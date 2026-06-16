@@ -70,6 +70,21 @@ setup_temp_dir() {
   mkdir -p "$TEST_TEMP_DIR/.vbw-planning"
 }
 
+assert_no_blank_lines_in_state_section() {
+  local start_re="$1"
+  local stop_re="$2"
+  local state_path="$TEST_TEMP_DIR/.vbw-planning/STATE.md"
+
+  awk -v start_re="$start_re" -v stop_re="$stop_re" '
+    $0 ~ start_re { seen_start=1; in_section=1; next }
+    in_section && $0 ~ stop_re { seen_stop=1; in_section=0; exit }
+    in_section && /^[[:space:]]*$/ { failed=1; exit }
+    END {
+      if (failed || !seen_start || !seen_stop) exit 1
+    }
+  ' "$state_path"
+}
+
 # Clean up temp directory
 teardown_temp_dir() {
   [ -n "${TEST_TEMP_DIR:-}" ] && rm -rf "$TEST_TEMP_DIR"

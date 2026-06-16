@@ -4,6 +4,7 @@ load test_helper
 
 setup() {
   setup_temp_dir
+  TEST_TEMP_DIR="$(cd "$TEST_TEMP_DIR" && pwd -P)"
   PHASE_DIR="$TEST_TEMP_DIR/.vbw-planning/phases/01-test"
   mkdir -p "$PHASE_DIR"
 }
@@ -525,6 +526,24 @@ EOF
   [ ! -d "$sidechain_phase_dir/remediation" ]
 }
 
+@test "get-or-init maps absolute Claude sidechain phase dir back to host from host cwd" {
+  local host_root host_phase_dir sidechain_dir sidechain_phase_dir
+  host_root="$TEST_TEMP_DIR/host"
+  create_test_vbw_workspace "$host_root"
+  mkdir -p "$host_root/.vbw-planning/phases/01-host-cwd" "$host_root/.claude/worktrees/agent-test/.vbw-planning/phases/01-host-cwd"
+  host_root=$(cd "$host_root" && pwd -P)
+  host_phase_dir="$host_root/.vbw-planning/phases/01-host-cwd"
+  sidechain_dir="$host_root/.claude/worktrees/agent-test"
+  sidechain_phase_dir="$sidechain_dir/.vbw-planning/phases/01-host-cwd"
+
+  run bash -c 'cd "$1" && bash "$2/uat-remediation-state.sh" get-or-init "$3" "major"' _ "$host_root" "$SCRIPTS_DIR" "$sidechain_phase_dir"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"round_dir=$host_phase_dir/remediation/uat/round-01"* ]]
+  [[ "$output" == *"summary_path=$host_phase_dir/remediation/uat/round-01/R01-SUMMARY.md"* ]]
+  [ -f "$host_phase_dir/remediation/uat/.uat-remediation-stage" ]
+  [ ! -d "$sidechain_phase_dir/remediation" ]
+}
+
 @test "get-or-init normalizes nested active phase subpath back to phase root" {
   local phase_dir_physical
   mkdir -p "$PHASE_DIR/remediation/uat/round-01"
@@ -842,6 +861,12 @@ EOF
   bash "$SCRIPTS_DIR/uat-remediation-state.sh" advance "$PHASE_DIR" >/dev/null
   bash "$SCRIPTS_DIR/uat-remediation-state.sh" advance "$PHASE_DIR" >/dev/null
   bash "$SCRIPTS_DIR/uat-remediation-state.sh" advance "$PHASE_DIR" >/dev/null
+  cat > "$PHASE_DIR/remediation/uat/round-01/R01-UAT.md" <<'EOF'
+---
+status: issues_found
+---
+# UAT
+EOF
 
   run bash "$SCRIPTS_DIR/uat-remediation-state.sh" needs-round "$PHASE_DIR"
   [ "$status" -eq 0 ]
@@ -919,10 +944,160 @@ EOF
   bash "$SCRIPTS_DIR/uat-remediation-state.sh" advance "$PHASE_DIR" >/dev/null
   bash "$SCRIPTS_DIR/uat-remediation-state.sh" advance "$PHASE_DIR" >/dev/null
   bash "$SCRIPTS_DIR/uat-remediation-state.sh" advance "$PHASE_DIR" >/dev/null
+  cat > "$PHASE_DIR/remediation/uat/round-01/R01-UAT.md" <<'EOF'
+---
+status: issues_found
+---
+# UAT
+EOF
 
   run bash "$SCRIPTS_DIR/uat-remediation-state.sh" needs-round "$PHASE_DIR"
   [ "$status" -eq 0 ]
   [ "$(echo "$output" | head -1)" = "research" ]
   echo "$output" | grep -q "^round=02$"
   [ -d "$PHASE_DIR/remediation/uat/round-02" ]
+}
+
+@test "needs-round refuses previous-round fallback when current round UAT is missing" {
+  mkdir -p "$PHASE_DIR/remediation/uat/round-01" "$PHASE_DIR/remediation/uat/round-02"
+  printf 'stage=done\nround=02\nlayout=round-dir\n' > "$PHASE_DIR/remediation/uat/.uat-remediation-stage"
+  cat > "$PHASE_DIR/remediation/uat/round-01/R01-UAT.md" <<'EOF'
+---
+status: issues_found
+---
+# Previous round UAT
+EOF
+
+  run bash "$SCRIPTS_DIR/uat-remediation-state.sh" needs-round "$PHASE_DIR"
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"current round UAT evidence is missing"* ]]
+  grep -q '^stage=done$' "$PHASE_DIR/remediation/uat/.uat-remediation-stage"
+  grep -q '^round=02$' "$PHASE_DIR/remediation/uat/.uat-remediation-stage"
+  [ ! -d "$PHASE_DIR/remediation/uat/round-03" ]
+}
+
+@test "needs-round accepts exact current flat archive during migration bridge" {
+  mkdir -p "$PHASE_DIR/remediation/uat/round-02"
+  printf 'stage=done\nround=02\nlayout=round-dir\n' > "$PHASE_DIR/remediation/uat/.uat-remediation-stage"
+  cat > "$PHASE_DIR/01-UAT-round-02.md" <<'EOF'
+---
+status: issues_found
+---
+# Flat archive for current round
+EOF
+
+  run bash "$SCRIPTS_DIR/uat-remediation-state.sh" needs-round "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [ "$(echo "$output" | head -1)" = "research" ]
+  grep -q '^stage=research$' "$PHASE_DIR/remediation/uat/.uat-remediation-stage"
+  grep -q '^round=03$' "$PHASE_DIR/remediation/uat/.uat-remediation-stage"
+  [ -d "$PHASE_DIR/remediation/uat/round-03" ]
+}
+
+@test "needs-round refuses old remediation state before migration when stage is not terminal" {
+  mkdir -p "$PHASE_DIR/remediation/round-01"
+  printf 'stage=research\nround=01\n' > "$PHASE_DIR/remediation/.uat-remediation-stage"
+
+  run bash "$SCRIPTS_DIR/uat-remediation-state.sh" needs-round "$PHASE_DIR"
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"needs-round requires stage verify or done, got: research"* ]]
+  [ -f "$PHASE_DIR/remediation/.uat-remediation-stage" ]
+  [ -d "$PHASE_DIR/remediation/round-01" ]
+  [ ! -d "$PHASE_DIR/remediation/uat" ]
+  [ ! -d "$PHASE_DIR/remediation/round-02" ]
+}
+
+@test "needs-round refuses old remediation state before migration when current UAT is active" {
+  mkdir -p "$PHASE_DIR/remediation/round-01"
+  printf 'stage=done\nround=01\n' > "$PHASE_DIR/remediation/.uat-remediation-stage"
+  cat > "$PHASE_DIR/remediation/round-01/R01-UAT.md" <<'EOF'
+---
+status: in_progress
+---
+# Active old-location UAT
+EOF
+
+  run bash "$SCRIPTS_DIR/uat-remediation-state.sh" needs-round "$PHASE_DIR"
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"requires a finalized 'issues_found' UAT"* ]]
+  [ -f "$PHASE_DIR/remediation/.uat-remediation-stage" ]
+  [ -f "$PHASE_DIR/remediation/round-01/R01-UAT.md" ]
+  [ ! -d "$PHASE_DIR/remediation/uat" ]
+}
+
+@test "needs-round refuses old remediation state before migration when current UAT evidence is missing" {
+  mkdir -p "$PHASE_DIR/remediation/round-01"
+  printf 'stage=done\nround=01\n' > "$PHASE_DIR/remediation/.uat-remediation-stage"
+
+  run bash "$SCRIPTS_DIR/uat-remediation-state.sh" needs-round "$PHASE_DIR"
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"current round UAT evidence is missing"* ]]
+  [ -f "$PHASE_DIR/remediation/.uat-remediation-stage" ]
+  [ -d "$PHASE_DIR/remediation/round-01" ]
+  [ ! -d "$PHASE_DIR/remediation/uat" ]
+  [ ! -d "$PHASE_DIR/remediation/round-02" ]
+}
+
+@test "needs-round migrates old remediation state after finalized current UAT preflight" {
+  mkdir -p "$PHASE_DIR/remediation/round-01"
+  printf 'stage=done\nround=01\n' > "$PHASE_DIR/remediation/.uat-remediation-stage"
+  cat > "$PHASE_DIR/remediation/round-01/R01-UAT.md" <<'EOF'
+---
+status: issues_found
+---
+# Finalized old-location UAT
+EOF
+
+  run bash "$SCRIPTS_DIR/uat-remediation-state.sh" needs-round "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [ "$(echo "$output" | head -1)" = "research" ]
+  [ ! -f "$PHASE_DIR/remediation/.uat-remediation-stage" ]
+  [ ! -d "$PHASE_DIR/remediation/round-01" ]
+  [ -f "$PHASE_DIR/remediation/uat/round-01/R01-UAT.md" ]
+  [ -d "$PHASE_DIR/remediation/uat/round-02" ]
+  grep -q '^stage=research$' "$PHASE_DIR/remediation/uat/.uat-remediation-stage"
+  grep -q '^round=02$' "$PHASE_DIR/remediation/uat/.uat-remediation-stage"
+  grep -q '^layout=round-dir$' "$PHASE_DIR/remediation/uat/.uat-remediation-stage"
+}
+
+@test "needs-round refuses when current round UAT is active" {
+  mkdir -p "$PHASE_DIR/remediation/uat/round-03"
+  printf 'stage=verify\nround=03\nlayout=round-dir\n' > "$PHASE_DIR/remediation/uat/.uat-remediation-stage"
+  cat > "$PHASE_DIR/remediation/uat/round-03/R03-UAT.md" <<'EOF'
+---
+status: in_progress
+---
+# UAT
+EOF
+
+  run bash "$SCRIPTS_DIR/uat-remediation-state.sh" needs-round "$PHASE_DIR"
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"requires a finalized 'issues_found' UAT"* ]]
+  grep -q '^stage=verify$' "$PHASE_DIR/remediation/uat/.uat-remediation-stage"
+  grep -q '^round=03$' "$PHASE_DIR/remediation/uat/.uat-remediation-stage"
+  [ ! -d "$PHASE_DIR/remediation/uat/round-04" ]
+}
+
+@test "needs-round refuses lifecycle stages before verify or done" {
+  local stage
+  for stage in research plan execute fix; do
+    rm -rf "$PHASE_DIR/remediation"
+    mkdir -p "$PHASE_DIR/remediation/uat/round-01"
+    printf 'stage=%s\nround=01\nlayout=round-dir\n' "$stage" > "$PHASE_DIR/remediation/uat/.uat-remediation-stage"
+
+    run bash "$SCRIPTS_DIR/uat-remediation-state.sh" needs-round "$PHASE_DIR"
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"needs-round requires stage verify or done, got: $stage"* ]]
+    grep -q "^stage=$stage$" "$PHASE_DIR/remediation/uat/.uat-remediation-stage"
+    grep -q '^round=01$' "$PHASE_DIR/remediation/uat/.uat-remediation-stage"
+    [ ! -d "$PHASE_DIR/remediation/uat/round-02" ]
+  done
 }

@@ -291,6 +291,111 @@ EOF
   grep -q "^status: complete" "$uat"
 }
 
+@test "finalize-uat-status: PR and D checkpoints are counted" {
+  local uat="$TEST_TEMP_DIR/03-UAT.md"
+  create_uat_file "$uat" <<'EOF'
+---
+phase: 03
+status: in_progress
+completed:
+total_tests: 3
+passed: 0
+skipped: 0
+issues: 0
+---
+
+## Tests
+
+### D01: Review accepted summary deviation
+
+- **Result:** pass
+- **Disposition:** accepted-process-exception
+
+### PR03-T01: Verify remediation behavior
+
+- **Result:** pass
+
+### D02: Discovered issue
+
+- **Result:** issue
+- **Issue:** New problem
+  - Description: New problem
+  - Severity: major
+EOF
+
+  run bash "$SCRIPTS_DIR/finalize-uat-status.sh" "$uat"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"status=issues_found"* ]]
+  [[ "$output" == *"passed=2"* ]]
+  [[ "$output" == *"issues=1"* ]]
+  [[ "$output" == *"total=3"* ]]
+}
+
+@test "finalize-uat-status: tracked accepted summary deviation is non-blocking" {
+  local uat="$TEST_TEMP_DIR/03-UAT.md"
+  create_uat_file "$uat" <<'EOF'
+---
+phase: 03
+status: in_progress
+completed:
+total_tests: 2
+passed: 0
+skipped: 0
+issues: 0
+---
+
+## Tests
+
+### D01: Review accepted tracked summary deviation
+
+- **Result:** pass
+- **Disposition:** accepted-process-exception
+- **Tracking:** accepted deviation added to todos (ref:1a2b3c4d)
+
+### P01-T01: Verify normal checkpoint
+
+- **Result:** pass
+EOF
+
+  run bash "$SCRIPTS_DIR/finalize-uat-status.sh" "$uat"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"status=complete"* ]]
+  [[ "$output" == *"passed=2"* ]]
+  [[ "$output" == *"issues=0"* ]]
+  grep -q '^status: complete' "$uat"
+  grep -q '^issues: 0' "$uat"
+}
+
+@test "finalize-uat-status: legacy P checkpoints remain supported" {
+  local uat="$TEST_TEMP_DIR/01-UAT.md"
+  create_uat_file "$uat" <<'EOF'
+---
+phase: 01
+status: in_progress
+completed:
+total_tests: 1
+passed: 0
+skipped: 0
+issues: 0
+---
+
+## Tests
+
+### P01: Legacy checkpoint
+
+- **Result:** issue
+- **Issue:** Legacy checkpoint failed
+  - Description: Legacy checkpoint failed
+  - Severity: major
+EOF
+
+  run bash "$SCRIPTS_DIR/finalize-uat-status.sh" "$uat"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"status=issues_found"* ]]
+  [[ "$output" == *"issues=1"* ]]
+  [[ "$output" == *"total=1"* ]]
+}
+
 @test "finalize-uat-status: updates completed date" {
   local uat="$TEST_TEMP_DIR/01-UAT.md"
   create_uat_file "$uat" <<'EOF'
@@ -326,6 +431,25 @@ EOF
   run bash "$SCRIPTS_DIR/finalize-uat-status.sh" "/nonexistent/file.md"
   [ "$status" -eq 1 ]
   [[ "$output" == *"Error"* ]]
+}
+
+@test "finalize-uat-status: missing frontmatter fails closed without rewriting body" {
+  local uat="$TEST_TEMP_DIR/01-UAT.md"
+  create_uat_file "$uat" <<'EOF'
+# UAT without frontmatter
+
+## Tests
+
+### P01-T1: Test one
+
+- **Result:** pass
+EOF
+  cp "$uat" "$uat.before"
+
+  run bash "$SCRIPTS_DIR/finalize-uat-status.sh" "$uat"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"missing YAML frontmatter block"* ]]
+  cmp -s "$uat.before" "$uat"
 }
 
 # --- finalize-uat-status.sh robustness: edge-case Result values ---
@@ -539,6 +663,51 @@ EOF
   local today
   today=$(date +%Y-%m-%d)
   grep -q "^completed: $today" "$uat"
+}
+
+@test "finalize-uat-status: injects missing canonical count fields" {
+  local uat="$TEST_TEMP_DIR/R05-UAT.md"
+  create_uat_file "$uat" <<'EOF'
+---
+phase: 03
+round: 05
+status: in_progress
+---
+
+## Tests
+
+### D01: Review accepted deviation
+
+- **Result:** pass
+
+### PR05-T01: Verify recurring remediation behavior
+
+- **Result:** issue
+- **Issue:** Re-verification still finds the problem
+  - Description: Re-verification still finds the problem
+  - Severity: major
+
+### PR05-T02: Optional follow-up
+
+- **Result:** skip
+EOF
+
+  run bash "$SCRIPTS_DIR/finalize-uat-status.sh" "$uat"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"status=issues_found"* ]]
+  [[ "$output" == *"passed=1"* ]]
+  [[ "$output" == *"skipped=1"* ]]
+  [[ "$output" == *"issues=1"* ]]
+  [[ "$output" == *"total=3"* ]]
+
+  local today
+  today=$(date +%Y-%m-%d)
+  grep -q '^status: issues_found$' "$uat"
+  grep -q "^completed: $today$" "$uat"
+  grep -q '^passed: 1$' "$uat"
+  grep -q '^skipped: 1$' "$uat"
+  grep -q '^issues: 1$' "$uat"
+  grep -q '^total_tests: 3$' "$uat"
 }
 
 # --- extract-uat-issues.sh lenient parsing tests ---

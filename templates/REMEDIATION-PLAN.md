@@ -53,6 +53,7 @@ must_haves:
 - {criterion}
 </success_criteria>
 <known_issue_workflow>
+- Always include `known_issues_input` and `known_issue_resolutions` in frontmatter. If there are no carried known issues, set both to empty arrays: `known_issues_input: []` and `known_issue_resolutions: []`.
 - Copy every carried known issue from the remediation input backlog into `known_issues_input` using the canonical `{test,file,error}` shape.
 - Add a matching `known_issue_resolutions` entry for every carried known issue. Use `resolved` when this round fixes it, `accepted-process-exception` when QA should treat it as a verified non-blocking carryover for this phase, and `unresolved` only when the issue is intentionally carried into the next round.
 - Do not omit a carried known issue from these arrays. The deterministic gate treats missing coverage as a failed remediation round.

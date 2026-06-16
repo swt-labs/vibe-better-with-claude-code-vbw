@@ -30,25 +30,32 @@ Store the plugin root path output above as `{plugin-root}` for use in script inv
 - Not initialized (no .vbw-planning/ dir): STOP "Run /vbw:init first."
 - No $ARGUMENTS and no `--resume` flag and no `--session` flag: STOP "Usage: `/vbw:debug \"description of the bug or error message\" [--competing|--parallel|--serial]` | `/vbw:debug <todo-number> [--competing|--parallel|--serial]` | `/vbw:debug --resume` | `/vbw:debug --session <id>`"
 
-## Resolve todo number
+## Resolve selected todo number
 
-If $ARGUMENTS is a bare integer (matches `^[0-9]+$` with no other text or flags), preserve the original numeric-selection marker before rewriting anything. Resolve the todo item against the persisted unfiltered `/vbw:list-todos` snapshot and validate that the live backlog still matches the snapshotted identity:
-```bash
-bash "{plugin-root}/scripts/resolve-todo-item.sh" <N> --session-snapshot --require-unfiltered --validate-live
-```
-Parse the JSON output. If `status` is `"ok"`, store the full payload as `TODO_SELECTED_JSON`, preserve `TODO_SELECTED=true`, and replace $ARGUMENTS with the item's `command_text` value. If the resolved `state_path` points under `.vbw-planning/milestones/`, STOP with: `This todo came from archived milestone state. Restore the writable root STATE.md first by restarting so session-start.sh can run migration, or run 'bash scripts/migrate-orphaned-state.sh .vbw-planning'.` Do not continue using the archived description as live work input.
+<selected_todo_start_helper>
+Selected-todo mode applies when `$ARGUMENTS`, after removing only supported routing flags (`--competing`, `--parallel`, `--serial`), contains exactly one numeric token and no other freeform text. Preserve those supported routing flags and pass them through to the helper. Any other text stays on the manual/freeform debug path.
 
-If the selected item has a non-null `ref`, load detail immediately — before session creation:
+When selected-todo mode applies, call the deterministic helper exactly once:
 ```bash
-bash "{plugin-root}/scripts/todo-details.sh" get {hash}
+bash "{plugin-root}/scripts/debug-start-selected-todo.sh" .vbw-planning <N> [--competing|--parallel|--serial]
 ```
-If `status` is `"ok"`, store `DETAIL_STATUS=ok`, store the exact helper stdout as `TODO_DETAIL_RESULT_JSON`, and store `detail.context` plus `detail.files` for later use. If `status` is `"not_found"` or `"error"`, clear `TODO_DETAIL_RESULT_JSON`, record the matching `DETAIL_STATUS` value, and run:
-```bash
-bash "{plugin-root}/scripts/todo-lifecycle.sh" detail-warning {hash}
-```
-Continue without detail. If the selected item has no ref, use `DETAIL_STATUS=none` and `TODO_DETAIL_RESULT_JSON=""`.
 
-If `status` is `"error"`, STOP with the resolver's `message` value.
+Treat the helper stdout as `helper_output`, the single source of truth for selected-todo startup. The helper owns numbered selection resolution, optional detail loading, completed-session stale-state repair, debug session creation, `## Source Todo` persistence, and selected-todo pickup from writable root `STATE.md`. Do not reimplement those state transitions in command markdown.
+
+Helper output schema is status-variant. Always parse `.status` before reading branch-specific fields.
+- Common discriminator: `status` is `ok`, `already_complete`, or `error`.
+- Success-like payloads (`ok` and `already_complete`) include the full selected-todo payload: `mode`, `todo_selected`, `bug_desc`, `routing_flags`, `selected`, `ref`, `detail_status`, `detail`, `detail_has_signal`, `accepted_exception_markers`, `detail_warning`, `session`, `pickup`, and `message` when applicable. `pickup` contains `status`, `warning`, `auto_note`, and `result`.
+- No-session errors may carry only `status`, `code`, and `message`, plus any resolver-owned error fields. Do not assume `mode`, `bug_desc`, `routing_flags`, `selected`, `ref`, `detail_*`, `accepted_exception_markers`, `session`, or `pickup` exists on this branch.
+- Session-bearing errors carry `status`, `code`, `message`, `mode`, `todo_selected`, `session`, and usually `pickup` so the command can expose partial lifecycle state. Do not require success-only selected/detail fields on this branch.
+
+Parse `.status` first and branch explicitly:
+- If `.status == "ok"`: store `SELECTED_TODO_MODE=true`, store `SELECTED_TODO_START_JSON=helper_output`, replace `$ARGUMENTS` with `.bug_desc`, set `session_id=.session.id`, `session_file=.session.file`, and `session_status=.session.status`, then continue the workflow using helper-provided fields.
+- If `.status == "already_complete"`: show the completed session id/file/status, the helper message, and any pickup warning. STOP. Do not create, resume, or investigate another session.
+- If `.status == "error"` and `.session` exists: show that a debug session already exists or was created before the pickup/session error, include `.session.id`, `.session.file`, `.session.status`, surface `.message`, and tell the user to inspect or resume that session instead of implying no session exists. STOP.
+- For any other error: STOP with `.message // "Selected todo startup failed. Rerun /vbw:list-todos and try again."`.
+
+All selected-todo consumers below must read `SELECTED_TODO_START_JSON`: parse/effort uses `.bug_desc` and `.ref`; sparse enrichment uses `.detail_has_signal`, `.detail.context`, and `.detail.files`; accepted-exception prompt text uses `.accepted_exception_markers`; pickup UX uses `.pickup.*`. The command must not preserve selected-todo JSON variables, preserve raw detail-helper JSON for the selected path, or pipe selected-todo JSON between resolver/detail/session/pickup helpers.
+</selected_todo_start_helper>
 
 ## Debug Session Resolution
 
@@ -69,39 +76,31 @@ Resolve or create the debug session before any investigation. Order of precedenc
   If `active_session=fallback`, inform user which session was auto-selected (no `.active-session` pointer was set, so the latest unresolved session was chosen automatically).
   For metadata-read helper calls (`resume`, `get-or-latest`), use `active_session`, `session_id`, `session_file`, and `session_status` after `eval`. Use `session_status` for lifecycle checks after `eval`; do not rely on a bare `status` variable.
 
-3. **New session (no --resume, no --session):** Create a fresh session from $ARGUMENTS. Strip known flags (`--competing`, `--parallel`, `--serial`) and any `(ref:HASH)` suffix from $ARGUMENTS before computing the slug — these are routing/ref metadata, not part of the bug description.
+3. **New session (no --resume, no --session):** If `SELECTED_TODO_MODE=true`, the selected-todo helper has already created or identified the session and has already handled Source Todo persistence plus root `STATE.md` pickup. Reuse `session_id`, `session_file`, and `session_status` from `SELECTED_TODO_START_JSON`; do not create another session and do not run selected-todo pickup in markdown.
+
+   For manual/freeform starts only, create a fresh session from $ARGUMENTS. Strip known flags (`--competing`, `--parallel`, `--serial`) and any `(ref:HASH)` suffix from $ARGUMENTS before computing the slug — these are routing/ref metadata, not part of the bug description.
    ```bash
    BUG_DESC=$(printf '%s' "$ARGUMENTS" | sed -E 's/[[:space:]]*\(ref:[^)]+\)//g' | sed -E 's/(^|[[:space:]])--(competing|parallel|serial)([[:space:]]|$)/ /g' | sed 's/^[[:space:]]*//' | sed 's/[[:space:]]*$//' | tr -s '[:space:]' ' ')
    SLUG=$(printf '%s' "$BUG_DESC" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]/-/g' | sed 's/--*/-/g' | sed 's/^-//' | sed 's/-$//' | head -c 50)
-   if [ "${TODO_SELECTED:-false}" = "true" ]; then
-     eval "$(printf '%s' "$TODO_SELECTED_JSON" | TODO_DETAIL_RESULT_JSON="${TODO_DETAIL_RESULT_JSON:-}" bash "{plugin-root}/scripts/debug-session-state.sh" start-with-selected-todo .vbw-planning "$SLUG" "${DETAIL_STATUS:-none}")"
-   else
-     MANUAL_REF="${REF_HASH:-none}"
-     MANUAL_DETAIL_CONTEXT=""
-     MANUAL_DETAIL_FILES='[]'
-     if [ "${DETAIL_STATUS:-none}" = "ok" ] && [ -n "${TODO_DETAIL_RESULT_JSON:-}" ]; then
-       MANUAL_DETAIL_CONTEXT=$(printf '%s' "$TODO_DETAIL_RESULT_JSON" | jq -r '.detail.context // empty' 2>/dev/null || echo "")
-       MANUAL_DETAIL_FILES=$(printf '%s' "$TODO_DETAIL_RESULT_JSON" | jq -c '(.detail.files // []) | if type == "array" then . else [] end' 2>/dev/null || printf '[]')
-     fi
-     eval "$(jq -cn \
-       --arg mode "source-todo" \
-       --arg text "$BUG_DESC" \
-       --arg raw_line "none" \
-       --arg ref "$MANUAL_REF" \
-       --arg detail_status "${DETAIL_STATUS:-none}" \
-       --argjson related_files "$MANUAL_DETAIL_FILES" \
-       --arg detail_context "$MANUAL_DETAIL_CONTEXT" \
-       '{mode:$mode, text:$text, raw_line:$raw_line, ref:$ref, detail_status:$detail_status, related_files:$related_files, detail_context:$detail_context}' \
-       | bash "{plugin-root}/scripts/debug-session-state.sh" start-with-source-todo .vbw-planning "$SLUG")"
+   MANUAL_REF="${REF_HASH:-none}"
+   MANUAL_DETAIL_CONTEXT=""
+   MANUAL_DETAIL_FILES='[]'
+   if [ "${DETAIL_STATUS:-none}" = "ok" ] && [ -n "${DETAIL_RESULT_JSON:-}" ]; then
+     MANUAL_DETAIL_CONTEXT=$(printf '%s' "$DETAIL_RESULT_JSON" | jq -r '.detail.context // empty' 2>/dev/null || echo "")
+     MANUAL_DETAIL_FILES=$(printf '%s' "$DETAIL_RESULT_JSON" | jq -c '(.detail.files // []) | if type == "array" then . else [] end' 2>/dev/null || printf '[]')
    fi
+   eval "$(jq -cn \
+     --arg mode "source-todo" \
+     --arg text "$BUG_DESC" \
+     --arg raw_line "none" \
+     --arg ref "$MANUAL_REF" \
+     --arg detail_status "${DETAIL_STATUS:-none}" \
+     --argjson related_files "$MANUAL_DETAIL_FILES" \
+     --arg detail_context "$MANUAL_DETAIL_CONTEXT" \
+     '{mode:$mode, text:$text, raw_line:$raw_line, ref:$ref, detail_status:$detail_status, related_files:$related_files, detail_context:$detail_context}' \
+     | bash "{plugin-root}/scripts/debug-session-state.sh" start-with-source-todo .vbw-planning "$SLUG")"
    ```
-   The selected-todo helper owns the numbered `/vbw:list-todos` source-todo payload normalization, `## Source Todo` persistence, and rollback on write failure. Keep manual/freeform debug starts on the existing `start-with-source-todo` path.
-
-  Only after the source-todo write succeeds, and only when `TODO_SELECTED=true`, pipe `TODO_SELECTED_JSON` into:
-  ```bash
-  bash "{plugin-root}/scripts/todo-lifecycle.sh" pickup /vbw:debug {DETAIL_STATUS} {cleanup_policy}
-  ```
-  Set `{cleanup_policy}` to `safe` when `DETAIL_STATUS=ok`; otherwise set it to `keep`. If the helper returns `status="error"`, STOP with its `message` value. If it returns `status="partial"`, continue but surface its `warning` value with the final result so cleanup state stays explicit. Capture the helper result immediately into explicit presentation variables so post-pickup messaging stays deterministic: `TODO_PICKUP_RESULT_JSON` for the exact helper stdout, `TODO_PICKUP_STATUS=ok|partial`, `TODO_PICKUP_WARNING` from `.warning // empty`, and `TODO_PICKUP_AUTO_NOTE="Selected todo was already picked up automatically."`.
+   Keep manual/freeform debug starts on the existing `start-with-source-todo` path. The selected helper owns deterministic selected-todo state mutation and returns pickup presentation fields under `.pickup`.
 
 Store the resolved `session_id` and `session_file` for use in Steps below.
 
@@ -121,27 +120,29 @@ If resuming a session with `session_status=complete`: STOP "This debug session i
 </debug_session_routing>
 
 ## Steps
-1. **Parse + effort:** Strip any known flags (`--competing`, `--parallel`, `--serial`) from $ARGUMENTS and store them separately for Step 2 routing. If `TODO_SELECTED_JSON` already exists from the numeric-selection path above, reuse its `command_text` as the bug description, reuse its `ref`, and reuse the already-loaded `DETAIL_STATUS`, `TODO_DETAIL_RESULT_JSON`, `detail.context`, and `detail.files` values — do not call `todo-details.sh` a second time. Otherwise, if the remaining $ARGUMENTS contains a `(ref:HASH)` suffix (8 hex characters), extract the hash as `REF_HASH` and strip the ref tag. Store remaining text (minus flags and ref) as the bug description. If a ref was found, load extended detail:
+1. **Parse + effort:** Strip any known flags (`--competing`, `--parallel`, `--serial`) from $ARGUMENTS and store them separately for Step 2 routing. If `SELECTED_TODO_START_JSON` exists from the selected helper, reuse `.bug_desc` as the bug description, `.ref` as the selected ref, `.detail_status`, `.detail.context`, `.detail.files`, `.detail_has_signal`, `.accepted_exception_markers`, and `.routing_flags`; do not call `todo-details.sh` a second time and do not inspect raw selected-todo JSON to rediscover these fields. Otherwise, if the remaining $ARGUMENTS contains a `(ref:HASH)` suffix (8 hex characters), extract the hash as `REF_HASH` and strip the ref tag. Store remaining text (minus flags and ref) as the bug description. If a ref was found, load extended detail:
    ```bash
    bash "{plugin-root}/scripts/todo-details.sh" get {hash}
    ```
-   Parse the JSON output. If `status` is `"ok"`, store `DETAIL_STATUS=ok`, store the exact helper stdout as `TODO_DETAIL_RESULT_JSON`, and store `detail.context` plus `detail.files` for use in Step 4. If `status` is `"not_found"` or `"error"`, clear `TODO_DETAIL_RESULT_JSON`, record the matching `DETAIL_STATUS` value, and run:
+  Parse the JSON output. If `status` is `"ok"`, store `DETAIL_STATUS=ok`, store the exact helper stdout as `DETAIL_RESULT_JSON`, and store `detail.context` plus `detail.files` for use in Step 4. If `status` is `"not_found"` or `"error"`, clear `DETAIL_RESULT_JSON`, record the matching `DETAIL_STATUS` value, and run:
    ```bash
    bash "{plugin-root}/scripts/todo-lifecycle.sh" detail-warning {hash}
    ```
    In all cases, continue without detail.
-   If no ref suffix, $ARGUMENTS minus flags = bug description, `DETAIL_STATUS=none`, and `TODO_DETAIL_RESULT_JSON=""`.
+  If no ref suffix, $ARGUMENTS minus flags = bug description, `DETAIL_STATUS=none`, and `DETAIL_RESULT_JSON=""`.
   **Post-parse validation:** If the bug description is empty or whitespace-only after stripping flags and ref, check whether a ref was found AND its detail loaded successfully (status `"ok"`). If yes, proceed — the detail provides the investigation context. If no ref was found, or the ref detail failed to load, STOP: "Usage: `/vbw:debug \"description of the bug or error message\" [--competing|--parallel|--serial]` | `/vbw:debug <todo-number> [--competing|--parallel|--serial]` | `/vbw:debug --resume` | `/vbw:debug --session <id>`".
    Map effort: thorough=high, balanced/fast=medium, turbo=low.
    Keep effort profile as `EFFORT_PROFILE` (thorough|balanced|fast|turbo).
    Read `{plugin-root}/references/effort-profile-{profile}.md`.
 
-   **Bounded sparse-context enrichment (detail-first, then tiny helper):** Treat `DETAIL_STATUS=ok` as “lookup succeeded,” not automatically as “detail is useful.” Skip enrichment only when the loaded detail has actual signal — a non-empty `detail.context` or at least one related file. Otherwise, keep treating the item as sparse and run one bounded enrichment pass before final skill preselection:
+   **Bounded sparse-context enrichment (detail-first, then tiny helper):** Treat `DETAIL_STATUS=ok` as “lookup succeeded,” not automatically as “detail is useful.” For selected-todo mode, consume helper-provided `detail_has_signal` directly. For manual/freeform ref mode, compute the same value from `DETAIL_RESULT_JSON`: true only when loaded detail has actual signal — a non-empty `detail.context` or at least one related file. Otherwise, keep treating the item as sparse and run one bounded enrichment pass before final skill preselection:
    ```bash
    DETAIL_HAS_SIGNAL=false
-   if [ "${DETAIL_STATUS:-none}" = "ok" ] && [ -n "${TODO_DETAIL_RESULT_JSON:-}" ]; then
-    DETAIL_CONTEXT_FOR_ENRICHMENT=$(printf '%s' "$TODO_DETAIL_RESULT_JSON" | jq -r '.detail.context // ""' 2>/dev/null || printf '')
-    DETAIL_FILE_COUNT_FOR_ENRICHMENT=$(printf '%s' "$TODO_DETAIL_RESULT_JSON" | jq -r '(.detail.files // []) | if type == "array" then length else 0 end' 2>/dev/null || printf '0')
+   if [ "${SELECTED_TODO_MODE:-false}" = "true" ]; then
+     DETAIL_HAS_SIGNAL=$(printf '%s' "$SELECTED_TODO_START_JSON" | jq -r '.detail_has_signal // false' 2>/dev/null || printf 'false')
+   elif [ "${DETAIL_STATUS:-none}" = "ok" ] && [ -n "${DETAIL_RESULT_JSON:-}" ]; then
+    DETAIL_CONTEXT_FOR_ENRICHMENT=$(printf '%s' "$DETAIL_RESULT_JSON" | jq -r '.detail.context // ""' 2>/dev/null || printf '')
+    DETAIL_FILE_COUNT_FOR_ENRICHMENT=$(printf '%s' "$DETAIL_RESULT_JSON" | jq -r '(.detail.files // []) | if type == "array" then length else 0 end' 2>/dev/null || printf '0')
      if [ -n "$DETAIL_CONTEXT_FOR_ENRICHMENT" ] || [ "${DETAIL_FILE_COUNT_FOR_ENRICHMENT:-0}" -gt 0 ]; then
        DETAIL_HAS_SIGNAL=true
      fi
@@ -162,6 +163,12 @@ If resuming a session with `session_status=complete`: STOP "This debug session i
    fi
    ```
    The helper is allowed to return `no_signal` or `no_match`; treat those as bounded no-ops and continue. Prefer existing selected-todo metadata first, then this helper's 1-3 likely files / framework markers, then the raw description. Do not turn this into a broad repo scan.
+
+  <accepted_exception_debug_semantics>
+  Accepted exception/backlog markers are historical phase/round waivers and backlog pointers, not proof that the underlying issue is fixed. Known-issue sources include `[KNOWN-ISSUE]`, `Disposition: accepted-process-exception`, and `known_issue_signature.disposition`. UAT-deviation sources include `[UAT-DEVIATION]`, `source: "uat-deviation"`, an `uat_deviation` object, and the phrase `Accepted UAT summary deviation`. When the user selects the item with `/vbw:debug <todo-number>`, treat it as an active remediation request. Do not set or accept `already_fixed` solely because source metadata says accepted, non-blocking, UAT deviation, process exception, or backlog. `already_fixed` requires fresh current evidence that the underlying issue no longer reproduces or the current branch already contains a real fix. If still actionable, use `resolution_observation=needs_change`; if impossible or unsafe without more input, use `resolution_observation=inconclusive`; Step 5 will normalize that field and map the no-commit session to `INVESTIGATION_OUTCOME=no_fix_yet`.
+
+  When selected helper output includes `accepted_exception_markers`, include one compact source-metadata sentence near this block using those labels. For manual/freeform detail, include the same kind of sentence when `DETAIL_RESULT_JSON` contains visible accepted-exception markers. Do not paste full JSON into spawned prompts.
+  </accepted_exception_debug_semantics>
 
 2. **Classify ambiguity:** 2+ signals = ambiguous.
   Keywords: "intermittent/sometimes/random/unclear/inconsistent/flaky/sporadic/nondeterministic",
@@ -227,22 +234,23 @@ If resuming a session with `session_status=complete`: STOP "This debug session i
       </skill_no_activation>
       After calling `Skill(...)`, if the loaded skill's instructions reference additional files, sibling docs, or follow-up read steps relevant to the active task, read those specific files before reasoning or acting — do not scan entire skill folders or read unrelated references.
       ```
+    - Paste `<accepted_exception_debug_semantics>` immediately after the Path A payload prefix (and after any emitted `<skill_follow_up_files>` block) in all hypothesis investigator prompts and in the fresh post-synthesis implementation owner prompt. This block must appear before bug report, standalone research context, selected todo detail, sparse enrichment, hypothesis, implementation, and `resolution_observation` instructions. If `SELECTED_TODO_START_JSON.accepted_exception_markers` or manual `DETAIL_RESULT_JSON` contains accepted-exception markers, add one compact source-metadata sentence after the block; do not paste the full JSON.
     - Also evaluate available MCP tools in your system context. If any MCP servers provide debugging, build, test, documentation, or domain-specific capabilities relevant to this investigation, note them in each Debugger's task context so it can use those tools during investigation.
     - **Discover research context** (optional, from prior `/vbw:research`):
         ```bash
         RESEARCH_CONTEXT=$(bash "{plugin-root}/scripts/compile-research-context.sh" .vbw-planning "{bug description from Step 1}" 2>/dev/null || echo "")
         ```
         Replace `{bug description from Step 1}` with the actual parsed bug description. If `RESEARCH_CONTEXT` is non-empty, include it in each Debugger task prompt below. If empty, omit the `<standalone_research_context>` block entirely.
-    - Create 3 tasks via TaskCreate, each with: bug report, standalone research context (include ONLY if RESEARCH_CONTEXT was non-empty: `<standalone_research_context>Prior research findings from /vbw:research. Advisory — verify all claims against the current codebase before relying on them.\n{RESEARCH_CONTEXT}</standalone_research_context>`), extended context from todo detail only when the detail has actual signal from Step 1 (include `detail.context` and `detail.files` — omit this section entirely when detail was absent or structurally empty), and if detail did not have signal but bounded sparse-context enrichment from Step 1 returned `ok`, include the enrichment summary plus matched files and markers as a compact hint. Omit this enrichment section entirely if the helper returned `no_signal` or `no_match`. Include ONE hypothesis only (no cross-contamination), working dir, codebase bootstrap instruction ("If `.vbw-planning/codebase/META.md` exists, read ARCHITECTURE.md, CONCERNS.md, PATTERNS.md, and DEPENDENCIES.md (whichever exist) from `.vbw-planning/codebase/` to bootstrap codebase understanding before investigating"), instruction to report via `debugger_report` schema (see `{plugin-root}/references/handoff-schemas.md`) including explicit `resolution_observation=already_fixed|needs_change|inconclusive`, instruction that `resolution_observation` is analysis-scoped only (teammates do not own the final command outcome or session status), explicit report-only contract: "You are a hypothesis investigator, not the implementation owner. Do NOT edit files, apply fixes, run mutating Bash, commit, request implementation approval, or claim ownership of the final session outcome. Stop after diagnosis plus evidence reporting via `debugger_report`." Also include instruction: "If investigation reveals pre-existing failures unrelated to this bug, list them in your response under a 'Pre-existing Issues' heading with test name, file, and failure message." **Include `[analysis-only]` in each task subject** (e.g., "Hypothesis 1: race condition in sync handler [analysis-only]") so the TaskCompleted hook skips the commit-verification gate for report-only tasks. Keep `[analysis-only]` as an advisory hook marker only — it does NOT replace the report-only contract above.
-    - Spawn 3 vbw-debugger teammates, one task each. **Set `subagent_type: "vbw:vbw-debugger"` and `model: "${DEBUGGER_MODEL}"` on each Task spawn. If `DEBUGGER_MAX_TURNS` is non-empty, also pass `maxTurns: ${DEBUGGER_MAX_TURNS}`. If `DEBUGGER_MAX_TURNS` is empty, do NOT include maxTurns (omitting it = unlimited).**
-    - **Investigation phase:** Wait until ALL spawned hypothesis investigators have returned `debugger_report`. Then synthesize: strongest evidence + highest confidence wins. Multiple confirmed = contributing factors. After synthesis, choose one authoritative `RESOLUTION_OBSERVATION` value for the command from the teammate reports: `already_fixed` when the current branch already contains the fix and no new change is needed, `needs_change` when code changes were required or would still be required, `inconclusive` when the evidence is not yet strong enough.
+    - Create 3 tasks via TaskCreate, each with: bug report, standalone research context (include ONLY if RESEARCH_CONTEXT was non-empty: `<standalone_research_context>Prior research findings from /vbw:research. Advisory — verify all claims against the current codebase before relying on them.\n{RESEARCH_CONTEXT}</standalone_research_context>`), extended context from todo detail only when the detail has actual signal from Step 1 (include `detail.context` and `detail.files` — omit this section entirely when detail was absent or structurally empty), and if detail did not have signal but bounded sparse-context enrichment from Step 1 returned `ok`, include the enrichment summary plus matched files and markers as a compact hint. Omit this enrichment section entirely if the helper returned `no_signal` or `no_match`. Include ONE hypothesis only (no cross-contamination), working dir, codebase bootstrap instruction ("If `.vbw-planning/codebase/META.md` exists, read ARCHITECTURE.md, CONCERNS.md, PATTERNS.md, and DEPENDENCIES.md (whichever exist) from `.vbw-planning/codebase/` to bootstrap codebase understanding before investigating"), instruction to report via `debugger_report` schema (see `{plugin-root}/references/handoff-schemas.md`) including explicit `resolution_observation=already_fixed|needs_change|inconclusive`, instruction that `resolution_observation` is analysis-scoped only (teammates do not own the final command outcome or session status), and instruction that accepted-process-exception/backlog metadata alone is not enough for `already_fixed`; `already_fixed` requires fresh current evidence that the underlying issue no longer reproduces or the branch contains a real fix. Explicit report-only contract: "You are a hypothesis investigator, not the implementation owner. Do NOT edit files, apply fixes, run mutating Bash, commit, request implementation approval, or claim ownership of the final session outcome. Stop after diagnosis plus evidence reporting via `debugger_report`." Also include instruction: "If investigation reveals pre-existing failures unrelated to this bug, list them in your response under a 'Pre-existing Issues' heading with test name, file, and failure message." **Include `[analysis-only]` in each task subject** (e.g., "Hypothesis 1: race condition in sync handler [analysis-only]") so the TaskCompleted hook skips the commit-verification gate for report-only tasks. Keep `[analysis-only]` as an advisory hook marker only — it does NOT replace the report-only contract above.
+    - Spawn 3 vbw-debugger teammates, one task each. **Set `subagent_type: "vbw:vbw-debugger"` and `model: "${DEBUGGER_MODEL}"` on each Task spawn. If `DEBUGGER_MAX_TURNS` is non-empty, also pass `maxTurns: ${DEBUGGER_MAX_TURNS}`. If `DEBUGGER_MAX_TURNS` is empty, do NOT include maxTurns (omitting it = unlimited).** True-team spawn shape: pass the exact TeamCreate `team_name` and a unique per-teammate `name` for each hypothesis investigator (for example `debug-hypothesis-1`, `debug-hypothesis-2`, `debug-hypothesis-3`). Do not pass `isolation`, `cwd`, `working_dir`, `workingDirectory`, or `workdir`.
+    - **Investigation phase:** Wait until ALL spawned hypothesis investigators have returned `debugger_report`. Then synthesize: strongest evidence + highest confidence wins. Multiple confirmed = contributing factors. After synthesis, choose one authoritative `RESOLUTION_OBSERVATION` value for the command from the teammate reports: `already_fixed` only when fresh current evidence proves the current branch already contains the fix and no new change is needed, `needs_change` when code changes were required or would still be required, `inconclusive` when the evidence is not yet strong enough. For selected accepted-exception/backlog or UAT-deviation items, accepted-process-exception/backlog metadata alone is not enough for `already_fixed`; require fresh current evidence that the underlying issue no longer reproduces or the branch contains a real fix. If any teammate finds the selected item still reproducible or actionable, choose `needs_change`. If remediation is blocked or unsafe without more input, choose `inconclusive` and leave the session unresolved.
     - Choose one authoritative analysis-scoped `RESOLUTION_OBSERVATION` summary for user-facing presentation. Collect pre-existing issues from all debugger responses. De-duplicate by test name and file (keep first error message when the same test+file pair has different messages) — if multiple debuggers report the same pre-existing failure, include it only once.
     - **Teardown phase — HARD GATE before any implementation:** Send `shutdown_request` to each teammate.
     - Wait for `shutdown_response` (approved=true) delivered via SendMessage tool call (NOT plain text). If a teammate responds in plain text instead of calling SendMessage, re-send the `shutdown_request`. If rejected, re-request (max 3 attempts per teammate — then proceed).
     - Call TeamDelete.
     - **Post-TeamDelete residual cleanup:** `bash "{plugin-root}/scripts/clean-stale-teams.sh" 2>/dev/null || true`.
     - Verify: after TeamDelete, there must be ZERO active teammates. If teardown stalls, advise the user to run `/vbw:doctor --cleanup`.
-    - **Implementation phase:** If `RESOLUTION_OBSERVATION=already_fixed` or `inconclusive`: do NOT spawn an implementation owner. If `RESOLUTION_OBSERVATION=needs_change`: spawn ONE fresh post-synthesis implementation owner via TaskCreate with `subagent_type: "vbw:vbw-debugger"` and `model: "${DEBUGGER_MODEL}"`. If `DEBUGGER_MAX_TURNS` is non-empty, also pass `maxTurns: ${DEBUGGER_MAX_TURNS}`. If `DEBUGGER_MAX_TURNS` is empty, do NOT include maxTurns (omitting it = unlimited). This is a new debugger instance, not one of the earlier hypothesis investigators. Give it the winning hypothesis, rejected-hypothesis summary, synthesized evidence, relevant file paths, working dir, codebase bootstrap instruction, and explicit authority to implement, verify, and commit `fix({scope}): {description}` as the sole post-synthesis implementation owner. Wait for that implementation owner to finish before continuing to Step 5. Only THEN present results to user.
+    - **Implementation phase:** If `RESOLUTION_OBSERVATION=already_fixed` or `inconclusive`: do NOT spawn an implementation owner. If `RESOLUTION_OBSERVATION=needs_change`: spawn ONE fresh post-synthesis implementation owner via TaskCreate with `subagent_type: "vbw:vbw-debugger"` and `model: "${DEBUGGER_MODEL}"`. If `DEBUGGER_MAX_TURNS` is non-empty, also pass `maxTurns: ${DEBUGGER_MAX_TURNS}`. If `DEBUGGER_MAX_TURNS` is empty, do NOT include maxTurns (omitting it = unlimited). Non-team spawn shape: omit `team_name`, `run_in_background`, `isolation`, and worktree cwd fields (`cwd`, `working_dir`, `workingDirectory`, `workdir`). `name` is optional label-only metadata; never use it for routing, lifecycle state, or team semantics. This is a new debugger instance, not one of the earlier hypothesis investigators. Give it the accepted-exception debug semantics block, winning hypothesis, rejected-hypothesis summary, synthesized evidence, relevant file paths, working dir, codebase bootstrap instruction, and explicit authority to implement, verify, and commit `fix({scope}): {description}` as the sole post-synthesis implementation owner. Wait for that implementation owner to finish before continuing to Step 5. Only THEN present results to user.
 
   **Path B: Standard** (all other cases):
     - Resolve Debugger model:
@@ -277,15 +285,20 @@ If resuming a session with `session_status=complete`: STOP "This debug session i
       </skill_no_activation>
       After calling `Skill(...)`, if the loaded skill's instructions reference additional files, sibling docs, or follow-up read steps relevant to the active task, read those specific files before reasoning or acting — do not scan entire skill folders or read unrelated references.
       ```
+    - Paste `<accepted_exception_debug_semantics>` immediately after the Path B payload prefix (and after any emitted `<skill_follow_up_files>` block), before bug report, standalone research context, selected todo detail, sparse enrichment, reproduce/fix protocol, or `resolution_observation` instructions. If `SELECTED_TODO_START_JSON.accepted_exception_markers` or manual `DETAIL_RESULT_JSON` contains accepted-exception markers, add one compact source-metadata sentence after the block; do not paste the full JSON.
     - Also evaluate available MCP tools in your system context. If any MCP servers provide debugging, build, test, documentation, or domain-specific capabilities relevant to this investigation, note them in the Debugger's task context so it can use those tools during investigation.
     - **Discover research context** (optional, from prior `/vbw:research`):
         ```bash
         RESEARCH_CONTEXT=$(bash "{plugin-root}/scripts/compile-research-context.sh" .vbw-planning "{bug description from Step 1}" 2>/dev/null || echo "")
         ```
         Replace `{bug description from Step 1}` with the actual parsed bug description. If `RESEARCH_CONTEXT` is non-empty, include it in the Debugger task prompt below. If empty, omit the `<standalone_research_context>` block entirely — the debug workflow proceeds as today.
-    - Spawn vbw-debugger as subagent via Task tool. **Set `subagent_type: "vbw:vbw-debugger"` and `model: "${DEBUGGER_MODEL}"` in the Task tool invocation. If `DEBUGGER_MAX_TURNS` is non-empty, also pass `maxTurns: ${DEBUGGER_MAX_TURNS}`. If `DEBUGGER_MAX_TURNS` is empty, do NOT include maxTurns (omitting it = unlimited).**
+    - Spawn vbw-debugger as subagent via Task tool. **Set `subagent_type: "vbw:vbw-debugger"` and `model: "${DEBUGGER_MODEL}"` in the Task tool invocation. If `DEBUGGER_MAX_TURNS` is non-empty, also pass `maxTurns: ${DEBUGGER_MAX_TURNS}`. If `DEBUGGER_MAX_TURNS` is empty, do NOT include maxTurns (omitting it = unlimited).** Non-team spawn shape: omit `team_name`, `run_in_background`, `isolation`, and worktree cwd fields (`cwd`, `working_dir`, `workingDirectory`, `workdir`). `name` is optional label-only metadata; never use it for routing, lifecycle state, or team semantics.
         ```text
         Bug investigation. Effort: {DEBUGGER_EFFORT}.
+        <accepted_exception_debug_semantics>
+        {Paste only the inner contents of the shared accepted-exception debug semantics block from Step 1 here; do not include the outer <accepted_exception_debug_semantics> tags here.}
+        </accepted_exception_debug_semantics>
+        {Add the compact source-metadata sentence here only when source markers are present.}
         Standalone research context (include ONLY if RESEARCH_CONTEXT was non-empty — omit this entire block otherwise):
         <standalone_research_context>
         Prior research findings from /vbw:research. Advisory — verify all claims against the current codebase before relying on them.
@@ -297,7 +310,7 @@ If resuming a session with `session_status=complete`: STOP "This debug session i
         Working directory: {pwd}.
         If `.vbw-planning/codebase/META.md` exists, read ARCHITECTURE.md, CONCERNS.md, PATTERNS.md, and DEPENDENCIES.md (whichever exist) from `.vbw-planning/codebase/` to bootstrap codebase understanding before investigating.
         Follow protocol: bootstrap (if codebase mapping exists), reproduce, hypothesize, gather evidence, diagnose, fix, verify, document.
-        Return a final report that includes an explicit `resolution_observation` field with exactly one of `already_fixed`, `needs_change`, or `inconclusive`. This field is analysis-scoped: use `already_fixed` only when the current branch already contains the fix and no new code change is needed; use `needs_change` when additional code changes were required or would still be required; use `inconclusive` when diagnosis is incomplete.
+        Return a final report that includes an explicit `resolution_observation` field with exactly one of `already_fixed`, `needs_change`, or `inconclusive`. This field is analysis-scoped: accepted-process-exception/backlog metadata alone is not enough for `already_fixed`; fresh current evidence that the current branch already contains a real fix is required before using `already_fixed`; use `needs_change` when additional code changes were required or would still be required; use `inconclusive` when diagnosis is incomplete.
         If you apply a fix, commit with: fix({scope}): {description}.
         If investigation reveals pre-existing failures unrelated to this bug, list them in your response under a "Pre-existing Issues" heading with test name, file, and failure message.
         ```
@@ -312,6 +325,8 @@ If resuming a session with `session_status=complete`: STOP "This debug session i
    ```
 
    Resolve one authoritative analysis-scoped `RESOLUTION_OBSERVATION` before persisting anything. For Path A, use the synthesized `debugger_report.payload.resolution_observation` chosen from teammate evidence. For Path B, read the single debugger's explicit `resolution_observation` field from its final report. Normalize it to exactly one of `already_fixed`, `needs_change`, or `inconclusive`. Do **not** infer `already_fixed` from free-text phrasing or from commit presence alone.
+
+    Before mapping `RESOLUTION_OBSERVATION=already_fixed` to `INVESTIGATION_OUTCOME=already_fixed`, verify that the debugger report cites fresh current evidence of actual resolution. For selected known issues, selected UAT deviations, or accepted-process-exception details, a report that cites the accepted disposition only must normalize away from `already_fixed`: use `needs_change` when actionable remediation remains, or use `inconclusive` when the blocker is genuine and no safe fix can be applied in this run. Preserve true no-op semantics: a no-commit session may still complete as `already_fixed` when fresh evidence proves the current branch already contains a real fix.
 
    Then compute the command-local three-way outcome: new commit created now (`HEAD_BEFORE` != `HEAD_AFTER`) → `INVESTIGATION_OUTCOME=fixed_now`; no new commit now + `RESOLUTION_OBSERVATION=already_fixed` → `INVESTIGATION_OUTCOME=already_fixed`; no new commit now + `RESOLUTION_OBSERVATION=needs_change|inconclusive` → `INVESTIGATION_OUTCOME=no_fix_yet`.
 
@@ -380,7 +395,7 @@ If resuming a session with `session_status=complete`: STOP "This debug session i
      Files Modified: {list}
    ```
 
-  If `TODO_SELECTED=true` and pickup ran, any numbered list captured before pickup is stale because `STATE.md` has already changed. Use the stored `TODO_PICKUP_STATUS`, `TODO_PICKUP_WARNING`, and `TODO_PICKUP_AUTO_NOTE` values instead of inventing fresh numbered cleanup advice. Never tell the user to `remove N` for the selected todo; `/vbw:debug` already picked it up automatically. Never cite a remaining todo number unless you first refresh through the existing snapshot/resolver flow. Default low-token UX: unnumbered prose only — emit `TODO_PICKUP_AUTO_NOTE` verbatim and, when related backlog items may still exist, say `Rerun /vbw:list-todos for fresh numbering.` If `TODO_PICKUP_STATUS=partial` and `TODO_PICKUP_WARNING` is non-empty, surface that warning explicitly.
+  If `SELECTED_TODO_MODE=true`, any numbered list captured before pickup is stale because helper pickup has already changed `STATE.md`. Use `SELECTED_TODO_START_JSON.pickup.status`, `.pickup.warning`, and `.pickup.auto_note` instead of inventing fresh numbered cleanup advice. Never tell the user to `remove N` for the selected todo; `/vbw:debug` already picked it up automatically. The helper auto note says the selected todo was picked up automatically; emit `.pickup.auto_note` verbatim. Never cite a remaining todo number unless you first refresh through the existing snapshot/resolver flow. Default low-token UX: unnumbered prose only — emit `.pickup.auto_note` and, when related backlog items may still exist, say `Rerun /vbw:list-todos for fresh numbering.` If `.pickup.status` is `partial` and `.pickup.warning` is non-empty, surface that warning explicitly.
 
 **Discovered Issues:** If the Debugger reported pre-existing failures, out-of-scope bugs, or issues unrelated to the investigated bug, append after the result box. Cap the list at 20 entries; if more exist, show the first 20 and append `... and {N} more`:
 ```text
@@ -441,7 +456,7 @@ fi
   QA_MAX_TURNS="$RESOLVED_MAX_TURNS"
   ```
 
-1. Spawn vbw-qa as subagent via Task tool for debug-session verification. **Set `subagent_type: "vbw:vbw-qa"` and `model: "${QA_MODEL}"` in the Task tool invocation. If `QA_MAX_TURNS` is non-empty, also pass `maxTurns: ${QA_MAX_TURNS}`.**
+1. Spawn vbw-qa as subagent via Task tool for debug-session verification. **Set `subagent_type: "vbw:vbw-qa"` and `model: "${QA_MODEL}"` in the Task tool invocation. If `QA_MAX_TURNS` is non-empty, also pass `maxTurns: ${QA_MAX_TURNS}`.** Non-team spawn shape: omit `team_name`, `run_in_background`, `isolation`, and worktree cwd fields (`cwd`, `working_dir`, `workingDirectory`, `workdir`). `name` is optional label-only metadata; never use it for routing, lifecycle state, or team semantics.
 
     Before composing the QA task description, evaluate installed skills visible in your system context using the same two-pass rubric. **Pass 1:** derive technical domains from the session context, error text, related files, changed files, and any bounded sparse-context enrichment summary/files/markers retained from Step 1. Prefer that structured data before generic stack guesses. If those signals mention or imply SwiftData markers such as `import SwiftData`, `@Model`, `ModelContext`, `ModelContainer`, `FetchDescriptor`, `VersionedSchema`, `SchemaMigrationPlan`, or `PersistentModel`, select `swiftdata`. Do NOT pull in `core-data` as a generic persistence fallback unless the actual evidence instead shows Core Data APIs such as `import CoreData`, `NSManagedObject`, `NSPersistentContainer`, `NSFetchRequest`, or `NSManagedObjectContext`. **Pass 2:** select all materially helpful installed skills that directly match those derived domains, plus only the narrowly adjacent support skills that materially help verification — not just the single most direct skill. The QA prompt MUST begin with exactly one explicit skill outcome block: use `<skill_activation>{For each selected skill: "Call Skill({skill-name})"}</skill_activation>` when one or more installed skills are preselected at orchestration time, or `<skill_no_activation>Evaluated installed skills for this task. No skills were preselected at orchestration time. Reason: {brief task-specific reason}.</skill_no_activation>` when none are preselected. Silent omission of both blocks is invalid. After evaluating, state the skill outcome in your response (e.g., "Skills: activating {skill-name}" or "Skills: none preselected — {reason}") so the user has visibility before the agent is spawned. If bounded sparse-context enrichment influenced the choice, cite that explicitly in the activation/no-activation reason so `.vbw-planning/.skill-decisions.log` records why. After calling `Skill(...)`, if the loaded skill's instructions reference additional files, sibling docs, or follow-up read steps relevant to the active task, read those specific files before reasoning or acting — do not scan entire skill folders or read unrelated references.
 
@@ -586,26 +601,28 @@ If `AUTO_UAT` is `"true"`: skip the prompt and proceed directly.
 
 2. Present checkpoints one at a time using CHECKPOINT + AskUserQuestion:
 
+    **Checkpoint presentation boundary (NON-NEGOTIABLE):** The debug UAT checkpoint loop is conversational and blocking. Each cycle presents exactly one checkpoint, and the CHECKPOINT display plus the `AskUserQuestion` tool_use MUST be emitted in the same assistant response. Treat the checkpoint display and tool call as one atomic presentation step: never split them across turns. A text-only checkpoint is invalid because it gives the user no structured response path and can let the turn end prematurely. Do NOT end the turn after displaying checkpoint text; the only valid pause is waiting for the blocking `AskUserQuestion` response. Do not process an answer, advance to later checkpoints, persist UAT state, or finalize the session until that tool response is available.
+
    Per @${CLAUDE_PLUGIN_ROOT}/references/vbw-brand-essentials.md:
-   ```text
-   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-     CHECKPOINT {NN}/{total} — Debug Fix Verification
-   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    ```text
+    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      CHECKPOINT {NN}/{total} — Debug Fix Verification
+    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-   {scenario description}
-   ```
+    {scenario description}
+    ```
 
-   Then call AskUserQuestion:
-   ```yaml
-   question: "Expected: {expected result}"
-   header: "UAT"
-   multiSelect: false
-   options:
-     - label: "Pass"
-       description: "Behavior matches expected result"
-     - label: "Skip"
-       description: "Cannot test right now — skip this checkpoint"
-   ```
+    Then call AskUserQuestion. Keep the modal question self-contained because it may cover the surrounding checkpoint prose:
+    ```yaml
+    question: "Scenario: {scenario description}\n\nExpected: {expected result}\n\nDoes the behavior match this checkpoint?"
+    header: "UAT"
+    multiSelect: false
+    options:
+      - label: "Pass"
+        description: "Behavior matches expected result"
+      - label: "Skip"
+        description: "Cannot test right now — skip this checkpoint"
+    ```
 
    **AskUserQuestion is a tool call (NON-NEGOTIABLE):** You MUST invoke AskUserQuestion via the tool_use mechanism — never emit the question parameters as text, YAML, or any other inline format in your response body. If AskUserQuestion appears in your text output instead of as a tool call, the checkpoint will not be presented to the user and the session will end prematurely. **STOP HERE and wait for the user to respond.** Process one checkpoint at a time.
 

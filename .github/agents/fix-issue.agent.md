@@ -1,7 +1,7 @@
 ---
 name: fix-issue-vbw
 description: "End-to-end issue fix workflow with automated QA. Use when: fixing a bug, implementing an issue, fix workflow, issue-driven change. Creates a flat-named worktree and branch, plans the fix, implements it, runs iterative QA review cycles via sub-agent until clean, then opens draft PR."
-tools: [vscode/memory, vscode/resolveMemoryFileUri, execute, read, agent, edit, search, web, github/add_comment_to_pending_review, github/add_issue_comment, github/add_reply_to_pull_request_comment, github/create_pull_request, github/get_commit, github/get_copilot_job_status, github/get_file_contents, github/get_label, github/get_latest_release, github/get_me, github/get_release_by_tag, github/get_tag, github/get_team_members, github/get_teams, github/issue_read, github/issue_write, github/list_branches, github/list_commits, github/list_issue_types, github/list_issues, github/list_pull_requests, github/list_releases, github/list_tags, github/pull_request_read, github/pull_request_review_write, github/request_copilot_review, github/run_secret_scanning, github/search_code, github/search_issues, github/search_pull_requests, github/search_users, github/sub_issue_write, github/update_pull_request, github/update_pull_request_branch, github.vscode-pull-request-github/issue_fetch, github.vscode-pull-request-github/labels_fetch, github.vscode-pull-request-github/notification_fetch, github.vscode-pull-request-github/doSearch, github.vscode-pull-request-github/activePullRequest, github.vscode-pull-request-github/pullRequestStatusChecks, github.vscode-pull-request-github/openPullRequest, github.vscode-pull-request-github/create_pull_request, github.vscode-pull-request-github/resolveReviewThread, todo]
+tools: [vscode, execute, read, agent, edit, search, web, browser, 'context7/*', 'gitnexus/*', 'mcp-omnisearch/*', github/request_copilot_review, todo]
 agents: [fix-planner-vbw, qa-investigator, qa-investigator-gpt-54, 'Explore']
 argument-hint: "Issue number or description of the bug to fix"
 hooks:
@@ -322,11 +322,20 @@ Start with cross-model round M = 1. **Repeat the following steps, incrementing M
 
 <main_sync_procedure>
 **Standard main-sync procedure.** Used at designated merge points (steps 22, 24):
-1. `cd <worktree-absolute-path> && git fetch origin && git merge origin/main`
-2. If merge produced conflicts, resolve them first
-3. Run `cd <worktree-absolute-path> && bash testing/run-all.sh` to verify
-4. Push normally (no `--force`)
-5. If conflicts are too complex, abort (`git merge --abort`) and report to the user
+1. `cd <worktree-absolute-path> && git fetch origin`
+2. Check whether `origin/main` has commits not in the branch:
+    ```bash
+    NEW_COMMITS=$(git rev-list HEAD..origin/main --count)
+    echo "Commits behind main: $NEW_COMMITS"
+    ```
+3. If `NEW_COMMITS` is `0`, skip the merge, tests, and push. No code changed at this sync checkpoint, so a full `testing/run-all.sh` run would be redundant; continue to the next workflow step.
+4. If `NEW_COMMITS` is greater than `0`, merge `origin/main`.
+5. If merge produced conflicts, resolve them first.
+6. Run `cd <worktree-absolute-path> && bash testing/run-all.sh` only after the merge, conflict resolution, or another sync step changed the branch/worktree.
+7. Push normally (no `--force`) only when there is a merge commit or other sync change to publish.
+8. If conflicts are too complex, abort (`git merge --abort`) and report to the user.
+
+This no-op skip applies only to main-sync checkpoints. After implementation, QA remediation, conflict resolution, or CI fixes, keep the explicit test requirements for the step that changed code.
 
 **Do NOT merge main outside these designated sync points.** In particular, do not merge main mid-round (between spawning a QA sub-agent and processing its findings), and do not merge main after a Copilot review request is already being processed until that review's findings have been handled — merging changes the code under review and can invalidate findings.
 </main_sync_procedure>

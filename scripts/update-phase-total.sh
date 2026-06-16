@@ -121,10 +121,50 @@ if [ -n "$action" ] && ! echo "$position" | grep -qE '^[1-9][0-9]*$'; then
   exit 0
 fi
 
+existing_phase_status_line() {
+  local phase_num="$1"
+  grep -E "^- \*\*Phase 0*${phase_num}([ :]|\()" "$state_md" 2>/dev/null | head -1
+}
+
+append_missing_phase_status() {
+  local out_file="$1" phase_num="$2"
+  local existing
+
+  existing=$(existing_phase_status_line "$phase_num" || true)
+  if [ -n "$existing" ]; then
+    printf '%s\n' "$existing" >> "$out_file"
+  else
+    printf -- '- **Phase %s (Missing phase directory):** Unknown (missing phase directory)\n' "$phase_num" >> "$out_file"
+  fi
+}
+
 sorted_dirs_file="${state_md}.dirs.$$"
 list_canonical_phase_dirs "$phases_dir" > "$sorted_dirs_file"
 
 total=$(wc -l < "$sorted_dirs_file" | tr -d ' ')
+roadmap_md="${planning_root}/ROADMAP.md"
+numbering_scheme="ordinal"
+display_numbering_scheme="ordinal"
+roadmap_total=0
+display_total="$total"
+if [ -f "$roadmap_md" ] && type roadmap_numbering_scheme >/dev/null 2>&1 && type roadmap_checklist_count >/dev/null 2>&1; then
+  numbering_scheme=$(roadmap_numbering_scheme "$roadmap_md" "$phases_dir")
+  if type phase_state_log_numbering_warnings >/dev/null 2>&1; then
+    phase_state_log_numbering_warnings "$planning_root" "$roadmap_md" "$phases_dir" "$numbering_scheme"
+  fi
+  if [ "$numbering_scheme" = "prefix" ]; then
+    roadmap_total=$(roadmap_checklist_count "$roadmap_md")
+  elif [ "$numbering_scheme" = "unknown" ]; then
+    rm -f "$sorted_dirs_file" 2>/dev/null
+    exit 0
+  fi
+  if type roadmap_display_numbering_scheme >/dev/null 2>&1; then
+    display_numbering_scheme=$(roadmap_display_numbering_scheme "$numbering_scheme" "$roadmap_total")
+  fi
+  if [ "$display_numbering_scheme" = "prefix" ]; then
+    display_total="$roadmap_total"
+  fi
+fi
 
 # F-02: handle zero-phase state — remove stale current-phase section and clear
 # stale Phase Status bullets so STATE.md no longer claims an active phase.
@@ -183,22 +223,32 @@ case "$action" in
 esac
 
 # Clamp current to valid range
-[ "$current" -gt "$total" ] && current="$total"
+[ "$current" -gt "$display_total" ] && current="$display_total"
 [ "$current" -lt 1 ] && current=1
 
-# F-11: Resolve phase name from sorted position (not filesystem prefix) so
+# F-11: Resolve phase name using the selected display-numbering scheme so
 # the Phase: line and Phase Status bullets always agree on numbering.
 phase_name=""
-phase_dir=$(sed -n "${current}p" "$sorted_dirs_file")
+case "$display_numbering_scheme" in
+  prefix)
+    phase_dir=""
+    if type roadmap_phase_dir_for_num >/dev/null 2>&1; then
+      phase_dir=$(roadmap_phase_dir_for_num "prefix" "$phases_dir" "$current" 2>/dev/null || true)
+    fi
+    ;;
+  *)
+    phase_dir=$(sed -n "${current}p" "$sorted_dirs_file")
+    ;;
+esac
 if [ -n "$phase_dir" ]; then
   phase_name=$(basename "$phase_dir" | sed 's/^[0-9]*-//' | tr '-' ' ' | awk '{for(i=1;i<=NF;i++) $i=toupper(substr($i,1,1)) substr($i,2)}1')
 fi
 
 # Build replacement
 if [ -n "$phase_name" ]; then
-  replacement="Phase: ${current} of ${total} (${phase_name})"
+  replacement="Phase: ${current} of ${display_total} (${phase_name})"
 else
-  replacement="Phase: ${current} of ${total}"
+  replacement="Phase: ${current} of ${display_total}"
 fi
 
 # Update STATE.md Phase: line
@@ -210,13 +260,28 @@ sed "s/^Phase: .*/${replacement}/" "$state_md" > "$tmp" 2>/dev/null && \
 new_status_file="${state_md}.newstatus.$$"
 phase_idx=0
 : > "$new_status_file"
-while IFS= read -r dir; do
-  [ -z "$dir" ] && continue
-  phase_idx=$((phase_idx + 1))
-  local_name=$(phase_dir_display_name "$dir")
-  status_text=$(phase_status_label "$dir" "$phase_idx")
-  echo "- **Phase ${phase_idx} (${local_name}):** ${status_text}" >> "$new_status_file"
-done < "$sorted_dirs_file"
+if [ "$display_numbering_scheme" = "prefix" ] && type roadmap_checklist_phase_nums >/dev/null 2>&1 && type roadmap_phase_dir_for_num >/dev/null 2>&1; then
+  while IFS= read -r roadmap_phase_num; do
+    [ -n "$roadmap_phase_num" ] || continue
+    dir=$(roadmap_phase_dir_for_num "prefix" "$phases_dir" "$roadmap_phase_num" 2>/dev/null || true)
+    if [ -n "$dir" ]; then
+      phase_idx=$((phase_idx + 1))
+      local_name=$(phase_dir_display_name "$dir")
+      status_text=$(phase_status_label "$dir" "$phase_idx")
+      echo "- **Phase ${roadmap_phase_num} (${local_name}):** ${status_text}" >> "$new_status_file"
+    else
+      append_missing_phase_status "$new_status_file" "$roadmap_phase_num"
+    fi
+  done < <(roadmap_checklist_phase_nums "$roadmap_md")
+else
+  while IFS= read -r dir; do
+    [ -z "$dir" ] && continue
+    phase_idx=$((phase_idx + 1))
+    local_name=$(phase_dir_display_name "$dir")
+    status_text=$(phase_status_label "$dir" "$phase_idx")
+    echo "- **Phase ${phase_idx} (${local_name}):** ${status_text}" >> "$new_status_file"
+  done < "$sorted_dirs_file"
+fi
 
 rm -f "$sorted_dirs_file" 2>/dev/null
 

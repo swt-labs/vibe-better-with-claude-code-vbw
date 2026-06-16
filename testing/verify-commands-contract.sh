@@ -164,6 +164,55 @@ first_matching_line_number() {
   ' <<< "$text"
 }
 
+first_matching_regex_line_number() {
+  local text="$1"
+  local regex="$2"
+
+  awk -v regex="$regex" '
+    $0 ~ regex && first == 0 {
+      first = NR
+    }
+
+    END {
+      if (first > 0) print first
+    }
+  ' <<< "$text"
+}
+
+check_literal_before_literal() {
+  local label="$1"
+  local text="$2"
+  local before="$3"
+  local after="$4"
+  local before_line after_line
+
+  before_line=$(first_matching_line_number "$text" "$before")
+  after_line=$(first_matching_line_number "$text" "$after")
+
+  if [ -n "$before_line" ] && [ -n "$after_line" ] && [ "$before_line" -lt "$after_line" ]; then
+    pass "$label"
+  else
+    fail "$label"
+  fi
+}
+
+check_literal_before_regex() {
+  local label="$1"
+  local text="$2"
+  local before="$3"
+  local after_regex="$4"
+  local before_line after_line
+
+  before_line=$(first_matching_line_number "$text" "$before")
+  after_line=$(first_matching_regex_line_number "$text" "$after_regex")
+
+  if [ -n "$before_line" ] && [ -n "$after_line" ] && [ "$before_line" -lt "$after_line" ]; then
+    pass "$label"
+  else
+    fail "$label"
+  fi
+}
+
 extract_heading_block() {
   local file="$1"
   local heading="$2"
@@ -320,6 +369,101 @@ for file in "${TRACKED_COMMAND_MARKDOWN_FILES[@]}"; do
     fi
   fi
 done
+
+echo ""
+echo "=== Non-Team Name Contract Verification ==="
+
+STALE_NON_TEAM_NAME_PATTERNS=(
+  'no `team_name`, `name`'
+  'omit `team_name`, `name`'
+  'Do not pass `team_name`, per-agent `name`'
+  'do not pass `team_name`, per-agent `name`'
+  'Do not pass team metadata (`team_name`), per-agent names (`name`)'
+  'do not pass team metadata (`team_name`), per-agent names (`name`)'
+)
+NON_TEAM_NAME_SCAN_FILES=("${TRACKED_COMMAND_MARKDOWN_FILES[@]}" "$ROOT/references/execute-protocol.md")
+stale_non_team_name_found=false
+for file in "${NON_TEAM_NAME_SCAN_FILES[@]}"; do
+  [ -f "$file" ] || continue
+  for pattern in "${STALE_NON_TEAM_NAME_PATTERNS[@]}"; do
+    if grep -Fq -- "$pattern" "$file"; then
+      fail "non-team name contract: stale name-ban phrase in ${file#"$ROOT/"}: $pattern"
+      stale_non_team_name_found=true
+    fi
+  done
+done
+if [ "$stale_non_team_name_found" = false ]; then
+  pass "non-team name contract: command/reference prose has no stale name-ban phrases"
+fi
+
+DEBUG_COMMAND_FILE="$COMMANDS_DIR/debug.md"
+NON_TEAM_SPAWN_SHAPE_TEXT='Non-team spawn shape: omit `team_name`, `run_in_background`, `isolation`, and worktree cwd fields (`cwd`, `working_dir`, `workingDirectory`, `workdir`)'
+LABEL_ONLY_NAME_TEXT='`name` is optional label-only metadata; never use it for routing, lifecycle state, or team semantics'
+
+debug_path_a_block="$(awk '
+  /\*\*Path A: Competing Hypotheses\*\*/ { in_block = 1 }
+  in_block && /\*\*Path B: Standard\*\*/ { exit }
+  in_block { print }
+' "$DEBUG_COMMAND_FILE")"
+
+debug_path_a_investigator_block="$(awk '
+  /Spawn 3 vbw-debugger teammates/ { in_block = 1 }
+  in_block && /\*\*Investigation phase:\*\*/ { exit }
+  in_block { print }
+' "$DEBUG_COMMAND_FILE")"
+
+debug_path_a_implementation_block="$(awk '
+  /\*\*Implementation phase:\*\*/ { in_block = 1 }
+  in_block && /\*\*Path B: Standard\*\*/ { exit }
+  in_block { print }
+' "$DEBUG_COMMAND_FILE")"
+
+debug_path_b_block="$(awk '
+  /\*\*Path B: Standard\*\*/ { in_block = 1 }
+  in_block && /^5\. \*\*Persist to debug session \+ Clear delegation marker \+ Present:/ { exit }
+  in_block { print }
+' "$DEBUG_COMMAND_FILE")"
+
+debug_inline_qa_spawn_line="$(grep -F 'Spawn vbw-qa as subagent via Task tool for debug-session verification' "$DEBUG_COMMAND_FILE" || true)"
+
+if contains_literal "$debug_path_a_block" 'Create team via TeamCreate' \
+  && contains_literal "$debug_path_a_investigator_block" 'True-team spawn shape' \
+  && contains_literal "$debug_path_a_investigator_block" 'pass the exact TeamCreate `team_name`' \
+  && contains_literal "$debug_path_a_investigator_block" 'unique per-teammate `name`' \
+  && contains_literal "$debug_path_a_investigator_block" 'debug-hypothesis-1' \
+  && contains_literal "$debug_path_a_investigator_block" 'Do not pass `isolation`, `cwd`, `working_dir`, `workingDirectory`, or `workdir`'; then
+  pass "debug: Path A hypothesis investigators use true-team spawn metadata"
+else
+  fail "debug: Path A hypothesis investigators must pass TeamCreate team_name and per-teammate names"
+fi
+
+if contains_literal "$debug_path_a_investigator_block" 'Non-team spawn shape' \
+  || contains_literal "$debug_path_a_investigator_block" "$LABEL_ONLY_NAME_TEXT"; then
+  fail "debug: Path A hypothesis investigators must not use non-team label wording"
+else
+  pass "debug: Path A hypothesis investigators avoid non-team label wording"
+fi
+
+if contains_literal "$debug_path_a_implementation_block" "$NON_TEAM_SPAWN_SHAPE_TEXT" \
+  && contains_literal "$debug_path_a_implementation_block" "$LABEL_ONLY_NAME_TEXT"; then
+  pass "debug: Path A post-TeamDelete implementation owner remains non-team"
+else
+  fail "debug: Path A post-TeamDelete implementation owner must remain non-team"
+fi
+
+if contains_literal "$debug_path_b_block" "$NON_TEAM_SPAWN_SHAPE_TEXT" \
+  && contains_literal "$debug_path_b_block" "$LABEL_ONLY_NAME_TEXT"; then
+  pass "debug: Path B debugger remains non-team"
+else
+  fail "debug: Path B debugger must retain non-team label wording"
+fi
+
+if contains_literal "$debug_inline_qa_spawn_line" "$NON_TEAM_SPAWN_SHAPE_TEXT" \
+  && contains_literal "$debug_inline_qa_spawn_line" "$LABEL_ONLY_NAME_TEXT"; then
+  pass "debug: inline QA spawn remains non-team"
+else
+  fail "debug: inline QA spawn must retain non-team label wording"
+fi
 
 echo ""
 echo "=== AskUserQuestion Contract Verification ==="
@@ -702,6 +846,65 @@ else
   fail "verify: missing promote-todos after known-issues restore in verify recovery path"
 fi
 
+if grep -Fq 'Track Todo' "$VERIFY_FILE" \
+  && grep -Fq 'track-uat-deviations.sh" todo-from-uat' "$VERIFY_FILE" \
+  && grep -Fq 'accepted deviation added to todos (ref:{TODO_REF})' "$VERIFY_FILE" \
+  && grep -Fq 'Never invent a todo ref' "$VERIFY_FILE"; then
+  pass "verify: summary-deviation Track Todo path uses deterministic helper output"
+else
+  fail "verify: summary-deviation Track Todo path missing deterministic helper/ref contract"
+fi
+
+if grep -Fq 'Track Todo' "$ROOT/references/execute-protocol.md" \
+  && grep -Fq 'track-uat-deviations.sh" todo-from-uat' "$ROOT/references/execute-protocol.md" \
+  && grep -Fq 'accepted deviation added to todos (ref:{todo_ref})' "$ROOT/references/execute-protocol.md"; then
+  pass "execute-protocol: summary-deviation Track Todo path mirrors helper output contract"
+else
+  fail "execute-protocol: summary-deviation Track Todo path missing helper output contract"
+fi
+
+if grep -Fq "can't\`/\`cant\` → \`cannot" "$VERIFY_FILE" \
+  && grep -Fq 'curly apostrophes as straight apostrophes' "$VERIFY_FILE" \
+  && grep -Fq 'can’t' "$VERIFY_FILE" \
+  && grep -Fq 'marker-first ordering' "$VERIFY_FILE" \
+  && grep -Fq 'not ok' "$VERIFY_FILE" \
+  && grep -Fq 'cannot accept' "$VERIFY_FILE" \
+  && grep -Fq 'do not accept' "$VERIFY_FILE" \
+  && grep -Fq 'will not accept' "$VERIFY_FILE" \
+  && grep -Fq 'unable to accept' "$VERIFY_FILE" \
+  && grep -Fq 'refuse to accept' "$VERIFY_FILE" \
+  && grep -Fq 'not acceptable' "$VERIFY_FILE" \
+  && grep -Fq "can't continue, track this" "$VERIFY_FILE" \
+  && grep -Fq 'not ok, track this' "$VERIFY_FILE" \
+  && grep -Fq "can't accept this, track this" "$VERIFY_FILE" \
+  && grep -Fq 'not acceptable, add to todo' "$VERIFY_FILE" \
+  && grep -Fq 'rejected-by-user' "$VERIFY_FILE"; then
+  pass "verify: summary-deviation todo intent handles contraction blockers before tracking"
+else
+  fail "verify: summary-deviation todo intent missing contraction blocker guard"
+fi
+
+if grep -Fq "can't\`/\`cant\` → \`cannot" "$ROOT/references/execute-protocol.md" \
+  && grep -Fq 'curly apostrophes as straight apostrophes' "$ROOT/references/execute-protocol.md" \
+  && grep -Fq 'can’t continue, track this' "$ROOT/references/execute-protocol.md" \
+  && grep -Fq 'marker-first ordering' "$ROOT/references/execute-protocol.md" \
+  && grep -Fq 'not ok' "$ROOT/references/execute-protocol.md" \
+  && grep -Fq 'cannot accept' "$ROOT/references/execute-protocol.md" \
+  && grep -Fq 'do not accept' "$ROOT/references/execute-protocol.md" \
+  && grep -Fq 'will not accept' "$ROOT/references/execute-protocol.md" \
+  && grep -Fq 'unable to accept' "$ROOT/references/execute-protocol.md" \
+  && grep -Fq 'refuse to accept' "$ROOT/references/execute-protocol.md" \
+  && grep -Fq 'not acceptable' "$ROOT/references/execute-protocol.md" \
+  && grep -Fq "can't continue, track this" "$ROOT/references/execute-protocol.md" \
+  && grep -Fq 'not ok, track this' "$ROOT/references/execute-protocol.md" \
+  && grep -Fq "can't accept this, track this" "$ROOT/references/execute-protocol.md" \
+  && grep -Fq 'not acceptable, add to todo' "$ROOT/references/execute-protocol.md" \
+  && grep -Fq 'rejected-by-user' "$ROOT/references/execute-protocol.md"; then
+  pass "execute-protocol: summary-deviation todo intent handles contraction blockers before tracking"
+else
+  fail "execute-protocol: summary-deviation todo intent missing contraction blocker guard"
+fi
+
 if grep -Eq 'qa-remediation-state\.sh"? advance' "$QA_FILE"; then
   pass "qa: round-scoped PROCEED_TO_UAT persists remediation advance"
 else
@@ -793,6 +996,15 @@ else
   fail "vibe: needs_reverification missing refreshed round-scoped uat_path validation"
 fi
 
+if grep -q 'uat_resume_scenario' "$VIBE_FILE" \
+  && grep -q 'uat_resume_expected' "$VIBE_FILE" \
+  && grep -q 'bash "$L/scripts/extract-uat-resume.sh" "$PDIR" 2>/dev/null || echo "uat_resume=error"' "$VIBE_FILE" \
+  && grep -q 'echo "uat_resume=unavailable"' "$VIBE_FILE"; then
+  pass "vibe: Verify mode passes deterministic UAT resume fields and preserves wrapper sentinels"
+else
+  fail "vibe: Verify mode missing deterministic UAT resume fields or wrapper sentinels"
+fi
+
 if grep -q 'compile-verify-context.sh --remediation-only {phase-dir}' "$ROOT/references/execute-protocol.md"; then
   pass "execute-protocol: QA remediation verify uses remediation-only verify context"
 else
@@ -838,6 +1050,15 @@ if grep -Eq 'uat-remediation-state\.sh"? get-or-init "{phase-dir}" major' "$VERI
   pass "verify: remediation re-verification refreshes and validates round-scoped uat_path for round-dir and legacy layouts"
 else
   fail "verify: remediation re-verification missing refreshed round-scoped uat_path validation"
+fi
+
+if grep -q 'uat_resume_scenario' "$VERIFY_FILE" \
+  && grep -q 'uat_resume_expected' "$VERIFY_FILE" \
+  && grep -q 'summary-deviation checkpoints use `uat_resume_deviation`' "$VERIFY_FILE" \
+  && grep -q 're-run `bash "{plugin-root}/scripts/extract-uat-resume.sh" "{phase-dir}"`' "$VERIFY_FILE"; then
+  pass "verify: resumed UAT uses deterministic checkpoint fields and refreshes after each answer"
+else
+  fail "verify: resumed UAT missing deterministic checkpoint field usage or refresh loop"
 fi
 
 if grep -q 'ignore the pre-computed verify context, `next_phase_state`, `qa_status`, and UAT resume metadata' "$VERIFY_FILE" \
@@ -1045,6 +1266,209 @@ if grep -q 'qa-result-gate\.sh' "$QA_FILE" \
 else
   fail "qa: missing deterministic gate reconciliation for standalone remediation QA"
 fi
+
+qa_remediation_block="$({
+  awk '
+    /^\*\*QA Remediation mode \(needs_qa_remediation\)/ { in_block=1 }
+    /^\*\*QA Remediation \+ UAT blocking:/ { in_block=0 }
+    in_block { print }
+  ' "$VIBE_FILE"
+} || true)"
+
+qa_remediation_plan_block="$({
+  awk '
+    /^- \*\*stage=plan:/ { in_block=1 }
+    /^- \*\*stage=execute:/ { in_block=0 }
+    in_block { print }
+  ' <<< "$qa_remediation_block"
+} || true)"
+
+qa_remediation_execute_block="$({
+  awk '
+    /^- \*\*stage=execute:/ { in_block=1 }
+    /^- \*\*stage=verify:/ { in_block=0 }
+    in_block { print }
+  ' <<< "$qa_remediation_block"
+} || true)"
+
+execute_protocol_qa_remediation_block="$({
+  awk '
+    /^\*\*QA Remediation Loop \(inline, same session\):/ { in_block=1 }
+    /^### Step 4\.5: Human acceptance testing \(UAT\)/ { in_block=0 }
+    in_block { print }
+  ' "$ROOT/references/execute-protocol.md"
+} || true)"
+
+qa_remediation_verify_block="$({
+  awk '
+    /^- \*\*stage=verify:/ { in_block=1 }
+    in_block { print }
+  ' <<< "$qa_remediation_block"
+} || true)"
+
+if grep -Fq '<qa_remediation_artifact_contract>' <<< "$qa_remediation_block" \
+  && grep -Fq '`round_dir`, `source_verification_path`, `known_issues_path`, and `verification_path` are authoritative host-repository paths from `qa-remediation-state.sh` metadata' <<< "$qa_remediation_block" \
+  && grep -Fq 'pass these exact paths to Lead, Dev, and QA prompts' <<< "$qa_remediation_block" \
+  && grep -Fq '.claude/worktrees/agent-*' <<< "$qa_remediation_block" \
+  && grep -Fq 'never rewrite them relative to the current CWD' <<< "$qa_remediation_block"; then
+  pass "vibe: QA remediation has host artifact path contract"
+else
+  fail "vibe: QA remediation missing host artifact path contract"
+fi
+
+if grep -Fq '<qa_remediation_artifact_contract>' <<< "$execute_protocol_qa_remediation_block" \
+  && grep -Fq '`round_dir`, `source_verification_path`, `known_issues_path`, and `verification_path` from `qa-remediation-state.sh` metadata are authoritative host-repository paths' <<< "$execute_protocol_qa_remediation_block" \
+  && grep -Fq 'pass these exact paths to Lead, Dev, and QA prompts' <<< "$execute_protocol_qa_remediation_block" \
+  && grep -Fq 'never rewrite them relative to the current CWD' <<< "$execute_protocol_qa_remediation_block"; then
+  pass "execute-protocol: QA remediation host paths cover Lead, Dev, and QA"
+else
+  fail "execute-protocol: QA remediation host path contract missing Lead/Dev/QA coverage"
+fi
+
+if grep -Fq '<qa_remediation_spawn_contract>' <<< "$qa_remediation_block" \
+  && grep -Fq 'QA remediation spawns are plain sequential subagent calls' <<< "$qa_remediation_block" \
+  && grep -Fq 'Non-team spawn shape: omit `team_name`, `run_in_background`, `isolation`, and worktree cwd fields (`cwd`, `working_dir`, `workingDirectory`, `workdir`)' <<< "$qa_remediation_block" \
+  && grep -Fq '`name` is optional label-only metadata; never use it for routing, lifecycle state, or team semantics' <<< "$qa_remediation_block"; then
+  pass "vibe: QA remediation has non-team spawn-shape contract"
+else
+  fail "vibe: QA remediation missing non-team spawn-shape contract"
+fi
+
+if grep -Fq 'future section explicitly prepares VBW worktree targeting' <<< "$qa_remediation_block" \
+  || grep -Fq 'unless a future section' <<< "$qa_remediation_block" \
+  || grep -Fq 'prepared VBW worktree target' <<< "$qa_remediation_block"; then
+  fail "vibe: QA remediation must not preserve worktree-targeting spawn exceptions"
+else
+  pass "vibe: QA remediation rejects worktree-targeting spawn exceptions"
+fi
+
+if grep -Fq '<qa_remediation_no_tool_circuit_breaker>' <<< "$qa_remediation_block" \
+  && grep -Fq 'After any QA remediation Lead, Dev, or QA subagent returns' <<< "$qa_remediation_block" \
+  && grep -Fq 'tools, shell/Bash, filesystem, edits, or API-session access are unavailable' <<< "$qa_remediation_block" \
+  && grep -Fq 'STOP without advancing `.qa-remediation-stage`' <<< "$qa_remediation_block" \
+  && grep -Fq 'do not retry the same prompt' <<< "$qa_remediation_block"; then
+  pass "vibe: QA remediation has no-tool circuit breaker"
+else
+  fail "vibe: QA remediation missing no-tool circuit breaker"
+fi
+
+if grep -Fq 'tools, Bash, filesystem, edits, or API-session access are unavailable' <<< "$qa_remediation_block"; then
+  fail "vibe: QA remediation no-tool breaker still uses Bash-only wording"
+else
+  pass "vibe: QA remediation no-tool breaker includes generic shell signal"
+fi
+
+if grep -Fq 'unavailable tools, Bash, filesystem, edits, or API-session access' <<< "$qa_remediation_block"; then
+  fail "vibe: QA remediation return sites still use Bash-only wording"
+else
+  pass "vibe: QA remediation return sites include generic shell signal"
+fi
+
+if grep -Fq 'After any QA remediation Dev or QA subagent returns' <<< "$qa_remediation_block"; then
+  fail "vibe: QA remediation shared no-tool breaker still excludes Lead"
+else
+  pass "vibe: QA remediation shared no-tool breaker includes Lead"
+fi
+
+if grep -Fq 'After any QA remediation Lead, Dev, or QA subagent returns' <<< "$execute_protocol_qa_remediation_block" \
+  && grep -Fq 'tools, shell/Bash, filesystem, edits, or API-session access are unavailable' <<< "$execute_protocol_qa_remediation_block" \
+  && grep -Fq 'STOP without advancing `.qa-remediation-stage`' <<< "$execute_protocol_qa_remediation_block" \
+  && grep -Fq 'do not retry the same prompt' <<< "$execute_protocol_qa_remediation_block"; then
+  pass "execute-protocol: QA remediation shared no-tool breaker includes Lead"
+else
+  fail "execute-protocol: QA remediation shared no-tool breaker missing Lead or stop/no-retry wording"
+fi
+
+check_literal_before_regex "vibe: QA no-tool breaker appears before remediation state advance" "$qa_remediation_block" '<qa_remediation_no_tool_circuit_breaker>' 'qa-remediation-state\.sh.*advance'
+check_literal_before_literal "vibe: QA no-tool breaker appears before deterministic gate" "$qa_remediation_block" '<qa_remediation_no_tool_circuit_breaker>' 'qa-result-gate.sh'
+
+if grep -Fq 'The orchestrator/Lead writes the plan' <<< "$qa_remediation_plan_block" \
+  || grep -Fq 'The orchestrator writes the plan' <<< "$qa_remediation_plan_block"; then
+  fail "vibe: QA remediation plan stage still has ambiguous orchestrator-authored planning wording"
+else
+  pass "vibe: QA remediation plan stage removes ambiguous orchestrator-authored wording"
+fi
+
+if grep -Fq 'spawns exactly one Lead subagent to write `{round_dir}/R{RR}-PLAN.md`' <<< "$qa_remediation_plan_block" \
+  && grep -Fq 'subagent_type: "vbw:vbw-lead"' <<< "$qa_remediation_plan_block" \
+  && grep -Fq 'resolve-agent-settings.sh lead' <<< "$qa_remediation_plan_block" \
+  && grep -Fq '.vbw-planning/config.json' <<< "$qa_remediation_plan_block" \
+  && grep -Fq 'config/model-profiles.json' <<< "$qa_remediation_plan_block" \
+  && grep -Fq 'LEAD_MODEL="$RESOLVED_MODEL"' <<< "$qa_remediation_plan_block" \
+  && grep -Fq 'LEAD_MAX_TURNS="$RESOLVED_MAX_TURNS"' <<< "$qa_remediation_plan_block" \
+  && grep -Fq 'model: "${LEAD_MODEL}"' <<< "$qa_remediation_plan_block" \
+  && grep -Fq 'maxTurns: ${LEAD_MAX_TURNS}' <<< "$qa_remediation_plan_block" \
+  && grep -Fq 'omit `maxTurns` because the resolved profile is unlimited' <<< "$qa_remediation_plan_block" \
+  && grep -Fq 'Non-team spawn shape: omit `team_name`, `run_in_background`, `isolation`, and worktree cwd fields (`cwd`, `working_dir`, `workingDirectory`, `workdir`)' <<< "$qa_remediation_plan_block" \
+  && grep -Fq '`name` is optional label-only metadata; never use it for routing, lifecycle state, or team semantics' <<< "$qa_remediation_plan_block" \
+  && grep -Fq 'Read the remediation plan template at /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/templates/REMEDIATION-PLAN.md' <<< "$qa_remediation_plan_block"; then
+  pass "vibe: QA remediation plan stage resolves Lead settings and spawns with safe shape"
+else
+  fail "vibe: QA remediation plan stage missing Lead settings resolution or safe spawn contract"
+fi
+
+check_literal_before_literal "vibe: QA plan resolves Lead settings before using Lead model" "$qa_remediation_plan_block" 'resolve-agent-settings.sh lead' 'model: "${LEAD_MODEL}"'
+if grep -Fq 'Existing-plan recovery before spawning Lead' <<< "$qa_remediation_plan_block" \
+  && grep -Fq 'If the canonical `{round_dir}/R{RR}-PLAN.md` exists after normalization' <<< "$qa_remediation_plan_block" \
+  && grep -Fq 'If validation passes, do not spawn Lead again; reuse the persisted plan' <<< "$qa_remediation_plan_block"; then
+  pass "vibe: QA remediation reuses existing validated plan on resume"
+else
+  fail "vibe: QA remediation missing existing-plan recovery before Lead respawn"
+fi
+check_literal_before_literal "vibe: QA existing-plan recovery normalizes before canonical probe" "$qa_remediation_plan_block" 'normalize-plan-filenames.sh' 'If the canonical `{round_dir}/R{RR}-PLAN.md` exists after normalization'
+check_literal_before_literal "vibe: QA existing-plan recovery appears before Lead spawn" "$qa_remediation_plan_block" 'Existing-plan recovery before spawning Lead' 'spawns exactly one Lead subagent to write `{round_dir}/R{RR}-PLAN.md`'
+check_literal_before_literal "vibe: QA plan Lead spawn appears before Lead return breaker" "$qa_remediation_plan_block" 'spawns exactly one Lead subagent to write `{round_dir}/R{RR}-PLAN.md`' 'After Lead returns, apply the QA remediation no-tool circuit breaker'
+
+if grep -Fq 'Normalize plan filenames before validation' <<< "$qa_remediation_plan_block" \
+  && grep -Fq 'normalize-plan-filenames.sh' <<< "$qa_remediation_plan_block" \
+  && grep -Fq 'validate-uat-remediation-artifact.sh plan "{round_dir}/R{RR}-PLAN.md"' <<< "$qa_remediation_plan_block" \
+  && grep -Fq 'If validation fails, display the validator error and STOP without advancing `.qa-remediation-stage`' <<< "$qa_remediation_plan_block" \
+  && grep -Fq 'Do not search for an alternate PLAN.md' <<< "$qa_remediation_plan_block"; then
+  pass "vibe: QA remediation plan stage validates canonical plan before advance"
+else
+  fail "vibe: QA remediation plan stage missing normalization/validation gate before advance"
+fi
+
+if grep -Fq 'Always include `known_issues_input:` and `known_issue_resolutions:` in R{RR}-PLAN.md frontmatter' <<< "$qa_remediation_plan_block" \
+  && grep -Fq 'known_issues_count=0' <<< "$qa_remediation_plan_block" \
+  && grep -Fq 'input_mode=verification' <<< "$qa_remediation_plan_block" \
+  && grep -Fq 'known_issues_input: []' <<< "$qa_remediation_plan_block" \
+  && grep -Fq 'known_issue_resolutions: []' <<< "$qa_remediation_plan_block"; then
+  pass "vibe: QA remediation plan always includes known-issue arrays"
+else
+  fail "vibe: QA remediation plan may omit validator-required known-issue arrays"
+fi
+
+if grep -Fq 'Always include `known_issues_input:` and `known_issue_resolutions:` in R{RR}-PLAN.md frontmatter' <<< "$execute_protocol_qa_remediation_block" \
+  && grep -Fq 'known_issues_count=0' <<< "$execute_protocol_qa_remediation_block" \
+  && grep -Fq 'input_mode=verification' <<< "$execute_protocol_qa_remediation_block" \
+  && grep -Fq 'known_issues_input: []' <<< "$execute_protocol_qa_remediation_block" \
+  && grep -Fq 'known_issue_resolutions: []' <<< "$execute_protocol_qa_remediation_block"; then
+  pass "execute-protocol: QA remediation plan always includes known-issue arrays"
+else
+  fail "execute-protocol: QA remediation plan may omit validator-required known-issue arrays"
+fi
+
+if grep -Fq 'After Lead returns, apply the QA remediation no-tool circuit breaker' <<< "$qa_remediation_plan_block" \
+  && grep -Fq 'If Lead reports unavailable tools, shell/Bash, filesystem, edits, or API-session access' <<< "$qa_remediation_plan_block" \
+  && grep -Fq 'After Dev returns, apply the QA remediation no-tool circuit breaker' <<< "$qa_remediation_block" \
+  && grep -Fq 'If Dev reports unavailable tools, shell/Bash, filesystem, edits, or API-session access' <<< "$qa_remediation_execute_block" \
+  && grep -Fq 'After QA returns, apply the QA remediation no-tool circuit breaker' <<< "$qa_remediation_block" \
+  && grep -Fq 'If QA reports unavailable tools, shell/Bash, filesystem, edits, or API-session access' <<< "$qa_remediation_verify_block"; then
+  pass "vibe: QA remediation applies no-tool breaker at Lead, Dev, and QA return sites"
+else
+  fail "vibe: QA remediation missing no-tool breaker at Lead, Dev, or QA return site"
+fi
+
+check_literal_before_regex "vibe: QA plan Lead breaker appears before plan-stage state advance" "$qa_remediation_plan_block" 'After Lead returns, apply the QA remediation no-tool circuit breaker' 'qa-remediation-state\.sh.*advance'
+check_literal_before_literal "vibe: QA plan Lead breaker appears before plan normalization" "$qa_remediation_plan_block" 'After Lead returns, apply the QA remediation no-tool circuit breaker' 'Normalize plan filenames before validation'
+check_literal_before_literal "vibe: QA plan normalization appears before plan validation" "$qa_remediation_plan_block" 'Normalize plan filenames before validation' 'Validate the exact QA remediation plan artifact before advancing'
+check_literal_before_regex "vibe: QA plan validation appears before plan-stage state advance" "$qa_remediation_plan_block" 'validate-uat-remediation-artifact.sh plan "{round_dir}/R{RR}-PLAN.md"' 'qa-remediation-state\.sh.*advance'
+check_literal_before_literal "vibe: QA plan validation passes before state advance wording" "$qa_remediation_plan_block" 'Validate the exact QA remediation plan artifact before advancing' 'After plan validation passes, advance state'
+check_literal_before_regex "vibe: QA execute Dev breaker appears before execute-stage state advance" "$qa_remediation_execute_block" 'After Dev returns, apply the QA remediation no-tool circuit breaker' 'qa-remediation-state\.sh.*advance'
+check_literal_before_literal "vibe: QA verify breaker appears before known-issue sync" "$qa_remediation_verify_block" 'After QA returns, apply the QA remediation no-tool circuit breaker' 'track-known-issues.sh" sync-verification'
+check_literal_before_literal "vibe: QA verify breaker appears before known-issue promotion" "$qa_remediation_verify_block" 'After QA returns, apply the QA remediation no-tool circuit breaker' 'track-known-issues.sh" promote-todos'
+check_literal_before_literal "vibe: QA verify breaker appears before deterministic gate" "$qa_remediation_verify_block" 'After QA returns, apply the QA remediation no-tool circuit breaker' 'qa-result-gate.sh'
 
 if grep -q 'Determine verification scope from `VERIF_PATH`' "$QA_FILE"; then
   pass "qa: standalone QA scope is tied to resolved VERIF_PATH"

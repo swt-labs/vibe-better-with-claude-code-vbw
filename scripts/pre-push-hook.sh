@@ -21,6 +21,22 @@ if [ ! -f "$ROOT/scripts/bump-version.sh" ]; then
   exit 0
 fi
 
+# Plugin-name guard (issue #635): mirror validate-commit.sh's check so we never
+# invoke `--verify` against a non-VBW bump-version.sh. Many repos have their own
+# `scripts/bump-version.sh` that interprets `$1` as the new semver string —
+# calling such a script with `--verify` corrupts every package.json `version`
+# field. Only proceed when this is a VBW-managed repo (the same condition
+# validate-commit.sh already enforces). Non-VBW repos can either name their
+# plugin `vbw` in `.claude-plugin/plugin.json`, or `git push --no-verify` to
+# bypass.
+if [ ! -f "$ROOT/.claude-plugin/plugin.json" ]; then
+  exit 0
+fi
+PLUGIN_NAME=$(jq -r '.name // ""' "$ROOT/.claude-plugin/plugin.json" 2>/dev/null || echo "")
+if [ "$PLUGIN_NAME" != "vbw" ]; then
+  exit 0
+fi
+
 VERIFY_OUTPUT=$(bash "$ROOT/scripts/bump-version.sh" --verify 2>&1) || {
   echo ""
   echo "ERROR: Push blocked -- version files are out of sync."

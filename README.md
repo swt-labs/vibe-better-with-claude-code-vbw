@@ -99,11 +99,11 @@ Most Claude Code plugins were built for the subagent era, one main session spawn
 
 - **Agent Teams for real parallelism.** `/vbw:vibe` uses dependency-aware routing: true Dev teams are created when plans have real parallel delegate work, while linear dependency chains use serialized Dev subagents to avoid fake coordination overhead. `/vbw:map` runs 4 Scout teammates in parallel to analyze your codebase. When teams are used, this isn't "spawn a subagent and wait" -- it's coordinated teamwork with a shared task list and direct inter-agent communication. Agent health monitoring tracks lifecycle events, detects orphaned teammates, and recovers stuck agents via circuit breakers.
 
-- **Native hooks for continuous verification.** 24 hooks across 11 event types run automatically -- validating SUMMARY.md structure, checking commit format, validating frontmatter descriptions, gating task completion, blocking sensitive file access, enforcing plan file boundaries, managing session lifecycle, tracking agent health and cost attribution, tracking session metrics, pre-flight prompt validation, and post-compaction context verification. No more spawning a QA agent after every task. The platform enforces it, not the prompt.
+- **Native hooks for continuous verification.** 30 hooks across 11 event types run automatically -- validating SUMMARY.md structure, checking commit format, validating frontmatter descriptions, gating task completion, blocking sensitive file access, enforcing plan file boundaries, managing session lifecycle, tracking agent health and cost attribution, tracking session metrics, pre-flight prompt validation, and post-compaction context verification. No more spawning a QA agent after every task. The platform enforces it, not the prompt.
 
-- **Platform-enforced tool permissions.** Each agent has `tools`/`disallowedTools` in their YAML frontmatter -- 4 of 7 agents have platform-enforced deny lists. Scout can write research files to `.vbw-planning/` but cannot edit existing code, run commands, or spawn subagents (Edit, Bash, NotebookEdit, Task are platform-denied); QA is read-only via `permissionMode: plan` and can only persist VERIFICATION.md through the deterministic `write-verification.sh` script via Bash. Sensitive file access (`.env`, credentials) is intercepted by the `security-filter` hook. `disallowedTools` is enforced by Claude Code itself, not by instructions an agent might ignore during compaction.
+- **Platform-enforced tool permissions.** Each agent has `tools`/`disallowedTools` in YAML frontmatter. Dev uses a `disallowedTools` denylist that explicitly bans recursive subagent, team, and user-question tools (`Task`, `TaskCreate`, `Agent`, `TeamCreate`, `TeamDelete`, `AskUserQuestion`) while leaving every other built-in and MCP tool available; Scout can write research files to `.vbw-planning/` and run read-only Bash for live validation, but cannot edit existing code or spawn subagents/teams (Edit, NotebookEdit, Task, TaskCreate, Agent, TeamCreate, TeamDelete are platform-denied); QA is read-only via `permissionMode: plan` and can only persist VERIFICATION.md through the deterministic `write-verification.sh` script via Bash. Sensitive file access (`.env`, credentials) is intercepted by the `security-filter` hook. Claude Code enforces these frontmatter permissions directly, not through instructions an agent might ignore during compaction.
 
-- **Database safety guard.** A PreToolUse hook (`bash-guard.sh`) intercepts every Bash command before it reaches the shell and blocks known destructive patterns -- `migrate:fresh`, `db:drop`, `TRUNCATE TABLE`, `FLUSHALL`, and 40+ patterns across Laravel, Rails, Django, Prisma, Knex, Sequelize, TypeORM, Drizzle, Diesel, SQLx, Ecto, raw SQL clients, Redis, MongoDB, and Docker volumes. All five agents with Bash access (Dev, QA, Lead, Debugger, Docs) are filtered equally. Override with `VBW_ALLOW_DESTRUCTIVE=1` env var or `bash_guard=false` in config. Extend with `.vbw-planning/destructive-commands.local.txt` for project-specific patterns. See **[Database Safety Guard](docs/database-safety-guard.md)** for the full design, flowchart, and pattern list.
+- **Database safety guard.** A PreToolUse hook (`bash-guard.sh`) intercepts every Bash command before it reaches the shell and blocks known destructive patterns -- `migrate:fresh`, `db:drop`, `TRUNCATE TABLE`, `FLUSHALL`, and 40+ patterns across Laravel, Rails, Django, Prisma, Knex, Sequelize, TypeORM, Drizzle, Diesel, SQLx, Ecto, raw SQL clients, Redis, MongoDB, and Docker volumes. All Bash-capable agents (Dev, QA, Lead, Debugger, Docs, and Scout) are filtered. Scout also gets read-only command-shape blocks for obvious shell writes, shell evaluation containers (`eval`, static shell `-c` forms including quoted/absolute interpreters and simple control/grouping wrappers, command/process substitution), git/API mutations, and sensitive-file reads when its role is detectable; if per-call identity is missing but VBW knows Scout is active, ambiguous calls use the same Scout-safe fallback. Impossible lifecycle role totals are degraded by discarding unreliable role markers instead of preserving stale Scout claims. `VBW_ALLOW_DESTRUCTIVE=1` and `bash_guard=false` override only the generic destructive-command classifier, not Scout-specific read-only blocks. Extend with `.vbw-planning/destructive-commands.local.txt` for project-specific patterns. See **[Database Safety Guard](docs/database-safety-guard.md)** for the full design, flowchart, and pattern list.
 
 - **Structured handoff schemas.** Agents communicate via JSON-structured SendMessage with typed schemas (`scout_findings`, `dev_progress`, `dev_blocker`, `qa_result`, `debugger_report`). No more hoping the receiving agent can parse free-form markdown. Schema definitions live in a single reference document with backward-compatible fallback to plain text.
 
@@ -119,7 +119,7 @@ Agent Teams are [experimental with known limitations](https://code.claude.com/do
 
 - **File conflicts.** Plans decompose work into tasks with explicit file ownership. Dev teammates operate on disjoint file sets by design, enforced at runtime by the `file-guard.sh` hook that blocks writes to files not declared in the active plan.
 
-- **Worktree isolation.** Each Dev plan can get its own git worktree — physical filesystem isolation, not just file-list enforcement — whether execution is true-team parallel or serialized by dependencies. Six scripts handle the full lifecycle: create, merge, cleanup, status, targeting, and agent mapping. Off by default; set `worktree_isolation` to `"on"` in config to enable. See [Execution Model](#execution-model) for how this interacts with dependency routing and lease locks.
+- **Worktree isolation.** Each Dev plan can get its own git worktree — physical filesystem isolation, not just file-list enforcement — whether execution is true-team parallel or serialized by dependencies. Six scripts handle the full lifecycle: create, merge, cleanup, status, targeting, and agent mapping. Off by default; set `worktree_isolation` to `"on"` in config to enable. VBW uses its own `.vbw-worktrees` git worktrees through task prompt/state metadata and blocks teammate spawns that try to force Claude-side `isolation:"worktree"`, unmanaged `.claude/worktrees/agent-*` sidechain CWDs, or `.vbw-worktrees/...` spawn CWD aliases. See [Execution Model](#execution-model) for how this interacts with dependency routing and lease locks.
 
 Agent Teams ship with seven known limitations. VBW addresses all of them. The eighth... that you're using AI to write software doesn't need a fix. It needs an intervention.
 
@@ -181,7 +181,7 @@ Claude Code will ask permission before file writes, bash commands, etc. You appr
 claude --dangerously-skip-permissions
 ```
 
-No permission prompts. No interruptions. Agents run uninterrupted until the work is done or your API budget isn't. VBW's built-in security controls (Scout writes only to `.vbw-planning/` and cannot edit or run commands, QA can only persist via a deterministic writer script, `security-filter.sh` blocks `.env` and credentials, QA gates on every task) still apply. The platform just stops asking "are you sure?" every time an agent wants to create a file.
+No permission prompts. No interruptions. Agents run uninterrupted until the work is done or your API budget isn't. VBW's built-in security controls (Scout writes only to `.vbw-planning/`, can run only read-only validation Bash, and cannot edit code; QA can only persist via a deterministic writer script, `security-filter.sh` blocks `.env` and credentials, QA gates on every task) still apply. The platform just stops asking "are you sure?" every time an agent wants to create a file.
 
 This is how most vibe coders run it. The agents work longer, the flow stays unbroken, and you get to pretend you're supervising while scrolling Twitter.
 
@@ -356,7 +356,7 @@ Yes, the same command again. When Phase 1 finishes, run it again for Phase 2. An
 /vbw:vibe --archive
 ```
 
-When all phases are built, archive the work. VBW runs a completion audit, archives state to `.vbw-planning/milestones/`, tags the git release, and updates project docs. In hook-enabled/archive-flow execution, unresolved UAT is script-blocked (active or milestone) and is not bypassed by `--skip-audit`/`--force`. If `hooks.post_archive` is configured, VBW runs it after successful archive completion; missing or failing user hooks warn but do not block shipping. You shipped. With actual verification. Your future self won't want to set the codebase on fire. Probably.
+When all phases are built, archive the work. VBW runs a completion audit, archives state to `.vbw-planning/milestones/`, tags the git release, and updates project docs. In hook-enabled/archive-flow execution, active/non-terminal UAT and unresolved UAT issues are script-blocked (active phase or milestone) and are not bypassed by `--skip-audit`/`--force`. If `hooks.post_archive` is configured, VBW runs it after successful archive completion; missing or failing user hooks warn but do not block shipping. You shipped. With actual verification. Your future self won't want to set the codebase on fire. Probably.
 
 That's it. `init` → `vibe` (repeat) → `vibe --archive`. Two commands for an entire development lifecycle.
 
@@ -401,13 +401,15 @@ These are the commands you'll use every day. This is the job now.
 | Command | Description |
 | :--- | :--- |
 | `/vbw:init` | Set up environment and scaffold `.vbw-planning/` directory with templates and config. Configures Agent Teams and statusline. Automatically installs git hooks (pre-push version enforcement). For existing codebases, maps the codebase first, then uses the map data to inform stack detection and skill suggestions before auto-chaining to `/vbw:vibe`. |
-| `/vbw:vibe [intent or flags]` | The one command. Auto-detects project state, parses natural language intent, or accepts explicit flags. 13 modes: bootstrap, scope, discuss, assumptions, **UAT remediation**, **milestone UAT recovery**, plan, execute, add/insert/remove phase, archive. Discussion mode uses the unified discussion engine (auto-calibrates Builder/Architect, generates phase-specific gray areas). If a phase has unresolved UAT issues (`status: issues_found`), plain `/vbw:vibe` automatically loads `{phase}-UAT.md` and continues remediation without requiring `--discuss` or `--plan`—major/critical issues auto-chain **discuss → plan → execute**; minor-only issues use quick-fix remediation. Milestone recovery scans archived milestones deterministically (including legacy milestones missing `SHIPPED.md`) and surfaces unresolved UAT for recovery. Archive mode includes a 7-point audit plus a script-level UAT guard in the archive flow/hook path — unresolved UAT issues block archiving and are not bypassed by `--skip-audit`/`--force`. Flags: `--plan`, `--execute`, `--discuss`, `--assumptions`, `--scope`, `--add`, `--insert`, `--remove`, `--archive`, `--yolo`, `--effort`, `--skip-qa`, `--skip-audit`. Phase numbers optional -- auto-detected when omitted. |
+| `/vbw:vibe [intent or flags]` | The one command. Auto-detects project state, parses natural language intent, or accepts explicit flags. 13 modes: bootstrap, scope, discuss, assumptions, **UAT remediation**, **milestone UAT recovery**, plan, execute, add/insert/remove phase, archive. Discussion mode uses the unified discussion engine (auto-calibrates Builder/Architect, generates phase-specific gray areas). If a phase has unresolved UAT issues (`status: issues_found`), plain `/vbw:vibe` automatically loads `{phase}-UAT.md` and continues remediation without requiring `--discuss` or `--plan`—major/critical issues auto-chain **discuss → plan → execute**; minor-only issues use quick-fix remediation. Active/non-terminal UAT (`status: in_progress`, `pending`, or another non-terminal value) keeps the phase in Verify/resume mode instead of allowing archive or preparing a new re-verification round. Milestone recovery scans archived milestones deterministically (including legacy milestones missing `SHIPPED.md`) and surfaces unresolved UAT for recovery. Archive mode includes a 7-point audit plus a script-level UAT guard in the archive flow/hook path — active/non-terminal UAT and unresolved UAT issues block archiving and are not bypassed by `--skip-audit`/`--force`. Flags: `--plan`, `--execute`, `--discuss`, `--assumptions`, `--scope`, `--add`, `--insert`, `--remove`, `--archive`, `--yolo`, `--effort`, `--skip-qa`, `--skip-audit`. Phase numbers optional -- auto-detected when omitted. |
 
 ### Monitoring -- Trust But Verify
 
 | Command | Description |
 | :--- | :--- |
 | `/vbw:status` | Progress dashboard showing all phases, completion bars, velocity metrics, and suggested next action. Add `--metrics` for token consumption breakdown per agent. |
+| `/vbw:qa [phase]` | Run read-only QA verification for the active or specified phase and persist findings to VERIFICATION.md through the deterministic verification writer. |
+| `/vbw:verify [phase]` | Run human UAT verification for the active or specified phase, including remediation-round resume, self-contained checkpoint prompts, and accepted-deviation tracking. |
 
 ### Supporting -- The Safety Net
 
@@ -415,7 +417,7 @@ These are the commands you'll use every day. This is the job now.
 | :--- | :--- |
 | `/vbw:discuss [phase]` | Standalone discussion engine for exploring phase decisions before planning. Auto-calibrates between Builder and Architect modes based on conversation signals. Generates phase-specific gray areas, explores selected ones conversationally, and captures decisions to `{phase}-CONTEXT.md`. Same engine as `/vbw:vibe --discuss`. |
 | `/vbw:fix` | Quick task in Turbo mode. One commit, no ceremony. For when the fix is obvious and you don't need seven agents to add a missing comma. |
-| `/vbw:debug` | Systematic bug investigation via the Debugger agent. Persists findings to a debug session file so investigations survive across sessions — resume with `--resume` or target a specific session with `--session <id>`. At Thorough effort with ambiguous bugs, spawns 3 parallel debugger teammates for report-only competing-hypothesis investigation, waits for all reports, tears that cohort down, and only then (if needed) spawns one fresh debugger as the sole implementation owner. Investigations that create a new fix commit auto-chain QA and UAT verification inline; investigations that confirm the fix was already present can complete immediately without re-running QA/UAT. |
+| `/vbw:debug` | Systematic bug investigation via the Debugger agent. Persists findings to a debug session file so investigations survive across sessions — resume with `--resume` or target a specific session with `--session <id>`. From an unfiltered `/vbw:list-todos` view, `/vbw:debug N` deterministically claims the selected todo, removes it from the pending list, and avoids duplicate sessions when a completed debug session already records the same source todo. At thorough effort with ambiguous bugs, can spawn 3 parallel debugger teammates for report-only competing-hypothesis investigation, wait for all reports, tear that cohort down, and only then (if needed) spawn one fresh debugger as the sole implementation owner. `--competing` and `--parallel` force the bug to be treated as ambiguous for routing; under `prefer_teams=auto`, team mode still also requires thorough effort. `--serial` forces non-ambiguous routing under `auto`. `prefer_teams=always` or `prefer_teams=never` still wins over the flags. Investigations that create a new fix commit auto-chain QA and UAT verification inline; investigations that confirm the fix was already present can complete immediately without re-running QA/UAT. The final `Mode:` line reports agent topology, not how many hypotheses appeared in the diagnosis. |
 | `/vbw:todo` | Add an item to a persistent backlog that survives across sessions. For all those "we should really..." thoughts that usually die in a terminal tab. |
 | `/vbw:list-todos` | Browse pending todos, filter by priority, and pick one to act on. Computes ages, formats a numbered list, persists the last displayed view for deterministic follow-up actions, offers `/vbw:fix`, `/vbw:debug`, `/vbw:research`, and `/vbw:vibe` routing only from unfiltered views, and keeps `remove N` / `delete N` working against the exact displayed snapshot. |
 | `/vbw:pause` | Save session notes for next time. State auto-persists in `.vbw-planning/` -- pause just lets you leave a sticky note for future you. |
@@ -429,6 +431,8 @@ These are the commands you'll use every day. This is the job now.
 | `/vbw:teach` | View, add, or manage project conventions. Auto-detected from codebase during init, manually teachable anytime. Shows what VBW already knows and warns about conflicts before adding. Conventions are injected into agent context via CLAUDE.md and verified by QA. |
 | `/vbw:doctor` | Run VBW installation and project health checks: jq, version sync, plugin cache, hook validity, agent files, config, script permissions, gh CLI, runtime cleanup state, CLAUDE.md staleness, state consistency, and optional RTK integration. Diagnoses issues before they become mysteries. |
 | `/vbw:help` | Command reference with usage examples. You are reading its output's spiritual ancestor right now. |
+
+**Debug routing note:** `Mode: Standard (single debugger)` means VBW used one Debugger agent, not that the report contained only one hypothesis. A single Debugger can still test and summarize multiple plausible causes in one report. The 3-agent path is **Competing Hypotheses** team mode: three report-only debuggers investigate in parallel, VBW synthesizes the results, and only then may hand implementation to one fresh debugger. With `prefer_teams=auto`, `/vbw:debug` uses that team path only when the bug is **both** `thorough` effort and ambiguous; a clear exact-repro issue stays Standard unless those routing conditions are met. Example: `/vbw:debug 12` on a clear lint repro may still end with `Mode: Standard (single debugger)` while listing multiple hypotheses. `/vbw:debug 12 --competing` or `/vbw:debug 12 --parallel` forces the bug to count as ambiguous, which means a `thorough`-effort debug run can take the 3-investigator path under `auto`; `/vbw:debug 12 --serial` forces non-ambiguous routing under `auto`. To guarantee team mode regardless of ambiguity, set `prefer_teams=always`; to guarantee non-team mode, set `prefer_teams=never`.
 
 ### Optional RTK tool-output compression
 
@@ -452,17 +456,17 @@ VBW can optionally manage [RTK](https://github.com/rtk-ai/rtk) setup through `/v
 
 VBW uses 7 specialized agents, each with native tool permissions enforced via YAML frontmatter. Three layers of control -- `tools` (what they can use), `disallowedTools` (what's platform-denied), and `permissionMode` (how they interact with the session) -- mean they can't do what they shouldn't, which is more than can be said for most interns.
 
-| Agent | Role | Tools | Denied | Mode |
+| Agent | Role | Tools | Denied / Omitted | Mode |
 | :--- | :--- | :--- | :--- | :--- |
-| **Scout** | Research and information gathering. The responsible one. | Inherited (all except denied) + MCP | Bash, Edit, NotebookEdit, Task | `plan` |
+| **Scout** | Research and information gathering. The responsible one. | Inherited (all except denied) + MCP; Bash is read-only live-validation only | Edit, NotebookEdit, Task, TaskCreate, Agent, TeamCreate, TeamDelete | `plan` |
 | **Architect** | Creates roadmaps and phase structure. Writes plans, not code. | Read, Glob, Grep, Write | Edit, WebFetch, Bash | `acceptEdits` |
 | **Lead** | Merges research + planning + self-review. The one who actually makes decisions. | Read, Glob, Grep, Write, Bash, WebFetch | Edit | `acceptEdits` |
-| **Dev** | Writes code, makes commits, builds things. Handle with care. | Full access | -- | `acceptEdits` |
+| **Dev** | Writes code, makes commits, builds things. Handle with care. | Inherited (all except denied) + MCP | Task, TaskCreate, Agent, TeamCreate, TeamDelete, AskUserQuestion | `acceptEdits` |
 | **QA** | Goal-backward verification. Trusts nothing. Persists VERIFICATION.md via write-verification.sh; Write/Edit tools disallowed. | Read, Grep, Glob, Bash | Write, Edit, NotebookEdit | `plan` |
 | **Debugger** | Scientific method bug investigation. One issue, one session. | Full access | -- | `acceptEdits` |
 | **Docs** | Documentation specialist. READMEs, changelogs, API docs, guides. | Read, Grep, Glob, Bash, Write, Edit | -- | `acceptEdits` |
 
-**Denied** = `disallowedTools` -- platform-enforced denial. These tools are blocked by Claude Code itself, not by instructions an agent might ignore during compaction. **Mode** = `permissionMode` -- `plan` means no interactive edits — Scout writes research files to `.vbw-planning/` but cannot edit code or run commands; QA can only persist VERIFICATION.md via `write-verification.sh`, `acceptEdits` means the agent can propose and apply changes.
+**Denied / Omitted** = `disallowedTools` for denylist agents; for explicit allowlist agents, tools intentionally absent from `tools`. These restrictions are blocked by Claude Code itself, not by instructions an agent might ignore during compaction. **Mode** = `permissionMode` -- `plan` means no interactive edits — Scout writes research files to `.vbw-planning/` and can run read-only validation Bash, but cannot edit code or spawn subagents/teams; QA can only persist VERIFICATION.md via `write-verification.sh`, `acceptEdits` means the agent can propose and apply changes.
 
 Here's when each one shows up to work:
 
@@ -490,7 +494,7 @@ Here's when each one shows up to work:
   │(subagt)  │   (scope creep is for amateurs)                         │ verify
   └──────────┘                                                         │
                                                                        ▼
-  HOOKS (11 event types, 24 handlers)                              VERIFICATION.md
+  HOOKS (11 event types, 30 handlers)                              VERIFICATION.md
   ┌───────────────────────────────────────────────────────────────────────────────┐
   │  Verification                                                                 │
   │    PostToolUse ──── Validates SUMMARY.md on write, checks commit format,      │
@@ -519,13 +523,14 @@ Here's when each one shows up to work:
   ┌───────────────────────────────────────────────────────────────────────────────┐
   │  PERMISSION MODEL                                                             │
   │                                                                               │
-  │  Scout ─────────── Plan mode. Writes research to .vbw-planning/ only.         │
+  │  Scout ─────────── Plan mode. Writes .vbw-planning/ research; read-only Bash. │
   │  QA ───────────── Read + Bash. Persists only via write-verification.sh.        │
   │  Architect ─────── Edit/Bash blocked by platform. Write limited to plans      │
   │                    by instruction. Writes roadmaps, not code. Mostly.         │
   │  Lead ─────────── Read, Write, Bash, WebFetch. The middle manager.            │
   │  Docs ─────────── Read, Write, Edit, Bash. Doc files only by instruction.     │
-  │  Dev, Debugger ─── Full access. The ones you actually worry about.            │
+  │  Dev ──────────── Denylist (no Task/Agent/Team/AskUserQuestion); inherited tools.   │
+  │  Debugger ─────── Full access. The one you still worry about.                 │
   │                                                                               │
   │  Platform-enforced: tools / disallowedTools (cannot be overridden)            │
   │  Instruction-enforced: behavioral constraints in agent prompts                │
@@ -673,7 +678,7 @@ Autonomy interacts with effort profiles. At `cautious`, plan approval expands to
 | Plan approval (Balanced) | Required | Off | Off | Off |
 | UAT after QA | Run | Run | Skip | Skip |
 
-**`auto_uat`** — When `true`, VBW automatically runs UAT verification after QA passes during the `/vbw:vibe` execution flow, regardless of autonomy level. Normally, UAT only runs at `cautious` and `standard` autonomy. With `auto_uat` enabled, UAT runs inline at every level, including `confident` and `pure-vibe`.
+**`auto_uat`** — When `true`, VBW automatically runs UAT verification after QA passes during the `/vbw:vibe` execution flow, regardless of autonomy level. Normally, UAT only runs at `cautious` and `standard` autonomy. With `auto_uat` enabled, UAT runs inline at every level, including `confident` and `pure-vibe`. Product UAT checkpoint modals include both the scenario and expected result so the prompt is answerable even if the modal covers surrounding terminal text. If completed summaries document implementation deviations, UAT preloads them as review checkpoints so you can accept them as process exceptions, accept them while adding a VBW todo for follow-up, skip them, or reject them as real issues.
 
 ```text
 /vbw:config auto_uat true
@@ -776,11 +781,15 @@ Controls when VBW creates an Agent Team (multiple color-coded Dev agents) vs usi
 
 If `prefer_teams` requests team mode but the live tool set cannot express real team semantics, VBW now emits `⚠ Agent Teams not enabled — using non-team mode` and falls back to explicit non-team execution. It does **not** substitute plain background agents without `team_name` and pretend a team was created.
 
-This setting determines whether true team execution is allowed for delegate-eligible Execute work. With a single delegate plan or a real dependency chain, `auto` chooses serialized subagents because there is no useful parallelism. `auto` also creates teams for ambiguous bugs in debug mode. Note: Planning always uses sequential subagents (Scout → Lead), not teams — `prefer_teams` only affects Execute and debug/map modes.
+This setting determines whether true team execution is allowed for delegate-eligible Execute work. With a single delegate plan or a real dependency chain, `auto` chooses serialized subagents because there is no useful parallelism. For `/vbw:debug`, `auto` is stricter: it uses **Competing Hypotheses** team mode only when the bug is both on the `thorough-effort` profile and ambiguous — think intermittent/flaky/random behavior, generic or missing error text, multiple plausible root-cause areas, or `--competing` / `--parallel`, which force the bug to count as ambiguous for routing. A clear exact-repro issue stays `Standard (single debugger)` unless those `auto` conditions are met. `--serial` forces non-ambiguous routing under `auto`. `prefer_teams=always` still uses team mode for all debug runs, and `prefer_teams=never` still disables team mode regardless of the flags. Note: Planning always uses sequential subagents (Scout → Lead), not teams — `prefer_teams` only affects Execute and debug/map modes.
 
 #### `worktree_isolation` — Filesystem Isolation
 
 When enabled, each Dev agent gets its own **git worktree** — a physically separate copy of your repo on a dedicated branch. Agents literally work in different directories, so they can't overwrite each other's files.
+
+When `worktree_isolation` is `on`, VBW creates `.vbw-worktrees/...` git worktrees, records the assigned path in execution state, and tells Dev agents their working directory through task prompt metadata. VBW does not use Claude Code's `isolation:"worktree"` sidechain for this flow.
+
+VBW teammate spawns always block Claude-side `isolation:"worktree"`, unmanaged `.claude/worktrees/agent-*` sidechain working directories, and `.vbw-worktrees/...` spawn cwd aliases. This keeps remediation and serialized subagent paths out of unprepared sidechain roots while allowing VBW-prepared git worktree targeting through `.execution-state.json`, `scripts/worktree-target.sh`, and task prompt metadata.
 
 | Setting | Type | Default | Values |
 | :--- | :--- | :--- | :--- |
@@ -873,7 +882,7 @@ VBW spawns specialized agents for planning, development, and verification. Model
 | :--- | :--- | :--- | :--- |
 | `bash_guard` | boolean | `true` | `true` / `false` |
 
-- **`bash_guard`** — When `true`, a PreToolUse hook blocks known destructive Bash commands (database drops, migration resets, volume wipes) before they execute. Covers 40+ patterns across all major frameworks and databases. Override per-command with `VBW_ALLOW_DESTRUCTIVE=1` env var, or disable entirely with `false`. Project-specific patterns can be added to `.vbw-planning/destructive-commands.local.txt`.
+- **`bash_guard`** — When `true`, a PreToolUse hook blocks known destructive Bash commands (database drops, migration resets, volume wipes) before they execute. Covers 40+ patterns across all major frameworks and databases. Override the generic destructive-command classifier per-command with `VBW_ALLOW_DESTRUCTIVE=1`, or disable that generic classifier with `false`. Scout-specific read-only blocks still apply when Scout identity is detected. Project-specific patterns can be added to `.vbw-planning/destructive-commands.local.txt`.
 
 ### Cross-phase context
 

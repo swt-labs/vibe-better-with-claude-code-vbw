@@ -10,6 +10,7 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 
 PASS=0
 FAIL=0
+VIBE_VERIFY_STEP4_BLOCK=$(sed -n '/4\. \*\*UAT Remediation Auto-Continuation:/,/### Mode: Add Phase/p' "$ROOT/commands/vibe.md")
 
 pass() {
   echo "PASS  $1"
@@ -49,18 +50,19 @@ else
   fail "vibe.md missing transition banner with issue count"
 fi
 
-# 5. vibe.md calls needs-round in auto-continuation path
-if grep -q 'uat-remediation-state.sh needs-round' "$ROOT/commands/vibe.md"; then
-  pass "vibe.md calls needs-round in auto-continuation path"
+# 5. vibe.md Step 4 routes auto-continuation through prepare-reverification
+if echo "$VIBE_VERIFY_STEP4_BLOCK" | grep -q 'prepare-reverification.sh'; then
+  pass "vibe.md Step 4 routes auto-continuation through prepare-reverification.sh"
 else
-  fail "vibe.md missing needs-round call in auto-continuation path"
+  fail "vibe.md Step 4 missing prepare-reverification.sh transition"
 fi
 
-# 6. vibe.md resolves the UAT cap via shared helper-backed decision mode
-if grep -q 'resolve-uat-remediation-round-limit.sh --next-round-decision' "$ROOT/commands/vibe.md" && grep -q 'max_uat_remediation_rounds' "$ROOT/commands/vibe.md"; then
-  pass "vibe.md resolves the UAT remediation round cap via shared decision helper"
+# 6. vibe.md Step 4 explains why prepare-reverification owns this transition
+if echo "$VIBE_VERIFY_STEP4_BLOCK" | grep -q 'finalizes and validates the active UAT before state mutation' \
+  && echo "$VIBE_VERIFY_STEP4_BLOCK" | grep -q 'direct .*needs-round.*not the transition path'; then
+  pass "vibe.md Step 4 documents prepare-reverification transition ownership"
 else
-  fail "vibe.md missing shared helper-backed max_uat_remediation_rounds handling"
+  fail "vibe.md Step 4 missing prepare-reverification transition rationale"
 fi
 
 # 7. defaults.json contains max_uat_remediation_rounds=false
@@ -70,11 +72,14 @@ else
   fail "defaults.json missing max_uat_remediation_rounds=false"
 fi
 
-# 8. vibe.md and verify.md both handle cap_reached explicitly
-if grep -q 'skipped=cap_reached' "$ROOT/commands/vibe.md" && grep -q 'skipped=cap_reached' "$ROOT/commands/verify.md"; then
-  pass "vibe.md and verify.md both handle cap_reached"
+# 8. vibe.md Verify Step 4 and verify.md both handle cap_reached explicitly
+if echo "$VIBE_VERIFY_STEP4_BLOCK" | grep -q '_skipped=cap_reached' \
+  && echo "$VIBE_VERIFY_STEP4_BLOCK" | grep -q 'Reached maximum UAT remediation rounds' \
+  && echo "$VIBE_VERIFY_STEP4_BLOCK" | grep -q 'Do NOT re-enter remediation' \
+  && grep -q 'skipped=cap_reached' "$ROOT/commands/verify.md"; then
+  pass "vibe.md Step 4 and verify.md both handle cap_reached"
 else
-  fail "vibe.md or verify.md missing cap_reached handling"
+  fail "vibe.md Step 4 or verify.md missing cap_reached handling"
 fi
 
 # 9. verify.md standalone mode uses the shared helper before needs-round
@@ -94,15 +99,11 @@ else
   pass "verify.md orchestrated mode correctly defers needs-round to caller"
 fi
 
-# 11. vibe.md Step 4: cap check (current-round) appears BEFORE needs-round call
-# Structural ordering: the LLM must read the current round and check the cap
-# before calling needs-round, which mutates state.
-_cap_line=$(grep -n 'uat-remediation-state.sh current-round' "$ROOT/commands/vibe.md" | head -1 | cut -d: -f1)
-_needs_line=$(grep -n 'uat-remediation-state.sh needs-round' "$ROOT/commands/vibe.md" | head -1 | cut -d: -f1)
-if [ -n "$_cap_line" ] && [ -n "$_needs_line" ] && [ "$_cap_line" -lt "$_needs_line" ]; then
-  pass "vibe.md: cap check (current-round) appears before needs-round call"
+# 11. vibe.md Step 4 does not directly call needs-round; prepare-reverification owns mutation
+if echo "$VIBE_VERIFY_STEP4_BLOCK" | grep -q 'uat-remediation-state.sh needs-round'; then
+  fail "vibe.md Step 4 must not directly call uat-remediation-state.sh needs-round"
 else
-  fail "vibe.md: cap check must appear BEFORE needs-round call in Step 4 (cap@${_cap_line:-?} vs needs@${_needs_line:-?})"
+  pass "vibe.md Step 4 avoids direct needs-round mutation"
 fi
 
 # 12. vibe.md documents the real prepare-reverification archived/skipped contract
@@ -122,15 +123,15 @@ else
   fail "verify.md missing skipped=ready_for_verify or flat-layout archived basename handling"
 fi
 
-# 14. vibe.md and verify.md fail-close on empty cap-check helper output
-# Both command files must instruct the LLM to STOP (no state mutation) when
-# _cap_reached or _cap_decision is empty — matching the fail-close hardening
-# in phase-detect.sh and prepare-reverification.sh.
-if grep -q '_cap_reached.*empty\|_cap_decision.*empty' "$ROOT/commands/vibe.md" \
-  && grep -q 'no state mutation on error' "$ROOT/commands/vibe.md"; then
-  pass "vibe.md fail-closes on empty/malformed cap-check helper output"
+# 14. vibe.md and verify.md fail-close on malformed transition helper output
+# vibe.md Step 4 must stop when prepare-reverification fails or emits malformed output;
+# verify.md standalone mode still stops on malformed cap-helper output.
+if echo "$VIBE_VERIFY_STEP4_BLOCK" | grep -q 'prepare-reverification.*exits nonzero' \
+  && echo "$VIBE_VERIFY_STEP4_BLOCK" | grep -q 'malformed' \
+  && echo "$VIBE_VERIFY_STEP4_BLOCK" | grep -q 'STOP'; then
+  pass "vibe.md Step 4 fail-closes on nonzero/malformed prepare output"
 else
-  fail "vibe.md missing fail-close guard for empty cap-check helper output"
+  fail "vibe.md Step 4 missing fail-close guard for nonzero/malformed prepare output"
 fi
 if grep -q '_cap_reached.*empty\|_cap_decision.*empty' "$ROOT/commands/verify.md" \
   && grep -q 'no state mutation on error' "$ROOT/commands/verify.md"; then

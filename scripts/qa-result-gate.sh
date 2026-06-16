@@ -40,6 +40,11 @@ if [ -n "$VERIF_NAME" ]; then
 fi
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 RESOLVE_VERIF_SCRIPT="$SCRIPT_DIR/resolve-verification-path.sh"
+if [ -f "$SCRIPT_DIR/summary-utils.sh" ]; then
+  # shellcheck source=summary-utils.sh
+  . "$SCRIPT_DIR/summary-utils.sh"
+fi
+TRACK_UAT_DEVIATIONS_SCRIPT="$SCRIPT_DIR/track-uat-deviations.sh"
 
 # Extract YAML-frontmatter array items from either block-list form:
 #   key:
@@ -1087,45 +1092,16 @@ extract_frontmatter_json_object_array() {
   local file_path="${1:-}"
   local key_name="${2:-}"
   local kind="${3:-issue}"
-  local item=""
   local tmp_file=""
   [ -f "$file_path" ] || { echo '[]'; return 0; }
   [ -n "$key_name" ] || { echo '[]'; return 0; }
 
-  tmp_file=$(mktemp)
-  while IFS= read -r item; do
-    item=$(printf '%s' "$item" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
-    [ -n "$item" ] || continue
-    case "$kind" in
-      issue)
-        printf '%s' "$item" | jq -ce '
-          select(
-            type == "object"
-            and (.test | type == "string")
-            and (.file | type == "string")
-            and (.error | type == "string")
-          )
-        ' >> "$tmp_file" 2>/dev/null || true
-        ;;
-      resolution|outcome)
-        printf '%s' "$item" | jq -ce '
-          select(
-            type == "object"
-            and (.test | type == "string")
-            and (.file | type == "string")
-            and (.error | type == "string")
-            and (.disposition | type == "string")
-            and (.rationale | type == "string")
-            and (
-              .disposition == "resolved"
-              or .disposition == "accepted-process-exception"
-              or .disposition == "unresolved"
-            )
-          )
-        ' >> "$tmp_file" 2>/dev/null || true
-        ;;
-    esac
-  done < <(extract_frontmatter_array_items "$file_path" "$key_name")
+  tmp_file=$(mktemp) || { echo '[]'; return 0; }
+  if ! extract_frontmatter_array_items "$file_path" "$key_name" > "$tmp_file" 2>/dev/null; then
+    rm -f "$tmp_file"
+    echo '[]'
+    return 0
+  fi
 
   if [ ! -s "$tmp_file" ]; then
     rm -f "$tmp_file"
@@ -1133,7 +1109,34 @@ extract_frontmatter_json_object_array() {
     return 0
   fi
 
-  jq -sc 'unique_by(.test, .file, .error) | sort_by(.test, .file, .error)' "$tmp_file"
+  jq -Rsc --arg kind "$kind" '
+    def trim: gsub("^[[:space:]]+|[[:space:]]+$"; "");
+    def valid_issue:
+      type == "object"
+      and (.test | type == "string")
+      and (.file | type == "string")
+      and (.error | type == "string");
+    def valid_resolution:
+      valid_issue
+      and (.disposition | type == "string")
+      and (.rationale | type == "string")
+      and (
+        .disposition == "resolved"
+        or .disposition == "accepted-process-exception"
+        or .disposition == "unresolved"
+      );
+    split("\n")
+    | map(trim | select(length > 0) | (try fromjson catch empty))
+    | if $kind == "issue" then
+        map(select(valid_issue))
+      elif $kind == "resolution" or $kind == "outcome" then
+        map(select(valid_resolution))
+      else
+        []
+      end
+    | unique_by(.test, .file, .error)
+    | sort_by(.test, .file, .error)
+  ' "$tmp_file"
   rm -f "$tmp_file"
 }
 
@@ -1181,16 +1184,58 @@ json_object_array_length() {
 json_object_array_covers_full_issue_objects() {
   local required_json="${1:-[]}"
   local candidate_json="${2:-[]}"
-  local test_name=""
-  local file_path=""
-  local error_msg=""
+  local required_file=""
+  local candidate_file=""
+  local jq_status=0
 
-  while IFS=$'\t' read -r test_name file_path error_msg; do
-    [ -n "$test_name" ] || continue
-    printf '%s' "$candidate_json" | jq -e --arg test "$test_name" --arg file "$file_path" --arg error "$error_msg" '.[] | select(.test == $test and .file == $file and .error == $error)' >/dev/null 2>&1 || return 1
-  done < <(printf '%s' "$required_json" | jq -r '.[] | [.test, .file, .error] | @tsv' 2>/dev/null)
+  required_file=$(mktemp) || return 1
+  candidate_file=$(mktemp) || {
+    rm -f "$required_file"
+    return 1
+  }
+  if ! printf '%s' "$required_json" > "$required_file"; then
+    rm -f "$required_file" "$candidate_file"
+    return 1
+  fi
+  if ! printf '%s' "$candidate_json" > "$candidate_file"; then
+    rm -f "$required_file" "$candidate_file"
+    return 1
+  fi
 
-  return 0
+  if jq -e -n \
+    --slurpfile required "$required_file" \
+    --slurpfile candidate "$candidate_file" '
+      def issue_key: [.test, .file, .error] | @json;
+      ($required[0] // empty) as $required_array |
+      ($candidate[0] // empty) as $candidate_array |
+      if (($required_array | type) != "array") or (($candidate_array | type) != "array") then
+        false
+      else
+        (reduce ($candidate_array[] | select(
+          type == "object"
+          and (.test | type == "string")
+          and (.file | type == "string")
+          and (.error | type == "string")
+        )) as $candidate ({}; .[$candidate | issue_key] = true)) as $candidate_index |
+        all($required_array[];
+          if type != "object" then
+            false
+          elif ((.test | type) == "string" and .test == "") then
+            true
+          elif ((.test | type) != "string") or ((.file | type) != "string") or ((.error | type) != "string") then
+            false
+          else
+            ($candidate_index[issue_key] // false) == true
+          end
+        )
+      end
+    ' >/dev/null 2>&1; then
+    jq_status=0
+  else
+    jq_status=$?
+  fi
+  rm -f "$required_file" "$candidate_file"
+  return "$jq_status"
 }
 
 load_known_issue_registry_json() {
@@ -1203,17 +1248,59 @@ load_known_issue_registry_json() {
 json_object_array_dispositions_match() {
   local expected_json="${1:-[]}"
   local actual_json="${2:-[]}"
-  local test_name=""
-  local file_path=""
-  local error_msg=""
-  local disposition=""
+  local expected_file=""
+  local actual_file=""
+  local jq_status=0
 
-  while IFS=$'\t' read -r test_name file_path error_msg disposition; do
-    [ -n "$test_name" ] || continue
-    printf '%s' "$actual_json" | jq -e --arg test "$test_name" --arg file "$file_path" --arg error "$error_msg" --arg disposition "$disposition" '.[] | select(.test == $test and .file == $file and .error == $error and .disposition == $disposition)' >/dev/null 2>&1 || return 1
-  done < <(printf '%s' "$expected_json" | jq -r '.[] | [.test, .file, .error, .disposition] | @tsv' 2>/dev/null)
+  expected_file=$(mktemp) || return 1
+  actual_file=$(mktemp) || {
+    rm -f "$expected_file"
+    return 1
+  }
+  if ! printf '%s' "$expected_json" > "$expected_file"; then
+    rm -f "$expected_file" "$actual_file"
+    return 1
+  fi
+  if ! printf '%s' "$actual_json" > "$actual_file"; then
+    rm -f "$expected_file" "$actual_file"
+    return 1
+  fi
 
-  return 0
+  if jq -e -n \
+    --slurpfile expected "$expected_file" \
+    --slurpfile actual "$actual_file" '
+      def disposition_key: [.test, .file, .error, .disposition] | @json;
+      ($expected[0] // empty) as $expected_array |
+      ($actual[0] // empty) as $actual_array |
+      if (($expected_array | type) != "array") or (($actual_array | type) != "array") then
+        false
+      else
+        (reduce ($actual_array[] | select(
+          type == "object"
+          and (.test | type == "string")
+          and (.file | type == "string")
+          and (.error | type == "string")
+          and (.disposition | type == "string")
+        )) as $actual_disposition ({}; .[$actual_disposition | disposition_key] = true)) as $actual_disposition_index |
+        all($expected_array[];
+          if type != "object" then
+            true
+          elif ((.test // "") == "") then
+            true
+          elif ((.test | type) != "string") or ((.file | type) != "string") or ((.error | type) != "string") or ((.disposition | type) != "string") then
+            false
+          else
+            ($actual_disposition_index[disposition_key] // false) == true
+          end
+        )
+      end
+    ' >/dev/null 2>&1; then
+    jq_status=0
+  else
+    jq_status=$?
+  fi
+  rm -f "$expected_file" "$actual_file"
+  return "$jq_status"
 }
 
 json_object_array_has_disposition() {
@@ -1347,26 +1434,183 @@ if [ "$KNOWN_ISSUES_STATUS" = "probe_error" ]; then
   esac
 fi
 
-# Count non-placeholder deviations across SUMMARY.md files in a given directory.
-# Uses the same AWK extraction logic as execute-protocol.md Step 4.
-# Arguments: $1 = directory to scan for SUMMARY.md files
+# Extract a single scalar from YAML frontmatter. This intentionally matches
+# compile-verify-context.sh's simple frontmatter lookup for plan identity.
+extract_frontmatter_scalar_value() {
+  local file_path="${1:-}"
+  local key_name="${2:-}"
+  [ -f "$file_path" ] || return 0
+  [ -n "$key_name" ] || return 0
+  awk -v key="$key_name" '
+    function trim(v) {
+      gsub(/^[[:space:]]+|[[:space:]]+$/, "", v)
+      return v
+    }
+    function strip_quotes(v, first, last) {
+      first = substr(v, 1, 1)
+      last = substr(v, length(v), 1)
+      if ((first == "\"" && last == "\"") || (first == squote && last == squote)) {
+        return substr(v, 2, length(v) - 2)
+      }
+      return v
+    }
+    BEGIN { in_fm = 0; squote = sprintf("%c", 39) }
+    NR == 1 && /^---[[:space:]]*$/ { in_fm = 1; next }
+    in_fm && /^---[[:space:]]*$/ { exit }
+    in_fm && $0 ~ ("^" key ":[[:space:]]*") {
+      value = $0
+      sub("^" key ":[[:space:]]*", "", value)
+      value = strip_quotes(trim(value))
+      if (value != "") print value
+      exit
+    }
+  ' "$file_path" 2>/dev/null
+}
+
+summary_plan_id_from_plan_file() {
+  local plan_file="${1:-}"
+  local plan_id=""
+  local round_id=""
+  local plan_base=""
+  [ -f "$plan_file" ] || return 0
+
+  plan_id=$(extract_frontmatter_scalar_value "$plan_file" plan | head -1)
+  if [ -z "$plan_id" ]; then
+    plan_base=$(basename "$plan_file")
+    case "$plan_base" in
+      R*-PLAN.md)
+        plan_id="${plan_base%-PLAN.md}"
+        ;;
+      *)
+        round_id=$(extract_frontmatter_scalar_value "$plan_file" round | head -1)
+        if [ -n "$round_id" ]; then
+          plan_id="R${round_id}"
+        fi
+        ;;
+    esac
+  fi
+
+  printf '%s\n' "${plan_id:-unknown}"
+}
+
+source_plan_ids_for_summary() {
+  local summary_file="${1:-}"
+  local summary_dir=""
+  local summary_base=""
+  local summary_prefix=""
+  local round_summary_base=""
+  local plan_file=""
+
+  [ -f "$summary_file" ] || return 0
+  summary_dir=$(dirname "$summary_file")
+  summary_base=$(basename "$summary_file")
+
+  if [ "$summary_base" = "SUMMARY.md" ]; then
+    plan_file="$summary_dir/PLAN.md"
+    [ -f "$plan_file" ] && summary_plan_id_from_plan_file "$plan_file"
+    return 0
+  fi
+
+  case "$summary_base" in
+    *-SUMMARY.md)
+      summary_prefix="${summary_base%-SUMMARY.md}"
+      ;;
+    *)
+      return 0
+      ;;
+  esac
+
+  if [[ "$summary_dir" == */round-* ]] && [[ "$summary_prefix" =~ ^R[0-9][0-9]$ ]]; then
+    round_summary_base="$summary_prefix"
+    while IFS= read -r plan_file; do
+      [ -f "$plan_file" ] || continue
+      summary_plan_id_from_plan_file "$plan_file"
+    done < <(find "$summary_dir" -maxdepth 1 ! -name '.*' \( -name "${round_summary_base}-PLAN.md" -o -name "${round_summary_base}-*-PLAN.md" \) 2>/dev/null | (sort -V 2>/dev/null || sort))
+    return 0
+  fi
+
+  plan_file="$summary_dir/${summary_prefix}-PLAN.md"
+  [ -f "$plan_file" ] && summary_plan_id_from_plan_file "$plan_file"
+}
+
+summary_deviation_is_accepted() {
+  local phase_dir="${1:-}"
+  local summary_file="${2:-}"
+  local deviation_text="${3:-}"
+  local accepted_signatures="${4:-}"
+  local source_path=""
+  local source_plan_ids=""
+  local source_plan_id=""
+  local signature=""
+  local saw_source_plan=false
+
+  [ -n "$accepted_signatures" ] || return 1
+  [ -x "$TRACK_UAT_DEVIATIONS_SCRIPT" ] || return 1
+  [ -f "$summary_file" ] || return 1
+  [ -n "$deviation_text" ] || return 1
+
+  phase_dir="${phase_dir%/}"
+  source_path="${summary_file#"$phase_dir/"}"
+  [ -n "$source_path" ] || return 1
+
+  if type summary_deviation_source_plan_candidates >/dev/null 2>&1; then
+    source_plan_ids=$(summary_deviation_source_plan_candidates "$summary_file" 2>/dev/null || true)
+  else
+    source_plan_ids=$(source_plan_ids_for_summary "$summary_file")
+  fi
+  [ -n "$source_plan_ids" ] || return 1
+
+  while IFS= read -r source_plan_id; do
+    [ -n "$source_plan_id" ] || continue
+    saw_source_plan=true
+    signature=$(bash "$TRACK_UAT_DEVIATIONS_SCRIPT" signature "$source_plan_id" "$source_path" "$deviation_text" 2>/dev/null || true)
+    [ -n "$signature" ] || return 1
+    if printf '%s\n' "$accepted_signatures" | grep -Fx -- "$signature" >/dev/null 2>&1; then
+      return 0
+    fi
+  done <<< "$source_plan_ids"
+
+  [ "$saw_source_plan" != true ] && return 1
+  return 1
+}
+
+# Count active, non-placeholder deviations across SUMMARY.md files in a given directory.
+# Accepted UAT process exceptions are suppressed using the same signature identity
+# emitted by compile-verify-context.sh; when that identity cannot be derived, the
+# gate fails closed and counts the deviation as active.
+# Arguments: $1 = phase directory, $2 = directory to scan for SUMMARY.md files
 count_deviations_in_dir() {
-  local scan_dir="${1:-}"
+  local phase_dir="${1:-}"
+  local scan_dir="${2:-${1:-}}"
+  local accepted_signatures=""
   local total=0
   [ -d "$scan_dir" ] || { echo 0; return; }
+  if [ -x "$TRACK_UAT_DEVIATIONS_SCRIPT" ]; then
+    accepted_signatures=$(bash "$TRACK_UAT_DEVIATIONS_SCRIPT" accepted-signatures "$phase_dir" 2>/dev/null || true)
+  fi
   while IFS= read -r _cdf_file; do
     [ -f "$_cdf_file" ] || continue
     local _cdf_devs
-    _cdf_devs=$(extract_frontmatter_array_items "$_cdf_file" deviations | awk '
-      BEGIN { count=0 }
-      {
-        lc = tolower($0)
-        if (lc ~ /^none\.?$/ || lc ~ /^n\/a\.?$/ || lc ~ /^na\.?$/ || lc ~ /^no deviations/) next
-        count++
-      }
-      END { print count }
-    ' 2>/dev/null)
-    if [ "${_cdf_devs:-0}" -eq 0 ]; then
+    if type extract_summary_deviations >/dev/null 2>&1; then
+      _cdf_devs=0
+      while IFS= read -r _cdf_deviation; do
+        [ -n "$_cdf_deviation" ] || continue
+        if summary_deviation_is_accepted "$phase_dir" "$_cdf_file" "$_cdf_deviation" "$accepted_signatures"; then
+          continue
+        fi
+        _cdf_devs=$((_cdf_devs + 1))
+      done < <(extract_summary_deviations "$_cdf_file" 2>/dev/null || true)
+    else
+      _cdf_devs=$(extract_frontmatter_array_items "$_cdf_file" deviations | awk '
+        BEGIN { count=0 }
+        {
+          lc = tolower($0)
+          if (lc ~ /^none\.?$/ || lc ~ /^n\/a\.?$/ || lc ~ /^na\.?$/ || lc ~ /^no deviations/) next
+          count++
+        }
+        END { print count }
+      ' 2>/dev/null)
+      if [ "${_cdf_devs:-0}" -eq 0 ]; then
       _cdf_devs=$(awk '
         BEGIN { count=0; found=0 }
           /^## Deviations/ || /^### Deviations/ { found=1; in_comment=0; next }
@@ -1394,6 +1638,7 @@ count_deviations_in_dir() {
         }
         END { print count }
       ' "$_cdf_file" 2>/dev/null)
+      fi
     fi
     total=$((total + ${_cdf_devs:-0}))
   done < <(find "$scan_dir" -maxdepth 1 ! -name '.*' \( -name '*-SUMMARY.md' -o -name 'SUMMARY.md' \) 2>/dev/null | (sort -V 2>/dev/null || sort))
@@ -1465,7 +1710,7 @@ RESULT=$(awk '
 FAIL_COUNT=$(count_fail_rows_in_verification "$VERIF_PATH")
 
 # Deviation count — scan SUMMARY.md files for non-placeholder deviations
-DEVIATION_COUNT=$(count_deviations_in_dir "$SUMMARY_SCOPE_DIR")
+DEVIATION_COUNT=$(count_deviations_in_dir "$PHASE_DIR" "$SUMMARY_SCOPE_DIR")
 
 ROUND_SOURCE_VERIFICATION_MISSING="false"
 if [ "$IN_REMEDIATION" = "true" ] && [ "$SUMMARY_SCOPE_DIR" != "$PHASE_DIR" ]; then
@@ -1797,7 +2042,7 @@ case "$RESULT" in
       echo "qa_gate_routing=REMEDIATION_REQUIRED"
     elif [ "$IN_REMEDIATION" = "true" ] && [ "$SUMMARY_SCOPE_DIR" != "$PHASE_DIR" ] && [ "$ROUND_CLASSIFICATIONS_VALID" != "true" ]; then
       if [ "$METADATA_ONLY_ROUND" = "true" ]; then
-        PHASE_DEVIATION_COUNT=$(count_deviations_in_dir "$PHASE_DIR")
+        PHASE_DEVIATION_COUNT=$(count_deviations_in_dir "$PHASE_DIR" "$PHASE_DIR")
         echo "qa_gate_metadata_only_override=true"
         echo "qa_gate_phase_deviation_count=$PHASE_DEVIATION_COUNT"
       fi
@@ -1832,7 +2077,7 @@ case "$RESULT" in
       # process-exception (i.e. whether it is truly non-fixable) is still enforced
       # by remediation QA re-verifying the original FAILs; this deterministic gate
       # only validates structural evidence.
-      PHASE_DEVIATION_COUNT=$(count_deviations_in_dir "$PHASE_DIR")
+      PHASE_DEVIATION_COUNT=$(count_deviations_in_dir "$PHASE_DIR" "$PHASE_DIR")
       if [ "$ROUND_CODE_FIX_COUNT" -gt 0 ] 2>/dev/null; then
         echo "qa_gate_metadata_only_override=true"
         echo "qa_gate_phase_deviation_count=$PHASE_DEVIATION_COUNT"

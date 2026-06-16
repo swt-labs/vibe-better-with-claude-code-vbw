@@ -538,6 +538,69 @@ path_b_debug_block() {
   grep -qi 'recorded in the UAT.md' "$PROJECT_ROOT/commands/verify.md"
 }
 
+@test "verify command synthesizes issue descriptions instead of raw responses" {
+  local section
+  section=$(sed -n '/### 7\. Issue handling/,/### 7a\. Discovered issue handling/p' "$PROJECT_ROOT/commands/verify.md")
+
+  grep -q 'Create a synthesized, remediation-ready issue description' <<< "$section"
+  grep -q 'visible attachment/image content' <<< "$section"
+  grep -q 'do not persist `image attached`, `(Image attached)`' <<< "$section"
+  grep -q 'Never persist raw screenshots, raw attachment blobs, or base64 data' <<< "$section"
+  ! grep -q "The user's response text IS the issue description" <<< "$section"
+}
+
+@test "execute-protocol mirrors synthesized UAT issue description contract" {
+  local section
+  section=$(sed -n '/### Step 4\.5: Human acceptance testing (UAT)/,/### Step 5:/p' "$PROJECT_ROOT/references/execute-protocol.md")
+
+  grep -q 'Issue description capture' <<< "$section"
+  grep -q 'synthesize an actionable persisted `Description`' <<< "$section"
+  grep -q 'visible attachment/image content' <<< "$section"
+  grep -q 'do not persist `image attached`, `(Image attached)`' <<< "$section"
+  grep -q 'Never persist raw screenshots, raw attachment blobs, or base64 data' <<< "$section"
+  grep -q 'Do not invent facts that are not present in the checkpoint, user response, or visible attachment/image evidence' <<< "$section"
+  ! grep -q 'treat the entire response text as an issue description' <<< "$section"
+}
+
+@test "human-only UAT require_absent fails closed for unreadable targets" {
+  local section
+  section=$(sed -n '/^require_absent()/,/^}/p' "$PROJECT_ROOT/testing/verify-human-only-uat-contract.sh")
+
+  grep -Fq '[ ! -f "$file" ]' <<< "$section"
+  grep -Fq '[ ! -r "$file" ]' <<< "$section"
+  grep -Fq 'fail "$label (missing or unreadable file: $file)"' <<< "$section"
+}
+
+@test "UAT template preserves Description and Severity while forbidding placeholders" {
+  grep -q 'Issue `Description` values are synthesized, remediation-ready text' "$PROJECT_ROOT/templates/UAT.md"
+  grep -q 'Severity: {critical|major|minor}' "$PROJECT_ROOT/templates/UAT.md"
+  grep -q 'Do not persist `image attached`, `(Image attached)`' "$PROJECT_ROOT/templates/UAT.md"
+  grep -q 'raw attachment blobs, or base64 data' "$PROJECT_ROOT/templates/UAT.md"
+  grep -q 'Description: {synthesized remediation-ready description}' "$PROJECT_ROOT/templates/UAT.md"
+  ! grep -q 'Description: {observation text}' "$PROJECT_ROOT/templates/UAT.md"
+}
+
+@test "verify command discovered issue snippet uses synthesized Description" {
+  local section
+  section=$(sed -n '/### 7a\. Discovered issue handling/,/### 8\. After each response/p' "$PROJECT_ROOT/commands/verify.md")
+
+  grep -q 'captured observation is source material' <<< "$section"
+  grep -q 'Description: {synthesized remediation-ready description}' <<< "$section"
+  grep -q 'Severity: {inferred severity}' <<< "$section"
+  ! grep -q 'Description: {observation text}' <<< "$section"
+}
+
+@test "verify command discovered issue cross-references match Step 7a" {
+  local response_mapping discovered_section
+  response_mapping=$(sed -n '/### 6\. Response mapping/,/### 7\. Issue handling/p' "$PROJECT_ROOT/commands/verify.md")
+  discovered_section=$(sed -n '/### 7a\. Discovered issue handling/,/### 8\. After each response/p' "$PROJECT_ROOT/commands/verify.md")
+
+  grep -q 'Step 7a' <<< "$response_mapping"
+  ! grep -q 'Step 6a' <<< "$response_mapping"
+  grep -q 'keyword table from Step 7' <<< "$discovered_section"
+  ! grep -q 'keyword table from Step 6' <<< "$discovered_section"
+}
+
 @test "verify command discovered issues uses D{NN} IDs" {
   grep -q 'D{NN}' "$PROJECT_ROOT/commands/verify.md"
 }
@@ -701,12 +764,43 @@ path_b_debug_block() {
 }
 
 @test "verify command skip button-selected captures observations" {
-  # Step 5 skip path should mention discovered issue / Step 6a
-  sed -n '/\*\*"Skip" selected:\*\*/,/\*\*Freeform/p' "$PROJECT_ROOT/commands/verify.md" | grep -qi 'discovered issue\|Step 6a\|observation'
+  # Step 6 skip path should mention discovered issue handling / Step 7a
+  sed -n '/\*\*"Skip" selected:\*\*/,/\*\*Freeform/p' "$PROJECT_ROOT/commands/verify.md" | grep -qi 'discovered issue\|Step 7a\|observation'
 }
 
-@test "verify command D{NN} resume scans existing entries" {
-  grep -qi 'scan existing.*D{NN}\|highest existing number\|max+1' "$PROJECT_ROOT/commands/verify.md"
+@test "verify command D{NN} allocation scans current file for every append" {
+  local section
+  section=$(sed -n '/### 7a\. Discovered issue handling/,/### 8\. After each response/p' "$PROJECT_ROOT/commands/verify.md")
+
+  grep -qi 'Before appending any discovered issue' <<< "$section"
+  grep -q '{phase-dir}/{uat_path}' <<< "$section"
+  grep -qi 'initial and resumed sessions' <<< "$section"
+  grep -Fq 'D[0-9]+' <<< "$section"
+  grep -q 'prefilled summary-deviation review entries' <<< "$section"
+  grep -q 'already appended earlier in the same session' <<< "$section"
+  grep -qi 'highest existing + 1' <<< "$section"
+  grep -q 'D01' <<< "$section"
+  grep -q 'D02' <<< "$section"
+  grep -q 'D03' <<< "$section"
+  grep -qi 'Never renumber' <<< "$section"
+  ! grep -qi 'On resumed sessions' <<< "$section"
+}
+
+@test "execute-protocol UAT D{NN} allocation scans current file for every append" {
+  local section
+  section=$(sed -n '/### Step 4\.5: Human acceptance testing (UAT)/,/### Step 5:/p' "$PROJECT_ROOT/references/execute-protocol.md")
+
+  grep -qi 'separate defect observation' <<< "$section"
+  grep -q '{phase-dir}/{uat_path}' <<< "$section"
+  grep -qi 'initial and resumed sessions' <<< "$section"
+  grep -Fq 'D[0-9]+' <<< "$section"
+  grep -q 'prefilled summary-deviation review entries' <<< "$section"
+  grep -q 'appended earlier in the same session' <<< "$section"
+  grep -qi 'highest existing + 1' <<< "$section"
+  grep -q 'D01' <<< "$section"
+  grep -q 'D02' <<< "$section"
+  grep -q 'D03' <<< "$section"
+  grep -qi 'never renumber' <<< "$section"
 }
 
 @test "dev agent DEVN-05 has priority rule for overlapping uncertainty" {

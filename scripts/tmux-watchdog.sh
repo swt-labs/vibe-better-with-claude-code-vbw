@@ -14,6 +14,10 @@ set -u
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PLANNING_DIR="${VBW_PLANNING_DIR:-.vbw-planning}"
+if [ -f "$SCRIPT_DIR/lib/active-agent-state.sh" ]; then
+  # shellcheck source=lib/active-agent-state.sh
+  . "$SCRIPT_DIR/lib/active-agent-state.sh"
+fi
 
 # --- Session name resolution ---
 SESSION="${1:-}"
@@ -37,6 +41,21 @@ log() {
   local timestamp
   timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ" 2>/dev/null || date +"%Y-%m-%d %H:%M:%S")
   echo "[$timestamp] $*" >> "$LOG" 2>/dev/null || echo "[$timestamp] $*" >&2
+}
+
+cleanup_detached_agent_state() {
+  if command -v vbw_active_agent_clear_all >/dev/null 2>&1; then
+    vbw_active_agent_clear_all "$PLANNING_DIR"
+  else
+    rm -f \
+      "$PLANNING_DIR/.active-agent" \
+      "$PLANNING_DIR/.active-agent-count" \
+      "$PLANNING_DIR/.active-agent-roles" \
+      "$PLANNING_DIR/.active-agent-role-pids" \
+      2>/dev/null || true
+    rm -rf "$PLANNING_DIR/.active-agents" "$PLANNING_DIR/.active-agent-count.lock" 2>/dev/null || true
+  fi
+  rm -f "$PLANNING_DIR/.agent-panes" 2>/dev/null || true
 }
 
 log "Watchdog started for session: $SESSION (PID=$$)"
@@ -213,6 +232,7 @@ while true; do
         rm -f "$PLANNING_DIR/.agent-pids" 2>/dev/null || true
         log "Removed .agent-pids file"
       fi
+      cleanup_detached_agent_state
       rm -rf "$PLANNING_DIR/.compacting" 2>/dev/null || true
 
       # Exit after cleanup

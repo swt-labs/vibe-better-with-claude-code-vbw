@@ -15,6 +15,10 @@ LOG_FILE="$PLANNING_DIR/.hook-errors.log"
 
 # Resolve CLAUDE_DIR
 . "$SCRIPT_DIR/resolve-claude-dir.sh"
+if [ -f "$SCRIPT_DIR/lib/active-agent-state.sh" ]; then
+  # shellcheck source=lib/active-agent-state.sh
+  . "$SCRIPT_DIR/lib/active-agent-state.sh"
+fi
 
 TEAMS_DIR="$CLAUDE_DIR/teams"
 TASKS_DIR="$CLAUDE_DIR/tasks"
@@ -133,10 +137,16 @@ scan_stale_markers() {
     fi
   fi
 
-  # Check active agent marker
+  # Check legacy/root active agent marker. When session-local state exists,
+  # root .active-agent is aggregate display state; stale session dirs below are
+  # the authoritative cleanup target.
   local active_agent_file="$PLANNING_DIR/.active-agent"
-  if [ -f "$active_agent_file" ]; then
+  if [ -f "$active_agent_file" ] && [ ! -d "$PLANNING_DIR/.active-agents" ]; then
     echo "stale_marker|.active-agent|potentially stale"
+  fi
+
+  if command -v vbw_active_agent_scan_stale_sessions >/dev/null 2>&1; then
+    vbw_active_agent_scan_stale_sessions "$PLANNING_DIR"
   fi
 }
 
@@ -254,7 +264,7 @@ cleanup_stale_markers() {
           [ "$age" -gt 60 ] && is_stale=true
           ;;
         .active-agent)
-          is_stale=true  # Always considered stale in cleanup
+          [ ! -d "$PLANNING_DIR/.active-agents" ] && is_stale=true
           ;;
       esac
 
@@ -266,6 +276,11 @@ cleanup_stale_markers() {
       fi
     fi
   done
+
+  if command -v vbw_active_agent_cleanup_stale_sessions >/dev/null 2>&1; then
+    vbw_active_agent_cleanup_stale_sessions "$PLANNING_DIR"
+    vbw_active_agent_rebuild_aggregate "$PLANNING_DIR"
+  fi
 
   log_action "stale markers cleanup completed: $removed removed"
 }

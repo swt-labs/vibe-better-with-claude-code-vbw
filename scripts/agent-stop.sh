@@ -1,18 +1,25 @@
 #!/bin/bash
 set -u
-# SubagentStop hook: Decrement active agent count and unregister PID
-# Uses reference counting so concurrent agents (e.g., Scout + Lead) don't
-# delete the marker while siblings are still running.
+# SubagentStop hook: Decrement active agent count and unregister PID.
+# Active-agent state is session-local when a safe session id is available; root
+# .active-agent* files are aggregate display/legacy fallback state.
 # Unregisters agent PID from tmux watchdog tracking.
 # Final cleanup happens in session-stop.sh.
 
 INPUT=$(cat)
 LAST_MESSAGE=$(echo "$INPUT" | jq -r '.last_assistant_message // ""' 2>/dev/null)
 PLANNING_DIR="${VBW_PLANNING_DIR:-.vbw-planning}"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+if [ -f "$SCRIPT_DIR/lib/active-agent-state.sh" ]; then
+  # shellcheck source=lib/active-agent-state.sh
+  . "$SCRIPT_DIR/lib/active-agent-state.sh"
+else
+  exit 0
+fi
 COUNT_FILE="$PLANNING_DIR/.active-agent-count"
-LOCK_DIR="$PLANNING_DIR/.active-agent-count.lock"
 NATIVE_AGENT_TYPE=$(echo "$INPUT" | jq -r '.agent_type // ""' 2>/dev/null)
 LEGACY_AGENT_ROLE_SOURCE=$(echo "$INPUT" | jq -r '.agent_name // .agentName // .name // ""' 2>/dev/null)
+AGENT_PID=$(echo "$INPUT" | jq -r '.pid // ""' 2>/dev/null)
 
 has_vbw_context() {
   [ -f "$PLANNING_DIR/.vbw-session" ] \
@@ -25,6 +32,52 @@ is_explicit_vbw_agent() {
   local lower
   lower=$(printf '%s' "$value" | tr '[:upper:]' '[:lower:]')
   echo "$lower" | grep -qE '^@?vbw:|^@?vbw-'
+}
+
+normalize_agent_role() {
+  local value="$1"
+  local lower
+
+  lower=$(printf '%s' "$value" | tr '[:upper:]' '[:lower:]')
+  lower="${lower#@}"
+  lower="${lower#vbw:}"
+
+  case "$lower" in
+    vbw-lead|vbw-lead-[0-9]*|lead|lead-[0-9]*|team-lead|team-lead-[0-9]*) printf 'lead'; return 0 ;;
+    vbw-dev|vbw-dev-[0-9]*|dev|dev-[0-9]*|team-dev|team-dev-[0-9]*) printf 'dev'; return 0 ;;
+    vbw-qa|vbw-qa-[0-9]*|qa|qa-[0-9]*|team-qa|team-qa-[0-9]*) printf 'qa'; return 0 ;;
+    vbw-scout|vbw-scout-[0-9]*|scout|scout-[0-9]*|team-scout|team-scout-[0-9]*) printf 'scout'; return 0 ;;
+    vbw-debugger|vbw-debugger-[0-9]*|debugger|debugger-[0-9]*|team-debugger|team-debugger-[0-9]*) printf 'debugger'; return 0 ;;
+    vbw-architect|vbw-architect-[0-9]*|architect|architect-[0-9]*|team-architect|team-architect-[0-9]*) printf 'architect'; return 0 ;;
+    vbw-docs|vbw-docs-[0-9]*|docs|docs-[0-9]*|team-docs|team-docs-[0-9]*) printf 'docs'; return 0 ;;
+  esac
+
+  return 1
+}
+
+select_agent_role_source() {
+  if [ -n "$NATIVE_AGENT_TYPE" ]; then
+    if is_explicit_vbw_agent "$NATIVE_AGENT_TYPE"; then
+      printf '%s' "$NATIVE_AGENT_TYPE"
+      return 0
+    fi
+
+    if is_explicit_vbw_agent "$LEGACY_AGENT_ROLE_SOURCE"; then
+      printf '%s' "$LEGACY_AGENT_ROLE_SOURCE"
+      return 0
+    fi
+
+    return 1
+  fi
+
+  if [ -n "$LEGACY_AGENT_ROLE_SOURCE" ]; then
+    if is_explicit_vbw_agent "$LEGACY_AGENT_ROLE_SOURCE" || has_vbw_context; then
+      printf '%s' "$LEGACY_AGENT_ROLE_SOURCE"
+      return 0
+    fi
+  fi
+
+  return 1
 }
 
 should_process_stop() {
@@ -52,90 +105,20 @@ should_process_stop() {
   return 0
 }
 
-acquire_lock() {
-  local attempts=0
-  local max_attempts=100
-  local now lock_mtime age
-  while [ "$attempts" -lt "$max_attempts" ]; do
-    if mkdir "$LOCK_DIR" 2>/dev/null; then
-      return 0
-    fi
-
-    attempts=$((attempts + 1))
-
-    # Stale lock guard: if lock persists for >5s, clear and retry.
-    if [ "$attempts" -eq 50 ] && [ -d "$LOCK_DIR" ]; then
-      now=$(date +%s)
-      if [ "$(uname)" = "Darwin" ]; then
-        lock_mtime=$(stat -f %m "$LOCK_DIR" 2>/dev/null || echo 0)
-      else
-        lock_mtime=$(stat -c %Y "$LOCK_DIR" 2>/dev/null || echo 0)
-      fi
-      age=$((now - lock_mtime))
-      if [ "$age" -gt 5 ]; then
-        rmdir "$LOCK_DIR" 2>/dev/null || true
-      fi
-    fi
-
-    sleep 0.01
-  done
-  # Could not acquire lock — proceed without it (best-effort).
-  return 1
-}
-
-release_lock() {
-  rmdir "$LOCK_DIR" 2>/dev/null || true
-}
-
-read_count() {
-  local raw
-  raw=$(cat "$COUNT_FILE" 2>/dev/null | tr -d '[:space:]')
-  if echo "$raw" | grep -Eq '^[0-9]+$'; then
-    printf '%s' "$raw"
-  else
-    printf '0'
-  fi
-}
-
-decrement_or_cleanup() {
-  local count
-
-  if [ -f "$COUNT_FILE" ]; then
-    count=$(read_count)
-    # Corrupted count + active marker => treat as one active agent left.
-    if [ "$count" -le 0 ] && [ -f "$PLANNING_DIR/.active-agent" ]; then
-      count=1
-    fi
-
-    count=$((count - 1))
-    if [ "$count" -le 0 ]; then
-      rm -f "$PLANNING_DIR/.active-agent" "$COUNT_FILE"
-    else
-      echo "$count" > "$COUNT_FILE"
-    fi
-  elif [ -f "$PLANNING_DIR/.active-agent" ]; then
-    # Legacy: no count file but marker exists — remove (single agent case)
-    rm -f "$PLANNING_DIR/.active-agent"
-  fi
-}
+ROLE=""
+if ROLE_SOURCE=$(select_agent_role_source) && ROLE=$(normalize_agent_role "$ROLE_SOURCE"); then
+  :
+else
+  ROLE=""
+fi
 
 if ! should_process_stop; then
   exit 0
 fi
 
-if acquire_lock; then
-  trap 'release_lock' EXIT INT TERM
-  decrement_or_cleanup
-  release_lock
-  trap - EXIT INT TERM
-else
-  # Lock unavailable — proceed best-effort without lock.
-  decrement_or_cleanup
-fi
+vbw_active_agent_stop "$PLANNING_DIR" "$INPUT" "$ROLE" "$AGENT_PID"
 
 # Unregister agent PID
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-AGENT_PID=$(echo "$INPUT" | jq -r '.pid // ""' 2>/dev/null)
 if [ -n "$AGENT_PID" ] && [ -f "$SCRIPT_DIR/agent-pid-tracker.sh" ]; then
   bash "$SCRIPT_DIR/agent-pid-tracker.sh" unregister "$AGENT_PID" 2>/dev/null || true
 fi

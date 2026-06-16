@@ -221,12 +221,13 @@ You are the team LEAD. NEVER implement tasks yourself.
 - NEVER Write/Edit files in a plan's `files_modified` — only state files: STATE.md, ROADMAP.md, .execution-state.json, SUMMARY.md
 - If Dev fails: guidance via SendMessage, not takeover. If all Devs unavailable: create new Dev.
 - **Subagent return handling (non-team model):** When a Dev subagent Task returns, inspect the result immediately:
-  1. **blocker_report received:** Read the blocker details. If the blocker is a tool precondition error (e.g., "File has not been read yet"), amend the task description with explicit "Read {file} first, then edit" and re-spawn once. If the blocker is a validation contradiction or empty-result failure, do NOT blindly re-spawn — the same subagent prompt will hit the same wall. Instead: (a) verify the validation target yourself (run the bash/curl command Lead can execute), (b) if the data truly contradicts expectations, update the plan task to reflect reality, (c) re-spawn with the corrected task.
-  2. **Task returned without SUMMARY.md or with incomplete work:** Check what the Dev actually accomplished (git log, file changes). If partial progress was made, spawn a new Dev with "Continue from where the previous Dev stopped — files X, Y already modified, remaining work is Z." If zero progress, check whether the task description was ambiguous or missing context and re-spawn with clarification.
-  3. **Max retry: 2 re-spawns per plan.** After 2 failed Dev spawns for the same plan, stop and surface the blocker to the user: "Dev agent failed {N} times on plan {plan_id}. Last blocker: {details}. Manual intervention needed."
+  1. **platform/tool provisioning failure:** If the returned text explicitly says tools, shell/Bash, filesystem, edits, or API-session access are unavailable, optionally paired with visible zero tool-use metadata when you can see it, stop immediately and surface a platform/tool provisioning blocker. Do not consume the normal retry budget and do not re-spawn the same prompt shape; the child cannot fix missing tools by receiving the same instructions again.
+  2. **blocker_report received:** Read the blocker details. If the blocker is a tool precondition error (e.g., "File has not been read yet"), amend the task description with explicit "Read {file} first, then edit" and re-spawn once. If the blocker is a validation contradiction or empty-result failure, do NOT blindly re-spawn — the same subagent prompt will hit the same wall. Instead: (a) verify the validation target yourself (run the bash/curl command Lead can execute), (b) if the data truly contradicts expectations, update the plan task to reflect reality, (c) re-spawn with the corrected task.
+  3. **Task returned without SUMMARY.md or with incomplete work:** Check what the Dev actually accomplished (git log, file changes). If partial progress was made, spawn a new Dev with "Continue from where the previous Dev stopped — files X, Y already modified, remaining work is Z." If zero progress, check whether the task description was ambiguous or missing context and re-spawn with clarification.
+  4. **Max retry: 2 re-spawns per plan.** After 2 failed Dev spawns for the same plan, stop and surface the blocker to the user: "Dev agent failed {N} times on plan {plan_id}. Last blocker: {details}. Manual intervention needed."
 - At Turbo (or smart-routed to turbo): no team — Dev executes directly.
 - **Runtime enforcement:** This directive is structurally enforced by the `file-guard.sh` PreToolUse hook. When `.execution-state.json` has `status: running` and effort is not turbo/direct, the hook blocks product-file Write/Edit from the orchestrator. Two bypass mechanisms exist:
-  - **Subagent model:** `.active-agent-count` (written by `agent-start.sh`): when count > 0, at least one VBW subagent is running and the write is allowed.
+  - **Subagent model:** `.active-agents/{session_id}/active-agent-count` (written by `agent-start.sh`): when a safe Claude session id is available and the current session count is > 0, a VBW subagent is running in this session and the write is allowed. Session-local `active-agent-roles` drives Scout-safe fallback for ambiguous calls in the same session only, preventing cross-terminal/session role leakage. Root `.active-agent*` files are aggregate display/legacy fallback state and are used for enforcement only when no safe session id is available.
   - **Execute team mode:** `scripts/delegated-workflow.sh set execute {effort} team {team_name}` records true team mode before teammate spawns. `file-guard.sh` bypasses only when that execute marker is active. This avoids assuming that `prefer_teams` or background `Agent` spawns automatically imply a real team.
   - When neither bypass applies, the write is treated as an orchestrator action and blocked. Planning/state artifacts (`.vbw-planning/*`, `STATE.md`, `SUMMARY.md`, etc.) remain exempt.
 
@@ -323,9 +324,9 @@ if [ $? -ne 0 ]; then echo "$QA_MAX_TURNS" >&2; exit 1; fi
 
 **Skill activation for Dev/QA tasks:** Before composing task descriptions, evaluate installed skills visible in your system context — read each skill's description and select all materially helpful installed skills for the tasks being executed, including adjacent/supporting domain skills surfaced by the prompt, logs, error text, related files, or stack context — not just the single most direct skill. Every spawned prompt that performs this evaluation MUST begin with exactly one explicit outcome block: use `<skill_activation>` as the FIRST line when one or more installed skills are preselected at orchestration time, or `<skill_no_activation>` as the FIRST line when none are preselected. Silent omission of both blocks is invalid. After evaluating, state the skill outcome in your response (e.g., "Skills: activating {skill-name}" or "Skills: none preselected — {reason}") so the user has visibility before the agent is spawned. Example: if the prompt or error mentions SwiftData, include `swiftdata` alongside relevant test/build/debug skills. After calling `Skill(...)`, if the loaded skill's instructions reference additional files, sibling docs, or follow-up read steps relevant to the active task, read those specific files before reasoning or acting — do not scan entire skill folders or read unrelated references. When preselected skills expose named local follow-up docs, resolve them with `extract-skill-follow-up-files.sh` and paste the emitted `<skill_follow_up_files>` block immediately after the follow-up-read sentence in the spawned payload.
 
-**MCP tool evaluation for Dev tasks:** Also evaluate available MCP tools in your system context. If any MCP servers provide capabilities relevant to the tasks (build tools, documentation servers, domain-specific APIs), note them in the Dev task description so the Dev agent knows which MCP tools to use.
-
 For each runnable plan in the current segment, create the teammate task using the live teammate spawn tool (for example `TaskCreate` or `Agent`). In non-team mode, spawn exactly one Dev and wait for its result before spawning the next runnable plan. In true team mode, every spawn/TaskCreate after the marker is set must include the selected `TEAM_NAME` and teammate `name`.
+
+**Spawn-shape rule (applies to both non-team and true-team spawns):** On every live teammate spawn call, whether the live tool is `Agent` or `TaskCreate`, never set Claude-side `isolation:"worktree"` or pass a `cwd` pointing into `.claude/worktrees/...` or `.vbw-worktrees/...`. `agent-spawn-guard.sh` validates these isolation/cwd fields before it branches on delegation mode, so the rule is enforced for true-team spawns identically to non-team ones — passing them produces a hard `cross-worktree spawn` rejection in either mode. Prepared VBW worktree targeting means the `Working directory:` and `Worktree targeting:` lines in the task description, derived from `.execution-state.json` `worktree_path` and `scripts/worktree-target.sh`; it is not an `isolation` or `cwd` field on the spawn call. Claude-side `isolation:"worktree"` can create unmanaged `.claude/worktrees/agent-*` sidechains with different tool/artifact assumptions; VBW's current isolation uses its own `.vbw-worktrees` git worktrees. In addition, non-team spawns must omit `team_name` and `run_in_background`; `name` is optional label-only metadata and must never be used for routing, lifecycle state, or team semantics. In true team mode, every spawn/TaskCreate after the marker is set must include the selected `TEAM_NAME` and teammate `name`.
 ```yaml
 subject: "Execute {NN-MM}: {plan-title}"
 description: |
@@ -554,39 +555,20 @@ for summary_file in {phase-dir}/*-SUMMARY.md; do
   [ -f "$summary_file" ] || continue
   plan_id=$(basename "$summary_file" | sed 's/-SUMMARY\.md$//')
 
-  # Extract deviations from YAML frontmatter
-  devs=$(awk '
-    BEGIN { in_fm=0; in_dev=0 }
-    NR==1 && /^---[[:space:]]*$/ { in_fm=1; next }
-    in_fm && /^---[[:space:]]*$/ { exit }
-    in_fm && /^deviations:/ { in_dev=1; next }
-    in_fm && in_dev && /^[[:space:]]+- / {
-      line=$0; sub(/^[[:space:]]+- /, "", line)
-      gsub(/^"/, "", line); gsub(/"$/, "", line)
-      items = items (items ? "; " : "") line; next
-    }
-    in_fm && in_dev && /^[^[:space:]]/ { exit }
-    END { print items }
-  ' "$summary_file" 2>/dev/null)
-
-  # Fallback: extract deviations from body ## Deviations section
-  # Dev agents frequently write deviations only in the body, omitting
-  # the YAML frontmatter array. This fallback ensures QA always receives them.
-  if [ -z "$devs" ]; then
-    devs=$(awk '
-      /^## Deviations/ { found=1; next }
-      found && /^## / { exit }
-      found && /^[[:space:]]*$/ { next }
-      found && /^- / {
-        line=$0; sub(/^- /, "", line)
-        if (tolower(line) ~ /^\*\*n(one|\/a|a)\*\*/ || tolower(line) ~ /^\*\*no deviations\*\*/) next
-        sub(/^\*\*[^*]+\*\*:?[[:space:]]*/, "", line)
-        lc = tolower(line)
-        if (lc ~ /^none[. ]/ || lc == "none" || lc ~ /^n\/a[. ]/ || lc == "n/a" || lc == "na" || lc ~ /^no deviations/) next
-        items = items (items ? "; " : "") line
-      }
+  # Extract deviations from YAML frontmatter AND the body ## Deviations section.
+  # The shared helper merges both sources in stable order, drops placeholder
+  # "none" values, and de-duplicates exact duplicates. Frontmatter must not
+  # mask body-only deviation detail.
+  devs=""
+  if [ -f "${VBW_PLUGIN_ROOT}/scripts/summary-utils.sh" ]; then
+    # shellcheck source=/dev/null
+    . "${VBW_PLUGIN_ROOT}/scripts/summary-utils.sh"
+  fi
+  if type extract_summary_deviations >/dev/null 2>&1; then
+    devs=$(extract_summary_deviations "$summary_file" 2>/dev/null | awk '
+      NF { items = items (items ? "; " : "") $0 }
       END { print items }
-    ' "$summary_file" 2>/dev/null)
+    ')
   fi
 
   # Extract pre-existing issues from canonical SUMMARY.md frontmatter first.
@@ -753,6 +735,15 @@ This loop runs inline during execution — no second `/vbw:vibe` call needed. If
    bash "${VBW_PLUGIN_ROOT}/scripts/qa-remediation-state.sh" init "{phase-dir}"
    ```
   Parse output: `stage`, `round`, `round_dir`, `source_verification_path`, `source_fail_count`, `known_issues_path`, `known_issues_count`, `input_mode`, `verification_path`
+  <qa_remediation_artifact_contract>
+  `round_dir`, `source_verification_path`, `known_issues_path`, and `verification_path` from `qa-remediation-state.sh` metadata are authoritative host-repository paths. Claude Code may run subagents from `.claude/worktrees/agent-*` sidechain CWDs; pass these exact paths to Lead, Dev, and QA prompts and never rewrite them relative to the current CWD. Rewriting those paths relative to sidechain CWDs can write or read remediation artifacts from the wrong location and break resume or verification.
+  </qa_remediation_artifact_contract>
+  <qa_remediation_spawn_contract>
+  QA remediation uses plain sequential subagent calls. Do not use TeamCreate. Non-team spawn shape: omit `team_name`, `run_in_background`, `isolation`, and worktree cwd fields (`cwd`, `working_dir`, `workingDirectory`, `workdir`). `name` is optional label-only metadata; never use it for routing, lifecycle state, or team semantics. Use remediation metadata paths in prompts; VBW worktree targeting is task prompt/state metadata, not a spawn isolation or cwd handoff.
+  </qa_remediation_spawn_contract>
+  <qa_remediation_no_tool_circuit_breaker>
+  After any QA remediation Lead, Dev, or QA subagent returns, inspect returned text before artifact validation, deterministic gates, or state advancement. If it says tools, shell/Bash, filesystem, edits, or API-session access are unavailable, treat that as a platform/tool provisioning failure: STOP without advancing `.qa-remediation-stage`, report the failed role and stage/task, and do not retry the same prompt.
+  </qa_remediation_no_tool_circuit_breaker>
 
 2. **Loop (until PROCEED_TO_UAT or user intervention):**
 
@@ -770,15 +761,41 @@ This loop runs inline during execution — no second `/vbw:vibe` call needed. If
    - Include `fail_classifications:` YAML array in R{RR}-PLAN.md frontmatter.
      - `code-fix` / `process-exception` entries: `{id: "FAIL-ID", type: "code-fix|process-exception", rationale: "..."}`
      - `plan-amendment` entries MUST also identify the original plan being amended: `{id: "FAIL-ID", type: "plan-amendment", rationale: "...", source_plan: "01-01-PLAN.md"}`. `source_plan` must reference an original plan in the current phase only — never a sibling phase, archived milestone, or remediation plan.
-   - When `input_mode=known-issues` or `input_mode=both`, include every carried known issue from `known_issues_path` in `known_issues_input:` using the canonical `{test,file,error}` JSON object-string shape already used for tracked issues.
-   - When `input_mode=known-issues` or `input_mode=both`, include a matching `known_issue_resolutions:` entry for every carried known issue using `{test,file,error,disposition,rationale}` JSON object strings. Valid `disposition` values are `resolved`, `accepted-process-exception`, and `unresolved`.
+    - Always include `known_issues_input:` and `known_issue_resolutions:` in R{RR}-PLAN.md frontmatter. When `known_issues_count=0` or `input_mode=verification`, set both to empty arrays (`known_issues_input: []` and `known_issue_resolutions: []`) rather than omitting them.
+    - When `input_mode=known-issues` or `input_mode=both`, populate `known_issues_input:` with every carried known issue from `known_issues_path` using the canonical `{test,file,error}` JSON object-string shape already used for tracked issues.
+    - When `input_mode=known-issues` or `input_mode=both`, populate `known_issue_resolutions:` with a matching entry for every carried known issue using `{test,file,error,disposition,rationale}` JSON object strings. Valid `disposition` values are `resolved`, `accepted-process-exception`, and `unresolved`.
      - `resolved` = this round fixes the issue and QA should no longer return it in `pre_existing_issues`
      - `accepted-process-exception` = QA must verify the issue is real but non-blocking for this phase, omit it from `pre_existing_issues`, and leave it visible via the summary/STATE backlog instead of reopening the round forever
      - `unresolved` = the issue remains blocking and the next round must continue to carry it
-   - Do NOT omit a carried known issue from `known_issues_input` or `known_issue_resolutions`. The deterministic gate treats missing coverage as a failed remediation round even if QA writes `PASS`.
+    - Do NOT omit the `known_issues_input` or `known_issue_resolutions` keys. Do NOT omit a carried known issue from either array. The deterministic gate treats missing coverage as a failed remediation round even if QA writes `PASS`.
    - Scope the plan to those failures: what to fix, which files, acceptance criteria
-   - The orchestrator writes the plan (QA identified problems, orchestrator determines fixes)
-   - Advance state: `bash "${VBW_PLUGIN_ROOT}/scripts/qa-remediation-state.sh" advance "{phase-dir}"`
+  - The orchestrator coordinates the remediation loop and spawns exactly one Lead subagent to write `{round_dir}/R{RR}-PLAN.md` (QA identified problems, Lead determines fixes).
+  - Resolve Lead settings before composing the Lead task:
+    ```bash
+    if ! AGENT_SETTINGS=$(bash "${VBW_PLUGIN_ROOT}/scripts/resolve-agent-settings.sh" lead .vbw-planning/config.json "${VBW_PLUGIN_ROOT}/config/model-profiles.json" "{effort}"); then
+      echo "$AGENT_SETTINGS" >&2
+      exit 1
+    fi
+    eval "$AGENT_SETTINGS"
+    LEAD_MODEL="$RESOLVED_MODEL"
+    LEAD_MAX_TURNS="$RESOLVED_MAX_TURNS"
+    ```
+  - Spawn Lead as a plain sequential work-unit subagent with `subagent_type: "vbw:vbw-lead"` and `model: "${LEAD_MODEL}"`. If `LEAD_MAX_TURNS` is non-empty, include `maxTurns: ${LEAD_MAX_TURNS}`. If `LEAD_MAX_TURNS` is empty, omit `maxTurns` because the resolved profile is unlimited. Non-team spawn shape: omit `team_name`, `run_in_background`, `isolation`, and worktree cwd fields (`cwd`, `working_dir`, `workingDirectory`, `workdir`). `name` is optional label-only metadata; never use it for routing, lifecycle state, or team semantics.
+  - Lead prompt MUST include the authoritative `round_dir`, `source_verification_path`, `known_issues_path`, and output path `{round_dir}/R{RR}-PLAN.md`; the failed-check and known-issue inputs above; the deviation-classification and known-issue-resolution requirements above; and `Read the remediation plan template at /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/templates/REMEDIATION-PLAN.md and follow its structure exactly.`
+  - After Lead returns, apply the QA remediation no-tool circuit breaker before normalizing plan filenames, validating the generated plan, or advancing state. If Lead reports unavailable tools, shell/Bash, filesystem, edits, or API-session access, STOP without advancing `.qa-remediation-stage` and do not retry that same Lead prompt.
+  - Normalize plan filenames before validation:
+    ```bash
+    NORM_SCRIPT="${VBW_PLUGIN_ROOT}/scripts/normalize-plan-filenames.sh"
+    if [ -f "$NORM_SCRIPT" ]; then
+      bash "$NORM_SCRIPT" "{round_dir}"
+    fi
+    ```
+  - Validate the exact QA remediation plan artifact before advancing:
+    ```bash
+    bash "${VBW_PLUGIN_ROOT}/scripts/validate-uat-remediation-artifact.sh" plan "{round_dir}/R{RR}-PLAN.md"
+    ```
+    If validation fails, display the validator error and STOP without advancing `.qa-remediation-stage`. Do not search for an alternate PLAN.md.
+  - After plan validation passes, advance state: `bash "${VBW_PLUGIN_ROOT}/scripts/qa-remediation-state.sh" advance "{phase-dir}"`
 
    **stage=execute:** Spawn a Dev subagent per `R{RR}-PLAN.md`:
    - **Always subagent — NO team creation for QA remediation (NON-NEGOTIABLE)**
@@ -787,12 +804,14 @@ This loop runs inline during execution — no second `/vbw:vibe` call needed. If
      - The remediation summary frontmatter MUST include aggregated `commit_hashes`, `files_modified`, and `deviations`
      - `files_modified` is required even for documentation-only rounds so `qa-result-gate.sh` can deterministically distinguish metadata-only remediation from real code changes
      - When `input_mode=known-issues` or `input_mode=both`, the remediation summary frontmatter MUST also include `known_issue_outcomes` with one `{test,file,error,disposition,rationale}` JSON object string per carried known issue. Keys and `disposition` values must match `R{RR}-PLAN.md` `known_issue_resolutions`; do not silently drop accepted non-blocking issues.
-   - After Dev completes, advance state: `bash "${VBW_PLUGIN_ROOT}/scripts/qa-remediation-state.sh" advance "{phase-dir}"`
+    - After Dev returns, apply the QA remediation no-tool circuit breaker before checking the summary or advancing state. If Dev reports unavailable tools, shell/Bash, filesystem, edits, or API-session access, STOP without advancing `.qa-remediation-stage` and do not retry that same Dev prompt.
+    - After Dev completes without a no-tool provisioning failure, advance state: `bash "${VBW_PLUGIN_ROOT}/scripts/qa-remediation-state.sh" advance "{phase-dir}"`
 
    **stage=verify:** Re-run QA:
    - Run `compile-verify-context.sh --remediation-only {phase-dir}` to get compounded verification history plus the current round's plan/summary context only
    - Spawn QA agent as subagent — writes to `{verification_path}` (from `qa-remediation-state.sh` metadata)
      - Output path: `{round_dir}/R{RR}-VERIFICATION.md` — phase-level VERIFICATION.md stays frozen
+    - After QA returns, apply the QA remediation no-tool circuit breaker before syncing known issues or running the deterministic gate. If QA reports unavailable tools, shell/Bash, filesystem, edits, or API-session access, STOP without advancing `.qa-remediation-stage` and do not retry that same QA prompt.
      - After QA persists `{verification_path}`, immediately sync tracked known issues from that round artifact:
        ```bash
        bash "${VBW_PLUGIN_ROOT}/scripts/track-known-issues.sh" sync-verification "{phase-dir}" "{verification_path}" 2>/dev/null || true
@@ -847,10 +866,27 @@ UAT_NAME=$(bash "${VBW_PLUGIN_ROOT}/scripts/resolve-artifact-path.sh" uat "{phas
 ```
 
 1. Check if `{phase-dir}/${UAT_NAME}` already exists with `status: complete`. If so: "○ UAT already complete" and proceed to Step 5.
-2. Generate test scenarios from completed SUMMARY.md files:
-   - Read each SUMMARY.md: extract what was built, files modified, must_haves
+2. Generate test scenarios from the compiled UAT verification context:
+  ```bash
+  UAT_VERIFY_CONTEXT=$(bash "${VBW_PLUGIN_ROOT}/scripts/compile-verify-context-for-uat.sh" "{phase-dir}" 2>/dev/null || true)
+  ```
+  Treat this compact context as the authoritative UAT input. It includes merged PLAN/SUMMARY details, remediation scope, the correct `uat_path`, and any unsuppressed `SUMMARY_DEVIATION:` records. Do not independently re-read individual SUMMARY.md files to build UAT scope.
+  - Parse `verify_scope=full` vs `verify_scope=remediation round=RR` from the compiled context.
+  - Parse `uat_path=` and write the UAT file there. For full scope this is usually `${UAT_NAME}`; for remediation it is the round-scoped UAT path.
+  - Parse each `SUMMARY_DEVIATION:` record (`signature`, `source_plan`, `source_path`, `text`). These records are already filtered against `{phase-dir}/remediation/uat/accepted-deviations.json`; do not re-prefill accepted records.
+
+  **Summary deviation review prefill (NON-NEGOTIABLE):** Before generated plan checkpoints, create one `D{NN}` review checkpoint for each `SUMMARY_DEVIATION:` record, in the same stable order.
+  - These are review checkpoints, not blocking issues. Start `**Result:**` empty and leave `issues: 0` in the initial frontmatter unless the human later rejects a deviation.
+  - Write them before any generated `P...` or `PR...` checkpoints.
+  - Include identity metadata exactly in the entry: `**Source:** Summary deviation review`, `**Deviation Signature:** {signature}`, `**Source Plan:** {source_plan}`, `**Source Summary:** {source_path}`, and `**Deviation:** {text}`.
+  - Use `**Expected:** Human confirms whether this documented deviation is acceptable for this phase.`
+  - Include the `D{NN}` entries in `total_tests`; they remain incomplete until the human answers.
+
+  Generate plan/remediation scenarios from the compiled context:
+  - Use each context record's built work, files modified, and must_haves
    - Generate 1-3 test scenarios per plan requiring HUMAN judgment — things only a person can verify
    - Minimum 1 test per plan. Test IDs: `P{plan}-T{NN}`
+  - In remediation re-verification mode, use remediation checkpoint IDs `PR{RR}-T{NN}` (for example, `PR03-T01`) and focus on whether the original UAT issue was fixed.
 
    **UAT tests must require human judgment.** Good examples:
    - Open the app and navigate to screen X — does it display Y correctly?
@@ -883,35 +919,46 @@ UAT_NAME=$(bash "${VBW_PLUGIN_ROOT}/scripts/resolve-artifact-path.sh" uat "{phas
 
    If a plan's work is purely internal (refactor, test infrastructure, script changes) with no user-facing behavior, generate a single lightweight checkpoint asking the user to confirm the app still works as expected from their perspective, rather than asking them to run automated checks.
 
-   - Write initial `${UAT_NAME}` in phase dir with all tests (Result fields empty)
+  - Write initial UAT file at `{phase-dir}/{uat_path}` with all tests (prefilled `D{NN}` review checkpoints first, then generated `P...` or `PR...` checkpoints; all Result fields empty)
 3. **CHECKPOINT loop — present ONE test at a time, wait for user response:**
 
    **This is a conversational loop. Do NOT present all tests at once. Do NOT end the session after presenting a test. Do NOT proceed to Step 5 until all tests are complete.**
 
    For the FIRST test without a result, display a CHECKPOINT followed by AskUserQuestion:
 
-   ```text
-   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-   CHECKPOINT {NN}/{total} — {plan-id}: {plan-title}
-   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    ```text
+    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    CHECKPOINT {NN}/{total} — {plan-id}: {plan-title}
+    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-   {scenario description}
-   ```
+    {scenario description}
+    ```
 
-   Then use AskUserQuestion:
+    Then use AskUserQuestion. Keep the modal question self-contained because it may cover the surrounding checkpoint prose:
 
-   ```yaml
-   question: "Expected: {expected result}"
-   header: "UAT"
-   multiSelect: false
-   options:
-     - label: "Pass"
-       description: "Behavior matches expected result"
-     - label: "Skip"
-       description: "Cannot test right now — skip this checkpoint"
-   ```
+    ```yaml
+    question: "Scenario: {scenario description}\n\nExpected: {expected result}\n\nDoes the behavior match this checkpoint?"
+    header: "UAT"
+    multiSelect: false
+    options:
+      - label: "Pass"
+        description: "Behavior matches expected result"
+      - label: "Skip"
+        description: "Cannot test right now — skip this checkpoint"
+    ```
 
    The tool automatically provides a freeform "Other" option for the user to describe issues.
+
+  **Summary-deviation checkpoint prompt:** If the current checkpoint is a prefilled `D{NN}` summary-deviation review, show the deviation text and source metadata instead of a product scenario.
+  - The CHECKPOINT display must be self-contained: include a compact `Deviation: {text}` line from the entry's `**Deviation:**` field and `Source: {source_path} ({source_plan})` from `**Source Summary:**` and `**Source Plan:**`. Include `Deviation Signature: {signature}` only when it helps distinguish similar deviations.
+  - The AskUserQuestion `question` value MUST also be self-contained. Include the same compact `Deviation: {text}` and `Source: {source_path} ({source_plan})` lines in the tool question, then ask: `Accept this documented deviation as non-blocking for this phase?`
+  - The generic artifact expectation, `Expected: Human confirms whether this documented deviation is acceptable for this phase.`, is not enough by itself. It must not be the only visible AskUserQuestion question for a prefilled `D{NN}` summary-deviation checkpoint.
+  - Use three visible option labels for this checkpoint type only:
+    - `Pass` → `Accept this deviation as non-blocking for this phase`
+    - `Track Todo` → `Accept this deviation and add a VBW todo`
+    - `Skip` → `Leave this deviation unaccepted for now`
+  - This stays within the AskUserQuestion four-option limit. Normal product checkpoints keep only `Pass` and `Skip`.
+  - Freeform/Other → record the response as a UAT issue if it explains why the deviation is unacceptable or reveals a product defect, except for high-confidence todo intent handled below.
 
    **STOP HERE.** Wait for the AskUserQuestion response. Do NOT continue to the next test or to Step 5.
 
@@ -919,18 +966,32 @@ UAT_NAME=$(bash "${VBW_PLUGIN_ROOT}/scripts/resolve-artifact-path.sh" uat "{phas
 
    Map the AskUserQuestion response:
 
-   - **"Pass" selected:** record pass
-   - **"Skip" selected:** record skip
-   - **Freeform text (via "Other"):** Apply case-insensitive, trimmed string matching:
+  - **"Pass" selected:** record pass. For a prefilled summary-deviation `D{NN}` checkpoint, also write `**Disposition:** accepted-process-exception` and preserve its deviation metadata. Plain `Pass` accepts the deviation without adding a todo.
+  - **"Track Todo" selected:** for a prefilled summary-deviation `D{NN}` checkpoint only, record `**Result:** pass`, write `**Disposition:** accepted-process-exception`, preserve deviation metadata, and mark the checkpoint as accepted-and-tracked for the persistence step. Do not introduce a new `Result` value.
+  - **"Skip" selected:** record skip. For a prefilled summary-deviation `D{NN}` checkpoint, also write `**Disposition:** skipped-by-user` and do not record acceptance.
+  - **Freeform text (via "Other"):** Apply case-insensitive, trimmed string matching:
+    - For a prefilled summary-deviation `D{NN}` checkpoint, normalize before intent matching: trim, lowercase, treat curly apostrophes as straight apostrophes (`can’t` == `can't`), treat em/en dashes as separators, and canonicalize contractions (`can't`/`cant` → `cannot`, `don't`/`dont` → `do not`, `won't`/`wont` → `will not`). Then apply marker-first ordering: explicit rejection/blocking/acceptance-refusal markers (`unacceptable`, `reject`, `blocking`, `blocker`, `do not continue`, `cannot continue`, `will not continue`, `do not proceed`, `cannot proceed`, `not ok`, `not okay`, `cannot accept`, `do not accept`, `will not accept`, `unable to accept`, `refuse to accept`, `not acceptable`) record `Result: issue` and `Disposition: rejected-by-user` even when todo words are also present; `not ok` and `not okay` are equivalent because `ok` and `okay` are equivalent pass-intent words elsewhere. Examples: `can't continue, track this` and `can’t continue, track this` both canonicalize to `cannot continue, track this`; `not ok, track this` remains rejected; `can't accept this, track this` and `can’t accept this, track this` both canonicalize to `cannot accept this, track this`; and `not acceptable, add to todo` remains a rejected UAT issue. Only otherwise should high-confidence todo intent (`/vbw:todo`, `todo`, `to-do`, `add to todo`, `add to to-do`, `track this`, `track it`, `backlog`, or `follow up later`) map to the accepted-and-tracked path.
      - **Skip words** (skip, skipped, next, n/a, na, later, defer): record skip
-     - **Anything else**: treat the entire response text as an issue description, infer severity from keywords (crash/broken/error=critical, wrong/missing/bug=major, minor/cosmetic/nitpick=minor, default=major)
-   - Update `${UAT_NAME}` immediately (persist to disk)
+     - **Anything else**: classify the response as an issue, synthesize the persisted `Description` using the issue capture rules below, and infer severity from keywords (crash/broken/error=critical, wrong/missing/bug=major, minor/cosmetic/nitpick=minor, default=major). For a prefilled summary-deviation `D{NN}` checkpoint, also write `**Disposition:** rejected-by-user`.
+   - **Issue description capture:** Whenever a response is recorded as an issue, synthesize an actionable persisted `Description` from the checkpoint expectation, the current user response, and any visible attachment/image content available in the current conversation turn.
+     - Correct typos, remove filler/hedging, preserve user intent, identify the violated expectation, and state the observed actual behavior.
+     - If the user includes or references an image/attachment and the content is visible and interpretable, inspect it immediately and fold relevant facts into durable text in `Description`.
+     - If an image/attachment is not visible or not interpretable, do not persist `image attached`, `(Image attached)`, `screenshot attached`, `attachment attached`, or similar placeholders as evidence. Record the limitation only if it matters to remediation.
+     - Never persist raw screenshots, raw attachment blobs, or base64 data in the UAT artifact.
+     - Do not add a required raw-response field; keep the existing `Description` and `Severity` issue shape for downstream extraction.
+     - Do not invent facts that are not present in the checkpoint, user response, or visible attachment/image evidence.
+     - Preserve the human-only UAT boundary: synthesize issue text only from current UAT evidence; do not debug, inspect project files, run commands, or implement fixes during UAT capture.
+   - If a pass/skip response includes a separate defect observation unrelated to the current checkpoint, append it as a discovered UAT issue. Before choosing the ID, scan the current UAT file at `{phase-dir}/{uat_path}` in both initial and resumed sessions for existing `D[0-9]+` headings, including prefilled summary-deviation review entries and issues appended earlier in the same session; allocate highest existing + 1 (`D03` after prefilled `D01`/`D02`) and never renumber existing entries.
+   - Update `{phase-dir}/{uat_path}` immediately (persist to disk)
+  - If the response accepts and tracks a prefilled summary-deviation checkpoint (`Track Todo` or high-confidence todo-intent freeform), run `bash "${VBW_PLUGIN_ROOT}/scripts/track-uat-deviations.sh" todo-from-uat "{phase-dir}" "{phase-dir}/{uat_path}" "{test-id}"` after writing the UAT file. Use only the helper-emitted `todo_ref` to write or update `**Tracking:** accepted deviation added to todos (ref:{todo_ref})` or `**Tracking:** accepted deviation already tracked in todos (ref:{todo_ref})`. If the helper reports `no_state_file`, `missing_metadata`, `not_accepted`, empty output, or any other failure status, keep the UAT `Result: pass` and write `**Tracking:** accepted deviation todo tracking unavailable ({status})` rather than claiming a todo was added.
+  - If the response accepts a prefilled summary-deviation checkpoint, run `bash "${VBW_PLUGIN_ROOT}/scripts/track-uat-deviations.sh" record-from-uat "{phase-dir}" "{phase-dir}/{uat_path}"` after any todo tracking update. The helper is idempotent; never hand-edit `accepted-deviations.json`.
    - Display progress: `✓ {completed}/{total} tests`
    - If more tests remain: present the NEXT test using the same CHECKPOINT format with AskUserQuestion, then **STOP and wait again**
    - If all tests done: go to step 4
 
 4. After all tests complete:
    - Update UAT.md frontmatter (status, completed date, final counts)
+  - Run `bash "${VBW_PLUGIN_ROOT}/scripts/track-uat-deviations.sh" record-from-uat "{phase-dir}" "{phase-dir}/{uat_path}"` after finalization so accepted summary-deviation signatures are available to suppress future duplicate prefill.
    - If no issues: proceed to Step 5
    - If issues found: display issue summary, suggest `/vbw:fix`, STOP (do not proceed to Step 5)
 

@@ -25,10 +25,12 @@ REFERENCES_DIR="$ROOT/references"
 
 ASK_USER_QUESTION_REF="$REFERENCES_DIR/ask-user-question.md"
 VIBE_COMMAND_FILE="$COMMANDS_DIR/vibe.md"
+VERIFY_COMMAND_FILE="$COMMANDS_DIR/verify.md"
 INIT_COMMAND_FILE="$COMMANDS_DIR/init.md"
 LIST_TODOS_COMMAND_FILE="$COMMANDS_DIR/list-todos.md"
 CONFIG_COMMAND_FILE="$COMMANDS_DIR/config.md"
 SKILLS_COMMAND_FILE="$COMMANDS_DIR/skills.md"
+EXECUTE_PROTOCOL_FILE="$REFERENCES_DIR/execute-protocol.md"
 
 tracked_command_markdown_files() {
   local rel
@@ -134,6 +136,27 @@ extract_regex_block() {
       print
     }
   ' "$file"
+}
+
+extract_bullet_block_from_text() {
+  local text="$1"
+  local start_regex="$2"
+
+  awk -v start_re="$start_regex" '
+    $0 ~ start_re {
+      found=1
+      print
+      next
+    }
+
+    found && $0 ~ /^[[:space:]]*-[[:space:]]+/ {
+      exit
+    }
+
+    found {
+      print
+    }
+  ' <<< "$text"
 }
 
 count_text_occurrences() {
@@ -400,6 +423,7 @@ require_file_literal "ask-user-question: documents short-header guidance" "Keep 
 require_file_regex "ask-user-question: documents 2-4 option sweet spot" '2[-–]4 options' "$ASK_USER_QUESTION_REF"
 require_file_regex "ask-user-question: documents 1-4 question guidance" '1[-–]4 questions' "$ASK_USER_QUESTION_REF"
 require_file_literal "ask-user-question: documents built-in Other path" '`Other` path' "$ASK_USER_QUESTION_REF"
+require_file_literal "ask-user-question: documents self-contained modal context" 'minimal answer-critical context in the `question` itself' "$ASK_USER_QUESTION_REF"
 require_file_literal "ask-user-question: documents intentional freeform boundary" "high-cardinality or unbounded" "$ASK_USER_QUESTION_REF"
 require_file_literal "ask-user-question: documents freeform handoff heading" "### Freeform handoff" "$ASK_USER_QUESTION_REF"
 require_file_literal "ask-user-question: documents freeform handoff behavior" "stop using AskUserQuestion" "$ASK_USER_QUESTION_REF"
@@ -447,6 +471,141 @@ if grep -Eq '2[-–]4 options|1[-–]4 questions|high-cardinality' <<< "$VIBE_CO
 else
   pass "vibe: confirmation gate does not duplicate generic AskUserQuestion guidance"
 fi
+
+# --------------------------------------------------------------------------
+# Check 4b: Summary-deviation UAT prompts are self-contained in AskUserQuestion
+# --------------------------------------------------------------------------
+
+echo ""
+echo "--- Check 4b: Summary-deviation UAT prompt context ---"
+
+VERIFY_DEVIATION_PROMPT_BLOCK="$(extract_regex_block "$VERIFY_COMMAND_FILE" 'Summary-deviation checkpoint prompt' 'AskUserQuestion is a tool call' || true)"
+EXECUTE_DEVIATION_PROMPT_BLOCK="$(extract_regex_block "$EXECUTE_PROTOCOL_FILE" 'Summary-deviation checkpoint prompt' 'STOP HERE' || true)"
+VERIFY_RESPONSE_MAPPING_BLOCK="$(extract_regex_block "$VERIFY_COMMAND_FILE" '### 6\. Response mapping' '### 7\. Issue handling' || true)"
+EXECUTE_RESPONSE_MAPPING_BLOCK="$(extract_regex_block "$EXECUTE_PROTOCOL_FILE" 'Map the AskUserQuestion response' 'If a pass/skip response includes' || true)"
+
+if [ -n "$VERIFY_DEVIATION_PROMPT_BLOCK" ]; then
+  pass "verify: summary-deviation prompt block extracted"
+else
+  fail "verify: summary-deviation prompt block extracted"
+fi
+
+if [ -n "$EXECUTE_DEVIATION_PROMPT_BLOCK" ]; then
+  pass "execute-protocol: summary-deviation prompt block extracted"
+else
+  fail "execute-protocol: summary-deviation prompt block extracted"
+fi
+
+for prompt_target in \
+  "verify:$VERIFY_DEVIATION_PROMPT_BLOCK" \
+  "execute-protocol:$EXECUTE_DEVIATION_PROMPT_BLOCK"; do
+  prompt_label="${prompt_target%%:*}"
+  prompt_block="${prompt_target#*:}"
+  checkpoint_display_block="$(extract_bullet_block_from_text "$prompt_block" 'CHECKPOINT display must be self-contained' || true)"
+  modal_question_block="$(extract_bullet_block_from_text "$prompt_block" 'AskUserQuestion `question` value MUST also be self-contained' || true)"
+
+  if [ -n "$checkpoint_display_block" ]; then
+    pass "$prompt_label: DNN checkpoint display sub-block extracted"
+  else
+    fail "$prompt_label: DNN checkpoint display sub-block extracted"
+  fi
+
+  if [ -n "$modal_question_block" ]; then
+    pass "$prompt_label: DNN modal question sub-block extracted"
+  else
+    fail "$prompt_label: DNN modal question sub-block extracted"
+  fi
+
+  require_text_literal "$prompt_label: DNN checkpoint display includes deviation line" 'Deviation: {text}' "$checkpoint_display_block"
+  require_text_literal "$prompt_label: DNN checkpoint display includes source metadata" 'Source: {source_path} ({source_plan})' "$checkpoint_display_block"
+  require_text_literal "$prompt_label: DNN modal question names AskUserQuestion question value" 'AskUserQuestion `question` value MUST also be self-contained' "$modal_question_block"
+  require_text_literal "$prompt_label: DNN modal question includes deviation line" 'Deviation: {text}' "$modal_question_block"
+  require_text_literal "$prompt_label: DNN modal question includes source metadata" 'Source: {source_path} ({source_plan})' "$modal_question_block"
+  require_text_literal "$prompt_label: DNN modal asks non-blocking acceptance question" 'Accept this documented deviation as non-blocking for this phase?' "$modal_question_block"
+  require_text_literal "$prompt_label: DNN modal forbids generic expected-only question" 'must not be the only visible AskUserQuestion question' "$prompt_block"
+  require_text_literal "$prompt_label: DNN Pass option accepts non-blocking deviation" 'Accept this deviation as non-blocking for this phase' "$prompt_block"
+  require_text_literal "$prompt_label: DNN Track Todo option exists" 'Track Todo' "$prompt_block"
+  require_text_literal "$prompt_label: DNN Track Todo option adds VBW todo" 'Accept this deviation and add a VBW todo' "$prompt_block"
+  require_text_literal "$prompt_label: DNN Skip option leaves deviation unaccepted" 'Leave this deviation unaccepted for now' "$prompt_block"
+done
+
+require_file_literal "verify: accepted tracked DNN invokes todo-from-uat helper" 'track-uat-deviations.sh" todo-from-uat' "$VERIFY_COMMAND_FILE"
+require_file_literal "verify: tracked DNN uses helper-emitted todo ref" 'accepted deviation added to todos (ref:{TODO_REF})' "$VERIFY_COMMAND_FILE"
+require_file_literal "execute-protocol: accepted tracked DNN invokes todo-from-uat helper" 'track-uat-deviations.sh" todo-from-uat' "$EXECUTE_PROTOCOL_FILE"
+require_file_literal "execute-protocol: tracked DNN uses helper-emitted todo ref" 'accepted deviation added to todos (ref:{todo_ref})' "$EXECUTE_PROTOCOL_FILE"
+
+for mapping_target in \
+  "verify:$VERIFY_RESPONSE_MAPPING_BLOCK" \
+  "execute-protocol:$EXECUTE_RESPONSE_MAPPING_BLOCK"; do
+  mapping_label="${mapping_target%%:*}"
+  mapping_block="${mapping_target#*:}"
+
+  if [ -n "$mapping_block" ]; then
+    pass "$mapping_label: DNN response mapping block extracted"
+  else
+    fail "$mapping_label: DNN response mapping block extracted"
+  fi
+
+  require_text_literal "$mapping_label: DNN todo intent canonicalizes can't" "can't\`/\`cant\` → \`cannot" "$mapping_block"
+  require_text_literal "$mapping_label: DNN todo intent normalizes curly apostrophes" 'curly apostrophes as straight apostrophes' "$mapping_block"
+  require_text_literal "$mapping_label: DNN todo intent requires marker-first ordering" 'marker-first' "$mapping_block"
+  require_text_literal "$mapping_label: DNN todo intent blocks cannot continue" 'cannot continue' "$mapping_block"
+  require_text_literal "$mapping_label: DNN todo intent blocks do not proceed" 'do not proceed' "$mapping_block"
+  require_text_literal "$mapping_label: DNN todo intent blocks not ok" 'not ok' "$mapping_block"
+  require_text_literal "$mapping_label: DNN todo intent blocks cannot accept" 'cannot accept' "$mapping_block"
+  require_text_literal "$mapping_label: DNN todo intent blocks do not accept" 'do not accept' "$mapping_block"
+  require_text_literal "$mapping_label: DNN todo intent blocks will not accept" 'will not accept' "$mapping_block"
+  require_text_literal "$mapping_label: DNN todo intent blocks unable to accept" 'unable to accept' "$mapping_block"
+  require_text_literal "$mapping_label: DNN todo intent blocks refuse to accept" 'refuse to accept' "$mapping_block"
+  require_text_literal "$mapping_label: DNN todo intent blocks not acceptable" 'not acceptable' "$mapping_block"
+  require_text_literal "$mapping_label: DNN todo intent example rejects contraction blocker" "can't continue, track this" "$mapping_block"
+  require_text_literal "$mapping_label: DNN todo intent example rejects not-ok blocker" 'not ok, track this' "$mapping_block"
+  require_text_literal "$mapping_label: DNN todo intent example rejects acceptance-refusal blocker" "can't accept this, track this" "$mapping_block"
+  require_text_literal "$mapping_label: DNN todo intent example rejects smart-apostrophe acceptance-refusal blocker" "can’t accept this, track this" "$mapping_block"
+  require_text_literal "$mapping_label: DNN todo intent example rejects not-acceptable blocker" 'not acceptable, add to todo' "$mapping_block"
+  require_text_literal "$mapping_label: DNN todo intent keeps rejected-by-user semantics" 'rejected-by-user' "$mapping_block"
+done
+
+require_text_literal "execute-protocol: DNN todo intent rejects smart-apostrophe contraction blocker" "can’t continue, track this" "$EXECUTE_RESPONSE_MAPPING_BLOCK"
+
+# --------------------------------------------------------------------------
+# Check 4c: Normal product UAT prompts are self-contained in AskUserQuestion
+# --------------------------------------------------------------------------
+
+echo ""
+echo "--- Check 4c: Product UAT prompt context ---"
+
+PRODUCT_UAT_MODAL='question: "Scenario: {scenario description}\n\nExpected: {expected result}\n\nDoes the behavior match this checkpoint?"'
+EXPECTED_ONLY_MODAL='question: "Expected: {expected result}"'
+
+require_file_literal "verify: product UAT modal includes Scenario and Expected" "$PRODUCT_UAT_MODAL" "$VERIFY_COMMAND_FILE"
+require_file_literal "execute-protocol: product UAT modal includes Scenario and Expected" "$PRODUCT_UAT_MODAL" "$EXECUTE_PROTOCOL_FILE"
+require_file_literal "debug: product UAT modal includes Scenario and Expected" "$PRODUCT_UAT_MODAL" "$COMMANDS_DIR/debug.md"
+
+if grep -Fq "$EXPECTED_ONLY_MODAL" "$VERIFY_COMMAND_FILE"; then
+  fail "verify: product UAT modal no longer uses expected-only question"
+else
+  pass "verify: product UAT modal no longer uses expected-only question"
+fi
+
+if grep -Fq "$EXPECTED_ONLY_MODAL" "$EXECUTE_PROTOCOL_FILE"; then
+  fail "execute-protocol: product UAT modal no longer uses expected-only question"
+else
+  pass "execute-protocol: product UAT modal no longer uses expected-only question"
+fi
+
+if grep -Fq "$EXPECTED_ONLY_MODAL" "$COMMANDS_DIR/debug.md"; then
+  fail "debug: product UAT modal no longer uses expected-only question"
+else
+  pass "debug: product UAT modal no longer uses expected-only question"
+fi
+
+require_file_literal "verify: resumed product UAT consumes uat_resume_scenario" 'uat_resume_scenario' "$VERIFY_COMMAND_FILE"
+require_file_literal "verify: resumed product UAT consumes uat_resume_expected" 'uat_resume_expected' "$VERIFY_COMMAND_FILE"
+require_file_literal "vibe: passes resumed product UAT scenario field" 'uat_resume_scenario' "$VIBE_COMMAND_FILE"
+require_file_literal "vibe: passes resumed product UAT expected field" 'uat_resume_expected' "$VIBE_COMMAND_FILE"
+require_file_literal "vibe: extractor failure uses error sentinel" '|| echo "uat_resume=error"' "$VIBE_COMMAND_FILE"
+require_file_literal "vibe: extractor unavailable uses unavailable sentinel" 'echo "uat_resume=unavailable"' "$VIBE_COMMAND_FILE"
 
 # --------------------------------------------------------------------------
 # Check 5: /vbw:list-todos intentional plain-text/freeform handoff

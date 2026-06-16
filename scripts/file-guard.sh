@@ -18,6 +18,10 @@ FILE_PATH=$(echo "$INPUT" | jq -r '.tool_input.file_path // ""' 2>/dev/null) || 
 [ -z "$FILE_PATH" ] && exit 0
 
 _FG_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if [ -f "$_FG_SCRIPT_DIR/lib/active-agent-state.sh" ]; then
+  # shellcheck source=lib/active-agent-state.sh
+  . "$_FG_SCRIPT_DIR/lib/active-agent-state.sh"
+fi
 _FG_SHARED_ROOT_RESOLVED=false
 if [ -f "$_FG_SCRIPT_DIR/lib/vbw-config-root.sh" ]; then
   # shellcheck source=lib/vbw-config-root.sh
@@ -63,6 +67,102 @@ to_abs_path() {
     echo "$base"
   fi
 }
+
+# Find project root by walking up from $PWD
+find_project_root() {
+  local dir="$PWD"
+  while [ "$dir" != "/" ]; do
+    if [ -f "$dir/.vbw-planning/config.json" ] || [ -d "$dir/.vbw-planning/phases" ]; then
+      echo "$dir"
+      return 0
+    fi
+    dir=$(dirname "$dir")
+  done
+  return 1
+}
+
+if [ "$_FG_SHARED_ROOT_RESOLVED" = "true" ] && [ -n "${VBW_CONFIG_ROOT:-}" ] && [ -n "${VBW_PLANNING_DIR:-}" ] && [ -f "$VBW_PLANNING_DIR/config.json" ]; then
+  PROJECT_ROOT="$VBW_CONFIG_ROOT"
+  PHASES_DIR="$VBW_PLANNING_DIR/phases"
+else
+  PROJECT_ROOT=$(find_project_root) || PROJECT_ROOT=""
+  if [ -n "$PROJECT_ROOT" ]; then
+    PHASES_DIR="$PROJECT_ROOT/.vbw-planning/phases"
+  else
+    PHASES_DIR=""
+  fi
+fi
+
+normalize_agent_role() {
+  local value="$1"
+  local lower
+
+  lower=$(printf '%s' "$value" | tr '[:upper:]' '[:lower:]')
+  lower="${lower#@}"
+  lower="${lower#vbw:}"
+
+  case "$lower" in
+    vbw-scout|vbw-scout-[0-9]*|scout|scout-[0-9]*|team-scout|team-scout-[0-9]*)
+      printf 'scout'
+      return 0
+      ;;
+    vbw-lead|vbw-lead-[0-9]*|lead|lead-[0-9]*|team-lead|team-lead-[0-9]*)
+      printf 'lead'
+      return 0
+      ;;
+    vbw-dev|vbw-dev-[0-9]*|dev|dev-[0-9]*|team-dev|team-dev-[0-9]*)
+      printf 'dev'
+      return 0
+      ;;
+    vbw-qa|vbw-qa-[0-9]*|qa|qa-[0-9]*|team-qa|team-qa-[0-9]*)
+      printf 'qa'
+      return 0
+      ;;
+    vbw-debugger|vbw-debugger-[0-9]*|debugger|debugger-[0-9]*|team-debugger|team-debugger-[0-9]*)
+      printf 'debugger'
+      return 0
+      ;;
+    vbw-architect|vbw-architect-[0-9]*|architect|architect-[0-9]*|team-architect|team-architect-[0-9]*)
+      printf 'architect'
+      return 0
+      ;;
+    vbw-docs|vbw-docs-[0-9]*|docs|docs-[0-9]*|team-docs|team-docs-[0-9]*)
+      printf 'docs'
+      return 0
+      ;;
+  esac
+
+  return 1
+}
+
+detect_agent_role() {
+  local candidate role planning_dir
+
+  for candidate in "${VBW_AGENT_ROLE:-}" "${VBW_ACTIVE_AGENT:-}"; do
+    [ -z "$candidate" ] && continue
+    if role=$(normalize_agent_role "$candidate"); then
+      printf '%s' "$role"
+      return 0
+    fi
+  done
+
+  if [ -n "$PROJECT_ROOT" ]; then
+    planning_dir="$PROJECT_ROOT/.vbw-planning"
+    if command -v vbw_active_agent_current_scout >/dev/null 2>&1 && vbw_active_agent_current_scout "$planning_dir" "$INPUT"; then
+      printf 'scout'
+      return 0
+    fi
+  fi
+
+  return 1
+}
+
+ACTIVE_AGENT_ROLE=""
+if ACTIVE_AGENT_ROLE=$(detect_agent_role); then
+  :
+else
+  ACTIVE_AGENT_ROLE=""
+fi
 
 # Block misnamed plan/summary/context files in phase dirs (type-first format)
 # Must precede the .vbw-planning/* exemption which exits 0 for all planning artifacts.
@@ -127,6 +227,25 @@ if [ -n "${VBW_CLAUDE_SIDECHAIN_ROOT:-}" ] && [ -n "${VBW_CLAUDE_SIDECHAIN_HOST_
   fi
 fi
 
+# Scout can write only planning artifacts. This must run before broad artifact
+# exemptions and before the active-agent-count delegated-workflow bypass; the
+# PreToolUse payload may not include VBW_AGENT_ROLE, so fall back to current
+# session active-agent state when available, with legacy root markers only when
+# no safe session id exists.
+if [ "$ACTIVE_AGENT_ROLE" = "scout" ] && [ -n "$PROJECT_ROOT" ]; then
+  _FG_TARGET_ABS=$(to_abs_path "$FILE_PATH")
+  _FG_PLANNING_ABS=$(to_abs_path "$PROJECT_ROOT/.vbw-planning")
+  case "$_FG_TARGET_ABS" in
+    "$_FG_PLANNING_ABS"|"$_FG_PLANNING_ABS"/*)
+      :
+      ;;
+    *)
+      echo "Blocked: Scout-safe active-agent context is read-only outside .vbw-planning/" >&2
+      exit 2
+      ;;
+  esac
+fi
+
 # Exempt planning artifacts — these are always allowed
 case "$FILE_PATH" in
   *.vbw-planning/milestones/*/phases/*)
@@ -165,26 +284,7 @@ case "$FILE_PATH" in
     ;;
 esac
 
-# Find project root by walking up from $PWD
-find_project_root() {
-  local dir="$PWD"
-  while [ "$dir" != "/" ]; do
-    if [ -d "$dir/.vbw-planning/phases" ]; then
-      echo "$dir"
-      return 0
-    fi
-    dir=$(dirname "$dir")
-  done
-  return 1
-}
-
-if [ "$_FG_SHARED_ROOT_RESOLVED" = "true" ] && [ -n "${VBW_CONFIG_ROOT:-}" ] && [ -n "${VBW_PLANNING_DIR:-}" ] && [ -d "$VBW_PLANNING_DIR/phases" ]; then
-  PROJECT_ROOT="$VBW_CONFIG_ROOT"
-  PHASES_DIR="$VBW_PLANNING_DIR/phases"
-else
-  PROJECT_ROOT=$(find_project_root) || exit 0
-  PHASES_DIR="$PROJECT_ROOT/.vbw-planning/phases"
-fi
+[ -z "$PROJECT_ROOT" ] && exit 0
 [ ! -d "$PHASES_DIR" ] && exit 0
 
 # Source shared summary-status helpers (fail-open: inline fallback if lib unavailable)
@@ -333,15 +433,18 @@ fi
 # `.delegated-workflow.json` marker. Only an active execute marker with
 # `delegation_mode="team"` gets the team-style bypass.
 if [ -z "${VBW_AGENT_ROLE:-}" ]; then
-  # Check .active-agent-count: if VBW subagents are active, this write is from
-  # a subagent (PreToolUse hooks don't carry agent identity). Skip the guard.
-  _DG_COUNT_FILE="$PROJECT_ROOT/.vbw-planning/.active-agent-count"
-  if [ -f "$_DG_COUNT_FILE" ]; then
-    _DG_AGENT_COUNT=$(cat "$_DG_COUNT_FILE" 2>/dev/null | tr -d '[:space:]')
-    if echo "$_DG_AGENT_COUNT" | grep -Eq '^[0-9]+$' && [ "$_DG_AGENT_COUNT" -gt 0 ]; then
-      # VBW subagent is active — allow the write
-      exit 0
-    fi
+  # Check active-agent count: if a VBW subagent is active in the current safe
+  # session, this write is from a subagent context. Other sessions' aggregate
+  # root counts are not an authority when a safe session id exists.
+  _DG_AGENT_COUNT=0
+  if command -v vbw_active_agent_current_count >/dev/null 2>&1; then
+    _DG_AGENT_COUNT=$(vbw_active_agent_current_count "$PROJECT_ROOT/.vbw-planning" "$INPUT")
+  elif [ -f "$PROJECT_ROOT/.vbw-planning/.active-agent-count" ]; then
+    _DG_AGENT_COUNT=$(cat "$PROJECT_ROOT/.vbw-planning/.active-agent-count" 2>/dev/null | tr -d '[:space:]')
+  fi
+  if echo "$_DG_AGENT_COUNT" | grep -Eq '^[0-9]+$' && [ "$_DG_AGENT_COUNT" -gt 0 ]; then
+    # VBW subagent is active in this session — allow the write
+    exit 0
   fi
 
   _DELEG_FILE="$PROJECT_ROOT/.vbw-planning/.delegated-workflow.json"

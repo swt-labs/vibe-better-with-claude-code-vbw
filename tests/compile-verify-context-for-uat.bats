@@ -101,6 +101,85 @@ EOF
   [[ "$output" != *"Original feature"* ]]
 }
 
+@test "compile-verify-context-for-uat: active UAT round 09 keeps remediation scope without octal error" {
+  cat > "$PHASE_DIR/03-01-PLAN.md" <<'EOF'
+---
+plan: 01
+title: Original feature
+must_haves:
+  - Feature works
+---
+EOF
+  mkdir -p "$PHASE_DIR/remediation/uat/round-09"
+  printf 'stage=verify\nround=09\nlayout=round-dir\n' > "$PHASE_DIR/remediation/uat/.uat-remediation-stage"
+  cat > "$PHASE_DIR/remediation/uat/round-09/R09-PLAN.md" <<'EOF'
+---
+round: 09
+title: UAT remediation round nine
+must_haves:
+  - Ninth UAT issue fixed
+---
+EOF
+  cat > "$PHASE_DIR/remediation/uat/round-09/R09-SUMMARY.md" <<'EOF'
+---
+status: complete
+---
+## What Was Built
+- Fixed the ninth UAT issue
+EOF
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" != *"invalid number"* ]]
+  [[ "$output" == *"verify_scope=remediation round=09"* ]]
+  [[ "$output" == *"uat_path=remediation/uat/round-09/R09-UAT.md"* ]]
+  [[ "$output" == *"=== PLAN R09: UAT remediation round nine ==="* ]]
+  [[ "$output" != *"Original feature"* ]]
+}
+
+@test "compile-verify-context-for-uat: active UAT round 06 keeps current round uat_path" {
+  cat > "$PHASE_DIR/03-01-PLAN.md" <<'EOF'
+---
+plan: 01
+title: Original feature
+must_haves:
+  - Feature works
+---
+EOF
+  mkdir -p "$PHASE_DIR/remediation/uat/round-06"
+  printf 'stage=verify\nround=06\nlayout=round-dir\n' > "$PHASE_DIR/remediation/uat/.uat-remediation-stage"
+  cat > "$PHASE_DIR/remediation/uat/round-06/R06-PLAN.md" <<'EOF'
+---
+round: 06
+title: UAT remediation round six
+must_haves:
+  - Sixth UAT issue fixed
+---
+EOF
+  cat > "$PHASE_DIR/remediation/uat/round-06/R06-SUMMARY.md" <<'EOF'
+---
+status: complete
+---
+## What Was Built
+- Fixed the sixth UAT issue
+EOF
+  cat > "$PHASE_DIR/remediation/uat/round-06/R06-UAT.md" <<'EOF'
+---
+phase: 03
+status: in_progress
+---
+EOF
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"verify_scope=remediation round=06"* ]]
+  [[ "$output" == *"uat_path=remediation/uat/round-06/R06-UAT.md"* ]]
+  [[ "$output" == *"=== PLAN R06: UAT remediation round six ==="* ]]
+  [[ "$output" != *"Original feature"* ]]
+}
+
 @test "compile-verify-context-for-uat: legacy UAT remediation marker uses remediation-only scope" {
   cat > "$PHASE_DIR/03-01-PLAN.md" <<'EOF'
 ---
@@ -269,4 +348,89 @@ EOF
   [[ "$output" == *"uat_path=remediation/uat/round-01/R01-UAT.md"* ]]
   [[ "$output" == *"=== PLAN R01: UAT fix ==="* ]]
   [[ "$output" != *"=== PLAN R01: QA fix ==="* ]]
+}
+
+@test "compile-verify-context-for-uat: active UAT remediation exposes unsuppressed summary deviation records" {
+  mkdir -p "$PHASE_DIR/remediation/uat/round-03"
+  printf 'stage=verify\nround=03\nlayout=round-dir\n' > "$PHASE_DIR/remediation/uat/.uat-remediation-stage"
+  cat > "$PHASE_DIR/remediation/uat/round-03/R03-PLAN.md" <<'EOF'
+---
+round: 03
+title: LCID remediation
+must_haves:
+  - User-visible behavior verified
+---
+EOF
+  cat > "$PHASE_DIR/remediation/uat/round-03/R03-SUMMARY.md" <<'EOF'
+---
+round: 03
+title: LCID remediation
+status: complete
+deviations:
+  - "Full-project SwiftLint was not runnable in this environment"
+---
+
+## What Was Built
+- Added service-level regression coverage
+
+## Deviations
+- GitNexus detect_changes completed but reported FTS lock warnings
+EOF
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"verify_scope=remediation round=03"* ]]
+  [[ "$output" == *"SUMMARY_DEVIATION: signature="*"source_plan=R03"*"source_path=remediation/uat/round-03/R03-SUMMARY.md"*"text=Full-project SwiftLint was not runnable in this environment"* ]]
+  [[ "$output" == *"SUMMARY_DEVIATION: signature="*"text=GitNexus detect_changes completed but reported FTS lock warnings"* ]]
+}
+
+@test "compile-verify-context-for-uat: shared R03 summary deviations emit once across multiple plans" {
+  mkdir -p "$PHASE_DIR/remediation/uat/round-03"
+  printf 'stage=verify\nround=03\nlayout=round-dir\n' > "$PHASE_DIR/remediation/uat/.uat-remediation-stage"
+  cat > "$PHASE_DIR/remediation/uat/round-03/R03-PLAN.md" <<'EOF'
+---
+round: 03
+title: Primary UAT remediation
+must_haves:
+  - Primary issue fixed
+---
+EOF
+  cat > "$PHASE_DIR/remediation/uat/round-03/R03-02-PLAN.md" <<'EOF'
+---
+round: 03
+title: Secondary UAT remediation
+must_haves:
+  - Secondary issue fixed
+---
+EOF
+  cat > "$PHASE_DIR/remediation/uat/round-03/R03-SUMMARY.md" <<'EOF'
+---
+round: 03
+title: Shared UAT remediation summary
+status: complete
+deviations:
+  - "Full-project SwiftLint was not runnable in this environment"
+  - "N/A"
+---
+
+## What Was Built
+- Added service-level regression coverage
+
+## Deviations
+- Full-project SwiftLint was not runnable in this environment
+- GitNexus detect_changes completed but reported FTS lock warnings
+- No deviations.
+EOF
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"verify_scope=remediation round=03"* ]]
+  [[ "$output" == *"=== PLAN R03: Primary UAT remediation ==="* ]]
+  [[ "$output" == *"=== PLAN R03-02: Secondary UAT remediation ==="* ]]
+  [ "$(grep -o 'SUMMARY_DEVIATION:' <<< "$output" | wc -l | tr -d ' ')" -eq 2 ]
+  [[ "$output" == *"SUMMARY_DEVIATION: signature="*"source_plan=R03"*"source_path=remediation/uat/round-03/R03-SUMMARY.md"*"text=Full-project SwiftLint was not runnable in this environment"* ]]
+  [[ "$output" == *"SUMMARY_DEVIATION: signature="*"source_plan=R03"*"text=GitNexus detect_changes completed but reported FTS lock warnings"* ]]
+  ! grep -q 'SUMMARY_DEVIATION: .*source_plan=R03-02' <<< "$output"
 }

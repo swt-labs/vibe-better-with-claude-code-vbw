@@ -144,6 +144,66 @@ EOF
   [[ "$output" == *"verify_plan_count=1"* ]]
 }
 
+@test "compile-verify-context: no-summary plan does not inherit prior summary state" {
+  cat > "$PHASE_DIR/03-01-PLAN.md" <<'EOF'
+---
+phase: 03
+plan: 01
+title: Complete plan
+must_haves:
+  - First plan complete
+---
+EOF
+
+  cat > "$PHASE_DIR/03-01-SUMMARY.md" <<'EOF'
+---
+phase: 03
+plan: 01
+title: Complete plan
+status: complete
+deviations:
+  - Prior plan deviation should stay local
+pre_existing_issues:
+  - '{"test":"PriorSuite","file":"Tests/PriorSuite.swift","error":"prior failure should stay local"}'
+---
+
+## What Was Built
+
+- First plan complete
+EOF
+
+  cat > "$PHASE_DIR/03-02-PLAN.md" <<'EOF'
+---
+phase: 03
+plan: 02
+title: No summary plan
+must_haves:
+  - Second plan still pending
+---
+EOF
+
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/compile-verify-context.sh" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"Prior plan deviation should stay local"* ]]
+  [[ "$output" == *"pre_existing_issues: PriorSuite (Tests/PriorSuite.swift): prior failure should stay local"* ]]
+
+  local plan02
+  plan02=$(awk '
+    /^=== PLAN 02: No summary plan ===/ { capture=1 }
+    capture { print }
+    capture && /^$/ { exit }
+  ' <<< "$output")
+
+  [[ "$plan02" == *"status: no_summary"* ]]
+  [[ "$plan02" == *"deviations: none"* ]]
+  [[ "$plan02" == *"summary_deviation_reviews: none"* ]]
+  [[ "$plan02" == *"pre_existing_issues: none"* ]]
+  [[ "$plan02" != *"Prior plan deviation should stay local"* ]]
+  [[ "$plan02" != *"prior failure should stay local"* ]]
+}
+
 @test "compile-verify-context: flow-style YAML deviations are emitted" {
   cat > "$PHASE_DIR/03-01-PLAN.md" <<'EOF'
 ---
@@ -611,6 +671,46 @@ EOF
   [[ "$output" == *"uat_path=remediation/uat/round-01/R01-UAT.md"* ]]
 }
 
+@test "compile-verify-context: active UAT round 08 keeps remediation scope without octal error" {
+  cat > "$PHASE_DIR/03-01-PLAN.md" <<'EOF'
+---
+plan: 01
+title: Phase-root plan
+must_haves:
+  - Original feature remains out of remediation scope
+---
+EOF
+
+  mkdir -p "$PHASE_DIR/remediation/uat/round-08"
+  printf 'stage=verify\nround=08\nlayout=round-dir\n' > "$PHASE_DIR/remediation/uat/.uat-remediation-stage"
+  cat > "$PHASE_DIR/remediation/uat/round-08/R08-PLAN.md" <<'EOF'
+---
+round: 08
+title: Round 8 UAT remediation
+must_haves:
+  - Round-eight UAT issue fixed
+---
+EOF
+  cat > "$PHASE_DIR/remediation/uat/round-08/R08-SUMMARY.md" <<'EOF'
+---
+status: complete
+---
+## What Was Built
+- Fixed the round-eight UAT issue
+EOF
+
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/compile-verify-context.sh" --remediation-only --remediation-kind uat "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" != *"invalid number"* ]]
+  [[ "$output" == *"verify_scope=remediation round=08"* ]]
+  [[ "$output" == *"uat_path=remediation/uat/round-08/R08-UAT.md"* ]]
+  [[ "$output" == *"=== PLAN R08: Round 8 UAT remediation ==="* ]]
+  [[ "$output" != *"Phase-root plan"* ]]
+  [[ "$output" == *"verify_plan_count=1"* ]]
+}
+
 @test "compile-verify-context: legacy remediation layout emits correct uat_path" {
   # Legacy layout: remediation/round-* (no uat/ sublevel)
   mkdir -p "$PHASE_DIR/remediation/round-01"
@@ -823,7 +923,7 @@ EOF
   [[ "$output" == *"deviations: Changed from raw constraint test to upsert pattern test; Proceeded since API was on disk"* ]]
 }
 
-@test "compile-verify-context: YAML frontmatter deviations take priority over body" {
+@test "compile-verify-context: YAML and body deviations are merged in stable order" {
   cat > "$PHASE_DIR/03-01-PLAN.md" <<'EOF'
 ---
 phase: 03
@@ -853,15 +953,97 @@ Built it.
 
 ## Deviations
 
-- Body deviation should be ignored
+- Body deviation should also be reviewed
 EOF
 
   cd "$TEST_TEMP_DIR"
   run bash "$SCRIPTS_DIR/compile-verify-context.sh" "$PHASE_DIR"
 
   [ "$status" -eq 0 ]
-  [[ "$output" == *"deviations: YAML deviation wins"* ]]
-  [[ "$output" != *"Body deviation should be ignored"* ]]
+  [[ "$output" == *"deviations: YAML deviation wins; Body deviation should also be reviewed"* ]]
+  [[ "$output" == *"SUMMARY_DEVIATION: signature="*"source_plan=01"*"source_path=03-01-SUMMARY.md"*"text=YAML deviation wins"* ]]
+  [[ "$output" == *"SUMMARY_DEVIATION: signature="*"text=Body deviation should also be reviewed"* ]]
+}
+
+@test "compile-verify-context: duplicate YAML/body deviations emit once" {
+  cat > "$PHASE_DIR/03-01-PLAN.md" <<'EOF'
+---
+phase: 03
+plan: 01
+title: Duplicate deviation
+wave: 1
+must_haves:
+  - Feature works
+---
+EOF
+
+  cat > "$PHASE_DIR/03-01-SUMMARY.md" <<'EOF'
+---
+phase: 03
+plan: 01
+title: Duplicate deviation
+status: complete
+deviations:
+  - "Same deviation"
+---
+
+## What Was Built
+
+- Thing
+
+## Deviations
+
+- Same deviation
+EOF
+
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/compile-verify-context.sh" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"deviations: Same deviation"* ]]
+  [ "$(grep -o 'SUMMARY_DEVIATION:' <<< "$output" | wc -l | tr -d ' ')" -eq 1 ]
+}
+
+@test "compile-verify-context: accepted summary deviations are not re-emitted as review records" {
+  cat > "$PHASE_DIR/03-01-PLAN.md" <<'EOF'
+---
+phase: 03
+plan: 01
+title: Accepted deviation
+wave: 1
+must_haves:
+  - Feature works
+---
+EOF
+
+  cat > "$PHASE_DIR/03-01-SUMMARY.md" <<'EOF'
+---
+phase: 03
+plan: 01
+title: Accepted deviation
+status: complete
+deviations:
+  - "Documented tooling constraint"
+---
+
+## What Was Built
+- Thing
+EOF
+
+  local sig
+  sig=$(bash "$SCRIPTS_DIR/track-uat-deviations.sh" signature "01" "03-01-SUMMARY.md" "Documented tooling constraint")
+  mkdir -p "$PHASE_DIR/remediation/uat"
+  cat > "$PHASE_DIR/remediation/uat/accepted-deviations.json" <<EOF
+{"schema_version":1,"phase":"03-test","accepted":[{"signature":"$sig","source_plan":"01","source_path":"03-01-SUMMARY.md","text":"Documented tooling constraint","disposition":"accepted-process-exception"}]}
+EOF
+
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/compile-verify-context.sh" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"deviations: Documented tooling constraint"* ]]
+  [[ "$output" == *"summary_deviation_reviews: none"* ]]
+  [[ "$output" != *"SUMMARY_DEVIATION:"* ]]
 }
 
 @test "compile-verify-context: body deviations section with None is treated as no deviations" {
@@ -1752,6 +1934,61 @@ EOF
   [[ "$output" == *"=== PLAN R01-02: Second remediation plan ==="*"status: complete"* ]]
   [[ "$output" == *"=== PLAN R01-02: Second remediation plan ==="*"Reimplemented the API layer"* ]]
   [[ "$output" == *"verify_plan_count=2"* ]]
+}
+
+@test "compile-verify-context: shared round summary deviations emit once across multiple plans" {
+  mkdir -p "$PHASE_DIR/remediation/qa/round-01"
+  printf 'stage=verify\nround=01\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-PLAN.md" <<'EOF'
+---
+phase: 03
+round: 01
+title: First remediation plan
+must_haves:
+  - Fix first issue
+---
+EOF
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-02-PLAN.md" <<'EOF'
+---
+phase: 03
+round: 01
+title: Second remediation plan
+must_haves:
+  - Fix second issue
+---
+EOF
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-SUMMARY.md" <<'EOF'
+---
+phase: 03
+round: 01
+title: Shared remediation summary
+status: complete
+files_modified:
+  - src/api.swift
+deviations:
+  - "Shared implementation compromise"
+---
+
+## Task 1: Update API layer
+
+### What Was Built
+- Reimplemented the API layer
+
+### Deviations
+- Shared validation shortcut
+EOF
+
+  cd "$TEST_TEMP_DIR"
+  run bash "$SCRIPTS_DIR/compile-verify-context.sh" --remediation-only "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"=== PLAN R01: First remediation plan ==="* ]]
+  [[ "$output" == *"=== PLAN R01-02: Second remediation plan ==="* ]]
+  [ "$(grep -o 'SUMMARY_DEVIATION:' <<< "$output" | wc -l | tr -d ' ')" -eq 2 ]
+  [[ "$output" == *"SUMMARY_DEVIATION: signature="*"source_plan=R01"*"source_path=remediation/qa/round-01/R01-SUMMARY.md"*"text=Shared implementation compromise"* ]]
+  [[ "$output" == *"SUMMARY_DEVIATION: signature="*"source_plan=R01"*"text=Shared validation shortcut"* ]]
+  ! grep -q 'SUMMARY_DEVIATION: .*source_plan=R01-02' <<< "$output"
 }
 
 @test "compile-verify-context: --remediation-only excludes QA remediation plans" {

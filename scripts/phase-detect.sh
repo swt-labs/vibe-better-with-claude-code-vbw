@@ -133,6 +133,93 @@ phase_relative_path() {
   esac
 }
 
+phase_has_uat_cutover() {
+  local phase_dir="$1"
+  local phase_name phase_num root_uat f
+
+  [ -n "$phase_dir" ] || return 1
+  case "$phase_dir" in
+    */) ;;
+    *) phase_dir="$phase_dir/" ;;
+  esac
+
+  [ -d "$phase_dir" ] || return 1
+
+  # Any UAT remediation state means this phase has crossed the UAT boundary,
+  # even if the current UAT artifact was archived or not written yet.
+  [ -f "${phase_dir}.uat-remediation-stage" ] && return 0
+  [ -f "${phase_dir}remediation/uat/.uat-remediation-stage" ] && return 0
+  [ -f "${phase_dir}remediation/.uat-remediation-stage" ] && return 0
+
+  # Current phase-root UAT artifacts, excluding SOURCE-UAT references via the
+  # shared helper when it is available.
+  if type latest_non_source_uat &>/dev/null; then
+    root_uat=$(latest_non_source_uat "$phase_dir")
+    [ -n "$root_uat" ] && [ -f "$root_uat" ] && return 0
+  fi
+
+  phase_name=$(basename "${phase_dir%/}")
+  phase_num=$(printf '%s\n' "$phase_name" | sed -n 's/^\([0-9][0-9]*\).*/\1/p')
+
+  if [ -n "$phase_num" ] && [ -f "${phase_dir}${phase_num}-UAT.md" ]; then
+    return 0
+  fi
+
+  # Historical/archived UAT layouts also establish the one-way UAT cutover.
+  for f in "${phase_dir}"[0-9]*-UAT-round-*.md; do
+    [ -f "$f" ] && return 0
+  done
+  for f in "${phase_dir}"remediation/round-*/R*-UAT.md; do
+    [ -f "$f" ] && return 0
+  done
+  for f in "${phase_dir}"remediation/uat/round-*/R*-UAT.md; do
+    [ -f "$f" ] && return 0
+  done
+
+  return 1
+}
+
+advance_uat_round_after_issues() {
+  local target_dir="$1"
+  local state_file="$2"
+  local current_round="$3"
+  local current_layout="$4"
+  local cap_decision cap_status cap_reached next_round
+
+  case "$current_round" in
+    ''|*[!0-9]*)
+      printf '%s\n' "needs_reverification"
+      return 0
+      ;;
+  esac
+
+  cap_decision=$(bash "$_SCRIPT_DIR_PD/resolve-uat-remediation-round-limit.sh" --next-round-decision "$PLANNING_DIR/config.json" "$current_round" 2>/dev/null)
+  cap_status=$?
+  cap_reached=$(printf '%s\n' "$cap_decision" | awk -F= '/^cap_reached=/{print $2; exit}')
+  case "${cap_status}:${cap_reached:-}" in
+    0:true)
+      printf '%s\n' "needs_reverification"
+      ;;
+    0:false)
+      next_round=$(printf '%02d' $(( 10#${current_round} + 1 )))
+      if [ -n "$state_file" ] && [ -f "$state_file" ]; then
+        printf 'stage=research\nround=%s\nlayout=%s\n' "$next_round" "$current_layout" > "$state_file"
+      fi
+      if [ "$current_layout" = "legacy" ]; then
+        mkdir -p "${target_dir}remediation/round-${next_round}" 2>/dev/null || true
+      else
+        mkdir -p "${target_dir}remediation/uat/round-${next_round}" 2>/dev/null || true
+      fi
+      printf '%s\n' "needs_uat_remediation"
+      ;;
+    *)
+      # Fail closed when the shared cap helper errors or emits a malformed
+      # contract. Do not mutate remediation state on an error path.
+      printf '%s\n' "needs_reverification"
+      ;;
+  esac
+}
+
 normalize_qa_remediation_stage() {
   case "${1:-none}" in
     plan|execute|verify|done) echo "$1" ;;
@@ -409,6 +496,10 @@ else
   echo "uat_issues_major_or_higher=false"
   echo "uat_issues_phases="
   echo "uat_issues_count=0"
+  echo "uat_blocking_phase=none"
+  echo "uat_blocking_slug=none"
+  echo "uat_blocking_status=none"
+  echo "uat_blocking_file=none"
   echo "uat_file=none"
   echo "uat_round_count=0"
   echo "has_shipped_milestones=false"
@@ -440,6 +531,7 @@ else
   echo "qa_attention_reason=none"
   echo "qa_status=none"
   echo "qa_reason=none"
+  echo "qa_after_uat_dormant=false"
   echo "qa_round=00"
   echo "has_codebase_map=false"
   echo "brownfield=false"
@@ -532,7 +624,64 @@ UAT_ISSUES_COUNT=0
 UAT_ROUND_COUNT=0
 UAT_ISSUES_FILE=""
 UAT_ISSUES_RELATIVE_FILE="none"
+UAT_BLOCKING_PHASE="none"
+UAT_BLOCKING_SLUG="none"
+UAT_BLOCKING_STATUS="none"
+UAT_BLOCKING_FILE=""
+UAT_BLOCKING_RELATIVE_FILE="none"
+UAT_LANE_BLOCKS_QA=false
 PHASE_DIRS=()
+
+route_earlier_incomplete_before_phase() {
+  local boundary_phase="$1"
+  local _ei_dir _ei_name _ei_num _ei_num_cmp _ei_plans _ei_summaries _ei_contexts _boundary_phase_cmp
+
+  [ -n "$boundary_phase" ] && echo "$boundary_phase" | grep -qE '^[0-9]+$' || return 1
+  _boundary_phase_cmp=$(printf '%s' "$boundary_phase" | sed 's/^0*//')
+  _boundary_phase_cmp=${_boundary_phase_cmp:-0}
+
+  for _ei_dir in "${PHASE_DIRS[@]}"; do
+    _ei_name=$(basename "$_ei_dir")
+    _ei_num=$(echo "$_ei_name" | sed 's/^\([0-9]*\).*/\1/')
+    [ -n "$_ei_num" ] && echo "$_ei_num" | grep -qE '^[0-9]+$' || continue
+    _ei_num_cmp=$(printf '%s' "$_ei_num" | sed 's/^0*//')
+    _ei_num_cmp=${_ei_num_cmp:-0}
+    if [ "$_ei_num_cmp" -ge "$_boundary_phase_cmp" ] 2>/dev/null; then
+      break
+    fi
+
+    _ei_plans=$(count_phase_plans "$_ei_dir")
+    _ei_summaries=$(count_complete_summaries "$_ei_dir")
+    if [ "$_ei_plans" -eq 0 ]; then
+      if [ "$CFG_REQUIRE_PHASE_DISCUSSION" = true ]; then
+        _ei_contexts=$(find "$_ei_dir" -maxdepth 1 ! -name '.*' -name '[0-9]*-CONTEXT.md' 2>/dev/null | wc -l | tr -d ' ')
+        if [ "$_ei_contexts" -eq 0 ]; then
+          NEXT_PHASE="$_ei_num"
+          NEXT_PHASE_SLUG="$_ei_name"
+          NEXT_PHASE_STATE="needs_discussion"
+          NEXT_PHASE_PLANS="$_ei_plans"
+          NEXT_PHASE_SUMMARIES="$_ei_summaries"
+          return 0
+        fi
+      fi
+      NEXT_PHASE="$_ei_num"
+      NEXT_PHASE_SLUG="$_ei_name"
+      NEXT_PHASE_STATE="needs_plan_and_execute"
+      NEXT_PHASE_PLANS="$_ei_plans"
+      NEXT_PHASE_SUMMARIES="$_ei_summaries"
+      return 0
+    elif [ "$_ei_summaries" -lt "$_ei_plans" ]; then
+      NEXT_PHASE="$_ei_num"
+      NEXT_PHASE_SLUG="$_ei_name"
+      NEXT_PHASE_STATE="needs_execute"
+      NEXT_PHASE_PLANS="$_ei_plans"
+      NEXT_PHASE_SUMMARIES="$_ei_summaries"
+      return 0
+    fi
+  done
+
+  return 1
+}
 
 if [ -d "$PHASES_DIR" ]; then
   # Collect phase directories in numeric order (prevents 100 sorting before 11)
@@ -577,8 +726,18 @@ if [ -d "$PHASES_DIR" ]; then
 
       UAT_FILE=$(current_uat "$DIR")
       if [ -f "$UAT_FILE" ]; then
-        UAT_STATUS=$(extract_status_value "$UAT_FILE")
-        if [ "$UAT_STATUS" = "issues_found" ]; then
+        UAT_STATUS_CLASS=$(uat_file_status_class "$UAT_FILE" 2>/dev/null || printf '%s\n' "none")
+        case "$UAT_STATUS_CLASS" in
+          issues_found|active)
+            if [ "$UAT_BLOCKING_PHASE" = "none" ]; then
+              UAT_BLOCKING_PHASE="$NUM"
+              UAT_BLOCKING_SLUG="$DIRNAME"
+              UAT_BLOCKING_STATUS="$UAT_STATUS_CLASS"
+              UAT_BLOCKING_FILE="$UAT_FILE"
+            fi
+            ;;
+        esac
+        if [ "$UAT_STATUS_CLASS" = "issues_found" ]; then
           # First match becomes the priority routing target
           if [ "$UAT_ISSUES_PHASE" = "none" ]; then
             UAT_ISSUES_PHASE="$NUM"
@@ -609,50 +768,7 @@ if [ -d "$PHASES_DIR" ]; then
       # are skipped by the UAT scan (SUMMARIES < PLANS), so they become
       # invisible when a later phase has UAT issues. Fix: scan for the first
       # incomplete phase before the UAT issues phase and route there instead.
-      _EARLIER_INCOMPLETE=false
-      for _ei_dir in "${PHASE_DIRS[@]}"; do
-        _ei_name=$(basename "$_ei_dir")
-        _ei_num=$(echo "$_ei_name" | sed 's/^\([0-9]*\).*/\1/')
-        [ -n "$_ei_num" ] && echo "$_ei_num" | grep -qE '^[0-9]+$' || continue
-        # Stop once we reach or pass the UAT issues phase
-        if [ "$_ei_num" -ge "$UAT_ISSUES_PHASE" ] 2>/dev/null; then
-          break
-        fi
-        _ei_plans=$(count_phase_plans "$_ei_dir")
-        _ei_summaries=$(count_complete_summaries "$_ei_dir")
-        if [ "$_ei_plans" -eq 0 ]; then
-          # Mirror the discussion gate from the normal scan
-          if [ "$CFG_REQUIRE_PHASE_DISCUSSION" = true ]; then
-            _ei_contexts=$(find "$_ei_dir" -maxdepth 1 ! -name '.*' -name '[0-9]*-CONTEXT.md' 2>/dev/null | wc -l | tr -d ' ')
-            if [ "$_ei_contexts" -eq 0 ]; then
-              NEXT_PHASE="$_ei_num"
-              NEXT_PHASE_SLUG="$_ei_name"
-              NEXT_PHASE_STATE="needs_discussion"
-              NEXT_PHASE_PLANS="$_ei_plans"
-              NEXT_PHASE_SUMMARIES="$_ei_summaries"
-              _EARLIER_INCOMPLETE=true
-              break
-            fi
-          fi
-          NEXT_PHASE="$_ei_num"
-          NEXT_PHASE_SLUG="$_ei_name"
-          NEXT_PHASE_STATE="needs_plan_and_execute"
-          NEXT_PHASE_PLANS="$_ei_plans"
-          NEXT_PHASE_SUMMARIES="$_ei_summaries"
-          _EARLIER_INCOMPLETE=true
-          break
-        elif [ "$_ei_summaries" -lt "$_ei_plans" ]; then
-          NEXT_PHASE="$_ei_num"
-          NEXT_PHASE_SLUG="$_ei_name"
-          NEXT_PHASE_STATE="needs_execute"
-          NEXT_PHASE_PLANS="$_ei_plans"
-          NEXT_PHASE_SUMMARIES="$_ei_summaries"
-          _EARLIER_INCOMPLETE=true
-          break
-        fi
-      done
-
-      if [ "$_EARLIER_INCOMPLETE" = false ]; then
+      if ! route_earlier_incomplete_before_phase "$UAT_ISSUES_PHASE"; then
         TARGET_DIR="$PHASES_DIR/$UAT_ISSUES_SLUG/"
         NEXT_PHASE="$UAT_ISSUES_PHASE"
         NEXT_PHASE_SLUG="$UAT_ISSUES_SLUG"
@@ -724,12 +840,12 @@ if [ -d "$PHASES_DIR" ]; then
           fi
           _rem_stage="done"
         fi
-        if [ "$_rem_stage" = "done" ]; then
+        if [ "$_rem_stage" = "done" ] || [ "$_rem_stage" = "verify" ]; then
           # Check if re-verification already happened for this round.
           # If a round-scoped UAT exists with issues, skip re-verification
           # and route directly to the next remediation round.
           _round_uat=""
-          _round_uat_status=""
+          _round_uat_class=""
           # Round-dir layout
           if [ -f "${TARGET_DIR}remediation/uat/round-${_cur_rr}/R${_cur_rr}-UAT.md" ]; then
             _round_uat="${TARGET_DIR}remediation/uat/round-${_cur_rr}/R${_cur_rr}-UAT.md"
@@ -738,7 +854,7 @@ if [ -d "$PHASES_DIR" ]; then
             _round_uat="${TARGET_DIR}remediation/round-${_cur_rr}/R${_cur_rr}-UAT.md"
           fi
           if [ -n "$_round_uat" ]; then
-            _round_uat_status=$(extract_status_value "$_round_uat")
+            _round_uat_class=$(uat_file_status_class "$_round_uat" 2>/dev/null || printf '%s\n' "none")
           fi
           # Read layout before the routing decision — apply the same path-based
           # default as the execute→done transition above.
@@ -755,57 +871,75 @@ if [ -d "$PHASES_DIR" ]; then
           else
             _cur_layout="round-dir"
           fi
-          case "$_round_uat_status" in
+          case "$_round_uat_class" in
             issues_found)
               # Re-verification already happened and found issues.
-              # Auto-advance to next round's research stage, but only if the
-              # current round read from state is a valid numeric value.
-              case "$_cur_rr" in
-                ''|*[!0-9]*)
-                  # Malformed/corrupt round value; avoid arithmetic expansion
-                  # and fall back to explicit re-verification routing.
-                  NEXT_PHASE_STATE="needs_reverification"
-                  ;;
-                *)
-                  _cap_decision=$(bash "$_SCRIPT_DIR_PD/resolve-uat-remediation-round-limit.sh" --next-round-decision "$PLANNING_DIR/config.json" "$_cur_rr" 2>/dev/null)
-                  _cap_status=$?
-                  _cap_reached=$(printf '%s\n' "$_cap_decision" | awk -F= '/^cap_reached=/{print $2; exit}')
-                  case "${_cap_status}:${_cap_reached:-}" in
-                    0:true)
-                      NEXT_PHASE_STATE="needs_reverification"
-                      ;;
-                    0:false)
-                      _next_rr=$(printf '%02d' $(( 10#${_cur_rr} + 1 )))
-                      if [ -n "$_rem_state_file" ] && [ -f "$_rem_state_file" ]; then
-                        printf 'stage=research\nround=%s\nlayout=%s\n' "$_next_rr" "$_cur_layout" > "$_rem_state_file"
-                      fi
-                      if [ "$_cur_layout" = "legacy" ]; then
-                        mkdir -p "${TARGET_DIR}remediation/round-${_next_rr}" 2>/dev/null || true
-                      else
-                        mkdir -p "${TARGET_DIR}remediation/uat/round-${_next_rr}" 2>/dev/null || true
-                      fi
-                      NEXT_PHASE_STATE="needs_uat_remediation"
-                      ;;
-                    *)
-                      # Fail closed when the shared cap helper errors or emits a
-                      # malformed contract. Do not mutate remediation state on an
-                      # error path — route back into explicit re-verification.
-                      NEXT_PHASE_STATE="needs_reverification"
-                      ;;
-                  esac
-                  ;;
-              esac
+              # Auto-advance to next round's research stage when the cap allows.
+              _uat_round_route=$(advance_uat_round_after_issues "$TARGET_DIR" "$_rem_state_file" "$_cur_rr" "$_cur_layout")
+              NEXT_PHASE_STATE="$_uat_round_route"
+              if [ "$_uat_round_route" = "needs_reverification" ]; then
+                UAT_LANE_BLOCKS_QA=true
+              fi
+              ;;
+            active)
+              # A current round UAT exists and is still in progress. Resume
+              # Verify mode instead of preparing a fresh re-verification
+              # artifact; preparation would try to archive live human test
+              # state and correctly refuse the active artifact.
+              NEXT_PHASE_STATE="needs_verification"
+              UAT_LANE_BLOCKS_QA=true
               ;;
             *)
               # No round UAT yet, or UAT passed — needs re-verification
               NEXT_PHASE_STATE="needs_reverification"
               ;;
           esac
-        elif [ "$_rem_stage" = "verify" ]; then
-          NEXT_PHASE_STATE="needs_reverification"
         else
           NEXT_PHASE_STATE="needs_uat_remediation"
         fi
+      fi
+    elif [ "$UAT_BLOCKING_PHASE" != "none" ]; then
+      if ! route_earlier_incomplete_before_phase "$UAT_BLOCKING_PHASE"; then
+        TARGET_DIR="$PHASES_DIR/$UAT_BLOCKING_SLUG/"
+        NEXT_PHASE="$UAT_BLOCKING_PHASE"
+        NEXT_PHASE_SLUG="$UAT_BLOCKING_SLUG"
+        UAT_ROUND_COUNT=$(count_uat_rounds "$TARGET_DIR" "$UAT_BLOCKING_PHASE")
+
+        _block_stage="none"
+        _block_state_file=""
+        if [ -f "${TARGET_DIR}remediation/uat/.uat-remediation-stage" ]; then
+          _block_state_file="${TARGET_DIR}remediation/uat/.uat-remediation-stage"
+          _block_stage=$(state_file_kv_value "$_block_state_file" stage)
+        elif [ -f "${TARGET_DIR}remediation/.uat-remediation-stage" ]; then
+          _block_state_file="${TARGET_DIR}remediation/.uat-remediation-stage"
+          _block_stage=$(state_file_kv_value "$_block_state_file" stage)
+          [ -n "$_block_stage" ] || _block_stage=$(state_file_scalar_value "$_block_state_file")
+        elif [ -f "${TARGET_DIR}.uat-remediation-stage" ]; then
+          _block_state_file="${TARGET_DIR}.uat-remediation-stage"
+          _block_stage=$(state_file_kv_value "$_block_state_file" stage)
+          [ -n "$_block_stage" ] || _block_stage=$(state_file_scalar_value "$_block_state_file")
+        fi
+        _block_stage="${_block_stage:-none}"
+
+        NEXT_PHASE_PLANS=$(count_phase_plans "$TARGET_DIR")
+        NEXT_PHASE_SUMMARIES=$(count_complete_summaries "$TARGET_DIR")
+        case "$_block_stage" in
+          research|plan|execute)
+            NEXT_PHASE_STATE="needs_uat_remediation"
+            ;;
+          verify|done)
+            if [ "$UAT_BLOCKING_STATUS" = "active" ]; then
+              NEXT_PHASE_STATE="needs_verification"
+            else
+              NEXT_PHASE_STATE="needs_reverification"
+            fi
+            UAT_LANE_BLOCKS_QA=true
+            ;;
+          *)
+            NEXT_PHASE_STATE="needs_verification"
+            UAT_LANE_BLOCKS_QA=true
+            ;;
+        esac
       fi
     else
       ALL_DONE=true
@@ -901,6 +1035,7 @@ QA_ATTENTION_STATUS="none"
 QA_ATTENTION_REASON="none"
 QA_STATUS="none"
 QA_REASON="none"
+QA_AFTER_UAT_DORMANT=false
 QA_ROUND="00"
 QA_REMEDIATING_PHASE=""
 QA_REMEDIATING_SLUG=""
@@ -916,6 +1051,9 @@ if [ ${#PHASE_DIRS[@]} -gt 0 ]; then
     [ "$_qr_plans" -gt 0 ] || continue
     _qr_sums=$(count_complete_summaries "$_qr_dir")
     [ "$_qr_sums" -ge "$_qr_plans" ] || continue
+    if phase_has_uat_cutover "$_qr_dir"; then
+      continue
+    fi
 
     _qr_rem_file="${_qr_dir}remediation/qa/.qa-remediation-stage"
     [ -f "$_qr_rem_file" ] || continue
@@ -944,6 +1082,10 @@ if [ ${#PHASE_DIRS[@]} -gt 0 ]; then
     [ "$_uv_plans" -gt 0 ] || continue
     _uv_sums=$(count_complete_summaries "$_uv_dir")
     [ "$_uv_sums" -ge "$_uv_plans" ] || continue
+    _uv_uat_cutover=false
+    if phase_has_uat_cutover "$_uv_dir"; then
+      _uv_uat_cutover=true
+    fi
 
     # --- QA remediation state check (blocks unverified detection) ---
     _qa_rem_stage="none"
@@ -960,16 +1102,22 @@ if [ ${#PHASE_DIRS[@]} -gt 0 ]; then
     # it's "in QA remediation". Skip it for unverified detection but record
     # the QA status for routing.
     if [ "$_qa_rem_stage" != "none" ] && [ "$_qa_rem_stage" != "done" ]; then
-      if [ -z "$FIRST_UNVERIFIED_PHASE" ]; then
-        _uv_dirname=$(basename "$_uv_dir")
-        FIRST_UNVERIFIED_PHASE=$(echo "$_uv_dirname" | sed 's/^\([0-9]*\).*/\1/')
-        FIRST_UNVERIFIED_SLUG="$_uv_dirname"
-        QA_STATUS="remediating"
-        QA_REASON="none"
-        QA_ROUND="$_qa_rem_round"
+      if [ "$_uv_uat_cutover" = true ]; then
+        QA_AFTER_UAT_DORMANT=true
+        # QA remediation is a pre-UAT lane. Once UAT exists, leave this stale
+        # metadata on disk for traceability but do not let it block UAT routing.
+      else
+        if [ -z "$FIRST_UNVERIFIED_PHASE" ]; then
+          _uv_dirname=$(basename "$_uv_dir")
+          FIRST_UNVERIFIED_PHASE=$(echo "$_uv_dirname" | sed 's/^\([0-9]*\).*/\1/')
+          FIRST_UNVERIFIED_SLUG="$_uv_dirname"
+          QA_STATUS="remediating"
+          QA_REASON="none"
+          QA_ROUND="$_qa_rem_round"
+        fi
+        # Don't set HAS_UNVERIFIED_PHASES — QA remediation takes priority
+        break
       fi
-      # Don't set HAS_UNVERIFIED_PHASES — QA remediation takes priority
-      break
     fi
 
     # --- QA VERIFICATION.md check ---
@@ -977,7 +1125,7 @@ if [ ${#PHASE_DIRS[@]} -gt 0 ]; then
     if [ -n "$_uv_verif" ] && [ ! -f "$_uv_verif" ]; then
       _uv_verif=""
     fi
-    if [ "$_qa_rem_stage" != "done" ] && [ -n "$_uv_verif" ] && [ -f "$_uv_verif" ]; then
+    if [ "$_uv_uat_cutover" != true ] && [ "$_qa_rem_stage" != "done" ] && [ -n "$_uv_verif" ] && [ -f "$_uv_verif" ]; then
       restore_known_issues_from_verification_if_needed "$_uv_dir" "$_uv_verif"
     fi
 
@@ -987,9 +1135,9 @@ if [ ${#PHASE_DIRS[@]} -gt 0 ]; then
       _uv_is_unverified=true
     else
       # UAT file exists — check if it has a terminal status
-      _uv_uat_status=$(extract_status_value "$_uv_uat")
+      _uv_uat_status=$(uat_file_status_class "$_uv_uat" 2>/dev/null || printf '%s\n' "none")
       case "$_uv_uat_status" in
-        complete|passed|issues_found) ;;  # terminal — phase is verified
+        complete|issues_found) ;;  # terminal — phase is verified
         *) _uv_is_unverified=true ;;
       esac
     fi
@@ -1001,25 +1149,31 @@ if [ ${#PHASE_DIRS[@]} -gt 0 ]; then
         FIRST_UNVERIFIED_SLUG="$_uv_dirname"
 
         # Compute QA status for this phase
-        if [ "$_qa_rem_stage" = "done" ]; then
-          # Use the authoritative current verification path for cross-validation:
-          # round VERIFICATION.md when present, otherwise phase-level numbered/plain fallback.
-          _uv_verif=$(bash "$_SCRIPT_DIR_PD/resolve-verification-path.sh" current "$_uv_dir" 2>/dev/null || true)
-          if [ -n "$_uv_verif" ] && [ ! -f "$_uv_verif" ]; then
-            _uv_verif=""
-          fi
-          if [ -n "$_uv_verif" ] && [ -f "$_uv_verif" ]; then
-            restore_known_issues_from_verification_if_needed "$_uv_dir" "$_uv_verif"
-          fi
-          _uv_assessment=$(phase_verification_assessment "$_uv_dir" "$_uv_verif" "remediated")
-        elif [ -n "$_uv_verif" ] && [ -f "$_uv_verif" ]; then
-          _uv_assessment=$(phase_verification_assessment "$_uv_dir" "$_uv_verif" "passed")
+        if [ "$_uv_uat_cutover" = true ]; then
+          QA_STATUS="none"
+          QA_REASON="uat_cutover"
+          QA_AFTER_UAT_DORMANT=true
         else
-          _uv_assessment=$(phase_verification_assessment "$_uv_dir" "" "passed")
+          if [ "$_qa_rem_stage" = "done" ]; then
+            # Use the authoritative current verification path for cross-validation:
+            # round VERIFICATION.md when present, otherwise phase-level numbered/plain fallback.
+            _uv_verif=$(bash "$_SCRIPT_DIR_PD/resolve-verification-path.sh" current "$_uv_dir" 2>/dev/null || true)
+            if [ -n "$_uv_verif" ] && [ ! -f "$_uv_verif" ]; then
+              _uv_verif=""
+            fi
+            if [ -n "$_uv_verif" ] && [ -f "$_uv_verif" ]; then
+              restore_known_issues_from_verification_if_needed "$_uv_dir" "$_uv_verif"
+            fi
+            _uv_assessment=$(phase_verification_assessment "$_uv_dir" "$_uv_verif" "remediated")
+          elif [ -n "$_uv_verif" ] && [ -f "$_uv_verif" ]; then
+            _uv_assessment=$(phase_verification_assessment "$_uv_dir" "$_uv_verif" "passed")
+          else
+            _uv_assessment=$(phase_verification_assessment "$_uv_dir" "" "passed")
+          fi
+          IFS=$'\t' read -r QA_STATUS QA_REASON <<< "$_uv_assessment"
+          QA_STATUS="${QA_STATUS:-pending}"
+          QA_REASON="${QA_REASON:-none}"
         fi
-        IFS=$'\t' read -r QA_STATUS QA_REASON <<< "$_uv_assessment"
-        QA_STATUS="${QA_STATUS:-pending}"
-        QA_REASON="${QA_REASON:-none}"
       fi
       break
     fi
@@ -1027,8 +1181,9 @@ if [ ${#PHASE_DIRS[@]} -gt 0 ]; then
 fi
 
 # --- QA attention detection for QA protocol ---
-# Unlike FIRST_UNVERIFIED_PHASE, this scan also covers built phases that already
-# have terminal UAT but whose QA verification is stale or failed.
+# Unlike FIRST_UNVERIFIED_PHASE, this scan also covers fully built pre-UAT phases
+# whose QA verification is stale or failed. Phases with any UAT state/artifact
+# are skipped because QA remediation is dormant after UAT cutover.
 if [ ${#PHASE_DIRS[@]} -gt 0 ]; then
   for _qa_dir in ${PHASE_DIRS[@]+"${PHASE_DIRS[@]}"}; do
     [ -d "$_qa_dir" ] || continue
@@ -1036,6 +1191,9 @@ if [ ${#PHASE_DIRS[@]} -gt 0 ]; then
     [ "$_qa_plans" -gt 0 ] || continue
     _qa_sums=$(count_complete_summaries "$_qa_dir")
     [ "$_qa_sums" -ge "$_qa_plans" ] || continue
+    if phase_has_uat_cutover "$_qa_dir"; then
+      continue
+    fi
 
     _qa_stage="none"
     _qa_round_scan="00"
@@ -1090,10 +1248,11 @@ fi
 
 # --- needs_qa_remediation override: active QA remediation is resume-authoritative ---
 # When QA remediation is active (qa_status=remediating), override next_phase_state
-# to needs_qa_remediation for every state except active UAT remediation. Once a
-# phase has entered the known-issues QA lifecycle, plain `/vbw:vibe` must resume
-# that backlog before drifting into unrelated discussion / planning / execution.
-if [ -n "$QA_REMEDIATING_PHASE" ] && [ "$NEXT_PHASE_STATE" != "needs_uat_remediation" ]; then
+# to needs_qa_remediation for every state except active UAT remediation or a
+# fail-closed UAT cap/evaluation lane. Once a phase has entered the known-issues
+# QA lifecycle, plain `/vbw:vibe` must resume that backlog before drifting into
+# unrelated discussion / planning / execution.
+if [ -n "$QA_REMEDIATING_PHASE" ] && [ "$NEXT_PHASE_STATE" != "needs_uat_remediation" ] && [ "$UAT_LANE_BLOCKS_QA" != true ]; then
   case "$NEXT_PHASE_STATE" in
     needs_discussion|needs_plan_and_execute|needs_execute|needs_verification|needs_reverification|all_done|no_phases)
       NEXT_PHASE="$QA_REMEDIATING_PHASE"
@@ -1136,53 +1295,89 @@ if [ "$CFG_AUTO_UAT_EARLY" = "true" ] && [ "$HAS_UNVERIFIED_PHASES" = "true" ] &
   esac
 fi
 
-# --- all_done QA-attention override: never archive while a completed phase still needs QA attention ---
-# Terminal-UAT phases always override all_done when QA attention remains. In
-# addition, a fully built phase with no UAT yet must override all_done when QA
-# has already run and the known-issues gate left qa_attention_status=failed or
-# verify. That preserves a deterministic plain `/vbw:vibe` resume path for the
-# post-initial-QA known-issues remediation case without broadening all no-UAT
-# phases into QA remediation.
+# --- all_done QA-attention override: never archive while a pre-UAT completed phase still needs QA attention ---
+# A fully built phase with no UAT yet must override all_done when QA has already
+# run and the known-issues gate left qa_attention_status=failed or verify. That
+# preserves a deterministic plain `/vbw:vibe` resume path for the post-initial-QA
+# known-issues remediation case without broadening all no-UAT phases into QA
+# remediation. After UAT cutover, QA attention is dormant and must not route.
 if [ "$NEXT_PHASE_STATE" = "all_done" ] && [ -n "$FIRST_QA_ATTENTION_PHASE" ]; then
   _QA_ATT_DIR="$PHASES_DIR/$FIRST_QA_ATTENTION_SLUG/"
-  case "$QA_ATTENTION_STATUS" in
-    failed|verify)
-      NEXT_PHASE="$FIRST_QA_ATTENTION_PHASE"
-      NEXT_PHASE_SLUG="$FIRST_QA_ATTENTION_SLUG"
-      if [ -d "$_QA_ATT_DIR" ]; then
-        NEXT_PHASE_PLANS=$(count_phase_plans "$_QA_ATT_DIR")
-        NEXT_PHASE_SUMMARIES=$(count_complete_summaries "$_QA_ATT_DIR")
-      fi
-      NEXT_PHASE_STATE="needs_qa_remediation"
-      if [ "$QA_ATTENTION_STATUS" = "failed" ]; then
-        QA_STATUS="failed"
-      else
-        QA_STATUS="remediating"
-      fi
-      QA_REASON="none"
-      ;;
-    pending)
-      _QA_ATT_UAT="$(current_uat "$_QA_ATT_DIR")"
-      _QA_ATT_UAT_STATUS=""
-      if [ -f "$_QA_ATT_UAT" ]; then
-        _QA_ATT_UAT_STATUS=$(extract_status_value "$_QA_ATT_UAT")
-      fi
+  if phase_has_uat_cutover "$_QA_ATT_DIR"; then
+    QA_AFTER_UAT_DORMANT=true
+  else
+    case "$QA_ATTENTION_STATUS" in
+      failed|verify)
+        NEXT_PHASE="$FIRST_QA_ATTENTION_PHASE"
+        NEXT_PHASE_SLUG="$FIRST_QA_ATTENTION_SLUG"
+        if [ -d "$_QA_ATT_DIR" ]; then
+          NEXT_PHASE_PLANS=$(count_phase_plans "$_QA_ATT_DIR")
+          NEXT_PHASE_SUMMARIES=$(count_complete_summaries "$_QA_ATT_DIR")
+        fi
+        NEXT_PHASE_STATE="needs_qa_remediation"
+        if [ "$QA_ATTENTION_STATUS" = "failed" ]; then
+          QA_STATUS="failed"
+        else
+          QA_STATUS="remediating"
+        fi
+        QA_REASON="none"
+        ;;
+      pending)
+        _QA_ATT_UAT="$(current_uat "$_QA_ATT_DIR")"
+        _QA_ATT_UAT_STATUS=""
+        if [ -f "$_QA_ATT_UAT" ]; then
+          _QA_ATT_UAT_STATUS=$(uat_file_status_class "$_QA_ATT_UAT" 2>/dev/null || printf '%s\n' "none")
+        fi
 
-      case "$_QA_ATT_UAT_STATUS" in
-        complete|passed)
-          NEXT_PHASE="$FIRST_QA_ATTENTION_PHASE"
-          NEXT_PHASE_SLUG="$FIRST_QA_ATTENTION_SLUG"
-          if [ -d "$_QA_ATT_DIR" ]; then
-            NEXT_PHASE_PLANS=$(count_phase_plans "$_QA_ATT_DIR")
-            NEXT_PHASE_SUMMARIES=$(count_complete_summaries "$_QA_ATT_DIR")
-          fi
-          NEXT_PHASE_STATE="needs_verification"
-          QA_STATUS="pending"
-          QA_REASON="${QA_ATTENTION_REASON:-none}"
-          ;;
-      esac
-      ;;
-  esac
+        case "$_QA_ATT_UAT_STATUS" in
+          complete)
+            NEXT_PHASE="$FIRST_QA_ATTENTION_PHASE"
+            NEXT_PHASE_SLUG="$FIRST_QA_ATTENTION_SLUG"
+            if [ -d "$_QA_ATT_DIR" ]; then
+              NEXT_PHASE_PLANS=$(count_phase_plans "$_QA_ATT_DIR")
+              NEXT_PHASE_SUMMARIES=$(count_complete_summaries "$_QA_ATT_DIR")
+            fi
+            NEXT_PHASE_STATE="needs_verification"
+            QA_STATUS="pending"
+            QA_REASON="${QA_ATTENTION_REASON:-none}"
+            ;;
+        esac
+        ;;
+    esac
+  fi
+fi
+
+# Defense-in-depth: no source of QA state may route a UAT-cutover phase back to
+# QA remediation. Earlier scans filter these candidates; this final guard keeps
+# the route selector safe if a future path forgets that boundary.
+if [ "$NEXT_PHASE_STATE" = "needs_qa_remediation" ]; then
+  _pd_qa_guard_dir="$PHASES_DIR/$NEXT_PHASE_SLUG/"
+  if phase_has_uat_cutover "$_pd_qa_guard_dir"; then
+    _pd_guard_uat=$(current_uat "$_pd_qa_guard_dir")
+    _pd_guard_uat_status=""
+    if [ -f "$_pd_guard_uat" ]; then
+      _pd_guard_uat_status=$(uat_file_status_class "$_pd_guard_uat" 2>/dev/null || printf '%s\n' "none")
+    fi
+    QA_AFTER_UAT_DORMANT=true
+    QA_STATUS="none"
+    QA_REASON="uat_cutover"
+    QA_ROUND="00"
+    case "$_pd_guard_uat_status" in
+      issues_found)
+        NEXT_PHASE_STATE="needs_uat_remediation"
+        ;;
+      complete)
+        NEXT_PHASE="none"
+        NEXT_PHASE_SLUG="none"
+        NEXT_PHASE_PLANS=0
+        NEXT_PHASE_SUMMARIES=0
+        NEXT_PHASE_STATE="all_done"
+        ;;
+      *)
+        NEXT_PHASE_STATE="needs_verification"
+        ;;
+    esac
+  fi
 fi
 
 if [ "$UAT_ISSUES_PHASE" != "none" ] && [ -n "$UAT_ISSUES_FILE" ] && [ -f "$UAT_ISSUES_FILE" ]; then
@@ -1191,6 +1386,15 @@ if [ "$UAT_ISSUES_PHASE" != "none" ] && [ -n "$UAT_ISSUES_FILE" ] && [ -f "$UAT_
     UAT_ISSUES_RELATIVE_FILE=$(phase_relative_path "$_pd_active_phase_dir" "$UAT_ISSUES_FILE")
   else
     UAT_ISSUES_RELATIVE_FILE=$(basename "$UAT_ISSUES_FILE")
+  fi
+fi
+
+if [ "$UAT_BLOCKING_PHASE" != "none" ] && [ -n "$UAT_BLOCKING_FILE" ] && [ -f "$UAT_BLOCKING_FILE" ]; then
+  _pd_blocking_phase_dir="${PHASES_DIR}/${UAT_BLOCKING_SLUG}"
+  if [ -d "$_pd_blocking_phase_dir" ]; then
+    UAT_BLOCKING_RELATIVE_FILE=$(phase_relative_path "$_pd_blocking_phase_dir" "$UAT_BLOCKING_FILE")
+  else
+    UAT_BLOCKING_RELATIVE_FILE=$(basename "$UAT_BLOCKING_FILE")
   fi
 fi
 
@@ -1209,12 +1413,17 @@ echo "qa_attention_status=$QA_ATTENTION_STATUS"
 echo "qa_attention_reason=$QA_ATTENTION_REASON"
 echo "qa_status=$QA_STATUS"
 echo "qa_reason=$QA_REASON"
+echo "qa_after_uat_dormant=$QA_AFTER_UAT_DORMANT"
 echo "qa_round=$QA_ROUND"
 echo "uat_issues_phase=$UAT_ISSUES_PHASE"
 echo "uat_issues_slug=$UAT_ISSUES_SLUG"
 echo "uat_issues_major_or_higher=$UAT_ISSUES_MAJOR_OR_HIGHER"
 echo "uat_issues_phases=$UAT_ISSUES_PHASES"
 echo "uat_issues_count=$UAT_ISSUES_COUNT"
+echo "uat_blocking_phase=$UAT_BLOCKING_PHASE"
+echo "uat_blocking_slug=$UAT_BLOCKING_SLUG"
+echo "uat_blocking_status=$UAT_BLOCKING_STATUS"
+echo "uat_blocking_file=$UAT_BLOCKING_RELATIVE_FILE"
 echo "uat_file=$UAT_ISSUES_RELATIVE_FILE"
 echo "uat_round_count=$UAT_ROUND_COUNT"
 
@@ -1319,7 +1528,7 @@ if [ "$UAT_ISSUES_PHASE" = "none" ] && { [ "$NEXT_PHASE_STATE" = "all_done" ] ||
 
       _ms_uat=$(current_uat "$_ms_phase_dir")
       if [ -f "$_ms_uat" ]; then
-        _ms_uat_status=$(extract_status_value "$_ms_uat")
+        _ms_uat_status=$(uat_file_status_class "$_ms_uat" 2>/dev/null || printf '%s\n' "none")
         if [ "$_ms_uat_status" = "issues_found" ]; then
           _ms_issue_count=$((_ms_issue_count + 1))
           # First match becomes the primary (for backward compat)

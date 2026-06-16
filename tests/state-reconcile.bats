@@ -260,6 +260,122 @@ ROADMAP
   [ "$status" -eq 0 ]
 }
 
+@test "reconcile-state preserves prefix numbers when ROADMAP has a missing phase dir" {
+  cat > .vbw-planning/PROJECT.md <<'PROJECT'
+# Test Project
+PROJECT
+
+  cat > .vbw-planning/STATE.md <<'STATE'
+# State
+
+**Project:** Test Project
+**Milestone:** MVP
+
+## Current Phase
+Phase: 3 of 4 (Build)
+Plans: 0/1
+Progress: 0%
+Status: ready
+
+## Phase Status
+- **Phase 1 (Setup):** Complete
+- **Phase 2 (Out Of Band):** Complete
+- **Phase 3 (Build):** Planned
+- **Phase 4 (Deploy):** Pending
+
+## Decisions
+- Preserve manual missing phase notes.
+STATE
+
+  cat > .vbw-planning/ROADMAP.md <<'ROADMAP'
+# Roadmap
+
+- [x] Phase 1: Setup
+- [x] Phase 2: Out Of Band
+- [ ] Phase 3: Build
+- [ ] Phase 4: Deploy
+
+## Phase 1: Setup
+## Phase 2: Out Of Band
+## Phase 3: Build
+## Phase 4: Deploy
+ROADMAP
+
+  mkdir -p .vbw-planning/phases/01-setup .vbw-planning/phases/03-build .vbw-planning/phases/04-deploy
+  echo '# Plan' > .vbw-planning/phases/01-setup/01-01-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' 'Done.' > .vbw-planning/phases/01-setup/01-01-SUMMARY.md
+  echo '# Plan' > .vbw-planning/phases/03-build/03-01-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' 'Done.' > .vbw-planning/phases/03-build/03-01-SUMMARY.md
+  echo '# Plan' > .vbw-planning/phases/04-deploy/04-01-PLAN.md
+
+  run bash "$SCRIPTS_DIR/reconcile-state-md.sh" .vbw-planning
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+
+  grep -q '^Phase: 4 of 4 (Deploy)$' .vbw-planning/STATE.md
+  grep -q '^- \*\*Phase 2 (Out Of Band):\*\* Complete$' .vbw-planning/STATE.md
+  grep -q '^- \*\*Phase 3 (Build):\*\* Complete$' .vbw-planning/STATE.md
+  grep -q '^- \*\*Phase 4 (Deploy):\*\* Planned$' .vbw-planning/STATE.md
+  ! grep -q '^- \*\*Phase 2 (Build):\*\*' .vbw-planning/STATE.md
+  grep -q 'Preserve manual missing phase notes' .vbw-planning/STATE.md
+  grep -q 'ROADMAP phase 2 has no matching 2-\* phase directory' .vbw-planning/.hook-errors.log
+
+  run bash "$SCRIPTS_DIR/verify-state-consistency.sh" .vbw-planning --mode archive
+  [ "$status" -eq 2 ]
+  echo "$output" | jq -r '.checks.roadmap_vs_summaries.detail' | grep -q 'phase 2 referenced in ROADMAP.md but no matching phase directory'
+  echo "$output" | jq -r '.checks.state_vs_filesystem.detail' | grep -q '^ok$'
+}
+
+@test "reconcile-state uses ordinal display when ROADMAP checklist is empty" {
+  cat > .vbw-planning/PROJECT.md <<'PROJECT'
+# Test Project
+PROJECT
+
+  cat > .vbw-planning/STATE.md <<'STATE'
+# State
+
+**Project:** Test Project
+**Milestone:** MVP
+
+## Current Phase
+Phase: 2 of 3 (Build)
+Plans: 0/1
+Progress: 0%
+Status: ready
+
+## Phase Status
+- **Phase 1 (Setup):** Complete
+- **Phase 2 (Build):** Planned
+- **Phase 3 (Deploy):** Pending
+STATE
+
+  cat > .vbw-planning/ROADMAP.md <<'ROADMAP'
+# Roadmap
+
+## Phase 1: Setup
+## Phase 2: Build
+## Phase 3: Deploy
+ROADMAP
+
+  mkdir -p .vbw-planning/phases/01-setup .vbw-planning/phases/03-build .vbw-planning/phases/04-deploy
+  echo '# Plan' > .vbw-planning/phases/01-setup/01-01-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' 'Done.' > .vbw-planning/phases/01-setup/01-01-SUMMARY.md
+  echo '# Plan' > .vbw-planning/phases/03-build/03-01-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' 'Done.' > .vbw-planning/phases/03-build/03-01-SUMMARY.md
+  echo '# Plan' > .vbw-planning/phases/04-deploy/04-01-PLAN.md
+
+  run bash "$SCRIPTS_DIR/reconcile-state-md.sh" .vbw-planning
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+
+  grep -q '^Phase: 3 of 3 (Deploy)$' .vbw-planning/STATE.md
+  grep -q '^- \*\*Phase 1 (Setup):\*\* Complete$' .vbw-planning/STATE.md
+  grep -q '^- \*\*Phase 2 (Build):\*\* Complete$' .vbw-planning/STATE.md
+  grep -q '^- \*\*Phase 3 (Deploy):\*\* Planned$' .vbw-planning/STATE.md
+  ! grep -q '^- \*\*Phase 4 ' .vbw-planning/STATE.md
+  grep -q 'ROADMAP has no Phase checklist entries; using ordinal display numbering' .vbw-planning/.hook-errors.log
+}
+
 @test "reconcile-state repairs ordinal ROADMAP checklist drift by sorted phase position" {
   cat > .vbw-planning/PROJECT.md <<'PROJECT'
 # Test Project
@@ -312,6 +428,8 @@ ROADMAP
 
   grep -q '^- \[x\] Phase 2: Build$' .vbw-planning/ROADMAP.md
   grep -q '^- \[ \] Phase 3: Deploy$' .vbw-planning/ROADMAP.md
+  grep -q 'legacy ordinal ROADMAP numbering' .vbw-planning/.hook-errors.log
+  grep -q 'position 2 -> 03-build (prefix 3)' .vbw-planning/.hook-errors.log
 
   run bash "$SCRIPTS_DIR/verify-state-consistency.sh" .vbw-planning --mode archive
   if [ "$status" -ne 0 ]; then echo "$output" >&2; fi
@@ -432,6 +550,63 @@ ROADMAP
   [ "$status" -eq 2 ]
   echo "$output" | jq -e '.failed_checks | index("roadmap_vs_summaries")' >/dev/null
   echo "$output" | jq -r '.checks.roadmap_vs_summaries.detail' | grep -q 'ROADMAP checklist numbering scheme is mixed or unresolvable'
+}
+
+@test "reconcile-state treats duplicate phase directory prefixes as unknown" {
+  cat > .vbw-planning/PROJECT.md <<'PROJECT'
+# Test Project
+PROJECT
+
+  cat > .vbw-planning/STATE.md <<'STATE'
+# State
+
+**Project:** Test Project
+**Milestone:** MVP
+
+## Current Phase
+Phase: 2 of 3 (Build)
+Plans: 0/1
+Progress: 0%
+Status: ready
+
+## Phase Status
+- **Phase 1 (Setup):** Complete
+- **Phase 2 (Build):** Planned
+- **Phase 3 (Deploy):** Pending
+STATE
+
+  cat > .vbw-planning/ROADMAP.md <<'ROADMAP'
+# Roadmap
+
+- [x] Phase 1: Setup
+- [ ] Phase 2: Build
+- [ ] Phase 3: Deploy
+
+## Phase 1: Setup
+## Phase 2: Build
+## Phase 3: Deploy
+ROADMAP
+
+  mkdir -p .vbw-planning/phases/01-setup .vbw-planning/phases/02-build-a .vbw-planning/phases/02-build-b .vbw-planning/phases/03-deploy
+  echo '# Plan' > .vbw-planning/phases/01-setup/01-01-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' 'Done.' > .vbw-planning/phases/01-setup/01-01-SUMMARY.md
+  echo '# Plan' > .vbw-planning/phases/02-build-a/02-01-PLAN.md
+  echo '# Plan' > .vbw-planning/phases/02-build-b/02-02-PLAN.md
+  echo '# Plan' > .vbw-planning/phases/03-deploy/03-01-PLAN.md
+
+  cp .vbw-planning/STATE.md "$TEST_TEMP_DIR/state-before.md"
+  cp .vbw-planning/ROADMAP.md "$TEST_TEMP_DIR/roadmap-before.md"
+
+  run bash "$SCRIPTS_DIR/reconcile-state-md.sh" .vbw-planning
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+
+  cmp -s "$TEST_TEMP_DIR/state-before.md" .vbw-planning/STATE.md
+  cmp -s "$TEST_TEMP_DIR/roadmap-before.md" .vbw-planning/ROADMAP.md
+  grep -q 'state-numbering-warning' .vbw-planning/.hook-errors.log
+  grep -q 'duplicate phase directory prefix 2' .vbw-planning/.hook-errors.log
+  grep -q '02-build-a' .vbw-planning/.hook-errors.log
+  grep -q '02-build-b' .vbw-planning/.hook-errors.log
 }
 
 @test "reconcile-state skips quietly when ROADMAP helpers are missing" {
@@ -622,6 +797,90 @@ STATE
   run bash "$SCRIPTS_DIR/reconcile-state-md.sh" .vbw-planning
   [ "$status" -eq 0 ]
   grep -q '^Status: complete$' .vbw-planning/STATE.md
+}
+
+@test "round-dir current in-progress UAT blocks phase completion" {
+  cat > .vbw-planning/STATE.md <<'STATE'
+# State
+
+**Project:** Test Project
+**Milestone:** MVP
+
+## Current Phase
+Phase: 1 of 1 (Setup)
+Plans: 1/1
+Progress: 100%
+Status: complete
+
+## Phase Status
+- **Phase 1:** Complete
+STATE
+
+  cat > .vbw-planning/ROADMAP.md <<'ROADMAP'
+# Roadmap
+
+- [x] Phase 1: Setup
+
+## Phase 1: Setup
+ROADMAP
+
+  mkdir -p .vbw-planning/phases/01-setup/remediation/uat/round-06
+  echo '# Plan' > .vbw-planning/phases/01-setup/01-01-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' 'Done.' > .vbw-planning/phases/01-setup/01-01-SUMMARY.md
+  printf '%s\n' 'stage=verify' 'round=06' 'layout=round-dir' > .vbw-planning/phases/01-setup/remediation/uat/.uat-remediation-stage
+  printf '%s\n' '---' 'status: in_progress' '---' 'Round verification still running.' > .vbw-planning/phases/01-setup/remediation/uat/round-06/R06-UAT.md
+
+  run bash "$SCRIPTS_DIR/reconcile-state-md.sh" .vbw-planning
+  [ "$status" -eq 0 ]
+
+  grep -q '^Phase: 1 of 1 (Setup)$' .vbw-planning/STATE.md
+  grep -q '^Plans: 1/1$' .vbw-planning/STATE.md
+  grep -q '^Progress: 100%$' .vbw-planning/STATE.md
+  grep -q '^Status: needs_verification$' .vbw-planning/STATE.md
+  grep -q '^- \*\*Phase 1 (Setup):\*\* Needs verification$' .vbw-planning/STATE.md
+  grep -q '^- \[ \] Phase 1: Setup$' .vbw-planning/ROADMAP.md
+}
+
+@test "round-dir current UAT with missing status blocks phase completion" {
+  cat > .vbw-planning/STATE.md <<'STATE'
+# State
+
+**Project:** Test Project
+**Milestone:** MVP
+
+## Current Phase
+Phase: 1 of 1 (Setup)
+Plans: 1/1
+Progress: 100%
+Status: complete
+
+## Phase Status
+- **Phase 1:** Complete
+STATE
+
+  cat > .vbw-planning/ROADMAP.md <<'ROADMAP'
+# Roadmap
+
+- [x] Phase 1: Setup
+
+## Phase 1: Setup
+ROADMAP
+
+  mkdir -p .vbw-planning/phases/01-setup/remediation/uat/round-06
+  echo '# Plan' > .vbw-planning/phases/01-setup/01-01-PLAN.md
+  printf '%s\n' '---' 'status: complete' '---' 'Done.' > .vbw-planning/phases/01-setup/01-01-SUMMARY.md
+  printf '%s\n' 'stage=verify' 'round=06' 'layout=round-dir' > .vbw-planning/phases/01-setup/remediation/uat/.uat-remediation-stage
+  printf '%s\n' '---' 'phase: 01' '---' 'Round verification exists but status is absent.' > .vbw-planning/phases/01-setup/remediation/uat/round-06/R06-UAT.md
+
+  run bash "$SCRIPTS_DIR/reconcile-state-md.sh" .vbw-planning
+  [ "$status" -eq 0 ]
+
+  grep -q '^Phase: 1 of 1 (Setup)$' .vbw-planning/STATE.md
+  grep -q '^Plans: 1/1$' .vbw-planning/STATE.md
+  grep -q '^Progress: 100%$' .vbw-planning/STATE.md
+  grep -q '^Status: needs_verification$' .vbw-planning/STATE.md
+  grep -q '^- \*\*Phase 1 (Setup):\*\* Needs verification$' .vbw-planning/STATE.md
+  grep -q '^- \[ \] Phase 1: Setup$' .vbw-planning/ROADMAP.md
 }
 
 @test "legacy remediation current UAT affects STATE" {

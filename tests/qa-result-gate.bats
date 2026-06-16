@@ -2,12 +2,15 @@
 
 REPO_ROOT="$(cd "$(dirname "$BATS_TEST_FILENAME")/.." && pwd)"
 SCRIPT="$REPO_ROOT/scripts/qa-result-gate.sh"
+TRACK_DEVIATIONS_SCRIPT="$REPO_ROOT/scripts/track-uat-deviations.sh"
 
 setup() {
   TEST_DIR="$(mktemp -d)"
+  TEST_DIR="$(cd "$TEST_DIR" && pwd -P)"
   # Use numbered phase-dir prefix to match production convention ({NN}-slug)
-  PHASE_DIR="$TEST_DIR/01-test-phase"
-  mkdir -p "$PHASE_DIR"
+  PHASE_DIR="$TEST_DIR/.vbw-planning/phases/01-test-phase"
+  mkdir -p "$PHASE_DIR" "$TEST_DIR/.vbw-planning"
+  printf '{}\n' > "$TEST_DIR/.vbw-planning/config.json"
 }
 
 teardown() {
@@ -123,6 +126,43 @@ create_plan() {
   } > "$PHASE_DIR/${plan_id}-PLAN.md"
 }
 
+create_pass_verification_for_plans() {
+  local plans="${1:-}"
+  {
+    echo "---"
+    echo "writer: write-verification.sh"
+    echo "result: PASS"
+    if [ -n "$plans" ]; then
+      echo "plans_verified:"
+      while IFS= read -r plan_id; do
+        [ -n "$plan_id" ] && echo "  - $plan_id"
+      done <<< "$plans"
+    fi
+    echo "---"
+    echo "## Checks"
+    echo "| ID | Category | Description | Status | Evidence |"
+    echo "|----|----------|-------------|--------|----------|"
+    echo "| MH-01 | must_have | Test | PASS | ok |"
+  } > "$PHASE_DIR/01-VERIFICATION.md"
+}
+
+write_accepted_summary_deviation() {
+  local source_plan="${1}"
+  local source_path="${2}"
+  local text="${3}"
+  local sig
+  sig=$(bash "$TRACK_DEVIATIONS_SCRIPT" signature "$source_plan" "$source_path" "$text")
+  mkdir -p "$PHASE_DIR/remediation/uat"
+  jq -n \
+    --arg phase "$(basename "$PHASE_DIR")" \
+    --arg sig "$sig" \
+    --arg source_plan "$source_plan" \
+    --arg source_path "$source_path" \
+    --arg text "$text" \
+    '{schema_version: 1, phase: $phase, accepted: [{signature: $sig, source_plan: $source_plan, source_path: $source_path, text: $text, disposition: "accepted-process-exception"}]}' \
+    > "$PHASE_DIR/remediation/uat/accepted-deviations.json"
+}
+
 create_source_fail_verif() {
   local fail_id="${1:-FAIL-01}"
   local description="${2:-Original failure still needs remediation}"
@@ -131,6 +171,146 @@ create_source_fail_verif() {
 | ID | Category | Description | Status | Evidence |
 |----|----------|-------------|--------|----------|
 | ${fail_id} | must_have | ${description} | FAIL | Missing |" "$verified_at_commit"
+}
+
+extract_function_span() {
+  local file_path="${1}"
+  local start_function="${2}"
+  local end_function="${3}"
+
+  awk -v start="$start_function" -v end="$end_function" '
+    $0 ~ "^" start "\\(\\)[[:space:]]*\\{" { found_start = 1; in_body = 1 }
+    in_body && $0 ~ "^" end "\\(\\)[[:space:]]*\\{" { found_end = 1; exit }
+    in_body { print }
+    END { if (!found_start || !found_end) exit 1 }
+  ' "$file_path"
+}
+
+write_known_issue_temp_write_failure_shim() {
+  local shim_dir="$TEST_DIR/mktemp-shim"
+  local temp_dir="$TEST_DIR/mktemp-shim-files"
+  local count_file="$TEST_DIR/mktemp-shim-count"
+  mkdir -p "$shim_dir" "$temp_dir"
+  printf '0' > "$count_file"
+  cat > "$shim_dir/mktemp" <<'SHIM'
+#!/usr/bin/env bash
+set -eu
+
+count_file="${QA_MKTEMP_COUNT_FILE:?}"
+temp_dir="${QA_MKTEMP_TEMP_DIR:?}"
+fail_on="${QA_MKTEMP_FAIL_ON:?}"
+count=$(cat "$count_file" 2>/dev/null || printf '0')
+count=$((count + 1))
+printf '%s' "$count" > "$count_file"
+
+if [ "$count" -eq "$fail_on" ]; then
+  printf '%s\n' "$temp_dir/missing-parent/unwritable-${count}.tmp"
+  exit 0
+fi
+
+path="$temp_dir/valid-${count}.tmp"
+: > "$path"
+printf '%s\n' "$path"
+SHIM
+  chmod +x "$shim_dir/mktemp"
+  printf '%s' "$shim_dir"
+}
+
+create_single_known_issue_process_exception_round() {
+  create_verif "write-verification.sh" "PASS"
+  mkdir -p "$PHASE_DIR/remediation/qa/round-01"
+  printf 'stage=verify\nround=01\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-KNOWN-ISSUES.json" <<'SNAP'
+{
+  "schema_version": 1,
+  "phase": "01",
+  "issues": [
+    {
+      "test": "Tests\\Feature\\X > it does the thing",
+      "file": "tests/Feature/XTest.php",
+      "error": "Expected response status code [200] but received 500.",
+      "first_seen_in": "01-VERIFICATION.md",
+      "last_seen_in": "01-VERIFICATION.md",
+      "first_seen_round": 0,
+      "last_seen_round": 0,
+      "times_seen": 1
+    }
+  ]
+}
+SNAP
+
+  cat > "$PHASE_DIR/known-issues.json" <<'REGISTRY'
+{
+  "schema_version": 1,
+  "phase": "01",
+  "issues": [
+    {
+      "test": "Tests\\Feature\\X > it does the thing",
+      "file": "tests/Feature/XTest.php",
+      "error": "Expected response status code [200] but received 500.",
+      "first_seen_in": "01-VERIFICATION.md",
+      "last_seen_in": "01-VERIFICATION.md",
+      "first_seen_round": 0,
+      "last_seen_round": 0,
+      "times_seen": 1
+    }
+  ]
+}
+REGISTRY
+
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-SUMMARY.md" <<'SUMMARY'
+---
+plan: R01
+status: complete
+commit_hashes: []
+files_modified:
+  - "01-test-phase/remediation/qa/round-01/R01-SUMMARY.md"
+deviations: []
+known_issue_outcomes:
+  - '{"test":"Tests\\Feature\\X > it does the thing","file":"tests/Feature/XTest.php","error":"Expected response status code [200] but received 500.","disposition":"accepted-process-exception","rationale":"Pest namespace failure is pre-existing and non-blocking for this phase"}'
+---
+
+## Summary
+Documented the Pest/PHPUnit known issue as an accepted non-blocking process-exception.
+SUMMARY
+
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-PLAN.md" <<'PLAN'
+---
+round: 01
+title: Known-issues-only Pest namespace process-exception round
+known_issues_input:
+  - '{"test":"Tests\\Feature\\X > it does the thing","file":"tests/Feature/XTest.php","error":"Expected response status code [200] but received 500."}'
+known_issue_resolutions:
+  - '{"test":"Tests\\Feature\\X > it does the thing","file":"tests/Feature/XTest.php","error":"Expected response status code [200] but received 500.","disposition":"accepted-process-exception","rationale":"Pest namespace failure is pre-existing and non-blocking for this phase"}'
+---
+PLAN
+
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" <<'VERIF'
+---
+writer: write-verification.sh
+result: PASS
+plans_verified:
+  - R01
+---
+## Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| MH-01 | must_have | Pest known issue accepted as non-blocking | PASS | Done |
+VERIF
+}
+
+run_gate_with_mktemp_write_failure_on_call() {
+  local fail_on_call="${1}"
+  local shim_dir
+  shim_dir=$(write_known_issue_temp_write_failure_shim)
+
+  run env \
+    PATH="$shim_dir:$PATH" \
+    QA_MKTEMP_COUNT_FILE="$TEST_DIR/mktemp-shim-count" \
+    QA_MKTEMP_TEMP_DIR="$TEST_DIR/mktemp-shim-files" \
+    QA_MKTEMP_FAIL_ON="$fail_on_call" \
+    bash "$SCRIPT" "$PHASE_DIR"
 }
 
 @test "PASS with clean body → PROCEED_TO_UAT" {
@@ -316,7 +496,7 @@ VERIF
 @test "plan-amendment requires actual round diff to include the original plan when git evidence is available" {
   init_git_repo
   mkdir -p "$TEST_DIR/docs"
-  baseline_commit=$(commit_repo_file "01-test-phase/01-01-PLAN.md" "original plan")
+  baseline_commit=$(commit_repo_file ".vbw-planning/phases/01-test-phase/01-01-PLAN.md" "original plan")
   create_verif "write-verification.sh" "FAIL" "## Must-Have Checks
 | ID | Category | Description | Status | Evidence |
 |----|----------|-------------|--------|----------|
@@ -327,7 +507,7 @@ VERIF
   printf 'stage=verify\nround=01\nround_started_at_commit=%s\n' "$baseline_commit" > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
 
   create_round_summary_with_files "$PHASE_DIR/remediation/qa/round-01" "01" \
-    '  - "01-01-PLAN.md"
+    '  - ".vbw-planning/phases/01-test-phase/01-01-PLAN.md"
   - "README.md"'
 
   cat > "$PHASE_DIR/remediation/qa/round-01/R01-PLAN.md" <<'PLAN'
@@ -359,25 +539,25 @@ VERIF
 
 @test "plan-amendment accepts repo-relative original plan path when file still exists" {
   init_git_repo
-  baseline_commit=$(commit_repo_file "01-test-phase/01-01-PLAN.md" "original plan")
+  baseline_commit=$(commit_repo_file ".vbw-planning/phases/01-test-phase/01-01-PLAN.md" "original plan")
   create_verif "write-verification.sh" "FAIL" "## Must-Have Checks
 | ID | Category | Description | Status | Evidence |
 |----|----------|-------------|--------|----------|
 | FAIL-0101 | must_have | Plan must be amended | FAIL | Missing rationale |" "$baseline_commit"
-  commit_repo_file "01-test-phase/01-01-PLAN.md" "updated plan with rationale" >/dev/null
+  commit_repo_file ".vbw-planning/phases/01-test-phase/01-01-PLAN.md" "updated plan with rationale" >/dev/null
 
   mkdir -p "$PHASE_DIR/remediation/qa/round-01"
   printf 'stage=verify\nround=01\nround_started_at_commit=%s\n' "$baseline_commit" > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
 
   create_round_summary_with_files "$PHASE_DIR/remediation/qa/round-01" "01" \
-    '  - "01-test-phase/01-01-PLAN.md"'
+    '  - ".vbw-planning/phases/01-test-phase/01-01-PLAN.md"'
 
   cat > "$PHASE_DIR/remediation/qa/round-01/R01-PLAN.md" <<'PLAN'
 ---
 round: 01
 title: Repo-relative original plan path remains valid when the plan still exists
 fail_classifications:
-  - {id: "FAIL-0101", type: "plan-amendment", rationale: "Original plan updated with actual approach", source_plan: "01-test-phase/01-01-PLAN.md"}
+  - {id: "FAIL-0101", type: "plan-amendment", rationale: "Original plan updated with actual approach", source_plan: ".vbw-planning/phases/01-test-phase/01-01-PLAN.md"}
 ---
 PLAN
   cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" <<'VERIF'
@@ -401,12 +581,12 @@ VERIF
 
 @test "plan-amendment does not accept deleted absolute original plan path" {
   init_git_repo
-  baseline_commit=$(commit_repo_file "01-test-phase/01-01-PLAN.md" "original plan")
+  baseline_commit=$(commit_repo_file ".vbw-planning/phases/01-test-phase/01-01-PLAN.md" "original plan")
   create_verif "write-verification.sh" "FAIL" "## Must-Have Checks
 | ID | Category | Description | Status | Evidence |
 |----|----------|-------------|--------|----------|
 | FAIL-0101 | must_have | Plan must be amended | FAIL | Missing rationale |" "$baseline_commit"
-  delete_repo_file "01-test-phase/01-01-PLAN.md" >/dev/null
+  delete_repo_file ".vbw-planning/phases/01-test-phase/01-01-PLAN.md" >/dev/null
 
   mkdir -p "$PHASE_DIR/remediation/qa/round-01"
   printf 'stage=verify\nround=01\nround_started_at_commit=%s\n' "$baseline_commit" > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
@@ -903,6 +1083,32 @@ VERIF
   [[ "$output" == *"qa_gate_routing=QA_RERUN_REQUIRED"* ]]
 }
 
+@test "PASS + YAML and body deviations in one SUMMARY.md are both counted once" {
+  create_verif "write-verification.sh" "PASS"
+  cat > "$PHASE_DIR/01-01-SUMMARY.md" <<'SUMMARY'
+---
+plan: 01-01
+deviations:
+  - "Frontmatter deviation"
+  - "Duplicate deviation"
+---
+
+## Summary
+Work completed.
+
+## Deviations
+- Duplicate deviation
+- Body-only deviation
+SUMMARY
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"qa_gate_deviation_count=3"* ]]
+  [[ "$output" == *"qa_gate_deviation_override=true"* ]]
+  [[ "$output" == *"qa_gate_routing=QA_RERUN_REQUIRED"* ]]
+}
+
 @test "PASS + placeholder deviations (None) → PROCEED_TO_UAT" {
   create_verif "write-verification.sh" "PASS"
   create_summary_with_yaml_deviations "01-01" "None"
@@ -998,6 +1204,34 @@ VERIF
 
   [ "$status" -eq 0 ]
   [[ "$output" == *"qa_gate_deviation_count=3"* ]]
+  [[ "$output" == *"qa_gate_deviation_override=true"* ]]
+  [[ "$output" == *"qa_gate_routing=QA_RERUN_REQUIRED"* ]]
+}
+
+@test "PASS + accepted summary deviation is not counted by QA gate" {
+  create_plan "01-01"
+  create_pass_verification_for_plans "01-01"
+  create_summary_with_yaml_deviations "01-01" "Documented tooling constraint"
+  write_accepted_summary_deviation "01-01" "01-01-SUMMARY.md" "Documented tooling constraint"
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"qa_gate_deviation_count=0"* ]]
+  [[ "$output" != *"qa_gate_deviation_override=true"* ]]
+  [[ "$output" == *"qa_gate_routing=PROCEED_TO_UAT"* ]]
+}
+
+@test "PASS + accepted and active summary deviations counts only active records" {
+  create_plan "01-01"
+  create_pass_verification_for_plans "01-01"
+  create_summary_with_yaml_deviations "01-01" "$(printf 'Documented tooling constraint\nUnreviewed implementation shortcut')"
+  write_accepted_summary_deviation "01-01" "01-01-SUMMARY.md" "Documented tooling constraint"
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"qa_gate_deviation_count=1"* ]]
   [[ "$output" == *"qa_gate_deviation_override=true"* ]]
   [[ "$output" == *"qa_gate_routing=QA_RERUN_REQUIRED"* ]]
 }
@@ -1599,6 +1833,218 @@ VERIF
   [[ "$output" == *"qa_gate_routing=QA_RERUN_REQUIRED"* ]]
 }
 
+@test "accepted current-round remediation deviation is not counted by QA gate" {
+  create_source_fail_verif "FAIL-01" "Historical deviation still needs remediation"
+
+  mkdir -p "$PHASE_DIR/remediation/qa/round-01"
+  printf 'stage=verify\nround=01\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-PLAN.md" <<'PLAN'
+---
+round: 01
+title: Fix regression
+fail_classifications:
+  - {id: "FAIL-01", type: "process-exception", rationale: "Current-round accepted deviation should not trigger another QA rerun"}
+---
+PLAN
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-SUMMARY.md" <<'SUMMARY'
+---
+plan: R01
+status: complete
+files_modified:
+  - src/Fix.swift
+deviations:
+  - "Accepted alternate fix path"
+---
+
+## Summary
+Remediation applied.
+SUMMARY
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" <<'VERIF'
+---
+writer: write-verification.sh
+result: PASS
+plans_verified:
+  - R01
+---
+## Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| MH-01 | must_have | Regression fixed | PASS | ok |
+VERIF
+  write_accepted_summary_deviation "R01" "remediation/qa/round-01/R01-SUMMARY.md" "Accepted alternate fix path"
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"qa_gate_deviation_count=0"* ]]
+  [[ "$output" != *"qa_gate_deviation_override=true"* ]]
+  [[ "$output" == *"qa_gate_routing=PROCEED_TO_UAT"* ]]
+}
+
+@test "multi-plan remediation round counts shared summary deviation once" {
+  create_source_fail_verif "FAIL-01" "Shared deviation still needs remediation"
+
+  mkdir -p "$PHASE_DIR/remediation/qa/round-01"
+  printf 'stage=verify\nround=01\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-PLAN.md" <<'PLAN'
+---
+round: 01
+title: First remediation plan
+fail_classifications:
+  - {id: "FAIL-01", type: "process-exception", rationale: "Shared deviation is under review"}
+---
+PLAN
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-02-PLAN.md" <<'PLAN'
+---
+round: 01
+title: Second remediation plan
+---
+PLAN
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-SUMMARY.md" <<'SUMMARY'
+---
+plan: R01
+status: complete
+files_modified:
+  - src/Fix.swift
+deviations:
+  - "Shared alternate fix path"
+---
+
+## Summary
+Remediation applied.
+SUMMARY
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" <<'VERIF'
+---
+writer: write-verification.sh
+result: PASS
+plans_verified:
+  - R01
+  - R01-02
+---
+## Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| MH-01 | must_have | Regression fixed | PASS | ok |
+VERIF
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"qa_gate_deviation_count=1"* ]]
+  [[ "$output" == *"qa_gate_deviation_override=true"* ]]
+  [[ "$output" == *"qa_gate_routing=QA_RERUN_REQUIRED"* ]]
+}
+
+@test "canonical accepted shared remediation deviation is not counted by QA gate" {
+  create_source_fail_verif "FAIL-01" "Shared accepted deviation still needs remediation"
+
+  mkdir -p "$PHASE_DIR/remediation/qa/round-01"
+  printf 'stage=verify\nround=01\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-PLAN.md" <<'PLAN'
+---
+round: 01
+title: First remediation plan
+fail_classifications:
+  - {id: "FAIL-01", type: "process-exception", rationale: "Accepted shared deviation is non-blocking"}
+---
+PLAN
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-02-PLAN.md" <<'PLAN'
+---
+round: 01
+title: Second remediation plan
+---
+PLAN
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-SUMMARY.md" <<'SUMMARY'
+---
+plan: R01
+status: complete
+files_modified:
+  - src/Fix.swift
+deviations:
+  - "Shared accepted alternate fix path"
+---
+
+## Summary
+Remediation applied.
+SUMMARY
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" <<'VERIF'
+---
+writer: write-verification.sh
+result: PASS
+plans_verified:
+  - R01
+  - R01-02
+---
+## Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| MH-01 | must_have | Regression fixed | PASS | ok |
+VERIF
+  write_accepted_summary_deviation "R01" "remediation/qa/round-01/R01-SUMMARY.md" "Shared accepted alternate fix path"
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"qa_gate_deviation_count=0"* ]]
+  [[ "$output" != *"qa_gate_deviation_override=true"* ]]
+  [[ "$output" == *"qa_gate_routing=PROCEED_TO_UAT"* ]]
+}
+
+@test "legacy per-plan accepted shared remediation deviation is not counted by QA gate" {
+  create_source_fail_verif "FAIL-01" "Legacy accepted shared deviation still needs remediation"
+
+  mkdir -p "$PHASE_DIR/remediation/qa/round-01"
+  printf 'stage=verify\nround=01\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-PLAN.md" <<'PLAN'
+---
+round: 01
+title: First remediation plan
+fail_classifications:
+  - {id: "FAIL-01", type: "process-exception", rationale: "Legacy accepted shared deviation is non-blocking"}
+---
+PLAN
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-02-PLAN.md" <<'PLAN'
+---
+round: 01
+title: Second remediation plan
+---
+PLAN
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-SUMMARY.md" <<'SUMMARY'
+---
+plan: R01
+status: complete
+files_modified:
+  - src/Fix.swift
+deviations:
+  - "Legacy accepted alternate fix path"
+---
+
+## Summary
+Remediation applied.
+SUMMARY
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" <<'VERIF'
+---
+writer: write-verification.sh
+result: PASS
+plans_verified:
+  - R01
+  - R01-02
+---
+## Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| MH-01 | must_have | Regression fixed | PASS | ok |
+VERIF
+  write_accepted_summary_deviation "R01-02" "remediation/qa/round-01/R01-SUMMARY.md" "Legacy accepted alternate fix path"
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"qa_gate_deviation_count=0"* ]]
+  [[ "$output" != *"qa_gate_deviation_override=true"* ]]
+  [[ "$output" == *"qa_gate_routing=PROCEED_TO_UAT"* ]]
+}
+
 @test "explicit verif-name override is preserved during active remediation" {
   create_verif "write-verification.sh" "FAIL"
 
@@ -1936,19 +2382,19 @@ VERIF
 
 @test "metadata-only round with plan-amendment and original plan edit → PROCEED_TO_UAT" {
   init_git_repo
-  baseline_commit=$(commit_repo_file "01-test-phase/01-01-PLAN.md" "original plan")
+  baseline_commit=$(commit_repo_file ".vbw-planning/phases/01-test-phase/01-01-PLAN.md" "original plan")
   create_verif "write-verification.sh" "FAIL" "## Must-Have Checks
 | ID | Category | Description | Status | Evidence |
 |----|----------|-------------|--------|----------|
 | FAIL-0101 | must_have | Plan must be amended | FAIL | Missing rationale |" "$baseline_commit"
-  commit_repo_file "01-test-phase/01-01-PLAN.md" "updated plan with actual approach" >/dev/null
+  commit_repo_file ".vbw-planning/phases/01-test-phase/01-01-PLAN.md" "updated plan with actual approach" >/dev/null
 
   mkdir -p "$PHASE_DIR/remediation/qa/round-01"
   printf 'stage=verify\nround=01\nround_started_at_commit=%s\n' "$baseline_commit" > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
 
   create_round_summary_with_files "$PHASE_DIR/remediation/qa/round-01" "01" \
     "  - \"$PHASE_DIR/01-01-PLAN.md\"
-  - \"01-test-phase/remediation/qa/round-01/R01-SUMMARY.md\""
+  - \".vbw-planning/phases/01-test-phase/remediation/qa/round-01/R01-SUMMARY.md\""
 
   cat > "$PHASE_DIR/remediation/qa/round-01/R01-PLAN.md" <<'PLAN'
 ---
@@ -2414,7 +2860,7 @@ VERIF
 
 @test "Git-backed docs-only remediation artifact worktree fallback proceeds to UAT" {
   init_git_repo
-  baseline_commit=$(commit_repo_file "01-test-phase/01-01-PLAN.md" "original plan")
+  baseline_commit=$(commit_repo_file ".vbw-planning/phases/01-test-phase/01-01-PLAN.md" "original plan")
   create_verif "write-verification.sh" "FAIL" "## Must-Have Checks
 | ID | Category | Description | Status | Evidence |
 |----|----------|-------------|--------|----------|
@@ -2430,8 +2876,8 @@ plan: R01
 status: complete
 commit_hashes: []
 files_modified:
-  - "01-test-phase/remediation/qa/round-01/R01-SUMMARY.md"
-  - "01-test-phase/remediation/qa/round-01/R01-PLAN.md"
+  - ".vbw-planning/phases/01-test-phase/remediation/qa/round-01/R01-SUMMARY.md"
+  - ".vbw-planning/phases/01-test-phase/remediation/qa/round-01/R01-PLAN.md"
 deviations: []
 ---
 
@@ -2468,19 +2914,19 @@ VERIF
 
 @test "plan-amendment accepts short original plan filename" {
   init_git_repo
-  baseline_commit=$(commit_repo_file "01-test-phase/01-01-PLAN.md" "original plan")
+  baseline_commit=$(commit_repo_file ".vbw-planning/phases/01-test-phase/01-01-PLAN.md" "original plan")
   create_verif "write-verification.sh" "FAIL" "## Must-Have Checks
 | ID | Category | Description | Status | Evidence |
 |----|----------|-------------|--------|----------|
 | FAIL-0101 | must_have | Plan must be amended | FAIL | Missing rationale |" "$baseline_commit"
-  commit_repo_file "01-test-phase/01-01-PLAN.md" "updated plan with actual approach" >/dev/null
+  commit_repo_file ".vbw-planning/phases/01-test-phase/01-01-PLAN.md" "updated plan with actual approach" >/dev/null
 
   mkdir -p "$PHASE_DIR/remediation/qa/round-01"
   printf 'stage=verify\nround=01\nround_started_at_commit=%s\n' "$baseline_commit" > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
 
   create_round_summary_with_files "$PHASE_DIR/remediation/qa/round-01" "01" \
     '  - "01-01-PLAN.md"
-  - "01-test-phase/remediation/qa/round-01/R01-SUMMARY.md"'
+  - ".vbw-planning/phases/01-test-phase/remediation/qa/round-01/R01-SUMMARY.md"'
 
   cat > "$PHASE_DIR/remediation/qa/round-01/R01-PLAN.md" <<'PLAN'
 ---
@@ -3083,7 +3529,7 @@ commit_hashes: []
 files_modified:
   - "src/Fix.swift"
   - "README.md"
-  - "01-test-phase/01-SUMMARY.md"
+  - ".vbw-planning/phases/01-test-phase/01-SUMMARY.md"
 deviations: []
 ---
 
@@ -3094,7 +3540,7 @@ SUMMARY
   echo "real code fix" > "$TEST_DIR/src/Fix.swift"
   echo "round pass docs" > "$TEST_DIR/README.md"
   printf '%s\n' '---' 'status: complete' '---' '# Summary' 'Round 01 documented the remediation outcome.' > "$PHASE_DIR/01-SUMMARY.md"
-  git -C "$TEST_DIR" add src/Fix.swift README.md 01-test-phase/01-SUMMARY.md
+  git -C "$TEST_DIR" add src/Fix.swift README.md .vbw-planning/phases/01-test-phase/01-SUMMARY.md
   git -C "$TEST_DIR" commit -m "round pass summary evidence" --quiet
   current_commit=$(git -C "$TEST_DIR" rev-parse HEAD)
 
@@ -3541,12 +3987,12 @@ VERIF
 
 @test "unrecorded post-anchor original plan diff does not satisfy plan-amendment evidence" {
   init_git_repo
-  baseline_commit=$(commit_repo_file "01-test-phase/01-01-PLAN.md" "original plan")
+  baseline_commit=$(commit_repo_file ".vbw-planning/phases/01-test-phase/01-01-PLAN.md" "original plan")
   create_verif "write-verification.sh" "FAIL" "## Must-Have Checks
 | ID | Category | Description | Status | Evidence |
 |----|----------|-------------|--------|----------|
 | FAIL-0101 | must_have | Plan must be amended | FAIL | Missing rationale |" "$baseline_commit"
-  commit_repo_file "01-test-phase/01-01-PLAN.md" "updated plan outside recorded summary evidence" >/dev/null
+  commit_repo_file ".vbw-planning/phases/01-test-phase/01-01-PLAN.md" "updated plan outside recorded summary evidence" >/dev/null
 
   mkdir -p "$PHASE_DIR/remediation/qa/round-01"
   printf 'stage=verify\nround=01\nround_started_at_commit=%s\n' "$baseline_commit" > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
@@ -4144,6 +4590,486 @@ VERIF
 
   [ "$status" -eq 0 ]
   [[ "$output" == *"qa_gate_routing=PROCEED_TO_UAT"* ]]
+}
+
+@test "known-issue structural helpers avoid delimiter and large-array argv regressions" {
+  gate_extract_body=$(extract_function_span "$REPO_ROOT/scripts/qa-result-gate.sh" "extract_frontmatter_json_object_array" "collect_frontmatter_json_object_array_in_dir") || false
+  gate_cover_body=$(extract_function_span "$REPO_ROOT/scripts/qa-result-gate.sh" "json_object_array_covers_full_issue_objects" "load_known_issue_registry_json") || false
+  gate_disposition_body=$(extract_function_span "$REPO_ROOT/scripts/qa-result-gate.sh" "json_object_array_dispositions_match" "json_object_array_has_disposition") || false
+  snapshot_body=$(extract_function_span "$REPO_ROOT/scripts/qa-remediation-state.sh" "write_known_issue_snapshot" "materialize_round_known_issues_snapshot") || false
+  [ -n "$gate_extract_body" ]
+  [ -n "$gate_cover_body" ]
+  [ -n "$gate_disposition_body" ]
+  [ -n "$snapshot_body" ]
+  combined_body=$(printf '%s\n%s\n%s\n%s\n' "$gate_extract_body" "$gate_cover_body" "$gate_disposition_body" "$snapshot_body")
+
+  [[ "$combined_body" != *"--argjson issues"* ]]
+  [[ "$combined_body" != *"--argjson required"* ]]
+  [[ "$combined_body" != *"--argjson candidate"* ]]
+  [[ "$combined_body" != *"--argjson expected"* ]]
+  [[ "$combined_body" != *"--argjson actual"* ]]
+  [[ "$combined_body" != *"@tsv"* ]]
+  [[ "$combined_body" != *"read -r"* ]]
+  [[ "$combined_body" != *"--arg test"* ]]
+  [[ "$combined_body" != *"--arg file"* ]]
+  [[ "$combined_body" != *"--arg error"* ]]
+  [[ "$combined_body" != *"--arg disposition"* ]]
+  [[ "$gate_extract_body" != *"while IFS= read -r item"* ]]
+  [[ "$gate_extract_body" != *"printf '%s' \"\$item\" | jq"* ]]
+  [[ "$gate_extract_body" == *"jq -Rsc"* ]]
+  [[ "$gate_cover_body" == *"@json"* ]]
+  [[ "$gate_disposition_body" == *"@json"* ]]
+}
+
+@test "large Pest namespace known-issue registry avoids argv limits and proceeds" {
+  local issue_count=3500
+  local i
+  create_verif "write-verification.sh" "PASS"
+  mkdir -p "$PHASE_DIR/remediation/qa/round-01"
+  printf 'stage=verify\nround=01\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+
+  {
+    printf '{\n'
+    printf '  "schema_version": 1,\n'
+    printf '  "phase": "01",\n'
+    printf '  "issues": [\n'
+    for ((i = 1; i <= issue_count; i++)); do
+      if [ "$i" -gt 1 ]; then
+        printf ',\n'
+      fi
+      printf '    {"test":"Tests\\\\Feature\\\\KnownIssue%04d > it does the thing","file":"tests/Feature/KnownIssue%04dTest.php","error":"Failure %04d","first_seen_in":"01-VERIFICATION.md","last_seen_in":"01-VERIFICATION.md","first_seen_round":0,"last_seen_round":0,"times_seen":1}' "$i" "$i" "$i"
+    done
+    printf '\n  ]\n'
+    printf '}\n'
+  } > "$PHASE_DIR/known-issues.json"
+
+  {
+    printf '%s\n' '---'
+    printf '%s\n' 'round: 01'
+    printf '%s\n' 'title: Large Pest namespace known-issues-only round'
+    printf '%s\n' 'known_issues_input:'
+    for ((i = 1; i <= issue_count; i++)); do
+      printf '  - '\''{"test":"Tests\\\\Feature\\\\KnownIssue%04d > it does the thing","file":"tests/Feature/KnownIssue%04dTest.php","error":"Failure %04d"}'\''\n' "$i" "$i" "$i"
+    done
+    printf '%s\n' 'known_issue_resolutions:'
+    for ((i = 1; i <= issue_count; i++)); do
+      printf '  - '\''{"test":"Tests\\\\Feature\\\\KnownIssue%04d > it does the thing","file":"tests/Feature/KnownIssue%04dTest.php","error":"Failure %04d","disposition":"accepted-process-exception","rationale":"Pre-existing Pest namespace issue %04d is non-blocking for this phase"}'\''\n' "$i" "$i" "$i" "$i"
+    done
+    printf '%s\n' '---'
+  } > "$PHASE_DIR/remediation/qa/round-01/R01-PLAN.md"
+
+  grep -q 'KnownIssue0001.*issue 0001 is non-blocking' "$PHASE_DIR/remediation/qa/round-01/R01-PLAN.md"
+
+  {
+    printf '%s\n' '---'
+    printf '%s\n' 'plan: R01'
+    printf '%s\n' 'status: complete'
+    printf '%s\n' 'commit_hashes: []'
+    printf '%s\n' 'files_modified:'
+    printf '%s\n' '  - "01-test-phase/remediation/qa/round-01/R01-SUMMARY.md"'
+    printf '%s\n' 'deviations: []'
+    printf '%s\n' 'known_issue_outcomes:'
+    for ((i = 1; i <= issue_count; i++)); do
+      printf '  - '\''{"test":"Tests\\\\Feature\\\\KnownIssue%04d > it does the thing","file":"tests/Feature/KnownIssue%04dTest.php","error":"Failure %04d","disposition":"accepted-process-exception","rationale":"Pre-existing Pest namespace issue %04d is non-blocking for this phase"}'\''\n' "$i" "$i" "$i" "$i"
+    done
+    printf '%s\n' '---'
+    printf '\n## Summary\n'
+    printf 'Documented %s carried Pest/PHPUnit known issues as accepted non-blocking process-exceptions.\n' "$issue_count"
+  } > "$PHASE_DIR/remediation/qa/round-01/R01-SUMMARY.md"
+
+  grep -q 'KnownIssue0001.*issue 0001 is non-blocking' "$PHASE_DIR/remediation/qa/round-01/R01-SUMMARY.md"
+
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" <<'VERIF'
+---
+writer: write-verification.sh
+result: PASS
+plans_verified:
+  - R01
+---
+## Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| MH-01 | must_have | Large Pest known-issue registry accepted as non-blocking | PASS | Done |
+VERIF
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"qa_gate_known_issue_count=3500"* ]]
+  [[ "$output" == *"qa_gate_known_issues_all_addressed=true"* ]]
+  [[ "$output" != *"qa_gate_known_issues_override=true"* ]]
+  [[ "$output" == *"qa_gate_routing=PROCEED_TO_UAT"* ]]
+  [ -f "$PHASE_DIR/remediation/qa/round-01/R01-KNOWN-ISSUES.json" ]
+  [ "$(jq '.issues | length' "$PHASE_DIR/remediation/qa/round-01/R01-KNOWN-ISSUES.json")" -eq 3500 ]
+}
+
+@test "known-issue coverage comparison write failure fails closed" {
+  create_single_known_issue_process_exception_round
+
+  # Six frontmatter extraction temp files are created before the first coverage
+  # helper. Fail the required-json write target for that helper.
+  run_gate_with_mktemp_write_failure_on_call 7
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"qa_gate_routing=REMEDIATION_REQUIRED"* ]]
+  [[ "$output" != *"qa_gate_known_issues_all_addressed=true"* ]]
+  [ -z "$(find "$TEST_DIR/mktemp-shim-files" -type f -print -quit 2>/dev/null)" ]
+}
+
+@test "known-issue disposition comparison write failure fails closed" {
+  create_single_known_issue_process_exception_round
+
+  # Six frontmatter extraction temp files plus three successful two-file
+  # coverage helper calls happen before the disposition helper. Fail the
+  # expected-json write target for that helper.
+  run_gate_with_mktemp_write_failure_on_call 13
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"qa_gate_routing=REMEDIATION_REQUIRED"* ]]
+  [[ "$output" != *"qa_gate_known_issues_all_addressed=true"* ]]
+  [ -z "$(find "$TEST_DIR/mktemp-shim-files" -type f -print -quit 2>/dev/null)" ]
+}
+
+@test "live known-issue registry with null test identity fails closed" {
+  create_single_known_issue_process_exception_round
+  cat > "$PHASE_DIR/known-issues.json" <<'REGISTRY'
+{
+  "schema_version": 1,
+  "phase": "01",
+  "issues": [
+    {
+      "test": "Tests\\Feature\\X > it does the thing",
+      "file": "tests/Feature/XTest.php",
+      "error": "Expected response status code [200] but received 500.",
+      "first_seen_in": "01-VERIFICATION.md",
+      "last_seen_in": "01-VERIFICATION.md",
+      "first_seen_round": 0,
+      "last_seen_round": 0,
+      "times_seen": 1
+    },
+    {
+      "test": null,
+      "file": "tests/Feature/MalformedKnownIssueTest.php",
+      "error": "Malformed live registry entry should not be ignored",
+      "first_seen_in": "01-VERIFICATION.md",
+      "last_seen_in": "01-VERIFICATION.md",
+      "first_seen_round": 0,
+      "last_seen_round": 0,
+      "times_seen": 1
+    }
+  ]
+}
+REGISTRY
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"qa_gate_known_issue_count=2"* ]]
+  [[ "$output" == *"qa_gate_routing=REMEDIATION_REQUIRED"* ]]
+  [[ "$output" != *"qa_gate_known_issues_all_addressed=true"* ]]
+}
+
+@test "live known-issue registry keeps explicit empty test sentinel skippable" {
+  create_single_known_issue_process_exception_round
+  cat > "$PHASE_DIR/known-issues.json" <<'REGISTRY'
+{
+  "schema_version": 1,
+  "phase": "01",
+  "issues": [
+    {
+      "test": "Tests\\Feature\\X > it does the thing",
+      "file": "tests/Feature/XTest.php",
+      "error": "Expected response status code [200] but received 500.",
+      "first_seen_in": "01-VERIFICATION.md",
+      "last_seen_in": "01-VERIFICATION.md",
+      "first_seen_round": 0,
+      "last_seen_round": 0,
+      "times_seen": 1
+    },
+    {
+      "test": "",
+      "file": "tests/Feature/BlankKnownIssueTest.php",
+      "error": "Legacy blank test sentinel",
+      "first_seen_in": "01-VERIFICATION.md",
+      "last_seen_in": "01-VERIFICATION.md",
+      "first_seen_round": 0,
+      "last_seen_round": 0,
+      "times_seen": 1
+    }
+  ]
+}
+REGISTRY
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"qa_gate_known_issue_count=2"* ]]
+  [[ "$output" == *"qa_gate_known_issues_all_addressed=true"* ]]
+  [[ "$output" == *"qa_gate_routing=PROCEED_TO_UAT"* ]]
+}
+
+@test "known-issues-only remediation round accepts Pest namespace backslashes and proceeds" {
+  create_verif "write-verification.sh" "PASS"
+  mkdir -p "$PHASE_DIR/remediation/qa/round-01"
+  printf 'stage=verify\nround=01\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-KNOWN-ISSUES.json" <<'SNAP'
+{
+  "schema_version": 1,
+  "phase": "01",
+  "issues": [
+    {
+      "test": "Tests\\Feature\\X > it does the thing",
+      "file": "tests/Feature/XTest.php",
+      "error": "Expected response status code [200] but received 500.",
+      "first_seen_in": "01-VERIFICATION.md",
+      "last_seen_in": "01-VERIFICATION.md",
+      "first_seen_round": 0,
+      "last_seen_round": 0,
+      "times_seen": 1
+    }
+  ]
+}
+SNAP
+
+  cat > "$PHASE_DIR/known-issues.json" <<'REGISTRY'
+{
+  "schema_version": 1,
+  "phase": "01",
+  "issues": [
+    {
+      "test": "Tests\\Feature\\X > it does the thing",
+      "file": "tests/Feature/XTest.php",
+      "error": "Expected response status code [200] but received 500.",
+      "first_seen_in": "01-VERIFICATION.md",
+      "last_seen_in": "01-VERIFICATION.md",
+      "first_seen_round": 0,
+      "last_seen_round": 0,
+      "times_seen": 1
+    }
+  ]
+}
+REGISTRY
+
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-SUMMARY.md" <<'SUMMARY'
+---
+plan: R01
+status: complete
+commit_hashes: []
+files_modified:
+  - "01-test-phase/remediation/qa/round-01/R01-SUMMARY.md"
+deviations: []
+known_issue_outcomes:
+  - '{"test":"Tests\\Feature\\X > it does the thing","file":"tests/Feature/XTest.php","error":"Expected response status code [200] but received 500.","disposition":"accepted-process-exception","rationale":"Pest namespace failure is pre-existing and non-blocking for this phase"}'
+---
+
+## Summary
+Documented the Pest/PHPUnit known issue as an accepted non-blocking process-exception.
+SUMMARY
+
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-PLAN.md" <<'PLAN'
+---
+round: 01
+title: Known-issues-only Pest namespace process-exception round
+known_issues_input:
+  - '{"test":"Tests\\Feature\\X > it does the thing","file":"tests/Feature/XTest.php","error":"Expected response status code [200] but received 500."}'
+known_issue_resolutions:
+  - '{"test":"Tests\\Feature\\X > it does the thing","file":"tests/Feature/XTest.php","error":"Expected response status code [200] but received 500.","disposition":"accepted-process-exception","rationale":"Pest namespace failure is pre-existing and non-blocking for this phase"}'
+---
+PLAN
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" <<'VERIF'
+---
+writer: write-verification.sh
+result: PASS
+plans_verified:
+  - R01
+---
+## Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| MH-01 | must_have | Pest known issue accepted as non-blocking | PASS | Done |
+VERIF
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"qa_gate_known_issue_count=1"* ]]
+  [[ "$output" == *"qa_gate_known_issues_all_addressed=true"* ]]
+  [[ "$output" != *"qa_gate_known_issues_override=true"* ]]
+  [[ "$output" == *"qa_gate_routing=PROCEED_TO_UAT"* ]]
+}
+
+@test "known-issues disposition mismatch with Pest namespace backslashes fails closed" {
+  create_verif "write-verification.sh" "PASS"
+  mkdir -p "$PHASE_DIR/remediation/qa/round-01"
+  printf 'stage=verify\nround=01\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-KNOWN-ISSUES.json" <<'SNAP'
+{
+  "schema_version": 1,
+  "phase": "01",
+  "issues": [
+    {
+      "test": "Tests\\Feature\\X > it does the thing",
+      "file": "tests/Feature/XTest.php",
+      "error": "Expected response status code [200] but received 500.",
+      "first_seen_in": "01-VERIFICATION.md",
+      "last_seen_in": "01-VERIFICATION.md",
+      "first_seen_round": 0,
+      "last_seen_round": 0,
+      "times_seen": 1
+    }
+  ]
+}
+SNAP
+
+  cat > "$PHASE_DIR/known-issues.json" <<'REGISTRY'
+{
+  "schema_version": 1,
+  "phase": "01",
+  "issues": [
+    {
+      "test": "Tests\\Feature\\X > it does the thing",
+      "file": "tests/Feature/XTest.php",
+      "error": "Expected response status code [200] but received 500.",
+      "first_seen_in": "01-VERIFICATION.md",
+      "last_seen_in": "01-VERIFICATION.md",
+      "first_seen_round": 0,
+      "last_seen_round": 0,
+      "times_seen": 1
+    }
+  ]
+}
+REGISTRY
+
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-SUMMARY.md" <<'SUMMARY'
+---
+plan: R01
+status: complete
+commit_hashes: []
+files_modified:
+  - "01-test-phase/remediation/qa/round-01/R01-SUMMARY.md"
+deviations: []
+known_issue_outcomes:
+  - '{"test":"Tests\\Feature\\X > it does the thing","file":"tests/Feature/XTest.php","error":"Expected response status code [200] but received 500.","disposition":"resolved","rationale":"Incorrectly marked as resolved"}'
+---
+
+## Summary
+Recorded a disposition that disagrees with the plan.
+SUMMARY
+
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-PLAN.md" <<'PLAN'
+---
+round: 01
+title: Known-issues-only Pest namespace mismatch round
+known_issues_input:
+  - '{"test":"Tests\\Feature\\X > it does the thing","file":"tests/Feature/XTest.php","error":"Expected response status code [200] but received 500."}'
+known_issue_resolutions:
+  - '{"test":"Tests\\Feature\\X > it does the thing","file":"tests/Feature/XTest.php","error":"Expected response status code [200] but received 500.","disposition":"accepted-process-exception","rationale":"Pest namespace failure is pre-existing and non-blocking for this phase"}'
+---
+PLAN
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" <<'VERIF'
+---
+writer: write-verification.sh
+result: PASS
+plans_verified:
+  - R01
+---
+## Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| MH-01 | must_have | Pest known issue disposition mismatch is detected | PASS | Done |
+VERIF
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"qa_gate_routing=REMEDIATION_REQUIRED"* ]]
+}
+
+@test "backslash-bearing known issue omissions fail closed in non-empty round sections" {
+  local omission=""
+
+  for omission in input resolution outcome; do
+    PHASE_DIR="$TEST_DIR/01-${omission}-omission-phase"
+    mkdir -p "$PHASE_DIR/remediation/qa/round-01"
+    create_verif "write-verification.sh" "PASS"
+    printf 'stage=verify\nround=01\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+
+    cat > "$PHASE_DIR/remediation/qa/round-01/R01-KNOWN-ISSUES.json" <<'SNAP'
+{
+  "schema_version": 1,
+  "phase": "01",
+  "issues": [
+    {"test":"ControlKnownIssueTests","file":"tests/ControlKnownIssueTest.php","error":"control failure","first_seen_in":"01-VERIFICATION.md","last_seen_in":"01-VERIFICATION.md","first_seen_round":0,"last_seen_round":0,"times_seen":1},
+    {"test":"Tests\\Feature\\X > it does the thing","file":"tests/Feature/XTest.php","error":"Expected response status code [200] but received 500.","first_seen_in":"01-VERIFICATION.md","last_seen_in":"01-VERIFICATION.md","first_seen_round":0,"last_seen_round":0,"times_seen":1}
+  ]
+}
+SNAP
+
+    cat > "$PHASE_DIR/known-issues.json" <<'REGISTRY'
+{
+  "schema_version": 1,
+  "phase": "01",
+  "issues": [
+    {"test":"ControlKnownIssueTests","file":"tests/ControlKnownIssueTest.php","error":"control failure","first_seen_in":"01-VERIFICATION.md","last_seen_in":"01-VERIFICATION.md","first_seen_round":0,"last_seen_round":0,"times_seen":1},
+    {"test":"Tests\\Feature\\X > it does the thing","file":"tests/Feature/XTest.php","error":"Expected response status code [200] but received 500.","first_seen_in":"01-VERIFICATION.md","last_seen_in":"01-VERIFICATION.md","first_seen_round":0,"last_seen_round":0,"times_seen":1}
+  ]
+}
+REGISTRY
+
+    {
+      printf '%s\n' '---'
+      printf '%s\n' 'round: 01'
+      printf '%s\n' 'title: Non-empty known-issue omission fails closed'
+      printf '%s\n' 'known_issues_input:'
+      printf '  - '\''{"test":"ControlKnownIssueTests","file":"tests/ControlKnownIssueTest.php","error":"control failure"}'\''\n'
+      if [ "$omission" != "input" ]; then
+        printf '  - '\''{"test":"Tests\\Feature\\X > it does the thing","file":"tests/Feature/XTest.php","error":"Expected response status code [200] but received 500."}'\''\n'
+      fi
+      printf '%s\n' 'known_issue_resolutions:'
+      printf '  - '\''{"test":"ControlKnownIssueTests","file":"tests/ControlKnownIssueTest.php","error":"control failure","disposition":"accepted-process-exception","rationale":"Control issue remains non-blocking"}'\''\n'
+      if [ "$omission" != "resolution" ]; then
+        printf '  - '\''{"test":"Tests\\Feature\\X > it does the thing","file":"tests/Feature/XTest.php","error":"Expected response status code [200] but received 500.","disposition":"accepted-process-exception","rationale":"Pest namespace issue remains non-blocking"}'\''\n'
+      fi
+      printf '%s\n' '---'
+    } > "$PHASE_DIR/remediation/qa/round-01/R01-PLAN.md"
+
+    {
+      printf '%s\n' '---'
+      printf '%s\n' 'plan: R01'
+      printf '%s\n' 'status: complete'
+      printf '%s\n' 'commit_hashes: []'
+      printf '%s\n' 'files_modified:'
+      printf '  - "%s"\n' "$(basename "$PHASE_DIR")/remediation/qa/round-01/R01-SUMMARY.md"
+      printf '%s\n' 'deviations: []'
+      printf '%s\n' 'known_issue_outcomes:'
+      printf '  - '\''{"test":"ControlKnownIssueTests","file":"tests/ControlKnownIssueTest.php","error":"control failure","disposition":"accepted-process-exception","rationale":"Control issue remains non-blocking"}'\''\n'
+      if [ "$omission" != "outcome" ]; then
+        printf '  - '\''{"test":"Tests\\Feature\\X > it does the thing","file":"tests/Feature/XTest.php","error":"Expected response status code [200] but received 500.","disposition":"accepted-process-exception","rationale":"Pest namespace issue remains non-blocking"}'\''\n'
+      fi
+      printf '%s\n' '---'
+      printf '\n## Summary\nOmitted one backslash-bearing issue from a non-empty section.\n'
+    } > "$PHASE_DIR/remediation/qa/round-01/R01-SUMMARY.md"
+
+    cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" <<'VERIF'
+---
+writer: write-verification.sh
+result: PASS
+plans_verified:
+  - R01
+---
+## Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| MH-01 | must_have | Partial omission remains blocked | PASS | Done |
+VERIF
+
+    run bash "$SCRIPT" "$PHASE_DIR"
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"qa_gate_routing=REMEDIATION_REQUIRED"* ]]
+  done
 }
 
 @test "mixed input_mode both round can satisfy fail and carried known-issue contracts together" {
@@ -5128,7 +6054,7 @@ status: complete
 commit_hashes: []
 files_modified:
   - "README.md"
-  - "01-test-phase/remediation/qa/round-01/R01-SUMMARY.md"
+  - ".vbw-planning/phases/01-test-phase/remediation/qa/round-01/R01-SUMMARY.md"
 deviations: []
 ---
 
@@ -5265,7 +6191,7 @@ VERIF
 
 @test "committed and worktree evidence can combine for a plan-amendment round" {
   init_git_repo
-  baseline_commit=$(commit_repo_file "01-test-phase/01-01-PLAN.md" "original plan")
+  baseline_commit=$(commit_repo_file ".vbw-planning/phases/01-test-phase/01-01-PLAN.md" "original plan")
   create_verif "write-verification.sh" "FAIL" "## Must-Have Checks
 | ID | Category | Description | Status | Evidence |
 |----|----------|-------------|--------|----------|

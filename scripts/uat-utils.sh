@@ -8,6 +8,12 @@
 #   extract_status_value <file>   — Extract status value from YAML frontmatter
 #                                   with body-level fallback for brownfield files.
 #                                   Applies normalize_uat_status automatically.
+#   uat_file_status_class <file>  — Classify a UAT file as complete,
+#                                   issues_found, active, or none.
+#   current_uat_status_class <dir> — Classify the active UAT for a phase dir.
+#   current_uat_blocks_phase_completion <dir>
+#                                — True when the active UAT prevents phase
+#                                  completion/archive.
 #   latest_non_source_uat <dir>   — Find the latest canonical UAT file in a phase
 #                                   directory, excluding SOURCE-UAT.md copies.
 #   current_uat <dir>             — Find the active UAT file (round-dir first,
@@ -52,43 +58,260 @@ normalize_uat_status() {
 # map LLM synonyms (all_pass, passed, verified, failed, etc.) to canonical
 # values. SUMMARY files use their own extraction path in summary-utils.sh
 # which never calls normalize_uat_status(), so these mappings are UAT-only.
-extract_status_value() {
+_uat_ascii_lower() {
+  local input="${1:-}"
+  local output=""
+  local idx=0
+  local char
+
+  while [ "$idx" -lt "${#input}" ]; do
+    char="${input:$idx:1}"
+    case "$char" in
+      A) char=a ;;
+      B) char=b ;;
+      C) char=c ;;
+      D) char=d ;;
+      E) char=e ;;
+      F) char=f ;;
+      G) char=g ;;
+      H) char=h ;;
+      I) char=i ;;
+      J) char=j ;;
+      K) char=k ;;
+      L) char=l ;;
+      M) char=m ;;
+      N) char=n ;;
+      O) char=o ;;
+      P) char=p ;;
+      Q) char=q ;;
+      R) char=r ;;
+      S) char=s ;;
+      T) char=t ;;
+      U) char=u ;;
+      V) char=v ;;
+      W) char=w ;;
+      X) char=x ;;
+      Y) char=y ;;
+      Z) char=z ;;
+    esac
+    output="${output}${char}"
+    idx=$((idx + 1))
+  done
+
+  printf '%s' "$output"
+}
+
+_uat_trim_ws() {
+  local value="${1:-}"
+  value="${value%$'\r'}"
+  value="${value#"${value%%[![:space:]]*}"}"
+  value="${value%"${value##*[![:space:]]}"}"
+  printf '%s' "$value"
+}
+
+_uat_strip_matching_quotes() {
+  local value="${1:-}"
+  case "$value" in
+    \"*\")
+      value="${value#\"}"
+      value="${value%\"}"
+      ;;
+    \'*\')
+      value="${value#\'}"
+      value="${value%\'}"
+      ;;
+  esac
+  printf '%s' "$value"
+}
+
+_uat_is_frontmatter_delimiter() {
+  local line
+  line="${1:-}"
+  line="${line%$'\r'}"
+  line="${line%"${line##*[![:space:]]}"}"
+  [ "$line" = "---" ]
+}
+
+_uat_status_value_from_line() {
+  local line="${1:-}"
+  local key value
+
+  case "$line" in
+    *:*) ;;
+    *) return 1 ;;
+  esac
+
+  key=${line%%:*}
+  key=$(_uat_trim_ws "$key")
+  key=$(_uat_ascii_lower "$key")
+  [ "$key" = "status" ] || return 1
+
+  value=${line#*:}
+  value=$(_uat_trim_ws "$value")
+  value=$(_uat_strip_matching_quotes "$value")
+  value=$(_uat_ascii_lower "$value")
+  printf '%s' "$value"
+  return 0
+}
+
+_uat_status_value_known_for_body_fallback() {
+  case "${1:-}" in
+    issues_found|complete|passed|in_progress|pending|failed|aborted|all_pass|all_passed|pass|verified|no_issues)
+      return 0
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
+_extract_uat_status_value() {
   local file="$1"
-  local result
-  # Try frontmatter first
-  result=$(awk '
-    BEGIN { in_fm = 0 }
-    NR == 1 && /^---[[:space:]]*$/ { in_fm = 1; next }
-    in_fm && /^---[[:space:]]*$/ { exit }
-    in_fm && tolower($0) ~ /^[[:space:]]*status[[:space:]]*:/ {
-      value = $0
-      sub(/^[^:]*:[[:space:]]*/, "", value)
-      gsub(/[[:space:]]+$/, "", value)
-      gsub(/^[\"]/,  "", value); gsub(/[\"]/,  "", value)
-      gsub(/^'"'"'/, "", value); gsub(/'"'"'$/, "", value)
-      print tolower(value)
-      exit
-    }
-  ' "$file" 2>/dev/null || true)
-  # Fallback: scan body for unindented status: line (brownfield/manual UATs)
-  # Only accept known status values to avoid matching prose like "Status: The system works"
-  if [ -z "$result" ]; then
-    result=$(awk '
-      tolower($0) ~ /^status[[:space:]]*:/ {
-        value = $0
-        sub(/^[^:]*:[[:space:]]*/, "", value)
-        gsub(/[[:space:]]+$/, "", value)
-        v = tolower(value)
-        if (v == "issues_found" || v == "complete" || v == "passed" || v == "in_progress" || v == "pending" || v == "failed" || v == "aborted" || v == "all_pass" || v == "all_passed" || v == "pass" || v == "verified" || v == "no_issues") {
-          print v
-          exit
-        }
-      }
-    ' "$file" 2>/dev/null || true)
-  fi
-  # Normalize LLM synonyms to canonical values
+  local line line_num=0 result
+
+  # Try frontmatter first. A blank frontmatter status key is authoritative;
+  # callers that need class semantics use uat_file_has_frontmatter_status_key()
+  # to classify that artifact as active instead of falling through to body prose.
+  while IFS= read -r line || [ -n "$line" ]; do
+    line_num=$((line_num + 1))
+    line="${line%$'\r'}"
+    if [ "$line_num" -eq 1 ]; then
+      _uat_is_frontmatter_delimiter "$line" || break
+      continue
+    fi
+    _uat_is_frontmatter_delimiter "$line" && break
+    if result=$(_uat_status_value_from_line "$line"); then
+      printf '%s' "$result"
+      return 0
+    fi
+  done < "$file"
+
+  # Fallback: scan body for unindented status: line (brownfield/manual UATs).
+  # Only accept known status values to avoid matching prose like
+  # "Status: The system works".
+  while IFS= read -r line || [ -n "$line" ]; do
+    line="${line%$'\r'}"
+    case "$line" in
+      [[:space:]]*) continue ;;
+    esac
+    if result=$(_uat_status_value_from_line "$line") && _uat_status_value_known_for_body_fallback "$result"; then
+      printf '%s' "$result"
+      return 0
+    fi
+  done < "$file"
+
+  printf '%s' ""
+}
+
+extract_status_value() {
+  local file="$1" result
+  result=$(_extract_uat_status_value "$file")
   result=$(normalize_uat_status "$result")
   printf '%s' "$result"
+}
+
+# uat_status_class — Classify a normalized or raw UAT status value.
+#
+# Completion/archive is allowed only for explicit passing terminal statuses.
+# `issues_found` is a terminal UAT result that requires remediation.
+# Empty raw input maps to `none`; callers deciding phase completion/archive from
+# an artifact must use uat_file_status_class(), current_uat_status_class(), or
+# current_uat_blocks_phase_completion() instead. Those file-aware helpers treat
+# remediation round UAT files and artifacts with a blank frontmatter `status:`
+# key as `active`, while preserving legacy `none` for phase-root files with no
+# authoritative status key.
+# Unrecognized and non-terminal raw statuses mean active verification is still
+# authoritative and must block phase completion when used by file-aware callers.
+uat_status_class() {
+  local status
+  status=$(normalize_uat_status "${1:-}")
+  case "$status" in
+    "")
+      printf '%s\n' "none"
+      ;;
+    complete)
+      printf '%s\n' "complete"
+      ;;
+    issues_found)
+      printf '%s\n' "issues_found"
+      ;;
+    *)
+      printf '%s\n' "active"
+      ;;
+  esac
+}
+
+# uat_file_status_value — Extract and normalize UAT status directly.
+#
+# This intentionally does not call extract_status_value(), because some callers
+# validate behavior when that legacy function is degraded or locally overridden.
+# The classification contract must remain tied to the artifact content itself.
+uat_file_status_value() {
+  local file="$1" result
+  [ -f "$file" ] || return 1
+  result=$(_extract_uat_status_value "$file")
+  result=$(normalize_uat_status "$result")
+  printf '%s' "$result"
+}
+
+uat_file_has_frontmatter_status_key() {
+  local file="$1"
+  local line line_num=0
+  [ -f "$file" ] || return 1
+
+  while IFS= read -r line || [ -n "$line" ]; do
+    line_num=$((line_num + 1))
+    line="${line%$'\r'}"
+    if [ "$line_num" -eq 1 ]; then
+      _uat_is_frontmatter_delimiter "$line" || return 1
+      continue
+    fi
+    _uat_is_frontmatter_delimiter "$line" && return 1
+    if _uat_status_value_from_line "$line" >/dev/null; then
+      return 0
+    fi
+  done < "$file"
+
+  return 1
+}
+
+uat_file_is_remediation_round_uat() {
+  case "$1" in
+    */remediation/uat/round-*/R*-UAT.md|*/remediation/round-*/R*-UAT.md)
+      return 0
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
+# uat_file_status_class — Classify a concrete UAT artifact.
+#
+# Existing remediation round UAT artifacts are authoritative blockers even when
+# their status is missing or blank, so they classify as `active`. A blank
+# frontmatter `status:` key is also an explicit active blocker. Brownfield
+# phase-root UAT files with no authoritative status key remain `none`, preserving
+# degraded legacy behavior where ignored prose/body status mentions do not block
+# completion by themselves.
+uat_file_status_class() {
+  local file="$1" status
+  [ -f "$file" ] || { printf '%s\n' "none"; return 0; }
+  status=$(uat_file_status_value "$file")
+  if [ -n "$status" ]; then
+    uat_status_class "$status"
+  elif uat_file_has_frontmatter_status_key "$file" || uat_file_is_remediation_round_uat "$file"; then
+    printf '%s\n' "active"
+  else
+    printf '%s\n' "none"
+  fi
+}
+
+uat_status_class_blocks_completion() {
+  case "${1:-none}" in
+    issues_found|active) return 0 ;;
+    *) return 1 ;;
+  esac
 }
 
 # latest_non_source_uat — Find the latest [0-9]*-UAT.md file in a directory,
@@ -241,7 +464,7 @@ extract_round_issue_ids() {
       }
       return out
     }
-    /^### [PD][0-9]/ {
+    /^### (P[0-9]+(-T[0-9]+)?|PR[0-9]+-T[0-9]+|D[0-9]+)(:|[[:space:]])/ {
       id = $2
       sub(/:$/, "", id)
       has_issue = 0
@@ -347,4 +570,25 @@ current_uat() {
 
   # Fall back to phase-root UAT
   latest_non_source_uat "${dir%/}"
+}
+
+current_uat_status_class() {
+  local dir="$1" uat_file
+  uat_file=$(current_uat "$dir")
+  [ -n "$uat_file" ] && [ -f "$uat_file" ] || { printf '%s\n' "none"; return 0; }
+  uat_file_status_class "$uat_file"
+}
+
+current_uat_blocks_phase_completion() {
+  local class
+  class=$(current_uat_status_class "$1" 2>/dev/null || printf '%s\n' "none")
+  uat_status_class_blocks_completion "$class"
+}
+
+current_uat_needs_remediation() {
+  [ "$(current_uat_status_class "$1" 2>/dev/null || printf '%s\n' "none")" = "issues_found" ]
+}
+
+current_uat_needs_verification() {
+  [ "$(current_uat_status_class "$1" 2>/dev/null || printf '%s\n' "none")" = "active" ]
 }

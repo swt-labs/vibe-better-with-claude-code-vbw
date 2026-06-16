@@ -31,12 +31,26 @@ PROJECT_EXISTS=$(get_kv "project_exists")
 [ "${PROJECT_EXISTS:-false}" != "true" ] && exit 0
 
 ACTIVE_UAT_PHASE=$(get_kv "uat_issues_phase")
+ACTIVE_UAT_BLOCKING_PHASE=$(get_kv "uat_blocking_phase")
+ACTIVE_UAT_BLOCKING_STATUS=$(get_kv "uat_blocking_status")
 MILESTONE_UAT_ISSUES=$(get_kv "milestone_uat_issues")
 MILESTONE_UAT_PHASE=$(get_kv "milestone_uat_phase")
 MILESTONE_UAT_SLUG=$(get_kv "milestone_uat_slug")
 
 if [ "${ACTIVE_UAT_PHASE:-none}" != "none" ]; then
   echo "Archive blocked: unresolved active-phase UAT issues in Phase ${ACTIVE_UAT_PHASE}. Remediate and re-run UAT before archiving."
+  exit 2
+fi
+
+if [ "${ACTIVE_UAT_BLOCKING_PHASE:-none}" != "none" ]; then
+  case "${ACTIVE_UAT_BLOCKING_STATUS:-active}" in
+    issues_found)
+      echo "Archive blocked: unresolved active-phase UAT issues in Phase ${ACTIVE_UAT_BLOCKING_PHASE}. Remediate and re-run UAT before archiving."
+      ;;
+    *)
+      echo "Archive blocked: active-phase UAT is still in progress for Phase ${ACTIVE_UAT_BLOCKING_PHASE}. Complete or resolve UAT before archiving."
+      ;;
+  esac
   exit 2
 fi
 

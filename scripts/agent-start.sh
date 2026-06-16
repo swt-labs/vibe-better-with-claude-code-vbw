@@ -1,18 +1,25 @@
 #!/bin/bash
 set -u
-# SubagentStart hook: Record active agent type for cost attribution
-# Writes stripped agent name to .vbw-planning/.active-agent
+# SubagentStart hook: Record active agent type for cost attribution.
+# Active-agent state is session-local when a safe session id is available; root
+# .active-agent* files are rebuilt as aggregate display/legacy fallback state.
 
 INPUT=$(cat)
 PLANNING_DIR="${VBW_PLANNING_DIR:-.vbw-planning}"
 [ ! -d "$PLANNING_DIR" ] && exit 0
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+if [ -f "$SCRIPT_DIR/lib/active-agent-state.sh" ]; then
+  # shellcheck source=lib/active-agent-state.sh
+  . "$SCRIPT_DIR/lib/active-agent-state.sh"
+else
+  exit 0
+fi
 
 NATIVE_AGENT_TYPE=$(echo "$INPUT" | jq -r '.agent_type // ""' 2>/dev/null)
 LEGACY_AGENT_ROLE_SOURCE=$(echo "$INPUT" | jq -r '.agent_name // .agentName // .name // ""' 2>/dev/null)
 
 # Only track VBW agents; maintain reference count for concurrent agents
 COUNT_FILE="$PLANNING_DIR/.active-agent-count"
-LOCK_DIR="$PLANNING_DIR/.active-agent-count.lock"
 
 normalize_agent_role() {
   local value="$1"
@@ -106,78 +113,15 @@ else
   ROLE=""
 fi
 
-acquire_lock() {
-  local attempts=0
-  local max_attempts=100
-  local now lock_mtime age
-  while [ "$attempts" -lt "$max_attempts" ]; do
-    if mkdir "$LOCK_DIR" 2>/dev/null; then
-      return 0
-    fi
-
-    attempts=$((attempts + 1))
-
-    # Stale lock guard: if lock persists for >5s, clear and retry.
-    if [ "$attempts" -eq 50 ] && [ -d "$LOCK_DIR" ]; then
-      now=$(date +%s)
-      if [ "$(uname)" = "Darwin" ]; then
-        lock_mtime=$(stat -f %m "$LOCK_DIR" 2>/dev/null || echo 0)
-      else
-        lock_mtime=$(stat -c %Y "$LOCK_DIR" 2>/dev/null || echo 0)
-      fi
-      age=$((now - lock_mtime))
-      if [ "$age" -gt 5 ]; then
-        rmdir "$LOCK_DIR" 2>/dev/null || true
-      fi
-    fi
-
-    sleep 0.01
-  done
-  # Could not acquire lock — proceed without it (best-effort).
-  return 1
-}
-
-release_lock() {
-  rmdir "$LOCK_DIR" 2>/dev/null || true
-}
-
-read_count() {
-  local raw
-  raw=$(cat "$COUNT_FILE" 2>/dev/null | tr -d '[:space:]')
-  if echo "$raw" | grep -Eq '^[0-9]+$'; then
-    printf '%s' "$raw"
-  else
-    printf '0'
-  fi
-}
-
-update_agent_markers() {
-  local count
-  count=$(read_count)
-
-  # Write count first: if crash between writes, an elevated count is safer
-  # than a missing count (agent-stop recovery handles both cases).
-  echo $((count + 1)) > "$COUNT_FILE"
-  echo "$ROLE" > "$PLANNING_DIR/.active-agent"
-}
+AGENT_PID=$(echo "$INPUT" | jq -r '.pid // ""' 2>/dev/null)
+if [ -z "$AGENT_PID" ]; then
+  AGENT_PID="$PPID"
+fi
 
 if [ -n "$ROLE" ]; then
-  if acquire_lock; then
-    trap 'release_lock' EXIT INT TERM
-    update_agent_markers
-    release_lock
-    trap - EXIT INT TERM
-  else
-    # Lock unavailable — proceed best-effort without lock.
-    update_agent_markers
-  fi
+  vbw_active_agent_start "$PLANNING_DIR" "$INPUT" "$ROLE" "$AGENT_PID"
 
   # Register agent PID for tmux cleanup
-  SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-  AGENT_PID=$(echo "$INPUT" | jq -r '.pid // ""' 2>/dev/null)
-  if [ -z "$AGENT_PID" ]; then
-    AGENT_PID="$PPID"
-  fi
   if [ -n "$AGENT_PID" ] && [ -f "$SCRIPT_DIR/agent-pid-tracker.sh" ]; then
     bash "$SCRIPT_DIR/agent-pid-tracker.sh" register "$AGENT_PID" 2>/dev/null || true
   fi

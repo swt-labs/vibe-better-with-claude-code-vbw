@@ -99,21 +99,88 @@ check_not_regex() {
   fi
 }
 
+check_before() {
+  local label="$1"
+  local haystack="$2"
+  local before="$3"
+  local after="$4"
+  local before_line after_line
+
+  before_line=$(grep -nF -- "$before" <<< "$haystack" | head -n 1 | cut -d: -f1 || true)
+  after_line=$(grep -nF -- "$after" <<< "$haystack" | head -n 1 | cut -d: -f1 || true)
+
+  if [ -n "$before_line" ] && [ -n "$after_line" ] && [ "$before_line" -lt "$after_line" ]; then
+    pass "$label"
+  else
+    fail "$label"
+  fi
+}
+
+check_literal_before_regex() {
+  local label="$1"
+  local haystack="$2"
+  local before="$3"
+  local after_regex="$4"
+  local before_line after_line
+
+  before_line=$(grep -nF -- "$before" <<< "$haystack" | head -n 1 | cut -d: -f1 || true)
+  after_line=$(grep -nE -- "$after_regex" <<< "$haystack" | head -n 1 | cut -d: -f1 || true)
+
+  if [ -n "$before_line" ] && [ -n "$after_line" ] && [ "$before_line" -lt "$after_line" ]; then
+    pass "$label"
+  else
+    fail "$label"
+  fi
+}
+
+extract_uat_subsection() {
+  local heading="$1"
+
+  awk -v heading="$heading" '
+    /^### Mode: UAT Remediation[[:space:]]*$/ { in_uat = 1 }
+    /^### Mode: Milestone UAT Recovery[[:space:]]*$/ { in_uat = 0; in_section = 0 }
+    in_uat && $0 ~ ("^#### " heading "[[:space:]]*$") { in_section = 1 }
+    in_uat && in_section && /^#### / && $0 !~ ("^#### " heading "[[:space:]]*$") { in_section = 0 }
+    in_uat && in_section { print }
+  ' "$VIBE_FILE"
+}
+
 UAT_BLOCK=$(awk '
   /^### Mode: UAT Remediation[[:space:]]*$/ { in_block = 1 }
   /^### Mode: Milestone UAT Recovery[[:space:]]*$/ { in_block = 0 }
   in_block { print }
 ' "$VIBE_FILE")
 
-SPAWN_ARG_ISOLATION_RE='(^|[^[:alnum:]_])"?isolation"?([[:space:]]*[:=][[:space:]]*"?worktree"?|[[:space:]]+worktree)([^[:alnum:]_]|$)'
-SPAWN_ARG_BACKGROUND_RE='(^|[^[:alnum:]_])"?run_in_background"?([[:space:]]*[:=][[:space:]]*"?(true|false)"?|[[:space:]]+(true|false))([^[:alnum:]_]|$)'
+FIX_BLOCK=$(awk '
+  /^### Mode: UAT Remediation[[:space:]]*$/ { in_uat = 1 }
+  /^### Mode: Milestone UAT Recovery[[:space:]]*$/ { in_uat = 0; in_fix = 0 }
+  in_uat && /^#### fix[[:space:]]*$/ { in_fix = 1 }
+  in_uat && /^### Fallback remediation summary[[:space:]]*$/ { in_fix = 0 }
+  in_uat && in_fix { print }
+' "$VIBE_FILE")
+
+UAT_RESEARCH_BLOCK=$(extract_uat_subsection research)
+UAT_PLAN_BLOCK=$(extract_uat_subsection plan)
+UAT_EXECUTE_BLOCK=$(extract_uat_subsection execute)
+
+SPAWN_ARG_ISOLATION_RE='(^|[^[:alnum:]_])"?isolation"?([[:space:]]*[:=][[:space:]]*"?[^"[:space:]]+"?|[[:space:]]+(worktree|"?\{[A-Za-z0-9_:-]+\}"?|"?\$[A-Za-z_][A-Za-z0-9_]*"?|"?\$\{[A-Za-z_][A-Za-z0-9_]*\}"?))([^[:alnum:]_]|$)'
+SPAWN_ARG_BACKGROUND_RE='(^|[^[:alnum:]_])"?run_in_background"?([[:space:]]*[:=][[:space:]]*"?[^"[:space:]]+"?|[[:space:]]+(true|false|"?\{[A-Za-z0-9_:-]+\}"?|"?\$[A-Za-z_][A-Za-z0-9_]*"?|"?\$\{[A-Za-z_][A-Za-z0-9_]*\}"?))([^[:alnum:]_]|$)'
 SPAWN_ARG_TEAM_NAME_RE='(^|[^[:alnum:]_])"?team_name"?([[:space:]]*[:=]|[[:space:]]+"?[A-Za-z0-9_.-]+)([^[:alnum:]_.-]|$)'
 SPAWN_ARG_NAME_RE='(^|[^[:alnum:]_])"?name"?([[:space:]]*[:=]|[[:space:]]+"?[A-Za-z0-9_.-]+)([^[:alnum:]_.-]|$)'
+SPAWN_ARG_CWD_RE='(^|[^[:alnum:]_])"?(cwd|working_dir|workingDirectory|workdir)"?([[:space:]]*[:=][[:space:]]*"?([^"[:space:]]+|\{[A-Za-z0-9_:-]+\}|\$[A-Za-z_][A-Za-z0-9_]*|\$\{[A-Za-z_][A-Za-z0-9_]*\})"?|[[:space:]]+"?([./~][^"[:space:]]*|[[:alnum:]_-]+/[^"[:space:]]*|\{[A-Za-z0-9_:-]+\}|\$[A-Za-z_][A-Za-z0-9_]*|\$\{[A-Za-z_][A-Za-z0-9_]*\})"?)'
+NON_TEAM_SPAWN_SHAPE_TEXT='Non-team spawn shape: omit `team_name`, `run_in_background`, `isolation`, and worktree cwd fields (`cwd`, `working_dir`, `workingDirectory`, `workdir`)'
+LABEL_ONLY_NAME_TEXT='`name` is optional label-only metadata; never use it for routing, lifecycle state, or team semantics'
 
 if [ -z "$UAT_BLOCK" ]; then
   fail "vibe.md exposes a UAT Remediation block"
 else
   pass "vibe.md exposes a UAT Remediation block"
+fi
+
+if [ -z "$FIX_BLOCK" ]; then
+  fail "vibe.md exposes a UAT Remediation fix block"
+else
+  pass "vibe.md exposes a UAT Remediation fix block"
 fi
 
 if [ -f "$VALIDATOR" ]; then
@@ -130,10 +197,49 @@ check_contains "artifact contract validates legacy metadata paths directly" "$UA
 check_contains "spawn contract uses TodoWrite as sole stage progress tracker" "$UAT_BLOCK" 'TodoWrite is the only progress tracker for these stages'
 check_contains "spawn contract distinguishes work-unit delegation from stage tracking" "$UAT_BLOCK" 'TaskCreate/Agent is allowed only for real Scout/Lead/Dev work-unit delegation inside the current stage'
 check_contains "spawn contract requires plain sequential subagent calls" "$UAT_BLOCK" 'UAT remediation spawns are plain sequential subagent calls'
-check_contains "spawn contract bans team/background/isolation metadata" "$UAT_BLOCK" 'Do not pass team metadata (`team_name`), per-agent names (`name`), `run_in_background`, or the `isolation` parameter'
-check_contains "spawn contract explains unreliable worktree isolation" "$UAT_BLOCK" 'Claude Code worktree isolation is not reliable for this path'
+check_contains "spawn contract omits team/background/isolation/cwd fields" "$UAT_BLOCK" "$NON_TEAM_SPAWN_SHAPE_TEXT"
+check_contains "spawn contract treats name as label-only metadata" "$UAT_BLOCK" "$LABEL_ONLY_NAME_TEXT"
+check_contains "plan spawn contract omits team/background/isolation/cwd fields" "$UAT_PLAN_BLOCK" "$NON_TEAM_SPAWN_SHAPE_TEXT"
+check_contains "plan spawn contract treats name as label-only metadata" "$UAT_PLAN_BLOCK" "$LABEL_ONLY_NAME_TEXT"
+check_contains "execute spawn contract omits team/background/isolation/cwd fields" "$UAT_EXECUTE_BLOCK" "$NON_TEAM_SPAWN_SHAPE_TEXT"
+check_contains "execute spawn contract treats name as label-only metadata" "$UAT_EXECUTE_BLOCK" "$LABEL_ONLY_NAME_TEXT"
+check_not_contains "spawn contract rejects stale no team/name ban" "$UAT_BLOCK" 'no `team_name`, `name`'
+check_not_contains "spawn contract rejects stale omit team/name ban" "$UAT_BLOCK" 'omit `team_name`, `name`'
+check_contains "spawn contract explains unreliable worktree isolation" "$UAT_BLOCK" 'Claude Code worktree isolation and spawn cwd handoffs are not reliable for this path'
+check_contains "spawn contract explains unreliable cwd handoffs" "$UAT_BLOCK" 'spawn cwd handoffs are not reliable for this path'
 check_contains "round metadata prohibition includes summary_path" "$UAT_BLOCK" 'round_dir`, `research_path`, `plan_path`, and `summary_path`'
 check_contains "failed artifact validation blocks state advance" "$UAT_BLOCK" 'STOP without advancing state'
+check_contains "UAT no-tool circuit breaker is documented" "$UAT_BLOCK" 'Subagent no-tool circuit breaker'
+check_contains "UAT no-tool breaker names unavailable tool signals" "$UAT_BLOCK" 'tools, shell/Bash, filesystem, edits, or API-session access are unavailable'
+check_not_contains "UAT no-tool breaker avoids Bash-only wording" "$UAT_BLOCK" 'tools, Bash, filesystem, edits, or API-session access are unavailable'
+check_contains "UAT no-tool breaker stops without advancing stage" "$UAT_BLOCK" 'STOP without advancing `.uat-remediation-stage`'
+check_contains "UAT no-tool breaker avoids same-prompt retry" "$UAT_BLOCK" 'do not retry the same prompt'
+check_contains "UAT research site applies no-tool breaker before validation" "$UAT_BLOCK" 'If Scout returns a no-tool/tool-provisioning failure'
+check_contains "UAT research allows verified-safe Bash live validation" "$UAT_RESEARCH_BLOCK" 'Authenticated/private read-only checks use verified-safe Bash helper scripts or curl wrappers'
+check_contains "UAT research keeps public validation on WebFetch" "$UAT_RESEARCH_BLOCK" 'Public/anonymous HTTP validation uses WebFetch'
+check_contains "UAT research defers unsafe validation" "$UAT_RESEARCH_BLOCK" 'unsafe or mutating checks; defer those to Dev/Debugger'
+check_contains "UAT research requests Live Validation Evidence section" "$UAT_RESEARCH_BLOCK" '## Live Validation Evidence'
+check_contains "UAT research evidence includes command_shape" "$UAT_RESEARCH_BLOCK" 'command_shape'
+check_contains "UAT research evidence includes exit_status" "$UAT_RESEARCH_BLOCK" 'exit_status'
+check_contains "UAT research evidence includes redacted_evidence" "$UAT_RESEARCH_BLOCK" 'redacted_evidence'
+check_contains "UAT research evidence includes expected_shape" "$UAT_RESEARCH_BLOCK" 'expected_shape'
+check_contains "UAT research evidence includes confidence" "$UAT_RESEARCH_BLOCK" 'confidence'
+check_contains "UAT research evidence includes limitations_or_deferred_reason" "$UAT_RESEARCH_BLOCK" 'limitations_or_deferred_reason'
+check_not_contains "UAT research no longer says Scout has no Bash access" "$UAT_RESEARCH_BLOCK" 'no Bash access'
+check_contains "UAT plan site applies no-tool breaker before validation" "$UAT_BLOCK" 'If Lead returns a no-tool/tool-provisioning failure'
+check_contains "UAT execute site applies no-tool breaker before next Dev" "$UAT_BLOCK" 'If Dev returns a no-tool/tool-provisioning failure for the task'
+check_literal_before_regex "UAT research no-tool guard appears before research validation" "$UAT_RESEARCH_BLOCK" 'If Scout returns a no-tool/tool-provisioning failure' 'validate-uat-remediation-artifact\.sh research "\{round_dir\}/R\{RR\}-RESEARCH\.md"'
+check_before "UAT research no-tool guard appears before state advance" "$UAT_RESEARCH_BLOCK" 'If Scout returns a no-tool/tool-provisioning failure' 'uat-remediation-state.sh advance "$PHASE_DIR"'
+check_literal_before_regex "UAT plan no-tool guard appears before plan validation" "$UAT_PLAN_BLOCK" 'If Lead returns a no-tool/tool-provisioning failure' 'validate-uat-remediation-artifact\.sh plan "\{round_dir\}/R\{RR\}-PLAN\.md"'
+check_before "UAT plan no-tool guard appears before state advance" "$UAT_PLAN_BLOCK" 'If Lead returns a no-tool/tool-provisioning failure' 'uat-remediation-state.sh advance "$PHASE_DIR"'
+check_before "UAT execute no-tool guard appears before frontmatter finalization" "$UAT_EXECUTE_BLOCK" 'If Dev returns a no-tool/tool-provisioning failure for the task' '**Frontmatter finalization:**'
+check_literal_before_regex "UAT execute no-tool guard appears before summary validation" "$UAT_EXECUTE_BLOCK" 'If Dev returns a no-tool/tool-provisioning failure for the task' 'validate-uat-remediation-artifact\.sh summary'
+check_before "UAT execute no-tool guard appears before state advance" "$UAT_EXECUTE_BLOCK" 'If Dev returns a no-tool/tool-provisioning failure for the task' 'uat-remediation-state.sh advance "$PHASE_DIR"'
+check_contains "UAT fix site applies no-tool breaker" "$FIX_BLOCK" 'If the quick-fix Dev return reports that tools, shell/Bash, filesystem, edits, or API-session access are unavailable'
+check_contains "UAT fix no-tool breaker stops without advancing stage" "$FIX_BLOCK" 'STOP without advancing `.uat-remediation-stage`'
+check_contains "UAT fix no-tool breaker avoids same-prompt retry" "$FIX_BLOCK" 'do not retry the same prompt'
+check_contains "UAT fix no-tool breaker blocks re-verification" "$FIX_BLOCK" 'do not enter re-verification'
+check_before "UAT fix no-tool guard appears before state advance" "$FIX_BLOCK" 'If the quick-fix Dev return reports that tools, shell/Bash, filesystem, edits, or API-session access are unavailable' 'uat-remediation-state.sh advance "$PHASE_DIR"'
 check_regex "research stage validates exact artifact" "$UAT_BLOCK" 'validate-uat-remediation-artifact\.sh research "\{round_dir\}/R\{RR\}-RESEARCH\.md"'
 check_regex "plan stage validates existing plan_path" "$UAT_BLOCK" 'validate-uat-remediation-artifact\.sh plan "\{plan_path\}"'
 check_regex "plan stage validates exact generated plan" "$UAT_BLOCK" 'validate-uat-remediation-artifact\.sh plan "\{round_dir\}/R\{RR\}-PLAN\.md"'
@@ -145,14 +251,40 @@ check_not_regex "UAT block does not include isolation argument syntax" "$UAT_BLO
 check_not_regex "UAT block does not include background argument syntax" "$UAT_BLOCK" "$SPAWN_ARG_BACKGROUND_RE"
 check_not_regex "UAT block does not include team_name argument syntax" "$UAT_BLOCK" "$SPAWN_ARG_TEAM_NAME_RE"
 check_not_regex "UAT block does not include per-agent name argument syntax" "$UAT_BLOCK" "$SPAWN_ARG_NAME_RE"
+check_not_regex "UAT block does not include worktree cwd argument syntax" "$UAT_BLOCK" "$SPAWN_ARG_CWD_RE"
 check_regex "spawn argument matcher catches isolation equals syntax" 'Agent isolation=worktree' "$SPAWN_ARG_ISOLATION_RE"
 check_regex "spawn argument matcher catches isolation JSON syntax" 'Agent "isolation": "worktree"' "$SPAWN_ARG_ISOLATION_RE"
+check_regex "spawn argument matcher catches isolation placeholder syntax" 'Agent isolation="{mode}"' "$SPAWN_ARG_ISOLATION_RE"
+check_regex "spawn argument matcher catches isolation braced variable equals syntax" 'Agent isolation=${MODE}' "$SPAWN_ARG_ISOLATION_RE"
+check_regex "spawn argument matcher catches isolation braced variable bare syntax" 'Agent isolation ${MODE}' "$SPAWN_ARG_ISOLATION_RE"
 check_regex "spawn argument matcher catches run_in_background equals syntax" 'Agent run_in_background=true' "$SPAWN_ARG_BACKGROUND_RE"
+check_regex "spawn argument matcher catches run_in_background variable syntax" 'Agent run_in_background="$FLAG"' "$SPAWN_ARG_BACKGROUND_RE"
+check_regex "spawn argument matcher catches run_in_background braced variable equals syntax" 'Agent run_in_background=${FLAG}' "$SPAWN_ARG_BACKGROUND_RE"
+check_regex "spawn argument matcher catches run_in_background braced variable bare syntax" 'Agent run_in_background ${FLAG}' "$SPAWN_ARG_BACKGROUND_RE"
 check_regex "spawn argument matcher catches team_name bare syntax" 'Agent team_name vbw-phase-03' "$SPAWN_ARG_TEAM_NAME_RE"
 check_regex "spawn argument matcher catches per-agent name bare syntax" 'Agent name dev-1' "$SPAWN_ARG_NAME_RE"
+check_regex "spawn argument matcher catches generic cwd syntax" 'Agent cwd=/repo' "$SPAWN_ARG_CWD_RE"
+check_regex "spawn argument matcher catches cwd braced variable equals syntax" 'Agent cwd=${PHASE_DIR}' "$SPAWN_ARG_CWD_RE"
+check_regex "spawn argument matcher catches cwd braced variable bare syntax" 'Agent cwd ${PHASE_DIR}' "$SPAWN_ARG_CWD_RE"
+check_regex "spawn argument matcher catches generic working_dir syntax" 'Agent "working_dir": "/repo"' "$SPAWN_ARG_CWD_RE"
+check_regex "spawn argument matcher catches working_dir braced variable syntax" 'Agent working_dir=${ROUND_DIR}' "$SPAWN_ARG_CWD_RE"
+check_regex "spawn argument matcher catches generic workingDirectory syntax" 'Agent workingDirectory /repo' "$SPAWN_ARG_CWD_RE"
+check_regex "spawn argument matcher catches workingDirectory braced variable syntax" 'Agent workingDirectory ${ROUND_DIR}' "$SPAWN_ARG_CWD_RE"
+check_regex "spawn argument matcher catches generic workdir syntax" 'Agent workdir ./tmp' "$SPAWN_ARG_CWD_RE"
+check_regex "spawn argument matcher catches workdir braced variable equals syntax" 'Agent workdir=${PHASE_DIR}' "$SPAWN_ARG_CWD_RE"
+check_regex "spawn argument matcher catches workdir braced variable bare syntax" 'Agent workdir ${PHASE_DIR}' "$SPAWN_ARG_CWD_RE"
+check_regex "spawn argument matcher catches cwd placeholder syntax" 'Agent cwd="{round_dir}"' "$SPAWN_ARG_CWD_RE"
+check_regex "spawn argument matcher catches working_dir placeholder syntax" 'Agent working_dir="{summary_path}"' "$SPAWN_ARG_CWD_RE"
+check_regex "spawn argument matcher catches workdir variable syntax" 'Agent workdir="$PHASE_DIR"' "$SPAWN_ARG_CWD_RE"
+check_regex "spawn argument matcher catches cwd sidechain syntax" 'Agent cwd=.claude/worktrees/agent-1' "$SPAWN_ARG_CWD_RE"
+check_regex "spawn argument matcher catches working_dir vbw-worktree syntax" 'Agent "working_dir": ".vbw-worktrees/dev-01"' "$SPAWN_ARG_CWD_RE"
+check_regex "spawn argument matcher catches workingDirectory sidechain syntax" 'Agent workingDirectory=/repo/.claude/worktrees/agent-1' "$SPAWN_ARG_CWD_RE"
+check_regex "spawn argument matcher catches workdir vbw-worktree syntax" 'Agent workdir .vbw-worktrees/dev-01' "$SPAWN_ARG_CWD_RE"
 check_not_regex "per-agent name matcher ignores filename keys" 'filename: R01-PLAN.md' "$SPAWN_ARG_NAME_RE"
 check_not_regex "per-agent name matcher ignores team_name keys" 'team_name: vbw-phase-03' "$SPAWN_ARG_NAME_RE"
 check_not_regex "isolation matcher ignores benign prose" 'Spawn one Dev with no isolation parameter.' "$SPAWN_ARG_ISOLATION_RE"
+check_not_regex "cwd matcher ignores field-list prose" 'worktree cwd fields (`cwd`, `working_dir`, `workingDirectory`, `workdir`)' "$SPAWN_ARG_CWD_RE"
+check_not_regex "cwd matcher ignores generic prohibition prose" 'Do not pass cwd fields.' "$SPAWN_ARG_CWD_RE"
 check_not_contains "UAT block no longer uses broad skill preselection" "$UAT_BLOCK" 'select all materially helpful installed skills'
 check_contains "Lead avoids implementation-heavy preselection" "$UAT_BLOCK" 'Do not preselect implementation-heavy skills'
 check_contains "Dev uses task-specific skills" "$UAT_BLOCK" 'select the task-specific skills listed in the remediation plan'

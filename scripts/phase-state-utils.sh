@@ -120,6 +120,48 @@ roadmap_phase_dir_prefix_num() {
   normalize_roadmap_phase_num "$num"
 }
 
+roadmap_duplicate_phase_dir_prefix_details() {
+  local phases_dir="$1"
+  local seen="" emitted="" dir num dup_dir dup_num names base
+
+  [ -d "$phases_dir" ] || return 0
+
+  while IFS= read -r dir; do
+    [ -n "$dir" ] || continue
+    num=$(roadmap_phase_dir_prefix_num "$dir")
+    case " $seen " in
+      *" $num "*)
+        case " $emitted " in
+          *" $num "*) ;;
+          *)
+            names=""
+            while IFS= read -r dup_dir; do
+              [ -n "$dup_dir" ] || continue
+              dup_num=$(roadmap_phase_dir_prefix_num "$dup_dir")
+              [ "$dup_num" = "$num" ] || continue
+              base=$(basename "$dup_dir")
+              names="${names:+$names, }$base"
+            done < <(list_canonical_phase_dirs "$phases_dir")
+            printf 'duplicate phase directory prefix %s is ambiguous across %s; ROADMAP numbering cannot be safely reconciled\n' "$num" "$names"
+            emitted="$emitted $num"
+            ;;
+        esac
+        ;;
+    esac
+    seen="$seen $num"
+  done < <(list_canonical_phase_dirs "$phases_dir")
+}
+
+roadmap_phase_dir_prefixes_have_duplicates() {
+  local detail
+
+  while IFS= read -r detail; do
+    [ -n "$detail" ] && return 0
+  done < <(roadmap_duplicate_phase_dir_prefix_details "$1")
+
+  return 1
+}
+
 _roadmap_index_in_sequence() {
   local wanted="$1" sequence="$2" idx=0 candidate
 
@@ -159,10 +201,89 @@ _roadmap_candidate_score() {
   printf '%s\n' "$score"
 }
 
+_roadmap_unique_count() {
+  local sequence="$1" seen="" count=0 num
+
+  while IFS= read -r num; do
+    [ -n "$num" ] || continue
+    case " $seen " in *" $num "*) continue ;; esac
+    seen="$seen $num"
+    count=$((count + 1))
+  done <<< "$sequence"
+
+  printf '%s\n' "$count"
+}
+
+_roadmap_sequence_contains_all_unique_in_order() {
+  local checklist_seq="$1" expected_seq="$2"
+  local expected_count score
+
+  expected_count=$(_roadmap_unique_count "$expected_seq")
+  [ "$expected_count" -gt 0 ] || return 1
+  score=$(_roadmap_candidate_score "$checklist_seq" "$expected_seq")
+  [ "$score" -eq "$expected_count" ]
+}
+
+_roadmap_sequence_is_exact_ordinal() {
+  local checklist_seq="$1" expected_count="$2"
+  local idx=0 num
+
+  [ "$expected_count" -gt 0 ] || return 1
+  while IFS= read -r num; do
+    [ -n "$num" ] || continue
+    idx=$((idx + 1))
+    [ "$num" = "$idx" ] || return 1
+  done <<< "$checklist_seq"
+
+  [ "$idx" -eq "$expected_count" ]
+}
+
+roadmap_checklist_phase_nums() {
+  local roadmap_file="$1" line num
+
+  [ -f "$roadmap_file" ] || return 0
+  while IFS= read -r line || [ -n "$line" ]; do
+    if num=$(roadmap_checklist_phase_num_from_line "$line"); then
+      printf '%s\n' "$num"
+    fi
+  done < "$roadmap_file"
+}
+
+roadmap_checklist_count() {
+  local roadmap_file="$1" count=0 num
+
+  while IFS= read -r num; do
+    [ -n "$num" ] || continue
+    count=$((count + 1))
+  done < <(roadmap_checklist_phase_nums "$roadmap_file")
+
+  printf '%s\n' "$count"
+}
+
+roadmap_display_numbering_scheme() {
+  local raw_scheme="$1" roadmap_total="${2:-0}"
+
+  case "$raw_scheme" in
+    unknown)
+      printf '%s\n' "unknown"
+      ;;
+    prefix)
+      if [ "${roadmap_total:-0}" -gt 0 ] 2>/dev/null; then
+        printf '%s\n' "prefix"
+      else
+        printf '%s\n' "ordinal"
+      fi
+      ;;
+    *)
+      printf '%s\n' "ordinal"
+      ;;
+  esac
+}
+
 roadmap_numbering_scheme() {
   local roadmap_file="$1" phases_dir="$2"
-  local checklist_nums=() prefix_nums=() ordinal_nums=()
-  local line num dir idx checklist_seq prefix_seq ordinal_seq prefix_score ordinal_score
+  local checklist_nums=() prefix_nums=()
+  local line num dir idx checklist_seq prefix_seq dir_count
 
   [ -f "$roadmap_file" ] || { printf '%s\n' "unknown"; return 0; }
   [ -d "$phases_dir" ] || { printf '%s\n' "unknown"; return 0; }
@@ -182,10 +303,13 @@ roadmap_numbering_scheme() {
     [ -n "$dir" ] || continue
     idx=$((idx + 1))
     prefix_nums+=("$(roadmap_phase_dir_prefix_num "$dir")")
-    ordinal_nums+=("$idx")
   done < <(list_canonical_phase_dirs "$phases_dir")
 
   if [ "${#prefix_nums[@]}" -eq 0 ]; then
+    printf '%s\n' "unknown"
+    return 0
+  fi
+  if roadmap_phase_dir_prefixes_have_duplicates "$phases_dir"; then
     printf '%s\n' "unknown"
     return 0
   fi
@@ -196,25 +320,109 @@ roadmap_numbering_scheme() {
 
   checklist_seq=$(printf '%s\n' "${checklist_nums[@]}")
   prefix_seq=$(printf '%s\n' "${prefix_nums[@]}")
-  ordinal_seq=$(printf '%s\n' "${ordinal_nums[@]}")
-  prefix_score=$(_roadmap_candidate_score "$checklist_seq" "$prefix_seq")
-  ordinal_score=$(_roadmap_candidate_score "$checklist_seq" "$ordinal_seq")
 
-  if [ "$prefix_score" -le 0 ] && [ "$ordinal_score" -le 0 ]; then
-    printf '%s\n' "unknown"
-  elif [ "$prefix_seq" = "$ordinal_seq" ]; then
+  dir_count=${#prefix_nums[@]}
+  if _roadmap_sequence_contains_all_unique_in_order "$checklist_seq" "$prefix_seq"; then
     printf '%s\n' "prefix"
-  elif [ "$prefix_score" -gt 0 ] && [ "$ordinal_score" -le 0 ]; then
-    printf '%s\n' "prefix"
-  elif [ "$ordinal_score" -gt 0 ] && [ "$prefix_score" -le 0 ]; then
-    printf '%s\n' "ordinal"
-  elif [ "$prefix_score" -gt "$ordinal_score" ]; then
-    printf '%s\n' "prefix"
-  elif [ "$ordinal_score" -gt "$prefix_score" ]; then
+  elif _roadmap_sequence_is_exact_ordinal "$checklist_seq" "$dir_count"; then
     printf '%s\n' "ordinal"
   else
     printf '%s\n' "unknown"
   fi
+}
+
+roadmap_numbering_mismatch_details() {
+  local roadmap_file="$1" phases_dir="$2" scheme="${3:-}"
+  local checklist_seen="" num dir dir_num base
+
+  [ -f "$roadmap_file" ] || return 0
+  [ -d "$phases_dir" ] || return 0
+  [ -n "$scheme" ] || scheme=$(roadmap_numbering_scheme "$roadmap_file" "$phases_dir")
+
+  if [ "$scheme" = "unknown" ]; then
+    printf '%s\n' "ROADMAP checklist numbering scheme is mixed or unresolvable; skipping numbering-dependent rewrite"
+    roadmap_duplicate_phase_dir_prefix_details "$phases_dir"
+    return 0
+  fi
+
+  if [ "$scheme" = "ordinal" ]; then
+    local idx=0 mismatch_count=0 first_position="" first_base="" first_prefix=""
+    while IFS= read -r dir; do
+      [ -n "$dir" ] || continue
+      idx=$((idx + 1))
+      dir_num=$(roadmap_phase_dir_prefix_num "$dir")
+      if [ "$dir_num" != "$idx" ]; then
+        mismatch_count=$((mismatch_count + 1))
+        if [ -z "$first_position" ]; then
+          first_position="$idx"
+          first_base=$(basename "$dir")
+          first_prefix="$dir_num"
+        fi
+      fi
+    done < <(list_canonical_phase_dirs "$phases_dir")
+    if [ "$mismatch_count" -gt 0 ]; then
+      if [ "$mismatch_count" -gt 1 ]; then
+        printf 'legacy ordinal ROADMAP numbering is in use because phase directory prefixes diverge from the Phase 1..N checklist; position %s -> %s (prefix %s), plus %s more divergent phase dir(s)\n' "$first_position" "$first_base" "$first_prefix" "$((mismatch_count - 1))"
+      else
+        printf 'legacy ordinal ROADMAP numbering is in use because phase directory prefixes diverge from the Phase 1..N checklist; position %s -> %s (prefix %s)\n' "$first_position" "$first_base" "$first_prefix"
+      fi
+    fi
+    return 0
+  fi
+
+  if [ "$scheme" = "prefix" ] && [ "$(roadmap_checklist_count "$roadmap_file")" -eq 0 ]; then
+    printf '%s\n' "ROADMAP has no Phase checklist entries; using ordinal display numbering"
+    return 0
+  fi
+
+  while IFS= read -r num; do
+    [ -n "$num" ] || continue
+    checklist_seen="$checklist_seen $num"
+    if [ "$scheme" = "prefix" ] && ! roadmap_phase_dir_for_num "prefix" "$phases_dir" "$num" >/dev/null 2>&1; then
+      printf 'ROADMAP phase %s has no matching %s-* phase directory; using prefix numbering and preserving missing phase slot\n' "$num" "$num"
+    fi
+  done < <(roadmap_checklist_phase_nums "$roadmap_file")
+
+  if [ "$scheme" = "prefix" ]; then
+    while IFS= read -r dir; do
+      [ -n "$dir" ] || continue
+      dir_num=$(roadmap_phase_dir_prefix_num "$dir")
+      case " $checklist_seen " in
+        *" $dir_num "*) ;;
+        *)
+          base=$(basename "$dir")
+          printf 'phase directory %s exists on disk but ROADMAP has no matching Phase %s entry; using prefix numbering\n' "$base" "$dir_num"
+          ;;
+      esac
+    done < <(list_canonical_phase_dirs "$phases_dir")
+  fi
+}
+
+phase_state_log_warning() {
+  local planning_root="$1" detail="$2"
+  local log ts lc
+
+  [ -n "$planning_root" ] || return 0
+  [ -d "$planning_root" ] || return 0
+  [ -n "$detail" ] || return 0
+
+  log="$planning_root/.hook-errors.log"
+  ts=$(date -u +"%Y-%m-%dT%H:%M:%SZ" 2>/dev/null || date +"%s")
+  printf '[%s] state-numbering-warning: %s\n' "$ts" "$detail" >> "$log" 2>/dev/null || return 0
+  if [ -f "$log" ]; then
+    lc=$(wc -l < "$log" 2>/dev/null | tr -d ' ')
+    [ "${lc:-0}" -gt 50 ] && { tail -30 "$log" > "${log}.tmp" && mv "${log}.tmp" "$log"; } 2>/dev/null
+  fi
+}
+
+phase_state_log_numbering_warnings() {
+  local planning_root="$1" roadmap_file="$2" phases_dir="$3" scheme="${4:-}"
+  local detail
+
+  while IFS= read -r detail; do
+    [ -n "$detail" ] || continue
+    phase_state_log_warning "$planning_root" "$detail"
+  done < <(roadmap_numbering_mismatch_details "$roadmap_file" "$phases_dir" "$scheme")
 }
 
 roadmap_phase_num_for_dir() {
@@ -236,13 +444,15 @@ roadmap_phase_num_for_dir() {
 
 roadmap_phase_dir_for_num() {
   local scheme="$1" phases_dir="$2" phase_num="$3"
-  local wanted dir idx dir_num
+  local wanted dir idx dir_num match_dir match_count
 
   wanted=$(normalize_roadmap_phase_num "$phase_num")
   [ -n "$wanted" ] || return 1
   [ "$wanted" != "0" ] || return 1
 
   idx=0
+  match_dir=""
+  match_count=0
   while IFS= read -r dir; do
     [ -n "$dir" ] || continue
     idx=$((idx + 1))
@@ -258,10 +468,20 @@ roadmap_phase_dir_for_num() {
         ;;
     esac
     if [ "$dir_num" = "$wanted" ]; then
-      printf '%s\n' "$dir"
-      return 0
+      if [ "$scheme" = "prefix" ]; then
+        match_dir="$dir"
+        match_count=$((match_count + 1))
+      else
+        printf '%s\n' "$dir"
+        return 0
+      fi
     fi
   done < <(list_canonical_phase_dirs "$phases_dir")
+
+  if [ "$scheme" = "prefix" ] && [ "$match_count" -eq 1 ]; then
+    printf '%s\n' "$match_dir"
+    return 0
+  fi
 
   return 1
 }

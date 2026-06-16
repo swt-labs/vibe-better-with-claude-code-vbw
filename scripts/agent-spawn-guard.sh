@@ -16,6 +16,10 @@ INPUT=$(cat 2>/dev/null) || exit 0
 [ -z "$INPUT" ] && exit 0
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+if [ -f "$SCRIPT_DIR/lib/active-agent-state.sh" ]; then
+  # shellcheck source=lib/active-agent-state.sh
+  . "$SCRIPT_DIR/lib/active-agent-state.sh"
+fi
 
 find_project_root() {
   local dir="$PWD"
@@ -58,6 +62,32 @@ DELEGATION_MODE=$(echo "$MARKER_STATUS" | jq -r '.delegation_mode // ""' 2>/dev/
 EXPECTED_TEAM_NAME=$(echo "$MARKER_STATUS" | jq -r '.team_name // ""' 2>/dev/null) || exit 0
 MARKER_REASON=$(echo "$MARKER_STATUS" | jq -r '.reason // ""' 2>/dev/null) || exit 0
 TOOL_NAME=$(echo "$INPUT" | jq -r '.tool_name // ""' 2>/dev/null) || exit 0
+TEAM_NAME=$(echo "$INPUT" | jq -r '.tool_input.team_name // ""' 2>/dev/null) || exit 0
+AGENT_NAME=$(echo "$INPUT" | jq -r '.tool_input.name // ""' 2>/dev/null) || exit 0
+RUN_IN_BACKGROUND=$(echo "$INPUT" | jq -r '.tool_input.run_in_background // false' 2>/dev/null) || exit 0
+
+is_teammate_spawn_tool() {
+  [ "$TOOL_NAME" = "Agent" ] || [ "$TOOL_NAME" = "TaskCreate" ]
+}
+
+requested_worktree_isolation() {
+  local isolation=""
+  isolation=$(echo "$INPUT" | jq -r '.tool_input.isolation // ""' 2>/dev/null) || return 1
+  [ "$isolation" = "worktree" ]
+}
+
+requested_cwd_values() {
+  echo "$INPUT" | jq -r '[.tool_input.cwd? // empty, .tool_input.working_dir? // empty, .tool_input.workingDirectory? // empty, .tool_input.workdir? // empty] | map(select(type == "string")) | .[]' 2>/dev/null \
+    || return 1
+}
+
+requested_sidechain_cwd() {
+  requested_cwd_values | grep -Eq '(^|/)\.claude/worktrees/agent-[^/]+(/|$)'
+}
+
+requested_vbw_worktree_cwd() {
+  requested_cwd_values | grep -Eq '(^|/)\.vbw-worktrees(/|$)'
+}
 
 EXEC_STATE_FILE="$PROJECT_ROOT/.vbw-planning/.execution-state.json"
 EXEC_ACTIVE=false
@@ -82,13 +112,63 @@ if [ "$EXEC_ACTIVE" = true ] && { [ "$MARKER_LIVE" != "true" ] || [ "$MODE" != "
   exit 2
 fi
 
-[ "$MARKER_LIVE" = "true" ] || exit 0
-[ "$MODE" = "execute" ] || exit 0
-[ -n "$DELEGATION_MODE" ] || exit 0
+emit_strip_json() {
+  local stripped_input="$1" reason="$2"
+  # Build entire hook JSON via jq to guarantee valid output (reason is JSON-escaped)
+  local compact_input
+  compact_input=$(echo "$stripped_input" | jq -c '.' 2>/dev/null) || compact_input="$stripped_input"
+  jq -n -c --arg reason "$reason" --argjson input "$compact_input" \
+    '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"allow","permissionDecisionReason":$reason,"updatedInput":$input}}'
+}
 
-TEAM_NAME=$(echo "$INPUT" | jq -r '.tool_input.team_name // ""' 2>/dev/null) || exit 0
-AGENT_NAME=$(echo "$INPUT" | jq -r '.tool_input.name // ""' 2>/dev/null) || exit 0
-RUN_IN_BACKGROUND=$(echo "$INPUT" | jq -r '.tool_input.run_in_background // false' 2>/dev/null) || exit 0
+if is_teammate_spawn_tool; then
+  # Non-team .tool_input.name is platform label metadata; VBW routing and
+  # lifecycle state must come from delegation markers and team_name only.
+  # Hard blocks first — VBW-internal invariants must reject before strip paths
+  if requested_vbw_worktree_cwd; then
+    echo "Blocked: teammate spawn requested a VBW worktree path as a spawn working directory. Omit cwd/working_dir/workingDirectory/workdir fields; VBW worktree targeting is task prompt/state metadata, not a spawn cwd." >&2
+    exit 2
+  fi
+  # Strip paths — record fields to strip but do NOT exit yet.
+  # Execute-mode checks below may still block this spawn.
+  STRIP_REASON=""
+  STRIP_WARN=""
+  if requested_sidechain_cwd; then
+    STRIPPED_INPUT=$(echo "$INPUT" | jq '.tool_input | del(.cwd, .working_dir, .workingDirectory, .workdir, .isolation)' 2>/dev/null)
+    STRIP_REASON="VBW stripped sidechain cwd fields — worktree targeting is task metadata, not spawn cwd"
+    STRIP_WARN="VBW guard: stripped sidechain cwd fields (and isolation if present) from $TOOL_NAME spawn (models add these spontaneously; blocking causes infinite retry loops)"
+  elif requested_worktree_isolation; then
+    STRIPPED_INPUT=$(echo "$INPUT" | jq '.tool_input | del(.isolation)' 2>/dev/null)
+    STRIP_REASON="VBW stripped isolation:worktree — worktree isolation is not managed via spawn params"
+    STRIP_WARN="VBW guard: stripped isolation:worktree from $TOOL_NAME spawn (models add this spontaneously; blocking causes infinite retry loops)"
+  fi
+fi
+
+[ "$MARKER_LIVE" = "true" ] || {
+  # No marker — if stripping was needed, emit now and exit
+  if [ -n "$STRIP_REASON" ] && [ -n "$STRIPPED_INPUT" ] && [ "$STRIPPED_INPUT" != "null" ]; then
+    echo "$STRIP_WARN" >&2
+    emit_strip_json "$STRIPPED_INPUT" "$STRIP_REASON"
+    exit 0
+  fi
+  exit 0
+}
+[ "$MODE" = "execute" ] || {
+  if [ -n "$STRIP_REASON" ] && [ -n "$STRIPPED_INPUT" ] && [ "$STRIPPED_INPUT" != "null" ]; then
+    echo "$STRIP_WARN" >&2
+    emit_strip_json "$STRIPPED_INPUT" "$STRIP_REASON"
+    exit 0
+  fi
+  exit 0
+}
+[ -n "$DELEGATION_MODE" ] || {
+  if [ -n "$STRIP_REASON" ] && [ -n "$STRIPPED_INPUT" ] && [ "$STRIPPED_INPUT" != "null" ]; then
+    echo "$STRIP_WARN" >&2
+    emit_strip_json "$STRIPPED_INPUT" "$STRIP_REASON"
+    exit 0
+  fi
+  exit 0
+}
 
 case "$DELEGATION_MODE" in
   team)
@@ -111,10 +191,11 @@ case "$DELEGATION_MODE" in
       exit 2
     fi
     if [ "$TOOL_NAME" = "TaskCreate" ]; then
-      ACTIVE_COUNT_FILE="$PROJECT_ROOT/.vbw-planning/.active-agent-count"
       ACTIVE_COUNT=0
-      if [ -f "$ACTIVE_COUNT_FILE" ]; then
-        ACTIVE_COUNT=$(cat "$ACTIVE_COUNT_FILE" 2>/dev/null | tr -d '[:space:]')
+      if command -v vbw_active_agent_current_count >/dev/null 2>&1; then
+        ACTIVE_COUNT=$(vbw_active_agent_current_count "$PROJECT_ROOT/.vbw-planning" "$INPUT")
+      elif [ -f "$PROJECT_ROOT/.vbw-planning/.active-agent-count" ]; then
+        ACTIVE_COUNT=$(cat "$PROJECT_ROOT/.vbw-planning/.active-agent-count" 2>/dev/null | tr -d '[:space:]')
       fi
       if ! printf '%s' "$ACTIVE_COUNT" | grep -Eq '^[0-9]+$'; then
         ACTIVE_COUNT=0
@@ -130,5 +211,12 @@ case "$DELEGATION_MODE" in
     fi
     ;;
 esac
+
+# If strip was deferred and we made it past all blocks, emit now
+if [ -n "$STRIP_REASON" ] && [ -n "$STRIPPED_INPUT" ] && [ "$STRIPPED_INPUT" != "null" ]; then
+  echo "$STRIP_WARN" >&2
+  emit_strip_json "$STRIPPED_INPUT" "$STRIP_REASON"
+  exit 0
+fi
 
 exit 0
