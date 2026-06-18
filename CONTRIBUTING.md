@@ -214,7 +214,7 @@ Docs-only and repo-metadata-only PRs skip QA evidence. `.github/workflows/` and 
 
    > **QA-relevant paths:** The QA evidence gate applies when the PR touches plugin logic or automation paths (`.github/workflows/`, `agents/`, `commands/`, `config/`, `hooks/`, `references/`, `scripts/`, `templates/`, `testing/`, `tests/`). Docs-only and repo-metadata-only PRs skip QA evidence.
 
-   **Step A — Run the QA prompt.** Open a **new** Claude Code (or other AI) session using a top-tier model — **Claude Opus 4.6**, **GPT-5.3 Codex high/xhigh**, or **Gemini 3.1 Pro**. Smaller models (Haiku, Sonnet, etc.) don't produce thorough enough reviews. Paste the prompt below (fill in the placeholders):
+   **Step A — Run the QA prompt.** Open a **new** Claude Code (or other AI) session using a top-tier model — **GPT-5.5 Codex xhigh**, **Claude Opus 4.6**, or **Gemini 3.1 Pro**. Smaller models (Haiku, Sonnet, etc.) don't produce thorough enough reviews. Paste the prompt below (fill in the placeholders):
 
    ````text
    You are a read-only QA reviewer. Do NOT modify files, make commits, or push fixes — report only.
@@ -224,13 +224,13 @@ Docs-only and repo-metadata-only PRs skip QA evidence. `.github/workflows/` and 
 
    1. Review the commits in the PR to understand the change narrative.
    2. Read all files changed in the PR for full context.
-   3. Act as a devil's advocate — find edge cases, missed regressions, and untested
+   3. Read critically — find edge cases, missed regressions, and untested
       paths the implementer didn't consider.
 
    Do NOT prescribe what to test upfront. Discover what matters by reading the code.
 
    Report format (use a markdown code block):
-   - Model used: (e.g., Claude Opus 4.6, GPT-5.3 Codex (high or xhigh), Gemini 3.1 Pro)
+   - Model used: (e.g., GPT-5.5 Codex xhigh, Claude Opus 4.6, Gemini 3.1 Pro)
    - What was tested
    - Expected vs actual
    - Severity (critical / major / minor)

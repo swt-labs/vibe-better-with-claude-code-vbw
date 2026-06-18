@@ -1,0 +1,8 @@
+interface:
+  display_name: "VBW QA Investigator"
+  short_description: "Run full-contract QA on a VBW issue fix."
+  brand_color: "#B45309"
+  default_prompt: "Use $vbw-qa-investigator to QA PR #<number> against issue #<number>."
+
+policy:
+  allow_implicit_invocation: false
