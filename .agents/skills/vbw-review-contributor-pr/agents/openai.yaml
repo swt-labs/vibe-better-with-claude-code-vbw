@@ -1,0 +1,8 @@
+interface:
+  display_name: "VBW PR Review"
+  short_description: "Review contributor PRs against an independent plan."
+  brand_color: "#0F766E"
+  default_prompt: "Use $vbw-review-contributor-pr to review PR #<number>."
+
+policy:
+  allow_implicit_invocation: false
