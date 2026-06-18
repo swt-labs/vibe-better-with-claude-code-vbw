@@ -1,0 +1,8 @@
+interface:
+  display_name: "VBW Fix Issue"
+  short_description: "Run VBW issue fixes through Codex QA and CI gates."
+  brand_color: "#2563EB"
+  default_prompt: "Use $vbw-fix-issue to fix issue #<number> in this repo."
+
+policy:
+  allow_implicit_invocation: false
