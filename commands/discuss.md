@@ -88,7 +88,11 @@ fi`
 
 ## Guards
 
-- No `.vbw-planning/` directory: STOP "Run /vbw:init first."
+Bind `PLANNING_ROOT=$(bash "/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/resolve-planning-root.sh" 2>/dev/null || echo .vbw-planning)` and use `"$PLANNING_ROOT/..."` for every subsequent path reference in this command.
+
+- `"$PLANNING_ROOT/config.json"` missing AND `"$(dirname "$PLANNING_ROOT")"` equals cwd (truly uninitialized): STOP "Run /vbw:init first."
+- `"$PLANNING_ROOT/config.json"` exists AND `"$(dirname "$PLANNING_ROOT")"` is an ancestor of cwd: NOTE "◆ VBW: planning found at $PLANNING_ROOT — paths resolved from there." CONTINUE.
+- `"$PLANNING_ROOT/config.json"` exists AND `"$(dirname "$PLANNING_ROOT")"` equals cwd: proceed normally.
 - No phases in ROADMAP.md: STOP "No phases defined. Run /vbw:vibe first."
 
 ## Phase Resolution
@@ -103,7 +107,7 @@ fi`
 Determine the discussion mode before invoking the engine:
 
 1. If `$ARGUMENTS` contains `--assumptions` → mode is `assumptions`
-2. Else read `discussion_mode` from `.vbw-planning/config.json` (via `jq -r '.discussion_mode // "questions"'`)
+2. Else read `discussion_mode` from `"$PLANNING_ROOT/config.json"` (via `jq -r '.discussion_mode // "questions"'`)
 3. If config value is `"assumptions"` → mode is `assumptions`
 4. If config value is `"auto"` and `.vbw-planning/codebase/META.md` exists → mode is `assumptions`
 5. Otherwise → mode is `questions`
@@ -120,7 +124,7 @@ Read `{plugin-root}/references/discussion-engine.md` and follow its protocol for
 ```bash
 PG_SCRIPT="/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/planning-git.sh"
 if [ -f "$PG_SCRIPT" ]; then
-  bash "$PG_SCRIPT" commit-boundary "discuss phase {NN}" .vbw-planning/config.json
+  bash "$PG_SCRIPT" commit-boundary "discuss phase {NN}" "$PLANNING_ROOT/config.json"
 else
   echo "VBW: planning-git.sh unavailable; skipping planning git boundary commit" >&2
 fi

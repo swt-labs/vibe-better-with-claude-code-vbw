@@ -84,12 +84,17 @@ fi`
 
 ## Guard
 
-1. **Not initialized** (no .vbw-planning/ dir): STOP "Run /vbw:init first."
+Bind `PLANNING_ROOT=$(bash "/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/resolve-planning-root.sh" 2>/dev/null || echo .vbw-planning)` and use `"$PLANNING_ROOT/..."` for every subsequent path reference in this command.
+
+1. **Guard:**
+   - `"$PLANNING_ROOT/config.json"` missing AND `"$(dirname "$PLANNING_ROOT")"` equals cwd (truly uninitialized): STOP "Run /vbw:init first."
+   - `"$PLANNING_ROOT/config.json"` exists AND `"$(dirname "$PLANNING_ROOT")"` is an ancestor of cwd: NOTE "◆ VBW: planning found at $PLANNING_ROOT — paths resolved from there." CONTINUE.
+   - `"$PLANNING_ROOT/config.json"` exists AND `"$(dirname "$PLANNING_ROOT")"` equals cwd: proceed normally.
 2. **Brownfield normalization:** If Pre-computed state (from Context above) contains `misnamed_plans=true`, normalize all phase directories before proceeding:
    ```bash
    NORM_SCRIPT="/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/normalize-plan-filenames.sh"
    if [ -f "$NORM_SCRIPT" ]; then
-     for pdir in .vbw-planning/phases/*/; do
+     for pdir in "$PLANNING_ROOT"/phases/*/; do
        [ -d "$pdir" ] && bash "$NORM_SCRIPT" "$pdir"
      done
    fi
@@ -100,20 +105,20 @@ fi`
    bash "/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/phase-detect.sh" > "/tmp/.vbw-phase-detect-${CLAUDE_SESSION_ID:-default}.txt"
    ```
    Use the refreshed phase-detect output for all subsequent steps.
-3. **No roadmap:** `.vbw-planning/ROADMAP.md` missing → STOP: "No roadmap found. Run /vbw:vibe."
+3. **No roadmap:** `"$PLANNING_ROOT/ROADMAP.md"` missing → STOP: "No roadmap found. Run /vbw:vibe."
 4. **Phase-detect error:** If output contains `phase_detect_error=true`, display: "⚠ Phase detection failed. Run phase-detect.sh manually to debug." and STOP.
 
 ## Steps
 
-1. **Read ground truth (top-level only):** Read these files from `.vbw-planning/` (NOT from `milestones/` — those are archived):
-   - `.vbw-planning/PROJECT.md` — name, core value
-   - `.vbw-planning/STATE.md` — decisions, todos, blockers
-   - `.vbw-planning/ROADMAP.md` — phases overview
-   - `.vbw-planning/.execution-state.json` — interrupted builds
-   - `.vbw-planning/RESUME.md` — session notes
-   - Glob `.vbw-planning/phases/**/*-PLAN.md` and `.vbw-planning/phases/**/*-SUMMARY.md` — plan/completion counts
-   - Most recent SUMMARY.md from `.vbw-planning/phases/` — last work
-   - Skip missing files. **Never read from `.vbw-planning/milestones/`.**
+1. **Read ground truth (top-level only):** Read these files from `"$PLANNING_ROOT"` (NOT from `milestones/` — those are archived):
+   - `"$PLANNING_ROOT/PROJECT.md"` — name, core value
+   - `"$PLANNING_ROOT/STATE.md"` — decisions, todos, blockers
+   - `"$PLANNING_ROOT/ROADMAP.md"` — phases overview
+   - `"$PLANNING_ROOT/.execution-state.json"` — interrupted builds
+   - `"$PLANNING_ROOT/RESUME.md"` — session notes
+   - Glob `"$PLANNING_ROOT"/phases/**/*-PLAN.md` and `"$PLANNING_ROOT"/phases/**/*-SUMMARY.md` — plan/completion counts
+   - Most recent SUMMARY.md from `"$PLANNING_ROOT"/phases/` — last work
+   - Skip missing files. **Never read from `"$PLANNING_ROOT"/milestones/`.**
 2. **Compute progress from phase-detect.sh output:** Use the pre-computed `phase_count`, `next_phase`, `next_phase_state`, `next_phase_plans`, `next_phase_summaries`, `uat_issues_phase`, `uat_issues_slug`, `uat_issues_phases`, and `uat_issues_count` values. Map `next_phase_state` to display: `needs_uat_remediation` → "⚠ Needs remediation", `needs_verification` → "⏳ Needs UAT verification", `needs_plan_and_execute` → "not started", `needs_execute` → "in progress", `all_done` → "complete". **Per-phase status:** any phase whose number appears in the comma-separated `uat_issues_phases` list has unresolved UAT issues — mark it "⚠ Needs remediation". Only mark a phase as "✓ Done" if its number is NOT in `uat_issues_phases` and it has completed execution (SUMMARY count ≥ PLAN count). Phases not yet executed are "not started".
    **Known issues check:** For each phase directory, run:
    ```bash

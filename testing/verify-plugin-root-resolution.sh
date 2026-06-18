@@ -486,7 +486,10 @@ else
   fail "todo.md missing canonical helper add command shape via PLUGIN_ROOT"
 fi
 
-if grep -Fq 'bash "${PLUGIN_ROOT}/scripts/planning-git.sh" commit-boundary "add todo item" .vbw-planning/config.json' "$TODO_CMD"; then
+# Phase 11 (submodule-aware planning): accept either the legacy bare
+# `.vbw-planning/config.json` literal or the migrated `"$PLANNING_ROOT/config.json"` form.
+if grep -Fq 'bash "${PLUGIN_ROOT}/scripts/planning-git.sh" commit-boundary "add todo item" .vbw-planning/config.json' "$TODO_CMD" \
+   || grep -Fq 'bash "${PLUGIN_ROOT}/scripts/planning-git.sh" commit-boundary "add todo item" "$PLANNING_ROOT/config.json"' "$TODO_CMD"; then
   pass "todo.md uses canonical planning-git command shape via PLUGIN_ROOT"
 else
   fail "todo.md missing canonical planning-git command shape via PLUGIN_ROOT"
@@ -501,6 +504,7 @@ fi
 resolver_line=$(grep -nF 'Store the resolved path as `PLUGIN_ROOT`' "$TODO_CMD" | head -1 | cut -d: -f1 || true)
 add_line=$(grep -nF 'bash "${PLUGIN_ROOT}/scripts/todo-details.sh" add HASH -' "$TODO_CMD" | head -1 | cut -d: -f1 || true)
 planning_line=$(grep -nF 'bash "${PLUGIN_ROOT}/scripts/planning-git.sh" commit-boundary "add todo item" .vbw-planning/config.json' "$TODO_CMD" | head -1 | cut -d: -f1 || true)
+[ -z "$planning_line" ] && planning_line=$(grep -nF 'bash "${PLUGIN_ROOT}/scripts/planning-git.sh" commit-boundary "add todo item" "$PLANNING_ROOT/config.json"' "$TODO_CMD" | head -1 | cut -d: -f1 || true)
 if [ -n "$resolver_line" ] && [ -n "$add_line" ]; then
   if [ "$resolver_line" -lt "$add_line" ]; then
     pass "todo.md places the PLUGIN_ROOT resolver before helper add usage"

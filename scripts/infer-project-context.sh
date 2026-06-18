@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+
 # infer-project-context.sh — Extract project context from codebase mapping files
 #
 # Usage: infer-project-context.sh CODEBASE_DIR [REPO_ROOT]

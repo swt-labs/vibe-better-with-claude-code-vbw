@@ -16,13 +16,18 @@ allowed-tools: Read, Edit, Bash
 
 ## Guard
 
-1. **Not initialized** (no .vbw-planning/ dir): STOP "Run /vbw:init first."
+Bind `PLANNING_ROOT=$(bash "/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/resolve-planning-root.sh" 2>/dev/null || echo .vbw-planning)` and use `"$PLANNING_ROOT/..."` for every subsequent path reference in this command.
+
+1. **Guard:**
+   - `"$PLANNING_ROOT/config.json"` missing AND `"$(dirname "$PLANNING_ROOT")"` equals cwd (truly uninitialized): STOP "Run /vbw:init first."
+   - `"$PLANNING_ROOT/config.json"` exists AND `"$(dirname "$PLANNING_ROOT")"` is an ancestor of cwd: NOTE "◆ VBW: planning found at $PLANNING_ROOT — paths resolved from there." CONTINUE.
+   - `"$PLANNING_ROOT/config.json"` exists AND `"$(dirname "$PLANNING_ROOT")"` equals cwd: proceed normally.
 2. **Missing description:** STOP: `Usage: /vbw:todo <description> [--priority=high|normal|low]`
-3. **Restricted mode:** If the current permission mode does not allow both Bash and edits, STOP: "`/vbw:todo` needs Bash plus write access to update `.vbw-planning/STATE.md` and run the planning git boundary. If you're in read-only or another restricted mode, switch to a mode that allows both and rerun the command."
+3. **Restricted mode:** If the current permission mode does not allow both Bash and edits, STOP: "`/vbw:todo` needs Bash plus write access to update `"$PLANNING_ROOT/STATE.md"` and run the planning git boundary. If you're in read-only or another restricted mode, switch to a mode that allows both and rerun the command."
 
 ## Steps
 
-1. **Resolve context:** Always use `.vbw-planning/STATE.md` for todos — project-level data lives at the root, not in milestone subdirectories. If `.vbw-planning/STATE.md` does not exist, STOP: "STATE.md not found. Session startup normally recovers archived state automatically — try restarting your Claude session, or run /vbw:init to set up your project."
+1. **Resolve context:** Always use `"$PLANNING_ROOT/STATE.md"` for todos — project-level data lives at the root, not in milestone subdirectories. If `"$PLANNING_ROOT/STATE.md"` does not exist, STOP: "STATE.md not found. Session startup normally recovers archived state automatically — try restarting your Claude session, or run /vbw:init to set up your project."
 2. **Parse args:** Description (non-flag text), --priority (default: normal). Format: high=`[HIGH]`, normal=plain, low=`[low]`. Append `(added {YYYY-MM-DD})`.
 3. **Add plain todo to STATE.md:** Find `## Todos` section. Replace "None." / placeholder or append after last item.
 4. **Resolve plugin root.** Determine the plugin root path for helper-backed follow-up work. Always quote derived paths (they may contain spaces). Try in order:
@@ -51,7 +56,7 @@ allowed-tools: Read, Edit, Bash
    - **If not triggered** (simple one-liner with no structural context): skip — no ref tag, no detail storage. Brief bullets keep STATE.md scannable and token-efficient for context compilation. The detail file preserves context that would otherwise be lost when the todo is executed in a later session.
 6. **Run planning git boundary.** This step only happens after the plain `STATE.md` write from step 3 succeeded. For simple one-line todos, run it after step 3 using the shared `PLUGIN_ROOT` from step 4. For rich-detail todos, run it only after step 5 completes — after the `(ref:HASH)` update on detail-save success, or after the failed-detail/no-ref branch on helper failure. If `PLUGIN_ROOT` is non-empty and `${PLUGIN_ROOT}/scripts/planning-git.sh` exists, run:
    ```bash
-   bash "${PLUGIN_ROOT}/scripts/planning-git.sh" commit-boundary "add todo item" .vbw-planning/config.json
+   bash "${PLUGIN_ROOT}/scripts/planning-git.sh" commit-boundary "add todo item" "$PLANNING_ROOT/config.json"
    ```
    If `PLUGIN_ROOT` is empty or the helper is unavailable, keep the todo write intact and warn with the literal existing message:
    ```text

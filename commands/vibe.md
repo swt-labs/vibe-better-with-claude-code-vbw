@@ -123,7 +123,7 @@ fi`
 
 Config:
 ```
-!`cat .vbw-planning/config.json 2>/dev/null || echo "No config found"`
+!`P=$(bash "{plugin-root}/scripts/resolve-planning-root.sh" 2>/dev/null || echo ".vbw-planning"); CWD=$(pwd -P 2>/dev/null || pwd); if [ -f "$P/config.json" ]; then echo "planning_dir_exists=true"; echo "planning_root=$P"; if [ "$CWD" != "$(dirname "$P")" ]; then echo "planning_root_is_ancestor=true"; else echo "planning_root_is_ancestor=false"; fi; cat "$P/config.json"; else echo "planning_dir_exists=false"; echo "planning_root="; echo "planning_root_is_ancestor=false"; echo "No config found"; fi`
 ```
 
 Milestone UAT issues (milestone recovery only):
@@ -335,7 +335,8 @@ else
     TARGET=$(printf '%s' "$PD" | grep '^first_unverified_slug=' | head -1 | cut -d= -f2)
   fi
   if [ -n "$TARGET" ]; then
-    PDIR=".vbw-planning/phases/$TARGET"
+    VC_PLANNING_ROOT=$(bash "$L/scripts/resolve-planning-root.sh" 2>/dev/null || echo ".vbw-planning")
+    PDIR="$VC_PLANNING_ROOT/phases/$TARGET"
     echo "verify_target_slug=$TARGET"
     if [ -d "$PDIR" ] && [ -L "$L" ] && [ -f "$L/scripts/compile-verify-context-for-uat.sh" ]; then
       bash "$L/scripts/compile-verify-context-for-uat.sh" "$PDIR" 2>/dev/null || echo "verify_context_error=true"
@@ -449,8 +450,9 @@ STOP. Do NOT manually scan for project state or improvise routing — incorrect 
 **Misnamed plan auto-repair:** If the output contains `misnamed_plans=true`, normalize all phase directories before routing:
 ```bash
 NORM_SCRIPT="/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/normalize-plan-filenames.sh"
+PLANNING_ROOT="${planning_root:-$(bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/resolve-planning-root.sh 2>/dev/null || echo .vbw-planning)}"
 if [ -f "$NORM_SCRIPT" ]; then
-  for pdir in .vbw-planning/phases/*/; do
+  for pdir in "$PLANNING_ROOT"/phases/*/; do
     [ -d "$pdir" ] && bash "$NORM_SCRIPT" "$pdir"
   done
 fi
@@ -633,7 +635,7 @@ When `next_phase_state=needs_qa_remediation`, resume QA remediation at the persi
   - The orchestrator coordinates the remediation loop and spawns exactly one Lead subagent to write `{round_dir}/R{RR}-PLAN.md` (QA says what's wrong, planning says how to fix).
   - Resolve Lead settings before composing the Lead task:
     ```bash
-    if ! AGENT_SETTINGS=$(bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/resolve-agent-settings.sh lead .vbw-planning/config.json /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/config/model-profiles.json "{effort}"); then
+    if ! AGENT_SETTINGS=$(bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/resolve-agent-settings.sh lead "$PLANNING_ROOT/config.json" /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/config/model-profiles.json "{effort}"); then
       echo "$AGENT_SETTINGS" >&2
       exit 1
     fi
@@ -776,9 +778,19 @@ Every mode triggers confirmation before executing. Follow the shared interaction
 
 ## Modes
 
+**Planning root capture (applies to every mode below):** Before executing any shell snippet in a mode, bind a `PLANNING_ROOT` variable from the precompute output above. In every shell snippet in the modes that follow, use `"$PLANNING_ROOT/..."` in place of any `.vbw-planning/...` literal:
+
+```bash
+PLANNING_ROOT="$planning_root"
+[ -z "$PLANNING_ROOT" ] && PLANNING_ROOT=$(bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/resolve-planning-root.sh 2>/dev/null || echo ".vbw-planning")
+```
+
 ### Mode: Init Redirect
 
-If `planning_dir_exists=false`: display "Run /vbw:init first to set up your project." STOP.
+Guard:
+- `planning_dir_exists=false` AND `planning_root_is_ancestor=false`: display "Run /vbw:init first to set up your project." STOP.
+- `planning_dir_exists=true` AND `planning_root_is_ancestor=true`: NOTE "◆ VBW: planning found at $planning_root — paths resolved from there." CONTINUE with `PLANNING_ROOT="$planning_root"`.
+- `planning_dir_exists=true` AND `planning_root_is_ancestor=false`: proceed normally — cwd is the workspace root.
 
 ### Mode: Bootstrap
 
@@ -797,7 +809,7 @@ If `planning_dir_exists=false`: display "Run /vbw:init first to set up your proj
 **Steps:**
 - **B1: PROJECT.md** -- If $ARGUMENTS provided (excluding flags), use as description. Otherwise ask name + core purpose. Then call:
   ```
-  bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/bootstrap/bootstrap-project.sh .vbw-planning/PROJECT.md "$NAME" "$DESCRIPTION"
+  bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/bootstrap/bootstrap-project.sh "$PLANNING_ROOT/PROJECT.md" "$NAME" "$DESCRIPTION"
   ```
 - **B1.5: Discovery Depth** -- Read `discovery_questions` and `active_profile` from config. Map profile to depth:
 
@@ -817,7 +829,7 @@ If `planning_dir_exists=false`: display "Run /vbw:init first to set up your proj
        ```bash
        SCOUT_MODEL=""
        SCOUT_MAX_TURNS=""
-       if ! SCOUT_SETTINGS=$(bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/resolve-agent-settings.sh scout .vbw-planning/config.json /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/config/model-profiles.json); then
+       if ! SCOUT_SETTINGS=$(bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/resolve-agent-settings.sh scout "$PLANNING_ROOT/config.json" /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/config/model-profiles.json); then
          echo "Warning: failed to resolve Scout agent settings; continuing without explicit Scout model/maxTurns." >&2
        else
          eval "$SCOUT_SETTINGS"
@@ -862,17 +874,17 @@ If `planning_dir_exists=false`: display "Run /vbw:init first to set up your proj
     Record answers to `.vbw-planning/discovery.json` with `{"answered":[],"inferred":[],"deferred":[]}`.
   - **After discovery (all depths):** Call:
     ```
-    bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/bootstrap/bootstrap-requirements.sh .vbw-planning/REQUIREMENTS.md .vbw-planning/discovery.json .vbw-planning/domain-research.md
+    bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/bootstrap/bootstrap-requirements.sh "$PLANNING_ROOT/REQUIREMENTS.md" "$PLANNING_ROOT/discovery.json" "$PLANNING_ROOT/domain-research.md"
     ```
 
 - **B3: ROADMAP.md** -- Suggest 3-5 phases from requirements. If `.vbw-planning/codebase/META.md` exists, read PATTERNS.md, ARCHITECTURE.md, and CONCERNS.md (whichever exist) from `.vbw-planning/codebase/`. Each phase: name, goal, mapped reqs, success criteria. Write phases JSON to temp file, then call:
   ```
-  bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/bootstrap/bootstrap-roadmap.sh .vbw-planning/ROADMAP.md "$PROJECT_NAME" /tmp/vbw-phases.json
+  bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/bootstrap/bootstrap-roadmap.sh "$PLANNING_ROOT/ROADMAP.md" "$PROJECT_NAME" /tmp/vbw-phases.json
   ```
   Script handles ROADMAP.md generation and phase directory creation.
 - **B4: STATE.md** -- Extract project name, milestone name, and phase count from earlier steps. Call:
   ```
-  bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/bootstrap/bootstrap-state.sh .vbw-planning/STATE.md "$PROJECT_NAME" "$MILESTONE_NAME" "$PHASE_COUNT"
+  bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/bootstrap/bootstrap-state.sh "$PLANNING_ROOT/STATE.md" "$PROJECT_NAME" "$MILESTONE_NAME" "$PHASE_COUNT"
   ```
   Script handles today's date, Phase 1 status, empty decisions, and 0% progress.
 - **B5: Brownfield summary** -- If BROWNFIELD=true AND no codebase/: count files by ext, check tests/CI/Docker/monorepo, add Codebase Profile to STATE.md.
@@ -885,7 +897,7 @@ If `planning_dir_exists=false`: display "Run /vbw:init first to set up your proj
    ```bash
   PG_SCRIPT="/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/planning-git.sh"
    if [ -f "$PG_SCRIPT" ]; then
-     bash "$PG_SCRIPT" commit-boundary "bootstrap project files" .vbw-planning/config.json
+     bash "$PG_SCRIPT" commit-boundary "bootstrap project files" "$PLANNING_ROOT/config.json"
    else
      echo "VBW: planning-git.sh unavailable; skipping planning git boundary commit" >&2
    fi
@@ -904,7 +916,7 @@ If `planning_dir_exists=false`: display "Run /vbw:init first to set up your proj
 4. Write ROADMAP.md. Create `.vbw-planning/phases/{NN}-{slug}/` dirs.
 5. Update STATE.md by calling bootstrap-state.sh. Extract `PROJECT_NAME` from PROJECT.md, derive `MILESTONE_NAME` from the scope description (step 2), and use the phase count from step 3. The script preserves existing project-level sections (Todos, Decisions, Blockers, Codebase Profile) while restoring the `## Current Phase` section:
    ```
-   bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/bootstrap/bootstrap-state.sh .vbw-planning/STATE.md "$PROJECT_NAME" "$MILESTONE_NAME" "$PHASE_COUNT"
+   bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/bootstrap/bootstrap-state.sh "$PLANNING_ROOT/STATE.md" "$PROJECT_NAME" "$MILESTONE_NAME" "$PHASE_COUNT"
    ```
    Do NOT write next-action suggestions (e.g. "Run /vbw:vibe --plan 1") into the Todos section — those are ephemeral display output from suggest-next.sh, not persistent state.
 6. Write milestone context to `.vbw-planning/CONTEXT.md` using the template from `/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/templates/MILESTONE-CONTEXT.md`. Capture:
@@ -918,7 +930,7 @@ If `planning_dir_exists=false`: display "Run /vbw:init first to set up your proj
    ```bash
   PG_SCRIPT="/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/planning-git.sh"
    if [ -f "$PG_SCRIPT" ]; then
-     bash "$PG_SCRIPT" commit-boundary "scope milestone" .vbw-planning/config.json
+     bash "$PG_SCRIPT" commit-boundary "scope milestone" "$PLANNING_ROOT/config.json"
    else
      echo "VBW: planning-git.sh unavailable; skipping planning git boundary commit" >&2
    fi
@@ -940,7 +952,7 @@ If `planning_dir_exists=false`: display "Run /vbw:init first to set up your proj
    ```bash
   PG_SCRIPT="/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/planning-git.sh"
    if [ -f "$PG_SCRIPT" ]; then
-     bash "$PG_SCRIPT" commit-boundary "discuss phase {NN}" .vbw-planning/config.json
+     bash "$PG_SCRIPT" commit-boundary "discuss phase {NN}" "$PLANNING_ROOT/config.json"
    else
      echo "VBW: planning-git.sh unavailable; skipping planning git boundary commit" >&2
    fi
@@ -962,7 +974,7 @@ If `planning_dir_exists=false`: display "Run /vbw:init first to set up your proj
    ```bash
   PG_SCRIPT="/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/planning-git.sh"
    if [ -f "$PG_SCRIPT" ]; then
-     bash "$PG_SCRIPT" commit-boundary "assumptions phase {NN}" .vbw-planning/config.json
+     bash "$PG_SCRIPT" commit-boundary "assumptions phase {NN}" "$PLANNING_ROOT/config.json"
    else
      echo "VBW: planning-git.sh unavailable; skipping planning git boundary commit" >&2
    fi
@@ -1113,7 +1125,7 @@ If `plan_path` is empty, spawn Lead as a **single subagent** to write the remedi
 
 - Resolve Lead model:
   ```bash
-  if ! AGENT_SETTINGS=$(bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/resolve-agent-settings.sh lead .vbw-planning/config.json /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/config/model-profiles.json "{effort}"); then
+  if ! AGENT_SETTINGS=$(bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/resolve-agent-settings.sh lead "$PLANNING_ROOT/config.json" /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/config/model-profiles.json "{effort}"); then
     echo "$AGENT_SETTINGS" >&2
     exit 1
   fi
@@ -1178,7 +1190,7 @@ Execute the remediation plan by spawning Dev agents sequentially — one per tas
 - Read `plan_path` when it is non-empty; otherwise read `{round_dir}/R{RR}-PLAN.md` (using `round` and the absolute `round_dir` from step 4). Extract the task list from the plan frontmatter/body. Each task has an ID (e.g., `P07`, `P08`, `UAT-3`).
 - Resolve Dev model:
   ```bash
-  if ! AGENT_SETTINGS=$(bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/resolve-agent-settings.sh dev .vbw-planning/config.json /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/config/model-profiles.json "{effort}"); then
+  if ! AGENT_SETTINGS=$(bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/resolve-agent-settings.sh dev "$PLANNING_ROOT/config.json" /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/config/model-profiles.json "{effort}"); then
     echo "$AGENT_SETTINGS" >&2
     exit 1
   fi
@@ -1245,7 +1257,7 @@ Execute the remediation plan by spawning Dev agents sequentially — one per tas
     ```bash
     PG_SCRIPT="/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/planning-git.sh"
     if [ -f "$PG_SCRIPT" ]; then
-      bash "$PG_SCRIPT" commit-boundary "execute phase {NN} remediation round {RR}" .vbw-planning/config.json
+      bash "$PG_SCRIPT" commit-boundary "execute phase {NN} remediation round {RR}" "$PLANNING_ROOT/config.json"
     fi
     ```
   - **Continue directly into Verify mode** for this phase — do NOT stop, do NOT tell the user to run `/vbw:vibe`. Enter Verify mode (below) inline in the same turn. The pre-computed verify context may be stale (it was computed at session start, before remediation). Re-compute it:
@@ -1298,7 +1310,7 @@ This mode handles the case where a milestone was archived before UAT issues were
    ```bash
   PG_SCRIPT="/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/planning-git.sh"
    if [ -f "$PG_SCRIPT" ]; then
-     bash "$PG_SCRIPT" commit-boundary "create milestone remediation phases" .vbw-planning/config.json
+     bash "$PG_SCRIPT" commit-boundary "create milestone remediation phases" "$PLANNING_ROOT/config.json"
    else
      echo "VBW: planning-git.sh unavailable; skipping planning git boundary commit" >&2
    fi
@@ -1356,7 +1368,7 @@ This mode handles the case where a milestone was archived before UAT issues were
    - **If neither exists:** If `config_context_compiler=true`, compile Scout context first: `bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/compile-context.sh {phase} scout {phases_dir}`. Include `.context-scout.md` in the Scout prompt if produced, described as: "compiled context — includes milestone scope decisions (decomposition rationale, scope boundaries, cross-phase key decisions) and phase operational context (goal, success criteria, matched requirements, conventions, changed files)."
      Spawn Scout agent to research the phase goal, requirements, and relevant codebase patterns. Scout writes its findings directly to the output path. Pass `<output_path>{phase-dir}/${RESEARCH_NAME}</output_path>` in the Scout prompt so Scout writes the file using its Write tool. After Scout completes, confirm the file exists (read first line). Resolve Scout model:
      ```bash
-     if ! AGENT_SETTINGS=$(bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/resolve-agent-settings.sh scout .vbw-planning/config.json /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/config/model-profiles.json "{effort}"); then
+     if ! AGENT_SETTINGS=$(bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/resolve-agent-settings.sh scout "$PLANNING_ROOT/config.json" /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/config/model-profiles.json "{effort}"); then
        echo "$AGENT_SETTINGS" >&2
        exit 1
      fi
@@ -1392,7 +1404,7 @@ This mode handles the case where a milestone was archived before UAT issues were
    ```bash
   PG_SCRIPT="/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/planning-git.sh"
    if [ -f "$PG_SCRIPT" ]; then
-     bash "$PG_SCRIPT" commit-boundary "research phase {NN}" .vbw-planning/config.json
+     bash "$PG_SCRIPT" commit-boundary "research phase {NN}" "$PLANNING_ROOT/config.json"
    else
      echo "VBW: planning-git.sh unavailable; skipping research git boundary commit" >&2
    fi
@@ -1407,7 +1419,7 @@ This mode handles the case where a milestone was archived before UAT issues were
 7. **Other efforts:**
    - Resolve Lead model:
      ```bash
-     if ! AGENT_SETTINGS=$(bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/resolve-agent-settings.sh lead .vbw-planning/config.json /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/config/model-profiles.json "{effort}"); then
+     if ! AGENT_SETTINGS=$(bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/resolve-agent-settings.sh lead "$PLANNING_ROOT/config.json" /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/config/model-profiles.json "{effort}"); then
        echo "$AGENT_SETTINGS" >&2
        exit 1
      fi
@@ -1454,7 +1466,7 @@ This mode handles the case where a milestone was archived before UAT issues were
 9. **Validate output:** Verify PLAN.md has valid frontmatter (phase, plan, title, wave, depends_on, must_haves) and tasks. Check wave deps acyclic.
 10. **Present:** Update STATE.md (phase position, plan count, status=Planned). Resolve model profile:
    ```bash
-   MODEL_PROFILE=$(jq -r '.model_profile // "quality"' .vbw-planning/config.json)
+   MODEL_PROFILE=$(jq -r '.model_profile // "quality"' "$PLANNING_ROOT/config.json")
    ```
    Display Phase Banner with plan list, effort level, and model profile:
     ```text
@@ -1468,7 +1480,7 @@ This mode handles the case where a milestone was archived before UAT issues were
    ```bash
   PG_SCRIPT="/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/planning-git.sh"
    if [ -f "$PG_SCRIPT" ]; then
-     bash "$PG_SCRIPT" commit-boundary "plan phase {NN}" .vbw-planning/config.json
+     bash "$PG_SCRIPT" commit-boundary "plan phase {NN}" "$PLANNING_ROOT/config.json"
    else
      echo "VBW: planning-git.sh unavailable; skipping planning git boundary commit" >&2
    fi
@@ -1494,7 +1506,8 @@ Before reading:
     ```
 1. **Parse arguments:** Phase number (auto-detect if omitted), --effort, --skip-qa, --plan=NN.
 2. **Run execute guards:**
-   - Not initialized: STOP "Run /vbw:init first."
+   - `planning_dir_exists=false` AND `planning_root_is_ancestor=false`: STOP "Run /vbw:init first."
+   - `planning_dir_exists=true` AND `planning_root_is_ancestor=true`: NOTE "◆ VBW: planning found at $planning_root — paths resolved from there." CONTINUE with `PLANNING_ROOT="$planning_root"`.
    - No PLAN.md in phase dir: STOP "Phase {NN} has no plans. Run `/vbw:vibe --plan {NN}` first."
    - All plans have SUMMARY.md: cautious/standard -> WARN + confirm; confident/pure-vibe -> warn + auto-continue.
    - **Milestone path guard:** If `{phases_dir}` contains `.vbw-planning/milestones/`, STOP "Cannot execute inside archived milestones." This prevents writing artifacts into shipped milestone directories.
@@ -1589,7 +1602,7 @@ Missing name: STOP "Usage: `/vbw:vibe --add <phase-name>`"
     ```bash
     SCOUT_MODEL=""
     SCOUT_MAX_TURNS=""
-    if ! SCOUT_SETTINGS=$(bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/resolve-agent-settings.sh scout .vbw-planning/config.json /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/config/model-profiles.json); then
+    if ! SCOUT_SETTINGS=$(bash /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/resolve-agent-settings.sh scout "$PLANNING_ROOT/config.json" /tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/config/model-profiles.json); then
       echo "Warning: failed to resolve Scout agent settings; continuing without explicit Scout model/maxTurns." >&2
     else
       eval "$SCOUT_SETTINGS"
@@ -1630,7 +1643,7 @@ Missing name: STOP "Usage: `/vbw:vibe --add <phase-name>`"
    ```bash
   PG_SCRIPT="/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/planning-git.sh"
    if [ -f "$PG_SCRIPT" ]; then
-     bash "$PG_SCRIPT" commit-boundary "add phase {NN}-{slug}" .vbw-planning/config.json
+     bash "$PG_SCRIPT" commit-boundary "add phase {NN}-{slug}" "$PLANNING_ROOT/config.json"
    else
      echo "VBW: planning-git.sh unavailable; skipping planning git boundary commit" >&2
    fi
@@ -1678,7 +1691,7 @@ Inserting before completed phase: WARN + confirm.
     ```bash
    PG_SCRIPT="/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/planning-git.sh"
     if [ -f "$PG_SCRIPT" ]; then
-      bash "$PG_SCRIPT" commit-boundary "insert phase {NN}-{slug} at position {position}" .vbw-planning/config.json
+      bash "$PG_SCRIPT" commit-boundary "insert phase {NN}-{slug} at position {position}" "$PLANNING_ROOT/config.json"
     else
       echo "VBW: planning-git.sh unavailable; skipping planning git boundary commit" >&2
     fi
@@ -1706,7 +1719,7 @@ Completed ([x] in roadmap): STOP "Cannot remove completed Phase {NN}."
    ```bash
   PG_SCRIPT="/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/planning-git.sh"
    if [ -f "$PG_SCRIPT" ]; then
-     bash "$PG_SCRIPT" commit-boundary "remove phase {NN}" .vbw-planning/config.json
+     bash "$PG_SCRIPT" commit-boundary "remove phase {NN}" "$PLANNING_ROOT/config.json"
    else
      echo "VBW: planning-git.sh unavailable; skipping planning git boundary commit" >&2
    fi
@@ -1771,7 +1784,7 @@ FAIL -> STOP with remediation suggestions. WARN -> proceed with warnings.
    ```bash
   PG_SCRIPT="/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/planning-git.sh"
    if [ -f "$PG_SCRIPT" ]; then
-     bash "$PG_SCRIPT" commit-boundary "archive milestone {SLUG}" .vbw-planning/config.json
+     bash "$PG_SCRIPT" commit-boundary "archive milestone {SLUG}" "$PLANNING_ROOT/config.json"
    else
      echo "VBW: planning-git.sh unavailable; skipping planning git boundary commit" >&2
    fi

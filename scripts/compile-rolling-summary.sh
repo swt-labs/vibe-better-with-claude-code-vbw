@@ -5,8 +5,9 @@
 
 set -u
 
-PHASES_DIR="${1:-.vbw-planning/phases}"
-OUTPUT_PATH="${2:-.vbw-planning/ROLLING-CONTEXT.md}"
+
+PHASES_DIR="${1:-${VBW_PLANNING_DIR:-.vbw-planning}/phases}"
+OUTPUT_PATH="${2:-${VBW_PLANNING_DIR:-.vbw-planning}/ROLLING-CONTEXT.md}"
 
 # ── T1: Discover SUMMARY.md files ─────────────────────────────────────────────
 

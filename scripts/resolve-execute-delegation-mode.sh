@@ -12,8 +12,8 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PHASE_DIR=""
-CONFIG_PATH=".vbw-planning/config.json"
-EXEC_STATE_PATH=".vbw-planning/.execution-state.json"
+CONFIG_PATH="${VBW_PLANNING_DIR:-.vbw-planning}/config.json"
+EXEC_STATE_PATH="${VBW_PLANNING_DIR:-.vbw-planning}/.execution-state.json"
 ROUTE_MAP_PATH=""
 SEGMENTS_MODE=false
 

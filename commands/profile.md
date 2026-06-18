@@ -13,12 +13,15 @@ allowed-tools: Read, Write, Edit, AskUserQuestion
 
 Config:
 ```
-!`cat .vbw-planning/config.json 2>/dev/null || echo "No config found -- run /vbw:init first"`
+!`P=$(bash "{plugin-root}/scripts/resolve-planning-root.sh" 2>/dev/null || echo ".vbw-planning"); cat "$P/config.json" 2>/dev/null || echo "No config found -- run /vbw:init first"`
 ```
 
 ## Guard
 
-If no .vbw-planning/ dir: STOP "Run /vbw:init first." (check `.vbw-planning/config.json`)
+Bind `PLANNING_ROOT=$(bash "/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/resolve-planning-root.sh" 2>/dev/null || echo .vbw-planning)` and use `"$PLANNING_ROOT/..."` for every path. Three-branch guard:
+- `"$PLANNING_ROOT/config.json"` missing AND `"$(dirname "$PLANNING_ROOT")"` equals cwd (truly uninitialized): STOP "Run /vbw:init first."
+- `"$PLANNING_ROOT/config.json"` exists AND `"$(dirname "$PLANNING_ROOT")"` is an ancestor of cwd: NOTE "◆ VBW: planning found at $PLANNING_ROOT — paths resolved from there." CONTINUE.
+- `"$PLANNING_ROOT/config.json"` exists AND `"$(dirname "$PLANNING_ROOT")"` equals cwd: proceed normally.
 
 ## Built-in Profiles
 

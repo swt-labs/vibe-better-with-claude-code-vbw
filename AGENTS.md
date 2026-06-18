@@ -112,6 +112,43 @@ grep -Erl 'bootstrap-state|state-updater' "$CLAUDE_PROJECT_DIR"/*.jsonl
 cat "$CLAUDE_PROJECT_DIR"/<session-id>/subagents/agent-*.jsonl
 ```
 
+## Planning Root Resolution
+
+VBW commands and scripts resolve the workspace `.vbw-planning/` directory through a canonical cascade so they keep working when invoked from a submodule, sibling package, or any subdirectory under the workspace root. The resolver is `scripts/lib/vbw-config-root.sh` (sourced by scripts) and `scripts/resolve-planning-root.sh` (the stdout-printing wrapper used by command precompute blocks).
+
+Resolution order:
+
+1. `VBW_PLANNING_ROOT` env var (one-off override; absolute path to the workspace root that *contains* `.vbw-planning/`). Always wins when set and non-empty.
+2. `$(git rev-parse --git-common-dir)/info/vbw-planning-root.txt` pointer file in the current clone. Shared across all worktrees of the same clone via the common Git metadata directory. Mirrors the [`vbw-debug-target.txt`](#local-debug-target-configuration-private-not-committed) precedent above.
+3. Filesystem walk-up from CWD (and the calling script's directory when supplied) until an ancestor `.vbw-planning/config.json` is found. The walk uses `dirname`, not git, so it crosses submodule boundaries transparently.
+4. Fall back to `$PWD/.vbw-planning` (backwards-compatible — preserves the legacy "Run /vbw:init first" guard when no ancestor exists).
+
+### Pointer file format
+
+```text
+$(git rev-parse --git-common-dir)/info/vbw-planning-root.txt
+```
+
+In a standard non-worktree clone, this usually resolves to `.git/info/vbw-planning-root.txt`. The first non-empty, non-comment line is read as an absolute path to the directory *containing* `.vbw-planning/` (the workspace root). Leading and trailing whitespace are trimmed; blank lines and lines starting with `#` are ignored. The path must point to an existing directory; otherwise the resolver falls through to step 3.
+
+Example contents:
+
+```text
+/absolute/path/to/workspace-with-planning
+```
+
+Because the file lives under the clone's shared Git metadata, all worktrees created from that clone inherit the same planning root automatically.
+
+### Auto-resolve banner
+
+When the resolver maps CWD to an ancestor planning root (step 1, 2, or 3) and CWD is not the resolved root itself, a one-line banner is emitted to stderr exactly once per shell process:
+
+```text
+VBW: planning found at /absolute/path/to/workspace — paths resolved from there.
+```
+
+The banner is suppressed when CWD already equals the resolved root and when the cascade falls through to step 4 (no ancestor found). Scripts that source `vbw-config-root.sh` get this for free via `find_vbw_root`.
+
 ## Conventions
 
 - **Naming**: Commands are kebab-case `.md`, agents are `vbw-{role}.md`, scripts are kebab-case `.sh`, phase dirs are `{NN}-{slug}/`

@@ -29,6 +29,56 @@ trap '
 
 _SCRIPT_DIR_PD="$(cd "$(dirname "$0")" && pwd)"
 SCRIPT_DIR="$_SCRIPT_DIR_PD"
+# Phase 11 (submodule-aware planning): source the canonical resolver and call
+# find_vbw_root with $SCRIPT_DIR so the helper can locate the workspace root
+# even when CWD is below an ancestor .vbw-planning/ (e.g. when invoked from a
+# submodule or a sibling package). Best-effort — failures are non-fatal because
+# phase-detect.sh always emits a result envelope on EXIT.
+#
+# Preserve relative `.vbw-planning` output when CWD already contains a
+# .vbw-planning/ directory — many consumers (BATS test fixtures, downstream
+# greps in commands) pin on the relative form. Only honor the resolver's
+# absolute VBW_PLANNING_DIR when CWD itself is not the workspace root (e.g.
+# when invoked from a submodule below the ancestor planning root).
+if [ -f "$_SCRIPT_DIR_PD/lib/vbw-config-root.sh" ]; then
+  # shellcheck source=lib/vbw-config-root.sh
+  . "$_SCRIPT_DIR_PD/lib/vbw-config-root.sh"
+  # Snapshot VBW_PLANNING_DIR before the call so we can restore CWD-as-workspace
+  # semantics when find_vbw_root could NOT locate a real ancestor planning root.
+  # When it DOES find one (submodule-aware discovery from issue #640), we keep
+  # the absolute VBW_PLANNING_DIR it exported so phase-detect.sh emits the
+  # correct workspace paths instead of the CWD-relative literal.
+  _pd_saved_vbw_planning_dir="${VBW_PLANNING_DIR-}"
+  find_vbw_root "$SCRIPT_DIR" 2>/dev/null || true
+  # Restore only when the resolver fell back to CWD (no real ancestor found).
+  # Real-ancestor detection: a resolved VBW_PLANNING_DIR with an existing
+  # config.json that is NOT the original CWD's .vbw-planning. BATS fixtures
+  # (TDIRs without config.json) and CWD-as-workspace callers fall into the
+  # "no real ancestor" branch and retain the pre-call value, preserving the
+  # relative `.vbw-planning/...` form they pin on.
+  _pd_cwd_now=$(pwd -P 2>/dev/null || pwd)
+  _pd_keep_resolver=0
+  if [ -n "${VBW_PLANNING_DIR:-}" ] \
+     && [ -d "${VBW_PLANNING_DIR}" ] \
+     && [ "${VBW_CONFIG_ROOT:-}" != "$_pd_cwd_now" ]; then
+    # Require the resolver to have picked an ACTUAL ancestor of CWD, not a
+    # lateral hit via SCRIPT_DIR (which would leak the plugin dev clone's own
+    # .vbw-planning/ when phase-detect runs from an orphan directory).
+    case "$_pd_cwd_now/" in
+      "${VBW_CONFIG_ROOT:-}"/*) _pd_keep_resolver=1 ;;
+    esac
+  fi
+  if [ "$_pd_keep_resolver" -eq 1 ]; then
+    : # keep resolver result — real ancestor planning root found
+       # (use [ -d ] not [ -f config.json ] so the bootstrap window —
+       # workspace where /vbw:init created .vbw-planning/ but config.json
+       # is not yet written — still preserves the ancestor)
+  elif [ -n "${_pd_saved_vbw_planning_dir+set}" ] && [ -z "$_pd_saved_vbw_planning_dir" ]; then
+    unset VBW_PLANNING_DIR
+  elif [ -n "${_pd_saved_vbw_planning_dir+set}" ]; then
+    export VBW_PLANNING_DIR="$_pd_saved_vbw_planning_dir"
+  fi
+fi
 PLANNING_DIR="${VBW_PLANNING_DIR:-.vbw-planning}"
 if [ -f "$_SCRIPT_DIR_PD/summary-utils.sh" ]; then
   . "$_SCRIPT_DIR_PD/summary-utils.sh"

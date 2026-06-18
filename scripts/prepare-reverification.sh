@@ -23,6 +23,7 @@
 
 set -eo pipefail
 
+
 PHASE_DIR="${1:-}"
 
 if [ -z "$PHASE_DIR" ]; then
@@ -57,10 +58,10 @@ resolve_config_path() {
       printf '%s/config.json\n' "$planning_dir"
       ;;
     .vbw-planning/phases/*)
-      printf '.vbw-planning/config.json\n'
+      printf '%s/config.json\n' "${VBW_PLANNING_DIR:-.vbw-planning}"
       ;;
     *)
-      printf '.vbw-planning/config.json\n'
+      printf '%s/config.json\n' "${VBW_PLANNING_DIR:-.vbw-planning}"
       ;;
   esac
 }

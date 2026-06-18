@@ -6,8 +6,9 @@
 
 set -euo pipefail
 
+
 # Check if archive exists
-ARCHIVE_DIR=".vbw-planning/gsd-archive"
+ARCHIVE_DIR="${VBW_PLANNING_DIR:-.vbw-planning}/gsd-archive"
 if [[ ! -d "$ARCHIVE_DIR" ]]; then
   exit 0
 fi

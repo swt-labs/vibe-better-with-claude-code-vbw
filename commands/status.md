@@ -22,19 +22,19 @@ Plugin root:
 
 Current state:
 ```
-!`head -40 .vbw-planning/STATE.md 2>/dev/null || echo "No state found"`
+!`P=$(bash "{plugin-root}/scripts/resolve-planning-root.sh" 2>/dev/null || echo ".vbw-planning"); head -40 "$P/STATE.md" 2>/dev/null || echo "No state found"`
 ```
 
 Roadmap:
 ```
-!`head -50 .vbw-planning/ROADMAP.md 2>/dev/null || echo "No roadmap found"`
+!`P=$(bash "{plugin-root}/scripts/resolve-planning-root.sh" 2>/dev/null || echo ".vbw-planning"); head -50 "$P/ROADMAP.md" 2>/dev/null || echo "No roadmap found"`
 ```
 
 Config: Pre-injected by SessionStart hook. Read .vbw-planning/config.json only if --verbose.
 
 Phase directories:
 ```
-!`ls .vbw-planning/phases/ 2>/dev/null || echo "No phases directory"`
+!`P=$(bash "{plugin-root}/scripts/resolve-planning-root.sh" 2>/dev/null || echo ".vbw-planning"); ls "$P/phases/" 2>/dev/null || echo "No phases directory"`
 ```
 
 Phase state:
@@ -101,17 +101,21 @@ fi`
 
 Shipped milestones:
 ```
-!`ls -d .vbw-planning/milestones/*/SHIPPED.md 2>/dev/null || echo "No shipped milestones"`
+!`P=$(bash "{plugin-root}/scripts/resolve-planning-root.sh" 2>/dev/null || echo ".vbw-planning"); ls -d "$P"/milestones/*/SHIPPED.md 2>/dev/null || echo "No shipped milestones"`
 ```
 
 ## Guard
 
-- Not initialized (no .vbw-planning/ dir): STOP "Run /vbw:init first."
+Bind `PLANNING_ROOT=$(bash "/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/resolve-planning-root.sh" 2>/dev/null || echo .vbw-planning)` and use `"$PLANNING_ROOT/..."` for every subsequent path reference in this command.
+
+- `"$PLANNING_ROOT/config.json"` missing AND `"$(dirname "$PLANNING_ROOT")"` equals cwd (truly uninitialized): STOP "Run /vbw:init first."
+- `"$PLANNING_ROOT/config.json"` exists AND `"$(dirname "$PLANNING_ROOT")"` is an ancestor of cwd: NOTE "◆ VBW: planning found at $PLANNING_ROOT — paths resolved from there." CONTINUE.
+- `"$PLANNING_ROOT/config.json"` exists AND `"$(dirname "$PLANNING_ROOT")"` equals cwd: proceed normally.
 - **Brownfield normalization:** If Phase state (from Context above) contains `misnamed_plans=true`, normalize all phase directories before proceeding:
   ```bash
   NORM_SCRIPT="/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/normalize-plan-filenames.sh"
   if [ -f "$NORM_SCRIPT" ]; then
-    for pdir in .vbw-planning/phases/*/; do
+    for pdir in "$PLANNING_ROOT"/phases/*/; do
       [ -d "$pdir" ] && bash "$NORM_SCRIPT" "$pdir"
     done
   fi
@@ -122,7 +126,7 @@ Shipped milestones:
   bash "/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/phase-detect.sh" > "/tmp/.vbw-phase-detect-${CLAUDE_SESSION_ID:-default}.txt"
   ```
   Use the refreshed phase-detect output for all subsequent steps.
-- No ROADMAP.md or has template placeholders: STOP "No roadmap found. Run /vbw:vibe to set up your project."
+- No `"$PLANNING_ROOT/ROADMAP.md"` or has template placeholders: STOP "No roadmap found. Run /vbw:vibe to set up your project."
 
 ## Steps
 

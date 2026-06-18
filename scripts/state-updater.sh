@@ -602,7 +602,7 @@ update_model_profile() {
   [ -f "$state_md" ] || return 0
 
   config_file="${planning_root}/config.json"
-  [ -f "$config_file" ] || config_file=".vbw-planning/config.json"
+  [ -f "$config_file" ] || config_file="${VBW_PLANNING_DIR:-.vbw-planning}/config.json"
 
   # Read active model profile from config
   local model_profile

@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -u
 
+
 # normalize-prefer-teams.sh — emit canonical prefer_teams values.
 #
 # Usage:
@@ -51,4 +52,4 @@ if [ "${1:-}" = "--value" ]; then
   exit 0
 fi
 
-normalize_prefer_teams "$(read_raw_value "${1:-.vbw-planning/config.json}")"
+normalize_prefer_teams "$(read_raw_value "${1:-${VBW_PLANNING_DIR:-.vbw-planning}/config.json}")"

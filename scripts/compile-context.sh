@@ -16,6 +16,7 @@ PHASES_DIR_INPUT="${3:-}"
 PLAN_PATH="${4:-}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
+
 # shellcheck source=scripts/lib/vbw-target-root.sh
 . "${SCRIPT_DIR}/lib/vbw-target-root.sh"
 

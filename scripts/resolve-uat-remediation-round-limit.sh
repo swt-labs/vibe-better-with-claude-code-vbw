@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -u
 
+
 # resolve-uat-remediation-round-limit.sh — normalize the UAT remediation round cap.
 #
 # Usage:
@@ -295,7 +296,7 @@ decimal_gt() {
 }
 
 resolve_from_config() {
-  local config_path="${1:-.vbw-planning/config.json}"
+  local config_path="${1:-${VBW_PLANNING_DIR:-.vbw-planning}/config.json}"
   local raw canonical
 
   if ! command -v jq >/dev/null 2>&1; then
@@ -392,6 +393,6 @@ case "${1:-}" in
     exit 0
     ;;
   *)
-    resolve_from_config "${1:-.vbw-planning/config.json}"
+    resolve_from_config "${1:-${VBW_PLANNING_DIR:-.vbw-planning}/config.json}"
     ;;
 esac

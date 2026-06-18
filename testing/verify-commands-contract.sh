@@ -1392,7 +1392,8 @@ fi
 if grep -Fq 'spawns exactly one Lead subagent to write `{round_dir}/R{RR}-PLAN.md`' <<< "$qa_remediation_plan_block" \
   && grep -Fq 'subagent_type: "vbw:vbw-lead"' <<< "$qa_remediation_plan_block" \
   && grep -Fq 'resolve-agent-settings.sh lead' <<< "$qa_remediation_plan_block" \
-  && grep -Fq '.vbw-planning/config.json' <<< "$qa_remediation_plan_block" \
+  && { grep -Fq '.vbw-planning/config.json' <<< "$qa_remediation_plan_block" \
+       || grep -Fq '"$PLANNING_ROOT/config.json"' <<< "$qa_remediation_plan_block"; } \
   && grep -Fq 'config/model-profiles.json' <<< "$qa_remediation_plan_block" \
   && grep -Fq 'LEAD_MODEL="$RESOLVED_MODEL"' <<< "$qa_remediation_plan_block" \
   && grep -Fq 'LEAD_MAX_TURNS="$RESOLVED_MAX_TURNS"' <<< "$qa_remediation_plan_block" \

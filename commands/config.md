@@ -20,12 +20,17 @@ Store the plugin root path output above as `{plugin-root}` for use in script and
 
 Config:
 ```
-!`cat .vbw-planning/config.json 2>/dev/null || echo "No config found -- run /vbw:init first"`
+!`P=$(bash "{plugin-root}/scripts/resolve-planning-root.sh" 2>/dev/null || echo ".vbw-planning"); cat "$P/config.json" 2>/dev/null || echo "No config found -- run /vbw:init first"`
 ```
 
 ## Guard
 
-If no .vbw-planning/ dir: STOP "Run /vbw:init first." (check `.vbw-planning/config.json`)
+Bind `PLANNING_ROOT` from the Context precompute output (`P`). If unset, fall back to `$(bash "{plugin-root}/scripts/resolve-planning-root.sh" 2>/dev/null || echo .vbw-planning)`.
+
+Guard:
+- `"$PLANNING_ROOT/config.json"` missing AND `"$(dirname "$PLANNING_ROOT")"` equals cwd (truly uninitialized): STOP "Run /vbw:init first."
+- `"$PLANNING_ROOT/config.json"` exists AND `"$(dirname "$PLANNING_ROOT")"` is an ancestor of cwd: NOTE "◆ VBW: planning found at $PLANNING_ROOT — paths resolved from there." CONTINUE.
+- `"$PLANNING_ROOT/config.json"` exists AND `"$(dirname "$PLANNING_ROOT")"` equals cwd: proceed normally.
 
 ## Behavior
 
@@ -34,9 +39,10 @@ If no .vbw-planning/ dir: STOP "Run /vbw:init first." (check `.vbw-planning/conf
 Before any read/write behavior below, run:
 
 ```bash
-MIGRATED_COUNT=$(bash "{plugin-root}/scripts/migrate-config.sh" --print-added .vbw-planning/config.json 2>/dev/null)
+PLANNING_ROOT=$(bash "{plugin-root}/scripts/resolve-planning-root.sh" 2>/dev/null || echo .vbw-planning)
+MIGRATED_COUNT=$(bash "{plugin-root}/scripts/migrate-config.sh" --print-added "$PLANNING_ROOT/config.json" 2>/dev/null)
 if [ $? -ne 0 ] || [ -z "${MIGRATED_COUNT:-}" ]; then
-  echo "⚠ Config migration failed (invalid JSON). Fix .vbw-planning/config.json, then retry /vbw:config"
+  echo "⚠ Config migration failed (invalid JSON). Fix $PLANNING_ROOT/config.json, then retry /vbw:config"
   exit 0
 fi
 
@@ -53,17 +59,17 @@ This backfills all missing keys from `config/defaults.json` (without overwriting
 
 After the settings table, display Model Profile section:
 ```bash
-PROFILE=$(jq -r '.model_profile // "quality"' .vbw-planning/config.json)
+PROFILE=$(jq -r '.model_profile // "quality"' "$PLANNING_ROOT/config.json")
 echo ""
 echo "Model Profile: $PROFILE"
 echo "Agent Models:"
 # Resolve each agent model
-LEAD=$(bash "{plugin-root}/scripts/resolve-agent-model.sh" lead .vbw-planning/config.json "{plugin-root}/config/model-profiles.json")
-DEV=$(bash "{plugin-root}/scripts/resolve-agent-model.sh" dev .vbw-planning/config.json "{plugin-root}/config/model-profiles.json")
-QA=$(bash "{plugin-root}/scripts/resolve-agent-model.sh" qa .vbw-planning/config.json "{plugin-root}/config/model-profiles.json")
-SCOUT=$(bash "{plugin-root}/scripts/resolve-agent-model.sh" scout .vbw-planning/config.json "{plugin-root}/config/model-profiles.json")
-DEBUGGER=$(bash "{plugin-root}/scripts/resolve-agent-model.sh" debugger .vbw-planning/config.json "{plugin-root}/config/model-profiles.json")
-ARCHITECT=$(bash "{plugin-root}/scripts/resolve-agent-model.sh" architect .vbw-planning/config.json "{plugin-root}/config/model-profiles.json")
+LEAD=$(bash "{plugin-root}/scripts/resolve-agent-model.sh" lead "$PLANNING_ROOT/config.json" "{plugin-root}/config/model-profiles.json")
+DEV=$(bash "{plugin-root}/scripts/resolve-agent-model.sh" dev "$PLANNING_ROOT/config.json" "{plugin-root}/config/model-profiles.json")
+QA=$(bash "{plugin-root}/scripts/resolve-agent-model.sh" qa "$PLANNING_ROOT/config.json" "{plugin-root}/config/model-profiles.json")
+SCOUT=$(bash "{plugin-root}/scripts/resolve-agent-model.sh" scout "$PLANNING_ROOT/config.json" "{plugin-root}/config/model-profiles.json")
+DEBUGGER=$(bash "{plugin-root}/scripts/resolve-agent-model.sh" debugger "$PLANNING_ROOT/config.json" "{plugin-root}/config/model-profiles.json")
+ARCHITECT=$(bash "{plugin-root}/scripts/resolve-agent-model.sh" architect "$PLANNING_ROOT/config.json" "{plugin-root}/config/model-profiles.json")
 # Check for overrides and mark with asterisk
 LEAD_DISPLAY=$LEAD
 DEV_DISPLAY=$DEV
@@ -71,12 +77,12 @@ QA_DISPLAY=$QA
 SCOUT_DISPLAY=$SCOUT
 DEBUGGER_DISPLAY=$DEBUGGER
 ARCHITECT_DISPLAY=$ARCHITECT
-if [ "$(jq -r '.model_overrides.lead // ""' .vbw-planning/config.json)" != "" ]; then LEAD_DISPLAY="${LEAD}*"; fi
-if [ "$(jq -r '.model_overrides.dev // ""' .vbw-planning/config.json)" != "" ]; then DEV_DISPLAY="${DEV}*"; fi
-if [ "$(jq -r '.model_overrides.qa // ""' .vbw-planning/config.json)" != "" ]; then QA_DISPLAY="${QA}*"; fi
-if [ "$(jq -r '.model_overrides.scout // ""' .vbw-planning/config.json)" != "" ]; then SCOUT_DISPLAY="${SCOUT}*"; fi
-if [ "$(jq -r '.model_overrides.debugger // ""' .vbw-planning/config.json)" != "" ]; then DEBUGGER_DISPLAY="${DEBUGGER}*"; fi
-if [ "$(jq -r '.model_overrides.architect // ""' .vbw-planning/config.json)" != "" ]; then ARCHITECT_DISPLAY="${ARCHITECT}*"; fi
+if [ "$(jq -r '.model_overrides.lead // ""' "$PLANNING_ROOT/config.json")" != "" ]; then LEAD_DISPLAY="${LEAD}*"; fi
+if [ "$(jq -r '.model_overrides.dev // ""' "$PLANNING_ROOT/config.json")" != "" ]; then DEV_DISPLAY="${DEV}*"; fi
+if [ "$(jq -r '.model_overrides.qa // ""' "$PLANNING_ROOT/config.json")" != "" ]; then QA_DISPLAY="${QA}*"; fi
+if [ "$(jq -r '.model_overrides.scout // ""' "$PLANNING_ROOT/config.json")" != "" ]; then SCOUT_DISPLAY="${SCOUT}*"; fi
+if [ "$(jq -r '.model_overrides.debugger // ""' "$PLANNING_ROOT/config.json")" != "" ]; then DEBUGGER_DISPLAY="${DEBUGGER}*"; fi
+if [ "$(jq -r '.model_overrides.architect // ""' "$PLANNING_ROOT/config.json")" != "" ]; then ARCHITECT_DISPLAY="${ARCHITECT}*"; fi
 echo "  Lead: $LEAD_DISPLAY | Dev: $DEV_DISPLAY | QA: $QA_DISPLAY | Scout: $SCOUT_DISPLAY | Debugger: $DEBUGGER_DISPLAY | Architect: $ARCHITECT_DISPLAY"
 ```
 
@@ -178,16 +184,16 @@ Store selection in variable `PROFILE_METHOD`.
 
 Calculate OLD_COST before making changes (cost weights: opus=100, sonnet=20, haiku=2):
 ```bash
-CURRENT_PROFILE=$(jq -r '.model_profile // "quality"' .vbw-planning/config.json)
+CURRENT_PROFILE=$(jq -r '.model_profile // "quality"' "$PLANNING_ROOT/config.json")
 PROFILES_PATH="{plugin-root}/config/model-profiles.json"
 
 # Get current models (before changes)
-LEAD_OLD=$(bash "{plugin-root}/scripts/resolve-agent-model.sh" lead .vbw-planning/config.json "{plugin-root}/config/model-profiles.json")
-DEV_OLD=$(bash "{plugin-root}/scripts/resolve-agent-model.sh" dev .vbw-planning/config.json "{plugin-root}/config/model-profiles.json")
-QA_OLD=$(bash "{plugin-root}/scripts/resolve-agent-model.sh" qa .vbw-planning/config.json "{plugin-root}/config/model-profiles.json")
-SCOUT_OLD=$(bash "{plugin-root}/scripts/resolve-agent-model.sh" scout .vbw-planning/config.json "{plugin-root}/config/model-profiles.json")
-DEBUGGER_OLD=$(bash "{plugin-root}/scripts/resolve-agent-model.sh" debugger .vbw-planning/config.json "{plugin-root}/config/model-profiles.json")
-ARCHITECT_OLD=$(bash "{plugin-root}/scripts/resolve-agent-model.sh" architect .vbw-planning/config.json "{plugin-root}/config/model-profiles.json")
+LEAD_OLD=$(bash "{plugin-root}/scripts/resolve-agent-model.sh" lead "$PLANNING_ROOT/config.json" "{plugin-root}/config/model-profiles.json")
+DEV_OLD=$(bash "{plugin-root}/scripts/resolve-agent-model.sh" dev "$PLANNING_ROOT/config.json" "{plugin-root}/config/model-profiles.json")
+QA_OLD=$(bash "{plugin-root}/scripts/resolve-agent-model.sh" qa "$PLANNING_ROOT/config.json" "{plugin-root}/config/model-profiles.json")
+SCOUT_OLD=$(bash "{plugin-root}/scripts/resolve-agent-model.sh" scout "$PLANNING_ROOT/config.json" "{plugin-root}/config/model-profiles.json")
+DEBUGGER_OLD=$(bash "{plugin-root}/scripts/resolve-agent-model.sh" debugger "$PLANNING_ROOT/config.json" "{plugin-root}/config/model-profiles.json")
+ARCHITECT_OLD=$(bash "{plugin-root}/scripts/resolve-agent-model.sh" architect "$PLANNING_ROOT/config.json" "{plugin-root}/config/model-profiles.json")
 
 # Calculate cost based on model
 get_model_cost() {
@@ -204,10 +210,10 @@ OLD_COST=$(( $(get_model_cost "$LEAD_OLD") + $(get_model_cost "$DEV_OLD") + $(ge
 
 Get current models for Lead, Dev, QA, Scout:
 ```bash
-CURRENT_LEAD=$(bash "{plugin-root}/scripts/resolve-agent-model.sh" lead .vbw-planning/config.json "{plugin-root}/config/model-profiles.json")
-CURRENT_DEV=$(bash "{plugin-root}/scripts/resolve-agent-model.sh" dev .vbw-planning/config.json "{plugin-root}/config/model-profiles.json")
-CURRENT_QA=$(bash "{plugin-root}/scripts/resolve-agent-model.sh" qa .vbw-planning/config.json "{plugin-root}/config/model-profiles.json")
-CURRENT_SCOUT=$(bash "{plugin-root}/scripts/resolve-agent-model.sh" scout .vbw-planning/config.json "{plugin-root}/config/model-profiles.json")
+CURRENT_LEAD=$(bash "{plugin-root}/scripts/resolve-agent-model.sh" lead "$PLANNING_ROOT/config.json" "{plugin-root}/config/model-profiles.json")
+CURRENT_DEV=$(bash "{plugin-root}/scripts/resolve-agent-model.sh" dev "$PLANNING_ROOT/config.json" "{plugin-root}/config/model-profiles.json")
+CURRENT_QA=$(bash "{plugin-root}/scripts/resolve-agent-model.sh" qa "$PLANNING_ROOT/config.json" "{plugin-root}/config/model-profiles.json")
+CURRENT_SCOUT=$(bash "{plugin-root}/scripts/resolve-agent-model.sh" scout "$PLANNING_ROOT/config.json" "{plugin-root}/config/model-profiles.json")
 ```
 
 AskUserQuestion with 4 questions:
@@ -222,8 +228,8 @@ Store selections in variables `LEAD_MODEL`, `DEV_MODEL`, `QA_MODEL`, `SCOUT_MODE
 
 Get current models for Debugger and Architect:
 ```bash
-CURRENT_DEBUGGER=$(bash "{plugin-root}/scripts/resolve-agent-model.sh" debugger .vbw-planning/config.json "{plugin-root}/config/model-profiles.json")
-CURRENT_ARCHITECT=$(bash "{plugin-root}/scripts/resolve-agent-model.sh" architect .vbw-planning/config.json "{plugin-root}/config/model-profiles.json")
+CURRENT_DEBUGGER=$(bash "{plugin-root}/scripts/resolve-agent-model.sh" debugger "$PLANNING_ROOT/config.json" "{plugin-root}/config/model-profiles.json")
+CURRENT_ARCHITECT=$(bash "{plugin-root}/scripts/resolve-agent-model.sh" architect "$PLANNING_ROOT/config.json" "{plugin-root}/config/model-profiles.json")
 ```
 
 AskUserQuestion with 2 questions:
@@ -236,29 +242,29 @@ Store selections in variables `DEBUGGER_MODEL`, `ARCHITECT_MODEL`.
 
 Ensure model_overrides object exists:
 ```bash
-if ! jq -e '.model_overrides' .vbw-planning/config.json >/dev/null 2>&1; then
-  jq '.model_overrides = {}' .vbw-planning/config.json > .vbw-planning/config.json.tmp && mv .vbw-planning/config.json.tmp .vbw-planning/config.json
+if ! jq -e '.model_overrides' "$PLANNING_ROOT/config.json" >/dev/null 2>&1; then
+  jq '.model_overrides = {}' "$PLANNING_ROOT/config.json" > "$PLANNING_ROOT/config.json".tmp && mv "$PLANNING_ROOT/config.json".tmp "$PLANNING_ROOT/config.json"
 fi
 ```
 
 Apply each agent override:
 ```bash
-jq ".model_overrides.lead = \"$LEAD_MODEL\"" .vbw-planning/config.json > .vbw-planning/config.json.tmp && mv .vbw-planning/config.json.tmp .vbw-planning/config.json
+jq ".model_overrides.lead = \"$LEAD_MODEL\"" "$PLANNING_ROOT/config.json" > "$PLANNING_ROOT/config.json".tmp && mv "$PLANNING_ROOT/config.json".tmp "$PLANNING_ROOT/config.json"
 echo "✓ Model override: lead ➜ $LEAD_MODEL"
 
-jq ".model_overrides.dev = \"$DEV_MODEL\"" .vbw-planning/config.json > .vbw-planning/config.json.tmp && mv .vbw-planning/config.json.tmp .vbw-planning/config.json
+jq ".model_overrides.dev = \"$DEV_MODEL\"" "$PLANNING_ROOT/config.json" > "$PLANNING_ROOT/config.json".tmp && mv "$PLANNING_ROOT/config.json".tmp "$PLANNING_ROOT/config.json"
 echo "✓ Model override: dev ➜ $DEV_MODEL"
 
-jq ".model_overrides.qa = \"$QA_MODEL\"" .vbw-planning/config.json > .vbw-planning/config.json.tmp && mv .vbw-planning/config.json.tmp .vbw-planning/config.json
+jq ".model_overrides.qa = \"$QA_MODEL\"" "$PLANNING_ROOT/config.json" > "$PLANNING_ROOT/config.json".tmp && mv "$PLANNING_ROOT/config.json".tmp "$PLANNING_ROOT/config.json"
 echo "✓ Model override: qa ➜ $QA_MODEL"
 
-jq ".model_overrides.scout = \"$SCOUT_MODEL\"" .vbw-planning/config.json > .vbw-planning/config.json.tmp && mv .vbw-planning/config.json.tmp .vbw-planning/config.json
+jq ".model_overrides.scout = \"$SCOUT_MODEL\"" "$PLANNING_ROOT/config.json" > "$PLANNING_ROOT/config.json".tmp && mv "$PLANNING_ROOT/config.json".tmp "$PLANNING_ROOT/config.json"
 echo "✓ Model override: scout ➜ $SCOUT_MODEL"
 
-jq ".model_overrides.debugger = \"$DEBUGGER_MODEL\"" .vbw-planning/config.json > .vbw-planning/config.json.tmp && mv .vbw-planning/config.json.tmp .vbw-planning/config.json
+jq ".model_overrides.debugger = \"$DEBUGGER_MODEL\"" "$PLANNING_ROOT/config.json" > "$PLANNING_ROOT/config.json".tmp && mv "$PLANNING_ROOT/config.json".tmp "$PLANNING_ROOT/config.json"
 echo "✓ Model override: debugger ➜ $DEBUGGER_MODEL"
 
-jq ".model_overrides.architect = \"$ARCHITECT_MODEL\"" .vbw-planning/config.json > .vbw-planning/config.json.tmp && mv .vbw-planning/config.json.tmp .vbw-planning/config.json
+jq ".model_overrides.architect = \"$ARCHITECT_MODEL\"" "$PLANNING_ROOT/config.json" > "$PLANNING_ROOT/config.json".tmp && mv "$PLANNING_ROOT/config.json".tmp "$PLANNING_ROOT/config.json"
 echo "✓ Model override: architect ➜ $ARCHITECT_MODEL"
 ```
 
@@ -310,7 +316,7 @@ if [ $? -ne 0 ] || [ -z "${CANONICAL_VALUE:-}" ]; then
   exit 0
 fi
 
-jq ".max_uat_remediation_rounds = ${CANONICAL_VALUE}" .vbw-planning/config.json > .vbw-planning/config.json.tmp && mv .vbw-planning/config.json.tmp .vbw-planning/config.json
+jq ".max_uat_remediation_rounds = ${CANONICAL_VALUE}" "$PLANNING_ROOT/config.json" > "$PLANNING_ROOT/config.json".tmp && mv "$PLANNING_ROOT/config.json".tmp "$PLANNING_ROOT/config.json"
 echo "✓ max_uat_remediation_rounds ➜ ${CANONICAL_VALUE}"
 exit 0
 ```
@@ -320,7 +326,7 @@ If `setting=planning_tracking`, after writing config run:
 ```bash
   PG_SCRIPT="/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/planning-git.sh"
   if [ -f "$PG_SCRIPT" ]; then
-    bash "$PG_SCRIPT" sync-ignore .vbw-planning/config.json
+    bash "$PG_SCRIPT" sync-ignore "$PLANNING_ROOT/config.json"
   else
     echo "VBW: planning-git.sh unavailable; skipping .gitignore sync" >&2
   fi
@@ -354,7 +360,7 @@ if ! jq -e ".$PROFILE" "$PROFILES_PATH" >/dev/null 2>&1; then
 fi
 
 # Get current profile
-OLD_PROFILE=$(jq -r '.model_profile // "quality"' .vbw-planning/config.json)
+OLD_PROFILE=$(jq -r '.model_profile // "quality"' "$PLANNING_ROOT/config.json")
 
 # Calculate cost estimate
 # Cost weights: opus=100, sonnet=20, haiku=2
@@ -378,7 +384,7 @@ else
 fi
 
 # Update config.json
-jq ".model_profile = \"$PROFILE\"" .vbw-planning/config.json > .vbw-planning/config.json.tmp && mv .vbw-planning/config.json.tmp .vbw-planning/config.json
+jq ".model_profile = \"$PROFILE\"" "$PLANNING_ROOT/config.json" > "$PLANNING_ROOT/config.json".tmp && mv "$PLANNING_ROOT/config.json".tmp "$PLANNING_ROOT/config.json"
 
 echo "✓ Model profile ➜ $PROFILE"
 ```
@@ -414,16 +420,16 @@ case "$MODEL" in
 esac
 
 # Get current model for this agent
-OLD_MODEL=$(bash "{plugin-root}/scripts/resolve-agent-model.sh" "$AGENT" .vbw-planning/config.json "{plugin-root}/config/model-profiles.json")
+OLD_MODEL=$(bash "{plugin-root}/scripts/resolve-agent-model.sh" "$AGENT" "$PLANNING_ROOT/config.json" "{plugin-root}/config/model-profiles.json")
 
 echo "Set $AGENT model override: $MODEL (was: $OLD_MODEL)"
 
 # Update config.json - ensure model_overrides object exists
-if ! jq -e '.model_overrides' .vbw-planning/config.json >/dev/null 2>&1; then
-  jq '.model_overrides = {}' .vbw-planning/config.json > .vbw-planning/config.json.tmp && mv .vbw-planning/config.json.tmp .vbw-planning/config.json
+if ! jq -e '.model_overrides' "$PLANNING_ROOT/config.json" >/dev/null 2>&1; then
+  jq '.model_overrides = {}' "$PLANNING_ROOT/config.json" > "$PLANNING_ROOT/config.json".tmp && mv "$PLANNING_ROOT/config.json".tmp "$PLANNING_ROOT/config.json"
 fi
 
-jq ".model_overrides.$AGENT = \"$MODEL\"" .vbw-planning/config.json > .vbw-planning/config.json.tmp && mv .vbw-planning/config.json.tmp .vbw-planning/config.json
+jq ".model_overrides.$AGENT = \"$MODEL\"" "$PLANNING_ROOT/config.json" > "$PLANNING_ROOT/config.json".tmp && mv "$PLANNING_ROOT/config.json".tmp "$PLANNING_ROOT/config.json"
 
 echo "✓ Model override: $AGENT ➜ $MODEL"
 ```

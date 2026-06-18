@@ -24,14 +24,14 @@ Store the plugin root path output above as `{plugin-root}` for use in script inv
 
 Current state:
 ```text
-!`head -40 .vbw-planning/STATE.md 2>/dev/null || echo "No state found"`
+!`P=$(bash "{plugin-root}/scripts/resolve-planning-root.sh" 2>/dev/null || echo ".vbw-planning"); head -40 "$P/STATE.md" 2>/dev/null || echo "No state found"`
 ```
 
 Config: Pre-injected by SessionStart hook. Override with --effort flag.
 
 Phase directories:
 ```text
-!`ls .vbw-planning/phases/ 2>/dev/null || echo "No phases directory"`
+!`P=$(bash "{plugin-root}/scripts/resolve-planning-root.sh" 2>/dev/null || echo ".vbw-planning"); ls "$P/phases/" 2>/dev/null || echo "No phases directory"`
 ```
 
 Phase state:
@@ -101,10 +101,15 @@ fi`
 ```
 
 ## Guard
-- Not initialized (no .vbw-planning/ dir): STOP "Run /vbw:init first."
+
+Bind `PLANNING_ROOT=$(bash "{plugin-root}/scripts/resolve-planning-root.sh" 2>/dev/null || echo .vbw-planning)` and use `"$PLANNING_ROOT/..."` for every subsequent path reference in this command.
+
+- `"$PLANNING_ROOT/config.json"` missing AND `"$(dirname "$PLANNING_ROOT")"` equals cwd (truly uninitialized): STOP "Run /vbw:init first."
+- `"$PLANNING_ROOT/config.json"` exists AND `"$(dirname "$PLANNING_ROOT")"` is an ancestor of cwd: NOTE "◆ VBW: planning found at $PLANNING_ROOT — paths resolved from there." CONTINUE.
+- `"$PLANNING_ROOT/config.json"` exists AND `"$(dirname "$PLANNING_ROOT")"` equals cwd: proceed normally.
 - **Debug session override:** If `$ARGUMENTS` does NOT contain an explicit phase number OR `$ARGUMENTS` contains `--session`, check for an active debug session before any phase-related guards:
   ```bash
-  eval "$(bash "{plugin-root}/scripts/debug-session-state.sh" get-or-latest .vbw-planning 2>/dev/null)" 2>/dev/null || true
+  eval "$(bash "{plugin-root}/scripts/debug-session-state.sh" get-or-latest "$PLANNING_ROOT" 2>/dev/null)" 2>/dev/null || true
   ```
   The helper exports `active_session`, `session_id`, `session_file`, and `session_status`; use `session_status` for lifecycle checks after `eval`.
   If `active_session != none` AND exported `session_status` is `qa_pending` or `qa_failed` AND (`phase_count=0` OR `$ARGUMENTS` contains `--session`) → skip ALL remaining guards and jump directly to `<debug_session_qa>` below.
@@ -113,7 +118,7 @@ fi`
   ```bash
   NORM_SCRIPT="{plugin-root}/scripts/normalize-plan-filenames.sh"
   if [ -f "$NORM_SCRIPT" ]; then
-    for pdir in .vbw-planning/phases/*/; do
+    for pdir in "$PLANNING_ROOT"/phases/*/; do
       [ -d "$pdir" ] && bash "$NORM_SCRIPT" "$pdir"
     done
   fi
@@ -138,7 +143,7 @@ fi`
 **Before resolving phase target**, check for an active debug session. This handles the case where phase_count=0 but a debug session with `session_status=qa_pending` or `session_status=qa_failed` exists.
 
 ```bash
-eval "$(bash "{plugin-root}/scripts/debug-session-state.sh" get-or-latest .vbw-planning)"
+eval "$(bash "{plugin-root}/scripts/debug-session-state.sh" get-or-latest "$PLANNING_ROOT")"
 ```
 
 The helper exports `active_session`, `session_id`, `session_file`, and `session_status`; use `session_status` for routing after `eval`.
@@ -159,7 +164,7 @@ When routed here, skip the standard phase-resolution Steps entirely. Instead:
 
 2. Increment the QA round:
    ```bash
-  eval "$(bash "{plugin-root}/scripts/debug-session-state.sh" increment-qa .vbw-planning)"
+  eval "$(bash "{plugin-root}/scripts/debug-session-state.sh" increment-qa "$PLANNING_ROOT")"
    ```
 
 3. Resolve tier: same logic as Step 1 below (--tier flag > --effort flag > config default > Standard).

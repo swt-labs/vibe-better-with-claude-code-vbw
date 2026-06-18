@@ -24,7 +24,7 @@ Store the plugin root path output above as `{plugin-root}` for use in script inv
 
 Current project:
 ```
-!`cat .vbw-planning/PROJECT.md 2>/dev/null || echo "No project found"`
+!`P=$(bash "{plugin-root}/scripts/resolve-planning-root.sh" 2>/dev/null || echo ".vbw-planning"); cat "$P/PROJECT.md" 2>/dev/null || echo "No project found"`
 ```
 
 ## Guard

@@ -17,7 +17,7 @@ Settings:
 ```
 Planning dir:
 ```text
-!`ls -d .vbw-planning 2>/dev/null && echo "EXISTS" || echo "NONE"`
+!`P=$(bash "{plugin-root}/scripts/resolve-planning-root.sh" 2>/dev/null || echo ".vbw-planning"); ls -d "$P" 2>/dev/null && echo "EXISTS" || echo "NONE"`
 ```
 CLAUDE.md:
 ```text
@@ -27,6 +27,8 @@ CLAUDE.md:
 ## Steps
 
 **Resolve config directory:** Try in order: env var `CLAUDE_CONFIG_DIR` (if set and directory exists), `~/.config/claude-code` (if exists), otherwise `~/.claude`. Store result as `CLAUDE_DIR`.
+
+**Resolve planning root (NON-NEGOTIABLE before any destructive op):** Bind `PLANNING_ROOT=$(bash "/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/resolve-planning-root.sh" 2>/dev/null || echo .vbw-planning)`. This MUST be done before Step 4 — the precompute block above runs in an isolated shell scope and the `P=` variable inside that block does NOT survive. All subsequent destructive operations target `"$PLANNING_ROOT"`, never a bare `.vbw-planning/` literal.
 
 ### Step 1: Confirm intent
 
@@ -42,7 +44,7 @@ If `env.CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` exists: ask user (it's a Claude Co
 
 ### Step 4: Project data
 
-If `.vbw-planning/` exists: ask keep (recommended) or delete. Delete: `rm -rf .vbw-planning/`.
+If `"$PLANNING_ROOT"` (resolved via the precompute above) exists: ask keep (recommended) or delete. Delete: `rm -rf "$PLANNING_ROOT"`. Never substitute a bare `.vbw-planning/` literal — uninstall is destructive and must target the resolved planning root, never the literal CWD-relative path (which may belong to a submodule's parent workspace).
 
 ### Step 5: CLAUDE.md cleanup
 

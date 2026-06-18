@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+
 # track-known-issues.sh — Maintain a phase-scoped registry of unresolved known issues.
 #
 # Usage:

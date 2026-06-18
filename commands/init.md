@@ -35,7 +35,7 @@ Store the plugin root path output above as `{plugin-root}` for use in script inv
 
 Existing state:
 ```
-!`ls -la .vbw-planning 2>/dev/null || echo "No .vbw-planning directory"`
+!`P=$(bash "{plugin-root}/scripts/resolve-planning-root.sh" 2>/dev/null || echo ".vbw-planning"); ls -la "$P" 2>/dev/null || echo "No .vbw-planning directory"`
 ```
 Project files:
 ```

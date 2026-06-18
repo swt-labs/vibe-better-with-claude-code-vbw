@@ -25,14 +25,14 @@ Store the plugin root path output above as `{plugin-root}` for use in script inv
 
 Current state:
 ```bash
-!`head -40 .vbw-planning/STATE.md 2>/dev/null || echo "No state found"`
+!`P=$(bash "{plugin-root}/scripts/resolve-planning-root.sh" 2>/dev/null || echo ".vbw-planning"); head -40 "$P/STATE.md" 2>/dev/null || echo "No state found"`
 ```
 
 Config: Pre-injected by SessionStart hook.
 
 Phase directories:
 ```bash
-!`ls .vbw-planning/phases/ 2>/dev/null || echo "No phases directory"`
+!`P=$(bash "{plugin-root}/scripts/resolve-planning-root.sh" 2>/dev/null || echo ".vbw-planning"); ls "$P/phases/" 2>/dev/null || echo "No phases directory"`
 ```
 
 Phase state:
@@ -245,15 +245,19 @@ fi`
 
 QA verification summary (pre-extracted from VERIFICATION.md):
 ```
-!`SESSION_KEY="${CLAUDE_SESSION_ID:-default}"; L="/tmp/.vbw-plugin-root-link-${SESSION_KEY}"; if [ -L "$L" ] && [ -f "$L/scripts/extract-verified-items.sh" ]; then for d in .vbw-planning/phases/*/; do bash "$L/scripts/extract-verified-items.sh" "$d" 2>/dev/null; done; fi`
+!`P=$(bash "{plugin-root}/scripts/resolve-planning-root.sh" 2>/dev/null || echo ".vbw-planning"); SESSION_KEY="${CLAUDE_SESSION_ID:-default}"; L="/tmp/.vbw-plugin-root-link-${SESSION_KEY}"; if [ -L "$L" ] && [ -f "$L/scripts/extract-verified-items.sh" ]; then for d in "$P"/phases/*/; do bash "$L/scripts/extract-verified-items.sh" "$d" 2>/dev/null; done; fi`
 ```
 
 ## Guard
 
-- Not initialized (no .vbw-planning/ dir): STOP "Run /vbw:init first."
+Bind `PLANNING_ROOT=$(bash "{plugin-root}/scripts/resolve-planning-root.sh" 2>/dev/null || echo .vbw-planning)` and use `"$PLANNING_ROOT/..."` for every subsequent path reference in this command.
+
+- `"$PLANNING_ROOT/config.json"` missing AND `"$(dirname "$PLANNING_ROOT")"` equals cwd (truly uninitialized): STOP "Run /vbw:init first."
+- `"$PLANNING_ROOT/config.json"` exists AND `"$(dirname "$PLANNING_ROOT")"` is an ancestor of cwd: NOTE "◆ VBW: planning found at $PLANNING_ROOT — paths resolved from there." CONTINUE.
+- `"$PLANNING_ROOT/config.json"` exists AND `"$(dirname "$PLANNING_ROOT")"` equals cwd: proceed normally.
 - **Debug session override:** If `$ARGUMENTS` does NOT contain an explicit phase number OR `$ARGUMENTS` contains `--session`, check for an active debug session before any phase-related guards:
   ```bash
-  eval "$(bash "{plugin-root}/scripts/debug-session-state.sh" get-or-latest .vbw-planning 2>/dev/null)" 2>/dev/null || true
+  eval "$(bash "{plugin-root}/scripts/debug-session-state.sh" get-or-latest "$PLANNING_ROOT" 2>/dev/null)" 2>/dev/null || true
   ```
   The helper exports `active_session`, `session_id`, `session_file`, and `session_status`; use `session_status` for lifecycle checks after `eval`.
   If `active_session != none` AND exported `session_status` is `uat_pending` or `uat_failed` AND (`phase_count=0` OR `$ARGUMENTS` contains `--session`) → skip ALL remaining guards and jump directly to `<debug_session_uat>` below.
@@ -264,7 +268,7 @@ QA verification summary (pre-extracted from VERIFICATION.md):
   ```bash
   NORM_SCRIPT="{plugin-root}/scripts/normalize-plan-filenames.sh"
   if [ -f "$NORM_SCRIPT" ]; then
-    for pdir in .vbw-planning/phases/*/; do
+    for pdir in "$PLANNING_ROOT"/phases/*/; do
       [ -d "$pdir" ] && bash "$NORM_SCRIPT" "$pdir"
     done
   fi
@@ -284,7 +288,7 @@ QA verification summary (pre-extracted from VERIFICATION.md):
 - No SUMMARY.md in target phase dir: STOP "Phase {NN} has no completed plans. Run /vbw:vibe first."
 - **QA gate (NON-NEGOTIABLE unless `--skip-qa`):** Before entering UAT Steps, check whether QA has passed for the target phase. Use `qa_status` from Phase state only when the target phase is the same as the auto-detected `verify_target_slug` / first-unverified phase. If the user specified an explicit phase number that differs from the auto-detected target, ignore the pre-computed `qa_status` and compute the gate from that explicit phase's own VERIFICATION.md + QA remediation state.
   ```bash
-  PDIR=".vbw-planning/phases/{target-slug}"
+  PDIR="$PLANNING_ROOT/phases/{target-slug}"
   PHASE_NUM=$(echo "{target-slug}" | sed 's/^\([0-9]*\).*/\1/')
   VERIF_FILE=$(bash "{plugin-root}/scripts/resolve-verification-path.sh" phase "$PDIR" 2>/dev/null || true)
   [ -n "$VERIF_FILE" ] && [ ! -f "$VERIF_FILE" ] && VERIF_FILE=""
@@ -431,7 +435,7 @@ When routed here, skip the standard phase-resolution Steps entirely. Instead:
 - Use `.vbw-planning/phases/` for phase directories
 - **If initial Phase state contained `misnamed_plans=true`:** re-run compile-verify-context.sh and extract-uat-resume.sh for the resolved target phase dir, since pre-computed blocks used stale filenames:
   ```bash
-  PDIR=".vbw-planning/phases/{target-slug}"
+  PDIR="$PLANNING_ROOT/phases/{target-slug}"
   bash "{plugin-root}/scripts/compile-verify-context-for-uat.sh" "$PDIR"
   bash "{plugin-root}/scripts/extract-uat-resume.sh" "$PDIR"
   ```
@@ -447,7 +451,7 @@ When routed here, skip the standard phase-resolution Steps entirely. Instead:
   Parse `round=RR` and `layout=...`, then override `uat_path` with the matching round-scoped path for that layout before Step 4 writes any UAT file. This applies to resumed `needs_reverification` sessions too.
 - **If user specified an explicit phase number** that differs from `verify_target_slug`, ignore the pre-computed verify context, `next_phase_state`, `qa_status`, and UAT resume metadata from the auto-detected phase. Recompute target-specific verify context and UAT resume metadata:
   ```bash
-  PDIR=".vbw-planning/phases/{target-slug}"
+  PDIR="$PLANNING_ROOT/phases/{target-slug}"
   bash "{plugin-root}/scripts/compile-verify-context-for-uat.sh" "$PDIR"
   bash "{plugin-root}/scripts/extract-uat-resume.sh" "$PDIR"
   ```
@@ -815,7 +819,7 @@ _uat_state_exists=false
   **Standalone mode** (running via `/vbw:verify` directly — not called from vibe.md): Check the shared UAT remediation round-cap contract before mutating state:
   ```bash
   _current_round=$(bash "{plugin-root}/scripts/uat-remediation-state.sh" current-round "{phase-dir}")
-  _cap_decision=$(bash "{plugin-root}/scripts/resolve-uat-remediation-round-limit.sh" --next-round-decision .vbw-planning/config.json "${_current_round}" 2>/dev/null)
+  _cap_decision=$(bash "{plugin-root}/scripts/resolve-uat-remediation-round-limit.sh" --next-round-decision "$PLANNING_ROOT/config.json" "${_current_round}" 2>/dev/null)
   _next_round=$(printf '%s\n' "$_cap_decision" | awk -F= '/^next_round=/{print $2; exit}')
   _max_rounds=$(printf '%s\n' "$_cap_decision" | awk -F= '/^max_rounds=/{print $2; exit}')
   _cap_reached=$(printf '%s\n' "$_cap_decision" | awk -F= '/^cap_reached=/{print $2; exit}')
@@ -876,7 +880,7 @@ _uat_state_exists=false
 ```bash
 PG_SCRIPT="/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/planning-git.sh"
 if [ -f "$PG_SCRIPT" ]; then
-  bash "$PG_SCRIPT" commit-boundary "verify phase {NN}" .vbw-planning/config.json
+  bash "$PG_SCRIPT" commit-boundary "verify phase {NN}" "$PLANNING_ROOT/config.json"
 else
   echo "VBW: planning-git.sh unavailable; skipping planning git boundary commit" >&2
 fi
