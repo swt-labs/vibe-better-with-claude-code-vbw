@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
-# Stop hook for the fix-issue-vbw agent.
+# Stop hook for the fix issue workflow.
 # Blocks the agent from declaring completion when:
 #   1. PR is still in draft
 #   2. PR is out of date with main or has merge conflicts
-#   3. Required GitHub Actions CI checks are not all green
-#   4. No fresh Copilot review exists after the latest push
+#   3. The PR lacks a fresh @codex review request comment for the current head
+#   4. Required GitHub Actions CI checks are not all green
 #   5. The PR still has an active CHANGES_REQUESTED review decision
 #   6. The PR still has unresolved review threads
 #
-# Agent-scoped: only runs when fix-issue-vbw is the active agent.
+# Workflow-scoped: validates local open-PR worktrees before completion.
 # Requires: git, gh, jq
 
 set -euo pipefail
@@ -103,63 +103,6 @@ canonicalize_dir() {
   (cd "$path" 2>/dev/null && pwd -P)
 }
 
-latest_branch_push_at() {
-  local branch="$1"
-  local head_sha="$2"
-  local ref_owner="${3:-$OWNER}"
-  local ref_repo="${4:-$REPO}"
-  local branch_ref_json branch_head_oid branch_pushed_at
-
-  branch_ref_json=$(gh api graphql \
-    -f query='\
-      query($owner: String!, $repo: String!, $ref: String!) {\
-        repository(owner: $owner, name: $repo) {\
-          ref(qualifiedName: $ref) {\
-            target {\
-              __typename\
-              ... on Commit {\
-                oid\
-                pushedDate\
-              }\
-            }\
-          }\
-        }\
-      }' \
-    -f owner="$ref_owner" \
-    -f repo="$ref_repo" \
-    -f ref="refs/heads/${branch}" 2>/dev/null || true)
-
-  branch_head_oid=$(printf '%s' "$branch_ref_json" | jq -r '.data.repository.ref.target.oid // empty' 2>/dev/null || true)
-  branch_pushed_at=$(printf '%s' "$branch_ref_json" | jq -r '.data.repository.ref.target.pushedDate // empty' 2>/dev/null || true)
-
-  if [ -n "$branch_pushed_at" ] && [ "$branch_head_oid" = "$head_sha" ]; then
-    printf '%s\n' "$branch_pushed_at"
-    return 0
-  fi
-
-  gh api "repos/${ref_owner}/${ref_repo}/events" --jq '[.[] | select(.type == "PushEvent" and .payload.ref == "refs/heads/'"${branch}"'")] | first | .created_at // empty' 2>/dev/null || true
-}
-
-latest_matching_copilot_review() {
-  local pr_number="$1"
-  local head_sha="$2"
-  local reviews_json
-
-  # Paginate: the REST reviews API is oldest-first and capped at 100 per
-  # page, so on PRs with >100 reviews the newest Copilot review would be
-  # missed without --paginate. jq -s flattens the per-page arrays into a
-  # single list before filtering for the matching fresh review.
-  reviews_json=$(gh api --paginate "repos/${OWNER}/${REPO}/pulls/${pr_number}/reviews?per_page=100" 2>/dev/null | jq -s 'add // []' 2>/dev/null || echo '[]')
-  printf '%s' "$reviews_json" | jq -c --arg head_sha "$head_sha" '
-    [ .[]
-      | select((.user.login // "") | startswith("copilot-pull-request-reviewer"))
-      | select((.commit_id // "") == $head_sha)
-    ]
-    | sort_by(.submitted_at)
-    | last // empty
-  ' 2>/dev/null || true
-}
-
 # --- validate_pr: run all readiness gates against one PR. On any failure
 # calls block() (which exits 0 with decision:block). Returns 0 if all gates
 # pass.
@@ -168,9 +111,6 @@ validate_pr() {
   local worktree_dir="$2"
   local branch="$3"
   local pr_is_draft="$4"
-  local head_owner="${5:-$OWNER}"
-  local head_repo="${6:-$REPO}"
-  local head_ref_name="${7:-$branch}"
 
   _block_pr="$pr_number"
   _block_worktree="$worktree_dir"
@@ -186,9 +126,10 @@ validate_pr() {
     block "Worktree directory '${worktree_dir}' is not accessible (needs read+execute). Fix its permissions or reselect the fix-issue worktree, then retry completion."
   fi
 
-  local head_sha=""
+  local head_sha="" head_commit_ts=""
   if pushd "$worktree_dir" >/dev/null 2>&1; then
     head_sha=$(git rev-parse HEAD 2>/dev/null || true)
+    head_commit_ts=$(git show -s --format=%ct HEAD 2>/dev/null || true)
     popd >/dev/null 2>&1 || true
   else
     block "Unable to enter worktree directory '${worktree_dir}' to validate PR #${pr_number}. Recreate or reselect the fix-issue worktree, then retry completion."
@@ -197,20 +138,27 @@ validate_pr() {
   if [ -z "$head_sha" ]; then
     block "Unable to resolve HEAD in worktree '${worktree_dir}' for PR #${pr_number}. Ensure this fix-issue worktree is a valid git checkout (with a readable .git directory and commit history), or recreate/reselect the worktree, then retry completion."
   fi
+  if ! printf '%s' "$head_commit_ts" | grep -Eq '^[0-9]+$'; then
+    block "Unable to resolve HEAD commit timestamp in worktree '${worktree_dir}' for PR #${pr_number}. Ensure this fix-issue worktree has a valid HEAD commit before completing."
+  fi
 
   # Gate 1: draft
   if [ "$pr_is_draft" = "true" ]; then
     block "PR #${pr_number} (worktree: ${worktree_dir}) is still a draft. Mark it as ready for review (step 25) before completing."
   fi
 
-  # Gate 2: merge state + review decision + unresolved threads
+  # Gate 2: merge state + Codex review request + review decision + unresolved threads
   local pr_state_raw pr_state_json merge_state review_decision
+  local codex_review_request_count codex_review_recovery
   local unresolved_threads_json unresolved_thread_count unresolved_examples unresolved_suffix
   pr_state_raw=$(gh api graphql -f query='
     { repository(owner:"'"${OWNER}"'",name:"'"${REPO}"'") {
         pullRequest(number:'"${pr_number}"') {
           mergeStateStatus
           reviewDecision
+          comments(last:100) {
+            nodes { body createdAt }
+          }
           reviewThreads(first:100) {
             nodes { id isResolved isOutdated path line }
           }
@@ -235,6 +183,22 @@ validate_pr() {
       block "PR #${pr_number} (worktree: ${worktree_dir}) has merge conflicts with main (merge state: dirty). Merge origin/main and resolve the conflicts before completing."
       ;;
   esac
+
+  codex_review_recovery="cd ${worktree_dir} && gh pr comment ${pr_number} --repo ${OWNER}/${REPO} --body '@codex review'"
+  codex_review_request_count=$(printf '%s' "$pr_state_json" | jq --argjson head_commit_ts "$head_commit_ts" '
+    [
+      .comments.nodes[]?
+      | select(((.body // "") | gsub("^[[:space:]]+|[[:space:]]+$"; "")) == "@codex review")
+      | select((((.createdAt // "") | fromdateiso8601? // 0) >= $head_commit_ts))
+    ]
+    | length
+  ' 2>/dev/null || true)
+  if ! printf '%s' "$codex_review_request_count" | grep -Eq '^[0-9]+$'; then
+    block "Could not evaluate Codex remote review request comments for PR #${pr_number} (worktree: ${worktree_dir}). Retry once GitHub API access is healthy before completing." "$codex_review_recovery"
+  fi
+  if [ "$codex_review_request_count" -eq 0 ]; then
+    block "PR #${pr_number} (worktree: ${worktree_dir}) does not have an @codex review request comment at or after current HEAD ${head_sha}. Post a fresh Codex remote review request comment before completing." "$codex_review_recovery"
+  fi
 
   if [ "$review_decision" = "CHANGES_REQUESTED" ]; then
     block "PR #${pr_number} (worktree: ${worktree_dir}) still has an active CHANGES_REQUESTED review decision. Address the requested changes and obtain an updated review before completing."
@@ -279,31 +243,6 @@ validate_pr() {
       if [ "$pending" -gt 0 ]; then
         pending_names=$(printf '%s' "$check_runs_json" | jq -r '[.[] | select(.status == "queued" or .status == "in_progress")] | map(.name + " (" + .status + ")") | join(", ")')
         block "Remote CI still running on PR #${pr_number} (worktree: ${worktree_dir}) at commit ${head_sha}. Pending checks: ${pending_names}. Wait for CI to complete before finishing." "cd ${worktree_dir} && gh api --paginate 'repos/${OWNER}/${REPO}/commits/${head_sha}/check-runs?per_page=100' | jq -s '[.[].check_runs[]?] | .[] | .name + \": \" + .status + \" / \" + (.conclusion // \"pending\")'"
-      fi
-    fi
-  fi
-
-  # Gate 4: fresh Copilot review after latest push
-  if [ -n "$head_sha" ]; then
-    local latest_push_at reviews_json latest_copilot_review copilot_review_at
-    local review_epoch push_epoch date_cmd
-    latest_push_at=$(latest_branch_push_at "$head_ref_name" "$head_sha" "$head_owner" "$head_repo")
-    if [ -z "$latest_push_at" ]; then
-      block "Unable to determine the latest push timestamp for head ref ${head_ref_name} (local branch alias: ${branch}, worktree: ${worktree_dir}) at head commit ${head_sha}. Fix GitHub CLI/API access and retry so the hook can verify that a fresh Copilot review exists after the latest push."
-    fi
-    if [ -n "$latest_push_at" ]; then
-      latest_copilot_review=$(latest_matching_copilot_review "$pr_number" "$head_sha")
-      if [ -z "$latest_copilot_review" ] || [ "$latest_copilot_review" = "null" ]; then
-        block "No Copilot review found on PR #${pr_number} (worktree: ${worktree_dir}) for current head commit ${head_sha}. Request a Copilot review (step 25/30) and wait for it to complete before finishing."
-      fi
-      copilot_review_at=$(printf '%s' "$latest_copilot_review" | jq -r '.submitted_at // empty')
-      if [ -n "$copilot_review_at" ]; then
-        if command -v gdate >/dev/null 2>&1; then date_cmd="gdate"; else date_cmd="date"; fi
-        review_epoch=$($date_cmd -d "$copilot_review_at" +%s 2>/dev/null || $date_cmd -j -f "%Y-%m-%dT%H:%M:%SZ" "$copilot_review_at" +%s 2>/dev/null || echo 0)
-        push_epoch=$($date_cmd -d "$latest_push_at" +%s 2>/dev/null || $date_cmd -j -f "%Y-%m-%dT%H:%M:%SZ" "$latest_push_at" +%s 2>/dev/null || echo 0)
-        if [ "$review_epoch" -lt "$push_epoch" ]; then
-          block "Copilot review on PR #${pr_number} (worktree: ${worktree_dir}) is stale (submitted before the latest push). Request a fresh Copilot review and wait for it to arrive before completing."
-        fi
       fi
     fi
   fi

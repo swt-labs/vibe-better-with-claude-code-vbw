@@ -2,14 +2,12 @@
 """ETag-based polling for GitHub PR events.
 
 Subcommands:
-    wait-review  Wait for a fresh Copilot PR review.
     wait-ci      Wait for CI check runs to complete on a commit.
 
 Both use ETag conditional requests (HTTP 304s are free against GitHub rate
 limits) for efficient polling without burning through API quota.
 
 Usage:
-    python3 wait-github.py wait-review --pr 123 --repo owner/repo --push-ts 2025-01-01T00:00:00Z --head-sha abc123
     python3 wait-github.py wait-ci --repo owner/repo --sha abc123
 """
 
@@ -20,7 +18,7 @@ import json
 import subprocess
 import sys
 import time
-from typing import Any, Dict, List, Optional, Tuple, cast
+from typing import Dict, List, Optional, Tuple
 
 # ---------------------------------------------------------------------------
 # Shared utilities
@@ -113,171 +111,6 @@ def gh_api(
 
     body = "\n".join(lines[body_start:])
     return status_code, headers, body
-
-
-# ---------------------------------------------------------------------------
-# wait-review subcommand
-# ---------------------------------------------------------------------------
-
-REVIEWER_LOGINS = frozenset([
-    "copilot-pull-request-reviewer[bot]",
-    "copilot-pull-request-reviewer",
-])
-
-Review = dict[str, Any]
-
-
-def normalize_sha(value: Optional[str]) -> str:
-    """Normalize a commit SHA or prefix for comparison."""
-    return (value or "").strip().lower()
-
-
-def commit_matches(review_commit_id: Optional[str], head_sha: Optional[str]) -> bool:
-    """Return True when a review commit matches the requested SHA.
-
-    The workflow intends to pass the full 40-character HEAD SHA, but the wait
-    script is intentionally tolerant of a short SHA prefix because ad-hoc
-    callers (or model-generated repair commands) may reuse a 7+ character
-    `git log --oneline` style SHA. The review commit returned by GitHub is
-    always the full SHA.
-    """
-    review_commit = normalize_sha(review_commit_id)
-    requested = normalize_sha(head_sha)
-
-    if not review_commit or not requested:
-        return False
-
-    return review_commit == requested or (
-        len(requested) >= 7 and review_commit.startswith(requested)
-    )
-
-
-def parse_review_list(body: str) -> List[Review]:
-    """Parse a GitHub reviews payload into a flat list of review dicts.
-
-    `gh api --paginate --slurp` returns a JSON array of pages, where each page
-    is itself a JSON array. A non-paginated call returns a single JSON array.
-    """
-    try:
-        payload = json.loads(body)
-    except (json.JSONDecodeError, TypeError):
-        return []
-
-    if not isinstance(payload, list):
-        return []
-
-    payload_list = cast(list[Any], payload)
-    reviews: List[Review] = []
-    if payload_list and all(isinstance(page, list) for page in payload_list):
-        paged_payload = cast(list[list[Any]], payload_list)
-        for page in paged_payload:
-            for review in page:
-                if isinstance(review, dict):
-                    reviews.append(cast(Review, review))
-        return reviews
-
-    for review in payload_list:
-        if isinstance(review, dict):
-            reviews.append(cast(Review, review))
-
-    return reviews
-
-
-def find_fresh_review(
-    reviews: list[Review],
-    push_ts: str,
-    head_sha: str,
-) -> Tuple[Optional[str], Optional[Review]]:
-    """Find the latest Copilot review for the current pushed commit.
-
-    Returns (state, review_json) or (None, None).
-    """
-    fresh: Optional[Review] = None
-    for review in reviews:
-        user = review.get("user")
-        if isinstance(user, dict):
-            user_dict = cast(dict[str, Any], user)
-            login_raw = user_dict.get("login")
-            login = login_raw if isinstance(login_raw, str) else ""
-        else:
-            login = ""
-        submitted_raw = review.get("submitted_at")
-        submitted = submitted_raw if isinstance(submitted_raw, str) else ""
-        commit_raw = review.get("commit_id")
-        commit_id = commit_raw if isinstance(commit_raw, str) else ""
-        if (
-            login in REVIEWER_LOGINS
-            and submitted >= push_ts
-            and commit_matches(commit_id, head_sha)
-        ):
-            fresh = review  # keep scanning — we want the last match
-
-    if fresh:
-        state_raw = fresh.get("state")
-        state = state_raw if isinstance(state_raw, str) else None
-        return state, fresh
-    return None, None
-
-
-def fetch_all_reviews(repo: str, pr: int) -> List[Review]:
-    """Fetch all review pages for a PR and return a flat list of reviews."""
-    endpoint = f"repos/{repo}/pulls/{pr}/reviews?per_page=100"
-    _, _, body = gh_api(endpoint, extra_args=["--paginate", "--slurp"])
-    return parse_review_list(body)
-
-
-def cmd_wait_review(args: argparse.Namespace) -> None:
-    """Wait for a fresh Copilot review on a PR."""
-    poll_endpoint = f"repos/{args.repo}/pulls/{args.pr}"
-    start = time.monotonic()
-
-    # Phase 1: Immediate check — a fresh review may already exist.
-    reviews = fetch_all_reviews(args.repo, args.pr)
-    status, headers, body = gh_api(poll_endpoint, include_headers=True)
-    etag = headers.get("etag", "")
-    print(
-        f"[debug] ETag={etag or '(none)'}, reviews={len(reviews)}, "
-        f"pr_body={len(body)} chars"
-    )
-
-    state, review = find_fresh_review(reviews, args.push_ts, args.head_sha)
-    if state:
-        print(f"REVIEW_READY|state={state}")
-        print(json.dumps(review, indent=2))
-        return
-
-    # Phase 2: ETag polling loop — 304s are free against GitHub rate limit.
-    # Poll the PR resource, not the reviews list, because the reviews list is
-    # paginated oldest-first and page 1 can become permanently stale.
-    print(f"Polling every {args.poll_interval}s with ETag conditional requests...")
-    while True:
-        elapsed = time.monotonic() - start
-        if elapsed >= args.timeout:
-            print(f"TIMEOUT after {args.timeout}s — no fresh review detected")
-            sys.exit(1)
-
-        time.sleep(args.poll_interval)
-
-        extra = []
-        if etag:
-            extra = ["-H", f"If-None-Match: {etag}"]
-        status, new_headers, body = gh_api(
-            poll_endpoint, include_headers=True, extra_args=extra,
-        )
-
-        if status == 304:
-            continue  # No change — free request
-
-        # 200 = PR changed — update ETag and re-read the full review history.
-        if new_headers.get("etag"):
-            etag = new_headers["etag"]
-
-        reviews = fetch_all_reviews(args.repo, args.pr)
-        state, review = find_fresh_review(reviews, args.push_ts, args.head_sha)
-        if state:
-            print(f"REVIEW_READY|state={state}")
-            print(json.dumps(review, indent=2))
-            return
 
 
 # ---------------------------------------------------------------------------
@@ -413,18 +246,6 @@ def main() -> None:
         )
         subparsers = parser.add_subparsers(dest="command")
 
-        # wait-review
-        review_parser = subparsers.add_parser(
-            "wait-review",
-            help="Wait for a fresh Copilot PR review",
-        )
-        review_parser.add_argument("--pr", required=True, type=int, help="PR number")
-        review_parser.add_argument("--repo", required=True, help="owner/repo")
-        review_parser.add_argument("--push-ts", required=True, help="ISO8601 timestamp captured immediately before the triggering push")
-        review_parser.add_argument("--head-sha", required=True, help="Exact commit SHA or unique prefix that the review must target")
-        review_parser.add_argument("--timeout", type=int, default=600, help="Max seconds to wait (default: 600)")
-        review_parser.add_argument("--poll-interval", type=int, default=5, help="Seconds between polls (default: 5)")
-
         # wait-ci
         ci_parser = subparsers.add_parser(
             "wait-ci",
@@ -437,9 +258,7 @@ def main() -> None:
 
         args = parser.parse_args()
 
-        if args.command == "wait-review":
-            cmd_wait_review(args)
-        elif args.command == "wait-ci":
+        if args.command == "wait-ci":
             cmd_wait_ci(args)
         else:
             parser.print_help()
