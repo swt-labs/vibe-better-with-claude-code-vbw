@@ -10,7 +10,7 @@ Build a `review_finding_ledger` before posting:
 | --- | --- |
 | `id` | Stable finding id such as `VBW-PR-001`; include it in inline and summary text. |
 | `severity` | `blocker`, `non_blocking`, or `info`. |
-| `source` | `blind-baseline`, `qa`, `tests`, `diff-review`, or combined source list. |
+| `source` | `blind-baseline`, `qa`, `tests`, `diff-review`, `qa-evidence`, or combined source list. |
 | `path` | Repository-relative changed file path, or empty when unanchorable. |
 | `line` | Blob line number in the PR diff. |
 | `side` | `RIGHT` for additions/context, `LEFT` for deletions. |
