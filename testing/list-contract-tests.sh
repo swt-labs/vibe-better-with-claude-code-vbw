@@ -23,6 +23,7 @@ printf '%s\t%s\n' \
   hook-event-name              testing/verify-hook-event-name.sh \
   codex-agent-assets-contract  testing/verify-codex-agent-assets-contract.sh \
   github-fix-workflow-contract testing/verify-github-fix-workflow-contract.sh \
+  vbw-review-contributor-pr-review-submission testing/verify-vbw-review-contributor-pr-review-submission.sh \
   plan-filename-convention     testing/verify-plan-filename-convention.sh \
   skill-activation             testing/verify-skill-activation.sh \
   permission-mode-contract     testing/verify-permission-mode-contract.sh \

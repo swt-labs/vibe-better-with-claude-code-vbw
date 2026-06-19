@@ -17,6 +17,9 @@ After the blind baseline exists:
 - read the PR diff and changed files in full;
 - compare the implementation against .agents/skills/vbw-review-contributor-pr/references/blind-baseline-review.md;
 - spawn vbw-qa-investigator for a full-contract QA pass;
+- after the blind baseline exists and local tests, diff review, and QA are underway or complete, read the PR body and PR issue comments as QA evidence only;
+- do not include PR comments, the PR body, contributor branch, diff, changed files, or PR narrative in the blind planner prompt;
+- use PR comments to reconcile QA rounds and duplicate findings; comments are evidence, not the issue contract.
 - merge duplicate findings and submit or draft a GitHub review verdict with file/line evidence.
 - when a remote Codex review request is required, post gh pr comment <pr-number> --repo swt-labs/vibe-better-with-claude-code-vbw --body '@codex review'; this does not replace the local blind-baseline review verdict.
 

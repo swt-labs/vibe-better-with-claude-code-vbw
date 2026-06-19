@@ -212,7 +212,7 @@ test_execute_running_blocks() {
   local output
   output=$(run_guard "$PROJECT" "src/app.js" "" 2>&1) && local rc=$? || local rc=$?
   if [ "$rc" -eq 2 ]; then
-    if echo "$output" | grep -q "orchestrator cannot write product files"; then
+    if grep -q "orchestrator cannot write product files" <<<"$output"; then
       pass "Execute running, non-turbo, orchestrator product write: blocked (exit 2)"
     else
       fail "Execute running: blocked but wrong message: $output"
@@ -233,7 +233,7 @@ test_delegated_marker_blocks() {
   local output
   output=$(run_guard "$PROJECT" "src/app.js" "" 2>&1) && local rc=$? || local rc=$?
   if [ "$rc" -eq 2 ]; then
-    if echo "$output" | grep -q "orchestrator cannot write product files"; then
+    if grep -q "orchestrator cannot write product files" <<<"$output"; then
       pass "Delegated marker active, non-turbo, orchestrator product write: blocked (exit 2)"
     else
       fail "Delegated marker: blocked but wrong message: $output"
