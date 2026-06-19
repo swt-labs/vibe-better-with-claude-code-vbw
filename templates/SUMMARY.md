@@ -1,6 +1,6 @@
 ---
 phase: {NN} # bare integer, no quotes
-plan: {plan-number}
+plan: {plan-number} # plan number only (MM, zero-padded e.g. 01) — NOT the NN-MM file id
 title: {plan-title}
 status: {complete|partial|failed}
 completed: {YYYY-MM-DD}
