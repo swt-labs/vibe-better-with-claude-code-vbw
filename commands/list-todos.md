@@ -17,7 +17,7 @@ allowed-tools: Read, Edit, Bash
 
 ## Guard
 
-Bind `PLANNING_ROOT=$(bash "/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/resolve-planning-root.sh" 2>/dev/null || echo .vbw-planning)` and use `"$PLANNING_ROOT/..."` for every subsequent path reference in this command.
+Bind `PLANNING_ROOT=$(bash "/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-default}/scripts/resolve-planning-root.sh" 2>/dev/null || echo .vbw-planning)` and use `"$PLANNING_ROOT/..."` for every subsequent path reference in this command. Helper scripts below (`todo-lifecycle.sh`, `list-todos.sh`, `suggest-next.sh`) still own their own `.vbw-planning` lookup via `VBW_PLANNING_DIR:-.vbw-planning`, so every helper invocation MUST carry `VBW_PLANNING_DIR="$PLANNING_ROOT"` — otherwise, from a submodule CWD, they default to the submodule's `.vbw-planning` and report `STATE.md not found` even though the resolver found the parent planning dir.
 
 1. **Not initialized:** Apply the three-branch pattern:
    - `"$PLANNING_ROOT/config.json"` missing AND `"$(dirname "$PLANNING_ROOT")"` equals cwd (truly uninitialized): STOP "Run /vbw:init first."
@@ -35,16 +35,16 @@ Bind `PLANNING_ROOT=$(bash "/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-defa
    (e) Extract `--plugin-dir <path>` from the process tree (`ps axww`) and use that path if it contains `scripts/hook-wrapper.sh`.
    If none resolves to a valid directory, STOP: "Plugin root not found. The session startup hook may not have run. Try restarting your Claude session." Store the resolved path as `PLUGIN_ROOT` for subsequent steps.
 
-2. **Load todos through the snapshot helper:** Run:
+2. **Load todos through the snapshot helper:** Run (carry `VBW_PLANNING_DIR` so the helper resolves the same parent planning dir from a submodule CWD):
    ```bash
-   bash "${PLUGIN_ROOT}/scripts/todo-lifecycle.sh" list-with-snapshot {priority-filter}
+   VBW_PLANNING_DIR="$PLANNING_ROOT" bash "${PLUGIN_ROOT}/scripts/todo-lifecycle.sh" list-with-snapshot {priority-filter}
    ```
    Omit the filter arg if none is provided. Parse the JSON output. This helper owns both the fresh `list-todos.sh` lookup and the exact last-view snapshot write. If snapshot persistence fails, it returns the helper error JSON instead of a partial success.
 
 3. **Handle status:**
    - `"error"`: STOP with the `message` value.
-   - `"empty"`: Display the `display` value. Run `bash "${PLUGIN_ROOT}/scripts/suggest-next.sh" list-todos empty` and display. Exit.
-   - `"no-match"`: Display the `display` value. Run `bash "${PLUGIN_ROOT}/scripts/suggest-next.sh" list-todos empty` and display. Exit.
+   - `"empty"`: Display the `display` value. Run `VBW_PLANNING_DIR="$PLANNING_ROOT" bash "${PLUGIN_ROOT}/scripts/suggest-next.sh" list-todos empty` and display. Exit.
+   - `"no-match"`: Display the `display` value. Run `VBW_PLANNING_DIR="$PLANNING_ROOT" bash "${PLUGIN_ROOT}/scripts/suggest-next.sh" list-todos empty` and display. Exit.
    - `"ok"`: Continue to step 4.
 
 4. **Display list:** Show the `display` value from the script output exactly as returned (do not append any additional prompt text).

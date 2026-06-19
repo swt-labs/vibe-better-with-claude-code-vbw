@@ -30,7 +30,7 @@ Roadmap:
 !`P=$(bash "{plugin-root}/scripts/resolve-planning-root.sh" 2>/dev/null || echo ".vbw-planning"); head -50 "$P/ROADMAP.md" 2>/dev/null || echo "No roadmap found"`
 ```
 
-Config: Pre-injected by SessionStart hook. Read .vbw-planning/config.json only if --verbose.
+Config: Pre-injected by SessionStart hook. Read `"$PLANNING_ROOT/config.json"` only if --verbose.
 
 Phase directories:
 ```
@@ -131,14 +131,14 @@ Bind `PLANNING_ROOT=$(bash "/tmp/.vbw-plugin-root-link-${CLAUDE_SESSION_ID:-defa
 ## Steps
 
 1. **Parse args:** --verbose shows per-plan detail within each phase
-2. **Resolve paths:** Use `.vbw-planning/phases/` for phase directories. Gather milestone list from `.vbw-planning/milestones/` (dirs with SHIPPED.md).
+2. **Resolve paths:** Use `"$PLANNING_ROOT/phases/"` for phase directories. Gather milestone list from `"$PLANNING_ROOT/milestones/"` (dirs with SHIPPED.md). Never use bare `.vbw-planning/...` here — from a submodule CWD that resolves to the submodule, not the parent workspace the resolver found.
 3. **Read data:** (STATE.md and ROADMAP.md use compact format -- flat fields, no verbose prose)
    - STATE.md: project name, current phase (flat `Phase:`, `Plans:`, `Progress:` lines), velocity
    - ROADMAP.md: phases, status markers, plan counts (compact per-phase fields, Progress table)
-   - SessionStart injection: effort, autonomy. If --verbose, read config.json
+   - SessionStart injection: effort, autonomy. If --verbose, read `"$PLANNING_ROOT/config.json"`
    - Phase dirs: glob `*-PLAN.md` and `*-SUMMARY.md` per phase for completion data
    - If Agent Teams build active: read shared task list for teammate status
-   - Cost ledger: if `.vbw-planning/.cost-ledger.json` exists, read with jq. Extract per-agent costs. Compute total. Only display economy if total > 0.
+   - Cost ledger: if `"$PLANNING_ROOT/.cost-ledger.json"` exists, read with jq. Extract per-agent costs. Compute total. Only display economy if total > 0.
 4. **Compute progress:** Per phase: count PLANs (total) vs SUMMARYs (done). Pct = done/total * 100. Status: ✓ (100%), ◆ (1-99%), ○ (0%).
 5. **Compute velocity:** Total plans done, avg duration, total time. If --verbose: per-phase breakdown.
 6. **Next action:** Find first incomplete phase. Has plans but not all summaries: `/vbw:vibe` (auto-executes). Complete + next unplanned: `/vbw:vibe` (auto-plans). All complete: `/vbw:vibe --archive`. No plans anywhere: `/vbw:vibe`.

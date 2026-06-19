@@ -357,3 +357,44 @@ canon() {
   # pointing outside the orphan would be a leak.
   grep -qE '^(planning_dir_exists=false|phases_dir=(none|\.vbw-planning/phases))$' "$stdout_file"
 }
+
+# --- planning-git.sh submodule rooting (#640 / PR #641 VBW-PR-001) ----------
+# planning-git.sh must run its git operations against the workspace repo that
+# OWNS .vbw-planning, not the submodule the caller's CWD sits in. Before the fix
+# it ran `git add .vbw-planning` from the submodule CWD, which targets the wrong
+# repo / a path outside the submodule work tree.
+
+@test "planning-git.sh commit-boundary roots at the workspace repo from a submodule CWD" {
+  local outer="$TEST_TEMP_DIR/pg-outer"
+  local inner="$TEST_TEMP_DIR/pg-inner"
+  mkdir -p "$outer/.vbw-planning"
+  git -C "$outer" init -q
+  cat > "$outer/.vbw-planning/config.json" <<'JSON'
+{"planning_tracking": "commit", "auto_push": "never"}
+JSON
+  echo "# state" > "$outer/.vbw-planning/STATE.md"
+  git -C "$outer" add -A
+  git -C "$outer" commit -q -m "test(init): seed workspace"
+
+  mkdir -p "$inner"
+  git -C "$inner" init -q
+  ( cd "$inner" && echo hello > README.md && git add README.md && git commit -q -m "seed" )
+  if ! git -C "$outer" -c protocol.file.allow=always submodule add --quiet "$inner" packages/submod 2>/dev/null; then
+    skip "git submodule add (file://) not available in this harness"
+  fi
+  git -C "$outer" commit -q -m "chore: add submodule"
+
+  # Mutate parent planning state, then run commit-boundary from INSIDE the submodule.
+  echo "# changed" >> "$outer/.vbw-planning/STATE.md"
+  (
+    cd "$outer/packages/submod"
+    export VBW_PLANNING_DIR="$outer/.vbw-planning"
+    bash "$SCRIPTS_DIR/planning-git.sh" commit-boundary "test-action" "$outer/.vbw-planning/config.json"
+  )
+
+  # The vbw chore commit must land in the OUTER (workspace) repo...
+  git -C "$outer" log --oneline -1 | grep -q 'chore(vbw): test-action'
+  # ...and the parent's planning change must be committed, not left dirty.
+  run git -C "$outer" status --porcelain -- .vbw-planning
+  [ -z "$output" ]
+}

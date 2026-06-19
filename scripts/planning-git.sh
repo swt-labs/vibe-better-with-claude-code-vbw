@@ -135,6 +135,35 @@ if [ -z "$COMMAND" ]; then
   exit 1
 fi
 
+# --- Submodule-safe rooting (#640) ------------------------------------------
+# Planning artifacts live in the workspace that OWNS .vbw-planning, which can be
+# an ancestor of the caller's CWD — e.g. when a /vbw:* command runs from inside a
+# git submodule, the parent workspace (and its repo) sits ABOVE the submodule.
+# Every git operation below (add/commit/push, .gitignore writes) must target that
+# workspace repo, not the submodule the caller happens to sit in. Resolve the
+# planning dir, then cd to the workspace root and pin VBW_PLANNING_DIR to its
+# absolute path so all consumers reference the correct repo and work tree.
+# Passing $PLANNING_ROOT from commands alone is NOT enough while this script
+# stays rooted at the caller's CWD — the rooting must happen here.
+_pg_script_dir="$(cd "$(dirname "$0")" && pwd)"
+_pg_pdir="${VBW_PLANNING_DIR:-}"
+if [ -z "$_pg_pdir" ]; then
+  _pg_pdir="$(bash "$_pg_script_dir/resolve-planning-root.sh" 2>/dev/null || echo ".vbw-planning")"
+fi
+case "$_pg_pdir" in
+  /*) : ;;
+  *)  _pg_pdir="$PWD/$_pg_pdir" ;;
+esac
+if [ -d "$_pg_pdir" ]; then
+  _pg_abs="$(cd "$_pg_pdir" 2>/dev/null && pwd)" || _pg_abs="$_pg_pdir"
+  cd "$(dirname "$_pg_abs")" 2>/dev/null || true
+  VBW_PLANNING_DIR="$_pg_abs"
+  export VBW_PLANNING_DIR
+  unset _pg_abs
+fi
+unset _pg_script_dir _pg_pdir
+# ----------------------------------------------------------------------------
+
 case "$COMMAND" in
   sync-ignore)
     CONFIG_FILE="${ARG2:-${VBW_PLANNING_DIR:-.vbw-planning}/config.json}"
