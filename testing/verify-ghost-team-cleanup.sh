@@ -218,7 +218,7 @@ test_doctor_scan_reports_orphaned() {
     CLAUDE_CONFIG_DIR="$claude_dir" VBW_PLANNING_DIR="$planning_dir" \
     bash "$DOCTOR_SCRIPT" scan 2>/dev/null) || true
 
-  if echo "$output" | grep -q "orphaned_team|vbw-phase-05"; then
+  if grep -q "orphaned_team|vbw-phase-05" <<<"$output"; then
     pass "doctor scan reports orphaned VBW configless team"
   else
     fail "doctor scan did not report orphaned VBW team. Output: $output"
@@ -240,7 +240,7 @@ test_doctor_scan_skips_non_vbw_orphan() {
     CLAUDE_CONFIG_DIR="$claude_dir" VBW_PLANNING_DIR="$planning_dir" \
     bash "$DOCTOR_SCRIPT" scan 2>/dev/null) || true
 
-  if echo "$output" | grep -q "orphaned_team|my-custom-team"; then
+  if grep -q "orphaned_team|my-custom-team" <<<"$output"; then
     fail "doctor scan should not report non-VBW configless team"
   else
     pass "doctor scan skips non-VBW configless team"
@@ -286,7 +286,7 @@ test_vibe_no_team_machinery_in_plan() {
     fail "Could not extract Plan mode section from vibe.md (heading format may have changed)"
     return
   fi
-  if echo "$plan_section" | grep -q 'TeamCreate' || echo "$plan_section" | grep -q 'TeamDelete'; then
+  if grep -q 'TeamCreate' <<<"$plan_section" || grep -q 'TeamDelete' <<<"$plan_section"; then
     fail "vibe.md Plan mode section still references TeamCreate/TeamDelete"
   else
     pass "vibe.md Plan mode section has no team machinery"
@@ -343,7 +343,7 @@ test_clean_script_vbw_prefix_guard() {
   # Scope to pass 1 only — pass 2 has its own guard tested separately (test 25)
   local pass1_region
   pass1_region=$(sed -n '/^# Pass 1/,/^# Pass 2/p' "$CLEAN_SCRIPT")
-  if echo "$pass1_region" | grep -q 'case "$team_name" in vbw-\*)'; then
+  if grep -q 'case "$team_name" in vbw-\*)' <<<"$pass1_region"; then
     pass "clean-stale-teams.sh has vbw-* prefix guard in configless pass (pass 1)"
   else
     fail "clean-stale-teams.sh missing vbw-* prefix guard in pass 1"
@@ -446,7 +446,7 @@ test_clean_script_pass2_vbw_prefix_guard() {
   # Pass 2 is the second for-loop block; verify it contains a vbw-* case guard
   local pass2_region
   pass2_region=$(sed -n '/^# Pass 2/,/^done$/p' "$CLEAN_SCRIPT")
-  if echo "$pass2_region" | grep -q 'case "$team_name" in vbw-\*)'; then
+  if grep -q 'case "$team_name" in vbw-\*)' <<<"$pass2_region"; then
     pass "clean-stale-teams.sh pass 2 has vbw-* prefix guard"
   else
     fail "clean-stale-teams.sh pass 2 missing vbw-* prefix guard"
@@ -468,7 +468,7 @@ test_doctor_scan_reports_paired_tasks() {
     CLAUDE_CONFIG_DIR="$claude_dir" VBW_PLANNING_DIR="$planning_dir" \
     bash "$DOCTOR_SCRIPT" scan 2>/dev/null) || true
 
-  if echo "$output" | grep -q "orphaned_tasks|vbw-phase-07"; then
+  if grep -q "orphaned_tasks|vbw-phase-07" <<<"$output"; then
     pass "doctor scan reports paired tasks dir for orphaned team"
   else
     fail "doctor scan did not report paired tasks dir. Output: $output"
@@ -493,7 +493,7 @@ test_doctor_scan_reports_stale_paired_tasks() {
     CLAUDE_CONFIG_DIR="$claude_dir" VBW_PLANNING_DIR="$planning_dir" \
     bash "$DOCTOR_SCRIPT" scan 2>/dev/null) || true
 
-  if echo "$output" | grep -q "stale_tasks|vbw-phase-12"; then
+  if grep -q "stale_tasks|vbw-phase-12" <<<"$output"; then
     pass "doctor scan reports paired tasks dir for stale team"
   else
     fail "doctor scan did not report stale paired tasks dir. Output: $output"

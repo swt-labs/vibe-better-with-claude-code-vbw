@@ -407,7 +407,7 @@ else
 fi
 
 DEBUG_USAGE_LINES="$(grep -F 'Usage:' "$DEBUG_CMD" 2>/dev/null || true)"
-DEBUG_USAGE_COUNT=$(printf '%s\n' "$DEBUG_USAGE_LINES" | grep -c 'Usage:' || true)
+DEBUG_USAGE_COUNT=$(grep -c 'Usage:' <<<"$DEBUG_USAGE_LINES" || true)
 if [ "$DEBUG_USAGE_COUNT" -ge 2 ] \
   && contains_literal "$DEBUG_USAGE_LINES" '/vbw:debug <todo-number>' \
   && contains_literal "$DEBUG_USAGE_LINES" '/vbw:debug --resume' \
