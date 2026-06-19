@@ -384,6 +384,29 @@ write_state '{"plans":[{"id":"01-02","status":"pending"}],"effort":"balanced","p
 write_plan_inline 01-02-PLAN.md 01 03 '[]'
 expect_helper_failure "frontmatter plan mismatch fails closed with invalid_dependency_graph"
 
+# issue #659: a phase-prefixed plan: frontmatter value (NN-MM, the same form
+# cross_phase_deps uses) must resolve to the canonical id instead of being
+# double-prefixed to NN-NN-MM and rejected as a spurious frontmatter_mismatch.
+make_fixture fm-phase-prefixed '"auto"' balanced
+write_state '{"plans":[{"id":"01-01","status":"pending"}],"effort":"balanced","phase_effort":"balanced"}'
+write_plan_inline 01-01-PLAN.md 01 01-01 '[]'
+out=$(run_helper)
+assert_eq "$(json_field "$out" '.delegation_mode')" "subagent" "phase-prefixed plan: frontmatter (unquoted NN-MM) resolves without frontmatter_mismatch"
+assert_json_array_eq "$(jq -c '.dependency_waves' <<< "$out")" '[["01-01"]]' "phase-prefixed plan: frontmatter maps to canonical id 01-01"
+
+make_fixture fm-phase-prefixed-quoted '"auto"' balanced
+write_state '{"plans":[{"id":"01-01","status":"pending"}],"effort":"balanced","phase_effort":"balanced"}'
+write_plan_inline 01-01-PLAN.md 01 '"01-01"' '[]'
+out=$(run_helper)
+assert_eq "$(json_field "$out" '.delegation_mode')" "subagent" "phase-prefixed plan: frontmatter (quoted \"NN-MM\") resolves without frontmatter_mismatch"
+
+# the fix must not blunt genuine-mismatch detection: a phase-prefixed value that
+# disagrees with the canonical id is still rejected.
+make_fixture fm-phase-prefixed-mismatch '"auto"' balanced
+write_state '{"plans":[{"id":"01-01","status":"pending"}],"effort":"balanced","phase_effort":"balanced"}'
+write_plan_inline 01-01-PLAN.md 01 01-02 '[]'
+expect_helper_failure "phase-prefixed frontmatter mismatch (NN-MM disagrees with id) still fails closed"
+
 # malformed execution-state / route-map schemas fail closed before spawning
 make_fixture valid-empty-plans '"auto"' balanced
 write_state '{"plans":[],"effort":"balanced","phase_effort":"balanced"}'
