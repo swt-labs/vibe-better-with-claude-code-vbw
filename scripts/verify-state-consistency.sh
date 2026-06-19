@@ -904,15 +904,19 @@ run_check_state_vs_roadmap() {
   fi
 
   local roadmap_checklist_count roadmap_section_count
-  # Accept both plain "- [ ] Phase N:" and bootstrap link "- [ ] [Phase N:"
+  # Accept plain "- [ ] Phase N:", bootstrap link "- [ ] [Phase N:", and
+  # markdown-emphasis "- [ ] **Phase N:**" (bold/italic markers around the optional link bracket)
   roadmap_checklist_count=0
   while IFS= read -r line || [ -n "$line" ]; do
     if roadmap_checklist_phase_num_from_line "$line" >/dev/null 2>&1; then
       roadmap_checklist_count=$((roadmap_checklist_count + 1))
     fi
   done < "$ROADMAP_FILE"
-  # Accept ### or ## section headings (bootstrap may use ## instead of ###)
-  roadmap_section_count=$(grep -cE '^#{2,3} (\[)?Phase [0-9]+:' "$ROADMAP_FILE" 2>/dev/null || true)
+  # Accept ### or ## section headings (bootstrap may use ## instead of ###).
+  # Tolerate the same markdown emphasis as the checklist parser above (e.g.
+  # "## **Phase N:**") so an author who emphasizes BOTH checklist items and
+  # headings does not produce a checklist-count vs section-count mismatch (#651).
+  roadmap_section_count=$(grep -cE '^#{2,3} [*_]*(\[)?[*_]*Phase [0-9]+:' "$ROADMAP_FILE" 2>/dev/null || true)
 
   local details="" failed=false
 

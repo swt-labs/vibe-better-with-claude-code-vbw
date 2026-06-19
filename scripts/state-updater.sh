@@ -77,7 +77,7 @@ fi
 if ! type roadmap_checklist_phase_num_from_line >/dev/null 2>&1; then
   roadmap_checklist_phase_num_from_line() {
     local line="$1" raw_num
-    if [[ "$line" =~ ^-\ \[.\]\ \[?Phase\ ([0-9][0-9]*): ]]; then
+    if [[ "$line" =~ ^-\ \[.\]\ [*_]*\[?[*_]*Phase\ ([0-9][0-9]*): ]]; then
       raw_num="${BASH_REMATCH[1]}"
       normalize_roadmap_phase_num "$raw_num"
       return 0
