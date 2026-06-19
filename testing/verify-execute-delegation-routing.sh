@@ -407,6 +407,31 @@ write_state '{"plans":[{"id":"01-01","status":"pending"}],"effort":"balanced","p
 write_plan_inline 01-01-PLAN.md 01 01-02 '[]'
 expect_helper_failure "phase-prefixed frontmatter mismatch (NN-MM disagrees with id) still fails closed"
 
+# multi-digit phase symmetry (QA round 2): a 3-digit phase with a phase-prefixed
+# plan: value (100-01) must still normalize to the canonical id, not 100-100-01.
+# Guards the pad_number/normalize_plan_ref symmetry against future edits. Uses a
+# bespoke fixture because make_fixture/run_helper assume a 2-digit phase dir.
+MD_FIXTURE="$TMPDIR_BASE/fm-multidigit-phase"
+MD_PHASE_DIR="$MD_FIXTURE/.vbw-planning/phases/100-test"
+mkdir -p "$MD_PHASE_DIR" "$MD_FIXTURE/.vbw-planning/.cache"
+printf '{"prefer_teams":"auto","effort":"balanced"}\n' > "$MD_FIXTURE/.vbw-planning/config.json"
+printf '{"plans":[{"id":"100-01","status":"pending"}],"effort":"balanced","phase_effort":"balanced"}\n' > "$MD_FIXTURE/.vbw-planning/.execution-state.json"
+cat > "$MD_PHASE_DIR/100-01-PLAN.md" <<'MDPLAN'
+---
+phase: 100
+plan: "100-01"
+title: Plan 100-01
+depends_on: []
+---
+# Plan 100-01
+
+### Task 1: Work
+- **Files:** `src/file.txt`
+MDPLAN
+md_out=$(cd "$MD_FIXTURE" && "$HELPER" --phase-dir .vbw-planning/phases/100-test)
+assert_eq "$(json_field "$md_out" '.delegation_mode')" "subagent" "multi-digit phase with phase-prefixed plan: (100-01) resolves without frontmatter_mismatch"
+assert_json_array_eq "$(jq -c '.dependency_waves' <<< "$md_out")" '[["100-01"]]' "multi-digit phase-prefixed plan: maps to canonical id 100-01 (no 100-100-01 double-prefix)"
+
 # malformed execution-state / route-map schemas fail closed before spawning
 make_fixture valid-empty-plans '"auto"' balanced
 write_state '{"plans":[],"effort":"balanced","phase_effort":"balanced"}'
