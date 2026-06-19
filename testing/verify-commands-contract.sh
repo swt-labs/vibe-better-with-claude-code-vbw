@@ -349,7 +349,7 @@ for file in "${TRACKED_COMMAND_MARKDOWN_FILES[@]}"; do
     pass "$base: allowed-tools present"
   fi
 
-  DESC_COUNT="$(printf '%s\n' "$FRONTMATTER" | grep -c '^description:')"
+  DESC_COUNT="$(grep -c '^description:' <<<"$FRONTMATTER")"
   if [ "$DESC_COUNT" -ne 1 ]; then
     fail "$base: description field missing or duplicated"
     continue

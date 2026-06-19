@@ -121,7 +121,12 @@ require_file "$SKILL_DIR/vbw-fix-issue/references/qa-loop.md" "fix issue QA loop
 require_file "$SKILL_DIR/vbw-fix-issue/references/pr-ci-gate.md" "fix issue PR/CI gate reference"
 require_file "$SKILL_DIR/vbw-fix-issue/references/recovery.md" "fix issue recovery reference"
 require_file "$SKILL_DIR/vbw-review-contributor-pr/references/blind-baseline-review.md" "contributor PR blind baseline reference"
+require_file "$SKILL_DIR/vbw-review-contributor-pr/references/qa-evidence-comments.md" "contributor PR QA evidence comments reference"
 require_file "$SKILL_DIR/vbw-qa-investigator/references/qa-contract.md" "QA contract reference"
+
+require_contains "$CODEX_AGENT_DIR/vbw-contributor-pr-reviewer.toml" 'after the blind baseline exists' "contributor PR reviewer reads comments after blind baseline"
+require_contains "$CODEX_AGENT_DIR/vbw-contributor-pr-reviewer.toml" 'PR comments, the PR body' "contributor PR reviewer excludes comments from blind planner"
+require_contains "$CODEX_AGENT_DIR/vbw-contributor-pr-reviewer.toml" 'comments are evidence, not the issue contract' "contributor PR reviewer treats comments as evidence"
 
 if [ -d "$ROOT/.github/agents" ] && find "$ROOT/.github/agents" -type f -name '*.agent.md' | grep -q .; then
   fail "legacy .github/agents/*.agent.md files should be removed"
