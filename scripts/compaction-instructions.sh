@@ -12,6 +12,7 @@ set -u
 #   - Compaction markers for Dev re-read guards
 
 PLANNING_DIR="${VBW_PLANNING_DIR:-.vbw-planning}"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 INPUT=$(cat)
 NATIVE_AGENT_TYPE=$(echo "$INPUT" | jq -r '.agent_type // ""' 2>/dev/null)
@@ -201,11 +202,21 @@ case "$AGENT_ROLE" in
     ;;
 esac
 
-# Inject shutdown protocol reminder for team agents (survives compaction).
-# NOTE: Keep this reminder in sync with the Shutdown Handling section in agents/vbw-*.md.
+# Inject shutdown protocol reminder — ONLY for agents in a live VBW agent team.
+# The teammate shutdown handshake (and the SendMessage tool it requires) exist
+# only in team mode; the orchestrator's team-mode spawn prompt delivers this block
+# initially (see references/execute-protocol.md), and this re-injects it so it
+# survives compaction. Gated on the delegation marker so non-team subagent runs
+# never receive an un-followable SendMessage instruction.
 case "$AGENT_ROLE" in
   scout|dev|qa|lead|debugger|docs)
-    PRIORITIES="$PRIORITIES. SHUTDOWN PROTOCOL: If you receive a message containing \"shutdown_request\", you MUST call the SendMessage tool with a JSON body: {\"type\": \"shutdown_response\", \"approved\": true, \"request_id\": \"<id from shutdown_request>\", \"final_status\": \"complete|idle|in_progress\"}. Use the final_status value that matches your current state. Plain text responses do NOT satisfy the shutdown protocol."
+    _vbw_team_marker=$(VBW_PLANNING_DIR="$PLANNING_DIR" bash "$SCRIPT_DIR/delegated-workflow.sh" status-json 2>/dev/null) || _vbw_team_marker=""
+    if [ -n "$_vbw_team_marker" ] \
+      && [ "$(printf '%s' "$_vbw_team_marker" | jq -r '.live // false' 2>/dev/null)" = "true" ] \
+      && [ "$(printf '%s' "$_vbw_team_marker" | jq -r '.delegation_mode // ""' 2>/dev/null)" = "team" ] \
+      && [ -n "$(printf '%s' "$_vbw_team_marker" | jq -r '.team_name // ""' 2>/dev/null)" ]; then
+      PRIORITIES="$PRIORITIES. SHUTDOWN PROTOCOL: If you receive a message containing \"shutdown_request\", you MUST call the SendMessage tool with a JSON body: {\"type\": \"shutdown_response\", \"approved\": true, \"request_id\": \"<id from shutdown_request>\", \"final_status\": \"complete|idle|in_progress\"}. Use the final_status value that matches your current state. Plain text responses do NOT satisfy the shutdown protocol."
+    fi
     ;;
 esac
 
@@ -286,11 +297,13 @@ if [ -d "$PLANNING_DIR" ]; then
 fi
 
 # --- Save agent state snapshot ---
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 if [ -f "$PLANNING_DIR/.execution-state.json" ] && [ -f "$SCRIPT_DIR/snapshot-resume.sh" ]; then
   SNAP_PHASE=$(jq -r '.phase // ""' "$PLANNING_DIR/.execution-state.json" 2>/dev/null)
   if [ -n "$SNAP_PHASE" ]; then
-    bash "$SCRIPT_DIR/snapshot-resume.sh" save "$SNAP_PHASE" "$PLANNING_DIR/.execution-state.json" "$AGENT_ROLE" "$TRIGGER" 2>/dev/null || true
+    # Discard stdout (snapshot-resume.sh save echoes the snapshot path): this is a
+    # PreCompact hook whose stdout must be valid JSON only. When .execution-state.json
+    # exists (every live execute), an unredirected path would corrupt the hook JSON.
+    bash "$SCRIPT_DIR/snapshot-resume.sh" save "$SNAP_PHASE" "$PLANNING_DIR/.execution-state.json" "$AGENT_ROLE" "$TRIGGER" >/dev/null 2>&1 || true
     TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ" 2>/dev/null || date +"%Y-%m-%d %H:%M:%S")
     echo "[$TIMESTAMP] Snapshot saved: phase=$SNAP_PHASE agent=${AGENT_ROLE:-$AGENT_INSTANCE_NAME}" >> "$PLANNING_DIR/.hook-errors.log" 2>/dev/null || true
   fi

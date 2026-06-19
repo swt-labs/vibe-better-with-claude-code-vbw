@@ -25,97 +25,96 @@ teardown() {
 }
 
 # =============================================================================
-# Agent definitions: all 6 team-participating agents have Shutdown Handling
+# Issue #645: the teammate shutdown handshake is NOT baked into static agent
+# prompts. SendMessage exists only inside a live agent team, so the handler is
+# delivered at spawn time by the orchestrator (team mode only) — see
+# references/execute-protocol.md. These guards prevent reintroducing an
+# un-followable SendMessage mandate into the static agent prompts.
 # =============================================================================
 
-@test "vbw-dev has Shutdown Handling section" {
-  grep -q '^## Shutdown Handling$' "$PROJECT_ROOT/agents/vbw-dev.md"
-}
-
-@test "vbw-qa has Shutdown Handling section" {
-  grep -q '^## Shutdown Handling$' "$PROJECT_ROOT/agents/vbw-qa.md"
-}
-
-@test "vbw-scout has Shutdown Handling section" {
-  grep -q '^## Shutdown Handling$' "$PROJECT_ROOT/agents/vbw-scout.md"
-}
-
-@test "vbw-lead has Shutdown Handling section" {
-  grep -q '^## Shutdown Handling$' "$PROJECT_ROOT/agents/vbw-lead.md"
-}
-
-@test "vbw-debugger has Shutdown Handling section" {
-  grep -q '^## Shutdown Handling$' "$PROJECT_ROOT/agents/vbw-debugger.md"
-}
-
-@test "vbw-docs has Shutdown Handling section" {
-  grep -q '^## Shutdown Handling$' "$PROJECT_ROOT/agents/vbw-docs.md"
-}
-
-# =============================================================================
-# Agent handlers reference both message types
-# =============================================================================
-
-@test "all agent handlers reference shutdown_request" {
+@test "no team agent .md carries a static Shutdown Handling section" {
   for agent in dev qa scout lead debugger docs; do
-    grep -q 'shutdown_request' "$PROJECT_ROOT/agents/vbw-${agent}.md" || {
-      echo "vbw-${agent}.md missing shutdown_request reference"
+    ! grep -q '^## Shutdown Handling$' "$PROJECT_ROOT/agents/vbw-${agent}.md" || {
+      echo "vbw-${agent}.md must NOT carry a static Shutdown Handling section (issue #645)"
       return 1
     }
   done
 }
 
-@test "all agent handlers reference shutdown_response" {
+@test "no team agent .md carries the unconditional 'MUST call the SendMessage tool' mandate" {
   for agent in dev qa scout lead debugger docs; do
-    grep -q 'shutdown_response' "$PROJECT_ROOT/agents/vbw-${agent}.md" || {
-      echo "vbw-${agent}.md missing shutdown_response reference"
+    ! grep -qi 'MUST call the SendMessage tool' "$PROJECT_ROOT/agents/vbw-${agent}.md" || {
+      echo "vbw-${agent}.md must NOT carry an unconditional SendMessage shutdown mandate (issue #645)"
       return 1
     }
   done
 }
 
 # =============================================================================
-# Agent handlers instruct STOP behavior
+# execute-protocol.md delivers the teammate shutdown-response protocol at spawn,
+# gated to true team mode.
 # =============================================================================
 
-@test "all agent shutdown handlers instruct to STOP" {
-  for agent in dev qa scout lead debugger docs; do
-    # Each handler must contain a STOP instruction
-    sed -n '/^## Shutdown Handling$/,/^## /p' "$PROJECT_ROOT/agents/vbw-${agent}.md" | grep -qi 'STOP' || {
-      echo "vbw-${agent}.md Shutdown Handling section missing STOP instruction"
-      return 1
-    }
-  done
+@test "execute-protocol.md team-mode branch documents the teammate shutdown-response protocol" {
+  local section
+  section=$(sed -n '/Teammate shutdown-response protocol/,/Explicit non-team mode/p' "$PROJECT_ROOT/references/execute-protocol.md")
+  [ -n "$section" ] || { echo "execute-protocol.md missing teammate shutdown-response protocol block"; return 1; }
+  echo "$section" | grep -q 'shutdown_request'
+  echo "$section" | grep -q 'shutdown_response'
+  echo "$section" | grep -qi 'SendMessage'
+  echo "$section" | grep -q 'request_id'
+  echo "$section" | grep -q 'approved'
+  echo "$section" | grep -q 'final_status'
+  echo "$section" | grep -qi 'STOP'
 }
 
-@test "debugger handler includes checkpoint instruction" {
-  sed -n '/^## Shutdown Handling$/,/^## /p' "$PROJECT_ROOT/agents/vbw-debugger.md" | grep -qi 'checkpoint'
+@test "execute-protocol.md shutdown protocol is gated to team mode only" {
+  local section
+  section=$(sed -n '/Teammate shutdown-response protocol/,/Explicit non-team mode/p' "$PROJECT_ROOT/references/execute-protocol.md")
+  echo "$section" | grep -qi 'team mode only'
+  echo "$section" | grep -qi 'non-team'
+}
+
+@test "execute-protocol.md shutdown protocol warns plain text is not sufficient" {
+  sed -n '/Teammate shutdown-response protocol/,/Explicit non-team mode/p' "$PROJECT_ROOT/references/execute-protocol.md" \
+    | grep -qi 'NOT satisfy\|NOT sufficient'
 }
 
 # =============================================================================
-# Shutdown Handling is positioned between Effort and Circuit Breaker
+# Issue #645: /vbw:debug Path A is a real agent team (TeamCreate + SendMessage
+# teardown gate). It must be gated on team-tooling availability and fall back to
+# the non-team Path B when agent teams / SendMessage are unavailable — otherwise
+# the teardown HARD GATE hangs waiting for shutdown_response calls that can never
+# arrive. (Reproduction path for VBW-PR-002 on PR #646.)
 # =============================================================================
 
-@test "shutdown handling section order: after Effort, before Circuit Breaker" {
-  for agent in dev qa scout lead debugger docs; do
-    local file="$PROJECT_ROOT/agents/vbw-${agent}.md"
-    local effort_line shutdown_line breaker_line
-    effort_line=$(grep -n '^## Effort' "$file" | head -1 | cut -d: -f1)
-    shutdown_line=$(grep -n '^## Shutdown Handling' "$file" | head -1 | cut -d: -f1)
-    breaker_line=$(grep -n '^## Circuit Breaker' "$file" | head -1 | cut -d: -f1)
-    [ -n "$effort_line" ] && [ -n "$shutdown_line" ] && [ -n "$breaker_line" ] || {
-      echo "vbw-${agent}.md missing one of Effort/Shutdown/Circuit sections"
-      return 1
-    }
-    [ "$effort_line" -lt "$shutdown_line" ] || {
-      echo "vbw-${agent}.md: Shutdown Handling ($shutdown_line) not after Effort ($effort_line)"
-      return 1
-    }
-    [ "$shutdown_line" -lt "$breaker_line" ] || {
-      echo "vbw-${agent}.md: Shutdown Handling ($shutdown_line) not before Circuit Breaker ($breaker_line)"
-      return 1
-    }
-  done
+@test "debug.md surfaces Agent Teams availability (CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS) in Context" {
+  grep -q 'CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS' "$PROJECT_ROOT/commands/debug.md" || {
+    echo "debug.md must surface the Agent Teams flag so routing can gate Path A on it (#645)"
+    return 1
+  }
+}
+
+@test "debug.md Path A is gated on team-tooling availability before the prefer_teams tree" {
+  # The team-tooling precondition must (a) exist, (b) require the Agent Teams flag
+  # and SendMessage/TeamCreate, and (c) force Path B when unavailable.
+  local section
+  section=$(sed -n '/Routing decision + delegation marker/,/Path B: Standard/p' "$PROJECT_ROOT/commands/debug.md")
+  echo "$section" | grep -qi 'team-tooling precondition' || {
+    echo "debug.md routing must document a team-tooling precondition gating Path A (#645)"
+    return 1
+  }
+  echo "$section" | grep -qi 'SendMessage'
+  echo "$section" | grep -qi 'TeamCreate'
+  echo "$section" | grep -qi 'force Path B'
+}
+
+@test "debug.md Path A header requires the team-tooling precondition" {
+  grep -q 'Path A: Competing Hypotheses.*team-tooling precondition satisfied' \
+    "$PROJECT_ROOT/commands/debug.md" || {
+    echo "Path A header must require the team-tooling precondition (#645)"
+    return 1
+  }
 }
 
 # =============================================================================
@@ -490,81 +489,24 @@ teardown() {
 }
 
 # =============================================================================
-# Issue #198: Mechanical tool-call instructions in agent Shutdown Handling
-# Agents must be told to CALL the SendMessage tool, not just "respond"
+# Issue #198 + #645: mechanical tool-call instructions now live in the
+# orchestrator-delivered team-spawn block (execute-protocol.md), not agent .md.
+# Agents must be told to CALL the SendMessage tool, not just "respond".
 # =============================================================================
 
-@test "all agent shutdown handlers require calling SendMessage tool" {
-  for agent in dev qa scout lead debugger docs; do
-    local section
-    section=$(sed -n '/^## Shutdown Handling$/,/^## /p' "$PROJECT_ROOT/agents/vbw-${agent}.md")
-    echo "$section" | grep -qi 'call.*SendMessage tool' || {
-      echo "vbw-${agent}.md Shutdown Handling missing 'call the SendMessage tool' instruction"
-      return 1
-    }
-  done
+@test "execute-protocol shutdown block uses calling-the-tool language (not just 'respond')" {
+  sed -n '/Teammate shutdown-response protocol/,/Explicit non-team mode/p' "$PROJECT_ROOT/references/execute-protocol.md" \
+    | grep -qi 'call the `SendMessage` tool\|call the SendMessage tool\|call `SendMessage`'
 }
 
-@test "all agent shutdown handlers warn plain text is NOT sufficient" {
-  for agent in dev qa scout lead debugger docs; do
-    local section
-    section=$(sed -n '/^## Shutdown Handling$/,/^## /p' "$PROJECT_ROOT/agents/vbw-${agent}.md")
-    echo "$section" | grep -qi 'NOT sufficient' || {
-      echo "vbw-${agent}.md Shutdown Handling missing 'NOT sufficient' warning"
-      return 1
-    }
-  done
-}
-
-@test "all agent shutdown handlers specify approved (not approve) field" {
-  for agent in dev qa scout lead debugger docs; do
-    local section
-    section=$(sed -n '/^## Shutdown Handling$/,/^## /p' "$PROJECT_ROOT/agents/vbw-${agent}.md")
-    echo "$section" | grep -q '"approved"' || {
-      echo "vbw-${agent}.md Shutdown Handling uses wrong field name (should be \"approved\", not \"approve\")"
-      return 1
-    }
-  done
-}
-
-@test "all agent shutdown handlers include request_id in template" {
-  for agent in dev qa scout lead debugger docs; do
-    local section
-    section=$(sed -n '/^## Shutdown Handling$/,/^## /p' "$PROJECT_ROOT/agents/vbw-${agent}.md")
-    echo "$section" | grep -q 'request_id' || {
-      echo "vbw-${agent}.md Shutdown Handling missing request_id in JSON template"
-      return 1
-    }
-  done
-}
-
-@test "all agent shutdown handler templates match schema payload_required fields in JSON block" {
+@test "execute-protocol shutdown JSON includes all schema payload_required fields" {
   local schema_file="$CONFIG_DIR/schemas/message-schemas.json"
-  local required_fields
+  local required_fields section
   required_fields=$(jq -r '.schemas.shutdown_response.payload_required[]' "$schema_file")
-  for agent in dev qa scout lead debugger docs; do
-    # Extract only the fenced JSON block from the Shutdown Handling section
-    local json_block
-    json_block=$(sed -n '/^## Shutdown Handling$/,/^## /p' "$PROJECT_ROOT/agents/vbw-${agent}.md" | sed -n '/```json$/,/```$/p')
-    [ -n "$json_block" ] || {
-      echo "vbw-${agent}.md Shutdown Handling missing fenced JSON code block"
-      return 1
-    }
-    for field in $required_fields; do
-      echo "$json_block" | grep -q "\"$field\"" || {
-        echo "vbw-${agent}.md JSON template missing schema-required field: $field"
-        return 1
-      }
-    done
-  done
-}
-
-@test "all agent shutdown handlers specify shutdown_response type" {
-  for agent in dev qa scout lead debugger docs; do
-    local section
-    section=$(sed -n '/^## Shutdown Handling$/,/^## /p' "$PROJECT_ROOT/agents/vbw-${agent}.md")
-    echo "$section" | grep -q 'shutdown_response' || {
-      echo "vbw-${agent}.md Shutdown Handling missing shutdown_response type"
+  section=$(sed -n '/Teammate shutdown-response protocol/,/Explicit non-team mode/p' "$PROJECT_ROOT/references/execute-protocol.md")
+  for field in $required_fields; do
+    echo "$section" | grep -q "\"$field\"" || {
+      echo "execute-protocol shutdown block missing schema-required field: $field"
       return 1
     }
   done
@@ -580,15 +522,27 @@ teardown() {
   echo "$section" | grep -qi 'NOT satisfy\|NOT sufficient\|not plain text'
 }
 
-@test "compaction-instructions.sh injects shutdown protocol reminder for team agents" {
+# Helper: write a live execute team marker (satisfies delegated-workflow.sh
+# status-json 'live' criteria: active execute marker + running execution state
+# with matching correlation_id, both freshly written so mtime is recent).
+write_live_team_marker() {
+  local corr="$1"
+  printf '%s\n' "{\"phase\":1,\"status\":\"running\",\"effort\":\"balanced\",\"correlation_id\":\"$corr\",\"plans\":[]}" \
+    > "$TEST_TEMP_DIR/.vbw-planning/.execution-state.json"
+  printf '%s\n' "{\"mode\":\"execute\",\"active\":true,\"effort\":\"balanced\",\"delegation_mode\":\"team\",\"team_name\":\"vbw-phase-01\",\"session_id\":\"s\",\"correlation_id\":\"$corr\",\"started_at\":\"2026-05-29T00:00:00Z\"}" \
+    > "$TEST_TEMP_DIR/.vbw-planning/.delegated-workflow.json"
+}
+
+@test "compaction-instructions.sh injects shutdown reminder for team agents in a live team" {
   cd "$TEST_TEMP_DIR"
+  write_live_team_marker "corr-645a"
   for agent in scout dev qa lead debugger docs; do
     echo '{"agent_name":"vbw-'"$agent"'","matcher":"auto"}' | \
-      bash "$PROJECT_ROOT/scripts/compaction-instructions.sh" > "$TEST_TEMP_DIR/compaction-output.json"
+      VBW_PLANNING_DIR="$TEST_TEMP_DIR/.vbw-planning" bash "$PROJECT_ROOT/scripts/compaction-instructions.sh" > "$TEST_TEMP_DIR/compaction-output.json"
     local ctx
     ctx=$(jq -r '.hookSpecificOutput.additionalContext' "$TEST_TEMP_DIR/compaction-output.json")
     echo "$ctx" | grep -qi 'SHUTDOWN PROTOCOL' || {
-      echo "compaction-instructions.sh missing shutdown reminder for $agent"
+      echo "compaction-instructions.sh missing shutdown reminder for $agent (live team)"
       return 1
     }
     echo "$ctx" | grep -qi 'SendMessage tool' || {
@@ -603,6 +557,40 @@ teardown() {
       }
     done
   done
+}
+
+@test "compaction-instructions.sh does NOT inject shutdown reminder without a live team marker" {
+  cd "$TEST_TEMP_DIR"
+  # Subagent / non-team run: no delegation marker present
+  rm -f "$TEST_TEMP_DIR/.vbw-planning/.delegated-workflow.json" "$TEST_TEMP_DIR/.vbw-planning/.execution-state.json"
+  for agent in scout dev qa lead debugger docs; do
+    echo '{"agent_name":"vbw-'"$agent"'","matcher":"auto"}' | \
+      VBW_PLANNING_DIR="$TEST_TEMP_DIR/.vbw-planning" bash "$PROJECT_ROOT/scripts/compaction-instructions.sh" > "$TEST_TEMP_DIR/compaction-output.json"
+    local ctx
+    ctx=$(jq -r '.hookSpecificOutput.additionalContext' "$TEST_TEMP_DIR/compaction-output.json")
+    echo "$ctx" | grep -qi 'SHUTDOWN PROTOCOL' && {
+      echo "compaction-instructions.sh should NOT inject shutdown reminder for $agent without a live team"
+      return 1
+    }
+  done
+  return 0
+}
+
+@test "compaction-instructions.sh does NOT inject shutdown reminder for subagent-mode marker" {
+  cd "$TEST_TEMP_DIR"
+  printf '%s\n' '{"phase":1,"status":"running","effort":"balanced","correlation_id":"corr-sub","plans":[]}' \
+    > "$TEST_TEMP_DIR/.vbw-planning/.execution-state.json"
+  printf '%s\n' '{"mode":"execute","active":true,"effort":"balanced","delegation_mode":"subagent","team_name":"","session_id":"s","correlation_id":"corr-sub","started_at":"2026-05-29T00:00:00Z"}' \
+    > "$TEST_TEMP_DIR/.vbw-planning/.delegated-workflow.json"
+  echo '{"agent_name":"vbw-dev","matcher":"auto"}' | \
+    VBW_PLANNING_DIR="$TEST_TEMP_DIR/.vbw-planning" bash "$PROJECT_ROOT/scripts/compaction-instructions.sh" > "$TEST_TEMP_DIR/compaction-output.json"
+  local ctx
+  ctx=$(jq -r '.hookSpecificOutput.additionalContext' "$TEST_TEMP_DIR/compaction-output.json")
+  echo "$ctx" | grep -qi 'SHUTDOWN PROTOCOL' && {
+    echo "compaction-instructions.sh should NOT inject shutdown reminder in subagent mode"
+    return 1
+  }
+  return 0
 }
 
 @test "compaction-instructions.sh does NOT inject shutdown reminder for default/unknown agents" {
@@ -755,22 +743,17 @@ teardown() {
 # Prompt-equivalence: compaction reminder must match agent final_status semantics
 # =============================================================================
 
-@test "compaction reminder includes all final_status values from agent prompts" {
+@test "shutdown final_status trio is consistent across execute-protocol and compaction reminder" {
   cd "$TEST_TEMP_DIR"
-  # Verify ALL 6 team agents have the canonical final_status trio
-  for agent in dev lead qa scout debugger docs; do
-    local agent_statuses
-    agent_statuses=$(grep -o '"complete".*"idle".*"in_progress"' "$PROJECT_ROOT/agents/vbw-${agent}.md" || true)
-    [ -n "$agent_statuses" ] || {
-      echo "FAIL: vbw-${agent}.md missing final_status values"
-      return 1
-    }
-  done
+  # The orchestrator-delivered team-spawn block carries the canonical trio
+  sed -n '/Teammate shutdown-response protocol/,/Explicit non-team mode/p' "$PROJECT_ROOT/references/execute-protocol.md" \
+    | grep -q 'complete|idle|in_progress'
 
-  # Verify compaction reminder includes the same three values
+  # The compaction reminder (live team) carries the same trio
+  write_live_team_marker "corr-645b"
   local compaction_output
   compaction_output=$(echo '{"agent_name":"vbw-dev","matcher":"auto"}' \
-    | bash "$SCRIPTS_DIR/compaction-instructions.sh" 2>/dev/null \
+    | VBW_PLANNING_DIR="$TEST_TEMP_DIR/.vbw-planning" bash "$SCRIPTS_DIR/compaction-instructions.sh" 2>/dev/null \
     | jq -r '.hookSpecificOutput.additionalContext' 2>/dev/null || true)
   echo "$compaction_output" | grep -q 'complete|idle|in_progress'
 }
