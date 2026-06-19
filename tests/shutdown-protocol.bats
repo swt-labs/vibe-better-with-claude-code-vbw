@@ -81,6 +81,43 @@ teardown() {
 }
 
 # =============================================================================
+# Issue #645: /vbw:debug Path A is a real agent team (TeamCreate + SendMessage
+# teardown gate). It must be gated on team-tooling availability and fall back to
+# the non-team Path B when agent teams / SendMessage are unavailable — otherwise
+# the teardown HARD GATE hangs waiting for shutdown_response calls that can never
+# arrive. (Reproduction path for VBW-PR-002 on PR #646.)
+# =============================================================================
+
+@test "debug.md surfaces Agent Teams availability (CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS) in Context" {
+  grep -q 'CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS' "$PROJECT_ROOT/commands/debug.md" || {
+    echo "debug.md must surface the Agent Teams flag so routing can gate Path A on it (#645)"
+    return 1
+  }
+}
+
+@test "debug.md Path A is gated on team-tooling availability before the prefer_teams tree" {
+  # The team-tooling precondition must (a) exist, (b) require the Agent Teams flag
+  # and SendMessage/TeamCreate, and (c) force Path B when unavailable.
+  local section
+  section=$(sed -n '/Routing decision + delegation marker/,/Path B: Standard/p' "$PROJECT_ROOT/commands/debug.md")
+  echo "$section" | grep -qi 'team-tooling precondition' || {
+    echo "debug.md routing must document a team-tooling precondition gating Path A (#645)"
+    return 1
+  }
+  echo "$section" | grep -qi 'SendMessage'
+  echo "$section" | grep -qi 'TeamCreate'
+  echo "$section" | grep -qi 'force Path B'
+}
+
+@test "debug.md Path A header requires the team-tooling precondition" {
+  grep -q 'Path A: Competing Hypotheses.*team-tooling precondition satisfied' \
+    "$PROJECT_ROOT/commands/debug.md" || {
+    echo "Path A header must require the team-tooling precondition (#645)"
+    return 1
+  }
+}
+
+# =============================================================================
 # Handoff schemas: prose documentation consistency
 # =============================================================================
 

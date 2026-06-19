@@ -23,6 +23,10 @@ Recent commits:
 ```text
 !`git log --oneline -10 2>/dev/null || echo "No git history"`
 ```
+Agent Teams:
+```text
+!`echo "${CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS:-0}"`
+```
 
 Store the plugin root path output above as `{plugin-root}` for use in script invocations below. Replace `{plugin-root}` with the literal `Plugin root` value from Context whenever a step below references a script or reference file.
 
@@ -186,7 +190,13 @@ If resuming a session with `session_status=complete`: STOP "This debug session i
    bash "{plugin-root}/scripts/delegated-workflow.sh" set debug "$EFFORT_PROFILE"
    ```
 
-   Decision tree:
+   **Team-tooling precondition (hard gate, evaluated FIRST — #645):** Path A is a real agent team: it calls `TeamCreate`, spawns teammates with `team_name`, and its teardown HARD GATE waits for `SendMessage` `shutdown_response` tool calls. Those tools exist only when agent teams are enabled. Before applying the `prefer_teams` decision tree, confirm real team semantics are available:
+   - The `Agent Teams` value from Context must be `1` (it mirrors `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS`, which is `0`/unset by default), **and**
+   - `TeamCreate` and `SendMessage` must be present in the live tool set (plain background `Agent` spawns without `team_name` are NOT a team).
+
+   If either is missing, **force Path B** regardless of `prefer_teams`, effort, or ambiguity — never emit a `TeamCreate`/`SendMessage`-dependent Path A body into an environment that cannot complete the shutdown handshake (it would hang waiting for responses that can never arrive). Display `⚠ Agent Teams not enabled — using single-debugger mode (Path B)` and skip the `prefer_teams` tree below.
+
+   Decision tree (applies only when the team-tooling precondition above is satisfied):
 
    - `prefer_teams='always'`: Use Path A (team) for ALL bugs, regardless of effort or ambiguity
    - `prefer_teams='auto'`: Use Path A (team) only if effort=high AND ambiguous, else Path B
@@ -199,7 +209,7 @@ If resuming a session with `session_status=complete`: STOP "This debug session i
   ```
   Treat `HEAD_BEFORE` as the pre-investigation baseline for Step 5. Do not use commit presence alone to infer whether this investigation created a new fix.
 
-  **Path A: Competing Hypotheses** (prefer_teams='always' OR (prefer_teams!='never' AND effort=high AND ambiguous)):
+  **Path A: Competing Hypotheses** (team-tooling precondition satisfied AND (prefer_teams='always' OR (prefer_teams!='never' AND effort=high AND ambiguous))):
     - Generate 3 hypotheses (cause, codebase area, confirming evidence)
     - Resolve Debugger model:
         ```bash
