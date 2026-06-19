@@ -51,15 +51,15 @@ else
 fi
 
 # 5. vibe.md Step 4 routes auto-continuation through prepare-reverification
-if echo "$VIBE_VERIFY_STEP4_BLOCK" | grep -q 'prepare-reverification.sh'; then
+if grep -q 'prepare-reverification.sh' <<<"$VIBE_VERIFY_STEP4_BLOCK"; then
   pass "vibe.md Step 4 routes auto-continuation through prepare-reverification.sh"
 else
   fail "vibe.md Step 4 missing prepare-reverification.sh transition"
 fi
 
 # 6. vibe.md Step 4 explains why prepare-reverification owns this transition
-if echo "$VIBE_VERIFY_STEP4_BLOCK" | grep -q 'finalizes and validates the active UAT before state mutation' \
-  && echo "$VIBE_VERIFY_STEP4_BLOCK" | grep -q 'direct .*needs-round.*not the transition path'; then
+if grep -q 'finalizes and validates the active UAT before state mutation' <<<"$VIBE_VERIFY_STEP4_BLOCK" \
+  && grep -q 'direct .*needs-round.*not the transition path' <<<"$VIBE_VERIFY_STEP4_BLOCK"; then
   pass "vibe.md Step 4 documents prepare-reverification transition ownership"
 else
   fail "vibe.md Step 4 missing prepare-reverification transition rationale"
@@ -73,9 +73,9 @@ else
 fi
 
 # 8. vibe.md Verify Step 4 and verify.md both handle cap_reached explicitly
-if echo "$VIBE_VERIFY_STEP4_BLOCK" | grep -q '_skipped=cap_reached' \
-  && echo "$VIBE_VERIFY_STEP4_BLOCK" | grep -q 'Reached maximum UAT remediation rounds' \
-  && echo "$VIBE_VERIFY_STEP4_BLOCK" | grep -q 'Do NOT re-enter remediation' \
+if grep -q '_skipped=cap_reached' <<<"$VIBE_VERIFY_STEP4_BLOCK" \
+  && grep -q 'Reached maximum UAT remediation rounds' <<<"$VIBE_VERIFY_STEP4_BLOCK" \
+  && grep -q 'Do NOT re-enter remediation' <<<"$VIBE_VERIFY_STEP4_BLOCK" \
   && grep -q 'skipped=cap_reached' "$ROOT/commands/verify.md"; then
   pass "vibe.md Step 4 and verify.md both handle cap_reached"
 else
@@ -93,14 +93,14 @@ fi
 # (needs-round is called by vibe.md after cap check, not by verify.md in orchestrated mode)
 # Check that the orchestrated block doesn't contain a bash code block with needs-round
 orchestrated_block=$(sed -n '/Orchestrated mode/,/Standalone mode/p' "$ROOT/commands/verify.md")
-if echo "$orchestrated_block" | grep -q 'uat-remediation-state.sh needs-round'; then
+if grep -q 'uat-remediation-state.sh needs-round' <<<"$orchestrated_block"; then
   fail "verify.md orchestrated mode should NOT invoke needs-round (vibe.md handles it)"
 else
   pass "verify.md orchestrated mode correctly defers needs-round to caller"
 fi
 
 # 11. vibe.md Step 4 does not directly call needs-round; prepare-reverification owns mutation
-if echo "$VIBE_VERIFY_STEP4_BLOCK" | grep -q 'uat-remediation-state.sh needs-round'; then
+if grep -q 'uat-remediation-state.sh needs-round' <<<"$VIBE_VERIFY_STEP4_BLOCK"; then
   fail "vibe.md Step 4 must not directly call uat-remediation-state.sh needs-round"
 else
   pass "vibe.md Step 4 avoids direct needs-round mutation"
@@ -126,9 +126,9 @@ fi
 # 14. vibe.md and verify.md fail-close on malformed transition helper output
 # vibe.md Step 4 must stop when prepare-reverification fails or emits malformed output;
 # verify.md standalone mode still stops on malformed cap-helper output.
-if echo "$VIBE_VERIFY_STEP4_BLOCK" | grep -q 'prepare-reverification.*exits nonzero' \
-  && echo "$VIBE_VERIFY_STEP4_BLOCK" | grep -q 'malformed' \
-  && echo "$VIBE_VERIFY_STEP4_BLOCK" | grep -q 'STOP'; then
+if grep -q 'prepare-reverification.*exits nonzero' <<<"$VIBE_VERIFY_STEP4_BLOCK" \
+  && grep -q 'malformed' <<<"$VIBE_VERIFY_STEP4_BLOCK" \
+  && grep -q 'STOP' <<<"$VIBE_VERIFY_STEP4_BLOCK"; then
   pass "vibe.md Step 4 fail-closes on nonzero/malformed prepare output"
 else
   fail "vibe.md Step 4 missing fail-close guard for nonzero/malformed prepare output"

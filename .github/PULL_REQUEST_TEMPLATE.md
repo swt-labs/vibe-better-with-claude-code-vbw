@@ -23,13 +23,13 @@ Summary of the approach. Mention affected commands, agents, hooks, or scripts.
 - [ ] Tested affected commands against a real project (not the VBW repo)
 - [ ] No errors on plugin load
 - [ ] Existing commands still work
-- [ ] Ran QA review (at least 3 separate QA rounds acting as devil's advocate on the diff)
+- [ ] Ran QA review (at least 3 separate QA rounds critically reviewing the diff)
 
 ## QA Review Evidence
 
 Paste each QA round's report as a separate comment on this PR. QA-relevant changes require 3 QA evidence commits whose first line matches `fix(scope): address QA round N`. Clean rounds still need an evidence commit; use an empty commit when there are no fixes to make. Reviewers will verify the commit history matches the reported rounds.
 
-QA must be run on a top-tier model: **Claude Opus 4.6**, **GPT-5.3 Codex high/xhigh**, or **Gemini 3.1 Pro**.
+QA must be run on a top-tier model: **GPT-5.5 Codex xhigh**, **Claude Opus 4.6**, or **Gemini 3.1 Pro**.
 
 - **Rounds completed:** (number)
 - **Model used:** (e.g., Claude Opus 4.6)

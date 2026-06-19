@@ -8,9 +8,12 @@ TOOL_GUARD="$ROOT/.github/hooks/copilot-tool-guard.sh"
 STOP_GUARD="$ROOT/.github/hooks/fix-issue-stop-guard.sh"
 WAIT_GITHUB="$ROOT/.github/scripts/wait-github.py"
 RECORD_STATE="$ROOT/.github/scripts/fix-issue-record-state.sh"
-AGENT_MD="$ROOT/.github/agents/fix-issue.agent.md"
-PLANNER_AGENT="$ROOT/.github/agents/fix-planner.agent.md"
-REVIEW_AGENT="$ROOT/.github/agents/review-contributor-pr.agent.md"
+FIX_SKILL="$ROOT/.agents/skills/vbw-fix-issue/SKILL.md"
+ISSUE_INTAKE_REF="$ROOT/.agents/skills/vbw-fix-issue/references/issue-intake.md"
+PR_CI_GATE_REF="$ROOT/.agents/skills/vbw-fix-issue/references/pr-ci-gate.md"
+RECOVERY_REF="$ROOT/.agents/skills/vbw-fix-issue/references/recovery.md"
+PLANNER_AGENT="$ROOT/.codex/agents/vbw-fix-planner.toml"
+REVIEW_AGENT="$ROOT/.codex/agents/vbw-contributor-pr-reviewer.toml"
 QA_REVIEW_WORKFLOW="$ROOT/.github/workflows/qa-review.yml"
 CONTRIBUTING_DOC="$ROOT/CONTRIBUTING.md"
 PR_TEMPLATE="$ROOT/.github/PULL_REQUEST_TEMPLATE.md"
@@ -52,7 +55,7 @@ test_copilot_tool_guard_allows_wait_github() {
     }')
 
   output=$(bash "$TOOL_GUARD" <<< "$input" 2>&1) && rc=0 || rc=$?
-  if [ "$rc" -eq 0 ] && ! printf '%s' "$output" | grep -q 'permissionDecision'; then
+  if [ "$rc" -eq 0 ] && ! grep -q 'permissionDecision' <<<"$output"; then
     pass "copilot tool guard allows wait-github helper"
   else
     fail "copilot tool guard should allow wait-github helper (rc=$rc, output=$output)"
@@ -61,11 +64,11 @@ test_copilot_tool_guard_allows_wait_github() {
 test_copilot_tool_guard_allows_wait_github
 
 test_review_contributor_agent_avoids_heredoc() {
-  if grep -qF 'done < <(git worktree list --porcelain 2>/dev/null)' "$REVIEW_AGENT" \
+  if grep -qF 'scripts/adopt-contributor-pr.sh' "$REVIEW_AGENT" \
     && ! grep -q '<<EOF' "$REVIEW_AGENT"; then
-    pass "review-contributor agent uses process substitution instead of heredoc"
+    pass "contributor PR reviewer uses repo helpers instead of heredoc snippets"
   else
-    fail "review-contributor agent should avoid heredoc in worktree discovery snippet"
+    fail "contributor PR reviewer should prefer repo helpers and avoid heredoc snippets"
   fi
 }
 test_review_contributor_agent_avoids_heredoc
@@ -73,14 +76,14 @@ test_review_contributor_agent_avoids_heredoc
 test_fix_issue_record_state_validates_numeric_args() {
   local output rc
   output=$(bash "$RECORD_STATE" abc branch /tmp 123 2>&1) && rc=0 || rc=$?
-  if [ "$rc" -eq 1 ] && printf '%s' "$output" | grep -q 'pr_number must be a non-negative integer'; then
+  if [ "$rc" -eq 1 ] && grep -q 'pr_number must be a non-negative integer' <<<"$output"; then
     pass "fix-issue-record-state rejects non-numeric PR numbers"
   else
     fail "fix-issue-record-state should reject non-numeric PR numbers (rc=$rc, output=$output)"
   fi
 
   output=$(bash "$RECORD_STATE" 123 branch /tmp xyz 2>&1) && rc=0 || rc=$?
-  if [ "$rc" -eq 1 ] && printf '%s' "$output" | grep -q 'issue_number must be a non-negative integer'; then
+  if [ "$rc" -eq 1 ] && grep -q 'issue_number must be a non-negative integer' <<<"$output"; then
     pass "fix-issue-record-state rejects non-numeric issue numbers"
   else
     fail "fix-issue-record-state should reject non-numeric issue numbers (rc=$rc, output=$output)"
@@ -100,25 +103,72 @@ test_stop_guard_debug_capture_is_opt_in() {
 }
 test_stop_guard_debug_capture_is_opt_in
 
-test_stop_guard_uses_push_derived_timestamp() {
-  if grep -q 'pushedDate' "$STOP_GUARD" \
-    && ! grep -qF '.commit.committer.date' "$STOP_GUARD"; then
-    pass "stop guard uses push-derived timestamps for stale review checks"
+test_stop_guard_ci_gate_uses_exact_head_sha() {
+  if grep -qF 'commits/${head_sha}/check-runs?per_page=100' "$STOP_GUARD" \
+    && grep -qF 'Remote CI failed on PR #${pr_number}' "$STOP_GUARD" \
+    && grep -qF 'Remote CI still running on PR #${pr_number}' "$STOP_GUARD"; then
+    pass "stop guard validates remote CI against the exact worktree HEAD SHA"
   else
-    fail "stop guard should prefer push-derived timestamps and avoid commit committer date fallback"
+    fail "stop guard should validate remote CI against exact worktree HEAD SHA"
   fi
 }
-test_stop_guard_uses_push_derived_timestamp
+test_stop_guard_ci_gate_uses_exact_head_sha
 
-test_stop_guard_matches_review_commit_to_head_sha() {
-  if grep -qF 'pulls/${pr_number}/reviews?per_page=100' "$STOP_GUARD" \
-    && grep -qF 'select((.commit_id // "") == $head_sha)' "$STOP_GUARD"; then
-    pass "stop guard requires Copilot review commit to match current head SHA"
+test_stop_guard_does_not_require_legacy_bot_review() {
+  if ! grep -qF 'latest_matching_copilot_review' "$STOP_GUARD" \
+    && ! grep -qF 'copilot-pull-request-reviewer' "$STOP_GUARD" \
+    && ! grep -qi 'request a copilot review' "$STOP_GUARD" \
+    && ! grep -qi 'fresh copilot review' "$STOP_GUARD"; then
+    pass "stop guard no longer requires a legacy bot review gate"
   else
-    fail "stop guard should match Copilot review commit_id to head_sha"
+    fail "stop guard should not require or request legacy bot PR reviews"
   fi
 }
-test_stop_guard_matches_review_commit_to_head_sha
+test_stop_guard_does_not_require_legacy_bot_review
+
+test_fix_issue_pr_gate_requests_codex_review_comment() {
+  if grep -qF "gh pr comment <pr-number> --repo swt-labs/vibe-better-with-claude-code-vbw --body '@codex review'" "$PR_CI_GATE_REF" \
+    && grep -qF 'Post one Codex review request comment per current head' "$PR_CI_GATE_REF" \
+    && grep -qF 'current head commit timestamp' "$PR_CI_GATE_REF" \
+    && grep -qF 'Codex remote review request status' "$FIX_SKILL"; then
+    pass "Codex fix issue PR gate requests remote Codex review by PR comment"
+  else
+    fail "Codex fix issue PR gate should request remote Codex review with an @codex review PR comment"
+  fi
+}
+test_fix_issue_pr_gate_requests_codex_review_comment
+
+test_stop_guard_requires_fresh_codex_review_comment() {
+  if grep -qF 'comments(last:100)' "$STOP_GUARD" \
+    && grep -qF 'gsub("^[[:space:]]+|[[:space:]]+$"; "")) == "@codex review"' "$STOP_GUARD" \
+    && grep -qF 'head_commit_ts=$(git show -s --format=%ct HEAD' "$STOP_GUARD" \
+    && grep -qF 'does not have an @codex review request comment at or after current HEAD' "$STOP_GUARD" \
+    && grep -qF "gh pr comment \${pr_number} --repo \${OWNER}/\${REPO} --body '@codex review'" "$STOP_GUARD"; then
+    pass "stop guard requires a fresh @codex review request comment for current HEAD"
+  else
+    fail "stop guard should block until a fresh @codex review request comment exists for current HEAD"
+  fi
+}
+test_stop_guard_requires_fresh_codex_review_comment
+
+test_recovery_documents_codex_review_request_command() {
+  if grep -qF "gh pr comment <pr-number> --repo swt-labs/vibe-better-with-claude-code-vbw --body '@codex review'" "$RECOVERY_REF"; then
+    pass "recovery docs include exact Codex remote review request command"
+  else
+    fail "recovery docs should include the @codex review PR comment recovery command"
+  fi
+}
+test_recovery_documents_codex_review_request_command
+
+test_contributor_pr_review_documents_codex_comment_trigger() {
+  if grep -qF "gh pr comment <pr-number> --repo swt-labs/vibe-better-with-claude-code-vbw --body '@codex review'" "$REVIEW_AGENT" \
+    && grep -qF 'blind-baseline' "$REVIEW_AGENT"; then
+    pass "contributor PR review documents Codex comment trigger without replacing local verdict"
+  else
+    fail "contributor PR review should document @codex review as the remote review trigger"
+  fi
+}
+test_contributor_pr_review_documents_codex_comment_trigger
 
 test_stop_guard_block_reasons_include_worktree() {
   # All block() calls that reference a PR number should include the worktree path
@@ -137,39 +187,36 @@ test_stop_guard_block_reasons_include_worktree() {
 test_stop_guard_block_reasons_include_worktree
 
 test_fix_issue_agent_has_ambient_context_antipattern() {
-  local agent_file="${ROOT}/.github/agents/fix-issue.agent.md"
-  if grep -qF 'Anti-pattern: following ambient terminal context' "$agent_file" \
-    && grep -qF 'sole source of truth' "$agent_file" \
-    && grep -qF 'Cross-thread contamination guard' "$agent_file"; then
-    pass "fix-issue agent has ambient context anti-pattern and cross-thread contamination guards"
+  if grep -qF 'sole source of truth' "$FIX_SKILL" \
+    && grep -qF 'Do not follow ambient terminal context' "$FIX_SKILL" \
+    && grep -qF 'unrelated open PRs' "$FIX_SKILL"; then
+    pass "Codex fix-issue skill has ambient context and cross-thread contamination guards"
   else
-    fail "fix-issue agent should contain ambient context anti-pattern warning and cross-thread contamination guard"
+    fail "Codex fix-issue skill should guard against ambient terminal context and cross-thread contamination"
   fi
 }
 test_fix_issue_agent_has_ambient_context_antipattern
 
 test_fix_issue_agent_reuses_user_authored_plans() {
-  if grep -qF 'User-authored execution contract' "$AGENT_MD" \
-    && grep -qF 'Save the plan to `/memories/session/plan.md` exactly as written' "$AGENT_MD" \
-    && grep -qF 'replace its contents so the saved file matches the user' "$AGENT_MD" \
-    && grep -qF 'do NOT stop after saving it — continue the workflow' "$AGENT_MD" \
-    && grep -qF 'follow its existing audit loop against that same saved path' "$AGENT_MD" \
-    && grep -qF 'strip local absolute path prefixes like `/Users/.../` and other PII' "$AGENT_MD"; then
-    pass "fix-issue agent saves user-authored plans verbatim and audits the same saved path"
+  if grep -qF 'If the user supplied an execution plan, preserve it as the draft contract' "$ISSUE_INTAKE_REF" \
+    && grep -qF 'audit and refine that same plan instead of starting over' "$ISSUE_INTAKE_REF" \
+    && grep -qF 'When the caller supplies an existing plan' "$PLANNER_AGENT" \
+    && grep -qF 'refine the same plan instead of discarding it' "$PLANNER_AGENT"; then
+    pass "Codex fix workflow preserves user-authored plans and audits the same plan"
   else
-    fail "fix-issue agent should save user-authored plans exactly as written, continue after saving, and audit the same saved plan path instead of forking a new one"
+    fail "Codex fix workflow should preserve user-authored plans and audit the same plan instead of forking a new one"
   fi
 }
 test_fix_issue_agent_reuses_user_authored_plans
 
 test_fix_planner_agent_supports_existing_plan_audit_mode() {
-  if grep -qF 'When the caller supplies an existing saved or inline plan and asks you to validate, audit, or refine it' "$PLANNER_AGENT" \
-    && grep -qF 'Do not discard it and replan from scratch' "$PLANNER_AGENT" \
-    && grep -qF 'amend that same saved plan path in place' "$PLANNER_AGENT" \
-    && grep -qF 'If the caller asked you to audit an existing saved plan and that plan is already sufficient, do not rewrite it' "$PLANNER_AGENT"; then
-    pass "fix-planner agent supports in-place audit mode for existing plans"
+  if grep -qF 'When the caller supplies an existing plan' "$PLANNER_AGENT" \
+    && grep -qF 'audit that plan first' "$PLANNER_AGENT" \
+    && grep -qF 'preserve accepted decisions' "$PLANNER_AGENT" \
+    && grep -qF 'refine the same plan instead of discarding it' "$PLANNER_AGENT"; then
+    pass "Codex fix-planner supports audit mode for existing plans"
   else
-    fail "fix-planner agent should audit existing saved plans in place instead of forking a separate refined path"
+    fail "Codex fix-planner should audit existing plans instead of forking a separate refined path"
   fi
 }
 test_fix_planner_agent_supports_existing_plan_audit_mode
@@ -290,8 +337,8 @@ EOF
   local output rc
   output=$(PATH="$TMPDIR_BASE:$PATH" python3 "$WAIT_GITHUB" wait-ci --repo swt-labs/vibe-better-with-claude-code-vbw --sha deadbeef 2>&1) && rc=0 || rc=$?
   if [ "$rc" -eq 3 ] \
-    && printf '%s' "$output" | grep -q 'GH_API_ERROR' \
-    && printf '%s' "$output" | grep -q 'authentication failed'; then
+    && grep -q 'GH_API_ERROR' <<<"$output" \
+    && grep -q 'authentication failed' <<<"$output"; then
     pass "wait-github fails fast with actionable gh api errors"
   else
     fail "wait-github should fail fast on gh api errors (rc=$rc, output=$output)"
@@ -318,8 +365,8 @@ EOF
   local output rc
   output=$(PATH="$TMPDIR_BASE:$PATH" python3 "$WAIT_GITHUB" wait-ci --repo swt-labs/vibe-better-with-claude-code-vbw --sha deadbeef 2>&1) && rc=0 || rc=$?
   if [ "$rc" -eq 2 ] \
-    && printf '%s' "$output" | grep -q 'CI_FAILURE' \
-    && printf '%s' "$output" | grep -q 'FAILED: ci'; then
+    && grep -q 'CI_FAILURE' <<<"$output" \
+    && grep -q 'FAILED: ci' <<<"$output"; then
     pass "wait-github treats timed_out check runs as failures"
   else
     fail "wait-github should treat timed_out check runs as failures (rc=$rc, output=$output)"
@@ -334,18 +381,6 @@ echo ""
 echo "==============================="
 echo "--- Fork-aware push timestamp resolution (issue #480) ---"
 
-test_latest_branch_push_at_accepts_four_params() {
-  echo "  [contract] latest_branch_push_at accepts ref_owner and ref_repo params"
-  local stop_guard="$STOP_GUARD"
-  if grep -q 'local ref_owner=.*{3:-' "$stop_guard" \
-    && grep -q 'local ref_repo=.*{4:-' "$stop_guard"; then
-    pass "latest_branch_push_at accepts ref_owner (\$3) and ref_repo (\$4)"
-  else
-    fail "latest_branch_push_at must accept ref_owner (\$3) and ref_repo (\$4) for fork-aware push resolution"
-  fi
-}
-test_latest_branch_push_at_accepts_four_params
-
 test_enumerate_queries_fork_metadata() {
   echo "  [contract] enumerate_open_pr_worktrees queries headRepository and headRepositoryOwner"
   local stop_guard="$STOP_GUARD"
@@ -357,18 +392,6 @@ test_enumerate_queries_fork_metadata() {
   fi
 }
 test_enumerate_queries_fork_metadata
-
-test_validate_pr_accepts_fork_params() {
-  echo "  [contract] validate_pr accepts head_owner and head_repo params"
-  local stop_guard="$STOP_GUARD"
-  if grep -q 'local head_owner=.*{5:-' "$stop_guard" \
-    && grep -q 'local head_repo=.*{6:-' "$stop_guard"; then
-    pass "validate_pr accepts head_owner (\$5) and head_repo (\$6)"
-  else
-    fail "validate_pr must accept head_owner (\$5) and head_repo (\$6) for fork-aware push resolution"
-  fi
-}
-test_validate_pr_accepts_fork_params
 
 test_record_state_accepts_fork_args() {
   echo "  [contract] fix-issue-record-state.sh accepts optional fork_owner and fork_repo args"
@@ -394,18 +417,6 @@ test_enumerate_emits_head_ref_name() {
 }
 test_enumerate_emits_head_ref_name
 
-test_validate_pr_accepts_head_ref_name() {
-  echo "  [contract] validate_pr accepts head_ref_name (\$7) for push timestamp branch resolution"
-  local stop_guard="$STOP_GUARD"
-  if grep -q 'local head_ref_name=.*{7:-' "$stop_guard" \
-    && grep -q 'latest_branch_push_at.*head_ref_name' "$stop_guard"; then
-    pass "validate_pr uses head_ref_name for push timestamp query"
-  else
-    fail "validate_pr must accept head_ref_name (\$7) and use it in latest_branch_push_at"
-  fi
-}
-test_validate_pr_accepts_head_ref_name
-
 test_record_state_accepts_head_ref_name() {
   echo "  [contract] fix-issue-record-state.sh accepts optional head_ref_name arg"
   local record_script="$RECORD_STATE"
@@ -416,18 +427,6 @@ test_record_state_accepts_head_ref_name() {
   fi
 }
 test_record_state_accepts_head_ref_name
-
-test_step_23a_documents_fork_args() {
-  echo "  [contract] step 23a in agent instructions documents fork_owner, fork_repo, and head_ref_name args"
-  local agent_md="$AGENT_MD"
-  if grep -q 'fork_owner.*fork_repo.*head_ref_name' "$agent_md" \
-    || grep -q '\[fork_owner\].*\[fork_repo\].*\[head_ref_name\]' "$agent_md"; then
-    pass "step 23a documents all optional args"
-  else
-    fail "step 23a must document fork_owner, fork_repo, and head_ref_name arguments"
-  fi
-}
-test_step_23a_documents_fork_args
 echo "==============================="
 echo "TOTAL: $PASS PASS, $FAIL FAIL"
 echo "==============================="
