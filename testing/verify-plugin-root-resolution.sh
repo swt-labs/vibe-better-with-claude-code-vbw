@@ -168,7 +168,7 @@ for file in "$COMMANDS_DIR"/*.md "$REFERENCES_DIR"/*.md "$ROOT/internal"/*.md; d
   has_bare=0
   while IFS= read -r match; do
     [ -z "$match" ] && continue
-    if echo "$match" | grep -q 'CLAUDE_PLUGIN_ROOT:-'; then
+    if grep -q 'CLAUDE_PLUGIN_ROOT:-' <<<"$match"; then
       : # has fallback, safe
     else
       has_bare=1
@@ -641,7 +641,7 @@ fi
 
 # Check 16: grep -oE extracts --plugin-dir value from ps-style output
 BTEST_PS_LINE="node /path/to/claude --plugin-dir /Users/test/my-plugin --other-flag"
-extracted=$(echo "$BTEST_PS_LINE" | grep -oE -- "--plugin-dir [^ ]+" | head -1)
+extracted=$(grep -oE -- "--plugin-dir [^ ]+" <<<"$BTEST_PS_LINE" | head -1)
 if [ "$extracted" = "--plugin-dir /Users/test/my-plugin" ]; then
   pass "grep -oE correctly extracts --plugin-dir value from ps output"
 else

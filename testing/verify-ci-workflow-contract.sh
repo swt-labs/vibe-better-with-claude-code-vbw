@@ -94,7 +94,7 @@ else
   fail "list-contract-tests.sh: produces no output"
 fi
 
-if echo "$DISCOVERY_NAMES" | grep -q 'ci-workflow-contract'; then
+if grep -q 'ci-workflow-contract' <<<"$DISCOVERY_NAMES"; then
   pass "list-contract-tests.sh: includes ci-workflow-contract (self-referential)"
 else
   fail "list-contract-tests.sh: missing ci-workflow-contract entry"
