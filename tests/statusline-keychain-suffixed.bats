@@ -176,7 +176,10 @@ TOKENS_RAW=\$(cat <<'TOKENS_EOF'
 $tokens
 TOKENS_EOF
 )
-# Portable mapfile equivalent — bash 3.2 (macOS default) lacks `mapfile`.
+# Portable read-into-array (bash 3.2 on macOS has no mapfile builtin).
+# NOTE: this heredoc is unquoted (fixture values are interpolated), so backticks
+# here would execute as command substitution at write time — keep this comment
+# backtick-free or the mock-build will hang reading stdin (see PR #578).
 NAMES_ARR=()
 TOKENS_ARR=()
 while IFS= read -r _line; do NAMES_ARR+=("\$_line"); done <<< "\$NAMES_RAW"
@@ -218,6 +221,28 @@ EOK
   exit 0
 fi
 
+exit 0
+SH
+  chmod +x "$fake_bin/security"
+}
+
+# Build a mock `security` whose find-generic-password always fails with exit 51
+# (errSecAuthFailed = access denied), with an empty dump-keychain. Drives the
+# rc-51 keychain-access-denied render branch (#576). Quoted heredoc — nothing to
+# interpolate, so the mock body is emitted verbatim with zero expansion risk.
+_install_mock_security_denied() {
+  local fake_bin="$1"
+  mkdir -p "$fake_bin"
+  _install_mock_uname_darwin "$fake_bin"
+  cat > "$fake_bin/security" <<'SH'
+#!/usr/bin/env bash
+if [ "$1" = "find-generic-password" ]; then
+  echo "security: SecKeychainSearchCopyNext: Authorization failed." >&2
+  exit 51
+fi
+if [ "$1" = "dump-keychain" ]; then
+  exit 51
+fi
 exit 0
 SH
   chmod +x "$fake_bin/security"
@@ -381,4 +406,50 @@ SH
   # so use [[ ... =~ ... ]] for the negative assertion.
   echo "$l3" | grep -q "OAuth token unavailable"
   [[ ! "$l3" =~ "keychain access denied" ]]
+}
+
+# --- rc 51 (errSecAuthFailed): genuine access denial keeps the keychain wording ---
+
+@test "issue #576: claude.ai login + keychain access denied (exit 51) keeps 'keychain access denied'" {
+  local repo="$TEST_TEMP_DIR/repo-denied"
+  local fake_bin="$TEST_TEMP_DIR/fake-bin-denied"
+  mkdir -p "$repo/.vbw-planning"
+  git -C "$repo" init -q
+  git -C "$repo" commit --allow-empty -m "test(init): seed" -q
+  cat > "$repo/.vbw-planning/config.json" <<'JSON'
+{ "effort": "balanced", "statusline_hide_limits": false, "statusline_hide_limits_for_api_key": false }
+JSON
+
+  # security: every find-generic-password returns exit 51 (access denied).
+  _install_mock_security_denied "$fake_bin"
+
+  # claude CLI: report OAuth login (claude.ai) so AUTH_METHOD=claude.ai is set.
+  cat > "$fake_bin/claude" <<'SH'
+#!/usr/bin/env bash
+if [ "$1" = "auth" ] && [ "$2" = "status" ]; then
+  printf '{"loggedIn":true,"authMethod":"claude.ai"}'
+fi
+exit 0
+SH
+  chmod +x "$fake_bin/claude"
+
+  cd "$repo"
+  local old_path="$PATH"
+  export PATH="$fake_bin:$PATH"
+  unset VBW_OAUTH_TOKEN 2>/dev/null || true
+  unset VBW_SKIP_AUTH_CLI 2>/dev/null || true
+  export CLAUDE_CONFIG_DIR="$repo"
+  local output
+  output=$(echo '{}' | bash "$STATUSLINE" 2>&1)
+  unset CLAUDE_CONFIG_DIR
+  export VBW_SKIP_AUTH_CLI=1
+  export PATH="$old_path"
+  cd "$PROJECT_ROOT"
+
+  local l3
+  l3=$(echo "$output" | sed -n '3p')
+  # rc 51 is a real denial → keep the keychain-access-denied wording, NOT the
+  # item-not-found "OAuth token unavailable" message.
+  echo "$l3" | grep -q "keychain access denied"
+  [[ ! "$l3" =~ "OAuth token unavailable" ]]
 }

@@ -722,6 +722,10 @@ if ! cache_fresh "$SLOW_CF" "$_SLOW_TTL"; then
   FIVE_PCT=0; FIVE_EPOCH=0; WEEK_PCT=0; WEEK_EPOCH=0; SONNET_PCT=-1
   EXTRA_ENABLED=0; EXTRA_PCT=-1; EXTRA_USED_C=0; EXTRA_LIMIT_C=0; FETCH_OK="noauth"
   OAUTH_TOKEN=""
+  # #576: track macOS keychain access failures so rendering can distinguish
+  # item-not-found (exit 44 → OAuth token unavailable) from access-denied
+  # (exit 51 → keychain access denied). Empty = no denial observed.
+  _KEYCHAIN_STATUS=""
   AUTH_METHOD=""
   AUTH_CLASS="api_key"
   HIDE_LIMITS=$(jq -r '.statusline_hide_limits // false' "$VBW_PLANNING_DIR/config.json" 2>/dev/null)
@@ -737,11 +741,15 @@ if ! cache_fresh "$SLOW_CF" "$_SLOW_TTL"; then
   if [ -z "$OAUTH_TOKEN" ] && [ "${VBW_SKIP_KEYCHAIN:-0}" != "1" ]; then
     if [ "$_OS" = "Darwin" ]; then
       # Try the legacy literal service name first (back-compat for older Claude Code installs).
-      CRED_JSON=$(security find-generic-password -s "Claude Code-credentials" -w 2>/dev/null)
+      CRED_JSON=$(security find-generic-password -s "Claude Code-credentials" -w 2>/dev/null); _kc_rc=$?
       if [ -n "$CRED_JSON" ]; then
         OAUTH_TOKEN=$(echo "$CRED_JSON" | jq -r '.claudeAiOauth.accessToken // empty' 2>/dev/null)
         [ -n "$OAUTH_TOKEN" ] && AUTH_CLASS="oauth"
+      elif [ "$_kc_rc" = 51 ]; then
+        # errSecAuthFailed — keychain exists but access was denied (not item-not-found).
+        _KEYCHAIN_STATUS="access_denied"
       fi
+      unset _kc_rc
       # Fallback (#576): newer Claude Code installs persist credentials under
       # per-install suffixed service names like "Claude Code-credentials-<8hex>".
       # Discover candidates via a non-prompting `security dump-keychain`
@@ -758,7 +766,8 @@ if ! cache_fresh "$SLOW_CF" "$_SLOW_TTL"; then
           | sort -u)
         while IFS= read -r _sn; do
           [ -z "$_sn" ] && continue
-          CRED_JSON=$(security find-generic-password -s "$_sn" -w 2>/dev/null)
+          CRED_JSON=$(security find-generic-password -s "$_sn" -w 2>/dev/null); _sn_rc=$?
+          [ "$_sn_rc" = 51 ] && _KEYCHAIN_STATUS="access_denied"
           [ -z "$CRED_JSON" ] && continue
           _kt=$(echo "$CRED_JSON" | jq -r '.claudeAiOauth.accessToken // empty' 2>/dev/null)
           [ -z "$_kt" ] && continue
@@ -768,7 +777,7 @@ if ! cache_fresh "$SLOW_CF" "$_SLOW_TTL"; then
           OAUTH_TOKEN="${_KEYCHAIN_FALLBACK_TOKENS[0]}"
           AUTH_CLASS="oauth"
         fi
-        unset _SUFFIXED_NAMES _sn _kt
+        unset _SUFFIXED_NAMES _sn _kt _sn_rc
       fi
     else
       # Linux: try secret-tool (GNOME Keyring) then pass (password-store)
@@ -912,13 +921,14 @@ if ! cache_fresh "$SLOW_CF" "$_SLOW_TTL"; then
 
   fi # end: notraffic guard
 
-  atomic_write_string "$SLOW_CF" "${FIVE_PCT:-0}|${FIVE_EPOCH:-0}|${WEEK_PCT:-0}|${WEEK_EPOCH:-0}|${SONNET_PCT:--1}|${EXTRA_ENABLED:-0}|${EXTRA_PCT:--1}|${EXTRA_USED_C:-0}|${EXTRA_LIMIT_C:-0}|${FETCH_OK}|${UPDATE_AVAIL:-}|${AUTH_METHOD:-}|${AUTH_CLASS:-api_key}|${HIDE_LIMITS:-false}|${HIDE_LIMITS_API:-false}" 2>/dev/null || true
+  atomic_write_string "$SLOW_CF" "${FIVE_PCT:-0}|${FIVE_EPOCH:-0}|${WEEK_PCT:-0}|${WEEK_EPOCH:-0}|${SONNET_PCT:--1}|${EXTRA_ENABLED:-0}|${EXTRA_PCT:--1}|${EXTRA_USED_C:-0}|${EXTRA_LIMIT_C:-0}|${FETCH_OK}|${UPDATE_AVAIL:-}|${AUTH_METHOD:-}|${AUTH_CLASS:-api_key}|${HIDE_LIMITS:-false}|${HIDE_LIMITS_API:-false}|${_KEYCHAIN_STATUS:-}" 2>/dev/null || true
 fi
 
 if [ -O "$SLOW_CF" ]; then
   IFS='|' read -r FIVE_PCT FIVE_EPOCH WEEK_PCT WEEK_EPOCH SONNET_PCT \
                   EXTRA_ENABLED EXTRA_PCT EXTRA_USED_C EXTRA_LIMIT_C \
-                  FETCH_OK UPDATE_AVAIL AUTH_METHOD AUTH_CLASS HIDE_LIMITS HIDE_LIMITS_API < "$SLOW_CF"
+                  FETCH_OK UPDATE_AVAIL AUTH_METHOD AUTH_CLASS HIDE_LIMITS HIDE_LIMITS_API \
+                  KEYCHAIN_STATUS < "$SLOW_CF"
   # Backward compatibility: older slow-cache entries had no AUTH_CLASS field.
   if [ "$AUTH_CLASS" = "true" ] || [ "$AUTH_CLASS" = "false" ]; then
     HIDE_LIMITS_API="$HIDE_LIMITS"
@@ -1014,19 +1024,19 @@ elif [ "$FETCH_OK" = "fail" ]; then
 elif [ "$FETCH_OK" = "notraffic" ]; then
   USAGE_LINE="${D}Limits: skipped (nonessential traffic disabled)${X}"
 elif [ "$AUTH_METHOD" = "claude.ai" ]; then
-  # #576: previously labeled "keychain access denied" — but this branch fires
-  # whenever priorities 1-3 (env var, keychain literal+suffixed names, credentials
-  # file) all returned empty AND the claude CLI confirms an OAuth login. Most
-  # often that means the token simply isn't in any location we can reach, not
-  # that macOS denied access. Suggest the env-var workaround.
-  #
-  # NOTE: the exit-44 (item-not-found) vs exit-51 (access-denied) distinction
-  # from the issue's proposed fix is deliberately collapsed here — branching
-  # the message would require persisting the keychain status through the slow
-  # cache (15 → 16 fields with back-compat read), and the env-var workaround
-  # already resolves both sub-cases. Future maintainers: if you want exit-code
-  # branching, plan the cache schema bump first. See PR #578.
-  USAGE_LINE="${D}Limits: OAuth token unavailable (set VBW_OAUTH_TOKEN)${X}"
+  # #576: this branch fires when priorities 1-3 (env var, keychain literal+suffixed
+  # names, credentials file) all returned empty AND the claude CLI confirms an OAuth
+  # login. Distinguish the two macOS keychain failure modes (status carried through
+  # the slow cache as a 16th field):
+  #   - access-denied (security exit 51 / errSecAuthFailed): the keychain exists but
+  #     access was refused — keep the actionable "keychain access denied" wording.
+  #   - item-not-found (exit 44 / errSecItemNotFound) or any non-Darwin path: the
+  #     token simply isn't anywhere we can reach — suggest /login or the env var.
+  if [ "${KEYCHAIN_STATUS:-}" = "access_denied" ]; then
+    USAGE_LINE="${D}Limits: keychain access denied (allow Terminal in Keychain Access.app or set VBW_OAUTH_TOKEN)${X}"
+  else
+    USAGE_LINE="${D}Limits: OAuth token unavailable (run /login or set VBW_OAUTH_TOKEN)${X}"
+  fi
 elif [ "$FETCH_OK" = "noauth" ]; then
   USAGE_LINE="${D}Limits: N/A (using API key)${X}"
 else
