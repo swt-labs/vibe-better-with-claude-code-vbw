@@ -764,6 +764,12 @@ if ! cache_fresh "$SLOW_CF" "$_SLOW_TTL"; then
           | grep -oE '"svce"<blob>="Claude Code-credentials-[^"]+"' \
           | sed -E 's/^"svce"<blob>="(.*)"$/\1/' \
           | sort -u)
+        # Collect "expiresAt<TAB>token" pairs, then order newest-first. Claude Code
+        # stores expiresAt as a millisecond epoch; the install whose expiry is furthest
+        # in the future is the live one. Trying it first avoids burning a guaranteed-401
+        # usage call on a stale install's token (which only adds rate-limit pressure)
+        # before falling through. Tokens without a usable expiresAt sort as 0 → tried last.
+        _KC_PAIRS=""
         while IFS= read -r _sn; do
           [ -z "$_sn" ] && continue
           CRED_JSON=$(security find-generic-password -s "$_sn" -w 2>/dev/null); _sn_rc=$?
@@ -771,13 +777,21 @@ if ! cache_fresh "$SLOW_CF" "$_SLOW_TTL"; then
           [ -z "$CRED_JSON" ] && continue
           _kt=$(echo "$CRED_JSON" | jq -r '.claudeAiOauth.accessToken // empty' 2>/dev/null)
           [ -z "$_kt" ] && continue
-          _KEYCHAIN_FALLBACK_TOKENS+=("$_kt")
+          _exp=$(echo "$CRED_JSON" | jq -r '.claudeAiOauth.expiresAt // 0' 2>/dev/null)
+          case "$_exp" in ''|*[!0-9]*) _exp=0 ;; esac
+          _KC_PAIRS+="${_exp}"$'\t'"${_kt}"$'\n'
         done <<< "$_SUFFIXED_NAMES"
+        if [ -n "$_KC_PAIRS" ]; then
+          while IFS=$'\t' read -r _exp _kt; do
+            [ -z "$_kt" ] && continue
+            _KEYCHAIN_FALLBACK_TOKENS+=("$_kt")
+          done <<< "$(printf '%s' "$_KC_PAIRS" | sort -t"$(printf '\t')" -k1,1nr)"
+        fi
         if [ "${#_KEYCHAIN_FALLBACK_TOKENS[@]}" -gt 0 ]; then
           OAUTH_TOKEN="${_KEYCHAIN_FALLBACK_TOKENS[0]}"
           AUTH_CLASS="oauth"
         fi
-        unset _SUFFIXED_NAMES _sn _kt _sn_rc
+        unset _SUFFIXED_NAMES _sn _kt _sn_rc _exp _KC_PAIRS
       fi
     else
       # Linux: try secret-tool (GNOME Keyring) then pass (password-store)

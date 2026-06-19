@@ -162,8 +162,9 @@ SH
 # try-all-on-401 multi-install case (#576 reporter has 6 such entries).
 _install_mock_security_multi() {
   local fake_bin="$1"
-  local names="$2"   # newline-separated suffixed service names
-  local tokens="$3"  # newline-separated tokens, parallel to names
+  local names="$2"        # newline-separated suffixed service names
+  local tokens="$3"       # newline-separated tokens, parallel to names
+  local expiries="${4:-}" # newline-separated expiresAt (ms epoch), parallel; blank entry => expiresAt omitted
   mkdir -p "$fake_bin"
   _install_mock_uname_darwin "$fake_bin"
   cat > "$fake_bin/security" <<SH
@@ -176,14 +177,20 @@ TOKENS_RAW=\$(cat <<'TOKENS_EOF'
 $tokens
 TOKENS_EOF
 )
+EXPIRIES_RAW=\$(cat <<'EXPIRIES_EOF'
+$expiries
+EXPIRIES_EOF
+)
 # Portable read-into-array (bash 3.2 on macOS has no mapfile builtin).
 # NOTE: this heredoc is unquoted (fixture values are interpolated), so backticks
 # here would execute as command substitution at write time — keep this comment
 # backtick-free or the mock-build will hang reading stdin (see PR #578).
 NAMES_ARR=()
 TOKENS_ARR=()
+EXPIRIES_ARR=()
 while IFS= read -r _line; do NAMES_ARR+=("\$_line"); done <<< "\$NAMES_RAW"
 while IFS= read -r _line; do TOKENS_ARR+=("\$_line"); done <<< "\$TOKENS_RAW"
+while IFS= read -r _line; do EXPIRIES_ARR+=("\$_line"); done <<< "\$EXPIRIES_RAW"
 unset _line
 
 if [ "\$1" = "find-generic-password" ]; then
@@ -200,7 +207,12 @@ if [ "\$1" = "find-generic-password" ]; then
   fi
   for i in "\${!NAMES_ARR[@]}"; do
     if [ "\$svc" = "\${NAMES_ARR[\$i]}" ]; then
-      printf '{"claudeAiOauth":{"accessToken":"%s"}}\n' "\${TOKENS_ARR[\$i]}"
+      _exp="\${EXPIRIES_ARR[\$i]:-}"
+      if [ -n "\$_exp" ]; then
+        printf '{"claudeAiOauth":{"accessToken":"%s","expiresAt":%s}}\n' "\${TOKENS_ARR[\$i]}" "\$_exp"
+      else
+        printf '{"claudeAiOauth":{"accessToken":"%s"}}\n' "\${TOKENS_ARR[\$i]}"
+      fi
       exit 0
     fi
   done
@@ -331,11 +343,14 @@ JSON
 { "effort": "balanced", "statusline_hide_limits": false, "statusline_hide_limits_for_api_key": false }
 JSON
 
-  # Two suffixed entries; sort -u yields the lexically-first ("...-126018b2") as primary.
-  # The mock curl rejects the primary (401) and accepts any other → fallback proves the loop iterates.
+  # Two suffixed entries. Ordering is by expiresAt descending (newest-first), so the
+  # higher-expiry token is the primary regardless of lexical service-name order. Here
+  # the primary is rejected (401 — e.g. revoked despite a future stored expiry) and the
+  # loop falls through to the next candidate, proving the retry path still works.
   local names=$'Claude Code-credentials-126018b2\nClaude Code-credentials-42414e16'
   local tokens=$'token-stale-primary\ntoken-fresh-fallback'
-  _install_mock_security_multi "$fake_bin" "$names" "$tokens"
+  local expiries=$'9999999999999\n8888888888888'
+  _install_mock_security_multi "$fake_bin" "$names" "$tokens" "$expiries"
   _install_mock_curl_401_then_ok "$fake_bin" "token-stale-primary"
 
   cd "$repo"
@@ -360,6 +375,43 @@ JSON
   second=$(sed -n '2p' "$fake_bin/.curl-bearer-log")
   [ "$first" = "token-stale-primary" ]
   [ "$second" = "token-fresh-fallback" ]
+}
+
+@test "issue #576: multi-install — freshest token (highest expiresAt) is tried first, not lexical order" {
+  local repo="$TEST_TEMP_DIR/repo-multi-expiry"
+  local fake_bin="$TEST_TEMP_DIR/fake-bin-expiry"
+  mkdir -p "$repo/.vbw-planning"
+  git -C "$repo" init -q
+  git -C "$repo" commit --allow-empty -m "test(init): seed" -q
+  cat > "$repo/.vbw-planning/config.json" <<'JSON'
+{ "effort": "balanced", "statusline_hide_limits": false, "statusline_hide_limits_for_api_key": false }
+JSON
+
+  # The lexically-FIRST service name ("...-00000001") holds a near-expired token;
+  # the lexically-LAST ("...-fffffff0") holds the live, furthest-future token.
+  # Without expiry ordering, sort -u would pick the stale "-00000001" as primary.
+  # The mock curl accepts any token and records the FIRST (successful) bearer to
+  # .curl-bearer, so a passing assertion proves expiry order overrode lexical order.
+  local names=$'Claude Code-credentials-00000001\nClaude Code-credentials-fffffff0'
+  local tokens=$'token-near-expiry\ntoken-live'
+  local expiries=$'1000000000000\n9999999999999'
+  _install_mock_security_multi "$fake_bin" "$names" "$tokens" "$expiries"
+  _install_mock_curl_ok "$fake_bin"
+
+  cd "$repo"
+  local old_path="$PATH"
+  export PATH="$fake_bin:$PATH"
+  unset VBW_OAUTH_TOKEN 2>/dev/null || true
+  local output
+  output=$(echo '{}' | bash "$STATUSLINE" 2>&1)
+  export PATH="$old_path"
+  cd "$PROJECT_ROOT"
+
+  # The live token (highest expiresAt) must be the one used, despite sorting last lexically.
+  [ -f "$fake_bin/.curl-bearer" ]
+  local bearer
+  bearer=$(cat "$fake_bin/.curl-bearer")
+  [ "$bearer" = "token-live" ]
 }
 
 # --- New honest message: when no token is reachable but claude.ai login is detected ---
