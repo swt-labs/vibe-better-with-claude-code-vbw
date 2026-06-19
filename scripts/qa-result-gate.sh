@@ -1088,6 +1088,50 @@ classification_ids_cover_source_fail_ids() {
   return 0
 }
 
+# Detect a clean phase-level terminal baseline (issue #655): the phase's
+# authoritative verification resolves on disk, is a PASS result, lists zero FAIL
+# rows, and carries zero pre-existing/known issues. This identifies a no-FAIL
+# disposition phase (diagnosis / documentation) that has genuinely nothing left
+# to remediate, distinguishing it from a continuation round that simply lost its
+# source verification (no phase verification on disk) or a phase that still
+# carries unresolved pre-existing issues.
+phase_baseline_is_clean() {
+  local phase_dir="${1:-}" phase_v result preexist
+  [ -n "$phase_dir" ] || return 1
+  phase_v=$(bash "$SCRIPT_DIR/resolve-verification-path.sh" phase "$phase_dir" 2>/dev/null || true)
+  [ -n "$phase_v" ] && [ -r "$phase_v" ] || return 1
+  # Normalize like the gate's authoritative RESULT parser: case-insensitive,
+  # with a fallback to the legacy `status:` frontmatter field when `result:` is
+  # absent, so the same on-disk verification is judged consistently here.
+  result=$(extract_frontmatter_scalar_value "$phase_v" result)
+  [ -n "$result" ] || result=$(extract_frontmatter_scalar_value "$phase_v" status)
+  result=$(printf '%s' "$result" | tr '[:lower:]' '[:upper:]')
+  [ "$result" = "PASS" ] || return 1
+  [ "$(count_fail_rows_in_verification "$phase_v")" -eq 0 ] 2>/dev/null || return 1
+  preexist=$(awk '
+    /^## Pre-existing Issues/ { found=1; header_done=0; next }
+    found && /^## / { exit }
+    found && /^\|/ {
+      # Skip GitHub-style alignment separator rows (dashes, optional colons).
+      if ($0 ~ /^\|[[:space:]:|-]+$/) next
+      # The first non-separator table row is the column header, whatever its
+      # column titles are; every subsequent row is a counted data row.
+      if (!header_done) { header_done=1; next }
+      # Skip placeholder rows (e.g. "| None | - | - |") so a clean phase that
+      # renders an explicit empty pre-existing table still reads as clean.
+      split($0, _cells, "|")
+      _c = _cells[2]
+      gsub(/^[[:space:]]+|[[:space:]]+$/, "", _c)
+      _lc = tolower(_c)
+      if (_lc == "" || _lc == "none" || _lc == "n/a" || _lc == "na" || _lc ~ /^none[.,; ]/ || _lc ~ /^no .*(issue|pre-existing)/) next
+      count++
+    }
+    END { print count+0 }
+  ' "$phase_v" 2>/dev/null)
+  [ "${preexist:-0}" -eq 0 ] 2>/dev/null || return 1
+  return 0
+}
+
 extract_frontmatter_json_object_array() {
   local file_path="${1:-}"
   local key_name="${2:-}"
@@ -1977,6 +2021,30 @@ if [ "$IN_REMEDIATION" = "true" ] && [ "$SUMMARY_SCOPE_DIR" != "$PHASE_DIR" ]; t
   fi
 
   if [ "$ROUND_KNOWN_ISSUE_INPUT_COUNT" -gt 0 ] 2>/dev/null && [ "$SOURCE_FAIL_ROW_COUNT" -eq 0 ] 2>/dev/null && [ -z "$SOURCE_VERIFICATION_PATH" ]; then
+    ROUND_SOURCE_VERIFICATION_MISSING="false"
+  fi
+
+  # No-FAIL documentation / plan-amendment disposition (issue #655 sub-defect B):
+  # a round that classifies nothing (zero fail-classifications), carries no
+  # known issues, recorded only planning-metadata files, and has no source
+  # verification path has, by design, no FAIL source to anchor against — there
+  # is nothing to remediate. Exempt it from the source-missing check at ANY
+  # stage so the verify stage does not deadlock and force an unbounded re-run
+  # (the round could otherwise escape only by manually advancing verify -> done).
+  #
+  # The discriminator is the RECORDED files (not METADATA_ONLY_ROUND, which is
+  # corroboration-dependent and reads non-metadata edits as metadata-only when no
+  # git evidence is available) plus a clean phase-level baseline. A round that
+  # carries fail-classifications or known issues, recorded any non-metadata file,
+  # or whose phase verification is absent / not-PASS / carries FAIL rows or
+  # pre-existing issues does NOT satisfy this and still fails closed.
+  if [ "${ROUND_INPUT_MODE:-none}" = "none" ] \
+    && [ -z "$SOURCE_VERIFICATION_PATH" ] \
+    && [ "${ROUND_CLASSIFICATION_TYPE_COUNT:-0}" -eq 0 ] 2>/dev/null \
+    && [ "${KNOWN_ISSUES_COUNT:-0}" -eq 0 ] 2>/dev/null \
+    && [ -n "$ROUND_RECORDED_STRUCTURAL_PATHS" ] \
+    && ! paths_include_non_metadata "$PHASE_DIR" <<< "$ROUND_RECORDED_STRUCTURAL_PATHS" \
+    && phase_baseline_is_clean "$PHASE_DIR"; then
     ROUND_SOURCE_VERIFICATION_MISSING="false"
   fi
 

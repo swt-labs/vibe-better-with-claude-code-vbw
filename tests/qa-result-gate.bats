@@ -2231,7 +2231,15 @@ VERIF
   [[ "$output" == *"qa_gate_routing=PROCEED_TO_UAT"* ]]
 }
 
-@test "metadata-only round with missing fail_classifications → REMEDIATION_REQUIRED" {
+# Issue #655 (sub-defect B): a no-classification, metadata-only round on a phase
+# whose authoritative verification is a clean PASS (0 FAIL, 0 pre-existing) has
+# genuinely nothing to remediate, so it must terminate (PROCEED_TO_UAT) rather
+# than deadlock at the verify stage on source_verification_missing. A historical
+# phase-root SUMMARY deviation does not force remediation — phase-root deviations
+# are already treated as historical during remediation (they are not counted in
+# the round-scoped deviation override). Previously this routed REMEDIATION_REQUIRED
+# via the stage-asymmetric source-missing check; that was the #655 loop.
+@test "no-classification metadata-only round on a clean-baseline phase → PROCEED_TO_UAT (issue #655)" {
   create_verif "write-verification.sh" "PASS"
   create_summary_with_yaml_deviations "01-01" "Historical orchestration issue"
 
@@ -2244,7 +2252,7 @@ VERIF
   cat > "$PHASE_DIR/remediation/qa/round-01/R01-PLAN.md" <<'PLAN'
 ---
 round: 01
-title: Missing classifications should fail closed
+title: No-FAIL documentation disposition
 ---
 PLAN
   cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" <<'VERIF'
@@ -2263,7 +2271,184 @@ VERIF
   run bash "$SCRIPT" "$PHASE_DIR"
 
   [ "$status" -eq 0 ]
+  [[ "$output" != *"qa_gate_source_verification_missing=true"* ]]
+  [[ "$output" == *"qa_gate_routing=PROCEED_TO_UAT"* ]]
+}
+
+# Issue #655 (sub-defect B) — fail-closed companions. The source-missing
+# exemption must fire ONLY when every guard passes; the tests below each satisfy
+# the earlier guards (input_mode=none, 0 classifications, 0 known issues) and
+# then trip exactly one remaining guard, so each branch is exercised live:
+#   - this test: a recorded NON-metadata edit (claims real work, no source)
+#   - the three tests after it: the reachable false-return branches of
+#     phase_baseline_is_clean (absent phase verification, non-PASS result,
+#     pre-existing issues). Its count_fail==0 guard is defense-in-depth and is
+#     not independently reachable through the gate: a phase verification with
+#     FAIL rows makes qa-remediation-state derive input_mode=verification, so the
+#     exemption's input_mode=none precondition already excludes that case.
+@test "no-classification round recording a non-metadata edit still fails closed (issue #655)" {
+  create_verif "write-verification.sh" "PASS"
+
+  mkdir -p "$PHASE_DIR/remediation/qa/round-01"
+  printf 'stage=verify\nround=01\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+
+  create_round_summary_with_files "$PHASE_DIR/remediation/qa/round-01" "01" \
+    '  - "src/Feature.swift"'
+
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-PLAN.md" <<'PLAN'
+---
+round: 01
+title: Non-metadata edit without a source must fail closed
+---
+PLAN
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" <<'VERIF'
+---
+writer: write-verification.sh
+result: PASS
+plans_verified:
+  - R01
+---
+## Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| MH-01 | must_have | Code edited | PASS | Done |
+VERIF
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"qa_gate_source_verification_missing=true"* ]]
   [[ "$output" == *"qa_gate_routing=REMEDIATION_REQUIRED"* ]]
+}
+
+# Helper: a metadata-only, no-classification round that clears every guard up to
+# phase_baseline_is_clean. Callers set the phase verification to vary the baseline.
+_seed_clean_guard_round() {
+  mkdir -p "$PHASE_DIR/remediation/qa/round-01"
+  printf 'stage=verify\nround=01\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+  create_round_summary_with_files "$PHASE_DIR/remediation/qa/round-01" "01" \
+    '  - "01-test-phase/remediation/qa/round-01/R01-SUMMARY.md"'
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-PLAN.md" <<'PLAN'
+---
+round: 01
+title: No-FAIL documentation disposition
+---
+PLAN
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" <<'VERIF'
+---
+writer: write-verification.sh
+result: PASS
+plans_verified:
+  - R01
+---
+## Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| MH-01 | must_have | Documented | PASS | Done |
+VERIF
+}
+
+@test "phase_baseline_is_clean branch: no phase verification on disk → fails closed (issue #655)" {
+  _seed_clean_guard_round
+  # No phase-level VERIFICATION.md exists (a continuation round that lost its source).
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"qa_gate_source_verification_missing=true"* ]]
+  [[ "$output" == *"qa_gate_routing=REMEDIATION_REQUIRED"* ]]
+}
+
+@test "phase_baseline_is_clean branch: phase verification result is not PASS → fails closed (issue #655)" {
+  create_verif "write-verification.sh" "FAIL"
+  _seed_clean_guard_round
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"qa_gate_source_verification_missing=true"* ]]
+  [[ "$output" == *"qa_gate_routing=REMEDIATION_REQUIRED"* ]]
+}
+
+@test "phase_baseline_is_clean branch: phase verification carries a pre-existing issue → fails closed (issue #655)" {
+  create_verif "write-verification.sh" "PASS" "## Pre-existing Issues
+| Test | File | Error |
+|------|------|-------|
+| SomeTest | src/foo.swift | flaky boundary case |"
+  _seed_clean_guard_round
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"qa_gate_source_verification_missing=true"* ]]
+  [[ "$output" == *"qa_gate_routing=REMEDIATION_REQUIRED"* ]]
+}
+
+# Issue #655 (round 3, finding 2): a placeholder Pre-existing Issues table (a
+# single "None"/"N/A" row) is an explicit empty table, not a carried issue, so
+# `phase_baseline_is_clean` must treat the phase as clean — otherwise a clean
+# no-FAIL phase could spuriously fail closed.
+@test "phase_baseline_is_clean treats a placeholder pre-existing-issues row as clean → PROCEED_TO_UAT (issue #655)" {
+  create_verif "write-verification.sh" "PASS" "## Pre-existing Issues
+| Test | File | Error |
+|------|------|-------|
+| None | - | - |"
+  _seed_clean_guard_round
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" != *"qa_gate_source_verification_missing=true"* ]]
+  [[ "$output" == *"qa_gate_routing=PROCEED_TO_UAT"* ]]
+}
+
+# Issue #655 (round 3, finding 1): lock in the deliberate broadening for round-02+.
+# A round-02 no-FAIL disposition (input_mode=none, zero classifications, metadata-only
+# recorded files) on a clean phase baseline terminates rather than looping — the same
+# no-FAIL semantics as round-01, exercised through the round>1 source-resolution path.
+@test "round-02 no-classification disposition on a clean baseline → PROCEED_TO_UAT (issue #655)" {
+  create_verif "write-verification.sh" "PASS"
+  mkdir -p "$PHASE_DIR/remediation/qa/round-01" "$PHASE_DIR/remediation/qa/round-02"
+  printf 'stage=verify\nround=02\n' > "$PHASE_DIR/remediation/qa/.qa-remediation-stage"
+  # Prior round-01 verification exists (a normal continuation), PASS/clean.
+  cat > "$PHASE_DIR/remediation/qa/round-01/R01-VERIFICATION.md" <<'VERIF'
+---
+writer: write-verification.sh
+result: PASS
+plans_verified:
+  - R01
+---
+## Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| MH-01 | must_have | Documented | PASS | Done |
+VERIF
+  create_round_summary_with_files "$PHASE_DIR/remediation/qa/round-02" "02" \
+    '  - "01-test-phase/remediation/qa/round-02/R02-SUMMARY.md"'
+  cat > "$PHASE_DIR/remediation/qa/round-02/R02-PLAN.md" <<'PLAN'
+---
+round: 02
+title: No-FAIL documentation disposition
+---
+PLAN
+  cat > "$PHASE_DIR/remediation/qa/round-02/R02-VERIFICATION.md" <<'VERIF'
+---
+writer: write-verification.sh
+result: PASS
+plans_verified:
+  - R02
+---
+## Checks
+| ID | Category | Description | Status | Evidence |
+|----|----------|-------------|--------|----------|
+| MH-01 | must_have | Documented | PASS | Done |
+VERIF
+
+  run bash "$SCRIPT" "$PHASE_DIR"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" != *"qa_gate_source_verification_missing=true"* ]]
+  [[ "$output" == *"qa_gate_routing=PROCEED_TO_UAT"* ]]
 }
 
 @test "metadata-only round with inline fail_classifications process-exception → PROCEED_TO_UAT" {
