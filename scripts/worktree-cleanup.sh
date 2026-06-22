@@ -12,10 +12,20 @@ fi
 PHASE="$1"
 PLAN="$2"
 
+# Normalize the plan id into the canonical "<phase>-<plan>" slug so the worktree
+# dir, branch, and agent-map glob match what worktree-create.sh produced. A
+# caller may pass a bare plan number (MM) or an already phase-qualified id
+# (NN-MM); prepending PHASE to the latter would double-prefix to NN-NN-MM. Use
+# an already-qualified plan as-is, otherwise combine it with PHASE.
+case "$PLAN" in
+  *-*) SLUG="$PLAN" ;;
+  *)   SLUG="${PHASE}-${PLAN}" ;;
+esac
+
 PLANNING_DIR="${VBW_PLANNING_DIR:-.vbw-planning}"
 WORKTREES_PARENT=".vbw-worktrees"
-WORKTREE_DIR="${WORKTREES_PARENT}/${PHASE}-${PLAN}"
-BRANCH="vbw/${PHASE}-${PLAN}"
+WORKTREE_DIR="${WORKTREES_PARENT}/${SLUG}"
+BRANCH="vbw/${SLUG}"
 AGENT_WORKTREES_DIR="$PLANNING_DIR/.agent-worktrees"
 
 # Unlock the worktree if locked (locked worktrees resist single --force)
@@ -67,7 +77,7 @@ git branch -d "$BRANCH" 2>/dev/null || true
 # Clear the agent-worktree mapping entry if the directory exists
 if [ -d "$AGENT_WORKTREES_DIR" ]; then
   # Remove any JSON file matching the phase-plan pattern
-  for f in "$AGENT_WORKTREES_DIR"/*"${PHASE}-${PLAN}"*.json; do
+  for f in "$AGENT_WORKTREES_DIR"/*"${SLUG}"*.json; do
     [ -f "$f" ] && rm -f "$f" 2>/dev/null || true
   done
 fi
