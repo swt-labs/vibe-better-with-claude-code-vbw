@@ -295,7 +295,15 @@ resolve_plan_path() {
     if [ -n "$fm_phase" ] || [ -n "$fm_plan" ]; then
       fm_phase=${fm_phase:-$phase_id}
       fm_plan=${fm_plan:-$plan_part}
-      norm_fm_id=$(normalize_plan_ref "$(pad_number "$fm_phase")-$(pad_number "$fm_plan")" 2>/dev/null || true)
+      # A plan: frontmatter value may already be phase-qualified (NN-MM), the
+      # same form cross_phase_deps uses. Normalizing it directly avoids
+      # re-prepending fm_phase (which would double-prefix to NN-NN-MM and
+      # raise a spurious frontmatter_mismatch). A bare plan-number is still
+      # combined with fm_phase to build the canonical id.
+      case "$fm_plan" in
+        *-*) norm_fm_id=$(normalize_plan_ref "$fm_plan" 2>/dev/null || true) ;;
+        *)   norm_fm_id=$(normalize_plan_ref "$(pad_number "$fm_phase")-$(pad_number "$fm_plan")" 2>/dev/null || true) ;;
+      esac
       if [ -n "$norm_fm_id" ] && [ "$norm_fm_id" != "$id" ]; then
         printf 'frontmatter_mismatch:%s:declares:%s\n' "$(basename "$candidate")" "$norm_fm_id" >&2
         return 3

@@ -14,10 +14,23 @@ if [ -z "$PHASE" ] || [ -z "$PLAN" ]; then
   exit 0
 fi
 
-BRANCH="vbw/${PHASE}-${PLAN}"
+# Normalize the plan id into the canonical "<phase>-<plan>" slug so the branch
+# matches the one worktree-create.sh produced. A caller may pass a bare plan
+# number (MM) or an already phase-qualified id (NN-MM); prepending PHASE to the
+# latter would double-prefix to NN-NN-MM. Use an already-qualified plan as-is,
+# otherwise combine it with PHASE.
+case "$PLAN" in
+  *-*) SLUG="$PLAN" ;;
+  *)   SLUG="${PHASE}-${PLAN}" ;;
+esac
+PLAN_NUM="${SLUG#*-}"
 
-# Attempt the merge
-git merge --no-ff "$BRANCH" -m "merge: phase ${PHASE} plan ${PLAN}" 2>/dev/null
+BRANCH="vbw/${SLUG}"
+
+# Attempt the merge. Suppress git's own stdout/stderr so the script honors its
+# contract of emitting exactly "clean" or "conflict" (git prints a porcelain
+# summary to stdout on success and conflict details on failure).
+git merge --no-ff "$BRANCH" -m "merge: phase ${PHASE} plan ${PLAN_NUM}" >/dev/null 2>&1
 MERGE_STATUS=$?
 
 if [ "$MERGE_STATUS" -eq 0 ]; then

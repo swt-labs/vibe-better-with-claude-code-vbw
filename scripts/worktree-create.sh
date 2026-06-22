@@ -15,8 +15,19 @@ if [ -z "$PHASE" ] || [ -z "$PLAN" ]; then
   exit 0
 fi
 
-WORKTREE_DIR=".vbw-worktrees/${PHASE}-${PLAN}"
-BRANCH="vbw/${PHASE}-${PLAN}"
+# Normalize the plan id into the canonical "<phase>-<plan>" slug. A caller may
+# pass either a bare plan number (MM) or an already phase-qualified id (NN-MM,
+# the form .execution-state.json and plan filenames use). Prepending PHASE to an
+# already-qualified id would double-prefix to NN-NN-MM (e.g. 43-43-03). Mirror
+# resolve-execute-delegation-mode.sh: use an already-qualified plan as-is,
+# otherwise combine it with PHASE.
+case "$PLAN" in
+  *-*) SLUG="$PLAN" ;;
+  *)   SLUG="${PHASE}-${PLAN}" ;;
+esac
+
+WORKTREE_DIR=".vbw-worktrees/${SLUG}"
+BRANCH="vbw/${SLUG}"
 
 # Idempotent: if worktree already exists, return its absolute path
 if [ -d "$WORKTREE_DIR" ]; then

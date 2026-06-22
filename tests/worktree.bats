@@ -56,6 +56,28 @@ teardown() {
   [ "$output" = "vbw/02-03" ]
 }
 
+@test "worktree-create: phase-qualified plan id does not double-prefix (regression #659)" {
+  cd "$TEST_TEMP_DIR"
+  git init -q
+  git config user.name "VBW Test"
+  git config user.email "vbw-test@example.com"
+  echo "seed" > README.md
+  git add README.md
+  git commit -q -m "chore(init): seed"
+
+  # Callers pass the already phase-qualified plan id (the form
+  # .execution-state.json and plan filenames use). It must not become 43-43-03.
+  run bash "$SCRIPTS_DIR/worktree-create.sh" 43 43-03
+  [ "$status" -eq 0 ]
+  [[ "$output" == *".vbw-worktrees/43-03" ]]
+  [ -d ".vbw-worktrees/43-03" ]
+  [ ! -d ".vbw-worktrees/43-43-03" ]
+
+  run git -C ".vbw-worktrees/43-03" rev-parse --abbrev-ref HEAD
+  [ "$status" -eq 0 ]
+  [ "$output" = "vbw/43-03" ]
+}
+
 # ---------------------------------------------------------------------------
 # worktree-merge.sh tests
 # ---------------------------------------------------------------------------
@@ -80,6 +102,28 @@ teardown() {
   run bash "$SCRIPTS_DIR/worktree-merge.sh" 01 01
   [ "$status" -eq 0 ]
   [ "$output" = "conflict" ]
+}
+
+@test "worktree-merge: phase-qualified plan id targets the un-doubled branch (regression #659)" {
+  cd "$TEST_TEMP_DIR"
+  git init -q
+  git config user.name "VBW Test"
+  git config user.email "vbw-test@example.com"
+  echo "seed" > README.md
+  git add README.md
+  git commit -q -m "chore(init): seed"
+
+  # Work to be merged lives on vbw/43-03, not vbw/43-43-03.
+  git checkout -q -b vbw/43-03
+  echo "feature" > feature.txt
+  git add feature.txt
+  git commit -q -m "feat: work"
+  git checkout -q -
+
+  run bash "$SCRIPTS_DIR/worktree-merge.sh" 43 43-03
+  [ "$status" -eq 0 ]
+  [ "$output" = "clean" ]
+  [ -f feature.txt ]
 }
 
 # ---------------------------------------------------------------------------
@@ -220,6 +264,23 @@ teardown() {
   run bash "$SCRIPTS_DIR/worktree-cleanup.sh" 01 01
   [ "$status" -eq 0 ]
   [ ! -f ".vbw-planning/.agent-worktrees/agent-01-01.json" ]
+}
+
+@test "worktree-cleanup: phase-qualified plan id removes the un-doubled worktree (regression #659)" {
+  cd "$TEST_TEMP_DIR"
+  mkdir -p .vbw-worktrees/43-03/.vbw-planning
+  run bash "$SCRIPTS_DIR/worktree-cleanup.sh" 43 43-03
+  [ "$status" -eq 0 ]
+  [ ! -d ".vbw-worktrees/43-03" ]
+}
+
+@test "worktree-cleanup: phase-qualified plan id clears agent-worktree JSON (regression #659)" {
+  cd "$TEST_TEMP_DIR"
+  mkdir -p .vbw-planning/.agent-worktrees
+  echo '{}' > .vbw-planning/.agent-worktrees/dev-43-03.json
+  run bash "$SCRIPTS_DIR/worktree-cleanup.sh" 43 43-03
+  [ "$status" -eq 0 ]
+  [ ! -f ".vbw-planning/.agent-worktrees/dev-43-03.json" ]
 }
 
 # ---------------------------------------------------------------------------

@@ -66,6 +66,7 @@ Display: `✓ Lead: All plans written to disk`
 PLAN_NAME=$(bash "$RESOLVE_SCRIPT" plan "{phase-dir}" --plan-number {MM})
 ```
 Write the plan to `{phase-dir}/${PLAN_NAME}`. If the orchestrator did not provide `RESOLVE_SCRIPT`, fall back to `{NN}-{MM}-PLAN.md` where `{NN}` is the phase number from the directory basename and `{MM}` is the zero-padded plan number. Do NOT use `PLAN-{NN}.md` — this format is rejected by file-guard.
+**Frontmatter `plan:` value:** Set the `plan:` field to the plan number `{MM}` only (zero-padded, e.g. `01`). Do NOT write the `{NN}-{MM}` file id (e.g. `66-01`) into `plan:` — the phase is already carried by the separate `phase:` field. The execute router reconstructs the canonical `{NN}-{MM}` id from `phase:` + `plan:`, so a phase-prefixed `plan:` value misrepresents the plan id.
 Report: `Phase {NN}: {name}\nPlans: {N}\n  {plan}: {title} (wave {W}, {N} tasks)`
 
 ## Goal-Backward Methodology
