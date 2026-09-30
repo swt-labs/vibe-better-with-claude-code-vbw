@@ -3,201 +3,58 @@ name: CI
 on:
   pull_request:
   push:
-    branches: [main]
+    branches: [main, v2]
 
 jobs:
-  lint:
-    name: Lint
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Install ShellCheck
-        run: |
-          if command -v shellcheck >/dev/null 2>&1; then
-            shellcheck --version
-            exit 0
-          fi
-
-          install_shellcheck_with_apt() {
-            sudo apt-get update -qq -o Acquire::Retries=3
-            sudo apt-get install -y -qq --no-install-recommends shellcheck
-          }
-
-          if install_shellcheck_with_apt; then
-            shellcheck --version
-            exit 0
-          fi
-
-          version="v0.10.0"
-          case "${RUNNER_ARCH:-X64}" in
-            X64)
-              asset="shellcheck-${version}.linux.x86_64.tar.xz"
-              ;;
-            ARM64)
-              asset="shellcheck-${version}.linux.aarch64.tar.xz"
-              ;;
-            *)
-              echo "Unsupported RUNNER_ARCH: ${RUNNER_ARCH:-unknown}" >&2
-              exit 1
-              ;;
-          esac
-
-          tmpdir=$(mktemp -d)
-          trap 'rm -rf "$tmpdir"' EXIT
-
-          curl -fsSL --retry 3 --retry-delay 5 \
-            "https://github.com/koalaman/shellcheck/releases/download/${version}/${asset}" \
-            -o "$tmpdir/$asset"
-          tar -xf "$tmpdir/$asset" -C "$tmpdir"
-          sudo install "$tmpdir/shellcheck-${version}/shellcheck" /usr/local/bin/shellcheck
-          shellcheck --version
-
-      - name: Run shell lint checks
-        run: bash testing/run-lint.sh
-
-  bats-tests:
-    name: Bats Tests (shard ${{ matrix.shard }})
-    runs-on: ubuntu-latest
+  test:
+    name: Tests (${{ matrix.name }})
+    runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        shard: [0, 1, 2, 3, 4, 5, 6, 7]
+        include:
+          # macOS ships /bin/bash 3.2; that is the kernel's floor (build plan K2).
+          - name: macOS, /bin/bash 3.2
+            os: macos-latest
+            bash_path: /bin
+          - name: Linux, bash 5
+            os: ubuntu-latest
+            bash_path: /usr/bin
     steps:
+      # Check out into a path containing a space: v1 had test and script bugs
+      # that only a path like this exposes (ledger T2).
       - uses: actions/checkout@v4
+        with:
+          path: src dir
 
-      - name: Install bats-core
+      - name: Install test tools
+        shell: bash
         run: |
-          git clone --depth 1 --branch v1.13.0 https://github.com/bats-core/bats-core.git /tmp/bats-core
-          sudo /tmp/bats-core/install.sh /usr/local
-          bats -v
+          if [ "$RUNNER_OS" = "macOS" ]; then
+            brew install bats-core shellcheck jq parallel
+          else
+            sudo apt-get update -qq
+            sudo apt-get install -y -qq bats shellcheck jq parallel
+          fi
 
-      - name: Install jq
-        run: sudo apt-get install -y -qq jq
-
-      - name: Run bats shard
-        env:
-          SHARD: ${{ matrix.shard }}
-          TOTAL_SHARDS: 8
+      - name: Run the suite with the target bash first on PATH
+        working-directory: src dir
         run: |
-          files=()
-          while IFS= read -r file; do
-            [ -n "$file" ] || continue
-            files+=("$file")
-          done < <(bash testing/list-bats-files.sh --shardable)
-          bash testing/run-bats-shard.sh "$SHARD" "$TOTAL_SHARDS" "${files[@]}"
+          export PATH="${{ matrix.bash_path }}:$PATH"
+          bash --version | head -1
+          bash tools/test.sh
 
-  bats-serial:
-    name: Bats Tests (serial)
+  validate:
+    name: Plugin manifest validation
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
-      - name: Install bats-core
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Validate plugin and marketplaces
         run: |
-          git clone --depth 1 --branch v1.13.0 https://github.com/bats-core/bats-core.git /tmp/bats-core
-          sudo /tmp/bats-core/install.sh /usr/local
-          bats -v
-
-      - name: Install jq
-        run: sudo apt-get install -y -qq jq
-
-      - name: Run serial bats files
-        run: |
-          files=()
-          while IFS= read -r file; do
-            [ -n "$file" ] || continue
-            files+=("$file")
-          done < <(bash testing/list-bats-files.sh --serial)
-          if [ "${#files[@]}" -eq 0 ]; then
-            echo "No serial bats files configured, skipping"
-            exit 0
-          fi
-          bats "${files[@]}"
-
-  contract-tests:
-    name: Contract Tests
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Install jq
-        run: sudo apt-get install -y -qq jq
-
-      - name: Run all contract checks (parallel)
-        run: |
-          declare -a NAMES=()
-          declare -a PIDS=()
-          declare -a RESULTS=()
-          declare -a FAILED_NAMES=()
-          run_check() {
-            local name="$1" cmd="$2"
-            NAMES+=("$name")
-            bash -c "$cmd" > "/tmp/contract-$name.out" 2>&1 &
-            PIDS+=("$!")
-          }
-
-          # Discover contract tests from shared registry (single source of truth)
-          DISCOVERY_OUTPUT=$(bash testing/list-contract-tests.sh)
-          if [[ -z "$DISCOVERY_OUTPUT" ]]; then
-            echo "ERROR: No contract tests discovered from testing/list-contract-tests.sh"
-            exit 1
-          fi
-
-          while IFS=$'\t' read -r name path; do
-            [[ -z "$name" ]] && continue
-            run_check "$name" "bash $path"
-          done <<< "$DISCOVERY_OUTPUT"
-
-          failures=0
-          for i in "${!PIDS[@]}"; do
-            if wait "${PIDS[$i]}"; then
-              RESULTS[$i]=0
-            else
-              RESULTS[$i]=1
-              failures=$((failures + 1))
-              FAILED_NAMES+=("${NAMES[$i]}")
-            fi
-          done
-
-          for i in "${!NAMES[@]}"; do
-            if [ "${RESULTS[$i]:-1}" -eq 0 ]; then
-              echo "PASS: ${NAMES[$i]}"
-            else
-              echo "FAIL: ${NAMES[$i]}"
-            fi
-          done
-
-          if [ "$failures" -gt 0 ]; then
-            echo ""
-            for i in "${!NAMES[@]}"; do
-              [ "${RESULTS[$i]:-1}" -ne 0 ] || continue
-              echo "::error::FAIL: ${NAMES[$i]}"
-              echo "::group::${NAMES[$i]} output"
-              cat "/tmp/contract-${NAMES[$i]}.out"
-              echo "::endgroup::"
-            done
-            echo "Failed contract scripts: ${FAILED_NAMES[*]}"
-          fi
-
-          echo ""
-          echo "Contract checks: $(( ${#NAMES[@]} - failures ))/${#NAMES[@]} passed"
-          [ "$failures" -eq 0 ] || exit 1
-
-  test:
-    name: Test
-    if: always()
-    needs: [bats-tests, bats-serial, contract-tests, lint]
-    runs-on: ubuntu-latest
-    steps:
-      - name: Check test results
-        run: |
-          if [ "${{ needs.bats-tests.result }}" != "success" ] || [ "${{ needs.bats-serial.result }}" != "success" ] || [ "${{ needs.contract-tests.result }}" != "success" ] || [ "${{ needs.lint.result }}" != "success" ]; then
-            echo "One or more test jobs failed:"
-            echo "  lint: ${{ needs.lint.result }}"
-            echo "  bats-tests: ${{ needs.bats-tests.result }}"
-            echo "  bats-serial: ${{ needs.bats-serial.result }}"
-            echo "  contract-tests: ${{ needs.contract-tests.result }}"
-            exit 1
-          fi
-          echo "All test jobs passed."
+          npm install -g @anthropic-ai/claude-code
+          claude plugin validate ./plugin
+          claude plugin validate .
+          node --check plugin/workflows/*.js 2>/dev/null || [ -z "$(ls plugin/workflows/*.js 2>/dev/null)" ]
