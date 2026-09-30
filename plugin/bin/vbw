@@ -11,6 +11,8 @@ export VBW_LIB VBW_PLUGIN
 . "$VBW_LIB/core.sh"
 # shellcheck source=../lib/record.sh
 . "$VBW_LIB/record.sh"
+# shellcheck source=../lib/consent.sh
+. "$VBW_LIB/consent.sh"
 
 vbw_help() {
   cat <<'EOF'

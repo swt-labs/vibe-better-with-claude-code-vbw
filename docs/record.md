@@ -43,6 +43,7 @@ carries `VBW-Plan:`/`VBW-Req:` trailers, so the record stays small.
   ],
   "todos": [ { "id": "T1", "text": "Dark mode", "status": "open" } ],
   "decisions": [ { "id": "D1", "text": "Stripe, not PayPal", "at": "2026-10-01T09:00:00Z" } ],
+  "commands": { "test": ["npm", "test"] },
   "contract": { "hash": null, "approved_at": null },
   "evidence": null,
   "lease": null
@@ -61,9 +62,19 @@ carries `VBW-Plan:`/`VBW-Req:` trailers, so the record stays small.
 | `fixes[]` | `id` `F<n>` unique; `req` an existing requirement; `attempts` integer ≥ 0; `status` `open`, `fixed`, `closed` or `escalated` (lifecycle in docs/next.md); `note` string |
 | `todos[]` | `id` `T<n>` unique; non-empty `text`; `status` `open`, `in_progress`, `done` or `dropped` |
 | `decisions[]` | `id` `D<n>` unique; non-empty `text`; `at` an ISO-8601 UTC timestamp |
+| `commands` | object of name → argv (a non-empty array of non-empty strings): the project's own test, lint and build commands detected by `vbw init`. Recording a command never runs it; `vbw prove` runs only commands whose argv hash has consent (see Consent) |
 | `contract` | `hash` `null` or a 64-hex SHA-256; `approved_at` `null` or ISO-8601 UTC; both null or both set |
 | `evidence` | `null` or the last `vbw prove` result (defined in M2) |
 | `lease` | `null` or `{ "run", "session", "started_at", "agents": [] }`: the active run that scopes the guards (defined in M3) |
 
 Unknown keys are rejected, at the top level and inside every item: an unknown
 key is a typo, a stale field or a newer schema, and all three must be loud.
+
+## Consent
+
+Commands and contract checks from the repository run only with the user's
+consent, recorded by content hash in the clone's git directory:
+`$(git rev-parse --git-common-dir)/vbw/consent.json`. A repository cannot ship
+that file (clones never carry `.git` contents), it is writable under the Claude
+Code sandbox, and linked worktrees share it. Granting consent is a user action
+(`/vbw:approve`), never something an agent can do on its own.

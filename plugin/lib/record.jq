@@ -37,7 +37,7 @@ if type != "object" then ["record must be a JSON object"] else
     ( select($r.schema != 1) | "schema must be 1" ),
     ( $r | keys[]
       | select(one_of(["schema","project","milestone","requirements","checks","phases","plans",
-                       "fixes","todos","decisions","contract","evidence","lease"]) | not)
+                       "fixes","todos","decisions","contract","evidence","lease","commands"]) | not)
       | "unknown key: \(.)" ),
     ( ["requirements","checks","phases","plans","fixes","todos","decisions"][]
       | select(($r[.] | type) != "array") | "\(.) must be an array" ),
@@ -114,6 +114,16 @@ if type != "object" then ["record must be a JSON object"] else
           ( select((.hash == null) != (.approved_at == null)) | "contract hash and approved_at must both be set or both be null" )
         end ),
 
+    ( $r.commands
+      | if type != "object" then "commands must be an object of name: argv" else
+          to_entries[] | select((.value | type == "array" and length > 0 and all(.[]; nonempty)) | not)
+          | "command \(.key) must be a non-empty argv array"
+        end ),
+    ( $r.commands
+      | if type != "object" then "commands must be an object of name: argv" else
+          to_entries[] | select((.value | type == "array" and length > 0 and all(.[]; nonempty)) | not)
+          | "command \(.key) must be a non-empty argv array"
+        end ),
     ( select(($r.evidence | type) != "null" and ($r.evidence | type) != "object") | "evidence must be null or an object" ),
     ( $r.lease
       | select(. != null)
