@@ -25,11 +25,11 @@ carries `VBW-Plan:`/`VBW-Req:` trailers, so the record stays small.
   "project": { "name": "Shop" },
   "milestone": { "id": "M1", "title": "Checkout", "status": "active" },
   "requirements": [
-    { "id": "R1", "text": "A customer can pay by card", "proof": "auto",
-      "checks": ["C1"], "status": "failing" }
+    { "id": "R1", "text": "A customer can pay by card", "proof": "auto", "status": "failing" }
   ],
   "checks": [
-    { "id": "C1", "req": "R1", "kind": "spec", "path": ".vbw/checks/C1.json" }
+    { "id": "C1", "req": "R1", "run": ["npm", "test", "--", "tests/pay.test.ts"],
+      "files": ["tests/pay.test.ts"] }
   ],
   "phases": [
     { "id": "P1", "title": "Payments", "reqs": ["R1"], "status": "building" }
@@ -44,7 +44,6 @@ carries `VBW-Plan:`/`VBW-Req:` trailers, so the record stays small.
   "todos": [ { "id": "T1", "text": "Dark mode", "status": "open" } ],
   "decisions": [ { "id": "D1", "text": "Stripe, not PayPal", "at": "2026-10-01T09:00:00Z" } ],
   "commands": { "test": ["npm", "test"] },
-  "contract": { "hash": null, "approved_at": null },
   "evidence": null,
   "lease": null
 }
@@ -55,16 +54,15 @@ carries `VBW-Plan:`/`VBW-Req:` trailers, so the record stays small.
 | `schema` | `1` |
 | `project.name` | non-empty string |
 | `milestone` | `id` `M<n>`, non-empty `title`, `status` `active` or `shipped` |
-| `requirements[]` | `id` `R<n>` unique; non-empty `text`; `proof` `auto` or `human`; `checks[]` ids that exist in `checks`; `status` `open`, `failing`, `proven`, `accepted` or `rejected`. A `human` requirement has no checks and is never `proven`/`failing`; an `auto` requirement is never `accepted`/`rejected` |
-| `checks[]` | `id` `C<n>` unique; `req` an existing requirement; `kind` `spec` (a `.vbw/checks/*.json` check spec) or `test` (a test file in the project's own framework); `path` a relative path inside the project, no `..` |
+| `requirements[]` | `id` `R<n>` unique; non-empty `text`; `proof` `auto` or `human`; `status` `open`, `failing`, `proven`, `accepted` or `rejected`. A `human` requirement is never `proven`/`failing`; an `auto` requirement is never `accepted`/`rejected`. Requirements mirror `.vbw/spec.md` (`vbw spec sync`) |
+| `checks[]` | `id` `C<n>` unique; `req` an existing `auto` requirement; `run` argv; optional `files[]` (relative, no `..`), `exit` (0–255), `output` (a regular expression), `timeout` (1–3600 s). A requirement's checks are the checks whose `req` names it. Full semantics in docs/proof.md |
 | `phases[]` | `id` `P<n>` unique; non-empty `title`; `reqs[]` existing requirements; `status` `planned`, `building` or `built` |
 | `plans[]` | `id` `P<n>.<m>` unique, prefix equals `phase`; `phase` an existing phase; non-empty `title`; `reqs[]` existing requirements; `files[]` relative project paths (no `..`, no duplicates); `after[]` existing plan ids, no cycles; `status` `planned`, `building`, `done` or `blocked`. A plan's commits are not stored: they are the commits whose `VBW-Plan:` trailer names it (`git log`) |
-| `fixes[]` | `id` `F<n>` unique; `req` an existing requirement; `attempts` integer ≥ 0; `status` `open`, `fixed`, `closed` or `escalated` (lifecycle in docs/next.md); `note` string |
+| `fixes[]` | `id` `F<n>` unique; exactly one of `req` (an existing requirement) or `command` (a name in `commands`); `attempts` integer ≥ 0; `status` `open`, `fixed`, `closed` or `escalated` (lifecycle in docs/proof.md); `note` string |
 | `todos[]` | `id` `T<n>` unique; non-empty `text`; `status` `open`, `in_progress`, `done` or `dropped` |
 | `decisions[]` | `id` `D<n>` unique; non-empty `text`; `at` an ISO-8601 UTC timestamp |
 | `commands` | object of name → argv (a non-empty array of non-empty strings): the project's own test, lint and build commands detected by `vbw init`. Recording a command never runs it; `vbw prove` runs only commands whose argv hash has consent (see Consent) |
-| `contract` | `hash` `null` or a 64-hex SHA-256; `approved_at` `null` or ISO-8601 UTC; both null or both set |
-| `evidence` | `null` or the last `vbw prove` result (defined in M2) |
+| `evidence` | `null` or the last `vbw prove` result: `at`, `contract` (the hash proved), `passed`, `checks` and `commands` (name → `{status, exit, seconds, tail}`), `scope[]` violations (docs/proof.md) |
 | `lease` | `null` or `{ "run", "session", "started_at", "agents": [] }`: the active run that scopes the guards (defined in M3) |
 
 Unknown keys are rejected, at the top level and inside every item: an unknown
@@ -78,3 +76,8 @@ consent, recorded by content hash in the clone's git directory:
 that file (clones never carry `.git` contents), it is writable under the Claude
 Code sandbox, and linked worktrees share it. Granting consent is a user action
 (`/vbw:approve`), never something an agent can do on its own.
+
+Approval of the contract is therefore not a field of the record: the record
+travels with the repository, so a field saying "approved" could be shipped by
+anyone. The contract is approved when its current hash has consent
+(docs/proof.md).

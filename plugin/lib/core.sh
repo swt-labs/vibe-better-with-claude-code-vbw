@@ -38,6 +38,17 @@ vbw_require_project() {
   mkdir -p "$VBW_RUNTIME"
 }
 
+# SHA-256 hex digest of stdin (GNU coreutils or BSD/macOS shasum).
+vbw_sha256() {
+  local out
+  if command -v sha256sum > /dev/null 2>&1; then
+    out=$(sha256sum)
+  else
+    out=$(shasum -a 256)
+  fi
+  printf '%s\n' "${out%% *}"
+}
+
 # Modification time in epoch seconds (BSD and GNU stat).
 vbw_mtime() {
   stat -f %m "$1" 2>/dev/null || stat -c %Y "$1" 2>/dev/null || echo 0

@@ -8,9 +8,9 @@ setup() {
   vbw_git_project
   "$VBW" init > /dev/null
   jq '.requirements = [
-        {id:"R1", text:"Pay by card", proof:"auto", checks:["C1"], status:"proven"},
-        {id:"R2", text:"Feels trustworthy", proof:"human", checks:[], status:"open"}]
-      | .checks = [{id:"C1", req:"R1", kind:"test", path:"tests/pay.test.js"}]
+        {id:"R1", text:"Pay by card", proof:"auto", status:"proven"},
+        {id:"R2", text:"Feels trustworthy", proof:"human", status:"open"}]
+      | .checks = [{id:"C1", req:"R1", run:["npm","test","--","tests/pay test.js"], files:["tests/pay test.js"]}]
       | .phases = [{id:"P1", title:"Payments", reqs:["R1","R2"], status:"building"}]
       | .plans = [
           {id:"P1.1", phase:"P1", title:"Card form", reqs:["R1"], files:["src/pay.js"], after:[], status:"done"},
@@ -44,7 +44,7 @@ teardown() { vbw_teardown; }
   vbw_run show req R1
   [ "$status" -eq 0 ]
   [[ "$output" == *"R1 [auto, proven] Pay by card"* ]]
-  [[ "$output" == *"C1 test tests/pay.test.js"* ]]
+  [[ "$output" == *"C1 npm test -- 'tests/pay test.js' [protects tests/pay test.js]"* ]]
   [[ "$output" == *"P1.1"* ]]
   [[ "$output" == *"$(git rev-parse --short HEAD) feat(pay): card form"* ]]
 }
@@ -66,7 +66,7 @@ teardown() { vbw_teardown; }
 }
 
 @test "show req matches requirement ids exactly (R1 is not R12)" {
-  jq '.requirements += [{id:"R12", text:"Refunds", proof:"auto", checks:[], status:"open"}]
+  jq '.requirements += [{id:"R12", text:"Refunds", proof:"auto", status:"open"}]
       | .plans += [{id:"P1.3", phase:"P1", title:"Refund", reqs:["R12"], files:["src/refund.js"], after:[], status:"planned"}]' \
     .vbw/record.json > "$TEST_ROOT/r2.json" && cp "$TEST_ROOT/r2.json" .vbw/record.json
   printf 'refund\n' > src/refund.js

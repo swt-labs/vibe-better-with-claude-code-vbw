@@ -14,10 +14,10 @@ setup() {
   "project": { "name": "Shop" },
   "milestone": { "id": "M1", "title": "Checkout", "status": "active" },
   "requirements": [
-    { "id": "R1", "text": "Pay by card", "proof": "auto", "checks": ["C1"], "status": "failing" },
-    { "id": "R2", "text": "Looks trustworthy", "proof": "human", "checks": [], "status": "open" }
+    { "id": "R1", "text": "Pay by card", "proof": "auto", "status": "failing" },
+    { "id": "R2", "text": "Looks trustworthy", "proof": "human", "status": "open" }
   ],
-  "checks": [ { "id": "C1", "req": "R1", "kind": "spec", "path": ".vbw/checks/C1.json" } ],
+  "checks": [ { "id": "C1", "req": "R1", "run": ["npm", "test"], "files": ["tests/pay.test.ts"], "exit": 0, "output": "passed", "timeout": 60 } ],
   "phases": [ { "id": "P1", "title": "Payments", "reqs": ["R1", "R2"], "status": "building" } ],
   "plans": [
     { "id": "P1.1", "phase": "P1", "title": "Card form", "reqs": ["R1"], "files": ["src/pay.ts"],
@@ -28,8 +28,7 @@ setup() {
   "fixes": [ { "id": "F1", "req": "R1", "attempts": 1, "status": "open", "note": "C1 exit 1" } ],
   "todos": [ { "id": "T1", "text": "Dark mode", "status": "open" } ],
   "decisions": [ { "id": "D1", "text": "Stripe", "at": "2026-10-01T09:00:00Z" } ],
-  "commands": {},
-  "contract": { "hash": null, "approved_at": null },
+  "commands": { "test": ["npm", "test"] },
   "evidence": null,
   "lease": null
 }
@@ -50,7 +49,7 @@ violations_after() {
 }
 
 @test "the minimal record written by vbw init is valid" {
-  run bash -c 'jq -n --arg n "x" "{schema:1, project:{name:\$n}, milestone:{id:\"M1\",title:\"First milestone\",status:\"active\"}, requirements:[], checks:[], phases:[], plans:[], fixes:[], todos:[], decisions:[], commands:{}, contract:{hash:null,approved_at:null}, evidence:null, lease:null}" | jq -c -f "$1"' _ "$VALIDATOR"
+  run bash -c 'jq -n --arg n "x" "{schema:1, project:{name:\$n}, milestone:{id:\"M1\",title:\"First milestone\",status:\"active\"}, requirements:[], checks:[], phases:[], plans:[], fixes:[], todos:[], decisions:[], commands:{}, evidence:null, lease:null}" | jq -c -f "$1"' _ "$VALIDATOR"
   [ "$output" = "[]" ]
 }
 
@@ -76,8 +75,6 @@ violations_after() {
 }
 
 @test "rejects dangling references" {
-  run violations_after '.requirements[0].checks = ["C9"]'
-  [[ "$output" == *"R1 references unknown check C9"* ]]
   run violations_after '.checks[0].req = "R9"'
   [[ "$output" == *"C1 references unknown requirement R9"* ]]
   run violations_after '.plans[1].after = ["P1.9"]'
@@ -91,15 +88,15 @@ violations_after() {
   [[ "$output" == *"R2 is human-proved and cannot be proven"* ]]
   run violations_after '.requirements[0].status = "accepted"'
   [[ "$output" == *"R1 is auto-proved and cannot be accepted"* ]]
-  run violations_after '.requirements[1].checks = ["C1"]'
-  [[ "$output" == *"R2 is human-proved and cannot have checks"* ]]
+  run violations_after '.checks[0].req = "R2"'
+  [[ "$output" == *"C1 checks human-proved R2: only a person can judge it"* ]]
 }
 
 @test "rejects paths that escape the project" {
   run violations_after '.plans[0].files = ["../etc/passwd"]'
   [[ "$output" == *"P1.1 has an unsafe path: ../etc/passwd"* ]]
-  run violations_after '.checks[0].path = "/abs/C1.json"'
-  [[ "$output" == *"C1 has an unsafe path: /abs/C1.json"* ]]
+  run violations_after '.checks[0].files = ["/abs/pay.test.ts"]'
+  [[ "$output" == *"C1 has an unsafe path: /abs/pay.test.ts"* ]]
 }
 
 @test "rejects plan dependency cycles" {
@@ -107,9 +104,43 @@ violations_after() {
   [[ "$output" == *"plan dependency cycle"* ]]
 }
 
-@test "rejects a half-set contract and bad enums" {
-  run violations_after '.contract.hash = ("a" * 64)'
-  [[ "$output" == *"contract hash and approved_at must both be set or both be null"* ]]
+@test "checks run an argv, never a shell string, within sane limits" {
+  run violations_after '.checks[0].run = "npm test"'
+  [[ "$output" == *"C1 run must be a non-empty argv array"* ]]
+  run violations_after '.checks[0].run = []'
+  [[ "$output" == *"C1 run must be a non-empty argv array"* ]]
+  run violations_after '.checks[0].timeout = 0'
+  [[ "$output" == *"C1 timeout must be 1-3600 seconds"* ]]
+  run violations_after '.checks[0].exit = 256'
+  [[ "$output" == *"C1 exit must be an integer 0-255"* ]]
+  run violations_after '.checks[0].output = "("'
+  [[ "$output" == *"C1 output must be a valid regular expression"* ]]
+}
+
+@test "a fix targets exactly one requirement or project command" {
+  run violations_after '.fixes[0] += {command: "test"}'
+  [[ "$output" == *"F1 needs exactly one of req or command"* ]]
+  run violations_after '.fixes[0] |= (del(.req) | .command = "test")'
+  [ "$output" = "[]" ]
+  run violations_after '.fixes[0] |= (del(.req) | .command = "deploy")'
+  [[ "$output" == *"F1 references unknown command deploy"* ]]
+}
+
+@test "evidence has the documented shape" {
+  local ok='{at:"2026-10-01T09:00:00Z", contract:("a"*64), passed:false,
+             checks:{C1:{status:"fail", exit:1, seconds:2, tail:"x"}},
+             commands:{test:{status:"skipped", exit:null, seconds:0, tail:"not approved"}}, scope:[]}'
+  run violations_after ".evidence = $ok"
+  [ "$output" = "[]" ]
+  run violations_after ".evidence = $ok | .evidence.checks.C1.status = \"flaky\""
+  [[ "$output" == *"evidence needs at, contract, passed"* ]]
+  run violations_after '.evidence = {passed: true}'
+  [[ "$output" == *"evidence needs at, contract, passed"* ]]
+}
+
+@test "rejects the removed contract key and bad enums" {
+  run violations_after '.contract = {hash: null, approved_at: null}'
+  [[ "$output" == *"unknown key: contract"* ]]
   run violations_after '.todos[0].status = "later"'
   [[ "$output" == *"T1 has an invalid status: later"* ]]
 }
@@ -125,4 +156,15 @@ violations_after() {
   [[ "$output" == *"P1.1 has an unknown field: commits"* ]]
   run violations_after '.requirements[0].stauts = "open"'
   [[ "$output" == *"R1 has an unknown field: stauts"* ]]
+}
+
+@test "the example in docs/record.md is a valid record" {
+  run bash -c 'awk "/^\`\`\`json\$/{f=1; next} /^\`\`\`\$/{if (f) exit} f" "$1/docs/record.md" | jq -c -f "$2"' _ "$REPO_ROOT" "$VALIDATOR"
+  [ "$status" -eq 0 ]
+  [ "$output" = "[]" ]
+}
+
+@test "argv strings cannot hide a NUL (the kernel splits argv on NUL)" {
+  run violations_after '.commands.test = ["npm", "te\u0000st"]'
+  [[ "$output" == *"command test must be a non-empty argv array"* ]]
 }

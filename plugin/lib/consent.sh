@@ -13,13 +13,7 @@ consent_file() {
 
 # SHA-256 of an argv, NUL-separated so "a b" c and a "b c" never collide.
 vbw_sha256_argv() {
-  local out
-  if command -v sha256sum > /dev/null 2>&1; then
-    out=$(printf '%s\0' "$@" | sha256sum)
-  else
-    out=$(printf '%s\0' "$@" | shasum -a 256)
-  fi
-  printf '%s\n' "${out%% *}"
+  printf '%s\0' "$@" | vbw_sha256
 }
 
 consent_has() {

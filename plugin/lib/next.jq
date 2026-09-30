@@ -1,4 +1,5 @@
 # vbw next: the lifecycle decision table (docs/next.md). Input: a valid record.
+# Args: $approved (the current contract hash has consent), $contract (that hash).
 # Output: {action, gate, instruction, detail}. First matching row wins.
 
 def result($action; $gate; $instruction; $detail):
@@ -11,16 +12,17 @@ def result($action; $gate; $instruction; $detail):
 | ([.plans[] | select(.status == "blocked") | .id]) as $blocked
 | ([.fixes[] | select(.status == "escalated") | .id]) as $escalated
 | ([.fixes[] | select(.status == "open") | .id]) as $open_fixes
-| ([.requirements[] | select(.proof == "auto" and .status != "proven") | .id]) as $unproven
+| (.evidence == null or .evidence.contract != $contract) as $stale
+| ([.requirements[] | select(.proof == "auto" and (.status != "proven" or $stale)) | .id]) as $unproven
 | ([.requirements[] | select(.proof == "human" and .status == "open") | .id]) as $to_accept
 | ([.requirements[] | select(.proof == "human" and .status == "rejected") | .id]) as $rejected
 | if .milestone.status == "shipped" then
     result("milestone"; true; "Milestone \(.milestone.id) is shipped: start the next milestone"; {})
   elif (.requirements | length) == 0 then
     result("spec"; true; "Write the goals and requirements in .vbw/spec.md"; {})
-  elif (.phases | length) == 0 or any(.requirements[]; .proof == "auto" and ((.checks | length) == 0)) then
+  elif (.phases | length) == 0 or (.checks as $c | any(.requirements[]; .proof == "auto" and (.id as $id | any($c[]; .req == $id) | not))) then
     result("plan"; false; "Run the plan workflow: phases, plans and contract checks"; {})
-  elif .contract.hash == null then
+  elif $approved | not then
     result("approve"; true; "Review and approve the contract (requirements, plans and checks)"; {})
   elif ($blocked | length) > 0 then
     result("unblock"; true; "Resolve the blocker reported for \($blocked | join(", "))"; {plans: $blocked})
@@ -28,6 +30,8 @@ def result($action; $gate; $instruction; $detail):
     result("build"; false; "Run the build workflow for \($ready | join(", "))"; {plans: $ready})
   elif ($escalated | length) > 0 then
     result("escalate"; true; "The fix cap was reached for \($escalated | join(", ")): decide how to proceed"; {fixes: $escalated})
+  elif ($stale | not) and (.evidence.scope | length) > 0 then
+    result("scope"; true; "Commits changed files outside their plans: review them (vbw show evidence)"; {violations: .evidence.scope})
   elif ($open_fixes | length) > 0 then
     result("fix"; false; "Run the fix workflow for \($open_fixes | join(", "))"; {fixes: $open_fixes})
   elif ($unproven | length) > 0 then

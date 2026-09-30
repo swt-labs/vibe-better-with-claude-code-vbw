@@ -6,6 +6,13 @@ def iso: type == "string" and test("^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2
 def safe_path: type == "string" and length > 0 and (startswith("/") | not)
   and (split("/") | any(. == "..") | not);
 def one_of($vals): . as $v | any($vals[]; . == $v);
+def argv: type == "array" and length > 0 and all(.[]; nonempty and (contains("\u0000") | not));
+def int_in($lo; $hi): type == "number" and . == floor and . >= $lo and . <= $hi;
+def sha256: type == "string" and test("^[0-9a-f]{64}$");
+def results: type == "object" and all(.[];
+  type == "object" and (.status | one_of(["pass","fail","timeout","skipped"]))
+  and (.exit == null or (.exit | int_in(0; 255))) and (.seconds | type == "number")
+  and (.tail | type == "string"));
 def ids: [.[]?.id];
 def has_id($x): any(.[]?; .id == $x);
 
@@ -37,7 +44,7 @@ if type != "object" then ["record must be a JSON object"] else
     ( select($r.schema != 1) | "schema must be 1" ),
     ( $r | keys[]
       | select(one_of(["schema","project","milestone","requirements","checks","phases","plans",
-                       "fixes","todos","decisions","contract","evidence","lease","commands"]) | not)
+                       "fixes","todos","decisions","commands","evidence","lease"]) | not)
       | "unknown key: \(.)" ),
     ( ["requirements","checks","phases","plans","fixes","todos","decisions"][]
       | select(($r[.] | type) != "array") | "\(.) must be an array" ),
@@ -57,20 +64,23 @@ if type != "object" then ["record must be a JSON object"] else
     id_rules(arr("decisions"); "^D[0-9]+$"),
 
     ( $reqs[]
-      | field_rule(["id","text","proof","checks","status"]),
+      | field_rule(["id","text","proof","status"]),
         ( select((.text | nonempty) | not) | "\(.id) needs non-empty text" ),
         ( select((.proof | one_of(["auto","human"])) | not) | "\(.id) proof must be auto or human" ),
-        ( . as $q | (.checks // [])[] | . as $x | select(($checks | has_id($x)) | not) | "\($q.id) references unknown check \(.)" ),
         status_rule(["open","failing","proven","accepted","rejected"]),
-        ( select(.proof == "human" and ((.checks // []) | length) > 0) | "\(.id) is human-proved and cannot have checks" ),
         ( select(.proof == "human" and (.status | one_of(["proven","failing"]))) | "\(.id) is human-proved and cannot be \(.status)" ),
         ( select(.proof == "auto" and (.status | one_of(["accepted","rejected"]))) | "\(.id) is auto-proved and cannot be \(.status)" ) ),
 
     ( $checks[]
-      | field_rule(["id","req","kind","path"]),
+      | field_rule(["id","req","run","files","exit","output","timeout"]),
         ( . as $o | select(($reqs | has_id($o.req)) | not) | "\(.id) references unknown requirement \(.req)" ),
-        ( select((.kind | one_of(["spec","test"])) | not) | "\(.id) kind must be spec or test" ),
-        ( select((.path | safe_path) | not) | "\(.id) has an unsafe path: \(.path)" ) ),
+        ( . as $o | select(any($reqs[]; .id == $o.req and .proof == "human")) | "\(.id) checks human-proved \(.req): only a person can judge it" ),
+        ( select((.run | argv) | not) | "\(.id) run must be a non-empty argv array" ),
+        ( . as $c | (.files // [])[] | select(safe_path | not) | "\($c.id) has an unsafe path: \(.)" ),
+        ( select(has("files") and (.files | type) != "array") | "\(.id) files must be an array" ),
+        ( select(has("exit") and ((.exit | int_in(0; 255)) | not)) | "\(.id) exit must be an integer 0-255" ),
+        ( select(has("output") and ((.output | nonempty and (try (test(.) | true) catch false)) | not)) | "\(.id) output must be a valid regular expression" ),
+        ( select(has("timeout") and ((.timeout | int_in(1; 3600)) | not)) | "\(.id) timeout must be 1-3600 seconds" ) ),
 
     ( $phases[]
       | field_rule(["id","title","reqs","status"]),
@@ -92,8 +102,12 @@ if type != "object" then ["record must be a JSON object"] else
         ( select(.id as $id | reachable($graph; $id) | any(.[]; . == $id)) | "plan dependency cycle through \(.id)" ) ),
 
     ( arr("fixes")[]
-      | field_rule(["id","req","attempts","status","note"]),
-        ( . as $o | select(($reqs | has_id($o.req)) | not) | "\(.id) references unknown requirement \(.req)" ),
+      | field_rule(["id","req","command","attempts","status","note"]),
+        ( select(has("req") == has("command")) | "\(.id) needs exactly one of req or command" ),
+        ( . as $o | select(has("req") and (($reqs | has_id($o.req)) | not)) | "\(.id) references unknown requirement \(.req)" ),
+        ( . as $o | select(has("command") and (($r.commands | type == "object" and has($o.command | tostring)) | not))
+          | "\(.id) references unknown command \(.command)" ),
+        ( select((.note | type) != "string") | "\(.id) note must be a string" ),
         ( select((.attempts | type == "number" and . >= 0 and . == floor) | not) | "\(.id) attempts must be a non-negative integer" ),
         status_rule(["open","fixed","closed","escalated"]) ),
 
@@ -107,24 +121,19 @@ if type != "object" then ["record must be a JSON object"] else
         ( select((.text | nonempty) | not) | "\(.id) needs non-empty text" ),
         ( select((.at | iso) | not) | "\(.id) needs an ISO-8601 UTC timestamp" ) ),
 
-    ( $r.contract
-      | if type != "object" then "contract must be an object" else
-          ( select(.hash != null and ((.hash | type == "string" and test("^[0-9a-f]{64}$")) | not)) | "contract hash must be a SHA-256 hex digest" ),
-          ( select(.approved_at != null and ((.approved_at | iso) | not)) | "contract approved_at must be ISO-8601 UTC" ),
-          ( select((.hash == null) != (.approved_at == null)) | "contract hash and approved_at must both be set or both be null" )
-        end ),
-
     ( $r.commands
       | if type != "object" then "commands must be an object of name: argv" else
-          to_entries[] | select((.value | type == "array" and length > 0 and all(.[]; nonempty)) | not)
+          to_entries[] | select((.value | argv) | not)
           | "command \(.key) must be a non-empty argv array"
         end ),
-    ( $r.commands
-      | if type != "object" then "commands must be an object of name: argv" else
-          to_entries[] | select((.value | type == "array" and length > 0 and all(.[]; nonempty)) | not)
-          | "command \(.key) must be a non-empty argv array"
+    ( $r.evidence
+      | select(. != null)
+      | if type != "object" then "evidence must be null or an object" else
+          ( select(((.at | iso) and (.contract | sha256) and (.passed | type == "boolean")
+                    and (.checks | results) and (.commands | results)
+                    and (.scope | type == "array" and all(.[]; type == "string"))) | not)
+            | "evidence needs at, contract, passed, checks, commands and scope (docs/proof.md)" )
         end ),
-    ( select(($r.evidence | type) != "null" and ($r.evidence | type) != "object") | "evidence must be null or an object" ),
     ( $r.lease
       | select(. != null)
       | if type != "object" then "lease must be null or an object" else

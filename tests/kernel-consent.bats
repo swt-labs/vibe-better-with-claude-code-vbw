@@ -12,10 +12,8 @@ setup() {
 
 teardown() { vbw_teardown; }
 
-# Run a snippet with the kernel libraries loaded for this project.
-kernel() {
-  bash -c 'VBW_LIB="$1/lib"; . "$VBW_LIB/core.sh"; . "$VBW_LIB/record.sh"; . "$VBW_LIB/consent.sh"; vbw_project; eval "$2"' _ "$PLUGIN_ROOT" "$1"
-}
+# The kernel libraries, loaded for this project.
+kernel() { vbw_kernel "$1"; }
 
 @test "the consent file lives in the git directory, never the working tree" {
   run kernel 'consent_file'

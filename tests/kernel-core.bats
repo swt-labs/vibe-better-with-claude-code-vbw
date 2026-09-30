@@ -36,7 +36,6 @@ teardown() { vbw_teardown; }
   vbw_run init
   [ "$status" -eq 0 ]
   [ -f .vbw/spec.md ]
-  [ -d .vbw/checks ]
   [ -d .vbw/runtime ]
   [ "$(jq -c -f "$PLUGIN_ROOT/lib/record.jq" .vbw/record.json)" = "[]" ]
   [ "$(jq -r .project.name .vbw/record.json)" = "project with space" ]

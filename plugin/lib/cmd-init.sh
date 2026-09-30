@@ -9,7 +9,7 @@ cmd_init() {
     printf 'VBW is already initialized in %s\n' "$VBW_ROOT"
     return 0
   fi
-  mkdir -p "$VBW_DIR/checks" "$VBW_RUNTIME"
+  mkdir -p "$VBW_RUNTIME"
   local name commands
   name=$(basename "$VBW_ROOT")
   commands=$(init_detect_commands "$VBW_ROOT")
@@ -21,7 +21,6 @@ cmd_init() {
     requirements: [], checks: [], phases: [], plans: [],
     fixes: [], todos: [], decisions: [],
     commands: $commands,
-    contract: {hash: null, approved_at: null},
     evidence: null, lease: null
   }' > "$VBW_RUNTIME/record.init"
   mv "$VBW_RUNTIME/record.init" "$VBW_RECORD"

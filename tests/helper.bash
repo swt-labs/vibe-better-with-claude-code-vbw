@@ -52,3 +52,21 @@ vbw_git_project() {
 vbw_run() {
   run "$VBW" "$@" < /dev/null
 }
+
+# vbw_kernel SNIPPET: run SNIPPET with the kernel libraries loaded for this project.
+vbw_kernel() {
+  bash -c 'VBW_LIB="$1/lib"; for l in core record consent contract; do . "$VBW_LIB/$l.sh"; done
+    vbw_project; eval "$2"' _ "$PLUGIN_ROOT" "$1"
+}
+
+# Consent to the project's current contract directly, as /vbw:approve would but
+# without its completeness checks: for tests that need an arbitrary approved record.
+vbw_consent_contract() {
+  # shellcheck disable=SC2016 # expanded by vbw_kernel
+  vbw_kernel 'consent_grant contract "$(contract_hash "$(cat "$VBW_RECORD")")" "{}"'
+}
+
+vbw_contract_hash() {
+  # shellcheck disable=SC2016 # expanded by vbw_kernel
+  vbw_kernel 'contract_hash "$(cat "$VBW_RECORD")"'
+}
