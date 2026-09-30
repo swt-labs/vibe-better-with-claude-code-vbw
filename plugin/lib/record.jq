@@ -23,6 +23,8 @@ def id_rules($items; $pattern):
 
 def status_rule($enum): select((.status | one_of($enum)) | not) | "\(.id) has an invalid status: \(.status)";
 
+def field_rule($allowed): . as $o | keys[] | select(one_of($allowed) | not) | "\($o.id) has an unknown field: \(.)";
+
 if type != "object" then ["record must be a JSON object"] else
 . as $r
 | def arr($k): ($r[$k] | if type == "array" then . else [] end);
@@ -55,7 +57,8 @@ if type != "object" then ["record must be a JSON object"] else
     id_rules(arr("decisions"); "^D[0-9]+$"),
 
     ( $reqs[]
-      | ( select((.text | nonempty) | not) | "\(.id) needs non-empty text" ),
+      | field_rule(["id","text","proof","checks","status"]),
+        ( select((.text | nonempty) | not) | "\(.id) needs non-empty text" ),
         ( select((.proof | one_of(["auto","human"])) | not) | "\(.id) proof must be auto or human" ),
         ( . as $q | (.checks // [])[] | . as $x | select(($checks | has_id($x)) | not) | "\($q.id) references unknown check \(.)" ),
         status_rule(["open","failing","proven","accepted","rejected"]),
@@ -64,17 +67,20 @@ if type != "object" then ["record must be a JSON object"] else
         ( select(.proof == "auto" and (.status | one_of(["accepted","rejected"]))) | "\(.id) is auto-proved and cannot be \(.status)" ) ),
 
     ( $checks[]
-      | ( . as $o | select(($reqs | has_id($o.req)) | not) | "\(.id) references unknown requirement \(.req)" ),
+      | field_rule(["id","req","kind","path"]),
+        ( . as $o | select(($reqs | has_id($o.req)) | not) | "\(.id) references unknown requirement \(.req)" ),
         ( select((.kind | one_of(["spec","test"])) | not) | "\(.id) kind must be spec or test" ),
         ( select((.path | safe_path) | not) | "\(.id) has an unsafe path: \(.path)" ) ),
 
     ( $phases[]
-      | ( select((.title | nonempty) | not) | "\(.id) needs a non-empty title" ),
+      | field_rule(["id","title","reqs","status"]),
+        ( select((.title | nonempty) | not) | "\(.id) needs a non-empty title" ),
         ( . as $p | (.reqs // [])[] | . as $x | select(($reqs | has_id($x)) | not) | "\($p.id) references unknown requirement \(.)" ),
         status_rule(["planned","building","built"]) ),
 
     ( $plans[]
-      | ( . as $o | select(($phases | has_id($o.phase)) | not) | "\(.id) references unknown phase \(.phase)" ),
+      | field_rule(["id","phase","title","reqs","files","after","status"]),
+        ( . as $o | select(($phases | has_id($o.phase)) | not) | "\(.id) references unknown phase \(.phase)" ),
         ( select((.id | type == "string") and (.phase | type == "string")
                  and (.phase as $ph | (.id | startswith($ph + ".")) | not)) | "plan \(.id) is not in its phase \(.phase)" ),
         ( select((.title | nonempty) | not) | "\(.id) needs a non-empty title" ),
@@ -83,20 +89,22 @@ if type != "object" then ["record must be a JSON object"] else
         ( select(((.files // []) | length) != ((.files // []) | unique | length)) | "\(.id) lists a file twice" ),
         ( . as $p | (.after // [])[] | . as $x | select(($plans | has_id($x)) | not) | "\($p.id) references unknown plan \(.)" ),
         status_rule(["planned","building","done","blocked"]),
-        ( . as $p | (.commits // [])[] | select((type == "string" and test("^[0-9a-f]{7,40}$")) | not) | "\($p.id) has a malformed commit: \(.)" ),
         ( select(.id as $id | reachable($graph; $id) | any(.[]; . == $id)) | "plan dependency cycle through \(.id)" ) ),
 
     ( arr("fixes")[]
-      | ( . as $o | select(($reqs | has_id($o.req)) | not) | "\(.id) references unknown requirement \(.req)" ),
+      | field_rule(["id","req","attempts","status","note"]),
+        ( . as $o | select(($reqs | has_id($o.req)) | not) | "\(.id) references unknown requirement \(.req)" ),
         ( select((.attempts | type == "number" and . >= 0 and . == floor) | not) | "\(.id) attempts must be a non-negative integer" ),
         status_rule(["open","closed","escalated"]) ),
 
     ( arr("todos")[]
-      | ( select((.text | nonempty) | not) | "\(.id) needs non-empty text" ),
+      | field_rule(["id","text","status"]),
+        ( select((.text | nonempty) | not) | "\(.id) needs non-empty text" ),
         status_rule(["open","in_progress","done","dropped"]) ),
 
     ( arr("decisions")[]
-      | ( select((.text | nonempty) | not) | "\(.id) needs non-empty text" ),
+      | field_rule(["id","text","at"]),
+        ( select((.text | nonempty) | not) | "\(.id) needs non-empty text" ),
         ( select((.at | iso) | not) | "\(.id) needs an ISO-8601 UTC timestamp" ) ),
 
     ( $r.contract

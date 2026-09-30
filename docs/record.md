@@ -36,8 +36,7 @@ carries `VBW-Plan:`/`VBW-Req:` trailers, so the record stays small.
   ],
   "plans": [
     { "id": "P1.1", "phase": "P1", "title": "Card form", "reqs": ["R1"],
-      "files": ["src/pay.ts"], "after": [], "status": "done",
-      "commits": ["3f2a…"] }
+      "files": ["src/pay.ts"], "after": [], "status": "done" }
   ],
   "fixes": [
     { "id": "F1", "req": "R1", "attempts": 1, "status": "open", "note": "C1 exit 1" }
@@ -58,7 +57,7 @@ carries `VBW-Plan:`/`VBW-Req:` trailers, so the record stays small.
 | `requirements[]` | `id` `R<n>` unique; non-empty `text`; `proof` `auto` or `human`; `checks[]` ids that exist in `checks`; `status` `open`, `failing`, `proven`, `accepted` or `rejected`. A `human` requirement has no checks and is never `proven`/`failing`; an `auto` requirement is never `accepted`/`rejected` |
 | `checks[]` | `id` `C<n>` unique; `req` an existing requirement; `kind` `spec` (a `.vbw/checks/*.json` check spec) or `test` (a test file in the project's own framework); `path` a relative path inside the project, no `..` |
 | `phases[]` | `id` `P<n>` unique; non-empty `title`; `reqs[]` existing requirements; `status` `planned`, `building` or `built` |
-| `plans[]` | `id` `P<n>.<m>` unique, prefix equals `phase`; `phase` an existing phase; non-empty `title`; `reqs[]` existing requirements; `files[]` relative project paths (no `..`, no duplicates); `after[]` existing plan ids of earlier-or-same phase, no cycles; `status` `planned`, `building`, `done` or `blocked`; `commits[]` full or abbreviated hex SHAs |
+| `plans[]` | `id` `P<n>.<m>` unique, prefix equals `phase`; `phase` an existing phase; non-empty `title`; `reqs[]` existing requirements; `files[]` relative project paths (no `..`, no duplicates); `after[]` existing plan ids, no cycles; `status` `planned`, `building`, `done` or `blocked`. A plan's commits are not stored: they are the commits whose `VBW-Plan:` trailer names it (`git log`) |
 | `fixes[]` | `id` `F<n>` unique; `req` an existing requirement; `attempts` integer ≥ 0; `status` `open`, `closed` or `escalated`; `note` string |
 | `todos[]` | `id` `T<n>` unique; non-empty `text`; `status` `open`, `in_progress`, `done` or `dropped` |
 | `decisions[]` | `id` `D<n>` unique; non-empty `text`; `at` an ISO-8601 UTC timestamp |
@@ -66,5 +65,5 @@ carries `VBW-Plan:`/`VBW-Req:` trailers, so the record stays small.
 | `evidence` | `null` or the last `vbw prove` result (defined in M2) |
 | `lease` | `null` or `{ "run", "session", "started_at", "agents": [] }`: the active run that scopes the guards (defined in M3) |
 
-Unknown top-level keys are rejected: an unknown key is a typo or a newer
-schema, and both must be loud.
+Unknown keys are rejected, at the top level and inside every item: an unknown
+key is a typo, a stale field or a newer schema, and all three must be loud.

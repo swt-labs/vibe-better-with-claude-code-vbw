@@ -21,9 +21,9 @@ setup() {
   "phases": [ { "id": "P1", "title": "Payments", "reqs": ["R1", "R2"], "status": "building" } ],
   "plans": [
     { "id": "P1.1", "phase": "P1", "title": "Card form", "reqs": ["R1"], "files": ["src/pay.ts"],
-      "after": [], "status": "done", "commits": ["3f2a9c1"] },
+      "after": [], "status": "done" },
     { "id": "P1.2", "phase": "P1", "title": "Receipt", "reqs": ["R1"], "files": ["src/receipt.ts"],
-      "after": ["P1.1"], "status": "planned", "commits": [] }
+      "after": ["P1.1"], "status": "planned" }
   ],
   "fixes": [ { "id": "F1", "req": "R1", "attempts": 1, "status": "open", "note": "C1 exit 1" } ],
   "todos": [ { "id": "T1", "text": "Dark mode", "status": "open" } ],
@@ -117,4 +117,11 @@ violations_after() {
   run bash -c 'printf "[]" | jq -c -f "$1"' _ "$VALIDATOR"
   [ "$status" -eq 0 ]
   [[ "$output" == *"record must be a JSON object"* ]]
+}
+
+@test "rejects unknown fields inside items (typos and stale fields are loud)" {
+  run violations_after '.plans[0].commits = ["3f2a9c1"]'
+  [[ "$output" == *"P1.1 has an unknown field: commits"* ]]
+  run violations_after '.requirements[0].stauts = "open"'
+  [[ "$output" == *"R1 has an unknown field: stauts"* ]]
 }
