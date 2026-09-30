@@ -2,6 +2,14 @@
 
 A Claude Code plugin adding structured development workflows (plan → execute → verify) via 7 specialized agent teams. Zero external dependencies beyond `jq` and `git`. All logic is bash scripts + markdown.
 
+## Engineering Standard (owner mandate, non-negotiable)
+
+- **The goal is the world's gold-standard Claude Code harness.** Every choice is the most elegant, optimal and future-proof one, with zero technical debt. No shortcuts, no "good enough", no legacy carried forward for its own sake.
+- **Work as the senior engineer who owns the outcome.** Make technical and product decisions yourself, from the evidence (docs, probes, measurements, the ledger), apply the standard above, record the decision and its rationale in the working documents, and keep executing.
+- **Do not ask the owner questions you can answer.** Never hand back "we still need to figure out X": figure it out (research, probe, measure), decide, and move on. Escalate only what truly needs the owner: credentials or access, spending beyond the approved budget, publishing (push, PRs, releases), and irreversible actions outside the repo.
+- **Plan end to end, then execute end to end.** Keep one authoritative build plan with acceptance criteria, work it in order, and report progress against it, not open questions.
+- **Record everything as you go** (`a_non_prod_docs/v2_progress_log.md`: work done, decisions, findings, new issues). This is mandatory.
+
 ## Communication Style
 
 - **No AI fluff.** Skip phrases like "Thanks for the thoughtful feedback!", "Happy to help!", "I appreciate...", etc.
