@@ -18,6 +18,7 @@ usage: vbw <command> [args]
 
   init              create .vbw/ (spec, record, checks) in this git repository
   status [--json]   where the project stands
+  next [--json]     the next lifecycle step and whether it needs you
   todo add TEXT     add a backlog item
   commit PLAN MSG   commit a plan's declared files with provenance trailers
   version           print the plugin version
@@ -30,7 +31,7 @@ cmd="${1:-}"
 case "$cmd" in
   version) jq -r .version "$VBW_PLUGIN/.claude-plugin/plugin.json" ;;
   help|-h|--help) vbw_help ;;
-  init|status|todo|commit)
+  init|status|todo|commit|next)
     # shellcheck source=/dev/null
     . "$VBW_LIB/cmd-$cmd.sh"
     "cmd_$cmd" "$@"

@@ -58,7 +58,7 @@ carries `VBW-Plan:`/`VBW-Req:` trailers, so the record stays small.
 | `checks[]` | `id` `C<n>` unique; `req` an existing requirement; `kind` `spec` (a `.vbw/checks/*.json` check spec) or `test` (a test file in the project's own framework); `path` a relative path inside the project, no `..` |
 | `phases[]` | `id` `P<n>` unique; non-empty `title`; `reqs[]` existing requirements; `status` `planned`, `building` or `built` |
 | `plans[]` | `id` `P<n>.<m>` unique, prefix equals `phase`; `phase` an existing phase; non-empty `title`; `reqs[]` existing requirements; `files[]` relative project paths (no `..`, no duplicates); `after[]` existing plan ids, no cycles; `status` `planned`, `building`, `done` or `blocked`. A plan's commits are not stored: they are the commits whose `VBW-Plan:` trailer names it (`git log`) |
-| `fixes[]` | `id` `F<n>` unique; `req` an existing requirement; `attempts` integer ≥ 0; `status` `open`, `closed` or `escalated`; `note` string |
+| `fixes[]` | `id` `F<n>` unique; `req` an existing requirement; `attempts` integer ≥ 0; `status` `open`, `fixed`, `closed` or `escalated` (lifecycle in docs/next.md); `note` string |
 | `todos[]` | `id` `T<n>` unique; non-empty `text`; `status` `open`, `in_progress`, `done` or `dropped` |
 | `decisions[]` | `id` `D<n>` unique; non-empty `text`; `at` an ISO-8601 UTC timestamp |
 | `contract` | `hash` `null` or a 64-hex SHA-256; `approved_at` `null` or ISO-8601 UTC; both null or both set |

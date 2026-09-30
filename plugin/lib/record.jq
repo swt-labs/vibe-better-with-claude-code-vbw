@@ -95,7 +95,7 @@ if type != "object" then ["record must be a JSON object"] else
       | field_rule(["id","req","attempts","status","note"]),
         ( . as $o | select(($reqs | has_id($o.req)) | not) | "\(.id) references unknown requirement \(.req)" ),
         ( select((.attempts | type == "number" and . >= 0 and . == floor) | not) | "\(.id) attempts must be a non-negative integer" ),
-        status_rule(["open","closed","escalated"]) ),
+        status_rule(["open","fixed","closed","escalated"]) ),
 
     ( arr("todos")[]
       | field_rule(["id","text","status"]),
