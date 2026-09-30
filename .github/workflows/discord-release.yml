@@ -23,4 +23,4 @@ jobs:
           RELEASE_TAG: ${{ github.event.release.tag_name }}
           RELEASE_URL: ${{ github.event.release.html_url }}
           RELEASE_BODY: ${{ github.event.release.body }}
-        run: bash scripts/post-discord-release.sh
+        run: bash tools/post-discord-release.sh
