@@ -10,7 +10,7 @@
 5. Run the authoritative verification command from the worktree:
 
 ```bash
-bash testing/run-all.sh
+bash tools/test.sh
 ```
 
 Do not pipe, tail, tee, background, or otherwise wrap that command.

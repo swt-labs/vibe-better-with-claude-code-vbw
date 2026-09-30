@@ -12,8 +12,8 @@ Before reading the contributor diff:
 - do not expose the contributor branch, diff, changed files, or PR narrative to the planner.
 
 After the blind baseline exists:
-- enter the contributor branch worktree using scripts/adopt-contributor-pr.sh or the repo worktree helpers where possible;
-- run bash testing/run-all.sh from that worktree without piping or wrapping it;
+- enter the contributor branch worktree using tools/adopt-contributor-pr.sh or the repo worktree helpers where possible;
+- run bash tools/test.sh from that worktree without piping or wrapping it;
 - read the PR diff and changed files in full;
 - compare the implementation against .agents/skills/vbw-review-contributor-pr/references/blind-baseline-review.md;
 - spawn vbw-qa-investigator for a full-contract QA pass;

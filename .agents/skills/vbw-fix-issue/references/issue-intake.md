@@ -7,9 +7,9 @@
 5. For reports about VBW runtime behavior, resolve the local debug target first:
 
 ```bash
-TARGET_REPO=$(bash scripts/resolve-debug-target.sh repo)
-PLANNING_DIR=$(bash scripts/resolve-debug-target.sh planning-dir)
-CLAUDE_PROJECT_DIR=$(bash scripts/resolve-debug-target.sh claude-project-dir)
+TARGET_REPO=$(bash tools/resolve-debug-target.sh repo)
+PLANNING_DIR=$(bash tools/resolve-debug-target.sh planning-dir)
+CLAUDE_PROJECT_DIR=$(bash tools/resolve-debug-target.sh claude-project-dir)
 ```
 
 If the resolver exits nonzero, ask the user to configure the debug target path before diagnosing session behavior.

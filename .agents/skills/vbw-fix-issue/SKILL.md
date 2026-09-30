@@ -26,9 +26,9 @@ Run these phases in order. Keep every shell command rooted in the selected workt
 - The linked issue is the contract. Do not narrow scope to a recent commit or a subset of files unless the user explicitly says the review is delta-only.
 - Treat the user prompt, linked issue, selected worktree, and saved plan as the sole source of truth. Do not follow ambient terminal context, prior branch history, or unrelated open PRs.
 - Fix root causes, not symptoms. If a mitigation is necessary, include the root-cause fix in the same work item.
-- Use existing repo primitives before inventing new ones: `scripts/ensure-worktree.sh`, `scripts/adopt-contributor-pr.sh`, `.github/scripts/fix-issue-record-state.sh`, `.github/scripts/wait-github.py`, and `bash testing/run-all.sh`.
+- Use existing repo primitives before inventing new ones: `tools/ensure-worktree.sh`, `tools/adopt-contributor-pr.sh`, `.github/scripts/fix-issue-record-state.sh`, `.github/scripts/wait-github.py`, and `bash tools/test.sh`.
 - Use `jq` for JSON. Do not parse JSON with grep or sed.
-- Do not wrap `bash testing/run-all.sh` in `tail`, `tee`, background execution, or log redirection that hides the real exit status.
+- Do not wrap `bash tools/test.sh` in `tail`, `tee`, background execution, or log redirection that hides the real exit status.
 - QA findings are either fixed or explicitly rejected with evidence. Do not ignore lower-severity confirmed findings.
 - Completion requires local tests, Codex QA review, a Codex remote review request comment, GitHub Actions status, and unresolved-thread checks to be clean.
 

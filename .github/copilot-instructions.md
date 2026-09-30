@@ -20,14 +20,14 @@
 - Keep the repo zero-dependency in spirit: portable bash, `jq`, `git`, and the existing test tools.
 
 ## Validation
-- Primary local verification entrypoint: `bash testing/run-all.sh`
+- Primary local verification entrypoint: `bash tools/test.sh`
 - Shared lint entrypoint: `bash testing/run-lint.sh`
 - CI parity notes:
-  - `testing/run-all.sh` expects `jq`, `shellcheck`, and `bats`.
+  - `tools/test.sh` expects `jq`, `shellcheck`, and `bats`.
   - CI runs lint, contract checks, bats shards, and serial bats separately; see `.github/workflows/ci.yml`.
 - For command or shell changes, also run the most relevant targeted `testing/verify-*.sh` script(s).
 
 ## Known onboarding quirks / errors encountered
-- `bash testing/run-all.sh` currently fails in a fresh environment if `bats` is missing, even when lint and contract checks pass. Workaround: install `bats-core` before relying on full CI-parity local verification, or at minimum run the relevant non-bats checks explicitly.
+- `bash tools/test.sh` currently fails in a fresh environment if `bats` is missing, even when lint and contract checks pass. Workaround: install `bats-core` before relying on full CI-parity local verification, or at minimum run the relevant non-bats checks explicitly.
 - `bash testing/verify-statusline-qa-lifecycle.sh` should now exit cleanly. If it fails, treat it as a real regression rather than an expected SIGPIPE quirk.
 - Keep `.github/copilot-instructions.md` tracked in git. Do not add it back to `.gitignore`.

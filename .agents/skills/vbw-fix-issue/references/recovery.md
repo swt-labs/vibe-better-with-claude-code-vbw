@@ -3,7 +3,7 @@
 If a gate blocks completion, use the structured blocker as the source of truth.
 
 - Draft PR: mark ready only after local tests and Codex QA are clean.
-- Behind or dirty PR: merge `origin/main`, resolve conflicts, run `bash testing/run-all.sh`, commit, push, and rerun QA when the reviewed code changed.
+- Behind or dirty PR: merge `origin/main`, resolve conflicts, run `bash tools/test.sh`, commit, push, and rerun QA when the reviewed code changed.
 - Missing Codex remote review request: from the worktree, run `gh pr comment <pr-number> --repo swt-labs/vibe-better-with-claude-code-vbw --body '@codex review'`.
 - Pending CI: wait for the exact head SHA checks to finish.
 - Failed CI: inspect the failing check output, fix the root cause, rerun local tests, commit, push, and repeat QA/CI.

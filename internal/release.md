@@ -37,7 +37,7 @@ Git status:
 5. **No CHANGELOG.md:** If CHANGELOG.md does not exist:
    - If `--dry-run` (with or without `--skip-audit`): display "ℹ Would create CHANGELOG.md" but do NOT write. Skip to Guard 6.
    - Otherwise: create CHANGELOG.md with `# Changelog\n\nAll notable changes to VBW will be documented in this file.\n`. Display: "ℹ Created CHANGELOG.md." Skip to Guard 6.
-6. **Version sync:** `bash scripts/bump-version.sh --verify`. Out of sync → WARN but proceed (bump fixes it).
+6. **Version sync:** `bash tools/bump-version.sh --verify`. Out of sync → WARN but proceed (bump fixes it).
 7. **Existing release branch:** Check local and remote for existing `release/v*` branches:
    - **Local:** `git branch --list 'release/v*'` — note: `git branch --list` always exits 0 regardless of matches; check that stdout is non-empty to detect existing branches.
    - **Remote:** `git ls-remote --heads origin 'refs/heads/release/v*'` — note: `git ls-remote` always exits 0 when the remote is reachable, even with no matches; check stdout content for matches. A non-zero exit code indicates auth/network failure (see below).
@@ -61,7 +61,7 @@ Git status:
 
 Always runs (not skipped by `--skip-audit`). Compute `{new-version}` before the audit so changelog entries use the final version header directly:
 - Read local `VERSION` as `{local-version}`.
-- Fetch remote `VERSION` from `main` as `{remote-version}` (same authoritative source used by `scripts/bump-version.sh`: `https://raw.githubusercontent.com/yidakee/vibe-better-with-claude-code-vbw/main/VERSION`). If the fetch fails or returns empty output, display a warning and fall back to `{local-version}` for `{remote-version}`.
+- Fetch remote `VERSION` from `main` as `{remote-version}` (same authoritative source used by `tools/bump-version.sh`: `https://raw.githubusercontent.com/yidakee/vibe-better-with-claude-code-vbw/main/VERSION`). If the fetch fails or returns empty output, display a warning and fall back to `{local-version}` for `{remote-version}`.
 - **Pending release awareness + remote baseline protection:** Use the highest of `{local-version}`, `{remote-version}`, and `{pending-version}` (when present) as the bump base (semver compare major/minor/patch numerically; e.g., `printf '%s\n' "$local" "$remote" "$pending" | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -1`). This preserves pending-release behavior while preventing stale local `main` from computing a lower version than the remote baseline.
 - Apply the bump level to the chosen base: `--major` increments major and resets minor.patch to 0, `--minor` increments minor and resets patch to 0, default (no flag) increments patch.
 - Store `{new-version}` and `{release-date}` (today's date, `YYYY-MM-DD`) for use in the prepare phase and audit remediation.
@@ -127,7 +127,7 @@ Write `{new-version}` (from Version Resolution) to all 4 files: VERSION, .claude
 
 ### Step 4: Verify version sync
 
-`bash scripts/bump-version.sh --verify`. Fail → STOP: "Version sync failed after bump."
+`bash tools/bump-version.sh --verify`. Fail → STOP: "Version sync failed after bump."
 
 ### Step 5: Commit
 

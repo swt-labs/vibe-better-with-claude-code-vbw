@@ -11,7 +11,7 @@ gh pr comment <pr-number> --repo swt-labs/vibe-better-with-claude-code-vbw --bod
 
 5. Post one Codex review request comment per current head. If new commits are pushed after the request, post `@codex review` again before completion.
 6. Wait for GitHub Actions checks on the exact pushed head SHA. Use `.github/scripts/wait-github.py wait-ci` when a polling helper is needed.
-7. If CI fails, diagnose the failing check, fix the root cause, rerun `bash testing/run-all.sh`, commit, push, and repeat the QA/CI gate as needed.
+7. If CI fails, diagnose the failing check, fix the root cause, rerun `bash tools/test.sh`, commit, push, and repeat the QA/CI gate as needed.
 8. If `origin/main` advances or the PR is behind/dirty, merge `origin/main` in the worktree, resolve conflicts, rerun tests, commit the merge or conflict resolution, and rerun QA if code under review changed.
 9. Completion requires:
    - PR is not draft;

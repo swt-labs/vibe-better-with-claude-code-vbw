@@ -1,15 +1,10 @@
-# Planning docs (local-only)
-# Note: .vbw-planning/ exclusion covers all runtime files inside:
-#   - .agent-pids (tmux agent tracking)
-#   - .hook-errors.log (hook and cleanup logs, doctor-cleanup.sh runtime logs)
-#   - .watchdog-pid (tmux watchdog PID)
-#   - .watchdog.log (tmux watchdog logs)
-#   - .snapshots/ — agent state snapshots (covered by .vbw-planning/ exclusion)
+# VBW project state is per project; this repo's own dogfooding runtime stays local.
+.vbw/runtime/
 .vbw-planning/
 .planning/
 
-# Dependencies
-node_modules/
+# Plugin eval results (published reports live elsewhere)
+plugin/evals/results/
 
 # Environment
 .env
@@ -18,30 +13,12 @@ node_modules/
 
 # Claude Code local settings
 .claude/vbw-debug-target.txt
+.claude/settings.local.json
 
-# OS
+# OS / editors
 .DS_Store
 Thumbs.db
-
-# IDE
 .idea/
 .vscode/
 *.swp
 *.swo
-
-# Build
-dist/
-build/
-
-# Logs
-*.log
-npm-debug.log*
-
-# Non-production files
-a_non_prod_files/
-.vbw-worktrees/
-docs/vbw-agentic-workflow-presentation-source.md
-
-package.json
-package-lock.json
-.gitnexus

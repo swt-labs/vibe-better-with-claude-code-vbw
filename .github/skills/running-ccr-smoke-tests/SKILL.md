@@ -14,7 +14,7 @@ Use this skill when validating VBW behavior with `ccr code` so future issue-fix 
 - Do **not** run the smoke test directly in the base consumer repo checkout.
 - Create or reuse a **disposable consumer smoke worktree** and run `ccr code` there, or use a **sandbox repo** when the real consumer repo cannot exercise the flow.
 - Use the candidate VBW checkout only as `--plugin-dir`.
-- If the smoke needs installed skill fixtures, seed them only under the consumer repo's `.claude/skills/<skill>/` tree or the global Claude config `skills/` directory after sourcing `scripts/resolve-claude-dir.sh` and using `${CLAUDE_DIR}`. Do **not** use `.agents/` or `.pi/` as positive fixtures.
+- If the smoke needs installed skill fixtures, seed them only under the consumer repo's `.claude/skills/<skill>/` tree or the global Claude config `skills/` directory after sourcing `tools/resolve-claude-dir.sh` and using `${CLAUDE_DIR}`. Do **not** use `.agents/` or `.pi/` as positive fixtures.
 - When documenting results, say: **"smoke-tested from a consumer smoke worktree or sandbox while loading the candidate plugin checkout via `--plugin-dir`"**.
 - If the transcript path encodes the plugin repo or the base consumer repo checkout instead of the consumer smoke worktree/sandbox, treat the smoke result as suspect until proven otherwise.
 
@@ -22,7 +22,7 @@ Use this skill when validating VBW behavior with `ccr code` so future issue-fix 
 
 - Candidate plugin checkout path, usually the current VBW worktree under test.
 - Preferred consumer repo path, resolved from the VBW checkout with:
-  - `bash scripts/resolve-debug-target.sh repo`
+  - `bash tools/resolve-debug-target.sh repo`
 - Smoke worktree label such as `smoke-fix-issue-502` or `smoke-skill-audit`.
 - Optional sandbox path such as `/tmp/vbw-skill-smoke-<issue>` for phase-routed flows the real consumer repo cannot exercise.
 
@@ -62,7 +62,7 @@ Treat the candidate plugin checkout as the path passed to `--plugin-dir`. In iss
 From the VBW checkout, resolve the preferred smoke target with:
 
 ```bash
-bash scripts/resolve-debug-target.sh repo
+bash tools/resolve-debug-target.sh repo
 ```
 
 - If it returns an absolute path, use that repo as the source checkout for the consumer smoke worktree.

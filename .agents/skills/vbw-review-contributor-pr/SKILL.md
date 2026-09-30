@@ -12,8 +12,8 @@ Use this skill when the user explicitly asks to review an external or contributo
 1. Identify the PR and linked issue. If multiple PRs reference the issue, ask which PR to review.
 2. Read the issue body before reading the contributor diff. The issue is the verification contract.
 3. Spawn `vbw-fix-planner` with the issue body only. Do not include PR comments, the PR body, the contributor branch, diff, files changed, or PR narrative. The planner output is the blind baseline.
-4. Check out or enter the contributor branch worktree. Prefer `scripts/adopt-contributor-pr.sh` or existing worktree helpers over inline worktree logic.
-5. Run `bash testing/run-all.sh` from the worktree and keep the result as review evidence.
+4. Check out or enter the contributor branch worktree. Prefer `tools/adopt-contributor-pr.sh` or existing worktree helpers over inline worktree logic.
+5. Run `bash tools/test.sh` from the worktree and keep the result as review evidence.
 6. Read the PR diff and the full contents of changed files from the worktree.
 7. Compare the implementation against [blind-baseline-review.md](references/blind-baseline-review.md).
 8. Spawn `vbw-qa-investigator` for a latest GPT x-high full-contract review of the contributor branch.
