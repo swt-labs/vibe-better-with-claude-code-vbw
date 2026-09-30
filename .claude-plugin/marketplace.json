@@ -11,19 +11,19 @@
     {
       "name": "vbw",
       "source": {
-        "source": "url",
-        "url": "https://github.com/yidakee/vibe-better-with-claude-code-vbw.git"
+        "source": "git-subdir",
+        "url": "https://github.com/yidakee/vibe-better-with-claude-code-vbw.git",
+        "path": "plugin"
       },
-      "description": "Development lifecycle plugin — 26 commands, 7 agents, continuous verification",
+      "description": "Development lifecycle plugin: spec, executable contract, parallel build, mechanical proof, human acceptance",
       "version": "1.37.1",
       "license": "MIT",
       "keywords": [
         "vibe-coding",
-        "project-management",
-        "agent-teams",
-        "verification",
         "development",
-        "lifecycle"
+        "lifecycle",
+        "verification",
+        "workflows"
       ],
       "category": "development"
     }

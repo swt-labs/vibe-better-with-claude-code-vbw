@@ -10,17 +10,16 @@
   "plugins": [
     {
       "name": "vbw",
-      "source": "./",
-      "description": "Development lifecycle plugin — 26 commands, 7 agents, continuous verification",
+      "source": "./plugin",
+      "description": "Development lifecycle plugin: spec, executable contract, parallel build, mechanical proof, human acceptance",
       "version": "1.37.1",
       "license": "MIT",
       "keywords": [
         "vibe-coding",
-        "project-management",
-        "agent-teams",
-        "verification",
         "development",
-        "lifecycle"
+        "lifecycle",
+        "verification",
+        "workflows"
       ],
       "category": "development"
     }
