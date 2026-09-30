@@ -1,0 +1,6 @@
+{"arm":"plain","case":"fix-oneshot","model":"sonnet","installed_vbw":"","check_passed":true,"cost_usd":0.0781294,"turns":5,"wall_s":8,"date":"2026-09-30","claude_code":"2.1.286"}
+{"arm":"vbw","case":"fix-oneshot","model":"sonnet","installed_vbw":"1.37.1","check_passed":true,"cost_usd":0.2971666,"turns":6,"wall_s":26,"date":"2026-09-30","claude_code":"2.1.286"}
+{"arm":"plain","case":"fix-oneshot","model":"sonnet","installed_vbw":"","check_passed":true,"cost_usd":0.0768548,"turns":4,"wall_s":9,"date":"2026-09-30","claude_code":"2.1.286"}
+{"arm":"vbw","case":"fix-oneshot","model":"sonnet","installed_vbw":"1.37.1","check_passed":true,"cost_usd":0.27324719999999997,"turns":5,"wall_s":27,"date":"2026-09-30","claude_code":"2.1.286"}
+{"arm":"plain","case":"fix-oneshot","model":"sonnet","installed_vbw":"","check_passed":true,"cost_usd":0.077879,"turns":5,"wall_s":8,"date":"2026-09-30","claude_code":"2.1.286"}
+{"arm":"vbw","case":"fix-oneshot","model":"sonnet","installed_vbw":"1.37.1","check_passed":true,"cost_usd":0.2828568000000001,"turns":2,"wall_s":27,"date":"2026-09-30","claude_code":"2.1.286"}

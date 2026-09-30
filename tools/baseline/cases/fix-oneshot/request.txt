@@ -1,0 +1,1 @@
+add() in calc.sh returns the wrong result. Fix it so ./test.sh passes, and run ./test.sh to confirm.
