@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+# vbw: the VBW kernel. The only writer of .vbw/record.json.
+# It is on PATH for Claude Code sessions and workflow agents (plugin bin/).
+set -euo pipefail
+
+VBW_LIB="$(cd "$(dirname "$0")/../lib" && pwd)"
+VBW_PLUGIN="$(cd "$VBW_LIB/.." && pwd)"
+export VBW_LIB VBW_PLUGIN
+
+# shellcheck source=../lib/core.sh
+. "$VBW_LIB/core.sh"
+# shellcheck source=../lib/record.sh
+. "$VBW_LIB/record.sh"
+
+vbw_help() {
+  cat <<'EOF'
+usage: vbw <command> [args]
+
+  init              create .vbw/ (spec, record, checks) in this git repository
+  status [--json]   where the project stands
+  todo add TEXT     add a backlog item
+  version           print the plugin version
+  help              this list
+EOF
+}
+
+cmd="${1:-}"
+[ $# -gt 0 ] && shift
+case "$cmd" in
+  version) jq -r .version "$VBW_PLUGIN/.claude-plugin/plugin.json" ;;
+  help|-h|--help) vbw_help ;;
+  init|status|todo)
+    # shellcheck source=/dev/null
+    . "$VBW_LIB/cmd-$cmd.sh"
+    "cmd_$cmd" "$@"
+    ;;
+  "") vbw_usage_error "no command given" ;;
+  *) vbw_usage_error "unknown command: $cmd" ;;
+esac

@@ -1,0 +1,44 @@
+#!/usr/bin/env bash
+# Shared helpers for the vbw kernel. Sourced by bin/vbw; never executed alone.
+# Exit codes: 0 ok, 1 error, 2 usage, 3 corrupt record.
+
+vbw_die() {
+  printf 'vbw: %s\n' "$1" >&2
+  exit "${2:-1}"
+}
+
+vbw_usage_error() {
+  printf 'vbw: %s\n' "$1" >&2
+  printf 'usage: vbw <command> [args]   (vbw help for the list)\n' >&2
+  exit 2
+}
+
+vbw_now() {
+  date -u +%Y-%m-%dT%H:%M:%SZ
+}
+
+# Absolute path of the enclosing git repository, or die.
+vbw_git_root() {
+  local root
+  root=$(git rev-parse --show-toplevel 2>/dev/null) || vbw_die "not a git repository (VBW needs git: it commits with provenance)"
+  printf '%s\n' "$root"
+}
+
+# Sets VBW_ROOT, VBW_DIR, VBW_RECORD and VBW_RUNTIME for the current project.
+vbw_project() {
+  VBW_ROOT=$(vbw_git_root)
+  VBW_DIR="$VBW_ROOT/.vbw"
+  VBW_RECORD="$VBW_DIR/record.json"
+  VBW_RUNTIME="$VBW_DIR/runtime"
+}
+
+vbw_require_project() {
+  vbw_project
+  [ -f "$VBW_RECORD" ] || vbw_die "not a VBW project (run /vbw:init)"
+  mkdir -p "$VBW_RUNTIME"
+}
+
+# Modification time in epoch seconds (BSD and GNU stat).
+vbw_mtime() {
+  stat -f %m "$1" 2>/dev/null || stat -c %Y "$1" 2>/dev/null || echo 0
+}
