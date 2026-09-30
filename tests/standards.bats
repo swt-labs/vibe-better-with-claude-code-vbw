@@ -20,11 +20,12 @@ code_grep() {
 }
 
 @test "kernel stays within 3,000 lines of code (design §10)" {
+  # Shell and jq both count: the jq programs are kernel logic too.
   local total=0 file n
   while IFS= read -r file; do
     n=$(grep -cvE '^[[:space:]]*(#|$)' "$file" || true)
     total=$((total + n))
-  done < <(kernel_files)
+  done < <(kernel_files; find "$PLUGIN_ROOT/lib" -type f -name '*.jq' 2>/dev/null)
   echo "kernel lines: $total"
   [ "$total" -le 3000 ]
 }
