@@ -315,3 +315,9 @@ prove_all_green() {
   ! git show --name-only --format= HEAD | grep -qx .gitignore
   git diff --name-only | grep -qx .gitignore
 }
+
+@test "the codebase map is committed with VBW's own files" {
+  printf '## Stack and commands\n- npm test\n' > .vbw/map.md
+  "$VBW" run start plan > /dev/null && "$VBW" run end > /dev/null
+  git show --name-only --format= HEAD | grep -qx .vbw/map.md
+}

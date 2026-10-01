@@ -87,7 +87,7 @@ record_commit() {
   local msg="$1" own=() changed=() untracked=() f
   (
     cd "$VBW_ROOT" || exit 1
-    for f in .vbw/spec.md .vbw/record.json; do [ -f "$f" ] && own+=("$f"); done
+    for f in .vbw/spec.md .vbw/record.json .vbw/map.md; do [ -f "$f" ] && own+=("$f"); done
     while IFS= read -r -d '' f; do [ -f "$f" ] && own+=("$f"); done \
       < <(jq -j '[.checks[].files // [] | .[]] | unique[] | . + "\u0000"' "$VBW_RECORD")
     if [ -f .gitignore ] && ! git ls-files -z --error-unmatch .gitignore > /dev/null 2>&1; then own+=(.gitignore); fi

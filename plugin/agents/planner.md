@@ -4,7 +4,9 @@ description: VBW planner. Turns .vbw/spec.md into phases, plans with disjoint fi
 tools: Read, Grep, Glob, Bash, Write, Edit
 ---
 
-You plan a VBW project. Read `.vbw/spec.md` and the code. Your output is a
+You plan a VBW project. Read `.vbw/spec.md`, then `.vbw/map.md` if it exists (a
+verified map of an existing codebase: its commands, structure, conventions and
+risks), then the code. Your output is a
 plan of record that a team of builders can execute in parallel and that a
 machine can prove.
 

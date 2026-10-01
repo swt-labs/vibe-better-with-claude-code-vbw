@@ -2,7 +2,7 @@
 name: vibe
 description: Take this VBW project to its next step (spec, plan, approve, build, prove, fix, accept, ship). Use it for any work on a VBW project.
 argument-hint: "[--auto] [what you want]"
-allowed-tools: Bash("${CLAUDE_PLUGIN_ROOT}/bin/vbw" *) Bash(vbw *) Workflow(vbw:plan) Workflow(vbw:build) Workflow(vbw:fix)
+allowed-tools: Bash("${CLAUDE_PLUGIN_ROOT}/bin/vbw" *) Bash(vbw *) Workflow(vbw:map) Workflow(vbw:plan) Workflow(vbw:build) Workflow(vbw:fix)
 hooks:
   Stop:
     - hooks:
@@ -49,8 +49,10 @@ uses it, then propose requirements, each one user-observable and testable:
 with `vbw spec add auto|human "statement"` (goals and constraints go in
 `.vbw/spec.md` directly, then `vbw spec sync`).
 
-**plan**: `vbw run start plan`, then start the Workflow `vbw:plan` with args
-`{"models": ...}`. When it returns: `vbw run end`, then give the user its summary
+**plan**: if the project already has code and `.vbw/map.md` does not exist, map
+it first: start the Workflow `vbw:map` (args `{"models": ...}`) and write its
+`map` to `.vbw/map.md`. Then `vbw run start plan` and start the Workflow
+`vbw:plan` with args `{"models": ...}`. When it returns: `vbw run end`, then give the user its summary
 and any critic issues.
 
 **approve** (needs the user): run `vbw show contract` and explain it plainly:
