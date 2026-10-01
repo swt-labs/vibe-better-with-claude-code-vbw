@@ -93,8 +93,10 @@ start plan` and the workflow with `{"decided": true, "models": ...}`. When it
 has planned: give the user its summary, the `choices` the planner made itself
 (any of them can be changed), and any critic issues.
 
-**approve** (needs the user): run `vbw show contract` and explain it plainly:
-each requirement, how it will be checked, the plans and their files, the project
+**approve** (needs the user): run `vbw show contract --changes`. After an earlier
+approval it lists only what changed: explain just that (everything else stays
+as approved). Otherwise run `vbw show contract` and explain it plainly: each
+requirement, how it will be checked, the plans and their files, the project
 commands that will run. Then ask the user to review and type `/vbw:approve`.
 You cannot approve.
 
@@ -127,8 +129,11 @@ files outside their plan, and ask how to proceed. Do not rewrite history.
 **accept** (needs the user): for each requirement in `detail.requirements`,
 show the user the thing to judge: run it yourself when you can (the program's
 actual output, the page's text) and put that, or one concrete thing to try, in
-the question and the `preview` of "Works". Ask with AskUserQuestion: "Works",
-"Something's wrong", "Skip for now". Works: `vbw req accept <id>`. Something's
+the question and the `preview` of "Works". Something visual (a page, a screen):
+if you can open it (a browser tool), save a screenshot in `.vbw/runtime/` and
+open it for the user (`open` on macOS, `xdg-open` on Linux); otherwise give the
+exact way to see it. Ask with AskUserQuestion: "Works", "Something's wrong",
+"Skip for now". Works: `vbw req accept <id>`. Something's
 wrong: ask what, then `vbw req reject <id> "<their words>"`. Skip: leave it.
 
 **ship** (needs the user): summarize what was delivered (`vbw status`,

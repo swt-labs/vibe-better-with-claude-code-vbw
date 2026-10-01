@@ -74,7 +74,9 @@ approval: a fresh clone must approve before anything runs.
 
 Any change to the contract (a check edited, a test file touched, a plan's files
 widened) changes the hash, and the contract is unapproved again until the user
-re-approves it. `vbw show contract` renders what is being approved.
+re-approves it. `vbw show contract` renders what is being approved, and
+`vbw show contract --changes` only what changed since the last approval in this
+clone (`vbw approve` keeps a copy of what it approved in `.vbw/runtime/`).
 
 ## `vbw prove`
 

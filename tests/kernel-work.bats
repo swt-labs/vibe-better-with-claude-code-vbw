@@ -398,3 +398,29 @@ prove_all_green() {
   "$VBW" run start plan > /dev/null && "$VBW" run end > /dev/null
   git show --name-only --format= HEAD | grep -qx .vbw/map.md
 }
+
+@test "after an approval, show contract --changes lists only what changed since" {
+  apply_plan
+  vbw_run show contract --changes
+  [[ "$output" == *"no earlier approval in this clone"* ]]
+  "$VBW" approve > /dev/null
+  vbw_run show contract --changes
+  [ "$output" = "no changes since the last approval" ]
+  # Re-plan: a new requirement with its check and plan, a reworded one, a changed test file.
+  printf '# Shop\n\n## Requirements\n\n- R1 [auto] A customer can pay by card\n- R2 [auto] A customer gets a receipt\n- R3 [auto] A customer can get a refund\n' > .vbw/spec.md
+  "$VBW" spec sync > /dev/null
+  printf 'grep -qx refunded src/refund.txt\n' > tests/refund.sh
+  printf 'grep -qx sent src/receipt.txt # by email\n' > tests/receipt.sh
+  printf '%s' "$PLAN" | jq '.phases[0].reqs += ["R3"]
+    | .plans += [{id: "P1.3", phase: "P1", title: "Refund", reqs: ["R3"], files: ["src/refund.txt"]}]
+    | .checks += [{id: "C3", req: "R3", run: ["sh", "tests/refund.sh"], files: ["tests/refund.sh"]}]' | "$VBW" apply > /dev/null
+  vbw_run show contract --changes
+  [ "$status" -eq 0 ]
+  [ "${lines[0]}" = "changes since the last approval:" ]
+  [[ "$output" == *"added requirement R3 [auto] A customer can get a refund"* ]]
+  [[ "$output" == *"changed requirement R1: [auto] A customer can pay -> [auto] A customer can pay by card"* ]]
+  [[ "$output" == *"added check C3 (R3): sh tests/refund.sh"* ]]
+  [[ "$output" == *"changed test file tests/receipt.sh"* ]]
+  [[ "$output" == *"added plan P1.3 Refund: src/refund.txt"* ]]
+  [[ "$output" != *"R2"* ]]
+}

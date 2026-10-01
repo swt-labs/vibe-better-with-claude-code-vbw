@@ -7,7 +7,7 @@
 cmd_show() {
   local view="${1:-}" record
   [ $# -gt 0 ] && shift
-  case "$view" in roadmap|phase|req|plan|fix|contract|evidence|decisions|requirements) ;; *) vbw_usage_error "usage: vbw show roadmap | phase ID | req ID | plan ID [--json] | fix ID [--json] | contract | evidence | decisions | requirements" ;; esac
+  case "$view" in roadmap|phase|req|plan|fix|contract|evidence|decisions|requirements) ;; *) vbw_usage_error "usage: vbw show roadmap | phase ID | req ID | plan ID [--json] | fix ID [--json] | contract [--changes] | evidence | decisions | requirements" ;; esac
   vbw_require_project
   record=$(record_read)
   case "$view" in
@@ -50,6 +50,11 @@ cmd_show() {
       show_work "$record" "$view" "$1" "${2:-}"
       ;;
     contract)
+      if [ "${1:-}" = --changes ]; then
+        show_contract_changes "$record"
+        return 0
+      fi
+      [ $# -eq 0 ] || vbw_usage_error "usage: vbw show contract [--changes]"
       local hash state="NOT APPROVED"
       hash=$(contract_hash "$record")
       contract_approved "$hash" && state="approved"
@@ -86,6 +91,38 @@ cmd_show() {
         end'
       ;;
   esac
+}
+
+# What changed in the contract since the last approval in this clone.
+show_contract_changes() {
+  local before="$VBW_RUNTIME/approved-contract.json"
+  if [ ! -f "$before" ]; then
+    printf 'no earlier approval in this clone: the whole contract is new (vbw show contract)\n'
+    return 0
+  fi
+  contract_doc "$1" | jq -r --slurpfile old "$before" "$SHOW_JQ_DEFS"'
+    . as $new | $old[0] as $old
+    | [ ($new.requirements | to_entries[] | select($old.requirements[.key] == null)
+          | "added requirement \(.key) [\(.value.proof)] \(.value.text)"),
+        ($old.requirements | to_entries[] | select($new.requirements[.key] == null)
+          | "removed requirement \(.key): \(.value.text)"),
+        ($new.requirements | to_entries[] | select($old.requirements[.key] != null and $old.requirements[.key] != .value)
+          | "changed requirement \(.key): [\($old.requirements[.key].proof)] \($old.requirements[.key].text) -> [\(.value.proof)] \(.value.text)"),
+        ($new.checks | to_entries[] | select($old.checks[.key] == null)
+          | "added check \(.key) (\(.value.req)): " + (.value | check_line)),
+        ($old.checks | to_entries[] | select($new.checks[.key] == null)
+          | "removed check \(.key) (\(.value.req))"),
+        ($new.checks | to_entries[] | select($old.checks[.key] != null and $old.checks[.key] != .value)
+          | "changed check \(.key) (\(.value.req)): " + (.value | check_line)),
+        ($new.files | to_entries[] | select($old.files[.key] != null and $old.files[.key] != .value)
+          | "changed test file \(.key)"),
+        ($new.plans | to_entries[] | select($old.plans[.key] == null)
+          | "added plan \(.key) \(.value.title): \(.value.files | join(", "))"),
+        ($old.plans | to_entries[] | select($new.plans[.key] == null)
+          | "removed plan \(.key) \(.value.title)"),
+        ($new.plans | to_entries[] | select($old.plans[.key] != null and $old.plans[.key] != .value)
+          | "changed plan \(.key) \(.value.title): \(.value.files | join(", "))\(if (.value.after | length) > 0 then " (after \(.value.after | join(", ")))" else "" end)") ]
+    | if length == 0 then "no changes since the last approval" else "changes since the last approval:", (.[] | "  " + .) end'
 }
 
 # jq helpers for rendering checks. An argv is shown shell-quoted where needed.

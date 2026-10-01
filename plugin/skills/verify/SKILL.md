@@ -13,8 +13,11 @@ marked `built` above. None: say what is still being built and stop.
 
 For each one, one at a time: show the user the thing to judge. Run it yourself
 when you can (the program's actual output, the page's text) and put that, or
-one concrete thing to try, in the question and the `preview` of "Works". Ask
-with AskUserQuestion: "Works", "Something's wrong", "Skip for now".
+one concrete thing to try, in the question and the `preview` of "Works".
+Something visual (a page, a screen): if you can open it (a browser tool), save
+a screenshot in `.vbw/runtime/` and open it for the user (`open` on macOS,
+`xdg-open` on Linux); otherwise give the exact way to see it. Ask with
+AskUserQuestion: "Works", "Something's wrong", "Skip for now".
 
 - Works: `vbw req accept <id>`.
 - Something's wrong: ask what, in their words, then

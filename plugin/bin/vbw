@@ -25,7 +25,7 @@ usage: vbw <command> [args]
   spec add auto|human TEXT   append a requirement to the spec and sync
   status [--json]   where the project stands
   next [--json]     the next lifecycle step and whether it needs you
-  show VIEW [ID]    roadmap | phase ID | req ID | plan ID | fix ID | contract | evidence | decisions | requirements
+  show VIEW [ID]    roadmap | phase ID | req ID | plan ID | fix ID | contract [--changes] | evidence | decisions | requirements
   approve           approve the contract and project commands (the user, via /vbw:approve)
   check [--expect-red] [CHECK...]   run approved checks and report (writes nothing)
   prove             run the approved checks and commands, record the evidence

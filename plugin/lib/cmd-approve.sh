@@ -30,6 +30,10 @@ cmd_approve() {
     record_commit "chore(vbw): approve contract ${hash:0:12}"
     printf 'approved contract %s\n' "${hash:0:12}"
   fi
+  # What was approved, so the next approval can show only what changed
+  # (vbw show contract --changes). Per clone, like the consent itself.
+  contract_doc "$record" > "$VBW_RUNTIME/approved-contract.json.$$" \
+    && mv "$VBW_RUNTIME/approved-contract.json.$$" "$VBW_RUNTIME/approved-contract.json"
   approve_commands "$record"
 }
 
