@@ -102,11 +102,13 @@ gate() {
   jq -nc --arg s "$1" '{hook_event_name: "Stop", session_id: $s, stop_hook_active: false}' | "$VBW" auto gate
 }
 
-@test "auto on needs this session's id and arms only this session" {
+@test "auto on needs a well-formed session id and arms only that session" {
   vbw_run auto on
-  [ "$status" -eq 1 ]
-  [[ "$output" == *"no session id"* ]]
-  VBW_SESSION_ID=s1 vbw_run auto on
+  [ "$status" -eq 2 ]
+  vbw_run auto on "x; rm -rf ~"
+  [ "$status" -eq 2 ]
+  [ ! -e .vbw/runtime/auto.json ]
+  vbw_run auto on s1
   [ "$status" -eq 0 ]
   jq -e '.session == "s1" and .steps == 0 and .cap == 25' .vbw/runtime/auto.json
   run gate s2
@@ -125,7 +127,7 @@ gate() {
     | .phases = [{id: "P1", title: "Pay", reqs: ["R1", "R2"]}]
     | .plans = [{id: "P1.1", phase: "P1", title: "Pay", reqs: ["R1"], files: ["a.txt"], after: [], status: "planned"}]'
   "$VBW" approve > /dev/null
-  VBW_SESSION_ID=s1 "$VBW" auto on > /dev/null
+  "$VBW" auto on s1 > /dev/null
   run gate s1
   [ "$status" -eq 0 ]
   echo "$output" | jq -e '.decision == "block" and (.reason | contains("step 1 of 25")) and (.reason | contains("build: Run the build workflow for P1.1"))'
@@ -133,7 +135,7 @@ gate() {
 }
 
 @test "the gate lets the session wait while a workflow runs" {
-  VBW_SESSION_ID=s1 "$VBW" auto on > /dev/null
+  "$VBW" auto on s1 > /dev/null
   "$VBW" run start plan > /dev/null
   run gate s1
   [ -z "$output" ]
@@ -141,7 +143,7 @@ gate() {
 }
 
 @test "the gate stops and disarms at a decision that needs the user" {
-  VBW_SESSION_ID=s1 "$VBW" auto on > /dev/null
+  "$VBW" auto on s1 > /dev/null
   edit_record '.checks = [{id: "C1", req: "R1", run: ["true"]}]
     | .phases = [{id: "P1", title: "Pay", reqs: ["R1", "R2"]}]
     | .plans = [{id: "P1.1", phase: "P1", title: "Pay", reqs: ["R1"], files: ["a.txt"], after: [], status: "planned"}]'
@@ -156,7 +158,7 @@ gate() {
     | .phases = [{id: "P1", title: "Pay", reqs: ["R1", "R2"]}]
     | .plans = [{id: "P1.1", phase: "P1", title: "Pay", reqs: ["R1"], files: ["a.txt"], after: [], status: "planned"}]'
   "$VBW" approve > /dev/null
-  VBW_SESSION_ID=s1 "$VBW" auto on > /dev/null
+  "$VBW" auto on s1 > /dev/null
   run gate s1
   echo "$output" | jq -e '.decision == "block"'
   run gate s1
@@ -164,12 +166,13 @@ gate() {
   [ ! -f .vbw/runtime/auto.json ]
 }
 
-@test "the session hook exports the session id for autonomy, in VBW projects" {
-  export CLAUDE_ENV_FILE="$TEST_ROOT/env"
-  : > "$CLAUDE_ENV_FILE"
-  jq -nc '{hook_event_name: "SessionStart", session_id: "abc-123"}' | vbw_hook SessionStart > /dev/null
-  grep -qx 'export VBW_SESSION_ID=abc-123' "$CLAUDE_ENV_FILE"
-  : > "$CLAUDE_ENV_FILE"
-  jq -nc '{hook_event_name: "SessionStart", session_id: "x; rm -rf ~"}' | vbw_hook SessionStart > /dev/null
-  [ ! -s "$CLAUDE_ENV_FILE" ]
+
+@test "an escalated fix can be retried once by the user's decision" {
+  edit_record '.checks = [{id: "C1", req: "R1", run: ["false"]}] | .fixes = [{id: "F1", req: "R1", attempts: 3, status: "escalated", note: "C1 fail"}]'
+  vbw_run fix retry F1
+  [ "$status" -eq 0 ]
+  jq -e '.fixes[0].status == "open" and .fixes[0].attempts == 3' .vbw/record.json
+  vbw_run fix retry F1
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"F1 is not escalated"* ]]
 }

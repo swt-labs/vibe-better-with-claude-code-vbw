@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# vbw auto on|off|status|gate: autonomous runs (build plan K6, probe G1).
-# `on` arms this session (VBW_SESSION_ID, exported by the SessionStart hook);
+# vbw auto on SESSION_ID | off | status | gate: autonomous runs (build plan K6, G1).
+# `on SESSION_ID` arms one session (/vbw:vibe passes ${CLAUDE_SESSION_ID});
 # `gate` is the Stop hook of /vbw:vibe: while armed, it blocks the stop with
 # the next step until a human gate, ship, or settings.autonomy_cap steps. It
 # lets the session stop while a workflow runs (its result wakes the session)
@@ -9,8 +9,9 @@
 cmd_auto() {
   local sub="${1:-}"
   case "$sub" in
-    on|off|status|gate) [ $# -eq 1 ] || vbw_usage_error "usage: vbw auto $sub" ;;
-    *) vbw_usage_error "usage: vbw auto on | off | status | gate" ;;
+    on) [ $# -eq 2 ] && [[ "$2" =~ ^[A-Za-z0-9_-]+$ ]] || vbw_usage_error "usage: vbw auto on SESSION_ID" ;;
+    off|status|gate) [ $# -eq 1 ] || vbw_usage_error "usage: vbw auto $sub" ;;
+    *) vbw_usage_error "usage: vbw auto on SESSION_ID | off | status | gate" ;;
   esac
   # The gate reads its hook input before anything can fail.
   local input=""
@@ -19,8 +20,7 @@ cmd_auto() {
   local file="$VBW_RUNTIME/auto.json"
   case "$sub" in
     on)
-      [ -n "${VBW_SESSION_ID:-}" ] || vbw_die "no session id: autonomy needs the VBW plugin's SessionStart hook (restart Claude Code)"
-      auto_write "$file" "$(record_read | jq -c --arg s "$VBW_SESSION_ID" --arg at "$(vbw_now)" \
+      auto_write "$file" "$(record_read | jq -c --arg s "$2" --arg at "$(vbw_now)" \
         '{session: $s, steps: 0, cap: .settings.autonomy_cap, armed_at: $at}')"
       jq -r '"autonomous run armed for this session (at most \(.cap) steps; it stops at the first decision that needs you)"' "$file"
       ;;

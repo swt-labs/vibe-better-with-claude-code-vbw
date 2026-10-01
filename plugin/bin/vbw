@@ -32,11 +32,11 @@ usage: vbw <command> [args]
   apply < PLAN      the planner's write: phases, plans and checks in one update
   run start KIND [IDS] | run end   open or close the run lease (plan, build, fix)
   plan done|block|reset ID   a plan's outcome (done is verified)
-  fix done ID       a fix's work is committed and awaits proof
+  fix done|retry ID   a fix's work is committed; retry an escalated fix once more
   req accept ID | req reject ID NOTE   the user's verdict on a [human] requirement
   ship              mark the milestone shipped (when vbw next says ship)
   config [set KEY VALUE | models]   project settings: profile, autonomy_cap, model.ROLE
-  auto on|off|status|gate   autonomous runs for this session (gate: the Stop hook)
+  auto on SESSION_ID|off|status|gate   autonomous runs for one session (gate: the Stop hook)
   todo add TEXT     add a backlog item
   commit PLAN MSG   commit a plan's declared files with provenance trailers
   version           print the plugin version

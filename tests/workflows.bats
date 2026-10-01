@@ -81,7 +81,7 @@ agents() { find "$PLUGIN_ROOT/agents" -name '*.md' | LC_ALL=C sort; }
   while IFS= read -r cmd; do
     n=$((n + 1))
     "$VBW" help | grep -qE "^  $cmd( |$)" || { echo "agents use unknown command: vbw $cmd"; false; }
-  done < <(agents | while IFS= read -r f; do grep -oE '`vbw [a-z]+' "$f"; done | sed 's/^`vbw //' | sort -u)
+  done < <(agents | while IFS= read -r f; do grep -oE '`vbw [a-z]+' "$f" || true; done | sed 's/^`vbw //' | sort -u)
   [ "$n" -ge 5 ] || { echo "only $n commands found: the scan is broken"; false; }
 }
 
