@@ -110,6 +110,9 @@ code_grep() {
   # marketplace (a branch can be tested before it is merged).
   jq -e '.plugins[0].source == "./plugin"' "$REPO_ROOT/.claude-plugin/marketplace.json"
   [ "$(jq -r .version "$PLUGIN_ROOT/.claude-plugin/plugin.json")" = "$(tr -d '[:space:]' < "$REPO_ROOT/VERSION")" ]
+  # VBW 1's /vbw:update confirms an update by reading VERSION inside the installed
+  # plugin, so the plugin ships one (docs: the update from VBW 1).
+  [ "$(tr -d '[:space:]' < "$PLUGIN_ROOT/VERSION")" = "$(tr -d '[:space:]' < "$REPO_ROOT/VERSION")" ]
 }
 
 @test "hooks.json is valid and every file a hook names exists in hooks/" {

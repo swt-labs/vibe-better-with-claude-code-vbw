@@ -6,29 +6,33 @@ REPO_URL="https://raw.githubusercontent.com/swt-labs/vibe-better-with-claude-cod
 
 FILES=(
   "$ROOT/VERSION"
+  "$ROOT/plugin/VERSION"
   "$ROOT/plugin/.claude-plugin/plugin.json"
   "$ROOT/.claude-plugin/marketplace.json"
   "$ROOT/marketplace.json"
 )
 
-# --verify: check all 4 version files are in sync without bumping
+# --verify: check all 5 version files are in sync without bumping
 if [[ "${1:-}" == "--verify" ]]; then
   V_FILE=$(tr -d '[:space:]' < "$ROOT/VERSION")
+  V_PLUGIN_FILE=$(tr -d "[:space:]" < "$ROOT/plugin/VERSION")
   V_PLUGIN=$(jq -r '.version' "$ROOT/plugin/.claude-plugin/plugin.json")
   V_MKT_PLUGIN=$(jq -r '.plugins[0].version' "$ROOT/.claude-plugin/marketplace.json")
   V_MKT_ROOT=$(jq -r '.plugins[0].version' "$ROOT/marketplace.json")
 
   echo "Version sync check:"
   echo "  VERSION                         $V_FILE"
+  echo "  plugin/VERSION                  $V_PLUGIN_FILE"
   echo "  plugin/.claude-plugin/plugin.json $V_PLUGIN"
   echo "  .claude-plugin/marketplace.json $V_MKT_PLUGIN"
   echo "  marketplace.json                $V_MKT_ROOT"
 
   # intentional: detect if ANY file differs from VERSION
   # shellcheck disable=SC2055
-  if [[ "$V_FILE" != "$V_PLUGIN" || "$V_FILE" != "$V_MKT_PLUGIN" || "$V_FILE" != "$V_MKT_ROOT" ]]; then
+  if [[ "$V_FILE" != "$V_PLUGIN_FILE" || "$V_FILE" != "$V_PLUGIN" || "$V_FILE" != "$V_MKT_PLUGIN" || "$V_FILE" != "$V_MKT_ROOT" ]]; then
     echo ""
     echo "MISMATCH DETECTED — the following files differ:" >&2
+    [[ "$V_FILE" != "$V_PLUGIN_FILE" ]] && echo "  plugin/VERSION ($V_PLUGIN_FILE != $V_FILE)" >&2
     [[ "$V_FILE" != "$V_PLUGIN" ]]     && echo "  plugin/.claude-plugin/plugin.json ($V_PLUGIN != $V_FILE)" >&2
     [[ "$V_FILE" != "$V_MKT_PLUGIN" ]] && echo "  .claude-plugin/marketplace.json ($V_MKT_PLUGIN != $V_FILE)" >&2
     [[ "$V_FILE" != "$V_MKT_ROOT" ]]   && echo "  marketplace.json ($V_MKT_ROOT != $V_FILE)" >&2
@@ -36,7 +40,7 @@ if [[ "${1:-}" == "--verify" ]]; then
   fi
 
   echo ""
-  echo "All 4 version files are in sync ($V_FILE)."
+  echo "All 5 version files are in sync ($V_FILE)."
   exit 0
 fi
 
@@ -80,6 +84,7 @@ echo ""
 
 # Update all files — bail on first failure
 printf '%s\n' "$NEW" > "$ROOT/VERSION"
+printf '%s\n' "$NEW" > "$ROOT/plugin/VERSION"
 
 jq --arg v "$NEW" '.version = $v' "$ROOT/plugin/.claude-plugin/plugin.json" > "$ROOT/.claude-plugin/plugin.json.tmp" \
   && mv "$ROOT/.claude-plugin/plugin.json.tmp" "$ROOT/plugin/.claude-plugin/plugin.json"
@@ -90,7 +95,7 @@ jq --arg v "$NEW" '.plugins[0].version = $v' "$ROOT/.claude-plugin/marketplace.j
 jq --arg v "$NEW" '.plugins[0].version = $v' "$ROOT/marketplace.json" > "$ROOT/marketplace.json.tmp" \
   && mv "$ROOT/marketplace.json.tmp" "$ROOT/marketplace.json"
 
-echo "Updated 4 files:"
+echo "Updated 5 files:"
 for f in "${FILES[@]}"; do
   echo "  ${f#$ROOT/}"
 done
