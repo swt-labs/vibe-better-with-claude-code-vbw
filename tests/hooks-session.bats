@@ -21,10 +21,10 @@ session_start() {
   [ -z "$output" ]
 }
 
-@test "in a VBW project it gives the state and the next step, and writes nothing" {
+@test "in a VBW project it gives the state and the next step, and writes no project file" {
   "$VBW" init > /dev/null
   local before
-  before=$(find . -path ./.git -prune -o -type f -print | LC_ALL=C sort | xargs shasum)
+  before=$(find . \( -path ./.git -o -path ./.vbw/runtime \) -prune -o -type f -print | LC_ALL=C sort | xargs shasum)
   run session_start "$PROJECT"
   [ "$status" -eq 0 ]
   local ctx
@@ -32,7 +32,7 @@ session_start() {
   [[ "$ctx" == *"project with space · M1 First milestone"* ]]
   [[ "$ctx" == *"Next: spec (needs you): Write the goals and requirements"* ]]
   [[ "$ctx" != *"resume"* ]]
-  [ "$(find . -path ./.git -prune -o -type f -print | LC_ALL=C sort | xargs shasum)" = "$before" ]
+  [ "$(find . \( -path ./.git -o -path ./.vbw/runtime \) -prune -o -type f -print | LC_ALL=C sort | xargs shasum)" = "$before" ]
 }
 
 @test "a corrupt record is reported, not hidden" {

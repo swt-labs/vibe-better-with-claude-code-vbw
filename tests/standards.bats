@@ -7,7 +7,7 @@ load helper
 # Every shell file that ships: the kernel CLI, its library, hook handlers.
 kernel_files() {
   { [ -f "$PLUGIN_ROOT/bin/vbw" ] && printf '%s\n' "$PLUGIN_ROOT/bin/vbw"
-    find "$PLUGIN_ROOT/lib" "$PLUGIN_ROOT/hooks" -type f -name '*.sh' 2>/dev/null
+    find "$PLUGIN_ROOT/lib" "$PLUGIN_ROOT/hooks" "$PLUGIN_ROOT/scripts" -type f -name '*.sh' 2>/dev/null
   } | LC_ALL=C sort
 }
 
@@ -25,7 +25,7 @@ code_grep() {
   while IFS= read -r file; do
     n=$(grep -cvE '^[[:space:]]*(#|$)' "$file" || true)
     total=$((total + n))
-  done < <(kernel_files; find "$PLUGIN_ROOT/lib" "$PLUGIN_ROOT/hooks" -type f -name '*.jq' 2>/dev/null)
+  done < <(kernel_files; find "$PLUGIN_ROOT/lib" "$PLUGIN_ROOT/hooks" "$PLUGIN_ROOT/scripts" -type f -name '*.jq' 2>/dev/null)
   echo "kernel lines: $total"
   [ "$total" -le 3000 ]
 }
@@ -78,7 +78,10 @@ code_grep() {
 }
 
 @test "no plugin-root discovery: paths come from \${CLAUDE_PLUGIN_ROOT} substitution or \$0 (K4)" {
+  # The one exception: the user's statusLine setting cannot use substitution, so
+  # the command VBW writes there finds the newest install in the plugin cache.
   run code_grep 'plugins/cache|plugin-root-link|--plugin-dir|(^|[^[:alnum:]_])ps[[:space:]]+(a|-)'
+  output=$(printf '%s\n' "$output" | grep -v '/lib/cmd-statusline.sh:[0-9]*:VBW_STATUSLINE_CMD=' || true)
   [ -z "$output" ]
   local dirs=() d
   for d in skills agents workflows; do [ -d "$PLUGIN_ROOT/$d" ] && dirs+=("$PLUGIN_ROOT/$d"); done
