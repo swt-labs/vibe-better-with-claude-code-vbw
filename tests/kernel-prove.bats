@@ -284,3 +284,14 @@ build_pay() {
   [ "$SECONDS" -lt 15 ]
   jq -e '.evidence.checks.C1.status == "timeout"' .vbw/record.json
 }
+
+@test "a proof commits its evidence: VBW's own files are never left modified" {
+  "$VBW" approve > /dev/null
+  build_pay
+  printf 'mine\n' > staged.txt && git add staged.txt
+  vbw_run prove
+  [ "$status" -eq 0 ]
+  [[ "$(git log -1 --format=%s)" == "chore(vbw): proof passed" ]]
+  [ -z "$(git status --porcelain -- .vbw/record.json)" ]
+  git diff --cached --name-only | grep -qx staged.txt
+}
