@@ -176,3 +176,51 @@ gate() {
   [ "$status" -eq 1 ]
   [[ "$output" == *"F1 is not escalated"* ]]
 }
+
+# --- todo -----------------------------------------------------------------------
+
+@test "the backlog: add, list, done and drop" {
+  vbw_run todo
+  [ "$output" = "no open todos (vbw todo add TEXT)" ]
+  "$VBW" todo add "Dark mode" > /dev/null
+  "$VBW" todo add "CSV export" > /dev/null
+  vbw_run todo list
+  [ "$output" = "T1 Dark mode
+T2 CSV export" ]
+  "$VBW" todo done T1 > /dev/null
+  "$VBW" todo drop T2 > /dev/null
+  jq -e '[.todos[].status] == ["done", "dropped"]' .vbw/record.json
+  vbw_run todo done T9
+  [ "$status" -eq 1 ]
+}
+
+# --- doctor -------------------------------------------------------------------
+
+@test "doctor checks the project and the guards, and changes nothing" {
+  cp .vbw/record.json "$TEST_ROOT/before.json"
+  vbw_run doctor
+  [[ "$output" == *"✓ jq "* ]]
+  [[ "$output" == *"✓ the plan of record is valid"* ]]
+  [[ "$output" == *"✓ the spec is valid"* ]]
+  [[ "$output" == *"✓ the guards work"* ]]
+  [[ "$output" == *"! the VBW status line is not on"* ]]
+  cmp .vbw/record.json "$TEST_ROOT/before.json"
+}
+
+@test "doctor fails on a corrupt record and names the fix" {
+  printf '{"schema": 9}' > .vbw/record.json
+  vbw_run doctor
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"✗ the plan of record is corrupt"* ]]
+  [[ "$output" == *"fix: restore .vbw/record.json from git"* ]]
+}
+
+@test "doctor reports disabled workflows" {
+  printf '{"disableWorkflows": true}' > "$CLAUDE_CONFIG_DIR/settings.json"
+  vbw_run doctor
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"✗ workflows are disabled in your settings"* ]]
+  printf '{"enableWorkflows": true}' > "$CLAUDE_CONFIG_DIR/settings.json"
+  vbw_run doctor
+  [[ "$output" == *"✓ workflows enabled"* ]]
+}
