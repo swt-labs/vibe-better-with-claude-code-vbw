@@ -78,6 +78,32 @@ record_update() {
   trap - EXIT
 }
 
+# record_commit MESSAGE: commit VBW's own files that changed (.vbw/spec.md,
+# .vbw/record.json, the protected check files, and a .gitignore only if VBW
+# created it) with `git commit --only`, so the user's staged work stays staged.
+# Called when a run ends, at approval and at ship. Nothing changed: no commit.
+# A failing commit (no git identity, a hook) warns and never undoes the step.
+record_commit() {
+  local msg="$1" own=() changed=() untracked=() f
+  (
+    cd "$VBW_ROOT" || exit 1
+    for f in .vbw/spec.md .vbw/record.json; do [ -f "$f" ] && own+=("$f"); done
+    while IFS= read -r -d '' f; do [ -f "$f" ] && own+=("$f"); done \
+      < <(jq -j '[.checks[].files // [] | .[]] | unique[] | . + "\u0000"' "$VBW_RECORD")
+    if [ -f .gitignore ] && ! git ls-files -z --error-unmatch .gitignore > /dev/null 2>&1; then own+=(.gitignore); fi
+    [ ${#own[@]} -gt 0 ] || exit 0
+    while IFS= read -r -d '' f; do changed+=("$f"); done < <(git diff --name-only -z HEAD -- "${own[@]}" 2> /dev/null)
+    while IFS= read -r -d '' f; do untracked+=("$f"); changed+=("$f"); done \
+      < <(git ls-files -z --others --exclude-standard -- "${own[@]}")
+    [ ${#changed[@]} -gt 0 ] || exit 0
+    record_lock
+    trap record_unlock EXIT
+    { [ ${#untracked[@]} -eq 0 ] || git add -- "${untracked[@]}"; } &&
+      git commit --quiet --only -m "$msg" -- "${changed[@]}" > /dev/null 2>&1 \
+      || printf 'vbw: warning: could not commit VBW files (%s); commit them yourself\n' "$msg" >&2
+  )
+}
+
 # jq helper, prepended to update filters: the next free id with prefix P.
 # shellcheck disable=SC2016,SC2034 # jq text, not shell; used by the cmd-*.sh files
 VBW_JQ_DEFS='def next_id($p): (([.[]?.id | ltrimstr($p) | tonumber?] | max) // 0) + 1 | "\($p)\(.)";'

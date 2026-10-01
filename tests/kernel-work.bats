@@ -117,7 +117,6 @@ edit_record() {
 @test "plan done is verified: the checks of requirements it completes must pass" {
   apply_plan
   "$VBW" approve > /dev/null
-  git add -A && git commit -q -m "chore(vbw): plan"
   printf 'unpaid\n' > src/pay.txt
   "$VBW" commit P1.1 "feat(pay): pay" > /dev/null
   vbw_run plan done P1.1
@@ -130,7 +129,6 @@ edit_record() {
   PLAN=$(printf '%s' "$PLAN" | jq '.plans[1].reqs = ["R1", "R2"]')
   apply_plan
   "$VBW" approve > /dev/null
-  git add -A && git commit -q -m "chore(vbw): plan"
   printf 'unpaid\n' > src/pay.txt
   "$VBW" commit P1.1 "feat(pay): pay" > /dev/null
   vbw_run show plan P1.1 --json
@@ -142,7 +140,6 @@ edit_record() {
 @test "plan done is verified: it needs a commit and no uncommitted changes" {
   apply_plan
   "$VBW" approve > /dev/null
-  git add -A && git commit -q -m "chore(vbw): plan"
   vbw_run plan done P1.1
   [ "$status" -eq 1 ]
   [[ "$output" == *"P1.1 has no commit yet"* ]]
@@ -280,4 +277,41 @@ prove_all_green() {
   vbw_code_tree > /dev/null
   [ "$(git diff --cached --name-only)" = "$before" ]
   git status --porcelain | grep -q '^?? other.txt'
+}
+
+# --- VBW commits its own files ------------------------------------------------
+
+@test "a run's end commits the spec, the record and the check files, and nothing else" {
+  printf 'mine\n' > user-staged.txt && git add user-staged.txt
+  printf 'draft\n' > user-unstaged.txt
+  "$VBW" run start plan > /dev/null
+  apply_plan
+  vbw_run run end
+  [ "$status" -eq 0 ]
+  [[ "$(git log -1 --format=%s)" == "chore(vbw): record after plan-"* ]]
+  git show --name-only --format= HEAD | LC_ALL=C sort > "$TEST_ROOT/committed"
+  printf '%s\n' .gitignore .vbw/record.json .vbw/spec.md tests/pay.sh tests/receipt.sh > "$TEST_ROOT/expected"
+  diff "$TEST_ROOT/expected" "$TEST_ROOT/committed"
+  git diff --cached --name-only | grep -qx user-staged.txt
+  git status --porcelain | grep -q '^?? user-unstaged.txt'
+}
+
+@test "approval and ship commit the record; nothing changed means no commit" {
+  apply_plan
+  "$VBW" run start plan > /dev/null && "$VBW" run end > /dev/null
+  local before
+  before=$(git rev-parse HEAD)
+  "$VBW" run start plan > /dev/null && "$VBW" run end > /dev/null
+  "$VBW" approve > /dev/null
+  [[ "$(git log -1 --format=%s)" == "chore(vbw): approve contract "* ]]
+  [ "$(git rev-list --count "$before"..HEAD)" -eq 1 ]
+}
+
+@test "a .gitignore the user already tracks is never committed by VBW" {
+  printf 'node_modules/\n' > .gitignore && git add .gitignore && git commit -q -m "chore(repo): ignore"
+  "$VBW" init > /dev/null
+  printf 'my-own-edit/\n' >> .gitignore
+  "$VBW" run start plan > /dev/null && "$VBW" run end > /dev/null
+  ! git show --name-only --format= HEAD | grep -qx .gitignore
+  git diff --name-only | grep -qx .gitignore
 }

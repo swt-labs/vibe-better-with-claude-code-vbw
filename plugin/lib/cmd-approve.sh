@@ -27,6 +27,7 @@ cmd_approve() {
     record_update "$VBW_JQ_DEFS"'.decisions += [{id: (.decisions | next_id("D")), at: $at,
         text: "Contract approved: \(.requirements | length) requirements, \(.checks | length) checks, \(.plans | length) plans (\($h[0:12]))"}]' \
       --arg h "$hash" --arg at "$(vbw_now)"
+    record_commit "chore(vbw): approve contract ${hash:0:12}"
     printf 'approved contract %s\n' "${hash:0:12}"
   fi
   approve_commands "$record"

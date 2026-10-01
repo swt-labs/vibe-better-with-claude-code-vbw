@@ -16,7 +16,10 @@ cmd_run() {
   vbw_require_project
   if [ "$sub" = end ]; then
     # Plans an interrupted builder left "building" go back to the next wave.
+    local run
+    run=$(record_read | jq -r '.lease.run // "no run"')
     record_update '.lease = null | (.plans[] | select(.status == "building")).status = "planned"'
+    record_commit "chore(vbw): record after $run"
     printf 'run ended\n'
     return 0
   fi

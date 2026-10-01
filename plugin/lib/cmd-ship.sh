@@ -15,5 +15,6 @@ cmd_ship() {
     | .decisions += [{id: (.decisions | next_id("D")), at: $at,
         text: "Shipped \(.milestone.id) \(.milestone.title): \(.requirements | length) requirements proven or accepted"}]' \
     --arg at "$(vbw_now)"
+  record_commit "chore(vbw): ship $(jq -r .milestone.id "$VBW_RECORD")"
   jq -r '"shipped \(.milestone.id) \(.milestone.title)"' "$VBW_RECORD"
 }

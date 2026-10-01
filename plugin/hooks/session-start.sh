@@ -35,7 +35,7 @@ if [ -d "$claude_dir/commands/vbw" ]; then
 fi
 
 context=""
-[ "$removed" -eq 0 ] || context="VBW removed $removed outdated VBW 1 command copies that would have run instead of the VBW 2 commands; tell the user once. "
+[ "$removed" -eq 0 ] || context="VBW removed $removed outdated VBW 1 command copies that would have run instead of the VBW 2 commands. Tell the user once: run /reload-skills now (or restart Claude Code) before using any /vbw: command, because this session loaded the old copies. "
 
 if [ -f "$root/.vbw/record.json" ]; then
   state=$(cd "$root" && "$vbw" status 2>&1 < /dev/null | head -n 1)
