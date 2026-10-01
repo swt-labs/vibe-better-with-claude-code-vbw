@@ -56,16 +56,10 @@ init_spec() {
 EOF
 }
 
-# Ensure .vbw/runtime/ is ignored by git (one exact line, added once).
+# .vbw/runtime/ (locks, caches, check output) is never committed. VBW ignores it
+# in its own .vbw/.gitignore and never edits the user's .gitignore.
 init_gitignore() {
-  local gi="$VBW_ROOT/.gitignore"
-  if [ -f "$gi" ] && grep -qxF '.vbw/runtime/' "$gi"; then
-    return 0
-  fi
-  if [ -s "$gi" ] && [ -n "$(tail -c 1 "$gi")" ]; then
-    printf '\n' >> "$gi"
-  fi
-  printf '.vbw/runtime/\n' >> "$gi"
+  [ -f "$VBW_DIR/.gitignore" ] || printf 'runtime/\n' > "$VBW_DIR/.gitignore"
 }
 
 # Detect the project's own test/lint/build commands as argv arrays (JSON object

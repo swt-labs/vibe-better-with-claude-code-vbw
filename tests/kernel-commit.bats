@@ -8,7 +8,7 @@ setup() {
   vbw_setup
   vbw_git_project
   "$VBW" init > /dev/null
-  git add .gitignore .vbw && git commit -q -m "chore(vbw): init"
+  git add .vbw && git commit -q -m "chore(vbw): init"
   # A phase with one plan that owns two files (one with a space, one non-ASCII).
   jq '.requirements = [{id:"R1", text:"Pay", proof:"auto", status:"open", milestone: "M1"}]
       | .phases = [{id:"P1", title:"Pay", reqs:["R1"], milestone: "M1"}]

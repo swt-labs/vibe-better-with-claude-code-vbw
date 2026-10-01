@@ -39,7 +39,9 @@ teardown() { vbw_teardown; }
   [ -d .vbw/runtime ]
   [ "$(jq -c -f "$PLUGIN_ROOT/lib/record.jq" .vbw/record.json)" = "[]" ]
   [ "$(jq -r .project.name .vbw/record.json)" = "project with space" ]
-  grep -qx '.vbw/runtime/' .gitignore
+  [ "$(cat .vbw/.gitignore)" = "runtime/" ]
+  [ ! -e .gitignore ]
+  git check-ignore -q .vbw/runtime/x
 }
 
 @test "vbw init is idempotent and never overwrites existing state" {
@@ -52,7 +54,7 @@ teardown() { vbw_teardown; }
   [[ "$output" == *"already initialized"* ]]
   grep -q 'my spec edits' .vbw/spec.md
   cmp .vbw/record.json "$TEST_ROOT/before.json"
-  [ "$(grep -cx '.vbw/runtime/' .gitignore)" -eq 1 ]
+  [ "$(cat .vbw/.gitignore)" = "runtime/" ]
 }
 
 @test "vbw init writes nothing outside the project" {
