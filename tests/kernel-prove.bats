@@ -273,3 +273,14 @@ build_pay() {
   vbw_run prove
   jq -e '.fixes | length == 1 and .[0].req == "R1"' .vbw/record.json
 }
+
+@test "a hanging check is stopped even when the environment ignores the stop signals" {
+  edit_record '.checks[0] = {id:"C1", req:"R1", run:["sleep","30"], timeout: 1} | .plans[0].status = "done"'
+  "$VBW" approve > /dev/null
+  SECONDS=0
+  # CI runners can start processes with SIGALRM/SIGTERM ignored; that is inherited.
+  run bash -c 'trap "" ALRM TERM; exec "$1" prove' _ "$VBW"
+  [ "$status" -eq 1 ]
+  [ "$SECONDS" -lt 15 ]
+  jq -e '.evidence.checks.C1.status == "timeout"' .vbw/record.json
+}

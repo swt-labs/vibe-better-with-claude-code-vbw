@@ -24,10 +24,13 @@ checks_exec() {
   shift 2
   SECONDS=0
   CHECK_CODE=0
+  # A signal ignored by the environment stays ignored in its children (some CI
+  # runners start everything with SIGALRM/SIGTERM ignored). So timeout escalates
+  # to SIGKILL, which cannot be ignored, and perl resets SIGALRM before the alarm.
   if command -v timeout > /dev/null 2>&1; then
-    timeout "$t" "$@" > "$out" 2>&1 < /dev/null || CHECK_CODE=$?
+    timeout -k 5 "$t" "$@" > "$out" 2>&1 < /dev/null || CHECK_CODE=$?
   else
-    perl -e 'alarm shift @ARGV; exec { $ARGV[0] } @ARGV or do { print STDERR "cannot run $ARGV[0]: $!\n"; exit 127 }' \
+    perl -e '$SIG{ALRM} = "DEFAULT"; alarm shift @ARGV; exec { $ARGV[0] } @ARGV or do { print STDERR "cannot run $ARGV[0]: $!\n"; exit 127 }' \
       "$t" "$@" > "$out" 2>&1 < /dev/null || CHECK_CODE=$?
   fi
   CHECK_SECONDS=$SECONDS
