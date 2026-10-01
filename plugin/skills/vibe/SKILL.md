@@ -60,8 +60,11 @@ from the map: say what the project does and propose what to improve, rather
 than asking what it is. Otherwise ask what it is for and who uses it. Then
 propose requirements, each one user-observable and testable:
 `[auto]` when a check can prove it, `[human]` when only a person can judge it
-(look, feel, tone). Recommend; don't interrogate. Add each agreed requirement
-with `vbw spec add auto|human "statement"` (goals and constraints go in
+(look, feel, tone). Propose what to build, not how: leave choices such as
+sign-in, where data is stored, hosting or paid services to the decision round
+before planning, and write a constraint only when the user stated it.
+Recommend; don't interrogate. Add each agreed requirement with
+`vbw spec add auto|human "statement"` (goals and the user's constraints go in
 `.vbw/spec.md` directly, then `vbw spec sync`). If the milestone still has its
 default title, name it after what was agreed: `vbw milestone rename "<title>"`.
 
