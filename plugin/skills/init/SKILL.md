@@ -16,7 +16,7 @@ say they will run only after the user approves them. If VBW needs a git
 repository, offer to run `git init`.
 
 Headless use (`claude -p`, CI) needs one allow rule per VBW workflow; mention
-them only if the user asks about automation: `Workflow(vbw:plan)`,
-`Workflow(vbw:build)`, `Workflow(vbw:fix)`.
+them only if the user asks about automation: `Workflow(vbw:planning)`,
+`Workflow(vbw:building)`, `Workflow(vbw:fixing)`.
 
 Then continue with the `vbw:vibe` skill, which starts the spec conversation.

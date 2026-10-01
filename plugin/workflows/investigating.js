@@ -1,5 +1,5 @@
 export const meta = {
-  name: 'debug',
+  name: 'investigating',
   description: 'VBW: investigate a bug from three angles in parallel, then weigh the evidence into a root cause and a proposed fix',
   whenToUse: 'Started by /vbw:debug with a description of the problem',
   phases: [

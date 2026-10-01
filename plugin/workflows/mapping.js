@@ -1,5 +1,5 @@
 export const meta = {
-  name: 'map',
+  name: 'mapping',
   description: 'VBW: map an existing codebase from several angles in parallel, then merge the findings into one map',
   whenToUse: 'Started by /vbw:map, usually before planning work on an existing codebase',
   phases: [

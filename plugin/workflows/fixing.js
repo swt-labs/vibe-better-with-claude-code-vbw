@@ -1,5 +1,5 @@
 export const meta = {
-  name: 'fix',
+  name: 'fixing',
   description: 'VBW: work the open fix items, one builder per group of fixes that share files, groups in parallel',
   whenToUse: 'Started by /vbw:vibe when vbw next says fix, inside a vbw run start fix lease',
   phases: [{ title: 'Fix', detail: 'one builder per group of fixes; groups have disjoint files' }],

@@ -62,7 +62,7 @@ for step in $(seq 1 15); do
   case "$action" in
     plan)
       "$VBW" run start plan > /dev/null
-      workflow plan null
+      workflow planning null
       "$VBW" run end > /dev/null
       ;;
     approve)
@@ -74,7 +74,7 @@ for step in $(seq 1 15); do
       ids=$(printf '%s' "$next" | jq -r '.detail.plans | join(" ")')
       # shellcheck disable=SC2086 # plan ids are single words
       "$VBW" run start build $ids > /dev/null
-      workflow build "$(printf '%s' "$next" | jq -c '{plans: .detail.plans}')"
+      workflow building "$(printf '%s' "$next" | jq -c '{plans: .detail.plans}')"
       "$VBW" run end > /dev/null
       "$VBW" prove > /dev/null || true
       ;;
@@ -83,7 +83,7 @@ for step in $(seq 1 15); do
       [ -n "$ids" ] || { echo "     a fix without fix items (rejected human requirement): stopping"; break; }
       # shellcheck disable=SC2086 # fix ids are single words
       "$VBW" run start fix $ids > /dev/null
-      workflow fix "$(printf '%s' "$next" | jq -c '{fixes: .detail.fixes}')"
+      workflow fixing "$(printf '%s' "$next" | jq -c '{groups: .detail.groups}')"
       "$VBW" run end > /dev/null
       "$VBW" prove > /dev/null || true
       ;;

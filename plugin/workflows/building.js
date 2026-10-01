@@ -1,5 +1,5 @@
 export const meta = {
-  name: 'build',
+  name: 'building',
   description: 'VBW: build one wave of ready plans in parallel, each to its own green checks',
   whenToUse: 'Started by /vbw:vibe when vbw next says build, inside a vbw run start build lease',
   phases: [{ title: 'Build', detail: 'one builder per plan; disjoint files' }],

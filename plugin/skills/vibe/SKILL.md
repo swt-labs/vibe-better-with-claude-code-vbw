@@ -2,7 +2,7 @@
 name: vibe
 description: Take this VBW project to its next step (spec, plan, approve, build, prove, fix, accept, ship). Use it for any work on a VBW project.
 argument-hint: "[--auto] [what you want]"
-allowed-tools: Bash("${CLAUDE_PLUGIN_ROOT}/bin/vbw" *) Bash(vbw *) Workflow(vbw:map) Workflow(vbw:plan) Workflow(vbw:build) Workflow(vbw:fix)
+allowed-tools: Bash("${CLAUDE_PLUGIN_ROOT}/bin/vbw" *) Bash(vbw *) Workflow(vbw:mapping) Workflow(vbw:planning) Workflow(vbw:building) Workflow(vbw:fixing)
 hooks:
   Stop:
     - hooks:
@@ -56,7 +56,7 @@ the user: "VBW needs Dynamic workflows: turn them on in /config (or set
 `vbw config models`) in every workflow's args.
 
 Before `spec` or `plan`: if the project already has code and `.vbw/map.md` does
-not exist, map it first: start the Workflow `vbw:map` (args `{"models": ...}`)
+not exist, map it first: start the Workflow `vbw:mapping` (args `{"models": ...}`)
 and write its `map` to `.vbw/map.md`. Read the map before proposing anything.
 
 What the user must see to decide (a result, a draft, a sample output) goes
@@ -82,7 +82,7 @@ Recommend; don't interrogate. Add each agreed requirement with
 `.vbw/spec.md` directly, then `vbw spec sync`). If the milestone still has its
 default title, name it after what was agreed: `vbw milestone rename "<title>"`.
 
-**plan**: `vbw run start plan` and start the Workflow `vbw:plan` with args
+**plan**: `vbw run start plan` and start the Workflow `vbw:planning` with args
 `{"models": ...}`. When it returns: `vbw run end`. If its status is
 `needs_decisions`, the user decides first (hands-off: see Autonomy): ask each decision with
 AskUserQuestion, one question at a time (why it matters in the question, each
@@ -101,11 +101,11 @@ commands that will run. Then ask the user to review and type `/vbw:approve`.
 You cannot approve.
 
 **build**: `vbw run start build <detail.plans>`, then start the Workflow
-`vbw:build` with args `{"plans": [...], "models": ...}`. When it returns:
+`vbw:building` with args `{"plans": [...], "models": ...}`. When it returns:
 `vbw run end`, `vbw prove`, and report each plan's result in one line (quote
 blockers and notes).
 
-**fix**: `vbw run start fix <detail.fixes>`, then the Workflow `vbw:fix` with args
+**fix**: `vbw run start fix <detail.fixes>`, then the Workflow `vbw:fixing` with args
 `{"groups": <detail.groups>, "models": ...}` (fixes that share files go to one
 builder). When it returns: `vbw run end`, `vbw prove`.
 

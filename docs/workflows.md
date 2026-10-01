@@ -7,11 +7,11 @@ is. Every write to the plan of record goes through `vbw`.
 
 | Workflow | Started when `vbw next` says | Agents | Ends with |
 |---|---|---|---|
-| `vbw:plan` | `plan` | planner (decide) → planner → critic → planner (one revision when the critic finds issues) | `needs_decisions` (up to 4 questions for the user, each with options, trade-offs and a recommendation; the router asks them, records the answers with `vbw decide`, and runs the workflow again with `decided: true`), or phases, plans and checks in the record, protected test files written and failing, and the planner's own `choices` listed |
-| `vbw:build` | `build` (one wave: the ready plans, no two sharing a file) | one builder per plan, in parallel | each plan `done` (committed, its checks green) or `blocked` with a reason |
-| `vbw:fix` | `fix` (`detail.groups`: open fixes that share files, grouped) | one builder per group, groups in parallel | each fix `fixed` (verified, committed) or its plan `blocked` |
-| `vbw:map` | `spec` or `plan` on existing code without `.vbw/map.md` | scouts, one per angle, then one merge | the map, written to `.vbw/map.md` |
-| `vbw:debug` | the user runs `/vbw:debug` | three scouts (reproduce, trace, history), then a judge | the root cause, its evidence and a proposed fix; nothing changed |
+| `vbw:planning` | `plan` | planner (decide) → planner → critic → planner (one revision when the critic finds issues) | `needs_decisions` (up to 4 questions for the user, each with options, trade-offs and a recommendation; the router asks them, records the answers with `vbw decide`, and runs the workflow again with `decided: true`), or phases, plans and checks in the record, protected test files written and failing, and the planner's own `choices` listed |
+| `vbw:building` | `build` (one wave: the ready plans, no two sharing a file) | one builder per plan, in parallel | each plan `done` (committed, its checks green) or `blocked` with a reason |
+| `vbw:fixing` | `fix` (`detail.groups`: open fixes that share files, grouped) | one builder per group, groups in parallel | each fix `fixed` (verified, committed) or its plan `blocked` |
+| `vbw:mapping` | `spec` or `plan` on existing code without `.vbw/map.md` | scouts, one per angle, then one merge | the map, written to `.vbw/map.md` |
+| `vbw:investigating` | the user runs `/vbw:debug` | three scouts (reproduce, trace, history), then a judge | the root cause, its evidence and a proposed fix; nothing changed |
 
 After `build` and `fix`, the router runs `vbw prove` (deterministic, no agent),
 and `vbw next` decides again. Approval, acceptance and shipping are human gates.

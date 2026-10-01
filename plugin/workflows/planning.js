@@ -1,5 +1,5 @@
 export const meta = {
-  name: 'plan',
+  name: 'planning',
   description: 'VBW: find the decisions the user must make, then turn the spec into phases, plans and contract checks and critique them once',
   whenToUse: 'Started by /vbw:vibe when vbw next says plan, inside a vbw run start plan lease',
   phases: [

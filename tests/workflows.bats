@@ -13,7 +13,7 @@ agents() { find "$PLUGIN_ROOT/agents" -name '*.md' | LC_ALL=C sort; }
 
 @test "the plan, build and fix workflows and the planner, critic and builder agents exist" {
   local f
-  for f in plan build fix; do [ -f "$PLUGIN_ROOT/workflows/$f.js" ]; done
+  for f in planning building fixing mapping investigating; do [ -f "$PLUGIN_ROOT/workflows/$f.js" ]; done
   for f in planner critic builder; do [ -f "$PLUGIN_ROOT/agents/$f.md" ]; done
 }
 
@@ -109,5 +109,13 @@ agents() { find "$PLUGIN_ROOT/agents" -name '*.md' | LC_ALL=C sort; }
       '  walk(s, k)' \
       '}' >> "$TEST_ROOT/schemas.js"
     node "$TEST_ROOT/schemas.js" || { echo "bad schema in $f"; false; }
+  done < <(workflows)
+}
+
+@test "no workflow shares its name with a skill (/vbw:NAME would start the workflow)" {
+  local f n
+  while IFS= read -r f; do
+    n=$(basename "$f" .js)
+    [ ! -d "$PLUGIN_ROOT/skills/$n" ] || { echo "workflow $n has the name of the skill /vbw:$n"; false; }
   done < <(workflows)
 }

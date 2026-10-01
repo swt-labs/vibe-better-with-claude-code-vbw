@@ -145,6 +145,7 @@ scenario_resume() {
       say "closing Claude Code mid-run, then starting it again"
       l3 stop "$scenario"
       l3 start "$scenario" "$dir" > /dev/null
+      if screen | grep -q "Type \/reload-skills"; then l3 type "$scenario" "/reload-skills"; sleep 5; fi
       l3 type "$scenario" "/vbw:vibe"
     fi
     shipped
@@ -201,6 +202,8 @@ for scenario in "$@"; do
   "scenario_$scenario"
   say "project: $dir"
   if ! l3 start "$scenario" "$dir" > /dev/null; then say "could not start Claude Code"; failed=1; continue; fi
+  # As a user would: VBW 2 asks for a reload when it removed VBW 1 command copies.
+  if screen | grep -q "Type \/reload-skills"; then l3 type "$scenario" "/reload-skills"; sleep 5; fi
   l3 type "$scenario" "$start"
   drive || failed=1
   checks
