@@ -219,6 +219,7 @@ edit_record() {
 
 @test "show fix gives a builder the failure and the files it may touch" {
   apply_plan
+  edit_record '.plans[].status = "done"'
   "$VBW" approve > /dev/null
   "$VBW" prove > /dev/null || true
   local f

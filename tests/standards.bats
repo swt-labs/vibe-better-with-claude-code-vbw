@@ -106,7 +106,9 @@ code_grep() {
 @test "plugin manifests are valid" {
   jq -e '.name == "vbw" and (.version | type == "string")' "$PLUGIN_ROOT/.claude-plugin/plugin.json"
   jq -e '.plugins[0].source == "./plugin"' "$REPO_ROOT/marketplace.json"
-  jq -e '.plugins[0].source.source == "git-subdir" and .plugins[0].source.path == "plugin"' "$REPO_ROOT/.claude-plugin/marketplace.json"
+  # Relative: the plugin comes from the same repository and branch as the
+  # marketplace (a branch can be tested before it is merged).
+  jq -e '.plugins[0].source == "./plugin"' "$REPO_ROOT/.claude-plugin/marketplace.json"
   [ "$(jq -r .version "$PLUGIN_ROOT/.claude-plugin/plugin.json")" = "$(tr -d '[:space:]' < "$REPO_ROOT/VERSION")" ]
 }
 
@@ -131,4 +133,14 @@ code_grep() {
     [[ "$cmd" == "jq "* ]] || { echo "PreToolUse hook must be jq itself (no interpreter startup): $cmd"; false; }
     [[ "$cmd" == *" || true" ]] || { echo "PreToolUse hook must never exit non-zero (exit 2 blocks the call): $cmd"; false; }
   done < <(jq -r '.hooks.PreToolUse[]?.hooks[].command' "$hooks")
+}
+
+@test "Claude Code's own validator accepts the plugin and the marketplace" {
+  command -v claude > /dev/null 2>&1 || skip "claude is not installed"
+  [ -f "$REPO_ROOT/.claude-plugin/marketplace.json" ] && [ "$PLUGIN_ROOT" = "$REPO_ROOT/plugin" ] || skip "not the shipped plugin"
+  run claude plugin validate "$PLUGIN_ROOT"
+  [[ "$output" == *"Validation passed"* ]] || { echo "$output"; false; }
+  [[ "$output" != *"with warnings"* ]] || { echo "$output"; false; }
+  run claude plugin validate "$REPO_ROOT"
+  [[ "$output" == *"Validation passed"* ]] || { echo "$output"; false; }
 }

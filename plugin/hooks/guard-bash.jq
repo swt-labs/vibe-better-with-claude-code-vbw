@@ -31,7 +31,7 @@ def unquote: if startswith("'") then .[1:-1] else .[1:-1] | gsub("\\\\(?<c>.)"; 
 def restore($q): gsub("\u0001(?<n>[0-9]+)\u0002"; $q[.n | tonumber] | unquote);
 
 def assignment: test("^[A-Za-z_][A-Za-z0-9_]*=");
-def wrapper: basename | test("^(sudo|env|command|builtin|exec|nohup|time|nice|ionice|stdbuf|timeout|xargs|then|do|else|elif|if|while|until|!)$");
+def wrapper: basename | test("^(sudo|env|command|builtin|exec|nohup|time|nice|ionice|stdbuf|timeout|xargs|rtk|then|do|else|elif|if|while|until|!)$");
 def skip_options: until(length == 0 or (.[0] | startswith("-") | not);
   if .[0] | test("^-[ugCDnIPLsEdko]$") then .[2:] else .[1:] end);
 

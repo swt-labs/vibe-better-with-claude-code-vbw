@@ -53,14 +53,20 @@ timing() {
   ' "$1" "$2" "$RUNS" "${@:3}"
 }
 
-shell=$(timing 50 "$work/npm.json" sh -c "jq -nc 'input | empty' - \"$CLAUDE_PROJECT_DIR/.vbw/record.json\" \"$CLAUDE_PLUGIN_ROOT/hooks/end.json\" 2>/dev/null || true")
+baseline="jq -nc 'input | empty' - \"$CLAUDE_PROJECT_DIR/.vbw/record.json\" \"$CLAUDE_PLUGIN_ROOT/hooks/end.json\" 2>/dev/null || true"
 status=0
 for input in git npm big read; do
   tool=$(jq -r .tool_name "$work/$input.json")
   hook=$(jq -r --arg t "$tool" '[.hooks.PreToolUse[] | select(.matcher as $m | $t | test("^(" + $m + ")$"))][0].hooks[0].command' "$hooks_json")
-  p95=$(timing 95 "$work/$input.json" sh -c "$hook")
-  own=$(perl -e 'printf "%.1f", $ARGV[0] - $ARGV[1]' "$p95" "$shell")
-  if perl -e 'exit($ARGV[0] <= $ARGV[1] ? 0 : 1)' "$own" "$BUDGET_MS"; then
+  # Baseline and hook measured back to back; a negative difference means the
+  # machine was busy during one of them, so measure both again (up to 3 times).
+  for _ in 1 2 3; do
+    shell=$(timing 50 "$work/$input.json" sh -c "$baseline")
+    p95=$(timing 95 "$work/$input.json" sh -c "$hook")
+    own=$(perl -e 'printf "%.1f", $ARGV[0] - $ARGV[1]' -- "$p95" "$shell")
+    perl -e 'exit($ARGV[0] >= 0 ? 0 : 1)' -- "$own" && break
+  done
+  if perl -e 'exit($ARGV[0] <= $ARGV[1] ? 0 : 1)' -- "$own" "$BUDGET_MS"; then
     printf 'guard (%s): %s ms own cost at p95 (budget %s ms; end to end %s ms, of which sh and jq startup %s ms)\n' \
       "$input" "$own" "$BUDGET_MS" "$p95" "$shell"
   else

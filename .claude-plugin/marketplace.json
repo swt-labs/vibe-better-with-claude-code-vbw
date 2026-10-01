@@ -10,11 +10,7 @@
   "plugins": [
     {
       "name": "vbw",
-      "source": {
-        "source": "git-subdir",
-        "url": "https://github.com/yidakee/vibe-better-with-claude-code-vbw.git",
-        "path": "plugin"
-      },
+      "source": "./plugin",
       "description": "Development lifecycle plugin: spec, executable contract, parallel build, mechanical proof, human acceptance",
       "version": "1.37.1",
       "license": "MIT",

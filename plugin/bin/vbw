@@ -40,6 +40,8 @@ usage: vbw <command> [args]
   statusline [status | on | off]   the VBW status line in your Claude settings
   todo [list] | add TEXT | done ID | drop ID   the backlog
   doctor            check everything VBW needs, with the fix for anything wrong
+  rtk [status]      the state of RTK (command-output compression)
+  report            diagnostic facts for a bug report about VBW (no spec text or code)
   commit PLAN MSG   commit a plan's declared files with provenance trailers
   version           print the plugin version
   help              this list
@@ -51,7 +53,7 @@ cmd="${1:-}"
 case "$cmd" in
   version) jq -r .version "$VBW_PLUGIN/.claude-plugin/plugin.json" ;;
   help|-h|--help) vbw_help ;;
-  init|status|todo|commit|next|show|spec|approve|check|prove|apply|run|plan|fix|req|ship|config|auto|statusline|doctor)
+  init|status|todo|commit|next|show|spec|approve|check|prove|apply|run|plan|fix|req|ship|config|auto|statusline|doctor|rtk|report)
     # shellcheck source=/dev/null
     . "$VBW_LIB/cmd-$cmd.sh"
     "cmd_$cmd" "$@"

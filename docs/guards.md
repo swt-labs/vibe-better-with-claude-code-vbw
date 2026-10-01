@@ -44,7 +44,7 @@ The Bash guard judges what the shell would execute, not the text:
 - Each simple command is found by splitting on `;`, `&&`, `||`, `|`, `&`,
   newlines, parentheses, braces and backticks. Its program is the first word
   after variable assignments and wrappers (`sudo`, `env`, `command`, `exec`,
-  `nohup`, `time`, `nice`, `timeout`, `xargs`, `if`/`then`/`do`/...).
+  `nohup`, `time`, `nice`, `timeout`, `xargs`, `rtk` (RTK's rewrites), `if`/`then`/`do`/...).
 - Quoted strings and heredoc bodies are data: `git commit -m "never rm -rf /"`
   is allowed (ledger D281).
 - What the shell runs from inside strings is judged too: `$(...)` and `` `...` ``

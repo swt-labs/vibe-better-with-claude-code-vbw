@@ -230,3 +230,10 @@ lease() {
   run as_agent Write "{\"file_path\": \"$PROJECT/src/other.js\"}"
   [ -z "$output" ]
 }
+
+@test "commands rewritten by RTK are judged like the originals" {
+  run bash_call 'rtk git reset --hard'
+  denied
+  run bash_call 'rtk git status'
+  [ -z "$output" ]
+}

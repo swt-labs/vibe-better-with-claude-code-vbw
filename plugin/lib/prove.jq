@@ -10,10 +10,11 @@ def ok: .status == "pass";
     | select($ids | length > 0)
     | { key: "req", target: $id,
         pass: all($ids[]; $checks[.] | ok),
+        built: all($r.plans[]; .status == "done" or (any(.reqs[]; . == $id) | not)),
         note: ([$ids[] | select($checks[.] | ok | not) | "\(.) \($checks[.].status)\(if $checks[.].exit != null then " (exit \($checks[.].exit))" else "" end)"] | join(", ")) } ]
   as $req_results
 | [ $ev.commands | to_entries[] | select(.value.status != "skipped")
-    | {key: "command", target: .key, pass: (.value | ok), note: "\(.key) \(.value.status)"} ]
+    | {key: "command", target: .key, pass: (.value | ok), built: all($r.plans[]; .status == "done"), note: "\(.key) \(.value.status)"} ]
   as $cmd_results
 
 # Requirements: proven when all their checks pass.
@@ -21,11 +22,15 @@ def ok: .status == "pass";
     | ([$req_results[] | select(.target == $q.id)][0]) as $res
     | if $res == null then . else .status = (if $res.pass then "proven" else "failing" end) end)
 
-# Fixes: close on pass; open on first failure; count a failed attempt after work.
+# Fixes: close on pass; open on a failure once the work is built (every plan
+# serving the requirement, or every plan for a project command, is done: before
+# that a failure is work in progress, not a defect); count a failed attempt
+# after work.
 | reduce ($req_results + $cmd_results)[] as $t (.;
     ([.fixes | to_entries[] | select(.value[$t.key] == $t.target and (.value.status | IN("open","fixed","escalated"))) | .key][0]) as $i
     | if $t.pass then
         (if $i != null then .fixes[$i].status = "closed" else . end)
+      elif $i == null and ($t.built | not) then .
       elif $i == null then
         .fixes += [{id: (.fixes | next_id("F")), ($t.key): $t.target, attempts: 0, status: "open", note: $t.note}]
       elif .fixes[$i].status == "fixed" then

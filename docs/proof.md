@@ -101,9 +101,13 @@ failing project command. Lifecycle:
 
 | Before prove | Target passes | Target fails |
 |---|---|---|
-| no fix item | nothing | new fix, `open`, `attempts` 0 |
+| no fix item | nothing | new fix, `open`, `attempts` 0, once the work is built (below) |
 | `open` (no work yet) | `closed` | stays `open` |
 | `fixed` (work committed) | `closed` | `attempts` + 1, back to `open`; `escalated` at the cap (3) |
+
+A failure opens a fix only once the work is built: every plan serving the
+requirement (for a project command: every plan) is `done`. Before that, a
+failing check is work in progress, not a defect, and opens nothing.
 
 An escalated fix is a human gate (`vbw next`).
 

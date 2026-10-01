@@ -211,7 +211,7 @@ build_pay() {
 }
 
 @test "a check that hangs is stopped at its timeout" {
-  edit_record '.checks[0] = {id:"C1", req:"R1", run:["sleep","30"], timeout: 1}'
+  edit_record '.checks[0] = {id:"C1", req:"R1", run:["sleep","30"], timeout: 1} | .plans[0].status = "done"'
   "$VBW" approve > /dev/null
   SECONDS=0
   vbw_run prove
@@ -261,4 +261,15 @@ build_pay() {
   "$VBW" approve > /dev/null
   vbw_run show contract
   [[ "$output" == *"(approved)"* ]]
+}
+
+@test "a requirement still being built fails without opening a fix" {
+  "$VBW" approve > /dev/null
+  printf 'unpaid\n' > src/pay.txt
+  vbw_run prove
+  [ "$status" -eq 1 ]
+  jq -e '.requirements[0].status == "failing" and .fixes == []' .vbw/record.json
+  edit_record '.plans[0].status = "done"'
+  vbw_run prove
+  jq -e '.fixes | length == 1 and .[0].req == "R1"' .vbw/record.json
 }
