@@ -57,3 +57,28 @@ failing_rules_for() {
   run failing_rules_for 'printf "%s\n" "ok"'
   [ -z "$output" ]
 }
+
+# failing_rules_with_hooks HOOKS_JSON: the failing standards for a plugin whose
+# only defect is its hooks.json.
+failing_rules_with_hooks() {
+  local bad="$TEST_ROOT/bad-plugin"
+  failing_rules_for 'printf "%s\n" "ok"' > /dev/null
+  mkdir -p "$bad/hooks"
+  printf '#!/bin/sh\n' > "$bad/hooks/x.sh"
+  printf '%s' "$1" > "$bad/hooks/hooks.json"
+  VBW_TEST_PLUGIN_ROOT="$bad" bats "$REPO_ROOT/tests/standards.bats" 2>/dev/null | sed -n 's/^not ok [0-9]* //p'
+}
+
+@test "hooks naming a missing file are caught" {
+  run failing_rules_with_hooks '{"hooks":{"Stop":[{"hooks":[{"type":"command","command":"bash \"${CLAUDE_PLUGIN_ROOT}/hooks/gone.sh\""}]}]}}'
+  [[ "$output" == *"every file a hook names exists"* ]]
+  run failing_rules_with_hooks '{"hooks":{"Stop":[{"hooks":[{"type":"command","command":"bash \"${CLAUDE_PLUGIN_ROOT}/hooks/x.sh\""}]}]}}'
+  [ -z "$output" ]
+}
+
+@test "per-tool-call hooks that start a shell or can exit non-zero are caught" {
+  run failing_rules_with_hooks '{"hooks":{"PreToolUse":[{"hooks":[{"type":"command","command":"bash \"${CLAUDE_PLUGIN_ROOT}/hooks/x.sh\""}]}]}}'
+  [[ "$output" == *"per-tool-call hooks run jq directly"* ]]
+  run failing_rules_with_hooks '{"hooks":{"PreToolUse":[{"hooks":[{"type":"command","command":"jq -n -f \"${CLAUDE_PLUGIN_ROOT}/hooks/x.sh\""}]}]}}'
+  [[ "$output" == *"per-tool-call hooks run jq directly"* ]]
+}

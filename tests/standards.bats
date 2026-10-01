@@ -25,7 +25,7 @@ code_grep() {
   while IFS= read -r file; do
     n=$(grep -cvE '^[[:space:]]*(#|$)' "$file" || true)
     total=$((total + n))
-  done < <(kernel_files; find "$PLUGIN_ROOT/lib" -type f -name '*.jq' 2>/dev/null)
+  done < <(kernel_files; find "$PLUGIN_ROOT/lib" "$PLUGIN_ROOT/hooks" -type f -name '*.jq' 2>/dev/null)
   echo "kernel lines: $total"
   [ "$total" -le 3000 ]
 }
@@ -105,4 +105,27 @@ code_grep() {
   jq -e '.plugins[0].source == "./plugin"' "$REPO_ROOT/marketplace.json"
   jq -e '.plugins[0].source.source == "git-subdir" and .plugins[0].source.path == "plugin"' "$REPO_ROOT/.claude-plugin/marketplace.json"
   [ "$(jq -r .version "$PLUGIN_ROOT/.claude-plugin/plugin.json")" = "$(tr -d '[:space:]' < "$REPO_ROOT/VERSION")" ]
+}
+
+@test "hooks.json is valid and every file a hook names exists in hooks/" {
+  local hooks="$PLUGIN_ROOT/hooks/hooks.json" cmd rest
+  [ -f "$hooks" ] || return 0
+  jq -e '.hooks | type == "object"' "$hooks"
+  while IFS= read -r cmd; do
+    [[ "$cmd" == *'${CLAUDE_PLUGIN_ROOT}/hooks/'* ]] || { echo "hook runs nothing from hooks/: $cmd"; false; }
+    rest=$cmd
+    while [[ "$rest" =~ \$\{CLAUDE_PLUGIN_ROOT\}/(hooks/[A-Za-z0-9._-]+) ]]; do
+      [ -f "$PLUGIN_ROOT/${BASH_REMATCH[1]}" ] || { echo "missing: ${BASH_REMATCH[1]}"; false; }
+      rest=${rest#*"${BASH_REMATCH[0]}"}
+    done
+  done < <(jq -r '.hooks[][].hooks[].command' "$hooks")
+}
+
+@test "per-tool-call hooks run jq directly and never exit non-zero (K20)" {
+  local hooks="$PLUGIN_ROOT/hooks/hooks.json" cmd
+  [ -f "$hooks" ] || return 0
+  while IFS= read -r cmd; do
+    [[ "$cmd" == "jq "* ]] || { echo "PreToolUse hook must be jq itself (no interpreter startup): $cmd"; false; }
+    [[ "$cmd" == *" || true" ]] || { echo "PreToolUse hook must never exit non-zero (exit 2 blocks the call): $cmd"; false; }
+  done < <(jq -r '.hooks.PreToolUse[]?.hooks[].command' "$hooks")
 }

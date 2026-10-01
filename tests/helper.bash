@@ -70,3 +70,13 @@ vbw_contract_hash() {
   # shellcheck disable=SC2016 # expanded by vbw_kernel
   vbw_kernel 'contract_hash "$(cat "$VBW_RECORD")"'
 }
+
+# vbw_hook EVENT [TOOL]: run the hooks.json command for EVENT (the entry whose
+# matcher matches TOOL) the way Claude Code does: through sh -c, hook input on
+# stdin, with CLAUDE_PLUGIN_ROOT and CLAUDE_PROJECT_DIR (HOOK_PROJECT_DIR, default
+# $PROJECT) set. Tests exercise hooks.json itself.
+vbw_hook() {
+  local cmd
+  cmd=$(jq -r --arg e "$1" --arg t "${2:-}" '[.hooks[$e][] | select($t == "" or ((.matcher // "") as $m | $t | test("^(" + $m + ")$")))][0].hooks[0].command' "$PLUGIN_ROOT/hooks/hooks.json")
+  CLAUDE_PLUGIN_ROOT="$PLUGIN_ROOT" CLAUDE_PROJECT_DIR="${HOOK_PROJECT_DIR:-$PROJECT}" sh -c "$cmd"
+}

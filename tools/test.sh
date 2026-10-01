@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Run every check: shellcheck on repo tooling, then the bats suite. Runs under
 # whatever `bash` is first on PATH, so CI runs it once with macOS /bin/bash 3.2
-# and once with bash 5. Exit status is the suite's own (no pipes).
+# and once with bash 5. Fails on the first failing stage (no pipes).
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -21,4 +21,7 @@ jobs=1
 if command -v parallel >/dev/null 2>&1; then
   jobs="$(getconf _NPROCESSORS_ONLN 2>/dev/null || echo 4)"
 fi
-exec bats --jobs "$jobs" tests
+# Timing budgets are measured first, while the machine is quiet.
+bash tools/bench-hooks.sh
+
+bats --jobs "$jobs" tests
