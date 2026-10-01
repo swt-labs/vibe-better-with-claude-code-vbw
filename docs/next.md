@@ -17,9 +17,9 @@ lifecycle. `vbw next --json` returns:
 | # | Condition | action | gate |
 |---|---|---|---|
 | 0 | a run lease is open | `run` (wait for its workflow if it is running in this session; otherwise `vbw run end`) | no |
-| 1 | milestone `shipped` | `milestone` (start the next milestone) | yes |
-| 2 | no requirements | `spec` (write requirements in `.vbw/spec.md`) | yes |
-| 3 | an `auto` requirement without checks, or no phases | `plan` (plan workflow: phases, plans, contract checks) | no |
+| 1 | milestone `shipped` | `milestone` (start the next one: `vbw milestone start TITLE`) | yes |
+| 2 | no requirements in the current milestone | `spec` (write its requirements in `.vbw/spec.md`) | yes |
+| 3 | the current milestone has no phases, an `auto` requirement has no check, or a current `auto` requirement is in no plan | `plan` (plan workflow: phases, plans, contract checks) | no |
 | 4 | contract not approved (never approved, or changed since) | `approve` (review and approve the contract) | yes |
 | 5 | a plan is `blocked` | `unblock` (a builder reported a blocker) | yes |
 | 6 | plans ready to build: not `done`, every `after` plan `done` | `build` (the ready plans: one wave) | no |

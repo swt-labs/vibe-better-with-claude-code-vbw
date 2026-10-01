@@ -57,7 +57,7 @@ write_spec() {
   printf '# Shop\r\n\r\n## Requirements\r\n\r\n- R1 [auto] Sign up\r\n' > .vbw/spec.md
   vbw_run spec sync
   [ "$status" -eq 0 ]
-  jq -e '.requirements == [{id:"R1", text:"Sign up", proof:"auto", status:"open"}]' .vbw/record.json
+  jq -e '.requirements == [{id:"R1", text:"Sign up", proof:"auto", status:"open", milestone:"M1"}]' .vbw/record.json
 }
 
 @test "sync adds, changes (resetting status) and removes requirements, in spec order" {
@@ -76,7 +76,7 @@ write_spec() {
   [ "$status" -eq 0 ]
   [[ "$output" == *"changed R2 (status reset to open)"* ]]
   [[ "$output" == *"removed R1"* ]]
-  jq -e '.requirements == [{id:"R2", text:"Pay by card or wallet", proof:"auto", status:"open"}]' .vbw/record.json
+  jq -e '.requirements == [{id:"R2", text:"Pay by card or wallet", proof:"auto", status:"open", milestone:"M1"}]' .vbw/record.json
 }
 
 @test "sync keeps the status of unchanged requirements" {
@@ -88,17 +88,38 @@ write_spec() {
   jq -e '.requirements[0].status == "proven"' .vbw/record.json
 }
 
-@test "sync refuses to remove a requirement that is still referenced, and changes nothing" {
+@test "removing a requirement removes its checks and the unstarted plans that only served it" {
   write_spec '- R1 [auto] Pay
 - R2 [auto] Refund
 '
   "$VBW" spec sync > /dev/null
-  jq '.checks = [{id:"C1", req:"R2", run:["true"]}]' .vbw/record.json > "$TEST_ROOT/r.json" && cp "$TEST_ROOT/r.json" .vbw/record.json
+  jq '.checks = [{id:"C1", req:"R1", run:["true"]}, {id:"C2", req:"R2", run:["true"]}]
+      | .phases = [{id:"P1", title:"Pay", reqs:["R1","R2"], milestone:"M1"}]
+      | .plans = [{id:"P1.1", phase:"P1", title:"Pay", reqs:["R1"], files:["a"], after:[], status:"planned"},
+                  {id:"P1.2", phase:"P1", title:"Refund", reqs:["R2"], files:["b"], after:["P1.1"], status:"planned"},
+                  {id:"P1.3", phase:"P1", title:"Both", reqs:["R1","R2"], files:["c"], after:["P1.2"], status:"planned"}]' \
+    .vbw/record.json > "$TEST_ROOT/r.json" && cp "$TEST_ROOT/r.json" .vbw/record.json
+  write_spec '- R1 [auto] Pay'
+  vbw_run spec sync
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"removed R2 and its checks C2"* ]]
+  jq -e '[.checks[].id] == ["C1"] and [.plans[].id] == ["P1.1", "P1.3"]
+         and .plans[1].reqs == ["R1"] and .plans[1].after == [] and .phases[0].reqs == ["R1"]' .vbw/record.json
+}
+
+@test "removing a requirement whose plan has started is refused, and changes nothing" {
+  write_spec '- R1 [auto] Pay
+- R2 [auto] Refund
+'
+  "$VBW" spec sync > /dev/null
+  jq '.phases = [{id:"P1", title:"Pay", reqs:["R1","R2"], milestone:"M1"}]
+      | .plans = [{id:"P1.1", phase:"P1", title:"Refund", reqs:["R2"], files:["b"], after:[], status:"done"}]' \
+    .vbw/record.json > "$TEST_ROOT/r.json" && cp "$TEST_ROOT/r.json" .vbw/record.json
   cp .vbw/record.json "$TEST_ROOT/before.json"
   write_spec '- R1 [auto] Pay'
   vbw_run spec sync
   [ "$status" -eq 1 ]
-  [[ "$output" == *"C1 references unknown requirement R2"* ]]
+  [[ "$output" == *"P1.1 (done) serves only R2"* ]]
   cmp .vbw/record.json "$TEST_ROOT/before.json"
 }
 

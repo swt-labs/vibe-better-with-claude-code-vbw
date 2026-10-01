@@ -13,12 +13,13 @@ setup() {
   "schema": 1,
   "project": { "name": "Shop" },
   "milestone": { "id": "M1", "title": "Checkout", "status": "active" },
+  "shipped": [],
   "requirements": [
-    { "id": "R1", "text": "Pay by card", "proof": "auto", "status": "failing" },
-    { "id": "R2", "text": "Looks trustworthy", "proof": "human", "status": "open" }
+    { "id": "R1", "text": "Pay by card", "proof": "auto", "status": "failing", "milestone": "M1" },
+    { "id": "R2", "text": "Looks trustworthy", "proof": "human", "status": "open", "milestone": "M1" }
   ],
   "checks": [ { "id": "C1", "req": "R1", "run": ["npm", "test"], "files": ["tests/pay.test.ts"], "exit": 0, "output": "passed", "timeout": 60 } ],
-  "phases": [ { "id": "P1", "title": "Payments", "reqs": ["R1", "R2"] } ],
+  "phases": [ { "id": "P1", "title": "Payments", "reqs": ["R1", "R2"], "milestone": "M1" } ],
   "plans": [
     { "id": "P1.1", "phase": "P1", "title": "Card form", "reqs": ["R1"], "files": ["src/pay.ts"],
       "after": [], "status": "done" },
@@ -50,7 +51,7 @@ violations_after() {
 }
 
 @test "the minimal record written by vbw init is valid" {
-  run bash -c 'jq -n --arg n "x" "{schema:1, project:{name:\$n}, milestone:{id:\"M1\",title:\"First milestone\",status:\"active\"}, requirements:[], checks:[], phases:[], plans:[], fixes:[], todos:[], decisions:[], commands:{}, settings:{profile:\"balanced\",autonomy_cap:25}, evidence:null, lease:null}" | jq -c -f "$1"' _ "$VALIDATOR"
+  run bash -c 'jq -n --arg n "x" "{schema:1, project:{name:\$n}, milestone:{id:\"M1\",title:\"First milestone\",status:\"active\"}, shipped:[], requirements:[], checks:[], phases:[], plans:[], fixes:[], todos:[], decisions:[], commands:{}, settings:{profile:\"balanced\",autonomy_cap:25}, evidence:null, lease:null}" | jq -c -f "$1"' _ "$VALIDATOR"
   [ "$output" = "[]" ]
 }
 

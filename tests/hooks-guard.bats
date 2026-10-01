@@ -180,7 +180,7 @@ as_agent() {
 lease() {
   jq --arg at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" --arg k "$1" --argjson f "$2" \
     '.checks = [{id: "C1", req: "R1", run: ["true"], files: ["tests/pay.test.js"]}]
-     | .requirements = [{id: "R1", text: "Pay", proof: "auto", status: "open"}]
+     | .requirements = [{id: "R1", text: "Pay", proof: "auto", status: "open", milestone: "M1"}]
      | .lease = {run: "r1", kind: $k, started_at: $at, files: $f}' .vbw/record.json > "$TEST_ROOT/l.json"
   cp "$TEST_ROOT/l.json" .vbw/record.json
 }

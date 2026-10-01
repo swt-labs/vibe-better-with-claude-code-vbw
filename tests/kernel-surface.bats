@@ -22,7 +22,7 @@ edit_record() {
 proven_project() {
   mkdir -p src && printf 'paid\n' > src/pay.txt
   edit_record '.checks = [{id: "C1", req: "R1", run: ["grep", "-qx", "paid", "src/pay.txt"]}]
-    | .phases = [{id: "P1", title: "Pay", reqs: ["R1", "R2"]}]
+    | .phases = [{id: "P1", title: "Pay", reqs: ["R1", "R2"], milestone: "M1"}]
     | .plans = [{id: "P1.1", phase: "P1", title: "Pay", reqs: ["R1"], files: ["src/pay.txt"], after: [], status: "done"}]'
   "$VBW" approve > /dev/null
   "$VBW" prove > /dev/null
@@ -124,7 +124,7 @@ gate() {
 
 @test "the gate blocks the stop with the next step and counts it" {
   edit_record '.checks = [{id: "C1", req: "R1", run: ["true"]}]
-    | .phases = [{id: "P1", title: "Pay", reqs: ["R1", "R2"]}]
+    | .phases = [{id: "P1", title: "Pay", reqs: ["R1", "R2"], milestone: "M1"}]
     | .plans = [{id: "P1.1", phase: "P1", title: "Pay", reqs: ["R1"], files: ["a.txt"], after: [], status: "planned"}]'
   "$VBW" approve > /dev/null
   "$VBW" auto on s1 > /dev/null
@@ -145,7 +145,7 @@ gate() {
 @test "the gate stops and disarms at a decision that needs the user" {
   "$VBW" auto on s1 > /dev/null
   edit_record '.checks = [{id: "C1", req: "R1", run: ["true"]}]
-    | .phases = [{id: "P1", title: "Pay", reqs: ["R1", "R2"]}]
+    | .phases = [{id: "P1", title: "Pay", reqs: ["R1", "R2"], milestone: "M1"}]
     | .plans = [{id: "P1.1", phase: "P1", title: "Pay", reqs: ["R1"], files: ["a.txt"], after: [], status: "planned"}]'
   run gate s1
   echo "$output" | jq -e '(.decision // "allow") != "block" and (.systemMessage | contains("needs you. approve"))'
@@ -155,7 +155,7 @@ gate() {
 @test "the gate stops and disarms at the step cap" {
   "$VBW" config set autonomy_cap 1 > /dev/null
   edit_record '.checks = [{id: "C1", req: "R1", run: ["true"]}]
-    | .phases = [{id: "P1", title: "Pay", reqs: ["R1", "R2"]}]
+    | .phases = [{id: "P1", title: "Pay", reqs: ["R1", "R2"], milestone: "M1"}]
     | .plans = [{id: "P1.1", phase: "P1", title: "Pay", reqs: ["R1"], files: ["a.txt"], after: [], status: "planned"}]'
   "$VBW" approve > /dev/null
   "$VBW" auto on s1 > /dev/null

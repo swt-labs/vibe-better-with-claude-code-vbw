@@ -55,12 +55,53 @@ edit_record() {
   cmp .vbw/record.json "$TEST_ROOT/before.json"
 }
 
-@test "apply is refused once the build has started" {
+@test "re-planning mid-milestone keeps started plans exactly as they are" {
   apply_plan
   edit_record '.plans[0].status = "done"'
+  # A changed started plan is refused.
+  run bash -c 'printf "%s" "$1" | "$2" apply' _ "$(printf '%s' "$PLAN" | jq '.plans[0].files += ["src/extra.txt"]')" "$VBW"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"P1.1 is done: a plan that has started must stay as it is"* ]]
+  # The same started plan plus a new one is accepted; the done plan stays done.
+  run bash -c 'printf "%s" "$1" | "$2" apply' _ "$(printf '%s' "$PLAN" | jq '.plans += [{id: "P1.3", phase: "P1", title: "Refund", reqs: ["R2"], files: ["src/refund.txt"]}]')" "$VBW"
+  [ "$status" -eq 0 ]
+  jq -e '.plans[0].status == "done" and .plans[2].id == "P1.3" and .plans[2].status == "planned"' .vbw/record.json
+}
+
+@test "apply is refused while a build run is open" {
+  apply_plan
+  "$VBW" run start build P1.1 > /dev/null
   run bash -c 'printf "%s" "$1" | "$2" apply' _ "$PLAN" "$VBW"
   [ "$status" -eq 1 ]
-  [[ "$output" == *"the build has started"* ]]
+  [[ "$output" == *"a build run is open"* ]]
+}
+
+@test "a new milestone keeps the shipped one's phases, plans and checks; its checks keep guarding" {
+  apply_plan
+  edit_record '.plans[].status = "done" | .milestone.status = "shipped"
+    | .shipped = [{id: "M1", title: "First milestone", at: "2026-10-01T09:00:00Z"}]'
+  vbw_run milestone start "Exports"
+  [ "$status" -eq 0 ]
+  jq -e '.milestone == {id: "M2", title: "Exports", status: "active"}' .vbw/record.json
+  vbw_run next --json
+  echo "$output" | jq -e '.action == "spec"'
+  "$VBW" spec add auto "A customer can export to CSV" > /dev/null
+  jq -e '.requirements[-1] | .id == "R3" and .milestone == "M2"' .vbw/record.json
+  run bash -c 'printf "%s" "$1" | "$2" apply' _ '{"phases": [{"id": "P2", "title": "Exports", "reqs": ["R3"]}],
+    "plans": [{"id": "P2.1", "phase": "P2", "title": "CSV", "reqs": ["R3"], "files": ["src/csv.txt"]}],
+    "checks": [{"id": "C3", "req": "R3", "run": ["true"]}]}' "$VBW"
+  [ "$status" -eq 0 ]
+  jq -e '[.phases[].id] == ["P1", "P2"] and [.plans[].id] == ["P1.1", "P1.2", "P2.1"]
+         and [.checks[].id] == ["C1", "C2", "C3"] and .phases[1].milestone == "M2"' .vbw/record.json
+  vbw_run status
+  [[ "$output" == *"requirements: 0/1 proven"* ]]
+  [[ "$output" == *"shipped: M1 First milestone"* ]]
+}
+
+@test "a milestone that has not shipped cannot be followed by another" {
+  vbw_run milestone start "Too early"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"M1 is not shipped yet"* ]]
 }
 
 # --- run lease ---------------------------------------------------------------

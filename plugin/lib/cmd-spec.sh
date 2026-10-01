@@ -41,20 +41,39 @@ spec_parse() {
 
 # Bring the record's requirements in line with the spec, in spec order.
 spec_sync() {
-  local reqs
+  local reqs blocked
   reqs=$(printf '%s' "$1" | jq -c '.requirements')
+  # A requirement removed from the spec takes its checks with it, and the plans
+  # that only served it, unless such a plan has already started: that work is
+  # never thrown away without the user deciding.
+  blocked=$(record_read | jq -r --argjson s "$reqs" '
+    [.requirements[].id | select(. as $id | any($s[]; .id == $id) | not)] as $gone
+    | [.plans[] | select(.status != "planned")
+        | select(all(.reqs[]; . as $q | any($gone[]; . == $q)))
+        | "\(.id) (\(.status)) serves only \(.reqs | join(", "))"] | join("; ")')
+  [ -z "$blocked" ] || vbw_die "the spec removes requirements whose plans have already started: $blocked. Keep them in the spec, or reset those plans first (vbw plan reset)"
   record_read | jq -r --argjson s "$reqs" '
-    .requirements as $old
+    . as $rec | .requirements as $old
     | ($s[] | . as $n | [$old[] | select(.id == $n.id)][0] as $o
        | if $o == null then "added \(.id)"
          elif $o.text != .text or $o.proof != .proof then "changed \(.id) (status reset to open)"
          else empty end),
-      ($old[] | select(.id as $id | any($s[]; .id == $id) | not) | "removed \(.id)")'
-  record_update '.requirements as $old
-    | .requirements = [$s[] | . as $n | [$old[] | select(.id == $n.id)][0] as $o
+      ($old[] | select(.id as $id | any($s[]; .id == $id) | not) | .id as $id
+        | "removed \($id)" + ([$rec.checks[] | select(.req == $id) | .id] | if length > 0 then " and its checks \(join(", "))" else "" end))'
+  record_update '.milestone.id as $m
+    | .requirements as $old
+    | [$old[].id | select(. as $id | any($s[]; .id == $id) | not)] as $gone
+    | def kept: . as $q | any($gone[]; . == $q) | not;
+      .requirements = [$s[] | . as $n | [$old[] | select(.id == $n.id)][0] as $o
         | if $o == null or $o.text != $n.text or $o.proof != $n.proof
-          then {id: $n.id, text: $n.text, proof: $n.proof, status: "open"}
-          else $o end]' --argjson s "$reqs"
+          then {id: $n.id, text: $n.text, proof: $n.proof, status: "open", milestone: $m}
+          else $o end]
+    | .checks = [.checks[] | select(.req | kept)]
+    | .fixes = [.fixes[] | select((has("req") | not) or (.req | kept))]
+    | .plans = [.plans[] | .reqs = [.reqs[] | select(kept)] | select(.reqs | length > 0)]
+    | ([.plans[].id]) as $ids
+    | .plans = [.plans[] | .after = [.after[] | select(. as $a | any($ids[]; . == $a))]]
+    | .phases = [.phases[] | .reqs = [.reqs[] | select(kept)] | select(.reqs | length > 0)]' --argjson s "$reqs"
   printf 'record has %s requirements\n' "$(jq '.requirements | length' "$VBW_RECORD")"
 }
 

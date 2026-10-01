@@ -15,7 +15,7 @@ setup() {
   # C1 passes once src/pay.txt says "paid".
   printf 'grep -qx paid src/pay.txt\n' > tests/pay.sh
   edit_record '.checks = [{id:"C1", req:"R1", run:["sh","tests/pay.sh"], files:["tests/pay.sh"]}]
-    | .phases = [{id:"P1", title:"Pay", reqs:["R1","R2"]}]
+    | .phases = [{id:"P1", title:"Pay", reqs:["R1","R2"], milestone: "M1"}]
     | .plans = [{id:"P1.1", phase:"P1", title:"Pay", reqs:["R1"], files:["src/pay.txt"], after:[], status:"planned"}]'
   git add -A && git commit -q -m "chore(vbw): plan"
 }

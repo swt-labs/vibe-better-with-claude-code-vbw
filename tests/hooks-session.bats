@@ -30,7 +30,7 @@ session_start() {
   local ctx
   ctx=$(printf '%s' "$output" | jq -r '.hookSpecificOutput.additionalContext')
   [[ "$ctx" == *"project with space · M1 First milestone"* ]]
-  [[ "$ctx" == *"Next: spec (needs you): Write the goals and requirements"* ]]
+  [[ "$ctx" == *"Next: spec (needs you): Write the requirements for M1"* ]]
   [[ "$ctx" != *"resume"* ]]
   [ "$(find . \( -path ./.git -o -path ./.vbw/runtime \) -prune -o -type f -print | LC_ALL=C sort | xargs shasum)" = "$before" ]
 }

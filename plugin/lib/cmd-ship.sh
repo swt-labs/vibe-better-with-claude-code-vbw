@@ -11,9 +11,10 @@ cmd_ship() {
   local action
   action=$(cmd_next --json | jq -r .action)
   [ "$action" = ship ] || vbw_die "not ready to ship: vbw next says $action ($(cmd_next | cut -d: -f2- | sed 's/^ //'))"
-  record_update "$VBW_JQ_DEFS"'.milestone.status = "shipped"
+  record_update "$VBW_JQ_DEFS"'.milestone.id as $m | .milestone.status = "shipped"
+    | .shipped += [{id: .milestone.id, title: .milestone.title, at: $at}]
     | .decisions += [{id: (.decisions | next_id("D")), at: $at,
-        text: "Shipped \(.milestone.id) \(.milestone.title): \(.requirements | length) requirements proven or accepted"}]' \
+        text: "Shipped \(.milestone.id) \(.milestone.title): \([.requirements[] | select(.milestone == $m)] | length) requirements proven or accepted"}]' \
     --arg at "$(vbw_now)"
   record_commit "chore(vbw): ship $(jq -r .milestone.id "$VBW_RECORD")"
   jq -r '"shipped \(.milestone.id) \(.milestone.title)"' "$VBW_RECORD"

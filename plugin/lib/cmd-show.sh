@@ -13,11 +13,14 @@ cmd_show() {
     roadmap)
       printf '%s' "$record" | jq -r "$SHOW_JQ_DEFS"'
         . as $r
-        | "\(.milestone.id) \(.milestone.title) [\(.milestone.status)]",
-        (.phases[] as $ph
-          | "  \($ph.id) \($ph.title) [\($ph | phase_status($r))]",
-            (.plans[] | select(.phase == $ph.id)
-              | "    \(.id) \(.title) [\(.status)]\(if (.after | length) > 0 then " after \(.after | join(", "))" else "" end)"))'
+        | (.shipped[] | "\(.id) \(.title) [shipped \(.at[0:10])]"),
+          (if .milestone.status == "shipped" then empty else
+             "\(.milestone.id) \(.milestone.title) [\(.milestone.status)]",
+             ((.phases[] | select(.milestone == $r.milestone.id)) as $ph
+               | "  \($ph.id) \($ph.title) [\($ph | phase_status($r))]",
+                 ($r.plans[] | select(.phase == $ph.id)
+                   | "    \(.id) \(.title) [\(.status)]\(if (.after | length) > 0 then " after \(.after | join(", "))" else "" end)"))
+           end)'
       ;;
     phase)
       [ $# -eq 1 ] || vbw_usage_error "usage: vbw show phase ID"

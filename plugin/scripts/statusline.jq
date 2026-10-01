@@ -36,8 +36,9 @@ def sep: " │ " | dim;
 | ( if ($rec | type) != "object" then
       c("36"; "[VBW]") + " " + ("no project here · /vbw:init to start" | dim)
     else
-      ([$rec.requirements[]? | select(.status == "proven" or .status == "accepted")] | length) as $done
-      | ($rec.requirements | length) as $total
+      [$rec.requirements[]? | select(.milestone == $rec.milestone.id)] as $cur
+      | ([$cur[] | select(.status == "proven" or .status == "accepted")] | length) as $done
+      | ($cur | length) as $total
       | (if $rec.lease != null then
            c("36"; "▶ \($rec.lease.kind)\(if $rec.lease.kind == "build" then ": " + ([$rec.plans[]? | select(.status == "building") | .id] | join(", ")) else "" end)")
          elif $next != null and $next.gate then c("33"; "needs you: \($next.action)")

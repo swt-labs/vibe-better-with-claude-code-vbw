@@ -55,6 +55,14 @@ JSON
 3. `vbw show contract` shows what the user will approve. Read it once as they
    will.
 
+**Planning again** (a new milestone, or a changed spec mid-milestone): read
+`vbw show roadmap` first. `vbw apply` replaces only the current milestone's
+phases, plans and checks; earlier milestones stay as they are. Every plan that
+has started (building, done, blocked) must appear in your apply exactly as it
+is; plan only the remaining work around it. Use ids that are not taken yet
+(the next phase number after the highest one). Never change the check files of
+earlier milestones or of finished plans: they guard work that is done.
+
 Do not edit `.vbw/spec.md` or `.vbw/record.json`; do not commit. If the spec
 is too vague to plan a requirement, say so in `blockers` instead of guessing.
 

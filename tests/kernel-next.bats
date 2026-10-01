@@ -11,10 +11,10 @@ setup() {
   # A fully built and proven milestone: every row's condition is false, so each
   # test flips exactly the fields its row needs.
   jq '.requirements = [
-        {id:"R1", text:"Pay", proof:"auto", status:"proven"},
-        {id:"R2", text:"Trustworthy", proof:"human", status:"accepted"}]
+        {id:"R1", text:"Pay", proof:"auto", status:"proven", milestone: "M1"},
+        {id:"R2", text:"Trustworthy", proof:"human", status:"accepted", milestone: "M1"}]
       | .checks = [{id:"C1", req:"R1", run:["true"]}]
-      | .phases = [{id:"P1", title:"Pay", reqs:["R1","R2"]}]
+      | .phases = [{id:"P1", title:"Pay", reqs:["R1","R2"], milestone: "M1"}]
       | .plans = [
           {id:"P1.1", phase:"P1", title:"Form", reqs:["R1"], files:["a.js"], after:[], status:"done"},
           {id:"P1.2", phase:"P1", title:"Receipt", reqs:["R1"], files:["b.js"], after:["P1.1"], status:"done"},
@@ -40,7 +40,7 @@ next_after() {
 }
 
 @test "row 1: a shipped milestone asks for the next milestone" {
-  run next_after '.milestone.status = "shipped"'
+  run next_after '.milestone.status = "shipped" | .shipped = [{id: "M1", title: "First milestone", at: "2026-10-01T09:00:00Z"}]'
   echo "$output" | jq -e '.action == "milestone" and .gate == true'
 }
 

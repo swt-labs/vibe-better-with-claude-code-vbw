@@ -43,7 +43,7 @@ render() { cc_json | NO_COLOR=1 bash "$SL"; }
   "$VBW" init > /dev/null
   printf '# x\n\n## Requirements\n\n- R1 [auto] One\n' > .vbw/spec.md
   "$VBW" spec sync > /dev/null
-  jq '.checks = [{id: "C1", req: "R1", run: ["true"]}] | .phases = [{id: "P1", title: "A", reqs: ["R1"]}]
+  jq '.checks = [{id: "C1", req: "R1", run: ["true"]}] | .phases = [{id: "P1", title: "A", reqs: ["R1"], milestone: "M1"}]
       | .plans = [{id: "P1.1", phase: "P1", title: "A", reqs: ["R1"], files: ["a"], after: [], status: "planned"}]' \
     .vbw/record.json > "$TEST_ROOT/r.json" && cp "$TEST_ROOT/r.json" .vbw/record.json
   "$VBW" run start build P1.1 > /dev/null

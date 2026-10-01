@@ -25,10 +25,17 @@ section, where every bullet is a requirement:
 - Any other bullet in the section is an error, reported with its line number.
 
 `vbw spec check` validates the file. `vbw spec sync` validates it and brings
-the record in line: new ids are added as `open`, changed text or proof resets
-the requirement to `open`, and ids removed from the spec are removed from the
-record, which is refused while anything (a check, phase, plan or fix) still
-references them. The kernel never rewrites the spec; `vbw spec add auto|human
+the record in line: new ids are added as `open` to the current milestone,
+changed text or proof resets the requirement to `open` (in the current
+milestone), and an id removed from the spec is removed from the record with its
+checks, its fix items, and the unstarted plans that served only it. Removing a
+requirement whose only plans have already started is refused: built work is
+never discarded without the user deciding.
+
+The spec keeps every milestone's requirements. After a milestone ships, its
+requirements stay (their checks keep running in every proof, guarding the
+shipped work), and `vbw milestone start TITLE` opens the next milestone for new
+requirements. The kernel never rewrites the spec; `vbw spec add auto|human
 TEXT` only appends a line.
 
 ## Checks

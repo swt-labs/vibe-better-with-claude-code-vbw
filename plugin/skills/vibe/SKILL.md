@@ -93,8 +93,17 @@ wrong: ask what, then `vbw req reject <id> "<their words>"`. Skip: leave it.
 **ship** (needs the user): summarize what was delivered (`vbw status`,
 `vbw show roadmap`) and ask whether to ship. Yes: `vbw ship`.
 
-**milestone**: the milestone is shipped. Starting the next milestone is not
-available in this version of VBW yet; say so.
+**milestone** (needs the user): the milestone is shipped. Ask what the next one is
+about, start it with `vbw milestone start "<title>"`, then continue with `spec`
+for its requirements. Shipped requirements stay in the spec and their checks
+keep running in every proof, so new work cannot silently break shipped work.
+
+**Changing the plan** (the user wants to add, change or drop something mid-way):
+add with `vbw spec add`, or edit `.vbw/spec.md` and run `vbw spec sync`
+(dropping a requirement removes its checks and the unstarted plans that only
+served it; work already started is kept unless the user resets it). Then
+`vbw next` asks for planning again: the planner keeps finished work as it is,
+and the user approves the changed contract.
 
 ## Rules
 

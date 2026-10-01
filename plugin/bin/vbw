@@ -35,6 +35,7 @@ usage: vbw <command> [args]
   fix done|retry ID   a fix's work is committed; retry an escalated fix once more
   req accept ID | req reject ID NOTE   the user's verdict on a [human] requirement
   ship              mark the milestone shipped (when vbw next says ship)
+  milestone start TITLE   open the next milestone after shipping
   config [set KEY VALUE | models]   project settings: profile, autonomy_cap, model.ROLE
   auto on SESSION_ID|off|status|gate   autonomous runs for one session (gate: the Stop hook)
   statusline [status | on | off]   the VBW status line in your Claude settings
@@ -53,7 +54,7 @@ cmd="${1:-}"
 case "$cmd" in
   version) jq -r .version "$VBW_PLUGIN/.claude-plugin/plugin.json" ;;
   help|-h|--help) vbw_help ;;
-  init|status|todo|commit|next|show|spec|approve|check|prove|apply|run|plan|fix|req|ship|config|auto|statusline|doctor|rtk|report)
+  init|status|todo|commit|next|show|spec|approve|check|prove|apply|run|plan|fix|req|ship|config|auto|statusline|doctor|rtk|report|milestone)
     # shellcheck source=/dev/null
     . "$VBW_LIB/cmd-$cmd.sh"
     "cmd_$cmd" "$@"

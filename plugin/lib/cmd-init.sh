@@ -18,6 +18,7 @@ cmd_init() {
     schema: 1,
     project: {name: $name},
     milestone: {id: "M1", title: "First milestone", status: "active"},
+    shipped: [],
     requirements: [], checks: [], phases: [], plans: [],
     fixes: [], todos: [], decisions: [],
     commands: $commands,

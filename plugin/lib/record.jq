@@ -39,14 +39,15 @@ if type != "object" then ["record must be a JSON object"] else
 | (arr("checks")) as $checks
 | (arr("phases")) as $phases
 | (arr("plans")) as $plans
+| ([($r.shipped // [])[]?.id] + [$r.milestone.id?]) as $milestones
 | ($plans | map({key: .id, value: (.after // [])}) | from_entries) as $graph
 | [
     ( select($r.schema != 1) | "schema must be 1" ),
     ( $r | keys[]
       | select(one_of(["schema","project","milestone","requirements","checks","phases","plans",
-                       "fixes","todos","decisions","commands","settings","evidence","lease"]) | not)
+                       "fixes","todos","decisions","commands","settings","evidence","lease","shipped"]) | not)
       | "unknown key: \(.)" ),
-    ( ["requirements","checks","phases","plans","fixes","todos","decisions"][]
+    ( ["requirements","checks","phases","plans","fixes","todos","decisions","shipped"][]
       | select(($r[.] | type) != "array") | "\(.) must be an array" ),
 
     ( select(($r.project.name? | nonempty) | not) | "project.name must be a non-empty string" ),
@@ -54,6 +55,13 @@ if type != "object" then ["record must be a JSON object"] else
       | ( select((.id? | type == "string" and test("^M[0-9]+$")) | not) | "milestone.id must look like M1" ),
         ( select((.title? | nonempty) | not) | "milestone.title must be a non-empty string" ),
         ( select((.status? | one_of(["active","shipped"])) | not) | "milestone.status must be active or shipped" ) ),
+    ( arr("shipped")[]
+      | ( select(((.id | type == "string" and test("^M[0-9]+$")) and (.title | nonempty) and (.at | iso)) | not)
+          | "shipped milestones need an id, a title and an ISO-8601 UTC time" ),
+        ( keys[] | select(one_of(["id","title","at"]) | not) | "a shipped milestone has an unknown field: \(.)" ) ),
+    ( arr("shipped") | [.[].id] | group_by(.) | map(select(length > 1) | "milestone \(.[0]) is shipped twice") | .[] ),
+    ( select(($r.milestone.status == "shipped") != any(arr("shipped")[]; .id == $r.milestone.id))
+      | "the current milestone is shipped exactly when it is in shipped" ),
 
     id_rules($reqs; "^R[0-9]+$"),
     id_rules($checks; "^C[0-9]+$"),
@@ -64,7 +72,8 @@ if type != "object" then ["record must be a JSON object"] else
     id_rules(arr("decisions"); "^D[0-9]+$"),
 
     ( $reqs[]
-      | field_rule(["id","text","proof","status"]),
+      | field_rule(["id","text","proof","status","milestone"]),
+        ( . as $q | select((.milestone | one_of($milestones)) | not) | "\(.id) belongs to unknown milestone \(.milestone)" ),
         ( select((.text | nonempty) | not) | "\(.id) needs non-empty text" ),
         ( select((.proof | one_of(["auto","human"])) | not) | "\(.id) proof must be auto or human" ),
         status_rule(["open","failing","proven","accepted","rejected"]),
@@ -83,7 +92,8 @@ if type != "object" then ["record must be a JSON object"] else
         ( select(has("timeout") and ((.timeout | int_in(1; 3600)) | not)) | "\(.id) timeout must be 1-3600 seconds" ) ),
 
     ( $phases[]
-      | field_rule(["id","title","reqs"]),
+      | field_rule(["id","title","reqs","milestone"]),
+        ( select((.milestone | one_of($milestones)) | not) | "\(.id) belongs to unknown milestone \(.milestone)" ),
         ( select((.reqs | type == "array" and length > 0) | not) | "\(.id) needs a non-empty reqs array" ),
         ( select((.title | nonempty) | not) | "\(.id) needs a non-empty title" ),
         ( . as $p | (.reqs // [])[] | . as $x | select(($reqs | has_id($x)) | not) | "\($p.id) references unknown requirement \(.)" ) ),

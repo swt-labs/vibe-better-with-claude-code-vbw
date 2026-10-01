@@ -6,7 +6,9 @@
 def result($action; $gate; $instruction; $detail):
   {action: $action, gate: $gate, instruction: $instruction, detail: $detail};
 
-(.plans | map(select(.status == "done") | .id)) as $done
+.milestone.id as $m
+| [.requirements[] | select(.milestone == $m)] as $current
+| (.plans | map(select(.status == "done") | .id)) as $done
 | ([.plans[] | select(.status != "done" and .status != "blocked")
              | select(all((.after // [])[]; . as $a | any($done[]; . == $a)))
              | .id]) as $ready
@@ -15,14 +17,16 @@ def result($action; $gate; $instruction; $detail):
 | ([.fixes[] | select(.status == "open") | .id]) as $open_fixes
 | (.evidence == null or .evidence.contract != $contract or $code_changed) as $stale
 | ([.requirements[] | select(.proof == "auto" and (.status != "proven" or $stale)) | .id]) as $unproven
-| ([.requirements[] | select(.proof == "human" and .status == "open") | .id]) as $to_accept
+| ([$current[] | select(.proof == "human" and .status == "open") | .id]) as $to_accept
 | if .lease != null then
     result("run"; false; "A VBW \(.lease.kind) run (\(.lease.run)) is open: if its workflow is still running in this session, wait for it; otherwise run vbw run end"; {lease: .lease})
   elif .milestone.status == "shipped" then
-    result("milestone"; true; "Milestone \(.milestone.id) is shipped: start the next milestone"; {})
-  elif (.requirements | length) == 0 then
-    result("spec"; true; "Write the goals and requirements in .vbw/spec.md"; {})
-  elif (.phases | length) == 0 or (.checks as $c | any(.requirements[]; .proof == "auto" and (.id as $id | any($c[]; .req == $id) | not))) then
+    result("milestone"; true; "Milestone \(.milestone.id) is shipped: start the next milestone (vbw milestone start TITLE)"; {})
+  elif ($current | length) == 0 then
+    result("spec"; true; "Write the requirements for \(.milestone.id) \(.milestone.title) in .vbw/spec.md"; {})
+  elif ([.phases[] | select(.milestone == $m)] | length) == 0
+       or (.checks as $c | any(.requirements[]; .proof == "auto" and (.id as $id | any($c[]; .req == $id) | not)))
+       or (.plans as $p | any($current[]; .proof == "auto" and (.id as $id | any($p[]; any(.reqs[]; . == $id)) | not))) then
     result("plan"; false; "Run the plan workflow: phases, plans and contract checks"; {})
   elif $approved | not then
     result("approve"; true; "Review and approve the contract (requirements, plans and checks)"; {})
