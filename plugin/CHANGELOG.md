@@ -1,5 +1,51 @@
 # Changelog
 
+## [2.0.0] - 2026-10-01
+
+VBW 2 is a rebuild for today's Claude Code. Same idea, new engine: you agree on
+what to build, VBW proves it is done.
+
+### What's new
+
+- **One command, `/vbw:vibe`.** It always knows the next step (agree on
+  requirements, plan, approve, build, prove, fix, accept, ship), does it, and
+  stops only when it needs you. `--auto` keeps going on its own until then.
+- **Proof, not claims.** Every requirement that a check can prove gets a test
+  that fails before the work and passes after it. VBW runs those tests itself;
+  a builder cannot mark work done until they pass. You approve the plan and its
+  tests once (`/vbw:approve`), and nothing VBW runs is unapproved.
+- **Parallel building with Claude Code workflows.** Independent parts of the
+  plan are built at the same time, each by its own builder, each committing only
+  its own files, with the plan and requirement in every commit.
+- **Safety guards** stop destructive commands (force-push, `rm -rf` of the
+  project, `git reset --hard` ...), secret files, and builders writing outside
+  their part of the plan. They run before every tool call, in milliseconds.
+- **The status line** shows the project, its progress and what happens next,
+  next to context, cost and plan limits.
+- **Codebase map and debugging:** `/vbw:map` maps an existing codebase before
+  planning; `/vbw:debug` investigates a bug from three angles at once.
+- Also: `/vbw:status`, `/vbw:todo`, `/vbw:teach` (project conventions as Claude
+  Code rules), `/vbw:skills`, `/vbw:rtk`, `/vbw:compress` and the Caveman output
+  styles, `/vbw:config` (model profiles), `/vbw:doctor`, `/vbw:report`.
+
+### What you need
+
+- Claude Code 2.1.286 or later, with **Dynamic workflows** turned on (`/config`;
+  they are off by default on the Pro plan).
+- A Sonnet, Opus or Fable session model, in auto mode for hands-off runs.
+- `jq` and `git`.
+
+### Upgrading from VBW 1
+
+- Start each project fresh with `/vbw:init`. VBW 2 does not read VBW 1's
+  `.vbw-planning/` folder; delete it when you no longer need it.
+- VBW 1's old command copies are removed automatically at the first session;
+  run `/reload-skills` (or restart Claude Code) when VBW says so.
+- Commands that are now steps of `/vbw:vibe`: discuss, verify, qa, pause,
+  resume. For a quick change, just ask Claude; for web research, use
+  `/deep-research`.
+
+
 ## [1.37.1] - 2026-05-11
 
 ### Fixed

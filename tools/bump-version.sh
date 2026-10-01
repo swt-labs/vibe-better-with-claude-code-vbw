@@ -2,7 +2,7 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-REPO_URL="https://raw.githubusercontent.com/yidakee/vibe-better-with-claude-code-vbw/main/VERSION"
+REPO_URL="https://raw.githubusercontent.com/swt-labs/vibe-better-with-claude-code-vbw/main/VERSION"
 
 FILES=(
   "$ROOT/VERSION"
@@ -43,7 +43,7 @@ fi
 LOCAL=$(tr -d '[:space:]' < "$ROOT/VERSION")
 
 # --offline: skip remote fetch entirely (useful in CI or air-gapped environments)
-if [[ "${1:-}" == "--offline" ]]; then
+if [[ "${1:-}" == "--offline" || "${1:-}" == "--set" ]]; then
   REMOTE="$LOCAL"
   echo "Offline mode: skipping GitHub fetch."
 else
@@ -67,6 +67,11 @@ REST="${BASE#*.}"
 MINOR="${REST%%.*}"
 PATCH="${REST#*.}"
 NEW="${MAJOR}.${MINOR}.$((PATCH + 1))"
+# --set X.Y.Z: an explicit version (a major or minor release).
+if [[ "${1:-}" == "--set" ]]; then
+  [[ "${2:-}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "usage: bump-version.sh --set X.Y.Z" >&2; exit 2; }
+  NEW="$2"
+fi
 
 echo "GitHub version:  $REMOTE"
 echo "Local version:   $LOCAL"
