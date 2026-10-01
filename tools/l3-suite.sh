@@ -189,13 +189,15 @@ scenario_convert() {
   printf '# State\n\n## Key Decisions\n| Decision | Date | Rationale |\n|---|---|---|\n| Plain POSIX shell | 2026-01-01 | runs everywhere |\n' > "$dir/.vbw-planning/STATE.md"
   printf 'plan\n' > "$dir/.vbw-planning/phases/01-greeting/01-01-PLAN.md"
   git -C "$dir" add -A && git -C "$dir" commit -qm "chore: VBW 1 plan"
-  before=$(cd "$dir" && find .vbw-planning -type f | LC_ALL=C sort | xargs cat | git hash-object --stdin)
+  base=$(git -C "$dir" rev-parse HEAD)
   start="/vbw:vibe"
   done_yet() { jq -e 'has("converted") and (.requirements | length) > 0 and (.plans | length) > 0' "$dir/.vbw/record.json" > /dev/null 2>&1; }
   checks() {
     check "converted, with requirements and a plan" 'has("converted") and (.requirements | length) > 0 and (.plans | length) > 0'
     check "the VBW 1 decision was carried over" 'any(.decisions[]; .text | test("POSIX|shell"; "i"))'
-    check_sh "the VBW 1 folder is unchanged" "[ \"\$(find .vbw-planning -type f | LC_ALL=C sort | xargs cat | git hash-object --stdin)\" = '$before' ]"
+    # Tracked VBW 1 files only: on a machine that still shows VBW 1's status line,
+    # that status line itself adds untracked cost files to .vbw-planning/.
+    check_sh "the VBW 1 folder is unchanged" "git diff --quiet $base -- .vbw-planning"
   }
 }
 
