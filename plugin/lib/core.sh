@@ -70,7 +70,12 @@ vbw_code_tree() {
   return $status
 }
 
-# Modification time in epoch seconds (BSD and GNU stat).
+# Modification time in epoch seconds. GNU stat first: on Linux, BSD's `stat -f`
+# means "file system status" and succeeds with other output, while macOS rejects
+# GNU's `-c`. Only a number is ever returned (0 when it cannot be read).
 vbw_mtime() {
-  stat -f %m "$1" 2>/dev/null || stat -c %Y "$1" 2>/dev/null || echo 0
+  local t
+  t=$(stat -c %Y "$1" 2>/dev/null) || t=$(stat -f %m "$1" 2>/dev/null) || t=0
+  case "$t" in "" | *[!0-9]*) t=0 ;; esac
+  printf '%s\n' "$t"
 }

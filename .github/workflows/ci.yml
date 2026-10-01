@@ -39,6 +39,12 @@ jobs:
 
       - name: Run the suite with the target bash first on PATH
         working-directory: src dir
+        env:
+          # The hook latency budget (8 ms of VBW's own cost) is calibrated on a
+          # developer machine. Hosted runners are 2-3x slower, so CI uses a looser
+          # tripwire that still catches the regressions the budget exists for (an
+          # added subprocess, work that grows with the input).
+          VBW_HOOK_BUDGET_MS: "25"
         run: |
           export PATH="${{ matrix.bash_path }}:$PATH"
           bash --version | head -1

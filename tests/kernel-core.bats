@@ -133,3 +133,12 @@ teardown() { vbw_teardown; }
   cd "$PROJECT"
   [ "$(jq -r '.todos[0].text' .vbw/record.json)" = "from below" ]
 }
+
+@test "file ages are numbers on every platform's stat (Linux stat -f is not BSD stat -f)" {
+  : > "$TEST_ROOT/f"
+  run bash -c '. "$1/lib/core.sh"; vbw_mtime "$2"' _ "$PLUGIN_ROOT" "$TEST_ROOT/f"
+  [[ "$output" =~ ^[0-9]+$ ]]
+  [ "$output" -gt 1000000000 ]
+  run bash -c '. "$1/lib/core.sh"; vbw_mtime "$2"' _ "$PLUGIN_ROOT" "$TEST_ROOT/missing"
+  [ "$output" = 0 ]
+}
