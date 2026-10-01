@@ -1,21 +1,29 @@
 ---
 name: research
-description: Research a question on the web and in documentation, and get a sourced answer with a recommendation for this project.
+description: Research a question on the web, in documentation and in this project, and get a sourced answer with a recommendation (up to four Scouts in parallel).
 argument-hint: "[the question]"
-allowed-tools: Bash("${CLAUDE_PLUGIN_ROOT}/bin/vbw" *) Bash(vbw *) WebSearch WebFetch
+allowed-tools: Bash("${CLAUDE_PLUGIN_ROOT}/bin/vbw" *) Bash(vbw *) Workflow(vbw:researching)
 ---
+
+```!
+"${CLAUDE_PLUGIN_ROOT}/bin/vbw" config models 2>&1 || true
+"${CLAUDE_PLUGIN_ROOT}/bin/vbw" workflows on 2>&1 || true
+```
 
 The question: $ARGUMENTS
 
-If it is empty, ask what they want to find out. Then:
+If it is empty, ask what they want to find out. VBW needs the Workflow tool:
+the `workflows` line above turns Dynamic workflows on (say so in one line when
+it did); without the tool, say why and stop. (Outside a VBW project the models
+line shows an error; omit `models` then.)
 
-1. Say in one line what you will look for, and why it matters for this project
-   (read `.vbw/spec.md` and `vbw show decisions` when they exist).
-2. Search the web and official documentation. Prefer primary sources (official
-   docs, changelogs, the project's own repository) and recent ones; note dates
-   where things change fast (versions, prices, limits).
-3. Answer in plain words: what you found, the options with their trade-offs,
-   and your recommendation for this project. List the sources with links. Say
-   clearly what you could not confirm.
+1. Say in one line what will be looked into, and why it matters here.
+2. Start the Workflow `vbw:researching` with args `{"question": "<the
+   question>", "models": <the JSON above>}`: four Scouts research it in parallel
+   (official sources, real-world practice, what is current, this project's fit)
+   and one weighs their findings.
+3. Give the user its answer in plain words: what is true, the options with their
+   trade-offs, the recommendation for this project, the sources with links, and
+   what could not be confirmed (name any angle listed in `missing`).
 4. If it settles a decision, offer to record it: `vbw decide "<decision>"
    "<why>"`. If it changes what to build, offer `/vbw:discuss` or `/vbw:vibe`.

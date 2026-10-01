@@ -11,10 +11,10 @@ teardown() { vbw_teardown; }
 workflows() { find "$PLUGIN_ROOT/workflows" -name '*.js' | LC_ALL=C sort; }
 agents() { find "$PLUGIN_ROOT/agents" -name '*.md' | LC_ALL=C sort; }
 
-@test "the plan, build and fix workflows and the planner, critic and builder agents exist" {
+@test "the workflows and VBW 1's seven agents exist, and nothing else" {
   local f
-  for f in planning building fixing mapping investigating; do [ -f "$PLUGIN_ROOT/workflows/$f.js" ]; done
-  for f in planner critic builder; do [ -f "$PLUGIN_ROOT/agents/$f.md" ]; done
+  for f in planning building fixing verifying mapping investigating researching; do [ -f "$PLUGIN_ROOT/workflows/$f.js" ]; done
+  [ "$(ls "$PLUGIN_ROOT/agents" | LC_ALL=C sort | tr "\n" " ")" = "architect.md debugger.md dev.md docs.md lead.md qa.md scout.md " ]
 }
 
 @test "each workflow starts with a pure-literal meta naming itself after its file" {

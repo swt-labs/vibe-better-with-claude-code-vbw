@@ -8,9 +8,9 @@ export const meta = {
   ],
 }
 
-// args: {models?: {critic?}} - scouts and the merge run on the critic's model.
+// args: {models?: {scout?}}
 const models = (args && args.models) || {}
-const model = models.critic ? { model: models.critic } : {}
+const model = models.scout ? { model: models.scout } : {}
 
 const ANGLES = [
   { key: 'stack', ask: 'The stack and how to work with it: languages, frameworks, package manager, and the exact commands to install, build, run, test and lint (try the test and lint commands and report what happens).' },
@@ -28,7 +28,7 @@ const FINDINGS = {
 
 phase('Scout')
 const found = await parallel(ANGLES.map(a => () =>
-  agent(`Map this codebase from one angle. ${a.ask}`, Object.assign({ agentType: 'vbw:scout', label: a.key, phase: 'Scout', schema: FINDINGS }, model))))
+  agent(`Map this codebase from one angle. ${a.ask}`, Object.assign({ agentType: 'vbw:scout', label: `scout ${a.key}`, phase: 'Scout', schema: FINDINGS }, model))))
 
 const sections = ANGLES.map((a, i) => ({ angle: a.key, findings: found[i] ? found[i].findings : [] }))
 const missing = sections.filter(s => s.findings.length === 0).map(s => s.angle)
@@ -36,6 +36,6 @@ if (missing.length > 0) log(`no findings for: ${missing.join(', ')}`)
 
 phase('Merge')
 const map = await agent(`Merge these verified findings about this codebase into one concise markdown map, with the sections Stack and commands, Structure, Conventions, Tests, Risks. Keep every command and path exactly. Drop duplicates. No preamble.\n\n${JSON.stringify(sections)}`,
-  Object.assign({ agentType: 'vbw:scout', label: 'merge', phase: 'Merge' }, model))
+  Object.assign({ agentType: 'vbw:scout', label: 'scout merge', phase: 'Merge' }, model))
 
 return { map: map || sections.map(s => `## ${s.angle}\n${s.findings.map(f => `- ${f}`).join('\n')}`).join('\n\n'), missing }

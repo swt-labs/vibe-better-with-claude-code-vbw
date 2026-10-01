@@ -83,7 +83,7 @@ doctor_claude() {
   case "$mode" in
     auto) doctor_line ok "Claude Code starts in auto permission mode" ;;
     bypassPermissions) doctor_line ok "Claude Code starts in bypassPermissions mode" ;;
-    *) doctor_line warn "Claude Code starts in ${mode:-manual} permission mode (a session switched to auto mode with Shift+Tab is fine; in manual mode every builder step asks you first)" "to start in auto mode, set permissions.defaultMode to \"auto\" in $(statusline_settings)" ;;
+    *) doctor_line warn "Claude Code starts in ${mode:-manual} permission mode (a session switched to auto mode with Shift+Tab is fine; in manual mode every agent step asks you first)" "to start in auto mode, set permissions.defaultMode to \"auto\" in $(statusline_settings)" ;;
   esac
   case "$wf" in
     on) doctor_line ok "workflows enabled" ;;

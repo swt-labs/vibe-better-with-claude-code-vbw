@@ -2,7 +2,7 @@
 name: vibe
 description: Take this VBW project to its next step (spec, plan, approve, build, prove, fix, accept, ship). Use it for any work on a VBW project.
 argument-hint: "[--auto] [what you want]"
-allowed-tools: Bash("${CLAUDE_PLUGIN_ROOT}/bin/vbw" *) Bash(vbw *) Workflow(vbw:mapping) Workflow(vbw:planning) Workflow(vbw:building) Workflow(vbw:fixing)
+allowed-tools: Bash("${CLAUDE_PLUGIN_ROOT}/bin/vbw" *) Bash(vbw *) Workflow(vbw:mapping) Workflow(vbw:planning) Workflow(vbw:building) Workflow(vbw:fixing) Workflow(vbw:verifying)
 hooks:
   Stop:
     - hooks:
@@ -92,8 +92,9 @@ option's trade-off as its description, the recommended one first, marked
 "(Recommended)"). Record each answer: `vbw decide "<what was decided>" "<why:
 their reason, or the trade-off they accepted>"`. Then plan again: `vbw run
 start plan` and the workflow with `{"decided": true, "models": ...}`. When it
-has planned: give the user its summary, the `choices` the planner made itself
-(any of them can be changed), and any critic issues.
+has planned: give the user the Lead's summary, the `choices` it made itself (any
+of them can be changed), and the Architect's `notes` (nice-to-haves and scope
+creep, which can wait in the backlog: offer `vbw todo add`).
 
 **approve** (needs the user): run `vbw show contract --changes`. After an earlier
 approval it lists only what changed: explain just that (everything else stays
@@ -103,30 +104,35 @@ commands that will run. Then ask the user to review and type `/vbw:approve`.
 You cannot approve.
 
 **build**: `vbw run start build <detail.plans>`, then start the Workflow
-`vbw:building` with args `{"plans": [...], "models": ...}`. When it returns:
+`vbw:building` with args `{"plans": <detail.plans>, "docs": <detail.docs>,
+"models": ...}` (a Dev per plan; Docs for documentation plans). When it returns:
 `vbw run end`, `vbw prove`, and report each plan's result in one line (quote
 blockers and notes).
 
 **fix**: `vbw run start fix <detail.fixes>`, then the Workflow `vbw:fixing` with args
 `{"groups": <detail.groups>, "models": ...}` (fixes that share files go to one
-builder). When it returns: `vbw run end`, `vbw prove`.
+Dev). When it returns: `vbw run end`, `vbw prove`.
 
 **prove**: `vbw prove`, then report what passed and what failed.
 
-**run**: a run lease is open. If a VBW workflow from this session is still
-running, wait for it and do nothing now. Otherwise it was interrupted:
-`vbw run end` (its plans return to the next wave), then continue.
+**qa**: the Workflow `vbw:verifying` with args `{"phases": <detail.phases>,
+"tier": <detail.tier>, "models": ...}`: QA verifies each built phase against its
+goal, criteria and plans, and records its verdict; its findings become fixes.
+Report each phase's verdict and failed checks, one line each.
+
+**run**: a run is open. A VBW workflow of this session still running: wait.
+Otherwise it was interrupted: `vbw run end` (its plans return to the next
+wave), then continue.
 
 **unblock** (needs the user): `vbw show plan <id>` for each blocked plan;
-explain what the builder needs. Once the user has resolved it, `vbw plan reset <id>`.
+explain what the Dev needs. Once resolved: `vbw plan reset <id>`.
 
 **escalate** (needs the user): `vbw show fix <id>`; explain what failed after
 the attempts. Ask: try once more (`vbw fix retry <id>`), or change the
-requirement or its check (edit the spec; the contract will need approval
-again).
+requirement or its check (the contract then needs approval again).
 
 **scope** (needs the user): `vbw show evidence`; explain which commits changed
-files outside their plan, and ask how to proceed. Do not rewrite history.
+files outside their plan; ask how to proceed. Never rewrite history.
 
 **accept** (needs the user): for each requirement in `detail.requirements`,
 show the user the thing to judge: run it yourself when you can (the program's
@@ -142,15 +148,14 @@ wrong: ask what, then `vbw req reject <id> "<their words>"`. Skip: leave it.
 `vbw show roadmap`) and ask whether to ship. Yes: `vbw ship`.
 
 **milestone** (needs the user): the milestone is shipped. Ask what the next one is
-about, start it with `vbw milestone start "<title>"`, then continue with `spec`
-for its requirements. Shipped requirements stay in the spec and their checks
-keep running in every proof, so new work cannot silently break shipped work.
+about, start it with `vbw milestone start "<title>"`, then continue with `spec`.
+Shipped work stays guarded: its checks run in every proof.
 
 **Changing the plan** (the user wants to add, change or drop something mid-way):
 add with `vbw spec add`, or edit `.vbw/spec.md` and run `vbw spec sync`
 (dropping a requirement removes its checks and the unstarted plans that only
 served it; work already started is kept unless the user resets it). Then
-`vbw next` asks for planning again: the planner keeps finished work as it is,
+`vbw next` asks for planning again: the Lead keeps finished work as it is,
 and the user approves the changed contract.
 
 ## Rules
@@ -158,4 +163,4 @@ and the user approves the changed contract.
 - Only the kernel writes `.vbw/record.json`; agents and you change state through
   `vbw` commands.
 - Never approve, never run `git push`, and never weaken a check.
-- Commits of plan work go through `vbw commit` (builders do this).
+- Commits of plan work go through `vbw commit` (the Devs do this).

@@ -8,7 +8,7 @@ the user disabled them on purpose.
 
 ```
 [VBW] expenses │ M1 First milestone │ ▓▓▓▓▓▓▓░░░ 4/6 done │ ▶ build: P1.2, P2.1 4m10s · 2 agents working │ ⟳ auto 3/25
-Agents ● builder P1.2 sonnet  ● builder P2.1 sonnet
+Agents ● dev P1.2 sonnet  ● dev P2.1 sonnet
 Context ▓▓▓░░░░░░░ 31% 62K/200K │ Tokens 2 in 195 out │ Cache 93% hit 3.8K write 55.5K read │ Cost $1.42 │ +303 −12
 Limits 5h ▓▓░░░░░░░░ 23% (resets 2h13m) │ 7d ▓▓▓▓░░░░░░ 41% (resets 3d)
 Sonnet 5.5 │ 10m22s (API 5m55s) │ main │ VBW 2.0.6 │ CC 2.1.286
@@ -21,8 +21,8 @@ Sonnet 5.5 │ 10m22s (API 5m55s) │ main │ VBW 2.0.6 │ CC 2.1.286
    last `vbw next`). `⟳ auto 3/25` while an autonomous run is armed. Outside a
    VBW project: `/vbw:vibe to start` (this line, then lines 3 to 5).
 2. **Agents or team** (VBW projects): while agents work, each one in its role's
-   colour (planner blue, critic magenta, builder green, scout cyan) with its
-   label and model. Otherwise the team: each role's model from the profile and
+   colour (architect magenta, lead blue, dev green, qa yellow, scout cyan,
+   debugger red, docs pink) with its label and model. Otherwise the team: each role's model from the profile and
    any per-role override (`/vbw:config`), the profile, and how much VBW does on
    its own. An agent counts as working when its transcript, next to the
    session's, changed in the last minute; its `.meta.json` names its role,

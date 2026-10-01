@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # vbw check [--expect-red] [CHECK...]: run approved checks (all when none are
-# given) and report; writes nothing to the record. A builder uses it red-first
+# given) and report; writes nothing to the record. A Dev uses it red-first
 # (--expect-red: every check must fail, or it proves nothing) and to see its
 # own checks go green before it commits.
 

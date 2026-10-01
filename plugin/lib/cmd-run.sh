@@ -15,7 +15,7 @@ cmd_run() {
   esac
   vbw_require_project
   if [ "$sub" = end ]; then
-    # Plans an interrupted builder left "building" go back to the next wave.
+    # Plans an interrupted Dev left "building" go back to the next wave.
     local run
     run=$(record_read | jq -r '.lease.run // "no run"')
     record_update '.lease = null | (.plans[] | select(.status == "building")).status = "planned"'

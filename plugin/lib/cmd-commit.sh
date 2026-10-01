@@ -2,7 +2,7 @@
 # vbw commit PLAN MESSAGE: commit the plan's declared files that changed, with
 # VBW-Plan/VBW-Req trailers. Nothing else in the working tree or the index is
 # touched: the user's own staged work stays staged. Commits are serialized with
-# the project lock, so parallel builders never collide on git's index lock.
+# the project lock, so parallel Devs never collide on git's index lock.
 
 VBW_COMMIT_RE='^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)\([^)]+\)!?: .+'
 

@@ -1,5 +1,24 @@
 # Changelog
 
+## [2.0.7] - 2026-10-02
+
+### Changed
+
+- **VBW 1's team is back, with its mandates:** Architect (the decisions and
+  the phases with success criteria), Lead (plans with tasks and tests),
+  Dev (one commit per task, deviation rules), QA, Scout, Debugger and Docs.
+  Each has its VBW 1 model in every profile, and `/vbw:config` sets any of
+  them (`model.dev`, `model.qa`, ...). A model you set for an earlier role name
+  carries over.
+- **QA verifies finished work again:** after the tests pass, QA checks each
+  phase against its goal, criteria and plan; what it finds is fixed and
+  checked again.
+- **`/vbw:debug`** uses Debuggers (and one fixes the bug with a regression
+  test); **`/vbw:research`** uses up to four Scouts in parallel;
+  documentation plans go to the Docs agent.
+- **The status line** shows the seven agents in their own colours, and the
+  team grouped by model.
+
 ## [2.0.6] - 2026-10-01
 
 ### New

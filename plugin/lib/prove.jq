@@ -27,7 +27,10 @@ def ok: .status == "pass";
 # that a failure is work in progress, not a defect); count a failed attempt
 # after work.
 | reduce ($req_results + $cmd_results)[] as $t (.;
-    ([.fixes | to_entries[] | select(.value[$t.key] == $t.target and (.value.status | IN("open","fixed","escalated"))) | .key][0]) as $i
+    # QA's findings (source "qa") are QA's to close: passing checks do not settle
+    # a deviation from the plan.
+    ([.fixes | to_entries[] | select(.value[$t.key] == $t.target and (.value.source // "") != "qa"
+        and (.value.status | IN("open","fixed","escalated"))) | .key][0]) as $i
     | if $t.pass then
         (if $i != null then .fixes[$i].status = "closed" else . end)
       elif $i == null and ($t.built | not) then .

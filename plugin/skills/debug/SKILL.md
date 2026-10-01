@@ -21,6 +21,9 @@ shows an error; omit `models` then.)
 
 Start the Workflow `vbw:investigating` with args `{"problem": "<the problem>",
 "models": <the JSON above>}`. When it returns, tell the user the root cause,
-the evidence for it, how confident it is, and the proposed fix, then ask
-whether to make the fix now. If yes, make it the way `/vbw:fix` does (smallest
-change, committed, then `vbw prove` in a VBW project so nothing proven breaks).
+the evidence for it, the hypotheses it rejected, how confident it is, and the
+proposed fix, then ask whether to fix it now. If yes, start the Workflow again
+with args `{"problem": "<the problem>", "fix": <the diagnosis it returned>,
+"models": ...}`: one Debugger fixes the root cause, adds a regression test,
+commits and verifies (in a VBW project with `vbw prove`). Report what it
+changed.

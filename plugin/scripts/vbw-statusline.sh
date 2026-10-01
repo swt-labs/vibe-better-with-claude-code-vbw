@@ -42,9 +42,9 @@ if [ -n "$transcript" ] && [ -d "${transcript%.jsonl}/subagents/workflows" ]; th
     [ -f "${f%.jsonl}.meta.json" ] && metas+=("${f%.jsonl}.meta.json")
   done < <(find "${transcript%.jsonl}/subagents/workflows" -name 'agent-*.jsonl' -mmin -1 2> /dev/null)
   if [ ${#metas[@]} -gt 0 ]; then
-    # Steady order: by role (planner, critic, builder, scout), then label.
+    # Steady order: by role (the team's order), then label.
     agents=$(jq -cs 'map({role: (.agentType // "" | sub("^vbw:"; "")), label: (.description // ""), model: (.model // "")})
-      | sort_by((.role as $r | ["planner", "critic", "builder", "scout"] | index($r) // 9), .label)' "${metas[@]}" 2> /dev/null) || agents='[]'
+      | sort_by((.role as $r | ["architect", "lead", "dev", "qa", "scout", "debugger", "docs"] | index($r) // 9), .label)' "${metas[@]}" 2> /dev/null) || agents='[]'
   fi
 fi
 

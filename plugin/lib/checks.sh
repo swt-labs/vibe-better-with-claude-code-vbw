@@ -4,7 +4,7 @@
 # is executed directly, never through a shell, with stdin closed and a timeout.
 
 # checks_begin RECORD: die unless the contract is approved. Sets CHECK_HASH and
-# CHECK_OUT, a fresh output directory for this invocation (parallel builders
+# CHECK_OUT, a fresh output directory for this invocation (parallel Devs
 # each get their own). Called directly, never in $(...).
 checks_begin() {
   CHECK_HASH=$(contract_hash "$1")

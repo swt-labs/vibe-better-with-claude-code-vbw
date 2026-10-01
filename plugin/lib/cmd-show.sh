@@ -2,7 +2,7 @@
 # vbw show roadmap | phase ID | req ID | plan ID [--json] | fix ID [--json] |
 # contract | evidence | decisions | requirements: views rendered from the record
 # and git trailers. Nothing is stored in rendered form. plan and fix are the
-# context a builder works from.
+# context a Dev works from.
 
 cmd_show() {
   local view="${1:-}" record
@@ -29,10 +29,15 @@ cmd_show() {
       printf '%s' "$record" | jq -r --arg p "$1" "$SHOW_JQ_DEFS"'
         . as $r | (.phases[] | select(.id == $p)) as $ph
         | "\($ph.id) \($ph.title) [\($ph | phase_status($r))]",
+          (if $ph.goal then "goal: \($ph.goal)" else empty end),
+          (if $ph.criteria then "criteria:", ($ph.criteria[] | "  - " + .) else empty end),
+          (if $ph.qa then "qa: \($ph.qa.result) (\($ph.qa.tier), \($ph.qa.at))\(if $ph.qa.note then ": " + $ph.qa.note else "" end)"
+             + (if $ph.qa.tree != ($r.evidence.tree // "") then " [on older code]" else "" end) else empty end),
           "requirements:",
           ($ph.reqs[] as $q | $r.requirements[] | select(.id == $q) | "  \(.id) [\(.proof), \(.status)] \(.text)"),
           "plans:",
-          ($r.plans[] | select(.phase == $p) | "  \(.id) \(.title) [\(.status)]: \(.files | join(", "))")'
+          ($r.plans[] | select(.phase == $p) | "  \(.id) \(.title) [\(.status)\(if .role == "docs" then ", docs" else "" end)]: \(.files | join(", "))",
+            ((.tasks // [])[] | "    - " + .))'
       ;;
     req)
       [ $# -eq 1 ] || vbw_usage_error "usage: vbw show req ID"
@@ -152,7 +157,7 @@ show_commits_for_req() {
   done < <(git -C "$VBW_ROOT" log --format='%h %s%x1f%(trailers:key=VBW-Req,valueonly,separator=%x2C)' 2>/dev/null)
 }
 
-# show_work RECORD plan|fix ID [--json]: what a builder needs, and nothing else.
+# show_work RECORD plan|fix ID [--json]: what a Dev needs, and nothing else.
 show_work() {
   local json
   json=$(printf '%s' "$1" | jq -c --arg kind "$2" --arg id "$3" '
@@ -187,6 +192,7 @@ show_work() {
     if .plan then
       "\(.plan.id) \(.plan.title) [\(.plan.status)]\(if .plan.note then ": " + .plan.note else "" end)",
       "files: \(.plan.files | join(", "))",
+      (if .plan.tasks then "tasks:", (.plan.tasks | to_entries[] | "  \(.key + 1). \(.value)") else empty end),
       (if (.plan.after | length) > 0 then "after: \(.plan.after | join(", "))" else empty end),
       "requirements:", (.requirements[] | "  \(.id) [\(.proof)] \(.text)"),
       "checks:", check_lines

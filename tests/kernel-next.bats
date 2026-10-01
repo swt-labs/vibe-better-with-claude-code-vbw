@@ -32,8 +32,10 @@ next_after() {
   local hash tree
   hash=$(vbw_contract_hash)
   tree=$(vbw_code_tree)
-  jq --arg h "$hash" --arg t "$tree" 'if .evidence == null then .evidence = {at: "2026-10-01T09:00:00Z", contract: $h, tree: $t,
-      passed: true, checks: {}, commands: {}, scope: []} else . end' .vbw/record.json > "$TEST_ROOT/n.json"
+  # Phases count as verified by QA on that tree unless FILTER says otherwise.
+  jq --arg h "$hash" --arg t "$tree" '(if .evidence == null then .evidence = {at: "2026-10-01T09:00:00Z", contract: $h, tree: $t,
+      passed: true, checks: {}, commands: {}, scope: []} else . end)
+    | .phases |= map(if has("qa") then . else .qa = {result: "pass", tier: "standard", tree: $t, at: "2026-10-01T09:00:00Z"} end)' .vbw/record.json > "$TEST_ROOT/n.json"
   cp "$TEST_ROOT/n.json" .vbw/record.json
   [ "${2:-}" = unapproved ] || vbw_consent_contract
   "$VBW" next --json < /dev/null
@@ -170,4 +172,15 @@ next_after() {
   # Once work has started, an old folder no longer interrupts it.
   run next_after '.'
   echo "$output" | jq -e '.action == "ship"'
+}
+
+@test "row 10a: built phases not verified by QA on the proven code go to QA, at the profile's tier" {
+  # A verdict on other code (the helper treats a phase without one as verified).
+  run next_after '.phases[0].qa = {result: "pass", tier: "standard", tree: ("e" * 40), at: "2026-10-01T09:00:00Z"}'
+  echo "$output" | jq -e '.action == "qa" and .gate == false and .detail == {phases: ["P1"], tier: "standard"}'
+  run next_after '.settings.profile = "quality" | .phases[0].qa = {result: "pass", tier: "deep", tree: ("e" * 40), at: "2026-10-01T09:00:00Z"}'
+  echo "$output" | jq -e '.action == "qa" and .detail.tier == "deep"'
+  # A phase still being built is not verified yet.
+  run next_after '.phases[0].qa = {result: "pass", tier: "standard", tree: ("e" * 40), at: "2026-10-01T09:00:00Z"} | .plans[2].status = "blocked" | .plans[2].note = "x"'
+  echo "$output" | jq -e '.action == "unblock"'
 }

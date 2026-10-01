@@ -14,13 +14,13 @@ section, where every bullet is a requirement:
 ## Requirements
 
 - R1 [auto] A visitor can sign up with an email address
-  Notes for the planner may follow on indented lines.
+  Notes for the Architect and Lead may follow on indented lines.
 - R2 [human] The landing page feels trustworthy
 ```
 
 - `R<n>`: a stable id, never reused. `vbw spec add` appends the next free one.
 - `[auto]`: a check can prove it. `[human]`: only a person can judge it.
-- Indented lines under a bullet are notes for the planner; the kernel ignores
+- Indented lines under a bullet are notes for the Architect and Lead; the kernel ignores
   them. HTML comments are ignored.
 - Any other bullet in the section is an error, reported with its line number.
 
@@ -125,6 +125,18 @@ A project command's fix is left to `vbw prove`, which runs the command.
 
 An escalated fix is a human gate (`vbw next`).
 
+### QA verification
+
+Passing checks prove each requirement's behavior; they cannot see whether the
+work matches the plan that was agreed. After a passing proof, VBW 1's QA agent
+verifies each built phase goal-backward, at the profile's tier, against its goal
+and criteria (the Architect's) and its plans' tasks (the Lead's): test gaps and
+every deviation from the plan are failures. Each failure is recorded with
+`vbw qa finding REQ TEXT`, a fix item with `source: "qa"` that a proof never
+closes; the verdict with `vbw qa record PHASE pass|fail TIER`, against the
+evidence's tree. A pass closes the phase's QA fixes; code that changes
+afterwards needs QA again; three failed rounds in a row escalate.
+
 ### Freshness
 
 `tree` fingerprints the project files the proof ran on (tracked and new files,
@@ -136,6 +148,6 @@ work, or the record, changes nothing.
 ### `vbw check [--expect-red] [CHECK...]`
 
 Runs the given approved checks (all when none are given), reports, and writes
-nothing: the builder's tool. Exit 0 when all pass. With `--expect-red`, red-first:
+nothing: the Dev's tool. Exit 0 when all pass. With `--expect-red`, red-first:
 before a plan is built its checks must fail, and a check that already passes
 proves nothing, so exit 0 only when every check fails.

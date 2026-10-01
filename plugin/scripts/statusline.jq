@@ -25,7 +25,8 @@ def until_reset($now): if . == null then "" else (. - $now) as $s
     else " (resets \($s / 60 | floor)m)" end end;
 def sep: " │ " | dim;
 # Each role keeps one colour wherever it appears.
-def role_color: {planner: "34", critic: "35", builder: "32", scout: "36"}[.] // "33";
+def role_color: {architect: "35", lead: "34", dev: "32", qa: "33", scout: "36", debugger: "31", docs: "95"}[.] // "37";
+def roles: ["architect", "lead", "dev", "qa", "scout", "debugger", "docs"];
 def agent_dot($role): c($role | role_color; "●");
 def progress($done; $total): (if $total > 0 then $done * 100 / $total else 0 end) as $p
   | (($p + 5) / 10 | floor) as $n
@@ -69,14 +70,15 @@ def progress($done; $total): (if $total > 0 then $done * 100 / $total else 0 end
   ( select(($rec | type) == "object")
     | if ($agents | length) > 0 then
         "Agents " + ([$agents[0:6][] | agent_dot(.role) + " " + c(.role | role_color; .role)
-            + (if .label != "" and .label != .role then " " + .label else "" end)
+            + ((.role as $r | .label | ltrimstr($r) | ltrimstr(" ")) as $l | if $l != "" then " " + $l else "" end)
             + (if .model != "" then " " + (.model | dim) else "" end)] | join("  "))
         + (if ($agents | length) > 6 then "  " + ("+\(($agents | length) - 6) more" | dim) else "" end)
       else
         ($rec.settings // {}) as $s
         | ((($profiles[0] // {})[$s.profile // "balanced"] // {}) + ($s.models // {})) as $m
-        | "Team   " + ([("planner", "critic", "builder") as $r | agent_dot($r) + " " + c($r | role_color; $r) + " " + (($m[$r] // "?") | dim)]
-            + [agent_dot("scout") + " " + c("scout" | role_color; "scout") + " " + (($m.critic // "?") | dim)] | join("  "))
+        # Grouped by model, in the team's order: "sonnet ● architect ● lead ...".
+        | ([roles[] as $r | {role: $r, model: ($m[$r] // "?")}] | group_by(.model) | sort_by(.[0].role as $r | roles | index($r))) as $groups
+        | "Team   " + ([$groups[] | (.[0].model | dim) + " " + ([.[] | agent_dot(.role) + " " + c(.role | role_color; .role)] | join(" "))] | join(sep))
           + sep + "profile \($s.profile // "balanced")" + (" · " | dim) + "autonomy \($s.autonomy // "balanced")"
       end ),
 

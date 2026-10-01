@@ -92,14 +92,24 @@ if type != "object" then ["record must be a JSON object"] else
         ( select(has("timeout") and ((.timeout | int_in(1; 3600)) | not)) | "\(.id) timeout must be 1-3600 seconds" ) ),
 
     ( $phases[]
-      | field_rule(["id","title","reqs","milestone"]),
+      | field_rule(["id","title","reqs","milestone","goal","criteria","qa"]),
+        ( select(has("goal") and ((.goal | nonempty) | not)) | "\(.id) goal must be a non-empty string" ),
+        ( select(has("criteria") and ((.criteria | type == "array") and all(.criteria[]; nonempty) | not)) | "\(.id) criteria must be an array of non-empty strings" ),
+        ( select(has("qa")) | .qa as $q
+          | select(($q | type == "object") and ($q | keys - ["result","tier","tree","at","note","rounds"] == [])
+                   and ($q.result | one_of(["pass","fail"])) and ($q.tier | one_of(["quick","standard","deep"]))
+                   and ($q.tree | nonempty) and ($q.at | iso)
+                   and (($q | has("rounds") | not) or ($q.rounds | type == "number" and . >= 1 and . == floor)) | not)
+          | "\(.id) qa must be {result: pass|fail, tier: quick|standard|deep, tree, at, note?, rounds?}" ),
         ( select((.milestone | one_of($milestones)) | not) | "\(.id) belongs to unknown milestone \(.milestone)" ),
         ( select((.reqs | type == "array" and length > 0) | not) | "\(.id) needs a non-empty reqs array" ),
         ( select((.title | nonempty) | not) | "\(.id) needs a non-empty title" ),
         ( . as $p | (.reqs // [])[] | . as $x | select(($reqs | has_id($x)) | not) | "\($p.id) references unknown requirement \(.)" ) ),
 
     ( $plans[]
-      | field_rule(["id","phase","title","reqs","files","after","status","note"]),
+      | field_rule(["id","phase","title","reqs","files","after","status","note","tasks","role"]),
+        ( select(has("tasks") and ((.tasks | type == "array" and length > 0) and all(.tasks[]; nonempty) | not)) | "\(.id) tasks must be a non-empty array of non-empty strings" ),
+        ( select(has("role") and (.role | one_of(["dev","docs"]) | not)) | "\(.id) role must be dev or docs" ),
         ( select(has("note") and ((.note | nonempty) | not)) | "\(.id) note must be a non-empty string" ),
         ( . as $o | select(($phases | has_id($o.phase)) | not) | "\(.id) references unknown phase \(.phase)" ),
         ( select((.id | type == "string") and (.phase | type == "string")
@@ -116,7 +126,8 @@ if type != "object" then ["record must be a JSON object"] else
         ( select(.id as $id | reachable($graph; $id) | any(.[]; . == $id)) | "plan dependency cycle through \(.id)" ) ),
 
     ( arr("fixes")[]
-      | field_rule(["id","req","command","attempts","status","note"]),
+      | field_rule(["id","req","command","attempts","status","note","source"]),
+        ( select(has("source") and (.source != "qa" or has("command"))) | "\(.id) source must be qa, for a requirement" ),
         ( select(has("req") == has("command")) | "\(.id) needs exactly one of req or command" ),
         ( . as $o | select(has("req") and (($reqs | has_id($o.req)) | not)) | "\(.id) references unknown requirement \(.req)" ),
         ( . as $o | select(has("command") and (($r.commands | type == "object" and has($o.command | tostring)) | not))
@@ -148,8 +159,8 @@ if type != "object" then ["record must be a JSON object"] else
           ( keys[] | select(one_of(["profile","autonomy","autonomy_cap","models"]) | not) | "settings has an unknown key: \(.)" ),
           ( select(has("models")) | .models
             | if type != "object" then "settings.models must be an object" else
-                to_entries[] | select((.key | one_of(["planner","critic","builder"])) and (.value | nonempty) | not)
-                | "settings.models.\(.key) must name planner, critic or builder and a model"
+                to_entries[] | select((.key | one_of(["architect","lead","dev","qa","scout","debugger","docs","planner","critic","builder"])) and (.value | nonempty) | not)
+                | "settings.models.\(.key) must name a role (architect, lead, dev, qa, scout, debugger, docs) and a model"
               end )
         end ),
     ( $r.commands

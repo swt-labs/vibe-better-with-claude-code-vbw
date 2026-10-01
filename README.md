@@ -16,7 +16,7 @@ code, and shows you the proof:
 3. **You approve.** `/vbw:approve`. Nothing VBW runs is unapproved, and the
    tests are frozen from here on: they cannot be weakened to make work "pass".
 4. **Build in parallel.** Independent parts are built at the same time by
-   separate builders, each until its own tests pass. Every commit names the
+   separate Devs (VBW 1's team), each until its own tests pass. Every commit names the
    part and the requirement it delivers.
 5. **Prove.** VBW runs the tests itself. A requirement is done when its tests
    pass on the current code; not before, and not on anyone's say-so.
@@ -81,7 +81,7 @@ it into VBW 2 through a few questions, then asks whether to keep the old folder.
 
 - **Guards** run before every command Claude runs and block what would destroy
   work (force-push, `git reset --hard`, deleting the project), touch secret files,
-  or let a builder write outside its part of the plan.
+  or let an agent write outside its part of the plan.
 - **Approval is yours.** Tests and project commands run only after you approve
   them, and the approval lives in your clone's `.git` folder: a repository you
   download cannot approve itself.
@@ -93,7 +93,7 @@ it into VBW 2 through a few questions, then asks whether to keep the old folder.
 - [docs/record.md](docs/record.md): the plan of record (`.vbw/record.json`)
 - [docs/proof.md](docs/proof.md): requirements, tests, approval and proof
 - [docs/next.md](docs/next.md): how VBW decides the next step
-- [docs/workflows.md](docs/workflows.md): the planner, critic, builder and workflows
+- [docs/workflows.md](docs/workflows.md): the team (Architect, Lead, Dev, QA, Scout, Debugger, Docs) and the workflows
 - [docs/guards.md](docs/guards.md): the safety guards
 - [docs/statusline.md](docs/statusline.md): the status line
 - [docs/convert.md](docs/convert.md): updating from VBW 1 and bringing in its projects

@@ -57,6 +57,9 @@ proven_project() {
   proven_project
   vbw_run ship
   [ "$status" -eq 1 ]
+  [[ "$output" == *"not ready to ship: vbw next says qa"* ]]
+  "$VBW" qa record P1 pass standard > /dev/null
+  vbw_run ship
   [[ "$output" == *"not ready to ship: vbw next says accept"* ]]
   "$VBW" req accept R2 > /dev/null
   vbw_run ship
@@ -68,18 +71,26 @@ proven_project() {
 
 # --- settings ------------------------------------------------------------------
 
-@test "config shows the profile and resolves the models per role" {
+@test "config resolves VBW 1's seven roles from the profile and per-role overrides" {
   vbw_run config
   [[ "$output" == *"profile: balanced"* ]]
-  [[ "$output" == *"model.builder: sonnet"* ]]
+  [[ "$output" == *"model.dev: sonnet"* ]]
   vbw_run config models
-  [ "$output" = '{"planner":"opus","critic":"sonnet","builder":"sonnet"}' ]
+  [ "$output" = '{"architect":"sonnet","lead":"sonnet","dev":"sonnet","qa":"sonnet","scout":"sonnet","debugger":"sonnet","docs":"sonnet"}' ]
   "$VBW" config set profile budget > /dev/null
-  "$VBW" config set model.builder claude-opus-5-5 > /dev/null
+  "$VBW" config set model.dev claude-opus-5-5 > /dev/null
   vbw_run config models
-  [ "$output" = '{"planner":"sonnet","critic":"haiku","builder":"claude-opus-5-5"}' ]
-  "$VBW" config set model.builder default > /dev/null
+  [ "$output" = '{"architect":"sonnet","lead":"sonnet","dev":"claude-opus-5-5","qa":"haiku","scout":"haiku","debugger":"sonnet","docs":"sonnet"}' ]
+  "$VBW" config set model.dev default > /dev/null
   jq -e '.settings | has("models") | not' .vbw/record.json
+}
+
+@test "overrides saved under the earlier role names move to VBW 1's names" {
+  jq '.settings.models = {planner: "opus", critic: "haiku", builder: "opus"}' .vbw/record.json > "$TEST_ROOT/r.json" && cp "$TEST_ROOT/r.json" .vbw/record.json
+  vbw_run config models
+  [ "$status" -eq 0 ]
+  echo "$output" | jq -e '.lead == "opus" and .qa == "haiku" and .dev == "opus"'
+  jq -e '.settings.models == {lead: "opus", qa: "haiku", dev: "opus"}' .vbw/record.json
 }
 
 @test "config refuses unknown keys and invalid values, and changes nothing" {

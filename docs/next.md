@@ -22,12 +22,13 @@ lifecycle. `vbw next --json` returns:
 | 2 | no requirements in the current milestone | `spec` (write its requirements in `.vbw/spec.md`) | yes |
 | 3 | the current milestone has no phases, an `auto` requirement has no check, or a current `auto` requirement is in no plan | `plan` (plan workflow: phases, plans, contract checks) | no |
 | 4 | contract not approved (never approved, or changed since) | `approve` (review and approve the contract) | yes |
-| 5 | a plan is `blocked` | `unblock` (a builder reported a blocker) | yes |
+| 5 | a plan is `blocked` | `unblock` (a Dev reported a blocker) | yes |
 | 6 | plans ready to build: not `done`, every `after` plan `done` | `build` (one wave: the ready plans in order, skipping any that shares a file with one already in the wave) | no |
 | 7 | a fix is `escalated` | `escalate` (the fix cap was reached) | yes |
 | 8 | current evidence has scope violations | `scope` (commits changed files outside their plans) | yes |
-| 9 | a fix is `open` | `fix` (`detail.fixes`, and `detail.groups`: fixes whose files overlap, one builder each; a project command's fix may touch any file) | no |
+| 9 | a fix is `open` | `fix` (`detail.fixes`, and `detail.groups`: fixes whose files overlap, one Dev each; a project command's fix may touch any file) | no |
 | 10 | an `auto` requirement is not `proven`, or the evidence is stale (another contract, or the project files changed since; docs/proof.md) | `prove` | no |
+| 10a | a phase of the current milestone is built and QA has not verified it on the proven code (never, or the code changed since) | `qa` (`detail.phases`, and `detail.tier`: `deep` for the quality profile, `quick` for budget, else `standard`) | no |
 | 11 | a `human` requirement is `open` | `accept` (one scenario at a time) | yes |
 | 12 | otherwise | `ship` (`vbw ship`) | yes |
 

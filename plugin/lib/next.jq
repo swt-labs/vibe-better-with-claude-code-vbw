@@ -29,7 +29,7 @@ def fix_files($r): if .command then ["*"]
 | ([.plans[] | select(.status == "blocked") | .id]) as $blocked
 | ([.fixes[] | select(.status == "escalated") | .id]) as $escalated
 | ([.fixes[] | select(.status == "open") | .id]) as $open_fixes
-# Open fixes that share files form one group, worked by one builder.
+# Open fixes that share files form one group, worked by one Dev.
 | ([.fixes[] | select(.status == "open")]
    | reduce .[] as $f ([]; ($f | fix_files($r)) as $ff
        | map(select(overlaps(.files; $ff))) as $hit
@@ -39,6 +39,12 @@ def fix_files($r): if .command then ["*"]
 | (.evidence == null or .evidence.contract != $contract or $code_changed) as $stale
 | ([.requirements[] | select(.proof == "auto" and (.status != "proven" or $stale)) | .id]) as $unproven
 | ([$current[] | select(.proof == "human" and .status == "open") | .id]) as $to_accept
+# Built phases QA has not verified on the proven code (VBW 1's QA mandate):
+# never verified, or the code changed since. The tier follows the profile.
+| ([.phases[] | select(.milestone == $m) | .id as $ph
+    | select([$r.plans[] | select(.phase == $ph)] | length > 0 and all(.[]; .status == "done"))
+    | select(.qa == null or .qa.tree != ($r.evidence.tree // "")) | .id]) as $to_verify
+| ({quality: "deep", budget: "quick"}[.settings.profile] // "standard") as $tier
 | if .lease != null then
     result("run"; false; "A VBW \(.lease.kind) run (\(.lease.run)) is open: if its workflow is still running in this session, wait for it; otherwise run vbw run end"; {lease: .lease})
   elif .milestone.status == "shipped" then
@@ -56,7 +62,8 @@ def fix_files($r): if .command then ["*"]
   elif ($blocked | length) > 0 then
     result("unblock"; true; "Resolve the blocker reported for \($blocked | join(", "))"; {plans: $blocked})
   elif ($ready | length) > 0 then
-    result("build"; false; "Run the build workflow for \($ready | join(", "))"; {plans: $ready})
+    result("build"; false; "Run the build workflow for \($ready | join(", "))"; {plans: $ready,
+      docs: [.plans[] | select(.role == "docs" and (.id as $i | any($ready[]; . == $i))) | .id]})
   elif ($escalated | length) > 0 then
     result("escalate"; true; "The fix cap was reached for \($escalated | join(", ")): decide how to proceed"; {fixes: $escalated})
   elif ($stale | not) and (.evidence.scope | length) > 0 then
@@ -65,6 +72,8 @@ def fix_files($r): if .command then ["*"]
     result("fix"; false; "Run the fix workflow for \($open_fixes | join(", "))"; {fixes: $open_fixes, groups: $fix_groups})
   elif ($unproven | length) > 0 then
     result("prove"; false; "Run vbw prove for \($unproven | join(", "))"; {requirements: $unproven})
+  elif ($to_verify | length) > 0 then
+    result("qa"; false; "Run the QA workflow (\($tier)) for \($to_verify | join(", ")): goal-backward verification of the built work"; {phases: $to_verify, tier: $tier})
   elif ($to_accept | length) > 0 then
     result("accept"; true; "Accept or reject \($to_accept | join(", ")), one scenario at a time"; {requirements: $to_accept})
   else

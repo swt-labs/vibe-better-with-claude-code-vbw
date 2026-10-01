@@ -322,7 +322,7 @@ prove_all_green() {
   apply_plan
   prove_all_green
   vbw_run next --json
-  echo "$output" | jq -e '.action == "ship"'
+  echo "$output" | jq -e '.action == "qa"'
   printf 'more\n' >> src/pay.txt
   vbw_run next --json
   echo "$output" | jq -e '.action == "prove" and .detail.requirements == ["R1", "R2"]'
@@ -333,7 +333,7 @@ prove_all_green() {
   prove_all_green
   git add -A && git commit -q -m "feat(shop): checkout"
   vbw_run next --json
-  echo "$output" | jq -e '.action == "ship"'
+  echo "$output" | jq -e '.action == "qa"'
 }
 
 @test "files a check creates do not make its own evidence stale" {
@@ -341,7 +341,7 @@ prove_all_green() {
   edit_record '.checks[0].run = ["sh", "-c", "date > report.txt && grep -qx paid src/pay.txt"]'
   prove_all_green
   vbw_run next --json
-  echo "$output" | jq -e '.action == "ship"'
+  echo "$output" | jq -e '.action == "qa"'
 }
 
 @test "computing the fingerprint leaves the user's index untouched" {
@@ -445,4 +445,14 @@ prove_all_green() {
   vbw_run req accept R2
   [ "$status" -eq 0 ]
   jq -e '.requirements[1].status == "accepted" and .fixes[0].status == "closed"' .vbw/record.json
+}
+
+@test "apply keeps the Architect's phase goals and criteria and the Lead's tasks and roles" {
+  PLAN=$(printf '%s' "$PLAN" | jq '.phases[0] += {goal: "A customer can check out", criteria: ["paying shows a receipt"]}
+    | .plans[0] += {tasks: ["card form", "submit handler"], role: "dev"}
+    | .plans[1] += {role: "docs"}')
+  apply_plan
+  jq -e '.phases[0].goal == "A customer can check out" and .phases[0].criteria == ["paying shows a receipt"]
+    and .plans[0].tasks == ["card form", "submit handler"] and .plans[0].role == "dev" and .plans[1].role == "docs"
+    and (.plans[1] | has("tasks") | not)' .vbw/record.json
 }

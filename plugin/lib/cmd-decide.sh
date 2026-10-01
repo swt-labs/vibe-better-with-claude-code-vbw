@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # vbw decide TEXT [WHY]: record a decision the user made, and why, in the plan
-# of record (the Q&A's memory: planners and builders read it).
+# of record (the Q&A's memory: the Architect, Lead and Devs read it).
 
 cmd_decide() {
   [ $# -ge 1 ] && [ $# -le 2 ] && [ -n "$1" ] && { [ $# -eq 1 ] || [ -n "$2" ]; } \

@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# vbw apply < PLAN_JSON: the planner's one write (docs/workflows.md). Replaces
+# vbw apply < PLAN_JSON: the Lead's one write (docs/workflows.md). Replaces
 # the current milestone's phases, plans and checks in a single validated update:
-#   {"phases": [{id, title, reqs}],
-#    "plans":  [{id, phase, title, reqs, files, after}],
+#   {"phases": [{id, title, reqs, goal?, criteria?}],      (the Architect's)
+#    "plans":  [{id, phase, title, reqs, files, after, tasks?, role?}],   (the Lead's)
 #    "checks": [{id, req, run, files?, exit?, output?, timeout?}]}
 # The phases and plans are the current milestone's; "checks" are the checks of
 # its requirements. Earlier milestones' phases, plans and checks are kept (their
@@ -19,8 +19,8 @@ cmd_apply() {
   printf '%s' "$doc" | jq -e '(keys - ["phases", "plans", "checks"]) == [] and all(.phases, .plans, .checks; type == "array")' \
     > /dev/null || vbw_die "apply needs exactly phases, plans and checks, each an array"
   problem=$(printf '%s' "$doc" | jq -r '[
-      (.phases[] | . as $o | keys[] | select(IN("id", "title", "reqs") | not) | "\($o.id // "a phase") has an unknown field: \(.)"),
-      (.plans[] | . as $o | keys[] | select(IN("id", "phase", "title", "reqs", "files", "after") | not) | "\($o.id // "a plan") has an unknown field: \(.)")
+      (.phases[] | . as $o | keys[] | select(IN("id", "title", "reqs", "goal", "criteria") | not) | "\($o.id // "a phase") has an unknown field: \(.)"),
+      (.plans[] | . as $o | keys[] | select(IN("id", "phase", "title", "reqs", "files", "after", "tasks", "role") | not) | "\($o.id // "a plan") has an unknown field: \(.)")
     ] | .[0] // empty')
   [ -z "$problem" ] || vbw_die "refused: $problem"
   record=$(record_read)
@@ -38,9 +38,10 @@ cmd_apply() {
     | ([.phases[] | select(.milestone == $m) | .id]) as $mine
     | ([.requirements[] | select(.milestone == $m) | .id]) as $myreqs
     | (.plans | map({key: .id, value: .status}) | from_entries) as $status
-    | .phases = [(.phases[] | select(.milestone != $m)), ($d.phases[] | {id, title, reqs, milestone: $m})]
+    | .phases = [(.phases[] | select(.milestone != $m)), ($d.phases[] | {id, title, reqs, milestone: $m} + (with_entries(select(.key | IN("goal", "criteria")))))]
     | .plans = [(.plans[] | select(.phase as $p | any($mine[]; . == $p) | not)),
-                ($d.plans[] | {id, phase, title, reqs, files, after: (.after // []), status: ($status[.id] // "planned")})]
+                ($d.plans[] | {id, phase, title, reqs, files, after: (.after // []), status: ($status[.id] // "planned")}
+                  + (with_entries(select(.key | IN("tasks", "role")))))]
     | .checks = [(.checks[] | select(.req as $q | any($myreqs[]; . == $q) | not)), $d.checks[]]' --argjson d "$doc"
   jq -r '.milestone.id as $m | ([.phases[] | select(.milestone == $m) | .id]) as $mine
     | "applied \($mine | length) phases, \([.plans[] | select(.phase as $p | any($mine[]; . == $p))] | length) plans, \(.checks | length) checks in all"' "$VBW_RECORD"
