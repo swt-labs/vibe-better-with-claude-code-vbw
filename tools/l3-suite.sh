@@ -31,7 +31,7 @@ new_project() {
 
 next_action() { (cd "$dir" && "$VBW" next --json 2> /dev/null | jq -r '.action // "none"') || echo none; }
 screen() { l3 screen "$scenario"; }
-idle() { l3 wait "$scenario" 1500 > /dev/null 2>&1 || true; }
+default_idle() { l3 wait "$scenario" 1500 > /dev/null 2>&1 || true; }
 
 # Answer the question on screen with the first (recommended) option. A
 # multi-select question needs the option ticked, then Submit.
@@ -138,7 +138,16 @@ scenario_resume() {
   new_project
   start=$GREET
   killed=0
-  on_idle() { return 1; }
+  # Wait like the others, but come back as soon as a run is open, so the
+  # session can be closed while its workflow is still working.
+  idle() {
+    local waited=0
+    while [ "$waited" -lt 1500 ]; do
+      [ "$killed" -eq 0 ] && [ "$(next_action)" = run ] && return 0
+      l3 wait "$scenario" 20 > /dev/null 2>&1 && return 0
+      waited=$((waited + 20))
+    done
+  }
   done_yet() {
     if [ "$killed" -eq 0 ] && [ "$(next_action)" = run ]; then
       killed=1
@@ -195,7 +204,8 @@ failed=0
 [ $# -gt 0 ] || set -- $ALL
 for scenario in "$@"; do
   case " $ALL " in *" $scenario "*) ;; *) echo "unknown scenario $scenario (one of: $ALL)" >&2; exit 2 ;; esac
-  unset -f on_question on_idle done_yet checks
+  unset -f on_question on_idle done_yet checks idle
+  idle() { default_idle; }
   on_question() { return 1; }
   on_idle() { return 1; }
   done_yet() { shipped; }
