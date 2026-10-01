@@ -83,11 +83,10 @@ if type != "object" then ["record must be a JSON object"] else
         ( select(has("timeout") and ((.timeout | int_in(1; 3600)) | not)) | "\(.id) timeout must be 1-3600 seconds" ) ),
 
     ( $phases[]
-      | field_rule(["id","title","reqs","status"]),
+      | field_rule(["id","title","reqs"]),
         ( select((.reqs | type == "array" and length > 0) | not) | "\(.id) needs a non-empty reqs array" ),
         ( select((.title | nonempty) | not) | "\(.id) needs a non-empty title" ),
-        ( . as $p | (.reqs // [])[] | . as $x | select(($reqs | has_id($x)) | not) | "\($p.id) references unknown requirement \(.)" ),
-        status_rule(["planned","building","built"]) ),
+        ( . as $p | (.reqs // [])[] | . as $x | select(($reqs | has_id($x)) | not) | "\($p.id) references unknown requirement \(.)" ) ),
 
     ( $plans[]
       | field_rule(["id","phase","title","reqs","files","after","status","note"]),

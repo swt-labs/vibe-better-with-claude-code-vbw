@@ -11,19 +11,20 @@ cmd_show() {
   record=$(record_read)
   case "$view" in
     roadmap)
-      printf '%s' "$record" | jq -r '
-        "\(.milestone.id) \(.milestone.title) [\(.milestone.status)]",
+      printf '%s' "$record" | jq -r "$SHOW_JQ_DEFS"'
+        . as $r
+        | "\(.milestone.id) \(.milestone.title) [\(.milestone.status)]",
         (.phases[] as $ph
-          | "  \($ph.id) \($ph.title) [\($ph.status)]",
+          | "  \($ph.id) \($ph.title) [\($ph | phase_status($r))]",
             (.plans[] | select(.phase == $ph.id)
               | "    \(.id) \(.title) [\(.status)]\(if (.after | length) > 0 then " after \(.after | join(", "))" else "" end)"))'
       ;;
     phase)
       [ $# -eq 1 ] || vbw_usage_error "usage: vbw show phase ID"
       printf '%s' "$record" | jq -e --arg p "$1" 'any(.phases[]; .id == $p)' > /dev/null || vbw_die "unknown phase $1"
-      printf '%s' "$record" | jq -r --arg p "$1" '
+      printf '%s' "$record" | jq -r --arg p "$1" "$SHOW_JQ_DEFS"'
         . as $r | (.phases[] | select(.id == $p)) as $ph
-        | "\($ph.id) \($ph.title) [\($ph.status)]",
+        | "\($ph.id) \($ph.title) [\($ph | phase_status($r))]",
           "requirements:",
           ($ph.reqs[] as $q | $r.requirements[] | select(.id == $q) | "  \(.id) [\(.proof), \(.status)] \(.text)"),
           "plans:",
@@ -75,6 +76,10 @@ cmd_show() {
 # jq helpers for rendering checks. An argv is shown shell-quoted where needed.
 # shellcheck disable=SC2016 # jq text, not shell
 SHOW_JQ_DEFS='
+# The status of a phase is derived from its plans, never stored.
+def phase_status($r): .id as $id | [$r.plans[] | select(.phase == $id) | .status] as $s
+  | if ($s | length) > 0 and all($s[]; . == "done") then "built"
+    elif any($s[]; . != "planned") then "building" else "planned" end;
 def argv_line: map(if test("^[A-Za-z0-9_./:=@%+-]+$") then . else @sh end) | join(" ");
 def check_line: (.run | argv_line)
   + (if (.exit // 0) != 0 then " (exit \(.exit))" else "" end)
@@ -106,7 +111,8 @@ show_work() {
         [.plans[] | select(.id == $id)][0] as $p
         | if $p == null then null else
           {plan: $p,
-           requirements: [$p.reqs[] as $q | $r.requirements[] | select(.id == $q) | {id, text, proof}],
+           requirements: [$p.reqs[] as $q | $r.requirements[] | select(.id == $q) | {id, text, proof,
+             other_open_plans: [$r.plans[] | select(.id != $p.id and .status != "done" and any(.reqs[]; . == $q)) | .id]}],
            checks: checks_for($p.reqs), commands: $r.commands} end
       else
         [.fixes[] | select(.id == $id)][0] as $f

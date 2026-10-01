@@ -18,7 +18,7 @@ setup() {
     { "id": "R2", "text": "Looks trustworthy", "proof": "human", "status": "open" }
   ],
   "checks": [ { "id": "C1", "req": "R1", "run": ["npm", "test"], "files": ["tests/pay.test.ts"], "exit": 0, "output": "passed", "timeout": 60 } ],
-  "phases": [ { "id": "P1", "title": "Payments", "reqs": ["R1", "R2"], "status": "building" } ],
+  "phases": [ { "id": "P1", "title": "Payments", "reqs": ["R1", "R2"] } ],
   "plans": [
     { "id": "P1.1", "phase": "P1", "title": "Card form", "reqs": ["R1"], "files": ["src/pay.ts"],
       "after": [], "status": "done" },

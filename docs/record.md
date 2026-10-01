@@ -32,7 +32,7 @@ carries `VBW-Plan:`/`VBW-Req:` trailers, so the record stays small.
       "files": ["tests/pay.test.ts"] }
   ],
   "phases": [
-    { "id": "P1", "title": "Payments", "reqs": ["R1"], "status": "building" }
+    { "id": "P1", "title": "Payments", "reqs": ["R1"] }
   ],
   "plans": [
     { "id": "P1.1", "phase": "P1", "title": "Card form", "reqs": ["R1"],
@@ -56,7 +56,7 @@ carries `VBW-Plan:`/`VBW-Req:` trailers, so the record stays small.
 | `milestone` | `id` `M<n>`, non-empty `title`, `status` `active` or `shipped` |
 | `requirements[]` | `id` `R<n>` unique; non-empty `text`; `proof` `auto` or `human`; `status` `open`, `failing`, `proven`, `accepted` or `rejected`. A `human` requirement is never `proven`/`failing`; an `auto` requirement is never `accepted`/`rejected`. Requirements mirror `.vbw/spec.md` (`vbw spec sync`) |
 | `checks[]` | `id` `C<n>` unique; `req` an existing `auto` requirement; `run` argv; optional `files[]` (relative, no `..`), `exit` (0–255), `output` (a regular expression), `timeout` (1–3600 s). A requirement's checks are the checks whose `req` names it. Full semantics in docs/proof.md |
-| `phases[]` | `id` `P<n>` unique; non-empty `title`; `reqs[]` existing requirements; `status` `planned`, `building` or `built` |
+| `phases[]` | `id` `P<n>` unique; non-empty `title`; `reqs[]` non-empty, existing requirements. A phase has no stored status: it is derived from its plans (`planned`, `building`, `built` when every plan is done) |
 | `plans[]` | `id` `P<n>.<m>` unique, prefix equals `phase`; `phase` an existing phase; non-empty `title`; `reqs[]` non-empty, existing requirements; `files[]` non-empty, relative project paths (no `..`, no duplicates); `after[]` existing plan ids, no cycles; `status` `planned`, `building`, `done` or `blocked`; optional `note` (why it is blocked). A plan's commits are not stored: they are the commits whose `VBW-Plan:` trailer names it (`git log`) |
 | `fixes[]` | `id` `F<n>` unique; exactly one of `req` (an existing requirement) or `command` (a name in `commands`); `attempts` integer ≥ 0; `status` `open`, `fixed`, `closed` or `escalated` (lifecycle in docs/proof.md); `note` string |
 | `todos[]` | `id` `T<n>` unique; non-empty `text`; `status` `open`, `in_progress`, `done` or `dropped` |

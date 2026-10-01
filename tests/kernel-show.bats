@@ -11,7 +11,7 @@ setup() {
         {id:"R1", text:"Pay by card", proof:"auto", status:"proven"},
         {id:"R2", text:"Feels trustworthy", proof:"human", status:"open"}]
       | .checks = [{id:"C1", req:"R1", run:["npm","test","--","tests/pay test.js"], files:["tests/pay test.js"]}]
-      | .phases = [{id:"P1", title:"Payments", reqs:["R1","R2"], status:"building"}]
+      | .phases = [{id:"P1", title:"Payments", reqs:["R1","R2"]}]
       | .plans = [
           {id:"P1.1", phase:"P1", title:"Card form", reqs:["R1"], files:["src/pay.js"], after:[], status:"done"},
           {id:"P1.2", phase:"P1", title:"Receipt", reqs:["R1"], files:["src/receipt.js"], after:["P1.1"], status:"planned"}]' \
@@ -75,4 +75,13 @@ teardown() { vbw_teardown; }
   [[ "$output" != *"refunds"* ]]
   vbw_run show req R12
   [[ "$output" == *"refunds"* ]]
+}
+
+@test "a phase's status is derived from its plans" {
+  jq '.plans[1].status = "done"' .vbw/record.json > "$TEST_ROOT/d.json" && cp "$TEST_ROOT/d.json" .vbw/record.json
+  vbw_run show roadmap
+  [[ "$output" == *"P1 Payments [built]"* ]]
+  jq '.plans[].status = "planned"' .vbw/record.json > "$TEST_ROOT/d.json" && cp "$TEST_ROOT/d.json" .vbw/record.json
+  vbw_run show phase P1
+  [[ "$output" == *"P1 Payments [planned]"* ]]
 }

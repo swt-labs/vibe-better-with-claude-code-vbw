@@ -24,7 +24,7 @@ cmd_apply() {
   record_read | jq -e 'all(.plans[]; .status == "planned")' > /dev/null \
     || vbw_die "the build has started (a plan is past planned): planning again is not possible now"
   record_update '
-    .phases = [$d.phases[] | {id, title, reqs, status: "planned"}]
+    .phases = [$d.phases[] | {id, title, reqs}]
     | .plans = [$d.plans[] | {id, phase, title, reqs, files, after: (.after // []), status: "planned"}]
     | .checks = $d.checks' --argjson d "$doc"
   jq -r '"applied \(.phases | length) phases, \(.plans | length) plans, \(.checks | length) checks"' "$VBW_RECORD"

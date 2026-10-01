@@ -34,7 +34,7 @@ edit_record() {
   run bash -c 'printf "%s" "$1" | "$2" apply' _ "$PLAN" "$VBW"
   [ "$status" -eq 0 ]
   [[ "$output" == *"applied 1 phases, 2 plans, 2 checks"* ]]
-  jq -e '[.phases[].status, .plans[].status] | all(. == "planned")' .vbw/record.json
+  jq -e 'all(.plans[].status; . == "planned") and all(.phases[]; has("status") | not)' .vbw/record.json
   jq -e '.plans[0].after == [] and .plans[1].after == ["P1.1"]' .vbw/record.json
   vbw_run next --json
   echo "$output" | jq -e '.action == "approve"'
@@ -114,8 +114,34 @@ edit_record() {
 
 # --- plan and fix outcomes ---------------------------------------------------
 
+@test "plan done is verified: the checks of requirements it completes must pass" {
+  apply_plan
+  "$VBW" approve > /dev/null
+  git add -A && git commit -q -m "chore(vbw): plan"
+  printf 'unpaid\n' > src/pay.txt
+  "$VBW" commit P1.1 "feat(pay): pay" > /dev/null
+  vbw_run plan done P1.1
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"completes requirements whose checks do not pass: C1 fail"* ]]
+  jq -e '.plans[0].status == "planned"' .vbw/record.json
+}
+
+@test "a plan that does not complete its requirement is not held to its checks" {
+  PLAN=$(printf '%s' "$PLAN" | jq '.plans[1].reqs = ["R1", "R2"]')
+  apply_plan
+  "$VBW" approve > /dev/null
+  git add -A && git commit -q -m "chore(vbw): plan"
+  printf 'unpaid\n' > src/pay.txt
+  "$VBW" commit P1.1 "feat(pay): pay" > /dev/null
+  vbw_run show plan P1.1 --json
+  echo "$output" | jq -e '.requirements[0].other_open_plans == ["P1.2"]'
+  vbw_run plan done P1.1
+  [ "$status" -eq 0 ]
+}
+
 @test "plan done is verified: it needs a commit and no uncommitted changes" {
   apply_plan
+  "$VBW" approve > /dev/null
   git add -A && git commit -q -m "chore(vbw): plan"
   vbw_run plan done P1.1
   [ "$status" -eq 1 ]
@@ -184,7 +210,7 @@ edit_record() {
   vbw_run show plan P1.2 --json
   [ "$status" -eq 0 ]
   echo "$output" | jq -e '.plan.id == "P1.2" and .plan.files == ["src/receipt.txt"]
-    and .requirements == [{id: "R2", text: "A customer gets a receipt", proof: "auto"}]
+    and .requirements == [{id: "R2", text: "A customer gets a receipt", proof: "auto", other_open_plans: []}]
     and (.checks | map(.id)) == ["C2"] and .checks[0].last == null'
   vbw_run show plan P1.2
   [[ "$output" == *"P1.2 Receipt [planned]"* ]]
