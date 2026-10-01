@@ -34,8 +34,8 @@ In Claude Code:
 /plugin install vbw@vbw-marketplace
 ```
 
-Then turn on **Dynamic workflows** in `/config` (they are off by default on
-the Pro plan), and restart Claude Code.
+Restart Claude Code. VBW turns on the Claude Code features it needs (Dynamic
+workflows and its status line) the first time you use it.
 
 You need Claude Code 2.1.286 or later, `jq` and `git`. Use a Sonnet, Opus or
 Fable model, in auto mode (Shift+Tab) for hands-off building. `/vbw:doctor`

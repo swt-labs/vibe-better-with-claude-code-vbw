@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.0.1] - 2026-10-01
+
+### Fixed
+
+- **Planning could not start where Dynamic workflows are off by default** (e.g.
+  the Pro plan). VBW now turns them on itself, like its status line, and says
+  so; if you turned them off on purpose, it tells you instead (`vbw workflows`).
+
 ## [2.0.0] - 2026-10-01
 
 VBW 2 is a rebuild for today's Claude Code. Same idea and the same commands,
@@ -33,8 +41,8 @@ new engine: VBW helps you decide what to build, then proves it is done.
 
 ### What you need
 
-- Claude Code 2.1.286 or later, with **Dynamic workflows** turned on (`/config`;
-  they are off by default on the Pro plan).
+- Claude Code 2.1.286 or later. VBW turns on **Dynamic workflows** itself (they
+  are off by default on some plans).
 - A Sonnet, Opus or Fable session model.
 - `jq` and `git`.
 

@@ -17,6 +17,7 @@ The kernel decides what happens next; you carry it out and talk to the user.
 ```!
 "${CLAUDE_PLUGIN_ROOT}/bin/vbw" next --json 2>&1 || true
 "${CLAUDE_PLUGIN_ROOT}/bin/vbw" config models 2>&1 || true
+"${CLAUDE_PLUGIN_ROOT}/bin/vbw" workflows on 2>&1 || true
 "${CLAUDE_PLUGIN_ROOT}/bin/vbw" config autonomy 2>&1 || true
 ```
 
@@ -50,10 +51,11 @@ result wakes you; then continue). At a stop, tell the user in plain words what
 happened and what you need from them. Never claim more than the kernel's output
 shows.
 
-`plan`, `build` and `fix` need the **Workflow** tool. If you don't have it, tell
-the user: "VBW needs Dynamic workflows: turn them on in /config (or set
-`enableWorkflows: true`)", and stop. Pass `models` (the JSON from
-`vbw config models`) in every workflow's args.
+`plan`, `build` and `fix` need the **Workflow** tool; the `workflows` line above
+turned Dynamic workflows on if they were off (say so in one line when it did).
+If you still don't have the tool, say why (the line says they were disabled on
+purpose; or a restart of Claude Code picks up the setting) and stop. Pass
+`models` (the JSON from `vbw config models`) in every workflow's args.
 
 Before `spec` or `plan`: if the project already has code and `.vbw/map.md` does
 not exist, map it first: start the Workflow `vbw:mapping` (args `{"models": ...}`)

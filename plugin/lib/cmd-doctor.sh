@@ -79,7 +79,7 @@ doctor_claude() {
   case "$wf" in
     on) doctor_line ok "workflows enabled" ;;
     off) doctor_line fail "workflows are disabled in your settings (disableWorkflows)" "remove disableWorkflows, then turn on Dynamic workflows in /config" ;;
-    *) doctor_line warn "workflows: Claude Code's default (on, except on the Pro plan)" "on Pro: turn on Dynamic workflows in /config" ;;
+    *) doctor_line warn "workflows: Claude Code's default (off on some plans)" "vbw workflows on" ;;
   esac
 }
 

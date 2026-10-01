@@ -25,7 +25,9 @@ case "$cmd" in
   start)
     dir="${3:?usage: tools/l3.sh start NAME DIR [MODEL]}"
     model="${4:-sonnet}"
-    settings='{"enabledPlugins":{"vbw@vbw-marketplace":false},"enableWorkflows":true,"sandbox":{"enabled":true}}'
+    # Only what the test needs: VBW 1 off and the sandbox on. Never settings a
+    # real user would not have (VBW turns workflows on itself).
+    settings='{"enabledPlugins":{"vbw@vbw-marketplace":false},"sandbox":{"enabled":true}}'
     tmux kill-session -t "$session" 2> /dev/null || true
     tmux new-session -d -s "$session" -x 200 -y 60 -c "$dir" \
       "claude --model $model --permission-mode auto --plugin-dir '$ROOT/plugin' --settings '$settings'"

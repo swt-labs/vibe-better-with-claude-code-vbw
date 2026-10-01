@@ -7,6 +7,7 @@ allowed-tools: Bash("${CLAUDE_PLUGIN_ROOT}/bin/vbw" *) Bash(vbw *)
 ```!
 "${CLAUDE_PLUGIN_ROOT}/bin/vbw" init 2>&1 || true
 "${CLAUDE_PLUGIN_ROOT}/bin/vbw" statusline on 2>&1 || true
+"${CLAUDE_PLUGIN_ROOT}/bin/vbw" workflows on 2>&1 || true
 ```
 
 Tell the user in a few lines what was set up (from the output above),

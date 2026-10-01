@@ -40,6 +40,7 @@ usage: vbw <command> [args]
   config [set KEY VALUE | models | autonomy]   settings: profile, autonomy, autonomy_cap, model.ROLE
   auto on SESSION_ID|off|status|gate   autonomous runs for one session (gate: the Stop hook)
   statusline [status | on | off]   the VBW status line in your Claude settings
+  workflows [status | on]   Claude Code's Dynamic workflows, which VBW plans and builds with
   todo [list] | add TEXT | done ID | drop ID   the backlog
   decide TEXT [WHY]   record a decision the user made, and why
   legacy [facts] | done | remove   a VBW 1 project (.vbw-planning/): facts, mark converted, remove
@@ -57,7 +58,7 @@ cmd="${1:-}"
 case "$cmd" in
   version) jq -r .version "$VBW_PLUGIN/.claude-plugin/plugin.json" ;;
   help|-h|--help) vbw_help ;;
-  init|status|todo|commit|next|show|spec|approve|check|prove|apply|run|plan|fix|req|ship|config|auto|statusline|doctor|rtk|report|milestone|decide|legacy)
+  init|status|todo|commit|next|show|spec|approve|check|prove|apply|run|plan|fix|req|ship|config|auto|statusline|workflows|doctor|rtk|report|milestone|decide|legacy)
     # shellcheck source=/dev/null
     . "$VBW_LIB/cmd-$cmd.sh"
     "cmd_$cmd" "$@"

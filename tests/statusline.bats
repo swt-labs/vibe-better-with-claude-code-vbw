@@ -102,3 +102,26 @@ render() { cc_json | NO_COLOR=1 bash "$SL"; }
   [[ "${lines[0]}" == *"[VBW]"* ]]
   [ "${#lines[@]}" -eq 4 ]
 }
+
+@test "workflows on turns Dynamic workflows on, keeps every other setting, and never overrides a deliberate off" {
+  local s="$CLAUDE_CONFIG_DIR/settings.json"
+  mkdir -p "$CLAUDE_CONFIG_DIR"
+  printf '{"model": "opus", "permissions": {"defaultMode": "auto"}}\n' > "$s"
+  vbw_run workflows status
+  [[ "$output" == "default:"* ]]
+  vbw_run workflows on
+  [ "$status" -eq 0 ]
+  [[ "$output" == "on: Dynamic workflows turned on"* ]]
+  jq -e '.enableWorkflows == true and .model == "opus" and .permissions.defaultMode == "auto"' "$s"
+  vbw_run workflows on
+  [ "$output" = "on: Dynamic workflows are enabled" ]
+  # Turned off on purpose: told, never overridden.
+  printf '{"disableWorkflows": true}\n' > "$s"
+  vbw_run workflows on
+  [[ "$output" == "off: Dynamic workflows are disabled on purpose"* ]]
+  jq -e '.disableWorkflows == true and (has("enableWorkflows") | not)' "$s"
+  # No settings file yet: it is created.
+  rm -f "$s"
+  vbw_run workflows on
+  jq -e '.enableWorkflows == true' "$s"
+}
