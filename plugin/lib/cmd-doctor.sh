@@ -48,7 +48,7 @@ doctor_tools() {
 
 doctor_claude() {
   local v settings=() f wf=""
-  v=$(claude --version 2> /dev/null | awk '{print $1}')
+  v=$(claude --version 2> /dev/null | awk '{print $1}') || v=""
   if [ -z "$v" ]; then doctor_line warn "Claude Code version unknown (the claude command is not on PATH here)"
   elif version_at_least "$v" "$VBW_MIN_CLAUDE"; then doctor_line ok "Claude Code $v"
   else doctor_line fail "Claude Code $v is older than VBW needs ($VBW_MIN_CLAUDE)" "update Claude Code"

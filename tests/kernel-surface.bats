@@ -224,3 +224,12 @@ T2 CSV export" ]
   vbw_run doctor
   [[ "$output" == *"✓ workflows enabled"* ]]
 }
+
+@test "doctor works where Claude Code is not installed (CI machines)" {
+  mkdir -p "$TEST_ROOT/bin"
+  printf '#!/bin/sh\nexit 127\n' > "$TEST_ROOT/bin/claude"
+  chmod +x "$TEST_ROOT/bin/claude"
+  PATH="$TEST_ROOT/bin:$PATH" vbw_run doctor
+  [[ "$output" == *"! Claude Code version unknown"* ]]
+  [[ "$output" == *"✓ the plan of record is valid"* ]]
+}

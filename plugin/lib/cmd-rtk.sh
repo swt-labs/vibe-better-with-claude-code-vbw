@@ -13,7 +13,7 @@ cmd_rtk() {
   local path version settings hook="no"
   path=$(command -v rtk 2> /dev/null || true)
   if [ -n "$path" ]; then
-    version=$(rtk --version 2> /dev/null | head -n 1)
+    version=$(rtk --version 2> /dev/null | head -n 1) || version=""
     printf 'rtk: installed (%s, %s)\n' "${version:-version unknown}" "$path"
   else
     printf 'rtk: not installed\n'

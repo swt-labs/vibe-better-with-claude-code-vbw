@@ -24,4 +24,4 @@ fi
 # Timing budgets are measured first, while the machine is quiet.
 bash tools/bench-hooks.sh
 
-bats --jobs "$jobs" tests
+bats --print-output-on-failure --jobs "$jobs" tests
