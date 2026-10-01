@@ -65,9 +65,9 @@ written just before a question may be shown collapsed.
 
 ## Steps
 
-**convert** (needs the user): the project has a VBW 1 plan. Follow the
-`vbw:convert` skill: bring it into VBW 2 through a short Q&A, or, if the user
-wants to start fresh, `vbw legacy done` and continue with `spec`.
+**convert** (needs the user): the project has a VBW 1 plan. Ask (AskUserQuestion):
+"Convert it (Recommended)": follow the `vbw:convert` skill, a short Q&A; or
+"Start fresh": `vbw legacy done`, then continue with `spec`.
 
 **spec** (needs the user): agree on what to build. For existing code, start
 from the map: say what the project does and propose what to improve, rather
