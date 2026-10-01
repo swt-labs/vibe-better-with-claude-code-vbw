@@ -78,7 +78,7 @@ code_grep() {
 }
 
 @test "no plugin-root discovery: paths come from \${CLAUDE_PLUGIN_ROOT} substitution or \$0 (K4)" {
-  run code_grep 'plugins/cache|plugin-root-link|--plugin-dir|ps (a|-)'
+  run code_grep 'plugins/cache|plugin-root-link|--plugin-dir|(^|[^[:alnum:]_])ps[[:space:]]+(a|-)'
   [ -z "$output" ]
   local dirs=() d
   for d in skills agents workflows; do [ -d "$PLUGIN_ROOT/$d" ] && dirs+=("$PLUGIN_ROOT/$d"); done

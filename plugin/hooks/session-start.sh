@@ -1,10 +1,12 @@
 #!/usr/bin/env bash
 # SessionStart: in a VBW project (the session's project directory holds
 # .vbw/record.json, as for the guard), tell the model where the project stands
-# and what comes next, in one line. Started in a subdirectory of a VBW project:
-# say that the guards are off. Elsewhere: nothing. Never a resume directive
-# (ledger D289), never a write.
+# and what comes next, in one line, and export this session's id for
+# autonomous runs (vbw auto). Started in a subdirectory of a VBW project: say
+# that the guards are off. Elsewhere: nothing. Never a resume directive
+# (ledger D289); the only write is to Claude Code's own session env file.
 
+input=$(cat)
 root=${CLAUDE_PROJECT_DIR:-$PWD}
 vbw="${0%/*}/../bin/vbw"
 
@@ -16,7 +18,12 @@ if [ ! -f "$root/.vbw/record.json" ]; then
   exit 0
 fi
 
+session=$(printf '%s' "$input" | jq -r '.session_id // empty' 2> /dev/null)
+if [ -n "${CLAUDE_ENV_FILE:-}" ] && [[ "$session" =~ ^[A-Za-z0-9_-]+$ ]]; then
+  printf 'export VBW_SESSION_ID=%s\n' "$session" >> "$CLAUDE_ENV_FILE"
+fi
+
 state=$(cd "$root" && "$vbw" status 2>&1 < /dev/null | head -n 1)
 next=$(cd "$root" && "$vbw" next 2>&1 < /dev/null | head -n 1)
-jq -n --arg c "VBW project ($state). Next: $next. The vbw command is on PATH (vbw help)." \
+jq -n --arg c "VBW project ($state). Next: $next. Continue with /vbw:vibe. The vbw command is on PATH (vbw help)." \
   '{hookSpecificOutput: {hookEventName: "SessionStart", additionalContext: $c}}'

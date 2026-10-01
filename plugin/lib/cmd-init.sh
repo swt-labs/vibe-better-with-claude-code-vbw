@@ -21,6 +21,7 @@ cmd_init() {
     requirements: [], checks: [], phases: [], plans: [],
     fixes: [], todos: [], decisions: [],
     commands: $commands,
+    settings: {profile: "balanced", autonomy_cap: 25},
     evidence: null, lease: null
   }' > "$VBW_RUNTIME/record.init"
   mv "$VBW_RUNTIME/record.init" "$VBW_RECORD"

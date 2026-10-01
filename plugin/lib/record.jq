@@ -44,7 +44,7 @@ if type != "object" then ["record must be a JSON object"] else
     ( select($r.schema != 1) | "schema must be 1" ),
     ( $r | keys[]
       | select(one_of(["schema","project","milestone","requirements","checks","phases","plans",
-                       "fixes","todos","decisions","commands","evidence","lease"]) | not)
+                       "fixes","todos","decisions","commands","settings","evidence","lease"]) | not)
       | "unknown key: \(.)" ),
     ( ["requirements","checks","phases","plans","fixes","todos","decisions"][]
       | select(($r[.] | type) != "array") | "\(.) must be an array" ),
@@ -125,6 +125,17 @@ if type != "object" then ["record must be a JSON object"] else
         ( select((.text | nonempty) | not) | "\(.id) needs non-empty text" ),
         ( select((.at | iso) | not) | "\(.id) needs an ISO-8601 UTC timestamp" ) ),
 
+    ( $r.settings
+      | if type != "object" then "settings must be an object" else
+          ( select((.profile | one_of(["quality","balanced","budget"])) | not) | "settings.profile must be quality, balanced or budget" ),
+          ( select((.autonomy_cap | int_in(1; 500)) | not) | "settings.autonomy_cap must be an integer 1-500" ),
+          ( keys[] | select(one_of(["profile","autonomy_cap","models"]) | not) | "settings has an unknown key: \(.)" ),
+          ( select(has("models")) | .models
+            | if type != "object" then "settings.models must be an object" else
+                to_entries[] | select((.key | one_of(["planner","critic","builder"])) and (.value | nonempty) | not)
+                | "settings.models.\(.key) must name planner, critic or builder and a model"
+              end )
+        end ),
     ( $r.commands
       | if type != "object" then "commands must be an object of name: argv" else
           to_entries[] | select((.value | argv) | not)

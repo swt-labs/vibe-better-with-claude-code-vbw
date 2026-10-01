@@ -1,0 +1,175 @@
+#!/usr/bin/env bats
+# Kernel commands behind the user surface (M5): human acceptance, ship,
+# settings and model profiles, and the autonomy gate.
+
+load helper
+
+setup() {
+  vbw_setup
+  vbw_git_project
+  "$VBW" init > /dev/null
+  printf '# Shop\n\n## Requirements\n\n- R1 [auto] Pay\n- R2 [human] It feels trustworthy\n' > .vbw/spec.md
+  "$VBW" spec sync > /dev/null
+}
+
+teardown() { vbw_teardown; }
+
+edit_record() {
+  jq "$1" .vbw/record.json > "$TEST_ROOT/edit.json" && cp "$TEST_ROOT/edit.json" .vbw/record.json
+}
+
+# A milestone whose auto requirement is proven on the current files.
+proven_project() {
+  mkdir -p src && printf 'paid\n' > src/pay.txt
+  edit_record '.checks = [{id: "C1", req: "R1", run: ["grep", "-qx", "paid", "src/pay.txt"]}]
+    | .phases = [{id: "P1", title: "Pay", reqs: ["R1", "R2"]}]
+    | .plans = [{id: "P1.1", phase: "P1", title: "Pay", reqs: ["R1"], files: ["src/pay.txt"], after: [], status: "done"}]'
+  "$VBW" approve > /dev/null
+  "$VBW" prove > /dev/null
+}
+
+# --- acceptance --------------------------------------------------------------
+
+@test "accept and reject apply only to human requirements" {
+  vbw_run req accept R1
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"R1 is proved by its checks"* ]]
+  vbw_run req accept R9
+  [[ "$output" == *"unknown requirement R9"* ]]
+  vbw_run req accept R2
+  [ "$status" -eq 0 ]
+  jq -e '.requirements[1].status == "accepted"' .vbw/record.json
+}
+
+@test "a rejection opens a fix; when it is done the requirement returns for acceptance" {
+  vbw_run req reject R2 "the logo is blurry"
+  [ "$status" -eq 0 ]
+  jq -e '.requirements[1].status == "rejected" and .fixes == [{id: "F1", req: "R2", attempts: 0, status: "open", note: "the logo is blurry"}]' .vbw/record.json
+  vbw_run fix done F1
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"goes back to the user"* ]]
+  jq -e '.requirements[1].status == "open" and .fixes[0].status == "closed"' .vbw/record.json
+}
+
+# --- ship --------------------------------------------------------------------
+
+@test "ship is refused until vbw next says ship, then marks the milestone shipped" {
+  proven_project
+  vbw_run ship
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"not ready to ship: vbw next says accept"* ]]
+  "$VBW" req accept R2 > /dev/null
+  vbw_run ship
+  [ "$status" -eq 0 ]
+  jq -e '.milestone.status == "shipped" and (.decisions[-1].text | startswith("Shipped M1"))' .vbw/record.json
+  vbw_run next --json
+  echo "$output" | jq -e '.action == "milestone"'
+}
+
+# --- settings ------------------------------------------------------------------
+
+@test "config shows the profile and resolves the models per role" {
+  vbw_run config
+  [[ "$output" == *"profile: balanced"* ]]
+  [[ "$output" == *"model.builder: sonnet"* ]]
+  vbw_run config models
+  [ "$output" = '{"planner":"opus","critic":"sonnet","builder":"sonnet"}' ]
+  "$VBW" config set profile budget > /dev/null
+  "$VBW" config set model.builder claude-opus-5-5 > /dev/null
+  vbw_run config models
+  [ "$output" = '{"planner":"sonnet","critic":"haiku","builder":"claude-opus-5-5"}' ]
+  "$VBW" config set model.builder default > /dev/null
+  jq -e '.settings | has("models") | not' .vbw/record.json
+}
+
+@test "config refuses unknown keys and invalid values, and changes nothing" {
+  cp .vbw/record.json "$TEST_ROOT/before.json"
+  vbw_run config set profile turbo
+  [ "$status" -eq 2 ]
+  vbw_run config set autonomy_cap many
+  [ "$status" -eq 2 ]
+  vbw_run config set autonomy_cap 0
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"settings.autonomy_cap must be an integer 1-500"* ]]
+  vbw_run config set colour blue
+  [ "$status" -eq 2 ]
+  cmp .vbw/record.json "$TEST_ROOT/before.json"
+}
+
+# --- autonomy ------------------------------------------------------------------
+
+gate() {
+  jq -nc --arg s "$1" '{hook_event_name: "Stop", session_id: $s, stop_hook_active: false}' | "$VBW" auto gate
+}
+
+@test "auto on needs this session's id and arms only this session" {
+  vbw_run auto on
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"no session id"* ]]
+  VBW_SESSION_ID=s1 vbw_run auto on
+  [ "$status" -eq 0 ]
+  jq -e '.session == "s1" and .steps == 0 and .cap == 25' .vbw/runtime/auto.json
+  run gate s2
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+}
+
+@test "the gate is silent when no run is armed" {
+  run gate s1
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+}
+
+@test "the gate blocks the stop with the next step and counts it" {
+  edit_record '.checks = [{id: "C1", req: "R1", run: ["true"]}]
+    | .phases = [{id: "P1", title: "Pay", reqs: ["R1", "R2"]}]
+    | .plans = [{id: "P1.1", phase: "P1", title: "Pay", reqs: ["R1"], files: ["a.txt"], after: [], status: "planned"}]'
+  "$VBW" approve > /dev/null
+  VBW_SESSION_ID=s1 "$VBW" auto on > /dev/null
+  run gate s1
+  [ "$status" -eq 0 ]
+  echo "$output" | jq -e '.decision == "block" and (.reason | contains("step 1 of 25")) and (.reason | contains("build: Run the build workflow for P1.1"))'
+  jq -e '.steps == 1' .vbw/runtime/auto.json
+}
+
+@test "the gate lets the session wait while a workflow runs" {
+  VBW_SESSION_ID=s1 "$VBW" auto on > /dev/null
+  "$VBW" run start plan > /dev/null
+  run gate s1
+  [ -z "$output" ]
+  [ -f .vbw/runtime/auto.json ]
+}
+
+@test "the gate stops and disarms at a decision that needs the user" {
+  VBW_SESSION_ID=s1 "$VBW" auto on > /dev/null
+  edit_record '.checks = [{id: "C1", req: "R1", run: ["true"]}]
+    | .phases = [{id: "P1", title: "Pay", reqs: ["R1", "R2"]}]
+    | .plans = [{id: "P1.1", phase: "P1", title: "Pay", reqs: ["R1"], files: ["a.txt"], after: [], status: "planned"}]'
+  run gate s1
+  echo "$output" | jq -e '(.decision // "allow") != "block" and (.systemMessage | contains("needs you. approve"))'
+  [ ! -f .vbw/runtime/auto.json ]
+}
+
+@test "the gate stops and disarms at the step cap" {
+  "$VBW" config set autonomy_cap 1 > /dev/null
+  edit_record '.checks = [{id: "C1", req: "R1", run: ["true"]}]
+    | .phases = [{id: "P1", title: "Pay", reqs: ["R1", "R2"]}]
+    | .plans = [{id: "P1.1", phase: "P1", title: "Pay", reqs: ["R1"], files: ["a.txt"], after: [], status: "planned"}]'
+  "$VBW" approve > /dev/null
+  VBW_SESSION_ID=s1 "$VBW" auto on > /dev/null
+  run gate s1
+  echo "$output" | jq -e '.decision == "block"'
+  run gate s1
+  echo "$output" | jq -e '(.decision // "allow") != "block" and (.systemMessage | contains("after 1 steps"))'
+  [ ! -f .vbw/runtime/auto.json ]
+}
+
+@test "the session hook exports the session id for autonomy, in VBW projects" {
+  export CLAUDE_ENV_FILE="$TEST_ROOT/env"
+  : > "$CLAUDE_ENV_FILE"
+  jq -nc '{hook_event_name: "SessionStart", session_id: "abc-123"}' | vbw_hook SessionStart > /dev/null
+  grep -qx 'export VBW_SESSION_ID=abc-123' "$CLAUDE_ENV_FILE"
+  : > "$CLAUDE_ENV_FILE"
+  jq -nc '{hook_event_name: "SessionStart", session_id: "x; rm -rf ~"}' | vbw_hook SessionStart > /dev/null
+  [ ! -s "$CLAUDE_ENV_FILE" ]
+}

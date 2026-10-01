@@ -92,12 +92,12 @@ next_after() {
   echo "$output" | jq -e '.action == "accept" and .gate == true and .detail.requirements == ["R2"]'
 }
 
-@test "row 12: a rejected human requirement becomes a fix" {
-  run next_after '.requirements[1].status = "rejected"'
-  echo "$output" | jq -e '.action == "fix" and .gate == false and .detail.requirements == ["R2"]'
+@test "row 0: an open run lease comes first (wait for its workflow, or end it)" {
+  run next_after '.lease = {run: "build-1", kind: "build", started_at: "2026-10-01T09:00:00Z", files: ["a.js"]}'
+  echo "$output" | jq -e '.action == "run" and .gate == false and .detail.lease.run == "build-1"'
 }
 
-@test "row 13: everything proven and accepted is ready to ship" {
+@test "row 12: everything proven and accepted is ready to ship" {
   run next_after '.'
   echo "$output" | jq -e '.action == "ship" and .gate == true'
 }

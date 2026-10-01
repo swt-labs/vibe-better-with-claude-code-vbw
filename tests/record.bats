@@ -29,6 +29,7 @@ setup() {
   "todos": [ { "id": "T1", "text": "Dark mode", "status": "open" } ],
   "decisions": [ { "id": "D1", "text": "Stripe", "at": "2026-10-01T09:00:00Z" } ],
   "commands": { "test": ["npm", "test"] },
+  "settings": { "profile": "balanced", "autonomy_cap": 25 },
   "evidence": null,
   "lease": null
 }
@@ -49,7 +50,7 @@ violations_after() {
 }
 
 @test "the minimal record written by vbw init is valid" {
-  run bash -c 'jq -n --arg n "x" "{schema:1, project:{name:\$n}, milestone:{id:\"M1\",title:\"First milestone\",status:\"active\"}, requirements:[], checks:[], phases:[], plans:[], fixes:[], todos:[], decisions:[], commands:{}, evidence:null, lease:null}" | jq -c -f "$1"' _ "$VALIDATOR"
+  run bash -c 'jq -n --arg n "x" "{schema:1, project:{name:\$n}, milestone:{id:\"M1\",title:\"First milestone\",status:\"active\"}, requirements:[], checks:[], phases:[], plans:[], fixes:[], todos:[], decisions:[], commands:{}, settings:{profile:\"balanced\",autonomy_cap:25}, evidence:null, lease:null}" | jq -c -f "$1"' _ "$VALIDATOR"
   [ "$output" = "[]" ]
 }
 

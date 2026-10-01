@@ -16,8 +16,9 @@ def result($action; $gate; $instruction; $detail):
 | (.evidence == null or .evidence.contract != $contract or $code_changed) as $stale
 | ([.requirements[] | select(.proof == "auto" and (.status != "proven" or $stale)) | .id]) as $unproven
 | ([.requirements[] | select(.proof == "human" and .status == "open") | .id]) as $to_accept
-| ([.requirements[] | select(.proof == "human" and .status == "rejected") | .id]) as $rejected
-| if .milestone.status == "shipped" then
+| if .lease != null then
+    result("run"; false; "A VBW \(.lease.kind) run (\(.lease.run)) is open: if its workflow is still running in this session, wait for it; otherwise run vbw run end"; {lease: .lease})
+  elif .milestone.status == "shipped" then
     result("milestone"; true; "Milestone \(.milestone.id) is shipped: start the next milestone"; {})
   elif (.requirements | length) == 0 then
     result("spec"; true; "Write the goals and requirements in .vbw/spec.md"; {})
@@ -39,8 +40,6 @@ def result($action; $gate; $instruction; $detail):
     result("prove"; false; "Run vbw prove for \($unproven | join(", "))"; {requirements: $unproven})
   elif ($to_accept | length) > 0 then
     result("accept"; true; "Accept or reject \($to_accept | join(", ")), one scenario at a time"; {requirements: $to_accept})
-  elif ($rejected | length) > 0 then
-    result("fix"; false; "Turn the rejection of \($rejected | join(", ")) into a fix"; {requirements: $rejected})
   else
     result("ship"; true; "Everything is proven and accepted: ship milestone \(.milestone.id)"; {})
   end

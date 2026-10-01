@@ -44,6 +44,7 @@ carries `VBW-Plan:`/`VBW-Req:` trailers, so the record stays small.
   "todos": [ { "id": "T1", "text": "Dark mode", "status": "open" } ],
   "decisions": [ { "id": "D1", "text": "Stripe, not PayPal", "at": "2026-10-01T09:00:00Z" } ],
   "commands": { "test": ["npm", "test"] },
+  "settings": { "profile": "balanced", "autonomy_cap": 25 },
   "evidence": null,
   "lease": null
 }
@@ -62,6 +63,7 @@ carries `VBW-Plan:`/`VBW-Req:` trailers, so the record stays small.
 | `todos[]` | `id` `T<n>` unique; non-empty `text`; `status` `open`, `in_progress`, `done` or `dropped` |
 | `decisions[]` | `id` `D<n>` unique; non-empty `text`; `at` an ISO-8601 UTC timestamp |
 | `commands` | object of name → argv (a non-empty array of non-empty strings): the project's own test, lint and build commands detected by `vbw init`. Recording a command never runs it; `vbw prove` runs only commands whose argv hash has consent (see Consent) |
+| `settings` | `profile` `quality`, `balanced` (default) or `budget`: the models the workflow roles run on (`vbw config`); `autonomy_cap` steps per autonomous run (1–500, default 25); optional `models` overrides per role (`planner`, `critic`, `builder`) |
 | `evidence` | `null` or the last `vbw prove` result: `at`, `contract` (the hash proved), `tree` (the git tree id of the project files proved), `passed`, `checks` and `commands` (name → `{status, exit, seconds, tail}`), `scope[]` violations (docs/proof.md) |
 | `lease` | `null` or `{ "run", "kind", "started_at", "files" }`: the active run (`kind` `plan`, `build` or `fix`; `files` the paths its agents may write, or `null`) that the guards hold subagents to (docs/workflows.md) |
 

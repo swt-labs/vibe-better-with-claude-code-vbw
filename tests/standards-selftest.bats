@@ -51,6 +51,10 @@ failing_rules_for() {
 @test "plugin-root discovery is caught" {
   run failing_rules_for 'ls "$HOME"/.claude/plugins/cache/vbw-marketplace'
   [[ "$output" == *"plugin-root discovery"* ]]
+  run failing_rules_for 'ps axww | grep claude'
+  [[ "$output" == *"plugin-root discovery"* ]]
+  run failing_rules_for 'echo "it stops at the first steps -- done"'
+  [[ "$output" != *"plugin-root discovery"* ]]
 }
 
 @test "a clean file breaks no rule" {
