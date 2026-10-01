@@ -125,3 +125,14 @@ render() { cc_json | NO_COLOR=1 bash "$SL"; }
   vbw_run workflows on
   jq -e '.enableWorkflows == true' "$s"
 }
+
+@test "started in a subfolder it shows the project; a VBW 1 project is pointed to the conversion" {
+  "$VBW" init > /dev/null
+  "$VBW" milestone rename "A milestone title that is far too long to fit on one line" > /dev/null
+  mkdir -p src/deep
+  run bash -c 'jq -nc --arg d "$1/src/deep" "{workspace: {project_dir: \$d}}" | NO_COLOR=1 bash "$2"' _ "$PROJECT" "$SL"
+  [[ "${lines[0]}" == "[VBW] project with space │ M1 A milestone title that is far too long… │"* ]]
+  rm -rf .vbw && mkdir .vbw-planning
+  run render
+  [ "${lines[0]}" = "[VBW] VBW 1 plan here · /vbw:vibe to bring it into VBW 2" ]
+}

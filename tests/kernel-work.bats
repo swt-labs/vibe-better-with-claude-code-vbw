@@ -424,3 +424,15 @@ prove_all_green() {
   [[ "$output" == *"added plan P1.3 Refund: src/refund.txt"* ]]
   [[ "$output" != *"R2"* ]]
 }
+
+@test "a kept VBW 1 folder changing never makes the evidence stale" {
+  apply_plan
+  "$VBW" approve > /dev/null
+  printf 'paid\n' > src/pay.txt && "$VBW" commit P1.1 "feat(pay): pay" > /dev/null
+  "$VBW" plan done P1.1 > /dev/null
+  mkdir -p .vbw-planning && printf 'x\n' > .vbw-planning/.cost-ledger.json
+  "$VBW" prove > /dev/null || true
+  printf 'y\n' > .vbw-planning/.cost-ledger.json
+  vbw_run next --json
+  echo "$output" | jq -e '.action != "prove"'
+}

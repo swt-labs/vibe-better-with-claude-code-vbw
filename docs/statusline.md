@@ -2,7 +2,9 @@
 
 The status line is the user's live view of VBW. Setting up a project
 (`/vbw:vibe` the first time, or `/vbw:init`) turns it on; it is a core part of
-VBW, not an option.
+VBW, not an option. The same goes for Claude Code's Dynamic workflows, which
+VBW plans and builds with: `/vbw:vibe` turns them on (`vbw workflows on`) unless
+the user disabled them on purpose.
 
 ```
 [VBW] expenses │ M1 First milestone │ 4/6 done │ ▶ build: P1.2, P2.1 │ ⟳ auto 3/25

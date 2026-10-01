@@ -50,9 +50,10 @@ vbw_sha256() {
 }
 
 # The git tree id of the project's files as they are now (tracked and new,
-# committed or not, ignored files and .vbw/ excluded): a content fingerprint
-# that no commit changes. Built in a temporary index seeded from the real one,
-# so only changed files are rehashed; the user's index and files are untouched.
+# committed or not; ignored files, .vbw/ and a kept VBW 1 .vbw-planning/
+# excluded): a content fingerprint that no commit changes. Built in a temporary
+# index seeded from the real one, so only changed files are rehashed; the
+# user's index and files are untouched.
 vbw_code_tree() {
   local idx real
   idx=$(mktemp "$VBW_RUNTIME/index.XXXXXX") || return 1
@@ -61,8 +62,8 @@ vbw_code_tree() {
   (
     cd "$VBW_ROOT" || exit 1
     export GIT_INDEX_FILE="$idx"
-    git add -A -- . ':(exclude).vbw' > /dev/null 2>&1 &&
-      git rm -r -q --cached --ignore-unmatch -- .vbw > /dev/null 2>&1 &&
+    git add -A -- . ':(exclude).vbw' ':(exclude).vbw-planning' > /dev/null 2>&1 &&
+      git rm -r -q --cached --ignore-unmatch -- .vbw .vbw-planning > /dev/null 2>&1 &&
       git write-tree
   )
   local status=$?

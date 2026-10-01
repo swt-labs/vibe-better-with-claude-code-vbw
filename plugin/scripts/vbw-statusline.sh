@@ -19,6 +19,14 @@ exec 0< /dev/null
 root=$(printf '%s' "$input" | jq -r '.workspace.project_dir // .cwd // empty' 2> /dev/null)
 root=${root:-$PWD}
 
+# Started in a subfolder: the project is the nearest folder up that holds .git
+# (walked without a git process).
+d=$root
+while [ "$d" != / ] && [ -n "$d" ] && [ ! -e "$d/.git" ]; do d=$(dirname "$d"); done
+[ ! -e "$d/.git" ] || root=$d
+legacy=""
+[ -f "$root/.vbw/record.json" ] || [ ! -d "$root/.vbw-planning" ] || legacy=1
+
 # The branch, without a git process: .git is a directory, or a file pointing
 # at a worktree's git directory.
 branch=""
@@ -42,7 +50,7 @@ color=1
 end="$plugin/hooks/end.json"
 [ -n "$input" ] || input='{}'
 # jq exits non-zero when an optional file is missing; only an empty render is a failure.
-out=$(jq -nr --argjson cc "$input" --arg branch "$branch" --arg color "$color" -f "$here/statusline.jq" \
+out=$(jq -nr --argjson cc "$input" --arg branch "$branch" --arg color "$color" --arg legacy "$legacy" -f "$here/statusline.jq" \
   "$plugin/.claude-plugin/plugin.json" "$root/.vbw/record.json" "$end" \
   "$root/.vbw/runtime/next.json" "$end" "$root/.vbw/runtime/auto.json"  2> /dev/null)
 if [ -n "$out" ]; then printf '%s\n' "$out"; else printf '[VBW] status line unavailable\n'; fi

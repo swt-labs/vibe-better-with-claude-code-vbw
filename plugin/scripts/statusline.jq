@@ -34,7 +34,7 @@ def sep: " │ " | dim;
 
 # Line 1: VBW
 | ( if ($rec | type) != "object" then
-      c("36"; "[VBW]") + " " + ("no project here · /vbw:vibe to start" | dim)
+      c("36"; "[VBW]") + " " + (if $legacy != "" then "VBW 1 plan here · /vbw:vibe to bring it into VBW 2" else "no project here · /vbw:vibe to start" end | dim)
     else
       [$rec.requirements[]? | select(.milestone == $rec.milestone.id)] as $cur
       | ([$cur[] | select(.status == "proven" or .status == "accepted")] | length) as $done
@@ -45,7 +45,7 @@ def sep: " │ " | dim;
          elif $next != null then "next: \($next.action)"
          else "next: /vbw:vibe" end) as $state
       | c("36"; "[VBW]") + " " + c("1"; $rec.project.name) + sep
-        + "\($rec.milestone.id) \($rec.milestone.title)" + (if $rec.milestone.status == "shipped" then " ✓" else "" end) + sep
+        + "\($rec.milestone.id) \($rec.milestone.title | if length > 40 then (.[0:39] | sub("\\s+$"; "")) + "…" else . end)" + (if $rec.milestone.status == "shipped" then " ✓" else "" end) + sep
         + "\($done)/\($total) done" + sep + $state
         + (if ($auto | type) == "object" then sep + c("35"; "⟳ auto \($auto.steps)/\($auto.cap)") else "" end)
     end ),

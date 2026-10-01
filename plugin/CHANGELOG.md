@@ -1,5 +1,16 @@
 # Changelog
 
+## [2.0.2] - 2026-10-01
+
+### Fixed
+
+- **The status line** shows your project when Claude Code starts in one of its
+  subfolders, points a VBW 1 project to `/vbw:vibe` to bring it in, and
+  shortens very long milestone names.
+- **`/vbw:doctor`** checks that git knows your name and email (VBW commits as
+  you).
+- **A kept VBW 1 folder** no longer makes VBW think the code changed.
+
 ## [2.0.1] - 2026-10-01
 
 ### Fixed

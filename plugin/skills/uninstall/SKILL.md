@@ -16,3 +16,5 @@ Confirm with the user first (AskUserQuestion: "Remove VBW" or "Cancel"). Then:
 
 Tell them that each project's `.vbw/` folder (their spec, plan and history)
 is left untouched and is theirs to keep or delete, and to restart Claude Code.
+Claude Code's Dynamic workflows stay on (a Claude Code setting other tools may
+use; `/config` turns them off).

@@ -44,6 +44,15 @@ doctor_tools() {
   fi
   v=$(git --version 2> /dev/null | awk '{print $3}')
   if [ -n "$v" ]; then doctor_line ok "git $v"; else doctor_line fail "git is missing" "install git"; fi
+  # VBW commits as the user: without a name and email, git may refuse (or
+  # guess one from the machine name).
+  if [ -n "$v" ]; then
+    if [ -n "$(git config user.name 2> /dev/null)" ] && [ -n "$(git config user.email 2> /dev/null)" ]; then
+      doctor_line ok "git knows who you are ($(git config user.name))"
+    else
+      doctor_line warn "git has no name or email set: VBW's commits may fail" "git config --global user.name \"Your Name\" && git config --global user.email you@example.com"
+    fi
+  fi
 }
 
 doctor_claude() {
