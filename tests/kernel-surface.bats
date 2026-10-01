@@ -233,3 +233,17 @@ T2 CSV export" ]
   [[ "$output" == *"! Claude Code version unknown"* ]]
   [[ "$output" == *"✓ the plan of record is valid"* ]]
 }
+
+@test "autonomy is balanced until set; guided and hands-off are the other levels" {
+  vbw_run config autonomy
+  [ "$output" = balanced ]
+  vbw_run config
+  [[ "$output" == *"autonomy: balanced"* ]]
+  "$VBW" config set autonomy hands-off > /dev/null
+  vbw_run config autonomy
+  [ "$output" = hands-off ]
+  cp .vbw/record.json "$TEST_ROOT/before.json"
+  vbw_run config set autonomy reckless
+  [ "$status" -eq 2 ]
+  cmp .vbw/record.json "$TEST_ROOT/before.json"
+}

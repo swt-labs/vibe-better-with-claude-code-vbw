@@ -144,7 +144,8 @@ if type != "object" then ["record must be a JSON object"] else
       | if type != "object" then "settings must be an object" else
           ( select((.profile | one_of(["quality","balanced","budget"])) | not) | "settings.profile must be quality, balanced or budget" ),
           ( select((.autonomy_cap | int_in(1; 500)) | not) | "settings.autonomy_cap must be an integer 1-500" ),
-          ( keys[] | select(one_of(["profile","autonomy_cap","models"]) | not) | "settings has an unknown key: \(.)" ),
+          ( select(has("autonomy") and (.autonomy | one_of(["guided","balanced","hands-off"]) | not)) | "settings.autonomy must be guided, balanced or hands-off" ),
+          ( keys[] | select(one_of(["profile","autonomy","autonomy_cap","models"]) | not) | "settings has an unknown key: \(.)" ),
           ( select(has("models")) | .models
             | if type != "object" then "settings.models must be an object" else
                 to_entries[] | select((.key | one_of(["planner","critic","builder"])) and (.value | nonempty) | not)

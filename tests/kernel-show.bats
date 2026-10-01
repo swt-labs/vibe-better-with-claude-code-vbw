@@ -96,3 +96,16 @@ teardown() { vbw_teardown; }
   [ "${lines[0]}" = "D1 Stripe for payments (why: the team knows it)" ]
   [ "${lines[1]}" = "D2 No dark mode yet" ]
 }
+
+@test "show requirements lists proof, status, milestone, and whether the work is built" {
+  jq '.requirements = [{id:"R1", text:"Pay", proof:"auto", status:"proven", milestone:"M1"},
+                       {id:"R2", text:"Looks right", proof:"human", status:"open", milestone:"M1"}]
+      | .phases = [{id:"P1", title:"Pay", reqs:["R1","R2"], milestone:"M1"}]
+      | .plans = [{id:"P1.1", phase:"P1", title:"Pay", reqs:["R1"], files:["a"], after:[], status:"done"},
+                  {id:"P1.2", phase:"P1", title:"Look", reqs:["R2"], files:["b"], after:[], status:"planned"}]' \
+    .vbw/record.json > "$TEST_ROOT/r.json" && cp "$TEST_ROOT/r.json" .vbw/record.json
+  vbw_run show requirements
+  [ "$status" -eq 0 ]
+  [ "${lines[0]}" = "R1 [auto, proven] Pay (M1, built)" ]
+  [ "${lines[1]}" = "R2 [human, open] Looks right (M1)" ]
+}

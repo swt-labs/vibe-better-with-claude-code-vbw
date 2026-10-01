@@ -25,7 +25,7 @@ usage: vbw <command> [args]
   spec add auto|human TEXT   append a requirement to the spec and sync
   status [--json]   where the project stands
   next [--json]     the next lifecycle step and whether it needs you
-  show VIEW [ID]    roadmap | phase ID | req ID | plan ID | fix ID | contract | evidence | decisions
+  show VIEW [ID]    roadmap | phase ID | req ID | plan ID | fix ID | contract | evidence | decisions | requirements
   approve           approve the contract and project commands (the user, via /vbw:approve)
   check [--expect-red] [CHECK...]   run approved checks and report (writes nothing)
   prove             run the approved checks and commands, record the evidence
@@ -37,7 +37,7 @@ usage: vbw <command> [args]
   ship              mark the milestone shipped (when vbw next says ship)
   milestone start TITLE   open the next milestone after shipping
   milestone rename TITLE  name the current milestone
-  config [set KEY VALUE | models]   project settings: profile, autonomy_cap, model.ROLE
+  config [set KEY VALUE | models | autonomy]   settings: profile, autonomy, autonomy_cap, model.ROLE
   auto on SESSION_ID|off|status|gate   autonomous runs for one session (gate: the Stop hook)
   statusline [status | on | off]   the VBW status line in your Claude settings
   todo [list] | add TEXT | done ID | drop ID   the backlog

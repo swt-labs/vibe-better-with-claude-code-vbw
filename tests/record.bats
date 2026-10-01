@@ -183,3 +183,10 @@ violations_after() {
   run violations_after '.converted = true'
   [[ "$output" == *"converted must be"* ]]
 }
+
+@test "settings.autonomy is optional and one of three levels" {
+  run violations_after '.settings.autonomy = "guided"'
+  [ "$output" = "[]" ]
+  run violations_after '.settings.autonomy = "yolo"'
+  [[ "$output" == *"settings.autonomy must be guided, balanced or hands-off"* ]]
+}

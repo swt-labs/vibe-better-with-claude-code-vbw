@@ -1,6 +1,6 @@
 ---
 name: config
-description: Show or change VBW settings - the model profile (quality, balanced, budget), per-role models, the autonomy step cap and the status line.
+description: Show or change VBW settings - the model profile (quality, balanced, budget), per-role models, how much VBW does on its own, and the status line.
 argument-hint: "[what to change]"
 allowed-tools: Bash("${CLAUDE_PLUGIN_ROOT}/bin/vbw" *) Bash(vbw *)
 ---
@@ -20,7 +20,11 @@ the result. Otherwise show the settings above in plain words. Keys:
   and builds), `budget` (Sonnet plans and builds, Haiku reviews).
 - `model.planner`, `model.critic`, `model.builder`: override one role (`opus`,
   `sonnet`, `haiku` or a model id; `default` removes the override).
-- `autonomy_cap`: how many steps `/vbw:vibe --auto` takes before stopping.
+- `autonomy`: how much `/vbw:vibe` does on its own: `guided` (explains each
+  step and waits), `balanced` (the default: stops for decisions, approval,
+  checking and shipping), `hands-off` (takes its own recommendations on
+  decisions and lists them). `/vbw:profile` sets it together with the models.
+- `autonomy_cap`: how many steps one autonomous run takes before stopping.
 - The status line: `vbw statusline on` or `off`.
 
 Your own session keeps the model you chose with `/model`; it must be Sonnet,

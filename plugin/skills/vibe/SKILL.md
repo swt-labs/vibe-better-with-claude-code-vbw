@@ -17,16 +17,30 @@ The kernel decides what happens next; you carry it out and talk to the user.
 ```!
 "${CLAUDE_PLUGIN_ROOT}/bin/vbw" next --json 2>&1 || true
 "${CLAUDE_PLUGIN_ROOT}/bin/vbw" config models 2>&1 || true
+"${CLAUDE_PLUGIN_ROOT}/bin/vbw" config autonomy 2>&1 || true
 ```
 
 The user said: $ARGUMENTS
 
-If no JSON appears above (shell execution in skills is off), run `vbw next --json`
-and `vbw config models` with Bash first. "not a VBW project": set it up yourself with
-`vbw init` and `vbw statusline on` (say what was set up in one line), then run
-`vbw next --json` again. If the user passed `--auto`, run
-`vbw auto on ${CLAUDE_SESSION_ID}` once: from then on VBW keeps going on its own
-until a step needs the user.
+If no JSON appears above (shell execution in skills is off), run `vbw next --json`,
+`vbw config models` and `vbw config autonomy` with Bash first. "not a VBW
+project": set it up yourself with `vbw init` and `vbw statusline on` (say what
+was set up in one line), then run `vbw next --json` again.
+
+## Autonomy
+
+The last line above is how much VBW does on its own; the user changes it with
+`/vbw:profile`, `/vbw:config`, or by saying so (`vbw config set autonomy ...`).
+Approval, checking results (`accept`) and shipping always stop for the user.
+
+- **balanced** and **hands-off**: run `vbw auto on ${CLAUDE_SESSION_ID}` once,
+  so VBW keeps going on its own until a step needs the user.
+- **hands-off**: at `needs_decisions`, take the recommended option yourself:
+  `vbw decide "<option>" "chosen by VBW (hands-off): <its trade-off>"`, and
+  list those decisions at the next stop so the user can change any.
+- **guided**: before each step that does not need the user, say in plain words
+  what you will do and why, and ask (AskUserQuestion): "Go ahead", "Explain
+  more", "Stop here". `--auto` from the user runs on its own this time.
 
 ## Loop
 
@@ -70,7 +84,7 @@ default title, name it after what was agreed: `vbw milestone rename "<title>"`.
 
 **plan**: `vbw run start plan` and start the Workflow `vbw:plan` with args
 `{"models": ...}`. When it returns: `vbw run end`. If its status is
-`needs_decisions`, the user decides first: ask each decision with
+`needs_decisions`, the user decides first (hands-off: see Autonomy): ask each decision with
 AskUserQuestion, one question at a time (why it matters in the question, each
 option's trade-off as its description, the recommended one first, marked
 "(Recommended)"). Record each answer: `vbw decide "<what was decided>" "<why:

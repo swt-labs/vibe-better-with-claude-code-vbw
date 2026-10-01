@@ -5,9 +5,12 @@
 VBW is a Claude Code plugin that turns an idea into working, tested, committed
 code, and shows you the proof:
 
-1. **Agree on what to build.** VBW helps you write it down as requirements. Each
-   is either something a test can prove, or something only you can judge (how
-   it looks, how it feels).
+1. **Agree on what to build, and decide what matters.** VBW helps you write
+   it down as requirements: each is either something a test can prove, or
+   something only you can judge (how it looks, how it feels). Before planning,
+   it asks you the decisions that matter (cost, where data lives, security,
+   what is hard to change later), one at a time, with plain trade-offs and a
+   recommendation, and records what you chose and why.
 2. **Plan it, with tests first.** VBW plans the work in small parts and writes
    a test for every requirement. The tests fail today; that is the point.
 3. **You approve.** `/vbw:approve`. Nothing VBW runs is unapproved, and the
@@ -43,27 +46,33 @@ checks all of this for you.
 In your project's folder (any git repository, new or existing):
 
 ```
-/vbw:init
 /vbw:vibe I want a command-line expense tracker in Node.js
 ```
 
-`/vbw:init` sets up the project and the VBW status line. `/vbw:vibe` takes it
-from there. Type `/vbw:vibe` whenever you come back; it continues where things
-stand. Add `--auto` to let it keep going on its own until a step needs you.
+The first time, `/vbw:vibe` sets up the project and the VBW status line. Type
+`/vbw:vibe` whenever you come back; it continues where things stand. It keeps
+going on its own until a step needs you; `/vbw:profile` changes how much it
+does by itself (Careful, Standard, Fast).
+
+**Coming from VBW 1?** Update as usual (`/vbw:update`). Your projects are safe:
+VBW 1's `.vbw-planning/` folder is never changed. `/vbw:vibe` offers to bring
+it into VBW 2 through a few questions, then asks whether to keep the old folder.
 
 ## Commands
 
 | Command | What it does |
 |---|---|
 | `/vbw:vibe [what you want]` | The one command: the next step, every time |
-| `/vbw:init` | Set up VBW in a project, with the status line |
 | `/vbw:approve` | Approve the plan and its tests (only you can) |
 | `/vbw:status` | Where the project stands |
-| `/vbw:map` | Map an existing codebase before planning |
-| `/vbw:debug [problem]` | Find a bug's root cause from three angles at once |
-| `/vbw:todo [idea]` | Keep an idea for later |
-| `/vbw:teach [convention]` | Teach VBW and Claude your project's conventions |
-| `/vbw:config` | Models (quality, balanced, budget) and settings |
+| `/vbw:discuss`, `/vbw:research` | Think a decision through; a sourced answer to a question |
+| `/vbw:todo [idea]`, `/vbw:list-todos` | Park an idea for later; see the list |
+| `/vbw:qa`, `/vbw:verify` | Run every proof now; check what only you can judge |
+| `/vbw:debug [problem]`, `/vbw:fix [what]` | Find a bug's root cause; a quick fix with every proof re-run |
+| `/vbw:init`, `/vbw:convert` | Set up VBW (vibe does it too); bring in a VBW 1 project |
+| `/vbw:map`, `/vbw:teach [convention]` | Map an existing codebase; teach your conventions |
+| `/vbw:pause`, `/vbw:resume` | Stop safely; pick up where you left off |
+| `/vbw:profile`, `/vbw:config` | How VBW works (models, how much it does on its own); each setting |
 | `/vbw:skills`, `/vbw:rtk`, `/vbw:compress` | Community skills, output compression, terser instruction files |
 | `/vbw:doctor`, `/vbw:report` | Check the setup; prepare a bug report |
 | `/vbw:update`, `/vbw:whats-new`, `/vbw:uninstall` | Keep VBW current, or remove it |
@@ -87,6 +96,7 @@ stand. Add `--auto` to let it keep going on its own until a step needs you.
 - [docs/workflows.md](docs/workflows.md): the planner, critic, builder and workflows
 - [docs/guards.md](docs/guards.md): the safety guards
 - [docs/statusline.md](docs/statusline.md): the status line
+- [docs/convert.md](docs/convert.md): updating from VBW 1 and bringing in its projects
 - [plugin/CHANGELOG.md](plugin/CHANGELOG.md): what changed
 
 ## Contributing
