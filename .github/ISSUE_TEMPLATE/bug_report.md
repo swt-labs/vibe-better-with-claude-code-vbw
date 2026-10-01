@@ -23,7 +23,8 @@ What should have happened instead.
 - Claude Code version: (run `claude --version`)
 - OS: macOS / Linux / WSL
 - Plugin install method: `plugin install` / `--plugin-dir`
-- Model: Opus 4.6 / other
+- VBW version: (the status line, or `/vbw:doctor`)
+- Model: (e.g. Sonnet 5.5, Opus 5.5)
 
 **Additional context**
-Screenshots, logs, or the content of any relevant `.vbw-planning/` files.
+Screenshots, logs, or the relevant part of `.vbw/spec.md` and `.vbw/record.json`. `/vbw:report` prepares a report for you (you see it before anything is sent).

@@ -436,3 +436,13 @@ prove_all_green() {
   vbw_run next --json
   echo "$output" | jq -e '.action != "prove"'
 }
+
+@test "accepting a requirement closes a fix still open from its earlier rejection" {
+  printf '# Shop\n\n## Requirements\n\n- R1 [auto] A customer can pay\n- R2 [human] It feels trustworthy\n' > .vbw/spec.md
+  "$VBW" spec sync > /dev/null
+  "$VBW" req reject R2 "too plain" > /dev/null
+  jq -e '.fixes[0].status == "open"' .vbw/record.json
+  vbw_run req accept R2
+  [ "$status" -eq 0 ]
+  jq -e '.requirements[1].status == "accepted" and .fixes[0].status == "closed"' .vbw/record.json
+}

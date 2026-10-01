@@ -155,7 +155,7 @@ Claude excels at tracking state across extended sessions and multiple context wi
 - **Use git for state tracking**: Git provides a log of what's been done and checkpoints that can be restored. Claude performs especially well using git to track state.
 - **Context awareness**: Claude can track its remaining context window. If the agent harness supports compaction, tell Claude explicitly so it doesn't try to wrap up work prematurely: "Your context window will be automatically compacted as it approaches its limit, allowing you to continue working indefinitely."
 
-**VBW application**: VBW's `.vbw-planning/` state model (STATE.md, ROADMAP.md, phase directories) already follows these patterns. When writing agent instructions that interact with state, reference the structured format and instruct agents to update it incrementally rather than rewriting from scratch.
+**VBW application**: VBW's plan of record (`.vbw/spec.md`, `.vbw/record.json`, read through `vbw show`) already follows these patterns. When writing agent instructions that interact with state, reference the structured format and instruct agents to update it incrementally rather than rewriting from scratch.
 
 ## 16. Balance Autonomy and Safety
 

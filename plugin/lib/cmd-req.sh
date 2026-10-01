@@ -16,7 +16,9 @@ cmd_req() {
   [ -n "$proof" ] || vbw_die "unknown requirement $id"
   [ "$proof" = human ] || vbw_die "$id is proved by its checks (vbw prove), not by acceptance"
   if [ "$sub" = accept ]; then
-    record_update '(.requirements[] | select(.id == $q)).status = "accepted"' --arg q "$id"
+    # The user's word settles it: a fix still open from an earlier rejection closes.
+    record_update '(.requirements[] | select(.id == $q)).status = "accepted"
+      | (.fixes[] | select(.req == $q and (.status | IN("open", "fixed", "escalated")))).status = "closed"' --arg q "$id"
     printf '%s accepted\n' "$id"
   else
     record_update "$VBW_JQ_DEFS"'(.requirements[] | select(.id == $q)).status = "rejected"

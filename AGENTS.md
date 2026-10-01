@@ -122,7 +122,7 @@ grep -l 'vbw' "$CLAUDE_PROJECT_DIR"/*.jsonl
 grep -El 'hook.*error|hook.*fail' "$CLAUDE_CONFIG_ROOT"/debug/*.txt
 
 # Search for a specific tool invocation across sessions
-grep -Erl 'bootstrap-state|state-updater' "$CLAUDE_PROJECT_DIR"/*.jsonl
+grep -Erl 'vbw (next|apply|prove|run start)' "$CLAUDE_PROJECT_DIR"/*.jsonl
 
 # Check what a subagent did in a specific session
 cat "$CLAUDE_PROJECT_DIR"/<session-id>/subagents/agent-*.jsonl
@@ -134,12 +134,12 @@ cat "$CLAUDE_PROJECT_DIR"/<session-id>/subagents/agent-*.jsonl
 - **Surface** (`plugin/skills/`): the `/vbw:vibe` router and utility skills, plus the statusline segment. Skills are specifications, not procedures.
 - **Engine** (`plugin/workflows/*.js`): all orchestration and all run-scoped logic (waves, retries, fix loops, budgets, fan-out and merge). Workflows receive state in `args` from `vbw next --json`. Agents write only through `vbw` subcommands.
 - **Kernel** (`plugin/bin/vbw` + `plugin/lib/*.sh`): the only writer of the plan of record (`.vbw/record.json`). It runs approved checks, commits with provenance, renders on demand and backs the hooks. Hard budget: 3,000 lines.
-- **Agents** (`plugin/agents/`): `planner`, `builder`, `reviewer`, `scout`, `debugger`. Each is a ≤1.5k-token specification of good output plus a tool denylist.
+- **Agents** (`plugin/agents/`): `planner`, `critic`, `builder`, `scout`. Each is a ≤1.5k-token specification of good output plus a tool list.
 - **Hooks** (`plugin/hooks/hooks.json`): guards scoped by the run lease and by `agent_type`. They are inert outside VBW projects.
 
 ## Repository layout
 
-- `plugin/`: the only shipped tree (marketplace source `./plugin`). It holds `.claude-plugin/`, `bin/`, `lib/`, `hooks/`, `skills/`, `workflows/`, `agents/`, `schemas/`, `output-styles/` and `evals/` (plugin eval cases).
+- `plugin/`: the only shipped tree (marketplace source `./plugin`). It holds `.claude-plugin/`, `bin/`, `lib/`, `hooks/`, `scripts/` (the status line), `skills/`, `workflows/`, `agents/` and `output-styles/`.
 - `tests/`: bats suites. `helper.bash` is hermetic. `standards.bats` holds the engineering rules as tests, and `standards-selftest.bats` proves each rule fails on a violation.
 - `tools/`: maintainer tooling (`test.sh`, `bump-version.sh`, `install-hooks.sh`, `baseline/`, …). Never shipped.
 - `docs/`: user documentation. `a_non_prod_docs/`: local working documents (design, plan, ledger, progress log).
@@ -147,11 +147,11 @@ cat "$CLAUDE_PROJECT_DIR"/<session-id>/subagents/agent-*.jsonl
 ## Kernel and hook rules (each is enforced by `tests/standards.bats`)
 
 - **Bash 3.2 is the floor** (macOS `/bin/bash`). No `mapfile`/`readarray`, no associative arrays, no case-modifying expansions, no `"${@}"`. Every array expansion under `set -u` is guarded (`${a[@]+"${a[@]}"}`).
-- **No data as code:** no `eval`, no `bash -c "$var"`. Commands from repo files run only as argv arrays, and only after consent recorded by content hash in `${CLAUDE_PLUGIN_DATA}`.
+- **No data as code:** no `eval`, no `bash -c "$var"`. Commands from repo files run only as argv arrays, and only after consent recorded by content hash in the clone's git directory (`$(git rev-parse --git-common-dir)/vbw/consent.json`).
 - **Single writer:** only the kernel writes `.vbw/record.json`, through one locked, validated, atomic write path.
 - **Git path listings use `-z`.** VBW commits use an explicit pathspec, never `git add -A`, and never disturb user-staged files.
 - **Paths come from substitution:** `${CLAUDE_PLUGIN_ROOT}` in skills, agents and workflows; `$0` or arguments in scripts. No cache globs, `/tmp` links, `ps` scraping or command mirrors.
-- **Nothing outside the project:** no writes to `/tmp`, global settings, other repos or git hooks, and no process killing. It must work under the Claude Code sandbox.
+- **Nothing outside the project:** no writes to `/tmp`, other repos or git hooks, and no process killing. The one exception is the user's Claude Code `settings.json`, where VBW turns on its status line and Dynamic workflows (owner decision, 2026-10-01), keeping every other setting and a backup of a replaced status line. It must work under the Claude Code sandbox.
 - **Hot paths:** hooks ≤ 15 ms p95, statusline ≤ 30 ms, with no network and no credentials.
 - **JSON only through `jq`,** never grep or sed on JSON.
 
@@ -170,7 +170,7 @@ Run everything with `bash tools/test.sh`. Run it directly, never through `| tail
 - **Zero tolerance:** every failure is investigated and resolved before committing, with no "pre-existing" exemptions.
 - **Both shells:** CI runs the suite on macOS `/bin/bash` 3.2 and on bash 5, from a checkout path containing a space. Locally, run it at least once under `/bin/bash` before committing kernel or hook code.
 - **Hermetic tests:** use `tests/helper.bash` (`vbw_setup`/`vbw_teardown`). Never rely on the host `HOME`, Claude session variables or open stdin.
-- **Evals** (`plugin/evals/`, run with `claude plugin eval ./plugin`, sandboxed) are the release gate. Baselines for v1 and plain Claude Code live in `tools/baseline/`.
+- **Real-user scenarios** (`tools/l3-suite.sh`: the real Claude Code TUI driven as a user, outcomes checked in the record and git) run before every release. Baselines for v1 and plain Claude Code live in `tools/baseline/`.
 
 ## Git Workflow
 

@@ -26,7 +26,7 @@ gh api repos/swt-labs/vibe-better-with-claude-code-vbw/pulls/<pr-number>/files -
 gh api repos/swt-labs/vibe-better-with-claude-code-vbw/pulls/<pr-number>/commits --paginate
 ```
 
-The QA-relevant path set mirrors the public workflow: `.github/workflows/`, `agents/`, `commands/`, `config/`, `hooks/`, `references/`, `scripts/`, `templates/`, `testing/`, and `tests/`.
+The QA-relevant path set mirrors the public workflow (`QA_PATHS` in `.github/workflows/qa-review.yml`): `.github/workflows/`, `plugin/`, `tests/` and `tools/`.
 
 ## Reconcile Rounds
 

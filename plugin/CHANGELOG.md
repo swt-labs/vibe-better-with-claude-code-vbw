@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.0.3] - 2026-10-01
+
+### Fixed
+
+- **`/vbw:map` and `/vbw:debug`** turn on Dynamic workflows themselves, like
+  `/vbw:vibe`, instead of sending you to `/config`.
+- **Accepting a requirement** closes a fix still open from an earlier rejection.
+
 ## [2.0.2] - 2026-10-01
 
 ### Fixed

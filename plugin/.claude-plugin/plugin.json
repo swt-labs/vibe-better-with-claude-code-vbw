@@ -1,6 +1,6 @@
 {
   "name": "vbw",
-  "version": "2.0.2",
+  "version": "2.0.3",
   "description": "Vibe Better With Claude Code: an executable definition of done for Claude Code. Spec, contract checks, parallel build, mechanical proof, human acceptance.",
   "author": {
     "name": "Tiago Serôdio",
