@@ -62,6 +62,8 @@ session_start() {
   run session_start "$PROJECT"
   [ "$status" -eq 0 ]
   [[ "$(printf '%s' "$output" | jq -r '.hookSpecificOutput.additionalContext')" == *"removed 2 outdated VBW 1 command copies"* ]]
+  # The user sees it before typing anything (the session already loaded the copies).
+  [[ "$(printf '%s' "$output" | jq -r .systemMessage)" == *"Type /reload-skills"* ]]
   [ ! -e "$dir/init.md" ] && [ ! -e "$dir/vibe.md" ]
   [ -f "$dir/mine.md" ] && [ -f "$dir/plain.md" ]
   [ -f "$CLAUDE_CONFIG_DIR/commands/mine/keep.md" ]

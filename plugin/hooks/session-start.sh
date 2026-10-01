@@ -50,4 +50,11 @@ else
   fi
 fi
 
-[ -z "$context" ] || jq -n --arg c "$context" '{hookSpecificOutput: {hookEventName: "SessionStart", additionalContext: $c}}'
+# The copies were loaded before this hook ran, so this session still has them:
+# the user must reload before typing a /vbw: command. A systemMessage reaches
+# the user at once; the context alone would wait for their first prompt.
+notice=""
+[ "$removed" -eq 0 ] || notice="VBW 2 removed the old VBW 1 commands. Type /reload-skills (or restart Claude Code) before using any /vbw: command."
+
+[ -z "$context" ] || jq -n --arg c "$context" --arg n "$notice" \
+  '{hookSpecificOutput: {hookEventName: "SessionStart", additionalContext: $c}} + (if $n == "" then {} else {systemMessage: $n} end)'
