@@ -4,13 +4,15 @@
 
 cmd_next() {
   vbw_require_project
-  local record hash approved=false changed=false next
+  local record hash approved=false changed=false legacy=false next
   record=$(record_read)
   hash=$(contract_hash "$record")
   contract_approved "$hash" && approved=true
   next_code_changed "$record" && changed=true
+  # A VBW 1 plan not yet converted (docs/convert.md).
+  [ -d "$VBW_ROOT/.vbw-planning" ] && ! printf '%s' "$record" | jq -e 'has("converted")' > /dev/null && legacy=true
   next=$(printf '%s' "$record" | jq -c --argjson approved "$approved" --arg contract "$hash" \
-    --argjson code_changed "$changed" -f "$VBW_LIB/next.jq")
+    --argjson code_changed "$changed" --argjson legacy "$legacy" -f "$VBW_LIB/next.jq")
   # The status line shows the last answer (docs/statusline.md).
   printf '%s\n' "$next" > "$VBW_RUNTIME/next.json.$$" && mv "$VBW_RUNTIME/next.json.$$" "$VBW_RUNTIME/next.json"
   if [ "${1:-}" = "--json" ]; then

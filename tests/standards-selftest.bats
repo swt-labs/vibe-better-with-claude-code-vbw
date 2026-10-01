@@ -13,6 +13,7 @@ failing_rules_for() {
   local bad="$TEST_ROOT/bad-plugin"
   mkdir -p "$bad/bin" "$bad/lib" "$bad/.claude-plugin"
   cp "$PLUGIN_ROOT/.claude-plugin/plugin.json" "$bad/.claude-plugin/plugin.json"
+  cp "$PLUGIN_ROOT/VERSION" "$bad/VERSION"
   printf '#!/usr/bin/env bash\n%s\n' "$1" > "$bad/lib/bad.sh"
   VBW_TEST_PLUGIN_ROOT="$bad" bats "$REPO_ROOT/tests/standards.bats" 2>/dev/null | sed -n 's/^not ok [0-9]* //p'
 }

@@ -22,8 +22,9 @@ The kernel decides what happens next; you carry it out and talk to the user.
 The user said: $ARGUMENTS
 
 If no JSON appears above (shell execution in skills is off), run `vbw next --json`
-and `vbw config models` with Bash first. "not a VBW project": set it up with
-`vbw init`, then continue with `spec`. If the user passed `--auto`, run
+and `vbw config models` with Bash first. "not a VBW project": set it up yourself with
+`vbw init` and `vbw statusline on` (say what was set up in one line), then run
+`vbw next --json` again. If the user passed `--auto`, run
 `vbw auto on ${CLAUDE_SESSION_ID}` once: from then on VBW keeps going on its own
 until a step needs the user.
 
@@ -49,6 +50,10 @@ inside the AskUserQuestion: the question text or an option's `preview`. Text
 written just before a question may be shown collapsed.
 
 ## Steps
+
+**convert** (needs the user): the project has a VBW 1 plan. Follow the
+`vbw:convert` skill: bring it into VBW 2 through a short Q&A, or, if the user
+wants to start fresh, `vbw legacy done` and continue with `spec`.
 
 **spec** (needs the user): agree on what to build. For existing code, start
 from the map: say what the project does and propose what to improve, rather

@@ -41,6 +41,8 @@ usage: vbw <command> [args]
   auto on SESSION_ID|off|status|gate   autonomous runs for one session (gate: the Stop hook)
   statusline [status | on | off]   the VBW status line in your Claude settings
   todo [list] | add TEXT | done ID | drop ID   the backlog
+  decide TEXT [WHY]   record a decision the user made, and why
+  legacy [facts] | done | remove   a VBW 1 project (.vbw-planning/): facts, mark converted, remove
   doctor            check everything VBW needs, with the fix for anything wrong
   rtk [status]      the state of RTK (command-output compression)
   report            diagnostic facts for a bug report about VBW (no spec text or code)
@@ -55,7 +57,7 @@ cmd="${1:-}"
 case "$cmd" in
   version) jq -r .version "$VBW_PLUGIN/.claude-plugin/plugin.json" ;;
   help|-h|--help) vbw_help ;;
-  init|status|todo|commit|next|show|spec|approve|check|prove|apply|run|plan|fix|req|ship|config|auto|statusline|doctor|rtk|report|milestone)
+  init|status|todo|commit|next|show|spec|approve|check|prove|apply|run|plan|fix|req|ship|config|auto|statusline|doctor|rtk|report|milestone|decide|legacy)
     # shellcheck source=/dev/null
     . "$VBW_LIB/cmd-$cmd.sh"
     "cmd_$cmd" "$@"

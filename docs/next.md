@@ -18,6 +18,7 @@ lifecycle. `vbw next --json` returns:
 |---|---|---|---|
 | 0 | a run lease is open | `run` (wait for its workflow if it is running in this session; otherwise `vbw run end`) | no |
 | 1 | milestone `shipped` | `milestone` (start the next one: `vbw milestone start TITLE`) | yes |
+| 2a | no requirements in the current milestone, and a VBW 1 plan (`.vbw-planning/`) not converted yet | `convert` (`/vbw:convert`, or start fresh; docs/convert.md) | yes |
 | 2 | no requirements in the current milestone | `spec` (write its requirements in `.vbw/spec.md`) | yes |
 | 3 | the current milestone has no phases, an `auto` requirement has no check, or a current `auto` requirement is in no plan | `plan` (plan workflow: phases, plans, contract checks) | no |
 | 4 | contract not approved (never approved, or changed since) | `approve` (review and approve the contract) | yes |

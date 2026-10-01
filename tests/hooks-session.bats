@@ -85,3 +85,12 @@ session_start() {
   [ ! -e "$TEST_ROOT/other/commands/vbw/init.md" ]
   [ -f "$HOME/.claude/commands/vbw/init.md" ]
 }
+
+@test "a VBW 1 project is told its plan is safe and how to bring it in, and nothing is written" {
+  mkdir .vbw-planning && printf '# Project\n' > .vbw-planning/PROJECT.md
+  run session_start "$PROJECT"
+  [ "$status" -eq 0 ]
+  printf '%s' "$output" | jq -r '.hookSpecificOutput.additionalContext' | grep -q 'VBW 2 leaves it untouched, and /vbw:vibe or /vbw:convert'
+  [ ! -e .vbw ]
+  [ "$(cat .vbw-planning/PROJECT.md)" = "# Project" ]
+}

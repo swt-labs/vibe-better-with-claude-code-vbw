@@ -1,6 +1,7 @@
 # vbw next: the lifecycle decision table (docs/next.md). Input: a valid record.
 # Args: $approved (the current contract hash has consent), $contract (that hash),
-# $code_changed (the project differs from the commit the evidence proved).
+# $code_changed (the project differs from the commit the evidence proved), $legacy (a
+# VBW 1 plan, .vbw-planning/, is not converted yet).
 # Output: {action, gate, instruction, detail}. First matching row wins.
 
 def result($action; $gate; $instruction; $detail):
@@ -42,6 +43,8 @@ def fix_files($r): if .command then ["*"]
     result("run"; false; "A VBW \(.lease.kind) run (\(.lease.run)) is open: if its workflow is still running in this session, wait for it; otherwise run vbw run end"; {lease: .lease})
   elif .milestone.status == "shipped" then
     result("milestone"; true; "Milestone \(.milestone.id) is shipped: start the next milestone (vbw milestone start TITLE)"; {})
+  elif ($current | length) == 0 and $legacy then
+    result("convert"; true; "This project has a VBW 1 plan (.vbw-planning/): bring it into VBW 2 (/vbw:convert), or start fresh"; {})
   elif ($current | length) == 0 then
     result("spec"; true; "Write the requirements for \(.milestone.id) \(.milestone.title) in .vbw/spec.md"; {})
   elif ([.phases[] | select(.milestone == $m)] | length) == 0

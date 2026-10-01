@@ -63,10 +63,11 @@ carries `VBW-Plan:`/`VBW-Req:` trailers, so the record stays small.
 | `plans[]` | `id` `P<n>.<m>` unique, prefix equals `phase`; `phase` an existing phase; non-empty `title`; `reqs[]` non-empty, existing requirements; `files[]` non-empty, relative project paths (no `..`, no duplicates); `after[]` existing plan ids, no cycles; `status` `planned`, `building`, `done` or `blocked`; optional `note` (why it is blocked). A plan's commits are not stored: they are the commits whose `VBW-Plan:` trailer names it (`git log`) |
 | `fixes[]` | `id` `F<n>` unique; exactly one of `req` (an existing requirement) or `command` (a name in `commands`); `attempts` integer ≥ 0; `status` `open`, `fixed`, `closed` or `escalated` (lifecycle in docs/proof.md); `note` string |
 | `todos[]` | `id` `T<n>` unique; non-empty `text`; `status` `open`, `in_progress`, `done` or `dropped` |
-| `decisions[]` | `id` `D<n>` unique; non-empty `text`; `at` an ISO-8601 UTC timestamp |
+| `decisions[]` | `id` `D<n>` unique; non-empty `text`; optional `why` (non-empty: the reason the user gave); `at` an ISO-8601 UTC timestamp. `vbw decide TEXT [WHY]` records one |
 | `commands` | object of name → argv (a non-empty array of non-empty strings): the project's own test, lint and build commands detected by `vbw init`. Recording a command never runs it; `vbw prove` runs only commands whose argv hash has consent (see Consent) |
 | `settings` | `profile` `quality`, `balanced` (default) or `budget`: the models the workflow roles run on (`vbw config`); `autonomy_cap` steps per autonomous run (1–500, default 25); optional `models` overrides per role (`planner`, `critic`, `builder`) |
 | `evidence` | `null` or the last `vbw prove` result: `at`, `contract` (the hash proved), `tree` (the git tree id of the project files proved), `passed`, `checks` and `commands` (name → `{status, exit, seconds, tail}`), `scope[]` violations (docs/proof.md) |
+| `converted` | optional: `{ "from": ".vbw-planning", "at" }`, set by `vbw legacy done` once a VBW 1 plan was brought in (docs/convert.md) |
 | `lease` | `null` or `{ "run", "kind", "started_at", "files" }`: the active run (`kind` `plan`, `build` or `fix`; `files` the paths its agents may write, or `null`) that the guards hold subagents to (docs/workflows.md) |
 
 Unknown keys are rejected, at the top level and inside every item: an unknown

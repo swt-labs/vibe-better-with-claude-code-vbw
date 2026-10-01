@@ -41,6 +41,8 @@ if [ -f "$root/.vbw/record.json" ]; then
   state=$(cd "$root" && "$vbw" status 2>&1 < /dev/null | head -n 1)
   next=$(cd "$root" && "$vbw" next 2>&1 < /dev/null | head -n 1)
   context="${context}VBW project ($state). Next: $next. Continue with /vbw:vibe. The vbw command is on PATH (vbw help)."
+elif [ -d "$root/.vbw-planning" ]; then
+  context="${context}This project has a VBW 1 plan (.vbw-planning/). Tell the user once: VBW 2 leaves it untouched, and /vbw:vibe or /vbw:convert brings it into VBW 2 through a few questions."
 else
   top=$(git -C "$root" rev-parse --show-toplevel 2> /dev/null || true)
   if [ -n "$top" ] && [ -f "$top/.vbw/record.json" ]; then

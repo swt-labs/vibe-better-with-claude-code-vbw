@@ -170,3 +170,16 @@ violations_after() {
   run violations_after '.commands.test = ["npm", "te\u0000st"]'
   [[ "$output" == *"command test must be a non-empty argv array"* ]]
 }
+
+@test "a decision may carry its reason; a conversion marker has one exact shape" {
+  run violations_after '.decisions[0].why = "cheapest to run"'
+  [ "$output" = "[]" ]
+  run violations_after '.decisions[0].why = ""'
+  [[ "$output" == *"D1 why must be a non-empty string"* ]]
+  run violations_after '.converted = {from: ".vbw-planning", at: "2026-10-01T09:00:00Z"}'
+  [ "$output" = "[]" ]
+  run violations_after '.converted = {from: "elsewhere", at: "2026-10-01T09:00:00Z"}'
+  [[ "$output" == *"converted must be"* ]]
+  run violations_after '.converted = true'
+  [[ "$output" == *"converted must be"* ]]
+}

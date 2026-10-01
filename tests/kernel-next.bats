@@ -160,3 +160,14 @@ next_after() {
                {id:"F2", command:"test", attempts:0, status:"open", note:"exit 1"}]'
   echo "$output" | jq -e '.detail.groups == [["F1","F2"]]'
 }
+
+@test "row 2a: an unconverted VBW 1 plan is offered for conversion before the spec" {
+  mkdir .vbw-planning && printf '# Project\n' > .vbw-planning/PROJECT.md
+  run next_after '.requirements = [] | .checks = [] | .phases = [] | .plans = []' unapproved
+  echo "$output" | jq -e '.action == "convert" and .gate == true'
+  run next_after '.requirements = [] | .checks = [] | .phases = [] | .plans = [] | .converted = {from: ".vbw-planning", at: "2026-10-01T09:00:00Z"}' unapproved
+  echo "$output" | jq -e '.action == "spec"'
+  # Once work has started, an old folder no longer interrupts it.
+  run next_after '.'
+  echo "$output" | jq -e '.action == "ship"'
+}

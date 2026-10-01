@@ -45,7 +45,7 @@ if type != "object" then ["record must be a JSON object"] else
     ( select($r.schema != 1) | "schema must be 1" ),
     ( $r | keys[]
       | select(one_of(["schema","project","milestone","requirements","checks","phases","plans",
-                       "fixes","todos","decisions","commands","settings","evidence","lease","shipped"]) | not)
+                       "fixes","todos","decisions","commands","settings","evidence","lease","shipped","converted"]) | not)
       | "unknown key: \(.)" ),
     ( ["requirements","checks","phases","plans","fixes","todos","decisions","shipped"][]
       | select(($r[.] | type) != "array") | "\(.) must be an array" ),
@@ -131,9 +131,14 @@ if type != "object" then ["record must be a JSON object"] else
         status_rule(["open","in_progress","done","dropped"]) ),
 
     ( arr("decisions")[]
-      | field_rule(["id","text","at"]),
+      | field_rule(["id","text","why","at"]),
         ( select((.text | nonempty) | not) | "\(.id) needs non-empty text" ),
+        ( select(has("why") and (.why | nonempty | not)) | "\(.id) why must be a non-empty string" ),
         ( select((.at | iso) | not) | "\(.id) needs an ISO-8601 UTC timestamp" ) ),
+
+    ( select($r | has("converted")) | $r.converted
+      | select((type == "object" and (keys == ["at", "from"]) and .from == ".vbw-planning" and (.at | iso)) | not)
+      | "converted must be {from: \".vbw-planning\", at: an ISO-8601 UTC time}" ),
 
     ( $r.settings
       | if type != "object" then "settings must be an object" else

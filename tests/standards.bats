@@ -111,7 +111,7 @@ code_grep() {
   jq -e '.plugins[0].source == "./plugin"' "$REPO_ROOT/.claude-plugin/marketplace.json"
   [ "$(jq -r .version "$PLUGIN_ROOT/.claude-plugin/plugin.json")" = "$(tr -d '[:space:]' < "$REPO_ROOT/VERSION")" ]
   # VBW 1's /vbw:update confirms an update by reading VERSION inside the installed
-  # plugin, so the plugin ships one (docs: the update from VBW 1).
+  # plugin, so the plugin ships one (docs/convert.md).
   [ "$(tr -d '[:space:]' < "$PLUGIN_ROOT/VERSION")" = "$(tr -d '[:space:]' < "$REPO_ROOT/VERSION")" ]
 }
 
