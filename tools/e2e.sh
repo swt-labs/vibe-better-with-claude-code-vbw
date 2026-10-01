@@ -21,6 +21,14 @@ model="${2:-sonnet}"
 src="$ROOT/tools/e2e/$fixture"
 [ -f "$src/spec.md" ] || { echo "no fixture $src/spec.md" >&2; exit 2; }
 VBW="$ROOT/plugin/bin/vbw"
+# Sessions launched from inside Claude Code inherit its PATH, whose installed
+# plugins' bin/ (an older vbw) would shadow the code under test.
+clean=""
+IFS=: read -r -a parts <<< "$PATH"
+for p in "${parts[@]}"; do
+  case "$p" in */plugins/cache/*) ;; *) clean="${clean:+$clean:}$p" ;; esac
+done
+export PATH="$clean"
 
 work=$(mktemp -d "${TMPDIR:-/tmp}/vbw-e2e-$fixture.XXXXXX")
 cd "$work"

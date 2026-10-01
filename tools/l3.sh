@@ -28,9 +28,17 @@ case "$cmd" in
     # Only what the test needs: VBW 1 off and the sandbox on. Never settings a
     # real user would not have (VBW turns workflows on itself).
     settings='{"enabledPlugins":{"vbw@vbw-marketplace":false},"sandbox":{"enabled":true}}'
+    # A session launched from inside Claude Code inherits its PATH, which puts
+    # that session's installed plugins' bin/ (an older vbw) ahead of the code
+    # under test. Start from a PATH without any plugin cache.
+    clean=""
+    IFS=: read -r -a parts <<< "$PATH"
+    for p in "${parts[@]}"; do
+      case "$p" in */plugins/cache/*) ;; *) clean="${clean:+$clean:}$p" ;; esac
+    done
     tmux kill-session -t "$session" 2> /dev/null || true
     tmux new-session -d -s "$session" -x 200 -y 60 -c "$dir" \
-      "claude --model $model --permission-mode auto --plugin-dir '$ROOT/plugin' --settings '$settings'"
+      "env PATH='$clean' claude --model $model --permission-mode auto --plugin-dir '$ROOT/plugin' --settings '$settings'"
     sleep 6
     # First run in a directory: accept the folder-trust dialog, as a user would.
     if screen | grep -q 'Yes, I trust this folder'; then
