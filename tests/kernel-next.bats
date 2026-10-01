@@ -137,3 +137,26 @@ next_after() {
   run "$VBW" next --json
   echo "$output" | jq -e '.action == "approve"'
 }
+
+@test "row 6: plans that share a file never build in the same wave" {
+  run next_after '.plans |= map(.status = "planned") | .plans[2].files = ["a.js", "d.js"]'
+  echo "$output" | jq -e '.action == "build" and .detail.plans == ["P1.1"]'
+}
+
+@test "row 9: open fixes that share files form one group (one builder), others run alongside" {
+  run next_after '.requirements += [{id:"R3", text:"Refund", proof:"auto", status:"failing", milestone:"M1"}]
+    | .checks += [{id:"C2", req:"R3", run:["true"]}]
+    | .phases[0].reqs += ["R3"]
+    | .plans += [{id:"P1.4", phase:"P1", title:"Refund", reqs:["R3"], files:["r.js"], after:[], status:"done"}]
+    | .requirements[0].status = "failing"
+    | .fixes = [{id:"F1", req:"R1", attempts:0, status:"open", note:"C1"},
+               {id:"F2", req:"R3", attempts:0, status:"open", note:"C2"},
+               {id:"F3", req:"R1", attempts:0, status:"open", note:"again"}]'
+  echo "$output" | jq -e '.action == "fix" and .detail.fixes == ["F1","F2","F3"]
+    and (.detail.groups | sort) == [["F1","F3"],["F2"]]'
+  # A project command may touch any file: it joins every group.
+  run next_after '.commands = {test: ["true"]} | .requirements[0].status = "failing"
+    | .fixes = [{id:"F1", req:"R1", attempts:0, status:"open", note:"C1"},
+               {id:"F2", command:"test", attempts:0, status:"open", note:"exit 1"}]'
+  echo "$output" | jq -e '.detail.groups == [["F1","F2"]]'
+}

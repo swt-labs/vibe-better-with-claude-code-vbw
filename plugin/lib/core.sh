@@ -79,3 +79,13 @@ vbw_mtime() {
   case "$t" in "" | *[!0-9]*) t=0 ;; esac
   printf '%s\n' "$t"
 }
+
+# vbw_dirty_files FILE...: those of the project-relative FILEs that differ from
+# HEAD or are new, comma-separated.
+vbw_dirty_files() {
+  [ $# -gt 0 ] || return 0
+  local f out=""
+  while IFS= read -r -d '' f; do out="$out${out:+, }$f"; done \
+    < <(cd "$VBW_ROOT" && { git diff --name-only -z HEAD -- "$@"; git ls-files -z --others --exclude-standard -- "$@"; })
+  printf '%s' "$out"
+}

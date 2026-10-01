@@ -110,11 +110,16 @@ failing project command. Lifecycle:
 |---|---|---|
 | no fix item | nothing | new fix, `open`, `attempts` 0, once the work is built (below) |
 | `open` (no work yet) | `closed` | stays `open` |
-| `fixed` (work committed) | `closed` | `attempts` + 1, back to `open`; `escalated` at the cap (3) |
+| `fixed` (work committed and verified by `vbw fix done`) | `closed` | `attempts` + 1, back to `open`; `escalated` at the cap (3) |
 
 A failure opens a fix only once the work is built: every plan serving the
 requirement (for a project command: every plan) is `done`. Before that, a
 failing check is work in progress, not a defect, and opens nothing.
+
+`vbw fix done` is verified, not claimed: none of the files the fix may touch has
+uncommitted changes, and the checks of every finished requirement (all its plans
+`done`) that those files serve pass now. A fix cannot quietly break other work.
+A project command's fix is left to `vbw prove`, which runs the command.
 
 An escalated fix is a human gate (`vbw next`).
 

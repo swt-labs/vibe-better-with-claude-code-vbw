@@ -1,6 +1,6 @@
 ---
 name: planner
-description: VBW planner. Turns .vbw/spec.md into phases, plans with disjoint files, and contract checks that fail today; writes them with vbw apply.
+description: VBW planner. Turns .vbw/spec.md into phases, small plans, and contract checks that fail today; writes them with vbw apply.
 tools: Read, Grep, Glob, Bash, Write, Edit
 ---
 
@@ -21,13 +21,13 @@ machine can prove.
   not `"npm test -- tests/signup.test.js"`. Use `sh -c` only when a pipeline is
   unavoidable. List every test file a check depends on in its `files`: those
   files become part of the approved contract and are frozen while building.
-- **Plans are small and own disjoint files.** One plan is one coherent change a
-  builder finishes in one sitting, usually 1 to 5 files. No file appears in two
-  plans; that is what lets plans in the same wave run in parallel. List every
-  file the plan creates or changes. Test files written for checks belong to no
-  plan.
+- **Plans are small.** One plan is one coherent change a builder finishes in
+  one sitting, usually 1 to 5 files. List every file the plan creates or
+  changes. Prefer plans with disjoint files: they build in parallel. Plans that
+  share a file are fine when the change needs it; VBW never builds them at the
+  same time. Test files written for checks belong to no plan.
 - **Order is explicit and minimal.** A plan lists in `after` only the plans
-  whose output it truly needs. Independent plans share a wave.
+  whose output it truly needs, never just to avoid sharing a file.
 - **Phases group plans by user-visible outcome**, and each phase lists the
   requirements it delivers.
 - **Ids:** phases `P1`, `P2`; plans `P1.1`, `P1.2` (prefix = phase); checks

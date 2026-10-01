@@ -214,6 +214,23 @@ lease() {
   [ -z "$output" ]
 }
 
+@test "during a run, builders never move HEAD or other builders' changes in the shared tree" {
+  lease fix '["src/pay.js"]'
+  local c
+  for c in 'git stash' 'git stash push -m x' 'git stash pop' 'git switch main' 'git checkout main' 'git reset HEAD~1' 'git reset' \
+           'git checkout -- src/other.js' 'git restore src/other.js' 'git cherry-pick abc' 'git pull'; do
+    run as_agent Bash "$(jq -nc --arg c "$c" '{command: $c}')"
+    denied || { echo "not denied: $c"; return 1; }
+  done
+  for c in 'git stash list' 'git status' 'git diff' 'git checkout -- src/pay.js' 'git restore src/pay.js' 'git restore --staged src/other.js' 'git log -3'; do
+    run as_agent Bash "$(jq -nc --arg c "$c" '{command: $c}')"
+    [ -z "$output" ] || { echo "denied: $c"; return 1; }
+  done
+  # The main session is never held to this.
+  run bash_call 'git stash'
+  [ -z "$output" ]
+}
+
 @test "during planning, subagents may write test files (no file list, nothing protected yet)" {
   lease plan 'null'
   run as_agent Write "{\"file_path\": \"$PROJECT/tests/pay.test.js\"}"

@@ -117,11 +117,19 @@ def in_project:
   ( select(.cmd | test("^(ls|stat|test|\\[\\[?)$") | not) | [paths | select(secret_path)][0] // empty | secret_reason ),
   ( select((.out | any(.[]; record_path)) or ((.cmd | reader) | not) and any(.args[]; record_path)) | record_reason );
 
-# A subagent during a run (docs/workflows.md): commits go through vbw commit,
-# and redirects write only the run's files.
+# A subagent during a run (docs/workflows.md): commits go through vbw commit;
+# builders share one working tree, so nothing may move HEAD or other builders'
+# changes; files are restored and redirects written only within the run's files.
 def in_run($g):
-  ( select(.cmd == "git") | (git_words[0] // "") | select(test("^(commit|push|rebase|merge)$"))
-    | "git \(.) by a builder: commits go through vbw commit PLAN \"type(scope): description\"" ),
+  ( select(.cmd == "git") | git_words as $w | ($w[0] // "") as $s | $w[1:] as $a
+    | ( select($s | test("^(commit|push|rebase|merge|pull|cherry-pick|revert|am)$"))
+        | "git \($s) by a builder: commits go through vbw commit PLAN \"type(scope): description\"" ),
+      ( select(($s == "stash" and (($a[0] // "") | test("^(list|show)$") | not)) or ($s | test("^(switch|reset)$"))
+               or ($s == "checkout" and (any($a[]; . == "--") | not)))
+        | "git \($s) by a builder changes the working tree other builders share: undo your own change by editing your files" ),
+      ( select($s == "checkout" or ($s == "restore" and ((any($a[]; . == "--staged") and (any($a[]; test("^(--worktree|-W)$")) | not)) | not)))
+        | (if $s == "checkout" then $a[(($a | index("--")) + 1):] else [$a[] | select(startswith("-") | not)] end)[]
+        | project_path($g.hook.cwd // $root; $root) | lease_write_denial($g.lease; $g.record) ) ),
   ( .out[] | project_path($g.hook.cwd // $root; $root) | lease_write_denial($g.lease; $g.record) );
 
 # Outside a run, every rule needs one of these words in the raw command,

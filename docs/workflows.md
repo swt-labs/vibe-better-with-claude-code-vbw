@@ -1,6 +1,6 @@
 # Workflows and agents
 
-VBW's engine is three Claude Code workflows (`plugin/workflows/*.js`) and three
+VBW's engine is five Claude Code workflows (`plugin/workflows/*.js`) and four
 agents (`plugin/agents/*.md`). The workflows hold the procedure: who runs, in
 what order, in parallel or not. The agents hold the standard: what good output
 is. Every write to the plan of record goes through `vbw`.
@@ -8,8 +8,10 @@ is. Every write to the plan of record goes through `vbw`.
 | Workflow | Started when `vbw next` says | Agents | Ends with |
 |---|---|---|---|
 | `vbw:plan` | `plan` | planner → critic → planner (one revision when the critic finds issues) | phases, plans and checks in the record; protected test files written and failing |
-| `vbw:build` | `build` (one wave: the ready plans) | one builder per plan, in parallel | each plan `done` (committed, its checks green) or `blocked` with a reason |
-| `vbw:fix` | `fix` | one builder per fix item, in parallel | each fix `fixed` (committed) or its plan `blocked` |
+| `vbw:build` | `build` (one wave: the ready plans, no two sharing a file) | one builder per plan, in parallel | each plan `done` (committed, its checks green) or `blocked` with a reason |
+| `vbw:fix` | `fix` (`detail.groups`: open fixes that share files, grouped) | one builder per group, groups in parallel | each fix `fixed` (verified, committed) or its plan `blocked` |
+| `vbw:map` | `spec` or `plan` on existing code without `.vbw/map.md` | scouts, one per angle, then one merge | the map, written to `.vbw/map.md` |
+| `vbw:debug` | the user runs `/vbw:debug` | three scouts (reproduce, trace, history), then a judge | the root cause, its evidence and a proposed fix; nothing changed |
 
 After `build` and `fix`, the router runs `vbw prove` (deterministic, no agent),
 and `vbw next` decides again. Approval, acceptance and shipping are human gates.
@@ -31,7 +33,8 @@ test files that no plan owns yet). While a lease is active, any **subagent**
 
 - it writes only files in `lease.files` (when not null);
 - it never writes a protected check file (any check's `files`) during `build` or `fix`;
-- it never runs `git commit`, `git push`, `git rebase` or `git merge`: commits go through `vbw commit`.
+- it never runs `git commit`, `push`, `rebase`, `merge`, `pull`, `cherry-pick`, `revert` or `am`: commits go through `vbw commit`;
+- it never moves HEAD or other builders' changes in the shared working tree: no `git stash` (except `list`/`show`), `switch`, `reset`, or `checkout` of a branch, and `git checkout -- PATH`/`git restore PATH` only for paths in `lease.files`.
 
 The main session is never held to a lease, so the user can always step in. A
 lease older than 24 hours is ignored (a crashed run must not lock a project).
@@ -45,7 +48,7 @@ lease older than 24 hours is ignored (a crashed run must not lock a project).
 | `vbw check [--expect-red] [C1 ...]` | builder | run approved checks, report, write nothing. `--expect-red`: every check must fail (red-first) |
 | `vbw commit P1.2 "feat(x): ..."` | builder | commit the plan's changed files with provenance trailers |
 | `vbw plan done P1.2` / `vbw plan block P1.2 "reason"` | builder | the plan's outcome |
-| `vbw fix done F1` | builder | work committed, awaiting proof |
+| `vbw fix done F1` | builder | verified: no uncommitted changes in the files it may touch, and the checks of every finished requirement those files serve pass; then awaiting proof |
 | `vbw apply < plan.json` | planner | replace phases, plans and checks in one validated write (refused once any plan has started) |
 
 ## Agents
@@ -55,14 +58,16 @@ returns a structured result through the workflow's `schema`, so Claude Code
 validates it and retries on a mismatch. A completion gate of our own is not
 needed.
 
-- **planner**: turns the spec into phases, plans with disjoint declared files,
+- **planner**: turns the spec into phases, small plans with declared files,
   and checks that fail today and pass only when the requirement is met. It
   writes the check test files and applies the plan with `vbw apply`.
 - **critic**: reads the spec and the applied plan and finds what would make it
   fail: an uncovered requirement, a check that cannot fail or tests the wrong
-  thing, overlapping files, a wrong order. It writes nothing.
-- **builder**: implements one plan or one fix within its declared files, proves
-  its checks red first, then green, and commits through `vbw`.
+  thing, a wrong order. It writes nothing.
+- **builder**: implements one plan, or a group of fixes, within its declared
+  files, proves its checks red first, then green, and commits through `vbw`.
+- **scout**: investigates from one assigned angle (mapping, debugging) and
+  reports verified findings. It changes nothing.
 
 ## Models
 
@@ -73,8 +78,10 @@ project's model profile. The session itself must run an auto-mode-capable model
 
 ## Known trade-off
 
-Builders in one wave share the working tree. Their files are disjoint, so their
-commits never conflict, but a builder can see another's half-written file while
+Builders in one wave share the working tree. The kernel never puts two plans
+that share a file in one wave (`vbw next`, and `vbw run start build` refuses
+such a wave), and fixes that share files go to one builder, so commits never
+conflict, but a builder can see another's half-written file while
 it runs its checks. Its own checks still decide its result, and `vbw prove`
 after the wave is the authority. Per-agent worktrees would remove the overlap at
 the cost of merging; the eval data decides whether that is worth it.

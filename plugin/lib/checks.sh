@@ -78,3 +78,17 @@ checks_run_all() {
   done
   printf '%s\n' "$all"
 }
+
+# checks_must_pass RECORD WHAT CHECK...: run the checks now and die with
+# "WHAT: <the failing checks>" unless every one passes. No checks: nothing runs.
+checks_must_pass() {
+  local record="$1" what="$2" results
+  shift 2
+  [ $# -gt 0 ] || return 0
+  cd "$VBW_ROOT" || vbw_die "cannot enter $VBW_ROOT"
+  checks_begin "$record"
+  results=$(checks_run_all "$record" "$@")
+  checks_end
+  printf '%s' "$results" | jq -e 'all(.[]; .status == "pass")' > /dev/null \
+    || vbw_die "$what: $(printf '%s' "$results" | jq -r '[to_entries[] | select(.value.status != "pass") | "\(.key) \(.value.status)"] | join(", ")')"
+}

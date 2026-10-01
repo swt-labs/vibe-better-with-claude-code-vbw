@@ -6,15 +6,35 @@
 def result($action; $gate; $instruction; $detail):
   {action: $action, gate: $gate, instruction: $instruction, detail: $detail};
 
+# Builders share one working tree, so work that touches the same file never runs
+# at the same time. "*" stands for any file.
+def overlaps($a; $b): any($a[], $b[]; . == "*") or any($a[]; . as $x | any($b[]; . == $x));
+
+# The files a fix may touch (as in vbw run start fix): the files of the plans
+# serving its requirement; any file for a project command.
+def fix_files($r): if .command then ["*"]
+  else (.req as $q | [$r.plans[] | select(any(.reqs[]; . == $q)) | .files[]] | unique)
+       | if length == 0 then ["*"] else . end end;
+
 .milestone.id as $m
 | [.requirements[] | select(.milestone == $m)] as $current
 | (.plans | map(select(.status == "done") | .id)) as $done
+| . as $r
 | ([.plans[] | select(.status != "done" and .status != "blocked")
-             | select(all((.after // [])[]; . as $a | any($done[]; . == $a)))
-             | .id]) as $ready
+             | select(all((.after // [])[]; . as $a | any($done[]; . == $a)))]
+   | reduce .[] as $p ({ids: [], files: []};
+       if overlaps(.files; $p.files) then . else .ids += [$p.id] | .files += $p.files end)
+   | .ids) as $ready
 | ([.plans[] | select(.status == "blocked") | .id]) as $blocked
 | ([.fixes[] | select(.status == "escalated") | .id]) as $escalated
 | ([.fixes[] | select(.status == "open") | .id]) as $open_fixes
+# Open fixes that share files form one group, worked by one builder.
+| ([.fixes[] | select(.status == "open")]
+   | reduce .[] as $f ([]; ($f | fix_files($r)) as $ff
+       | map(select(overlaps(.files; $ff))) as $hit
+       | map(select(overlaps(.files; $ff) | not))
+         + [{ids: ([$hit[].ids[]] + [$f.id]), files: ([$hit[].files[]] + $ff | unique)}])
+   | map(.ids)) as $fix_groups
 | (.evidence == null or .evidence.contract != $contract or $code_changed) as $stale
 | ([.requirements[] | select(.proof == "auto" and (.status != "proven" or $stale)) | .id]) as $unproven
 | ([$current[] | select(.proof == "human" and .status == "open") | .id]) as $to_accept
@@ -39,7 +59,7 @@ def result($action; $gate; $instruction; $detail):
   elif ($stale | not) and (.evidence.scope | length) > 0 then
     result("scope"; true; "Commits changed files outside their plans: review them (vbw show evidence)"; {violations: .evidence.scope})
   elif ($open_fixes | length) > 0 then
-    result("fix"; false; "Run the fix workflow for \($open_fixes | join(", "))"; {fixes: $open_fixes})
+    result("fix"; false; "Run the fix workflow for \($open_fixes | join(", "))"; {fixes: $open_fixes, groups: $fix_groups})
   elif ($unproven | length) > 0 then
     result("prove"; false; "Run vbw prove for \($unproven | join(", "))"; {requirements: $unproven})
   elif ($to_accept | length) > 0 then

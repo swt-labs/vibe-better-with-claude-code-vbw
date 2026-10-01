@@ -32,7 +32,8 @@ input names an `agent_type`) is also held to the lease. The main session never i
 |---|---|
 | Writing a project file outside `lease.files` (file tools, shell redirects; paths resolved, `..` included) | Builders write only their plan's files |
 | Writing a protected check file (any check's `files`) during `build` or `fix` | The contract is fixed while building |
-| `git commit`, `push`, `rebase`, `merge` | Commits go through `vbw commit`, with provenance |
+| `git commit`, `push`, `rebase`, `merge`, `pull`, `cherry-pick`, `revert`, `am` | Commits go through `vbw commit`, with provenance |
+| `git stash` (except `list`, `show`), `switch`, `reset`, `checkout` of a branch; `git checkout -- PATH` or `git restore PATH` outside `lease.files` | Builders share one working tree: nothing may move HEAD or other builders' changes |
 
 A lease older than 24 hours holds no one. During a run the Bash fast path is off
 for subagents: every command they run is read.

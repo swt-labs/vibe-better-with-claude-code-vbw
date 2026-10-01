@@ -104,6 +104,16 @@ edit_record() {
   [[ "$output" == *"M1 is not shipped yet"* ]]
 }
 
+@test "the current milestone can be renamed until it ships" {
+  vbw_run milestone rename "Checkout"
+  [ "$status" -eq 0 ]
+  jq -e '.milestone == {id: "M1", title: "Checkout", status: "active"}' .vbw/record.json
+  edit_record '.milestone.status = "shipped" | .shipped = [{id: "M1", title: "Checkout", at: "2026-10-01T09:00:00Z"}]'
+  vbw_run milestone rename "Other"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"M1 has shipped"* ]]
+}
+
 # --- run lease ---------------------------------------------------------------
 
 @test "a build run leases exactly its plans' files and marks them building" {
@@ -219,6 +229,30 @@ edit_record() {
   [[ "$output" == *"F1 is not open"* ]]
 }
 
+@test "fix done is verified: no uncommitted changes, and finished work its files serve still passes" {
+  # R1 and R2 share src/pay.txt; both are built. A fix for R2 that breaks R1 is refused.
+  PLAN=$(printf '%s' "$PLAN" | jq '.plans[1].files = ["src/receipt.txt", "src/pay.txt"] | .plans[1].after = []')
+  apply_plan
+  "$VBW" approve > /dev/null
+  printf 'paid\n' > src/pay.txt && printf 'sent\n' > src/receipt.txt
+  git add src && git commit -q -m "feat: built"
+  edit_record '.plans[].status = "done" | .fixes = [{id: "F1", req: "R2", attempts: 0, status: "open", note: "wording"}]'
+  vbw_consent_contract
+  printf 'refunded\n' > src/pay.txt
+  vbw_run fix done F1
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"F1 has uncommitted changes in: src/pay.txt"* ]]
+  git commit -q -am "fix: wording"
+  vbw_run fix done F1
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"F1 broke finished work"*"C1 fail"* ]]
+  jq -e '.fixes[0].status == "open"' .vbw/record.json
+  printf 'paid\n' > src/pay.txt && git commit -q -am "fix: restore"
+  vbw_run fix done F1
+  [ "$status" -eq 0 ]
+  jq -e '.fixes[0].status == "fixed"' .vbw/record.json
+}
+
 # --- check -------------------------------------------------------------------
 
 @test "check runs approved checks, reports, and writes nothing" {
@@ -332,7 +366,7 @@ prove_all_green() {
   [ "$status" -eq 0 ]
   [[ "$(git log -1 --format=%s)" == "chore(vbw): record after plan-"* ]]
   git show --name-only --format= HEAD | LC_ALL=C sort > "$TEST_ROOT/committed"
-  printf '%s\n' .gitignore .vbw/record.json .vbw/spec.md tests/pay.sh tests/receipt.sh > "$TEST_ROOT/expected"
+  printf '%s\n' .vbw/.gitignore .vbw/record.json .vbw/spec.md tests/pay.sh tests/receipt.sh > "$TEST_ROOT/expected"
   diff "$TEST_ROOT/expected" "$TEST_ROOT/committed"
   git diff --cached --name-only | grep -qx user-staged.txt
   git status --porcelain | grep -q '^?? user-unstaged.txt'
@@ -349,9 +383,10 @@ prove_all_green() {
   [ "$(git rev-list --count "$before"..HEAD)" -eq 1 ]
 }
 
-@test "a .gitignore the user already tracks is never committed by VBW" {
+@test "VBW never edits or commits the user's .gitignore" {
   printf 'node_modules/\n' > .gitignore && git add .gitignore && git commit -q -m "chore(repo): ignore"
   "$VBW" init > /dev/null
+  [ "$(cat .gitignore)" = "node_modules/" ]
   printf 'my-own-edit/\n' >> .gitignore
   "$VBW" run start plan > /dev/null && "$VBW" run end > /dev/null
   ! git show --name-only --format= HEAD | grep -qx .gitignore

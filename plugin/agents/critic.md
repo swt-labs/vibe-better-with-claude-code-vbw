@@ -12,13 +12,16 @@ Find what would make this plan fail, ranked by harm:
 
 - **blocker:** a requirement with no check or no plan; a check that cannot fail,
   passes today, or would pass without the behavior (asserts on a mock, a
-  constant, an empty result); a check that tests the wrong thing; two plans that
-  claim the same file; an order that cannot be built (a plan needs output of a
+  constant, an empty result); a check that tests the wrong thing; an order that cannot be built (a plan needs output of a
   plan it does not list in `after`).
 - **major:** a plan too large to finish in one sitting; a missing file a plan
   will obviously need to change; a check that is flaky (time, network, order)
   or slow without need.
 - **minor:** naming and wording. Report only if nothing above exists.
+
+Not issues: plans that share a file (VBW never builds them at the same time),
+and new check test files that are not committed yet (VBW commits them when the
+run ends).
 
 Verify before you report: run a check, read the test, grep for the file. A
 finding you did not check is a guess. Report nothing rather than a guess.

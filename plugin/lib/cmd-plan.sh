@@ -18,27 +18,21 @@ cmd_plan() {
   case "$sub" in
     done)
       plan_has_commit "$id" || vbw_die "$id has no commit yet: commit its work with vbw commit $id \"type(scope): ...\""
-      local dirty completes=() c results
-      dirty=$(plan_dirty_files "$record" "$id")
+      local files=() completes=() f dirty
+      while IFS= read -r -d '' f; do files+=("$f"); done \
+        < <(printf '%s' "$record" | jq -j --arg p "$id" '.plans[] | select(.id == $p) | .files[] | . + "\u0000"')
+      dirty=$(vbw_dirty_files "${files[@]}")
       [ -z "$dirty" ] || vbw_die "$id has uncommitted changes in: $dirty"
       # The checks of every requirement this plan completes (no other open
       # plan serves it) must pass now.
-      while IFS= read -r c; do [ -n "$c" ] && completes+=("$c"); done < <(printf '%s' "$record" | jq -r --arg p "$id" '
+      while IFS= read -r f; do [ -n "$f" ] && completes+=("$f"); done < <(printf '%s' "$record" | jq -r --arg p "$id" '
         . as $r | (.plans[] | select(.id == $p)) as $pl
         | $pl.reqs[] as $q
         | select(all($r.plans[]; .id == $p or .status == "done" or (any(.reqs[]; . == $q) | not)))
         | $r.checks[] | select(.req == $q) | .id')
-      if [ ${#completes[@]} -gt 0 ]; then
-        cd "$VBW_ROOT" || vbw_die "cannot enter $VBW_ROOT"
-        # shellcheck source=checks.sh
-        . "$VBW_LIB/checks.sh"
-        checks_begin "$record"
-        results=$(checks_run_all "$record" "${completes[@]}")
-        checks_end
-        printf '%s' "$results" | jq -e 'all(.[]; .status == "pass")' > /dev/null \
-          || vbw_die "$id completes requirements whose checks do not pass: $(printf '%s' "$results" \
-               | jq -r '[to_entries[] | select(.value.status != "pass") | "\(.key) \(.value.status)"] | join(", ")')"
-      fi
+      # shellcheck source=checks.sh
+      . "$VBW_LIB/checks.sh"
+      checks_must_pass "$record" "$id completes requirements whose checks do not pass" ${completes[@]+"${completes[@]}"}
       record_update '(.plans[] | select(.id == $p)) |= (.status = "done" | del(.note))' --arg p "$id"
       printf '%s done\n' "$id"
       ;;
@@ -60,15 +54,4 @@ plan_has_commit() {
     [ "$line" = "$1" ] && return 0
   done < <(git -C "$VBW_ROOT" log --format='%(trailers:key=VBW-Plan,valueonly)' 2> /dev/null)
   return 1
-}
-
-# The plan's files that differ from HEAD or are new, comma-separated.
-plan_dirty_files() {
-  local files=() f out=""
-  while IFS= read -r -d '' f; do files+=("$f"); done \
-    < <(printf '%s' "$1" | jq -j --arg p "$2" '.plans[] | select(.id == $p) | .files[] | . + "\u0000"')
-  [ ${#files[@]} -gt 0 ] || return 0
-  while IFS= read -r -d '' f; do out="$out${out:+, }$f"; done \
-    < <(cd "$VBW_ROOT" && { git diff --name-only -z HEAD -- "${files[@]}"; git ls-files -z --others --exclude-standard -- "${files[@]}"; })
-  printf '%s' "$out"
 }

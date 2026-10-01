@@ -44,7 +44,10 @@ cmd_run() {
       | if $p == null then "unknown plan \($i)"
         elif ($p.status | IN("planned", "building") | not) then "\($i) is \($p.status), not ready to build"
         elif any($p.after[]; . as $a | any($done[]; . == $a) | not) then "\($i) waits for \($p.after | join(", "))"
-        else empty end
+        else empty end,
+      # Builders share one working tree: one wave never shares a file.
+      ([.plans[] | select(.id as $i | any($ids[]; . == $i)) | .files[]] | group_by(.)[] | select(length > 1)
+        | "more than one plan in this wave writes \(.[0]): build them in separate waves (vbw next)")
     elif $k == "fix" then
       $ids[] as $i | [.fixes[] | select(.id == $i)][0] as $f
       | if $f == null then "unknown fix \($i)" elif $f.status != "open" then "\($i) is \($f.status), not open" else empty end
