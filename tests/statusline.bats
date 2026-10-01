@@ -36,7 +36,9 @@ render() { cc_json | NO_COLOR=1 bash "$SL"; }
   "$VBW" spec sync > /dev/null
   "$VBW" next > /dev/null
   run render
-  [[ "${lines[0]}" == "[VBW] project with space │ M1 First milestone │ 0/2 done │ next: plan" ]]
+  [[ "${lines[0]}" == "[VBW] project with space │ M1 First milestone │ ░░░░░░░░░░ 0/2 done │ next: plan" ]]
+  [[ "${lines[1]}" == "Team   ● planner opus  ● critic sonnet  ● builder sonnet  ● scout sonnet │ profile balanced · autonomy balanced" ]]
+  [ "${#lines[@]}" -eq 5 ]
 }
 
 @test "a running build and an armed autonomous run are visible" {
@@ -145,11 +147,25 @@ render() { cc_json | NO_COLOR=1 bash "$SL"; }
   local t="$TEST_ROOT/session.jsonl" w="$TEST_ROOT/session/subagents/workflows/wf_1"
   mkdir -p "$w" && : > "$t"
   : > "$w/agent-a.jsonl" && : > "$w/agent-b.jsonl" && : > "$w/agent-c.jsonl"
+  printf '{"agentType": "vbw:builder", "description": "P1.2", "model": "sonnet"}' > "$w/agent-a.meta.json"
+  printf '{"agentType": "vbw:scout", "description": "risks", "model": "haiku"}' > "$w/agent-b.meta.json"
+  printf '{"agentType": "vbw:critic", "description": "critic", "model": "opus"}' > "$w/agent-c.meta.json"
   touch -t 202001010000 "$w/agent-c.jsonl"
   run bash -c 'jq -nc --arg d "$1" --arg t "$2" "{workspace: {project_dir: \$d}, transcript_path: \$t}" | NO_COLOR=1 bash "$3"' _ "$PROJECT" "$t" "$SL"
   [[ "${lines[0]}" =~ "│ ▶ plan "[0-9]+s" · 2 agents working" ]]
+  [ "${lines[1]}" = "Agents ● builder P1.2 sonnet  ● scout risks haiku" ]
   # No run open (a map or debug workflow): the agents alone.
   "$VBW" run end > /dev/null
   run bash -c 'jq -nc --arg d "$1" --arg t "$2" "{workspace: {project_dir: \$d}, transcript_path: \$t}" | NO_COLOR=1 bash "$3"' _ "$PROJECT" "$t" "$SL"
   [[ "${lines[0]}" == *"│ ▶ 2 agents working" ]]
+}
+
+@test "the team line follows the profile and per-role models; tokens and prompt cache are shown" {
+  "$VBW" init > /dev/null
+  "$VBW" config set profile budget > /dev/null
+  "$VBW" config set model.builder opus > /dev/null
+  run bash -c 'jq -nc --arg d "$1" "{workspace: {project_dir: \$d}, context_window: {used_percentage: 10, current_usage:
+    {input_tokens: 2, output_tokens: 195, cache_creation_input_tokens: 3800, cache_read_input_tokens: 55500}}}" | NO_COLOR=1 bash "$2"' _ "$PROJECT" "$SL"
+  [ "${lines[1]}" = "Team   ● planner sonnet  ● critic haiku  ● builder opus  ● scout haiku │ profile budget · autonomy balanced" ]
+  [[ "${lines[2]}" == *"│ Tokens 2 in 195 out │ Cache 93% hit 3.8K write 55.5K read │"* ]]
 }

@@ -1,0 +1,5 @@
+{
+  "quality": {"planner": "opus", "critic": "opus", "builder": "opus"},
+  "balanced": {"planner": "opus", "critic": "sonnet", "builder": "sonnet"},
+  "budget": {"planner": "sonnet", "critic": "haiku", "builder": "sonnet"}
+}

@@ -7,25 +7,31 @@ VBW plans and builds with: `/vbw:vibe` turns them on (`vbw workflows on`) unless
 the user disabled them on purpose.
 
 ```
-[VBW] expenses │ M1 First milestone │ 4/6 done │ ▶ build: P1.2, P2.1 │ ⟳ auto 3/25
-Context ▓▓▓░░░░░░░ 31% 62K/200K │ Cost $1.42 │ +303 −12
+[VBW] expenses │ M1 First milestone │ ▓▓▓▓▓▓▓░░░ 4/6 done │ ▶ build: P1.2, P2.1 4m10s · 2 agents working │ ⟳ auto 3/25
+Agents ● builder P1.2 sonnet  ● builder P2.1 sonnet
+Context ▓▓▓░░░░░░░ 31% 62K/200K │ Tokens 2 in 195 out │ Cache 93% hit 3.8K write 55.5K read │ Cost $1.42 │ +303 −12
 Limits 5h ▓▓░░░░░░░░ 23% (resets 2h13m) │ 7d ▓▓▓▓░░░░░░ 41% (resets 3d)
-Sonnet 5.5 │ 10m22s (API 5m55s) │ main │ VBW 2.0.0 │ CC 2.1.286
+Sonnet 5.5 │ 10m22s (API 5m55s) │ main │ VBW 2.0.6 │ CC 2.1.286
 ```
 
-1. **VBW:** the project, the milestone, requirements proven or accepted, and
-   what is happening: a run in progress (`▶ build: P1.2`), a step that needs the
-   user (`needs you: approve`), or the next step (`next: prove`, from the last
-   `vbw next`). `⟳ auto 3/25` while an autonomous run is armed. Outside a VBW
-   project: `/vbw:vibe to start`.
-2. **Context and cost** of the session, and the lines it changed.
-3. **Plan limits** (5-hour and 7-day), for Pro and Max accounts.
-4. **Model, time, git branch, versions.**
-
-While a step runs, line 1 shows it, how long it has run, and how many workflow
-agents are working now (`▶ build: P1.2 4m10s · 3 agents working`). An agent
-counts as working when its transcript, next to the session's, changed in the
-last minute.
+1. **VBW:** the project, the milestone, a progress bar of requirements proven
+   or accepted, and what is happening: a run in progress with its time and the
+   agents working (`▶ build: P1.2 4m10s · 2 agents working`), a step that needs
+   the user (`needs you: approve`), or the next step (`next: prove`, from the
+   last `vbw next`). `⟳ auto 3/25` while an autonomous run is armed. Outside a
+   VBW project: `/vbw:vibe to start` (this line, then lines 3 to 5).
+2. **Agents or team** (VBW projects): while agents work, each one in its role's
+   colour (planner blue, critic magenta, builder green, scout cyan) with its
+   label and model. Otherwise the team: each role's model from the profile and
+   any per-role override (`/vbw:config`), the profile, and how much VBW does on
+   its own. An agent counts as working when its transcript, next to the
+   session's, changed in the last minute; its `.meta.json` names its role,
+   label and model.
+3. **Context, tokens, prompt cache and cost:** the context used, the last
+   request's tokens, the prompt cache hit rate with what was written and read,
+   the session cost and the lines it changed.
+4. **Plan limits** (5-hour and 7-day), for Pro and Max accounts.
+5. **Model, time, git branch, versions.**
 
 ## How it is installed
 

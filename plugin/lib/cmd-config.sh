@@ -6,12 +6,10 @@
 # (planner|critic|builder: opus, sonnet, haiku or a model id; "default"
 # removes the override).
 
-# Profiles name a model per workflow role. The session itself always runs the
-# user's model, which must be auto-capable (build plan K7).
-# shellcheck disable=SC2016 # jq text, not shell
-VBW_PROFILES='{"quality": {"planner": "opus", "critic": "opus", "builder": "opus"},
-  "balanced": {"planner": "opus", "critic": "sonnet", "builder": "sonnet"},
-  "budget": {"planner": "sonnet", "critic": "haiku", "builder": "sonnet"}}'
+# Profiles name a model per workflow role (lib/profiles.json, shared with the
+# status line). The session itself always runs the user's model, which must be
+# auto-capable (build plan K7).
+VBW_PROFILES=$(jq -c . "$VBW_LIB/profiles.json")
 
 cmd_config() {
   local sub="${1:-}"

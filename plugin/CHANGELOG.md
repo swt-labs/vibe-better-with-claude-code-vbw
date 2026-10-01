@@ -1,5 +1,14 @@
 # Changelog
 
+## [2.0.6] - 2026-10-01
+
+### New
+
+- **A richer status line.** A progress bar for the milestone; a line showing
+  each working agent in its role's colour with its task and model (or, when
+  idle, your team: the model of each role, the profile and how much VBW does on
+  its own); and the tokens and prompt-cache hit rate of the last request.
+
 ## [2.0.5] - 2026-10-01
 
 ### New

@@ -32,12 +32,20 @@ legacy=""
 [ -f "$root/.vbw/record.json" ] || [ ! -d "$root/.vbw-planning" ] || legacy=1
 
 # Workflow agents working right now: their transcripts sit next to the
-# session's, and one written in the last minute is an agent at work. One find
-# for all of them, however long the session.
-agents=0
+# session's, and one written in the last minute is an agent at work. Its
+# .meta.json beside it names its role, label and model. One find, and one jq
+# only while agents work.
+agents='[]'
 if [ -n "$transcript" ] && [ -d "${transcript%.jsonl}/subagents/workflows" ]; then
-  agents=$(find "${transcript%.jsonl}/subagents/workflows" -name 'agent-*.jsonl' -mmin -1 2> /dev/null | wc -l | tr -d ' ')
-  case "$agents" in "" | *[!0-9]*) agents=0 ;; esac
+  metas=()
+  while IFS= read -r f; do
+    [ -f "${f%.jsonl}.meta.json" ] && metas+=("${f%.jsonl}.meta.json")
+  done < <(find "${transcript%.jsonl}/subagents/workflows" -name 'agent-*.jsonl' -mmin -1 2> /dev/null)
+  if [ ${#metas[@]} -gt 0 ]; then
+    # Steady order: by role (planner, critic, builder, scout), then label.
+    agents=$(jq -cs 'map({role: (.agentType // "" | sub("^vbw:"; "")), label: (.description // ""), model: (.model // "")})
+      | sort_by((.role as $r | ["planner", "critic", "builder", "scout"] | index($r) // 9), .label)' "${metas[@]}" 2> /dev/null) || agents='[]'
+  fi
 fi
 
 # The branch, without a git process: .git is a directory, or a file pointing
@@ -63,7 +71,7 @@ color=1
 end="$plugin/hooks/end.json"
 [ -n "$input" ] || input='{}'
 # jq exits non-zero when an optional file is missing; only an empty render is a failure.
-out=$(jq -nr --argjson cc "$input" --arg branch "$branch" --arg color "$color" --arg legacy "$legacy" --argjson agents "$agents" -f "$here/statusline.jq" \
+out=$(jq -nr --argjson cc "$input" --arg branch "$branch" --arg color "$color" --arg legacy "$legacy" --argjson agents "$agents" --slurpfile profiles "$plugin/lib/profiles.json" -f "$here/statusline.jq" \
   "$plugin/.claude-plugin/plugin.json" "$root/.vbw/record.json" "$end" \
   "$root/.vbw/runtime/next.json" "$end" "$root/.vbw/runtime/auto.json"  2> /dev/null)
 if [ -n "$out" ]; then printf '%s\n' "$out"; else printf '[VBW] status line unavailable\n'; fi
