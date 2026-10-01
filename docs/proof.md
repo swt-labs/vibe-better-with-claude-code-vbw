@@ -82,7 +82,7 @@ re-approves it. `vbw show contract` renders what is being approved.
 Evidence (`record.evidence`):
 
 ```json
-{ "at": "2026-10-01T09:00:00Z", "contract": "<sha256>", "passed": false,
+{ "at": "2026-10-01T09:00:00Z", "contract": "<sha256>", "tree": "<git tree id>", "passed": false,
   "checks": { "C1": { "status": "fail", "exit": 1, "seconds": 3, "tail": "…" } },
   "commands": { "test": { "status": "pass", "exit": 0, "seconds": 9, "tail": "" },
                 "lint": { "status": "skipped", "exit": null, "seconds": 0, "tail": "not approved" } },
@@ -107,8 +107,17 @@ failing project command. Lifecycle:
 
 An escalated fix is a human gate (`vbw next`).
 
-### Red-first: `vbw prove --expect-red [CHECK...]`
+### Freshness
 
-Before a plan is built its checks must fail; a check that already passes
-proves nothing. `--expect-red` runs the given checks (all when none are given)
-and exits 1 naming every check that passed. It writes nothing.
+`tree` fingerprints the project files the proof ran on (tracked and new files,
+committed or not, `.vbw/` and ignored files excluded), taken after the checks
+ran. `vbw next` treats evidence as stale, and asks for `prove` again, when the
+contract changed or the files differ from that fingerprint. Committing proved
+work, or the record, changes nothing.
+
+### `vbw check [--expect-red] [CHECK...]`
+
+Runs the given approved checks (all when none are given), reports, and writes
+nothing: the builder's tool. Exit 0 when all pass. With `--expect-red`, red-first:
+before a plan is built its checks must fail, and a check that already passes
+proves nothing, so exit 0 only when every check fails.

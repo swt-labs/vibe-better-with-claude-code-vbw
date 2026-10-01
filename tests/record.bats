@@ -127,15 +127,15 @@ violations_after() {
 }
 
 @test "evidence has the documented shape" {
-  local ok='{at:"2026-10-01T09:00:00Z", contract:("a"*64), passed:false,
+  local ok='{at:"2026-10-01T09:00:00Z", contract:("a"*64), tree:("c"*40), passed:false,
              checks:{C1:{status:"fail", exit:1, seconds:2, tail:"x"}},
              commands:{test:{status:"skipped", exit:null, seconds:0, tail:"not approved"}}, scope:[]}'
   run violations_after ".evidence = $ok"
   [ "$output" = "[]" ]
   run violations_after ".evidence = $ok | .evidence.checks.C1.status = \"flaky\""
-  [[ "$output" == *"evidence needs at, contract, passed"* ]]
+  [[ "$output" == *"evidence needs at, contract, tree, passed"* ]]
   run violations_after '.evidence = {passed: true}'
-  [[ "$output" == *"evidence needs at, contract, passed"* ]]
+  [[ "$output" == *"evidence needs at, contract, tree, passed"* ]]
 }
 
 @test "rejects the removed contract key and bad enums" {

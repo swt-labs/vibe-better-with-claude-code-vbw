@@ -167,3 +167,66 @@ EOF
 git reset --hard"
   denied
 }
+
+# --- the run lease (docs/workflows.md) ------------------------------------------
+
+# as_agent TOOL INPUT_JSON: a call from a workflow subagent, in the project.
+as_agent() {
+  jq -nc --arg t "$1" --argjson i "$2" --arg d "$PROJECT" \
+    '{hook_event_name: "PreToolUse", tool_name: $t, cwd: $d, agent_id: "a1", agent_type: "workflow-subagent", tool_input: $i}' \
+    | vbw_hook PreToolUse "$1"
+}
+
+lease() {
+  jq --arg at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" --arg k "$1" --argjson f "$2" \
+    '.checks = [{id: "C1", req: "R1", run: ["true"], files: ["tests/pay.test.js"]}]
+     | .requirements = [{id: "R1", text: "Pay", proof: "auto", status: "open"}]
+     | .lease = {run: "r1", kind: $k, started_at: $at, files: $f}' .vbw/record.json > "$TEST_ROOT/l.json"
+  cp "$TEST_ROOT/l.json" .vbw/record.json
+}
+
+@test "during a build, a subagent writes only the run's files" {
+  lease build '["src/pay.js"]'
+  run as_agent Write "{\"file_path\": \"$PROJECT/src/pay.js\"}"
+  [ -z "$output" ]
+  run as_agent Edit "{\"file_path\": \"$PROJECT/src/other.js\"}"
+  denied
+  [[ "$output" == *"src/other.js is outside this run's files (src/pay.js)"* ]]
+  run as_agent Write "{\"file_path\": \"$PROJECT/src/../src/other.js\"}"
+  denied
+  run as_agent Bash '{"command": "echo x > src/other.js"}'
+  denied
+  run as_agent Bash '{"command": "npm test > /dev/null 2>&1 && echo ok > src/pay.js"}'
+  [ -z "$output" ]
+  run as_agent Read "{\"file_path\": \"$PROJECT/src/other.js\"}"
+  [ -z "$output" ]
+}
+
+@test "during a build, protected check files are read-only and commits go through vbw" {
+  lease build '["src/pay.js", "tests/pay.test.js"]'
+  run as_agent Edit "{\"file_path\": \"$PROJECT/tests/pay.test.js\"}"
+  denied
+  [[ "$output" == *"protected check file"* ]]
+  run as_agent Bash '{"command": "git add -A && git commit -m wip"}'
+  denied
+  [[ "$output" == *"commits go through vbw commit"* ]]
+  run as_agent Bash '{"command": "vbw commit P1.1 \"feat(pay): card form\""}'
+  [ -z "$output" ]
+}
+
+@test "during planning, subagents may write test files (no file list, nothing protected yet)" {
+  lease plan 'null'
+  run as_agent Write "{\"file_path\": \"$PROJECT/tests/pay.test.js\"}"
+  [ -z "$output" ]
+}
+
+@test "the main session is never held to a lease, and an old lease holds no one" {
+  lease build '["src/pay.js"]'
+  run file_call Write "$PROJECT/src/other.js"
+  [ -z "$output" ]
+  run bash_call 'git commit -m "user commit"'
+  [ -z "$output" ]
+  jq '.lease.started_at = "2020-01-01T00:00:00Z"' .vbw/record.json > "$TEST_ROOT/o.json" && cp "$TEST_ROOT/o.json" .vbw/record.json
+  run as_agent Write "{\"file_path\": \"$PROJECT/src/other.js\"}"
+  [ -z "$output" ]
+}

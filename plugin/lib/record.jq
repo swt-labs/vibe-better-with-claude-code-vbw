@@ -84,17 +84,22 @@ if type != "object" then ["record must be a JSON object"] else
 
     ( $phases[]
       | field_rule(["id","title","reqs","status"]),
+        ( select((.reqs | type == "array" and length > 0) | not) | "\(.id) needs a non-empty reqs array" ),
         ( select((.title | nonempty) | not) | "\(.id) needs a non-empty title" ),
         ( . as $p | (.reqs // [])[] | . as $x | select(($reqs | has_id($x)) | not) | "\($p.id) references unknown requirement \(.)" ),
         status_rule(["planned","building","built"]) ),
 
     ( $plans[]
-      | field_rule(["id","phase","title","reqs","files","after","status"]),
+      | field_rule(["id","phase","title","reqs","files","after","status","note"]),
+        ( select(has("note") and ((.note | nonempty) | not)) | "\(.id) note must be a non-empty string" ),
         ( . as $o | select(($phases | has_id($o.phase)) | not) | "\(.id) references unknown phase \(.phase)" ),
         ( select((.id | type == "string") and (.phase | type == "string")
                  and (.phase as $ph | (.id | startswith($ph + ".")) | not)) | "plan \(.id) is not in its phase \(.phase)" ),
         ( select((.title | nonempty) | not) | "\(.id) needs a non-empty title" ),
         ( . as $p | (.reqs // [])[] | . as $x | select(($reqs | has_id($x)) | not) | "\($p.id) references unknown requirement \(.)" ),
+        ( select((.reqs | type == "array" and length > 0) | not) | "\(.id) needs a non-empty reqs array" ),
+        ( select((.files | type == "array" and length > 0) | not) | "\(.id) needs a non-empty files array" ),
+        ( select((.after | type) != "array") | "\(.id) after must be an array" ),
         ( . as $p | (.files // [])[] | select(safe_path | not) | "\($p.id) has an unsafe path: \(.)" ),
         ( select(((.files // []) | length) != ((.files // []) | unique | length)) | "\(.id) lists a file twice" ),
         ( . as $p | (.after // [])[] | . as $x | select(($plans | has_id($x)) | not) | "\($p.id) references unknown plan \(.)" ),
@@ -129,16 +134,18 @@ if type != "object" then ["record must be a JSON object"] else
     ( $r.evidence
       | select(. != null)
       | if type != "object" then "evidence must be null or an object" else
-          ( select(((.at | iso) and (.contract | sha256) and (.passed | type == "boolean")
-                    and (.checks | results) and (.commands | results)
+          ( select(((.at | iso) and (.contract | sha256) and (.tree | type == "string" and test("^[0-9a-f]{40,64}$"))
+                    and (.passed | type == "boolean") and (.checks | results) and (.commands | results)
                     and (.scope | type == "array" and all(.[]; type == "string"))) | not)
-            | "evidence needs at, contract, passed, checks, commands and scope (docs/proof.md)" )
+            | "evidence needs at, contract, tree, passed, checks, commands and scope (docs/proof.md)" )
         end ),
     ( $r.lease
       | select(. != null)
       | if type != "object" then "lease must be null or an object" else
-          ( select(((.run | nonempty) and (.session | nonempty) and (.started_at | iso) and (.agents | type == "array")) | not)
-            | "lease needs run, session, started_at (ISO-8601 UTC) and agents[]" )
+          ( select(((.run | nonempty) and (.kind | one_of(["plan","build","fix"])) and (.started_at | iso)
+                    and (.files == null or (.files | type == "array" and all(.[]; safe_path)))) | not)
+            | "lease needs run, kind (plan, build or fix), started_at (ISO-8601 UTC) and files (null or relative paths)" ),
+          ( . as $l | keys[] | select(one_of(["run","kind","started_at","files"]) | not) | "lease has an unknown field: \(.)" )
         end )
   ]
 end

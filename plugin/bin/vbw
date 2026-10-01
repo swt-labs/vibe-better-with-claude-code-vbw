@@ -25,9 +25,14 @@ usage: vbw <command> [args]
   spec add auto|human TEXT   append a requirement to the spec and sync
   status [--json]   where the project stands
   next [--json]     the next lifecycle step and whether it needs you
-  show VIEW [ID]    roadmap | phase ID | req ID | contract | evidence
+  show VIEW [ID]    roadmap | phase ID | req ID | plan ID | fix ID | contract | evidence
   approve           approve the contract and project commands (the user, via /vbw:approve)
-  prove [--expect-red [CHECK...]]   run the approved checks and record the evidence
+  check [--expect-red] [CHECK...]   run approved checks and report (writes nothing)
+  prove             run the approved checks and commands, record the evidence
+  apply < PLAN      the planner's write: phases, plans and checks in one update
+  run start KIND [IDS] | run end   open or close the run lease (plan, build, fix)
+  plan done|block|reset ID   a plan's outcome (done is verified)
+  fix done ID       a fix's work is committed and awaits proof
   todo add TEXT     add a backlog item
   commit PLAN MSG   commit a plan's declared files with provenance trailers
   version           print the plugin version
@@ -40,7 +45,7 @@ cmd="${1:-}"
 case "$cmd" in
   version) jq -r .version "$VBW_PLUGIN/.claude-plugin/plugin.json" ;;
   help|-h|--help) vbw_help ;;
-  init|status|todo|commit|next|show|spec|approve|prove)
+  init|status|todo|commit|next|show|spec|approve|check|prove|apply|run|plan|fix)
     # shellcheck source=/dev/null
     . "$VBW_LIB/cmd-$cmd.sh"
     "cmd_$cmd" "$@"

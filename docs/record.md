@@ -57,13 +57,13 @@ carries `VBW-Plan:`/`VBW-Req:` trailers, so the record stays small.
 | `requirements[]` | `id` `R<n>` unique; non-empty `text`; `proof` `auto` or `human`; `status` `open`, `failing`, `proven`, `accepted` or `rejected`. A `human` requirement is never `proven`/`failing`; an `auto` requirement is never `accepted`/`rejected`. Requirements mirror `.vbw/spec.md` (`vbw spec sync`) |
 | `checks[]` | `id` `C<n>` unique; `req` an existing `auto` requirement; `run` argv; optional `files[]` (relative, no `..`), `exit` (0–255), `output` (a regular expression), `timeout` (1–3600 s). A requirement's checks are the checks whose `req` names it. Full semantics in docs/proof.md |
 | `phases[]` | `id` `P<n>` unique; non-empty `title`; `reqs[]` existing requirements; `status` `planned`, `building` or `built` |
-| `plans[]` | `id` `P<n>.<m>` unique, prefix equals `phase`; `phase` an existing phase; non-empty `title`; `reqs[]` existing requirements; `files[]` relative project paths (no `..`, no duplicates); `after[]` existing plan ids, no cycles; `status` `planned`, `building`, `done` or `blocked`. A plan's commits are not stored: they are the commits whose `VBW-Plan:` trailer names it (`git log`) |
+| `plans[]` | `id` `P<n>.<m>` unique, prefix equals `phase`; `phase` an existing phase; non-empty `title`; `reqs[]` non-empty, existing requirements; `files[]` non-empty, relative project paths (no `..`, no duplicates); `after[]` existing plan ids, no cycles; `status` `planned`, `building`, `done` or `blocked`; optional `note` (why it is blocked). A plan's commits are not stored: they are the commits whose `VBW-Plan:` trailer names it (`git log`) |
 | `fixes[]` | `id` `F<n>` unique; exactly one of `req` (an existing requirement) or `command` (a name in `commands`); `attempts` integer ≥ 0; `status` `open`, `fixed`, `closed` or `escalated` (lifecycle in docs/proof.md); `note` string |
 | `todos[]` | `id` `T<n>` unique; non-empty `text`; `status` `open`, `in_progress`, `done` or `dropped` |
 | `decisions[]` | `id` `D<n>` unique; non-empty `text`; `at` an ISO-8601 UTC timestamp |
 | `commands` | object of name → argv (a non-empty array of non-empty strings): the project's own test, lint and build commands detected by `vbw init`. Recording a command never runs it; `vbw prove` runs only commands whose argv hash has consent (see Consent) |
-| `evidence` | `null` or the last `vbw prove` result: `at`, `contract` (the hash proved), `passed`, `checks` and `commands` (name → `{status, exit, seconds, tail}`), `scope[]` violations (docs/proof.md) |
-| `lease` | `null` or `{ "run", "session", "started_at", "agents": [] }`: the active run that scopes the guards (defined in M3) |
+| `evidence` | `null` or the last `vbw prove` result: `at`, `contract` (the hash proved), `tree` (the git tree id of the project files proved), `passed`, `checks` and `commands` (name → `{status, exit, seconds, tail}`), `scope[]` violations (docs/proof.md) |
+| `lease` | `null` or `{ "run", "kind", "started_at", "files" }`: the active run (`kind` `plan`, `build` or `fix`; `files` the paths its agents may write, or `null`) that the guards hold subagents to (docs/workflows.md) |
 
 Unknown keys are rejected, at the top level and inside every item: an unknown
 key is a typo, a stale field or a newer schema, and all three must be loud.

@@ -92,7 +92,7 @@ build_pay() {
   vbw_run prove
   [ "$status" -eq 1 ]
   [[ "$output" == *"not approved"* ]]
-  vbw_run prove --expect-red
+  vbw_run check --expect-red
   [ "$status" -eq 1 ]
   vbw_run next --json
   echo "$output" | jq -e '.action == "approve" and .gate == true'
@@ -138,20 +138,20 @@ build_pay() {
   vbw_run prove
   [ "$status" -eq 1 ]
   git checkout -q .vbw/record.json
-  vbw_run prove --expect-red
+  vbw_run check --expect-red
   [ "$status" -eq 0 ]
 }
 
 @test "red-first: checks fail before building; a vacuous check is flagged" {
   edit_record '.checks += [{id:"C2", req:"R1", run:["true"]}]'
   "$VBW" approve > /dev/null
-  vbw_run prove --expect-red C1
+  vbw_run check --expect-red C1
   [ "$status" -eq 0 ]
   [[ "$output" == *"C1 red (fail), as expected"* ]]
-  vbw_run prove --expect-red
+  vbw_run check --expect-red
   [ "$status" -eq 1 ]
   [[ "$output" == *"C2 passed before building: it proves nothing"* ]]
-  vbw_run prove --expect-red C9
+  vbw_run check --expect-red C9
   [ "$status" -eq 1 ]
   [[ "$output" == *"unknown check C9"* ]]
   jq -e '.evidence == null' .vbw/record.json

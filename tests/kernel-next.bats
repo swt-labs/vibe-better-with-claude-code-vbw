@@ -29,9 +29,10 @@ teardown() { vbw_teardown; }
 # that contract (unless FILTER set evidence), and print vbw next --json.
 next_after() {
   jq "$1" "$BASE" > .vbw/record.json
-  local hash
+  local hash tree
   hash=$(vbw_contract_hash)
-  jq --arg h "$hash" 'if .evidence == null then .evidence = {at: "2026-10-01T09:00:00Z", contract: $h,
+  tree=$(vbw_code_tree)
+  jq --arg h "$hash" --arg t "$tree" 'if .evidence == null then .evidence = {at: "2026-10-01T09:00:00Z", contract: $h, tree: $t,
       passed: true, checks: {}, commands: {}, scope: []} else . end' .vbw/record.json > "$TEST_ROOT/n.json"
   cp "$TEST_ROOT/n.json" .vbw/record.json
   [ "${2:-}" = unapproved ] || vbw_consent_contract
@@ -110,14 +111,14 @@ next_after() {
 }
 
 @test "row 10: evidence of another contract is stale and must be proved again" {
-  run next_after '.evidence = {at: "2026-10-01T09:00:00Z", contract: ("b" * 64), passed: true,
+  run next_after '.evidence = {at: "2026-10-01T09:00:00Z", contract: ("b" * 64), tree: ("c" * 40), passed: true,
                                checks: {}, commands: {}, scope: []}'
   echo "$output" | jq -e '.action == "prove" and .detail.requirements == ["R1"]'
 }
 
 @test "row 8: scope violations in current evidence are a human gate" {
   cp "$BASE" .vbw/record.json
-  jq --arg h "$(vbw_contract_hash)" '.evidence = {at: "2026-10-01T09:00:00Z", contract: $h, passed: false,
+  jq --arg h "$(vbw_contract_hash)" --arg t "$(vbw_code_tree)" '.evidence = {at: "2026-10-01T09:00:00Z", contract: $h, tree: $t, passed: false,
       checks: {}, commands: {}, scope: ["abc (P1.1) changed x.js, which is not in the plan"]}' \
     "$BASE" > .vbw/record.json
   vbw_consent_contract

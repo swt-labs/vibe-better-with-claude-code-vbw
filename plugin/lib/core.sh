@@ -49,6 +49,27 @@ vbw_sha256() {
   printf '%s\n' "${out%% *}"
 }
 
+# The git tree id of the project's files as they are now (tracked and new,
+# committed or not, ignored files and .vbw/ excluded): a content fingerprint
+# that no commit changes. Built in a temporary index seeded from the real one,
+# so only changed files are rehashed; the user's index and files are untouched.
+vbw_code_tree() {
+  local idx real
+  idx=$(mktemp "$VBW_RUNTIME/index.XXXXXX") || return 1
+  real=$(git -C "$VBW_ROOT" rev-parse --path-format=absolute --git-path index)
+  if [ -f "$real" ]; then cp "$real" "$idx"; else rm -f "$idx"; fi
+  (
+    cd "$VBW_ROOT" || exit 1
+    export GIT_INDEX_FILE="$idx"
+    git add -A -- . ':(exclude).vbw' > /dev/null 2>&1 &&
+      git rm -r -q --cached --ignore-unmatch -- .vbw > /dev/null 2>&1 &&
+      git write-tree
+  )
+  local status=$?
+  rm -f "$idx"
+  return $status
+}
+
 # Modification time in epoch seconds (BSD and GNU stat).
 vbw_mtime() {
   stat -f %m "$1" 2>/dev/null || stat -c %Y "$1" 2>/dev/null || echo 0

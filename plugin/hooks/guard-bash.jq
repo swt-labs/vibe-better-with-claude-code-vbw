@@ -117,13 +117,24 @@ def in_project:
   ( select(.cmd | test("^(ls|stat|test|\\[\\[?)$") | not) | [paths | select(secret_path)][0] // empty | secret_reason ),
   ( select((.out | any(.[]; record_path)) or ((.cmd | reader) | not) and any(.args[]; record_path)) | record_reason );
 
-# Every rule needs one of these words in the raw command, wherever it appears
-# (strings and heredocs included), so a command without any is allowed unread.
+# A subagent during a run (docs/workflows.md): commits go through vbw commit,
+# and redirects write only the run's files.
+def in_run($g):
+  ( select(.cmd == "git") | (git_words[0] // "") | select(test("^(commit|push|rebase|merge)$"))
+    | "git \(.) by a builder: commits go through vbw commit PLAN \"type(scope): description\"" ),
+  ( .out[] | project_path($g.hook.cwd // $root; $root) | lease_write_denial($g.lease; $g.record) );
+
+# Outside a run, every rule needs one of these words in the raw command,
+# wherever it appears (strings and heredocs included), so a command without any
+# is allowed unread. During a run a subagent's every command is read.
 def may_matter: test("rm|git|vbw|consent|record\\.json|\\.env|\\.(pem|key|p12|pfx|kdbx|keystore|jks)|id_(rsa|dsa|ecdsa|ed25519)|netrc|pgpass|npmrc|pypirc|credentials");
 
-input
-| (.tool_input.command // "") | select(may_matter)
-| [commands(3)] as $cmds
-| ([$cmds[] | everywhere][0] // (select(in_vbw_project) | [$cmds[] | in_project][0]))
+guard_context as $g
+| ($g.hook.tool_input.command // "") as $c
+| select($g.lease != null or ($c | may_matter))
+| [$c | commands(3)] as $cmds
+| ( [$cmds[] | everywhere][0]
+    // (select($g.project)
+        | [$cmds[] | in_project][0] // (select($g.lease != null) | [$cmds[] | in_run($g)][0])) )
 | select(. != null)
 | deny

@@ -25,7 +25,7 @@ lifecycle. `vbw next --json` returns:
 | 7 | a fix is `escalated` | `escalate` (the fix cap was reached) | yes |
 | 8 | current evidence has scope violations | `scope` (commits changed files outside their plans) | yes |
 | 9 | a fix is `open` | `fix` (fix workflow for its requirement) | no |
-| 10 | an `auto` requirement is not `proven`, or the evidence is of another contract | `prove` | no |
+| 10 | an `auto` requirement is not `proven`, or the evidence is stale (another contract, or the project files changed since; docs/proof.md) | `prove` | no |
 | 11 | a `human` requirement is `open` | `accept` (one scenario at a time) | yes |
 | 12 | a `human` requirement is `rejected` | `fix` (turn the rejection into a fix item) | no |
 | 13 | otherwise | `ship` | yes |

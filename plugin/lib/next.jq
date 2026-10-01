@@ -1,5 +1,6 @@
 # vbw next: the lifecycle decision table (docs/next.md). Input: a valid record.
-# Args: $approved (the current contract hash has consent), $contract (that hash).
+# Args: $approved (the current contract hash has consent), $contract (that hash),
+# $code_changed (the project differs from the commit the evidence proved).
 # Output: {action, gate, instruction, detail}. First matching row wins.
 
 def result($action; $gate; $instruction; $detail):
@@ -12,7 +13,7 @@ def result($action; $gate; $instruction; $detail):
 | ([.plans[] | select(.status == "blocked") | .id]) as $blocked
 | ([.fixes[] | select(.status == "escalated") | .id]) as $escalated
 | ([.fixes[] | select(.status == "open") | .id]) as $open_fixes
-| (.evidence == null or .evidence.contract != $contract) as $stale
+| (.evidence == null or .evidence.contract != $contract or $code_changed) as $stale
 | ([.requirements[] | select(.proof == "auto" and (.status != "proven" or $stale)) | .id]) as $unproven
 | ([.requirements[] | select(.proof == "human" and .status == "open") | .id]) as $to_accept
 | ([.requirements[] | select(.proof == "human" and .status == "rejected") | .id]) as $rejected

@@ -80,3 +80,7 @@ vbw_hook() {
   cmd=$(jq -r --arg e "$1" --arg t "${2:-}" '[.hooks[$e][] | select($t == "" or ((.matcher // "") as $m | $t | test("^(" + $m + ")$")))][0].hooks[0].command' "$PLUGIN_ROOT/hooks/hooks.json")
   CLAUDE_PLUGIN_ROOT="$PLUGIN_ROOT" CLAUDE_PROJECT_DIR="${HOOK_PROJECT_DIR:-$PROJECT}" sh -c "$cmd"
 }
+
+vbw_code_tree() {
+  vbw_kernel 'vbw_code_tree'
+}

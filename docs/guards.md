@@ -25,9 +25,17 @@ holds `.vbw/record.json`; a corrupt record still counts):
 | Reading or writing secret files: `.env` and `.env.*` (except `.example`, `.sample`, `.template`, `.dist`, `.defaults`), `*.pem`, `*.key`, `*.p12`, `*.pfx`, `*.kdbx`, `*.keystore`, `*.jks`, `id_rsa`/`id_dsa`/`id_ecdsa`/`id_ed25519`, `.netrc`, `.pgpass`, `.npmrc`, `.pypirc`, `credentials` | VBW never handles secrets. `ls`, `stat` and `test` on them are fine |
 | Writing `.vbw/record.json` (file tools, redirects, any program that is not a reader such as `cat`, `jq`, `grep` or `git`) | Only `vbw` writes the record, validated |
 
-The run-scoped rules (builders write only their plan's files, protected check
-files are read-only, commits go through `vbw commit`) arrive with the run lease
-(build plan M4).
+**During a run** (`record.lease`, docs/workflows.md), any **subagent** (the hook
+input names an `agent_type`) is also held to the lease. The main session never is.
+
+| Call | Why |
+|---|---|
+| Writing a project file outside `lease.files` (file tools, shell redirects; paths resolved, `..` included) | Builders write only their plan's files |
+| Writing a protected check file (any check's `files`) during `build` or `fix` | The contract is fixed while building |
+| `git commit`, `push`, `rebase`, `merge` | Commits go through `vbw commit`, with provenance |
+
+A lease older than 24 hours holds no one. During a run the Bash fast path is off
+for subagents: every command they run is read.
 
 ## How a command is read
 
