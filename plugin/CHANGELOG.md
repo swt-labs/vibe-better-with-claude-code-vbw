@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.0.4] - 2026-10-01
+
+### Fixed
+
+- **Simultaneous updates to a project's plan could be lost** when many VBW steps
+  wrote at the same moment (for example several builders finishing together).
+  Every update is now kept.
+
 ## [2.0.3] - 2026-10-01
 
 ### Fixed

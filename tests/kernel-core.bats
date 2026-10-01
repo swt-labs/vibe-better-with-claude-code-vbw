@@ -98,10 +98,11 @@ teardown() { vbw_teardown; }
   vbw_git_project
   vbw_run init
   local i
-  for i in $(seq 1 20); do "$VBW" todo add "task $i" < /dev/null > /dev/null & done
+  # 40 writers: 20 hid a lost-update race that CI found (2.0.2; see vbw_is_stale).
+  for i in $(seq 1 40); do "$VBW" todo add "task $i" < /dev/null > /dev/null & done
   wait
-  [ "$(jq '.todos | length' .vbw/record.json)" -eq 20 ]
-  [ "$(jq '[.todos[].id] | unique | length' .vbw/record.json)" -eq 20 ]
+  [ "$(jq '.todos | length' .vbw/record.json)" -eq 40 ]
+  [ "$(jq '[.todos[].id] | unique | length' .vbw/record.json)" -eq 40 ]
   [ "$(jq -c -f "$PLUGIN_ROOT/lib/record.jq" .vbw/record.json)" = "[]" ]
   [ -z "$(find .vbw/runtime -name 'record.*' 2>/dev/null)" ]
 }
@@ -143,4 +144,19 @@ teardown() { vbw_teardown; }
   [ "$output" -gt 1000000000 ]
   run bash -c '. "$1/lib/core.sh"; vbw_mtime "$2"' _ "$PLUGIN_ROOT" "$TEST_ROOT/missing"
   [ "$output" = 0 ]
+}
+
+@test "a lock whose age cannot be read is never stale (it may have just been taken)" {
+  vbw_git_project
+  vbw_run init
+  mkdir .vbw/runtime/lock
+  # The age read fails, as when the lock vanishes and reappears between two looks.
+  run vbw_kernel '. "$VBW_LIB/record.sh"; vbw_mtime() { printf "0\n"; }; vbw_is_stale .vbw/runtime/lock && echo stale || echo fresh'
+  [ "$output" = fresh ]
+  # A readable old age is stale; a missing lock is not.
+  run vbw_kernel '. "$VBW_LIB/record.sh"; vbw_mtime() { printf "1\n"; }; vbw_is_stale .vbw/runtime/lock && echo stale || echo fresh'
+  [ "$output" = stale ]
+  rmdir .vbw/runtime/lock
+  run vbw_kernel '. "$VBW_LIB/record.sh"; vbw_is_stale .vbw/runtime/lock && echo stale || echo fresh'
+  [ "$output" = fresh ]
 }

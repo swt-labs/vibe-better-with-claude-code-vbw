@@ -27,8 +27,15 @@ record_unlock() {
   rmdir "$VBW_RUNTIME/lock" 2>/dev/null || true
 }
 
+# True only when the lock's age is known and too old. An age that cannot be read
+# (the lock vanished between the two looks, as happens under contention) is
+# never "stale": treating it as age 0 once let a waiter delete a lock another
+# writer had just taken, and two writes overlapped (lost updates, CI 2.0.2).
 vbw_is_stale() {
-  [ -d "$1" ] && [ $(( $(date +%s) - $(vbw_mtime "$1") )) -gt "$VBW_LOCK_STALE_SECONDS" ]
+  local m
+  [ -d "$1" ] || return 1
+  m=$(vbw_mtime "$1")
+  [ "$m" -gt 0 ] && [ $(( $(date +%s) - m )) -gt "$VBW_LOCK_STALE_SECONDS" ]
 }
 
 # Take the project lock. A lock older than VBW_LOCK_STALE_SECONDS belongs to a
