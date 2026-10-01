@@ -36,6 +36,7 @@ usage: vbw <command> [args]
   req accept ID | req reject ID NOTE   the user's verdict on a [human] requirement
   ship              mark the milestone shipped (when vbw next says ship)
   milestone start TITLE   open the next milestone after shipping
+  milestone rename TITLE  name the current milestone
   config [set KEY VALUE | models]   project settings: profile, autonomy_cap, model.ROLE
   auto on SESSION_ID|off|status|gate   autonomous runs for one session (gate: the Stop hook)
   statusline [status | on | off]   the VBW status line in your Claude settings

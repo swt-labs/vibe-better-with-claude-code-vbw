@@ -55,7 +55,7 @@ carries `VBW-Plan:`/`VBW-Req:` trailers, so the record stays small.
 |---|---|
 | `schema` | `1` |
 | `project.name` | non-empty string |
-| `milestone` | the current milestone: `id` `M<n>`, non-empty `title`, `status` `active` or `shipped`. `vbw milestone start TITLE` opens the next one after shipping |
+| `milestone` | the current milestone: `id` `M<n>`, non-empty `title`, `status` `active` or `shipped`. `vbw milestone start TITLE` opens the next one after shipping; `vbw milestone rename TITLE` names the current one until it ships |
 | `shipped` | the shipped milestones, in order: `{ "id", "title", "at" }`. The current milestone is in this list exactly when its status is `shipped`. Shipped requirements, plans and checks stay in the record, and their checks keep running in every proof as regression guards |
 | `requirements[]` | `id` `R<n>` unique; non-empty `text`; `milestone` the milestone it belongs to (the current or a shipped one); `proof` `auto` or `human`; `status` `open`, `failing`, `proven`, `accepted` or `rejected`. A `human` requirement is never `proven`/`failing`; an `auto` requirement is never `accepted`/`rejected`. Requirements mirror `.vbw/spec.md` (`vbw spec sync`) |
 | `checks[]` | `id` `C<n>` unique; `req` an existing `auto` requirement; `run` argv; optional `files[]` (relative, no `..`), `exit` (0–255), `output` (a regular expression), `timeout` (1–3600 s). A requirement's checks are the checks whose `req` names it. Full semantics in docs/proof.md |
