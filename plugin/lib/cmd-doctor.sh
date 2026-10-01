@@ -65,6 +65,17 @@ doctor_claude() {
     jq -e '.disableWorkflows == true' "$f" > /dev/null 2>&1 && wf=off
     [ "$wf" = off ] || ! jq -e '.enableWorkflows == true' "$f" > /dev/null 2>&1 || wf=on
   done
+  local mode=""
+  for f in "${settings[@]}"; do
+    [ -f "$f" ] || continue
+    mode=$(jq -r '.permissions.defaultMode // empty' "$f" 2> /dev/null || true)
+    [ -z "$mode" ] || break
+  done
+  case "$mode" in
+    auto) doctor_line ok "default permission mode: auto" ;;
+    bypassPermissions) doctor_line ok "default permission mode: bypassPermissions" ;;
+    *) doctor_line warn "default permission mode: ${mode:-manual} (in manual mode every builder step asks you first)" "switch to auto mode with Shift+Tab, or set permissions.defaultMode to \"auto\" in $(statusline_settings)" ;;
+  esac
   case "$wf" in
     on) doctor_line ok "workflows enabled" ;;
     off) doctor_line fail "workflows are disabled in your settings (disableWorkflows)" "remove disableWorkflows, then turn on Dynamic workflows in /config" ;;

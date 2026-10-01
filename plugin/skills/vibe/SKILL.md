@@ -35,6 +35,11 @@ result wakes you; then continue). At a stop, tell the user in plain words what
 happened and what you need from them. Never claim more than the kernel's output
 shows.
 
+Before the first build of a session, if you are not in auto mode (the user is
+asked to approve tool calls), tell the user once: in manual mode every builder
+step will ask them first; Shift+Tab switches to auto mode (Sonnet, Opus or
+Fable).
+
 `plan`, `build` and `fix` need the **Workflow** tool. If you don't have it, tell
 the user: "VBW needs Dynamic workflows: turn them on in /config (or set
 `enableWorkflows: true`)", and stop. Pass `models` (the JSON from
