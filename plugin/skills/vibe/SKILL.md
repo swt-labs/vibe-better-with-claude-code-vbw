@@ -65,9 +65,16 @@ with `vbw spec add auto|human "statement"` (goals and constraints go in
 `.vbw/spec.md` directly, then `vbw spec sync`). If the milestone still has its
 default title, name it after what was agreed: `vbw milestone rename "<title>"`.
 
-**plan**: `vbw run start plan` and start the Workflow
-`vbw:plan` with args `{"models": ...}`. When it returns: `vbw run end`, then give the user its summary
-and any critic issues.
+**plan**: `vbw run start plan` and start the Workflow `vbw:plan` with args
+`{"models": ...}`. When it returns: `vbw run end`. If its status is
+`needs_decisions`, the user decides first: ask each decision with
+AskUserQuestion, one question at a time (why it matters in the question, each
+option's trade-off as its description, the recommended one first, marked
+"(Recommended)"). Record each answer: `vbw decide "<what was decided>" "<why:
+their reason, or the trade-off they accepted>"`. Then plan again: `vbw run
+start plan` and the workflow with `{"decided": true, "models": ...}`. When it
+has planned: give the user its summary, the `choices` the planner made itself
+(any of them can be changed), and any critic issues.
 
 **approve** (needs the user): run `vbw show contract` and explain it plainly:
 each requirement, how it will be checked, the plans and their files, the project

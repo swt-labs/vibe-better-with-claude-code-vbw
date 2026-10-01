@@ -85,3 +85,14 @@ teardown() { vbw_teardown; }
   vbw_run show phase P1
   [[ "$output" == *"P1 Payments [planned]"* ]]
 }
+
+@test "show decisions lists each decision with its reason" {
+  vbw_run show decisions
+  [[ "$output" == *"no decisions recorded yet"* ]]
+  "$VBW" decide "Stripe for payments" "the team knows it" > /dev/null
+  "$VBW" decide "No dark mode yet" > /dev/null
+  vbw_run show decisions
+  [ "$status" -eq 0 ]
+  [ "${lines[0]}" = "D1 Stripe for payments (why: the team knows it)" ]
+  [ "${lines[1]}" = "D2 No dark mode yet" ]
+}

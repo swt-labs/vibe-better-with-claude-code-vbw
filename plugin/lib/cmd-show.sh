@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
 # vbw show roadmap | phase ID | req ID | plan ID [--json] | fix ID [--json] |
-# contract | evidence: views rendered from the record and git trailers. Nothing
-# is stored in rendered form. plan and fix are the context a builder works from.
+# contract | evidence | decisions: views rendered from the record and git
+# trailers. Nothing is stored in rendered form. plan and fix are the context a
+# builder works from.
 
 cmd_show() {
   local view="${1:-}" record
   [ $# -gt 0 ] && shift
-  case "$view" in roadmap|phase|req|plan|fix|contract|evidence) ;; *) vbw_usage_error "usage: vbw show roadmap | phase ID | req ID | plan ID [--json] | fix ID [--json] | contract | evidence" ;; esac
+  case "$view" in roadmap|phase|req|plan|fix|contract|evidence|decisions) ;; *) vbw_usage_error "usage: vbw show roadmap | phase ID | req ID | plan ID [--json] | fix ID [--json] | contract | evidence | decisions" ;; esac
   vbw_require_project
   record=$(record_read)
   case "$view" in
@@ -62,6 +63,10 @@ cmd_show() {
           (.plans[] | "  \(.id) \(.title): \(.files | join(", "))\(if (.after | length) > 0 then " (after \(.after | join(", ")))" else "" end)"),
           "project commands:",
           (.commands | to_entries[] | "  \(.key): \(.value | argv_line)")'
+      ;;
+    decisions)
+      printf '%s' "$record" | jq -r 'if (.decisions | length) == 0 then "no decisions recorded yet (vbw decide TEXT [WHY])"
+        else .decisions[] | "\(.id) \(.text)\(if .why then " (why: \(.why))" else "" end)" end'
       ;;
     evidence)
       printf '%s' "$record" | jq -r '

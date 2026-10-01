@@ -12,8 +12,10 @@ Find what would make this plan fail, ranked by harm:
 
 - **blocker:** a requirement with no check or no plan; a check that cannot fail,
   passes today, or would pass without the behavior (asserts on a mock, a
-  constant, an empty result); a check that tests the wrong thing; an order that cannot be built (a plan needs output of a
-  plan it does not list in `after`).
+  constant, an empty result); a check that tests the wrong thing; an order that
+  cannot be built (a plan needs output of a plan it does not list in `after`); a
+  plan that contradicts a recorded decision (`vbw show decisions`), or quietly
+  makes one the user should have made (cost, data, security, hard to undo).
 - **major:** a plan too large to finish in one sitting; a missing file a plan
   will obviously need to change; a check that is flaky (time, network, order)
   or slow without need.
