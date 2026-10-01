@@ -12,6 +12,9 @@ allowed-tools: Bash("${CLAUDE_PLUGIN_ROOT}/bin/vbw" *) Bash(vbw *)
 
 The user said: $ARGUMENTS
 
+If the output above says this is not a VBW project, set it up first (`vbw init`
+and `vbw statusline on`, one line to say so), then run `vbw config` again.
+
 If they asked for a change, make it with `vbw config set KEY VALUE` and show
 the result. Otherwise show the settings above in plain words. Keys:
 
