@@ -14,6 +14,11 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+# Never the user's own Claude setup: v2's SessionStart removes VBW 1 command
+# copies from the config dir it runs with (K15). Use an isolated, logged-in one.
+: "${VBW_TEST_CLAUDE_CONFIG_DIR:?set VBW_TEST_CLAUDE_CONFIG_DIR to an isolated, logged-in Claude config dir}"
+[ "$VBW_TEST_CLAUDE_CONFIG_DIR" != "$HOME/.claude" ] || { echo "VBW_TEST_CLAUDE_CONFIG_DIR must not be ~/.claude" >&2; exit 2; }
+export CLAUDE_CONFIG_DIR="$VBW_TEST_CLAUDE_CONFIG_DIR"
 fixture="${1:?usage: tools/e2e.sh FIXTURE [MODEL]}"
 model="${2:-sonnet}"
 src="$ROOT/tools/e2e/$fixture"
