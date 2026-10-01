@@ -72,9 +72,9 @@ doctor_claude() {
     [ -z "$mode" ] || break
   done
   case "$mode" in
-    auto) doctor_line ok "default permission mode: auto" ;;
-    bypassPermissions) doctor_line ok "default permission mode: bypassPermissions" ;;
-    *) doctor_line warn "default permission mode: ${mode:-manual} (in manual mode every builder step asks you first)" "switch to auto mode with Shift+Tab, or set permissions.defaultMode to \"auto\" in $(statusline_settings)" ;;
+    auto) doctor_line ok "Claude Code starts in auto permission mode" ;;
+    bypassPermissions) doctor_line ok "Claude Code starts in bypassPermissions mode" ;;
+    *) doctor_line warn "Claude Code starts in ${mode:-manual} permission mode (a session switched to auto mode with Shift+Tab is fine; in manual mode every builder step asks you first)" "to start in auto mode, set permissions.defaultMode to \"auto\" in $(statusline_settings)" ;;
   esac
   case "$wf" in
     on) doctor_line ok "workflows enabled" ;;

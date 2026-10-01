@@ -8,10 +8,10 @@ export const meta = {
   ],
 }
 
-// args: {problem: "...", models?: {critic?, planner?}}
-const problem = args && args.problem
+// args: {problem: "...", models?: {critic?, planner?}}, or the problem as a plain string
+const problem = typeof args === 'string' ? args : args && args.problem
 if (!problem) return { error: 'no problem given: pass args.problem' }
-const models = (args && args.models) || {}
+const models = (args && typeof args === 'object' && args.models) || {}
 
 const LENSES = [
   { key: 'reproduce', ask: 'Reproduce it: find the smallest command or test that shows the problem, and run it. Report the exact steps and output, or that it does not reproduce.' },

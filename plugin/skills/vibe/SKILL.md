@@ -35,28 +35,32 @@ result wakes you; then continue). At a stop, tell the user in plain words what
 happened and what you need from them. Never claim more than the kernel's output
 shows.
 
-Before the first build of a session, if you are not in auto mode (the user is
-asked to approve tool calls), tell the user once: in manual mode every builder
-step will ask them first; Shift+Tab switches to auto mode (Sonnet, Opus or
-Fable).
-
 `plan`, `build` and `fix` need the **Workflow** tool. If you don't have it, tell
 the user: "VBW needs Dynamic workflows: turn them on in /config (or set
 `enableWorkflows: true`)", and stop. Pass `models` (the JSON from
 `vbw config models`) in every workflow's args.
 
+Before `spec` or `plan`: if the project already has code and `.vbw/map.md` does
+not exist, map it first: start the Workflow `vbw:map` (args `{"models": ...}`)
+and write its `map` to `.vbw/map.md`. Read the map before proposing anything.
+
+What the user must see to decide (a result, a draft, a sample output) goes
+inside the AskUserQuestion: the question text or an option's `preview`. Text
+written just before a question may be shown collapsed.
+
 ## Steps
 
-**spec** (needs the user): agree on what to build. Ask what it is for and who
-uses it, then propose requirements, each one user-observable and testable:
+**spec** (needs the user): agree on what to build. For existing code, start
+from the map: say what the project does and propose what to improve, rather
+than asking what it is. Otherwise ask what it is for and who uses it. Then
+propose requirements, each one user-observable and testable:
 `[auto]` when a check can prove it, `[human]` when only a person can judge it
 (look, feel, tone). Recommend; don't interrogate. Add each agreed requirement
 with `vbw spec add auto|human "statement"` (goals and constraints go in
-`.vbw/spec.md` directly, then `vbw spec sync`).
+`.vbw/spec.md` directly, then `vbw spec sync`). If the milestone still has its
+default title, name it after what was agreed: `vbw milestone rename "<title>"`.
 
-**plan**: if the project already has code and `.vbw/map.md` does not exist, map
-it first: start the Workflow `vbw:map` (args `{"models": ...}`) and write its
-`map` to `.vbw/map.md`. Then `vbw run start plan` and start the Workflow
+**plan**: `vbw run start plan` and start the Workflow
 `vbw:plan` with args `{"models": ...}`. When it returns: `vbw run end`, then give the user its summary
 and any critic issues.
 
@@ -71,7 +75,8 @@ You cannot approve.
 blockers and notes).
 
 **fix**: `vbw run start fix <detail.fixes>`, then the Workflow `vbw:fix` with args
-`{"fixes": [...], "models": ...}`. When it returns: `vbw run end`, `vbw prove`.
+`{"groups": <detail.groups>, "models": ...}` (fixes that share files go to one
+builder). When it returns: `vbw run end`, `vbw prove`.
 
 **prove**: `vbw prove`, then report what passed and what failed.
 
@@ -91,7 +96,9 @@ again).
 files outside their plan, and ask how to proceed. Do not rewrite history.
 
 **accept** (needs the user): for each requirement in `detail.requirements`,
-describe one concrete thing to try, then ask with AskUserQuestion: "Works",
+show the user the thing to judge: run it yourself when you can (the program's
+actual output, the page's text) and put that, or one concrete thing to try, in
+the question and the `preview` of "Works". Ask with AskUserQuestion: "Works",
 "Something's wrong", "Skip for now". Works: `vbw req accept <id>`. Something's
 wrong: ask what, then `vbw req reject <id> "<their words>"`. Skip: leave it.
 

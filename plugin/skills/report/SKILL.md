@@ -19,8 +19,9 @@ The user said: $ARGUMENTS
    diagnostics above. Remove anything that looks private (names of private
    projects, paths under their home directory, tokens) and say what you
    removed.
-3. Show the complete title and body, then ask (AskUserQuestion): "File it on
-   GitHub", "I'll file it myself", "Cancel".
+3. Ask with AskUserQuestion, with the complete title and body in the `preview`
+   of "File it on GitHub" (text written before a question may be shown
+   collapsed): "File it on GitHub", "I'll file it myself", "Cancel".
 4. File it only on "File it on GitHub", with
    `gh issue create -R swt-labs/vibe-better-with-claude-code-vbw --title ... --body-file <file>`
    and show the issue link. If `gh` is missing or not logged in, give them the
