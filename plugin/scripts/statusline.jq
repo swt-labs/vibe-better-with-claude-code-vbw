@@ -3,7 +3,9 @@
 # project's .vbw/record.json if it exists; the sentinel; .vbw/runtime/next.json
 # if it exists (the last `vbw next`); the sentinel; .vbw/runtime/auto.json if an
 # autonomous run is armed. jq skips missing files, so the sentinels mark which
-# optional input is which. Args: $branch, $color ("1" or ""). Output: 4 lines.
+# optional input is which. Args: $branch, $color ("1" or ""),
+# $legacy (a VBW 1 plan, not converted), $agents (workflow agents working now).
+# Output: 4 lines.
 
 def c($code; $s): if $color == "1" then "\u001b[\($code)m\($s)\u001b[0m" else $s end;
 def dim: c("2"; .);
@@ -39,8 +41,11 @@ def sep: " │ " | dim;
       [$rec.requirements[]? | select(.milestone == $rec.milestone.id)] as $cur
       | ([$cur[] | select(.status == "proven" or .status == "accepted")] | length) as $done
       | ($cur | length) as $total
+      | (if $agents > 0 then " · \($agents) agent\(if $agents == 1 then "" else "s" end) working" else "" end) as $working
       | (if $rec.lease != null then
-           c("36"; "▶ \($rec.lease.kind)\(if $rec.lease.kind == "build" then ": " + ([$rec.plans[]? | select(.status == "building") | .id] | join(", ")) else "" end)")
+           c("36"; "▶ \($rec.lease.kind)\(if $rec.lease.kind == "build" then ": " + ([$rec.plans[]? | select(.status == "building") | .id] | join(", ")) else "" end)"
+             + (($now - ($rec.lease.started_at | fromdateiso8601? // $now)) * 1000 | " " + dur) + $working)
+         elif $agents > 0 then c("36"; "▶ \($agents) agent\(if $agents == 1 then "" else "s" end) working")
          elif $next != null and $next.gate then c("33"; "needs you: \($next.action)")
          elif $next != null then "next: \($next.action)"
          else "next: /vbw:vibe" end) as $state

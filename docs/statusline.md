@@ -22,6 +22,11 @@ Sonnet 5.5 │ 10m22s (API 5m55s) │ main │ VBW 2.0.0 │ CC 2.1.286
 3. **Plan limits** (5-hour and 7-day), for Pro and Max accounts.
 4. **Model, time, git branch, versions.**
 
+While a step runs, line 1 shows it, how long it has run, and how many workflow
+agents are working now (`▶ build: P1.2 4m10s · 3 agents working`). An agent
+counts as working when its transcript, next to the session's, changed in the
+last minute.
+
 ## How it is installed
 
 A plugin cannot set the main status line, so `vbw statusline on` writes the

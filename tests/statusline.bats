@@ -49,7 +49,7 @@ render() { cc_json | NO_COLOR=1 bash "$SL"; }
   "$VBW" run start build P1.1 > /dev/null
   "$VBW" auto on s1 > /dev/null
   run render
-  [[ "${lines[0]}" == *"│ ▶ build: P1.1 │ ⟳ auto 0/25" ]]
+  [[ "${lines[0]}" =~ "│ ▶ build: P1.1 "[0-9]+s" │ ⟳ auto 0/25"$ ]]
 }
 
 @test "a gate that needs the user says so" {
@@ -135,4 +135,21 @@ render() { cc_json | NO_COLOR=1 bash "$SL"; }
   rm -rf .vbw && mkdir .vbw-planning
   run render
   [ "${lines[0]}" = "[VBW] VBW 1 plan here · /vbw:vibe to bring it into VBW 2" ]
+}
+
+@test "a running step shows how long it has run and how many agents are working" {
+  "$VBW" init > /dev/null
+  printf '# x\n\n## Requirements\n\n- R1 [auto] One\n' > .vbw/spec.md
+  "$VBW" spec sync > /dev/null
+  "$VBW" run start plan > /dev/null
+  local t="$TEST_ROOT/session.jsonl" w="$TEST_ROOT/session/subagents/workflows/wf_1"
+  mkdir -p "$w" && : > "$t"
+  : > "$w/agent-a.jsonl" && : > "$w/agent-b.jsonl" && : > "$w/agent-c.jsonl"
+  touch -t 202001010000 "$w/agent-c.jsonl"
+  run bash -c 'jq -nc --arg d "$1" --arg t "$2" "{workspace: {project_dir: \$d}, transcript_path: \$t}" | NO_COLOR=1 bash "$3"' _ "$PROJECT" "$t" "$SL"
+  [[ "${lines[0]}" =~ "│ ▶ plan "[0-9]+s" · 2 agents working" ]]
+  # No run open (a map or debug workflow): the agents alone.
+  "$VBW" run end > /dev/null
+  run bash -c 'jq -nc --arg d "$1" --arg t "$2" "{workspace: {project_dir: \$d}, transcript_path: \$t}" | NO_COLOR=1 bash "$3"' _ "$PROJECT" "$t" "$SL"
+  [[ "${lines[0]}" == *"│ ▶ 2 agents working" ]]
 }

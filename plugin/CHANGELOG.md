@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.0.5] - 2026-10-01
+
+### New
+
+- **See VBW's agents at work in the status line:** while a step runs it shows
+  how long it has run and how many agents are working right now, for example
+  `▶ build: P1.2 4m10s · 3 agents working`.
+
 ## [2.0.4] - 2026-10-01
 
 ### Fixed
