@@ -78,12 +78,21 @@ its role (`{planner, critic, builder}`), which the router fills from the
 project's model profile. The session itself must run an auto-mode-capable model
 (Sonnet, Opus or Fable; probe G4).
 
-## Known trade-off
+## Why builders share one folder (decided 2026-10-01)
 
 Builders in one wave share the working tree. The kernel never puts two plans
 that share a file in one wave (`vbw next`, and `vbw run start build` refuses
-such a wave), and fixes that share files go to one builder, so commits never
-conflict, but a builder can see another's half-written file while
-it runs its checks. Its own checks still decide its result, and `vbw prove`
-after the wave is the authority. Per-agent worktrees would remove the overlap at
-the cost of merging; the eval data decides whether that is worth it.
+such a wave), fixes that share files go to one builder, and the guards stop a
+builder from stashing, switching or resetting the tree, so commits never
+conflict. A builder can still see another's half-written file while it runs
+its checks; its own checks decide its result, and `vbw prove` after the wave is
+the authority.
+
+Per-agent git worktrees (`isolation: 'worktree'`) would isolate builders
+fully, but a worktree holds only tracked files: ignored dependencies
+(`node_modules`, a virtualenv) and build outputs are missing. Builders would
+reinstall per copy, fail checks for unrelated reasons, or, sharing the main
+checkout's dependencies (an editable install), prove the main checkout's code
+instead of their own. A false proof is the one failure VBW must not have, so
+worktrees may come later only as an opt-in setting with a per-copy install
+step.
