@@ -1,7 +1,8 @@
 # The VBW status line
 
-The status line is the user's live view of VBW. `/vbw:init` turns it on; it is
-a core part of VBW, not an option.
+The status line is the user's live view of VBW. Setting up a project
+(`/vbw:vibe` the first time, or `/vbw:init`) turns it on; it is a core part of
+VBW, not an option.
 
 ```
 [VBW] expenses │ M1 First milestone │ 4/6 done │ ▶ build: P1.2, P2.1 │ ⟳ auto 3/25
@@ -14,7 +15,7 @@ Sonnet 5.5 │ 10m22s (API 5m55s) │ main │ VBW 2.0.0 │ CC 2.1.286
    what is happening: a run in progress (`▶ build: P1.2`), a step that needs the
    user (`needs you: approve`), or the next step (`next: prove`, from the last
    `vbw next`). `⟳ auto 3/25` while an autonomous run is armed. Outside a VBW
-   project: `/vbw:init to start`.
+   project: `/vbw:vibe to start`.
 2. **Context and cost** of the session, and the lines it changed.
 3. **Plan limits** (5-hour and 7-day), for Pro and Max accounts.
 4. **Model, time, git branch, versions.**

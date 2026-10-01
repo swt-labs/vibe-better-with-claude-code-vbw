@@ -34,7 +34,7 @@ def sep: " │ " | dim;
 
 # Line 1: VBW
 | ( if ($rec | type) != "object" then
-      c("36"; "[VBW]") + " " + ("no project here · /vbw:init to start" | dim)
+      c("36"; "[VBW]") + " " + ("no project here · /vbw:vibe to start" | dim)
     else
       [$rec.requirements[]? | select(.milestone == $rec.milestone.id)] as $cur
       | ([$cur[] | select(.status == "proven" or .status == "accepted")] | length) as $done

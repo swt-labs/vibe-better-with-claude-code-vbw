@@ -25,7 +25,7 @@ render() { cc_json | NO_COLOR=1 bash "$SL"; }
   run render
   [ "$status" -eq 0 ]
   [ "${#lines[@]}" -eq 4 ]
-  [[ "${lines[0]}" == "[VBW] no project here · /vbw:init to start" ]]
+  [[ "${lines[0]}" == "[VBW] no project here · /vbw:vibe to start" ]]
   [[ "${lines[1]}" == "Context ▓▓▓░░░░░░░ 31% 62K/200K │ Cost \$1.42 │ +303 −12" ]]
   [[ "${lines[3]}" == "Sonnet 5.5 │ 10m22s (API 5m55s) │ main │ VBW "* ]]
 }
