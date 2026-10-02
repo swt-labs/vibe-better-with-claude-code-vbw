@@ -47,7 +47,7 @@ cmd_run() {
     *) vbw_usage_error "run kind must be plan, build, fix, qa or map" ;;
   esac
   local problem
-  problem=$(printf '%s' "$record" | jq -r --arg k "$kind" --argjson ids "$ids" '[
+  problem=$(printf '%s' "$record" | jq -r --arg k "$kind" --argjson ids "$ids" "$VBW_JQ_DEFS"'[
     if $k == "build" then
       (.plans | map(select(.status == "done") | .id)) as $done
       | $ids[] as $i | [.plans[] | select(.id == $i)][0] as $p
@@ -55,9 +55,14 @@ cmd_run() {
         elif ($p.status | IN("planned", "building") | not) then "\($i) is \($p.status), not ready to build"
         elif any($p.after[]; . as $a | any($done[]; . == $a) | not) then "\($i) waits for \($p.after | join(", "))"
         else empty end,
-      # Builders share one working tree: one wave never shares a file.
-      ([.plans[] | select(.id as $i | any($ids[]; . == $i)) | .files[]] | group_by(.)[] | select(length > 1)
-        | "more than one plan in this wave writes \(.[0]): build them in separate waves (vbw next)")
+      # Builders share one working tree: one wave never shares a file (a
+      # directory entry shares every file under it).
+      ([.plans[] | select(.id as $i | any($ids[]; . == $i)) | {id, files}]) as $w
+      | ([range(0; $w | length) as $a | range($a + 1; $w | length) as $b
+          | $w[$a].files[] as $x | $w[$b].files[] as $y
+          | select(($x | covers($y)) or ($y | covers($x))) | if ($x | length) <= ($y | length) then $x else $y end]
+         | unique[]
+         | "more than one plan in this wave writes \(.): build them in separate waves (vbw next)")
     elif $k == "fix" then
       $ids[] as $i | [.fixes[] | select(.id == $i)][0] as $f
       | if $f == null then "unknown fix \($i)" elif $f.status != "open" then "\($i) is \($f.status), not open" else empty end

@@ -9,7 +9,11 @@ def result($action; $gate; $instruction; $detail):
 
 # Builders share one working tree, so work that touches the same file never runs
 # at the same time. "*" stands for any file.
-def overlaps($a; $b): any($a[], $b[]; . == "*") or any($a[]; . as $x | any($b[]; . == $x));
+# A plan file entry covers PATH: the same path, or a directory entry (ending
+# in /) with PATH under it. Two file lists overlap when either covers the other.
+def covers($p): . as $e | $e == $p or (($e | endswith("/")) and ($p | startswith($e)));
+def overlaps($a; $b): any($a[], $b[]; . == "*")
+  or any($a[]; . as $x | any($b[]; . as $y | ($x | covers($y)) or ($y | covers($x))));
 
 # The files a fix may touch (as in vbw run start fix): the files of the plans
 # serving its requirement; any file for a project command.

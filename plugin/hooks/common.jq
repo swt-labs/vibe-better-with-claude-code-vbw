@@ -38,12 +38,16 @@ def project_path($cwd; $root):
   | "/" + join("/")
   | if startswith(($root | rtrimstr("/")) + "/") then .[($root | rtrimstr("/") | length) + 1:] else null end;
 
+# A plan file entry covers PATH: the same path, or a directory entry (ending
+# in /) with PATH under it.
+def covers($p): . as $e | $e == $p or (($e | endswith("/")) and ($p | startswith($e)));
+
 # Why a subagent may not write PATH (project-relative) under LEASE, or empty.
 def lease_write_denial($lease; $record):
   if . == null then empty
   elif $lease.files == [] then
     "\(.) cannot be written during a \($lease.kind) run: its agents only read"
-  elif $lease.files != null and (. as $p | any($lease.files[]; . == $p) | not) then
+  elif $lease.files != null and (. as $p | any($lease.files[]; covers($p)) | not) then
     "\(.) is outside this run's files (\($lease.files | join(", "))): agents write only their plan's files"
   elif ($lease.kind | test("^(build|fix)$")) and (. as $p | any($record.checks[]?.files[]?; . == $p)) then
     "\(.) is a protected check file: the contract is fixed while building"
@@ -52,7 +56,7 @@ def lease_write_denial($lease; $record):
 # Why another session may not write PATH (project-relative) while FOREIGN's run
 # is open, or empty: it writes lease.files (null: any project file, []: none).
 def foreign_denial($f):
-  . as $p | select($p != null and (($f.files // [$p]) | index($p) != null))
+  . as $p | select($p != null and (($f.files // [$p]) | any(.[]; covers($p))))
   | "\($p) is being written by run \($f.run) of another session (\($f.session)): wait for it; if the user says that session is closed, they run vbw run end --owner-closed";
 
 def secret_reason: "\(basename) may hold secrets; VBW never reads or writes secret files";

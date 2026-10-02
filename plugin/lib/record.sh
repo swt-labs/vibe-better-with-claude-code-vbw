@@ -115,4 +115,7 @@ record_commit() {
 
 # jq helper, prepended to update filters: the next free id with prefix P.
 # shellcheck disable=SC2016,SC2034 # jq text, not shell; used by the cmd-*.sh files
-VBW_JQ_DEFS='def next_id($p): (([.[]?.id | ltrimstr($p) | tonumber?] | max) // 0) + 1 | "\($p)\(.)";'
+# covers($p): a plan file entry covers PATH: the same path, or a directory
+# entry (ending in /) with PATH under it.
+VBW_JQ_DEFS='def next_id($p): (([.[]?.id | ltrimstr($p) | tonumber?] | max) // 0) + 1 | "\($p)\(.)";
+def covers($p): . as $e | $e == $p or (($e | endswith("/")) and ($p | startswith($e)));'
