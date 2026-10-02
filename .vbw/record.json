@@ -68,18 +68,486 @@
     },
     {
       "id": "R9",
-      "text": "A visual accept check shows the user a real screenshot of the page",
+      "text": "A visual accept check asks the user for a screenshot of the page and keeps it with their verdict",
       "proof": "human",
       "status": "open",
       "milestone": "M1"
     }
   ],
-  "checks": [],
-  "phases": [],
-  "plans": [],
+  "checks": [
+    {
+      "id": "C1",
+      "req": "R1",
+      "run": [
+        "bats",
+        "-f",
+        "R1:",
+        "tests/kernel-safety.bats"
+      ],
+      "files": [
+        "tests/kernel-safety.bats"
+      ]
+    },
+    {
+      "id": "C2",
+      "req": "R2",
+      "run": [
+        "bats",
+        "-f",
+        "R2:",
+        "tests/kernel-safety.bats"
+      ],
+      "files": [
+        "tests/kernel-safety.bats"
+      ]
+    },
+    {
+      "id": "C3",
+      "req": "R3",
+      "run": [
+        "bats",
+        "tests/kernel-diagnostics.bats"
+      ],
+      "files": [
+        "tests/kernel-diagnostics.bats"
+      ]
+    },
+    {
+      "id": "C4",
+      "req": "R4",
+      "run": [
+        "bats",
+        "-f",
+        "R4:",
+        "tests/l3-results.bats"
+      ],
+      "files": [
+        "tests/l3-results.bats"
+      ]
+    },
+    {
+      "id": "C5",
+      "req": "R5",
+      "run": [
+        "bats",
+        "-f",
+        "R5:",
+        "tests/l3-results.bats"
+      ],
+      "files": [
+        "tests/l3-results.bats"
+      ]
+    },
+    {
+      "id": "C6",
+      "req": "R6",
+      "run": [
+        "bats",
+        "-f",
+        "R6:",
+        "tests/l3-results.bats"
+      ],
+      "files": [
+        "tests/l3-results.bats"
+      ]
+    },
+    {
+      "id": "C7",
+      "req": "R7",
+      "run": [
+        "bats",
+        "-f",
+        "R7:",
+        "tests/l3-results.bats"
+      ],
+      "files": [
+        "tests/l3-results.bats"
+      ]
+    },
+    {
+      "id": "C8",
+      "req": "R8",
+      "run": [
+        "bats",
+        "-f",
+        "R8:",
+        "tests/l3-results.bats"
+      ],
+      "files": [
+        "tests/l3-results.bats"
+      ]
+    }
+  ],
+  "phases": [
+    {
+      "id": "P1",
+      "title": "Kernel safety: concurrent consent and interrupted commits",
+      "reqs": [
+        "R1",
+        "R2"
+      ],
+      "milestone": "M1",
+      "goal": "The kernel never loses a consent grant and never leaves debris when a command is interrupted.",
+      "criteria": [
+        "A test starts two consent grants at once from two worktrees of one clone, and both grants are in consent.json afterwards.",
+        "That test fails on the pre-fix code, and the failure is shown.",
+        "A test interrupts a vbw commit mid-way, and .vbw/runtime holds no stray index files afterwards.",
+        "A test sets a caller EXIT trap, interrupts the commit, and the caller's trap still runs.",
+        "Both tests pass under /bin/bash 3.2 and bash 5, and bash tools/test.sh passes in full.",
+        "The kernel is still within 3,000 lines."
+      ]
+    },
+    {
+      "id": "P2",
+      "title": "Honest report and rtk commands",
+      "reqs": [
+        "R3"
+      ],
+      "milestone": "M1",
+      "goal": "vbw report and vbw rtk behave as their --help text says.",
+      "criteria": [
+        "Each claim in the help text of vbw report and vbw rtk has a test that runs the command and checks the stated outcome.",
+        "Where the command and its help disagreed, one was corrected, and a regression test fails without that correction.",
+        "The help text and the user docs (docs/) say the same thing about both commands.",
+        "bash tools/test.sh passes in full."
+      ]
+    },
+    {
+      "id": "P3",
+      "title": "Balanced autonomy: background QA reaches the accept stop",
+      "reqs": [
+        "R8"
+      ],
+      "milestone": "M1",
+      "goal": "In balanced autonomy, a background QA run ends cleanly and the session reaches the accept stop.",
+      "criteria": [
+        "An L3 scenario in tools/l3-suite.sh runs balanced autonomy with a background QA run on a named fixture.",
+        "The session transcript and debug log hold zero Stop-hook errors during that run.",
+        "The record shows the session stopped at the accept stop.",
+        "The L3 result names its fixture, its cost and its evidence level."
+      ]
+    },
+    {
+      "id": "P4",
+      "title": "Docs agent builds a documentation requirement",
+      "reqs": [
+        "R4"
+      ],
+      "milestone": "M1",
+      "goal": "A documentation requirement is built by the Docs agent and proved in a real session.",
+      "criteria": [
+        "An L3 scenario drives /vbw:vibe on a fixture whose spec has one documentation requirement.",
+        "The record shows the Docs agent built it, by agent type.",
+        "The requirement's check is approved and passes in the record, and the commit carries provenance.",
+        "The result is logged with fixture, cost and evidence level."
+      ]
+    },
+    {
+      "id": "P5",
+      "title": "QA fails a deviating build and the fix loop closes it",
+      "reqs": [
+        "R5"
+      ],
+      "milestone": "M1",
+      "goal": "QA fails a phase whose build deviates from its plan, and the fix loop brings it back to passing.",
+      "criteria": [
+        "An L3 scenario seeds a build that deviates from its plan (a named deviation, e.g. a file the plan requires is missing).",
+        "The record shows the QA verdict as fail and names that deviation.",
+        "The record shows at least one fix iteration, then a QA verdict of pass.",
+        "The phase ends proved, and the number of fix rounds is logged."
+      ]
+    },
+    {
+      "id": "P6",
+      "title": "Debug and research in a real session",
+      "reqs": [
+        "R6",
+        "R7"
+      ],
+      "milestone": "M1",
+      "goal": "/vbw:debug fixes a seeded bug at its root cause with a regression test, and /vbw:research returns a sourced answer.",
+      "criteria": [
+        "An L3 scenario seeds a named bug in a fixture and runs /vbw:debug.",
+        "The fix is committed at the seeded root cause, and the diff does not only mask the symptom.",
+        "A new regression test is committed, fails on the pre-fix code, and passes after.",
+        "An L3 scenario runs /vbw:research on a question with a known answer.",
+        "The answer lists at least one source (URL or file path) that a person can open and that supports the answer.",
+        "Both results are logged with fixture, cost and evidence level."
+      ]
+    },
+    {
+      "id": "P7",
+      "title": "Visual accept check keeps the user's screenshot",
+      "reqs": [
+        "R9"
+      ],
+      "milestone": "M1",
+      "goal": "A visual accept check asks the user for a screenshot of the page and stores it with their verdict.",
+      "criteria": [
+        "When a [human] visual check comes up at accept, the prompt asks the user to attach a screenshot, and names the page.",
+        "The screenshot file is stored in the project, and the record links it to the check and the user's verdict.",
+        "VBW ships no screenshot tool and does not start a browser (decision D1), and a test checks that.",
+        "Accepting without a screenshot is refused, or the verdict is recorded as lacking one; the behavior is stated in docs/.",
+        "An L3 scenario runs the flow and checks the record. L4 owner acceptance is listed as not done until the owner has done it."
+      ]
+    }
+  ],
+  "plans": [
+    {
+      "id": "P1.1",
+      "phase": "P1",
+      "title": "Locked consent and interrupt-safe cleanup",
+      "reqs": [
+        "R1",
+        "R2"
+      ],
+      "files": [
+        "plugin/lib/consent.sh",
+        "plugin/lib/record.sh",
+        "plugin/lib/core.sh",
+        "plugin/lib/cmd-commit.sh"
+      ],
+      "after": [],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "Run tests/kernel-safety.bats on the unfixed code and keep the failing output (R1 lost grants, R2 debris and clobbered caller trap)",
+        "Serialize consent_grant read-modify-write (including file creation) with a lock in the clone's git dir shared by all worktrees; no writes outside the project, bash 3.2 safe",
+        "Add one cleanup helper in the kernel: signal traps (INT TERM HUP) that remove temp index/record files and the lock then exit promptly, and EXIT handling that chains the caller's existing EXIT trap instead of replacing or clearing it; use it in record_update, record_commit, cmd_commit and vbw_code_tree",
+        "Run bash tools/test.sh under /bin/bash and bash 5, confirm the kernel is within 3,000 lines"
+      ]
+    },
+    {
+      "id": "P2.1",
+      "phase": "P2",
+      "title": "Make report and rtk match their help",
+      "reqs": [
+        "R3"
+      ],
+      "files": [
+        "plugin/lib/cmd-report.sh",
+        "plugin/lib/cmd-rtk.sh",
+        "plugin/bin/vbw"
+      ],
+      "after": [],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "Run tests/kernel-diagnostics.bats and note each failing claim",
+        "Report: empty counts print none; a corrupt record is reported as corrupt without echoing its content; nothing from spec, code or check output",
+        "Verify rtk behavior against RTK's real hook command and install guidance; correct the command or its help line, whichever is wrong, with a regression test in the same file set if new behavior is added",
+        "Align the help lines for rtk and report in plugin/bin/vbw with the final behavior and run bash tools/test.sh"
+      ]
+    },
+    {
+      "id": "P2.2",
+      "phase": "P2",
+      "title": "Document report and rtk",
+      "reqs": [
+        "R3"
+      ],
+      "files": [
+        "docs/diagnostics.md",
+        "README.md"
+      ],
+      "after": [
+        "P2.1"
+      ],
+      "status": "planned",
+      "role": "docs",
+      "tasks": [
+        "Create docs/diagnostics.md with vbw report: what it prints, what it never prints, with the exact help description",
+        "Add vbw rtk to it: status output, install hint, hook state, with the exact help description",
+        "Link the page from README.md"
+      ]
+    },
+    {
+      "id": "P3.1",
+      "phase": "P3",
+      "title": "L3 scenario: balanced autonomy with background QA",
+      "reqs": [
+        "R8"
+      ],
+      "files": [
+        "tools/l3-suite.sh",
+        "tools/l3.sh",
+        "tools/l3-results/balanced.json"
+      ],
+      "after": [
+        "P1.1",
+        "P2.1"
+      ],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "Define the named fixture and add scenario_balanced to tools/l3-suite.sh and ALL (balanced autonomy, QA in background, auto on for the session)",
+        "Add result writing: tools/l3-results/NAME.json with scenario, fixture, cost_usd, evidence_level L3, at, passed, facts, not_tested; a shared helper others reuse",
+        "Check Stop-hook errors in the session transcript and the debug log, and that the record stops at accept; fix any kernel or hook root cause found, as a separate plan if outside these files",
+        "Run the scenario for real (about $2-5, D2) and commit the result with facts matching tests/l3-results.bats"
+      ]
+    },
+    {
+      "id": "P4.1",
+      "phase": "P4",
+      "title": "L3 scenario: Docs agent builds a documentation requirement",
+      "reqs": [
+        "R4"
+      ],
+      "files": [
+        "tools/l3-suite.sh",
+        "tools/l3-results/docs.json"
+      ],
+      "after": [
+        "P3.1"
+      ],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "Define the fixture: a spec with one documentation requirement and a check that proves the doc",
+        "Add scenario_docs to tools/l3-suite.sh and ALL, driving /vbw:vibe",
+        "Assert from the record and subagent transcripts: built by agent type docs, check approved and passing, commit with VBW-Plan trailer",
+        "Run it for real and commit the result with fixture, cost, level"
+      ]
+    },
+    {
+      "id": "P5.1",
+      "phase": "P5",
+      "title": "L3 scenario: QA fails a deviating build, fix loop closes it",
+      "reqs": [
+        "R5"
+      ],
+      "files": [
+        "tools/l3-suite.sh",
+        "tools/l3-results/qafix.json"
+      ],
+      "after": [
+        "P4.1"
+      ],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "Define the fixture and a seeded deviation (a file the plan requires is missing) that checks alone would not catch",
+        "Add scenario_qafix to tools/l3-suite.sh and ALL, seeding the build and driving /vbw:vibe",
+        "Assert the first QA verdict fail naming the deviation, at least one fix round, final pass, phase proved; log the round count",
+        "Run it for real and commit the result"
+      ]
+    },
+    {
+      "id": "P6.1",
+      "phase": "P6",
+      "title": "L3 scenarios: debug and research",
+      "reqs": [
+        "R6",
+        "R7"
+      ],
+      "files": [
+        "tools/l3-suite.sh",
+        "tools/l3-results/debug.json",
+        "tools/l3-results/research.json"
+      ],
+      "after": [
+        "P5.1"
+      ],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "Define the debug fixture with a named seeded bug and a known root-cause file; add scenario_debug running /vbw:debug",
+        "Assert the fix commit touches the root-cause file, a regression test is committed, fails on the pre-fix tree and passes after, and the diff is not a symptom mask",
+        "Define a research question with a known answer; add scenario_research running /vbw:research and assert at least one openable source supporting the answer",
+        "Run both for real and commit both results with fixture, cost, level"
+      ]
+    },
+    {
+      "id": "P7.1",
+      "phase": "P7",
+      "title": "Screenshot with the user's verdict",
+      "reqs": [
+        "R9"
+      ],
+      "files": [
+        "plugin/lib/cmd-req.sh",
+        "plugin/lib/record.jq",
+        "plugin/skills/vibe/SKILL.md",
+        "tests/screenshot.bats"
+      ],
+      "after": [
+        "P6.1"
+      ],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "Test first in tests/screenshot.bats: req accept ID --screenshot FILE stores the file under .vbw/ and links it in the record to the requirement and verdict; --no-screenshot records its absence; a missing file is refused; plugin/ holds no screenshot tool or browser launch",
+        "Implement vbw req accept ID [--screenshot FILE | --no-screenshot] in cmd-req.sh and allow the field in record.jq (kernel stays within 3,000 lines, bash 3.2)",
+        "Change the accept step of the vibe skill: for a visual check name the page and ask the user to attach a screenshot; remove the browser-tool and open instructions (D1)",
+        "Run bash tools/test.sh"
+      ]
+    },
+    {
+      "id": "P7.2",
+      "phase": "P7",
+      "title": "L3 scenario: visual accept with a screenshot",
+      "reqs": [
+        "R9"
+      ],
+      "files": [
+        "tools/l3-suite.sh",
+        "tools/l3-results/screenshot.json"
+      ],
+      "after": [
+        "P7.1"
+      ],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "Define a fixture with one [human] visual requirement; add scenario_screenshot to tools/l3-suite.sh and ALL",
+        "Drive the accept stop: the prompt names the page and asks for a screenshot; supply a PNG; check the record links file, check and verdict",
+        "Run it for real; commit the result with L4 owner acceptance listed in not_tested"
+      ]
+    },
+    {
+      "id": "P7.3",
+      "phase": "P7",
+      "title": "Document the screenshot accept",
+      "reqs": [
+        "R9"
+      ],
+      "files": [
+        "docs/proof.md"
+      ],
+      "after": [
+        "P7.1"
+      ],
+      "status": "planned",
+      "role": "docs",
+      "tasks": [
+        "Describe the visual accept flow: the prompt, the user attaches the screenshot, where it is stored",
+        "State that accepting without a screenshot needs --no-screenshot and is recorded as lacking one",
+        "State decision D1: VBW ships no screenshot tool and starts no browser"
+      ]
+    }
+  ],
   "fixes": [],
   "todos": [],
-  "decisions": [],
+  "decisions": [
+    {
+      "id": "D1",
+      "text": "R9 screenshots: the user captures and attaches the screenshot; VBW ships no screenshot tool and does not drive a browser for it",
+      "why": "owner's choice: simplest, always works, no new dependency; accepted that this is not an automated screenshot",
+      "at": "2026-10-02T01:49:46Z"
+    },
+    {
+      "id": "D2",
+      "text": "R4-R8 are proved by L3 real-session scenarios, each run after its own phase is built",
+      "why": "owner's choice: problems found early; accepted the higher cost of repeated runs (about $2-5 per scenario)",
+      "at": "2026-10-02T01:50:06Z"
+    },
+    {
+      "id": "D3",
+      "text": "Milestone ships as 2.0.9, one patch release",
+      "why": "owner's choice: fixes and proof, no new behavior; one update for users",
+      "at": "2026-10-02T01:50:29Z"
+    }
+  ],
   "commands": {},
   "settings": {
     "profile": "balanced",

@@ -16,7 +16,7 @@
 - R6 [auto] In a real session, /vbw:debug finds the root cause of a seeded bug and fixes it with a regression test
 - R7 [auto] In a real session, /vbw:research returns a sourced answer
 - R8 [auto] In balanced autonomy, a background QA run causes no Stop-hook errors and the session reaches the accept stop
-- R9 [human] A visual accept check shows the user a real screenshot of the page
+- R9 [human] A visual accept check asks the user for a screenshot of the page and keeps it with their verdict
 
 <!-- One requirement per line: an id, how it is proved, and a user-observable
      statement. [auto] = a check can prove it; [human] = only a person can judge it.
