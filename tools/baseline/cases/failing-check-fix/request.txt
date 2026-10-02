@@ -1,0 +1,1 @@
+The check ./check-slug.sh fails. Find the root cause in slug.sh, fix it there (do not edit check-slug.sh), and run ./check-slug.sh to confirm it passes.

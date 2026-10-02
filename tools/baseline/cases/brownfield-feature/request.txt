@@ -1,0 +1,1 @@
+Add a "done N" command to todo.sh that marks item N (1-based, as shown by list) as done by changing its "[ ]" to "[x]". An unknown or out-of-range N must print an error to stderr and exit non-zero. Keep add and list working, and keep ./test.sh passing.
