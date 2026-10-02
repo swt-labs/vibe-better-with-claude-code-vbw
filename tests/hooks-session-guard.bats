@@ -40,6 +40,22 @@ denied() { [ "$(printf '%s' "$output" | jq -r '.hookSpecificOutput.permissionDec
   denied
 }
 
+# shell SESSION COMMAND: a Bash call from SESSION's main conversation.
+shell() {
+  jq -nc --arg s "$1" --arg c "$2" --arg d "$PROJECT" \
+    '{hook_event_name: "PreToolUse", tool_name: "Bash", cwd: $d, session_id: $s, tool_input: {command: $c}}' \
+    | vbw_hook PreToolUse Bash
+}
+
+@test "another session cannot write the file with a shell command either" {
+  run shell sessB "echo 'x' > src/pay.js"
+  denied
+  run shell sessB "sed -i '' 's/a/b/' src/pay.js"
+  denied
+  run shell sessB "echo 'x' > src/other.js"
+  [ "$(printf '%s' "$output" | jq -r '.hookSpecificOutput.permissionDecision // "allow"' 2> /dev/null || echo allow)" != deny ]
+}
+
 @test "files the run does not write stay editable from another session" {
   run edit sessB src/other.js
   [ -z "$output" ]

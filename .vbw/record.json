@@ -793,7 +793,8 @@
         "plugin/hooks/common.jq",
         "plugin/hooks/guard-file.jq",
         "docs/guards.md",
-        "tests/hooks-session-guard.bats"
+        "tests/hooks-session-guard.bats",
+        "plugin/hooks/guard-bash.jq"
       ],
       "after": [
         "P11.1"
@@ -804,7 +805,8 @@
         "common.jq: guard_context exposes a foreign lease (open under 24h, has session, hook session_id differs) for main conversation and agents alike",
         "guard-file.jq: deny Write/Edit/MultiEdit/NotebookEdit of a file in the foreign lease's files (any project file when files is null; none when []) with a message naming the owning session and how the user lifts it (vbw run end --owner-closed); keep other denials unchanged",
         "docs/guards.md: document the rule (D11)",
-        "run tests/hooks-session-guard.bats, tests/hooks-guard.bats, tools/bench-hooks.sh and the full suite under bash 3.2 and bash 5"
+        "run tests/hooks-session-guard.bats, tests/hooks-guard.bats, tools/bench-hooks.sh and the full suite under bash 3.2 and bash 5",
+        "Shell commands from another session that write a leased file (redirection, sed -i, cp, mv, tee) are denied by guard-bash.jq the same way"
       ]
     },
     {
@@ -893,6 +895,11 @@
     {
       "id": "T4",
       "text": "Two sessions on one project: the run lease does not record its session, so a second session is told to end the first session's live run as 'interrupted'. Record the owning session in the lease; other sessions wait unless it is stale.",
+      "status": "open"
+    },
+    {
+      "id": "T5",
+      "text": "Status line says what is happening now: set refreshInterval so it stays current while the session waits on background work; one clear state (VBW working: what, for how long / waiting for you: what / idle); and a 'vbw activity' note for long work outside a VBW run (releases, test runs), shown until done",
       "status": "open"
     }
   ],
