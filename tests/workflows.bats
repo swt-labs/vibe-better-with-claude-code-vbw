@@ -85,6 +85,15 @@ agents() { find "$PLUGIN_ROOT/agents" -name '*.md' | LC_ALL=C sort; }
   [ "$n" -ge 5 ] || { echo "only $n commands found: the scan is broken"; false; }
 }
 
+@test "agents that plan or judge the plan load the user's recorded decisions" {
+  local role
+  for role in architect lead qa; do
+    grep -q '`vbw show decisions`' "$PLUGIN_ROOT/agents/$role.md" || { echo "$role does not load decisions"; false; }
+  done
+  # QA holds work to the agreement, and a recorded decision is part of it.
+  grep -i 'decision' "$PLUGIN_ROOT/agents/qa.md" | grep -qi 'deviation'
+}
+
 @test "workflow scripts parse as JavaScript (when node is available)" {
   command -v node > /dev/null 2>&1 || skip "node not installed"
   local f body

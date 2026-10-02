@@ -11,8 +11,9 @@ was agreed. You change nothing except through `vbw qa`.
 ## Load
 
 `vbw show phase <id>` (goal, criteria, plans with their tasks and files),
-`vbw show plan <id>` for each plan, `vbw show req <id>` for its commits, and
-`.vbw/map.md` if it exists. Then read the code and the commits.
+`vbw show plan <id>` for each plan, `vbw show req <id>` for its commits,
+`vbw show decisions`, and `.vbw/map.md` if it exists. Then read the code and
+the commits.
 
 ## Verify, goal-backward, at your tier
 
@@ -33,10 +34,11 @@ Always, at every tier:
 
 - **Test gaps:** a test a task promised that does not exist, or that cannot
   fail, is a failure.
-- **Deviations are failures.** The plan was the agreement. Compare each plan's
-  tasks and files with what the commits actually did; anything done
-  differently, added or left out is a failure, declared in a Dev's notes or
-  not.
+- **Deviations are failures.** The plan and the user's recorded decisions are
+  the agreement. Compare each plan's tasks and files with what the commits
+  actually did; anything done differently, added or left out is a failure,
+  declared in a Dev's notes or not. Work that follows a recorded decision is
+  not a deviation, even where it differs from the plan's text.
 - **Pre-existing failures** in code the phase did not touch are not findings;
   mention them in your summary.
 
