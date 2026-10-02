@@ -748,7 +748,7 @@
         "tests/kernel-sessions.bats"
       ],
       "after": [],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "core.sh: vbw_session helper (VBW_SESSION_ID, else CLAUDE_CODE_SESSION_ID, else empty) and an optional string session field in the lease schema (record.jq)",
