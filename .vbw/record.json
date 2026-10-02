@@ -627,14 +627,14 @@
     "autonomy_cap": 25
   },
   "evidence": {
-    "at": "2026-10-02T03:34:55Z",
+    "at": "2026-10-02T03:42:44Z",
     "contract": "85fc3e706c9b3728e7a3884841ad2b50fcb27c75aa0d7eb94080b08d4c26e4ca",
-    "tree": "69292f45d3deabd426dea9affdf2fcc53b79e3cc",
+    "tree": "a6e7ade31a633b1d4c8944dcca67dac0d390eb0c",
     "checks": {
       "C1": {
         "status": "pass",
         "exit": 0,
-        "seconds": 13,
+        "seconds": 12,
         "tail": "1..1\nok 1 R1: grants from two worktrees of one clone, started together, are all kept"
       },
       "C2": {
@@ -646,7 +646,7 @@
       "C3": {
         "status": "pass",
         "exit": 0,
-        "seconds": 6,
+        "seconds": 5,
         "tail": "1..11\nok 1 report: versions, doctor, and project state as counts and ids\nok 2 report: an empty count says none, never a blank\nok 3 report: never the spec's text, check output or file contents\nok 4 report: a corrupt record is named as corrupt without echoing its content\nok 5 report: outside a git repository it still prints, and says so\nok 6 report and rtk take no arguments beyond their usage\nok 7 rtk: not installed, with the install command that matches the machine\nok 8 rtk: installed shows its version and path; status equals no argument\nok 9 rtk: the Claude hook is on only when RTK's hook is in the user's settings\nok 10 rtk and report write nothing: no file in the project or settings changes\nok 11 docs/diagnostics.md says what the help says about both commands"
       },
       "C4": {
@@ -664,13 +664,13 @@
       "C6": {
         "status": "fail",
         "exit": 1,
-        "seconds": 0,
+        "seconds": 1,
         "tail": "1..1\nnot ok 1 R6: /vbw:debug fixed the seeded root cause with a regression test that failed before\n# (from function `result_ok' in file tests/l3-results.bats, line 15,\n#  in test file tests/l3-results.bats, line 51)\n#   `result_ok debug' failed"
       },
       "C7": {
         "status": "fail",
         "exit": 1,
-        "seconds": 1,
+        "seconds": 0,
         "tail": "1..1\nnot ok 1 R7: /vbw:research answered a known question with a source a person can open\n# (from function `result_ok' in file tests/l3-results.bats, line 15,\n#  in test file tests/l3-results.bats, line 61)\n#   `result_ok research' failed"
       },
       "C8": {
