@@ -308,14 +308,15 @@
         "plugin/lib/cmd-commit.sh"
       ],
       "after": [],
-      "status": "planned",
+      "status": "blocked",
       "role": "dev",
       "tasks": [
         "Run tests/kernel-safety.bats on the unfixed code and keep the failing output (R1 lost grants, R2 debris and clobbered caller trap)",
         "Serialize consent_grant read-modify-write (including file creation) with a lock in the clone's git dir shared by all worktrees; no writes outside the project, bash 3.2 safe",
         "Add one cleanup helper in the kernel: signal traps (INT TERM HUP) that remove temp index/record files and the lock then exit promptly, and EXIT handling that chains the caller's existing EXIT trap instead of replacing or clearing it; use it in record_update, record_commit, cmd_commit and vbw_code_tree",
         "Run bash tools/test.sh under /bin/bash and bash 5, confirm the kernel is within 3,000 lines"
-      ]
+      ],
+      "note": "Work committed (1421600d, 86cf81a4) and tests/kernel-safety.bats passes, but vbw check and plan done refuse: contract ee331c3ebdde is not approved (approved was 843599e1a3e3). Re-approve with /vbw:approve, then run vbw plan reset P1.1 / vbw plan done P1.1."
     },
     {
       "id": "P2.1",
@@ -330,14 +331,15 @@
         "plugin/bin/vbw"
       ],
       "after": [],
-      "status": "planned",
+      "status": "blocked",
       "role": "dev",
       "tasks": [
         "Run tests/kernel-diagnostics.bats and note each failing claim",
         "Report: empty counts print none; a corrupt record is reported as corrupt without echoing its content; nothing from spec, code or check output",
         "Verify rtk behavior against RTK's real hook command and install guidance; correct the command or its help line, whichever is wrong, with a regression test in the same file set if new behavior is added",
         "Align the help lines for rtk and report in plugin/bin/vbw with the final behavior and run bash tools/test.sh"
-      ]
+      ],
+      "note": "C3 needs docs/diagnostics.md (test 11 in tests/kernel-diagnostics.bats), outside this plan's files; guard denies writing it. Report fixes (tests 2,4) are committed; rtk already matches its help (tests 7-10 pass), help lines need no change. Add docs/diagnostics.md to the plan: it must contain the help descriptions 'the state of RTK (command-output compression)' and 'diagnostic facts for a bug report about VBW (no spec text or code)', plus the strings 'vbw report' and 'vbw rtk'."
     },
     {
       "id": "P2.2",
