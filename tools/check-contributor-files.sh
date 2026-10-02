@@ -2,7 +2,9 @@
 # Usage: check-contributor-files.sh [ROOT]
 # Contributor files (CONTRIBUTING.md, AGENTS.md, .github PR/issue templates,
 # copilot-instructions.md) may name only paths, tools and /vbw: commands that
-# exist under ROOT, and never .vbw-planning. Exits 0 when clean, 1 otherwise.
+# exist under ROOT (a_non_prod_docs/, the maintainer's local working documents,
+# is named on purpose and never committed), and never .vbw-planning. Exits 0
+# when clean, 1 otherwise.
 set -u
 
 ROOT="${1:-$(cd "$(dirname "$0")/.." && pwd)}"
@@ -34,7 +36,9 @@ for f in ${files[@]+"${files[@]}"}; do
           esac
           ;;
         http*|*'$'*|*'*'*|*'<'*|*'{'*|*'['*|'~'*|/*|./*|../*|*..*) ;;
-        tools/*|plugin/*|tests/*|docs/*|.github/*|a_non_prod_docs/*|assets/*|scripts/*)
+        # Maintainer-local working documents: named on purpose, never committed.
+        a_non_prod_docs/*) ;;
+        tools/*|plugin/*|tests/*|docs/*|.github/*|assets/*|scripts/*)
           [ -e "$word" ] || report "$f" "$word (no such path)"
           ;;
       esac

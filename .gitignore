@@ -22,3 +22,6 @@ Thumbs.db
 .vscode/
 *.swp
 *.swo
+
+# Maintainer-local working documents (design, plan, ledger, progress log).
+a_non_prod_docs/
