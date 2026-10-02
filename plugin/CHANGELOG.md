@@ -1,5 +1,20 @@
 # Changelog
 
+## [2.0.10] - 2026-10-02
+
+### Fixed
+
+- **QA respects your decisions.** QA now reads the decisions you recorded and
+  treats them as part of what was agreed: work that follows one of your
+  decisions is no longer failed as a deviation from the plan.
+- **Shipping needs the work committed.** VBW proves the files on disk, so a
+  milestone could be marked shipped while its work was only staged or
+  untracked. `vbw ship` now names the uncommitted files and asks you to commit
+  them first.
+- **`vbw rtk` reports RTK's hook the way RTK itself does:** a hook given by a
+  quoted path to `rtk` is now seen as on, and a command that merely mentions
+  `rtk hook claude` is not.
+
 ## [2.0.9] - 2026-10-02
 
 ### Fixed
