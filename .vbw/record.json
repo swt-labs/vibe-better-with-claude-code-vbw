@@ -532,7 +532,7 @@
         "P9.1",
         "P10.1"
       ],
-      "status": "planned",
+      "status": "done",
       "role": "docs",
       "tasks": [
         "State that accepting a [human] requirement closes only fixes opened by the user's rejections and that QA-opened fixes close only on a passing QA verdict",
