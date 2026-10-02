@@ -7,14 +7,14 @@
 #
 #   tools/l3-suite.sh [SCENARIO...]     (default: all)
 #
-# Scenarios: greenfield, reject, resume, change, convert, balanced. A user answers every
+# Scenarios: greenfield, reject, resume, change, convert, balanced, docs. A user answers every
 # question with VBW's recommendation unless the scenario says otherwise.
 set -uo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 l3() { bash "$ROOT/tools/l3.sh" "$@"; }
 VBW="$ROOT/plugin/bin/vbw"
-ALL="greenfield reject resume change convert balanced"
+ALL="greenfield reject resume change convert balanced docs"
 RESULTS="$ROOT/tools/l3-results"
 STEPS=60
 
@@ -147,6 +147,15 @@ read_session_cost() {
   out=$(screen)
   l3 keys "$scenario" Escape
   printf '%s' "$out" | grep -oE '\$[0-9]+\.[0-9]+' | head -1 | tr -d '$'
+}
+
+# Agent types of the subagents the building workflow ran (their .meta.json),
+# one per line, sorted and unique.
+build_agent_types() {
+  local f
+  while IFS= read -r f; do
+    jq -r 'select(.workflowPhase == "Build") | .agentType' "${f%.jsonl}.meta.json" 2> /dev/null
+  done < <(transcripts | grep '/subagents/') | sort -u
 }
 
 # result_write NAME FIXTURE COST PASSED FACTS_JSON NOT_TESTED_JSON
@@ -283,6 +292,36 @@ scenario_balanced() {
       "$(jq -n --arg a "$autonomy" --argjson q "$qa_bg" --argjson t "$te" --argjson d "$dl" --arg s "$stopped" \
         '{autonomy: $a, qa_background: $q, stop_hook_errors_transcript: $t, stop_hook_errors_debug_log: $d, stopped_at: $s}')" \
       '["acceptance itself (the run stops at accept)","hands-off and guided autonomy","a project larger than the greet.sh fixture"]'
+  }
+}
+
+# A documentation requirement (R4): the Lead marks its plan as documentation,
+# the Docs agent builds it, and the approved check proves it.
+scenario_docs() {
+  new_project
+  fixture="greet.sh already in the repo; one auto requirement: docs/USAGE.md documents it"
+  printf '#!/bin/sh\necho "Hello, ${1:-world}!"\n' > "$dir/greet.sh"
+  chmod +x "$dir/greet.sh"
+  git -C "$dir" add -A && git -C "$dir" commit -qm "feat: greet.sh"
+  start="/vbw:vibe Documentation only, no code changes: write docs/USAGE.md for the existing greet.sh, with how to run it with a name and without one, and one example of each. One small milestone."
+  checks() {
+    common_checks
+    local plan req agents passed=true by=none appr=false cst=none prov=false rst=none
+    plan=$(jq -r 'first(.plans[] | select(.role == "docs")) | .id // empty' "$dir/.vbw/record.json" 2> /dev/null)
+    req=$(jq -r --arg p "$plan" 'first(.plans[] | select(.id == $p)) | .reqs[0] // empty' "$dir/.vbw/record.json" 2> /dev/null)
+    agents=$(build_agent_types | tr '\n' ' ')
+    [ "$agents" = "vbw:docs " ] && by=docs
+    # Only approved checks ever run: a passing result in the evidence means approved.
+    cst=$(jq -r --arg r "$req" '. as $x | first($x.checks[] | select(.req == $r)) | .id as $c | $x.evidence.checks[$c].status // "none"' "$dir/.vbw/record.json" 2> /dev/null)
+    [ "$cst" = pass ] && appr=true
+    rst=$(jq -r --arg r "$req" 'first(.requirements[] | select(.id == $r)) | .status // "none"' "$dir/.vbw/record.json" 2> /dev/null)
+    [ -n "$plan" ] && [ "$(cd "$dir" && git log --format=%B | grep -c "^VBW-Plan: $plan\$")" -gt 0 ] && prov=true
+    [ -f "$dir/docs/USAGE.md" ] || failed=1
+    [ "$failed" -eq 0 ] && [ "$by" = docs ] && [ "$appr" = true ] && [ "$cst" = pass ] && [ "$prov" = true ] && [ "$rst" = proven ] || passed=false
+    result_write docs "$fixture" "${cost_usd:-0}" "$passed" \
+      "$(jq -n --arg b "$by" --argjson a "$appr" --arg c "$cst" --argjson p "$prov" --arg r "$rst" --arg pl "$plan" --arg ag "$agents" \
+        '{built_by_agent_type: $b, check_approved: $a, check_status: $c, commit_has_provenance: $p, requirement_status: $r, docs_plan: $pl, build_agents: $ag}')" \
+      '["acceptance by a person of the documentation quality","a documentation plan mixed with code plans in one wave","a project larger than the greet.sh fixture"]'
   }
 }
 
