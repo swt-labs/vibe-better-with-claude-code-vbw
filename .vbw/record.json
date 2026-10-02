@@ -724,9 +724,9 @@
     "autonomy_cap": 25
   },
   "evidence": {
-    "at": "2026-10-02T12:44:33Z",
+    "at": "2026-10-02T13:43:57Z",
     "contract": "ec29ba9f2c8542a1e78193537f9b4031409318bef8f6e9acacd78783d20f9faa",
-    "tree": "1b500834bc4d52d14d333cd76408b112ab867f35",
+    "tree": "d62fd548321c36c87962b21f8507e2f3576c9a79",
     "checks": {
       "C1": {
         "status": "pass",
@@ -743,13 +743,13 @@
       "C3": {
         "status": "pass",
         "exit": 0,
-        "seconds": 5,
+        "seconds": 6,
         "tail": "1..11\nok 1 report: versions, doctor, and project state as counts and ids\nok 2 report: an empty count says none, never a blank\nok 3 report: never the spec's text, check output or file contents\nok 4 report: a corrupt record is named as corrupt without echoing its content\nok 5 report: outside a git repository it still prints, and says so\nok 6 report and rtk take no arguments beyond their usage\nok 7 rtk: not installed, with the install command that matches the machine\nok 8 rtk: installed shows its version and path; status equals no argument\nok 9 rtk: the Claude hook is on only when RTK's hook is in the user's settings\nok 10 rtk and report write nothing: no file in the project or settings changes\nok 11 docs/diagnostics.md says what the help says about both commands"
       },
       "C4": {
         "status": "pass",
         "exit": 0,
-        "seconds": 1,
+        "seconds": 0,
         "tail": "1..1\nok 1 R4: the Docs agent built a documentation requirement and it is proved"
       },
       "C5": {
