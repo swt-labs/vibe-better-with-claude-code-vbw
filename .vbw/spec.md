@@ -17,6 +17,10 @@
 - R10 [auto] Blocking or resetting a plan (its note or status) never withdraws the user's approval of an unchanged contract
 - R11 [auto] Accepting a [human] requirement closes only the fixes opened by the user's own rejections; a fix QA opened stays open until QA passes the phase again
 - R12 [auto] QA cannot record a verdict on a proof older than the current code: vbw qa record refuses and asks for vbw prove first
+- R13 [auto] While one session's VBW run is open, vbw next in another session says the run belongs to another session and to wait or check status; it never tells that session to end the run
+- R14 [auto] vbw run end from a session that does not own the open run is refused, unless the user states that the owning session is closed or the run is older than 24 hours
+- R15 [auto] While a run is open, another session, neither its main conversation nor its agents, can edit the files that run is writing
+- R16 [auto] Turning on autonomous mode in one session leaves it on in every other session where it was on
 
 <!-- One requirement per line: an id, how it is proved, and a user-observable
      statement. [auto] = a check can prove it; [human] = only a person can judge it.

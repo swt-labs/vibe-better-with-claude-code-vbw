@@ -78,6 +78,34 @@
       "proof": "auto",
       "status": "proven",
       "milestone": "M1"
+    },
+    {
+      "id": "R13",
+      "text": "While one session's VBW run is open, vbw next in another session says the run belongs to another session and to wait or check status; it never tells that session to end the run",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M2"
+    },
+    {
+      "id": "R14",
+      "text": "vbw run end from a session that does not own the open run is refused, unless the user states that the owning session is closed or the run is older than 24 hours",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M2"
+    },
+    {
+      "id": "R15",
+      "text": "While a run is open, another session, neither its main conversation nor its agents, can edit the files that run is writing",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M2"
+    },
+    {
+      "id": "R16",
+      "text": "Turning on autonomous mode in one session leaves it on in every other session where it was on",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M2"
     }
   ],
   "checks": [
