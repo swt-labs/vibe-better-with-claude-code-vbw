@@ -1009,20 +1009,20 @@
     "autonomy_cap": 25
   },
   "evidence": {
-    "at": "2026-10-02T17:45:48Z",
+    "at": "2026-10-02T18:05:12Z",
     "contract": "109726123699fc3169744e302eb5d4449bc114b0710d2c5d8d13c37194529336",
-    "tree": "21559f2c852bc453237900a1643a440627d06c96",
+    "tree": "cc68159b79fdc83827d8556ee1296df1e925ebd2",
     "checks": {
       "C1": {
         "status": "pass",
         "exit": 0,
-        "seconds": 21,
+        "seconds": 18,
         "tail": "1..1\nok 1 R1: grants from two worktrees of one clone, started together, are all kept"
       },
       "C2": {
         "status": "pass",
         "exit": 0,
-        "seconds": 9,
+        "seconds": 10,
         "tail": "1..3\nok 1 R2: an interrupted code fingerprint (prove, next) leaves no index file\nok 2 R2: the caller's EXIT trap still runs when vbw code is interrupted\nok 3 R2: the caller's EXIT trap survives a vbw write that completes"
       },
       "C3": {
@@ -1040,31 +1040,31 @@
       "C5": {
         "status": "pass",
         "exit": 0,
-        "seconds": 1,
+        "seconds": 0,
         "tail": "1..1\nok 1 R5: QA failed a deviating build, naming the deviation; the fix loop closed it"
       },
       "C8": {
         "status": "pass",
         "exit": 0,
-        "seconds": 0,
+        "seconds": 1,
         "tail": "1..1\nok 1 R8: balanced autonomy, background QA: no Stop-hook errors, stopped at accept"
       },
       "C9": {
         "status": "pass",
         "exit": 0,
-        "seconds": 14,
+        "seconds": 10,
         "tail": "1..5\nok 1 blocking an approved plan keeps the approval and proceeds without re-approval\nok 2 resetting a blocked plan keeps the approval and the approved hash\nok 3 a plan's note does not change the contract hash\nok 4 changing a plan definition still withdraws the approval\nok 5 changing a check or a requirement still withdraws the approval"
       },
       "C10": {
         "status": "pass",
         "exit": 0,
-        "seconds": 13,
+        "seconds": 8,
         "tail": "1..3\nok 1 R11: a user rejection opens a fix and a later accept of that requirement closes it\nok 2 R11: a fix opened by QA stays open after the user accepts the requirement\nok 3 R11: the QA-opened fix closes only when QA records a passing verdict for the phase"
       },
       "C11": {
         "status": "pass",
         "exit": 0,
-        "seconds": 10,
+        "seconds": 8,
         "tail": "1..3\nok 1 R12: after a code change since the last proof, qa record refuses, names vbw prove, writes nothing\nok 2 R12: after vbw prove, the same qa record succeeds\nok 3 R12: the QA agent and the verifying workflow run prove and retry when qa record refuses"
       },
       "C12": {
@@ -1076,7 +1076,7 @@
       "C13": {
         "status": "pass",
         "exit": 0,
-        "seconds": 3,
+        "seconds": 4,
         "tail": "1..5\nok 1 run start records the owning session in the lease\nok 2 run end from another session is refused and the run stays open\nok 3 run end from another session works when the user states the owner is closed\nok 4 run end from another session works at 25 hours and is refused at 23\nok 5 run end from the owning session succeeds"
       },
       "C14": {
