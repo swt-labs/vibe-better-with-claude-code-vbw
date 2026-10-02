@@ -72,6 +72,13 @@
       "proof": "human",
       "status": "open",
       "milestone": "M1"
+    },
+    {
+      "id": "R10",
+      "text": "Blocking or resetting a plan (its note or status) never withdraws the user's approval of an unchanged contract",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M1"
     }
   ],
   "checks": [
@@ -175,6 +182,17 @@
       ],
       "files": [
         "tests/l3-results.bats"
+      ]
+    },
+    {
+      "id": "C9",
+      "req": "R10",
+      "run": [
+        "bats",
+        "tests/kernel-approval.bats"
+      ],
+      "files": [
+        "tests/kernel-approval.bats"
       ]
     }
   ],
@@ -290,6 +308,24 @@
         "Accepting without a screenshot is refused, or the verdict is recorded as lacking one; the behavior is stated in docs/.",
         "An L3 scenario runs the flow and checks the record. L4 owner acceptance is listed as not done until the owner has done it."
       ]
+    },
+    {
+      "id": "P8",
+      "title": "Approval survives blocking and resetting a plan",
+      "reqs": [
+        "R10"
+      ],
+      "milestone": "M1",
+      "goal": "Blocking or resetting a plan never withdraws the user's approval of a contract whose content is unchanged.",
+      "criteria": [
+        "With an approved contract, setting a plan's note leaves the contract approval in place and the approved hash unchanged",
+        "With an approved contract, blocking a plan leaves the approval in place",
+        "With an approved contract, resetting a plan's status leaves the approval in place",
+        "Changing the contract content (a requirement, check or plan definition) still withdraws the approval",
+        "After block or reset on an unchanged contract, the next vbw next --json proceeds without asking for re-approval",
+        "Each case has a bats regression test that fails without the fix, and bash tools/test.sh passes under /bin/bash 3.2 and bash 5",
+        "The kernel stays within its 3,000-line budget"
+      ]
     }
   ],
   "plans": [
@@ -315,8 +351,7 @@
         "Serialize consent_grant read-modify-write (including file creation) with a lock in the clone's git dir shared by all worktrees; no writes outside the project, bash 3.2 safe",
         "Add one cleanup helper in the kernel: signal traps (INT TERM HUP) that remove temp index/record files and the lock then exit promptly, and EXIT handling that chains the caller's existing EXIT trap instead of replacing or clearing it; use it in record_update, record_commit, cmd_commit and vbw_code_tree",
         "Run bash tools/test.sh under /bin/bash and bash 5, confirm the kernel is within 3,000 lines"
-      ],
-      "note": "Work committed (1421600d, 86cf81a4) and tests/kernel-safety.bats passes, but vbw check and plan done refuse: contract ee331c3ebdde is not approved (approved was 843599e1a3e3). Re-approve with /vbw:approve, then run vbw plan reset P1.1 / vbw plan done P1.1."
+      ]
     },
     {
       "id": "P2.1",
@@ -338,8 +373,7 @@
         "Report: empty counts print none; a corrupt record is reported as corrupt without echoing its content; nothing from spec, code or check output",
         "Verify rtk behavior against RTK's real hook command and install guidance; correct the command or its help line, whichever is wrong, with a regression test in the same file set if new behavior is added",
         "Align the help lines for rtk and report in plugin/bin/vbw with the final behavior and run bash tools/test.sh"
-      ],
-      "note": "C3 needs docs/diagnostics.md (test 11 in tests/kernel-diagnostics.bats), outside this plan's files; guard denies writing it. Report fixes (tests 2,4) are committed; rtk already matches its help (tests 7-10 pass), help lines need no change. Add docs/diagnostics.md to the plan: it must contain the help descriptions 'the state of RTK (command-output compression)' and 'diagnostic facts for a bug report about VBW (no spec text or code)', plus the strings 'vbw report' and 'vbw rtk'."
+      ]
     },
     {
       "id": "P2.2",
@@ -525,6 +559,26 @@
         "Describe the visual accept flow: the prompt, the user attaches the screenshot, where it is stored",
         "State that accepting without a screenshot needs --no-screenshot and is recorded as lacking one",
         "State decision D1: VBW ships no screenshot tool and starts no browser"
+      ]
+    },
+    {
+      "id": "P8.1",
+      "phase": "P8",
+      "title": "Exclude a plan's note from the contract hash",
+      "reqs": [
+        "R10"
+      ],
+      "files": [
+        "plugin/lib/contract.sh",
+        "tests/kernel-approval.bats"
+      ],
+      "after": [],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "Confirm tests/kernel-approval.bats fails today (note is hashed)",
+        "Hash plans without status and note in contract_hash",
+        "Run bash tools/test.sh under /bin/bash 3.2 and bash 5; confirm the kernel is within 3,000 lines"
       ]
     }
   ],

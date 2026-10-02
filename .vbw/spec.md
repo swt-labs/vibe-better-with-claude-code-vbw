@@ -17,6 +17,7 @@
 - R7 [auto] In a real session, /vbw:research returns a sourced answer
 - R8 [auto] In balanced autonomy, a background QA run causes no Stop-hook errors and the session reaches the accept stop
 - R9 [human] A visual accept check asks the user for a screenshot of the page and keeps it with their verdict
+- R10 [auto] Blocking or resetting a plan (its note or status) never withdraws the user's approval of an unchanged contract
 
 <!-- One requirement per line: an id, how it is proved, and a user-observable
      statement. [auto] = a check can prove it; [human] = only a person can judge it.
