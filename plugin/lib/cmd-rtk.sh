@@ -19,8 +19,11 @@ cmd_rtk() {
     printf 'rtk: not installed\n'
   fi
   settings=$(statusline_settings)
+  # RTK's own rule (is_claude_hook_command): the rtk binary by name or path,
+  # quoted or not, then exactly `hook claude`; or its older rtk-rewrite.sh.
   if [ -f "$settings" ] && jq -e '[.hooks.PreToolUse[]?.hooks[]?.command // empty]
-      | any(.[]; test("rtk hook claude|rtk-rewrite"))' "$settings" > /dev/null 2>&1; then
+      | any(.[]; test("^\\s*(\"([^\"]*/)?|([^\\s\"\\\\]|\\\\.)*/)?rtk(\\.exe)?\"?\\s+hook\\s+claude\\s*$")
+                 or contains("rtk-rewrite.sh"))' "$settings" > /dev/null 2>&1; then
     hook="yes"
   fi
   printf 'claude hook: %s\n' "$([ "$hook" = yes ] && echo "on (rtk init -g)" || echo "off")"
