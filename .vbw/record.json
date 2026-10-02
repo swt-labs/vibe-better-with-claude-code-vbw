@@ -691,6 +691,11 @@
       "text": "F3: keep tests/kernel-safety.bats test 2 as a regression test; it is not expected to fail on pre-fix code",
       "why": "an interrupted vbw commit already removed its lock before the fix (cmd_commit's EXIT trap ran on SIGTERM) and a commit uses no temporary index, so no test of that path can fail pre-fix; the fix's new behaviour is shown by tests 3 to 5, which do fail pre-fix. Removing a true test would only reduce coverage.",
       "at": "2026-10-02T11:42:21Z"
+    },
+    {
+      "id": "D9",
+      "at": "2026-10-02T11:56:23Z",
+      "text": "Contract approved: 9 requirements, 9 checks, 10 plans (ec29ba9f2c85)"
     }
   ],
   "commands": {},
