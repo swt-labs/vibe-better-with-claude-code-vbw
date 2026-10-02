@@ -247,7 +247,14 @@
         "The record shows the Docs agent built it, by agent type.",
         "The requirement's check is approved and passes in the record, and the commit carries provenance.",
         "The result is logged with fixture, cost and evidence level."
-      ]
+      ],
+      "qa": {
+        "result": "pass",
+        "tier": "standard",
+        "tree": "63a52428fed57e4a119aca5c17e6f1b4246ab213",
+        "at": "2026-10-02T10:51:50Z",
+        "note": "8/8 checks"
+      }
     },
     {
       "id": "P5",
