@@ -4,9 +4,9 @@
     "name": "v2"
   },
   "milestone": {
-    "id": "M1",
-    "title": "Close the 2.0 gaps",
-    "status": "shipped"
+    "id": "M2",
+    "title": "Several sessions, one project",
+    "status": "active"
   },
   "shipped": [
     {
