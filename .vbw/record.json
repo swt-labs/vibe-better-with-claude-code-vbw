@@ -434,7 +434,7 @@
       "after": [
         "P3.1"
       ],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "Define the fixture: a spec with one documentation requirement and a check that proves the doc",
