@@ -3,6 +3,7 @@
 #
 #   bench.sh ARM MODEL CASE RUN       one run (ARM plain|vbw2, MODEL sonnet-5.5|opus-5.5, RUN 1..3)
 #   bench.sh rerun ARM MODEL CASE RUN a new record with rerun_of; the earlier record stays
+#   bench.sh regrade ARM MODEL CASE RUN  the saved workspace graded again by the current check
 #   bench.sh all MODEL                the 42 runs of MODEL, resuming; vbw2 runs 4 at a time
 #
 # plain: headless `claude -p`, VBW not loaded, the case request as the prompt
@@ -33,7 +34,7 @@ EXIT_LIMIT=75
 EXIT_FAULT=70
 MAX_ROUNDS=120
 
-usage() { sed -n '3,6p' "$0" >&2; exit 2; }
+usage() { sed -n '3,7p' "$0" >&2; exit 2; }
 
 model_id() {
   case "$1" in
@@ -228,10 +229,27 @@ run_all() {
   return 0
 }
 
+# regrade ARM MODEL CASE RUN: grade the run's saved workspace again with the
+# current check (after a case check is corrected), as a new record with
+# rerun_of and regraded; tokens, cost and inputs are the run's, unchanged.
+regrade() {
+  local arm=$1 model=$2 case_name=$3 n=$4 ws src pass
+  ws="$SCRATCH/$arm-$model-$case_name-$n"
+  rerun=1 record_path "$arm" "$model" "$case_name" "$n"
+  src="$RUNS/$RERUN_OF"
+  [ -d "$ws" ] && [ -f "$src" ] || { echo "bench: no saved workspace or record for $arm-$model-$case_name-$n" >&2; exit 2; }
+  pass=$(grade "$ws" "$case_name")
+  jq --argjson pass "$pass" --arg of "$RERUN_OF" --arg date "$(date -u +%F)" \
+    '.pass = $pass | .rerun_of = $of | .regraded = true | .date = $date' "$src" > "$REC.tmp"
+  mv "$REC.tmp" "$REC"
+  echo "bench: wrote $(basename "$REC") (regraded: pass $pass)" >&2
+}
+
 rerun=0
 case "${1:-}" in
   all) [ $# -eq 2 ] || usage; run_all "$2" ;;
   rerun) [ $# -eq 5 ] || usage; rerun=1; run_one "$2" "$3" "$4" "$5" ;;
+  regrade) [ $# -eq 5 ] || usage; regrade "$2" "$3" "$4" "$5" ;;
   plain | vbw2) [ $# -eq 4 ] || usage; run_one "$1" "$2" "$3" "$4" ;;
   *) usage ;;
 esac

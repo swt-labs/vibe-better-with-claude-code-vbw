@@ -143,6 +143,27 @@ vbw2_transcript() {
   [ "$(jq -r '.pass' "$PROJECT/runs/plain-sonnet-5.5-fix-oneshot-1.json")" = "true" ]
 }
 
+@test "regrade re-checks the saved workspace: a new record, same tokens and cost, the original kept" {
+  run bash "$BENCH" plain sonnet-5.5 fix-oneshot 1
+  [ "$status" -eq 0 ]
+  orig="$PROJECT/runs/plain-sonnet-5.5-fix-oneshot-1.json"
+  [ "$(jq -r .pass "$orig")" = false ]
+  # The check is corrected after the run: here, the saved workspace now passes.
+  (cd "$PROJECT/scratch/plain-sonnet-5.5-fix-oneshot-1" && bash "$SOLUTION")
+  run bash "$BENCH" regrade plain sonnet-5.5 fix-oneshot 1
+  [ "$status" -eq 0 ]
+  new="$PROJECT/runs/plain-sonnet-5.5-fix-oneshot-1-rerun1.json"
+  run jq -c '[.pass, .tokens, .cost_usd, .user_inputs, .level, .rerun_of, .regraded]' "$new"
+  [ "$output" = '[true,100,0.25,0,"L2","plain-sonnet-5.5-fix-oneshot-1.json",true]' ]
+  [ "$(jq -r .pass "$orig")" = false ]
+}
+
+@test "regrade without a saved workspace or record is refused" {
+  run bash "$BENCH" regrade plain sonnet-5.5 fix-oneshot 2
+  [ "$status" -ne 0 ]
+  [ ! -e "$PROJECT/runs/plain-sonnet-5.5-fix-oneshot-2-rerun1.json" ]
+}
+
 @test "a usage limit stops with exit 75 and writes no record" {
   BENCH_STUB_LIMIT=1 run bash "$BENCH" plain sonnet-5.5 fix-oneshot 1
   [ "$status" -eq 75 ]
