@@ -824,7 +824,7 @@
       "after": [
         "P11.1"
       ],
-      "status": "blocked",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "cmd-auto.sh: keep one state file per session (.vbw/runtime/auto.SESSION.json), written atomically, so on never touches another session's file",
@@ -847,7 +847,7 @@
         "tests/statusline.bats"
       ],
       "after": [],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "Make tests/statusline.bats seed the per-session state (.vbw/runtime/auto.SESSION.json) and pass the session_id in the status line input; show it fails today",
