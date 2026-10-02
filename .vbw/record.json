@@ -366,7 +366,7 @@
         "plugin/bin/vbw"
       ],
       "after": [],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "Run tests/kernel-diagnostics.bats and note each failing claim",
