@@ -125,6 +125,11 @@ A project command's fix is left to `vbw prove`, which runs the command.
 
 An escalated fix is a human gate (`vbw next`).
 
+Accepting a `[human]` requirement (`vbw req accept ID`) closes only the fixes
+that the user's own rejections opened (`vbw req reject ID NOTE`). A fix that QA
+opened (`source: "qa"`) stays open after acceptance and closes only on a passing
+QA verdict (below).
+
 ### QA verification
 
 Passing checks prove each requirement's behavior; they cannot see whether the
