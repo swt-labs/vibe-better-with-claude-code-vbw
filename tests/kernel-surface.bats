@@ -136,10 +136,10 @@ gate() {
   [ "$status" -eq 2 ]
   vbw_run auto on "x; rm -rf ~"
   [ "$status" -eq 2 ]
-  [ ! -e .vbw/runtime/auto.json ]
+  [ -z "$(ls .vbw/runtime 2> /dev/null | grep "^auto\.")" ]
   vbw_run auto on s1
   [ "$status" -eq 0 ]
-  jq -e '.session == "s1" and .steps == 0 and .cap == 25' .vbw/runtime/auto.json
+  jq -e '.session == "s1" and .steps == 0 and .cap == 25' .vbw/runtime/auto.s1.json
   run gate s2
   [ "$status" -eq 0 ]
   [ -z "$output" ]
@@ -160,7 +160,7 @@ gate() {
   run gate s1
   [ "$status" -eq 0 ]
   echo "$output" | jq -e '.decision == "block" and (.reason | contains("step 1 of 25")) and (.reason | contains("build: Run the build workflow for P1.1"))'
-  jq -e '.steps == 1' .vbw/runtime/auto.json
+  jq -e '.steps == 1' .vbw/runtime/auto.s1.json
 }
 
 @test "the gate lets the session wait while a workflow runs" {
@@ -168,7 +168,7 @@ gate() {
   "$VBW" run start plan > /dev/null
   run gate s1
   [ -z "$output" ]
-  [ -f .vbw/runtime/auto.json ]
+  [ -f .vbw/runtime/auto.s1.json ]
 }
 
 @test "the gate stops and disarms at a decision that needs the user" {
@@ -178,7 +178,7 @@ gate() {
     | .plans = [{id: "P1.1", phase: "P1", title: "Pay", reqs: ["R1"], files: ["a.txt"], after: [], status: "planned"}]'
   run gate s1
   echo "$output" | jq -e '(.decision // "allow") != "block" and (.systemMessage | contains("needs you. approve"))'
-  [ ! -f .vbw/runtime/auto.json ]
+  [ ! -f .vbw/runtime/auto.s1.json ]
 }
 
 @test "the gate stops and disarms at the step cap" {
@@ -192,7 +192,7 @@ gate() {
   echo "$output" | jq -e '.decision == "block"'
   run gate s1
   echo "$output" | jq -e '(.decision // "allow") != "block" and (.systemMessage | contains("after 1 steps"))'
-  [ ! -f .vbw/runtime/auto.json ]
+  [ ! -f .vbw/runtime/auto.s1.json ]
 }
 
 
