@@ -25,15 +25,17 @@ bench() {
 own_cost() { printf '%s\n' "$output" | sed -n "s/^guard ($1): \([0-9.]*\) ms.*/\1/p"; }
 
 @test "time a hook spends waiting is not counted as its cost" {
-  # Both hooks start the same sleep process; one waits 30 ms in it.
+  # Both hooks start the same sleep process; one waits 50 ms in it. Measured by
+  # the clock, the wait adds all 50 ms; as CPU time it adds nothing beyond noise
+  # (CPU time still varies by several ms on a busy virtual machine, as in CI).
   hooks_with '"sleep 0; " + .'
   run bench 100
   local quick
   quick=$(own_cost git)
-  hooks_with '"sleep 0.03; " + .'
+  hooks_with '"sleep 0.05; " + .'
   run bench 100
   [ -n "$quick" ] && [ -n "$(own_cost git)" ] || { echo "$output"; false; }
-  perl -e 'exit(abs($ARGV[0] - $ARGV[1]) < 2 ? 0 : 1)' -- "$(own_cost git)" "$quick" \
+  perl -e 'exit($ARGV[0] - $ARGV[1] < 25 ? 0 : 1)' -- "$(own_cost git)" "$quick" \
     || { echo "waiting counted: $quick ms without it, $(own_cost git) ms with it"; false; }
 }
 
