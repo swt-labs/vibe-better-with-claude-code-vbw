@@ -5,11 +5,75 @@
   },
   "milestone": {
     "id": "M1",
-    "title": "First milestone",
+    "title": "Close the 2.0 gaps",
     "status": "active"
   },
   "shipped": [],
-  "requirements": [],
+  "requirements": [
+    {
+      "id": "R1",
+      "text": "Two consent grants made at the same time from different worktrees of one clone are both kept",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M1"
+    },
+    {
+      "id": "R2",
+      "text": "A vbw command interrupted mid-commit leaves no stray index files in .vbw/runtime and keeps the caller's own exit cleanup",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M1"
+    },
+    {
+      "id": "R3",
+      "text": "vbw report and vbw rtk do what their help says",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M1"
+    },
+    {
+      "id": "R4",
+      "text": "In a real session, a documentation requirement is built by the Docs agent and proved",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M1"
+    },
+    {
+      "id": "R5",
+      "text": "In a real session, QA fails a phase whose build deviates from its plan, and the fix loop closes it",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M1"
+    },
+    {
+      "id": "R6",
+      "text": "In a real session, /vbw:debug finds the root cause of a seeded bug and fixes it with a regression test",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M1"
+    },
+    {
+      "id": "R7",
+      "text": "In a real session, /vbw:research returns a sourced answer",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M1"
+    },
+    {
+      "id": "R8",
+      "text": "In balanced autonomy, a background QA run causes no Stop-hook errors and the session reaches the accept stop",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M1"
+    },
+    {
+      "id": "R9",
+      "text": "A visual accept check shows the user a real screenshot of the page",
+      "proof": "human",
+      "status": "open",
+      "milestone": "M1"
+    }
+  ],
   "checks": [],
   "phases": [],
   "plans": [],
