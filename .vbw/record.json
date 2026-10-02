@@ -487,7 +487,14 @@
         "After the user states the owning session is closed, the edit from session B is allowed.",
         "Outside a VBW project or with no open run, the hook allows edits and stays within the 8 ms hook CPU budget (`tools/bench-hooks.sh`).",
         "Bats tests cover each case, shown to fail before the change."
-      ]
+      ],
+      "qa": {
+        "result": "pass",
+        "tier": "standard",
+        "tree": "cc68159b79fdc83827d8556ee1296df1e925ebd2",
+        "at": "2026-10-02T18:13:28Z",
+        "note": "12/12 checks"
+      }
     },
     {
       "id": "P13",
