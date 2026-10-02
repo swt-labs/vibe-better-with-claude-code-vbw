@@ -45,9 +45,11 @@ own_cost() { printf '%s\n' "$output" | sed -n "s/^guard ($1): \([0-9.]*\) ms.*/\
   # A loaded machine (slower cores) grows startup and the guard's own cost
   # together, so the ratio holds; a quiet machine of any platform meets the
   # milliseconds.
-  run bench
+  # Whether VBW meets its budget is tools/bench-hooks.sh's own verdict (run
+  # first, on a quiet machine, by tools/test.sh); here, the report and the rule.
+  run bench 100 100
   [ "$status" -eq 0 ] || { echo "$output"; false; }
-  echo "$output" | grep -qE '^guard \(git\): [0-9.]+ ms own CPU per call, [0-9.]+x the platform.s sh and jq startup \([0-9.]+ ms\); budget 8 ms or 1.0x$'
+  echo "$output" | grep -qE '^guard \(git\): [0-9.]+ ms own CPU per call, [0-9.]+x the platform.s sh and jq startup \([0-9.]+ ms\); budget 100 ms or 100x$'
   run bench 0.01 100
   [ "$status" -eq 0 ]
   run bench 100 0
