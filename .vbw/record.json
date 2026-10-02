@@ -327,7 +327,14 @@
         "The QA agent and workflow handle the refusal by running prove and retrying, and a test covers that path.",
         "The kernel stays within its 3,000-line budget, checked by tests/standards.bats.",
         "R12 shows as proven in `vbw show requirements`."
-      ]
+      ],
+      "qa": {
+        "result": "pass",
+        "tier": "standard",
+        "tree": "63a52428fed57e4a119aca5c17e6f1b4246ab213",
+        "at": "2026-10-02T10:52:50Z",
+        "note": "10/10 checks"
+      }
     }
   ],
   "plans": [
