@@ -39,7 +39,7 @@ usage: vbw <command> [args]
   milestone start TITLE   open the next milestone after shipping
   milestone rename TITLE  name the current milestone
   config [set KEY VALUE | models | autonomy]   settings: profile, autonomy, autonomy_cap, model.ROLE (architect lead dev qa scout debugger docs)
-  auto on SESSION_ID|off|status|gate   autonomous runs for one session (gate: the Stop hook)
+  auto on SESSION_ID|off [SESSION_ID]|status [SESSION_ID]|gate   autonomous runs, kept per session (gate: the Stop hook)
   statusline [status | on | off]   the VBW status line in your Claude settings
   workflows [status | on]   Claude Code's Dynamic workflows, which VBW plans and builds with
   todo [list] | add TEXT | done ID | drop ID   the backlog
