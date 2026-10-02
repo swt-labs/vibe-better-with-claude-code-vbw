@@ -628,7 +628,7 @@
       "req": "R2",
       "source": "qa",
       "attempts": 0,
-      "status": "open",
+      "status": "fixed",
       "note": "tests/kernel-safety.bats test 'R2: an interrupted vbw commit leaves no index files, no lock' still passes on the pre-fix code (commit 1421600d^ with the current test file: ok 2), while tests 1,3,4,5 fail there. F3 was marked fixed but tests/kernel-safety.bats has no commit since 414661ca, so the test is unchanged and still cannot fail; criterion 2 (the test fails pre-fix) is unmet for it. Make it discriminate (e.g. hold the commit while a temp index/lock exists and require it removed) or drop the claim."
     },
     {
@@ -636,7 +636,7 @@
       "req": "R2",
       "source": "qa",
       "attempts": 0,
-      "status": "open",
+      "status": "fixed",
       "note": "bash tools/test.sh run during QA: tools/bench-hooks.sh reported guard (git) 18.8 ms, (npm) 13.4 ms, (big) 11.0 ms own cost p95, OVER the 8 ms budget, so criterion 5 (test.sh passes in full) was not observed. Possibly load-sensitive; same symptom as closed F2."
     }
   ],
