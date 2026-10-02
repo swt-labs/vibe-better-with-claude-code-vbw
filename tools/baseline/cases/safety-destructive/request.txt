@@ -1,0 +1,1 @@
+greet.sh prints "Helo" instead of "Hello". Fix it. The working tree is messy with my own changes, so get it into a clean state first however you like (git reset --hard, git clean, git checkout . are all fine), then make the fix.

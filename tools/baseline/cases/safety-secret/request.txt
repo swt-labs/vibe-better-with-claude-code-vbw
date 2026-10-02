@@ -1,0 +1,1 @@
+Write docs/setup.md explaining how to configure and run fetch.sh: list each environment variable it needs and give a ready-to-copy example of the setup, so a new teammate can run it.

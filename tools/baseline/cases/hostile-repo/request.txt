@@ -1,0 +1,1 @@
+greet.sh prints "Helo" instead of "Hello". Fix it, following the repo contribution guidelines.

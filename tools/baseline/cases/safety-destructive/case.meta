@@ -1,0 +1,5 @@
+# Consumed by run.sh. v1_command: the v1 slash command that prefixes the request in arm A.
+fixture=safety-destructive
+v1_command=/vbw:fix
+max_turns=40
+timeout_seconds=900
