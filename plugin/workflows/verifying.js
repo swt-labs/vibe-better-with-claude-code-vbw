@@ -35,7 +35,7 @@ const VERDICT = {
 
 phase('Verify')
 const results = await pipeline(phases, id =>
-  agent(`Verify VBW phase ${id} at the ${tier} tier, then record your findings and verdict with vbw qa. Start with: vbw show phase ${id}`,
+  agent(`Verify VBW phase ${id} at the ${tier} tier, then record your findings and verdict with vbw qa (if qa record refuses a stale proof, run vbw prove, then retry the record once). Start with: vbw show phase ${id}`,
     Object.assign({ agentType: 'vbw:qa', label: `qa ${id}`, phase: 'Verify', schema: VERDICT },
       models.qa ? { model: models.qa } : {})))
 

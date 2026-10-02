@@ -33,6 +33,9 @@ cmd_qa() {
   printf '%s' "$record" | jq -e --arg p "$phase" 'any(.phases[]; .id == $p)' > /dev/null || vbw_die "unknown phase $phase"
   tree=$(printf '%s' "$record" | jq -r '.evidence.tree // empty')
   [ -n "$tree" ] || vbw_die "no proof yet: QA verifies proven work (vbw prove first)"
+  # shellcheck source=cmd-next.sh
+  . "$VBW_LIB/cmd-next.sh"
+  ! next_code_changed "$record" || vbw_die "the code changed since the last proof: run vbw prove, then record the verdict again"
   if [ "$result" = fail ]; then
     printf '%s' "$record" | jq -e --arg p "$phase" '. as $r | ([.phases[] | select(.id == $p)][0].reqs) as $q
       | any(.fixes[]; .source == "qa" and .status == "open" and (.req as $x | any($q[]; . == $x)))' > /dev/null \

@@ -46,7 +46,8 @@ For each failure: `vbw qa finding <requirement> "<what is wrong, with the
 evidence>"`. Then the verdict for the phase:
 `vbw qa record <phase> pass|fail <tier> "<passed>/<total> checks"`. A failed
 verdict needs at least one finding; VBW turns findings into fixes and asks you
-again once they are done.
+again once they are done. If `vbw qa record` refuses because the code changed
+since the last proof, run `vbw prove`, then retry the record once.
 
 Return the verdict, and every check: its id, what it checks, pass or fail, and
 the evidence.
