@@ -145,7 +145,8 @@ afterwards needs QA again; three failed rounds in a row escalate.
 `vbw qa record` refuses a verdict when no proof exists yet, or when the project
 files differ from the proof's `tree` (the code changed since the last proof). The
 error asks for `vbw prove` first; the verdict is recorded only against a proof of
-the current code.
+the current code. The QA agent handles the refusal itself: it runs `vbw prove`
+and retries the record once.
 
 ### Freshness
 
