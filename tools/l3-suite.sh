@@ -7,14 +7,15 @@
 #
 #   tools/l3-suite.sh [SCENARIO...]     (default: all)
 #
-# Scenarios: greenfield, reject, resume, change, convert, balanced, docs, qafix. A user answers every
+# Scenarios: greenfield, reject, resume, change, convert, balanced, docs, qafix,
+# decision, debug, research. A user answers every
 # question with VBW's recommendation unless the scenario says otherwise.
 set -uo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 l3() { bash "$ROOT/tools/l3.sh" "$@"; }
 VBW="$ROOT/plugin/bin/vbw"
-ALL="greenfield reject resume change convert balanced docs qafix"
+ALL="greenfield reject resume change convert balanced docs qafix decision debug research"
 RESULTS="$ROOT/tools/l3-results"
 STEPS=60
 
@@ -92,6 +93,11 @@ check() {
 }
 check_sh() {
   if (cd "$dir" && eval "$2") > /dev/null 2>&1; then say "ok   $1"; else say "FAIL $1"; failed=1; fi
+}
+# expect DESCRIPTION COMMAND...: assert that COMMAND succeeds (run as argv, in $dir).
+expect() {
+  local d="$1"; shift
+  if (cd "$dir" && "$@") > /dev/null 2>&1; then say "ok   $d"; else say "FAIL $d"; failed=1; fi
 }
 
 common_checks() {
@@ -388,6 +394,133 @@ scenario_qafix() {
       "$(jq -n --arg d "${deviation:-}" --arg fv "$fv" --arg n "$note" --argjson r "$rounds" --arg fin "$final" --argjson p "$proved" \
         '{deviation: $d, first_qa_verdict: $fv, first_qa_note: $n, fix_rounds: $r, final_qa_verdict: $fin, phase_proved: $p}')" \
       '["a deviation other than one missing file","a deviation the Dev introduces itself (the seed is played by the scenario)","the fix cap (three failed rounds) and its escalation","a project larger than the greet.sh fixture"]'
+  }
+}
+
+# Agent types of every subagent the session ran (their .meta.json), one per line.
+agent_types() {
+  local f
+  while IFS= read -r f; do
+    jq -r '.agentType // empty' "${f%.jsonl}.meta.json" 2> /dev/null
+  done < <(transcripts | grep '/subagents/')
+}
+
+# The session's own transcript (not its subagents').
+main_transcript() { transcripts | grep -v '/subagents/' | head -1; }
+
+# The text of the session's last reply to the user.
+last_reply() {
+  local f
+  f=$(main_transcript)
+  [ -n "$f" ] || return 0
+  jq -rs '[.[] | select(.type == "assistant") | .message.content[]? | select(.type == "text") | .text] | last // ""' "$f" 2> /dev/null
+}
+
+# workflow_started NAME: the session started the VBW workflow NAME.
+workflow_started() {
+  local f
+  f=$(main_transcript)
+  [ -n "$f" ] && jq -e --arg n "$1" 'select(.type == "assistant") | .message.content[]?
+    | select(.type == "tool_use" and .name == "Workflow" and ((.input | tostring) | contains($n)))' "$f" > /dev/null 2>&1
+}
+
+# A decision recorded by the user justifies a deviation from the plan text:
+# QA loads the decisions and does not fail the phase for it. The mirror of
+# qafix: the same file is dropped after the build, with a recorded decision.
+scenario_decision() {
+  new_project
+  dropped=""
+  start="Use guided autonomy for this project. $GREET Also add NOTES.md with one sentence on what greet.sh is for. Nothing automated needs to test NOTES.md: a person reads it."
+  seed_decision() {
+    [ -z "$dropped" ] || return 1
+    case "$(next_action)" in prove | qa) ;; *) return 1 ;; esac
+    [ -f "$dir/NOTES.md" ] || return 1
+    git -C "$dir" rm -q -- NOTES.md && git -C "$dir" commit -qm "chore: drop NOTES.md" -- NOTES.md || return 1
+    dropped=NOTES.md
+    say "dropped NOTES.md after the build; telling the session it is a decision"
+    l3 keys "$scenario" Escape; sleep 2
+    l3 type "$scenario" "I deleted NOTES.md myself: I don't want it, the README says enough. Please record that as my decision and carry on."
+    return 0
+  }
+  on_question() { seed_decision; }
+  on_idle() { seed_decision; }
+  done_yet() { [ -n "$dropped" ] && shipped; }
+  checks() {
+    common_checks
+    local after qa_read=false f
+    # QA after the user's decision: its first verdict, and fixes it opened since.
+    after=$(record_history | jq -sr '. as $h
+      | ([$h[] | .decisions[]? | select(.text | test("NOTES"; "i")) | .at] | first) as $d
+      | if $d == null then "no decision" else
+          ([$h[] | .phases[]? | .qa | select(. != null and .at > $d)] | first // {} | .result // "none") + " "
+          + ([$h[] | select(any(.decisions[]?; .at == $d)) | [.fixes[]? | select(.source == "qa")] | length] | (last - first) | tostring)
+        end')
+    while IFS= read -r f; do
+      [ "$(jq -r '.agentType // empty' "${f%.jsonl}.meta.json" 2> /dev/null)" = vbw:qa ] || continue
+      jq -se 'any(.[] | select(.type == "assistant") | .message.content[]? | select(.type == "tool_use");
+        (.input.command // "") | contains("show decisions"))' "$f" > /dev/null 2>&1 && qa_read=true
+    done < <(transcripts | grep '/subagents/')
+    [ -n "$dropped" ] || { say "FAIL the deviation was never seeded"; failed=1; }
+    check "the user's decision is recorded" 'any(.decisions[]; .text | test("NOTES"; "i"))'
+    expect "QA loaded the recorded decisions" [ "$qa_read" = true ]
+    expect "after the decision, QA passed the phase first time and opened no fix ($after)" [ "$after" = "pass 0" ]
+  }
+}
+
+# /vbw:debug on a seeded bug: Debuggers find the root cause, and with the
+# user's yes one fixes it with a regression test that fails on the old code.
+scenario_debug() {
+  new_project
+  printf '#!/bin/sh\nname="$1"\necho "Hello, $name!"\n' > "$dir/greet.sh"
+  chmod +x "$dir/greet.sh"
+  git -C "$dir" add -A && git -C "$dir" commit -qm "feat: greet.sh"
+  seed=$(git -C "$dir" rev-parse HEAD)
+  start='/vbw:debug ./greet.sh with no name prints "Hello, !" but it should print "Hello, world!" (with a name it works: "./greet.sh Ana" prints "Hello, Ana!")'
+  said_yes=0
+  # After the diagnosis the session asks whether to fix it now; the user says yes.
+  on_idle() {
+    [ "$said_yes" -eq 0 ] && workflow_started investigating && last_reply | grep -qi 'fix' || return 0
+    said_yes=1
+    l3 type "$scenario" "Yes, fix it now, with the regression test."
+    return 0
+  }
+  done_yet() { [ -n "$(git -C "$dir" log --format=%H "$seed..HEAD" -- greet.sh)" ]; }
+  checks() {
+    local added t old new fails_before=false passes_now=false run
+    expect "the root cause (greet.sh) was fixed" [ -n "$(git -C "$dir" log --format=%H "$seed..HEAD" -- greet.sh)" ]
+    check_sh "./greet.sh prints Hello, world! now" '[ "$(./greet.sh)" = "Hello, world!" ] && [ "$(./greet.sh Ana)" = "Hello, Ana!" ]'
+    added=$(git -C "$dir" diff --name-only --diff-filter=A "$seed" HEAD | grep -v '^\.vbw/' || true)
+    expect "a regression test was committed" [ -n "$added" ]
+    # Each added file is run as a test on the fixed code and on the seeded greet.sh.
+    old=$(mktemp -d "${TMPDIR:-/tmp}/vbw-l3-debug-old.XXXXXX"); new=$(mktemp -d "${TMPDIR:-/tmp}/vbw-l3-debug-new.XXXXXX")
+    git -C "$dir" archive HEAD | tar -x -C "$new"; git -C "$dir" archive HEAD | tar -x -C "$old"
+    git -C "$dir" show "$seed:greet.sh" > "$old/greet.sh"; chmod +x "$old/greet.sh"
+    for t in $added; do
+      case "$t" in *.bats) run=(bats "$t") ;; *) run=(sh "$t") ;; esac
+      (cd "$new" && "${run[@]}" > /dev/null 2>&1) && passes_now=true
+      (cd "$old" && "${run[@]}" > /dev/null 2>&1) || fails_before=true
+    done
+    rm -rf "$old" "$new"
+    expect "the regression test passes on the fix" [ "$passes_now" = true ]
+    expect "the regression test fails on the seeded bug" [ "$fails_before" = true ]
+    expect "Debuggers did the work" [ "$(agent_types | grep -c '^vbw:debugger$')" -ge 2 ]
+  }
+}
+
+# /vbw:research on a question with a known answer (git switch arrived in Git
+# 2.23): Scouts research it in parallel and the answer names it with a link.
+scenario_research() {
+  new_project
+  start="/vbw:research Which Git release first added the git switch command? Give the version number and a link to its release notes."
+  on_idle() { return 0; }
+  done_yet() { workflow_started researching && last_reply | grep -q '2\.23'; }
+  checks() {
+    local reply
+    reply=$(last_reply)
+    expect "the researching workflow ran" workflow_started researching
+    expect "Scouts did the research" [ "$(agent_types | grep -c '^vbw:scout$')" -ge 2 ]
+    case "$reply" in *2.23*) say "ok   the answer names Git 2.23" ;; *) say "FAIL the answer names Git 2.23"; failed=1 ;; esac
+    case "$reply" in *https://*) say "ok   the answer gives a link" ;; *) say "FAIL the answer gives a link"; failed=1 ;; esac
   }
 }
 
