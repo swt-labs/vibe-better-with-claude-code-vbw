@@ -320,8 +320,8 @@
       "qa": {
         "result": "pass",
         "tier": "standard",
-        "tree": "f4905c81a2a1043a58bdab9565f2e3dbdc69331f",
-        "at": "2026-10-02T11:41:26Z",
+        "tree": "1a8d87841d78209204f5d4f58c51d0e96a861b0a",
+        "at": "2026-10-02T12:07:48Z",
         "note": "9/9 checks"
       }
     },
@@ -644,6 +644,16 @@
     {
       "id": "T1",
       "text": "Screenshot kept with a visual accept verdict (was R9 of M1; the user attaches it per D1)",
+      "status": "open"
+    },
+    {
+      "id": "T2",
+      "text": "vbw prove runs the approved checks in parallel (today one after another), so every user's proof is faster",
+      "status": "open"
+    },
+    {
+      "id": "T3",
+      "text": "QA round runs the project's full test suite once and hands the result to the QA agents, not one run per agent (load spikes made the hook benchmark fail: F2, F5)",
       "status": "open"
     }
   ],
