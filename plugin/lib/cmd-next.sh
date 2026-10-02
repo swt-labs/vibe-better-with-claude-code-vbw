@@ -12,7 +12,7 @@ cmd_next() {
   # A VBW 1 plan not yet converted (docs/convert.md).
   [ -d "$VBW_ROOT/.vbw-planning" ] && ! printf '%s' "$record" | jq -e 'has("converted")' > /dev/null && legacy=true
   next=$(printf '%s' "$record" | jq -c --argjson approved "$approved" --arg contract "$hash" \
-    --argjson code_changed "$changed" --argjson legacy "$legacy" -f "$VBW_LIB/next.jq")
+    --argjson code_changed "$changed" --argjson legacy "$legacy" --arg session "$(vbw_session)" -f "$VBW_LIB/next.jq")
   # The status line shows the last answer (docs/statusline.md).
   printf '%s\n' "$next" > "$VBW_RUNTIME/next.json.$$" && mv "$VBW_RUNTIME/next.json.$$" "$VBW_RUNTIME/next.json"
   if [ "${1:-}" = "--json" ]; then

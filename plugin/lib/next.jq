@@ -1,7 +1,7 @@
 # vbw next: the lifecycle decision table (docs/next.md). Input: a valid record.
 # Args: $approved (the current contract hash has consent), $contract (that hash),
 # $code_changed (the project differs from the commit the evidence proved), $legacy (a
-# VBW 1 plan, .vbw-planning/, is not converted yet).
+# VBW 1 plan, .vbw-planning/, is not converted yet), $session (the caller's session, "" when unknown).
 # Output: {action, gate, instruction, detail}. First matching row wins.
 
 def result($action; $gate; $instruction; $detail):
@@ -45,7 +45,9 @@ def fix_files($r): if .command then ["*"]
     | select([$r.plans[] | select(.phase == $ph)] | length > 0 and all(.[]; .status == "done"))
     | select(.qa == null or .qa.result != "pass" or .qa.tree != ($r.evidence.tree // "")) | .id]) as $to_verify
 | ({quality: "deep", budget: "quick"}[.settings.profile] // "standard") as $tier
-| if .lease != null then
+| if .lease != null and .lease.session != null and .lease.session != $session then
+    result("run"; false; "A VBW \(.lease.kind) run (\(.lease.run)) belongs to another session: wait for it, or check vbw status"; {lease: .lease})
+  elif .lease != null then
     result("run"; false; "A VBW \(.lease.kind) run (\(.lease.run)) is open: if its workflow is still running in this session, wait for it; otherwise run vbw run end"; {lease: .lease})
   elif .milestone.status == "shipped" then
     result("milestone"; true; "Milestone \(.milestone.id) is shipped: start the next milestone (vbw milestone start TITLE)"; {})

@@ -69,6 +69,12 @@ vbw_usage_error() {
   exit 2
 }
 
+# The calling Claude Code session: VBW_SESSION_ID (skills pass ${CLAUDE_SESSION_ID}),
+# else CLAUDE_CODE_SESSION_ID, else empty (unknown).
+vbw_session() {
+  printf '%s' "${VBW_SESSION_ID:-${CLAUDE_CODE_SESSION_ID:-}}"
+}
+
 vbw_now() {
   date -u +%Y-%m-%dT%H:%M:%SZ
 }

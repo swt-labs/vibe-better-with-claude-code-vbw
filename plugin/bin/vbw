@@ -30,7 +30,7 @@ usage: vbw <command> [args]
   check [--expect-red] [CHECK...]   run approved checks and report (writes nothing)
   prove             run the approved checks and commands, record the evidence
   apply < PLAN      the planner's write: phases, plans and checks in one update
-  run start KIND [IDS] | run end   open or close the run lease (plan, build, fix)
+  run start KIND [IDS] | run end [--owner-closed]   open or close the run lease (plan, build, fix)
   plan done|block|reset ID   a plan's outcome (done is verified)
   fix done|retry ID   a fix's work is committed; retry an escalated fix once more
   req accept ID | req reject ID NOTE   the user's verdict on a [human] requirement

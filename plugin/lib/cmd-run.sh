@@ -12,13 +12,21 @@ cmd_run() {
   [ $# -gt 0 ] && shift
   case "$sub" in
     start) [ $# -ge 1 ] || vbw_usage_error "usage: vbw run start plan | build PLAN... | fix FIX... | qa | map" ;;
-    end) [ $# -eq 0 ] || vbw_usage_error "usage: vbw run end" ;;
-    *) vbw_usage_error "usage: vbw run start KIND [IDS...] | vbw run end" ;;
+    end) { [ $# -eq 0 ] || { [ $# -eq 1 ] && [ "$1" = "--owner-closed" ]; }; } || vbw_usage_error "usage: vbw run end [--owner-closed]" ;;
+    *) vbw_usage_error "usage: vbw run start KIND [IDS...] | vbw run end [--owner-closed]" ;;
   esac
   vbw_require_project
   if [ "$sub" = end ]; then
     # Plans an interrupted Dev left "building" go back to the next wave.
-    local run
+    # Only the session that owns the run ends it, unless the user states the
+    # owner is closed or the run is over VBW_LEASE_HOURS old.
+    local run me refusal
+    me=$(vbw_session)
+    refusal=$(record_read | jq -r --arg me "$me" --argjson h "$VBW_LEASE_HOURS" --arg closed "${1:-}" '
+      .lease | select(. != null and .session != null and .session != $me
+        and $closed != "--owner-closed" and (now - (.started_at | fromdateiso8601) <= $h * 3600))
+      | "run \(.run) belongs to another session\(if $me == "" then " (this session is unknown)" else "" end): wait for it, or if the user says that session is closed, vbw run end --owner-closed"')
+    [ -z "$refusal" ] || vbw_die "$refusal"
     run=$(record_read | jq -r '.lease.run // "no run"')
     record_update '.lease = null | (.plans[] | select(.status == "building")).status = "planned"'
     record_commit "chore(vbw): record after $run"
@@ -65,7 +73,8 @@ cmd_run() {
      elif $k == "qa" or $k == "map" then []
      else null end) as $files
     | .lease = {run: "\($k)-\($at | gsub("[-:]"; ""))", kind: $k, started_at: $at, files: $files}
+       + (if $me == "" then {} else {session: $me} end)
     | if $k == "build" then (.plans[] | select(.id as $i | any($ids[]; . == $i))).status = "building" else . end' \
-    --arg k "$kind" --argjson ids "$ids" --arg at "$(vbw_now)"
+    --arg k "$kind" --arg me "$(vbw_session)" --argjson ids "$ids" --arg at "$(vbw_now)"
   jq -r '.lease | "run \(.run) started; agents may write: \(if .files == null then "any file (protected checks excepted)" else (.files | join(", ")) end)"' "$VBW_RECORD"
 }
