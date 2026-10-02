@@ -25,7 +25,6 @@ cmd_commit() {
 
   cd "$VBW_ROOT" || vbw_die "cannot enter $VBW_ROOT"
   record_lock
-  trap record_unlock EXIT
 
   # Changed = differs from HEAD (tracked, staged or not, incl. deletions) or new
   # and not ignored. NUL-separated throughout: names may hold spaces or UTF-8.
@@ -41,7 +40,6 @@ cmd_commit() {
 VBW-Req: $reqs" -- "${changed[@]}" || vbw_die "git commit failed"
 
   record_unlock
-  trap - EXIT
   printf 'committed %s for %s (%d file%s)\n' "$(git rev-parse --short HEAD)" "$plan" \
     "${#changed[@]}" "$([ ${#changed[@]} -eq 1 ] || printf s)"
 }

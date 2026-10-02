@@ -24,7 +24,7 @@ record_read() {
 }
 
 record_unlock() {
-  rmdir "$VBW_RUNTIME/lock" 2>/dev/null || true
+  vbw_guard_drop "$VBW_RUNTIME/lock"
 }
 
 # True only when the lock's age is known and too old. An age that cannot be read
@@ -44,11 +44,17 @@ vbw_is_stale() {
 # processes can never both break it and one delete the other's fresh lock.
 # No process probing and no signals.
 record_lock() {
-  local lock="$VBW_RUNTIME/lock" brk="$VBW_RUNTIME/lock.break" deadline
+  mkdir -p "$VBW_RUNTIME"
+  vbw_lock_take "$VBW_RUNTIME/lock" "record"
+}
+
+# vbw_lock_take LOCKDIR WHAT: take the mkdir lock LOCKDIR, as described above;
+# it is released by vbw_guard_drop (and by the interrupt cleanup).
+vbw_lock_take() {
+  local lock="$1" brk="$1.break" deadline
   # A held lock is released or becomes breakable within the stale window, so
   # waiting twice that long is always enough, even under heavy load.
   deadline=$(( $(date +%s) + 2 * VBW_LOCK_STALE_SECONDS ))
-  mkdir -p "$VBW_RUNTIME"
   until mkdir "$lock" 2>/dev/null; do
     if vbw_is_stale "$lock"; then
       vbw_is_stale "$brk" && rmdir "$brk" 2>/dev/null || true
@@ -58,9 +64,10 @@ record_lock() {
         continue
       fi
     fi
-    [ "$(date +%s)" -le "$deadline" ] || vbw_die "record is locked by another vbw process ($lock)"
+    [ "$(date +%s)" -le "$deadline" ] || vbw_die "$2 is locked by another vbw process ($lock)"
     sleep 0.05
   done
+  vbw_guard_add lock "$lock"
 }
 
 # record_update FILTER [jq options...]: apply FILTER to the record atomically.
@@ -69,20 +76,14 @@ record_update() {
   local filter="$1" tmp v
   shift
   record_lock
-  trap record_unlock EXIT
   v=$(record_violation "$VBW_RECORD") || vbw_die "record is corrupt: $v ($VBW_RECORD)" 3
   tmp=$(mktemp "$VBW_RUNTIME/record.XXXXXX") || vbw_die "cannot create a temporary file in $VBW_RUNTIME"
-  if ! jq "$@" "$filter" "$VBW_RECORD" > "$tmp" 2>/dev/null; then
-    rm -f "$tmp"
-    vbw_die "internal error: record update failed"
-  fi
-  if ! v=$(record_violation "$tmp"); then
-    rm -f "$tmp"
-    vbw_die "refused: $v"
-  fi
+  vbw_guard_add file "$tmp"
+  jq "$@" "$filter" "$VBW_RECORD" > "$tmp" 2>/dev/null || vbw_die "internal error: record update failed"
+  v=$(record_violation "$tmp") || vbw_die "refused: $v"
   mv "$tmp" "$VBW_RECORD"
+  vbw_guard_drop "$tmp"
   record_unlock
-  trap - EXIT
 }
 
 # record_commit MESSAGE: commit VBW's own files that changed (.vbw/spec.md,
@@ -93,6 +94,8 @@ record_update() {
 record_commit() {
   local msg="$1" own=() changed=() untracked=() f
   (
+    # A subshell starts without the parent's traps: it guards only its own lock.
+    VBW_GUARD_FILES=() VBW_GUARD_LOCKS=() VBW_GUARD_EXIT=0
     cd "$VBW_ROOT" || exit 1
     for f in .vbw/spec.md .vbw/record.json .vbw/map.md .vbw/.gitignore; do [ -f "$f" ] && own+=("$f"); done
     while IFS= read -r -d '' f; do [ -f "$f" ] && own+=("$f"); done \
@@ -103,10 +106,10 @@ record_commit() {
       < <(git ls-files -z --others --exclude-standard -- "${own[@]}")
     [ ${#changed[@]} -gt 0 ] || exit 0
     record_lock
-    trap record_unlock EXIT
     { [ ${#untracked[@]} -eq 0 ] || git add -- "${untracked[@]}"; } &&
       git commit --quiet --only -m "$msg" -- "${changed[@]}" > /dev/null 2>&1 \
       || printf 'vbw: warning: could not commit VBW files (%s); commit them yourself\n' "$msg" >&2
+    record_unlock
   )
 }
 

@@ -4,7 +4,56 @@
 
 vbw_die() {
   printf 'vbw: %s\n' "$1" >&2
+  vbw_guard_run
   exit "${2:-1}"
+}
+
+# Interrupt-safe cleanup. Temporary files and held lock directories are
+# registered here; INT, TERM and HUP remove them and exit (so the caller's own
+# EXIT trap still runs), and so does vbw_die. An EXIT trap is installed only
+# when the process has none (the vbw entry point), so a caller's EXIT trap is
+# never replaced or cleared, and no trap text is ever evaluated.
+VBW_GUARD_FILES=()
+VBW_GUARD_LOCKS=()
+VBW_GUARD_EXIT=0
+
+# vbw_guard_add FILE|LOCKDIR...: remove these on interrupt, die or vbw_guard_drop.
+# Kind is the first argument: file or lock.
+vbw_guard_add() {
+  local kind="$1" path="$2"
+  if [ "$kind" = lock ]; then VBW_GUARD_LOCKS+=("$path"); else VBW_GUARD_FILES+=("$path"); fi
+  trap 'vbw_guard_run; exit 130' INT
+  trap 'vbw_guard_run; exit 143' TERM
+  trap 'vbw_guard_run; exit 129' HUP
+  if [ "$VBW_GUARD_EXIT" -eq 0 ] && [ -z "$(trap -p EXIT)" ]; then
+    trap vbw_guard_run EXIT
+    VBW_GUARD_EXIT=1
+  fi
+}
+
+# Remove everything registered (files with rm, locks with rmdir).
+vbw_guard_run() {
+  local p
+  for p in ${VBW_GUARD_FILES[@]+"${VBW_GUARD_FILES[@]}"}; do rm -f "$p" 2>/dev/null || true; done
+  for p in ${VBW_GUARD_LOCKS[@]+"${VBW_GUARD_LOCKS[@]}"}; do rmdir "$p" 2>/dev/null || true; done
+  VBW_GUARD_FILES=()
+  VBW_GUARD_LOCKS=()
+}
+
+# vbw_guard_drop PATH: clean up one registered path now (file or lock dir);
+# when nothing is left, the traps are removed again.
+vbw_guard_drop() {
+  local p keep=()
+  rm -f "$1" 2>/dev/null || true
+  rmdir "$1" 2>/dev/null || true
+  for p in ${VBW_GUARD_FILES[@]+"${VBW_GUARD_FILES[@]}"}; do [ "$p" = "$1" ] || keep+=("$p"); done
+  VBW_GUARD_FILES=(${keep[@]+"${keep[@]}"})
+  keep=()
+  for p in ${VBW_GUARD_LOCKS[@]+"${VBW_GUARD_LOCKS[@]}"}; do [ "$p" = "$1" ] || keep+=("$p"); done
+  VBW_GUARD_LOCKS=(${keep[@]+"${keep[@]}"})
+  [ $(( ${#VBW_GUARD_FILES[@]} + ${#VBW_GUARD_LOCKS[@]} )) -eq 0 ] || return 0
+  trap - INT TERM HUP
+  if [ "$VBW_GUARD_EXIT" -eq 1 ]; then trap - EXIT; VBW_GUARD_EXIT=0; fi
 }
 
 vbw_usage_error() {
@@ -57,6 +106,7 @@ vbw_sha256() {
 vbw_code_tree() {
   local idx real
   idx=$(mktemp "$VBW_RUNTIME/index.XXXXXX") || return 1
+  vbw_guard_add file "$idx"
   real=$(git -C "$VBW_ROOT" rev-parse --path-format=absolute --git-path index)
   if [ -f "$real" ]; then cp "$real" "$idx"; else rm -f "$idx"; fi
   (
@@ -67,7 +117,7 @@ vbw_code_tree() {
       git write-tree
   )
   local status=$?
-  rm -f "$idx"
+  vbw_guard_drop "$idx"
   return $status
 }
 

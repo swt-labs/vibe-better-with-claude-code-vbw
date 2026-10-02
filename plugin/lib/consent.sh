@@ -23,17 +23,25 @@ consent_has() {
   jq -e --arg k "$1" --arg h "$2" 'any(.granted[]?; .kind == $k and .hash == $h)' "$file" > /dev/null 2>&1
 }
 
-# consent_grant KIND HASH DETAIL_JSON: record consent (idempotent, atomic).
+# consent_grant KIND HASH DETAIL_JSON: record consent (idempotent, atomic). The
+# read-modify-write, file creation included, runs under a lock beside the file,
+# so grants from parallel worktrees of one clone are never lost.
 consent_grant() {
-  local file dir tmp
+  local file dir tmp lock
   file=$(consent_file)
   dir=$(dirname "$file")
   mkdir -p "$dir"
-  [ -f "$file" ] || printf '{"granted":[]}\n' > "$file"
-  consent_has "$1" "$2" && return 0
-  tmp=$(mktemp "$dir/consent.XXXXXX") || vbw_die "cannot write $dir"
-  jq --arg k "$1" --arg h "$2" --argjson d "$3" --arg at "$(vbw_now)" \
-    '.granted += [{kind: $k, hash: $h, detail: $d, at: $at}]' "$file" > "$tmp" \
-    || { rm -f "$tmp"; vbw_die "cannot update $file"; }
-  mv "$tmp" "$file"
+  lock="$dir/consent.lock"
+  vbw_lock_take "$lock" "consent"
+  if ! consent_has "$1" "$2"; then
+    [ -f "$file" ] || printf '{"granted":[]}\n' > "$file"
+    tmp=$(mktemp "$dir/consent.XXXXXX") || vbw_die "cannot write $dir"
+    vbw_guard_add file "$tmp"
+    jq --arg k "$1" --arg h "$2" --argjson d "$3" --arg at "$(vbw_now)" \
+      '.granted += [{kind: $k, hash: $h, detail: $d, at: $at}]' "$file" > "$tmp" \
+      || vbw_die "cannot update $file"
+    mv "$tmp" "$file"
+    vbw_guard_drop "$tmp"
+  fi
+  vbw_guard_drop "$lock"
 }
