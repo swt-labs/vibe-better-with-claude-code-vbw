@@ -332,7 +332,14 @@
         "Test: the QA-opened fix closes only when QA records a passing verdict for the phase.",
         "Each regression test fails when run against the code before the fix.",
         "R11 shows as proven in `vbw show requirements`, and bash tools/test.sh passes."
-      ]
+      ],
+      "qa": {
+        "result": "pass",
+        "tier": "standard",
+        "tree": "63a52428fed57e4a119aca5c17e6f1b4246ab213",
+        "at": "2026-10-02T11:00:48Z",
+        "note": "10/10 checks"
+      }
     },
     {
       "id": "P10",
