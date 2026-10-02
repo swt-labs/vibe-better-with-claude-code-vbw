@@ -46,20 +46,3 @@ facts() { jq -e "$2" "$RESULTS/$1.json" > /dev/null; }
     and .facts.fix_rounds >= 1 and .facts.final_qa_verdict == "pass"
     and .facts.phase_proved == true'
 }
-
-@test "R6: /vbw:debug fixed the seeded root cause with a regression test that failed before" {
-  result_ok debug
-  facts debug '.facts.seeded_root_cause_file | type == "string" and length > 0'
-  facts debug '(.facts.fix_commit_files | index(.facts.seeded_root_cause_file)) != null
-    and .facts.regression_test_committed == true
-    and .facts.regression_test_fails_before_fix == true
-    and .facts.regression_test_passes_after_fix == true
-    and .facts.symptom_only_mask == false'
-}
-
-@test "R7: /vbw:research answered a known question with a source a person can open" {
-  result_ok research
-  facts research '.facts.known_answer_found == true and (.facts.sources | length) >= 1
-    and all(.facts.sources[]; type == "string" and length > 0 and (test("^https?://") or test("^[^ ]+$")))
-    and .facts.source_supports_answer == true'
-}

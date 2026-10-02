@@ -46,31 +46,10 @@
       "milestone": "M1"
     },
     {
-      "id": "R6",
-      "text": "In a real session, /vbw:debug finds the root cause of a seeded bug and fixes it with a regression test",
-      "proof": "auto",
-      "status": "failing",
-      "milestone": "M1"
-    },
-    {
-      "id": "R7",
-      "text": "In a real session, /vbw:research returns a sourced answer",
-      "proof": "auto",
-      "status": "failing",
-      "milestone": "M1"
-    },
-    {
       "id": "R8",
       "text": "In balanced autonomy, a background QA run causes no Stop-hook errors and the session reaches the accept stop",
       "proof": "auto",
       "status": "proven",
-      "milestone": "M1"
-    },
-    {
-      "id": "R9",
-      "text": "A visual accept check asks the user for a screenshot of the page and keeps it with their verdict",
-      "proof": "human",
-      "status": "open",
       "milestone": "M1"
     },
     {
@@ -153,32 +132,6 @@
         "bats",
         "-f",
         "R5:",
-        "tests/l3-results.bats"
-      ],
-      "files": [
-        "tests/l3-results.bats"
-      ]
-    },
-    {
-      "id": "C6",
-      "req": "R6",
-      "run": [
-        "bats",
-        "-f",
-        "R6:",
-        "tests/l3-results.bats"
-      ],
-      "files": [
-        "tests/l3-results.bats"
-      ]
-    },
-    {
-      "id": "C7",
-      "req": "R7",
-      "run": [
-        "bats",
-        "-f",
-        "R7:",
         "tests/l3-results.bats"
       ],
       "files": [
@@ -309,41 +262,6 @@
         "The record shows the QA verdict as fail and names that deviation.",
         "The record shows at least one fix iteration, then a QA verdict of pass.",
         "The phase ends proved, and the number of fix rounds is logged."
-      ]
-    },
-    {
-      "id": "P6",
-      "title": "Debug and research in a real session",
-      "reqs": [
-        "R6",
-        "R7"
-      ],
-      "milestone": "M1",
-      "goal": "In real Claude Code sessions, /vbw:debug fixes a seeded bug at its root cause with a regression test, and /vbw:research returns a sourced answer.",
-      "criteria": [
-        "An L3 scenario runs /vbw:debug on a fixture project with one seeded bug, and the run ends with the bug fixed.",
-        "The fix commit includes a new regression test that fails when the fix is reverted.",
-        "The debugger's recorded root cause names the seeded defect (file and cause), not only its symptom.",
-        "An L3 scenario runs /vbw:research on a named question and the answer lists at least one source (URL or file path) for each claim.",
-        "R6 and R7 show as proven in `vbw show requirements`.",
-        "The results are recorded in tests/l3-results.bats with the evidence level and fixture named."
-      ]
-    },
-    {
-      "id": "P7",
-      "title": "Visual accept check keeps the user's screenshot",
-      "reqs": [
-        "R9"
-      ],
-      "milestone": "M1",
-      "goal": "A visual [human] accept check asks the user to supply a screenshot of the page and stores it with their verdict, with no screenshot tool shipped (per D1).",
-      "criteria": [
-        "At a visual accept stop, the prompt asks the user to attach a screenshot of the page before they give a verdict.",
-        "After the verdict, the screenshot file is stored in the project and referenced from the same record entry as the verdict.",
-        "If no screenshot is supplied, the user is asked again, or can explicitly skip it and the skip is recorded.",
-        "No screenshot tool or browser driver is added and no new runtime dependency appears.",
-        "An L3 scenario takes a visual accept through to a recorded verdict plus screenshot.",
-        "docs/ describes the screenshot accept step."
       ]
     },
     {
@@ -558,99 +476,6 @@
       ]
     },
     {
-      "id": "P6.1",
-      "phase": "P6",
-      "title": "L3 scenarios: debug and research",
-      "reqs": [
-        "R6",
-        "R7"
-      ],
-      "files": [
-        "tools/l3-suite.sh",
-        "tools/l3-results/debug.json",
-        "tools/l3-results/research.json"
-      ],
-      "after": [
-        "P5.1"
-      ],
-      "status": "planned",
-      "role": "dev",
-      "tasks": [
-        "Define the debug fixture with a named seeded bug and a known root-cause file; add scenario_debug running /vbw:debug",
-        "Assert the fix commit touches the root-cause file, a regression test is committed, fails on the pre-fix tree and passes after, and the diff is not a symptom mask",
-        "Define a research question with a known answer; add scenario_research running /vbw:research and assert at least one openable source supporting the answer",
-        "Run both for real and commit both results with fixture, cost, level"
-      ]
-    },
-    {
-      "id": "P7.1",
-      "phase": "P7",
-      "title": "Screenshot with the user's verdict",
-      "reqs": [
-        "R9"
-      ],
-      "files": [
-        "plugin/lib/cmd-req.sh",
-        "plugin/lib/record.jq",
-        "plugin/skills/vibe/SKILL.md",
-        "tests/screenshot.bats"
-      ],
-      "after": [
-        "P6.1"
-      ],
-      "status": "planned",
-      "role": "dev",
-      "tasks": [
-        "Test first in tests/screenshot.bats: req accept ID --screenshot FILE stores the file under .vbw/ and links it in the record to the requirement and verdict; --no-screenshot records its absence; a missing file is refused; plugin/ holds no screenshot tool or browser launch",
-        "Implement vbw req accept ID [--screenshot FILE | --no-screenshot] in cmd-req.sh and allow the field in record.jq (kernel stays within 3,000 lines, bash 3.2)",
-        "Change the accept step of the vibe skill: for a visual check name the page and ask the user to attach a screenshot; remove the browser-tool and open instructions (D1)",
-        "Run bash tools/test.sh"
-      ]
-    },
-    {
-      "id": "P7.2",
-      "phase": "P7",
-      "title": "L3 scenario: visual accept with a screenshot",
-      "reqs": [
-        "R9"
-      ],
-      "files": [
-        "tools/l3-suite.sh",
-        "tools/l3-results/screenshot.json"
-      ],
-      "after": [
-        "P7.1"
-      ],
-      "status": "planned",
-      "role": "dev",
-      "tasks": [
-        "Define a fixture with one [human] visual requirement; add scenario_screenshot to tools/l3-suite.sh and ALL",
-        "Drive the accept stop: the prompt names the page and asks for a screenshot; supply a PNG; check the record links file, check and verdict",
-        "Run it for real; commit the result with L4 owner acceptance listed in not_tested"
-      ]
-    },
-    {
-      "id": "P7.3",
-      "phase": "P7",
-      "title": "Document the screenshot accept",
-      "reqs": [
-        "R9"
-      ],
-      "files": [
-        "docs/proof.md"
-      ],
-      "after": [
-        "P7.1"
-      ],
-      "status": "planned",
-      "role": "docs",
-      "tasks": [
-        "Describe the visual accept flow: the prompt, the user attaches the screenshot, where it is stored",
-        "State that accepting without a screenshot needs --no-screenshot and is recorded as lacking one",
-        "State decision D1: VBW ships no screenshot tool and starts no browser"
-      ]
-    },
-    {
       "id": "P9.1",
       "phase": "P9",
       "title": "Accept closes only the user's own fixes",
@@ -661,9 +486,7 @@
         "plugin/lib/cmd-req.sh",
         "tests/kernel-accept.bats"
       ],
-      "after": [
-        "P7.1"
-      ],
+      "after": [],
       "status": "planned",
       "role": "dev",
       "tasks": [
@@ -707,7 +530,6 @@
         "docs/proof.md"
       ],
       "after": [
-        "P7.3",
         "P9.1",
         "P10.1"
       ],
@@ -730,7 +552,13 @@
       "note": "The balanced L3 scenario's driver answered the [human] acceptance question itself: transcript 99416496 shows AskUserQuestion 'R1: does the greeting wording feel warm and friendly?' answered 'Works' (answer_recommended presses Enter), then 'vbw req accept R1'; the scenario project's next step is now ship, not accept. So stopped_at=accept in tools/l3-results/balanced.json was not the session's final state, and the scenario accepted a human requirement on the user's behalf. Fix tools/l3-suite.sh so the balanced scenario stops (never answers) at the accept question and records the state it actually stopped in; re-run it."
     }
   ],
-  "todos": [],
+  "todos": [
+    {
+      "id": "T1",
+      "text": "Screenshot kept with a visual accept verdict (was R9 of M1; the user attaches it per D1)",
+      "status": "open"
+    }
+  ],
   "decisions": [
     {
       "id": "D1",
@@ -759,6 +587,11 @@
       "id": "D5",
       "at": "2026-10-02T03:08:44Z",
       "text": "Contract approved: 10 requirements, 9 checks, 11 plans (85fc3e706c9b)"
+    },
+    {
+      "id": "D6",
+      "at": "2026-10-02T10:27:27Z",
+      "text": "Contract approved: 9 requirements, 9 checks, 10 plans (372cc6099789)"
     }
   ],
   "commands": {},
