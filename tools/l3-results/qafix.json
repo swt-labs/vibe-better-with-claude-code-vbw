@@ -1,16 +1,16 @@
 {
   "scenario": "qafix",
   "fixture": "greet.sh plus NOTES.md (no check names it); the built NOTES.md is deleted after the build, so only QA can see the deviation",
-  "cost_usd": 0,
+  "cost_usd": 0.85,
   "evidence_level": "L3",
-  "at": "2026-10-02T04:19:06Z",
+  "at": "2026-10-02T04:25:03Z",
   "passed": false,
   "facts": {
-    "deviation": "",
-    "first_qa_verdict": "pass",
-    "first_qa_note": "",
+    "deviation": "NOTES.md",
+    "first_qa_verdict": "fail",
+    "first_qa_note": "7/8 checks NOTES.md does not exist at HEAD: commit 5fdd1cc 'chore: drop NOTES.md' deleted it (it had been added in 4772db4). Plan task 3 and the phase criterion require NOTES.md with exactly one sentence describing greet.sh's purpose; ls NOTES.md fails.",
     "fix_rounds": 0,
-    "final_qa_verdict": "pass",
+    "final_qa_verdict": "fail",
     "phase_proved": true
   },
   "not_tested": [

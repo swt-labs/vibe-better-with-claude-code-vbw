@@ -357,6 +357,9 @@ scenario_qafix() {
     [ -n "$f" ] || return 1
     git -C "$dir" rm -q -- "$f" && git -C "$dir" commit -qm "chore: drop $f" -- "$f" || return 1
     deviation="$f"
+    # The user's commit changed the code: prove it again, so the evidence (and
+    # the tree QA is given) is the deviating build.
+    (cd "$dir" && "$VBW" prove > /dev/null 2>&1) || true
     say "seeded the deviation: $f deleted after the build"
     return 0
   }
@@ -379,7 +382,7 @@ scenario_qafix() {
     say "QA rounds: first verdict $fv, fix rounds $rounds, final $final"
     [ -n "$deviation" ] || { say "FAIL the deviation was never seeded"; failed=1; }
     case "$note" in *"$deviation"*) ;; *) say "FAIL the first QA note does not name the deviation"; failed=1 ;; esac
-    [ "$failed" -eq 0 ] && [ "$fv" = fail ] && [ "$rounds" -ge 1 ] && [ "$final" = pass ] && [ "$proved" = true ] || passed=false
+    [ "$failed" -eq 0 ] && [ "$fv" = fail ] && [ "$rounds" -ge 1 ] && [ "$final" = pass ] && [ "$proved" = true ] || { passed=false; failed=1; }
     result_write qafix "$fixture" "${cost_usd:-0}" "$passed" \
       "$(jq -n --arg d "${deviation:-}" --arg fv "$fv" --arg n "$note" --argjson r "$rounds" --arg fin "$final" --argjson p "$proved" \
         '{deviation: $d, first_qa_verdict: $fv, first_qa_note: $n, fix_rounds: $r, final_qa_verdict: $fin, phase_proved: $p}')" \
