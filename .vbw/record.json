@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "project": {
+    "name": "v2"
+  },
+  "milestone": {
+    "id": "M1",
+    "title": "First milestone",
+    "status": "active"
+  },
+  "shipped": [],
+  "requirements": [],
+  "checks": [],
+  "phases": [],
+  "plans": [],
+  "fixes": [],
+  "todos": [],
+  "decisions": [],
+  "commands": {},
+  "settings": {
+    "profile": "balanced",
+    "autonomy_cap": 25
+  },
+  "evidence": null,
+  "lease": null
+}
