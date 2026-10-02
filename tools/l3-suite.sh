@@ -7,14 +7,15 @@
 #
 #   tools/l3-suite.sh [SCENARIO...]     (default: all)
 #
-# Scenarios: greenfield, reject, resume, change, convert. A user answers every
+# Scenarios: greenfield, reject, resume, change, convert, balanced. A user answers every
 # question with VBW's recommendation unless the scenario says otherwise.
 set -uo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 l3() { bash "$ROOT/tools/l3.sh" "$@"; }
 VBW="$ROOT/plugin/bin/vbw"
-ALL="greenfield reject resume change convert"
+ALL="greenfield reject resume change convert balanced"
+RESULTS="$ROOT/tools/l3-results"
 STEPS=60
 
 say() { printf '[%s] %s\n' "$scenario" "$*"; }
@@ -101,6 +102,59 @@ common_checks() {
   # pipefail the SIGPIPE in git log fails the check.
   check_sh "plan work committed with provenance" '[ "$(git log --format=%B | grep -c "^VBW-Plan: ")" -gt 0 ]'
   check_sh "no stray changes outside .vbw/runtime" '[ -z "$(git status --porcelain -- . ":(exclude).vbw/runtime")" ]'
+}
+
+# --- Results (docs/proof.md, D2): a scenario that proves a requirement writes
+# tools/l3-results/NAME.json from the record, git and the session logs, never
+# from screen text. tests/l3-results.bats holds the committed file to its facts.
+
+claude_dir() { printf '%s' "${CLAUDE_CONFIG_DIR:-$HOME/.claude}"; }
+
+# Session transcripts of the project in $dir, the main one and its subagents'.
+transcripts() {
+  local real enc
+  real=$(cd "$dir" && pwd -P)
+  enc=$(printf '%s' "$real" | sed 's/[^A-Za-z0-9]/-/g')
+  find "$(claude_dir)/projects/$enc" -name '*.jsonl' 2> /dev/null
+}
+
+# Stop hooks that reported an error in the transcript: hook errors on a
+# stop_hook_summary entry, or a hook that did not complete.
+stop_hook_errors_transcript() {
+  local f n=0 c
+  while IFS= read -r f; do
+    c=$(jq -s '[.[] | select(.type == "system" and .subtype == "stop_hook_summary")
+      | select((.hookErrors | length) > 0)] | length' "$f" 2> /dev/null || echo 0)
+    n=$((n + c))
+  done < <(transcripts)
+  echo "$n"
+}
+
+# Stop-hook error lines in the session's debug log (--debug-file).
+stop_hook_errors_debug_log() {
+  local log
+  log=$(l3 debuglog "$dir")
+  [ -f "$log" ] || { echo "-1"; return; }
+  grep -ciE 'stop.{0,40}hook.{0,80}(error|fail)|hook.{0,40}stop.{0,80}(error|fail)' "$log" || true
+}
+
+# Session cost in USD, from the TUI's /cost.
+session_cost() {
+  local out
+  l3 type "$scenario" "/cost"; sleep 3
+  out=$(screen)
+  l3 keys "$scenario" Escape
+  printf '%s' "$out" | grep -oE '\$[0-9]+\.[0-9]+' | head -1 | tr -d '$'
+}
+
+# result_write NAME FIXTURE COST PASSED FACTS_JSON NOT_TESTED_JSON
+result_write() {
+  mkdir -p "$RESULTS"
+  jq -n --arg n "$1" --arg fx "$2" --arg cost "${3:-0}" --argjson passed "$4" \
+    --argjson facts "$5" --argjson nt "$6" --arg at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+    '{scenario: $n, fixture: $fx, cost_usd: ($cost | tonumber), evidence_level: "L3",
+      at: $at, passed: $passed, facts: $facts, not_tested: $nt}' > "$RESULTS/$1.json"
+  say "result written: tools/l3-results/$1.json"
 }
 
 GREET='/vbw:vibe a command-line script greet.sh: "./greet.sh Ana" prints "Hello, Ana!" and without a name prints "Hello, world!". One small milestone.'
@@ -199,6 +253,33 @@ scenario_convert() {
     # Tracked VBW 1 files only: on a machine that still shows VBW 1's status line,
     # that status line itself adds untracked cost files to .vbw-planning/.
     check_sh "the VBW 1 folder is unchanged" "git diff --quiet $base -- .vbw-planning"
+  }
+}
+
+# Balanced autonomy with QA in the background (R8): the session runs on its
+# own (auto armed by /vbw:vibe), QA runs as a background workflow, and the
+# session stops at accept without a Stop-hook error.
+scenario_balanced() {
+  new_project
+  fixture="greet.sh, one auto requirement and one human requirement"
+  start="$GREET Also, the wording should feel warm and friendly; I will judge that myself."
+  done_yet() { [ "$(next_action)" = accept ]; }
+  checks() {
+    check "QA recorded on the built phase" 'any(.phases[]; .qa.result == "pass")'
+    check "stopped at accept, not shipped" '.milestone.status != "shipped"'
+    local te dl cost passed=true autonomy qa_bg=false stopped=none
+    te=$(stop_hook_errors_transcript); dl=$(stop_hook_errors_debug_log)
+    autonomy=$(cd "$dir" && "$VBW" config autonomy 2> /dev/null)
+    # QA ran as a Workflow call of vbw:verifying in the session transcript.
+    if transcripts | xargs cat 2> /dev/null | jq -e 'select(.type == "assistant") | .message.content[]?
+      | select(.type == "tool_use" and .name == "Workflow" and ((.input | tostring) | test("verifying")))' > /dev/null 2>&1; then qa_bg=true; fi
+    [ "$(next_action)" = accept ] && stopped=accept
+    [ "$failed" -eq 0 ] && [ "$te" -eq 0 ] && [ "$dl" -eq 0 ] && [ "$stopped" = accept ] && [ "$qa_bg" = true ] || passed=false
+    cost=$(session_cost)
+    result_write balanced "$fixture" "${cost:-0}" "$passed" \
+      "$(jq -n --arg a "$autonomy" --argjson q "$qa_bg" --argjson t "$te" --argjson d "$dl" --arg s "$stopped" \
+        '{autonomy: $a, qa_background: $q, stop_hook_errors_transcript: $t, stop_hook_errors_debug_log: $d, stopped_at: $s}')" \
+      '["acceptance itself (the run stops at accept)","hands-off and guided autonomy","a project larger than the greet.sh fixture"]'
   }
 }
 

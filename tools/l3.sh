@@ -9,6 +9,7 @@
 #   tools/l3.sh wait NAME [SECONDS]      wait until Claude is idle (default 900 s), print the screen
 #   tools/l3.sh screen NAME              print the screen
 #   tools/l3.sh stop NAME                end the session
+#   tools/l3.sh debuglog DIR             print the debug log path of the session started in DIR
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -16,7 +17,7 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 [ -z "${VBW_TEST_CLAUDE_CONFIG_DIR:-}" ] || export CLAUDE_CONFIG_DIR="$VBW_TEST_CLAUDE_CONFIG_DIR"
 cmd="${1:-}"
 name="${2:-}"
-[ -n "$cmd" ] && [ -n "$name" ] || { sed -n '6,13p' "$0" >&2; exit 2; }
+[ -n "$cmd" ] && [ -n "$name" ] || { sed -n '6,14p' "$0" >&2; exit 2; }
 session="vbw-l3-$name"
 
 screen() { tmux capture-pane -t "$session" -p -S -60; }
@@ -38,7 +39,7 @@ case "$cmd" in
     done
     tmux kill-session -t "$session" 2> /dev/null || true
     tmux new-session -d -s "$session" -x 200 -y 60 -c "$dir" \
-      "env PATH='$clean' claude --model $model --permission-mode auto --plugin-dir '$ROOT/plugin' --settings '$settings'"
+      "env PATH='$clean' claude --model $model --permission-mode auto --plugin-dir '$ROOT/plugin' --settings '$settings' --debug-file '$dir.debug.log'"
     sleep 6
     # First run in a directory: accept the folder-trust dialog, as a user would.
     if screen | grep -q 'Yes, I trust this folder'; then
@@ -76,11 +77,12 @@ case "$cmd" in
     [ "$waited" -lt "$limit" ] || { echo "(l3: still busy after ${limit}s)" >&2; exit 1; }
     ;;
   screen) screen ;;
+  debuglog) printf '%s.debug.log\n' "$name" ;;
   stop)
     tmux send-keys -t "$session" -l "/exit"
     tmux send-keys -t "$session" Enter
     sleep 2
     tmux kill-session -t "$session" 2> /dev/null || true
     ;;
-  *) sed -n '6,13p' "$0" >&2; exit 2 ;;
+  *) sed -n '6,14p' "$0" >&2; exit 2 ;;
 esac
