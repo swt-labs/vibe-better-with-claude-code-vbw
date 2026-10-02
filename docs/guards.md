@@ -35,6 +35,14 @@ input names an `agent_type`) is also held to the lease. The main session never i
 | `git commit`, `push`, `rebase`, `merge`, `pull`, `cherry-pick`, `revert`, `am` | Commits go through `vbw commit`, with provenance |
 | `git stash` (except `list`, `show`), `switch`, `reset`, `checkout` of a branch; `git checkout -- PATH` or `git restore PATH` outside `lease.files` | Agents share one working tree: nothing may move HEAD or other agents' changes |
 
+**Another session's run** (D11): while a run with an owning session is open
+(under 24 hours), a call from a different session (`session_id` differs from
+`lease.session`), main conversation or agent, is denied when it writes a file in
+`lease.files` (any project file when `files` is null, none when `[]`): file
+tools, shell redirects, `tee`, `cp`/`mv` onto it, `sed -i`, `rm`. The message
+names the owning session; the user lifts it with `vbw run end --owner-closed`.
+Other files stay editable, and the owning session is unaffected.
+
 A lease older than 24 hours holds no one. During a run the Bash fast path is off
 for subagents: every command they run is read.
 

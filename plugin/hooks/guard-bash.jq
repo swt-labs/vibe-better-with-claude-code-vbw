@@ -132,6 +132,12 @@ def in_run($g):
         | project_path($g.hook.cwd // $root; $root) | lease_write_denial($g.lease; $g.record) ) ),
   ( .out[] | project_path($g.hook.cwd // $root; $root) | lease_write_denial($g.lease; $g.record) );
 
+# Another session's open run (D11): shell writes of the files it writes.
+def foreign_run($g):
+  (.out[], (select(.cmd | test("^(cp|mv|tee|rm)$")) | .args[]), (select(.cmd == "sed" and any(.args[]; test("^-[A-Za-z]*i"))) | .args[]))
+  | select(startswith("-") | not)
+  | project_path($g.hook.cwd // $root; $root) | foreign_denial($g.foreign);
+
 # Outside a run, every rule needs one of these words in the raw command,
 # wherever it appears (strings and heredocs included), so a command without any
 # is allowed unread. During a run a subagent's every command is read.
@@ -139,9 +145,10 @@ def may_matter: test("rm|git|vbw|consent|record\\.json|\\.env|\\.(pem|key|p12|pf
 
 guard_context as $g
 | ($g.hook.tool_input.command // "") as $c
-| select($g.lease != null or ($c | may_matter))
+| select($g.lease != null or $g.foreign != null or ($c | may_matter))
 | [$c | commands(3)] as $cmds
 | ( [$cmds[] | everywhere][0]
+    // (select($g.project and $g.foreign != null) | [$cmds[] | foreign_run($g)][0])
     // (select($g.project)
         | [$cmds[] | in_project][0] // (select($g.lease != null) | [$cmds[] | in_run($g)][0])) )
 | select(. != null)

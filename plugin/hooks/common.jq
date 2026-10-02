@@ -8,17 +8,19 @@
 # Membership tests are anchored regexes, not array literals: they compile to far
 # fewer jq instructions, and compiling is most of a guard's cost.
 
-# {hook, project, record, lease}: lease is the active run lease when this call
+# {hook, project, record, lease, foreign}: foreign is the open run lease (under
+# 24 hours, with an owning session) when the hook input comes from a different
+# session, main conversation or agent alike (D11), else null. lease is the active run lease when this call
 # comes from a subagent (the hook input names an agent_type) during a run of
 # at most 24 hours (docs/workflows.md), else null. The main session is never
 # held to a lease.
 def guard_context:
   input as $hook | (try input catch {}) as $rec
   | ($rec | if type == "object" then . else {} end) as $record
+  | (($record.lease | select(type == "object" and (try (now - (.started_at | fromdateiso8601) < 86400) catch false))) // null) as $live
   | {hook: $hook, project: ($rec != "vbw-guard-end"), record: $record,
-     lease: (if ($hook.agent_type // "") != "" and ($record.lease | type) == "object"
-                and (try (now - ($record.lease.started_at | fromdateiso8601) < 86400) catch false)
-             then $record.lease else null end)};
+     lease: (if ($hook.agent_type // "") != "" then $live else null end),
+     foreign: (($live | select((.session // "") != "" and ($hook.session_id // .session) != .session)) // null)};
 
 def basename: split("/") | last // "";
 def secret_path: basename
@@ -46,6 +48,12 @@ def lease_write_denial($lease; $record):
   elif ($lease.kind | test("^(build|fix)$")) and (. as $p | any($record.checks[]?.files[]?; . == $p)) then
     "\(.) is a protected check file: the contract is fixed while building"
   else empty end;
+
+# Why another session may not write PATH (project-relative) while FOREIGN's run
+# is open, or empty: it writes lease.files (null: any project file, []: none).
+def foreign_denial($f):
+  . as $p | select($p != null and (($f.files // [$p]) | index($p) != null))
+  | "\($p) is being written by run \($f.run) of another session (\($f.session)): wait for it; if the user says that session is closed, they run vbw run end --owner-closed";
 
 def secret_reason: "\(basename) may hold secrets; VBW never reads or writes secret files";
 def record_reason: ".vbw/record.json is written only by vbw (vbw help lists the commands)";
