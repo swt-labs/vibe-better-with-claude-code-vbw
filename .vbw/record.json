@@ -546,6 +546,11 @@
       "text": "Milestone ships as 2.0.9, one patch release",
       "why": "owner's choice: fixes and proof, no new behavior; one update for users",
       "at": "2026-10-02T01:50:29Z"
+    },
+    {
+      "id": "D4",
+      "at": "2026-10-02T01:57:08Z",
+      "text": "Contract approved: 9 requirements, 8 checks, 10 plans (843599e1a3e3)"
     }
   ],
   "commands": {},
