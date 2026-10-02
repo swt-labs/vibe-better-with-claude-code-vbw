@@ -3,12 +3,12 @@
   "fixture": "greet.sh plus NOTES.md (no check names it); the built NOTES.md is deleted after the build, so only QA can see the deviation",
   "cost_usd": 1.05,
   "evidence_level": "L3",
-  "at": "2026-10-02T14:23:57Z",
+  "at": "2026-10-02T18:55:10Z",
   "passed": true,
   "facts": {
     "deviation": "NOTES.md",
     "first_qa_verdict": "fail",
-    "first_qa_note": "5/6 checks NOTES.md does not exist in the working tree: commit 9f70562 'chore: drop NOTES.md' deleted it after 0bfb2f4 created it. Criterion 5 and plan P1.2 (create NOTES.md with one sentence) are unmet.",
+    "first_qa_note": "6/8 checks NOTES.md does not exist. Commit f63ed7b 'chore: drop NOTES.md' deleted it after acbb590 created it, so plan P1.2 deliverable and criteria 'NOTES.md exists with one sentence' and 'reader can tell what greet.sh does' are unmet.",
     "fix_rounds": 1,
     "final_qa_verdict": "pass",
     "phase_proved": true
