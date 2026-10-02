@@ -831,8 +831,29 @@
         "off and status take an optional SESSION_ID (else the caller's session from vbw_session; neither: usage error); the gate reads and counts only its own session's file",
         "update the auto cases in tests/kernel-surface.bats to the per-session files",
         "run tests/kernel-auto-sessions.bats and the full suite under bash 3.2 and bash 5"
+      ]
+    },
+    {
+      "id": "P13.2",
+      "phase": "P13",
+      "title": "The status line shows the autonomy of the session it is drawn for",
+      "reqs": [
+        "R16"
       ],
-      "note": "Per-session auto files (auto.SESSION.json) are implemented in plugin/lib/cmd-auto.sh and tests/kernel-surface.bats is updated; kernel-auto-sessions.bats and all other tests pass. But tests/statusline.bats #306 (armed autonomous run visible) fails because plugin/scripts/vbw-statusline.sh (line 76) and statusline.jq still read .vbw/runtime/auto.json. Fix needs those two files (read session_id from the statusline input, pass .vbw/runtime/auto.$sid.json) plus docs/statusline.md, all outside P13.1's files. Edits to cmd-auto.sh and kernel-surface.bats are uncommitted in the tree."
+      "files": [
+        "plugin/scripts/vbw-statusline.sh",
+        "plugin/scripts/statusline.jq",
+        "docs/statusline.md",
+        "tests/statusline.bats"
+      ],
+      "after": [],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "Make tests/statusline.bats seed the per-session state (.vbw/runtime/auto.SESSION.json) and pass the session_id in the status line input; show it fails today",
+        "vbw-statusline.sh reads session_id from its input and passes .vbw/runtime/auto.<session_id>.json to statusline.jq (no file: not armed); keep the 30 ms budget",
+        "docs/statusline.md names the per-session file"
+      ]
     }
   ],
   "fixes": [
@@ -975,6 +996,11 @@
       "id": "D13",
       "at": "2026-10-02T17:11:14Z",
       "text": "Contract approved: 13 requirements, 13 checks, 14 plans (ce2868c15de7)"
+    },
+    {
+      "id": "D14",
+      "at": "2026-10-02T17:38:29Z",
+      "text": "Contract approved: 13 requirements, 13 checks, 15 plans (109726123699)"
     }
   ],
   "commands": {},
