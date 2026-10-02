@@ -204,11 +204,12 @@
         "The kernel is still within 3,000 lines."
       ],
       "qa": {
-        "result": "pass",
+        "result": "fail",
         "tier": "standard",
-        "tree": "63a52428fed57e4a119aca5c17e6f1b4246ab213",
-        "at": "2026-10-02T11:00:04Z",
-        "note": "12/12 checks"
+        "tree": "f4905c81a2a1043a58bdab9565f2e3dbdc69331f",
+        "at": "2026-10-02T11:41:44Z",
+        "note": "11/12 checks",
+        "rounds": 1
       }
     },
     {
@@ -613,6 +614,14 @@
       "attempts": 0,
       "status": "closed",
       "note": "Criterion 4 not met: bash tools/test.sh exits 1 on two consecutive runs. No bats test fails; tools/bench-hooks.sh reports the guard hot path over its 8 ms own-cost budget (git 9.5-11.0, npm 8.4-9.7, big 9.0-9.3 ms p95). The code is outside P2's files (plugin/hooks, bench), but the phase criterion requires the full suite to pass."
+    },
+    {
+      "id": "F3",
+      "req": "R2",
+      "source": "qa",
+      "attempts": 0,
+      "status": "open",
+      "note": "tests/kernel-safety.bats test 2 ('an interrupted vbw commit leaves no index files, no lock') passes on the pre-fix code (commit 1421600d^, run in an extracted copy: ok 2), so it cannot fail and does not prove the criterion that it fails without the fix; tests 1, 3, 4 and 5 do fail pre-fix. Make the test discriminate (e.g. hold the commit while the temp index exists) or drop the claim."
     }
   ],
   "todos": [
