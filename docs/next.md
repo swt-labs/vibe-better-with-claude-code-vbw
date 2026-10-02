@@ -16,7 +16,7 @@ lifecycle. `vbw next --json` returns:
 
 | # | Condition | action | gate |
 |---|---|---|---|
-| 0 | a run lease is open | `run` (wait for its workflow if it is running in this session; otherwise `vbw run end`) | no |
+| 0 | a run lease is open | `run` (wait for its workflow if it is running in this session; otherwise `vbw run end`; a run owned by another session: wait or check `vbw status`, never end it) | no |
 | 1 | milestone `shipped` | `milestone` (start the next one: `vbw milestone start TITLE`) | yes |
 | 2a | no requirements in the current milestone, and a VBW 1 plan (`.vbw-planning/`) not converted yet | `convert` (`/vbw:convert`, or start fresh; docs/convert.md) | yes |
 | 2 | no requirements in the current milestone | `spec` (write its requirements in `.vbw/spec.md`) | yes |

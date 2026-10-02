@@ -15,7 +15,7 @@ If this is not a VBW project yet ("not a VBW project" above), set it up first:
 did). Without the tool, say why (disabled on purpose, or a restart of Claude
 Code picks up the setting) and stop.
 
-Run `vbw run start map`, then start the Workflow `vbw:mapping` with args
-`{"models": <the JSON above>}`. When it returns, `vbw run end`, then write its `map` to `.vbw/map.md` (replacing any older map), then tell
+Run `VBW_SESSION_ID=${CLAUDE_SESSION_ID} vbw run start map`, then start the Workflow `vbw:mapping` with args
+`{"models": <the JSON above>}`. When it returns, `VBW_SESSION_ID=${CLAUDE_SESSION_ID} vbw run end`, then write its `map` to `.vbw/map.md` (replacing any older map), then tell
 the user in a few lines what the codebase is and how to build and test it, and
 name any angle listed in `missing`. The Architect and Lead read this map when they plan.

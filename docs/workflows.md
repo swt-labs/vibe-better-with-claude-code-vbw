@@ -30,7 +30,15 @@ vbw run start build P1.1 P1.2     # or: fix F1 F2 | plan | qa | map
 vbw run end
 ```
 
-`record.lease` is `{run, kind, started_at, files}`. `files` holds the paths the
+`record.lease` is `{run, kind, started_at, session, files}`. `session` is the
+Claude Code session that opened the run (skills pass it as `VBW_SESSION_ID=${CLAUDE_SESSION_ID}`).
+In any other session `vbw next` answers that the run belongs to another session
+and to wait or check status; it never says to end it. `vbw run end` from a
+non-owner session is refused. Two exceptions: the user states the owning session
+is closed (`vbw run end --owner-closed`), or the run is older than 24 hours
+(`VBW_LEASE_HOURS`).
+
+`files` holds the paths the
 run's agents may write: the plans' files for `build`; for `fix`, the files of
 every plan that serves a fixed requirement; `null` for `plan` (the Lead writes
 test files that no plan owns yet); `[]` for `qa` and `map` (their agents

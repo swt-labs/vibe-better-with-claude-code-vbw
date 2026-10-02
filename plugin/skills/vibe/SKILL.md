@@ -23,10 +23,10 @@ Kernel decides next step; you carry it out and talk to user.
 
 User said: $ARGUMENTS
 
-No JSON above (skill shell execution off): run `vbw next --json`, `vbw config
+No JSON above (skill shell execution off): run `VBW_SESSION_ID=${CLAUDE_SESSION_ID} vbw next --json`, `vbw config
 models`, `vbw config autonomy` with Bash first. "not a VBW project": set it up
 yourself (`vbw init`, `vbw statusline on`; say what was set up in one line),
-then `vbw next --json` again.
+then `VBW_SESSION_ID=${CLAUDE_SESSION_ID} vbw next --json` again.
 
 ## Autonomy
 
@@ -45,7 +45,7 @@ checking results (`accept`) and shipping always stop for user.
 
 ## Loop
 
-Do step for `action`, run `vbw next --json`, do next step. Stop when `gate` is
+Do step for `action`, run `VBW_SESSION_ID=${CLAUDE_SESSION_ID} vbw next --json`, do next step. Stop when `gate` is
 true, or a workflow runs in background (its result wakes you; then continue).
 At a stop, tell user in plain words what happened and what you need. Never
 claim more than kernel output shows.
@@ -56,8 +56,8 @@ say why (disabled on purpose, or Claude Code needs restart) and stop. Pass
 `models` (JSON from `vbw config models`) in every workflow's args.
 
 Before `spec` or `plan`: project has code and no `.vbw/map.md` → map first:
-`vbw run start map`, Workflow `vbw:mapping` (args `{"models": ...}`),
-`vbw run end`, write its `map` to `.vbw/map.md`. Read it before proposing
+`VBW_SESSION_ID=${CLAUDE_SESSION_ID} vbw run start map`, Workflow `vbw:mapping` (args `{"models": ...}`),
+`VBW_SESSION_ID=${CLAUDE_SESSION_ID} vbw run end`, write its `map` to `.vbw/map.md`. Read it before proposing
 anything.
 
 What user must see to decide (result, draft, sample output) goes inside
@@ -83,13 +83,13 @@ still has default title → `vbw milestone rename "<title>"`. Check
 `## Commands` in `.vbw/spec.md` (what every proof runs) fits what was agreed
 (right sub-project, right interpreter); fix there, then `vbw spec sync`.
 
-**plan**: `vbw run start plan`, Workflow `vbw:planning` with args
-`{"models": ...}`. Returns: `vbw run end`. Status `needs_decisions`: user
+**plan**: `VBW_SESSION_ID=${CLAUDE_SESSION_ID} vbw run start plan`, Workflow `vbw:planning` with args
+`{"models": ...}`. Returns: `VBW_SESSION_ID=${CLAUDE_SESSION_ID} vbw run end`. Status `needs_decisions`: user
 decides first (hands-off: see Autonomy). Ask each decision with
 AskUserQuestion, one at a time (why it matters in question, each option's
 trade-off as description, recommended first, marked "(Recommended)"). Record
 each answer: `vbw decide "<what was decided>" "<why: their reason, or the
-trade-off they accepted>"`. Plan again: `vbw run start plan`, workflow with
+trade-off they accepted>"`. Plan again: `VBW_SESSION_ID=${CLAUDE_SESSION_ID} vbw run start plan`, workflow with
 `{"decided": true, "models": ...}`. Planned: give user Lead's summary, the
 `choices` it made itself (any can change), Architect's `notes` (nice-to-haves,
 scope creep; can wait in backlog: offer `vbw todo add`).
@@ -100,24 +100,26 @@ it lists only changes: explain just those (rest stays approved). Else
 their files, project commands that will run. Ask user to review and type
 `/vbw:approve`. You cannot approve.
 
-**build**: `vbw run start build <detail.plans>`, Workflow `vbw:building` with
+**build**: `VBW_SESSION_ID=${CLAUDE_SESSION_ID} vbw run start build <detail.plans>`, Workflow `vbw:building` with
 args `{"plans": <detail.plans>, "docs": <detail.docs>, "models": ...}` (Dev per
-plan; Docs for documentation plans). Returns: `vbw run end`, `vbw prove`,
+plan; Docs for documentation plans). Returns: `VBW_SESSION_ID=${CLAUDE_SESSION_ID} vbw run end`, `vbw prove`,
 report each plan's result in one line (quote blockers and notes).
 
-**fix**: `vbw run start fix <detail.fixes>`, Workflow `vbw:fixing` with args
+**fix**: `VBW_SESSION_ID=${CLAUDE_SESSION_ID} vbw run start fix <detail.fixes>`, Workflow `vbw:fixing` with args
 `{"groups": <detail.groups>, "models": ...}` (fixes sharing files go to one
-Dev). Returns: `vbw run end`, `vbw prove`.
+Dev). Returns: `VBW_SESSION_ID=${CLAUDE_SESSION_ID} vbw run end`, `vbw prove`.
 
 **prove**: `vbw prove`, report what passed and failed.
 
-**qa**: `vbw run start qa`, Workflow `vbw:verifying` with args
+**qa**: `VBW_SESSION_ID=${CLAUDE_SESSION_ID} vbw run start qa`, Workflow `vbw:verifying` with args
 `{"phases": <detail.phases>, "tier": <detail.tier>, "models": ...}`; returns:
-`vbw run end`. QA records each phase's verdict; findings become fixes. Report
+`VBW_SESSION_ID=${CLAUDE_SESSION_ID} vbw run end`. QA records each phase's verdict; findings become fixes. Report
 verdicts and failed checks briefly.
 
 **run**: a run is open. VBW workflow of this session still running: wait. Else
-it was interrupted: `vbw run end` (its plans return to next wave), continue.
+it was interrupted: `VBW_SESSION_ID=${CLAUDE_SESSION_ID} vbw run end` (its plans return to next wave), continue.
+A run that belongs to another session: wait or check `vbw status`; never end it on
+your own. Only when the user states that session is closed: `vbw run end --owner-closed`.
 
 **unblock** (needs user): `vbw show plan <id>` per blocked plan; explain what
 Dev needs. Resolved: `vbw plan reset <id>`.
