@@ -367,9 +367,9 @@
       "qa": {
         "result": "pass",
         "tier": "standard",
-        "tree": "f4905c81a2a1043a58bdab9565f2e3dbdc69331f",
-        "at": "2026-10-02T11:35:31Z",
-        "note": "10/10 checks"
+        "tree": "1a8d87841d78209204f5d4f58c51d0e96a861b0a",
+        "at": "2026-10-02T11:59:36Z",
+        "note": "9/9 checks"
       }
     }
   ],
