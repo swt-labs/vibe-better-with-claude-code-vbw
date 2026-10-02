@@ -445,7 +445,7 @@
       "after": [
         "P4.1"
       ],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "Define the fixture and a seeded deviation (a file the plan requires is missing) that checks alone would not catch",
@@ -486,7 +486,7 @@
         "tests/kernel-accept.bats"
       ],
       "after": [],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "Run tests/kernel-accept.bats on the current code and keep the failing output (accept closes a QA-opened fix)",
@@ -509,7 +509,7 @@
         "tests/kernel-qafresh.bats"
       ],
       "after": [],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "Run tests/kernel-qafresh.bats on the current code and keep the failing output",
