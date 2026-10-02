@@ -247,7 +247,14 @@
         "The session transcript and debug log hold zero Stop-hook errors during that run.",
         "The record shows the session stopped at the accept stop.",
         "The L3 result names its fixture, its cost and its evidence level."
-      ]
+      ],
+      "qa": {
+        "result": "pass",
+        "tier": "standard",
+        "tree": "63a52428fed57e4a119aca5c17e6f1b4246ab213",
+        "at": "2026-10-02T11:02:40Z",
+        "note": "8/8 checks"
+      }
     },
     {
       "id": "P4",
@@ -597,7 +604,7 @@
       "req": "R8",
       "source": "qa",
       "attempts": 0,
-      "status": "fixed",
+      "status": "closed",
       "note": "The balanced L3 scenario's driver answered the [human] acceptance question itself: transcript 99416496 shows AskUserQuestion 'R1: does the greeting wording feel warm and friendly?' answered 'Works' (answer_recommended presses Enter), then 'vbw req accept R1'; the scenario project's next step is now ship, not accept. So stopped_at=accept in tools/l3-results/balanced.json was not the session's final state, and the scenario accepted a human requirement on the user's behalf. Fix tools/l3-suite.sh so the balanced scenario stops (never answers) at the accept question and records the state it actually stopped in; re-run it."
     },
     {
@@ -725,5 +732,10 @@
     "scope": [],
     "passed": true
   },
-  "lease": null
+  "lease": {
+    "run": "qa-20261002T110229Z",
+    "kind": "qa",
+    "started_at": "2026-10-02T11:02:29Z",
+    "files": []
+  }
 }
