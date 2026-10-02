@@ -302,7 +302,14 @@
         "After block or reset on an unchanged contract, the next vbw next --json proceeds without asking for re-approval",
         "Each case has a bats regression test that fails without the fix, and bash tools/test.sh passes under /bin/bash 3.2 and bash 5",
         "The kernel stays within its 3,000-line budget"
-      ]
+      ],
+      "qa": {
+        "result": "pass",
+        "tier": "standard",
+        "tree": "63a52428fed57e4a119aca5c17e6f1b4246ab213",
+        "at": "2026-10-02T10:58:14Z",
+        "note": "9/9 checks"
+      }
     },
     {
       "id": "P9",
