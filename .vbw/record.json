@@ -669,32 +669,32 @@
     "autonomy_cap": 25
   },
   "evidence": {
-    "at": "2026-10-02T11:07:13Z",
+    "at": "2026-10-02T11:33:15Z",
     "contract": "8689c114f7c273f7c29e45884c526ff5fee98ee45d74b7e6096952bdc9032f3c",
-    "tree": "071ebd0878bdbe3bc12b74570dcd45c2996ed57f",
+    "tree": "f4905c81a2a1043a58bdab9565f2e3dbdc69331f",
     "checks": {
       "C1": {
         "status": "pass",
         "exit": 0,
-        "seconds": 13,
+        "seconds": 15,
         "tail": "1..1\nok 1 R1: grants from two worktrees of one clone, started together, are all kept"
       },
       "C2": {
         "status": "pass",
         "exit": 0,
-        "seconds": 13,
+        "seconds": 14,
         "tail": "1..4\nok 1 R2: an interrupted vbw commit leaves no index files, no lock\nok 2 R2: an interrupted code fingerprint (prove, next) leaves no index file\nok 3 R2: the caller's EXIT trap still runs when vbw code is interrupted\nok 4 R2: the caller's EXIT trap survives a vbw write that completes"
       },
       "C3": {
         "status": "pass",
         "exit": 0,
-        "seconds": 5,
+        "seconds": 8,
         "tail": "1..11\nok 1 report: versions, doctor, and project state as counts and ids\nok 2 report: an empty count says none, never a blank\nok 3 report: never the spec's text, check output or file contents\nok 4 report: a corrupt record is named as corrupt without echoing its content\nok 5 report: outside a git repository it still prints, and says so\nok 6 report and rtk take no arguments beyond their usage\nok 7 rtk: not installed, with the install command that matches the machine\nok 8 rtk: installed shows its version and path; status equals no argument\nok 9 rtk: the Claude hook is on only when RTK's hook is in the user's settings\nok 10 rtk and report write nothing: no file in the project or settings changes\nok 11 docs/diagnostics.md says what the help says about both commands"
       },
       "C4": {
         "status": "pass",
         "exit": 0,
-        "seconds": 0,
+        "seconds": 1,
         "tail": "1..1\nok 1 R4: the Docs agent built a documentation requirement and it is proved"
       },
       "C5": {
@@ -712,19 +712,19 @@
       "C9": {
         "status": "pass",
         "exit": 0,
-        "seconds": 6,
+        "seconds": 9,
         "tail": "1..5\nok 1 blocking an approved plan keeps the approval and proceeds without re-approval\nok 2 resetting a blocked plan keeps the approval and the approved hash\nok 3 a plan's note does not change the contract hash\nok 4 changing a plan definition still withdraws the approval\nok 5 changing a check or a requirement still withdraws the approval"
       },
       "C10": {
         "status": "pass",
         "exit": 0,
-        "seconds": 7,
+        "seconds": 12,
         "tail": "1..3\nok 1 R11: a user rejection opens a fix and a later accept of that requirement closes it\nok 2 R11: a fix opened by QA stays open after the user accepts the requirement\nok 3 R11: the QA-opened fix closes only when QA records a passing verdict for the phase"
       },
       "C11": {
         "status": "pass",
         "exit": 0,
-        "seconds": 7,
+        "seconds": 8,
         "tail": "1..3\nok 1 R12: after a code change since the last proof, qa record refuses, names vbw prove, writes nothing\nok 2 R12: after vbw prove, the same qa record succeeds\nok 3 R12: the QA agent and the verifying workflow run prove and retry when qa record refuses"
       }
     },
