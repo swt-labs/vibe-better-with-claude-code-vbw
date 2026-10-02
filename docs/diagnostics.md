@@ -35,4 +35,23 @@ It prints:
 
 It never prints the spec's text, requirement text, code, file contents or check output. If `.vbw/record.json` does not parse, it prints `record: corrupt` and none of the content. Outside a git repository, it prints the environment and doctor sections only.
 
-`/vbw:report` runs this command for you.
+`/vbw:report` runs this command, drafts the GitHub issue around its output, and sends nothing until you confirm.
+
+## vbw rtk
+
+```
+$ vbw rtk
+rtk: installed (rtk 0.9.1, /opt/homebrew/bin/rtk)
+claude hook: on (rtk init -g)
+install with: brew install rtk
+```
+
+`vbw rtk [status]` shows the state of RTK (command-output compression). RTK is a third-party tool ([rtk-ai/rtk](https://github.com/rtk-ai/rtk)) that shrinks command output before it reaches Claude's context. `vbw rtk` and `vbw rtk status` print the same thing and change nothing.
+
+The three lines:
+
+- **rtk:** `installed` with its version and path, or `not installed`.
+- **claude hook:** `on (rtk init -g)` when RTK's hook is in your Claude settings `PreToolUse` hooks, otherwise `off`.
+- **install with:** the install command for your machine: `brew install rtk` if Homebrew is present, else `cargo install --git https://github.com/rtk-ai/rtk` if Cargo is present, else a pointer to the RTK page.
+
+`/vbw:rtk` explains this state, and with your yes installs RTK (the install command, then `rtk init -g`) or removes its hook (`rtk init -g --uninstall`). VBW's safety guard judges the command inside `rtk ...`, so the two work together.

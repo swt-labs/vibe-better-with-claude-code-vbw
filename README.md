@@ -96,6 +96,7 @@ it into VBW 2 through a few questions, then asks whether to keep the old folder.
 - [docs/workflows.md](docs/workflows.md): the team (Architect, Lead, Dev, QA, Scout, Debugger, Docs) and the workflows
 - [docs/guards.md](docs/guards.md): the safety guards
 - [docs/statusline.md](docs/statusline.md): the status line
+- [docs/diagnostics.md](docs/diagnostics.md): `vbw report` for bug reports and `vbw rtk`
 - [docs/convert.md](docs/convert.md): updating from VBW 1 and bringing in its projects
 - [plugin/CHANGELOG.md](plugin/CHANGELOG.md): what changed
 
