@@ -6,9 +6,15 @@
   "milestone": {
     "id": "M1",
     "title": "Close the 2.0 gaps",
-    "status": "active"
+    "status": "shipped"
   },
-  "shipped": [],
+  "shipped": [
+    {
+      "id": "M1",
+      "title": "Close the 2.0 gaps",
+      "at": "2026-10-02T12:15:14Z"
+    }
+  ],
   "requirements": [
     {
       "id": "R1",
@@ -705,6 +711,11 @@
       "id": "D9",
       "at": "2026-10-02T11:56:23Z",
       "text": "Contract approved: 9 requirements, 9 checks, 10 plans (ec29ba9f2c85)"
+    },
+    {
+      "id": "D10",
+      "at": "2026-10-02T12:15:14Z",
+      "text": "Shipped M1 Close the 2.0 gaps: 9 requirements proven or accepted"
     }
   ],
   "commands": {},
