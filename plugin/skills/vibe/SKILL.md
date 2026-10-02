@@ -58,8 +58,9 @@ purpose; or a restart of Claude Code picks up the setting) and stop. Pass
 `models` (the JSON from `vbw config models`) in every workflow's args.
 
 Before `spec` or `plan`: if the project already has code and `.vbw/map.md` does
-not exist, map it first: start the Workflow `vbw:mapping` (args `{"models": ...}`)
-and write its `map` to `.vbw/map.md`. Read the map before proposing anything.
+not exist, map it first: `vbw run start map`, the Workflow `vbw:mapping` (args
+`{"models": ...}`), `vbw run end`, then write its `map` to `.vbw/map.md`. Read
+it before proposing anything.
 
 What the user must see to decide (a result, a draft, a sample output) goes
 inside the AskUserQuestion: the question text or an option's `preview`. Text
@@ -115,10 +116,10 @@ Dev). When it returns: `vbw run end`, `vbw prove`.
 
 **prove**: `vbw prove`, then report what passed and what failed.
 
-**qa**: the Workflow `vbw:verifying` with args `{"phases": <detail.phases>,
-"tier": <detail.tier>, "models": ...}`: QA verifies each built phase against its
-goal, criteria and plans, and records its verdict; its findings become fixes.
-Report each phase's verdict and failed checks, one line each.
+**qa**: `vbw run start qa`, then the Workflow `vbw:verifying` with args
+`{"phases": <detail.phases>, "tier": <detail.tier>, "models": ...}`; when it
+returns, `vbw run end`. QA records each phase's verdict; findings become fixes.
+Report verdicts and failed checks briefly.
 
 **run**: a run is open. A VBW workflow of this session still running: wait.
 Otherwise it was interrupted: `vbw run end` (its plans return to the next

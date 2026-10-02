@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
-# vbw run start plan | build PLAN... | fix FIX... ; vbw run end
+# vbw run start plan | build PLAN... | fix FIX... | qa | map ; vbw run end
 # The run lease (docs/workflows.md): which files a workflow's agents may write.
-# The guards hold every subagent to it while it is active.
+# The guards hold every subagent to it while it is active. QA and mapping runs
+# write nothing (files []); the lease also tells the autonomy gate that a
+# workflow is still running.
 
 VBW_LEASE_HOURS=24
 
@@ -9,7 +11,7 @@ cmd_run() {
   local sub="${1:-}"
   [ $# -gt 0 ] && shift
   case "$sub" in
-    start) [ $# -ge 1 ] || vbw_usage_error "usage: vbw run start plan | build PLAN... | fix FIX..." ;;
+    start) [ $# -ge 1 ] || vbw_usage_error "usage: vbw run start plan | build PLAN... | fix FIX... | qa | map" ;;
     end) [ $# -eq 0 ] || vbw_usage_error "usage: vbw run end" ;;
     *) vbw_usage_error "usage: vbw run start KIND [IDS...] | vbw run end" ;;
   esac
@@ -32,9 +34,9 @@ cmd_run() {
     || vbw_die "a run is active ($(printf '%s' "$record" | jq -r .lease.run)): vbw run end first"
   ids=$(printf '%s\n' "$@" | jq -R . | jq -sc 'map(select(length > 0))')
   case "$kind" in
-    plan) [ "$ids" = "[]" ] || vbw_usage_error "usage: vbw run start plan" ;;
+    plan|qa|map) [ "$ids" = "[]" ] || vbw_usage_error "usage: vbw run start $kind" ;;
     build|fix) [ "$ids" != "[]" ] || vbw_usage_error "usage: vbw run start $kind IDS..." ;;
-    *) vbw_usage_error "run kind must be plan, build or fix" ;;
+    *) vbw_usage_error "run kind must be plan, build, fix, qa or map" ;;
   esac
   local problem
   problem=$(printf '%s' "$record" | jq -r --arg k "$kind" --argjson ids "$ids" '[
@@ -60,6 +62,7 @@ cmd_run() {
        ([.fixes[] | select(.id as $i | any($ids[]; . == $i))]) as $fx
        | if any($fx[]; has("command")) then null
          else [$fx[].req as $q | .plans[] | select(any(.reqs[]; . == $q)) | .files[]] | unique end
+     elif $k == "qa" or $k == "map" then []
      else null end) as $files
     | .lease = {run: "\($k)-\($at | gsub("[-:]"; ""))", kind: $k, started_at: $at, files: $files}
     | if $k == "build" then (.plans[] | select(.id as $i | any($ids[]; . == $i))).status = "building" else . end' \

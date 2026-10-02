@@ -254,3 +254,14 @@ lease() {
   run bash_call 'rtk git status'
   [ -z "$output" ]
 }
+
+@test "during a QA or mapping run, agents write nothing" {
+  lease qa '[]'
+  run as_agent Write "{\"file_path\": \"$PROJECT/src/pay.js\"}"
+  denied
+  [[ "$output" == *"cannot be written during a qa run: its agents only read"* ]]
+  run as_agent Bash '{"command": "echo x > notes.txt"}'
+  denied
+  run as_agent Bash '{"command": "vbw qa finding R1 \"no receipt\""}'
+  [ -z "$output" ]
+}

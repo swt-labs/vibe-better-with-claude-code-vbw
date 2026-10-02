@@ -68,7 +68,7 @@ carries `VBW-Plan:`/`VBW-Req:` trailers, so the record stays small.
 | `settings` | `profile` `quality`, `balanced` (default) or `budget`: the models VBW 1's team runs on (`vbw config`, `lib/profiles.json`); optional `autonomy` `guided`, `balanced` (the default when unset) or `hands-off`: how much `/vbw:vibe` does on its own (`/vbw:profile`); `autonomy_cap` steps per autonomous run (1–500, default 25); optional `models` overrides per agent (`architect`, `lead`, `dev`, `qa`, `scout`, `debugger`, `docs`; the earlier names `planner`, `critic`, `builder` are renamed to `lead`, `qa`, `dev` on first use) |
 | `evidence` | `null` or the last `vbw prove` result: `at`, `contract` (the hash proved), `tree` (the git tree id of the project files proved), `passed`, `checks` and `commands` (name → `{status, exit, seconds, tail}`), `scope[]` violations (docs/proof.md) |
 | `converted` | optional: `{ "from": ".vbw-planning", "at" }`, set by `vbw legacy done` once a VBW 1 plan was brought in (docs/convert.md) |
-| `lease` | `null` or `{ "run", "kind", "started_at", "files" }`: the active run (`kind` `plan`, `build` or `fix`; `files` the paths its agents may write, or `null`) that the guards hold subagents to (docs/workflows.md) |
+| `lease` | `null` or `{ "run", "kind", "started_at", "files" }`: the active run (`kind` `plan`, `build`, `fix`, `qa` or `map`; `files` the paths its agents may write: `null` for any, `[]` for none) that the guards hold subagents to (docs/workflows.md) |
 
 Unknown keys are rejected, at the top level and inside every item: an unknown
 key is a typo, a stale field or a newer schema, and all three must be loud.

@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.0.8] - 2026-10-02
+
+### Fixed
+
+- **Autonomous mode no longer wastes steps while QA or mapping runs** (the
+  repeated "Stop hook error ... step N of 25"). QA and mapping now run as
+  steps VBW knows about, and their agents can read but never write.
+
 ## [2.0.7] - 2026-10-02
 
 ### Changed

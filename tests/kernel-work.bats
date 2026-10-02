@@ -456,3 +456,18 @@ prove_all_green() {
     and .plans[0].tasks == ["card form", "submit handler"] and .plans[0].role == "dev" and .plans[1].role == "docs"
     and (.plans[1] | has("tasks") | not)' .vbw/record.json
 }
+
+@test "QA and mapping runs hold a lease that lets their agents write nothing" {
+  apply_plan
+  vbw_run run start qa
+  [ "$status" -eq 0 ]
+  jq -e '.lease.kind == "qa" and .lease.files == []' .vbw/record.json
+  "$VBW" approve > /dev/null
+  vbw_run next --json
+  echo "$output" | jq -e '.action == "run"'
+  "$VBW" run end > /dev/null
+  vbw_run run start map
+  jq -e '.lease.kind == "map" and .lease.files == []' .vbw/record.json
+  vbw_run run start qa P1
+  [ "$status" -eq 1 ]
+}

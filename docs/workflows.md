@@ -26,14 +26,15 @@ after a passing proof, QA verifies what the checks cannot (docs/proof.md). Then
 The router opens a lease before it starts a workflow and closes it after:
 
 ```
-vbw run start build P1.1 P1.2     # or: vbw run start fix F1 F2 | vbw run start plan
+vbw run start build P1.1 P1.2     # or: fix F1 F2 | plan | qa | map
 vbw run end
 ```
 
 `record.lease` is `{run, kind, started_at, files}`. `files` holds the paths the
 run's agents may write: the plans' files for `build`; for `fix`, the files of
 every plan that serves a fixed requirement; `null` for `plan` (the Lead writes
-test files that no plan owns yet). While a lease is active, any **subagent**
+test files that no plan owns yet); `[]` for `qa` and `map` (their agents
+only read; the lease also tells the autonomy gate a workflow is still running). While a lease is active, any **subagent**
 (the hook input carries `agent_type`) is held to it:
 
 - it writes only files in `lease.files` (when not null);

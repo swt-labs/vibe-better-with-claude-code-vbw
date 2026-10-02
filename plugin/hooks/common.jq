@@ -39,8 +39,10 @@ def project_path($cwd; $root):
 # Why a subagent may not write PATH (project-relative) under LEASE, or empty.
 def lease_write_denial($lease; $record):
   if . == null then empty
+  elif $lease.files == [] then
+    "\(.) cannot be written during a \($lease.kind) run: its agents only read"
   elif $lease.files != null and (. as $p | any($lease.files[]; . == $p) | not) then
-    "\(.) is outside this run's files (\($lease.files | join(", "))): builders write only their plan's files"
+    "\(.) is outside this run's files (\($lease.files | join(", "))): agents write only their plan's files"
   elif ($lease.kind | test("^(build|fix)$")) and (. as $p | any($record.checks[]?.files[]?; . == $p)) then
     "\(.) is a protected check file: the contract is fixed while building"
   else empty end;

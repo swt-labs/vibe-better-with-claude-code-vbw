@@ -179,9 +179,9 @@ if type != "object" then ["record must be a JSON object"] else
     ( $r.lease
       | select(. != null)
       | if type != "object" then "lease must be null or an object" else
-          ( select(((.run | nonempty) and (.kind | one_of(["plan","build","fix"])) and (.started_at | iso)
+          ( select(((.run | nonempty) and (.kind | one_of(["plan","build","fix","qa","map"])) and (.started_at | iso)
                     and (.files == null or (.files | type == "array" and all(.[]; safe_path)))) | not)
-            | "lease needs run, kind (plan, build or fix), started_at (ISO-8601 UTC) and files (null or relative paths)" ),
+            | "lease needs run, kind (plan, build, fix, qa or map), started_at (ISO-8601 UTC) and files (null or relative paths)" ),
           ( . as $l | keys[] | select(one_of(["run","kind","started_at","files"]) | not) | "lease has an unknown field: \(.)" )
         end )
   ]
