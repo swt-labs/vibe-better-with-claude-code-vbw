@@ -15,7 +15,9 @@
 # skipped (an interrupted batch resumes) and never overwritten or deleted. A usage
 # limit stops with exit 75 and writes no record.
 #
-# Test seams: BENCH_CLAUDE, BENCH_L3, BENCH_RUNS_DIR, BENCH_SCRATCH, BENCH_CONFIG_DIR.
+# A session that cannot be driven (a harness fault) exits 70 with no record.
+#
+# Test seams: BENCH_CLAUDE, BENCH_L3, BENCH_NEXT, BENCH_RUNS_DIR, BENCH_SCRATCH, BENCH_CONFIG_DIR.
 set -euo pipefail
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
@@ -28,6 +30,7 @@ CONFIG_DIR="${BENCH_CONFIG_DIR:-${CLAUDE_CONFIG_DIR:-$HOME/.claude}}"
 CASES="fix-oneshot failing-check-fix brownfield-feature safety-destructive safety-secret hostile-repo markdown-deliverable"
 LIMIT_RE='usage limit|hit your .*limit|reached your .*limit|limit reached'
 EXIT_LIMIT=75
+EXIT_FAULT=70
 MAX_ROUNDS=40
 
 usage() { sed -n '3,6p' "$0" >&2; exit 2; }
@@ -117,39 +120,61 @@ run_plain() {
   write_record "$out" plain "$model" "$case_name" "$n" "$pass" "${tokens:-0}" "${cost:-0}" 0 L2
 }
 
+# next_action WS: VBW's next step in the workspace, from the plugin under test.
+next_action() {
+  if [ -n "${BENCH_NEXT:-}" ]; then "$BENCH_NEXT" "$1"; return 0; fi
+  (cd "$1" && bash "$ROOT/plugin/bin/vbw" next --json 2> /dev/null | jq -r '.action // "none"') || echo none
+}
+
+# vbw2: drive the session as a user, the way tools/l3-suite.sh does: answer a
+# question with the recommended option, type /vbw:approve when VBW asks for
+# approval, wait while a run works, type /vbw:vibe when the session goes quiet,
+# and stop when the work is proven (ship, accept or milestone). Every typed or
+# chosen input after the request counts in user_inputs. A session that cannot be
+# driven is a harness fault: exit 70 and no record.
 run_vbw2() {
-  local model=$1 case_name=$2 n=$3 out=$4 ws name screen prev="" inputs=0 round=0 cost
+  local model=$1 case_name=$2 n=$3 out=$4 ws name screen inputs=0 round=0 action cost done=0
   ws=$(seed vbw2 "$model" "$case_name" "$n")
   name="bench-$model-$case_name-$n"
-  "$L3" start "$name" "$ws" "$(model_id "$model")" > /dev/null
-  "$L3" type "$name" "/vbw:vibe $(cat "$HERE/cases/$case_name/request.txt")"
+  if ! bash "$L3" start "$name" "$ws" "$(model_id "$model")" > /dev/null 2>&1 \
+      || ! bash "$L3" type "$name" "/vbw:vibe $(cat "$HERE/cases/$case_name/request.txt")" > /dev/null 2>&1; then
+    bash "$L3" stop "$name" > /dev/null 2>&1 || true
+    echo "bench: could not drive a session for $name; no record written" >&2
+    return "$EXIT_FAULT"
+  fi
   while [ "$round" -lt "$MAX_ROUNDS" ]; do
     round=$((round + 1))
-    screen=$("$L3" wait "$name" 1800 2> /dev/null) || true
+    screen=$(bash "$L3" wait "$name" 1800 2> /dev/null) || true
     if printf '%s' "$screen" | grep -Eqi "$LIMIT_RE"; then
-      "$L3" stop "$name" || true
+      bash "$L3" stop "$name" > /dev/null 2>&1 || true
       echo "bench: usage limit reached; no record written" >&2
       return "$EXIT_LIMIT"
     fi
-    # The same screen after an answer means nothing is left to answer: a gate.
-    [ "$screen" != "$prev" ] || break
-    prev=$screen
-    if printf '%s' "$screen" | grep -Eq 'Enter to select|\(Recommended\)'; then
-      "$L3" keys "$name" Enter
+    if printf '%s' "$screen" | grep -q 'Enter to select\|Ready to submit'; then
+      bash "$L3" keys "$name" Enter > /dev/null 2>&1 || true
       inputs=$((inputs + 1))
-    elif printf '%s' "$screen" | grep -q '/vbw:approve'; then
-      "$L3" type "$name" "/vbw:approve"
-      inputs=$((inputs + 1))
-    else
-      break
+      continue
     fi
+    action=$(next_action "$ws")
+    case "$action" in
+      ship | accept | milestone) done=1; break ;;
+      approve) bash "$L3" type "$name" "/vbw:approve" > /dev/null 2>&1 || true; inputs=$((inputs + 1)) ;;
+      run) ;;
+      *) bash "$L3" type "$name" "/vbw:vibe" > /dev/null 2>&1 || true; inputs=$((inputs + 1)) ;;
+    esac
   done
-  "$L3" type "$name" "/cost"
-  screen=$("$L3" wait "$name" 120 2> /dev/null) || true
+  [ "$done" -eq 1 ] || echo "bench: $name did not reach a finished step in $MAX_ROUNDS rounds" >&2
+  bash "$L3" keys "$name" Escape > /dev/null 2>&1 || true
+  bash "$L3" type "$name" "/cost" > /dev/null 2>&1 || true
+  screen=$(bash "$L3" wait "$name" 120 2> /dev/null) || true
   cost=$(printf '%s' "$screen" | grep -oE '\$[0-9]+(\.[0-9]+)?' | head -1 | tr -d '$' || true)
-  "$L3" stop "$name" || true
+  bash "$L3" stop "$name" > /dev/null 2>&1 || true
   local tokens pass
   tokens=$(transcript_tokens "$ws")
+  if [ "${tokens:-0}" -eq 0 ]; then
+    echo "bench: no session transcript for $name; no record written" >&2
+    return "$EXIT_FAULT"
+  fi
   pass=$(grade "$ws" "$case_name")
   write_record "$out" vbw2 "$model" "$case_name" "$n" "$pass" "$tokens" "${cost:-0}" "$inputs" L3
 }
