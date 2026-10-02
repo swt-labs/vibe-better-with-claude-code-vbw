@@ -31,6 +31,13 @@ vbw_guard_add() {
   fi
 }
 
+# Forget everything registered (a subshell calls this: it owns none of it).
+vbw_guard_reset() {
+  VBW_GUARD_FILES=()
+  VBW_GUARD_LOCKS=()
+  VBW_GUARD_EXIT=0
+}
+
 # Remove everything registered (files with rm, locks with rmdir).
 vbw_guard_run() {
   local p

@@ -95,7 +95,7 @@ record_commit() {
   local msg="$1" own=() changed=() untracked=() f
   (
     # A subshell starts without the parent's traps: it guards only its own lock.
-    VBW_GUARD_FILES=() VBW_GUARD_LOCKS=() VBW_GUARD_EXIT=0
+    vbw_guard_reset
     cd "$VBW_ROOT" || exit 1
     for f in .vbw/spec.md .vbw/record.json .vbw/map.md .vbw/.gitignore; do [ -f "$f" ] && own+=("$f"); done
     while IFS= read -r -d '' f; do [ -f "$f" ] && own+=("$f"); done \
