@@ -949,6 +949,11 @@
       "id": "T5",
       "text": "Status line says what is happening now: set refreshInterval so it stays current while the session waits on background work; one clear state (VBW working: what, for how long / waiting for you: what / idle); and a 'vbw activity' note for long work outside a VBW run (releases, test runs), shown until done",
       "status": "open"
+    },
+    {
+      "id": "T6",
+      "text": "Enforce the unenforced budgets: a status line CPU benchmark (30 ms), and prompt budget tests by one documented token estimate (router 2k, each skill 3k, all prompts 15k); trim if they show it (owner: not critical before the merge)",
+      "status": "open"
     }
   ],
   "decisions": [
@@ -1038,6 +1043,12 @@
       "text": "M2 ships as 2.0.12",
       "why": "2.0.11 went to the project-commands hotfix released before M2; replaces D12's version number",
       "at": "2026-10-02T18:44:57Z"
+    },
+    {
+      "id": "D17",
+      "text": "Q10: benchmark VBW 2 against plain Claude Code on the plan's cases; VBW 1 is inferred from its recorded baseline runs and the behaviour ledger, not reinstalled",
+      "why": "owner: reinstalling VBW 1 is too much trouble; VBW 1 data exists for fix-oneshot only",
+      "at": "2026-10-02T20:23:31Z"
     }
   ],
   "commands": {},
