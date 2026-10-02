@@ -580,7 +580,16 @@
       ]
     }
   ],
-  "fixes": [],
+  "fixes": [
+    {
+      "id": "F1",
+      "req": "R8",
+      "source": "qa",
+      "attempts": 0,
+      "status": "fixed",
+      "note": "The balanced L3 scenario's driver answered the [human] acceptance question itself: transcript 99416496 shows AskUserQuestion 'R1: does the greeting wording feel warm and friendly?' answered 'Works' (answer_recommended presses Enter), then 'vbw req accept R1'; the scenario project's next step is now ship, not accept. So stopped_at=accept in tools/l3-results/balanced.json was not the session's final state, and the scenario accepted a human requirement on the user's behalf. Fix tools/l3-suite.sh so the balanced scenario stops (never answers) at the accept question and records the state it actually stopped in; re-run it."
+    }
+  ],
   "todos": [],
   "decisions": [
     {
