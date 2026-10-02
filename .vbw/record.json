@@ -943,7 +943,7 @@
     {
       "id": "T4",
       "text": "Two sessions on one project: the run lease does not record its session, so a second session is told to end the first session's live run as 'interrupted'. Record the owning session in the lease; other sessions wait unless it is stale.",
-      "status": "open"
+      "status": "done"
     },
     {
       "id": "T5",
