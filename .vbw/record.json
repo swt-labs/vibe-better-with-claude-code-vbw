@@ -1165,7 +1165,7 @@
         "P15.2",
         "P15.3"
       ],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "write tools/baseline/verify-results.sh [DIR] per the contract in tests/baseline-results.bats (default DIR tools/baseline/results/runs): exits non-zero naming each missing, duplicate or incomplete run, a missing user_inputs, and a level that does not match the arm (plain L2, vbw2 L3)",
