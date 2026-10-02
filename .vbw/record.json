@@ -4,9 +4,9 @@
     "name": "v2"
   },
   "milestone": {
-    "id": "M2",
-    "title": "Several sessions, one project",
-    "status": "shipped"
+    "id": "M3",
+    "title": "Benchmark and launch readiness",
+    "status": "active"
   },
   "shipped": [
     {
