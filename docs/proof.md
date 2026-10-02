@@ -142,6 +142,11 @@ closes; the verdict with `vbw qa record PHASE pass|fail TIER`, against the
 evidence's tree. A pass closes the phase's QA fixes; code that changes
 afterwards needs QA again; three failed rounds in a row escalate.
 
+`vbw qa record` refuses a verdict when no proof exists yet, or when the project
+files differ from the proof's `tree` (the code changed since the last proof). The
+error asks for `vbw prove` first; the verdict is recorded only against a proof of
+the current code.
+
 ### Freshness
 
 `tree` fingerprints the project files the proof ran on (tracked and new files,
