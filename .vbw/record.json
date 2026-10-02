@@ -202,7 +202,14 @@
         "A test sets a caller EXIT trap, interrupts the commit, and the caller's trap still runs.",
         "Both tests pass under /bin/bash 3.2 and bash 5, and bash tools/test.sh passes in full.",
         "The kernel is still within 3,000 lines."
-      ]
+      ],
+      "qa": {
+        "result": "pass",
+        "tier": "standard",
+        "tree": "63a52428fed57e4a119aca5c17e6f1b4246ab213",
+        "at": "2026-10-02T11:00:04Z",
+        "note": "12/12 checks"
+      }
     },
     {
       "id": "P2",
