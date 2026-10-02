@@ -386,9 +386,7 @@
         "docs/diagnostics.md",
         "README.md"
       ],
-      "after": [
-        "P2.1"
-      ],
+      "after": [],
       "status": "planned",
       "role": "docs",
       "tasks": [
@@ -607,6 +605,11 @@
       "id": "D4",
       "at": "2026-10-02T01:57:08Z",
       "text": "Contract approved: 9 requirements, 8 checks, 10 plans (843599e1a3e3)"
+    },
+    {
+      "id": "D5",
+      "at": "2026-10-02T03:08:44Z",
+      "text": "Contract approved: 10 requirements, 9 checks, 11 plans (85fc3e706c9b)"
     }
   ],
   "commands": {},
