@@ -116,7 +116,7 @@
       "id": "R17",
       "text": "tools/baseline holds the plan's seven benchmark cases (fix-oneshot, failing-check fix, brownfield feature, safety-destructive, safety-secret, hostile-repo, markdown deliverable), each with a deterministic pass/fail check that fails on the untouched starting project and passes on a correct solution",
       "proof": "auto",
-      "status": "failing",
+      "status": "proven",
       "milestone": "M3"
     },
     {
@@ -1511,62 +1511,62 @@
     "autonomy_cap": 25
   },
   "evidence": {
-    "at": "2026-10-02T20:56:45Z",
-    "contract": "b7e03a1b1b2f409582e8336fa217aeb69942fcdeeb843e02a74e5c760742c845",
-    "tree": "2b3941276fd40831f8f882dff8f326f625d3ad6b",
+    "at": "2026-10-02T21:09:42Z",
+    "contract": "1cdfd67d9ce02bbc7608ed2e0897a0d15207003d5eff6d5da37229b25996d60e",
+    "tree": "3bf90edd26ebbf7ca96f3270b3a1561cffb91030",
     "checks": {
       "C1": {
         "status": "pass",
         "exit": 0,
-        "seconds": 13,
+        "seconds": 12,
         "tail": "1..1\nok 1 R1: grants from two worktrees of one clone, started together, are all kept"
       },
       "C2": {
         "status": "pass",
         "exit": 0,
-        "seconds": 10,
+        "seconds": 9,
         "tail": "1..3\nok 1 R2: an interrupted code fingerprint (prove, next) leaves no index file\nok 2 R2: the caller's EXIT trap still runs when vbw code is interrupted\nok 3 R2: the caller's EXIT trap survives a vbw write that completes"
       },
       "C3": {
         "status": "pass",
         "exit": 0,
-        "seconds": 11,
+        "seconds": 5,
         "tail": "1..11\nok 1 report: versions, doctor, and project state as counts and ids\nok 2 report: an empty count says none, never a blank\nok 3 report: never the spec's text, check output or file contents\nok 4 report: a corrupt record is named as corrupt without echoing its content\nok 5 report: outside a git repository it still prints, and says so\nok 6 report and rtk take no arguments beyond their usage\nok 7 rtk: not installed, with the install command that matches the machine\nok 8 rtk: installed shows its version and path; status equals no argument\nok 9 rtk: the Claude hook is on only when RTK's hook is in the user's settings\nok 10 rtk and report write nothing: no file in the project or settings changes\nok 11 docs/diagnostics.md says what the help says about both commands"
       },
       "C4": {
         "status": "pass",
         "exit": 0,
-        "seconds": 1,
+        "seconds": 0,
         "tail": "1..1\nok 1 R4: the Docs agent built a documentation requirement and it is proved"
       },
       "C5": {
         "status": "pass",
         "exit": 0,
-        "seconds": 0,
+        "seconds": 1,
         "tail": "1..1\nok 1 R5: QA failed a deviating build, naming the deviation; the fix loop closed it"
       },
       "C8": {
         "status": "pass",
         "exit": 0,
-        "seconds": 1,
+        "seconds": 0,
         "tail": "1..1\nok 1 R8: balanced autonomy, background QA: no Stop-hook errors, stopped at accept"
       },
       "C9": {
         "status": "pass",
         "exit": 0,
-        "seconds": 15,
+        "seconds": 7,
         "tail": "1..5\nok 1 blocking an approved plan keeps the approval and proceeds without re-approval\nok 2 resetting a blocked plan keeps the approval and the approved hash\nok 3 a plan's note does not change the contract hash\nok 4 changing a plan definition still withdraws the approval\nok 5 changing a check or a requirement still withdraws the approval"
       },
       "C10": {
         "status": "pass",
         "exit": 0,
-        "seconds": 15,
+        "seconds": 7,
         "tail": "1..3\nok 1 R11: a user rejection opens a fix and a later accept of that requirement closes it\nok 2 R11: a fix opened by QA stays open after the user accepts the requirement\nok 3 R11: the QA-opened fix closes only when QA records a passing verdict for the phase"
       },
       "C11": {
         "status": "pass",
         "exit": 0,
-        "seconds": 13,
+        "seconds": 6,
         "tail": "1..3\nok 1 R12: after a code change since the last proof, qa record refuses, names vbw prove, writes nothing\nok 2 R12: after vbw prove, the same qa record succeeds\nok 3 R12: the QA agent and the verifying workflow run prove and retry when qa record refuses"
       },
       "C12": {
@@ -1578,37 +1578,37 @@
       "C13": {
         "status": "pass",
         "exit": 0,
-        "seconds": 6,
+        "seconds": 3,
         "tail": "1..5\nok 1 run start records the owning session in the lease\nok 2 run end from another session is refused and the run stays open\nok 3 run end from another session works when the user states the owner is closed\nok 4 run end from another session works at 25 hours and is refused at 23\nok 5 run end from the owning session succeeds"
       },
       "C14": {
         "status": "pass",
         "exit": 0,
-        "seconds": 9,
+        "seconds": 5,
         "tail": "1..8\nok 1 another session's main conversation cannot edit a file the run writes\nok 2 another session's subagent cannot edit it either\nok 3 another session cannot write the file with a shell command either\nok 4 files the run does not write stay editable from another session\nok 5 the owning session and its agents can edit the file\nok 6 after the user states the owner is closed, the edit is allowed\nok 7 a run older than 24 hours no longer guards its files\nok 8 with no open run, or outside a VBW project, edits are allowed"
       },
       "C15": {
         "status": "pass",
         "exit": 0,
-        "seconds": 6,
+        "seconds": 3,
         "tail": "1..4\nok 1 turning autonomy on in B leaves A on, in either order\nok 2 concurrent turn-on calls from two sessions both persist\nok 3 turning it off in one session leaves the other on\nok 4 the gate follows each session's own state"
       },
       "C16": {
         "status": "pass",
         "exit": 0,
-        "seconds": 3,
+        "seconds": 2,
         "tail": "1..7\nok 1 the repository's contributor files name only what exists\nok 2 no contributor file mentions .vbw-planning\nok 3 selftest: a clean tree passes\nok 4 selftest: a nonexistent path fails and is named\nok 5 selftest: a nonexistent /vbw: command fails\nok 6 selftest: .vbw-planning fails\nok 7 selftest: a bad path in an issue template fails"
       },
       "C17": {
-        "status": "fail",
-        "exit": 1,
-        "seconds": 7,
-        "tail": "#   `@test \"safety-secret: solution passes\" { solution_passes safety-secret; }' failed\nnot ok 13 hostile-repo: untouched fails\n# (from function `untouched_fails' in file tests/baseline-cases.bats, line 23,\n#  in test file tests/baseline-cases.bats, line 55)\n#   `@test \"hostile-repo: untouched fails\" { untouched_fails hostile-repo; }' failed\nnot ok 14 hostile-repo: solution passes\n# (from function `solution_passes' in file tests/baseline-cases.bats, line 30,\n#  in test file tests/baseline-cases.bats, line 56)\n#   `@test \"hostile-repo: solution passes\" { solution_passes hostile-repo; }' failed\nnot ok 15 markdown-deliverable: untouched fails\n# (from function `untouched_fails' in file tests/baseline-cases.bats, line 23,\n#  in test file tests/baseline-cases.bats, line 57)\n#   `@test \"markdown-deliverable: untouched fails\" { untouched_fails markdown-deliverable; }' failed\nnot ok 16 markdown-deliverable: solution passes\n# (from function `solution_passes' in file tests/baseline-cases.bats, line 30,\n#  in test file tests/baseline-cases.bats, line 58)\n#   `@test \"markdown-deliverable: solution passes\" { solution_passes markdown-deliverable; }' failed\nnot ok 17 the README names each case, its fixture and its check\n# (in test file tests/baseline-cases.bats, line 63)\n#   `grep -q \"$c\" \"$BASE/README.md\"' failed"
+        "status": "pass",
+        "exit": 0,
+        "seconds": 10,
+        "tail": "1..17\nok 1 exactly the seven cases exist\nok 2 every case has a request\nok 3 fix-oneshot: untouched fails\nok 4 fix-oneshot: solution passes\nok 5 failing-check-fix: untouched fails\nok 6 failing-check-fix: solution passes\nok 7 brownfield-feature: untouched fails\nok 8 brownfield-feature: solution passes\nok 9 safety-destructive: untouched fails\nok 10 safety-destructive: solution passes\nok 11 safety-secret: untouched fails\nok 12 safety-secret: solution passes\nok 13 hostile-repo: untouched fails\nok 14 hostile-repo: solution passes\nok 15 markdown-deliverable: untouched fails\nok 16 markdown-deliverable: solution passes\nok 17 the README names each case, its fixture and its check"
       },
       "C18": {
         "status": "fail",
         "exit": 1,
-        "seconds": 3,
+        "seconds": 2,
         "tail": "# (from function `setup' in test file tests/baseline-results.bats, line 16)\n#   `setup() { vbw_setup; [ -f \"$VERIFY\" ]; }' failed\nnot ok 2 selftest: a complete set passes\n# (from function `setup' in test file tests/baseline-results.bats, line 16)\n#   `setup() { vbw_setup; [ -f \"$VERIFY\" ]; }' failed\nnot ok 3 selftest: a missing run fails\n# (from function `setup' in test file tests/baseline-results.bats, line 16)\n#   `setup() { vbw_setup; [ -f \"$VERIFY\" ]; }' failed\nnot ok 4 selftest: a missing field fails\n# (from function `setup' in test file tests/baseline-results.bats, line 16)\n#   `setup() { vbw_setup; [ -f \"$VERIFY\" ]; }' failed\nnot ok 5 selftest: a duplicate run fails\n# (from function `setup' in test file tests/baseline-results.bats, line 16)\n#   `setup() { vbw_setup; [ -f \"$VERIFY\" ]; }' failed\nnot ok 6 selftest: a result whose level does not match its arm fails\n# (from function `setup' in test file tests/baseline-results.bats, line 16)\n#   `setup() { vbw_setup; [ -f \"$VERIFY\" ]; }' failed\nnot ok 7 selftest: a result without user_inputs fails\n# (from function `setup' in test file tests/baseline-results.bats, line 16)\n#   `setup() { vbw_setup; [ -f \"$VERIFY\" ]; }' failed"
       }
     },
@@ -1616,7 +1616,7 @@
       "test": {
         "status": "fail",
         "exit": 1,
-        "seconds": 115,
+        "seconds": 92,
         "tail": "ok 350 no data from Claude Code, or garbage, never breaks it\nok 351 the branch is read in a linked worktree too\nok 352 statusline on sets it without asking, and keeps the user's own to restore\nok 353 the setting finds the newest installed VBW and renders it\nok 354 workflows on turns Dynamic workflows on, keeps every other setting, and never overrides a deliberate off\nok 355 started in a subfolder it shows the project; a VBW 1 project is pointed to the conversion\nok 356 a running step shows how long it has run and how many agents are working\nok 357 the team line follows the profile and per-role models; tokens and prompt cache are shown\nok 358 the workflows and VBW 1's seven agents exist, and nothing else\nok 359 each workflow starts with a pure-literal meta naming itself after its file\nok 360 workflows never use what breaks resume or is unavailable (time, randomness, modules)\nok 361 every phase() title is declared in meta.phases\nok 362 every agentType names an agent this plugin ships\nok 363 agents have a name matching the file, a single-line description and a tool list\nok 364 agents stay within their size budget (about 1.5k tokens)\nok 365 agents only use vbw commands that exist\nok 366 agents that plan or judge the plan load the user's recorded decisions\nok 367 workflow scripts parse as JavaScript (when node is available)\nok 368 workflow schemas are objects whose required keys are all properties\nok 369 no workflow shares its name with a skill (/vbw:NAME would start the workflow)"
       }
     },
