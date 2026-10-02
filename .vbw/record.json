@@ -79,6 +79,20 @@
       "proof": "auto",
       "status": "proven",
       "milestone": "M1"
+    },
+    {
+      "id": "R11",
+      "text": "Accepting a [human] requirement closes only the fixes opened by the user's own rejections; a fix QA opened stays open until QA passes the phase again",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M1"
+    },
+    {
+      "id": "R12",
+      "text": "QA cannot record a verdict on a proof older than the current code: vbw qa record refuses and asks for vbw prove first",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M1"
     }
   ],
   "checks": [
@@ -194,6 +208,28 @@
       "files": [
         "tests/kernel-approval.bats"
       ]
+    },
+    {
+      "id": "C10",
+      "req": "R11",
+      "run": [
+        "bats",
+        "tests/kernel-accept.bats"
+      ],
+      "files": [
+        "tests/kernel-accept.bats"
+      ]
+    },
+    {
+      "id": "C11",
+      "req": "R12",
+      "run": [
+        "bats",
+        "tests/kernel-qafresh.bats"
+      ],
+      "files": [
+        "tests/kernel-qafresh.bats"
+      ]
     }
   ],
   "phases": [
@@ -283,14 +319,14 @@
         "R7"
       ],
       "milestone": "M1",
-      "goal": "/vbw:debug fixes a seeded bug at its root cause with a regression test, and /vbw:research returns a sourced answer.",
+      "goal": "In real Claude Code sessions, /vbw:debug fixes a seeded bug at its root cause with a regression test, and /vbw:research returns a sourced answer.",
       "criteria": [
-        "An L3 scenario seeds a named bug in a fixture and runs /vbw:debug.",
-        "The fix is committed at the seeded root cause, and the diff does not only mask the symptom.",
-        "A new regression test is committed, fails on the pre-fix code, and passes after.",
-        "An L3 scenario runs /vbw:research on a question with a known answer.",
-        "The answer lists at least one source (URL or file path) that a person can open and that supports the answer.",
-        "Both results are logged with fixture, cost and evidence level."
+        "An L3 scenario runs /vbw:debug on a fixture project with one seeded bug, and the run ends with the bug fixed.",
+        "The fix commit includes a new regression test that fails when the fix is reverted.",
+        "The debugger's recorded root cause names the seeded defect (file and cause), not only its symptom.",
+        "An L3 scenario runs /vbw:research on a named question and the answer lists at least one source (URL or file path) for each claim.",
+        "R6 and R7 show as proven in `vbw show requirements`.",
+        "The results are recorded in tests/l3-results.bats with the evidence level and fixture named."
       ]
     },
     {
@@ -300,13 +336,14 @@
         "R9"
       ],
       "milestone": "M1",
-      "goal": "A visual accept check asks the user for a screenshot of the page and stores it with their verdict.",
+      "goal": "A visual [human] accept check asks the user to supply a screenshot of the page and stores it with their verdict, with no screenshot tool shipped (per D1).",
       "criteria": [
-        "When a [human] visual check comes up at accept, the prompt asks the user to attach a screenshot, and names the page.",
-        "The screenshot file is stored in the project, and the record links it to the check and the user's verdict.",
-        "VBW ships no screenshot tool and does not start a browser (decision D1), and a test checks that.",
-        "Accepting without a screenshot is refused, or the verdict is recorded as lacking one; the behavior is stated in docs/.",
-        "An L3 scenario runs the flow and checks the record. L4 owner acceptance is listed as not done until the owner has done it."
+        "At a visual accept stop, the prompt asks the user to attach a screenshot of the page before they give a verdict.",
+        "After the verdict, the screenshot file is stored in the project and referenced from the same record entry as the verdict.",
+        "If no screenshot is supplied, the user is asked again, or can explicitly skip it and the skip is recorded.",
+        "No screenshot tool or browser driver is added and no new runtime dependency appears.",
+        "An L3 scenario takes a visual accept through to a recorded verdict plus screenshot.",
+        "docs/ describes the screenshot accept step."
       ]
     },
     {
@@ -325,6 +362,39 @@
         "After block or reset on an unchanged contract, the next vbw next --json proceeds without asking for re-approval",
         "Each case has a bats regression test that fails without the fix, and bash tools/test.sh passes under /bin/bash 3.2 and bash 5",
         "The kernel stays within its 3,000-line budget"
+      ]
+    },
+    {
+      "id": "P9",
+      "title": "Accept closes only the user's own fixes",
+      "reqs": [
+        "R11"
+      ],
+      "milestone": "M1",
+      "goal": "Accepting a [human] requirement closes only the fixes opened by the user's own rejections, and leaves QA-opened fixes open until QA passes the phase again.",
+      "criteria": [
+        "Test: a user rejection opens a fix, and a later accept of that requirement closes it.",
+        "Test: a fix opened by QA stays open after the user accepts the requirement.",
+        "Test: the QA-opened fix closes only when QA records a passing verdict for the phase.",
+        "Each regression test fails when run against the code before the fix.",
+        "R11 shows as proven in `vbw show requirements`, and bash tools/test.sh passes."
+      ]
+    },
+    {
+      "id": "P10",
+      "title": "QA verdicts require a fresh proof",
+      "reqs": [
+        "R12"
+      ],
+      "milestone": "M1",
+      "goal": "vbw qa record refuses to record a verdict on a proof older than the current code and tells the caller to run vbw prove first.",
+      "criteria": [
+        "Test: after a code change since the last vbw prove, `vbw qa record` exits non-zero and writes nothing to the record.",
+        "The refusal message names `vbw prove` as the next step.",
+        "Test: after vbw prove, the same `vbw qa record` succeeds.",
+        "The QA agent and workflow handle the refusal by running prove and retrying, and a test covers that path.",
+        "The kernel stays within its 3,000-line budget, checked by tests/standards.bats.",
+        "R12 shows as proven in `vbw show requirements`."
       ]
     }
   ],
@@ -468,6 +538,26 @@
       "note": "C5 (tests/l3-results.bats, protected) is unsatisfiable by any result file: its jq '.facts.first_qa_note | contains(.facts.deviation)' evaluates .facts.deviation against the piped string and errors ('Cannot index string with string facts'). Fix needed in the test, e.g. '.facts as $f | $f.first_qa_note | contains($f.deviation)'. The scenario (tools/l3-suite.sh) and a real passing L3 result (tools/l3-results/qafix.json, committed) are done."
     },
     {
+      "id": "P8.1",
+      "phase": "P8",
+      "title": "Exclude a plan's note from the contract hash",
+      "reqs": [
+        "R10"
+      ],
+      "files": [
+        "plugin/lib/contract.sh",
+        "tests/kernel-approval.bats"
+      ],
+      "after": [],
+      "status": "done",
+      "role": "dev",
+      "tasks": [
+        "Confirm tests/kernel-approval.bats fails today (note is hashed)",
+        "Hash plans without status and note in contract_hash",
+        "Run bash tools/test.sh under /bin/bash 3.2 and bash 5; confirm the kernel is within 3,000 lines"
+      ]
+    },
+    {
       "id": "P6.1",
       "phase": "P6",
       "title": "L3 scenarios: debug and research",
@@ -561,23 +651,72 @@
       ]
     },
     {
-      "id": "P8.1",
-      "phase": "P8",
-      "title": "Exclude a plan's note from the contract hash",
+      "id": "P9.1",
+      "phase": "P9",
+      "title": "Accept closes only the user's own fixes",
       "reqs": [
-        "R10"
+        "R11"
       ],
       "files": [
-        "plugin/lib/contract.sh",
-        "tests/kernel-approval.bats"
+        "plugin/lib/cmd-req.sh",
+        "tests/kernel-accept.bats"
       ],
-      "after": [],
-      "status": "done",
+      "after": [
+        "P7.1"
+      ],
+      "status": "planned",
       "role": "dev",
       "tasks": [
-        "Confirm tests/kernel-approval.bats fails today (note is hashed)",
-        "Hash plans without status and note in contract_hash",
+        "Run tests/kernel-accept.bats on the current code and keep the failing output (accept closes a QA-opened fix)",
+        "In vbw req accept, close only open, fixed or escalated fixes whose source is not qa; update the header comment",
+        "Confirm the existing accept test in tests/kernel-work.bats and tests/kernel-qa.bats still pass",
         "Run bash tools/test.sh under /bin/bash 3.2 and bash 5; confirm the kernel is within 3,000 lines"
+      ]
+    },
+    {
+      "id": "P10.1",
+      "phase": "P10",
+      "title": "qa record refuses a stale proof",
+      "reqs": [
+        "R12"
+      ],
+      "files": [
+        "plugin/lib/cmd-qa.sh",
+        "plugin/agents/qa.md",
+        "plugin/workflows/verifying.js",
+        "tests/kernel-qafresh.bats"
+      ],
+      "after": [],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "Run tests/kernel-qafresh.bats on the current code and keep the failing output",
+        "In cmd-qa.sh, before any write, refuse a verdict when the current vbw_code_tree differs from evidence.tree, exiting non-zero with a message that names vbw prove as the next step (reuse next_code_changed; no new fingerprint logic)",
+        "Add to the QA agent mandate and the verifying workflow prompt: if qa record refuses, run vbw prove, then retry the record once",
+        "Run bash tools/test.sh under /bin/bash 3.2 and bash 5; confirm the kernel is within 3,000 lines"
+      ]
+    },
+    {
+      "id": "P10.2",
+      "phase": "P10",
+      "title": "Document accept scope and the fresh-proof rule",
+      "reqs": [
+        "R12"
+      ],
+      "files": [
+        "docs/proof.md"
+      ],
+      "after": [
+        "P7.3",
+        "P9.1",
+        "P10.1"
+      ],
+      "status": "planned",
+      "role": "docs",
+      "tasks": [
+        "State that accepting a [human] requirement closes only fixes opened by the user's rejections and that QA-opened fixes close only on a passing QA verdict",
+        "State that vbw qa record refuses a verdict on a proof older than the current code and asks for vbw prove first",
+        "Note that the QA agent runs prove and retries after such a refusal"
       ]
     }
   ],

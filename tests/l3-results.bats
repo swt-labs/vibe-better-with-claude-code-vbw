@@ -42,7 +42,7 @@ facts() { jq -e "$2" "$RESULTS/$1.json" > /dev/null; }
 @test "R5: QA failed a deviating build, naming the deviation; the fix loop closed it" {
   result_ok qafix
   facts qafix '.facts.deviation | type == "string" and length > 0'
-  facts qafix '.facts.first_qa_verdict == "fail" and (.facts.first_qa_note | contains(.facts.deviation))
+  facts qafix '.facts.first_qa_verdict == "fail" and (.facts.deviation as $d | .facts.first_qa_note | contains($d))
     and .facts.fix_rounds >= 1 and .facts.final_qa_verdict == "pass"
     and .facts.phase_proved == true'
 }
