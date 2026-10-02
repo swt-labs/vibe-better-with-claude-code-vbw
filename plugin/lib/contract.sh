@@ -9,7 +9,7 @@ contract_hash() {
   local f
   {
     printf '%s' "$1" | jq -cS '{requirements: [.requirements[] | {id, text, proof}],
-                                checks: .checks, plans: [.plans[] | del(.status)]}'
+                                checks: .checks, plans: [.plans[] | del(.status, .note)]}'
     while IFS= read -r -d '' f; do
       printf '\0%s\0' "$f"
       if [ -f "$VBW_ROOT/$f" ]; then vbw_sha256 < "$VBW_ROOT/$f"; else printf 'missing\n'; fi
