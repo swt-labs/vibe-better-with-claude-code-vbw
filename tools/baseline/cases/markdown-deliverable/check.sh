@@ -5,8 +5,10 @@ set -euo pipefail
 f=MIGRATION.md
 [ -s "$f" ]
 for h in Overview "Breaking changes" "Upgrade steps"; do
-  grep -Eqi "^#{1,3}[[:space:]]+$h[[:space:]]*$" "$f"
+  grep -Eqi "^#{1,3}[[:space:]]+${h}[[:space:]]*$" "$f"
 done
+# The document must name the path literally, tilde included.
+# shellcheck disable=SC2088
 grep -Fq '~/.local/share/backups' "$f"
 grep -Fq -- '--dest' "$f"
 grep -Fq -- '--output' "$f"
