@@ -469,7 +469,14 @@
         "`vbw run end` from session B succeeds when the open run is older than 24 hours (tested with a run whose start time is 25 hours old) and is refused at 23 hours.",
         "`vbw run end` from the owning session still succeeds.",
         "Bats tests cover each case above, each shown to fail before the change, and `bash tools/test.sh` passes under bash 3.2 and bash 5."
-      ]
+      ],
+      "qa": {
+        "result": "pass",
+        "tier": "standard",
+        "tree": "cc68159b79fdc83827d8556ee1296df1e925ebd2",
+        "at": "2026-10-02T18:15:46Z",
+        "note": "10/10 checks"
+      }
     },
     {
       "id": "P12",
