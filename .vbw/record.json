@@ -774,7 +774,7 @@
       "after": [
         "P11.1"
       ],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "vibe and map skills: prefix vbw run start/next/run end with VBW_SESSION_ID=${CLAUDE_SESSION_ID}; say run end from another session needs the user to state the owner is closed (--owner-closed), never ending another session's run on its own",
@@ -799,7 +799,7 @@
       "after": [
         "P11.1"
       ],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "common.jq: guard_context exposes a foreign lease (open under 24h, has session, hook session_id differs) for main conversation and agents alike",
@@ -824,14 +824,15 @@
       "after": [
         "P11.1"
       ],
-      "status": "planned",
+      "status": "blocked",
       "role": "dev",
       "tasks": [
         "cmd-auto.sh: keep one state file per session (.vbw/runtime/auto.SESSION.json), written atomically, so on never touches another session's file",
         "off and status take an optional SESSION_ID (else the caller's session from vbw_session; neither: usage error); the gate reads and counts only its own session's file",
         "update the auto cases in tests/kernel-surface.bats to the per-session files",
         "run tests/kernel-auto-sessions.bats and the full suite under bash 3.2 and bash 5"
-      ]
+      ],
+      "note": "Per-session auto files (auto.SESSION.json) are implemented in plugin/lib/cmd-auto.sh and tests/kernel-surface.bats is updated; kernel-auto-sessions.bats and all other tests pass. But tests/statusline.bats #306 (armed autonomous run visible) fails because plugin/scripts/vbw-statusline.sh (line 76) and statusline.jq still read .vbw/runtime/auto.json. Fix needs those two files (read session_id from the statusline input, pass .vbw/runtime/auto.$sid.json) plus docs/statusline.md, all outside P13.1's files. Edits to cmd-auto.sh and kernel-surface.bats are uncommitted in the tree."
     }
   ],
   "fixes": [
