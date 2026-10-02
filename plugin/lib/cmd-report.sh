@@ -19,11 +19,15 @@ cmd_report() {
   root=$(git rev-parse --show-toplevel 2> /dev/null) || return 0
   [ -f "$root/.vbw/record.json" ] || return 0
   printf '\n### Project state\n\n```\n'
+  if ! jq -e . "$root/.vbw/record.json" > /dev/null 2>&1; then
+    printf 'record: corrupt (.vbw/record.json does not parse; content not shown)\n```\n'
+    return 0
+  fi
   jq -r '"milestone \(.milestone.id) \(.milestone.status)",
-    "requirements: \(.requirements | group_by(.status) | map("\(.[0].status) \(length)") | join(", "))",
-    "plans: \(.plans | group_by(.status) | map("\(.[0].status) \(length)") | join(", "))",
+    "requirements: \(.requirements | group_by(.status) | map("\(.[0].status) \(length)") | join(", ") | if . == "" then "none" else . end)",
+    "plans: \(.plans | group_by(.status) | map("\(.[0].status) \(length)") | join(", ") | if . == "" then "none" else . end)",
     "checks: \(.checks | length)",
-    "fixes: \(.fixes | map("\(.id) \(.status) attempts \(.attempts)") | join(", "))",
+    "fixes: \(.fixes | map("\(.id) \(.status) attempts \(.attempts)") | join(", ") | if . == "" then "none" else . end)",
     "lease: \(if .lease then "\(.lease.kind) since \(.lease.started_at)" else "none" end)",
     "evidence: \(if .evidence then "\(.evidence.at) passed=\(.evidence.passed) failing=\([.evidence.checks | to_entries[] | select(.value.status != "pass") | .key] | join(" "))" else "none" end)",
     "profile: \(.settings.profile)"' "$root/.vbw/record.json" 2>&1
