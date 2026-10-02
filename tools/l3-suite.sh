@@ -376,7 +376,8 @@ scenario_qafix() {
     fv=$first
     note=$(printf '%s\n' "$hist" | jq -sr '[.[] | select(any(.phases[]?; .qa.result == "fail"))] | first // {}
       | ([.phases[]? | .qa.note // empty] + [.fixes[]? | select(.source == "qa") | .note]) | join(" ")')
-    rounds=$(printf '%s\n' "$hist" | jq -sr '[.[] | .fixes[]? | select(.source == "qa" and .status == "fixed") | .id] | unique | length')
+    # A fix round is one fix run (the kernel commits the record after each run).
+    rounds=$(git -C "$dir" log --format=%s | grep -c '^chore(vbw): record after fix-' || true)
     final=$(jq -r '[.phases[] | .qa.result // "none"] | last // "none"' "$dir/.vbw/record.json" 2> /dev/null)
     jq -e 'all(.requirements[]; .status == "proven" or .status == "accepted")' "$dir/.vbw/record.json" > /dev/null 2>&1 && proved=true
     say "QA rounds: first verdict $fv, fix rounds $rounds, final $final"
