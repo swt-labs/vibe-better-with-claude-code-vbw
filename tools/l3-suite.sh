@@ -144,8 +144,9 @@ scenario_resume() {
     local waited=0
     while [ "$waited" -lt 1500 ]; do
       [ "$killed" -eq 0 ] && [ "$(next_action)" = run ] && return 0
-      l3 wait "$scenario" 20 > /dev/null 2>&1 && return 0
-      waited=$((waited + 20))
+      # l3 wait needs 15 s of a steady screen, so a 30 s limit can succeed.
+      l3 wait "$scenario" 30 > /dev/null 2>&1 && return 0
+      waited=$((waited + 30))
     done
   }
   done_yet() {
