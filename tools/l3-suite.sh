@@ -7,14 +7,14 @@
 #
 #   tools/l3-suite.sh [SCENARIO...]     (default: all)
 #
-# Scenarios: greenfield, reject, resume, change, convert, balanced, docs. A user answers every
+# Scenarios: greenfield, reject, resume, change, convert, balanced, docs, qafix. A user answers every
 # question with VBW's recommendation unless the scenario says otherwise.
 set -uo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 l3() { bash "$ROOT/tools/l3.sh" "$@"; }
 VBW="$ROOT/plugin/bin/vbw"
-ALL="greenfield reject resume change convert balanced docs"
+ALL="greenfield reject resume change convert balanced docs qafix"
 RESULTS="$ROOT/tools/l3-results"
 STEPS=60
 
@@ -322,6 +322,63 @@ scenario_docs() {
       "$(jq -n --arg b "$by" --argjson a "$appr" --arg c "$cst" --argjson p "$prov" --arg r "$rst" --arg pl "$plan" --arg ag "$agents" \
         '{built_by_agent_type: $b, check_approved: $a, check_status: $c, commit_has_provenance: $p, requirement_status: $r, docs_plan: $pl, build_agents: $ag}')" \
       '["acceptance by a person of the documentation quality","a documentation plan mixed with code plans in one wave","a project larger than the greet.sh fixture"]'
+  }
+}
+
+# Every committed version of the record, oldest first, one JSON document per
+# line: the history QA verdicts and fix rounds are read from (the record keeps
+# only the latest verdict).
+record_history() {
+  local h
+  while IFS= read -r h; do
+    git -C "$dir" show "$h:.vbw/record.json" 2> /dev/null | jq -c .
+  done < <(git -C "$dir" log --reverse --format=%H -- .vbw/record.json)
+}
+
+# QA fails a build that deviates from its plan (R5): checks cannot see the
+# deviation, QA must, and the fix loop must close it. The scenario plays the
+# deviation: once the build is proven it deletes a file its plan lists that no
+# check names (a commit by the "user"), the way a build that skipped a task
+# would look.
+scenario_qafix() {
+  new_project
+  fixture="greet.sh plus NOTES.md (no check names it); the built NOTES.md is deleted after the build, so only QA can see the deviation"
+  deviation=""
+  start="$GREET Also add NOTES.md with one sentence on what greet.sh is for. Nothing automated needs to test NOTES.md: a person reads it."
+  on_idle() {
+    [ -z "$deviation" ] || return 1
+    case "$(next_action)" in prove | qa) ;; *) return 1 ;; esac
+    local f
+    f=$(jq -r '. as $r | [$r.plans[] | .files[]] | unique[]
+      | select(. as $f | ([$r.checks[] | (.run + .files)[]] | any(contains($f))) | not)' "$dir/.vbw/record.json" 2> /dev/null \
+      | while IFS= read -r f; do [ -f "$dir/$f" ] && { echo "$f"; break; }; done)
+    [ -n "$f" ] || return 1
+    git -C "$dir" rm -q -- "$f" && git -C "$dir" commit -qm "chore: drop $f" -- "$f" || return 1
+    deviation="$f"
+    say "seeded the deviation: $f deleted after the build"
+    return 0
+  }
+  done_yet() { [ -n "$deviation" ] && shipped; }
+  # Human requirements (NOTES.md wording) are accepted as a user would.
+  checks() {
+    common_checks
+    local hist first note rounds=0 final=none proved=false passed=true fv=none
+    hist=$(record_history)
+    first=$(printf '%s\n' "$hist" | jq -sr '[.[] | .phases[]? | select(.qa != null) | .qa] | first // {} | .result // "none"')
+    fv=$first
+    note=$(printf '%s\n' "$hist" | jq -sr '[.[] | select(any(.phases[]?; .qa.result == "fail"))] | first // {}
+      | ([.phases[]? | .qa.note // empty] + [.fixes[]? | select(.source == "qa") | .note]) | join(" ")')
+    rounds=$(printf '%s\n' "$hist" | jq -sr '[.[] | .fixes[]? | select(.source == "qa" and .status == "fixed") | .id] | unique | length')
+    final=$(jq -r '[.phases[] | .qa.result // "none"] | last // "none"' "$dir/.vbw/record.json" 2> /dev/null)
+    jq -e 'all(.requirements[]; .status == "proven" or .status == "accepted")' "$dir/.vbw/record.json" > /dev/null 2>&1 && proved=true
+    say "QA rounds: first verdict $fv, fix rounds $rounds, final $final"
+    [ -n "$deviation" ] || { say "FAIL the deviation was never seeded"; failed=1; }
+    case "$note" in *"$deviation"*) ;; *) say "FAIL the first QA note does not name the deviation"; failed=1 ;; esac
+    [ "$failed" -eq 0 ] && [ "$fv" = fail ] && [ "$rounds" -ge 1 ] && [ "$final" = pass ] && [ "$proved" = true ] || passed=false
+    result_write qafix "$fixture" "${cost_usd:-0}" "$passed" \
+      "$(jq -n --arg d "${deviation:-}" --arg fv "$fv" --arg n "$note" --argjson r "$rounds" --arg fin "$final" --argjson p "$proved" \
+        '{deviation: $d, first_qa_verdict: $fv, first_qa_note: $n, fix_rounds: $r, final_qa_verdict: $fin, phase_proved: $p}')" \
+      '["a deviation other than one missing file","a deviation the Dev introduces itself (the seed is played by the scenario)","the fix cap (three failed rounds) and its escalation","a project larger than the greet.sh fixture"]'
   }
 }
 
