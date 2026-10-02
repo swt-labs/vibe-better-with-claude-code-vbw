@@ -1,5 +1,26 @@
 # Changelog
 
+## [2.0.9] - 2026-10-02
+
+### Fixed
+
+- **Your approval stays when a plan is blocked or reset.** A builder that
+  stopped on a blocker used to withdraw your approval of an unchanged plan,
+  so VBW asked you to approve again for nothing.
+- **QA's findings are no longer dropped.** Accepting something you judged
+  yourself closed every open fix on it, including fixes QA had raised; now it
+  closes only the fixes from your own rejections.
+- **QA judges the current code.** A QA verdict on a proof older than the code
+  is refused (QA runs the proof again first), and a phase QA failed is checked
+  again before VBW offers to ship.
+- **Approving commands from two worktrees at once** no longer loses one of
+  the approvals.
+- **Interrupting a VBW command** (Ctrl-C) no longer leaves temporary files or
+  a lock behind.
+- **`vbw report`** prints "none" for empty counts and reports a damaged plan
+  of record without printing its contents. New page: `docs/diagnostics.md`
+  (`vbw report` and `vbw rtk`).
+
 ## [2.0.8] - 2026-10-02
 
 ### Fixed
