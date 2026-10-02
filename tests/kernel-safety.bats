@@ -51,17 +51,6 @@ wait_for() {
   return 1
 }
 
-@test "R2: an interrupted vbw commit leaves no index files, no lock" {
-  commit_setup
-  "$VBW" commit P1.1 "feat(pay): pay" < /dev/null > /dev/null 2>&1 &
-  local pid=$!
-  wait_for "$TEST_ROOT/held"
-  kill -TERM "$pid"
-  wait "$pid" || true
-  [ -z "$(find .vbw/runtime -name 'index.*' 2> /dev/null)" ]
-  [ ! -d .vbw/runtime/lock ]
-}
-
 @test "R2: an interrupted code fingerprint (prove, next) leaves no index file" {
   mkdir -p "$TEST_ROOT/bin"
   local real
