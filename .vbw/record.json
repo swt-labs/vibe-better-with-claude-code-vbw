@@ -217,6 +217,54 @@
       "files": [
         "tests/kernel-qafresh.bats"
       ]
+    },
+    {
+      "id": "C12",
+      "req": "R13",
+      "run": [
+        "bats",
+        "-f",
+        "next in another session",
+        "tests/kernel-sessions.bats"
+      ],
+      "files": [
+        "tests/kernel-sessions.bats"
+      ]
+    },
+    {
+      "id": "C13",
+      "req": "R14",
+      "run": [
+        "bats",
+        "-f",
+        "run end|run start records",
+        "tests/kernel-sessions.bats"
+      ],
+      "files": [
+        "tests/kernel-sessions.bats"
+      ]
+    },
+    {
+      "id": "C14",
+      "req": "R15",
+      "run": [
+        "bats",
+        "tests/hooks-session-guard.bats"
+      ],
+      "files": [
+        "tests/hooks-session-guard.bats"
+      ]
+    },
+    {
+      "id": "C15",
+      "req": "R16",
+      "run": [
+        "bats",
+        "tests/kernel-auto-sessions.bats"
+      ],
+      "files": [
+        "tests/kernel-auto-sessions.bats"
+      ]
     }
   ],
   "phases": [
@@ -404,6 +452,58 @@
         "at": "2026-10-02T11:59:36Z",
         "note": "9/9 checks"
       }
+    },
+    {
+      "id": "P11",
+      "title": "Run ownership across sessions",
+      "reqs": [
+        "R13",
+        "R14"
+      ],
+      "milestone": "M2",
+      "goal": "A session that does not own the open run is told to wait or check status, and cannot end that run except by the stated exceptions.",
+      "criteria": [
+        "With a run open in session A, `vbw next` in session B reports that the run belongs to another session and advises waiting or `vbw status`; its output contains no instruction to end the run.",
+        "`vbw run end` from session B is refused with a non-zero exit and the run stays open in the record.",
+        "`vbw run end` from session B succeeds when the user states that the owning session is closed.",
+        "`vbw run end` from session B succeeds when the open run is older than 24 hours (tested with a run whose start time is 25 hours old) and is refused at 23 hours.",
+        "`vbw run end` from the owning session still succeeds.",
+        "Bats tests cover each case above, each shown to fail before the change, and `bash tools/test.sh` passes under bash 3.2 and bash 5."
+      ]
+    },
+    {
+      "id": "P12",
+      "title": "Guard the files an open run is writing",
+      "reqs": [
+        "R15"
+      ],
+      "milestone": "M2",
+      "goal": "While a run is open, no other session, neither its main conversation nor its agents, can edit the files that run is writing, unless the user states the owner is closed (D11).",
+      "criteria": [
+        "With a run open in session A that writes file F, an Edit or Write of F from session B's main conversation is blocked by the hook with a message naming the owning session.",
+        "The same edit from a subagent of session B is blocked.",
+        "Files the run is not writing remain editable from session B.",
+        "Session A and its own agents can still edit F.",
+        "After the user states the owning session is closed, the edit from session B is allowed.",
+        "Outside a VBW project or with no open run, the hook allows edits and stays within the 8 ms hook CPU budget (`tools/bench-hooks.sh`).",
+        "Bats tests cover each case, shown to fail before the change."
+      ]
+    },
+    {
+      "id": "P13",
+      "title": "Autonomous mode per session",
+      "reqs": [
+        "R16"
+      ],
+      "milestone": "M2",
+      "goal": "Turning on autonomous mode in one session never turns it off in any other session where it was on.",
+      "criteria": [
+        "Turn autonomy on in session A, then on in session B: session A still reports autonomy on.",
+        "Turn it on in B first and then A: both still report on, in either order.",
+        "Concurrent turn-on calls from two sessions both persist (no lost update), checked by a parallel test.",
+        "Turning it off in one session is the only way that session changes, and other sessions are unaffected.",
+        "Bats tests cover each case, shown to fail before the change, and the full suite passes under bash 3.2 and bash 5."
+      ]
     }
   ],
   "plans": [
@@ -629,6 +729,107 @@
         "State that vbw qa record refuses a verdict on a proof older than the current code and asks for vbw prove first",
         "Note that the QA agent runs prove and retries after such a refusal"
       ]
+    },
+    {
+      "id": "P11.1",
+      "phase": "P11",
+      "title": "Lease owner session: next and run end",
+      "reqs": [
+        "R13",
+        "R14"
+      ],
+      "files": [
+        "plugin/lib/core.sh",
+        "plugin/lib/cmd-run.sh",
+        "plugin/lib/cmd-next.sh",
+        "plugin/lib/next.jq",
+        "plugin/lib/record.jq",
+        "plugin/bin/vbw",
+        "tests/kernel-sessions.bats"
+      ],
+      "after": [],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "core.sh: vbw_session helper (VBW_SESSION_ID, else CLAUDE_CODE_SESSION_ID, else empty) and an optional string session field in the lease schema (record.jq)",
+        "cmd-run.sh: run start stores lease.session; run end refuses a non-owner (session differs, or is unknown while the lease has one) with a message naming the owner, unless --owner-closed (the user stated the owner is closed) or the lease is over 24 hours old; update usage and bin/vbw help",
+        "cmd-next.sh and next.jq: pass the caller's session; for a non-owner say the run belongs to another session, wait or check vbw status, with no mention of ending it; owner text unchanged",
+        "run tests/kernel-sessions.bats and the full suite under bash 3.2 and bash 5"
+      ]
+    },
+    {
+      "id": "P11.2",
+      "phase": "P11",
+      "title": "Skills and docs pass the session",
+      "reqs": [
+        "R13",
+        "R14"
+      ],
+      "files": [
+        "plugin/skills/vibe/SKILL.md",
+        "plugin/skills/map/SKILL.md",
+        "docs/workflows.md",
+        "docs/next.md"
+      ],
+      "after": [
+        "P11.1"
+      ],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "vibe and map skills: prefix vbw run start/next/run end with VBW_SESSION_ID=${CLAUDE_SESSION_ID}; say run end from another session needs the user to state the owner is closed (--owner-closed), never ending another session's run on its own",
+        "docs/workflows.md and docs/next.md: describe lease ownership, the non-owner next answer, --owner-closed and the 24-hour exception",
+        "keep router and mode prompt token budgets and tests/skills.bats passing"
+      ]
+    },
+    {
+      "id": "P12.1",
+      "phase": "P12",
+      "title": "Hook guards the open run's files across sessions",
+      "reqs": [
+        "R15"
+      ],
+      "files": [
+        "plugin/hooks/common.jq",
+        "plugin/hooks/guard-file.jq",
+        "docs/guards.md",
+        "tests/hooks-session-guard.bats"
+      ],
+      "after": [
+        "P11.1"
+      ],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "common.jq: guard_context exposes a foreign lease (open under 24h, has session, hook session_id differs) for main conversation and agents alike",
+        "guard-file.jq: deny Write/Edit/MultiEdit/NotebookEdit of a file in the foreign lease's files (any project file when files is null; none when []) with a message naming the owning session and how the user lifts it (vbw run end --owner-closed); keep other denials unchanged",
+        "docs/guards.md: document the rule (D11)",
+        "run tests/hooks-session-guard.bats, tests/hooks-guard.bats, tools/bench-hooks.sh and the full suite under bash 3.2 and bash 5"
+      ]
+    },
+    {
+      "id": "P13.1",
+      "phase": "P13",
+      "title": "Per-session autonomy state",
+      "reqs": [
+        "R16"
+      ],
+      "files": [
+        "plugin/lib/cmd-auto.sh",
+        "tests/kernel-surface.bats",
+        "tests/kernel-auto-sessions.bats"
+      ],
+      "after": [
+        "P11.1"
+      ],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "cmd-auto.sh: keep one state file per session (.vbw/runtime/auto.SESSION.json), written atomically, so on never touches another session's file",
+        "off and status take an optional SESSION_ID (else the caller's session from vbw_session; neither: usage error); the gate reads and counts only its own session's file",
+        "update the auto cases in tests/kernel-surface.bats to the per-session files",
+        "run tests/kernel-auto-sessions.bats and the full suite under bash 3.2 and bash 5"
+      ]
     }
   ],
   "fixes": [
@@ -749,6 +950,18 @@
       "id": "D10",
       "at": "2026-10-02T12:15:14Z",
       "text": "Shipped M1 Close the 2.0 gaps: 9 requirements proven or accepted"
+    },
+    {
+      "id": "D11",
+      "text": "Another session's edits to files an open run is writing are blocked by default; the user can override by stating the owning session is closed (same rule as ending its run, R14)",
+      "why": "owner's choice: protects the files without locking the user out after a crash",
+      "at": "2026-10-02T16:36:32Z"
+    },
+    {
+      "id": "D12",
+      "text": "M2 ships as 2.0.11, one patch release",
+      "why": "owner's choice: one update with all session rules",
+      "at": "2026-10-02T16:36:33Z"
     }
   ],
   "commands": {},
