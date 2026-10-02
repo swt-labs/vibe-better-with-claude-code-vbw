@@ -37,7 +37,12 @@ next_after() {
       passed: true, checks: {}, commands: {}, scope: []} else . end)
     | .phases |= map(if has("qa") then . else .qa = {result: "pass", tier: "standard", tree: $t, at: "2026-10-01T09:00:00Z"} end)' .vbw/record.json > "$TEST_ROOT/n.json"
   cp "$TEST_ROOT/n.json" .vbw/record.json
-  [ "${2:-}" = unapproved ] || vbw_consent_contract
+  if [ "${2:-}" != unapproved ]; then
+    # As /vbw:approve does: the contract and the project commands.
+    vbw_consent_contract
+    # shellcheck disable=SC2016 # expanded by vbw_kernel
+    vbw_kernel '. "$VBW_LIB/cmd-approve.sh"; approve_commands "$(cat "$VBW_RECORD")" > /dev/null'
+  fi
   "$VBW" next --json < /dev/null
 }
 

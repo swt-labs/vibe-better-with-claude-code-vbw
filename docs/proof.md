@@ -72,6 +72,28 @@ command in `record.commands`, in the clone's git directory (see
 docs/record.md, Consent), and logs a decision. A repository cannot ship
 approval: a fresh clone must approve before anything runs.
 
+## Project commands
+
+The project's own test, lint and build commands live in `.vbw/spec.md`, under
+`## Commands`, one per line: a name, then the command as words, or as a JSON
+array when an argument contains spaces:
+
+```markdown
+## Commands
+
+- test: cargo test --locked --workspace --manifest-path market_recorder/Cargo.toml
+- pytest: conda run -n portfolium python -m pytest -q market_recorder/
+- e2e: ["sh", "run tests.sh", "--fast"]
+```
+
+`vbw init` writes the commands it detects there as a suggestion (in a
+repository with several sub-projects it sees only the root, so check them).
+Edit a line to change a command, delete it to stop running it, then
+`vbw spec sync`: the record's commands become exactly that section. A spec
+without the section keeps the commands it has. A command whose exact argv the
+user has not approved makes `vbw next` ask for approval again, and
+`vbw prove` runs only approved commands.
+
 Any change to the contract (a check edited, a test file touched, a plan's files
 widened) changes the hash, and the contract is unapproved again until the user
 re-approves it. `vbw show contract` renders what is being approved, and

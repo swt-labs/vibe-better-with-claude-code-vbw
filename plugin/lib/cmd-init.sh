@@ -13,7 +13,14 @@ cmd_init() {
   local name commands
   name=$(basename "$VBW_ROOT")
   commands=$(init_detect_commands "$VBW_ROOT")
-  [ -f "$VBW_DIR/spec.md" ] || init_spec "$name" > "$VBW_DIR/spec.md"
+  # The detected commands are a suggestion in spec.md, which the user owns; a
+  # spec that already lists its own commands wins.
+  if [ -f "$VBW_DIR/spec.md" ]; then
+    commands=$(jq -Rs -f "$VBW_LIB/spec.jq" < "$VBW_DIR/spec.md" 2> /dev/null \
+      | jq -c --argjson d "$commands" '.commands // $d' 2> /dev/null || printf '%s' "$commands")
+  else
+    init_spec "$name" "$commands" > "$VBW_DIR/spec.md"
+  fi
   jq -n --arg name "$name" --argjson commands "$commands" '{
     schema: 1,
     project: {name: $name},
@@ -31,11 +38,12 @@ cmd_init() {
   printf '  .vbw/spec.md      what you are building (you own this file)\n'
   printf '  .vbw/record.json  the plan of record (written only by vbw)\n'
   if [ "$commands" != "{}" ]; then
-    printf '\nDetected project commands (not approved; vbw prove runs them only after /vbw:approve):\n'
+    printf '\nDetected project commands, not approved yet (vbw prove runs them only after\n/vbw:approve). Edit or delete them in .vbw/spec.md under Commands:\n'
     printf '%s\n' "$commands" | jq -r 'to_entries[] | "  \(.key): \(.value | join(" "))"'
   fi
 }
 
+# init_spec NAME COMMANDS_JSON: the starting spec.md.
 init_spec() {
   cat <<EOF
 # $1
@@ -53,7 +61,19 @@ init_spec() {
 - R1 [auto] A visitor can sign up with an email address
 - R2 [human] The landing page feels trustworthy
 -->
+
+## Commands
+
+<!-- The project's own commands, which every proof runs once you approve them.
+     One per line: a name, then the command as words, or as a JSON array when
+     an argument contains spaces. Edit or delete lines, then vbw spec sync.
+- test: npm test
+- build: ["make", "release build"]
+-->
 EOF
+  # An argv whose words contain no whitespace reads as plain words.
+  printf '%s' "$2" | jq -r 'to_entries[] | "- \(.key): " + (.value
+    | if any(.[]; test("\\s") or startswith("[")) then tojson else join(" ") end)'
 }
 
 # .vbw/runtime/ (locks, caches, check output) is never committed. VBW ignores it

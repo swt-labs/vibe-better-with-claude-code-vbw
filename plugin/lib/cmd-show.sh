@@ -126,7 +126,12 @@ show_contract_changes() {
         ($old.plans | to_entries[] | select($new.plans[.key] == null)
           | "removed plan \(.key) \(.value.title)"),
         ($new.plans | to_entries[] | select($old.plans[.key] != null and $old.plans[.key] != .value)
-          | "changed plan \(.key) \(.value.title): \(.value.files | join(", "))\(if (.value.after | length) > 0 then " (after \(.value.after | join(", ")))" else "" end)") ]
+          | "changed plan \(.key) \(.value.title): \(.value.files | join(", "))\(if (.value.after | length) > 0 then " (after \(.value.after | join(", ")))" else "" end)"),
+        # Snapshots taken before commands were part of it list none.
+        ($old | select(has("commands")) | .commands as $oc
+          | ($new.commands | to_entries[] | select($oc[.key] != .value)
+              | "\(if $oc[.key] == null then "added" else "changed" end) project command \(.key): \(.value | argv_line)"),
+            ($oc | keys[] | select(. as $k | $new.commands | has($k) | not) | "removed project command \(.)")) ]
     | if length == 0 then "no changes since the last approval" else "changes since the last approval:", (.[] | "  " + .) end'
 }
 

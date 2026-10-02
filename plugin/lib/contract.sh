@@ -21,6 +21,18 @@ contract_approved() {
   consent_has contract "$1"
 }
 
+# commands_approved RECORD_JSON: the user approved every project command's
+# exact argv (a command edited in spec.md needs approving again).
+commands_approved() {
+  local name argv a
+  while IFS= read -r -d '' name; do
+    argv=()
+    while IFS= read -r -d '' a; do argv+=("$a"); done \
+      < <(printf '%s' "$1" | jq -j --arg n "$name" '.commands[$n][] + "\u0000"')
+    consent_has command "$(vbw_sha256_argv "${argv[@]}")" || return 1
+  done < <(printf '%s' "$1" | jq -j '.commands | keys[] | . + "\u0000"')
+}
+
 # contract_doc RECORD_JSON: the contract as JSON, for comparing two approvals:
 # requirements, checks and plans by id, and each check file's digest.
 contract_doc() {
@@ -36,5 +48,6 @@ contract_doc() {
     requirements: (.requirements | map({key: .id, value: {text, proof}}) | from_entries),
     checks: (.checks | map({key: .id, value: .}) | from_entries),
     plans: (.plans | map({key: .id, value: del(.status, .note)}) | from_entries),
+    commands: .commands,
     files: $files}'
 }

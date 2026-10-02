@@ -7,7 +7,7 @@ cmd_next() {
   local record hash approved=false changed=false legacy=false next
   record=$(record_read)
   hash=$(contract_hash "$record")
-  contract_approved "$hash" && approved=true
+  contract_approved "$hash" && commands_approved "$record" && approved=true
   next_code_changed "$record" && changed=true
   # A VBW 1 plan not yet converted (docs/convert.md).
   [ -d "$VBW_ROOT/.vbw-planning" ] && ! printf '%s' "$record" | jq -e 'has("converted")' > /dev/null && legacy=true

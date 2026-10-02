@@ -19,8 +19,9 @@ cmd_spec() {
   parsed=$(spec_parse)
   case "$sub" in
     check)
-      printf '%s' "$parsed" | jq -r '.requirements
-        | "spec.md: \(length) requirements (\(map(select(.proof == "auto")) | length) auto, \(map(select(.proof == "human")) | length) human)"'
+      printf '%s' "$parsed" | jq -r '(.requirements
+        | "spec.md: \(length) requirements (\(map(select(.proof == "auto")) | length) auto, \(map(select(.proof == "human")) | length) human)")
+        + (if .commands == null then "" else ", \(.commands | length) command\(if (.commands | length) == 1 then "" else "s" end)" end)'
       ;;
     sync) spec_sync "$parsed" ;;
     add) spec_add "$parsed" "$1" "$2" ;;
@@ -74,7 +75,20 @@ spec_sync() {
     | ([.plans[].id]) as $ids
     | .plans = [.plans[] | .after = [.after[] | select(. as $a | any($ids[]; . == $a))]]
     | .phases = [.phases[] | .reqs = [.reqs[] | select(kept)] | select(.reqs | length > 0)]' --argjson s "$reqs"
+  spec_sync_commands "$(printf '%s' "$1" | jq -c '.commands')"
   printf 'record has %s requirements\n' "$(jq '.requirements | length' "$VBW_RECORD")"
+}
+
+# The record's commands become exactly the spec's Commands section; a spec
+# without that section leaves them as they are. A changed argv needs the user's
+# approval before any proof runs it (vbw next asks for it).
+spec_sync_commands() {
+  [ "$1" != null ] || return 0
+  record_read | jq -r --argjson c "$1" '.commands as $o
+    | ($c | to_entries[] | if $o[.key] == null then "added command \(.key)"
+        elif $o[.key] != .value then "changed command \(.key)" else empty end),
+      ($o | keys[] | select(. as $k | $c | has($k) | not) | "removed command \(.)")'
+  record_update '.commands = $c' --argjson c "$1"
 }
 
 # Insert "- R<next> [PROOF] TEXT" at the end of the Requirements section, then sync.
