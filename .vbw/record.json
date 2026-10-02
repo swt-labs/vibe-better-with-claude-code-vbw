@@ -762,10 +762,5 @@
     "scope": [],
     "passed": true
   },
-  "lease": {
-    "run": "qa-20261002T114335Z",
-    "kind": "qa",
-    "started_at": "2026-10-02T11:43:35Z",
-    "files": []
-  }
+  "lease": null
 }
