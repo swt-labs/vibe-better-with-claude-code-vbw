@@ -1157,7 +1157,8 @@
         "tools/baseline/bench.sh",
         "tools/baseline/verify-results.sh",
         "tools/baseline/results/runs/.gitkeep",
-        "tools/l3.sh"
+        "tools/l3.sh",
+        "tests/baseline-bench.bats"
       ],
       "after": [
         "P15.1",
@@ -1498,6 +1499,11 @@
       "id": "D22",
       "at": "2026-10-02T21:03:39Z",
       "text": "Contract approved: 18 requirements, 16 checks, 26 plans (1cdfd67d9ce0)"
+    },
+    {
+      "id": "D23",
+      "at": "2026-10-02T21:16:07Z",
+      "text": "Contract approved: 18 requirements, 16 checks, 26 plans (5552ede9f232)"
     }
   ],
   "commands": {
