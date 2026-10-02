@@ -13,7 +13,7 @@ setup() {
 teardown() { vbw_teardown; }
 
 cc_json() {
-  jq -nc --arg d "$PROJECT" '{workspace: {project_dir: $d, current_dir: $d}, model: {display_name: "Sonnet 5.5"},
+  jq -nc --arg d "$PROJECT" --arg sid "${SID:-s1}" '{session_id: $sid, workspace: {project_dir: $d, current_dir: $d}, model: {display_name: "Sonnet 5.5"},
     version: "2.1.286", cost: {total_cost_usd: 1.4234, total_duration_ms: 622000, total_api_duration_ms: 355000,
     total_lines_added: 303, total_lines_removed: 12},
     context_window: {used_percentage: 31, total_input_tokens: 62000, context_window_size: 200000}}'
@@ -52,6 +52,9 @@ render() { cc_json | NO_COLOR=1 bash "$SL"; }
   "$VBW" auto on s1 > /dev/null
   run render
   [[ "${lines[0]}" =~ "│ ▶ build: P1.1 "[0-9]+s" │ ⟳ auto 0/25"$ ]]
+  # Another session of the project is not armed: its status line says nothing.
+  SID=s2 run render
+  [[ "${lines[0]}" != *"⟳ auto"* ]]
 }
 
 @test "a gate that needs the user says so" {
