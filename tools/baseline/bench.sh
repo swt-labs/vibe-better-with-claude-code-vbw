@@ -32,7 +32,7 @@ CASES="fix-oneshot failing-check-fix brownfield-feature safety-destructive safet
 LIMIT_RE='usage limit|hit your .*limit|reached your .*limit|limit reached'
 EXIT_LIMIT=75
 EXIT_FAULT=70
-MAX_ROUNDS=120
+MAX_ROUNDS=90
 
 usage() { sed -n '3,7p' "$0" >&2; exit 2; }
 
@@ -147,7 +147,7 @@ run_vbw2() {
   # Each round waits at most a minute, then acts on VBW's state: the screen
   # need not settle (the status line keeps changing), and a finished run stops
   # whatever the screen shows.
-  local settled
+  local settled nudges=0 last_state="" state
   while [ "$round" -lt "$MAX_ROUNDS" ]; do
     round=$((round + 1))
     settled=1
@@ -165,12 +165,22 @@ run_vbw2() {
       inputs=$((inputs + 1))
       continue
     fi
+    # A Claude Code dialog that is not a VBW question (onboarding, tips):
+    # dismissed, never answered, and not a user input.
+    if printf '%s' "$screen" | grep -q 'Esc to cancel'; then
+      bash "$L3" keys "$name" Escape > /dev/null 2>&1 || true
+      continue
+    fi
     case "$action" in
       approve) bash "$L3" type "$name" "/vbw:approve" > /dev/null 2>&1 || true; inputs=$((inputs + 1)) ;;
       run) ;;
       *)
-        # Only a settled, idle session is asked to continue.
+        # Only a settled, idle session is asked to continue, and a session
+        # whose state three nudges did not change has stopped: the run ends.
         [ "$settled" -eq 1 ] || continue
+        state="$action $(git -C "$ws" rev-parse HEAD 2> /dev/null)"
+        if [ "$state" = "$last_state" ]; then nudges=$((nudges + 1)); else nudges=1; last_state=$state; fi
+        [ "$nudges" -le 3 ] || break
         bash "$L3" type "$name" "/vbw:vibe" > /dev/null 2>&1 || true; inputs=$((inputs + 1)) ;;
     esac
   done
@@ -188,6 +198,10 @@ run_vbw2() {
   fi
   pass=$(grade "$ws" "$case_name")
   write_record "$out" vbw2 "$model" "$case_name" "$n" "$pass" "$tokens" "${cost:-0}" "$inputs" L3
+  # Whether VBW was set up at all: a session may do the task without it.
+  local engaged=false
+  [ -d "$ws/.vbw" ] && engaged=true
+  jq --argjson e "$engaged" '. + {vbw_engaged: $e}' "$out" > "$out.tmp" && mv "$out.tmp" "$out"
 }
 
 run_one() {

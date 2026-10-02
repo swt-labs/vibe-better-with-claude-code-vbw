@@ -26,7 +26,9 @@ cmd=\$1; shift
 echo "\$cmd \$*" >> "$STUB/calls"
 case "\$cmd" in
   start) echo "\$2" > "$STUB/ws" ;;
-  type) [ "\$2" != "/cost" ] || touch "$STUB/cost" ;;
+  type) [ "\$2" != "/cost" ] || touch "$STUB/cost"
+    # The session sets VBW up when asked (BENCH_STUB_VBW=1).
+    [ -z "\${BENCH_STUB_VBW:-}" ] || mkdir -p "\$(cat "$STUB/ws")/.vbw" ;;
   wait)
     if [ -e "$STUB/cost" ]; then echo "Total cost:            \\\$1.50"; exit 0; fi
     n=\$(cat "$STUB/n" 2>/dev/null || echo 1)
@@ -111,6 +113,50 @@ vbw2_transcript() {
   ! grep -q '^keys bench-sonnet-5-5-fix-oneshot-1 Enter' "$STUB/calls"
   run jq -r '.user_inputs' "$PROJECT/runs/vbw2-sonnet-5.5-fix-oneshot-1.json"
   [ "$output" = 0 ]
+}
+
+@test "a Claude Code dialog that is not a VBW question is dismissed with Escape, not answered" {
+  printf 'Teach auto mode about your environment?\n  Continue\n<-/-> to change . Enter to continue . Esc to cancel\n' > "$STUB/screens/1"
+  printf 'Done.\n' > "$STUB/screens/2"
+  printf 'build\nship\n' > "$STUB/actions"
+  vbw2_transcript
+  BENCH_STUB_FIX=1 run bash "$BENCH" vbw2 sonnet-5.5 fix-oneshot 1
+  [ "$status" -eq 0 ]
+  grep -q '^keys bench-sonnet-5-5-fix-oneshot-1 Escape' "$STUB/calls"
+  ! grep -q '^keys bench-sonnet-5-5-fix-oneshot-1 Enter' "$STUB/calls"
+  run jq -r '.user_inputs' "$PROJECT/runs/vbw2-sonnet-5.5-fix-oneshot-1.json"
+  [ "$output" = 0 ]
+}
+
+@test "a run that makes no progress after three nudges ends, bounded" {
+  printf 'Idle.\n' > "$STUB/screens/1"
+  printf 'build\n' > "$STUB/actions"
+  vbw2_transcript
+  BENCH_STUB_FIX=1 run bash "$BENCH" vbw2 sonnet-5.5 fix-oneshot 1
+  [ "$status" -eq 0 ]
+  [ "$(grep -c '^type bench-sonnet-5-5-fix-oneshot-1 /vbw:vibe$' "$STUB/calls")" -eq 3 ]
+  run jq -r '.user_inputs' "$PROJECT/runs/vbw2-sonnet-5.5-fix-oneshot-1.json"
+  [ "$output" = 3 ]
+}
+
+@test "a run where VBW was never set up is recorded as not engaged" {
+  printf 'Fixed it directly.\n' > "$STUB/screens/1"
+  printf 'none\n' > "$STUB/actions"
+  vbw2_transcript
+  BENCH_STUB_FIX=1 run bash "$BENCH" vbw2 sonnet-5.5 fix-oneshot 1
+  [ "$status" -eq 0 ]
+  run jq -c '[.pass, .vbw_engaged]' "$PROJECT/runs/vbw2-sonnet-5.5-fix-oneshot-1.json"
+  [ "$output" = '[true,false]' ]
+}
+
+@test "a run where VBW was set up is recorded as engaged" {
+  printf 'Done.\n' > "$STUB/screens/1"
+  printf 'ship\n' > "$STUB/actions"
+  vbw2_transcript
+  BENCH_STUB_FIX=1 BENCH_STUB_VBW=1 run bash "$BENCH" vbw2 sonnet-5.5 fix-oneshot 1
+  [ "$status" -eq 0 ]
+  run jq -r '.vbw_engaged' "$PROJECT/runs/vbw2-sonnet-5.5-fix-oneshot-1.json"
+  [ "$output" = true ]
 }
 
 @test "a session that cannot start writes no record (harness fault, exit 70)" {
