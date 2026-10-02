@@ -503,7 +503,14 @@
         "Concurrent turn-on calls from two sessions both persist (no lost update), checked by a parallel test.",
         "Turning it off in one session is the only way that session changes, and other sessions are unaffected.",
         "Bats tests cover each case, shown to fail before the change, and the full suite passes under bash 3.2 and bash 5."
-      ]
+      ],
+      "qa": {
+        "result": "pass",
+        "tier": "standard",
+        "tree": "cc68159b79fdc83827d8556ee1296df1e925ebd2",
+        "at": "2026-10-02T18:09:15Z",
+        "note": "17/17 checks"
+      }
     }
   ],
   "plans": [
@@ -1096,5 +1103,10 @@
     "scope": [],
     "passed": true
   },
-  "lease": null
+  "lease": {
+    "run": "qa-20261002T180516Z",
+    "kind": "qa",
+    "started_at": "2026-10-02T18:05:16Z",
+    "files": []
+  }
 }
