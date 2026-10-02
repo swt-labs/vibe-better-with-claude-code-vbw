@@ -6,13 +6,18 @@
   "milestone": {
     "id": "M2",
     "title": "Several sessions, one project",
-    "status": "active"
+    "status": "shipped"
   },
   "shipped": [
     {
       "id": "M1",
       "title": "Close the 2.0 gaps",
       "at": "2026-10-02T12:15:14Z"
+    },
+    {
+      "id": "M2",
+      "title": "Several sessions, one project",
+      "at": "2026-10-02T18:44:42Z"
     }
   ],
   "requirements": [
@@ -1022,6 +1027,11 @@
       "id": "D14",
       "at": "2026-10-02T17:38:29Z",
       "text": "Contract approved: 13 requirements, 13 checks, 15 plans (109726123699)"
+    },
+    {
+      "id": "D15",
+      "at": "2026-10-02T18:44:42Z",
+      "text": "Shipped M2 Several sessions, one project: 4 requirements proven or accepted"
     }
   ],
   "commands": {},
