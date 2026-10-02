@@ -226,12 +226,11 @@
         "bash tools/test.sh passes in full."
       ],
       "qa": {
-        "result": "fail",
+        "result": "pass",
         "tier": "standard",
-        "tree": "63a52428fed57e4a119aca5c17e6f1b4246ab213",
-        "at": "2026-10-02T10:53:01Z",
-        "note": "13/14 checks",
-        "rounds": 1
+        "tree": "f4905c81a2a1043a58bdab9565f2e3dbdc69331f",
+        "at": "2026-10-02T11:40:44Z",
+        "note": "15/15 checks"
       }
     },
     {
@@ -612,7 +611,7 @@
       "req": "R3",
       "source": "qa",
       "attempts": 0,
-      "status": "fixed",
+      "status": "closed",
       "note": "Criterion 4 not met: bash tools/test.sh exits 1 on two consecutive runs. No bats test fails; tools/bench-hooks.sh reports the guard hot path over its 8 ms own-cost budget (git 9.5-11.0, npm 8.4-9.7, big 9.0-9.3 ms p95). The code is outside P2's files (plugin/hooks, bench), but the phase criterion requires the full suite to pass."
     }
   ],
