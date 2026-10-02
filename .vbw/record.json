@@ -207,9 +207,9 @@
         "result": "fail",
         "tier": "standard",
         "tree": "f4905c81a2a1043a58bdab9565f2e3dbdc69331f",
-        "at": "2026-10-02T11:41:44Z",
-        "note": "11/12 checks",
-        "rounds": 1
+        "at": "2026-10-02T11:46:19Z",
+        "note": "10/12 checks",
+        "rounds": 2
       }
     },
     {
@@ -620,8 +620,24 @@
       "req": "R2",
       "source": "qa",
       "attempts": 0,
-      "status": "fixed",
+      "status": "closed",
       "note": "tests/kernel-safety.bats test 2 ('an interrupted vbw commit leaves no index files, no lock') passes on the pre-fix code (commit 1421600d^, run in an extracted copy: ok 2), so it cannot fail and does not prove the criterion that it fails without the fix; tests 1, 3, 4 and 5 do fail pre-fix. Make the test discriminate (e.g. hold the commit while the temp index exists) or drop the claim."
+    },
+    {
+      "id": "F4",
+      "req": "R2",
+      "source": "qa",
+      "attempts": 0,
+      "status": "open",
+      "note": "tests/kernel-safety.bats test 'R2: an interrupted vbw commit leaves no index files, no lock' still passes on the pre-fix code (commit 1421600d^ with the current test file: ok 2), while tests 1,3,4,5 fail there. F3 was marked fixed but tests/kernel-safety.bats has no commit since 414661ca, so the test is unchanged and still cannot fail; criterion 2 (the test fails pre-fix) is unmet for it. Make it discriminate (e.g. hold the commit while a temp index/lock exists and require it removed) or drop the claim."
+    },
+    {
+      "id": "F5",
+      "req": "R2",
+      "source": "qa",
+      "attempts": 0,
+      "status": "open",
+      "note": "bash tools/test.sh run during QA: tools/bench-hooks.sh reported guard (git) 18.8 ms, (npm) 13.4 ms, (big) 11.0 ms own cost p95, OVER the 8 ms budget, so criterion 5 (test.sh passes in full) was not observed. Possibly load-sensitive; same symptom as closed F2."
     }
   ],
   "todos": [
@@ -746,5 +762,10 @@
     "scope": [],
     "passed": true
   },
-  "lease": null
+  "lease": {
+    "run": "qa-20261002T114335Z",
+    "kind": "qa",
+    "started_at": "2026-10-02T11:43:35Z",
+    "files": []
+  }
 }
