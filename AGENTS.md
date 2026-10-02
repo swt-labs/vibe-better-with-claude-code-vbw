@@ -152,7 +152,7 @@ cat "$CLAUDE_PROJECT_DIR"/<session-id>/subagents/agent-*.jsonl
 - **Git path listings use `-z`.** VBW commits use an explicit pathspec, never `git add -A`, and never disturb user-staged files.
 - **Paths come from substitution:** `${CLAUDE_PLUGIN_ROOT}` in skills, agents and workflows; `$0` or arguments in scripts. No cache globs, `/tmp` links, `ps` scraping or command mirrors.
 - **Nothing outside the project:** no writes to `/tmp`, other repos or git hooks, and no process killing. The one exception is the user's Claude Code `settings.json`, where VBW turns on its status line and Dynamic workflows (owner decision, 2026-10-01), keeping every other setting and a backup of a replaced status line. It must work under the Claude Code sandbox.
-- **Hot paths:** hooks ≤ 15 ms p95, statusline ≤ 30 ms, with no network and no credentials.
+- **Hot paths:** hooks ≤ 8 ms of VBW's own CPU per call (about 15 ms with shell and jq startup; `tools/bench-hooks.sh`), statusline ≤ 30 ms, with no network and no credentials.
 - **JSON only through `jq`,** never grep or sed on JSON.
 
 ## Engine, agent and prompt rules
