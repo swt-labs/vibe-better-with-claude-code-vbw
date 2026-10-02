@@ -1,5 +1,25 @@
 # Changelog
 
+## [2.0.11] - 2026-10-02
+
+### Fixed
+
+- **You can now change the project's commands.** The test, lint and build
+  commands every proof runs live in `.vbw/spec.md`, under `## Commands`, one
+  per line (`- test: cargo test --manifest-path app/Cargo.toml`, or a JSON
+  array when an argument contains spaces). Edit a line to change a command,
+  delete it to stop running it, then `vbw spec sync`. `vbw init` writes the
+  commands it detects there as a suggestion; in a repository with several
+  sub-projects it sees only the root, so check them. A changed command needs
+  your approval before any proof runs it.
+
+### What you need to do
+
+- **An existing project keeps its commands** until you add a `## Commands`
+  section to `.vbw/spec.md`. To change or remove a detected command, add the
+  section with the commands you want (an empty section removes them all), run
+  `vbw spec sync`, then `/vbw:approve`.
+
 ## [2.0.10] - 2026-10-02
 
 ### Fixed
