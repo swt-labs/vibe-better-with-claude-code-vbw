@@ -620,7 +620,7 @@
       "req": "R2",
       "source": "qa",
       "attempts": 0,
-      "status": "open",
+      "status": "fixed",
       "note": "tests/kernel-safety.bats test 2 ('an interrupted vbw commit leaves no index files, no lock') passes on the pre-fix code (commit 1421600d^, run in an extracted copy: ok 2), so it cannot fail and does not prove the criterion that it fails without the fix; tests 1, 3, 4 and 5 do fail pre-fix. Make the test discriminate (e.g. hold the commit while the temp index exists) or drop the claim."
     }
   ],
@@ -669,6 +669,12 @@
       "id": "D7",
       "at": "2026-10-02T10:33:03Z",
       "text": "Contract approved: 9 requirements, 9 checks, 10 plans (8689c114f7c2)"
+    },
+    {
+      "id": "D8",
+      "text": "F3: keep tests/kernel-safety.bats test 2 as a regression test; it is not expected to fail on pre-fix code",
+      "why": "an interrupted vbw commit already removed its lock before the fix (cmd_commit's EXIT trap ran on SIGTERM) and a commit uses no temporary index, so no test of that path can fail pre-fix; the fix's new behaviour is shown by tests 3 to 5, which do fail pre-fix. Removing a true test would only reduce coverage.",
+      "at": "2026-10-02T11:42:21Z"
     }
   ],
   "commands": {},
