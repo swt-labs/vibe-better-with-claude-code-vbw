@@ -344,7 +344,7 @@
         "plugin/lib/cmd-commit.sh"
       ],
       "after": [],
-      "status": "blocked",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "Run tests/kernel-safety.bats on the unfixed code and keep the failing output (R1 lost grants, R2 debris and clobbered caller trap)",
@@ -366,7 +366,7 @@
         "plugin/bin/vbw"
       ],
       "after": [],
-      "status": "blocked",
+      "status": "planned",
       "role": "dev",
       "tasks": [
         "Run tests/kernel-diagnostics.bats and note each failing claim",
@@ -387,7 +387,7 @@
         "README.md"
       ],
       "after": [],
-      "status": "planned",
+      "status": "done",
       "role": "docs",
       "tasks": [
         "Create docs/diagnostics.md with vbw report: what it prints, what it never prints, with the exact help description",
@@ -571,7 +571,7 @@
         "tests/kernel-approval.bats"
       ],
       "after": [],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "Confirm tests/kernel-approval.bats fails today (note is hashed)",
