@@ -118,8 +118,10 @@ verdicts and failed checks briefly.
 
 **run**: a run is open. VBW workflow of this session still running: wait. Else
 it was interrupted: `VBW_SESSION_ID=${CLAUDE_SESSION_ID} vbw run end` (its plans return to next wave), continue.
-A run that belongs to another session: wait or check `vbw status`; never end it on
-your own. Only when the user states that session is closed: `vbw run end --owner-closed`.
+Run of another session: never end it on your own. Ask once (AskUserQuestion,
+naming the run and session): "Still running: wait" (Recommended), or "That
+session is closed" → `VBW_SESSION_ID=${CLAUDE_SESSION_ID} vbw run end
+--owner-closed`, continue.
 
 **unblock** (needs user): `vbw show plan <id>` per blocked plan; explain what
 Dev needs. Resolved: `vbw plan reset <id>`.

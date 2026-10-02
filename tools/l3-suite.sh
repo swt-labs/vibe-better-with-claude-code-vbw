@@ -220,6 +220,16 @@ scenario_resume() {
       waited=$((waited + 30))
     done
   }
+  # Back in a new session, VBW asks whether the closed session is still open:
+  # the user closed it, and says so.
+  on_question() {
+    [ "$killed" -eq 1 ] && screen | grep -q 'That session is closed' || return 1
+    local n i
+    n=$(screen | grep -E '[0-9]+\. That session is closed' | grep -oE '[0-9]+' | head -1)
+    for ((i = 1; i < n; i++)); do l3 keys "$scenario" Down; done
+    l3 keys "$scenario" Enter
+    return 0
+  }
   done_yet() {
     if [ "$killed" -eq 0 ] && [ "$(next_action)" = run ]; then
       killed=1
