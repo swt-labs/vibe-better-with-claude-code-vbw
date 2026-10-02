@@ -53,6 +53,23 @@ proven_project() {
 
 # --- ship --------------------------------------------------------------------
 
+@test "ship is refused while proven work is not committed, naming the files" {
+  proven_project
+  "$VBW" qa record P1 pass standard > /dev/null
+  "$VBW" req accept R2 > /dev/null
+  # Proof reads the files on disk: the work is proven, but only in the working tree.
+  vbw_run ship
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"not committed"* && "$output" == *"src/pay.txt"* ]]
+  jq -e '.milestone.status != "shipped"' .vbw/record.json
+  git add src/pay.txt
+  vbw_run ship
+  [ "$status" -eq 1 ]
+  git commit -q -m "feat: pay" -- src/pay.txt
+  vbw_run ship
+  [ "$status" -eq 0 ]
+}
+
 @test "ship is refused until vbw next says ship, then marks the milestone shipped" {
   proven_project
   vbw_run ship
@@ -62,6 +79,7 @@ proven_project() {
   vbw_run ship
   [[ "$output" == *"not ready to ship: vbw next says accept"* ]]
   "$VBW" req accept R2 > /dev/null
+  git add src/pay.txt && git commit -q -m "feat: pay" -- src/pay.txt
   vbw_run ship
   [ "$status" -eq 0 ]
   jq -e '.milestone.status == "shipped" and (.decisions[-1].text | startswith("Shipped M1"))' .vbw/record.json

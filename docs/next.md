@@ -30,7 +30,7 @@ lifecycle. `vbw next --json` returns:
 | 10 | an `auto` requirement is not `proven`, or the evidence is stale (another contract, or the project files changed since; docs/proof.md) | `prove` | no |
 | 10a | a phase of the current milestone is built and QA has not passed it on the proven code (never verified, failed, or the code changed since) | `qa` (`detail.phases`, and `detail.tier`: `deep` for the quality profile, `quick` for budget, else `standard`) | no |
 | 11 | a `human` requirement is `open` | `accept` (one scenario at a time) | yes |
-| 12 | otherwise | `ship` (`vbw ship`) | yes |
+| 12 | otherwise | `ship` (`vbw ship`, which refuses while the proven work is not committed: the proof reads files on disk, a shipped milestone must be in git history) | yes |
 
 Rejecting a `human` requirement (`vbw req reject R2 "why"`) opens a fix item at
 once, so it is worked by row 9; when the fix is done the requirement returns to
