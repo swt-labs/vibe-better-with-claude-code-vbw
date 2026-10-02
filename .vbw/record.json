@@ -35,7 +35,7 @@
       "id": "R4",
       "text": "In a real session, a documentation requirement is built by the Docs agent and proved",
       "proof": "auto",
-      "status": "failing",
+      "status": "proven",
       "milestone": "M1"
     },
     {
@@ -627,33 +627,33 @@
     "autonomy_cap": 25
   },
   "evidence": {
-    "at": "2026-10-02T03:42:44Z",
+    "at": "2026-10-02T03:48:48Z",
     "contract": "85fc3e706c9b3728e7a3884841ad2b50fcb27c75aa0d7eb94080b08d4c26e4ca",
-    "tree": "a6e7ade31a633b1d4c8944dcca67dac0d390eb0c",
+    "tree": "5343edf01d20fa7fe503c8b62aae9f9619398e74",
     "checks": {
       "C1": {
         "status": "pass",
         "exit": 0,
-        "seconds": 12,
+        "seconds": 20,
         "tail": "1..1\nok 1 R1: grants from two worktrees of one clone, started together, are all kept"
       },
       "C2": {
         "status": "pass",
         "exit": 0,
-        "seconds": 13,
+        "seconds": 12,
         "tail": "1..4\nok 1 R2: an interrupted vbw commit leaves no index files, no lock\nok 2 R2: an interrupted code fingerprint (prove, next) leaves no index file\nok 3 R2: the caller's EXIT trap still runs when vbw code is interrupted\nok 4 R2: the caller's EXIT trap survives a vbw write that completes"
       },
       "C3": {
         "status": "pass",
         "exit": 0,
-        "seconds": 5,
+        "seconds": 6,
         "tail": "1..11\nok 1 report: versions, doctor, and project state as counts and ids\nok 2 report: an empty count says none, never a blank\nok 3 report: never the spec's text, check output or file contents\nok 4 report: a corrupt record is named as corrupt without echoing its content\nok 5 report: outside a git repository it still prints, and says so\nok 6 report and rtk take no arguments beyond their usage\nok 7 rtk: not installed, with the install command that matches the machine\nok 8 rtk: installed shows its version and path; status equals no argument\nok 9 rtk: the Claude hook is on only when RTK's hook is in the user's settings\nok 10 rtk and report write nothing: no file in the project or settings changes\nok 11 docs/diagnostics.md says what the help says about both commands"
       },
       "C4": {
-        "status": "fail",
-        "exit": 1,
+        "status": "pass",
+        "exit": 0,
         "seconds": 0,
-        "tail": "1..1\nnot ok 1 R4: the Docs agent built a documentation requirement and it is proved\n# (from function `result_ok' in file tests/l3-results.bats, line 15,\n#  in test file tests/l3-results.bats, line 36)\n#   `result_ok docs' failed"
+        "tail": "1..1\nok 1 R4: the Docs agent built a documentation requirement and it is proved"
       },
       "C5": {
         "status": "fail",
@@ -664,13 +664,13 @@
       "C6": {
         "status": "fail",
         "exit": 1,
-        "seconds": 1,
+        "seconds": 0,
         "tail": "1..1\nnot ok 1 R6: /vbw:debug fixed the seeded root cause with a regression test that failed before\n# (from function `result_ok' in file tests/l3-results.bats, line 15,\n#  in test file tests/l3-results.bats, line 51)\n#   `result_ok debug' failed"
       },
       "C7": {
         "status": "fail",
         "exit": 1,
-        "seconds": 0,
+        "seconds": 1,
         "tail": "1..1\nnot ok 1 R7: /vbw:research answered a known question with a source a person can open\n# (from function `result_ok' in file tests/l3-results.bats, line 15,\n#  in test file tests/l3-results.bats, line 61)\n#   `result_ok research' failed"
       },
       "C8": {
