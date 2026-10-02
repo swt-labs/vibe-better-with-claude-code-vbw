@@ -660,6 +660,11 @@
       "id": "T3",
       "text": "QA round runs the project's full test suite once and hands the result to the QA agents, not one run per agent (load spikes made the hook benchmark fail: F2, F5)",
       "status": "open"
+    },
+    {
+      "id": "T4",
+      "text": "Two sessions on one project: the run lease does not record its session, so a second session is told to end the first session's live run as 'interrupted'. Record the owning session in the lease; other sessions wait unless it is stale.",
+      "status": "open"
     }
   ],
   "decisions": [
