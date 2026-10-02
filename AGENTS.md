@@ -1,6 +1,6 @@
 # VBW Instructions
 
-VBW 2 is a Claude Code plugin that gives Claude Code an executable definition of done: a human-approved spec, protected acceptance checks, parallel builds by workflows, mechanical proof by a small kernel, and human acceptance only where checks can't judge. Runtime dependencies: `bash` (3.2+), `jq`, `git`. The design is `a_non_prod_docs/vbw2_next_gen_design.md`; the execution plan is `a_non_prod_docs/vbw2_build_plan.md`.
+VBW 2 is a Claude Code plugin that gives Claude Code an executable definition of done: a human-approved spec, protected acceptance checks, parallel builds by workflows, mechanical proof by a small kernel, and human acceptance only where checks can't judge. Runtime dependencies: `bash` (3.2+), `jq`, `git`. The design and execution plan are maintainer-local working documents, not part of the repository.
 
 ## Engineering Standard (owner mandate, non-negotiable)
 
@@ -16,7 +16,7 @@ VBW 2 is a Claude Code plugin that gives Claude Code an executable definition of
 - **Work as the senior engineer who owns the outcome.** Make technical and product decisions yourself, from the evidence (docs, probes, measurements, the ledger), apply the standard above, record the decision and its rationale in the working documents, and keep executing.
 - **Do not ask the owner questions you can answer.** Never hand back "we still need to figure out X": figure it out (research, probe, measure), decide, and move on. Escalate only what truly needs the owner: credentials or access, spending beyond the approved budget, publishing (push, PRs, releases), and irreversible actions outside the repo.
 - **Plan end to end, then execute end to end.** Keep one authoritative build plan with acceptance criteria, work it in order, and report progress against it, not open questions.
-- **Record everything as you go** (`a_non_prod_docs/v2_progress_log.md`: work done, decisions, findings, new issues). This is mandatory.
+- **Record everything as you go** (the maintainer's local progress log: work done, decisions, findings, new issues). This is mandatory.
 
 ## Communication Style
 
@@ -95,7 +95,7 @@ When debugging, search these directories for evidence of what actually happened:
 
 | Path | Contents | Use When |
 | ------ | ---------- | ---------- |
-| `<target-repo>/.vbw/` (v1 projects: `.vbw-planning/`) | Project state: `spec.md`, `record.json` (inspect with `vbw status` / `vbw show`) | Ground the investigation in actual workflow state |
+| `<target-repo>/.vbw/` | Project state: `spec.md`, `record.json` (inspect with `vbw status` / `vbw show`) | Ground the investigation in actual workflow state |
 | `<claude-config-dir>/projects/{encoded-path}/*.jsonl` | Session transcripts | Replaying what the LLM said/did in a session |
 | `<claude-config-dir>/projects/{encoded-path}/{session-id}/subagents/agent-*.jsonl` | Subagent transcripts | Checking what VBW agent team members did |
 | `<claude-config-dir>/projects/{encoded-path}/{session-id}/tool-results/` | Tool output snapshots | Seeing exact tool outputs from a session |
@@ -139,10 +139,10 @@ cat "$CLAUDE_PROJECT_DIR"/<session-id>/subagents/agent-*.jsonl
 
 ## Repository layout
 
-- `plugin/`: the only shipped tree (marketplace source `./plugin`). It holds `.claude-plugin/`, `bin/`, `lib/`, `hooks/`, `scripts/` (the status line), `skills/`, `workflows/`, `agents/` and `output-styles/`.
+- `plugin/`: the only shipped tree (marketplace source `./plugin`). It holds `.claude-plugin/`, `bin/`, `lib/`, `hooks/`, scripts (the status line), `skills/`, `workflows/`, `agents/` and `output-styles/`.
 - `tests/`: bats suites. `helper.bash` is hermetic. `standards.bats` holds the engineering rules as tests, and `standards-selftest.bats` proves each rule fails on a violation.
 - `tools/`: maintainer tooling (`test.sh`, `bump-version.sh`, `install-hooks.sh`, `baseline/`, …). Never shipped.
-- `docs/`: user documentation. `a_non_prod_docs/`: local working documents (design, plan, ledger, progress log).
+- `docs/`: user documentation. Local working documents (design, plan, ledger, progress log) are kept outside the repository.
 
 ## Kernel and hook rules (each is enforced by `tests/standards.bats`)
 

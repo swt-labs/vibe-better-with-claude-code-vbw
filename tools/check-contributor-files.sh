@@ -26,9 +26,12 @@ for f in ${files[@]+"${files[@]}"}; do
     for word in $span; do
       word="${word%[.,;:]}"
       case "$word" in
-        /vbw:*)
+        /vbw:[a-z]*)
           name="${word#/vbw:}"
-          [ -f "plugin/skills/$name/SKILL.md" ] || report "$f" "$word (no such skill)"
+          case "$name" in
+            *[!a-z-]*) ;; # placeholder such as /vbw:* or /vbw:...
+            *) [ -f "plugin/skills/$name/SKILL.md" ] || report "$f" "$word (no such skill)" ;;
+          esac
           ;;
         http*|*'$'*|*'*'*|*'<'*|*'{'*|*'['*|'~'*|/*|./*|../*|*..*) ;;
         tools/*|plugin/*|tests/*|docs/*|.github/*|a_non_prod_docs/*|assets/*|scripts/*)
