@@ -1,0 +1,22 @@
+{
+  "scenario": "qafix",
+  "fixture": "greet.sh plus NOTES.md (no check names it); the built NOTES.md is deleted after the build, so only QA can see the deviation",
+  "cost_usd": 0,
+  "evidence_level": "L3",
+  "at": "2026-10-02T04:19:06Z",
+  "passed": false,
+  "facts": {
+    "deviation": "",
+    "first_qa_verdict": "pass",
+    "first_qa_note": "",
+    "fix_rounds": 0,
+    "final_qa_verdict": "pass",
+    "phase_proved": true
+  },
+  "not_tested": [
+    "a deviation other than one missing file",
+    "a deviation the Dev introduces itself (the seed is played by the scenario)",
+    "the fix cap (three failed rounds) and its escalation",
+    "a project larger than the greet.sh fixture"
+  ]
+}

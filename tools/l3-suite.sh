@@ -344,8 +344,10 @@ scenario_qafix() {
   new_project
   fixture="greet.sh plus NOTES.md (no check names it); the built NOTES.md is deleted after the build, so only QA can see the deviation"
   deviation=""
-  start="$GREET Also add NOTES.md with one sentence on what greet.sh is for. Nothing automated needs to test NOTES.md: a person reads it."
-  on_idle() {
+  # Guided autonomy: the session asks before each step, which is where a user
+  # (and this scenario) can act between the build and QA.
+  start="Use guided autonomy for this project. $GREET Also add NOTES.md with one sentence on what greet.sh is for. Nothing automated needs to test NOTES.md: a person reads it."
+  seed_deviation() {
     [ -z "$deviation" ] || return 1
     case "$(next_action)" in prove | qa) ;; *) return 1 ;; esac
     local f
@@ -358,6 +360,9 @@ scenario_qafix() {
     say "seeded the deviation: $f deleted after the build"
     return 0
   }
+  # Seed, then answer the question as a user would (the recommended option).
+  on_question() { seed_deviation || true; return 1; }
+  on_idle() { seed_deviation; }
   done_yet() { [ -n "$deviation" ] && shipped; }
   # Human requirements (NOTES.md wording) are accepted as a user would.
   checks() {
