@@ -79,6 +79,10 @@ case "$cmd" in
   screen) screen ;;
   debuglog) printf '%s.debug.log\n' "$name" ;;
   stop)
+    # Escape first: a question left on screen would take "/exit" + Enter as
+    # its answer (the first option), acting for the user.
+    tmux send-keys -t "$session" Escape
+    sleep 1
     tmux send-keys -t "$session" -l "/exit"
     tmux send-keys -t "$session" Enter
     sleep 2

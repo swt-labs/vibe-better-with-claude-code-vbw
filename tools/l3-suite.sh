@@ -139,7 +139,9 @@ stop_hook_errors_debug_log() {
 }
 
 # Session cost in USD, from the TUI's /cost.
-session_cost() {
+# Read once, before the session ends (see the main loop); checks reuse it.
+session_cost() { printf '%s' "${cost_usd:-}"; }
+read_session_cost() {
   local out
   l3 type "$scenario" "/cost"; sleep 3
   out=$(screen)
@@ -267,6 +269,7 @@ scenario_balanced() {
   checks() {
     check "QA recorded on the built phase" 'any(.phases[]; .qa.result == "pass")'
     check "stopped at accept, not shipped" '.milestone.status != "shipped"'
+    check "no human requirement accepted for the user" 'all(.requirements[]; .status != "accepted")'
     local te dl cost passed=true autonomy qa_bg=false stopped=none
     te=$(stop_hook_errors_transcript); dl=$(stop_hook_errors_debug_log)
     autonomy=$(cd "$dir" && "$VBW" config autonomy 2> /dev/null)
@@ -300,7 +303,12 @@ for scenario in "$@"; do
   if screen | grep -q "Type \/reload-skills"; then l3 type "$scenario" "/reload-skills"; sleep 5; fi
   l3 type "$scenario" "$start"
   drive || failed=1
-  checks
+  # Dismiss a pending question with Escape (never answer it), let the session
+  # settle, read its cost, then stop. Stop first, then read the state: the result records where the session
+  # actually ended, and a stop that acted for the user would show.
+  l3 keys "$scenario" Escape; sleep 2; default_idle
+  cost_usd=$(read_session_cost)
   l3 stop "$scenario"
+  checks
 done
 [ "$failed" -eq 0 ] && echo "L3 suite: all checks passed" || { echo "L3 suite: FAILED"; exit 1; }
