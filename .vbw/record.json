@@ -411,7 +411,7 @@
         "P1.1",
         "P2.1"
       ],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "Define the named fixture and add scenario_balanced to tools/l3-suite.sh and ALL (balanced autonomy, QA in background, auto on for the session)",
