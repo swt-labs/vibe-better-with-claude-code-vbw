@@ -1,5 +1,32 @@
 # Changelog
 
+## [2.0.12] - 2026-10-02
+
+### Changed
+
+- **Several Claude Code sessions on one project are safe.** A build, fix,
+  QA, planning or mapping run now belongs to the session that started it:
+  - another session is told the run belongs elsewhere (wait, or
+    `/vbw:status`) and is never asked to end it;
+  - `vbw run end` from another session is refused, unless you say the other
+    session is closed (`vbw run end --owner-closed`) or the run is more than
+    24 hours old;
+  - another session, and its agents, cannot edit or overwrite with a shell
+    command the files a live run is writing (during a planning run, any
+    project file).
+  - after Claude Code restarts in the middle of a run, the new session asks
+    you once whether the old session is still open, and ends its run only
+    when you say it is closed.
+- **Autonomous mode is per session:** turning it on or off in one session
+  leaves the others as they were, and the status line shows the session it is
+  drawn for.
+
+### Fixed
+
+- **The hook speed check no longer fails on a busy machine.** Its budget is
+  now relative to the platform's own shell and jq startup (for maintainers:
+  `tools/bench-hooks.sh`).
+
 ## [2.0.11] - 2026-10-02
 
 ### Fixed
