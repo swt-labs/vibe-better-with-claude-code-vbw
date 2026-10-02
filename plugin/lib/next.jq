@@ -40,10 +40,10 @@ def fix_files($r): if .command then ["*"]
 | ([.requirements[] | select(.proof == "auto" and (.status != "proven" or $stale)) | .id]) as $unproven
 | ([$current[] | select(.proof == "human" and .status == "open") | .id]) as $to_accept
 # Built phases QA has not verified on the proven code (VBW 1's QA mandate):
-# never verified, or the code changed since. The tier follows the profile.
+# never verified, failed, or the code changed since. The tier follows the profile.
 | ([.phases[] | select(.milestone == $m) | .id as $ph
     | select([$r.plans[] | select(.phase == $ph)] | length > 0 and all(.[]; .status == "done"))
-    | select(.qa == null or .qa.tree != ($r.evidence.tree // "")) | .id]) as $to_verify
+    | select(.qa == null or .qa.result != "pass" or .qa.tree != ($r.evidence.tree // "")) | .id]) as $to_verify
 | ({quality: "deep", budget: "quick"}[.settings.profile] // "standard") as $tier
 | if .lease != null then
     result("run"; false; "A VBW \(.lease.kind) run (\(.lease.run)) is open: if its workflow is still running in this session, wait for it; otherwise run vbw run end"; {lease: .lease})

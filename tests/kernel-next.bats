@@ -184,3 +184,11 @@ next_after() {
   run next_after '.phases[0].qa = {result: "pass", tier: "standard", tree: ("e" * 40), at: "2026-10-01T09:00:00Z"} | .plans[2].status = "blocked" | .plans[2].note = "x"'
   echo "$output" | jq -e '.action == "unblock"'
 }
+
+@test "row 10b: a phase QA failed on the proven code is verified again before shipping" {
+  local tree
+  tree=$(vbw_code_tree)
+  # Its findings were closed without a code change: the failed verdict still stands.
+  run next_after ".phases[0].qa = {result: \"fail\", tier: \"standard\", tree: \"$tree\", at: \"2026-10-01T09:00:00Z\"}"
+  echo "$output" | jq -e '.action == "qa" and .detail.phases == ["P1"]'
+}

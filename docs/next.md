@@ -28,7 +28,7 @@ lifecycle. `vbw next --json` returns:
 | 8 | current evidence has scope violations | `scope` (commits changed files outside their plans) | yes |
 | 9 | a fix is `open` | `fix` (`detail.fixes`, and `detail.groups`: fixes whose files overlap, one Dev each; a project command's fix may touch any file) | no |
 | 10 | an `auto` requirement is not `proven`, or the evidence is stale (another contract, or the project files changed since; docs/proof.md) | `prove` | no |
-| 10a | a phase of the current milestone is built and QA has not verified it on the proven code (never, or the code changed since) | `qa` (`detail.phases`, and `detail.tier`: `deep` for the quality profile, `quick` for budget, else `standard`) | no |
+| 10a | a phase of the current milestone is built and QA has not passed it on the proven code (never verified, failed, or the code changed since) | `qa` (`detail.phases`, and `detail.tier`: `deep` for the quality profile, `quick` for budget, else `standard`) | no |
 | 11 | a `human` requirement is `open` | `accept` (one scenario at a time) | yes |
 | 12 | otherwise | `ship` (`vbw ship`) | yes |
 
