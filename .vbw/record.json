@@ -445,15 +445,14 @@
       "after": [
         "P4.1"
       ],
-      "status": "blocked",
+      "status": "planned",
       "role": "dev",
       "tasks": [
         "Define the fixture and a seeded deviation (a file the plan requires is missing) that checks alone would not catch",
         "Add scenario_qafix to tools/l3-suite.sh and ALL, seeding the build and driving /vbw:vibe",
         "Assert the first QA verdict fail naming the deviation, at least one fix round, final pass, phase proved; log the round count",
         "Run it for real and commit the result"
-      ],
-      "note": "C5 (tests/l3-results.bats, protected) is unsatisfiable by any result file: its jq '.facts.first_qa_note | contains(.facts.deviation)' evaluates .facts.deviation against the piped string and errors ('Cannot index string with string facts'). Fix needed in the test, e.g. '.facts as $f | $f.first_qa_note | contains($f.deviation)'. The scenario (tools/l3-suite.sh) and a real passing L3 result (tools/l3-results/qafix.json, committed) are done."
+      ]
     },
     {
       "id": "P8.1",
@@ -592,6 +591,11 @@
       "id": "D6",
       "at": "2026-10-02T10:27:27Z",
       "text": "Contract approved: 9 requirements, 9 checks, 10 plans (372cc6099789)"
+    },
+    {
+      "id": "D7",
+      "at": "2026-10-02T10:33:03Z",
+      "text": "Contract approved: 9 requirements, 9 checks, 10 plans (8689c114f7c2)"
     }
   ],
   "commands": {},
