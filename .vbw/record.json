@@ -1032,6 +1032,12 @@
       "id": "D15",
       "at": "2026-10-02T18:44:42Z",
       "text": "Shipped M2 Several sessions, one project: 4 requirements proven or accepted"
+    },
+    {
+      "id": "D16",
+      "text": "M2 ships as 2.0.12",
+      "why": "2.0.11 went to the project-commands hotfix released before M2; replaces D12's version number",
+      "at": "2026-10-02T18:44:57Z"
     }
   ],
   "commands": {},
