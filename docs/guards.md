@@ -69,9 +69,11 @@ A command that contains none of the words any rule needs (`rm`, `git`, `vbw`,
   `|| true` (exit status 2 would block the call), and errors fall through to
   "allow". A standards test enforces both.
 - **Budget:** VBW's own cost (the hook minus the platform's `sh -c jq` startup)
-  is at most 8 ms at p95, measured by `tools/bench-hooks.sh` after every test
-  run, including on a 20 KB heredoc command. On this Mac: file tools about 2 ms,
-  Bash about 4 to 6 ms, on top of about 8 ms of shell and jq startup.
+  is at most 8 ms of CPU time per call, measured by `tools/bench-hooks.sh` before
+  every test run, including on a 20 KB heredoc command. CPU time, not elapsed
+  time, so a busy machine cannot fail it while added work still does. On this
+  Mac: file tools about 1.5 ms, Bash about 5 to 6 ms, on top of about 8 ms of
+  shell and jq startup.
 
 ## SessionStart
 

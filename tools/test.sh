@@ -21,7 +21,7 @@ jobs=1
 if command -v parallel >/dev/null 2>&1; then
   jobs="$(getconf _NPROCESSORS_ONLN 2>/dev/null || echo 4)"
 fi
-# Timing budgets are measured first, while the machine is quiet.
+# The hook cost budget (CPU time, so other load does not skew it) is measured first.
 bash tools/bench-hooks.sh
 
 bats --print-output-on-failure --jobs "$jobs" tests
