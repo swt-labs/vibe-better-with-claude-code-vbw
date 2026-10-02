@@ -1138,7 +1138,8 @@
       "files": [
         "tools/baseline/bench.sh",
         "tools/baseline/verify-results.sh",
-        "tools/baseline/results/runs/.gitkeep"
+        "tools/baseline/results/runs/.gitkeep",
+        "tools/l3.sh"
       ],
       "after": [
         "P15.1",
@@ -1148,10 +1149,10 @@
       "status": "planned",
       "role": "dev",
       "tasks": [
-        "write tools/baseline/verify-results.sh [DIR] per the contract in tests/baseline-results.bats (default DIR tools/baseline/results/runs); exits non-zero naming each missing, duplicate or incomplete run and any level other than L2",
-        "write tools/baseline/bench.sh ARM MODEL CASE RUN: seed the fixture in a scratch workspace inside the project's scratch area, run headless claude -p (plain: VBW disabled; vbw2: plugin loaded from ./plugin via --plugin-dir), grade with the case check.sh, take tokens and cost from the JSON output, write one runs/ARM-MODEL-CASE-RUN.json (fields arm, model, case, run, pass, tokens, cost_usd, level L2, fixture, date, rerun_of optional); skip a run whose record exists, so an interrupted batch resumes; on a usage-limit stop, exit with a distinct code and write no record",
-        "write a batch driver mode (bench.sh all MODEL) that loops all 42 runs for one model in order, resumes, and never deletes or overwrites a record (a re-run is a new record with rerun_of)",
-        "L1 tests of bench.sh with a stub claude on PATH covering record fields, resume, and the usage-limit stop; shellcheck clean, Bash 3.2"
+        "write tools/baseline/verify-results.sh [DIR] per the contract in tests/baseline-results.bats (default DIR tools/baseline/results/runs): exits non-zero naming each missing, duplicate or incomplete run, a missing user_inputs, and a level that does not match the arm (plain L2, vbw2 L3)",
+        "write tools/baseline/bench.sh ARM MODEL CASE RUN: seed the fixture in a scratch workspace inside the project scratch area; plain: headless claude -p with VBW not loaded, the case request as the prompt, tokens and cost from the JSON output, user_inputs 0, level L2; vbw2: drive the real Claude Code TUI as a user through tools/l3.sh with the plugin from ./plugin (/vbw:vibe with the case request, answer every question with the recommended option, type /vbw:approve when VBW asks, never accept a [human] requirement on the user’s behalf), stop when VBW reaches ship or stops at a gate, count user_inputs (answers and approvals typed), take cost from /cost and tokens from the session transcripts (main and subagents), level L3; then grade with the case check.sh and write runs/ARM-MODEL-CASE-RUN.json (arm, model, case, run, pass, tokens, cost_usd, user_inputs, level, fixture, date, rerun_of optional); skip a run whose record exists so an interrupted batch resumes; on a usage-limit stop exit with a distinct code and write no record",
+        "batch mode: bench.sh all MODEL loops the 42 runs for one model, resumes, never deletes or overwrites a record (a re-run is a new record with rerun_of); vbw2 runs may run up to 4 at a time in separate TUI sessions",
+        "L1 tests of bench.sh with a stub claude and a stub l3 driver on PATH covering record fields for both arms, resume and the usage-limit stop; shellcheck clean, Bash 3.2"
       ]
     },
     {
@@ -1469,6 +1470,11 @@
       "text": "README images: the owner provides them later in assets/; the README references them by planned file names",
       "why": "owner's choice (consistent with D1); R20 acceptance waits for the images",
       "at": "2026-10-02T20:33:29Z"
+    },
+    {
+      "id": "D21",
+      "at": "2026-10-02T20:42:05Z",
+      "text": "Contract approved: 18 requirements, 16 checks, 26 plans (b7e03a1b1b2f)"
     }
   ],
   "commands": {
