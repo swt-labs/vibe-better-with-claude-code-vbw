@@ -18,7 +18,7 @@ Sonnet 5.5 │ 10m22s (API 5m55s) │ main │ VBW 2.0.6 │ CC 2.1.286
    or accepted, and what is happening: a run in progress with its time and the
    agents working (`▶ build: P1.2 4m10s · 2 agents working`), a step that needs
    the user (`needs you: approve`), or the next step (`next: prove`, from the
-   last `vbw next`). `⟳ auto 3/25` while an autonomous run is armed. Outside a
+   last `vbw next`). `⟳ auto 3/25` while this session's autonomous run is armed (another session's is not shown). Outside a
    VBW project: `/vbw:vibe to start` (this line, then lines 3 to 5).
 2. **Agents or team** (VBW projects): while agents work, each one in its role's
    colour (architect magenta, lead blue, dev green, qa yellow, scout cyan,
@@ -48,7 +48,7 @@ so updating from VBW 1 switches the status line over with no change.
 ## Engineering
 
 - One jq program renders all four lines from Claude Code's JSON, the record,
-  and VBW's runtime state (`next.json`, `auto.json`).
+  and VBW's runtime state (`next.json`, and the session's own `auto.SESSION.json`).
 - No network, no temporary files, no git process (the branch is read from
   `.git/HEAD`, also in linked worktrees).
 - It reads stdin with a timeout (Claude Code may send nothing on the first

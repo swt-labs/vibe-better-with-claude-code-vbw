@@ -16,11 +16,15 @@ while IFS= read -t 1 -r line; do input="$input$line"; done 2> /dev/null
 input="$input${line:-}"
 exec 0< /dev/null
 
-# One jq call for both: the project folder, and the session's transcript.
-paths=$(printf '%s' "$input" | jq -r '(.workspace.project_dir // .cwd // ""), (.transcript_path // "")' 2> /dev/null)
+# One jq call for all: the project folder, the session's transcript and its id
+# (a safe token only: it names a file).
+paths=$(printf '%s' "$input" | jq -r '(.workspace.project_dir // .cwd // ""), (.transcript_path // ""), (.session_id // "" | if test("^[A-Za-z0-9_-]+$") then . else "" end)' 2> /dev/null)
 root=${paths%%$'\n'*}
-transcript=""
-case "$paths" in *$'\n'*) transcript=${paths#*$'\n'} ;; esac
+rest=${paths#*$'\n'}
+transcript=${rest%%$'\n'*}
+sid=${rest#*$'\n'}
+[ "$rest" != "$paths" ] || { transcript=""; sid=""; }
+[ "$sid" != "$rest" ] || sid=""
 root=${root:-$PWD}
 
 # Started in a subfolder: the project is the nearest folder up that holds .git
@@ -69,9 +73,11 @@ color=1
 [ -z "${NO_COLOR:-}" ] || color=""
 
 end="$plugin/hooks/end.json"
+# Autonomy is per session: only this session's file counts.
+auto="$root/.vbw/runtime/auto.${sid:-none}.json"
 [ -n "$input" ] || input='{}'
 # jq exits non-zero when an optional file is missing; only an empty render is a failure.
 out=$(jq -nr --argjson cc "$input" --arg branch "$branch" --arg color "$color" --arg legacy "$legacy" --argjson agents "$agents" --slurpfile profiles "$plugin/lib/profiles.json" -f "$here/statusline.jq" \
   "$plugin/.claude-plugin/plugin.json" "$root/.vbw/record.json" "$end" \
-  "$root/.vbw/runtime/next.json" "$end" "$root/.vbw/runtime/auto.json"  2> /dev/null)
+  "$root/.vbw/runtime/next.json" "$end" "$auto" 2> /dev/null)
 if [ -n "$out" ]; then printf '%s\n' "$out"; else printf '[VBW] status line unavailable\n'; fi
