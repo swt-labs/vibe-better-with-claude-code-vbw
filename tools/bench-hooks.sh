@@ -6,20 +6,23 @@
 # RUNS calls. VBW's own cost is the hook's CPU time minus that of the same
 # `sh -c jq` with an empty program: shell and jq startup are the platform's
 # (about 8 ms of CPU on an idle Mac), paid by any hook, and not ours to remove.
-# The budget is relative to that startup (VBW_HOOK_BUDGET, default 1.0x):
+# The budget: VBW's own CPU per call is within VBW_HOOK_BUDGET_MS (default 8),
+# or within VBW_HOOK_BUDGET times that startup (default 1.0x).
 # - CPU time, not wall-clock time: waiting for a busy machine is not the hook's
 #   work.
-# - Relative, not milliseconds: a loaded machine runs everything on slower
-#   cores, so startup and the guard's own cost grow together (7.7 to 15.5 ms of
-#   startup measured on one Mac, the guard staying near 0.8x), and a slower CI
-#   runner needs no budget of its own.
-# A real regression still shows: an added subprocess costs about 1x more, and
-# the 20 KB heredoc case catches work that grows faster than the input.
+# - The relative bound covers a loaded machine: processes run on slower cores,
+#   so startup and the guard's own cost grow together (7.7 to 15.5 ms of
+#   startup on one Mac, the guard staying near 0.8x). It cannot stand alone:
+#   platforms differ in startup (3.4 ms on a Linux CI runner, the guard 2.2x),
+#   so the absolute bound covers a quiet machine of any platform.
+# A real regression still shows: an added subprocess costs about one startup
+# more, and the 20 KB heredoc case catches work that grows faster than the input.
 # VBW_BENCH_RUNS and VBW_BENCH_PLUGIN_ROOT override the runs and the plugin (tests).
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 BUDGET="${VBW_HOOK_BUDGET:-1.0}"
+BUDGET_MS="${VBW_HOOK_BUDGET_MS:-8}"
 RUNS="${VBW_BENCH_RUNS:-100}"
 PLUGIN="${VBW_BENCH_PLUGIN_ROOT:-$ROOT/plugin}"
 work="$(mktemp -d)"
@@ -69,9 +72,9 @@ for input in git npm big read; do
   read -r shell total < <(cpu_pair "$work/$input.json" "$baseline" "$hook")
   own=$(perl -e 'printf "%.1f", $ARGV[0] - $ARGV[1]' -- "$total" "$shell")
   ratio=$(perl -e 'printf "%.2f", $ARGV[1] > 0 ? $ARGV[0] / $ARGV[1] : 99' -- "$own" "$shell")
-  line=$(printf 'guard (%s): %s ms own CPU per call, %sx the platform'"'"'s sh and jq startup (%s ms); budget %sx' \
-    "$input" "$own" "$ratio" "$shell" "$BUDGET")
-  if perl -e 'exit($ARGV[0] <= $ARGV[1] ? 0 : 1)' -- "$ratio" "$BUDGET"; then
+  line=$(printf 'guard (%s): %s ms own CPU per call, %sx the platform'"'"'s sh and jq startup (%s ms); budget %s ms or %sx' \
+    "$input" "$own" "$ratio" "$shell" "$BUDGET_MS" "$BUDGET")
+  if perl -e 'exit($ARGV[0] <= $ARGV[1] || $ARGV[2] <= $ARGV[3] ? 0 : 1)' -- "$own" "$BUDGET_MS" "$ratio" "$BUDGET"; then
     printf '%s\n' "$line"
   else
     printf '%s: OVER\n' "$line" >&2

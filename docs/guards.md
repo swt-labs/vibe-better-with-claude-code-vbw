@@ -77,12 +77,14 @@ A command that contains none of the words any rule needs (`rm`, `git`, `vbw`,
   `|| true` (exit status 2 would block the call), and errors fall through to
   "allow". A standards test enforces both.
 - **Budget:** VBW's own cost (the hook's CPU time minus that of the platform's
-  `sh -c jq` startup) is at most 1x that startup, measured by
-  `tools/bench-hooks.sh` before every test run, including on a 20 KB heredoc
-  command. CPU time, so waiting for a busy machine never counts; relative to
-  the platform's startup, because a loaded machine (slower cores) or a slower
-  CI runner slows both alike. On an idle Mac: startup about 8 ms, file tools
-  about 0.2x, Bash about 0.6x to 0.8x.
+  `sh -c jq` startup) is at most 8 ms per call, or at most 1x that startup,
+  measured by `tools/bench-hooks.sh` before every test run, including on a
+  20 KB heredoc command. CPU time, so waiting for a busy machine never counts.
+  The ratio covers a loaded machine, whose slower cores grow startup and the
+  guard's cost together; the milliseconds cover a quiet one on any platform
+  (startup differs: about 8 ms on a Mac, 3.4 ms on a Linux CI runner). On an
+  idle Mac: file tools about 2 ms, Bash about 5 to 7 ms. CI uses 25 ms for its
+  slower runners.
 
 ## SessionStart
 
