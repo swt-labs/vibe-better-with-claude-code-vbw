@@ -31,7 +31,7 @@ CASES="fix-oneshot failing-check-fix brownfield-feature safety-destructive safet
 LIMIT_RE='usage limit|hit your .*limit|reached your .*limit|limit reached'
 EXIT_LIMIT=75
 EXIT_FAULT=70
-MAX_ROUNDS=40
+MAX_ROUNDS=120
 
 usage() { sed -n '3,6p' "$0" >&2; exit 2; }
 
@@ -143,25 +143,34 @@ run_vbw2() {
     echo "bench: could not drive a session for $name; no record written" >&2
     return "$EXIT_FAULT"
   fi
+  # Each round waits at most a minute, then acts on VBW's state: the screen
+  # need not settle (the status line keeps changing), and a finished run stops
+  # whatever the screen shows.
+  local settled
   while [ "$round" -lt "$MAX_ROUNDS" ]; do
     round=$((round + 1))
-    screen=$(bash "$L3" wait "$name" 1800 2> /dev/null) || true
+    settled=1
+    screen=$(bash "$L3" wait "$name" 60 2> /dev/null) || settled=0
     if printf '%s' "$screen" | grep -Eqi "$LIMIT_RE"; then
       bash "$L3" stop "$name" > /dev/null 2>&1 || true
       echo "bench: usage limit reached; no record written" >&2
       return "$EXIT_LIMIT"
     fi
+    action=$(next_action "$ws")
+    case "$action" in ship | accept | milestone) done=1; break ;; esac
+    printf '%s' "$screen" | grep -q 'esc to interrupt' && continue
     if printf '%s' "$screen" | grep -q 'Enter to select\|Ready to submit'; then
       bash "$L3" keys "$name" Enter > /dev/null 2>&1 || true
       inputs=$((inputs + 1))
       continue
     fi
-    action=$(next_action "$ws")
     case "$action" in
-      ship | accept | milestone) done=1; break ;;
       approve) bash "$L3" type "$name" "/vbw:approve" > /dev/null 2>&1 || true; inputs=$((inputs + 1)) ;;
       run) ;;
-      *) bash "$L3" type "$name" "/vbw:vibe" > /dev/null 2>&1 || true; inputs=$((inputs + 1)) ;;
+      *)
+        # Only a settled, idle session is asked to continue.
+        [ "$settled" -eq 1 ] || continue
+        bash "$L3" type "$name" "/vbw:vibe" > /dev/null 2>&1 || true; inputs=$((inputs + 1)) ;;
     esac
   done
   [ "$done" -eq 1 ] || echo "bench: $name did not reach a finished step in $MAX_ROUNDS rounds" >&2

@@ -88,7 +88,7 @@ vbw2_transcript() {
   printf 'Building...\n' > "$STUB/screens/3"
   printf 'Waiting.\n' > "$STUB/screens/4"
   printf 'Done. All checks pass.\n' > "$STUB/screens/5"
-  printf 'approve\nrun\nbuild\nship\n' > "$STUB/actions"
+  printf 'spec\napprove\nrun\nbuild\nship\n' > "$STUB/actions"
   vbw2_transcript
   BENCH_STUB_FIX=1 run bash "$BENCH" vbw2 sonnet-5.5 fix-oneshot 1
   [ "$status" -eq 0 ]
@@ -100,6 +100,17 @@ vbw2_transcript() {
   [ "$(grep -c '^type bench-sonnet-5-5-fix-oneshot-1 /vbw:vibe$' "$STUB/calls")" -eq 1 ]
   # tmux reads a dot in a session name as a window.pane separator.
   ! grep -q '^[a-z]* [^ ]*[.]' "$STUB/calls" || { cat "$STUB/calls"; false; }
+}
+
+@test "a finished run stops even with a question on screen, without answering it" {
+  printf 'Ship M1?\n 1. Ship M1\nEnter to select\n' > "$STUB/screens/1"
+  printf 'ship\n' > "$STUB/actions"
+  vbw2_transcript
+  BENCH_STUB_FIX=1 run bash "$BENCH" vbw2 sonnet-5.5 fix-oneshot 1
+  [ "$status" -eq 0 ]
+  ! grep -q '^keys bench-sonnet-5-5-fix-oneshot-1 Enter' "$STUB/calls"
+  run jq -r '.user_inputs' "$PROJECT/runs/vbw2-sonnet-5.5-fix-oneshot-1.json"
+  [ "$output" = 0 ]
 }
 
 @test "a session that cannot start writes no record (harness fault, exit 70)" {
