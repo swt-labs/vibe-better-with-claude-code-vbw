@@ -76,12 +76,13 @@ A command that contains none of the words any rule needs (`rm`, `git`, `vbw`,
 - **A guard can never block by accident.** Every PreToolUse command ends in
   `|| true` (exit status 2 would block the call), and errors fall through to
   "allow". A standards test enforces both.
-- **Budget:** VBW's own cost (the hook minus the platform's `sh -c jq` startup)
-  is at most 8 ms of CPU time per call, measured by `tools/bench-hooks.sh` before
-  every test run, including on a 20 KB heredoc command. CPU time, not elapsed
-  time, so a busy machine cannot fail it while added work still does. On this
-  Mac: file tools about 1.5 ms, Bash about 5 to 6 ms, on top of about 8 ms of
-  shell and jq startup.
+- **Budget:** VBW's own cost (the hook's CPU time minus that of the platform's
+  `sh -c jq` startup) is at most 1x that startup, measured by
+  `tools/bench-hooks.sh` before every test run, including on a 20 KB heredoc
+  command. CPU time, so waiting for a busy machine never counts; relative to
+  the platform's startup, because a loaded machine (slower cores) or a slower
+  CI runner slows both alike. On an idle Mac: startup about 8 ms, file tools
+  about 0.2x, Bash about 0.6x to 0.8x.
 
 ## SessionStart
 

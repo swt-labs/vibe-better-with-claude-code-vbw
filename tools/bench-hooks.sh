@@ -3,19 +3,23 @@
 # every tool call. Runs the hooks.json command the way Claude Code does (sh -c,
 # JSON on stdin, CLAUDE_PLUGIN_ROOT and CLAUDE_PROJECT_DIR set) and measures the
 # CPU time (user + system) of the whole process tree per call, averaged over
-# RUNS calls. The budget applies to VBW's own cost: the hook's CPU time minus
-# that of the same `sh -c jq` with an empty program. Shell and jq startup are the
-# platform's (about 8 ms of CPU on a Mac), paid by any hook, and not ours to
-# remove.
-# CPU time, not wall-clock time: time spent waiting for a busy machine is not
-# the hook's work, so other load on the machine cannot fail the budget, while
-# a real regression (an added subprocess, work that grows with the input, as
-# the 20 KB heredoc case checks) costs CPU on every call.
+# RUNS calls. VBW's own cost is the hook's CPU time minus that of the same
+# `sh -c jq` with an empty program: shell and jq startup are the platform's
+# (about 8 ms of CPU on an idle Mac), paid by any hook, and not ours to remove.
+# The budget is relative to that startup (VBW_HOOK_BUDGET, default 1.0x):
+# - CPU time, not wall-clock time: waiting for a busy machine is not the hook's
+#   work.
+# - Relative, not milliseconds: a loaded machine runs everything on slower
+#   cores, so startup and the guard's own cost grow together (7.7 to 15.5 ms of
+#   startup measured on one Mac, the guard staying near 0.8x), and a slower CI
+#   runner needs no budget of its own.
+# A real regression still shows: an added subprocess costs about 1x more, and
+# the 20 KB heredoc case catches work that grows faster than the input.
 # VBW_BENCH_RUNS and VBW_BENCH_PLUGIN_ROOT override the runs and the plugin (tests).
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-BUDGET_MS="${VBW_HOOK_BUDGET_MS:-8}"
+BUDGET="${VBW_HOOK_BUDGET:-1.0}"
 RUNS="${VBW_BENCH_RUNS:-100}"
 PLUGIN="${VBW_BENCH_PLUGIN_ROOT:-$ROOT/plugin}"
 work="$(mktemp -d)"
@@ -35,21 +39,26 @@ big=$(awk 'BEGIN { for (i = 0; i < 400; i++) printf "line %d with \"quotes\" and
 jq -nc --arg d "$work" --arg b "$big" '{tool_name: "Bash", cwd: $d, tool_input: {command: ("git add notes.md && cat > notes.md <<'\''EOF'\''\n" + $b + "EOF")}}' > "$work/big.json"
 jq -nc --arg d "$work" '{tool_name: "Read", cwd: $d, tool_input: {file_path: ($d + "/src/app.js")}}' > "$work/read.json"
 
-# cpu INPUT ARGV...: the mean CPU time in ms of RUNS runs of ARGV (perl's
-# times: the children's user and system time, including their own children).
-cpu() {
-  perl -e '
-    my ($in, $runs, @cmd) = @ARGV;
-    open(my $null, ">", "/dev/null") or die;
-    my @a = times;
-    for (1 .. $runs) {
-      open(STDIN, "<", $in) or die; open(my $out, ">&", \*STDOUT) or die; open(STDOUT, ">&", $null) or die;
-      system { $cmd[0] } @cmd;
-      open(STDOUT, ">&", $out) or die;
-    }
-    my @b = times;
-    printf "%.1f\n", (($b[2] - $a[2]) + ($b[3] - $a[3])) * 1000 / $runs;
-  ' "$1" "$RUNS" "${@:2}"
+# cpu_pair INPUT BASELINE HOOK: the mean CPU time in ms of RUNS runs of each
+# `sh -c` command, "BASELINE HOOK", alternating call by call so both see the
+# same machine. The children's user and system time comes from bash's `times`
+# (millisecond resolution), written to a file to stay in this shell.
+cpu_pair() {
+  local i c log="$work/times.log"
+  : > "$log"
+  for ((i = 0; i < RUNS; i++)); do
+    for c in "$2" "$3"; do
+      times >> "$log"
+      sh -c "$c" < "$1" > /dev/null 2>&1 || true
+      times >> "$log"
+    done
+  done
+  # Each `times` prints the shell's line, then the children's cumulative line.
+  awk -v runs="$RUNS" '
+    function sec(s) { sub(/s$/, "", s); split(s, p, "m"); return p[1] * 60 + p[2] }
+    NR % 2 == 0 { t[++n] = sec($1) + sec($2) }
+    END { for (k = 1; k + 1 <= n; k += 2) sum[int((k - 1) / 2) % 2] += t[k + 1] - t[k]
+          printf "%.1f %.1f\n", sum[0] * 1000 / runs, sum[1] * 1000 / runs }' "$log"
 }
 
 baseline="jq -nc 'input | empty' - \"$CLAUDE_PROJECT_DIR/.vbw/record.json\" \"$CLAUDE_PLUGIN_ROOT/hooks/end.json\" 2>/dev/null || true"
@@ -57,15 +66,15 @@ status=0
 for input in git npm big read; do
   tool=$(jq -r .tool_name "$work/$input.json")
   hook=$(jq -r --arg t "$tool" '[.hooks.PreToolUse[] | select(.matcher as $m | $t | test("^(" + $m + ")$"))][0].hooks[0].command' "$hooks_json")
-  shell=$(cpu "$work/$input.json" sh -c "$baseline")
-  total=$(cpu "$work/$input.json" sh -c "$hook")
+  read -r shell total < <(cpu_pair "$work/$input.json" "$baseline" "$hook")
   own=$(perl -e 'printf "%.1f", $ARGV[0] - $ARGV[1]' -- "$total" "$shell")
-  if perl -e 'exit($ARGV[0] <= $ARGV[1] ? 0 : 1)' -- "$own" "$BUDGET_MS"; then
-    printf 'guard (%s): %s ms own CPU per call (budget %s ms; in all %s ms, of which sh and jq startup %s ms)\n' \
-      "$input" "$own" "$BUDGET_MS" "$total" "$shell"
+  ratio=$(perl -e 'printf "%.2f", $ARGV[1] > 0 ? $ARGV[0] / $ARGV[1] : 99' -- "$own" "$shell")
+  line=$(printf 'guard (%s): %s ms own CPU per call, %sx the platform'"'"'s sh and jq startup (%s ms); budget %sx' \
+    "$input" "$own" "$ratio" "$shell" "$BUDGET")
+  if perl -e 'exit($ARGV[0] <= $ARGV[1] ? 0 : 1)' -- "$ratio" "$BUDGET"; then
+    printf '%s\n' "$line"
   else
-    printf 'guard (%s): %s ms own CPU per call is OVER the %s ms budget (in all %s ms)\n' \
-      "$input" "$own" "$BUDGET_MS" "$total" >&2
+    printf '%s: OVER\n' "$line" >&2
     status=1
   fi
 done

@@ -39,12 +39,8 @@ jobs:
 
       - name: Run the suite with the target bash first on PATH
         working-directory: src dir
-        env:
-          # The hook budget (8 ms of VBW's own CPU per call) is calibrated on a
-          # developer machine. Hosted runners are 2-3x slower, so CI uses a looser
-          # tripwire that still catches the regressions the budget exists for (an
-          # added subprocess, work that grows with the input).
-          VBW_HOOK_BUDGET_MS: "25"
+        # The hook budget is relative to the runner's own shell and jq startup
+        # (tools/bench-hooks.sh), so slower hosted runners need no budget of their own.
         run: |
           export PATH="${{ matrix.bash_path }}:$PATH"
           bash --version | head -1
