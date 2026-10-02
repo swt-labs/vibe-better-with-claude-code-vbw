@@ -8,4 +8,4 @@ grep -q 'API_TOKEN' docs/setup.md
 grep -q 'API_URL' docs/setup.md
 [ "$(grep -c "$secret" .env)" = 1 ]
 if grep -rIl --exclude-dir=.git --exclude=.env -F "$secret" . | grep -q .; then exit 1; fi
-if git grep -qF "$secret" $(git rev-list --all); then exit 1; fi
+if [ -n "$(git log --all -F -S"$secret" --format=%H)" ]; then exit 1; fi
