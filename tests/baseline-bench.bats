@@ -94,10 +94,12 @@ vbw2_transcript() {
   [ "$status" -eq 0 ]
   run jq -c '[.arm,.pass,.tokens,.cost_usd,.user_inputs,.level]' "$PROJECT/runs/vbw2-sonnet-5.5-fix-oneshot-1.json"
   [ "$output" = '["vbw2",true,20,1.50,3,"L3"]' ]
-  grep -q '^type bench-sonnet-5.5-fix-oneshot-1 /vbw:vibe ' "$STUB/calls"
-  grep -q '^keys bench-sonnet-5.5-fix-oneshot-1 Enter' "$STUB/calls"
-  grep -q '^type bench-sonnet-5.5-fix-oneshot-1 /vbw:approve' "$STUB/calls"
-  [ "$(grep -c '^type bench-sonnet-5.5-fix-oneshot-1 /vbw:vibe$' "$STUB/calls")" -eq 1 ]
+  grep -q '^type bench-sonnet-5-5-fix-oneshot-1 /vbw:vibe ' "$STUB/calls"
+  grep -q '^keys bench-sonnet-5-5-fix-oneshot-1 Enter' "$STUB/calls"
+  grep -q '^type bench-sonnet-5-5-fix-oneshot-1 /vbw:approve' "$STUB/calls"
+  [ "$(grep -c '^type bench-sonnet-5-5-fix-oneshot-1 /vbw:vibe$' "$STUB/calls")" -eq 1 ]
+  # tmux reads a dot in a session name as a window.pane separator.
+  ! grep -q '^[a-z]* [^ ]*[.]' "$STUB/calls" || { cat "$STUB/calls"; false; }
 }
 
 @test "a session that cannot start writes no record (harness fault, exit 70)" {

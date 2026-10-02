@@ -135,7 +135,8 @@ next_action() {
 run_vbw2() {
   local model=$1 case_name=$2 n=$3 out=$4 ws name screen inputs=0 round=0 action cost done=0
   ws=$(seed vbw2 "$model" "$case_name" "$n")
-  name="bench-$model-$case_name-$n"
+  # No dots: tmux reads one in a session name as a window.pane separator.
+  name="bench-${model//./-}-$case_name-$n"
   if ! bash "$L3" start "$name" "$ws" "$(model_id "$model")" > /dev/null 2>&1 \
       || ! bash "$L3" type "$name" "/vbw:vibe $(cat "$HERE/cases/$case_name/request.txt")" > /dev/null 2>&1; then
     bash "$L3" stop "$name" > /dev/null 2>&1 || true
