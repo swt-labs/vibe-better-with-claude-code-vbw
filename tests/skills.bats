@@ -86,3 +86,10 @@ front() { awk 'NR == 1 && /^---$/ { on = 1; next } on && /^---$/ { exit } on' "$
     ! grep -nE '\$HOME|~/\.claude|plugins/cache|/tmp/' "$f" || { echo "in $f"; false; }
   done < <(skills)
 }
+
+@test "the router says before the user's request that no project file changes before approval" {
+  local f="$PLUGIN_ROOT/skills/vibe/SKILL.md" rule said
+  rule=$(grep -n 'no project file' "$f" | head -1 | cut -d: -f1)
+  said=$(grep -n '^User said:' "$f" | cut -d: -f1)
+  [ -n "$rule" ] && [ -n "$said" ] && [ "$rule" -lt "$said" ]
+}

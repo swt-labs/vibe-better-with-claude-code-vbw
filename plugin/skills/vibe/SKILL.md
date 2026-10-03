@@ -12,7 +12,9 @@ hooks:
 
 # VBW
 
-Kernel decides next step; you carry it out and talk to user.
+Kernel decides next step; you carry it out and talk to user. First rule, even
+for a one-line fix: no project file changes until the contract is approved and
+a build runs (express makes small work fast).
 
 ```!
 "${CLAUDE_PLUGIN_ROOT}/bin/vbw" next --json 2>&1 || true
@@ -166,6 +168,5 @@ Lead keeps finished work as is, user approves changed contract.
 
 - Only kernel writes `.vbw/record.json`; agents and you change state through
   `vbw` commands.
-- Never approve, never run `git push`, never weaken a check, never change
-  project files before the contract is approved.
+- Never approve, never run `git push`, never weaken a check.
 - Plan work commits go through `vbw commit` (Devs do this).
