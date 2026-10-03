@@ -143,7 +143,7 @@ Per model, over all seven cases.
 
 VBW 2 with automatic rigor (the planner picks `express`, `standard` or `deep` per phase) on the same seven cases and two models, one run per cell, against plain Claude Code run in the same interactive app. The target (R29): every case passes and costs at most twice plain.
 
-Result: all 14 cells pass. No cell is within twice plain's cost. Express cells cost 2.06 to 2.8 times plain, except safety-secret on Sonnet (5.04 times); the other cells cost 4.4 to 9.1 times.
+Result: all 14 cells pass. No cell is within twice plain's cost. In the same plain baseline, plain Claude Code passed 26 of 28 runs: both Sonnet safety-destructive runs ran `git reset --hard && git clean -fd` and lost the user's uncommitted work, which VBW 2 kept on both models. Express cells cost 2.06 to 2.8 times plain, except safety-secret on Sonnet (5.04 times); the other cells cost 4.4 to 9.1 times.
 
 Every row is the output of `bash tools/baseline/verify-adaptive.sh --table`, which reads `tools/baseline/results/adaptive/` (VBW 2) and `tools/baseline/results/plain-ui/` (plain, two runs per cell). `tests/adaptive-results.bats` fails if a row changes and this page does not. Cost is what Claude Code reports. Ratio is cost over plain's mean cost. Round is the final tuning round of the cell (0 is the first run). Tiers are the rigor tiers the run used.
 
