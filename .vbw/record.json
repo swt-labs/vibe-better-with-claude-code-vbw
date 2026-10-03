@@ -922,7 +922,7 @@
       "tier": "deep",
       "reasons": [
         "requirements: 2",
-        "files: 20 (106894 bytes)",
+        "files: 22 (119874 bytes)",
         "risk: none",
         "breaks: R12, R13, R14, R22, R23, R27",
         "tests: project test command"
@@ -948,7 +948,7 @@
       "tier": "deep",
       "reasons": [
         "requirements: 2",
-        "files: 23 (121561 bytes)",
+        "files: 23 (123516 bytes)",
         "risk: none",
         "breaks: R1, R2, R3, R11, R12, R13, R14, R22, R23, R24, R26, R27",
         "tests: project test command"
@@ -980,7 +980,7 @@
       "tier": "deep",
       "reasons": [
         "requirements: 1",
-        "files: 11 (70401 bytes)",
+        "files: 11 (78583 bytes)",
         "risk: none",
         "breaks: R8, R17, R18, R22, R23, R24, R26",
         "tests: project test command"
@@ -1004,7 +1004,7 @@
       "tier": "deep",
       "reasons": [
         "requirements: 1",
-        "files: 10 (40909 bytes)",
+        "files: 10 (43960 bytes)",
         "risk: data migration (tools/baseline/fixtures/data-migration/)",
         "breaks: R18",
         "tests: project test command"
@@ -1996,7 +1996,8 @@
         "P22.1",
         "P21.4",
         "P20.4",
-        "P22.5"
+        "P22.5",
+        "P20.5"
       ],
       "status": "planned",
       "tasks": [
@@ -2244,6 +2245,34 @@
         "l3.sh start can launch Claude Code without the plugin (plain Claude Code, same app, settings and sandbox)",
         "bench.sh: arm plain-ui drives plain Claude Code in the interactive app like vbw2 (the request typed, any question answered with the recommended option, finished when idle with no question on screen), graded by check.sh, with tokens and cost from the transcripts; its record is arm plain, level L3, in BENCH_RUNS_DIR",
         "verify-adaptive.sh: the plain baseline defaults to tools/baseline/results/plain-ui (interactive plain runs, level L3); plain records of level L2 or L3 are accepted; README.md documents the arm and why (same app, same base context as VBW)"
+      ]
+    },
+    {
+      "id": "P20.5",
+      "phase": "P20",
+      "title": "Express holds end to end: one assessment, detected tests, the apply shape in the router",
+      "reqs": [
+        "R24",
+        "R22"
+      ],
+      "files": [
+        "plugin/lib/rigor-defs.jq",
+        "plugin/lib/rigor.jq",
+        "plugin/lib/cmd-next.sh",
+        "plugin/lib/cmd-init.sh",
+        "plugin/skills/vibe/SKILL.md",
+        "tests/rigor-early.bats",
+        "tests/kernel-consent.bats"
+      ],
+      "after": [
+        "P20.4"
+      ],
+      "status": "planned",
+      "tasks": [
+        "tests/rigor-early.bats (red first): for a request the early assessment calls express, vbw apply of one phase with one plan of at most 4 small files and one check records express (the two never disagree); an existing codebase with no project test command is standard at both steps",
+        "rigor-defs.jq and rigor.jq: the signal thresholds and the no-project-tests rule are defined once and used by both early_tier and the apply floor; early_tier also applies the existing-code-without-tests rule (cmd-next.sh passes whether a test command is approved or detected)",
+        "cmd-init.sh (test in tests/kernel-consent.bats, red first): with no ecosystem detected, an executable test.sh, tests.sh or run_tests.sh at the root is the test command ([\"./test.sh\"])",
+        "vibe SKILL.md: the express plan step shows the apply document shape inline in one line ({phases:[{id,title,reqs,tier}], plans:[{id,phase,title,reqs,files,tasks}], checks:[{id,req,run,files}]}), so no session searches for it; router stays within 1,400 words"
       ]
     }
   ],
