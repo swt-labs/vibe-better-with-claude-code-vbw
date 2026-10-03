@@ -2,10 +2,14 @@
 # Args: $approved (the current contract hash has consent), $contract (that hash),
 # $code_changed (the project differs from the commit the evidence proved), $legacy (a
 # VBW 1 plan, .vbw-planning/, is not converted yet), $session (the caller's session, "" when unknown).
-# Output: {action, gate, instruction, detail}. First matching row wins.
+# $tiers (slurped: [table]; lib/tiers.json: profile -> tier -> cell).
+# Output: {action, gate, instruction, detail, rigor}. First matching row wins.
 
 def result($action; $gate; $instruction; $detail):
   {action: $action, gate: $gate, instruction: $instruction, detail: $detail};
+
+# QA ranks, lowest first.
+def qa_rank: {quick: 0, standard: 1, deep: 2}[.];
 
 # Builders share one working tree, so work that touches the same file never runs
 # at the same time. "*" stands for any file.
@@ -43,13 +47,23 @@ def fix_files($r): if .command then ["*"]
 | (.evidence == null or .evidence.contract != $contract or $code_changed) as $stale
 | ([.requirements[] | select(.proof == "auto" and (.status != "proven" or $stale)) | .id]) as $unproven
 | ([$current[] | select(.proof == "human" and .status == "open") | .id]) as $to_accept
+# Rigor: each current phase's tier (standard when it has none) with its cell of
+# the profile (lib/tiers.json); the user's model overrides win over the cell's.
+| ((.settings.models // {}) | {dev, qa} | with_entries(select(.value != null))) as $override
+| ([.phases[] | select(.milestone == $m) | . as $ph | ($ph.tier // "standard") as $t
+    | {key: $ph.id, value: ({tier: $t} + $tiers[0][$r.settings.profile][$t] | .models += $override)}]
+   | from_entries) as $rigor
 # Built phases QA has not verified on the proven code (VBW 1's QA mandate):
-# never verified, failed, or the code changed since. The tier follows the profile.
-| ([.phases[] | select(.milestone == $m) | .id as $ph
+# never verified, failed, or the code changed since. A built phase needs QA
+# unless it is express with only [auto] requirements and no escalations.
+| ([.phases[] | select(.milestone == $m) | .id as $ph | . as $p
     | select([$r.plans[] | select(.phase == $ph)] | length > 0 and all(.[]; .status == "done"))
+    | select(($rigor[$ph].tier != "express") or (($p.escalations // []) | length > 0)
+             or any($p.reqs[]; . as $q | any($current[]; .id == $q and .proof == "human")))
     | select(.qa == null or .qa.result != "pass" or .qa.tree != ($r.evidence.tree // "")) | .id]) as $to_verify
-| ({quality: "deep", budget: "quick"}[.settings.profile] // "standard") as $tier
-| if .lease != null and .lease.session != null and .lease.session != $session then
+# The QA tier is the highest among the phases to verify.
+| ([$to_verify[] | $rigor[.].qa] | max_by(qa_rank) // "standard") as $tier
+| (if .lease != null and .lease.session != null and .lease.session != $session then
     result("run"; false; "A VBW \(.lease.kind) run (\(.lease.run)) belongs to another session: wait for it, or check vbw status"; {lease: .lease})
   elif .lease != null then
     result("run"; false; "A VBW \(.lease.kind) run (\(.lease.run)) is open: if its workflow is still running in this session, wait for it; otherwise run vbw run end"; {lease: .lease})
@@ -84,4 +98,4 @@ def fix_files($r): if .command then ["*"]
     result("accept"; true; "Accept or reject \($to_accept | join(", ")), one scenario at a time"; {requirements: $to_accept})
   else
     result("ship"; true; "Everything is proven and accepted: ship milestone \(.milestone.id)"; {})
-  end
+  end) + {rigor: $rigor}
