@@ -617,9 +617,9 @@
         "result": "fail",
         "tier": "standard",
         "tree": "92c012183f644ed517c42bb9db01165f83b13f8f",
-        "at": "2026-10-03T02:24:13Z",
+        "at": "2026-10-03T02:32:04Z",
         "note": "17/19 checks",
-        "rounds": 1
+        "rounds": 2
       }
     },
     {
@@ -1404,8 +1404,16 @@
       "req": "R21",
       "source": "qa",
       "attempts": 0,
-      "status": "fixed",
+      "status": "closed",
       "note": "Test gap: commit 5e5a730d added a check that every backticked 'vbw NAME' is a command listed by plugin/bin/vbw help, but tests/contributor-files.bats has no selftest for it (last changed in fae5dd46); no test fails if that check is removed. Add a selftest where a file names `vbw nonesuch` and the check exits non-zero."
+    },
+    {
+      "id": "F9",
+      "req": "R21",
+      "source": "qa",
+      "attempts": 0,
+      "status": "open",
+      "note": ".github/references/prompting-best-practices-for-vbw.md names VBW 1 files absent from the tree: line 251 'commands/status.md' and 'scripts/compile-context.sh', line 262 'compile-context.sh' (ls commands scripts: no such directory). The goal covers the other contributor files under .github and criterion 2 forbids absent v1 scripts; check-contributor-files.sh does not scan .github/references/*, so it cannot catch this."
     }
   ],
   "todos": [
@@ -1702,5 +1710,11 @@
     "scope": [],
     "passed": true
   },
-  "lease": null
+  "lease": {
+    "run": "qa-20261003T022815Z",
+    "kind": "qa",
+    "started_at": "2026-10-03T02:28:15Z",
+    "files": [],
+    "session": "9cd2cc30-8c86-4520-9d71-a0e82aff5407"
+  }
 }
