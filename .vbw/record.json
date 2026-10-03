@@ -953,7 +953,15 @@
         "breaks: R1, R2, R3, R11, R12, R13, R14, R22, R23, R24, R26, R27",
         "tests: project test command"
       ],
-      "predicted": "deep"
+      "predicted": "deep",
+      "escalations": [
+        {
+          "at": "2026-10-03T13:45:59Z",
+          "from": "deep",
+          "to": "deep",
+          "reason": "Dev blocked P21.3: Task 1 puts the finish definition in plugin/lib/rigor.jq, but since P21.2 (778c0c61) rigor.jq is only the assessment program (it needs $facts/$ids) and every definition shared by record updates lives in plugin/lib/rigor-defs.jq, which is loaded into VBW_JQ_DEFS. prove.jq, cmd-qa.sh and cmd-req.sh can only share one finish definition through rigor-defs.jq, which is not in P21.3's file list. Re-plan with plugin/lib/rigor-defs.jq added (and rigor.jq dropped). Schema (record.jq outcome/predicted) and the red checks C24/C25 are already in place."
+        }
+      ]
     },
     {
       "id": "P22",
@@ -1913,14 +1921,15 @@
         "P21.5",
         "P21.6"
       ],
-      "status": "planned",
+      "status": "blocked",
       "tasks": [
         "rigor.jq: a finished definition (plans done, requirements proven or accepted, no open or escalated fix on them, QA passed on the proven code when needs-QA) and a finish definition that writes outcome {tier, predicted, held, fix_rounds (sum of attempts + 1 over the phase's requirements' fixes), qa_findings (their qa-source fixes), escalations (count)} once, never rewriting an existing outcome",
         "call finish after vbw prove, vbw qa record and vbw req accept (prove.jq, cmd-qa.sh, cmd-req.sh)",
         "cmd-show.sh: new view 'vbw show rigor' listing every phase's tier, predicted tier and reasons, then 'prediction held for N of M finished phases (P%)' or 'no finished phases yet'; vbw show phase also prints each escalation (from, to, reason)",
         "keep the kernel inside its 3,000-line budget"
       ],
-      "role": "dev"
+      "role": "dev",
+      "note": "Task 1 puts the finish definition in plugin/lib/rigor.jq, but since P21.2 (778c0c61) rigor.jq is only the assessment program (it needs $facts/$ids) and every definition shared by record updates lives in plugin/lib/rigor-defs.jq, which is loaded into VBW_JQ_DEFS. prove.jq, cmd-qa.sh and cmd-req.sh can only share one finish definition through rigor-defs.jq, which is not in P21.3's file list. Re-plan with plugin/lib/rigor-defs.jq added (and rigor.jq dropped). Schema (record.jq outcome/predicted) and the red checks C24/C25 are already in place."
     },
     {
       "id": "P21.4",
