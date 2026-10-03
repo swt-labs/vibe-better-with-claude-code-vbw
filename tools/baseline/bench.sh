@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Benchmark runner (R18): one run of one case, or the 42 runs of one model.
 #
-#   bench.sh ARM MODEL CASE RUN       one run (ARM plain|vbw2, MODEL sonnet-5.5|opus-5.5, RUN 1..3)
+#   bench.sh ARM MODEL CASE RUN       one run (ARM plain|plain-ui|vbw2, MODEL sonnet-5.5|opus-5.5, RUN 1..3)
 #   bench.sh rerun ARM MODEL CASE RUN a new record with rerun_of; the earlier record stays
 #   bench.sh regrade ARM MODEL CASE RUN  the saved workspace graded again by the current check
 #   bench.sh all MODEL                the 42 runs of MODEL, resuming; vbw2 runs 4 at a time
@@ -15,6 +15,12 @@
 # check.sh and write results/runs/ARM-MODEL-CASE-RUN.json. An existing record is
 # skipped (an interrupted batch resumes) and never overwritten or deleted. A usage
 # limit stops with exit 75 and writes no record.
+#
+# plain-ui: plain Claude Code in the same interactive app as vbw2 (same base
+# context, settings and sandbox, the plugin not loaded): the case request typed,
+# every question answered with the recommended option, finished when the session
+# is idle with no question on screen. Its record is arm plain, level L3,
+# results/runs/plain-MODEL-CASE-RUN.json (or BENCH_RUNS_DIR).
 #
 # A session that cannot be driven (a harness fault) exits 70 with no record.
 #
@@ -38,7 +44,7 @@ EXIT_LIMIT=75
 EXIT_FAULT=70
 MAX_ROUNDS=90
 
-usage() { sed -n '3,7p' "$0" >&2; exit 2; }
+usage() { sed -n '3,8p' "$0" >&2; exit 2; }
 
 model_id() {
   case "$1" in
@@ -106,12 +112,19 @@ write_record() {
 
 grade() { (cd "$1" && bash "$HERE/cases/$2/check.sh" > /dev/null 2>&1) && echo true || echo false; }
 
+# The settings of a plain session: VBW off, and this repository's own
+# maintainer instructions (CLAUDE.md, AGENTS.md) never read.
+excludes_settings() {
+  jq -cn --arg a "$ROOT/CLAUDE.md" --arg b "$ROOT/AGENTS.md" \
+    '{enabledPlugins:{"vbw@vbw-marketplace":false},claudeMdExcludes:[$a,$b]}'
+}
+
 run_plain() {
   local model=$1 case_name=$2 n=$3 out=$4 ws result
   ws=$(seed plain "$model" "$case_name" "$n")
   result="$ws.result.json"
   (cd "$ws" && "$CLAUDE" -p --model "$(model_id "$model")" \
-    --settings '{"enabledPlugins":{"vbw@vbw-marketplace":false}}' \
+    --settings "$(excludes_settings)" \
     --allowedTools Bash Write Edit --max-turns "$(meta max_turns "$case_name")" \
     --output-format json "$(cat "$HERE/cases/$case_name/request.txt")" \
     < /dev/null > "$result" 2> "$ws.stderr") || true
@@ -125,6 +138,65 @@ run_plain() {
   cost=$(jq '.total_cost_usd // 0' "$result" 2> /dev/null || echo 0)
   pass=$(grade "$ws" "$case_name")
   write_record "$out" plain "$model" "$case_name" "$n" "$pass" "${tokens:-0}" "${cost:-0}" 0 L2
+}
+
+# session_cost NAME: the session's cost from /cost, empty when unreadable.
+session_cost() {
+  local screen
+  bash "$L3" keys "$1" Escape > /dev/null 2>&1 || true
+  bash "$L3" type "$1" "/cost" > /dev/null 2>&1 || true
+  screen=$(bash "$L3" wait "$1" 120 2> /dev/null) || true
+  printf '%s' "$screen" | grep -oE '\$[0-9]+(\.[0-9]+)?' | head -1 | tr -d '$' || true
+}
+
+# plain-ui: the interactive app without the plugin, driven as a user: the
+# request typed, a question answered with the recommended option (Enter), a
+# Claude Code dialog that is not a question dismissed; the run is finished when
+# the session settles idle with no question on screen.
+run_plain_ui() {
+  local model=$1 case_name=$2 n=$3 out=$4 ws name screen inputs=0 round=0 settled done=0
+  ws=$(seed plain-ui "$model" "$case_name" "$n")
+  name="bench-plain-${model//./-}-$case_name-$n"
+  if ! bash "$L3" start "$name" "$ws" "$(model_id "$model")" plain > /dev/null 2>&1 \
+      || ! bash "$L3" type "$name" "$(cat "$HERE/cases/$case_name/request.txt")" > /dev/null 2>&1; then
+    bash "$L3" stop "$name" > /dev/null 2>&1 || true
+    echo "bench: could not drive a session for $name; no record written" >&2
+    return "$EXIT_FAULT"
+  fi
+  while [ "$round" -lt "$MAX_ROUNDS" ]; do
+    round=$((round + 1))
+    settled=1
+    screen=$(bash "$L3" wait "$name" 60 2> /dev/null) || settled=0
+    if printf '%s' "$screen" | grep -Eqi "$LIMIT_RE"; then
+      bash "$L3" stop "$name" > /dev/null 2>&1 || true
+      echo "bench: usage limit reached; no record written" >&2
+      return "$EXIT_LIMIT"
+    fi
+    printf '%s' "$screen" | grep -q 'esc to interrupt' && continue
+    if printf '%s' "$screen" | grep -q 'Enter to select\|Ready to submit'; then
+      bash "$L3" keys "$name" Enter > /dev/null 2>&1 || true
+      inputs=$((inputs + 1))
+      continue
+    fi
+    if printf '%s' "$screen" | grep -q 'Esc to cancel'; then
+      bash "$L3" keys "$name" Escape > /dev/null 2>&1 || true
+      continue
+    fi
+    [ "$settled" -eq 1 ] || continue
+    done=1
+    break
+  done
+  [ "$done" -eq 1 ] || echo "bench: $name did not go idle in $MAX_ROUNDS rounds" >&2
+  local cost tokens pass
+  cost=$(session_cost "$name")
+  bash "$L3" stop "$name" > /dev/null 2>&1 || true
+  tokens=$(transcript_tokens "$ws")
+  if [ "${tokens:-0}" -eq 0 ]; then
+    echo "bench: no session transcript for $name; no record written" >&2
+    return "$EXIT_FAULT"
+  fi
+  pass=$(grade "$ws" "$case_name")
+  write_record "$out" plain "$model" "$case_name" "$n" "$pass" "$tokens" "${cost:-0}" "$inputs" L3
 }
 
 # next_action WS: VBW's next step in the workspace, from the plugin under test.
@@ -191,10 +263,7 @@ run_vbw2() {
     esac
   done
   [ "$done" -eq 1 ] || echo "bench: $name did not reach a finished step in $MAX_ROUNDS rounds" >&2
-  bash "$L3" keys "$name" Escape > /dev/null 2>&1 || true
-  bash "$L3" type "$name" "/cost" > /dev/null 2>&1 || true
-  screen=$(bash "$L3" wait "$name" 120 2> /dev/null) || true
-  cost=$(printf '%s' "$screen" | grep -oE '\$[0-9]+(\.[0-9]+)?' | head -1 | tr -d '$' || true)
+  cost=$(session_cost "$name")
   bash "$L3" stop "$name" > /dev/null 2>&1 || true
   local tokens pass
   tokens=$(transcript_tokens "$ws")
@@ -222,17 +291,18 @@ run_vbw2() {
 
 run_one() {
   local arm=$1 model=$2 case_name=$3 n=$4 out rc=0
-  case "$arm" in plain | vbw2) ;; *) usage ;; esac
+  case "$arm" in plain | plain-ui | vbw2) ;; *) usage ;; esac
   model_id "$model" > /dev/null
   [ -d "$HERE/cases/$case_name" ] || { echo "bench: unknown case: $case_name" >&2; exit 2; }
   case "$n" in 1 | 2 | 3) ;; *) usage ;; esac
-  record_path "$arm" "$model" "$case_name" "$n"
+  # plain-ui writes the plain arm's record (arm plain, level L3).
+  record_path "${arm%-ui}" "$model" "$case_name" "$n"
   out=$REC
   if [ -e "$out" ] && [ "${rerun:-0}" -eq 0 ]; then
     echo "bench: skip $(basename "$out") (exists)" >&2
     return 0
   fi
-  "run_$arm" "$model" "$case_name" "$n" "$out" || rc=$?
+  "run_${arm//-/_}" "$model" "$case_name" "$n" "$out" || rc=$?
   [ "$rc" -eq 0 ] && echo "bench: wrote $(basename "$out")" >&2
   return "$rc"
 }
@@ -284,6 +354,6 @@ case "${1:-}" in
   all) [ $# -eq 2 ] || usage; run_all "$2" ;;
   rerun) [ $# -eq 5 ] || usage; rerun=1; run_one "$2" "$3" "$4" "$5" ;;
   regrade) [ $# -eq 5 ] || usage; regrade "$2" "$3" "$4" "$5" ;;
-  plain | vbw2) [ $# -eq 4 ] || usage; run_one "$1" "$2" "$3" "$4" ;;
+  plain | plain-ui | vbw2) [ $# -eq 4 ] || usage; run_one "$1" "$2" "$3" "$4" ;;
   *) usage ;;
 esac

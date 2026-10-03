@@ -246,3 +246,65 @@ vbw2_transcript() {
   run bash "$BENCH" plain gpt fix-oneshot 1
   [ "$status" -eq 2 ]
 }
+
+# l3_start [ARG...]: tools/l3.sh start with a stub tmux that logs its arguments
+# (L1; no session runs).
+l3_start() {
+  mkdir -p "$STUB/bin"
+  printf '#!/usr/bin/env bash\necho "$*" >> "%s/tmux"\n[ "$1" != capture-pane ] || echo welcome\nexit 0\n' "$STUB" > "$STUB/bin/tmux"
+  chmod +x "$STUB/bin/tmux"
+  PATH="$STUB/bin:$PATH" run bash "$BATS_TEST_DIRNAME/../tools/l3.sh" start t "$PROJECT" sonnet "$@"
+  [ "$status" -eq 0 ]
+}
+
+@test "l3 start excludes the VBW repository's own CLAUDE.md and AGENTS.md" {
+  l3_start
+  root="$(cd "$BATS_TEST_DIRNAME/.." && pwd)"
+  line=$(grep 'new-session' "$STUB/tmux")
+  settings=$(printf '%s' "$line" | sed -n "s/.*--settings '\\(.*\\)' --debug-file.*/\\1/p")
+  run jq -c '.claudeMdExcludes' <<< "$settings"
+  [ "$output" = "[\"$root/CLAUDE.md\",\"$root/AGENTS.md\"]" ]
+  [ "$(jq -r '.sandbox.enabled' <<< "$settings")" = true ]
+}
+
+@test "l3 start loads the plugin by default and not in plain mode" {
+  l3_start
+  grep 'new-session' "$STUB/tmux" | grep -q -- '--plugin-dir'
+  rm "$STUB/tmux"
+  l3_start plain
+  ! grep 'new-session' "$STUB/tmux" | grep -q -- '--plugin-dir'
+  grep 'new-session' "$STUB/tmux" | grep -q 'claudeMdExcludes'
+}
+
+@test "the headless plain arm also excludes the VBW repository's instruction files" {
+  printf '#!/usr/bin/env bash\nprintf "%%s\\n" "$@" > "%s/args"\necho "{\\"total_cost_usd\\":0.25,\\"usage\\":{}}"\n' "$STUB" > "$STUB/claude"
+  run bash "$BENCH" plain sonnet-5.5 fix-oneshot 1
+  [ "$status" -eq 0 ]
+  root="$(cd "$BATS_TEST_DIRNAME/.." && pwd)"
+  s=$(grep claudeMdExcludes "$STUB/args")
+  [ "$(jq -c '.claudeMdExcludes' <<< "$s")" = "[\"$root/CLAUDE.md\",\"$root/AGENTS.md\"]" ]
+}
+
+@test "plain-ui arm types the bare request, answers questions, and records arm plain at L3" {
+  printf 'Pick one\n 1. A (Recommended)\nEnter to select\n' > "$STUB/screens/1"
+  printf 'Done.\n' > "$STUB/screens/2"
+  ws="$PROJECT/scratch/plain-ui-sonnet-5.5-fix-oneshot-1"
+  mkdir -p "$ws"; ws=$(cd "$ws" && pwd -P)
+  enc=$(printf '%s' "$ws" | sed 's/[^A-Za-z0-9]/-/g')
+  mkdir -p "$PROJECT/config/projects/$enc"
+  echo '{"type":"assistant","message":{"id":"a","usage":{"input_tokens":1,"output_tokens":2,"cache_creation_input_tokens":3,"cache_read_input_tokens":4}}}' > "$PROJECT/config/projects/$enc/s.jsonl"
+  BENCH_STUB_FIX=1 run bash "$BENCH" plain-ui sonnet-5.5 fix-oneshot 1
+  [ "$status" -eq 0 ]
+  run jq -c '[.arm,.pass,.tokens,.cost_usd,.user_inputs,.level]' "$PROJECT/runs/plain-sonnet-5.5-fix-oneshot-1.json"
+  [ "$output" = '["plain",true,10,1.50,1,"L3"]' ]
+  grep -q '^start bench-plain-sonnet-5-5-fix-oneshot-1 .* claude-sonnet-5-5 plain' "$STUB/calls"
+  ! grep -q '/vbw:' "$STUB/calls"
+  grep -q '^type bench-plain-sonnet-5-5-fix-oneshot-1 ' "$STUB/calls"
+}
+
+@test "plain-ui arm stops on a usage limit with no record" {
+  printf 'You have reached your usage limit\n' > "$STUB/screens/1"
+  run bash "$BENCH" plain-ui sonnet-5.5 fix-oneshot 1
+  [ "$status" -eq 75 ]
+  [ -z "$(ls "$PROJECT/runs" 2>/dev/null)" ]
+}
