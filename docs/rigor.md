@@ -3,23 +3,24 @@
 VBW gives each phase a tier: `express`, `standard` or `deep`. A small, safe
 phase gets one Dev and no QA agent; a risky or large one gets the full team.
 VBW picks the tier from measured signals, raises it on its own when a run goes
-badly, and never lowers it.
+badly, and never lowers it once work on the phase has begun.
 
 ```
 $ vbw show phase P1
-P1 Payments [building]
+P1 Add the done command [built]
 ...
-tier: deep (predicted express)
-  - requirements: 2
-  - files: 3 (4120 bytes)
-  - risk: payments (R1)
+qa: pass (deep, 2026-10-03T16:30:25Z): 24/24 checks
+tier: deep (predicted standard)
+  - requirements: 3
+  - files: 2 (673 bytes)
+  - risk: none
   - breaks: none
   - tests: project test command
-escalated express -> deep (2026-10-03T09:12:00Z): touches a risk path: sign-in (src/login.ts)
+escalated standard -> deep (2026-10-03T16:29:12Z): QA needs a second round
 
 $ vbw show rigor
-P1 deep (predicted express), finished: requirements: 2; files: 3 (4120 bytes); risk: payments (R1); ...
-prediction held for 3 of 4 finished phases (75%)
+P1 deep (predicted standard), finished: requirements: 3; files: 2 (673 bytes); risk: none; breaks: none; tests: project test command
+prediction held for 0 of 1 finished phases (0%)
 ```
 
 ## The floor
