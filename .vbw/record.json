@@ -892,7 +892,16 @@
         "A fixture phase touching a risk path (sign-in, payments, data migration, secrets, deletion, CI) or with many requirements is recorded at or above the floor tier for those signals; a test shows the kernel refuses an Architect-submitted tier below that floor and accepts a higher one",
         "With no setting, the tier is chosen automatically; vbw config rigor auto|express|standard|deep each sets the mode, and a forced value overrides the computed tier; an invalid value is refused with the allowed list",
         "Bats tests for each criterion fail before the change and pass after; kernel stays within 3,000 lines"
-      ]
+      ],
+      "tier": "deep",
+      "reasons": [
+        "requirements: 3",
+        "files: 19 (122515 bytes)",
+        "risk: sign-in (R23), payments (R23), data migration (R23), secrets (R23), deletion (R23), CI (R23)",
+        "breaks: R1, R2, R3, R13, R14, R24, R26",
+        "tests: project test command"
+      ],
+      "predicted": "deep"
     },
     {
       "id": "P20",
@@ -909,7 +918,16 @@
         "An express phase builds with one Dev and runs vbw prove; it runs QA only when one of its requirements is [human] or the phase has escalated, and a test covers each of the three cases",
         "Standard and deep phases keep their existing multi-step approval and QA behaviour, shown by existing tests still passing",
         "Workflows stay within 1,500 lines of JS in total and prompts within budget"
-      ]
+      ],
+      "tier": "deep",
+      "reasons": [
+        "requirements: 2",
+        "files: 16 (94188 bytes)",
+        "risk: none",
+        "breaks: R12, R13, R14, R22, R23, R27",
+        "tests: project test command"
+      ],
+      "predicted": "deep"
     },
     {
       "id": "P21",
@@ -926,7 +944,16 @@
         "Once escalated, the later steps of that run use the raised tier's agents, QA tier and models",
         "Each finished phase records predicted tier, final tier and outcome (fix rounds, QA findings, escalations, cost)",
         "vbw show reports how many finished phases held their predicted tier, as a count and percentage, and says so plainly when there are no finished phases"
-      ]
+      ],
+      "tier": "deep",
+      "reasons": [
+        "requirements: 2",
+        "files: 23 (106727 bytes)",
+        "risk: none",
+        "breaks: R1, R2, R3, R11, R12, R13, R14, R22, R23, R24, R26, R27",
+        "tests: project test command"
+      ],
+      "predicted": "deep"
     },
     {
       "id": "P22",
@@ -941,7 +968,16 @@
         "Every case passes with VBW 2 on both models, and VBW 2 cost per case is at most 2x plain Claude Code cost, or the miss is stated per case",
         "If the target is missed, at most 2 tuning rounds are run, each recorded with what changed and its result; after that the result ships with the miss stated plainly in docs/benchmark.md",
         "The run is recorded at its evidence level (L2 scripted) with a Not tested list"
-      ]
+      ],
+      "tier": "deep",
+      "reasons": [
+        "requirements: 1",
+        "files: 7 (53262 bytes)",
+        "risk: none",
+        "breaks: R17, R18, R22, R23, R24, R26",
+        "tests: project test command"
+      ],
+      "predicted": "deep"
     },
     {
       "id": "P23",
@@ -956,7 +992,16 @@
         "Each project has a deterministic check that fails on the untouched starting project and passes on a correct solution, proven by a test",
         "Each project has been run with plain Claude Code and with VBW 2, results committed with pass or fail, tokens and cost",
         "docs/benchmark.md reports the three projects with both tools side by side and states plainly what was not measured; the owner accepts it as a [human] requirement"
-      ]
+      ],
+      "tier": "deep",
+      "reasons": [
+        "requirements: 1",
+        "files: 10 (40909 bytes)",
+        "risk: data migration (tools/baseline/fixtures/data-migration/)",
+        "breaks: R18",
+        "tests: project test command"
+      ],
+      "predicted": "deep"
     }
   ],
   "plans": [
@@ -1823,9 +1868,15 @@
         "R25"
       ],
       "files": [
+        "plugin/lib/rigor-defs.jq",
+        "plugin/lib/record.sh",
+        "plugin/lib/rigor.jq",
+        "plugin/lib/rigor.sh",
+        "plugin/lib/cmd-tier.sh",
         "plugin/lib/cmd-plan.sh",
         "plugin/lib/cmd-qa.sh",
         "plugin/lib/cmd-commit.sh",
+        "plugin/lib/cmd-prove.sh",
         "plugin/lib/prove.jq"
       ],
       "after": [
@@ -1833,10 +1884,12 @@
       ],
       "status": "planned",
       "tasks": [
+        "rigor-defs.jq (new, definitions only): every jq definition record updates need for tiers (tier_rank, max_tier, the risk categories, escalate) lives here once; record.sh makes it part of VBW_JQ_DEFS so every record update and rigor.jq share the one copy; rigor.jq keeps only the assessment program; cmd-tier.sh no longer cuts rigor.jq at a marker (no text surgery on jq sources); one shell helper in rigor.sh, rigor_escalate PHASE REASON [TIER], is the single way triggers raise a tier",
         "cmd-plan.sh: vbw plan block raises the plan's phase one step, reason 'Dev blocked PLAN: REASON'",
         "cmd-qa.sh: vbw qa finding on an express phase raises it ('QA found a problem in REQ: TEXT'); a second failed QA round (qa.rounds reaching 2) raises it ('QA needs a second round'); a finding on a standard or deep phase alone does not",
         "cmd-commit.sh: after a commit (and after the project lock is released) a changed file matching a risk category raises the phase to deep ('touches a risk path: CATEGORY (PATH)'); a commit changing more than twice as many files as the plan lists and at least 4 raises it one step ('grew beyond its plan: N files for M planned')",
-        "prove.jq: a fix whose failed attempt makes attempts at least 1 raises its requirement's phases one step ('fix FIX needs a second round'); a requirement that was proven and now fails raises its phases one step ('proven requirement REQ failed')"
+        "prove.jq: a fix whose failed attempt makes attempts at least 1 raises its requirement's phases one step ('fix FIX needs a second round'); a requirement that was proven and now fails raises its phases one step ('proven requirement REQ failed')",
+        "cmd-prove.sh passes the time (--arg at) prove.jq needs for escalation records; keep the kernel inside its 3,000-line budget"
       ],
       "role": "dev"
     },
@@ -1856,7 +1909,9 @@
         "plugin/lib/cmd-show.sh"
       ],
       "after": [
-        "P21.2"
+        "P21.2",
+        "P21.5",
+        "P21.6"
       ],
       "status": "planned",
       "tasks": [
@@ -2073,6 +2128,53 @@
         "keep benchmark-doc tests passing"
       ],
       "role": "docs"
+    },
+    {
+      "id": "P21.5",
+      "phase": "P21",
+      "title": "Automatic rigor keeps the Architect's raise",
+      "reqs": [
+        "R23",
+        "R27"
+      ],
+      "files": [
+        "plugin/lib/cmd-apply.sh",
+        "plugin/lib/cmd-config.sh",
+        "plugin/lib/record.jq",
+        "tests/kernel-commands.bats"
+      ],
+      "after": [
+        "P21.2"
+      ],
+      "status": "planned",
+      "tasks": [
+        "cmd-apply.sh records the tier the Architect stated for a phase as proposed (absent when none); record.jq validates proposed as a tier",
+        "cmd-config.sh: vbw config rigor auto re-tiers each untouched phase to the higher of its signal floor and its proposed tier, keeping the line saying the Architect raised it; a forced mode still overrides; started or escalated phases keep their tier as today",
+        "tests/kernel-commands.bats: a phase the Architect raised to deep is deep again after config rigor express then auto (red before the change)"
+      ]
+    },
+    {
+      "id": "P21.6",
+      "phase": "P21",
+      "title": "One commit per task: vbw commit takes the task's files",
+      "reqs": [
+        "R24"
+      ],
+      "files": [
+        "plugin/lib/cmd-commit.sh",
+        "plugin/bin/vbw",
+        "plugin/agents/dev.md",
+        "tests/kernel-commit.bats"
+      ],
+      "after": [
+        "P21.2"
+      ],
+      "status": "planned",
+      "tasks": [
+        "cmd-commit.sh: vbw commit PLAN MESSAGE [FILE...] commits only the named files, each of which the plan must cover (a directory entry covers its files); no FILE keeps today's behaviour (every changed declared file); a named file outside the plan is refused with its name",
+        "plugin/bin/vbw help and dev.md: the Dev names each task's files in its commit, so tasks that share a plan get one commit each",
+        "tests/kernel-commit.bats: a subset commit leaves the other changed files uncommitted; an outside file is refused (red before the change)"
+      ]
     }
   ],
   "fixes": [
