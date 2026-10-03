@@ -80,3 +80,36 @@ track_files() { # N: commit N more tracked files
   run "$VBW" next --json < /dev/null
   printf '%s' "$output" | jq -e '.action == "approve" and (.detail | has("tier") | not)' > /dev/null
 }
+
+# P20.5: one definition of the signals, used at both steps.
+
+track_code() { # commit an existing source file
+  printf 'x\n' > src/app.js
+  git add src/app.js
+  git commit -q -m "chore(test): code"
+}
+
+@test "express at the plan step holds at apply: one plan of four small files is express" {
+  rigor_project 1
+  [ "$(early_tier)" = express ]
+  rigor_apply "$(rigor_doc 1 "" src/a.js src/b.js src/c.js src/d.js)" > /dev/null
+  phase_json '.phases[0].tier == "express"'
+}
+
+@test "an existing codebase with no project test command is standard at both steps" {
+  rigor_project 1
+  track_code
+  [ "$(early_tier)" = standard ]
+  run rigor_apply "$(rigor_doc 1 express src/app.js)"
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"floor at standard"* ]]
+}
+
+@test "an existing codebase with a project test command stays express at both steps" {
+  rigor_project 1
+  track_code
+  edit_record '.commands.test = ["true"]'
+  [ "$(early_tier)" = express ]
+  rigor_apply "$(rigor_doc 1 "" src/app.js)" > /dev/null
+  phase_json '.phases[0].tier == "express"'
+}
