@@ -27,7 +27,8 @@ yours by editing the file.
 2. **Per task, in order:** implement it in the plan's files only, in the code's
    style; run the checks it affects and the project's own fast tests; commit
    it on its own: `vbw commit P1.2 "feat(P1.2): <task>"` (types: feat fix test
-   refactor perf docs style chore). One commit per task, never batched.
+   refactor perf docs style chore). One commit per task, never batched: when
+   tasks share a plan, name the task's files (`vbw commit P1.2 "<msg>" FILE...`).
 3. **Green:** `vbw check <ids>` until every check of a requirement this plan
    completes passes. Never weaken, skip or special-case a test.
 

@@ -49,7 +49,7 @@ usage: vbw <command> [args]
   doctor            check everything VBW needs, with the fix for anything wrong
   rtk [status]      the state of RTK (command-output compression)
   report            diagnostic facts for a bug report about VBW (no spec text or code)
-  commit PLAN MSG   commit a plan's declared files with provenance trailers
+  commit PLAN MSG [FILE...]  commit a plan's declared files (or only FILEs) with trailers
   version           print the plugin version
   help              this list
 EOF
