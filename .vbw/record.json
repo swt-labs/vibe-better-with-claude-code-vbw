@@ -903,12 +903,19 @@
       ],
       "predicted": "deep",
       "qa": {
-        "result": "fail",
+        "result": "pass",
         "tier": "deep",
-        "tree": "6ae81c88769d77f76fa53f63f931a4d087364f50",
-        "at": "2026-10-03T17:16:15Z",
-        "note": "21/22 checks",
-        "rounds": 1
+        "tree": "b55fab0570e2d8243a9bdfa28f8af588895ba1d8",
+        "at": "2026-10-03T17:55:50Z",
+        "note": "30/30 checks"
+      },
+      "outcome": {
+        "tier": "deep",
+        "predicted": "deep",
+        "held": true,
+        "fix_rounds": 1,
+        "qa_findings": 1,
+        "escalations": 0
       }
     },
     {
@@ -2467,7 +2474,7 @@
       "req": "R23",
       "source": "qa",
       "attempts": 0,
-      "status": "fixed",
+      "status": "closed",
       "note": "P19.2 says on planning again a phase 'never records a tier lower than the one it has'; plugin/lib/cmd-apply.sh only enforces that for a locked phase (started plans or escalations): $locked and $o.tier > $want. An existing unstarted phase (e.g. Architect-raised deep) is re-recorded at the recomputed lower tier when re-planned without the proposal. No recorded decision (D37-D40) covers this and no test pins it. Either lock all existing phases or record a decision."
     },
     {
