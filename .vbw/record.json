@@ -944,12 +944,19 @@
       ],
       "predicted": "deep",
       "qa": {
-        "result": "fail",
+        "result": "pass",
         "tier": "deep",
-        "tree": "6ae81c88769d77f76fa53f63f931a4d087364f50",
-        "at": "2026-10-03T17:19:40Z",
-        "note": "29/30 checks",
-        "rounds": 1
+        "tree": "b55fab0570e2d8243a9bdfa28f8af588895ba1d8",
+        "at": "2026-10-03T17:55:57Z",
+        "note": "30/30 checks"
+      },
+      "outcome": {
+        "tier": "deep",
+        "predicted": "deep",
+        "held": true,
+        "fix_rounds": 1,
+        "qa_findings": 1,
+        "escalations": 0
       }
     },
     {
@@ -2482,7 +2489,7 @@
       "req": "R24",
       "source": "qa",
       "attempts": 0,
-      "status": "fixed",
+      "status": "closed",
       "note": "P20.1 task 3 says the 'needs QA' definition is shared in rigor.jq (rigor.jq is in the plan's files). Commit b5dd7db5 did not touch rigor.jq; the definition is written inline in plugin/lib/next.jq (the $to_verify select using $rigor, escalations and human reqs), so it is not a shared definition. Move it to a named definition in rigor.jq/rigor-defs.jq, or record a decision that changes the plan."
     }
   ],
