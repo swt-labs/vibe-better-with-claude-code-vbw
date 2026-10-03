@@ -1234,9 +1234,9 @@
       "status": "planned",
       "role": "dev",
       "tasks": [
-        "write tools/baseline/report.sh: from results/runs/ print per case, arm and model the pass rate, mean tokens and mean cost as markdown tables, each row citing its result files; add the v1 fix-oneshot rows from results/2026-09-30-fix-oneshot-sonnet.jsonl labelled inferred",
-        "write tests/benchmark-doc.bats: docs/benchmark.md has a section per case, a Not measured section naming VBW 1 cases without data, L2 and sample size 3, the word inferred for VBW 1, and every cited result path exists; numbers equal report.sh output",
-        "L1-test report.sh on a synthetic result set"
+        "write tools/baseline/report.sh: from results/runs/ (records named in another record's rerun_of are superseded and excluded; README.md is not a record) print per case and model, for plain and VBW 2: pass rate (n/3), median and range of user_inputs, mean cost and mean tokens, and the evidence level (plain L2, VBW 2 L3), as markdown tables citing each row's result files; plus a totals table per model; plus the VBW 1 fix-oneshot rows from results/2026-09-30-fix-oneshot-sonnet.jsonl labelled inferred (cost only: its pass was not recorded)",
+        "write tests/benchmark-doc.bats: docs/benchmark.md has a section per case, a Not measured section (VBW 1 cases without data, sample size 3 per cell), a How it ran section naming the evidence levels (plain L2, VBW 2 L3), the word inferred for VBW 1, every cited result path exists, and its numbers equal report.sh output",
+        "L1-test report.sh on a synthetic result set, including a superseded record and a regraded one"
       ]
     },
     {
@@ -1257,9 +1257,11 @@
       "status": "planned",
       "role": "docs",
       "tasks": [
-        "one section per case with VBW 2 and plain Claude Code pass rate, tokens and cost for both models, from report.sh output",
+        "one section per case: VBW 2 and plain Claude Code pass rate, user inputs (median, range), cost and tokens for both models, from report.sh output; what the case tests in one sentence",
+        "How it ran: plain is headless claude -p with Bash, Write and Edit allowed and no sandbox (L2); VBW 2 is the TUI driven as a user through /vbw:vibe, recommended answers, /vbw:approve typed, inside the Claude Code sandbox (L3); tokens include prompt-cache reads on both sides, so cost is the cleaner comparison; corrected checks and regrades (safety-destructive and markdown-deliverable) and harness re-runs, each named",
+        "Findings in plain words: where each side failed and why (plain Sonnet destroyed the user's work once in safety-destructive); what VBW 2 costs more and why (planning, proof, QA); the Opus fix-oneshot run 1 where VBW 2 fixed the bug first and the driver then nudged 89 times at the spec step (its input count is a harness artifact); one Sonnet hostile-repo session that did the task without setting VBW up",
         "VBW 1 section: fix-oneshot baseline runs and the behaviour ledger, labelled inferred, no new VBW 1 runs",
-        "Not measured section: VBW 1 cases without data, evidence level L2, sample size of 3",
+        "Not measured: VBW 1 cases without data; larger projects and multi-requirement milestones, where VBW 2's approval, regression guards and QA are meant to pay off; sample size 3 per cell",
         "run tests/benchmark-doc.bats"
       ]
     },
@@ -1504,6 +1506,11 @@
       "id": "D23",
       "at": "2026-10-02T21:16:07Z",
       "text": "Contract approved: 18 requirements, 16 checks, 26 plans (5552ede9f232)"
+    },
+    {
+      "id": "D24",
+      "at": "2026-10-03T01:53:08Z",
+      "text": "Contract approved: 18 requirements, 16 checks, 26 plans (ce36f53d16e1)"
     }
   ],
   "commands": {
