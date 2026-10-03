@@ -42,7 +42,7 @@ config_rigor() {
       | select(.id as $i | [$r.plans[] | select(.phase == $i and .status != "planned")] | length == 0) | .id')
     if [ ${#ids[@]} -gt 0 ]; then
       tiers=$(record_read | jq 'del(.phases[].tier)' | rigor_assess "${ids[@]}")
-      record_update '(.phases[] | select(.id as $i | $t | any(.[]; .id == $i))) |= (. as $ph
+      record_update "$VBW_JQ_DEFS"'(.phases[] | select(.id as $i | $t | any(.[]; .id == $i))) |= (. as $ph
         | ([$t[] | select(.id == $ph.id)][0]) as $a
         | if $m == "auto" then
             (if .proposed != null and (.proposed | tier_rank) > ($a.floor | tier_rank)
