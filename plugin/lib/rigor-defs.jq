@@ -78,9 +78,8 @@ def needs_qa($tier; $current):
 
 # phase_finished($r): on a phase object, with the whole record as $r. A phase is
 # finished when its plans are done, its requirements are proven (accepted, for
-# [human] ones), no fix on them is still open, fixed or escalated, and, when its
-# tier calls for QA (not express) or it has a [human] requirement, QA passed on
-# the code that was proven.
+# [human] ones), no fix on them is still open, fixed or escalated, and, when it
+# needs QA (needs_qa), QA passed on the code that was proven.
 def phase_finished($r):
   . as $ph
   | [$r.plans[] | select(.phase == $ph.id)] as $plans
@@ -88,20 +87,21 @@ def phase_finished($r):
   | ($plans | length > 0 and all(.[]; .status == "done"))
     and all($reqs[]; .status | IN("proven", "accepted"))
     and ([$r.fixes[] | select(.req as $q | $q != null and ($ph.reqs | index($q))) | select(.status != "closed")] | length == 0)
-    and ((($ph.tier // "express") == "express" and all($reqs[]; .proof == "auto"))
+    and ((needs_qa($ph.tier // "standard"; $reqs) | not)
          or (($ph.qa.result // "") == "pass" and $ph.qa.tree == ($r.evidence.tree // "")));
 
 # finish_phases: on the record. Writes outcome {tier, predicted, held,
-# fix_rounds, qa_findings, escalations} once (predicted: the tier the work began
-# at, which is the first escalation's from; a re-tier before any work is no miss) on every tiered phase that has just
-# finished; an outcome already written is never rewritten.
+# fix_rounds, qa_findings, escalations} once on every tiered phase that has just
+# finished (predicted: the phase's predicted tier, the tier its work began at; a
+# re-tier before any work moves it, an escalation never does); an outcome
+# already written is never rewritten.
 def finish_phases:
   . as $r
   | .phases |= map(
       if has("outcome") or (has("tier") | not) or (phase_finished($r) | not) then .
       else . as $ph
         | [$r.fixes[] | select(.req as $q | $q != null and ($ph.reqs | index($q)))] as $fx
-        | ((.escalations // [])[0].from // .tier) as $predicted
+        | (.predicted // .tier) as $predicted
         | .outcome = {tier: .tier, predicted: $predicted, held: (.tier == $predicted),
                       fix_rounds: ([$fx[] | .attempts + 1] | add // 0),
                       qa_findings: ([$fx[] | select(.source == "qa")] | length),

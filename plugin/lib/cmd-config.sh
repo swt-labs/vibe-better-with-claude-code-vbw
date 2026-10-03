@@ -46,9 +46,9 @@ config_rigor() {
         | ([$t[] | select(.id == $ph.id)][0]) as $a
         | if $m == "auto" then
             (if .proposed != null and (.proposed | tier_rank) > ($a.floor | tier_rank)
-             then .tier = .proposed | .reasons = $a.reasons + ["raised by the Architect"]
-             else .tier = $a.tier | .reasons = $a.reasons end)
-          else .tier = $m | .reasons = $a.reasons + ["forced: vbw config rigor \($m)"] end)' \
+             then .tier = .proposed | .predicted = .proposed | .reasons = $a.reasons + ["raised by the Architect"]
+             else .tier = $a.tier | .predicted = $a.tier | .reasons = $a.reasons end)
+          else .tier = $m | .predicted = $m | .reasons = $a.reasons + ["forced: vbw config rigor \($m)"] end)' \
         --argjson t "$tiers" --arg m "$mode"
     fi
   fi
