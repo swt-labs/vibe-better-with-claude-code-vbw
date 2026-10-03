@@ -41,6 +41,21 @@ The reasons are stored with the tier and printed by `vbw show phase ID` and
 phase above its floor; `vbw apply` refuses a lower tier than the floor. The
 raise is kept as the phase's `proposed` tier.
 
+## The early decision
+
+Before planning, `vbw next --json` at the `plan` step carries `detail.tier`.
+It is `express` only when the milestone has one requirement, it is `auto`, its
+text names no risk category (the words above), the repository tracks at most
+30 files (`git ls-files`, counted; no file is read) and `vbw config rigor` is
+`auto` or `express`. Otherwise it is `standard`, or `deep` when the mode is
+`deep`. A forced `express` stays `express` on a bigger request.
+
+At an express `plan` step the router skips mapping and the planning workflow:
+it reads the files the request names, then runs `vbw apply` with one phase
+(tier `express`), one plan and one check that fails today, and goes to
+approval. No project file changes before the contract is approved. If apply
+computes a higher floor, the normal planning workflow runs instead.
+
 ## What each tier runs
 
 `plugin/lib/tiers.json` holds one row per profile and tier. In the `balanced`

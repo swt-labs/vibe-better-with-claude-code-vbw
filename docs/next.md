@@ -25,6 +25,11 @@ workflow as `args.rigor`.
 `models` is the table's cell with your `vbw config set model.dev` and
 `model.qa` overrides applied.
 
+At the `plan` step, `detail.tier` is the early tier (docs/rigor.md): `express`
+for one small, risk-free `auto` requirement in a repository of at most 30
+tracked files, else `standard` (`deep` when forced). On `express` the router
+plans without workflows: one `vbw apply` with one phase, plan and check.
+
 ## Decision order (first match wins)
 
 | # | Condition | action | gate |
@@ -33,7 +38,7 @@ workflow as `args.rigor`.
 | 1 | milestone `shipped` | `milestone` (start the next one: `vbw milestone start TITLE`) | yes |
 | 2a | no requirements in the current milestone, and a VBW 1 plan (`.vbw-planning/`) not converted yet | `convert` (`/vbw:convert`, or start fresh; docs/convert.md) | yes |
 | 2 | no requirements in the current milestone | `spec` (write its requirements in `.vbw/spec.md`) | yes |
-| 3 | the current milestone has no phases, an `auto` requirement has no check, or a current `auto` requirement is in no plan | `plan` (plan workflow: phases, plans, contract checks) | no |
+| 3 | the current milestone has no phases, an `auto` requirement has no check, or a current `auto` requirement is in no plan | `plan` (`detail.tier`: the early tier; plan workflow: phases, plans, contract checks, or direct `vbw apply` when express) | no |
 | 4 | contract not approved (never approved, or changed since) | `approve` (review and approve the contract) | yes |
 | 5 | a plan is `blocked` | `unblock` (a Dev reported a blocker) | yes |
 | 6 | plans ready to build: not `done`, every `after` plan `done` | `build` (one wave: the ready plans in order, skipping any that shares a file with one already in the wave) | no |

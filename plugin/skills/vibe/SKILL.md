@@ -55,7 +55,7 @@ Dynamic workflows on if off (say so in one line when it did). Still no tool:
 say why (disabled on purpose, or Claude Code needs restart) and stop. Pass
 `models` (JSON from `vbw config models`) and the next JSON's top-level `rigor` in every workflow's args.
 
-Before `spec` or `plan`: project has code and no `.vbw/map.md` → map first:
+Before `spec` or a workflow `plan`: project has code and no `.vbw/map.md` → map first:
 `VBW_SESSION_ID=${CLAUDE_SESSION_ID} vbw run start map`, Workflow `vbw:mapping` (args `{"models": ...}`),
 `VBW_SESSION_ID=${CLAUDE_SESSION_ID} vbw run end`, write its `map` to `.vbw/map.md`. Read it before proposing
 anything.
@@ -82,6 +82,11 @@ constraints go in `.vbw/spec.md` directly, then `vbw spec sync`). Milestone
 still has default title → `vbw milestone rename "<title>"`. Check
 `## Commands` in `.vbw/spec.md` (what every proof runs) fits what was agreed
 (right sub-project, right interpreter); fix there, then `vbw spec sync`.
+
+**plan** with `detail.tier` express: no mapping, no planning workflow. Read the
+files the request names, then `vbw apply` one phase (tier express) with one
+plan (its files and tasks) and one check that fails today; go to **approve**.
+Apply computes a higher tier: run the planning workflow below instead.
 
 **plan**: `VBW_SESSION_ID=${CLAUDE_SESSION_ID} vbw run start plan`, Workflow `vbw:planning` with args
 `{"models": ...}`. Returns: `VBW_SESSION_ID=${CLAUDE_SESSION_ID} vbw run end`. Status `needs_decisions`: user
@@ -159,5 +164,6 @@ Lead keeps finished work as is, user approves changed contract.
 
 - Only kernel writes `.vbw/record.json`; agents and you change state through
   `vbw` commands.
-- Never approve, never run `git push`, never weaken a check.
+- Never approve, never run `git push`, never weaken a check, never change
+  project files before the contract is approved.
 - Plan work commits go through `vbw commit` (Devs do this).
