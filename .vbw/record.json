@@ -1038,12 +1038,19 @@
         }
       ],
       "qa": {
-        "result": "fail",
+        "result": "pass",
         "tier": "deep",
-        "tree": "6ae81c88769d77f76fa53f63f931a4d087364f50",
-        "at": "2026-10-03T17:11:37Z",
-        "note": "21/23 checks",
-        "rounds": 1
+        "tree": "b55fab0570e2d8243a9bdfa28f8af588895ba1d8",
+        "at": "2026-10-03T17:50:20Z",
+        "note": "24/24 checks"
+      },
+      "outcome": {
+        "tier": "deep",
+        "predicted": "deep",
+        "held": true,
+        "fix_rounds": 2,
+        "qa_findings": 2,
+        "escalations": 3
       }
     },
     {
@@ -2444,7 +2451,7 @@
       "req": "R29",
       "source": "qa",
       "attempts": 0,
-      "status": "fixed",
+      "status": "closed",
       "note": "P22.3 task 3 says if cells still miss, run Round 2 the same way. All 14 cells missed the 2x target after round 1 (2.06x to 9.14x), yet no Round 2 ran (tuning.md; docs/benchmark.md Not tested: 'no further change was tried'). The criterion allows up to 2 tuning rounds before shipping the miss; skipping the second is a deviation from the plan. Cells at 4.4x-9.1x (brownfield-feature deep, safety-secret opus deep) had untried levers (tier table in plugin/lib/tiers.json, listed in the plan files)."
     },
     {
@@ -2452,7 +2459,7 @@
       "req": "R29",
       "source": "qa",
       "attempts": 0,
-      "status": "fixed",
+      "status": "closed",
       "note": "Work outside P22's planned files, without a plan change: round-1 commits ae14ca86 and bcd949b8 (bench.sh driver), 89343d52 and a2041cb8 (plugin/skills/vibe/SKILL.md, tests/skills.bats), 6d5ecf36/5d5b77a5 (tests/rigor-early.bats), bbee136a (tools/baseline/verify-adaptive.sh, tests/verify-adaptive.bats, after P22.4 blocked). P22.3 lists only results/, rigor.jq, rigor-defs.jq, tiers.json. Declared in tuning.md but not in the plan; round-1 results mix the threshold change with router and driver fixes."
     },
     {
@@ -2989,5 +2996,11 @@
     "scope": [],
     "passed": true
   },
-  "lease": null
+  "lease": {
+    "run": "qa-20261003T174243Z",
+    "kind": "qa",
+    "started_at": "2026-10-03T17:42:43Z",
+    "files": [],
+    "session": "9cd2cc30-8c86-4520-9d71-a0e82aff5407"
+  }
 }
