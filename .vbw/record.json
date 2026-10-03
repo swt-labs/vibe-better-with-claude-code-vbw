@@ -6,7 +6,7 @@
   "milestone": {
     "id": "M4",
     "title": "Adaptive rigor",
-    "status": "active"
+    "status": "shipped"
   },
   "shipped": [
     {
@@ -23,6 +23,11 @@
       "id": "M3",
       "title": "Benchmark and launch readiness",
       "at": "2026-10-03T11:39:25Z"
+    },
+    {
+      "id": "M4",
+      "title": "Adaptive rigor",
+      "at": "2026-10-03T21:32:17Z"
     }
   ],
   "requirements": [
@@ -212,7 +217,7 @@
       "id": "R30",
       "text": "The benchmark adds at least three multi-requirement projects (a feature on an existing codebase with earlier requirements to protect, a data migration, and a third non-UI project of several requirements), each graded by a deterministic check, run with plain Claude Code and VBW 2, and docs/benchmark.md reports them plainly",
       "proof": "human",
-      "status": "open",
+      "status": "accepted",
       "milestone": "M4"
     }
   ],
@@ -1104,6 +1109,14 @@
         "tree": "b55fab0570e2d8243a9bdfa28f8af588895ba1d8",
         "at": "2026-10-03T17:54:42Z",
         "note": "20/20 checks"
+      },
+      "outcome": {
+        "tier": "deep",
+        "predicted": "deep",
+        "held": true,
+        "fix_rounds": 0,
+        "qa_findings": 0,
+        "escalations": 1
       }
     }
   ],
@@ -2837,6 +2850,11 @@
       "text": "F13: the out-of-plan commits ae14ca86, bcd949b8, 89343d52, a2041cb8, 6d5ecf36, 5d5b77a5 and bbee136a stand: each fixes a defect in work an approved plan delivered (benchmark driver, router, verifier) with a red-first test, inside that plan's stated goal",
       "why": "Re-planning for each defect would have cost an owner approval per fix; each is listed in tuning.md or the progress log, and round 1's results include them, as tuning.md says",
       "at": "2026-10-03T17:20:37Z"
+    },
+    {
+      "id": "D52",
+      "at": "2026-10-03T21:32:17Z",
+      "text": "Shipped M4 Adaptive rigor: 9 requirements proven or accepted"
     }
   ],
   "commands": {
