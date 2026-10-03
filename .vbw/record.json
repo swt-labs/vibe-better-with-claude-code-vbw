@@ -985,7 +985,15 @@
         "breaks: R8, R17, R18, R22, R23, R24, R26",
         "tests: project test command"
       ],
-      "predicted": "deep"
+      "predicted": "deep",
+      "escalations": [
+        {
+          "at": "2026-10-03T16:07:58Z",
+          "from": "deep",
+          "to": "deep",
+          "reason": "grew beyond its plan: 42 files for 2 planned"
+        }
+      ]
     },
     {
       "id": "P23",
@@ -1999,7 +2007,7 @@
         "P22.5",
         "P20.5"
       ],
-      "status": "planned",
+      "status": "done",
       "tasks": [
         "run the plain-ui baseline: the seven cases on Sonnet 5.5 and Opus 5.5, two runs per cell (BENCH_RUNS_DIR=tools/baseline/results/plain-ui), and commit the records",
         "run VBW 2 with automatic rigor on the seven cases on Sonnet 5.5 and on Opus 5.5, one run per cell (BENCH_RUNS_DIR=tools/baseline/results/adaptive), and commit the records",
@@ -2405,6 +2413,16 @@
     {
       "id": "T8",
       "text": "Idea (owner, 2026-10-03, brainstorm later): first-run interview, a short deterministic Q&A that sets the user's proficiency and preferences, so a senior developer gets VBW tuned to their expertise and a pure vibe coder gets settings that ensure good code is built",
+      "status": "open"
+    },
+    {
+      "id": "T9",
+      "text": "NEXT after M4 (owner, 2026-10-03): write a very detailed report of the M4 sprint (adaptive rigor, benchmark method and results, every finding and fix)",
+      "status": "open"
+    },
+    {
+      "id": "T10",
+      "text": "Concept (owner, 2026-10-03, positioning): cost per correct outcome, not cost per turn. Stop wasting tokens is not fewer tokens per turn: ten cheap turns that ship broken code waste more than five dearer turns that ship proven code. Measure and present VBW's cost per proven, safe result",
       "status": "open"
     }
   ],
