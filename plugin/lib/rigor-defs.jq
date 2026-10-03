@@ -68,6 +68,14 @@ def escalate($to; $reason; $at):
 def escalate_phases($ids; $to; $reason; $at):
   .phases |= map(if .id as $i | $ids | index($i) then escalate($to; $reason; $at) else . end);
 
+# needs_qa($tier; $current): on a phase object. A built phase needs QA unless it
+# is express with only [auto] requirements and no escalations. $tier is the
+# phase's tier, $current the current milestone's requirements.
+def needs_qa($tier; $current):
+  . as $p
+  | ($tier != "express") or (($p.escalations // []) | length > 0)
+    or any($p.reqs[]; . as $q | any($current[]; .id == $q and .proof == "human"));
+
 # phase_finished($r): on a phase object, with the whole record as $r. A phase is
 # finished when its plans are done, its requirements are proven (accepted, for
 # [human] ones), no fix on them is still open, fixed or escalated, and, when its

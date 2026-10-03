@@ -151,3 +151,15 @@ track_code() { # commit an existing source file
   rigor_apply "$(rigor_doc 1 "" db/migrations/001.sql)" > /dev/null
   phase_json '.phases[0].tier == "deep"'
 }
+
+@test "re-planning re-tiers an unstarted phase from its signals; a started phase keeps its tier (D49)" {
+  rigor_project 3
+  rigor_apply "$(rigor_doc 3 deep src/note.txt)" > /dev/null
+  phase_json '.phases[0].tier == "deep"'
+  rigor_apply "$(rigor_doc 3 "" src/note.txt)" > /dev/null
+  phase_json '.phases[0].tier == "standard"'
+  rigor_apply "$(rigor_doc 3 deep src/note.txt)" > /dev/null
+  edit_record '.plans[0].status = "done"'
+  rigor_apply "$(rigor_doc 3 "" src/note.txt)" > /dev/null
+  phase_json '.phases[0].tier == "deep"'
+}

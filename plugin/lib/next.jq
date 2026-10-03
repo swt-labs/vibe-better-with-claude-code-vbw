@@ -59,8 +59,7 @@ def fix_files($r): if .command then ["*"]
 # unless it is express with only [auto] requirements and no escalations.
 | ([.phases[] | select(.milestone == $m) | .id as $ph | . as $p
     | select([$r.plans[] | select(.phase == $ph)] | length > 0 and all(.[]; .status == "done"))
-    | select(($rigor[$ph].tier != "express") or (($p.escalations // []) | length > 0)
-             or any($p.reqs[]; . as $q | any($current[]; .id == $q and .proof == "human")))
+    | select($p | needs_qa($rigor[$ph].tier; $current))
     | select(.qa == null or .qa.result != "pass" or .qa.tree != ($r.evidence.tree // "")) | .id]) as $to_verify
 # The QA tier is the highest among the phases to verify.
 | ([$to_verify[] | $rigor[.].qa] | max_by(qa_rank) // "standard") as $tier
