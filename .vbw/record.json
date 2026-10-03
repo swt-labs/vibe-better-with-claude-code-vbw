@@ -896,7 +896,7 @@
       "tier": "deep",
       "reasons": [
         "requirements: 3",
-        "files: 19 (123304 bytes)",
+        "files: 19 (123826 bytes)",
         "risk: sign-in (R23), payments (R23), data migration (R23), secrets (R23), deletion (R23), CI (R23)",
         "breaks: R1, R2, R3, R13, R14, R24, R26",
         "tests: project test command"
@@ -922,7 +922,7 @@
       "tier": "deep",
       "reasons": [
         "requirements: 2",
-        "files: 16 (93519 bytes)",
+        "files: 20 (106894 bytes)",
         "risk: none",
         "breaks: R12, R13, R14, R22, R23, R27",
         "tests: project test command"
@@ -948,7 +948,7 @@
       "tier": "deep",
       "reasons": [
         "requirements: 2",
-        "files: 23 (112198 bytes)",
+        "files: 23 (121561 bytes)",
         "risk: none",
         "breaks: R1, R2, R3, R11, R12, R13, R14, R22, R23, R24, R26, R27",
         "tests: project test command"
@@ -980,9 +980,9 @@
       "tier": "deep",
       "reasons": [
         "requirements: 1",
-        "files: 8 (53779 bytes)",
+        "files: 10 (70401 bytes)",
         "risk: none",
-        "breaks: R17, R18, R22, R23, R24, R26",
+        "breaks: R8, R17, R18, R22, R23, R24, R26",
         "tests: project test command"
       ],
       "predicted": "deep"
@@ -1993,12 +1993,14 @@
       ],
       "after": [
         "P22.1",
-        "P21.4"
+        "P21.4",
+        "P20.4",
+        "P22.5"
       ],
       "status": "planned",
       "tasks": [
-        "run VBW 2 with automatic rigor on the seven cases on Sonnet 5.5 (BENCH_RUNS_DIR=tools/baseline/results/adaptive BENCH_LEVEL=L2, one run per cell) and commit the records",
-        "run the same on Opus 5.5 and commit the records",
+        "run the plain-ui baseline: the seven cases on Sonnet 5.5 and Opus 5.5, two runs per cell (BENCH_RUNS_DIR=tools/baseline/results/plain-ui), and commit the records",
+        "run VBW 2 with automatic rigor on the seven cases on Sonnet 5.5 and on Opus 5.5, one run per cell (BENCH_RUNS_DIR=tools/baseline/results/adaptive), and commit the records",
         "run verify-adaptive.sh --table and record which cells miss the target (failed, or cost above 2x plain); stop and report if the usage limit is reached or a session cannot be driven"
       ],
       "role": "dev"
@@ -2044,8 +2046,9 @@
       "status": "planned",
       "tasks": [
         "add the section '## Adaptive rigor' with the rows printed by verify-adaptive.sh --table, copied exactly",
-        "state the evidence level (L2, scripted, toy fixtures), what each tuning round changed, and a 'Miss: CASE MODEL: ...' line for each cell that missed",
-        "add a Not tested list and update the short version at the top; benchmark-doc tests must still pass"
+        "state the evidence level (both arms L3: the interactive app driven by a script, small fixtures), what each tuning round changed, and a 'Miss: CASE MODEL: ...' line for each cell that missed",
+        "add a Not tested list and update the short version at the top; benchmark-doc tests must still pass",
+        "state plainly that the M3 runs (both arms) loaded the VBW repository's own instructions and compared headless plain runs with interactive VBW runs, and that the adaptive set fixes both; keep the M3 numbers as measured"
       ],
       "role": "docs"
     },
@@ -2087,7 +2090,8 @@
       ],
       "after": [
         "P22.3",
-        "P23.1"
+        "P23.1",
+        "P22.5"
       ],
       "status": "planned",
       "tasks": [
@@ -2113,7 +2117,7 @@
       ],
       "status": "planned",
       "tasks": [
-        "run each project once with plain Claude Code and once with VBW 2 on Sonnet 5.5, committing the records",
+        "run each project once with plain Claude Code in the interactive app (plain-ui) and once with VBW 2 on Sonnet 5.5, committing the records",
         "the same on Opus 5.5",
         "check every record has pass, tokens and cost; stop and report if the usage limit is reached"
       ],
@@ -2186,6 +2190,59 @@
         "cmd-commit.sh: vbw commit PLAN MESSAGE [FILE...] commits only the named files, each of which the plan must cover (a directory entry covers its files); no FILE keeps today's behaviour (every changed declared file); a named file outside the plan is refused with its name",
         "plugin/bin/vbw help and dev.md: the Dev names each task's files in its commit, so tasks that share a plan get one commit each",
         "tests/kernel-commit.bats: a subset commit leaves the other changed files uncommitted; an outside file is refused (red before the change)"
+      ]
+    },
+    {
+      "id": "P20.4",
+      "phase": "P20",
+      "title": "Express is decided before planning, and planned without workflows",
+      "reqs": [
+        "R24",
+        "R26"
+      ],
+      "files": [
+        "plugin/lib/next.jq",
+        "plugin/lib/rigor-defs.jq",
+        "plugin/lib/cmd-next.sh",
+        "plugin/skills/vibe/SKILL.md",
+        "docs/rigor.md",
+        "docs/next.md",
+        "tests/rigor-early.bats"
+      ],
+      "after": [
+        "P21.4"
+      ],
+      "status": "planned",
+      "tasks": [
+        "tests/rigor-early.bats (red first): vbw next --json at the plan step carries detail.tier, express only when the milestone has one requirement, it is [auto], its text names no risk category, the repository tracks at most 30 files, and settings.rigor is auto or express; otherwise standard (deep when settings.rigor is deep); a forced express on a bigger request still says express",
+        "rigor-defs.jq: the early assessment is one definition over the record and a tracked-file count passed by cmd-next.sh (git ls-files -z, counted, no file reads); it reuses the risk categories",
+        "vibe SKILL.md: at plan with detail.tier express, no mapping and no planning workflow: read the files the request names, then vbw apply one phase (tier express) with one plan (its files and tasks) and one check that fails today, and go to approve; when apply computes a higher tier, run the normal planning workflow instead. A rule: never change project files before the contract is approved. Router stays within 1,400 words",
+        "docs/rigor.md and docs/next.md describe the early express decision and the express plan step"
+      ]
+    },
+    {
+      "id": "P22.5",
+      "phase": "P22",
+      "title": "Like-for-like benchmark: clean sessions, plain Claude Code in the same app",
+      "reqs": [
+        "R29"
+      ],
+      "files": [
+        "tools/l3.sh",
+        "tools/baseline/bench.sh",
+        "tools/baseline/verify-adaptive.sh",
+        "tools/baseline/README.md",
+        "tests/baseline-bench.bats"
+      ],
+      "after": [
+        "P22.1"
+      ],
+      "status": "planned",
+      "tasks": [
+        "l3.sh and bench.sh: every test session excludes the VBW repository's own CLAUDE.md and AGENTS.md (claudeMdExcludes with their exact paths), so no session reads VBW's maintainer instructions; a fixture's own instruction files still load; tests/baseline-bench.bats asserts the setting for both arms (red first)",
+        "l3.sh start can launch Claude Code without the plugin (plain Claude Code, same app, settings and sandbox)",
+        "bench.sh: arm plain-ui drives plain Claude Code in the interactive app like vbw2 (the request typed, any question answered with the recommended option, finished when idle with no question on screen), graded by check.sh, with tokens and cost from the transcripts; its record is arm plain, level L3, in BENCH_RUNS_DIR",
+        "verify-adaptive.sh: the plain baseline defaults to tools/baseline/results/plain-ui (interactive plain runs, level L3); plain records of level L2 or L3 are accepted; README.md documents the arm and why (same app, same base context as VBW)"
       ]
     }
   ],
