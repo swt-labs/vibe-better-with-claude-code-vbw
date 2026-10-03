@@ -1997,15 +1997,14 @@
         "tests/baseline-projects.bats"
       ],
       "after": [],
-      "status": "blocked",
+      "status": "done",
       "tasks": [
         "protected-feature: an existing codebase with tests for earlier requirements, and a request for a new feature in several requirements; its check also re-runs the earlier requirements' tests",
         "data-migration: a small data store (files or SQLite) and a request to migrate it to a new shape without losing rows; its check inspects the migrated data",
         "non-ui-pipeline: a command-line data tool needing several requirements implemented; its check runs it on fixed inputs",
         "each project has request.txt, case.meta, check.sh and solution.sh in tools/baseline/projects/NAME and a fixture.sh in tools/baseline/fixtures/NAME; tests/baseline-projects.bats proves each check fails on the untouched fixture and passes after solution.sh"
       ],
-      "role": "dev",
-      "note": "Cannot write the plan's directory entries (tools/baseline/projects/, tools/baseline/fixtures/NAME/): this session's guard (older plugin copy, before commit a9440290 'a plan entry ending in / covers its directory') denies every file under a directory entry as outside the run's files, via Write and Bash redirects. The tree's plugin/hooks/common.jq covers them correctly (verified with jq). Only tests/baseline-projects.bats was written (uncommitted); empty dirs were created. Reload the plugin from the current tree and re-run P23.1; I did not bypass the guard."
+      "role": "dev"
     },
     {
       "id": "P23.2",
