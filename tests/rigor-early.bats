@@ -27,8 +27,8 @@ track_files() { # N: commit N more tracked files
   [ "$(early_tier)" = express ]
 }
 
-@test "more than one requirement is standard" {
-  rigor_project 2
+@test "three requirements are standard, as at apply (C20: 2 express, 3 standard)" {
+  rigor_project 3
   [ "$(early_tier)" = standard ]
 }
 
