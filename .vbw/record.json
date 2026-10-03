@@ -1037,7 +1037,14 @@
           "to": "deep",
           "reason": "grew beyond its plan: 12 files for 1 planned"
         }
-      ]
+      ],
+      "qa": {
+        "result": "pass",
+        "tier": "deep",
+        "tree": "6ae81c88769d77f76fa53f63f931a4d087364f50",
+        "at": "2026-10-03T17:11:01Z",
+        "note": "12/12 checks"
+      }
     }
   ],
   "plans": [
@@ -2893,5 +2900,11 @@
     "scope": [],
     "passed": true
   },
-  "lease": null
+  "lease": {
+    "run": "qa-20261003T170743Z",
+    "kind": "qa",
+    "started_at": "2026-10-03T17:07:43Z",
+    "files": [],
+    "session": "9cd2cc30-8c86-4520-9d71-a0e82aff5407"
+  }
 }
