@@ -2267,7 +2267,7 @@
       "after": [
         "P20.4"
       ],
-      "status": "planned",
+      "status": "done",
       "tasks": [
         "tests/rigor-early.bats (red first): for a request the early assessment calls express, vbw apply of one phase with one plan of at most 4 small files and one check records express (the two never disagree); an existing codebase with no project test command is standard at both steps",
         "rigor-defs.jq and rigor.jq: the signal thresholds and the no-project-tests rule are defined once and used by both early_tier and the apply floor; early_tier also applies the existing-code-without-tests rule (cmd-next.sh passes whether a test command is approved or detected)",
@@ -2395,6 +2395,16 @@
     {
       "id": "T6",
       "text": "Enforce the unenforced budgets: a status line CPU benchmark (30 ms), and prompt budget tests by one documented token estimate (router 2k, each skill 3k, all prompts 15k); trim if they show it (owner: not critical before the merge)",
+      "status": "open"
+    },
+    {
+      "id": "T7",
+      "text": "Idea (owner, 2026-10-03, brainstorm later): VBW as an advanced algorithm creator, for non-developers and for the world's leading algorithm designers",
+      "status": "open"
+    },
+    {
+      "id": "T8",
+      "text": "Idea (owner, 2026-10-03, brainstorm later): first-run interview, a short deterministic Q&A that sets the user's proficiency and preferences, so a senior developer gets VBW tuned to their expertise and a pure vibe coder gets settings that ensure good code is built",
       "status": "open"
     }
   ],
