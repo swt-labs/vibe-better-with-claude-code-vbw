@@ -1,0 +1,16 @@
+{
+  "arm": "vbw2",
+  "model": "sonnet-5.5",
+  "case": "failing-check-fix",
+  "run": 3,
+  "pass": true,
+  "tokens": 2182781,
+  "cost_usd": 0.98,
+  "user_inputs": 4,
+  "level": "L3",
+  "fixture": "failing-check-fix",
+  "date": "2026-10-03",
+  "rerun_of": "vbw2-sonnet-5.5-failing-check-fix-3.json",
+  "regraded": true,
+  "vbw_engaged": true
+}

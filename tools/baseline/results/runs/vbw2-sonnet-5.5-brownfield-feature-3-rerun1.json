@@ -1,0 +1,16 @@
+{
+  "arm": "vbw2",
+  "model": "sonnet-5.5",
+  "case": "brownfield-feature",
+  "run": 3,
+  "pass": true,
+  "tokens": 6889035,
+  "cost_usd": 2.88,
+  "user_inputs": 10,
+  "level": "L3",
+  "fixture": "brownfield-feature",
+  "date": "2026-10-03",
+  "rerun_of": "vbw2-sonnet-5.5-brownfield-feature-3.json",
+  "regraded": true,
+  "vbw_engaged": true
+}
