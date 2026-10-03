@@ -2610,6 +2610,23 @@
       "id": "D43",
       "at": "2026-10-03T13:53:01Z",
       "text": "Contract approved: 27 requirements, 24 checks, 48 plans (bfeb8795da0c)"
+    },
+    {
+      "id": "D44",
+      "text": "Express is decided at the plan step from the requirements and the repository size, before mapping and planning; an express phase is planned by the router without workflows",
+      "why": "Smoke cell (fix-oneshot, Sonnet): express was chosen only after the mapping and planning workflows had run 10 agents; cost 1.34 USD vs 0.12 plain (11x). The design said express skips mapping and the planning round",
+      "at": "2026-10-03T14:11:15Z"
+    },
+    {
+      "id": "D45",
+      "text": "Benchmark sessions exclude the VBW repo's own CLAUDE.md/AGENTS.md, and plain Claude Code is measured in the same interactive app as VBW (plain-ui, L3)",
+      "why": "Probes: the repo instructions added 7.6k tokens per turn to every test session of both arms (claudeMdExcludes removes them: 38.2k to 30.6k); the interactive app's base context is 47k vs 31k headless, so headless plain vs interactive VBW was not like for like",
+      "at": "2026-10-03T14:11:15Z"
+    },
+    {
+      "id": "D46",
+      "at": "2026-10-03T14:27:22Z",
+      "text": "Contract approved: 27 requirements, 24 checks, 50 plans (dcb8426a5d75)"
     }
   ],
   "commands": {
