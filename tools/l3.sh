@@ -3,7 +3,8 @@
 # reporting standard): the real TUI in tmux, with the v2 plugin. The only
 # input is what a user types; the screen is the only output.
 #
-#   tools/l3.sh start NAME DIR [MODEL]   start `claude` in DIR (auto mode, sandbox on)
+#   tools/l3.sh start NAME DIR [MODEL] [plain]  start `claude` in DIR (auto mode, sandbox on);
+#                                        plain: without the VBW plugin, same app and settings
 #   tools/l3.sh type NAME TEXT           type TEXT and press Enter
 #   tools/l3.sh keys NAME KEY...         press keys (tmux names: Down, Enter, Escape, ...)
 #   tools/l3.sh wait NAME [SECONDS]      wait until Claude is idle (default 900 s), print the screen
@@ -17,7 +18,7 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 [ -z "${VBW_TEST_CLAUDE_CONFIG_DIR:-}" ] || export CLAUDE_CONFIG_DIR="$VBW_TEST_CLAUDE_CONFIG_DIR"
 cmd="${1:-}"
 name="${2:-}"
-[ -n "$cmd" ] && [ -n "$name" ] || { sed -n '6,14p' "$0" >&2; exit 2; }
+[ -n "$cmd" ] && [ -n "$name" ] || { sed -n '6,15p' "$0" >&2; exit 2; }
 session="vbw-l3-$name"
 
 screen() { tmux capture-pane -t "$session" -p -S -60; }
@@ -26,9 +27,15 @@ case "$cmd" in
   start)
     dir="${3:?usage: tools/l3.sh start NAME DIR [MODEL]}"
     model="${4:-sonnet}"
-    # Only what the test needs: VBW 1 off and the sandbox on. Never settings a
-    # real user would not have (VBW turns workflows on itself).
-    settings='{"enabledPlugins":{"vbw@vbw-marketplace":false},"sandbox":{"enabled":true}}'
+    mode="${5:-vbw}"
+    [ "$mode" = vbw ] || [ "$mode" = plain ] || { echo "l3: unknown mode: $mode" >&2; exit 2; }
+    # Only what the test needs: VBW 1 off, the sandbox on, and this repository's
+    # own maintainer instructions (CLAUDE.md, AGENTS.md) never read. Never
+    # settings a real user would not have (VBW turns workflows on itself).
+    settings=$(jq -cn --arg a "$ROOT/CLAUDE.md" --arg b "$ROOT/AGENTS.md" \
+      '{enabledPlugins:{"vbw@vbw-marketplace":false},sandbox:{enabled:true},claudeMdExcludes:[$a,$b]}')
+    plugin="--plugin-dir '$ROOT/plugin'"
+    [ "$mode" = vbw ] || plugin=""
     # A session launched from inside Claude Code inherits its PATH, which puts
     # that session's installed plugins' bin/ (an older vbw) ahead of the code
     # under test. Start from a PATH without any plugin cache.
@@ -39,7 +46,7 @@ case "$cmd" in
     done
     tmux kill-session -t "$session" 2> /dev/null || true
     tmux new-session -d -s "$session" -x 200 -y 60 -c "$dir" \
-      "env PATH='$clean' claude --model $model --permission-mode auto --plugin-dir '$ROOT/plugin' --settings '$settings' --debug-file '$dir.debug.log'"
+      "env PATH='$clean' claude --model $model --permission-mode auto $plugin --settings '$settings' --debug-file '$dir.debug.log'"
     sleep 6
     # First run in a directory: accept the folder-trust dialog, as a user would.
     if screen | grep -q 'Yes, I trust this folder'; then
@@ -88,5 +95,5 @@ case "$cmd" in
     sleep 2
     tmux kill-session -t "$session" 2> /dev/null || true
     ;;
-  *) sed -n '6,14p' "$0" >&2; exit 2 ;;
+  *) sed -n '6,15p' "$0" >&2; exit 2 ;;
 esac
