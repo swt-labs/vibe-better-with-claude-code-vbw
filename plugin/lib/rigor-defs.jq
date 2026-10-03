@@ -18,6 +18,20 @@ def risks: [
 # risk_name: on a text, the name of the first risk category it matches, or null.
 def risk_name: . as $t | ([risks[] | select(. as $c | $t | test($c.re; "i")) | .name] | .[0]);
 
+# early_tier($tracked): on the record, the tier of the request before planning.
+# A forced mode (settings.rigor express|standard|deep) is that tier. In auto,
+# express only for one [auto] requirement of the current milestone whose text
+# names no risk category, in a repository tracking at most 30 files; else
+# standard. $tracked is the count of tracked files (no file is read).
+def early_tier($tracked):
+  (.settings.rigor // "auto") as $mode
+  | if $mode != "auto" then $mode
+    else .milestone.id as $m
+      | [.requirements[] | select(.milestone == $m)] as $cur
+      | if ($cur | length) == 1 and $cur[0].proof == "auto" and ($cur[0].text | risk_name) == null and $tracked <= 30
+        then "express" else "standard" end
+    end;
+
 # escalate($to; $reason; $at): on a phase object, inside a record update. Raises
 # the tier to $to (null = one step up; deep stays deep) and appends {at, from,
 # to, reason} to escalations. A reason already recorded is not recorded twice,
