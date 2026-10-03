@@ -1428,7 +1428,7 @@
       "req": "R19",
       "source": "qa",
       "attempts": 0,
-      "status": "open",
+      "status": "closed",
       "note": "docs/benchmark.md (How it ran, last bullet; Findings, hostile-repo bullet) says each VBW 2 record says whether VBW was set up (vbw_engaged) and that every counted VBW 2 run set VBW up. 23 of the 49 tools/baseline/results/runs/vbw2-*.json records have vbw_engaged null (jq -r .vbw_engaged), so the claim is false for them and unevidenced. Scope the claim to records that carry the field, or backfill/verify the rest, and extend the doc test to check it."
     }
   ],
