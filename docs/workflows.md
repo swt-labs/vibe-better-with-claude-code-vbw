@@ -92,6 +92,18 @@ needed.
 - **Docs**: documentation plans (README, changelog, guides, API and inline
   docs), concise and example-first; documentation files only.
 
+## Rigor
+
+The router passes `args.rigor` (the `rigor` key of `vbw next --json`, docs/next.md)
+to the building, verifying and fixing workflows. It maps each phase id to
+`{tier, agents, qa, models}` (docs/rigor.md).
+
+- `vbw:building`: each Dev runs on `rigor[phase].models.dev`, falling back to `args.models.dev`; a documentation plan's Docs agent runs on `args.models.docs`.
+- `vbw:verifying`: each phase is verified at `rigor[phase].qa` (`quick`, `standard` or `deep`), falling back to `args.tier`, on `rigor[phase].models.qa`.
+- `vbw:fixing`: a fix has no phase of its own, so every Dev runs on the Dev model of the highest-tier phase in `args.rigor`.
+
+Without `args.rigor`, each workflow uses `args.models` and `args.tier` as before.
+
 ## Models
 
 A workflow agent inherits the session model unless `args.models` names one for

@@ -12,6 +12,19 @@ lifecycle. `vbw next --json` returns:
 
 `gate: true` means a person must act; autonomous runs stop there.
 
+Every answer also carries `rigor`, keyed by the current milestone's phase ids:
+each phase's tier and its row of the profile's tier table (docs/rigor.md). A
+phase with no tier counts as `standard`. The router passes it to every
+workflow as `args.rigor`.
+
+```json
+"rigor": { "P1": { "tier": "express", "agents": { "dev": 1 }, "qa": "quick",
+                   "models": { "dev": "sonnet", "qa": "sonnet" } } }
+```
+
+`models` is the table's cell with your `vbw config set model.dev` and
+`model.qa` overrides applied.
+
 ## Decision order (first match wins)
 
 | # | Condition | action | gate |
@@ -28,7 +41,7 @@ lifecycle. `vbw next --json` returns:
 | 8 | current evidence has scope violations | `scope` (commits changed files outside their plans) | yes |
 | 9 | a fix is `open` | `fix` (`detail.fixes`, and `detail.groups`: fixes whose files overlap, one Dev each; a project command's fix may touch any file) | no |
 | 10 | an `auto` requirement is not `proven`, or the evidence is stale (another contract, or the project files changed since; docs/proof.md) | `prove` | no |
-| 10a | a phase of the current milestone is built and QA has not passed it on the proven code (never verified, failed, or the code changed since) | `qa` (`detail.phases`, and `detail.tier`: `deep` for the quality profile, `quick` for budget, else `standard`) | no |
+| 10a | a phase of the current milestone is built and QA has not passed it on the proven code (never verified, failed, or the code changed since). An express phase is skipped when every requirement is `auto` and it has no escalations; a `human` requirement or an escalation brings QA back | `qa` (`detail.phases`, and `detail.tier`: the highest QA tier of those phases in the profile's table) | no |
 | 11 | a `human` requirement is `open` | `accept` (one scenario at a time) | yes |
 | 12 | otherwise | `ship` (`vbw ship`, which refuses while the proven work is not committed: the proof reads files on disk, a shipped milestone must be in git history) | yes |
 
