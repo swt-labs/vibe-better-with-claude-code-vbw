@@ -992,6 +992,12 @@
           "from": "deep",
           "to": "deep",
           "reason": "grew beyond its plan: 42 files for 2 planned"
+        },
+        {
+          "at": "2026-10-03T16:38:24Z",
+          "from": "deep",
+          "to": "deep",
+          "reason": "grew beyond its plan: 15 files for 4 planned"
         }
       ]
     },
@@ -2031,7 +2037,7 @@
       "after": [
         "P22.2"
       ],
-      "status": "planned",
+      "status": "done",
       "tasks": [
         "if no cell misses, write tuning.md stating that no tuning was needed and stop",
         "otherwise tune the floor thresholds or the tier table for the missed cells, re-run only those cells with BENCH_ROUND=1, and describe in tuning.md 'Round 1: what changed and its result'",
@@ -2423,6 +2429,11 @@
     {
       "id": "T10",
       "text": "Concept (owner, 2026-10-03, positioning): cost per correct outcome, not cost per turn. Stop wasting tokens is not fewer tokens per turn: ten cheap turns that ship broken code waste more than five dearer turns that ship proven code. Measure and present VBW's cost per proven, safe result",
+      "status": "open"
+    },
+    {
+      "id": "T11",
+      "text": "Idea (owner, 2026-10-03, brainstorm later): proactive suggestions matched to the user's level (from the first-run interview, T8). VBW regularly suggests what the user may not know: for a vibe coder, keep keys in .env and out of the repo, render on mobile, encrypt API calls; for a senior developer, e.g. SHA-1 chosen where SHA-256 fits, quantum resistance. Goal: steer toward better design and algorithm choices and away from bad ones; the user decides",
       "status": "open"
     }
   ],
