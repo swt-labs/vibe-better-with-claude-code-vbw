@@ -1209,7 +1209,7 @@
         "P16.1",
         "P16.2"
       ],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "run bench.sh all opus-5.5 in the project; on usage-limit stops wait and rerun until all 42 records exist",
