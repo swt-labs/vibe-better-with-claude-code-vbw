@@ -210,14 +210,22 @@ scenario_resume() {
   start=$GREET
   killed=0
   # Wait like the others, but come back as soon as a run is open, so the
-  # session can be closed while its workflow is still working.
+  # session can be closed while its workflow is still working. VBW's state is
+  # read every 3 s: an express build is short, and a 30 s screen wait missed it.
   idle() {
-    local waited=0
+    local waited=0 last="" now steady=0
     while [ "$waited" -lt 1500 ]; do
       [ "$killed" -eq 0 ] && [ "$(next_action)" = run ] && return 0
-      # l3 wait needs 15 s of a steady screen, so a 30 s limit can succeed.
-      l3 wait "$scenario" 30 > /dev/null 2>&1 && return 0
-      waited=$((waited + 30))
+      now=$(screen)
+      if [ "$now" = "$last" ] && ! printf '%s' "$now" | grep -q 'esc to interrupt'; then
+        steady=$((steady + 3))
+      else
+        steady=0
+      fi
+      last=$now
+      [ "$steady" -ge 15 ] && return 0
+      sleep 3
+      waited=$((waited + 3))
     done
   }
   # Back in a new session, VBW asks whether the closed session is still open:
