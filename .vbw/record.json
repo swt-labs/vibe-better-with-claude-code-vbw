@@ -981,9 +981,9 @@
       "qa": {
         "result": "pass",
         "tier": "deep",
-        "tree": "6ae81c88769d77f76fa53f63f931a4d087364f50",
-        "at": "2026-10-03T17:17:53Z",
-        "note": "24/24 checks"
+        "tree": "b55fab0570e2d8243a9bdfa28f8af588895ba1d8",
+        "at": "2026-10-03T17:51:57Z",
+        "note": "30/30 checks"
       },
       "outcome": {
         "tier": "deep",
