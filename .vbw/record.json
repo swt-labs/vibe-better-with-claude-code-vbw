@@ -980,7 +980,7 @@
       "tier": "deep",
       "reasons": [
         "requirements: 1",
-        "files: 10 (70401 bytes)",
+        "files: 11 (70401 bytes)",
         "risk: none",
         "breaks: R8, R17, R18, R22, R23, R24, R26",
         "tests: project test command"
@@ -1989,7 +1989,8 @@
         "R29"
       ],
       "files": [
-        "tools/baseline/results/adaptive/"
+        "tools/baseline/results/adaptive/",
+        "tools/baseline/results/plain-ui/"
       ],
       "after": [
         "P22.1",
