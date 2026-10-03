@@ -2541,6 +2541,17 @@
       "id": "D41",
       "at": "2026-10-03T13:32:13Z",
       "text": "Contract approved: 27 requirements, 24 checks, 48 plans (c5ae1e389ddc)"
+    },
+    {
+      "id": "D42",
+      "text": "P21.3 and P22.3 name rigor-defs.jq; cost_usd is removed from the record schema (D35 follow-through)",
+      "why": "The shared definitions moved to rigor-defs.jq in P21.2; I did not carry that into the later plans' file lists when re-planning, so P21.3 blocked",
+      "at": "2026-10-03T13:46:46Z"
+    },
+    {
+      "id": "D43",
+      "at": "2026-10-03T13:53:01Z",
+      "text": "Contract approved: 27 requirements, 24 checks, 48 plans (bfeb8795da0c)"
     }
   ],
   "commands": {
