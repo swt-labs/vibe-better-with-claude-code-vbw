@@ -547,6 +547,8 @@ failed=0
 [ $# -gt 0 ] || set -- $ALL
 for scenario in "$@"; do
   case " $ALL " in *" $scenario "*) ;; *) echo "unknown scenario $scenario (one of: $ALL)" >&2; exit 2 ;; esac
+  # Each scenario's result reflects its own checks; the suite's exit, all of them.
+  suite_failed=$failed failed=0
   unset -f on_question on_idle done_yet checks idle
   idle() { default_idle; }
   on_question() { return 1; }
@@ -566,5 +568,6 @@ for scenario in "$@"; do
   cost_usd=$(read_session_cost)
   l3 stop "$scenario"
   checks
+  [ "$suite_failed" -eq 0 ] || failed=1
 done
 [ "$failed" -eq 0 ] && echo "L3 suite: all checks passed" || { echo "L3 suite: FAILED"; exit 1; }
