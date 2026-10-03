@@ -1412,7 +1412,7 @@
       "req": "R21",
       "source": "qa",
       "attempts": 0,
-      "status": "open",
+      "status": "fixed",
       "note": ".github/references/prompting-best-practices-for-vbw.md names VBW 1 files absent from the tree: line 251 'commands/status.md' and 'scripts/compile-context.sh', line 262 'compile-context.sh' (ls commands scripts: no such directory). The goal covers the other contributor files under .github and criterion 2 forbids absent v1 scripts; check-contributor-files.sh does not scan .github/references/*, so it cannot catch this."
     }
   ],
