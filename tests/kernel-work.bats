@@ -13,7 +13,7 @@ setup() {
   mkdir -p tests src
   printf 'grep -qx paid src/pay.txt\n' > tests/pay.sh
   printf 'grep -qx sent src/receipt.txt\n' > tests/receipt.sh
-  PLAN='{"phases": [{"id": "P1", "title": "Checkout", "reqs": ["R1", "R2"]}],
+  PLAN='{"phases": [{"id": "P1", "title": "Checkout", "reqs": ["R1", "R2"], "tier": "standard"}],
          "plans": [{"id": "P1.1", "phase": "P1", "title": "Pay", "reqs": ["R1"], "files": ["src/pay.txt"]},
                    {"id": "P1.2", "phase": "P1", "title": "Receipt", "reqs": ["R2"], "files": ["src/receipt.txt"], "after": ["P1.1"]}],
          "checks": [{"id": "C1", "req": "R1", "run": ["sh", "tests/pay.sh"], "files": ["tests/pay.sh"]},

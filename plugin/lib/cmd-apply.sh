@@ -21,7 +21,7 @@
 cmd_apply() {
   [ $# -eq 0 ] || vbw_usage_error "usage: vbw apply < plan.json"
   vbw_require_project
-  local doc record problem hypo tiers
+  local doc record problem hypo tiers one
   doc=$(cat)
   printf '%s' "$doc" | jq -e 'type == "object"' > /dev/null 2>&1 || vbw_die "apply needs a JSON object on stdin"
   printf '%s' "$doc" | jq -e '(keys - ["phases", "plans", "checks"]) == [] and all(.phases, .plans, .checks; type == "array")' \
@@ -57,6 +57,11 @@ cmd_apply() {
   if [ -n "$problem" ] && [ "$(printf '%s' "$record" | jq -r '.settings.rigor // "auto"')" = auto ]; then
     vbw_die "refused: $problem"
   fi
+  one=$(printf '%s' "$record" | jq -r --argjson d "$doc" --argjson tiers "$tiers" --arg mode "$(printf '%s' "$record" | jq -r '.settings.rigor // "auto"')" '
+      [$tiers[] | . as $a | (if $mode | IN("express", "standard", "deep") then $mode else $a.tier end) as $t
+        | select($t == "express" and ([$d.plans[] | select(.phase == $a.id)] | length) > 1)
+        | "\($a.id) is express: one plan, merge its plans or raise its tier"] | .[0] // empty')
+  [ -z "$one" ] || vbw_die "refused: $one"
   record_update '.milestone.id as $m
     | ([.phases[] | select(.milestone == $m) | .id]) as $mine
     | ([.requirements[] | select(.milestone == $m) | .id]) as $myreqs

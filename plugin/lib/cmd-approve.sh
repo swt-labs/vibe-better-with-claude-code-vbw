@@ -24,8 +24,12 @@ cmd_approve() {
   else
     consent_grant contract "$hash" "$(printf '%s' "$record" | jq -c \
       '{requirements: (.requirements | length), checks: (.checks | length), plans: (.plans | length)}')"
-    record_update "$VBW_JQ_DEFS"'.decisions += [{id: (.decisions | next_id("D")), at: $at,
-        text: "Contract approved: \(.requirements | length) requirements, \(.checks | length) checks, \(.plans | length) plans (\($h[0:12]))"}]' \
+    record_update "$VBW_JQ_DEFS"'
+      def express_text: . as $r | [.phases[] | select(.milestone == $r.milestone.id and .tier == "express") | .id as $p | .reqs as $q
+          | "express: \($p) (\([$q[], ($r.checks[] | select(.req as $c | any($q[]; . == $c)) | .id), ($r.plans[] | select(.phase == $p) | .id)] | join(", ")))"]
+        | if length > 0 then "; " + join("; ") else "" end;
+      .decisions += [{id: (.decisions | next_id("D")), at: $at,
+        text: "Contract approved: \(.requirements | length) requirements, \(.checks | length) checks, \(.plans | length) plans (\($h[0:12]))\(express_text)"}]' \
       --arg h "$hash" --arg at "$(vbw_now)"
     record_commit "chore(vbw): approve contract ${hash:0:12}"
     printf 'approved contract %s\n' "${hash:0:12}"

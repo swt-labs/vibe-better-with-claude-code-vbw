@@ -66,12 +66,15 @@ cmd_show() {
       contract_approved "$hash" && state="approved"
       printf 'contract %s (%s)\n' "${hash:0:12}" "$state"
       printf '%s' "$record" | jq -r "$SHOW_JQ_DEFS"'
+        def express_line($r): $r.phases[] | select(.milestone == $r.milestone.id and .tier == "express") | .id as $p | .reqs as $q
+          | "express: \($p) (\(([$q[], ($r.checks[] | select(.req as $c | any($q[]; . == $c)) | .id), ($r.plans[] | select(.phase == $p) | .id)]) | join(", ")))";
         . as $r
         | "requirements:",
           (.requirements[] | . as $q | "  \(.id) [\(.proof)] \(.text)",
             ($r.checks[] | select(.req == $q.id) | "    \(.id) " + check_line)),
           (([.phases[] | select(.milestone == $r.milestone.id and .tier)]) as $tp
             | if ($tp | length) > 0 then "phases:", ($tp[] | "  \(.id) \(.tier): \(.reasons | join("; "))") else empty end),
+          (express_line($r) | "  " + .),
           "plans:",
           (.plans[] | "  \(.id) \(.title): \(.files | join(", "))\(if (.after | length) > 0 then " (after \(.after | join(", ")))" else "" end)"),
           "project commands:",
