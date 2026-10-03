@@ -212,7 +212,7 @@ The M3 runs (the 84-run tables above, both arms) loaded the VBW repository's own
 
 Three projects with four requirements each, run once per cell on Sonnet 5.5 and Opus 5.5 with plain Claude Code and VBW 2. A deterministic `check.sh` grades each run. The tables are the output of `bash tools/baseline/report-projects.sh`, which reads `tools/baseline/results/projects/`. To repeat one run: `bash tools/baseline/bench.sh ARM MODEL PROJECT RUN`.
 
-Plain Claude Code passed 6 of 6 runs. VBW 2 passed 5 of 6 and cost 4.9 to 7.0 times as much per run. The one VBW 2 failure is Sonnet on non-ui-pipeline: its `check.sh` failed, and this page does not say why, because the cause was not investigated.
+Plain Claude Code passed 6 of 6 runs. VBW 2 passed 5 of 6 and cost 4.9 to 7.0 times as much per run. The one VBW 2 failure is Sonnet on non-ui-pipeline. VBW 2 reached the ship step with its three requirements proven and QA passed, but `logstat.sh` does not count the log's blank line as malformed (it reports `malformed: 3`, the request's rule "any other line is malformed" makes it 4). The checks VBW 2 wrote never tried a blank line, so its proof could not see the gap: VBW 2 proves what its checks cover, and here the checks missed an edge the request stated. On these small projects plain Claude Code kept the earlier requirements working too, so no run shows VBW 2 catching a regression that plain missed.
 
 ### data-migration
 
