@@ -935,7 +935,15 @@
         "breaks: R12, R13, R14, R22, R23, R27",
         "tests: project test command"
       ],
-      "predicted": "deep"
+      "predicted": "deep",
+      "qa": {
+        "result": "fail",
+        "tier": "deep",
+        "tree": "6ae81c88769d77f76fa53f63f931a4d087364f50",
+        "at": "2026-10-03T17:19:40Z",
+        "note": "29/30 checks",
+        "rounds": 1
+      }
     },
     {
       "id": "P21",
@@ -2454,6 +2462,14 @@
       "attempts": 0,
       "status": "open",
       "note": "P19.2 says on planning again a phase 'never records a tier lower than the one it has'; plugin/lib/cmd-apply.sh only enforces that for a locked phase (started plans or escalations): $locked and $o.tier > $want. An existing unstarted phase (e.g. Architect-raised deep) is re-recorded at the recomputed lower tier when re-planned without the proposal. No recorded decision (D37-D40) covers this and no test pins it. Either lock all existing phases or record a decision."
+    },
+    {
+      "id": "F15",
+      "req": "R24",
+      "source": "qa",
+      "attempts": 0,
+      "status": "open",
+      "note": "P20.1 task 3 says the 'needs QA' definition is shared in rigor.jq (rigor.jq is in the plan's files). Commit b5dd7db5 did not touch rigor.jq; the definition is written inline in plugin/lib/next.jq (the $to_verify select using $rigor, escalations and human reqs), so it is not a shared definition. Move it to a named definition in rigor.jq/rigor-defs.jq, or record a decision that changes the plan."
     }
   ],
   "todos": [
