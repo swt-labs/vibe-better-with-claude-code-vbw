@@ -1404,7 +1404,7 @@
       "req": "R21",
       "source": "qa",
       "attempts": 0,
-      "status": "open",
+      "status": "fixed",
       "note": "Test gap: commit 5e5a730d added a check that every backticked 'vbw NAME' is a command listed by plugin/bin/vbw help, but tests/contributor-files.bats has no selftest for it (last changed in fae5dd46); no test fails if that check is removed. Add a selftest where a file names `vbw nonesuch` and the check exits non-zero."
     }
   ],
@@ -1571,6 +1571,12 @@
       "id": "D24",
       "at": "2026-10-03T01:53:08Z",
       "text": "Contract approved: 18 requirements, 16 checks, 26 plans (ce36f53d16e1)"
+    },
+    {
+      "id": "D25",
+      "text": "F8 is covered: the selftests for the vbw-command check live in tests/contributor-tools.bats (added with the check in 5e5a730d), not in tests/contributor-files.bats",
+      "why": "contributor-files.bats is a protected check file and could not be extended without re-approval; contributor-tools.bats has 3 tests, 2 of which failed before the fix and pass after it",
+      "at": "2026-10-03T02:24:39Z"
     }
   ],
   "commands": {
