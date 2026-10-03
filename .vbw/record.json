@@ -683,12 +683,11 @@
         "Depends on P3"
       ],
       "qa": {
-        "result": "fail",
+        "result": "pass",
         "tier": "standard",
-        "tree": "1e68977c0588acce4019946f130b7a7edfc0757f",
-        "at": "2026-10-03T02:52:06Z",
-        "note": "19/20 checks",
-        "rounds": 2
+        "tree": "1ead6e7d5a10db39f384a8a51c6778149354e72f",
+        "at": "2026-10-03T03:06:52Z",
+        "note": "20/20 checks"
       }
     },
     {
