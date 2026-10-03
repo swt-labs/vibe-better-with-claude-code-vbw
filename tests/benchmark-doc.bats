@@ -62,8 +62,11 @@ teardown() { vbw_teardown; }
 
 # report.sh on a synthetic result set (L1).
 rec() { # DIR NAME ARM MODEL CASE RUN PASS TOKENS COST INPUTS [EXTRA-JSON]
+  # A brace default inside ${...:-} parses differently on bash 3.2.
+  local extra='{}'
+  [ -z "${11:-}" ] || extra=${11}
   jq -n --arg a "$3" --arg m "$4" --arg c "$5" --argjson n "$6" --argjson p "$7" \
-    --argjson t "$8" --argjson k "$9" --argjson i "${10}" --argjson x "${11:-{\}}" \
+    --argjson t "$8" --argjson k "$9" --argjson i "${10}" --argjson x "$extra" \
     '{arm:$a,model:$m,case:$c,run:$n,pass:$p,tokens:$t,cost_usd:$k,user_inputs:$i,
       level:(if $a == "plain" then "L2" else "L3" end),fixture:$c} + $x' > "$1/$2.json"
 }
