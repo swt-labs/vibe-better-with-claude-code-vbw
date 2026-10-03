@@ -685,10 +685,10 @@
       "qa": {
         "result": "fail",
         "tier": "standard",
-        "tree": "d465d68b060d6646d578e612c773380ace807ea5",
-        "at": "2026-10-03T02:45:38Z",
-        "note": "11/12 checks",
-        "rounds": 1
+        "tree": "1e68977c0588acce4019946f130b7a7edfc0757f",
+        "at": "2026-10-03T02:52:06Z",
+        "note": "19/20 checks",
+        "rounds": 2
       }
     },
     {
@@ -1422,6 +1422,14 @@
       "attempts": 0,
       "status": "closed",
       "note": "docs/benchmark.md 'Not measured' section (lines 153-159) does not name evidence level L2 as a gap; criterion 3 requires it to name VBW 1 cases without data, evidence level L2 and sample size of 3. L2 appears only in the table labels and 'How it ran'. Plain arm is L2 (headless claude -p) and VBW 2 ran through a script-driven TUI; the section should state that the numbers are below L4 owner acceptance and that the plain arm is L2, not a user-path run."
+    },
+    {
+      "id": "F11",
+      "req": "R19",
+      "source": "qa",
+      "attempts": 0,
+      "status": "open",
+      "note": "docs/benchmark.md (How it ran, last bullet; Findings, hostile-repo bullet) says each VBW 2 record says whether VBW was set up (vbw_engaged) and that every counted VBW 2 run set VBW up. 23 of the 49 tools/baseline/results/runs/vbw2-*.json records have vbw_engaged null (jq -r .vbw_engaged), so the claim is false for them and unevidenced. Scope the claim to records that carry the field, or backfill/verify the rest, and extend the doc test to check it."
     }
   ],
   "todos": [
