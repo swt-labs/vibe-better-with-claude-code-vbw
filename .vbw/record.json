@@ -1029,7 +1029,15 @@
         "breaks: R18",
         "tests: project test command"
       ],
-      "predicted": "deep"
+      "predicted": "deep",
+      "escalations": [
+        {
+          "at": "2026-10-03T17:00:44Z",
+          "from": "deep",
+          "to": "deep",
+          "reason": "grew beyond its plan: 12 files for 1 planned"
+        }
+      ]
     }
   ],
   "plans": [
@@ -2137,7 +2145,7 @@
         "P23.1",
         "P23.2"
       ],
-      "status": "planned",
+      "status": "done",
       "tasks": [
         "run each project once with plain Claude Code in the interactive app (plain-ui) and once with VBW 2 on Sonnet 5.5, committing the records",
         "the same on Opus 5.5",
