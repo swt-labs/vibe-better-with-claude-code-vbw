@@ -56,7 +56,11 @@ out=$(jq -n --rawfile doc "$doc" --rawfile tuning "$tuning" '
   | [$live[] | select(.r.arm == "plain" and (.r.cost_usd | num))] as $pl
   | ($doc | split("\n")) as $docl
   | ($tuning | split("\n")) as $tunl
-  | [ $ad[]
+  # The final record of a cell is its highest round; a record a later round replaced
+  # is history and needs only what orders it (case, model, round).
+  | [ $ad[] | select(.r | has("case") and has("model") and has("round") and (.round | num)) ] as $ordered
+  | ( [ $ordered | group_by([.r.case, .r.model])[] | max_by(.r.round) ] ) as $final_files
+  | [ ($ad[] | select(.r | has("case") and has("model") and has("round") and (.round | num) | not)), $final_files[]
       | .f as $f | .r as $r
       | ( ["arm","rigor","model","case","run","round","pass","tokens","cost_usd","user_inputs","level","fixture","tiers"][]
           | select(. as $k | $r | has($k) | not) | "\($f): missing field \(.)" ),
@@ -69,8 +73,8 @@ out=$(jq -n --rawfile doc "$doc" --rawfile tuning "$tuning" '
               or ($r.tiers | all(. == "express" or . == "standard" or . == "deep") | not))
           then "\($f): tiers must be a non-empty list of express, standard or deep" else empty end )
     ] as $field_problems
-  | [ $ad[] | select(.r | has("case") and has("model") and has("round") and (.round | num)) | .r ] as $valid
-  | ( [ $valid | group_by([.case, .model])[] | max_by(.round) ] ) as $final
+  | [ $ordered[].r ] as $valid
+  | [ $final_files[].r ] as $final
   | ( [ cases[] as $c | models[] as $m
         | select([$final[] | select(.case == $c and .model == $m)] | length == 0)
         | "missing cell: \($c) \($m)" ] ) as $missing
