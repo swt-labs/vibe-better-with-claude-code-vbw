@@ -2213,7 +2213,7 @@
       "after": [
         "P21.4"
       ],
-      "status": "planned",
+      "status": "done",
       "tasks": [
         "tests/rigor-early.bats (red first): vbw next --json at the plan step carries detail.tier, express only when the milestone has one requirement, it is [auto], its text names no risk category, the repository tracks at most 30 files, and settings.rigor is auto or express; otherwise standard (deep when settings.rigor is deep); a forced express on a bigger request still says express",
         "rigor-defs.jq: the early assessment is one definition over the record and a tracked-file count passed by cmd-next.sh (git ls-files -z, counted, no file reads); it reuses the risk categories",
@@ -2238,7 +2238,7 @@
       "after": [
         "P22.1"
       ],
-      "status": "planned",
+      "status": "done",
       "tasks": [
         "l3.sh and bench.sh: every test session excludes the VBW repository's own CLAUDE.md and AGENTS.md (claudeMdExcludes with their exact paths), so no session reads VBW's maintainer instructions; a fixture's own instruction files still load; tests/baseline-bench.bats asserts the setting for both arms (red first)",
         "l3.sh start can launch Claude Code without the plugin (plain Claude Code, same app, settings and sandbox)",
