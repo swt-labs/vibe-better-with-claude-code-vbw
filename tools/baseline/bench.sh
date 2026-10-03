@@ -63,19 +63,22 @@ seed() {
   rm -rf "$ws"
   mkdir -p "$ws"
   ws="$(cd "$ws" && pwd -P)"
+  # The run's start: only transcripts written after it are this run's.
+  touch "$ws.started"
   # Seed from a copy of the fixture script, so the workspace never holds extras.
   (cd "$ws" && VBW_BASELINE_NO_CACHE_LINK=1 bash "$HERE/fixtures/$(meta fixture "$case_name")/fixture.sh" > /dev/null)
   printf '%s\n' "$ws"
 }
 
-# Sum token usage over session transcripts (main and subagents) of a workspace.
+# Sum token usage over the session transcripts (main and subagents) this run
+# wrote: a reused workspace path keeps earlier runs' transcripts beside them.
 transcript_tokens() {
   local enc dir
   enc=$(printf '%s' "$1" | sed 's/[^A-Za-z0-9]/-/g')
   dir="$CONFIG_DIR/projects/$enc"
   local files=()
   while IFS= read -r -d '' f; do files[${#files[@]}]="$f"; done \
-    < <(find "$dir" -name '*.jsonl' -print0 2> /dev/null)
+    < <(find "$dir" -name '*.jsonl' -newer "$1.started" -print0 2> /dev/null)
   [ "${#files[@]}" -gt 0 ] || { echo 0; return 0; }
   jq -s '[ .[] | select(.type == "assistant" and (.message.usage != null)) ]
          | unique_by(.message.id // .uuid)

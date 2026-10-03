@@ -80,6 +80,8 @@ vbw2_transcript() {
   u='"usage":{"input_tokens":1,"output_tokens":2,"cache_creation_input_tokens":3,"cache_read_input_tokens":4}'
   echo "{\"type\":\"assistant\",\"message\":{\"id\":\"a\",$u}}" > "$PROJECT/config/projects/$enc/s1.jsonl"
   echo "{\"type\":\"assistant\",\"message\":{\"id\":\"b\",$u}}" > "$PROJECT/config/projects/$enc/s1/subagents/agent-1.jsonl"
+  # Written by this run's session: newer than the run's start.
+  touch -t 209901010000 "$PROJECT/config/projects/$enc/s1.jsonl" "$PROJECT/config/projects/$enc/s1/subagents/agent-1.jsonl"
 }
 
 @test "vbw2 arm follows VBW's next step to the end, counts the user's inputs and records L3" {
@@ -102,6 +104,20 @@ vbw2_transcript() {
   [ "$(grep -c '^type bench-sonnet-5-5-fix-oneshot-1 /vbw:vibe$' "$STUB/calls")" -eq 1 ]
   # tmux reads a dot in a session name as a window.pane separator.
   ! grep -q '^[a-z]* [^ ]*[.]' "$STUB/calls" || { cat "$STUB/calls"; false; }
+}
+
+@test "a transcript left by an earlier run of the same workspace is not counted" {
+  printf 'Done. All checks pass.\n' > "$STUB/screens/1"
+  printf 'ship\n' > "$STUB/actions"
+  vbw2_transcript
+  enc=$(printf '%s' "$(cd "$PROJECT/scratch/vbw2-sonnet-5.5-fix-oneshot-1" && pwd -P)" | sed 's/[^A-Za-z0-9]/-/g')
+  u='"usage":{"input_tokens":100,"output_tokens":0,"cache_creation_input_tokens":0,"cache_read_input_tokens":0}'
+  echo "{\"type\":\"assistant\",\"message\":{\"id\":\"old\",$u}}" > "$PROJECT/config/projects/$enc/s0.jsonl"
+  touch -t 200001010000 "$PROJECT/config/projects/$enc/s0.jsonl"
+  BENCH_STUB_FIX=1 run bash "$BENCH" vbw2 sonnet-5.5 fix-oneshot 1
+  [ "$status" -eq 0 ]
+  run jq '.tokens' "$PROJECT/runs/vbw2-sonnet-5.5-fix-oneshot-1.json"
+  [ "$output" = "20" ]
 }
 
 @test "a finished run stops even with a question on screen, without answering it" {
@@ -293,6 +309,7 @@ l3_start() {
   enc=$(printf '%s' "$ws" | sed 's/[^A-Za-z0-9]/-/g')
   mkdir -p "$PROJECT/config/projects/$enc"
   echo '{"type":"assistant","message":{"id":"a","usage":{"input_tokens":1,"output_tokens":2,"cache_creation_input_tokens":3,"cache_read_input_tokens":4}}}' > "$PROJECT/config/projects/$enc/s.jsonl"
+  touch -t 209901010000 "$PROJECT/config/projects/$enc/s.jsonl"
   BENCH_STUB_FIX=1 run bash "$BENCH" plain-ui sonnet-5.5 fix-oneshot 1
   [ "$status" -eq 0 ]
   run jq -c '[.arm,.pass,.tokens,.cost_usd,.user_inputs,.level]' "$PROJECT/runs/plain-sonnet-5.5-fix-oneshot-1.json"
