@@ -18,17 +18,32 @@ def risks: [
 # risk_name: on a text, the name of the first risk category it matches, or null.
 def risk_name: . as $t | ([risks[] | select(. as $c | $t | test($c.re; "i")) | .name] | .[0]);
 
-# early_tier($tracked): on the record, the tier of the request before planning.
-# A forced mode (settings.rigor express|standard|deep) is that tier. In auto,
-# express only for one [auto] requirement of the current milestone whose text
-# names no risk category, in a repository tracking at most 30 files; else
-# standard. $tracked is the count of tracked files (no file is read).
-def early_tier($tracked):
+# The signal thresholds, defined once: the apply floor (rigor.jq) and the early
+# assessment (early_tier) both use them.
+def sig_reqs: if . >= 6 then "deep" elif . >= 3 then "standard" else "express" end;
+def sig_files: if . >= 10 then "deep" elif . >= 5 then "standard" else "express" end;
+def sig_bytes: if . >= 500000 then "deep" elif . >= 100000 then "standard" else "express" end;
+def sig_breaks: if . >= 4 then "deep" elif . >= 1 then "standard" else "express" end;
+# Existing code with no project test command cannot be proved by the project's
+# own tests: standard at least.
+def sig_tests($existing; $has_tests): if $existing and ($has_tests | not) then "standard" else "express" end;
+
+# early_tier($tracked; $code; $has_tests): on the record, the tier of the request
+# before planning. A forced mode (settings.rigor express|standard|deep) is that
+# tier. In auto, express only for one [auto] requirement of the current
+# milestone whose text names no risk category, in a repository tracking at most
+# 30 files, unless existing code has no project test command (the same
+# sig_tests rule as the apply floor); else standard. $facts is {tracked, code}:
+# the count of tracked files and of those that are code (not .vbw/, not markdown
+# or text); no file is read. A test command is the record's (detected at init
+# or approved).
+def early_tier($facts):
   (.settings.rigor // "auto") as $mode
   | if $mode != "auto" then $mode
     else .milestone.id as $m
       | [.requirements[] | select(.milestone == $m)] as $cur
-      | if ($cur | length) == 1 and $cur[0].proof == "auto" and ($cur[0].text | risk_name) == null and $tracked <= 30
+      | if ($cur | length) == 1 and $cur[0].proof == "auto" and ($cur[0].text | risk_name) == null and $facts.tracked <= 30
+           and (($cur | length | sig_reqs) == "express") and (sig_tests($facts.code > 0; .commands.test != null) == "express")
         then "express" else "standard" end
     end;
 

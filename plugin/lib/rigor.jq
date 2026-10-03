@@ -35,12 +35,12 @@ def rid: ltrimstr("R") | tonumber? // 0;
         | select([$r.plans[] | select(.phase != $ph.id and (.reqs | index($q))) | .files[]
                   | . as $f | select($files | any(.[]; overlaps($f)))] | length > 0) | $q]
        | sort_by(rid)) as $breaks
-    | ( [ (if $nreqs >= 6 then "deep" elif $nreqs >= 3 then "standard" else "express" end),
-          (if ($files | length) >= 10 then "deep" elif ($files | length) >= 5 then "standard" else "express" end),
-          (if $bytes >= 500000 then "deep" elif $bytes >= 100000 then "standard" else "express" end),
+    | ( [ ($nreqs | sig_reqs),
+          ($files | length | sig_files),
+          ($bytes | sig_bytes),
           (if ($risk | length) > 0 then "deep" else "express" end),
-          (if ($breaks | length) >= 4 then "deep" elif ($breaks | length) >= 1 then "standard" else "express" end),
-          (if $existing and ($has_tests | not) then "standard" else "express" end)
+          ($breaks | length | sig_breaks),
+          sig_tests($existing; $has_tests)
         ] | reduce .[] as $t ("express"; max_tier($t))) as $floor
     | (if ($ph.tier // $floor) | tier_rank > ($floor | tier_rank) then $ph.tier else $floor end) as $tier
     | { id: $ph.id, tier: $tier, floor: $floor,
