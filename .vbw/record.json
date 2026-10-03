@@ -219,6 +219,34 @@
       "proof": "human",
       "status": "accepted",
       "milestone": "M4"
+    },
+    {
+      "id": "R31",
+      "text": "Before approval, every [auto] requirement lists the rules its text states (each condition, edge and error case), each with the check that tests it; vbw apply refuses a listed rule that no check tests, naming it, and the approval screen shows the rules with their checks",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M5"
+    },
+    {
+      "id": "R32",
+      "text": "vbw prove runs the checks and project commands on a clean copy of the committed code, so uncommitted changes and untracked files in the working folder change no proof result; vbw check keeps running on the working folder for the Dev's red and green steps",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M5"
+    },
+    {
+      "id": "R33",
+      "text": "A VBW that opens a project record written by a newer VBW says the project needs a newer VBW and how to update, instead of calling the record corrupt, and every VBW still reads the records of older versions",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M5"
+    },
+    {
+      "id": "R34",
+      "text": "A real-user scenario in tools/l3-suite.sh shows both in the real Claude Code app: a request that states an edge case gets a check for that edge before approval, and a leftover untracked file in the working folder does not change the proof",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M5"
     }
   ],
   "checks": [
