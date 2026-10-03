@@ -1,0 +1,13 @@
+{
+  "arm": "plain",
+  "model": "sonnet-5.5",
+  "case": "markdown-deliverable",
+  "run": 2,
+  "pass": true,
+  "tokens": 152742,
+  "cost_usd": 0.1585,
+  "user_inputs": 0,
+  "level": "L3",
+  "fixture": "markdown-deliverable",
+  "date": "2026-10-03"
+}

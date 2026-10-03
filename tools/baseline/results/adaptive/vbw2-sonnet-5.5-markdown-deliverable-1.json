@@ -1,0 +1,17 @@
+{
+  "arm": "vbw2",
+  "model": "sonnet-5.5",
+  "case": "markdown-deliverable",
+  "run": 1,
+  "pass": true,
+  "tokens": 351045,
+  "cost_usd": 0.2454,
+  "user_inputs": 90,
+  "level": "L3",
+  "fixture": "markdown-deliverable",
+  "date": "2026-10-03",
+  "vbw_engaged": true,
+  "rigor": "auto",
+  "round": 0,
+  "tiers": []
+}

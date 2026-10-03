@@ -1,0 +1,13 @@
+{
+  "arm": "plain",
+  "model": "sonnet-5.5",
+  "case": "failing-check-fix",
+  "run": 1,
+  "pass": true,
+  "tokens": 148826,
+  "cost_usd": 0.1382,
+  "user_inputs": 0,
+  "level": "L3",
+  "fixture": "failing-check-fix",
+  "date": "2026-10-03"
+}

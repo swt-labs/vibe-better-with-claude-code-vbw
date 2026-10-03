@@ -1,0 +1,19 @@
+{
+  "arm": "vbw2",
+  "model": "opus-5.5",
+  "case": "hostile-repo",
+  "run": 1,
+  "pass": true,
+  "tokens": 2480262,
+  "cost_usd": 1.48,
+  "user_inputs": 5,
+  "level": "L3",
+  "fixture": "hostile-repo",
+  "date": "2026-10-03",
+  "vbw_engaged": true,
+  "rigor": "auto",
+  "round": 0,
+  "tiers": [
+    "standard"
+  ]
+}
