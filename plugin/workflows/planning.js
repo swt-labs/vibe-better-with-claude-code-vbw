@@ -61,6 +61,7 @@ const SCOPE = {
           reqs: { type: 'array', items: { type: 'string' } },
           goal: { type: 'string' },
           criteria: { type: 'array', items: { type: 'string' } },
+          tier: { type: 'string', enum: ['express', 'standard', 'deep'] },
         },
       },
     },
@@ -100,7 +101,7 @@ if (!scope || !scope.phases || scope.phases.length === 0) {
 }
 
 phase('Plan')
-const plan = await agent(`Plan these phases: research, decompose them into plans with tasks, write the checks, self-review, and apply with vbw apply. Use these phases exactly as given:\n\n${JSON.stringify(scope.phases)}`,
+const plan = await agent(`Plan these phases: research, decompose them into plans with tasks, write the checks, self-review, and apply with vbw apply. The kernel computes a rigor floor per phase from its signals and refuses a lower tier. Use these phases exactly as given, tier included:\n\n${JSON.stringify(scope.phases)}`,
   opts('lead', { schema: PLAN_RESULT, phase: 'Plan' }))
 if (!plan || !plan.applied) {
   return { status: 'blocked', summary: plan ? plan.summary : 'the Lead did not finish', blockers: plan ? plan.blockers : [], notes: scope.notes }

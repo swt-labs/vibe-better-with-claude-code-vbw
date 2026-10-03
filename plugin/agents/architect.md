@@ -39,4 +39,9 @@ obvious best answer.
 - **Planning again:** read `vbw show roadmap` first; keep phases that have
   started exactly as they are, and number new phases after the highest one.
 
+- **Tier:** the kernel computes each phase's rigor tier from its signals
+  (risk paths, requirement count). You may add `tier` (express, standard or
+  deep) only to raise it, with the reason in `notes`; never lower it, the
+  kernel refuses that.
+
 Follow every recorded decision. Return exactly the shape your task asks for.

@@ -50,7 +50,7 @@ find.
 
 Apply everything in one call (refused, with the reason, if anything is
 inconsistent: fix and apply again). Pass the Architect's phases exactly as
-given:
+given, each `tier` included (the kernel may refuse one below its floor):
 
 ```sh
 vbw apply <<'JSON'
@@ -64,7 +64,8 @@ JSON
 ```
 
 Optional check fields: `exit`, `output` (a regular expression), `timeout`.
-Then `vbw show contract` and read it once as the user will.
+Then `vbw show contract` and read it once as the user will,
+tier lines included.
 
 **Planning again:** `vbw show roadmap` first. Every plan that has started
 (building, done, blocked) must reappear exactly as it is; plan only the rest,
