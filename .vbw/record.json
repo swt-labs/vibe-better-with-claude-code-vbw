@@ -1951,7 +1951,7 @@
         "P21.3",
         "P20.3"
       ],
-      "status": "planned",
+      "status": "done",
       "tasks": [
         "docs/rigor.md: the signals and floor rules, reasons, forced mode (vbw config rigor), the profile's tier table, express, the escalation events and vbw tier raise, never lowering, the outcome record and vbw show rigor; say plainly that cost is recorded only when reported with vbw tier cost",
         "docs/record.md: the new phase fields and settings.rigor",
