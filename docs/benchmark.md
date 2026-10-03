@@ -135,7 +135,7 @@ Per model, over all seven cases.
 - **Where VBW 2 failed.** Not under the final checks. Its only recorded failure (markdown-deliverable) came from the check bug above.
 - **What VBW 2 costs more, and why.** It plans before it builds, writes and proves checks, runs QA and records decisions, so a run is several model sessions plus the kernel's work, and the user answers a few questions and approves. On a one-line fix that is overhead the task does not need.
 - **Opus fix-oneshot run 1.** VBW 2 fixed the bug first. The driver then nudged 89 times at the spec step. The 89 inputs are a harness artifact.
-- **One Sonnet hostile-repo session** did the task without setting VBW up. It passed, but it says nothing about VBW 2's guards.
+- **One Sonnet hostile-repo session skipped VBW.** Given `/vbw:vibe` and a one-word fix, it made the change directly without setting VBW up ("for a one-word change"). That session was stopped by the dialog fault above and is not counted; its re-run set VBW up and passed. Every counted VBW 2 run set VBW up. It still shows that a session can bypass VBW on a trivial task.
 - **Why equal pass rates prove little here.** With one requirement and a short check, plain Claude Code has little to get wrong. Passing equally says the cases are easy, not that the tools are equal.
 
 ## VBW 1
