@@ -1187,7 +1187,7 @@
       "after": [
         "P16.1"
       ],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "run bench.sh all sonnet-5.5 in the project; on usage-limit stops wait and rerun the same command until all 42 records exist",
