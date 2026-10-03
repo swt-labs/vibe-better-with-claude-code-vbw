@@ -5,11 +5,12 @@ export const meta = {
   phases: [{ title: 'Build', detail: 'a Dev (or Docs) per plan; disjoint files' }],
 }
 
-// args: {plans: ["P1.1", ...], docs?: ["P2.1"], models?: {dev?, docs?}} (docs/workflows.md).
+// args: {plans: ["P1.1", ...], docs?: ["P2.1"], models?: {dev?, docs?}, rigor?: {P1: {models}}} (docs/workflows.md).
 // docs: the plans the Lead marked as documentation, built by the Docs agent.
 const plans = (args && args.plans) || []
 const docs = (args && args.docs) || []
 const models = (args && args.models) || {}
+const rigor = (args && args.rigor) || {}
 if (plans.length === 0) return { results: [], error: 'no plans given: pass args.plans from vbw next --json' }
 
 const BUILD_RESULT = {
@@ -25,9 +26,11 @@ const BUILD_RESULT = {
 phase('Build')
 const results = await pipeline(plans, id => {
   const role = docs.includes(id) ? 'docs' : 'dev'
+  const cell = rigor[id.split('.')[0]]
+  const m = (cell && cell.models && cell.models[role]) || models[role]
   return agent(`Execute VBW plan ${id}. Start with: vbw show plan ${id}`,
     Object.assign({ agentType: `vbw:${role}`, label: `${role} ${id}`, phase: 'Build', schema: BUILD_RESULT },
-      models[role] ? { model: models[role] } : {}))
+      m ? { model: m } : {}))
 })
 
 // An agent that was stopped or died returns null: its plan stays "building"

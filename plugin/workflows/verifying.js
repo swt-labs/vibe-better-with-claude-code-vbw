@@ -5,10 +5,11 @@ export const meta = {
   phases: [{ title: 'Verify', detail: 'one QA agent per phase, in parallel' }],
 }
 
-// args: {phases: ["P1", ...], tier: "quick"|"standard"|"deep", models?: {qa?}} (docs/workflows.md).
+// args: {phases: ["P1", ...], tier: "quick"|"standard"|"deep", models?: {qa?}, rigor?: {P1: {qa, models}}} (docs/workflows.md).
 const phases = (args && args.phases) || []
 const tier = (args && args.tier) || 'standard'
 const models = (args && args.models) || {}
+const rigor = (args && args.rigor) || {}
 if (phases.length === 0) return { results: [], error: 'no phases given: pass args.phases from vbw next --json' }
 
 const VERDICT = {
@@ -34,10 +35,13 @@ const VERDICT = {
 }
 
 phase('Verify')
+const cellOf = id => rigor[id] || {}
+const tierOf = id => cellOf(id).qa || tier
+const modelOf = id => (cellOf(id).models && cellOf(id).models.qa) || models.qa
 const results = await pipeline(phases, id =>
-  agent(`Verify VBW phase ${id} at the ${tier} tier, then record your findings and verdict with vbw qa (if qa record refuses a stale proof, run vbw prove, then retry the record once). Start with: vbw show phase ${id}`,
+  agent(`Verify VBW phase ${id} at the ${tierOf(id)} tier, then record your findings and verdict with vbw qa (if qa record refuses a stale proof, run vbw prove, then retry the record once). Start with: vbw show phase ${id}`,
     Object.assign({ agentType: 'vbw:qa', label: `qa ${id}`, phase: 'Verify', schema: VERDICT },
-      models.qa ? { model: models.qa } : {})))
+      modelOf(id) ? { model: modelOf(id) } : {})))
 
 const out = phases.map((id, i) => results[i]
   ? Object.assign({ phase: id }, results[i])

@@ -53,7 +53,7 @@ claim more than kernel output shows.
 `plan`, `build`, `fix` need **Workflow** tool; `workflows` line above turned
 Dynamic workflows on if off (say so in one line when it did). Still no tool:
 say why (disabled on purpose, or Claude Code needs restart) and stop. Pass
-`models` (JSON from `vbw config models`) in every workflow's args.
+`models` (JSON from `vbw config models`) and the next JSON's top-level `rigor` in every workflow's args.
 
 Before `spec` or `plan`: project has code and no `.vbw/map.md` → map first:
 `VBW_SESSION_ID=${CLAUDE_SESSION_ID} vbw run start map`, Workflow `vbw:mapping` (args `{"models": ...}`),
@@ -101,18 +101,18 @@ their files, project commands that will run. Ask user to review and type
 `/vbw:approve`. You cannot approve.
 
 **build**: `VBW_SESSION_ID=${CLAUDE_SESSION_ID} vbw run start build <detail.plans>`, Workflow `vbw:building` with
-args `{"plans": <detail.plans>, "docs": <detail.docs>, "models": ...}` (Dev per
+args `{"plans": <detail.plans>, "docs": <detail.docs>, "models": ..., "rigor": ...}` (Dev per
 plan; Docs for documentation plans). Returns: `VBW_SESSION_ID=${CLAUDE_SESSION_ID} vbw run end`, `vbw prove`,
 report each plan's result in one line (quote blockers and notes).
 
 **fix**: `VBW_SESSION_ID=${CLAUDE_SESSION_ID} vbw run start fix <detail.fixes>`, Workflow `vbw:fixing` with args
-`{"groups": <detail.groups>, "models": ...}` (fixes sharing files go to one
+`{"groups": <detail.groups>, "models": ..., "rigor": ...}` (fixes sharing files go to one
 Dev). Returns: `VBW_SESSION_ID=${CLAUDE_SESSION_ID} vbw run end`, `vbw prove`.
 
 **prove**: `vbw prove`, report what passed and failed.
 
 **qa**: `VBW_SESSION_ID=${CLAUDE_SESSION_ID} vbw run start qa`, Workflow `vbw:verifying` with args
-`{"phases": <detail.phases>, "tier": <detail.tier>, "models": ...}`; returns:
+`{"phases": <detail.phases>, "tier": <detail.tier>, "models": ..., "rigor": ...}`; returns:
 `VBW_SESSION_ID=${CLAUDE_SESSION_ID} vbw run end`. QA records each phase's verdict; findings become fixes. Report
 verdicts and failed checks briefly.
 
