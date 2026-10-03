@@ -143,6 +143,25 @@ run_plain() {
   write_record "$out" plain "$model" "$case_name" "$n" "$pass" "${tokens:-0}" "${cost:-0}" 0 L2
 }
 
+# answer_question NAME SCREEN: answer the question on screen as a user who
+# takes the proposal: a single choice gets its first (recommended) option; a
+# multi-select gets every proposed option ticked (not the free-text line),
+# then Submit. Returns 1 when no question is on screen.
+answer_question() {
+  local name=$1 screen=$2 n i
+  printf '%s' "$screen" | grep -q 'Enter to select\|Ready to submit' || return 1
+  if printf '%s' "$screen" | grep -q '^ *Submit *$'; then
+    n=$(printf '%s\n' "$screen" | grep -E '^[^0-9]*[0-9]+\. \[ \] ' | grep -vc 'Type something' || true)
+    for ((i = 0; i < n; i++)); do
+      bash "$L3" keys "$name" Enter > /dev/null 2>&1 || true
+      bash "$L3" keys "$name" Down > /dev/null 2>&1 || true
+    done
+    # Past the free-text line, onto Submit.
+    bash "$L3" keys "$name" Down > /dev/null 2>&1 || true
+  fi
+  bash "$L3" keys "$name" Enter > /dev/null 2>&1 || true
+}
+
 # session_cost NAME: the session's cost from /cost, empty when unreadable.
 session_cost() {
   local screen
@@ -176,8 +195,7 @@ run_plain_ui() {
       return "$EXIT_LIMIT"
     fi
     printf '%s' "$screen" | grep -q 'esc to interrupt' && continue
-    if printf '%s' "$screen" | grep -q 'Enter to select\|Ready to submit'; then
-      bash "$L3" keys "$name" Enter > /dev/null 2>&1 || true
+    if answer_question "$name" "$screen"; then
       inputs=$((inputs + 1))
       continue
     fi
@@ -241,8 +259,7 @@ run_vbw2() {
     action=$(next_action "$ws")
     case "$action" in ship | accept | milestone) done=1; break ;; esac
     printf '%s' "$screen" | grep -q 'esc to interrupt' && continue
-    if printf '%s' "$screen" | grep -q 'Enter to select\|Ready to submit'; then
-      bash "$L3" keys "$name" Enter > /dev/null 2>&1 || true
+    if answer_question "$name" "$screen"; then
       inputs=$((inputs + 1))
       continue
     fi

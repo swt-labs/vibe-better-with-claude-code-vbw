@@ -120,6 +120,21 @@ vbw2_transcript() {
   [ "$output" = "20" ]
 }
 
+@test "a multi-select question is answered by ticking every proposed option and submitting" {
+  printf '%s\n' 'Which requirements?' '❯ 1. [ ] R1 Overview' '  2. [ ] R2 Breaking changes' '  3. [ ] R3 Guide reads clearly' \
+    '  4. [ ] Type something' '     Submit' '  5. Chat about this' 'Enter to select · ↑/↓ to navigate · Esc to cancel' > "$STUB/screens/1"
+  printf 'Done.\n' > "$STUB/screens/2"
+  printf 'spec\nship\n' > "$STUB/actions"
+  vbw2_transcript
+  BENCH_STUB_FIX=1 run bash "$BENCH" vbw2 sonnet-5.5 fix-oneshot 1
+  [ "$status" -eq 0 ]
+  keys=$(sed -n 's/^keys bench-sonnet-5-5-fix-oneshot-1 //p' "$STUB/calls" | tr '\n' ' ')
+  # The answer, then the Escape that precedes /cost.
+  [ "$keys" = "Enter Down Enter Down Enter Down Down Enter Escape " ] || { echo "keys: $keys"; false; }
+  run jq '.user_inputs' "$PROJECT/runs/vbw2-sonnet-5.5-fix-oneshot-1.json"
+  [ "$output" = "1" ]
+}
+
 @test "a finished run stops even with a question on screen, without answering it" {
   printf 'Ship M1?\n 1. Ship M1\nEnter to select\n' > "$STUB/screens/1"
   printf 'ship\n' > "$STUB/actions"
