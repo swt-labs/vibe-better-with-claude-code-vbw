@@ -2656,6 +2656,17 @@
       "id": "D46",
       "at": "2026-10-03T14:27:22Z",
       "text": "Contract approved: 27 requirements, 24 checks, 50 plans (dcb8426a5d75)"
+    },
+    {
+      "id": "D47",
+      "text": "One assessment decides the tier before and at planning; init detects a root test script; the router carries the apply shape (P20.5)",
+      "why": "Express smoke run 2 (after P20.4, clean harness): 0.75 USD, 1 input, pass, but the early check said express while apply's floor said standard (no project test command: init did not detect ./test.sh), and the session spent about 5 turns searching VBW's source for the apply format, then ran the planning, build and QA workflows",
+      "at": "2026-10-03T14:45:46Z"
+    },
+    {
+      "id": "D48",
+      "at": "2026-10-03T15:04:34Z",
+      "text": "Contract approved: 27 requirements, 24 checks, 51 plans (c0966e5c6225)"
     }
   ],
   "commands": {
