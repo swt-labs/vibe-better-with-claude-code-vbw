@@ -4,9 +4,9 @@
     "name": "v2"
   },
   "milestone": {
-    "id": "M3",
-    "title": "Benchmark and launch readiness",
-    "status": "shipped"
+    "id": "M4",
+    "title": "Adaptive rigor",
+    "status": "active"
   },
   "shipped": [
     {
