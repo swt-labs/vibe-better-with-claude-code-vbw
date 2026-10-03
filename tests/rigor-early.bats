@@ -163,3 +163,31 @@ track_code() { # commit an existing source file
   rigor_apply "$(rigor_doc 3 "" src/note.txt)" > /dev/null
   phase_json '.phases[0].tier == "deep"'
 }
+
+# The predicted tier is the tier the work began at: a re-tier before any work
+# (vbw config rigor, or planning again) moves it; an escalation never does.
+@test "a re-tier before work moves the predicted tier, so the outcome holds" {
+  rigor_flow_setup
+  "$VBW" config rigor standard > /dev/null
+  phase_json '.phases[0].tier == "standard" and .phases[0].predicted == "standard"'
+  rigor_flow_build
+  "$VBW" qa record P1 pass standard > /dev/null
+  phase_json '.phases[0].outcome | .tier == "standard" and .predicted == "standard" and .held == true'
+}
+
+@test "planning an unstarted phase again moves its predicted tier with its tier" {
+  rigor_flow_setup
+  edit_record '.settings.rigor = "deep"'
+  rigor_flow_doc | "$VBW" apply > /dev/null
+  phase_json '.phases[0].tier == "deep" and .phases[0].predicted == "deep"'
+}
+
+@test "an escalated express phase is not finished until QA passes" {
+  rigor_flow_setup
+  rigor_flow_approve
+  "$VBW" tier raise P1 standard "Dev blocked P1.1: test" > /dev/null
+  rigor_flow_work
+  phase_json '.phases[0].outcome == null'
+  "$VBW" qa record P1 pass standard > /dev/null
+  phase_json '.phases[0].outcome | .tier == "standard" and .predicted == "express" and .held == false'
+}
