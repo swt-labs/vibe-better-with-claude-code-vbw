@@ -18,6 +18,10 @@
 #
 # A session that cannot be driven (a harness fault) exits 70 with no record.
 #
+# BENCH_ROUND=N (vbw2) writes the record of tuning round N as ...-rN.json, with
+# rigor, round and tiers; BENCH_RUNS_DIR=.../results/adaptive keeps the adaptive
+# set apart (verify-adaptive.sh checks it).
+#
 # Test seams: BENCH_CLAUDE, BENCH_L3, BENCH_NEXT, BENCH_RUNS_DIR, BENCH_SCRATCH, BENCH_CONFIG_DIR.
 set -euo pipefail
 
@@ -79,6 +83,8 @@ transcript_tokens() {
 REC="" RERUN_OF=""
 record_path() {
   local base="$RUNS/$1-$2-$3-$4" k=1
+  # A tuning round of a VBW 2 run is its own record (the earlier rounds stay).
+  [ "${BENCH_ROUND:-0}" -eq 0 ] || [ "$1" != vbw2 ] || base="$base-r$BENCH_ROUND"
   if [ "${rerun:-0}" -eq 0 ]; then REC="$base.json"; return 0; fi
   RERUN_OF=$(basename "$base.json")
   while [ -e "$base-rerun$k.json" ]; do RERUN_OF=$(basename "$base-rerun$k.json"); k=$((k + 1)); done
@@ -201,7 +207,17 @@ run_vbw2() {
   # Whether VBW was set up at all: a session may do the task without it.
   local engaged=false
   [ -d "$ws/.vbw" ] && engaged=true
-  jq --argjson e "$engaged" '. + {vbw_engaged: $e}' "$out" > "$out.tmp" && mv "$out.tmp" "$out"
+  # The adaptive-rigor fields: the setting in force (auto when unset), the
+  # tuning round (BENCH_ROUND, 0 is the first run) and the phases' tiers.
+  local rigor tiers=[]
+  if [ -f "$ws/.vbw/record.json" ]; then
+    rigor=$(jq -r '.settings.rigor // "auto"' "$ws/.vbw/record.json" 2> /dev/null || echo auto)
+    tiers=$(jq -c '[.phases[]? | .tier // empty]' "$ws/.vbw/record.json" 2> /dev/null || echo '[]')
+  else
+    rigor=auto
+  fi
+  jq --argjson e "$engaged" --arg rigor "$rigor" --argjson round "${BENCH_ROUND:-0}" --argjson tiers "$tiers" \
+    '. + {vbw_engaged: $e, rigor: $rigor, round: $round, tiers: $tiers}' "$out" > "$out.tmp" && mv "$out.tmp" "$out"
 }
 
 run_one() {
