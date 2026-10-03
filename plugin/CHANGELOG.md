@@ -1,5 +1,47 @@
 # Changelog
 
+## [2.0.14] - 2026-10-03
+
+### Added
+
+- **VBW sizes its process to the work, on its own (adaptive rigor).** Every
+  phase gets a tier, `express`, `standard` or `deep`, computed from measured
+  signals: how many requirements, how many files and how large, risky areas
+  (sign-in, payments, migrations, secrets, deletion, CI), proven work it could
+  break, and whether the project has its own tests. The approval screen shows
+  each phase's tier and why, on one line.
+  - **Express** (a small, safe request in a small repository): VBW writes the
+    requirement, its check and a one-plan contract itself, asks once for
+    approval, one Dev builds it and the kernel proves it. No mapping, no
+    planning agents, and QA only when a requirement needs a person's judgement.
+  - **Deep** (risky or large work): a Scout researches first, and QA goes
+    deeper, with an adversarial pass.
+  - **When work goes badly** (a Dev blocked, a second fix round, a QA finding
+    in an express phase, a risky or oversized commit, proven work failing), VBW
+    raises the tier and records why. It never lowers a tier once work began.
+  - `vbw config rigor auto|express|standard|deep`: automatic by default;
+    any other value forces a tier. `vbw show rigor` reports how often VBW's
+    predicted tier held. `vbw tier raise PHASE TIER REASON` raises one by hand.
+  - See `docs/rigor.md`, and `docs/m4-report.md` for the measurements.
+- **`vbw commit PLAN MESSAGE FILE...`** commits only the named files of a plan,
+  so each task gets its own commit.
+- **A benchmark against plain Claude Code** (`docs/benchmark.md`): seven
+  single-task cases, three multi-requirement projects, both models. It states
+  plainly where VBW costs more and where it lost.
+
+### Fixed
+
+- **An agent can write inside a directory its plan lists** (a plan entry
+  ending in `/` covers its files); before, every file there was refused.
+- **Check files stay approved after a formatter run.** The Lead runs the
+  project's formatter and linter on new check files before approval, and Devs
+  run formatters on their own files only (a field report: `cargo fmt --all`
+  rewrote protected Rust tests and voided the approval three times in a day).
+- **`vbw init` detects an executable `test.sh`, `tests.sh` or `run_tests.sh`**
+  at the root as the project's test command.
+- **VBW changes no project file before you approve the contract,** even for a
+  one-line request.
+
 ## [2.0.12] - 2026-10-02
 
 ### Changed
