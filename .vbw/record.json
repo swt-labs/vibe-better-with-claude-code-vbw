@@ -612,7 +612,15 @@
         "No contributor file mentions .vbw-planning, v1 slash commands or v1 scripts that are absent from the tree (grep returns no match)",
         "The check is part of bash tools/test.sh and fails on a file that names a nonexistent path (shown by a selftest)",
         "bash tools/test.sh passes under /bin/bash 3.2 and bash 5"
-      ]
+      ],
+      "qa": {
+        "result": "fail",
+        "tier": "standard",
+        "tree": "15b6f0c4b7e824624ae9ca8ffc168cc838052dfc",
+        "at": "2026-10-03T02:03:04Z",
+        "note": "18/19 checks",
+        "rounds": 1
+      }
     },
     {
       "id": "P15",
@@ -1374,6 +1382,14 @@
       "attempts": 0,
       "status": "closed",
       "note": "bash tools/test.sh run during QA: tools/bench-hooks.sh reported guard (git) 18.8 ms, (npm) 13.4 ms, (big) 11.0 ms own cost p95, OVER the 8 ms budget, so criterion 5 (test.sh passes in full) was not observed. Possibly load-sensitive; same symptom as closed F2."
+    },
+    {
+      "id": "F6",
+      "req": "R21",
+      "source": "qa",
+      "attempts": 0,
+      "status": "open",
+      "note": "tools/check-contributor-files.sh checks only backticked paths under tools|plugin|tests|docs|.github|assets|scripts and /vbw:<skill> names. Plan task 1 and criterion 1 also require tool names to be extracted and verified, and it does not: AGENTS.md names `vbw next --json`, `vbw show`, `vbw status`, which the script never checks (a nonexistent vbw subcommand passes), and no selftest covers tool names."
     }
   ],
   "todos": [
