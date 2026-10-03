@@ -208,6 +208,68 @@ The M3 runs (the 84-run tables above, both arms) loaded the VBW repository's own
 - A second tuning round: the cost target is unmet and no further change was tried.
 - Human acceptance of `[human]` requirements: the driver never accepts one for the user.
 
+## Multi-requirement projects
+
+Three projects with four requirements each, run once per cell on Sonnet 5.5 and Opus 5.5 with plain Claude Code and VBW 2. A deterministic `check.sh` grades each run. The tables are the output of `bash tools/baseline/report-projects.sh`, which reads `tools/baseline/results/projects/`. To repeat one run: `bash tools/baseline/bench.sh ARM MODEL PROJECT RUN`.
+
+Plain Claude Code passed 6 of 6 runs. VBW 2 passed 5 of 6 and cost 4.9 to 7.0 times as much per run. The one VBW 2 failure is Sonnet on non-ui-pipeline: its `check.sh` failed, and this page does not say why, because the cause was not investigated.
+
+### data-migration
+
+Migrate `data/people.csv` to JSON with `migrate.sh`: no row lost, emails lowercased, empty email to null, tags split on `;`, safe to run twice (4 requirements).
+
+#### opus-5.5
+
+| Arm | Pass | Mean cost | Mean tokens |
+|---|---|---|---|
+| plain Claude Code | 1/1 | $0.31 | 205300 |
+| VBW 2 | 1/1 | $1.58 | 2212572 |
+
+#### sonnet-5.5
+
+| Arm | Pass | Mean cost | Mean tokens |
+|---|---|---|---|
+| plain Claude Code | 1/1 | $0.19 | 254278 |
+| VBW 2 | 1/1 | $0.93 | 1541787 |
+
+### non-ui-pipeline
+
+Write `logstat.sh`, a summary of an access log: valid-line count, status classes, bytes, top three paths, malformed lines on stderr, exit 2 on a missing file (4 requirements, no user interface).
+
+#### opus-5.5
+
+| Arm | Pass | Mean cost | Mean tokens |
+|---|---|---|---|
+| plain Claude Code | 1/1 | $0.36 | 311237 |
+| VBW 2 | 1/1 | $2.51 | 3759175 |
+
+#### sonnet-5.5
+
+| Arm | Pass | Mean cost | Mean tokens |
+|---|---|---|---|
+| plain Claude Code | 1/1 | $0.16 | 152459 |
+| VBW 2 | 0/1 | $1.10 | 1997855 |
+
+### protected-feature
+
+Extend an existing inventory CLI: merge duplicate adds, `total`, `low N`, `remove NAME`, while its existing `test.sh` keeps passing (4 requirements, with earlier behaviour to protect).
+
+#### opus-5.5
+
+| Arm | Pass | Mean cost | Mean tokens |
+|---|---|---|---|
+| plain Claude Code | 1/1 | $0.37 | 264602 |
+| VBW 2 | 1/1 | $2.29 | 3512596 |
+
+#### sonnet-5.5
+
+| Arm | Pass | Mean cost | Mean tokens |
+|---|---|---|---|
+| plain Claude Code | 1/1 | $0.24 | 419192 |
+| VBW 2 | 1/1 | $1.42 | 2316001 |
+
+Each row is one run, so a ratio is one measurement. The three projects are the requests in `tools/baseline/projects/*/request.txt`.
+
 ## VBW 1
 
 
@@ -223,7 +285,7 @@ These rows are **inferred**. They come from the recorded fix-oneshot runs of 202
 ## Not measured
 
 - **VBW 1 on the other six cases**, and on Opus: no data, so no comparison. The VBW 1 rows above cover one case only.
-- **Larger projects and multi-requirement milestones.** VBW 2's approval step, regression guards and QA are meant to pay off there, by protecting earlier requirements while later ones are built and by catching what a short check cannot. These cases do not exercise that.
+- **Larger projects and longer milestones.** The [multi-requirement projects](#multi-requirement-projects) have four requirements each and are toy-sized: a few files, one shell script to write or extend. They do not show how VBW 2 behaves on a real codebase or a milestone of many requirements. They ran once per cell (not 3), on two models, and VBW 1 has no run on them.
 - **Evidence level.** The plain runs are L2: headless `claude -p`, with nobody answering anything. The VBW 2 runs are L3, the real Claude Code interface used through `/vbw:vibe`, but driven by a script (recommended answers, approval typed), not by a person. No result here is L4, a person using it on their own project and accepting the outcome.
 - **Sample size is 3 per cell.** One run can move a median or a range, as the 89-input run shows. Read a pass rate as "no failure seen", not as a rate.
 - **Human acceptance.** The driver accepted no `[human]` requirement for the user, so what VBW 2 asks of a real user at acceptance is not in these numbers.
