@@ -684,11 +684,12 @@
         "Depends on P3"
       ],
       "qa": {
-        "result": "pass",
+        "result": "fail",
         "tier": "standard",
-        "tree": "15b6f0c4b7e824624ae9ca8ffc168cc838052dfc",
-        "at": "2026-10-03T02:00:26Z",
-        "note": "12/12 checks"
+        "tree": "9d9bcd0e817a0c71a3579c8900dbd31e936a56be",
+        "at": "2026-10-03T02:07:10Z",
+        "note": "11/12 checks",
+        "rounds": 1
       }
     },
     {
@@ -1390,6 +1391,14 @@
       "attempts": 0,
       "status": "fixed",
       "note": "tools/check-contributor-files.sh checks only backticked paths under tools|plugin|tests|docs|.github|assets|scripts and /vbw:<skill> names. Plan task 1 and criterion 1 also require tool names to be extracted and verified, and it does not: AGENTS.md names `vbw next --json`, `vbw show`, `vbw status`, which the script never checks (a nonexistent vbw subcommand passes), and no selftest covers tool names."
+    },
+    {
+      "id": "F7",
+      "req": "R19",
+      "source": "qa",
+      "attempts": 0,
+      "status": "open",
+      "note": "docs/benchmark.md (VBW 1 section and Not measured) says VBW 1 pass was not recorded and shows cost only, but tools/baseline/results/2026-09-30-fix-oneshot-sonnet.jsonl records check_passed:true for all 3 plain and all 3 vbw runs (jq '.check_passed'). The doc understates the recorded data and the claim 'nothing here is a pass rate' is false; tools/baseline/report.sh also omits pass for VBW 1. Show 3/3 inferred pass (as recorded) and fix the wording, report.sh and test."
     }
   ],
   "todos": [
