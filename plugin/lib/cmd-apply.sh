@@ -13,7 +13,7 @@
 # Architect's optional tier may only raise it (a lower one is refused) and is
 # kept as the phase's proposed tier (config rigor auto restores it), and
 # settings.rigor forced to a tier overrides both. A phase that already existed
-# keeps predicted, escalations, cost_usd and outcome, and a started or
+# keeps predicted, escalations and outcome, and a started or
 # escalated phase never records a lower tier than it has.
 
 # shellcheck source=rigor.sh
@@ -86,7 +86,7 @@ cmd_apply() {
                             elif ($sub != null and $tier == $sub and $tier != $a.floor) then ["raised by the Architect"]
                             else [] end)),
                        predicted: ($o.predicted // $tier)}
-                    + ($o // {} | with_entries(select(.key | IN("escalations", "cost_usd", "outcome")))))]
+                    + ($o // {} | with_entries(select(.key | IN("escalations", "outcome")))))]
     | .plans = [(.plans[] | select(.phase as $p | any($mine[]; . == $p) | not)),
                 ($d.plans[] | {id, phase, title, reqs, files, after: (.after // []), status: ($status[.id] // "planned")}
                   + (with_entries(select(.key | IN("tasks", "role")))))]

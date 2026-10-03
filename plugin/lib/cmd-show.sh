@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 # vbw show roadmap | phase ID | req ID | plan ID [--json] | fix ID [--json] |
-# contract | evidence | decisions | requirements: views rendered from the record
+# contract | evidence | decisions | requirements | rigor: views rendered from the record
 # and git trailers. Nothing is stored in rendered form. plan and fix are the
 # context a Dev works from.
 
 cmd_show() {
   local view="${1:-}" record
   [ $# -gt 0 ] && shift
-  case "$view" in roadmap|phase|req|plan|fix|contract|evidence|decisions|requirements) ;; *) vbw_usage_error "usage: vbw show roadmap | phase ID | req ID | plan ID [--json] | fix ID [--json] | contract [--changes] | evidence | decisions | requirements" ;; esac
+  case "$view" in roadmap|phase|req|plan|fix|contract|evidence|decisions|requirements|rigor) ;; *) vbw_usage_error "usage: vbw show roadmap | phase ID | req ID | plan ID [--json] | fix ID [--json] | contract [--changes] | evidence | decisions | requirements | rigor" ;; esac
   vbw_require_project
   record=$(record_read)
   case "$view" in
@@ -34,6 +34,7 @@ cmd_show() {
           (if $ph.qa then "qa: \($ph.qa.result) (\($ph.qa.tier), \($ph.qa.at))\(if $ph.qa.note then ": " + $ph.qa.note else "" end)"
              + (if $ph.qa.tree != ($r.evidence.tree // "") then " [on older code]" else "" end) else empty end),
           (if $ph.tier then "tier: \($ph.tier) (predicted \($ph.predicted // $ph.tier))", ($ph.reasons // [] | map("  - " + .)[]) else empty end),
+          (($ph.escalations // [])[] | "escalated \(.from) -> \(.to) (\(.at)): \(.reason)"),
           "requirements:",
           ($ph.reqs[] as $q | $r.requirements[] | select(.id == $q) | "  \(.id) [\(.proof), \(.status)] \(.text)"),
           "plans:",
@@ -86,6 +87,15 @@ cmd_show() {
       printf '%s' "$record" | jq -r '. as $r | .requirements[]
         | . as $q | [$r.plans[] | select(any(.reqs[]; . == $q.id))] as $ps
         | "\(.id) [\(.proof), \(.status)] \(.text) (\(.milestone)\(if ($ps | length) > 0 and all($ps[]; .status == "done") then ", built" else "" end))"'
+      ;;
+    rigor)
+      # Every phase's tier, the tier predicted for it and why, then how often the
+      # prediction held among the finished phases (those with an outcome).
+      printf '%s' "$record" | jq -r '
+        (.phases[] | select(.tier) | "\(.id) \(.tier) (predicted \(.predicted // .tier))\(if .outcome then ", finished" else "" end): \((.reasons // []) | join("; "))"),
+        ([.phases[] | select(.outcome)] as $f
+          | if ($f | length) == 0 then "no finished phases yet"
+            else "prediction held for \([$f[] | select(.outcome.held)] | length) of \($f | length) finished phases (\(([$f[] | select(.outcome.held)] | length) * 100 / ($f | length) | round)%)" end)'
       ;;
     decisions)
       printf '%s' "$record" | jq -r 'if (.decisions | length) == 0 then "no decisions recorded yet (vbw decide TEXT [WHY])"

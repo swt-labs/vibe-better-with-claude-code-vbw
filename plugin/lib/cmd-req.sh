@@ -18,8 +18,9 @@ cmd_req() {
   [ "$proof" = human ] || vbw_die "$id is proved by its checks (vbw prove), not by acceptance"
   if [ "$sub" = accept ]; then
     # The user's word settles their own rejections; a fix QA opened stays open until QA passes.
-    record_update '(.requirements[] | select(.id == $q)).status = "accepted"
-      | (.fixes[] | select(.req == $q and .source != "qa" and (.status | IN("open", "fixed", "escalated")))).status = "closed"' --arg q "$id"
+    record_update "$VBW_JQ_DEFS"'(.requirements[] | select(.id == $q)).status = "accepted"
+      | (.fixes[] | select(.req == $q and .source != "qa" and (.status | IN("open", "fixed", "escalated")))).status = "closed"
+      | finish_phases' --arg q "$id"
     printf '%s accepted\n' "$id"
   else
     record_update "$VBW_JQ_DEFS"'(.requirements[] | select(.id == $q)).status = "rejected"

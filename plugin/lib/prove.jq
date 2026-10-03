@@ -50,3 +50,4 @@ def ok: .status == "pass";
       else .fixes[$i].note = $t.note end)
 
 | .evidence = $ev
+| finish_phases

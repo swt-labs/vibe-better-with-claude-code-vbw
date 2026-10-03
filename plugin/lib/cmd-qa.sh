@@ -53,7 +53,8 @@ cmd_qa() {
          elif $res == "fail" and .status == "open" and $rounds >= $cap then .status = "escalated"
          else . end)
       else . end)
-    | escalate_phases(if $rounds >= 2 then [$p] else [] end; null; "QA needs a second round"; $at)' \
+    | escalate_phases(if $rounds >= 2 then [$p] else [] end; null; "QA needs a second round"; $at)
+    | finish_phases' \
     --arg p "$phase" --arg res "$result" --arg tier "$tier" --arg tree "$tree" --arg note "$note" \
     --arg at "$(vbw_now)" --argjson cap "$VBW_QA_ROUNDS"
   record_commit "chore(vbw): qa $phase $result"

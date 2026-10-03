@@ -94,21 +94,19 @@ if type != "object" then ["record must be a JSON object"] else
         ( select(has("timeout") and ((.timeout | int_in(1; 3600)) | not)) | "\(.id) timeout must be 1-3600 seconds" ) ),
 
     ( $phases[]
-      | field_rule(["id","title","reqs","milestone","goal","criteria","qa","tier","proposed","reasons","predicted","cost_usd","escalations","outcome"]),
+      | field_rule(["id","title","reqs","milestone","goal","criteria","qa","tier","proposed","reasons","predicted","escalations","outcome"]),
         ( select(has("tier") and ((.tier | tier) | not)) | "\(.id) tier must be express, standard or deep" ),
         ( select(has("proposed") and ((.proposed | tier) | not)) | "\(.id) proposed must be express, standard or deep" ),
         ( select(has("predicted") and ((.predicted | tier) | not)) | "\(.id) predicted must be express, standard or deep" ),
         ( select(has("reasons") and ((.reasons | type == "array" and all(.[]; type == "string")) | not)) | "\(.id) reasons must be an array of strings" ),
-        ( select(has("cost_usd") and ((.cost_usd | type == "number") | not)) | "\(.id) cost_usd must be a number" ),
         ( select(has("escalations") and ((.escalations | type == "array" and all(.[];
               type == "object" and (keys - ["at","from","to","reason"] == []) and (.at | iso)
               and (.from | tier) and (.to | tier) and (.reason | nonempty))) | not))
           | "\(.id) escalations must be [{at, from: tier, to: tier, reason}]" ),
-        ( select(has("outcome") and ((.outcome | type == "object" and (keys - ["tier","predicted","held","fix_rounds","qa_findings","escalations","cost_usd"] == [])
+        ( select(has("outcome") and ((.outcome | type == "object" and (keys - ["tier","predicted","held","fix_rounds","qa_findings","escalations"] == [])
               and (.tier | tier) and (.predicted | tier) and (.held | type == "boolean")
-              and (.fix_rounds | count) and (.qa_findings | count) and (.escalations | count)
-              and ((has("cost_usd") | not) or (.cost_usd == null or (.cost_usd | type == "number")))) | not))
-          | "\(.id) outcome must be {tier, predicted, held: boolean, fix_rounds, qa_findings, escalations, cost_usd: number or null}" ),
+              and (.fix_rounds | count) and (.qa_findings | count) and (.escalations | count)) | not))
+          | "\(.id) outcome must be {tier, predicted, held: boolean, fix_rounds, qa_findings, escalations}" ),
         ( select(has("goal") and ((.goal | nonempty) | not)) | "\(.id) goal must be a non-empty string" ),
         ( select(has("criteria") and ((.criteria | type == "array") and all(.criteria[]; nonempty) | not)) | "\(.id) criteria must be an array of non-empty strings" ),
         ( select(has("qa")) | .qa as $q

@@ -33,3 +33,35 @@ def escalate($to; $reason; $at):
 # escalate_phases($ids; $to; $reason; $at): escalate the phases with these ids.
 def escalate_phases($ids; $to; $reason; $at):
   .phases |= map(if .id as $i | $ids | index($i) then escalate($to; $reason; $at) else . end);
+
+# phase_finished($r): on a phase object, with the whole record as $r. A phase is
+# finished when its plans are done, its requirements are proven (accepted, for
+# [human] ones), no fix on them is still open, fixed or escalated, and, when its
+# tier calls for QA (not express) or it has a [human] requirement, QA passed on
+# the code that was proven.
+def phase_finished($r):
+  . as $ph
+  | [$r.plans[] | select(.phase == $ph.id)] as $plans
+  | [$r.requirements[] | select(.id as $q | $ph.reqs | index($q))] as $reqs
+  | ($plans | length > 0 and all(.[]; .status == "done"))
+    and all($reqs[]; .status | IN("proven", "accepted"))
+    and ([$r.fixes[] | select(.req as $q | $q != null and ($ph.reqs | index($q))) | select(.status != "closed")] | length == 0)
+    and ((($ph.tier // "express") == "express" and all($reqs[]; .proof == "auto"))
+         or (($ph.qa.result // "") == "pass" and $ph.qa.tree == ($r.evidence.tree // "")));
+
+# finish_phases: on the record. Writes outcome {tier, predicted, held,
+# fix_rounds, qa_findings, escalations} once (predicted: the tier the work began
+# at, which is the first escalation's from; a re-tier before any work is no miss) on every tiered phase that has just
+# finished; an outcome already written is never rewritten.
+def finish_phases:
+  . as $r
+  | .phases |= map(
+      if has("outcome") or (has("tier") | not) or (phase_finished($r) | not) then .
+      else . as $ph
+        | [$r.fixes[] | select(.req as $q | $q != null and ($ph.reqs | index($q)))] as $fx
+        | ((.escalations // [])[0].from // .tier) as $predicted
+        | .outcome = {tier: .tier, predicted: $predicted, held: (.tier == $predicted),
+                      fix_rounds: ([$fx[] | .attempts + 1] | add // 0),
+                      qa_findings: ([$fx[] | select(.source == "qa")] | length),
+                      escalations: ((.escalations // []) | length)}
+      end);
