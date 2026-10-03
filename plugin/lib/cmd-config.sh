@@ -24,7 +24,8 @@ config_migrate_roles() {
 
 # config_rigor [MODE]: print the mode, or set it and re-tier the current
 # milestone's phases whose plans are all still planned and that have no
-# escalations (auto recomputes through rigor.sh, a forced mode sets the tier).
+# escalations (auto recomputes through rigor.sh and keeps a tier the Architect
+# raised above the floor, a forced mode sets the tier).
 config_rigor() {
   local mode="${1:-}" old ids tiers
   if [ -z "$mode" ]; then
@@ -43,7 +44,10 @@ config_rigor() {
       tiers=$(record_read | jq 'del(.phases[].tier)' | rigor_assess "${ids[@]}")
       record_update '(.phases[] | select(.id as $i | $t | any(.[]; .id == $i))) |= (. as $ph
         | ([$t[] | select(.id == $ph.id)][0]) as $a
-        | if $m == "auto" then .tier = $a.tier | .reasons = $a.reasons
+        | if $m == "auto" then
+            (if .proposed != null and (.proposed | tier_rank) > ($a.floor | tier_rank)
+             then .tier = .proposed | .reasons = $a.reasons + ["raised by the Architect"]
+             else .tier = $a.tier | .reasons = $a.reasons end)
           else .tier = $m | .reasons = $a.reasons + ["forced: vbw config rigor \($m)"] end)' \
         --argjson t "$tiers" --arg m "$mode"
     fi
