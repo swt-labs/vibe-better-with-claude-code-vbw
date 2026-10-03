@@ -6,6 +6,10 @@
 #   bench.sh regrade ARM MODEL CASE RUN  the saved workspace graded again by the current check
 #   bench.sh all MODEL                the 42 runs of MODEL, resuming; vbw2 runs 4 at a time
 #
+# CASE is a directory of tools/baseline/cases or of tools/baseline/projects (the
+# multi-requirement projects of R30; report-projects.sh prints them). A project run
+# is kept apart from the 42-run set with BENCH_RUNS_DIR.
+#
 # plain: headless `claude -p`, VBW not loaded, the case request as the prompt
 # (level L2, user_inputs 0). vbw2: the real Claude Code TUI driven as a user
 # through tools/l3.sh with the plugin from ./plugin: /vbw:vibe with the case
@@ -54,7 +58,11 @@ model_id() {
   esac
 }
 
-meta() { sed -n "s/^$1=//p" "$HERE/cases/$2/case.meta"; }
+# The directory of a case: tools/baseline/cases/NAME, else a multi-requirement
+# project tools/baseline/projects/NAME (same layout).
+case_dir() { if [ -d "$HERE/cases/$1" ]; then echo "$HERE/cases/$1"; else echo "$HERE/projects/$1"; fi; }
+
+meta() { sed -n "s/^$1=//p" "$(case_dir "$2")/case.meta"; }
 
 # Seed a fresh workspace from the case's fixture; print its path.
 seed() {
@@ -113,7 +121,7 @@ write_record() {
   mv "$out.tmp" "$out"
 }
 
-grade() { (cd "$1" && bash "$HERE/cases/$2/check.sh" > /dev/null 2>&1) && echo true || echo false; }
+grade() { (cd "$1" && bash "$(case_dir "$2")/check.sh" > /dev/null 2>&1) && echo true || echo false; }
 
 # The settings of a plain session: VBW off, and this repository's own
 # maintainer instructions (CLAUDE.md, AGENTS.md) never read.
@@ -129,7 +137,7 @@ run_plain() {
   (cd "$ws" && "$CLAUDE" -p --model "$(model_id "$model")" \
     --settings "$(excludes_settings)" \
     --allowedTools Bash Write Edit --max-turns "$(meta max_turns "$case_name")" \
-    --output-format json "$(cat "$HERE/cases/$case_name/request.txt")" \
+    --output-format json "$(cat "$(case_dir "$case_name")/request.txt")" \
     < /dev/null > "$result" 2> "$ws.stderr") || true
   if grep -Eqi "$LIMIT_RE" "$result" "$ws.stderr" 2> /dev/null; then
     echo "bench: usage limit reached; no record written" >&2
@@ -180,7 +188,7 @@ run_plain_ui() {
   ws=$(seed plain-ui "$model" "$case_name" "$n")
   name="bench-plain-${model//./-}-$case_name-$n"
   if ! bash "$L3" start "$name" "$ws" "$(model_id "$model")" plain > /dev/null 2>&1 \
-      || ! bash "$L3" type "$name" "$(cat "$HERE/cases/$case_name/request.txt")" > /dev/null 2>&1; then
+      || ! bash "$L3" type "$name" "$(cat "$(case_dir "$case_name")/request.txt")" > /dev/null 2>&1; then
     bash "$L3" stop "$name" > /dev/null 2>&1 || true
     echo "bench: could not drive a session for $name; no record written" >&2
     return "$EXIT_FAULT"
@@ -238,7 +246,7 @@ run_vbw2() {
   # No dots: tmux reads one in a session name as a window.pane separator.
   name="bench-${model//./-}-$case_name-$n"
   if ! bash "$L3" start "$name" "$ws" "$(model_id "$model")" > /dev/null 2>&1 \
-      || ! bash "$L3" type "$name" "/vbw:vibe $(cat "$HERE/cases/$case_name/request.txt")" > /dev/null 2>&1; then
+      || ! bash "$L3" type "$name" "/vbw:vibe $(cat "$(case_dir "$case_name")/request.txt")" > /dev/null 2>&1; then
     bash "$L3" stop "$name" > /dev/null 2>&1 || true
     echo "bench: could not drive a session for $name; no record written" >&2
     return "$EXIT_FAULT"
@@ -313,7 +321,7 @@ run_one() {
   local arm=$1 model=$2 case_name=$3 n=$4 out rc=0
   case "$arm" in plain | plain-ui | vbw2) ;; *) usage ;; esac
   model_id "$model" > /dev/null
-  [ -d "$HERE/cases/$case_name" ] || { echo "bench: unknown case: $case_name" >&2; exit 2; }
+  [ -d "$(case_dir "$case_name")" ] || { echo "bench: unknown case: $case_name" >&2; exit 2; }
   case "$n" in 1 | 2 | 3) ;; *) usage ;; esac
   # plain-ui writes the plain arm's record (arm plain, level L3).
   record_path "${arm%-ui}" "$model" "$case_name" "$n"
