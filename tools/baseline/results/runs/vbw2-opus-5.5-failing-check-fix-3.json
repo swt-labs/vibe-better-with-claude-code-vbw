@@ -1,0 +1,14 @@
+{
+  "arm": "vbw2",
+  "model": "opus-5.5",
+  "case": "failing-check-fix",
+  "run": 3,
+  "pass": true,
+  "tokens": 2207619,
+  "cost_usd": 1.69,
+  "user_inputs": 1,
+  "level": "L3",
+  "fixture": "failing-check-fix",
+  "date": "2026-10-03",
+  "vbw_engaged": true
+}

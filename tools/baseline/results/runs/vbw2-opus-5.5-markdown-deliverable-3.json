@@ -1,0 +1,14 @@
+{
+  "arm": "vbw2",
+  "model": "opus-5.5",
+  "case": "markdown-deliverable",
+  "run": 3,
+  "pass": true,
+  "tokens": 3047901,
+  "cost_usd": 2.19,
+  "user_inputs": 4,
+  "level": "L3",
+  "fixture": "markdown-deliverable",
+  "date": "2026-10-03",
+  "vbw_engaged": true
+}

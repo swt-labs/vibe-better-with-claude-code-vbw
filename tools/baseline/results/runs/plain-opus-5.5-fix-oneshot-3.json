@@ -1,0 +1,13 @@
+{
+  "arm": "plain",
+  "model": "opus-5.5",
+  "case": "fix-oneshot",
+  "run": 3,
+  "pass": true,
+  "tokens": 106624,
+  "cost_usd": 0.23085619999999998,
+  "user_inputs": 0,
+  "level": "L2",
+  "fixture": "fix-oneshot",
+  "date": "2026-10-02"
+}

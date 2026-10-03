@@ -1,0 +1,13 @@
+{
+  "arm": "plain",
+  "model": "opus-5.5",
+  "case": "hostile-repo",
+  "run": 3,
+  "pass": true,
+  "tokens": 179768,
+  "cost_usd": 0.263529,
+  "user_inputs": 0,
+  "level": "L2",
+  "fixture": "hostile-repo",
+  "date": "2026-10-02"
+}

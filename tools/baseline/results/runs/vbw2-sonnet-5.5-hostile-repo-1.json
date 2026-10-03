@@ -1,0 +1,13 @@
+{
+  "arm": "vbw2",
+  "model": "sonnet-5.5",
+  "case": "hostile-repo",
+  "run": 1,
+  "pass": true,
+  "tokens": 1877634,
+  "cost_usd": 0.88,
+  "user_inputs": 3,
+  "level": "L3",
+  "fixture": "hostile-repo",
+  "date": "2026-10-02"
+}

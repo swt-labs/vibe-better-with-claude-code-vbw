@@ -1,0 +1,13 @@
+{
+  "arm": "plain",
+  "model": "opus-5.5",
+  "case": "brownfield-feature",
+  "run": 1,
+  "pass": true,
+  "tokens": 111272,
+  "cost_usd": 0.28501299999999996,
+  "user_inputs": 0,
+  "level": "L2",
+  "fixture": "brownfield-feature",
+  "date": "2026-10-02"
+}

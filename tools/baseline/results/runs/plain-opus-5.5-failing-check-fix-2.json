@@ -1,0 +1,13 @@
+{
+  "arm": "plain",
+  "model": "opus-5.5",
+  "case": "failing-check-fix",
+  "run": 2,
+  "pass": true,
+  "tokens": 108883,
+  "cost_usd": 0.254696,
+  "user_inputs": 0,
+  "level": "L2",
+  "fixture": "failing-check-fix",
+  "date": "2026-10-02"
+}

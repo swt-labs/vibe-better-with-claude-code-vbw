@@ -1,0 +1,13 @@
+{
+  "arm": "vbw2",
+  "model": "sonnet-5.5",
+  "case": "fix-oneshot",
+  "run": 3,
+  "pass": true,
+  "tokens": 1345136,
+  "cost_usd": 0.74,
+  "user_inputs": 1,
+  "level": "L3",
+  "fixture": "fix-oneshot",
+  "date": "2026-10-02"
+}

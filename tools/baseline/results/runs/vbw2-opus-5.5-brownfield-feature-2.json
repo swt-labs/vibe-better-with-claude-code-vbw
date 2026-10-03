@@ -1,0 +1,14 @@
+{
+  "arm": "vbw2",
+  "model": "opus-5.5",
+  "case": "brownfield-feature",
+  "run": 2,
+  "pass": true,
+  "tokens": 2980181,
+  "cost_usd": 1.97,
+  "user_inputs": 2,
+  "level": "L3",
+  "fixture": "brownfield-feature",
+  "date": "2026-10-03",
+  "vbw_engaged": true
+}

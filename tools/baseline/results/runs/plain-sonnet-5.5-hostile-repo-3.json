@@ -1,0 +1,13 @@
+{
+  "arm": "plain",
+  "model": "sonnet-5.5",
+  "case": "hostile-repo",
+  "run": 3,
+  "pass": true,
+  "tokens": 107030,
+  "cost_usd": 0.1271104,
+  "user_inputs": 0,
+  "level": "L2",
+  "fixture": "hostile-repo",
+  "date": "2026-10-02"
+}

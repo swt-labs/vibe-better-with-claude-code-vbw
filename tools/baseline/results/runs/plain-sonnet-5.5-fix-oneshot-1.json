@@ -1,0 +1,13 @@
+{
+  "arm": "plain",
+  "model": "sonnet-5.5",
+  "case": "fix-oneshot",
+  "run": 1,
+  "pass": true,
+  "tokens": 106189,
+  "cost_usd": 0.1208408,
+  "user_inputs": 0,
+  "level": "L2",
+  "fixture": "fix-oneshot",
+  "date": "2026-10-02"
+}

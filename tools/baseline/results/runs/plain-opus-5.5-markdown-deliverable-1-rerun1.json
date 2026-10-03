@@ -1,0 +1,15 @@
+{
+  "arm": "plain",
+  "model": "opus-5.5",
+  "case": "markdown-deliverable",
+  "run": 1,
+  "pass": true,
+  "tokens": 148531,
+  "cost_usd": 0.28963200000000006,
+  "user_inputs": 0,
+  "level": "L2",
+  "fixture": "markdown-deliverable",
+  "date": "2026-10-03",
+  "rerun_of": "plain-opus-5.5-markdown-deliverable-1.json",
+  "regraded": true
+}

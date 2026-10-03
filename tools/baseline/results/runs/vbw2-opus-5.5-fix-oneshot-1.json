@@ -1,0 +1,14 @@
+{
+  "arm": "vbw2",
+  "model": "opus-5.5",
+  "case": "fix-oneshot",
+  "run": 1,
+  "pass": true,
+  "tokens": 1104452,
+  "cost_usd": 0.97,
+  "user_inputs": 89,
+  "level": "L3",
+  "fixture": "fix-oneshot",
+  "date": "2026-10-03",
+  "vbw_engaged": true
+}

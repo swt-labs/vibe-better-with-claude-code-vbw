@@ -1,0 +1,13 @@
+{
+  "arm": "plain",
+  "model": "sonnet-5.5",
+  "case": "brownfield-feature",
+  "run": 1,
+  "pass": true,
+  "tokens": 108282,
+  "cost_usd": 0.13229280000000002,
+  "user_inputs": 0,
+  "level": "L2",
+  "fixture": "brownfield-feature",
+  "date": "2026-10-02"
+}
