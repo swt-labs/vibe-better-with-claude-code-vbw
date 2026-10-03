@@ -4,9 +4,9 @@
     "name": "v2"
   },
   "milestone": {
-    "id": "M4",
-    "title": "Adaptive rigor",
-    "status": "shipped"
+    "id": "M5",
+    "title": "Proof you can trust",
+    "status": "active"
   },
   "shipped": [
     {
