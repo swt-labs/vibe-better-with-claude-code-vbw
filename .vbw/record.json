@@ -1882,7 +1882,7 @@
       "after": [
         "P21.1"
       ],
-      "status": "planned",
+      "status": "done",
       "tasks": [
         "rigor-defs.jq (new, definitions only): every jq definition record updates need for tiers (tier_rank, max_tier, the risk categories, escalate) lives here once; record.sh makes it part of VBW_JQ_DEFS so every record update and rigor.jq share the one copy; rigor.jq keeps only the assessment program; cmd-tier.sh no longer cuts rigor.jq at a marker (no text surgery on jq sources); one shell helper in rigor.sh, rigor_escalate PHASE REASON [TIER], is the single way triggers raise a tier",
         "cmd-plan.sh: vbw plan block raises the plan's phase one step, reason 'Dev blocked PLAN: REASON'",
