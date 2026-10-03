@@ -614,12 +614,11 @@
         "bash tools/test.sh passes under /bin/bash 3.2 and bash 5"
       ],
       "qa": {
-        "result": "fail",
+        "result": "pass",
         "tier": "standard",
-        "tree": "92c012183f644ed517c42bb9db01165f83b13f8f",
-        "at": "2026-10-03T02:32:04Z",
-        "note": "17/19 checks",
-        "rounds": 2
+        "tree": "7b5355e9b8d90556c734b168c7d6f04052b3b2a9",
+        "at": "2026-10-03T02:42:16Z",
+        "note": "19/19 checks"
       }
     },
     {
@@ -1412,7 +1411,7 @@
       "req": "R21",
       "source": "qa",
       "attempts": 0,
-      "status": "fixed",
+      "status": "closed",
       "note": ".github/references/prompting-best-practices-for-vbw.md names VBW 1 files absent from the tree: line 251 'commands/status.md' and 'scripts/compile-context.sh', line 262 'compile-context.sh' (ls commands scripts: no such directory). The goal covers the other contributor files under .github and criterion 2 forbids absent v1 scripts; check-contributor-files.sh does not scan .github/references/*, so it cannot catch this."
     }
   ],
