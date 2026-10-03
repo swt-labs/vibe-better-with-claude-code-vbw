@@ -37,3 +37,11 @@ teardown() { vbw_teardown; }
   [ "$status" -ne 0 ]
   [[ "$output" == *"vbw gone"* ]]
 }
+
+@test "contributor reference docs under .github/references are checked too" {
+  mkdir -p .github/references
+  printf 'Follow `tools/gone.sh`.\n' > .github/references/notes.md
+  run bash "$CHECK" "$PROJECT"
+  [ "$status" -ne 0 ]
+  [[ "$output" == *".github/references/notes.md"* && "$output" == *"tools/gone.sh"* ]]
+}

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Usage: check-contributor-files.sh [ROOT]
-# Contributor files (CONTRIBUTING.md, AGENTS.md, .github PR/issue templates,
+# Contributor files (CONTRIBUTING.md, AGENTS.md, .github PR/issue templates and references,
 # copilot-instructions.md) may name only paths and /vbw: commands that exist
 # under ROOT, and vbw commands its plugin/bin/vbw help lists; a_non_prod_docs/,
 # the maintainer's local working documents, is named on purpose and never
@@ -12,7 +12,7 @@ cd "$ROOT" || exit 2
 
 files=()
 for f in CONTRIBUTING.md AGENTS.md .github/PULL_REQUEST_TEMPLATE.md \
-  .github/copilot-instructions.md .github/ISSUE_TEMPLATE/*; do
+  .github/copilot-instructions.md .github/ISSUE_TEMPLATE/* .github/references/*; do
   [ -f "$f" ] && files+=("$f")
 done
 
