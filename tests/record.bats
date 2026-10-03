@@ -85,6 +85,26 @@ violations_after() {
   [[ "$output" == *"F1 references unknown requirement R9"* ]]
 }
 
+@test "an [auto] requirement may carry rules, each naming a check of that requirement" {
+  run violations_after '.requirements[0].rules = [{text: "Paying works", check: "C1"}]'
+  [ "$output" = "[]" ]
+  run violations_after '.requirements[0].rules = []'
+  [ "$output" = "[]" ]
+}
+
+@test "rejects rules that are malformed, unchecked, or on a [human] requirement" {
+  run violations_after '.requirements[0].rules = "x"'
+  [[ "$output" == *"R1 rules must be an array"* ]]
+  run violations_after '.requirements[0].rules = [{text: "", check: "C1"}]'
+  [[ "$output" == *"R1 has a rule without text"* ]]
+  run violations_after '.requirements[0].rules = [{text: "Paying works", check: "C9"}]'
+  [[ "$output" == *'R1 rule \"Paying works\" names C9, which is not a check of R1'* ]]
+  run violations_after '.requirements[0].rules = [{text: "Paying works", check: "C1", extra: 1}]'
+  [[ "$output" == *"R1 has a rule with an unknown field: extra"* ]]
+  run violations_after '.requirements[1].rules = []'
+  [[ "$output" == *"R2 is human-proved and cannot carry rules"* ]]
+}
+
 @test "rejects proof/status combinations that cannot happen" {
   run violations_after '.requirements[1].status = "proven"'
   [[ "$output" == *"R2 is human-proved and cannot be proven"* ]]

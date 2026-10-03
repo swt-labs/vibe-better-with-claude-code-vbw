@@ -74,7 +74,15 @@ if type != "object" then ["record must be a JSON object"] else
     id_rules(arr("decisions"); "^D[0-9]+$"),
 
     ( $reqs[]
-      | field_rule(["id","text","proof","status","milestone"]),
+      | field_rule(["id","text","proof","status","milestone","rules"]),
+        ( select(has("rules") and (.rules | type) != "array") | "\(.id) rules must be an array" ),
+        ( select(has("rules") and .proof == "human") | "\(.id) is human-proved and cannot carry rules" ),
+        ( . as $q | select(.rules | type == "array") | .rules[]
+          | select(type != "object" or ((.text | nonempty) | not)) | "\($q.id) has a rule without text" ),
+        ( . as $q | select(.rules | type == "array") | .rules[] | select(type == "object")
+          | ( keys[] | select(one_of(["text","check"]) | not) | "\($q.id) has a rule with an unknown field: \(.)" ),
+            ( . as $x | select(any($checks[]; .id == $x.check and .req == $q.id) | not)
+              | "\($q.id) rule \"\($x.text)\" names \($x.check), which is not a check of \($q.id)" ) ),
         ( . as $q | select((.milestone | one_of($milestones)) | not) | "\(.id) belongs to unknown milestone \(.milestone)" ),
         ( select((.text | nonempty) | not) | "\(.id) needs non-empty text" ),
         ( select((.proof | one_of(["auto","human"])) | not) | "\(.id) proof must be auto or human" ),
