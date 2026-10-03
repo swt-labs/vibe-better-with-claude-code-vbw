@@ -2146,7 +2146,7 @@
       "after": [
         "P21.2"
       ],
-      "status": "planned",
+      "status": "done",
       "tasks": [
         "cmd-apply.sh records the tier the Architect stated for a phase as proposed (absent when none); record.jq validates proposed as a tier",
         "cmd-config.sh: vbw config rigor auto re-tiers each untouched phase to the higher of its signal floor and its proposed tier, keeping the line saying the Architect raised it; a forced mode still overrides; started or escalated phases keep their tier as today",
@@ -2169,7 +2169,7 @@
       "after": [
         "P21.2"
       ],
-      "status": "planned",
+      "status": "done",
       "tasks": [
         "cmd-commit.sh: vbw commit PLAN MESSAGE [FILE...] commits only the named files, each of which the plan must cover (a directory entry covers its files); no FILE keeps today's behaviour (every changed declared file); a named file outside the plan is refused with its name",
         "plugin/bin/vbw help and dev.md: the Dev names each task's files in its commit, so tasks that share a plan get one commit each",
