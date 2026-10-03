@@ -7,7 +7,7 @@
 # tools/baseline/results/2026-09-30-fix-oneshot-sonnet.jsonl. A record named in
 # another record's rerun_of is superseded and left out; only *.json files are
 # records (README.md is not). Every row cites the result files it summarises.
-# VBW 1 rows come from its recorded runs (cost only, pass not recorded) and are
+# VBW 1 rows come from its recorded runs (pass as recorded by check_passed, and cost) and are
 # labelled inferred.
 set -euo pipefail
 
@@ -67,10 +67,10 @@ if [ -f "$v1" ]; then
       | "$\($c / 100 | floor).\(($c % 100) | tostring | if length < 2 then "0" + . else . end)";
     [inputs] as $all
     | "## VBW 1 (inferred)\n",
-      "Recorded runs of the fix-oneshot case on Sonnet, VBW 1.37.1 against plain Claude Code. Cost only: the pass was not recorded, so nothing here is a pass rate. Labelled inferred.\n",
-      "| Arm (evidence level) | Runs | Mean cost | Result file |\n|---|---|---|---|",
+      "Recorded runs of the fix-oneshot case on Sonnet, VBW 1.37.1 against plain Claude Code. Pass is the recorded check_passed, cost is the recorded cost. Labelled inferred.\n",
+      "| Arm (evidence level) | Runs | Pass | Mean cost | Result file |\n|---|---|---|---|---|",
       ( ("plain","vbw") as $a
         | [$all[] | select(.arm == $a)] | select(length > 0)
-        | "| \(if $a == "vbw" then "VBW 1, inferred" else "plain Claude Code, inferred" end) | \(length) | \(map(.cost_usd) | add / length | money) | `\($cite)` |" )
+        | "| \(if $a == "vbw" then "VBW 1, inferred" else "plain Claude Code, inferred" end) | \(length) | \(map(select(.check_passed == true)) | length)/\(length) | \(map(.cost_usd) | add / length | money) | `\($cite)` |" )
   ' "$v1"
 fi

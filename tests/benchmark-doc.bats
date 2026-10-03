@@ -117,7 +117,7 @@ report() { REPORT_CITE_PREFIX="" REPORT_CITE_V1="" bash "$REPORT" "$S" "$BATS_TE
   [[ "$output" == *"## Totals"* ]]
   [[ "$output" == *"### m"* ]]
   [[ "$output" == *"## VBW 1 (inferred)"* ]]
-  [[ "$output" == *"| VBW 1, inferred | 2 | \$0.30 |"* ]]
+  [[ "$output" == *"| VBW 1, inferred | 2 | 2/2 | \$0.30 |"* ]]
 }
 
 @test "report.sh: an empty or missing directory is an error" {
