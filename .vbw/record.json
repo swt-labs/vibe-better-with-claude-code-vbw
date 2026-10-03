@@ -2387,6 +2387,17 @@
       "text": "No user-interface project in the multi-requirement benchmark: a third non-UI project instead (no person judges results)",
       "why": "owner's choice",
       "at": "2026-10-03T11:43:33Z"
+    },
+    {
+      "id": "D35",
+      "text": "D35: a finished phase's outcome records fix rounds, QA findings and escalations, not cost; dollar cost is measured per session by the benchmark",
+      "why": "Workflow notifications report only agent tokens, and one build workflow spans several phases, so a per-phase cost would be invented; R29 and D30 are judged on benchmark session cost",
+      "at": "2026-10-03T12:02:25Z"
+    },
+    {
+      "id": "D36",
+      "at": "2026-10-03T12:12:29Z",
+      "text": "Contract approved: 27 requirements, 24 checks, 46 plans (da228eab3955)"
     }
   ],
   "commands": {
