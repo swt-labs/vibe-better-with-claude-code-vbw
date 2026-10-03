@@ -37,7 +37,11 @@ cmd_plan() {
       printf '%s done\n' "$id"
       ;;
     block)
-      record_update '(.plans[] | select(.id == $p)) |= (.status = "blocked" | .note = $why)' --arg p "$id" --arg why "$3"
+      # A blocked Dev raises the plan's phase one step, in the same update.
+      record_update "$VBW_JQ_DEFS"'(.plans[] | select(.id == $p)) as $pl
+        | (.plans[] | select(.id == $p)) |= (.status = "blocked" | .note = $why)
+        | escalate_phases([$pl.phase]; null; "Dev blocked \($p): \($why)"; $at)' \
+        --arg p "$id" --arg why "$3" --arg at "$(vbw_now)"
       printf '%s blocked: %s\n' "$id" "$3"
       ;;
     reset)

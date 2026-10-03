@@ -1,5 +1,5 @@
 # vbw prove: fold one run into the record (docs/proof.md). Input: the record.
-# Args: $ev (the evidence object), $cap (fix attempt cap). VBW_JQ_DEFS prepended.
+# Args: $ev (the evidence object), $cap (fix attempt cap), $at (the time). VBW_JQ_DEFS prepended.
 
 def ok: .status == "pass";
 
@@ -16,6 +16,11 @@ def ok: .status == "pass";
 | [ $ev.commands | to_entries[] | select(.value.status != "skipped")
     | {key: "command", target: .key, pass: (.value | ok), built: all($r.plans[]; .status == "done"), note: "\(.key) \(.value.status)"} ]
   as $cmd_results
+
+# A requirement that was proven and now fails raises its phases one step.
+| [ .requirements[] | select(.status == "proven") | .id ] as $was_proven
+| reduce ($req_results[] | select(.pass | not) | select(.target as $t | $was_proven | index($t))) as $t (.;
+    escalate_phases([.phases[] | select(.reqs | index($t.target)) | .id]; null; "proven requirement \($t.target) failed"; $at))
 
 # Requirements: proven when all their checks pass.
 | .requirements |= map(. as $q
@@ -40,6 +45,8 @@ def ok: .status == "pass";
         .fixes[$i].attempts += 1
         | .fixes[$i].note = $t.note
         | .fixes[$i].status = (if .fixes[$i].attempts >= $cap then "escalated" else "open" end)
+        | .fixes[$i] as $fx
+        | escalate_phases([.phases[] | select($fx.req != null and (.reqs | index($fx.req))) | .id]; null; "fix \($fx.id) needs a second round"; $at)
       else .fixes[$i].note = $t.note end)
 
 | .evidence = $ev

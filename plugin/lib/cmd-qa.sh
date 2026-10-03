@@ -24,8 +24,9 @@ cmd_qa() {
   record=$(record_read)
   if [ "$sub" = finding ]; then
     printf '%s' "$record" | jq -e --arg q "$2" 'any(.requirements[]; .id == $q)' > /dev/null || vbw_die "unknown requirement $2"
-    record_update "$VBW_JQ_DEFS"'.fixes += [{id: (.fixes | next_id("F")), req: $q, source: "qa", attempts: 0, status: "open", note: $t}]' \
-      --arg q "$2" --arg t "$3"
+    record_update "$VBW_JQ_DEFS"'.fixes += [{id: (.fixes | next_id("F")), req: $q, source: "qa", attempts: 0, status: "open", note: $t}]
+      | escalate_phases([.phases[] | select((.tier // "express") == "express" and (.reqs | index($q))) | .id]; null; "QA found a problem in \($q): \($t)"; $at)' \
+      --arg q "$2" --arg t "$3" --arg at "$(vbw_now)"
     jq -r '.fixes[-1] | "\(.id) opened for \(.req) (qa): \(.note)"' "$VBW_RECORD"
     return 0
   fi
@@ -41,7 +42,7 @@ cmd_qa() {
       | any(.fixes[]; .source == "qa" and .status == "open" and (.req as $x | any($q[]; . == $x)))' > /dev/null \
       || vbw_die "a failed verdict needs its findings first (vbw qa finding REQ TEXT for each)"
   fi
-  record_update '([.phases[] | select(.id == $p)][0]) as $ph
+  record_update "$VBW_JQ_DEFS"'([.phases[] | select(.id == $p)][0]) as $ph
     | ($ph.reqs) as $q
     | (if $res == "fail" and ($ph.qa.result // "") == "fail" then ($ph.qa.rounds // 1) + 1 elif $res == "fail" then 1 else 0 end) as $rounds
     | (.phases[] | select(.id == $p)).qa = ({result: $res, tier: $tier, tree: $tree, at: $at}
@@ -51,7 +52,8 @@ cmd_qa() {
          elif $res == "fail" and .status == "fixed" then .status = "closed"
          elif $res == "fail" and .status == "open" and $rounds >= $cap then .status = "escalated"
          else . end)
-      else . end)' \
+      else . end)
+    | escalate_phases(if $rounds >= 2 then [$p] else [] end; null; "QA needs a second round"; $at)' \
     --arg p "$phase" --arg res "$result" --arg tier "$tier" --arg tree "$tree" --arg note "$note" \
     --arg at "$(vbw_now)" --argjson cap "$VBW_QA_ROUNDS"
   record_commit "chore(vbw): qa $phase $result"

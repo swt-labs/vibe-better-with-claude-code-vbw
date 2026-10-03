@@ -12,7 +12,7 @@ cmd_prove() {
   [ $# -eq 0 ] || vbw_usage_error "usage: vbw prove"
   vbw_require_project
   cd "$VBW_ROOT" || vbw_die "cannot enter $VBW_ROOT"
-  local record checks commands scope tree ev
+  local record checks commands scope tree ev at
   record=$(record_read)
   checks_begin "$record"
   checks=$(checks_run_all "$record")
@@ -20,11 +20,12 @@ cmd_prove() {
   checks_end
   scope=$(prove_scope "$record")
   tree=$(vbw_code_tree) || vbw_die "cannot fingerprint the project files"
-  ev=$(jq -n --arg at "$(vbw_now)" --arg h "$CHECK_HASH" --arg tree "$tree" \
+  at=$(vbw_now)
+  ev=$(jq -n --arg at "$at" --arg h "$CHECK_HASH" --arg tree "$tree" \
     --argjson c "$checks" --argjson m "$commands" --argjson s "$scope" \
     '{at: $at, contract: $h, tree: $tree, checks: $c, commands: $m, scope: $s,
       passed: (all($c[]; .status == "pass") and all($m[]; .status == "pass" or .status == "skipped") and ($s | length) == 0)}')
-  record_update "$VBW_JQ_DEFS$(cat "$VBW_LIB/prove.jq")" --argjson ev "$ev" --argjson cap "$VBW_FIX_CAP"
+  record_update "$VBW_JQ_DEFS$(cat "$VBW_LIB/prove.jq")" --argjson ev "$ev" --argjson cap "$VBW_FIX_CAP" --arg at "$at"
   # The evidence is part of the plan of record: commit it, so a proof never
   # leaves VBW's own file modified in the user's working tree.
   record_commit "chore(vbw): proof $(jq -r 'if .evidence.passed then "passed" else "not passed" end' "$VBW_RECORD")"

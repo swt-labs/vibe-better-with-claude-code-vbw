@@ -40,6 +40,25 @@ cmd_commit() {
 VBW-Req: $reqs" -- "${changed[@]}" || vbw_die "git commit failed"
 
   record_unlock
+  commit_escalate "$plan" "${#files[@]}" "${changed[@]}"
   printf 'committed %s for %s (%d file%s)\n' "$(git rev-parse --short HEAD)" "$plan" \
     "${#changed[@]}" "$([ ${#changed[@]} -eq 1 ] || printf s)"
+}
+
+# commit_escalate PLAN PLANNED_FILES CHANGED...: a changed file on a risk path
+# raises the plan's phase to deep; a commit of more than twice the planned
+# files (and at least 4) raises it one step. Runs with the lock released.
+commit_escalate() {
+  local plan="$1" planned="$2" changed n hit phase
+  shift 2
+  n=$#
+  changed=$(printf '%s\0' "$@" | jq -Rsc 'split("\u0000")[:-1]')
+  hit=$(printf '%s' "$changed" | jq -r "$VBW_JQ_DEFS"'[.[] | . as $f | ($f | risk_name) as $c | select($c != null) | "\($c) (\($f))"] | .[0] // empty')
+  # shellcheck source=rigor.sh
+  . "$VBW_LIB/rigor.sh"
+  phase=$(jq -r --arg p "$plan" '.plans[] | select(.id == $p) | .phase' "$VBW_RECORD")
+  [ -z "$hit" ] || rigor_escalate "$phase" "touches a risk path: $hit" deep
+  if [ "$n" -ge 4 ] && [ "$n" -gt $((planned * 2)) ]; then
+    rigor_escalate "$phase" "grew beyond its plan: $n files for $planned planned"
+  fi
 }
