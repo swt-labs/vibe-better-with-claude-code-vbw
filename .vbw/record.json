@@ -998,6 +998,12 @@
           "from": "deep",
           "to": "deep",
           "reason": "grew beyond its plan: 15 files for 4 planned"
+        },
+        {
+          "at": "2026-10-03T16:40:04Z",
+          "from": "deep",
+          "to": "deep",
+          "reason": "Dev blocked P22.4: docs/benchmark.md is done and committed (a30447f1), but check C26 still fails: tools/baseline/results/adaptive/vbw2-sonnet-5.5-markdown-deliverable-1.json (round 0, user_inputs 90) has tiers [] and verify-adaptive.sh rejects it. Fixing it (data fix, or verifier ignoring superseded rounds) is outside this plan's files."
         }
       ]
     },
@@ -2059,7 +2065,7 @@
       "after": [
         "P22.3"
       ],
-      "status": "planned",
+      "status": "done",
       "tasks": [
         "add the section '## Adaptive rigor' with the rows printed by verify-adaptive.sh --table, copied exactly",
         "state the evidence level (both arms L3: the interactive app driven by a script, small fixtures), what each tuning round changed, and a 'Miss: CASE MODEL: ...' line for each cell that missed",
@@ -2109,7 +2115,7 @@
         "P23.1",
         "P22.5"
       ],
-      "status": "planned",
+      "status": "done",
       "tasks": [
         "bench.sh: a case name may also be a project in tools/baseline/projects (same layout); results go to a directory chosen with BENCH_RUNS_DIR",
         "report-projects.sh: a side-by-side markdown table per project and model, plain Claude Code against VBW 2, with pass, tokens and cost, and a line for a missing arm",
