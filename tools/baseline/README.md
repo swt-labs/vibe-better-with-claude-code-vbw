@@ -32,3 +32,23 @@ the untouched fixture and passes after the case's `solution.sh`
 
 `solution.sh` runs inside a workspace seeded by the fixture and leaves it in a
 state `check.sh` accepts. It is never shown to the agent under test.
+
+## Adaptive rigor (R29)
+
+The adaptive set is VBW 2 with automatic rigor on the seven cases and both
+models: 14 cells, one record per run in `results/adaptive/`.
+
+- Run a cell: `BENCH_RUNS_DIR=tools/baseline/results/adaptive bash tools/baseline/bench.sh vbw2 MODEL CASE 1`.
+  The record adds `rigor` (the workspace's `settings.rigor`, `auto` when
+  unset), `round` (`BENCH_ROUND`, default 0) and `tiers` (the phases' tiers
+  read from the workspace record).
+- A tuning round reruns cells with `BENCH_ROUND=1` (or 2), written as
+  `vbw2-MODEL-CASE-1-rN.json`. At most 2 rounds; each is described in
+  `results/adaptive/tuning.md` on a line `Round N: what changed and its result`.
+  The highest round of a cell is its final state.
+- Verify: `bash tools/baseline/verify-adaptive.sh [--table] [ADAPTIVE_DIR [PLAIN_DIR [DOC]]]`.
+  It needs all 14 cells valid (level L3, rigor auto, non-empty tiers) and a
+  `Miss: CASE MODEL: ...` line in `docs/benchmark.md` for every failed case or
+  cost above twice plain's. Plain cost is the mean over the case's plain runs
+  (`results/runs/`) of the latest rerun of each. `--table` prints one markdown
+  row per cell, which the doc's "Adaptive rigor" section quotes.
