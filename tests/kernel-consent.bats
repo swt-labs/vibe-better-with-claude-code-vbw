@@ -90,6 +90,15 @@ detected_in() {
   jq -e '.commands == {}' .vbw/record.json
 }
 
+@test "an executable test.sh, tests.sh or run_tests.sh at the root is the test command" {
+  run detected_in 'printf "true\n" > test.sh && chmod +x test.sh'
+  [ "$output" = '{"test":["./test.sh"]}' ]
+  run detected_in 'printf "true\n" > run_tests.sh && chmod +x run_tests.sh'
+  [ "$output" = '{"test":["./run_tests.sh"]}' ]
+  run detected_in 'printf "true\n" > tests.sh'
+  [ "$output" = '{}' ]
+}
+
 @test "the record rejects malformed commands" {
   vbw_run init
   jq '.commands = {"test": []}' .vbw/record.json | jq -c -f "$PLUGIN_ROOT/lib/record.jq" | grep -q 'command test must be a non-empty argv array'

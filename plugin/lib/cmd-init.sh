@@ -108,6 +108,14 @@ init_detect_commands() {
     done
     printf '%s\n' "$out"
   else
+    # A project's own runner script, when no ecosystem is recognised.
+    local s
+    for s in test.sh tests.sh run_tests.sh; do
+      if [ -f "$root/$s" ] && [ -x "$root/$s" ]; then
+        jq -nc --arg s "./$s" '{test: [$s]}'
+        return 0
+      fi
+    done
     printf '{}\n'
   fi
 }
