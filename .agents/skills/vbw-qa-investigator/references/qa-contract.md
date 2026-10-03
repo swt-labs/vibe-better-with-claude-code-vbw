@@ -14,7 +14,7 @@
 3. Read changed files in full.
 4. Check downstream consumers of modified functions, formats, files, or workflow contracts.
 5. Verify tests exercise the changed behavior.
-6. For LLM-consumed markdown changes, read `.github/references/prompting-best-practices-for-vbw.md` and check the content against it.
+6. For LLM-consumed markdown changes (skills, agents, prompts), check the content against the budgets and prompt rules in `AGENTS.md`.
 
 ## Output Format
 
