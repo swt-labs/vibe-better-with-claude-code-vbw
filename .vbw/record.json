@@ -901,7 +901,15 @@
         "breaks: R1, R2, R3, R13, R14, R24, R26",
         "tests: project test command"
       ],
-      "predicted": "deep"
+      "predicted": "deep",
+      "qa": {
+        "result": "fail",
+        "tier": "deep",
+        "tree": "6ae81c88769d77f76fa53f63f931a4d087364f50",
+        "at": "2026-10-03T17:16:15Z",
+        "note": "21/22 checks",
+        "rounds": 1
+      }
     },
     {
       "id": "P20",
@@ -2423,6 +2431,14 @@
       "attempts": 0,
       "status": "open",
       "note": "Work outside P22's planned files, without a plan change: round-1 commits ae14ca86 and bcd949b8 (bench.sh driver), 89343d52 and a2041cb8 (plugin/skills/vibe/SKILL.md, tests/skills.bats), 6d5ecf36/5d5b77a5 (tests/rigor-early.bats), bbee136a (tools/baseline/verify-adaptive.sh, tests/verify-adaptive.bats, after P22.4 blocked). P22.3 lists only results/, rigor.jq, rigor-defs.jq, tiers.json. Declared in tuning.md but not in the plan; round-1 results mix the threshold change with router and driver fixes."
+    },
+    {
+      "id": "F14",
+      "req": "R23",
+      "source": "qa",
+      "attempts": 0,
+      "status": "open",
+      "note": "P19.2 says on planning again a phase 'never records a tier lower than the one it has'; plugin/lib/cmd-apply.sh only enforces that for a locked phase (started plans or escalations): $locked and $o.tier > $want. An existing unstarted phase (e.g. Architect-raised deep) is re-recorded at the recomputed lower tier when re-planned without the proposal. No recorded decision (D37-D40) covers this and no test pins it. Either lock all existing phases or record a decision."
     }
   ],
   "todos": [
