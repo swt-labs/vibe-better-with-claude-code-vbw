@@ -127,3 +127,21 @@ teardown() { vbw_teardown; }
   cd "$PROJECT"
   [ "$(git show 'HEAD:src/pay form.js')" = "pay" ]
 }
+
+@test "named files commit alone; the other changed files stay uncommitted" {
+  printf 'pay\n' > "src/pay form.js"
+  printf 'data\n' > "src/données.js"
+  vbw_run commit P1.1 "feat(pay): card form" "src/pay form.js"
+  [ "$status" -eq 0 ]
+  [ "$(git show --name-only --format= -z HEAD | tr '\0' '\n' | grep -c .)" -eq 1 ]
+  git status --porcelain -- src/données.js | grep -q '^??'
+}
+
+@test "a named file outside the plan is refused with its name" {
+  printf 'x\n' > src/other.js
+  printf 'pay\n' > "src/pay form.js"
+  vbw_run commit P1.1 "feat(pay): x" "src/pay form.js" src/other.js
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"src/other.js"* ]]
+  git status --porcelain -- "src/pay form.js" | grep -q '^??'
+}
