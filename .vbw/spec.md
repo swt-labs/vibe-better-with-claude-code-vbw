@@ -34,7 +34,7 @@
 - R27 [auto] The tier is chosen automatically by default; the user can force it with vbw config rigor auto, express, standard or deep
 - R28 [auto] Each finished phase records its predicted tier and the outcome (fix rounds, QA findings, escalations, cost), and vbw show reports how often the prediction held
 - R29 [auto] On the seven single-task benchmark cases, VBW 2 with automatic rigor passes every case and costs at most twice what plain Claude Code costs, on Sonnet 5.5 and Opus 5.5
-- R30 [human] The benchmark adds at least three multi-requirement projects (a feature on an existing codebase with earlier requirements to protect, a data migration, a user interface judged by a person), run with plain Claude Code and VBW 2, and docs/benchmark.md reports them plainly
+- R30 [human] The benchmark adds at least three multi-requirement projects (a feature on an existing codebase with earlier requirements to protect, a data migration, and a third non-UI project of several requirements), each graded by a deterministic check, run with plain Claude Code and VBW 2, and docs/benchmark.md reports them plainly
 
 <!-- One requirement per line: an id, how it is proved, and a user-observable
      statement. [auto] = a check can prove it; [human] = only a person can judge it.

@@ -210,7 +210,7 @@
     },
     {
       "id": "R30",
-      "text": "The benchmark adds at least three multi-requirement projects (a feature on an existing codebase with earlier requirements to protect, a data migration, a user interface judged by a person), run with plain Claude Code and VBW 2, and docs/benchmark.md reports them plainly",
+      "text": "The benchmark adds at least three multi-requirement projects (a feature on an existing codebase with earlier requirements to protect, a data migration, and a third non-UI project of several requirements), each graded by a deterministic check, run with plain Claude Code and VBW 2, and docs/benchmark.md reports them plainly",
       "proof": "human",
       "status": "open",
       "milestone": "M4"
@@ -405,6 +405,101 @@
       ],
       "files": [
         "tests/baseline-results.bats"
+      ]
+    },
+    {
+      "id": "C19",
+      "req": "R22",
+      "run": [
+        "bats",
+        "tests/rigor-record.bats"
+      ],
+      "files": [
+        "tests/rigor-record.bats",
+        "tests/rigor-helper.bash"
+      ]
+    },
+    {
+      "id": "C20",
+      "req": "R23",
+      "run": [
+        "bats",
+        "tests/rigor-floor.bats"
+      ],
+      "files": [
+        "tests/rigor-floor.bats",
+        "tests/rigor-helper.bash"
+      ]
+    },
+    {
+      "id": "C21",
+      "req": "R27",
+      "run": [
+        "bats",
+        "tests/rigor-config.bats"
+      ],
+      "files": [
+        "tests/rigor-config.bats",
+        "tests/rigor-helper.bash"
+      ]
+    },
+    {
+      "id": "C22",
+      "req": "R26",
+      "run": [
+        "bats",
+        "tests/rigor-profile.bats"
+      ],
+      "files": [
+        "tests/rigor-profile.bats",
+        "tests/rigor-helper.bash"
+      ]
+    },
+    {
+      "id": "C23",
+      "req": "R24",
+      "run": [
+        "bats",
+        "tests/rigor-express.bats"
+      ],
+      "files": [
+        "tests/rigor-express.bats",
+        "tests/rigor-helper.bash"
+      ]
+    },
+    {
+      "id": "C24",
+      "req": "R25",
+      "run": [
+        "bats",
+        "tests/rigor-escalation.bats"
+      ],
+      "files": [
+        "tests/rigor-escalation.bats",
+        "tests/rigor-helper.bash"
+      ]
+    },
+    {
+      "id": "C25",
+      "req": "R28",
+      "run": [
+        "bats",
+        "tests/rigor-prediction.bats"
+      ],
+      "files": [
+        "tests/rigor-prediction.bats",
+        "tests/rigor-helper.bash"
+      ]
+    },
+    {
+      "id": "C26",
+      "req": "R29",
+      "run": [
+        "bats",
+        "tests/adaptive-results.bats"
+      ],
+      "files": [
+        "tests/adaptive-results.bats"
       ]
     }
   ],
@@ -780,6 +875,88 @@
         "at": "2026-10-03T03:06:22Z",
         "note": "12/12 checks"
       }
+    },
+    {
+      "id": "P19",
+      "title": "Rigor tier computed at planning, never lowered by the Architect",
+      "reqs": [
+        "R22",
+        "R23",
+        "R27"
+      ],
+      "milestone": "M4",
+      "goal": "Every phase leaves planning with a rigor tier and one-line reasons computed from measured signals, with a risk floor the Architect can only raise, and the user can force the tier with vbw config rigor.",
+      "criteria": [
+        "After planning, every phase in the record has a tier (express, standard or deep) and a reasons list naming the signals used (requirement count, planned files and size, risk paths, proven requirements it could break, test coverage)",
+        "The approval screen shows each phase's tier and reasons on one line",
+        "A fixture phase touching a risk path (sign-in, payments, data migration, secrets, deletion, CI) or with many requirements is recorded at or above the floor tier for those signals; a test shows the kernel refuses an Architect-submitted tier below that floor and accepts a higher one",
+        "With no setting, the tier is chosen automatically; vbw config rigor auto|express|standard|deep each sets the mode, and a forced value overrides the computed tier; an invalid value is refused with the allowed list",
+        "Bats tests for each criterion fail before the change and pass after; kernel stays within 3,000 lines"
+      ]
+    },
+    {
+      "id": "P20",
+      "title": "Profile maps tier to agents, QA tier and models; express path",
+      "reqs": [
+        "R24",
+        "R26"
+      ],
+      "milestone": "M4",
+      "goal": "A phase's tier decides which agents run, how many, the QA tier and the models through the profile, and an express phase is approved in one step, built by one Dev and proved.",
+      "criteria": [
+        "The profile defines for each tier the agents, their count, the QA tier and the models, and vbw next --json for a phase exposes exactly those values",
+        "An express phase shows one combined approval of its requirement, check and plan together, and one approval records all three",
+        "An express phase builds with one Dev and runs vbw prove; it runs QA only when one of its requirements is [human] or the phase has escalated, and a test covers each of the three cases",
+        "Standard and deep phases keep their existing multi-step approval and QA behaviour, shown by existing tests still passing",
+        "Workflows stay within 1,500 lines of JS in total and prompts within budget"
+      ]
+    },
+    {
+      "id": "P21",
+      "title": "Automatic escalation during a run, and prediction record",
+      "reqs": [
+        "R25",
+        "R28"
+      ],
+      "milestone": "M4",
+      "goal": "A running phase raises its own tier, with the reason recorded and shown, when trouble appears; and each finished phase records predicted tier versus outcome so vbw show reports prediction accuracy.",
+      "criteria": [
+        "Each of these events raises the tier and records and shows a reason: a Dev blocks, a fix needs a second round, QA finds a problem in an express phase, the change touches a risk path or grows well beyond its plan, a proven requirement fails; each has a test",
+        "No code path lowers a tier during a run; a test shows an attempt to lower is refused",
+        "Once escalated, the later steps of that run use the raised tier's agents, QA tier and models",
+        "Each finished phase records predicted tier, final tier and outcome (fix rounds, QA findings, escalations, cost)",
+        "vbw show reports how many finished phases held their predicted tier, as a count and percentage, and says so plainly when there are no finished phases"
+      ]
+    },
+    {
+      "id": "P22",
+      "title": "Adaptive-rigor benchmark on the seven single-task cases",
+      "reqs": [
+        "R29"
+      ],
+      "milestone": "M4",
+      "goal": "Measured evidence that VBW 2 with automatic rigor passes all seven single-task cases at no more than twice plain Claude Code's cost on Sonnet 5.5 and Opus 5.5.",
+      "criteria": [
+        "The committed results hold VBW 2 runs with automatic rigor for all seven cases on Sonnet 5.5 and Opus 5.5, each run recording pass or fail, tokens and cost, compared with the plain Claude Code results from M3",
+        "Every case passes with VBW 2 on both models, and VBW 2 cost per case is at most 2x plain Claude Code cost, or the miss is stated per case",
+        "If the target is missed, at most 2 tuning rounds are run, each recorded with what changed and its result; after that the result ships with the miss stated plainly in docs/benchmark.md",
+        "The run is recorded at its evidence level (L2 scripted) with a Not tested list"
+      ]
+    },
+    {
+      "id": "P23",
+      "title": "Multi-requirement benchmark projects and report",
+      "reqs": [
+        "R30"
+      ],
+      "milestone": "M4",
+      "goal": "The benchmark includes three multi-requirement projects, each graded by a deterministic check and run with plain Claude Code and VBW 2, and docs/benchmark.md reports them plainly.",
+      "criteria": [
+        "tools/baseline holds three projects: a feature on an existing codebase with earlier requirements to protect, a data migration, and a third non-UI project of several requirements",
+        "Each project has a deterministic check that fails on the untouched starting project and passes on a correct solution, proven by a test",
+        "Each project has been run with plain Claude Code and with VBW 2, results committed with pass or fail, tokens and cost",
+        "docs/benchmark.md reports the three projects with both tools side by side and states plainly what was not measured; the owner accepts it as a [human] requirement"
+      ]
     }
   ],
   "plans": [
@@ -1407,6 +1584,496 @@
         "install and a first project walkthrough, with image references to planned names in assets/",
         "command list matching plugin/skills; drop v1 wording; run tests/readme.bats"
       ]
+    },
+    {
+      "id": "P19.1",
+      "phase": "P19",
+      "title": "Rigor schema, signals and floor",
+      "reqs": [
+        "R22",
+        "R23"
+      ],
+      "files": [
+        "plugin/lib/record.jq",
+        "plugin/lib/rigor.jq",
+        "plugin/lib/rigor.sh",
+        "plugin/lib/record.sh"
+      ],
+      "after": [],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "record.jq: optional phase fields tier (express|standard|deep), reasons (array of strings), predicted (tier), cost_usd (number), escalations ([{at ISO time, from tier, to tier, reason non-empty}]) and outcome ({tier, predicted, held boolean, fix_rounds, qa_findings, escalations integers >= 0, cost_usd number or null}); optional settings.rigor (auto|express|standard|deep); phases without them stay valid",
+        "rigor.jq: the tier order, the risk categories (sign-in, payments, data migration, secrets, deletion, CI) matched case-insensitively against planned file paths, the phase title and goal and its requirements' text, and the floor rules: requirements 3 standard and 6 deep; planned files 5 standard and 10 deep; size of existing planned files 100000 bytes standard and 500000 deep; any risk deep; proven requirements (any milestone) whose plans' files overlap the phase's planned files 1 standard and 4 deep; an existing regular file planned with no project test command standard (directory entries do not count as existing files)",
+        "rigor.jq reasons: always one line per signal in this order and format: 'requirements: N', 'files: N (B bytes)', 'risk: none' or 'risk: CATEGORY (PATH), ...', 'breaks: none' or 'breaks: R1, R2', 'tests: project test command' or 'tests: no project test command'",
+        "rigor.sh: one function that gathers the file facts the jq cannot (existence and byte size of planned regular files) and returns tier, floor and reasons for a given list of phases of a record; apply and config both call it; add the jq helpers other commands need to VBW_JQ_DEFS in record.sh; keep the kernel inside its 3,000-line budget"
+      ]
+    },
+    {
+      "id": "P19.2",
+      "phase": "P19",
+      "title": "Apply computes, checks and records each phase's tier",
+      "reqs": [
+        "R22",
+        "R23",
+        "R27"
+      ],
+      "files": [
+        "plugin/lib/cmd-apply.sh",
+        "tests/kernel-work.bats",
+        "tests/kernel-plan-dirs.bats",
+        "tests/kernel-commit.bats",
+        "tests/kernel-spec.bats",
+        "tests/record.bats"
+      ],
+      "after": [
+        "P19.1"
+      ],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "cmd-apply.sh: accept an optional tier on each phase (the Architect's); refuse any value that is not express, standard or deep, naming the allowed list",
+        "compute the floor with rigor.sh; in auto mode refuse a submitted tier below the floor (name the phase, the floor and its reasons) and record max(floor, submitted), adding the reason 'raised by the Architect' when it is higher; with settings.rigor forced, record the forced tier with the reason 'forced: vbw config rigor X' and never refuse",
+        "write tier, reasons and predicted on every phase; on planning again keep predicted, escalations, cost_usd and outcome of a phase that existed, and never record a tier lower than the one it has",
+        "adjust existing test fixtures the new phase fields break, without weakening them"
+      ]
+    },
+    {
+      "id": "P19.3",
+      "phase": "P19",
+      "title": "vbw config rigor",
+      "reqs": [
+        "R27"
+      ],
+      "files": [
+        "plugin/lib/cmd-config.sh",
+        "plugin/bin/vbw",
+        "plugin/skills/config/SKILL.md",
+        "tests/kernel-commands.bats"
+      ],
+      "after": [
+        "P19.1"
+      ],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "cmd-config.sh: 'vbw config rigor' prints the mode (auto when unset); 'vbw config rigor auto|express|standard|deep' sets settings.rigor; any other value is refused with 'auto, express, standard or deep'; the plain 'vbw config' listing gains 'rigor: MODE'",
+        "when the mode changes, re-tier the current milestone's phases whose plans have not started (all planned) and that have no escalations: a forced mode sets that tier with the reason 'forced: vbw config rigor X', auto recomputes through rigor.sh; started or escalated phases are left alone; the contract hash does not change",
+        "plugin/bin/vbw help line and the config skill name the rigor setting; keep the skill within its budget"
+      ]
+    },
+    {
+      "id": "P19.4",
+      "phase": "P19",
+      "title": "Approval screen shows each phase's tier and reasons",
+      "reqs": [
+        "R22"
+      ],
+      "files": [
+        "plugin/lib/cmd-show.sh",
+        "tests/kernel-show.bats"
+      ],
+      "after": [
+        "P19.2"
+      ],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "vbw show contract gains a 'phases:' section with one line per phase of the current milestone: '  P1 express: REASON; REASON; ...' (two spaces, the phase id, the tier, then its reasons joined by '; ')",
+        "vbw show phase prints 'tier: TIER (predicted PREDICTED)' and the reasons; a phase without a tier prints nothing new",
+        "adjust existing show tests the new lines affect, without weakening them"
+      ]
+    },
+    {
+      "id": "P19.5",
+      "phase": "P19",
+      "title": "Architect and Lead pass the tier through, only upward",
+      "reqs": [
+        "R23"
+      ],
+      "files": [
+        "plugin/agents/architect.md",
+        "plugin/agents/lead.md",
+        "plugin/workflows/planning.js"
+      ],
+      "after": [
+        "P19.2"
+      ],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "planning.js: the Architect's SCOPE schema takes an optional tier per phase (express|standard|deep) and the Lead's task text says the kernel computes a floor and refuses lower",
+        "architect.md: it may submit a tier only to raise the computed one, with the reason in its notes; it never lowers",
+        "lead.md: pass each phase's tier through exactly as given and read the tier lines in vbw show contract once; stay within the agent token budget"
+      ]
+    },
+    {
+      "id": "P20.1",
+      "phase": "P20",
+      "title": "Tier table in the profile and next --json",
+      "reqs": [
+        "R24",
+        "R26"
+      ],
+      "files": [
+        "plugin/lib/tiers.json",
+        "plugin/lib/next.jq",
+        "plugin/lib/cmd-next.sh",
+        "plugin/lib/rigor.jq"
+      ],
+      "after": [
+        "P19.3",
+        "P19.4",
+        "P19.5"
+      ],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "tiers.json: for each profile (quality, balanced, budget) and each tier a cell {agents: {role: count or \"plans\"}, qa: quick|standard|deep, models: {dev, qa}}; express is {dev: 1} with qa quick and a dev model that is not opus; standard keeps the profile's own models and QA tier (quality deep, balanced standard, budget quick); deep qa is deep",
+        "cmd-next.sh passes the table to next.jq; next.jq adds a top-level 'rigor' object keyed by each current-milestone phase id with {tier} plus its cell (a phase without a tier counts as standard), user model overrides from settings.models winning; 'detail' of every action stays as it is",
+        "next.jq: the qa action's detail.tier is the highest QA tier among the phases to verify, taken from the cells; a built phase needs QA unless it is express with only [auto] requirements and no escalations (a shared 'needs QA' definition in rigor.jq)",
+        "keep the kernel inside its 3,000-line budget"
+      ]
+    },
+    {
+      "id": "P20.2",
+      "phase": "P20",
+      "title": "Express phase: one combined approval, one plan",
+      "reqs": [
+        "R24"
+      ],
+      "files": [
+        "plugin/lib/cmd-apply.sh",
+        "plugin/lib/cmd-show.sh",
+        "plugin/lib/cmd-approve.sh",
+        "tests/kernel-work.bats",
+        "tests/kernel-plan-dirs.bats",
+        "tests/kernel-commit.bats",
+        "tests/kernel-spec.bats",
+        "tests/kernel-show.bats"
+      ],
+      "after": [
+        "P19.3",
+        "P19.4",
+        "P19.5"
+      ],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "cmd-apply.sh: refuse an express phase with more than one plan ('P1 is express: one plan, merge its plans or raise its tier'); update existing fixtures that plan several plans in one phase to submit tier standard",
+        "cmd-show.sh: vbw show contract prints, for each express phase, one line holding the word express, its requirement ids, its check ids and its plan id; standard and deep phases keep the separate listing",
+        "cmd-approve.sh: the approval decision names each express phase with its requirement, check and plan ids ('express: P1 (R1, C1, P1.1)') so one approval records all three"
+      ]
+    },
+    {
+      "id": "P20.3",
+      "phase": "P20",
+      "title": "Workflows and router pass each phase's tier values through",
+      "reqs": [
+        "R26"
+      ],
+      "files": [
+        "plugin/workflows/building.js",
+        "plugin/workflows/verifying.js",
+        "plugin/workflows/fixing.js",
+        "plugin/skills/vibe/SKILL.md"
+      ],
+      "after": [
+        "P20.1"
+      ],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "building.js: take args.rigor (phase id to cell); a plan's phase is its id before the dot; the Dev or Docs agent of a plan uses its phase's models; no cell falls back to args.models",
+        "verifying.js: each phase uses its cell's qa tier and qa model, falling back to args.tier and args.models",
+        "fixing.js: use the dev model of the highest-tier phase in args.rigor, falling back to args.models",
+        "vibe SKILL.md: pass the next JSON's top-level rigor in every workflow's args beside models; router stays within 1,400 words; workflows stay within 1,500 lines"
+      ]
+    },
+    {
+      "id": "P21.1",
+      "phase": "P21",
+      "title": "Escalation core and the tier command",
+      "reqs": [
+        "R25"
+      ],
+      "files": [
+        "plugin/lib/cmd-tier.sh",
+        "plugin/lib/rigor.jq",
+        "plugin/bin/vbw"
+      ],
+      "after": [
+        "P20.1",
+        "P20.2",
+        "P20.3"
+      ],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "rigor.jq: an escalate definition used inside record updates: it appends {at, from, to, reason} to the phase's escalations and sets the tier to the target (default one step up, deep stays deep and still records the event); an identical reason already recorded is not recorded twice; a lower target is never applied",
+        "cmd-tier.sh: 'vbw tier raise PHASE TIER REASON' raises to a higher tier and records the reason; it refuses a lower or equal tier ('a tier is never lowered during a run'), an unknown tier or phase",
+        "cmd-tier.sh: 'vbw tier cost PHASE USD' adds a reported cost to the phase (refuses a non-number); the kernel cannot observe cost, so only reported cost is kept",
+        "plugin/bin/vbw dispatches tier and lists it in help; keep the kernel inside its 3,000-line budget"
+      ]
+    },
+    {
+      "id": "P21.2",
+      "phase": "P21",
+      "title": "Escalation triggers",
+      "reqs": [
+        "R25"
+      ],
+      "files": [
+        "plugin/lib/cmd-plan.sh",
+        "plugin/lib/cmd-qa.sh",
+        "plugin/lib/cmd-commit.sh",
+        "plugin/lib/prove.jq"
+      ],
+      "after": [
+        "P21.1"
+      ],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "cmd-plan.sh: vbw plan block raises the plan's phase one step, reason 'Dev blocked PLAN: REASON'",
+        "cmd-qa.sh: vbw qa finding on an express phase raises it ('QA found a problem in REQ: TEXT'); a second failed QA round (qa.rounds reaching 2) raises it ('QA needs a second round'); a finding on a standard or deep phase alone does not",
+        "cmd-commit.sh: after a commit (and after the project lock is released) a changed file matching a risk category raises the phase to deep ('touches a risk path: CATEGORY (PATH)'); a commit changing more than twice as many files as the plan lists and at least 4 raises it one step ('grew beyond its plan: N files for M planned')",
+        "prove.jq: a fix whose failed attempt makes attempts at least 1 raises its requirement's phases one step ('fix FIX needs a second round'); a requirement that was proven and now fails raises its phases one step ('proven requirement REQ failed')"
+      ]
+    },
+    {
+      "id": "P21.3",
+      "phase": "P21",
+      "title": "Outcome record and prediction report",
+      "reqs": [
+        "R25",
+        "R28"
+      ],
+      "files": [
+        "plugin/lib/rigor.jq",
+        "plugin/lib/prove.jq",
+        "plugin/lib/cmd-qa.sh",
+        "plugin/lib/cmd-req.sh",
+        "plugin/lib/cmd-show.sh"
+      ],
+      "after": [
+        "P21.2"
+      ],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "rigor.jq: a finished definition (plans done, requirements proven or accepted, no open or escalated fix on them, QA passed on the proven code when needs-QA) and a finish definition that writes outcome {tier, predicted, held, fix_rounds (sum of attempts + 1 over the phase's requirements' fixes), qa_findings (their qa-source fixes), escalations (count), cost_usd (the phase's reported cost or null)} once, never rewriting an existing outcome",
+        "call finish after vbw prove, vbw qa record and vbw req accept (prove.jq, cmd-qa.sh, cmd-req.sh)",
+        "cmd-show.sh: new view 'vbw show rigor' listing every phase's tier, predicted tier and reasons, then 'prediction held for N of M finished phases (P%)' or 'no finished phases yet'; vbw show phase also prints each escalation (from, to, reason)",
+        "keep the kernel inside its 3,000-line budget"
+      ]
+    },
+    {
+      "id": "P21.4",
+      "phase": "P21",
+      "title": "Document adaptive rigor",
+      "reqs": [
+        "R25",
+        "R28"
+      ],
+      "files": [
+        "docs/rigor.md",
+        "docs/record.md",
+        "docs/next.md",
+        "docs/workflows.md"
+      ],
+      "after": [
+        "P21.3",
+        "P20.3"
+      ],
+      "status": "planned",
+      "role": "docs",
+      "tasks": [
+        "docs/rigor.md: the signals and floor rules, reasons, forced mode (vbw config rigor), the profile's tier table, express, the escalation events and vbw tier raise, never lowering, the outcome record and vbw show rigor; say plainly that cost is recorded only when reported with vbw tier cost",
+        "docs/record.md: the new phase fields and settings.rigor",
+        "docs/next.md: the rigor key of vbw next --json and the express QA rule",
+        "docs/workflows.md: args.rigor for building, verifying and fixing; every command and path named must exist"
+      ]
+    },
+    {
+      "id": "P22.1",
+      "phase": "P22",
+      "title": "Adaptive result records and verifier",
+      "reqs": [
+        "R29"
+      ],
+      "files": [
+        "tools/baseline/bench.sh",
+        "tools/baseline/verify-adaptive.sh",
+        "tools/baseline/README.md"
+      ],
+      "after": [],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "bench.sh: BENCH_LEVEL overrides the recorded level (adaptive runs record L2); a vbw2 record gains rigor (the workspace's settings.rigor, auto when unset), round (BENCH_ROUND, default 0) and tiers (the phases' tiers read from the workspace record)",
+        "verify-adaptive.sh [--table] [ADAPTIVE_DIR [PLAIN_DIR [DOC]]] as tests/adaptive-results.bats specifies: all 14 cells present and valid, the highest round of a cell is final, plain cost is the mean of the latest rerun of each plain run, a miss (failed case or cost above 2x) needs a 'Miss: CASE MODEL' line in the doc, at most 2 tuning rounds each described in tuning.md, --table rows",
+        "README.md: how to run and verify the adaptive set"
+      ]
+    },
+    {
+      "id": "P22.2",
+      "phase": "P22",
+      "title": "Run the adaptive set",
+      "reqs": [
+        "R29"
+      ],
+      "files": [
+        "tools/baseline/results/adaptive/"
+      ],
+      "after": [
+        "P22.1",
+        "P21.4"
+      ],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "run VBW 2 with automatic rigor on the seven cases on Sonnet 5.5 (BENCH_RUNS_DIR=tools/baseline/results/adaptive BENCH_LEVEL=L2, one run per cell) and commit the records",
+        "run the same on Opus 5.5 and commit the records",
+        "run verify-adaptive.sh --table and record which cells miss the target (failed, or cost above 2x plain); stop and report if the usage limit is reached or a session cannot be driven"
+      ]
+    },
+    {
+      "id": "P22.3",
+      "phase": "P22",
+      "title": "Tuning rounds, at most two",
+      "reqs": [
+        "R29"
+      ],
+      "files": [
+        "tools/baseline/results/adaptive/",
+        "plugin/lib/rigor.jq",
+        "plugin/lib/tiers.json"
+      ],
+      "after": [
+        "P22.2"
+      ],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "if no cell misses, write tuning.md stating that no tuning was needed and stop",
+        "otherwise tune the floor thresholds or the tier table for the missed cells, re-run only those cells with BENCH_ROUND=1, and describe in tuning.md 'Round 1: what changed and its result'",
+        "if cells still miss, one more round (Round 2) the same way; after round 2 stop: the misses ship stated plainly (the docs plan adds them)",
+        "keep the full test suite green after any threshold change"
+      ]
+    },
+    {
+      "id": "P22.4",
+      "phase": "P22",
+      "title": "Adaptive-rigor results in the benchmark doc",
+      "reqs": [
+        "R29"
+      ],
+      "files": [
+        "docs/benchmark.md"
+      ],
+      "after": [
+        "P22.3"
+      ],
+      "status": "planned",
+      "role": "docs",
+      "tasks": [
+        "add the section '## Adaptive rigor' with the rows printed by verify-adaptive.sh --table, copied exactly",
+        "state the evidence level (L2, scripted, toy fixtures), what each tuning round changed, and a 'Miss: CASE MODEL: ...' line for each cell that missed",
+        "add a Not tested list and update the short version at the top; benchmark-doc tests must still pass"
+      ]
+    },
+    {
+      "id": "P23.1",
+      "phase": "P23",
+      "title": "Three multi-requirement projects with deterministic checks",
+      "reqs": [
+        "R30"
+      ],
+      "files": [
+        "tools/baseline/projects/",
+        "tools/baseline/fixtures/protected-feature/",
+        "tools/baseline/fixtures/data-migration/",
+        "tools/baseline/fixtures/non-ui-pipeline/",
+        "tests/baseline-projects.bats"
+      ],
+      "after": [],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "protected-feature: an existing codebase with tests for earlier requirements, and a request for a new feature in several requirements; its check also re-runs the earlier requirements' tests",
+        "data-migration: a small data store (files or SQLite) and a request to migrate it to a new shape without losing rows; its check inspects the migrated data",
+        "non-ui-pipeline: a command-line data tool needing several requirements implemented; its check runs it on fixed inputs",
+        "each project has request.txt, case.meta, check.sh and solution.sh in tools/baseline/projects/NAME and a fixture.sh in tools/baseline/fixtures/NAME; tests/baseline-projects.bats proves each check fails on the untouched fixture and passes after solution.sh"
+      ]
+    },
+    {
+      "id": "P23.2",
+      "phase": "P23",
+      "title": "Run projects with the benchmark runner and report them",
+      "reqs": [
+        "R30"
+      ],
+      "files": [
+        "tools/baseline/bench.sh",
+        "tools/baseline/report-projects.sh",
+        "tests/baseline-project-bench.bats"
+      ],
+      "after": [
+        "P22.3",
+        "P23.1"
+      ],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "bench.sh: a case name may also be a project in tools/baseline/projects (same layout); results go to a directory chosen with BENCH_RUNS_DIR",
+        "report-projects.sh: a side-by-side markdown table per project and model, plain Claude Code against VBW 2, with pass, tokens and cost, and a line for a missing arm",
+        "tests/baseline-project-bench.bats: the runner resolves projects, and the report on synthetic records prints both arms"
+      ]
+    },
+    {
+      "id": "P23.3",
+      "phase": "P23",
+      "title": "Run the three projects with plain Claude Code and VBW 2",
+      "reqs": [
+        "R30"
+      ],
+      "files": [
+        "tools/baseline/results/projects/"
+      ],
+      "after": [
+        "P23.1",
+        "P23.2"
+      ],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "run each project once with plain Claude Code and once with VBW 2 on Sonnet 5.5, committing the records",
+        "the same on Opus 5.5",
+        "check every record has pass, tokens and cost; stop and report if the usage limit is reached"
+      ]
+    },
+    {
+      "id": "P23.4",
+      "phase": "P23",
+      "title": "Report the projects in the benchmark doc",
+      "reqs": [
+        "R30"
+      ],
+      "files": [
+        "docs/benchmark.md"
+      ],
+      "after": [
+        "P23.3",
+        "P22.4"
+      ],
+      "status": "planned",
+      "role": "docs",
+      "tasks": [
+        "add the section '## Multi-requirement projects' with the three projects described, each in the table printed by report-projects.sh, copied exactly",
+        "state plainly what was not measured (one run per cell, two models, toy-sized projects, no VBW 1)",
+        "keep benchmark-doc tests passing"
+      ]
     }
   ],
   "fixes": [
@@ -1697,6 +2364,30 @@
       "text": "Express target: at most 2x plain Claude Code's cost on single-task jobs",
       "why": "owner accepted the recommendation",
       "at": "2026-10-03T11:39:38Z"
+    },
+    {
+      "id": "D31",
+      "text": "Adaptive rigor is automatic by default for everyone; vbw config rigor only overrides",
+      "why": "owner: 'it does it automatically without user changing setting'",
+      "at": "2026-10-03T11:40:12Z"
+    },
+    {
+      "id": "D32",
+      "text": "Adaptive rigor ships as 2.0.14",
+      "why": "owner's choice",
+      "at": "2026-10-03T11:43:33Z"
+    },
+    {
+      "id": "D33",
+      "text": "If the benchmark misses the adaptive-rigor target: at most 2 tuning rounds, then ship with the miss stated plainly in docs/benchmark.md",
+      "why": "owner accepted the recommendation",
+      "at": "2026-10-03T11:43:33Z"
+    },
+    {
+      "id": "D34",
+      "text": "No user-interface project in the multi-requirement benchmark: a third non-UI project instead (no person judges results)",
+      "why": "owner's choice",
+      "at": "2026-10-03T11:43:33Z"
     }
   ],
   "commands": {
