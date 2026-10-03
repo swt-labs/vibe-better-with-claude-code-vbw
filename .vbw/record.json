@@ -667,7 +667,14 @@
         "A Not measured section names the gaps (VBW 1 cases without data, evidence level L2, sample size of 3)",
         "The owner reads the document and accepts or rejects it (human requirement)",
         "Depends on P3"
-      ]
+      ],
+      "qa": {
+        "result": "pass",
+        "tier": "standard",
+        "tree": "15b6f0c4b7e824624ae9ca8ffc168cc838052dfc",
+        "at": "2026-10-03T02:00:26Z",
+        "note": "12/12 checks"
+      }
     },
     {
       "id": "P18",
