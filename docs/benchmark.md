@@ -141,18 +141,18 @@ Per model, over all seven cases.
 ## VBW 1
 
 
-Recorded runs of the fix-oneshot case on Sonnet, VBW 1.37.1 against plain Claude Code. Cost only: the pass was not recorded, so nothing here is a pass rate. Labelled inferred.
+Recorded runs of the fix-oneshot case on Sonnet, VBW 1.37.1 against plain Claude Code. Pass is the recorded `check_passed` of each run, cost is the recorded cost. Labelled inferred.
 
-| Arm (evidence level) | Runs | Mean cost | Result file |
-|---|---|---|---|
-| plain Claude Code, inferred | 3 | $0.08 | `tools/baseline/results/2026-09-30-fix-oneshot-sonnet.jsonl` |
-| VBW 1, inferred | 3 | $0.28 | `tools/baseline/results/2026-09-30-fix-oneshot-sonnet.jsonl` |
+| Arm (evidence level) | Runs | Pass | Mean cost | Result file |
+|---|---|---|---|---|
+| plain Claude Code, inferred | 3 | 3/3 | $0.08 | `tools/baseline/results/2026-09-30-fix-oneshot-sonnet.jsonl` |
+| VBW 1, inferred | 3 | 3/3 | $0.28 | `tools/baseline/results/2026-09-30-fix-oneshot-sonnet.jsonl` |
 
 These rows are **inferred**. They come from the recorded fix-oneshot runs of 2026-09-30 and from the behaviour ledger of VBW 1.37.1, not from new runs. On that one-line fix VBW 1 cost about 3.5 times plain Claude Code. Every VBW 1 command fails under the Claude Code sandbox (ledger D296), so the sandboxed harness cannot run it, and its commands that ask questions cannot run headless, so no other VBW 1 case has data.
 
 ## Not measured
 
-- **VBW 1 on the other six cases**, and on Opus: no data, so no comparison. The VBW 1 rows above have no pass rate.
+- **VBW 1 on the other six cases**, and on Opus: no data, so no comparison. The VBW 1 rows above cover one case only.
 - **Larger projects and multi-requirement milestones.** VBW 2's approval step, regression guards and QA are meant to pay off there, by protecting earlier requirements while later ones are built and by catching what a short check cannot. These cases do not exercise that.
 - **Sample size is 3 per cell.** One run can move a median or a range, as the 89-input run shows. Read a pass rate as "no failure seen", not as a rate.
 - **Human acceptance.** The driver accepted no `[human]` requirement for the user, so what VBW 2 asks of a real user at acceptance is not in these numbers.
