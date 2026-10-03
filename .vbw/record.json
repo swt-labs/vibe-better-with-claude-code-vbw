@@ -628,7 +628,14 @@
         "For each case, running its check on a committed known-correct solution exits zero",
         "A bats test runs all seven pairs of checks and fails if any case lacks either result",
         "tools/baseline/README.md names each case, its fixture and its check"
-      ]
+      ],
+      "qa": {
+        "result": "pass",
+        "tier": "standard",
+        "tree": "15b6f0c4b7e824624ae9ca8ffc168cc838052dfc",
+        "at": "2026-10-03T02:00:13Z",
+        "note": "10/10 checks"
+      }
     },
     {
       "id": "P16",
