@@ -2829,14 +2829,14 @@
     "autonomy_cap": 25
   },
   "evidence": {
-    "at": "2026-10-03T17:07:32Z",
+    "at": "2026-10-03T17:42:36Z",
     "contract": "c0966e5c6225b812a4816144a57555eb6be4a276fb5c53a7614bb63b24c14110",
-    "tree": "6ae81c88769d77f76fa53f63f931a4d087364f50",
+    "tree": "b55fab0570e2d8243a9bdfa28f8af588895ba1d8",
     "checks": {
       "C1": {
         "status": "pass",
         "exit": 0,
-        "seconds": 13,
+        "seconds": 11,
         "tail": "1..1\nok 1 R1: grants from two worktrees of one clone, started together, are all kept"
       },
       "C2": {
@@ -2866,13 +2866,13 @@
       "C8": {
         "status": "pass",
         "exit": 0,
-        "seconds": 0,
+        "seconds": 1,
         "tail": "1..1\nok 1 R8: balanced autonomy, background QA: no Stop-hook errors, stopped at accept"
       },
       "C9": {
         "status": "pass",
         "exit": 0,
-        "seconds": 8,
+        "seconds": 7,
         "tail": "1..5\nok 1 blocking an approved plan keeps the approval and proceeds without re-approval\nok 2 resetting a blocked plan keeps the approval and the approved hash\nok 3 a plan's note does not change the contract hash\nok 4 changing a plan definition still withdraws the approval\nok 5 changing a check or a requirement still withdraws the approval"
       },
       "C10": {
@@ -2926,7 +2926,7 @@
       "C18": {
         "status": "pass",
         "exit": 0,
-        "seconds": 8,
+        "seconds": 7,
         "tail": "1..7\nok 1 the committed results are complete\nok 2 selftest: a complete set passes\nok 3 selftest: a missing run fails\nok 4 selftest: a missing field fails\nok 5 selftest: a duplicate run fails\nok 6 selftest: a result whose level does not match its arm fails\nok 7 selftest: a result without user_inputs fails"
       },
       "C19": {
@@ -2938,13 +2938,13 @@
       "C20": {
         "status": "pass",
         "exit": 0,
-        "seconds": 14,
+        "seconds": 12,
         "tail": "1..10\nok 1 control: a phase with no risk signals is express\nok 2 a risk path (sign-in, payments, data migration, secrets, deletion, CI) puts a phase at deep\nok 3 a risk named by a requirement counts, not only a path\nok 4 many requirements raise the floor: 2 express, 3 standard, 6 deep\nok 5 many planned files and a large size raise the floor\nok 6 touching files that proven requirements depend on is at least standard\nok 7 changing existing files with no project test command is at least standard\nok 8 the kernel refuses an Architect tier below the risk floor, and changes nothing\nok 9 the kernel accepts an Architect tier above the floor, and says so in the reasons\nok 10 an Architect tier that is not a tier is refused with the allowed list"
       },
       "C21": {
         "status": "pass",
         "exit": 0,
-        "seconds": 9,
+        "seconds": 8,
         "tail": "1..7\nok 1 with no setting the mode is auto, and the config listing says so\nok 2 vbw config rigor sets each of auto, express, standard and deep\nok 3 an invalid mode is refused with the allowed list and the setting stays\nok 4 a forced mode overrides the computed tier when planning, up or down\nok 5 changing the mode re-tiers phases whose work has not started, and auto computes again\nok 6 a phase whose work has started keeps its tier when the mode changes\nok 7 changing the mode never makes the approved contract need approving again"
       },
       "C22": {
@@ -2956,25 +2956,25 @@
       "C23": {
         "status": "pass",
         "exit": 0,
-        "seconds": 16,
+        "seconds": 13,
         "tail": "1..9\nok 1 an express phase shows its requirement, check and plan together on one line\nok 2 a standard phase keeps the separate requirement, check and plan listing\nok 3 one approval records the requirement, check and plan of an express phase\nok 4 an express phase has exactly one plan; a higher tier may have several\nok 5 an express phase is built by one Dev\nok 6 an express phase with only [auto] requirements is not sent to QA once proven\nok 7 an express phase with a [human] requirement runs QA, at the express QA tier\nok 8 an express phase that has escalated runs QA\nok 9 a standard phase still goes to QA after its proof, as before"
       },
       "C24": {
         "status": "pass",
         "exit": 0,
-        "seconds": 27,
+        "seconds": 23,
         "tail": "1..12\nok 1 a Dev block raises the tier and records the reason\nok 2 a standard phase is raised to deep, and a deep phase records the event and stays deep\nok 3 a fix that needs a second round raises the tier, a first failure does not\nok 4 QA finding a problem in an express phase raises it; in a standard phase it does not\nok 5 QA failing a phase a second time raises the tier\nok 6 a commit that touches a risk path raises the phase to deep\nok 7 a commit that grows well beyond its plan raises the tier one step; a small commit does not\nok 8 a proven requirement that fails raises the tier\nok 9 vbw tier raise raises, records the reason, and refuses to lower or repeat\nok 10 nothing lowers a raised tier: planning again and changing the mode keep it\nok 11 after a raise, the later steps use the raised tier's agents, QA tier and models\nok 12 vbw show phase shows the tier, the reason it was raised and the tier it started at"
       },
       "C25": {
         "status": "pass",
         "exit": 0,
-        "seconds": 17,
+        "seconds": 16,
         "tail": "1..8\nok 1 a proven express phase is finished with its predicted tier and outcome\nok 2 a standard phase is finished only once QA has passed it\nok 3 an express phase with a [human] requirement is finished once QA passed and the user accepted\nok 4 an escalated phase records that its prediction did not hold\nok 5 QA findings and fix rounds are counted\nok 6 the outcome of a finished phase is not rewritten by a later proof\nok 7 vbw show rigor says plainly when no phase is finished\nok 8 vbw show rigor reports how many finished phases held their predicted tier"
       },
       "C26": {
         "status": "pass",
         "exit": 0,
-        "seconds": 10,
+        "seconds": 9,
         "tail": "1..11\nok 1 the committed results are complete and every miss is stated\nok 2 the committed results cover both models and every case, with automatic rigor\nok 3 selftest: a complete set within twice plain's cost passes\nok 4 selftest: a missing cell fails\nok 5 selftest: a missing field, a wrong level or empty tiers fail\nok 6 selftest: a case above twice plain's cost fails unless the doc states the miss\nok 7 selftest: a failed case fails unless the doc states the miss\nok 8 selftest: only the highest round of a cell counts, and a rerun of a plain run supersedes the original\nok 9 selftest: tuning rounds are limited to two and each must be described\nok 10 selftest: --table prints a row per cell, with the cost ratio\nok 11 the doc quotes every adaptive table row and states the evidence level and what was not tested"
       }
     },
@@ -2982,8 +2982,8 @@
       "test": {
         "status": "pass",
         "exit": 0,
-        "seconds": 136,
-        "tail": "ok 505 statusline on sets it without asking, and keeps the user's own to restore\nok 506 the setting finds the newest installed VBW and renders it\nok 507 workflows on turns Dynamic workflows on, keeps every other setting, and never overrides a deliberate off\nok 508 started in a subfolder it shows the project; a VBW 1 project is pointed to the conversion\nok 509 a running step shows how long it has run and how many agents are working\nok 510 the team line follows the profile and per-role models; tokens and prompt cache are shown\nok 511 a replaced round-0 record with empty tiers does not fail the set\nok 512 a final record with empty tiers still fails\nok 513 the workflows and VBW 1's seven agents exist, and nothing else\nok 514 each workflow starts with a pure-literal meta naming itself after its file\nok 515 workflows never use what breaks resume or is unavailable (time, randomness, modules)\nok 516 every phase() title is declared in meta.phases\nok 517 every agentType names an agent this plugin ships\nok 518 agents have a name matching the file, a single-line description and a tool list\nok 519 agents stay within their size budget (about 1.5k tokens)\nok 520 agents only use vbw commands that exist\nok 521 agents that plan or judge the plan load the user's recorded decisions\nok 522 workflow scripts parse as JavaScript (when node is available)\nok 523 workflow schemas are objects whose required keys are all properties\nok 524 no workflow shares its name with a skill (/vbw:NAME would start the workflow)"
+        "seconds": 123,
+        "tail": "ok 509 statusline on sets it without asking, and keeps the user's own to restore\nok 510 the setting finds the newest installed VBW and renders it\nok 511 workflows on turns Dynamic workflows on, keeps every other setting, and never overrides a deliberate off\nok 512 started in a subfolder it shows the project; a VBW 1 project is pointed to the conversion\nok 513 a running step shows how long it has run and how many agents are working\nok 514 the team line follows the profile and per-role models; tokens and prompt cache are shown\nok 515 a replaced round-0 record with empty tiers does not fail the set\nok 516 a final record with empty tiers still fails\nok 517 the workflows and VBW 1's seven agents exist, and nothing else\nok 518 each workflow starts with a pure-literal meta naming itself after its file\nok 519 workflows never use what breaks resume or is unavailable (time, randomness, modules)\nok 520 every phase() title is declared in meta.phases\nok 521 every agentType names an agent this plugin ships\nok 522 agents have a name matching the file, a single-line description and a tool list\nok 523 agents stay within their size budget (about 1.5k tokens)\nok 524 agents only use vbw commands that exist\nok 525 agents that plan or judge the plan load the user's recorded decisions\nok 526 workflow scripts parse as JavaScript (when node is available)\nok 527 workflow schemas are objects whose required keys are all properties\nok 528 no workflow shares its name with a skill (/vbw:NAME would start the workflow)"
       }
     },
     "scope": [],
