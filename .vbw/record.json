@@ -1254,7 +1254,7 @@
         "P16.2",
         "P16.3"
       ],
-      "status": "planned",
+      "status": "done",
       "role": "docs",
       "tasks": [
         "one section per case: VBW 2 and plain Claude Code pass rate, user inputs (median, range), cost and tokens for both models, from report.sh output; what the case tests in one sentence",
