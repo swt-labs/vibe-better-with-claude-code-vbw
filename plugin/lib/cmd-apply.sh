@@ -3,7 +3,13 @@
 # the current milestone's phases, plans and checks in a single validated update:
 #   {"phases": [{id, title, reqs, goal?, criteria?, tier?}],   (the Architect's)
 #    "plans":  [{id, phase, title, reqs, files, after, tasks?, role?}],   (the Lead's)
-#    "checks": [{id, req, run, files?, exit?, output?, timeout?}]}
+#    "checks": [{id, req, run, files?, exit?, output?, timeout?}],
+#    "rules":  [{req, text, check}]}   (optional, the Lead's: R31)
+# "rules" are the conditions, edges and error cases an [auto] requirement
+# states, each with the check that tests it. When present, apply refuses a rule
+# whose check is not in the plan or belongs to another requirement, a rule for a
+# [human] requirement, and any unproven [auto] requirement of the plan's phases
+# that lists no rules (earlier rules count). Without the key nothing changes.
 # The phases and plans are the current milestone's; "checks" are the checks of
 # its requirements. Earlier milestones' phases, plans and checks are kept (their
 # checks keep guarding shipped work). Re-planning mid-milestone is allowed: a
@@ -25,8 +31,9 @@ cmd_apply() {
   local doc record problem hypo tiers one
   doc=$(cat)
   printf '%s' "$doc" | jq -e 'type == "object"' > /dev/null 2>&1 || vbw_die "apply needs a JSON object on stdin"
-  printf '%s' "$doc" | jq -e '(keys - ["phases", "plans", "checks"]) == [] and all(.phases, .plans, .checks; type == "array")' \
-    > /dev/null || vbw_die "apply needs exactly phases, plans and checks, each an array"
+  printf '%s' "$doc" | jq -e '(keys - ["phases", "plans", "checks", "rules"]) == [] and all(.phases, .plans, .checks; type == "array")
+      and ((has("rules") | not) or (.rules | type == "array" and all(.[]; type == "object" and (keys - ["req", "text", "check"]) == [] and (.text | type == "string" and length > 0))))' \
+    > /dev/null || vbw_die "apply needs phases, plans and checks, each an array, and optionally rules: [{req, text, check}]"
   problem=$(printf '%s' "$doc" | jq -r '[
       (.phases[] | . as $o | keys[] | select(IN("id", "title", "reqs", "goal", "criteria", "tier") | not) | "\($o.id // "a phase") has an unknown field: \(.)"),
       (.plans[] | . as $o | keys[] | select(IN("id", "phase", "title", "reqs", "files", "after", "tasks", "role") | not) | "\($o.id // "a plan") has an unknown field: \(.)")
@@ -44,6 +51,18 @@ cmd_apply() {
         | ([$d.plans[] | select(.id == $old.id)][0]) as $new
         | select($new == null or ($new | {phase, reqs, files, after: (.after // [])}) != ($old | {phase, reqs, files, after}))
         | "\($old.id) is \($old.status): a plan that has started must stay as it is (same phase, requirements, files and order)"]
+    | .[0] // empty')
+  [ -z "$problem" ] || vbw_die "refused: $problem"
+  problem=$(printf '%s' "$record" | jq -r --argjson d "$doc" 'select($d | has("rules"))
+    | . as $r | $d.rules as $rules
+    | [($rules[] | . as $x | select(any($r.requirements[]; .id == $x.req and .proof == "human"))
+        | "the rule \"\($x.text)\" is for \($x.req), a [human] requirement: only [auto] requirements list rules"),
+       ($rules[] | . as $x | select(any($d.checks[]; .id == $x.check and .req == $x.req) | not)
+        | "the rule \"\($x.text)\" names \($x.check), which is not a check of \($x.req) in this plan"),
+       ($r.requirements[] | . as $q | select(.proof == "auto" and .status != "proven"
+          and any($d.phases[].reqs[]; . == $q.id)
+          and ((($rules | any(.req == $q.id)) or ((.rules // []) | length > 0)) | not))
+        | "\(.id) lists no rules: list each condition, edge and error case its text states, with the check that tests it (rules)")]
     | .[0] // empty')
   [ -z "$problem" ] || vbw_die "refused: $problem"
   hypo=$(printf '%s' "$record" | jq -c --argjson d "$doc" '.milestone.id as $m
@@ -90,7 +109,10 @@ cmd_apply() {
     | .plans = [(.plans[] | select(.phase as $p | any($mine[]; . == $p) | not)),
                 ($d.plans[] | {id, phase, title, reqs, files, after: (.after // []), status: ($status[.id] // "planned")}
                   + (with_entries(select(.key | IN("tasks", "role")))))]
-    | .checks = [(.checks[] | select(.req as $q | any($myreqs[]; . == $q) | not)), $d.checks[]]' --argjson d "$doc" --argjson tiers "$tiers" --arg mode "$(printf '%s' "$record" | jq -r '.settings.rigor // "auto"')"
+    | .checks = [(.checks[] | select(.req as $q | any($myreqs[]; . == $q) | not)), $d.checks[]]
+    | if $d | has("rules") then .requirements |= map(. as $q
+        | if any($d.rules[]; .req == $q.id) then .rules = [$d.rules[] | select(.req == $q.id) | {text, check}] else . end)
+      else . end' --argjson d "$doc" --argjson tiers "$tiers" --arg mode "$(printf '%s' "$record" | jq -r '.settings.rigor // "auto"')"
   jq -r '.milestone.id as $m | ([.phases[] | select(.milestone == $m) | .id]) as $mine
     | "applied \($mine | length) phases, \([.plans[] | select(.phase as $p | any($mine[]; . == $p))] | length) plans, \(.checks | length) checks in all"' "$VBW_RECORD"
 }
