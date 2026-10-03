@@ -123,3 +123,31 @@ track_code() { # commit an existing source file
   rigor_apply "$doc" > /dev/null
   phase_json '.phases[0].tier == "express" and (.plans | length) == 1 and (.checks | length) >= 1'
 }
+
+# Tuning round 1 (P22.3): the benchmark showed requests split into two
+# requirements, a "check" project command, and a migration guide (a document)
+# each pushing a single small task above express.
+
+@test "two [auto] risk-free requirements are express before planning, as at apply" {
+  rigor_project 2
+  [ "$(early_tier)" = express ]
+  rigor_apply "$(rigor_doc 2 "" src/note.txt)" > /dev/null
+  phase_json '.phases[0].tier == "express"'
+}
+
+@test "a project check command counts as the project's tests" {
+  rigor_project 1
+  track_code
+  edit_record '.commands.check = ["./check.sh"]'
+  [ "$(early_tier)" = express ]
+  rigor_apply "$(rigor_doc 1 "" src/app.js)" > /dev/null
+  phase_json '.phases[0].tier == "express" and any(.phases[0].reasons[]; . == "tests: project test command")'
+}
+
+@test "a document is never a risk path, however it is named" {
+  rigor_project 1
+  rigor_apply "$(rigor_doc 1 "" MIGRATION.md docs/secrets-policy.txt)" > /dev/null
+  phase_json '.phases[0].tier == "express" and any(.phases[0].reasons[]; . == "risk: none")'
+  rigor_apply "$(rigor_doc 1 "" db/migrations/001.sql)" > /dev/null
+  phase_json '.phases[0].tier == "deep"'
+}
