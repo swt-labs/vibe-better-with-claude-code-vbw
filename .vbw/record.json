@@ -896,7 +896,7 @@
       "tier": "deep",
       "reasons": [
         "requirements: 3",
-        "files: 19 (122515 bytes)",
+        "files: 19 (123304 bytes)",
         "risk: sign-in (R23), payments (R23), data migration (R23), secrets (R23), deletion (R23), CI (R23)",
         "breaks: R1, R2, R3, R13, R14, R24, R26",
         "tests: project test command"
@@ -922,7 +922,7 @@
       "tier": "deep",
       "reasons": [
         "requirements: 2",
-        "files: 16 (94188 bytes)",
+        "files: 16 (93519 bytes)",
         "risk: none",
         "breaks: R12, R13, R14, R22, R23, R27",
         "tests: project test command"
@@ -948,7 +948,7 @@
       "tier": "deep",
       "reasons": [
         "requirements: 2",
-        "files: 23 (106727 bytes)",
+        "files: 23 (112198 bytes)",
         "risk: none",
         "breaks: R1, R2, R3, R11, R12, R13, R14, R22, R23, R24, R26, R27",
         "tests: project test command"
@@ -980,7 +980,7 @@
       "tier": "deep",
       "reasons": [
         "requirements: 1",
-        "files: 7 (53262 bytes)",
+        "files: 8 (53779 bytes)",
         "risk: none",
         "breaks: R17, R18, R22, R23, R24, R26",
         "tests: project test command"
@@ -1910,26 +1910,28 @@
         "R28"
       ],
       "files": [
-        "plugin/lib/rigor.jq",
+        "plugin/lib/rigor-defs.jq",
         "plugin/lib/prove.jq",
         "plugin/lib/cmd-qa.sh",
         "plugin/lib/cmd-req.sh",
-        "plugin/lib/cmd-show.sh"
+        "plugin/lib/cmd-show.sh",
+        "plugin/lib/record.jq",
+        "plugin/lib/cmd-apply.sh"
       ],
       "after": [
         "P21.2",
         "P21.5",
         "P21.6"
       ],
-      "status": "blocked",
+      "status": "planned",
       "tasks": [
-        "rigor.jq: a finished definition (plans done, requirements proven or accepted, no open or escalated fix on them, QA passed on the proven code when needs-QA) and a finish definition that writes outcome {tier, predicted, held, fix_rounds (sum of attempts + 1 over the phase's requirements' fixes), qa_findings (their qa-source fixes), escalations (count)} once, never rewriting an existing outcome",
+        "rigor-defs.jq (the shared record-update definitions): a finished definition (plans done, requirements proven or accepted, no open or escalated fix on them, QA passed on the proven code when needs-QA) and a finish definition that writes outcome {tier, predicted, held, fix_rounds (sum of attempts + 1 over the phase's requirements' fixes), qa_findings (their qa-source fixes), escalations (count)} once, never rewriting an existing outcome",
         "call finish after vbw prove, vbw qa record and vbw req accept (prove.jq, cmd-qa.sh, cmd-req.sh)",
         "cmd-show.sh: new view 'vbw show rigor' listing every phase's tier, predicted tier and reasons, then 'prediction held for N of M finished phases (P%)' or 'no finished phases yet'; vbw show phase also prints each escalation (from, to, reason)",
-        "keep the kernel inside its 3,000-line budget"
+        "keep the kernel inside its 3,000-line budget",
+        "D35: the outcome and the phase carry no cost; remove cost_usd from record.jq validation and from what cmd-apply.sh preserves"
       ],
-      "role": "dev",
-      "note": "Task 1 puts the finish definition in plugin/lib/rigor.jq, but since P21.2 (778c0c61) rigor.jq is only the assessment program (it needs $facts/$ids) and every definition shared by record updates lives in plugin/lib/rigor-defs.jq, which is loaded into VBW_JQ_DEFS. prove.jq, cmd-qa.sh and cmd-req.sh can only share one finish definition through rigor-defs.jq, which is not in P21.3's file list. Re-plan with plugin/lib/rigor-defs.jq added (and rigor.jq dropped). Schema (record.jq outcome/predicted) and the red checks C24/C25 are already in place."
+      "role": "dev"
     },
     {
       "id": "P21.4",
@@ -2011,6 +2013,7 @@
       "files": [
         "tools/baseline/results/adaptive/",
         "plugin/lib/rigor.jq",
+        "plugin/lib/rigor-defs.jq",
         "plugin/lib/tiers.json"
       ],
       "after": [
