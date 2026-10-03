@@ -2444,7 +2444,7 @@
       "req": "R29",
       "source": "qa",
       "attempts": 0,
-      "status": "open",
+      "status": "fixed",
       "note": "P22.3 task 3 says if cells still miss, run Round 2 the same way. All 14 cells missed the 2x target after round 1 (2.06x to 9.14x), yet no Round 2 ran (tuning.md; docs/benchmark.md Not tested: 'no further change was tried'). The criterion allows up to 2 tuning rounds before shipping the miss; skipping the second is a deviation from the plan. Cells at 4.4x-9.1x (brownfield-feature deep, safety-secret opus deep) had untried levers (tier table in plugin/lib/tiers.json, listed in the plan files)."
     },
     {
@@ -2452,7 +2452,7 @@
       "req": "R29",
       "source": "qa",
       "attempts": 0,
-      "status": "open",
+      "status": "fixed",
       "note": "Work outside P22's planned files, without a plan change: round-1 commits ae14ca86 and bcd949b8 (bench.sh driver), 89343d52 and a2041cb8 (plugin/skills/vibe/SKILL.md, tests/skills.bats), 6d5ecf36/5d5b77a5 (tests/rigor-early.bats), bbee136a (tools/baseline/verify-adaptive.sh, tests/verify-adaptive.bats, after P22.4 blocked). P22.3 lists only results/, rigor.jq, rigor-defs.jq, tiers.json. Declared in tuning.md but not in the plan; round-1 results mix the threshold change with router and driver fixes."
     },
     {
@@ -2460,7 +2460,7 @@
       "req": "R23",
       "source": "qa",
       "attempts": 0,
-      "status": "open",
+      "status": "fixed",
       "note": "P19.2 says on planning again a phase 'never records a tier lower than the one it has'; plugin/lib/cmd-apply.sh only enforces that for a locked phase (started plans or escalations): $locked and $o.tier > $want. An existing unstarted phase (e.g. Architect-raised deep) is re-recorded at the recomputed lower tier when re-planned without the proposal. No recorded decision (D37-D40) covers this and no test pins it. Either lock all existing phases or record a decision."
     },
     {
@@ -2468,7 +2468,7 @@
       "req": "R24",
       "source": "qa",
       "attempts": 0,
-      "status": "open",
+      "status": "fixed",
       "note": "P20.1 task 3 says the 'needs QA' definition is shared in rigor.jq (rigor.jq is in the plan's files). Commit b5dd7db5 did not touch rigor.jq; the definition is written inline in plugin/lib/next.jq (the $to_verify select using $rigor, escalations and human reqs), so it is not a shared definition. Move it to a named definition in rigor.jq/rigor-defs.jq, or record a decision that changes the plan."
     }
   ],
@@ -2798,6 +2798,24 @@
       "id": "D48",
       "at": "2026-10-03T15:04:34Z",
       "text": "Contract approved: 27 requirements, 24 checks, 51 plans (c0966e5c6225)"
+    },
+    {
+      "id": "D49",
+      "text": "F14: re-planning re-tiers an unstarted phase from its signals (and the Architect's proposed tier); only a phase with started plans or escalations keeps a tier that is never lowered. P19.2's 'never lower' text is superseded",
+      "why": "Approved check C20 (tests/rigor-floor.bats) requires an unstarted phase to be re-tiered on re-planning; a phase nobody has worked on has no history to protect, and the proposed field (D38) keeps an Architect raise",
+      "at": "2026-10-03T17:20:37Z"
+    },
+    {
+      "id": "D50",
+      "text": "F12: tuning stops after round 1; round 2 is not run and the R29 misses are stated (D33 allows at most two rounds, not exactly two)",
+      "why": "The one rule change the results pointed to breaks approved check C20; the other lever (the tier table) would cut QA or models exactly where the floor found risk, which trades the rigor M4 exists to keep for a benchmark number",
+      "at": "2026-10-03T17:20:37Z"
+    },
+    {
+      "id": "D51",
+      "text": "F13: the out-of-plan commits ae14ca86, bcd949b8, 89343d52, a2041cb8, 6d5ecf36, 5d5b77a5 and bbee136a stand: each fixes a defect in work an approved plan delivered (benchmark driver, router, verifier) with a red-first test, inside that plan's stated goal",
+      "why": "Re-planning for each defect would have cost an owner approval per fix; each is listed in tuning.md or the progress log, and round 1's results include them, as tuning.md says",
+      "at": "2026-10-03T17:20:37Z"
     }
   ],
   "commands": {
