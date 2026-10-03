@@ -676,7 +676,14 @@
         "Image references point to planned file names in assets/ (D20) and a test lists each referenced file",
         "Install steps match the marketplace source and plugin name",
         "The owner reads it and accepts it once the images are supplied (human requirement; acceptance waits for the images per D20)"
-      ]
+      ],
+      "qa": {
+        "result": "pass",
+        "tier": "standard",
+        "tree": "15b6f0c4b7e824624ae9ca8ffc168cc838052dfc",
+        "at": "2026-10-03T02:00:09Z",
+        "note": "10/10 checks"
+      }
     }
   ],
   "plans": [
@@ -1636,5 +1643,11 @@
     "scope": [],
     "passed": true
   },
-  "lease": null
+  "lease": {
+    "run": "qa-20261003T015948Z",
+    "kind": "qa",
+    "started_at": "2026-10-03T01:59:48Z",
+    "files": [],
+    "session": "9cd2cc30-8c86-4520-9d71-a0e82aff5407"
+  }
 }
