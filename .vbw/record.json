@@ -1600,7 +1600,7 @@
         "plugin/lib/record.sh"
       ],
       "after": [],
-      "status": "planned",
+      "status": "done",
       "tasks": [
         "record.jq: optional phase fields tier (express|standard|deep), reasons (array of strings), predicted (tier), cost_usd (number), escalations ([{at ISO time, from tier, to tier, reason non-empty}]) and outcome ({tier, predicted, held boolean, fix_rounds, qa_findings, escalations integers >= 0, cost_usd number or null}); optional settings.rigor (auto|express|standard|deep); phases without them stay valid",
         "rigor.jq: the tier order, the risk categories (sign-in, payments, data migration, secrets, deletion, CI) matched case-insensitively against planned file paths, the phase title and goal and its requirements' text, and the floor rules: requirements 3 standard and 6 deep; planned files 5 standard and 10 deep; size of existing planned files 100000 bytes standard and 500000 deep; any risk deep; proven requirements (any milestone) whose plans' files overlap the phase's planned files 1 standard and 4 deep; an existing regular file planned with no project test command standard (directory entries do not count as existing files)",
@@ -1907,7 +1907,7 @@
         "tools/baseline/README.md"
       ],
       "after": [],
-      "status": "planned",
+      "status": "done",
       "tasks": [
         "bench.sh: a vbw2 record gains rigor (the workspace's settings.rigor, auto when unset), round (BENCH_ROUND, default 0) and tiers (the phases' tiers read from the workspace record)",
         "verify-adaptive.sh [--table] [ADAPTIVE_DIR [PLAIN_DIR [DOC]]] as tests/adaptive-results.bats specifies: all 14 cells present and valid, the highest round of a cell is final, plain cost is the mean of the latest rerun of each plain run, a miss (failed case or cost above 2x) needs a 'Miss: CASE MODEL' line in the doc, at most 2 tuning rounds each described in tuning.md, --table rows",
@@ -1997,14 +1997,15 @@
         "tests/baseline-projects.bats"
       ],
       "after": [],
-      "status": "planned",
+      "status": "blocked",
       "tasks": [
         "protected-feature: an existing codebase with tests for earlier requirements, and a request for a new feature in several requirements; its check also re-runs the earlier requirements' tests",
         "data-migration: a small data store (files or SQLite) and a request to migrate it to a new shape without losing rows; its check inspects the migrated data",
         "non-ui-pipeline: a command-line data tool needing several requirements implemented; its check runs it on fixed inputs",
         "each project has request.txt, case.meta, check.sh and solution.sh in tools/baseline/projects/NAME and a fixture.sh in tools/baseline/fixtures/NAME; tests/baseline-projects.bats proves each check fails on the untouched fixture and passes after solution.sh"
       ],
-      "role": "dev"
+      "role": "dev",
+      "note": "Cannot write the plan's directory entries (tools/baseline/projects/, tools/baseline/fixtures/NAME/): this session's guard (older plugin copy, before commit a9440290 'a plan entry ending in / covers its directory') denies every file under a directory entry as outside the run's files, via Write and Bash redirects. The tree's plugin/hooks/common.jq covers them correctly (verified with jq). Only tests/baseline-projects.bats was written (uncommitted); empty dirs were created. Reload the plugin from the current tree and re-run P23.1; I did not bypass the guard."
     },
     {
       "id": "P23.2",
