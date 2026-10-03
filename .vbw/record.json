@@ -1807,7 +1807,7 @@
         "P20.2",
         "P20.3"
       ],
-      "status": "planned",
+      "status": "done",
       "tasks": [
         "rigor.jq: an escalate definition used inside record updates: it appends {at, from, to, reason} to the phase's escalations and sets the tier to the target (default one step up, deep stays deep and still records the event); an identical reason already recorded is not recorded twice; a lower target is never applied",
         "cmd-tier.sh: 'vbw tier raise PHASE TIER REASON' raises to a higher tier and records the reason; it refuses a lower or equal tier ('a tier is never lowered during a run'), an unknown tier or phase",
