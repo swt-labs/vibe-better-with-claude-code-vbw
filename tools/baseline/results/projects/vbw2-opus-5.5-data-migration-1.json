@@ -1,0 +1,20 @@
+{
+  "arm": "vbw2",
+  "model": "opus-5.5",
+  "case": "data-migration",
+  "run": 1,
+  "pass": true,
+  "tokens": 2212572,
+  "cost_usd": 1.58,
+  "user_inputs": 2,
+  "level": "L3",
+  "fixture": "data-migration",
+  "date": "2026-10-03",
+  "vbw_engaged": true,
+  "rigor": "auto",
+  "round": 0,
+  "tiers": [
+    "deep",
+    "deep"
+  ]
+}

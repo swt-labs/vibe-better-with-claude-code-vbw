@@ -1,0 +1,13 @@
+{
+  "arm": "plain",
+  "model": "sonnet-5.5",
+  "case": "protected-feature",
+  "run": 1,
+  "pass": true,
+  "tokens": 419192,
+  "cost_usd": 0.2372,
+  "user_inputs": 0,
+  "level": "L3",
+  "fixture": "protected-feature",
+  "date": "2026-10-03"
+}

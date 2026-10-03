@@ -1,0 +1,13 @@
+{
+  "arm": "plain",
+  "model": "sonnet-5.5",
+  "case": "non-ui-pipeline",
+  "run": 1,
+  "pass": true,
+  "tokens": 152459,
+  "cost_usd": 0.1609,
+  "user_inputs": 0,
+  "level": "L3",
+  "fixture": "non-ui-pipeline",
+  "date": "2026-10-03"
+}

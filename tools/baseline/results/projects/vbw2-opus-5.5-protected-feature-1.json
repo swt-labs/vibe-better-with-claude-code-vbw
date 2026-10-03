@@ -1,0 +1,20 @@
+{
+  "arm": "vbw2",
+  "model": "opus-5.5",
+  "case": "protected-feature",
+  "run": 1,
+  "pass": true,
+  "tokens": 3512596,
+  "cost_usd": 2.29,
+  "user_inputs": 4,
+  "level": "L3",
+  "fixture": "protected-feature",
+  "date": "2026-10-03",
+  "vbw_engaged": true,
+  "rigor": "auto",
+  "round": 0,
+  "tiers": [
+    "express",
+    "deep"
+  ]
+}

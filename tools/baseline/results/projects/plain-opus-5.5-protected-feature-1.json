@@ -1,0 +1,13 @@
+{
+  "arm": "plain",
+  "model": "opus-5.5",
+  "case": "protected-feature",
+  "run": 1,
+  "pass": true,
+  "tokens": 264602,
+  "cost_usd": 0.3724,
+  "user_inputs": 0,
+  "level": "L3",
+  "fixture": "protected-feature",
+  "date": "2026-10-03"
+}

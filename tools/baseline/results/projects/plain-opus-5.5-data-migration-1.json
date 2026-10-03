@@ -1,0 +1,13 @@
+{
+  "arm": "plain",
+  "model": "opus-5.5",
+  "case": "data-migration",
+  "run": 1,
+  "pass": true,
+  "tokens": 205300,
+  "cost_usd": 0.3116,
+  "user_inputs": 0,
+  "level": "L3",
+  "fixture": "data-migration",
+  "date": "2026-10-03"
+}

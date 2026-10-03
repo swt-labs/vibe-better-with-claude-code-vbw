@@ -1,0 +1,20 @@
+{
+  "arm": "vbw2",
+  "model": "sonnet-5.5",
+  "case": "non-ui-pipeline",
+  "run": 1,
+  "pass": false,
+  "tokens": 1997855,
+  "cost_usd": 1.10,
+  "user_inputs": 1,
+  "level": "L3",
+  "fixture": "non-ui-pipeline",
+  "date": "2026-10-03",
+  "vbw_engaged": true,
+  "rigor": "auto",
+  "round": 0,
+  "tiers": [
+    "deep",
+    "deep"
+  ]
+}
