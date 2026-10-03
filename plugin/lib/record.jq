@@ -15,6 +15,8 @@ def results: type == "object" and all(.[];
   and (.tail | type == "string"));
 def ids: [.[]?.id];
 def has_id($x): any(.[]?; .id == $x);
+def tier: one_of(["express","standard","deep"]);
+def count: type == "number" and . == floor and . >= 0;
 
 # Plan ids reachable from $n through "after" edges ($g: id -> [ids]).
 def reachable($g; $n):
@@ -92,7 +94,20 @@ if type != "object" then ["record must be a JSON object"] else
         ( select(has("timeout") and ((.timeout | int_in(1; 3600)) | not)) | "\(.id) timeout must be 1-3600 seconds" ) ),
 
     ( $phases[]
-      | field_rule(["id","title","reqs","milestone","goal","criteria","qa"]),
+      | field_rule(["id","title","reqs","milestone","goal","criteria","qa","tier","reasons","predicted","cost_usd","escalations","outcome"]),
+        ( select(has("tier") and ((.tier | tier) | not)) | "\(.id) tier must be express, standard or deep" ),
+        ( select(has("predicted") and ((.predicted | tier) | not)) | "\(.id) predicted must be express, standard or deep" ),
+        ( select(has("reasons") and ((.reasons | type == "array" and all(.[]; type == "string")) | not)) | "\(.id) reasons must be an array of strings" ),
+        ( select(has("cost_usd") and ((.cost_usd | type == "number") | not)) | "\(.id) cost_usd must be a number" ),
+        ( select(has("escalations") and ((.escalations | type == "array" and all(.[];
+              type == "object" and (keys - ["at","from","to","reason"] == []) and (.at | iso)
+              and (.from | tier) and (.to | tier) and (.reason | nonempty))) | not))
+          | "\(.id) escalations must be [{at, from: tier, to: tier, reason}]" ),
+        ( select(has("outcome") and ((.outcome | type == "object" and (keys - ["tier","predicted","held","fix_rounds","qa_findings","escalations","cost_usd"] == [])
+              and (.tier | tier) and (.predicted | tier) and (.held | type == "boolean")
+              and (.fix_rounds | count) and (.qa_findings | count) and (.escalations | count)
+              and ((has("cost_usd") | not) or (.cost_usd == null or (.cost_usd | type == "number")))) | not))
+          | "\(.id) outcome must be {tier, predicted, held: boolean, fix_rounds, qa_findings, escalations, cost_usd: number or null}" ),
         ( select(has("goal") and ((.goal | nonempty) | not)) | "\(.id) goal must be a non-empty string" ),
         ( select(has("criteria") and ((.criteria | type == "array") and all(.criteria[]; nonempty) | not)) | "\(.id) criteria must be an array of non-empty strings" ),
         ( select(has("qa")) | .qa as $q
@@ -156,7 +171,8 @@ if type != "object" then ["record must be a JSON object"] else
           ( select((.profile | one_of(["quality","balanced","budget"])) | not) | "settings.profile must be quality, balanced or budget" ),
           ( select((.autonomy_cap | int_in(1; 500)) | not) | "settings.autonomy_cap must be an integer 1-500" ),
           ( select(has("autonomy") and (.autonomy | one_of(["guided","balanced","hands-off"]) | not)) | "settings.autonomy must be guided, balanced or hands-off" ),
-          ( keys[] | select(one_of(["profile","autonomy","autonomy_cap","models"]) | not) | "settings has an unknown key: \(.)" ),
+          ( select(has("rigor") and (.rigor | one_of(["auto","express","standard","deep"]) | not)) | "settings.rigor must be auto, express, standard or deep" ),
+          ( keys[] | select(one_of(["profile","autonomy","autonomy_cap","models","rigor"]) | not) | "settings has an unknown key: \(.)" ),
           ( select(has("models")) | .models
             | if type != "object" then "settings.models must be an object" else
                 to_entries[] | select((.key | one_of(["architect","lead","dev","qa","scout","debugger","docs","planner","critic","builder"])) and (.value | nonempty) | not)
