@@ -1,0 +1,19 @@
+{
+  "arm": "vbw2",
+  "model": "sonnet-5.5",
+  "case": "failing-check-fix",
+  "run": 1,
+  "pass": true,
+  "tokens": 726045,
+  "cost_usd": 0.3495,
+  "user_inputs": 1,
+  "level": "L3",
+  "fixture": "failing-check-fix",
+  "date": "2026-10-03",
+  "vbw_engaged": true,
+  "rigor": "auto",
+  "round": 1,
+  "tiers": [
+    "express"
+  ]
+}
