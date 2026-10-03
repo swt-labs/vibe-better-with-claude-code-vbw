@@ -969,7 +969,22 @@
           "to": "deep",
           "reason": "Dev blocked P21.3: Task 1 puts the finish definition in plugin/lib/rigor.jq, but since P21.2 (778c0c61) rigor.jq is only the assessment program (it needs $facts/$ids) and every definition shared by record updates lives in plugin/lib/rigor-defs.jq, which is loaded into VBW_JQ_DEFS. prove.jq, cmd-qa.sh and cmd-req.sh can only share one finish definition through rigor-defs.jq, which is not in P21.3's file list. Re-plan with plugin/lib/rigor-defs.jq added (and rigor.jq dropped). Schema (record.jq outcome/predicted) and the red checks C24/C25 are already in place."
         }
-      ]
+      ],
+      "qa": {
+        "result": "pass",
+        "tier": "deep",
+        "tree": "6ae81c88769d77f76fa53f63f931a4d087364f50",
+        "at": "2026-10-03T17:17:53Z",
+        "note": "24/24 checks"
+      },
+      "outcome": {
+        "tier": "deep",
+        "predicted": "deep",
+        "held": true,
+        "fix_rounds": 0,
+        "qa_findings": 0,
+        "escalations": 1
+      }
     },
     {
       "id": "P22",
