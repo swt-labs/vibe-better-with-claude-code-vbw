@@ -614,11 +614,12 @@
         "bash tools/test.sh passes under /bin/bash 3.2 and bash 5"
       ],
       "qa": {
-        "result": "pass",
+        "result": "fail",
         "tier": "standard",
-        "tree": "9d9bcd0e817a0c71a3579c8900dbd31e936a56be",
-        "at": "2026-10-03T02:08:56Z",
-        "note": "19/19 checks"
+        "tree": "92c012183f644ed517c42bb9db01165f83b13f8f",
+        "at": "2026-10-03T02:24:13Z",
+        "note": "17/19 checks",
+        "rounds": 1
       }
     },
     {
@@ -1397,6 +1398,14 @@
       "attempts": 0,
       "status": "closed",
       "note": "docs/benchmark.md (VBW 1 section and Not measured) says VBW 1 pass was not recorded and shows cost only, but tools/baseline/results/2026-09-30-fix-oneshot-sonnet.jsonl records check_passed:true for all 3 plain and all 3 vbw runs (jq '.check_passed'). The doc understates the recorded data and the claim 'nothing here is a pass rate' is false; tools/baseline/report.sh also omits pass for VBW 1. Show 3/3 inferred pass (as recorded) and fix the wording, report.sh and test."
+    },
+    {
+      "id": "F8",
+      "req": "R21",
+      "source": "qa",
+      "attempts": 0,
+      "status": "open",
+      "note": "Test gap: commit 5e5a730d added a check that every backticked 'vbw NAME' is a command listed by plugin/bin/vbw help, but tests/contributor-files.bats has no selftest for it (last changed in fae5dd46); no test fails if that check is removed. Add a selftest where a file names `vbw nonesuch` and the check exits non-zero."
     }
   ],
   "todos": [
