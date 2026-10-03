@@ -1388,7 +1388,7 @@
       "req": "R21",
       "source": "qa",
       "attempts": 0,
-      "status": "open",
+      "status": "fixed",
       "note": "tools/check-contributor-files.sh checks only backticked paths under tools|plugin|tests|docs|.github|assets|scripts and /vbw:<skill> names. Plan task 1 and criterion 1 also require tool names to be extracted and verified, and it does not: AGENTS.md names `vbw next --json`, `vbw show`, `vbw status`, which the script never checks (a nonexistent vbw subcommand passes), and no selftest covers tool names."
     }
   ],
