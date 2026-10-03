@@ -32,7 +32,7 @@
 - R25 [auto] While a phase runs, VBW raises its tier on its own and records and shows why when a Dev blocks, a fix needs a second round, QA finds a problem in an express phase, the change touches a risk path or grows well beyond its plan, or a proven requirement fails; it never lowers a tier during a run
 - R26 [auto] Which agents run, how many, the QA tier and the models follow each phase's tier through the profile
 - R27 [auto] The tier is chosen automatically by default; the user can force it with vbw config rigor auto, express, standard or deep
-- R28 [auto] Each finished phase records its predicted tier and the outcome (fix rounds, QA findings, escalations, cost), and vbw show reports how often the prediction held
+- R28 [auto] Each finished phase records its predicted tier and the outcome (fix rounds, QA findings, escalations), and vbw show reports how often the prediction held; cost is measured per session by the benchmark
 - R29 [auto] On the seven single-task benchmark cases, VBW 2 with automatic rigor passes every case and costs at most twice what plain Claude Code costs, on Sonnet 5.5 and Opus 5.5
 - R30 [human] The benchmark adds at least three multi-requirement projects (a feature on an existing codebase with earlier requirements to protect, a data migration, and a third non-UI project of several requirements), each graded by a deterministic check, run with plain Claude Code and VBW 2, and docs/benchmark.md reports them plainly
 

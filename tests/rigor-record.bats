@@ -53,15 +53,14 @@ teardown() { vbw_teardown; }
   [[ "$line" == *"src/payments/charge.js"* ]]
 }
 
-@test "the record validator accepts tier, reasons, escalations, outcome and cost, and still accepts phases without them" {
+@test "the record validator accepts tier, reasons, escalations and outcome, and still accepts phases without them" {
   rigor_project 1
   rigor_apply "$(rigor_doc 1 "" src/note.txt)" > /dev/null
   edit_record '.phases[0].escalations = [{at: "2026-10-03T10:00:00Z", from: "express", to: "standard", reason: "Dev blocked P1.1: stuck"}]
-    | .phases[0].cost_usd = 0.5
-    | .phases[0].outcome = {tier: "standard", predicted: "express", held: false, fix_rounds: 1, qa_findings: 0, escalations: 1, cost_usd: null}'
+    | .phases[0].outcome = {tier: "standard", predicted: "express", held: false, fix_rounds: 1, qa_findings: 0, escalations: 1}'
   vbw_run status
   [ "$status" -eq 0 ]
-  edit_record '.phases[0] |= del(.tier, .reasons, .predicted, .escalations, .outcome, .cost_usd)'
+  edit_record '.phases[0] |= del(.tier, .reasons, .predicted, .escalations, .outcome)'
   vbw_run status
   [ "$status" -eq 0 ]
 }
@@ -80,7 +79,7 @@ teardown() { vbw_teardown; }
   vbw_run status
   [ "$status" -ne 0 ]
   cp "$TEST_ROOT/good.json" .vbw/record.json
-  edit_record '.phases[0].outcome = {tier: "standard", predicted: "express", held: "no", fix_rounds: 1, qa_findings: 0, escalations: 1, cost_usd: null}'
+  edit_record '.phases[0].outcome = {tier: "standard", predicted: "express", held: "no", fix_rounds: 1, qa_findings: 0, escalations: 1}'
   vbw_run status
   [ "$status" -ne 0 ]
 }

@@ -3,7 +3,7 @@
 # case and costs at most twice what plain Claude Code costs, on Sonnet 5.5 and
 # Opus 5.5. tools/baseline/results/adaptive/ holds the VBW 2 runs (one JSON
 # file per run: arm vbw2, rigor auto, model, case, run, round, pass, tokens,
-# cost_usd, user_inputs, level L2, fixture, tiers). Round 0 is the first run;
+# cost_usd, user_inputs, level L3, fixture, tiers). Round 0 is the first run;
 # rounds 1 and 2 are tuning rounds, described in tuning.md ("Round N: what
 # changed and its result"). The final state of a cell is its highest round.
 # A miss (a failed case or a cost above twice plain) must be stated in
@@ -40,7 +40,7 @@ adaptive_set() {
   local c m
   for c in $CASES; do for m in sonnet-5.5 opus-5.5; do
     jq -n --arg c "$c" --arg m "$m" --argjson cost "${2:-0.3}" \
-      '{arm:"vbw2",rigor:"auto",model:$m,case:$c,run:1,round:0,pass:true,tokens:500000,cost_usd:$cost,user_inputs:2,level:"L2",fixture:$c,tiers:["express"]}' \
+      '{arm:"vbw2",rigor:"auto",model:$m,case:$c,run:1,round:0,pass:true,tokens:500000,cost_usd:$cost,user_inputs:2,level:"L3",fixture:$c,tiers:["express"]}' \
       > "$1/vbw2-$m-$c-1.json"
   done; done
 }
@@ -81,7 +81,7 @@ verify() { bash "$VERIFY" "$PROJECT/adaptive" "$PROJECT/plain" "$PROJECT/doc.md"
   plain_set "$PROJECT/plain"
   : > "$PROJECT/doc.md"
   local f edit
-  for edit in 'del(.tokens)' '.level = "L3"' '.tiers = []' '.rigor = "deep"' '.tiers = ["huge"]'; do
+  for edit in 'del(.tokens)' '.level = "L2"' '.tiers = []' '.rigor = "deep"' '.tiers = ["huge"]'; do
     adaptive_set "$PROJECT/adaptive"
     f="$PROJECT/adaptive/vbw2-sonnet-5.5-fix-oneshot-1.json"
     jq "$edit" "$f" > "$f.n" && mv "$f.n" "$f"
@@ -170,6 +170,6 @@ verify() { bash "$VERIFY" "$PROJECT/adaptive" "$PROJECT/plain" "$PROJECT/doc.md"
   done < <(printf '%s\n' "$output" | grep '^| ')
   grep -Eq '^## Adaptive rigor' "$doc"
   sec=$(awk '/^## Adaptive rigor/{on=1;next} /^## /{on=0} on' "$doc")
-  [[ "$sec" == *L2* ]]
+  [[ "$sec" == *L2* && "$sec" == *L3* ]]
   [[ "$sec" == *"Not tested"* ]]
 }
