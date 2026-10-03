@@ -2550,7 +2550,7 @@
     {
       "id": "T9",
       "text": "NEXT after M4 (owner, 2026-10-03): write a very detailed report of the M4 sprint (adaptive rigor, benchmark method and results, every finding and fix)",
-      "status": "open"
+      "status": "done"
     },
     {
       "id": "T10",
@@ -2560,6 +2560,16 @@
     {
       "id": "T11",
       "text": "Idea (owner, 2026-10-03, brainstorm later): proactive suggestions matched to the user's level (from the first-run interview, T8). VBW regularly suggests what the user may not know: for a vibe coder, keep keys in .env and out of the repo, render on mobile, encrypt API calls; for a senior developer, e.g. SHA-1 chosen where SHA-256 fits, quantum resistance. Goal: steer toward better design and algorithm choices and away from bad ones; the user decides",
+      "status": "open"
+    },
+    {
+      "id": "T12",
+      "text": "Idea (owner, 2026-10-03): coordination between VBW sessions on one repo. (1) Planning awareness: a session's planning sees other sessions' open runs and their files (from the record) and plans around them. (2) Optional notices via Claude Code's peer-session messaging (ListAgents/SendMessage, seen working on this machine): when a run ends or a milestone ships, tell the other sessions on the same repo; degrade silently where unavailable",
+      "status": "open"
+    },
+    {
+      "id": "T13",
+      "text": "T12 note (owner, 2026-10-03): discuss with the owner before implementing; research first whether cross-session coordination is a good idea at all and what unwanted issues it could cause (sessions acting on each other's messages, noise, races, prompt injection between sessions, feature availability). No build until that discussion",
       "status": "open"
     }
   ],
