@@ -33,6 +33,7 @@ cmd_show() {
           (if $ph.criteria then "criteria:", ($ph.criteria[] | "  - " + .) else empty end),
           (if $ph.qa then "qa: \($ph.qa.result) (\($ph.qa.tier), \($ph.qa.at))\(if $ph.qa.note then ": " + $ph.qa.note else "" end)"
              + (if $ph.qa.tree != ($r.evidence.tree // "") then " [on older code]" else "" end) else empty end),
+          (if $ph.tier then "tier: \($ph.tier) (predicted \($ph.predicted // $ph.tier))", ($ph.reasons // [] | map("  - " + .)[]) else empty end),
           "requirements:",
           ($ph.reqs[] as $q | $r.requirements[] | select(.id == $q) | "  \(.id) [\(.proof), \(.status)] \(.text)"),
           "plans:",
@@ -69,6 +70,8 @@ cmd_show() {
         | "requirements:",
           (.requirements[] | . as $q | "  \(.id) [\(.proof)] \(.text)",
             ($r.checks[] | select(.req == $q.id) | "    \(.id) " + check_line)),
+          (([.phases[] | select(.milestone == $r.milestone.id and .tier)]) as $tp
+            | if ($tp | length) > 0 then "phases:", ($tp[] | "  \(.id) \(.tier): \(.reasons | join("; "))") else empty end),
           "plans:",
           (.plans[] | "  \(.id) \(.title): \(.files | join(", "))\(if (.after | length) > 0 then " (after \(.after | join(", ")))" else "" end)"),
           "project commands:",

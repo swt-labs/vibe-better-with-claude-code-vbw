@@ -109,3 +109,16 @@ teardown() { vbw_teardown; }
   [ "${lines[0]}" = "R1 [auto, proven] Pay (M1, built)" ]
   [ "${lines[1]}" = "R2 [human, open] Looks right (M1)" ]
 }
+
+@test "show phase and contract print a phase's tier and reasons, and nothing for a phase without one" {
+  vbw_run show phase P1
+  [[ "$output" != *"tier:"* ]]
+  vbw_run show contract
+  [[ "$output" != *"phases:"* ]]
+  jq '.phases[0] += {tier:"standard", predicted:"express", reasons:["requirements: 2","risk: none"]}' .vbw/record.json > "$TEST_ROOT/r.json" && cp "$TEST_ROOT/r.json" .vbw/record.json
+  vbw_run show phase P1
+  [[ "$output" == *"tier: standard (predicted express)"* ]]
+  [[ "$output" == *"  - risk: none"* ]]
+  vbw_run show contract
+  [[ "$output" == *"  P1 standard: requirements: 2; risk: none"* ]]
+}
