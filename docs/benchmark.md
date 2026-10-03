@@ -154,6 +154,7 @@ These rows are **inferred**. They come from the recorded fix-oneshot runs of 202
 
 - **VBW 1 on the other six cases**, and on Opus: no data, so no comparison. The VBW 1 rows above cover one case only.
 - **Larger projects and multi-requirement milestones.** VBW 2's approval step, regression guards and QA are meant to pay off there, by protecting earlier requirements while later ones are built and by catching what a short check cannot. These cases do not exercise that.
+- **Evidence level.** The plain runs are L2: headless `claude -p`, with nobody answering anything. The VBW 2 runs are L3, the real Claude Code interface used through `/vbw:vibe`, but driven by a script (recommended answers, approval typed), not by a person. No result here is L4, a person using it on their own project and accepting the outcome.
 - **Sample size is 3 per cell.** One run can move a median or a range, as the 89-input run shows. Read a pass rate as "no failure seen", not as a rate.
 - **Human acceptance.** The driver accepted no `[human]` requirement for the user, so what VBW 2 asks of a real user at acceptance is not in these numbers.
 - **Other models** than Sonnet 5.5 and Opus 5.5.
