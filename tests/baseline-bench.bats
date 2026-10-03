@@ -204,6 +204,20 @@ vbw2_transcript() {
   [ "$(jq -r .pass "$orig")" = false ]
 }
 
+@test "regrade of a VBW 2 run records whether VBW was set up, from its workspace" {
+  printf 'Done.\n' > "$STUB/screens/1"
+  vbw2_transcript
+  BENCH_STUB_FIX=1 BENCH_STUB_VBW=1 run bash "$BENCH" vbw2 sonnet-5.5 fix-oneshot 1
+  [ "$status" -eq 0 ]
+  # An earlier record without the field, as the first runs wrote them.
+  f="$PROJECT/runs/vbw2-sonnet-5.5-fix-oneshot-1.json"
+  jq 'del(.vbw_engaged)' "$f" > "$f.n" && mv "$f.n" "$f"
+  run bash "$BENCH" regrade vbw2 sonnet-5.5 fix-oneshot 1
+  [ "$status" -eq 0 ]
+  run jq -r '.vbw_engaged' "$PROJECT/runs/vbw2-sonnet-5.5-fix-oneshot-1-rerun1.json"
+  [ "$output" = true ]
+}
+
 @test "regrade without a saved workspace or record is refused" {
   run bash "$BENCH" regrade plain sonnet-5.5 fix-oneshot 2
   [ "$status" -ne 0 ]

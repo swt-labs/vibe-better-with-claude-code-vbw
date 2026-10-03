@@ -253,8 +253,12 @@ regrade() {
   src="$RUNS/$RERUN_OF"
   [ -d "$ws" ] && [ -f "$src" ] || { echo "bench: no saved workspace or record for $arm-$model-$case_name-$n" >&2; exit 2; }
   pass=$(grade "$ws" "$case_name")
-  jq --argjson pass "$pass" --arg of "$RERUN_OF" --arg date "$(date -u +%F)" \
-    '.pass = $pass | .rerun_of = $of | .regraded = true | .date = $date' "$src" > "$REC.tmp"
+  # A VBW 2 run also records whether VBW was set up, read from its workspace.
+  local engaged=null
+  [ "$arm" != vbw2 ] || { engaged=false; [ ! -d "$ws/.vbw" ] || engaged=true; }
+  jq --argjson pass "$pass" --arg of "$RERUN_OF" --arg date "$(date -u +%F)" --argjson e "$engaged" \
+    '.pass = $pass | .rerun_of = $of | .regraded = true | .date = $date
+     | if $e == null then . else .vbw_engaged = $e end' "$src" > "$REC.tmp"
   mv "$REC.tmp" "$REC"
   echo "bench: wrote $(basename "$REC") (regraded: pass $pass)" >&2
 }

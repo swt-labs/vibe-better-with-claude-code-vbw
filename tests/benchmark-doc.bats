@@ -130,3 +130,14 @@ report() { REPORT_CITE_PREFIX="" REPORT_CITE_V1="" bash "$REPORT" "$S" "$BATS_TE
   run bash "$REPORT" "$BATS_TEST_TMPDIR/empty"
   [ "$status" -eq 2 ]
 }
+
+@test "every counted VBW 2 run says it set VBW up, as the page claims" {
+  local d="$BATS_TEST_DIRNAME/../tools/baseline/results/runs" f n bad=0
+  for f in "$d"/vbw2-*.json; do
+    n=$(basename "$f")
+    # Superseded records (named in another record's rerun_of) are not counted.
+    if grep -lq "\"rerun_of\": *\"$n\"" "$d"/*.json 2> /dev/null; then continue; fi
+    [ "$(jq -r '.vbw_engaged' "$f")" = true ] || { echo "not engaged or not recorded: $n"; bad=1; }
+  done
+  [ "$bad" -eq 0 ]
+}
