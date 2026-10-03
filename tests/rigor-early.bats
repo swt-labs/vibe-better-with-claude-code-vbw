@@ -113,3 +113,13 @@ track_code() { # commit an existing source file
   rigor_apply "$(rigor_doc 1 "" src/app.js)" > /dev/null
   phase_json '.phases[0].tier == "express"'
 }
+
+@test "the router's express example is a document vbw apply accepts as express" {
+  rigor_project 1
+  local doc
+  doc=$(sed -n 's/^Example: `\(.*\)`\.\{0,1\}$/\1/p' "$BATS_TEST_DIRNAME/../plugin/skills/vibe/SKILL.md")
+  [ -n "$doc" ]
+  printf 'exit 1\n' > test.sh
+  rigor_apply "$doc" > /dev/null
+  phase_json '.phases[0].tier == "express" and (.plans | length) == 1 and (.checks | length) >= 1'
+}
