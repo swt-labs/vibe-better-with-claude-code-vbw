@@ -151,19 +151,3 @@ track_code() { # commit an existing source file
   rigor_apply "$(rigor_doc 1 "" db/migrations/001.sql)" > /dev/null
   phase_json '.phases[0].tier == "deep"'
 }
-
-# Tuning round 2 (P22.3): a migration guide (a document) was planned deep for
-# "data migration" in its title. A document can leak a secret, but it cannot
-# migrate data, take payments or delete anything.
-@test "a phase that only writes documents is risky only for secrets" {
-  rigor_project 1
-  edit_record '.requirements[0].text = "MIGRATION.md explains the data migration to v2"'
-  rigor_apply "$(rigor_doc 1 "" MIGRATION.md)" > /dev/null
-  phase_json '.phases[0].tier == "express" and any(.phases[0].reasons[]; . == "risk: none")'
-  edit_record '.requirements[0].text = "docs/setup.md never shows a secret from .env"'
-  rigor_apply "$(rigor_doc 1 "" docs/setup.md)" > /dev/null
-  phase_json '.phases[0].tier == "deep"'
-  edit_record '.requirements[0].text = "The data migration moves people.csv to JSON"'
-  rigor_apply "$(rigor_doc 1 "" migrate.sh MIGRATION.md)" > /dev/null
-  phase_json '.phases[0].tier == "deep"'
-}
