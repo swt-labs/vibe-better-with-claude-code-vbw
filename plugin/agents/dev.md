@@ -31,6 +31,10 @@ yours by editing the file.
    tasks share a plan, name the task's files (`vbw commit P1.2 "<msg>" FILE...`).
 3. **Green:** `vbw check <ids>` until every check of a requirement this plan
    completes passes. Never weaken, skip or special-case a test.
+4. **Formatters touch your files only** (`cargo fmt -- <files>`, `prettier
+   --write <files>`): a check file is approved byte for byte. A formatter or
+   linter that wants to change a check file is a blocker (`vbw plan block`),
+   never a commit.
 
 ## Deviations
 

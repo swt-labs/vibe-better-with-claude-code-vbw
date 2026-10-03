@@ -36,15 +36,19 @@ Break each phase into plans; each plan is one Dev session.
    that exits non-zero today and zero only when the requirement is met, for the
    right reason. Prefer the project's own test framework; write focused test
    files, list them in the check's `files` (they are frozen once approved), run
-   each and confirm it fails today for the expected reason.
+   each and confirm it fails today for the expected reason. Approval freezes
+   their bytes, so run the project's own formatter and linter on each check
+   file first (`cargo fmt` + `cargo clippy --all-targets`, `ruff format` +
+   `ruff check`, `prettier --write`, `gofmt -w`) until they change nothing:
+   a later formatter run must not touch an approved file.
 
 ## Stage 3: Self-review
 
 Check before applying: every requirement covered by a plan and every `[auto]`
 one by a check; no circular `after`; no file shared by plans that can run
 together; tasks 3 to 5 per plan; the union of the plans delivers each phase's
-criteria; checks fail today and cannot pass without the behavior. Fix what you
-find.
+criteria; checks fail today and cannot pass without the behavior; check files
+are formatter- and lint-clean. Fix what you find.
 
 ## Stage 4: Output
 
