@@ -2500,6 +2500,35 @@
       "id": "D36",
       "at": "2026-10-03T12:12:29Z",
       "text": "Contract approved: 27 requirements, 24 checks, 46 plans (da228eab3955)"
+    },
+    {
+      "id": "D37",
+      "text": "Rigor jq definitions live once in a defs-only module (rigor-defs.jq) shared by every record update; no cutting jq sources at markers (I4)",
+      "why": "The P21.1 marker cut is text surgery on code and blocked P21.2's triggers, which need the same definitions",
+      "at": "2026-10-03T13:13:12Z"
+    },
+    {
+      "id": "D38",
+      "text": "The Architect's stated tier is kept on the phase as proposed; vbw config rigor auto restores max(signal floor, proposed) (I1)",
+      "why": "R23 lets judgement raise a tier; auto must not silently drop that raise",
+      "at": "2026-10-03T13:13:13Z"
+    },
+    {
+      "id": "D39",
+      "text": "vbw commit PLAN MESSAGE [FILE...] commits a subset of the plan's files, so each task gets its own commit (I2)",
+      "why": "The Dev mandate is one atomic commit per task; committing the whole file set forced batching in P19.2, P19.5, P20.1, P20.2, P20.3, P21.1",
+      "at": "2026-10-03T13:13:13Z"
+    },
+    {
+      "id": "D40",
+      "text": "The workflows' per-phase model and QA-tier selection is proven by the adaptive benchmark runs (L3), not a JS unit harness (I3)",
+      "why": "Node is not a dependency of VBW or its suite; the real Workflow runtime is the only faithful executor, and P22.2 runs it on every tier",
+      "at": "2026-10-03T13:13:13Z"
+    },
+    {
+      "id": "D41",
+      "at": "2026-10-03T13:32:13Z",
+      "text": "Contract approved: 27 requirements, 24 checks, 48 plans (c5ae1e389ddc)"
     }
   ],
   "commands": {
