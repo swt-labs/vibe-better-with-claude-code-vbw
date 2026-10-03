@@ -1629,7 +1629,7 @@
       "after": [
         "P19.1"
       ],
-      "status": "planned",
+      "status": "done",
       "tasks": [
         "cmd-apply.sh: accept an optional tier on each phase (the Architect's); refuse any value that is not express, standard or deep, naming the allowed list",
         "compute the floor with rigor.sh; in auto mode refuse a submitted tier below the floor (name the phase, the floor and its reasons) and record max(floor, submitted), adding the reason 'raised by the Architect' when it is higher; with settings.rigor forced, record the forced tier with the reason 'forced: vbw config rigor X' and never refuse",
@@ -1654,7 +1654,7 @@
       "after": [
         "P19.1"
       ],
-      "status": "planned",
+      "status": "done",
       "tasks": [
         "cmd-config.sh: 'vbw config rigor' prints the mode (auto when unset); 'vbw config rigor auto|express|standard|deep' sets settings.rigor; any other value is refused with 'auto, express, standard or deep'; the plain 'vbw config' listing gains 'rigor: MODE'",
         "when the mode changes, re-tier the current milestone's phases whose plans have not started (all planned) and that have no escalations: a forced mode sets that tier with the reason 'forced: vbw config rigor X', auto recomputes through rigor.sh; started or escalated phases are left alone; the contract hash does not change",
