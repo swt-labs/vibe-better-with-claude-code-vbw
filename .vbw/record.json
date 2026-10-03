@@ -177,7 +177,7 @@
       "id": "R25",
       "text": "While a phase runs, VBW raises its tier on its own and records and shows why when a Dev blocks, a fix needs a second round, QA finds a problem in an express phase, the change touches a risk path or grows well beyond its plan, or a proven requirement fails; it never lowers a tier during a run",
       "proof": "auto",
-      "status": "failing",
+      "status": "proven",
       "milestone": "M4"
     },
     {
@@ -198,14 +198,14 @@
       "id": "R28",
       "text": "Each finished phase records its predicted tier and the outcome (fix rounds, QA findings, escalations), and vbw show reports how often the prediction held; cost is measured per session by the benchmark",
       "proof": "auto",
-      "status": "failing",
+      "status": "proven",
       "milestone": "M4"
     },
     {
       "id": "R29",
       "text": "On the seven single-task benchmark cases, VBW 2 with automatic rigor passes every case and costs at most twice what plain Claude Code costs, on Sonnet 5.5 and Opus 5.5",
       "proof": "auto",
-      "status": "failing",
+      "status": "proven",
       "milestone": "M4"
     },
     {
@@ -2733,14 +2733,14 @@
     "autonomy_cap": 25
   },
   "evidence": {
-    "at": "2026-10-03T13:07:44Z",
-    "contract": "da228eab395545b39eceea846e7d65fd7dee605ee2f118423b04fc127e1c1f03",
-    "tree": "9ca745ca8acb9a0ceeecd17ecbbe395ab3403df0",
+    "at": "2026-10-03T17:07:32Z",
+    "contract": "c0966e5c6225b812a4816144a57555eb6be4a276fb5c53a7614bb63b24c14110",
+    "tree": "6ae81c88769d77f76fa53f63f931a4d087364f50",
     "checks": {
       "C1": {
         "status": "pass",
         "exit": 0,
-        "seconds": 18,
+        "seconds": 13,
         "tail": "1..1\nok 1 R1: grants from two worktrees of one clone, started together, are all kept"
       },
       "C2": {
@@ -2752,7 +2752,7 @@
       "C3": {
         "status": "pass",
         "exit": 0,
-        "seconds": 5,
+        "seconds": 6,
         "tail": "1..11\nok 1 report: versions, doctor, and project state as counts and ids\nok 2 report: an empty count says none, never a blank\nok 3 report: never the spec's text, check output or file contents\nok 4 report: a corrupt record is named as corrupt without echoing its content\nok 5 report: outside a git repository it still prints, and says so\nok 6 report and rtk take no arguments beyond their usage\nok 7 rtk: not installed, with the install command that matches the machine\nok 8 rtk: installed shows its version and path; status equals no argument\nok 9 rtk: the Claude hook is on only when RTK's hook is in the user's settings\nok 10 rtk and report write nothing: no file in the project or settings changes\nok 11 docs/diagnostics.md says what the help says about both commands"
       },
       "C4": {
@@ -2764,7 +2764,7 @@
       "C5": {
         "status": "pass",
         "exit": 0,
-        "seconds": 1,
+        "seconds": 0,
         "tail": "1..1\nok 1 R5: QA failed a deviating build, naming the deviation; the fix loop closed it"
       },
       "C8": {
@@ -2776,13 +2776,13 @@
       "C9": {
         "status": "pass",
         "exit": 0,
-        "seconds": 7,
+        "seconds": 8,
         "tail": "1..5\nok 1 blocking an approved plan keeps the approval and proceeds without re-approval\nok 2 resetting a blocked plan keeps the approval and the approved hash\nok 3 a plan's note does not change the contract hash\nok 4 changing a plan definition still withdraws the approval\nok 5 changing a check or a requirement still withdraws the approval"
       },
       "C10": {
         "status": "pass",
         "exit": 0,
-        "seconds": 6,
+        "seconds": 8,
         "tail": "1..3\nok 1 R11: a user rejection opens a fix and a later accept of that requirement closes it\nok 2 R11: a fix opened by QA stays open after the user accepts the requirement\nok 3 R11: the QA-opened fix closes only when QA records a passing verdict for the phase"
       },
       "C11": {
@@ -2800,7 +2800,7 @@
       "C13": {
         "status": "pass",
         "exit": 0,
-        "seconds": 2,
+        "seconds": 3,
         "tail": "1..5\nok 1 run start records the owning session in the lease\nok 2 run end from another session is refused and the run stays open\nok 3 run end from another session works when the user states the owner is closed\nok 4 run end from another session works at 25 hours and is refused at 23\nok 5 run end from the owning session succeeds"
       },
       "C14": {
@@ -2812,7 +2812,7 @@
       "C15": {
         "status": "pass",
         "exit": 0,
-        "seconds": 3,
+        "seconds": 4,
         "tail": "1..4\nok 1 turning autonomy on in B leaves A on, in either order\nok 2 concurrent turn-on calls from two sessions both persist\nok 3 turning it off in one session leaves the other on\nok 4 the gate follows each session's own state"
       },
       "C16": {
@@ -2824,74 +2824,74 @@
       "C17": {
         "status": "pass",
         "exit": 0,
-        "seconds": 9,
+        "seconds": 10,
         "tail": "1..17\nok 1 exactly the seven cases exist\nok 2 every case has a request\nok 3 fix-oneshot: untouched fails\nok 4 fix-oneshot: solution passes\nok 5 failing-check-fix: untouched fails\nok 6 failing-check-fix: solution passes\nok 7 brownfield-feature: untouched fails\nok 8 brownfield-feature: solution passes\nok 9 safety-destructive: untouched fails\nok 10 safety-destructive: solution passes\nok 11 safety-secret: untouched fails\nok 12 safety-secret: solution passes\nok 13 hostile-repo: untouched fails\nok 14 hostile-repo: solution passes\nok 15 markdown-deliverable: untouched fails\nok 16 markdown-deliverable: solution passes\nok 17 the README names each case, its fixture and its check"
       },
       "C18": {
         "status": "pass",
         "exit": 0,
-        "seconds": 7,
+        "seconds": 8,
         "tail": "1..7\nok 1 the committed results are complete\nok 2 selftest: a complete set passes\nok 3 selftest: a missing run fails\nok 4 selftest: a missing field fails\nok 5 selftest: a duplicate run fails\nok 6 selftest: a result whose level does not match its arm fails\nok 7 selftest: a result without user_inputs fails"
       },
       "C19": {
         "status": "pass",
         "exit": 0,
-        "seconds": 5,
+        "seconds": 6,
         "tail": "1..7\nok 1 apply gives every phase a tier, its reasons and the predicted tier\nok 2 the reasons name each measured signal, with its numbers\nok 3 a risk path is named in the reasons, and proven requirements it could break too\nok 4 a phase with nothing risky is a one-line express phase on the approval screen\nok 5 the approval line of a risky phase shows its higher tier and the risk\nok 6 the record validator accepts tier, reasons, escalations and outcome, and still accepts phases without them\nok 7 the record validator refuses a bad tier, a bad escalation and a bad outcome"
       },
       "C20": {
         "status": "pass",
         "exit": 0,
-        "seconds": 11,
+        "seconds": 14,
         "tail": "1..10\nok 1 control: a phase with no risk signals is express\nok 2 a risk path (sign-in, payments, data migration, secrets, deletion, CI) puts a phase at deep\nok 3 a risk named by a requirement counts, not only a path\nok 4 many requirements raise the floor: 2 express, 3 standard, 6 deep\nok 5 many planned files and a large size raise the floor\nok 6 touching files that proven requirements depend on is at least standard\nok 7 changing existing files with no project test command is at least standard\nok 8 the kernel refuses an Architect tier below the risk floor, and changes nothing\nok 9 the kernel accepts an Architect tier above the floor, and says so in the reasons\nok 10 an Architect tier that is not a tier is refused with the allowed list"
       },
       "C21": {
         "status": "pass",
         "exit": 0,
-        "seconds": 7,
+        "seconds": 9,
         "tail": "1..7\nok 1 with no setting the mode is auto, and the config listing says so\nok 2 vbw config rigor sets each of auto, express, standard and deep\nok 3 an invalid mode is refused with the allowed list and the setting stays\nok 4 a forced mode overrides the computed tier when planning, up or down\nok 5 changing the mode re-tiers phases whose work has not started, and auto computes again\nok 6 a phase whose work has started keeps its tier when the mode changes\nok 7 changing the mode never makes the approved contract need approving again"
       },
       "C22": {
         "status": "pass",
         "exit": 0,
-        "seconds": 3,
+        "seconds": 4,
         "tail": "1..6\nok 1 the profile defines, for each tier, the agents with their count, the QA tier and the models\nok 2 express is one Dev; standard and deep keep the profile's models and QA tiers as before\nok 3 vbw next --json gives each phase exactly its profile cell, for every profile and tier\nok 4 a user's model override still wins over the tier's models\nok 5 a phase planned before tiers existed counts as standard\nok 6 the workflows and the router pass the tier's models and QA tier through"
       },
       "C23": {
         "status": "pass",
         "exit": 0,
-        "seconds": 11,
+        "seconds": 16,
         "tail": "1..9\nok 1 an express phase shows its requirement, check and plan together on one line\nok 2 a standard phase keeps the separate requirement, check and plan listing\nok 3 one approval records the requirement, check and plan of an express phase\nok 4 an express phase has exactly one plan; a higher tier may have several\nok 5 an express phase is built by one Dev\nok 6 an express phase with only [auto] requirements is not sent to QA once proven\nok 7 an express phase with a [human] requirement runs QA, at the express QA tier\nok 8 an express phase that has escalated runs QA\nok 9 a standard phase still goes to QA after its proof, as before"
       },
       "C24": {
-        "status": "fail",
-        "exit": 1,
-        "seconds": 15,
-        "tail": "#  in test file tests/rigor-escalation.bats, line 101)\n#   `phase_json '.phases[0].tier == \"standard\" and (.phases[0].escalations[-1].reason | contains(\"R1\") and contains(\"proven\"))'' failed\n# true\n# false\nnot ok 9 vbw tier raise raises, records the reason, and refuses to lower or repeat\n# (in test file tests/rigor-escalation.bats, line 107)\n#   `[ \"$status\" -eq 0 ]' failed\nnot ok 10 nothing lowers a raised tier: planning again and changing the mode keep it\n# (in test file tests/rigor-escalation.bats, line 123)\n#   `\"$VBW\" tier raise P1 deep \"the user asked for more care\" > /dev/null' failed with status 2\n# vbw: unknown command: tier\n# usage: vbw <command> [args]   (vbw help for the list)\nnot ok 11 after a raise, the later steps use the raised tier's agents, QA tier and models\n# (in test file tests/rigor-escalation.bats, line 135)\n#   `\"$VBW\" tier raise P1 standard \"Dev blocked a sibling\" > /dev/null' failed with status 2\n# vbw: unknown command: tier\n# usage: vbw <command> [args]   (vbw help for the list)\nnot ok 12 vbw show phase shows the tier, the reason it was raised and the tier it started at\n# (in test file tests/rigor-escalation.bats, line 148)\n#   `[[ \"$output\" == *\"tier: standard\"* ]]' failed"
+        "status": "pass",
+        "exit": 0,
+        "seconds": 27,
+        "tail": "1..12\nok 1 a Dev block raises the tier and records the reason\nok 2 a standard phase is raised to deep, and a deep phase records the event and stays deep\nok 3 a fix that needs a second round raises the tier, a first failure does not\nok 4 QA finding a problem in an express phase raises it; in a standard phase it does not\nok 5 QA failing a phase a second time raises the tier\nok 6 a commit that touches a risk path raises the phase to deep\nok 7 a commit that grows well beyond its plan raises the tier one step; a small commit does not\nok 8 a proven requirement that fails raises the tier\nok 9 vbw tier raise raises, records the reason, and refuses to lower or repeat\nok 10 nothing lowers a raised tier: planning again and changing the mode keep it\nok 11 after a raise, the later steps use the raised tier's agents, QA tier and models\nok 12 vbw show phase shows the tier, the reason it was raised and the tier it started at"
       },
       "C25": {
-        "status": "fail",
-        "exit": 1,
-        "seconds": 12,
-        "tail": "# (in test file tests/rigor-prediction.bats, line 41)\n#   `\"$VBW\" tier raise P1 standard \"the user asked for more care\" > /dev/null' failed with status 2\n# vbw: unknown command: tier\n# usage: vbw <command> [args]   (vbw help for the list)\nnot ok 5 QA findings and fix rounds are counted\n# (from function `phase_json' in file tests/rigor-helper.bash, line 11,\n#  in test file tests/rigor-prediction.bats, line 54)\n#   `phase_json '.phases[0].outcome | .qa_findings == 1 and .fix_rounds == 1'' failed\n# false\nnot ok 6 the outcome of a finished phase is not rewritten by a later proof\n# (from function `phase_json' in file tests/rigor-helper.bash, line 11,\n#  in test file tests/rigor-prediction.bats, line 60)\n#   `phase_json '.phases[0].outcome.tier == \"express\"'' failed\n# false\nnot ok 7 vbw show rigor says plainly when no phase is finished\n# (in test file tests/rigor-prediction.bats, line 69)\n#   `[ \"$status\" -eq 0 ]' failed\nnot ok 8 vbw show rigor reports how many finished phases held their predicted tier\n# (in test file tests/rigor-prediction.bats, line 85)\n#   `[ \"$status\" -eq 0 ]' failed"
+        "status": "pass",
+        "exit": 0,
+        "seconds": 17,
+        "tail": "1..8\nok 1 a proven express phase is finished with its predicted tier and outcome\nok 2 a standard phase is finished only once QA has passed it\nok 3 an express phase with a [human] requirement is finished once QA passed and the user accepted\nok 4 an escalated phase records that its prediction did not hold\nok 5 QA findings and fix rounds are counted\nok 6 the outcome of a finished phase is not rewritten by a later proof\nok 7 vbw show rigor says plainly when no phase is finished\nok 8 vbw show rigor reports how many finished phases held their predicted tier"
       },
       "C26": {
-        "status": "fail",
-        "exit": 1,
-        "seconds": 7,
-        "tail": "1..11\nnot ok 1 the committed results are complete and every miss is stated\n# (in test file tests/adaptive-results.bats, line 52)\n#   `[ \"$status\" -eq 0 ]' failed\nnot ok 2 the committed results cover both models and every case, with automatic rigor\n# (in test file tests/adaptive-results.bats, line 59)\n#   `|| { echo \"no automatic-rigor run for $c on $m\"; false; }' failed\n# jq: error: Could not open file /Users/tiagoserodio/Documents/AI Stuff/vibe-better-with-claude-code-vbw-worktrees/v2/tests/../tools/baseline/results/adaptive/*.json: No such file or directory\n# no automatic-rigor run for fix-oneshot on sonnet-5.5\nok 3 selftest: a complete set within twice plain's cost passes\nok 4 selftest: a missing cell fails\nok 5 selftest: a missing field, a wrong level or empty tiers fail\nok 6 selftest: a case above twice plain's cost fails unless the doc states the miss\nok 7 selftest: a failed case fails unless the doc states the miss\nok 8 selftest: only the highest round of a cell counts, and a rerun of a plain run supersedes the original\nok 9 selftest: tuning rounds are limited to two and each must be described\nok 10 selftest: --table prints a row per cell, with the cost ratio\nnot ok 11 the doc quotes every adaptive table row and states the evidence level and what was not tested\n# (in test file tests/adaptive-results.bats, line 167)\n#   `[ \"$status\" -eq 0 ]' failed"
+        "status": "pass",
+        "exit": 0,
+        "seconds": 10,
+        "tail": "1..11\nok 1 the committed results are complete and every miss is stated\nok 2 the committed results cover both models and every case, with automatic rigor\nok 3 selftest: a complete set within twice plain's cost passes\nok 4 selftest: a missing cell fails\nok 5 selftest: a missing field, a wrong level or empty tiers fail\nok 6 selftest: a case above twice plain's cost fails unless the doc states the miss\nok 7 selftest: a failed case fails unless the doc states the miss\nok 8 selftest: only the highest round of a cell counts, and a rerun of a plain run supersedes the original\nok 9 selftest: tuning rounds are limited to two and each must be described\nok 10 selftest: --table prints a row per cell, with the cost ratio\nok 11 the doc quotes every adaptive table row and states the evidence level and what was not tested"
       }
     },
     "commands": {
       "test": {
-        "status": "fail",
-        "exit": 1,
-        "seconds": 91,
-        "tail": "ok 470 no data from Claude Code, or garbage, never breaks it\nok 471 the branch is read in a linked worktree too\nok 472 statusline on sets it without asking, and keeps the user's own to restore\nok 473 the setting finds the newest installed VBW and renders it\nok 474 workflows on turns Dynamic workflows on, keeps every other setting, and never overrides a deliberate off\nok 475 started in a subfolder it shows the project; a VBW 1 project is pointed to the conversion\nok 476 a running step shows how long it has run and how many agents are working\nok 477 the team line follows the profile and per-role models; tokens and prompt cache are shown\nok 478 the workflows and VBW 1's seven agents exist, and nothing else\nok 479 each workflow starts with a pure-literal meta naming itself after its file\nok 480 workflows never use what breaks resume or is unavailable (time, randomness, modules)\nok 481 every phase() title is declared in meta.phases\nok 482 every agentType names an agent this plugin ships\nok 483 agents have a name matching the file, a single-line description and a tool list\nok 484 agents stay within their size budget (about 1.5k tokens)\nok 485 agents only use vbw commands that exist\nok 486 agents that plan or judge the plan load the user's recorded decisions\nok 487 workflow scripts parse as JavaScript (when node is available)\nok 488 workflow schemas are objects whose required keys are all properties\nok 489 no workflow shares its name with a skill (/vbw:NAME would start the workflow)"
+        "status": "pass",
+        "exit": 0,
+        "seconds": 136,
+        "tail": "ok 505 statusline on sets it without asking, and keeps the user's own to restore\nok 506 the setting finds the newest installed VBW and renders it\nok 507 workflows on turns Dynamic workflows on, keeps every other setting, and never overrides a deliberate off\nok 508 started in a subfolder it shows the project; a VBW 1 project is pointed to the conversion\nok 509 a running step shows how long it has run and how many agents are working\nok 510 the team line follows the profile and per-role models; tokens and prompt cache are shown\nok 511 a replaced round-0 record with empty tiers does not fail the set\nok 512 a final record with empty tiers still fails\nok 513 the workflows and VBW 1's seven agents exist, and nothing else\nok 514 each workflow starts with a pure-literal meta naming itself after its file\nok 515 workflows never use what breaks resume or is unavailable (time, randomness, modules)\nok 516 every phase() title is declared in meta.phases\nok 517 every agentType names an agent this plugin ships\nok 518 agents have a name matching the file, a single-line description and a tool list\nok 519 agents stay within their size budget (about 1.5k tokens)\nok 520 agents only use vbw commands that exist\nok 521 agents that plan or judge the plan load the user's recorded decisions\nok 522 workflow scripts parse as JavaScript (when node is available)\nok 523 workflow schemas are objects whose required keys are all properties\nok 524 no workflow shares its name with a skill (/vbw:NAME would start the workflow)"
       }
     },
     "scope": [],
-    "passed": false
+    "passed": true
   },
   "lease": null
 }
