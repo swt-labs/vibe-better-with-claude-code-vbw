@@ -1420,7 +1420,7 @@
       "req": "R19",
       "source": "qa",
       "attempts": 0,
-      "status": "open",
+      "status": "closed",
       "note": "docs/benchmark.md 'Not measured' section (lines 153-159) does not name evidence level L2 as a gap; criterion 3 requires it to name VBW 1 cases without data, evidence level L2 and sample size of 3. L2 appears only in the table labels and 'How it ran'. Plain arm is L2 (headless claude -p) and VBW 2 ran through a script-driven TUI; the section should state that the numbers are below L4 owner acceptance and that the plain arm is L2, not a user-path run."
     }
   ],
