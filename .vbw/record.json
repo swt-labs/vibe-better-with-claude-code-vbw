@@ -651,7 +651,14 @@
         "Runs paused by a usage limit are resumed, none dropped or silently replaced; any re-run is recorded as such",
         "Results are marked at L2 evidence level (scripted headless runs) with the fixtures named",
         "Depends on P2 (the cases must be validated before any run)"
-      ]
+      ],
+      "qa": {
+        "result": "pass",
+        "tier": "standard",
+        "tree": "15b6f0c4b7e824624ae9ca8ffc168cc838052dfc",
+        "at": "2026-10-03T02:00:36Z",
+        "note": "9/9 checks"
+      }
     },
     {
       "id": "P17",
