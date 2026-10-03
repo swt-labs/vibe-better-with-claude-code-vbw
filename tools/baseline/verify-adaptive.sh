@@ -4,7 +4,9 @@
 #   verify-adaptive.sh [--table] [ADAPTIVE_DIR [PLAIN_DIR [DOC]]]
 #
 # ADAPTIVE_DIR (default results/adaptive) holds one JSON file per VBW 2 run with
-# automatic rigor; PLAIN_DIR (default results/runs) the plain runs; DOC
+# automatic rigor; PLAIN_DIR (default results/plain-ui) the interactive plain
+# runs (bench.sh plain-ui: same app and base context as VBW; level L3, and L2
+# headless records are accepted too); DOC
 # (default docs/benchmark.md) states the misses. Exits 0 only when
 #   - every cell (7 cases x sonnet-5.5, opus-5.5) is present and valid
 #     (arm vbw2, rigor auto, level L3, tiers a non-empty list of express,
@@ -23,7 +25,7 @@ ROOT="$(cd "$HERE/../.." && pwd)"
 table=0
 if [ "${1:-}" = "--table" ]; then table=1; shift; fi
 adaptive="${1:-$HERE/results/adaptive}"
-plain="${2:-$HERE/results/runs}"
+plain="${2:-$HERE/results/plain-ui}"
 doc="${3:-$ROOT/docs/benchmark.md}"
 [ -d "$adaptive" ] || { echo "verify-adaptive: no such directory: $adaptive" >&2; exit 2; }
 [ -d "$plain" ] || { echo "verify-adaptive: no such directory: $plain" >&2; exit 2; }

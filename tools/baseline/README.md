@@ -46,9 +46,19 @@ models: 14 cells, one record per run in `results/adaptive/`.
   `vbw2-MODEL-CASE-1-rN.json`. At most 2 rounds; each is described in
   `results/adaptive/tuning.md` on a line `Round N: what changed and its result`.
   The highest round of a cell is its final state.
+- Plain baseline: `BENCH_RUNS_DIR=tools/baseline/results/plain-ui bash tools/baseline/bench.sh plain-ui MODEL CASE N`
+  drives plain Claude Code in the same interactive app as the vbw2 arm: same
+  settings and sandbox, the plugin not loaded (`tools/l3.sh start ... plain`),
+  the request typed, questions answered with the recommended option, finished
+  when idle with no question on screen. Its record is arm `plain`, level L3,
+  with tokens from the transcripts and cost from `/cost`. Why: the headless
+  `claude -p` arm starts from a different base context than the app, so its
+  cost is not like for like. Every test session, both arms, excludes this
+  repository's own `CLAUDE.md` and `AGENTS.md` (`claudeMdExcludes`); a fixture's
+  own instruction files still load. Plain records of level L2 or L3 are accepted.
 - Verify: `bash tools/baseline/verify-adaptive.sh [--table] [ADAPTIVE_DIR [PLAIN_DIR [DOC]]]`.
   It needs all 14 cells valid (level L3, rigor auto, non-empty tiers) and a
   `Miss: CASE MODEL: ...` line in `docs/benchmark.md` for every failed case or
   cost above twice plain's. Plain cost is the mean over the case's plain runs
-  (`results/runs/`) of the latest rerun of each. `--table` prints one markdown
+  (`results/plain-ui/`) of the latest rerun of each. `--table` prints one markdown
   row per cell, which the doc's "Adaptive rigor" section quotes.
