@@ -6,7 +6,7 @@
   "milestone": {
     "id": "M3",
     "title": "Benchmark and launch readiness",
-    "status": "active"
+    "status": "shipped"
   },
   "shipped": [
     {
@@ -18,6 +18,11 @@
       "id": "M2",
       "title": "Several sessions, one project",
       "at": "2026-10-02T18:44:42Z"
+    },
+    {
+      "id": "M3",
+      "title": "Benchmark and launch readiness",
+      "at": "2026-10-03T11:39:25Z"
     }
   ],
   "requirements": [
@@ -130,14 +135,14 @@
       "id": "R19",
       "text": "docs/benchmark.md compares VBW 2 with plain Claude Code case by case, shows VBW 1 from its recorded runs and behaviour ledger, and states plainly what was not measured",
       "proof": "human",
-      "status": "open",
+      "status": "accepted",
       "milestone": "M3"
     },
     {
       "id": "R20",
       "text": "README.md presents VBW 2 to someone new: what it does and why, how to install it, a first project, the commands, with images",
       "proof": "human",
-      "status": "open",
+      "status": "accepted",
       "milestone": "M3"
     },
     {
@@ -1600,6 +1605,17 @@
       "text": "F8 is covered: the selftests for the vbw-command check live in tests/contributor-tools.bats (added with the check in 5e5a730d), not in tests/contributor-files.bats",
       "why": "contributor-files.bats is a protected check file and could not be extended without re-approval; contributor-tools.bats has 3 tests, 2 of which failed before the fix and pass after it",
       "at": "2026-10-03T02:24:39Z"
+    },
+    {
+      "id": "D26",
+      "text": "R20 accepted before the images: the owner adds assets/flow.png, first-question.png, approve.png and proof.png later as a README update",
+      "why": "owner's choice: unblock adaptive rigor now",
+      "at": "2026-10-03T11:39:24Z"
+    },
+    {
+      "id": "D27",
+      "at": "2026-10-03T11:39:25Z",
+      "text": "Shipped M3 Benchmark and launch readiness: 5 requirements proven or accepted"
     }
   ],
   "commands": {
