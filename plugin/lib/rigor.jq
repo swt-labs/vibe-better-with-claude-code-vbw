@@ -21,9 +21,9 @@ def rid: ltrimstr("R") | tonumber? // 0;
     | ($ph.reqs | length) as $nreqs
     | ([$files[] | $facts[.] // empty] | add // 0) as $bytes
     | ($files | any(.[]; $facts[.] != null)) as $existing
-    | ($r.commands.test != null) as $has_tests
+    | ($r | has_tests) as $has_tests
     | ([$r.requirements[] | select(.id as $q | $ph.reqs | index($q))] ) as $mine
-    | ([ $files[] | {src: ., text: .} ]
+    | ([ $files[] | select(is_doc | not) | {src: ., text: .} ]
        + [{src: "phase title", text: $ph.title}]
        + [{src: "phase goal", text: ($ph.goal // "")}]
        + [$mine[] | {src: .id, text: .text}]) as $haystack

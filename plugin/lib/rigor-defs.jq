@@ -27,13 +27,18 @@ def sig_breaks: if . >= 4 then "deep" elif . >= 1 then "standard" else "express"
 # Existing code with no project test command cannot be proved by the project's
 # own tests: standard at least.
 def sig_tests($existing; $has_tests): if $existing and ($has_tests | not) then "standard" else "express" end;
+# On the record: the project has its own tests to run (a test or check command).
+def has_tests: .commands.test != null or .commands.check != null;
+# A document (markdown, text) is never a risk path, whatever its name.
+def is_doc: test("\\.(md|markdown|txt|rst)$"; "i");
 
-# early_tier($tracked; $code; $has_tests): on the record, the tier of the request
-# before planning. A forced mode (settings.rigor express|standard|deep) is that
-# tier. In auto, express only for one [auto] requirement of the current
-# milestone whose text names no risk category, in a repository tracking at most
-# 30 files, unless existing code has no project test command (the same
-# sig_tests rule as the apply floor); else standard. $facts is {tracked, code}:
+# early_tier($facts): on the record, the tier of the request before planning.
+# A forced mode (settings.rigor express|standard|deep) is that tier. In auto,
+# express only when the current milestone's requirements are all [auto], name no
+# risk category and are few enough for express (sig_reqs, as at apply), in a
+# repository tracking at most 30 files, unless existing code has no project
+# tests (has_tests; the same sig_tests rule as the apply floor); else standard.
+# $facts is {tracked, code}:
 # the count of tracked files and of those that are code (not .vbw/, not markdown
 # or text); no file is read. A test command is the record's (detected at init
 # or approved).
@@ -42,8 +47,8 @@ def early_tier($facts):
   | if $mode != "auto" then $mode
     else .milestone.id as $m
       | [.requirements[] | select(.milestone == $m)] as $cur
-      | if ($cur | length) == 1 and $cur[0].proof == "auto" and ($cur[0].text | risk_name) == null and $facts.tracked <= 30
-           and (($cur | length | sig_reqs) == "express") and (sig_tests($facts.code > 0; .commands.test != null) == "express")
+      | if ($cur | length) > 0 and all($cur[]; .proof == "auto" and (.text | risk_name) == null) and $facts.tracked <= 30
+           and (($cur | length | sig_reqs) == "express") and (sig_tests($facts.code > 0; has_tests) == "express")
         then "express" else "standard" end
     end;
 
