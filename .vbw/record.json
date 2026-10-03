@@ -123,7 +123,7 @@
       "id": "R18",
       "text": "The benchmark has run every case 3 times with plain Claude Code and 3 times with VBW 2, on Sonnet 5.5 and on Opus 5.5, and its committed results record each run's pass or fail, tokens and cost",
       "proof": "auto",
-      "status": "failing",
+      "status": "proven",
       "milestone": "M3"
     },
     {
@@ -1517,20 +1517,20 @@
     "autonomy_cap": 25
   },
   "evidence": {
-    "at": "2026-10-02T21:09:42Z",
-    "contract": "1cdfd67d9ce02bbc7608ed2e0897a0d15207003d5eff6d5da37229b25996d60e",
-    "tree": "3bf90edd26ebbf7ca96f3270b3a1561cffb91030",
+    "at": "2026-10-03T00:48:35Z",
+    "contract": "5552ede9f232e7bc3db8a3dcbb46202df9d61db0a228c68c776c4de8b4c79fbd",
+    "tree": "b9621190bbfe1d55a3ed0f683dec2055a75976b5",
     "checks": {
       "C1": {
         "status": "pass",
         "exit": 0,
-        "seconds": 12,
+        "seconds": 10,
         "tail": "1..1\nok 1 R1: grants from two worktrees of one clone, started together, are all kept"
       },
       "C2": {
         "status": "pass",
         "exit": 0,
-        "seconds": 9,
+        "seconds": 8,
         "tail": "1..3\nok 1 R2: an interrupted code fingerprint (prove, next) leaves no index file\nok 2 R2: the caller's EXIT trap still runs when vbw code is interrupted\nok 3 R2: the caller's EXIT trap survives a vbw write that completes"
       },
       "C3": {
@@ -1548,7 +1548,7 @@
       "C5": {
         "status": "pass",
         "exit": 0,
-        "seconds": 1,
+        "seconds": 0,
         "tail": "1..1\nok 1 R5: QA failed a deviating build, naming the deviation; the fix loop closed it"
       },
       "C8": {
@@ -1560,19 +1560,19 @@
       "C9": {
         "status": "pass",
         "exit": 0,
-        "seconds": 7,
+        "seconds": 6,
         "tail": "1..5\nok 1 blocking an approved plan keeps the approval and proceeds without re-approval\nok 2 resetting a blocked plan keeps the approval and the approved hash\nok 3 a plan's note does not change the contract hash\nok 4 changing a plan definition still withdraws the approval\nok 5 changing a check or a requirement still withdraws the approval"
       },
       "C10": {
         "status": "pass",
         "exit": 0,
-        "seconds": 7,
+        "seconds": 6,
         "tail": "1..3\nok 1 R11: a user rejection opens a fix and a later accept of that requirement closes it\nok 2 R11: a fix opened by QA stays open after the user accepts the requirement\nok 3 R11: the QA-opened fix closes only when QA records a passing verdict for the phase"
       },
       "C11": {
         "status": "pass",
         "exit": 0,
-        "seconds": 6,
+        "seconds": 7,
         "tail": "1..3\nok 1 R12: after a code change since the last proof, qa record refuses, names vbw prove, writes nothing\nok 2 R12: after vbw prove, the same qa record succeeds\nok 3 R12: the QA agent and the verifying workflow run prove and retry when qa record refuses"
       },
       "C12": {
@@ -1584,7 +1584,7 @@
       "C13": {
         "status": "pass",
         "exit": 0,
-        "seconds": 3,
+        "seconds": 7,
         "tail": "1..5\nok 1 run start records the owning session in the lease\nok 2 run end from another session is refused and the run stays open\nok 3 run end from another session works when the user states the owner is closed\nok 4 run end from another session works at 25 hours and is refused at 23\nok 5 run end from the owning session succeeds"
       },
       "C14": {
@@ -1596,7 +1596,7 @@
       "C15": {
         "status": "pass",
         "exit": 0,
-        "seconds": 3,
+        "seconds": 4,
         "tail": "1..4\nok 1 turning autonomy on in B leaves A on, in either order\nok 2 concurrent turn-on calls from two sessions both persist\nok 3 turning it off in one session leaves the other on\nok 4 the gate follows each session's own state"
       },
       "C16": {
@@ -1612,22 +1612,22 @@
         "tail": "1..17\nok 1 exactly the seven cases exist\nok 2 every case has a request\nok 3 fix-oneshot: untouched fails\nok 4 fix-oneshot: solution passes\nok 5 failing-check-fix: untouched fails\nok 6 failing-check-fix: solution passes\nok 7 brownfield-feature: untouched fails\nok 8 brownfield-feature: solution passes\nok 9 safety-destructive: untouched fails\nok 10 safety-destructive: solution passes\nok 11 safety-secret: untouched fails\nok 12 safety-secret: solution passes\nok 13 hostile-repo: untouched fails\nok 14 hostile-repo: solution passes\nok 15 markdown-deliverable: untouched fails\nok 16 markdown-deliverable: solution passes\nok 17 the README names each case, its fixture and its check"
       },
       "C18": {
-        "status": "fail",
-        "exit": 1,
-        "seconds": 2,
-        "tail": "# (from function `setup' in test file tests/baseline-results.bats, line 16)\n#   `setup() { vbw_setup; [ -f \"$VERIFY\" ]; }' failed\nnot ok 2 selftest: a complete set passes\n# (from function `setup' in test file tests/baseline-results.bats, line 16)\n#   `setup() { vbw_setup; [ -f \"$VERIFY\" ]; }' failed\nnot ok 3 selftest: a missing run fails\n# (from function `setup' in test file tests/baseline-results.bats, line 16)\n#   `setup() { vbw_setup; [ -f \"$VERIFY\" ]; }' failed\nnot ok 4 selftest: a missing field fails\n# (from function `setup' in test file tests/baseline-results.bats, line 16)\n#   `setup() { vbw_setup; [ -f \"$VERIFY\" ]; }' failed\nnot ok 5 selftest: a duplicate run fails\n# (from function `setup' in test file tests/baseline-results.bats, line 16)\n#   `setup() { vbw_setup; [ -f \"$VERIFY\" ]; }' failed\nnot ok 6 selftest: a result whose level does not match its arm fails\n# (from function `setup' in test file tests/baseline-results.bats, line 16)\n#   `setup() { vbw_setup; [ -f \"$VERIFY\" ]; }' failed\nnot ok 7 selftest: a result without user_inputs fails\n# (from function `setup' in test file tests/baseline-results.bats, line 16)\n#   `setup() { vbw_setup; [ -f \"$VERIFY\" ]; }' failed"
+        "status": "pass",
+        "exit": 0,
+        "seconds": 7,
+        "tail": "1..7\nok 1 the committed results are complete\nok 2 selftest: a complete set passes\nok 3 selftest: a missing run fails\nok 4 selftest: a missing field fails\nok 5 selftest: a duplicate run fails\nok 6 selftest: a result whose level does not match its arm fails\nok 7 selftest: a result without user_inputs fails"
       }
     },
     "commands": {
       "test": {
-        "status": "fail",
-        "exit": 1,
-        "seconds": 92,
-        "tail": "ok 350 no data from Claude Code, or garbage, never breaks it\nok 351 the branch is read in a linked worktree too\nok 352 statusline on sets it without asking, and keeps the user's own to restore\nok 353 the setting finds the newest installed VBW and renders it\nok 354 workflows on turns Dynamic workflows on, keeps every other setting, and never overrides a deliberate off\nok 355 started in a subfolder it shows the project; a VBW 1 project is pointed to the conversion\nok 356 a running step shows how long it has run and how many agents are working\nok 357 the team line follows the profile and per-role models; tokens and prompt cache are shown\nok 358 the workflows and VBW 1's seven agents exist, and nothing else\nok 359 each workflow starts with a pure-literal meta naming itself after its file\nok 360 workflows never use what breaks resume or is unavailable (time, randomness, modules)\nok 361 every phase() title is declared in meta.phases\nok 362 every agentType names an agent this plugin ships\nok 363 agents have a name matching the file, a single-line description and a tool list\nok 364 agents stay within their size budget (about 1.5k tokens)\nok 365 agents only use vbw commands that exist\nok 366 agents that plan or judge the plan load the user's recorded decisions\nok 367 workflow scripts parse as JavaScript (when node is available)\nok 368 workflow schemas are objects whose required keys are all properties\nok 369 no workflow shares its name with a skill (/vbw:NAME would start the workflow)"
+        "status": "pass",
+        "exit": 0,
+        "seconds": 82,
+        "tail": "ok 367 no data from Claude Code, or garbage, never breaks it\nok 368 the branch is read in a linked worktree too\nok 369 statusline on sets it without asking, and keeps the user's own to restore\nok 370 the setting finds the newest installed VBW and renders it\nok 371 workflows on turns Dynamic workflows on, keeps every other setting, and never overrides a deliberate off\nok 372 started in a subfolder it shows the project; a VBW 1 project is pointed to the conversion\nok 373 a running step shows how long it has run and how many agents are working\nok 374 the team line follows the profile and per-role models; tokens and prompt cache are shown\nok 375 the workflows and VBW 1's seven agents exist, and nothing else\nok 376 each workflow starts with a pure-literal meta naming itself after its file\nok 377 workflows never use what breaks resume or is unavailable (time, randomness, modules)\nok 378 every phase() title is declared in meta.phases\nok 379 every agentType names an agent this plugin ships\nok 380 agents have a name matching the file, a single-line description and a tool list\nok 381 agents stay within their size budget (about 1.5k tokens)\nok 382 agents only use vbw commands that exist\nok 383 agents that plan or judge the plan load the user's recorded decisions\nok 384 workflow scripts parse as JavaScript (when node is available)\nok 385 workflow schemas are objects whose required keys are all properties\nok 386 no workflow shares its name with a skill (/vbw:NAME would start the workflow)"
       }
     },
     "scope": [],
-    "passed": false
+    "passed": true
   },
   "lease": null
 }
