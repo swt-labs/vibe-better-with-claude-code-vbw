@@ -1576,20 +1576,20 @@
     "autonomy_cap": 25
   },
   "evidence": {
-    "at": "2026-10-03T02:06:34Z",
+    "at": "2026-10-03T02:15:49Z",
     "contract": "ce36f53d16e1eef7e26f7235b2db8ca3d437f7df1a965dddc87b383a2d3546d0",
-    "tree": "9d9bcd0e817a0c71a3579c8900dbd31e936a56be",
+    "tree": "92149425b842fa5f42ddeaff9f23e074277b56dc",
     "checks": {
       "C1": {
         "status": "pass",
         "exit": 0,
-        "seconds": 9,
+        "seconds": 11,
         "tail": "1..1\nok 1 R1: grants from two worktrees of one clone, started together, are all kept"
       },
       "C2": {
         "status": "pass",
         "exit": 0,
-        "seconds": 9,
+        "seconds": 8,
         "tail": "1..3\nok 1 R2: an interrupted code fingerprint (prove, next) leaves no index file\nok 2 R2: the caller's EXIT trap still runs when vbw code is interrupted\nok 3 R2: the caller's EXIT trap survives a vbw write that completes"
       },
       "C3": {
@@ -1607,7 +1607,7 @@
       "C5": {
         "status": "pass",
         "exit": 0,
-        "seconds": 0,
+        "seconds": 1,
         "tail": "1..1\nok 1 R5: QA failed a deviating build, naming the deviation; the fix loop closed it"
       },
       "C8": {
@@ -1625,7 +1625,7 @@
       "C10": {
         "status": "pass",
         "exit": 0,
-        "seconds": 7,
+        "seconds": 6,
         "tail": "1..3\nok 1 R11: a user rejection opens a fix and a later accept of that requirement closes it\nok 2 R11: a fix opened by QA stays open after the user accepts the requirement\nok 3 R11: the QA-opened fix closes only when QA records a passing verdict for the phase"
       },
       "C11": {
@@ -1637,7 +1637,7 @@
       "C12": {
         "status": "pass",
         "exit": 0,
-        "seconds": 0,
+        "seconds": 1,
         "tail": "1..1\nok 1 next in another session says the run belongs elsewhere and never says to end it"
       },
       "C13": {
@@ -1649,7 +1649,7 @@
       "C14": {
         "status": "pass",
         "exit": 0,
-        "seconds": 4,
+        "seconds": 5,
         "tail": "1..8\nok 1 another session's main conversation cannot edit a file the run writes\nok 2 another session's subagent cannot edit it either\nok 3 another session cannot write the file with a shell command either\nok 4 files the run does not write stay editable from another session\nok 5 the owning session and its agents can edit the file\nok 6 after the user states the owner is closed, the edit is allowed\nok 7 a run older than 24 hours no longer guards its files\nok 8 with no open run, or outside a VBW project, edits are allowed"
       },
       "C15": {
@@ -1661,7 +1661,7 @@
       "C16": {
         "status": "pass",
         "exit": 0,
-        "seconds": 1,
+        "seconds": 2,
         "tail": "1..7\nok 1 the repository's contributor files name only what exists\nok 2 no contributor file mentions .vbw-planning\nok 3 selftest: a clean tree passes\nok 4 selftest: a nonexistent path fails and is named\nok 5 selftest: a nonexistent /vbw: command fails\nok 6 selftest: .vbw-planning fails\nok 7 selftest: a bad path in an issue template fails"
       },
       "C17": {
@@ -1673,7 +1673,7 @@
       "C18": {
         "status": "pass",
         "exit": 0,
-        "seconds": 7,
+        "seconds": 8,
         "tail": "1..7\nok 1 the committed results are complete\nok 2 selftest: a complete set passes\nok 3 selftest: a missing run fails\nok 4 selftest: a missing field fails\nok 5 selftest: a duplicate run fails\nok 6 selftest: a result whose level does not match its arm fails\nok 7 selftest: a result without user_inputs fails"
       }
     },
@@ -1681,7 +1681,7 @@
       "test": {
         "status": "pass",
         "exit": 0,
-        "seconds": 77,
+        "seconds": 93,
         "tail": "ok 382 no data from Claude Code, or garbage, never breaks it\nok 383 the branch is read in a linked worktree too\nok 384 statusline on sets it without asking, and keeps the user's own to restore\nok 385 the setting finds the newest installed VBW and renders it\nok 386 workflows on turns Dynamic workflows on, keeps every other setting, and never overrides a deliberate off\nok 387 started in a subfolder it shows the project; a VBW 1 project is pointed to the conversion\nok 388 a running step shows how long it has run and how many agents are working\nok 389 the team line follows the profile and per-role models; tokens and prompt cache are shown\nok 390 the workflows and VBW 1's seven agents exist, and nothing else\nok 391 each workflow starts with a pure-literal meta naming itself after its file\nok 392 workflows never use what breaks resume or is unavailable (time, randomness, modules)\nok 393 every phase() title is declared in meta.phases\nok 394 every agentType names an agent this plugin ships\nok 395 agents have a name matching the file, a single-line description and a tool list\nok 396 agents stay within their size budget (about 1.5k tokens)\nok 397 agents only use vbw commands that exist\nok 398 agents that plan or judge the plan load the user's recorded decisions\nok 399 workflow scripts parse as JavaScript (when node is available)\nok 400 workflow schemas are objects whose required keys are all properties\nok 401 no workflow shares its name with a skill (/vbw:NAME would start the workflow)"
       }
     },
