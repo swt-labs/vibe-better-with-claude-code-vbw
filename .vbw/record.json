@@ -1231,7 +1231,7 @@
       "after": [
         "P16.1"
       ],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "write tools/baseline/report.sh: from results/runs/ (records named in another record's rerun_of are superseded and excluded; README.md is not a record) print per case and model, for plain and VBW 2: pass rate (n/3), median and range of user_inputs, mean cost and mean tokens, and the evidence level (plain L2, VBW 2 L3), as markdown tables citing each row's result files; plus a totals table per model; plus the VBW 1 fix-oneshot rows from results/2026-09-30-fix-oneshot-sonnet.jsonl labelled inferred (cost only: its pass was not recorded)",
