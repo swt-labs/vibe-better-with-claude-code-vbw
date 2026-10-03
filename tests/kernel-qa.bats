@@ -12,7 +12,7 @@ setup() {
   "$VBW" spec sync > /dev/null
   mkdir -p tests src
   printf 'grep -qx paid src/pay.txt\n' > tests/pay.sh
-  printf '%s' '{"phases": [{"id": "P1", "title": "Pay", "reqs": ["R1"]}],
+  printf '%s' '{"phases": [{"id": "P1", "title": "Pay", "reqs": ["R1"], "tier": "standard"}],
     "plans": [{"id": "P1.1", "phase": "P1", "title": "Pay", "reqs": ["R1"], "files": ["src/pay.txt"]}],
     "checks": [{"id": "C1", "req": "R1", "run": ["sh", "tests/pay.sh"], "files": ["tests/pay.sh"]}]}' | "$VBW" apply > /dev/null
   "$VBW" approve > /dev/null

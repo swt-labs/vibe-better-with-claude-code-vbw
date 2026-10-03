@@ -37,7 +37,7 @@ vbw_setup() {
 
 vbw_teardown() {
   cd / || true
-  [ -n "${TEST_ROOT:-}" ] && rm -rf "$TEST_ROOT"
+  [ -z "${TEST_ROOT:-}" ] || rm -rf "$TEST_ROOT"
 }
 
 # A git repository with one commit, as most kernel tests need.
