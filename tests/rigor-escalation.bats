@@ -97,6 +97,7 @@ last_escalation() { jq -r '.phases[0].escalations[-1] | "\(.from)>\(.to): \(.rea
   rigor_flow_build
   jq -e '.requirements[0].status == "proven"' .vbw/record.json
   printf 'broken\n' > src/greet.txt
+  git add src/greet.txt && git commit -q -m "feat(greet): break it"
   "$VBW" prove > /dev/null || true
   phase_json '.phases[0].tier == "standard" and (.phases[0].escalations[-1].reason | contains("R1") and contains("proven"))'
 }

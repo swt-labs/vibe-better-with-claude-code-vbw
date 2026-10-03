@@ -534,6 +534,52 @@
       "files": [
         "tests/adaptive-results.bats"
       ]
+    },
+    {
+      "id": "C27",
+      "req": "R31",
+      "run": [
+        "bats",
+        "tests/rules.bats"
+      ],
+      "files": [
+        "tests/rules.bats"
+      ]
+    },
+    {
+      "id": "C28",
+      "req": "R32",
+      "run": [
+        "bats",
+        "tests/prove-clean.bats"
+      ],
+      "files": [
+        "tests/prove-clean.bats"
+      ]
+    },
+    {
+      "id": "C29",
+      "req": "R33",
+      "run": [
+        "bats",
+        "tests/record-newer.bats"
+      ],
+      "files": [
+        "tests/record-newer.bats",
+        "tests/fixtures/records/v1.json",
+        "tests/fixtures/records/future.json"
+      ]
+    },
+    {
+      "id": "C30",
+      "req": "R34",
+      "run": [
+        "bats",
+        "tests/l3-scenarios.bats"
+      ],
+      "files": [
+        "tests/l3-scenarios.bats"
+      ]
     }
   ],
   "phases": [
@@ -1146,6 +1192,108 @@
         "qa_findings": 0,
         "escalations": 1
       }
+    },
+    {
+      "id": "P24",
+      "title": "Records from a newer VBW are recognised",
+      "reqs": [
+        "R33"
+      ],
+      "milestone": "M5",
+      "goal": "A VBW that meets a project record written by a newer VBW tells the user to update instead of calling it corrupt, while still reading every older record.",
+      "criteria": [
+        "Opening a record whose schema version is newer than the running VBW exits non-zero with a message saying the project needs a newer VBW and how to update",
+        "That message does not contain the word corrupt",
+        "Records written by each earlier schema version still load and show correctly",
+        "A newer-version record is not modified or rewritten by the older VBW",
+        "A bats test using a fixture with a future schema version fails before the change and passes after"
+      ],
+      "tier": "deep",
+      "reasons": [
+        "requirements: 1",
+        "files: 4 (24813 bytes)",
+        "risk: none",
+        "breaks: R1, R2, R13, R14, R22, R23, R25, R28",
+        "tests: project test command"
+      ],
+      "predicted": "deep"
+    },
+    {
+      "id": "P25",
+      "title": "Proof runs on a clean copy of committed code",
+      "reqs": [
+        "R32"
+      ],
+      "milestone": "M5",
+      "goal": "vbw prove gives the same result whatever uncommitted or untracked files sit in the working folder, while vbw check still runs on the working folder.",
+      "criteria": [
+        "With an untracked, non-ignored file present that would flip a check, vbw prove gives the same result as without it",
+        "With an uncommitted edit to a tracked file, vbw prove tests the committed version",
+        "Git-ignored files (installed packages, build output, local config) are linked into the copy so a project that needs them still proves (D54)",
+        "vbw check still sees uncommitted and untracked files in the working folder",
+        "The clean copy is created inside the project and removed after proof, including on interruption, and the working folder is left unchanged",
+        "Bats tests for each condition fail before the change and pass after"
+      ],
+      "tier": "deep",
+      "reasons": [
+        "requirements: 1",
+        "files: 7 (60374 bytes)",
+        "risk: none",
+        "breaks: R1, R2, R12, R13, R14, R16, R22, R23, R24, R25, R27",
+        "tests: project test command"
+      ],
+      "predicted": "deep"
+    },
+    {
+      "id": "P26",
+      "title": "Every requirement lists its rules, each with a check",
+      "reqs": [
+        "R31"
+      ],
+      "milestone": "M5",
+      "goal": "Before approval each [auto] requirement lists the rules its text states, each tied to a check, and vbw apply refuses any rule no check tests.",
+      "criteria": [
+        "The contract format lets a requirement list rules (conditions, edge and error cases), each naming its check",
+        "vbw apply exits non-zero naming a listed rule that no check tests, and approves when every rule is covered",
+        "The approval screen shows each requirement's rules with their checks",
+        "Requirements approved before this change keep their approval and show 'rules not listed' (D53)",
+        "The Architect and Lead mandates and the router state the rule-listing step, within the prompt token budgets",
+        "Bats tests cover refusal, acceptance, display and the older-requirement case, and fail before the change"
+      ],
+      "tier": "deep",
+      "reasons": [
+        "requirements: 1",
+        "files: 15 (103876 bytes)",
+        "risk: none",
+        "breaks: R10, R12, R13, R14, R22, R23, R24, R25, R26, R27, R28",
+        "tests: project test command"
+      ],
+      "predicted": "deep"
+    },
+    {
+      "id": "P27",
+      "title": "Real-app scenarios for edge-case checks and proof isolation",
+      "reqs": [
+        "R34"
+      ],
+      "milestone": "M5",
+      "goal": "tools/l3-suite.sh shows in the real Claude Code app that a stated edge case gets a check before approval and that a leftover untracked file does not change a proof.",
+      "criteria": [
+        "An edge-case scenario in tools/l3-suite.sh gives a request stating an edge case and passes only if the approved contract has a check testing that edge before approval (depends on P26)",
+        "A leftover-file scenario leaves an untracked file in the working folder and passes only if the proof result is unchanged and the file is not in the proof copy (depends on P25)",
+        "Each scenario's result reflects only its own checks and is reported with its evidence level (L3) and fixture",
+        "Both scenarios run and the run output is recorded in the progress log",
+        "tests for the suite structure pass under bash tools/test.sh"
+      ],
+      "tier": "standard",
+      "reasons": [
+        "requirements: 1",
+        "files: 3 (28057 bytes)",
+        "risk: none",
+        "breaks: R4, R5, R8",
+        "tests: project test command"
+      ],
+      "predicted": "standard"
     }
   ],
   "plans": [
@@ -2410,6 +2558,238 @@
         "cmd-init.sh (test in tests/kernel-consent.bats, red first): with no ecosystem detected, an executable test.sh, tests.sh or run_tests.sh at the root is the test command ([\"./test.sh\"])",
         "vibe SKILL.md: the express plan step shows the apply document shape inline in one line ({phases:[{id,title,reqs,tier}], plans:[{id,phase,title,reqs,files,tasks}], checks:[{id,req,run,files}]}), so no session searches for it; router stays within 1,400 words"
       ]
+    },
+    {
+      "id": "P24.1",
+      "phase": "P24",
+      "title": "Guard against a newer record",
+      "reqs": [
+        "R33"
+      ],
+      "files": [
+        "plugin/lib/record.sh",
+        "plugin/lib/core.sh",
+        "plugin/lib/cmd-doctor.sh"
+      ],
+      "after": [],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "record.sh: add a newer-schema test (the record's schema is a number above the highest this VBW reads, 1) and call it first in record_read and in record_update before record_lock, so a newer record is never locked, validated, rewritten or called corrupt; die with exit 4 and 'this project needs a newer VBW: its record was written with schema N, this VBW reads up to schema 1; update VBW with /vbw:update'",
+        "cmd-doctor.sh: report a newer record as a failure with the same wording and the update fix, never as corrupt",
+        "core.sh: add exit code 4 (newer record) to the exit-code table; a non-numeric or damaged schema stays corrupt with exit 3"
+      ]
+    },
+    {
+      "id": "P24.2",
+      "phase": "P24",
+      "title": "Document record versioning",
+      "reqs": [
+        "R33"
+      ],
+      "files": [
+        "docs/record.md"
+      ],
+      "after": [
+        "P24.1"
+      ],
+      "status": "planned",
+      "role": "docs",
+      "tasks": [
+        "state the versioning rule: an older VBW refuses a record with a newer schema, says the project needs a newer VBW and how to update, and never modifies it",
+        "state exit code 4 and keep exit 3 for damaged records",
+        "state that every earlier schema version keeps loading (fixtures in tests/fixtures/records)"
+      ]
+    },
+    {
+      "id": "P25.1",
+      "phase": "P25",
+      "title": "Prove on a clean copy of the committed code",
+      "reqs": [
+        "R32"
+      ],
+      "files": [
+        "plugin/lib/core.sh",
+        "plugin/lib/proofcopy.sh",
+        "plugin/lib/cmd-prove.sh",
+        "tests/kernel-prove.bats",
+        "tests/kernel-work.bats",
+        "tests/kernel-surface.bats"
+      ],
+      "after": [
+        "P24.1"
+      ],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "core.sh: let vbw_guard_add register a directory (kind dir), removed on interrupt, die or vbw_guard_drop, so an interrupted proof removes its copy",
+        "proofcopy.sh (new): create the copy of HEAD inside the project (under the run's directory in .vbw/runtime) with git worktree add --detach and git hooks disabled (-c core.hooksPath=/dev/null), pruning stale worktree entries first; link every git-ignored path (git ls-files -z --others --ignored --exclude-standard --directory, skipping .git and .vbw) from the working folder (D54); remove by unlinking the links first and never recursing through them, then worktree remove --force",
+        "cmd-prove.sh: run checks and project commands with the copy as the working directory (vbw check is unchanged), refuse with a message naming any check file whose committed bytes differ from the approved contract (recompute contract_hash with the copy as VBW_ROOT), keep the evidence and the record commit in the real project; evidence.tree stays the working-folder fingerprint so QA freshness (R12) is unchanged",
+        "tests/kernel-prove.bats, kernel-work.bats, kernel-surface.bats: the tests that prove with uncommitted changes (fix cap, ship refused while proven work is not committed, ship until next says ship, evidence stale, committing proved work, files a check creates) commit the change before proving; run bash tools/test.sh under /bin/bash and bash 5"
+      ]
+    },
+    {
+      "id": "P25.2",
+      "phase": "P25",
+      "title": "Document proof on a clean copy",
+      "reqs": [
+        "R32"
+      ],
+      "files": [
+        "docs/proof.md"
+      ],
+      "after": [
+        "P25.1"
+      ],
+      "status": "planned",
+      "role": "docs",
+      "tasks": [
+        "update the vbw prove steps: checks and commands run on a clean copy of the committed code, inside the project, removed afterwards",
+        "state that git-ignored files are linked in and untracked, non-ignored files never enter the copy (D54), and that vbw check keeps running on the working folder",
+        "state what evidence.tree fingerprints and that uncommitted changes are not proved until committed"
+      ]
+    },
+    {
+      "id": "P26.1",
+      "phase": "P26",
+      "title": "Rules in the record, apply, spec sync and approve",
+      "reqs": [
+        "R31"
+      ],
+      "files": [
+        "plugin/lib/record.jq",
+        "plugin/lib/cmd-apply.sh",
+        "plugin/lib/cmd-spec.sh",
+        "plugin/lib/cmd-approve.sh",
+        "tests/record.bats"
+      ],
+      "after": [],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "record.jq and tests/record.bats: an [auto] requirement may carry rules: [{text, check}] where check names a check of that requirement; a [human] requirement carries none; red-first record tests for each violation",
+        "cmd-apply.sh: accept an optional top-level rules: [{req, text, check}]; when present refuse, naming the rule, any rule whose check is not in the plan or belongs to another requirement, rules for a [human] requirement, and any [auto] requirement of the plan's phases that is not proven and lists no rules (the record's earlier rules count); store them on the requirements; without the key apply behaves as before",
+        "cmd-spec.sh: a new or changed [auto] requirement gets rules: [] (pending) only when some requirement already has a rules field, so projects approved before rules existed are untouched (D53)",
+        "cmd-approve.sh: approve_problems refuses an [auto] requirement whose rules are pending (empty), naming it"
+      ]
+    },
+    {
+      "id": "P26.2",
+      "phase": "P26",
+      "title": "Show rules in the contract",
+      "reqs": [
+        "R31"
+      ],
+      "files": [
+        "plugin/lib/contract.sh",
+        "plugin/lib/cmd-show.sh",
+        "tests/kernel-show.bats"
+      ],
+      "after": [
+        "P26.1"
+      ],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "contract.sh: contract_hash and contract_doc include a requirement's rules only when it has the field, so every contract approved before keeps its hash (golden hash in tests/rules.bats)",
+        "cmd-show.sh: vbw show contract prints 'rule: TEXT -> CHECK' under each [auto] requirement that lists rules, and 'rules not listed' under one that has none; vbw show req prints them too",
+        "cmd-show.sh: show contract --changes reports added, removed or changed rules; tests/kernel-show.bats covers req and changes output"
+      ]
+    },
+    {
+      "id": "P26.3",
+      "phase": "P26",
+      "title": "Rule-listing step in the mandates and the router",
+      "reqs": [
+        "R31"
+      ],
+      "files": [
+        "plugin/agents/lead.md",
+        "plugin/agents/architect.md",
+        "plugin/skills/vibe/SKILL.md",
+        "tests/rules-prompts.bats"
+      ],
+      "after": [
+        "P26.1"
+      ],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "tests/rules-prompts.bats (new, red first): the Lead and Architect mandates and the router name the rules step and the rules key of vbw apply",
+        "lead.md: stage 2 and the apply example list each [auto] requirement's rules (every condition, edge and error case its text states), each naming the check that tests it; self-review confirms every rule has a check",
+        "architect.md: state each requirement's conditions and edge cases in the phase criteria so the Lead can list them as rules",
+        "vibe SKILL.md: the express apply example carries rules; stay within the router, mode and total prompt token budgets (tests/standards.bats)"
+      ]
+    },
+    {
+      "id": "P26.4",
+      "phase": "P26",
+      "title": "Document rules",
+      "reqs": [
+        "R31"
+      ],
+      "files": [
+        "docs/proof.md",
+        "docs/workflows.md",
+        "docs/record.md"
+      ],
+      "after": [
+        "P26.2",
+        "P25.2",
+        "P24.2"
+      ],
+      "status": "planned",
+      "role": "docs",
+      "tasks": [
+        "docs/record.md: the rules field of a requirement and its validation",
+        "docs/workflows.md: the rules key of vbw apply and what it refuses",
+        "docs/proof.md: rules in the contract and approval screen, and requirements approved before rules showing 'rules not listed' (D53)"
+      ]
+    },
+    {
+      "id": "P27.1",
+      "phase": "P27",
+      "title": "Edge-case and leftover-file scenarios",
+      "reqs": [
+        "R34"
+      ],
+      "files": [
+        "tools/l3-suite.sh"
+      ],
+      "after": [
+        "P25.1",
+        "P26.2",
+        "P26.3"
+      ],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "edgecase scenario: a fixture project and a request that states an edge case; drive the real app through plan and approve as a user would; write tools/l3-results/edgecase.json with the facts tests/l3-scenarios.bats names (the rule and its check were listed before approval, the check passes on the solution and fails on a copy that ignores the edge)",
+        "leftover scenario: a fixture whose project command fails on a stray file; leave an untracked file in the working folder, prove, and write tools/l3-results/leftover.json with the facts tests/l3-scenarios.bats names (the check flips in the working folder, the proof is unchanged and passes, the file was not in the proof copy and the copy is gone)",
+        "register both in ALL and the header of tools/l3-suite.sh; each result reflects only its own checks, states L3 and its fixture; shellcheck clean"
+      ]
+    },
+    {
+      "id": "P27.2",
+      "phase": "P27",
+      "title": "Run both scenarios and keep their results",
+      "reqs": [
+        "R34"
+      ],
+      "files": [
+        "tools/l3-results/edgecase.json",
+        "tools/l3-results/leftover.json"
+      ],
+      "after": [
+        "P27.1"
+      ],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "run bash tools/l3-suite.sh edgecase and commit tools/l3-results/edgecase.json as written (never hand-edited); a failing scenario is diagnosed to its root cause, fixed red-first, and run again",
+        "run bash tools/l3-suite.sh leftover and commit tools/l3-results/leftover.json as written",
+        "append both runs' output, evidence level L3, fixtures and a Not tested list to the progress log in the main checkout (maintainer-local, not committed); run bash tools/test.sh"
+      ]
     }
   ],
   "fixes": [
@@ -2893,6 +3273,30 @@
       "id": "D52",
       "at": "2026-10-03T21:32:17Z",
       "text": "Shipped M4 Adaptive rigor: 9 requirements proven or accepted"
+    },
+    {
+      "id": "D53",
+      "text": "R31 applies to new or changed requirements only; requirements approved before it keep their approval, and the approval screen marks them 'rules not listed'",
+      "why": "No existing project is blocked at its next approval, with no third warn state to explain; the gap stays visible (chosen by VBW as the owner's engineer)",
+      "at": "2026-10-03T23:31:34Z"
+    },
+    {
+      "id": "D54",
+      "text": "vbw prove runs on a clean copy of the committed code with the project's git-ignored files (installed packages, build output, local config) linked in from the working folder; untracked files that are not ignored never enter the copy",
+      "why": "A copy of committed files alone breaks most projects, whose tests need installed dependencies; ignored files are the project's declared environment, while untracked unignored files (the leftover todos.txt that made proofs flap) are exactly the stray state R32 removes; no user setting (chosen by VBW as the owner's engineer)",
+      "at": "2026-10-03T23:31:34Z"
+    },
+    {
+      "id": "D55",
+      "text": "R34 is two real-user scenarios, edge-case check and leftover file, each run right after its own phase",
+      "why": "Problems found early and isolated; the extra usage is small on the Max plan (chosen by VBW as the owner's engineer)",
+      "at": "2026-10-03T23:31:35Z"
+    },
+    {
+      "id": "D56",
+      "text": "M5 ships as 2.0.15",
+      "why": "Owner's choice: continue the 2.0.x patch series",
+      "at": "2026-10-03T23:31:58Z"
     }
   ],
   "commands": {

@@ -1,0 +1,139 @@
+{
+  "schema": 1,
+  "project": {
+    "name": "Shop"
+  },
+  "milestone": {
+    "id": "M2",
+    "title": "Refunds",
+    "status": "active"
+  },
+  "shipped": [
+    {
+      "id": "M1",
+      "title": "Checkout",
+      "at": "2026-10-01T10:00:00Z"
+    }
+  ],
+  "requirements": [
+    {
+      "id": "R1",
+      "text": "Pay by card",
+      "proof": "auto",
+      "status": "proven",
+      "milestone": "M1"
+    },
+    {
+      "id": "R2",
+      "text": "Looks trustworthy",
+      "proof": "human",
+      "status": "accepted",
+      "milestone": "M1"
+    },
+    {
+      "id": "R3",
+      "text": "Refund a payment",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M2"
+    }
+  ],
+  "checks": [
+    {
+      "id": "C1",
+      "req": "R1",
+      "run": [
+        "npm",
+        "test"
+      ]
+    },
+    {
+      "id": "C2",
+      "req": "R3",
+      "run": [
+        "npm",
+        "test",
+        "--",
+        "refund"
+      ]
+    }
+  ],
+  "phases": [
+    {
+      "id": "P1",
+      "title": "Payments",
+      "reqs": [
+        "R1",
+        "R2"
+      ],
+      "milestone": "M1"
+    },
+    {
+      "id": "P2",
+      "title": "Refunds",
+      "reqs": [
+        "R3"
+      ],
+      "milestone": "M2",
+      "tier": "standard",
+      "reasons": [
+        "requirements: 1"
+      ]
+    }
+  ],
+  "plans": [
+    {
+      "id": "P1.1",
+      "phase": "P1",
+      "title": "Card form",
+      "reqs": [
+        "R1"
+      ],
+      "files": [
+        "src/pay.ts"
+      ],
+      "after": [],
+      "status": "done"
+    },
+    {
+      "id": "P2.1",
+      "phase": "P2",
+      "title": "Refund button",
+      "reqs": [
+        "R3"
+      ],
+      "files": [
+        "src/refund.ts"
+      ],
+      "after": [],
+      "status": "planned"
+    }
+  ],
+  "fixes": [],
+  "todos": [
+    {
+      "id": "T1",
+      "text": "Dark mode",
+      "status": "open"
+    }
+  ],
+  "decisions": [
+    {
+      "id": "D1",
+      "text": "Stripe",
+      "at": "2026-10-01T09:00:00Z"
+    }
+  ],
+  "commands": {
+    "test": [
+      "npm",
+      "test"
+    ]
+  },
+  "settings": {
+    "profile": "balanced",
+    "autonomy_cap": 25
+  },
+  "evidence": null,
+  "lease": null
+}
