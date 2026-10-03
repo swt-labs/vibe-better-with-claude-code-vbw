@@ -19,5 +19,13 @@ rigor_assess() {
     [ -f "$VBW_ROOT/$p" ] && [ ! -L "$VBW_ROOT/$p" ] || continue
     facts=$(printf '%s' "$facts" | jq -c --arg p "$p" --argjson n "$(wc -c < "$VBW_ROOT/$p" | tr -d ' ')" '.[$p] = $n')
   done
-  printf '%s' "$record" | jq -c --argjson facts "$facts" --argjson ids "$ids" -f "$VBW_LIB/rigor.jq"
+  printf '%s' "$record" | jq -c --argjson facts "$facts" --argjson ids "$ids" "$VBW_JQ_DEFS$(cat "$VBW_LIB/rigor.jq")"
+}
+
+# rigor_escalate PHASE REASON [TIER]: raise a phase's tier (one step, or to TIER)
+# and record why; the single way a trigger raises a tier. Never lowers a tier.
+# Takes the record lock itself: call it with the lock released.
+rigor_escalate() {
+  record_update "$VBW_JQ_DEFS"'escalate_phases([$p]; (if $to == "" then null else $to end); $why; $at)' \
+    --arg p "$1" --arg why "$2" --arg to "${3:-}" --arg at "$(vbw_now)"
 }

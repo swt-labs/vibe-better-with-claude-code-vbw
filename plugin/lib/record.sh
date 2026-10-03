@@ -119,5 +119,4 @@ record_commit() {
 # entry (ending in /) with PATH under it.
 VBW_JQ_DEFS='def next_id($p): (([.[]?.id | ltrimstr($p) | tonumber?] | max) // 0) + 1 | "\($p)\(.)";
 def covers($p): . as $e | $e == $p or (($e | endswith("/")) and ($p | startswith($e)));
-def tier_rank: ["express","standard","deep"] as $t | . as $x | $t | index($x);
-def max_tier($b): if (tier_rank) >= ($b | tier_rank) then . else $b end;'
+'"$(cat "$VBW_LIB/rigor-defs.jq")"
