@@ -118,3 +118,20 @@ commands_section() {
   [ "$status" -eq 1 ]
   [[ "$output" == *"spec.md and the record differ (vbw spec sync)"* ]]
 }
+
+@test "vbw config rigor re-tiers unstarted phases only, forced or recomputed" {
+  load rigor-helper
+  rigor_project 1
+  rigor_apply "$(rigor_doc 1 "" src/note.txt)" > /dev/null
+  edit_record '.phases[0].tier = "express"'
+  "$VBW" config rigor deep > /dev/null
+  jq -e '.phases[0].tier == "deep" and (.phases[0].reasons | index("forced: vbw config rigor deep"))' .vbw/record.json
+  "$VBW" config rigor auto > /dev/null
+  jq -e '.phases[0].tier == "express" and (.phases[0].reasons | any(.[]; test("forced")) | not)' .vbw/record.json
+  edit_record '.plans[0].status = "done"'
+  "$VBW" config rigor deep > /dev/null
+  jq -e '.phases[0].tier == "express"' .vbw/record.json
+  edit_record '.plans[0].status = "planned" | .phases[0].escalations = [{at: "2026-10-03T10:00:00Z", from: "express", to: "standard", reason: "x"}]'
+  "$VBW" config rigor standard > /dev/null
+  jq -e '.phases[0].tier == "express"' .vbw/record.json
+}

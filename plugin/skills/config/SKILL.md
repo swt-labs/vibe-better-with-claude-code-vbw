@@ -30,6 +30,9 @@ the result. Otherwise show the settings above in plain words. Keys:
   checking and shipping), `hands-off` (takes its own recommendations on
   decisions and lists them). `/vbw:profile` sets it together with the models.
 - `autonomy_cap`: how many steps one autonomous run takes before stopping.
+- `rigor`: how thorough each phase's checking is. `auto` (the default) picks a
+  tier per phase from its risk; `express`, `standard` or `deep` forces it. Set
+  with `vbw config rigor MODE`; phases not yet started are re-tiered.
 - The status line: `vbw statusline on` or `off`.
 
 Your own session keeps the model you chose with `/model`; it must be Sonnet,
