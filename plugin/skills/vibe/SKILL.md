@@ -86,6 +86,7 @@ still has default title → `vbw milestone rename "<title>"`. Check
 **plan** with `detail.tier` express: no mapping, no planning workflow. Read the
 files the request names, then `vbw apply` one phase (tier express) with one
 plan (its files and tasks) and one check that fails today; go to **approve**.
+The document, on one line: `{phases:[{id,title,reqs,tier}], plans:[{id,phase,title,reqs,files,tasks}], checks:[{id,req,run,files}]}`.
 Apply computes a higher tier: run the planning workflow below instead.
 
 **plan**: `VBW_SESSION_ID=${CLAUDE_SESSION_ID} vbw run start plan`, Workflow `vbw:planning` with args
