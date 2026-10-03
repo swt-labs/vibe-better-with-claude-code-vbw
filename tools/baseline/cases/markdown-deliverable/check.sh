@@ -13,4 +13,5 @@ grep -Fq '~/.local/share/backups' "$f"
 grep -Fq -- '--dest' "$f"
 grep -Fq -- '--output' "$f"
 grep -Eqi 'bash[^0-9]*4\.4' "$f"
-grep -Eqi 'exit[^0-9]*(code)?[^0-9]*66' "$f"
+# The new code on a line about the exit code (the old one, 1, may come first).
+grep -Eqi 'exit.*(^|[^0-9])66([^0-9]|$)' "$f"
