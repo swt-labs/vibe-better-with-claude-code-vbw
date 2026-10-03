@@ -9,6 +9,20 @@ def tiers: ["express", "standard", "deep"];
 def rank: . as $t | tiers | index($t);
 def at_least($a; $b): if ($a | rank) >= ($b | rank) then $a else $b end;
 
+# escalate($to; $reason; $at): on a phase object, inside a record update. Raises
+# the tier to $to (null = one step up; deep stays deep) and appends {at, from,
+# to, reason} to escalations. A reason already recorded is not recorded twice,
+# and an explicit target that is not higher is never applied. Everything above
+# the marker below is also loaded as the definitions of record updates (cmd-tier.sh).
+def escalate($to; $reason; $at):
+  (.tier // "express") as $from
+  | (if $to == null then tiers[([($from | rank) + 1, 2] | min)] else $to end) as $target
+  | if (($to != null) and (($target | rank) <= ($from | rank))) or (((.escalations // []) | any(.[]; .reason == $reason)))
+    then .
+    else .tier = $target | .escalations = ((.escalations // []) + [{at: $at, from: $from, to: $target, reason: $reason}])
+    end;
+# ---- the assessment program ----
+
 # Risk categories, matched case-insensitively, in the order they are reported.
 def risks: [
   {name: "sign-in", re: "(^|[^a-z])(sign[ _-]?in|log[ _-]?in|auth)([^a-z]|$)|authenticat|authoriz|oauth|password"},
