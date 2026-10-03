@@ -1,14 +1,16 @@
 #!/usr/bin/env bash
-# vbw commit PLAN MESSAGE: commit the plan's declared files that changed, with
-# VBW-Plan/VBW-Req trailers. Nothing else in the working tree or the index is
+# vbw commit PLAN MESSAGE [FILE...]: commit the plan's declared files that
+# changed (or only the named FILEs, each covered by the plan: one commit per
+# task), with VBW-Plan/VBW-Req trailers. Nothing else in the working tree or the index is
 # touched: the user's own staged work stays staged. Commits are serialized with
 # the project lock, so parallel Devs never collide on git's index lock.
 
 VBW_COMMIT_RE='^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)\([^)]+\)!?: .+'
 
 cmd_commit() {
-  [ $# -eq 2 ] || vbw_usage_error "usage: vbw commit PLAN MESSAGE"
+  [ $# -ge 2 ] || vbw_usage_error "usage: vbw commit PLAN MESSAGE [FILE...]"
   local plan="$1" msg="$2"
+  shift 2
   printf '%s' "$msg" | grep -Eq "$VBW_COMMIT_RE" \
     || vbw_usage_error "commit message must be 'type(scope): description' (types: feat fix docs style refactor perf test build ci chore revert)"
   vbw_require_project
@@ -22,6 +24,22 @@ cmd_commit() {
   while IFS= read -r -d '' f; do files+=("$f"); done \
     < <(printf '%s' "$record" | jq -j --arg p "$plan" '.plans[] | select(.id == $p) | .files[] | . + "\u0000"')
   [ ${#files[@]} -gt 0 ] || vbw_die "plan $plan declares no files"
+
+  local planned=${#files[@]}
+  if [ $# -gt 0 ]; then
+    local named=() e covered
+    for f in "$@"; do
+      f="${f#./}"
+      covered=0
+      for e in "${files[@]}"; do
+        e="${e%/}"
+        if [ "$f" = "$e" ] || { [ "${f#"$e"/}" != "$f" ] && [[ "/$f/" != *"/../"* ]]; }; then covered=1; break; fi
+      done
+      [ "$covered" -eq 1 ] || vbw_die "$f is not covered by plan $plan: name only files the plan declares"
+      named+=("$f")
+    done
+    files=("${named[@]}")
+  fi
 
   cd "$VBW_ROOT" || vbw_die "cannot enter $VBW_ROOT"
   record_lock
@@ -40,7 +58,7 @@ cmd_commit() {
 VBW-Req: $reqs" -- "${changed[@]}" || vbw_die "git commit failed"
 
   record_unlock
-  commit_escalate "$plan" "${#files[@]}" "${changed[@]}"
+  commit_escalate "$plan" "$planned" "${changed[@]}"
   printf 'committed %s for %s (%d file%s)\n' "$(git rev-parse --short HEAD)" "$plan" \
     "${#changed[@]}" "$([ ${#changed[@]} -eq 1 ] || printf s)"
 }
