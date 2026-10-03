@@ -94,8 +94,9 @@ if type != "object" then ["record must be a JSON object"] else
         ( select(has("timeout") and ((.timeout | int_in(1; 3600)) | not)) | "\(.id) timeout must be 1-3600 seconds" ) ),
 
     ( $phases[]
-      | field_rule(["id","title","reqs","milestone","goal","criteria","qa","tier","reasons","predicted","cost_usd","escalations","outcome"]),
+      | field_rule(["id","title","reqs","milestone","goal","criteria","qa","tier","proposed","reasons","predicted","cost_usd","escalations","outcome"]),
         ( select(has("tier") and ((.tier | tier) | not)) | "\(.id) tier must be express, standard or deep" ),
+        ( select(has("proposed") and ((.proposed | tier) | not)) | "\(.id) proposed must be express, standard or deep" ),
         ( select(has("predicted") and ((.predicted | tier) | not)) | "\(.id) predicted must be express, standard or deep" ),
         ( select(has("reasons") and ((.reasons | type == "array" and all(.[]; type == "string")) | not)) | "\(.id) reasons must be an array of strings" ),
         ( select(has("cost_usd") and ((.cost_usd | type == "number") | not)) | "\(.id) cost_usd must be a number" ),

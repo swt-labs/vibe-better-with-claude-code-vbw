@@ -10,7 +10,8 @@
 # plan that has started must come back unchanged and keeps its status; every
 # other plan is "planned". Refused while a build or fix run is open.
 # Every phase gets its rigor tier here: the floor comes from rigor.sh; the
-# Architect's optional tier may only raise it (a lower one is refused), and
+# Architect's optional tier may only raise it (a lower one is refused) and is
+# kept as the phase's proposed tier (config rigor auto restores it), and
 # settings.rigor forced to a tier overrides both. A phase that already existed
 # keeps predicted, escalations, cost_usd and outcome, and a started or
 # escalated phase never records a lower tier than it has.
@@ -78,6 +79,7 @@ cmd_apply() {
                         and ((["express", "standard", "deep"] | index($o.tier)) > (["express", "standard", "deep"] | index($want)))
                      then $o.tier else $want end) as $tier
                   | {id, title, reqs, milestone: $m} + (with_entries(select(.key | IN("goal", "criteria"))))
+                    + (if $sub != null then {proposed: $sub} else {} end)
                     + {tier: $tier,
                        reasons: ($a.reasons | map(select(startswith("Architect raised") | not))
                          + (if $forced then ["forced: vbw config rigor \($mode)"]

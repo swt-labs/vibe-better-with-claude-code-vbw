@@ -135,3 +135,16 @@ commands_section() {
   "$VBW" config rigor standard > /dev/null
   jq -e '.phases[0].tier == "express"' .vbw/record.json
 }
+
+@test "a phase the Architect raised to deep is deep again after config rigor express then auto" {
+  load rigor-helper
+  rigor_project 1
+  rigor_apply "$(rigor_doc 1 deep src/note.txt)" > /dev/null
+  jq -e '.phases[0].tier == "deep" and .phases[0].proposed == "deep"' .vbw/record.json
+  "$VBW" config rigor express > /dev/null
+  jq -e '.phases[0].tier == "express"' .vbw/record.json
+  "$VBW" config rigor auto > /dev/null
+  jq -e '.phases[0].tier == "deep" and (.phases[0].reasons | index("raised by the Architect")) and (.phases[0].reasons | any(.[]; test("forced")) | not)' .vbw/record.json
+  rigor_apply "$(rigor_doc 1 "" src/note.txt)" > /dev/null
+  jq -e '.phases[0] | has("proposed") | not' .vbw/record.json
+}
