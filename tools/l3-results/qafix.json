@@ -1,14 +1,14 @@
 {
   "scenario": "qafix",
   "fixture": "greet.sh plus NOTES.md (no check names it); the built NOTES.md is deleted after the build, so only QA can see the deviation",
-  "cost_usd": 1.05,
+  "cost_usd": 1.12,
   "evidence_level": "L3",
-  "at": "2026-10-02T18:55:10Z",
-  "passed": true,
+  "at": "2026-10-03T22:44:02Z",
+  "passed": false,
   "facts": {
     "deviation": "NOTES.md",
     "first_qa_verdict": "fail",
-    "first_qa_note": "6/8 checks NOTES.md does not exist. Commit f63ed7b 'chore: drop NOTES.md' deleted it after acbb590 created it, so plan P1.2 deliverable and criteria 'NOTES.md exists with one sentence' and 'reader can tell what greet.sh does' are unmet.",
+    "first_qa_note": "8/9 checks NOTES.md does not exist in the working tree. It was created in cdb1d31 (P1.2) but deleted in a337d41 'chore: drop NOTES.md'. Criterion 4 and plan P1.2 (write it to NOTES.md) are unmet; no recorded decision authorises the removal.",
     "fix_rounds": 1,
     "final_qa_verdict": "pass",
     "phase_proved": true
