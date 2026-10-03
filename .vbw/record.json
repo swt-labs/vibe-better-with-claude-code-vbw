@@ -1923,7 +1923,7 @@
         "P21.5",
         "P21.6"
       ],
-      "status": "planned",
+      "status": "done",
       "tasks": [
         "rigor-defs.jq (the shared record-update definitions): a finished definition (plans done, requirements proven or accepted, no open or escalated fix on them, QA passed on the proven code when needs-QA) and a finish definition that writes outcome {tier, predicted, held, fix_rounds (sum of attempts + 1 over the phase's requirements' fixes), qa_findings (their qa-source fixes), escalations (count)} once, never rewriting an existing outcome",
         "call finish after vbw prove, vbw qa record and vbw req accept (prove.jq, cmd-qa.sh, cmd-req.sh)",
