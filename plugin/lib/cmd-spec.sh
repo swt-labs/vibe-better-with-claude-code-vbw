@@ -40,7 +40,9 @@ spec_parse() {
   printf '%s\n' "$parsed"
 }
 
-# Bring the record's requirements in line with the spec, in spec order.
+# Bring the record's requirements in line with the spec, in spec order. A new
+# or changed [auto] requirement gets rules: [] (pending) once any requirement
+# has a rules field; projects approved before rules existed are untouched (D53).
 spec_sync() {
   local reqs blocked
   reqs=$(printf '%s' "$1" | jq -c '.requirements')
@@ -64,10 +66,12 @@ spec_sync() {
   record_update '.milestone.id as $m
     | .requirements as $old
     | [$old[].id | select(. as $id | any($s[]; .id == $id) | not)] as $gone
+    | any($old[]; has("rules")) as $ruled
     | def kept: . as $q | any($gone[]; . == $q) | not;
       .requirements = [$s[] | . as $n | [$old[] | select(.id == $n.id)][0] as $o
         | if $o == null or $o.text != $n.text or $o.proof != $n.proof
           then {id: $n.id, text: $n.text, proof: $n.proof, status: "open", milestone: $m}
+            + (if $n.proof == "auto" and $ruled then {rules: []} else {} end)
           else $o end]
     | .checks = [.checks[] | select(.req | kept)]
     | .fixes = [.fixes[] | select((has("req") | not) or (.req | kept))]

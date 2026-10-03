@@ -54,7 +54,9 @@ approve_problems() {
   printf '%s' "$1" | jq -r '
     (select((.requirements | length) == 0) | "no requirements"),
     (.checks as $c | .requirements[] | select(.proof == "auto")
-      | select(.id as $id | any($c[]; .req == $id) | not) | "\(.id) has no check")'
+      | select(.id as $id | any($c[]; .req == $id) | not) | "\(.id) has no check"),
+    (.requirements[] | select(.proof == "auto" and (.rules // null) == [])
+      | "\(.id) has no rules listed (vbw apply with rules)")'
   while IFS= read -r -d '' f; do
     [ -f "$VBW_ROOT/$f" ] || printf 'check file missing: %s\n' "$f"
   done < <(printf '%s' "$1" | jq -j '[.checks[].files // [] | .[]] | unique[] | . + "\u0000"')
