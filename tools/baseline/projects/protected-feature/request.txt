@@ -1,0 +1,8 @@
+Extend the inventory CLI inv.sh. Keep everything it does today working: ./test.sh must still pass.
+
+1. Adding an item that already exists adds to its quantity instead of creating a second line (add apples 3 then add apples 2 leaves one "apples 5").
+2. `./inv.sh total` prints the sum of all quantities (0 when the inventory is empty).
+3. `./inv.sh low N` prints the items whose quantity is below N, sorted by name, in the same "NAME QTY" format as list.
+4. `./inv.sh remove NAME` deletes that item; removing an item that does not exist prints an error on stderr and exits 1.
+
+Add tests for the new features to test.sh and run ./test.sh to confirm.

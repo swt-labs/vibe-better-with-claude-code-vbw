@@ -1,0 +1,4 @@
+# A multi-requirement project. Consumed by bench.sh.
+fixture=protected-feature
+max_turns=120
+timeout_seconds=2400

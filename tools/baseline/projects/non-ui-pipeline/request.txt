@@ -1,0 +1,8 @@
+Implement logstat.sh, a command-line summary of an access log. A valid line has exactly five fields: TIME METHOD PATH STATUS BYTES, where STATUS is a three-digit number and BYTES a whole number. Any other line is malformed.
+
+1. `./logstat.sh FILE` prints "requests: N", the number of valid lines.
+2. It prints "status 2xx: N", "status 3xx: N", "status 4xx: N" and "status 5xx: N" (every class, even when 0).
+3. It prints "bytes: N", the total BYTES of valid lines, and "top: PATH (N)" for the three most requested paths, most first, ties by path name.
+4. Malformed lines are never counted: it prints "malformed: N" on stderr, and exits 2 with a usage message when FILE is missing or unreadable.
+
+Print the stdout lines in the order above. Run it on logs/access.log to check.

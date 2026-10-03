@@ -1,0 +1,8 @@
+Migrate the people store from data/people.csv to JSON.
+
+1. Write ./migrate.sh, which reads data/people.csv and writes data/people.json: an array with one object per row, in id order, shaped {"id": NUMBER, "name": STRING, "email": STRING or null, "tags": [STRING, ...]}.
+2. No row is lost: every row of the CSV is in the JSON (blank lines are not rows).
+3. Emails are stored lowercase; an empty email becomes null; tags are split on ";" and empty tags give [].
+4. migrate.sh can be run again safely: it leaves data/people.csv unchanged and rewrites data/people.json with the same result.
+
+Update README.md to describe the new file, run ./migrate.sh, and check the result.
