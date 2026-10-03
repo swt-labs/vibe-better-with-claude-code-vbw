@@ -1676,7 +1676,7 @@
       "after": [
         "P19.2"
       ],
-      "status": "planned",
+      "status": "done",
       "tasks": [
         "vbw show contract gains a 'phases:' section with one line per phase of the current milestone: '  P1 express: REASON; REASON; ...' (two spaces, the phase id, the tier, then its reasons joined by '; ')",
         "vbw show phase prints 'tier: TIER (predicted PREDICTED)' and the reasons; a phase without a tier prints nothing new",
@@ -1699,7 +1699,7 @@
       "after": [
         "P19.2"
       ],
-      "status": "planned",
+      "status": "done",
       "tasks": [
         "planning.js: the Architect's SCOPE schema takes an optional tier per phase (express|standard|deep) and the Lead's task text says the kernel computes a floor and refuses lower",
         "architect.md: it may submit a tier only to raise the computed one, with the reason in its notes; it never lowers",
