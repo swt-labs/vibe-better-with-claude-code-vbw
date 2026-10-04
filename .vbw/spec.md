@@ -39,6 +39,8 @@
 - R32 [auto] vbw prove runs the checks and project commands on a clean copy of the committed code, so uncommitted changes and untracked files in the working folder change no proof result; vbw check keeps running on the working folder for the Dev's red and green steps
 - R33 [auto] A VBW that opens a project record written by a newer VBW says the project needs a newer VBW and how to update, instead of calling the record corrupt, and every VBW still reads the records of older versions
 - R34 [auto] A real-user scenario in tools/l3-suite.sh shows both in the real Claude Code app: a request that states an edge case gets a check for that edge before approval, and a leftover untracked file in the working folder does not change the proof
+- R35 [auto] In every profile and rigor tier, QA agents run on Sonnet or a stronger model, never Haiku; other roles keep the models their profile gives them
+- R36 [auto] vbw config set model.qa refuses a model weaker than Sonnet (haiku) and says QA needs Sonnet or stronger; sonnet, opus and default are still accepted
 
 <!-- One requirement per line: an id, how it is proved, and a user-observable
      statement. [auto] = a check can prove it; [human] = only a person can judge it.

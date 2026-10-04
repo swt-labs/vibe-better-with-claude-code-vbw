@@ -252,6 +252,80 @@
       "proof": "auto",
       "status": "proven",
       "milestone": "M5"
+    },
+    {
+      "id": "R35",
+      "text": "In every profile and rigor tier, QA agents run on Sonnet or a stronger model, never Haiku; other roles keep the models their profile gives them",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M6",
+      "rules": [
+        {
+          "text": "no profile and no tier cell (quality, balanced, budget x express, standard, deep) gives QA haiku in the tables or in vbw next --json",
+          "check": "C31"
+        },
+        {
+          "text": "the budget profile shows QA as Sonnet in config models and the status line",
+          "check": "C31"
+        },
+        {
+          "text": "other roles keep their models (budget scout haiku, express dev haiku, quality and balanced unchanged)",
+          "check": "C31"
+        },
+        {
+          "text": "a record already holding a haiku QA override (including a model id containing haiku) gets sonnet in next output, no failure",
+          "check": "C31"
+        },
+        {
+          "text": "a QA override to opus or a full non-Haiku id is honoured and the dev override still wins",
+          "check": "C31"
+        },
+        {
+          "text": "a forced rigor and an escalated or automatic tier never lower QA below Sonnet",
+          "check": "C31"
+        },
+        {
+          "text": "the status line shows the same effective QA model the workflow receives",
+          "check": "C31"
+        },
+        {
+          "text": "docs and the config skill say QA never uses Haiku",
+          "check": "C31"
+        }
+      ]
+    },
+    {
+      "id": "R36",
+      "text": "vbw config set model.qa refuses a model weaker than Sonnet (haiku) and says QA needs Sonnet or stronger; sonnet, opus and default are still accepted",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M6",
+      "rules": [
+        {
+          "text": "model.qa haiku exits non-zero with a message that QA needs Sonnet or stronger and leaves the record unchanged",
+          "check": "C32"
+        },
+        {
+          "text": "any value naming Haiku, in any case, is refused for model.qa",
+          "check": "C32"
+        },
+        {
+          "text": "sonnet, opus, default and a non-Haiku full id are still accepted; default removes the override",
+          "check": "C32"
+        },
+        {
+          "text": "the other roles still accept haiku",
+          "check": "C32"
+        },
+        {
+          "text": "a refused set writes nothing and keeps an existing valid model.qa override",
+          "check": "C32"
+        },
+        {
+          "text": "the config header and skill document the restriction and the kernel stays within 3,000 lines",
+          "check": "C32"
+        }
+      ]
     }
   ],
   "checks": [
@@ -584,6 +658,28 @@
       ],
       "files": [
         "tests/l3-scenarios.bats"
+      ]
+    },
+    {
+      "id": "C31",
+      "req": "R35",
+      "run": [
+        "bats",
+        "tests/qa-model.bats"
+      ],
+      "files": [
+        "tests/qa-model.bats"
+      ]
+    },
+    {
+      "id": "C32",
+      "req": "R36",
+      "run": [
+        "bats",
+        "tests/config-qa.bats"
+      ],
+      "files": [
+        "tests/config-qa.bats"
       ]
     }
   ],
@@ -1359,6 +1455,61 @@
         "qa_findings": 0,
         "escalations": 0
       }
+    },
+    {
+      "id": "P28",
+      "title": "QA never runs on Haiku",
+      "reqs": [
+        "R35"
+      ],
+      "milestone": "M6",
+      "goal": "Every QA agent run, in any profile, rigor tier or recorded override, uses Sonnet or a stronger model; other roles keep their profile models.",
+      "criteria": [
+        "For each profile (quality, balanced, budget) and each tier (express, standard, deep), the QA model in the `vbw next --json` rigor cell is sonnet, opus or default, never haiku (today budget profile and every tier cell in plugin/lib/tiers.json give haiku).",
+        "`vbw show` and the status line show QA as Sonnet or stronger under the budget profile (plugin/lib/profiles.json budget.qa is no longer haiku).",
+        "Other roles are unchanged: budget keeps scout on haiku; express dev stays haiku in tiers.json; quality/balanced models for all non-QA roles are identical to before (a test compares them).",
+        "Edge: an existing record that already holds settings.models.qa = haiku (or a model id containing 'haiku') set before this change does not produce a Haiku QA agent: next output raises it to sonnet instead of failing or passing haiku through.",
+        "Edge: an override of model.qa to opus or a full non-Haiku model id is still honoured in the next output; the dev override still wins over the tier cell for dev.",
+        "Edge: a forced rigor (vbw config rigor express|standard|deep) and an automatic or escalated tier change never lower QA below Sonnet.",
+        "Statusline.jq, which merges profile and overrides on its own, shows the same effective QA model the workflow receives.",
+        "tests pass under bash tools/test.sh, including rigor-profile.bats expectations updated to the new QA models; docs (docs/, plugin/skills/config/SKILL.md budget description) say QA never uses Haiku."
+      ],
+      "tier": "deep",
+      "reasons": [
+        "requirements: 1",
+        "files: 11 (53749 bytes)",
+        "risk: none",
+        "breaks: R13, R14, R16, R23, R24, R25, R26, R27, R28, R29, R32",
+        "tests: project test command"
+      ],
+      "predicted": "deep"
+    },
+    {
+      "id": "P29",
+      "title": "Refuse a weak QA model in config",
+      "reqs": [
+        "R36"
+      ],
+      "milestone": "M6",
+      "goal": "vbw config set model.qa refuses Haiku with a plain message, and still accepts sonnet, opus and default.",
+      "criteria": [
+        "`vbw config set model.qa haiku` exits non-zero (usage error), prints a message saying QA needs Sonnet or stronger, and leaves the record unchanged.",
+        "Edge: any value naming Haiku (case-insensitive, e.g. Haiku, claude-haiku-4-5) is refused for model.qa; the check is on the value, not only the exact word.",
+        "`vbw config set model.qa sonnet`, `opus` and `default` succeed as before; `default` removes the override; an unrelated full model id without haiku is accepted.",
+        "Edge: model.dev, model.scout and the other roles still accept haiku (the refusal is only for model.qa).",
+        "Error case: a refused set writes nothing to .vbw/record.json and does not change an existing valid model.qa override.",
+        "The comment header of plugin/lib/cmd-config.sh and the config skill text document the QA restriction; kernel line budget (3,000) still holds.",
+        "A regression test for each rule fails before the change and passes after; bash tools/test.sh passes."
+      ],
+      "tier": "standard",
+      "reasons": [
+        "requirements: 1",
+        "files: 2 (7670 bytes)",
+        "risk: none",
+        "breaks: R23, R27",
+        "tests: project test command"
+      ],
+      "predicted": "standard"
     }
   ],
   "plans": [
@@ -2854,6 +3005,98 @@
         "run bash tools/l3-suite.sh edgecase and commit tools/l3-results/edgecase.json as written (never hand-edited); a failing scenario is diagnosed to its root cause, fixed red-first, and run again",
         "run bash tools/l3-suite.sh leftover and commit tools/l3-results/leftover.json as written",
         "append both runs' output, evidence level L3, fixtures and a Not tested list to the progress log in the main checkout (maintainer-local, not committed); run bash tools/test.sh"
+      ]
+    },
+    {
+      "id": "P28.1",
+      "phase": "P28",
+      "title": "QA floor in profiles, tiers, next and status line",
+      "reqs": [
+        "R35"
+      ],
+      "files": [
+        "plugin/lib/profiles.json",
+        "plugin/lib/tiers.json",
+        "plugin/lib/next.jq",
+        "plugin/scripts/statusline.jq",
+        "plugin/lib/cmd-config.sh",
+        "tests/rigor-profile.bats",
+        "tests/kernel-surface.bats",
+        "tests/statusline.bats"
+      ],
+      "after": [],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "Set budget qa and every tier-cell qa model to sonnet (profiles.json, tiers.json)",
+        "Clamp the effective QA model in next.jq: a model naming haiku (case-insensitive) becomes sonnet, other overrides pass through",
+        "Apply the same clamp in statusline.jq and in the config models and config listing output",
+        "Update rigor-profile, kernel-surface and statusline tests to the new QA models"
+      ]
+    },
+    {
+      "id": "P28.2",
+      "phase": "P28",
+      "title": "Docs: QA never uses Haiku",
+      "reqs": [
+        "R35"
+      ],
+      "files": [
+        "docs/rigor.md",
+        "plugin/skills/config/SKILL.md",
+        "plugin/skills/profile/SKILL.md"
+      ],
+      "after": [
+        "P28.1"
+      ],
+      "status": "planned",
+      "role": "docs",
+      "tasks": [
+        "Update the budget profile description in the config and profile skills",
+        "State in docs/rigor.md that QA never uses Haiku in any profile or tier",
+        "Update the model-override text in the config skill (QA is raised to Sonnet)"
+      ]
+    },
+    {
+      "id": "P29.1",
+      "phase": "P29",
+      "title": "Refuse Haiku for model.qa",
+      "reqs": [
+        "R36"
+      ],
+      "files": [
+        "plugin/lib/cmd-config.sh"
+      ],
+      "after": [
+        "P28.1"
+      ],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "Refuse any model.qa value naming Haiku (case-insensitive) with a usage error before any write",
+        "Document the QA restriction in the file header",
+        "Confirm the kernel line budget"
+      ]
+    },
+    {
+      "id": "P29.2",
+      "phase": "P29",
+      "title": "Docs: model.qa restriction",
+      "reqs": [
+        "R36"
+      ],
+      "files": [
+        "plugin/skills/config/SKILL.md"
+      ],
+      "after": [
+        "P28.2",
+        "P29.1"
+      ],
+      "status": "planned",
+      "role": "docs",
+      "tasks": [
+        "Document that model.qa refuses Haiku and why",
+        "Show the accepted values sonnet, opus, default and full non-Haiku ids"
       ]
     }
   ],
