@@ -714,9 +714,9 @@ interview_options_fixed() {
   t=$(transcripts | grep -v '/subagents/')
   [ -n "$t" ] || return 1
   printf '%s\n' "$t" | xargs cat 2> /dev/null | jq -s -e '
-    {"How much software": ["never", "small scripts or no-code", "professionally", "senior engineer"],
-     "explain things": ["plain words", "plain with technical terms explained", "technical and brief"],
-     "How involved": ["decide and tell me", "options with a recommendation", "I make the calls"]} as $want
+    {"^How much software have you built": ["never", "small scripts or no-code", "professionally", "senior engineer"],
+     "^How should I explain things": ["plain words", "plain with technical terms explained", "technical and brief"],
+     "^How involved do you want to be": ["decide and tell me", "options with a recommendation", "I make the calls"]} as $want
     | [.[] | select(.type == "assistant") | .message.content[]?
        | select(.type == "tool_use" and .name == "AskUserQuestion") | .input.questions[]?
        | . as $q | $want | to_entries[] | .key as $k | select($q.question | test($k; "i"))
