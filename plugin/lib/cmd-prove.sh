@@ -26,6 +26,7 @@ cmd_prove() {
   cd "$VBW_ROOT" || vbw_die "cannot enter $VBW_ROOT"
   proofcopy_remove
   checks_end
+  checks_record_passes "$record" "$checks" "$CHECK_HASH"
   scope=$(prove_scope "$record")
   tree=$(vbw_code_tree) || vbw_die "cannot fingerprint the project files"
   head=$(vbw_head_tree) || vbw_die "cannot fingerprint the committed code"
