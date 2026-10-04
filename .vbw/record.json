@@ -1492,12 +1492,19 @@
         }
       ],
       "qa": {
-        "result": "fail",
+        "result": "pass",
         "tier": "deep",
         "tree": "20bedd8908a5c88253374d4ffdc6add14cedb692",
-        "at": "2026-10-04T11:34:10Z",
-        "note": "22/24 checks",
-        "rounds": 1
+        "at": "2026-10-04T11:46:12Z",
+        "note": "24/24 checks"
+      },
+      "outcome": {
+        "tier": "deep",
+        "predicted": "deep",
+        "held": true,
+        "fix_rounds": 2,
+        "qa_findings": 1,
+        "escalations": 1
       }
     },
     {
@@ -3279,7 +3286,7 @@
       "req": "R35",
       "source": "qa",
       "attempts": 0,
-      "status": "fixed",
+      "status": "closed",
       "note": "Plan P28.1 task 4 and the phase criterion require tests/rigor-profile.bats expectations updated to the new QA models, but no commit touches it (git log 74042e66^..HEAD). tests/rigor-profile.bats:21 still accepts .models.qa IN(opus,sonnet,haiku), so it would pass with haiku QA in tiers.json; the promised update is missing."
     }
   ],
@@ -3930,5 +3937,11 @@
     "scope": [],
     "passed": true
   },
-  "lease": null
+  "lease": {
+    "run": "qa-20261004T114205Z",
+    "kind": "qa",
+    "started_at": "2026-10-04T11:42:05Z",
+    "files": [],
+    "session": "9cd2cc30-8c86-4520-9d71-a0e82aff5407"
+  }
 }
