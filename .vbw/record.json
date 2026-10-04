@@ -556,7 +556,7 @@
       "id": "R43",
       "text": "Closing a fix does not rerun a check that already passed on the same project files under the same approved contract: it says the check is unchanged since its pass, and when that pass was; vbw prove still runs every check",
       "proof": "auto",
-      "status": "open",
+      "status": "failing",
       "milestone": "M7",
       "rules": [
         {
@@ -613,7 +613,7 @@
       "id": "R44",
       "text": "Several fixes close in one command (vbw fix done F8 F9 F5), running the checks their files serve once; each fix ends as it would if closed alone; a fix that cannot close is named, and the others still close",
       "proof": "auto",
-      "status": "open",
+      "status": "failing",
       "milestone": "M7",
       "rules": [
         {
@@ -662,7 +662,7 @@
       "id": "R45",
       "text": "A check the contract marks to run alone (for example one that starts containers) never runs at the same time as another VBW check in the same project, even when several fixes or builds run checks in parallel",
       "proof": "auto",
-      "status": "open",
+      "status": "failing",
       "milestone": "M7",
       "rules": [
         {
@@ -5314,15 +5314,15 @@
     "autonomy_cap": 25
   },
   "evidence": {
-    "at": "2026-10-04T17:47:03Z",
-    "contract": "b6527878b1e38f9aeac3ea9ecacf9ae97b8e9bd5b035160d37fa9d9055d7974f",
-    "tree": "d9dee95313234bc0cdd05de63a7212b64fbcc6c7",
-    "head": "d9dee95313234bc0cdd05de63a7212b64fbcc6c7",
+    "at": "2026-10-04T19:29:07Z",
+    "contract": "21bbdcd69f657d76f22f5afa90cf607baf06afc5e15f5755e22e1ab183b56e04",
+    "tree": "428b97b1d68926d23f5dc7adc8a82fcaa2936310",
+    "head": "428b97b1d68926d23f5dc7adc8a82fcaa2936310",
     "checks": {
       "C1": {
         "status": "pass",
         "exit": 0,
-        "seconds": 10,
+        "seconds": 11,
         "tail": "1..1\nok 1 R1: grants from two worktrees of one clone, started together, are all kept"
       },
       "C2": {
@@ -5364,7 +5364,7 @@
       "C10": {
         "status": "pass",
         "exit": 0,
-        "seconds": 8,
+        "seconds": 7,
         "tail": "1..3\nok 1 R11: a user rejection opens a fix and a later accept of that requirement closes it\nok 2 R11: a fix opened by QA stays open after the user accepts the requirement\nok 3 R11: the QA-opened fix closes only when QA records a passing verdict for the phase"
       },
       "C11": {
@@ -5376,7 +5376,7 @@
       "C12": {
         "status": "pass",
         "exit": 0,
-        "seconds": 1,
+        "seconds": 0,
         "tail": "1..1\nok 1 next in another session says the run belongs elsewhere and never says to end it"
       },
       "C13": {
@@ -5388,13 +5388,13 @@
       "C14": {
         "status": "pass",
         "exit": 0,
-        "seconds": 4,
+        "seconds": 5,
         "tail": "1..8\nok 1 another session's main conversation cannot edit a file the run writes\nok 2 another session's subagent cannot edit it either\nok 3 another session cannot write the file with a shell command either\nok 4 files the run does not write stay editable from another session\nok 5 the owning session and its agents can edit the file\nok 6 after the user states the owner is closed, the edit is allowed\nok 7 a run older than 24 hours no longer guards its files\nok 8 with no open run, or outside a VBW project, edits are allowed"
       },
       "C15": {
         "status": "pass",
         "exit": 0,
-        "seconds": 4,
+        "seconds": 3,
         "tail": "1..4\nok 1 turning autonomy on in B leaves A on, in either order\nok 2 concurrent turn-on calls from two sessions both persist\nok 3 turning it off in one session leaves the other on\nok 4 the gate follows each session's own state"
       },
       "C16": {
@@ -5406,13 +5406,13 @@
       "C17": {
         "status": "pass",
         "exit": 0,
-        "seconds": 9,
+        "seconds": 10,
         "tail": "1..17\nok 1 exactly the seven cases exist\nok 2 every case has a request\nok 3 fix-oneshot: untouched fails\nok 4 fix-oneshot: solution passes\nok 5 failing-check-fix: untouched fails\nok 6 failing-check-fix: solution passes\nok 7 brownfield-feature: untouched fails\nok 8 brownfield-feature: solution passes\nok 9 safety-destructive: untouched fails\nok 10 safety-destructive: solution passes\nok 11 safety-secret: untouched fails\nok 12 safety-secret: solution passes\nok 13 hostile-repo: untouched fails\nok 14 hostile-repo: solution passes\nok 15 markdown-deliverable: untouched fails\nok 16 markdown-deliverable: solution passes\nok 17 the README names each case, its fixture and its check"
       },
       "C18": {
         "status": "pass",
         "exit": 0,
-        "seconds": 6,
+        "seconds": 7,
         "tail": "1..7\nok 1 the committed results are complete\nok 2 selftest: a complete set passes\nok 3 selftest: a missing run fails\nok 4 selftest: a missing field fails\nok 5 selftest: a duplicate run fails\nok 6 selftest: a result whose level does not match its arm fails\nok 7 selftest: a result without user_inputs fails"
       },
       "C19": {
@@ -5424,49 +5424,49 @@
       "C20": {
         "status": "pass",
         "exit": 0,
-        "seconds": 12,
+        "seconds": 14,
         "tail": "1..10\nok 1 control: a phase with no risk signals is express\nok 2 a risk path (sign-in, payments, data migration, secrets, deletion, CI) puts a phase at deep\nok 3 a risk named by a requirement counts, not only a path\nok 4 many requirements raise the floor: 2 express, 3 standard, 6 deep\nok 5 many planned files and a large size raise the floor\nok 6 touching files that proven requirements depend on is at least standard\nok 7 changing existing files with no project test command is at least standard\nok 8 the kernel refuses an Architect tier below the risk floor, and changes nothing\nok 9 the kernel accepts an Architect tier above the floor, and says so in the reasons\nok 10 an Architect tier that is not a tier is refused with the allowed list"
       },
       "C21": {
         "status": "pass",
         "exit": 0,
-        "seconds": 7,
+        "seconds": 8,
         "tail": "1..7\nok 1 with no setting the mode is auto, and the config listing says so\nok 2 vbw config rigor sets each of auto, express, standard and deep\nok 3 an invalid mode is refused with the allowed list and the setting stays\nok 4 a forced mode overrides the computed tier when planning, up or down\nok 5 changing the mode re-tiers phases whose work has not started, and auto computes again\nok 6 a phase whose work has started keeps its tier when the mode changes\nok 7 changing the mode never makes the approved contract need approving again"
       },
       "C22": {
         "status": "pass",
         "exit": 0,
-        "seconds": 6,
+        "seconds": 4,
         "tail": "1..6\nok 1 the profile defines, for each tier, the agents with their count, the QA tier and the models\nok 2 express is one Dev; standard and deep keep the profile's models and QA tiers as before\nok 3 vbw next --json gives each phase exactly its profile cell, for every profile and tier\nok 4 a user's model override still wins over the tier's models\nok 5 a phase planned before tiers existed counts as standard\nok 6 the workflows and the router pass the tier's models and QA tier through"
       },
       "C23": {
         "status": "pass",
         "exit": 0,
-        "seconds": 20,
+        "seconds": 18,
         "tail": "1..9\nok 1 an express phase shows its requirement, check and plan together on one line\nok 2 a standard phase keeps the separate requirement, check and plan listing\nok 3 one approval records the requirement, check and plan of an express phase\nok 4 an express phase has exactly one plan; a higher tier may have several\nok 5 an express phase is built by one Dev\nok 6 an express phase with only [auto] requirements is not sent to QA once proven\nok 7 an express phase with a [human] requirement runs QA, at the express QA tier\nok 8 an express phase that has escalated runs QA\nok 9 a standard phase still goes to QA after its proof, as before"
       },
       "C24": {
         "status": "pass",
         "exit": 0,
-        "seconds": 25,
+        "seconds": 30,
         "tail": "1..12\nok 1 a Dev block raises the tier and records the reason\nok 2 a standard phase is raised to deep, and a deep phase records the event and stays deep\nok 3 a fix that needs a second round raises the tier, a first failure does not\nok 4 QA finding a problem in an express phase raises it; in a standard phase it does not\nok 5 QA failing a phase a second time raises the tier\nok 6 a commit that touches a risk path raises the phase to deep\nok 7 a commit that grows well beyond its plan raises the tier one step; a small commit does not\nok 8 a proven requirement that fails raises the tier\nok 9 vbw tier raise raises, records the reason, and refuses to lower or repeat\nok 10 nothing lowers a raised tier: planning again and changing the mode keep it\nok 11 after a raise, the later steps use the raised tier's agents, QA tier and models\nok 12 vbw show phase shows the tier, the reason it was raised and the tier it started at"
       },
       "C25": {
         "status": "pass",
         "exit": 0,
-        "seconds": 20,
+        "seconds": 17,
         "tail": "1..8\nok 1 a proven express phase is finished with its predicted tier and outcome\nok 2 a standard phase is finished only once QA has passed it\nok 3 an express phase with a [human] requirement is finished once QA passed and the user accepted\nok 4 an escalated phase records that its prediction did not hold\nok 5 QA findings and fix rounds are counted\nok 6 the outcome of a finished phase is not rewritten by a later proof\nok 7 vbw show rigor says plainly when no phase is finished\nok 8 vbw show rigor reports how many finished phases held their predicted tier"
       },
       "C26": {
         "status": "pass",
         "exit": 0,
-        "seconds": 9,
+        "seconds": 10,
         "tail": "1..11\nok 1 the committed results are complete and every miss is stated\nok 2 the committed results cover both models and every case, with automatic rigor\nok 3 selftest: a complete set within twice plain's cost passes\nok 4 selftest: a missing cell fails\nok 5 selftest: a missing field, a wrong level or empty tiers fail\nok 6 selftest: a case above twice plain's cost fails unless the doc states the miss\nok 7 selftest: a failed case fails unless the doc states the miss\nok 8 selftest: only the highest round of a cell counts, and a rerun of a plain run supersedes the original\nok 9 selftest: tuning rounds are limited to two and each must be described\nok 10 selftest: --table prints a row per cell, with the cost ratio\nok 11 the doc quotes every adaptive table row and states the evidence level and what was not tested"
       },
       "C27": {
         "status": "pass",
         "exit": 0,
-        "seconds": 10,
+        "seconds": 11,
         "tail": "1..10\nok 1 R31: apply refuses a rule that no check tests, naming it\nok 2 R31: apply refuses a rule whose check belongs to another requirement\nok 3 R31: apply refuses an [auto] requirement that lists no rules once the plan lists rules\nok 4 R31: a plan without any rules still applies, and the approval screen says the rules are not listed\nok 5 R31: apply refuses rules for a [human] requirement\nok 6 R31: apply approves when every rule is covered, and the record keeps the rules\nok 7 R31: re-planning without restating rules keeps them while their checks still exist\nok 8 R31: approve refuses an [auto] requirement whose rules are not listed, and a changed requirement loses its rules\nok 9 R31: the approval screen shows each requirement's rules with their checks\nok 10 R31: a requirement approved before rules existed keeps its approval and shows 'rules not listed' (D53)"
       },
       "C28": {
@@ -5490,13 +5490,13 @@
       "C31": {
         "status": "pass",
         "exit": 0,
-        "seconds": 7,
+        "seconds": 8,
         "tail": "1..8\nok 1 no profile and no tier cell gives QA Haiku, in the tables or in vbw next\nok 2 the budget profile shows QA on Sonnet in vbw config models and in the status line\nok 3 other roles keep their models: budget scout on haiku, express dev on haiku, the rest as before\nok 4 a record that already holds a Haiku QA override gets Sonnet in vbw next\nok 5 a QA override to opus or a full non-Haiku id is honoured, and the dev override still wins\nok 6 a forced rigor and an escalation never lower QA below Sonnet\nok 7 the status line shows the effective QA model: a Haiku override reads Sonnet, an opus one Opus\nok 8 the docs say QA never uses Haiku, and the budget profile no longer lists Haiku for QA"
       },
       "C32": {
         "status": "pass",
         "exit": 0,
-        "seconds": 3,
+        "seconds": 4,
         "tail": "1..6\nok 1 model.qa haiku is a usage error that says QA needs Sonnet or stronger and changes nothing\nok 2 any value naming Haiku is refused for model.qa, whatever its case\nok 3 model.qa accepts sonnet, opus and a full non-Haiku id; default removes the override\nok 4 the other roles still accept haiku\nok 5 a refused set leaves an existing valid model.qa override as it was\nok 6 the config header and the config skill document the QA restriction; the kernel stays within 3,300 lines"
       },
       "C33": {
@@ -5526,7 +5526,7 @@
       "C37": {
         "status": "pass",
         "exit": 0,
-        "seconds": 6,
+        "seconds": 7,
         "tail": "1..10\nok 1 R40: a declined suggestion is recorded in the project record by the kernel and never offered again\nok 2 R40: declining the same text twice is deduplicated, even with other case or spacing\nok 3 R40: a declined suggestion stays declined across sessions and milestones\nok 4 R40: a record from an older VBW (nothing declined) is read: none declined\nok 5 R40: the declined list is written only through the kernel's validated write path\nok 6 R40: the record change is additive under project, so older VBWs still read the project\nok 7 R40: the suggest skill offers at most three yes-or-no suggestions, only at spec proposal and plan approval\nok 8 R40: an accepted suggestion becomes a requirement or a recorded decision, a declined one is recorded and not offered again\nok 9 R40: suggestions follow the user's level and depth, zero is valid, and none duplicates a requirement or decision\nok 10 R40: the router offers suggestions at spec proposal and at plan approval, and nowhere else"
       },
       "C38": {
@@ -5534,18 +5534,60 @@
         "exit": 0,
         "seconds": 1,
         "tail": "1..9\nok 1 R42: the newcomer scenario exists, runs the real app and states its fixture and level\nok 2 R42: the senior-engineer scenario exists, runs the real app and states its fixture and level\nok 3 R42: the newcomer answered the three fixed questions, what and for whom, the follow-ups and where to keep them\nok 4 R42: the senior engineer answered the three fixed questions, what and for whom, the follow-ups and where to keep them\nok 5 R42: each scenario's recorded answers (vbw interview, taken from the project) match what was answered\nok 6 R42: in each scenario a second request in a new session did not trigger the interview again\nok 7 R42: each scenario reaches the ship step\nok 8 R42: the two scenarios record different explanation depth and involvement, and their transcripts are saved for comparison\nok 9 R42: the release gate runs every scenario for a milestone release: both new scenarios are in the default list"
+      },
+      "C39": {
+        "status": "pass",
+        "exit": 0,
+        "seconds": 10,
+        "tail": "1..7\nok 1 apply accepts alone: true, keeps it in the record and shows it in the contract\nok 2 apply accepts alone: false\nok 3 a non-boolean alone is refused, naming the check, and changes nothing\nok 4 the alone marker is part of the contract hash\nok 5 adding the marker to an approved contract needs approving again\nok 6 removing the marker from an approved contract needs approving again\nok 7 the approval screen shows an added or removed marker"
+      },
+      "C40": {
+        "status": "fail",
+        "exit": 1,
+        "seconds": 75,
+        "tail": "1..11\nnot ok 1 an alone check and another check started together never overlap\n# (in test file tests/check-alone-runner.bats, line 100)\n#   `[ -z \"$(overlaps C1)\" ]' failed\nok 2 an alone check waits for a running check, and checks wait while it runs\nok 3 checks that are not alone still run in parallel, with unchanged output\nnot ok 4 vbw prove holds the exclusion too\n# (in test file tests/check-alone-runner.bats, line 137)\n#   `[ -z \"$(overlaps C1)\" ]' failed\nnot ok 5 the checks vbw fix done runs hold the exclusion too\n# (in test file tests/check-alone-runner.bats, line 156)\n#   `[ -z \"$(overlaps C1)\" ]' failed\nok 6 a check that times out while alone releases the exclusion\nok 7 a crashed vbw process leaves no lock that blocks later checks\nnot ok 8 a wait beyond the limit fails naming the check being waited on\n# (in test file tests/check-alone-runner.bats, line 186)\n#   `[ \"$status\" -ne 0 ]' failed\nok 9 checks of two different projects do not block each other\nok 10 the exclusion lives under .vbw/runtime and nothing is written outside the project\nok 11 without an alone marker behaviour is unchanged: no waiting, no lock left behind"
+      },
+      "C41": {
+        "status": "fail",
+        "exit": 1,
+        "seconds": 1,
+        "tail": "1..4\nnot ok 1 docs/proof.md describes the alone marker of a check\n# (in test file tests/check-alone-docs.bats, line 7)\n#   `grep -q 'alone' \"$REPO_ROOT/docs/proof.md\"' failed\nnot ok 2 docs/record.md lists alone among a check's fields\n# (in test file tests/check-alone-docs.bats, line 13)\n#   `grep -E '^\\| `checks\\[\\]`.*`alone`' \"$REPO_ROOT/docs/record.md\"' failed\nok 3 the kernel stays within its line budget\nok 4 the kernel code stays bash 3.2 compatible, without eval and without /tmp"
+      },
+      "C42": {
+        "status": "fail",
+        "exit": 1,
+        "seconds": 23,
+        "tail": "ok 6 a check that never ran is run, and a check with no declared files is always rerun\nok 7 a check whose served files cannot be fingerprinted is always rerun\nnot ok 8 a pass is not recorded while a served file has uncommitted changes\n# (in test file tests/fix-reuse.bats, line 129)\n#   `jq -e '.passes.C1 != null' .vbw/record.json' failed\n# true\n# false\nok 9 uncommitted changes in the fix's files still block closing, and nothing reruns\nnot ok 10 vbw prove runs every check and records the passes the fix reuses\n# (in test file tests/fix-reuse.bats, line 145)\n#   `jq -e '.passes.C1 != null and .passes.C2 != null' .vbw/record.json' failed\n# false\nok 11 vbw prove still fails on a failing check whatever was recorded\nnot ok 12 closing outcomes are the same when a check is skipped: fixed for code, closed for a human requirement\n# (in test file tests/fix-reuse.bats, line 168)\n#   `[ \"$(runs C1)\" = 1 ]' failed\nnot ok 13 a record without recorded passes reads fine, and a malformed pass is refused by the record writer\n# (in test file tests/fix-reuse.bats, line 179)\n#   `[ \"$status\" -eq 0 ]' failed\n# true"
+      },
+      "C43": {
+        "status": "fail",
+        "exit": 1,
+        "seconds": 0,
+        "tail": "1..3\nnot ok 1 docs/proof.md describes when vbw fix done skips a check and what it says\n# (in test file tests/fix-reuse-docs.bats, line 7)\n#   `grep -q 'unchanged since its pass' \"$REPO_ROOT/docs/proof.md\"' failed\nnot ok 2 docs/record.md describes the recorded passes\n# (in test file tests/fix-reuse-docs.bats, line 12)\n#   `grep -E '^\\| `passes`' \"$REPO_ROOT/docs/record.md\"' failed\nok 3 the kernel stays within its line budget"
+      },
+      "C44": {
+        "status": "fail",
+        "exit": 1,
+        "seconds": 17,
+        "tail": "#   `[[ \"$output\" == *\"unknown fix F99\"* ]]' failed\nnot ok 5 a fix with uncommitted changes is named and the others still close\n# (in test file tests/fix-many.bats, line 108)\n#   `[[ \"$output\" == *\"F2 has uncommitted changes in: src/refund.txt\"* ]]' failed\nnot ok 6 a failing check fails only the fixes it serves, and is named\n# (in test file tests/fix-many.bats, line 117)\n#   `[[ \"$output\" == *\"F2 broke finished work\"*\"C3 fail\"* ]]' failed\nnot ok 7 a shared check that fails fails each fix it serves, not the fix of a human requirement\n# (in test file tests/fix-many.bats, line 131)\n#   `[[ \"$output\" == *\"F1 broke finished work\"*\"C1 fail\"* ]]' failed\nnot ok 8 the same id twice is closed once, without error\n# (in test file tests/fix-many.bats, line 139)\n#   `[ \"$status\" -eq 0 ]' failed\nnot ok 9 checks that passed on unchanged files are reused across the named fixes\n# (in test file tests/fix-many.bats, line 147)\n#   `[ \"$status\" -eq 0 ]' failed\nnot ok 10 checks marked alone still run alone while several fixes close\n# (in test file tests/fix-many.bats, line 162)\n#   `[ \"$status\" -eq 0 ]' failed\nok 11 fix retry still takes exactly one id, and fix done needs at least one"
+      },
+      "C45": {
+        "status": "fail",
+        "exit": 1,
+        "seconds": 1,
+        "tail": "1..4\nnot ok 1 vbw help shows fix done with several ids\n# (in test file tests/fix-many-docs.bats, line 10)\n#   `[[ \"$output\" == *\"fix done ID [ID...]\"* ]]' failed\nnot ok 2 docs/proof.md and docs/workflows.md show vbw fix done with several fixes\n# (in test file tests/fix-many-docs.bats, line 14)\n#   `grep -qE 'vbw fix done F[0-9]+ F[0-9]+' \"$REPO_ROOT/docs/proof.md\"' failed\nnot ok 3 the dev agent closes several fixes in one vbw fix done\n# (in test file tests/fix-many-docs.bats, line 19)\n#   `grep -qE 'vbw fix done F[0-9]+ F[0-9]+' \"$PLUGIN_ROOT/agents/dev.md\"' failed\nok 4 the kernel stays within its line budget"
       }
     },
     "commands": {
       "test": {
-        "status": "pass",
-        "exit": 0,
-        "seconds": 133,
-        "tail": "ok 624 R40: the declined list is written only through the kernel's validated write path\nok 625 R40: the record change is additive under project, so older VBWs still read the project\nok 626 R40: the suggest skill offers at most three yes-or-no suggestions, only at spec proposal and plan approval\nok 627 R40: an accepted suggestion becomes a requirement or a recorded decision, a declined one is recorded and not offered again\nok 628 R40: suggestions follow the user's level and depth, zero is valid, and none duplicates a requirement or decision\nok 629 R40: the router offers suggestions at spec proposal and at plan approval, and nowhere else\nok 630 a replaced round-0 record with empty tiers does not fail the set\nok 631 a final record with empty tiers still fails\nok 632 the workflows and VBW 1's seven agents exist, and nothing else\nok 633 each workflow starts with a pure-literal meta naming itself after its file\nok 634 workflows never use what breaks resume or is unavailable (time, randomness, modules)\nok 635 every phase() title is declared in meta.phases\nok 636 every agentType names an agent this plugin ships\nok 637 agents have a name matching the file, a single-line description and a tool list\nok 638 agents stay within their size budget (about 1.5k tokens)\nok 639 agents only use vbw commands that exist\nok 640 agents that plan or judge the plan load the user's recorded decisions\nok 641 workflow scripts parse as JavaScript (when node is available)\nok 642 workflow schemas are objects whose required keys are all properties\nok 643 no workflow shares its name with a skill (/vbw:NAME would start the workflow)"
+        "status": "fail",
+        "exit": 1,
+        "seconds": 140,
+        "tail": "ok 677 R40: the declined list is written only through the kernel's validated write path\nok 678 R40: the record change is additive under project, so older VBWs still read the project\nok 679 R40: the suggest skill offers at most three yes-or-no suggestions, only at spec proposal and plan approval\nok 680 R40: an accepted suggestion becomes a requirement or a recorded decision, a declined one is recorded and not offered again\nok 681 R40: suggestions follow the user's level and depth, zero is valid, and none duplicates a requirement or decision\nok 682 R40: the router offers suggestions at spec proposal and at plan approval, and nowhere else\nok 683 a replaced round-0 record with empty tiers does not fail the set\nok 684 a final record with empty tiers still fails\nok 685 the workflows and VBW 1's seven agents exist, and nothing else\nok 686 each workflow starts with a pure-literal meta naming itself after its file\nok 687 workflows never use what breaks resume or is unavailable (time, randomness, modules)\nok 688 every phase() title is declared in meta.phases\nok 689 every agentType names an agent this plugin ships\nok 690 agents have a name matching the file, a single-line description and a tool list\nok 691 agents stay within their size budget (about 1.5k tokens)\nok 692 agents only use vbw commands that exist\nok 693 agents that plan or judge the plan load the user's recorded decisions\nok 694 workflow scripts parse as JavaScript (when node is available)\nok 695 workflow schemas are objects whose required keys are all properties\nok 696 no workflow shares its name with a skill (/vbw:NAME would start the workflow)"
       }
     },
     "scope": [],
-    "passed": true
+    "passed": false
   },
   "lease": null
 }
