@@ -2558,12 +2558,19 @@
       ],
       "predicted": "deep",
       "qa": {
-        "result": "fail",
+        "result": "pass",
         "tier": "deep",
-        "tree": "ad44411d06db3e71fcaccc9630a82b2e55319214",
-        "at": "2026-10-04T22:26:19Z",
-        "note": "22/23 checks",
-        "rounds": 1
+        "tree": "c9472629147f03637d7123812d5509e0b00cd3af",
+        "at": "2026-10-04T23:19:33Z",
+        "note": "24/24 checks"
+      },
+      "outcome": {
+        "tier": "deep",
+        "predicted": "deep",
+        "held": true,
+        "fix_rounds": 1,
+        "qa_findings": 1,
+        "escalations": 0
       }
     }
   ],
@@ -5044,7 +5051,7 @@
       "req": "R46",
       "source": "qa",
       "attempts": 0,
-      "status": "fixed",
+      "status": "closed",
       "note": "docs/record.md line 57: the field table row for schema still reads `1` only; the criterion and P38.2 require the docs to describe both schemas (schema 2 when a check is alone). Prose at lines 21 and 81-94 does say it, but the rules table, which the validator documents, is stale."
     }
   ],
