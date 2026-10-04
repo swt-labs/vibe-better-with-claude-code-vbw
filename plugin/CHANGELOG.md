@@ -1,5 +1,17 @@
 # Changelog
 
+## [2.0.16] - 2026-10-04
+
+### Changed
+
+- **QA never runs on Haiku.** QA is what catches the mistakes VBW's own
+  checks miss, so it now runs on Sonnet or a stronger model in every profile
+  and rigor tier; the `budget` profile used Haiku for QA before. Other agents
+  keep their models (in `budget`, the Scout and express Devs still use Haiku).
+  `vbw config set model.qa haiku` is refused with the reason; `sonnet`, `opus`,
+  `default` and other non-Haiku models are accepted. A Haiku QA setting saved
+  earlier is treated as Sonnet, and `vbw config` and the status line show it so.
+
 ## [2.0.15] - 2026-10-04
 
 ### Changed
