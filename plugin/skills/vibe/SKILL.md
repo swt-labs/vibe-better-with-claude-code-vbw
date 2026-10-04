@@ -62,9 +62,11 @@ Before `spec` or a workflow `plan`: project has code and no `.vbw/map.md` → ma
 `VBW_SESSION_ID=${CLAUDE_SESSION_ID} vbw run end`, write its `map` to `.vbw/map.md`. Read it before proposing
 anything.
 
-What user must see to decide (result, draft, sample output) goes inside
-AskUserQuestion: question text or an option's `preview`. Text just before a
-question may show collapsed.
+Then, `profile.ask` true: follow `vbw:interview` before any spec work; resume at
+`profile.pending`; unrecognised answer: ask again, record nothing.
+
+What user must see to decide goes inside AskUserQuestion (question text or
+option `preview`), not in text before it (may show collapsed).
 
 ## Steps
 
@@ -80,8 +82,7 @@ judge it (look, feel, tone); a document that must contain something is `[auto]`,
 storage, hosting, paid services to decision round before planning; write a
 constraint only when user stated it. Recommend; don't interrogate. Add each
 agreed requirement: `vbw spec add auto|human "statement"` (goals and user's
-constraints go in `.vbw/spec.md` directly, then `vbw spec sync`). Milestone
-still has default title → `vbw milestone rename "<title>"`. Check
+constraints go in `.vbw/spec.md` directly, then `vbw spec sync`). Default milestone title → `vbw milestone rename "<title>"`. Check
 `## Commands` in `.vbw/spec.md` (what every proof runs) fits what was agreed
 (right sub-project, right interpreter); fix there, then `vbw spec sync`.
 
