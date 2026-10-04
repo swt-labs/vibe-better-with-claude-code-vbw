@@ -55,11 +55,11 @@ violations_after() {
   [ "$output" = "[]" ]
 }
 
-@test "rejects a newer or missing schema version" {
+@test "rejects a schema that does not match the record: 2 only when a check is alone, else 1" {
   run violations_after '.schema = 2'
-  [[ "$output" == *"schema must be 1"* ]]
+  [[ "$output" == *"schema must be 2 when a check is alone, else 1"* ]]
   run violations_after 'del(.schema)'
-  [[ "$output" == *"schema must be 1"* ]]
+  [[ "$output" == *"schema must be 2 when a check is alone, else 1"* ]]
 }
 
 @test "rejects unknown top-level keys" {
