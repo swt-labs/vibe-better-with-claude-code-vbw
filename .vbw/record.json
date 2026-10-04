@@ -2353,6 +2353,14 @@
         "fix_rounds": 3,
         "qa_findings": 3,
         "escalations": 1
+      },
+      "qa": {
+        "result": "fail",
+        "tier": "deep",
+        "tree": "ad44411d06db3e71fcaccc9630a82b2e55319214",
+        "at": "2026-10-04T22:20:37Z",
+        "note": "16/18 checks",
+        "rounds": 1
       }
     },
     {
@@ -4942,6 +4950,22 @@
       "attempts": 0,
       "status": "fixed",
       "note": "plugin/skills/map/SKILL.md (line 20), plugin/skills/research/SKILL.md (line 24) and plugin/skills/debug/SKILL.md (lines 23 and 26) start Workflows vbw:mapping, vbw:researching and vbw:investigating with args {models} / {question, models} / {problem, models} only, no profile. The workflows read args.profile (P32.1) and fall back to the neutral default, so scouts and debuggers launched by these skills never get the user's level, depth or involvement. This breaks the criterion that the args handed to each workflow carry the three values and docs/workflows.md ('to every workflow'). tests/profile-levels.bats test 9 only checks the router, so it cannot catch this. Fix: have these skills pass the profile from the vbw interview answers in args, and extend the test to every skill that starts a workflow."
+    },
+    {
+      "id": "F25",
+      "req": "R42",
+      "source": "qa",
+      "attempts": 0,
+      "status": "open",
+      "note": "Scripted follow-up answers do not answer the question asked, so the transcripts R41 asks the owner to read are incoherent. Newcomer: VBW proposes a web page for the grandmother ('Does that suit her?', options Yes/No) and the scripted reply is 'A script greet.sh: ./greet.sh Ana prints Hello, Ana!...', in technical words a newcomer who answered 'never' would not use; VBW then builds the shell script anyway. Senior: the question 'Which language/runtime should the CLI use?' is answered with 'greet.sh NAME prints Hello, NAME!...'. One fixed DETAIL string (tools/l3-suite.sh scenario_newcomer/scenario_senior, answer_other $a_detail) is sent to every follow-up whatever it asks. tools/l3-results/newcomer.transcript.md and senior.transcript.md."
+    },
+    {
+      "id": "F26",
+      "req": "R42",
+      "source": "qa",
+      "attempts": 0,
+      "status": "open",
+      "note": "Out-of-plan commits touching files outside P34.1's file list have no recorded decision for 05bde66e (plugin/skills/interview/SKILL.md, 'follow-ups are asked inside the interview', VBW-Plan P34.1): D78 names 0a351770 and the harness commits, D80 names the 6b365dc2 skill change, D81 names ee0c7bab; 05bde66e is in none. 6b365dc2 also changed docs/interview.md, which D80 does not name (it says 'interview skill'). Also P34.1 lists tools/l3.sh but no P34.1 commit changes it (last change 8657c2f9, before the phase)."
     }
   ],
   "todos": [
@@ -5798,5 +5822,11 @@
     "scope": [],
     "passed": true
   },
-  "lease": null
+  "lease": {
+    "run": "qa-20261004T221902Z",
+    "kind": "qa",
+    "started_at": "2026-10-04T22:19:02Z",
+    "files": [],
+    "session": "9cd2cc30-8c86-4520-9d71-a0e82aff5407"
+  }
 }
