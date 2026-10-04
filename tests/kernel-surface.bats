@@ -105,7 +105,7 @@ proven_project() {
   "$VBW" config set profile budget > /dev/null
   "$VBW" config set model.dev claude-opus-5-5 > /dev/null
   vbw_run config models
-  [ "$output" = '{"architect":"sonnet","lead":"sonnet","dev":"claude-opus-5-5","qa":"haiku","scout":"haiku","debugger":"sonnet","docs":"sonnet"}' ]
+  [ "$output" = '{"architect":"sonnet","lead":"sonnet","dev":"claude-opus-5-5","qa":"sonnet","scout":"haiku","debugger":"sonnet","docs":"sonnet"}' ]
   "$VBW" config set model.dev default > /dev/null
   jq -e '.settings | has("models") | not' .vbw/record.json
 }
@@ -114,7 +114,7 @@ proven_project() {
   jq '.settings.models = {planner: "opus", critic: "haiku", builder: "opus"}' .vbw/record.json > "$TEST_ROOT/r.json" && cp "$TEST_ROOT/r.json" .vbw/record.json
   vbw_run config models
   [ "$status" -eq 0 ]
-  echo "$output" | jq -e '.lead == "opus" and .qa == "haiku" and .dev == "opus"'
+  echo "$output" | jq -e '.lead == "opus" and .qa == "sonnet" and .dev == "opus"'
   jq -e '.settings.models == {lead: "opus", qa: "haiku", dev: "opus"}' .vbw/record.json
 }
 

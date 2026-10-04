@@ -169,6 +169,6 @@ render() { cc_json | NO_COLOR=1 bash "$SL"; }
   "$VBW" config set model.dev opus > /dev/null
   run bash -c 'jq -nc --arg d "$1" "{workspace: {project_dir: \$d}, context_window: {used_percentage: 10, current_usage:
     {input_tokens: 2, output_tokens: 195, cache_creation_input_tokens: 3800, cache_read_input_tokens: 55500}}}" | NO_COLOR=1 bash "$2"' _ "$PROJECT" "$SL"
-  [ "${lines[1]}" = "Team   sonnet ● architect ● lead ● debugger ● docs │ opus ● dev │ haiku ● qa ● scout │ profile budget · autonomy balanced" ]
+  [ "${lines[1]}" = "Team   sonnet ● architect ● lead ● qa ● debugger ● docs │ opus ● dev │ haiku ● scout │ profile budget · autonomy balanced" ]
   [[ "${lines[2]}" == *"│ Tokens 2 in 195 out │ Cache 93% hit 3.8K write 55.5K read │"* ]]
 }
