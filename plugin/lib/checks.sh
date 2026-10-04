@@ -201,16 +201,25 @@ checks_unchanged() {
   fp=$(checks_fingerprint "$1" "$2") || return 1
   checks_served_dirty "$1" "$2" && return 1
   contract_approved "$(contract_hash "$1")" || return 1
-  pass=$(printf '%s' "$1" | jq -r --arg id "$2" --arg h "$(contract_hash "$1")" --arg fp "$fp" \
-    '.passes[$id] // empty | select(.contract == $h and .tree == $fp) | .at')
+  pass=$(jq -r --arg id "$2" --arg h "$(contract_hash "$1")" --arg fp "$fp" \
+    '.[$id] // empty | select(type == "object" and .contract == $h and .tree == $fp) | .at // empty' "$(checks_passes_file)" 2> /dev/null) || return 1
   [ -n "$pass" ] && printf '%s\n' "$pass"
+}
+
+# The passes live in the clone, never in the record (they change on every run
+# and would make the record's history noise): $(git common dir)/vbw/passes.json,
+# {check id: {at, contract, tree}}. A missing or damaged file means no reuse.
+checks_passes_file() {
+  local common
+  common=$(git -C "$VBW_ROOT" rev-parse --path-format=absolute --git-common-dir 2> /dev/null) || vbw_die "not a git repository"
+  printf '%s/vbw/passes.json\n' "$common"
 }
 
 # checks_record_passes RECORD RESULTS HASH: record a pass for each passing
 # check whose served files are all committed; drop the entry of every other
 # check that ran.
 checks_record_passes() {
-  local id fp at new='{}' ran
+  local id fp at new='{}' ran file lock cur tmp
   at=$(vbw_now)
   ran=$(printf '%s' "$2" | jq -c 'keys')
   while IFS= read -r id; do
@@ -219,8 +228,15 @@ checks_record_passes() {
     checks_served_dirty "$1" "$id" && continue
     new=$(printf '%s' "$new" | jq -c --arg id "$id" --arg at "$at" --arg h "$3" --arg fp "$fp" '. + {($id): {at: $at, contract: $h, tree: $fp}}')
   done < <(printf '%s' "$2" | jq -r 'to_entries[] | select(.value.status == "pass") | .key')
-  record_update '.passes = (((.passes // {}) | with_entries(select(.key as $k | $ran | index($k) | not))) + $new)
-    | if .passes == {} then del(.passes) else . end' --argjson ran "$ran" --argjson new "$new"
+  file=$(checks_passes_file)
+  mkdir -p "${file%/*}" || vbw_die "cannot create ${file%/*}"
+  lock="${file%.json}.lock"
+  vbw_lock_take "$lock" "passes"
+  cur=$(jq -c 'if type == "object" then . else {} end' "$file" 2> /dev/null) || cur='{}'
+  tmp=$(mktemp "${file%/*}/passes.XXXXXX") || vbw_die "cannot create a temporary file in ${file%/*}"
+  printf '%s' "$cur" | jq -c --argjson ran "$ran" --argjson new "$new" \
+    'with_entries(select(.key as $k | $ran | index($k) | not)) + $new' > "$tmp" && mv "$tmp" "$file"
+  vbw_guard_drop "$lock"
 }
 
 # checks_must_pass RECORD WHAT CHECK...: run the checks now and die with
