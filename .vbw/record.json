@@ -4728,7 +4728,7 @@
       "after": [
         "P38.1"
       ],
-      "status": "planned",
+      "status": "done",
       "tasks": [
         "docs/proof.md: passes.json in the clone git directory, never in the record, a lost one only reruns checks; docs/record.md: remove the passes row, say a record whose checks use alone is schema 2 so an older VBW asks for an update (C41, C43)"
       ],
@@ -4746,7 +4746,7 @@
         "plugin/lib/record.sh"
       ],
       "after": [],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "record.jq: drop passes from the allowed top-level keys; record.sh: remove del(.passes) and its comment from the write path (no release ever wrote passes; this repo record no longer has it) (C46)"
