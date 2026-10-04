@@ -551,6 +551,30 @@
           "check": "C38"
         }
       ]
+    },
+    {
+      "id": "R43",
+      "text": "Closing a fix does not rerun a check that already passed on the same project files under the same approved contract: it says the check is unchanged since its pass, and when that pass was; vbw prove still runs every check",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M7",
+      "rules": []
+    },
+    {
+      "id": "R44",
+      "text": "Several fixes close in one command (vbw fix done F8 F9 F5), running the checks their files serve once; each fix ends as it would if closed alone; a fix that cannot close is named, and the others still close",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M7",
+      "rules": []
+    },
+    {
+      "id": "R45",
+      "text": "A check the contract marks to run alone (for example one that starts containers) never runs at the same time as another VBW check in the same project, even when several fixes or builds run checks in parallel",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M7",
+      "rules": []
     }
   ],
   "checks": [
@@ -4790,6 +4814,18 @@
       "text": "Correction to D77: commit 545ad009 adds the interview skill's 'vbw interview' read and the line naming level, explanation depth and involvement (what protected check C36 scans every skill for); it does not change question order",
       "why": "D77 misdescribed the commit; the decision to let it stand is unchanged",
       "at": "2026-10-04T17:11:30Z"
+    },
+    {
+      "id": "D80",
+      "text": "The interview asks follow-ups whenever the what-and-for-whom answer does not say what the thing does and for whom, whatever the user's involvement; zero follow-ups only when it does (interview skill, outside P34.1's files, made in fix run for F22)",
+      "why": "L3 newcomer run (2026-10-04, OBGNrn): given 'a little greeting program for my grandmother', VBW asked no follow-up and wrote the behaviour itself, against D67 (a couple of follow-ups, like a software shop with its client). R37's rule 'zero is allowed' still holds",
+      "at": "2026-10-04T18:16:56Z"
+    },
+    {
+      "id": "D81",
+      "text": "For a user who chose 'decide and tell me', an interview follow-up may be VBW's proposal for them to confirm or correct; follow-ups come before the keep question",
+      "why": "L3 newcomer run CPApu1: with D80 in place VBW still skipped follow-ups but asked the newcomer to confirm a proposal right after the keep question; a proposal at her level is the right follow-up for that user, and the skill's order (keep last) must hold",
+      "at": "2026-10-04T18:33:44Z"
     }
   ],
   "commands": {
