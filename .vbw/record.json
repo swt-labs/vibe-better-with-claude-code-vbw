@@ -2593,7 +2593,7 @@
       "after": [
         "P24.1"
       ],
-      "status": "planned",
+      "status": "done",
       "role": "docs",
       "tasks": [
         "state the versioning rule: an older VBW refuses a record with a newer schema, says the project needs a newer VBW and how to update, and never modifies it",
@@ -2619,7 +2619,7 @@
       "after": [
         "P24.1"
       ],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "core.sh: let vbw_guard_add register a directory (kind dir), removed on interrupt, die or vbw_guard_drop, so an interrupted proof removes its copy",
@@ -2688,7 +2688,7 @@
       "after": [
         "P26.1"
       ],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "contract.sh: contract_hash and contract_doc include a requirement's rules only when it has the field, so every contract approved before keeps its hash (golden hash in tests/rules.bats)",
@@ -2712,7 +2712,7 @@
       "after": [
         "P26.1"
       ],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "tests/rules-prompts.bats (new, red first): the Lead and Architect mandates and the router name the rules step and the rules key of vbw apply",
