@@ -693,15 +693,46 @@ transcript_write() {
               "**VBW asks:**\n" + ([.input.questions[]? | "- " + .question + " (options: " + ([.options[]?.label] | join(" / ")) + ")"] | join("\n")) + "\n"
             else empty end)
         elif .type == "user" then
-          # Skill bodies, the workflow reference and background-task notifications are machinery, not the conversation.
-          (.message.content | if type == "string" then (select(startswith("Base directory for this skill") or startswith("<task-notification>") or startswith("# Workflow authoring reference") | not) | "**User:** " + . + "\n")
-            else (.[]? | if .type == "text" and (.text | startswith("Base directory for this skill") or startswith("<task-notification>") or startswith("# Workflow authoring reference") | not) then "**User:** " + .text + "\n"
+          # Claude Code marks the text it injects (skill bodies, tool references) isMeta;
+          # background-task notifications are not marked. Neither is the conversation.
+          if .isMeta == true then empty else
+          (.message.content | if type == "string" then (select(startswith("<task-notification>") | not) | "**User:** " + . + "\n")
+            else (.[]? | if .type == "text" and (.text | startswith("<task-notification>") | not) then "**User:** " + .text + "\n"
               elif .type == "tool_result" then ((.content | if type == "array" then map(.text? // "") | join(" ") else (. // "") end)
                 | select(startswith("Your questions have been answered")) | "**User answers:** " + . + "\n")
-              else empty end) end)
+              else empty end) end) end
         else empty end' "$f" 2> /dev/null
     done < <(transcripts | grep -v '/subagents/' | sort)
   } > "$1"
+}
+
+# interview_options_fixed: every time the main session asked one of the three
+# baseline interview questions, it offered exactly the skill's options, in its
+# order, none marked Recommended (read from the session, not the screen).
+interview_options_fixed() {
+  local t
+  t=$(transcripts | grep -v '/subagents/')
+  [ -n "$t" ] || return 1
+  printf '%s\n' "$t" | xargs cat 2> /dev/null | jq -s -e '
+    {"How much software": ["never", "small scripts or no-code", "professionally", "senior engineer"],
+     "explain things": ["plain words", "plain with technical terms explained", "technical and brief"],
+     "How involved": ["decide and tell me", "options with a recommendation", "I make the calls"]} as $want
+    | [.[] | select(.type == "assistant") | .message.content[]?
+       | select(.type == "tool_use" and .name == "AskUserQuestion") | .input.questions[]?
+       | . as $q | $want | to_entries[] | .key as $k | select($q.question | test($k; "i"))
+       | ([$q.options[]?.label] == .value)]
+    | length > 0 and all' > /dev/null
+}
+
+# transcript_clean FILE: no text Claude Code injected (isMeta) reached FILE.
+transcript_clean() {
+  local line
+  while IFS= read -r line; do
+    [ -n "$line" ] && grep -qF -- "$line" "$1" && return 1
+  done < <(transcripts | grep -v '/subagents/' | xargs cat 2> /dev/null | jq -r 'select(.type == "user" and .isMeta == true)
+    | .message.content | if type == "string" then . else ([.[]? | .text? // empty] | join("\n")) end
+    | split("\n") | map(select(length >= 20)) | .[0] // empty')
+  return 0
 }
 
 # scenario_interview LEVEL DEPTH INVOLVEMENT KEEP_REGEX PURPOSE KEYWORD: sets up
@@ -742,7 +773,7 @@ scenario_interview() {
 # interview_outcome: reads the outcome and sets $passed and $facts. Also runs a
 # second request in a new session and checks the interview is not asked again.
 interview_outcome() {
-  local rec before after files new asked=false ask_after=true goals="" in_goals=false shipped_ok=false ship_commit=false match=false keptw n
+  local rec before after files new asked=false ask_after=true goals="" in_goals=false shipped_ok=false ship_commit=false match=false keptw n fixed=false clean=false
   passed=true
   common_checks
   rec=$(cd "$dir" && "$VBW" interview --json 2> /dev/null || echo '{}')
@@ -754,6 +785,8 @@ interview_outcome() {
   printf '%s' "$rec" | jq -e --arg l "$a_level" --arg d "$a_depth" --arg i "$a_inv" '.level == $l and .depth == $d and .involvement == $i' > /dev/null && match=true
   [ "$keptw" = private ] || [ "$keptw" = project ] || match=false
   transcript_write "$RESULTS/$scenario.transcript.md"
+  interview_options_fixed && fixed=true
+  transcript_clean "$RESULTS/$scenario.transcript.md" && clean=true
   # A second request in a new session.
   files=$(transcripts | sort); before=$rec
   l3 start "$scenario" "$dir" > /dev/null
@@ -775,15 +808,25 @@ interview_outcome() {
   expect "the profile no longer asks" [ "$ask_after" = false ]
   expect "the milestone shipped, with a ship commit" [ "$shipped_ok$ship_commit" = truetrue ]
   expect "at most three follow-ups ($n)" [ "$n" -le 3 ]
+  expect "the baseline options came in the skill's order, none marked Recommended" [ "$fixed" = true ]
+  expect "the transcript holds the conversation only, no injected text" [ "$clean" = true ]
   [ "$failed" -eq 0 ] || passed=false
   facts=$(jq -n --arg l "$a_level" --arg d "$a_depth" --arg i "$a_inv" --arg k "$keptw" --arg p "$a_purpose" --argjson f "$n" \
     --argjson rec "$rec" --argjson m "$match" --argjson g "$in_goals" --argjson a "$asked" --argjson aa "$ask_after" \
-    --argjson s "$shipped_ok" --argjson sc "$ship_commit" --arg t "tools/l3-results/$scenario.transcript.md" \
+    --argjson s "$shipped_ok" --argjson sc "$ship_commit" --argjson fx "$fixed" --argjson cl "$clean" --arg t "tools/l3-results/$scenario.transcript.md" \
     '{answered: {level: $l, depth: $d, involvement: $i, purpose: $p, follow_ups: $f, keep: $k},
       recorded: {level: $rec.level, depth: $rec.depth, involvement: $rec.involvement, kept: $rec.kept},
       recorded_matches_answered: $m, purpose_in_spec_goals: $g,
       second_session_asked_interview: $a, next_profile_ask_after: $aa,
-      milestone_shipped: $s, reached_ship: ($s and $sc), transcript: $t}')
+      milestone_shipped: $s, reached_ship: ($s and $sc), transcript: $t,
+      baseline_options_fixed: $fx, transcript_clean: $cl}')
+}
+
+# interview_not_tested LIST: LIST, plus the follow-up answering path when the
+# session asked no follow-up question.
+interview_not_tested() {
+  printf '%s' "$facts" | jq -c --argjson l "$1" 'if .answered.follow_ups == 0
+    then $l + ["answering an interview follow-up question (none was asked)"] else $l end'
 }
 
 scenario_newcomer() {
@@ -793,7 +836,7 @@ scenario_newcomer() {
   checks() {
     interview_outcome
     result_write newcomer "$fixture" "${cost_usd:-0}" "$passed" "$facts" \
-      '["a person judging the wording (R41, human)","the other two level answers","a project larger than the greet.sh fixture","a second request carried through to the end"]'
+      "$(interview_not_tested '["a person judging the wording (R41, human)","the other two level answers","a project larger than the greet.sh fixture","a second request carried through to the end"]')"
   }
 }
 
@@ -804,7 +847,7 @@ scenario_senior() {
   checks() {
     interview_outcome
     result_write senior "$fixture" "${cost_usd:-0}" "$passed" "$facts" \
-      '["a person judging the wording (R41, human)","the middle level answers","a project larger than the greet.sh fixture","a second request carried through to the end"]'
+      "$(interview_not_tested '["a person judging the wording (R41, human)","the middle level answers","a project larger than the greet.sh fixture","a second request carried through to the end"]')"
   }
 }
 
