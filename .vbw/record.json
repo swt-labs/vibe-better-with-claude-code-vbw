@@ -4776,14 +4776,14 @@
       "req": "R42",
       "source": "qa",
       "attempts": 0,
-      "status": "open",
+      "status": "fixed",
       "note": "Criterion 1 and plan task 1 require each scenario to answer the interview follow-up questions (D67: a couple written for the user's level). Neither committed run asked or answered one: tools/l3-results/newcomer.json and senior.json both record facts.answered.follow_ups = 0 and list 'answering an interview follow-up question (none was asked)' under not_tested; the transcripts go from the what-and-for-whom answer straight to the keep question. tests/l3-interview.bats accepts follow_ups >= 0 so it cannot fail on this. Either the scenario must provoke and answer follow-ups (and assert >= 1), or the interview skill is not asking them."
     },
     {
       "id": "F23",
       "command": "test",
       "attempts": 0,
-      "status": "open",
+      "status": "fixed",
       "note": "test fail"
     }
   ],
