@@ -224,28 +224,28 @@
       "id": "R31",
       "text": "Before approval, every [auto] requirement lists the rules its text states (each condition, edge and error case), each with the check that tests it; vbw apply refuses a listed rule that no check tests, naming it, and the approval screen shows the rules with their checks",
       "proof": "auto",
-      "status": "open",
+      "status": "proven",
       "milestone": "M5"
     },
     {
       "id": "R32",
       "text": "vbw prove runs the checks and project commands on a clean copy of the committed code, so uncommitted changes and untracked files in the working folder change no proof result; vbw check keeps running on the working folder for the Dev's red and green steps",
       "proof": "auto",
-      "status": "open",
+      "status": "proven",
       "milestone": "M5"
     },
     {
       "id": "R33",
       "text": "A VBW that opens a project record written by a newer VBW says the project needs a newer VBW and how to update, instead of calling the record corrupt, and every VBW still reads the records of older versions",
       "proof": "auto",
-      "status": "open",
+      "status": "proven",
       "milestone": "M5"
     },
     {
       "id": "R34",
       "text": "A real-user scenario in tools/l3-suite.sh shows both in the real Claude Code app: a request that states an edge case gets a check for that edge before approval, and a leftover untracked file in the working folder does not change the proof",
       "proof": "auto",
-      "status": "open",
+      "status": "proven",
       "milestone": "M5"
     }
   ],
@@ -3315,9 +3315,10 @@
     "autonomy_cap": 25
   },
   "evidence": {
-    "at": "2026-10-03T17:42:36Z",
-    "contract": "c0966e5c6225b812a4816144a57555eb6be4a276fb5c53a7614bb63b24c14110",
-    "tree": "b55fab0570e2d8243a9bdfa28f8af588895ba1d8",
+    "at": "2026-10-04T01:01:32Z",
+    "contract": "7ec6eaf7b010aed9968349656d2bcc4fb8794c09bc0c71eb0ca30ce36ac6eff7",
+    "tree": "d619ada5967a195cb96633b60b4c17b8a1d24ef8",
+    "head": "d619ada5967a195cb96633b60b4c17b8a1d24ef8",
     "checks": {
       "C1": {
         "status": "pass",
@@ -3328,19 +3329,19 @@
       "C2": {
         "status": "pass",
         "exit": 0,
-        "seconds": 9,
+        "seconds": 8,
         "tail": "1..3\nok 1 R2: an interrupted code fingerprint (prove, next) leaves no index file\nok 2 R2: the caller's EXIT trap still runs when vbw code is interrupted\nok 3 R2: the caller's EXIT trap survives a vbw write that completes"
       },
       "C3": {
         "status": "pass",
         "exit": 0,
-        "seconds": 6,
+        "seconds": 5,
         "tail": "1..11\nok 1 report: versions, doctor, and project state as counts and ids\nok 2 report: an empty count says none, never a blank\nok 3 report: never the spec's text, check output or file contents\nok 4 report: a corrupt record is named as corrupt without echoing its content\nok 5 report: outside a git repository it still prints, and says so\nok 6 report and rtk take no arguments beyond their usage\nok 7 rtk: not installed, with the install command that matches the machine\nok 8 rtk: installed shows its version and path; status equals no argument\nok 9 rtk: the Claude hook is on only when RTK's hook is in the user's settings\nok 10 rtk and report write nothing: no file in the project or settings changes\nok 11 docs/diagnostics.md says what the help says about both commands"
       },
       "C4": {
         "status": "pass",
         "exit": 0,
-        "seconds": 0,
+        "seconds": 1,
         "tail": "1..1\nok 1 R4: the Docs agent built a documentation requirement and it is proved"
       },
       "C5": {
@@ -3352,7 +3353,7 @@
       "C8": {
         "status": "pass",
         "exit": 0,
-        "seconds": 1,
+        "seconds": 0,
         "tail": "1..1\nok 1 R8: balanced autonomy, background QA: no Stop-hook errors, stopped at accept"
       },
       "C9": {
@@ -3394,7 +3395,7 @@
       "C15": {
         "status": "pass",
         "exit": 0,
-        "seconds": 4,
+        "seconds": 3,
         "tail": "1..4\nok 1 turning autonomy on in B leaves A on, in either order\nok 2 concurrent turn-on calls from two sessions both persist\nok 3 turning it off in one session leaves the other on\nok 4 the gate follows each session's own state"
       },
       "C16": {
@@ -3412,7 +3413,7 @@
       "C18": {
         "status": "pass",
         "exit": 0,
-        "seconds": 7,
+        "seconds": 6,
         "tail": "1..7\nok 1 the committed results are complete\nok 2 selftest: a complete set passes\nok 3 selftest: a missing run fails\nok 4 selftest: a missing field fails\nok 5 selftest: a duplicate run fails\nok 6 selftest: a result whose level does not match its arm fails\nok 7 selftest: a result without user_inputs fails"
       },
       "C19": {
@@ -3430,7 +3431,7 @@
       "C21": {
         "status": "pass",
         "exit": 0,
-        "seconds": 8,
+        "seconds": 7,
         "tail": "1..7\nok 1 with no setting the mode is auto, and the config listing says so\nok 2 vbw config rigor sets each of auto, express, standard and deep\nok 3 an invalid mode is refused with the allowed list and the setting stays\nok 4 a forced mode overrides the computed tier when planning, up or down\nok 5 changing the mode re-tiers phases whose work has not started, and auto computes again\nok 6 a phase whose work has started keeps its tier when the mode changes\nok 7 changing the mode never makes the approved contract need approving again"
       },
       "C22": {
@@ -3448,7 +3449,7 @@
       "C24": {
         "status": "pass",
         "exit": 0,
-        "seconds": 23,
+        "seconds": 22,
         "tail": "1..12\nok 1 a Dev block raises the tier and records the reason\nok 2 a standard phase is raised to deep, and a deep phase records the event and stays deep\nok 3 a fix that needs a second round raises the tier, a first failure does not\nok 4 QA finding a problem in an express phase raises it; in a standard phase it does not\nok 5 QA failing a phase a second time raises the tier\nok 6 a commit that touches a risk path raises the phase to deep\nok 7 a commit that grows well beyond its plan raises the tier one step; a small commit does not\nok 8 a proven requirement that fails raises the tier\nok 9 vbw tier raise raises, records the reason, and refuses to lower or repeat\nok 10 nothing lowers a raised tier: planning again and changing the mode keep it\nok 11 after a raise, the later steps use the raised tier's agents, QA tier and models\nok 12 vbw show phase shows the tier, the reason it was raised and the tier it started at"
       },
       "C25": {
@@ -3460,16 +3461,40 @@
       "C26": {
         "status": "pass",
         "exit": 0,
-        "seconds": 9,
+        "seconds": 8,
         "tail": "1..11\nok 1 the committed results are complete and every miss is stated\nok 2 the committed results cover both models and every case, with automatic rigor\nok 3 selftest: a complete set within twice plain's cost passes\nok 4 selftest: a missing cell fails\nok 5 selftest: a missing field, a wrong level or empty tiers fail\nok 6 selftest: a case above twice plain's cost fails unless the doc states the miss\nok 7 selftest: a failed case fails unless the doc states the miss\nok 8 selftest: only the highest round of a cell counts, and a rerun of a plain run supersedes the original\nok 9 selftest: tuning rounds are limited to two and each must be described\nok 10 selftest: --table prints a row per cell, with the cost ratio\nok 11 the doc quotes every adaptive table row and states the evidence level and what was not tested"
+      },
+      "C27": {
+        "status": "pass",
+        "exit": 0,
+        "seconds": 8,
+        "tail": "1..10\nok 1 R31: apply refuses a rule that no check tests, naming it\nok 2 R31: apply refuses a rule whose check belongs to another requirement\nok 3 R31: apply refuses an [auto] requirement that lists no rules once the plan lists rules\nok 4 R31: a plan without any rules still applies, and the approval screen says the rules are not listed\nok 5 R31: apply refuses rules for a [human] requirement\nok 6 R31: apply approves when every rule is covered, and the record keeps the rules\nok 7 R31: re-planning without restating rules keeps them while their checks still exist\nok 8 R31: approve refuses an [auto] requirement whose rules are not listed, and a changed requirement loses its rules\nok 9 R31: the approval screen shows each requirement's rules with their checks\nok 10 R31: a requirement approved before rules existed keeps its approval and shows 'rules not listed' (D53)"
+      },
+      "C28": {
+        "status": "pass",
+        "exit": 0,
+        "seconds": 18,
+        "tail": "1..8\nok 1 R32: an untracked file that would flip a check changes no proof result\nok 2 R32: an uncommitted edit to a tracked file is not proved; the committed version is\nok 3 R32: git-ignored files are linked into the copy, so a project that needs them proves\nok 4 R32: project commands run on the clean copy too\nok 5 R32: vbw check still sees uncommitted and untracked files in the working folder\nok 6 R32: the copy lives inside the project, is gone after the proof, and the folder is unchanged\nok 7 R32: an interrupted proof removes its copy and leaves the folder unchanged\nok 8 R32: check files that are not committed as approved are refused, never run from the working folder"
+      },
+      "C29": {
+        "status": "pass",
+        "exit": 0,
+        "seconds": 3,
+        "tail": "1..5\nok 1 R33: a record with a newer schema exits non-zero and says the project needs a newer VBW\nok 2 R33: the message never calls a newer record corrupt\nok 3 R33: a newer record is not modified, rewritten or locked by the older VBW\nok 4 R33: a record that is damaged, not newer, is still reported as corrupt\nok 5 R33: the record of every earlier schema version still loads and shows correctly"
+      },
+      "C30": {
+        "status": "pass",
+        "exit": 0,
+        "seconds": 0,
+        "tail": "1..5\nok 1 R34: the edge-case scenario exists, runs the real app and states its fixture and level\nok 2 R34: the edge case got a rule and a check before approval, and the check tests that edge\nok 3 R34: the leftover-file scenario exists, runs the real app and states its fixture and level\nok 4 R34: a leftover untracked file left the proof unchanged and was not in the proof copy\nok 5 R34: each scenario's result reflects only its own checks"
       }
     },
     "commands": {
       "test": {
         "status": "pass",
         "exit": 0,
-        "seconds": 123,
-        "tail": "ok 509 statusline on sets it without asking, and keeps the user's own to restore\nok 510 the setting finds the newest installed VBW and renders it\nok 511 workflows on turns Dynamic workflows on, keeps every other setting, and never overrides a deliberate off\nok 512 started in a subfolder it shows the project; a VBW 1 project is pointed to the conversion\nok 513 a running step shows how long it has run and how many agents are working\nok 514 the team line follows the profile and per-role models; tokens and prompt cache are shown\nok 515 a replaced round-0 record with empty tiers does not fail the set\nok 516 a final record with empty tiers still fails\nok 517 the workflows and VBW 1's seven agents exist, and nothing else\nok 518 each workflow starts with a pure-literal meta naming itself after its file\nok 519 workflows never use what breaks resume or is unavailable (time, randomness, modules)\nok 520 every phase() title is declared in meta.phases\nok 521 every agentType names an agent this plugin ships\nok 522 agents have a name matching the file, a single-line description and a tool list\nok 523 agents stay within their size budget (about 1.5k tokens)\nok 524 agents only use vbw commands that exist\nok 525 agents that plan or judge the plan load the user's recorded decisions\nok 526 workflow scripts parse as JavaScript (when node is available)\nok 527 workflow schemas are objects whose required keys are all properties\nok 528 no workflow shares its name with a skill (/vbw:NAME would start the workflow)"
+        "seconds": 112,
+        "tail": "ok 548 statusline on sets it without asking, and keeps the user's own to restore\nok 549 the setting finds the newest installed VBW and renders it\nok 550 workflows on turns Dynamic workflows on, keeps every other setting, and never overrides a deliberate off\nok 551 started in a subfolder it shows the project; a VBW 1 project is pointed to the conversion\nok 552 a running step shows how long it has run and how many agents are working\nok 553 the team line follows the profile and per-role models; tokens and prompt cache are shown\nok 554 a replaced round-0 record with empty tiers does not fail the set\nok 555 a final record with empty tiers still fails\nok 556 the workflows and VBW 1's seven agents exist, and nothing else\nok 557 each workflow starts with a pure-literal meta naming itself after its file\nok 558 workflows never use what breaks resume or is unavailable (time, randomness, modules)\nok 559 every phase() title is declared in meta.phases\nok 560 every agentType names an agent this plugin ships\nok 561 agents have a name matching the file, a single-line description and a tool list\nok 562 agents stay within their size budget (about 1.5k tokens)\nok 563 agents only use vbw commands that exist\nok 564 agents that plan or judge the plan load the user's recorded decisions\nok 565 workflow scripts parse as JavaScript (when node is available)\nok 566 workflow schemas are objects whose required keys are all properties\nok 567 no workflow shares its name with a skill (/vbw:NAME would start the workflow)"
       }
     },
     "scope": [],
