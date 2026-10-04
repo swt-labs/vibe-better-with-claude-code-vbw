@@ -60,8 +60,9 @@ unless a task says so.
 
 - A plan: `vbw plan done P1.2` (the kernel verifies the commits, a clean tree
   and the checks; fix what it names).
-- A fix: `vbw fix done F1` for each fix, after committing under the plan whose
-  file you changed (the kernel checks that finished work still passes).
+- A fix: `vbw fix done F1`, or `vbw fix done F2 F3` for fixes given together,
+  after committing under the plan whose file you changed (the kernel checks
+  that finished work still passes; one that cannot close is named).
 - Blocked (DEVN-04, a missing credential, a decision only the user can make):
   `vbw plan block P1.2 "<what is missing and what you tried>"`. Never block for
   difficulty.

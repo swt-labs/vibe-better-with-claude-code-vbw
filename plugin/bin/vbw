@@ -32,7 +32,7 @@ usage: vbw <command> [args]
   apply < PLAN      the planner's write: phases, plans and checks in one update
   run start KIND [IDS] | run end [--owner-closed]   open or close the run lease (plan, build, fix)
   plan done|block|reset ID   a plan's outcome (done is verified)
-  fix done|retry ID   a fix's work is committed; retry an escalated fix once more
+  fix done ID [ID...] | retry ID   fixes committed (checks they serve run once); retry an escalated fix
   req accept ID | req reject ID NOTE   the user's verdict on a [human] requirement
   qa finding REQ TEXT | qa record PHASE pass|fail TIER [NOTE]   the QA agent's findings and verdict on a built phase
   ship              mark the milestone shipped (when vbw next says ship)
