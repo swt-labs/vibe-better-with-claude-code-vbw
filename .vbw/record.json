@@ -516,7 +516,7 @@
       "id": "R41",
       "text": "A vibe coder and a senior engineer each find VBW's wording right for their level: never too simple, never too technical",
       "proof": "human",
-      "status": "open",
+      "status": "accepted",
       "milestone": "M7"
     },
     {
@@ -558,7 +558,56 @@
       "proof": "auto",
       "status": "open",
       "milestone": "M7",
-      "rules": []
+      "rules": [
+        {
+          "text": "after a check passes the record keeps the pass with the file fingerprint, the contract hash and the time",
+          "check": "C42"
+        },
+        {
+          "text": "vbw fix done does not run a check whose recorded pass has the same file fingerprint and contract hash, and says it is unchanged since its pass with the date of that pass",
+          "check": "C42"
+        },
+        {
+          "text": "a committed change to a served file reruns the check",
+          "check": "C42"
+        },
+        {
+          "text": "a changed contract hash reruns the check",
+          "check": "C42"
+        },
+        {
+          "text": "a check whose last result was fail or timeout, or that never ran, is rerun, never skipped",
+          "check": "C42"
+        },
+        {
+          "text": "a check with no declared files, or whose served files cannot be fingerprinted, is always rerun",
+          "check": "C42"
+        },
+        {
+          "text": "uncommitted changes in the fix's files still block closing, and the skip applies only to the check rerun",
+          "check": "C42"
+        },
+        {
+          "text": "vbw prove runs every check regardless of recorded passes, and a failing check still fails the proof",
+          "check": "C42"
+        },
+        {
+          "text": "a failure of a rerun check still blocks the fix with the same message naming the check",
+          "check": "C42"
+        },
+        {
+          "text": "a record without recorded passes reads fine and the new field is validated by the record writer",
+          "check": "C42"
+        },
+        {
+          "text": "fix closing outcomes (fixed, or closed for a human requirement) are the same when checks are skipped",
+          "check": "C42"
+        },
+        {
+          "text": "the docs describe the reuse rule and its wording, and the kernel stays within its line budget",
+          "check": "C43"
+        }
+      ]
     },
     {
       "id": "R44",
@@ -566,7 +615,48 @@
       "proof": "auto",
       "status": "open",
       "milestone": "M7",
-      "rules": []
+      "rules": [
+        {
+          "text": "vbw fix done accepts one or more ids, a single id behaves as before, and vbw fix retry still takes exactly one",
+          "check": "C44"
+        },
+        {
+          "text": "a check served by several of the named fixes runs once in the command",
+          "check": "C44"
+        },
+        {
+          "text": "each fix ends as if closed alone: fixed for code, closed with its requirement returning to the user for a human requirement",
+          "check": "C44"
+        },
+        {
+          "text": "a fix that cannot close (unknown id, not open, uncommitted changes, a served check fails) is named with its reason and the others still close",
+          "check": "C44"
+        },
+        {
+          "text": "a failing check fails only the fixes it serves, and is named",
+          "check": "C44"
+        },
+        {
+          "text": "the same id twice is closed once without error; the exit code is non-zero only if some fix could not close",
+          "check": "C44"
+        },
+        {
+          "text": "unchanged earlier passes are still reported as unchanged since their pass, and alone checks still run alone",
+          "check": "C44"
+        },
+        {
+          "text": "a partial success leaves the record consistent: closed fixes recorded, unclosed fixes unchanged",
+          "check": "C44"
+        },
+        {
+          "text": "fix ids from different requirements and phases mix freely",
+          "check": "C44"
+        },
+        {
+          "text": "help text, agent and docs show the multi-id form, and the kernel stays within its line budget",
+          "check": "C45"
+        }
+      ]
     },
     {
       "id": "R45",
@@ -574,7 +664,72 @@
       "proof": "auto",
       "status": "open",
       "milestone": "M7",
-      "rules": []
+      "rules": [
+        {
+          "text": "vbw apply accepts an alone marker on a check",
+          "check": "C39"
+        },
+        {
+          "text": "a non-boolean alone value is refused naming the check",
+          "check": "C39"
+        },
+        {
+          "text": "the alone marker is part of the contract hash, so adding or removing it needs re-approval",
+          "check": "C39"
+        },
+        {
+          "text": "vbw show contract and the approval screen show the marker",
+          "check": "C39"
+        },
+        {
+          "text": "an alone check and another check started together in one project never overlap",
+          "check": "C40"
+        },
+        {
+          "text": "an alone check waits for running non-alone checks, and non-alone checks wait while an alone check runs",
+          "check": "C40"
+        },
+        {
+          "text": "non-alone checks still run in parallel with each other",
+          "check": "C40"
+        },
+        {
+          "text": "the exclusion holds across vbw check, vbw prove and the checks run by vbw fix done",
+          "check": "C40"
+        },
+        {
+          "text": "a check that times out while holding the exclusion releases it",
+          "check": "C40"
+        },
+        {
+          "text": "a crashed vbw process leaves no stale lock: a lock owned by a dead process is taken over",
+          "check": "C40"
+        },
+        {
+          "text": "a wait beyond the bounded limit fails with a message naming the check waited on, not a hang",
+          "check": "C40"
+        },
+        {
+          "text": "checks of two different projects do not block each other",
+          "check": "C40"
+        },
+        {
+          "text": "lock files live under .vbw/runtime and nothing is written outside the project or in /tmp",
+          "check": "C40"
+        },
+        {
+          "text": "without an alone marker behaviour and timing are unchanged",
+          "check": "C40"
+        },
+        {
+          "text": "the docs describe the alone marker",
+          "check": "C41"
+        },
+        {
+          "text": "the kernel stays within its line budget, bash 3.2 compatible, with no eval and no /tmp",
+          "check": "C41"
+        }
+      ]
     }
   ],
   "checks": [
@@ -995,6 +1150,86 @@
       ],
       "files": [
         "tests/l3-interview.bats"
+      ]
+    },
+    {
+      "id": "C39",
+      "req": "R45",
+      "run": [
+        "bats",
+        "tests/check-alone-contract.bats"
+      ],
+      "files": [
+        "tests/check-alone-contract.bats"
+      ]
+    },
+    {
+      "id": "C40",
+      "req": "R45",
+      "run": [
+        "bats",
+        "tests/check-alone-runner.bats"
+      ],
+      "files": [
+        "tests/check-alone-runner.bats"
+      ],
+      "timeout": 300
+    },
+    {
+      "id": "C41",
+      "req": "R45",
+      "run": [
+        "bats",
+        "tests/check-alone-docs.bats"
+      ],
+      "files": [
+        "tests/check-alone-docs.bats"
+      ]
+    },
+    {
+      "id": "C42",
+      "req": "R43",
+      "run": [
+        "bats",
+        "tests/fix-reuse.bats"
+      ],
+      "files": [
+        "tests/fix-reuse.bats"
+      ],
+      "timeout": 300
+    },
+    {
+      "id": "C43",
+      "req": "R43",
+      "run": [
+        "bats",
+        "tests/fix-reuse-docs.bats"
+      ],
+      "files": [
+        "tests/fix-reuse-docs.bats"
+      ]
+    },
+    {
+      "id": "C44",
+      "req": "R44",
+      "run": [
+        "bats",
+        "tests/fix-many.bats"
+      ],
+      "files": [
+        "tests/fix-many.bats"
+      ],
+      "timeout": 300
+    },
+    {
+      "id": "C45",
+      "req": "R44",
+      "run": [
+        "bats",
+        "tests/fix-many-docs.bats"
+      ],
+      "files": [
+        "tests/fix-many-docs.bats"
       ]
     }
   ],
@@ -1893,19 +2128,12 @@
       "tier": "deep",
       "reasons": [
         "requirements: 1",
-        "files: 11 (40753 bytes)",
+        "files: 11 (57279 bytes)",
         "risk: none",
-        "breaks: R1, R2, R3, R13, R14, R22, R23, R24, R25, R27, R28, R31, R33, R35",
+        "breaks: R1, R2, R3, R13, R14, R22, R23, R24, R25, R27, R28, R31, R33, R35, R37, R39, R40",
         "tests: project test command"
       ],
       "predicted": "deep",
-      "qa": {
-        "result": "pass",
-        "tier": "deep",
-        "tree": "d9dee95313234bc0cdd05de63a7212b64fbcc6c7",
-        "at": "2026-10-04T18:02:28Z",
-        "note": "22/22 checks"
-      },
       "outcome": {
         "tier": "deep",
         "predicted": "deep",
@@ -1938,9 +2166,9 @@
       "tier": "deep",
       "reasons": [
         "requirements: 2",
-        "files: 8 (27723 bytes)",
+        "files: 8 (43722 bytes)",
         "risk: none",
-        "breaks: R13, R14, R22, R24, R25, R26, R28, R31, R35",
+        "breaks: R13, R14, R22, R24, R25, R26, R28, R31, R35, R39, R40",
         "tests: project test command"
       ],
       "predicted": "deep",
@@ -1958,13 +2186,6 @@
           "reason": "Dev blocked P31.3: Docs written and committed (55b91446, b55955a2). C35 fails only on test 10: plugin/skills/vibe/SKILL.md has 1448 words (limit 1400) from another agent's uncommitted edit, outside this plan's files. Rerun after that edit is trimmed or committed."
         }
       ],
-      "qa": {
-        "result": "pass",
-        "tier": "deep",
-        "tree": "d9dee95313234bc0cdd05de63a7212b64fbcc6c7",
-        "at": "2026-10-04T17:55:37Z",
-        "note": "22/22 checks"
-      },
       "outcome": {
         "tier": "deep",
         "predicted": "deep",
@@ -1993,9 +2214,9 @@
       "tier": "deep",
       "reasons": [
         "requirements: 1",
-        "files: 44 (90849 bytes)",
+        "files: 44 (110630 bytes)",
         "risk: none",
-        "breaks: R12, R13, R14, R22, R23, R24, R25, R26, R27, R28, R31, R35, R36",
+        "breaks: R12, R13, R14, R22, R23, R24, R25, R26, R27, R28, R31, R35, R36, R37, R38, R40",
         "tests: project test command"
       ],
       "predicted": "deep",
@@ -2013,13 +2234,6 @@
           "reason": "Dev blocked P32.5: C36 fails on the prompt word budget (all prompts 10988 words, limit 10700) in plugin/ prompts, outside this docs plan's files; docs tasks are committed"
         }
       ],
-      "qa": {
-        "result": "pass",
-        "tier": "deep",
-        "tree": "d9dee95313234bc0cdd05de63a7212b64fbcc6c7",
-        "at": "2026-10-04T17:53:30Z",
-        "note": "30/30 checks"
-      },
       "outcome": {
         "tier": "deep",
         "predicted": "deep",
@@ -2049,19 +2263,12 @@
       "tier": "deep",
       "reasons": [
         "requirements: 1",
-        "files: 11 (56969 bytes)",
+        "files: 11 (72003 bytes)",
         "risk: none",
-        "breaks: R3, R13, R14, R22, R23, R24, R25, R26, R27, R28, R31, R33, R35",
+        "breaks: R3, R13, R14, R22, R23, R24, R25, R26, R27, R28, R31, R33, R35, R37, R38, R39",
         "tests: project test command"
       ],
       "predicted": "deep",
-      "qa": {
-        "result": "pass",
-        "tier": "deep",
-        "tree": "d9dee95313234bc0cdd05de63a7212b64fbcc6c7",
-        "at": "2026-10-04T17:49:56Z",
-        "note": "16/16 checks"
-      },
       "outcome": {
         "tier": "deep",
         "predicted": "deep",
@@ -2092,20 +2299,12 @@
       "tier": "deep",
       "reasons": [
         "requirements: 2",
-        "files: 6 (41541 bytes)",
+        "files: 6 (69243 bytes)",
         "risk: none",
         "breaks: R4, R5, R8, R18, R29, R34",
         "tests: project test command"
       ],
       "predicted": "deep",
-      "qa": {
-        "result": "fail",
-        "tier": "deep",
-        "tree": "d9dee95313234bc0cdd05de63a7212b64fbcc6c7",
-        "at": "2026-10-04T17:48:25Z",
-        "note": "24/25 checks",
-        "rounds": 2
-      },
       "escalations": [
         {
           "at": "2026-10-04T17:48:25Z",
@@ -2114,6 +2313,97 @@
           "reason": "QA needs a second round"
         }
       ]
+    },
+    {
+      "id": "P35",
+      "title": "Checks marked to run alone never overlap",
+      "reqs": [
+        "R45"
+      ],
+      "milestone": "M7",
+      "goal": "A check the contract marks to run alone never runs at the same time as any other VBW check in the same project, however many fixes, builds or Devs run checks in parallel.",
+      "criteria": [
+        "A check in an approved contract can carry an alone marker (for example alone: true); vbw apply accepts it, rejects a non-boolean value naming the check, and the marker is part of the contract hash so adding or removing it needs re-approval and is shown by vbw show contract and on the approval screen",
+        "Two vbw check invocations started together in one project, one of them on an alone check, never overlap: the alone check's run interval shares no time with the other's (proved with checks that record start and end times)",
+        "An alone check waits for running non-alone checks to finish, and non-alone checks wait while an alone check runs; non-alone checks still run in parallel with each other",
+        "The same holds across vbw check, vbw prove and the checks run by vbw fix done and vbw commit, since all go through the one check runner",
+        "A check killed or timed out while holding the exclusion releases it; a crashed vbw process leaves no stale lock that blocks later checks (a lock owned by a dead process is taken over)",
+        "A wait that exceeds a bounded limit fails with a message naming the check being waited on, not a hang",
+        "Checks of two different projects (or worktrees with separate .vbw) do not block each other",
+        "Lock files live under .vbw/runtime, nothing is written outside the project, bash 3.2 compatible, no eval, no use of /tmp",
+        "Without an alone marker on any check, behaviour and timing are unchanged and all existing tests pass",
+        "The docs (docs/proof.md or the contract docs) describe the alone marker; kernel stays under the 3,300 line budget"
+      ],
+      "tier": "deep",
+      "reasons": [
+        "requirements: 1",
+        "files: 8 (77895 bytes)",
+        "risk: none",
+        "breaks: R12, R13, R14, R22, R23, R24, R25, R27, R28, R31, R32, R33, R38, R40",
+        "tests: project test command"
+      ],
+      "predicted": "deep"
+    },
+    {
+      "id": "P36",
+      "title": "Closing a fix reuses an unchanged earlier pass",
+      "reqs": [
+        "R43"
+      ],
+      "milestone": "M7",
+      "goal": "vbw fix done does not rerun a check that already passed on the same project files under the same approved contract, and says so with the date of that pass; vbw prove still runs every check.",
+      "criteria": [
+        "After a check passes, the record keeps the pass together with a fingerprint of the project files it serves (committed content) and the contract hash, and the time of the pass",
+        "vbw fix done on a fix whose served checks all have a recorded pass with the same file fingerprint and the same contract hash does not execute them, and prints for each that the check is unchanged since its pass and when that pass was",
+        "If any served file changed since the pass (committed change), the check is rerun; if the contract hash changed (re-approval with different content), the check is rerun",
+        "A check whose last result was fail or timeout, or that never ran, is rerun, never skipped",
+        "A check with no declared files or whose served files cannot be fingerprinted is always rerun",
+        "Uncommitted changes in the fix's files still block closing as before (dirty-file refusal unchanged); the skip applies only to the check rerun",
+        "vbw prove runs every check regardless of recorded passes, and a failing check still fails the proof",
+        "A failure of a rerun check still blocks the fix with the same message naming the check",
+        "Records written by earlier versions without a recorded pass read fine and simply rerun checks (R33 compatibility, schema version handling checked); the new fields are validated by the single record writer",
+        "Fix closing outcomes (fixed or closed for [human]) are identical to before when checks are skipped",
+        "Docs describe the reuse rule and its wording; kernel stays under the 3,300 line budget"
+      ],
+      "tier": "deep",
+      "reasons": [
+        "requirements: 1",
+        "files: 6 (51623 bytes)",
+        "risk: none",
+        "breaks: R12, R13, R14, R22, R23, R25, R27, R28, R31, R32, R33, R38, R40",
+        "tests: project test command"
+      ],
+      "predicted": "deep"
+    },
+    {
+      "id": "P37",
+      "title": "Several fixes close in one command",
+      "reqs": [
+        "R44"
+      ],
+      "milestone": "M7",
+      "goal": "vbw fix done F8 F9 F5 closes several fixes in one command, running the checks their files serve once, each fix ending as it would if closed alone, and naming any fix that cannot close.",
+      "criteria": [
+        "vbw fix done accepts one or more fix ids; a single id behaves exactly as today, and vbw fix retry still takes exactly one id",
+        "A check served by the files of more than one of the named fixes runs once in the command (proved by a counting check), not once per fix",
+        "Each fix ends as if closed alone: a code fix becomes fixed and awaits vbw prove, a [human] requirement's fix becomes closed and its requirement returns to the user for acceptance",
+        "A fix that cannot close (unknown id, not open, uncommitted changes in its files, or a served check fails) is named with its reason and the others still close",
+        "A check that fails fails only the fixes it serves; fixes not served by it still close, and the failing check is named",
+        "The same id given twice is closed once and not an error; the exit code is non-zero if any named fix could not close, zero only when all closed",
+        "Repeated passes the P36 reuse rule applies still say the check is unchanged since its pass; checks marked alone (P35) still run alone",
+        "The record is updated through the single locked writer, and the result of a partial success is consistent (closed fixes recorded, unclosed fixes unchanged)",
+        "Fix ids from different requirements and phases mix freely",
+        "Skills, workflows and docs that say vbw fix done (the build and fix loop, docs/proof.md, bin help text) show the multi-id form; kernel stays under the 3,300 line budget"
+      ],
+      "tier": "deep",
+      "reasons": [
+        "requirements: 1",
+        "files: 5 (34168 bytes)",
+        "risk: none",
+        "breaks: R3, R12, R13, R14, R24, R25, R27, R28, R31, R32, R38, R39, R40",
+        "tests: project test command"
+      ],
+      "predicted": "deep"
     }
   ],
   "plans": [
@@ -4107,6 +4397,168 @@
         "Scenario senior: senior engineer, technical and brief, I make the calls, the same questions; saves the transcript",
         "Both in ALL and the suite header; after the interview a second request in a new session; outcome read from vbw interview, the record, the spec Goals and git; result_write with facts, not_tested and the transcript path",
         "Run both in the real Claude Code app; commit the two results and transcripts for the owner's R41 reading"
+      ]
+    },
+    {
+      "id": "P35.1",
+      "phase": "P35",
+      "title": "The contract carries the alone marker",
+      "reqs": [
+        "R45"
+      ],
+      "files": [
+        "plugin/lib/record.jq",
+        "plugin/lib/cmd-show.sh",
+        "plugin/lib/cmd-apply.sh"
+      ],
+      "after": [],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "record.jq: a check may carry alone, which must be a boolean, refused naming the check",
+        "cmd-show.sh: the check line and the contract changes view show a check marked alone",
+        "cmd-apply.sh: document alone among the check fields in the apply header"
+      ]
+    },
+    {
+      "id": "P35.2",
+      "phase": "P35",
+      "title": "One check runner enforces the exclusion",
+      "reqs": [
+        "R45"
+      ],
+      "files": [
+        "plugin/lib/checks.sh",
+        "tests/standards.bats",
+        "tests/standards-selftest.bats"
+      ],
+      "after": [
+        "P35.1"
+      ],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "checks.sh: an exclusion gate under .vbw/runtime that holds an alone check by itself and lets non-alone checks share, with registrations owned by a process id",
+        "checks.sh: take over a registration whose owner process is dead, release on timeout, exit and interrupt, and fail a wait beyond VBW_CHECK_WAIT_SECONDS (default 900) naming the check waited on",
+        "standards.bats and standards-selftest.bats: allow the signal-free liveness probe kill -0 while any other killing stays refused, with a selftest",
+        "run the full suite under /bin/bash and bash 5 and confirm the kernel line budget"
+      ]
+    },
+    {
+      "id": "P35.3",
+      "phase": "P35",
+      "title": "Docs: the alone marker",
+      "reqs": [
+        "R45"
+      ],
+      "files": [
+        "docs/proof.md",
+        "docs/record.md"
+      ],
+      "after": [
+        "P35.1",
+        "P35.2"
+      ],
+      "status": "planned",
+      "role": "docs",
+      "tasks": [
+        "docs/proof.md: what alone means, how the exclusion works, the wait limit and its variable",
+        "docs/record.md: alone in the checks field row"
+      ]
+    },
+    {
+      "id": "P36.1",
+      "phase": "P36",
+      "title": "Record passes and close fixes without rerunning unchanged ones",
+      "reqs": [
+        "R43"
+      ],
+      "files": [
+        "plugin/lib/record.jq",
+        "plugin/lib/checks.sh",
+        "plugin/lib/cmd-prove.sh",
+        "plugin/lib/cmd-fix.sh"
+      ],
+      "after": [
+        "P35.1",
+        "P35.2"
+      ],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "record.jq: validate the optional top-level passes object (check id to at, contract, tree) in the single writer, schema stays 1",
+        "checks.sh: fingerprint a check's served files from committed content (its requirement's plan files and its own files), decide reuse, record a pass only when no served file is dirty and drop the entry on fail or timeout",
+        "cmd-prove.sh: record the passes of the checks that passed on the clean copy; prove still runs every check",
+        "cmd-fix.sh: skip checks whose recorded pass matches the fingerprint and the contract hash, print C unchanged since its pass (time), rerun everything else with the same failure message",
+        "run the full suite"
+      ]
+    },
+    {
+      "id": "P36.2",
+      "phase": "P36",
+      "title": "Docs: reusing an unchanged pass",
+      "reqs": [
+        "R43"
+      ],
+      "files": [
+        "docs/proof.md",
+        "docs/record.md"
+      ],
+      "after": [
+        "P36.1",
+        "P35.3"
+      ],
+      "status": "planned",
+      "role": "docs",
+      "tasks": [
+        "docs/proof.md: the reuse rule, its wording and that vbw prove runs every check",
+        "docs/record.md: the passes object"
+      ]
+    },
+    {
+      "id": "P37.1",
+      "phase": "P37",
+      "title": "vbw fix done closes several fixes",
+      "reqs": [
+        "R44"
+      ],
+      "files": [
+        "plugin/lib/cmd-fix.sh",
+        "plugin/bin/vbw",
+        "plugin/agents/dev.md"
+      ],
+      "after": [
+        "P36.1"
+      ],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "cmd-fix.sh: accept one or more ids for done (one for retry), drop duplicates, name unknown, not-open and dirty fixes with their reasons",
+        "cmd-fix.sh: run the union of the served checks once, attribute a failing check only to the fixes it serves",
+        "cmd-fix.sh: close the fixes that can close in one record_update, human requirement fixes closing as alone, non-zero exit if any fix could not close",
+        "bin/vbw help and agents/dev.md: show the multi-id form"
+      ]
+    },
+    {
+      "id": "P37.2",
+      "phase": "P37",
+      "title": "Docs: closing several fixes",
+      "reqs": [
+        "R44"
+      ],
+      "files": [
+        "docs/proof.md",
+        "docs/workflows.md"
+      ],
+      "after": [
+        "P37.1",
+        "P36.2"
+      ],
+      "status": "planned",
+      "role": "docs",
+      "tasks": [
+        "docs/proof.md: multi-id fix done, partial success and exit code",
+        "docs/workflows.md: the fix done row shows the multi-id form"
       ]
     }
   ],
