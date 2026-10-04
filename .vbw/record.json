@@ -1990,12 +1990,19 @@
         }
       ],
       "qa": {
-        "result": "fail",
+        "result": "pass",
         "tier": "deep",
-        "tree": "03f89003112457b38d626b9e31765872e9d029c7",
-        "at": "2026-10-04T17:04:12Z",
-        "note": "24/25 checks",
-        "rounds": 1
+        "tree": "d9dee95313234bc0cdd05de63a7212b64fbcc6c7",
+        "at": "2026-10-04T17:53:30Z",
+        "note": "30/30 checks"
+      },
+      "outcome": {
+        "tier": "deep",
+        "predicted": "deep",
+        "held": true,
+        "fix_rounds": 1,
+        "qa_findings": 1,
+        "escalations": 2
       }
     },
     {
@@ -4227,7 +4234,7 @@
       "req": "R39",
       "source": "qa",
       "attempts": 0,
-      "status": "fixed",
+      "status": "closed",
       "note": "Out-of-plan change: commit 545ad009 edits plugin/skills/interview/SKILL.md, which is in no P32 plan's file list (P32.4 blocked on it; it belongs to P31.2), and no recorded decision (D37-D76) covers it. Commit 2c762999 also edits profile/SKILL.md outside any P32 task commit. Record a decision or re-plan to cover them."
     },
     {
