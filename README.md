@@ -68,8 +68,10 @@ Your first project. In your project's folder (any git repository, new or existin
 
    ![The VBW status line showing the project's progress](assets/statusline.png)
 
-2. **Questions.** VBW asks what you want and the decisions that matter, one
-   at a time.
+2. **Questions.** Once per project, VBW first asks three quick questions about
+   you (how much software you have built, how it should explain things, how
+   involved you want to be), so every message fits your level. Then it asks
+   what you want and the decisions that matter, one at a time.
 
    ![VBW asking a decision with a recommendation](assets/first-question.png)
 
@@ -84,7 +86,7 @@ Your first project. In your project's folder (any git repository, new or existin
    ![Requirements proven by passing tests](assets/proof.png)
 
 Type `/vbw:vibe` whenever you come back; it continues where things stand.
-`/vbw:profile` changes how much it does by itself (Careful, Standard, Fast).
+`/vbw:profile` changes your answers and how much it does by itself (Careful, Standard, Fast).
 
 Coming from an earlier VBW? See [docs/convert.md](docs/convert.md).
 
@@ -103,7 +105,7 @@ Coming from an earlier VBW? See [docs/convert.md](docs/convert.md).
 | `/vbw:init`, `/vbw:convert` | Set up VBW (vibe does it too); bring in a project from an earlier VBW |
 | `/vbw:map`, `/vbw:teach [convention]` | Map an existing codebase; teach your conventions |
 | `/vbw:pause`, `/vbw:resume` | Stop safely; pick up where you left off |
-| `/vbw:profile`, `/vbw:config` | How VBW works (models, how much it does on its own); each setting |
+| `/vbw:profile`, `/vbw:config` | How VBW works (how it talks to you, models, how much it does on its own); each setting |
 | `/vbw:skills`, `/vbw:rtk`, `/vbw:compress` | Community skills, output compression, terser instruction files |
 | `/vbw:doctor`, `/vbw:report` | Check the setup; prepare a bug report |
 | `/vbw:update`, `/vbw:whats-new`, `/vbw:uninstall` | Keep VBW current, or remove it |
