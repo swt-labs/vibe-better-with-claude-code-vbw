@@ -11,14 +11,14 @@
 # L3_JOBS at a time (default 4); each one's lines print together when it ends.
 #
 # Scenarios: greenfield, reject, resume, change, convert, balanced, docs, qafix,
-# decision, debug, research, edgecase, leftover. A user answers every
-# question with VBW's recommendation unless the scenario says otherwise.
+# decision, debug, research, edgecase, leftover, newcomer, senior. A user answers
+# every question with VBW's recommendation unless the scenario says otherwise.
 set -uo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 l3() { bash "$ROOT/tools/l3.sh" "$@"; }
 VBW="$ROOT/plugin/bin/vbw"
-ALL="greenfield reject resume change convert balanced docs qafix decision debug research edgecase leftover"
+ALL="greenfield reject resume change convert balanced docs qafix decision debug research edgecase leftover newcomer senior"
 RESULTS="$ROOT/tools/l3-results"
 STEPS=60
 
@@ -649,6 +649,161 @@ scenario_leftover() {
       "$(jq -n --arg f "$f" --argjson fl "$flips" --argjson s "$same" --argjson p "$pp" --argjson i "$inc" --argjson g "$gone" \
         '{leftover_file: $f, check_flips_in_working_folder: $fl, proof_unchanged: $s, proof_passed: $p, file_in_proof_copy: $i, copy_removed: $g}')" \
       '["a leftover modified tracked file","a git-ignored leftover (linked into the copy by design)","a project command other than a shell script","a project larger than the greet.sh fixture"]'
+  }
+}
+
+# --- The interview (R42): a newcomer and a senior engineer answer it in the real
+# app, in their own words. Each answer is recorded, the interview is not asked
+# again in a new session, and the milestone ships. The transcript is saved for a
+# person to read (R41, human). Facts come from `vbw interview`, the record, the
+# spec Goals and git, never from screen text.
+
+interview_pending() { (cd "$dir" && "$VBW" interview --json 2> /dev/null | jq -r '.pending // "none"') || echo none; }
+
+# The open question as it shows: from the separator above its tab line to the
+# end (the scrollback still shows the questions answered before).
+current_question() {
+  local s start
+  s=$(screen)
+  start=$(printf '%s\n' "$s" | grep -n '^──' | tail -2 | head -1 | cut -d: -f1)
+  printf '%s\n' "$s" | tail -n +"${start:-1}"
+}
+
+# pick_label REGEX: choose the option on screen whose label starts with REGEX
+# (the model may reorder options; the cursor's marker is not always a plain space).
+pick_label() {
+  local n i
+  n=$(current_question | grep -iE "^[^0-9]*[0-9]+\. $1" | head -1 | grep -oE '[0-9]+' | head -1)
+  [ -n "$n" ] || { say "no option matching '$1' on screen"; return 1; }
+  for ((i = 1; i < n; i++)); do l3 keys "$scenario" Down; done
+  l3 keys "$scenario" Enter
+}
+
+# Render the project's main session transcripts (what VBW said and asked, what
+# the user answered) as Markdown, in time order, to $1.
+transcript_write() {
+  local f
+  mkdir -p "$RESULTS"
+  {
+    printf '# %s: transcript of the real Claude Code session\n\n' "$scenario"
+    while IFS= read -r f; do
+      jq -r 'if .type == "assistant" then
+          (.message.content[]? | if .type == "text" then "**VBW:** " + .text + "\n"
+            elif .type == "tool_use" and .name == "AskUserQuestion" then
+              "**VBW asks:**\n" + ([.input.questions[]? | "- " + .question + " (options: " + ([.options[]?.label] | join(" / ")) + ")"] | join("\n")) + "\n"
+            else empty end)
+        elif .type == "user" then
+          (.message.content | if type == "string" then (select(startswith("Base directory for this skill") | not) | "**User:** " + . + "\n")
+            else (.[]? | if .type == "text" and (.text | startswith("Base directory for this skill") | not) then "**User:** " + .text + "\n"
+              elif .type == "tool_result" then ((.content | if type == "array" then map(.text? // "") | join(" ") else (. // "") end)
+                | select(startswith("Your questions have been answered")) | "**User answers:** " + . + "\n")
+              else empty end) end)
+        else empty end' "$f" 2> /dev/null
+    done < <(transcripts | grep -v '/subagents/' | sort)
+  } > "$1"
+}
+
+# scenario_interview LEVEL DEPTH INVOLVEMENT KEEP_REGEX PURPOSE KEYWORD: sets up
+# a project whose user answers the interview as given (drive handlers) and
+# defines checks() to read the outcome. The caller's checks() writes the result.
+scenario_interview() {
+  a_level=$1 a_depth=$2 a_inv=$3 a_keep=$4 a_purpose=$5 a_word=$6
+  new_project
+  start="/vbw:vibe I want to build a small greeting tool. One small milestone."
+  purpose_done=0 followups=0
+  # The question on screen decides the answer (the model may put several
+  # questions in one form, so the recorded state is not a guide).
+  on_question() {
+    local p scr
+    p=$(interview_pending)
+    scr=$(current_question)
+    if printf '%s' "$scr" | grep -qi 'how much software'; then pick_label "$a_level"
+    elif printf '%s' "$scr" | grep -qi 'explain things'; then pick_label "$a_depth"
+    elif printf '%s' "$scr" | grep -qi 'how involved'; then pick_label "$a_inv"
+    elif printf '%s' "$scr" | grep -qi 'private on this machine'; then pick_label "$a_keep"
+    elif [ "$p" = none ] || printf '%s' "$scr" | grep -q 'Ready to submit'; then return 1
+    elif [ "$purpose_done" -eq 0 ]; then
+      purpose_done=1; answer_other "$a_purpose"
+    else
+      followups=$((followups + 1))
+      if printf '%s' "$scr" | grep -q 'Type something'; then answer_other "Keep it as simple as that."; else answer_recommended; fi
+    fi
+  }
+  # The question "what and for whom" may arrive as a plain message, not a menu.
+  on_idle() {
+    [ "$(interview_pending)" = keep ] && [ "$purpose_done" -eq 0 ] || return 1
+    last_reply | grep -qiE 'building|for whom|who.*(for|use)' || return 1
+    purpose_done=1
+    l3 type "$scenario" "$a_purpose"
+  }
+}
+
+# interview_outcome: reads the outcome and sets $passed and $facts. Also runs a
+# second request in a new session and checks the interview is not asked again.
+interview_outcome() {
+  local rec before after files new asked=false ask_after=true goals="" in_goals=false shipped_ok=false ship_commit=false match=false keptw n
+  passed=true
+  common_checks
+  rec=$(cd "$dir" && "$VBW" interview --json 2> /dev/null || echo '{}')
+  keptw=$(printf '%s' "$rec" | jq -r '.kept // "none"')
+  goals=$(sed -n '/^## Goals/,/^## /p' "$dir/.vbw/spec.md" 2> /dev/null || true)
+  printf '%s' "$goals" | grep -qi "$a_word" && in_goals=true
+  shipped && shipped_ok=true
+  [ "$(git -C "$dir" log --format=%s | grep -c '^chore(vbw): ship')" -gt 0 ] && ship_commit=true
+  printf '%s' "$rec" | jq -e --arg l "$a_level" --arg d "$a_depth" --arg i "$a_inv" '.level == $l and .depth == $d and .involvement == $i' > /dev/null && match=true
+  [ "$keptw" = private ] || [ "$keptw" = project ] || match=false
+  transcript_write "$RESULTS/$scenario.transcript.md"
+  # A second request in a new session.
+  files=$(transcripts | sort); before=$rec
+  l3 start "$scenario" "$dir" > /dev/null
+  if screen | grep -q "Type \/reload-skills"; then l3 type "$scenario" "/reload-skills"; sleep 5; fi
+  l3 type "$scenario" "/vbw:vibe Also let greet.sh take --shout, printing the greeting in capital letters."
+  default_idle
+  l3 keys "$scenario" Escape; sleep 2; default_idle
+  l3 stop "$scenario"
+  after=$(cd "$dir" && "$VBW" interview --json 2> /dev/null || echo '{}')
+  new=$(comm -13 <(printf '%s\n' "$files") <(transcripts | sort) | grep -v '/subagents/' || true)
+  if [ -n "$new" ] && printf '%s\n' "$new" | xargs cat 2> /dev/null | jq -e 'select(.type == "assistant") | .message.content[]?
+    | select(.type == "tool_use" and (((.input | tostring) | test("interview (set|keep)|How much software")) or (.name == "Skill" and ((.input | tostring) | test("interview")))))' > /dev/null 2>&1; then asked=true; fi
+  [ "$(cd "$dir" && "$VBW" next --json 2> /dev/null | jq -r '.profile.ask')" = false ] && ask_after=false || ask_after=true
+  [ "$before" = "$after" ] || asked=true
+  n=$followups
+  expect "the answers were recorded as given, kept $keptw" [ "$match" = true ]
+  expect "what was being built is in the spec Goals" [ "$in_goals" = true ]
+  expect "the second session did not ask the interview again" [ "$asked" = false ]
+  expect "the profile no longer asks" [ "$ask_after" = false ]
+  expect "the milestone shipped, with a ship commit" [ "$shipped_ok$ship_commit" = truetrue ]
+  expect "at most three follow-ups ($n)" [ "$n" -le 3 ]
+  [ "$failed" -eq 0 ] || passed=false
+  facts=$(jq -n --arg l "$a_level" --arg d "$a_depth" --arg i "$a_inv" --arg k "$keptw" --arg p "$a_purpose" --argjson f "$n" \
+    --argjson rec "$rec" --argjson m "$match" --argjson g "$in_goals" --argjson a "$asked" --argjson aa "$ask_after" \
+    --argjson s "$shipped_ok" --argjson sc "$ship_commit" --arg t "tools/l3-results/$scenario.transcript.md" \
+    '{answered: {level: $l, depth: $d, involvement: $i, purpose: $p, follow_ups: $f, keep: $k},
+      recorded: {level: $rec.level, depth: $rec.depth, involvement: $rec.involvement, kept: $rec.kept},
+      recorded_matches_answered: $m, purpose_in_spec_goals: $g,
+      second_session_asked_interview: $a, next_profile_ask_after: $aa,
+      milestone_shipped: $s, reached_ship: ($s and $sc), transcript: $t}')
+}
+
+scenario_newcomer() {
+  fixture="greet.sh from scratch; a user who has never built software answers in plain words and lets VBW decide"
+  scenario_interview "never" "plain words" "decide and tell me" "private" \
+    "a script greet.sh: ./greet.sh Ana prints Hello, Ana! and ./greet.sh alone prints Hello, world!. It is for my grandmother, who is learning English." grandmother
+  checks() {
+    interview_outcome
+    result_write newcomer "$fixture" "${cost_usd:-0}" "$passed" "$facts" \
+      '["a person judging the wording (R41, human)","the other two level answers","a project larger than the greet.sh fixture","a second request carried through to the end"]'
+  }
+}
+
+scenario_senior() {
+  fixture="greet.sh from scratch; a senior engineer answers technically and briefly and makes the calls; answers kept in the project"
+  scenario_interview "senior engineer" "technical and brief" "I make the calls" "saved" \
+    "a CLI greeter, greet.sh: ./greet.sh Ana prints Hello, Ana!, no argument prints Hello, world!. Our team calls it from onboarding scripts; users are platform engineers." onboarding
+  checks() {
+    interview_outcome
+    result_write senior "$fixture" "${cost_usd:-0}" "$passed" "$facts" \
+      '["a person judging the wording (R41, human)","the middle level answers","a project larger than the greet.sh fixture","a second request carried through to the end"]'
   }
 }
 
