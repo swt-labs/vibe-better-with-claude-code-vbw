@@ -21,7 +21,7 @@ unanswered question, named by `profile.pending` (`level`, `depth`,
 ## The three fixed questions
 
 Each answer is recorded as soon as it is given, so an interrupted interview
-loses nothing. Offer exactly these options, in this order, and no others.
+loses nothing. Offer exactly these options, in this order, and no others: never reorder them or mark one Recommended, whatever the earlier answers suggest (they are the user's own facts, not a choice VBW advises).
 
 1. "How much software have you built?"
    Options: never; small scripts or no-code; professionally; senior engineer.
