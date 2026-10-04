@@ -2128,7 +2128,7 @@
       "tier": "deep",
       "reasons": [
         "requirements: 1",
-        "files: 11 (57279 bytes)",
+        "files: 11 (57980 bytes)",
         "risk: none",
         "breaks: R1, R2, R3, R13, R14, R22, R23, R24, R25, R27, R28, R31, R33, R35, R37, R39, R40",
         "tests: project test command"
@@ -2214,7 +2214,7 @@
       "tier": "deep",
       "reasons": [
         "requirements: 1",
-        "files: 44 (110630 bytes)",
+        "files: 44 (110826 bytes)",
         "risk: none",
         "breaks: R12, R13, R14, R22, R23, R24, R25, R26, R27, R28, R31, R35, R36, R37, R38, R40",
         "tests: project test command"
@@ -2263,7 +2263,7 @@
       "tier": "deep",
       "reasons": [
         "requirements: 1",
-        "files: 11 (72003 bytes)",
+        "files: 11 (72704 bytes)",
         "risk: none",
         "breaks: R3, R13, R14, R22, R23, R24, R25, R26, R27, R28, R31, R33, R35, R37, R38, R39",
         "tests: project test command"
@@ -2337,7 +2337,7 @@
       "tier": "deep",
       "reasons": [
         "requirements: 1",
-        "files: 9 (82979 bytes)",
+        "files: 9 (91788 bytes)",
         "risk: none",
         "breaks: R12, R13, R14, R22, R23, R24, R25, R27, R28, R31, R32, R33, R38, R39, R40",
         "tests: project test command"
@@ -2368,9 +2368,9 @@
       "tier": "deep",
       "reasons": [
         "requirements: 1",
-        "files: 6 (51623 bytes)",
+        "files: 7 (69604 bytes)",
         "risk: none",
-        "breaks: R12, R13, R14, R22, R23, R25, R27, R28, R31, R32, R33, R38, R40",
+        "breaks: R12, R13, R14, R22, R23, R24, R25, R27, R28, R31, R32, R33, R38, R40",
         "tests: project test command"
       ],
       "predicted": "deep",
@@ -2406,7 +2406,7 @@
       "tier": "deep",
       "reasons": [
         "requirements: 1",
-        "files: 5 (34168 bytes)",
+        "files: 5 (35593 bytes)",
         "risk: none",
         "breaks: R3, R12, R13, R14, R24, R25, R27, R28, R31, R32, R38, R39, R40",
         "tests: project test command"
@@ -4499,8 +4499,7 @@
         "cmd-fix.sh: skip checks whose recorded pass matches the fingerprint and the contract hash, print C unchanged since its pass (time), rerun everything else with the same failure message",
         "run the full suite"
       ],
-      "role": "dev",
-      "note": "C42 test 10 ('vbw prove runs every check and records the passes the fix reuses') cannot pass as written: after a passing vbw prove, prove.jq closes the open fix F1 (R2 proven; existing behavior, tested in kernel-prove.bats:187), so 'vbw fix done F1' dies 'F1 is not open' before any check logic. Needs a decision: fix the test (use a fix opened after the prove) or change prove.jq (outside plan files) so a passing proof does not close open fixes. Also: vbw apply (cmd-apply.sh, outside plan files) must prune .passes entries of checks it drops, or the record becomes invalid. Tasks 1-4 are committed (12 of 13 tests in fix-reuse.bats pass; kernel-prove, kernel-work, record suites pass). Task 5 and docs C43 not done."
+      "role": "dev"
     },
     {
       "id": "P36.2",
@@ -4586,6 +4585,22 @@
       "status": "done",
       "tasks": [
         "lead.md: a check that starts containers, services or other heavy shared resources gets the alone marker in vbw apply; within the agent token budget"
+      ]
+    },
+    {
+      "id": "P36.3",
+      "phase": "P36",
+      "title": "A re-plan drops the recorded passes of the checks it removes",
+      "reqs": [
+        "R43"
+      ],
+      "files": [
+        "plugin/lib/cmd-apply.sh"
+      ],
+      "after": [],
+      "status": "planned",
+      "tasks": [
+        "vbw apply removes .passes entries whose check id is no longer in the record, in the same validated update, so the record stays readable (C42 test 14)"
       ]
     }
   ],

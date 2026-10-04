@@ -143,12 +143,15 @@ runs() { if [ -f "$RUNS/$1" ]; then wc -l < "$RUNS/$1" | tr -d ' '; else printf 
   [ "$status" -eq 0 ]
   [ "$(runs C1)" = 1 ] && [ "$(runs C2)" = 1 ] && [ "$(runs C3)" = 1 ]
   jq -e '.passes.C1 != null and .passes.C2 != null' .vbw/record.json
-  vbw_run fix done F1
+  # A passing proof closes the open fixes; a fix found afterwards reuses its passes.
+  edit_record '.fixes += [{id: "F4", req: "R2", attempts: 0, status: "open", note: "d"}]'
+  vbw_run fix done F4
   [ "$status" -eq 0 ]
   [ "$(runs C1)" = 1 ]
   [[ "$output" == *"C1 unchanged since its pass"* ]]
   vbw_run prove
-  [ "$(runs C1)" = 2 ] && [ "$(runs C2)" = 2 ] && [ "$(runs C3)" = 2 ]
+  # C3 declares no files, so closing F4 ran it too.
+  [ "$(runs C1)" = 2 ] && [ "$(runs C2)" = 2 ] && [ "$(runs C3)" = 3 ]
 }
 
 @test "vbw prove still fails on a failing check whatever was recorded" {
@@ -184,4 +187,14 @@ runs() { if [ -f "$RUNS/$1" ]; then wc -l < "$RUNS/$1" | tr -d ' '; else printf 
   edit_record '.passes = {C99: {at: "2026-10-04T10:00:00Z", contract: "x", tree: "y"}}'
   vbw_run status
   [ "$status" -eq 3 ]
+}
+
+@test "a re-plan that drops a check drops its recorded pass, and the record stays readable" {
+  vbw_run prove
+  [ "$status" -eq 0 ]
+  jq -e '.passes.C1 != null and .passes.C2 != null' .vbw/record.json
+  printf '%s' "$PLAN" | jq '.checks |= map(select(.id != "C1"))' | "$VBW" apply > /dev/null
+  jq -e '(.passes | has("C1") | not) and .passes.C2 != null' .vbw/record.json
+  vbw_run status
+  [ "$status" -eq 0 ]
 }
