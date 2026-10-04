@@ -2738,7 +2738,7 @@
         "P25.2",
         "P24.2"
       ],
-      "status": "planned",
+      "status": "done",
       "role": "docs",
       "tasks": [
         "docs/record.md: the rules field of a requirement and its validation",
@@ -2783,7 +2783,7 @@
       "after": [
         "P27.1"
       ],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "run bash tools/l3-suite.sh edgecase and commit tools/l3-results/edgecase.json as written (never hand-edited); a failing scenario is diagnosed to its root cause, fixed red-first, and run again",
