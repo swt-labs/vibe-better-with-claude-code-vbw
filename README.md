@@ -24,13 +24,16 @@ with you.
    where data lives, security, what is hard to change later), one at a time,
    with plain trade-offs and a recommendation, and records what you chose and why.
 2. **Plan it, with tests first.** VBW plans the work in small parts and writes
-   a test for every requirement. The tests fail today; that is the point.
+   a test for every requirement, and for every rule a requirement states (each
+   condition, edge and error case). The tests fail today; that is the point.
 3. **You approve.** `/vbw:approve`. Nothing VBW runs is unapproved, and the
    tests cannot be weakened afterwards to make work "pass".
 4. **Build in parallel.** Independent parts are built at the same time by
    separate Dev agents, each until its own tests pass. Every commit names the
    part and the requirement it delivers.
-5. **Prove.** VBW runs the tests itself. Not before, and not on anyone's say-so.
+5. **Prove.** VBW runs the tests itself, on a clean copy of the committed code,
+   so leftover files cannot change the result. Not before, and not on anyone's
+   say-so.
 6. **Accept and ship.** You check what only a person can judge, and ship.
 
 All of that is one command: **`/vbw:vibe`**. It always knows the next step,

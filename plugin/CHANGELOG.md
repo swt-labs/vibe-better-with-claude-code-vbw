@@ -1,5 +1,31 @@
 # Changelog
 
+## [2.0.15] - 2026-10-04
+
+### Changed
+
+- **Every rule a requirement states gets its own check, and you see them
+  before you approve.** The approval screen lists each requirement's rules
+  (its conditions, edge cases and error cases) with the check that tests each
+  one, for example `rule: two names print "Hello, Ana Maria!" -> C3`.
+  `vbw apply` refuses a rule that no check tests and names it. Requirements you
+  approved before this version keep their approval and show
+  "rules not listed".
+- **A proof checks exactly what is committed.** `vbw prove` runs the checks and
+  project commands on a clean copy of the committed code, with the project's
+  git-ignored files (installed packages, build output, local config) linked in.
+  Leftover or uncommitted files in your working folder no longer change a
+  proof, and committing code that was never proved asks for a new proof.
+  `vbw check` still runs on your working folder while you build.
+  Commit your work before proving.
+
+### Fixed
+
+- **An older VBW opening a project made by a newer VBW** now says "this
+  project needs a newer VBW, update with /vbw:update" (also when a session
+  starts), instead of calling the record corrupt. Every VBW still reads
+  projects made by older versions.
+
 ## [2.0.14] - 2026-10-03
 
 ### Added
