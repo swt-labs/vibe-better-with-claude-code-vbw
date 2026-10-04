@@ -671,10 +671,16 @@ current_question() {
 
 # pick_label REGEX: choose the option on screen whose label starts with REGEX
 # (the model may reorder options; the cursor's marker is not always a plain space).
+# Options may still be rendering: it looks for up to 5 s. Not found, it counts
+# in $unmatched, so a scenario cannot pass on the drive loop's default answer.
 pick_label() {
-  local n i
-  n=$(current_question | grep -iE "^[^0-9]*[0-9]+\. $1" | head -1 | grep -oE '[0-9]+' | head -1)
-  [ -n "$n" ] || { say "no option matching '$1' on screen"; return 1; }
+  local n="" i
+  for ((i = 0; i < 10; i++)); do
+    n=$(current_question | grep -iE "^[^0-9]*[0-9]+\. $1" | head -1 | grep -oE '[0-9]+' | head -1)
+    [ -n "$n" ] && break
+    sleep 0.5
+  done
+  [ -n "$n" ] || { say "no option matching '$1' on screen"; unmatched=$((${unmatched:-0} + 1)); return 1; }
   for ((i = 1; i < n; i++)); do l3 keys "$scenario" Down; done
   l3 keys "$scenario" Enter
 }
@@ -742,17 +748,19 @@ scenario_interview() {
   a_level=$1 a_depth=$2 a_inv=$3 a_keep=$4 a_purpose=$5 a_word=$6
   new_project
   start="/vbw:vibe I want to build a small greeting tool. One small milestone."
-  purpose_done=0 followups=0
+  purpose_done=0 followups=0 unmatched=0
   # The question on screen decides the answer (the model may put several
   # questions in one form, so the recorded state is not a guide).
   on_question() {
     local p scr
     p=$(interview_pending)
     scr=$(current_question)
-    if printf '%s' "$scr" | grep -qi 'how much software'; then pick_label "$a_level"
-    elif printf '%s' "$scr" | grep -qi 'explain things'; then pick_label "$a_depth"
-    elif printf '%s' "$scr" | grep -qi 'how involved'; then pick_label "$a_inv"
-    elif printf '%s' "$scr" | grep -qi 'private on this machine'; then pick_label "$a_keep"
+    # The keep question names the other answers ("how involved you are"), so it
+    # is told apart first, by its options; the others by their opening words.
+    if printf '%s' "$scr" | grep -qi 'private on this machine'; then pick_label "$a_keep"
+    elif printf '%s' "$scr" | grep -qi 'how much software have you built'; then pick_label "$a_level"
+    elif printf '%s' "$scr" | grep -qi 'how should I explain things'; then pick_label "$a_depth"
+    elif printf '%s' "$scr" | grep -qi 'how involved do you want to be'; then pick_label "$a_inv"
     elif [ "$p" = none ] || printf '%s' "$scr" | grep -q 'Ready to submit'; then return 1
     elif [ "$purpose_done" -eq 0 ]; then
       purpose_done=1; answer_other "$a_purpose"
@@ -808,6 +816,7 @@ interview_outcome() {
   expect "the profile no longer asks" [ "$ask_after" = false ]
   expect "the milestone shipped, with a ship commit" [ "$shipped_ok$ship_commit" = truetrue ]
   expect "at most three follow-ups ($n)" [ "$n" -le 3 ]
+  expect "every scripted answer was found on screen ($unmatched not found)" [ "$unmatched" -eq 0 ]
   expect "the baseline options came in the skill's order, none marked Recommended" [ "$fixed" = true ]
   expect "the transcript holds the conversation only, no injected text" [ "$clean" = true ]
   [ "$failed" -eq 0 ] || passed=false
