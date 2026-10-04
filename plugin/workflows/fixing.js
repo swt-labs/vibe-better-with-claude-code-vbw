@@ -9,6 +9,10 @@ export const meta = {
 // Fixes in one group share files, so one Dev works them together.
 const groups = ((args && args.groups) || []).filter(g => Array.isArray(g) && g.length > 0)
 const models = (args && args.models) || {}
+// The user's level, explanation depth and involvement (args.profile, from vbw next --json):
+// every agent writes what reaches the user at that level.
+const profile = (args && typeof args === 'object' && args.profile) || {}
+const voice = `\n\nThe user's level: ${profile.level || 'small scripts or no-code'}. Explanation depth: ${profile.depth || 'plain with technical terms explained'}. Involvement: ${profile.involvement || 'options with a recommendation'}. Write whatever the user will read at that level and depth.`
 // The Dev model of the highest-tier phase (a fix has no phase of its own).
 const RANK = { express: 0, standard: 1, deep: 2 }
 const top = Object.values((args && args.rigor) || {}).filter(c => c && c.models && c.models.dev)
@@ -29,8 +33,8 @@ const FIX_RESULT = {
 phase('Fix')
 const results = await pipeline(groups, ids =>
   agent(ids.length === 1
-    ? `Fix VBW fix item ${ids[0]}. Start with: vbw show fix ${ids[0]}`
-    : `Fix VBW fix items ${ids.join(', ')} together: they touch the same files and may share one cause. Start with: ${ids.map(id => `vbw show fix ${id}`).join('; ')}`,
+    ? `Fix VBW fix item ${ids[0]}. Start with: vbw show fix ${ids[0]}${voice}`
+    : `Fix VBW fix items ${ids.join(', ')} together: they touch the same files and may share one cause. Start with: ${ids.map(id => `vbw show fix ${id}`).join('; ')}${voice}`,
     Object.assign({ agentType: 'vbw:dev', label: ids.join('+'), phase: 'Fix', schema: FIX_RESULT },
       devModel ? { model: devModel } : {})))
 
