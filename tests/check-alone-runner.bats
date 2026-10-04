@@ -222,7 +222,7 @@ overlaps() {
 }
 
 @test "without an alone marker behaviour is unchanged: no waiting, no lock left behind" {
-  jq 'del(.checks[].alone)' .vbw/record.json > "$TEST_ROOT/r.json"
+  jq 'del(.checks[].alone) | .schema = 1' .vbw/record.json > "$TEST_ROOT/r.json"
   cp "$TEST_ROOT/r.json" .vbw/record.json
   vbw_consent_contract
   bg "$TEST_ROOT/o1" check C2

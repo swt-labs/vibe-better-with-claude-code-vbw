@@ -745,6 +745,10 @@
         {
           "text": "a field VBW 2.0.16 does not read (alone) raises the schema instead of staying at schema 1",
           "check": "C46"
+        },
+        {
+          "text": "a record carrying passes is refused as corrupt",
+          "check": "C46"
         }
       ]
     }
@@ -2157,7 +2161,7 @@
       "tier": "deep",
       "reasons": [
         "requirements: 1",
-        "files: 11 (58763 bytes)",
+        "files: 11 (58744 bytes)",
         "risk: none",
         "breaks: R1, R2, R3, R13, R14, R22, R23, R24, R25, R27, R28, R31, R33, R35, R37, R39, R40, R43, R44, R45",
         "tests: project test command"
@@ -2292,7 +2296,7 @@
       "tier": "deep",
       "reasons": [
         "requirements: 1",
-        "files: 11 (73487 bytes)",
+        "files: 11 (73176 bytes)",
         "risk: none",
         "breaks: R3, R13, R14, R22, R23, R24, R25, R26, R27, R28, R31, R33, R35, R37, R38, R39, R43, R44, R45",
         "tests: project test command"
@@ -2374,7 +2378,7 @@
       "tier": "deep",
       "reasons": [
         "requirements: 1",
-        "files: 9 (94716 bytes)",
+        "files: 9 (95074 bytes)",
         "risk: none",
         "breaks: R12, R13, R14, R22, R23, R24, R25, R27, R28, R31, R32, R33, R38, R39, R40, R43, R44",
         "tests: project test command"
@@ -2413,7 +2417,7 @@
       "tier": "deep",
       "reasons": [
         "requirements: 1",
-        "files: 7 (75275 bytes)",
+        "files: 7 (75633 bytes)",
         "risk: none",
         "breaks: R12, R13, R14, R22, R23, R24, R25, R27, R28, R31, R32, R33, R38, R40, R44, R45",
         "tests: project test command"
@@ -2491,7 +2495,7 @@
       "tier": "deep",
       "reasons": [
         "requirements: 1",
-        "files: 6 (70064 bytes)",
+        "files: 6 (70714 bytes)",
         "risk: none",
         "breaks: R1, R2, R12, R13, R14, R22, R23, R24, R25, R27, R28, R31, R32, R33, R38, R40, R43, R44, R45",
         "tests: project test command"
@@ -4725,9 +4729,27 @@
         "P38.1"
       ],
       "status": "planned",
-      "role": "docs",
       "tasks": [
         "docs/proof.md: passes.json in the clone git directory, never in the record, a lost one only reruns checks; docs/record.md: remove the passes row, say a record whose checks use alone is schema 2 so an older VBW asks for an update (C41, C43)"
+      ],
+      "role": "docs"
+    },
+    {
+      "id": "P38.3",
+      "phase": "P38",
+      "title": "No legacy passes key: a record carrying passes is corrupt",
+      "reqs": [
+        "R46"
+      ],
+      "files": [
+        "plugin/lib/record.jq",
+        "plugin/lib/record.sh"
+      ],
+      "after": [],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "record.jq: drop passes from the allowed top-level keys; record.sh: remove del(.passes) and its comment from the write path (no release ever wrote passes; this repo record no longer has it) (C46)"
       ]
     }
   ],

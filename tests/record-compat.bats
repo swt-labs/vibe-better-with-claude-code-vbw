@@ -60,3 +60,10 @@ fits() {
   run fits
   [ "$status" -ne 0 ]
 }
+
+@test "a record carrying passes is refused as corrupt: passes belong to the clone, and no release wrote them" {
+  jq '.passes = {}' .vbw/record.json > "$TEST_ROOT/r.json" && cp "$TEST_ROOT/r.json" .vbw/record.json
+  vbw_run status
+  [ "$status" -eq 3 ]
+  [[ "$output" == *"unknown key: passes"* ]]
+}
