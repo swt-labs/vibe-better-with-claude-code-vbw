@@ -3279,7 +3279,7 @@
       "req": "R35",
       "source": "qa",
       "attempts": 0,
-      "status": "open",
+      "status": "fixed",
       "note": "Plan P28.1 task 4 and the phase criterion require tests/rigor-profile.bats expectations updated to the new QA models, but no commit touches it (git log 74042e66^..HEAD). tests/rigor-profile.bats:21 still accepts .models.qa IN(opus,sonnet,haiku), so it would pass with haiku QA in tiers.json; the promised update is missing."
     }
   ],
@@ -3714,6 +3714,12 @@
       "id": "D63",
       "at": "2026-10-04T11:07:21Z",
       "text": "Contract approved: 33 requirements, 30 checks, 65 plans (c31d0225bb71)"
+    },
+    {
+      "id": "D64",
+      "text": "F18: the protected C22 schema test stays as approved; the QA floor is proved by C31 (every profile and tier cell, next output, status line), so P28.1's task to tighten rigor-profile.bats is superseded",
+      "why": "rigor-profile.bats is a protected check (C22) that a build cannot edit, so the task could not be done in the plan; C31 already fails on a Haiku QA cell, and changing C22 would duplicate it and need another approval for no added protection",
+      "at": "2026-10-04T11:34:33Z"
     }
   ],
   "commands": {
@@ -3727,7 +3733,7 @@
     "autonomy_cap": 25
   },
   "evidence": {
-    "at": "2026-10-04T11:27:44Z",
+    "at": "2026-10-04T11:41:59Z",
     "contract": "c31d0225bb71079d8e28818a235ed6f785573ab958942361d102677559ec6bc8",
     "tree": "20bedd8908a5c88253374d4ffdc6add14cedb692",
     "head": "20bedd8908a5c88253374d4ffdc6add14cedb692",
@@ -3771,19 +3777,19 @@
       "C9": {
         "status": "pass",
         "exit": 0,
-        "seconds": 7,
+        "seconds": 8,
         "tail": "1..5\nok 1 blocking an approved plan keeps the approval and proceeds without re-approval\nok 2 resetting a blocked plan keeps the approval and the approved hash\nok 3 a plan's note does not change the contract hash\nok 4 changing a plan definition still withdraws the approval\nok 5 changing a check or a requirement still withdraws the approval"
       },
       "C10": {
         "status": "pass",
         "exit": 0,
-        "seconds": 8,
+        "seconds": 7,
         "tail": "1..3\nok 1 R11: a user rejection opens a fix and a later accept of that requirement closes it\nok 2 R11: a fix opened by QA stays open after the user accepts the requirement\nok 3 R11: the QA-opened fix closes only when QA records a passing verdict for the phase"
       },
       "C11": {
         "status": "pass",
         "exit": 0,
-        "seconds": 7,
+        "seconds": 8,
         "tail": "1..3\nok 1 R12: after a code change since the last proof, qa record refuses, names vbw prove, writes nothing\nok 2 R12: after vbw prove, the same qa record succeeds\nok 3 R12: the QA agent and the verifying workflow run prove and retry when qa record refuses"
       },
       "C12": {
@@ -3813,13 +3819,13 @@
       "C16": {
         "status": "pass",
         "exit": 0,
-        "seconds": 2,
+        "seconds": 1,
         "tail": "1..7\nok 1 the repository's contributor files name only what exists\nok 2 no contributor file mentions .vbw-planning\nok 3 selftest: a clean tree passes\nok 4 selftest: a nonexistent path fails and is named\nok 5 selftest: a nonexistent /vbw: command fails\nok 6 selftest: .vbw-planning fails\nok 7 selftest: a bad path in an issue template fails"
       },
       "C17": {
         "status": "pass",
         "exit": 0,
-        "seconds": 8,
+        "seconds": 9,
         "tail": "1..17\nok 1 exactly the seven cases exist\nok 2 every case has a request\nok 3 fix-oneshot: untouched fails\nok 4 fix-oneshot: solution passes\nok 5 failing-check-fix: untouched fails\nok 6 failing-check-fix: solution passes\nok 7 brownfield-feature: untouched fails\nok 8 brownfield-feature: solution passes\nok 9 safety-destructive: untouched fails\nok 10 safety-destructive: solution passes\nok 11 safety-secret: untouched fails\nok 12 safety-secret: solution passes\nok 13 hostile-repo: untouched fails\nok 14 hostile-repo: solution passes\nok 15 markdown-deliverable: untouched fails\nok 16 markdown-deliverable: solution passes\nok 17 the README names each case, its fixture and its check"
       },
       "C18": {
@@ -3843,7 +3849,7 @@
       "C21": {
         "status": "pass",
         "exit": 0,
-        "seconds": 8,
+        "seconds": 7,
         "tail": "1..7\nok 1 with no setting the mode is auto, and the config listing says so\nok 2 vbw config rigor sets each of auto, express, standard and deep\nok 3 an invalid mode is refused with the allowed list and the setting stays\nok 4 a forced mode overrides the computed tier when planning, up or down\nok 5 changing the mode re-tiers phases whose work has not started, and auto computes again\nok 6 a phase whose work has started keeps its tier when the mode changes\nok 7 changing the mode never makes the approved contract need approving again"
       },
       "C22": {
@@ -3867,7 +3873,7 @@
       "C25": {
         "status": "pass",
         "exit": 0,
-        "seconds": 17,
+        "seconds": 16,
         "tail": "1..8\nok 1 a proven express phase is finished with its predicted tier and outcome\nok 2 a standard phase is finished only once QA has passed it\nok 3 an express phase with a [human] requirement is finished once QA passed and the user accepted\nok 4 an escalated phase records that its prediction did not hold\nok 5 QA findings and fix rounds are counted\nok 6 the outcome of a finished phase is not rewritten by a later proof\nok 7 vbw show rigor says plainly when no phase is finished\nok 8 vbw show rigor reports how many finished phases held their predicted tier"
       },
       "C26": {
@@ -3879,13 +3885,13 @@
       "C27": {
         "status": "pass",
         "exit": 0,
-        "seconds": 10,
+        "seconds": 9,
         "tail": "1..10\nok 1 R31: apply refuses a rule that no check tests, naming it\nok 2 R31: apply refuses a rule whose check belongs to another requirement\nok 3 R31: apply refuses an [auto] requirement that lists no rules once the plan lists rules\nok 4 R31: a plan without any rules still applies, and the approval screen says the rules are not listed\nok 5 R31: apply refuses rules for a [human] requirement\nok 6 R31: apply approves when every rule is covered, and the record keeps the rules\nok 7 R31: re-planning without restating rules keeps them while their checks still exist\nok 8 R31: approve refuses an [auto] requirement whose rules are not listed, and a changed requirement loses its rules\nok 9 R31: the approval screen shows each requirement's rules with their checks\nok 10 R31: a requirement approved before rules existed keeps its approval and shows 'rules not listed' (D53)"
       },
       "C28": {
         "status": "pass",
         "exit": 0,
-        "seconds": 19,
+        "seconds": 17,
         "tail": "1..8\nok 1 R32: an untracked file that would flip a check changes no proof result\nok 2 R32: an uncommitted edit to a tracked file is not proved; the committed version is\nok 3 R32: git-ignored files are linked into the copy, so a project that needs them proves\nok 4 R32: project commands run on the clean copy too\nok 5 R32: vbw check still sees uncommitted and untracked files in the working folder\nok 6 R32: the copy lives inside the project, is gone after the proof, and the folder is unchanged\nok 7 R32: an interrupted proof removes its copy and leaves the folder unchanged\nok 8 R32: check files that are not committed as approved are refused, never run from the working folder"
       },
       "C29": {
@@ -3897,13 +3903,13 @@
       "C30": {
         "status": "pass",
         "exit": 0,
-        "seconds": 0,
+        "seconds": 1,
         "tail": "1..5\nok 1 R34: the edge-case scenario exists, runs the real app and states its fixture and level\nok 2 R34: the edge case got a rule and a check before approval, and the check tests that edge\nok 3 R34: the leftover-file scenario exists, runs the real app and states its fixture and level\nok 4 R34: a leftover untracked file left the proof unchanged and was not in the proof copy\nok 5 R34: each scenario's result reflects only its own checks"
       },
       "C31": {
         "status": "pass",
         "exit": 0,
-        "seconds": 9,
+        "seconds": 7,
         "tail": "1..8\nok 1 no profile and no tier cell gives QA Haiku, in the tables or in vbw next\nok 2 the budget profile shows QA on Sonnet in vbw config models and in the status line\nok 3 other roles keep their models: budget scout on haiku, express dev on haiku, the rest as before\nok 4 a record that already holds a Haiku QA override gets Sonnet in vbw next\nok 5 a QA override to opus or a full non-Haiku id is honoured, and the dev override still wins\nok 6 a forced rigor and an escalation never lower QA below Sonnet\nok 7 the status line shows the effective QA model: a Haiku override reads Sonnet, an opus one Opus\nok 8 the docs say QA never uses Haiku, and the budget profile no longer lists Haiku for QA"
       },
       "C32": {
@@ -3917,7 +3923,7 @@
       "test": {
         "status": "pass",
         "exit": 0,
-        "seconds": 145,
+        "seconds": 118,
         "tail": "ok 563 statusline on sets it without asking, and keeps the user's own to restore\nok 564 the setting finds the newest installed VBW and renders it\nok 565 workflows on turns Dynamic workflows on, keeps every other setting, and never overrides a deliberate off\nok 566 started in a subfolder it shows the project; a VBW 1 project is pointed to the conversion\nok 567 a running step shows how long it has run and how many agents are working\nok 568 the team line follows the profile and per-role models; tokens and prompt cache are shown\nok 569 a replaced round-0 record with empty tiers does not fail the set\nok 570 a final record with empty tiers still fails\nok 571 the workflows and VBW 1's seven agents exist, and nothing else\nok 572 each workflow starts with a pure-literal meta naming itself after its file\nok 573 workflows never use what breaks resume or is unavailable (time, randomness, modules)\nok 574 every phase() title is declared in meta.phases\nok 575 every agentType names an agent this plugin ships\nok 576 agents have a name matching the file, a single-line description and a tool list\nok 577 agents stay within their size budget (about 1.5k tokens)\nok 578 agents only use vbw commands that exist\nok 579 agents that plan or judge the plan load the user's recorded decisions\nok 580 workflow scripts parse as JavaScript (when node is available)\nok 581 workflow schemas are objects whose required keys are all properties\nok 582 no workflow shares its name with a skill (/vbw:NAME would start the workflow)"
       }
     },
