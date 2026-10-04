@@ -2373,7 +2373,15 @@
         "breaks: R12, R13, R14, R22, R23, R25, R27, R28, R31, R32, R33, R38, R40",
         "tests: project test command"
       ],
-      "predicted": "deep"
+      "predicted": "deep",
+      "escalations": [
+        {
+          "at": "2026-10-04T19:56:53Z",
+          "from": "deep",
+          "to": "deep",
+          "reason": "Dev blocked P36.1: C42 test 10 ('vbw prove runs every check and records the passes the fix reuses') cannot pass as written: after a passing vbw prove, prove.jq closes the open fix F1 (R2 proven; existing behavior, tested in kernel-prove.bats:187), so 'vbw fix done F1' dies 'F1 is not open' before any check logic. Needs a decision: fix the test (use a fix opened after the prove) or change prove.jq (outside plan files) so a passing proof does not close open fixes. Also: vbw apply (cmd-apply.sh, outside plan files) must prune .passes entries of checks it drops, or the record becomes invalid. Tasks 1-4 are committed (12 of 13 tests in fix-reuse.bats pass; kernel-prove, kernel-work, record suites pass). Task 5 and docs C43 not done."
+        }
+      ]
     },
     {
       "id": "P37",
@@ -4459,7 +4467,7 @@
         "P35.1",
         "P35.2"
       ],
-      "status": "planned",
+      "status": "done",
       "tasks": [
         "docs/proof.md: what alone means, how the exclusion works, the wait limit and its variable",
         "docs/record.md: alone in the checks field row"
@@ -4483,7 +4491,7 @@
         "P35.1",
         "P35.2"
       ],
-      "status": "planned",
+      "status": "blocked",
       "tasks": [
         "record.jq: validate the optional top-level passes object (check id to at, contract, tree) in the single writer, schema stays 1",
         "checks.sh: fingerprint a check's served files from committed content (its requirement's plan files and its own files), decide reuse, record a pass only when no served file is dirty and drop the entry on fail or timeout",
@@ -4491,7 +4499,8 @@
         "cmd-fix.sh: skip checks whose recorded pass matches the fingerprint and the contract hash, print C unchanged since its pass (time), rerun everything else with the same failure message",
         "run the full suite"
       ],
-      "role": "dev"
+      "role": "dev",
+      "note": "C42 test 10 ('vbw prove runs every check and records the passes the fix reuses') cannot pass as written: after a passing vbw prove, prove.jq closes the open fix F1 (R2 proven; existing behavior, tested in kernel-prove.bats:187), so 'vbw fix done F1' dies 'F1 is not open' before any check logic. Needs a decision: fix the test (use a fix opened after the prove) or change prove.jq (outside plan files) so a passing proof does not close open fixes. Also: vbw apply (cmd-apply.sh, outside plan files) must prune .passes entries of checks it drops, or the record becomes invalid. Tasks 1-4 are committed (12 of 13 tests in fix-reuse.bats pass; kernel-prove, kernel-work, record suites pass). Task 5 and docs C43 not done."
     },
     {
       "id": "P36.2",
