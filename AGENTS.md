@@ -170,7 +170,7 @@ Run everything with `bash tools/test.sh`. Run it directly, never through `| tail
 - **Zero tolerance:** every failure is investigated and resolved before committing, with no "pre-existing" exemptions.
 - **Both shells:** CI runs the suite on macOS `/bin/bash` 3.2 and on bash 5, from a checkout path containing a space. Locally, run it at least once under `/bin/bash` before committing kernel or hook code.
 - **Hermetic tests:** use `tests/helper.bash` (`vbw_setup`/`vbw_teardown`). Never rely on the host `HOME`, Claude session variables or open stdin.
-- **Real-user scenarios** (`tools/l3-suite.sh`: the real Claude Code TUI driven as a user, outcomes checked in the record and git) run before every release. Baselines for v1 and plain Claude Code live in `tools/baseline/`.
+- **Real-user scenarios** (`tools/l3-suite.sh`: the real Claude Code TUI driven as a user, outcomes checked in the record and git, 4 at a time) run before every release, tiered (owner decision, 2026-10-04): a milestone release runs all of them; a hotfix runs `greenfield` plus every scenario that exercises the changed area, and the progress log names the scenarios run and those not run. Baselines for v1 and plain Claude Code live in `tools/baseline/`.
 
 ## Git Workflow
 

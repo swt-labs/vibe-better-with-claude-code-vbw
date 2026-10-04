@@ -3737,6 +3737,12 @@
       "id": "D65",
       "at": "2026-10-04T12:04:30Z",
       "text": "Shipped M6 QA never below Sonnet: 2 requirements proven or accepted"
+    },
+    {
+      "id": "D66",
+      "text": "Release gate for real-user scenarios is tiered and parallel: milestone releases run all scenarios; hotfixes run greenfield plus the scenarios that exercise the changed area; the suite runs 4 at a time",
+      "why": "Owner (2026-10-04): 13 sequential scenarios for a small hotfix was overkill; parallel runs keep full coverage at a quarter of the time",
+      "at": "2026-10-04T12:18:00Z"
     }
   ],
   "commands": {

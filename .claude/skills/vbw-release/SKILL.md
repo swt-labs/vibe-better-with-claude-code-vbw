@@ -10,8 +10,11 @@ Every step runs; a failure stops the release until its root cause is fixed.
 1. **Tests:** `bash tools/test.sh` (bash 5), then the same suite under macOS
    `/bin/bash` 3.2. Both must pass in full; the hook benchmark must be within
    budget on an idle machine.
-2. **Real-user scenarios:** `bash tools/l3-suite.sh` (the real Claude Code TUI,
-   driven as a user; about $1-3 per scenario). Every check must pass.
+2. **Real-user scenarios:** `bash tools/l3-suite.sh [SCENARIO...]` (the real
+   Claude Code TUI, driven as a user, 4 at a time; about $1-3 per scenario).
+   Tiered: a milestone release runs all of them; a hotfix runs `greenfield`
+   plus every scenario that exercises the changed area, and the release record
+   names the scenarios run and those not run. Every check must pass.
 3. **Version:** `bash tools/bump-version.sh --set X.Y.Z` (all five version files),
    then a `plugin/CHANGELOG.md` entry written for users: what they can do now,
    what was fixed, anything they must do. Every build a user is meant to receive

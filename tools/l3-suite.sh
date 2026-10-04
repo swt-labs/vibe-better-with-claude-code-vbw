@@ -7,6 +7,9 @@
 #
 #   tools/l3-suite.sh [SCENARIO...]     (default: all)
 #
+# Scenarios are independent (own project, own Claude Code session), so they run
+# L3_JOBS at a time (default 4); each one's lines print together when it ends.
+#
 # Scenarios: greenfield, reject, resume, change, convert, balanced, docs, qafix,
 # decision, debug, research, edgecase, leftover. A user answers every
 # question with VBW's recommendation unless the scenario says otherwise.
@@ -652,6 +655,26 @@ scenario_leftover() {
 failed=0
 # shellcheck disable=SC2086 # the default list splits on purpose
 [ $# -gt 0 ] || set -- $ALL
+
+# Several scenarios: run each in its own process, L3_JOBS at a time, then
+# print each one's lines in the order asked; the exit reflects all of them.
+if [ $# -gt 1 ] && [ "${L3_JOBS:-4}" -gt 1 ] && [ -z "${L3_CHILD:-}" ]; then
+  logs=$(mktemp -d "${TMPDIR:-/tmp}/vbw-l3-logs.XXXXXX")
+  pids=() names=() status=0 running=0 i
+  for scenario in "$@"; do
+    case " $ALL " in *" $scenario "*) ;; *) echo "unknown scenario $scenario (one of: $ALL)" >&2; exit 2 ;; esac
+  done
+  for scenario in "$@"; do
+    L3_CHILD=1 bash "$0" "$scenario" > "$logs/$scenario.log" 2>&1 &
+    pids+=("$!") names+=("$scenario") running=$((running + 1))
+    if [ "$running" -ge "${L3_JOBS:-4}" ]; then wait "${pids[$((${#pids[@]} - running))]}" || status=1; running=$((running - 1)); fi
+  done
+  for ((i = ${#pids[@]} - running; i < ${#pids[@]}; i++)); do wait "${pids[$i]}" || status=1; done
+  for scenario in "${names[@]}"; do grep -v '^L3 suite:' "$logs/$scenario.log"; done
+  rm -rf "$logs"
+  [ "$status" -eq 0 ] && echo "L3 suite: all checks passed" || { echo "L3 suite: FAILED"; exit 1; }
+  exit 0
+fi
 for scenario in "$@"; do
   case " $ALL " in *" $scenario "*) ;; *) echo "unknown scenario $scenario (one of: $ALL)" >&2; exit 2 ;; esac
   # Each scenario's result reflects its own checks; the suite's exit, all of them.
