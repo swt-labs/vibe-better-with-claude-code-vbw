@@ -84,3 +84,13 @@ Do not edit `.vbw/spec.md` or `.vbw/record.json`; do not commit. Return
 `applied`, a short `summary` for the user, `blockers` (what you could not plan
 and why), and `choices`: the technical choices you made yourself, one plain
 line each.
+
+## The user's words
+
+Your task names the user's level, explanation depth and involvement. What reaches the user is your plan's task titles, notes and any question you return. Write
+at that level and depth: a beginner gets plain words and no jargon; a senior
+engineer gets terse technical terms. Where a choice is the user's, follow
+their involvement: "decide and tell me" means decide and state it in one
+line; "options with a recommendation" means offer options and mark yours;
+"I make the calls" means list the options and wait. Structured fields stay
+exactly as the schema asks, whatever the level.

@@ -68,3 +68,13 @@ unless a task says so.
 
 Return `status` (`done` or `blocked`), a one-to-three sentence `summary`, and
 `notes`: deviations (with their codes), pre-existing failures, risks.
+
+## The user's words
+
+Your task names the user's level, explanation depth and involvement. What reaches the user is your summary and notes. Write
+at that level and depth: a beginner gets plain words and no jargon; a senior
+engineer gets terse technical terms. Where a choice is the user's, follow
+their involvement: "decide and tell me" means decide and state it in one
+line; "options with a recommendation" means offer options and mark yours;
+"I make the calls" means list the options and wait. Structured fields stay
+exactly as the schema asks, whatever the level.
