@@ -54,11 +54,32 @@ A check proves one `auto` requirement. It lives in the record:
 | `exit` | optional expected exit status, default `0` |
 | `output` | optional extended regular expression that stdout+stderr must match |
 | `timeout` | optional seconds, 1 to 3600, default 300 |
+| `alone` | optional boolean, default `false`. `true` marks a check that must not run beside any other VBW check (for example one that starts containers or binds a fixed port) |
 
 `vbw prove` runs checks from the root of a clean copy of the committed code,
 `vbw check` from the project root; both close stdin. A run that reaches its
 timeout is stopped (by `timeout` where available, otherwise by `perl`'s alarm)
 and fails.
+
+### Checks that run alone
+
+```json
+{ "id": "C2", "req": "R1", "run": ["docker", "compose", "run", "--rm", "e2e"], "alone": true }
+```
+
+A check with `"alone": true` never runs at the same time as another VBW check
+in the same project, even when several fixes or builds run checks in parallel.
+Other checks keep running in parallel with each other.
+
+Every running check registers in `.vbw/runtime/gate`. An alone check starts
+when nothing else is running. A shared check starts when no alone check is
+running or waiting, so a waiting alone check is not starved. The registration
+is released when the check ends, times out or is interrupted, and a
+registration left by a dead process is taken over.
+
+A check that cannot start waits at most 900 seconds, then fails with a message
+naming the check that holds it. Set `VBW_CHECK_WAIT_SECONDS` to change the
+limit. The wait is not part of the check's `timeout`, which counts only the run.
 
 ## The contract and approval
 
