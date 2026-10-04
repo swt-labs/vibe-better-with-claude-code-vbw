@@ -4491,7 +4491,7 @@
         "P35.1",
         "P35.2"
       ],
-      "status": "blocked",
+      "status": "done",
       "tasks": [
         "record.jq: validate the optional top-level passes object (check id to at, contract, tree) in the single writer, schema stays 1",
         "checks.sh: fingerprint a check's served files from committed content (its requirement's plan files and its own files), decide reuse, record a pass only when no served file is dirty and drop the entry on fail or timeout",
@@ -4598,7 +4598,7 @@
         "plugin/lib/cmd-apply.sh"
       ],
       "after": [],
-      "status": "planned",
+      "status": "done",
       "tasks": [
         "vbw apply removes .passes entries whose check id is no longer in the record, in the same validated update, so the record stays readable (C42 test 14)"
       ]
