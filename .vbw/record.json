@@ -5014,7 +5014,7 @@
       "req": "R42",
       "source": "qa",
       "attempts": 0,
-      "status": "open",
+      "status": "fixed",
       "note": "Scripted follow-up answers do not answer the question asked, so the transcripts R41 asks the owner to read are incoherent. Newcomer: VBW proposes a web page for the grandmother ('Does that suit her?', options Yes/No) and the scripted reply is 'A script greet.sh: ./greet.sh Ana prints Hello, Ana!...', in technical words a newcomer who answered 'never' would not use; VBW then builds the shell script anyway. Senior: the question 'Which language/runtime should the CLI use?' is answered with 'greet.sh NAME prints Hello, NAME!...'. One fixed DETAIL string (tools/l3-suite.sh scenario_newcomer/scenario_senior, answer_other $a_detail) is sent to every follow-up whatever it asks. tools/l3-results/newcomer.transcript.md and senior.transcript.md."
     },
     {
@@ -5022,7 +5022,7 @@
       "req": "R42",
       "source": "qa",
       "attempts": 0,
-      "status": "open",
+      "status": "fixed",
       "note": "Out-of-plan commits touching files outside P34.1's file list have no recorded decision for 05bde66e (plugin/skills/interview/SKILL.md, 'follow-ups are asked inside the interview', VBW-Plan P34.1): D78 names 0a351770 and the harness commits, D80 names the 6b365dc2 skill change, D81 names ee0c7bab; 05bde66e is in none. 6b365dc2 also changed docs/interview.md, which D80 does not name (it says 'interview skill'). Also P34.1 lists tools/l3.sh but no P34.1 commit changes it (last change 8657c2f9, before the phase)."
     },
     {
@@ -5030,7 +5030,7 @@
       "req": "R40",
       "source": "qa",
       "attempts": 0,
-      "status": "open",
+      "status": "fixed",
       "note": "Deviation: commit 43fc1ed5 (P33.2) also deleted the router sentence '(express makes small work fast)' from plugin/skills/vibe/SKILL.md line 17; no P33.2 task or recorded decision covers it (router now 1396 words of 1400, the removal looks budget-driven). Restore it elsewhere or record a decision."
     },
     {
@@ -5038,7 +5038,7 @@
       "req": "R40",
       "source": "qa",
       "attempts": 0,
-      "status": "open",
+      "status": "fixed",
       "note": "Deviation: plan P33.2 lists tests/skills.bats and P33.1 lists plugin/lib/cmd-next.sh, but no P33 commit touches either file (git show --stat of 8319ab9a..43fc1ed5); the work was done differently than planned and the plan was not amended."
     },
     {
@@ -5046,7 +5046,7 @@
       "req": "R46",
       "source": "qa",
       "attempts": 0,
-      "status": "open",
+      "status": "fixed",
       "note": "docs/record.md line 57: the field table row for schema still reads `1` only; the criterion and P38.2 require the docs to describe both schemas (schema 2 when a check is alone). Prose at lines 21 and 81-94 does say it, but the rules table, which the validator documents, is stale."
     }
   ],
@@ -5610,6 +5610,24 @@
       "id": "D85",
       "at": "2026-10-04T21:57:13Z",
       "text": "Contract approved: 43 requirements, 44 checks, 92 plans (214efd21a438)"
+    },
+    {
+      "id": "D86",
+      "text": "Commit 05bde66e (interview skill: follow-ups are asked inside the interview, before the keep question, never left to the spec step) and the docs/interview.md part of 6b365dc2 (follow-ups when the first answer does not say what it does) stand as fixes made by the maintaining session in fix runs for F22",
+      "why": "Both put D80/D81 into words after real-user runs showed the follow-up skipped or asked after the keep question; P34.1 lists tools/l3.sh, which no P34.1 commit needed to change",
+      "at": "2026-10-04T22:34:32Z"
+    },
+    {
+      "id": "D87",
+      "text": "The router sentence '(express makes small work fast)' removed in 43fc1ed5 (P33.2) stays removed",
+      "why": "The router is at 1,396 of 1,400 words; the express path is described in full under the plan step, so the sentence repeated it",
+      "at": "2026-10-04T22:34:32Z"
+    },
+    {
+      "id": "D88",
+      "text": "P33.1 listed plugin/lib/cmd-next.sh and P33.2 listed tests/skills.bats; neither needed a change",
+      "why": "next.jq carries the suggestion data without a cmd-next.sh change, and the suggest skill's tests live in the protected check files of P33; a plan's file list is the files it may touch, not ones it must",
+      "at": "2026-10-04T22:34:32Z"
     }
   ],
   "commands": {
