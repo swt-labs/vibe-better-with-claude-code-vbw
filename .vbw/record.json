@@ -3743,6 +3743,24 @@
       "text": "Release gate for real-user scenarios is tiered and parallel: milestone releases run all scenarios; hotfixes run greenfield plus the scenarios that exercise the changed area; the suite runs 4 at a time",
       "why": "Owner (2026-10-04): 13 sequential scenarios for a small hotfix was overkill; parallel runs keep full coverage at a quarter of the time",
       "at": "2026-10-04T12:18:00Z"
+    },
+    {
+      "id": "D67",
+      "text": "M7 interview runs once per project, at its start (after mapping for an existing codebase): 3 fixed baseline questions (proficiency, explanation depth, involvement in technical decisions), then 'briefly, what are you building and for whom', then a couple of follow-up questions VBW writes for that user's level and project",
+      "why": "Owner (2026-10-04): like a software shop interviewing a client, so VBW talks to each user at their level",
+      "at": "2026-10-04T14:17:56Z"
+    },
+    {
+      "id": "D68",
+      "text": "The interview's purpose is communication: VBW's style and technical depth fit the user; autonomy and rigor keep their current mechanisms",
+      "why": "Owner (2026-10-04): 'that is the entire point of the interview'",
+      "at": "2026-10-04T14:17:56Z"
+    },
+    {
+      "id": "D69",
+      "text": "Suggestions (T11) come at natural pauses only (spec proposal, plan for approval), a few short yes/no items worded for the user's level",
+      "why": "Owner (2026-10-04)",
+      "at": "2026-10-04T14:17:56Z"
     }
   ],
   "commands": {
