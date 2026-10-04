@@ -4,9 +4,9 @@
     "name": "v2"
   },
   "milestone": {
-    "id": "M5",
-    "title": "Proof you can trust",
-    "status": "shipped"
+    "id": "M6",
+    "title": "QA never below Sonnet",
+    "status": "active"
   },
   "shipped": [
     {
@@ -3383,6 +3383,18 @@
       "text": "VBW's minimum Claude Code version stays 2.1.286",
       "why": "Owner's choice (2026-10-04): not raised to 2.1.288",
       "at": "2026-10-04T10:33:36Z"
+    },
+    {
+      "id": "D60",
+      "text": "QA never runs below Sonnet, in any profile, tier or override",
+      "why": "Owner (2026-10-04): QA is critical; cheaper models are fine for other roles",
+      "at": "2026-10-04T10:47:11Z"
+    },
+    {
+      "id": "D61",
+      "text": "Token and cost saving is deferred until after the 2.1 release",
+      "why": "Owner (2026-10-04)",
+      "at": "2026-10-04T10:47:11Z"
     }
   ],
   "commands": {
