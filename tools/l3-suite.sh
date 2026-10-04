@@ -52,7 +52,7 @@ answer_recommended() {
   fi
 }
 
-# answer_other TEXT: pick "Type something." and type TEXT.
+# answer_other TEXT: move to "Type something." and type TEXT.
 # Options may still be rendering: it looks for up to 5 s before it escapes the
 # menu and types (which Claude Code reports to the model as an interruption).
 answer_other() {
@@ -63,8 +63,9 @@ answer_other() {
     sleep 0.5
   done
   [ -n "$n" ] || { say "no 'Type something' option on screen; escaping the menu"; l3 keys "$scenario" Escape; sleep 1; l3 type "$scenario" "$1"; return; }
+  # On "Type something." the user types at once; Enter there first would
+  # submit it empty and send the text as a new prompt.
   for ((i = 1; i < n; i++)); do l3 keys "$scenario" Down; done
-  l3 keys "$scenario" Enter; sleep 1
   l3 type "$scenario" "$1"
 }
 
@@ -710,7 +711,7 @@ transcript_write() {
           (.message.content | if type == "string" then (select(startswith("<task-notification>") | not) | "**User:** " + . + "\n")
             else (.[]? | if .type == "text" and (.text | startswith("<task-notification>") | not) then "**User:** " + .text + "\n"
               elif .type == "tool_result" then ((.content | if type == "array" then map(.text? // "") | join(" ") else (. // "") end)
-                | select(startswith("Your questions have been answered")) | "**User answers:** " + . + "\n")
+                | select(startswith("Your questions have been answered") or startswith("The user answered")) | "**User answers:** " + . + "\n")
               else empty end) end) end
         else empty end' "$f" 2> /dev/null
     done < <(transcripts | grep -v '/subagents/' | sort)
