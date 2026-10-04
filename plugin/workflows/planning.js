@@ -13,6 +13,10 @@ export const meta = {
 // decided: the user has just answered this round's questions; plan now.
 const models = (args && args.models) || {}
 const decided = Boolean(args && args.decided)
+// The user's level, explanation depth and involvement (args.profile, from vbw next --json):
+// every agent writes what reaches the user at that level.
+const profile = (args && typeof args === 'object' && args.profile) || {}
+const voice = `\n\nThe user's level: ${profile.level || 'small scripts or no-code'}. Explanation depth: ${profile.depth || 'plain with technical terms explained'}. Involvement: ${profile.involvement || 'options with a recommendation'}. Write whatever the user will read at that level and depth.`
 const opts = (role, extra) => Object.assign({ agentType: `vbw:${role}`, label: role },
   models[role] ? { model: models[role] } : {}, extra)
 
@@ -84,7 +88,7 @@ const PLAN_RESULT = {
 // with decided: true, so each planning round asks at most once.
 if (!decided) {
   phase('Decide')
-  const found = await agent('Job 1: find the decisions this VBW project needs from its user before planning. Change nothing.',
+  const found = await agent(`Job 1: find the decisions this VBW project needs from its user before planning. Change nothing.${voice}`,
     opts('architect', { schema: DECISIONS, label: 'architect (decide)', phase: 'Decide' }))
   const open = (found && found.decisions) || []
   if (open.length > 0) {
@@ -94,14 +98,14 @@ if (!decided) {
 }
 
 phase('Scope')
-const scope = await agent('Job 2: scope the current milestone into phases, each with a goal and goal-backward success criteria. Change nothing.',
+const scope = await agent(`Job 2: scope the current milestone into phases, each with a goal and goal-backward success criteria. Change nothing.${voice}`,
   opts('architect', { schema: SCOPE, label: 'architect (scope)', phase: 'Scope' }))
 if (!scope || !scope.phases || scope.phases.length === 0) {
   return { status: 'blocked', summary: 'the Architect could not scope the milestone', blockers: [], notes: [] }
 }
 
 phase('Plan')
-const plan = await agent(`Plan these phases: research, decompose them into plans with tasks, write the checks, self-review, and apply with vbw apply. The kernel computes a rigor floor per phase from its signals and refuses a lower tier. Use these phases exactly as given, tier included:\n\n${JSON.stringify(scope.phases)}`,
+const plan = await agent(`Plan these phases: research, decompose them into plans with tasks, write the checks, self-review, and apply with vbw apply. The kernel computes a rigor floor per phase from its signals and refuses a lower tier. Use these phases exactly as given, tier included:\n\n${JSON.stringify(scope.phases)}${voice}`,
   opts('lead', { schema: PLAN_RESULT, phase: 'Plan' }))
 if (!plan || !plan.applied) {
   return { status: 'blocked', summary: plan ? plan.summary : 'the Lead did not finish', blockers: plan ? plan.blockers : [], notes: scope.notes }
