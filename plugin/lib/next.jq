@@ -101,4 +101,4 @@ def fix_files($r): if .command then ["*"]
     result("accept"; true; "Accept or reject \($to_accept | join(", ")), one scenario at a time"; {requirements: $to_accept})
   else
     result("ship"; true; "Everything is proven and accepted: ship milestone \(.milestone.id)"; {})
-  end) as $n | $n + {rigor: $rigor, profile: ({level: "small scripts or no-code", depth: "plain with technical terms explained", involvement: "options with a recommendation"} + ($profile | with_entries(select(.value != null or .key == "kept" or .key == "pending"))) + {ask: ($n.action == "spec" and ($profile.interviewed | not))})}
+  end) as $n | $n + {rigor: $rigor, declined: [(.project.declined // [])[].text], profile: ({level: "small scripts or no-code", depth: "plain with technical terms explained", involvement: "options with a recommendation"} + ($profile | with_entries(select(.value != null or .key == "kept" or .key == "pending"))) + {ask: ($n.action == "spec" and ($profile.interviewed | not))})}
