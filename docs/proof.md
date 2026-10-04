@@ -208,6 +208,31 @@ uncommitted changes, and the checks of every finished requirement (all its plans
 `done`) that those files serve pass now. A fix cannot quietly break other work.
 A project command's fix is left to `vbw prove`, which runs the command.
 
+### Reusing an unchanged pass
+
+`vbw fix done` does not rerun a check that already passed on the same project
+files under the same approved contract. It prints one line per skipped check
+and runs the rest:
+
+```text
+C1 unchanged since its pass (2026-10-04T20:30:00Z)
+```
+
+The time is when that check passed. A check is skipped only when all of these hold:
+
+- A recorded pass exists (`passes` in the record, docs/record.md). `vbw prove`
+  and `vbw fix done` record one for every check that passes.
+- The contract hash of that pass is the current, approved contract hash.
+- The committed content of the check's served files is the same as at the pass.
+  Served files are the check's own `files` plus the `files` of every plan that
+  serves its requirement.
+- None of those files has uncommitted changes.
+
+A check with no `files`, or with a served path that is not committed, always
+runs and is never recorded. A check that fails loses its recorded pass.
+`vbw prove` is not affected: it runs every check, every time, from a clean copy
+of the committed code.
+
 An escalated fix is a human gate (`vbw next`).
 
 Accepting a `[human]` requirement (`vbw req accept ID`) closes only the fixes
