@@ -3241,14 +3241,14 @@
       "id": "F16",
       "req": "R35",
       "attempts": 0,
-      "status": "open",
+      "status": "fixed",
       "note": "C31 fail (exit 1)"
     },
     {
       "id": "F17",
       "command": "test",
       "attempts": 0,
-      "status": "open",
+      "status": "fixed",
       "note": "test fail"
     }
   ],
