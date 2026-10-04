@@ -122,3 +122,24 @@ teardown() { vbw_teardown; }
   vbw_run show contract
   [[ "$output" == *"  P1 standard: requirements: 2; risk: none"* ]]
 }
+
+@test "show req prints a requirement's rules, and show contract --changes reports rule changes" {
+  set_rules() { jq --argjson r "$1" '.requirements[0].rules = $r | .checks |= (if any(.[]; .id == "C2") then . else . + [{id:"C2", req:"R1", run:["true"]}] end)' .vbw/record.json > "$TEST_ROOT/r.json" && cp "$TEST_ROOT/r.json" .vbw/record.json; }
+  set_rules '[{"text": "A payment succeeds", "check": "C1"}]'
+  vbw_run show req R1
+  [[ "$output" == *"rule: A payment succeeds -> C1"* ]]
+  vbw_run show contract
+  [[ "$output" == *"R1 [auto] Pay by card"*"rule: A payment succeeds -> C1"* ]]
+  # The snapshot an approval would have taken.
+  jq -c '{requirements: (.requirements | map({key: .id, value: ({text, proof} + (if has("rules") then {rules} else {} end))}) | from_entries),
+          checks: (.checks | map({key: .id, value: .}) | from_entries),
+          plans: (.plans | map({key: .id, value: del(.status, .note)}) | from_entries),
+          commands: .commands, files: {}}' .vbw/record.json > .vbw/runtime/approved-contract.json
+  set_rules '[{"text": "A payment succeeds", "check": "C2"}, {"text": "Paying twice is refused", "check": "C1"}]'
+  vbw_run show contract --changes
+  [[ "$output" == *"changed rule R1: A payment succeeds -> C2 (was C1)"* ]]
+  [[ "$output" == *"added rule R1: Paying twice is refused -> C1"* ]]
+  set_rules '[]'
+  vbw_run show contract --changes
+  [[ "$output" == *"removed rule R1: A payment succeeds"* ]]
+}
