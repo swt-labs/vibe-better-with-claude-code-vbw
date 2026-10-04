@@ -3937,11 +3937,5 @@
     "scope": [],
     "passed": true
   },
-  "lease": {
-    "run": "qa-20261004T114205Z",
-    "kind": "qa",
-    "started_at": "2026-10-04T11:42:05Z",
-    "files": [],
-    "session": "9cd2cc30-8c86-4520-9d71-a0e82aff5407"
-  }
+  "lease": null
 }
