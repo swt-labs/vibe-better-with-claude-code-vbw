@@ -4435,7 +4435,7 @@
       "after": [
         "P35.1"
       ],
-      "status": "planned",
+      "status": "done",
       "tasks": [
         "checks.sh: an exclusion gate under .vbw/runtime that holds an alone check by itself and lets non-alone checks share, with registrations owned by a process id",
         "checks.sh: take over a registration whose owner process is dead, release on timeout, exit and interrupt, and fail a wait beyond VBW_CHECK_WAIT_SECONDS (default 900) naming the check waited on",
@@ -4574,7 +4574,7 @@
       "after": [
         "P35.1"
       ],
-      "status": "planned",
+      "status": "done",
       "tasks": [
         "lead.md: a check that starts containers, services or other heavy shared resources gets the alone marker in vbw apply; within the agent token budget"
       ]
