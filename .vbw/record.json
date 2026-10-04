@@ -1482,7 +1482,15 @@
         "breaks: R13, R14, R16, R23, R24, R25, R26, R27, R28, R29, R32",
         "tests: project test command"
       ],
-      "predicted": "deep"
+      "predicted": "deep",
+      "escalations": [
+        {
+          "at": "2026-10-04T11:02:30Z",
+          "from": "deep",
+          "to": "deep",
+          "reason": "Dev blocked P28.1: Tasks 1-4 done and committed (profiles, tiers, next.jq/statusline.jq/cmd-config.sh clamp, kernel-surface+statusline tests). C31 still red on two protected tests outside my files: (a) qa-model.bats test 6 sets phases[0].escalations = [{from,to,reason}] without the required 'at' (record.jq escalations validation), so vbw next exits 3 on a corrupt record, independent of the QA clamp; fix needs the test fixture to add an iso 'at' (protected file) or record.jq to relax validation (outside plan). (b) test 8 greps 'QA never' in plugin/skills/config/SKILL.md and docs/rigor.md, files not in P28.1 (presumably a docs plan)."
+        }
+      ]
     },
     {
       "id": "P29",
@@ -3025,14 +3033,15 @@
         "tests/statusline.bats"
       ],
       "after": [],
-      "status": "planned",
+      "status": "blocked",
       "role": "dev",
       "tasks": [
         "Set budget qa and every tier-cell qa model to sonnet (profiles.json, tiers.json)",
         "Clamp the effective QA model in next.jq: a model naming haiku (case-insensitive) becomes sonnet, other overrides pass through",
         "Apply the same clamp in statusline.jq and in the config models and config listing output",
         "Update rigor-profile, kernel-surface and statusline tests to the new QA models"
-      ]
+      ],
+      "note": "Tasks 1-4 done and committed (profiles, tiers, next.jq/statusline.jq/cmd-config.sh clamp, kernel-surface+statusline tests). C31 still red on two protected tests outside my files: (a) qa-model.bats test 6 sets phases[0].escalations = [{from,to,reason}] without the required 'at' (record.jq escalations validation), so vbw next exits 3 on a corrupt record, independent of the QA clamp; fix needs the test fixture to add an iso 'at' (protected file) or record.jq to relax validation (outside plan). (b) test 8 greps 'QA never' in plugin/skills/config/SKILL.md and docs/rigor.md, files not in P28.1 (presumably a docs plan)."
     },
     {
       "id": "P28.2",
