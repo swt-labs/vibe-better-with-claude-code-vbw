@@ -161,6 +161,7 @@ build_pay() {
   "$VBW" approve > /dev/null
   edit_record '.plans[0].status = "done"'
   printf 'unpaid\n' > src/pay.txt
+  git add src/pay.txt && git commit -q -m "feat(pay): unpaid" -- src/pay.txt
   vbw_run prove
   [ "$status" -eq 1 ]
   jq -e '.requirements[0].status == "failing" and .fixes == [{id:"F1", req:"R1", attempts:0, status:"open", note:"C1 fail (exit 1)"}]' .vbw/record.json
@@ -180,6 +181,7 @@ build_pay() {
   echo "$output" | jq -e '.action == "escalate" and .gate == true'
   # A person fixes it: the next passing proof closes the fix.
   printf 'paid\n' > src/pay.txt
+  git add src/pay.txt && git commit -q -m "fix(pay): paid" -- src/pay.txt
   vbw_run prove
   [ "$status" -eq 0 ]
   jq -e '.fixes[0].status == "closed" and .requirements[0].status == "proven"' .vbw/record.json

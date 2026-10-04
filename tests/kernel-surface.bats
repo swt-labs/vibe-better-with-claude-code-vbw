@@ -25,6 +25,7 @@ proven_project() {
     | .phases = [{id: "P1", title: "Pay", reqs: ["R1", "R2"], milestone: "M1"}]
     | .plans = [{id: "P1.1", phase: "P1", title: "Pay", reqs: ["R1"], files: ["src/pay.txt"], after: [], status: "done"}]'
   "$VBW" approve > /dev/null
+  git add src/pay.txt && git commit -q -m "feat: pay" -- src/pay.txt
   "$VBW" prove > /dev/null
 }
 
@@ -53,19 +54,21 @@ proven_project() {
 
 # --- ship --------------------------------------------------------------------
 
-@test "ship is refused while proven work is not committed, naming the files" {
+@test "ship is refused while the working folder has uncommitted files, naming them" {
+  printf 'notes\n' > notes.txt
   proven_project
   "$VBW" qa record P1 pass standard > /dev/null
   "$VBW" req accept R2 > /dev/null
-  # Proof reads the files on disk: the work is proven, but only in the working tree.
+  # Proof runs on the committed code: an untracked file does not change it, but
+  # shipping still wants everything in git history.
   vbw_run ship
   [ "$status" -eq 1 ]
-  [[ "$output" == *"not committed"* && "$output" == *"src/pay.txt"* ]]
+  [[ "$output" == *"not committed"* && "$output" == *"notes.txt"* ]]
   jq -e '.milestone.status != "shipped"' .vbw/record.json
-  git add src/pay.txt
+  git add notes.txt
   vbw_run ship
   [ "$status" -eq 1 ]
-  git commit -q -m "feat: pay" -- src/pay.txt
+  git commit -q -m "docs: notes" -- notes.txt
   vbw_run ship
   [ "$status" -eq 0 ]
 }
@@ -79,7 +82,6 @@ proven_project() {
   vbw_run ship
   [[ "$output" == *"not ready to ship: vbw next says accept"* ]]
   "$VBW" req accept R2 > /dev/null
-  git add src/pay.txt && git commit -q -m "feat: pay" -- src/pay.txt
   vbw_run ship
   [ "$status" -eq 0 ]
   jq -e '.milestone.status == "shipped" and (.decisions[-1].text | startswith("Shipped M1"))' .vbw/record.json

@@ -315,6 +315,8 @@ prove_all_green() {
   printf 'sent\n' > src/receipt.txt
   edit_record '.plans[].status = "done"'
   "$VBW" approve > /dev/null
+  # Proof runs on the committed code.
+  git add src/pay.txt src/receipt.txt && git commit -q -m "feat(shop): checkout" -- src/pay.txt src/receipt.txt
   "$VBW" prove > /dev/null
 }
 
@@ -331,7 +333,7 @@ prove_all_green() {
 @test "committing proved work or the record never makes evidence stale" {
   apply_plan
   prove_all_green
-  git add -A && git commit -q -m "feat(shop): checkout"
+  git commit -q --allow-empty -m "chore: after the proof"
   vbw_run next --json
   echo "$output" | jq -e '.action == "qa"'
 }
