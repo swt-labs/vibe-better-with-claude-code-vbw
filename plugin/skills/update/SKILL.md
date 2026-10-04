@@ -1,8 +1,14 @@
 ---
 name: update
 description: Update VBW to the latest version.
-allowed-tools: Bash(claude plugin *)
+allowed-tools: Bash("${CLAUDE_PLUGIN_ROOT}/bin/vbw" *) Bash(vbw *) Bash(claude plugin *)
 ---
+
+```!
+"${CLAUDE_PLUGIN_ROOT}/bin/vbw" interview 2>&1 || true
+```
+
+Write to the user's level, explanation depth and involvement (above; "-": plain words).
 
 Update with Claude Code's own plugin commands, one at a time:
 

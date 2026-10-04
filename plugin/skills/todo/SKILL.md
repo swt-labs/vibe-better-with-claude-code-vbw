@@ -6,6 +6,12 @@ allowed-tools: Bash("${CLAUDE_PLUGIN_ROOT}/bin/vbw" *) Bash(vbw *)
 effort: low
 ---
 
+```!
+"${CLAUDE_PLUGIN_ROOT}/bin/vbw" interview 2>&1 || true
+```
+
+Write to the user's level, explanation depth and involvement (above; "-": plain words).
+
 The user said: $ARGUMENTS
 
 If they gave an idea, add it with `vbw todo add "<the idea, in their words>"`.

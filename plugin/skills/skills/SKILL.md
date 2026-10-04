@@ -2,7 +2,14 @@
 name: skills
 description: Find community skills (skills.sh) that fit this project's stack and install the ones the user picks.
 argument-hint: "[what to search for]"
+allowed-tools: Bash("${CLAUDE_PLUGIN_ROOT}/bin/vbw" *) Bash(vbw *)
 ---
+
+```!
+"${CLAUDE_PLUGIN_ROOT}/bin/vbw" interview 2>&1 || true
+```
+
+Write to the user's level, explanation depth and involvement (above; "-": plain words).
 
 The user said: $ARGUMENTS
 
@@ -13,7 +20,7 @@ The user said: $ARGUMENTS
    `npx skills find "<query>"`. If `npx` is missing, say that the skills CLI
    needs Node.js and stop.
 3. Show at most 8 relevant results with what each does, skipping skills you
-   already have (they are in your list of available skills).
+   already have.
 4. Ask which to install and where (this project, or all projects). Install each
    chosen one with `npx skills add <skill> -y` (add `-g` for all projects).
    Nothing is installed without the user's choice. Skills work right away.
