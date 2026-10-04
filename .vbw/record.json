@@ -2523,7 +2523,15 @@
         "breaks: R1, R2, R12, R13, R14, R22, R23, R24, R25, R27, R28, R31, R32, R33, R38, R40, R43, R44, R45",
         "tests: project test command"
       ],
-      "predicted": "deep"
+      "predicted": "deep",
+      "qa": {
+        "result": "fail",
+        "tier": "deep",
+        "tree": "ad44411d06db3e71fcaccc9630a82b2e55319214",
+        "at": "2026-10-04T22:26:19Z",
+        "note": "22/23 checks",
+        "rounds": 1
+      }
     }
   ],
   "plans": [
@@ -4997,6 +5005,14 @@
       "attempts": 0,
       "status": "open",
       "note": "Deviation: plan P33.2 lists tests/skills.bats and P33.1 lists plugin/lib/cmd-next.sh, but no P33 commit touches either file (git show --stat of 8319ab9a..43fc1ed5); the work was done differently than planned and the plan was not amended."
+    },
+    {
+      "id": "F29",
+      "req": "R46",
+      "source": "qa",
+      "attempts": 0,
+      "status": "open",
+      "note": "docs/record.md line 57: the field table row for schema still reads `1` only; the criterion and P38.2 require the docs to describe both schemas (schema 2 when a check is alone). Prose at lines 21 and 81-94 does say it, but the rules table, which the validator documents, is stale."
     }
   ],
   "todos": [
