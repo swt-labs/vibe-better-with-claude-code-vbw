@@ -29,14 +29,14 @@ interview_private_update() {
   vbw_guard_drop "$lock"
 }
 
-# interview_effective: {kept, interviewed, level, depth, involvement, pending}
-# on stdout. Complete private answers win over the project's; partial private
-# answers (not yet kept anywhere) are shown with kept null.
+# interview_effective [RECORD]: {kept, interviewed, level, depth, involvement,
+# pending} on stdout (RECORD: the record's JSON when the caller has it).
+# Complete private answers win over the project's; partial private answers
+# (not yet kept anywhere) are shown with kept null.
 interview_effective() {
-  local file priv='{}'
-  file=$(interview_private_file)
-  [ -f "$file" ] && { priv=$(jq -c 'if type == "object" then . else {} end' "$file" 2> /dev/null) || priv='{}'; }
-  record_read | jq -c --argjson p "$priv" '
+  local priv rec="${1:-$(record_read)}"
+  priv=$(jq -c 'if type == "object" then . else {} end' "$(interview_private_file)" 2> /dev/null) || priv='{}'
+  printf '%s' "$rec" | jq -c --argjson p "$priv" '
     ["level","depth","involvement"] as $k
     | def pick($o): $o | with_entries(select(.key as $x | $k | any(. == $x)) | select(.value | type == "string"));
     (pick($p)) as $pp | (pick(.project.interview // {})) as $sp
