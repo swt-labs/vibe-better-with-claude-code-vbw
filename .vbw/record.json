@@ -3292,6 +3292,11 @@
       "id": "T14",
       "text": "Finding (2.0.15 release run): the Lead once planned a task no requirement asked for (removing a README heading it misread as stray). QA caught the deviation. Watch for repeats; if seen again, add to the Lead's self-review: every task traces to a requirement or a stated rule",
       "status": "open"
+    },
+    {
+      "id": "T15",
+      "text": "Finding (M6 planning): the Architect proposed phase ids P1 and P2, already taken by M1; the Lead renumbered. The planning workflow should hand the Architect the next free phase id",
+      "status": "open"
     }
   ],
   "decisions": [
@@ -3638,6 +3643,11 @@
       "text": "Token and cost saving is deferred until after the 2.1 release",
       "why": "Owner (2026-10-04)",
       "at": "2026-10-04T10:47:11Z"
+    },
+    {
+      "id": "D62",
+      "at": "2026-10-04T10:59:57Z",
+      "text": "Contract approved: 33 requirements, 30 checks, 65 plans (a2ff60611ea8)"
     }
   ],
   "commands": {
