@@ -1951,6 +1951,12 @@
           "from": "deep",
           "to": "deep",
           "reason": "Dev blocked P32.4: Router edits are committed (1395 words; tests 7,8,9,10 pass). C36 still fails on test 5 only: plugin/skills/interview/SKILL.md does not contain the phrase 'explanation depth' (carries_profile needs level, explanation depth, involvement). That file is outside P32.4 (it belongs to P31.2, done); needs a plan or fix touching it."
+        },
+        {
+          "at": "2026-10-04T15:17:52Z",
+          "from": "deep",
+          "to": "deep",
+          "reason": "Dev blocked P32.5: C36 fails on the prompt word budget (all prompts 10988 words, limit 10700) in plugin/ prompts, outside this docs plan's files; docs tasks are committed"
         }
       ]
     },
@@ -3735,14 +3741,13 @@
         "P31.2",
         "P30.3"
       ],
-      "status": "blocked",
+      "status": "done",
       "role": "docs",
       "tasks": [
         "docs/interview.md: the flow, when it is asked and never asked again, interrupted and older projects",
         "docs/next.md: the profile object and profile.ask in vbw next --json",
         "docs/interview.md: why the answers shape wording and not rigor or autonomy"
-      ],
-      "note": "Docs written and committed (55b91446, b55955a2). C35 fails only on test 10: plugin/skills/vibe/SKILL.md has 1448 words (limit 1400) from another agent's uncommitted edit, outside this plan's files. Rerun after that edit is trimmed or committed."
+      ]
     },
     {
       "id": "P32.1",
@@ -3861,14 +3866,13 @@
       "after": [
         "P31.2"
       ],
-      "status": "blocked",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "Pass next's profile in every workflow's args",
         "Honor involvement at needs_decisions: decide and tell me (decide, vbw decide, report), options with a recommendation (ask with a recommendation), I make the calls (put every decision to the user before proceeding)",
         "Speak to the user at the profile's level and depth; stay within 1,400 words"
-      ],
-      "note": "Router edits are committed (1395 words; tests 7,8,9,10 pass). C36 still fails on test 5 only: plugin/skills/interview/SKILL.md does not contain the phrase 'explanation depth' (carries_profile needs level, explanation depth, involvement). That file is outside P32.4 (it belongs to P31.2, done); needs a plan or fix touching it."
+      ]
     },
     {
       "id": "P32.5",
@@ -3888,13 +3892,14 @@
         "P32.4",
         "P31.3"
       ],
-      "status": "planned",
+      "status": "blocked",
       "role": "docs",
       "tasks": [
         "docs/workflows.md: args.profile and how agent tasks carry it",
         "docs/interview.md: how involvement changes what VBW does with a decision",
         "docs/interview.md: what never changes with level (schemas, record fields, commit messages)"
-      ]
+      ],
+      "note": "C36 fails on the prompt word budget (all prompts 10988 words, limit 10700) in plugin/ prompts, outside this docs plan's files; docs tasks are committed"
     },
     {
       "id": "P33.1",
@@ -3939,7 +3944,7 @@
         "P32.4",
         "P33.1"
       ],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "Suggest skill: at most three yes or no suggestions, level-matched, none required, zero valid, no duplicate of a requirement or decision, never an already-declined one; reads the profile and the declined list",
