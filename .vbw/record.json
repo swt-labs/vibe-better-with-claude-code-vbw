@@ -4412,7 +4412,7 @@
         "plugin/lib/cmd-apply.sh"
       ],
       "after": [],
-      "status": "planned",
+      "status": "done",
       "tasks": [
         "record.jq: a check may carry alone, which must be a boolean, refused naming the check",
         "cmd-show.sh: the check line and the contract changes view show a check marked alone",
