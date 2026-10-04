@@ -2332,12 +2332,11 @@
         "escalations": 0
       },
       "qa": {
-        "result": "fail",
+        "result": "pass",
         "tier": "deep",
-        "tree": "ad44411d06db3e71fcaccc9630a82b2e55319214",
-        "at": "2026-10-04T22:21:29Z",
-        "note": "22/24 checks",
-        "rounds": 1
+        "tree": "c9472629147f03637d7123812d5509e0b00cd3af",
+        "at": "2026-10-04T23:03:19Z",
+        "note": "24/24 checks"
       }
     },
     {
@@ -5030,7 +5029,7 @@
       "req": "R40",
       "source": "qa",
       "attempts": 0,
-      "status": "fixed",
+      "status": "closed",
       "note": "Deviation: commit 43fc1ed5 (P33.2) also deleted the router sentence '(express makes small work fast)' from plugin/skills/vibe/SKILL.md line 17; no P33.2 task or recorded decision covers it (router now 1396 words of 1400, the removal looks budget-driven). Restore it elsewhere or record a decision."
     },
     {
@@ -5038,7 +5037,7 @@
       "req": "R40",
       "source": "qa",
       "attempts": 0,
-      "status": "fixed",
+      "status": "closed",
       "note": "Deviation: plan P33.2 lists tests/skills.bats and P33.1 lists plugin/lib/cmd-next.sh, but no P33 commit touches either file (git show --stat of 8319ab9a..43fc1ed5); the work was done differently than planned and the plan was not amended."
     },
     {
