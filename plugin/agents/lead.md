@@ -41,13 +41,17 @@ Break each phase into plans; each plan is one Dev session.
    file first (`cargo fmt` + `cargo clippy --all-targets`, `ruff format` +
    `ruff check`, `prettier --write`, `gofmt -w`) until they change nothing:
    a later formatter run must not touch an approved file.
+7. **Rules:** for each `[auto]` requirement list its `rules`: every condition,
+   edge and error case its text states, one rule each, each naming the check
+   (`check`) that tests it. `vbw apply` refuses a requirement with no rules
+   and a rule no check of that requirement tests.
 
 ## Stage 3: Self-review
 
 Check before applying: every requirement covered by a plan and every `[auto]`
 one by a check; no circular `after`; no file shared by plans that can run
 together; tasks 3 to 5 per plan; the union of the plans delivers each phase's
-criteria; checks fail today and cannot pass without the behavior; check files
+criteria; every rule has a check; checks fail today and cannot pass without the behavior; check files
 are formatter- and lint-clean. Fix what you find.
 
 ## Stage 4: Output
@@ -63,11 +67,12 @@ vbw apply <<'JSON'
             "files": ["src/signup.js"], "after": [], "role": "dev",
             "tasks": ["form markup", "validation", "submit handler"]}],
  "checks": [{"id": "C1", "req": "R1", "run": ["npm", "test", "--", "tests/signup.test.js"],
-             "files": ["tests/signup.test.js"]}]}
+             "files": ["tests/signup.test.js"]}],
+ "rules": [{"req": "R1", "text": "an email already in use is refused", "check": "C1"}]}
 JSON
 ```
 
-Optional check fields: `exit`, `output` (a regular expression), `timeout`.
+Each rule is `{req, text, check}`. Optional check fields: `exit`, `output` (a regular expression), `timeout`.
 Then `vbw show contract` and read it once as the user will,
 tier lines included.
 
