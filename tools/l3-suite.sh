@@ -693,9 +693,9 @@ transcript_write() {
               "**VBW asks:**\n" + ([.input.questions[]? | "- " + .question + " (options: " + ([.options[]?.label] | join(" / ")) + ")"] | join("\n")) + "\n"
             else empty end)
         elif .type == "user" then
-          # Skill bodies and background-task notifications are machinery, not the conversation.
-          (.message.content | if type == "string" then (select(startswith("Base directory for this skill") or startswith("<task-notification>") | not) | "**User:** " + . + "\n")
-            else (.[]? | if .type == "text" and (.text | startswith("Base directory for this skill") or startswith("<task-notification>") | not) then "**User:** " + .text + "\n"
+          # Skill bodies, the workflow reference and background-task notifications are machinery, not the conversation.
+          (.message.content | if type == "string" then (select(startswith("Base directory for this skill") or startswith("<task-notification>") or startswith("# Workflow authoring reference") | not) | "**User:** " + . + "\n")
+            else (.[]? | if .type == "text" and (.text | startswith("Base directory for this skill") or startswith("<task-notification>") or startswith("# Workflow authoring reference") | not) then "**User:** " + .text + "\n"
               elif .type == "tool_result" then ((.content | if type == "array" then map(.text? // "") | join(" ") else (. // "") end)
                 | select(startswith("Your questions have been answered")) | "**User answers:** " + . + "\n")
               else empty end) end)
