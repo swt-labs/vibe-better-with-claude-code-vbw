@@ -25,8 +25,8 @@ the result. Otherwise show the settings above in plain words. Keys:
 - `model.architect`, `model.lead`, `model.dev`, `model.qa`, `model.scout`,
   `model.debugger`, `model.docs`: override one agent (`opus`, `sonnet`, `haiku`
   or a model id; `default` removes the override). The status line shows each.
-  QA needs Sonnet or stronger, because it judges whether the work meets the
-  spec. `model.qa` refuses Haiku: `vbw config set model.qa haiku` (or any id
+  QA never runs on Haiku: it needs Sonnet or stronger, because it judges
+  whether the work meets the spec. `model.qa` refuses Haiku: `vbw config set model.qa haiku` (or any id
   naming Haiku) fails with that message and changes nothing. `model.qa` accepts `sonnet`, `opus`,
   `default` and full non-Haiku ids such as `claude-opus-5-5`. A Haiku value
   already stored is raised to Sonnet, and `vbw config` and the status line show
