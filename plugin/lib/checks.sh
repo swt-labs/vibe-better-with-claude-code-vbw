@@ -47,6 +47,89 @@ checks_result() {
             exit: $code, seconds: $secs, tail: $tail} end'
 }
 
+# The exclusion gate (R45), under .vbw/runtime/gate: every running check is a
+# registration file "reg.PID.ID" holding "alone" or "shared". An alone check
+# runs when nothing else is registered; a shared check runs when no alone check
+# is registered and none is waiting. A short mutex directory makes the look and
+# the registration one step. Registrations of a dead process are taken over
+# (kill -0 is only a liveness probe), and every hold is released on exit,
+# interrupt or timeout through the guard.
+
+# checks_gate_live FILE: the process named in the file's name (NAME.PID...) is alive.
+checks_gate_live() {
+  local pid="${1##*/}"
+  pid="${pid#*.}"
+  pid="${pid%%.*}"
+  [ -n "$pid" ] && kill -0 "$pid" 2> /dev/null
+}
+
+# checks_gate_blocker KIND: print the check blocking KIND ("alone" or "shared")
+# and return 0, or return 1 when nothing blocks. Dead registrations are dropped.
+checks_gate_blocker() {
+  local kind="$1" f id
+  for f in "$VBW_RUNTIME"/gate/reg.* "$VBW_RUNTIME"/gate/want.*; do
+    [ -e "$f" ] || continue
+    checks_gate_live "$f" || { rm -f "$f"; continue; }
+    id="${f##*.}"
+    case "${f##*/}" in
+      want.*) [ "$kind" = shared ] || continue ;;
+      *) [ "$kind" = alone ] || [ "$(cat "$f" 2> /dev/null)" = alone ] || continue ;;
+    esac
+    printf '%s\n' "$id"
+    return 0
+  done
+  return 1
+}
+
+# checks_gate_enter ID ALONE: wait for the gate, then register this check.
+checks_gate_enter() {
+  local id="$1" kind=shared g="$VBW_RUNTIME/gate" limit="${VBW_CHECK_WAIT_SECONDS:-900}" start blocker= idle=0 want=
+  [ "$2" != true ] || kind=alone
+  mkdir -p "$g" || vbw_die "cannot create $g"
+  start=$(date +%s)
+  while :; do
+    if mkdir "$g/mutex" 2> /dev/null; then
+      printf '%s\n' "$$" > "$g/mutex/pid"
+      vbw_guard_add dir "$g/mutex"
+      idle=0
+      if blocker=$(checks_gate_blocker "$kind"); then
+        # An alone check that has to wait holds back new shared checks, so it is not starved.
+        if [ "$kind" = alone ] && [ -z "$want" ]; then
+          want="$g/want.$$.$id"
+          : > "$want"
+          vbw_guard_add file "$want"
+        fi
+      else
+        blocker=
+        [ -z "$want" ] || vbw_guard_drop "$want"
+        printf '%s\n' "$kind" > "$g/reg.$$.$id"
+        vbw_guard_add file "$g/reg.$$.$id"
+        vbw_guard_drop "$g/mutex"
+        return 0
+      fi
+      vbw_guard_drop "$g/mutex"
+    else
+      # A mutex whose owner is gone (or never wrote its pid) is taken over.
+      idle=$((idle + 1))
+      if [ -f "$g/mutex/pid" ]; then
+        checks_gate_live "x.$(cat "$g/mutex/pid" 2> /dev/null)" || rm -rf "$g/mutex"
+      elif [ "$idle" -gt 50 ]; then
+        rm -rf "$g/mutex"
+      fi
+    fi
+    if [ $(( $(date +%s) - start )) -ge "$limit" ]; then
+      [ -z "$want" ] || vbw_guard_drop "$want"
+      vbw_die "check $id waited ${limit}s for ${blocker:-the check gate}: raise VBW_CHECK_WAIT_SECONDS or find what holds it (.vbw/runtime/gate)"
+    fi
+    sleep 0.1
+  done
+}
+
+# checks_gate_leave ID: release this check's registration.
+checks_gate_leave() {
+  vbw_guard_drop "$VBW_RUNTIME/gate/reg.$$.$1"
+}
+
 # checks_run RECORD ID: run one check; print its result object.
 checks_run() {
   local record="$1" id="$2" argv=() a t want re
@@ -55,7 +138,9 @@ checks_run() {
   t=$(printf '%s' "$record" | jq -r --arg id "$id" '.checks[] | select(.id == $id) | .timeout // 300')
   want=$(printf '%s' "$record" | jq -r --arg id "$id" '.checks[] | select(.id == $id) | .exit // 0')
   re=$(printf '%s' "$record" | jq -r --arg id "$id" '.checks[] | select(.id == $id) | .output // ""')
+  checks_gate_enter "$id" "$(printf '%s' "$record" | jq -r --arg id "$id" '.checks[] | select(.id == $id) | .alone // false')"
   checks_exec "$t" "$CHECK_OUT/$id.out" "${argv[@]}"
+  checks_gate_leave "$id"
   checks_result "$CHECK_OUT/$id.out" "$t" "$want" "$re"
 }
 
