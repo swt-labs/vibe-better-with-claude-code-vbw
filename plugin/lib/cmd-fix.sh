@@ -2,7 +2,8 @@
 # vbw fix done ID | retry ID (docs/proof.md). "done" is verified, not claimed:
 # for a requirement's fix, none of the files it may touch has uncommitted
 # changes, and the checks of every finished requirement served by those files
-# pass now, so a fix cannot quietly break other work. Then, for a requirement
+# pass now (one that already passed on the same committed files under the same
+# approved contract is not rerun), so a fix cannot quietly break other work. Then, for a requirement
 # proved by checks, or a project command, it awaits proof: the next vbw prove
 # closes it or counts a failed attempt. For a [human] requirement no check can
 # decide, so the fix closes and the requirement returns to the user for
@@ -41,8 +42,16 @@ cmd_fix() {
     | .checks[] | select(.req as $q | any($reqs[]; . == $q)) | .id')
   # shellcheck source=checks.sh
   . "$VBW_LIB/checks.sh"
+  local todo=() at
+  for f in ${checks[@]+"${checks[@]}"}; do
+    if at=$(checks_unchanged "$record" "$f"); then
+      printf '%s unchanged since its pass (%s)\n' "$f" "$at"
+    else
+      todo+=("$f")
+    fi
+  done
   checks_must_pass "$record" "$id broke finished work: these checks of requirements its files serve do not pass" \
-    ${checks[@]+"${checks[@]}"}
+    ${todo[@]+"${todo[@]}"}
 
   human=$(printf '%s' "$record" | jq -r --arg f "$id" '. as $r | [.fixes[] | select(.id == $f)][0] as $x
     | any($r.requirements[]; .id == $x.req and .proof == "human")')
