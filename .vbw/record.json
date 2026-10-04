@@ -2440,7 +2440,22 @@
           "to": "deep",
           "reason": "Dev blocked P36.1: C42 test 10 ('vbw prove runs every check and records the passes the fix reuses') cannot pass as written: after a passing vbw prove, prove.jq closes the open fix F1 (R2 proven; existing behavior, tested in kernel-prove.bats:187), so 'vbw fix done F1' dies 'F1 is not open' before any check logic. Needs a decision: fix the test (use a fix opened after the prove) or change prove.jq (outside plan files) so a passing proof does not close open fixes. Also: vbw apply (cmd-apply.sh, outside plan files) must prune .passes entries of checks it drops, or the record becomes invalid. Tasks 1-4 are committed (12 of 13 tests in fix-reuse.bats pass; kernel-prove, kernel-work, record suites pass). Task 5 and docs C43 not done."
         }
-      ]
+      ],
+      "qa": {
+        "result": "pass",
+        "tier": "deep",
+        "tree": "a8ecae27ca635334d6536c4200638859fa8b4f17",
+        "at": "2026-10-04T21:08:25Z",
+        "note": "20/20 checks"
+      },
+      "outcome": {
+        "tier": "deep",
+        "predicted": "deep",
+        "held": true,
+        "fix_rounds": 0,
+        "qa_findings": 0,
+        "escalations": 1
+      }
     },
     {
       "id": "P37",
