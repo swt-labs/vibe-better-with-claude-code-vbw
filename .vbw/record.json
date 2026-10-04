@@ -1509,7 +1509,7 @@
         "The comment header of plugin/lib/cmd-config.sh and the config skill text document the QA restriction; kernel line budget (3,000) still holds.",
         "A regression test for each rule fails before the change and passes after; bash tools/test.sh passes."
       ],
-      "tier": "standard",
+      "tier": "deep",
       "reasons": [
         "requirements: 1",
         "files: 2 (7670 bytes)",
@@ -1517,7 +1517,15 @@
         "breaks: R23, R27",
         "tests: project test command"
       ],
-      "predicted": "standard"
+      "predicted": "standard",
+      "escalations": [
+        {
+          "at": "2026-10-04T11:07:56Z",
+          "from": "standard",
+          "to": "deep",
+          "reason": "Dev blocked P29.1: C32 needs plugin/skills/config/SKILL.md reworded (line must match 'model.qa.*(Sonnet or stronger|never|refus)'; it currently says model.qa haiku is raised to Sonnet, now false) and that file is outside the plan's files and has uncommitted edits by another worker. cmd-config.sh change (refusal + header) is done in the working tree, uncommitted; 5 of 6 test assertions pass."
+        }
+      ]
     }
   ],
   "plans": [
@@ -3033,7 +3041,7 @@
         "tests/statusline.bats"
       ],
       "after": [],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "Set budget qa and every tier-cell qa model to sonnet (profiles.json, tiers.json)",
@@ -3057,7 +3065,7 @@
       "after": [
         "P28.1"
       ],
-      "status": "planned",
+      "status": "done",
       "role": "docs",
       "tasks": [
         "Update the budget profile description in the config and profile skills",
@@ -3078,7 +3086,7 @@
       "after": [
         "P28.1"
       ],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "Refuse any model.qa value naming Haiku (case-insensitive) with a usage error before any write",
