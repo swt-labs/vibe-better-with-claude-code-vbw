@@ -11,6 +11,10 @@ export const meta = {
 // args: {models?: {scout?}}
 const models = (args && args.models) || {}
 const model = models.scout ? { model: models.scout } : {}
+// The user's level, explanation depth and involvement (args.profile, from vbw next --json):
+// every agent writes what reaches the user at that level.
+const profile = (args && typeof args === 'object' && args.profile) || {}
+const voice = `\n\nThe user's level: ${profile.level || 'small scripts or no-code'}. Explanation depth: ${profile.depth || 'plain with technical terms explained'}. Involvement: ${profile.involvement || 'options with a recommendation'}. Write whatever the user will read at that level and depth.`
 
 const ANGLES = [
   { key: 'stack', ask: 'The stack and how to work with it: languages, frameworks, package manager, and the exact commands to install, build, run, test and lint (try the test and lint commands and report what happens).' },
@@ -26,16 +30,22 @@ const FINDINGS = {
   properties: { findings: { type: 'array', items: { type: 'string' } } },
 }
 
+const MAP = {
+  type: 'object',
+  required: ['map'],
+  properties: { map: { type: 'string' } },
+}
+
 phase('Scout')
 const found = await parallel(ANGLES.map(a => () =>
-  agent(`Map this codebase from one angle. ${a.ask}`, Object.assign({ agentType: 'vbw:scout', label: `scout ${a.key}`, phase: 'Scout', schema: FINDINGS }, model))))
+  agent(`Map this codebase from one angle. ${a.ask}${voice}`, Object.assign({ agentType: 'vbw:scout', label: `scout ${a.key}`, phase: 'Scout', schema: FINDINGS }, model))))
 
 const sections = ANGLES.map((a, i) => ({ angle: a.key, findings: found[i] ? found[i].findings : [] }))
 const missing = sections.filter(s => s.findings.length === 0).map(s => s.angle)
 if (missing.length > 0) log(`no findings for: ${missing.join(', ')}`)
 
 phase('Merge')
-const map = await agent(`Merge these verified findings about this codebase into one concise markdown map, with the sections Stack and commands, Structure, Conventions, Tests, Risks. Keep every command and path exactly. Drop duplicates. No preamble.\n\n${JSON.stringify(sections)}`,
-  Object.assign({ agentType: 'vbw:scout', label: 'scout merge', phase: 'Merge' }, model))
+const map = await agent(`Merge these verified findings about this codebase into one concise markdown map, with the sections Stack and commands, Structure, Conventions, Tests, Risks. Keep every command and path exactly. Drop duplicates. No preamble.\n\n${JSON.stringify(sections)}${voice}`,
+  Object.assign({ agentType: 'vbw:scout', label: 'scout merge', phase: 'Merge', schema: MAP }, model))
 
-return { map: map || sections.map(s => `## ${s.angle}\n${s.findings.map(f => `- ${f}`).join('\n')}`).join('\n\n'), missing }
+return { map: (map && map.map) || sections.map(s => `## ${s.angle}\n${s.findings.map(f => `- ${f}`).join('\n')}`).join('\n\n'), missing }

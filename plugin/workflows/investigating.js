@@ -16,6 +16,10 @@ if (!problem) return { error: 'no problem given: pass args.problem' }
 const models = (args && typeof args === 'object' && args.models) || {}
 const model = models.debugger ? { model: models.debugger } : {}
 const fix = args && typeof args === 'object' ? args.fix : null
+// The user's level, explanation depth and involvement (args.profile, from vbw next --json):
+// every agent writes what reaches the user at that level.
+const profile = (args && typeof args === 'object' && args.profile) || {}
+const voice = `\n\nThe user's level: ${profile.level || 'small scripts or no-code'}. Explanation depth: ${profile.depth || 'plain with technical terms explained'}. Involvement: ${profile.involvement || 'options with a recommendation'}. Write whatever the user will read at that level and depth.`
 
 const DONE = {
   type: 'object',
@@ -33,7 +37,7 @@ const DONE = {
 
 if (fix) {
   phase('Fix')
-  const done = await agent(`Fix mode (steps 5 to 7). Fix this bug at its root cause, add a regression test, verify, and document.\n\nProblem: ${problem}\n\nDiagnosis: ${JSON.stringify(fix)}`,
+  const done = await agent(`Fix mode (steps 5 to 7). Fix this bug at its root cause, add a regression test, verify, and document.\n\nProblem: ${problem}\n\nDiagnosis: ${JSON.stringify(fix)}${voice}`,
     Object.assign({ agentType: 'vbw:debugger', label: 'debugger fix', phase: 'Fix', schema: DONE }, model))
   return { fixed: done }
 }
@@ -79,13 +83,13 @@ const DIAGNOSIS = {
 
 phase('Investigate')
 const reports = await parallel(LENSES.map(l => () =>
-  agent(`Investigation mode (steps 1 to 4), from one angle only. Change nothing.\n\nProblem: ${problem}\n\nYour angle: ${l.ask}`,
+  agent(`Investigation mode (steps 1 to 4), from one angle only. Change nothing.\n\nProblem: ${problem}\n\nYour angle: ${l.ask}${voice}`,
     Object.assign({ agentType: 'vbw:debugger', label: `debugger ${l.key}`, phase: 'Investigate', schema: EVIDENCE }, model))))
 
 const evidence = LENSES.map((l, i) => ({ angle: l.key, report: reports[i] }))
 
 phase('Diagnose')
-const diagnosis = await agent(`Investigation mode, step 4: weigh this evidence into the root cause. Prefer causes with reproduced or traced evidence; check the deciding fact yourself before you conclude; list the hypotheses you rejected and why. Propose the minimal fix for the root cause, not the symptom. Change nothing.\n\nProblem: ${problem}\n\nEvidence: ${JSON.stringify(evidence)}`,
+const diagnosis = await agent(`Investigation mode, step 4: weigh this evidence into the root cause. Prefer causes with reproduced or traced evidence; check the deciding fact yourself before you conclude; list the hypotheses you rejected and why. Propose the minimal fix for the root cause, not the symptom. Change nothing.\n\nProblem: ${problem}\n\nEvidence: ${JSON.stringify(evidence)}${voice}`,
   Object.assign({ agentType: 'vbw:debugger', label: 'debugger diagnose', phase: 'Diagnose', schema: DIAGNOSIS }, model))
 
 return { diagnosis, evidence }
