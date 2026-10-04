@@ -3377,6 +3377,12 @@
       "id": "D58",
       "at": "2026-10-04T02:04:23Z",
       "text": "Shipped M5 Proof you can trust: 4 requirements proven or accepted"
+    },
+    {
+      "id": "D59",
+      "text": "VBW's minimum Claude Code version stays 2.1.286",
+      "why": "Owner's choice (2026-10-04): not raised to 2.1.288",
+      "at": "2026-10-04T10:33:36Z"
     }
   ],
   "commands": {
