@@ -55,7 +55,8 @@ A check proves one `auto` requirement. It lives in the record:
 | `output` | optional extended regular expression that stdout+stderr must match |
 | `timeout` | optional seconds, 1 to 3600, default 300 |
 
-Checks run from the project root with stdin closed. A run that reaches its
+`vbw prove` runs checks from the root of a clean copy of the committed code,
+`vbw check` from the project root; both close stdin. A run that reaches its
 timeout is stopped (by `timeout` where available, otherwise by `perl`'s alarm)
 and fails.
 
@@ -103,12 +104,25 @@ clone (`vbw approve` keeps a copy of what it approved in `.vbw/runtime/`).
 ## `vbw prove`
 
 1. Refuses unless the current contract hash is approved.
-2. Runs every check, and every project command whose argv is approved; an
-   unapproved command is skipped and reported, never run.
-3. Scope: every commit with a `VBW-Plan:` trailer naming a plan in the record
+2. Makes a clean copy of the committed code (`HEAD`) inside the project, under
+   `.vbw/runtime/`.
+3. Runs every check, and every project command whose argv is approved, from the
+   root of that copy; an unapproved command is skipped and reported, never run.
+   Then it removes the copy, also when interrupted.
+4. Scope: every commit with a `VBW-Plan:` trailer naming a plan in the record
    must change only that plan's files.
-4. Writes the evidence and updates requirements and fixes in one atomic record
+5. Writes the evidence and updates requirements and fixes in one atomic record
    update, then prints a one-screen summary. Exit 0 only when everything passed.
+
+Because the copy holds only committed files, uncommitted edits and untracked
+files in the working folder change no result. A check file that is not
+committed as approved is refused: commit it, then `/vbw:approve`.
+
+Git-ignored files (`node_modules/`, `.env.local`, build caches) are the
+project's environment, not its code, so the copy links them in from the working
+folder. Untracked files that are not ignored never enter the copy (D54): to
+make one count, commit it or ignore it. Removing the copy never touches the
+files behind the links.
 
 Evidence (`record.evidence`):
 
@@ -172,15 +186,20 @@ and retries the record once.
 
 ### Freshness
 
-`tree` fingerprints the project files the proof ran on (tracked and new files,
-committed or not, `.vbw/` and ignored files excluded), taken after the checks
-ran. `vbw next` treats evidence as stale, and asks for `prove` again, when the
-contract changed or the files differ from that fingerprint. Committing proved
-work, or the record, changes nothing.
+`tree` is a git tree id of the working folder when the proof finished: tracked
+and new files, committed or not, `.vbw/` and ignored files excluded. It records
+which files the evidence belongs to; the checks themselves ran on the last
+commit. `vbw next` treats evidence as stale, and asks for `prove` again, when
+the contract changed or the working files differ from that fingerprint.
+Committing proved work, or the record, changes nothing.
+
+Uncommitted changes are not proved. Commit the work, then run `vbw prove`, so
+the evidence covers the code you will keep.
 
 ### `vbw check [--expect-red] [CHECK...]`
 
-Runs the given approved checks (all when none are given), reports, and writes
-nothing: the Dev's tool. Exit 0 when all pass. With `--expect-red`, red-first:
+Runs the given approved checks (all when none are given) on the working folder,
+uncommitted and untracked files included, reports, and writes nothing: the
+Dev's tool for the red and green steps. Exit 0 when all pass. With `--expect-red`, red-first:
 before a plan is built its checks must fail, and a check that already passes
 proves nothing, so exit 0 only when every check fails.
