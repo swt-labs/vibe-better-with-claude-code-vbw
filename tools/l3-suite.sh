@@ -741,11 +741,13 @@ transcript_clean() {
   return 0
 }
 
-# scenario_interview LEVEL DEPTH INVOLVEMENT KEEP_REGEX PURPOSE KEYWORD: sets up
-# a project whose user answers the interview as given (drive handlers) and
-# defines checks() to read the outcome. The caller's checks() writes the result.
+# scenario_interview LEVEL DEPTH INVOLVEMENT KEEP_REGEX PURPOSE KEYWORD DETAIL:
+# sets up a project whose user answers the interview as given (drive handlers)
+# and defines checks() to read the outcome. PURPOSE leaves out what the tool
+# does, so the interview has something to follow up on; every follow-up is
+# answered with DETAIL. The caller's checks() writes the result.
 scenario_interview() {
-  a_level=$1 a_depth=$2 a_inv=$3 a_keep=$4 a_purpose=$5 a_word=$6
+  a_level=$1 a_depth=$2 a_inv=$3 a_keep=$4 a_purpose=$5 a_word=$6 a_detail=$7
   new_project
   start="/vbw:vibe I want to build a small greeting tool. One small milestone."
   purpose_done=0 followups=0 unmatched=0
@@ -766,15 +768,21 @@ scenario_interview() {
       purpose_done=1; answer_other "$a_purpose"
     else
       followups=$((followups + 1))
-      if printf '%s' "$scr" | grep -q 'Type something'; then answer_other "Keep it as simple as that."; else answer_recommended; fi
+      answer_other "$a_detail"
     fi
   }
-  # The question "what and for whom" may arrive as a plain message, not a menu.
+  # "What and for whom" and the follow-ups may arrive as plain messages, not menus.
   on_idle() {
-    [ "$(interview_pending)" = keep ] && [ "$purpose_done" -eq 0 ] || return 1
-    last_reply | grep -qiE 'building|for whom|who.*(for|use)' || return 1
-    purpose_done=1
-    l3 type "$scenario" "$a_purpose"
+    [ "$(interview_pending)" = keep ] || return 1
+    if [ "$purpose_done" -eq 0 ]; then
+      last_reply | grep -qiE 'building|for whom|who.*(for|use)' || return 1
+      purpose_done=1
+      l3 type "$scenario" "$a_purpose"
+    else
+      last_reply | grep -q '?' || return 1
+      followups=$((followups + 1))
+      l3 type "$scenario" "$a_detail"
+    fi
   }
 }
 
@@ -815,7 +823,8 @@ interview_outcome() {
   expect "the second session did not ask the interview again" [ "$asked" = false ]
   expect "the profile no longer asks" [ "$ask_after" = false ]
   expect "the milestone shipped, with a ship commit" [ "$shipped_ok$ship_commit" = truetrue ]
-  expect "at most three follow-ups ($n)" [ "$n" -le 3 ]
+  expect "one to three follow-ups asked and answered ($n)" [ "$n" -ge 1 ]
+  expect "never a fourth follow-up ($n)" [ "$n" -le 3 ]
   expect "every scripted answer was found on screen ($unmatched not found)" [ "$unmatched" -eq 0 ]
   expect "the baseline options came in the skill's order, none marked Recommended" [ "$fixed" = true ]
   expect "the transcript holds the conversation only, no injected text" [ "$clean" = true ]
@@ -841,7 +850,8 @@ interview_not_tested() {
 scenario_newcomer() {
   fixture="greet.sh from scratch; a user who has never built software answers in plain words and lets VBW decide"
   scenario_interview "never" "plain words" "decide and tell me" "private" \
-    "a script greet.sh: ./greet.sh Ana prints Hello, Ana! and ./greet.sh alone prints Hello, world!. It is for my grandmother, who is learning English." grandmother
+    "a little greeting program for my grandmother, who is learning English." grandmother \
+    "A script greet.sh: ./greet.sh Ana prints Hello, Ana! and ./greet.sh alone prints Hello, world!. That is all it needs to do."
   checks() {
     interview_outcome
     result_write newcomer "$fixture" "${cost_usd:-0}" "$passed" "$facts" \
@@ -852,7 +862,8 @@ scenario_newcomer() {
 scenario_senior() {
   fixture="greet.sh from scratch; a senior engineer answers technically and briefly and makes the calls; answers kept in the project"
   scenario_interview "senior engineer" "technical and brief" "I make the calls" "saved" \
-    "a CLI greeter, greet.sh: ./greet.sh Ana prints Hello, Ana!, no argument prints Hello, world!. Our team calls it from onboarding scripts; users are platform engineers." onboarding
+    "a CLI greeter our team calls from onboarding scripts; users are platform engineers." onboarding \
+    "greet.sh NAME prints Hello, NAME!; no argument prints Hello, world!; exit 0. Nothing else."
   checks() {
     interview_outcome
     result_write senior "$fixture" "${cost_usd:-0}" "$passed" "$facts" \
