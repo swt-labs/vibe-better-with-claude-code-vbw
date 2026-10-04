@@ -69,8 +69,11 @@ profile:
 | `deep` | Scout, Lead, a Dev per plan, QA | `deep` | Sonnet |
 
 `quality` runs Dev on Opus from `standard` up and QA at `deep` for both upper
-tiers; `budget` runs `express` on Haiku and `standard` QA at `quick`. Read the
+tiers; `budget` runs `express` Dev on Haiku and `standard` QA at `quick`. Read the
 file for the exact table. Your own model overrides (`vbw config set model.dev opus`) win over the table.
+
+**QA never uses Haiku.** In every profile and tier, QA runs on Sonnet or a
+stronger model. Other roles keep the models their profile gives them.
 
 An express phase has exactly one plan: `vbw apply` refuses more.
 
