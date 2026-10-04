@@ -1,9 +1,9 @@
 {
   "scenario": "senior",
   "fixture": "greet.sh from scratch; a senior engineer answers technically and briefly and makes the calls; answers kept in the project",
-  "cost_usd": 0.62,
+  "cost_usd": 0.68,
   "evidence_level": "L3",
-  "at": "2026-10-04T18:41:00Z",
+  "at": "2026-10-04T19:05:02Z",
   "passed": true,
   "facts": {
     "answered": {
