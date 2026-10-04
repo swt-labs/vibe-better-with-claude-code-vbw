@@ -6,6 +6,12 @@ allowed-tools: Bash("${CLAUDE_PLUGIN_ROOT}/bin/vbw" *) Bash(vbw *)
 
 # Interview
 
+```!
+"${CLAUDE_PLUGIN_ROOT}/bin/vbw" interview 2>&1 || true
+```
+
+The answers so far are above. Once they are kept, write every later message at the user's level, explanation depth and involvement.
+
 The router calls this when `profile.ask` is true: after mapping (for existing
 code), before any spec work. Ask with AskUserQuestion, one question at a time,
 in plain words. Skip the answers `profile` already holds: resume at the first
