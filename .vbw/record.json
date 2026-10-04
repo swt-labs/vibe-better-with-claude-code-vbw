@@ -4562,7 +4562,7 @@
         "P37.1",
         "P36.2"
       ],
-      "status": "planned",
+      "status": "done",
       "tasks": [
         "docs/proof.md: multi-id fix done, partial success and exit code",
         "docs/workflows.md: the fix done row shows the multi-id form"
