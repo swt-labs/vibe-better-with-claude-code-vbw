@@ -37,6 +37,17 @@ failing_rules_for() {
   [[ "$output" == *"never terminates"* ]]
 }
 
+@test "the signal-free liveness probe kill -0 passes, any other kill is caught" {
+  run failing_rules_for 'kill -0 "$pid" 2> /dev/null'
+  [[ "$output" != *"never terminates"* ]]
+  run failing_rules_for 'kill -9 "$pid"'
+  [[ "$output" == *"never terminates"* ]]
+  run failing_rules_for 'kill "$pid"'
+  [[ "$output" == *"never terminates"* ]]
+  run failing_rules_for 'pkill -f vbw'
+  [[ "$output" == *"never terminates"* ]]
+}
+
 @test "/tmp paths are caught" {
   run failing_rules_for 'echo x > /tmp/vbw-link'
   [[ "$output" == *"/tmp"* ]]

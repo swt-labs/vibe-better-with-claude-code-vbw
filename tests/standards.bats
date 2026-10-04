@@ -58,7 +58,7 @@ code_grep() {
 }
 
 @test "never terminates processes (ledger D54, D285–D288)" {
-  run code_grep '(^|[^[:alnum:]_])(kill|pkill|killall)[[:space:]]|tmux[[:space:]]+kill-'
+  run code_grep '(^|[^[:alnum:]_])(pkill|killall)[[:space:]]|(^|[^[:alnum:]_])kill[[:space:]]+(-([^0]|0[^[:space:]])|[^-])|tmux[[:space:]]+kill-'
   [ -z "$output" ]
 }
 
