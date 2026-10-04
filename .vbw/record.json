@@ -2383,12 +2383,11 @@
         "escalations": 1
       },
       "qa": {
-        "result": "fail",
+        "result": "pass",
         "tier": "deep",
-        "tree": "ad44411d06db3e71fcaccc9630a82b2e55319214",
-        "at": "2026-10-04T22:20:37Z",
-        "note": "16/18 checks",
-        "rounds": 1
+        "tree": "c9472629147f03637d7123812d5509e0b00cd3af",
+        "at": "2026-10-04T23:06:45Z",
+        "note": "18/18 checks"
       }
     },
     {
@@ -5013,7 +5012,7 @@
       "req": "R42",
       "source": "qa",
       "attempts": 0,
-      "status": "fixed",
+      "status": "closed",
       "note": "Scripted follow-up answers do not answer the question asked, so the transcripts R41 asks the owner to read are incoherent. Newcomer: VBW proposes a web page for the grandmother ('Does that suit her?', options Yes/No) and the scripted reply is 'A script greet.sh: ./greet.sh Ana prints Hello, Ana!...', in technical words a newcomer who answered 'never' would not use; VBW then builds the shell script anyway. Senior: the question 'Which language/runtime should the CLI use?' is answered with 'greet.sh NAME prints Hello, NAME!...'. One fixed DETAIL string (tools/l3-suite.sh scenario_newcomer/scenario_senior, answer_other $a_detail) is sent to every follow-up whatever it asks. tools/l3-results/newcomer.transcript.md and senior.transcript.md."
     },
     {
@@ -5021,7 +5020,7 @@
       "req": "R42",
       "source": "qa",
       "attempts": 0,
-      "status": "fixed",
+      "status": "closed",
       "note": "Out-of-plan commits touching files outside P34.1's file list have no recorded decision for 05bde66e (plugin/skills/interview/SKILL.md, 'follow-ups are asked inside the interview', VBW-Plan P34.1): D78 names 0a351770 and the harness commits, D80 names the 6b365dc2 skill change, D81 names ee0c7bab; 05bde66e is in none. 6b365dc2 also changed docs/interview.md, which D80 does not name (it says 'interview skill'). Also P34.1 lists tools/l3.sh but no P34.1 commit changes it (last change 8657c2f9, before the phase)."
     },
     {
