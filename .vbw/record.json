@@ -2572,7 +2572,7 @@
         "plugin/lib/cmd-doctor.sh"
       ],
       "after": [],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "record.sh: add a newer-schema test (the record's schema is a number above the highest this VBW reads, 1) and call it first in record_read and in record_update before record_lock, so a newer record is never locked, validated, rewritten or called corrupt; die with exit 4 and 'this project needs a newer VBW: its record was written with schema N, this VBW reads up to schema 1; update VBW with /vbw:update'",
@@ -2664,7 +2664,7 @@
         "tests/record.bats"
       ],
       "after": [],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "record.jq and tests/record.bats: an [auto] requirement may carry rules: [{text, check}] where check names a check of that requirement; a [human] requirement carries none; red-first record tests for each violation",
