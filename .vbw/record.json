@@ -4,9 +4,9 @@
     "name": "v2"
   },
   "milestone": {
-    "id": "M6",
-    "title": "QA never below Sonnet",
-    "status": "shipped"
+    "id": "M7",
+    "title": "VBW knows its user",
+    "status": "active"
   },
   "shipped": [
     {
