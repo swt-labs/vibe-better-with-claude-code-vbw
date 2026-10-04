@@ -4219,7 +4219,7 @@
       "req": "R39",
       "source": "qa",
       "attempts": 0,
-      "status": "open",
+      "status": "fixed",
       "note": "Out-of-plan change: commit 545ad009 edits plugin/skills/interview/SKILL.md, which is in no P32 plan's file list (P32.4 blocked on it; it belongs to P31.2), and no recorded decision (D37-D76) covers it. Commit 2c762999 also edits profile/SKILL.md outside any P32 task commit. Record a decision or re-plan to cover them."
     },
     {
@@ -4227,7 +4227,7 @@
       "req": "R42",
       "source": "qa",
       "attempts": 0,
-      "status": "open",
+      "status": "fixed",
       "note": "Deviation: commit 0a351770 changed plugin/skills/interview/SKILL.md (option order, no Recommended), a file outside P34.1's file list and tasks (tools/l3-suite.sh, l3.sh, results); it and c39bfa86/7de91149 carry no VBW-Plan/VBW-Req provenance. Record it as a decision or plan it, with its own test."
     },
     {
@@ -4235,7 +4235,7 @@
       "req": "R42",
       "source": "qa",
       "attempts": 0,
-      "status": "open",
+      "status": "fixed",
       "note": "tools/l3-results/newcomer.transcript.md line 60 still contains a 'Workflow authoring reference' dump as a **User:** turn (machinery, not conversation) in the file the owner reads for R41; c39bfa86 filtered only <task-notification> and 7de91149 claims clean transcripts. Filter it in transcript_write and re-run. Also both scenarios record follow_ups 0, so the follow-up answering path is unexercised."
     }
   ],
@@ -4749,6 +4749,24 @@
       "id": "D76",
       "at": "2026-10-04T15:28:30Z",
       "text": "Contract approved: 39 requirements, 36 checks, 80 plans (b6527878b1e3)"
+    },
+    {
+      "id": "D77",
+      "text": "Commit 545ad009 (interview skill: 'keep' is the last question, asked once the three answers exist) and commit 2c762999 (profile skill: restore 'change only that one answer', add 'write to the user's level') stand as direct fixes made by the maintaining session outside P32's plan files",
+      "why": "P32.4 was blocked on the interview skill missing from every P32 plan and P32.3's compression broke protected check C33's phrase; both were one-file prompt fixes made under the owner's standing delegation of technical decisions (CLAUDE.md), proven by the full suite and the newcomer/senior L3 runs",
+      "at": "2026-10-04T17:11:23Z"
+    },
+    {
+      "id": "D78",
+      "text": "Commit 0a351770 (interview skill: offer the three baseline options in their fixed order, none marked Recommended) and l3 harness commits c39bfa86 and 7de91149 stand as direct fixes made by the maintaining session outside P34.1's tasks",
+      "why": "The senior L3 run showed the model reordering options and marking one Recommended, which biases the answer the interview exists to collect; the harness commits fixed transcript noise and re-ran the scenarios. Made under the owner's standing delegation of technical decisions; the option-order rule gets its own test (F20)",
+      "at": "2026-10-04T17:11:23Z"
+    },
+    {
+      "id": "D79",
+      "text": "Correction to D77: commit 545ad009 adds the interview skill's 'vbw interview' read and the line naming level, explanation depth and involvement (what protected check C36 scans every skill for); it does not change question order",
+      "why": "D77 misdescribed the commit; the decision to let it stand is unchanged",
+      "at": "2026-10-04T17:11:30Z"
     }
   ],
   "commands": {
