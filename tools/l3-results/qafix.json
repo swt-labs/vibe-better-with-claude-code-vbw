@@ -1,14 +1,14 @@
 {
   "scenario": "qafix",
   "fixture": "greet.sh plus NOTES.md (no check names it); the built NOTES.md is deleted after the build, so only QA can see the deviation",
-  "cost_usd": 1.06,
+  "cost_usd": 1.15,
   "evidence_level": "L3",
-  "at": "2026-10-03T23:12:08Z",
+  "at": "2026-10-04T05:48:19Z",
   "passed": true,
   "facts": {
     "deviation": "NOTES.md",
     "first_qa_verdict": "fail",
-    "first_qa_note": "7/8 checks NOTES.md does not exist at repo root. It was created in 1608453 but deleted in d6e2f89 'chore: drop NOTES.md'; ls NOTES.md fails. Plan P1.2 and criterion 4 require it with one sentence.",
+    "first_qa_note": "12/13 checks NOTES.md is missing from the repo root. It was added in d3f3641 and deleted in f21a5c0 (chore: drop NOTES.md). Plan P1.1 task 3 and the criteria require it with exactly one sentence on greet.sh's purpose.",
     "fix_rounds": 1,
     "final_qa_verdict": "pass",
     "phase_proved": true
