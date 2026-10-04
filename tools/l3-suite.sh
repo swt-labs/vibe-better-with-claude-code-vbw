@@ -310,6 +310,9 @@ scenario_balanced() {
     if transcripts | xargs cat 2> /dev/null | jq -e 'select(.type == "assistant") | .message.content[]?
       | select(.type == "tool_use" and .name == "Workflow" and ((.input | tostring) | test("verifying")))' > /dev/null 2>&1; then qa_bg=true; fi
     [ "$(next_action)" = accept ] && stopped=accept
+    expect "no Stop-hook errors in the transcript ($te) or the debug log ($dl)" [ "$te" -eq 0 -a "$dl" -eq 0 ]
+    expect "QA ran in the background (a vbw:verifying workflow)" [ "$qa_bg" = true ]
+    expect "VBW's next step is accept ($stopped)" [ "$stopped" = accept ]
     [ "$failed" -eq 0 ] && [ "$te" -eq 0 ] && [ "$dl" -eq 0 ] && [ "$stopped" = accept ] && [ "$qa_bg" = true ] || passed=false
     cost=$(session_cost)
     result_write balanced "$fixture" "${cost:-0}" "$passed" \
@@ -340,7 +343,12 @@ scenario_docs() {
     [ "$cst" = pass ] && appr=true
     rst=$(jq -r --arg r "$req" 'first(.requirements[] | select(.id == $r)) | .status // "none"' "$dir/.vbw/record.json" 2> /dev/null)
     [ -n "$plan" ] && [ "$(cd "$dir" && git log --format=%B | grep -c "^VBW-Plan: $plan\$")" -gt 0 ] && prov=true
-    [ -f "$dir/docs/USAGE.md" ] || failed=1
+    # Each condition prints its own line, so a failed one is never silent.
+    expect "docs/USAGE.md was written" [ -f "$dir/docs/USAGE.md" ]
+    expect "the Docs agent built it (agents: $agents)" [ "$by" = docs ]
+    expect "an approved check proves the documentation requirement (check status: $cst)" [ "$cst" = pass ]
+    expect "the documentation requirement is proven, not only accepted ($rst)" [ "$rst" = proven ]
+    expect "the docs plan's commits carry provenance" [ "$prov" = true ]
     [ "$failed" -eq 0 ] && [ "$by" = docs ] && [ "$appr" = true ] && [ "$cst" = pass ] && [ "$prov" = true ] && [ "$rst" = proven ] || passed=false
     result_write docs "$fixture" "${cost_usd:-0}" "$passed" \
       "$(jq -n --arg b "$by" --argjson a "$appr" --arg c "$cst" --argjson p "$prov" --arg r "$rst" --arg pl "$plan" --arg ag "$agents" \
@@ -407,6 +415,10 @@ scenario_qafix() {
     say "QA rounds: first verdict $fv, fix rounds $rounds, final $final"
     [ -n "$deviation" ] || { say "FAIL the deviation was never seeded"; failed=1; }
     case "$note" in *"$deviation"*) ;; *) say "FAIL the first QA note does not name the deviation"; failed=1 ;; esac
+    expect "QA's first verdict was fail ($fv)" [ "$fv" = fail ]
+    expect "at least one fix round ran ($rounds)" [ "$rounds" -ge 1 ]
+    expect "QA's final verdict is pass ($final)" [ "$final" = pass ]
+    expect "every requirement is proven or accepted" [ "$proved" = true ]
     [ "$failed" -eq 0 ] && [ "$fv" = fail ] && [ "$rounds" -ge 1 ] && [ "$final" = pass ] && [ "$proved" = true ] || { passed=false; failed=1; }
     result_write qafix "$fixture" "${cost_usd:-0}" "$passed" \
       "$(jq -n --arg d "${deviation:-}" --arg fv "$fv" --arg n "$note" --argjson r "$rounds" --arg fin "$final" --argjson p "$proved" \
