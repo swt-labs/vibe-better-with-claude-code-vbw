@@ -20,7 +20,7 @@ Presets (each sets two things with `vbw config set`):
 |---|---|---|---|
 | Careful | `quality` (Opus for the Architect, Lead, Dev and Debugger) | `guided`: explains each step and waits for "go" | learning, a first project, risky changes |
 | Standard | `balanced` (Sonnet for every agent) | `balanced`: keeps going, stops for your decisions, approval, checking and shipping | most work (the default) |
-| Fast | `budget` (Haiku for QA and Scout, Sonnet for the rest) | `hands-off`: takes its own recommendations on decisions and lists them for you | small changes, once you trust it |
+| Fast | `budget` (Haiku for Scout, Sonnet for the rest, QA included) | `hands-off`: takes its own recommendations on decisions and lists them for you | small changes, once you trust it |
 
 If they named a preset, apply it and show the result. Otherwise show the
 current settings above in plain words and ask (AskUserQuestion) which preset,

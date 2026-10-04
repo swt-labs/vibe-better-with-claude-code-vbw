@@ -21,7 +21,7 @@ the result. Otherwise show the settings above in plain words. Keys:
 - `profile`: which models VBW's agents (VBW 1's team: Architect, Lead, Dev, QA,
   Scout, Debugger, Docs) run on. `quality` (Opus for the Architect, Lead, Dev
   and Debugger; Sonnet for QA, Scout and Docs), `balanced` (the default: Sonnet
-  for all), `budget` (Haiku for QA and Scout, Sonnet for the rest).
+  for all), `budget` (Haiku for Scout, Sonnet for the rest, QA included).
 - `model.architect`, `model.lead`, `model.dev`, `model.qa`, `model.scout`,
   `model.debugger`, `model.docs`: override one agent (`opus`, `sonnet`, `haiku`
   or a model id; `default` removes the override). The status line shows each.
