@@ -22,3 +22,8 @@ load helper
   run bats --filter 'no eval|no bash-4-only|no predictable' "$REPO_ROOT/tests/standards.bats"
   [ "$status" -eq 0 ]
 }
+
+@test "docs/record.md says a record whose checks use alone is schema 2, and why" {
+  grep -i 'alone' "$REPO_ROOT/docs/record.md" | grep -qi 'schema 2'
+  grep -i 'schema 2' "$REPO_ROOT/docs/record.md" | grep -qi 'newer VBW\|update'
+}

@@ -1,7 +1,9 @@
 #!/usr/bin/env bats
 # R43: vbw fix done does not rerun a check that already passed on the same
 # project files under the same approved contract, and says so; vbw prove still
-# runs every check (docs/proof.md). Checks count their runs in $RUNS.
+# runs every check (docs/proof.md). Checks count their runs in $RUNS. Passes are
+# a cache of this clone, kept in its git directory, never in the record: an
+# older VBW still reads the record, and closing a fix leaves no record change.
 
 load helper
 
@@ -40,6 +42,9 @@ edit_record() {
   jq "$1" .vbw/record.json > "$TEST_ROOT/edit.json" && cp "$TEST_ROOT/edit.json" .vbw/record.json
 }
 
+# passes: this clone's recorded passes ({} when there are none).
+passes() { cat "$(git rev-parse --git-common-dir)/vbw/passes.json" 2> /dev/null || printf '{}'; }
+
 # runs ID: how many times the check ran.
 runs() { if [ -f "$RUNS/$1" ]; then wc -l < "$RUNS/$1" | tr -d ' '; else printf 0; fi; }
 
@@ -47,13 +52,14 @@ runs() { if [ -f "$RUNS/$1" ]; then wc -l < "$RUNS/$1" | tr -d ' '; else printf 
   vbw_run fix done F1
   [ "$status" -eq 0 ]
   [ "$(runs C1)" = 1 ]
-  jq -e --arg h "$(vbw_contract_hash)" '.passes.C1 | .contract == $h and (.at | test("^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9:]{8}Z$")) and (.tree | type == "string" and length >= 40)' .vbw/record.json
-  jq -e '.passes.C2 != null and .schema == 1' .vbw/record.json
+  passes | jq -e --arg h "$(vbw_contract_hash)" '.C1 | .contract == $h and (.at | test("^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9:]{8}Z$")) and (.tree | type == "string" and length >= 40)'
+  passes | jq -e '.C2 != null'
+  jq -e 'has("passes") | not' .vbw/record.json
 }
 
 @test "an unchanged pass is not rerun, and the output says so with the date of the pass" {
   "$VBW" fix done F1 > /dev/null
-  at=$(jq -r '.passes.C1.at' .vbw/record.json)
+  at=$(passes | jq -r '.C1.at')
   vbw_run fix done F2
   [ "$status" -eq 0 ]
   [ "$(runs C1)" = 1 ] && [ "$(runs C2)" = 1 ]
@@ -88,7 +94,7 @@ runs() { if [ -f "$RUNS/$1" ]; then wc -l < "$RUNS/$1" | tr -d ' '; else printf 
   [ "$status" -eq 1 ]
   [[ "$output" == *"F2 broke finished work"*"C1 fail"* ]]
   [ "$(runs C1)" = 2 ]
-  jq -e '.passes.C1 == null' .vbw/record.json
+  passes | jq -e '.C1 == null'
   printf 'paid\n' > src/pay.txt && git commit -q -am "fix: restore"
   vbw_run fix done F2
   [ "$status" -eq 0 ]
@@ -103,7 +109,7 @@ runs() { if [ -f "$RUNS/$1" ]; then wc -l < "$RUNS/$1" | tr -d ' '; else printf 
   [ "$status" -eq 0 ]
   [ "$(runs C1)" = 1 ] && [ "$(runs C3)" = 2 ]
   [[ "$output" != *"C3 unchanged"* ]]
-  jq -e '.passes.C3 == null' .vbw/record.json
+  passes | jq -e '.C3 == null'
 }
 
 @test "a check whose served files cannot be fingerprinted is always rerun" {
@@ -122,11 +128,11 @@ runs() { if [ -f "$RUNS/$1" ]; then wc -l < "$RUNS/$1" | tr -d ' '; else printf 
   vbw_consent_contract
   vbw_run fix done F1
   [ "$status" -eq 0 ]
-  jq -e '.passes.C1 == null' .vbw/record.json
+  passes | jq -e '.C1 == null'
   git add src/extra.txt && git commit -q -m "feat: extra"
   vbw_run fix done F2
   [ "$(runs C1)" = 2 ]
-  jq -e '.passes.C1 != null' .vbw/record.json
+  passes | jq -e '.C1 != null'
 }
 
 @test "uncommitted changes in the fix's files still block closing, and nothing reruns" {
@@ -142,7 +148,8 @@ runs() { if [ -f "$RUNS/$1" ]; then wc -l < "$RUNS/$1" | tr -d ' '; else printf 
   vbw_run prove
   [ "$status" -eq 0 ]
   [ "$(runs C1)" = 1 ] && [ "$(runs C2)" = 1 ] && [ "$(runs C3)" = 1 ]
-  jq -e '.passes.C1 != null and .passes.C2 != null' .vbw/record.json
+  passes | jq -e '.C1 != null and .C2 != null'
+  jq -e 'has("passes") | not' .vbw/record.json
   # A passing proof closes the open fixes; a fix found afterwards reuses its passes.
   edit_record '.fixes += [{id: "F4", req: "R2", attempts: 0, status: "open", note: "d"}]'
   vbw_run fix done F4
@@ -173,28 +180,36 @@ runs() { if [ -f "$RUNS/$1" ]; then wc -l < "$RUNS/$1" | tr -d ' '; else printf 
   jq -e '(.fixes[] | select(.id == "F1")).status == "fixed"' .vbw/record.json
 }
 
-@test "a record without recorded passes reads fine, and a malformed pass is refused by the record writer" {
-  jq -e 'has("passes") | not' .vbw/record.json
+@test "a missing or damaged passes file only means the checks run again" {
+  "$VBW" fix done F1 > /dev/null
+  printf 'not json' > "$(git rev-parse --git-common-dir)/vbw/passes.json"
+  vbw_run fix done F2
+  [ "$status" -eq 0 ]
+  [ "$(runs C1)" = 2 ]
+  [[ "$output" != *"C1 unchanged"* ]]
+  passes | jq -e '.C1 != null'
+  rm "$(git rev-parse --git-common-dir)/vbw/passes.json"
   vbw_run status
   [ "$status" -eq 0 ]
-  edit_record '.passes = {C1: {at: "2026-10-04T10:00:00Z", contract: "0000000000000000000000000000000000000000000000000000000000000000", tree: "1111111111111111111111111111111111111111111111111111111111111111"}}'
-  vbw_run status
-  [ "$status" -eq 0 ]
-  edit_record '.passes = {C1: {at: "yesterday", contract: "x", tree: 5}}'
-  vbw_run status
-  [ "$status" -eq 3 ]
-  [[ "$output" == *"passes"* ]]
-  edit_record '.passes = {C99: {at: "2026-10-04T10:00:00Z", contract: "x", tree: "y"}}'
-  vbw_run status
-  [ "$status" -eq 3 ]
 }
 
-@test "a re-plan that drops a check drops its recorded pass, and the record stays readable" {
+@test "the record never holds passes, so VBW 2.0.16 still reads it, and closing a fix leaves no record change to commit" {
   vbw_run prove
   [ "$status" -eq 0 ]
-  jq -e '.passes.C1 != null and .passes.C2 != null' .vbw/record.json
+  jq -e 'has("passes") | not' .vbw/record.json
+  passes | jq -e '.C1 != null'
+  edit_record '.fixes += [{id: "F4", req: "R2", attempts: 0, status: "open", note: "d"}]'
+  before=$(jq -S 'del(.fixes)' .vbw/record.json)
+  vbw_run fix done F4
+  [ "$status" -eq 0 ]
+  [ "$(jq -S 'del(.fixes)' .vbw/record.json)" = "$before" ]
+}
+
+@test "a pass of a check the contract no longer has is never used, and the record stays readable" {
+  vbw_run prove
+  [ "$status" -eq 0 ]
   printf '%s' "$PLAN" | jq '.checks |= map(select(.id != "C1"))' | "$VBW" apply > /dev/null
-  jq -e '(.passes | has("C1") | not) and .passes.C2 != null' .vbw/record.json
   vbw_run status
   [ "$status" -eq 0 ]
+  jq -e 'has("passes") | not' .vbw/record.json
 }

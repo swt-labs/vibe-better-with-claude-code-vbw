@@ -50,6 +50,7 @@
 - R43 [auto] Closing a fix does not rerun a check that already passed on the same project files under the same approved contract: it says the check is unchanged since its pass, and when that pass was; vbw prove still runs every check
 - R44 [auto] Several fixes close in one command (vbw fix done F8 F9 F5), running the checks their files serve once; each fix ends as it would if closed alone; a fix that cannot close is named, and the others still close
 - R45 [auto] A check the contract marks to run alone (for example one that starts containers) never runs at the same time as another VBW check in the same project, even when several fixes or builds run checks in parallel
+- R46 [auto] A record written by this VBW is either read by VBW 2.0.16 or makes it say the project needs a newer VBW; it is never reported as corrupt
 
 <!-- One requirement per line: an id, how it is proved, and a user-observable
      statement. [auto] = a check can prove it; [human] = only a person can judge it.

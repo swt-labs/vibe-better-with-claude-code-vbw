@@ -8,8 +8,10 @@ load helper
   grep -qi 'vbw prove.*every check\|every check.*vbw prove' "$REPO_ROOT/docs/proof.md"
 }
 
-@test "docs/record.md describes the recorded passes" {
-  grep -E '^\| `passes`' "$REPO_ROOT/docs/record.md"
+@test "docs/proof.md says passes are a cache of the clone, outside the record, and a lost one only reruns checks" {
+  grep -q 'passes.json' "$REPO_ROOT/docs/proof.md"
+  grep -qi 'never in the record\|not in the record\|outside the record' "$REPO_ROOT/docs/proof.md"
+  ! grep -E '^\| `passes`' "$REPO_ROOT/docs/record.md"
 }
 
 @test "the kernel stays within its line budget" {

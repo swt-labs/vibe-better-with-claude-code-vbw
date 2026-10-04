@@ -730,6 +730,23 @@
           "check": "C41"
         }
       ]
+    },
+    {
+      "id": "R46",
+      "text": "A record written by this VBW is either read by VBW 2.0.16 or makes it say the project needs a newer VBW; it is never reported as corrupt",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M7",
+      "rules": [
+        {
+          "text": "closing a fix, proving and keeping the interview answers in the project leave a schema-1 record holding only fields VBW 2.0.16 reads",
+          "check": "C46"
+        },
+        {
+          "text": "a field VBW 2.0.16 does not read (alone) raises the schema instead of staying at schema 1",
+          "check": "C46"
+        }
+      ]
     }
   ],
   "checks": [
@@ -1231,6 +1248,18 @@
       "files": [
         "tests/fix-many-docs.bats"
       ]
+    },
+    {
+      "id": "C46",
+      "req": "R46",
+      "run": [
+        "bats",
+        "tests/record-compat.bats"
+      ],
+      "files": [
+        "tests/record-compat.bats"
+      ],
+      "timeout": 300
     }
   ],
   "phases": [
@@ -2128,9 +2157,9 @@
       "tier": "deep",
       "reasons": [
         "requirements: 1",
-        "files: 11 (57980 bytes)",
+        "files: 11 (58763 bytes)",
         "risk: none",
-        "breaks: R1, R2, R3, R13, R14, R22, R23, R24, R25, R27, R28, R31, R33, R35, R37, R39, R40",
+        "breaks: R1, R2, R3, R13, R14, R22, R23, R24, R25, R27, R28, R31, R33, R35, R37, R39, R40, R43, R44, R45",
         "tests: project test command"
       ],
       "predicted": "deep",
@@ -2141,13 +2170,6 @@
         "fix_rounds": 0,
         "qa_findings": 0,
         "escalations": 0
-      },
-      "qa": {
-        "result": "pass",
-        "tier": "deep",
-        "tree": "a8ecae27ca635334d6536c4200638859fa8b4f17",
-        "at": "2026-10-04T21:03:05Z",
-        "note": "16/16 checks"
       }
     },
     {
@@ -2200,13 +2222,6 @@
         "fix_rounds": 0,
         "qa_findings": 0,
         "escalations": 2
-      },
-      "qa": {
-        "result": "pass",
-        "tier": "deep",
-        "tree": "a8ecae27ca635334d6536c4200638859fa8b4f17",
-        "at": "2026-10-04T21:06:41Z",
-        "note": "22/22 checks"
       }
     },
     {
@@ -2228,9 +2243,9 @@
       "tier": "deep",
       "reasons": [
         "requirements: 1",
-        "files: 44 (110826 bytes)",
+        "files: 44 (111070 bytes)",
         "risk: none",
-        "breaks: R12, R13, R14, R22, R23, R24, R25, R26, R27, R28, R31, R35, R36, R37, R38, R40",
+        "breaks: R12, R13, R14, R22, R23, R24, R25, R26, R27, R28, R31, R35, R36, R37, R38, R40, R44, R45",
         "tests: project test command"
       ],
       "predicted": "deep",
@@ -2255,14 +2270,6 @@
         "fix_rounds": 1,
         "qa_findings": 1,
         "escalations": 2
-      },
-      "qa": {
-        "result": "fail",
-        "tier": "deep",
-        "tree": "a8ecae27ca635334d6536c4200638859fa8b4f17",
-        "at": "2026-10-04T20:55:18Z",
-        "note": "22/24 checks",
-        "rounds": 1
       }
     },
     {
@@ -2285,9 +2292,9 @@
       "tier": "deep",
       "reasons": [
         "requirements: 1",
-        "files: 11 (72704 bytes)",
+        "files: 11 (73487 bytes)",
         "risk: none",
-        "breaks: R3, R13, R14, R22, R23, R24, R25, R26, R27, R28, R31, R33, R35, R37, R38, R39",
+        "breaks: R3, R13, R14, R22, R23, R24, R25, R26, R27, R28, R31, R33, R35, R37, R38, R39, R43, R44, R45",
         "tests: project test command"
       ],
       "predicted": "deep",
@@ -2298,13 +2305,6 @@
         "fix_rounds": 0,
         "qa_findings": 0,
         "escalations": 0
-      },
-      "qa": {
-        "result": "pass",
-        "tier": "deep",
-        "tree": "a8ecae27ca635334d6536c4200638859fa8b4f17",
-        "at": "2026-10-04T21:07:22Z",
-        "note": "26/26 checks"
       }
     },
     {
@@ -2342,13 +2342,6 @@
           "reason": "QA needs a second round"
         }
       ],
-      "qa": {
-        "result": "pass",
-        "tier": "deep",
-        "tree": "a8ecae27ca635334d6536c4200638859fa8b4f17",
-        "at": "2026-10-04T21:07:29Z",
-        "note": "24/24 checks"
-      },
       "outcome": {
         "tier": "deep",
         "predicted": "deep",
@@ -2381,19 +2374,12 @@
       "tier": "deep",
       "reasons": [
         "requirements: 1",
-        "files: 9 (91788 bytes)",
+        "files: 9 (94716 bytes)",
         "risk: none",
-        "breaks: R12, R13, R14, R22, R23, R24, R25, R27, R28, R31, R32, R33, R38, R39, R40",
+        "breaks: R12, R13, R14, R22, R23, R24, R25, R27, R28, R31, R32, R33, R38, R39, R40, R43, R44",
         "tests: project test command"
       ],
       "predicted": "deep",
-      "qa": {
-        "result": "pass",
-        "tier": "deep",
-        "tree": "a8ecae27ca635334d6536c4200638859fa8b4f17",
-        "at": "2026-10-04T21:02:07Z",
-        "note": "30/30 checks"
-      },
       "outcome": {
         "tier": "deep",
         "predicted": "deep",
@@ -2427,9 +2413,9 @@
       "tier": "deep",
       "reasons": [
         "requirements: 1",
-        "files: 7 (69604 bytes)",
+        "files: 7 (75275 bytes)",
         "risk: none",
-        "breaks: R12, R13, R14, R22, R23, R24, R25, R27, R28, R31, R32, R33, R38, R40",
+        "breaks: R12, R13, R14, R22, R23, R24, R25, R27, R28, R31, R32, R33, R38, R40, R44, R45",
         "tests: project test command"
       ],
       "predicted": "deep",
@@ -2441,13 +2427,6 @@
           "reason": "Dev blocked P36.1: C42 test 10 ('vbw prove runs every check and records the passes the fix reuses') cannot pass as written: after a passing vbw prove, prove.jq closes the open fix F1 (R2 proven; existing behavior, tested in kernel-prove.bats:187), so 'vbw fix done F1' dies 'F1 is not open' before any check logic. Needs a decision: fix the test (use a fix opened after the prove) or change prove.jq (outside plan files) so a passing proof does not close open fixes. Also: vbw apply (cmd-apply.sh, outside plan files) must prune .passes entries of checks it drops, or the record becomes invalid. Tasks 1-4 are committed (12 of 13 tests in fix-reuse.bats pass; kernel-prove, kernel-work, record suites pass). Task 5 and docs C43 not done."
         }
       ],
-      "qa": {
-        "result": "pass",
-        "tier": "deep",
-        "tree": "a8ecae27ca635334d6536c4200638859fa8b4f17",
-        "at": "2026-10-04T21:08:25Z",
-        "note": "20/20 checks"
-      },
       "outcome": {
         "tier": "deep",
         "predicted": "deep",
@@ -2480,19 +2459,12 @@
       "tier": "deep",
       "reasons": [
         "requirements: 1",
-        "files: 5 (35593 bytes)",
+        "files: 5 (40582 bytes)",
         "risk: none",
-        "breaks: R3, R12, R13, R14, R24, R25, R27, R28, R31, R32, R38, R39, R40",
+        "breaks: R3, R12, R13, R14, R24, R25, R27, R28, R31, R32, R38, R39, R40, R43, R45",
         "tests: project test command"
       ],
       "predicted": "deep",
-      "qa": {
-        "result": "pass",
-        "tier": "deep",
-        "tree": "a8ecae27ca635334d6536c4200638859fa8b4f17",
-        "at": "2026-10-04T20:56:23Z",
-        "note": "30/30 checks"
-      },
       "outcome": {
         "tier": "deep",
         "predicted": "deep",
@@ -2501,6 +2473,30 @@
         "qa_findings": 0,
         "escalations": 0
       }
+    },
+    {
+      "id": "P38",
+      "title": "Records stay readable by older VBW",
+      "reqs": [
+        "R46"
+      ],
+      "milestone": "M7",
+      "goal": "A record written by this VBW is read by VBW 2.0.16, or makes it ask for an update; never reported as corrupt",
+      "criteria": [
+        "Recorded passes are a cache of the clone in its git directory, never in the record; a missing or damaged cache only reruns checks",
+        "A record whose checks use alone is written as schema 2; one without is schema 1; a mismatch is corrupt; this VBW reads up to schema 2",
+        "A schema-1 record holds only the fields VBW 2.0.16 reads (tests/record-compat.bats)",
+        "docs/proof.md and docs/record.md describe both"
+      ],
+      "tier": "deep",
+      "reasons": [
+        "requirements: 1",
+        "files: 6 (70064 bytes)",
+        "risk: none",
+        "breaks: R1, R2, R12, R13, R14, R22, R23, R24, R25, R27, R28, R31, R32, R33, R38, R40, R43, R44, R45",
+        "tests: project test command"
+      ],
+      "predicted": "deep"
     }
   ],
   "plans": [
@@ -4690,6 +4686,48 @@
       "status": "done",
       "tasks": [
         "vbw apply removes .passes entries whose check id is no longer in the record, in the same validated update, so the record stays readable (C42 test 14)"
+      ]
+    },
+    {
+      "id": "P38.1",
+      "phase": "P38",
+      "title": "Passes move to the clone; alone raises the schema to 2",
+      "reqs": [
+        "R46"
+      ],
+      "files": [
+        "plugin/lib/checks.sh",
+        "plugin/lib/record.jq",
+        "plugin/lib/record.sh",
+        "plugin/lib/cmd-apply.sh"
+      ],
+      "after": [],
+      "status": "planned",
+      "tasks": [
+        "checks.sh: passes live in $(git common dir)/vbw/passes.json ({check id: {at, contract, tree}}), written under vbw_lock_take, read leniently (missing or damaged: no reuse); never written to the record (C42)",
+        "record.jq: drop the passes key; schema is 2 exactly when a check has alone: true, else 1, anything else corrupt; cmd-apply.sh: remove the passes pruning",
+        "record.sh: VBW_SCHEMA_MAX=2; the single write path sets .schema from the alone markers before validating (C39, C46)"
+      ],
+      "role": "dev"
+    },
+    {
+      "id": "P38.2",
+      "phase": "P38",
+      "title": "Docs: passes are a clone cache; alone means schema 2",
+      "reqs": [
+        "R46"
+      ],
+      "files": [
+        "docs/proof.md",
+        "docs/record.md"
+      ],
+      "after": [
+        "P38.1"
+      ],
+      "status": "planned",
+      "role": "docs",
+      "tasks": [
+        "docs/proof.md: passes.json in the clone git directory, never in the record, a lost one only reruns checks; docs/record.md: remove the passes row, say a record whose checks use alone is schema 2 so an older VBW asks for an update (C41, C43)"
       ]
     }
   ],

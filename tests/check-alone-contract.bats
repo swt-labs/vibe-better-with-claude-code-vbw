@@ -97,3 +97,32 @@ apply_doc() { printf '%s' "$1" | "$VBW" apply; }
   vbw_run show contract --changes
   [[ "$output" == *"C1"*"alone"* ]]
 }
+
+@test "a record whose checks use alone is schema 2, so an older VBW asks for an update instead of calling it corrupt" {
+  run apply_doc "$ALONE"
+  [ "$status" -eq 0 ]
+  jq -e '.schema == 2' .vbw/record.json
+  vbw_run status
+  [ "$status" -eq 0 ]
+  run apply_doc "$PLAN"
+  [ "$status" -eq 0 ]
+  jq -e '.schema == 1 and all(.checks[]; has("alone") | not)' .vbw/record.json
+}
+
+@test "a schema-1 record with an alone check, or a schema-2 record without one, is refused as corrupt" {
+  run apply_doc "$PLAN"
+  [ "$status" -eq 0 ]
+  jq '.schema = 2' .vbw/record.json > "$TEST_ROOT/r.json" && cp "$TEST_ROOT/r.json" .vbw/record.json
+  vbw_run status
+  [ "$status" -eq 3 ]
+  jq '.schema = 1 | .checks[0].alone = true' .vbw/record.json > "$TEST_ROOT/r.json" && cp "$TEST_ROOT/r.json" .vbw/record.json
+  vbw_run status
+  [ "$status" -eq 3 ]
+}
+
+@test "a record newer than schema 2 still says it needs a newer VBW" {
+  jq '.schema = 3' .vbw/record.json > "$TEST_ROOT/r.json" && cp "$TEST_ROOT/r.json" .vbw/record.json
+  vbw_run status
+  [ "$status" -eq 4 ]
+  [[ "$output" == *"newer VBW"* ]]
+}
