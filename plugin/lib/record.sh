@@ -100,10 +100,9 @@ record_update() {
   v=$(record_violation "$VBW_RECORD") || vbw_die "record is corrupt: $v ($VBW_RECORD)" 3
   tmp=$(mktemp "$VBW_RUNTIME/record.XXXXXX") || vbw_die "cannot create a temporary file in $VBW_RUNTIME"
   vbw_guard_add file "$tmp"
-  # The schema follows the fields in use: 2 exactly when a check is alone (R46). A
-  # "passes" key left by VBW 2.0.15 is dropped on the first write.
+  # The schema follows the fields in use: 2 exactly when a check is alone (R46).
   jq "$@" "$filter
-    | del(.passes) | .schema = (if (.checks | type) == \"array\" and any(.checks[]; type == \"object\" and .alone == true) then 2 else 1 end)" "$VBW_RECORD" > "$tmp" 2>/dev/null || vbw_die "internal error: record update failed"
+    | .schema = (if (.checks | type) == \"array\" and any(.checks[]; type == \"object\" and .alone == true) then 2 else 1 end)" "$VBW_RECORD" > "$tmp" 2>/dev/null || vbw_die "internal error: record update failed"
   v=$(record_violation "$tmp") || vbw_die "refused: $v"
   mv "$tmp" "$VBW_RECORD"
   vbw_guard_drop "$tmp"

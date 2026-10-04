@@ -48,7 +48,7 @@ if type != "object" then ["record must be a JSON object"] else
       | "schema must be 2 when a check is alone, else 1" ),
     ( $r | keys[]
       | select(one_of(["schema","project","milestone","requirements","checks","phases","plans",
-                       "fixes","todos","decisions","commands","settings","evidence","passes","lease","shipped","converted"]) | not)
+                       "fixes","todos","decisions","commands","settings","evidence","lease","shipped","converted"]) | not)
       | "unknown key: \(.)" ),
     ( ["requirements","checks","phases","plans","fixes","todos","decisions","shipped"][]
       | select(($r[.] | type) != "array") | "\(.) must be an array" ),
