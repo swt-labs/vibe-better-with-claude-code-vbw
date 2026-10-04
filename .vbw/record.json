@@ -338,7 +338,44 @@
       "proof": "auto",
       "status": "open",
       "milestone": "M7",
-      "rules": []
+      "rules": [
+        {
+          "text": "the three fixed questions are asked in order with exactly the listed options for level, explanation depth and involvement",
+          "check": "C35"
+        },
+        {
+          "text": "for an existing codebase the interview comes after mapping, before spec work",
+          "check": "C35"
+        },
+        {
+          "text": "after the three, VBW asks briefly what is being built and for whom and writes it into the spec Goals",
+          "check": "C35"
+        },
+        {
+          "text": "at most three follow-up questions are asked: zero is allowed, four never",
+          "check": "C35"
+        },
+        {
+          "text": "follow-up questions are written for the user's level and this project",
+          "check": "C35"
+        },
+        {
+          "text": "the last question asks where to keep the personal answers and applies the choice through the kernel",
+          "check": "C35"
+        },
+        {
+          "text": "an unrecognised answer to a fixed question is re-asked or defaulted and never recorded as an invalid value",
+          "check": "C35"
+        },
+        {
+          "text": "an interrupted interview records nothing as complete and resumes at the first unanswered question",
+          "check": "C35"
+        },
+        {
+          "text": "the router stays within its token budget and the interview within a mode prompt's",
+          "check": "C35"
+        }
+      ]
     },
     {
       "id": "R38",
@@ -346,7 +383,56 @@
       "proof": "auto",
       "status": "open",
       "milestone": "M7",
-      "rules": []
+      "rules": [
+        {
+          "text": "a kernel command records level, explanation depth and involvement, and refuses any other value naming the allowed ones",
+          "check": "C33"
+        },
+        {
+          "text": "private answers live in the clone's git directory beside consent.json and are never committed or written to the project",
+          "check": "C33"
+        },
+        {
+          "text": "shared answers are written to the project record only through the kernel, and choosing one location leaves no copy in the other",
+          "check": "C33"
+        },
+        {
+          "text": "private answers in one worktree are read in another worktree of the clone, and concurrent writes are both kept",
+          "check": "C33"
+        },
+        {
+          "text": "answers shared by choice are visible to a second worktree of the clone",
+          "check": "C33"
+        },
+        {
+          "text": "vbw status shows the three answers and where they are kept, and with none says the interview has not been done",
+          "check": "C33"
+        },
+        {
+          "text": "changing one answer later with /vbw:profile leaves the other two untouched and vbw status shows the new value",
+          "check": "C33"
+        },
+        {
+          "text": "a record or answers file from an older VBW (no answers) is read without error and counts as not yet interviewed",
+          "check": "C33"
+        },
+        {
+          "text": "the record change stays readable by older VBWs (schema 1, under project) and a bad stored value is corrupt",
+          "check": "C33"
+        },
+        {
+          "text": "what is being built and for whom is not stored as a personal answer",
+          "check": "C33"
+        },
+        {
+          "text": "the interview is asked at a new project's spec step and never again once answers exist, in any session, location or milestone",
+          "check": "C34"
+        },
+        {
+          "text": "a project started before this version is asked once, at its next milestone's spec step, and never in the middle of a run or phase",
+          "check": "C34"
+        }
+      ]
     },
     {
       "id": "R39",
@@ -354,7 +440,36 @@
       "proof": "auto",
       "status": "open",
       "milestone": "M7",
-      "rules": []
+      "rules": [
+        {
+          "text": "vbw next --json carries the user's level, explanation depth and involvement, with an explicit neutral default when absent",
+          "check": "C36"
+        },
+        {
+          "text": "machine-read output is unchanged by the user's level",
+          "check": "C36"
+        },
+        {
+          "text": "every skill that speaks to the user receives and applies the three values, and none is skipped",
+          "check": "C36"
+        },
+        {
+          "text": "every agent that can reach the user receives and applies the three values",
+          "check": "C36"
+        },
+        {
+          "text": "involvement is honored with each of its three settings, including the Architect's decision job",
+          "check": "C36"
+        },
+        {
+          "text": "workflow agent calls carry the profile in their task text and still pass a schema",
+          "check": "C36"
+        },
+        {
+          "text": "prompts, the router and the workflows stay within their budgets",
+          "check": "C36"
+        }
+      ]
     },
     {
       "id": "R40",
@@ -362,7 +477,40 @@
       "proof": "auto",
       "status": "open",
       "milestone": "M7",
-      "rules": []
+      "rules": [
+        {
+          "text": "at most three suggestions are offered at a time, each a single yes or no the user may decline, none required to approve",
+          "check": "C37"
+        },
+        {
+          "text": "suggestions are offered only at spec proposal and at plan approval, never mid-run or mid-build",
+          "check": "C37"
+        },
+        {
+          "text": "an accepted suggestion becomes a requirement or a recorded decision",
+          "check": "C37"
+        },
+        {
+          "text": "a declined suggestion is recorded in the project and never offered again, across sessions and milestones",
+          "check": "C37"
+        },
+        {
+          "text": "declining identical text twice is deduplicated, even with other case or spacing",
+          "check": "C37"
+        },
+        {
+          "text": "suggestion wording follows the user's level and depth, and a project with no answers gets the neutral default",
+          "check": "C37"
+        },
+        {
+          "text": "when there is nothing worth suggesting none are shown, and a suggestion never duplicates a requirement or a recorded decision",
+          "check": "C37"
+        },
+        {
+          "text": "declined suggestions are written only through the kernel's validated write path and an older record means none declined",
+          "check": "C37"
+        }
+      ]
     },
     {
       "id": "R41",
@@ -377,7 +525,32 @@
       "proof": "auto",
       "status": "open",
       "milestone": "M7",
-      "rules": []
+      "rules": [
+        {
+          "text": "a newcomer scenario in the real app answers the three fixed questions, what and for whom, the follow-ups and where to keep the answers",
+          "check": "C38"
+        },
+        {
+          "text": "a senior-engineer scenario in the real app answers the same questions",
+          "check": "C38"
+        },
+        {
+          "text": "both scenarios record their answers, and the recorded answers match what was answered",
+          "check": "C38"
+        },
+        {
+          "text": "in both scenarios a second request in a new session does not ask the interview again",
+          "check": "C38"
+        },
+        {
+          "text": "both scenarios reach the ship step",
+          "check": "C38"
+        },
+        {
+          "text": "the two scenarios record different explanation depth and involvement and save their transcripts for comparison",
+          "check": "C38"
+        }
+      ]
     }
   ],
   "checks": [
@@ -732,6 +905,72 @@
       ],
       "files": [
         "tests/config-qa.bats"
+      ]
+    },
+    {
+      "id": "C33",
+      "req": "R38",
+      "run": [
+        "bats",
+        "tests/interview-store.bats"
+      ],
+      "files": [
+        "tests/interview-store.bats"
+      ]
+    },
+    {
+      "id": "C34",
+      "req": "R38",
+      "run": [
+        "bats",
+        "tests/interview-once.bats"
+      ],
+      "files": [
+        "tests/interview-once.bats"
+      ]
+    },
+    {
+      "id": "C35",
+      "req": "R37",
+      "run": [
+        "bats",
+        "tests/interview-flow.bats"
+      ],
+      "files": [
+        "tests/interview-flow.bats"
+      ]
+    },
+    {
+      "id": "C36",
+      "req": "R39",
+      "run": [
+        "bats",
+        "tests/profile-levels.bats"
+      ],
+      "files": [
+        "tests/profile-levels.bats"
+      ]
+    },
+    {
+      "id": "C37",
+      "req": "R40",
+      "run": [
+        "bats",
+        "tests/suggestions.bats"
+      ],
+      "files": [
+        "tests/suggestions.bats"
+      ]
+    },
+    {
+      "id": "C38",
+      "req": "R42",
+      "run": [
+        "bats",
+        "tests/l3-interview.bats"
+      ],
+      "files": [
+        "tests/l3-interview.bats"
       ]
     }
   ],
@@ -1608,6 +1847,145 @@
         "qa_findings": 0,
         "escalations": 1
       }
+    },
+    {
+      "id": "P30",
+      "title": "Interview answers: store, show, change",
+      "reqs": [
+        "R38"
+      ],
+      "milestone": "M7",
+      "goal": "The user's level, explanation depth and involvement can be stored (private to the clone or in the project record, as the user chooses), shown by vbw status, and changed with /vbw:profile.",
+      "criteria": [
+        "A kernel command records level (never, small scripts or no-code, professionally, senior engineer), explanation depth (plain words, plain with technical terms explained, technical and brief) and involvement (decide and tell me, options with a recommendation, I make the calls); any other value is refused naming the allowed values.",
+        "Storage location is a choice: private storage lives in the clone's git directory beside consent.json and is never committed; shared storage lives in .vbw/record.json written only through the kernel's single write path. Choosing one location leaves no copy in the other, and the answers shared by choice are visible to a second worktree of the clone.",
+        "Private answers in one worktree are read by another worktree of the same clone (shared git directory), with concurrent writes both kept.",
+        "vbw status shows the three answers and where they are kept; with no answers it says the interview has not been done.",
+        "/vbw:profile changes any one answer later, and vbw status then shows the new value; changing one answer leaves the others untouched.",
+        "A project record or answers file written by an older VBW (no answers) is read without error and counts as not yet interviewed; the record schema change is readable by older VBWs per R33 rules or marks a newer-version requirement.",
+        "What is being built and for whom is not stored as a personal answer; it is written to the spec's Goals.",
+        "Bash 3.2 compatible, JSON handled only via jq, no new runtime dependency; kernel stays within its line budget."
+      ],
+      "tier": "deep",
+      "reasons": [
+        "requirements: 1",
+        "files: 11 (40753 bytes)",
+        "risk: none",
+        "breaks: R1, R2, R3, R13, R14, R22, R23, R24, R25, R27, R28, R31, R33, R35",
+        "tests: project test command"
+      ],
+      "predicted": "deep"
+    },
+    {
+      "id": "P31",
+      "title": "The start-of-project interview, asked once",
+      "reqs": [
+        "R37",
+        "R38"
+      ],
+      "milestone": "M7",
+      "goal": "At the start of a project (after mapping for existing code) VBW asks the three fixed questions, what is being built and for whom, up to three written follow-ups, and then where to keep the personal answers, and never asks again.",
+      "criteria": [
+        "For a new project the router, before spec work, asks the three fixed questions in order with exactly the listed options; for an existing codebase the interview comes after mapping.",
+        "After the three, VBW asks briefly what the user is building and for whom; the answer is written into the spec Goals.",
+        "VBW then asks at most three follow-up questions it writes for that user's level and this project; zero follow-ups is allowed, four never.",
+        "The last question asks where to keep the personal answers (private on this machine, or saved in the project for everyone); VBW applies the choice via P30's command.",
+        "Once answers exist, the interview is never asked again in that project, including after a new session or a new milestone.",
+        "A project started before this version (milestones present, no answers) is asked once, at its next milestone start, not in the middle of a run or phase.",
+        "If the user declines or gives an unrecognised answer to a fixed question, VBW re-asks that question or records a stated default; it never records an invalid value.",
+        "If the interview is interrupted partway, nothing partial is recorded as complete and it resumes at the first unanswered question.",
+        "The router prompt stays within its 2k-token budget and mode prompts within 3k; total prompts within 15k."
+      ],
+      "tier": "deep",
+      "reasons": [
+        "requirements: 2",
+        "files: 8 (27723 bytes)",
+        "risk: none",
+        "breaks: R13, R14, R22, R24, R25, R26, R28, R31, R35",
+        "tests: project test command"
+      ],
+      "predicted": "deep"
+    },
+    {
+      "id": "P32",
+      "title": "Every user-facing step writes at the user's level",
+      "reqs": [
+        "R39"
+      ],
+      "milestone": "M7",
+      "goal": "Every VBW step and agent whose words reach the user receives the user's level, explanation depth and involvement and writes accordingly.",
+      "criteria": [
+        "vbw next --json (and the args handed to each workflow) carries the user's level, explanation depth and involvement; when absent it carries an explicit neutral default (plain with terms explained, options with a recommendation).",
+        "Every skill and mode that speaks to the user, and each agent that can reach the user (architect, lead, qa, docs, debugger, scout and dev when it reports), has its prompt receive and apply these three values; a structural test lists every such file and fails when one lacks them.",
+        "Involvement is honored: with 'decide and tell me' decisions are made and reported; with 'options with a recommendation' decisions are posed with a recommendation; with 'I make the calls' decisions are put to the user before proceeding. A decision-boundary job (Architect Job 1) is checked against each setting.",
+        "Workflow agent calls carry the profile in their task text and still pass a schema; no workflow gains procedure in prompts.",
+        "Agent prompts stay at or under 1.5k tokens each and total prompts within 15k, mode prompts within 3k, workflows within 1,500 lines of JS.",
+        "Machine-read outputs (schemas, record fields, commit messages) are unchanged by level."
+      ],
+      "tier": "deep",
+      "reasons": [
+        "requirements: 1",
+        "files: 44 (90849 bytes)",
+        "risk: none",
+        "breaks: R12, R13, R14, R22, R23, R24, R25, R26, R27, R28, R31, R35, R36",
+        "tests: project test command"
+      ],
+      "predicted": "deep"
+    },
+    {
+      "id": "P33",
+      "title": "Suggestions at natural pauses",
+      "reqs": [
+        "R40"
+      ],
+      "milestone": "M7",
+      "goal": "When VBW proposes requirements and when it presents a plan for approval, it offers at most three level-matched yes or no suggestions, and remembers declined ones.",
+      "criteria": [
+        "Suggestions are offered only at spec proposal and at plan approval, never mid-run or mid-build.",
+        "At most three are shown at a time; each is a single yes or no the user may decline; none is required to proceed to approval.",
+        "An accepted suggestion becomes a requirement (through the kernel's requirement command) or a recorded decision (vbw decide), as the suggestion states; the result is visible in vbw show.",
+        "A declined suggestion is recorded in the project and never offered again in that project, including in later sessions and milestones; declining twice-identical text is deduplicated.",
+        "Wording and technical depth of suggestions follow the user's level and explanation depth; a project with no interview answers gets the neutral default.",
+        "If there is nothing worth suggesting, none are shown (zero is valid); suggestions never duplicate an existing requirement or recorded decision.",
+        "Declined-suggestion storage is written only by the kernel single write path and is readable by older records (absent means none declined)."
+      ],
+      "tier": "deep",
+      "reasons": [
+        "requirements: 1",
+        "files: 11 (56969 bytes)",
+        "risk: none",
+        "breaks: R3, R13, R14, R22, R23, R24, R25, R26, R27, R28, R31, R33, R35",
+        "tests: project test command"
+      ],
+      "predicted": "deep"
+    },
+    {
+      "id": "P34",
+      "title": "Real-user scenarios: newcomer and senior engineer",
+      "reqs": [
+        "R42",
+        "R41"
+      ],
+      "milestone": "M7",
+      "goal": "Two real-app scenarios answer the interview as a newcomer and as a senior engineer, record their answers, are not asked again, and reach ship; a person judges the wording fits each level.",
+      "criteria": [
+        "tools/l3-suite.sh has a newcomer scenario and a senior-engineer scenario run in the real Claude Code app, each answering the three fixed questions, the build-for-whom question, follow-ups and the storage question.",
+        "Each scenario's outcome shows the recorded answers (via vbw status or the record/private file) matching what was answered.",
+        "In each scenario a second request or new session does not trigger the interview again.",
+        "Each scenario reaches the ship step.",
+        "The two scenarios record different explanation depth and involvement, and the transcripts are saved so a person can compare wording.",
+        "R41 (human): the owner reads both transcripts and finds the newcomer's wording never too technical and the senior's never too simple; acceptance is recorded by the owner.",
+        "Release gate follows D66: M7 is a milestone release, so all scenarios run; ship is 2.0.17 per D71."
+      ],
+      "tier": "deep",
+      "reasons": [
+        "requirements: 2",
+        "files: 6 (41541 bytes)",
+        "risk: none",
+        "breaks: R4, R5, R8, R18, R29, R34",
+        "tests: project test command"
+      ],
+      "predicted": "deep"
     }
   ],
   "plans": [
@@ -3196,6 +3574,412 @@
         "Document that model.qa refuses Haiku and why",
         "Show the accepted values sonnet, opus, default and full non-Haiku ids"
       ]
+    },
+    {
+      "id": "P30.1",
+      "phase": "P30",
+      "title": "Kernel store for the interview answers",
+      "reqs": [
+        "R38"
+      ],
+      "files": [
+        "plugin/lib/interview.json",
+        "plugin/lib/interview.sh",
+        "plugin/lib/cmd-interview.sh",
+        "plugin/bin/vbw",
+        "plugin/lib/record.sh",
+        "plugin/lib/record.jq"
+      ],
+      "after": [],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "Allowed-values table (interview.json) and record.jq validation of project.interview, passed in by record_violation (schema stays 1, older VBWs ignore project.interview)",
+        "interview.sh: private answers file in the git common dir (locked read-modify-write via vbw_lock_take), shared answers via record_update, effective read with private-over-project precedence and pending question",
+        "cmd-interview.sh: show, --json, set KEY VALUE (refuses other values naming the allowed ones, refuses purpose) and keep private|project (moves, leaves no copy, needs all three); register in bin/vbw with its help line",
+        "Confirm the kernel stays within 3,000 lines (physical, tests/kernel-safety.bats) and runs under /bin/bash 3.2"
+      ]
+    },
+    {
+      "id": "P30.2",
+      "phase": "P30",
+      "title": "Show the answers in status and change them with /vbw:profile",
+      "reqs": [
+        "R38"
+      ],
+      "files": [
+        "plugin/lib/cmd-status.sh",
+        "plugin/skills/profile/SKILL.md",
+        "plugin/skills/help/SKILL.md"
+      ],
+      "after": [
+        "P30.1"
+      ],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "vbw status text: the three answers and where they are kept, or 'the interview has not been done'",
+        "vbw status --json: an interview object (the same shape as vbw interview --json)",
+        "/vbw:profile skill: show the answers, change any one with vbw interview set (others untouched), keep the model presets",
+        "help skill: the /vbw:profile row says it also sets how VBW talks to the user"
+      ]
+    },
+    {
+      "id": "P30.3",
+      "phase": "P30",
+      "title": "Docs: interview answers and record",
+      "reqs": [
+        "R38"
+      ],
+      "files": [
+        "docs/interview.md",
+        "docs/record.md"
+      ],
+      "after": [
+        "P30.1",
+        "P30.2"
+      ],
+      "status": "planned",
+      "role": "docs",
+      "tasks": [
+        "docs/interview.md: the three answers, their allowed values and the commands",
+        "docs/interview.md: private versus shared storage, worktrees, changing an answer, older records",
+        "docs/record.md: project.interview, additive under project, schema stays 1"
+      ]
+    },
+    {
+      "id": "P31.1",
+      "phase": "P31",
+      "title": "vbw next carries the profile and says when to ask",
+      "reqs": [
+        "R37",
+        "R38"
+      ],
+      "files": [
+        "plugin/lib/next.jq",
+        "plugin/lib/cmd-next.sh",
+        "plugin/lib/interview.sh"
+      ],
+      "after": [
+        "P30.1"
+      ],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "interview.sh: the profile object for next (answers or the neutral default, interviewed, kept, pending)",
+        "next.jq: profile in the output, and ask true only at the spec step with no completed interview (new project, or a pre-version project at its next milestone)",
+        "cmd-next.sh: hand the profile to next.jq; machine-read fields stay unchanged",
+        "Confirm the kernel line budget"
+      ]
+    },
+    {
+      "id": "P31.2",
+      "phase": "P31",
+      "title": "The interview skill and the router's interview step",
+      "reqs": [
+        "R37"
+      ],
+      "files": [
+        "plugin/skills/interview/SKILL.md",
+        "plugin/skills/vibe/SKILL.md",
+        "tests/skills.bats"
+      ],
+      "after": [
+        "P31.1",
+        "P30.2"
+      ],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "Trim the router's wording to make room, keeping every behavior its tests name",
+        "Interview skill: the three fixed questions with exactly the listed options, what and for whom into the spec Goals, at most three written follow-ups, the keep question last, answers recorded one by one with vbw interview set and keep",
+        "Router spec step: when profile.ask, follow vbw:interview after mapping and before spec work; resume at profile.pending; re-ask on an unrecognised answer",
+        "Keep the router within 1,400 words and the interview skill within 900"
+      ]
+    },
+    {
+      "id": "P31.3",
+      "phase": "P31",
+      "title": "Docs: the interview and vbw next",
+      "reqs": [
+        "R37"
+      ],
+      "files": [
+        "docs/interview.md",
+        "docs/next.md"
+      ],
+      "after": [
+        "P31.1",
+        "P31.2",
+        "P30.3"
+      ],
+      "status": "planned",
+      "role": "docs",
+      "tasks": [
+        "docs/interview.md: the flow, when it is asked and never asked again, interrupted and older projects",
+        "docs/next.md: the profile object and profile.ask in vbw next --json",
+        "docs/interview.md: why the answers shape wording and not rigor or autonomy"
+      ]
+    },
+    {
+      "id": "P32.1",
+      "phase": "P32",
+      "title": "Workflows carry the profile in every agent's task",
+      "reqs": [
+        "R39"
+      ],
+      "files": [
+        "plugin/workflows/planning.js",
+        "plugin/workflows/building.js",
+        "plugin/workflows/fixing.js",
+        "plugin/workflows/verifying.js",
+        "plugin/workflows/mapping.js",
+        "plugin/workflows/investigating.js",
+        "plugin/workflows/researching.js"
+      ],
+      "after": [
+        "P31.1"
+      ],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "planning.js and building.js: read args.profile into a voice text and append it to every agent task",
+        "fixing.js and verifying.js: the same",
+        "mapping.js, investigating.js and researching.js: the same",
+        "Every agent call still passes a schema; workflows stay within 1,500 lines"
+      ]
+    },
+    {
+      "id": "P32.2",
+      "phase": "P32",
+      "title": "Agents apply the user's level, depth and involvement",
+      "reqs": [
+        "R39"
+      ],
+      "files": [
+        "plugin/agents/architect.md",
+        "plugin/agents/lead.md",
+        "plugin/agents/dev.md",
+        "plugin/agents/qa.md",
+        "plugin/agents/scout.md",
+        "plugin/agents/debugger.md",
+        "plugin/agents/docs.md"
+      ],
+      "after": [],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "Architect: Job 1 decisions written against each involvement setting (decide and tell me, options with a recommendation, I make the calls) and wording at the user's level and depth",
+        "Lead, Dev and Docs: the task names the three values; write what reaches the user at that level",
+        "QA, Debugger and Scout: the same",
+        "Each agent stays within 900 words"
+      ]
+    },
+    {
+      "id": "P32.3",
+      "phase": "P32",
+      "title": "Every skill reads and applies the user's profile",
+      "reqs": [
+        "R39"
+      ],
+      "files": [
+        "plugin/skills/approve/SKILL.md",
+        "plugin/skills/compress/SKILL.md",
+        "plugin/skills/config/SKILL.md",
+        "plugin/skills/convert/SKILL.md",
+        "plugin/skills/debug/SKILL.md",
+        "plugin/skills/discuss/SKILL.md",
+        "plugin/skills/doctor/SKILL.md",
+        "plugin/skills/fix/SKILL.md",
+        "plugin/skills/help/SKILL.md",
+        "plugin/skills/init/SKILL.md",
+        "plugin/skills/list-todos/SKILL.md",
+        "plugin/skills/map/SKILL.md",
+        "plugin/skills/pause/SKILL.md",
+        "plugin/skills/profile/SKILL.md",
+        "plugin/skills/qa/SKILL.md",
+        "plugin/skills/report/SKILL.md",
+        "plugin/skills/research/SKILL.md",
+        "plugin/skills/resume/SKILL.md",
+        "plugin/skills/rtk/SKILL.md",
+        "plugin/skills/skills/SKILL.md",
+        "plugin/skills/status/SKILL.md",
+        "plugin/skills/teach/SKILL.md",
+        "plugin/skills/todo/SKILL.md",
+        "plugin/skills/uninstall/SKILL.md",
+        "plugin/skills/update/SKILL.md",
+        "plugin/skills/verify/SKILL.md",
+        "plugin/skills/whats-new/SKILL.md"
+      ],
+      "after": [
+        "P30.2",
+        "P31.2",
+        "P32.2"
+      ],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "Skills with a shell block (approve config convert debug discuss doctor fix init list-todos map): add the vbw interview line and one sentence to write at the user's level, explanation depth and involvement",
+        "Skills with a shell block (pause profile qa report research resume rtk status uninstall verify): the same",
+        "Skills without one (compress help skills teach todo update whats-new): add the pre-approved shell block, its allowed-tools and the sentence",
+        "Measure all prompts against 10,700 words and 2,000 per mode prompt; compress where needed"
+      ]
+    },
+    {
+      "id": "P32.4",
+      "phase": "P32",
+      "title": "Router hands the profile on and honors involvement",
+      "reqs": [
+        "R39"
+      ],
+      "files": [
+        "plugin/skills/vibe/SKILL.md"
+      ],
+      "after": [
+        "P31.2"
+      ],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "Pass next's profile in every workflow's args",
+        "Honor involvement at needs_decisions: decide and tell me (decide, vbw decide, report), options with a recommendation (ask with a recommendation), I make the calls (put every decision to the user before proceeding)",
+        "Speak to the user at the profile's level and depth; stay within 1,400 words"
+      ]
+    },
+    {
+      "id": "P32.5",
+      "phase": "P32",
+      "title": "Docs: the profile in workflows and agents",
+      "reqs": [
+        "R39"
+      ],
+      "files": [
+        "docs/workflows.md",
+        "docs/interview.md"
+      ],
+      "after": [
+        "P32.1",
+        "P32.2",
+        "P32.3",
+        "P32.4",
+        "P31.3"
+      ],
+      "status": "planned",
+      "role": "docs",
+      "tasks": [
+        "docs/workflows.md: args.profile and how agent tasks carry it",
+        "docs/interview.md: how involvement changes what VBW does with a decision",
+        "docs/interview.md: what never changes with level (schemas, record fields, commit messages)"
+      ]
+    },
+    {
+      "id": "P33.1",
+      "phase": "P33",
+      "title": "Kernel: declined suggestions",
+      "reqs": [
+        "R40"
+      ],
+      "files": [
+        "plugin/lib/cmd-suggest.sh",
+        "plugin/bin/vbw",
+        "plugin/lib/record.jq",
+        "plugin/lib/next.jq",
+        "plugin/lib/cmd-next.sh"
+      ],
+      "after": [
+        "P31.1"
+      ],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "record.jq: validate project.declined as entries of text and ISO time (absent means none; schema stays 1)",
+        "cmd-suggest.sh: suggest decline TEXT (record through record_update, deduplicated by case and spacing) and suggest list",
+        "bin/vbw: register suggest and its help line",
+        "next.jq and cmd-next.sh: declined as a list of texts in vbw next --json; confirm the kernel line budget"
+      ]
+    },
+    {
+      "id": "P33.2",
+      "phase": "P33",
+      "title": "The suggest skill and its two places in the router",
+      "reqs": [
+        "R40"
+      ],
+      "files": [
+        "plugin/skills/suggest/SKILL.md",
+        "plugin/skills/vibe/SKILL.md",
+        "tests/skills.bats"
+      ],
+      "after": [
+        "P31.2",
+        "P32.4",
+        "P33.1"
+      ],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "Suggest skill: at most three yes or no suggestions, level-matched, none required, zero valid, no duplicate of a requirement or decision, never an already-declined one; reads the profile and the declined list",
+        "Accepted: vbw spec add or vbw decide; declined: vbw suggest decline",
+        "Router: offer suggestions only at spec proposal and at plan approval; stay within 1,400 words"
+      ]
+    },
+    {
+      "id": "P33.3",
+      "phase": "P33",
+      "title": "Docs: suggestions",
+      "reqs": [
+        "R40"
+      ],
+      "files": [
+        "docs/interview.md",
+        "docs/next.md",
+        "docs/record.md"
+      ],
+      "after": [
+        "P32.5",
+        "P33.1",
+        "P33.2"
+      ],
+      "status": "planned",
+      "role": "docs",
+      "tasks": [
+        "docs/interview.md: when suggestions are offered, accepted and declined",
+        "docs/next.md: the declined list in vbw next --json",
+        "docs/record.md: project.declined"
+      ]
+    },
+    {
+      "id": "P34.1",
+      "phase": "P34",
+      "title": "Newcomer and senior-engineer scenarios in the real app",
+      "reqs": [
+        "R42",
+        "R41"
+      ],
+      "files": [
+        "tools/l3-suite.sh",
+        "tools/l3.sh",
+        "tools/l3-results/newcomer.json",
+        "tools/l3-results/senior.json",
+        "tools/l3-results/newcomer.transcript.md",
+        "tools/l3-results/senior.transcript.md"
+      ],
+      "after": [
+        "P30.2",
+        "P32.1",
+        "P32.2",
+        "P32.3",
+        "P32.4",
+        "P33.2"
+      ],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "Scenario newcomer: answers never, plain words, decide and tell me, what and for whom, follow-ups and the keep question; saves the transcript",
+        "Scenario senior: senior engineer, technical and brief, I make the calls, the same questions; saves the transcript",
+        "Both in ALL and the suite header; after the interview a second request in a new session; outcome read from vbw interview, the record, the spec Goals and git; result_write with facts, not_tested and the transcript path",
+        "Run both in the real Claude Code app; commit the two results and transcripts for the owner's R41 reading"
+      ]
     }
   ],
   "fixes": [
@@ -3808,6 +4592,18 @@
       "text": "Suggestions (T11) come at natural pauses only (spec proposal, plan for approval), a few short yes/no items worded for the user's level",
       "why": "Owner (2026-10-04)",
       "at": "2026-10-04T14:17:56Z"
+    },
+    {
+      "id": "D70",
+      "text": "The interview's last question asks the user where to keep their personal answers (level, explanation depth, involvement): private to them on this machine (in the clone's git directory, like consent, never committed), or saved in the project record for everyone who works on it; VBW applies their choice. What they are building and for whom is project information and goes into the spec's goals",
+      "why": "Owner (2026-10-04): 'ask the user as the last question, and let them decide'",
+      "at": "2026-10-04T14:25:46Z"
+    },
+    {
+      "id": "D71",
+      "text": "M7 ships as 2.0.17; 2.1 stays the launch release after the large benchmark",
+      "why": "Owner (2026-10-04)",
+      "at": "2026-10-04T14:25:46Z"
     }
   ],
   "commands": {
