@@ -3591,7 +3591,7 @@
         "plugin/lib/record.jq"
       ],
       "after": [],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "Allowed-values table (interview.json) and record.jq validation of project.interview, passed in by record_violation (schema stays 1, older VBWs ignore project.interview)",
@@ -3766,7 +3766,7 @@
         "plugin/agents/docs.md"
       ],
       "after": [],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "Architect: Job 1 decisions written against each involvement setting (decide and tell me, options with a recommendation, I make the calls) and wording at the user's level and depth",
