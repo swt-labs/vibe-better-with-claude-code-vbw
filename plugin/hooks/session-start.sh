@@ -34,13 +34,21 @@ if [ -d "$claude_dir/commands/vbw" ]; then
   rmdir "$claude_dir/commands/vbw" 2> /dev/null || true
 fi
 
-context=""
+context="" notice=""
 [ "$removed" -eq 0 ] || context="VBW removed $removed outdated VBW 1 command copies that would have run instead of the VBW 2 commands. Tell the user once: run /reload-skills now (or restart Claude Code) before using any /vbw: command, because this session loaded the old copies. "
 
 if [ -f "$root/.vbw/record.json" ]; then
-  state=$(cd "$root" && "$vbw" status 2>&1 < /dev/null | head -n 1)
-  next=$(cd "$root" && "$vbw" next 2>&1 < /dev/null | head -n 1)
-  context="${context}VBW project ($state). Next: $next. Continue with /vbw:vibe. The vbw command is on PATH (vbw help)."
+  state=$(cd "$root" && "$vbw" status 2>&1 < /dev/null)
+  newer=$?
+  state=$(printf '%s\n' "$state" | head -n 1)
+  if [ "$newer" -eq 4 ]; then
+    # Written by a newer VBW: nothing works until VBW is updated (exit 4).
+    context="${context}VBW project made by a newer VBW (${state#vbw: }). Tell the user once: update VBW with /vbw:update, then restart Claude Code; VBW cannot work on this project until then."
+    notice="This project was made by a newer VBW. Update with /vbw:update, then restart Claude Code."
+  else
+    next=$(cd "$root" && "$vbw" next 2>&1 < /dev/null | head -n 1)
+    context="${context}VBW project ($state). Next: $next. Continue with /vbw:vibe. The vbw command is on PATH (vbw help)."
+  fi
 elif [ -d "$root/.vbw-planning" ]; then
   context="${context}This project has a VBW 1 plan (.vbw-planning/). Tell the user once: VBW 2 leaves it untouched, and /vbw:vibe or /vbw:convert brings it into VBW 2 through a few questions."
 else
@@ -53,8 +61,7 @@ fi
 # The copies were loaded before this hook ran, so this session still has them:
 # the user must reload before typing a /vbw: command. A systemMessage reaches
 # the user at once; the context alone would wait for their first prompt.
-notice=""
-[ "$removed" -eq 0 ] || notice="VBW 2 removed the old VBW 1 commands. Type /reload-skills (or restart Claude Code) before using any /vbw: command."
+[ "$removed" -eq 0 ] || notice="VBW 2 removed the old VBW 1 commands. Type /reload-skills (or restart Claude Code) before using any /vbw: command.${notice:+ $notice}"
 
 [ -z "$context" ] || jq -n --arg c "$context" --arg n "$notice" \
   '{hookSpecificOutput: {hookEventName: "SessionStart", additionalContext: $c}} + (if $n == "" then {} else {systemMessage: $n} end)'

@@ -37,10 +37,22 @@ session_start() {
 
 @test "a corrupt record is reported, not hidden" {
   "$VBW" init > /dev/null
-  printf '{"schema": 9}' > .vbw/record.json
+  printf '{"schema": "damaged"}' > .vbw/record.json
   run session_start "$PROJECT"
   [ "$status" -eq 0 ]
   [[ "$(printf '%s' "$output" | jq -r '.hookSpecificOutput.additionalContext')" == *"record is corrupt"* ]]
+}
+
+@test "a project made by a newer VBW asks for an update, not /vbw:vibe" {
+  "$VBW" init > /dev/null
+  jq '.schema = 99' .vbw/record.json > "$TEST_ROOT/newer.json"
+  cp "$TEST_ROOT/newer.json" .vbw/record.json
+  run session_start "$PROJECT"
+  [ "$status" -eq 0 ]
+  ctx=$(printf '%s' "$output" | jq -r '.hookSpecificOutput.additionalContext')
+  [[ "$ctx" == *"needs a newer VBW"* && "$ctx" == *"/vbw:update"* ]]
+  [[ "$ctx" != *"Continue with /vbw:vibe"* ]]
+  [[ "$(printf '%s' "$output" | jq -r '.systemMessage')" == *"/vbw:update"* ]]
 }
 
 @test "a session started in a subdirectory of a VBW project is told the guards are off" {

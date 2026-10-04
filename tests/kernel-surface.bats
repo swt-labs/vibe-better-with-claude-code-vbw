@@ -239,7 +239,7 @@ T2 CSV export" ]
 }
 
 @test "doctor fails on a corrupt record and names the fix" {
-  printf '{"schema": 9}' > .vbw/record.json
+  printf '{"schema": "damaged"}' > .vbw/record.json
   vbw_run doctor
   [ "$status" -eq 1 ]
   [[ "$output" == *"✗ the plan of record is corrupt"* ]]
