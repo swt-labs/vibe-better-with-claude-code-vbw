@@ -1257,7 +1257,22 @@
         "breaks: R1, R2, R12, R13, R14, R16, R22, R23, R24, R25, R27",
         "tests: project test command"
       ],
-      "predicted": "deep"
+      "predicted": "deep",
+      "qa": {
+        "result": "pass",
+        "tier": "deep",
+        "tree": "d619ada5967a195cb96633b60b4c17b8a1d24ef8",
+        "at": "2026-10-04T01:11:03Z",
+        "note": "18/18 checks"
+      },
+      "outcome": {
+        "tier": "deep",
+        "predicted": "deep",
+        "held": true,
+        "fix_rounds": 0,
+        "qa_findings": 0,
+        "escalations": 0
+      }
     },
     {
       "id": "P26",
