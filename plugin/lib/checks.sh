@@ -83,7 +83,7 @@ checks_gate_blocker() {
 
 # checks_gate_enter ID ALONE: wait for the gate, then register this check.
 checks_gate_enter() {
-  local id="$1" kind=shared g="$VBW_RUNTIME/gate" limit="${VBW_CHECK_WAIT_SECONDS:-900}" start blocker= idle=0 want=
+  local id="$1" kind=shared g="$VBW_RUNTIME/gate" limit="${VBW_CHECK_WAIT_SECONDS:-900}" start blocker='' idle=0 want=''
   [ "$2" != true ] || kind=alone
   mkdir -p "$g" || vbw_die "cannot create $g"
   start=$(date +%s)
