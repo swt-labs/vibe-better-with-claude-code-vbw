@@ -2288,6 +2288,13 @@
         "fix_rounds": 1,
         "qa_findings": 1,
         "escalations": 2
+      },
+      "qa": {
+        "result": "pass",
+        "tier": "deep",
+        "tree": "ad44411d06db3e71fcaccc9630a82b2e55319214",
+        "at": "2026-10-04T22:31:58Z",
+        "note": "18/18 checks"
       }
     },
     {
@@ -4992,7 +4999,7 @@
       "req": "R39",
       "source": "qa",
       "attempts": 0,
-      "status": "fixed",
+      "status": "closed",
       "note": "plugin/skills/map/SKILL.md (line 20), plugin/skills/research/SKILL.md (line 24) and plugin/skills/debug/SKILL.md (lines 23 and 26) start Workflows vbw:mapping, vbw:researching and vbw:investigating with args {models} / {question, models} / {problem, models} only, no profile. The workflows read args.profile (P32.1) and fall back to the neutral default, so scouts and debuggers launched by these skills never get the user's level, depth or involvement. This breaks the criterion that the args handed to each workflow carry the three values and docs/workflows.md ('to every workflow'). tests/profile-levels.bats test 9 only checks the router, so it cannot catch this. Fix: have these skills pass the profile from the vbw interview answers in args, and extend the test to every skill that starts a workflow."
     },
     {
