@@ -6,7 +6,7 @@
   "milestone": {
     "id": "M5",
     "title": "Proof you can trust",
-    "status": "active"
+    "status": "shipped"
   },
   "shipped": [
     {
@@ -28,6 +28,11 @@
       "id": "M4",
       "title": "Adaptive rigor",
       "at": "2026-10-03T21:32:17Z"
+    },
+    {
+      "id": "M5",
+      "title": "Proof you can trust",
+      "at": "2026-10-04T02:04:23Z"
     }
   ],
   "requirements": [
@@ -3362,6 +3367,11 @@
       "id": "D57",
       "at": "2026-10-03T23:55:56Z",
       "text": "Contract approved: 31 requirements, 28 checks, 61 plans (7ec6eaf7b010)"
+    },
+    {
+      "id": "D58",
+      "at": "2026-10-04T02:04:23Z",
+      "text": "Shipped M5 Proof you can trust: 4 requirements proven or accepted"
     }
   ],
   "commands": {
