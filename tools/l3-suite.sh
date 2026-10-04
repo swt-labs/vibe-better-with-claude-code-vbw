@@ -8,14 +8,14 @@
 #   tools/l3-suite.sh [SCENARIO...]     (default: all)
 #
 # Scenarios: greenfield, reject, resume, change, convert, balanced, docs, qafix,
-# decision, debug, research. A user answers every
+# decision, debug, research, edgecase, leftover. A user answers every
 # question with VBW's recommendation unless the scenario says otherwise.
 set -uo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 l3() { bash "$ROOT/tools/l3.sh" "$@"; }
 VBW="$ROOT/plugin/bin/vbw"
-ALL="greenfield reject resume change convert balanced docs qafix decision debug research"
+ALL="greenfield reject resume change convert balanced docs qafix decision debug research edgecase leftover"
 RESULTS="$ROOT/tools/l3-results"
 STEPS=60
 
@@ -539,6 +539,99 @@ scenario_research() {
     expect "Scouts did the research" [ "$(agent_types | grep -c '^vbw:scout$')" -ge 2 ]
     case "$reply" in *2.23*) say "ok   the answer names Git 2.23" ;; *) say "FAIL the answer names Git 2.23"; failed=1 ;; esac
     case "$reply" in *https://*) say "ok   the answer gives a link" ;; *) say "FAIL the answer gives a link"; failed=1 ;; esac
+  }
+}
+
+# run_check_in DIR CHECK_ID: run the approved check's argv in DIR (as argv).
+run_check_in() {
+  local a argv=()
+  while IFS= read -r -d '' a; do argv+=("$a"); done \
+    < <(jq -j --arg c "$2" 'first(.checks[] | select(.id == $c)) | .run[] + "\u0000"' "$dir/.vbw/record.json")
+  [ "${#argv[@]}" -gt 0 ] || return 1
+  (cd "$1" && "${argv[@]}") > /dev/null 2>&1
+}
+
+# A request that states an edge case (R34): the Lead lists a rule for it, with
+# its check, before the user approves; the check passes on the solution and
+# fails on a copy that ignores the edge.
+scenario_edgecase() {
+  new_project
+  fixture="greet.sh from scratch; the request states one edge case (several words as separate arguments)"
+  edge='./greet.sh Ana Maria (two arguments) prints "Hello, Ana Maria!"'
+  start="$GREET Edge case to handle: $edge."
+  checks() {
+    common_checks
+    local rule="" rc="" listed=false appr=false sol=false nof=false passed=true h v tmp pat
+    pat='maria|several|multiple|more than one|separate|words|two arg'
+    # The record as it was when the user approved: the commit that approves.
+    h=$(git -C "$dir" log --reverse --format='%H %s' -- .vbw/record.json | grep -m1 'chore(vbw): approve contract' | cut -d' ' -f1 || true)
+    if [ -n "$h" ]; then
+      v=$(git -C "$dir" show "$h^:.vbw/record.json" 2> /dev/null || true)
+      rule=$(printf '%s' "$v" | jq -r --arg p "$pat" 'first(.requirements[]?.rules[]? | select(.text | test($p; "i"))) | .text // empty' 2> /dev/null || true)
+      rc=$(printf '%s' "$v" | jq -r --arg p "$pat" 'first(.requirements[]?.rules[]? | select(.text | test($p; "i"))) | .check // empty' 2> /dev/null || true)
+      [ -n "$rule" ] && [ -n "$rc" ] && printf '%s' "$v" | jq -e --arg c "$rc" 'any(.checks[]; .id == $c)' > /dev/null 2>&1 && listed=true
+      appr=true
+    fi
+    if [ -n "$rc" ]; then
+      jq -e --arg c "$rc" '.evidence.checks[$c].status == "pass"' "$dir/.vbw/record.json" > /dev/null 2>&1 || appr=false
+      tmp=$(mktemp -d "${TMPDIR:-/tmp}/vbw-l3-edge.XXXXXX")
+      git -C "$dir" archive HEAD | tar -x -C "$tmp"
+      run_check_in "$tmp" "$rc" && sol=true
+      # The same project with a greet.sh that ignores the edge case.
+      printf '#!/bin/sh\necho "Hello, ${1:-world}!"\n' > "$tmp/greet.sh"
+      run_check_in "$tmp" "$rc" || nof=true
+      rm -rf "$tmp"
+    fi
+    expect "a rule for the edge case was listed before approval, with its check" [ "$listed" = true ]
+    expect "the contract was approved with that check passing" [ "$appr" = true ]
+    expect "the check passes on the solution" [ "$sol" = true ]
+    expect "the check fails on a copy that ignores the edge" [ "$nof" = true ]
+    [ "$failed" -eq 0 ] || passed=false
+    result_write edgecase "$fixture" "${cost_usd:-0}" "$passed" \
+      "$(jq -n --arg e "$edge" --arg r "$rule" --arg c "$rc" --argjson l "$listed" --argjson a "$appr" --argjson s "$sol" --argjson n "$nof" \
+        '{edge_case: $e, rule_text: $r, rule_check: $c, rule_listed_before_approval: $l, check_approved: $a, check_passes_on_solution: $s, check_fails_without_edge: $n}')" \
+      '["an edge case the user states only in a later answer","an error case (a rule for a refusal)","a rule listed for a [human] requirement","a project larger than the greet.sh fixture"]'
+  }
+}
+
+# A leftover untracked file in the working folder (R34): the project command
+# fails on it when run in the working folder, and the proof (run on a clean
+# copy) is unchanged and passes. lint.sh records where it ran and whether the
+# file was there.
+scenario_leftover() {
+  new_project
+  fixture="greet.sh from scratch plus a committed lint.sh that fails when todos.txt exists; project command lint: sh lint.sh"
+  printf '#!/bin/sh\n[ -z "${LEFTOVER_PROBE:-}" ] || { pwd -P; [ -e todos.txt ] && echo yes || echo no; } > "$LEFTOVER_PROBE"\n[ ! -e todos.txt ]\n' > "$dir/lint.sh"
+  git -C "$dir" add -A && git -C "$dir" commit -qm "chore: lint.sh"
+  start="$GREET Also make the project command lint (sh lint.sh) part of the project's commands; it is already in the repository."
+  checks() {
+    common_checks
+    local probe before after f=todos.txt flips=false same=false pp=false inc=true gone=false passed=true where a argv=()
+    jq -e '.commands.lint' "$dir/.vbw/record.json" > /dev/null 2>&1 || { say "FAIL no lint command in the record"; failed=1; }
+    before=$(jq -c '.evidence | {passed, checks: (.checks | map_values(.status)), commands: (.commands | map_values(.status))}' "$dir/.vbw/record.json" 2> /dev/null)
+    printf 'buy milk\n' > "$dir/$f"
+    while IFS= read -r -d '' a; do argv+=("$a"); done < <(jq -j '.commands.lint[] + "\u0000"' "$dir/.vbw/record.json" 2> /dev/null)
+    (cd "$dir" && [ "${#argv[@]}" -gt 0 ] && ! "${argv[@]}" > /dev/null 2>&1) && flips=true
+    probe=$(mktemp "${TMPDIR:-/tmp}/vbw-l3-probe.XXXXXX")
+    (cd "$dir" && LEFTOVER_PROBE="$probe" "$VBW" prove > /dev/null 2>&1) || true
+    after=$(jq -c '.evidence | {passed, checks: (.checks | map_values(.status)), commands: (.commands | map_values(.status))}' "$dir/.vbw/record.json" 2> /dev/null)
+    [ -n "$before" ] && [ "$before" = "$after" ] && same=true
+    jq -e '.evidence.passed == true' "$dir/.vbw/record.json" > /dev/null 2>&1 && pp=true
+    where=$(sed -n 1p "$probe"); [ "$(sed -n 2p "$probe")" = no ] && inc=false
+    rm -f "$probe"
+    [ -n "$where" ] && [ "$where" != "$(cd "$dir" && pwd -P)" ] && [ ! -e "$where" ] \
+      && ! git -C "$dir" worktree list --porcelain | grep -qF "$where" && gone=true
+    rm -f "$dir/$f"
+    expect "the check flips in the working folder with the leftover file" [ "$flips" = true ]
+    expect "the proof is unchanged by the leftover file" [ "$same" = true ]
+    expect "the proof passed" [ "$pp" = true ]
+    expect "the file was not in the proof copy" [ "$inc" = false ]
+    expect "the proof copy is gone" [ "$gone" = true ]
+    [ "$failed" -eq 0 ] || passed=false
+    result_write leftover "$fixture" "${cost_usd:-0}" "$passed" \
+      "$(jq -n --arg f "$f" --argjson fl "$flips" --argjson s "$same" --argjson p "$pp" --argjson i "$inc" --argjson g "$gone" \
+        '{leftover_file: $f, check_flips_in_working_folder: $fl, proof_unchanged: $s, proof_passed: $p, file_in_proof_copy: $i, copy_removed: $g}')" \
+      '["a leftover modified tracked file","a git-ignored leftover (linked into the copy by design)","a project command other than a shell script","a project larger than the greet.sh fixture"]'
   }
 }
 
