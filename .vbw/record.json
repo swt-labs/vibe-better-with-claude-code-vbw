@@ -3696,15 +3696,14 @@
         "P31.1",
         "P30.2"
       ],
-      "status": "blocked",
+      "status": "planned",
       "role": "dev",
       "tasks": [
         "Trim the router's wording to make room, keeping every behavior its tests name",
         "Interview skill: the three fixed questions with exactly the listed options, what and for whom into the spec Goals, at most three written follow-ups, the keep question last, answers recorded one by one with vbw interview set and keep",
         "Router spec step: when profile.ask, follow vbw:interview after mapping and before spec work; resume at profile.pending; re-ask on an unrecognised answer",
         "Keep the router within 1,400 words and the interview skill within 900"
-      ],
-      "note": "C35 test 7 (interview-flow.bats:99) needs the kernel to report pending=keep after the three answers are set but before 'vbw interview keep'. plugin/lib/interview.sh interview_effective treats three private answers as kept=private and pending=null, so it fails; fix is in plugin/lib/interview.sh (P30.1/P31.1 files, outside this plan). Skill and router are done and committed; the other 9 C35 tests pass."
+      ]
     },
     {
       "id": "P31.3",
@@ -4624,6 +4623,11 @@
       "text": "The kernel budget is 3,300 lines (was 3,000)",
       "why": "Owner (2026-10-04): the kernel grew for real features (rigor, clean-copy proof, interview); squeezing lines would only game the counter; 10% headroom keeps the core small",
       "at": "2026-10-04T15:04:34Z"
+    },
+    {
+      "id": "D74",
+      "at": "2026-10-04T15:10:16Z",
+      "text": "Contract approved: 39 requirements, 36 checks, 80 plans (225406493a63)"
     }
   ],
   "commands": {
