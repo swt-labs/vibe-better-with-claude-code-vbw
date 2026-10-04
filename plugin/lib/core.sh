@@ -15,13 +15,19 @@ vbw_die() {
 # never replaced or cleared, and no trap text is ever evaluated.
 VBW_GUARD_FILES=()
 VBW_GUARD_LOCKS=()
+VBW_GUARD_DIRS=()
 VBW_GUARD_EXIT=0
 
-# vbw_guard_add FILE|LOCKDIR...: remove these on interrupt, die or vbw_guard_drop.
-# Kind is the first argument: file or lock.
+# vbw_guard_add KIND PATH: remove PATH on interrupt, die or vbw_guard_drop.
+# KIND is file, lock (a lock directory, rmdir) or dir (a directory tree, rm -rf;
+# rm never follows a symlink inside it).
 vbw_guard_add() {
   local kind="$1" path="$2"
-  if [ "$kind" = lock ]; then VBW_GUARD_LOCKS+=("$path"); else VBW_GUARD_FILES+=("$path"); fi
+  case "$kind" in
+    lock) VBW_GUARD_LOCKS+=("$path") ;;
+    dir) VBW_GUARD_DIRS+=("$path") ;;
+    *) VBW_GUARD_FILES+=("$path") ;;
+  esac
   trap 'vbw_guard_run; exit 130' INT
   trap 'vbw_guard_run; exit 143' TERM
   trap 'vbw_guard_run; exit 129' HUP
@@ -35,6 +41,7 @@ vbw_guard_add() {
 vbw_guard_reset() {
   VBW_GUARD_FILES=()
   VBW_GUARD_LOCKS=()
+  VBW_GUARD_DIRS=()
   VBW_GUARD_EXIT=0
 }
 
@@ -43,14 +50,17 @@ vbw_guard_run() {
   local p
   for p in ${VBW_GUARD_FILES[@]+"${VBW_GUARD_FILES[@]}"}; do rm -f "$p" 2>/dev/null || true; done
   for p in ${VBW_GUARD_LOCKS[@]+"${VBW_GUARD_LOCKS[@]}"}; do rmdir "$p" 2>/dev/null || true; done
+  for p in ${VBW_GUARD_DIRS[@]+"${VBW_GUARD_DIRS[@]}"}; do rm -rf "$p" 2>/dev/null || true; done
   VBW_GUARD_FILES=()
   VBW_GUARD_LOCKS=()
+  VBW_GUARD_DIRS=()
 }
 
 # vbw_guard_drop PATH: clean up one registered path now (file or lock dir);
 # when nothing is left, the traps are removed again.
 vbw_guard_drop() {
   local p keep=()
+  for p in ${VBW_GUARD_DIRS[@]+"${VBW_GUARD_DIRS[@]}"}; do [ "$p" != "$1" ] || rm -rf "$1" 2>/dev/null || true; done
   rm -f "$1" 2>/dev/null || true
   rmdir "$1" 2>/dev/null || true
   for p in ${VBW_GUARD_FILES[@]+"${VBW_GUARD_FILES[@]}"}; do [ "$p" = "$1" ] || keep+=("$p"); done
@@ -58,7 +68,10 @@ vbw_guard_drop() {
   keep=()
   for p in ${VBW_GUARD_LOCKS[@]+"${VBW_GUARD_LOCKS[@]}"}; do [ "$p" = "$1" ] || keep+=("$p"); done
   VBW_GUARD_LOCKS=(${keep[@]+"${keep[@]}"})
-  [ $(( ${#VBW_GUARD_FILES[@]} + ${#VBW_GUARD_LOCKS[@]} )) -eq 0 ] || return 0
+  keep=()
+  for p in ${VBW_GUARD_DIRS[@]+"${VBW_GUARD_DIRS[@]}"}; do [ "$p" = "$1" ] || keep+=("$p"); done
+  VBW_GUARD_DIRS=(${keep[@]+"${keep[@]}"})
+  [ $(( ${#VBW_GUARD_FILES[@]} + ${#VBW_GUARD_LOCKS[@]} + ${#VBW_GUARD_DIRS[@]} )) -eq 0 ] || return 0
   trap - INT TERM HUP
   if [ "$VBW_GUARD_EXIT" -eq 1 ]; then trap - EXIT; VBW_GUARD_EXIT=0; fi
 }
