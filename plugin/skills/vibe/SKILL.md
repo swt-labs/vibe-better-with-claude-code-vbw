@@ -14,7 +14,7 @@ hooks:
 
 Kernel decides next step; you carry it out and talk to user. First rule, even
 for a one-line fix: no project file changes until the contract is approved and
-a build runs (express makes small work fast).
+a build runs.
 
 ```!
 "${CLAUDE_PLUGIN_ROOT}/bin/vbw" next --json 2>&1 || true
@@ -89,7 +89,7 @@ what project does, propose improvements. Else ask what it is for and who uses it
 testable: `[auto]` when a check can prove it, `[human]` when only a person can
 judge it (look, feel, tone); a document that must contain something is `[auto]`, how it reads is `[human]`. Propose what, not how: leave sign-in, data
 storage, hosting, paid services to decision round before planning; write a
-constraint only when user stated it. Recommend; don't interrogate. Add each
+constraint only when user stated it. Recommend; don't interrogate. Then follow `vbw:suggest`. Add each
 agreed requirement: `vbw spec add auto|human "statement"` (goals and user's
 constraints go in `.vbw/spec.md` directly, then `vbw spec sync`). Default milestone title → `vbw milestone rename "<title>"`. Check
 `## Commands` in `.vbw/spec.md` (what every proof runs) fits what was agreed
@@ -114,7 +114,7 @@ trade-off they accepted>"`. Plan again: `VBW_SESSION_ID=${CLAUDE_SESSION_ID} vbw
 
 **approve** (needs user): `vbw show contract --changes`. After earlier approval
 it lists only changes: explain just those (rest stays approved). Else
-`vbw show contract`, explain each requirement, how checked, plans, files, project commands that will run. Ask user to type `/vbw:approve`. You cannot approve.
+`vbw show contract`, explain each requirement, how checked, plans, files, project commands that will run. Follow `vbw:suggest`, then ask user to type `/vbw:approve`. You cannot approve.
 
 **build**: `VBW_SESSION_ID=${CLAUDE_SESSION_ID} vbw run start build <detail.plans>`, Workflow `vbw:building` with
 args `{"plans": <detail.plans>, "docs": <detail.docs>, "models": ..., "rigor": ...}` (Dev per
