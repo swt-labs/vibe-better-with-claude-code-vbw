@@ -108,6 +108,23 @@ undo):
 
 Autonomy `hands-off` takes the recommended option whatever the involvement.
 
+## What never changes
+
+The answers never change:
+
+- rigor: the tier of each phase and its checks come from the requirements and
+  the code (docs/rigor.md), not from your level;
+- autonomy: how much VBW does alone is `vbw config set autonomy`;
+- proof: approved checks run the same for everyone (docs/proof.md);
+- machine-read output: `vbw next --json` is the same for every level except its
+  `profile` field, and agent result schemas keep their fields and values;
+- the record: its fields, and what `vbw` writes to it;
+- commit messages and provenance trailers: `{type}({scope}): ...` and
+  `VBW-Plan`, `VBW-Req`, as written for every user.
+
+A beginner and a senior engineer get the same checks and the same gates
+(docs/next.md); they read different words.
+
 ## Changing an answer
 
 Run `/vbw:profile`, or `vbw interview set KEY VALUE`. The change goes to
