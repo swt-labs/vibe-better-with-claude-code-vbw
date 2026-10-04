@@ -63,7 +63,35 @@ lease older than 24 hours is ignored (a crashed run must not lock a project).
 | `vbw commit P1.2 "feat(x): ..."` | Dev | commit the plan's changed files with provenance trailers |
 | `vbw plan done P1.2` / `vbw plan block P1.2 "reason"` | Dev | the plan's outcome |
 | `vbw fix done F1` | Dev | verified: no uncommitted changes in the files it may touch, and the checks of every finished requirement those files serve pass; then awaiting proof |
-| `vbw apply < plan.json` | Lead | replace phases, plans and checks in one validated write (refused once any plan has started) |
+| `vbw apply < plan.json` | Lead | replace phases, plans and checks, and set each `auto` requirement's rules, in one validated write (refused while a build or fix run is open; a plan that has started must come back unchanged) |
+
+## `vbw apply` and rules
+
+The Lead's one write is a JSON document on stdin. The optional `rules` key
+lists what each `auto` requirement states, with the check that tests it:
+
+```json
+{"phases": [{"id": "P1", "title": "Pay", "reqs": ["R1"]}],
+ "plans":  [{"id": "P1.1", "phase": "P1", "title": "Pay", "reqs": ["R1"], "files": ["src/pay.sh"], "after": []}],
+ "checks": [{"id": "C1", "req": "R1", "run": ["sh", "tests/pay.sh"], "files": ["tests/pay.sh"]},
+            {"id": "C2", "req": "R1", "run": ["sh", "tests/twice.sh"], "files": ["tests/twice.sh"]}],
+ "rules":  [{"req": "R1", "text": "A payment succeeds", "check": "C1"},
+            {"req": "R1", "text": "Paying twice is refused", "check": "C2"}]}
+```
+
+When the key is present, `vbw apply` refuses, writes nothing, and names the
+problem when:
+
+- a rule's `check` is not a check of that rule's requirement in this plan
+  ("the rule ... names C9, which is not a check of R1 in this plan");
+- a rule is for a `human` requirement;
+- an `auto` requirement of the plan's phases lists no rules (`R1 lists no
+  rules`), counting rules the record already holds.
+
+An accepted document stores each requirement's rules in the record
+(docs/record.md). Re-planning without the key keeps the stored rules. Without
+the key on a first plan, nothing changes (see docs/proof.md for the approval
+consequence).
 
 ## Agents
 
