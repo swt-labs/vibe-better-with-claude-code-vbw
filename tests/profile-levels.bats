@@ -125,7 +125,7 @@ carries_profile() {
   grep -iE 'profile' "$r" | grep -qiE 'workflow|args'
 }
 
-@test "R39: prompts stay within their budgets: agents 1.5k tokens, mode prompts 3k, router 2k, all prompts 15k" {
+@test "R39: prompts stay within their budgets: agents 1.5k tokens, mode prompts 3k, router 2k, all prompts 16k (owner raised it from 15k on 2026-10-04)" {
   local f total=0 w
   while IFS= read -r f; do
     w=$(wc -w < "$f"); total=$((total + w))
@@ -136,8 +136,8 @@ carries_profile() {
     case "$f" in */skills/vibe/SKILL.md) [ "$w" -le 1400 ] ;; *) [ "$w" -le 2000 ] ;; esac || { echo "$f has $w words"; false; }
   done < <(skills)
   echo "all prompts: $total words"
-  # About 1.4 tokens a word: 15k tokens is 10,700 words.
-  [ "$total" -le 10700 ]
+  # About 1.4 tokens a word: 16k tokens is 11,400 words.
+  [ "$total" -le 11400 ]
 }
 
 @test "R39: the workflows stay within 1,500 lines of JavaScript" {

@@ -4649,6 +4649,12 @@
       "id": "D74",
       "at": "2026-10-04T15:10:16Z",
       "text": "Contract approved: 39 requirements, 36 checks, 80 plans (225406493a63)"
+    },
+    {
+      "id": "D75",
+      "text": "All VBW prompts together may use 16k tokens (was 15k)",
+      "why": "Owner (2026-10-04): the interview and suggestions are new behaviour that needs words; trimming further risked meaning",
+      "at": "2026-10-04T15:27:12Z"
     }
   ],
   "commands": {
