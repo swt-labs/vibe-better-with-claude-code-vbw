@@ -2337,9 +2337,9 @@
       "tier": "deep",
       "reasons": [
         "requirements: 1",
-        "files: 8 (77895 bytes)",
+        "files: 9 (82979 bytes)",
         "risk: none",
-        "breaks: R12, R13, R14, R22, R23, R24, R25, R27, R28, R31, R32, R33, R38, R40",
+        "breaks: R12, R13, R14, R22, R23, R24, R25, R27, R28, R31, R32, R33, R38, R39, R40",
         "tests: project test command"
       ],
       "predicted": "deep"
@@ -4010,13 +4010,13 @@
       ],
       "after": [],
       "status": "done",
-      "role": "dev",
       "tasks": [
         "Allowed-values table (interview.json) and record.jq validation of project.interview, passed in by record_violation (schema stays 1, older VBWs ignore project.interview)",
         "interview.sh: private answers file in the git common dir (locked read-modify-write via vbw_lock_take), shared answers via record_update, effective read with private-over-project precedence and pending question",
         "cmd-interview.sh: show, --json, set KEY VALUE (refuses other values naming the allowed ones, refuses purpose) and keep private|project (moves, leaves no copy, needs all three); register in bin/vbw with its help line",
         "Confirm the kernel stays within 3,000 lines (physical, tests/kernel-safety.bats) and runs under /bin/bash 3.2"
-      ]
+      ],
+      "role": "dev"
     },
     {
       "id": "P30.2",
@@ -4034,13 +4034,13 @@
         "P30.1"
       ],
       "status": "done",
-      "role": "dev",
       "tasks": [
         "vbw status text: the three answers and where they are kept, or 'the interview has not been done'",
         "vbw status --json: an interview object (the same shape as vbw interview --json)",
         "/vbw:profile skill: show the answers, change any one with vbw interview set (others untouched), keep the model presets",
         "help skill: the /vbw:profile row says it also sets how VBW talks to the user"
-      ]
+      ],
+      "role": "dev"
     },
     {
       "id": "P30.3",
@@ -4058,12 +4058,12 @@
         "P30.2"
       ],
       "status": "done",
-      "role": "docs",
       "tasks": [
         "docs/interview.md: the three answers, their allowed values and the commands",
         "docs/interview.md: private versus shared storage, worktrees, changing an answer, older records",
         "docs/record.md: project.interview, additive under project, schema stays 1"
-      ]
+      ],
+      "role": "docs"
     },
     {
       "id": "P31.1",
@@ -4082,13 +4082,13 @@
         "P30.1"
       ],
       "status": "done",
-      "role": "dev",
       "tasks": [
         "interview.sh: the profile object for next (answers or the neutral default, interviewed, kept, pending)",
         "next.jq: profile in the output, and ask true only at the spec step with no completed interview (new project, or a pre-version project at its next milestone)",
         "cmd-next.sh: hand the profile to next.jq; machine-read fields stay unchanged",
         "Confirm the kernel line budget"
-      ]
+      ],
+      "role": "dev"
     },
     {
       "id": "P31.2",
@@ -4107,13 +4107,13 @@
         "P30.2"
       ],
       "status": "done",
-      "role": "dev",
       "tasks": [
         "Trim the router's wording to make room, keeping every behavior its tests name",
         "Interview skill: the three fixed questions with exactly the listed options, what and for whom into the spec Goals, at most three written follow-ups, the keep question last, answers recorded one by one with vbw interview set and keep",
         "Router spec step: when profile.ask, follow vbw:interview after mapping and before spec work; resume at profile.pending; re-ask on an unrecognised answer",
         "Keep the router within 1,400 words and the interview skill within 900"
-      ]
+      ],
+      "role": "dev"
     },
     {
       "id": "P31.3",
@@ -4132,12 +4132,12 @@
         "P30.3"
       ],
       "status": "done",
-      "role": "docs",
       "tasks": [
         "docs/interview.md: the flow, when it is asked and never asked again, interrupted and older projects",
         "docs/next.md: the profile object and profile.ask in vbw next --json",
         "docs/interview.md: why the answers shape wording and not rigor or autonomy"
-      ]
+      ],
+      "role": "docs"
     },
     {
       "id": "P32.1",
@@ -4159,13 +4159,13 @@
         "P31.1"
       ],
       "status": "done",
-      "role": "dev",
       "tasks": [
         "planning.js and building.js: read args.profile into a voice text and append it to every agent task",
         "fixing.js and verifying.js: the same",
         "mapping.js, investigating.js and researching.js: the same",
         "Every agent call still passes a schema; workflows stay within 1,500 lines"
-      ]
+      ],
+      "role": "dev"
     },
     {
       "id": "P32.2",
@@ -4185,13 +4185,13 @@
       ],
       "after": [],
       "status": "done",
-      "role": "dev",
       "tasks": [
         "Architect: Job 1 decisions written against each involvement setting (decide and tell me, options with a recommendation, I make the calls) and wording at the user's level and depth",
         "Lead, Dev and Docs: the task names the three values; write what reaches the user at that level",
         "QA, Debugger and Scout: the same",
         "Each agent stays within 900 words"
-      ]
+      ],
+      "role": "dev"
     },
     {
       "id": "P32.3",
@@ -4235,13 +4235,13 @@
         "P32.2"
       ],
       "status": "done",
-      "role": "dev",
       "tasks": [
         "Skills with a shell block (approve config convert debug discuss doctor fix init list-todos map): add the vbw interview line and one sentence to write at the user's level, explanation depth and involvement",
         "Skills with a shell block (pause profile qa report research resume rtk status uninstall verify): the same",
         "Skills without one (compress help skills teach todo update whats-new): add the pre-approved shell block, its allowed-tools and the sentence",
         "Measure all prompts against 10,700 words and 2,000 per mode prompt; compress where needed"
-      ]
+      ],
+      "role": "dev"
     },
     {
       "id": "P32.4",
@@ -4257,12 +4257,12 @@
         "P31.2"
       ],
       "status": "done",
-      "role": "dev",
       "tasks": [
         "Pass next's profile in every workflow's args",
         "Honor involvement at needs_decisions: decide and tell me (decide, vbw decide, report), options with a recommendation (ask with a recommendation), I make the calls (put every decision to the user before proceeding)",
         "Speak to the user at the profile's level and depth; stay within 1,400 words"
-      ]
+      ],
+      "role": "dev"
     },
     {
       "id": "P32.5",
@@ -4283,12 +4283,12 @@
         "P31.3"
       ],
       "status": "done",
-      "role": "docs",
       "tasks": [
         "docs/workflows.md: args.profile and how agent tasks carry it",
         "docs/interview.md: how involvement changes what VBW does with a decision",
         "docs/interview.md: what never changes with level (schemas, record fields, commit messages)"
-      ]
+      ],
+      "role": "docs"
     },
     {
       "id": "P33.1",
@@ -4308,13 +4308,13 @@
         "P31.1"
       ],
       "status": "done",
-      "role": "dev",
       "tasks": [
         "record.jq: validate project.declined as entries of text and ISO time (absent means none; schema stays 1)",
         "cmd-suggest.sh: suggest decline TEXT (record through record_update, deduplicated by case and spacing) and suggest list",
         "bin/vbw: register suggest and its help line",
         "next.jq and cmd-next.sh: declined as a list of texts in vbw next --json; confirm the kernel line budget"
-      ]
+      ],
+      "role": "dev"
     },
     {
       "id": "P33.2",
@@ -4334,12 +4334,12 @@
         "P33.1"
       ],
       "status": "done",
-      "role": "dev",
       "tasks": [
         "Suggest skill: at most three yes or no suggestions, level-matched, none required, zero valid, no duplicate of a requirement or decision, never an already-declined one; reads the profile and the declined list",
         "Accepted: vbw spec add or vbw decide; declined: vbw suggest decline",
         "Router: offer suggestions only at spec proposal and at plan approval; stay within 1,400 words"
-      ]
+      ],
+      "role": "dev"
     },
     {
       "id": "P33.3",
@@ -4359,12 +4359,12 @@
         "P33.2"
       ],
       "status": "done",
-      "role": "docs",
       "tasks": [
         "docs/interview.md: when suggestions are offered, accepted and declined",
         "docs/next.md: the declined list in vbw next --json",
         "docs/record.md: project.declined"
-      ]
+      ],
+      "role": "docs"
     },
     {
       "id": "P34.1",
@@ -4391,13 +4391,13 @@
         "P33.2"
       ],
       "status": "done",
-      "role": "dev",
       "tasks": [
         "Scenario newcomer: answers never, plain words, decide and tell me, what and for whom, follow-ups and the keep question; saves the transcript",
         "Scenario senior: senior engineer, technical and brief, I make the calls, the same questions; saves the transcript",
         "Both in ALL and the suite header; after the interview a second request in a new session; outcome read from vbw interview, the record, the spec Goals and git; result_write with facts, not_tested and the transcript path",
         "Run both in the real Claude Code app; commit the two results and transcripts for the owner's R41 reading"
-      ]
+      ],
+      "role": "dev"
     },
     {
       "id": "P35.1",
@@ -4413,12 +4413,12 @@
       ],
       "after": [],
       "status": "planned",
-      "role": "dev",
       "tasks": [
         "record.jq: a check may carry alone, which must be a boolean, refused naming the check",
         "cmd-show.sh: the check line and the contract changes view show a check marked alone",
         "cmd-apply.sh: document alone among the check fields in the apply header"
-      ]
+      ],
+      "role": "dev"
     },
     {
       "id": "P35.2",
@@ -4436,13 +4436,13 @@
         "P35.1"
       ],
       "status": "planned",
-      "role": "dev",
       "tasks": [
         "checks.sh: an exclusion gate under .vbw/runtime that holds an alone check by itself and lets non-alone checks share, with registrations owned by a process id",
         "checks.sh: take over a registration whose owner process is dead, release on timeout, exit and interrupt, and fail a wait beyond VBW_CHECK_WAIT_SECONDS (default 900) naming the check waited on",
         "standards.bats and standards-selftest.bats: allow the signal-free liveness probe kill -0 while any other killing stays refused, with a selftest",
         "run the full suite under /bin/bash and bash 5 and confirm the kernel line budget"
-      ]
+      ],
+      "role": "dev"
     },
     {
       "id": "P35.3",
@@ -4460,11 +4460,11 @@
         "P35.2"
       ],
       "status": "planned",
-      "role": "docs",
       "tasks": [
         "docs/proof.md: what alone means, how the exclusion works, the wait limit and its variable",
         "docs/record.md: alone in the checks field row"
-      ]
+      ],
+      "role": "docs"
     },
     {
       "id": "P36.1",
@@ -4484,14 +4484,14 @@
         "P35.2"
       ],
       "status": "planned",
-      "role": "dev",
       "tasks": [
         "record.jq: validate the optional top-level passes object (check id to at, contract, tree) in the single writer, schema stays 1",
         "checks.sh: fingerprint a check's served files from committed content (its requirement's plan files and its own files), decide reuse, record a pass only when no served file is dirty and drop the entry on fail or timeout",
         "cmd-prove.sh: record the passes of the checks that passed on the clean copy; prove still runs every check",
         "cmd-fix.sh: skip checks whose recorded pass matches the fingerprint and the contract hash, print C unchanged since its pass (time), rerun everything else with the same failure message",
         "run the full suite"
-      ]
+      ],
+      "role": "dev"
     },
     {
       "id": "P36.2",
@@ -4509,11 +4509,11 @@
         "P35.3"
       ],
       "status": "planned",
-      "role": "docs",
       "tasks": [
         "docs/proof.md: the reuse rule, its wording and that vbw prove runs every check",
         "docs/record.md: the passes object"
-      ]
+      ],
+      "role": "docs"
     },
     {
       "id": "P37.1",
@@ -4531,13 +4531,13 @@
         "P36.1"
       ],
       "status": "planned",
-      "role": "dev",
       "tasks": [
         "cmd-fix.sh: accept one or more ids for done (one for retry), drop duplicates, name unknown, not-open and dirty fixes with their reasons",
         "cmd-fix.sh: run the union of the served checks once, attribute a failing check only to the fixes it serves",
         "cmd-fix.sh: close the fixes that can close in one record_update, human requirement fixes closing as alone, non-zero exit if any fix could not close",
         "bin/vbw help and agents/dev.md: show the multi-id form"
-      ]
+      ],
+      "role": "dev"
     },
     {
       "id": "P37.2",
@@ -4555,10 +4555,28 @@
         "P36.2"
       ],
       "status": "planned",
-      "role": "docs",
       "tasks": [
         "docs/proof.md: multi-id fix done, partial success and exit code",
         "docs/workflows.md: the fix done row shows the multi-id form"
+      ],
+      "role": "docs"
+    },
+    {
+      "id": "P35.4",
+      "phase": "P35",
+      "title": "The Lead marks checks that start containers or services to run alone",
+      "reqs": [
+        "R45"
+      ],
+      "files": [
+        "plugin/agents/lead.md"
+      ],
+      "after": [
+        "P35.1"
+      ],
+      "status": "planned",
+      "tasks": [
+        "lead.md: a check that starts containers, services or other heavy shared resources gets the alone marker in vbw apply; within the agent token budget"
       ]
     }
   ],
