@@ -47,7 +47,7 @@ if type != "object" then ["record must be a JSON object"] else
     ( select($r.schema != 1) | "schema must be 1" ),
     ( $r | keys[]
       | select(one_of(["schema","project","milestone","requirements","checks","phases","plans",
-                       "fixes","todos","decisions","commands","settings","evidence","lease","shipped","converted"]) | not)
+                       "fixes","todos","decisions","commands","settings","evidence","passes","lease","shipped","converted"]) | not)
       | "unknown key: \(.)" ),
     ( ["requirements","checks","phases","plans","fixes","todos","decisions","shipped"][]
       | select(($r[.] | type) != "array") | "\(.) must be an array" ),
@@ -214,6 +214,14 @@ if type != "object" then ["record must be a JSON object"] else
                     and (.passed | type == "boolean") and (.checks | results) and (.commands | results)
                     and (.scope | type == "array" and all(.[]; type == "string"))) | not)
             | "evidence needs at, contract, tree, passed, checks, commands and scope (docs/proof.md)" )
+        end ),
+    ( $r.passes
+      | select(. != null)
+      | if type != "object" then "passes must be an object of check id: {at, contract, tree}" else
+          to_entries[] | . as $e
+          | select(((($checks | has_id($e.key)) and ($e.value | type == "object" and (keys == ["at","contract","tree"])
+                    and (.at | iso) and (.contract | nonempty) and (.tree | nonempty))) | not))
+          | "passes.\($e.key) must name a check and be {at: ISO-8601 UTC time, contract, tree}"
         end ),
     ( $r.lease
       | select(. != null)
