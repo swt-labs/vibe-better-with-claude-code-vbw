@@ -11,7 +11,7 @@ allowed-tools: Bash("${CLAUDE_PLUGIN_ROOT}/bin/vbw" *) Bash(vbw *) Workflow(vbw:
 "${CLAUDE_PLUGIN_ROOT}/bin/vbw" interview 2>&1 || true
 ```
 
-Write to the user's level, explanation depth and involvement (above; "-": plain words).
+Write to the user's level, explanation depth and involvement (above; "-": plain words), and pass them to the workflow as `"profile": {"level", "depth", "involvement"}` (none for "-").
 
 The problem, in the user's words: $ARGUMENTS
 
@@ -21,8 +21,8 @@ expected). VBW needs the Workflow tool: the `workflows` line above turns it on
 project the models line shows an error; omit `models`.)
 
 Start the Workflow `vbw:investigating` with args `{"problem": "<the problem>",
-"models": <the JSON above>}`. When it returns, tell the user the root cause,
+"models": <the JSON above>, "profile": ...}`. When it returns, tell the user the root cause,
 its evidence, rejected hypotheses, confidence and the proposed fix, then ask whether to fix it now. If yes, start the Workflow again
 with args `{"problem": "<the problem>", "fix": <the diagnosis it returned>,
-"models": ...}`: one Debugger fixes the root cause, adds a regression test,
+"models": ..., "profile": ...}`: one Debugger fixes the root cause, adds a regression test,
 commits and verifies (`vbw prove` in a VBW project). Report what changed.

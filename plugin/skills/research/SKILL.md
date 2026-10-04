@@ -11,7 +11,7 @@ allowed-tools: Bash("${CLAUDE_PLUGIN_ROOT}/bin/vbw" *) Bash(vbw *) Workflow(vbw:
 "${CLAUDE_PLUGIN_ROOT}/bin/vbw" interview 2>&1 || true
 ```
 
-Write to the user's level, explanation depth and involvement (above; "-": plain words).
+Write to the user's level, explanation depth and involvement (above; "-": plain words), and pass them to the workflow as `"profile": {"level", "depth", "involvement"}` (none for "-").
 
 The question: $ARGUMENTS
 
@@ -22,7 +22,7 @@ line shows an error; omit `models` then.)
 
 1. Say in one line what will be looked into, and why it matters here.
 2. Start the Workflow `vbw:researching` with args `{"question": "<the
-   question>", "models": <the JSON above>}`: four Scouts research it in parallel
+   question>", "models": <the JSON above>, "profile": ...}`: four Scouts research it in parallel
    (official sources, practice, what is current, project fit); one weighs them.
 3. Give the user its answer in plain words: what is true, options with trade-offs,
    the recommendation, sources with links, and what could not be confirmed

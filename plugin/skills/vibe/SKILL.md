@@ -56,7 +56,7 @@ say why and stop. Pass
 `models` (JSON from `vbw config models`), the next JSON's top-level `rigor` and its `profile` (level, depth, involvement) in every workflow's args.
 
 Before `spec` or a workflow `plan`: project has code and no `.vbw/map.md` → map first:
-`VBW_SESSION_ID=${CLAUDE_SESSION_ID} vbw run start map`, Workflow `vbw:mapping` (args `{"models": ...}`),
+`VBW_SESSION_ID=${CLAUDE_SESSION_ID} vbw run start map`, Workflow `vbw:mapping` (args as above),
 `VBW_SESSION_ID=${CLAUDE_SESSION_ID} vbw run end`, write its `map` to `.vbw/map.md`. Read it before proposing
 anything.
 
