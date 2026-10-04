@@ -4,7 +4,8 @@
 # autonomy (guided|balanced|hands-off: how much /vbw:vibe does on its own;
 # balanced when unset), autonomy_cap (steps per autonomous run), model.<role>
 # (architect|lead|dev|qa|scout|debugger|docs, VBW 1's team: opus, sonnet,
-# haiku or a model id; "default" removes the override), rigor (auto|express|
+# haiku or a model id; "default" removes the override; model.qa refuses Haiku:
+# QA needs Sonnet or stronger), rigor (auto|express|
 # standard|deep: auto computes each phase's tier, the others force it).
 
 # Profiles name a model per workflow role (lib/profiles.json, shared with the
@@ -92,7 +93,16 @@ cmd_config() {
         autonomy_cap)
           [[ "$value" =~ ^[0-9]+$ ]] || vbw_usage_error "autonomy_cap must be a number of steps"
           record_update '.settings.autonomy_cap = ($v | tonumber)' --arg v "$value" ;;
-        model.architect|model.lead|model.dev|model.qa|model.scout|model.debugger|model.docs)
+        model.qa)
+          case $(printf '%s' "$value" | tr '[:upper:]' '[:lower:]') in
+            *haiku*) vbw_usage_error "model.qa must be Sonnet or stronger: QA needs Sonnet or stronger, not Haiku" ;;
+          esac
+          if [ "$value" = default ]; then
+            record_update '.settings.models |= del(.qa) | if (.settings.models // {}) == {} then .settings |= del(.models) else . end'
+          else
+            record_update '.settings.models = ((.settings.models // {}) + {qa: $v})' --arg v "$value"
+          fi ;;
+        model.architect|model.lead|model.dev|model.scout|model.debugger|model.docs)
           if [ "$value" = default ]; then
             record_update '.settings.models |= del(.[$r]) | if (.settings.models // {}) == {} then .settings |= del(.models) else . end' --arg r "${key#model.}"
           else
