@@ -3892,14 +3892,13 @@
         "P32.4",
         "P31.3"
       ],
-      "status": "blocked",
+      "status": "planned",
       "role": "docs",
       "tasks": [
         "docs/workflows.md: args.profile and how agent tasks carry it",
         "docs/interview.md: how involvement changes what VBW does with a decision",
         "docs/interview.md: what never changes with level (schemas, record fields, commit messages)"
-      ],
-      "note": "C36 fails on the prompt word budget (all prompts 10988 words, limit 10700) in plugin/ prompts, outside this docs plan's files; docs tasks are committed"
+      ]
     },
     {
       "id": "P33.1",
@@ -4655,6 +4654,11 @@
       "text": "All VBW prompts together may use 16k tokens (was 15k)",
       "why": "Owner (2026-10-04): the interview and suggestions are new behaviour that needs words; trimming further risked meaning",
       "at": "2026-10-04T15:27:12Z"
+    },
+    {
+      "id": "D76",
+      "at": "2026-10-04T15:28:30Z",
+      "text": "Contract approved: 39 requirements, 36 checks, 80 plans (b6527878b1e3)"
     }
   ],
   "commands": {
