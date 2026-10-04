@@ -93,3 +93,7 @@ front() { awk 'NR == 1 && /^---$/ { on = 1; next } on && /^---$/ { exit } on' "$
   said=$(grep -n '^User said:' "$f" | cut -d: -f1)
   [ -n "$rule" ] && [ -n "$said" ] && [ "$rule" -lt "$said" ]
 }
+
+@test "the router says a document's required contents are [auto]; only how it reads is [human]" {
+  grep -q 'document that must contain' "$PLUGIN_ROOT/skills/vibe/SKILL.md"
+}

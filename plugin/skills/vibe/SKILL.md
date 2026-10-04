@@ -76,7 +76,7 @@ fresh": `vbw legacy done`, then `spec`.
 what project does and propose improvements, don't ask what it is. Else ask
 what it is for and who uses it. Propose requirements, each user-observable and
 testable: `[auto]` when a check can prove it, `[human]` when only a person can
-judge it (look, feel, tone). Propose what, not how: leave sign-in, data
+judge it (look, feel, tone); a document that must contain something is `[auto]`, how it reads is `[human]`. Propose what, not how: leave sign-in, data
 storage, hosting, paid services to decision round before planning; write a
 constraint only when user stated it. Recommend; don't interrogate. Add each
 agreed requirement: `vbw spec add auto|human "statement"` (goals and user's
