@@ -24,15 +24,14 @@ Presets (each sets two things with `vbw config set`):
 | Fast | `budget` (Haiku for Scout, Sonnet for the rest, QA included) | `hands-off`: takes its own recommendations on decisions and lists them for you | small changes, once you trust it |
 
 If they named a preset, apply it and show the result. Otherwise show the
-current settings above in plain words and ask (AskUserQuestion) which preset,
-with the one that fits what you know of them first, or "My own mix" (then ask
-the two settings separately). Approval, checking results and shipping always
-stop for the user, whatever the preset.
+current settings and ask (AskUserQuestion) which preset, the best fit first, or
+"My own mix" (then ask the two settings separately). Approval, checking and
+shipping always stop for the user.
 
 The interview answers shown above (`vbw interview`) set how VBW talks to the
-user. Show them in plain words. To change one answer, ask which one and its new
-value (AskUserQuestion; the allowed values come from the error of a wrong one),
-then change only that one answer, the other two stay as they are:
+user. Show them in plain words. To change one, ask which and its new value
+(AskUserQuestion; a wrong value's error lists the allowed ones), changing only
+that one:
 
 - `vbw interview set level VALUE`
 - `vbw interview set depth VALUE`

@@ -8,7 +8,10 @@ disable-model-invocation: true
 
 ```!
 "${CLAUDE_PLUGIN_ROOT}/bin/vbw" report 2>&1 || true
+"${CLAUDE_PLUGIN_ROOT}/bin/vbw" interview 2>&1 || true
 ```
+
+Write to the user's level, explanation depth and involvement (above; "-": plain words).
 
 The user said: $ARGUMENTS
 
@@ -16,14 +19,9 @@ The user said: $ARGUMENTS
    what happened, what they expected. One question at a time.
 2. Draft the issue for https://github.com/swt-labs/vibe-better-with-claude-code-vbw:
    a short title, then **What happened**, **Expected**, **Steps**, and the
-   diagnostics above. Remove anything that looks private (names of private
-   projects, paths under their home directory, tokens) and say what you
-   removed.
-3. Ask with AskUserQuestion, with the complete title and body in the `preview`
-   of "File it on GitHub" (text written before a question may be shown
-   collapsed): "File it on GitHub", "I'll file it myself", "Cancel".
-4. File it only on "File it on GitHub", with
-   `gh issue create -R swt-labs/vibe-better-with-claude-code-vbw --title ... --body-file <file>`
-   and show the issue link. If `gh` is missing or not logged in, give them the
-   text and https://github.com/swt-labs/vibe-better-with-claude-code-vbw/issues/new
+   diagnostics above. Remove anything private (project names, home paths, tokens) and say what.
+3. Ask (AskUserQuestion) with the complete title and body in the `preview` of
+   "File it on GitHub": "File it on GitHub", "I'll file it myself", "Cancel".
+4. File only on "File it on GitHub": `gh issue create -R swt-labs/vibe-better-with-claude-code-vbw --title ... --body-file <file>`
+   and show the issue link. No `gh` or not logged in: give them the text and https://github.com/swt-labs/vibe-better-with-claude-code-vbw/issues/new
    instead. Never send anything without that confirmation.

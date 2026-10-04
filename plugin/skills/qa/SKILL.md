@@ -6,14 +6,17 @@ allowed-tools: Bash("${CLAUDE_PLUGIN_ROOT}/bin/vbw" *) Bash(vbw *)
 
 ```!
 "${CLAUDE_PLUGIN_ROOT}/bin/vbw" show requirements 2>&1 || true
+"${CLAUDE_PLUGIN_ROOT}/bin/vbw" interview 2>&1 || true
 ```
+
+Write to the user's level, explanation depth and involvement (above; "-": plain words).
 
 1. If the contract is approved, run `vbw prove`; otherwise say the plan and its
    tests need `/vbw:approve` first, and stop.
 2. Explain the result in plain words, requirement by requirement: proven,
    failing (with the reason from `vbw show evidence`), or still being built.
-   Name any project command that failed. If commits changed files outside
-   their plans, say which (`vbw show evidence`).
+   Name any failed project command and any commit that changed files outside
+   its plan (`vbw show evidence`).
 3. The `[human]` requirements no check can prove: list the ones whose work is
    built (`built` above) and offer `/vbw:verify` to check them now.
 4. If something fails, say what happens next: `/vbw:vibe` fixes failures

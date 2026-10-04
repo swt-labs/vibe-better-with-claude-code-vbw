@@ -7,14 +7,16 @@ disable-model-invocation: true
 
 ```!
 "${CLAUDE_PLUGIN_ROOT}/bin/vbw" statusline status 2>&1 || true
+"${CLAUDE_PLUGIN_ROOT}/bin/vbw" interview 2>&1 || true
 ```
+
+Write to the user's level, explanation depth and involvement (above; "-": plain words).
 
 Confirm with the user first (AskUserQuestion: "Remove VBW" or "Cancel"). Then:
 
 1. `vbw statusline off` (restores the status line they had before VBW, if any).
 2. `claude plugin uninstall vbw@vbw-marketplace`.
 
-Tell them that each project's `.vbw/` folder (their spec, plan and history)
-is left untouched and is theirs to keep or delete, and to restart Claude Code.
-Claude Code's Dynamic workflows stay on (a Claude Code setting other tools may
-use; `/config` turns them off).
+Tell them each project's `.vbw/` folder is left untouched (theirs to keep or
+delete), and to restart Claude Code.
+Dynamic workflows stay on (`/config` turns them off).
