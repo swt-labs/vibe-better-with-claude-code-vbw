@@ -70,7 +70,6 @@ carries `VBW-Plan:`/`VBW-Req:` trailers, so the record stays small.
 | `commands` | object of name → argv (a non-empty array of non-empty strings): the project's own test, lint and build commands, kept in line with the `## Commands` section of `.vbw/spec.md` by `vbw spec sync` (`vbw init` writes the detected ones there; docs/proof.md). Recording a command never runs it; `vbw prove` runs only commands whose argv hash has consent (see Consent) |
 | `settings` | `profile` `quality`, `balanced` (default) or `budget`: the models VBW 1's team runs on (`vbw config`, `lib/profiles.json`); optional `rigor` `auto` (the default when unset), `express`, `standard` or `deep`: computes each phase's tier or forces it (`vbw config rigor`, docs/rigor.md); optional `autonomy` `guided`, `balanced` (the default when unset) or `hands-off`: how much `/vbw:vibe` does on its own (`/vbw:profile`); `autonomy_cap` steps per autonomous run (1–500, default 25); optional `models` overrides per agent (`architect`, `lead`, `dev`, `qa`, `scout`, `debugger`, `docs`; the earlier names `planner`, `critic`, `builder` are renamed to `lead`, `qa`, `dev` on first use) |
 | `evidence` | `null` or the last `vbw prove` result: `at`, `contract` (the hash proved), `tree` (the git tree id of the working folder's project files), `head` (the tree of the committed code the checks ran on; both decide freshness, docs/proof.md), `passed`, `checks` and `commands` (name → `{status, exit, seconds, tail}`), `scope[]` violations (docs/proof.md) |
-| `passes` | optional: the last pass of each check, `{ "C1": { "at", "contract", "tree" } }`: the check id (an existing check), an ISO-8601 UTC time `at`, the `contract` hash it passed under and `tree`, a fingerprint of the committed content of the files the check serves (its `files` and those of the plans that serve its requirement); no other keys. `vbw prove` and `vbw fix done` write it for passing checks, and remove the entry of a check that ran and did not pass; `vbw apply` removes the entries of checks it removes. `vbw fix done` skips a check whose pass still matches the contract and fingerprint (docs/proof.md, Reusing an unchanged pass). Absent until a check passes. Added within schema 1: a record without it stays valid, so the schema stays 1 |
 | `converted` | optional: `{ "from": ".vbw-planning", "at" }`, set by `vbw legacy done` once a VBW 1 plan was brought in (docs/convert.md) |
 | `lease` | `null` or `{ "run", "kind", "started_at", "files" }`: the active run (`kind` `plan`, `build`, `fix`, `qa` or `map`; `files` the paths its agents may write: `null` for any, `[]` for none) that the guards hold subagents to (docs/workflows.md) |
 
@@ -79,8 +78,17 @@ key is a typo, a stale field or a newer schema, and all three must be loud.
 
 ## Versioning
 
-A VBW reads every schema up to its own (`VBW_SCHEMA_MAX`, currently 1). When
-it opens a record whose `schema` is a number above that, it stops and says so:
+A VBW reads every schema up to its own (`VBW_SCHEMA_MAX`, currently 2).
+The kernel writes the schema that the fields in use need: a record with a check
+that has `alone: true` is schema 2, every other record is schema 1. A VBW that
+reads only schema 1 therefore asks for an update on a record that uses `alone`
+instead of calling it corrupt.
+
+The last pass of each check is not in the record. It is a cache in the clone
+(`passes.json` in the git directory, see docs/proof.md), so a record never
+carries it.
+
+For example, an older VBW that reads up to schema 1 says this on a schema 2 record:
 
 ```text
 this project needs a newer VBW: its record was written with schema 2, this VBW reads up to schema 1; update VBW with /vbw:update

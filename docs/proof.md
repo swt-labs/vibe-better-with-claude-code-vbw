@@ -243,8 +243,10 @@ C1 unchanged since its pass (2026-10-04T20:30:00Z)
 
 The time is when that check passed. A check is skipped only when all of these hold:
 
-- A recorded pass exists (`passes` in the record, docs/record.md). `vbw prove`
-  and `vbw fix done` record one for every check that passes.
+- A recorded pass exists in the clone's cache, `vbw/passes.json` in the git
+  directory (`git rev-parse --git-common-dir`). It is never in the record. `vbw prove`
+  and `vbw fix done` record one for every check that passes. A lost or damaged
+  file only makes the checks run again.
 - The contract hash of that pass is the current, approved contract hash.
 - The committed content of the check's served files is the same as at the pass.
   Served files are the check's own `files` plus the `files` of every plan that
