@@ -27,7 +27,9 @@ new_project() {
   git -C "$dir" init -q
   git -C "$dir" config user.email l3@vbw.local
   git -C "$dir" config user.name "VBW L3"
-  printf '# %s\n' "$scenario" > "$dir/README.md"
+  # A neutral title: the scenario's name ("reject", "leftover") read by a
+  # planner as project content once led to an unrequested task.
+  printf '# Demo project\n' > "$dir/README.md"
   git -C "$dir" add -A && git -C "$dir" commit -qm "chore: seed"
 }
 
