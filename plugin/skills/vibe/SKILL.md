@@ -87,9 +87,9 @@ still has default title → `vbw milestone rename "<title>"`. Check
 
 **plan** with `detail.tier` express: no mapping, no planning workflow. Read the
 files the request names, then `vbw apply` one phase (tier express) with one
-plan (its files and tasks) and one check that fails today; go to **approve**.
+plan (its files and tasks) and one check that fails today, and the `rules` (each condition, edge and error case the requirement states, each with its check); go to **approve**.
 Ids continue the record's numbering (first unused P and C in `vbw show roadmap`).
-Example: `{"phases":[{"id":"P1","title":"Fix add","reqs":["R1"],"tier":"express"}],"plans":[{"id":"P1.1","phase":"P1","title":"Fix add","reqs":["R1"],"files":["calc.sh"],"after":[],"tasks":["add returns the sum"]}],"checks":[{"id":"C1","req":"R1","run":["sh","test.sh"],"files":["test.sh"]}]}`
+Example: `{"phases":[{"id":"P1","title":"Fix add","reqs":["R1"],"tier":"express"}],"plans":[{"id":"P1.1","phase":"P1","title":"Fix add","reqs":["R1"],"files":["calc.sh"],"after":[],"tasks":["add returns the sum"]}],"checks":[{"id":"C1","req":"R1","run":["sh","test.sh"],"files":["test.sh"]}],"rules":[{"req":"R1","text":"add returns the sum","check":"C1"}]}`
 Apply computes a higher tier: run the planning workflow below instead.
 
 **plan**: `VBW_SESSION_ID=${CLAUDE_SESSION_ID} vbw run start plan`, Workflow `vbw:planning` with args
