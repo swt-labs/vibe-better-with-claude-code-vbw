@@ -52,7 +52,7 @@ def fix_files($r): if .command then ["*"]
 # the profile (lib/tiers.json); the user's model overrides win over the cell's.
 | ((.settings.models // {}) | {dev, qa} | with_entries(select(.value != null))) as $override
 | ([.phases[] | select(.milestone == $m) | . as $ph | ($ph.tier // "standard") as $t
-    | {key: $ph.id, value: ({tier: $t} + $tiers[0][$r.settings.profile][$t] | .models += $override | .models |= (if ((.qa // "") | type == "string" and ascii_downcase contains("haiku")) then .qa = "sonnet" else . end))}]
+    | {key: $ph.id, value: ({tier: $t} + $tiers[0][$r.settings.profile][$t] | .models += $override | .models |= (if ((.qa // "" | ascii_downcase | contains("haiku"))) then .qa = "sonnet" else . end))}]
    | from_entries) as $rigor
 # Built phases QA has not verified on the proven code (VBW 1's QA mandate):
 # never verified, failed, or the code changed since. A built phase needs QA
