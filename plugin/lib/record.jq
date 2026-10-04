@@ -1,4 +1,4 @@
-# The definition of .vbw/record.json, schema 1 (docs/record.md).
+# The definition of .vbw/record.json, schema 1, or 2 when a check is alone (docs/record.md).
 # Input: the record. Output: a JSON array of violation messages; [] = valid.
 
 def nonempty: type == "string" and length > 0;
@@ -44,7 +44,8 @@ if type != "object" then ["record must be a JSON object"] else
 | ([($r.shipped // [])[]?.id] + [$r.milestone.id?]) as $milestones
 | ($plans | map({key: .id, value: (.after // [])}) | from_entries) as $graph
 | [
-    ( select($r.schema != 1) | "schema must be 1" ),
+    ( select($r.schema != (if (($r.checks // []) | type) == "array" and any(($r.checks // [])[]?; type == "object" and .alone == true) then 2 else 1 end))
+      | "schema must be 2 when a check is alone, else 1" ),
     ( $r | keys[]
       | select(one_of(["schema","project","milestone","requirements","checks","phases","plans",
                        "fixes","todos","decisions","commands","settings","evidence","passes","lease","shipped","converted"]) | not)
@@ -214,14 +215,6 @@ if type != "object" then ["record must be a JSON object"] else
                     and (.passed | type == "boolean") and (.checks | results) and (.commands | results)
                     and (.scope | type == "array" and all(.[]; type == "string"))) | not)
             | "evidence needs at, contract, tree, passed, checks, commands and scope (docs/proof.md)" )
-        end ),
-    ( $r.passes
-      | select(. != null)
-      | if type != "object" then "passes must be an object of check id: {at, contract, tree}" else
-          to_entries[] | . as $e
-          | select(((($checks | has_id($e.key)) and ($e.value | type == "object" and (keys == ["at","contract","tree"])
-                    and (.at | iso) and (.contract | nonempty) and (.tree | nonempty))) | not))
-          | "passes.\($e.key) must name a check and be {at: ISO-8601 UTC time, contract, tree}"
         end ),
     ( $r.lease
       | select(. != null)

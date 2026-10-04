@@ -111,8 +111,6 @@ cmd_apply() {
                 ($d.plans[] | {id, phase, title, reqs, files, after: (.after // []), status: ($status[.id] // "planned")}
                   + (with_entries(select(.key | IN("tasks", "role")))))]
     | .checks = [(.checks[] | select(.req as $q | any($myreqs[]; . == $q) | not)), $d.checks[]]
-    | if .passes then (.checks | map(.id)) as $ids | .passes |= with_entries(select(.key as $k | $ids | index($k)))
-        | if .passes == {} then del(.passes) else . end else . end
     | if $d | has("rules") then .requirements |= map(. as $q
         | if any($d.rules[]; .req == $q.id) then .rules = [$d.rules[] | select(.req == $q.id) | {text, check}] else . end)
       else . end' --argjson d "$doc" --argjson tiers "$tiers" --arg mode "$(printf '%s' "$record" | jq -r '.settings.rigor // "auto"')"
