@@ -69,8 +69,10 @@ from `.vbw/map.md` and asks you to correct it. VBW asks one question at a time:
 2. What you are building and for whom. VBW writes the answer under `## Goals`
    in `.vbw/spec.md`.
 3. At most three follow-up questions that VBW writes for your level and this
-   project. Zero is allowed. Their answers go into the spec, not into the
-   interview answers.
+   project. If your answer to step 2 doesn't say what the thing does and for
+   whom, VBW asks rather than deciding that for you. Zero follow-ups only when
+   it already does. Their answers go into the spec, not into the interview
+   answers.
 4. Where to keep the three answers: "private on this machine" (recommended) or
    "saved in the project". This runs `vbw interview keep private|project`.
 

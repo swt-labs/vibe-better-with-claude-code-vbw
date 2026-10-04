@@ -48,8 +48,10 @@ it, instead of asking what it is. Write the answer into `.vbw/spec.md` under
 
 Then at most three written follow-up questions, which you write for this user
 and this project: pitched at their level and depth answers, aimed at what the
-spec still lacks (users, constraints, what success looks like). Zero is
-allowed and right when the answers so far are enough. Never ask a fourth.
+spec still lacks (what it does, users, constraints, what success looks like).
+Zero is allowed only when the answers already say what it does and for whom;
+otherwise ask, as a shop asks its client, whatever their involvement. Never
+fill that gap yourself with behavior they did not ask for. Never ask a fourth.
 Fold each answer into `.vbw/spec.md` (Goals, or the user's own constraints),
 then `vbw spec sync`. These follow-ups are not recorded as interview answers.
 
