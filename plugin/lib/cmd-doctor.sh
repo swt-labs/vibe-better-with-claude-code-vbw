@@ -110,8 +110,11 @@ doctor_project() {
     doctor_line info "not a VBW project yet (/vbw:init)"
     return 0
   fi
-  local v
-  if v=$(record_violation "$VBW_RECORD"); then doctor_line ok "the plan of record is valid"
+  local v n
+  if n=$(record_newer_schema "$VBW_RECORD"); then
+    doctor_line fail "this project needs a newer VBW: its record was written with schema $n, this VBW reads up to schema $VBW_SCHEMA_MAX" "update VBW with /vbw:update"
+    return 0
+  elif v=$(record_violation "$VBW_RECORD"); then doctor_line ok "the plan of record is valid"
   else doctor_line fail "the plan of record is corrupt: $v" "restore .vbw/record.json from git (git checkout -- .vbw/record.json)"
   fi
   # shellcheck source=cmd-spec.sh

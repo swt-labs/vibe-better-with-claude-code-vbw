@@ -16,9 +16,28 @@ record_violation() {
   return 1
 }
 
-# The validated record on stdout; exit 3 if it is corrupt.
+VBW_SCHEMA_MAX=1
+
+# The schema of the record at FILE when it is a number above the highest this
+# VBW reads (written by a newer VBW); empty and status 1 otherwise. A
+# non-numeric or damaged schema is not "newer": it stays corrupt.
+record_newer_schema() {
+  local n
+  n=$(jq -r --argjson max "$VBW_SCHEMA_MAX" 'if (.schema | type) == "number" and .schema > $max then .schema else empty end' "$1" 2> /dev/null) || return 1
+  [ -n "$n" ] && printf '%s\n' "$n"
+}
+
+# Die (exit 4) when the record was written by a newer VBW.
+record_refuse_newer() {
+  local n
+  n=$(record_newer_schema "$VBW_RECORD") || return 0
+  vbw_die "this project needs a newer VBW: its record was written with schema $n, this VBW reads up to schema $VBW_SCHEMA_MAX; update VBW with /vbw:update" 4
+}
+
+# The validated record on stdout; exit 3 if it is corrupt, 4 if it is newer.
 record_read() {
   local v
+  record_refuse_newer
   v=$(record_violation "$VBW_RECORD") || vbw_die "record is corrupt: $v ($VBW_RECORD)" 3
   cat "$VBW_RECORD"
 }
@@ -75,7 +94,9 @@ vbw_lock_take() {
 record_update() {
   local filter="$1" tmp v
   shift
+  record_refuse_newer
   record_lock
+  record_refuse_newer
   v=$(record_violation "$VBW_RECORD") || vbw_die "record is corrupt: $v ($VBW_RECORD)" 3
   tmp=$(mktemp "$VBW_RUNTIME/record.XXXXXX") || vbw_die "cannot create a temporary file in $VBW_RUNTIME"
   vbw_guard_add file "$tmp"
