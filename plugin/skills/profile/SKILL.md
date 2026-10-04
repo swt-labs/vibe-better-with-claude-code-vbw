@@ -5,6 +5,8 @@ argument-hint: "[careful | standard | fast]"
 allowed-tools: Bash("${CLAUDE_PLUGIN_ROOT}/bin/vbw" *) Bash(vbw *)
 ---
 
+Write to the user's level, explanation depth and involvement.
+
 ```!
 "${CLAUDE_PLUGIN_ROOT}/bin/vbw" config 2>&1 || true
 "${CLAUDE_PLUGIN_ROOT}/bin/vbw" interview 2>&1 || true
@@ -29,9 +31,9 @@ current settings and ask (AskUserQuestion) which preset, the best fit first, or
 shipping always stop for the user.
 
 The interview answers shown above (`vbw interview`) set how VBW talks to the
-user. Show them in plain words. To change one, ask which and its new value
-(AskUserQuestion; a wrong value's error lists the allowed ones), changing only
-that one:
+user. Show them in plain words. To change one answer, ask which one and its new
+value (AskUserQuestion; a wrong value's error lists the allowed ones), then
+change only that one answer; the other two stay as they are:
 
 - `vbw interview set level VALUE`
 - `vbw interview set depth VALUE`
