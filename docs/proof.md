@@ -208,6 +208,29 @@ uncommitted changes, and the checks of every finished requirement (all its plans
 `done`) that those files serve pass now. A fix cannot quietly break other work.
 A project command's fix is left to `vbw prove`, which runs the command.
 
+### Closing several fixes
+
+```text
+vbw fix done F8 F9 F5
+```
+
+One command closes several fixes. The checks that their files serve run once
+(the union, not once per fix), and a check that passed earlier is reused as
+below. Each fix ends as it would if closed alone: `fixed` and awaiting
+`vbw prove`, or, for a `[human]` requirement, `closed` with the requirement
+back to the user for acceptance. Naming an id twice closes it once.
+
+A fix that cannot close is named, and the others still close. The cases:
+
+- an unknown id, or a fix that is not `open`;
+- uncommitted changes in a file the fix may touch;
+- a failing check: only the fixes whose requirement that check serves fail
+  (`F2 broke finished work`, with the check), the rest close.
+
+The exit code is 0 when every fix closed and non-zero when any could not. A fix
+that could not close keeps its status and `attempts`; fix the cause and run
+`vbw fix done` again for it.
+
 ### Reusing an unchanged pass
 
 `vbw fix done` does not rerun a check that already passed on the same project
