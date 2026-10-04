@@ -2021,7 +2021,15 @@
         "breaks: R4, R5, R8, R18, R29, R34",
         "tests: project test command"
       ],
-      "predicted": "deep"
+      "predicted": "deep",
+      "qa": {
+        "result": "fail",
+        "tier": "deep",
+        "tree": "03f89003112457b38d626b9e31765872e9d029c7",
+        "at": "2026-10-04T17:04:16Z",
+        "note": "22/25 checks",
+        "rounds": 1
+      }
     }
   ],
   "plans": [
@@ -4168,6 +4176,22 @@
       "attempts": 0,
       "status": "open",
       "note": "Out-of-plan change: commit 545ad009 edits plugin/skills/interview/SKILL.md, which is in no P32 plan's file list (P32.4 blocked on it; it belongs to P31.2), and no recorded decision (D37-D76) covers it. Commit 2c762999 also edits profile/SKILL.md outside any P32 task commit. Record a decision or re-plan to cover them."
+    },
+    {
+      "id": "F20",
+      "req": "R42",
+      "source": "qa",
+      "attempts": 0,
+      "status": "open",
+      "note": "Deviation: commit 0a351770 changed plugin/skills/interview/SKILL.md (option order, no Recommended), a file outside P34.1's file list and tasks (tools/l3-suite.sh, l3.sh, results); it and c39bfa86/7de91149 carry no VBW-Plan/VBW-Req provenance. Record it as a decision or plan it, with its own test."
+    },
+    {
+      "id": "F21",
+      "req": "R42",
+      "source": "qa",
+      "attempts": 0,
+      "status": "open",
+      "note": "tools/l3-results/newcomer.transcript.md line 60 still contains a 'Workflow authoring reference' dump as a **User:** turn (machinery, not conversation) in the file the owner reads for R41; c39bfa86 filtered only <task-notification> and 7de91149 claims clean transcripts. Filter it in transcript_write and re-run. Also both scenarios record follow_ups 0, so the follow-up answering path is unexercised."
     }
   ],
   "todos": [
