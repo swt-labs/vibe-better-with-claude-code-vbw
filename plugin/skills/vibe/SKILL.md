@@ -38,12 +38,10 @@ checking results (`accept`) and shipping always stop for user.
 
 - **balanced**, **hands-off**: run `vbw auto on ${CLAUDE_SESSION_ID}` once, so
   VBW keeps going until a step needs user.
-- **hands-off**: at `needs_decisions`, take recommended option yourself:
-  `vbw decide "<option>" "chosen by VBW (hands-off): <its trade-off>"`; list
-  those decisions at next stop so user can change any.
-- **guided**: before each step not needing user, say in plain words what you
-  will do and why, ask (AskUserQuestion): "Go ahead", "Explain more", "Stop
-  here". `--auto` from user runs alone this time.
+- **hands-off**: at `needs_decisions`, take recommended option yourself (as
+  `decide and tell me` below, whatever the involvement).
+- **guided**: before each step not needing user, say what you will do and why,
+  ask (AskUserQuestion): "Go ahead", "Explain more", "Stop here". `--auto` runs alone this time.
 
 ## Loop
 
@@ -54,8 +52,8 @@ claim more than kernel output shows.
 
 `plan`, `build`, `fix` need **Workflow** tool; `workflows` line above turned
 Dynamic workflows on if off (say so in one line when it did). Still no tool:
-say why (disabled on purpose, or Claude Code needs restart) and stop. Pass
-`models` (JSON from `vbw config models`) and the next JSON's top-level `rigor` in every workflow's args.
+say why and stop. Pass
+`models` (JSON from `vbw config models`), the next JSON's top-level `rigor` and its `profile` (level, depth, involvement) in every workflow's args.
 
 Before `spec` or a workflow `plan`: project has code and no `.vbw/map.md` → map first:
 `VBW_SESSION_ID=${CLAUDE_SESSION_ID} vbw run start map`, Workflow `vbw:mapping` (args `{"models": ...}`),
@@ -65,8 +63,20 @@ anything.
 Then, `profile.ask` true: follow `vbw:interview` before any spec work; resume at
 `profile.pending`; unrecognised answer: ask again, record nothing.
 
-What user must see to decide goes inside AskUserQuestion (question text or
-option `preview`), not in text before it (may show collapsed).
+What user must see to decide goes inside AskUserQuestion, not in text before it.
+
+## Profile
+
+Next JSON's `profile` = user's level, explanation depth, involvement. Speak to
+user at that level and depth, in every message, question and summary. At
+`needs_decisions`, by `profile.involvement`:
+
+- **decide and tell me**: decide yourself with the recommended option,
+  `vbw decide "<option>" "chosen by VBW: <its trade-off>"`, then report each
+  decision at next stop so user can change any.
+- **options with a recommendation**: ask each decision as described under plan.
+- **I make the calls**: put every decision to user before proceeding; no
+  default, nothing decided for them.
 
 ## Steps
 
@@ -75,8 +85,7 @@ option `preview`), not in text before it (may show collapsed).
 fresh": `vbw legacy done`, then `spec`.
 
 **spec** (needs user): agree what to build. Existing code: start from map, say
-what project does and propose improvements, don't ask what it is. Else ask
-what it is for and who uses it. Propose requirements, each user-observable and
+what project does, propose improvements. Else ask what it is for and who uses it. Propose requirements, each user-observable and
 testable: `[auto]` when a check can prove it, `[human]` when only a person can
 judge it (look, feel, tone); a document that must contain something is `[auto]`, how it reads is `[human]`. Propose what, not how: leave sign-in, data
 storage, hosting, paid services to decision round before planning; write a
@@ -100,15 +109,12 @@ AskUserQuestion, one at a time (why it matters in question, each option's
 trade-off as description, recommended first, marked "(Recommended)"). Record
 each answer: `vbw decide "<what was decided>" "<why: their reason, or the
 trade-off they accepted>"`. Plan again: `VBW_SESSION_ID=${CLAUDE_SESSION_ID} vbw run start plan`, workflow with
-`{"decided": true, "models": ...}`. Planned: give user Lead's summary, the
-`choices` it made itself (any can change), Architect's `notes` (nice-to-haves,
-scope creep; can wait in backlog: offer `vbw todo add`).
+`{"decided": true, "models": ...}`. Planned: give Lead's summary, the
+`choices` it made itself (any can change), Architect's `notes` (offer `vbw todo add`).
 
 **approve** (needs user): `vbw show contract --changes`. After earlier approval
 it lists only changes: explain just those (rest stays approved). Else
-`vbw show contract`, explain plainly: each requirement, how checked, plans and
-their files, project commands that will run. Ask user to review and type
-`/vbw:approve`. You cannot approve.
+`vbw show contract`, explain each requirement, how checked, plans, files, project commands that will run. Ask user to type `/vbw:approve`. You cannot approve.
 
 **build**: `VBW_SESSION_ID=${CLAUDE_SESSION_ID} vbw run start build <detail.plans>`, Workflow `vbw:building` with
 args `{"plans": <detail.plans>, "docs": <detail.docs>, "models": ..., "rigor": ...}` (Dev per
@@ -129,16 +135,14 @@ verdicts and failed checks briefly.
 **run**: a run is open. VBW workflow of this session still running: wait. Else
 it was interrupted: `VBW_SESSION_ID=${CLAUDE_SESSION_ID} vbw run end` (its plans return to next wave), continue.
 Run of another session: never end it on your own. Ask once (AskUserQuestion,
-naming the run and session): "Still running: wait" (Recommended), or "That
-session is closed" → `VBW_SESSION_ID=${CLAUDE_SESSION_ID} vbw run end
---owner-closed`, continue.
+naming it): "Still running: wait" (Recommended), or "That session is closed" →
+`VBW_SESSION_ID=${CLAUDE_SESSION_ID} vbw run end --owner-closed`, continue.
 
-**unblock** (needs user): `vbw show plan <id>` per blocked plan; explain what
-Dev needs. Resolved: `vbw plan reset <id>`.
+**unblock** (needs user): `vbw show plan <id>` per blocked plan; say what Dev needs. Resolved: `vbw plan reset <id>`.
 
-**escalate** (needs user): `vbw show fix <id>`; explain what failed after the
-attempts. Ask: try once more (`vbw fix retry <id>`), or change the requirement
-or its check (contract then needs approval again).
+**escalate** (needs user): `vbw show fix <id>`; explain what failed. Ask: try
+once more (`vbw fix retry <id>`), or change the requirement or its check
+(contract then needs approval again).
 
 **scope** (needs user): `vbw show evidence`; explain which commits changed files
 outside their plan; ask how to proceed. Never rewrite history.
@@ -146,18 +150,15 @@ outside their plan; ask how to proceed. Never rewrite history.
 **accept** (needs user): per requirement in `detail.requirements`, show user
 the thing to judge: run it yourself when you can (program's actual output,
 page's text); put that, or one concrete thing to try, in the question and the
-`preview` of "Works". Visual (page, screen): can open it (browser tool) → save
-screenshot in `.vbw/runtime/`, open it for user (`open` macOS, `xdg-open`
-Linux); else give exact way to see it. Ask with AskUserQuestion: "Works",
+`preview` of "Works". Visual: screenshot into `.vbw/runtime/` and open it for user (`open`, `xdg-open`); else give exact way to see it. Ask with AskUserQuestion: "Works",
 "Something's wrong", "Skip for now". Works: `vbw req accept <id>`. Something's
 wrong: ask what, then `vbw req reject <id> "<their words>"`. Skip: leave it.
 
 **ship** (needs user): summarize what was delivered (`vbw status`,
 `vbw show roadmap`), ask whether to ship. Yes: `vbw ship`.
 
-**milestone** (needs user): milestone shipped. Ask what next one is about,
-`vbw milestone start "<title>"`, then `spec`. Shipped work stays guarded: its
-checks run in every proof.
+**milestone** (needs user): ask what next milestone is about,
+`vbw milestone start "<title>"`, then `spec`. 
 
 **Changing the plan** (user wants to add, change or drop something mid-way):
 add with `vbw spec add`, or edit `.vbw/spec.md` and `vbw spec sync` (dropping a
@@ -170,4 +171,3 @@ Lead keeps finished work as is, user approves changed contract.
 - Only kernel writes `.vbw/record.json`; agents and you change state through
   `vbw` commands.
 - Never approve, never run `git push`, never weaken a check.
-- Plan work commits go through `vbw commit` (Devs do this).
