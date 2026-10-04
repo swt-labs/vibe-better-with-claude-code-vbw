@@ -142,7 +142,8 @@ show_contract_changes() {
         ($old.checks | to_entries[] | select($new.checks[.key] == null)
           | "removed check \(.key) (\(.value.req))"),
         ($new.checks | to_entries[] | select($old.checks[.key] != null and $old.checks[.key] != .value)
-          | "changed check \(.key) (\(.value.req)): " + (.value | check_line)),
+          | "changed check \(.key) (\(.value.req)): " + (.value | check_line)
+            + (if ($old.checks[.key].alone // false) and (.value.alone | not) then " [no longer alone]" else "" end)),
         ($new.files | to_entries[] | select($old.files[.key] != null and $old.files[.key] != .value)
           | "changed test file \(.key)"),
         ($new.plans | to_entries[] | select($old.plans[.key] == null)
@@ -173,7 +174,8 @@ def rule_lines: if .proof == "auto" then
 def check_line: (.run | argv_line)
   + (if (.exit // 0) != 0 then " (exit \(.exit))" else "" end)
   + (if .output then " (output ~ /\(.output)/)" else "" end)
-  + (if .files then " [protects \(.files | join(", "))]" else "" end);
+  + (if .files then " [protects \(.files | join(", "))]" else "" end)
+  + (if .alone then " [alone]" else "" end);
 '
 
 # Commits whose VBW-Req trailer lists REQ as an exact token (not a substring:
