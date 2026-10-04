@@ -4,6 +4,8 @@
 
 # shellcheck source=checks.sh
 . "$VBW_LIB/checks.sh"
+# shellcheck source=proofcopy.sh
+. "$VBW_LIB/proofcopy.sh"
 
 VBW_FIX_CAP=3
 VBW_COMMAND_TIMEOUT=900
@@ -15,8 +17,14 @@ cmd_prove() {
   local record checks commands scope tree ev at
   record=$(record_read)
   checks_begin "$record"
+  proofcopy_create
+  proofcopy_verify "$CHECK_HASH" "$record"
+  # Checks and commands run on the clean copy; evidence and the record stay here.
+  cd "$PROOF_COPY" || vbw_die "cannot enter the clean copy"
   checks=$(checks_run_all "$record")
   commands=$(prove_commands "$record")
+  cd "$VBW_ROOT" || vbw_die "cannot enter $VBW_ROOT"
+  proofcopy_remove
   checks_end
   scope=$(prove_scope "$record")
   tree=$(vbw_code_tree) || vbw_die "cannot fingerprint the project files"
