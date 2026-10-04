@@ -105,7 +105,7 @@ if type != "object" then ["record must be a JSON object"] else
         ( select(.proof == "auto" and (.status | one_of(["accepted","rejected"]))) | "\(.id) is auto-proved and cannot be \(.status)" ) ),
 
     ( $checks[]
-      | field_rule(["id","req","run","files","exit","output","timeout"]),
+      | field_rule(["id","req","run","files","exit","output","timeout","alone"]),
         ( . as $o | select(($reqs | has_id($o.req)) | not) | "\(.id) references unknown requirement \(.req)" ),
         ( . as $o | select(any($reqs[]; .id == $o.req and .proof == "human")) | "\(.id) checks human-proved \(.req): only a person can judge it" ),
         ( select((.run | argv) | not) | "\(.id) run must be a non-empty argv array" ),
@@ -113,6 +113,7 @@ if type != "object" then ["record must be a JSON object"] else
         ( select(has("files") and (.files | type) != "array") | "\(.id) files must be an array" ),
         ( select(has("exit") and ((.exit | int_in(0; 255)) | not)) | "\(.id) exit must be an integer 0-255" ),
         ( select(has("output") and ((.output | nonempty and (try (test(.) | true) catch false)) | not)) | "\(.id) output must be a valid regular expression" ),
+        ( select(has("alone") and (.alone | type) != "boolean") | "\(.id) alone must be a boolean" ),
         ( select(has("timeout") and ((.timeout | int_in(1; 3600)) | not)) | "\(.id) timeout must be 1-3600 seconds" ) ),
 
     ( $phases[]
