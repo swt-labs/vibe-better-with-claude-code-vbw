@@ -129,6 +129,26 @@ vbw_sha256() {
 # excluded): a content fingerprint that no commit changes. Built in a temporary
 # index seeded from the real one, so only changed files are rehashed; the
 # user's index and files are untouched.
+# vbw_head_tree: the tree of the committed code (HEAD, without .vbw and
+# .vbw-planning), which is what vbw prove runs on: the fingerprint of what a
+# proof proved. Prints nothing when there is no commit yet.
+vbw_head_tree() {
+  local idx status
+  git -C "$VBW_ROOT" rev-parse -q --verify HEAD > /dev/null 2>&1 || return 0
+  idx=$(mktemp "$VBW_RUNTIME/index.XXXXXX") || return 1
+  vbw_guard_add file "$idx"
+  (
+    cd "$VBW_ROOT" || exit 1
+    export GIT_INDEX_FILE="$idx"
+    git read-tree HEAD &&
+      git rm -r -q --cached --ignore-unmatch -- .vbw .vbw-planning > /dev/null 2>&1 &&
+      git write-tree
+  )
+  status=$?
+  vbw_guard_drop "$idx"
+  return $status
+}
+
 vbw_code_tree() {
   local idx real
   idx=$(mktemp "$VBW_RUNTIME/index.XXXXXX") || return 1

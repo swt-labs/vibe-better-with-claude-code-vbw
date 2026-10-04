@@ -25,14 +25,19 @@ cmd_next() {
   fi
 }
 
-# True when the project's files differ from the ones the last proof ran on
-# (vbw_code_tree: content, not commits, so committing proved work or the
-# record never makes evidence stale). No evidence counts as no change: the
-# evidence is already stale for lack of a proof.
+# True when the project's files differ from the ones the last proof saw: the
+# working folder (vbw_code_tree: content, so committing VBW's record never
+# makes evidence stale) or the committed code the checks ran on (head: an edit
+# proved while uncommitted and committed later was never proved). No evidence
+# counts as no change: the evidence is already stale for lack of a proof.
 next_code_changed() {
-  local proved now
+  local proved head now
   proved=$(printf '%s' "$1" | jq -r '.evidence.tree // empty')
   [ -n "$proved" ] || return 1
   now=$(vbw_code_tree) || return 0
-  [ "$now" != "$proved" ]
+  [ "$now" = "$proved" ] || return 0
+  head=$(printf '%s' "$1" | jq -r '.evidence.head // empty')
+  [ -n "$head" ] || return 1
+  now=$(vbw_head_tree) || return 0
+  [ "$now" != "$head" ]
 }

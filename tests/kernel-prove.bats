@@ -297,3 +297,27 @@ build_pay() {
   [ -z "$(git status --porcelain -- .vbw/record.json)" ]
   git diff --cached --name-only | grep -qx staged.txt
 }
+
+# --- prove proves the committed code (R32), and freshness knows it -------
+
+@test "an edit proved while uncommitted, then committed, needs a new proof" {
+  "$VBW" approve > /dev/null
+  build_pay
+  "$VBW" prove > /dev/null
+  printf 'paid\n# later edit\n' > src/pay.txt
+  "$VBW" prove > /dev/null
+  vbw_run next --json
+  [ "$(printf '%s' "$output" | jq -r '.action')" != prove ]
+  git add src/pay.txt && git commit -q -m "feat(pay): later edit"
+  vbw_run next --json
+  [ "$(printf '%s' "$output" | jq -r '.action')" = prove ] || { echo "$output"; false; }
+}
+
+@test "committing VBW's own record after a proof keeps the proof fresh" {
+  "$VBW" approve > /dev/null
+  build_pay
+  "$VBW" prove > /dev/null
+  "$VBW" decide "keep it" > /dev/null
+  vbw_run next --json
+  [ "$(printf '%s' "$output" | jq -r '.action')" != prove ]
+}

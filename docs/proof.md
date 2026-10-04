@@ -186,12 +186,14 @@ and retries the record once.
 
 ### Freshness
 
-`tree` is a git tree id of the working folder when the proof finished: tracked
-and new files, committed or not, `.vbw/` and ignored files excluded. It records
-which files the evidence belongs to; the checks themselves ran on the last
-commit. `vbw next` treats evidence as stale, and asks for `prove` again, when
-the contract changed or the working files differ from that fingerprint.
-Committing proved work, or the record, changes nothing.
+Evidence carries two fingerprints. `tree` is a git tree id of the working
+folder when the proof finished: tracked and new files, committed or not,
+`.vbw/` and ignored files excluded. `head` is the tree of the committed code
+the checks ran on, `.vbw/` excluded. `vbw next` treats evidence as stale, and
+asks for `prove` again, when the contract changed or either fingerprint no
+longer matches: the working files changed, or new code was committed (an edit
+proved while uncommitted and committed later was never checked). Committing
+VBW's own record changes nothing.
 
 Uncommitted changes are not proved. Commit the work, then run `vbw prove`, so
 the evidence covers the code you will keep.

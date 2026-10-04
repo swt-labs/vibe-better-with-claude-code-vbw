@@ -14,7 +14,7 @@ cmd_prove() {
   [ $# -eq 0 ] || vbw_usage_error "usage: vbw prove"
   vbw_require_project
   cd "$VBW_ROOT" || vbw_die "cannot enter $VBW_ROOT"
-  local record checks commands scope tree ev at
+  local record checks commands scope tree head ev at
   record=$(record_read)
   checks_begin "$record"
   proofcopy_create
@@ -28,10 +28,13 @@ cmd_prove() {
   checks_end
   scope=$(prove_scope "$record")
   tree=$(vbw_code_tree) || vbw_die "cannot fingerprint the project files"
+  head=$(vbw_head_tree) || vbw_die "cannot fingerprint the committed code"
   at=$(vbw_now)
-  ev=$(jq -n --arg at "$at" --arg h "$CHECK_HASH" --arg tree "$tree" \
+  # tree: the working folder (QA freshness, R12); head: the committed code the
+  # checks ran on, so committing unproved edits later makes the proof stale.
+  ev=$(jq -n --arg at "$at" --arg h "$CHECK_HASH" --arg tree "$tree" --arg head "$head" \
     --argjson c "$checks" --argjson m "$commands" --argjson s "$scope" \
-    '{at: $at, contract: $h, tree: $tree, checks: $c, commands: $m, scope: $s,
+    '{at: $at, contract: $h, tree: $tree, head: $head, checks: $c, commands: $m, scope: $s,
       passed: (all($c[]; .status == "pass") and all($m[]; .status == "pass" or .status == "skipped") and ($s | length) == 0)}')
   record_update "$VBW_JQ_DEFS$(cat "$VBW_LIB/prove.jq")" --argjson ev "$ev" --argjson cap "$VBW_FIX_CAP" --arg at "$at"
   # The evidence is part of the plan of record: commit it, so a proof never

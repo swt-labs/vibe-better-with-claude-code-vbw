@@ -195,6 +195,7 @@ if type != "object" then ["record must be a JSON object"] else
       | select(. != null)
       | if type != "object" then "evidence must be null or an object" else
           ( select(((.at | iso) and (.contract | sha256) and (.tree | type == "string" and test("^[0-9a-f]{40,64}$"))
+                    and ((has("head") | not) or (.head | type == "string" and test("^([0-9a-f]{40,64})?$")))
                     and (.passed | type == "boolean") and (.checks | results) and (.commands | results)
                     and (.scope | type == "array" and all(.[]; type == "string"))) | not)
             | "evidence needs at, contract, tree, passed, checks, commands and scope (docs/proof.md)" )

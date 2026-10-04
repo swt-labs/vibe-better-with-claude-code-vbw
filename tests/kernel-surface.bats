@@ -69,6 +69,11 @@ proven_project() {
   vbw_run ship
   [ "$status" -eq 1 ]
   git commit -q -m "docs: notes" -- notes.txt
+  # The committed notes were never part of a proof: prove again, then ship.
+  vbw_run ship
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"prove"* ]]
+  "$VBW" prove > /dev/null
   vbw_run ship
   [ "$status" -eq 0 ]
 }
