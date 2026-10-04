@@ -42,6 +42,14 @@ interviewed: the router then follows the interview skill before any spec work.
 A workflow reads `args.profile` for its wording and falls back to the middle
 choices without it.
 
+Every answer also carries `declined`: the texts of the suggestions you
+declined in this project (docs/interview.md), oldest first, or `[]`. The
+`suggest` skill never offers one of them again.
+
+```json
+"declined": ["Should visitors be able to search the page?"]
+```
+
 At the `plan` step, `detail.tier` is the early tier (docs/rigor.md): `express`
 for one small, risk-free `auto` requirement in a repository of at most 30
 tracked files, else `standard` (`deep` when forced). On `express` the router
