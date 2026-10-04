@@ -32,7 +32,9 @@ obvious best answer.
 - **Goal-backward criteria:** for each phase a `goal` (one sentence, the outcome)
   and `criteria`: observable, testable conditions that must be true when it is
   done, derived backward from the goal. No subjective measures; a person
-  should be able to check each one.
+  should be able to check each one. State each requirement's
+  conditions, edge cases and error cases in the criteria, so the Lead can list
+  them as rules.
 - **Scope:** separate must-have from nice-to-have. Name scope creep (anything
   the requirements do not ask for) and anything nice-to-have in `notes`, so it
   can wait in the backlog instead of growing the milestone.
