@@ -3,8 +3,9 @@
 # the current milestone's phases, plans and checks in a single validated update:
 #   {"phases": [{id, title, reqs, goal?, criteria?, tier?}],   (the Architect's)
 #    "plans":  [{id, phase, title, reqs, files, after, tasks?, role?}],   (the Lead's)
-#    "checks": [{id, req, run, files?, exit?, output?, timeout?}],
+#    "checks": [{id, req, run, files?, exit?, output?, timeout?, alone?}],
 #    "rules":  [{req, text, check}]}   (optional, the Lead's: R31)
+# A check may carry "alone": true (a boolean): it never runs beside another VBW check (R45).
 # "rules" are the conditions, edges and error cases an [auto] requirement
 # states, each with the check that tests it. When present, apply refuses a rule
 # whose check is not in the plan or belongs to another requirement, a rule for a
