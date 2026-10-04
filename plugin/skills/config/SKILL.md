@@ -25,6 +25,8 @@ the result. Otherwise show the settings above in plain words. Keys:
 - `model.architect`, `model.lead`, `model.dev`, `model.qa`, `model.scout`,
   `model.debugger`, `model.docs`: override one agent (`opus`, `sonnet`, `haiku`
   or a model id; `default` removes the override). The status line shows each.
+  QA never runs on Haiku: `model.qa haiku` is raised to Sonnet, and `vbw config`
+  and the status line show Sonnet.
 - `autonomy`: how much `/vbw:vibe` does on its own: `guided` (explains each
   step and waits), `balanced` (the default: stops for decisions, approval,
   checking and shipping), `hands-off` (takes its own recommendations on
