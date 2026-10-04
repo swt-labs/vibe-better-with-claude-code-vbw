@@ -62,7 +62,7 @@ and fails.
 
 ## The contract and approval
 
-The contract is the requirements (id, text, proof), the checks, the plans
+The contract is the requirements (id, text, proof, and rules when listed), the checks, the plans
 (everything but their status) and the contents of every check's `files`. Its
 hash is SHA-256 over a canonical rendering of all of it.
 
@@ -72,6 +72,34 @@ check file), then records consent for the contract hash and for every project
 command in `record.commands`, in the clone's git directory (see
 docs/record.md, Consent), and logs a decision. A repository cannot ship
 approval: a fresh clone must approve before anything runs.
+
+## Rules
+
+A rule is one condition, edge or error case that an `auto` requirement's text
+states, paired with the check that tests it. The Lead lists them with
+`vbw apply` (docs/workflows.md), so an approved contract shows what each check
+is meant to cover, not only that checks exist.
+
+`vbw show contract` is the approval screen. Each `auto` requirement shows its
+rules with their checks:
+
+```text
+R1 [auto] A customer can pay once
+  rule: A payment succeeds -> C1
+  rule: Paying twice is refused -> C2
+```
+
+- `vbw approve` refuses an `auto` requirement whose rules are pending
+  (`rules: []`): `R1 has no rules listed (vbw apply with rules)`.
+- Rules are part of the contract hash: adding, removing or re-pointing a rule
+  needs re-approval, and `vbw show contract --changes` lists it as
+  `added rule`, `removed rule` or `changed rule`.
+- When a requirement's text or proof changes, `vbw spec sync` resets its rules
+  to pending, so the Lead restates them.
+- A requirement approved before rules existed (no requirement has a `rules`
+  field) keeps its approval. Its screen shows `rules not listed`, and nothing
+  forces rules until the Lead applies a plan that lists them (D53). Once any
+  requirement has rules, new and changed `auto` requirements need them too.
 
 ## Project commands
 
