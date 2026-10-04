@@ -1904,7 +1904,15 @@
         "breaks: R13, R14, R22, R24, R25, R26, R28, R31, R35",
         "tests: project test command"
       ],
-      "predicted": "deep"
+      "predicted": "deep",
+      "escalations": [
+        {
+          "at": "2026-10-04T15:02:09Z",
+          "from": "deep",
+          "to": "deep",
+          "reason": "Dev blocked P31.2: C35 test 7 (interview-flow.bats:99) needs the kernel to report pending=keep after the three answers are set but before 'vbw interview keep'. plugin/lib/interview.sh interview_effective treats three private answers as kept=private and pending=null, so it fails; fix is in plugin/lib/interview.sh (P30.1/P31.1 files, outside this plan). Skill and router are done and committed; the other 9 C35 tests pass."
+        }
+      ]
     },
     {
       "id": "P32",
@@ -3639,7 +3647,7 @@
         "P30.1",
         "P30.2"
       ],
-      "status": "planned",
+      "status": "done",
       "role": "docs",
       "tasks": [
         "docs/interview.md: the three answers, their allowed values and the commands",
@@ -3688,14 +3696,15 @@
         "P31.1",
         "P30.2"
       ],
-      "status": "planned",
+      "status": "blocked",
       "role": "dev",
       "tasks": [
         "Trim the router's wording to make room, keeping every behavior its tests name",
         "Interview skill: the three fixed questions with exactly the listed options, what and for whom into the spec Goals, at most three written follow-ups, the keep question last, answers recorded one by one with vbw interview set and keep",
         "Router spec step: when profile.ask, follow vbw:interview after mapping and before spec work; resume at profile.pending; re-ask on an unrecognised answer",
         "Keep the router within 1,400 words and the interview skill within 900"
-      ]
+      ],
+      "note": "C35 test 7 (interview-flow.bats:99) needs the kernel to report pending=keep after the three answers are set but before 'vbw interview keep'. plugin/lib/interview.sh interview_effective treats three private answers as kept=private and pending=null, so it fails; fix is in plugin/lib/interview.sh (P30.1/P31.1 files, outside this plan). Skill and router are done and committed; the other 9 C35 tests pass."
     },
     {
       "id": "P31.3",
@@ -3740,7 +3749,7 @@
       "after": [
         "P31.1"
       ],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "planning.js and building.js: read args.profile into a voice text and append it to every agent task",
@@ -3889,7 +3898,7 @@
       "after": [
         "P31.1"
       ],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "record.jq: validate project.declined as entries of text and ISO time (absent means none; schema stays 1)",
