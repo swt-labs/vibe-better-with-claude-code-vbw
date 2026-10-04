@@ -1958,7 +1958,15 @@
           "to": "deep",
           "reason": "Dev blocked P32.5: C36 fails on the prompt word budget (all prompts 10988 words, limit 10700) in plugin/ prompts, outside this docs plan's files; docs tasks are committed"
         }
-      ]
+      ],
+      "qa": {
+        "result": "fail",
+        "tier": "deep",
+        "tree": "03f89003112457b38d626b9e31765872e9d029c7",
+        "at": "2026-10-04T17:04:12Z",
+        "note": "24/25 checks",
+        "rounds": 1
+      }
     },
     {
       "id": "P33",
@@ -4152,6 +4160,14 @@
       "attempts": 0,
       "status": "closed",
       "note": "Plan P28.1 task 4 and the phase criterion require tests/rigor-profile.bats expectations updated to the new QA models, but no commit touches it (git log 74042e66^..HEAD). tests/rigor-profile.bats:21 still accepts .models.qa IN(opus,sonnet,haiku), so it would pass with haiku QA in tiers.json; the promised update is missing."
+    },
+    {
+      "id": "F19",
+      "req": "R39",
+      "source": "qa",
+      "attempts": 0,
+      "status": "open",
+      "note": "Out-of-plan change: commit 545ad009 edits plugin/skills/interview/SKILL.md, which is in no P32 plan's file list (P32.4 blocked on it; it belongs to P31.2), and no recorded decision (D37-D76) covers it. Commit 2c762999 also edits profile/SKILL.md outside any P32 task commit. Record a decision or re-plan to cover them."
     }
   ],
   "todos": [
@@ -4910,5 +4926,11 @@
     "scope": [],
     "passed": true
   },
-  "lease": null
+  "lease": {
+    "run": "qa-20261004T170325Z",
+    "kind": "qa",
+    "started_at": "2026-10-04T17:03:25Z",
+    "files": [],
+    "session": "9cd2cc30-8c86-4520-9d71-a0e82aff5407"
+  }
 }
