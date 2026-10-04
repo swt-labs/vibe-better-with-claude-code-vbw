@@ -53,6 +53,15 @@ if type != "object" then ["record must be a JSON object"] else
       | select(($r[.] | type) != "array") | "\(.) must be an array" ),
 
     ( select(($r.project.name? | nonempty) | not) | "project.name must be a non-empty string" ),
+    ( ($ARGS.named.interview[0]? // null) as $allowed
+      | $r.project.interview? | select(. != null)
+      | ( select(type != "object") | "project.interview must be an object" ),
+        ( select(type == "object")
+          | ( keys[] | select(one_of(["level","depth","involvement","at"]) | not) | "project.interview has an unknown field: \(.)" ),
+            ( .at | select(iso | not) | "project.interview.at must be an ISO-8601 UTC time" ),
+            ( . as $i | ["level","depth","involvement"][] as $k
+              | select(($i[$k] | type) != "string" or ($allowed != null and (($i[$k] | one_of($allowed[$k])) | not)))
+              | "project.interview.\($k) must be one of: \(if $allowed != null then $allowed[$k] | join(", ") else "a string" end)" ) ) ),
     ( $r.milestone
       | ( select((.id? | type == "string" and test("^M[0-9]+$")) | not) | "milestone.id must look like M1" ),
         ( select((.title? | nonempty) | not) | "milestone.title must be a non-empty string" ),

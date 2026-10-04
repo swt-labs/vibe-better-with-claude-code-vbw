@@ -7,7 +7,7 @@ VBW_LOCK_STALE_SECONDS=30
 # Print the first violation of FILE (empty output = valid). Status 1 if invalid.
 record_violation() {
   local out
-  if ! out=$(jq -c -f "$VBW_LIB/record.jq" "$1" 2>/dev/null); then
+  if ! out=$(jq -c --slurpfile interview "$VBW_LIB/interview.json" -f "$VBW_LIB/record.jq" "$1" 2>/dev/null); then
     printf 'unparseable JSON\n'
     return 1
   fi
