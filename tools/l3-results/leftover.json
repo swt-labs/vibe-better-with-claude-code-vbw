@@ -1,0 +1,22 @@
+{
+  "scenario": "leftover",
+  "fixture": "greet.sh from scratch plus a committed lint.sh that fails when todos.txt exists; project command lint: sh lint.sh",
+  "cost_usd": 0.53,
+  "evidence_level": "L3",
+  "at": "2026-10-04T00:50:55Z",
+  "passed": true,
+  "facts": {
+    "leftover_file": "todos.txt",
+    "check_flips_in_working_folder": true,
+    "proof_unchanged": true,
+    "proof_passed": true,
+    "file_in_proof_copy": false,
+    "copy_removed": true
+  },
+  "not_tested": [
+    "a leftover modified tracked file",
+    "a git-ignored leftover (linked into the copy by design)",
+    "a project command other than a shell script",
+    "a project larger than the greet.sh fixture"
+  ]
+}
