@@ -18,7 +18,7 @@ carries `VBW-Plan:`/`VBW-Req:` trailers, so the record stays small.
   forward in one tested step; an older kernel refuses a newer record (see
   Versioning).
 
-## Shape (schema 1)
+## Shape (schema 1; schema 2 when a check is alone)
 
 ```json
 {
