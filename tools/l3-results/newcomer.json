@@ -1,0 +1,37 @@
+{
+  "scenario": "newcomer",
+  "fixture": "greet.sh from scratch; a user who has never built software answers in plain words and lets VBW decide",
+  "cost_usd": 1.02,
+  "evidence_level": "L3",
+  "at": "2026-10-04T16:45:00Z",
+  "passed": true,
+  "facts": {
+    "answered": {
+      "level": "never",
+      "depth": "plain words",
+      "involvement": "decide and tell me",
+      "purpose": "a script greet.sh: ./greet.sh Ana prints Hello, Ana! and ./greet.sh alone prints Hello, world!. It is for my grandmother, who is learning English.",
+      "follow_ups": 0,
+      "keep": "private"
+    },
+    "recorded": {
+      "level": "never",
+      "depth": "plain words",
+      "involvement": "decide and tell me",
+      "kept": "private"
+    },
+    "recorded_matches_answered": true,
+    "purpose_in_spec_goals": true,
+    "second_session_asked_interview": false,
+    "next_profile_ask_after": false,
+    "milestone_shipped": true,
+    "reached_ship": true,
+    "transcript": "tools/l3-results/newcomer.transcript.md"
+  },
+  "not_tested": [
+    "a person judging the wording (R41, human)",
+    "the other two level answers",
+    "a project larger than the greet.sh fixture",
+    "a second request carried through to the end"
+  ]
+}
