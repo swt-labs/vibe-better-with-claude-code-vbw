@@ -2233,6 +2233,13 @@
         "fix_rounds": 0,
         "qa_findings": 0,
         "escalations": 2
+      },
+      "qa": {
+        "result": "pass",
+        "tier": "deep",
+        "tree": "ad44411d06db3e71fcaccc9630a82b2e55319214",
+        "at": "2026-10-04T22:29:31Z",
+        "note": "30/30 checks"
       }
     },
     {
