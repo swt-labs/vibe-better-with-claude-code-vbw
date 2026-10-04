@@ -1490,7 +1490,15 @@
           "to": "deep",
           "reason": "Dev blocked P28.1: Tasks 1-4 done and committed (profiles, tiers, next.jq/statusline.jq/cmd-config.sh clamp, kernel-surface+statusline tests). C31 still red on two protected tests outside my files: (a) qa-model.bats test 6 sets phases[0].escalations = [{from,to,reason}] without the required 'at' (record.jq escalations validation), so vbw next exits 3 on a corrupt record, independent of the QA clamp; fix needs the test fixture to add an iso 'at' (protected file) or record.jq to relax validation (outside plan). (b) test 8 greps 'QA never' in plugin/skills/config/SKILL.md and docs/rigor.md, files not in P28.1 (presumably a docs plan)."
         }
-      ]
+      ],
+      "qa": {
+        "result": "fail",
+        "tier": "deep",
+        "tree": "20bedd8908a5c88253374d4ffdc6add14cedb692",
+        "at": "2026-10-04T11:34:10Z",
+        "note": "22/24 checks",
+        "rounds": 1
+      }
     },
     {
       "id": "P29",
@@ -3265,6 +3273,14 @@
       "attempts": 0,
       "status": "closed",
       "note": "test fail"
+    },
+    {
+      "id": "F18",
+      "req": "R35",
+      "source": "qa",
+      "attempts": 0,
+      "status": "open",
+      "note": "Plan P28.1 task 4 and the phase criterion require tests/rigor-profile.bats expectations updated to the new QA models, but no commit touches it (git log 74042e66^..HEAD). tests/rigor-profile.bats:21 still accepts .models.qa IN(opus,sonnet,haiku), so it would pass with haiku QA in tiers.json; the promised update is missing."
     }
   ],
   "todos": [
