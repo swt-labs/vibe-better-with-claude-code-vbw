@@ -8,7 +8,10 @@ allowed-tools: Bash("${CLAUDE_PLUGIN_ROOT}/bin/vbw" *) Bash(vbw *)
 ```!
 "${CLAUDE_PLUGIN_ROOT}/bin/vbw" config 2>&1 || true
 "${CLAUDE_PLUGIN_ROOT}/bin/vbw" statusline status 2>&1 || true
+"${CLAUDE_PLUGIN_ROOT}/bin/vbw" interview 2>&1 || true
 ```
+
+Write to the user's level, explanation depth and involvement (above; "-": plain words).
 
 The user said: $ARGUMENTS
 
@@ -22,19 +25,15 @@ the result. Otherwise show the settings above in plain words. Keys:
   Scout, Debugger, Docs) run on. `quality` (Opus for the Architect, Lead, Dev
   and Debugger; Sonnet for QA, Scout and Docs), `balanced` (the default: Sonnet
   for all), `budget` (Haiku for Scout, Sonnet for the rest, QA included).
-- `model.architect`, `model.lead`, `model.dev`, `model.qa`, `model.scout`,
-  `model.debugger`, `model.docs`: override one agent (`opus`, `sonnet`, `haiku`
-  or a model id; `default` removes the override). The status line shows each.
-  QA never runs on Haiku: it needs Sonnet or stronger, because it judges
-  whether the work meets the spec. `model.qa` refuses Haiku: `vbw config set model.qa haiku` (or any id
-  naming Haiku) fails with that message and changes nothing. `model.qa` accepts `sonnet`, `opus`,
-  `default` and full non-Haiku ids such as `claude-opus-5-5`. A Haiku value
-  already stored is raised to Sonnet, and `vbw config` and the status line show
-  Sonnet.
-- `autonomy`: how much `/vbw:vibe` does on its own: `guided` (explains each
-  step and waits), `balanced` (the default: stops for decisions, approval,
-  checking and shipping), `hands-off` (takes its own recommendations on
-  decisions and lists them). `/vbw:profile` sets it together with the models.
+- `model.<role>` (architect, lead, dev, qa, scout, debugger, docs): override
+  one agent (`opus`, `sonnet`, `haiku`, a model id; `default` removes it).
+  QA never runs on Haiku (it judges whether the work meets the spec):
+  `model.qa` refuses any Haiku id and changes nothing; it accepts `sonnet`,
+  `opus`, `default` and non-Haiku ids such as `claude-opus-5-5`. A stored Haiku
+  value is raised to Sonnet.
+- `autonomy`: how much `/vbw:vibe` does alone: `guided` (explains each step and
+  waits), `balanced` (the default: stops for decisions, approval, checking and
+  shipping), `hands-off` (takes its own recommendations and lists them).
 - `autonomy_cap`: how many steps one autonomous run takes before stopping.
 - `rigor`: how thorough each phase's checking is. `auto` (the default) picks a
   tier per phase from its risk; `express`, `standard` or `deep` forces it. Set

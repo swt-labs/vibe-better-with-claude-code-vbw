@@ -7,12 +7,14 @@ allowed-tools: Bash("${CLAUDE_PLUGIN_ROOT}/bin/vbw" *) Bash(vbw *)
 
 ```!
 "${CLAUDE_PLUGIN_ROOT}/bin/vbw" status 2>&1 || true
+"${CLAUDE_PLUGIN_ROOT}/bin/vbw" interview 2>&1 || true
 ```
+
+Write to the user's level, explanation depth and involvement (above; "-": plain words).
 
 The user wants a quick change: $ARGUMENTS
 
-If that is empty, ask what to fix. If it is really new behavior a user would
-notice (a feature, a new screen, a changed rule), say so and recommend
+If that is empty, ask what to fix. If it is new user-visible behavior, say so and recommend
 `/vbw:vibe` instead, so it becomes a requirement with a check; do it as a
 quick fix only if they still want that.
 

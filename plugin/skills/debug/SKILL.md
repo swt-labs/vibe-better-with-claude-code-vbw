@@ -8,22 +8,21 @@ allowed-tools: Bash("${CLAUDE_PLUGIN_ROOT}/bin/vbw" *) Bash(vbw *) Workflow(vbw:
 ```!
 "${CLAUDE_PLUGIN_ROOT}/bin/vbw" config models 2>&1 || true
 "${CLAUDE_PLUGIN_ROOT}/bin/vbw" workflows on 2>&1 || true
+"${CLAUDE_PLUGIN_ROOT}/bin/vbw" interview 2>&1 || true
 ```
+
+Write to the user's level, explanation depth and involvement (above; "-": plain words).
 
 The problem, in the user's words: $ARGUMENTS
 
 If that is empty, ask what is wrong (what they did, what happened, what they
-expected) before anything else. VBW needs the Workflow tool: the `workflows`
-line above turns Dynamic workflows on (say so in one line when it did).
-Without the tool, say why (disabled on purpose, or a restart of Claude Code
-picks up the setting) and stop. (Outside a VBW project the models line above
-shows an error; omit `models` then.)
+expected). VBW needs the Workflow tool: the `workflows` line above turns it on
+(say so in one line when it did); without it, say why and stop. (Outside a VBW
+project the models line shows an error; omit `models`.)
 
 Start the Workflow `vbw:investigating` with args `{"problem": "<the problem>",
 "models": <the JSON above>}`. When it returns, tell the user the root cause,
-the evidence for it, the hypotheses it rejected, how confident it is, and the
-proposed fix, then ask whether to fix it now. If yes, start the Workflow again
+its evidence, rejected hypotheses, confidence and the proposed fix, then ask whether to fix it now. If yes, start the Workflow again
 with args `{"problem": "<the problem>", "fix": <the diagnosis it returned>,
 "models": ...}`: one Debugger fixes the root cause, adds a regression test,
-commits and verifies (in a VBW project with `vbw prove`). Report what it
-changed.
+commits and verifies (`vbw prove` in a VBW project). Report what changed.

@@ -7,13 +7,15 @@ allowed-tools: Bash("${CLAUDE_PLUGIN_ROOT}/bin/vbw" *) Bash(vbw *) Workflow(vbw:
 ```!
 "${CLAUDE_PLUGIN_ROOT}/bin/vbw" config models 2>&1 || true
 "${CLAUDE_PLUGIN_ROOT}/bin/vbw" workflows on 2>&1 || true
+"${CLAUDE_PLUGIN_ROOT}/bin/vbw" interview 2>&1 || true
 ```
+
+Write to the user's level, explanation depth and involvement (above; "-": plain words).
 
 If this is not a VBW project yet ("not a VBW project" above), set it up first:
 `vbw init` and `vbw statusline on`. VBW needs the Workflow tool: the
-`workflows` line above turns Dynamic workflows on (say so in one line when it
-did). Without the tool, say why (disabled on purpose, or a restart of Claude
-Code picks up the setting) and stop.
+`workflows` line above turns it on (say so in one line when it did); without
+it, say why and stop.
 
 Run `VBW_SESSION_ID=${CLAUDE_SESSION_ID} vbw run start map`, then start the Workflow `vbw:mapping` with args
 `{"models": <the JSON above>}`. When it returns, `VBW_SESSION_ID=${CLAUDE_SESSION_ID} vbw run end`, then write its `map` to `.vbw/map.md` (replacing any older map), then tell
