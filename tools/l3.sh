@@ -60,6 +60,16 @@ case "$cmd" in
     tmux send-keys -t "$session" -l "$text"
     sleep 1
     tmux send-keys -t "$session" Enter
+    # A busy machine (several sessions at once) can take seconds to take the
+    # text: wait until the input line (the last ❯ line) no longer holds it, so
+    # the next text is never appended to this one. Enter again once if needed.
+    waited=0
+    while [ "$waited" -lt 30 ]; do
+      case "$(screen | grep '❯' | tail -n 1)" in *"$text"*) ;; *) break ;; esac
+      sleep 0.5
+      waited=$((waited + 1))
+      [ "$waited" -ne 20 ] || tmux send-keys -t "$session" Enter
+    done
     ;;
   keys)
     shift 2
