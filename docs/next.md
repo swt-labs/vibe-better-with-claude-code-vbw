@@ -25,6 +25,23 @@ workflow as `args.rigor`.
 `models` is the table's cell with your `vbw config set model.dev` and
 `model.qa` overrides applied.
 
+Every answer also carries `profile`: your interview answers (docs/interview.md)
+with the neutral middle choice for any question not yet answered, so a reader
+never meets a missing value.
+
+```json
+"profile": { "level": "professionally", "depth": "plain with technical terms explained",
+             "involvement": "I make the calls", "kept": "private",
+             "interviewed": true, "pending": null, "ask": false }
+```
+
+`interviewed` is true once the set is complete and kept. `pending` names the
+first unanswered question (`level`, `depth`, `involvement`, or `keep`), or is
+`null`. `ask` is true only when the action is `spec` and the project is not
+interviewed: the router then follows the interview skill before any spec work.
+A workflow reads `args.profile` for its wording and falls back to the middle
+choices without it.
+
 At the `plan` step, `detail.tier` is the early tier (docs/rigor.md): `express`
 for one small, risk-free `auto` requirement in a repository of at most 30
 tracked files, else `standard` (`deep` when forced). On `express` the router
