@@ -3892,7 +3892,7 @@
         "P32.4",
         "P31.3"
       ],
-      "status": "planned",
+      "status": "done",
       "role": "docs",
       "tasks": [
         "docs/workflows.md: args.profile and how agent tasks carry it",
@@ -3968,7 +3968,7 @@
         "P33.1",
         "P33.2"
       ],
-      "status": "planned",
+      "status": "done",
       "role": "docs",
       "tasks": [
         "docs/interview.md: when suggestions are offered, accepted and declined",
@@ -4000,7 +4000,7 @@
         "P32.4",
         "P33.2"
       ],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "Scenario newcomer: answers never, plain words, decide and tell me, what and for whom, follow-ups and the keep question; saves the transcript",
