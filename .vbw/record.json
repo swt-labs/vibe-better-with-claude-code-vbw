@@ -1525,7 +1525,22 @@
           "to": "deep",
           "reason": "Dev blocked P29.1: C32 needs plugin/skills/config/SKILL.md reworded (line must match 'model.qa.*(Sonnet or stronger|never|refus)'; it currently says model.qa haiku is raised to Sonnet, now false) and that file is outside the plan's files and has uncommitted edits by another worker. cmd-config.sh change (refusal + header) is done in the working tree, uncommitted; 5 of 6 test assertions pass."
         }
-      ]
+      ],
+      "qa": {
+        "result": "pass",
+        "tier": "standard",
+        "tree": "20bedd8908a5c88253374d4ffdc6add14cedb692",
+        "at": "2026-10-04T11:28:32Z",
+        "note": "14/14 checks"
+      },
+      "outcome": {
+        "tier": "deep",
+        "predicted": "standard",
+        "held": false,
+        "fix_rounds": 0,
+        "qa_findings": 0,
+        "escalations": 1
+      }
     }
   ],
   "plans": [
@@ -3893,5 +3908,11 @@
     "scope": [],
     "passed": true
   },
-  "lease": null
+  "lease": {
+    "run": "qa-20261004T112752Z",
+    "kind": "qa",
+    "started_at": "2026-10-04T11:27:52Z",
+    "files": [],
+    "session": "9cd2cc30-8c86-4520-9d71-a0e82aff5407"
+  }
 }
