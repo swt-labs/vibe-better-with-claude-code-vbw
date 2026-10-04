@@ -3,8 +3,11 @@
 # $code_changed (the project differs from the commit the evidence proved), $legacy (a
 # VBW 1 plan, .vbw-planning/, is not converted yet), $session (the caller's session, "" when unknown).
 # $tracked (the number of files git tracks, for the early tier).
+# $profile: interview_effective (lib/interview.sh); next fills unanswered ones with the neutral middle choice.
 # $tiers (slurped: [table]; lib/tiers.json: profile -> tier -> cell).
-# Output: {action, gate, instruction, detail, rigor}. First matching row wins.
+# Output: {action, gate, instruction, detail, rigor, profile}; profile.ask is true only
+# at the spec step with no completed interview (once per project).
+# First matching row wins.
 
 def result($action; $gate; $instruction; $detail):
   {action: $action, gate: $gate, instruction: $instruction, detail: $detail};
@@ -98,4 +101,4 @@ def fix_files($r): if .command then ["*"]
     result("accept"; true; "Accept or reject \($to_accept | join(", ")), one scenario at a time"; {requirements: $to_accept})
   else
     result("ship"; true; "Everything is proven and accepted: ship milestone \(.milestone.id)"; {})
-  end) + {rigor: $rigor}
+  end) as $n | $n + {rigor: $rigor, profile: ({level: "small scripts or no-code", depth: "plain with technical terms explained", involvement: "options with a recommendation"} + ($profile | with_entries(select(.value != null or .key == "kept" or .key == "pending"))) + {ask: ($n.action == "spec" and ($profile.interviewed | not))})}
