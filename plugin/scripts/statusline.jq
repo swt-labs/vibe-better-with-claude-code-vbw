@@ -75,7 +75,7 @@ def progress($done; $total): (if $total > 0 then $done * 100 / $total else 0 end
         + (if ($agents | length) > 6 then "  " + ("+\(($agents | length) - 6) more" | dim) else "" end)
       else
         ($rec.settings // {}) as $s
-        | ((($profiles[0] // {})[$s.profile // "balanced"] // {}) + ($s.models // {})) as $m
+        | ((($profiles[0] // {})[$s.profile // "balanced"] // {}) + ($s.models // {}) | if ((.qa // "") | ascii_downcase | contains("haiku")) then .qa = "sonnet" else . end) as $m
         # Grouped by model, in the team's order: "sonnet ● architect ● lead ...".
         | ([roles[] as $r | {role: $r, model: ($m[$r] // "?")}] | group_by(.model) | sort_by(.[0].role as $r | roles | index($r))) as $groups
         | "Team   " + ([$groups[] | (.[0].model | dim) + " " + ([.[] | agent_dot(.role) + " " + c(.role | role_color; .role)] | join(" "))] | join(sep))
