@@ -72,7 +72,8 @@ vbw apply <<'JSON'
 JSON
 ```
 
-Each rule is `{req, text, check}`. Optional check fields: `exit`, `output` (a regular expression), `timeout`.
+Each rule is `{req, text, check}`. Optional check fields: `exit`, `output` (a regular expression), `timeout`, `alone` (boolean).
+Mark `"alone": true` a check that starts containers, services or other heavy shared resources (docker, a database server, a dev server): it never runs beside another VBW check.
 Then `vbw show contract` and read it once as the user will,
 tier lines included.
 
