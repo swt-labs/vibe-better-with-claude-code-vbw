@@ -10,8 +10,8 @@
     "deep": {"agents": {"scout": 1, "lead": 1, "dev": "plans", "qa": 1}, "qa": "deep", "models": {"dev": "sonnet", "qa": "sonnet"}}
   },
   "budget": {
-    "express": {"agents": {"dev": 1}, "qa": "quick", "models": {"dev": "haiku", "qa": "haiku"}},
-    "standard": {"agents": {"lead": 1, "dev": "plans", "qa": 1}, "qa": "quick", "models": {"dev": "sonnet", "qa": "haiku"}},
-    "deep": {"agents": {"scout": 1, "lead": 1, "dev": "plans", "qa": 1}, "qa": "deep", "models": {"dev": "sonnet", "qa": "haiku"}}
+    "express": {"agents": {"dev": 1}, "qa": "quick", "models": {"dev": "haiku", "qa": "sonnet"}},
+    "standard": {"agents": {"lead": 1, "dev": "plans", "qa": 1}, "qa": "quick", "models": {"dev": "sonnet", "qa": "sonnet"}},
+    "deep": {"agents": {"scout": 1, "lead": 1, "dev": "plans", "qa": 1}, "qa": "deep", "models": {"dev": "sonnet", "qa": "sonnet"}}
   }
 }
