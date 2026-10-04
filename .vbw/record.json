@@ -331,6 +331,53 @@
           "check": "C32"
         }
       ]
+    },
+    {
+      "id": "R37",
+      "text": "At the start of a project (after mapping, for existing code), VBW asks three fixed questions: how much software the user has built (never, small scripts or no-code, professionally, senior engineer), how VBW should explain things (plain words, plain with technical terms explained, technical and brief), and how involved they want to be in technical decisions (decide and tell me, options with a recommendation, I make the calls); then what they are building and for whom; then up to three follow-up questions VBW writes for that user and project",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M7",
+      "rules": []
+    },
+    {
+      "id": "R38",
+      "text": "The interview's answers are kept in the project, shown by vbw status, asked only once per project (a project started before this version is asked once, at its next milestone), and can be changed later with /vbw:profile",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M7",
+      "rules": []
+    },
+    {
+      "id": "R39",
+      "text": "Every VBW step that talks to the user, and every agent whose words reach the user, receives the user's level, explanation depth and involvement, and writes at that level",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M7",
+      "rules": []
+    },
+    {
+      "id": "R40",
+      "text": "When VBW proposes requirements and when it presents a plan for approval, it offers at most three suggestions matched to the user's level, each one a yes or no the user may decline; an accepted one becomes a requirement or a recorded decision, and a declined one is not offered again in that project",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M7",
+      "rules": []
+    },
+    {
+      "id": "R41",
+      "text": "A vibe coder and a senior engineer each find VBW's wording right for their level: never too simple, never too technical",
+      "proof": "human",
+      "status": "open",
+      "milestone": "M7"
+    },
+    {
+      "id": "R42",
+      "text": "Real-user scenarios answer the interview as a newcomer and as a senior engineer; both record their answers, are not asked again, and reach the ship step",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M7",
+      "rules": []
     }
   ],
   "checks": [

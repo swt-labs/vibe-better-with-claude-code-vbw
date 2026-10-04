@@ -41,6 +41,12 @@
 - R34 [auto] A real-user scenario in tools/l3-suite.sh shows both in the real Claude Code app: a request that states an edge case gets a check for that edge before approval, and a leftover untracked file in the working folder does not change the proof
 - R35 [auto] In every profile and rigor tier, QA agents run on Sonnet or a stronger model, never Haiku; other roles keep the models their profile gives them
 - R36 [auto] vbw config set model.qa refuses a model weaker than Sonnet (haiku) and says QA needs Sonnet or stronger; sonnet, opus and default are still accepted
+- R37 [auto] At the start of a project (after mapping, for existing code), VBW asks three fixed questions: how much software the user has built (never, small scripts or no-code, professionally, senior engineer), how VBW should explain things (plain words, plain with technical terms explained, technical and brief), and how involved they want to be in technical decisions (decide and tell me, options with a recommendation, I make the calls); then what they are building and for whom; then up to three follow-up questions VBW writes for that user and project
+- R38 [auto] The interview's answers are kept in the project, shown by vbw status, asked only once per project (a project started before this version is asked once, at its next milestone), and can be changed later with /vbw:profile
+- R39 [auto] Every VBW step that talks to the user, and every agent whose words reach the user, receives the user's level, explanation depth and involvement, and writes at that level
+- R40 [auto] When VBW proposes requirements and when it presents a plan for approval, it offers at most three suggestions matched to the user's level, each one a yes or no the user may decline; an accepted one becomes a requirement or a recorded decision, and a declined one is not offered again in that project
+- R41 [human] A vibe coder and a senior engineer each find VBW's wording right for their level: never too simple, never too technical
+- R42 [auto] Real-user scenarios answer the interview as a newcomer and as a senior engineer; both record their answers, are not asked again, and reach the ship step
 
 <!-- One requirement per line: an id, how it is proved, and a user-observable
      statement. [auto] = a check can prove it; [human] = only a person can judge it.
