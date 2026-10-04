@@ -2641,7 +2641,7 @@
       "after": [
         "P25.1"
       ],
-      "status": "planned",
+      "status": "done",
       "role": "docs",
       "tasks": [
         "update the vbw prove steps: checks and commands run on a clean copy of the committed code, inside the project, removed afterwards",
@@ -2761,7 +2761,7 @@
         "P26.2",
         "P26.3"
       ],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "edgecase scenario: a fixture project and a request that states an edge case; drive the real app through plan and approve as a user would; write tools/l3-results/edgecase.json with the facts tests/l3-scenarios.bats names (the rule and its check were listed before approval, the check passes on the solution and fails on a copy that ignores the edge)",
