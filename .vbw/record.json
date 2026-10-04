@@ -336,7 +336,7 @@
       "id": "R37",
       "text": "At the start of a project (after mapping, for existing code), VBW asks three fixed questions: how much software the user has built (never, small scripts or no-code, professionally, senior engineer), how VBW should explain things (plain words, plain with technical terms explained, technical and brief), and how involved they want to be in technical decisions (decide and tell me, options with a recommendation, I make the calls); then what they are building and for whom; then up to three follow-up questions VBW writes for that user and project",
       "proof": "auto",
-      "status": "open",
+      "status": "proven",
       "milestone": "M7",
       "rules": [
         {
@@ -381,7 +381,7 @@
       "id": "R38",
       "text": "The interview's answers are kept in the project, shown by vbw status, asked only once per project (a project started before this version is asked once, at its next milestone), and can be changed later with /vbw:profile",
       "proof": "auto",
-      "status": "open",
+      "status": "proven",
       "milestone": "M7",
       "rules": [
         {
@@ -438,7 +438,7 @@
       "id": "R39",
       "text": "Every VBW step that talks to the user, and every agent whose words reach the user, receives the user's level, explanation depth and involvement, and writes at that level",
       "proof": "auto",
-      "status": "open",
+      "status": "proven",
       "milestone": "M7",
       "rules": [
         {
@@ -475,7 +475,7 @@
       "id": "R40",
       "text": "When VBW proposes requirements and when it presents a plan for approval, it offers at most three suggestions matched to the user's level, each one a yes or no the user may decline; an accepted one becomes a requirement or a recorded decision, and a declined one is not offered again in that project",
       "proof": "auto",
-      "status": "open",
+      "status": "proven",
       "milestone": "M7",
       "rules": [
         {
@@ -523,7 +523,7 @@
       "id": "R42",
       "text": "Real-user scenarios answer the interview as a newcomer and as a senior engineer; both record their answers, are not asked again, and reach the ship step",
       "proof": "auto",
-      "status": "open",
+      "status": "proven",
       "milestone": "M7",
       "rules": [
         {
@@ -4229,6 +4229,11 @@
       "id": "T15",
       "text": "Finding (M6 planning): the Architect proposed phase ids P1 and P2, already taken by M1; the Lead renumbered. The planning workflow should hand the Architect the next free phase id",
       "status": "open"
+    },
+    {
+      "id": "T16",
+      "text": "Express path friction (M7 senior run): the router put a check file in the contract before writing it (first approval refused) and set a project test command that failed without arguments (fix round and re-approval). The express step should write and red-check the check file first, and the project command must run bare",
+      "status": "open"
     }
   ],
   "decisions": [
@@ -4672,10 +4677,10 @@
     "autonomy_cap": 25
   },
   "evidence": {
-    "at": "2026-10-04T11:41:59Z",
-    "contract": "c31d0225bb71079d8e28818a235ed6f785573ab958942361d102677559ec6bc8",
-    "tree": "20bedd8908a5c88253374d4ffdc6add14cedb692",
-    "head": "20bedd8908a5c88253374d4ffdc6add14cedb692",
+    "at": "2026-10-04T17:03:18Z",
+    "contract": "b6527878b1e38f9aeac3ea9ecacf9ae97b8e9bd5b035160d37fa9d9055d7974f",
+    "tree": "03f89003112457b38d626b9e31765872e9d029c7",
+    "head": "03f89003112457b38d626b9e31765872e9d029c7",
     "checks": {
       "C1": {
         "status": "pass",
@@ -4686,7 +4691,7 @@
       "C2": {
         "status": "pass",
         "exit": 0,
-        "seconds": 9,
+        "seconds": 8,
         "tail": "1..3\nok 1 R2: an interrupted code fingerprint (prove, next) leaves no index file\nok 2 R2: the caller's EXIT trap still runs when vbw code is interrupted\nok 3 R2: the caller's EXIT trap survives a vbw write that completes"
       },
       "C3": {
@@ -4710,13 +4715,13 @@
       "C8": {
         "status": "pass",
         "exit": 0,
-        "seconds": 0,
+        "seconds": 1,
         "tail": "1..1\nok 1 R8: balanced autonomy, background QA: no Stop-hook errors, stopped at accept"
       },
       "C9": {
         "status": "pass",
         "exit": 0,
-        "seconds": 8,
+        "seconds": 7,
         "tail": "1..5\nok 1 blocking an approved plan keeps the approval and proceeds without re-approval\nok 2 resetting a blocked plan keeps the approval and the approved hash\nok 3 a plan's note does not change the contract hash\nok 4 changing a plan definition still withdraws the approval\nok 5 changing a check or a requirement still withdraws the approval"
       },
       "C10": {
@@ -4728,7 +4733,7 @@
       "C11": {
         "status": "pass",
         "exit": 0,
-        "seconds": 8,
+        "seconds": 7,
         "tail": "1..3\nok 1 R12: after a code change since the last proof, qa record refuses, names vbw prove, writes nothing\nok 2 R12: after vbw prove, the same qa record succeeds\nok 3 R12: the QA agent and the verifying workflow run prove and retry when qa record refuses"
       },
       "C12": {
@@ -4770,7 +4775,7 @@
       "C18": {
         "status": "pass",
         "exit": 0,
-        "seconds": 7,
+        "seconds": 6,
         "tail": "1..7\nok 1 the committed results are complete\nok 2 selftest: a complete set passes\nok 3 selftest: a missing run fails\nok 4 selftest: a missing field fails\nok 5 selftest: a duplicate run fails\nok 6 selftest: a result whose level does not match its arm fails\nok 7 selftest: a result without user_inputs fails"
       },
       "C19": {
@@ -4788,7 +4793,7 @@
       "C21": {
         "status": "pass",
         "exit": 0,
-        "seconds": 7,
+        "seconds": 8,
         "tail": "1..7\nok 1 with no setting the mode is auto, and the config listing says so\nok 2 vbw config rigor sets each of auto, express, standard and deep\nok 3 an invalid mode is refused with the allowed list and the setting stays\nok 4 a forced mode overrides the computed tier when planning, up or down\nok 5 changing the mode re-tiers phases whose work has not started, and auto computes again\nok 6 a phase whose work has started keeps its tier when the mode changes\nok 7 changing the mode never makes the approved contract need approving again"
       },
       "C22": {
@@ -4836,34 +4841,70 @@
       "C29": {
         "status": "pass",
         "exit": 0,
-        "seconds": 3,
+        "seconds": 4,
         "tail": "1..5\nok 1 R33: a record with a newer schema exits non-zero and says the project needs a newer VBW\nok 2 R33: the message never calls a newer record corrupt\nok 3 R33: a newer record is not modified, rewritten or locked by the older VBW\nok 4 R33: a record that is damaged, not newer, is still reported as corrupt\nok 5 R33: the record of every earlier schema version still loads and shows correctly"
       },
       "C30": {
         "status": "pass",
         "exit": 0,
-        "seconds": 1,
+        "seconds": 0,
         "tail": "1..5\nok 1 R34: the edge-case scenario exists, runs the real app and states its fixture and level\nok 2 R34: the edge case got a rule and a check before approval, and the check tests that edge\nok 3 R34: the leftover-file scenario exists, runs the real app and states its fixture and level\nok 4 R34: a leftover untracked file left the proof unchanged and was not in the proof copy\nok 5 R34: each scenario's result reflects only its own checks"
       },
       "C31": {
         "status": "pass",
         "exit": 0,
-        "seconds": 7,
+        "seconds": 8,
         "tail": "1..8\nok 1 no profile and no tier cell gives QA Haiku, in the tables or in vbw next\nok 2 the budget profile shows QA on Sonnet in vbw config models and in the status line\nok 3 other roles keep their models: budget scout on haiku, express dev on haiku, the rest as before\nok 4 a record that already holds a Haiku QA override gets Sonnet in vbw next\nok 5 a QA override to opus or a full non-Haiku id is honoured, and the dev override still wins\nok 6 a forced rigor and an escalation never lower QA below Sonnet\nok 7 the status line shows the effective QA model: a Haiku override reads Sonnet, an opus one Opus\nok 8 the docs say QA never uses Haiku, and the budget profile no longer lists Haiku for QA"
       },
       "C32": {
         "status": "pass",
         "exit": 0,
+        "seconds": 3,
+        "tail": "1..6\nok 1 model.qa haiku is a usage error that says QA needs Sonnet or stronger and changes nothing\nok 2 any value naming Haiku is refused for model.qa, whatever its case\nok 3 model.qa accepts sonnet, opus and a full non-Haiku id; default removes the override\nok 4 the other roles still accept haiku\nok 5 a refused set leaves an existing valid model.qa override as it was\nok 6 the config header and the config skill document the QA restriction; the kernel stays within 3,300 lines"
+      },
+      "C33": {
+        "status": "pass",
+        "exit": 0,
+        "seconds": 16,
+        "tail": "1..14\nok 1 R38: a kernel command records the three answers and refuses any other value, naming the allowed ones\nok 2 R38: private answers live in the clone's git directory beside consent.json and never touch the project\nok 3 R38: shared answers are written to the project record by the kernel, valid at schema 1, with no private copy\nok 4 R38: choosing the other location moves the answers and leaves no copy behind\nok 5 R38: private answers made in one worktree are read in another worktree of the clone\nok 6 R38: concurrent writes from two worktrees are both kept\nok 7 R38: answers shared by choice are seen by a second worktree once the project record is committed\nok 8 R38: vbw status shows the three answers and where they are kept; with none it says the interview has not been done\nok 9 R38: changing one answer later leaves the other two untouched, in either location\nok 10 R38: a record or answers file from an older VBW (no answers) reads without error as not yet interviewed\nok 11 R38: the record change is additive under project: schema stays 1, older VBWs read it, and a bad value is corrupt\nok 12 R38: what is being built and for whom is not a personal answer: it is refused and never stored\nok 13 R38: keep refuses until all three answers exist, naming the first unanswered one\nok 14 R38: /vbw:profile changes any one answer with the kernel command and shows the answers first"
+      },
+      "C34": {
+        "status": "pass",
+        "exit": 0,
+        "seconds": 7,
+        "tail": "1..7\nok 1 R38: a new project, at its spec step with no answers, is asked the interview\nok 2 R38: once the answers exist the interview is never asked again, whatever the location or session\nok 3 R38: a new milestone does not ask again once the answers exist, shared or private\nok 4 R38: a project started before this version is not asked mid-run or mid-phase, only at its next milestone\nok 5 R38: a project record from an older VBW is read, is not mid-run asked, and counts as not yet interviewed\nok 6 R38: answers shared by choice are not asked again in a second worktree\nok 7 R38: the router asks the interview only when next says profile.ask, never mid-run"
+      },
+      "C35": {
+        "status": "pass",
+        "exit": 0,
         "seconds": 4,
-        "tail": "1..6\nok 1 model.qa haiku is a usage error that says QA needs Sonnet or stronger and changes nothing\nok 2 any value naming Haiku is refused for model.qa, whatever its case\nok 3 model.qa accepts sonnet, opus and a full non-Haiku id; default removes the override\nok 4 the other roles still accept haiku\nok 5 a refused set leaves an existing valid model.qa override as it was\nok 6 the config header and the config skill document the QA restriction; the kernel stays within 3,000 lines"
+        "tail": "1..10\nok 1 R37: the interview is a skill of its own, named interview, within a mode prompt's budget\nok 2 R37: the three fixed questions are asked in order with exactly the listed options\nok 3 R37: after the three, VBW asks briefly what is being built and for whom, and writes it into the spec Goals\nok 4 R37: at most three follow-up questions, written for that user's level and this project; zero is allowed\nok 5 R37: the last question asks where to keep the personal answers and applies the choice through the kernel\nok 6 R37: each answer is recorded as it is given, so an interrupted interview resumes at the first unanswered question\nok 7 R37: an interrupted interview records nothing as complete and resumes at the first unanswered question\nok 8 R37: an unrecognised answer to a fixed question is refused and never recorded\nok 9 R37: the router runs the interview before spec work, after mapping for existing code,\nok 10 R37: the router stays within its budget and the interview adds no more than a mode prompt"
+      },
+      "C36": {
+        "status": "pass",
+        "exit": 0,
+        "seconds": 7,
+        "tail": "1..11\nok 1 R39: vbw next --json carries the user's level, explanation depth and involvement\nok 2 R39: with no answers it carries an explicit neutral default\nok 3 R39: a partly answered interview fills the gaps with the neutral default\nok 4 R39: machine-read output does not change with the level: only the profile field differs\nok 5 R39: every skill hands the user's three values to its prompt, and none is skipped\nok 6 R39: every agent that can reach the user receives and applies the three values\nok 7 R39: involvement is honored: the three settings each name what VBW does with a decision\nok 8 R39: every workflow agent call carries the profile in its task text and still passes a schema\nok 9 R39: the router hands the profile to every workflow it starts\nok 10 R39: prompts stay within their budgets: agents 1.5k tokens, mode prompts 3k, router 2k, all prompts 16k (owner raised it from 15k on 2026-10-04)\nok 11 R39: the workflows stay within 1,500 lines of JavaScript"
+      },
+      "C37": {
+        "status": "pass",
+        "exit": 0,
+        "seconds": 5,
+        "tail": "1..10\nok 1 R40: a declined suggestion is recorded in the project record by the kernel and never offered again\nok 2 R40: declining the same text twice is deduplicated, even with other case or spacing\nok 3 R40: a declined suggestion stays declined across sessions and milestones\nok 4 R40: a record from an older VBW (nothing declined) is read: none declined\nok 5 R40: the declined list is written only through the kernel's validated write path\nok 6 R40: the record change is additive under project, so older VBWs still read the project\nok 7 R40: the suggest skill offers at most three yes-or-no suggestions, only at spec proposal and plan approval\nok 8 R40: an accepted suggestion becomes a requirement or a recorded decision, a declined one is recorded and not offered again\nok 9 R40: suggestions follow the user's level and depth, zero is valid, and none duplicates a requirement or decision\nok 10 R40: the router offers suggestions at spec proposal and at plan approval, and nowhere else"
+      },
+      "C38": {
+        "status": "pass",
+        "exit": 0,
+        "seconds": 1,
+        "tail": "1..9\nok 1 R42: the newcomer scenario exists, runs the real app and states its fixture and level\nok 2 R42: the senior-engineer scenario exists, runs the real app and states its fixture and level\nok 3 R42: the newcomer answered the three fixed questions, what and for whom, the follow-ups and where to keep them\nok 4 R42: the senior engineer answered the three fixed questions, what and for whom, the follow-ups and where to keep them\nok 5 R42: each scenario's recorded answers (vbw interview, taken from the project) match what was answered\nok 6 R42: in each scenario a second request in a new session did not trigger the interview again\nok 7 R42: each scenario reaches the ship step\nok 8 R42: the two scenarios record different explanation depth and involvement, and their transcripts are saved for comparison\nok 9 R42: the release gate runs every scenario for a milestone release: both new scenarios are in the default list"
       }
     },
     "commands": {
       "test": {
         "status": "pass",
         "exit": 0,
-        "seconds": 118,
-        "tail": "ok 563 statusline on sets it without asking, and keeps the user's own to restore\nok 564 the setting finds the newest installed VBW and renders it\nok 565 workflows on turns Dynamic workflows on, keeps every other setting, and never overrides a deliberate off\nok 566 started in a subfolder it shows the project; a VBW 1 project is pointed to the conversion\nok 567 a running step shows how long it has run and how many agents are working\nok 568 the team line follows the profile and per-role models; tokens and prompt cache are shown\nok 569 a replaced round-0 record with empty tiers does not fail the set\nok 570 a final record with empty tiers still fails\nok 571 the workflows and VBW 1's seven agents exist, and nothing else\nok 572 each workflow starts with a pure-literal meta naming itself after its file\nok 573 workflows never use what breaks resume or is unavailable (time, randomness, modules)\nok 574 every phase() title is declared in meta.phases\nok 575 every agentType names an agent this plugin ships\nok 576 agents have a name matching the file, a single-line description and a tool list\nok 577 agents stay within their size budget (about 1.5k tokens)\nok 578 agents only use vbw commands that exist\nok 579 agents that plan or judge the plan load the user's recorded decisions\nok 580 workflow scripts parse as JavaScript (when node is available)\nok 581 workflow schemas are objects whose required keys are all properties\nok 582 no workflow shares its name with a skill (/vbw:NAME would start the workflow)"
+        "seconds": 125,
+        "tail": "ok 624 R40: the declined list is written only through the kernel's validated write path\nok 625 R40: the record change is additive under project, so older VBWs still read the project\nok 626 R40: the suggest skill offers at most three yes-or-no suggestions, only at spec proposal and plan approval\nok 627 R40: an accepted suggestion becomes a requirement or a recorded decision, a declined one is recorded and not offered again\nok 628 R40: suggestions follow the user's level and depth, zero is valid, and none duplicates a requirement or decision\nok 629 R40: the router offers suggestions at spec proposal and at plan approval, and nowhere else\nok 630 a replaced round-0 record with empty tiers does not fail the set\nok 631 a final record with empty tiers still fails\nok 632 the workflows and VBW 1's seven agents exist, and nothing else\nok 633 each workflow starts with a pure-literal meta naming itself after its file\nok 634 workflows never use what breaks resume or is unavailable (time, randomness, modules)\nok 635 every phase() title is declared in meta.phases\nok 636 every agentType names an agent this plugin ships\nok 637 agents have a name matching the file, a single-line description and a tool list\nok 638 agents stay within their size budget (about 1.5k tokens)\nok 639 agents only use vbw commands that exist\nok 640 agents that plan or judge the plan load the user's recorded decisions\nok 641 workflow scripts parse as JavaScript (when node is available)\nok 642 workflow schemas are objects whose required keys are all properties\nok 643 no workflow shares its name with a skill (/vbw:NAME would start the workflow)"
       }
     },
     "scope": [],
