@@ -2,6 +2,9 @@
 # vbw next [--json]: the next lifecycle step (docs/next.md), from the record,
 # the approval state of its contract, and whether the code changed since proof.
 
+# shellcheck source=interview.sh
+. "$VBW_LIB/interview.sh"
+
 cmd_next() {
   vbw_require_project
   local record hash tracked code approved=false changed=false legacy=false next
@@ -15,7 +18,7 @@ cmd_next() {
   # Code: tracked files outside .vbw/ that are not markdown or text.
   code=$(git -C "$VBW_ROOT" ls-files -z 2> /dev/null | jq -Rs '[split("\u0000")[] | select(length > 0 and ((startswith(".vbw/") or test("\\.(md|markdown|txt)$")) | not))] | length')
   next=$(printf '%s' "$record" | jq -c --argjson tracked "{\"tracked\":${tracked:-0},\"code\":${code:-0}}" --argjson approved "$approved" --arg contract "$hash" \
-    --argjson code_changed "$changed" --argjson legacy "$legacy" --arg session "$(vbw_session)" --slurpfile tiers "$VBW_LIB/tiers.json" "$VBW_JQ_DEFS$(cat "$VBW_LIB/next.jq")")
+    --argjson code_changed "$changed" --argjson legacy "$legacy" --argjson profile "$(interview_effective "$record")" --arg session "$(vbw_session)" --slurpfile tiers "$VBW_LIB/tiers.json" "$VBW_JQ_DEFS$(cat "$VBW_LIB/next.jq")")
   # The status line shows the last answer (docs/statusline.md).
   printf '%s\n' "$next" > "$VBW_RUNTIME/next.json.$$" && mv "$VBW_RUNTIME/next.json.$$" "$VBW_RUNTIME/next.json"
   if [ "${1:-}" = "--json" ]; then
