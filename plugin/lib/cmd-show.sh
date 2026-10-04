@@ -47,6 +47,7 @@ cmd_show() {
       printf '%s' "$record" | jq -r --arg q "$1" "$SHOW_JQ_DEFS"'
         . as $r | (.requirements[] | select(.id == $q)) as $req
         | "\($req.id) [\($req.proof), \($req.status)] \($req.text)",
+          ($req | rule_lines),
           "checks:", ($r.checks[] | select(.req == $q) | "  \(.id) " + check_line),
           "plans:", ($r.plans[] | select(any(.reqs[]; . == $q)) | "  \(.id) \(.title) [\(.status)]")'
       printf 'commits:\n'
@@ -72,6 +73,7 @@ cmd_show() {
         . as $r
         | "requirements:",
           (.requirements[] | . as $q | "  \(.id) [\(.proof)] \(.text)",
+            (rule_lines | "    " + .),
             ($r.checks[] | select(.req == $q.id) | "    \(.id) " + check_line)),
           (([.phases[] | select(.milestone == $r.milestone.id and .tier)]) as $tp
             | if ($tp | length) > 0 then "phases:", ($tp[] | "  \(.id) \(.tier): \(.reasons | join("; "))") else empty end),
@@ -127,8 +129,14 @@ show_contract_changes() {
           | "added requirement \(.key) [\(.value.proof)] \(.value.text)"),
         ($old.requirements | to_entries[] | select($new.requirements[.key] == null)
           | "removed requirement \(.key): \(.value.text)"),
-        ($new.requirements | to_entries[] | select($old.requirements[.key] != null and $old.requirements[.key] != .value)
+        ($new.requirements | to_entries[] | select($old.requirements[.key] != null and ($old.requirements[.key] | del(.rules)) != (.value | del(.rules)))
           | "changed requirement \(.key): [\($old.requirements[.key].proof)] \($old.requirements[.key].text) -> [\(.value.proof)] \(.value.text)"),
+        ($new.requirements | to_entries[] | select($old.requirements[.key] != null) | .key as $q
+          | (($old.requirements[$q].rules // []) | map({key: .text, value: .check}) | from_entries) as $o
+          | ((.value.rules // []) | map({key: .text, value: .check}) | from_entries) as $n
+          | ($n | to_entries[] | select($o[.key] == null) | "added rule \($q): \(.key) -> \(.value)"),
+            ($o | to_entries[] | select($n[.key] == null) | "removed rule \($q): \(.key)"),
+            ($n | to_entries[] | select($o[.key] != null and $o[.key] != .value) | "changed rule \($q): \(.key) -> \(.value) (was \($o[.key]))")),
         ($new.checks | to_entries[] | select($old.checks[.key] == null)
           | "added check \(.key) (\(.value.req)): " + (.value | check_line)),
         ($old.checks | to_entries[] | select($new.checks[.key] == null)
@@ -159,6 +167,9 @@ def phase_status($r): .id as $id | [$r.plans[] | select(.phase == $id) | .status
   | if ($s | length) > 0 and all($s[]; . == "done") then "built"
     elif any($s[]; . != "planned") then "building" else "planned" end;
 def argv_line: map(if test("^[A-Za-z0-9_./:=@%+-]+$") then . else @sh end) | join(" ");
+def rule_lines: if .proof == "auto" then
+    (if (.rules // []) | length == 0 then "rules not listed" else (.rules[] | "rule: \(.text) -> \(.check)") end)
+  else empty end;
 def check_line: (.run | argv_line)
   + (if (.exit // 0) != 0 then " (exit \(.exit))" else "" end)
   + (if .output then " (output ~ /\(.output)/)" else "" end)
