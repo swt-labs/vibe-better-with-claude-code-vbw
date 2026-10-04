@@ -87,7 +87,7 @@ next_models() { # PROFILE TIER: the P1 rigor models of vbw next --json
     vbw_run next --json
     echo "$output" | jq -e '.rigor.P1.models.qa | IN("sonnet", "opus", "default")' || { echo "$m: $output"; false; }
   done
-  edit_record '.phases[0].tier = "deep" | .phases[0].escalations = [{from: "express", to: "deep", reason: "a Dev blocked"}]'
+  edit_record '.phases[0].tier = "deep" | .phases[0].escalations = [{at: "2026-10-04T10:00:00Z", from: "express", to: "deep", reason: "a Dev blocked"}]'
   vbw_run next --json
   echo "$output" | jq -e '.rigor.P1.models.qa | IN("sonnet", "opus", "default")'
 }
