@@ -660,7 +660,7 @@ failed=0
 # print each one's lines in the order asked; the exit reflects all of them.
 if [ $# -gt 1 ] && [ "${L3_JOBS:-4}" -gt 1 ] && [ -z "${L3_CHILD:-}" ]; then
   logs=$(mktemp -d "${TMPDIR:-/tmp}/vbw-l3-logs.XXXXXX")
-  pids=() names=() status=0 running=0 i
+  pids=() names=() status=0 running=0
   for scenario in "$@"; do
     case " $ALL " in *" $scenario "*) ;; *) echo "unknown scenario $scenario (one of: $ALL)" >&2; exit 2 ;; esac
   done
