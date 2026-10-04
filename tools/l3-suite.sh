@@ -53,11 +53,16 @@ answer_recommended() {
 }
 
 # answer_other TEXT: pick "Type something." and type TEXT.
+# Options may still be rendering: it looks for up to 5 s before it escapes the
+# menu and types (which Claude Code reports to the model as an interruption).
 answer_other() {
-  local n
-  n=$(screen | grep -E '^\s*(❯ )?[0-9]+\. Type something' | grep -oE '[0-9]+' | head -1)
-  [ -n "$n" ] || { l3 keys "$scenario" Escape; sleep 1; l3 type "$scenario" "$1"; return; }
-  local i
+  local n="" i
+  for ((i = 0; i < 10; i++)); do
+    n=$(screen | grep -E '^\s*(❯ )?[0-9]+\. Type something' | grep -oE '[0-9]+' | head -1)
+    [ -n "$n" ] && break
+    sleep 0.5
+  done
+  [ -n "$n" ] || { say "no 'Type something' option on screen; escaping the menu"; l3 keys "$scenario" Escape; sleep 1; l3 type "$scenario" "$1"; return; }
   for ((i = 1; i < n; i++)); do l3 keys "$scenario" Down; done
   l3 keys "$scenario" Enter; sleep 1
   l3 type "$scenario" "$1"
