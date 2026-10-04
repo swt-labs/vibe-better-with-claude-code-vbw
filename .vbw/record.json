@@ -1323,7 +1323,22 @@
         "breaks: R4, R5, R8",
         "tests: project test command"
       ],
-      "predicted": "standard"
+      "predicted": "standard",
+      "qa": {
+        "result": "pass",
+        "tier": "standard",
+        "tree": "d619ada5967a195cb96633b60b4c17b8a1d24ef8",
+        "at": "2026-10-04T01:10:08Z",
+        "note": "12/12 checks"
+      },
+      "outcome": {
+        "tier": "standard",
+        "predicted": "standard",
+        "held": true,
+        "fix_rounds": 0,
+        "qa_findings": 0,
+        "escalations": 0
+      }
     }
   ],
   "plans": [
