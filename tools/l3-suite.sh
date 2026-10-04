@@ -750,8 +750,9 @@ transcript_clean() {
 # scenario_interview LEVEL DEPTH INVOLVEMENT KEEP_REGEX PURPOSE KEYWORD DETAIL:
 # sets up a project whose user answers the interview as given (drive handlers)
 # and defines checks() to read the outcome. PURPOSE leaves out what the tool
-# does, so the interview has something to follow up on; every follow-up is
-# answered with DETAIL. The caller's checks() writes the result.
+# does, so the interview has something to follow up on. Every follow-up gets
+# DETAIL, a reply that answers both kinds VBW asks (what it does, and in what
+# form or language), in the user's own words. The caller's checks() writes the result.
 scenario_interview() {
   a_level=$1 a_depth=$2 a_inv=$3 a_keep=$4 a_purpose=$5 a_word=$6 a_detail=$7
   new_project
@@ -857,7 +858,7 @@ scenario_newcomer() {
   fixture="greet.sh from scratch; a user who has never built software answers in plain words and lets VBW decide"
   scenario_interview "never" "plain words" "decide and tell me" "private" \
     "a little greeting program for my grandmother, who is learning English." grandmother \
-    "A script greet.sh: ./greet.sh Ana prints Hello, Ana! and ./greet.sh alone prints Hello, world!. That is all it needs to do."
+    "Something simple she types in the terminal: greet.sh with her name says Hello and her name, like Hello, Ana!, and greet.sh on its own says Hello, world!. Nothing more."
   checks() {
     interview_outcome
     result_write newcomer "$fixture" "${cost_usd:-0}" "$passed" "$facts" \
@@ -869,7 +870,7 @@ scenario_senior() {
   fixture="greet.sh from scratch; a senior engineer answers technically and briefly and makes the calls; answers kept in the project"
   scenario_interview "senior engineer" "technical and brief" "I make the calls" "saved" \
     "a CLI greeter our team calls from onboarding scripts; users are platform engineers." onboarding \
-    "greet.sh NAME prints Hello, NAME!; no argument prints Hello, world!; exit 0. Nothing else."
+    "POSIX sh, one script greet.sh: greet.sh NAME prints Hello, NAME!; no argument prints Hello, world!; exit 0. Nothing else."
   checks() {
     interview_outcome
     result_write senior "$fixture" "${cost_usd:-0}" "$passed" "$facts" \
