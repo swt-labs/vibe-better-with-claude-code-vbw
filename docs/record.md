@@ -15,7 +15,8 @@ carries `VBW-Plan:`/`VBW-Req:` trailers, so the record stays small.
   first violation; the kernel never "repairs" it silently.
 - **Stable ids:** ids are assigned once and never reused or renumbered.
 - **Versioned:** `schema` is an integer. A newer kernel migrates older records
-  forward in one tested step; an older kernel refuses a newer record.
+  forward in one tested step; an older kernel refuses a newer record (see
+  Versioning).
 
 ## Shape (schema 1)
 
@@ -72,6 +73,31 @@ carries `VBW-Plan:`/`VBW-Req:` trailers, so the record stays small.
 
 Unknown keys are rejected, at the top level and inside every item: an unknown
 key is a typo, a stale field or a newer schema, and all three must be loud.
+
+## Versioning
+
+A VBW reads every schema up to its own (`VBW_SCHEMA_MAX`, currently 1). When
+it opens a record whose `schema` is a number above that, it stops and says so:
+
+```text
+this project needs a newer VBW: its record was written with schema 2, this VBW reads up to schema 1; update VBW with /vbw:update
+```
+
+The refusal comes before any validation, so the record is never called
+corrupt, and it covers reads and writes: the file is never modified.
+`vbw doctor` reports the same condition with the same advice.
+
+Exit codes of a command that opens the record:
+
+| Code | Meaning |
+|---|---|
+| 3 | the record is damaged: invalid JSON, a non-numeric `schema`, or a validation failure |
+| 4 | the record was written by a newer VBW: update VBW |
+
+Every earlier schema keeps loading. The fixtures in `tests/fixtures/records`
+(`v1.json`, and `future.json` for the refusal) are protected by check C29
+(`tests/record-newer.bats`), so a change that stops an old record from loading
+fails the proof.
 
 ## Consent
 
