@@ -164,6 +164,65 @@ checks_run_all() {
   printf '%s\n' "$all"
 }
 
+# Recorded passes (R43). A check's served files are its own files and the files
+# of every plan that serves its requirement. Its fingerprint is the committed
+# content of those paths (HEAD), so it moves only when a served file changes in
+# a commit. A check with no declared files, or a served path that is not in
+# HEAD, has no fingerprint: it is always run and never recorded.
+
+# checks_served RECORD ID: the check's served paths, one per line.
+checks_served() {
+  printf '%s' "$1" | jq -r --arg id "$2" '. as $r | .checks[] | select(.id == $id and ((.files // []) | length) > 0)
+    | .req as $q | ((.files) + [$r.plans[] | select(any(.reqs[]; . == $q)) | .files[]]) | unique[]'
+}
+
+# checks_fingerprint RECORD ID: print the fingerprint, or return 1 when there is none.
+checks_fingerprint() {
+  local p sha lines=""
+  while IFS= read -r p; do
+    sha=$(git -C "$VBW_ROOT" rev-parse --verify -q "HEAD:$p") || return 1
+    lines="$lines$p $sha"$'\n'
+  done < <(checks_served "$1" "$2")
+  [ -n "$lines" ] || return 1
+  printf '%s' "$lines" | vbw_sha256
+}
+
+# checks_served_dirty RECORD ID: succeed when a served file has uncommitted changes.
+checks_served_dirty() {
+  local files=() p
+  while IFS= read -r p; do files+=("$p"); done < <(checks_served "$1" "$2")
+  [ -n "$(vbw_dirty_files ${files[@]+"${files[@]}"})" ]
+}
+
+# checks_unchanged RECORD ID: print the time of the recorded pass and succeed
+# when it matches the current contract hash and fingerprint, with nothing dirty.
+checks_unchanged() {
+  local fp pass
+  fp=$(checks_fingerprint "$1" "$2") || return 1
+  checks_served_dirty "$1" "$2" && return 1
+  contract_approved "$(contract_hash "$1")" || return 1
+  pass=$(printf '%s' "$1" | jq -r --arg id "$2" --arg h "$(contract_hash "$1")" --arg fp "$fp" \
+    '.passes[$id] // empty | select(.contract == $h and .tree == $fp) | .at')
+  [ -n "$pass" ] && printf '%s\n' "$pass"
+}
+
+# checks_record_passes RECORD RESULTS HASH: record a pass for each passing
+# check whose served files are all committed; drop the entry of every other
+# check that ran.
+checks_record_passes() {
+  local id fp at new='{}' ran
+  at=$(vbw_now)
+  ran=$(printf '%s' "$2" | jq -c 'keys')
+  while IFS= read -r id; do
+    [ -n "$id" ] || continue
+    fp=$(checks_fingerprint "$1" "$id") || continue
+    checks_served_dirty "$1" "$id" && continue
+    new=$(printf '%s' "$new" | jq -c --arg id "$id" --arg at "$at" --arg h "$3" --arg fp "$fp" '. + {($id): {at: $at, contract: $h, tree: $fp}}')
+  done < <(printf '%s' "$2" | jq -r 'to_entries[] | select(.value.status == "pass") | .key')
+  record_update '.passes = (((.passes // {}) | with_entries(select(.key as $k | $ran | index($k) | not))) + $new)
+    | if .passes == {} then del(.passes) else . end' --argjson ran "$ran" --argjson new "$new"
+}
+
 # checks_must_pass RECORD WHAT CHECK...: run the checks now and die with
 # "WHAT: <the failing checks>" unless every one passes. No checks: nothing runs.
 checks_must_pass() {
@@ -174,6 +233,7 @@ checks_must_pass() {
   checks_begin "$record"
   results=$(checks_run_all "$record" "$@")
   checks_end
+  checks_record_passes "$record" "$results" "$CHECK_HASH"
   printf '%s' "$results" | jq -e 'all(.[]; .status == "pass")' > /dev/null \
     || vbw_die "$what: $(printf '%s' "$results" | jq -r '[to_entries[] | select(.value.status != "pass") | "\(.key) \(.value.status)"] | join(", ")')"
 }
