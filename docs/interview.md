@@ -89,6 +89,20 @@ A project started before this version has milestones and no answers. It is
 asked once, at its next milestone's spec step, never in the middle of a run or
 phase.
 
+## What the answers change
+
+The answers change wording only. Agents that write for you (mapping,
+planning, building, fixing, verifying, investigating, researching) get your
+level, depth and involvement and write at that level. They do not change:
+
+- rigor: the tier of each phase and its checks come from the requirements and
+  the code (docs/rigor.md), not from your level;
+- autonomy: how much VBW does alone is `vbw config set autonomy`;
+- proof: approved checks run the same for everyone (docs/proof.md).
+
+A beginner and a senior engineer get the same checks and the same gates
+(docs/next.md); they read different words.
+
 ## Changing an answer
 
 Run `/vbw:profile`, or `vbw interview set KEY VALUE`. The change goes to
