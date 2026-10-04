@@ -3615,7 +3615,7 @@
       "after": [
         "P30.1"
       ],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "vbw status text: the three answers and where they are kept, or 'the interview has not been done'",
@@ -3663,7 +3663,7 @@
       "after": [
         "P30.1"
       ],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "interview.sh: the profile object for next (answers or the neutral default, interviewed, kept, pending)",
