@@ -96,6 +96,6 @@ EOS
   grep -q "caller" "$TEST_ROOT/out"
 }
 
-@test "the kernel stays within 3,000 lines" {
-  [ "$(cat "$PLUGIN_ROOT"/bin/vbw "$PLUGIN_ROOT"/lib/*.sh | wc -l)" -le 3000 ]
+@test "the kernel stays within 3,300 lines" {
+  [ "$(cat "$PLUGIN_ROOT"/bin/vbw "$PLUGIN_ROOT"/lib/*.sh | wc -l)" -le 3300 ]
 }

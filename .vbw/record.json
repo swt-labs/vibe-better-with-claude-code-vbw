@@ -4618,6 +4618,12 @@
       "id": "D72",
       "at": "2026-10-04T14:50:52Z",
       "text": "Contract approved: 39 requirements, 36 checks, 80 plans (23e843e12788)"
+    },
+    {
+      "id": "D73",
+      "text": "The kernel budget is 3,300 lines (was 3,000)",
+      "why": "Owner (2026-10-04): the kernel grew for real features (rigor, clean-copy proof, interview); squeezing lines would only game the counter; 10% headroom keeps the core small",
+      "at": "2026-10-04T15:04:34Z"
     }
   ],
   "commands": {
