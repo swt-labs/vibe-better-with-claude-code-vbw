@@ -4,8 +4,6 @@
 <command-name>/vbw:vibe</command-name>
 <command-args>I want to build a small greeting tool. One small milestone.</command-args>
 
-**VBW:** I set up VBW here with `.vbw/` and the status line. Next is a short interview before we write the spec.
-
 **VBW asks:**
 - How much software have you built? (options: never / small scripts or no-code / professionally / senior engineer)
 
@@ -22,127 +20,201 @@
 **User answers:** Your questions have been answered: "How involved do you want to be in technical decisions?"="decide and tell me". You can now continue with these answers in mind.
 
 **VBW asks:**
-- What should the greeting tool do, and who will use it? For example: a small program where you type a name and it says hello. (options: Say hello to a name (Recommended) / Greeting that changes with time of day)
+- In a sentence or two: what should the greeting tool do, and who will use it? (options: Greet by name / Greet by time of day)
 
 **User:** [Request interrupted by user for tool use]
 
 **User:** a script greet.sh: ./greet.sh Ana prints Hello, Ana! and ./greet.sh alone prints Hello, world!. It is for my grandmother, who is learning English.
 
 **VBW asks:**
-- Last question: where should I keep your answers about how you like to work (your experience, how I explain things, how much you decide)? (options: private on this machine (Recommended) / saved in the project)
+- Where should I keep your answers about how I talk to you (experience, explanations, involvement)? (options: private on this machine (Recommended) / saved in the project)
 
-**User answers:** Your questions have been answered: "Last question: where should I keep your answers about how you like to work (your experience, how I explain things, how much you decide)?"="private on this machine (Recommended)". You can now continue with these answers in mind.
+**User answers:** Your questions have been answered: "Where should I keep your answers about how I talk to you (experience, explanations, involvement)?"="private on this machine (Recommended)". You can now continue with these answers in mind.
 
-**VBW:** Setup is done and the interview is saved. I've written the goal and three requirements for a "Greeting script" milestone:
+**VBW:** The plan is ready and needs your approval before I change any files.
 
-- **R1:** `./greet.sh Ana` prints exactly `Hello, Ana!`.
-- **R2:** `./greet.sh` with no name prints exactly `Hello, world!`.
-- **R3:** The greeting is simple and clear enough for someone learning English. Only you can judge this one, so you'll check it at the end.
+**What will be built:** one small script, `greet.sh`.
+- `./greet.sh Ana` prints `Hello, Ana!` (requirement R1)
+- `./greet.sh` with no name prints `Hello, world!` (requirement R2)
 
-The planning step is now running in the background. It will break the work into a plan and checks that fail today. I'll continue when it finishes, and then ask you to approve the plan with `/vbw:approve`.
+**How each one is checked:** I'll also write a tiny test file, `test.sh`. It runs `greet.sh` both ways and compares the output to the exact words above. The only commands that will run are `sh test.sh name` and `sh test.sh world`. Nothing else on your computer is touched.
 
-**User:** <task-notification>
-<task-id>w9ywuniwr</task-id>
-<tool-use-id>toolu_01RyGp96C4RwKJx4fmYrjaAK</tool-use-id>
-<output-file>/private/tmp/claude-501/-private-var-folders-xl-6lk7wfr15t79zn7fpz2lm1q80000gn-T-vbw-l3-newcomer-brZ6DV/d2418a12-bfbf-40b0-96cb-78200007d671/tasks/w9ywuniwr.output</output-file>
-<status>completed</status>
-<summary>Dynamic workflow "VBW: the Architect finds the decisions for the user and scopes the phases; the Lead plans them with tests that fail today and self-reviews" completed</summary>
-<result>{"status":"needs_decisions","decisions":[{"question":"Which kind of script should greet.sh be?","why_it_matters":"It decides whether the script runs on your grandmother's computer without installing anything. I chose a plain shell script because the requirements already name ./greet.sh and it needs nothing extra.","options":[{"label":"Plain shell script (bash)","tradeoff":"Runs on Mac and Linux with nothing to install. It may not run on Windows."},{"label":"Python script","tradeoff":"Works on more systems, but she would have to install Python first."}],"recommended":"Plain shell script (bash)"},{"question":"Should the greeting add anything beyond 'Hello, NAME!'?","why_it_matters":"Extra words could make the greeting harder for someone learning English. I chose to keep exactly the two greetings you asked for, because a simple greeting is what you wanted.","options":[{"label":"Only the two exact greetings","tradeoff":"Simple and clear, and it matches the requirements exactly. It has no extras."},{"label":"Add extras such as 'Good morning' or a goodbye","tradeoff":"Friendlier, but it goes beyond what you asked for and makes the script harder to check."}],"recommended":"Only the two exact greetings"}]}</result>
-<diagnostics>Per-agent results: /Users/tiagoserodio/.claude/projects/-private-var-folders-xl-6lk7wfr15t79zn7fpz2lm1q80000gn-T-vbw-l3-newcomer-brZ6DV/d2418a12-bfbf-40b0-96cb-78200007d671/subagents/workflows/wf_68f9bb8c-4b0/journal.jsonl — one {"type":"result",...} line per completed agent with its full return value.
-If the result above is empty or unexpected, Read this file BEFORE diagnosing — do not assume agents returned non-empty results.
-To re-run with edited post-processing: Workflow({scriptPath: '/Users/tiagoserodio/.claude/projects/-private-var-folders-xl-6lk7wfr15t79zn7fpz2lm1q80000gn-T-vbw-l3-newcomer-brZ6DV/d2418a12-bfbf-40b0-96cb-78200007d671/workflows/scripts/planning-wf_68f9bb8c-4b0.js', resumeFromRunId: 'wf_68f9bb8c-4b0', args: {"models":{"architect":"sonnet","lead":"sonnet","dev":"sonnet","qa":"sonnet","scout":"sonnet","debugger":"sonnet","docs":"sonnet"},"rigor":{},"profile":{"level":"never","depth":"plain words","involvement":"decide and tell me"}}}) — agents whose (prompt, opts) are unchanged replay from cache.</diagnostics>
-<usage><agent_count>1</agent_count><agents_done>1</agents_done><agents_error>0</agents_error><agents_skipped>0</agents_skipped><agents_empty_result>0</agents_empty_result><subagent_tokens>10120</subagent_tokens><tool_uses>2</tool_uses><duration_ms>12277</duration_ms></usage>
-</task-notification>
+**Choices I made for you:** I made one build step (one worker) and kept the checks simple. Nothing needed your decision.
 
-**VBW:** The planning step asked two technical questions. You said "decide and tell me", so I answered both with the recommended option:
-
-- **Script type:** a plain shell script (bash). It runs on Mac and Linux with nothing to install. It may not run on Windows.
-- **Greeting text:** only the two greetings you asked for, with no extras. That keeps it simple for your grandmother.
-
-I'm planning again with those choices. You can change either one if you want.
-
-**User:** <task-notification>
-<task-id>w34fhj0fm</task-id>
-<tool-use-id>toolu_01QrMKMd3QREFYtBrStya1Tp</tool-use-id>
-<output-file>/private/tmp/claude-501/-private-var-folders-xl-6lk7wfr15t79zn7fpz2lm1q80000gn-T-vbw-l3-newcomer-brZ6DV/d2418a12-bfbf-40b0-96cb-78200007d671/tasks/w34fhj0fm.output</output-file>
-<status>completed</status>
-<summary>Dynamic workflow "VBW: the Architect finds the decisions for the user and scopes the phases; the Lead plans them with tests that fail today and self-reviews" completed</summary>
-<result>{"status":"planned","summary":"I planned one small job: write greet.sh. It greets by name, and says \"Hello, world!\" when there is no name or an empty name. I wrote two tests that fail now because the script doesn't exist yet. One test covers Ana and Maria. The other covers no name and an empty name. Both also check that nothing but the greeting is printed. R3 (is the English simple enough) is for you to judge. It has no test.","blockers":[],"choices":["One plan with 3 tasks, since the script is a single file.","Tests are plain bash scripts in tests/r1.sh and tests/r2.sh, so nothing needs installing.","The tests also check that greet.sh is executable and prints no error text or extra lines."],"notes":["Everything fits in one small phase because the whole project is one short script.","Must-have: R1, R2, R3. These are all the milestone asks for.","Nice-to-have, left for later: several languages, a friendly time-of-day greeting (Good morning), a Windows version, handling names with spaces or several names.","Edge case I chose: an empty name is treated like no name. This is a small guess; tell me if you want it different.","No tier raise needed; this is low risk."]}</result>
-<diagnostics>Per-agent results: /Users/tiagoserodio/.claude/projects/-private-var-folders-xl-6lk7wfr15t79zn7fpz2lm1q80000gn-T-vbw-l3-newcomer-brZ6DV/d2418a12-bfbf-40b0-96cb-78200007d671/subagents/workflows/wf_2b2cea71-e6d/journal.jsonl — one {"type":"result",...} line per completed agent with its full return value.
-If the result above is empty or unexpected, Read this file BEFORE diagnosing — do not assume agents returned non-empty results.
-To re-run with edited post-processing: Workflow({scriptPath: '/Users/tiagoserodio/.claude/projects/-private-var-folders-xl-6lk7wfr15t79zn7fpz2lm1q80000gn-T-vbw-l3-newcomer-brZ6DV/d2418a12-bfbf-40b0-96cb-78200007d671/workflows/scripts/planning-wf_2b2cea71-e6d.js', resumeFromRunId: 'wf_2b2cea71-e6d', args: {"decided":true,"models":{"architect":"sonnet","lead":"sonnet","dev":"sonnet","qa":"sonnet","scout":"sonnet","debugger":"sonnet","docs":"sonnet"},"rigor":{},"profile":{"level":"never","depth":"plain words","involvement":"decide and tell me"}}}) — agents whose (prompt, opts) are unchanged replay from cache.</diagnostics>
-<usage><agent_count>2</agent_count><agents_done>2</agents_done><agents_error>0</agents_error><agents_skipped>0</agents_skipped><agents_empty_result>0</agents_empty_result><subagent_tokens>24808</subagent_tokens><tool_uses>6</tool_uses><duration_ms>40042</duration_ms></usage>
-</task-notification>
-
-**VBW:** The plan is ready for you to approve. Nothing has been built yet.
-
-**What will be made:** one file, `greet.sh`, written as a plain shell script (bash).
-
-**How each requirement is checked:**
-- **R1 (name):** a test script, `tests/r1.sh`, runs `./greet.sh Ana` and expects exactly `Hello, Ana!`. It also runs it with `Maria` to make sure the name isn't hard-coded. It checks that the script can be run and prints nothing else, such as error text.
-- **R2 (no name):** a second test script, `tests/r2.sh`, runs `./greet.sh` alone and expects exactly `Hello, world!`. It does the same for an empty name, and also checks for extra output.
-- **R3 (clear English):** no automatic test. Only you can judge this, so I'll show you the real output at the end and ask.
-
-**One small guess from the planner:** an empty name, as in `./greet.sh ""`, is treated like no name and prints `Hello, world!`. Tell me if you want that handled differently.
-
-**What will run on your computer:** only the two test scripts above, using bash. Nothing needs installing.
-
-If this looks right, type `/vbw:approve` to approve it. I can't approve it for you. After that I'll build it.
+To approve, type `/vbw:approve`. I can't do that part for you.
 
 **User:** <command-message>vbw:approve</command-message>
 <command-name>/vbw:approve</command-name>
 
-**VBW:** Your approval went through, so the plan is locked in and the build has started. A helper is now writing `greet.sh` and running the two tests against it. I'll report back when it finishes.
+**VBW:** The approval didn't go through. VBW needs the test file `test.sh` to exist first, and I hadn't written it. It's there now.
 
-**User:** <task-notification>
-<task-id>wzgw731vu</task-id>
-<tool-use-id>toolu_01FC2J1kY4AUa9wzTAv6cYKi</tool-use-id>
-<output-file>/private/tmp/claude-501/-private-var-folders-xl-6lk7wfr15t79zn7fpz2lm1q80000gn-T-vbw-l3-newcomer-brZ6DV/d2418a12-bfbf-40b0-96cb-78200007d671/tasks/wzgw731vu.output</output-file>
-<status>completed</status>
-<summary>Dynamic workflow "VBW: build one wave of ready plans in parallel, a Dev per plan (Docs for documentation plans), each to its own green checks" completed</summary>
-<result>{"results":[{"plan":"P1.1","status":"done","summary":"I wrote greet.sh. `./greet.sh Ana` prints \"Hello, Ana!\", and running it with no name or an empty name prints \"Hello, world!\". Both automatic checks (C1 and C2) pass, and the plan is marked done.","notes":["I made three commits, one per task, and all of them touch only greet.sh: 628a3df, bc2fcbd and f469835.","Both checks failed before the change, as expected.","Inside the sandbox the checks failed even though the script was correct. The test files write a scratch file in /tmp, and the sandbox blocks that, so the script never ran. I re-ran the checks once outside the sandbox and both passed. If you want them to run inside the sandbox, you can allow writes to /tmp with /sandbox. I did not edit the test files.","R3 (the greeting is simple enough for someone learning English) needs a human to judge. The greeting is plain: 'Hello, NAME!' or 'Hello, world!'."]}]}</result>
-<diagnostics>Per-agent results: /Users/tiagoserodio/.claude/projects/-private-var-folders-xl-6lk7wfr15t79zn7fpz2lm1q80000gn-T-vbw-l3-newcomer-brZ6DV/d2418a12-bfbf-40b0-96cb-78200007d671/subagents/workflows/wf_31565b6e-47b/journal.jsonl — one {"type":"result",...} line per completed agent with its full return value.
-If the result above is empty or unexpected, Read this file BEFORE diagnosing — do not assume agents returned non-empty results.
-To re-run with edited post-processing: Workflow({scriptPath: '/Users/tiagoserodio/.claude/projects/-private-var-folders-xl-6lk7wfr15t79zn7fpz2lm1q80000gn-T-vbw-l3-newcomer-brZ6DV/d2418a12-bfbf-40b0-96cb-78200007d671/workflows/scripts/building-wf_31565b6e-47b.js', resumeFromRunId: 'wf_31565b6e-47b', args: {"plans":["P1.1"],"docs":[],"models":{"architect":"sonnet","lead":"sonnet","dev":"sonnet","qa":"sonnet","scout":"sonnet","debugger":"sonnet","docs":"sonnet"},"rigor":{"P1":{"tier":"standard","agents":{"lead":1,"dev":"plans","qa":1},"qa":"standard","models":{"dev":"sonnet","qa":"sonnet"}}}}}) — agents whose (prompt, opts) are unchanged replay from cache.</diagnostics>
-<usage><agent_count>1</agent_count><agents_done>1</agents_done><agents_error>0</agents_error><agents_skipped>0</agents_skipped><agents_empty_result>0</agents_empty_result><subagent_tokens>13055</subagent_tokens><tool_uses>7</tool_uses><duration_ms>27834</duration_ms></usage>
-</task-notification>
+It currently fails, because `greet.sh` doesn't exist yet. That's what VBW wants, since the build step should turn it from failing to passing. I haven't written `greet.sh`.
 
-**VBW:** `greet.sh` is built and both automatic checks pass. R1 and R2 are marked proven. A quality-check helper is now reviewing the work, and I'll report when it finishes.
+Please type `/vbw:approve` once more, and I'll start the build.
 
-The checks failed the first time I ran them. The test files write a scratch file to `/tmp`, and the sandbox blocks that, so the script never ran. I re-ran the proofs once outside the sandbox without changing any test, and both passed. If you want them to run inside the sandbox, `/sandbox` lets you allow writes to `/tmp`.
+**User:** <command-message>vbw:approve</command-message>
+<command-name>/vbw:approve</command-name>
 
-**User:** <task-notification>
-<task-id>wce2nasx7</task-id>
-<tool-use-id>toolu_01L4AcZduxcpTwtmv1ygnKd2</tool-use-id>
-<output-file>/private/tmp/claude-501/-private-var-folders-xl-6lk7wfr15t79zn7fpz2lm1q80000gn-T-vbw-l3-newcomer-brZ6DV/d2418a12-bfbf-40b0-96cb-78200007d671/tasks/wce2nasx7.output</output-file>
-<status>completed</status>
-<summary>Dynamic workflow "VBW: QA verifies each built phase goal-backward against its goal, criteria and plans, and records findings and a verdict" completed</summary>
-<result>{"tier":"standard","results":[{"phase":"P1","verdict":"pass","summary":"The greeting script does what the phase asked, and I found nothing wrong. It prints \"Hello, Ana!\" for a name and \"Hello, world!\" for no name or an empty name. The file is executable, and it prints nothing else. The plan was followed with no extras (decision D2). One item is still open for you: R3 asks a person to confirm the English is simple enough for a learner. It is only the words \"Hello\", the name, a comma and an exclamation mark, so I recommend you confirm it. My run of the two test scripts failed only because my sandbox blocks writing to /tmp. That is not a script bug, and I checked the same behavior by hand instead. I ran fewer checks than the standard tier's 15 to 25, because this is a three-line script.","checks":[{"id":"c1","check":"greet.sh exists and is executable","status":"pass","evidence":"ls shows -rwxr-xr-x; git index mode is 100755 (commit f469835)"},{"id":"c2","check":"./greet.sh Ana prints exactly 'Hello, Ana!'","status":"pass","evidence":"Output bytes were 'Hello, Ana!\\n' (checked with od -c)"},{"id":"c3","check":"No name prints exactly 'Hello, world!'","status":"pass","evidence":"Output bytes were 'Hello, world!\\n'"},{"id":"c4","check":"The name is not hard-coded (Maria)","status":"pass","evidence":"./greet.sh Maria printed 'Hello, Maria!'. The script uses name=\"${1:-world}\""},{"id":"c5","check":"An empty name prints 'Hello, world!'","status":"pass","evidence":"./greet.sh \"\" printed 'Hello, world!'. The ':-' form treats an empty value as missing"},{"id":"c6","check":"Nothing is printed except the greeting, and there is no error text","status":"pass","evidence":"Under bash, stderr was 0 bytes. The script is 3 lines with one echo"},{"id":"c7","check":"The script runs with bash on Mac and Linux with nothing to install","status":"pass","evidence":"The first line is '#!/usr/bin/env bash' and there are no other dependencies (decision D1)"},{"id":"c8","check":"No extra greetings or features (D2), and the plan was followed with no deviations","status":"pass","evidence":"The commits touched only greet.sh: create, add the world default, make it executable. The plan listed one file, greet.sh"},{"id":"c9","check":"Tests promised for R1 and R2 exist and can fail","status":"pass","evidence":"tests/r1.sh and tests/r2.sh compare exact output and stderr for Ana, Maria, no name and empty name. They only failed in my sandbox, which blocks writing to /tmp"}]}]}</result>
-<diagnostics>Per-agent results: /Users/tiagoserodio/.claude/projects/-private-var-folders-xl-6lk7wfr15t79zn7fpz2lm1q80000gn-T-vbw-l3-newcomer-brZ6DV/d2418a12-bfbf-40b0-96cb-78200007d671/subagents/workflows/wf_29f6cdd6-a5b/journal.jsonl — one {"type":"result",...} line per completed agent with its full return value.
-If the result above is empty or unexpected, Read this file BEFORE diagnosing — do not assume agents returned non-empty results.
-To re-run with edited post-processing: Workflow({scriptPath: '/Users/tiagoserodio/.claude/projects/-private-var-folders-xl-6lk7wfr15t79zn7fpz2lm1q80000gn-T-vbw-l3-newcomer-brZ6DV/d2418a12-bfbf-40b0-96cb-78200007d671/workflows/scripts/verifying-wf_29f6cdd6-a5b.js', resumeFromRunId: 'wf_29f6cdd6-a5b', args: {"phases":["P1"],"tier":"standard","models":{"architect":"sonnet","lead":"sonnet","dev":"sonnet","qa":"sonnet","scout":"sonnet","debugger":"sonnet","docs":"sonnet"},"rigor":{"P1":{"tier":"standard","agents":{"lead":1,"dev":"plans","qa":1},"qa":"standard","models":{"dev":"sonnet","qa":"sonnet"}}}}}) — agents whose (prompt, opts) are unchanged replay from cache.</diagnostics>
-<usage><agent_count>1</agent_count><agents_done>1</agents_done><agents_error>0</agents_error><agents_skipped>0</agents_skipped><agents_empty_result>0</agents_empty_result><subagent_tokens>13346</subagent_tokens><tool_uses>6</tool_uses><duration_ms>30589</duration_ms></usage>
-</task-notification>
+**VBW:** Approved. Starting the build now.
+
+**User:** # Workflow authoring reference
+
+A workflow structures work across many agents — to be comprehensive (decompose and cover in parallel), to be confident (independent perspectives and adversarial checks before committing), or to take on scale one context can't hold (migrations, audits, broad sweeps). The script is where you encode that structure: what fans out, what verifies, what synthesizes.
+
+When you do call it, the right move is often **hybrid**: scout inline first (list the files, find the channels, scope the diff) to discover the work-list, then call Workflow to pipeline over it. You don't need to know the shape before the *task* — only before the *orchestration step*.
+
+Common single-phase workflows you can chain across turns:
+- **Understand** — parallel readers over relevant subsystems → structured map
+- **Design** — judge panel of N independent approaches → scored synthesis
+- **Review** — dimensions → find → adversarially verify (the review-changes example)
+- **Research** — multi-modal sweep → deep-read → synthesize
+- **Migrate** — discover sites → transform each (worktree isolation) → verify
+
+For larger work, run several in sequence — read each result before deciding the next phase. You stay in the loop; each workflow is one well-scoped fan-out.
+
+**Ultracode.** When a system-reminder confirms ultracode is on, that opt-in is standing: author and run a workflow for every substantive task by default. The goal is the most exhaustive, correct answer you can produce — token cost is not a constraint. For multi-phase work (understand → design → implement → review), that often means several workflows in sequence — one per phase — so you stay in the loop between them. The quality patterns below (adversarial verify, multi-modal sweep, completeness critic, loop-until-dry) are the tools; pick what fits the task. Lean toward orchestrating with workflows and adversarially verifying your findings — unless the work is trivial or already verified. Solo only on conversational turns or trivial mechanical edits. When a reminder says ultracode is off, revert to the opt-in rule in the Workflow tool description.
+
+Pass the script inline via `script` — do not Write it to a file first. Every invocation automatically persists its script to a file under the session directory and returns the path in the tool result. To iterate on a workflow, edit that file with Write/Edit and re-invoke Workflow with `{scriptPath: "<path>"}` instead of resending the full script.
+
+Every script must begin with `export const meta = {...}`:
+  export const meta = {
+    name: 'find-flaky-tests',
+    description: 'Find flaky tests and propose fixes',   // one-line, shown in permission dialog
+    phases: [                                            // one entry per phase() call
+      { title: 'Scan', detail: 'grep test logs for retries' },
+      { title: 'Fix', detail: 'one agent per flaky test' },
+    ],
+  }
+  // script body starts here — use agent()/parallel()/pipeline()/phase()/log()
+  phase('Scan')
+  const flaky = await agent('grep CI logs for retry markers', {schema: FLAKY_SCHEMA})
+  ...
+
+The `meta` object must be a PURE LITERAL — no variables, function calls, spreads, or template interpolation. Required fields: `name`, `description`. Optional: `whenToUse` (shown in the workflow list), `phases`. Use the SAME phase titles in meta.phases as in phase() calls — titles are matched exactly; a phase() call with no matching meta entry just gets its own progress group. Add `model` to a phase entry when that phase uses a specific model override.
+
+Script body hooks:
+- agent(prompt: string, opts?: {label?: string, phase?: string, schema?: object, model?: string, effort?: string, isolation?: 'worktree', agentType?: string}): Promise<any> — spawn a subagent. Without schema, returns its final text as a string. With schema (a JSON Schema), the subagent is forced to call a StructuredOutput tool and agent() returns the validated object — no parsing needed. Returns null if the user skips the agent mid-run or the subagent dies on a terminal API error after retries (filter with .filter(Boolean)). opts.label overrides the display label. opts.phase explicitly assigns this agent to a progress group (use this inside pipeline()/parallel() stages to avoid races on the global phase() state — same phase string → same group box). opts.model overrides the model for this agent call. Default to omitting it — the agent inherits the main-loop model (the resolved session model), which is almost always correct. Only set it when you're highly confident a different tier fits the task; when unsure, omit. opts.effort overrides the reasoning effort for this agent call ('low' | 'medium' | 'high' | 'xhigh' | 'max') — omit to inherit the session effort; use 'low' for cheap mechanical stages and higher tiers only for the hardest verify/judge stages. opts.isolation: 'worktree' runs the agent in a fresh git worktree — EXPENSIVE (~200-500ms setup + disk per agent), use ONLY when agents mutate files in parallel and would otherwise conflict; the worktree is auto-removed if unchanged. opts.agentType uses a custom subagent type (e.g. 'general-purpose', 'code-reviewer') instead of the default workflow subagent — resolved from the same registry as the Agent tool; composes with schema (the custom agent's system prompt gets a StructuredOutput instruction appended).
+- pipeline(items, stage1, stage2, ...): Promise<any[]> — run each item through all stages independently, NO barrier between stages. Item A can be in stage 3 while item B is still in stage 1. This is the DEFAULT for multi-stage work. Wall-clock = slowest single-item chain, not sum-of-slowest-per-stage. Every stage callback receives (prevResult, originalItem, index) — use originalItem/index in later stages to label work without threading context through stage 1's return value. A stage that throws drops that item to `null` and skips its remaining stages.
+- parallel(thunks: Array<() => Promise<any>>): Promise<any[]> — run tasks concurrently. This is a BARRIER: awaits all thunks before returning. A thunk that throws (or whose agent errors) resolves to `null` in the result array — the call itself never rejects, so `.filter(Boolean)` before using the results. Use ONLY when you genuinely need all results together.
+- log(message: string): void — emit a progress message to the user (shown as a narrator line above the progress tree)
+- phase(title: string): void — start a new phase; subsequent agent() calls are grouped under this title in the progress display
+- args: any — the value passed as Workflow's `args` input, verbatim (undefined if not provided). Pass arrays/objects as actual JSON values in the tool call, NOT as a JSON-encoded string — `args: ["a.ts", "b.ts"]`, not `args: "[\"a.ts\", ...]"` (a stringified list reaches the script as one string, so `args.filter`/`args.map` throw). Use this to parameterize named workflows — e.g. pass a research question, target path, or config object directly instead of via a side-channel file.
+- budget: {total: number|null, spent(): number, remaining(): number} — the turn's token target from the user's "+500k"-style directive. `budget.total` is null if no target was set. `budget.spent()` returns output tokens spent this turn across the main loop and all workflows — the pool is shared, not per-workflow. `budget.remaining()` returns `max(0, total - spent())`, or `Infinity` if no target. The target is a HARD ceiling, not advisory: once `spent()` reaches `total`, further `agent()` calls throw. Use for dynamic loops: `while (budget.total && budget.remaining() > 50_000) { ... }`, or static scaling: `const FLEET = budget.total ? Math.floor(budget.total / 100_000) : 5`.
+- workflow(nameOrRef: string | {scriptPath: string}, args?: any): Promise<any> — run another workflow inline as a sub-step and return whatever it returns. Pass a name to invoke a saved workflow (same registry as {name: "..."}), or {scriptPath} to run a script file you Wrote earlier. The child shares this run's concurrency cap, agent counter, abort signal, and token budget — its agents appear under a "▸ name" group in /workflows and its tokens count toward budget.spent(). The args param becomes the child's `args` global. Nesting is one level only: workflow() inside a child throws. Throws on unknown name / unreadable scriptPath / child syntax error; catch to handle gracefully.
+
+Subagents are told their final text IS the return value (not a human-facing message), so they return raw data. For structured output, use the schema option — validation happens at the tool-call layer so the model retries on mismatch.
+Schemas need {type: 'object', properties: {...}} at root and required ⊆ properties; unsatisfiable ones throw at agent().
+
+Workflow agents can reach all session-connected MCP tools via ToolSearch — schemas load on demand per agent. Caveat: interactively-authenticated MCP servers (e.g. claude.ai) may be absent in headless/cron runs.
+
+Subagents get the same CLAUDE.md files injected at start that you did (except built-in agent types that omit them, such as Explore and Plan) — don't tell them to re-read those or paste their rules into the prompt; name the specific rule a stage needs, if any.
+
+Scripts are plain JavaScript, NOT TypeScript — type annotations (`: string[]`), interfaces, and generics fail to parse. The script body runs in an async context — use await directly. Standard JS built-ins (JSON, Math, Array, etc.) are available — EXCEPT `Date.now()`/`Math.random()`/argless `new Date()`, which throw (they would break resume); pass timestamps in via `args`, stamp results after the workflow returns, and for randomness vary the agent prompt/label by index. No filesystem or Node.js API access.
+
+DEFAULT TO pipeline(). Only reach for a barrier (parallel between stages) when you genuinely need ALL prior-stage results together.
+
+A barrier is correct ONLY when stage N needs cross-item context from all of stage N-1:
+- Dedup/merge across the full result set before expensive downstream work
+- Early-exit if the total count is zero ("0 bugs found → skip verification entirely")
+- Stage N's prompt references "the other findings" for comparison
+
+A barrier is NOT justified by:
+- "I need to flatten/map/filter first" — do it inside a pipeline stage: pipeline(items, stageA, r => transform([r]).flat(), stageB)
+- "The stages are conceptually separate" — that's what pipeline() models. Separate stages ≠ synchronized stages.
+- "It's cleaner code" — barrier latency is real. If 5 finders run and the slowest takes 3× the fastest, a barrier wastes 2/3 of the fast finders' idle time.
+
+Smell test: if you wrote
+  const a = await parallel(...)
+  const b = transform(a)        // flatten, map, filter — no cross-item dependency
+  const c = await parallel(b.map(...))
+that middle transform doesn't need the barrier. Rewrite as a pipeline with the transform inside a stage. When in doubt: pipeline.
+
+Concurrent agent() calls are capped at min(16, available CPUs - 2) per workflow — excess calls queue and run as slots free up. You can still pass 100 items to parallel()/pipeline() and they all complete; only ~10 run at any moment. Total agent count across a workflow's lifetime is capped at 1000 — a runaway-loop backstop set far above any real workflow. A single parallel()/pipeline() call accepts at most 4096 items; passing more is an explicit error, not a silent truncation.
+
+When a barrier IS correct — dedup across all findings before expensive verification:
+  const all = await parallel(DIMENSIONS.map(d => () => agent(d.prompt, {schema: FINDINGS_SCHEMA})))
+  const deduped = dedupeByFileAndLine(all.filter(Boolean).flatMap(r => r.findings))  // <-- genuinely needs ALL at once
+  const verified = await parallel(deduped.map(f => () => agent(verifyPrompt(f), {schema: VERDICT_SCHEMA})))
+
+Loop-until-count pattern — accumulate to a target:
+  const bugs = []
+  while (bugs.length < 10) {
+    const result = await agent("Find bugs in this codebase.", {schema: BUGS_SCHEMA})
+    bugs.push(...result.bugs)
+    log(`${bugs.length}/10 found`)
+  }
+
+Loop-until-budget pattern — scale depth to the user's "+500k" directive. Guard on budget.total: with no target set, remaining() is Infinity and the loop would run straight to the 1000-agent cap.
+  const bugs = []
+  while (budget.total && budget.remaining() > 50_000) {
+    const result = await agent("Find bugs in this codebase.", {schema: BUGS_SCHEMA})
+    bugs.push(...result.bugs)
+    log(`${bugs.length} found, ${Math.round(budget.remaining()/1000)}k remaining`)
+  }
+
+Composing patterns — exhaustive review (find → dedup vs seen → diverse-lens panel → loop-until-dry):
+  const seen = new Set(), confirmed = []
+  let dry = 0
+  while (dry < 2) {                                              // loop-until-dry
+    const found = (await parallel(FINDERS.map(f => () =>          // barrier: collect all finders this round
+      agent(f.prompt, {phase: 'Find', schema: BUGS})))).filter(Boolean).flatMap(r => r.bugs)
+    const fresh = found.filter(b => !seen.has(key(b)))           // dedup vs ALL seen — plain code, not an agent
+    if (!fresh.length) { dry++; continue }
+    dry = 0; fresh.forEach(b => seen.add(key(b)))
+    const judged = await parallel(fresh.map(b => () =>           // every fresh bug judged concurrently...
+      parallel(['correctness','security','repro'].map(lens => () =>   // ...each by 3 distinct lenses
+        agent(`Judge "${b.desc}" via the ${lens} lens — real?`, {phase: 'Verify', schema: VERDICT})))
+        .then(vs => ({ b, real: vs.filter(Boolean).filter(v => v.real).length >= 2 }))))
+    confirmed.push(...judged.filter(v => v.real).map(v => v.b))
+  }
+  return confirmed
+  // dedup vs `seen`, NOT `confirmed` — else judge-rejected findings reappear every round and it never converges.
+
+Quality patterns — common shapes; pick by task and compose freely:
+- Adversarial verify: spawn N independent skeptics per finding, each prompted to REFUTE. Kill if ≥majority refute. Prevents plausible-but-wrong findings from surviving.
+    const votes = await parallel(Array.from({length: 3}, () => () =>
+      agent(`Try to refute: ${claim}. Default to refuted=true if uncertain.`, {schema: VERDICT})))
+    const survives = votes.filter(Boolean).filter(v => !v.refuted).length >= 2
+- Perspective-diverse verify: when a finding can fail in more than one way, give each verifier a distinct lens (correctness, security, perf, does-it-reproduce) instead of N identical refuters — diversity catches failure modes redundancy can't.
+- Judge panel: generate N independent attempts from different angles (e.g. MVP-first, risk-first, user-first), score with parallel judges, synthesize from the winner while grafting the best ideas from runners-up. Beats one-attempt-iterated when the solution space is wide.
+- Loop-until-dry: for unknown-size discovery (bugs, issues, edge cases), keep spawning finders until K consecutive rounds return nothing new. Simple counters (while count < N) miss the tail.
+- Multi-modal sweep: parallel agents each searching a different way (by-container, by-content, by-entity, by-time). Each is blind to what the others surface; useful when one search angle won't find everything.
+- Completeness critic: a final agent that asks "what's missing — modality not run, claim unverified, source unread?" What it finds becomes the next round of work.
+- No silent caps: if a workflow bounds coverage (top-N, no-retry, sampling), `log()` what was dropped — silent truncation reads as "covered everything" when it didn't.
+
+Scale to what the user asked for. "find any bugs" → a few finders, single-vote verify. "thoroughly audit this" or "be comprehensive" → larger finder pool, 3–5 vote adversarial pass, synthesis stage. When unsure, lean toward thoroughness for research/review/audit requests and toward brevity for quick checks.
+
+These patterns aren't exhaustive — compose novel harnesses when the task calls for it (tournament brackets, self-repair loops, staged escalation, whatever fits).
+
+Use this tool for multi-step orchestration where control flow should be deterministic (loops, conditionals, fan-out) rather than model-driven.
+
+## Resume
+
+The tool result includes a runId. To resume after a pause, kill, or script edit, relaunch with Workflow({scriptPath, resumeFromRunId}) — the longest unchanged prefix of agent() calls returns cached results instantly; the first edited/new call and everything after it runs live. Same script + same args → 100% cache hit. Before diagnosing why a completed workflow returned an empty or unexpected result, Read <transcriptDir>/journal.jsonl — it records each agent's actual return value; do not assume cached results are non-empty. Date.now()/Math.random()/new Date() are unavailable in scripts (they would break this) — stamp results after the workflow returns, or pass timestamps via args. Fallback when no journal is available: Read agent-<id>.jsonl files in the transcript directory and hand-author a continuation script.
+
+**VBW:** The build is running in the background. A worker is writing `greet.sh` now. I'll carry on once it finishes.
+
+**VBW:** The greeting script is built, and both checks pass.
+
+I ran the script myself:
+- `./greet.sh Ana` prints `Hello, Ana!`
+- `./greet.sh` with no name prints `Hello, world!`
+
+The whole script is two lines. The second line says "use the name if there is one, otherwise use `world`".
+
+The milestone "Greeting script" has both requirements proven. Nothing is left open. I'm ready to ship it, which wraps up the milestone. Should I go ahead?
+
+**User:** <command-message>vbw:vibe</command-message>
+<command-name>/vbw:vibe</command-name>
 
 **VBW asks:**
-- R3: Is this greeting simple and clear enough for your grandmother, who is learning English? (options: Works / Something's wrong / Skip for now)
+- The greeting script is built and both checks pass (`./greet.sh Ana` prints "Hello, Ana!", `./greet.sh` prints "Hello, world!"). Ship this milestone now? (options: Yes, ship it / Not yet)
 
-**User answers:** Your questions have been answered: "R3: Is this greeting simple and clear enough for your grandmother, who is learning English?"="Works". You can now continue with these answers in mind.
+**User answers:** Your questions have been answered: "The greeting script is built and both checks pass (`./greet.sh Ana` prints "Hello, Ana!", `./greet.sh` prints "Hello, world!"). Ship this milestone now?"="Yes, ship it". You can now continue with these answers in mind.
 
-**VBW asks:**
-- Everything is built, checked and accepted. `./greet.sh Ana` prints "Hello, Ana!" and `./greet.sh` prints "Hello, world!". Ship this milestone (mark it finished)? (options: Ship it / Not yet)
+**VBW:** Shipped. Milestone M1, "Greeting script", is finished.
 
-**User answers:** Your questions have been answered: "Everything is built, checked and accepted. `./greet.sh Ana` prints "Hello, Ana!" and `./greet.sh` prints "Hello, world!". Ship this milestone (mark it finished)?"="Ship it". You can now continue with these answers in mind.
+Your grandmother can run `./greet.sh Ana` to get `Hello, Ana!`. Running `./greet.sh` with no name gives `Hello, world!`.
 
-**VBW:** The greeting milestone is shipped. `greet.sh` is in the project folder:
-
-- `./greet.sh Ana` prints `Hello, Ana!`.
-- `./greet.sh` with no name prints `Hello, world!`.
-- An empty name, as in `./greet.sh ""`, also prints `Hello, world!`.
-
-Both automatic checks passed. The first time they ran they failed, because the sandbox blocked the test files from writing to `/tmp`. I re-ran them once outside the sandbox without changing any test, and they passed. You confirmed the greeting is clear enough for your grandmother.
-
-It's a plain shell script, so it runs on a Mac or Linux with nothing to install. It may not run on Windows.
-
-If you want more later, such as "Good morning" or other languages, I can start a new milestone.
+If you want a second milestone, such as greetings in other languages, run `/vbw:vibe` again and tell me what it should be about.
 
