@@ -34,7 +34,7 @@ judge, and you ship.
 | `/vbw:teach [convention]` | Teach VBW your project's conventions |
 | `/vbw:pause`, `/vbw:resume` | Stop safely; pick up where you left off |
 | **Settings and tools** | |
-| `/vbw:profile [careful/standard/fast]` | How VBW works in one switch: models and how much it does on its own |
+| `/vbw:profile [careful/standard/fast]` | How VBW works in one switch: models, how much it does on its own, and how it talks to you |
 | `/vbw:config` | Each setting on its own |
 | `/vbw:skills`, `/vbw:rtk`, `/vbw:compress` | Community skills; command-output and instruction-file compression to save tokens |
 | `/vbw:doctor` | Check that everything VBW needs is in place |

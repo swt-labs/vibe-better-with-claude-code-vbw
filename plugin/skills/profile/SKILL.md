@@ -1,12 +1,13 @@
 ---
 name: profile
-description: Switch how VBW works in one go - which AI models it uses and how much it does on its own (Careful, Standard, Fast, or your own mix).
+description: Switch how VBW works in one go - which AI models it uses, how much it does on its own (Careful, Standard, Fast, or your own mix), and how it talks to you (your level, how much it explains, how much you decide).
 argument-hint: "[careful | standard | fast]"
 allowed-tools: Bash("${CLAUDE_PLUGIN_ROOT}/bin/vbw" *) Bash(vbw *)
 ---
 
 ```!
 "${CLAUDE_PLUGIN_ROOT}/bin/vbw" config 2>&1 || true
+"${CLAUDE_PLUGIN_ROOT}/bin/vbw" interview 2>&1 || true
 ```
 
 The user said: $ARGUMENTS
@@ -27,3 +28,14 @@ current settings above in plain words and ask (AskUserQuestion) which preset,
 with the one that fits what you know of them first, or "My own mix" (then ask
 the two settings separately). Approval, checking results and shipping always
 stop for the user, whatever the preset.
+
+The interview answers shown above (`vbw interview`) set how VBW talks to the
+user. Show them in plain words. To change one answer, ask which one and its new
+value (AskUserQuestion; the allowed values come from the error of a wrong one),
+then change only that one answer, the other two stay as they are:
+
+- `vbw interview set level VALUE`
+- `vbw interview set depth VALUE`
+- `vbw interview set involvement VALUE`
+
+If the interview has not been done, say so and point to `/vbw:vibe`, which asks it.
