@@ -6,7 +6,7 @@
   "milestone": {
     "id": "M6",
     "title": "QA never below Sonnet",
-    "status": "active"
+    "status": "shipped"
   },
   "shipped": [
     {
@@ -33,6 +33,11 @@
       "id": "M5",
       "title": "Proof you can trust",
       "at": "2026-10-04T02:04:23Z"
+    },
+    {
+      "id": "M6",
+      "title": "QA never below Sonnet",
+      "at": "2026-10-04T12:04:30Z"
     }
   ],
   "requirements": [
@@ -3727,6 +3732,11 @@
       "text": "F18: the protected C22 schema test stays as approved; the QA floor is proved by C31 (every profile and tier cell, next output, status line), so P28.1's task to tighten rigor-profile.bats is superseded",
       "why": "rigor-profile.bats is a protected check (C22) that a build cannot edit, so the task could not be done in the plan; C31 already fails on a Haiku QA cell, and changing C22 would duplicate it and need another approval for no added protection",
       "at": "2026-10-04T11:34:33Z"
+    },
+    {
+      "id": "D65",
+      "at": "2026-10-04T12:04:30Z",
+      "text": "Shipped M6 QA never below Sonnet: 2 requirements proven or accepted"
     }
   ],
   "commands": {
