@@ -46,6 +46,7 @@ usage: vbw <command> [args]
   decide TEXT [WHY]   record a decision the user made, and why
   tier raise PHASE TIER REASON   raise a phase's rigor tier and record why (never lowered during a run)
   legacy [facts] | done | remove   a VBW 1 project (.vbw-planning/): facts, mark converted, remove
+  interview [--json] | set level|depth|involvement VALUE | keep private|project   the interview's answers and where they are kept
   doctor            check everything VBW needs, with the fix for anything wrong
   rtk [status]      the state of RTK (command-output compression)
   report            diagnostic facts for a bug report about VBW (no spec text or code)
@@ -60,7 +61,7 @@ cmd="${1:-}"
 case "$cmd" in
   version) jq -r .version "$VBW_PLUGIN/.claude-plugin/plugin.json" ;;
   help|-h|--help) vbw_help ;;
-  init|status|todo|commit|next|show|spec|approve|check|prove|apply|run|plan|fix|req|qa|ship|config|auto|statusline|workflows|doctor|rtk|report|milestone|decide|legacy|tier)
+  init|status|todo|commit|next|show|spec|approve|check|prove|apply|run|plan|fix|req|qa|ship|config|auto|statusline|workflows|doctor|rtk|report|milestone|decide|legacy|tier|interview)
     # shellcheck source=/dev/null
     . "$VBW_LIB/cmd-$cmd.sh"
     "cmd_$cmd" "$@"
