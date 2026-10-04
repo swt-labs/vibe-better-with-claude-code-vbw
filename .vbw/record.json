@@ -3108,7 +3108,7 @@
         "P28.2",
         "P29.1"
       ],
-      "status": "planned",
+      "status": "done",
       "role": "docs",
       "tasks": [
         "Document that model.qa refuses Haiku and why",
