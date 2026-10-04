@@ -40,14 +40,14 @@ cmd_interview() {
       [ $# -eq 2 ] || vbw_usage_error "usage: vbw interview keep private|project"
       case "$2" in private | project) ;; *) vbw_usage_error "keep private or project" ;; esac
       e=$(interview_effective)
-      k=$(printf '%s' "$e" | jq -r '.pending // ""')
+      k=$(printf '%s' "$e" | jq -r 'if .pending == "keep" then "" else .pending // "" end')
       [ -z "$k" ] || vbw_die "the $k answer is missing: vbw interview set $k VALUE, then keep"
       if [ "$2" = "private" ]; then
-        interview_private_update '. + $a' --argjson a "$(printf '%s' "$e" | jq -c '{level, depth, involvement}')"
+        interview_private_update '. + $a + {done: true}' --argjson a "$(printf '%s' "$e" | jq -c '{level, depth, involvement}')"
         record_update 'del(.project.interview)'
       else
         record_update '.project.interview = ($a + {at: $at})' --argjson a "$(printf '%s' "$e" | jq -c '{level, depth, involvement}')" --arg at "$(vbw_now)"
-        interview_private_update 'del(.level, .depth, .involvement)'
+        interview_private_update 'del(.level, .depth, .involvement, .done)'
       fi
       printf 'the interview answers are kept %s\n' "$2"
       ;;

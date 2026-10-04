@@ -31,8 +31,9 @@ interview_private_update() {
 
 # interview_effective [RECORD]: {kept, interviewed, level, depth, involvement,
 # pending} on stdout (RECORD: the record's JSON when the caller has it).
-# Complete private answers win over the project's; partial private answers
-# (not yet kept anywhere) are shown with kept null.
+# Private answers marked kept win over the project's; private answers not yet
+# kept (an interview in progress) are shown with kept null and, once all three
+# are given, pending "keep" (the interview's last question: where to keep them).
 interview_effective() {
   local priv rec="${1:-$(record_read)}"
   priv=$(jq -c 'if type == "object" then . else {} end' "$(interview_private_file)" 2> /dev/null) || priv='{}'
@@ -40,7 +41,8 @@ interview_effective() {
     ["level","depth","involvement"] as $k
     | def pick($o): $o | with_entries(select(.key as $x | $k | any(. == $x)) | select(.value | type == "string"));
     (pick($p)) as $pp | (pick(.project.interview // {})) as $sp
-    | (if ($pp | length) == 3 then {kept: "private", a: $pp} elif ($sp | length) == 3 then {kept: "project", a: $sp} else {kept: null, a: $pp} end) as $e
+    | (if ($pp | length) == 3 and $p.done == true then {kept: "private", a: $pp} elif ($pp | length) > 0 then {kept: null, a: $pp}
+       elif ($sp | length) == 3 then {kept: "project", a: $sp} else {kept: null, a: {}} end) as $e
     | {kept: $e.kept, interviewed: ($e.kept != null)} + ($k | map({key: ., value: ($e.a[.] // null)}) | from_entries)
-      + {pending: ($k | map(select($e.a[.] == null)) | .[0])}'
+      + {pending: (($k | map(select($e.a[.] == null)) | .[0]) // (if $e.kept == null then "keep" else null end))}'
 }
