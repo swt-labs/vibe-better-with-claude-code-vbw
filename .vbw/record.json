@@ -4516,7 +4516,7 @@
         "P36.1",
         "P35.3"
       ],
-      "status": "planned",
+      "status": "done",
       "tasks": [
         "docs/proof.md: the reuse rule, its wording and that vbw prove runs every check",
         "docs/record.md: the passes object"
@@ -4538,7 +4538,7 @@
       "after": [
         "P36.1"
       ],
-      "status": "planned",
+      "status": "done",
       "tasks": [
         "cmd-fix.sh: accept one or more ids for done (one for retry), drop duplicates, name unknown, not-open and dirty fixes with their reasons",
         "cmd-fix.sh: run the union of the served checks once, attribute a failing check only to the fixes it serves",
