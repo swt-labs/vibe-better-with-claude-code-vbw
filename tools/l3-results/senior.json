@@ -1,17 +1,17 @@
 {
   "scenario": "senior",
   "fixture": "greet.sh from scratch; a senior engineer answers technically and briefly and makes the calls; answers kept in the project",
-  "cost_usd": 1.65,
+  "cost_usd": 0.62,
   "evidence_level": "L3",
-  "at": "2026-10-04T17:40:10Z",
+  "at": "2026-10-04T18:41:00Z",
   "passed": true,
   "facts": {
     "answered": {
       "level": "senior engineer",
       "depth": "technical and brief",
       "involvement": "I make the calls",
-      "purpose": "a CLI greeter, greet.sh: ./greet.sh Ana prints Hello, Ana!, no argument prints Hello, world!. Our team calls it from onboarding scripts; users are platform engineers.",
-      "follow_ups": 0,
+      "purpose": "a CLI greeter our team calls from onboarding scripts; users are platform engineers.",
+      "follow_ups": 1,
       "keep": "project"
     },
     "recorded": {
@@ -34,7 +34,6 @@
     "a person judging the wording (R41, human)",
     "the middle level answers",
     "a project larger than the greet.sh fixture",
-    "a second request carried through to the end",
-    "answering an interview follow-up question (none was asked)"
+    "a second request carried through to the end"
   ]
 }

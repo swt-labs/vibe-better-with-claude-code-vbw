@@ -1,17 +1,17 @@
 {
   "scenario": "newcomer",
   "fixture": "greet.sh from scratch; a user who has never built software answers in plain words and lets VBW decide",
-  "cost_usd": 0.61,
+  "cost_usd": 0.64,
   "evidence_level": "L3",
-  "at": "2026-10-04T17:36:49Z",
+  "at": "2026-10-04T18:43:41Z",
   "passed": true,
   "facts": {
     "answered": {
       "level": "never",
       "depth": "plain words",
       "involvement": "decide and tell me",
-      "purpose": "a script greet.sh: ./greet.sh Ana prints Hello, Ana! and ./greet.sh alone prints Hello, world!. It is for my grandmother, who is learning English.",
-      "follow_ups": 0,
+      "purpose": "a little greeting program for my grandmother, who is learning English.",
+      "follow_ups": 1,
       "keep": "private"
     },
     "recorded": {
@@ -34,7 +34,6 @@
     "a person judging the wording (R41, human)",
     "the other two level answers",
     "a project larger than the greet.sh fixture",
-    "a second request carried through to the end",
-    "answering an interview follow-up question (none was asked)"
+    "a second request carried through to the end"
   ]
 }
