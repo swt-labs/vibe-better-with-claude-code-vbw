@@ -120,6 +120,30 @@ needed.
 - **Docs**: documentation plans (README, changelog, guides, API and inline
   docs), concise and example-first; documentation files only.
 
+## The user's level
+
+The router passes `args.profile` (the `profile` key of `vbw next --json`,
+docs/next.md) to every workflow: `{level, depth, involvement, ...}`
+(docs/interview.md). Each workflow turns it into one sentence and appends it to
+the task of every agent it starts:
+
+```
+The user's level: professionally. Explanation depth: plain with technical terms
+explained. Involvement: I make the calls. Write whatever the user will read at
+that level and depth.
+```
+
+Without `args.profile`, or for a missing value, the workflow uses the middle
+choices (`small scripts or no-code`, `plain with technical terms explained`,
+`options with a recommendation`). All seven workflows do this.
+
+Each agent file has a section on the user's words: what reaches the user is the
+agent's summary, notes and questions, and those follow the level and depth.
+Where a choice is the user's, the agent follows involvement: Architect returns
+a decision instead of options for `decide and tell me`, and lists every
+decision, obvious ones included, for `I make the calls`. The `schema` fields
+stay as the schema defines them at every level.
+
 ## Rigor
 
 The router passes `args.rigor` (the `rigor` key of `vbw next --json`, docs/next.md)

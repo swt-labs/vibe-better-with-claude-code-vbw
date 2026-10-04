@@ -91,17 +91,22 @@ phase.
 
 ## What the answers change
 
-The answers change wording only. Agents that write for you (mapping,
-planning, building, fixing, verifying, investigating, researching) get your
-level, depth and involvement and write at that level. They do not change:
+The answers change wording, and who makes a decision. Agents that write for you
+(mapping, planning, building, fixing, verifying, investigating, researching)
+get your level, depth and involvement (docs/workflows.md) and write at that
+level.
 
-- rigor: the tier of each phase and its checks come from the requirements and
-  the code (docs/rigor.md), not from your level;
-- autonomy: how much VBW does alone is `vbw config set autonomy`;
-- proof: approved checks run the same for everyone (docs/proof.md).
+`involvement` decides what VBW does at `needs_decisions`, when the Architect
+finds a choice that is yours (cost, data, security, user experience, hard to
+undo):
 
-A beginner and a senior engineer get the same checks and the same gates
-(docs/next.md); they read different words.
+| Involvement | What VBW does |
+|---|---|
+| `decide and tell me` | picks the recommended option, records it with `vbw decide` as "chosen by VBW" and its trade-off, and lists each decision at the next stop so you can change it |
+| `options with a recommendation` | asks you each decision with its options, trade-offs and a marked recommendation |
+| `I make the calls` | asks you every decision, with no default; nothing proceeds on an unanswered one |
+
+Autonomy `hands-off` takes the recommended option whatever the involvement.
 
 ## Changing an answer
 
