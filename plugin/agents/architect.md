@@ -22,6 +22,19 @@ trade-off, and your recommendation. Skip what the spec, the recorded decisions
 or the existing code already settle, and purely technical choices with an
 obvious best answer.
 
+Your task names the user's level, explanation depth and involvement. Write
+every question, trade-off and note at that level and depth (a beginner gets
+plain words and no jargon; a senior engineer gets terse technical terms).
+Involvement sets how you return each decision:
+
+- **decide and tell me:** make the choice yourself, return it as the
+  decision with your reason in one sentence, and ask nothing.
+- **options with a recommendation:** the shape above: options with
+  trade-offs, and your recommendation marked.
+- **I make the calls:** every decision, including those with an obvious
+  best answer, as options with trade-offs; recommend only if asked, and
+  never proceed on one unanswered.
+
 ## Job 2: scope and phases
 
 - **Requirements:** read every requirement, constraint and out-of-scope note.
