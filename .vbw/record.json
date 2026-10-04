@@ -2309,6 +2309,14 @@
         "fix_rounds": 0,
         "qa_findings": 0,
         "escalations": 0
+      },
+      "qa": {
+        "result": "fail",
+        "tier": "deep",
+        "tree": "ad44411d06db3e71fcaccc9630a82b2e55319214",
+        "at": "2026-10-04T22:21:29Z",
+        "note": "22/24 checks",
+        "rounds": 1
       }
     },
     {
@@ -4966,6 +4974,22 @@
       "attempts": 0,
       "status": "open",
       "note": "Out-of-plan commits touching files outside P34.1's file list have no recorded decision for 05bde66e (plugin/skills/interview/SKILL.md, 'follow-ups are asked inside the interview', VBW-Plan P34.1): D78 names 0a351770 and the harness commits, D80 names the 6b365dc2 skill change, D81 names ee0c7bab; 05bde66e is in none. 6b365dc2 also changed docs/interview.md, which D80 does not name (it says 'interview skill'). Also P34.1 lists tools/l3.sh but no P34.1 commit changes it (last change 8657c2f9, before the phase)."
+    },
+    {
+      "id": "F27",
+      "req": "R40",
+      "source": "qa",
+      "attempts": 0,
+      "status": "open",
+      "note": "Deviation: commit 43fc1ed5 (P33.2) also deleted the router sentence '(express makes small work fast)' from plugin/skills/vibe/SKILL.md line 17; no P33.2 task or recorded decision covers it (router now 1396 words of 1400, the removal looks budget-driven). Restore it elsewhere or record a decision."
+    },
+    {
+      "id": "F28",
+      "req": "R40",
+      "source": "qa",
+      "attempts": 0,
+      "status": "open",
+      "note": "Deviation: plan P33.2 lists tests/skills.bats and P33.1 lists plugin/lib/cmd-next.sh, but no P33 commit touches either file (git show --stat of 8319ab9a..43fc1ed5); the work was done differently than planned and the plan was not amended."
     }
   ],
   "todos": [
