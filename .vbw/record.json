@@ -6,7 +6,7 @@
   "milestone": {
     "id": "M7",
     "title": "VBW knows its user",
-    "status": "active"
+    "status": "shipped"
   },
   "shipped": [
     {
@@ -38,6 +38,11 @@
       "id": "M6",
       "title": "QA never below Sonnet",
       "at": "2026-10-04T12:04:30Z"
+    },
+    {
+      "id": "M7",
+      "title": "VBW knows its user",
+      "at": "2026-10-04T23:22:49Z"
     }
   ],
   "requirements": [
@@ -5633,6 +5638,11 @@
       "text": "P33.1 listed plugin/lib/cmd-next.sh and P33.2 listed tests/skills.bats; neither needed a change",
       "why": "next.jq carries the suggestion data without a cmd-next.sh change, and the suggest skill's tests live in the protected check files of P33; a plan's file list is the files it may touch, not ones it must",
       "at": "2026-10-04T22:34:32Z"
+    },
+    {
+      "id": "D89",
+      "at": "2026-10-04T23:22:49Z",
+      "text": "Shipped M7 VBW knows its user: 10 requirements proven or accepted"
     }
   ],
   "commands": {
