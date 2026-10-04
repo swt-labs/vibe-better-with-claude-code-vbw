@@ -1,9 +1,9 @@
 {
   "scenario": "newcomer",
   "fixture": "greet.sh from scratch; a user who has never built software answers in plain words and lets VBW decide",
-  "cost_usd": 0.73,
+  "cost_usd": 0.61,
   "evidence_level": "L3",
-  "at": "2026-10-04T16:55:30Z",
+  "at": "2026-10-04T17:36:49Z",
   "passed": true,
   "facts": {
     "answered": {
@@ -26,12 +26,15 @@
     "next_profile_ask_after": false,
     "milestone_shipped": true,
     "reached_ship": true,
-    "transcript": "tools/l3-results/newcomer.transcript.md"
+    "transcript": "tools/l3-results/newcomer.transcript.md",
+    "baseline_options_fixed": true,
+    "transcript_clean": true
   },
   "not_tested": [
     "a person judging the wording (R41, human)",
     "the other two level answers",
     "a project larger than the greet.sh fixture",
-    "a second request carried through to the end"
+    "a second request carried through to the end",
+    "answering an interview follow-up question (none was asked)"
   ]
 }

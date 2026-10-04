@@ -1,9 +1,9 @@
 {
   "scenario": "senior",
   "fixture": "greet.sh from scratch; a senior engineer answers technically and briefly and makes the calls; answers kept in the project",
-  "cost_usd": 1.14,
+  "cost_usd": 1.65,
   "evidence_level": "L3",
-  "at": "2026-10-04T16:56:53Z",
+  "at": "2026-10-04T17:40:10Z",
   "passed": true,
   "facts": {
     "answered": {
@@ -26,12 +26,15 @@
     "next_profile_ask_after": false,
     "milestone_shipped": true,
     "reached_ship": true,
-    "transcript": "tools/l3-results/senior.transcript.md"
+    "transcript": "tools/l3-results/senior.transcript.md",
+    "baseline_options_fixed": true,
+    "transcript_clean": true
   },
   "not_tested": [
     "a person judging the wording (R41, human)",
     "the middle level answers",
     "a project larger than the greet.sh fixture",
-    "a second request carried through to the end"
+    "a second request carried through to the end",
+    "answering an interview follow-up question (none was asked)"
   ]
 }
