@@ -8,7 +8,7 @@
 contract_hash() {
   local f
   {
-    printf '%s' "$1" | jq -cS '{requirements: [.requirements[] | {id, text, proof}],
+    printf '%s' "$1" | jq -cS '{requirements: [.requirements[] | {id, text, proof} + (if has("rules") then {rules} else {} end)],
                                 checks: .checks, plans: [.plans[] | del(.status, .note)]}'
     while IFS= read -r -d '' f; do
       printf '\0%s\0' "$f"
@@ -45,7 +45,7 @@ contract_doc() {
     fi
   done < <(printf '%s' "$1" | jq -j '[.checks[].files // [] | .[]] | unique[] | . + "\u0000"')
   printf '%s' "$1" | jq -c --argjson files "$files" '{
-    requirements: (.requirements | map({key: .id, value: {text, proof}}) | from_entries),
+    requirements: (.requirements | map({key: .id, value: ({text, proof} + (if has("rules") then {rules} else {} end))}) | from_entries),
     checks: (.checks | map({key: .id, value: .}) | from_entries),
     plans: (.plans | map({key: .id, value: del(.status, .note)}) | from_entries),
     commands: .commands,
