@@ -89,6 +89,38 @@ A project started before this version has milestones and no answers. It is
 asked once, at its next milestone's spec step, never in the middle of a run or
 phase.
 
+## Suggestions
+
+```text
+$ vbw suggest decline "Should visitors be able to search the page?"
+declined: Should visitors be able to search the page?
+$ vbw suggest list
+Should visitors be able to search the page?
+```
+
+VBW may offer you ideas, but only at two moments: when it proposes
+requirements (the spec step) and when it presents the plan for approval. It
+never asks mid-run, mid-build or while a step is working. The `suggest` skill
+(`/vbw:vibe` follows it at those two moments) offers at most three, each a yes
+or no. Zero is valid: when nothing is worth raising, VBW says nothing about
+suggestions.
+
+The wording follows your `level` and `depth`: a first-time builder gets plain
+outcomes ("Should visitors be able to find the page by searching?"), a senior
+engineer gets terse technical ones (rate limiting, migrations, observability).
+VBW never offers a duplicate of an existing requirement or decision.
+
+| Your answer | What VBW does |
+|---|---|
+| yes, a testable outcome | adds a requirement: `vbw spec add auto\|human "statement"` |
+| yes, a choice or constraint | records a decision: `vbw decide "what" "why: accepted on suggestion"` |
+| no | `vbw suggest decline "exact text"`: stored in `project.declined`, never offered again in this project, reworded or not |
+
+Matching ignores case and spacing, so declining the same text twice stores it
+once. The declined list belongs to the project, so it holds across sessions and
+milestones. `vbw suggest list` prints it (`none declined` when empty);
+`vbw next --json` returns the same texts as `declined` (docs/next.md).
+
 ## What the answers change
 
 The answers change wording, and who makes a decision. Agents that write for you
