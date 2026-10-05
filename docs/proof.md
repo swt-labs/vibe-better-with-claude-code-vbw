@@ -293,11 +293,32 @@ Files and tests count as committed (`HEAD`), so commit work before QA.
 
 ```
 $ vbw show qa
-P2 checked again: builds on P1, which changed
+P1 is checked again: its files changed
+P2 is checked again: builds on P1, which changed
+P3 keeps its pass
 ```
 
-`vbw next` sends only these phases to QA and gives the reasons in its `qa` key
-(docs/next.md). `vbw qa record PHASE pass` stores a digest of the phase's inputs
+`vbw show qa` prints one line per built phase: the phases checked again with
+every reason (several reasons are joined with `; `), then the phases that keep
+their pass. When no phase needs checking, the first line is
+`Nothing needs checking again`. A line starting `problem:` names a plan link that
+points nowhere or loops.
+
+The reasons, in plain words:
+
+| Reason | Meaning |
+|---|---|
+| `not checked yet` | QA has never recorded a verdict for the phase |
+| `failed last time` | the last verdict was a fail |
+| `its files changed` | a file of one of its plans changed since it passed |
+| `its tests changed` | a check of its requirements, or a file of that check, changed |
+| `its goal or plan changed` | the goal or the plans changed |
+| `builds on P1, which changed` | a phase it builds on has changed inputs |
+| `its files, tests or plan changed` | something changed, but the cache that says what is missing |
+
+`vbw next` sends only these phases to QA, gives the reasons in its `qa` key
+(docs/next.md) and states them in its instruction line. The QA skill tells the
+user the same. `vbw qa record PHASE pass` stores a digest of the phase's inputs
 and those of the phases it builds on in the phase's `qa.tree` (docs/record.md).
 
 A record from before this rule holds the proof's tree id in `qa.tree`. It matches
