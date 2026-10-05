@@ -103,13 +103,13 @@ Example: `{"phases":[{"id":"P1","title":"Fix add","reqs":["R1"],"tier":"express"
 Apply computes a higher tier: run the planning workflow below instead.
 
 **plan**: `VBW_SESSION_ID=${CLAUDE_SESSION_ID} vbw run start plan`, Workflow `vbw:planning` with args
-`{"models": ...}`. Returns: `VBW_SESSION_ID=${CLAUDE_SESSION_ID} vbw run end`. Status `needs_decisions`: user
+`{"requirements": <requirements>, "models": ...}`. Returns: `VBW_SESSION_ID=${CLAUDE_SESSION_ID} vbw run end`. Status `needs_decisions`: user
 decides first (hands-off: see Autonomy). Ask each decision with
 AskUserQuestion, one at a time (why it matters in question, each option's
 trade-off as description, recommended first, marked "(Recommended)"). Record
 each answer: `vbw decide "<what was decided>" "<why: their reason, or the
 trade-off they accepted>"`. Plan again: `VBW_SESSION_ID=${CLAUDE_SESSION_ID} vbw run start plan`, workflow with
-`{"decided": true, "models": ...}`. Planned: give Lead's summary, the
+`{"requirements": <requirements>, "decided": true, "models": ...}`. Planned: give Lead's summary, the
 `choices` it made itself (any can change), Architect's `notes` (offer `vbw todo add`).
 
 **approve** (needs user): `vbw show contract --changes`. After earlier approval
