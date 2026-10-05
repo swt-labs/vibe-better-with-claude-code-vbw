@@ -71,6 +71,24 @@ say() { printf '%s' "$output" | jq -r '.systemMessage // empty'; }
   done
 }
 
+@test "R61: the question may explain the contract after the fingerprint: Approve still approves it (real-app run)" {
+  # Claude asked this way in the 2.0.19 real-app run: the kernel's question, then a summary.
+  run answer_hook "$Q It builds two small shell scripts, each checked by its own test script." "Approve"
+  [ "$status" -eq 0 ]
+  [ "$(contract_state)" = "approved" ]
+  [ "$(approved_count)" = "1" ]
+}
+
+@test "R61: the fingerprint counts only at the very start of the question and only as exactly 12 hex digits" {
+  run answer_hook "Please $Q" "Approve"
+  [ -z "$output" ]
+  run answer_hook "Approve contract ${FP}0? It builds a script." "Approve"
+  [ -z "$output" ]
+  run answer_hook "Approve contract ${FP}?It builds a script." "Approve"
+  [ -z "$output" ]
+  [ "$(contract_state)" = "NOT APPROVED" ]
+}
+
 @test "R61: any other question changes nothing and prints nothing, in a VBW project and outside one" {
   run answer_hook "Which database should it use?" "Approve"
   [ "$status" -eq 0 ]

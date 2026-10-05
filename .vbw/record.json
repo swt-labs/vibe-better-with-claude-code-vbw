@@ -3961,7 +3961,7 @@
       "tier": "deep",
       "reasons": [
         "requirements: 3",
-        "files: 10 (39392 bytes)",
+        "files: 10 (39587 bytes)",
         "risk: CI (.github/workflows/ci.yml)",
         "breaks: R3",
         "tests: project test command"
@@ -3995,7 +3995,7 @@
       "tier": "deep",
       "reasons": [
         "requirements: 2",
-        "files: 29 (805850 bytes)",
+        "files: 29 (806330 bytes)",
         "risk: none",
         "breaks: R3, R38, R39",
         "tests: project test command"
@@ -4036,7 +4036,7 @@
       "tier": "deep",
       "reasons": [
         "requirements: 4",
-        "files: 11 (113463 bytes)",
+        "files: 11 (116852 bytes)",
         "risk: none",
         "breaks: R1, R2, R4, R5, R8, R13, R14, R18, R29, R32, R33, R34, R42, R48",
         "tests: project test command"
@@ -4085,7 +4085,7 @@
       "tier": "deep",
       "reasons": [
         "requirements: 2",
-        "files: 6 (102912 bytes)",
+        "files: 6 (106301 bytes)",
         "risk: none",
         "breaks: R4, R5, R8, R13, R14, R22, R24, R25, R26, R28, R31, R34, R37, R38, R39, R40, R42, R44, R48, R50",
         "tests: project test command"
@@ -4119,7 +4119,7 @@
       "tier": "deep",
       "reasons": [
         "requirements: 1",
-        "files: 26 (177285 bytes)",
+        "files: 26 (180869 bytes)",
         "risk: none",
         "breaks: R3, R4, R5, R8, R12, R13, R14, R15, R22, R23, R24, R25, R26, R27, R28, R31, R32, R34, R35, R36, R37, R38, R39, R40, R42, R43, R44, R45, R46, R47, R48, R49, R50",
         "tests: project test command"
@@ -4173,7 +4173,7 @@
       "tier": "deep",
       "reasons": [
         "requirements: 2",
-        "files: 10 (106579 bytes)",
+        "files: 10 (112797 bytes)",
         "risk: none",
         "breaks: R3, R4, R5, R8, R13, R14, R22, R23, R24, R25, R27, R28, R31, R34, R37, R38, R39, R40, R42, R43, R44, R45, R46, R47, R48, R49",
         "tests: project test command"
@@ -7130,16 +7130,16 @@
       "after": [
         "P45.1",
         "P46.2",
-        "P46.4"
+        "P46.4",
+        "P46.8"
       ],
-      "status": "blocked",
+      "status": "planned",
       "tasks": [
         "Add scenario 'approval' to tools/l3-suite.sh (in ALL and the header): a project with an agreed spec and plan; when the approval question appears the driver presses Enter and never types /vbw:approve",
         "Check the record and git: the question named the fingerprint, the contract is approved, one 'Contract approved' decision names that fingerprint; write the result with its fixture and what was not tested",
         "Run it once if the owner's budget allows, commit the result, and report it as run or not run"
       ],
-      "role": "dev",
-      "note": "Scenario added and committed (177e1da9) and run once in the real Claude Code app (cost about 4 USD). It FAILED: VBW asked 'Approve contract 2d2b082c4d1d?' with Approve and Not yet, the driver pressed Enter, but the contract stayed unapproved (0 'Contract approved' decisions) and Claude told the user to type /vbw:approve. So the PostToolUse hook plugin/hooks/approve-answer.jq/.sh (P46.2/P46.4 files, outside this plan) did not approve in the real app, although its bats tests pass. Likely cause to check: the real tool_response shape of AskUserQuestion differs from the one the tests assume. No result file is committed (C77 requires passed true). Needs a fix to the hook, then a re-run of: bash tools/l3-suite.sh approval. Failed result kept at /private/tmp/claude-501/-Users-tiagoserodio-Documents-AI-Stuff-vibe-better-with-claude-code-vbw-worktrees-v2/9cd2cc30-8c86-4520-9d71-a0e82aff5407/scratchpad/approval-failed.json"
+      "role": "dev"
     },
     {
       "id": "P47.1",
@@ -7380,9 +7380,28 @@
         "P43.2"
       ],
       "status": "done",
-      "role": "dev",
       "tasks": [
         "Run tools/sounds.sh so plugin/hooks/panel-sounds.js lists every shipped clip (charlize, arnold, darth); commit the new clips with it; C70 and the 2 MB size rule pass"
+      ],
+      "role": "dev"
+    },
+    {
+      "id": "P46.8",
+      "phase": "P46",
+      "title": "The approval answer counts when the question explains the contract after its fingerprint",
+      "reqs": [
+        "R61"
+      ],
+      "files": [
+        "plugin/hooks/approve-answer.jq"
+      ],
+      "after": [
+        "P46.2"
+      ],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "approve-answer.jq matches a question that starts with \"Approve contract <12 hex>?\" followed by a space and anything, or nothing: the 2.0.19 real-app run showed Claude appending a summary to the kernel's question, so Enter on Approve approved nothing; the fingerprint must still sit at the very start, be exactly 12 hex digits, and match the current contract; update the header comment; C74 passes"
       ]
     }
   ],
