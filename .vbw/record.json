@@ -6174,6 +6174,11 @@
       "text": "QA re-check data adds no new record field and no schema change: a phase's QA pass stores one digest of that phase's own inputs (its plans' files, its checks' files, its goal, criteria, plans and rules, and the digests of phases it builds on) in the existing qa.tree field; the per-input digests used to name a reason are a clone-local cache in $(git common dir)/vbw/qa.json; without the cache the reason is 'its inputs changed'",
       "why": "A digest field in the record would need a new schema; VBW 2.0.17 requires schema 2 exactly when a check is alone and calls any other schema-2 record corrupt (R46). With qa.tree reused, 2.0.16/2.0.17 read the record and at worst re-check every phase (today's behaviour); the digest is computed from committed content, so every clone agrees which passes stand",
       "at": "2026-10-05T00:42:00Z"
+    },
+    {
+      "id": "D92",
+      "at": "2026-10-05T00:58:22Z",
+      "text": "Contract approved: 47 requirements, 49 checks, 100 plans (ff6586d84bee)"
     }
   ],
   "commands": {
