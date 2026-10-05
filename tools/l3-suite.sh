@@ -610,12 +610,15 @@ scenario_tools() {
     s=$(screen)
     if printf '%s' "$s" | grep -qiE 'look for (the best )?tools|tools for this project' && printf '%s' "$s" | grep -qiE 'linter|scanner|formatter'; then
       offers=$((offers + 1))
-      # The user presses Enter on the first option, yes.
+      # "No, skip it" is the first option: the user moves to "Yes, look" and presses Enter.
+      n=$(printf '%s' "$s" | grep -E '[0-9]+\. Yes' | grep -oE '[0-9]+' | head -1)
+      for ((i = 1; i < ${n:-2}; i++)); do l3 keys "$scenario" Down; done
       l3 keys "$scenario" Enter
       answered=true
+      sleep 3
       return 0
     fi
-    if [ "$answered" = true ] && printf '%s' "$s" | grep -qE '[0-9]+\. Not yet'; then
+    if [ "$answered" = true ] && printf '%s' "$s" | grep -qE '[0-9]+\. Not yet' && ! printf '%s' "$s" | grep -qE 'Approve contract|Ship'; then
       listed=true
       # Nothing may be installed while the list waits for the answer.
       before_clean=$([ "$(install_traces)" -eq 0 ] && [ "$(install_commands)" -eq 0 ] && echo true || echo false)
