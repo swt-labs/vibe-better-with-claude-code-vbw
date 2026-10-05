@@ -2882,6 +2882,12 @@
           "from": "deep",
           "to": "deep",
           "reason": "Dev blocked P40.2: Plan files miss two places that read qa.tree as the proven-code tree. (1) plugin/lib/rigor-defs.jq phase_finished (line ~91) requires qa.tree == evidence.tree; with qa.tree now the combined digest no pass ever finishes a phase, and prove.jq/cmd-qa.sh both call finish_phases, so task 2 (a standing pass still counts for finishing) cannot be met from prove.jq alone. It should read: pass AND (qa.tree == the phase's current combined digest). (2) plugin/lib/cmd-show.sh line ~35 prints [on older code] when qa.tree != evidence.tree; C47's test 'a pass that stands ... [on older code]' needs it changed. Also phase_finished has no digests in scope: finish_phases needs a $standing argument (or the digests) passed by prove.jq and cmd-qa.sh. Needs: add plugin/lib/rigor-defs.jq and plugin/lib/cmd-show.sh to P40.2 (and tests/kernel-qafresh.bats, which asserts qa pass semantics). Kernel is at 3140/3300 lines, so these edits must stay small. No changes made."
+        },
+        {
+          "at": "2026-10-05T01:19:39Z",
+          "from": "deep",
+          "to": "deep",
+          "reason": "Dev blocked P40.4: Task 2 needs the digests passed from plugin/lib/cmd-prove.sh (it calls record_update with prove.jq and passes --argjson ev/cap/at only), but cmd-prove.sh is not in P40.4's files. prove.jq cannot get the digests otherwise, so a fix that closes on prove would never finish a phase that needs QA. Also: until P40.2 makes vbw qa record store the combined digest in qa.tree (it still stores evidence.tree), the new comparison would never match; P40.4 would need cmd-qa.sh to write it too, which overlaps P40.2 task 1. Suggest: add plugin/lib/cmd-prove.sh to P40.4 (pass --argjson digests \"$(qa_digests \"$record\")\", source qa-inputs.sh), and fold the qa.tree write into P40.4 or order P40.2 task 1 first. No file changed."
         }
       ]
     },
@@ -5373,14 +5379,15 @@
       "after": [
         "P40.1"
       ],
-      "status": "planned",
+      "status": "blocked",
       "role": "dev",
       "tasks": [
         "rigor-defs.jq: phase_finished and finish_phases take the phases' current digests (from qa_digests) and count a QA pass as standing when qa.tree equals the phase's current combined digest, instead of comparing qa.tree with evidence.tree (D91)",
         "Every caller passes the digests: prove.jq (via cmd-prove), cmd-qa.sh and cmd-req.sh; no caller keeps the old comparison",
         "cmd-show.sh: [on older code] only when the phase's pass does not stand by that same comparison",
         "Update tests/kernel-qafresh.bats to the new rule; P40.2 runs after this plan (it stays blocked until P40.4 is done)"
-      ]
+      ],
+      "note": "Task 2 needs the digests passed from plugin/lib/cmd-prove.sh (it calls record_update with prove.jq and passes --argjson ev/cap/at only), but cmd-prove.sh is not in P40.4's files. prove.jq cannot get the digests otherwise, so a fix that closes on prove would never finish a phase that needs QA. Also: until P40.2 makes vbw qa record store the combined digest in qa.tree (it still stores evidence.tree), the new comparison would never match; P40.4 would need cmd-qa.sh to write it too, which overlaps P40.2 task 1. Suggest: add plugin/lib/cmd-prove.sh to P40.4 (pass --argjson digests \"$(qa_digests \"$record\")\", source qa-inputs.sh), and fold the qa.tree write into P40.4 or order P40.2 task 1 first. No file changed."
     }
   ],
   "fixes": [
