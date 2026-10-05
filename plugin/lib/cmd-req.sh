@@ -12,6 +12,8 @@ cmd_req() {
     *) vbw_usage_error "usage: vbw req accept ID | reject ID NOTE" ;;
   esac
   vbw_require_project
+  # shellcheck source=cmd-next.sh
+  . "$VBW_LIB/cmd-next.sh"
   local proof
   proof=$(record_read | jq -r --arg q "$id" '[.requirements[] | select(.id == $q) | .proof][0] // empty')
   [ -n "$proof" ] || vbw_die "unknown requirement $id"
@@ -20,7 +22,7 @@ cmd_req() {
     # The user's word settles their own rejections; a fix QA opened stays open until QA passes.
     record_update "$VBW_JQ_DEFS"'(.requirements[] | select(.id == $q)).status = "accepted"
       | (.fixes[] | select(.req == $q and .source != "qa" and (.status | IN("open", "fixed", "escalated")))).status = "closed"
-      | finish_phases' --arg q "$id"
+      | finish_phases($cur)' --arg q "$id" --argjson cur "$(qa_combined "$(record_read)")"
     printf '%s accepted\n' "$id"
   else
     record_update "$VBW_JQ_DEFS"'(.requirements[] | select(.id == $q)).status = "rejected"

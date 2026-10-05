@@ -6,6 +6,8 @@
 . "$VBW_LIB/checks.sh"
 # shellcheck source=proofcopy.sh
 . "$VBW_LIB/proofcopy.sh"
+# shellcheck source=cmd-next.sh
+. "$VBW_LIB/cmd-next.sh"
 
 VBW_FIX_CAP=3
 VBW_COMMAND_TIMEOUT=900
@@ -37,7 +39,7 @@ cmd_prove() {
     --argjson c "$checks" --argjson m "$commands" --argjson s "$scope" \
     '{at: $at, contract: $h, tree: $tree, head: $head, checks: $c, commands: $m, scope: $s,
       passed: (all($c[]; .status == "pass") and all($m[]; .status == "pass" or .status == "skipped") and ($s | length) == 0)}')
-  record_update "$VBW_JQ_DEFS$(cat "$VBW_LIB/prove.jq")" --argjson ev "$ev" --argjson cap "$VBW_FIX_CAP" --arg at "$at"
+  record_update "$VBW_JQ_DEFS$(cat "$VBW_LIB/prove.jq")" --argjson ev "$ev" --argjson cap "$VBW_FIX_CAP" --argjson cur "$(qa_combined "$record")" --arg at "$at"
   # The evidence is part of the plan of record: commit it, so a proof never
   # leaves VBW's own file modified in the user's working tree.
   record_commit "chore(vbw): proof $(jq -r 'if .evidence.passed then "passed" else "not passed" end' "$VBW_RECORD")"

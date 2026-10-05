@@ -76,11 +76,12 @@ def needs_qa($tier; $current):
   | ($tier != "express") or (($p.escalations // []) | length > 0)
     or any($p.reqs[]; . as $q | any($current[]; .id == $q and .proof == "human"));
 
-# phase_finished($r): on a phase object, with the whole record as $r. A phase is
+# phase_finished($r; $cur): on a phase object, with the whole record as $r and
+# $cur the current combined digest of each phase (lib/qa-inputs.sh). A phase is
 # finished when its plans are done, its requirements are proven (accepted, for
 # [human] ones), no fix on them is still open, fixed or escalated, and, when it
-# needs QA (needs_qa), QA passed on the code that was proven.
-def phase_finished($r):
+# needs QA (needs_qa), QA passed and the pass stands: its qa.tree is the phase's current digest (D91).
+def phase_finished($r; $cur):
   . as $ph
   | [$r.plans[] | select(.phase == $ph.id)] as $plans
   | [$r.requirements[] | select(.id as $q | $ph.reqs | index($q))] as $reqs
@@ -88,17 +89,17 @@ def phase_finished($r):
     and all($reqs[]; .status | IN("proven", "accepted"))
     and ([$r.fixes[] | select(.req as $q | $q != null and ($ph.reqs | index($q))) | select(.status != "closed")] | length == 0)
     and ((needs_qa($ph.tier // "standard"; $reqs) | not)
-         or (($ph.qa.result // "") == "pass" and $ph.qa.tree == ($r.evidence.tree // "")));
+         or (($ph.qa.result // "") == "pass" and $ph.qa.tree == ($cur[$ph.id] // "")));
 
 # finish_phases: on the record. Writes outcome {tier, predicted, held,
 # fix_rounds, qa_findings, escalations} once on every tiered phase that has just
 # finished (predicted: the phase's predicted tier, the tier its work began at; a
 # re-tier before any work moves it, an escalation never does); an outcome
 # already written is never rewritten.
-def finish_phases:
+def finish_phases($cur):
   . as $r
   | .phases |= map(
-      if has("outcome") or (has("tier") | not) or (phase_finished($r) | not) then .
+      if has("outcome") or (has("tier") | not) or (phase_finished($r; $cur) | not) then .
       else . as $ph
         | [$r.fixes[] | select(.req as $q | $q != null and ($ph.reqs | index($q)))] as $fx
         | (.predicted // .tier) as $predicted

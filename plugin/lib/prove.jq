@@ -1,5 +1,5 @@
 # vbw prove: fold one run into the record (docs/proof.md). Input: the record.
-# Args: $ev (the evidence object), $cap (fix attempt cap), $at (the time). VBW_JQ_DEFS prepended.
+# Args: $ev (the evidence object), $cap (fix attempt cap), $cur (qa_combined), $at (the time). VBW_JQ_DEFS prepended.
 
 def ok: .status == "pass";
 
@@ -50,4 +50,4 @@ def ok: .status == "pass";
       else .fixes[$i].note = $t.note end)
 
 | .evidence = $ev
-| finish_phases
+| finish_phases($cur)
