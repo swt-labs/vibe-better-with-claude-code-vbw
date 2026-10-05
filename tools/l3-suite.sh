@@ -447,7 +447,8 @@ scenario_recheck() {
   new_project
   # Rigor fixed at standard: an express phase is never QA'd (M4), and two
   # one-file scripts may be tiered express, which leaves nothing to re-check.
-  (cd "$dir" && "$VBW" init > /dev/null && "$VBW" config set rigor standard > /dev/null)
+  (cd "$dir" && "$VBW" init > /dev/null && "$VBW" config rigor standard > /dev/null) \
+    || { say "setup failed: could not fix the rigor at standard"; return 1; }
   fixture="two independent scripts, greet.sh and farewell.sh, one phase each; rigor fixed at standard; guided autonomy; after QA passes, one commit changes greet.sh and QA runs again"
   seeded="" next_json="{}" qa_before="{}"
   start="Use guided autonomy for this project. /vbw:vibe two small command-line scripts as two separate phases, one script each, neither using the other: greet.sh (\"./greet.sh Ana\" prints \"Hello, Ana!\", without a name \"Hello, world!\") and farewell.sh (\"./farewell.sh Ana\" prints \"Goodbye, Ana!\", without a name \"Goodbye, world!\"). One small milestone."
@@ -975,7 +976,7 @@ for scenario in "$@"; do
   on_question() { return 1; }
   on_idle() { return 1; }
   done_yet() { shipped; }
-  "scenario_$scenario"
+  "scenario_$scenario" || { failed=1; continue; }
   say "project: $dir"
   if ! l3 start "$scenario" "$dir" > /dev/null; then say "could not start Claude Code"; failed=1; continue; fi
   # As a user would: VBW 2 asks for a reload when it removed VBW 1 command copies.
