@@ -5313,7 +5313,7 @@
       "after": [
         "P40.2"
       ],
-      "status": "planned",
+      "status": "done",
       "tasks": [
         "New vbw show qa: one plain-words line per phase checked again with all its reasons, one line per phase whose pass stands, and 'Nothing needs checking again' with every phase listed when none",
         "The vbw next instruction for QA names each phase, its reasons and the phases that keep their pass, matching exactly the list sent to QA",
