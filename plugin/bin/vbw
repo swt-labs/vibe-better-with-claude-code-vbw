@@ -26,7 +26,7 @@ usage: vbw <command> [args]
   status [--json]   where the project stands
   next [--json]     the next lifecycle step and whether it needs you
   show VIEW [ID]    roadmap | phase ID | req ID | plan ID | fix ID | contract [--changes] | evidence | decisions | requirements
-  approve           approve the contract and project commands (the user, via /vbw:approve)
+  approve [--hash FINGERPRINT]   approve the contract and project commands (the user, via /vbw:approve; --hash only if it is still that contract)
   check [--expect-red] [CHECK...]   run approved checks and report (writes nothing)
   prove             run the approved checks and commands, record the evidence
   apply < PLAN      the planner's write: phases, plans and checks in one update
