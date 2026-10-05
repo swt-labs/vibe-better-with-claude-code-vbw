@@ -87,12 +87,38 @@ The contract is the requirements (id, text, proof, and rules when listed), the c
 (everything but their status) and the contents of every check's `files`. Its
 hash is SHA-256 over a canonical rendering of all of it.
 
-`vbw approve` (the user's `/vbw:approve`, never an agent) refuses an incomplete
+### Approving by choice
+
+When the contract is ready, VBW shows it and asks a question in Claude Code's
+own question box. `vbw show contract` prints the question and its options:
+
+```text
+approval question: Approve contract 4cfe6f0859c9?
+approval options: Approve, Not yet
+```
+
+- **Approve** comes first, so pressing Enter approves the contract shown.
+- **Not yet** approves nothing; VBW asks what to change.
+- **Your own words** (the box's own-answer slot) approve nothing either. VBW
+  takes them as what to change, or as a question.
+
+The 12 characters in the question are the contract's fingerprint (the start of
+its hash). Approval covers exactly that contract. If the contract changed
+after the question was asked (a plan or check was edited meanwhile), nothing
+is approved: `the contract changed since you were asked (now ...): review it
+again`. Review it with `vbw show contract` and answer again.
+
+Typing `/vbw:approve` still works and approves the current contract, without
+the question.
+
+`vbw approve` (the user's answer or `/vbw:approve`, never the model) refuses an incomplete
 contract (no requirements, an `auto` requirement without a check, a missing
 check file), then records consent for the contract hash and for every project
 command in `record.commands`, in the clone's git directory (see
 docs/record.md, Consent), and logs a decision. A repository cannot ship
-approval: a fresh clone must approve before anything runs.
+approval: a fresh clone must approve before anything runs. The kernel accepts
+`vbw approve --hash FINGERPRINT` only when the fingerprint is the current
+contract's.
 
 ## Rules
 
