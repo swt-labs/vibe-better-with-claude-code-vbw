@@ -1312,7 +1312,84 @@
       "proof": "auto",
       "status": "open",
       "milestone": "M9",
-      "rules": []
+      "rules": [
+        {
+          "text": "the approval question offers Approve first, Not yet second, and the question names the contract by its 12-character fingerprint",
+          "check": "C73"
+        },
+        {
+          "text": "approve with a fingerprint approves the contract it names with the same decision entry as plain approve, once per approval whichever path is used",
+          "check": "C73"
+        },
+        {
+          "text": "if the contract changed after the question, approving by its old fingerprint approves nothing and says the contract changed",
+          "check": "C73"
+        },
+        {
+          "text": "a malformed fingerprint or a contract not ready for approval is refused and nothing is written",
+          "check": "C73"
+        },
+        {
+          "text": "answering Approve to VBW's approval question approves exactly the contract the question named, through VBW's own hook",
+          "check": "C74"
+        },
+        {
+          "text": "when the contract changed after the question, Approve approves nothing, and the user is told in plain words and shown the new contract",
+          "check": "C74"
+        },
+        {
+          "text": "answering Not yet approves nothing and VBW is told to ask what to change",
+          "check": "C74"
+        },
+        {
+          "text": "the user's own words approve nothing and are treated as what to change or a question",
+          "check": "C74"
+        },
+        {
+          "text": "any other question, in a VBW project or outside one, changes nothing and prints nothing",
+          "check": "C74"
+        },
+        {
+          "text": "when the hook cannot approve (nothing ready, already approved, damaged record) nothing changes, the record is untouched and the user sees one sentence saying why and what to do",
+          "check": "C74"
+        },
+        {
+          "text": "the decision is recorded once per approval even when both the choice and /vbw:approve are used",
+          "check": "C74"
+        },
+        {
+          "text": "the answer may arrive as a map or a list of answers",
+          "check": "C74"
+        },
+        {
+          "text": "the model's own call to approve is still refused by the guard",
+          "check": "C75"
+        },
+        {
+          "text": "an answer-shaped message from the model, another tool's result, or a subagent does not approve",
+          "check": "C75"
+        },
+        {
+          "text": "the new hook stays within the hot-path budget and the kernel within 3,500 lines",
+          "check": "C75"
+        },
+        {
+          "text": "the router asks for approval with a choice, Approve first, built from the question the kernel prints, and says what to do with each answer; typing /vbw:approve still works",
+          "check": "C76"
+        },
+        {
+          "text": "the prompts stay within their budgets",
+          "check": "C76"
+        },
+        {
+          "text": "the docs and the README describe the choice, the Approve-first order and that /vbw:approve still works",
+          "check": "C76"
+        },
+        {
+          "text": "a real Claude Code scenario shows the choice appearing and Enter approving the shown contract, and says whether it ran",
+          "check": "C77"
+        }
+      ]
     }
   ],
   "checks": [
@@ -2134,6 +2211,65 @@
       ],
       "files": [
         "tests/stop-line.bats"
+      ]
+    },
+    {
+      "id": "C73",
+      "req": "R61",
+      "run": [
+        "bats",
+        "tests/approve-choice-kernel.bats"
+      ],
+      "files": [
+        "tests/approve-choice-kernel.bats",
+        "tests/approve-choice-helper.bash"
+      ]
+    },
+    {
+      "id": "C74",
+      "req": "R61",
+      "run": [
+        "bats",
+        "tests/approve-choice-hook.bats"
+      ],
+      "files": [
+        "tests/approve-choice-hook.bats",
+        "tests/approve-choice-helper.bash"
+      ]
+    },
+    {
+      "id": "C75",
+      "req": "R61",
+      "run": [
+        "bats",
+        "tests/approve-choice-guard.bats"
+      ],
+      "files": [
+        "tests/approve-choice-guard.bats",
+        "tests/approve-choice-helper.bash"
+      ],
+      "alone": true
+    },
+    {
+      "id": "C76",
+      "req": "R61",
+      "run": [
+        "bats",
+        "tests/approve-choice-docs.bats"
+      ],
+      "files": [
+        "tests/approve-choice-docs.bats"
+      ]
+    },
+    {
+      "id": "C77",
+      "req": "R61",
+      "run": [
+        "bats",
+        "tests/l3-approval.bats"
+      ],
+      "files": [
+        "tests/l3-approval.bats"
       ]
     }
   ],
@@ -3615,10 +3751,11 @@
         "Updating the panel costs no more than a stated, measured CPU budget per refresh (measured with a bench like tools/bench-hooks.sh), and does not run a refresh when nothing changed.",
         "The panel's code is read-only: it never writes the record (single-writer rule holds), and kernel (3,500 lines) and workflow (1,500 lines) budgets still pass."
       ],
+      "proposed": "deep",
       "tier": "deep",
       "reasons": [
         "requirements: 3",
-        "files: 10 (29726 bytes)",
+        "files: 10 (30879 bytes)",
         "risk: CI (.github/workflows/ci.yml)",
         "breaks: R3",
         "tests: project test command"
@@ -3648,10 +3785,11 @@
         "On versions without mods, the sound command still works or says plainly that the panel is unavailable, with no error output.",
         "The sound hook respects the hook CPU limit (8 ms or 1x shell start) and uses no network."
       ],
+      "proposed": "deep",
       "tier": "deep",
       "reasons": [
         "requirements: 2",
-        "files: 20 (370132 bytes)",
+        "files: 20 (371047 bytes)",
         "risk: none",
         "breaks: R3, R38, R39",
         "tests: project test command"
@@ -3687,10 +3825,11 @@
         "A full-panel check on a realistic project is run in a real Claude Code session (L3 scenario added to tools/l3-suite.sh for the panel), and its result is committed.",
         "HUMAN ACCEPTANCE (R54): the owner looks at the panel on a realistic project and confirms a person at level 'never' with plain-with-terms-explained depth can tell, at a glance, the milestone, what is happening and whether they are needed."
       ],
+      "proposed": "deep",
       "tier": "deep",
       "reasons": [
         "requirements: 3",
-        "files: 10 (92778 bytes)",
+        "files: 10 (93931 bytes)",
         "risk: none",
         "breaks: R1, R2, R4, R5, R8, R13, R14, R18, R29, R32, R33, R34, R42, R48",
         "tests: project test command"
@@ -3715,12 +3854,47 @@
         "Edge case: a returning user whose level is already recorded is not asked the level question again, as before.",
         "Check by a test that finds the exact greeting text in the interview skill and the four options after it; a person can also start a new project and read the first line."
       ],
+      "proposed": "deep",
       "tier": "deep",
       "reasons": [
         "requirements: 2",
         "files: 6 (94257 bytes)",
         "risk: none",
         "breaks: R4, R5, R8, R13, R14, R22, R24, R25, R26, R28, R31, R34, R37, R38, R39, R40, R42, R44, R48, R50",
+        "tests: project test command"
+      ],
+      "predicted": "deep"
+    },
+    {
+      "id": "P46",
+      "title": "Approve with Enter: approval offered as a choice",
+      "reqs": [
+        "R61"
+      ],
+      "milestone": "M9",
+      "goal": "When VBW asks for approval of the contract, the user sees a choice (Approve first, Not yet, or their own words), and picking Approve approves exactly the contract shown, recorded by VBW's own code and never by Claude.",
+      "criteria": [
+        "VBW's approval step asks with three choices in this order: Approve (first, so pressing Enter approves), Not yet, and a place to type the user's own words; the question names the contract it is about by its short fingerprint (hash).",
+        "Picking Approve records the approval for the contract whose fingerprint the question named, through a VBW hook on the user's answer (D112); the record then shows that contract as approved by the user, exactly as /vbw:approve would have recorded it.",
+        "If the contract changed after the question was asked (fingerprint no longer the current one), picking Approve approves nothing, and the user is told in plain words that the contract changed and is shown the new one.",
+        "Picking Not yet approves nothing, and VBW then asks the user what to change.",
+        "Typing their own words approves nothing; VBW treats the words as what to change (or as a question) and does not approve.",
+        "Claude cannot approve by itself: a call to the approve command from the model is still refused by the guard, and a test shows that an answer-shaped message written by the model (not coming from the user's answer in Claude Code's interface) does not approve.",
+        "The hook acts only for VBW's own approval question; any other question the user answers in a VBW project, and any question outside a VBW project, changes nothing and causes no error.",
+        "Typing /vbw:approve still approves the current contract exactly as before.",
+        "If the hook cannot approve (no pending contract, already approved, record locked or damaged), nothing is approved, the existing record is untouched, and the user sees one plain sentence saying why and what to do (for example type /vbw:approve).",
+        "The decision is recorded in the decision log with the contract fingerprint (the same entry /vbw:approve writes), once per approval, not twice when both paths are used.",
+        "The new hook stays within the hot-path budget (CPU per call within the rule in the engineering standard) and the kernel stays within its 3,500-line budget; the approval skill text stays within the prompt budgets.",
+        "Docs describe the choice, the Approve-first order and that /vbw:approve still works.",
+        "A real Claude Code run (L3) shows the choice appearing and Enter approving the shown contract; this run is listed in the progress log as run or not run."
+      ],
+      "proposed": "deep",
+      "tier": "deep",
+      "reasons": [
+        "requirements: 1",
+        "files: 14 (129039 bytes)",
+        "risk: none",
+        "breaks: R3, R4, R5, R8, R12, R13, R14, R15, R22, R24, R25, R26, R27, R28, R31, R32, R34, R37, R38, R39, R40, R42, R43, R44, R45, R46, R47, R48, R49, R50",
         "tests: project test command"
       ],
       "predicted": "deep"
@@ -6534,6 +6708,141 @@
         "Router loop: at every stop, end the message with one line \"**What I need from you:** <the one thing the user must do now>\" or \"nothing\"; trim elsewhere so the router stays within 1,400 words",
         "docs/workflows.md: say that every stop ends with that line"
       ]
+    },
+    {
+      "id": "P46.1",
+      "phase": "P46",
+      "title": "The kernel names the question and approves the contract it named",
+      "reqs": [
+        "R61"
+      ],
+      "files": [
+        "plugin/lib/cmd-approve.sh",
+        "plugin/lib/cmd-show.sh",
+        "plugin/bin/vbw"
+      ],
+      "after": [],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "vbw show contract ends with the approval question (with the 12-character fingerprint) and the options Approve, Not yet, only while the contract is not approved",
+        "vbw approve --hash FINGERPRINT: approves only when that is still the current contract, with the same record entry as plain vbw approve; a changed contract is refused with a plain 'the contract changed' message and nothing is written",
+        "Malformed or missing fingerprint is a usage error; update the usage lines in vbw help"
+      ]
+    },
+    {
+      "id": "P46.2",
+      "phase": "P46",
+      "title": "The hook that turns the user's answer into the approval",
+      "reqs": [
+        "R61"
+      ],
+      "files": [
+        "plugin/hooks/approve-answer.sh",
+        "plugin/hooks/approve-answer.jq",
+        "plugin/hooks/hooks.json"
+      ],
+      "after": [
+        "P46.1"
+      ],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "One jq pass reads the hook input and exits silently unless the tool is AskUserQuestion, there is no agent_type, the question is 'Approve contract <12 hex>?' and the answer is exactly Approve (answers may be a map from question to answer or a list)",
+        "On Approve run vbw approve --hash with the named fingerprint; print one plain sentence for the user (systemMessage) and the result for Claude (additionalContext), including the new contract when it changed; Not yet and the user's own words approve nothing and tell Claude to ask what to change; any failure (not ready, already approved, damaged or locked record) leaves everything untouched and says why and 'type /vbw:approve'",
+        "Register one PostToolUse hook with matcher AskUserQuestion in hooks.json; confirm the real answer shape from a real Claude Code answer and keep the hook working with it"
+      ]
+    },
+    {
+      "id": "P46.3",
+      "phase": "P46",
+      "title": "Keep the new hook inside the speed budget",
+      "reqs": [
+        "R61"
+      ],
+      "files": [
+        "tools/bench-hooks.sh"
+      ],
+      "after": [
+        "P46.2"
+      ],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "Add an unrelated answered question to the hook bench's inputs and run the PostToolUse command from hooks.json for it",
+        "Print it as 'guard (answer): N ms own CPU per call' with the same budget rule as the other inputs"
+      ]
+    },
+    {
+      "id": "P46.4",
+      "phase": "P46",
+      "title": "The approval step asks with a choice",
+      "reqs": [
+        "R61"
+      ],
+      "files": [
+        "plugin/skills/vibe/SKILL.md",
+        "plugin/skills/help/SKILL.md"
+      ],
+      "after": [
+        "P46.1",
+        "P45.2"
+      ],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "Replace 'ask user to type /vbw:approve' in the router's approve step: ask with AskUserQuestion using the 'approval question' and options that vbw show contract prints (Approve first, Not yet; the user's own words come from the app's own-answer slot); keep 'You cannot approve' and that /vbw:approve still works",
+        "Say what to do with each answer: Approve continues the loop (the hook has recorded it), Not yet asks what to change, own words are treated as what to change or as a question; trim other wording so the router stays at or under 1,400 words and all prompts within 16k tokens",
+        "Mention the choice next to /vbw:approve in the help"
+      ]
+    },
+    {
+      "id": "P46.5",
+      "phase": "P46",
+      "title": "Explain approval by choice",
+      "reqs": [
+        "R61"
+      ],
+      "files": [
+        "docs/proof.md",
+        "docs/guards.md",
+        "README.md"
+      ],
+      "after": [
+        "P46.2",
+        "P46.4"
+      ],
+      "status": "planned",
+      "role": "docs",
+      "tasks": [
+        "docs/proof.md: the approval question, the three choices, Approve first so Enter approves, the fingerprint, what happens when the contract changed, and that /vbw:approve still works",
+        "docs/guards.md: the answer hook (PostToolUse on AskUserQuestion), why the model cannot approve through it and that the guard still refuses vbw approve",
+        "README: approval step says Enter approves the contract shown, /vbw:approve still works"
+      ]
+    },
+    {
+      "id": "P46.6",
+      "phase": "P46",
+      "title": "A real Claude Code run of the approval choice",
+      "reqs": [
+        "R61"
+      ],
+      "files": [
+        "tools/l3-suite.sh",
+        "tools/l3-results/approval.json"
+      ],
+      "after": [
+        "P45.1",
+        "P46.2",
+        "P46.4"
+      ],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "Add scenario 'approval' to tools/l3-suite.sh (in ALL and the header): a project with an agreed spec and plan; when the approval question appears the driver presses Enter and never types /vbw:approve",
+        "Check the record and git: the question named the fingerprint, the contract is approved, one 'Contract approved' decision names that fingerprint; write the result with its fixture and what was not tested",
+        "Run it once if the owner's budget allows, commit the result, and report it as run or not run"
+      ]
     }
   ],
   "fixes": [
@@ -7508,6 +7817,12 @@
       "id": "D111",
       "at": "2026-10-05T15:00:10Z",
       "text": "Contract approved: 57 requirements, 68 checks, 115 plans (d68ee3970531)"
+    },
+    {
+      "id": "D112",
+      "text": "Approval from a choice: a PostToolUse hook on AskUserQuestion (VBW's own code) approves when the user's answer to VBW's approval question is the Approve option, for the contract hash the question names, and only if that hash is still the current contract; the model's own vbw approve stays refused by the guard",
+      "why": "Owner (2026-10-05) wants Enter-to-approve; the answer reaches the hook from Claude Code's interface, which the model cannot forge, so 'only the user approves' holds. A stale hash (contract changed after the question) approves nothing",
+      "at": "2026-10-05T15:02:10Z"
     }
   ],
   "commands": {
