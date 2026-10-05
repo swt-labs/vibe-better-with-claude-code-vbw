@@ -89,6 +89,9 @@ cmd_show() {
           (.plans[] | "  \(.id) \(.title): \(.files | join(", "))\(if (.after | length) > 0 then " (after \(.after | join(", ")))" else "" end)"),
           "project commands:",
           (.commands | to_entries[] | "  \(.key): \(.value | argv_line)")'
+      if [ "$state" != approved ]; then
+        printf 'approval question: Approve contract %s?\napproval options: Approve, Not yet\n' "${hash:0:12}"
+      fi
       ;;
     requirements)
       # Every requirement with its proof, status and milestone, and whether the
