@@ -35,8 +35,10 @@ ids() { jq -c '[.requirements[].id]'; }
 
 # plan_run RESPONSES [ARGS_EXTRA]: run planning.js with the kernel's requirements.
 plan_run() {
-  local args
-  args=$("$VBW" next --json < /dev/null | jq -c --argjson p "$PROFILE" --argjson x "${2:-{\}}" '{requirements: .requirements, profile: $p} + $x')
+  # The default is set apart: bash 3.2 keeps the backslash in "${2:-{\}}".
+  local args extra="${2:-}"
+  [ -n "$extra" ] || extra='{}'
+  args=$("$VBW" next --json < /dev/null | jq -c --argjson p "$PROFILE" --argjson x "$extra" '{requirements: .requirements, profile: $p} + $x')
   node "$RUN" "$PLUGIN_ROOT/workflows/planning.js" "$args" "$1"
 }
 
