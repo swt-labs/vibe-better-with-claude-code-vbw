@@ -1,14 +1,14 @@
 {
   "scenario": "qafix",
   "fixture": "greet.sh plus NOTES.md (no check names it); the built NOTES.md is deleted after the build, so only QA can see the deviation",
-  "cost_usd": 1.28,
+  "cost_usd": 1.29,
   "evidence_level": "L3",
-  "at": "2026-10-04T23:51:01Z",
+  "at": "2026-10-05T11:16:05Z",
   "passed": true,
   "facts": {
     "deviation": "NOTES.md",
     "first_qa_verdict": "fail",
-    "first_qa_note": "2/5 checks NOTES.md does not exist. It was built in commits c0221a4 and 5918bb7, then deleted by commit f3cb260 'chore: drop NOTES.md'. All three phase criteria (file exists, one sentence, mentions greeting a person by name) fail. Fix: restore NOTES.md with one sentence such as 'greet.sh greets a person by name.'",
+    "first_qa_note": "9/10 checks NOTES.md no longer exists. Commit eb1a201 added it, but commit 08e47f0 ('chore: drop NOTES.md') deleted it. The plan, goal and criterion all require NOTES.md with one sentence on what greet.sh is for. Recommended: restore NOTES.md with one clear sentence (option: instead, record a decision to drop it and update the goal).",
     "fix_rounds": 1,
     "final_qa_verdict": "pass",
     "phase_proved": true

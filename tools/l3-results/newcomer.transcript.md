@@ -4,6 +4,8 @@
 <command-name>/vbw:vibe</command-name>
 <command-args>I want to build a small greeting tool. One small milestone.</command-args>
 
+**VBW:** VBW is now set up in this project (`.vbw/` and the status line). Before we agree on what to build, I'll start the short interview.
+
 **VBW asks:**
 - How much software have you built? (options: never / small scripts or no-code / professionally / senior engineer)
 
@@ -20,86 +22,76 @@
 **User answers:** Your questions have been answered: "How involved do you want to be in technical decisions?"="decide and tell me". You can now continue with these answers in mind.
 
 **VBW asks:**
-- What should the greeting tool do, and who is it for? Here is my guess, tell me if it's wrong: a small program you run, type your name, and it says hello back (for you, or anyone you share it with). (options: Yes, that's right / Something different)
+- What is the greeting tool for, and who will use it? (Pick the closest, or type your own under Other.) (options: A small program for me / A tool for other people / A learning project)
 
-**User answers:** The user answered: "What should the greeting tool do, and who is it for? Here is my guess, tell me if it's wrong: a small program you run, type your name, and it says hello back (for you, or anyone you share it with)."="a little greeting program for my grandmother, who is learning English.". Read the answers carefully — they may request clarification, changes, or that you not proceed — and follow what they actually say.
-
-**VBW asks:**
-- How should your grandmother use the greeting program? My proposal: she runs it on a computer, types her name, and it greets her in simple, clear English. (options: Yes, that's right / Something different)
-- What kind of greetings should it show? My proposal: a different simple greeting each time (like Hello, Good morning, Nice to meet you), matched to the time of day. (options: Yes, that's right / Something different)
-
-**User answers:** The user answered: "How should your grandmother use the greeting program? My proposal: she runs it on a computer, types her name, and it greets her in simple, clear English."="Something simple she types in the terminal: greet.sh with her name says Hello and her name, like Hello, Ana!, and greet.sh on its own says Hello, world!. Nothing more.", "What kind of greetings should it show? My proposal: a different simple greeting each time (like Hello, Good morning, Nice to meet you), matched to the time of day."="Something simple she types in the terminal: greet.sh with her name says Hello and her name, like Hello, Ana!, and greet.sh on its own says Hello, world!. Nothing more.". Read the answers carefully — they may request clarification, changes, or that you not proceed — and follow what they actually say.
-
-**VBW:** Clear enough. Fold in and ask the keep question.
+**User answers:** The user answered: "What is the greeting tool for, and who will use it? (Pick the closest, or type your own under Other.)"="a little greeting program for my grandmother, who is learning English.". Read the answers carefully — they may request clarification, changes, or that you not proceed — and follow what they actually say.
 
 **VBW asks:**
-- Where should I keep your answers about how to talk to you? (options: private on this machine (Recommended) / saved in the project)
+- My proposal: she types her name, and the program replies with a short, simple English greeting (like "Hello, Rosa! Nice to meet you."). Does that fit, or what should it do differently? (options: That fits / Vary the greeting / Show a translation too)
+- How will she run it? My proposal: a simple web page she opens in her browser, with no installing. (options: Web page in browser / Terminal program)
 
-**User answers:** Your questions have been answered: "Where should I keep your answers about how to talk to you?"="private on this machine (Recommended)". You can now continue with these answers in mind.
+**User answers:** The user answered: "My proposal: she types her name, and the program replies with a short, simple English greeting (like "Hello, Rosa! Nice to meet you."). Does that fit, or what should it do differently?"="Something simple she types in the terminal: greet.sh with her name says Hello and her name, like Hello, Ana!, and greet.sh on its own says Hello, world!. Nothing more.", "How will she run it? My proposal: a simple web page she opens in her browser, with no installing."="Something simple she types in the terminal: greet.sh with her name says Hello and her name, like Hello, Ana!, and greet.sh on its own says Hello, world!. Nothing more.". Read the answers carefully — they may request clarification, changes, or that you not proceed — and follow what they actually say.
 
-**VBW:** The plan is ready and needs your approval before I build anything.
+**VBW asks:**
+- Where should I keep your personal answers (experience, how I explain, how involved you are)? (options: private on this machine (Recommended) / saved in the project)
 
-**What gets built** (one small step, two files):
-- `greet.sh`: the greeting program.
-  - `greet.sh Ana` says `Hello, Ana!`
-  - `greet.sh` on its own says `Hello, world!`
-- `test.sh`: a small checker that runs `greet.sh` both ways. It confirms the words match exactly.
+**User answers:** Your questions have been answered: "Where should I keep your personal answers (experience, how I explain, how involved you are)?"="private on this machine (Recommended)". You can now continue with these answers in mind.
 
-**How each promise is checked:**
-- **R1** (a name gets greeted): the checker runs `greet.sh Ana` and looks for exactly `Hello, Ana!`.
-- **R2** (no name): the checker runs `greet.sh` alone and looks for exactly `Hello, world!`.
+**VBW:** Express tier: I'll apply one phase, one plan, and a check that fails today.
 
-The only command that runs on your computer is `sh test.sh`. Nothing else is installed or changed.
+**VBW:** Here's the plan. Nothing has been built yet, and nothing will be until you approve it.
 
-**Decisions I made for you:**
-- It's a plain shell script, since you asked for `greet.sh`.
-- There are no extra features, because you said "nothing more".
+**What gets made:** two small files.
+- `greet.sh`: your grandmother's greeting script. `greet.sh Ana` prints `Hello, Ana!`, and `greet.sh` on its own prints `Hello, world!`.
+- `test.sh`: a checker that runs `greet.sh` both ways and confirms the exact words. This checker is the proof that the script works.
+
+**Decisions I made, per your "decide and tell me" setting:**
+- It's a single small plan, because this is a very small job.
+- Both greetings are checked by one test file, run with `sh test.sh`.
+- No other commands run on your machine.
+- I didn't suggest any extras, since you said "nothing more".
 
 To approve, type `/vbw:approve`. I can't do that part for you.
 
 **User:** <command-message>vbw:approve</command-message>
 <command-name>/vbw:approve</command-name>
 
-**VBW:** The approval was refused because the checker file `test.sh` doesn't exist yet. VBW wants the check written first so it can fail today, before the program exists. I'll write only that file, not `greet.sh`.
+**VBW:** The approval was refused because `test.sh` doesn't exist yet. The checker has to exist, and fail, before approval. That shows it really tests something. I'll write just that file now. `greet.sh` isn't built until you approve.
 
-**VBW:** I wrote `test.sh`, the checker. It fails right now, which is what we want, because `greet.sh` doesn't exist yet. Nothing else has been built.
+**VBW:** I wrote `test.sh`, and it fails today because `greet.sh` doesn't exist yet. That's what we want before building. The contract has changed slightly, so it needs your approval again.
 
-Please type `/vbw:approve` again. I can't approve for you.
-
-**User:** <command-message>vbw:approve</command-message>
-<command-name>/vbw:approve</command-name>
-
-**VBW:** Approved. I'm allowed to build now, so I'll write `greet.sh` and run the checker.
-
-**VBW:** The build is running in the background. A helper is writing `greet.sh` now. I'll carry on when it finishes.
-
-**VBW:** The fix is running in the background. A helper is changing `test.sh` so it works when run on its own. I'll continue when it finishes.
-
-**VBW:** The greeting program is built and both promises pass. One change needs your approval first.
-
-**Working:** `greet.sh Ana` says `Hello, Ana!`, and `greet.sh` alone says `Hello, world!`. Both checks (R1 and R2) pass.
-
-**The problem:** the project's overall test command was `sh test.sh` with no argument. My checker needs `name` or `world`, so that command could never pass. It was my mistake, not a bug in the program.
-
-**The change:** the test command now runs both checks in one go:
-`sh test.sh name && sh test.sh world`
-
-This is stricter than before, not looser, and nothing else changed. Because it changes the approved contract, please type `/vbw:approve` again. I can't approve it for you.
+Please type `/vbw:approve` once more.
 
 **User:** <command-message>vbw:approve</command-message>
 <command-name>/vbw:approve</command-name>
 
-**VBW asks:**
-- The greeting tool is finished and every check passes. I ran it myself: `sh greet.sh Ana` printed "Hello, Ana!" and `sh greet.sh` printed "Hello, world!". Shall I ship (close) this milestone? (options: Yes, ship it / Not yet)
+**VBW:** Approved. Now I'll build it.
 
-**User answers:** Your questions have been answered: "The greeting tool is finished and every check passes. I ran it myself: `sh greet.sh Ana` printed "Hello, Ana!" and `sh greet.sh` printed "Hello, world!". Shall I ship (close) this milestone?"="Yes, ship it". You can now continue with these answers in mind.
+**VBW:** The build is running in the background. A helper is writing `greet.sh` and making the checker pass. I'll carry on when it finishes.
 
-**VBW:** The greeting tool is built and shipped as milestone M1. I ran it myself:
+**VBW:** The greeting tool is built, and both checks pass.
 
+**`greet.sh`** is two lines long:
 - `sh greet.sh Ana` prints `Hello, Ana!`
 - `sh greet.sh` prints `Hello, world!`
 
-Both promises are proven by their checks, and the test command passes. Your grandmother can run `greet.sh` from the terminal in the project folder.
+I ran both myself and got exactly those outputs. The checker `test.sh` confirmed it too, and VBW says 2 of 2 requirements are proven.
 
-One thing to know: the project's overall test command first failed because of my mistake in `test.sh`. I fixed it in the contract rather than editing the approved checker, and you approved that change.
+The helper noted that it never saw `test.sh` fail before writing `greet.sh`. I did see it fail earlier, before approval, because `greet.sh` didn't exist yet. So the proof is sound.
+
+Since the checks prove these requirements automatically, there's nothing for you to judge by hand. The last step is shipping this milestone, which closes it out. Do you want me to ship it?
+
+**User:** <command-message>vbw:vibe</command-message>
+<command-name>/vbw:vibe</command-name>
+
+**VBW asks:**
+- The greeting tool is built and both checks pass: `sh greet.sh Ana` prints "Hello, Ana!" and `sh greet.sh` prints "Hello, world!". Ship this milestone (close it out as finished)? (options: Yes, ship it / Not yet)
+
+**User answers:** Your questions have been answered: "The greeting tool is built and both checks pass: `sh greet.sh Ana` prints "Hello, Ana!" and `sh greet.sh` prints "Hello, world!". Ship this milestone (close it out as finished)?"="Yes, ship it". You can now continue with these answers in mind.
+
+**VBW:** The Greeting tool milestone (M1) is shipped.
+
+Your grandmother can run `sh greet.sh Ana` to get `Hello, Ana!`, or `sh greet.sh` on its own to get `Hello, world!`. The files are `greet.sh` and `test.sh` (the checker) in the project folder. Nothing was pushed anywhere online.
+
+If you want a next milestone, run `/vbw:vibe` and tell me what it should be about. `/vbw:profile` changes how I explain things.
 

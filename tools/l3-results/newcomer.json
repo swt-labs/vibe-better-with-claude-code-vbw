@@ -1,9 +1,9 @@
 {
   "scenario": "newcomer",
   "fixture": "greet.sh from scratch; a user who has never built software answers in plain words and lets VBW decide",
-  "cost_usd": 0.85,
+  "cost_usd": 0.71,
   "evidence_level": "L3",
-  "at": "2026-10-05T00:01:06Z",
+  "at": "2026-10-05T11:25:35Z",
   "passed": true,
   "facts": {
     "answered": {

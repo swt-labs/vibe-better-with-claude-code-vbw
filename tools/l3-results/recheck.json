@@ -1,9 +1,9 @@
 {
   "scenario": "recheck",
-  "fixture": "two independent scripts, greet.sh and farewell.sh, one phase each; guided autonomy; after QA passes, one commit changes greet.sh and QA runs again",
-  "cost_usd": 1.47,
+  "fixture": "greet.sh and farewell.sh, one phase each, plan approved by the user before the session; rigor standard; after QA passes, one commit changes greet.sh and QA runs again",
+  "cost_usd": 0.66,
   "evidence_level": "L3",
-  "at": "2026-10-05T02:27:05Z",
+  "at": "2026-10-05T12:43:53Z",
   "passed": true,
   "facts": {
     "changed_file": "greet.sh",
@@ -19,7 +19,10 @@
     ],
     "kernel_named_standing": [
       "P2"
-    ]
+    ],
+    "new_verdict": {
+      "P1": "pass"
+    }
   },
   "not_tested": [
     "a fix round of the fix loop (the change is a commit played by the scenario)",
