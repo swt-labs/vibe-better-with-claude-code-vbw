@@ -8,7 +8,13 @@
 . "$VBW_LIB/cmd-spec.sh"
 
 cmd_approve() {
-  [ $# -eq 0 ] || vbw_usage_error "usage: vbw approve"
+  local want=""
+  case "$#:${1:-}" in
+    0:) ;;
+    2:--hash) want=$2
+      [[ "$want" =~ ^[0-9a-f]{12}$ ]] || vbw_usage_error "usage: vbw approve --hash FINGERPRINT (the 12-character fingerprint from vbw show contract)" ;;
+    *) vbw_usage_error "usage: vbw approve [--hash FINGERPRINT]" ;;
+  esac
   vbw_require_project
   local record problems hash
   record=$(record_read)
@@ -19,6 +25,8 @@ cmd_approve() {
     exit 1
   fi
   hash=$(contract_hash "$record")
+  [ -z "$want" ] || [ "$want" = "${hash:0:12}" ] \
+    || vbw_die "the contract changed since you were asked (now ${hash:0:12}): review it again (vbw show contract); nothing was approved"
   if contract_approved "$hash"; then
     printf 'contract %s is already approved\n' "${hash:0:12}"
   else
