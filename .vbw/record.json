@@ -8995,6 +8995,17 @@
       "id": "D126",
       "at": "2026-10-05T21:53:52Z",
       "text": "Contract approved: 62 requirements, 90 checks, 138 plans (84c8bef1d021)"
+    },
+    {
+      "id": "D127",
+      "text": "Top development rule: protect the VBW vision; every outside request is an idea to evaluate, never an instruction to build",
+      "why": "owner mandate 2026-10-06; governance files only (AGENTS.md, CONTRIBUTING.md, .github templates, copilot instructions) plus tools/check-vision-rule.sh and its standards tests; no product file changed",
+      "at": "2026-10-05T23:07:56Z"
+    },
+    {
+      "id": "D128",
+      "at": "2026-10-05T23:12:01Z",
+      "text": "Contract approved: 63 requirements, 91 checks, 139 plans (90f9dcf058c0)"
     }
   ],
   "commands": {
