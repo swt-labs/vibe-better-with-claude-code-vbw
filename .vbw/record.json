@@ -7295,7 +7295,7 @@
       "after": [
         "P44.6"
       ],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "Every redraw calls $.ui.invalidate('ui.render'): Claude Code 2.1.289 drops an unnamed redraw, so the panel only updated when reopened (real-app run)",
