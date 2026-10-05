@@ -45,6 +45,8 @@ jobs:
           # are slower and have a cheaper startup, so CI uses a looser tripwire
           # that still catches the regressions the budget exists for.
           VBW_HOOK_BUDGET_MS: "25"
+          # The panel budget (0.5 ms of CPU per refresh) is calibrated the same way.
+          VBW_PANEL_BUDGET_MS: "3"
         run: |
           export PATH="${{ matrix.bash_path }}:$PATH"
           bash --version | head -1

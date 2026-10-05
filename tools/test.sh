@@ -23,5 +23,9 @@ if command -v parallel >/dev/null 2>&1; then
 fi
 # The hook cost budget (CPU time, so other load does not skew it) is measured first.
 bash tools/bench-hooks.sh
+# The panel cost budget, when node exists (the panel is JS).
+if command -v node >/dev/null 2>&1; then
+  bash tools/bench-panel.sh
+fi
 
 bats --print-output-on-failure --jobs "$jobs" tests
