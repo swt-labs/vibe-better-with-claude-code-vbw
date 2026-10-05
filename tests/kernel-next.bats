@@ -29,13 +29,15 @@ teardown() { vbw_teardown; }
 # that contract (unless FILTER set evidence), and print vbw next --json.
 next_after() {
   jq "$1" "$BASE" > .vbw/record.json
-  local hash tree
+  local hash tree digest
   hash=$(vbw_contract_hash)
   tree=$(vbw_code_tree)
-  # Phases count as verified by QA on that tree unless FILTER says otherwise.
-  jq --arg h "$hash" --arg t "$tree" '(if .evidence == null then .evidence = {at: "2026-10-01T09:00:00Z", contract: $h, tree: $t,
+  # Phases count as verified by QA on their current digest unless FILTER says otherwise.
+  # shellcheck disable=SC2016 # expanded by vbw_kernel
+  digest=$(vbw_kernel '. "$VBW_LIB/cmd-next.sh"; qa_combined "$(cat "$VBW_RECORD")" | jq -r .P1')
+  jq --arg h "$hash" --arg t "$tree" --arg d "$digest" '(if .evidence == null then .evidence = {at: "2026-10-01T09:00:00Z", contract: $h, tree: $t,
       passed: true, checks: {}, commands: {}, scope: []} else . end)
-    | .phases |= map(if has("qa") then . else .qa = {result: "pass", tier: "standard", tree: $t, at: "2026-10-01T09:00:00Z"} end)' .vbw/record.json > "$TEST_ROOT/n.json"
+    | .phases |= map(if has("qa") then . else .qa = {result: "pass", tier: "standard", tree: $d, at: "2026-10-01T09:00:00Z"} end)' .vbw/record.json > "$TEST_ROOT/n.json"
   cp "$TEST_ROOT/n.json" .vbw/record.json
   if [ "${2:-}" != unapproved ]; then
     # As /vbw:approve does: the contract and the project commands.

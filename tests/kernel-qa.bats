@@ -28,7 +28,7 @@ teardown() { vbw_teardown; }
   echo "$output" | jq -e '.action == "qa" and .detail.phases == ["P1"]'
   vbw_run qa record P1 pass standard
   [ "$status" -eq 0 ]
-  jq -e '.phases[0].qa.result == "pass" and .phases[0].qa.tree == .evidence.tree' .vbw/record.json
+  jq -e '.phases[0].qa.result == "pass" and (.phases[0].qa.tree | test("^[0-9a-f]{64}$"))' .vbw/record.json
   vbw_run next --json
   echo "$output" | jq -e '.action == "ship"'
 }
@@ -53,11 +53,11 @@ teardown() { vbw_teardown; }
 
 @test "code that changes after QA needs QA again; three failed rounds escalate" {
   "$VBW" qa record P1 pass standard > /dev/null
-  printf 'paid\n' > src/pay.txt && printf 'more\n' > src/extra.txt
+  printf 'paid\nmore\n' > src/pay.txt
+  git add src/pay.txt && git commit -q -m "fix(pay): more"
   "$VBW" prove > /dev/null
   vbw_run next --json
   echo "$output" | jq -e '.action == "qa"'
-  rm src/extra.txt && "$VBW" prove > /dev/null
   local round
   for round in 1 2 3; do
     "$VBW" qa finding R1 "still deviates ($round)" > /dev/null
