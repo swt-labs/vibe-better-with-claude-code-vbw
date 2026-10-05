@@ -56,6 +56,7 @@ VBW is a Claude Code plugin that makes it build software properly: the user agre
 - R47 [auto] After a round of fixes, QA checks again only the phases that did not pass and the phases whose own inputs changed since they passed (their files, their tests, or their goal and plan); an untouched phase keeps its pass
 - R48 [auto] When QA runs, VBW says for each phase why it is checked again (failed last time, or which of its inputs changed) and lists the phases whose pass still stands
 - R49 [auto] A phase is also checked again when a phase it builds on was checked again because its inputs changed, even if its own inputs did not
+- R50 [auto] Before planning, VBW asks the user only about decisions for the milestone being planned, never about requirements of shipped milestones
 
 <!-- One requirement per line: an id, how it is proved, and a user-observable
      statement. [auto] = a check can prove it; [human] = only a person can judge it.
