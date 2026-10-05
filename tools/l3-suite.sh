@@ -495,11 +495,14 @@ scenario_recheck() {
     expect "at least one phase kept its pass" [ "$(printf '%s' "$kept" | jq 'length')" -ge 1 ]
     expect "the phases QA checked again are the ones the kernel named, and the kept ones the ones it said stand" [ "$same" = true ]
     expect "the reason names what changed" [ "$named" = true ]
-    expect "the checked phase's last QA verdict is a pass" jq -e --argjson r "$rechecked" 'all(.phases[] | select(.id | IN($r[])); .qa.result == "pass")' .vbw/record.json
+    # The change is a commit outside any plan, so QA may rightly fail it as a
+    # deviation: what matters here is that QA judged the phase again.
+    expect "QA judged the re-checked phase again and recorded a verdict" jq -e --argjson r "$rechecked" 'all(.phases[] | select(.id | IN($r[])); .qa.result == "pass" or .qa.result == "fail")' .vbw/record.json
     [ "$failed" -eq 0 ] || passed=false
     result_write recheck "$fixture" "${cost_usd:-0}" "$passed" \
       "$(jq -n --arg f "${seeded:-}" --argjson r "$rechecked" --argjson k "$kept" --arg why "$reason" --argjson p "$predicted" --argjson s "$standing" \
-        '{changed_file: $f, rechecked: $r, kept: $k, reason: $why, kernel_named_recheck: $p, kernel_named_standing: $s}')" \
+        --argjson v "$(jq -c --argjson r "$rechecked" '[.phases[] | select(.id | IN($r[])) | {(.id): .qa.result}] | add // {}' .vbw/record.json 2> /dev/null || echo '{}')" \
+        '{changed_file: $f, rechecked: $r, kept: $k, reason: $why, kernel_named_recheck: $p, kernel_named_standing: $s, new_verdict: $v}')" \
       '["a fix round of the fix loop (the change is a commit played by the scenario)","a project of more than two phases or phases that build on each other","the wording of what VBW tells the user (read by a person)","a change to a phase'"'"'s tests or plan"]'
   }
 }
