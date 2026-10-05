@@ -6075,7 +6075,7 @@
       "after": [
         "P42.1"
       ],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "Add \"modules\": [\"./panel.js\"] to hooks/hooks.json without touching the hooks already there; start the panel only on Claude Code 2.1.287 or newer, inside a VBW project, and otherwise do nothing at all (no command, no timer, no error)",
