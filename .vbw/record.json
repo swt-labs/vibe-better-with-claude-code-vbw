@@ -6357,7 +6357,7 @@
         "P42.4",
         "P42.3"
       ],
-      "status": "planned",
+      "status": "done",
       "tasks": [
         "Document opening by itself (wide windows), /vbw-panel at any width, and that closing it keeps it closed until you open it again",
         "Document the sound: when it plays, /vbw-sound, the button, that it is on by default, where the choice is kept (your own machine, never committed), and where the mp3 lives",
