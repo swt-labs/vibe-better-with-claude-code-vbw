@@ -21,6 +21,9 @@ After `build` and `fix`, the router runs `vbw prove` (deterministic, no agent);
 after a passing proof, QA verifies what the checks cannot (docs/proof.md). Then
 `vbw next` decides again. Approval, acceptance and shipping are human gates.
 
+Every stop ends with one plain line, **What I need from you:** followed by the
+one thing you must do now, or "nothing" when VBW needs nothing.
+
 ## The run lease
 
 The router opens a lease before it starts a workflow and closes it after:
