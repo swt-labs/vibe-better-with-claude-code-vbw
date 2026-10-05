@@ -83,9 +83,14 @@ plans without workflows: one `vbw apply` with one phase, plan and check.
 | 8 | current evidence has scope violations | `scope` (commits changed files outside their plans) | yes |
 | 9 | a fix is `open` | `fix` (`detail.fixes`, and `detail.groups`: fixes whose files overlap, one Dev each; a project command's fix may touch any file) | no |
 | 10 | an `auto` requirement is not `proven`, or the evidence is stale (another contract, or the project files changed since; docs/proof.md) | `prove` | no |
-| 10a | a phase of the current milestone is built and QA has not passed it on the proven code (never verified, failed, or the code changed since). An express phase is skipped when every requirement is `auto` and it has no escalations; a `human` requirement or an escalation brings QA back | `qa` (`detail.phases`, and `detail.tier`: the highest QA tier of those phases in the profile's table) | no |
+| 10a | a phase of the current milestone is built and QA must check it again (never passed, failed, its own files, tests, goal or plan changed since it passed, or a phase it builds on was checked again; docs/proof.md). An express phase is skipped when every requirement is `auto` and it has no escalations; a `human` requirement or an escalation brings QA back | `qa` (`detail.phases`: only the phases to check again, not the whole project, and `detail.tier`: the highest QA tier of those phases in the profile's table) | no |
 | 11 | a `human` requirement is `open` | `accept` (one scenario at a time) | yes |
 | 12 | otherwise | `ship` (`vbw ship`, which refuses while the proven work is not committed: the proof reads files on disk, a shipped milestone must be in git history) | yes |
+
+Every result also carries a `qa` key: `{recheck, standing, problems}`. `recheck`
+maps each built phase QA must check again to its reasons in plain words
+(`{"P2": ["builds on P1, which changed"]}`); `standing` lists the built phases
+whose pass stands; `problems` lists plan links that point nowhere or loop.
 
 Rejecting a `human` requirement (`vbw req reject R2 "why"`) opens a fix item at
 once, so it is worked by row 9; when the fix is done the requirement returns to

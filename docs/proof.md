@@ -274,8 +274,37 @@ and criteria (the Architect's) and its plans' tasks (the Lead's): test gaps and
 every deviation from the plan are failures. Each failure is recorded with
 `vbw qa finding REQ TEXT`, a fix item with `source: "qa"` that a proof never
 closes; the verdict with `vbw qa record PHASE pass|fail TIER`, against the
-evidence's tree. A pass closes the phase's QA fixes; code that changes
-afterwards needs QA again; three failed rounds in a row escalate.
+phase's inputs (see "Which phases QA checks again"). A pass closes the phase's
+QA fixes; three failed rounds in a row escalate.
+
+### Which phases QA checks again
+
+After a round of fixes, QA checks only the phases that need it. An untouched
+phase keeps its pass. A built phase is checked again when:
+
+- it never passed, or its last verdict was a fail;
+- its own inputs changed since it passed: its files (the files of its plans),
+  its tests (its requirements' checks and their files), or its goal and plan;
+- a phase it builds on is checked again because that phase's inputs changed,
+  even if its own inputs did not. A phase builds on another when one of its
+  plans comes after a plan of the other, directly or through other phases.
+
+Files and tests count as committed (`HEAD`), so commit work before QA.
+
+```
+$ vbw show qa
+P2 checked again: builds on P1, which changed
+```
+
+`vbw next` sends only these phases to QA and gives the reasons in its `qa` key
+(docs/next.md). `vbw qa record PHASE pass` stores a digest of the phase's inputs
+and those of the phases it builds on in the phase's `qa.tree` (docs/record.md).
+
+A record from before this rule holds the proof's tree id in `qa.tree`. It matches
+no digest, so each such phase is checked once more, and the new pass stores a
+digest. The same happens when the clone's cache `qa.json` is missing or damaged:
+the cache only names the reason, never decides, so a phase is checked again with
+the reason "its files, tests or plan changed".
 
 `vbw qa record` refuses a verdict when no proof exists yet, or when the project
 files differ from the proof's `tree` (the code changed since the last proof). The
