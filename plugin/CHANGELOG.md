@@ -1,5 +1,29 @@
 # Changelog
 
+## [2.0.18] - 2026-10-05
+
+### Changed
+
+- **QA checks again only what needs it.** After a round of fixes, QA used to
+  check every phase of the milestone again whenever anything in the project
+  changed. Now it checks again only the phases that did not pass, the phases
+  whose own files, tests, goal or plan changed, and the phases that build on a
+  phase checked again for that reason. Every other phase keeps its pass. The
+  full proof (`vbw prove`) still runs every test.
+- **QA says why.** When QA runs, VBW names each phase it checks again and the
+  reason in plain words ("failed last time", "its files changed", "builds on
+  P1, which changed"), and lists the phases that keep their pass. See it any
+  time with `vbw show qa`; `/vbw:qa` explains it at your level.
+- **Planning asks only about what is being planned.** Before planning, VBW asks
+  you only about decisions for the milestone being planned, never about work
+  that already shipped.
+
+### Compatibility
+
+- No change to the project record: VBW 2.0.16 and 2.0.17 still read it. They
+  check every phase again after fixes, as before. Phases that passed QA before
+  this version are checked once more after the update, then this rule applies.
+
 ## [2.0.17] - 2026-10-05
 
 ### Added
