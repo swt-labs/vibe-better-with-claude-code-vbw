@@ -1390,6 +1390,21 @@
           "check": "C77"
         }
       ]
+    },
+    {
+      "id": "R62",
+      "text": "Once the interview knows what is being built, VBW asks the user's permission to look for the best tools for this project (community skills, automated code-safety scanners, code-quality tools such as linters and formatters, unit-test and other test frameworks); on yes, Scouts research current best-in-class options for the project's stack, with sources, and VBW proposes a short list; nothing is installed until the user approves that list; on no, nothing is searched or installed; it is asked once per project, and /vbw:skills runs it again any time",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M9",
+      "rules": []
+    },
+    {
+      "id": "R63",
+      "text": "The recommended tools fit the project and are explained at the user's level",
+      "proof": "human",
+      "status": "open",
+      "milestone": "M9"
     }
   ],
   "checks": [
