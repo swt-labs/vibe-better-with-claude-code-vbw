@@ -1397,7 +1397,88 @@
       "proof": "auto",
       "status": "open",
       "milestone": "M9",
-      "rules": []
+      "rules": [
+        {
+          "text": "the permission question is asked once the interview knows what is being built, as one plain yes/no question that explains each kind of tool",
+          "check": "C81"
+        },
+        {
+          "text": "the question is asked once per project: the answer is remembered in the project record and a second pass does not ask again",
+          "check": "C78"
+        },
+        {
+          "text": "the interview skill reads the remembered answer and skips the question when there is one",
+          "check": "C81"
+        },
+        {
+          "text": "on no nothing is searched or installed, the record shows no, and the flow continues unchanged",
+          "check": "C78"
+        },
+        {
+          "text": "on no the interview skill starts no Scout, searches nothing and installs nothing",
+          "check": "C81"
+        },
+        {
+          "text": "on yes a Scout per angle (safety, quality, tests, skills) runs in parallel on the project's own stack",
+          "check": "C79"
+        },
+        {
+          "text": "each pick carries a source link; a pick without one is not shown",
+          "check": "C79"
+        },
+        {
+          "text": "respected open-source picks are proposed; anything else carries a plain warning",
+          "check": "C79"
+        },
+        {
+          "text": "the proposed list is short, trusted picks first",
+          "check": "C79"
+        },
+        {
+          "text": "a Scout that fails or finds nothing, or an unknown stack, gives a plain note and no error",
+          "check": "C79"
+        },
+        {
+          "text": "the skills skill shows each item in plain words (what, why it fits, where from) and lets the user keep, drop or look further for untrusted picks",
+          "check": "C80"
+        },
+        {
+          "text": "nothing is installed until the user approves the list; declining, not yet or a partial approval installs only what was approved",
+          "check": "C80"
+        },
+        {
+          "text": "for each approved tool the user is asked project only or all projects and the install goes to that scope",
+          "check": "C80"
+        },
+        {
+          "text": "when nothing is found or the stack is unknown the skills skill says so plainly and installs nothing",
+          "check": "C80"
+        },
+        {
+          "text": "/vbw:skills runs the research at any time, after a yes or a no, from any state of a VBW project",
+          "check": "C80"
+        },
+        {
+          "text": "/vbw:skills can store the answer again later and the record stays valid",
+          "check": "C78"
+        },
+        {
+          "text": "the skills skill ends every stop with one plain line saying what VBW needs",
+          "check": "C80"
+        },
+        {
+          "text": "the interview step ends with the line 'I need your yes or no to look for tools'",
+          "check": "C81"
+        },
+        {
+          "text": "the user documentation explains the offer, trusted sources, approval before install, the scope choice and /vbw:skills",
+          "check": "C82"
+        },
+        {
+          "text": "a real Claude Code run shows the answer stored once, not asked again, and nothing installed before approval",
+          "check": "C83"
+        }
+      ]
     },
     {
       "id": "R63",
@@ -2285,6 +2366,72 @@
       ],
       "files": [
         "tests/l3-approval.bats"
+      ]
+    },
+    {
+      "id": "C78",
+      "req": "R62",
+      "run": [
+        "bats",
+        "tests/tools-store.bats"
+      ],
+      "files": [
+        "tests/tools-store.bats"
+      ]
+    },
+    {
+      "id": "C79",
+      "req": "R62",
+      "run": [
+        "bats",
+        "tests/tools-workflow.bats"
+      ],
+      "files": [
+        "tests/tools-workflow.bats"
+      ]
+    },
+    {
+      "id": "C80",
+      "req": "R62",
+      "run": [
+        "bats",
+        "tests/tools-skill.bats"
+      ],
+      "files": [
+        "tests/tools-skill.bats"
+      ]
+    },
+    {
+      "id": "C81",
+      "req": "R62",
+      "run": [
+        "bats",
+        "tests/tools-interview.bats"
+      ],
+      "files": [
+        "tests/tools-interview.bats"
+      ]
+    },
+    {
+      "id": "C82",
+      "req": "R62",
+      "run": [
+        "bats",
+        "tests/tools-docs.bats"
+      ],
+      "files": [
+        "tests/tools-docs.bats"
+      ]
+    },
+    {
+      "id": "C83",
+      "req": "R62",
+      "run": [
+        "bats",
+        "tests/l3-tools.bats"
+      ],
+      "files": [
+        "tests/l3-tools.bats"
       ]
     }
   ],
@@ -3910,6 +4057,39 @@
         "files: 14 (129039 bytes)",
         "risk: none",
         "breaks: R3, R4, R5, R8, R12, R13, R14, R15, R22, R24, R25, R26, R27, R28, R31, R32, R34, R37, R38, R39, R40, R42, R43, R44, R45, R46, R47, R48, R49, R50",
+        "tests: project test command"
+      ],
+      "predicted": "deep"
+    },
+    {
+      "id": "P47",
+      "title": "VBW finds the best tools for your project, with your permission",
+      "reqs": [
+        "R62",
+        "R63"
+      ],
+      "milestone": "M9",
+      "goal": "Once VBW knows what is being built, it offers to look for the best tools for the project (once), and after your yes, researches, proposes a short explained list, and installs only what you approve.",
+      "criteria": [
+        "After the interview knows what is being built, VBW asks one plain yes/no question for permission to look for tools (community skills, code-safety scanners, quality tools such as linters and formatters, test frameworks); the question explains each term in a few words.",
+        "The question is asked once per project: the answer is remembered, and a second pass through the same step does not ask again.",
+        "On no: no Scout is started, nothing is searched on the web and nothing is installed; the project record shows the answer was no and the build flow continues unchanged.",
+        "On yes: a few Scouts run in parallel, one per angle (code safety, code quality, tests, skills), each looking at the project's own stack and returning main picks, each with at least one source link.",
+        "Only trusted sources are used; respected open-source tools appear as proposed picks; anything else appears in the list with a plain warning and the user decides how to proceed (keep, drop, or look further).",
+        "VBW shows a short list (a handful of items, not a catalogue); each item says in plain words, at the user's level, what it is, why it fits this project and where it came from; technical terms are explained beside the name.",
+        "Nothing is installed, downloaded or changed in the project or the user's settings until the user approves the list; declining the list, or approving only some items, installs only the approved items (nothing for 'not yet').",
+        "At the approval of the list VBW asks directly, for each approved tool, whether it goes into this project only or into all the user's projects, and installs to the chosen scope.",
+        "If a Scout fails, finds nothing, or the stack cannot be determined, VBW says so plainly, shows whatever was found (or nothing) and installs nothing; it does not stop the project flow or show an error trace.",
+        "/vbw:skills runs the same research and proposal at any time, even after the first answer was yes or no, and works from any state of a VBW project.",
+        "Every stop in this flow ends with one plain line saying what VBW needs from the user now (R60), e.g. 'I need your yes or no to look for tools'.",
+        "Human check (R63): a person reading a proposed list for a real project confirms the picks fit the stack and the explanations are understandable at the user's level."
+      ],
+      "tier": "deep",
+      "reasons": [
+        "requirements: 2",
+        "files: 10 (90505 bytes)",
+        "risk: none",
+        "breaks: R3, R4, R5, R8, R13, R14, R22, R23, R24, R25, R27, R28, R31, R34, R37, R38, R39, R40, R42, R43, R44, R45, R46, R47, R48, R49",
         "tests: project test command"
       ],
       "predicted": "deep"
@@ -6718,11 +6898,11 @@
         "P45.1"
       ],
       "status": "planned",
-      "role": "dev",
       "tasks": [
         "Router loop: at every stop, end the message with one line \"**What I need from you:** <the one thing the user must do now>\" or \"nothing\"; trim elsewhere so the router stays within 1,400 words",
         "docs/workflows.md: say that every stop ends with that line"
-      ]
+      ],
+      "role": "dev"
     },
     {
       "id": "P46.1",
@@ -6738,12 +6918,12 @@
       ],
       "after": [],
       "status": "planned",
-      "role": "dev",
       "tasks": [
         "vbw show contract ends with the approval question (with the 12-character fingerprint) and the options Approve, Not yet, only while the contract is not approved",
         "vbw approve --hash FINGERPRINT: approves only when that is still the current contract, with the same record entry as plain vbw approve; a changed contract is refused with a plain 'the contract changed' message and nothing is written",
         "Malformed or missing fingerprint is a usage error; update the usage lines in vbw help"
-      ]
+      ],
+      "role": "dev"
     },
     {
       "id": "P46.2",
@@ -6761,12 +6941,12 @@
         "P46.1"
       ],
       "status": "planned",
-      "role": "dev",
       "tasks": [
         "One jq pass reads the hook input and exits silently unless the tool is AskUserQuestion, there is no agent_type, the question is 'Approve contract <12 hex>?' and the answer is exactly Approve (answers may be a map from question to answer or a list)",
         "On Approve run vbw approve --hash with the named fingerprint; print one plain sentence for the user (systemMessage) and the result for Claude (additionalContext), including the new contract when it changed; Not yet and the user's own words approve nothing and tell Claude to ask what to change; any failure (not ready, already approved, damaged or locked record) leaves everything untouched and says why and 'type /vbw:approve'",
         "Register one PostToolUse hook with matcher AskUserQuestion in hooks.json; confirm the real answer shape from a real Claude Code answer and keep the hook working with it"
-      ]
+      ],
+      "role": "dev"
     },
     {
       "id": "P46.3",
@@ -6782,11 +6962,11 @@
         "P46.2"
       ],
       "status": "planned",
-      "role": "dev",
       "tasks": [
         "Add an unrelated answered question to the hook bench's inputs and run the PostToolUse command from hooks.json for it",
         "Print it as 'guard (answer): N ms own CPU per call' with the same budget rule as the other inputs"
-      ]
+      ],
+      "role": "dev"
     },
     {
       "id": "P46.4",
@@ -6804,12 +6984,12 @@
         "P45.2"
       ],
       "status": "planned",
-      "role": "dev",
       "tasks": [
         "Replace 'ask user to type /vbw:approve' in the router's approve step: ask with AskUserQuestion using the 'approval question' and options that vbw show contract prints (Approve first, Not yet; the user's own words come from the app's own-answer slot); keep 'You cannot approve' and that /vbw:approve still works",
         "Say what to do with each answer: Approve continues the loop (the hook has recorded it), Not yet asks what to change, own words are treated as what to change or as a question; trim other wording so the router stays at or under 1,400 words and all prompts within 16k tokens",
         "Mention the choice next to /vbw:approve in the help"
-      ]
+      ],
+      "role": "dev"
     },
     {
       "id": "P46.5",
@@ -6828,12 +7008,12 @@
         "P46.4"
       ],
       "status": "planned",
-      "role": "docs",
       "tasks": [
         "docs/proof.md: the approval question, the three choices, Approve first so Enter approves, the fingerprint, what happens when the contract changed, and that /vbw:approve still works",
         "docs/guards.md: the answer hook (PostToolUse on AskUserQuestion), why the model cannot approve through it and that the guard still refuses vbw approve",
         "README: approval step says Enter approves the contract shown, /vbw:approve still works"
-      ]
+      ],
+      "role": "docs"
     },
     {
       "id": "P46.6",
@@ -6852,11 +7032,150 @@
         "P46.4"
       ],
       "status": "planned",
-      "role": "dev",
       "tasks": [
         "Add scenario 'approval' to tools/l3-suite.sh (in ALL and the header): a project with an agreed spec and plan; when the approval question appears the driver presses Enter and never types /vbw:approve",
         "Check the record and git: the question named the fingerprint, the contract is approved, one 'Contract approved' decision names that fingerprint; write the result with its fixture and what was not tested",
         "Run it once if the owner's budget allows, commit the result, and report it as run or not run"
+      ],
+      "role": "dev"
+    },
+    {
+      "id": "P47.1",
+      "phase": "P47",
+      "title": "Remember whether you allowed the tool search",
+      "reqs": [
+        "R62"
+      ],
+      "files": [
+        "plugin/lib/cmd-tools.sh",
+        "plugin/bin/vbw",
+        "plugin/lib/record.jq"
+      ],
+      "after": [],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "add the vbw tools command: shows whether the question was asked and the answer (text and --json)",
+        "vbw tools answer yes|no stores the answer and the time in the project record, refusing anything else",
+        "check the stored answer in the record's validator and list the command in the help",
+        "keep the kernel inside its line budget"
+      ]
+    },
+    {
+      "id": "P47.2",
+      "phase": "P47",
+      "title": "The Scouts that look for tools",
+      "reqs": [
+        "R62"
+      ],
+      "files": [
+        "plugin/workflows/tooling.js"
+      ],
+      "after": [],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "new tooling workflow: one Scout per angle (safety, quality, tests, skills) in parallel, each given the project's stack and the user's words",
+        "each Scout returns picks with what, why, source links and where it came from (respected open source or other)",
+        "drop picks without a source link; mark non-trusted picks with a plain warning; keep a short list (two per angle, six in all, trusted first)",
+        "a failed or empty Scout is named in missing and an unknown stack starts no Scout; both give a plain note, never an error"
+      ]
+    },
+    {
+      "id": "P47.3",
+      "phase": "P47",
+      "title": "/vbw:skills proposes tools and installs only what you approve",
+      "reqs": [
+        "R62"
+      ],
+      "files": [
+        "plugin/skills/skills/SKILL.md"
+      ],
+      "after": [
+        "P47.1",
+        "P47.2"
+      ],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "work out the stack, record the yes with vbw tools answer yes and start the tooling workflow at any time, from any state",
+        "show the short list in plain words at the user's level: what it is, why it fits, where it came from, with links and terms explained",
+        "warn about picks from other sources and let the user keep, drop or look further",
+        "approve the list with a choice, ask per approved tool whether it goes into this project or all projects, then install only the approved ones",
+        "say plainly when nothing was found, install nothing then, and end with one line saying what VBW needs"
+      ]
+    },
+    {
+      "id": "P47.4",
+      "phase": "P47",
+      "title": "The interview asks once if VBW may look for tools",
+      "reqs": [
+        "R62"
+      ],
+      "files": [
+        "plugin/skills/interview/SKILL.md"
+      ],
+      "after": [
+        "P47.1",
+        "P47.3",
+        "P45.2"
+      ],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "add a tools step after the keep question: read vbw tools and skip it when already answered",
+        "ask one yes/no question explaining skills, code-safety scanners, linters, formatters and test frameworks in a few words",
+        "record the answer at once; on no search and install nothing and go on; on yes continue as /vbw:skills does",
+        "end the step with 'I need your yes or no to look for tools'"
+      ]
+    },
+    {
+      "id": "P47.5",
+      "phase": "P47",
+      "title": "Explain the tools offer to users",
+      "reqs": [
+        "R62"
+      ],
+      "files": [
+        "docs/tools.md",
+        "README.md"
+      ],
+      "after": [
+        "P47.3",
+        "P47.4",
+        "P46.5"
+      ],
+      "status": "planned",
+      "role": "docs",
+      "tasks": [
+        "write docs/tools.md: what the offer is, asked once, what yes and no do",
+        "explain trusted sources, the warning for others, approval before install and the project-or-all-projects choice",
+        "say that /vbw:skills runs it again any time and that vbw tools shows the stored answer",
+        "list the offer in the README and link the page"
+      ]
+    },
+    {
+      "id": "P47.6",
+      "phase": "P47",
+      "title": "A real Claude Code run of the tools offer",
+      "reqs": [
+        "R62"
+      ],
+      "files": [
+        "tools/l3-suite.sh",
+        "tools/l3-results/tools.json"
+      ],
+      "after": [
+        "P47.3",
+        "P47.4",
+        "P46.6"
+      ],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "add the tools scenario to tools/l3-suite.sh: answer the offer yes once in the real interface on a small project",
+        "check from the record and git that the answer is stored, was not asked again, and nothing was installed before approval",
+        "run it, commit the result with its fixture, cost and not-tested list, and name it in the suite header"
       ]
     }
   ],
@@ -7838,6 +8157,24 @@
       "text": "Approval from a choice: a PostToolUse hook on AskUserQuestion (VBW's own code) approves when the user's answer to VBW's approval question is the Approve option, for the contract hash the question names, and only if that hash is still the current contract; the model's own vbw approve stays refused by the guard",
       "why": "Owner (2026-10-05) wants Enter-to-approve; the answer reaches the hook from Claude Code's interface, which the model cannot forge, so 'only the user approves' holds. A stale hash (contract changed after the question) approves nothing",
       "at": "2026-10-05T15:02:10Z"
+    },
+    {
+      "id": "D113",
+      "text": "Install scope of approved tools: VBW asks the user directly, at the approval of the short list, whether each goes into this project or all their projects",
+      "why": "Owner (2026-10-05): ask the user directly",
+      "at": "2026-10-05T15:17:30Z"
+    },
+    {
+      "id": "D114",
+      "text": "Tool sources: a small team of Scouts researches best-in-class options from trusted sources only; respected open-source tools are proposed as approved picks; anything else is shown with a plain warning and the user decides how to proceed",
+      "why": "Owner (2026-10-05): research with a team of Scouts, trusted sources only; respected open source approve, otherwise warn and ask",
+      "at": "2026-10-05T15:17:30Z"
+    },
+    {
+      "id": "D115",
+      "text": "Tool research is short and focused: a few Scouts in parallel, one per angle (code safety, quality, tests, skills), main picks for the project's stack, with sources",
+      "why": "Owner chose the recommended option; reconciled with the Scout-team answer by keeping each Scout's angle narrow",
+      "at": "2026-10-05T15:17:30Z"
     }
   ],
   "commands": {
