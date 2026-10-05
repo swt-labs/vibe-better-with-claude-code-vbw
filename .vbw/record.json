@@ -4289,7 +4289,22 @@
         "breaks: R4, R5, R8, R13, R14, R22, R24, R25, R26, R28, R31, R34, R37, R38, R39, R40, R42, R44, R48, R50, R51, R61, R62, R64, R65",
         "tests: project test command"
       ],
-      "predicted": "deep"
+      "predicted": "deep",
+      "qa": {
+        "result": "pass",
+        "tier": "deep",
+        "tree": "08e2a0f7b17aeda98693b361c4e96275cfcad1f24deb8ccb130119ab5498edab",
+        "at": "2026-10-05T22:19:58Z",
+        "note": "30/30 checks"
+      },
+      "outcome": {
+        "tier": "deep",
+        "predicted": "deep",
+        "held": true,
+        "fix_rounds": 1,
+        "qa_findings": 1,
+        "escalations": 0
+      }
     },
     {
       "id": "P46",
@@ -8096,7 +8111,7 @@
       "req": "R59",
       "source": "qa",
       "attempts": 0,
-      "status": "fixed",
+      "status": "closed",
       "note": "tools/l3-suite.sh still uses the old level question in two places that P45.1 task 3 (update the real-user test script to recognise the new greeting) should have covered: line 1192 (interview_options_fixed, key '^How much software have you built') and line 1287 (test 'interview (set|keep)|How much software'). Line 1192 means the level options are no longer checked against the real session (the greeting never matches that regex, so only the other two questions are checked). Only line 973 was updated (commit 21d1ddfe)."
     },
     {
