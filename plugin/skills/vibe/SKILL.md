@@ -72,8 +72,8 @@ Next JSON's `profile` = user's level, explanation depth, involvement. Speak at t
 
 ## Steps
 
-**convert** (needs user): VBW 1 plan. Ask (AskUserQuestion): "Convert it (Recommended)": follow `vbw:convert`; or "Start
-fresh": `vbw legacy done`, then `spec`.
+**convert** (needs user): VBW 1 plan, no choice recorded yet. Follow the old-folder step of `vbw:interview` (review,
+recommendation, question); convert runs `vbw:convert`, fresh records `vbw legacy choose fresh`, then `spec`.
 
 **spec** (needs user): agree what to build. Existing code: start from map, say
 what it does, propose improvements. Else ask what it is for and who uses it. Propose user-observable,

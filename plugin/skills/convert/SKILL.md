@@ -6,6 +6,7 @@ allowed-tools: Bash("${CLAUDE_PLUGIN_ROOT}/bin/vbw" *) Bash(vbw *)
 
 ```!
 "${CLAUDE_PLUGIN_ROOT}/bin/vbw" legacy 2>&1 || true
+"${CLAUDE_PLUGIN_ROOT}/bin/vbw" legacy review 2>&1 || true
 "${CLAUDE_PLUGIN_ROOT}/bin/vbw" status 2>&1 || true
 "${CLAUDE_PLUGIN_ROOT}/bin/vbw" interview 2>&1 || true
 ```
@@ -13,6 +14,8 @@ allowed-tools: Bash("${CLAUDE_PLUGIN_ROOT}/bin/vbw" *) Bash(vbw *)
 Write to user's level, explanation depth and involvement (above; "-": plain words).
 
 Facts above describe the VBW 1 plan. `"legacy": false`: nothing to convert; say so, stop. `"converted": true`: already converted; say so, offer only the removal question (step 6).
+
+The review above (`vbw legacy review`: finished, last used, match with the code, half done, recommendation) can be shown on demand when the user asks; same plain words as the interview step.
 
 Carry over what the user still wants, through their answers. Never change `.vbw-planning/`; only `vbw legacy remove` may, only on their word.
 

@@ -8,6 +8,7 @@ allowed-tools: Bash("${CLAUDE_PLUGIN_ROOT}/bin/vbw" *) Bash(vbw *)
 
 ```!
 "${CLAUDE_PLUGIN_ROOT}/bin/vbw" interview 2>&1 || true
+"${CLAUDE_PLUGIN_ROOT}/bin/vbw" legacy review 2>&1 || true
 ```
 
 Answers so far above. Once kept, write every later message at the user's level, explanation depth and involvement.
@@ -29,6 +30,19 @@ Record each answer at once; an interrupted interview loses nothing. Offer exactl
    Record: `vbw interview set involvement "<option>"`.
 
 Kernel refuses other values and names allowed ones. On refusal or an answer fitting no option (free text, "Other"): never record it; ask again, same question, same options. Never guess nearest option.
+
+## The old VBW 1 folder
+
+One extra step, right after the level answer, before any other question. Review above. `"legacy": false` (no folder) or `asked` true (a choice is recorded): skip it and say nothing; it is asked once.
+
+Else show it at the user's level and depth: how much was finished, when last used, whether plans still match the code, any work half done. Never guess or change the kernel's numbers, `recommendation` or `reasons`. Say any `notes` (what could not be read); never recommend converting what could not be read.
+
+Ask with AskUserQuestion: the recommended option first, marked "(Recommended)", the other second, each with a short trade-off: "Convert it" (keeps your old plans, a few questions), "Start fresh" (clean slate). Either may be picked whatever was recommended; own words allowed.
+
+- convert: `vbw legacy choose convert`, run /vbw:convert, report the result; the old folder stays.
+- fresh: `vbw legacy choose fresh`. Nothing is converted, the folder is left untouched; carry on with the interview.
+
+Read-only: it only reads files, runs no command found there. `/vbw:convert` shows it again on demand.
 
 ## What and for whom
 
