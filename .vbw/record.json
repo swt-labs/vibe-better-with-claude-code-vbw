@@ -4207,7 +4207,22 @@
           "to": "deep",
           "reason": "Dev blocked P43.2: panel.js and bench-panel.mjs are done and C59 passes. C60 also needs tools/bench-panel.sh (the 'sound, need raised' line), docs/panel.md (new, linked from README but missing) and README.md (/vbw-sound row), none declared by P43.2. Those edits are made in the working tree, uncommitted; the plan's files need extending to commit them."
         }
-      ]
+      ],
+      "qa": {
+        "result": "pass",
+        "tier": "deep",
+        "tree": "a2ca0ea0b3d95f9dfc5a7d9929dc27fcd8b0c183102dea08fc46f1ecbc1fef5e",
+        "at": "2026-10-05T22:34:16Z",
+        "note": "30/30 checks"
+      },
+      "outcome": {
+        "tier": "deep",
+        "predicted": "standard",
+        "held": false,
+        "fix_rounds": 1,
+        "qa_findings": 1,
+        "escalations": 1
+      }
     },
     {
       "id": "P44",
