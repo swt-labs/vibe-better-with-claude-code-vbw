@@ -7079,7 +7079,7 @@
         "P46.5",
         "P46.7"
       ],
-      "status": "planned",
+      "status": "done",
       "tasks": [
         "Replace 'ask user to type /vbw:approve' in the router's approve step: ask with AskUserQuestion using the 'approval question' and options that vbw show contract prints (Approve first, Not yet; the user's own words come from the app's own-answer slot); keep 'You cannot approve' and that /vbw:approve still works",
         "Say what to do with each answer: Approve continues the loop (the hook has recorded it), Not yet asks what to change, own words are treated as what to change or as a question; trim other wording so the router stays at or under 1,400 words and all prompts within 16k tokens",
@@ -7240,7 +7240,7 @@
         "P47.4",
         "P46.5"
       ],
-      "status": "planned",
+      "status": "done",
       "tasks": [
         "write docs/tools.md: what the offer is, asked once, what yes and no do",
         "explain trusted sources, the warning for others, approval before install and the project-or-all-projects choice",
@@ -7372,7 +7372,7 @@
       "after": [
         "P43.2"
       ],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "Run tools/sounds.sh so plugin/hooks/panel-sounds.js lists every shipped clip (charlize, arnold, darth); commit the new clips with it; C70 and the 2 MB size rule pass"
