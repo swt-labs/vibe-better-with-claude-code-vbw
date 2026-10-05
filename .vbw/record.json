@@ -6955,7 +6955,7 @@
       "after": [
         "P44.4"
       ],
-      "status": "planned",
+      "status": "done",
       "tasks": [
         "Replace the first question in the interview skill with the new greeting, keeping the four options and everything after it untouched",
         "Show the greeting in docs/interview.md in place of the old level question",
