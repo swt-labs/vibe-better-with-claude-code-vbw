@@ -2,6 +2,8 @@
 
 ## Goals
 
+VBW is a Claude Code plugin that makes it build software properly: the user agrees on what to build, VBW writes tests that must pass, builds the work in parallel, proves it works, and asks the user only about what tests cannot judge. It is for anyone who builds with Claude Code, from people who have never written code to senior engineers, and it adapts how it talks to each.
+
 ## Non-goals
 
 ## Constraints
@@ -51,6 +53,9 @@
 - R44 [auto] Several fixes close in one command (vbw fix done F8 F9 F5), running the checks their files serve once; each fix ends as it would if closed alone; a fix that cannot close is named, and the others still close
 - R45 [auto] A check the contract marks to run alone (for example one that starts containers) never runs at the same time as another VBW check in the same project, even when several fixes or builds run checks in parallel
 - R46 [auto] A record written by this VBW is either read by VBW 2.0.16 or makes it say the project needs a newer VBW; it is never reported as corrupt
+- R47 [auto] After a round of fixes, QA checks again only the phases that did not pass and the phases whose own inputs changed since they passed (their files, their tests, or their goal and plan); an untouched phase keeps its pass
+- R48 [auto] When QA runs, VBW says for each phase why it is checked again (failed last time, or which of its inputs changed) and lists the phases whose pass still stands
+- R49 [auto] A phase is also checked again when a phase it builds on was checked again because its inputs changed, even if its own inputs did not
 
 <!-- One requirement per line: an id, how it is proved, and a user-observable
      statement. [auto] = a check can prove it; [human] = only a person can judge it.

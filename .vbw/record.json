@@ -756,6 +756,30 @@
           "check": "C46"
         }
       ]
+    },
+    {
+      "id": "R47",
+      "text": "After a round of fixes, QA checks again only the phases that did not pass and the phases whose own inputs changed since they passed (their files, their tests, or their goal and plan); an untouched phase keeps its pass",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M8",
+      "rules": []
+    },
+    {
+      "id": "R48",
+      "text": "When QA runs, VBW says for each phase why it is checked again (failed last time, or which of its inputs changed) and lists the phases whose pass still stands",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M8",
+      "rules": []
+    },
+    {
+      "id": "R49",
+      "text": "A phase is also checked again when a phase it builds on was checked again because its inputs changed, even if its own inputs did not",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M8",
+      "rules": []
     }
   ],
   "checks": [
