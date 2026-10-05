@@ -4260,7 +4260,15 @@
         "breaks: R4, R5, R8, R13, R14, R22, R24, R25, R26, R28, R31, R34, R37, R38, R39, R40, R42, R44, R48, R50",
         "tests: project test command"
       ],
-      "predicted": "deep"
+      "predicted": "deep",
+      "qa": {
+        "result": "fail",
+        "tier": "deep",
+        "tree": "88afe14ceee3b2ff0f924b61f63a18f57d5c9b56c916d20848073429874bf5b3",
+        "at": "2026-10-05T20:27:02Z",
+        "note": "21/24 checks",
+        "rounds": 1
+      }
     },
     {
       "id": "P46",
@@ -7986,6 +7994,14 @@
       "attempts": 0,
       "status": "open",
       "note": "plugin/skills/panel/SKILL.md says '/vbw-panel opens or closes it', but the command in plugin/hooks/panel.js (command.run vbw-panel) only opens the panel and docs/panel.md line 123 says the same. Users on a new Claude Code are told a toggle exists that does not. Fix the skill wording to 'opens it'."
+    },
+    {
+      "id": "F34",
+      "req": "R59",
+      "source": "qa",
+      "attempts": 0,
+      "status": "open",
+      "note": "tools/l3-suite.sh still uses the old level question in two places that P45.1 task 3 (update the real-user test script to recognise the new greeting) should have covered: line 1192 (interview_options_fixed, key '^How much software have you built') and line 1287 (test 'interview (set|keep)|How much software'). Line 1192 means the level options are no longer checked against the real session (the greeting never matches that regex, so only the other two questions are checked). Only line 973 was updated (commit 21d1ddfe)."
     }
   ],
   "todos": [
