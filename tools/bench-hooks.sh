@@ -41,6 +41,11 @@ jq -nc --arg d "$work" '{tool_name: "Bash", cwd: $d, tool_input: {command: "npm 
 big=$(awk 'BEGIN { for (i = 0; i < 400; i++) printf "line %d with \"quotes\" and $(cmd) and git words\n", i }')
 jq -nc --arg d "$work" --arg b "$big" '{tool_name: "Bash", cwd: $d, tool_input: {command: ("git add notes.md && cat > notes.md <<'\''EOF'\''\n" + $b + "EOF")}}' > "$work/big.json"
 jq -nc --arg d "$work" '{tool_name: "Read", cwd: $d, tool_input: {file_path: ($d + "/src/app.js")}}' > "$work/read.json"
+# An answered question unrelated to approval: the PostToolUse hook runs after
+# every AskUserQuestion and must stay cheap when the answer is not an approval.
+jq -nc --arg d "$work" '{hook_event_name: "PostToolUse", tool_name: "AskUserQuestion", cwd: $d,
+  tool_input: {questions: [{question: "Which database should the app use?", options: [{label: "SQLite"}, {label: "Postgres"}]}]},
+  tool_response: {answers: {"Which database should the app use?": "SQLite"}}}' > "$work/answer.json"
 
 # cpu_pair INPUT BASELINE HOOK: the mean CPU time in ms of RUNS runs of each
 # `sh -c` command, "BASELINE HOOK", alternating call by call so both see the
@@ -66,9 +71,11 @@ cpu_pair() {
 
 baseline="jq -nc 'input | empty' - \"$CLAUDE_PROJECT_DIR/.vbw/record.json\" \"$CLAUDE_PLUGIN_ROOT/hooks/end.json\" 2>/dev/null || true"
 status=0
-for input in git npm big read; do
+for input in git npm big read answer; do
   tool=$(jq -r .tool_name "$work/$input.json")
-  hook=$(jq -r --arg t "$tool" '[.hooks.PreToolUse[] | select(.matcher as $m | $t | test("^(" + $m + ")$"))][0].hooks[0].command' "$hooks_json")
+  event=PreToolUse
+  [ "$input" != answer ] || event=PostToolUse
+  hook=$(jq -r --arg t "$tool" --arg e "$event" '[.hooks[$e][] | select(.matcher as $m | $t | test("^(" + $m + ")$"))][0].hooks[0].command' "$hooks_json")
   read -r shell total < <(cpu_pair "$work/$input.json" "$baseline" "$hook")
   own=$(perl -e 'printf "%.1f", $ARGV[0] - $ARGV[1]' -- "$total" "$shell")
   ratio=$(perl -e 'printf "%.2f", $ARGV[1] > 0 ? $ARGV[0] / $ARGV[1] : 99' -- "$own" "$shell")
