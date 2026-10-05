@@ -5289,7 +5289,7 @@
         "P40.2",
         "P39.2"
       ],
-      "status": "planned",
+      "status": "done",
       "tasks": [
         "Record format: qa.tree now holds the digest of the phase's own inputs (no new field, schema unchanged); the clone cache qa.json is not part of the record",
         "Proof: which phases QA checks again, in plain words, including phases built on a re-checked phase and records from before",
@@ -5335,7 +5335,7 @@
       "after": [
         "P41.1"
       ],
-      "status": "planned",
+      "status": "done",
       "tasks": [
         "New scenario recheck in tools/l3-suite.sh: a two-phase project is built and passes QA, a fix touches one phase, and QA runs again",
         "Its checks read the record and git (the phases checked again, the phases kept, the reason named), never screen text",
@@ -5358,7 +5358,7 @@
         "P40.3",
         "P41.1"
       ],
-      "status": "planned",
+      "status": "done",
       "tasks": [
         "Proof: vbw show qa and the wording of the reasons",
         "Status line: the answer file now carries the qa reasons"
