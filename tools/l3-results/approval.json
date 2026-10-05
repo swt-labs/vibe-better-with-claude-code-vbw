@@ -1,0 +1,20 @@
+{
+  "scenario": "approval",
+  "fixture": "greet.sh and farewell.sh, one phase each; spec and plan agreed with the user before the session, contract not yet approved; rigor standard",
+  "cost_usd": 0.50,
+  "evidence_level": "L3",
+  "at": "2026-10-05T18:52:54Z",
+  "passed": true,
+  "facts": {
+    "fingerprint": "2d2b082c4d1d",
+    "choice_shown": true,
+    "approved_by_enter": true,
+    "decisions": 1
+  },
+  "not_tested": [
+    "the answer Not yet or the user's own words",
+    "an approval after the contract changed under the question",
+    "typing /vbw:approve (covered by the kernel tests)",
+    "a project larger than the greet.sh and farewell.sh fixture"
+  ]
+}
