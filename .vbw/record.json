@@ -6,7 +6,7 @@
   "milestone": {
     "id": "M8",
     "title": "Smarter QA re-checks",
-    "status": "active"
+    "status": "shipped"
   },
   "shipped": [
     {
@@ -43,6 +43,11 @@
       "id": "M7",
       "title": "VBW knows its user",
       "at": "2026-10-04T23:22:49Z"
+    },
+    {
+      "id": "M8",
+      "title": "Smarter QA re-checks",
+      "at": "2026-10-05T04:24:26Z"
     }
   ],
   "requirements": [
@@ -6317,6 +6322,11 @@
       "text": "QA's pass verdicts for P39 (14/14) and P40 (25/25) from run qa-20261005T040008Z were re-recorded unchanged with the repo kernel",
       "why": "The QA agents called the installed VBW 2.0.17 from PATH, which stores the old whole-folder fingerprint in qa.tree; the M8 kernel reads that as a pre-M8 pass and asks for a re-check every time. Same verdict, tier and note; only the stored digest changes. Ends once the installed VBW is 2.0.18",
       "at": "2026-10-05T04:19:56Z"
+    },
+    {
+      "id": "D102",
+      "at": "2026-10-05T04:24:26Z",
+      "text": "Shipped M8 Smarter QA re-checks: 4 requirements proven or accepted"
     }
   ],
   "commands": {
