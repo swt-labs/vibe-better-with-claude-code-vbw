@@ -2906,12 +2906,19 @@
         }
       ],
       "qa": {
-        "result": "fail",
+        "result": "pass",
         "tier": "deep",
-        "tree": "1d0fc4f786daa9cd2a3154dddf2058d3205f542afb26f6dbe94c1ef25cf734ee",
-        "at": "2026-10-05T03:18:32Z",
-        "note": "23/25 checks",
-        "rounds": 1
+        "tree": "68252a6212ee06135836e7a32c08c93db171766f",
+        "at": "2026-10-05T04:19:18Z",
+        "note": "25/25 checks"
+      },
+      "outcome": {
+        "tier": "deep",
+        "predicted": "deep",
+        "held": true,
+        "fix_rounds": 2,
+        "qa_findings": 2,
+        "escalations": 2
       }
     },
     {
@@ -5647,7 +5654,7 @@
       "req": "R47",
       "source": "qa",
       "attempts": 0,
-      "status": "fixed",
+      "status": "closed",
       "note": "Added and unlisted: commit 2b1d2bfd adds a new view 'vbw show qa' (not in any P40 task) but the usage text in plugin/lib/cmd-show.sh (both the vbw_usage_error line and the header of the case) was not updated, so 'vbw show' help does not list it. Fix: either list qa in the usage message (and record the view as a decision) or remove it."
     },
     {
@@ -5655,7 +5662,7 @@
       "req": "R47",
       "source": "qa",
       "attempts": 0,
-      "status": "fixed",
+      "status": "closed",
       "note": "Unrelated code rewritten: commits 9f932df1 and 2b1d2bfd rewrite code that has nothing to do with the re-check rule, apparently to save lines: cmd-next.sh (if/else on --json turned into a case; tracked/code counting merged), cmd-show.sh (three if-blocks in show contract --changes, show_contract_changes and show_work turned into one-line short-circuits). Not in any P40 task. With the budget now 3,500 (D96) there is no reason to keep them. Fix: revert those hunks or record a decision that lets them stand."
     }
   ],
