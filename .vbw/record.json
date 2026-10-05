@@ -4423,8 +4423,8 @@
         "result": "pass",
         "tier": "deep",
         "tree": "5c9fef01ce2d109396fdfe4e116ce544ad728f255f9bd1f321c6cda2159ced62",
-        "at": "2026-10-05T20:35:14Z",
-        "note": "0/0"
+        "at": "2026-10-05T20:35:19Z",
+        "note": "30/30 checks"
       },
       "outcome": {
         "tier": "deep",
