@@ -7,6 +7,8 @@ import { panelView, supports } from './panel-view.js'
 
 const PANE = 'vbw-panel'
 const TICK_MS = 2000
+// The user's choice lives in Claude Code's per-user store, never in the project.
+const CLOSED_KEY = 'vbw-panel.closed'
 const isObj = (x) => x !== null && typeof x === 'object' && !Array.isArray(x)
 
 // Parse a project file; null when it is not a JSON object (half written, invalid).
@@ -68,9 +70,9 @@ async function tick($, st, root) {
   }
 }
 
-async function open($) {
+async function open($, extra) {
   try {
-    await $.ui.open({ id: PANE, title: 'VBW', placement: 'dock' })
+    await $.ui.open({ id: PANE, title: 'VBW', placement: 'dock', ...extra })
   } catch {
     // where Claude Code keeps the pane closed, it stays closed
   }
@@ -94,7 +96,7 @@ export function register(on) {
       if (st.timer && st.timer.cancel) st.timer.cancel()
       st.timer = $.clock.every(TICK_MS, () => tick($, st, root))
       $.command.register({ name: 'vbw-panel', description: 'Open the VBW panel', immediate: true })
-      await open($)
+      if ((await $.store.get(CLOSED_KEY)) !== true) await open($)
     } catch {
       // the panel stays out of the way
     }
@@ -103,13 +105,28 @@ export function register(on) {
 
   on('command.run', async ($, e, next) => {
     if (st.live && isObj(e) && e.command === 'vbw-panel') {
-      await open($)
+      try {
+        await $.store.set(CLOSED_KEY, false)
+      } catch {
+        // the panel still opens
+      }
+      await open($, { focus: true })
       return { text: 'The VBW panel is open.' }
     }
     return next(e)
   })
 
-  on('ui.close', async ($, e, next) => next(e))
+  // Remember a close made by the user only; every close is passed on.
+  on('ui.close', async ($, e, next) => {
+    if (st.live && isObj(e) && e.id === PANE && isObj(e.origin) && e.origin.kind === 'person') {
+      try {
+        await $.store.set(CLOSED_KEY, true)
+      } catch {
+        // the close still goes through
+      }
+    }
+    return next(e)
+  })
 
   // A question to the user is a need while it is open.
   on('tool.call', { tool: 'AskUserQuestion' }, async ($, e, next) => {
