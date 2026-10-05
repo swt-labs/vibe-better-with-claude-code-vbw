@@ -1,5 +1,5 @@
 {
-  "schema": 1,
+  "schema": 2,
   "project": {
     "name": "v2"
   },
@@ -940,7 +940,52 @@
       "proof": "auto",
       "status": "open",
       "milestone": "M9",
-      "rules": []
+      "rules": [
+        {
+          "text": "the panel states the milestone and its progress (phases done of total, counting only this milestone's phases whose check passed) in plain sentences",
+          "check": "C52"
+        },
+        {
+          "text": "a milestone with no phases says no phases are planned yet, and a single phase is counted in the singular",
+          "check": "C52"
+        },
+        {
+          "text": "the panel names what VBW is doing right now: planning, building (naming which parts), checking, fixing or mapping, with minutes so far, and says so when idle",
+          "check": "C52"
+        },
+        {
+          "text": "the panel says whether it needs the user and for what (approval, a result to check, a decision, a question), and says nothing is needed when it does not",
+          "check": "C52"
+        },
+        {
+          "text": "a question raised for the user is a need, and a need has a stable key that changes when the request changes",
+          "check": "C52"
+        },
+        {
+          "text": "every row is a plain sentence with its technical term beside it, and the plain sentence uses no jargon (D107)",
+          "check": "C52"
+        },
+        {
+          "text": "a missing, empty or invalid project state gives one neutral line and never throws",
+          "check": "C52"
+        },
+        {
+          "text": "the pane draws each term in small dim text beside its sentence and draws only its own pane",
+          "check": "C53"
+        },
+        {
+          "text": "after a phase finishes, a run starts, or a need is raised or cleared, the panel shows the new state within 5 seconds with no action by the user",
+          "check": "C53"
+        },
+        {
+          "text": "a half-written, missing or invalid project file keeps the last good text, raises no error, and recovers when the file is good again",
+          "check": "C53"
+        },
+        {
+          "text": "in a real Claude Code session the panel shows the milestone and progress, what VBW is doing, what it needs from the user, the cost line and an estimate or 'no basis yet' (L3 scenario with a committed result)",
+          "check": "C66"
+        }
+      ]
     },
     {
       "id": "R52",
@@ -948,7 +993,28 @@
       "proof": "auto",
       "status": "open",
       "milestone": "M9",
-      "rules": []
+      "rules": [
+        {
+          "text": "a VBW project session opens the panel by itself without taking the keyboard, and where Claude Code keeps it closed (a narrow window) it is not tried again and nothing fails",
+          "check": "C58"
+        },
+        {
+          "text": "the /vbw-panel command opens the panel at any width",
+          "check": "C58"
+        },
+        {
+          "text": "closing the panel by hand keeps it closed on new activity and in new sessions, until the user opens it again, and that choice is remembered across sessions",
+          "check": "C58"
+        },
+        {
+          "text": "only the user's own close is remembered, a close is never refused, and closing another pane changes nothing",
+          "check": "C58"
+        },
+        {
+          "text": "opening and closing write no file and change no project data; the choice is kept in the user store, and outside a VBW project the panel is never opened",
+          "check": "C58"
+        }
+      ]
     },
     {
       "id": "R53",
@@ -956,7 +1022,32 @@
       "proof": "auto",
       "status": "open",
       "milestone": "M9",
-      "rules": []
+      "rules": [
+        {
+          "text": "on Claude Code older than 2.1.287, or with a version that cannot be read, the panel registers no command, starts no timer, opens no pane, reads no file and raises no error",
+          "check": "C54"
+        },
+        {
+          "text": "outside a VBW project (no .vbw record, or only a VBW 1 plan) there is no panel, no command and no error",
+          "check": "C54"
+        },
+        {
+          "text": "failures of Claude Code's own calls and garbage in the project files never make a hook fail",
+          "check": "C54"
+        },
+        {
+          "text": "on 2.1.287 or newer, inside a VBW project, the panel starts",
+          "check": "C54"
+        },
+        {
+          "text": "the panel is a mod named by hooks.json 'modules' beside the unchanged hooks, and Claude Code's validator reads its hooks without warnings",
+          "check": "C55"
+        },
+        {
+          "text": "the status line output is byte-identical with and without the panel, inside and outside a VBW project, with colour and without, on any Claude Code version",
+          "check": "C55"
+        }
+      ]
     },
     {
       "id": "R54",
@@ -971,7 +1062,40 @@
       "proof": "auto",
       "status": "open",
       "milestone": "M9",
-      "rules": []
+      "rules": [
+        {
+          "text": "the panel calls nothing that reaches the network, credentials, processes or settings, and reads only files inside the project",
+          "check": "C57"
+        },
+        {
+          "text": "the panel never writes: not the record and not any file",
+          "check": "C57"
+        },
+        {
+          "text": "when nothing changed no file is read and no redraw is asked for; during a run it redraws only when the shown minute changes",
+          "check": "C57"
+        },
+        {
+          "text": "a changed file is read once and drawn once however many ticks follow",
+          "check": "C57"
+        },
+        {
+          "text": "the CPU time of a refresh that found nothing and of one that redraws is measured by tools/bench-panel.sh and stays within the stated budget",
+          "check": "C56"
+        },
+        {
+          "text": "the budget is enforced: an impossible budget fails the bench, and the budget is stated in docs/panel.md",
+          "check": "C56"
+        },
+        {
+          "text": "the panel's code contains no network, credential, process or write call, and never writes the record",
+          "check": "C56"
+        },
+        {
+          "text": "the kernel stays within 3,500 lines and the workflows within 1,500 lines, and the panel's tests run in the suite",
+          "check": "C56"
+        }
+      ]
     },
     {
       "id": "R56",
@@ -979,7 +1103,32 @@
       "proof": "auto",
       "status": "open",
       "milestone": "M9",
-      "rules": []
+      "rules": [
+        {
+          "text": "the cost so far is one small line with its term beside it, with no breakdown",
+          "check": "C61"
+        },
+        {
+          "text": "the cost follows the session within 5 seconds",
+          "check": "C61"
+        },
+        {
+          "text": "when the cost is not available the line is left out or says not available, never a number or a zero",
+          "check": "C61"
+        },
+        {
+          "text": "only read-only calls are made to learn the cost",
+          "check": "C61"
+        },
+        {
+          "text": "a refresh that also reads the cost and works out estimates stays within the panel's CPU budget",
+          "check": "C65"
+        },
+        {
+          "text": "docs/panel.md says the cost is one line, for this session, and when it is not available",
+          "check": "C65"
+        }
+      ]
     },
     {
       "id": "R57",
@@ -987,7 +1136,121 @@
       "proof": "auto",
       "status": "open",
       "milestone": "M9",
-      "rules": []
+      "rules": [
+        {
+          "text": "a need for the user plays the sound once, not again while the need stands, and again for the next request or when the same need returns",
+          "check": "C59"
+        },
+        {
+          "text": "a question for the user plays the sound once and the need ends when it is answered; other tool calls make no sound",
+          "check": "C59"
+        },
+        {
+          "text": "the sound plays even when the panel is closed",
+          "check": "C59"
+        },
+        {
+          "text": "the sound is on by default, /vbw-sound switches it off, on or over and says which, and with it off nothing plays for any need",
+          "check": "C59"
+        },
+        {
+          "text": "the panel shows whether the sound is on and one click switches it",
+          "check": "C59"
+        },
+        {
+          "text": "the choice survives a restart and lives in the user store, never in the project",
+          "check": "C59"
+        },
+        {
+          "text": "a missing sound file or no player is silent: nothing plays and nothing is shown",
+          "check": "C59"
+        },
+        {
+          "text": "on a version without mods the panel and its sound do nothing and register no command",
+          "check": "C59"
+        },
+        {
+          "text": "raising a need and playing the sound costs less than the hook CPU limit of 8 ms, measured",
+          "check": "C60"
+        },
+        {
+          "text": "the sound is the plugin's own file assets/needs-you.mp3 and nothing is fetched",
+          "check": "C60"
+        },
+        {
+          "text": "on Claude Code without mods /vbw:panel says plainly that the panel and sound need 2.1.287 or newer, and help and README list the commands",
+          "check": "C60"
+        },
+        {
+          "text": "the docs say the sound preference is the user's own and never committed",
+          "check": "C60"
+        }
+      ]
+    },
+    {
+      "id": "R58",
+      "text": "The panel shows an estimated time left for the current step and for the milestone, based on how long earlier steps took in this project, and says plainly when it has no basis for an estimate yet",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M9",
+      "rules": [
+        {
+          "text": "with fewer than 3 finished steps of a kind the step has no basis and no number; the usual time is the median of the last 10 steps of that kind, and other kinds are not counted",
+          "check": "C62"
+        },
+        {
+          "text": "a step that runs past its usual time is 'longer', never negative; with no step running there is no step estimate",
+          "check": "C62"
+        },
+        {
+          "text": "the milestone estimate is the running step's time left plus phases left times the usual build plus check time, has no basis without enough build and check history, and is nothing when no phase is left",
+          "check": "C62"
+        },
+        {
+          "text": "bad history entries are ignored without a crash or a wrong number",
+          "check": "C62"
+        },
+        {
+          "text": "ending a run records one finished step (kind, run, start, end, seconds) in the clone's steps.json, oldest first, only the latest 50, shared by worktrees",
+          "check": "C63"
+        },
+        {
+          "text": "the history adds no record field, no schema change and no tracked file, and a damaged or unwritable cache never stops a run from ending",
+          "check": "C63"
+        },
+        {
+          "text": "a run ended with no run open records nothing",
+          "check": "C63"
+        },
+        {
+          "text": "with no or too little history the panel says plainly it has no basis and shows no time; with enough it shows about N min for the step and the milestone",
+          "check": "C64"
+        },
+        {
+          "text": "a step past its usual time says it is taking longer than usual and shows no negative time; idle shows only the milestone; no phase left shows no milestone estimate",
+          "check": "C64"
+        },
+        {
+          "text": "a missing or garbled history means no history and no error, and in a linked worktree the history is read from its clone",
+          "check": "C64"
+        },
+        {
+          "text": "the history is only read, from the clone cache, with no network, and the shown estimate follows the clock",
+          "check": "C64"
+        },
+        {
+          "text": "the estimate code is pure and local, states MIN_STEPS = 3, and the panel reads history only from steps.json",
+          "check": "C67"
+        },
+        {
+          "text": "a refresh that works out two estimates stays within the panel's CPU budget",
+          "check": "C67"
+        },
+        {
+          "text": "docs/panel.md says how many finished steps an estimate needs, that it is approximate, and where the history is kept",
+          "check": "C67"
+        }
+      ]
     }
   ],
   "checks": [
@@ -1567,6 +1830,214 @@
         "tests/helpers/run-workflow.js"
       ],
       "timeout": 900
+    },
+    {
+      "id": "C52",
+      "req": "R51",
+      "run": [
+        "node",
+        "--test",
+        "tests/panel/view.test.mjs"
+      ],
+      "files": [
+        "tests/panel/view.test.mjs",
+        "tests/panel/helpers/fake-mod.mjs"
+      ]
+    },
+    {
+      "id": "C53",
+      "req": "R51",
+      "run": [
+        "node",
+        "--test",
+        "tests/panel/panel.test.mjs"
+      ],
+      "files": [
+        "tests/panel/panel.test.mjs",
+        "tests/panel/helpers/fake-mod.mjs"
+      ]
+    },
+    {
+      "id": "C54",
+      "req": "R53",
+      "run": [
+        "node",
+        "--test",
+        "tests/panel/safe.test.mjs"
+      ],
+      "files": [
+        "tests/panel/safe.test.mjs",
+        "tests/panel/helpers/fake-mod.mjs"
+      ]
+    },
+    {
+      "id": "C55",
+      "req": "R53",
+      "run": [
+        "bats",
+        "tests/panel-compat.bats"
+      ],
+      "files": [
+        "tests/panel-compat.bats"
+      ],
+      "timeout": 300
+    },
+    {
+      "id": "C56",
+      "req": "R55",
+      "run": [
+        "bats",
+        "tests/panel-light.bats"
+      ],
+      "files": [
+        "tests/panel-light.bats"
+      ],
+      "alone": true,
+      "timeout": 900
+    },
+    {
+      "id": "C57",
+      "req": "R55",
+      "run": [
+        "node",
+        "--test",
+        "tests/panel/light.test.mjs"
+      ],
+      "files": [
+        "tests/panel/light.test.mjs",
+        "tests/panel/helpers/fake-mod.mjs"
+      ]
+    },
+    {
+      "id": "C58",
+      "req": "R52",
+      "run": [
+        "node",
+        "--test",
+        "tests/panel/open.test.mjs"
+      ],
+      "files": [
+        "tests/panel/open.test.mjs",
+        "tests/panel/helpers/fake-mod.mjs"
+      ]
+    },
+    {
+      "id": "C59",
+      "req": "R57",
+      "run": [
+        "node",
+        "--test",
+        "tests/panel/sound.test.mjs"
+      ],
+      "files": [
+        "tests/panel/sound.test.mjs",
+        "tests/panel/helpers/fake-mod.mjs"
+      ]
+    },
+    {
+      "id": "C60",
+      "req": "R57",
+      "run": [
+        "bats",
+        "tests/panel-sound.bats"
+      ],
+      "files": [
+        "tests/panel-sound.bats"
+      ],
+      "alone": true,
+      "timeout": 600
+    },
+    {
+      "id": "C61",
+      "req": "R56",
+      "run": [
+        "node",
+        "--test",
+        "tests/panel/cost.test.mjs"
+      ],
+      "files": [
+        "tests/panel/cost.test.mjs",
+        "tests/panel/helpers/fake-mod.mjs"
+      ]
+    },
+    {
+      "id": "C62",
+      "req": "R58",
+      "run": [
+        "node",
+        "--test",
+        "tests/panel/estimate.test.mjs"
+      ],
+      "files": [
+        "tests/panel/estimate.test.mjs",
+        "tests/panel/helpers/fake-mod.mjs"
+      ]
+    },
+    {
+      "id": "C63",
+      "req": "R58",
+      "run": [
+        "bats",
+        "tests/panel-steps.bats"
+      ],
+      "files": [
+        "tests/panel-steps.bats"
+      ],
+      "timeout": 300
+    },
+    {
+      "id": "C64",
+      "req": "R58",
+      "run": [
+        "node",
+        "--test",
+        "tests/panel/glance.test.mjs"
+      ],
+      "files": [
+        "tests/panel/glance.test.mjs",
+        "tests/panel/helpers/fake-mod.mjs"
+      ]
+    },
+    {
+      "id": "C65",
+      "req": "R56",
+      "run": [
+        "bats",
+        "--filter",
+        "R56",
+        "tests/panel-glance.bats"
+      ],
+      "files": [
+        "tests/panel-glance.bats"
+      ],
+      "alone": true,
+      "timeout": 600
+    },
+    {
+      "id": "C66",
+      "req": "R51",
+      "run": [
+        "bats",
+        "tests/l3-panel.bats"
+      ],
+      "files": [
+        "tests/l3-panel.bats"
+      ]
+    },
+    {
+      "id": "C67",
+      "req": "R58",
+      "run": [
+        "bats",
+        "--filter",
+        "R58",
+        "tests/panel-glance.bats"
+      ],
+      "files": [
+        "tests/panel-glance.bats"
+      ],
+      "alone": true,
+      "timeout": 600
     }
   ],
   "phases": [
@@ -3023,6 +3494,103 @@
         "qa_findings": 1,
         "escalations": 0
       }
+    },
+    {
+      "id": "P42",
+      "title": "The panel shows what VBW is doing, and is safe everywhere",
+      "reqs": [
+        "R51",
+        "R53",
+        "R55"
+      ],
+      "milestone": "M9",
+      "goal": "A VBW panel in Claude Code states the milestone, its progress, what VBW is doing now and whether it needs you, updates by itself, and does nothing at all where it cannot run.",
+      "criteria": [
+        "In a VBW project on Claude Code 2.1.287 or newer, the panel shows the milestone name and its progress (phases done of total) in plain sentences.",
+        "The panel names what VBW is doing now: planning, building (naming which phases or parts), or checking; and when idle says so.",
+        "When VBW needs the user (an approval, a question, a result to check), the panel says so and says what for; when it does not, it says nothing is needed.",
+        "The panel text follows D107: a plain sentence with the technical term in small text beside it.",
+        "After the project state changes (a phase starts, a check finishes, a question is raised), the panel shows the new state within 5 seconds without the user doing anything.",
+        "On Claude Code older than 2.1.287, no panel appears, no error or warning is printed, and the status line output is byte-identical to before.",
+        "Outside a VBW project (no .vbw folder), no panel and no error; the status line behaves as before.",
+        "If the project state file is missing, half-written or invalid, the panel keeps its last good text or shows a neutral line; it never crashes or prints an error.",
+        "The panel reads only local project files: a test shows no network call is made and no credentials are read.",
+        "Updating the panel costs no more than a stated, measured CPU budget per refresh (measured with a bench like tools/bench-hooks.sh), and does not run a refresh when nothing changed.",
+        "The panel's code is read-only: it never writes the record (single-writer rule holds), and kernel (3,500 lines) and workflow (1,500 lines) budgets still pass."
+      ],
+      "tier": "deep",
+      "reasons": [
+        "requirements: 3",
+        "files: 10 (10682 bytes)",
+        "risk: CI (.github/workflows/ci.yml)",
+        "breaks: R3",
+        "tests: project test command"
+      ],
+      "predicted": "deep"
+    },
+    {
+      "id": "P43",
+      "title": "Open, close and the 'needs you' sound",
+      "reqs": [
+        "R52",
+        "R57"
+      ],
+      "milestone": "M9",
+      "goal": "The panel opens by itself in a wide window and on command at any width, the user can close it and it stays closed, and VBW plays a sound when it needs the user, which one click or command turns off or on.",
+      "criteria": [
+        "In a wide window the panel opens by itself when a VBW project session starts; in a narrow window it does not open by itself.",
+        "A VBW command opens the panel at any width, including narrow ones.",
+        "The user can close the panel; after closing it, it does not reopen by itself (not on new activity, not on a new session) until the user opens it again, and that choice is remembered across sessions.",
+        "Closing or opening the panel changes no project data in the record and no tracked git file.",
+        "When VBW needs the user (approval, question, result to check), a short sound plays once per request, not repeatedly while the need stands.",
+        "The sound is the mp3 the owner provides (D104), shipped inside the plugin; if the file is missing or no player exists, nothing plays and no error shows.",
+        "The sound plays even when the panel is closed (D104).",
+        "The sound is on by default (D105); one click in the panel or one command switches it off or on, the panel shows which it is, and the choice survives restart.",
+        "With the sound off, nothing plays for any need.",
+        "The preference is stored locally per user, never in the committed record or any tracked file, and works under the Claude Code sandbox.",
+        "On versions without mods, the sound command still works or says plainly that the panel is unavailable, with no error output.",
+        "The sound hook respects the hook CPU limit (8 ms or 1x shell start) and uses no network."
+      ],
+      "tier": "standard",
+      "reasons": [
+        "requirements: 2",
+        "files: 6 (8855 bytes)",
+        "risk: none",
+        "breaks: R3, R38, R39",
+        "tests: project test command"
+      ],
+      "predicted": "standard"
+    },
+    {
+      "id": "P44",
+      "title": "Cost, time estimates and an at-a-glance panel",
+      "reqs": [
+        "R56",
+        "R58",
+        "R54"
+      ],
+      "milestone": "M9",
+      "goal": "The panel also shows what the session has cost and how long the step and milestone will probably take, honestly, and a person at the user's level can read it at a glance.",
+      "criteria": [
+        "The panel shows the current session's cost so far as one small line (D106), no breakdown, updating as the cost changes.",
+        "When cost data is unavailable, the line is omitted or says 'not available', never a wrong number or zero presented as fact.",
+        "The panel shows an estimated time left for the current step and for the milestone, derived from the durations of earlier steps in this project.",
+        "With too little history (fewer than a stated number of finished steps), the panel says plainly it has no basis for an estimate yet, and shows no number.",
+        "Estimates come from local records only, stay in a clone-local cache or existing record data with no new record schema field (cf. D91), and are never presented as exact (shown as approximate).",
+        "An estimate never shows negative or past-due time; when a step runs longer than its estimate, the panel says it is taking longer than usual.",
+        "Cost and estimate calculation stay within the panel's CPU budget from P42 and use no network.",
+        "A full-panel check on a realistic project is run in a real Claude Code session (L3 scenario added to tools/l3-suite.sh for the panel), and its result is committed.",
+        "HUMAN ACCEPTANCE (R54): the owner looks at the panel on a realistic project and confirms a person at level 'never' with plain-with-terms-explained depth can tell, at a glance, the milestone, what is happening and whether they are needed."
+      ],
+      "tier": "deep",
+      "reasons": [
+        "requirements: 3",
+        "files: 10 (73554 bytes)",
+        "risk: none",
+        "breaks: R1, R2, R4, R5, R8, R13, R14, R18, R29, R32, R33, R34, R42, R48",
+        "tests: project test command"
+      ],
+      "predicted": "deep"
     }
   ],
   "plans": [
@@ -5469,6 +6037,309 @@
         "Status line: the answer file now carries the qa reasons"
       ],
       "role": "docs"
+    },
+    {
+      "id": "P42.1",
+      "phase": "P42",
+      "title": "What the panel says: the words and the version rule",
+      "reqs": [
+        "R51",
+        "R53"
+      ],
+      "files": [
+        "plugin/hooks/panel-view.js"
+      ],
+      "after": [],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "Write the rule for which Claude Code versions have the panel (2.1.287 and newer; anything unreadable counts as older)",
+        "Turn the project record into plain sentences with the technical term beside each: the milestone, phases done of total (only this milestone's phases whose check passed), and what VBW is doing (idle, planning, building with the parts named, checking, fixing, mapping) with minutes so far",
+        "Say what VBW needs from you and why (approval, a result to check, a decision, a question), give each need a stable key, say nothing is needed otherwise, and say nothing is needed while a run is open",
+        "Return one neutral line for a missing or invalid record, never change the input, and make tests/panel/view.test.mjs pass"
+      ]
+    },
+    {
+      "id": "P42.2",
+      "phase": "P42",
+      "title": "The panel itself: reads the project, draws, refreshes by itself, does nothing where it cannot run",
+      "reqs": [
+        "R51",
+        "R53",
+        "R55"
+      ],
+      "files": [
+        "plugin/hooks/panel.js",
+        "plugin/hooks/hooks.json"
+      ],
+      "after": [
+        "P42.1"
+      ],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "Add \"modules\": [\"./panel.js\"] to hooks/hooks.json without touching the hooks already there; start the panel only on Claude Code 2.1.287 or newer, inside a VBW project, and otherwise do nothing at all (no command, no timer, no error)",
+        "Every 2 seconds check the record and next-step files cheaply (size and time), read them only when they changed, keep the last good state when a file is missing, half-written or invalid, and ask for a redraw only when something shown changed (including the minute count during a run)",
+        "Draw the pane with id vbw-panel from the sentences (each term in small dim text beside it), leave every other pane alone, and open it when a project session starts",
+        "Treat a question to the user (the AskUserQuestion tool) as a need while it is open, never write any file, call nothing outside the read-only list, then make the C53, C54, C55 and C57 checks pass and run claude plugin validate"
+      ]
+    },
+    {
+      "id": "P42.3",
+      "phase": "P42",
+      "title": "Measure the panel's CPU cost and put its tests in the suite",
+      "reqs": [
+        "R55"
+      ],
+      "files": [
+        "tools/bench-panel.sh",
+        "tools/bench-panel.mjs",
+        "tests/panel-suite.bats",
+        "tools/test.sh",
+        ".github/workflows/ci.yml"
+      ],
+      "after": [
+        "P42.2"
+      ],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "Write a bench driver that runs the panel with the test stand-in for Claude Code and measures CPU time (not waiting time) of a refresh that finds nothing new and of one that redraws, averaged over VBW_BENCH_RUNS",
+        "Write tools/bench-panel.sh: print the lines 'tick, nothing changed: X ms CPU', 'refresh, state changed: X ms CPU' and 'budget: N ms', and fail when a measurement is over VBW_PANEL_BUDGET_MS",
+        "Measure on this machine and set the default budgets with headroom, stated in the script header like bench-hooks.sh does",
+        "Add tests/panel-suite.bats that runs node --test over tests/panel/*.test.mjs (skipped when node is missing), run the bench from tools/test.sh when node exists, and give the slower CI machines a looser VBW_PANEL_BUDGET_MS in ci.yml"
+      ]
+    },
+    {
+      "id": "P42.4",
+      "phase": "P42",
+      "title": "Explain the panel to users",
+      "reqs": [
+        "R51",
+        "R53",
+        "R55"
+      ],
+      "files": [
+        "docs/panel.md",
+        "README.md"
+      ],
+      "after": [
+        "P42.3"
+      ],
+      "status": "planned",
+      "role": "docs",
+      "tasks": [
+        "Create docs/panel.md in plain words: what the panel shows, the Claude Code version it needs (2.1.287) and what happens on older ones and outside a VBW project",
+        "State the CPU budget with the measured numbers, that the panel reads only local files and never writes, and how to check it (tools/bench-panel.sh)",
+        "Mention the panel in README.md next to the status line"
+      ]
+    },
+    {
+      "id": "P43.1",
+      "phase": "P43",
+      "title": "Open it, close it, and keep it closed",
+      "reqs": [
+        "R52"
+      ],
+      "files": [
+        "plugin/hooks/panel.js"
+      ],
+      "after": [
+        "P42.2"
+      ],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "Read the user's saved choice at session start from Claude Code's per-user store (never the project) and open the panel by itself only when the user has not closed it; if Claude Code leaves it closed (narrow window), do not try again",
+        "Add the /vbw-panel command, working even while Claude is busy: it opens the panel at any width with the keyboard, and saves that the user wants it open",
+        "Remember a close made by the user (not one made by a plugin or an unload), pass every close on without refusing it, and ignore other panes",
+        "Make sure opening and closing write no file and call no process, and make the C58 check pass (and still C53 and C54)"
+      ]
+    },
+    {
+      "id": "P43.2",
+      "phase": "P43",
+      "title": "The 'needs you' sound and its on/off switch",
+      "reqs": [
+        "R57"
+      ],
+      "files": [
+        "plugin/hooks/panel.js",
+        "tools/bench-panel.mjs"
+      ],
+      "after": [
+        "P43.1",
+        "P42.3"
+      ],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "When a need for the user appears (approval, result to check, decision or a question) play the plugin's own sound file assets/needs-you.mp3 once per request, even when the panel is closed, never again while the same need stands, and again for the next request (the owner supplies the mp3 itself; the build does not create it)",
+        "Add the /vbw-sound command (on, off, or no word to switch over) that says which it is now; the sound is on by default and the choice is kept in Claude Code's per-user store, never in the project",
+        "Show 'Sound is on/off' in the panel with a button that switches it with one click",
+        "Play nothing and show nothing when the file is missing or there is no player, and nothing at all on Claude Code without mods",
+        "Add the line 'sound, need raised: X ms CPU' to the bench, check it is under 8 ms, and make the C59 and C60 checks pass"
+      ]
+    },
+    {
+      "id": "P43.3",
+      "phase": "P43",
+      "title": "The /vbw:panel command for people on older Claude Code",
+      "reqs": [
+        "R57"
+      ],
+      "files": [
+        "plugin/skills/panel/SKILL.md",
+        "plugin/skills/help/SKILL.md"
+      ],
+      "after": [],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "Write the /vbw:panel skill: it checks claude --version and says plainly, at the user's level, that the panel and its sound need Claude Code 2.1.287 or newer (how to update), or otherwise how to use /vbw-panel and /vbw-sound",
+        "List /vbw:panel in the help skill",
+        "Run the skill and prompt-size tests (the 16k-token total must still hold) and the C60 skill test"
+      ]
+    },
+    {
+      "id": "P43.4",
+      "phase": "P43",
+      "title": "Explain opening, closing and the sound",
+      "reqs": [
+        "R52",
+        "R57"
+      ],
+      "files": [
+        "docs/panel.md",
+        "README.md"
+      ],
+      "after": [
+        "P43.2",
+        "P43.3",
+        "P42.4"
+      ],
+      "status": "planned",
+      "role": "docs",
+      "tasks": [
+        "Document opening by itself (wide windows), /vbw-panel at any width, and that closing it keeps it closed until you open it again",
+        "Document the sound: when it plays, /vbw-sound, the button, that it is on by default, where the choice is kept (your own machine, never committed), and where the mp3 lives",
+        "List /vbw:panel, /vbw-panel and /vbw-sound in README.md"
+      ]
+    },
+    {
+      "id": "P44.1",
+      "phase": "P44",
+      "title": "Remember how long finished steps took",
+      "reqs": [
+        "R58"
+      ],
+      "files": [
+        "plugin/lib/cmd-run.sh",
+        "plugin/lib/core.sh"
+      ],
+      "after": [],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "When a run ends, add one finished step (kind, run, start, end, seconds) to the clone's own cache $(git common dir)/vbw/steps.json, shared by worktrees, keeping the latest 50 (no record field, no tracked file)",
+        "Never let a missing, damaged or unwritable cache stop the run from ending; a damaged file is replaced",
+        "Record nothing when no run was open",
+        "Make tests/panel-steps.bats pass, check the kernel is still within 3,500 lines, and run the suite under /bin/bash 3.2"
+      ]
+    },
+    {
+      "id": "P44.2",
+      "phase": "P44",
+      "title": "Work out honest time estimates",
+      "reqs": [
+        "R58"
+      ],
+      "files": [
+        "plugin/hooks/panel-estimate.js"
+      ],
+      "after": [],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "Write the pure estimate rules: the usual time of a kind of step is the median of the last 10 finished steps of that kind, and fewer than MIN_STEPS = 3 means no basis",
+        "Estimate the current step (about N seconds left, or 'longer' once it runs past the usual time, never negative)",
+        "Estimate the milestone: time left in the running step plus phases left times the usual build plus check time; no basis without enough build and check history; nothing when no phase is left",
+        "Ignore bad history entries, never change the input, and make tests/panel/estimate.test.mjs pass"
+      ]
+    },
+    {
+      "id": "P44.3",
+      "phase": "P44",
+      "title": "Show the cost and the estimates in the panel",
+      "reqs": [
+        "R56",
+        "R58"
+      ],
+      "files": [
+        "plugin/hooks/panel-view.js",
+        "plugin/hooks/panel.js",
+        "tools/bench-panel.mjs"
+      ],
+      "after": [
+        "P44.1",
+        "P44.2",
+        "P43.2"
+      ],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "Read the session cost each refresh, show it as one small line with its term beside it (no breakdown), redraw when it changes, and leave the line out or say 'not available' when there is no cost (never a made-up number)",
+        "Find the clone's git directory (also in a linked worktree) and read steps.json from it only when it changed, never writing it; treat a missing or damaged file as no history",
+        "Show the step and milestone estimates as 'about N min' with the term 'estimate, approximate', say 'taking longer than usual' past the usual time, and say plainly there is no basis yet when history is short; the shown time follows the clock",
+        "Add the line 'refresh with cost and estimates: X ms CPU' to the bench and make the C61, C64, C65 and C67 checks pass"
+      ]
+    },
+    {
+      "id": "P44.4",
+      "phase": "P44",
+      "title": "A real Claude Code run that checks the whole panel",
+      "reqs": [
+        "R51"
+      ],
+      "files": [
+        "tools/l3-suite.sh",
+        "tools/l3.sh",
+        "tools/l3-results/panel.json"
+      ],
+      "after": [
+        "P44.3"
+      ],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "Add a 'panel' scenario to tools/l3-suite.sh: a realistic project with phases, history and a plan waiting for approval, started in a wide window (160 columns or more)",
+        "Make it check, in the real app, that the panel shows the milestone and progress, what VBW is doing, what it needs from the user, the cost line and an estimate or the plain 'no basis yet'; that closing it keeps it closed and the sound switch is kept",
+        "Name the scenario in the suite's list and header, state its fixture and what it did not test (the sound itself, a person reading it)",
+        "Run it in the real app and commit tools/l3-results/panel.json"
+      ]
+    },
+    {
+      "id": "P44.5",
+      "phase": "P44",
+      "title": "Explain the cost line and the estimates",
+      "reqs": [
+        "R56",
+        "R58"
+      ],
+      "files": [
+        "docs/panel.md"
+      ],
+      "after": [
+        "P44.3",
+        "P43.4"
+      ],
+      "status": "planned",
+      "role": "docs",
+      "tasks": [
+        "Document the cost line: one line, this session only, and 'not available' when Claude Code gives no cost",
+        "Document the estimates: they need at least 3 finished steps of the same kind, are approximate ('about'), come from this clone's own history in steps.json, and say 'taking longer than usual' instead of a negative time",
+        "Add a short 'reading the panel at a glance' picture of a typical panel"
+      ]
     }
   ],
   "fixes": [
@@ -6387,6 +7258,30 @@
       "id": "D103",
       "at": "2026-10-05T10:47:51Z",
       "text": "Contract approved: 47 requirements, 49 checks, 100 plans (9ef51ee45a52)"
+    },
+    {
+      "id": "D104",
+      "text": "The 'VBW needs you' sound is an mp3 the owner provides, shipped as an asset of the VBW plugin, and it plays even when the panel is closed",
+      "why": "Owner (2026-10-05): will create the mp3 and place it where told; playing with the panel closed keeps the alert from silently disappearing (the recommended part of the first option)",
+      "at": "2026-10-05T13:18:24Z"
+    },
+    {
+      "id": "D105",
+      "text": "The sound is on by default; one click in the panel or one command turns it off, and the choice is remembered",
+      "why": "Owner chose the recommended option: users learn the alert exists, and turning it off is instant",
+      "at": "2026-10-05T13:18:24Z"
+    },
+    {
+      "id": "D106",
+      "text": "The panel shows the session cost as one small line: cost so far",
+      "why": "Owner chose the recommended option: calm and readable, no breakdown",
+      "at": "2026-10-05T13:18:24Z"
+    },
+    {
+      "id": "D107",
+      "text": "Panel wording: plain sentences with the technical name in small text beside them",
+      "why": "Owner (level never, 'plain with technical terms explained'): learn the terms over time; accepts a busier panel",
+      "at": "2026-10-05T13:18:25Z"
     }
   ],
   "commands": {

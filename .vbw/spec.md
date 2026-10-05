@@ -64,6 +64,7 @@ VBW is a Claude Code plugin that makes it build software properly: the user agre
 - R55 [auto] The panel stays light: it uses no network, and its updates do not slow Claude Code down
 - R56 [auto] The panel shows how much the current session has cost so far
 - R57 [auto] VBW plays a short sound when it needs the user (an approval, a question, a result to check); one click in the panel or one command turns it off or on, and the choice is remembered
+- R58 [auto] The panel shows an estimated time left for the current step and for the milestone, based on how long earlier steps took in this project, and says plainly when it has no basis for an estimate yet
 
 <!-- One requirement per line: an id, how it is proved, and a user-observable
      statement. [auto] = a check can prove it; [human] = only a person can judge it.

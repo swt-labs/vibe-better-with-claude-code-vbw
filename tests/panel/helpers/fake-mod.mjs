@@ -1,0 +1,299 @@
+// A stand-in for Claude Code's mods API, enough to drive VBW's panel module
+// (plugin/hooks/panel.js) in a test: the hooks it registers with `on`, the
+// calls it makes on `$`, a virtual file system, a store, a clock the test
+// advances, and a record of every call. Nothing here touches the real disk,
+// the network or Claude Code (evidence level L1).
+import path from 'node:path'
+import { fileURLToPath, pathToFileURL } from 'node:url'
+
+const here = path.dirname(fileURLToPath(import.meta.url))
+export const PLUGIN = process.env.VBW_TEST_PLUGIN_ROOT || path.resolve(here, '../../../plugin')
+export const ROOT = '/proj'
+export const PANE = 'vbw-panel'
+export const T0 = 1_800_000_000_000
+let instance = 0
+
+export function deepFreeze(x) {
+  if (x && typeof x === 'object' && !Object.isFrozen(x)) {
+    Object.freeze(x)
+    for (const k of Object.keys(x)) deepFreeze(x[k])
+  }
+  return x
+}
+
+// A project record with the fields the panel reads.
+export function record(over = {}) {
+  return {
+    schema: 2,
+    project: { name: 'demo' },
+    milestone: { id: 'M9', title: 'Live VBW panel', status: 'active' },
+    phases: [
+      { id: 'P1', title: 'Old work', milestone: 'M1', qa: { result: 'pass' } },
+      { id: 'P42', title: 'Panel text', milestone: 'M9', qa: { result: 'pass' } },
+      { id: 'P43', title: 'Open and close', milestone: 'M9', qa: { result: 'pass' } },
+      { id: 'P44', title: 'Cost', milestone: 'M9' },
+      { id: 'P45', title: 'Estimates', milestone: 'M9' },
+      { id: 'P46', title: 'Docs', milestone: 'M9' },
+    ],
+    plans: [
+      { id: 'P44.1', phase: 'P44', title: 'Show the cost', status: 'planned' },
+      { id: 'P44.2', phase: 'P44', title: 'Show the estimate', status: 'planned' },
+    ],
+    requirements: [],
+    lease: null,
+    ...over,
+  }
+}
+
+export function next(over = {}) {
+  return { action: 'build', gate: false, instruction: 'Run the build workflow', detail: {}, ...over }
+}
+
+export function lease(kind, startedAtMs, extra = {}) {
+  return { run: kind + '-1', kind, started_at: new Date(startedAtMs).toISOString().replace(/\.\d+Z$/, 'Z'), files: null, ...extra }
+}
+
+function matches(matcher, e) {
+  if (!matcher) return true
+  return Object.entries(matcher).every(([k, v]) => (Array.isArray(v) ? v.includes(e?.[k]) : e?.[k] === v))
+}
+
+// mount(options) loads a fresh copy of the panel module and registers its hooks.
+// options: version, root, files (path -> text), store (a Map shared between
+// mounts to model a restart), usage, usageError, placed (ui.open answer),
+// audioFails, modulePath.
+export async function mount(options = {}) {
+  const o = { version: '2.1.289', root: ROOT, usage: { cost: { usd: 1.4234 } }, placed: true, ...options }
+  const files = new Map()
+  const store = o.store || new Map()
+  const handlers = []
+  const timers = []
+  const calls = []
+  const errors = []
+  const plays = []
+  const opens = []
+  let now = T0
+  let clockSeq = 0
+
+  const h = { calls, errors, plays, opens, store, files, handlers }
+  h.now = () => now
+
+  function put(p, text) {
+    files.set(p, { text, mtimeMs: now + ++clockSeq / 1000 })
+  }
+  for (const [p, text] of Object.entries(o.files || {})) put(p, text)
+  h.write = (p, text) => put(p, typeof text === 'string' ? text : JSON.stringify(text))
+  h.remove = (p) => files.delete(p)
+  h.project = (rec, nxt) => {
+    if (rec !== undefined) h.write(o.root + '/.vbw/record.json', rec)
+    if (nxt !== undefined) h.write(o.root + '/.vbw/runtime/next.json', nxt)
+  }
+  h.git = () => {
+    if (![...files.keys()].some((p) => p.startsWith(o.root + '/.git/'))) put(o.root + '/.git/HEAD', 'ref: refs/heads/main\n')
+  }
+  h.setUsage = (u) => void (o.usage = u)
+  h.snapshot = () => JSON.stringify([...files.entries()].sort())
+
+  const dirs = () => {
+    const s = new Set(o.dirs || [])
+    for (const p of files.keys()) {
+      let d = path.posix.dirname(p)
+      while (d && d !== '/' && !s.has(d)) {
+        s.add(d)
+        d = path.posix.dirname(d)
+      }
+    }
+    return s
+  }
+
+  const impl = {
+    'session.version': () => ({ version: o.version, base: o.version }),
+    'session.root': () => o.root,
+    'session.cwd': () => o.root,
+    'session.usage': () => {
+      if (o.usageError) throw new Error('no ledger')
+      return o.usage
+    },
+    'fs.read': (p) => {
+      const f = files.get(p)
+      if (!f) throw new Error('ENOENT ' + p)
+      return f.text
+    },
+    'fs.exists': (p) => files.has(p) || dirs().has(p),
+    'fs.stat': (p) => {
+      const f = files.get(p)
+      if (f) return { kind: 'file', size: f.text.length, mtimeMs: f.mtimeMs, isLink: false }
+      if (dirs().has(p)) return { kind: 'dir', size: 0, mtimeMs: 0, isLink: false }
+      throw new Error('ENOENT ' + p)
+    },
+    'store.get': (k) => (store.has(k) ? store.get(k) : undefined),
+    'store.set': (k, v) => void store.set(k, v),
+    'store.delete': (k) => void store.delete(k),
+    'clock.now': () => now,
+    'clock.every': (ms, fn) => {
+      const t = { ms, fn, at: now + ms, dead: false, cancel() { t.dead = true } }
+      timers.push(t)
+      return t
+    },
+    'clock.after': (ms, fn) => {
+      const t = { ms, fn, at: now + ms, dead: false, once: true, cancel() { t.dead = true } }
+      timers.push(t)
+      return t
+    },
+    'ui.open': (a) => {
+      opens.push(a)
+      return typeof o.placed === 'function' ? o.placed(a) : o.placed ? { isPlaced: true } : { isPlaced: false, reason: 'the terminal is too narrow' }
+    },
+    'ui.close': () => undefined,
+    'ui.invalidate': () => undefined,
+    'ui.toast': () => undefined,
+    'ui.log': () => undefined,
+    'ui.status': () => undefined,
+    'ui.resolve': () => ({
+      Box: (props) => ({ type: 'Box', props, children: props.children || [] }),
+      Text: (props) => ({ type: 'Text', props, children: props.children || [] }),
+      Button: (props) => ({ type: 'Button', props, children: [] }),
+    }),
+    'command.register': () => undefined,
+    'audio.play': (clip) => {
+      if (o.audioFails) throw new Error('no player')
+      plays.push(clip)
+    },
+  }
+
+  // Timers and redraw requests answer at once, as in Claude Code; every other call is async.
+  const SYNC = new Set(['clock.every', 'clock.after', 'ui.invalidate', 'ui.resolve'])
+  const ns = (name) =>
+    new Proxy({}, {
+      get: (_, method) => (...args) => {
+        const key = name + '.' + String(method)
+        calls.push({ name: key, args })
+        if (!impl[key]) return Promise.reject(new Error('no implementation for ' + key))
+        if (SYNC.has(key)) return impl[key](...args)
+        return (async () => impl[key](...args))()
+      },
+    })
+  const cache = {}
+  const $ = new Proxy({}, { get: (_, n) => (cache[n] ??= ns(String(n))) })
+  h.$ = $
+
+  const on = (event, a, b) => {
+    const matcher = typeof a === 'function' ? undefined : a
+    const fn = typeof a === 'function' ? a : b
+    handlers.push({ event, matcher, fn })
+    return { catch() {} }
+  }
+
+  const entry = path.join(o.modulePath || path.join(PLUGIN, 'hooks/panel.js'))
+  const mod = await import(pathToFileURL(entry).href + '?i=' + ++instance)
+  mod.register(on, {})
+
+  h.count = (name) => calls.filter((c) => c.name === name).length
+  h.callsOf = (name) => calls.filter((c) => c.name === name).map((c) => c.args)
+  h.names = () => [...new Set(calls.map((c) => c.name))]
+
+  // Fire an event through the registered hooks, in order. `terminal` answers when
+  // every hook passed the event on (default: the event itself).
+  h.fire = async (event, e, terminal) => {
+    const chain = handlers.filter((x) => x.event === event && matches(x.matcher, e))
+    const run = async (i, ev) => {
+      if (i >= chain.length) return terminal ? terminal(ev) : ev
+      const nextFn = (e2) => run(i + 1, e2)
+      nextFn.signal = new AbortController().signal
+      try {
+        return await chain[i].fn($, ev, nextFn)
+      } catch (err) {
+        errors.push({ event, error: String(err?.stack || err) })
+        return run(i + 1, ev)
+      }
+    }
+    return run(0, e)
+  }
+  h.start = () => h.fire('session.start', { surface: 'terminal', isInteractive: true, cwd: o.root })
+  h.cmd = (command, args = '') => h.fire('command.run', { command, args })
+  h.render = (extra = {}) =>
+    h.fire('ui.render', {
+      plugin: 'vbw', component: 'Pane', requestId: PANE, surface: 'terminal', viewport: { columns: 160, rows: 40 },
+      props: { title: 'VBW', isFocused: false, bodyColumns: 50, placement: 'dock', scroll: { offset: 0, bodyRows: 30 }, view: {} },
+      ...extra,
+    }, () => ({ type: 'engine', ref: 'default' }))
+  h.settle = async () => {
+    for (let i = 0; i < 20; i++) await Promise.resolve()
+    await new Promise((r) => setImmediate(r))
+  }
+  h.advance = async (ms) => {
+    const target = now + ms
+    for (;;) {
+      const live = timers.filter((t) => !t.dead && t.at <= target)
+      if (!live.length) break
+      const t = live.reduce((a, b) => (a.at <= b.at ? a : b))
+      now = t.at
+      if (t.once) t.dead = true
+      else t.at += t.ms
+      try {
+        await t.fn()
+      } catch (err) {
+        errors.push({ event: 'timer', error: String(err?.stack || err) })
+      }
+      await h.settle()
+    }
+    now = target
+  }
+  // Advance in 1 s steps until `ok()` holds; returns the virtual ms it took (or -1).
+  h.until = async (ok, limitMs = 30000) => {
+    for (let t = 0; t <= limitMs; t += 1000) {
+      if (await ok()) return t
+      await h.advance(1000)
+    }
+    return -1
+  }
+  h.texts = async () => collect(await h.render())
+  h.text = async () => (await h.texts()).join('\n')
+  h.press = async (key) => {
+    const b = find(await h.render(), (n) => n.type === 'Button' && n.props.key === key)
+    if (!b) throw new Error('no button ' + key)
+    await b.props.onPress({ surface: 'terminal' })
+    await h.settle()
+  }
+  h.tree = () => h.render()
+  return h
+}
+
+export function walk(node, fn) {
+  if (node === null || typeof node !== 'object') return
+  fn(node)
+  for (const c of node.children || []) walk(c, fn)
+}
+export function find(tree, pred) {
+  let hit
+  walk(tree, (n) => {
+    if (!hit && pred(n)) hit = n
+  })
+  return hit
+}
+export function collect(tree) {
+  const out = []
+  walk(tree, (n) => {
+    if (n.type === 'Text') out.push(n.children.filter((c) => typeof c === 'string').join(''))
+    if (n.type === 'Button' && n.props.label) out.push(String(n.props.label))
+  })
+  return out
+}
+// Text elements drawn dim (the technical term in small text, D107).
+export function dimTexts(tree) {
+  const out = []
+  walk(tree, (n) => {
+    if (n.type === 'Text' && n.props.dimColor) out.push(n.children.filter((c) => typeof c === 'string').join(''))
+  })
+  return out
+}
+
+// What the tests allow the panel to call: it reads, draws, keeps a preference and plays a sound.
+export const ALLOWED = new Set([
+  'session.version', 'session.root', 'session.cwd', 'session.usage',
+  'fs.read', 'fs.stat', 'fs.exists',
+  'store.get', 'store.set',
+  'clock.now', 'clock.every', 'clock.after',
+  'ui.open', 'ui.close', 'ui.invalidate', 'ui.resolve',
+  'command.register', 'audio.play',
+])
