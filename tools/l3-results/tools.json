@@ -1,0 +1,20 @@
+{
+  "scenario": "tools",
+  "fixture": "greet.sh, one small milestone on an empty README project; the interview asks the tools offer; the user answers yes, then Not yet at the proposed list",
+  "cost_usd": 0.83,
+  "evidence_level": "L3",
+  "at": "2026-10-05T19:49:02Z",
+  "passed": true,
+  "facts": {
+    "answer": "yes",
+    "asked_again": false,
+    "installed_before_approval": false,
+    "list_shown": true
+  },
+  "not_tested": [
+    "the answer no",
+    "approving the list and the install itself",
+    "the question in a second session or worktree (covered by the store tests)",
+    "a project with a real stack: the fixture is one shell script"
+  ]
+}
