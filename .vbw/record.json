@@ -8389,6 +8389,11 @@
       "text": "Prompts stay within 16k tokens (11,400 words): remove obsolete instructions and compress the rest into terse caveman style, keeping every text shown to the user word for word (questions, options, greeting, messages)",
       "why": "Owner (2026-10-05): remove only obsolete stuff; caveman it, except the actual text fed to the user. No budget raise",
       "at": "2026-10-05T16:43:26Z"
+    },
+    {
+      "id": "D122",
+      "at": "2026-10-05T17:05:32Z",
+      "text": "Contract approved: 61 requirements, 81 checks, 131 plans (4cfe6f0859c9)"
     }
   ],
   "commands": {
