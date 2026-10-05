@@ -6207,6 +6207,18 @@
       "id": "D94",
       "at": "2026-10-05T01:23:51Z",
       "text": "Contract approved: 47 requirements, 49 checks, 100 plans (c41a5a7698f1)"
+    },
+    {
+      "id": "D95",
+      "text": "Real-user scenarios run where they find bugs: a milestone runs the scenarios for what it changes while it is built; every release runs greenfield plus the changed-area scenarios; the full suite runs before the 2.1 launch and when the core /vbw:vibe loop changes",
+      "why": "Owner (2026-10-05): the full 1-1.5 h run on every milestone release slows development; evidence: the scenarios caught real bugs while features were built, while the full 2.0.17 release run found nothing new",
+      "at": "2026-10-05T02:01:29Z"
+    },
+    {
+      "id": "D96",
+      "text": "Kernel budget 3,500 lines, kept in one place (tests/standards.bats); protected tests defer to it",
+      "why": "Owner (2026-10-05): M8 filled the 3,300 budget and the Dev compressed code to fit; one source means a later change needs no contract change",
+      "at": "2026-10-05T02:01:29Z"
     }
   ],
   "commands": {

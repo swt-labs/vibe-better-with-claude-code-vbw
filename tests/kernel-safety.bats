@@ -96,6 +96,7 @@ EOS
   grep -q "caller" "$TEST_ROOT/out"
 }
 
-@test "the kernel stays within 3,300 lines" {
-  [ "$(cat "$PLUGIN_ROOT"/bin/vbw "$PLUGIN_ROOT"/lib/*.sh | wc -l)" -le 3300 ]
+@test "the kernel stays within its budget (kept in one place: tests/standards.bats)" {
+  run bats --filter 'kernel stays within' "$REPO_ROOT/tests/standards.bats"
+  [ "$status" -eq 0 ]
 }
