@@ -3961,7 +3961,7 @@
       "tier": "deep",
       "reasons": [
         "requirements: 3",
-        "files: 10 (38634 bytes)",
+        "files: 10 (39154 bytes)",
         "risk: CI (.github/workflows/ci.yml)",
         "breaks: R3",
         "tests: project test command"
@@ -3995,7 +3995,7 @@
       "tier": "deep",
       "reasons": [
         "requirements: 2",
-        "files: 20 (378112 bytes)",
+        "files: 20 (378685 bytes)",
         "risk: none",
         "breaks: R3, R38, R39",
         "tests: project test command"
@@ -4036,7 +4036,7 @@
       "tier": "deep",
       "reasons": [
         "requirements: 4",
-        "files: 11 (112401 bytes)",
+        "files: 11 (113463 bytes)",
         "risk: none",
         "breaks: R1, R2, R4, R5, R8, R13, R14, R18, R29, R32, R33, R34, R42, R48",
         "tests: project test command"
@@ -4085,7 +4085,7 @@
       "tier": "deep",
       "reasons": [
         "requirements: 2",
-        "files: 6 (102913 bytes)",
+        "files: 6 (103344 bytes)",
         "risk: none",
         "breaks: R4, R5, R8, R13, R14, R22, R24, R25, R26, R28, R31, R34, R37, R38, R39, R40, R42, R44, R48, R50",
         "tests: project test command"
@@ -4119,9 +4119,9 @@
       "tier": "deep",
       "reasons": [
         "requirements: 1",
-        "files: 14 (142367 bytes)",
+        "files: 26 (179243 bytes)",
         "risk: none",
-        "breaks: R3, R4, R5, R8, R12, R13, R14, R15, R22, R24, R25, R26, R27, R28, R31, R32, R34, R37, R38, R39, R40, R42, R43, R44, R45, R46, R47, R48, R49, R50",
+        "breaks: R3, R4, R5, R8, R12, R13, R14, R15, R22, R23, R24, R25, R26, R27, R28, R31, R32, R34, R35, R36, R37, R38, R39, R40, R42, R43, R44, R45, R46, R47, R48, R49, R50",
         "tests: project test command"
       ],
       "predicted": "deep",
@@ -4167,7 +4167,7 @@
       "tier": "deep",
       "reasons": [
         "requirements: 2",
-        "files: 10 (106553 bytes)",
+        "files: 10 (107177 bytes)",
         "risk: none",
         "breaks: R3, R4, R5, R8, R13, R14, R22, R23, R24, R25, R27, R28, R31, R34, R37, R38, R39, R40, R42, R43, R44, R45, R46, R47, R48, R49",
         "tests: project test command"
@@ -7066,17 +7066,18 @@
         "plugin/skills/help/SKILL.md"
       ],
       "after": [
+        "P45.2",
         "P46.1",
-        "P45.2"
+        "P46.5",
+        "P46.7"
       ],
-      "status": "blocked",
+      "status": "planned",
       "tasks": [
         "Replace 'ask user to type /vbw:approve' in the router's approve step: ask with AskUserQuestion using the 'approval question' and options that vbw show contract prints (Approve first, Not yet; the user's own words come from the app's own-answer slot); keep 'You cannot approve' and that /vbw:approve still works",
         "Say what to do with each answer: Approve continues the loop (the hook has recorded it), Not yet asks what to change, own words are treated as what to change or as a question; trim other wording so the router stays at or under 1,400 words and all prompts within 16k tokens",
         "Mention the choice next to /vbw:approve in the help"
       ],
-      "role": "dev",
-      "note": "Approve step and help are done and committed (router 1,332 words). C76 cannot pass inside this plan's files, for two reasons. (1) The all-prompts budget test needs the skills and agents to total at most 11,400 words; they total 11,827 now, and were already 11,695 before this plan (growth from earlier plans, mostly interview 782 and lead 831 words). Cutting 430 words from the router and help alone would gut them. Decision needed: trim other prompts (interview, lead, dev) in a plan that owns them, or raise the budget (owner decision). (2) C76 also checks docs/proof.md, docs/guards.md and README.md, which are not in P46.4's files; presumably a docs plan (P46.5?) delivers them. Also tests/profile-levels.bats 'every workflow agent call carries the profile' fails on a workflow count, unrelated to my files."
+      "role": "dev"
     },
     {
       "id": "P46.5",
@@ -7091,8 +7092,7 @@
         "README.md"
       ],
       "after": [
-        "P46.2",
-        "P46.4"
+        "P46.2"
       ],
       "status": "planned",
       "tasks": [
@@ -7303,11 +7303,62 @@
         "P44.6"
       ],
       "status": "done",
-      "role": "dev",
       "tasks": [
         "Every redraw calls $.ui.invalidate('ui.render'): Claude Code 2.1.289 drops an unnamed redraw, so the panel only updated when reopened (real-app run)",
         "Test mode: a project holding .vbw/runtime/test-mode is a VBW test session; the panel then plays no audio (it only counts what it would have played) and keeps its choices under test.vbw-panel.* keys, never the user's; the panel still reads no environment (R55)",
         "C53, C59, C84 and every other panel check pass against the stand-in"
+      ],
+      "role": "dev"
+    },
+    {
+      "id": "P46.7",
+      "phase": "P46",
+      "title": "VBW's instructions fit their budget again, written tersely",
+      "reqs": [
+        "R61"
+      ],
+      "files": [
+        "plugin/agents/lead.md",
+        "plugin/agents/dev.md",
+        "plugin/agents/architect.md",
+        "plugin/agents/qa.md",
+        "plugin/agents/debugger.md",
+        "plugin/agents/scout.md",
+        "plugin/agents/docs.md",
+        "plugin/skills/interview/SKILL.md",
+        "plugin/skills/skills/SKILL.md",
+        "plugin/skills/convert/SKILL.md",
+        "plugin/skills/profile/SKILL.md",
+        "plugin/skills/config/SKILL.md"
+      ],
+      "after": [
+        "P47.4"
+      ],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "Remove obsolete instructions, then compress what Claude reads into terse caveman style (as /vbw:compress does: every fact, rule, path, command and code block kept); keep every text shown to the user word for word: questions, options, the greeting, messages (D121)",
+        "All prompts together within 11,000 words (budget 11,400, tests/profile-levels.bats); the router and help are left to P46.4",
+        "Every existing test that reads these prompts still passes (tests/*.bats on agents and skills); the full suite has no new failure"
+      ]
+    },
+    {
+      "id": "P47.7",
+      "phase": "P47",
+      "title": "The tool-search Scouts write at the user's level",
+      "reqs": [
+        "R62"
+      ],
+      "files": [
+        "plugin/workflows/tooling.js"
+      ],
+      "after": [
+        "P47.2"
+      ],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "tooling.js passes args.profile (level, explanation depth, involvement) into every Scout task, as every other workflow does (R39); tests/profile-levels.bats 'every workflow agent call carries the profile' passes, and C79 still passes"
       ]
     }
   ],
@@ -8332,6 +8383,12 @@
       "id": "D120",
       "at": "2026-10-05T16:31:55Z",
       "text": "Contract approved: 61 requirements, 81 checks, 129 plans (bfb21815a958)"
+    },
+    {
+      "id": "D121",
+      "text": "Prompts stay within 16k tokens (11,400 words): remove obsolete instructions and compress the rest into terse caveman style, keeping every text shown to the user word for word (questions, options, greeting, messages)",
+      "why": "Owner (2026-10-05): remove only obsolete stuff; caveman it, except the actual text fed to the user. No budget raise",
+      "at": "2026-10-05T16:43:26Z"
     }
   ],
   "commands": {
