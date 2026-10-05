@@ -1,16 +1,21 @@
 #!/usr/bin/env bash
-# vbw legacy [facts] | done | remove: a VBW 1 project (.vbw-planning/) and its
+# vbw legacy [facts] | review | done | remove: a VBW 1 project (.vbw-planning/) and its
 # conversion (docs/convert.md). VBW 2 never changes .vbw-planning/ on its own:
-# facts only reads it; remove deletes it, after the conversion, only when the
+# facts and review only read it; remove deletes it, after the conversion, only when the
 # user chose to.
 
 VBW_LEGACY=.vbw-planning
 
 cmd_legacy() {
   local sub="${1:-facts}"
-  [ $# -le 1 ] || vbw_usage_error "usage: vbw legacy [facts] | done | remove"
+  [ $# -le 1 ] || vbw_usage_error "usage: vbw legacy [facts] | review | done | remove"
   case "$sub" in
     facts) legacy_facts ;;
+    review)
+      # shellcheck source=legacy-review.sh
+      . "$VBW_LIB/legacy-review.sh"
+      legacy_review
+      ;;
     done)
       vbw_require_project
       [ -d "$VBW_ROOT/$VBW_LEGACY" ] || vbw_die "no $VBW_LEGACY/ here: nothing to convert"
@@ -25,7 +30,7 @@ cmd_legacy() {
         || vbw_die "$VBW_LEGACY/ is not converted yet: convert it first (/vbw:convert), so nothing is lost"
       legacy_remove
       ;;
-    *) vbw_usage_error "usage: vbw legacy [facts] | done | remove" ;;
+    *) vbw_usage_error "usage: vbw legacy [facts] | review | done | remove" ;;
   esac
 }
 
