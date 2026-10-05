@@ -63,6 +63,7 @@ teardown() { vbw_teardown; }
   [ "$status" -eq 1 ]
   vbw_run show nonsense
   [ "$status" -eq 2 ]
+  [[ "$output" == *"rigor | qa"* ]]
 }
 
 @test "show req matches requirement ids exactly (R1 is not R12)" {
