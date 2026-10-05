@@ -30,6 +30,17 @@
           }
         ]
       }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "AskUserQuestion",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "out=$(jq -c -f \"${CLAUDE_PLUGIN_ROOT}/hooks/approve-answer.jq\" 2>/dev/null); [ -z \"$out\" ] || bash \"${CLAUDE_PLUGIN_ROOT}/hooks/approve-answer.sh\" \"$out\" 2>/dev/null || true"
+          }
+        ]
+      }
     ]
   }
 }
