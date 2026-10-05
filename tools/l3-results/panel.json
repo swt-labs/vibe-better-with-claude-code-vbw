@@ -1,0 +1,27 @@
+{
+  "scenario": "panel",
+  "fixture": "greet.sh and farewell.sh, two phases: the first passed QA, the second plan waits for the user's approval; no finished steps in the clone (so no estimate basis); window 200 columns wide",
+  "cost_usd": 0.1273,
+  "evidence_level": "L3",
+  "at": "2026-10-05T16:35:13Z",
+  "passed": true,
+  "facts": {
+    "milestone_shown": true,
+    "progress_shown": true,
+    "doing_shown": true,
+    "need_shown": true,
+    "need_text": "Please approve the plan before VBW builds it.",
+    "cost_shown": true,
+    "estimate_shown": "no basis yet",
+    "sound_shown_off": true,
+    "closed_by_click": true,
+    "closed_stays_closed": true,
+    "sound_toggle_persisted": true
+  },
+  "not_tested": [
+    "the sound itself (nothing was heard: the run only checks the switch)",
+    "what a person reads at a glance: wording and layout are judged on the screen text, not by a reader",
+    "a narrow window (the panel is opened with /vbw-panel there)",
+    "a panel while a build or QA runs, and a time estimate with a number"
+  ]
+}
