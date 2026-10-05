@@ -21,7 +21,7 @@ cmd_next() {
   contract_approved "$hash" && commands_approved "$record" && approved=true
   next_code_changed "$record" && changed=true
   # A VBW 1 plan not yet converted (docs/convert.md).
-  [ -d "$VBW_ROOT/.vbw-planning" ] && ! printf '%s' "$record" | jq -e 'has("converted")' > /dev/null && legacy=true
+  [ -d "$VBW_ROOT/.vbw-planning" ] && ! printf '%s' "$record" | jq -e 'has("converted") or .project.legacy.choice == "fresh"' > /dev/null && legacy=true
   # Tracked files, and of those the code: outside .vbw/ and not markdown or text.
   counts=$(git -C "$VBW_ROOT" ls-files -z 2> /dev/null | jq -Rs '[split("\u0000")[] | select(length > 0)]
     | {tracked: length, code: ([.[] | select((startswith(".vbw/") or test("\\.(md|markdown|txt)$")) | not)] | length)}')

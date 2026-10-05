@@ -66,6 +66,9 @@ if type != "object" then ["record must be a JSON object"] else
     ( $r.project.tools? | select(. != null)
       | select((type == "object" and (keys | sort) == ["answer","at"] and (.answer | one_of(["yes","no"])) and (.at | iso)) | not)
       | "project.tools must be an answer (yes or no) and an ISO-8601 UTC time" ),
+    ( $r.project.legacy? | select(. != null)
+      | select((type == "object" and (keys | sort) == ["at","choice"] and (.choice | one_of(["convert","fresh"])) and (.at | iso)) | not)
+      | "project.legacy must be a choice (convert or fresh) and an ISO-8601 UTC time" ),
     ( $r.project.declined? | select(. != null)
       | ( select(type != "array") | "project.declined must be an array" ),
         ( select(type == "array") | .[]

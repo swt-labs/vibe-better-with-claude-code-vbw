@@ -45,7 +45,7 @@ usage: vbw <command> [args]
   todo [list] | add TEXT | done ID | drop ID   the backlog
   decide TEXT [WHY]   record a decision the user made, and why
   tier raise PHASE TIER REASON   raise a phase's rigor tier and record why (never lowered during a run)
-  legacy [facts] | review | done | remove   a VBW 1 project (.vbw-planning/): facts, review and recommendation, mark converted, remove
+  legacy [facts] | review | choose | done | remove   a VBW 1 project (.vbw-planning/): facts, review and recommendation, record convert or fresh, mark converted, remove
   interview [--json] | set level|depth|involvement VALUE | keep private|project   the interview's answers and where they are kept
   suggest decline TEXT | list   suggestions the user declined (never offered again)
   doctor            check everything VBW needs, with the fix for anything wrong

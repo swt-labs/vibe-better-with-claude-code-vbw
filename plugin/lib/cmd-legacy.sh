@@ -1,20 +1,29 @@
 #!/usr/bin/env bash
-# vbw legacy [facts] | review | done | remove: a VBW 1 project (.vbw-planning/) and its
+# vbw legacy [facts] | review | choose | done | remove: a VBW 1 project (.vbw-planning/) and its
 # conversion (docs/convert.md). VBW 2 never changes .vbw-planning/ on its own:
-# facts and review only read it; remove deletes it, after the conversion, only when the
+# facts and review only read it; choose records the user's choice (project.legacy);
+# remove deletes it, after the conversion, only when the
 # user chose to.
 
 VBW_LEGACY=.vbw-planning
 
 cmd_legacy() {
   local sub="${1:-facts}"
-  [ $# -le 1 ] || vbw_usage_error "usage: vbw legacy [facts] | review | done | remove"
+  [ $# -le 1 ] || [ "$sub" = choose ] || vbw_usage_error "usage: vbw legacy [facts] | review | choose convert|fresh | done | remove"
   case "$sub" in
     facts) legacy_facts ;;
     review)
       # shellcheck source=legacy-review.sh
       . "$VBW_LIB/legacy-review.sh"
       legacy_review
+      ;;
+    choose)
+      [ $# -eq 2 ] && { [ "$2" = convert ] || [ "$2" = fresh ]; } || vbw_usage_error "usage: vbw legacy choose convert|fresh"
+      vbw_require_project
+      [ -d "$VBW_ROOT/$VBW_LEGACY" ] || vbw_die "no $VBW_LEGACY/ here: nothing to choose"
+      record_update '.project.legacy = {choice: $c, at: $at}' --arg c "$2" --arg at "$(vbw_now)"
+      record_commit "chore(vbw): VBW 1 plan: $2"
+      printf 'chosen: %s (%s/ is not touched)\n' "$2" "$VBW_LEGACY"
       ;;
     done)
       vbw_require_project
@@ -30,7 +39,7 @@ cmd_legacy() {
         || vbw_die "$VBW_LEGACY/ is not converted yet: convert it first (/vbw:convert), so nothing is lost"
       legacy_remove
       ;;
-    *) vbw_usage_error "usage: vbw legacy [facts] | review | done | remove" ;;
+    *) vbw_usage_error "usage: vbw legacy [facts] | review | choose convert|fresh | done | remove" ;;
   esac
 }
 
