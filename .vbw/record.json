@@ -8893,6 +8893,11 @@
       "text": "F36: keep commit 977ce2ef (standards rule: no brace-literal parameter defaults) as made outside a plan",
       "why": "chosen by VBW: it enforces the bash 3.2 floor after two helpers broke under /bin/bash; tests/standards.bats is unprotected maintenance; history is never rewritten; P47.7 in the escalation text was a dropped plan (misdiagnosis, the workflow-count test was fixed instead)",
       "at": "2026-10-05T20:36:16Z"
+    },
+    {
+      "id": "D126",
+      "at": "2026-10-05T21:53:52Z",
+      "text": "Contract approved: 62 requirements, 90 checks, 138 plans (84c8bef1d021)"
     }
   ],
   "commands": {
