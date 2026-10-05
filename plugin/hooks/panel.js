@@ -9,6 +9,9 @@ const PANE = 'vbw-panel'
 const TICK_MS = 2000
 // The user's choice lives in Claude Code's per-user store, never in the project.
 const CLOSED_KEY = 'vbw-panel.closed'
+const SOUND_KEY = 'vbw-panel.sound'
+// The plugin's own sound file, played once per request for the user.
+const CLIP = { asset: 'assets/needs-you.mp3' }
 const isObj = (x) => x !== null && typeof x === 'object' && !Array.isArray(x)
 
 // Parse a project file; null when it is not a JSON object (half written, invalid).
@@ -23,7 +26,7 @@ function parse(text) {
 
 // What the panel knows: the last good state of both files, what is drawn, what is asked.
 function fresh() {
-  return { live: false, timer: null, busy: false, question: null, record: null, next: null, shown: '', seen: {} }
+  return { live: false, timer: null, busy: false, question: null, sound: true, alerted: null, record: null, next: null, shown: '', seen: {} }
 }
 
 const view = (st, now) => panelView({ record: st.record, next: st.next, question: st.question, now })
@@ -49,8 +52,24 @@ async function refresh($, st, path, key) {
   if (v) st[key] = v
 }
 
+// Play the sound once when a need appears; the same need never plays it again.
+// A missing file or player is silent.
+async function alert($, st, need) {
+  const key = need ? need.key : null
+  if (key === st.alerted) return
+  st.alerted = key
+  if (!key || !st.sound) return
+  try {
+    await $.audio.play(CLIP)
+  } catch {
+    // no file or no player: nothing to say
+  }
+}
+
 async function redrawIfChanged($, st) {
-  const sig = JSON.stringify(view(st, await $.clock.now()))
+  const v = view(st, await $.clock.now())
+  await alert($, st, v.need)
+  const sig = JSON.stringify([v, st.sound])
   if (sig === st.shown) return
   st.shown = sig
   $.ui.invalidate()
@@ -67,6 +86,21 @@ async function tick($, st, root) {
     // keep the last good state
   } finally {
     st.busy = false
+  }
+}
+
+// Switch the sound and keep the choice in the user's store; the panel redraws.
+async function setSound($, st, on) {
+  st.sound = on
+  try {
+    await $.store.set(SOUND_KEY, on)
+  } catch {
+    // the choice holds for this session
+  }
+  try {
+    await redrawIfChanged($, st)
+  } catch {
+    // the next tick draws it
   }
 }
 
@@ -92,10 +126,14 @@ export function register(on) {
       st.live = true
       await refresh($, st, root + '/.vbw/record.json', 'record')
       await refresh($, st, root + '/.vbw/runtime/next.json', 'next')
-      st.shown = JSON.stringify(view(st, await $.clock.now()))
+      st.sound = (await $.store.get(SOUND_KEY)) !== false
+      const v0 = view(st, await $.clock.now())
+      st.alerted = v0.need ? v0.need.key : null // a need already standing at start is not announced
+      st.shown = JSON.stringify([v0, st.sound])
       if (st.timer && st.timer.cancel) st.timer.cancel()
       st.timer = $.clock.every(TICK_MS, () => tick($, st, root))
       $.command.register({ name: 'vbw-panel', description: 'Open the VBW panel', immediate: true })
+      $.command.register({ name: 'vbw-sound', description: "Turn the 'needs you' sound on or off", immediate: true })
       if ((await $.store.get(CLOSED_KEY)) !== true) await open($)
     } catch {
       // the panel stays out of the way
@@ -112,6 +150,11 @@ export function register(on) {
       }
       await open($, { focus: true })
       return { text: 'The VBW panel is open.' }
+    }
+    if (st.live && isObj(e) && e.command === 'vbw-sound') {
+      const word = String(e.args ?? '').trim().toLowerCase()
+      if (word === '' || word === 'on' || word === 'off') await setSound($, st, word === '' ? !st.sound : word === 'on')
+      return { text: "The 'needs you' sound is " + (st.sound ? 'on' : 'off') + '.' }
     }
     return next(e)
   })
@@ -152,7 +195,7 @@ export function register(on) {
   on('ui.render', async ($, e, next) => {
     if (!st.live || !isObj(e) || e.requestId !== PANE) return next(e)
     try {
-      const { Box, Text } = await $.ui.resolve()
+      const { Box, Text, Button } = await $.ui.resolve()
       const v = view(st, await $.clock.now())
       const rows = v.rows.map((r) =>
         Box({
@@ -164,6 +207,14 @@ export function register(on) {
             Text({ children: [String(r.term)], dimColor: true }),
           ],
         }))
+      rows.push(Box({
+        key: 'sound',
+        flexDirection: 'row',
+        children: [
+          Text({ children: ['Sound is ' + (st.sound ? 'on' : 'off') + '. '] }),
+          Button({ key: 'sound-toggle', label: st.sound ? 'Turn off' : 'Turn on', onPress: () => setSound($, st, !st.sound) }),
+        ],
+      }))
       return Box({ flexDirection: 'column', children: rows })
     } catch {
       return next(e)
