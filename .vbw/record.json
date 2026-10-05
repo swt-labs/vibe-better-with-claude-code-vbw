@@ -6050,7 +6050,7 @@
         "plugin/hooks/panel-view.js"
       ],
       "after": [],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "Write the rule for which Claude Code versions have the panel (2.1.287 and newer; anything unreadable counts as older)",
@@ -6193,7 +6193,7 @@
         "plugin/skills/help/SKILL.md"
       ],
       "after": [],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "Write the /vbw:panel skill: it checks claude --version and says plainly, at the user's level, that the panel and its sound need Claude Code 2.1.287 or newer (how to update), or otherwise how to use /vbw-panel and /vbw-sound",
@@ -6238,7 +6238,7 @@
         "plugin/lib/core.sh"
       ],
       "after": [],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "When a run ends, add one finished step (kind, run, start, end, seconds) to the clone's own cache $(git common dir)/vbw/steps.json, shared by worktrees, keeping the latest 50 (no record field, no tracked file)",
@@ -6258,7 +6258,7 @@
         "plugin/hooks/panel-estimate.js"
       ],
       "after": [],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "Write the pure estimate rules: the usual time of a kind of step is the median of the last 10 finished steps of that kind, and fewer than MIN_STEPS = 3 means no basis",
