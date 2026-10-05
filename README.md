@@ -26,7 +26,8 @@ with you.
 2. **Plan it, with tests first.** VBW plans the work in small parts and writes
    a test for every requirement, and for every rule a requirement states (each
    condition, edge and error case). The tests fail today; that is the point.
-3. **You approve.** `/vbw:approve`. Nothing VBW runs is unapproved, and the
+3. **You approve.** One choice, with Approve first so Enter approves (or type
+   `/vbw:approve`). Nothing VBW runs is unapproved, and the
    tests cannot be weakened afterwards to make work "pass".
 4. **Build in parallel.** Independent parts are built at the same time by
    separate Dev agents, each until its own tests pass. Every commit names the
@@ -78,8 +79,10 @@ Your first project. In your project's folder (any git repository, new or existin
 
    ![VBW asking a decision with a recommendation](assets/first-question.png)
 
-3. **Plan and approve.** VBW shows the plan and its tests. Read them, then run
-   `/vbw:approve`.
+3. **Plan and approve.** VBW shows the plan and its tests. Read them, then answer
+   the question it asks: **Approve** is the first choice, so Enter approves
+   the contract shown. **Not yet** or your own words tell VBW what to change.
+   Typing `/vbw:approve` still works.
 
    ![The plan and its tests, ready for approval](assets/approve.png)
 
