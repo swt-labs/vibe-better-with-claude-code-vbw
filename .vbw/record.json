@@ -6320,7 +6320,8 @@
       "files": [
         "docs/panel.md",
         "README.md",
-        "tools/bench-panel.sh"
+        "tools/bench-panel.sh",
+        "plugin/skills/panel/SKILL.md"
       ],
       "after": [
         "P43.3",
@@ -6332,7 +6333,8 @@
         "Document opening by itself (wide windows), /vbw-panel at any width, and that closing it keeps it closed until you open it again",
         "Document the sound: when it plays, /vbw-sound, the button, that it is on by default, where the choice is kept (your own machine, never committed), and where the mp3 lives",
         "List /vbw:panel, /vbw-panel and /vbw-sound in README.md",
-        "tools/bench-panel.sh prints \"sound, need raised: X ms CPU\" from bench-panel.mjs and holds it to the budget (C60)"
+        "tools/bench-panel.sh prints \"sound, need raised: X ms CPU\" from bench-panel.mjs and holds it to the budget (C60)",
+        "Trim plugin/skills/panel/SKILL.md so all prompts stay within 11,400 words (R39, C36; today 11,437), keeping what it tells users on older Claude Code"
       ],
       "role": "dev"
     },
@@ -7437,6 +7439,12 @@
       "text": "The 'needs you' sound is picked at random from plugin/assets/audio/<character>/ (today: charlize, c1-c11.mp3, 1.4-2.7 s, about 34 KB each), through a generated list shipped with the panel and a test that the list matches the folders; choosing a character comes later",
       "why": "Owner (2026-10-05): several versions per character, more characters over time, random now and user choice later. Claude Code plays a plugin asset by path but lists folders only relative to the project, so the panel cannot discover the files at runtime. Supersedes the single-file part of D104",
       "at": "2026-10-05T14:32:41Z"
+    },
+    {
+      "id": "D110",
+      "text": "The shipped plugin may be up to 2 MB (was 1 MB, design section 10, ledger D295)",
+      "why": "Owner (2026-10-05): the needs-you sounds (380 KB today, more characters and variations coming) pushed the plugin to 1,092 KB; the limit is VBW's own, not Anthropic's",
+      "at": "2026-10-05T14:53:40Z"
     }
   ],
   "commands": {
