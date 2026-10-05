@@ -1599,7 +1599,20 @@
       "proof": "auto",
       "status": "open",
       "milestone": "M9",
-      "rules": []
+      "rules": [
+        {
+          "text": "adding a phase mid-milestone keeps the QA verdicts of the phases already checked",
+          "check": "C95"
+        },
+        {
+          "text": "after the new phase is built, QA is asked to check only the new phase; the others stand",
+          "check": "C95"
+        },
+        {
+          "text": "a kept phase whose goal or plan changed in the re-plan is checked again, with that reason",
+          "check": "C95"
+        }
+      ]
     }
   ],
   "checks": [
@@ -7172,6 +7185,34 @@
       "role": "dev"
     },
     {
+      "id": "P43.5",
+      "phase": "P43",
+      "title": "Ship the owner's new sound characters",
+      "reqs": [
+        "R57"
+      ],
+      "files": [
+        "plugin/hooks/panel-sounds.js",
+        "plugin/assets/audio/arnold/a1.mp3",
+        "plugin/assets/audio/arnold/a2.mp3",
+        "plugin/assets/audio/arnold/a3.mp3",
+        "plugin/assets/audio/arnold/a4.mp3",
+        "plugin/assets/audio/arnold/a5.mp3",
+        "plugin/assets/audio/arnold/a6.mp3",
+        "plugin/assets/audio/darth/d1.mp3",
+        "plugin/assets/audio/darth/d2.mp3",
+        "plugin/assets/audio/darth/d3.mp3"
+      ],
+      "after": [
+        "P43.2"
+      ],
+      "status": "done",
+      "tasks": [
+        "Run tools/sounds.sh so plugin/hooks/panel-sounds.js lists every shipped clip (charlize, arnold, darth); commit the new clips with it; C70 and the 2 MB size rule pass"
+      ],
+      "role": "dev"
+    },
+    {
       "id": "P44.1",
       "phase": "P44",
       "title": "Remember how long finished steps took",
@@ -7291,6 +7332,51 @@
         "Add a short 'reading the panel at a glance' picture of a typical panel"
       ],
       "role": "docs"
+    },
+    {
+      "id": "P44.6",
+      "phase": "P44",
+      "title": "The panel draws the way Claude Code draws, and runs only for its own events",
+      "reqs": [
+        "R51",
+        "R55"
+      ],
+      "files": [
+        "plugin/hooks/panel.js"
+      ],
+      "after": [
+        "P44.3"
+      ],
+      "status": "done",
+      "tasks": [
+        "ui.render registers with the matcher { component: \"Pane\", requestId: PANE }, takes its elements from $.ui.resolve(e) and builds them with h(type, props, ...children), as Claude Code's own pane example does; the real-app run showed an empty panel and a 100-400 ms worker hop on every drawing in Claude Code",
+        "command.run: one hook per command with its matcher ({ command: \"vbw-panel\" }, { command: \"vbw-sound\" }), so other commands never reach the panel",
+        "$.ui.open passes only the fields Claude Code defines (id, title, focus): no placement",
+        "All panel checks pass against the stricter stand-in (tests/panel/helpers/fake-mod.mjs), and claude plugin validate passes"
+      ],
+      "role": "dev"
+    },
+    {
+      "id": "P44.7",
+      "phase": "P44",
+      "title": "The panel redraws itself, and stays silent in VBW's own test sessions",
+      "reqs": [
+        "R51",
+        "R64"
+      ],
+      "files": [
+        "plugin/hooks/panel.js"
+      ],
+      "after": [
+        "P44.6"
+      ],
+      "status": "done",
+      "tasks": [
+        "Every redraw calls $.ui.invalidate('ui.render'): Claude Code 2.1.289 drops an unnamed redraw, so the panel only updated when reopened (real-app run)",
+        "Test mode: a project holding .vbw/runtime/test-mode is a VBW test session; the panel then plays no audio (it only counts what it would have played) and keeps its choices under test.vbw-panel.* keys, never the user's; the panel still reads no environment (R55)",
+        "C53, C59, C84 and every other panel check pass against the stand-in"
+      ],
+      "role": "dev"
     },
     {
       "id": "P45.1",
@@ -7475,6 +7561,57 @@
       "role": "dev"
     },
     {
+      "id": "P46.7",
+      "phase": "P46",
+      "title": "VBW's instructions fit their budget again, written tersely",
+      "reqs": [
+        "R61"
+      ],
+      "files": [
+        "plugin/agents/lead.md",
+        "plugin/agents/dev.md",
+        "plugin/agents/architect.md",
+        "plugin/agents/qa.md",
+        "plugin/agents/debugger.md",
+        "plugin/agents/scout.md",
+        "plugin/agents/docs.md",
+        "plugin/skills/interview/SKILL.md",
+        "plugin/skills/skills/SKILL.md",
+        "plugin/skills/convert/SKILL.md",
+        "plugin/skills/profile/SKILL.md",
+        "plugin/skills/config/SKILL.md"
+      ],
+      "after": [
+        "P47.4"
+      ],
+      "status": "done",
+      "tasks": [
+        "Remove obsolete instructions, then compress what Claude reads into terse caveman style (as /vbw:compress does: every fact, rule, path, command and code block kept); keep every text shown to the user word for word: questions, options, the greeting, messages (D121)",
+        "All prompts together within 11,000 words (budget 11,400, tests/profile-levels.bats); the router and help are left to P46.4",
+        "Every existing test that reads these prompts still passes (tests/*.bats on agents and skills); the full suite has no new failure"
+      ],
+      "role": "dev"
+    },
+    {
+      "id": "P46.8",
+      "phase": "P46",
+      "title": "The approval answer counts when the question explains the contract after its fingerprint",
+      "reqs": [
+        "R61"
+      ],
+      "files": [
+        "plugin/hooks/approve-answer.jq"
+      ],
+      "after": [
+        "P46.2"
+      ],
+      "status": "done",
+      "tasks": [
+        "approve-answer.jq matches a question that starts with \"Approve contract <12 hex>?\" followed by a space and anything, or nothing: the 2.0.19 real-app run showed Claude appending a summary to the kernel's question, so Enter on Approve approved nothing; the fingerprint must still sit at the very start, be exactly 12 hex digits, and match the current contract; update the header comment; C74 passes"
+      ],
+      "role": "dev"
+    },
+    {
       "id": "P47.1",
       "phase": "P47",
       "title": "Remember whether you allowed the tool search",
@@ -7610,130 +7747,6 @@
         "add the tools scenario to tools/l3-suite.sh: answer the offer yes once in the real interface on a small project",
         "check from the record and git that the answer is stored, was not asked again, and nothing was installed before approval",
         "run it, commit the result with its fixture, cost and not-tested list, and name it in the suite header"
-      ],
-      "role": "dev"
-    },
-    {
-      "id": "P44.6",
-      "phase": "P44",
-      "title": "The panel draws the way Claude Code draws, and runs only for its own events",
-      "reqs": [
-        "R51",
-        "R55"
-      ],
-      "files": [
-        "plugin/hooks/panel.js"
-      ],
-      "after": [
-        "P44.3"
-      ],
-      "status": "done",
-      "tasks": [
-        "ui.render registers with the matcher { component: \"Pane\", requestId: PANE }, takes its elements from $.ui.resolve(e) and builds them with h(type, props, ...children), as Claude Code's own pane example does; the real-app run showed an empty panel and a 100-400 ms worker hop on every drawing in Claude Code",
-        "command.run: one hook per command with its matcher ({ command: \"vbw-panel\" }, { command: \"vbw-sound\" }), so other commands never reach the panel",
-        "$.ui.open passes only the fields Claude Code defines (id, title, focus): no placement",
-        "All panel checks pass against the stricter stand-in (tests/panel/helpers/fake-mod.mjs), and claude plugin validate passes"
-      ],
-      "role": "dev"
-    },
-    {
-      "id": "P44.7",
-      "phase": "P44",
-      "title": "The panel redraws itself, and stays silent in VBW's own test sessions",
-      "reqs": [
-        "R51",
-        "R64"
-      ],
-      "files": [
-        "plugin/hooks/panel.js"
-      ],
-      "after": [
-        "P44.6"
-      ],
-      "status": "done",
-      "tasks": [
-        "Every redraw calls $.ui.invalidate('ui.render'): Claude Code 2.1.289 drops an unnamed redraw, so the panel only updated when reopened (real-app run)",
-        "Test mode: a project holding .vbw/runtime/test-mode is a VBW test session; the panel then plays no audio (it only counts what it would have played) and keeps its choices under test.vbw-panel.* keys, never the user's; the panel still reads no environment (R55)",
-        "C53, C59, C84 and every other panel check pass against the stand-in"
-      ],
-      "role": "dev"
-    },
-    {
-      "id": "P46.7",
-      "phase": "P46",
-      "title": "VBW's instructions fit their budget again, written tersely",
-      "reqs": [
-        "R61"
-      ],
-      "files": [
-        "plugin/agents/lead.md",
-        "plugin/agents/dev.md",
-        "plugin/agents/architect.md",
-        "plugin/agents/qa.md",
-        "plugin/agents/debugger.md",
-        "plugin/agents/scout.md",
-        "plugin/agents/docs.md",
-        "plugin/skills/interview/SKILL.md",
-        "plugin/skills/skills/SKILL.md",
-        "plugin/skills/convert/SKILL.md",
-        "plugin/skills/profile/SKILL.md",
-        "plugin/skills/config/SKILL.md"
-      ],
-      "after": [
-        "P47.4"
-      ],
-      "status": "done",
-      "tasks": [
-        "Remove obsolete instructions, then compress what Claude reads into terse caveman style (as /vbw:compress does: every fact, rule, path, command and code block kept); keep every text shown to the user word for word: questions, options, the greeting, messages (D121)",
-        "All prompts together within 11,000 words (budget 11,400, tests/profile-levels.bats); the router and help are left to P46.4",
-        "Every existing test that reads these prompts still passes (tests/*.bats on agents and skills); the full suite has no new failure"
-      ],
-      "role": "dev"
-    },
-    {
-      "id": "P43.5",
-      "phase": "P43",
-      "title": "Ship the owner's new sound characters",
-      "reqs": [
-        "R57"
-      ],
-      "files": [
-        "plugin/hooks/panel-sounds.js",
-        "plugin/assets/audio/arnold/a1.mp3",
-        "plugin/assets/audio/arnold/a2.mp3",
-        "plugin/assets/audio/arnold/a3.mp3",
-        "plugin/assets/audio/arnold/a4.mp3",
-        "plugin/assets/audio/arnold/a5.mp3",
-        "plugin/assets/audio/arnold/a6.mp3",
-        "plugin/assets/audio/darth/d1.mp3",
-        "plugin/assets/audio/darth/d2.mp3",
-        "plugin/assets/audio/darth/d3.mp3"
-      ],
-      "after": [
-        "P43.2"
-      ],
-      "status": "done",
-      "tasks": [
-        "Run tools/sounds.sh so plugin/hooks/panel-sounds.js lists every shipped clip (charlize, arnold, darth); commit the new clips with it; C70 and the 2 MB size rule pass"
-      ],
-      "role": "dev"
-    },
-    {
-      "id": "P46.8",
-      "phase": "P46",
-      "title": "The approval answer counts when the question explains the contract after its fingerprint",
-      "reqs": [
-        "R61"
-      ],
-      "files": [
-        "plugin/hooks/approve-answer.jq"
-      ],
-      "after": [
-        "P46.2"
-      ],
-      "status": "done",
-      "tasks": [
-        "approve-answer.jq matches a question that starts with \"Approve contract <12 hex>?\" followed by a space and anything, or nothing: the 2.0.19 real-app run showed Claude appending a summary to the kernel's question, so Enter on Approve approved nothing; the fingerprint must still sit at the very start, be exactly 12 hex digits, and match the current contract; update the header comment; C74 passes"
       ],
       "role": "dev"
     },
