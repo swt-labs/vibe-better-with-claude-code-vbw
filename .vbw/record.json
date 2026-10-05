@@ -5262,7 +5262,7 @@
         "P40.1",
         "P39.1"
       ],
-      "status": "planned",
+      "status": "done",
       "tasks": [
         "vbw qa record stores the phase's combined digest in qa.tree and its per-input digests in the clone cache (and still refuses a proof older than the code, R12)",
         "One rule for a standing pass: result pass and qa.tree equals the phase's current combined digest (D91). rigor-defs.jq phase_finished/finish_phases take the current digests; every caller passes them: prove.jq via cmd-prove.sh, cmd-qa.sh and cmd-req.sh; no code compares qa.tree with evidence.tree any more",
