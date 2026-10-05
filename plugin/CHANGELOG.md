@@ -1,5 +1,47 @@
 # Changelog
 
+## [2.0.17] - 2026-10-05
+
+### Added
+
+- **VBW asks who you are, once per project.** On a project's first spec step
+  (after mapping, for existing code) VBW asks three fixed questions: how much
+  software you have built, how it should explain things, and how involved you
+  want to be in technical decisions. Then what you are building and for whom,
+  and up to three follow-up questions written for your level when your answer
+  leaves out what the thing does. Last, where to keep your answers: private on
+  this machine (the default), or saved in the project for everyone who clones
+  it. VBW never asks again in that project; `/vbw:profile` changes any answer.
+- **Every message, question and agent speaks at your level.** Planning,
+  building, QA, mapping, research and debugging all receive your answers, so a
+  newcomer gets plain words and VBW's recommendation, and a senior engineer
+  gets brief technical wording and every decision.
+- **Suggestions at natural pauses.** When VBW proposes a spec or a plan for
+  approval, it may add a few short yes/no suggestions worded for your level.
+  Declined suggestions are remembered and not offered again
+  (`vbw suggest list`).
+- **Close several fixes in one command:** `vbw fix done F8 F9 F5` runs the
+  checks they share once. A failing check blocks only the fixes it covers; the
+  others close.
+- **Checks that must run alone.** A check marked `alone` in the contract (for
+  example one that starts containers) never runs at the same time as another
+  VBW check in the project. The Lead marks such checks when it plans.
+
+### Changed
+
+- **Closing a fix skips checks that cannot have changed.** `vbw fix done` no
+  longer reruns a check that already passed on the same committed files under
+  the same approved contract; it prints `C46 unchanged since its pass (time)`.
+  `vbw prove` still runs every check. Passes are kept privately in your clone,
+  so closing a fix leaves no record change to commit.
+
+### Compatibility
+
+- A project whose contract has an `alone` check is written as record schema 2.
+  VBW 2.0.16 and older then say "this project needs a newer VBW, update with
+  /vbw:update"; everyone on the project should update. Projects without an
+  `alone` check stay readable by 2.0.16.
+
 ## [2.0.16] - 2026-10-04
 
 ### Changed
