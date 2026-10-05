@@ -4489,7 +4489,22 @@
         "breaks: R13, R14, R22, R24, R26, R31, R37, R39, R40, R50, R61, R65",
         "tests: project test command"
       ],
-      "predicted": "deep"
+      "predicted": "deep",
+      "qa": {
+        "result": "pass",
+        "tier": "deep",
+        "tree": "26ef791f41f2c430b3fafd4eabe2726286d35ea428de5e75555807af64a0bd41",
+        "at": "2026-10-05T22:20:12Z",
+        "note": "12/12 checks"
+      },
+      "outcome": {
+        "tier": "deep",
+        "predicted": "deep",
+        "held": true,
+        "fix_rounds": 4,
+        "qa_findings": 4,
+        "escalations": 0
+      }
     }
   ],
   "plans": [
@@ -8103,7 +8118,7 @@
       "req": "R52",
       "source": "qa",
       "attempts": 0,
-      "status": "fixed",
+      "status": "closed",
       "note": "plugin/skills/panel/SKILL.md says '/vbw-panel opens or closes it', but the command in plugin/hooks/panel.js (command.run vbw-panel) only opens the panel and docs/panel.md line 123 says the same. Users on a new Claude Code are told a toggle exists that does not. Fix the skill wording to 'opens it'."
     },
     {
