@@ -7569,7 +7569,7 @@
       "after": [
         "P46.2"
       ],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "approve-answer.jq matches a question that starts with \"Approve contract <12 hex>?\" followed by a space and anything, or nothing: the 2.0.19 real-app run showed Claude appending a summary to the kernel's question, so Enter on Approve approved nothing; the fingerprint must still sit at the very start, be exactly 12 hex digits, and match the current contract; update the header comment; C74 passes"
@@ -7588,7 +7588,7 @@
         "plugin/bin/vbw"
       ],
       "after": [],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "Read-only facts from the folder and the repo: finished against total plans, last use from the commit or file times, files the plans name that still exist, half-done phases and unfinished build markers",
