@@ -110,6 +110,7 @@ Coming from an earlier VBW? See [docs/convert.md](docs/convert.md).
 | `/vbw:pause`, `/vbw:resume` | Stop safely; pick up where you left off |
 | `/vbw:profile`, `/vbw:config` | How VBW works (how it talks to you, models, how much it does on its own); each setting |
 | `/vbw:skills`, `/vbw:rtk`, `/vbw:compress` | Community skills, output compression, terser instruction files |
+| `/vbw:panel`, `/vbw-panel`, `/vbw-sound` | Whether the panel works here; open the panel; turn the "needs you" sound on or off |
 | `/vbw:doctor`, `/vbw:report` | Check the setup; prepare a bug report |
 | `/vbw:update`, `/vbw:whats-new`, `/vbw:uninstall` | Keep VBW current, or remove it |
 
