@@ -1,0 +1,17 @@
+{
+  "scenario": "nolegacy",
+  "fixture": "greet.sh from scratch; a project without a VBW 1 folder; the interview is answered with VBW's first options",
+  "cost_usd": 0.3251,
+  "evidence_level": "L3",
+  "at": "2026-10-05T19:54:49Z",
+  "passed": true,
+  "facts": {
+    "asked_legacy": false,
+    "interview_completed": true
+  },
+  "not_tested": [
+    "a project with a leftover folder that is not a VBW 1 plan",
+    "a second session",
+    "how the interview reads (R41, human)"
+  ]
+}

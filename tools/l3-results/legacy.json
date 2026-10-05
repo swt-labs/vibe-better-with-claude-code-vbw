@@ -1,0 +1,24 @@
+{
+  "scenario": "legacy",
+  "fixture": "greet.sh from scratch; a VBW 1 folder with one finished plan whose files exist; the user picks Start fresh, the option that is not recommended",
+  "cost_usd": 0.3167,
+  "evidence_level": "L3",
+  "at": "2026-10-05T19:57:49Z",
+  "passed": true,
+  "facts": {
+    "recommendation": "convert",
+    "choice": "fresh",
+    "review_before_other_questions": true,
+    "recommended_option_first": true,
+    "converted": false,
+    "old_folder_unchanged": true,
+    "asked_again": false,
+    "interview_completed": true
+  },
+  "not_tested": [
+    "the choice Convert and the conversion itself",
+    "a folder the review recommends starting fresh for",
+    "a real VBW 1 project: the fixture has one phase and one plan",
+    "how the review reads at each level and depth (R41, human)"
+  ]
+}
