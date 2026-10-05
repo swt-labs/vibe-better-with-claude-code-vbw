@@ -65,7 +65,10 @@ cmd_show() {
       show_work "$record" "$view" "$1" "${2:-}"
       ;;
     contract)
-      [ "${1:-}" != --changes ] || { show_contract_changes "$record"; return 0; }
+      if [ "${1:-}" = --changes ]; then
+        show_contract_changes "$record"
+        return 0
+      fi
       [ $# -eq 0 ] || vbw_usage_error "usage: vbw show contract [--changes]"
       local hash state="NOT APPROVED"
       hash=$(contract_hash "$record")
@@ -123,7 +126,10 @@ cmd_show() {
 # What changed in the contract since the last approval in this clone.
 show_contract_changes() {
   local before="$VBW_RUNTIME/approved-contract.json"
-  [ -f "$before" ] || { printf 'no earlier approval in this clone: the whole contract is new (vbw show contract)\n'; return 0; }
+  if [ ! -f "$before" ]; then
+    printf 'no earlier approval in this clone: the whole contract is new (vbw show contract)\n'
+    return 0
+  fi
   contract_doc "$1" | jq -r --slurpfile old "$before" "$SHOW_JQ_DEFS"'
     . as $new | $old[0] as $old
     | [ ($new.requirements | to_entries[] | select($old.requirements[.key] == null)
@@ -217,7 +223,10 @@ show_work() {
            plans: [$r.plans[] | select($f.req != null and any(.reqs[]; . == $f.req)) | {id, title, files}]} end
       end')
   [ "$json" != null ] || vbw_die "unknown $2 $3"
-  [ "${4:-}" != --json ] || { printf '%s\n' "$json"; return 0; }
+  if [ "${4:-}" = --json ]; then
+    printf '%s\n' "$json"
+    return 0
+  fi
   printf '%s' "$json" | jq -r "$SHOW_JQ_DEFS"'
     def check_lines: .checks[] | "  \(.id) (\(.req)) " + check_line
       + (if .last then " — last: \(.last.status)" else "" end);

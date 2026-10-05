@@ -32,10 +32,11 @@ cmd_next() {
     --argjson code_changed "$changed" --argjson legacy "$legacy" --argjson qa "$qa" --argjson profile "$(interview_effective "$record")" --arg session "$(vbw_session)" --slurpfile tiers "$VBW_LIB/tiers.json" "$VBW_JQ_DEFS$(cat "$VBW_LIB/next.jq")")
   # The status line shows the last answer (docs/statusline.md).
   printf '%s\n' "$next" > "$VBW_RUNTIME/next.json.$$" && mv "$VBW_RUNTIME/next.json.$$" "$VBW_RUNTIME/next.json"
-  case "${1:-}" in
-    --json) printf '%s\n' "$next" ;;
-    *) printf '%s\n' "$next" | jq -r '"\(.action)\(if .gate then " (needs you)" else "" end): \(.instruction)"' ;;
-  esac
+  if [ "${1:-}" = "--json" ]; then
+    printf '%s\n' "$next"
+  else
+    printf '%s\n' "$next" | jq -r '"\(.action)\(if .gate then " (needs you)" else "" end): \(.instruction)"'
+  fi
 }
 
 # True when the project's files differ from the ones the last proof saw: the
