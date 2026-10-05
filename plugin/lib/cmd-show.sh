@@ -7,7 +7,7 @@
 cmd_show() {
   local view="${1:-}" record
   [ $# -gt 0 ] && shift
-  case "$view" in roadmap|phase|req|plan|fix|contract|evidence|decisions|requirements|rigor|qa) ;; *) vbw_usage_error "usage: vbw show roadmap | phase ID | req ID | plan ID [--json] | fix ID [--json] | contract [--changes] | evidence | decisions | requirements | rigor" ;; esac
+  case "$view" in roadmap|phase|req|plan|fix|contract|evidence|decisions|requirements|rigor|qa) ;; *) vbw_usage_error "usage: vbw show roadmap | phase ID | req ID | plan ID [--json] | fix ID [--json] | contract [--changes] | evidence | decisions | requirements | rigor | qa" ;; esac
   vbw_require_project
   # shellcheck source=cmd-next.sh
   . "$VBW_LIB/cmd-next.sh"
@@ -44,8 +44,9 @@ cmd_show() {
             ((.tasks // [])[] | "    - " + .))'
       ;;
     qa)
-      qa_state "$record" | jq -r '(.recheck | to_entries[] | "\(.key) checked again: \(.value | join("; "))"),
-        (if (.standing | length) > 0 then "standing: \(.standing | join(", "))" else empty end), (.problems[] | "problem: " + .)'
+      qa_state "$record" | jq -r '(if (.recheck | length) == 0 then "Nothing needs checking again" else
+          (.recheck | to_entries[] | "\(.key) is checked again: \(.value | join("; "))") end),
+        (.standing[] | "\(.) keeps its pass"), (.problems[] | "problem: " + .)'
       ;;
     req)
       [ $# -eq 1 ] || vbw_usage_error "usage: vbw show req ID"
