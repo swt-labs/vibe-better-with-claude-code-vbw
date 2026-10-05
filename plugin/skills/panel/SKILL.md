@@ -1,6 +1,6 @@
 ---
 name: panel
-description: Check whether the VBW panel and its "needs you" sound work on this Claude Code, and how to use them.
+description: Check whether the VBW panel and its sound work on this Claude Code.
 effort: low
 allowed-tools: Bash("${CLAUDE_PLUGIN_ROOT}/bin/vbw" *) Bash(vbw *) Bash(claude --version)
 ---
@@ -11,17 +11,9 @@ allowed-tools: Bash("${CLAUDE_PLUGIN_ROOT}/bin/vbw" *) Bash(vbw *) Bash(claude -
 
 Write to the user's level, explanation depth and involvement (above; "-": plain words).
 
-Run `claude --version`. The panel and its sound need Claude Code 2.1.287 or
-newer.
+Run `claude --version`. The panel and its sound need Claude Code 2.1.287 or newer.
 
-- Older version: say plainly that the panel and the sound are not available
-  yet, give the version found, and tell the user to update Claude Code
-  (`claude update`, or reinstall the way they installed it), then restart.
-  Everything else in VBW works unchanged.
-- 2.1.287 or newer: say the panel is available. `/vbw-panel` opens or closes
-  it. `/vbw-sound` turns the "needs you" sound on or off (also one click in the
-  panel); the choice is remembered, kept in the user's own settings, never in
-  the project or its record.
+- Older: say they are not available, give the version, tell the user to run `claude update` and restart. The rest of VBW works unchanged.
+- Newer: say the panel is available. `/vbw-panel` opens or closes it; `/vbw-sound` turns the "needs you" sound on or off (or one click in the panel). The choice is kept in the user's own settings, never in the project.
 
-If the panel or `/vbw-panel` does not respond on a new enough version, say so
-and suggest `/vbw:doctor`.
+If they do not respond on a new enough version, suggest `/vbw:doctor`.
