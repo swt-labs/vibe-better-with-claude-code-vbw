@@ -7,6 +7,7 @@
 #                                        plain: without the VBW plugin, same app and settings
 #   tools/l3.sh type NAME TEXT           type TEXT and press Enter
 #   tools/l3.sh keys NAME KEY...         press keys (tmux names: Down, Enter, Escape, ...)
+#   tools/l3.sh click NAME COL ROW       click the mouse at that column and row (1-based, left button)
 #   tools/l3.sh wait NAME [SECONDS]      wait until Claude is idle (default 900 s), print the screen
 #   tools/l3.sh screen NAME              print the screen
 #   tools/l3.sh stop NAME                end the session
@@ -18,7 +19,7 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 [ -z "${VBW_TEST_CLAUDE_CONFIG_DIR:-}" ] || export CLAUDE_CONFIG_DIR="$VBW_TEST_CLAUDE_CONFIG_DIR"
 cmd="${1:-}"
 name="${2:-}"
-[ -n "$cmd" ] && [ -n "$name" ] || { sed -n '6,15p' "$0" >&2; exit 2; }
+[ -n "$cmd" ] && [ -n "$name" ] || { sed -n '6,14p' "$0" >&2; exit 2; }
 session="vbw-l3-$name"
 
 screen() { tmux capture-pane -t "$session" -p -S -60; }
@@ -75,6 +76,12 @@ case "$cmd" in
     shift 2
     tmux send-keys -t "$session" "$@"
     ;;
+  click)
+    col="${3:?usage: tools/l3.sh click NAME COL ROW}"
+    row="${4:?usage: tools/l3.sh click NAME COL ROW}"
+    # A terminal mouse click as the terminal sends it (SGR): press, then release.
+    tmux send-keys -t "$session" -l "$(printf '\033[<0;%d;%dM\033[<0;%d;%dm' "$col" "$row" "$col" "$row")"
+    ;;
   wait)
     limit="${3:-900}"
     last="" stable=0 waited=0
@@ -105,5 +112,5 @@ case "$cmd" in
     sleep 2
     tmux kill-session -t "$session" 2> /dev/null || true
     ;;
-  *) sed -n '6,15p' "$0" >&2; exit 2 ;;
+  *) sed -n '6,14p' "$0" >&2; exit 2 ;;
 esac
