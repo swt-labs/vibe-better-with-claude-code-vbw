@@ -95,7 +95,7 @@ def fix_files($r): if .command then ["*"]
   elif ($unproven | length) > 0 then
     result("prove"; false; "Run vbw prove for \($unproven | join(", "))"; {requirements: $unproven})
   elif ($to_verify | length) > 0 then
-    result("qa"; false; "Run the QA workflow (\($tier)) for \($to_verify | join(", ")): goal-backward verification of the built work"; {phases: $to_verify, tier: $tier})
+    result("qa"; false; "Run the QA workflow (\($tier)) for \($to_verify | join(", ")): goal-backward verification of the built work. Checked again: \([$to_verify[] | "\(.) (\($qa.recheck[.] | join("; ")))"] | join(", "))\(if ($qa.standing | length) > 0 then ". Keeping their pass: \($qa.standing | join(", "))" else "" end)"; {phases: $to_verify, tier: $tier})
   elif ($to_accept | length) > 0 then
     result("accept"; true; "Accept or reject \($to_accept | join(", ")), one scenario at a time"; {requirements: $to_accept})
   else
