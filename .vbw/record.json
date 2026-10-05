@@ -7218,7 +7218,7 @@
       "after": [
         "P44.3"
       ],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "ui.render registers with the matcher { component: \"Pane\", requestId: PANE }, takes its elements from $.ui.resolve(e) and builds them with h(type, props, ...children), as Claude Code's own pane example does; the real-app run showed an empty panel and a 100-400 ms worker hop on every drawing in Claude Code",
