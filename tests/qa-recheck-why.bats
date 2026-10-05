@@ -138,3 +138,11 @@ JARGON='fingerprint|hash|sha|digest|checksum|tree|blob|inputs'
   grep -q 'recheck' "$REPO_ROOT/docs/next.md"
   grep -q 'vbw show qa' "$REPO_ROOT/docs/proof.md"
 }
+
+@test "R48: on a clone without the cache of what each pass covered, a re-checked phase still gets a plain reason" {
+  qa_project 2
+  qa_pass P1 P2
+  rm -f "$(git rev-parse --git-common-dir)/vbw/qa.json"
+  qa_touch 1
+  next_json | jq -e '.qa.recheck.P1 == ["its files, tests or plan changed"] and .qa.standing == ["P2"]'
+}

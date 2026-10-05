@@ -2853,7 +2853,7 @@
       "milestone": "M8",
       "goal": "After a round of fixes, QA checks again only the phases that did not pass, the phases whose own inputs changed since they passed, and the phases that build on a re-checked phase; every other phase keeps its pass.",
       "criteria": [
-        "Each QA pass records a fingerprint of the phase's inputs: its files, its tests (checks) and its goal and plan.",
+        "Each QA pass stores one digest of the phase's own inputs (its files and tests as committed, its goal and plan, and the digests of the phases it builds on) in the existing qa.tree field; no new record field, the record schema is unchanged (D91); the per-input digests that name a reason are this clone's cache in $(git common dir)/vbw/qa.json",
         "A phase whose last QA verdict was fail or has no pass is checked again.",
         "A phase that passed and whose files, tests, goal and plan are all unchanged is not checked again and keeps its pass (a test with two phases, one touched by a fix, shows only that one in the next QA list).",
         "Changing any one of the three inputs (a file, a test, or the goal or plan) is enough to make a passed phase checked again; each is covered by its own test.",
@@ -5170,13 +5170,13 @@
       ],
       "after": [],
       "status": "planned",
-      "role": "dev",
       "tasks": [
         "vbw next --json lists the requirements of the milestone being planned (a requirement moved over from an earlier milestone counts), and no shipped one",
         "The planning workflow shows the Architect exactly that list for both its jobs (finding decisions, then scoping), keeps the schema and the user's level, and stops with a clear message if the list is missing",
         "The Architect agent reads only the requirements its task lists and returns no decision when all of them are internal technical changes",
         "The /vbw:vibe router passes the list in the plan step and stays within its 1,400-word budget"
-      ]
+      ],
+      "role": "dev"
     },
     {
       "id": "P39.2",
@@ -5193,11 +5193,11 @@
         "P39.1"
       ],
       "status": "planned",
-      "role": "docs",
       "tasks": [
         "Describe the requirements list in the vbw next answer",
         "Describe that the planning step receives only the active milestone's requirements and stops without them"
-      ]
+      ],
+      "role": "docs"
     },
     {
       "id": "P40.1",
@@ -5216,13 +5216,13 @@
       ],
       "after": [],
       "status": "planned",
-      "role": "dev",
       "tasks": [
-        "New qa-inputs.sh: for each phase of the active milestone, compute a short digest of its files (contents read from the working folder through one git listing), of its tests (the checks of its requirements and their files) and of its goal and plan, plus the digests of every phase it builds on",
-        "New qa.jq: from the record and those digests, say for each built phase why it is checked again (never checked, failed last time, files, tests or goal-or-plan changed, builds on a named phase that changed, checked before VBW kept this record) or that its pass stands; transitive, safe on cycles, names a cycle or an unknown phase in a problems list",
-        "Record rules: a QA pass may carry its digests, and doing so makes the record schema 2 (so VBW 2.0.16 says it needs a newer VBW, never corrupt); the plain-word reasons use the exact wording the tests expect",
+        "New qa-inputs.sh: for each phase of the active milestone, compute a digest of its files and its tests (the checks of its requirements and their files) as committed (HEAD), of its goal and plan, and of every phase it builds on; one combined digest per phase plus the per-input digests",
+        "New qa.jq: from the record and those digests, say for each built phase why it is checked again (never checked, failed last time, files, tests or goal-or-plan changed, builds on a named phase that changed) or that its pass stands; transitive, safe on cycles, names a cycle or an unknown phase in a problems list; without the clone cache the only change reason is \"its files, tests or plan changed\"",
+        "No record change (D91): the combined digest goes in the existing qa.tree; the per-input digests are kept in the clone cache $(git common dir)/vbw/qa.json, written under vbw_lock_take, read leniently (missing or damaged: the reason is \"its files, tests or plan changed\"); the record stays schema 1 and VBW 2.0.16/2.0.17 read it (C46)",
         "Unit tests in tests/qa-state.bats for qa.jq (several reasons at once, cycle, unknown dependency, record without digests); keep the kernel within the 3,300-line budget and bash 3.2 rules"
-      ]
+      ],
+      "role": "dev"
     },
     {
       "id": "P40.2",
@@ -5246,13 +5246,13 @@
         "P39.1"
       ],
       "status": "planned",
-      "role": "dev",
       "tasks": [
-        "vbw qa record stores the phase's digests with the verdict (and still refuses a proof older than the code)",
-        "vbw prove keeps the pass of every phase whose digests are unchanged (it stays a pass on the newly proven code), so it still counts for finishing the phase",
+        "vbw qa record stores the phase's combined digest in qa.tree and its per-input digests in the clone cache (and still refuses a proof older than the code)",
+        "vbw prove leaves QA passes as they are: a pass stands while the phase's current combined digest equals its qa.tree, so it still counts for finishing the phase",
         "vbw next lists for QA only the phases that need checking again, and adds a top-level qa with recheck (phase to reasons), standing and problems; the status line file carries it too",
         "Update the existing tests that wrote passes by hand or expected a whole-project re-check (kernel-next.bats, kernel-qa.bats); bash tools/test.sh passes under /bin/bash and bash 5"
-      ]
+      ],
+      "role": "dev"
     },
     {
       "id": "P40.3",
@@ -5272,12 +5272,12 @@
         "P39.2"
       ],
       "status": "planned",
-      "role": "docs",
       "tasks": [
-        "Record format: the digests on a QA pass and schema 2",
+        "Record format: qa.tree now holds the digest of the phase's own inputs (no new field, schema unchanged); the clone cache qa.json is not part of the record",
         "Proof: which phases QA checks again, in plain words, including phases built on a re-checked phase and records from before",
         "Next: the qa key and that to-verify no longer means the whole project"
-      ]
+      ],
+      "role": "docs"
     },
     {
       "id": "P41.1",
@@ -5296,13 +5296,13 @@
         "P40.2"
       ],
       "status": "planned",
-      "role": "dev",
       "tasks": [
         "New vbw show qa: one plain-words line per phase checked again with all its reasons, one line per phase whose pass stands, and 'Nothing needs checking again' with every phase listed when none",
         "The vbw next instruction for QA names each phase, its reasons and the phases that keep their pass, matching exactly the list sent to QA",
         "The qa skill reads vbw show qa and tells the user, at their level, explanation depth and involvement, which phases are checked again, why, and which keep their pass; no unexplained jargon; prompt budgets hold",
         "Update the usage text test for vbw show (kernel-show.bats)"
-      ]
+      ],
+      "role": "dev"
     },
     {
       "id": "P41.2",
@@ -5318,12 +5318,12 @@
         "P41.1"
       ],
       "status": "planned",
-      "role": "dev",
       "tasks": [
         "New scenario recheck in tools/l3-suite.sh: a two-phase project is built and passes QA, a fix touches one phase, and QA runs again",
         "Its checks read the record and git (the phases checked again, the phases kept, the reason named), never screen text",
         "Register it in the default list and the header and have it write its result file; do not run it here: its status stays not run until the milestone release run"
-      ]
+      ],
+      "role": "dev"
     },
     {
       "id": "P41.3",
@@ -5341,11 +5341,11 @@
         "P41.1"
       ],
       "status": "planned",
-      "role": "docs",
       "tasks": [
         "Proof: vbw show qa and the wording of the reasons",
         "Status line: the answer file now carries the qa reasons"
-      ]
+      ],
+      "role": "docs"
     }
   ],
   "fixes": [
@@ -6168,6 +6168,12 @@
       "text": "M8 planning proceeds without a user decision round",
       "why": "The Architect's decision step returned one question about the benchmark requirements R18/R29/R30 of shipped milestones M3/M4 (a scoping bug, fixed by R50); M8's R47-R50 are internal technical changes with no cost, data, security or user-experience choice for the user",
       "at": "2026-10-05T00:23:16Z"
+    },
+    {
+      "id": "D91",
+      "text": "QA re-check data adds no new record field and no schema change: a phase's QA pass stores one digest of that phase's own inputs (its plans' files, its checks' files, its goal, criteria, plans and rules, and the digests of phases it builds on) in the existing qa.tree field; the per-input digests used to name a reason are a clone-local cache in $(git common dir)/vbw/qa.json; without the cache the reason is 'its inputs changed'",
+      "why": "A digest field in the record would need a new schema; VBW 2.0.17 requires schema 2 exactly when a check is alone and calls any other schema-2 record corrupt (R46). With qa.tree reused, 2.0.16/2.0.17 read the record and at worst re-check every phase (today's behaviour); the digest is computed from committed content, so every clone agrees which passes stand",
+      "at": "2026-10-05T00:42:00Z"
     }
   ],
   "commands": {

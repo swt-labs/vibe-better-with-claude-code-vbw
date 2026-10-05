@@ -11,11 +11,12 @@ load qa-recheck-helper
 setup() { qa_project 2; }
 teardown() { vbw_teardown; }
 
-@test "R47: each QA pass records the phase's files, tests and goal-and-plan as digests, and the record needs schema 2" {
+@test "R47: a QA pass keeps one digest of the phase's own inputs in qa.tree; no new record field, the record stays schema 1" {
   qa_pass P1 P2
-  jq -e '[.phases[].qa.inputs | (.files, .tests, .plan)] | length == 6 and all(.[]; type == "string" and test("^[0-9a-f]{64}$"))' .vbw/record.json
-  jq -e '.phases[0].qa.inputs.files != .phases[1].qa.inputs.files' .vbw/record.json
-  jq -e '.schema == 2' .vbw/record.json
+  jq -e 'all(.phases[].qa; (keys - ["result","tier","tree","at","note","rounds"]) == [] and (.tree | test("^[0-9a-f]{64}$")))' .vbw/record.json
+  jq -e '.phases[0].qa.tree != .phases[1].qa.tree and .schema == 1' .vbw/record.json
+  # The per-input digests that name a reason are this clone's cache, outside the record.
+  jq -e '[.P1, .P2] | all(.[]; (.files, .tests, .plan) | type == "string")' "$(git rev-parse --git-common-dir)/vbw/qa.json"
   vbw_run status
   [ "$status" -eq 0 ]
 }
@@ -49,7 +50,8 @@ teardown() { vbw_teardown; }
 @test "R47: a pass that stands is still a pass on the proven code: it counts for finishing the phase" {
   qa_pass P1 P2
   qa_touch 1
-  jq -e '.phases[1].qa.tree == .evidence.tree and .phases[1].qa.result == "pass"' .vbw/record.json
+  jq -e '.phases[1].qa.result == "pass"' .vbw/record.json
+  [ "$(listed)" = '["P1"]' ]
   vbw_run show phase P2
   [[ "$output" != *"[on older code]"* ]]
   qa_pass P1
@@ -99,13 +101,14 @@ teardown() { vbw_teardown; }
   printf '# notes\n' > NOTES.md
   git add NOTES.md && git commit -q -m "docs: notes"
   "$VBW" prove > /dev/null
-  jq -e 'all(.phases[]; .qa.result == "pass" and .qa.tree == .evidence.tree)' .vbw/record.json
+  jq -e 'all(.phases[]; .qa.result == "pass")' .vbw/record.json
   next_json | jq -e '.action == "ship" and .qa.recheck == {}'
 }
 
-@test "R47: a record written before this change, with passes that carry no digests, is read without error and checked again once" {
+@test "R47: a record written before this change (qa.tree held the whole-folder fingerprint) is read without error and its phases are checked again once" {
   qa_pass P1 P2
-  edit_record '.phases |= map(del(.qa.inputs)) | .schema = 1'
+  edit_record '.evidence.tree as $t | .phases |= map(.qa.tree = $t)'
+  rm -f "$(git rev-parse --git-common-dir)/vbw/qa.json"
   vbw_run next --json
   [ "$status" -eq 0 ]
   [ "$(listed)" = '["P1","P2"]' ]
