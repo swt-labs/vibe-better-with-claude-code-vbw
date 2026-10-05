@@ -68,6 +68,9 @@ Your first project. In your project's folder (any git repository, new or existin
 
    ![The VBW status line showing the project's progress](assets/statusline.png)
 
+   On Claude Code 2.1.287 or newer, a panel next to it says in plain words
+   what VBW is doing and when it needs you ([docs/panel.md](docs/panel.md)).
+
 2. **Questions.** Once per project, VBW first asks three quick questions about
    you (how much software you have built, how it should explain things, how
    involved you want to be), so every message fits your level. Then it asks
@@ -129,6 +132,7 @@ Coming from an earlier VBW? See [docs/convert.md](docs/convert.md).
 - [docs/workflows.md](docs/workflows.md): the team (Architect, Lead, Dev, QA, Scout, Debugger, Docs) and the workflows
 - [docs/guards.md](docs/guards.md): the safety guards
 - [docs/statusline.md](docs/statusline.md): the status line
+- [docs/panel.md](docs/panel.md): the panel, a plain-words view of progress and what needs you
 - [docs/diagnostics.md](docs/diagnostics.md): `vbw report` for bug reports and `vbw rtk`
 - [docs/convert.md](docs/convert.md): updating from an earlier VBW and bringing in its projects
 - [plugin/CHANGELOG.md](plugin/CHANGELOG.md): what changed
