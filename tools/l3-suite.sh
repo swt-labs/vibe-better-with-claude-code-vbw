@@ -627,6 +627,7 @@ scenario_tools() {
     fi
     return 1
   }
+  # The stored answer, as `vbw tools --json` reports it (project.tools in the record).
   stored() { (cd "$dir" && "$VBW" tools --json 2> /dev/null); }
   done_yet() { [ "$declined" = true ]; }
   checks() {
