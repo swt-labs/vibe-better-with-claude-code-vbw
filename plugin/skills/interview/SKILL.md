@@ -23,7 +23,7 @@ unanswered question, named by `profile.pending` (`level`, `depth`,
 Each answer is recorded as soon as it is given, so an interrupted interview
 loses nothing. Offer exactly these options, in this order, and no others: never reorder them or mark one Recommended, whatever the earlier answers suggest (they are the user's own facts, not a choice VBW advises).
 
-1. "How much software have you built?"
+1. "Hello, Human! Welcome to VBW. Let me interview you real quick to better adapt to you. What is your level of proficiency?"
    Options: never; small scripts or no-code; professionally; senior engineer.
    Record: `vbw interview set level "<option>"`.
 2. "How should I explain things?"

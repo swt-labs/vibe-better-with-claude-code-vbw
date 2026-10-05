@@ -20,7 +20,7 @@ involvement: I make the calls
 
 | Key | Question | Allowed values |
 |---|---|---|
-| `level` | How much have you built before? | `never`; `small scripts or no-code`; `professionally`; `senior engineer` |
+| `level` | "Hello, Human! Welcome to VBW. Let me interview you real quick to better adapt to you. What is your level of proficiency?" | `never`; `small scripts or no-code`; `professionally`; `senior engineer` |
 | `depth` | How should VBW explain? | `plain words`; `plain with technical terms explained`; `technical and brief` |
 | `involvement` | How much do you decide? | `decide and tell me`; `options with a recommendation`; `I make the calls` |
 

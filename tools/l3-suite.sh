@@ -970,7 +970,7 @@ scenario_interview() {
     # The keep question names the other answers ("how involved you are"), so it
     # is told apart first, by its options; the others by their opening words.
     if printf '%s' "$scr" | grep -qi 'private on this machine'; then pick_label "$a_keep"
-    elif printf '%s' "$scr" | grep -qi 'how much software have you built'; then pick_label "$a_level"
+    elif printf '%s' "$scr" | grep -qi 'what is your level of proficiency'; then pick_label "$a_level"
     elif printf '%s' "$scr" | grep -qi 'how should I explain things'; then pick_label "$a_depth"
     elif printf '%s' "$scr" | grep -qi 'how involved do you want to be'; then pick_label "$a_inv"
     elif [ "$p" = none ] || printf '%s' "$scr" | grep -q 'Ready to submit'; then return 1
