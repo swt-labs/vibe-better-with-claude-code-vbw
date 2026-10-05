@@ -12,6 +12,18 @@ lifecycle. `vbw next --json` returns:
 
 `gate: true` means a person must act; autonomous runs stop there.
 
+Every answer also carries `requirements`: the requirements of the current
+(active) milestone, each with `id`, `text` and `proof`. Requirements of shipped
+milestones are left out, and one carried over to the active milestone is
+included. A requirement with no milestone is an error that names it
+(`requirements with no milestone: R48`), so none is dropped silently. The
+router passes the list to the planning workflow as `args.requirements`
+(docs/workflows.md).
+
+```json
+"requirements": [ { "id": "R47", "text": "QA checks only changed phases", "proof": "auto" } ]
+```
+
 Every answer also carries `rigor`, keyed by the current milestone's phase ids:
 each phase's tier and its row of the profile's tier table (docs/rigor.md). A
 phase with no tier counts as `standard`. The router passes it to every

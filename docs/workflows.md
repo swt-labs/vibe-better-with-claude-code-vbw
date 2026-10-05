@@ -144,6 +144,20 @@ a decision instead of options for `decide and tell me`, and lists every
 decision, obvious ones included, for `I make the calls`. The `schema` fields
 stay as the schema defines them at every level.
 
+## Planning scope
+
+The router passes `args.requirements` (the `requirements` key of `vbw next
+--json`, docs/next.md) to `vbw:planning`: only the active milestone's
+requirements, as `{id, text, proof}`. The workflow lists exactly those in the
+task of both Architect jobs (decide and scope) under "Requirements of this
+milestone (the only ones to consider)", so the Architect never asks about
+requirements of shipped milestones. When every listed requirement is an
+internal technical change, it returns no decision.
+
+Without `args.requirements`, or with an empty list, the workflow starts no
+agent and returns `status: "blocked"` with the summary "planning needs the
+requirements of this milestone ... and got none".
+
 ## Rigor
 
 The router passes `args.rigor` (the `rigor` key of `vbw next --json`, docs/next.md)
