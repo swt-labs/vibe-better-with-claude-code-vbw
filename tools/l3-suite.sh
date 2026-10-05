@@ -445,7 +445,10 @@ scenario_qafix() {
 # whose pass stands; the record then shows which phases QA really checked again.
 scenario_recheck() {
   new_project
-  fixture="two independent scripts, greet.sh and farewell.sh, one phase each; guided autonomy; after QA passes, one commit changes greet.sh and QA runs again"
+  # Rigor fixed at standard: an express phase is never QA'd (M4), and two
+  # one-file scripts may be tiered express, which leaves nothing to re-check.
+  (cd "$dir" && "$VBW" init > /dev/null && "$VBW" config set rigor standard > /dev/null)
+  fixture="two independent scripts, greet.sh and farewell.sh, one phase each; rigor fixed at standard; guided autonomy; after QA passes, one commit changes greet.sh and QA runs again"
   seeded="" next_json="{}" qa_before="{}"
   start="Use guided autonomy for this project. /vbw:vibe two small command-line scripts as two separate phases, one script each, neither using the other: greet.sh (\"./greet.sh Ana\" prints \"Hello, Ana!\", without a name \"Hello, world!\") and farewell.sh (\"./farewell.sh Ana\" prints \"Goodbye, Ana!\", without a name \"Goodbye, world!\"). One small milestone."
   phase_qa() { jq -c '. as $r | [$r.phases[] | select(.milestone == $r.milestone.id) | {key: .id, value: (.qa.at // "")}] | from_entries' "$dir/.vbw/record.json"; }
