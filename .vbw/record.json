@@ -4009,6 +4009,12 @@
           "from": "deep",
           "to": "deep",
           "reason": "Dev blocked P44.4: The panel pane opens in the real app (Claude Code 2.1.289, 200 columns; debug log: 'ui.open vbw vbw-panel (unasked, 200 columns): placed', ui.render key=vbw-panel settles) but stays EMPTY on screen: no milestone, progress, doing, need, cost or estimate line is drawn, also after /vbw-sound off forced a redraw. So the panel never shows its content in the real app, and the scenario cannot pass. The cause is in plugin/hooks/panel.js (ui.render, probably what it returns to Claude Code), which is outside this plan's files (tools/l3-suite.sh, tools/l3.sh, tools/l3-results/panel.json). Done: the 'panel' scenario in tools/l3-suite.sh (seed: two phases, P1 passed, P2 plan awaiting approval; reads the screen). Not done: sound/closed persistence checks across a restart, and the committed result. Needs a fix of the panel render first."
+        },
+        {
+          "at": "2026-10-05T16:28:05Z",
+          "from": "deep",
+          "to": "deep",
+          "reason": "Dev blocked P44.4: The real-app run (L3, Claude Code 2.1.289, window 200 columns) shows a defect in plugin/hooks/panel.js, outside this plan's files: the panel never redraws by itself. The debug log has '[WARN] [vbw] $.ui.invalidate dropped: HooksError: ui.invalidate: takes \"ui.render\", \"prompt.section\", ... (host check)': panel.js calls $.ui.invalidate() with no event name (redrawIfChanged). Seen: after '/vbw-sound off' the panel still says 'Sound is on.' (the choice is saved), and a state change (need, progress) shows only when the pane is reopened. R51 requires updates within a few seconds. Fix: call $.ui.invalidate('ui.render') (check the host's argument form), and check tests/panel (the fake's invalidate must also demand the name). The scenario is committed and passes every other fact (milestone, progress, doing, need, cost, no basis yet, click-close stays closed after restart, sound off kept); only sound_shown_off fails. After the fix, rerun: bash tools/l3-suite.sh panel, then commit tools/l3-results/panel.json."
         }
       ]
     },
@@ -6854,14 +6860,15 @@
         "P44.3",
         "P44.6"
       ],
-      "status": "planned",
+      "status": "blocked",
       "tasks": [
         "Add a 'panel' scenario to tools/l3-suite.sh: a realistic project with phases, history and a plan waiting for approval, started in a wide window (160 columns or more)",
         "Make it check, in the real app, that the panel shows the milestone and progress, what VBW is doing, what it needs from the user, the cost line and an estimate or the plain 'no basis yet'; that closing it keeps it closed and the sound switch is kept",
         "Name the scenario in the suite's list and header, state its fixture and what it did not test (the sound itself, a person reading it)",
         "Run it in the real app and commit tools/l3-results/panel.json"
       ],
-      "role": "dev"
+      "role": "dev",
+      "note": "The real-app run (L3, Claude Code 2.1.289, window 200 columns) shows a defect in plugin/hooks/panel.js, outside this plan's files: the panel never redraws by itself. The debug log has '[WARN] [vbw] $.ui.invalidate dropped: HooksError: ui.invalidate: takes \"ui.render\", \"prompt.section\", ... (host check)': panel.js calls $.ui.invalidate() with no event name (redrawIfChanged). Seen: after '/vbw-sound off' the panel still says 'Sound is on.' (the choice is saved), and a state change (need, progress) shows only when the pane is reopened. R51 requires updates within a few seconds. Fix: call $.ui.invalidate('ui.render') (check the host's argument form), and check tests/panel (the fake's invalidate must also demand the name). The scenario is committed and passes every other fact (milestone, progress, doing, need, cost, no basis yet, click-close stays closed after restart, sound off kept); only sound_shown_off fails. After the fix, rerun: bash tools/l3-suite.sh panel, then commit tools/l3-results/panel.json."
     },
     {
       "id": "P44.5",
