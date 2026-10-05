@@ -608,7 +608,8 @@ scenario_tools() {
   on_question() {
     local s n i
     s=$(screen)
-    if printf '%s' "$s" | grep -qiE 'look for (the best )?tools|tools for this project' && printf '%s' "$s" | grep -qiE 'linter|scanner|formatter'; then
+    # Matched on its option, which the screen never wraps.
+    if printf '%s' "$s" | grep -qE '[0-9]+\. Yes, look'; then
       offers=$((offers + 1))
       # "No, skip it" is the first option: the user moves to "Yes, look" and presses Enter.
       n=$(printf '%s' "$s" | grep -E '[0-9]+\. Yes' | grep -oE '[0-9]+' | head -1)
