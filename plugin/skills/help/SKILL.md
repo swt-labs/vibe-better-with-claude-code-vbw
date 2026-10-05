@@ -44,5 +44,6 @@ and you ship.
 | `/vbw:config` | Each setting on its own |
 | `/vbw:skills`, `/vbw:rtk`, `/vbw:compress` | Community skills; token-saving compression |
 | `/vbw:doctor` | Check VBW's setup |
+| `/vbw:panel` | Whether the panel and its "needs you" sound work here; `/vbw-panel` and `/vbw-sound` use them |
 | `/vbw:report` | Prepare a bug report (you see it first) |
 | `/vbw:update`, `/vbw:whats-new`, `/vbw:uninstall` | Update VBW, see what changed, remove it |
