@@ -12,9 +12,11 @@ Every step runs; a failure stops the release until its root cause is fixed.
    budget on an idle machine.
 2. **Real-user scenarios:** `bash tools/l3-suite.sh [SCENARIO...]` (the real
    Claude Code TUI, driven as a user, 4 at a time; about $1-3 per scenario).
-   Tiered: a milestone release runs all of them; a hotfix runs `greenfield`
-   plus every scenario that exercises the changed area, and the release record
-   names the scenarios run and those not run. Every check must pass.
+   Run `greenfield` plus every scenario that exercises what the release
+   changed; the milestone already ran its own scenarios while it was built.
+   Run the full suite before the 2.1 launch and when the release changes the
+   core `/vbw:vibe` loop (the router or `vbw next`). The release record names
+   the scenarios run and those not run. Every check must pass.
 3. **Version:** `bash tools/bump-version.sh --set X.Y.Z` (all five version files),
    then a `plugin/CHANGELOG.md` entry written for users: what they can do now,
    what was fixed, anything they must do. Every build a user is meant to receive

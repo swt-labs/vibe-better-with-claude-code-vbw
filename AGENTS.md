@@ -133,7 +133,7 @@ cat "$CLAUDE_PROJECT_DIR"/<session-id>/subagents/agent-*.jsonl
 
 - **Surface** (`plugin/skills/`): the `/vbw:vibe` router and utility skills, plus the statusline segment. Skills are specifications, not procedures.
 - **Engine** (`plugin/workflows/*.js`): all orchestration and all run-scoped logic (waves, retries, fix loops, budgets, fan-out and merge). Workflows receive state in `args` from `vbw next --json`. Agents write only through `vbw` subcommands.
-- **Kernel** (`plugin/bin/vbw` + `plugin/lib/*.sh`): the only writer of the plan of record (`.vbw/record.json`). It runs approved checks, commits with provenance, renders on demand and backs the hooks. Hard budget: 3,300 lines (owner raised it from 3,000 on 2026-10-04).
+- **Kernel** (`plugin/bin/vbw` + `plugin/lib/*.sh`): the only writer of the plan of record (`.vbw/record.json`). It runs approved checks, commits with provenance, renders on demand and backs the hooks. Hard budget: 3,500 lines (owner raised it from 3,000 to 3,300 on 2026-10-04 and to 3,500 on 2026-10-05).
 - **Agents** (`plugin/agents/`): VBW 1's team with its mandates: `architect`, `lead`, `dev`, `qa`, `scout`, `debugger`, `docs`. Each is a ≤1.5k-token specification of good output plus a tool list.
 - **Hooks** (`plugin/hooks/hooks.json`): guards scoped by the run lease and by `agent_type`. They are inert outside VBW projects.
 
@@ -170,7 +170,7 @@ Run everything with `bash tools/test.sh`. Run it directly, never through `| tail
 - **Zero tolerance:** every failure is investigated and resolved before committing, with no "pre-existing" exemptions.
 - **Both shells:** CI runs the suite on macOS `/bin/bash` 3.2 and on bash 5, from a checkout path containing a space. Locally, run it at least once under `/bin/bash` before committing kernel or hook code.
 - **Hermetic tests:** use `tests/helper.bash` (`vbw_setup`/`vbw_teardown`). Never rely on the host `HOME`, Claude session variables or open stdin.
-- **Real-user scenarios** (`tools/l3-suite.sh`: the real Claude Code TUI driven as a user, outcomes checked in the record and git, 4 at a time) run before every release, tiered (owner decision, 2026-10-04): a milestone release runs all of them; a hotfix runs `greenfield` plus every scenario that exercises the changed area, and the progress log names the scenarios run and those not run. Baselines for v1 and plain Claude Code live in `tools/baseline/`.
+- **Real-user scenarios** (`tools/l3-suite.sh`: the real Claude Code TUI driven as a user, outcomes checked in the record and git, 4 at a time) run where they find bugs (owner decision, 2026-10-05): a milestone adds and runs the scenarios for what it changes while it is built; every release runs `greenfield` plus every scenario that exercises the changed area; the full suite runs before the 2.1 launch and in any release that changes the core `/vbw:vibe` loop (the router or `vbw next`). The progress log names the scenarios run and those not run. Baselines for v1 and plain Claude Code live in `tools/baseline/`.
 
 ## Git Workflow
 
