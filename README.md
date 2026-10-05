@@ -112,7 +112,7 @@ Coming from an earlier VBW? See [docs/convert.md](docs/convert.md).
 | `/vbw:map`, `/vbw:teach [convention]` | Map an existing codebase; teach your conventions |
 | `/vbw:pause`, `/vbw:resume` | Stop safely; pick up where you left off |
 | `/vbw:profile`, `/vbw:config` | How VBW works (how it talks to you, models, how much it does on its own); each setting |
-| `/vbw:skills`, `/vbw:rtk`, `/vbw:compress` | Community skills, output compression, terser instruction files |
+| `/vbw:skills`, `/vbw:rtk`, `/vbw:compress` | Look for the best tools for your project ([docs/tools.md](docs/tools.md)); output compression; terser instruction files |
 | `/vbw:panel`, `/vbw-panel`, `/vbw-sound` | Whether the panel works here; open the panel; turn the "needs you" sound on or off |
 | `/vbw:doctor`, `/vbw:report` | Check the setup; prepare a bug report |
 | `/vbw:update`, `/vbw:whats-new`, `/vbw:uninstall` | Keep VBW current, or remove it |
@@ -138,6 +138,7 @@ Coming from an earlier VBW? See [docs/convert.md](docs/convert.md).
 - [docs/statusline.md](docs/statusline.md): the status line
 - [docs/panel.md](docs/panel.md): the panel, a plain-words view of progress and what needs you
 - [docs/diagnostics.md](docs/diagnostics.md): `vbw report` for bug reports and `vbw rtk`
+- [docs/tools.md](docs/tools.md): the offer to find the best tools for your project (asked once, nothing installed without your approval)
 - [docs/convert.md](docs/convert.md): updating from an earlier VBW and bringing in its projects
 - [plugin/CHANGELOG.md](plugin/CHANGELOG.md): what changed
 
