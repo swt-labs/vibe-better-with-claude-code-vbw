@@ -2942,12 +2942,19 @@
       ],
       "predicted": "deep",
       "qa": {
-        "result": "fail",
+        "result": "pass",
         "tier": "deep",
-        "tree": "ce2a1dd98c602da6c269bef4199ab749d255b2a17facc3081d5c647960dbf91b",
-        "at": "2026-10-05T03:01:28Z",
-        "note": "21/22 checks",
-        "rounds": 1
+        "tree": "25fbe8ff9d68d39f25ab1bb2fdaa88726f01c2e6905e3fcc80afbe31fdc286ce",
+        "at": "2026-10-05T04:12:21Z",
+        "note": "22/22 checks"
+      },
+      "outcome": {
+        "tier": "deep",
+        "predicted": "deep",
+        "held": true,
+        "fix_rounds": 1,
+        "qa_findings": 1,
+        "escalations": 0
       }
     }
   ],
@@ -5632,7 +5639,7 @@
       "req": "R48",
       "source": "qa",
       "attempts": 0,
-      "status": "fixed",
+      "status": "closed",
       "note": "Plan P41.2 said the recheck scenario must not be run in this phase (its status stays 'not run' until the milestone release run), and the criterion says the same. Commit 157bdc0b nevertheless ran it and committed tools/l3-results/recheck.json (passed: true, L3, cost 1.47 USD). That is a deviation from the agreed plan. Also, the scenario plays a plain commit, not a real fix round (the result's own not_tested list says so)."
     },
     {
@@ -6621,5 +6628,11 @@
     "scope": [],
     "passed": true
   },
-  "lease": null
+  "lease": {
+    "run": "qa-20261005T040008Z",
+    "kind": "qa",
+    "started_at": "2026-10-05T04:00:08Z",
+    "files": [],
+    "session": "9cd2cc30-8c86-4520-9d71-a0e82aff5407"
+  }
 }
