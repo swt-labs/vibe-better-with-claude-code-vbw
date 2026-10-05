@@ -4364,7 +4364,15 @@
           "to": "deep",
           "reason": "Dev blocked P47.7: tooling.js already reads args.profile and puts ${voice} in its only agent call (delivered by P47.2), so the task needs no change. The test 'every workflow agent call carries the profile' still fails only because it hard-codes [ \"$n\" -eq 7 ] workflows (tests/profile-levels.bats line 120) and there are now 8. Fixing it means editing tests/profile-levels.bats (and likely the 7-workflow count in tests/workflows.bats), which is outside this plan's files."
         }
-      ]
+      ],
+      "qa": {
+        "result": "fail",
+        "tier": "deep",
+        "tree": "5c2660d55e31d13c8a3ab4e1eca5062a4f4ed89d5e8ae8060711ba37c30e5a2c",
+        "at": "2026-10-05T20:33:49Z",
+        "note": "22/24 checks",
+        "rounds": 1
+      }
     },
     {
       "id": "P48",
@@ -8002,6 +8010,22 @@
       "attempts": 0,
       "status": "open",
       "note": "tools/l3-suite.sh still uses the old level question in two places that P45.1 task 3 (update the real-user test script to recognise the new greeting) should have covered: line 1192 (interview_options_fixed, key '^How much software have you built') and line 1287 (test 'interview (set|keep)|How much software'). Line 1192 means the level options are no longer checked against the real session (the greeting never matches that regex, so only the other two questions are checked). Only line 973 was updated (commit 21d1ddfe)."
+    },
+    {
+      "id": "F35",
+      "req": "R62",
+      "source": "qa",
+      "attempts": 0,
+      "status": "open",
+      "note": "The interview skill (plugin/skills/interview/SKILL.md) tells VBW to carry on as /vbw:skills does on yes (run the vbw:tooling workflow, install with npx skills), but its allowed-tools holds only Bash(vbw *). Workflow(vbw:tooling) and Bash(npx skills *) are not listed, so the yes path from the interview can stop on a permission prompt, while plugin/skills/skills/SKILL.md lists both. No test checks this."
+    },
+    {
+      "id": "F36",
+      "req": "R62",
+      "source": "qa",
+      "attempts": 0,
+      "status": "open",
+      "note": "Commit 977ce2ef changes tests/standards.bats (a new brace-default rule). It carries no VBW-Plan trailer and no P47 plan lists the file, so it is work outside the agreed plan. Escalation text also names a P47.7 that does not exist in the plan."
     }
   ],
   "todos": [
