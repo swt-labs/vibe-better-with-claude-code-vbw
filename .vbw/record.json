@@ -5632,7 +5632,7 @@
       "req": "R48",
       "source": "qa",
       "attempts": 0,
-      "status": "open",
+      "status": "fixed",
       "note": "Plan P41.2 said the recheck scenario must not be run in this phase (its status stays 'not run' until the milestone release run), and the criterion says the same. Commit 157bdc0b nevertheless ran it and committed tools/l3-results/recheck.json (passed: true, L3, cost 1.47 USD). That is a deviation from the agreed plan. Also, the scenario plays a plain commit, not a real fix round (the result's own not_tested list says so)."
     },
     {
@@ -5640,7 +5640,7 @@
       "req": "R47",
       "source": "qa",
       "attempts": 0,
-      "status": "open",
+      "status": "fixed",
       "note": "Added and unlisted: commit 2b1d2bfd adds a new view 'vbw show qa' (not in any P40 task) but the usage text in plugin/lib/cmd-show.sh (both the vbw_usage_error line and the header of the case) was not updated, so 'vbw show' help does not list it. Fix: either list qa in the usage message (and record the view as a decision) or remove it."
     },
     {
@@ -5648,7 +5648,7 @@
       "req": "R47",
       "source": "qa",
       "attempts": 0,
-      "status": "open",
+      "status": "fixed",
       "note": "Unrelated code rewritten: commits 9f932df1 and 2b1d2bfd rewrite code that has nothing to do with the re-check rule, apparently to save lines: cmd-next.sh (if/else on --json turned into a case; tracked/code counting merged), cmd-show.sh (three if-blocks in show contract --changes, show_contract_changes and show_work turned into one-line short-circuits). Not in any P40 task. With the budget now 3,500 (D96) there is no reason to keep them. Fix: revert those hunks or record a decision that lets them stand."
     }
   ],
@@ -6285,6 +6285,18 @@
       "text": "tools/l3-results/recheck.json, the committed result of the recheck scenario (P41.2), stands although no M8 plan lists it",
       "why": "P41.2 owns the scenario in tools/l3-suite.sh; its result file is what C50 reads once committed, written by the real-app run during the milestone (D95)",
       "at": "2026-10-05T02:27:18Z"
+    },
+    {
+      "id": "D99",
+      "text": "The recheck scenario ran during M8 and its result is committed, although P41.2's text said 'not run until the release run'",
+      "why": "D95 (owner, 2026-10-05), made after P41.2 was planned: a milestone runs the scenarios for what it changes while it is built; the result lists the plain-commit 'fix' under not tested",
+      "at": "2026-10-05T03:23:33Z"
+    },
+    {
+      "id": "D100",
+      "text": "vbw show qa stands as a view (added in P40.2, listed in vbw show's usage by P41.1); cmd-next.sh keeps one git ls-files pass for the tracked and code counts",
+      "why": "The view is R48's user-facing output; one listing pass instead of two is the same result with half the git calls. The other line-saving rewrites were reverted (F32)",
+      "at": "2026-10-05T03:23:34Z"
     }
   ],
   "commands": {
