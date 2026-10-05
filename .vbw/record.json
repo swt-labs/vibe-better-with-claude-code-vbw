@@ -4131,6 +4131,12 @@
           "from": "deep",
           "to": "deep",
           "reason": "Dev blocked P46.2: Hook is built and committed (6f5bd385, 53188717). With the same tests run against a copy of tests/approve-choice-helper.bash where answer_hook's default is \"${4:-{}}\", all 11 hook tests of C74 pass. The approved helper has \"${4:-\\{\\}}\" which bash 3.2 and 5.3 expand to the literal text \\{\\} (not {}), so jq --argjson fails and 7 tests in C74 (and test 13 in C75) see jq's error as output. The helper is protected (approved byte for byte), so I cannot fix it. Needs: owner/Lead to fix that default in the helper and re-approve. Also open and out of this plan: C75 tests 16 (docs/guards.md mention) and 17 (bench 'guard (answer)', plan P46.3)."
+        },
+        {
+          "at": "2026-10-05T16:41:27Z",
+          "from": "deep",
+          "to": "deep",
+          "reason": "Dev blocked P46.4: Approve step and help are done and committed (router 1,332 words). C76 cannot pass inside this plan's files, for two reasons. (1) The all-prompts budget test needs the skills and agents to total at most 11,400 words; they total 11,827 now, and were already 11,695 before this plan (growth from earlier plans, mostly interview 782 and lead 831 words). Cutting 430 words from the router and help alone would gut them. Decision needed: trim other prompts (interview, lead, dev) in a plan that owns them, or raise the budget (owner decision). (2) C76 also checks docs/proof.md, docs/guards.md and README.md, which are not in P46.4's files; presumably a docs plan (P46.5?) delivers them. Also tests/profile-levels.bats 'every workflow agent call carries the profile' fails on a workflow count, unrelated to my files."
         }
       ]
     },
@@ -7063,13 +7069,14 @@
         "P46.1",
         "P45.2"
       ],
-      "status": "planned",
+      "status": "blocked",
       "tasks": [
         "Replace 'ask user to type /vbw:approve' in the router's approve step: ask with AskUserQuestion using the 'approval question' and options that vbw show contract prints (Approve first, Not yet; the user's own words come from the app's own-answer slot); keep 'You cannot approve' and that /vbw:approve still works",
         "Say what to do with each answer: Approve continues the loop (the hook has recorded it), Not yet asks what to change, own words are treated as what to change or as a question; trim other wording so the router stays at or under 1,400 words and all prompts within 16k tokens",
         "Mention the choice next to /vbw:approve in the help"
       ],
-      "role": "dev"
+      "role": "dev",
+      "note": "Approve step and help are done and committed (router 1,332 words). C76 cannot pass inside this plan's files, for two reasons. (1) The all-prompts budget test needs the skills and agents to total at most 11,400 words; they total 11,827 now, and were already 11,695 before this plan (growth from earlier plans, mostly interview 782 and lead 831 words). Cutting 430 words from the router and help alone would gut them. Decision needed: trim other prompts (interview, lead, dev) in a plan that owns them, or raise the budget (owner decision). (2) C76 also checks docs/proof.md, docs/guards.md and README.md, which are not in P46.4's files; presumably a docs plan (P46.5?) delivers them. Also tests/profile-levels.bats 'every workflow agent call carries the profile' fails on a workflow count, unrelated to my files."
     },
     {
       "id": "P46.5",
@@ -7200,7 +7207,7 @@
         "P47.3",
         "P45.2"
       ],
-      "status": "planned",
+      "status": "done",
       "tasks": [
         "add a tools step after the keep question: read vbw tools and skip it when already answered",
         "ask one yes/no question explaining skills, code-safety scanners, linters, formatters and test frameworks in a few words",
