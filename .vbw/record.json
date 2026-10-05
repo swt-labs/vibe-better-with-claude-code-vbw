@@ -2870,7 +2870,7 @@
       "tier": "deep",
       "reasons": [
         "requirements: 2",
-        "files: 19 (132701 bytes)",
+        "files: 18 (130569 bytes)",
         "risk: none",
         "breaks: R1, R2, R11, R12, R13, R14, R22, R23, R24, R25, R26, R27, R28, R29, R31, R32, R33, R35, R37, R38, R40, R43, R44, R45, R46",
         "tests: project test command"
@@ -5241,7 +5241,7 @@
     {
       "id": "P40.2",
       "phase": "P40",
-      "title": "Use that in QA, proof and next",
+      "title": "QA records, proof, next, finishing and show all use the phase digest",
       "reqs": [
         "R47",
         "R49"
@@ -5252,6 +5252,9 @@
         "plugin/lib/prove.jq",
         "plugin/lib/cmd-next.sh",
         "plugin/lib/next.jq",
+        "plugin/lib/rigor-defs.jq",
+        "plugin/lib/cmd-show.sh",
+        "plugin/lib/cmd-req.sh",
         "tests/kernel-next.bats",
         "tests/kernel-qa.bats"
       ],
@@ -5259,12 +5262,13 @@
         "P40.1",
         "P39.1"
       ],
-      "status": "blocked",
+      "status": "planned",
       "tasks": [
-        "vbw qa record stores the phase's combined digest in qa.tree and its per-input digests in the clone cache (and still refuses a proof older than the code)",
-        "vbw prove leaves QA passes as they are: a pass stands while the phase's current combined digest equals its qa.tree, so it still counts for finishing the phase",
-        "vbw next lists for QA only the phases that need checking again, and adds a top-level qa with recheck (phase to reasons), standing and problems; the status line file carries it too",
-        "Update the existing tests that wrote passes by hand or expected a whole-project re-check (kernel-next.bats, kernel-qa.bats); bash tools/test.sh passes under /bin/bash and bash 5"
+        "vbw qa record stores the phase's combined digest in qa.tree and its per-input digests in the clone cache (and still refuses a proof older than the code, R12)",
+        "One rule for a standing pass: result pass and qa.tree equals the phase's current combined digest (D91). rigor-defs.jq phase_finished/finish_phases take the current digests; every caller passes them: prove.jq via cmd-prove.sh, cmd-qa.sh and cmd-req.sh; no code compares qa.tree with evidence.tree any more",
+        "vbw next lists for QA only the phases that need checking again (failed, never passed, digest changed, or building on a re-checked phase), and adds a top-level qa with recheck (phase to reasons), standing and problems; the status line file carries it too",
+        "vbw show phase prints [on older code] only when the phase's pass does not stand by that same rule",
+        "Delete the replaced whole-folder comparison code so the kernel stays within 3,300 lines; update kernel-next.bats and kernel-qa.bats (unprotected) to the new rule; bash tools/test.sh passes under /bin/bash and bash 5"
       ],
       "role": "dev"
     },
@@ -5360,34 +5364,6 @@
         "Status line: the answer file now carries the qa reasons"
       ],
       "role": "docs"
-    },
-    {
-      "id": "P40.4",
-      "phase": "P40",
-      "title": "A phase is finished, and shown current, when its QA pass stands",
-      "reqs": [
-        "R47"
-      ],
-      "files": [
-        "plugin/lib/rigor-defs.jq",
-        "plugin/lib/cmd-show.sh",
-        "plugin/lib/cmd-req.sh",
-        "plugin/lib/prove.jq",
-        "plugin/lib/cmd-qa.sh",
-        "tests/kernel-qafresh.bats"
-      ],
-      "after": [
-        "P40.1"
-      ],
-      "status": "blocked",
-      "role": "dev",
-      "tasks": [
-        "rigor-defs.jq: phase_finished and finish_phases take the phases' current digests (from qa_digests) and count a QA pass as standing when qa.tree equals the phase's current combined digest, instead of comparing qa.tree with evidence.tree (D91)",
-        "Every caller passes the digests: prove.jq (via cmd-prove), cmd-qa.sh and cmd-req.sh; no caller keeps the old comparison",
-        "cmd-show.sh: [on older code] only when the phase's pass does not stand by that same comparison",
-        "Update tests/kernel-qafresh.bats to the new rule; P40.2 runs after this plan (it stays blocked until P40.4 is done)"
-      ],
-      "note": "Task 2 needs the digests passed from plugin/lib/cmd-prove.sh (it calls record_update with prove.jq and passes --argjson ev/cap/at only), but cmd-prove.sh is not in P40.4's files. prove.jq cannot get the digests otherwise, so a fix that closes on prove would never finish a phase that needs QA. Also: until P40.2 makes vbw qa record store the combined digest in qa.tree (it still stores evidence.tree), the new comparison would never match; P40.4 would need cmd-qa.sh to write it too, which overlaps P40.2 task 1. Suggest: add plugin/lib/cmd-prove.sh to P40.4 (pass --argjson digests \"$(qa_digests \"$record\")\", source qa-inputs.sh), and fold the qa.tree write into P40.4 or order P40.2 task 1 first. No file changed."
     }
   ],
   "fixes": [
