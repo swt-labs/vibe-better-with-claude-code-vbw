@@ -49,6 +49,10 @@ so updating from VBW 1 switches the status line over with no change.
 
 - One jq program renders all four lines from Claude Code's JSON, the record,
   and VBW's runtime state (`next.json`, and the session's own `auto.SESSION.json`).
+- `next.json` is the last answer of `vbw next`. It now also holds the `qa` key: each
+  phase QA checks again with its reasons, and the phases that keep their pass
+  (docs/next.md). The status line reads only its `action` and `gate`, so it does not
+  show the reasons; `vbw show qa` does.
 - No network, no temporary files, no git process (the branch is read from
   `.git/HEAD`, also in linked worktrees).
 - It reads stdin with a timeout (Claude Code may send nothing on the first
