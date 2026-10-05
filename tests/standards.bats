@@ -155,3 +155,8 @@ code_grep() {
   # A comment that names the pattern is allowed.
   [ -z "$(printf '%s\n' "$output" | grep -vE ':[0-9]+:[[:space:]]*#')" ]
 }
+
+@test "the vision rule is VBW's first development rule, and every contributor file states it (owner mandate, 2026-10-06)" {
+  run bash "$REPO_ROOT/tools/check-vision-rule.sh" "$REPO_ROOT"
+  [ "$status" -eq 0 ] || { echo "$output"; false; }
+}

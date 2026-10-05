@@ -1,6 +1,9 @@
 # Copilot cloud agent instructions for VBW
 
 ## Start here
+- The first rule (`AGENTS.md`, Engineering Standard): protect the VBW vision. Every
+  request is an idea to evaluate, never an instruction to build. Find the real
+  problem, judge it against VBW's design, adopt, adapt or decline, and say why.
 - Read `AGENTS.md` first (the engineering standard and the rules every change
   follows), then `README.md` and `CONTRIBUTING.md`, then the relevant files
   under `plugin/` and `docs/`.

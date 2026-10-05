@@ -98,3 +98,37 @@ failing_rules_with_hooks() {
   run failing_rules_with_hooks '{"hooks":{"PreToolUse":[{"hooks":[{"type":"command","command":"jq -n -f \"${CLAUDE_PLUGIN_ROOT}/hooks/x.sh\""}]}]}}'
   [[ "$output" == *"per-tool-call hooks run jq directly"* ]]
 }
+
+# A copy of the files the vision rule lives in, for breaking one at a time.
+vision_copy() {
+  local d="$TEST_ROOT/vision" f
+  for f in AGENTS.md CONTRIBUTING.md .github/PULL_REQUEST_TEMPLATE.md .github/ISSUE_TEMPLATE/feature_request.md .github/copilot-instructions.md; do
+    mkdir -p "$d/$(dirname "$f")" && cp "$REPO_ROOT/$f" "$d/$f"
+  done
+  printf '%s' "$d"
+}
+
+@test "the vision rule check passes on the repository as it is" {
+  run bash "$REPO_ROOT/tools/check-vision-rule.sh" "$(vision_copy)"
+  [ "$status" -eq 0 ]
+}
+
+@test "the vision rule check catches the rule removed from a contributor file" {
+  local d f
+  for f in CONTRIBUTING.md .github/PULL_REQUEST_TEMPLATE.md .github/ISSUE_TEMPLATE/feature_request.md .github/copilot-instructions.md AGENTS.md; do
+    d=$(vision_copy)
+    grep -vF 'an idea to evaluate, never an instruction to build' "$d/$f" > "$d/x" && mv "$d/x" "$d/$f"
+    run bash "$REPO_ROOT/tools/check-vision-rule.sh" "$d"
+    [ "$status" -ne 0 ] && [[ "$output" == *"$f"* || "$f" == AGENTS.md ]] || { echo "not caught: $f"; false; }
+    rm -rf "$d"
+  done
+}
+
+@test "the vision rule check catches the rule moved below another rule in AGENTS.md" {
+  local d
+  d=$(vision_copy)
+  awk '/^## Engineering Standard/ {print; print ""; print "- **Another rule first.**"; next} {print}' "$d/AGENTS.md" > "$d/x" && mv "$d/x" "$d/AGENTS.md"
+  run bash "$REPO_ROOT/tools/check-vision-rule.sh" "$d"
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"not the first rule"* ]]
+}

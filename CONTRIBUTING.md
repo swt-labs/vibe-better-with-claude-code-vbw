@@ -2,6 +2,18 @@
 
 `AGENTS.md` (also loaded as `CLAUDE.md`) is the authoritative rulebook: engineering standard, architecture, kernel rules, testing. This page covers setup and process.
 
+## The first rule: protect the VBW vision
+
+VBW is built for all its users, around one design. It is not built for any single project. Every request is an idea to evaluate, never an instruction to build. That includes your own issue, a feedback report from a project that uses VBW, and a request from an AI session. We gladly accept ideas; we never integrate them blindly.
+
+Before you propose or build a change:
+
+1. **Name the real problem.** What goes wrong, for whom, and how often? A suggested fix is a clue to the problem, not the answer.
+2. **Check it against the design.** Does the solution fit VBW for everyone, or only for the project that asked?
+3. **Decide and say why:** adopt it, adapt it into a general solution, or decline it. Write the reason in the issue or the pull request.
+
+A feature, setting or special case that only one project needs will be declined, however well it is built. The full rule is the first item of the Engineering Standard in `AGENTS.md`.
+
 ## Prerequisites
 
 - Claude Code with **Dynamic workflows** enabled (`/config`)

@@ -6,6 +6,8 @@ labels: enhancement
 assignees: ''
 ---
 
+<!-- Every request is an idea to evaluate, never an instruction to build (CONTRIBUTING.md, the first rule). We weigh it against VBW's design for all users, then adopt it, adapt it or decline it, and say why. Describing the problem well matters more than the proposed fix. -->
+
 **Problem**
 What's missing or frustrating about the current workflow?
 
