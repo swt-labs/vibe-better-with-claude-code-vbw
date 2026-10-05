@@ -7495,6 +7495,11 @@
       "text": "The shipped plugin may be up to 2 MB (was 1 MB, design section 10, ledger D295)",
       "why": "Owner (2026-10-05): the needs-you sounds (380 KB today, more characters and variations coming) pushed the plugin to 1,092 KB; the limit is VBW's own, not Anthropic's",
       "at": "2026-10-05T14:53:40Z"
+    },
+    {
+      "id": "D111",
+      "at": "2026-10-05T15:00:10Z",
+      "text": "Contract approved: 57 requirements, 68 checks, 115 plans (d68ee3970531)"
     }
   ],
   "commands": {
