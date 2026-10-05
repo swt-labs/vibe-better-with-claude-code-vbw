@@ -11,14 +11,14 @@
 # L3_JOBS at a time (default 4); each one's lines print together when it ends.
 #
 # Scenarios: greenfield, reject, resume, change, convert, balanced, docs, qafix,
-# decision, debug, research, edgecase, leftover, recheck, newcomer, senior, panel. A user
+# decision, debug, research, edgecase, leftover, recheck, approval, newcomer, senior, panel. A user
 # answers every question with VBW's recommendation unless the scenario says otherwise.
 set -uo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 l3() { bash "$ROOT/tools/l3.sh" "$@"; }
 VBW="$ROOT/plugin/bin/vbw"
-ALL="greenfield reject resume change convert balanced docs qafix decision debug research edgecase leftover recheck newcomer senior panel"
+ALL="greenfield reject resume change convert balanced docs qafix decision debug research edgecase leftover recheck approval newcomer senior panel"
 RESULTS="$ROOT/tools/l3-results"
 STEPS=60
 
@@ -446,9 +446,9 @@ scenario_qafix() {
 # way a fix would), and QA runs again. The kernel's own answer just before QA
 # (vbw next --json, .qa) names the phase to check again, its reason and the phases
 # whose pass stands; the record then shows which phases QA really checked again.
-# recheck_seed: a spec of two requirements and an approved plan of two
-# independent phases, so the planner's phase split and tier never decide the run.
-recheck_seed() {
+# plan_seed: a spec of two requirements and a plan of two independent phases
+# (not yet approved), so the planner's phase split and tier never decide the run.
+plan_seed() {
   printf '# Greetings\n\n## Requirements\n\n- R1 [auto] ./greet.sh Ana prints "Hello, Ana!"; without a name it prints "Hello, world!"\n- R2 [auto] ./farewell.sh Ana prints "Goodbye, Ana!"; without a name it prints "Goodbye, world!"\n' > .vbw/spec.md
   "$VBW" spec sync > /dev/null || return 1
   printf '[ "$(sh greet.sh Ana)" = "Hello, Ana!" ] && [ "$(sh greet.sh)" = "Hello, world!" ]\n' > test_greet.sh
@@ -461,9 +461,10 @@ recheck_seed() {
     "rules": [{"req": "R1", "text": "a name is greeted", "check": "C1"}, {"req": "R1", "text": "no name greets the world", "check": "C1"},
               {"req": "R2", "text": "a name gets a farewell", "check": "C2"}, {"req": "R2", "text": "no name says goodbye to the world", "check": "C2"}]}' \
     | "$VBW" apply > /dev/null || return 1
-  git add -A && git commit -qm "chore: approved plan" || return 1
-  "$VBW" approve > /dev/null
+  git add -A && git commit -qm "chore: plan" || return 1
 }
+# recheck_seed: the plan above, approved.
+recheck_seed() { plan_seed && "$VBW" approve > /dev/null; }
 
 scenario_recheck() {
   new_project
@@ -527,6 +528,59 @@ scenario_recheck() {
         --argjson v "$(jq -c --argjson r "$rechecked" '[.phases[] | select(.id | IN($r[])) | {(.id): .qa.result}] | add // {}' .vbw/record.json 2> /dev/null || echo '{}')" \
         '{changed_file: $f, rechecked: $r, kept: $k, reason: $why, kernel_named_recheck: $p, kernel_named_standing: $s, new_verdict: $v}')" \
       '["a fix round of the fix loop (the change is a commit played by the scenario)","a project of more than two phases or phases that build on each other","the wording of what VBW tells the user (read by a person)","a change to a phase'"'"'s tests or plan"]'
+  }
+}
+
+# Approval as a choice (R61): the user agreed the spec and the plan, and starts
+# /vbw:vibe. VBW shows the contract and asks "Approve contract <fingerprint>?"
+# with the options Approve and Not yet; the user presses Enter on the first one
+# and never types /vbw:approve. The record and git then show the contract
+# approved by VBW's own hook, once, for the fingerprint the question named.
+scenario_approval() {
+  new_project
+  (cd "$dir" && "$VBW" init > /dev/null && "$VBW" config rigor standard > /dev/null && plan_seed) \
+    || { say "setup failed: could not seed the agreed spec and plan"; return 1; }
+  fixture="greet.sh and farewell.sh, one phase each; spec and plan agreed with the user before the session, contract not yet approved; rigor standard"
+  asked_fp="" options_shown=false pressed=false
+  start="/vbw:vibe"
+  # The contract's fingerprint (12 characters), from vbw show contract.
+  contract_fp() { (cd "$dir" && "$VBW" show contract 2> /dev/null | sed -n '1s/^contract \([0-9a-f]*\) .*$/\1/p' | cut -c1-12); }
+  approved_now() { (cd "$dir" && "$VBW" show contract 2> /dev/null | sed -n '1p' | grep -q '(approved)'); }
+  on_question() {
+    local s fp
+    s=$(screen)
+    fp=$(printf '%s' "$s" | grep -oE 'Approve contract [0-9a-f]{12}' | head -1 | grep -oE '[0-9a-f]{12}$')
+    [ -n "$fp" ] || return 1
+    asked_fp=$fp
+    if printf '%s' "$s" | grep -q 'Approve' && printf '%s' "$s" | grep -q 'Not yet'; then options_shown=true; fi
+    # The user presses Enter on the first option, Approve.
+    l3 keys "$scenario" Enter
+    pressed=true
+    return 0
+  }
+  # Never type /vbw:approve: when VBW waits for approval, ask VBW again.
+  on_idle() {
+    [ "$(next_action)" = approve ] || return 1
+    l3 type "$scenario" "/vbw:vibe"
+  }
+  done_yet() { [ "$pressed" = true ] && approved_now; }
+  checks() {
+    local passed=true now n named
+    now=$(contract_fp)
+    n=$(jq '[.decisions[] | select(.text | startswith("Contract approved"))] | length' "$dir/.vbw/record.json" 2> /dev/null || echo 0)
+    named=$(jq -r '[.decisions[] | select(.text | startswith("Contract approved")) | .text] | join(" ")' "$dir/.vbw/record.json" 2> /dev/null)
+    expect "the approval question named a fingerprint (${asked_fp:-none})" [ -n "$asked_fp" ]
+    expect "the question showed Approve and Not yet" [ "$options_shown" = true ]
+    expect "the question named the contract's fingerprint ($now)" [ "$asked_fp" = "$now" ]
+    expect "the contract is approved" approved_now
+    expect "exactly one 'Contract approved' decision ($n)" [ "$n" -eq 1 ]
+    case "$named" in *"($asked_fp)"*) named=true ;; *) named=false ;; esac
+    expect "that decision names the fingerprint the question named" [ "$named" = true ]
+    [ "$failed" -eq 0 ] || passed=false
+    result_write approval "$fixture" "${cost_usd:-0}" "$passed" \
+      "$(jq -n --arg fp "${asked_fp:-}" --argjson shown "$options_shown" --argjson e "$pressed" --argjson ok "$named" --argjson n "$n" \
+        '{fingerprint: $fp, choice_shown: $shown, approved_by_enter: ($e and $ok and $n == 1), decisions: $n}')" \
+      '["the answer Not yet or the user'"'"'s own words","an approval after the contract changed under the question","typing /vbw:approve (covered by the kernel tests)","a project larger than the greet.sh and farewell.sh fixture"]'
   }
 }
 
