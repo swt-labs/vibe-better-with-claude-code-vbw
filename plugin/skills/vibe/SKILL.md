@@ -47,8 +47,8 @@ checking results (`accept`) and shipping always stop for user.
 
 Do step for `action`, run `VBW_SESSION_ID=${CLAUDE_SESSION_ID} vbw next --json`, do next step. Stop when `gate` is
 true, or a workflow runs in background (its result wakes you; then continue).
-At a stop, tell user in plain words what happened. Every stop ends with a last
-line, **What I need from you:** <the one thing user must do now>, or "nothing".
+At a stop, tell user in plain words what happened.
+Every stop ends with a last line, **What I need from you:** <the one thing user must do now>, or "nothing".
 Never claim more than kernel output shows.
 
 `plan`, `build`, `fix` need **Workflow** tool; `workflows` line above turned
