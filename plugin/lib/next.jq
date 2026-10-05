@@ -59,13 +59,10 @@ def fix_files($r): if .command then ["*"]
 | ([.phases[] | select(.milestone == $m) | . as $ph | ($ph.tier // "standard") as $t
     | {key: $ph.id, value: ({tier: $t} + $tiers[0][$r.settings.profile][$t] | .models += $override | .models |= (if ((.qa // "" | ascii_downcase | contains("haiku"))) then .qa = "sonnet" else . end))}]
    | from_entries) as $rigor
-# Built phases QA has not verified on the proven code (VBW 1's QA mandate):
-# never verified, failed, or the code changed since. A built phase needs QA
+# Built phases QA must check again (VBW 1's QA mandate; lib/qa.jq): failed,
+# never passed, their inputs changed, or building on a phase that was. A built phase needs QA
 # unless it is express with only [auto] requirements and no escalations.
-| ([.phases[] | select(.milestone == $m) | .id as $ph | . as $p
-    | select([$r.plans[] | select(.phase == $ph)] | length > 0 and all(.[]; .status == "done"))
-    | select($p | needs_qa($rigor[$ph].tier; $current))
-    | select(.qa == null or .qa.result != "pass" or .qa.tree != ($r.evidence.tree // "")) | .id]) as $to_verify
+| ([.phases[] | select(.milestone == $m and $qa.recheck[.id] != null and needs_qa($rigor[.id].tier; $current)) | .id]) as $to_verify
 # The QA tier is the highest among the phases to verify.
 | ([$to_verify[] | $rigor[.].qa] | max_by(qa_rank) // "standard") as $tier
 | (if .lease != null and .lease.session != null and .lease.session != $session then
@@ -103,4 +100,4 @@ def fix_files($r): if .command then ["*"]
     result("accept"; true; "Accept or reject \($to_accept | join(", ")), one scenario at a time"; {requirements: $to_accept})
   else
     result("ship"; true; "Everything is proven and accepted: ship milestone \(.milestone.id)"; {})
-  end) as $n | $n + {requirements: [$current[] | {id, text, proof}], rigor: $rigor, declined: [(.project.declined // [])[].text], profile: ({level: "small scripts or no-code", depth: "plain with technical terms explained", involvement: "options with a recommendation"} + ($profile | with_entries(select(.value != null or .key == "kept" or .key == "pending"))) + {ask: ($n.action == "spec" and ($profile.interviewed | not))})}
+  end) as $n | $n + {requirements: [$current[] | {id, text, proof}], rigor: $rigor, qa: ($qa | {recheck, standing, problems}), declined: [(.project.declined // [])[].text], profile: ({level: "small scripts or no-code", depth: "plain with technical terms explained", involvement: "options with a recommendation"} + ($profile | with_entries(select(.value != null or .key == "kept" or .key == "pending"))) + {ask: ($n.action == "spec" and ($profile.interviewed | not))})}
