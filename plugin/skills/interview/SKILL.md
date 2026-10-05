@@ -1,7 +1,7 @@
 ---
 name: interview
 description: Ask the user, once at the start of a project, how much software they have built, how VBW should explain things, how involved they want to be, and what they are building and for whom. Used by the vibe router when the kernel says the interview is due.
-allowed-tools: Bash("${CLAUDE_PLUGIN_ROOT}/bin/vbw" *) Bash(vbw *)
+allowed-tools: Bash("${CLAUDE_PLUGIN_ROOT}/bin/vbw" *) Bash(vbw *) Bash(npx skills *) Workflow(vbw:tooling)
 ---
 
 # Interview
