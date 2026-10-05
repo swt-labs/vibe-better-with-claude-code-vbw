@@ -25,3 +25,6 @@ Thumbs.db
 
 # Maintainer-local working documents (design, plan, ledger, progress log).
 a_non_prod_docs/
+
+# Written by Claude Code when it loads the plugin from a folder (mods): never shipped
+plugin/tsconfig.json
