@@ -28,8 +28,11 @@ cmd_run() {
       | "run \(.run) belongs to another session\(if $me == "" then " (this session is unknown)" else "" end): wait for it, or if the user says that session is closed, vbw run end --owner-closed"')
     [ -z "$refusal" ] || vbw_die "$refusal"
     run=$(record_read | jq -r '.lease.run // "no run"')
+    local lease
+    lease=$(record_read | jq -c '.lease // empty')
     record_update '.lease = null | (.plans[] | select(.status == "building")).status = "planned"'
     record_commit "chore(vbw): record after $run"
+    [ -z "$lease" ] || vbw_step_add "$lease"
     printf 'run ended\n'
     return 0
   fi

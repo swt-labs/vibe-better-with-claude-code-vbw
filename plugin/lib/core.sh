@@ -92,6 +92,23 @@ vbw_now() {
   date -u +%Y-%m-%dT%H:%M:%SZ
 }
 
+# vbw_step_add LEASE_JSON: one finished step (kind, run, start, end, seconds)
+# in the clone's cache $(git-common-dir)/vbw/steps.json, the latest 50. Best
+# effort: a missing, damaged or unwritable cache never fails the caller.
+vbw_step_add() {
+  local common file now tmp
+  common=$(git rev-parse --path-format=absolute --git-common-dir 2> /dev/null) || return 0
+  file="$common/vbw/steps.json"
+  now=$(vbw_now)
+  tmp="$file.$$"
+  mkdir -p "$common/vbw" 2> /dev/null || return 0
+  { jq -c --arg now "$now" --slurpfile old <(jq -c 'select(type == "object" and (.steps | type) == "array")' "$file" 2> /dev/null) '
+      {steps: ((($old[0].steps // []) + [{kind, run, started_at, ended_at: $now,
+        seconds: (($now | fromdateiso8601) - (.started_at | fromdateiso8601))}]) | .[-50:])}' <<< "$1" > "$tmp" \
+    && mv -f "$tmp" "$file"; } 2> /dev/null || rm -f "$tmp" 2> /dev/null || true
+  return 0
+}
+
 # Absolute path of the enclosing git repository, or die.
 vbw_git_root() {
   local root
