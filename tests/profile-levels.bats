@@ -117,7 +117,8 @@ carries_profile() {
     [ "$voices" -ge "$calls" ] || { echo "$f: $calls agent calls but the profile is in $voices task texts"; false; }
     [ "$schemas" -ge "$calls" ] || { echo "$f: an agent call without a schema"; false; }
   done < <(workflows)
-  [ "$n" -eq 7 ]
+  # Every workflow was checked: at least the seven core ones, and any added since.
+  [ "$n" -ge 7 ] && [ "$n" -eq "$(workflows | wc -l | tr -d ' ')" ]
 }
 
 @test "R39: the router hands the profile to every workflow it starts" {

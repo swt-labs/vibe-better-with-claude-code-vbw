@@ -3961,7 +3961,7 @@
       "tier": "deep",
       "reasons": [
         "requirements: 3",
-        "files: 10 (39154 bytes)",
+        "files: 10 (39392 bytes)",
         "risk: CI (.github/workflows/ci.yml)",
         "breaks: R3",
         "tests: project test command"
@@ -3995,7 +3995,7 @@
       "tier": "deep",
       "reasons": [
         "requirements: 2",
-        "files: 20 (378685 bytes)",
+        "files: 29 (805850 bytes)",
         "risk: none",
         "breaks: R3, R38, R39",
         "tests: project test command"
@@ -4085,7 +4085,7 @@
       "tier": "deep",
       "reasons": [
         "requirements: 2",
-        "files: 6 (103344 bytes)",
+        "files: 6 (102912 bytes)",
         "risk: none",
         "breaks: R4, R5, R8, R13, R14, R22, R24, R25, R26, R28, R31, R34, R37, R38, R39, R40, R42, R44, R48, R50",
         "tests: project test command"
@@ -4119,7 +4119,7 @@
       "tier": "deep",
       "reasons": [
         "requirements: 1",
-        "files: 26 (179243 bytes)",
+        "files: 26 (177285 bytes)",
         "risk: none",
         "breaks: R3, R4, R5, R8, R12, R13, R14, R15, R22, R23, R24, R25, R26, R27, R28, R31, R32, R34, R35, R36, R37, R38, R39, R40, R42, R43, R44, R45, R46, R47, R48, R49, R50",
         "tests: project test command"
@@ -4167,7 +4167,7 @@
       "tier": "deep",
       "reasons": [
         "requirements: 2",
-        "files: 10 (107177 bytes)",
+        "files: 10 (106579 bytes)",
         "risk: none",
         "breaks: R3, R4, R5, R8, R13, R14, R22, R23, R24, R25, R27, R28, R31, R34, R37, R38, R39, R40, R42, R43, R44, R45, R46, R47, R48, R49",
         "tests: project test command"
@@ -7343,32 +7343,40 @@
         "P47.4"
       ],
       "status": "done",
-      "role": "dev",
       "tasks": [
         "Remove obsolete instructions, then compress what Claude reads into terse caveman style (as /vbw:compress does: every fact, rule, path, command and code block kept); keep every text shown to the user word for word: questions, options, the greeting, messages (D121)",
         "All prompts together within 11,000 words (budget 11,400, tests/profile-levels.bats); the router and help are left to P46.4",
         "Every existing test that reads these prompts still passes (tests/*.bats on agents and skills); the full suite has no new failure"
-      ]
+      ],
+      "role": "dev"
     },
     {
-      "id": "P47.7",
-      "phase": "P47",
-      "title": "The tool-search Scouts write at the user's level",
+      "id": "P43.5",
+      "phase": "P43",
+      "title": "Ship the owner's new sound characters",
       "reqs": [
-        "R62"
+        "R57"
       ],
       "files": [
-        "plugin/workflows/tooling.js"
+        "plugin/hooks/panel-sounds.js",
+        "plugin/assets/audio/arnold/a1.mp3",
+        "plugin/assets/audio/arnold/a2.mp3",
+        "plugin/assets/audio/arnold/a3.mp3",
+        "plugin/assets/audio/arnold/a4.mp3",
+        "plugin/assets/audio/arnold/a5.mp3",
+        "plugin/assets/audio/arnold/a6.mp3",
+        "plugin/assets/audio/darth/d1.mp3",
+        "plugin/assets/audio/darth/d2.mp3",
+        "plugin/assets/audio/darth/d3.mp3"
       ],
       "after": [
-        "P47.2"
+        "P43.2"
       ],
-      "status": "blocked",
+      "status": "planned",
       "role": "dev",
       "tasks": [
-        "tooling.js passes args.profile (level, explanation depth, involvement) into every Scout task, as every other workflow does (R39); tests/profile-levels.bats 'every workflow agent call carries the profile' passes, and C79 still passes"
-      ],
-      "note": "tooling.js already reads args.profile and puts ${voice} in its only agent call (delivered by P47.2), so the task needs no change. The test 'every workflow agent call carries the profile' still fails only because it hard-codes [ \"$n\" -eq 7 ] workflows (tests/profile-levels.bats line 120) and there are now 8. Fixing it means editing tests/profile-levels.bats (and likely the 7-workflow count in tests/workflows.bats), which is outside this plan's files."
+        "Run tools/sounds.sh so plugin/hooks/panel-sounds.js lists every shipped clip (charlize, arnold, darth); commit the new clips with it; C70 and the 2 MB size rule pass"
+      ]
     }
   ],
   "fixes": [
