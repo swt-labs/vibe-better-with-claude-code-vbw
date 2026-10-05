@@ -4,9 +4,9 @@
     "name": "v2"
   },
   "milestone": {
-    "id": "M8",
-    "title": "Smarter QA re-checks",
-    "status": "shipped"
+    "id": "M9",
+    "title": "Live VBW panel",
+    "status": "active"
   },
   "shipped": [
     {
