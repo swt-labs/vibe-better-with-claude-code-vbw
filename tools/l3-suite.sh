@@ -11,14 +11,14 @@
 # L3_JOBS at a time (default 4); each one's lines print together when it ends.
 #
 # Scenarios: greenfield, reject, resume, change, convert, balanced, docs, qafix,
-# decision, debug, research, edgecase, leftover, newcomer, senior. A user answers
-# every question with VBW's recommendation unless the scenario says otherwise.
+# decision, debug, research, edgecase, leftover, recheck, newcomer, senior. A user
+# answers every question with VBW's recommendation unless the scenario says otherwise.
 set -uo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 l3() { bash "$ROOT/tools/l3.sh" "$@"; }
 VBW="$ROOT/plugin/bin/vbw"
-ALL="greenfield reject resume change convert balanced docs qafix decision debug research edgecase leftover newcomer senior"
+ALL="greenfield reject resume change convert balanced docs qafix decision debug research edgecase leftover recheck newcomer senior"
 RESULTS="$ROOT/tools/l3-results"
 STEPS=60
 
@@ -435,6 +435,68 @@ scenario_qafix() {
       "$(jq -n --arg d "${deviation:-}" --arg fv "$fv" --arg n "$note" --argjson r "$rounds" --arg fin "$final" --argjson p "$proved" \
         '{deviation: $d, first_qa_verdict: $fv, first_qa_note: $n, fix_rounds: $r, final_qa_verdict: $fin, phase_proved: $p}')" \
       '["a deviation other than one missing file","a deviation the Dev introduces itself (the seed is played by the scenario)","the fix cap (three failed rounds) and its escalation","a project larger than the greet.sh fixture"]'
+  }
+}
+
+# QA checks again only what changed (R48): a project of two independent phases is
+# built and passes QA, then a commit by the "user" touches one phase's script (the
+# way a fix would), and QA runs again. The kernel's own answer just before QA
+# (vbw next --json, .qa) names the phase to check again, its reason and the phases
+# whose pass stands; the record then shows which phases QA really checked again.
+scenario_recheck() {
+  new_project
+  fixture="two independent scripts, greet.sh and farewell.sh, one phase each; guided autonomy; after QA passes, one commit changes greet.sh and QA runs again"
+  seeded="" next_json="{}" qa_before="{}"
+  start="Use guided autonomy for this project. /vbw:vibe two small command-line scripts as two separate phases, one script each, neither using the other: greet.sh (\"./greet.sh Ana\" prints \"Hello, Ana!\", without a name \"Hello, world!\") and farewell.sh (\"./farewell.sh Ana\" prints \"Goodbye, Ana!\", without a name \"Goodbye, world!\"). One small milestone."
+  phase_qa() { jq -c '. as $r | [$r.phases[] | select(.milestone == $r.milestone.id) | {key: .id, value: (.qa.at // "")}] | from_entries' "$dir/.vbw/record.json"; }
+  seed_change() {
+    [ -z "$seeded" ] || return 1
+    jq -e '. as $r | [$r.phases[] | select(.milestone == $r.milestone.id)] | length >= 2 and all(.[]; .qa.result == "pass") and $r.milestone.status != "shipped"' "$dir/.vbw/record.json" > /dev/null 2>&1 || return 1
+    local f
+    f=$(jq -r '. as $r | ([$r.phases[] | select(.milestone == $r.milestone.id)][0].id) as $p
+      | [$r.plans[] | select(.phase == $p) | .files[] | select(endswith(".sh"))] as $mine
+      | [$r.plans[] | select(.phase != $p) | .files[]] as $others
+      | [$r.checks[] | .files[]] as $tests
+      | [$mine[] | select(. as $x | ($others + $tests) | index($x) | not)][0] // empty' "$dir/.vbw/record.json" 2> /dev/null)
+    [ -n "$f" ] && [ -f "$dir/$f" ] || return 1
+    qa_before=$(phase_qa)
+    printf '# reviewed by the user\n' >> "$dir/$f"
+    git -C "$dir" commit -qm "chore: note in $f" -- "$f" || return 1
+    (cd "$dir" && "$VBW" prove > /dev/null 2>&1) || true
+    # The kernel's answer before QA runs again: what it will check and what stands.
+    next_json=$(cd "$dir" && "$VBW" next --json 2> /dev/null | jq -c '.qa // {}')
+    seeded="$f"
+    say "changed $f after QA passed; the kernel says: $next_json"
+    return 0
+  }
+  on_question() { seed_change || true; return 1; }
+  on_idle() { seed_change; }
+  done_yet() {
+    [ -n "$seeded" ] || return 1
+    jq -e --argjson b "$qa_before" '[.phases[] | select(.id | IN($b | keys[])) | select(.qa.at != $b[.id])] | length > 0' "$dir/.vbw/record.json" > /dev/null 2>&1
+  }
+  checks() {
+    local after rechecked kept reason predicted standing passed=true same=false named=false
+    [ -n "$seeded" ] || { say "FAIL the change was never made (QA did not pass for two phases)"; failed=1; }
+    after=$(phase_qa)
+    rechecked=$(jq -nc --argjson a "$qa_before" --argjson z "$after" '[$z | keys[] | select($z[.] != $a[.])]')
+    kept=$(jq -nc --argjson a "$qa_before" --argjson z "$after" '[$z | keys[] | select($z[.] == $a[.])]')
+    predicted=$(printf '%s' "$next_json" | jq -c '(.recheck // {}) | keys')
+    standing=$(printf '%s' "$next_json" | jq -c '.standing // []')
+    reason=$(printf '%s' "$next_json" | jq -r '[(.recheck // {})[] | join("; ")] | join(" | ")')
+    say "checked again: $rechecked, kept: $kept, reason: $reason"
+    [ "$rechecked" = "$predicted" ] && [ "$kept" = "$standing" ] && same=true
+    case "$reason" in *changed*) named=true ;; esac
+    expect "exactly one phase was checked again" [ "$(printf '%s' "$rechecked" | jq 'length')" -eq 1 ]
+    expect "at least one phase kept its pass" [ "$(printf '%s' "$kept" | jq 'length')" -ge 1 ]
+    expect "the phases QA checked again are the ones the kernel named, and the kept ones the ones it said stand" [ "$same" = true ]
+    expect "the reason names what changed" [ "$named" = true ]
+    expect "the checked phase's last QA verdict is a pass" jq -e --argjson r "$rechecked" 'all(.phases[] | select(.id | IN($r[])); .qa.result == "pass")' .vbw/record.json
+    [ "$failed" -eq 0 ] || passed=false
+    result_write recheck "$fixture" "${cost_usd:-0}" "$passed" \
+      "$(jq -n --arg f "${seeded:-}" --argjson r "$rechecked" --argjson k "$kept" --arg why "$reason" --argjson p "$predicted" --argjson s "$standing" \
+        '{changed_file: $f, rechecked: $r, kept: $k, reason: $why, kernel_named_recheck: $p, kernel_named_standing: $s}')" \
+      '["a fix round of the fix loop (the change is a commit played by the scenario)","a project of more than two phases or phases that build on each other","the wording of what VBW tells the user (read by a person)","a change to a phase'"'"'s tests or plan"]'
   }
 }
 
