@@ -317,6 +317,10 @@ phase keeps its pass. A built phase is checked again when:
 
 Files and tests count as committed (`HEAD`), so commit work before QA.
 
+Re-planning mid-milestone (`vbw apply` with phases added or changed) keeps each
+existing phase's QA verdict. QA then checks again only the new phases and the
+phases whose own inputs changed, by the rule above.
+
 ```
 $ vbw show qa
 P1 is checked again: its files changed
