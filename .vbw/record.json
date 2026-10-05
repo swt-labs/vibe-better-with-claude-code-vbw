@@ -6101,7 +6101,7 @@
       "after": [
         "P42.2"
       ],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "Write a bench driver that runs the panel with the test stand-in for Claude Code and measures CPU time (not waiting time) of a refresh that finds nothing new and of one that redraws, averaged over VBW_BENCH_RUNS",
@@ -6147,7 +6147,7 @@
       "after": [
         "P42.2"
       ],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "Read the user's saved choice at session start from Claude Code's per-user store (never the project) and open the panel by itself only when the user has not closed it; if Claude Code leaves it closed (narrow window), do not try again",
