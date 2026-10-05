@@ -11,14 +11,14 @@
 # L3_JOBS at a time (default 4); each one's lines print together when it ends.
 #
 # Scenarios: greenfield, reject, resume, change, convert, balanced, docs, qafix,
-# decision, debug, research, edgecase, leftover, recheck, newcomer, senior. A user
+# decision, debug, research, edgecase, leftover, recheck, newcomer, senior, panel. A user
 # answers every question with VBW's recommendation unless the scenario says otherwise.
 set -uo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 l3() { bash "$ROOT/tools/l3.sh" "$@"; }
 VBW="$ROOT/plugin/bin/vbw"
-ALL="greenfield reject resume change convert balanced docs qafix decision debug research edgecase leftover recheck newcomer senior"
+ALL="greenfield reject resume change convert balanced docs qafix decision debug research edgecase leftover recheck newcomer senior panel"
 RESULTS="$ROOT/tools/l3-results"
 STEPS=60
 
@@ -524,6 +524,83 @@ scenario_recheck() {
         --argjson v "$(jq -c --argjson r "$rechecked" '[.phases[] | select(.id | IN($r[])) | {(.id): .qa.result}] | add // {}' .vbw/record.json 2> /dev/null || echo '{}')" \
         '{changed_file: $f, rechecked: $r, kept: $k, reason: $why, kernel_named_recheck: $p, kernel_named_standing: $s, new_verdict: $v}')" \
       '["a fix round of the fix loop (the change is a commit played by the scenario)","a project of more than two phases or phases that build on each other","the wording of what VBW tells the user (read by a person)","a change to a phase'"'"'s tests or plan"]'
+  }
+}
+
+# The VBW panel (R51, R53, R55, R58): the real app in a wide window (200 columns, the
+# panel opens by itself from 144 up) on a project with two phases, one passed and one
+# whose plan waits for the user's approval. The panel is read from the screen, as the
+# user sees it: the milestone, the progress, what VBW is doing, what it needs from the
+# user, the cost line, and an estimate or the plain "no basis yet" (a new clone has no
+# finished steps). Then the user turns the sound off, closes the panel, and starts the
+# app again: the panel stays closed and the sound stays off. The one place the screen is
+# the evidence is the panel itself: what it shows is what the requirement asks for.
+panel_seed() {
+  printf '# Greetings\n\n## Requirements\n\n- R1 [auto] ./greet.sh Ana prints "Hello, Ana!"; without a name it prints "Hello, world!"\n- R2 [auto] ./farewell.sh Ana prints "Goodbye, Ana!"; without a name it prints "Goodbye, world!"\n' > .vbw/spec.md
+  "$VBW" spec sync > /dev/null || return 1
+  printf '#!/bin/sh\necho "Hello, ${1:-world}!"\n' > greet.sh
+  printf '[ "$(sh greet.sh Ana)" = "Hello, Ana!" ] && [ "$(sh greet.sh)" = "Hello, world!" ]\n' > test_greet.sh
+  printf '[ "$(sh farewell.sh Ana)" = "Goodbye, Ana!" ] && [ "$(sh farewell.sh)" = "Goodbye, world!" ]\n' > test_farewell.sh
+  git add -A && git commit -qm "feat: greet.sh and its test" || return 1
+  panel_apply "farewell.sh prints Goodbye, NAME! or Goodbye, world! without a name" || return 1
+  git add -A && git commit -qm "chore: plan" || return 1
+  # The user approved the plan and the first phase was built and checked earlier;
+  # the second phase's plan was then reworded and waits for approval again.
+  "$VBW" approve > /dev/null && { "$VBW" prove > /dev/null 2>&1 || true; } && "$VBW" qa record P1 pass standard > /dev/null || return 1
+  panel_apply "farewell.sh says Goodbye, NAME! (or Goodbye, world! with no name) and exits 0" || return 1
+}
+
+# panel_apply TASK: apply the two-phase plan, P2.1 with the task TASK.
+panel_apply() {
+  jq -n --arg t "$1" '{"phases": [{"id": "P1", "title": "Greet", "reqs": ["R1"]}, {"id": "P2", "title": "Farewell", "reqs": ["R2"]}],
+    "plans": [{"id": "P1.1", "phase": "P1", "title": "greet.sh", "reqs": ["R1"], "files": ["greet.sh"], "after": [], "tasks": ["greet.sh prints Hello, NAME! or Hello, world! without a name"]},
+              {"id": "P2.1", "phase": "P2", "title": "farewell.sh", "reqs": ["R2"], "files": ["farewell.sh"], "after": ["P1.1"], "tasks": [$t]}],
+    "checks": [{"id": "C1", "req": "R1", "run": ["sh", "test_greet.sh"], "files": ["test_greet.sh"]},
+               {"id": "C2", "req": "R2", "run": ["sh", "test_farewell.sh"], "files": ["test_farewell.sh"]}],
+    "rules": [{"req": "R1", "text": "a name is greeted", "check": "C1"}, {"req": "R1", "text": "no name greets the world", "check": "C1"},
+              {"req": "R2", "text": "a name gets a farewell", "check": "C2"}, {"req": "R2", "text": "no name says goodbye to the world", "check": "C2"}]}' \
+    | "$VBW" apply > /dev/null
+}
+
+scenario_panel() {
+  new_project
+  (cd "$dir" && "$VBW" init > /dev/null && "$VBW" config rigor standard > /dev/null && panel_seed) \
+    || { say "setup failed: could not seed the two-phase project"; return 1; }
+  fixture="greet.sh and farewell.sh, two phases: the first passed QA, the second plan waits for the user's approval; no finished steps in the clone (so no estimate basis); window 200 columns wide"
+  start="/vbw:panel"
+  facts="{}"
+  panel_text() { screen | sed 's/[[:space:]][[:space:]]*/ /g'; }
+  # The screen after the panel has had time to draw (it redraws within seconds).
+  panel_wait() {
+    local i s
+    for ((i = 0; i < 20; i++)); do
+      s=$(panel_text)
+      case "$s" in *"$1"*) printf '%s' "$s"; return 0 ;; esac
+      sleep 1
+    done
+    printf '%s' "$s"; return 1
+  }
+  has() { case "$1" in *"$2"*) echo true ;; *) echo false ;; esac; }
+  observe() {
+    local s mid
+    s=$(panel_wait "Working on")
+    printf '%s\n' "$s" > "$dir.panel.screen.txt"
+    mid=$(jq -r '.milestone.id' "$dir/.vbw/record.json")
+    facts=$(jq -n --arg m "$(has "$s" "Working on $mid:")" --arg p "$(has "$s" "1 of 2 phases done")" \
+      --arg d "$(has "$s" "VBW is idle")" --arg n "$(has "$s" "Please approve the plan")" \
+      --arg c "$(case "$s" in *"has cost \$"*|*"cost so far is not available"*) echo true ;; *) echo false ;; esac)" \
+      --arg e "$(case "$s" in *"No estimate yet"*) echo "no basis yet" ;; *"min left"*) echo "approximate time" ;; *) echo "" ;; esac)" \
+      '{milestone_shown: ($m == "true"), progress_shown: ($p == "true"), doing_shown: ($d == "true"), need_shown: ($n == "true"),
+        need_text: (if $n == "true" then "Please approve the plan before VBW builds it." else "" end), cost_shown: ($c == "true"), estimate_shown: $e}')
+  }
+  done_yet() { observe; return 0; }
+  checks() {
+    local passed=true
+    for k in milestone_shown progress_shown doing_shown need_shown cost_shown; do
+      expect "the panel shows: $k" jq -e --arg k "$k" '.[$k] == true' <<< "$facts"
+    done
+    result_write panel "$fixture" "${cost_usd:-0}" "$passed" "$facts" \
+      '["the sound itself (nothing was heard: the run only checks the switch)","what a person reads at a glance: wording and layout are judged on the screen text, not by a reader","a narrow window (the panel is opened with /vbw-panel there)","a panel while a build or QA runs, and a time estimate with a number"]'
   }
 }
 
