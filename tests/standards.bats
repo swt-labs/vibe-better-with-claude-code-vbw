@@ -147,3 +147,9 @@ code_grep() {
   run claude plugin validate "$REPO_ROOT"
   [[ "$output" == *"Validation passed"* ]] || { echo "$output"; false; }
 }
+
+@test "no brace-literal parameter defaults (a default of {} written inside the expansion): bash 3.2 keeps the backslash (tests and tools too)" {
+  run grep -rnE '\$\{[A-Za-z0-9_]+:-\\?\{' --include='*.sh' --include='*.bash' --include='*.bats' "$REPO_ROOT/tests" "$REPO_ROOT/tools" "$PLUGIN_ROOT"
+  # A comment that names the pattern is allowed.
+  [ -z "$(printf '%s\n' "$output" | grep -vE ':[0-9]+:[[:space:]]*#')" ]
+}
