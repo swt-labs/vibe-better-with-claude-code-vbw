@@ -6219,6 +6219,11 @@
       "text": "Kernel budget 3,500 lines, kept in one place (tests/standards.bats); protected tests defer to it",
       "why": "Owner (2026-10-05): M8 filled the 3,300 budget and the Dev compressed code to fit; one source means a later change needs no contract change",
       "at": "2026-10-05T02:01:29Z"
+    },
+    {
+      "id": "D97",
+      "at": "2026-10-05T02:05:02Z",
+      "text": "Contract approved: 47 requirements, 49 checks, 100 plans (784c417faacc)"
     }
   ],
   "commands": {
