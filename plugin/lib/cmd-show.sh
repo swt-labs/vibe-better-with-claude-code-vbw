@@ -1,14 +1,16 @@
 #!/usr/bin/env bash
 # vbw show roadmap | phase ID | req ID | plan ID [--json] | fix ID [--json] |
-# contract | evidence | decisions | requirements | rigor: views rendered from the record
+# contract | evidence | decisions | requirements | rigor | qa: views rendered from the record
 # and git trailers. Nothing is stored in rendered form. plan and fix are the
 # context a Dev works from.
 
 cmd_show() {
   local view="${1:-}" record
   [ $# -gt 0 ] && shift
-  case "$view" in roadmap|phase|req|plan|fix|contract|evidence|decisions|requirements|rigor) ;; *) vbw_usage_error "usage: vbw show roadmap | phase ID | req ID | plan ID [--json] | fix ID [--json] | contract [--changes] | evidence | decisions | requirements | rigor" ;; esac
+  case "$view" in roadmap|phase|req|plan|fix|contract|evidence|decisions|requirements|rigor|qa) ;; *) vbw_usage_error "usage: vbw show roadmap | phase ID | req ID | plan ID [--json] | fix ID [--json] | contract [--changes] | evidence | decisions | requirements | rigor" ;; esac
   vbw_require_project
+  # shellcheck source=cmd-next.sh
+  . "$VBW_LIB/cmd-next.sh"
   record=$(record_read)
   case "$view" in
     roadmap)
@@ -26,13 +28,13 @@ cmd_show() {
     phase)
       [ $# -eq 1 ] || vbw_usage_error "usage: vbw show phase ID"
       printf '%s' "$record" | jq -e --arg p "$1" 'any(.phases[]; .id == $p)' > /dev/null || vbw_die "unknown phase $1"
-      printf '%s' "$record" | jq -r --arg p "$1" "$SHOW_JQ_DEFS"'
+      printf '%s' "$record" | jq -r --arg p "$1" --argjson cur "$(qa_combined "$record")" "$SHOW_JQ_DEFS"'
         . as $r | (.phases[] | select(.id == $p)) as $ph
         | "\($ph.id) \($ph.title) [\($ph | phase_status($r))]",
           (if $ph.goal then "goal: \($ph.goal)" else empty end),
           (if $ph.criteria then "criteria:", ($ph.criteria[] | "  - " + .) else empty end),
           (if $ph.qa then "qa: \($ph.qa.result) (\($ph.qa.tier), \($ph.qa.at))\(if $ph.qa.note then ": " + $ph.qa.note else "" end)"
-             + (if $ph.qa.tree != ($r.evidence.tree // "") then " [on older code]" else "" end) else empty end),
+             + (if $ph.qa.result == "pass" and $ph.qa.tree != ($cur[$ph.id] // "") then " [on older code]" else "" end) else empty end),
           (if $ph.tier then "tier: \($ph.tier) (predicted \($ph.predicted // $ph.tier))", ($ph.reasons // [] | map("  - " + .)[]) else empty end),
           (($ph.escalations // [])[] | "escalated \(.from) -> \(.to) (\(.at)): \(.reason)"),
           "requirements:",
@@ -40,6 +42,10 @@ cmd_show() {
           "plans:",
           ($r.plans[] | select(.phase == $p) | "  \(.id) \(.title) [\(.status)\(if .role == "docs" then ", docs" else "" end)]: \(.files | join(", "))",
             ((.tasks // [])[] | "    - " + .))'
+      ;;
+    qa)
+      qa_state "$record" | jq -r '(.recheck | to_entries[] | "\(.key) checked again: \(.value | join("; "))"),
+        (if (.standing | length) > 0 then "standing: \(.standing | join(", "))" else empty end), (.problems[] | "problem: " + .)'
       ;;
     req)
       [ $# -eq 1 ] || vbw_usage_error "usage: vbw show req ID"
@@ -58,10 +64,7 @@ cmd_show() {
       show_work "$record" "$view" "$1" "${2:-}"
       ;;
     contract)
-      if [ "${1:-}" = --changes ]; then
-        show_contract_changes "$record"
-        return 0
-      fi
+      [ "${1:-}" != --changes ] || { show_contract_changes "$record"; return 0; }
       [ $# -eq 0 ] || vbw_usage_error "usage: vbw show contract [--changes]"
       local hash state="NOT APPROVED"
       hash=$(contract_hash "$record")
@@ -119,10 +122,7 @@ cmd_show() {
 # What changed in the contract since the last approval in this clone.
 show_contract_changes() {
   local before="$VBW_RUNTIME/approved-contract.json"
-  if [ ! -f "$before" ]; then
-    printf 'no earlier approval in this clone: the whole contract is new (vbw show contract)\n'
-    return 0
-  fi
+  [ -f "$before" ] || { printf 'no earlier approval in this clone: the whole contract is new (vbw show contract)\n'; return 0; }
   contract_doc "$1" | jq -r --slurpfile old "$before" "$SHOW_JQ_DEFS"'
     . as $new | $old[0] as $old
     | [ ($new.requirements | to_entries[] | select($old.requirements[.key] == null)
@@ -216,10 +216,7 @@ show_work() {
            plans: [$r.plans[] | select($f.req != null and any(.reqs[]; . == $f.req)) | {id, title, files}]} end
       end')
   [ "$json" != null ] || vbw_die "unknown $2 $3"
-  if [ "${4:-}" = --json ]; then
-    printf '%s\n' "$json"
-    return 0
-  fi
+  [ "${4:-}" != --json ] || { printf '%s\n' "$json"; return 0; }
   printf '%s' "$json" | jq -r "$SHOW_JQ_DEFS"'
     def check_lines: .checks[] | "  \(.id) (\(.req)) " + check_line
       + (if .last then " — last: \(.last.status)" else "" end);
