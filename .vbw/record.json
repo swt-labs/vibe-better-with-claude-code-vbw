@@ -1305,6 +1305,14 @@
           "check": "C72"
         }
       ]
+    },
+    {
+      "id": "R61",
+      "text": "Approval is offered as a choice: VBW asks with the options Approve (first, so Enter approves), Not yet (VBW asks what to change) and the user's own words; picking Approve approves exactly the contract shown, recorded by VBW's own code from the user's answer so Claude can never approve by itself; typing /vbw:approve still works",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M9",
+      "rules": []
     }
   ],
   "checks": [
