@@ -11,14 +11,14 @@
 # L3_JOBS at a time (default 4); each one's lines print together when it ends.
 #
 # Scenarios: greenfield, reject, resume, change, convert, balanced, docs, qafix,
-# decision, debug, research, edgecase, leftover, recheck, approval, newcomer, senior, panel, tools. A user
+# decision, debug, research, edgecase, leftover, recheck, approval, newcomer, senior, panel, tools, legacy, nolegacy. A user
 # answers every question with VBW's recommendation unless the scenario says otherwise.
 set -uo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 l3() { bash "$ROOT/tools/l3.sh" "$@"; }
 VBW="$ROOT/plugin/bin/vbw"
-ALL="greenfield reject resume change convert balanced docs qafix decision debug research edgecase leftover recheck approval newcomer senior panel tools"
+ALL="greenfield reject resume change convert balanced docs qafix decision debug research edgecase leftover recheck approval newcomer senior panel tools legacy nolegacy"
 RESULTS="$ROOT/tools/l3-results"
 STEPS=60
 
@@ -651,6 +651,142 @@ scenario_tools() {
       "$(jq -n --arg a "$ans" --argjson again "$again" --argjson b "$([ "$before_clean" = true ] && echo false || echo true)" --argjson l "$listed" \
         '{answer: $a, asked_again: $again, installed_before_approval: $b, list_shown: $l}')" \
       '["the answer no","approving the list and the install itself","the question in a second session or worktree (covered by the store tests)","a project with a real stack: the fixture is one shell script"]'
+  }
+}
+
+# The old VBW 1 folder (R65): the interview reviews it right after the level
+# answer, recommends converting or starting fresh with the recommended option
+# first, and asks once. `legacy`: the user picks the option that is NOT
+# recommended (Start fresh); nothing is converted and the folder is untouched.
+# `nolegacy`: a project without a folder is never asked. Facts come from the
+# record, git and the session transcript, never screen text.
+
+# Every question of the main session, in order, one JSON object per line:
+# {question, options: [label...]}.
+asked_questions() {
+  local t
+  t=$(transcripts | grep -v '/subagents/' | sort)
+  [ -n "$t" ] || return 0
+  printf '%s\n' "$t" | xargs cat 2> /dev/null | jq -c 'select(.type == "assistant") | .message.content[]?
+    | select(.type == "tool_use" and .name == "AskUserQuestion") | .input.questions[]?
+    | {question: .question, options: [.options[]?.label]}' 2> /dev/null
+}
+
+# The old-folder question: the one whose options offer Convert and Start fresh.
+is_legacy_question='(.options | map(test("^Convert"; "i")) | any) and (.options | map(test("fresh"; "i")) | any)'
+
+# Plays the interview as a user who accepts VBW's first option everywhere,
+# except that the old-folder question gets Start fresh (the second option).
+legacy_user() {
+  purpose_done=0 followups=0 unmatched=0
+  on_question() {
+    local scr
+    scr=$(current_question)
+    if printf '%s' "$scr" | grep -qiE '[0-9]+\. Start fresh'; then
+      pick_label 'Start fresh'
+    elif printf '%s' "$scr" | grep -qiE 'proficiency|how should I explain|how involved|private on this machine|Ready to submit'; then
+      return 1
+    elif [ "$(interview_pending)" = none ]; then
+      return 1
+    elif [ "$purpose_done" -eq 0 ]; then
+      purpose_done=1; answer_other "a little greeting tool for my grandmother, who is learning English."
+    else
+      followups=$((followups + 1)); answer_other "greet.sh with a name says Hello and the name, like Hello, Ana!; on its own it says Hello, world!. Nothing more."
+    fi
+  }
+  on_idle() {
+    [ "$(interview_pending)" = keep ] || return 1
+    if [ "$purpose_done" -eq 0 ]; then
+      last_reply | grep -qiE 'building|for whom|who.*(for|use)' || return 1
+      purpose_done=1
+      l3 type "$scenario" "a little greeting tool for my grandmother, who is learning English."
+    else
+      last_reply | grep -q '?' || return 1
+      followups=$((followups + 1))
+      l3 type "$scenario" "greet.sh with a name says Hello and the name, like Hello, Ana!; on its own it says Hello, world!. Nothing more."
+    fi
+  }
+  done_yet() { (cd "$dir" && "$VBW" interview --json 2> /dev/null | jq -e '.interviewed == true and .kept != null') > /dev/null 2>&1; }
+}
+
+scenario_legacy() {
+  new_project
+  fixture="greet.sh from scratch; a VBW 1 folder with one finished plan whose files exist; the user picks Start fresh, the option that is not recommended"
+  start="/vbw:vibe I want to build a small greeting tool. One small milestone."
+  mkdir -p "$dir/.vbw-planning/phases/01-greeting"
+  printf '# Greeter\n\nA tiny command-line greeter.\n' > "$dir/.vbw-planning/PROJECT.md"
+  printf '# State\n\nPhase 1 done.\n' > "$dir/.vbw-planning/STATE.md"
+  printf -- '---\nphase: 1\nplan: 1\nfiles_modified:\n  - README.md\n---\n# Plan\n' > "$dir/.vbw-planning/phases/01-greeting/01-01-PLAN.md"
+  printf '# Summary\n\nDone.\n' > "$dir/.vbw-planning/phases/01-greeting/01-01-SUMMARY.md"
+  git -C "$dir" add -A && git -C "$dir" commit -qm "chore: VBW 1 plan"
+  base=$(git -C "$dir" rev-parse HEAD)
+  legacy_user
+  checks() {
+    local passed=true rec chosen conv=false first=false before=false completed=false same=false again=false n lq files new
+    rec=$(cd "$dir" && "$VBW" legacy review 2> /dev/null | jq -r '.recommendation // "none"')
+    chosen=$(jq -r '.project.legacy.choice // "none"' "$dir/.vbw/record.json" 2> /dev/null)
+    jq -e 'has("converted")' "$dir/.vbw/record.json" > /dev/null 2>&1 && conv=true
+    [ "$(transcripts | grep -v '/subagents/' | xargs cat 2> /dev/null | jq -s '[.[] | select(.type == "assistant") | .message.content[]?
+      | select(.type == "tool_use" and ((.input | tostring) | test("vbw:convert|legacy done")))] | length')" -gt 0 ] && conv=true
+    lq=$(asked_questions | jq -c "select($is_legacy_question)")
+    n=$(printf '%s\n' "$lq" | grep -c . || true)
+    [ "$n" -le 1 ] || again=true
+    printf '%s\n' "$lq" | head -1 | jq -e '(.options[0] | test("^Convert"; "i") and test("Recommended"; "i")) and (.options[1] | test("fresh"; "i"))' > /dev/null 2>&1 && first=true
+    # The old-folder question comes after the level question and before every other one.
+    asked_questions | jq -s -e "(map(.question | test(\"proficiency\"; \"i\")) | index(true)) as \$l
+      | (map($is_legacy_question) | index(true)) as \$g
+      | (map(.question | test(\"explain things|how involved|building|private\"; \"i\")) | index(true)) as \$o
+      | \$l != null and \$g != null and \$l < \$g and (\$o == null or \$g < \$o)" > /dev/null 2>&1 && before=true
+    done_yet && completed=true
+    (cd "$dir" && git diff --quiet "$base" -- .vbw-planning && [ -z "$(git status --porcelain -- .vbw-planning)" ]) && same=true
+    expect "the review recommended converting ($rec)" [ "$rec" = convert ]
+    expect "the question came after the level answer and before any other" [ "$before" = true ]
+    expect "the recommended option (Convert) was first, Start fresh second" [ "$first" = true ]
+    expect "the user's choice was recorded as fresh ($chosen)" [ "$chosen" = fresh ]
+    expect "nothing was converted" [ "$conv" = false ]
+    expect "the VBW 1 folder is unchanged" [ "$same" = true ]
+    expect "it was asked once ($n)" [ "$again" = false ]
+    expect "the interview was completed" [ "$completed" = true ]
+    # A second session asks neither the old-folder question again nor changes the choice.
+    files=$(transcripts | sort)
+    l3 start "$scenario" "$dir" > /dev/null
+    if screen | grep -q "Type \/reload-skills"; then l3 type "$scenario" "/reload-skills"; sleep 5; fi
+    l3 type "$scenario" "/vbw:vibe Also let greet.sh take --shout, printing the greeting in capital letters."
+    default_idle
+    l3 keys "$scenario" Escape; sleep 2; default_idle
+    l3 stop "$scenario"
+    new=$(comm -13 <(printf '%s\n' "$files") <(transcripts | sort) | grep -v '/subagents/' || true)
+    if [ -n "$new" ] && printf '%s\n' "$new" | xargs cat 2> /dev/null | jq -e 'select(.type == "assistant") | .message.content[]?
+      | select(.type == "tool_use" and .name == "AskUserQuestion") | .input.questions[]?
+      | select(.options | map(.label) | map(test("fresh"; "i")) | any)' > /dev/null 2>&1; then again=true; fi
+    [ "$(jq -r '.project.legacy.choice // "none"' "$dir/.vbw/record.json" 2> /dev/null)" = fresh ] || again=true
+    expect "a second session did not ask again" [ "$again" = false ]
+    [ "$failed" -eq 0 ] || passed=false
+    result_write legacy "$fixture" "${cost_usd:-0}" "$passed" \
+      "$(jq -n --arg r "$rec" --arg c "$chosen" --argjson b "$before" --argjson f "$first" --argjson cv "$conv" --argjson s "$same" --argjson a "$again" --argjson ic "$completed" \
+        '{recommendation: $r, choice: $c, review_before_other_questions: $b, recommended_option_first: $f, converted: $cv, old_folder_unchanged: $s, asked_again: $a, interview_completed: $ic}')" \
+      '["the choice Convert and the conversion itself","a folder the review recommends starting fresh for","a real VBW 1 project: the fixture has one phase and one plan","how the review reads at each level and depth (R41, human)"]'
+  }
+}
+
+scenario_nolegacy() {
+  new_project
+  fixture="greet.sh from scratch; a project without a VBW 1 folder; the interview is answered with VBW's first options"
+  start="/vbw:vibe I want to build a small greeting tool. One small milestone."
+  legacy_user
+  checks() {
+    local passed=true asked=false completed=false none=false
+    asked_questions | jq -e "select($is_legacy_question)" > /dev/null 2>&1 && asked=true
+    [ "$(cd "$dir" && "$VBW" legacy review 2> /dev/null | jq -r '.legacy')" = false ] && none=true
+    [ "$(jq -r '.project.legacy // "none"' "$dir/.vbw/record.json" 2> /dev/null)" = none ] || asked=true
+    done_yet && completed=true
+    expect "the project has no VBW 1 folder (review says legacy false)" [ "$none" = true ]
+    expect "no old-folder question was asked" [ "$asked" = false ]
+    expect "the interview was completed" [ "$completed" = true ]
+    [ "$failed" -eq 0 ] || passed=false
+    result_write nolegacy "$fixture" "${cost_usd:-0}" "$passed" \
+      "$(jq -n --argjson a "$asked" --argjson c "$completed" '{asked_legacy: $a, interview_completed: $c}')" \
+      '["a project with a leftover folder that is not a VBW 1 plan","a second session","how the interview reads (R41, human)"]'
   }
 }
 
