@@ -34,6 +34,9 @@ new_project() {
   # planner as project content once led to an unrequested task.
   printf '# Demo project\n' > "$dir/README.md"
   git -C "$dir" add -A && git -C "$dir" commit -qm "chore: seed"
+  # Marks a VBW test session (R64): the panel plays no sound aloud here and keeps
+  # its choices under its test.vbw-panel.* keys, never the user's own.
+  mkdir -p "$dir/.vbw/runtime" && : > "$dir/.vbw/runtime/test-mode"
 }
 
 next_action() { (cd "$dir" && "$VBW" next --json 2> /dev/null | jq -r '.action // "none"') || echo none; }
@@ -585,20 +588,11 @@ scenario_panel() {
     printf '%s' "$s"
   }
   has() { case "$1" in *"$2"*) echo true ;; *) echo false ;; esac; }
-  # The user's own store of the panel's choices (sound, closed), kept across sessions.
-  store_read() {
-    local f
-    f=$(ls -t "$(claude_dir)"/plugins/store/vbw_inline-*.json 2> /dev/null | head -1)
-    if [ -n "$f" ]; then jq -c '{sound: (.["vbw-panel.sound"] != false), closed: (.["vbw-panel.closed"] == true)}' "$f" 2> /dev/null || echo '{"sound":true,"closed":false}'
-    else echo '{"sound":true,"closed":false}'; fi
-  }
-  original=$(store_read)
   # The panel's close button is the last column of the first row.
   close_panel() { l3 click "$scenario" "$(($(tmux display -p -t "vbw-l3-$scenario" '#{window_width}') - 1))" 1; }
   observe() {
     local s mid snd
-    # The panel opens by itself in a wide window; where the user's store says it was
-    # closed, the user opens it with /vbw-panel.
+    # The panel opens by itself in a wide window; if not, the user opens it with /vbw-panel.
     if [ "$(has "$(panel_wait "Working on")" "Working on")" = false ]; then l3 type "$scenario" "/vbw-panel"; fi
     mid=$(jq -r '.milestone.id' "$dir/.vbw/record.json")
     s=$(panel_wait "Working on $mid:" "1 of 2 phases done" "Please approve the plan")
@@ -633,9 +627,6 @@ scenario_panel() {
     snd_back=$(panel_text)
     facts=$(jq -c --arg b "$before" --arg c "$(has "$snd_back" "Working on")" --arg o "$(has "$snd_back" "sound is on")" \
       '. + {closed_by_click: ($b == "false"), closed_stays_closed: ($b == "false" and $c == "false"), sound_toggle_persisted: ($o == "true")}' <<< "$facts")
-    # Leave the user's choices as they were.
-    [ "$(jq -r .sound <<< "$original")" = true ] || l3 type "$scenario" "/vbw-sound off"
-    [ "$(jq -r .closed <<< "$original")" = true ] || { l3 type "$scenario" "/vbw-panel"; sleep 3; }
     sleep 2
     l3 stop "$scenario"
     local k passed
