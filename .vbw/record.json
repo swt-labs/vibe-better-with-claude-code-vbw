@@ -6907,7 +6907,7 @@
         "P44.6",
         "P44.7"
       ],
-      "status": "planned",
+      "status": "done",
       "tasks": [
         "Add a 'panel' scenario to tools/l3-suite.sh: a realistic project with phases, history and a plan waiting for approval, started in a wide window (160 columns or more)",
         "Make it check, in the real app, that the panel shows the milestone and progress, what VBW is doing, what it needs from the user, the cost line and an estimate or the plain 'no basis yet'; that closing it keeps it closed and the sound switch is kept",
