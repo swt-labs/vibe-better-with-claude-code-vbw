@@ -6,6 +6,7 @@ allowed-tools: Bash("${CLAUDE_PLUGIN_ROOT}/bin/vbw" *) Bash(vbw *)
 
 ```!
 "${CLAUDE_PLUGIN_ROOT}/bin/vbw" show requirements 2>&1 || true
+"${CLAUDE_PLUGIN_ROOT}/bin/vbw" show qa 2>&1 || true
 "${CLAUDE_PLUGIN_ROOT}/bin/vbw" interview 2>&1 || true
 ```
 
@@ -19,5 +20,9 @@ Write to the user's level, explanation depth and involvement (above; "-": plain 
    its plan (`vbw show evidence`).
 3. The `[human]` requirements no check can prove: list the ones whose work is
    built (`built` above) and offer `/vbw:verify` to check them now.
-4. If something fails, say what happens next: `/vbw:vibe` fixes failures
+4. From `vbw show qa` (above), tell the user which phases are checked again and
+   why, and which phases keep their pass (their earlier pass still stands), in
+   plain words at their level, explanation depth and involvement. Say it before
+   the results, and explain any term a beginner would not know.
+5. If something fails, say what happens next: `/vbw:vibe` fixes failures
    (each becomes a fix item, worked and proved again).
