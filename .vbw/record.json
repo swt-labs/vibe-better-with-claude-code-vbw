@@ -7801,7 +7801,7 @@
         "plugin/skills/vibe/SKILL.md"
       ],
       "after": [],
-      "status": "planned",
+      "status": "done",
       "tasks": [
         "put back \"Recommend; don't interrogate.\" in the spec step",
         "put back \"(right sub-project, right interpreter)\" in the Commands check of the spec step"
