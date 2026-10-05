@@ -21,9 +21,10 @@ BENCH="$BATS_TEST_DIRNAME/../tools/bench-panel.sh"
   [ "$(awk -v x="${BASH_REMATCH[2]}" 'BEGIN { print (x <= 8) ? "ok" : "over" }')" = "ok" ]
 }
 
-@test "R57: the sound is a file of the plugin, named in the panel module, and nothing else is fetched" {
-  grep -q "assets/needs-you.mp3" "$PLUGIN_ROOT/hooks/panel.js"
-  ! grep -nE 'url:|base64|https?://' "$PLUGIN_ROOT/hooks/panel.js"
+@test "R57: the sound is a file of the plugin, from the generated sound list, and nothing else is fetched" {
+  grep -qF "panel-sounds.js" "$PLUGIN_ROOT/hooks/panel.js"
+  run grep -nE 'url:|base64|https?://' "$PLUGIN_ROOT/hooks/panel.js" "$PLUGIN_ROOT/hooks/panel-sounds.js"
+  [ "$status" -ne 0 ]
 }
 
 @test "R57: on Claude Code without mods /vbw:panel says plainly that the panel and its sound need 2.1.287 or newer" {
