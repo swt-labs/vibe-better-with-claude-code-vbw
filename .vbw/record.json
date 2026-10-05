@@ -3521,7 +3521,7 @@
       "tier": "deep",
       "reasons": [
         "requirements: 3",
-        "files: 10 (10682 bytes)",
+        "files: 10 (29726 bytes)",
         "risk: CI (.github/workflows/ci.yml)",
         "breaks: R3",
         "tests: project test command"
@@ -3554,7 +3554,7 @@
       "tier": "deep",
       "reasons": [
         "requirements: 2",
-        "files: 6 (8855 bytes)",
+        "files: 7 (24575 bytes)",
         "risk: none",
         "breaks: R3, R38, R39",
         "tests: project test command"
@@ -3593,7 +3593,7 @@
       "tier": "deep",
       "reasons": [
         "requirements: 3",
-        "files: 10 (73554 bytes)",
+        "files: 10 (92778 bytes)",
         "risk: none",
         "breaks: R1, R2, R4, R5, R8, R13, R14, R18, R29, R32, R33, R34, R42, R48",
         "tests: project test command"
@@ -6059,13 +6059,13 @@
       ],
       "after": [],
       "status": "done",
-      "role": "dev",
       "tasks": [
         "Write the rule for which Claude Code versions have the panel (2.1.287 and newer; anything unreadable counts as older)",
         "Turn the project record into plain sentences with the technical term beside each: the milestone, phases done of total (only this milestone's phases whose check passed), and what VBW is doing (idle, planning, building with the parts named, checking, fixing, mapping) with minutes so far",
         "Say what VBW needs from you and why (approval, a result to check, a decision, a question), give each need a stable key, say nothing is needed otherwise, and say nothing is needed while a run is open",
         "Return one neutral line for a missing or invalid record, never change the input, and make tests/panel/view.test.mjs pass"
-      ]
+      ],
+      "role": "dev"
     },
     {
       "id": "P42.2",
@@ -6084,13 +6084,13 @@
         "P42.1"
       ],
       "status": "done",
-      "role": "dev",
       "tasks": [
         "Add \"modules\": [\"./panel.js\"] to hooks/hooks.json without touching the hooks already there; start the panel only on Claude Code 2.1.287 or newer, inside a VBW project, and otherwise do nothing at all (no command, no timer, no error)",
         "Every 2 seconds check the record and next-step files cheaply (size and time), read them only when they changed, keep the last good state when a file is missing, half-written or invalid, and ask for a redraw only when something shown changed (including the minute count during a run)",
         "Draw the pane with id vbw-panel from the sentences (each term in small dim text beside it), leave every other pane alone, and open it when a project session starts",
         "Treat a question to the user (the AskUserQuestion tool) as a need while it is open, never write any file, call nothing outside the read-only list, then make the C53, C54, C55 and C57 checks pass and run claude plugin validate"
-      ]
+      ],
+      "role": "dev"
     },
     {
       "id": "P42.3",
@@ -6110,13 +6110,13 @@
         "P42.2"
       ],
       "status": "done",
-      "role": "dev",
       "tasks": [
         "Write a bench driver that runs the panel with the test stand-in for Claude Code and measures CPU time (not waiting time) of a refresh that finds nothing new and of one that redraws, averaged over VBW_BENCH_RUNS",
         "Write tools/bench-panel.sh: print the lines 'tick, nothing changed: X ms CPU', 'refresh, state changed: X ms CPU' and 'budget: N ms', and fail when a measurement is over VBW_PANEL_BUDGET_MS",
         "Measure on this machine and set the default budgets with headroom, stated in the script header like bench-hooks.sh does",
         "Add tests/panel-suite.bats that runs node --test over tests/panel/*.test.mjs (skipped when node is missing), run the bench from tools/test.sh when node exists, and give the slower CI machines a looser VBW_PANEL_BUDGET_MS in ci.yml"
-      ]
+      ],
+      "role": "dev"
     },
     {
       "id": "P42.4",
@@ -6135,12 +6135,12 @@
         "P42.3"
       ],
       "status": "done",
-      "role": "docs",
       "tasks": [
         "Create docs/panel.md in plain words: what the panel shows, the Claude Code version it needs (2.1.287) and what happens on older ones and outside a VBW project",
         "State the CPU budget with the measured numbers, that the panel reads only local files and never writes, and how to check it (tools/bench-panel.sh)",
         "Mention the panel in README.md next to the status line"
-      ]
+      ],
+      "role": "docs"
     },
     {
       "id": "P43.1",
@@ -6156,13 +6156,13 @@
         "P42.2"
       ],
       "status": "done",
-      "role": "dev",
       "tasks": [
         "Read the user's saved choice at session start from Claude Code's per-user store (never the project) and open the panel by itself only when the user has not closed it; if Claude Code leaves it closed (narrow window), do not try again",
         "Add the /vbw-panel command, working even while Claude is busy: it opens the panel at any width with the keyboard, and saves that the user wants it open",
         "Remember a close made by the user (not one made by a plugin or an unload), pass every close on without refusing it, and ignore other panes",
         "Make sure opening and closing write no file and call no process, and make the C58 check pass (and still C53 and C54)"
-      ]
+      ],
+      "role": "dev"
     },
     {
       "id": "P43.2",
@@ -6180,7 +6180,6 @@
         "P42.3"
       ],
       "status": "blocked",
-      "role": "dev",
       "tasks": [
         "When a need for the user appears (approval, result to check, decision or a question) play the plugin's own sound file assets/needs-you.mp3 once per request, even when the panel is closed, never again while the same need stands, and again for the next request (the owner supplies the mp3 itself; the build does not create it)",
         "Add the /vbw-sound command (on, off, or no word to switch over) that says which it is now; the sound is on by default and the choice is kept in Claude Code's per-user store, never in the project",
@@ -6188,7 +6187,7 @@
         "Play nothing and show nothing when the file is missing or there is no player, and nothing at all on Claude Code without mods",
         "Add the line 'sound, need raised: X ms CPU' to the bench, check it is under 8 ms, and make the C59 and C60 checks pass"
       ],
-      "note": "panel.js and bench-panel.mjs are done and C59 passes. C60 also needs tools/bench-panel.sh (the 'sound, need raised' line), docs/panel.md (new, linked from README but missing) and README.md (/vbw-sound row), none declared by P43.2. Those edits are made in the working tree, uncommitted; the plan's files need extending to commit them."
+      "role": "dev"
     },
     {
       "id": "P43.3",
@@ -6203,12 +6202,12 @@
       ],
       "after": [],
       "status": "done",
-      "role": "dev",
       "tasks": [
         "Write the /vbw:panel skill: it checks claude --version and says plainly, at the user's level, that the panel and its sound need Claude Code 2.1.287 or newer (how to update), or otherwise how to use /vbw-panel and /vbw-sound",
         "List /vbw:panel in the help skill",
         "Run the skill and prompt-size tests (the 16k-token total must still hold) and the C60 skill test"
-      ]
+      ],
+      "role": "dev"
     },
     {
       "id": "P43.4",
@@ -6220,7 +6219,8 @@
       ],
       "files": [
         "docs/panel.md",
-        "README.md"
+        "README.md",
+        "tools/bench-panel.sh"
       ],
       "after": [
         "P43.2",
@@ -6228,12 +6228,13 @@
         "P42.4"
       ],
       "status": "planned",
-      "role": "docs",
       "tasks": [
         "Document opening by itself (wide windows), /vbw-panel at any width, and that closing it keeps it closed until you open it again",
         "Document the sound: when it plays, /vbw-sound, the button, that it is on by default, where the choice is kept (your own machine, never committed), and where the mp3 lives",
-        "List /vbw:panel, /vbw-panel and /vbw-sound in README.md"
-      ]
+        "List /vbw:panel, /vbw-panel and /vbw-sound in README.md",
+        "tools/bench-panel.sh prints \"sound, need raised: X ms CPU\" from bench-panel.mjs and holds it to the budget (C60)"
+      ],
+      "role": "dev"
     },
     {
       "id": "P44.1",
@@ -6248,13 +6249,13 @@
       ],
       "after": [],
       "status": "done",
-      "role": "dev",
       "tasks": [
         "When a run ends, add one finished step (kind, run, start, end, seconds) to the clone's own cache $(git common dir)/vbw/steps.json, shared by worktrees, keeping the latest 50 (no record field, no tracked file)",
         "Never let a missing, damaged or unwritable cache stop the run from ending; a damaged file is replaced",
         "Record nothing when no run was open",
         "Make tests/panel-steps.bats pass, check the kernel is still within 3,500 lines, and run the suite under /bin/bash 3.2"
-      ]
+      ],
+      "role": "dev"
     },
     {
       "id": "P44.2",
@@ -6268,13 +6269,13 @@
       ],
       "after": [],
       "status": "done",
-      "role": "dev",
       "tasks": [
         "Write the pure estimate rules: the usual time of a kind of step is the median of the last 10 finished steps of that kind, and fewer than MIN_STEPS = 3 means no basis",
         "Estimate the current step (about N seconds left, or 'longer' once it runs past the usual time, never negative)",
         "Estimate the milestone: time left in the running step plus phases left times the usual build plus check time; no basis without enough build and check history; nothing when no phase is left",
         "Ignore bad history entries, never change the input, and make tests/panel/estimate.test.mjs pass"
-      ]
+      ],
+      "role": "dev"
     },
     {
       "id": "P44.3",
@@ -6295,13 +6296,13 @@
         "P43.2"
       ],
       "status": "planned",
-      "role": "dev",
       "tasks": [
         "Read the session cost each refresh, show it as one small line with its term beside it (no breakdown), redraw when it changes, and leave the line out or say 'not available' when there is no cost (never a made-up number)",
         "Find the clone's git directory (also in a linked worktree) and read steps.json from it only when it changed, never writing it; treat a missing or damaged file as no history",
         "Show the step and milestone estimates as 'about N min' with the term 'estimate, approximate', say 'taking longer than usual' past the usual time, and say plainly there is no basis yet when history is short; the shown time follows the clock",
         "Add the line 'refresh with cost and estimates: X ms CPU' to the bench and make the C61, C64, C65 and C67 checks pass"
-      ]
+      ],
+      "role": "dev"
     },
     {
       "id": "P44.4",
@@ -6319,13 +6320,13 @@
         "P44.3"
       ],
       "status": "planned",
-      "role": "dev",
       "tasks": [
         "Add a 'panel' scenario to tools/l3-suite.sh: a realistic project with phases, history and a plan waiting for approval, started in a wide window (160 columns or more)",
         "Make it check, in the real app, that the panel shows the milestone and progress, what VBW is doing, what it needs from the user, the cost line and an estimate or the plain 'no basis yet'; that closing it keeps it closed and the sound switch is kept",
         "Name the scenario in the suite's list and header, state its fixture and what it did not test (the sound itself, a person reading it)",
         "Run it in the real app and commit tools/l3-results/panel.json"
-      ]
+      ],
+      "role": "dev"
     },
     {
       "id": "P44.5",
@@ -6343,12 +6344,12 @@
         "P43.4"
       ],
       "status": "planned",
-      "role": "docs",
       "tasks": [
         "Document the cost line: one line, this session only, and 'not available' when Claude Code gives no cost",
         "Document the estimates: they need at least 3 finished steps of the same kind, are approximate ('about'), come from this clone's own history in steps.json, and say 'taking longer than usual' instead of a negative time",
         "Add a short 'reading the panel at a glance' picture of a typical panel"
-      ]
+      ],
+      "role": "docs"
     }
   ],
   "fixes": [
