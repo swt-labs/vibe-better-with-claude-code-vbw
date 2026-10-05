@@ -4158,6 +4158,13 @@
         "fix_rounds": 0,
         "qa_findings": 0,
         "escalations": 0
+      },
+      "qa": {
+        "result": "pass",
+        "tier": "deep",
+        "tree": "602c68a683b2ef8989acda50cb938ee44e33407df900e46b00d85598f91773c5",
+        "at": "2026-10-05T22:18:19Z",
+        "note": "30/30 checks"
       }
     },
     {
@@ -9468,5 +9475,11 @@
     "scope": [],
     "passed": true
   },
-  "lease": null
+  "lease": {
+    "run": "qa-20261005T221711Z",
+    "kind": "qa",
+    "started_at": "2026-10-05T22:17:11Z",
+    "files": [],
+    "session": "9cd2cc30-8c86-4520-9d71-a0e82aff5407"
+  }
 }
