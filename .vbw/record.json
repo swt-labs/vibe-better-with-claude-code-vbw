@@ -3917,7 +3917,7 @@
       "tier": "deep",
       "reasons": [
         "requirements: 3",
-        "files: 10 (35396 bytes)",
+        "files: 10 (38643 bytes)",
         "risk: CI (.github/workflows/ci.yml)",
         "breaks: R3",
         "tests: project test command"
@@ -3951,7 +3951,7 @@
       "tier": "deep",
       "reasons": [
         "requirements: 2",
-        "files: 20 (374874 bytes)",
+        "files: 20 (378121 bytes)",
         "risk: none",
         "breaks: R3, R38, R39",
         "tests: project test command"
@@ -3991,7 +3991,7 @@
       "tier": "deep",
       "reasons": [
         "requirements: 3",
-        "files: 11 (100091 bytes)",
+        "files: 11 (108794 bytes)",
         "risk: none",
         "breaks: R1, R2, R4, R5, R8, R13, R14, R18, R29, R32, R33, R34, R42, R48",
         "tests: project test command"
@@ -4034,7 +4034,7 @@
       "tier": "deep",
       "reasons": [
         "requirements: 2",
-        "files: 6 (94257 bytes)",
+        "files: 6 (99713 bytes)",
         "risk: none",
         "breaks: R4, R5, R8, R13, R14, R22, R24, R25, R26, R28, R31, R34, R37, R38, R39, R40, R42, R44, R48, R50",
         "tests: project test command"
@@ -4068,7 +4068,7 @@
       "tier": "deep",
       "reasons": [
         "requirements: 1",
-        "files: 14 (133144 bytes)",
+        "files: 14 (139167 bytes)",
         "risk: none",
         "breaks: R3, R4, R5, R8, R12, R13, R14, R15, R22, R24, R25, R26, R27, R28, R31, R32, R34, R37, R38, R39, R40, R42, R43, R44, R45, R46, R47, R48, R49, R50",
         "tests: project test command"
@@ -4110,7 +4110,7 @@
       "tier": "deep",
       "reasons": [
         "requirements: 2",
-        "files: 10 (96161 bytes)",
+        "files: 10 (103353 bytes)",
         "risk: none",
         "breaks: R3, R4, R5, R8, R13, R14, R22, R23, R24, R25, R27, R28, R31, R34, R37, R38, R39, R40, R42, R43, R44, R45, R46, R47, R48, R49",
         "tests: project test command"
@@ -6851,17 +6851,17 @@
         "tools/l3-results/panel.json"
       ],
       "after": [
-        "P44.3"
+        "P44.3",
+        "P44.6"
       ],
-      "status": "blocked",
+      "status": "planned",
       "tasks": [
         "Add a 'panel' scenario to tools/l3-suite.sh: a realistic project with phases, history and a plan waiting for approval, started in a wide window (160 columns or more)",
         "Make it check, in the real app, that the panel shows the milestone and progress, what VBW is doing, what it needs from the user, the cost line and an estimate or the plain 'no basis yet'; that closing it keeps it closed and the sound switch is kept",
         "Name the scenario in the suite's list and header, state its fixture and what it did not test (the sound itself, a person reading it)",
         "Run it in the real app and commit tools/l3-results/panel.json"
       ],
-      "role": "dev",
-      "note": "The panel pane opens in the real app (Claude Code 2.1.289, 200 columns; debug log: 'ui.open vbw vbw-panel (unasked, 200 columns): placed', ui.render key=vbw-panel settles) but stays EMPTY on screen: no milestone, progress, doing, need, cost or estimate line is drawn, also after /vbw-sound off forced a redraw. So the panel never shows its content in the real app, and the scenario cannot pass. The cause is in plugin/hooks/panel.js (ui.render, probably what it returns to Claude Code), which is outside this plan's files (tools/l3-suite.sh, tools/l3.sh, tools/l3-results/panel.json). Done: the 'panel' scenario in tools/l3-suite.sh (seed: two phases, P1 passed, P2 plan awaiting approval; reads the screen). Not done: sound/closed persistence checks across a restart, and the committed result. Needs a fix of the panel render first."
+      "role": "dev"
     },
     {
       "id": "P44.5",
@@ -7203,6 +7203,29 @@
         "run it, commit the result with its fixture, cost and not-tested list, and name it in the suite header"
       ],
       "role": "dev"
+    },
+    {
+      "id": "P44.6",
+      "phase": "P44",
+      "title": "The panel draws the way Claude Code draws, and runs only for its own events",
+      "reqs": [
+        "R51",
+        "R55"
+      ],
+      "files": [
+        "plugin/hooks/panel.js"
+      ],
+      "after": [
+        "P44.3"
+      ],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "ui.render registers with the matcher { component: \"Pane\", requestId: PANE }, takes its elements from $.ui.resolve(e) and builds them with h(type, props, ...children), as Claude Code's own pane example does; the real-app run showed an empty panel and a 100-400 ms worker hop on every drawing in Claude Code",
+        "command.run: one hook per command with its matcher ({ command: \"vbw-panel\" }, { command: \"vbw-sound\" }), so other commands never reach the panel",
+        "$.ui.open passes only the fields Claude Code defines (id, title, focus): no placement",
+        "All panel checks pass against the stricter stand-in (tests/panel/helpers/fake-mod.mjs), and claude plugin validate passes"
+      ]
     }
   ],
   "fixes": [

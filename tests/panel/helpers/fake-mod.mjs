@@ -7,6 +7,15 @@ import path from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 
 const here = path.dirname(fileURLToPath(import.meta.url))
+// Element types as Claude Code hands them out: opaque values that only h() can build.
+const ELEMENT = (name) => Object.freeze({ element: name })
+const flat = (xs) => xs.flat(Infinity).filter((c) => c !== undefined && c !== null && c !== false)
+globalThis.h = (type, props, ...children) => {
+  if (!type || typeof type.element !== 'string') throw new Error('h() needs an element from $.ui.resolve(e)')
+  const kids = flat(children.length ? children : [props?.children ?? []])
+  return { type: type.element, props: { ...(props || {}), children: kids }, children: kids }
+}
+
 export const PLUGIN = process.env.VBW_TEST_PLUGIN_ROOT || path.resolve(here, '../../../plugin')
 export const ROOT = '/proj'
 export const PANE = 'vbw-panel'
@@ -149,11 +158,12 @@ export async function mount(options = {}) {
     'ui.toast': () => undefined,
     'ui.log': () => undefined,
     'ui.status': () => undefined,
-    'ui.resolve': () => ({
-      Box: (props) => ({ type: 'Box', props, children: props.children || [] }),
-      Text: (props) => ({ type: 'Text', props, children: props.children || [] }),
-      Button: (props) => ({ type: 'Button', props, children: [] }),
-    }),
+    // As in Claude Code: resolve takes the render event (its surface), and the
+    // elements are types that only h() turns into a tree; calling one throws.
+    'ui.resolve': (e) => {
+      if (!e || typeof e.surface !== 'string') throw new Error('$.ui.resolve(e) needs the render event')
+      return { Box: ELEMENT('Box'), Text: ELEMENT('Text'), Button: ELEMENT('Button') }
+    },
     'command.register': () => undefined,
     'audio.play': (clip) => {
       if (o.audioFails) throw new Error('no player')
@@ -180,6 +190,14 @@ export async function mount(options = {}) {
   const on = (event, a, b) => {
     const matcher = typeof a === 'function' ? undefined : a
     const fn = typeof a === 'function' ? a : b
+    // In Claude Code a hook without a matcher runs for every such event (every
+    // drawing, every command), each one a hop to the plugin's worker.
+    if (event === 'ui.render' && !(matcher && matcher.component === 'Pane' && matcher.requestId)) {
+      throw new Error('a ui.render hook must match { component: "Pane", requestId }: without it, it runs for every drawing in Claude Code')
+    }
+    if (event === 'command.run' && !(matcher && matcher.command)) {
+      throw new Error('a command.run hook must match { command }: without it, it runs for every command')
+    }
     handlers.push({ event, matcher, fn })
     return { catch() {} }
   }
