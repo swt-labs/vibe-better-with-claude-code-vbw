@@ -2904,7 +2904,15 @@
           "to": "deep",
           "reason": "Dev blocked P40.4: Task 2 needs the digests passed from plugin/lib/cmd-prove.sh (it calls record_update with prove.jq and passes --argjson ev/cap/at only), but cmd-prove.sh is not in P40.4's files. prove.jq cannot get the digests otherwise, so a fix that closes on prove would never finish a phase that needs QA. Also: until P40.2 makes vbw qa record store the combined digest in qa.tree (it still stores evidence.tree), the new comparison would never match; P40.4 would need cmd-qa.sh to write it too, which overlaps P40.2 task 1. Suggest: add plugin/lib/cmd-prove.sh to P40.4 (pass --argjson digests \"$(qa_digests \"$record\")\", source qa-inputs.sh), and fold the qa.tree write into P40.4 or order P40.2 task 1 first. No file changed."
         }
-      ]
+      ],
+      "qa": {
+        "result": "fail",
+        "tier": "deep",
+        "tree": "1d0fc4f786daa9cd2a3154dddf2058d3205f542afb26f6dbe94c1ef25cf734ee",
+        "at": "2026-10-05T03:18:32Z",
+        "note": "23/25 checks",
+        "rounds": 1
+      }
     },
     {
       "id": "P41",
@@ -5626,6 +5634,22 @@
       "attempts": 0,
       "status": "open",
       "note": "Plan P41.2 said the recheck scenario must not be run in this phase (its status stays 'not run' until the milestone release run), and the criterion says the same. Commit 157bdc0b nevertheless ran it and committed tools/l3-results/recheck.json (passed: true, L3, cost 1.47 USD). That is a deviation from the agreed plan. Also, the scenario plays a plain commit, not a real fix round (the result's own not_tested list says so)."
+    },
+    {
+      "id": "F31",
+      "req": "R47",
+      "source": "qa",
+      "attempts": 0,
+      "status": "open",
+      "note": "Added and unlisted: commit 2b1d2bfd adds a new view 'vbw show qa' (not in any P40 task) but the usage text in plugin/lib/cmd-show.sh (both the vbw_usage_error line and the header of the case) was not updated, so 'vbw show' help does not list it. Fix: either list qa in the usage message (and record the view as a decision) or remove it."
+    },
+    {
+      "id": "F32",
+      "req": "R47",
+      "source": "qa",
+      "attempts": 0,
+      "status": "open",
+      "note": "Unrelated code rewritten: commits 9f932df1 and 2b1d2bfd rewrite code that has nothing to do with the re-check rule, apparently to save lines: cmd-next.sh (if/else on --json turned into a case; tracked/code counting merged), cmd-show.sh (three if-blocks in show contract --changes, show_contract_changes and show_work turned into one-line short-circuits). Not in any P40 task. With the budget now 3,500 (D96) there is no reason to keep them. Fix: revert those hunks or record a decision that lets them stand."
     }
   ],
   "todos": [
