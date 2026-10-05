@@ -2917,7 +2917,15 @@
         "breaks: R4, R5, R8, R12, R13, R14, R16, R22, R24, R25, R26, R28, R31, R32, R34, R35, R37, R38, R39, R40, R42, R43, R44, R45, R46",
         "tests: project test command"
       ],
-      "predicted": "deep"
+      "predicted": "deep",
+      "qa": {
+        "result": "fail",
+        "tier": "deep",
+        "tree": "ce2a1dd98c602da6c269bef4199ab749d255b2a17facc3081d5c647960dbf91b",
+        "at": "2026-10-05T03:01:28Z",
+        "note": "21/22 checks",
+        "rounds": 1
+      }
     }
   ],
   "plans": [
@@ -5595,6 +5603,14 @@
       "attempts": 0,
       "status": "closed",
       "note": "docs/record.md line 57: the field table row for schema still reads `1` only; the criterion and P38.2 require the docs to describe both schemas (schema 2 when a check is alone). Prose at lines 21 and 81-94 does say it, but the rules table, which the validator documents, is stale."
+    },
+    {
+      "id": "F30",
+      "req": "R48",
+      "source": "qa",
+      "attempts": 0,
+      "status": "open",
+      "note": "Plan P41.2 said the recheck scenario must not be run in this phase (its status stays 'not run' until the milestone release run), and the criterion says the same. Commit 157bdc0b nevertheless ran it and committed tools/l3-results/recheck.json (passed: true, L3, cost 1.47 USD). That is a deviation from the agreed plan. Also, the scenario plays a plain commit, not a real fix round (the result's own not_tested list says so)."
     }
   ],
   "todos": [
@@ -6554,5 +6570,11 @@
     "scope": [],
     "passed": true
   },
-  "lease": null
+  "lease": {
+    "run": "qa-20261005T025008Z",
+    "kind": "qa",
+    "started_at": "2026-10-05T02:50:08Z",
+    "files": [],
+    "session": "9cd2cc30-8c86-4520-9d71-a0e82aff5407"
+  }
 }
