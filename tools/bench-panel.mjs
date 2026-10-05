@@ -5,6 +5,7 @@
 //   refresh: the timer fires, a file changed, the panel reads it, redraws and
 //   the draw is rendered.
 //   sound: a need for the user appears and the sound is played (the next tick it ends).
+//   glance: the cost changed and a step history changed: both are read, both estimates worked out, drawn.
 // Prints "tick <ms>", "refresh <ms>" and "sound <ms>". The stand-in's own work is included,
 // so the numbers are an upper bound on the panel's cost.
 import { mount, record, next } from '../tests/panel/helpers/fake-mod.mjs'
@@ -44,6 +45,16 @@ const sound = await measure(async (h, i) => {
   h.write(ROOT + '/.vbw/runtime/next.json', next(i % 2 === 0 ? { action: 'approve', gate: true } : {}))
   await h.advance(TICK_MS)
 })
+// glance: a refresh that also reads the session cost and works out both estimates
+const STEPS = ROOT + '/.git/vbw/steps.json'
+const steps = (kind, secs) => secs.map((s, i) => ({ kind, run: kind + '-' + i, seconds: s }))
+const glance = await measure(async (h, i) => {
+  h.write(STEPS, { steps: [...steps('build', [600, 900, 1200 + i]), ...steps('qa', [100, 200, 300])] })
+  h.setUsage({ cost: { usd: 1 + i / 100 } })
+  await h.advance(TICK_MS)
+  await h.render()
+})
 console.log('tick ' + tick.toFixed(3))
 console.log('refresh ' + refresh.toFixed(3))
 console.log('sound ' + sound.toFixed(3))
+console.log('glance ' + glance.toFixed(3))
