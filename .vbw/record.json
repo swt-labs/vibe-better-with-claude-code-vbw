@@ -4393,7 +4393,14 @@
           "to": "deep",
           "reason": "Dev blocked P47.7: tooling.js already reads args.profile and puts ${voice} in its only agent call (delivered by P47.2), so the task needs no change. The test 'every workflow agent call carries the profile' still fails only because it hard-codes [ \"$n\" -eq 7 ] workflows (tests/profile-levels.bats line 120) and there are now 8. Fixing it means editing tests/profile-levels.bats (and likely the 7-workflow count in tests/workflows.bats), which is outside this plan's files."
         }
-      ]
+      ],
+      "qa": {
+        "result": "pass",
+        "tier": "deep",
+        "tree": "1d7c218b62f25642c8ab0fd7ae0fd3ab94cee249b5f47a699a3c1988b5cc29c2",
+        "at": "2026-10-05T22:19:11Z",
+        "note": "26/26 checks"
+      }
     },
     {
       "id": "P48",
@@ -8090,7 +8097,7 @@
       "req": "R62",
       "source": "qa",
       "attempts": 0,
-      "status": "fixed",
+      "status": "closed",
       "note": "The interview skill (plugin/skills/interview/SKILL.md) tells VBW to carry on as /vbw:skills does on yes (run the vbw:tooling workflow, install with npx skills), but its allowed-tools holds only Bash(vbw *). Workflow(vbw:tooling) and Bash(npx skills *) are not listed, so the yes path from the interview can stop on a permission prompt, while plugin/skills/skills/SKILL.md lists both. No test checks this."
     },
     {
@@ -8098,7 +8105,7 @@
       "req": "R62",
       "source": "qa",
       "attempts": 0,
-      "status": "fixed",
+      "status": "closed",
       "note": "Commit 977ce2ef changes tests/standards.bats (a new brace-default rule). It carries no VBW-Plan trailer and no P47 plan lists the file, so it is work outside the agreed plan. Escalation text also names a P47.7 that does not exist in the plan."
     }
   ],
