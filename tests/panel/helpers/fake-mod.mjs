@@ -75,6 +75,7 @@ export async function mount(options = {}) {
   const o = { version: '2.1.289', root: ROOT, usage: { cost: { usd: 1.4234 } }, placed: true, ...options }
   const files = new Map()
   const store = o.store || new Map()
+  const invalidations = []
   const handlers = []
   const timers = []
   const calls = []
@@ -154,7 +155,12 @@ export async function mount(options = {}) {
       return typeof o.placed === 'function' ? o.placed(a) : o.placed ? { isPlaced: true } : { isPlaced: false, reason: 'the terminal is too narrow' }
     },
     'ui.close': () => undefined,
-    'ui.invalidate': () => undefined,
+    // As in Claude Code 2.1.289: a redraw names what to redraw ('ui.render');
+    // without it the call is dropped.
+    'ui.invalidate': (what) => {
+      if (what !== 'ui.render') throw new Error("$.ui.invalidate needs the event to redraw: 'ui.render'")
+      invalidations.push(what)
+    },
     'ui.toast': () => undefined,
     'ui.log': () => undefined,
     'ui.status': () => undefined,
@@ -209,6 +215,7 @@ export async function mount(options = {}) {
   h.count = (name) => calls.filter((c) => c.name === name).length
   h.callsOf = (name) => calls.filter((c) => c.name === name).map((c) => c.args)
   h.names = () => [...new Set(calls.map((c) => c.name))]
+  h.invalidations = () => invalidations.length
 
   // Fire an event through the registered hooks, in order. `terminal` answers when
   // every hook passed the event on (default: the event itself).

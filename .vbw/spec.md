@@ -70,6 +70,7 @@ VBW is a Claude Code plugin that makes it build software properly: the user agre
 - R61 [auto] Approval is offered as a choice: VBW asks with the options Approve (first, so Enter approves), Not yet (VBW asks what to change) and the user's own words; picking Approve approves exactly the contract shown, recorded by VBW's own code from the user's answer so Claude can never approve by itself; typing /vbw:approve still works
 - R62 [auto] Once the interview knows what is being built, VBW asks the user's permission to look for the best tools for this project (community skills, automated code-safety scanners, code-quality tools such as linters and formatters, unit-test and other test frameworks); on yes, Scouts research current best-in-class options for the project's stack, with sources, and VBW proposes a short list; nothing is installed until the user approves that list; on no, nothing is searched or installed; it is asked once per project, and /vbw:skills runs it again any time
 - R63 [human] The recommended tools fit the project and are explained at the user's level
+- R64 [auto] VBW's own real-app test sessions never play the sound aloud and never read or change the user's own panel and sound choices
 
 <!-- One requirement per line: an id, how it is proved, and a user-observable
      statement. [auto] = a check can prove it; [human] = only a person can judge it.

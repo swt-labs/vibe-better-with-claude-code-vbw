@@ -1486,6 +1486,27 @@
       "proof": "human",
       "status": "open",
       "milestone": "M9"
+    },
+    {
+      "id": "R64",
+      "text": "VBW's own real-app test sessions never play the sound aloud and never read or change the user's own panel and sound choices",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M9",
+      "rules": [
+        {
+          "text": "a VBW test session plays no sound aloud",
+          "check": "C84"
+        },
+        {
+          "text": "a VBW test session never reads or changes the user's own panel and sound choices",
+          "check": "C84"
+        },
+        {
+          "text": "every real-app test project is marked as a test session, and scenarios read only the test keys",
+          "check": "C85"
+        }
+      ]
     }
   ],
   "checks": [
@@ -2432,6 +2453,29 @@
       ],
       "files": [
         "tests/l3-tools.bats"
+      ]
+    },
+    {
+      "id": "C84",
+      "req": "R64",
+      "run": [
+        "node",
+        "--test",
+        "tests/panel/testmode.test.mjs"
+      ],
+      "files": [
+        "tests/panel/testmode.test.mjs"
+      ]
+    },
+    {
+      "id": "C85",
+      "req": "R64",
+      "run": [
+        "bats",
+        "tests/l3-testmode.bats"
+      ],
+      "files": [
+        "tests/l3-testmode.bats"
       ]
     }
   ],
@@ -3917,7 +3961,7 @@
       "tier": "deep",
       "reasons": [
         "requirements: 3",
-        "files: 10 (38643 bytes)",
+        "files: 10 (38634 bytes)",
         "risk: CI (.github/workflows/ci.yml)",
         "breaks: R3",
         "tests: project test command"
@@ -3951,7 +3995,7 @@
       "tier": "deep",
       "reasons": [
         "requirements: 2",
-        "files: 20 (378121 bytes)",
+        "files: 20 (378112 bytes)",
         "risk: none",
         "breaks: R3, R38, R39",
         "tests: project test command"
@@ -3970,9 +4014,10 @@
       "id": "P44",
       "title": "Cost, time estimates and an at-a-glance panel",
       "reqs": [
+        "R54",
         "R56",
         "R58",
-        "R54"
+        "R64"
       ],
       "milestone": "M9",
       "goal": "The panel also shows what the session has cost and how long the step and milestone will probably take, honestly, and a person at the user's level can read it at a glance.",
@@ -3990,8 +4035,8 @@
       "proposed": "deep",
       "tier": "deep",
       "reasons": [
-        "requirements: 3",
-        "files: 11 (108794 bytes)",
+        "requirements: 4",
+        "files: 11 (112401 bytes)",
         "risk: none",
         "breaks: R1, R2, R4, R5, R8, R13, R14, R18, R29, R32, R33, R34, R42, R48",
         "tests: project test command"
@@ -4040,7 +4085,7 @@
       "tier": "deep",
       "reasons": [
         "requirements: 2",
-        "files: 6 (99713 bytes)",
+        "files: 6 (102913 bytes)",
         "risk: none",
         "breaks: R4, R5, R8, R13, R14, R22, R24, R25, R26, R28, R31, R34, R37, R38, R39, R40, R42, R44, R48, R50",
         "tests: project test command"
@@ -4074,7 +4119,7 @@
       "tier": "deep",
       "reasons": [
         "requirements: 1",
-        "files: 14 (139167 bytes)",
+        "files: 14 (142367 bytes)",
         "risk: none",
         "breaks: R3, R4, R5, R8, R12, R13, R14, R15, R22, R24, R25, R26, R27, R28, R31, R32, R34, R37, R38, R39, R40, R42, R43, R44, R45, R46, R47, R48, R49, R50",
         "tests: project test command"
@@ -4116,7 +4161,7 @@
       "tier": "deep",
       "reasons": [
         "requirements: 2",
-        "files: 10 (103353 bytes)",
+        "files: 10 (106553 bytes)",
         "risk: none",
         "breaks: R3, R4, R5, R8, R13, R14, R22, R23, R24, R25, R27, R28, R31, R34, R37, R38, R39, R40, R42, R43, R44, R45, R46, R47, R48, R49",
         "tests: project test command"
@@ -6849,7 +6894,8 @@
       "phase": "P44",
       "title": "A real Claude Code run that checks the whole panel",
       "reqs": [
-        "R51"
+        "R51",
+        "R64"
       ],
       "files": [
         "tools/l3-suite.sh",
@@ -6858,17 +6904,18 @@
       ],
       "after": [
         "P44.3",
-        "P44.6"
+        "P44.6",
+        "P44.7"
       ],
-      "status": "blocked",
+      "status": "planned",
       "tasks": [
         "Add a 'panel' scenario to tools/l3-suite.sh: a realistic project with phases, history and a plan waiting for approval, started in a wide window (160 columns or more)",
         "Make it check, in the real app, that the panel shows the milestone and progress, what VBW is doing, what it needs from the user, the cost line and an estimate or the plain 'no basis yet'; that closing it keeps it closed and the sound switch is kept",
         "Name the scenario in the suite's list and header, state its fixture and what it did not test (the sound itself, a person reading it)",
-        "Run it in the real app and commit tools/l3-results/panel.json"
+        "Run it in the real app and commit tools/l3-results/panel.json",
+        "tools/l3-suite.sh new_project writes .vbw/runtime/test-mode in every scenario project (R64); the panel scenario reads only the test.vbw-panel.* keys and no longer restores or writes the user's own choices (C85)"
       ],
-      "role": "dev",
-      "note": "The real-app run (L3, Claude Code 2.1.289, window 200 columns) shows a defect in plugin/hooks/panel.js, outside this plan's files: the panel never redraws by itself. The debug log has '[WARN] [vbw] $.ui.invalidate dropped: HooksError: ui.invalidate: takes \"ui.render\", \"prompt.section\", ... (host check)': panel.js calls $.ui.invalidate() with no event name (redrawIfChanged). Seen: after '/vbw-sound off' the panel still says 'Sound is on.' (the choice is saved), and a state change (need, progress) shows only when the pane is reopened. R51 requires updates within a few seconds. Fix: call $.ui.invalidate('ui.render') (check the host's argument form), and check tests/panel (the fake's invalidate must also demand the name). The scenario is committed and passes every other fact (milestone, progress, doing, need, cost, no basis yet, click-close stays closed after restart, sound off kept); only sound_shown_off fails. After the fix, rerun: bash tools/l3-suite.sh panel, then commit tools/l3-results/panel.json."
+      "role": "dev"
     },
     {
       "id": "P44.5",
@@ -7226,12 +7273,34 @@
         "P44.3"
       ],
       "status": "done",
-      "role": "dev",
       "tasks": [
         "ui.render registers with the matcher { component: \"Pane\", requestId: PANE }, takes its elements from $.ui.resolve(e) and builds them with h(type, props, ...children), as Claude Code's own pane example does; the real-app run showed an empty panel and a 100-400 ms worker hop on every drawing in Claude Code",
         "command.run: one hook per command with its matcher ({ command: \"vbw-panel\" }, { command: \"vbw-sound\" }), so other commands never reach the panel",
         "$.ui.open passes only the fields Claude Code defines (id, title, focus): no placement",
         "All panel checks pass against the stricter stand-in (tests/panel/helpers/fake-mod.mjs), and claude plugin validate passes"
+      ],
+      "role": "dev"
+    },
+    {
+      "id": "P44.7",
+      "phase": "P44",
+      "title": "The panel redraws itself, and stays silent in VBW's own test sessions",
+      "reqs": [
+        "R51",
+        "R64"
+      ],
+      "files": [
+        "plugin/hooks/panel.js"
+      ],
+      "after": [
+        "P44.6"
+      ],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "Every redraw calls $.ui.invalidate('ui.render'): Claude Code 2.1.289 drops an unnamed redraw, so the panel only updated when reopened (real-app run)",
+        "Test mode: a project holding .vbw/runtime/test-mode is a VBW test session; the panel then plays no audio (it only counts what it would have played) and keeps its choices under test.vbw-panel.* keys, never the user's; the panel still reads no environment (R55)",
+        "C53, C59, C84 and every other panel check pass against the stand-in"
       ]
     }
   ],
