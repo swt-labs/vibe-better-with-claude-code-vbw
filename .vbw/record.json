@@ -7443,7 +7443,7 @@
         "P47.4",
         "P46.6"
       ],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "add the tools scenario to tools/l3-suite.sh: answer the offer yes once in the real interface on a small project",
@@ -7637,7 +7637,7 @@
       "after": [
         "P48.2"
       ],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "Interview step right after the level answer: show the review at the user's level, recommended option first, the other second, own words allowed",
