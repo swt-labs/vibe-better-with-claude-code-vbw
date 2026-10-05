@@ -4,14 +4,16 @@
 // a folder that is not a VBW 2 project. Every hook is wrapped: an error here must
 // never reach the user's session.
 import { panelView, supports } from './panel-view.js'
+import { SOUNDS } from './panel-sounds.js'
 
 const PANE = 'vbw-panel'
 const TICK_MS = 2000
 // The user's choice lives in Claude Code's per-user store, never in the project.
 const CLOSED_KEY = 'vbw-panel.closed'
 const SOUND_KEY = 'vbw-panel.sound'
-// The plugin's own sound file, played once per request for the user.
-const CLIP = { asset: 'assets/needs-you.mp3' }
+// One of the plugin's shipped sounds (assets/audio/<character>/), picked at random
+// for each request for the user; with none shipped, the panel is silent.
+const pick = () => (SOUNDS.length ? { asset: SOUNDS[Math.floor(Math.random() * SOUNDS.length)] } : null)
 const isObj = (x) => x !== null && typeof x === 'object' && !Array.isArray(x)
 
 // Parse a project file; null when it is not a JSON object (half written, invalid).
@@ -58,9 +60,10 @@ async function alert($, st, need) {
   const key = need ? need.key : null
   if (key === st.alerted) return
   st.alerted = key
-  if (!key || !st.sound) return
+  const clip = key && st.sound ? pick() : null
+  if (!clip) return
   try {
-    await $.audio.play(CLIP)
+    await $.audio.play(clip)
   } catch {
     // no file or no player: nothing to say
   }
