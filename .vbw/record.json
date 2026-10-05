@@ -2836,7 +2836,7 @@
       "tier": "deep",
       "reasons": [
         "requirements: 1",
-        "files: 6 (42980 bytes)",
+        "files: 6 (45433 bytes)",
         "risk: none",
         "breaks: R13, R14, R22, R23, R24, R25, R26, R28, R31, R35, R37, R38, R39, R40, R44",
         "tests: project test command"
@@ -2870,9 +2870,9 @@
       "tier": "deep",
       "reasons": [
         "requirements: 2",
-        "files: 15 (90507 bytes)",
+        "files: 19 (132701 bytes)",
         "risk: none",
-        "breaks: R1, R2, R12, R13, R14, R22, R23, R24, R25, R26, R27, R28, R31, R32, R33, R35, R37, R38, R40, R43, R44, R45, R46",
+        "breaks: R1, R2, R11, R12, R13, R14, R22, R23, R24, R25, R26, R27, R28, R29, R31, R32, R33, R35, R37, R38, R40, R43, R44, R45, R46",
         "tests: project test command"
       ],
       "predicted": "deep",
@@ -2906,7 +2906,7 @@
       "tier": "deep",
       "reasons": [
         "requirements: 1",
-        "files: 7 (98825 bytes)",
+        "files: 7 (99120 bytes)",
         "risk: none",
         "breaks: R4, R5, R8, R12, R13, R14, R16, R22, R24, R25, R26, R28, R31, R32, R34, R35, R37, R38, R39, R40, R42, R43, R44, R45, R46",
         "tests: project test command"
@@ -5260,8 +5260,7 @@
         "vbw next lists for QA only the phases that need checking again, and adds a top-level qa with recheck (phase to reasons), standing and problems; the status line file carries it too",
         "Update the existing tests that wrote passes by hand or expected a whole-project re-check (kernel-next.bats, kernel-qa.bats); bash tools/test.sh passes under /bin/bash and bash 5"
       ],
-      "role": "dev",
-      "note": "Plan files miss two places that read qa.tree as the proven-code tree. (1) plugin/lib/rigor-defs.jq phase_finished (line ~91) requires qa.tree == evidence.tree; with qa.tree now the combined digest no pass ever finishes a phase, and prove.jq/cmd-qa.sh both call finish_phases, so task 2 (a standing pass still counts for finishing) cannot be met from prove.jq alone. It should read: pass AND (qa.tree == the phase's current combined digest). (2) plugin/lib/cmd-show.sh line ~35 prints [on older code] when qa.tree != evidence.tree; C47's test 'a pass that stands ... [on older code]' needs it changed. Also phase_finished has no digests in scope: finish_phases needs a $standing argument (or the digests) passed by prove.jq and cmd-qa.sh. Needs: add plugin/lib/rigor-defs.jq and plugin/lib/cmd-show.sh to P40.2 (and tests/kernel-qafresh.bats, which asserts qa pass semantics). Kernel is at 3140/3300 lines, so these edits must stay small. No changes made."
+      "role": "dev"
     },
     {
       "id": "P40.3",
@@ -5355,6 +5354,33 @@
         "Status line: the answer file now carries the qa reasons"
       ],
       "role": "docs"
+    },
+    {
+      "id": "P40.4",
+      "phase": "P40",
+      "title": "A phase is finished, and shown current, when its QA pass stands",
+      "reqs": [
+        "R47"
+      ],
+      "files": [
+        "plugin/lib/rigor-defs.jq",
+        "plugin/lib/cmd-show.sh",
+        "plugin/lib/cmd-req.sh",
+        "plugin/lib/prove.jq",
+        "plugin/lib/cmd-qa.sh",
+        "tests/kernel-qafresh.bats"
+      ],
+      "after": [
+        "P40.1"
+      ],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "rigor-defs.jq: phase_finished and finish_phases take the phases' current digests (from qa_digests) and count a QA pass as standing when qa.tree equals the phase's current combined digest, instead of comparing qa.tree with evidence.tree (D91)",
+        "Every caller passes the digests: prove.jq (via cmd-prove), cmd-qa.sh and cmd-req.sh; no caller keeps the old comparison",
+        "cmd-show.sh: [on older code] only when the phase's pass does not stand by that same comparison",
+        "Update tests/kernel-qafresh.bats to the new rule; P40.2 runs after this plan (it stays blocked until P40.4 is done)"
+      ]
     }
   ],
   "fixes": [
