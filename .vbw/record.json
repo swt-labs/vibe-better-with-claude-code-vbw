@@ -7304,7 +7304,7 @@
         "P46.4",
         "P46.8"
       ],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "Add scenario 'approval' to tools/l3-suite.sh (in ALL and the header): a project with an agreed spec and plan; when the approval question appears the driver presses Enter and never types /vbw:approve",
@@ -7613,7 +7613,7 @@
       "after": [
         "P48.1"
       ],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "'vbw legacy choose convert|fresh' stores the choice and its time in the project record",
