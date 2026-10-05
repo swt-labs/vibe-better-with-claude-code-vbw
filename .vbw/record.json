@@ -4366,6 +4366,13 @@
         "fix_rounds": 0,
         "qa_findings": 0,
         "escalations": 3
+      },
+      "qa": {
+        "result": "pass",
+        "tier": "deep",
+        "tree": "40a51d2436f6dfa6624f18c2a3a5008ca2d1b6327bb99d204814fdfaa05792a6",
+        "at": "2026-10-05T22:20:15Z",
+        "note": "18/18 checks"
       }
     },
     {
