@@ -6822,7 +6822,7 @@
         "P43.2",
         "P44.5"
       ],
-      "status": "planned",
+      "status": "done",
       "tasks": [
         "Read the session cost each refresh, show it as one small line with its term beside it (no breakdown), redraw when it changes, and leave the line out or say 'not available' when there is no cost (never a made-up number)",
         "Find the clone's git directory (also in a linked worktree) and read steps.json from it only when it changed, never writing it; treat a missing or damaged file as no history",
@@ -6980,7 +6980,7 @@
       "after": [
         "P46.2"
       ],
-      "status": "planned",
+      "status": "done",
       "tasks": [
         "Add an unrelated answered question to the hook bench's inputs and run the PostToolUse command from hooks.json for it",
         "Print it as 'guard (answer): N ms own CPU per call' with the same budget rule as the other inputs"
