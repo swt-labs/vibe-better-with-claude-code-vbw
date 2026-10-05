@@ -5169,7 +5169,7 @@
         "plugin/skills/vibe/SKILL.md"
       ],
       "after": [],
-      "status": "planned",
+      "status": "done",
       "tasks": [
         "vbw next --json lists the requirements of the milestone being planned (a requirement moved over from an earlier milestone counts), and no shipped one",
         "The planning workflow shows the Architect exactly that list for both its jobs (finding decisions, then scoping), keeps the schema and the user's level, and stops with a clear message if the list is missing",
@@ -5215,7 +5215,7 @@
         "tests/qa-state.bats"
       ],
       "after": [],
-      "status": "planned",
+      "status": "done",
       "tasks": [
         "New qa-inputs.sh: for each phase of the active milestone, compute a digest of its files and its tests (the checks of its requirements and their files) as committed (HEAD), of its goal and plan, and of every phase it builds on; one combined digest per phase plus the per-input digests",
         "New qa.jq: from the record and those digests, say for each built phase why it is checked again (never checked, failed last time, files, tests or goal-or-plan changed, builds on a named phase that changed) or that its pass stands; transitive, safe on cycles, names a cycle or an unknown phase in a problems list; without the clone cache the only change reason is \"its files, tests or plan changed\"",
