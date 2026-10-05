@@ -4003,6 +4003,12 @@
           "from": "deep",
           "to": "deep",
           "reason": "Dev blocked P44.3: Code done and committed (C61, C62, C63, C64 pass). C65 and C67 cannot pass inside this plan: (1) the bats needs tools/bench-panel.sh to print 'refresh with cost and estimates: X ms CPU' (the driver bench-panel.mjs now prints 'glance <ms>'; the .sh is not a P44.3 file, vbw commit and the guard refuse it); (2) its docs checks need docs/panel.md, which is P44.5's file and runs after P44.3. Needed: add tools/bench-panel.sh to P44.3 (patch: read 'glance' with awk, print the line, include it in the budget loop) or to P44.5."
+        },
+        {
+          "at": "2026-10-05T16:08:12Z",
+          "from": "deep",
+          "to": "deep",
+          "reason": "Dev blocked P44.4: The panel pane opens in the real app (Claude Code 2.1.289, 200 columns; debug log: 'ui.open vbw vbw-panel (unasked, 200 columns): placed', ui.render key=vbw-panel settles) but stays EMPTY on screen: no milestone, progress, doing, need, cost or estimate line is drawn, also after /vbw-sound off forced a redraw. So the panel never shows its content in the real app, and the scenario cannot pass. The cause is in plugin/hooks/panel.js (ui.render, probably what it returns to Claude Code), which is outside this plan's files (tools/l3-suite.sh, tools/l3.sh, tools/l3-results/panel.json). Done: the 'panel' scenario in tools/l3-suite.sh (seed: two phases, P1 passed, P2 plan awaiting approval; reads the screen). Not done: sound/closed persistence checks across a restart, and the committed result. Needs a fix of the panel render first."
         }
       ]
     },
@@ -6847,14 +6853,15 @@
       "after": [
         "P44.3"
       ],
-      "status": "planned",
+      "status": "blocked",
       "tasks": [
         "Add a 'panel' scenario to tools/l3-suite.sh: a realistic project with phases, history and a plan waiting for approval, started in a wide window (160 columns or more)",
         "Make it check, in the real app, that the panel shows the milestone and progress, what VBW is doing, what it needs from the user, the cost line and an estimate or the plain 'no basis yet'; that closing it keeps it closed and the sound switch is kept",
         "Name the scenario in the suite's list and header, state its fixture and what it did not test (the sound itself, a person reading it)",
         "Run it in the real app and commit tools/l3-results/panel.json"
       ],
-      "role": "dev"
+      "role": "dev",
+      "note": "The panel pane opens in the real app (Claude Code 2.1.289, 200 columns; debug log: 'ui.open vbw vbw-panel (unasked, 200 columns): placed', ui.render key=vbw-panel settles) but stays EMPTY on screen: no milestone, progress, doing, need, cost or estimate line is drawn, also after /vbw-sound off forced a redraw. So the panel never shows its content in the real app, and the scenario cannot pass. The cause is in plugin/hooks/panel.js (ui.render, probably what it returns to Claude Code), which is outside this plan's files (tools/l3-suite.sh, tools/l3.sh, tools/l3-results/panel.json). Done: the 'panel' scenario in tools/l3-suite.sh (seed: two phases, P1 passed, P2 plan awaiting approval; reads the screen). Not done: sound/closed persistence checks across a restart, and the committed result. Needs a fix of the panel render first."
     },
     {
       "id": "P44.5",
