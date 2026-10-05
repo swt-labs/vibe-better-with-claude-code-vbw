@@ -6641,11 +6641,5 @@
     "scope": [],
     "passed": true
   },
-  "lease": {
-    "run": "qa-20261005T041957Z",
-    "kind": "qa",
-    "started_at": "2026-10-05T04:19:57Z",
-    "files": [],
-    "session": "9cd2cc30-8c86-4520-9d71-a0e82aff5407"
-  }
+  "lease": null
 }
