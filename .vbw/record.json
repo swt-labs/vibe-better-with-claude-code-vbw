@@ -7661,7 +7661,7 @@
       "after": [
         "P48.3"
       ],
-      "status": "planned",
+      "status": "done",
       "role": "docs",
       "tasks": [
         "docs/convert.md: when the review happens, its four facts, the recommendation rule and what each choice does",
@@ -7685,7 +7685,7 @@
         "P48.3",
         "P47.6"
       ],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "Scenario 'legacy': a project with a VBW 1 folder; the user picks the option that was not recommended",
