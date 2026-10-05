@@ -2,7 +2,7 @@
 name: panel
 description: Check whether the VBW panel and its "needs you" sound work on this Claude Code, and how to use them.
 effort: low
-allowed-tools: Bash(claude --version) Bash("${CLAUDE_PLUGIN_ROOT}/bin/vbw" *) Bash(vbw *)
+allowed-tools: Bash("${CLAUDE_PLUGIN_ROOT}/bin/vbw" *) Bash(vbw *) Bash(claude --version)
 ---
 
 ```!
