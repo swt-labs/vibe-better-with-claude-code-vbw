@@ -548,6 +548,8 @@ panel_seed() {
   # the second phase's plan was then reworded and waits for approval again.
   "$VBW" approve > /dev/null && { "$VBW" prove > /dev/null 2>&1 || true; } && "$VBW" qa record P1 pass standard > /dev/null || return 1
   panel_apply "farewell.sh says Goodbye, NAME! (or Goodbye, world! with no name) and exits 0" || return 1
+  # Applying a plan starts the phases over: phase 1's verdict is recorded again.
+  "$VBW" qa record P1 pass standard > /dev/null || return 1
 }
 
 # panel_apply TASK: apply the two-phase plan, P2.1 with the task TASK.
@@ -570,35 +572,79 @@ scenario_panel() {
   start="/vbw:panel"
   facts="{}"
   panel_text() { screen | sed 's/[[:space:]][[:space:]]*/ /g'; }
-  # The screen after the panel has had time to draw (it redraws within seconds).
+  # The panel's text once it shows every phrase given (it redraws within seconds);
+  # whatever is there after 40 s otherwise.
   panel_wait() {
-    local i s
-    for ((i = 0; i < 20; i++)); do
-      s=$(panel_text)
-      case "$s" in *"$1"*) printf '%s' "$s"; return 0 ;; esac
+    local i s p all
+    for ((i = 0; i < 40; i++)); do
+      s=$(panel_text) all=1
+      for p in "$@"; do case "$s" in *"$p"*) ;; *) all=0 ;; esac; done
+      [ "$all" -eq 1 ] && break
       sleep 1
     done
-    printf '%s' "$s"; return 1
+    printf '%s' "$s"
   }
   has() { case "$1" in *"$2"*) echo true ;; *) echo false ;; esac; }
+  # The user's own store of the panel's choices (sound, closed), kept across sessions.
+  store_read() {
+    local f
+    f=$(ls -t "$(claude_dir)"/plugins/store/vbw_inline-*.json 2> /dev/null | head -1)
+    if [ -n "$f" ]; then jq -c '{sound: (.["vbw-panel.sound"] != false), closed: (.["vbw-panel.closed"] == true)}' "$f" 2> /dev/null || echo '{"sound":true,"closed":false}'
+    else echo '{"sound":true,"closed":false}'; fi
+  }
+  original=$(store_read)
+  # The panel's close button is the last column of the first row.
+  close_panel() { l3 click "$scenario" "$(($(tmux display -p -t "vbw-l3-$scenario" '#{window_width}') - 1))" 1; }
   observe() {
-    local s mid
-    s=$(panel_wait "Working on")
-    printf '%s\n' "$s" > "$dir.panel.screen.txt"
+    local s mid snd
+    # The panel opens by itself in a wide window; where the user's store says it was
+    # closed, the user opens it with /vbw-panel.
+    if [ "$(has "$(panel_wait "Working on")" "Working on")" = false ]; then l3 type "$scenario" "/vbw-panel"; fi
     mid=$(jq -r '.milestone.id' "$dir/.vbw/record.json")
+    s=$(panel_wait "Working on $mid:" "1 of 2 phases done" "Please approve the plan")
+    printf '%s\n' "$s" > "$dir.panel.screen.txt"
     facts=$(jq -n --arg m "$(has "$s" "Working on $mid:")" --arg p "$(has "$s" "1 of 2 phases done")" \
       --arg d "$(has "$s" "VBW is idle")" --arg n "$(has "$s" "Please approve the plan")" \
       --arg c "$(case "$s" in *"has cost \$"*|*"cost so far is not available"*) echo true ;; *) echo false ;; esac)" \
       --arg e "$(case "$s" in *"No estimate yet"*) echo "no basis yet" ;; *"min left"*) echo "approximate time" ;; *) echo "" ;; esac)" \
       '{milestone_shown: ($m == "true"), progress_shown: ($p == "true"), doing_shown: ($d == "true"), need_shown: ($n == "true"),
         need_text: (if $n == "true" then "Please approve the plan before VBW builds it." else "" end), cost_shown: ($c == "true"), estimate_shown: $e}')
+    # The sound switch, as the user types it; the panel's own line follows within seconds.
+    l3 type "$scenario" "/vbw-sound off"
+    snd=$(panel_wait "Sound is off.")
+    facts=$(jq -c --arg s "$(has "$snd" "Sound is off.")" '. + {sound_shown_off: ($s == "true")}' <<< "$facts")
   }
   done_yet() { observe; return 0; }
   checks() {
-    local passed=true
-    for k in milestone_shown progress_shown doing_shown need_shown cost_shown; do
-      expect "the panel shows: $k" jq -e --arg k "$k" '.[$k] == true' <<< "$facts"
+    local snd_back before
+    # The first session's panel: close it as a person does, then start the app again.
+    l3 start "$scenario" "$dir" > /dev/null
+    if screen | grep -q "Type \/reload-skills"; then l3 type "$scenario" "/reload-skills"; sleep 5; fi
+    panel_wait "Working on" > /dev/null
+    close_panel
+    sleep 5
+    before=$(has "$(panel_text)" "Working on")
+    l3 stop "$scenario"
+    l3 start "$scenario" "$dir" > /dev/null
+    if screen | grep -q "Type \/reload-skills"; then l3 type "$scenario" "/reload-skills"; sleep 5; fi
+    sleep 10
+    # Closed by the user: still closed after the restart. The sound was turned off: the switch says it is back on.
+    l3 type "$scenario" "/vbw-sound"; sleep 4
+    snd_back=$(panel_text)
+    facts=$(jq -c --arg b "$before" --arg c "$(has "$snd_back" "Working on")" --arg o "$(has "$snd_back" "sound is on")" \
+      '. + {closed_by_click: ($b == "false"), closed_stays_closed: ($b == "false" and $c == "false"), sound_toggle_persisted: ($o == "true")}' <<< "$facts")
+    # Leave the user's choices as they were.
+    [ "$(jq -r .sound <<< "$original")" = true ] || l3 type "$scenario" "/vbw-sound off"
+    [ "$(jq -r .closed <<< "$original")" = true ] || { l3 type "$scenario" "/vbw-panel"; sleep 3; }
+    sleep 2
+    l3 stop "$scenario"
+    local k passed
+    for k in milestone_shown progress_shown doing_shown need_shown cost_shown sound_shown_off closed_by_click closed_stays_closed sound_toggle_persisted; do
+      expect "the panel: $k" jq -e --arg k "$k" '.[$k] == true' <<< "$facts"
     done
+    expect "the panel shows an estimate or the plain 'no basis yet'" jq -e '.estimate_shown | length > 0' <<< "$facts"
+    passed=$(jq -r '[.milestone_shown, .progress_shown, .doing_shown, .need_shown, .cost_shown, .sound_shown_off, .closed_by_click, .closed_stays_closed, .sound_toggle_persisted, (.estimate_shown | length > 0)] | all' <<< "$facts")
+    [ "$passed" = true ] || failed=1
     result_write panel "$fixture" "${cost_usd:-0}" "$passed" "$facts" \
       '["the sound itself (nothing was heard: the run only checks the switch)","what a person reads at a glance: wording and layout are judged on the screen text, not by a reader","a narrow window (the panel is opened with /vbw-panel there)","a panel while a build or QA runs, and a time estimate with a number"]'
   }
