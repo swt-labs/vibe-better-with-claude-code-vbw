@@ -36,12 +36,35 @@ refresh it.
 
 ## Open and close it
 
-`/vbw-panel` opens the panel. If you close it yourself, it stays closed in
-later sessions until you run `/vbw-panel` again. VBW keeps this choice in
-Claude Code's per-user store, never in your project.
+In a wide window the panel opens by itself when a session starts in a VBW
+project. In a narrow window Claude Code does not open a pane unasked, so run
+`/vbw-panel`: it opens the panel at any width.
+
+If you close the panel yourself, it stays closed, in later sessions too, until
+you open it again with `/vbw-panel`. VBW keeps this choice in Claude Code's
+per-user store, never in your project, and opening or closing changes no file
+of the project.
 
 `/vbw:panel` checks your Claude Code version and tells you whether the panel
-is available.
+and its sound are available.
+
+## The sound
+
+VBW plays a short sound when it needs you: an approval, a question, or a
+result to check. It plays once per request, not again while the same request
+stands, and not for a request already waiting when the session starts. Each
+time it picks one at random from the sounds shipped with VBW, in
+`plugin/assets/audio/<character>/` (mp3 files).
+
+The sound is **on by default**. To turn it off or on:
+
+- click the **Turn off** / **Turn on** button in the panel, or
+- run `/vbw-sound` (it switches; `/vbw-sound off` and `/vbw-sound on` set it).
+
+The choice is remembered. It is yours alone: it is kept in Claude Code's
+per-user store on your own machine, never committed, never in the project and
+never in `.vbw/record.json`. The sound needs the panel, so it needs Claude Code
+2.1.287 or newer.
 
 ## What it needs
 
@@ -69,6 +92,7 @@ not time spent waiting) as follows, measured on a developer Mac with Node 22:
 |---|---|---|
 | Nothing changed | about 0.02 to 0.08 ms | 0.5 ms |
 | A file changed, read and redrawn | about 0.04 to 0.2 ms | 0.5 ms |
+| A need raised and the sound asked to play | measured by the same script | 0.5 ms |
 
 The budget is about 12 times the typical cost, to leave room for a busy
 machine. These numbers come from the test stand-in for Claude Code, whose own
@@ -80,6 +104,6 @@ Check it yourself from a VBW checkout (needs `node`):
 bash tools/bench-panel.sh
 ```
 
-It prints both costs and the budget, and fails if a check is over the budget.
+It prints the three costs and the budget, and fails if a check is over the budget.
 `VBW_PANEL_BUDGET_MS` changes the budget; `VBW_BENCH_RUNS` changes how many
 checks it averages (default 200).
