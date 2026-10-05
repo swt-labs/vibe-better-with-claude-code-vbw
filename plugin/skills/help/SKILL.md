@@ -22,7 +22,7 @@ and you ship.
 |---|---|
 | **Everyday** | |
 | `/vbw:vibe [what you want]` | The one command: takes the project to its next step, stops when it needs you |
-| `/vbw:approve` | Approve the plan, its tests and the commands it may run (only you can) |
+| `/vbw:approve` | Approve the plan, its tests and the commands it may run (only you can); VBW also offers it as a choice where Enter approves |
 | `/vbw:status` | Where the project stands |
 | **Think and decide** | |
 | `/vbw:discuss [topic]` | Think something through; the outcome is recorded |
