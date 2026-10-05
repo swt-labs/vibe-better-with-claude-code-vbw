@@ -11,14 +11,14 @@
 # L3_JOBS at a time (default 4); each one's lines print together when it ends.
 #
 # Scenarios: greenfield, reject, resume, change, convert, balanced, docs, qafix,
-# decision, debug, research, edgecase, leftover, recheck, approval, newcomer, senior, panel. A user
+# decision, debug, research, edgecase, leftover, recheck, approval, newcomer, senior, panel, tools. A user
 # answers every question with VBW's recommendation unless the scenario says otherwise.
 set -uo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 l3() { bash "$ROOT/tools/l3.sh" "$@"; }
 VBW="$ROOT/plugin/bin/vbw"
-ALL="greenfield reject resume change convert balanced docs qafix decision debug research edgecase leftover recheck approval newcomer senior panel"
+ALL="greenfield reject resume change convert balanced docs qafix decision debug research edgecase leftover recheck approval newcomer senior panel tools"
 RESULTS="$ROOT/tools/l3-results"
 STEPS=60
 
@@ -581,6 +581,71 @@ scenario_approval() {
       "$(jq -n --arg fp "${asked_fp:-}" --argjson shown "$options_shown" --argjson e "$pressed" --argjson ok "$named" --argjson n "$n" \
         '{fingerprint: $fp, choice_shown: $shown, approved_by_enter: ($e and $ok and $n == 1), decisions: $n}')" \
       '["the answer Not yet or the user'"'"'s own words","an approval after the contract changed under the question","typing /vbw:approve (covered by the kernel tests)","a project larger than the greet.sh and farewell.sh fixture"]'
+  }
+}
+
+# R62: the interview asks once whether VBW may look for tools. The user answers
+# yes in the real interface; the scenario stops the search at the proposed list
+# (Not yet), so nothing is installed. Facts come from the record, git and the
+# session logs, never screen text.
+scenario_tools() {
+  new_project
+  fixture="greet.sh, one small milestone on an empty README project; the interview asks the tools offer; the user answers yes, then Not yet at the proposed list"
+  start=$GREET
+  offers=0 answered=false listed=false declined=false before_clean=""
+  # Files an install would leave in the project, outside .vbw.
+  install_traces() { (cd "$dir" && git status --porcelain -- . ":(exclude).vbw" | grep -v 'greet\|farewell' | grep -ciE 'skills|\.claude|\.agents|package|lock|requirements|eslint|prettier|shellcheck|\.pre-commit' || true); }
+  # `npx skills add` commands Claude ran, from the session transcripts.
+  install_commands() {
+    local f n=0 c
+    while IFS= read -r f; do
+      c=$(jq -s '[.[] | select(.type == "assistant") | .message.content[]? | select(.type == "tool_use")
+        | (.input.command // "") | select(test("skills add|npm (i|install)|pip install|brew install"))] | length' "$f" 2> /dev/null || echo 0)
+      n=$((n + c))
+    done < <(transcripts)
+    echo "$n"
+  }
+  on_question() {
+    local s n i
+    s=$(screen)
+    if printf '%s' "$s" | grep -qiE 'look for (the best )?tools|tools for this project' && printf '%s' "$s" | grep -qiE 'linter|scanner|formatter'; then
+      offers=$((offers + 1))
+      # The user presses Enter on the first option, yes.
+      l3 keys "$scenario" Enter
+      answered=true
+      return 0
+    fi
+    if [ "$answered" = true ] && printf '%s' "$s" | grep -qE '[0-9]+\. Not yet'; then
+      listed=true
+      # Nothing may be installed while the list waits for the answer.
+      before_clean=$([ "$(install_traces)" -eq 0 ] && [ "$(install_commands)" -eq 0 ] && echo true || echo false)
+      n=$(printf '%s' "$s" | grep -E '[0-9]+\. Not yet' | grep -oE '[0-9]+' | head -1)
+      for ((i = 1; i < n; i++)); do l3 keys "$scenario" Down; done
+      l3 keys "$scenario" Enter
+      declined=true
+      return 0
+    fi
+    return 1
+  }
+  stored() { (cd "$dir" && "$VBW" tools --json 2> /dev/null); }
+  done_yet() { [ "$declined" = true ]; }
+  checks() {
+    local passed=true ans at again=false inst
+    ans=$(stored | jq -r '.answer // "none"')
+    at=$(stored | jq -r '.at // ""')
+    [ "$offers" -le 1 ] || again=true
+    inst=$(( $(install_traces) + $(install_commands) ))
+    expect "the offer was shown (${offers})" [ "$offers" -ge 1 ]
+    expect "the stored answer is yes ($ans, $at)" [ "$ans" = yes ]
+    expect "it was not asked again (offers seen: $offers)" [ "$again" = false ]
+    expect "the proposed list was shown" [ "$listed" = true ]
+    expect "nothing was installed before the list was approved" [ "$before_clean" = true ]
+    expect "nothing was installed after Not yet ($inst)" [ "$inst" -eq 0 ]
+    [ "$failed" -eq 0 ] || passed=false
+    result_write tools "$fixture" "${cost_usd:-0}" "$passed" \
+      "$(jq -n --arg a "$ans" --argjson again "$again" --argjson b "$([ "$before_clean" = true ] && echo false || echo true)" --argjson l "$listed" \
+        '{answer: $a, asked_again: $again, installed_before_approval: $b, list_shown: $l}')" \
+      '["the answer no","approving the list and the install itself","the question in a second session or worktree (covered by the store tests)","a project with a real stack: the fixture is one shell script"]'
   }
 }
 
