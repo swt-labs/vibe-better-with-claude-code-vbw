@@ -2,6 +2,8 @@
 // into plain sentences, each with its technical term beside it. Pure: data in,
 // rows out; it never changes its input and never throws.
 
+import { estimate } from './panel-estimate.js'
+
 export const MIN_VERSION = '2.1.287'
 
 const isObj = (x) => x !== null && typeof x === 'object' && !Array.isArray(x)
@@ -54,13 +56,38 @@ function needOf(nx, question) {
   }
 }
 
+// The session cost as one small line; no number when there is none to show.
+function costRow(cost) {
+  return Number.isFinite(cost) && cost >= 0
+    ? { id: 'cost', text: 'This session has cost $' + cost.toFixed(2) + ' so far.', term: 'session cost' }
+    : { id: 'cost', text: 'The cost so far is not available.', term: 'cost, not available' }
+}
+
+const mins = (sec) => Math.max(1, Math.round(sec / 60))
+const NO_BASIS = { text: 'No estimate yet: there are not enough finished steps to go on.', term: 'estimate, no basis' }
+
+// Time left for the running step and for the milestone, never more exact than it is.
+function estimateRows(rec, steps, phasesLeft, now) {
+  const e = estimate({ steps, lease: isObj(rec.lease) ? rec.lease : null, phasesLeft, now })
+  const row = (id, x, what) => {
+    if (x.state === 'none') return { id, ...NO_BASIS }
+    if (x.state === 'longer') return { id, text: 'This step is taking longer than usual.', term: 'estimate, approximate' }
+    return { id, text: 'About ' + mins(x.seconds) + ' min left in ' + what + '.', term: 'estimate, approximate' }
+  }
+  const rows = []
+  if (e.step) rows.push(row('estimate-step', e.step, 'this step'))
+  if (e.milestone && !(e.milestone.state === 'none' && rows.length && rows[0].term === NO_BASIS.term)) rows.push(row('estimate-milestone', e.milestone, 'the milestone'))
+  return rows
+}
+
 export function panelView(input) {
-  const { record: rec, next: nx, question, now } = isObj(input) ? input : {}
+  const { record: rec, next: nx, question, now, cost, steps } = isObj(input) ? input : {}
   if (!isObj(rec) || !isObj(rec.milestone) || !rec.milestone.id) return { rows: [NEUTRAL], need: null }
   const ph = (Array.isArray(rec.phases) ? rec.phases : []).filter((p) => isObj(p) && p.milestone === rec.milestone.id)
   const done = ph.filter((p) => isObj(p.qa) && p.qa.result === 'pass').length
   const progress = ph.length === 0 ? 'No phases are planned yet.'
     : done + ' of ' + ph.length + (ph.length === 1 ? ' phase' : ' phases') + ' done.'
+  const phasesLeft = ph.length - done
   const open = isObj(rec.lease)
   const need = open ? null : needOf(nx, question)
   return {
@@ -69,6 +96,8 @@ export function panelView(input) {
       { id: 'milestone', text: 'Working on ' + rec.milestone.id + ': ' + (rec.milestone.title || 'untitled') + '.', term: 'milestone' },
       { id: 'progress', text: progress, term: 'phases' },
       doing(rec, Number.isFinite(now) ? now : Date.now()),
+      ...estimateRows(rec, Array.isArray(steps) ? steps : [], phasesLeft, Number.isFinite(now) ? now : Date.now()),
+      costRow(cost),
       { id: 'need', text: need ? need.text : 'Nothing is needed from you right now.', term: 'your turn' },
     ],
   }

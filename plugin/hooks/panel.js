@@ -28,10 +28,10 @@ function parse(text) {
 
 // What the panel knows: the last good state of both files, what is drawn, what is asked.
 function fresh() {
-  return { live: false, timer: null, busy: false, question: null, sound: true, alerted: null, record: null, next: null, shown: '', seen: {} }
+  return { live: false, timer: null, busy: false, question: null, sound: true, alerted: null, record: null, next: null, history: null, cost: null, stepsPath: null, steps: null, shown: '', seen: {} }
 }
 
-const view = (st, now) => panelView({ record: st.record, next: st.next, question: st.question, now })
+const view = (st, now) => panelView({ record: st.record, next: st.next, question: st.question, now, cost: st.cost, steps: st.steps })
 
 // Read a file only when its size or time changed; keep the old state when it cannot be used.
 async function refresh($, st, path, key) {
@@ -52,6 +52,60 @@ async function refresh($, st, path, key) {
   }
   const v = parse(text)
   if (v) st[key] = v
+}
+
+// Where this clone keeps steps.json: its git directory, also from a linked worktree
+// (whose .git file names a directory with a `commondir` pointer). Null when unknown.
+const norm = (p) => {
+  const out = []
+  for (const s of p.split('/')) {
+    if (s === '..') out.pop()
+    else if (s !== '' && s !== '.') out.push(s)
+  }
+  return '/' + out.join('/')
+}
+const place = (base, p) => norm(p.startsWith('/') ? p : base + '/' + p)
+
+async function stepsPath($, root) {
+  try {
+    const dot = root + '/.git'
+    if ((await $.fs.stat(dot)).kind === 'dir') return dot + '/vbw/steps.json'
+    const m = /^gitdir:\s*(.+?)\s*$/m.exec(await $.fs.read(dot))
+    if (!m) return null
+    const dir = place(root, m[1])
+    let common = dir
+    try {
+      const c = (await $.fs.read(dir + '/commondir')).trim()
+      if (c) common = place(dir, c)
+    } catch {
+      // not a linked worktree: this is the git directory
+    }
+    return common + '/vbw/steps.json'
+  } catch {
+    return null
+  }
+}
+
+// The session cost so far: a number, or null when it cannot be read (never a guess).
+async function readCost($, st) {
+  try {
+    const u = await $.session.usage()
+    const usd = isObj(u) && isObj(u.cost) ? u.cost.usd : null
+    st.cost = typeof usd === 'number' && Number.isFinite(usd) ? usd : null
+  } catch {
+    st.cost = null
+  }
+}
+
+// Everything the panel shows, read afresh: each file only when it changed, never written.
+async function gather($, st, root) {
+  await refresh($, st, root + '/.vbw/record.json', 'record')
+  await refresh($, st, root + '/.vbw/runtime/next.json', 'next')
+  if (st.stepsPath) {
+    await refresh($, st, st.stepsPath, 'history')
+    st.steps = isObj(st.history) && Array.isArray(st.history.steps) ? st.history.steps : null
+  }
+  await readCost($, st)
 }
 
 // Play the sound once when a need appears; the same need never plays it again.
@@ -82,8 +136,7 @@ async function tick($, st, root) {
   if (st.busy) return
   st.busy = true
   try {
-    await refresh($, st, root + '/.vbw/record.json', 'record')
-    await refresh($, st, root + '/.vbw/runtime/next.json', 'next')
+    await gather($, st, root)
     await redrawIfChanged($, st)
   } catch {
     // keep the last good state
@@ -127,8 +180,8 @@ export function register(on) {
       const root = await $.session.root()
       if (typeof root !== 'string' || !(await $.fs.exists(root + '/.vbw/record.json'))) return out
       st.live = true
-      await refresh($, st, root + '/.vbw/record.json', 'record')
-      await refresh($, st, root + '/.vbw/runtime/next.json', 'next')
+      st.stepsPath = await stepsPath($, root)
+      await gather($, st, root)
       st.sound = (await $.store.get(SOUND_KEY)) !== false
       const v0 = view(st, await $.clock.now())
       st.alerted = v0.need ? v0.need.key : null // a need already standing at start is not announced
