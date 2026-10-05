@@ -1288,6 +1288,23 @@
           "check": "C68"
         }
       ]
+    },
+    {
+      "id": "R60",
+      "text": "At every stop, VBW ends its message with one plain line saying what it needs from the user now, or that it needs nothing",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M9",
+      "rules": [
+        {
+          "text": "the router tells VBW to end every stop with one line of what it needs from the user, or nothing",
+          "check": "C72"
+        },
+        {
+          "text": "the router stays within its 1,400-word budget",
+          "check": "C72"
+        }
+      ]
     }
   ],
   "checks": [
@@ -2099,6 +2116,17 @@
       ],
       "alone": true,
       "timeout": 600
+    },
+    {
+      "id": "C72",
+      "req": "R60",
+      "run": [
+        "bats",
+        "tests/stop-line.bats"
+      ],
+      "files": [
+        "tests/stop-line.bats"
+      ]
     }
   ],
   "phases": [
@@ -3665,7 +3693,8 @@
       "id": "P45",
       "title": "The interview opens with the new greeting",
       "reqs": [
-        "R59"
+        "R59",
+        "R60"
       ],
       "milestone": "M9",
       "goal": "A new user starting the interview sees the new welcome line followed by the same four proficiency options as before.",
@@ -3680,10 +3709,10 @@
       ],
       "tier": "deep",
       "reasons": [
-        "requirements: 1",
-        "files: 4 (71823 bytes)",
+        "requirements: 2",
+        "files: 6 (94257 bytes)",
         "risk: none",
-        "breaks: R4, R5, R8, R34, R37, R38, R39, R40, R42, R48",
+        "breaks: R4, R5, R8, R13, R14, R22, R24, R25, R26, R28, R31, R34, R37, R38, R39, R40, R42, R44, R48, R50",
         "tests: project test command"
       ],
       "predicted": "deep"
@@ -6476,6 +6505,27 @@
         "Update the real-user test script so it recognises the new greeting as the level question"
       ],
       "role": "dev"
+    },
+    {
+      "id": "P45.2",
+      "phase": "P45",
+      "title": "VBW ends every stop with what it needs from the user",
+      "reqs": [
+        "R60"
+      ],
+      "files": [
+        "plugin/skills/vibe/SKILL.md",
+        "docs/workflows.md"
+      ],
+      "after": [
+        "P45.1"
+      ],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "Router loop: at every stop, end the message with one line \"**What I need from you:** <the one thing the user must do now>\" or \"nothing\"; trim elsewhere so the router stays within 1,400 words",
+        "docs/workflows.md: say that every stop ends with that line"
+      ]
     }
   ],
   "fixes": [

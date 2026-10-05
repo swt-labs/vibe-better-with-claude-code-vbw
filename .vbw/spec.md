@@ -66,6 +66,7 @@ VBW is a Claude Code plugin that makes it build software properly: the user agre
 - R57 [auto] VBW plays a short sound when it needs the user (an approval, a question, a result to check), picked at random from the sounds shipped with VBW in plugin/assets/audio/<character>/; one click in the panel or one command turns it off or on, and the choice is remembered
 - R58 [auto] The panel shows an estimated time left for the current step and for the milestone, based on how long earlier steps took in this project, and says plainly when it has no basis for an estimate yet
 - R59 [auto] The interview opens with: "Hello, Human! Welcome to VBW. Let me interview you real quick to better adapt to you. What is your level of proficiency?", with the same four options as before
+- R60 [auto] At every stop, VBW ends its message with one plain line saying what it needs from the user now, or that it needs nothing
 
 <!-- One requirement per line: an id, how it is proved, and a user-observable
      statement. [auto] = a check can prove it; [human] = only a person can judge it.
