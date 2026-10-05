@@ -933,6 +933,61 @@
           "check": "C51"
         }
       ]
+    },
+    {
+      "id": "R51",
+      "text": "A VBW panel in Claude Code shows, in plain words, the milestone and its progress, what VBW is doing right now (planning, building which parts, checking), and whether it needs the user and for what; it updates by itself within a few seconds when that changes",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M9",
+      "rules": []
+    },
+    {
+      "id": "R52",
+      "text": "The panel opens by itself in a wide window, and at any width with a command; the user can close it, and it stays closed until they open it again",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M9",
+      "rules": []
+    },
+    {
+      "id": "R53",
+      "text": "On Claude Code versions without mods (older than 2.1.287), or outside a VBW project, nothing breaks: no panel and no error, and the status line works as before",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M9",
+      "rules": []
+    },
+    {
+      "id": "R54",
+      "text": "The panel is easy to read at a glance at the user's level",
+      "proof": "human",
+      "status": "open",
+      "milestone": "M9"
+    },
+    {
+      "id": "R55",
+      "text": "The panel stays light: it uses no network, and its updates do not slow Claude Code down",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M9",
+      "rules": []
+    },
+    {
+      "id": "R56",
+      "text": "The panel shows how much the current session has cost so far",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M9",
+      "rules": []
+    },
+    {
+      "id": "R57",
+      "text": "VBW plays a short sound when it needs the user (an approval, a question, a result to check); one click in the panel or one command turns it off or on, and the choice is remembered",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M9",
+      "rules": []
     }
   ],
   "checks": [

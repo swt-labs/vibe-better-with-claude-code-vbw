@@ -57,6 +57,13 @@ VBW is a Claude Code plugin that makes it build software properly: the user agre
 - R48 [auto] When QA runs, VBW says for each phase why it is checked again (failed last time, or which of its inputs changed) and lists the phases whose pass still stands
 - R49 [auto] A phase is also checked again when a phase it builds on was checked again because its inputs changed, even if its own inputs did not
 - R50 [auto] Before planning, VBW asks the user only about decisions for the milestone being planned, never about requirements of shipped milestones
+- R51 [auto] A VBW panel in Claude Code shows, in plain words, the milestone and its progress, what VBW is doing right now (planning, building which parts, checking), and whether it needs the user and for what; it updates by itself within a few seconds when that changes
+- R52 [auto] The panel opens by itself in a wide window, and at any width with a command; the user can close it, and it stays closed until they open it again
+- R53 [auto] On Claude Code versions without mods (older than 2.1.287), or outside a VBW project, nothing breaks: no panel and no error, and the status line works as before
+- R54 [human] The panel is easy to read at a glance at the user's level
+- R55 [auto] The panel stays light: it uses no network, and its updates do not slow Claude Code down
+- R56 [auto] The panel shows how much the current session has cost so far
+- R57 [auto] VBW plays a short sound when it needs the user (an approval, a question, a result to check); one click in the panel or one command turns it off or on, and the choice is remembered
 
 <!-- One requirement per line: an id, how it is proved, and a user-observable
      statement. [auto] = a check can prove it; [human] = only a person can judge it.
