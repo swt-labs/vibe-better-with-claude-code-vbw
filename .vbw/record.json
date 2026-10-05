@@ -4172,7 +4172,15 @@
         "breaks: R3, R4, R5, R8, R13, R14, R22, R23, R24, R25, R27, R28, R31, R34, R37, R38, R39, R40, R42, R43, R44, R45, R46, R47, R48, R49",
         "tests: project test command"
       ],
-      "predicted": "deep"
+      "predicted": "deep",
+      "escalations": [
+        {
+          "at": "2026-10-05T17:06:02Z",
+          "from": "deep",
+          "to": "deep",
+          "reason": "Dev blocked P47.7: tooling.js already reads args.profile and puts ${voice} in its only agent call (delivered by P47.2), so the task needs no change. The test 'every workflow agent call carries the profile' still fails only because it hard-codes [ \"$n\" -eq 7 ] workflows (tests/profile-levels.bats line 120) and there are now 8. Fixing it means editing tests/profile-levels.bats (and likely the 7-workflow count in tests/workflows.bats), which is outside this plan's files."
+        }
+      ]
     }
   ],
   "plans": [
@@ -7094,7 +7102,7 @@
       "after": [
         "P46.2"
       ],
-      "status": "planned",
+      "status": "done",
       "tasks": [
         "docs/proof.md: the approval question, the three choices, Approve first so Enter approves, the fingerprint, what happens when the contract changed, and that /vbw:approve still works",
         "docs/guards.md: the answer hook (PostToolUse on AskUserQuestion), why the model cannot approve through it and that the guard still refuses vbw approve",
@@ -7334,7 +7342,7 @@
       "after": [
         "P47.4"
       ],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "Remove obsolete instructions, then compress what Claude reads into terse caveman style (as /vbw:compress does: every fact, rule, path, command and code block kept); keep every text shown to the user word for word: questions, options, the greeting, messages (D121)",
@@ -7355,11 +7363,12 @@
       "after": [
         "P47.2"
       ],
-      "status": "planned",
+      "status": "blocked",
       "role": "dev",
       "tasks": [
         "tooling.js passes args.profile (level, explanation depth, involvement) into every Scout task, as every other workflow does (R39); tests/profile-levels.bats 'every workflow agent call carries the profile' passes, and C79 still passes"
-      ]
+      ],
+      "note": "tooling.js already reads args.profile and puts ${voice} in its only agent call (delivered by P47.2), so the task needs no change. The test 'every workflow agent call carries the profile' still fails only because it hard-codes [ \"$n\" -eq 7 ] workflows (tests/profile-levels.bats line 120) and there are now 8. Fixing it means editing tests/profile-levels.bats (and likely the 7-workflow count in tests/workflows.bats), which is outside this plan's files."
     }
   ],
   "fixes": [
