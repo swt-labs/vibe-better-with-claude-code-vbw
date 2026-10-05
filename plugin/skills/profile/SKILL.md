@@ -14,8 +14,7 @@ Write to the user's level, explanation depth and involvement.
 
 The user said: $ARGUMENTS
 
-If the output above says this is not a VBW project, set it up first (`vbw init`
-and `vbw statusline on`, one line to say so), then run `vbw config` again.
+Output above says not a VBW project: set up first (`vbw init` and `vbw statusline on`, one line saying so), then run `vbw config` again.
 
 Presets (each sets two things with `vbw config set`):
 
@@ -25,18 +24,12 @@ Presets (each sets two things with `vbw config set`):
 | Standard | `balanced` (Sonnet for every agent) | `balanced`: keeps going, stops for your decisions, approval, checking and shipping | most work (the default) |
 | Fast | `budget` (Haiku for Scout, Sonnet for the rest, QA included) | `hands-off`: takes its own recommendations on decisions and lists them for you | small changes, once you trust it |
 
-If they named a preset, apply it and show the result. Otherwise show the
-current settings and ask (AskUserQuestion) which preset, the best fit first, or
-"My own mix" (then ask the two settings separately). Approval, checking and
-shipping always stop for the user.
+Preset named: apply it, show the result. Else show current settings and ask (AskUserQuestion) which preset, best fit first, or "My own mix" (then ask the two settings separately). Approval, checking and shipping always stop for the user.
 
-The interview answers shown above (`vbw interview`) set how VBW talks to the
-user. Show them in plain words. To change one answer, ask which one and its new
-value (AskUserQuestion; a wrong value's error lists the allowed ones), then
-change only that one answer; the other two stay as they are:
+Interview answers above (`vbw interview`) set how VBW talks to the user. Show them in plain words. To change one answer: ask which and its new value (AskUserQuestion; a wrong value's error lists allowed ones), change only that one answer:
 
 - `vbw interview set level VALUE`
 - `vbw interview set depth VALUE`
 - `vbw interview set involvement VALUE`
 
-If the interview has not been done, say so and point to `/vbw:vibe`, which asks it.
+Interview not done: say so, point to `/vbw:vibe`, which asks it.

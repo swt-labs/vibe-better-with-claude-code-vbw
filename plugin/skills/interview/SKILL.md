@@ -10,18 +10,13 @@ allowed-tools: Bash("${CLAUDE_PLUGIN_ROOT}/bin/vbw" *) Bash(vbw *)
 "${CLAUDE_PLUGIN_ROOT}/bin/vbw" interview 2>&1 || true
 ```
 
-The answers so far are above. Once they are kept, write every later message at the user's level, explanation depth and involvement.
+Answers so far above. Once kept, write every later message at the user's level, explanation depth and involvement.
 
-The router calls this when `profile.ask` is true: after mapping (for existing
-code), before any spec work. Ask with AskUserQuestion, one question at a time,
-in plain words. Skip the answers `profile` already holds: resume at the first
-unanswered question, named by `profile.pending` (`level`, `depth`,
-`involvement`, then `keep`). `vbw interview` shows the same state.
+Router calls this when `profile.ask` is true: after mapping (existing code), before any spec work. Ask with AskUserQuestion, one question at a time, plain words. Skip the answers `profile` already holds: resume at first unanswered, named by `profile.pending` (`level`, `depth`, `involvement`, then `keep`). `vbw interview` shows same state.
 
 ## The three fixed questions
 
-Each answer is recorded as soon as it is given, so an interrupted interview
-loses nothing. Offer exactly these options, in this order, and no others: never reorder them or mark one Recommended, whatever the earlier answers suggest (they are the user's own facts, not a choice VBW advises).
+Record each answer at once; an interrupted interview loses nothing. Offer exactly these options, this order, no others: never reorder or mark one Recommended, whatever earlier answers suggest (user's own facts, not a choice VBW advises).
 
 1. "Hello, Human! Welcome to VBW. Let me interview you real quick to better adapt to you. What is your level of proficiency?"
    Options: never; small scripts or no-code; professionally; senior engineer.
@@ -33,64 +28,36 @@ loses nothing. Offer exactly these options, in this order, and no others: never 
    Options: decide and tell me; options with a recommendation; I make the calls.
    Record: `vbw interview set involvement "<option>"`.
 
-The kernel refuses any other value and says which are allowed. On a refusal or
-an answer that fits no option (free text, "Other"), never record it: ask again,
-the same question, with the same options. Never guess the nearest option.
+Kernel refuses other values and names allowed ones. On refusal or an answer fitting no option (free text, "Other"): never record it; ask again, same question, same options. Never guess nearest option.
 
 ## What and for whom
 
-Then ask briefly what you are building and for whom. Existing code: start
-from `.vbw/map.md`, say what the project seems to do and let the user correct
-it, instead of asking what it is. Write the answer into `.vbw/spec.md` under
-`## Goals` (one or two plain sentences), then `vbw spec sync`.
+Ask briefly what you are building and for whom. Existing code: start from `.vbw/map.md`, say what the project seems to do, let user correct, instead of asking what it is. Write answer into `.vbw/spec.md` under `## Goals` (one or two plain sentences), then `vbw spec sync`.
 
 ## Follow-ups
 
-Then at most three written follow-up questions, which you write for this user
-and this project: pitched at their level and depth answers, aimed at what the
-spec still lacks (what it does, users, constraints, what success looks like).
-Zero is allowed only when the answers already say what it does and for whom;
-otherwise ask them now, as a shop asks its client: inside the interview,
-before the keep question, never left to the spec step. For
-"decide and tell me", a follow-up may be your proposal for them to confirm or
-correct. Never fill the gap unasked. Never ask a fourth.
-Fold each answer into `.vbw/spec.md` (Goals, or the user's own constraints),
-then `vbw spec sync`. These follow-ups are not recorded as interview answers.
+Then at most three written follow-up questions, written for this user and project: pitched at their level and depth, aimed at what spec still lacks (what it does, users, constraints, what success looks like). Zero is allowed only when the answers already say what it does and for whom; otherwise ask now, as a shop asks its client: inside the interview, before the keep question, never left to the spec step. For "decide and tell me", a follow-up may be your proposal for them to confirm or correct. Never fill a gap unasked. Never a fourth. Fold each answer into `.vbw/spec.md` (Goals, or user's constraints), then `vbw spec sync`. Not recorded as interview answers.
 
 ## Keep
 
-The last question: where to keep the personal answers (level, depth,
-involvement). Options: "private on this machine (Recommended)", or "saved in
-the project" (shared with whoever clones it).
+Last question: where to keep personal answers (level, depth, involvement). Options: "private on this machine (Recommended)", or "saved in the project" (shared with whoever clones it).
 
 - private: `vbw interview keep private`
 - saved in the project: `vbw interview keep project`
 
-The interview is complete only after this command. If the user stops before
-it, record nothing as complete; the router asks again next time and resumes at
-the first unanswered question.
+The interview is complete only after this command. If user stops before it, record nothing as complete; router asks again next time, resuming at first unanswered question.
 
-Afterwards say in one line how the answers shape what follows, and that
-`/vbw:profile` changes any of them.
+Afterwards say in one line how answers shape what follows, and that `/vbw:profile` changes any.
 
 ## Tools
 
-After the keep question, ask once whether VBW may look for tools. Read the
-remembered state first: `vbw tools`. If it already holds an answer, yes or no,
-skip this step and never ask again: it is asked once per project.
+After keep, ask once whether VBW may look for tools. First `vbw tools`. If it holds an answer, yes or no: skip, never ask again; asked once per project.
 
-Otherwise ask one plain yes/no question with AskUserQuestion. Explain each
-kind of tool in a few words, at the user's level: skills (add-ons that teach
-Claude a craft), code-safety scanners (programs that look for security holes),
-linters (programs that flag likely mistakes), formatters (programs that tidy
-the code's layout) and test frameworks (what runs automatic tests).
+Else one plain yes/no question with AskUserQuestion. Explain each kind in a few words at user's level: skills (add-ons teaching Claude a craft), code-safety scanners (programs looking for security holes), linters (flag likely mistakes), formatters (tidy code layout), test frameworks (run automatic tests).
 
-Record the answer at once:
+Record at once:
 
-- yes: `vbw tools answer yes`, then carry on exactly as `/vbw:skills` does
-  (work out the stack, run the `vbw:tooling` workflow, show the short list,
-  install only what the user approves).
-- no: `vbw tools answer no`. No Scout is started, nothing is searched and
-  install nothing; go on with the flow unchanged. `/vbw:skills` runs it later.
+- yes: `vbw tools answer yes`, then carry on exactly as `/vbw:skills` does (work out stack, run `vbw:tooling` workflow, show short list, install only what user approves).
+- no: `vbw tools answer no`. No Scout started, nothing searched, install nothing; flow goes on unchanged. `/vbw:skills` runs it later.
 
 End the step with: "I need your yes or no to look for tools".
