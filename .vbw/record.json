@@ -4224,7 +4224,14 @@
           "to": "deep",
           "reason": "Dev blocked P44.4: The real-app run (L3, Claude Code 2.1.289, window 200 columns) shows a defect in plugin/hooks/panel.js, outside this plan's files: the panel never redraws by itself. The debug log has '[WARN] [vbw] $.ui.invalidate dropped: HooksError: ui.invalidate: takes \"ui.render\", \"prompt.section\", ... (host check)': panel.js calls $.ui.invalidate() with no event name (redrawIfChanged). Seen: after '/vbw-sound off' the panel still says 'Sound is on.' (the choice is saved), and a state change (need, progress) shows only when the pane is reopened. R51 requires updates within a few seconds. Fix: call $.ui.invalidate('ui.render') (check the host's argument form), and check tests/panel (the fake's invalidate must also demand the name). The scenario is committed and passes every other fact (milestone, progress, doing, need, cost, no basis yet, click-close stays closed after restart, sound off kept); only sound_shown_off fails. After the fix, rerun: bash tools/l3-suite.sh panel, then commit tools/l3-results/panel.json."
         }
-      ]
+      ],
+      "qa": {
+        "result": "pass",
+        "tier": "deep",
+        "tree": "43b0ab84ed826dafaf20854a7234290701f8dc13e11d71128bf2a8972d1f041a",
+        "at": "2026-10-05T20:23:28Z",
+        "note": "30/30 checks"
+      }
     },
     {
       "id": "P45",
