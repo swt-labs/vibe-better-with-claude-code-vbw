@@ -8030,7 +8030,7 @@
       "req": "R52",
       "source": "qa",
       "attempts": 0,
-      "status": "open",
+      "status": "fixed",
       "note": "plugin/skills/panel/SKILL.md says '/vbw-panel opens or closes it', but the command in plugin/hooks/panel.js (command.run vbw-panel) only opens the panel and docs/panel.md line 123 says the same. Users on a new Claude Code are told a toggle exists that does not. Fix the skill wording to 'opens it'."
     },
     {
@@ -8038,7 +8038,7 @@
       "req": "R59",
       "source": "qa",
       "attempts": 0,
-      "status": "open",
+      "status": "fixed",
       "note": "tools/l3-suite.sh still uses the old level question in two places that P45.1 task 3 (update the real-user test script to recognise the new greeting) should have covered: line 1192 (interview_options_fixed, key '^How much software have you built') and line 1287 (test 'interview (set|keep)|How much software'). Line 1192 means the level options are no longer checked against the real session (the greeting never matches that regex, so only the other two questions are checked). Only line 973 was updated (commit 21d1ddfe)."
     },
     {
@@ -8046,7 +8046,7 @@
       "req": "R62",
       "source": "qa",
       "attempts": 0,
-      "status": "open",
+      "status": "fixed",
       "note": "The interview skill (plugin/skills/interview/SKILL.md) tells VBW to carry on as /vbw:skills does on yes (run the vbw:tooling workflow, install with npx skills), but its allowed-tools holds only Bash(vbw *). Workflow(vbw:tooling) and Bash(npx skills *) are not listed, so the yes path from the interview can stop on a permission prompt, while plugin/skills/skills/SKILL.md lists both. No test checks this."
     },
     {
@@ -8054,7 +8054,7 @@
       "req": "R62",
       "source": "qa",
       "attempts": 0,
-      "status": "open",
+      "status": "fixed",
       "note": "Commit 977ce2ef changes tests/standards.bats (a new brace-default rule). It carries no VBW-Plan trailer and no P47 plan lists the file, so it is work outside the agreed plan. Escalation text also names a P47.7 that does not exist in the plan."
     }
   ],
@@ -8850,6 +8850,12 @@
       "id": "D124",
       "at": "2026-10-05T18:25:06Z",
       "text": "Contract approved: 62 requirements, 86 checks, 137 plans (2727caceaf19)"
+    },
+    {
+      "id": "D125",
+      "text": "F36: keep commit 977ce2ef (standards rule: no brace-literal parameter defaults) as made outside a plan",
+      "why": "chosen by VBW: it enforces the bash 3.2 floor after two helpers broke under /bin/bash; tests/standards.bats is unprotected maintenance; history is never rewritten; P47.7 in the escalation text was a dropped plan (misdiagnosis, the workflow-count test was fixed instead)",
+      "at": "2026-10-05T20:36:16Z"
     }
   ],
   "commands": {
