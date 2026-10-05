@@ -94,7 +94,7 @@ Your first project. In your project's folder (any git repository, new or existin
 Type `/vbw:vibe` whenever you come back; it continues where things stand.
 `/vbw:profile` changes your answers and how much it does by itself (Careful, Standard, Fast).
 
-Coming from an earlier VBW? See [docs/convert.md](docs/convert.md).
+Coming from an earlier VBW? VBW reviews the old folder, recommends converting or starting fresh, and you choose: see [docs/convert.md](docs/convert.md).
 
 ## Commands
 
@@ -139,7 +139,7 @@ Coming from an earlier VBW? See [docs/convert.md](docs/convert.md).
 - [docs/panel.md](docs/panel.md): the panel, a plain-words view of progress and what needs you
 - [docs/diagnostics.md](docs/diagnostics.md): `vbw report` for bug reports and `vbw rtk`
 - [docs/tools.md](docs/tools.md): the offer to find the best tools for your project (asked once, nothing installed without your approval)
-- [docs/convert.md](docs/convert.md): updating from an earlier VBW and bringing in its projects
+- [docs/convert.md](docs/convert.md): updating from an earlier VBW, the review of its old folder, and the choice to convert or start fresh
 - [plugin/CHANGELOG.md](plugin/CHANGELOG.md): what changed
 
 ## Contributing

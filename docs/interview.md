@@ -66,6 +66,10 @@ from `.vbw/map.md` and asks you to correct it. VBW asks one question at a time:
 1. The three fixed questions above, with exactly their options. Each answer is
    recorded at once with `vbw interview set`. An answer that fits no option
    (free text, "Other") is never recorded: VBW asks the same question again.
+   If the project has an old VBW 1 folder (`.vbw-planning/`) and no choice
+   about it yet, one extra step comes right after the level answer: VBW reviews
+   the folder, recommends converting or starting fresh, and you choose (asked
+   once; see docs/convert.md).
 2. What you are building and for whom. VBW writes the answer under `## Goals`
    in `.vbw/spec.md`.
 3. At most three follow-up questions that VBW writes for your level and this
