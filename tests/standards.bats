@@ -40,11 +40,11 @@ code_grep() {
   [ "$total" -le 1500 ]
 }
 
-@test "shipped plugin is under 1 MB (design §10, ledger D295)" {
+@test "shipped plugin is under 2 MB (design §10, ledger D295; owner raised it from 1 MB on 2026-10-05 for the sounds)" {
   local kb
   kb=$(du -sk "$PLUGIN_ROOT" | cut -f1)
   echo "plugin size: ${kb} KB"
-  [ "$kb" -lt 1024 ]
+  [ "$kb" -lt 2048 ]
 }
 
 @test "no eval or data-as-code (ledger D108, D139)" {
