@@ -4148,7 +4148,15 @@
           "to": "deep",
           "reason": "Dev blocked P43.2: panel.js and bench-panel.mjs are done and C59 passes. C60 also needs tools/bench-panel.sh (the 'sound, need raised' line), docs/panel.md (new, linked from README but missing) and README.md (/vbw-sound row), none declared by P43.2. Those edits are made in the working tree, uncommitted; the plan's files need extending to commit them."
         }
-      ]
+      ],
+      "qa": {
+        "result": "fail",
+        "tier": "deep",
+        "tree": "bd49458747720e49c48f59a63ba73518af3c8c867d1802346ccfa4bdde765cf4",
+        "at": "2026-10-05T20:22:15Z",
+        "note": "24/25 checks",
+        "rounds": 1
+      }
     },
     {
       "id": "P44",
@@ -7948,6 +7956,14 @@
       "attempts": 0,
       "status": "closed",
       "note": "Unrelated code rewritten: commits 9f932df1 and 2b1d2bfd rewrite code that has nothing to do with the re-check rule, apparently to save lines: cmd-next.sh (if/else on --json turned into a case; tracked/code counting merged), cmd-show.sh (three if-blocks in show contract --changes, show_contract_changes and show_work turned into one-line short-circuits). Not in any P40 task. With the budget now 3,500 (D96) there is no reason to keep them. Fix: revert those hunks or record a decision that lets them stand."
+    },
+    {
+      "id": "F33",
+      "req": "R52",
+      "source": "qa",
+      "attempts": 0,
+      "status": "open",
+      "note": "plugin/skills/panel/SKILL.md says '/vbw-panel opens or closes it', but the command in plugin/hooks/panel.js (command.run vbw-panel) only opens the panel and docs/panel.md line 123 says the same. Users on a new Claude Code are told a toggle exists that does not. Fix the skill wording to 'opens it'."
     }
   ],
   "todos": [
@@ -8039,6 +8055,11 @@
     {
       "id": "T18",
       "text": "Later (owner, 2026-10-05): let the user choose the sound character (folders under plugin/assets/audio/)",
+      "status": "open"
+    },
+    {
+      "id": "T19",
+      "text": "qa.jq names a phase cycle as a problem even when plans are acyclic (P46.7 after P47.4, P47.5/P47.6 after P46.x): interleaved phases are legitimate; report it as a note, keep the recheck closure",
       "status": "open"
     }
   ],
@@ -9283,5 +9304,11 @@
     "scope": [],
     "passed": true
   },
-  "lease": null
+  "lease": {
+    "run": "qa-20261005T202106Z",
+    "kind": "qa",
+    "started_at": "2026-10-05T20:21:06Z",
+    "files": [],
+    "session": "9cd2cc30-8c86-4520-9d71-a0e82aff5407"
+  }
 }
