@@ -7898,7 +7898,7 @@
         "docs/proof.md"
       ],
       "after": [],
-      "status": "planned",
+      "status": "done",
       "tasks": [
         "vbw apply keeps an existing phase's qa field with its escalations and outcome",
         "docs/proof.md says a re-plan keeps QA verdicts and the re-check rule decides what QA checks again"
