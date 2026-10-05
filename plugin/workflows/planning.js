@@ -9,7 +9,7 @@ export const meta = {
   ],
 }
 
-// args: {models?: {architect?, lead?}, decided?: true} (docs/workflows.md).
+// args: {requirements, models?: {architect?, lead?}, decided?: true} (docs/workflows.md).
 // decided: the user has just answered this round's questions; plan now.
 const models = (args && args.models) || {}
 const decided = Boolean(args && args.decided)
@@ -17,6 +17,10 @@ const decided = Boolean(args && args.decided)
 // every agent writes what reaches the user at that level.
 const profile = (args && typeof args === 'object' && args.profile) || {}
 const voice = `\n\nThe user's level: ${profile.level || 'small scripts or no-code'}. Explanation depth: ${profile.depth || 'plain with technical terms explained'}. Involvement: ${profile.involvement || 'options with a recommendation'}. Write whatever the user will read at that level and depth.`
+// The active milestone's requirements (args.requirements, from vbw next --json):
+// the only ones the Architect is shown, so it never asks about shipped work.
+const reqs = (args && Array.isArray(args.requirements)) ? args.requirements : null
+const reqList = reqs ? `\n\nRequirements of this milestone (the only ones to consider):\n${reqs.map(r => `- ${r.id} [${r.proof}] ${r.text}`).join('\n')}` : ''
 const opts = (role, extra) => Object.assign({ agentType: `vbw:${role}`, label: role },
   models[role] ? { model: models[role] } : {}, extra)
 
@@ -86,9 +90,13 @@ const PLAN_RESULT = {
 // The user decides what matters to them before anything is planned: the
 // router asks, records the answers (vbw decide) and starts this workflow again
 // with decided: true, so each planning round asks at most once.
+if (!reqs || reqs.length === 0) {
+  return { status: 'blocked', summary: 'planning needs the requirements of this milestone (args.requirements, from vbw next --json) and got none', blockers: [], notes: [] }
+}
+
 if (!decided) {
   phase('Decide')
-  const found = await agent(`Job 1: find the decisions this VBW project needs from its user before planning. Change nothing.${voice}`,
+  const found = await agent(`Job 1: find the decisions this VBW project needs from its user before planning. Change nothing.${reqList}${voice}`,
     opts('architect', { schema: DECISIONS, label: 'architect (decide)', phase: 'Decide' }))
   const open = (found && found.decisions) || []
   if (open.length > 0) {
@@ -98,7 +106,7 @@ if (!decided) {
 }
 
 phase('Scope')
-const scope = await agent(`Job 2: scope the current milestone into phases, each with a goal and goal-backward success criteria. Change nothing.${voice}`,
+const scope = await agent(`Job 2: scope the current milestone into phases, each with a goal and goal-backward success criteria. Change nothing.${reqList}${voice}`,
   opts('architect', { schema: SCOPE, label: 'architect (scope)', phase: 'Scope' }))
 if (!scope || !scope.phases || scope.phases.length === 0) {
   return { status: 'blocked', summary: 'the Architect could not scope the milestone', blockers: [], notes: [] }
