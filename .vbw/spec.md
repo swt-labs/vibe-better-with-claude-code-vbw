@@ -71,6 +71,7 @@ VBW is a Claude Code plugin that makes it build software properly: the user agre
 - R62 [auto] Once the interview knows what is being built, VBW asks the user's permission to look for the best tools for this project (community skills, automated code-safety scanners, code-quality tools such as linters and formatters, unit-test and other test frameworks); on yes, Scouts research current best-in-class options for the project's stack, with sources, and VBW proposes a short list; nothing is installed until the user approves that list; on no, nothing is searched or installed; it is asked once per project, and /vbw:skills runs it again any time
 - R63 [human] The recommended tools fit the project and are explained at the user's level
 - R64 [auto] VBW's own real-app test sessions never play the sound aloud and never read or change the user's own panel and sound choices
+- R65 [auto] When a project has a VBW 1 folder, VBW first reviews it (how much was finished, how recently it was used, whether its plans still match the current code, any work half done) and recommends converting or starting fresh with its reasons in plain words, the recommended option first; the user still chooses
 
 <!-- One requirement per line: an id, how it is proved, and a user-observable
      statement. [auto] = a check can prove it; [human] = only a person can judge it.
