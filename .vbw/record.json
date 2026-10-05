@@ -2875,7 +2875,15 @@
         "breaks: R1, R2, R12, R13, R14, R22, R23, R24, R25, R26, R27, R28, R31, R32, R33, R35, R37, R38, R40, R43, R44, R45, R46",
         "tests: project test command"
       ],
-      "predicted": "deep"
+      "predicted": "deep",
+      "escalations": [
+        {
+          "at": "2026-10-05T01:12:13Z",
+          "from": "deep",
+          "to": "deep",
+          "reason": "Dev blocked P40.2: Plan files miss two places that read qa.tree as the proven-code tree. (1) plugin/lib/rigor-defs.jq phase_finished (line ~91) requires qa.tree == evidence.tree; with qa.tree now the combined digest no pass ever finishes a phase, and prove.jq/cmd-qa.sh both call finish_phases, so task 2 (a standing pass still counts for finishing) cannot be met from prove.jq alone. It should read: pass AND (qa.tree == the phase's current combined digest). (2) plugin/lib/cmd-show.sh line ~35 prints [on older code] when qa.tree != evidence.tree; C47's test 'a pass that stands ... [on older code]' needs it changed. Also phase_finished has no digests in scope: finish_phases needs a $standing argument (or the digests) passed by prove.jq and cmd-qa.sh. Needs: add plugin/lib/rigor-defs.jq and plugin/lib/cmd-show.sh to P40.2 (and tests/kernel-qafresh.bats, which asserts qa pass semantics). Kernel is at 3140/3300 lines, so these edits must stay small. No changes made."
+        }
+      ]
     },
     {
       "id": "P41",
@@ -5192,7 +5200,7 @@
       "after": [
         "P39.1"
       ],
-      "status": "planned",
+      "status": "done",
       "tasks": [
         "Describe the requirements list in the vbw next answer",
         "Describe that the planning step receives only the active milestone's requirements and stops without them"
@@ -5245,14 +5253,15 @@
         "P40.1",
         "P39.1"
       ],
-      "status": "planned",
+      "status": "blocked",
       "tasks": [
         "vbw qa record stores the phase's combined digest in qa.tree and its per-input digests in the clone cache (and still refuses a proof older than the code)",
         "vbw prove leaves QA passes as they are: a pass stands while the phase's current combined digest equals its qa.tree, so it still counts for finishing the phase",
         "vbw next lists for QA only the phases that need checking again, and adds a top-level qa with recheck (phase to reasons), standing and problems; the status line file carries it too",
         "Update the existing tests that wrote passes by hand or expected a whole-project re-check (kernel-next.bats, kernel-qa.bats); bash tools/test.sh passes under /bin/bash and bash 5"
       ],
-      "role": "dev"
+      "role": "dev",
+      "note": "Plan files miss two places that read qa.tree as the proven-code tree. (1) plugin/lib/rigor-defs.jq phase_finished (line ~91) requires qa.tree == evidence.tree; with qa.tree now the combined digest no pass ever finishes a phase, and prove.jq/cmd-qa.sh both call finish_phases, so task 2 (a standing pass still counts for finishing) cannot be met from prove.jq alone. It should read: pass AND (qa.tree == the phase's current combined digest). (2) plugin/lib/cmd-show.sh line ~35 prints [on older code] when qa.tree != evidence.tree; C47's test 'a pass that stands ... [on older code]' needs it changed. Also phase_finished has no digests in scope: finish_phases needs a $standing argument (or the digests) passed by prove.jq and cmd-qa.sh. Needs: add plugin/lib/rigor-defs.jq and plugin/lib/cmd-show.sh to P40.2 (and tests/kernel-qafresh.bats, which asserts qa pass semantics). Kernel is at 3140/3300 lines, so these edits must stay small. No changes made."
     },
     {
       "id": "P40.3",
