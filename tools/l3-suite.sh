@@ -443,15 +443,35 @@ scenario_qafix() {
 # way a fix would), and QA runs again. The kernel's own answer just before QA
 # (vbw next --json, .qa) names the phase to check again, its reason and the phases
 # whose pass stands; the record then shows which phases QA really checked again.
+# recheck_seed: a spec of two requirements and an approved plan of two
+# independent phases, so the planner's phase split and tier never decide the run.
+recheck_seed() {
+  printf '# Greetings\n\n## Requirements\n\n- R1 [auto] ./greet.sh Ana prints "Hello, Ana!"; without a name it prints "Hello, world!"\n- R2 [auto] ./farewell.sh Ana prints "Goodbye, Ana!"; without a name it prints "Goodbye, world!"\n' > .vbw/spec.md
+  "$VBW" spec sync > /dev/null || return 1
+  printf '[ "$(sh greet.sh Ana)" = "Hello, Ana!" ] && [ "$(sh greet.sh)" = "Hello, world!" ]\n' > test_greet.sh
+  printf '[ "$(sh farewell.sh Ana)" = "Goodbye, Ana!" ] && [ "$(sh farewell.sh)" = "Goodbye, world!" ]\n' > test_farewell.sh
+  printf '%s' '{"phases": [{"id": "P1", "title": "Greet", "reqs": ["R1"]}, {"id": "P2", "title": "Farewell", "reqs": ["R2"]}],
+    "plans": [{"id": "P1.1", "phase": "P1", "title": "greet.sh", "reqs": ["R1"], "files": ["greet.sh"], "after": [], "tasks": ["greet.sh prints Hello, NAME! or Hello, world! without a name"]},
+              {"id": "P2.1", "phase": "P2", "title": "farewell.sh", "reqs": ["R2"], "files": ["farewell.sh"], "after": [], "tasks": ["farewell.sh prints Goodbye, NAME! or Goodbye, world! without a name"]}],
+    "checks": [{"id": "C1", "req": "R1", "run": ["sh", "test_greet.sh"], "files": ["test_greet.sh"]},
+               {"id": "C2", "req": "R2", "run": ["sh", "test_farewell.sh"], "files": ["test_farewell.sh"]}],
+    "rules": [{"req": "R1", "text": "a name is greeted", "check": "C1"}, {"req": "R1", "text": "no name greets the world", "check": "C1"},
+              {"req": "R2", "text": "a name gets a farewell", "check": "C2"}, {"req": "R2", "text": "no name says goodbye to the world", "check": "C2"}]}' \
+    | "$VBW" apply > /dev/null || return 1
+  git add -A && git commit -qm "chore: approved plan" || return 1
+  "$VBW" approve > /dev/null
+}
+
 scenario_recheck() {
   new_project
-  # Rigor fixed at standard: an express phase is never QA'd (M4), and two
-  # one-file scripts may be tiered express, which leaves nothing to re-check.
-  (cd "$dir" && "$VBW" init > /dev/null && "$VBW" config rigor standard > /dev/null) \
-    || { say "setup failed: could not fix the rigor at standard"; return 1; }
-  fixture="two independent scripts, greet.sh and farewell.sh, one phase each; rigor fixed at standard; guided autonomy; after QA passes, one commit changes greet.sh and QA runs again"
+  # The user agreed the spec and approved a plan of two independent phases,
+  # at standard rigor (an express phase is never QA'd, M4): the planner's
+  # phase split and tier, which vary run to run, never decide this scenario.
+  (cd "$dir" && "$VBW" init > /dev/null && "$VBW" config rigor standard > /dev/null && recheck_seed) \
+    || { say "setup failed: could not seed the approved two-phase plan"; return 1; }
+  fixture="greet.sh and farewell.sh, one phase each, plan approved by the user before the session; rigor standard; after QA passes, one commit changes greet.sh and QA runs again"
   seeded="" next_json="{}" qa_before="{}"
-  start="Use guided autonomy for this project. /vbw:vibe two small command-line scripts as two separate phases, one script each, neither using the other: greet.sh (\"./greet.sh Ana\" prints \"Hello, Ana!\", without a name \"Hello, world!\") and farewell.sh (\"./farewell.sh Ana\" prints \"Goodbye, Ana!\", without a name \"Goodbye, world!\"). One small milestone."
+  start="/vbw:vibe"
   phase_qa() { jq -c '. as $r | [$r.phases[] | select(.milestone == $r.milestone.id) | {key: .id, value: (.qa.at // "")}] | from_entries' "$dir/.vbw/record.json"; }
   seed_change() {
     [ -z "$seeded" ] || return 1
