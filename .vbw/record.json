@@ -6687,7 +6687,7 @@
         "P42.3",
         "P43.4"
       ],
-      "status": "planned",
+      "status": "done",
       "tasks": [
         "panel.js plays one sound per need, even with the panel closed, never again while the same need stands; on by default; /vbw-sound on|off and a panel button toggle it, remembered in Claude Code's per-user store (already committed in 95147ce9, ceaf29cc: keep it)",
         "tools/sounds.sh writes plugin/hooks/panel-sounds.js, exporting SOUNDS: every assets/audio/<character>/*.mp3 path, sorted, skipping empty folders and non-mp3 files (D109); panel.js imports it and picks one at random (Math.random) for each need; no sounds: silent, no error",
@@ -6917,7 +6917,7 @@
         "plugin/bin/vbw"
       ],
       "after": [],
-      "status": "planned",
+      "status": "done",
       "tasks": [
         "vbw show contract ends with the approval question (with the 12-character fingerprint) and the options Approve, Not yet, only while the contract is not approved",
         "vbw approve --hash FINGERPRINT: approves only when that is still the current contract, with the same record entry as plain vbw approve; a changed contract is refused with a plain 'the contract changed' message and nothing is written",
@@ -7072,7 +7072,7 @@
         "plugin/workflows/tooling.js"
       ],
       "after": [],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "new tooling workflow: one Scout per angle (safety, quality, tests, skills) in parallel, each given the project's stack and the user's words",
