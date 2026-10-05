@@ -1189,7 +1189,7 @@ interview_options_fixed() {
   t=$(transcripts | grep -v '/subagents/')
   [ -n "$t" ] || return 1
   printf '%s\n' "$t" | xargs cat 2> /dev/null | jq -s -e '
-    {"^How much software have you built": ["never", "small scripts or no-code", "professionally", "senior engineer"],
+    {"What is your level of proficiency": ["never", "small scripts or no-code", "professionally", "senior engineer"],
      "^How should I explain things": ["plain words", "plain with technical terms explained", "technical and brief"],
      "^How involved do you want to be": ["decide and tell me", "options with a recommendation", "I make the calls"]} as $want
     | [.[] | select(.type == "assistant") | .message.content[]?
@@ -1284,7 +1284,7 @@ interview_outcome() {
   after=$(cd "$dir" && "$VBW" interview --json 2> /dev/null || echo '{}')
   new=$(comm -13 <(printf '%s\n' "$files") <(transcripts | sort) | grep -v '/subagents/' || true)
   if [ -n "$new" ] && printf '%s\n' "$new" | xargs cat 2> /dev/null | jq -e 'select(.type == "assistant") | .message.content[]?
-    | select(.type == "tool_use" and (((.input | tostring) | test("interview (set|keep)|How much software")) or (.name == "Skill" and ((.input | tostring) | test("interview")))))' > /dev/null 2>&1; then asked=true; fi
+    | select(.type == "tool_use" and (((.input | tostring) | test("interview (set|keep)|level of proficiency")) or (.name == "Skill" and ((.input | tostring) | test("interview")))))' > /dev/null 2>&1; then asked=true; fi
   [ "$(cd "$dir" && "$VBW" next --json 2> /dev/null | jq -r '.profile.ask')" = false ] && ask_after=false || ask_after=true
   [ "$before" = "$after" ] || asked=true
   n=$followups
