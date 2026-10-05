@@ -1132,7 +1132,7 @@
     },
     {
       "id": "R57",
-      "text": "VBW plays a short sound when it needs the user (an approval, a question, a result to check); one click in the panel or one command turns it off or on, and the choice is remembered",
+      "text": "VBW plays a short sound when it needs the user (an approval, a question, a result to check), picked at random from the sounds shipped with VBW in plugin/assets/audio/<character>/; one click in the panel or one command turns it off or on, and the choice is remembered",
       "proof": "auto",
       "status": "open",
       "milestone": "M9",
@@ -1171,19 +1171,19 @@
         },
         {
           "text": "raising a need and playing the sound costs less than the hook CPU limit of 8 ms, measured",
-          "check": "C60"
-        },
-        {
-          "text": "the sound is the plugin's own file assets/needs-you.mp3 and nothing is fetched",
-          "check": "C60"
+          "check": "C71"
         },
         {
           "text": "on Claude Code without mods /vbw:panel says plainly that the panel and sound need 2.1.287 or newer, and help and README list the commands",
-          "check": "C60"
+          "check": "C71"
         },
         {
           "text": "the docs say the sound preference is the user's own and never committed",
-          "check": "C60"
+          "check": "C71"
+        },
+        {
+          "text": "the plugin ships its sounds in plugin/assets/audio/<character>/ and the sound played is picked at random from them, not from one fixed file",
+          "check": "C70"
         }
       ]
     },
@@ -1249,6 +1249,43 @@
         {
           "text": "docs/panel.md says how many finished steps an estimate needs, that it is approximate, and where the history is kept",
           "check": "C67"
+        }
+      ]
+    },
+    {
+      "id": "R59",
+      "text": "The interview opens with: \"Hello, Human! Welcome to VBW. Let me interview you real quick to better adapt to you. What is your level of proficiency?\", with the same four options as before",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M9",
+      "rules": [
+        {
+          "text": "the first thing the interview says is exactly the new greeting",
+          "check": "C68"
+        },
+        {
+          "text": "the four options follow it in the same order and wording",
+          "check": "C68"
+        },
+        {
+          "text": "choosing a level still records it and continues the interview",
+          "check": "C68"
+        },
+        {
+          "text": "later questions, follow-up rules and keep order are unchanged",
+          "check": "C68"
+        },
+        {
+          "text": "the old opening wording is gone from the skill and docs/interview.md, and the docs show the greeting",
+          "check": "C68"
+        },
+        {
+          "text": "the router and interview prompt stay within their budgets",
+          "check": "C68"
+        },
+        {
+          "text": "a returning user with a recorded level is not asked the level question again",
+          "check": "C68"
         }
       ]
     }
@@ -1892,8 +1929,8 @@
       "files": [
         "tests/panel-light.bats"
       ],
-      "alone": true,
-      "timeout": 900
+      "timeout": 900,
+      "alone": true
     },
     {
       "id": "C57",
@@ -1933,19 +1970,6 @@
         "tests/panel/sound.test.mjs",
         "tests/panel/helpers/fake-mod.mjs"
       ]
-    },
-    {
-      "id": "C60",
-      "req": "R57",
-      "run": [
-        "bats",
-        "tests/panel-sound.bats"
-      ],
-      "files": [
-        "tests/panel-sound.bats"
-      ],
-      "alone": true,
-      "timeout": 600
     },
     {
       "id": "C61",
@@ -2010,8 +2034,8 @@
       "files": [
         "tests/panel-glance.bats"
       ],
-      "alone": true,
-      "timeout": 600
+      "timeout": 600,
+      "alone": true
     },
     {
       "id": "C66",
@@ -2035,6 +2059,43 @@
       ],
       "files": [
         "tests/panel-glance.bats"
+      ],
+      "timeout": 600,
+      "alone": true
+    },
+    {
+      "id": "C68",
+      "req": "R59",
+      "run": [
+        "bats",
+        "tests/interview-greeting.bats"
+      ],
+      "files": [
+        "tests/interview-greeting.bats"
+      ]
+    },
+    {
+      "id": "C70",
+      "req": "R57",
+      "run": [
+        "bats",
+        "tests/panel-sound-audio.bats"
+      ],
+      "files": [
+        "tests/panel-sound-audio.bats"
+      ]
+    },
+    {
+      "id": "C71",
+      "req": "R57",
+      "run": [
+        "bats",
+        "-f",
+        "costs less than|without mods|help and the README|preference is the user",
+        "tests/panel-sound.bats"
+      ],
+      "files": [
+        "tests/panel-sound.bats"
       ],
       "alone": true,
       "timeout": 600
@@ -3554,7 +3615,7 @@
       "tier": "deep",
       "reasons": [
         "requirements: 2",
-        "files: 7 (24575 bytes)",
+        "files: 20 (370132 bytes)",
         "risk: none",
         "breaks: R3, R38, R39",
         "tests: project test command"
@@ -3596,6 +3657,33 @@
         "files: 10 (92778 bytes)",
         "risk: none",
         "breaks: R1, R2, R4, R5, R8, R13, R14, R18, R29, R32, R33, R34, R42, R48",
+        "tests: project test command"
+      ],
+      "predicted": "deep"
+    },
+    {
+      "id": "P45",
+      "title": "The interview opens with the new greeting",
+      "reqs": [
+        "R59"
+      ],
+      "milestone": "M9",
+      "goal": "A new user starting the interview sees the new welcome line followed by the same four proficiency options as before.",
+      "criteria": [
+        "The first thing the interview says is exactly: \"Hello, Human! Welcome to VBW. Let me interview you real quick to better adapt to you. What is your level of proficiency?\"",
+        "The four options offered right after it are the same four, in the same order and with the same wording, as before this change.",
+        "Choosing any of the four options still sets the user's level and continues the interview exactly as it did before (no change to later questions, the follow-up rules D80/D81, or the keep question order).",
+        "The old opening wording no longer appears anywhere in the interview skill or in docs/interview.md; the docs show the new greeting.",
+        "The router (2k-token budget) and the interview prompt (3k-token budget) stay within their budgets after the change.",
+        "Edge case: a returning user whose level is already recorded is not asked the level question again, as before.",
+        "Check by a test that finds the exact greeting text in the interview skill and the four options after it; a person can also start a new project and read the first line."
+      ],
+      "tier": "deep",
+      "reasons": [
+        "requirements: 1",
+        "files: 4 (71823 bytes)",
+        "risk: none",
+        "breaks: R4, R5, R8, R34, R37, R38, R39, R40, R42, R48",
         "tests: project test command"
       ],
       "predicted": "deep"
@@ -6167,25 +6255,37 @@
     {
       "id": "P43.2",
       "phase": "P43",
-      "title": "The 'needs you' sound and its on/off switch",
+      "title": "The needs-you sound, picked at random from the shipped sounds, and its on/off switch",
       "reqs": [
         "R57"
       ],
       "files": [
         "plugin/hooks/panel.js",
-        "tools/bench-panel.mjs"
+        "plugin/hooks/panel-sounds.js",
+        "tools/bench-panel.mjs",
+        "tools/sounds.sh",
+        "plugin/assets/audio/charlize/c1.mp3",
+        "plugin/assets/audio/charlize/c10.mp3",
+        "plugin/assets/audio/charlize/c11.mp3",
+        "plugin/assets/audio/charlize/c2.mp3",
+        "plugin/assets/audio/charlize/c3.mp3",
+        "plugin/assets/audio/charlize/c4.mp3",
+        "plugin/assets/audio/charlize/c5.mp3",
+        "plugin/assets/audio/charlize/c6.mp3",
+        "plugin/assets/audio/charlize/c7.mp3",
+        "plugin/assets/audio/charlize/c8.mp3",
+        "plugin/assets/audio/charlize/c9.mp3"
       ],
       "after": [
         "P43.1",
-        "P42.3"
+        "P42.3",
+        "P43.4"
       ],
-      "status": "blocked",
+      "status": "planned",
       "tasks": [
-        "When a need for the user appears (approval, result to check, decision or a question) play the plugin's own sound file assets/needs-you.mp3 once per request, even when the panel is closed, never again while the same need stands, and again for the next request (the owner supplies the mp3 itself; the build does not create it)",
-        "Add the /vbw-sound command (on, off, or no word to switch over) that says which it is now; the sound is on by default and the choice is kept in Claude Code's per-user store, never in the project",
-        "Show 'Sound is on/off' in the panel with a button that switches it with one click",
-        "Play nothing and show nothing when the file is missing or there is no player, and nothing at all on Claude Code without mods",
-        "Add the line 'sound, need raised: X ms CPU' to the bench, check it is under 8 ms, and make the C59 and C60 checks pass"
+        "panel.js plays one sound per need, even with the panel closed, never again while the same need stands; on by default; /vbw-sound on|off and a panel button toggle it, remembered in Claude Code's per-user store (already committed in 95147ce9, ceaf29cc: keep it)",
+        "tools/sounds.sh writes plugin/hooks/panel-sounds.js, exporting SOUNDS: every assets/audio/<character>/*.mp3 path, sorted, skipping empty folders and non-mp3 files (D109); panel.js imports it and picks one at random (Math.random) for each need; no sounds: silent, no error",
+        "Commit the owner's sounds (plugin/assets/audio/charlize/c1-c11.mp3) with the generated list; tools/bench-panel.mjs measures the sound path; C59 and C70 pass"
       ],
       "role": "dev"
     },
@@ -6350,6 +6450,30 @@
         "Add a short 'reading the panel at a glance' picture of a typical panel"
       ],
       "role": "docs"
+    },
+    {
+      "id": "P45.1",
+      "phase": "P45",
+      "title": "Open the interview with the new greeting",
+      "reqs": [
+        "R59"
+      ],
+      "files": [
+        "plugin/skills/interview/SKILL.md",
+        "docs/interview.md",
+        "tools/l3-suite.sh",
+        "tests/interview-greeting.bats"
+      ],
+      "after": [
+        "P44.4"
+      ],
+      "status": "planned",
+      "tasks": [
+        "Replace the first question in the interview skill with the new greeting, keeping the four options and everything after it untouched",
+        "Show the greeting in docs/interview.md in place of the old level question",
+        "Update the real-user test script so it recognises the new greeting as the level question"
+      ],
+      "role": "dev"
     }
   ],
   "fixes": [
@@ -6686,6 +6810,16 @@
     {
       "id": "T16",
       "text": "Express path friction (M7 senior run): the router put a check file in the contract before writing it (first approval refused) and set a project test command that failed without arguments (fix round and re-approval). The express step should write and red-check the check file first, and the project command must run bare",
+      "status": "open"
+    },
+    {
+      "id": "T17",
+      "text": "Before 2.0.19 ships (owner, 2026-10-05): interview's first question becomes 'Hello, Human! Welcome to VBW. Let me interview you real quick to better adapt to you. What is your level of proficiency?' (same four options); update the interview skill, its protected test, docs/interview.md and the L3 newcomer/senior driver match; batch into the M9 contract change with the sound files",
+      "status": "open"
+    },
+    {
+      "id": "T18",
+      "text": "Later (owner, 2026-10-05): let the user choose the sound character (folders under plugin/assets/audio/)",
       "status": "open"
     }
   ],
@@ -7297,6 +7431,12 @@
       "id": "D108",
       "at": "2026-10-05T13:50:32Z",
       "text": "Contract approved: 55 requirements, 65 checks, 113 plans (eef73bbd39d4)"
+    },
+    {
+      "id": "D109",
+      "text": "The 'needs you' sound is picked at random from plugin/assets/audio/<character>/ (today: charlize, c1-c11.mp3, 1.4-2.7 s, about 34 KB each), through a generated list shipped with the panel and a test that the list matches the folders; choosing a character comes later",
+      "why": "Owner (2026-10-05): several versions per character, more characters over time, random now and user choice later. Claude Code plays a plugin asset by path but lists folders only relative to the project, so the panel cannot discover the files at runtime. Supersedes the single-file part of D104",
+      "at": "2026-10-05T14:32:41Z"
     }
   ],
   "commands": {

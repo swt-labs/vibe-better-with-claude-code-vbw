@@ -7,7 +7,8 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { mount, record, next, ROOT, PANE } from './helpers/fake-mod.mjs'
 
-const CLIP = { asset: 'assets/needs-you.mp3' }
+// One of the shipped sounds, plugin/assets/audio/<character>/<file>.mp3 (D109).
+const SHIPPED = /^assets\/audio\/[^/]+\/[^/]+\.mp3$/
 const approve = () => next({ action: 'approve', gate: true })
 const accept = (r) => next({ action: 'accept', gate: true, detail: { requirements: [r] } })
 
@@ -24,7 +25,8 @@ test('a need for the user plays the sound once, and not again while the need sta
   assert.equal(h.plays.length, 0)
   h.project(undefined, approve())
   await h.advance(30000)
-  assert.deepEqual(h.plays, [CLIP])
+  assert.equal(h.plays.length, 1)
+  assert.match(h.plays[0].asset, SHIPPED)
 })
 
 test('each new request plays it once; the same request after it was answered plays it again', async () => {
