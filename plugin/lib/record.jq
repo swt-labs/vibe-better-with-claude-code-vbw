@@ -63,6 +63,9 @@ if type != "object" then ["record must be a JSON object"] else
             ( . as $i | ["level","depth","involvement"][] as $k
               | select(($i[$k] | type) != "string" or ($allowed != null and (($i[$k] | one_of($allowed[$k])) | not)))
               | "project.interview.\($k) must be one of: \(if $allowed != null then $allowed[$k] | join(", ") else "a string" end)" ) ) ),
+    ( $r.project.tools? | select(. != null)
+      | select((type == "object" and (keys | sort) == ["answer","at"] and (.answer | one_of(["yes","no"])) and (.at | iso)) | not)
+      | "project.tools must be an answer (yes or no) and an ISO-8601 UTC time" ),
     ( $r.project.declined? | select(. != null)
       | ( select(type != "array") | "project.declined must be an array" ),
         ( select(type == "array") | .[]

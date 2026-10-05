@@ -49,6 +49,7 @@ usage: vbw <command> [args]
   interview [--json] | set level|depth|involvement VALUE | keep private|project   the interview's answers and where they are kept
   suggest decline TEXT | list   suggestions the user declined (never offered again)
   doctor            check everything VBW needs, with the fix for anything wrong
+  tools [--json] | answer yes|no   whether you allowed VBW to look for the best tools for this project
   rtk [status]      the state of RTK (command-output compression)
   report            diagnostic facts for a bug report about VBW (no spec text or code)
   commit PLAN MSG [FILE...]  commit a plan's declared files (or only FILEs) with trailers
@@ -62,7 +63,7 @@ cmd="${1:-}"
 case "$cmd" in
   version) jq -r .version "$VBW_PLUGIN/.claude-plugin/plugin.json" ;;
   help|-h|--help) vbw_help ;;
-  init|status|todo|commit|next|show|spec|approve|check|prove|apply|run|plan|fix|req|qa|ship|config|auto|statusline|workflows|doctor|rtk|report|milestone|decide|legacy|tier|interview|suggest)
+  init|status|todo|commit|next|show|spec|approve|check|prove|apply|run|plan|fix|req|qa|ship|config|auto|statusline|workflows|doctor|rtk|report|milestone|decide|legacy|tier|interview|suggest|tools)
     # shellcheck source=/dev/null
     . "$VBW_LIB/cmd-$cmd.sh"
     "cmd_$cmd" "$@"
