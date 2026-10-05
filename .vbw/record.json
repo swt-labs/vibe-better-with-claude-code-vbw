@@ -6870,7 +6870,7 @@
       "after": [
         "P43.4"
       ],
-      "status": "planned",
+      "status": "done",
       "tasks": [
         "Document the cost line: one line, this session only, and 'not available' when Claude Code gives no cost",
         "Document the estimates: they need at least 3 finished steps of the same kind, are approximate ('about'), come from this clone's own history in steps.json, and say 'taking longer than usual' instead of a negative time",
@@ -6959,7 +6959,7 @@
       "after": [
         "P46.1"
       ],
-      "status": "planned",
+      "status": "done",
       "tasks": [
         "One jq pass reads the hook input and exits silently unless the tool is AskUserQuestion, there is no agent_type, the question is 'Approve contract <12 hex>?' and the answer is exactly Approve (answers may be a map from question to answer or a list)",
         "On Approve run vbw approve --hash with the named fingerprint; print one plain sentence for the user (systemMessage) and the result for Claude (additionalContext), including the new contract when it changed; Not yet and the user's own words approve nothing and tell Claude to ask what to change; any failure (not ready, already approved, damaged or locked record) leaves everything untouched and says why and 'type /vbw:approve'",
@@ -7114,7 +7114,7 @@
         "P47.1",
         "P47.2"
       ],
-      "status": "planned",
+      "status": "done",
       "tasks": [
         "work out the stack, record the yes with vbw tools answer yes and start the tooling workflow at any time, from any state",
         "show the short list in plain words at the user's level: what it is, why it fits, where it came from, with links and terms explained",
