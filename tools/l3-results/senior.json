@@ -1,9 +1,9 @@
 {
   "scenario": "senior",
   "fixture": "greet.sh from scratch; a senior engineer answers technically and briefly and makes the calls; answers kept in the project",
-  "cost_usd": 0.75,
+  "cost_usd": 0.69,
   "evidence_level": "L3",
-  "at": "2026-10-04T22:44:29Z",
+  "at": "2026-10-05T00:02:24Z",
   "passed": true,
   "facts": {
     "answered": {
@@ -11,7 +11,7 @@
       "depth": "technical and brief",
       "involvement": "I make the calls",
       "purpose": "a CLI greeter our team calls from onboarding scripts; users are platform engineers.",
-      "follow_ups": 3,
+      "follow_ups": 1,
       "keep": "project"
     },
     "recorded": {

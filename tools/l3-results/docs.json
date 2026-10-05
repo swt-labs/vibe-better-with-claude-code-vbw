@@ -1,9 +1,9 @@
 {
   "scenario": "docs",
   "fixture": "greet.sh already in the repo; one auto requirement: docs/USAGE.md documents it",
-  "cost_usd": 0.81,
+  "cost_usd": 0.76,
   "evidence_level": "L3",
-  "at": "2026-10-04T12:51:05Z",
+  "at": "2026-10-04T23:48:42Z",
   "passed": true,
   "facts": {
     "built_by_agent_type": "docs",

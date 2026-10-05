@@ -4,7 +4,7 @@
 <command-name>/vbw:vibe</command-name>
 <command-args>I want to build a small greeting tool. One small milestone.</command-args>
 
-**VBW:** I set up VBW in this folder (`.vbw/` and the status line). Next is a short interview, which the kernel requires before spec work.
+**VBW:** I've set up VBW here (`.vbw/` and the status line). Next is a short interview so I can match how I talk to you.
 
 **VBW asks:**
 - How much software have you built? (options: never / small scripts or no-code / professionally / senior engineer)
@@ -22,60 +22,88 @@
 **User answers:** Your questions have been answered: "How involved do you want to be in technical decisions?"="I make the calls". You can now continue with these answers in mind.
 
 **VBW asks:**
-- What should the greeting tool do, and who is it for? (e.g. a CLI that prints a greeting for a name, for you or other devs) (options: CLI: greet a name / Web page greeter / Library function)
+- What should the greeting tool do, and who is it for? (e.g. CLI that prints a greeting for a given name; for yourself/teammates) (options: CLI: greet a name / Small web page / Library function)
 
-**User answers:** The user answered: "What should the greeting tool do, and who is it for? (e.g. a CLI that prints a greeting for a name, for you or other devs)"="a CLI greeter our team calls from onboarding scripts; users are platform engineers.". Read the answers carefully — they may request clarification, changes, or that you not proceed — and follow what they actually say.
+**User answers:** The user answered: "What should the greeting tool do, and who is it for? (e.g. CLI that prints a greeting for a given name; for yourself/teammates)"="a CLI greeter our team calls from onboarding scripts; users are platform engineers.". Read the answers carefully — they may request clarification, changes, or that you not proceed — and follow what they actually say.
 
 **VBW asks:**
-- What should the greeting say by default for `greet Ada`? (options: Hello, Ada! / Welcome aboard, Ada!)
-- How should it behave in scripts when input is missing (no name given)? (options: Error, exit non-zero / Fall back to generic greeting)
-- Any extra options needed in this milestone? (options: None, name only / --greeting <text> override)
+- Script-facing contract: what should the CLI's interface look like? (name arg, output, exit codes) (options: greet <name> → stdout, exit 0 / Add --lang and --json flags / Name via stdin or arg)
 
-**User answers:** The user answered: "What should the greeting say by default for `greet Ada`?"="POSIX sh, one script greet.sh: greet.sh NAME prints Hello, NAME!; no argument prints Hello, world!; exit 0. Nothing else.", "How should it behave in scripts when input is missing (no name given)?"="POSIX sh, one script greet.sh: greet.sh NAME prints Hello, NAME!; no argument prints Hello, world!; exit 0. Nothing else.", "Any extra options needed in this milestone?"="POSIX sh, one script greet.sh: greet.sh NAME prints Hello, NAME!; no argument prints Hello, world!; exit 0. Nothing else.". Read the answers carefully — they may request clarification, changes, or that you not proceed — and follow what they actually say.
+**User answers:** The user answered: "Script-facing contract: what should the CLI's interface look like? (name arg, output, exit codes)"="POSIX sh, one script greet.sh: greet.sh NAME prints Hello, NAME!; no argument prints Hello, world!; exit 0. Nothing else.". Read the answers carefully — they may request clarification, changes, or that you not proceed — and follow what they actually say.
 
 **VBW asks:**
 - Where should I keep your personal answers (level, depth, involvement)? (options: private on this machine (Recommended) / saved in the project)
 
 **User answers:** Your questions have been answered: "Where should I keep your personal answers (level, depth, involvement)?"="saved in the project". You can now continue with these answers in mind.
 
-**VBW:** Nothing worth suggesting for a two-line script, so I'm moving on to planning. This is an express-tier plan.
+**VBW asks:**
+- Proposed requirements for M1:
+R1 [auto] `sh greet.sh Ada` prints `Hello, Ada!` and exits 0
+R2 [auto] `sh greet.sh` with no argument prints `Hello, world!` and exits 0
+Agree? (Commands: test = `sh test.sh`.) (options: Agree / Change them)
 
-**VBW:** The contract is ready for your approval. Nothing is built yet.
+**User answers:** Your questions have been answered: "Proposed requirements for M1:
+R1 [auto] `sh greet.sh Ada` prints `Hello, Ada!` and exits 0
+R2 [auto] `sh greet.sh` with no argument prints `Hello, world!` and exits 0
+Agree? (Commands: test = `sh test.sh`.)"="Agree". You can now continue with these answers in mind.
 
-**Requirements**
-- **R1 [auto]:** `greet.sh NAME` prints `Hello, NAME!` and exits 0.
-- **R2 [auto]:** `greet.sh` with no argument prints `Hello, world!` and exits 0.
+**VBW:** The contract is written and waiting for your approval. Nothing has been built yet.
 
-**How they're checked:** C1 and C2 both run `sh test.sh`. `test.sh` is protected, so it can't be weakened later. Today the check fails because `greet.sh` doesn't exist.
+**Contract for M1 "Greeting script"** (one phase, one plan, tier express):
 
-**Plan:** P1.1 is a single express plan with one Dev. It touches `greet.sh` and `test.sh` only.
+| Requirement | Check |
+|---|---|
+| R1: `sh greet.sh Ada` prints `Hello, Ada!` and exits 0 | C1: `sh test.sh named` |
+| R2: `sh greet.sh` with no argument prints `Hello, world!` and exits 0 | C2: `sh test.sh default` |
 
-**Project command that will run:** `sh test.sh`
+- **Plan P1.1** creates only `greet.sh` and `test.sh`. Both checks run through `test.sh`, and neither check passes until `greet.sh` exists.
+- **Project command that will run:** `sh test.sh`. It runs as part of every proof.
+- **Not in the plan:** flags, languages and extra output, as you specified.
+- **Suggestions:** none to offer.
 
-Type `/vbw:approve` to approve. I can't approve it for you.
+To approve, type `/vbw:approve`. I can't approve it for you.
 
 **User:** <command-message>vbw:approve</command-message>
 <command-name>/vbw:approve</command-name>
 
-**VBW:** The approval was refused because the contract names `test.sh` as a protected check file and it doesn't exist yet. I'm writing it now. It should fail today, since `greet.sh` isn't there.
+**VBW:** The kernel won't accept approval until the check file exists. I'm writing `test.sh` now. It's the check, not the implementation, and it fails today because `greet.sh` doesn't exist.
 
-**VBW:** I created `test.sh`. It fails as intended: both checks exit 1 because `greet.sh` doesn't exist. The contract hash changed from `40624a1ee08e` to `3c0d5ca5acd5`, so it's still unapproved. Please run `/vbw:approve` again.
+**VBW:** `/vbw:approve` was refused. The contract names `test.sh` as a check file, and that file didn't exist yet. I've now written it. It fails today (exit 1, because `greet.sh` is missing), which is what the check should do before the build.
+
+Adding the file changed the contract's hash from `5a84a90f13ec` to `399d5b19a0eb`. It is still unapproved, so please run `/vbw:approve` again. The plan and requirements haven't changed.
 
 **User:** <command-message>vbw:approve</command-message>
 <command-name>/vbw:approve</command-name>
 
-**VBW:** The contract is approved, so I'm starting the build.
+**VBW:** Contract `399d5b19a0eb` is approved, along with the project command `sh test.sh`. I'm moving on to the build.
 
-**VBW:** The build workflow is running in the background with one Dev on P1.1. I'll pick up when it finishes.
+**VBW:** The build workflow is running in the background with one Dev agent on P1.1. I'll pick it up when it finishes.
 
 **VBW asks:**
-- M1 is built and proven: R1 and R2 pass (`sh test.sh`, scope ok, 0 open fixes). `sh greet.sh Ada` prints `Hello, Ada!` and `sh greet.sh` prints `Hello, world!`. Ship M1? (options: Ship / Not yet)
+- M1 "Greeting script" is built and proven: R1 and R2 pass (C1, C2, `sh test.sh`), scope ok.
 
-**User answers:** Your questions have been answered: "M1 is built and proven: R1 and R2 pass (`sh test.sh`, scope ok, 0 open fixes). `sh greet.sh Ada` prints `Hello, Ada!` and `sh greet.sh` prints `Hello, world!`. Ship M1?"="Ship". You can now continue with these answers in mind.
+greet.sh:
+  echo "Hello, ${1:-world}!"
+  `sh greet.sh Ada` -> Hello, Ada!
+  `sh greet.sh` -> Hello, world!
 
-**VBW:** M1 is shipped. `greet.sh` is a POSIX sh script that prints `Hello, NAME!`, or `Hello, world!` when you give it no name. Both cases exit 0. R1 and R2 are proven by `sh test.sh`, and scope is ok.
+Note: `${1:-world}` also treats an empty-string argument (`greet.sh ""`) as no argument, so it prints Hello, world!. The spec doesn't cover that case. Ship M1? (options: Ship M1 / Not yet)
 
-- **Commit history:** Dev made two commits. The first, `6f7461a`, prints `Hello, !` with no argument. The default arrives in the second, `f13d2e2`, so `6f7461a` alone doesn't satisfy R2.
-- **`test.sh`:** I wrote it myself, because the contract needs the check file to exist before it can be approved. Dev didn't touch it.
-- **Interview answers:** they're saved in the project, so anyone who clones it gets them. `/vbw:profile` changes them.
+**User answers:** Your questions have been answered: "M1 "Greeting script" is built and proven: R1 and R2 pass (C1, C2, `sh test.sh`), scope ok.
+
+greet.sh:
+  echo "Hello, ${1:-world}!"
+  `sh greet.sh Ada` -> Hello, Ada!
+  `sh greet.sh` -> Hello, world!
+
+Note: `${1:-world}` also treats an empty-string argument (`greet.sh ""`) as no argument, so it prints Hello, world!. The spec doesn't cover that case. Ship M1?"="Ship M1". You can now continue with these answers in mind.
+
+**VBW:** M1 "Greeting script" is shipped.
+
+- `greet.sh` is one POSIX sh line: `echo "Hello, ${1:-world}!"`.
+- `sh greet.sh Ada` prints `Hello, Ada!`, and `sh greet.sh` prints `Hello, world!`. Both exit 0.
+- Both requirements (R1, R2) are proven by `sh test.sh`.
+- You decided to ship it with one known edge case: an empty-string argument (`greet.sh ""`) also prints `Hello, world!`. The spec doesn't cover that case.
+
+The build used one Dev agent and made two commits, `99d378f` and `3b54462`. Nothing was pushed. Your interview answers are saved in the project. Run `/vbw:profile` if you want to change them.
 
