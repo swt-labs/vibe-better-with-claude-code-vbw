@@ -4322,7 +4322,22 @@
           "to": "deep",
           "reason": "Dev blocked P46.6: Scenario added and committed (177e1da9) and run once in the real Claude Code app (cost about 4 USD). It FAILED: VBW asked 'Approve contract 2d2b082c4d1d?' with Approve and Not yet, the driver pressed Enter, but the contract stayed unapproved (0 'Contract approved' decisions) and Claude told the user to type /vbw:approve. So the PostToolUse hook plugin/hooks/approve-answer.jq/.sh (P46.2/P46.4 files, outside this plan) did not approve in the real app, although its bats tests pass. Likely cause to check: the real tool_response shape of AskUserQuestion differs from the one the tests assume. No result file is committed (C77 requires passed true). Needs a fix to the hook, then a re-run of: bash tools/l3-suite.sh approval. Failed result kept at /private/tmp/claude-501/-Users-tiagoserodio-Documents-AI-Stuff-vibe-better-with-claude-code-vbw-worktrees-v2/9cd2cc30-8c86-4520-9d71-a0e82aff5407/scratchpad/approval-failed.json"
         }
-      ]
+      ],
+      "qa": {
+        "result": "pass",
+        "tier": "deep",
+        "tree": "88ab0aea846ce05f1ee2330fad25f0a70659bf8901d1ff9a751bf2fbfdd460a2",
+        "at": "2026-10-05T20:35:17Z",
+        "note": "30/30 checks"
+      },
+      "outcome": {
+        "tier": "deep",
+        "predicted": "deep",
+        "held": true,
+        "fix_rounds": 0,
+        "qa_findings": 0,
+        "escalations": 3
+      }
     },
     {
       "id": "P47",
