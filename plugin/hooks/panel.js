@@ -162,7 +162,7 @@ async function setSound($, st, on) {
 
 async function open($, extra) {
   try {
-    await $.ui.open({ id: PANE, title: 'VBW', placement: 'dock', ...extra })
+    await $.ui.open({ id: PANE, title: 'VBW', ...extra })
   } catch {
     // where Claude Code keeps the pane closed, it stays closed
   }
@@ -197,22 +197,22 @@ export function register(on) {
     return out
   })
 
-  on('command.run', async ($, e, next) => {
-    if (st.live && isObj(e) && e.command === 'vbw-panel') {
-      try {
-        await $.store.set(CLOSED_KEY, false)
-      } catch {
-        // the panel still opens
-      }
-      await open($, { focus: true })
-      return { text: 'The VBW panel is open.' }
+  on('command.run', { command: 'vbw-panel' }, async ($, e, next) => {
+    if (!st.live) return next(e)
+    try {
+      await $.store.set(CLOSED_KEY, false)
+    } catch {
+      // the panel still opens
     }
-    if (st.live && isObj(e) && e.command === 'vbw-sound') {
-      const word = String(e.args ?? '').trim().toLowerCase()
-      if (word === '' || word === 'on' || word === 'off') await setSound($, st, word === '' ? !st.sound : word === 'on')
-      return { text: "The 'needs you' sound is " + (st.sound ? 'on' : 'off') + '.' }
-    }
-    return next(e)
+    await open($, { focus: true })
+    return { text: 'The VBW panel is open.' }
+  })
+
+  on('command.run', { command: 'vbw-sound' }, async ($, e, next) => {
+    if (!st.live) return next(e)
+    const word = String(e.args ?? '').trim().toLowerCase()
+    if (word === '' || word === 'on' || word === 'off') await setSound($, st, word === '' ? !st.sound : word === 'on')
+    return { text: "The 'needs you' sound is " + (st.sound ? 'on' : 'off') + '.' }
   })
 
   // Remember a close made by the user only; every close is passed on.
@@ -248,30 +248,22 @@ export function register(on) {
     }
   })
 
-  on('ui.render', async ($, e, next) => {
-    if (!st.live || !isObj(e) || e.requestId !== PANE) return next(e)
+  // Drawn as Claude Code's own pane example does: the elements come from
+  // $.ui.resolve(e) and h() builds the tree. Only this pane's drawings reach here.
+  on('ui.render', { component: 'Pane', requestId: PANE }, async ($, e, next) => {
+    if (!st.live) return next(e)
     try {
-      const { Box, Text, Button } = await $.ui.resolve()
+      const { Box, Text, Button } = $.ui.resolve(e)
       const v = view(st, await $.clock.now())
       const rows = v.rows.map((r) =>
-        Box({
-          key: r.id,
-          flexDirection: 'column',
-          marginBottom: 1,
-          children: [
-            Text({ children: [String(r.text)], color: r.id === 'need' && v.need ? 'yellow' : undefined }),
-            Text({ children: [String(r.term)], dimColor: true }),
-          ],
-        }))
-      rows.push(Box({
-        key: 'sound',
-        flexDirection: 'row',
-        children: [
-          Text({ children: ['Sound is ' + (st.sound ? 'on' : 'off') + '. '] }),
-          Button({ key: 'sound-toggle', label: st.sound ? 'Turn off' : 'Turn on', onPress: () => setSound($, st, !st.sound) }),
-        ],
-      }))
-      return Box({ flexDirection: 'column', children: rows })
+        h(Box, { key: r.id, flexDirection: 'column', marginBottom: 1 },
+          h(Text, { color: r.id === 'need' && v.need ? 'yellow' : undefined }, String(r.text)),
+          h(Text, { dimColor: true }, String(r.term))))
+      rows.push(
+        h(Box, { key: 'sound', flexDirection: 'row' },
+          h(Text, null, 'Sound is ' + (st.sound ? 'on' : 'off') + '. '),
+          h(Button, { key: 'sound-toggle', label: st.sound ? 'Turn off' : 'Turn on', onPress: () => setSound($, st, !st.sound) })))
+      return h(Box, { flexDirection: 'column' }, ...rows)
     } catch {
       return next(e)
     }
