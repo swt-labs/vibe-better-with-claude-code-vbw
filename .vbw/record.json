@@ -1592,6 +1592,14 @@
           "check": "C90"
         }
       ]
+    },
+    {
+      "id": "R66",
+      "text": "Changing the plan mid-milestone (adding or changing phases) keeps each phase's QA pass; QA then checks again only new phases and phases whose own inputs changed",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M9",
+      "rules": []
     }
   ],
   "checks": [
@@ -2660,6 +2668,17 @@
       ],
       "files": [
         "tests/router-spec-rules.bats"
+      ]
+    },
+    {
+      "id": "C95",
+      "req": "R66",
+      "run": [
+        "bats",
+        "tests/qa-replan-keeps.bats"
+      ],
+      "files": [
+        "tests/qa-replan-keeps.bats"
       ]
     }
   ],
@@ -4158,13 +4177,6 @@
         "fix_rounds": 0,
         "qa_findings": 0,
         "escalations": 0
-      },
-      "qa": {
-        "result": "pass",
-        "tier": "deep",
-        "tree": "602c68a683b2ef8989acda50cb938ee44e33407df900e46b00d85598f91773c5",
-        "at": "2026-10-05T22:18:19Z",
-        "note": "30/30 checks"
       }
     },
     {
@@ -4208,13 +4220,6 @@
           "reason": "Dev blocked P43.2: panel.js and bench-panel.mjs are done and C59 passes. C60 also needs tools/bench-panel.sh (the 'sound, need raised' line), docs/panel.md (new, linked from README but missing) and README.md (/vbw-sound row), none declared by P43.2. Those edits are made in the working tree, uncommitted; the plan's files need extending to commit them."
         }
       ],
-      "qa": {
-        "result": "pass",
-        "tier": "deep",
-        "tree": "a2ca0ea0b3d95f9dfc5a7d9929dc27fcd8b0c183102dea08fc46f1ecbc1fef5e",
-        "at": "2026-10-05T22:34:16Z",
-        "note": "30/30 checks"
-      },
       "outcome": {
         "tier": "deep",
         "predicted": "standard",
@@ -4275,14 +4280,7 @@
           "to": "deep",
           "reason": "Dev blocked P44.4: The real-app run (L3, Claude Code 2.1.289, window 200 columns) shows a defect in plugin/hooks/panel.js, outside this plan's files: the panel never redraws by itself. The debug log has '[WARN] [vbw] $.ui.invalidate dropped: HooksError: ui.invalidate: takes \"ui.render\", \"prompt.section\", ... (host check)': panel.js calls $.ui.invalidate() with no event name (redrawIfChanged). Seen: after '/vbw-sound off' the panel still says 'Sound is on.' (the choice is saved), and a state change (need, progress) shows only when the pane is reopened. R51 requires updates within a few seconds. Fix: call $.ui.invalidate('ui.render') (check the host's argument form), and check tests/panel (the fake's invalidate must also demand the name). The scenario is committed and passes every other fact (milestone, progress, doing, need, cost, no basis yet, click-close stays closed after restart, sound off kept); only sound_shown_off fails. After the fix, rerun: bash tools/l3-suite.sh panel, then commit tools/l3-results/panel.json."
         }
-      ],
-      "qa": {
-        "result": "pass",
-        "tier": "deep",
-        "tree": "11ceeea168c7a7686ef44b7e34d1784b4a2e22cb53720c5f83d25dd46c281a36",
-        "at": "2026-10-05T22:23:13Z",
-        "note": "16/16 checks"
-      }
+      ]
     },
     {
       "id": "P45",
@@ -4306,19 +4304,12 @@
       "tier": "deep",
       "reasons": [
         "requirements: 2",
-        "files: 6 (120550 bytes)",
+        "files: 6 (120619 bytes)",
         "risk: none",
         "breaks: R4, R5, R8, R13, R14, R22, R24, R25, R26, R28, R31, R34, R37, R38, R39, R40, R42, R44, R48, R50, R51, R61, R62, R64, R65",
         "tests: project test command"
       ],
       "predicted": "deep",
-      "qa": {
-        "result": "pass",
-        "tier": "deep",
-        "tree": "08e2a0f7b17aeda98693b361c4e96275cfcad1f24deb8ccb130119ab5498edab",
-        "at": "2026-10-05T22:19:58Z",
-        "note": "30/30 checks"
-      },
       "outcome": {
         "tier": "deep",
         "predicted": "deep",
@@ -4355,7 +4346,7 @@
       "tier": "deep",
       "reasons": [
         "requirements: 1",
-        "files: 26 (196088 bytes)",
+        "files: 26 (196157 bytes)",
         "risk: none",
         "breaks: R3, R4, R5, R8, R12, R13, R14, R15, R22, R23, R24, R25, R26, R27, R28, R31, R32, R34, R35, R36, R37, R38, R39, R40, R42, R43, R44, R45, R46, R47, R48, R49, R50, R51, R52, R53, R55, R57, R59, R60, R62, R64, R65",
         "tests: project test command"
@@ -4388,13 +4379,6 @@
         "fix_rounds": 0,
         "qa_findings": 0,
         "escalations": 3
-      },
-      "qa": {
-        "result": "pass",
-        "tier": "deep",
-        "tree": "40a51d2436f6dfa6624f18c2a3a5008ca2d1b6327bb99d204814fdfaa05792a6",
-        "at": "2026-10-05T22:20:15Z",
-        "note": "18/18 checks"
       }
     },
     {
@@ -4437,14 +4421,7 @@
           "to": "deep",
           "reason": "Dev blocked P47.7: tooling.js already reads args.profile and puts ${voice} in its only agent call (delivered by P47.2), so the task needs no change. The test 'every workflow agent call carries the profile' still fails only because it hard-codes [ \"$n\" -eq 7 ] workflows (tests/profile-levels.bats line 120) and there are now 8. Fixing it means editing tests/profile-levels.bats (and likely the 7-workflow count in tests/workflows.bats), which is outside this plan's files."
         }
-      ],
-      "qa": {
-        "result": "pass",
-        "tier": "deep",
-        "tree": "1d7c218b62f25642c8ab0fd7ae0fd3ab94cee249b5f47a699a3c1988b5cc29c2",
-        "at": "2026-10-05T22:19:11Z",
-        "note": "26/26 checks"
-      }
+      ]
     },
     {
       "id": "P48",
@@ -4471,7 +4448,7 @@
       "tier": "deep",
       "reasons": [
         "requirements: 1",
-        "files: 14 (158156 bytes)",
+        "files: 14 (158225 bytes)",
         "risk: none",
         "breaks: R3, R4, R5, R8, R13, R14, R22, R23, R24, R25, R26, R27, R28, R31, R34, R37, R38, R39, R40, R42, R43, R44, R45, R46, R47, R48, R49, R50, R51, R52, R53, R55, R57, R59, R60, R61, R62, R64",
         "tests: project test command"
@@ -4484,13 +4461,6 @@
         "fix_rounds": 0,
         "qa_findings": 0,
         "escalations": 0
-      },
-      "qa": {
-        "result": "pass",
-        "tier": "deep",
-        "tree": "f0d09f6099b5ef462a8fc74af9203f5878ec91ee60ead9bb38ada142c2ecf952",
-        "at": "2026-10-05T22:19:19Z",
-        "note": "30/30 checks"
       }
     },
     {
@@ -4513,19 +4483,12 @@
       "tier": "deep",
       "reasons": [
         "requirements: 4",
-        "files: 1 (9866 bytes)",
+        "files: 1 (9935 bytes)",
         "risk: none",
         "breaks: R13, R14, R22, R24, R26, R31, R37, R39, R40, R50, R61, R65",
         "tests: project test command"
       ],
       "predicted": "deep",
-      "qa": {
-        "result": "pass",
-        "tier": "deep",
-        "tree": "26ef791f41f2c430b3fafd4eabe2726286d35ea428de5e75555807af64a0bd41",
-        "at": "2026-10-05T22:20:12Z",
-        "note": "12/12 checks"
-      },
       "outcome": {
         "tier": "deep",
         "predicted": "deep",
@@ -4534,6 +4497,29 @@
         "qa_findings": 4,
         "escalations": 0
       }
+    },
+    {
+      "id": "P50",
+      "title": "A re-plan keeps the QA verdicts",
+      "reqs": [
+        "R66"
+      ],
+      "milestone": "M9",
+      "goal": "vbw apply mid-milestone keeps each existing phase's QA verdict, so QA re-checks only new phases and phases whose own inputs changed.",
+      "criteria": [
+        "Adding a phase keeps the other phases' QA results",
+        "After the new phase is built, QA is asked to check only it",
+        "A kept phase whose goal or plan changed is still checked again, with that reason"
+      ],
+      "tier": "deep",
+      "reasons": [
+        "requirements: 1",
+        "files: 2 (27853 bytes)",
+        "risk: none",
+        "breaks: R12, R22, R23, R24, R25, R27, R28, R31, R32, R43, R44, R45, R46, R47, R48, R49, R61",
+        "tests: project test command"
+      ],
+      "predicted": "deep"
     }
   ],
   "plans": [
@@ -7885,6 +7871,24 @@
       "tasks": [
         "put back \"Recommend; don't interrogate.\" in the spec step",
         "put back \"(right sub-project, right interpreter)\" in the Commands check of the spec step"
+      ]
+    },
+    {
+      "id": "P50.1",
+      "phase": "P50",
+      "title": "Keep each phase's QA verdict on apply",
+      "reqs": [
+        "R66"
+      ],
+      "files": [
+        "plugin/lib/cmd-apply.sh",
+        "docs/proof.md"
+      ],
+      "after": [],
+      "status": "planned",
+      "tasks": [
+        "vbw apply keeps an existing phase's qa field with its escalations and outcome",
+        "docs/proof.md says a re-plan keeps QA verdicts and the re-check rule decides what QA checks again"
       ]
     }
   ],

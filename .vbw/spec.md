@@ -72,6 +72,7 @@ VBW is a Claude Code plugin that makes it build software properly: the user agre
 - R63 [human] The recommended tools fit the project and are explained at the user's level
 - R64 [auto] VBW's own real-app test sessions never play the sound aloud and never read or change the user's own panel and sound choices
 - R65 [auto] When a project has a VBW 1 folder, VBW first reviews it (how much was finished, how recently it was used, whether its plans still match the current code, any work half done) and recommends converting or starting fresh with its reasons in plain words, the recommended option first; the user still chooses
+- R66 [auto] Changing the plan mid-milestone (adding or changing phases) keeps each phase's QA pass; QA then checks again only new phases and phases whose own inputs changed
 
 <!-- One requirement per line: an id, how it is proved, and a user-observable
      statement. [auto] = a check can prove it; [human] = only a person can judge it.
