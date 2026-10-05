@@ -79,9 +79,9 @@ recommendation, question); convert runs `vbw:convert`, fresh records `vbw legacy
 what it does, propose improvements. Else ask what it is for and who uses it. Propose user-observable,
 testable requirements: `[auto]` when a check can prove it, `[human]` when only a person can
 judge it (look, feel, tone); a document that must contain something is `[auto]`, how it reads is `[human]`. Propose what, not how: leave sign-in, storage, hosting, paid services
-to the decision round; write a constraint only when user stated it. Then follow `vbw:suggest`. Add each
+to the decision round; write a constraint only when user stated it. Recommend; don't interrogate. Then follow `vbw:suggest`. Add each
 agreed requirement: `vbw spec add auto|human "statement"` (goals and constraints go in `.vbw/spec.md`, then `vbw spec sync`). Default milestone title → `vbw milestone rename "<title>"`. Check
-`## Commands` in `.vbw/spec.md` (what every proof runs) fits what was agreed; fix there, then `vbw spec sync`.
+`## Commands` in `.vbw/spec.md` (what every proof runs) fits (right sub-project, right interpreter) what was agreed; fix there, then `vbw spec sync`.
 
 **plan** with `detail.tier` express: no mapping, no planning workflow. Read the
 files the request names, then `vbw apply` one express phase with one
