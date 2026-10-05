@@ -6223,9 +6223,9 @@
         "tools/bench-panel.sh"
       ],
       "after": [
-        "P43.2",
         "P43.3",
-        "P42.4"
+        "P42.4",
+        "P42.3"
       ],
       "status": "planned",
       "tasks": [
