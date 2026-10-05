@@ -47,11 +47,12 @@ checking results (`accept`) and shipping always stop for user.
 
 Do step for `action`, run `VBW_SESSION_ID=${CLAUDE_SESSION_ID} vbw next --json`, do next step. Stop when `gate` is
 true, or a workflow runs in background (its result wakes you; then continue).
-At a stop, tell user in plain words what happened and what you need. Never
-claim more than kernel output shows.
+At a stop, tell user in plain words what happened. Every stop ends with a last
+line, **What I need from you:** <the one thing user must do now>, or "nothing".
+Never claim more than kernel output shows.
 
 `plan`, `build`, `fix` need **Workflow** tool; `workflows` line above turned
-Dynamic workflows on if off (say so in one line when it did). Still no tool:
+Dynamic workflows on if off. Still no tool:
 say why and stop. Pass
 `models` (JSON from `vbw config models`), the next JSON's top-level `rigor` and its `profile` (level, depth, involvement) in every workflow's args.
 
@@ -89,7 +90,7 @@ what project does, propose improvements. Else ask what it is for and who uses it
 testable: `[auto]` when a check can prove it, `[human]` when only a person can
 judge it (look, feel, tone); a document that must contain something is `[auto]`, how it reads is `[human]`. Propose what, not how: leave sign-in, data
 storage, hosting, paid services to decision round before planning; write a
-constraint only when user stated it. Recommend; don't interrogate. Then follow `vbw:suggest`. Add each
+constraint only when user stated it. Then follow `vbw:suggest`. Add each
 agreed requirement: `vbw spec add auto|human "statement"` (goals and user's
 constraints go in `.vbw/spec.md` directly, then `vbw spec sync`). Default milestone title → `vbw milestone rename "<title>"`. Check
 `## Commands` in `.vbw/spec.md` (what every proof runs) fits what was agreed
@@ -98,7 +99,7 @@ constraints go in `.vbw/spec.md` directly, then `vbw spec sync`). Default milest
 **plan** with `detail.tier` express: no mapping, no planning workflow. Read the
 files the request names, then `vbw apply` one phase (tier express) with one
 plan (its files and tasks) and one check that fails today, and the `rules` (each condition, edge and error case the requirement states, each with its check); go to **approve**.
-Ids continue the record's numbering (first unused P and C in `vbw show roadmap`).
+Ids continue the record's numbering (`vbw show roadmap`).
 Example: `{"phases":[{"id":"P1","title":"Fix add","reqs":["R1"],"tier":"express"}],"plans":[{"id":"P1.1","phase":"P1","title":"Fix add","reqs":["R1"],"files":["calc.sh"],"after":[],"tasks":["add returns the sum"]}],"checks":[{"id":"C1","req":"R1","run":["sh","test.sh"],"files":["test.sh"]}],"rules":[{"req":"R1","text":"add returns the sum","check":"C1"}]}`
 Apply computes a higher tier: run the planning workflow below instead.
 
