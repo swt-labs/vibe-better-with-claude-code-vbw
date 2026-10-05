@@ -9,8 +9,10 @@ import { SOUNDS } from './panel-sounds.js'
 const PANE = 'vbw-panel'
 const TICK_MS = 2000
 // The user's choice lives in Claude Code's per-user store, never in the project.
-const CLOSED_KEY = 'vbw-panel.closed'
-const SOUND_KEY = 'vbw-panel.sound'
+// A project holding .vbw/runtime/test-mode is a VBW test session (R64): it plays no
+// audio and keeps its choices under test.* keys, never the user's.
+const TEST_MARK = '/.vbw/runtime/test-mode'
+const keys = (test) => ({ closed: (test ? 'test.' : '') + 'vbw-panel.closed', sound: (test ? 'test.' : '') + 'vbw-panel.sound' })
 // One of the plugin's shipped sounds (assets/audio/<character>/), picked at random
 // for each request for the user; with none shipped, the panel is silent.
 const pick = () => (SOUNDS.length ? { asset: SOUNDS[Math.floor(Math.random() * SOUNDS.length)] } : null)
@@ -28,7 +30,7 @@ function parse(text) {
 
 // What the panel knows: the last good state of both files, what is drawn, what is asked.
 function fresh() {
-  return { live: false, timer: null, busy: false, question: null, sound: true, alerted: null, record: null, next: null, history: null, cost: null, stepsPath: null, steps: null, shown: '', seen: {} }
+  return { live: false, timer: null, busy: false, question: null, sound: true, keys: keys(false), silent: false, wouldPlay: 0, alerted: null, record: null, next: null, history: null, cost: null, stepsPath: null, steps: null, shown: '', seen: {} }
 }
 
 const view = (st, now) => panelView({ record: st.record, next: st.next, question: st.question, now, cost: st.cost, steps: st.steps })
@@ -116,6 +118,10 @@ async function alert($, st, need) {
   st.alerted = key
   const clip = key && st.sound ? pick() : null
   if (!clip) return
+  if (st.silent) {
+    st.wouldPlay++
+    return
+  }
   try {
     await $.audio.play(clip)
   } catch {
@@ -129,7 +135,7 @@ async function redrawIfChanged($, st) {
   const sig = JSON.stringify([v, st.sound])
   if (sig === st.shown) return
   st.shown = sig
-  $.ui.invalidate()
+  $.ui.invalidate('ui.render') // Claude Code drops a redraw that names nothing
 }
 
 async function tick($, st, root) {
@@ -149,7 +155,7 @@ async function tick($, st, root) {
 async function setSound($, st, on) {
   st.sound = on
   try {
-    await $.store.set(SOUND_KEY, on)
+    await $.store.set(st.keys.sound, on)
   } catch {
     // the choice holds for this session
   }
@@ -180,9 +186,11 @@ export function register(on) {
       const root = await $.session.root()
       if (typeof root !== 'string' || !(await $.fs.exists(root + '/.vbw/record.json'))) return out
       st.live = true
+      st.silent = await $.fs.exists(root + TEST_MARK)
+      st.keys = keys(st.silent)
       st.stepsPath = await stepsPath($, root)
       await gather($, st, root)
-      st.sound = (await $.store.get(SOUND_KEY)) !== false
+      st.sound = (await $.store.get(st.keys.sound)) !== false
       const v0 = view(st, await $.clock.now())
       st.alerted = v0.need ? v0.need.key : null // a need already standing at start is not announced
       st.shown = JSON.stringify([v0, st.sound])
@@ -190,7 +198,7 @@ export function register(on) {
       st.timer = $.clock.every(TICK_MS, () => tick($, st, root))
       $.command.register({ name: 'vbw-panel', description: 'Open the VBW panel', immediate: true })
       $.command.register({ name: 'vbw-sound', description: "Turn the 'needs you' sound on or off", immediate: true })
-      if ((await $.store.get(CLOSED_KEY)) !== true) await open($)
+      if ((await $.store.get(st.keys.closed)) !== true) await open($)
     } catch {
       // the panel stays out of the way
     }
@@ -200,7 +208,7 @@ export function register(on) {
   on('command.run', { command: 'vbw-panel' }, async ($, e, next) => {
     if (!st.live) return next(e)
     try {
-      await $.store.set(CLOSED_KEY, false)
+      await $.store.set(st.keys.closed, false)
     } catch {
       // the panel still opens
     }
@@ -219,7 +227,7 @@ export function register(on) {
   on('ui.close', async ($, e, next) => {
     if (st.live && isObj(e) && e.id === PANE && isObj(e.origin) && e.origin.kind === 'person') {
       try {
-        await $.store.set(CLOSED_KEY, true)
+        await $.store.set(st.keys.closed, true)
       } catch {
         // the close still goes through
       }
