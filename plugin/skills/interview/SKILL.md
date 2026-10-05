@@ -72,3 +72,25 @@ the first unanswered question.
 
 Afterwards say in one line how the answers shape what follows, and that
 `/vbw:profile` changes any of them.
+
+## Tools
+
+After the keep question, ask once whether VBW may look for tools. Read the
+remembered state first: `vbw tools`. If it already holds an answer, yes or no,
+skip this step and never ask again: it is asked once per project.
+
+Otherwise ask one plain yes/no question with AskUserQuestion. Explain each
+kind of tool in a few words, at the user's level: skills (add-ons that teach
+Claude a craft), code-safety scanners (programs that look for security holes),
+linters (programs that flag likely mistakes), formatters (programs that tidy
+the code's layout) and test frameworks (what runs automatic tests).
+
+Record the answer at once:
+
+- yes: `vbw tools answer yes`, then carry on exactly as `/vbw:skills` does
+  (work out the stack, run the `vbw:tooling` workflow, show the short list,
+  install only what the user approves).
+- no: `vbw tools answer no`. No Scout is started, nothing is searched and
+  install nothing; go on with the flow unchanged. `/vbw:skills` runs it later.
+
+End the step with: "I need your yes or no to look for tools".
