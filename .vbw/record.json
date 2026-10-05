@@ -6977,7 +6977,7 @@
       "after": [
         "P45.1"
       ],
-      "status": "planned",
+      "status": "done",
       "tasks": [
         "Router loop: at every stop, end the message with one line \"**What I need from you:** <the one thing the user must do now>\" or \"nothing\"; trim elsewhere so the router stays within 1,400 words",
         "docs/workflows.md: say that every stop ends with that line"
