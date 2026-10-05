@@ -14,6 +14,22 @@ Code sandbox and permission rules remain the security boundary.
 | `vbw approve`, however it is spelled (`"$X/bin/vbw" approve`, `bash bin/vbw approve`, inside `$(...)` or `sh -c`) | Approving the contract is the user's decision: `/vbw:approve` |
 | Writing the consent file (`<git-dir>/vbw/consent.json`) by redirect, by a non-reading program, or with a file tool | The same |
 
+**Approving by answer.** The approval question (docs/proof.md) is answered in
+Claude Code's own interface. A `PostToolUse` hook on `AskUserQuestion`
+(`hooks/approve-answer.jq` and `hooks/approve-answer.sh`) runs after the user
+answers. It acts only on a question named `Approve contract <12 hex>?`, and
+only when the answer is exactly `Approve`; it then runs
+`vbw approve --hash <fingerprint>` for that contract. Any other answer
+(`Not yet`, or the user's own words) approves nothing and goes back to Claude
+as what to change.
+
+The model cannot approve through it. The hook sees only what the user
+answered: Claude Code reports an answer to `PostToolUse` only after the user
+gives it, so nothing the model writes can stand in for it. A question asked by
+a subagent never counts. The guard above still refuses the model's own
+`vbw approve`, so the answer hook is the only route besides the user typing
+`/vbw:approve`.
+
 **In VBW projects** (the session's project directory, `$CLAUDE_PROJECT_DIR`,
 holds `.vbw/record.json`; a corrupt record still counts):
 
