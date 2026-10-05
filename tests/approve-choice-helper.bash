@@ -28,7 +28,9 @@ contract_state() { "$VBW" show contract < /dev/null | sed -n '1s/^contract [0-9a
 # answer_hook QUESTION ANSWER [TOOL [EXTRA_JSON]]: the PostToolUse hook of
 # hooks.json, given what Claude Code sends after the user answers a question.
 answer_hook() {
-  jq -nc --arg q "$1" --arg a "$2" --arg t "${3:-AskUserQuestion}" --arg d "$PROJECT" --argjson x "${4:-\{\}}" \
+  local extra="${4:-}"
+  [ -n "$extra" ] || extra='{}'
+  jq -nc --arg q "$1" --arg a "$2" --arg t "${3:-AskUserQuestion}" --arg d "$PROJECT" --argjson x "$extra" \
     '{hook_event_name: "PostToolUse", session_id: "s1", cwd: $d, tool_name: $t,
       tool_input: {questions: [{question: $q, header: "Approval", multiSelect: false,
         options: [{label: "Approve", description: "approve it"}, {label: "Not yet", description: "change something"}]}]},

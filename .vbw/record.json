@@ -3917,7 +3917,7 @@
       "tier": "deep",
       "reasons": [
         "requirements: 3",
-        "files: 10 (30879 bytes)",
+        "files: 10 (35396 bytes)",
         "risk: CI (.github/workflows/ci.yml)",
         "breaks: R3",
         "tests: project test command"
@@ -3951,7 +3951,7 @@
       "tier": "deep",
       "reasons": [
         "requirements: 2",
-        "files: 20 (371047 bytes)",
+        "files: 20 (374874 bytes)",
         "risk: none",
         "breaks: R3, R38, R39",
         "tests: project test command"
@@ -3991,7 +3991,7 @@
       "tier": "deep",
       "reasons": [
         "requirements: 3",
-        "files: 10 (93931 bytes)",
+        "files: 11 (100091 bytes)",
         "risk: none",
         "breaks: R1, R2, R4, R5, R8, R13, R14, R18, R29, R32, R33, R34, R42, R48",
         "tests: project test command"
@@ -4062,7 +4062,7 @@
       "tier": "deep",
       "reasons": [
         "requirements: 1",
-        "files: 14 (129039 bytes)",
+        "files: 14 (133144 bytes)",
         "risk: none",
         "breaks: R3, R4, R5, R8, R12, R13, R14, R15, R22, R24, R25, R26, R27, R28, R31, R32, R34, R37, R38, R39, R40, R42, R43, R44, R45, R46, R47, R48, R49, R50",
         "tests: project test command"
@@ -4100,10 +4100,11 @@
         "Every stop in this flow ends with one plain line saying what VBW needs from the user now (R60), e.g. 'I need your yes or no to look for tools'.",
         "Human check (R63): a person reading a proposed list for a real project confirms the picks fit the stack and the explanations are understandable at the user's level."
       ],
+      "proposed": "deep",
       "tier": "deep",
       "reasons": [
         "requirements: 2",
-        "files: 10 (90505 bytes)",
+        "files: 10 (96161 bytes)",
         "risk: none",
         "breaks: R3, R4, R5, R8, R13, R14, R22, R23, R24, R25, R27, R28, R31, R34, R37, R38, R39, R40, R42, R43, R44, R45, R46, R47, R48, R49",
         "tests: project test command"
@@ -6812,22 +6813,24 @@
       "files": [
         "plugin/hooks/panel-view.js",
         "plugin/hooks/panel.js",
-        "tools/bench-panel.mjs"
+        "tools/bench-panel.mjs",
+        "tools/bench-panel.sh"
       ],
       "after": [
         "P44.1",
         "P44.2",
-        "P43.2"
+        "P43.2",
+        "P44.5"
       ],
-      "status": "blocked",
+      "status": "planned",
       "tasks": [
         "Read the session cost each refresh, show it as one small line with its term beside it (no breakdown), redraw when it changes, and leave the line out or say 'not available' when there is no cost (never a made-up number)",
         "Find the clone's git directory (also in a linked worktree) and read steps.json from it only when it changed, never writing it; treat a missing or damaged file as no history",
         "Show the step and milestone estimates as 'about N min' with the term 'estimate, approximate', say 'taking longer than usual' past the usual time, and say plainly there is no basis yet when history is short; the shown time follows the clock",
-        "Add the line 'refresh with cost and estimates: X ms CPU' to the bench and make the C61, C64, C65 and C67 checks pass"
+        "Add the line 'refresh with cost and estimates: X ms CPU' to the bench and make the C61, C64, C65 and C67 checks pass",
+        "tools/bench-panel.sh prints \"refresh with cost and estimates: X ms CPU\" from the driver's glance value and holds it to the budget (C65, C67)"
       ],
-      "role": "dev",
-      "note": "Code done and committed (C61, C62, C63, C64 pass). C65 and C67 cannot pass inside this plan: (1) the bats needs tools/bench-panel.sh to print 'refresh with cost and estimates: X ms CPU' (the driver bench-panel.mjs now prints 'glance <ms>'; the .sh is not a P44.3 file, vbw commit and the guard refuse it); (2) its docs checks need docs/panel.md, which is P44.5's file and runs after P44.3. Needed: add tools/bench-panel.sh to P44.3 (patch: read 'glance' with awk, print the line, include it in the budget loop) or to P44.5."
+      "role": "dev"
     },
     {
       "id": "P44.4",
@@ -6865,7 +6868,6 @@
         "docs/panel.md"
       ],
       "after": [
-        "P44.3",
         "P43.4"
       ],
       "status": "planned",
@@ -6957,14 +6959,13 @@
       "after": [
         "P46.1"
       ],
-      "status": "blocked",
+      "status": "planned",
       "tasks": [
         "One jq pass reads the hook input and exits silently unless the tool is AskUserQuestion, there is no agent_type, the question is 'Approve contract <12 hex>?' and the answer is exactly Approve (answers may be a map from question to answer or a list)",
         "On Approve run vbw approve --hash with the named fingerprint; print one plain sentence for the user (systemMessage) and the result for Claude (additionalContext), including the new contract when it changed; Not yet and the user's own words approve nothing and tell Claude to ask what to change; any failure (not ready, already approved, damaged or locked record) leaves everything untouched and says why and 'type /vbw:approve'",
         "Register one PostToolUse hook with matcher AskUserQuestion in hooks.json; confirm the real answer shape from a real Claude Code answer and keep the hook working with it"
       ],
-      "role": "dev",
-      "note": "Hook is built and committed (6f5bd385, 53188717). With the same tests run against a copy of tests/approve-choice-helper.bash where answer_hook's default is \"${4:-{}}\", all 11 hook tests of C74 pass. The approved helper has \"${4:-\\{\\}}\" which bash 3.2 and 5.3 expand to the literal text \\{\\} (not {}), so jq --argjson fails and 7 tests in C74 (and test 13 in C75) see jq's error as output. The helper is protected (approved byte for byte), so I cannot fix it. Needs: owner/Lead to fix that default in the helper and re-approve. Also open and out of this plan: C75 tests 16 (docs/guards.md mention) and 17 (bench 'guard (answer)', plan P46.3)."
+      "role": "dev"
     },
     {
       "id": "P46.3",
@@ -7071,13 +7072,13 @@
       ],
       "after": [],
       "status": "done",
-      "role": "dev",
       "tasks": [
         "add the vbw tools command: shows whether the question was asked and the answer (text and --json)",
         "vbw tools answer yes|no stores the answer and the time in the project record, refusing anything else",
         "check the stored answer in the record's validator and list the command in the help",
         "keep the kernel inside its line budget"
-      ]
+      ],
+      "role": "dev"
     },
     {
       "id": "P47.2",
@@ -7091,13 +7092,13 @@
       ],
       "after": [],
       "status": "done",
-      "role": "dev",
       "tasks": [
         "new tooling workflow: one Scout per angle (safety, quality, tests, skills) in parallel, each given the project's stack and the user's words",
         "each Scout returns picks with what, why, source links and where it came from (respected open source or other)",
         "drop picks without a source link; mark non-trusted picks with a plain warning; keep a short list (two per angle, six in all, trusted first)",
         "a failed or empty Scout is named in missing and an unknown stack starts no Scout; both give a plain note, never an error"
-      ]
+      ],
+      "role": "dev"
     },
     {
       "id": "P47.3",
@@ -7114,14 +7115,14 @@
         "P47.2"
       ],
       "status": "planned",
-      "role": "dev",
       "tasks": [
         "work out the stack, record the yes with vbw tools answer yes and start the tooling workflow at any time, from any state",
         "show the short list in plain words at the user's level: what it is, why it fits, where it came from, with links and terms explained",
         "warn about picks from other sources and let the user keep, drop or look further",
         "approve the list with a choice, ask per approved tool whether it goes into this project or all projects, then install only the approved ones",
         "say plainly when nothing was found, install nothing then, and end with one line saying what VBW needs"
-      ]
+      ],
+      "role": "dev"
     },
     {
       "id": "P47.4",
@@ -7139,13 +7140,13 @@
         "P45.2"
       ],
       "status": "planned",
-      "role": "dev",
       "tasks": [
         "add a tools step after the keep question: read vbw tools and skip it when already answered",
         "ask one yes/no question explaining skills, code-safety scanners, linters, formatters and test frameworks in a few words",
         "record the answer at once; on no search and install nothing and go on; on yes continue as /vbw:skills does",
         "end the step with 'I need your yes or no to look for tools'"
-      ]
+      ],
+      "role": "dev"
     },
     {
       "id": "P47.5",
@@ -7164,13 +7165,13 @@
         "P46.5"
       ],
       "status": "planned",
-      "role": "docs",
       "tasks": [
         "write docs/tools.md: what the offer is, asked once, what yes and no do",
         "explain trusted sources, the warning for others, approval before install and the project-or-all-projects choice",
         "say that /vbw:skills runs it again any time and that vbw tools shows the stored answer",
         "list the offer in the README and link the page"
-      ]
+      ],
+      "role": "docs"
     },
     {
       "id": "P47.6",
@@ -7189,12 +7190,12 @@
         "P46.6"
       ],
       "status": "planned",
-      "role": "dev",
       "tasks": [
         "add the tools scenario to tools/l3-suite.sh: answer the offer yes once in the real interface on a small project",
         "check from the record and git that the answer is stored, was not asked again, and nothing was installed before approval",
         "run it, commit the result with its fixture, cost and not-tested list, and name it in the suite header"
-      ]
+      ],
+      "role": "dev"
     }
   ],
   "fixes": [
