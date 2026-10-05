@@ -3,8 +3,8 @@
 # goal-backward verification of a built phase (VBW 1's QA mandate; docs/proof.md).
 # A finding opens a fix item marked source "qa": only QA closes it, because the
 # checks may pass while the work still deviates from the plan. The verdict is
-# recorded against the code it was given (the evidence's tree): code that
-# changes afterwards needs QA again. Three failed rounds in a row escalate.
+# recorded against the digest of the phase's inputs and those of the phases it
+# builds on (lib/qa-inputs.sh): a change to them needs QA again, others do not. Three failed rounds in a row escalate.
 
 VBW_QA_ROUNDS=3
 
@@ -30,13 +30,16 @@ cmd_qa() {
     jq -r '.fixes[-1] | "\(.id) opened for \(.req) (qa): \(.note)"' "$VBW_RECORD"
     return 0
   fi
-  local phase="$2" result="$3" tier="$4" note="${5:-}" tree
+  local phase="$2" result="$3" tier="$4" note="${5:-}" tree digests
   printf '%s' "$record" | jq -e --arg p "$phase" 'any(.phases[]; .id == $p)' > /dev/null || vbw_die "unknown phase $phase"
-  tree=$(printf '%s' "$record" | jq -r '.evidence.tree // empty')
-  [ -n "$tree" ] || vbw_die "no proof yet: QA verifies proven work (vbw prove first)"
+  printf '%s' "$record" | jq -e '.evidence.tree' > /dev/null || vbw_die "no proof yet: QA verifies proven work (vbw prove first)"
   # shellcheck source=cmd-next.sh
   . "$VBW_LIB/cmd-next.sh"
   ! next_code_changed "$record" || vbw_die "the code changed since the last proof: run vbw prove, then record the verdict again"
+  # The pass covers this phase's inputs and those of the phases it builds on (D91).
+  digests=$(qa_digests "$record")
+  tree=$(printf '%s' "$digests" | jq -r --arg p "$phase" '.[$p].combined // empty')
+  [ -n "$tree" ] || vbw_die "$phase is not a phase of the active milestone"
   if [ "$result" = fail ]; then
     printf '%s' "$record" | jq -e --arg p "$phase" '. as $r | ([.phases[] | select(.id == $p)][0].reqs) as $q
       | any(.fixes[]; .source == "qa" and .status == "open" and (.req as $x | any($q[]; . == $x)))' > /dev/null \
@@ -54,9 +57,10 @@ cmd_qa() {
          else . end)
       else . end)
     | escalate_phases(if $rounds >= 2 then [$p] else [] end; null; "QA needs a second round"; $at)
-    | finish_phases' \
+    | finish_phases($cur)' \
     --arg p "$phase" --arg res "$result" --arg tier "$tier" --arg tree "$tree" --arg note "$note" \
-    --arg at "$(vbw_now)" --argjson cap "$VBW_QA_ROUNDS"
+    --arg at "$(vbw_now)" --argjson cap "$VBW_QA_ROUNDS" --argjson cur "$(printf '%s' "$digests" | jq -c 'map_values(.combined)')"
+  qa_cache_put "$phase" "$digests"
   record_commit "chore(vbw): qa $phase $result"
   jq -r --arg p "$phase" '.phases[] | select(.id == $p) | "\(.id) qa \(.qa.result) (\(.qa.tier))\(if .qa.rounds then ", round \(.qa.rounds)" else "" end)"' "$VBW_RECORD"
 }
