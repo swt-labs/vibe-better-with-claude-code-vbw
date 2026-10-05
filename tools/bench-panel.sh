@@ -26,15 +26,17 @@ out="$(node "$ROOT/tools/bench-panel.mjs")"
 tick="$(printf '%s\n' "$out" | awk '$1 == "tick" { print $2 }')"
 refresh="$(printf '%s\n' "$out" | awk '$1 == "refresh" { print $2 }')"
 sound="$(printf '%s\n' "$out" | awk '$1 == "sound" { print $2 }')"
-[ -n "$sound" ] && [ -n "$tick" ] && [ -n "$refresh" ] || { echo "bench-panel: the driver printed no measurement: $out" >&2; exit 1; }
+glance="$(printf '%s\n' "$out" | awk '$1 == "glance" { print $2 }')"
+[ -n "$glance" ] && [ -n "$sound" ] && [ -n "$tick" ] && [ -n "$refresh" ] || { echo "bench-panel: the driver printed no measurement: $out" >&2; exit 1; }
 
 printf 'tick, nothing changed: %s ms CPU\n' "$tick"
 printf 'refresh, state changed: %s ms CPU\n' "$refresh"
 printf 'sound, need raised: %s ms CPU\n' "$sound"
+printf 'refresh with cost and estimates: %s ms CPU\n' "$glance"
 printf 'budget: %s ms\n' "$BUDGET_MS"
 
 status=0
-for v in "$tick" "$refresh" "$sound"; do
+for v in "$tick" "$refresh" "$sound" "$glance"; do
   perl -e 'exit($ARGV[0] <= $ARGV[1] ? 0 : 1)' -- "$v" "$BUDGET_MS" || status=1
 done
 [ "$status" -eq 0 ] || echo "bench-panel: a refresh is over the budget of $BUDGET_MS ms" >&2
