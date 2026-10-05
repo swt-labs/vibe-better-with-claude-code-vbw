@@ -28,7 +28,65 @@ mix, and VBW 2 never changes `.vbw-planning/` on its own.
 | Record | `vbw legacy done` | `record.converted = {from: ".vbw-planning", at}`; VBW stops offering the conversion |
 | Remove (optional) | `vbw legacy remove` | only after `done`, only on the user's answer (keeping is the default). Tracked files: `git rm` plus a commit of that deletion only, so the history keeps them; then anything left (caches) |
 
+## The review and the choice
+
+```text
+$ vbw legacy review
+{"legacy":true,"recommendation":"convert","finished":{"done":6,"total":8},"last_used":"2026-09-20",...}
+```
+
+When a project has a `.vbw-planning/` folder, VBW reviews it before it asks
+anything about it. The review happens in the interview (docs/interview.md),
+right after the level question and before the other questions. VBW then tells
+you what it found in plain words, recommends one of two options, and you choose.
+You can pick the other option whatever it recommends.
+
+### What the review reports
+
+| Fact | What it means |
+|---|---|
+| How much was finished | plans with a SUMMARY file, out of all plans |
+| How recently it was used | the date of the last git commit that touched `.vbw-planning/`; file times when the project is not a git repository |
+| Whether the plans still match the code | of the files and folders the plans name, how many still exist in the project |
+| Any work half done | a phase with some plans finished and some not, or an unfinished build left in `.execution-state.json` |
+
+### The recommendation rule
+
+The review is a fixed rule, not a judgement: the same folder always gets the
+same answer. VBW recommends **start fresh** when any of these holds, and
+**convert** otherwise:
+
+- no plan in the folder could be read;
+- fewer than half of the files the plans name still exist;
+- the folder was last used more than a year (365 days) ago and fewer than half
+  of its plans were finished.
+
+Half-done work does not change the recommendation. VBW lists it, so you decide
+with it in view. The recommended option comes first, with its reasons.
+
+### What each choice does
+
+| Choice | What happens |
+|---|---|
+| Convert it | `vbw legacy choose convert` records it, then `/vbw:convert` runs (the Q&A above) |
+| Start fresh | `vbw legacy choose fresh` records it. Nothing is converted and VBW stops offering the conversion |
+
+Either way `.vbw-planning/` stays untouched. VBW only removes it if you ask
+(`vbw legacy remove`, after converting).
+
+### Safe by design
+
+- The review only reads. It looks at file names, file times, git history and the
+  top of each plan. It never runs a command it finds in the old folder.
+- A folder it cannot read does not stop it. A file that could not be read is
+  not counted and appears under the review's `notes`. If no plan could be read,
+  the recommendation is start fresh, because there is nothing safe to convert.
+- The choice is asked once per project. It is stored in `project.legacy` in
+  `.vbw/record.json` (docs/record.md).
+- You can run the review again any time: `vbw legacy review`, or ask during
+  `/vbw:convert`. A project without `.vbw-planning/` gets `{"legacy": false}`.
+
 Finished VBW 1 work is not re-proved: VBW 1 had no runnable proofs. It is
 history, and the user can turn any of it into a requirement with a check.
 
-Starting fresh is `vbw legacy done` without carrying anything over.
+Starting fresh carries nothing over (see the choice above).
