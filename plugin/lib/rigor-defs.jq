@@ -33,8 +33,10 @@ def sig_spread($tracked): if $tracked > 30 and . > 2 then "standard" else "expre
 def sig_tests($existing; $has_tests): if $existing and ($has_tests | not) then "standard" else "express" end;
 # On the record: the project has its own tests to run (a test or check command).
 def has_tests: .commands.test != null or .commands.check != null;
-# A document (Markdown, reStructuredText) is never a risk path, whatever its name.
-# Plain .txt is not a document: it is often data (word lists, fixtures, config).
+# Prose (Markdown, text, reStructuredText) is never a risk path, whatever its name.
+def is_prose: test("\\.(md|markdown|txt|rst)$"; "i");
+# Documentation (Markdown, reStructuredText) needs no check and is not existing
+# code. Plain .txt is not documentation: it is often data (word lists, fixtures).
 def is_doc: test("\\.(md|markdown|rst)$"; "i");
 
 # A documentation-only requirement: on a requirement, given the plans and the
