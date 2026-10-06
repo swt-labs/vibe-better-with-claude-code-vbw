@@ -11081,6 +11081,18 @@
       "id": "D143",
       "at": "2026-10-06T17:52:11Z",
       "text": "Contract approved: 80 requirements, 115 checks, 166 plans (46111a2c5844)"
+    },
+    {
+      "id": "D144",
+      "text": "Documentation (needs no check, not existing code) is .md, .markdown and .rst; plain .txt is data and keeps its check; prose for risk names stays .md/.markdown/.txt/.rst",
+      "why": "chosen by VBW 2026-10-06: .txt is often data (word lists, fixtures, config) whose change must be tested; two M4 tests used .txt as code; the risk-name rule keeps .txt as prose so a 'secrets-policy.txt' is not a risk path",
+      "at": "2026-10-06T21:15:31Z"
+    },
+    {
+      "id": "D145",
+      "text": "When vbw prove is stopped by a signal sent only to it, its running checks are not killed (no process killing, D54/D285-D288): they finish within their own timeout and never write after the run's cleanup",
+      "why": "chosen by VBW 2026-10-06 (F40): killing child processes is forbidden by the kernel rules; Ctrl+C reaches the whole process group and stops them",
+      "at": "2026-10-06T21:15:31Z"
     }
   ],
   "commands": {
