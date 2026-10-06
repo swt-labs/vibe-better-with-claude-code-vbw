@@ -2,6 +2,7 @@
 # Input: the record. Args: $facts (object: planned path -> bytes, for the
 # existing regular files only), $ids (array of phase ids, or null = the
 # current milestone's phases).
+# $tracked: the number of files git tracks.
 # Output: [{id, tier, floor, reasons}]. The floor comes from the signals alone;
 # tier is the phase's own tier when it is higher (the Architect may only raise).
 
@@ -40,12 +41,14 @@ def rid: ltrimstr("R") | tonumber? // 0;
           ($bytes | sig_bytes),
           (if ($risk | length) > 0 then "deep" else "express" end),
           ($breaks | length | sig_breaks),
-          sig_tests($existing; $has_tests)
+          sig_tests($existing; $has_tests),
+          ($files | length | sig_spread($tracked))
         ] | reduce .[] as $t ("express"; max_tier($t))) as $floor
     | (if ($ph.tier // $floor) | tier_rank > ($floor | tier_rank) then $ph.tier else $floor end) as $tier
     | { id: $ph.id, tier: $tier, floor: $floor,
         reasons: ([ "requirements: \($nreqs)",
                     "files: \($files | length) (\($bytes) bytes)",
+                    (if ($files | length | sig_spread($tracked)) == "standard" then "files: more than 2 in a repository tracking \($tracked) files" else empty end),
                     (if ($risk | length) == 0 then "risk: none"
                      else "risk: " + ([$risk[] | "\(.name) (\(.src))"] | join(", ")) end),
                     (if ($breaks | length) == 0 then "breaks: none" else "breaks: " + ($breaks | join(", ")) end),

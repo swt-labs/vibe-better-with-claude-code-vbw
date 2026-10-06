@@ -6,7 +6,7 @@
 # Reads existence and size of the planned regular files under $VBW_ROOT;
 # directory entries and missing files are not facts.
 rigor_assess() {
-  local record paths=() p facts ids='null'
+  local record paths=() p facts ids='null' tracked
   record=$(cat)
   [ $# -eq 0 ] || ids=$(printf '%s\n' "$@" | jq -Rnc '[inputs]')
   while IFS= read -r -d '' p; do
@@ -14,12 +14,13 @@ rigor_assess() {
   done < <(printf '%s' "$record" | jq -j --argjson ids "$ids" '
     . as $r | ($ids // [$r.phases[] | select(.milestone == $r.milestone.id) | .id]) as $want
     | [$r.plans[] | select(.phase as $i | $want | index($i)) | .files[]] | unique[] | . + "\u0000"')
+  tracked=$(git -C "$VBW_ROOT" ls-files -z 2> /dev/null | tr -cd '\000' | wc -c | tr -d ' ')
   facts='{}'
   for p in ${paths[@]+"${paths[@]}"}; do
     [ -f "$VBW_ROOT/$p" ] && [ ! -L "$VBW_ROOT/$p" ] || continue
     facts=$(printf '%s' "$facts" | jq -c --arg p "$p" --argjson n "$(wc -c < "$VBW_ROOT/$p" | tr -d ' ')" '.[$p] = $n')
   done
-  printf '%s' "$record" | jq -c --argjson facts "$facts" --argjson ids "$ids" "$VBW_JQ_DEFS$(cat "$VBW_LIB/rigor.jq")"
+  printf '%s' "$record" | jq -c --argjson facts "$facts" --argjson tracked "${tracked:-0}" --argjson ids "$ids" "$VBW_JQ_DEFS$(cat "$VBW_LIB/rigor.jq")"
 }
 
 # rigor_escalate PHASE REASON [TIER]: raise a phase's tier (one step, or to TIER)
