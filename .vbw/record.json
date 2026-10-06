@@ -9452,7 +9452,7 @@
         "P56.3",
         "P55.6"
       ],
-      "status": "planned",
+      "status": "done",
       "tasks": [
         "describe parallel proof, alone checks and the check_jobs setting",
         "describe how a QA round gets the one test run"
@@ -9473,7 +9473,7 @@
       "after": [
         "P56.3"
       ],
-      "status": "planned",
+      "status": "done",
       "tasks": [
         "add round.tiers to vbw next --json: for each phase to check, quick for at most two files and no risk, at most standard for three to nine files and no risk, else the depth its tier and profile give; never above the profile's depth; leave rigor cells and detail as they are",
         "let the QA workflow use round.tiers for each phase before the rigor cell's depth",
