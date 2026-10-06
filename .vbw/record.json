@@ -9398,7 +9398,7 @@
         "P56.1",
         "P55.2"
       ],
-      "status": "planned",
+      "status": "done",
       "tasks": [
         "run the approved checks up to check_jobs at a time, never more, with bash 3.2 (no wait -n); a limit of 1 is the old sequential order",
         "keep checks marked alone by themselves through the existing gate, and keep the gate's registrations right when several run from one process",
@@ -9424,7 +9424,7 @@
         "P55.2",
         "P55.5"
       ],
-      "status": "planned",
+      "status": "done",
       "tasks": [
         "add a top-level round.suite to vbw next --json at the qa step: the proof's result of the project's test command, 'skipped' when it was not approved, 'not run' when the proof has none, null when the project has no test command; leave detail as it is",
         "put the result in every QA agent's prompt with 'Do not run the project's test command', and say once, in the log, when the run did not start ('did not run'), with 'Do not retry' to the agents",
