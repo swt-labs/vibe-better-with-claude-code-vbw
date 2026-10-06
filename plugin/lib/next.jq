@@ -6,7 +6,7 @@
 # $profile: interview_effective (lib/interview.sh); next fills unanswered ones with the neutral middle choice.
 # $tiers (slurped: [table]; lib/tiers.json: profile -> tier -> cell).
 # Output: {action, gate, instruction, detail, requirements (the active milestone's: id, text, proof), rigor, profile}; profile.ask is true only
-# at the spec step with no completed interview (once per project).
+# at the spec or convert step with no completed interview (once per project).
 # First matching row wins.
 
 def result($action; $gate; $instruction; $detail):
@@ -100,4 +100,4 @@ def fix_files($r): if .command then ["*"]
     result("accept"; true; "Accept or reject \($to_accept | join(", ")), one scenario at a time"; {requirements: $to_accept})
   else
     result("ship"; true; "Everything is proven and accepted: ship milestone \(.milestone.id)"; {})
-  end) as $n | $n + {requirements: [$current[] | {id, text, proof}], rigor: $rigor, qa: ($qa | {recheck, standing, problems}), declined: [(.project.declined // [])[].text], profile: ({level: "small scripts or no-code", depth: "plain with technical terms explained", involvement: "options with a recommendation"} + ($profile | with_entries(select(.value != null or .key == "kept" or .key == "pending"))) + {ask: ($n.action == "spec" and ($profile.interviewed | not))})}
+  end) as $n | $n + {requirements: [$current[] | {id, text, proof}], rigor: $rigor, qa: ($qa | {recheck, standing, problems}), declined: [(.project.declined // [])[].text], profile: ({level: "small scripts or no-code", depth: "plain with technical terms explained", involvement: "options with a recommendation"} + ($profile | with_entries(select(.value != null or .key == "kept" or .key == "pending"))) + {ask: ([$n.action] | inside(["spec","convert"]) and ($profile.interviewed | not))})}
