@@ -101,7 +101,22 @@ def destructive:
         | "git \($s) rewrites or deletes history" ) );
 
 # Programs that only read the files they are given.
-def reader: test("^(cat|jq|head|tail|less|more|grep|egrep|rg|wc|git|ls|stat|diff|cmp|shasum|sha256sum|file|test|\\[\\[?)$");
+def reader: test("^(cat|jq|head|tail|less|more|grep|egrep|rg|wc|git|ls|stat|diff|cmp|shasum|sha256sum|file|test|sort|awk|gawk|nawk|cut|nl|column|paste|\\[\\[?)$");
+def copier: test("^(cp|rsync|install|ln)$");
+
+# The command writes the plan of record: a redirect to it, a copier whose
+# destination (last operand) is it, or a program that names it and is not
+# known to only read (sort -o and awk -i inplace write the file they read).
+def record_written:
+  (.out | any(.[]; record_path))
+  or (any(.args[]; record_path) and
+      (if .cmd | copier then
+         ([.args[] | select(startswith("-") | not)] | (last // "") | record_path)
+         or any(.args[]; test("^(-t|--target-directory.*|--remove-source-files)$"))
+       elif .cmd | reader then
+         (.cmd == "sort" and any(.args[]; test("^(-[A-Za-z]*o|--output.*)$")))
+         or (.cmd | test("awk$")) and any(.args[]; test("^(inplace|--in-place)$"))
+       else true end));
 def paths: (.args[] | sub("^--?[A-Za-z0-9-]+="; "")), .out[], .in[];
 
 def approve_call:
@@ -115,7 +130,7 @@ def everywhere:
 def in_project:
   destructive,
   ( select(.cmd | test("^(ls|stat|test|\\[\\[?)$") | not) | [paths | select(secret_path)][0] // empty | secret_reason ),
-  ( select((.out | any(.[]; record_path)) or ((.cmd | reader) | not) and any(.args[]; record_path)) | record_reason );
+  ( select(record_written) | record_reason );
 
 # --- programs that write files (R76) -----------------------------------------
 
