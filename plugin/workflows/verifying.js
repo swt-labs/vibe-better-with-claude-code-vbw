@@ -72,7 +72,8 @@ if (suite && !ran) log(`the project's test command (${suite.command}) did not ru
 
 phase('Verify')
 const cellOf = id => rigor[id] || {}
-const tierOf = id => cellOf(id).qa || tier
+const sized = (args && args.round && args.round.tiers) || {}
+const tierOf = id => sized[id] || cellOf(id).qa || tier
 const modelOf = id => (cellOf(id).models && cellOf(id).models.qa) || models.qa
 const results = await pipeline(phases, id =>
   agent(`Verify VBW phase ${id} at the ${tierOf(id)} tier, then record your findings and verdict with vbw qa (if qa record refuses a stale proof, run vbw prove, then retry the record once). Start with: vbw show phase ${id}${suiteNote}${voice}`,

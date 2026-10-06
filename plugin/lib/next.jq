@@ -68,6 +68,17 @@ def fix_files($r): if .command then ["*"]
 | ([.phases[] | select(.milestone == $m and $qa.recheck[.id] != null and needs_qa($rigor[.id].tier; $current)) | .id]) as $to_verify
 # The QA tier is the highest among the phases to verify.
 | ([$to_verify[] | $rigor[.].qa] | max_by(qa_rank) // "standard") as $tier
+# QA depth by the size and risk of the change (R71): at most two files and no risk
+# path is quick; three to nine files and no risk at most standard; else the cell's.
+# A phase with no recorded reasons is not small.
+| (. as $rec | [$to_verify[] | . as $id | ($rec.phases[] | select(.id == $id)) as $ph
+    | ($rec.plans | map(select(.phase == $id) | .files // []) | add // [] | unique | length) as $nf
+    | ($ph.reasons // []) as $why
+    | $rigor[$id].qa as $cell
+    | {key: $id, value: (if ($why | index("risk: none")) == null then $cell
+        elif $nf <= 2 then "quick"
+        elif $nf <= 9 then ([$cell, "standard"] | min_by(qa_rank))
+        else $cell end)}] | from_entries) as $tiers_qa
 | (if .lease != null and .lease.session != null and .lease.session != $session then
     result("run"; false; "A VBW \(.lease.kind) run (\(.lease.run)) belongs to another session: wait for it, or check vbw status"; {lease: .lease})
   elif .lease != null then
@@ -107,4 +118,4 @@ def fix_files($r): if .command then ["*"]
     result("accept"; true; "Accept or reject \($to_accept | join(", ")), one scenario at a time"; {requirements: $to_accept})
   else
     result("ship"; true; "Everything is proven and accepted: ship milestone \(.milestone.id)"; {})
-  end) as $n | $n + (if $n.action == "qa" then {round: {suite: (if (.commands.test // null) == null then null else (.evidence.commands.test // {command: "test", status: "not run"}) end)}} else {} end) + {requirements: [$current[] | {id, text, proof}], rigor: $rigor, qa: ($qa | {recheck, standing, problems}), declined: [(.project.declined // [])[].text], profile: ({level: "small scripts or no-code", depth: "plain with technical terms explained", involvement: "options with a recommendation"} + ($profile | with_entries(select(.value != null or .key == "kept" or .key == "pending"))) + {ask: ([$n.action] | inside(["spec","convert"]) and ($profile.interviewed | not))})}
+  end) as $n | $n + (if $n.action == "qa" then {round: {tiers: $tiers_qa, suite: (if (.commands.test // null) == null then null else (.evidence.commands.test // {command: "test", status: "not run"}) end)}} else {} end) + {requirements: [$current[] | {id, text, proof}], rigor: $rigor, qa: ($qa | {recheck, standing, problems}), declined: [(.project.declined // [])[].text], profile: ({level: "small scripts or no-code", depth: "plain with technical terms explained", involvement: "options with a recommendation"} + ($profile | with_entries(select(.value != null or .key == "kept" or .key == "pending"))) + {ask: ([$n.action] | inside(["spec","convert"]) and ($profile.interviewed | not))})}
