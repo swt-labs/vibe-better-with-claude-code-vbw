@@ -32,6 +32,16 @@ def has_tests: .commands.test != null or .commands.check != null;
 # A document (markdown, text) is never a risk path, whatever its name.
 def is_doc: test("\\.(md|markdown|txt|rst)$"; "i");
 
+# A documentation-only requirement: on a requirement, given the plans and the
+# checks that bear on it. Every plan serving it changes only documents, and no
+# check exists for it (one a project rule asked for still runs and decides).
+def doc_only($plans; $checks):
+  . as $q
+  | ([$plans[] | select(any(.reqs[]; . == $q.id))]) as $mine
+  | ($mine | length > 0 and all(.[]; (.files | length) > 0 and all(.files[]; is_doc)))
+    and ([$checks[] | select(.req == $q.id)] | length == 0);
+def doc_only($r): doc_only($r.plans; $r.checks);
+
 # early_tier($facts): on the record, the tier of the request before planning.
 # A forced mode (settings.rigor express|standard|deep) is that tier. In auto,
 # express only when the current milestone's requirements are all [auto], name no

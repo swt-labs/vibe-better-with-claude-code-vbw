@@ -84,13 +84,13 @@ cmd_apply() {
         | "\($n.id) is a new phase for requirements another phase already covers: once work has started, add plans to that phase"
       )] | .[0] // empty')
   [ -z "$problem" ] || vbw_die "refused: $problem"
-  problem=$(printf '%s' "$record" | jq -r --argjson d "$doc" 'select($d | has("rules"))
+  problem=$(printf '%s' "$record" | jq -r --argjson d "$doc" "$VBW_JQ_DEFS"'select($d | has("rules"))
     | . as $r | $d.rules as $rules
     | [($rules[] | . as $x | select(any($r.requirements[]; .id == $x.req and .proof == "human"))
         | "the rule \"\($x.text)\" is for \($x.req), a [human] requirement: only [auto] requirements list rules"),
        ($rules[] | . as $x | select(any($d.checks[]; .id == $x.check and .req == $x.req) | not)
         | "the rule \"\($x.text)\" names \($x.check), which is not a check of \($x.req) in this plan"),
-       ($r.requirements[] | . as $q | select(.proof == "auto" and .status != "proven"
+       ($r.requirements[] | . as $q | select(.proof == "auto" and .status != "proven" and ($q | doc_only($d.plans; $d.checks) | not)
           and any($d.phases[].reqs[]; . == $q.id)
           and ((($rules | any(.req == $q.id)) or ((.rules // []) | length > 0)) | not))
         | "\(.id) lists no rules: list each condition, edge and error case its text states, with the check that tests it (rules)")]

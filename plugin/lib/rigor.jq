@@ -20,7 +20,7 @@ def rid: ltrimstr("R") | tonumber? // 0;
     | ([$r.plans[] | select(.phase == $ph.id) | .files[]] | unique) as $files
     | ($ph.reqs | length) as $nreqs
     | ([$files[] | $facts[.] // empty] | add // 0) as $bytes
-    | ($files | any(.[]; $facts[.] != null)) as $existing
+    | ($files | any(.[]; $facts[.] != null and (is_doc | not))) as $existing
     | ($r | has_tests) as $has_tests
     | ([$r.requirements[] | select(.id as $q | $ph.reqs | index($q))] ) as $mine
     | ([ $files[] | select(is_doc | not) | {src: ., text: .} ]

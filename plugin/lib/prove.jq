@@ -5,13 +5,17 @@ def ok: .status == "pass";
 
 . as $r
 | ($ev.checks) as $checks
-| [ .requirements[] | select(.proof == "auto") | .id as $id
+| ([ .requirements[] | select(.proof == "auto") | .id as $id
     | [$r.checks[] | select(.req == $id) | .id] as $ids
     | select($ids | length > 0)
     | { key: "req", target: $id,
         pass: all($ids[]; $checks[.] | ok),
         built: all($r.plans[]; .status == "done" or (any(.reqs[]; . == $id) | not)),
         note: ([$ids[] | select($checks[.] | ok | not) | "\(.) \($checks[.].status)\(if $checks[.].exit != null then " (exit \($checks[.].exit))" else "" end)"] | join(", ")) } ]
+  # A documentation-only requirement has no check: it is proven once its plans are done.
+  + [ .requirements[] | select(.proof == "auto" and doc_only($r)) | .id as $id
+      | select(all($r.plans[]; .status == "done" or (any(.reqs[]; . == $id) | not)))
+      | {key: "req", target: $id, pass: true, built: true, note: ""} ])
   as $req_results
 | [ $ev.commands | to_entries[] | select(.value.status != "skipped")
     | {key: "command", target: .key, pass: (.value | ok), built: all($r.plans[]; .status == "done"), note: "\(.key) \(.value.status)"} ]

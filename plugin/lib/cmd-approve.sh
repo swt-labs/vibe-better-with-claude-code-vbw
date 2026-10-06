@@ -67,11 +67,11 @@ approve_problems() {
         and ($p.commands == null or .commands == $p.commands)' > /dev/null; then
     printf 'spec.md and the record differ (vbw spec sync)\n'
   fi
-  printf '%s' "$1" | jq -r '
+  printf '%s' "$1" | jq -r "$VBW_JQ_DEFS"'
     (select((.requirements | length) == 0) | "no requirements"),
-    (.checks as $c | .requirements[] | select(.proof == "auto")
-      | select(.id as $id | any($c[]; .req == $id) | not) | "\(.id) has no check"),
-    (.requirements[] | select(.proof == "auto" and (.rules // null) == [])
+    (. as $r | .requirements[] | select(.proof == "auto")
+      | select(.id as $id | any($r.checks[]; .req == $id) | not) | select(doc_only($r) | not) | "\(.id) has no check"),
+    (. as $r | .requirements[] | select(.proof == "auto" and (.rules // null) == [] and (doc_only($r) | not))
       | "\(.id) has no rules listed (vbw apply with rules)")'
   while IFS= read -r -d '' f; do
     [ -f "$VBW_ROOT/$f" ] || printf 'check file missing: %s\n' "$f"
