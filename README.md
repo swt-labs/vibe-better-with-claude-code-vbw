@@ -1,12 +1,12 @@
 <div align="center">
 
-# Vibe Better With Claude Code - VBW 2
+# Vibe Better With Claude Code - VBW
 
-*Your AI said "done".*
+*You're not an engineer anymore.*
 
-*It has said that before.*
+*You're a prompt jockey with commit access.*
 
-*This time, a program checks.*
+*At least do it properly.*
 
 <img src="assets/abraham.jpeg" alt="Abraham Lincoln portrait" width="300"/>
 
