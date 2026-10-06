@@ -83,7 +83,8 @@ from `.vbw/map.md` and asks you to correct it. VBW asks one question at a time:
 
 ## Asked once
 
-`vbw next --json` returns `profile.ask: true` only at the spec step while no
+`vbw next --json` returns `profile.ask: true` at the spec step, or at the convert
+step when a VBW 1 folder has no choice yet, while no
 complete set of answers exists. Once answered, it never asks again: not in a
 new session, a new milestone or another worktree.
 
