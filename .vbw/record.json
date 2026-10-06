@@ -9016,7 +9016,7 @@
         "plugin/lib/proofcopy.sh"
       ],
       "after": [],
-      "status": "planned",
+      "status": "done",
       "tasks": [
         "name the build-output folders of Node, Python, Rust and Go projects once (target, dist, build, bin, __pycache__, .pytest_cache and the like), matched at any depth",
         "stop linking those git-ignored folders into the clean copy, so the copy starts without them",
@@ -9035,7 +9035,7 @@
         "plugin/lib/cmd-plan.sh"
       ],
       "after": [],
-      "status": "planned",
+      "status": "done",
       "tasks": [
         "accept a plan whose files are all committed in HEAD even when no commit carries its VBW-Plan trailer",
         "in that case require that at least one check of its requirements exists and runs and passes, and name the failing check if not",
@@ -9054,7 +9054,7 @@
         "plugin/lib/next.jq"
       ],
       "after": [],
-      "status": "planned",
+      "status": "done",
       "tasks": [
         "offer the ready independent plans (build) even when another plan is blocked",
         "report each blocked plan by name with its reason (detail.blocked, and in the instruction)",
@@ -9100,7 +9100,7 @@
         "plugin/hooks/guard-file.jq"
       ],
       "after": [],
-      "status": "planned",
+      "status": "done",
       "tasks": [
         "give the planning run's lease the files planning really writes (.vbw/) instead of any file",
         "let planning agents also write test files, recognised by place and name (tests/, test/, spec/, __tests__/, *.test.*, *_test.*, test_*.py), in one shared definition",
@@ -9530,7 +9530,7 @@
         "docs/panel.md"
       ],
       "after": [],
-      "status": "planned",
+      "status": "done",
       "tasks": [
         "opening by itself, open as Claude Code places it (session.start carries no width)",
         "on the first docked drawing, the terminal is viewport.columns + props.bodyColumns + 1 (measured in Claude Code 2.1.291); ask once a session for max(40, round(terminal / 4)) columns, never taking the keyboard, unless the pane already has that width",
