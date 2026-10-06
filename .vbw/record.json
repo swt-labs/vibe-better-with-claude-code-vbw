@@ -6,7 +6,7 @@
   "milestone": {
     "id": "M10",
     "title": "Interview first, then the old VBW 1 folder",
-    "status": "active"
+    "status": "shipped"
   },
   "shipped": [
     {
@@ -53,6 +53,11 @@
       "id": "M9",
       "title": "Live VBW panel",
       "at": "2026-10-06T12:40:05Z"
+    },
+    {
+      "id": "M10",
+      "title": "Interview first, then the old VBW 1 folder",
+      "at": "2026-10-06T15:21:30Z"
     }
   ],
   "requirements": [
@@ -8513,6 +8518,11 @@
       "id": "T21",
       "text": "panel.js: give the two gating hooks (ui.close, tool.call AskUserQuestion) a .catch so a failure clears st.question explicitly; CC 2.1.291 validate now lists gating hooks without .catch (informational: a failed hook is skipped, never blocks)",
       "status": "open"
+    },
+    {
+      "id": "T22",
+      "text": "interview SKILL.md line 16 still says 'before any spec work'; say 'before any spec or convert work' like the router (cosmetic, QA note on P51)",
+      "status": "open"
     }
   ],
   "decisions": [
@@ -9253,6 +9263,11 @@
       "text": "F38: keep commit a21fa989 (tools/l3-results/nolegacy.json re-run on the P51 fix)",
       "why": "chosen by VBW: release evidence (step 2 of the release) for the scenario that pairs with legacy; P51.2's task ran both scenarios but listed only legacy.json; history is never rewritten",
       "at": "2026-10-06T14:51:30Z"
+    },
+    {
+      "id": "D133",
+      "at": "2026-10-06T15:21:30Z",
+      "text": "Shipped M10 Interview first, then the old VBW 1 folder: 1 requirements proven or accepted"
     }
   ],
   "commands": {
