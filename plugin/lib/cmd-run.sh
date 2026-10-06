@@ -52,6 +52,8 @@ cmd_run() {
     # Only the session that owns the run ends it, unless the user states the
     # owner is closed or the run is over VBW_LEASE_HOURS old.
     local run me refusal
+    # No run open: nothing to end, nothing to record (a workflow ends its own run).
+    record_read | jq -e '.lease != null' > /dev/null || { printf 'no run is open\n'; return 0; }
     me=$(vbw_session)
     refusal=$(record_read | jq -r --arg me "$me" --argjson h "$VBW_LEASE_HOURS" --arg closed "${1:-}" '
       .lease | select(. != null and .session != null and .session != $me
