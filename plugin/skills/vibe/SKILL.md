@@ -49,11 +49,11 @@ Every stop ends with a last line, **What I need from you:** <the one thing user 
 Never claim more than kernel output shows.
 
 `plan`, `build`, `fix` need the **Workflow** tool (the `workflows` line above turned it on). Still none: say why and stop. Pass
-`models` (from `vbw config models`), the next JSON's top-level `rigor` and its `profile` in every workflow's args.
+`session` (`${CLAUDE_SESSION_ID}`: the workflow confirms what its agents recorded and ends its own run), `models` (from `vbw config models`), the next JSON's top-level `rigor` and its `profile` in every workflow's args.
 
 Before `spec` or a workflow `plan`: code and no `.vbw/map.md` → map first:
 `VBW_SESSION_ID=${CLAUDE_SESSION_ID} vbw run start map`, Workflow `vbw:mapping` (args as above),
-`VBW_SESSION_ID=${CLAUDE_SESSION_ID} vbw run end`, write its `map` to `.vbw/map.md`, read it.
+write its `map` to `.vbw/map.md`, read it.
 
 Then, `profile.ask` true: follow `vbw:interview` before any spec or convert work; resume at
 `profile.pending`; unrecognised answer: ask again, record nothing.
@@ -91,7 +91,7 @@ Example: `{"phases":[{"id":"P1","title":"Fix add","reqs":["R1"],"tier":"express"
 Apply computes a higher tier: run the planning workflow below instead.
 
 **plan**: `VBW_SESSION_ID=${CLAUDE_SESSION_ID} vbw run start plan`, Workflow `vbw:planning` with args
-`{"requirements": <requirements>, "models": ...}`. Returns: `VBW_SESSION_ID=${CLAUDE_SESSION_ID} vbw run end`. Status `needs_decisions`: user
+`{"requirements": <requirements>, "models": ...}`. Status `needs_decisions`: user
 decides first. Ask each with AskUserQuestion, one at a time (why it matters in the question, each option's
 trade-off as description, recommended first, "(Recommended)"). Record
 each: `vbw decide "<what was decided>" "<their reason, or the trade-off they accepted>"`. Plan again: `VBW_SESSION_ID=${CLAUDE_SESSION_ID} vbw run start plan`, workflow with
@@ -103,18 +103,17 @@ each: `vbw decide "<what was decided>" "<their reason, or the trade-off they acc
 
 **build**: `VBW_SESSION_ID=${CLAUDE_SESSION_ID} vbw run start build <detail.plans>`, Workflow `vbw:building` with
 args `{"plans": <detail.plans>, "docs": <detail.docs>, "models": ..., "rigor": ...}` (Dev per
-plan; Docs for documentation plans). Returns: `VBW_SESSION_ID=${CLAUDE_SESSION_ID} vbw run end`, `vbw prove`,
+plan; Docs for documentation plans). Returns: `vbw prove`,
 report each plan's result in one line (quote blockers and notes).
 
 **fix**: `VBW_SESSION_ID=${CLAUDE_SESSION_ID} vbw run start fix <detail.fixes>`, Workflow `vbw:fixing` with args
 `{"groups": <detail.groups>, "models": ..., "rigor": ...}` (fixes sharing files go to one
-Dev). Returns: `VBW_SESSION_ID=${CLAUDE_SESSION_ID} vbw run end`, `vbw prove`.
+Dev). Returns: `vbw prove`.
 
 **prove**: `vbw prove`, report what passed and failed.
 
 **qa**: `VBW_SESSION_ID=${CLAUDE_SESSION_ID} vbw run start qa`, Workflow `vbw:verifying` with args
-`{"phases": <detail.phases>, "tier": <detail.tier>, "models": ..., "rigor": ...}`; returns:
-`VBW_SESSION_ID=${CLAUDE_SESSION_ID} vbw run end`. QA records each phase's verdict; findings become fixes. Report
+`{"phases": <detail.phases>, "tier": <detail.tier>, "models": ..., "rigor": ...}`. QA records each phase's verdict; findings become fixes. Report
 verdicts and failed checks briefly.
 
 **run**: a run is open. This session's workflow still running: wait. Else
