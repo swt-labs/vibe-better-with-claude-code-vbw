@@ -9191,7 +9191,7 @@
         "P54.2",
         "P53.4"
       ],
-      "status": "planned",
+      "status": "done",
       "tasks": [
         "describe what a planning agent may write",
         "describe how program writes are judged during a run and what stays allowed",
@@ -9219,7 +9219,7 @@
       "after": [
         "P54.1"
       ],
-      "status": "planned",
+      "status": "done",
       "tasks": [
         "add vbw run confirm ID...: one line per plan, fix or phase of the open run saying whether its state or verdict was recorded, naming plainly the ones that were not (exit 1), changing nothing",
         "make vbw run end a quiet no-op, with no commit, when no run is open",
@@ -9270,7 +9270,7 @@
       "after": [
         "P55.2"
       ],
-      "status": "planned",
+      "status": "done",
       "tasks": [
         "let the commit step report git's own reason and a failure status to the caller, while every other caller keeps its warning only",
         "make vbw approve stop with that reason when its commit fails, and say that nothing was approved",
