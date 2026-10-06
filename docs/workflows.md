@@ -43,12 +43,14 @@ is closed (`vbw run end --owner-closed`), or the run is older than 24 hours
 
 `files` holds the paths the
 run's agents may write: the plans' files for `build`; for `fix`, the files of
-every plan that serves a fixed requirement; `null` for `plan` (the Lead writes
-test files that no plan owns yet); `[]` for `qa` and `map` (their agents
+every plan that serves a fixed requirement; `[".vbw/"]` for `plan` (planning
+agents write VBW's own files, and also test files, which no plan owns yet: a
+path in a `tests/`, `test/`, `spec/` or `__tests__/` folder, or named
+`*.test.*`, `*_test.*` or `test_*.py`); `[]` for `qa` and `map` (their agents
 only read; the lease also tells the autonomy gate a workflow is still running). While a lease is active, any **subagent**
 (the hook input carries `agent_type`) is held to it:
 
-- it writes only files in `lease.files` (when not null);
+- it writes only files in `lease.files` (when not null); in a `plan` run, also test files;
 - it never writes a protected check file (any check's `files`) during `build` or `fix`;
 - it never runs `git commit`, `push`, `rebase`, `merge`, `pull`, `cherry-pick`, `revert` or `am`: commits go through `vbw commit`;
 - it never moves HEAD or other agents' changes in the shared working tree: no `git stash` (except `list`/`show`), `switch`, `reset`, or `checkout` of a branch, and `git checkout -- PATH`/`git restore PATH` only for paths in `lease.files`.
