@@ -2,7 +2,21 @@
 # The clean copy vbw prove runs on (docs/proof.md): a detached git worktree of
 # HEAD inside the project, so uncommitted changes and untracked files change no
 # proof result. Git-ignored paths (dependencies, env files) are linked in from
-# the working folder; they are the project's environment, not its code.
+# the working folder; they are the project's environment, not its code. Build
+# output is not environment: the copy builds its own, so no artifact of a proof
+# points into the working folder or another copy.
+
+# Build-output folder names (Node, Python, Rust, Go and the like), at any depth.
+PROOFCOPY_BUILD_DIRS='target dist build bin out __pycache__ .pytest_cache .mypy_cache .ruff_cache .tox .next .nuxt .gradle coverage'
+
+# proofcopy_is_build_dir PATH: PATH's last segment names a build folder.
+proofcopy_is_build_dir() {
+  local b=${1##*/} n
+  for n in $PROOFCOPY_BUILD_DIRS; do
+    [ "$b" != "$n" ] || return 0
+  done
+  return 1
+}
 
 # proofcopy_create: make the copy; sets PROOF_COPY (absolute path). Called
 # directly, never in $(...), so the guard that removes it on interrupt holds.
@@ -17,6 +31,7 @@ proofcopy_create() {
   while IFS= read -r -d '' p; do
     p=${p%/}
     case "$p" in .git | .git/* | .vbw | .vbw/*) continue ;; esac
+    ! proofcopy_is_build_dir "$p" || continue
     [ ! -e "$PROOF_COPY/$p" ] && [ ! -L "$PROOF_COPY/$p" ] || continue
     mkdir -p "$PROOF_COPY/$(dirname "$p")"
     ln -s "$VBW_ROOT/$p" "$PROOF_COPY/$p"
