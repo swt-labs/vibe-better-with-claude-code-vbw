@@ -33,7 +33,7 @@ legacy_review_rows() {
   fi
   if [ -z "$ct" ]; then
     while IFS= read -r -d '' f; do
-      printf 'T\t%s\n' "$(stat -f %m "$f" 2> /dev/null || stat -c %Y "$f" 2> /dev/null || printf 0)"
+      printf 'T\t%s\n' "$(vbw_mtime "$f")"
     done < <(find "$root/$VBW_LEGACY" -type f -print0 2> /dev/null)
   else
     printf 'T\t%s\n' "$ct"
