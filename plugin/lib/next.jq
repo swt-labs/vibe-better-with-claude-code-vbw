@@ -92,7 +92,7 @@ def fix_files($r): if .command then ["*"]
   elif ([.phases[] | select(.milestone == $m)] | length) == 0
        or (. as $r | any(.requirements[]; .proof == "auto" and (.id as $id | any($r.checks[]; .req == $id) | not) and (doc_only($r) | not)))
        or (.plans as $p | any($current[]; .proof == "auto" and (.id as $id | any($p[]; any(.reqs[]; . == $id)) | not))) then
-    result("plan"; false; "Run the plan workflow: phases, plans and contract checks"; {tier: early_tier($tracked)})
+    result("plan"; false; "Run the plan workflow: phases, plans and contract checks"; {tier: early_tier($tracked), small: small_change})
   elif $approved | not then
     result("approve"; true; "Review and approve the contract (requirements, plans and checks)"; {})
   elif ($ready | length) > 0 then

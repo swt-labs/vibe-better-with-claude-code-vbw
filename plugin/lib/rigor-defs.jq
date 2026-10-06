@@ -24,6 +24,10 @@ def sig_reqs: if . >= 6 then "deep" elif . >= 3 then "standard" else "express" e
 def sig_files: if . >= 10 then "deep" elif . >= 5 then "standard" else "express" end;
 def sig_bytes: if . >= 500000 then "deep" elif . >= 100000 then "standard" else "express" end;
 def sig_breaks: if . >= 4 then "deep" elif . >= 1 then "standard" else "express" end;
+# In a repository tracking more than 30 files, an express phase covers at most
+# two files: more is standard at least (the early tier uses the same 30).
+def large_repo: . > 30;
+def sig_spread($tracked): if $tracked > 30 and . > 2 then "standard" else "express" end;
 # Existing code with no project test command cannot be proved by the project's
 # own tests: standard at least.
 def sig_tests($existing; $has_tests): if $existing and ($has_tests | not) then "standard" else "express" end;
@@ -43,6 +47,16 @@ def doc_only($plans; $checks):
     and ([$checks[] | select(.req == $q.id)] | length == 0);
 def doc_only($r): doc_only($r.plans; $r.checks);
 
+# small_change: on the record, the current milestone's request is a small
+# change: one or two [auto] requirements naming no risk category, with rigor not
+# forced above express, whatever the size of the repository.
+def small_change:
+  .milestone.id as $m
+  | [.requirements[] | select(.milestone == $m)] as $cur
+  | ((.settings.rigor // "auto") | IN("auto", "express"))
+    and ($cur | length) >= 1 and ($cur | length) <= 2
+    and all($cur[]; .proof == "auto" and (.text | risk_name) == null);
+
 # early_tier($facts): on the record, the tier of the request before planning.
 # A forced mode (settings.rigor express|standard|deep) is that tier. In auto,
 # express only when the current milestone's requirements are all [auto], name no
@@ -58,7 +72,7 @@ def early_tier($facts):
   | if $mode != "auto" then $mode
     else .milestone.id as $m
       | [.requirements[] | select(.milestone == $m)] as $cur
-      | if ($cur | length) > 0 and all($cur[]; .proof == "auto" and (.text | risk_name) == null) and $facts.tracked <= 30
+      | if ($cur | length) > 0 and all($cur[]; .proof == "auto" and (.text | risk_name) == null) and ($facts.tracked | large_repo | not)
            and (($cur | length | sig_reqs) == "express") and (sig_tests($facts.code > 0; has_tests) == "express")
         then "express" else "standard" end
     end;
