@@ -33,7 +33,7 @@ VBW is a Claude Code plugin that turns "build me an app" into software that actu
 
 It's the entire software development lifecycle, except the engineering team is a plugin and the QA department is a program that has never once been talked into anything.
 
-Think of it as project management for the post-dignity era of software development.
+### **Think of it as project management for the post-dignity era of software development.**
 
 Inspired by **[Ralph](https://github.com/frankbria/ralph-claude-code)** and **[Get Shit Done](https://github.com/glittercowboy/get-shit-done)**, however, an entirely new architecture.
 
