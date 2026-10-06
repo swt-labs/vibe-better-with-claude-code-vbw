@@ -4574,7 +4574,22 @@
         "breaks: R12, R22, R23, R24, R25, R27, R28, R31, R32, R43, R44, R45, R46, R47, R48, R49, R61",
         "tests: project test command"
       ],
-      "predicted": "deep"
+      "predicted": "deep",
+      "qa": {
+        "result": "pass",
+        "tier": "deep",
+        "tree": "130bb9414e76507fd2b037b57fa953c8b3c00337b89db5451258f5ca2b0a92de",
+        "at": "2026-10-06T05:11:00Z",
+        "note": "12/12 checks"
+      },
+      "outcome": {
+        "tier": "deep",
+        "predicted": "deep",
+        "held": true,
+        "fix_rounds": 0,
+        "qa_findings": 0,
+        "escalations": 0
+      }
     }
   ],
   "plans": [
