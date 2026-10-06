@@ -27,6 +27,8 @@ RUNS="${VBW_BENCH_RUNS:-100}"
 PLUGIN="${VBW_BENCH_PLUGIN_ROOT:-$ROOT/plugin}"
 work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
+# A step that fails under set -e says where, instead of ending the bench silently.
+trap 'echo "bench-hooks: stopped at line $LINENO (status $?)" >&2' ERR
 hooks_json="$PLUGIN/hooks/hooks.json"
 export CLAUDE_PLUGIN_ROOT="$PLUGIN" CLAUDE_PROJECT_DIR="$work"
 
