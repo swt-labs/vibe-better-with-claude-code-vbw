@@ -2058,7 +2058,20 @@
       "proof": "auto",
       "status": "open",
       "milestone": "M11",
-      "rules": []
+      "rules": [
+        {
+          "text": "no text VBW hands Claude says to type or run /vbw:approve",
+          "check": "C119"
+        },
+        {
+          "text": "when Claude tries to approve, the guard refuses and tells it to ask with the approval menu",
+          "check": "C119"
+        },
+        {
+          "text": "the router asks for approval only with the menu and never asks the user to type the command",
+          "check": "C119"
+        }
+      ]
     }
   ],
   "checks": [
@@ -3409,6 +3422,17 @@
       ],
       "files": [
         "tests/l3-smallchange.bats"
+      ]
+    },
+    {
+      "id": "C119",
+      "req": "R83",
+      "run": [
+        "bats",
+        "tests/approval-menu.bats"
+      ],
+      "files": [
+        "tests/approval-menu.bats"
       ]
     }
   ],
@@ -5435,7 +5459,7 @@
       "tier": "deep",
       "reasons": [
         "requirements: 2",
-        "files: 6 (50321 bytes)",
+        "files: 6 (54033 bytes)",
         "risk: none",
         "breaks: R12, R13, R14, R24, R25, R26, R28, R31, R32, R35, R37, R38, R39, R40, R43, R44, R45, R46, R47, R48, R49, R50, R60, R61, R66, R67",
         "tests: project test command"
@@ -5465,7 +5489,7 @@
       "tier": "deep",
       "reasons": [
         "requirements: 3",
-        "files: 7 (43882 bytes)",
+        "files: 7 (51515 bytes)",
         "risk: none",
         "breaks: R13, R14, R15, R25, R28, R31, R39, R44, R50, R58, R60, R61",
         "tests: project test command"
@@ -5479,7 +5503,8 @@
         "R78",
         "R79",
         "R80",
-        "R81"
+        "R81",
+        "R83"
       ],
       "milestone": "M11",
       "goal": "Nothing is silently lost after an agent returns, test-file approvals are batched per phase, targeted changes do not need a full resubmission, and failed approvals and finished workflows are explicit.",
@@ -5497,10 +5522,10 @@
       "proposed": "deep",
       "tier": "deep",
       "reasons": [
-        "requirements: 4",
-        "files: 21 (131659 bytes)",
+        "requirements: 5",
+        "files: 25 (162614 bytes)",
         "risk: none",
-        "breaks: R1, R2, R3, R10, R12, R13, R14, R22, R23, R24, R25, R26, R27, R28, R31, R32, R33, R35, R37, R38, R39, R40, R43, R44, R45, R46, R47, R48, R49, R50, R58, R60, R61, R62, R65, R66, R67",
+        "breaks: R1, R2, R3, R10, R12, R13, R14, R15, R22, R23, R24, R25, R26, R27, R28, R31, R32, R33, R35, R37, R38, R39, R40, R43, R44, R45, R46, R47, R48, R49, R50, R58, R60, R61, R62, R65, R66, R67",
         "tests: project test command"
       ],
       "predicted": "deep",
@@ -5536,7 +5561,7 @@
       "tier": "deep",
       "reasons": [
         "requirements: 3",
-        "files: 12 (94765 bytes)",
+        "files: 12 (98508 bytes)",
         "risk: none",
         "breaks: R1, R2, R3, R12, R13, R14, R22, R23, R24, R25, R26, R27, R28, R31, R32, R33, R35, R36, R37, R38, R39, R40, R43, R44, R45, R46, R47, R48, R49, R50, R58, R60, R61, R62, R65, R66, R67",
         "tests: project test command"
@@ -5565,7 +5590,7 @@
       "tier": "deep",
       "reasons": [
         "requirements: 2",
-        "files: 14 (147340 bytes)",
+        "files: 14 (149825 bytes)",
         "risk: none",
         "breaks: R4, R5, R8, R12, R13, R14, R22, R23, R24, R25, R26, R27, R28, R29, R31, R34, R35, R37, R38, R39, R40, R42, R43, R45, R46, R47, R48, R49, R50, R51, R59, R60, R61, R62, R64, R65, R66, R67",
         "tests: project test command"
@@ -5590,7 +5615,7 @@
       "tier": "deep",
       "reasons": [
         "requirements: 1",
-        "files: 2 (16892 bytes)",
+        "files: 2 (18537 bytes)",
         "risk: none",
         "breaks: R51, R52, R53, R55, R56, R57, R58, R64",
         "tests: project test command"
@@ -9179,17 +9204,17 @@
       "phase": "P55",
       "title": "Workflows confirm what agents recorded and end their own run",
       "reqs": [
-        "R78",
-        "R81"
+        "R78"
       ],
       "files": [
+        "plugin/bin/vbw",
         "plugin/lib/cmd-run.sh",
+        "plugin/skills/vibe/SKILL.md",
         "plugin/workflows/building.js",
         "plugin/workflows/fixing.js",
-        "plugin/workflows/verifying.js",
-        "plugin/workflows/planning.js",
         "plugin/workflows/mapping.js",
-        "plugin/bin/vbw"
+        "plugin/workflows/planning.js",
+        "plugin/workflows/verifying.js"
       ],
       "after": [
         "P54.1"
@@ -9200,7 +9225,8 @@
         "make vbw run end a quiet no-op, with no commit, when no run is open",
         "add a closing step to the build, fix and QA workflows: when args.session is given, a small agent labelled close run runs vbw run confirm for that run's ids and then vbw run end, and the workflow returns and logs what was not recorded (older tests call these workflows without a session and must see no extra agent)",
         "give the planning and mapping workflows the same closing step (run end only) on every way out",
-        "list vbw run confirm in vbw help; keep verifying.js free of the words inputs, standing and recheck (an older test checks that)"
+        "list vbw run confirm in vbw help; keep verifying.js free of the words inputs, standing and recheck (an older test checks that)",
+        "the router passes the session in every workflow args and no longer ends a run after a workflow (at most the --owner-closed and interrupted-run mentions remain)"
       ]
     },
     {
@@ -9581,6 +9607,7 @@
         "P55.4",
         "P55.5",
         "P55.6",
+        "P55.8",
         "P56.1",
         "P56.2",
         "P56.3",
@@ -9596,6 +9623,36 @@
         "add the smallchange scenario: a shipped greet.sh project; the user asks one small change in plain words through /vbw:vibe",
         "facts from the record, git and the transcript: no planning workflow, one approval decision, one plan, its check passed, QA quick at most, the change committed",
         "run it in the real app, commit the result with its fixture, cost and not-tested list, and name it in the suite header and the default list"
+      ]
+    },
+    {
+      "id": "P55.8",
+      "phase": "P55",
+      "title": "Approval is asked only with the menu",
+      "reqs": [
+        "R83"
+      ],
+      "files": [
+        "plugin/skills/vibe/SKILL.md",
+        "plugin/skills/qa/SKILL.md",
+        "plugin/hooks/guard-bash.jq",
+        "plugin/hooks/approve-answer.sh",
+        "plugin/lib/checks.sh",
+        "plugin/lib/proofcopy.sh"
+      ],
+      "after": [
+        "P55.1",
+        "P55.5",
+        "P56.2",
+        "P56.3",
+        "P57.3",
+        "P54.2"
+      ],
+      "status": "planned",
+      "tasks": [
+        "every message the kernel, the guard and the answer hook give Claude points to the approval menu (AskUserQuestion with the question vbw show contract prints) and may name /vbw:approve, but never tells the user to type or run it",
+        "the router approve step says approval is asked only with the menu and never asks the user to type the command; a user who types /vbw:approve is still served",
+        "the qa skill says the same where tests wait for approval"
       ]
     }
   ],
