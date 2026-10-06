@@ -73,12 +73,12 @@ tier_of() { jq -r '.phases[0].tier' .vbw/record.json; }
 
 @test "changing existing files with no project test command is at least standard" {
   rigor_project 1
-  printf 'x' > src/exists.js
-  rigor_apply "$(rigor_doc 1 "" src/exists.js)" > /dev/null
+  printf 'x' > src/exists.txt
+  rigor_apply "$(rigor_doc 1 "" src/exists.txt)" > /dev/null
   [ "$(tier_of)" = standard ]
   jq -e '.phases[0].reasons | any(.[]; . == "tests: no project test command")' .vbw/record.json
   edit_record '.commands.test = ["bash", "tools/test.sh"]'
-  rigor_apply "$(rigor_doc 1 "" src/exists.js)" > /dev/null
+  rigor_apply "$(rigor_doc 1 "" src/exists.txt)" > /dev/null
   [ "$(tier_of)" = express ]
 }
 
