@@ -8084,7 +8084,7 @@
       "after": [
         "P51.1"
       ],
-      "status": "planned",
+      "status": "done",
       "tasks": [
         "run bash tools/l3-suite.sh legacy nolegacy and commit legacy.json when it passes"
       ]
