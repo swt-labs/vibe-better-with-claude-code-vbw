@@ -106,6 +106,60 @@ stronger model. Other roles keep the models their profile gives them.
 
 An express phase has exactly one plan: `vbw apply` refuses more.
 
+## QA depth
+
+The table gives each phase a QA depth. Size and risk can only lower it. At
+the `qa` step, `vbw next --json` carries the depth chosen per phase in
+`round.tiers`, and the QA workflow checks each phase at that depth:
+
+```json
+{ "action": "qa", "detail": { "phases": ["P1"], "tier": "deep" },
+  "round": { "tiers": { "P1": "quick" }, "suite": null } }
+```
+
+Here the profile says `deep` (`rigor.P1.qa`), but the change is small, so
+`P1` gets a `quick` check. The profile's cell and `detail.tier` stay as they
+are.
+
+| The phase's change | `round.tiers` |
+|---|---|
+| risk is not `none` in its tier reasons, or it has no recorded reasons | the profile's depth |
+| 1 or 2 files in its plans | `quick`, never deeper |
+| 3 to 9 files | `standard` at most (a profile's `quick` stays `quick`) |
+| 10 or more files | the profile's depth |
+
+Files are counted once across the phase's plans. A risky change gets the full
+depth however few files it touches. A small, low-risk change never gets a deep
+check.
+
+## Documentation changes
+
+Example: a plan that only edits `README.md` goes from `vbw approve` to `ship`
+with no check.
+
+A requirement that only changes documentation or wording needs no new check.
+Every plan that serves it must change only Markdown (`.md`, `.markdown`) or
+reStructuredText (`.rst`) files. Plain `.txt` files are data, not
+documents.
+
+For such a requirement:
+
+- the Lead lists no check and no `rules` for it, and `vbw approve` does not
+  ask for them;
+- `vbw prove` marks it `proven` once its plans are done;
+- documentation files do not count as existing code, so a repository with no
+  project test command does not raise the phase to `standard` for them.
+
+A small documentation phase is `express`, and an express phase with only
+`auto` requirements and a passing proof gets no QA.
+
+Two cases keep their check. A plan that changes documentation and code
+together is not exempt: its requirement needs a check, and `vbw approve` says
+`R1 has no check` without one. And a project rule that requires a check for the
+documentation overrides the exemption. The Lead writes the check, it runs, and
+a failing one fails the requirement. State such a rule in your project's own
+instructions, for example `CLAUDE.md`.
+
 **Express and QA.** An express phase skips QA when all its requirements are
 `auto` and its proof passes. It gets QA if it has a `human` requirement or has
 escalated.
