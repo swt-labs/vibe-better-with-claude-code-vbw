@@ -141,6 +141,16 @@ what was approved:
 A change to the structure (a new check, a changed `run`, a plan's files) is not
 waiting: the contract needs approval first, as before.
 
+### An approval whose commit fails
+
+`vbw approve` commits the approval record. When that commit fails (a project
+hook refuses it, or git has no identity), VBW stops and prints git's own reason
+and `the approval commit failed (reason above); the contract is not approved`.
+It exits non-zero and leaves no approval: the decision is not in the record and
+no consent is kept. `vbw show contract` still says `NOT APPROVED` and `vbw next`
+asks again. Fix the cause (for example, make the hook pass) and approve again.
+Other VBW commits still only warn, with git's reason.
+
 ## Rules
 
 A rule is one condition, edge or error case that an `auto` requirement's text
