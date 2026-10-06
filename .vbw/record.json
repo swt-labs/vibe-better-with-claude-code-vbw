@@ -1684,6 +1684,10 @@
         {
           "text": "a proof of many checks finishes in a fraction of the sequential time",
           "check": "C110"
+        },
+        {
+          "text": "a stop signal sent to vbw prove alone waits for its running checks, then cleans up; nothing outlives it",
+          "check": "C120"
         }
       ]
     },
@@ -1754,6 +1758,10 @@
         {
           "text": "a project rule that requires a check overrides the documentation exemption: that check runs and decides",
           "check": "C115"
+        },
+        {
+          "text": "documentation is defined once (md, markdown, rst) and the early tier and the Lead use that definition",
+          "check": "C121"
         }
       ]
     },
@@ -3433,6 +3441,28 @@
       ],
       "files": [
         "tests/approval-menu.bats"
+      ]
+    },
+    {
+      "id": "C120",
+      "req": "R69",
+      "run": [
+        "bats",
+        "tests/prove-signal.bats"
+      ],
+      "files": [
+        "tests/prove-signal.bats"
+      ]
+    },
+    {
+      "id": "C121",
+      "req": "R71",
+      "run": [
+        "bats",
+        "tests/doc-definition.bats"
+      ],
+      "files": [
+        "tests/doc-definition.bats"
       ]
     }
   ],
@@ -9737,6 +9767,24 @@
         "every message the kernel, the guard and the answer hook give Claude points to the approval menu (AskUserQuestion with the question vbw show contract prints) and may name /vbw:approve, but never tells the user to type or run it",
         "the router approve step says approval is asked only with the menu and never asks the user to type the command; a user who types /vbw:approve is still served",
         "the qa skill says the same where tests wait for approval"
+      ]
+    },
+    {
+      "id": "P57.6",
+      "phase": "P57",
+      "title": "Documentation is defined once",
+      "reqs": [
+        "R71"
+      ],
+      "files": [
+        "plugin/lib/cmd-next.sh",
+        "plugin/agents/lead.md"
+      ],
+      "after": [],
+      "status": "planned",
+      "tasks": [
+        "the early tier counts code with the shared is_doc from rigor-defs.jq (through VBW_JQ_DEFS), not a list of its own (F42)",
+        "the Lead is told documentation is markdown and rst; plain text keeps its check (F41, D144)"
       ]
     }
   ],
