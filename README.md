@@ -110,7 +110,7 @@ This project exists to make AI coding better for everyone, and "everyone" means 
 
 ### One command, the whole lifecycle
 
-`/vbw:vibe` reads where your project stands and does the next step: agree on what to build, plan, get your approval, build, check, fix, review, ship. You never need to know which step you're on. VBW knows. You just keep typing `/vbw:vibe`, which is also what you were doing before, except now it works.
+`/vbw:vibe` reads where your project stands and does the next step: agree on what to build, plan, get your approval, build, check, fix, review, ship. You never need to know which step you're on. VBW knows. You just keep typing `/vbw:vibe`. Senior devs will call this an orchestration layer. Vibe coders will call it the button. Both are right, and only one of them will admit they press it all day.
 
 ### Done means checked
 
