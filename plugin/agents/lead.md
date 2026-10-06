@@ -45,6 +45,8 @@ JSON
 Each rule is `{req, text, check}`. Optional check fields: `exit`, `output` (regular expression), `timeout`, `alone` (boolean). `"alone": true` for a check starting containers, services or other heavy shared resources (docker, database server, dev server): it never runs beside another VBW check.
 Then `vbw show contract`; read once as the user will, tier lines included.
 
+**Changing one thing** (a plan, check or rule not yet started): `vbw apply --patch` with only those `plans`, `checks`, `rules`; everything else stays. Never add, rename or duplicate phases of started work: add plans to the phase.
+
 **Planning again:** `vbw show roadmap` first. Every started plan (building, done, blocked) reappears exactly as is; plan only the rest, with unused ids. Never change check files of finished work.
 
 Do not edit `.vbw/spec.md` or `.vbw/record.json`; do not commit. Return `applied`, short `summary` for the user, `blockers` (what you could not plan, why), `choices`: technical choices you made yourself, one plain line each.
