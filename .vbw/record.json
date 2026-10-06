@@ -5615,8 +5615,8 @@
       "qa": {
         "result": "pass",
         "tier": "deep",
-        "tree": "ce86b9ce2e335aaa156705d1ca1016468137b1b005833c656440f57bb6c51064",
-        "at": "2026-10-06T22:52:12Z",
+        "tree": "896c498e292f5c814ad4460f4dcc13b70e95567e2e27396411cc61575668b828",
+        "at": "2026-10-06T23:36:59Z",
         "note": "30/30 checks"
       },
       "outcome": {
@@ -10438,6 +10438,11 @@
       "id": "T44",
       "text": "Claude Code 2.1.292 added an effort parameter to the Agent tool: VBW could pass its per-stage effort (profile) to each sub-agent",
       "status": "open"
+    },
+    {
+      "id": "T45",
+      "text": "QA re-check scope: a phase is re-checked deeply when a phase it builds on changed only test-result files (2026-10-07: P55 re-checked because P57's tools/l3-results/smallchange.json was re-committed); judge dependency changes by kind, as R71 does for depth",
+      "status": "open"
     }
   ],
   "decisions": [
@@ -12000,5 +12005,11 @@
     "scope": [],
     "passed": true
   },
-  "lease": null
+  "lease": {
+    "run": "qa-20261006T232151Z",
+    "kind": "qa",
+    "started_at": "2026-10-06T23:21:51Z",
+    "files": [],
+    "session": "9cd2cc30-8c86-4520-9d71-a0e82aff5407"
+  }
 }
