@@ -172,7 +172,7 @@ When any plan of a phase is no longer `planned`, a planning round (a full
 
 A new phase for requirements nobody planned yet is still accepted, and before
 any work has started planning may rename and reshape phases freely. To add or
-change a plan in a started phase, add plans to it or use `vbw apply --patch`.
+change a plan that has not started, add plans to the phase or use `vbw apply --patch`.
 
 ## Agents
 
