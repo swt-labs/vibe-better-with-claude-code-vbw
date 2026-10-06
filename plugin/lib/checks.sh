@@ -93,13 +93,14 @@ checks_gate_blocker() {
 
 # checks_gate_enter ID ALONE: wait for the gate, then register this check.
 checks_gate_enter() {
-  local id="$1" kind=shared g="$VBW_RUNTIME/gate" limit="${VBW_CHECK_WAIT_SECONDS:-900}" start blocker='' idle=0 want=''
+  local id="$1" kind=shared g="$VBW_RUNTIME/gate" limit="${VBW_CHECK_WAIT_SECONDS:-900}" start blocker='' idle=0 want='' owner
   [ "$2" != true ] || kind=alone
   mkdir -p "$g" || vbw_die "cannot create $g"
   start=$(date +%s)
   while :; do
     if mkdir "$g/mutex" 2> /dev/null; then
-      printf '%s\n' "$$" > "$g/mutex/pid"
+      # The lock can vanish before its owner is written (taken as stale): retry.
+      { printf '%s\n' "$$" > "$g/mutex/pid"; } 2> /dev/null || { sleep 0.1; continue; }
       vbw_guard_add dir "$g/mutex"
       idle=0
       if blocker=$(checks_gate_blocker "$kind"); then
@@ -121,8 +122,10 @@ checks_gate_enter() {
     else
       # A mutex whose owner is gone (or never wrote its pid) is taken over.
       idle=$((idle + 1))
-      if [ -f "$g/mutex/pid" ]; then
-        checks_gate_live "x.$(cat "$g/mutex/pid" 2> /dev/null)" || rm -rf "$g/mutex"
+      # The owner is read once: empty means a handover in progress, never a dead owner.
+      owner=$(cat "$g/mutex/pid" 2> /dev/null)
+      if [ -n "$owner" ]; then
+        checks_gate_live "x.$owner" || rm -rf "$g/mutex"
       elif [ "$idle" -gt 50 ]; then
         rm -rf "$g/mutex"
       fi
