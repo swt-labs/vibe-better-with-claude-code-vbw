@@ -61,12 +61,21 @@ const closeRun = async ids => {
   return done
 }
 
+// The proof's one run of the project's test command (args.round.suite, from vbw next --json):
+// every QA agent gets its result and none runs the suite again.
+const suite = (args && args.round && args.round.suite) || null
+const ran = suite && suite.status !== 'skipped' && suite.status !== 'not run'
+const suiteNote = !suite ? '' : ran
+  ? `\n\nThe project's test command (${suite.command}) ran once for this round: ${suite.status}, exit ${suite.exit}, ${suite.seconds}s. Its output ends: ${suite.tail}\nDo not run the project's test command; use this result.`
+  : `\n\nThe project's test command (${suite.command}) did not run in this round (${suite.status}). Do not retry it and do not run it yourself; say in your summary that the suite was not run.`
+if (suite && !ran) log(`the project's test command (${suite.command}) did not run (${suite.status}): QA agents were told not to retry it`)
+
 phase('Verify')
 const cellOf = id => rigor[id] || {}
 const tierOf = id => cellOf(id).qa || tier
 const modelOf = id => (cellOf(id).models && cellOf(id).models.qa) || models.qa
 const results = await pipeline(phases, id =>
-  agent(`Verify VBW phase ${id} at the ${tierOf(id)} tier, then record your findings and verdict with vbw qa (if qa record refuses a stale proof, run vbw prove, then retry the record once). Start with: vbw show phase ${id}${voice}`,
+  agent(`Verify VBW phase ${id} at the ${tierOf(id)} tier, then record your findings and verdict with vbw qa (if qa record refuses a stale proof, run vbw prove, then retry the record once). Start with: vbw show phase ${id}${suiteNote}${voice}`,
     Object.assign({ agentType: 'vbw:qa', label: `qa ${id}`, phase: 'Verify', schema: VERDICT },
       modelOf(id) ? { model: modelOf(id) } : {})))
 

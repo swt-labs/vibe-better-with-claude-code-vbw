@@ -113,7 +113,7 @@ Dev). Returns: report anything it says was not recorded, then `vbw prove`.
 **prove**: `vbw prove`, report what passed and failed.
 
 **qa**: `VBW_SESSION_ID=${CLAUDE_SESSION_ID} vbw run start qa`, Workflow `vbw:verifying` with args
-`{"phases": <detail.phases>, "tier": <detail.tier>, "models": ..., "rigor": ...}`. QA records each phase's verdict; findings become fixes. Report
+`{"phases": <detail.phases>, "tier": <detail.tier>, "round": <round, as in vbw next --json>, "models": ..., "rigor": ...}`. QA records each phase's verdict; findings become fixes. Report
 verdicts, failed checks and anything not recorded briefly.
 
 **run**: a run is open. This session's workflow still running: wait. Else
