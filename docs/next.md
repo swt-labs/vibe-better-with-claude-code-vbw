@@ -66,6 +66,9 @@ At the `plan` step, `detail.tier` is the early tier (docs/rigor.md): `express`
 for one small, risk-free `auto` requirement in a repository of at most 30
 tracked files, else `standard` (`deep` when forced). On `express` the router
 plans without workflows: one `vbw apply` with one phase, plan and check.
+`detail.small` is `true` for one or two `auto` requirements that name no risk
+category, in a repository of any size; the router plans those the same way
+(docs/rigor.md).
 
 ## Decision order (first match wins)
 

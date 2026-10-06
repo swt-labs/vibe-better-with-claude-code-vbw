@@ -57,6 +57,35 @@ it reads the files the request names, then runs `vbw apply` with one phase
 approval. No project file changes before the contract is approved. If apply
 computes a higher floor, the normal planning workflow runs instead.
 
+## The small change
+
+A small change goes from your request to done with one approval and no
+planning workflow. `vbw next --json` marks it at the `plan` step:
+
+```json
+{ "action": "plan", "detail": { "tier": "standard", "small": true } }
+```
+
+`detail.small` is `true` when the milestone has one or two requirements, all
+`auto`, none naming a risk category (the words above), and `vbw config rigor`
+is `auto` or `express`. It does not depend on the size of the repository, so
+a small request in a large repository is still small, even though its early
+tier (`detail.tier`) is `standard`. A `human` requirement, three or more
+requirements, a risk word or a forced `standard` or `deep` makes it `false`.
+
+When `detail.small` or an `express` tier is set, the router plans the change
+itself: one `vbw apply` with one phase, one plan of one or two files, its
+check and its rules. You approve once. Then VBW builds, proves, checks (see
+"QA depth") and closes it.
+
+One rule keeps this honest in a large repository. When git tracks more than 30
+files, an express phase may cover at most two files. A phase over more than two
+files has a `standard` floor, with the reason `files: more than 2 in a
+repository tracking 40 files`, and `vbw apply` refuses to store it as express
+(`its signals set the floor at standard`). Leave the tier out and the kernel picks `standard`. A
+change over two files or on a risk path therefore plans normally, through the
+planning workflow.
+
 ## What each tier runs
 
 `plugin/lib/tiers.json` holds one row per profile and tier. In the `balanced`
