@@ -5595,7 +5595,15 @@
         "breaks: R4, R5, R8, R12, R13, R14, R22, R23, R24, R25, R26, R27, R28, R29, R31, R34, R35, R37, R38, R39, R40, R42, R43, R45, R46, R47, R48, R49, R50, R51, R59, R60, R61, R62, R64, R65, R66, R67",
         "tests: project test command"
       ],
-      "predicted": "deep"
+      "predicted": "deep",
+      "escalations": [
+        {
+          "at": "2026-10-06T19:08:04Z",
+          "from": "deep",
+          "to": "deep",
+          "reason": "Dev blocked P57.2: Code done and committed (577a317d); C115 passes. Two existing tests outside the plan's files now fail by design and need a fixture change: tests/kernel-prove.bats 'approve refuses an incomplete contract' (plan file src/pay.txt is a doc, so R1 is now exempt; fix: edit_record '.checks = [] | .plans[0].files = [\"src/pay.js\"]') and tests/rigor-floor.bats 'changing existing files with no project test command' (uses src/exists.txt as existing code; use src/exists.js at lines 75-81). Edits are uncommitted in the tree; they need to be added to this plan's files and committed. Also not done: .rst in cmd-next.sh facts (file outside plan)."
+        }
+      ]
     },
     {
       "id": "P58",
@@ -9502,14 +9510,15 @@
         "P55.4",
         "P55.5"
       ],
-      "status": "planned",
+      "status": "blocked",
       "tasks": [
         "define once what a documentation-only requirement is: every plan serving it changes only documentation files (markdown, text, rst) and it has no check",
         "do not ask for a check or rules for it in vbw next, vbw apply and the approval",
         "let vbw prove mark it proven once its plans are done; a check that exists (a project rule asked for it) still runs and decides",
         "stop counting documentation files as existing code in the 'no project test command' floor",
         "Lead prompt: documentation or wording alone needs no new check unless a project rule requires one"
-      ]
+      ],
+      "note": "Code done and committed (577a317d); C115 passes. Two existing tests outside the plan's files now fail by design and need a fixture change: tests/kernel-prove.bats 'approve refuses an incomplete contract' (plan file src/pay.txt is a doc, so R1 is now exempt; fix: edit_record '.checks = [] | .plans[0].files = [\"src/pay.js\"]') and tests/rigor-floor.bats 'changing existing files with no project test command' (uses src/exists.txt as existing code; use src/exists.js at lines 75-81). Edits are uncommitted in the tree; they need to be added to this plan's files and committed. Also not done: .rst in cmd-next.sh facts (file outside plan)."
     },
     {
       "id": "P57.3",
