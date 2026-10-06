@@ -89,6 +89,7 @@ VBW is a Claude Code plugin that makes it build software properly: the user agre
 - R80 [auto] One plan, check or rule can be changed without resubmitting the whole milestone, and a fix round cannot add phases or rename phases nobody asked for
 - R81 [auto] A project setting limits how many checks run at the same time; an approval whose commit fails stops and says why instead of only warning; a workflow ends its own run when it finishes
 - R82 [auto] The VBW panel opens at about a quarter of the terminal width (never narrower than 40 columns); a width the user sets by hand always wins
+- R83 [auto] VBW always asks for approval with the approval menu, where Enter approves; it never asks the user to type /vbw:approve, which still works when the user types it
 
 <!-- One requirement per line: an id, how it is proved, and a user-observable
      statement. [auto] = a check can prove it; [human] = only a person can judge it.

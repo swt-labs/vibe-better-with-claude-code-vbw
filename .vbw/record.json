@@ -2051,6 +2051,14 @@
           "check": "C117"
         }
       ]
+    },
+    {
+      "id": "R83",
+      "text": "VBW always asks for approval with the approval menu, where Enter approves; it never asks the user to type /vbw:approve, which still works when the user types it",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M11",
+      "rules": []
     }
   ],
   "checks": [
@@ -9186,15 +9194,14 @@
       "after": [
         "P54.1"
       ],
-      "status": "blocked",
+      "status": "planned",
       "tasks": [
         "add vbw run confirm ID...: one line per plan, fix or phase of the open run saying whether its state or verdict was recorded, naming plainly the ones that were not (exit 1), changing nothing",
         "make vbw run end a quiet no-op, with no commit, when no run is open",
         "add a closing step to the build, fix and QA workflows: when args.session is given, a small agent labelled close run runs vbw run confirm for that run's ids and then vbw run end, and the workflow returns and logs what was not recorded (older tests call these workflows without a session and must see no extra agent)",
         "give the planning and mapping workflows the same closing step (run end only) on every way out",
         "list vbw run confirm in vbw help; keep verifying.js free of the words inputs, standing and recheck (an older test checks that)"
-      ],
-      "note": "Tasks 1-5 are committed (vbw run confirm, quiet run end, closing agent in build/fix/QA/planning/mapping, help). Check C112 needs plugin/skills/vibe/SKILL.md changed (its R81 test: the router passes args.session, drops the 'vbw run end' after each workflow so at most 4 mentions remain, keeps --owner-closed). That file is not in the plan's files, so vbw commit refuses it. Add plugin/skills/vibe/SKILL.md to P55.1's files and rerun; I reverted my uncommitted router edit."
+      ]
     },
     {
       "id": "P55.2",

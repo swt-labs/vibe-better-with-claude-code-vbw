@@ -38,6 +38,7 @@ body() { sed -n "/^scenario_$1()/,/^}/p" "$SUITE"; }
     and (.not_tested | type == "array" and length > 0)
     and .facts.planning_workflow == false
     and .facts.approvals == 1
+    and .facts.approved_by_choice == true
     and .facts.plans == 1
     and .facts.check_passed == true
     and (.facts.qa_tier | IN("quick", "express", "none"))
