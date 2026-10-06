@@ -8519,7 +8519,7 @@
     {
       "id": "T8",
       "text": "Idea (owner, 2026-10-03, brainstorm later): first-run interview, a short deterministic Q&A that sets the user's proficiency and preferences, so a senior developer gets VBW tuned to their expertise and a pure vibe coder gets settings that ensure good code is built",
-      "status": "open"
+      "status": "done"
     },
     {
       "id": "T9",
@@ -8534,7 +8534,7 @@
     {
       "id": "T11",
       "text": "Idea (owner, 2026-10-03, brainstorm later): proactive suggestions matched to the user's level (from the first-run interview, T8). VBW regularly suggests what the user may not know: for a vibe coder, keep keys in .env and out of the repo, render on mobile, encrypt API calls; for a senior developer, e.g. SHA-1 chosen where SHA-256 fits, quantum resistance. Goal: steer toward better design and algorithm choices and away from bad ones; the user decides",
-      "status": "open"
+      "status": "done"
     },
     {
       "id": "T12",
@@ -8564,7 +8564,7 @@
     {
       "id": "T17",
       "text": "Before 2.0.19 ships (owner, 2026-10-05): interview's first question becomes 'Hello, Human! Welcome to VBW. Let me interview you real quick to better adapt to you. What is your level of proficiency?' (same four options); update the interview skill, its protected test, docs/interview.md and the L3 newcomer/senior driver match; batch into the M9 contract change with the sound files",
-      "status": "open"
+      "status": "done"
     },
     {
       "id": "T18",
@@ -8589,6 +8589,86 @@
     {
       "id": "T22",
       "text": "interview SKILL.md line 16 still says 'before any spec work'; say 'before any spec or convert work' like the router (cosmetic, QA note on P51)",
+      "status": "open"
+    },
+    {
+      "id": "T23",
+      "text": "release skill: run the suite in a local Linux container (bash 5, GNU coreutils) before push; 2.0.19 reached GitHub with a Linux-only bug CI caught after the push",
+      "status": "open"
+    },
+    {
+      "id": "T24",
+      "text": "Guard false positives: a command that only reads .vbw/record.json (cp, cat into a script) or only names the approve subcommand in text is refused as a write/approval; seen 4+ times",
+      "status": "open"
+    },
+    {
+      "id": "T25",
+      "text": "Guard gap: a Dev wrote a file outside its plan through Python (open().write) and the guard did not see it; Bash-only write detection",
+      "status": "open"
+    },
+    {
+      "id": "T26",
+      "text": "Docs agent commits but does not run vbw plan done; the building workflow should confirm each plan's status after its agent returns (like T20 for QA)",
+      "status": "open"
+    },
+    {
+      "id": "T27",
+      "text": "l3-suite scheduler waits on the oldest job (head-of-line), so a slow scenario leaves slots idle; poll for any finished job (bash 3.2 has no wait -n)",
+      "status": "open"
+    },
+    {
+      "id": "T28",
+      "text": "docs/panel.md and bench-panel.sh header CPU figures are stale (now 0.10-0.21 ms vs written 0.02-0.08; budget 0.5 ms holds)",
+      "status": "open"
+    },
+    {
+      "id": "T29",
+      "text": "Field report (Portfolium market recorder, 2026-10-06), adopt: proof copy links target/ and other build output, so artifacts embed deleted proof paths (Rust); keep the proof copy at a stable path and never link build-output folders (language-agnostic)",
+      "status": "open"
+    },
+    {
+      "id": "T30",
+      "text": "Field report, adopt: a plan whose work was committed by the approval commit can never be closed (plan done: no commit yet), and a stuck or blocked plan stops unrelated plans",
+      "status": "open"
+    },
+    {
+      "id": "T31",
+      "text": "Field report, adopt: the planning lease lets agents write any file, blocking other sessions' folders; scope it to .vbw/ and the declared test files",
+      "status": "open"
+    },
+    {
+      "id": "T32",
+      "text": "Field report, adopt: narrow apply (patch one plan or check without resubmitting the milestone); refuse unrequested phase additions and title changes in fix rounds; no Architect re-scope in decided rounds",
+      "status": "open"
+    },
+    {
+      "id": "T33",
+      "text": "Field report, reshape: batch approvals per phase (one approval covering a phase's test edits before its proof) instead of per edit; declined: auto-approving 'mechanical' test edits (unsafe, unverifiable across languages)",
+      "status": "open"
+    },
+    {
+      "id": "T34",
+      "text": "Field report, adopt: show each check's timeout in vbw show contract; a fixed setting for how many checks run at once (not load-based); approval commit failure must fail loudly; optional decision-number prefix; workflows end their own run",
+      "status": "dropped"
+    },
+    {
+      "id": "T35",
+      "text": "Process: check the Claude Code changelog at every release (done by hand for 2.0.19); owner question still open on a daily automatic check",
+      "status": "dropped"
+    },
+    {
+      "id": "T36",
+      "text": "Maintainer release step (not shipped to users, owner 2026-10-06): before each push, a maintainer checks the Claude Code changelog since the last release by hand; never a VBW feature or scheduled job",
+      "status": "open"
+    },
+    {
+      "id": "T37",
+      "text": "M13 LEAD (owner 2026-10-06): small changes stay small. Rigor proportional to the change, for any project from a snake game to a large Rust codebase: a one-file fix with a failing test goes approve -> build -> check -> done; changes that need no test (wording, docs) need no new check; QA depth by size and risk of the diff, never deep for a trivial change; fewer approvals (one per phase); measure time per change type before and after",
+      "status": "open"
+    },
+    {
+      "id": "T38",
+      "text": "Field report, adopt (trimmed): a fixed setting for how many checks run at once; approval commit failure fails loudly; workflows end their own run. Dropped as gold plating: decision-number prefix, timeouts shown in the contract",
       "status": "open"
     }
   ],
@@ -9335,6 +9415,29 @@
       "id": "D133",
       "at": "2026-10-06T15:21:30Z",
       "text": "Shipped M10 Interview first, then the old VBW 1 folder: 1 requirements proven or accepted"
+    },
+    {
+      "id": "D134",
+      "text": "Roadmap order: M11 Linux fix (2.0.20) → M12 safe and unblocked → M13 less waiting → M14 benchmark and 2.1 → cheaper and faster → later ideas",
+      "why": "owner confirmed the recommended order 2026-10-06: wrong results, blocked work and safety gaps before convenience; benchmark stays the last step before 2.1",
+      "at": "2026-10-06T15:50:59Z"
+    },
+    {
+      "id": "D135",
+      "text": "Claude Code changelog is checked by maintainers by hand at each release, never inside VBW",
+      "why": "owner 2026-10-06: it would affect every VBW user on other projects and confuse them; maintainer release step only",
+      "at": "2026-10-06T15:51:00Z"
+    },
+    {
+      "id": "D136",
+      "text": "M13 is 'small changes stay small' plus every VBW performance booster (T2 parallel prove, T3 one test-suite run per QA round, narrow apply, one approval per phase); trims: decision prefix and timeouts display dropped",
+      "why": "owner 2026-10-06: deep tests for little fixes waste time; VBW is built with VBW but users use it for anything from a simple HTML snake game to a large Rust backtesting codebase, so rigor must scale with the change",
+      "at": "2026-10-06T15:59:01Z"
+    },
+    {
+      "id": "D137",
+      "at": "2026-10-06T16:00:35Z",
+      "text": "Contract approved: 65 requirements, 93 checks, 142 plans (2594b7d1d995)"
     }
   ],
   "commands": {
