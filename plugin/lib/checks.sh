@@ -12,10 +12,10 @@ checks_begin() {
   local waiting
   CHECK_HASH=$(contract_hash "$1")
   CHECK_WAITING=$(contract_waiting "$1") \
-    || vbw_die "the contract is not approved, or changed since it was approved: review it (vbw show contract), then /vbw:approve"
+    || vbw_die "the contract is not approved, or changed since it was approved: review it (vbw show contract), then ask the user with the approval menu (AskUserQuestion)"
   if [ -n "$CHECK_WAITING" ]; then
     waiting=$(printf '%s' "$CHECK_WAITING" | tr '\n' ' ')
-    [ "${2:-}" != strict ] || vbw_die "check files changed since it was approved are waiting for approval: ${waiting% }: review them, then /vbw:approve"
+    [ "${2:-}" != strict ] || vbw_die "check files changed since it was approved are waiting for approval: ${waiting% }: review them, then ask the user with the approval menu (AskUserQuestion)"
     printf 'vbw: waiting for approval (changed since approved): %s\n' "${waiting% }" >&2
   fi
   CHECK_OUT=$(mktemp -d "$VBW_RUNTIME/run.XXXXXX") || vbw_die "cannot create a directory in $VBW_RUNTIME"

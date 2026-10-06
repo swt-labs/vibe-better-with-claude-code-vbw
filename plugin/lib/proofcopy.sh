@@ -58,5 +58,5 @@ proofcopy_verify() {
     cmp -s "$VBW_ROOT/$f" "$PROOF_COPY/$f" 2> /dev/null || bad="$bad $f"
   done < <(printf '%s' "$2" | jq -j '[.checks[].files // [] | .[]] | unique[] | . + "\u0000"')
   proofcopy_remove
-  vbw_die "check files not committed as approved:${bad:- (the committed contract differs)}: commit them, then /vbw:approve"
+  vbw_die "check files not committed as approved:${bad:- (the committed contract differs)}: commit them, then ask the user with the approval menu (AskUserQuestion)"
 }
