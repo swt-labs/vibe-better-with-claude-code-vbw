@@ -9626,7 +9626,7 @@
         "P57.4",
         "P58.1"
       ],
-      "status": "planned",
+      "status": "done",
       "tasks": [
         "add the smallchange scenario: a shipped greet.sh project; the user asks one small change in plain words through /vbw:vibe",
         "facts from the record, git and the transcript: no planning workflow, one approval decision, one plan, its check passed, QA quick at most, the change committed",
