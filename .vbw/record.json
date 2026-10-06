@@ -9795,7 +9795,7 @@
         "plugin/agents/lead.md"
       ],
       "after": [],
-      "status": "planned",
+      "status": "done",
       "tasks": [
         "the early tier counts code with the shared is_doc from rigor-defs.jq (through VBW_JQ_DEFS), not a list of its own (F42)",
         "the Lead is told documentation is markdown and rst; plain text keeps its check (F41, D144)"
