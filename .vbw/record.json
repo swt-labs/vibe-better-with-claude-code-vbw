@@ -5596,7 +5596,15 @@
         "breaks: R1, R2, R3, R12, R13, R14, R22, R23, R24, R25, R26, R27, R28, R31, R32, R33, R35, R36, R37, R38, R39, R40, R43, R44, R45, R46, R47, R48, R49, R50, R58, R60, R61, R62, R65, R66, R67",
         "tests: project test command"
       ],
-      "predicted": "deep"
+      "predicted": "deep",
+      "qa": {
+        "result": "fail",
+        "tier": "deep",
+        "tree": "b7ebb6cea72939bafd2f8c1b9c0f5e3d516cb63687620df73ce860c82b839936",
+        "at": "2026-10-06T21:13:01Z",
+        "note": "27/28 checks",
+        "rounds": 1
+      }
     },
     {
       "id": "P57",
@@ -10017,6 +10025,14 @@
       "attempts": 1,
       "status": "closed",
       "note": "test fail"
+    },
+    {
+      "id": "F40",
+      "req": "R69",
+      "source": "qa",
+      "attempts": 0,
+      "status": "open",
+      "note": "P56.2 task 4 promised cleanup of every background process on error or interrupt. plugin/lib/checks.sh (commit 7cd1aa96, checks_run_all) starts each check as a background subshell and collects pids, but nothing stops or waits for them when vbw prove gets TERM/INT/HUP: the guard only removes the output directory, so running checks go on as orphans and then write into a deleted folder. A Ctrl-C in a terminal reaches them through the process group; a TERM sent to vbw alone does not. No test in tests/prove-parallel.bats covers an interrupted parallel proof, so the promise is untested. Evidence is by reading the code; I could not run an interrupt experiment (QA may not write files). Options: (a, recommended) have the interrupt handler wait for the running checks to finish before cleaning up, which fits the rule that VBW never kills processes, and add a test; (b) change P56.2 task 4 to say only files are cleaned up, and record that as a decision."
     }
   ],
   "todos": [
