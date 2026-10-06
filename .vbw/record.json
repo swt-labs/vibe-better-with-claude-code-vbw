@@ -6,7 +6,7 @@
   "milestone": {
     "id": "M11",
     "title": "Faster, safer, unblocked",
-    "status": "active"
+    "status": "shipped"
   },
   "shipped": [
     {
@@ -58,6 +58,11 @@
       "id": "M10",
       "title": "Interview first, then the old VBW 1 folder",
       "at": "2026-10-06T15:21:30Z"
+    },
+    {
+      "id": "M11",
+      "title": "Faster, safer, unblocked",
+      "at": "2026-10-06T23:38:11Z"
     }
   ],
   "requirements": [
@@ -11267,6 +11272,11 @@
       "id": "D147",
       "at": "2026-10-06T22:30:39Z",
       "text": "Contract approved: 80 requirements, 118 checks, 168 plans (a3a5fccd41a1)"
+    },
+    {
+      "id": "D148",
+      "at": "2026-10-06T23:38:11Z",
+      "text": "Shipped M11 Faster, safer, unblocked: 16 requirements proven or accepted"
     }
   ],
   "commands": {
