@@ -17,7 +17,7 @@ early_tier() {
 track_files() { # N: commit N more tracked files
   local i
   mkdir -p many
-  for ((i = 1; i <= $1; i++)); do printf '%s\n' "$i" > "many/f$i.txt"; done
+  for ((i = 1; i <= $1; i++)); do printf '%s\n' "$i" > "many/f$i.md"; done
   git add many
   git commit -q -m "chore(test): files"
 }
