@@ -5708,12 +5708,19 @@
         }
       ],
       "qa": {
-        "result": "fail",
+        "result": "pass",
         "tier": "deep",
-        "tree": "063b0de270c8b0f10ca617f5c96675eb39762c267f25047a72adfa6543905208",
-        "at": "2026-10-06T21:14:46Z",
-        "note": "28/30 checks",
-        "rounds": 1
+        "tree": "5ad1fd5b4c2f3963e488ed3257c7a28fb3c0be7aa9a18456fb1c7e43500d648e",
+        "at": "2026-10-06T22:19:19Z",
+        "note": "24/24 checks"
+      },
+      "outcome": {
+        "tier": "deep",
+        "predicted": "deep",
+        "held": true,
+        "fix_rounds": 2,
+        "qa_findings": 2,
+        "escalations": 2
       }
     },
     {
@@ -10130,7 +10137,7 @@
       "req": "R71",
       "source": "qa",
       "attempts": 0,
-      "status": "fixed",
+      "status": "closed",
       "note": "Plan P57.2 task 1 says documentation is 'markdown, text, rst'. Commit de5e4b4d made it markdown and rst only (plugin/lib/rigor-defs.jq is_doc), so a .txt-only change still needs a check. No recorded decision approves this. plugin/agents/lead.md (577a317d) still tells the Lead that 'markdown, text, rst' need no check, so the Lead prompt and the kernel disagree. Either follow the plan and fix the code, or record the decision and correct the plan text and Lead prompt and docs."
     },
     {
@@ -10138,7 +10145,7 @@
       "req": "R71",
       "source": "qa",
       "attempts": 0,
-      "status": "fixed",
+      "status": "closed",
       "note": "The 'documentation' definition is not in one place. plugin/lib/cmd-next.sh line 28 still counts .md, .markdown and .txt (not .rst) as non-code for the early tier, while rigor-defs.jq is_doc is md, markdown, rst. The Dev's own blocked note listed '.rst in cmd-next.sh facts' as not done, and no commit finished it. P57.2 task 1 says define it once."
     },
     {
