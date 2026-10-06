@@ -48,7 +48,7 @@ At a stop, tell user in plain words what happened.
 Every stop ends with a last line, **What I need from you:** <the one thing user must do now>, or "nothing".
 Never claim more than kernel output shows.
 
-`plan`, `build`, `fix` need the **Workflow** tool (the `workflows` line above turned it on). Still none: say why and stop. Pass
+`plan`, `build`, `fix` need the **Workflow** tool (the `workflows` line above turned it on). None: say why, stop. Pass
 `session` (`${CLAUDE_SESSION_ID}`: the workflow confirms what its agents recorded and ends its own run), `models` (from `vbw config models`), the next JSON's top-level `rigor` and its `profile` in every workflow's args.
 
 Before `spec` or a workflow `plan`: code and no `.vbw/map.md` → map first:
@@ -83,12 +83,12 @@ to the decision round; write a constraint only when user stated it. Recommend; d
 agreed requirement: `vbw spec add auto|human "statement"` (goals and constraints go in `.vbw/spec.md`, then `vbw spec sync`). Default milestone title → `vbw milestone rename "<title>"`. Check
 `## Commands` in `.vbw/spec.md` (what every proof runs) fits what was agreed (right sub-project, right interpreter); fix there, then `vbw spec sync`.
 
-**plan** with `detail.tier` express: no mapping, no planning workflow. Read the
+**plan** with `detail.tier` express or `detail.small`: no mapping, no planning workflow. Read the
 files the request names, then `vbw apply` one express phase with one
-plan (files, tasks), one check that fails today, and the `rules` (each condition, edge and error case the requirement states, each with its check); go to **approve**.
+plan (one or two files, tasks), one check that fails today, and the `rules` (each condition, edge and error case the requirement states, each with its check); go to **approve**.
 Ids continue the record's numbering (`vbw show roadmap`).
 Example: `{"phases":[{"id":"P1","title":"Fix add","reqs":["R1"],"tier":"express"}],"plans":[{"id":"P1.1","phase":"P1","title":"Fix add","reqs":["R1"],"files":["calc.sh"],"after":[],"tasks":["add returns the sum"]}],"checks":[{"id":"C1","req":"R1","run":["sh","test.sh"],"files":["test.sh"]}],"rules":[{"req":"R1","text":"add returns the sum","check":"C1"}]}`
-Apply computes a higher tier: run the planning workflow below instead.
+Over two files, a risk path or a higher tier from apply: planning workflow below.
 
 **plan**: `VBW_SESSION_ID=${CLAUDE_SESSION_ID} vbw run start plan`, Workflow `vbw:planning` with args
 `{"requirements": <requirements>, "models": ...}`. Status `needs_decisions`: user
@@ -128,7 +128,7 @@ naming it): "Still running: wait" (Recommended), or "That session is closed" →
 once more (`vbw fix retry <id>`), or change the requirement or its check
 (contract then needs approval again).
 
-**scope** (needs user): `vbw show evidence`; explain which commits changed files
+**scope** (needs user): `vbw show evidence`; say which commits changed files
 outside their plan; ask how to proceed. Never rewrite history.
 
 **accept** (needs user): per requirement in `detail.requirements`, show the
