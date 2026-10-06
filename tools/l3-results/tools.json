@@ -1,9 +1,9 @@
 {
   "scenario": "tools",
   "fixture": "greet.sh, one small milestone on an empty README project; the interview asks the tools offer; the user answers yes, then Not yet at the proposed list",
-  "cost_usd": 0.83,
+  "cost_usd": 0.68,
   "evidence_level": "L3",
-  "at": "2026-10-05T19:49:02Z",
+  "at": "2026-10-06T13:28:24Z",
   "passed": true,
   "facts": {
     "answer": "yes",

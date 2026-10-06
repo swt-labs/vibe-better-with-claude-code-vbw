@@ -1,9 +1,9 @@
 {
   "scenario": "newcomer",
   "fixture": "greet.sh from scratch; a user who has never built software answers in plain words and lets VBW decide",
-  "cost_usd": 0.71,
+  "cost_usd": 0.66,
   "evidence_level": "L3",
-  "at": "2026-10-05T11:25:35Z",
+  "at": "2026-10-06T13:34:35Z",
   "passed": true,
   "facts": {
     "answered": {
@@ -11,7 +11,7 @@
       "depth": "plain words",
       "involvement": "decide and tell me",
       "purpose": "a little greeting program for my grandmother, who is learning English.",
-      "follow_ups": 2,
+      "follow_ups": 1,
       "keep": "private"
     },
     "recorded": {

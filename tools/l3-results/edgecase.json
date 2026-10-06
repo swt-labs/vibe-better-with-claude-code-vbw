@@ -1,13 +1,13 @@
 {
   "scenario": "edgecase",
   "fixture": "greet.sh from scratch; the request states one edge case (several words as separate arguments)",
-  "cost_usd": 0.84,
+  "cost_usd": 0.83,
   "evidence_level": "L3",
-  "at": "2026-10-05T11:21:42Z",
+  "at": "2026-10-06T13:23:55Z",
   "passed": true,
   "facts": {
     "edge_case": "./greet.sh Ana Maria (two arguments) prints \"Hello, Ana Maria!\"",
-    "rule_text": "two arguments are joined with one space: Hello, Ana Maria!",
+    "rule_text": "two names print Hello, Ana Maria! joined by one space, exit 0, nothing else",
     "rule_check": "C3",
     "rule_listed_before_approval": true,
     "check_approved": true,
