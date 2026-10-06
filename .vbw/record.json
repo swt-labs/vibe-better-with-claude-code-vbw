@@ -6,7 +6,7 @@
   "milestone": {
     "id": "M9",
     "title": "Live VBW panel",
-    "status": "active"
+    "status": "shipped"
   },
   "shipped": [
     {
@@ -48,6 +48,11 @@
       "id": "M8",
       "title": "Smarter QA re-checks",
       "at": "2026-10-05T04:24:26Z"
+    },
+    {
+      "id": "M9",
+      "title": "Live VBW panel",
+      "at": "2026-10-06T12:40:05Z"
     }
   ],
   "requirements": [
@@ -1053,7 +1058,7 @@
       "id": "R54",
       "text": "The panel is easy to read at a glance at the user's level",
       "proof": "human",
-      "status": "open",
+      "status": "accepted",
       "milestone": "M9"
     },
     {
@@ -1484,7 +1489,7 @@
       "id": "R63",
       "text": "The recommended tools fit the project and are explained at the user's level",
       "proof": "human",
-      "status": "open",
+      "status": "accepted",
       "milestone": "M9"
     },
     {
@@ -4314,6 +4319,14 @@
         "tree": "11ceeea168c7a7686ef44b7e34d1784b4a2e22cb53720c5f83d25dd46c281a36",
         "at": "2026-10-06T05:22:17Z",
         "note": "24/24 checks"
+      },
+      "outcome": {
+        "tier": "deep",
+        "predicted": "deep",
+        "held": true,
+        "fix_rounds": 0,
+        "qa_findings": 0,
+        "escalations": 3
       }
     },
     {
@@ -4476,6 +4489,14 @@
         "tree": "bce261727fbb3fdbab4b2bccc09b8673ebdc76221b46cd0da3cedcee90d414cb",
         "at": "2026-10-06T04:57:06Z",
         "note": "30/30 checks"
+      },
+      "outcome": {
+        "tier": "deep",
+        "predicted": "deep",
+        "held": true,
+        "fix_rounds": 2,
+        "qa_findings": 2,
+        "escalations": 1
       }
     },
     {
@@ -9087,6 +9108,11 @@
       "id": "D129",
       "at": "2026-10-06T04:25:46Z",
       "text": "Contract approved: 63 requirements, 91 checks, 139 plans (e28e185d49c6)"
+    },
+    {
+      "id": "D130",
+      "at": "2026-10-06T12:40:05Z",
+      "text": "Shipped M9 Live VBW panel: 16 requirements proven or accepted"
     }
   ],
   "commands": {
