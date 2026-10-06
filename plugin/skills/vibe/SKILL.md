@@ -55,7 +55,7 @@ Before `spec` or a workflow `plan`: code and no `.vbw/map.md` → map first:
 `VBW_SESSION_ID=${CLAUDE_SESSION_ID} vbw run start map`, Workflow `vbw:mapping` (args as above),
 `VBW_SESSION_ID=${CLAUDE_SESSION_ID} vbw run end`, write its `map` to `.vbw/map.md`, read it.
 
-Then, `profile.ask` true: follow `vbw:interview` before any spec work; resume at
+Then, `profile.ask` true: follow `vbw:interview` before any spec or convert work; resume at
 `profile.pending`; unrecognised answer: ask again, record nothing.
 
 What user must see to decide goes inside AskUserQuestion, not in text before it.
