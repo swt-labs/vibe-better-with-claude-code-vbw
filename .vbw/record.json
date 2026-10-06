@@ -10193,7 +10193,7 @@
       "req": "R69",
       "source": "qa",
       "attempts": 0,
-      "status": "open",
+      "status": "fixed",
       "note": "Parallel proof can break the check gate under load. plugin/lib/checks.sh line 102 creates the lock owner file with printf > $g/mutex/pid right after mkdir; a waiting check that reads that file while it is still empty treats the owner as dead and runs rm -rf on a live lock (the gate's takeover test passes an empty pid to checks_gate_live). Parallel proof makes this window common. The Linux suite already hit it (mutex/pid: No such file or directory). Evidence: tests/gate-race.bats (untracked, not committed) fails 2 of 3 on HEAD: 'a lock whose owner file reads empty is not taken over at once' (the check took the lock: C1 pass 0s) and 'the owner write never prints an error' (checks.sh:102 matches). Fix: do not take over on an empty owner file until a wait has passed, write the owner file so a vanished lock prints nothing, commit the test. Minor: plan P56.2 lists plugin/lib/cmd-prove.sh but no commit touched it."
     },
     {
