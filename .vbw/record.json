@@ -4750,7 +4750,22 @@
         "breaks: R65",
         "tests: project test command"
       ],
-      "predicted": "standard"
+      "predicted": "standard",
+      "qa": {
+        "result": "pass",
+        "tier": "standard",
+        "tree": "25f2a5f004a47ca5e67a5015848c118d1b1780ab3b34609a998943765a882b8e",
+        "at": "2026-10-06T16:27:28Z",
+        "note": "6/6 checks"
+      },
+      "outcome": {
+        "tier": "standard",
+        "predicted": "standard",
+        "held": true,
+        "fix_rounds": 0,
+        "qa_findings": 0,
+        "escalations": 0
+      }
     }
   ],
   "plans": [
@@ -10047,5 +10062,11 @@
     "scope": [],
     "passed": true
   },
-  "lease": null
+  "lease": {
+    "run": "qa-20261006T162706Z",
+    "kind": "qa",
+    "started_at": "2026-10-06T16:27:06Z",
+    "files": [],
+    "session": "9cd2cc30-8c86-4520-9d71-a0e82aff5407"
+  }
 }
