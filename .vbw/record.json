@@ -4,9 +4,9 @@
     "name": "v2"
   },
   "milestone": {
-    "id": "M9",
-    "title": "Live VBW panel",
-    "status": "shipped"
+    "id": "M10",
+    "title": "Interview first, then the old VBW 1 folder",
+    "status": "active"
   },
   "shipped": [
     {
