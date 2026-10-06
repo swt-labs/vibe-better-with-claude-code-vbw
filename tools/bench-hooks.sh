@@ -33,15 +33,22 @@ hooks_json="$PLUGIN/hooks/hooks.json"
 export CLAUDE_PLUGIN_ROOT="$PLUGIN" CLAUDE_PROJECT_DIR="$work"
 
 git -C "$work" init -q
-mkdir -p "$work/.vbw" && printf '{}' > "$work/.vbw/record.json"
+mkdir -p "$work/.vbw"
+# A build lease on the record: the interp case is a build agent's command, which
+# the guard reads in full. Calls without an agent_type are never held to it.
+jq -nc --arg t "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+  '{lease: {run: "build-1", kind: "build", session: "bench", started_at: $t, files: ["src/pay.py"]}}' > "$work/.vbw/record.json"
 
 # Representative calls: a compound command the guard must read in full (git, a
-# heredoc, quotes, a substitution), one it can skip unread, and a file read.
+# heredoc, quotes, a substitution), one it can skip unread, and a file read, and a build agent's program command.
 jq -nc --arg d "$work" '{tool_name: "Bash", cwd: $d, tool_input: {command:
   "git status && npm test -- --watch=false 2>&1 | tail -20; cat <<EOF > notes.md\nhello \"world\" $(date)\nEOF"}}' > "$work/git.json"
 jq -nc --arg d "$work" '{tool_name: "Bash", cwd: $d, tool_input: {command: "npm test -- --watch=false 2>&1 | tail -20"}}' > "$work/npm.json"
 big=$(awk 'BEGIN { for (i = 0; i < 400; i++) printf "line %d with \"quotes\" and $(cmd) and git words\n", i }')
 jq -nc --arg d "$work" --arg b "$big" '{tool_name: "Bash", cwd: $d, tool_input: {command: ("git add notes.md && cat > notes.md <<'\''EOF'\''\n" + $b + "EOF")}}' > "$work/big.json"
+# A build agent running Python from a heredoc on a build lease: the program is read for the files it writes.
+jq -nc --arg d "$work" '{tool_name: "Bash", cwd: $d, session_id: "bench", agent_id: "x1", agent_type: "workflow-subagent", tool_input: {command:
+  "python3 - <<'\''EOF'\''\nimport json\nwith open(\"src/pay.py\", \"w\") as f:\n    json.dump({\"paid\": True}, f)\nprint(open(\"src/pay.py\").read())\nEOF"}}' > "$work/interp.json"
 jq -nc --arg d "$work" '{tool_name: "Read", cwd: $d, tool_input: {file_path: ($d + "/src/app.js")}}' > "$work/read.json"
 # An answered question unrelated to approval: the PostToolUse hook runs after
 # every AskUserQuestion and must stay cheap when the answer is not an approval.
@@ -73,7 +80,7 @@ cpu_pair() {
 
 baseline="jq -nc 'input | empty' - \"$CLAUDE_PROJECT_DIR/.vbw/record.json\" \"$CLAUDE_PLUGIN_ROOT/hooks/end.json\" 2>/dev/null || true"
 status=0
-for input in git npm big read answer; do
+for input in git npm big interp read answer; do
   tool=$(jq -r .tool_name "$work/$input.json")
   event=PreToolUse
   [ "$input" != answer ] || event=PostToolUse
