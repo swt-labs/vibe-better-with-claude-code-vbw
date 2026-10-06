@@ -15,10 +15,11 @@ qa_state() { jq -c --argjson inputs "$(qa_digests "$1")" --argjson cache "$(qa_c
 
 cmd_next() {
   vbw_require_project
-  local record hash counts approved=false changed=false legacy=false next qa
+  local record hash counts approved=false changed=false legacy=false next qa waiting
   record=$(record_read)
   hash=$(contract_hash "$record")
-  contract_approved "$hash" && commands_approved "$record" && approved=true
+  # Check files edited since the approval wait: the build goes on, the one approval comes before proof.
+  waiting=$(contract_waiting "$record") && commands_approved "$record" && approved=true
   next_code_changed "$record" && changed=true
   # A VBW 1 plan not yet converted (docs/convert.md).
   [ -d "$VBW_ROOT/.vbw-planning" ] && ! printf '%s' "$record" | jq -e 'has("converted") or .project.legacy.choice == "fresh"' > /dev/null && legacy=true
@@ -28,7 +29,7 @@ cmd_next() {
   qa=$(qa_state "$record")
   # A plan that names a plan or phase that is not there cannot be judged.
   jq -e '.problems | any(.[]; contains("does not exist")) | not' <<< "$qa" > /dev/null || vbw_die "$(jq -r '.problems | join("; ")' <<< "$qa")"
-  next=$(printf '%s' "$record" | jq -c --argjson tracked "$counts" --argjson approved "$approved" --arg contract "$hash" \
+  next=$(printf '%s' "$record" | jq -c --argjson tracked "$counts" --argjson approved "$approved" --arg waiting "$waiting" --arg contract "$hash" \
     --argjson code_changed "$changed" --argjson legacy "$legacy" --argjson qa "$qa" --argjson profile "$(interview_effective "$record")" --arg session "$(vbw_session)" --slurpfile tiers "$VBW_LIB/tiers.json" "$VBW_JQ_DEFS$(cat "$VBW_LIB/next.jq")")
   # The status line shows the last answer (docs/statusline.md).
   printf '%s\n' "$next" > "$VBW_RUNTIME/next.json.$$" && mv "$VBW_RUNTIME/next.json.$$" "$VBW_RUNTIME/next.json"

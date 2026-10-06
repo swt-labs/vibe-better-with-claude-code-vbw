@@ -3,13 +3,21 @@
 # vbw prove. Nothing runs unless the current contract is approved; every argv
 # is executed directly, never through a shell, with stdin closed and a timeout.
 
-# checks_begin RECORD: die unless the contract is approved. Sets CHECK_HASH and
-# CHECK_OUT, a fresh output directory for this invocation (parallel Devs
-# each get their own). Called directly, never in $(...).
+# checks_begin RECORD [strict]: die unless the contract is approved. Check
+# files edited since the approval wait for it (CHECK_WAITING): the checks still
+# run and the files are named, but with "strict" (proof) it dies. Sets
+# CHECK_HASH and CHECK_OUT, a fresh output directory for this invocation
+# (parallel Devs each get their own). Called directly, never in $(...).
 checks_begin() {
+  local waiting
   CHECK_HASH=$(contract_hash "$1")
-  contract_approved "$CHECK_HASH" \
+  CHECK_WAITING=$(contract_waiting "$1") \
     || vbw_die "the contract is not approved, or changed since it was approved: review it (vbw show contract), then /vbw:approve"
+  if [ -n "$CHECK_WAITING" ]; then
+    waiting=$(printf '%s' "$CHECK_WAITING" | tr '\n' ' ')
+    [ "${2:-}" != strict ] || vbw_die "check files changed since it was approved are waiting for approval: ${waiting% }: review them, then /vbw:approve"
+    printf 'vbw: waiting for approval (changed since approved): %s\n' "${waiting% }" >&2
+  fi
   CHECK_OUT=$(mktemp -d "$VBW_RUNTIME/run.XXXXXX") || vbw_die "cannot create a directory in $VBW_RUNTIME"
 }
 

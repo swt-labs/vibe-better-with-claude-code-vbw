@@ -2,6 +2,7 @@
 # Args: $approved (the current contract hash has consent), $contract (that hash),
 # $code_changed (the project differs from the commit the evidence proved), $legacy (a
 # VBW 1 plan, .vbw-planning/, is not converted yet), $session (the caller's session, "" when unknown).
+# $waiting: the check files edited since the approval, newline-separated ("" when none).
 # $tracked (the number of files git tracks, for the early tier).
 # $profile: interview_effective (lib/interview.sh); next fills unanswered ones with the neutral middle choice.
 # $tiers (slurped: [table]; lib/tiers.json: profile -> tier -> cell).
@@ -95,6 +96,9 @@ def fix_files($r): if .command then ["*"]
     result("scope"; true; "Commits changed files outside their plans: review them (vbw show evidence)"; {violations: .evidence.scope})
   elif ($open_fixes | length) > 0 then
     result("fix"; false; "Run the fix workflow for \($open_fixes | join(", "))"; {fixes: $open_fixes, groups: $fix_groups})
+  elif ($waiting | length) > 0 and ($unproven | length) > 0 then
+    ([$waiting | split("\n")[] | select(length > 0)] | sort) as $wf
+    | result("approve"; true; "Approve the test files edited since the approval, once, before they are proved: \($wf | join(", "))"; {files: $wf})
   elif ($unproven | length) > 0 then
     result("prove"; false; "Run vbw prove for \($unproven | join(", "))"; {requirements: $unproven})
   elif ($to_verify | length) > 0 then

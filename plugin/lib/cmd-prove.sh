@@ -18,7 +18,7 @@ cmd_prove() {
   cd "$VBW_ROOT" || vbw_die "cannot enter $VBW_ROOT"
   local record checks commands scope tree head ev at
   record=$(record_read)
-  checks_begin "$record"
+  checks_begin "$record" strict
   proofcopy_create
   proofcopy_verify "$CHECK_HASH" "$record"
   # Checks and commands run on the clean copy; evidence and the record stay here.
