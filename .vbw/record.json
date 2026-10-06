@@ -8064,7 +8064,7 @@
         "docs/interview.md"
       ],
       "after": [],
-      "status": "planned",
+      "status": "done",
       "tasks": [
         "vbw next: profile.ask is true at convert as at spec while the user has not been interviewed",
         "router: profile.ask true means interview before any spec or convert work",
