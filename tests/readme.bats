@@ -1,6 +1,7 @@
 #!/usr/bin/env bats
 # README.md consistency (R20): commands, install steps, images, sections.
 # Image files may be missing (D20): they are reported, never failed.
+# Badges are the one remote image kind: shields.io and contrib.rocks only.
 
 load helper
 
@@ -24,12 +25,13 @@ README="$REPO_ROOT/README.md"
   grep -qE '^/plugin marketplace add [A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$' "$README"
 }
 
-@test "image references point under assets/; presence is reported" {
+@test "image references point under assets/ or are badges; presence is reported" {
   refs="$(grep -oE '!\[[^]]*\]\([^)]+\)|<img[^>]*src="[^"]+"' "$README" \
     | sed -E 's/.*\(([^)]+)\)$/\1/; s/.*src="([^"]+)"/\1/' || true)"
   for r in $refs; do
     case "$r" in
       assets/*) ;;
+      https://img.shields.io/*|https://contrib.rocks/*) continue ;;
       *) echo "image outside assets/: $r"; return 1 ;;
     esac
     if [ -f "$REPO_ROOT/$r" ]; then echo "present: $r"; else echo "missing: $r"; fi
