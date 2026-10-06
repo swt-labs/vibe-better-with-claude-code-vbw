@@ -1644,6 +1644,23 @@
           "check": "C96"
         }
       ]
+    },
+    {
+      "id": "R68",
+      "text": "The review of an old VBW 1 folder works on Linux as on macOS, including folders not tracked by git",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M11",
+      "rules": [
+        {
+          "text": "with GNU stat, an untracked folder is reviewed from its newest file time",
+          "check": "C97"
+        },
+        {
+          "text": "file times in the kernel come only from vbw_mtime",
+          "check": "C97"
+        }
+      ]
     }
   ],
   "checks": [
@@ -2734,6 +2751,17 @@
       ],
       "files": [
         "tests/legacy-interview-order.bats"
+      ]
+    },
+    {
+      "id": "C97",
+      "req": "R68",
+      "run": [
+        "bats",
+        "tests/legacy-review-linux.bats"
+      ],
+      "files": [
+        "tests/legacy-review-linux.bats"
       ]
     }
   ],
@@ -4700,6 +4728,29 @@
         "qa_findings": 2,
         "escalations": 0
       }
+    },
+    {
+      "id": "P52",
+      "title": "Old-folder review works on Linux",
+      "reqs": [
+        "R68"
+      ],
+      "milestone": "M11",
+      "goal": "vbw legacy review reads file times through the kernel's portable reader, so it works with GNU stat (Linux) as with BSD stat (macOS).",
+      "criteria": [
+        "With GNU stat an untracked folder is reviewed: readable, last use from its newest file",
+        "No kernel file reads file times except vbw_mtime",
+        "CI Linux bash 5 passes tests/legacy-review.bats"
+      ],
+      "tier": "standard",
+      "reasons": [
+        "requirements: 1",
+        "files: 1 (5729 bytes)",
+        "risk: none",
+        "breaks: R65",
+        "tests: project test command"
+      ],
+      "predicted": "standard"
     }
   ],
   "plans": [
@@ -8107,6 +8158,22 @@
       "status": "done",
       "tasks": [
         "run bash tools/l3-suite.sh legacy nolegacy and commit legacy.json when it passes"
+      ]
+    },
+    {
+      "id": "P52.1",
+      "phase": "P52",
+      "title": "Use vbw_mtime in the review",
+      "reqs": [
+        "R68"
+      ],
+      "files": [
+        "plugin/lib/legacy-review.sh"
+      ],
+      "after": [],
+      "status": "planned",
+      "tasks": [
+        "read each file time with vbw_mtime instead of stat -f/-c"
       ]
     }
   ],
