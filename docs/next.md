@@ -78,7 +78,7 @@ category, in a repository of any size; the router plans those the same way
 | 1 | milestone `shipped` | `milestone` (start the next one: `vbw milestone start TITLE`) | yes |
 | 2a | no requirements in the current milestone, and a VBW 1 plan (`.vbw-planning/`) not converted yet | `convert` (`/vbw:convert`, or start fresh; docs/convert.md) | yes |
 | 2 | no requirements in the current milestone | `spec` (write its requirements in `.vbw/spec.md`) | yes |
-| 3 | the current milestone has no phases, an `auto` requirement has no check, or a current `auto` requirement is in no plan | `plan` (`detail.tier`: the early tier; plan workflow: phases, plans, contract checks, or direct `vbw apply` when express) | no |
+| 3 | the current milestone has no phases, an `auto` requirement has no check (a documentation-only requirement needs none: docs/rigor.md), or a current `auto` requirement is in no plan | `plan` (`detail.tier`: the early tier; plan workflow: phases, plans, contract checks, or direct `vbw apply` when express) | no |
 | 4 | contract not approved (never approved, or its structure changed since: requirements, checks, plans) | `approve` (review and approve the contract) | yes |
 | 4a | the contract is approved except for edits to the bytes of test files (a check's `files`), and a phase is built but not proved | `approve` with `detail.files`: the one approval of those test files, before they are proved (docs/proof.md) | yes |
 | 5 | plans ready to build: not `done`, not `blocked`, every `after` plan `done` | `build` (one wave: the ready plans in order, skipping any that shares a file with one already in the wave). When a plan is `blocked`, the instruction names it with its reason and `detail.blocked` lists `{id, note}`; plans that depend on it wait, unrelated plans still run | no |
@@ -106,6 +106,9 @@ when the project has no test command. `status` is the proof's (`pass`, `fail`,
 `timeout`, `skipped`), or `not run` when the proof did not include the command.
 The router gives `round` to the QA workflow, which hands it to every QA agent so
 none runs the suite again (docs/workflows.md).
+`round.tiers` maps each phase to check to the QA depth chosen for its size and
+risk (`quick`, `standard` or `deep`; docs/rigor.md). The QA workflow uses it
+instead of the profile's depth, which `rigor` still carries.
 
 Rejecting a `human` requirement (`vbw req reject R2 "why"`) opens a fix item at
 once, so it is worked by row 9; when the fix is done the requirement returns to
