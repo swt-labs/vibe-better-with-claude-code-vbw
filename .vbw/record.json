@@ -9291,7 +9291,7 @@
       "after": [
         "P55.1"
       ],
-      "status": "planned",
+      "status": "done",
       "tasks": [
         "add vbw apply --patch: only the changed plans, checks and rules, merged by id (rules by requirement and text) into the milestone, every other item left byte-identical",
         "refuse a patch that carries phases, and hold a patch to every rule a full apply has (started plans stay, known phases, rules need checks, floors)",
