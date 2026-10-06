@@ -30,7 +30,7 @@ function parse(text) {
 
 // What the panel knows: the last good state of both files, what is drawn, what is asked.
 function fresh() {
-  return { live: false, timer: null, busy: false, question: null, sound: true, keys: keys(false), silent: false, wouldPlay: 0, alerted: null, record: null, next: null, history: null, cost: null, stepsPath: null, steps: null, shown: '', seen: {} }
+  return { live: false, timer: null, busy: false, question: null, sound: true, keys: keys(false), silent: false, wouldPlay: 0, alerted: null, record: null, next: null, history: null, cost: null, stepsPath: null, steps: null, shown: '', seen: {}, sized: false }
 }
 
 const view = (st, now) => panelView({ record: st.record, next: st.next, question: st.question, now, cost: st.cost, steps: st.steps })
@@ -166,6 +166,24 @@ async function setSound($, st, on) {
   }
 }
 
+// A quarter of the terminal, never under 40 columns (R82).
+const quarter = (terminal) => Math.max(40, Math.round(terminal / 4))
+const cols = (n) => typeof n === 'number' && Number.isFinite(n) && n > 0
+
+// Once a session, on the first drawing as a dock, ask for a quarter of the terminal
+// unless the pane already has it. The terminal is the conversation beside the pane
+// plus the pane plus 1 (Claude Code 2.1.291). A width the user dragged is kept by
+// Claude Code, which ignores this request; it is never asked again nor stored.
+async function size($, st, e) {
+  if (st.sized || !isObj(e.props) || e.props.placement !== 'dock') return
+  const beside = isObj(e.viewport) ? e.viewport.columns : null
+  const pane = e.props.bodyColumns
+  if (!cols(beside) || !cols(pane)) return
+  st.sized = true
+  const want = quarter(beside + pane + 1)
+  if (pane !== want) await open($, { columns: want })
+}
+
 async function open($, extra) {
   try {
     await $.ui.open({ id: PANE, title: 'VBW', ...extra })
@@ -212,7 +230,8 @@ export function register(on) {
     } catch {
       // the panel still opens
     }
-    await open($, { focus: true })
+    const w = isObj(e) && isObj(e.presentation) ? e.presentation.columns : null
+    await open($, cols(w) ? { columns: quarter(w), focus: true } : { focus: true })
     return { text: 'The VBW panel is open.' }
   })
 
@@ -260,6 +279,11 @@ export function register(on) {
   // $.ui.resolve(e) and h() builds the tree. Only this pane's drawings reach here.
   on('ui.render', { component: 'Pane', requestId: PANE }, async ($, e, next) => {
     if (!st.live) return next(e)
+    try {
+      await size($, st, e)
+    } catch {
+      // the width stays as Claude Code placed it
+    }
     try {
       const { Box, Text, Button } = $.ui.resolve(e)
       const v = view(st, await $.clock.now())

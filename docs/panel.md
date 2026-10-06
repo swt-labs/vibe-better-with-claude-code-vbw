@@ -122,6 +122,14 @@ In a wide window the panel opens by itself when a session starts in a VBW
 project. In a narrow window Claude Code does not open a pane unasked, so run
 `/vbw-panel`: it opens the panel at any width.
 
+The panel asks for a quarter of the terminal's width (never under 40
+columns). It asks once per session, after its first drawing, and never takes
+the keyboard. `/vbw-panel` opens at a quarter of the width of the terminal you
+typed it in. A width you set by dragging the pane's edge always wins: Claude
+Code keeps it, VBW never asks again, and VBW never stores a width as your
+choice. Drawn on the main screen (not as a side pane), or where the width is
+not reported, the panel asks for nothing.
+
 If you close the panel yourself, it stays closed, in later sessions too, until
 you open it again with `/vbw-panel`. VBW keeps this choice in Claude Code's
 per-user store, never in your project, and opening or closing changes no file
