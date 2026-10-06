@@ -42,11 +42,16 @@ def project_path($cwd; $root):
 # in /) with PATH under it.
 def covers($p): . as $e | $e == $p or (($e | endswith("/")) and ($p | startswith($e)));
 
+# PATH (project-relative) is a test file, by place or by name: the one
+# definition of what a planning run may write besides .vbw/ (R75).
+def test_path: test("(^|/)(tests?|spec|__tests__)/") or (basename | test("\\.test\\.|_test\\.|^test_.*\\.py$"));
+
 # Why a subagent may not write PATH (project-relative) under LEASE, or empty.
 def lease_write_denial($lease; $record):
   if . == null then empty
   elif $lease.files == [] then
     "\(.) cannot be written during a \($lease.kind) run: its agents only read"
+  elif $lease.kind == "plan" and test_path then empty
   elif $lease.files != null and (. as $p | any($lease.files[]; covers($p)) | not) then
     "\(.) is outside this run's files (\($lease.files | join(", "))): agents write only their plan's files"
   elif ($lease.kind | test("^(build|fix)$")) and (. as $p | any($record.checks[]?.files[]?; . == $p)) then

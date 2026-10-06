@@ -2,7 +2,7 @@
 # vbw run start plan | build PLAN... | fix FIX... | qa | map ; vbw run end
 # The run lease (docs/workflows.md): which files a workflow's agents may write.
 # The guards hold every subagent to it while it is active. QA and mapping runs
-# write nothing (files []); the lease also tells the autonomy gate that a
+# write nothing (files []); a plan run writes .vbw/ and test files (R75); the lease also tells the autonomy gate that a
 # workflow is still running.
 
 VBW_LEASE_HOURS=24
@@ -79,7 +79,7 @@ cmd_run() {
        | if any($fx[]; has("command")) then null
          else [$fx[].req as $q | .plans[] | select(any(.reqs[]; . == $q)) | .files[]] | unique end
      elif $k == "qa" or $k == "map" then []
-     else null end) as $files
+     else [".vbw/"] end) as $files
     | .lease = {run: "\($k)-\($at | gsub("[-:]"; ""))", kind: $k, started_at: $at, files: $files}
        + (if $me == "" then {} else {session: $me} end)
     | if $k == "build" then (.plans[] | select(.id as $i | any($ids[]; . == $i))).status = "building" else . end' \
