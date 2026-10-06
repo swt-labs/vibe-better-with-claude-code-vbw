@@ -14,6 +14,9 @@ Code sandbox and permission rules remain the security boundary.
 | `vbw approve`, however it is spelled (`"$X/bin/vbw" approve`, `bash bin/vbw approve`, inside `$(...)` or `sh -c`) | Approving the contract is the user's decision: `/vbw:approve` |
 | Writing the consent file (`<git-dir>/vbw/consent.json`) by redirect, by a non-reading program, or with a file tool | The same |
 
+Naming the approval command in text (a commit message, `echo`, `grep`, a doc)
+is not approving: only a command the shell would actually run is refused.
+
 **Approving by answer.** The approval question (docs/proof.md) is answered in
 Claude Code's own interface. A `PostToolUse` hook on `AskUserQuestion`
 (`hooks/approve-answer.jq` and `hooks/approve-answer.sh`) runs after the user
@@ -90,6 +93,10 @@ The Bash guard judges what the shell would execute, not the text:
 - What the shell runs from inside strings is judged too: `$(...)` and `` `...` ``
   inside double quotes, and the script given to `sh -c`/`bash -c` or `eval`
   (three levels deep).
+- Only a real substitution counts. In `echo "run vbw approve"`, a commit message
+  that mentions `` `vbw approve` ``, or `echo "typed: \$(vbw approve)"` (escaped),
+  nothing runs, so nothing is refused. `echo "$(vbw approve)"` runs it and is
+  refused.
 - Redirect targets (`> file`, `2>> file`, `< file`) are paths like arguments.
 
 Reading the plan of record is not writing it: `cat`, `jq`, `sort`, `awk`
