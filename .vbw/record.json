@@ -5628,7 +5628,22 @@
         "breaks: R51, R52, R53, R55, R56, R57, R58, R64",
         "tests: project test command"
       ],
-      "predicted": "deep"
+      "predicted": "deep",
+      "qa": {
+        "result": "pass",
+        "tier": "deep",
+        "tree": "4aa32ca7139714ea4f17ce30ce564d6a7bf084ba1bc64f896e6d959579d2750d",
+        "at": "2026-10-06T21:01:26Z",
+        "note": "12/12 checks"
+      },
+      "outcome": {
+        "tier": "deep",
+        "predicted": "deep",
+        "held": true,
+        "fix_rounds": 0,
+        "qa_findings": 0,
+        "escalations": 0
+      }
     }
   ],
   "plans": [
@@ -11701,5 +11716,11 @@
     "scope": [],
     "passed": true
   },
-  "lease": null
+  "lease": {
+    "run": "qa-20261006T210025Z",
+    "kind": "qa",
+    "started_at": "2026-10-06T21:00:25Z",
+    "files": [],
+    "session": "9cd2cc30-8c86-4520-9d71-a0e82aff5407"
+  }
 }
