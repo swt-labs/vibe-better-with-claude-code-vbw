@@ -1668,7 +1668,24 @@
       "proof": "auto",
       "status": "open",
       "milestone": "M11",
-      "rules": []
+      "rules": [
+        {
+          "text": "vbw prove runs the approved checks in parallel, by default up to four at a time",
+          "check": "C110"
+        },
+        {
+          "text": "checks marked alone still run by themselves, never beside another check",
+          "check": "C110"
+        },
+        {
+          "text": "the passed and failed checks and their recorded results are the same as running them one after another",
+          "check": "C110"
+        },
+        {
+          "text": "a proof of many checks finishes in a fraction of the sequential time",
+          "check": "C110"
+        }
+      ]
     },
     {
       "id": "R70",
@@ -1676,7 +1693,32 @@
       "proof": "auto",
       "status": "open",
       "milestone": "M11",
-      "rules": []
+      "rules": [
+        {
+          "text": "the result of the one run of the project's test command is handed to every QA agent of the round",
+          "check": "C114"
+        },
+        {
+          "text": "the QA agents are told not to run the project's test command again",
+          "check": "C114"
+        },
+        {
+          "text": "no agent is started only to run the suite",
+          "check": "C114"
+        },
+        {
+          "text": "a run that did not start is said once and no agent retries it",
+          "check": "C114"
+        },
+        {
+          "text": "a suite that ran and failed is handed over as failed and is not run again",
+          "check": "C114"
+        },
+        {
+          "text": "a project with no test command has nothing to hand over, and a command that did not run in the proof is never handed over as passing",
+          "check": "C114"
+        }
+      ]
     },
     {
       "id": "R71",
@@ -1684,7 +1726,36 @@
       "proof": "auto",
       "status": "open",
       "milestone": "M11",
-      "rules": []
+      "rules": [
+        {
+          "text": "a small, low-risk change (one or two files) gets a quick QA check and never a deep one",
+          "check": "C115"
+        },
+        {
+          "text": "a change of three to nine files gets at most a standard QA check",
+          "check": "C115"
+        },
+        {
+          "text": "a larger change gets deeper QA in proportion to its size, and a riskier one gets deeper QA however few files it touches",
+          "check": "C115"
+        },
+        {
+          "text": "the size never raises QA above what the profile gives",
+          "check": "C115"
+        },
+        {
+          "text": "a change to wording or documentation alone needs no new check and is closed without one",
+          "check": "C115"
+        },
+        {
+          "text": "a change to code, or to code and documentation together, still needs its check",
+          "check": "C115"
+        },
+        {
+          "text": "a project rule that requires a check overrides the documentation exemption: that check runs and decides",
+          "check": "C115"
+        }
+      ]
     },
     {
       "id": "R72",
@@ -1692,7 +1763,28 @@
       "proof": "auto",
       "status": "open",
       "milestone": "M11",
-      "rules": []
+      "rules": [
+        {
+          "text": "a request of one or two [auto] requirements with no risk path is marked small, in a repository of any size",
+          "check": "C116"
+        },
+        {
+          "text": "a request of three requirements, a [human] requirement, a risk path or a forced rigor above express is not small",
+          "check": "C116"
+        },
+        {
+          "text": "a small change is planned as one express phase with one plan and its check, approved once, built, checked and closed",
+          "check": "C116"
+        },
+        {
+          "text": "a change touching more than two files is not treated as small in a large repository and follows normal planning",
+          "check": "C116"
+        },
+        {
+          "text": "in the real app a small change goes to done without the planning workflow, with one approval, its check passing and QA quick at most",
+          "check": "C118"
+        }
+      ]
     },
     {
       "id": "R73",
@@ -1700,7 +1792,24 @@
       "proof": "auto",
       "status": "open",
       "milestone": "M11",
-      "rules": []
+      "rules": [
+        {
+          "text": "the clean copy has its own build folders for Node, Python, Rust and Go style projects: none is linked to the working folder",
+          "check": "C98"
+        },
+        {
+          "text": "the project's environment (dependency folders and env files) is still linked into the copy",
+          "check": "C98"
+        },
+        {
+          "text": "a proof never reads build output left in the working folder: deleting those folders does not change the result",
+          "check": "C98"
+        },
+        {
+          "text": "build output made during a proof stays in the copy and never reaches the working folder",
+          "check": "C98"
+        }
+      ]
     },
     {
       "id": "R74",
@@ -1708,7 +1817,32 @@
       "proof": "auto",
       "status": "open",
       "milestone": "M11",
-      "rules": []
+      "rules": [
+        {
+          "text": "a plan whose files were already committed, with no plan trailer, and whose checks pass can be marked done",
+          "check": "C99"
+        },
+        {
+          "text": "a plan whose files are committed but whose checks fail cannot be marked done, and the failing check is named",
+          "check": "C99"
+        },
+        {
+          "text": "uncommitted changes in a plan's files, and a plan with no commit and no check that could prove it, still block done",
+          "check": "C99"
+        },
+        {
+          "text": "a blocked plan never stops unrelated plans from being scheduled by vbw next",
+          "check": "C100"
+        },
+        {
+          "text": "the blocked plan is reported by name with its reason",
+          "check": "C100"
+        },
+        {
+          "text": "plans that depend on a blocked plan stay unscheduled",
+          "check": "C100"
+        }
+      ]
     },
     {
       "id": "R75",
@@ -1716,7 +1850,20 @@
       "proof": "auto",
       "status": "open",
       "milestone": "M11",
-      "rules": []
+      "rules": [
+        {
+          "text": "while VBW plans, its agents may write only VBW's own files and test files",
+          "check": "C101"
+        },
+        {
+          "text": "a write to any other path during planning is refused with the reason, by file tools and by shell",
+          "check": "C101"
+        },
+        {
+          "text": "a planning run never blocks another session's folders",
+          "check": "C101"
+        }
+      ]
     },
     {
       "id": "R76",
@@ -1724,7 +1871,20 @@
       "proof": "auto",
       "status": "open",
       "milestone": "M11",
-      "rules": []
+      "rules": [
+        {
+          "text": "a Dev's command that writes a file outside its plan through Python, Node, Perl or Ruby is refused like a shell write outside its plan",
+          "check": "C102"
+        },
+        {
+          "text": "the same program writing a file inside its plan is allowed",
+          "check": "C102"
+        },
+        {
+          "text": "programs that only read, or run tests, are allowed",
+          "check": "C102"
+        }
+      ]
     },
     {
       "id": "R77",
@@ -1732,7 +1892,20 @@
       "proof": "auto",
       "status": "open",
       "milestone": "M11",
-      "rules": []
+      "rules": [
+        {
+          "text": "copying or printing the plan of record is never refused as a write, while writing it stays refused",
+          "check": "C104"
+        },
+        {
+          "text": "naming the approval command in plain text (a message, a commit message, an echo) is never refused as an approval",
+          "check": "C104"
+        },
+        {
+          "text": "actually running the approval, wherever it is hidden, is still refused",
+          "check": "C104"
+        }
+      ]
     },
     {
       "id": "R78",
@@ -1740,7 +1913,24 @@
       "proof": "auto",
       "status": "open",
       "milestone": "M11",
-      "rules": []
+      "rules": [
+        {
+          "text": "after a build run, a plan whose state was not recorded is named plainly",
+          "check": "C105"
+        },
+        {
+          "text": "after a fix run, a fix whose result was not recorded is named plainly",
+          "check": "C105"
+        },
+        {
+          "text": "after a QA run, a phase with no verdict from that run is named plainly",
+          "check": "C105"
+        },
+        {
+          "text": "the build, fix and QA workflows confirm after their agents return and name what was not recorded in their output",
+          "check": "C106"
+        }
+      ]
     },
     {
       "id": "R79",
@@ -1748,7 +1938,24 @@
       "proof": "auto",
       "status": "open",
       "milestone": "M11",
-      "rules": []
+      "rules": [
+        {
+          "text": "test-file edits made while building go on without a new approval, and vbw check still runs",
+          "check": "C107"
+        },
+        {
+          "text": "one approval before the proof covers all the edits, and vbw next asks for it naming the files",
+          "check": "C107"
+        },
+        {
+          "text": "a proof with test files waiting for approval stops and says which files are waiting",
+          "check": "C107"
+        },
+        {
+          "text": "a change to the contract's structure, or a contract never approved, still needs approval first",
+          "check": "C107"
+        }
+      ]
     },
     {
       "id": "R80",
@@ -1756,7 +1963,28 @@
       "proof": "auto",
       "status": "open",
       "milestone": "M11",
-      "rules": []
+      "rules": [
+        {
+          "text": "one plan can be changed without resubmitting the whole milestone",
+          "check": "C108"
+        },
+        {
+          "text": "one check can be changed without resubmitting the whole milestone",
+          "check": "C108"
+        },
+        {
+          "text": "one rule can be changed without resubmitting the whole milestone",
+          "check": "C108"
+        },
+        {
+          "text": "untouched plans, phases, checks and rules stay byte-identical after a patch, and a patch never carries phases",
+          "check": "C108"
+        },
+        {
+          "text": "once work has started, a planning round cannot add a phase for requirements another phase covers or rename a phase, and is refused with the reason",
+          "check": "C108"
+        }
+      ]
     },
     {
       "id": "R81",
@@ -1764,7 +1992,36 @@
       "proof": "auto",
       "status": "open",
       "milestone": "M11",
-      "rules": []
+      "rules": [
+        {
+          "text": "the project setting check_jobs limits how many checks run at the same time, never more than set, and 1 behaves like sequential",
+          "check": "C111"
+        },
+        {
+          "text": "an invalid check_jobs value is refused with a clear message and changes nothing",
+          "check": "C111"
+        },
+        {
+          "text": "check_jobs is shown by vbw config, kept in the clone, and removed with default",
+          "check": "C111"
+        },
+        {
+          "text": "an approval whose commit fails stops and says why instead of only warning",
+          "check": "C109"
+        },
+        {
+          "text": "a failed approval leaves no approval in the record or in the consent",
+          "check": "C109"
+        },
+        {
+          "text": "a workflow ends its own run when it finishes, on every way out, and never leaves a lease open",
+          "check": "C112"
+        },
+        {
+          "text": "ending a run that is not open changes nothing",
+          "check": "C113"
+        }
+      ]
     },
     {
       "id": "R82",
@@ -1772,7 +2029,28 @@
       "proof": "auto",
       "status": "open",
       "milestone": "M11",
-      "rules": []
+      "rules": [
+        {
+          "text": "opening by itself the panel opens as placed; after its first docked drawing it asks once for a quarter of the terminal (viewport.columns + props.bodyColumns + 1)",
+          "check": "C117"
+        },
+        {
+          "text": "never narrower than 40 columns",
+          "check": "C117"
+        },
+        {
+          "text": "/vbw-panel opens at a quarter of the terminal the command was typed in",
+          "check": "C117"
+        },
+        {
+          "text": "it asks only once a session, so a width the user dragged (kept by Claude Code) wins; no width is stored as the user choice",
+          "check": "C117"
+        },
+        {
+          "text": "an inline drawing, or a missing, zero or odd width, asks nothing and never fails",
+          "check": "C117"
+        }
+      ]
     }
   ],
   "checks": [
@@ -2874,6 +3152,255 @@
       ],
       "files": [
         "tests/legacy-review-linux.bats"
+      ]
+    },
+    {
+      "id": "C98",
+      "req": "R73",
+      "run": [
+        "bats",
+        "tests/proof-build-dirs.bats"
+      ],
+      "files": [
+        "tests/proof-build-dirs.bats"
+      ]
+    },
+    {
+      "id": "C99",
+      "req": "R74",
+      "run": [
+        "bats",
+        "tests/plan-done-committed.bats"
+      ],
+      "files": [
+        "tests/plan-done-committed.bats"
+      ]
+    },
+    {
+      "id": "C100",
+      "req": "R74",
+      "run": [
+        "bats",
+        "tests/next-blocked.bats"
+      ],
+      "files": [
+        "tests/next-blocked.bats"
+      ]
+    },
+    {
+      "id": "C101",
+      "req": "R75",
+      "run": [
+        "bats",
+        "tests/guard-plan-writes.bats"
+      ],
+      "files": [
+        "tests/guard-plan-writes.bats"
+      ]
+    },
+    {
+      "id": "C102",
+      "req": "R76",
+      "run": [
+        "bats",
+        "tests/guard-interpreters.bats"
+      ],
+      "files": [
+        "tests/guard-interpreters.bats"
+      ]
+    },
+    {
+      "id": "C103",
+      "req": "R76",
+      "run": [
+        "bats",
+        "tests/guard-cost.bats"
+      ],
+      "files": [
+        "tests/guard-cost.bats"
+      ]
+    },
+    {
+      "id": "C104",
+      "req": "R77",
+      "run": [
+        "bats",
+        "tests/guard-reads-approval.bats"
+      ],
+      "files": [
+        "tests/guard-reads-approval.bats"
+      ]
+    },
+    {
+      "id": "C105",
+      "req": "R78",
+      "run": [
+        "bats",
+        "tests/run-confirm.bats",
+        "-f",
+        "R78"
+      ],
+      "files": [
+        "tests/run-confirm.bats"
+      ]
+    },
+    {
+      "id": "C106",
+      "req": "R78",
+      "run": [
+        "bats",
+        "tests/workflows-run-end.bats",
+        "-f",
+        "R78"
+      ],
+      "files": [
+        "tests/workflows-run-end.bats",
+        "tests/helpers/run-workflow.js"
+      ]
+    },
+    {
+      "id": "C107",
+      "req": "R79",
+      "run": [
+        "bats",
+        "tests/approve-once.bats"
+      ],
+      "files": [
+        "tests/approve-once.bats"
+      ]
+    },
+    {
+      "id": "C108",
+      "req": "R80",
+      "run": [
+        "bats",
+        "tests/apply-narrow.bats"
+      ],
+      "files": [
+        "tests/apply-narrow.bats"
+      ]
+    },
+    {
+      "id": "C109",
+      "req": "R81",
+      "run": [
+        "bats",
+        "tests/approve-commit-fails.bats"
+      ],
+      "files": [
+        "tests/approve-commit-fails.bats"
+      ]
+    },
+    {
+      "id": "C110",
+      "req": "R69",
+      "run": [
+        "bats",
+        "tests/prove-parallel.bats",
+        "-f",
+        "R69"
+      ],
+      "files": [
+        "tests/prove-parallel.bats"
+      ]
+    },
+    {
+      "id": "C111",
+      "req": "R81",
+      "run": [
+        "bats",
+        "tests/prove-parallel.bats",
+        "-f",
+        "R81"
+      ],
+      "files": [
+        "tests/prove-parallel.bats"
+      ]
+    },
+    {
+      "id": "C112",
+      "req": "R81",
+      "run": [
+        "bats",
+        "tests/workflows-run-end.bats",
+        "-f",
+        "R81"
+      ],
+      "files": [
+        "tests/workflows-run-end.bats",
+        "tests/helpers/run-workflow.js"
+      ]
+    },
+    {
+      "id": "C113",
+      "req": "R81",
+      "run": [
+        "bats",
+        "tests/run-confirm.bats",
+        "-f",
+        "R81"
+      ],
+      "files": [
+        "tests/run-confirm.bats"
+      ]
+    },
+    {
+      "id": "C114",
+      "req": "R70",
+      "run": [
+        "bats",
+        "tests/qa-suite-once.bats"
+      ],
+      "files": [
+        "tests/qa-suite-once.bats",
+        "tests/helpers/run-workflow.js"
+      ]
+    },
+    {
+      "id": "C115",
+      "req": "R71",
+      "run": [
+        "bats",
+        "tests/qa-depth-docs.bats"
+      ],
+      "files": [
+        "tests/qa-depth-docs.bats",
+        "tests/helpers/run-workflow.js"
+      ]
+    },
+    {
+      "id": "C116",
+      "req": "R72",
+      "run": [
+        "bats",
+        "tests/small-change.bats"
+      ],
+      "files": [
+        "tests/small-change.bats",
+        "tests/rigor-helper.bash"
+      ]
+    },
+    {
+      "id": "C117",
+      "req": "R82",
+      "run": [
+        "node",
+        "--test",
+        "tests/panel/width.test.mjs"
+      ],
+      "files": [
+        "tests/panel/width.test.mjs"
+      ]
+    },
+    {
+      "id": "C118",
+      "req": "R72",
+      "run": [
+        "bats",
+        "tests/l3-smallchange.bats"
+      ],
+      "files": [
+        "tests/l3-smallchange.bats"
       ]
     }
   ],
@@ -4857,7 +5384,7 @@
       "tier": "standard",
       "reasons": [
         "requirements: 1",
-        "files: 1 (5729 bytes)",
+        "files: 1 (5671 bytes)",
         "risk: none",
         "breaks: R65",
         "tests: project test command"
@@ -4878,6 +5405,181 @@
         "qa_findings": 0,
         "escalations": 0
       }
+    },
+    {
+      "id": "P53",
+      "title": "Proof is clean and plans never get stuck",
+      "reqs": [
+        "R73",
+        "R74"
+      ],
+      "milestone": "M11",
+      "goal": "A proof runs in a clean copy with its own build folders, and a plan already committed with passing checks can be closed without blocking others.",
+      "criteria": [
+        "After a proof, no build output in the clean copy points into the working folder or any other copy (checked for Node, Python, Rust and Go style build folders)",
+        "A proof never reads build output left in the working folder; deleting the working folder's build folders does not change the proof result",
+        "A plan whose files are already committed (for example by the approval commit) and whose checks pass can be marked done",
+        "A plan whose files are committed but whose checks fail cannot be marked done and says which check failed",
+        "A blocked or stuck plan never prevents unrelated plans from being scheduled by vbw next; the blocked plan is reported by name with its reason",
+        "Plans that depend on a blocked plan stay unscheduled; independent ones are still offered"
+      ],
+      "proposed": "deep",
+      "tier": "deep",
+      "reasons": [
+        "requirements: 2",
+        "files: 6 (50321 bytes)",
+        "risk: none",
+        "breaks: R12, R13, R14, R24, R25, R26, R28, R31, R32, R35, R37, R38, R39, R40, R43, R44, R45, R46, R47, R48, R49, R50, R60, R61, R66, R67",
+        "tests: project test command"
+      ],
+      "predicted": "deep"
+    },
+    {
+      "id": "P54",
+      "title": "Guards: planning and Dev writes, approvals, plan reads",
+      "reqs": [
+        "R75",
+        "R76",
+        "R77"
+      ],
+      "milestone": "M11",
+      "goal": "The write guards block what they should and never block reading the plan or talking about approval.",
+      "criteria": [
+        "During planning, an agent may write only VBW's own files and the test files the plan declares; a write to any other path is refused with the reason",
+        "A planning run never blocks or locks another session's folders",
+        "A Dev command that writes a file outside its plan through Python, Node, Perl or a similar program is refused exactly like a shell write outside its plan",
+        "The same program writing to a file inside its plan is allowed",
+        "Copying or printing the plan of record (cat, cp, jq read) is never refused as a write",
+        "Writing the approval command's name in plain text (a message, a commit message, an echo) is never refused as an approval; actually running the approval is still governed as before",
+        "Hook cost per call stays within the existing hot-path budget"
+      ],
+      "proposed": "deep",
+      "tier": "deep",
+      "reasons": [
+        "requirements: 3",
+        "files: 7 (43882 bytes)",
+        "risk: none",
+        "breaks: R13, R14, R15, R25, R28, R31, R39, R44, R50, R58, R60, R61",
+        "tests: project test command"
+      ],
+      "predicted": "deep"
+    },
+    {
+      "id": "P55",
+      "title": "Confirmed results, one test-file approval, targeted edits",
+      "reqs": [
+        "R78",
+        "R79",
+        "R80",
+        "R81"
+      ],
+      "milestone": "M11",
+      "goal": "Nothing is silently lost after an agent returns, test-file approvals are batched per phase, targeted changes do not need a full resubmission, and failed approvals and finished workflows are explicit.",
+      "criteria": [
+        "After each agent of a build, fix or QA workflow returns, VBW checks that its plan state or verdict is in the record",
+        "Any agent whose state or verdict was not recorded is named in the output, plainly",
+        "The test-file edits made while building a phase are approved once, before the phase is proved, not once per edit",
+        "Test-file edits not approved before proof make the proof stop and say which files are waiting",
+        "One plan, one check or one rule can be changed without resubmitting the whole milestone; untouched items stay byte-identical",
+        "A fix round cannot add phases or rename phases nobody asked for; an attempt is refused with the reason",
+        "An approval whose commit fails stops and states why, not only a warning, and the record does not show it as approved",
+        "A workflow ends its own run when it finishes; no lease remains open afterwards",
+        "Kernel stays within its 3,500 line budget"
+      ],
+      "proposed": "deep",
+      "tier": "deep",
+      "reasons": [
+        "requirements: 4",
+        "files: 21 (131659 bytes)",
+        "risk: none",
+        "breaks: R1, R2, R3, R10, R12, R13, R14, R22, R23, R24, R25, R26, R27, R28, R31, R32, R33, R35, R37, R38, R39, R40, R43, R44, R45, R46, R47, R48, R49, R50, R58, R60, R61, R62, R65, R66, R67",
+        "tests: project test command"
+      ],
+      "predicted": "deep"
+    },
+    {
+      "id": "P56",
+      "title": "Faster proof and one test run per QA round",
+      "reqs": [
+        "R69",
+        "R70",
+        "R81"
+      ],
+      "milestone": "M11",
+      "goal": "Proof runs checks in parallel with the same results as sequentially, a project setting caps concurrency, and a QA round runs the test command once.",
+      "criteria": [
+        "vbw prove runs approved checks in parallel; checks marked alone run by themselves, never alongside another",
+        "The set of passed and failed checks and their recorded results equal those of a sequential run on the same project",
+        "A proof of many checks finishes in a fraction of the sequential time, measured on a fixture of at least 20 checks",
+        "A project setting limits how many checks run at the same time; never more run than set, and a limit of 1 behaves like sequential",
+        "An invalid setting value is rejected with a clear message and does not change behaviour silently",
+        "A QA round runs the project's test command once; its result is handed to every QA agent of that round",
+        "QA agents of a round do not re-run the whole suite; if the one run fails to start, the round says so instead of each agent retrying"
+      ],
+      "proposed": "deep",
+      "tier": "deep",
+      "reasons": [
+        "requirements: 3",
+        "files: 12 (94765 bytes)",
+        "risk: none",
+        "breaks: R1, R2, R3, R12, R13, R14, R22, R23, R24, R25, R26, R27, R28, R31, R32, R33, R35, R36, R37, R38, R39, R40, R43, R44, R45, R46, R47, R48, R49, R50, R58, R60, R61, R62, R65, R66, R67",
+        "tests: project test command"
+      ],
+      "predicted": "deep"
+    },
+    {
+      "id": "P57",
+      "title": "Small changes stay small",
+      "reqs": [
+        "R71",
+        "R72"
+      ],
+      "milestone": "M11",
+      "goal": "A small, low-risk change goes through /vbw:vibe quickly, and QA depth follows the size and risk of the change.",
+      "criteria": [
+        "A change of one or two files at low risk goes from request to done through /vbw:vibe without starting a planning workflow",
+        "VBW writes it as one plan with its check; the user approves once; it is built, checked and closed",
+        "A change touching more than two files or a risk path is not treated as small and follows normal planning",
+        "A small, low-risk change gets a quick QA check and never a deep one",
+        "A larger or riskier change gets deeper QA in proportion to its size and risk",
+        "A change to wording or documentation alone needs no new check and is closed without one",
+        "A project rule that requires a check overrides the documentation exemption where it applies"
+      ],
+      "proposed": "deep",
+      "tier": "deep",
+      "reasons": [
+        "requirements: 2",
+        "files: 14 (147340 bytes)",
+        "risk: none",
+        "breaks: R4, R5, R8, R12, R13, R14, R22, R23, R24, R25, R26, R27, R28, R29, R31, R34, R35, R37, R38, R39, R40, R42, R43, R45, R46, R47, R48, R49, R50, R51, R59, R60, R61, R62, R64, R65, R66, R67",
+        "tests: project test command"
+      ],
+      "predicted": "deep"
+    },
+    {
+      "id": "P58",
+      "title": "Panel opens at a sensible width",
+      "reqs": [
+        "R82"
+      ],
+      "milestone": "M11",
+      "goal": "The VBW panel opens at about a quarter of the terminal width, with a floor of 40 columns, unless the user set a width.",
+      "criteria": [
+        "In a terminal 200 columns wide the panel opens at about 50 columns",
+        "In a terminal 120 columns wide the panel opens at 40 columns (never narrower than 40)",
+        "A width the user set by hand is used as set, in any terminal size",
+        "Terminals narrower than 40 columns do not crash the panel",
+        "Statusline stays within its time budget"
+      ],
+      "tier": "deep",
+      "reasons": [
+        "requirements: 1",
+        "files: 2 (16892 bytes)",
+        "risk: none",
+        "breaks: R51, R52, R53, R55, R56, R57, R58, R64",
+        "tests: project test command"
+      ],
+      "predicted": "deep"
     }
   ],
   "plans": [
@@ -8302,6 +9004,583 @@
       "tasks": [
         "read each file time with vbw_mtime instead of stat -f/-c"
       ]
+    },
+    {
+      "id": "P53.1",
+      "phase": "P53",
+      "title": "The proof copy keeps its own build folders",
+      "reqs": [
+        "R73"
+      ],
+      "files": [
+        "plugin/lib/proofcopy.sh"
+      ],
+      "after": [],
+      "status": "planned",
+      "tasks": [
+        "name the build-output folders of Node, Python, Rust and Go projects once (target, dist, build, bin, __pycache__, .pytest_cache and the like), matched at any depth",
+        "stop linking those git-ignored folders into the clean copy, so the copy starts without them",
+        "keep linking the project's environment (dependency folders such as node_modules and .venv, and env files such as .env.local)",
+        "make sure nothing the copy builds can reach the working folder, and nothing is removed through a link"
+      ]
+    },
+    {
+      "id": "P53.2",
+      "phase": "P53",
+      "title": "Close a plan whose work is already committed",
+      "reqs": [
+        "R74"
+      ],
+      "files": [
+        "plugin/lib/cmd-plan.sh"
+      ],
+      "after": [],
+      "status": "planned",
+      "tasks": [
+        "accept a plan whose files are all committed in HEAD even when no commit carries its VBW-Plan trailer",
+        "in that case require that at least one check of its requirements exists and runs and passes, and name the failing check if not",
+        "keep refusing uncommitted changes in the plan's files, and keep the trailer path exactly as it is",
+        "say which of the cases applies in the refusal message (no commit, uncommitted, check failed)"
+      ]
+    },
+    {
+      "id": "P53.3",
+      "phase": "P53",
+      "title": "A blocked plan no longer stops the others",
+      "reqs": [
+        "R74"
+      ],
+      "files": [
+        "plugin/lib/next.jq"
+      ],
+      "after": [],
+      "status": "planned",
+      "tasks": [
+        "offer the ready independent plans (build) even when another plan is blocked",
+        "report each blocked plan by name with its reason (detail.blocked, and in the instruction)",
+        "keep dependents of a blocked plan unscheduled, and keep unblock as the step when nothing else can run"
+      ]
+    },
+    {
+      "id": "P53.4",
+      "phase": "P53",
+      "title": "Docs: clean proof copy, closing committed plans, blocked plans",
+      "reqs": [
+        "R73",
+        "R74"
+      ],
+      "files": [
+        "docs/proof.md",
+        "docs/next.md",
+        "docs/workflows.md"
+      ],
+      "after": [
+        "P53.1",
+        "P53.2",
+        "P53.3"
+      ],
+      "status": "planned",
+      "tasks": [
+        "describe which folders the proof copy links and which it keeps its own",
+        "describe closing a plan whose work is already committed",
+        "describe how vbw next treats blocked plans"
+      ],
+      "role": "docs"
+    },
+    {
+      "id": "P54.1",
+      "phase": "P54",
+      "title": "Planning agents write only VBW's files and test files",
+      "reqs": [
+        "R75"
+      ],
+      "files": [
+        "plugin/lib/cmd-run.sh",
+        "plugin/hooks/common.jq",
+        "plugin/hooks/guard-file.jq"
+      ],
+      "after": [],
+      "status": "planned",
+      "tasks": [
+        "give the planning run's lease the files planning really writes (.vbw/) instead of any file",
+        "let planning agents also write test files, recognised by place and name (tests/, test/, spec/, __tests__/, *.test.*, *_test.*, test_*.py), in one shared definition",
+        "refuse every other write during planning with the reason, for file tools and shell writes alike",
+        "hold other sessions back only from the files planning writes, so a planning run never blocks their folders"
+      ]
+    },
+    {
+      "id": "P54.2",
+      "phase": "P54",
+      "title": "The guard reads what programs write, and stops false alarms",
+      "reqs": [
+        "R76",
+        "R77"
+      ],
+      "files": [
+        "plugin/hooks/guard-bash.jq",
+        "plugin/hooks/common.jq",
+        "tools/bench-hooks.sh"
+      ],
+      "after": [
+        "P54.1"
+      ],
+      "status": "planned",
+      "tasks": [
+        "during a run, judge Python, Node, Perl, Ruby and similar programs that write a file (inline code, scripts read from standard input, in-place edit flags) like a shell write outside the plan, with the same reason",
+        "treat copying or printing the plan of record (cp, sort, awk, rsync, cat, jq) as reading, while writes to it stay refused",
+        "parse only the real command substitutions inside double quotes, so text that merely names the approval command (escaped backticks, quoted examples) is not an approval",
+        "add a program-command case under a build lease to tools/bench-hooks.sh, named interp, and keep every case within the hook budget"
+      ]
+    },
+    {
+      "id": "P54.3",
+      "phase": "P54",
+      "title": "Docs: what the guards allow and refuse",
+      "reqs": [
+        "R75",
+        "R76",
+        "R77"
+      ],
+      "files": [
+        "docs/guards.md",
+        "docs/workflows.md"
+      ],
+      "after": [
+        "P54.1",
+        "P54.2",
+        "P53.4"
+      ],
+      "status": "planned",
+      "tasks": [
+        "describe what a planning agent may write",
+        "describe how program writes are judged during a run and what stays allowed",
+        "describe reading the plan of record and naming the approval command"
+      ],
+      "role": "docs"
+    },
+    {
+      "id": "P55.1",
+      "phase": "P55",
+      "title": "Workflows confirm what agents recorded and end their own run",
+      "reqs": [
+        "R78",
+        "R81"
+      ],
+      "files": [
+        "plugin/lib/cmd-run.sh",
+        "plugin/workflows/building.js",
+        "plugin/workflows/fixing.js",
+        "plugin/workflows/verifying.js",
+        "plugin/workflows/planning.js",
+        "plugin/workflows/mapping.js",
+        "plugin/bin/vbw"
+      ],
+      "after": [
+        "P54.1"
+      ],
+      "status": "planned",
+      "tasks": [
+        "add vbw run confirm ID...: one line per plan, fix or phase of the open run saying whether its state or verdict was recorded, naming plainly the ones that were not (exit 1), changing nothing",
+        "make vbw run end a quiet no-op, with no commit, when no run is open",
+        "add a closing step to the build, fix and QA workflows: when args.session is given, a small agent labelled close run runs vbw run confirm for that run's ids and then vbw run end, and the workflow returns and logs what was not recorded (older tests call these workflows without a session and must see no extra agent)",
+        "give the planning and mapping workflows the same closing step (run end only) on every way out",
+        "list vbw run confirm in vbw help; keep verifying.js free of the words inputs, standing and recheck (an older test checks that)"
+      ]
+    },
+    {
+      "id": "P55.2",
+      "phase": "P55",
+      "title": "Test-file edits are approved once, before proof",
+      "reqs": [
+        "R79"
+      ],
+      "files": [
+        "plugin/lib/contract.sh",
+        "plugin/lib/checks.sh",
+        "plugin/lib/cmd-approve.sh",
+        "plugin/lib/cmd-prove.sh",
+        "plugin/lib/cmd-next.sh",
+        "plugin/lib/next.jq"
+      ],
+      "after": [
+        "P53.3"
+      ],
+      "status": "planned",
+      "tasks": [
+        "remember with each approval a fingerprint of the contract's structure (requirements, checks, plans), apart from the bytes of the check files; the contract fingerprint itself stays as it is",
+        "while only the bytes of check files differ from what was approved, let vbw check and vbw plan done run and say which files wait for approval; any structural change still needs approval first",
+        "make vbw next keep building while test files wait, and ask for the one approval (detail.files, sorted) just before the proof step",
+        "make vbw prove stop and name the waiting files, keeping the words 'changed since it was approved' that an older test needs",
+        "keep a contract that was never approved, and a project command not approved, refused as today"
+      ]
+    },
+    {
+      "id": "P55.3",
+      "phase": "P55",
+      "title": "An approval whose commit fails stops and says why",
+      "reqs": [
+        "R81"
+      ],
+      "files": [
+        "plugin/lib/record.sh",
+        "plugin/lib/cmd-approve.sh"
+      ],
+      "after": [
+        "P55.2"
+      ],
+      "status": "planned",
+      "tasks": [
+        "let the commit step report git's own reason and a failure status to the caller, while every other caller keeps its warning only",
+        "make vbw approve stop with that reason when its commit fails, and say that nothing was approved",
+        "take back the decision the approval wrote, and grant the consent only after the commit worked, so the record and the consent never show an approval that did not happen"
+      ]
+    },
+    {
+      "id": "P55.4",
+      "phase": "P55",
+      "title": "Change one plan, check or rule without resubmitting everything",
+      "reqs": [
+        "R80"
+      ],
+      "files": [
+        "plugin/lib/cmd-apply.sh",
+        "plugin/bin/vbw"
+      ],
+      "after": [
+        "P55.1"
+      ],
+      "status": "planned",
+      "tasks": [
+        "add vbw apply --patch: only the changed plans, checks and rules, merged by id (rules by requirement and text) into the milestone, every other item left byte-identical",
+        "refuse a patch that carries phases, and hold a patch to every rule a full apply has (started plans stay, known phases, rules need checks, floors)",
+        "once any plan has started, refuse a full apply that renames a phase or changes its requirements, or adds a phase for requirements another phase already covers, with the reason",
+        "list apply --patch in vbw help"
+      ]
+    },
+    {
+      "id": "P55.5",
+      "phase": "P55",
+      "title": "Router, Lead and Dev prompts say the new flow",
+      "reqs": [
+        "R78",
+        "R79",
+        "R80",
+        "R81"
+      ],
+      "files": [
+        "plugin/skills/vibe/SKILL.md",
+        "plugin/agents/lead.md",
+        "plugin/agents/dev.md"
+      ],
+      "after": [
+        "P55.1",
+        "P55.2",
+        "P55.4"
+      ],
+      "status": "planned",
+      "tasks": [
+        "router: pass session (${CLAUDE_SESSION_ID}) in every workflow's args, drop the run end after each workflow, keep the interrupted-run step; report what the workflow says was not recorded",
+        "router: when test files wait for approval, the approval comes just before proof; explain it from detail.files",
+        "Lead: change one plan, check or rule with vbw apply --patch; never add or rename phases of started work",
+        "Dev: edits to check files are blockers as before; say that the one approval comes before proof",
+        "stay inside the word budgets (router 1,400 words, all prompts 11,400)"
+      ]
+    },
+    {
+      "id": "P55.6",
+      "phase": "P55",
+      "title": "Docs: confirmations, one approval, narrow apply, own run end",
+      "reqs": [
+        "R78",
+        "R79",
+        "R80",
+        "R81"
+      ],
+      "files": [
+        "docs/workflows.md",
+        "docs/proof.md",
+        "docs/next.md"
+      ],
+      "after": [
+        "P55.1",
+        "P55.2",
+        "P55.3",
+        "P55.4",
+        "P54.3"
+      ],
+      "status": "planned",
+      "tasks": [
+        "describe vbw run confirm and the workflows ending their own run",
+        "describe the one approval before proof and the waiting test files",
+        "describe vbw apply --patch and the limits on changing phases of started work",
+        "describe an approval whose commit fails"
+      ],
+      "role": "docs"
+    },
+    {
+      "id": "P56.1",
+      "phase": "P56",
+      "title": "The clone's check_jobs setting",
+      "reqs": [
+        "R81"
+      ],
+      "files": [
+        "plugin/lib/cmd-config.sh",
+        "plugin/lib/core.sh",
+        "plugin/bin/vbw"
+      ],
+      "after": [
+        "P55.4"
+      ],
+      "status": "planned",
+      "tasks": [
+        "vbw config set check_jobs N (a whole number 1 to 64) and check_jobs default, kept in this clone's own settings file in the git directory, not in the shared record",
+        "refuse any other value with a message naming check_jobs and the 1 to 64 range, changing nothing",
+        "show check_jobs (default 4) in vbw config, and give the checks code one reader of the setting",
+        "list the setting in vbw help"
+      ]
+    },
+    {
+      "id": "P56.2",
+      "phase": "P56",
+      "title": "vbw prove runs checks in parallel",
+      "reqs": [
+        "R69",
+        "R81"
+      ],
+      "files": [
+        "plugin/lib/checks.sh",
+        "plugin/lib/cmd-prove.sh"
+      ],
+      "after": [
+        "P56.1",
+        "P55.2"
+      ],
+      "status": "planned",
+      "tasks": [
+        "run the approved checks up to check_jobs at a time, never more, with bash 3.2 (no wait -n); a limit of 1 is the old sequential order",
+        "keep checks marked alone by themselves through the existing gate, and keep the gate's registrations right when several run from one process",
+        "collect the results in the checks' own order, so the recorded evidence equals a sequential run's",
+        "keep vbw check, vbw fix done and vbw plan done working, and clean up every background process and file on error or interrupt"
+      ]
+    },
+    {
+      "id": "P56.3",
+      "phase": "P56",
+      "title": "QA gets the proof's one test run",
+      "reqs": [
+        "R70"
+      ],
+      "files": [
+        "plugin/lib/next.jq",
+        "plugin/workflows/verifying.js",
+        "plugin/agents/qa.md",
+        "plugin/skills/vibe/SKILL.md"
+      ],
+      "after": [
+        "P55.1",
+        "P55.2",
+        "P55.5"
+      ],
+      "status": "planned",
+      "tasks": [
+        "add a top-level round.suite to vbw next --json at the qa step: the proof's result of the project's test command, 'skipped' when it was not approved, 'not run' when the proof has none, null when the project has no test command; leave detail as it is",
+        "put the result in every QA agent's prompt with 'Do not run the project's test command', and say once, in the log, when the run did not start ('did not run'), with 'Do not retry' to the agents",
+        "tell the QA agent the same in agents/qa.md, and let the router pass round in the QA workflow's args",
+        "keep the words inputs, standing and recheck out of verifying.js (an older test checks that)"
+      ]
+    },
+    {
+      "id": "P56.4",
+      "phase": "P56",
+      "title": "Docs: parallel proof, check_jobs, one test run per QA round",
+      "reqs": [
+        "R69",
+        "R70",
+        "R81"
+      ],
+      "files": [
+        "docs/proof.md",
+        "docs/workflows.md",
+        "docs/next.md"
+      ],
+      "after": [
+        "P56.1",
+        "P56.2",
+        "P56.3",
+        "P55.6"
+      ],
+      "status": "planned",
+      "tasks": [
+        "describe parallel proof, alone checks and the check_jobs setting",
+        "describe how a QA round gets the one test run"
+      ],
+      "role": "docs"
+    },
+    {
+      "id": "P57.1",
+      "phase": "P57",
+      "title": "QA depth follows the size and risk of the change",
+      "reqs": [
+        "R71"
+      ],
+      "files": [
+        "plugin/lib/next.jq",
+        "plugin/workflows/verifying.js"
+      ],
+      "after": [
+        "P56.3"
+      ],
+      "status": "planned",
+      "tasks": [
+        "add round.tiers to vbw next --json: for each phase to check, quick for at most two files and no risk, at most standard for three to nine files and no risk, else the depth its tier and profile give; never above the profile's depth; leave rigor cells and detail as they are",
+        "let the QA workflow use round.tiers for each phase before the rigor cell's depth",
+        "treat a phase with no recorded reasons as not small"
+      ]
+    },
+    {
+      "id": "P57.2",
+      "phase": "P57",
+      "title": "Documentation-only changes need no new check",
+      "reqs": [
+        "R71"
+      ],
+      "files": [
+        "plugin/lib/rigor-defs.jq",
+        "plugin/lib/rigor.jq",
+        "plugin/lib/cmd-apply.sh",
+        "plugin/lib/cmd-approve.sh",
+        "plugin/lib/prove.jq",
+        "plugin/lib/next.jq",
+        "plugin/agents/lead.md"
+      ],
+      "after": [
+        "P57.1",
+        "P55.3",
+        "P55.4",
+        "P55.5"
+      ],
+      "status": "planned",
+      "tasks": [
+        "define once what a documentation-only requirement is: every plan serving it changes only documentation files (markdown, text, rst) and it has no check",
+        "do not ask for a check or rules for it in vbw next, vbw apply and the approval",
+        "let vbw prove mark it proven once its plans are done; a check that exists (a project rule asked for it) still runs and decides",
+        "stop counting documentation files as existing code in the 'no project test command' floor",
+        "Lead prompt: documentation or wording alone needs no new check unless a project rule requires one"
+      ]
+    },
+    {
+      "id": "P57.3",
+      "phase": "P57",
+      "title": "The small-change path: detail.small and the large-repository cap",
+      "reqs": [
+        "R72"
+      ],
+      "files": [
+        "plugin/lib/next.jq",
+        "plugin/lib/rigor-defs.jq",
+        "plugin/lib/rigor.jq",
+        "plugin/lib/rigor.sh",
+        "plugin/skills/vibe/SKILL.md"
+      ],
+      "after": [
+        "P57.2"
+      ],
+      "status": "planned",
+      "tasks": [
+        "add detail.small at the plan step: true for one or two [auto] requirements that name no risk path, with rigor not forced above express, whatever the repository's size; the early tier stays as it is",
+        "in a repository tracking more than 30 files, put the tier floor at standard when an express phase's plans cover more than two files (reason shown), and keep small repositories as they are",
+        "router: for detail.small, plan it yourself as one express phase, one plan, one check, no planning workflow; more than two files or a risk path means normal planning",
+        "stay inside the router's 1,400 words"
+      ]
+    },
+    {
+      "id": "P57.4",
+      "phase": "P57",
+      "title": "Docs: the small-change path, QA depth, documentation changes",
+      "reqs": [
+        "R71",
+        "R72"
+      ],
+      "files": [
+        "docs/rigor.md",
+        "docs/next.md"
+      ],
+      "after": [
+        "P57.3",
+        "P56.4"
+      ],
+      "status": "planned",
+      "tasks": [
+        "describe detail.small and the large-repository rule",
+        "describe QA depth by size and risk (round.tiers)",
+        "describe the documentation exemption and the project rule that overrides it"
+      ],
+      "role": "docs"
+    },
+    {
+      "id": "P58.1",
+      "phase": "P58",
+      "title": "The panel opens at a quarter of the terminal width",
+      "reqs": [
+        "R82"
+      ],
+      "files": [
+        "plugin/hooks/panel.js",
+        "docs/panel.md"
+      ],
+      "after": [],
+      "status": "planned",
+      "tasks": [
+        "opening by itself, open as Claude Code places it (session.start carries no width)",
+        "on the first docked drawing, the terminal is viewport.columns + props.bodyColumns + 1 (measured in Claude Code 2.1.291); ask once a session for max(40, round(terminal / 4)) columns, never taking the keyboard, unless the pane already has that width",
+        "/vbw-panel opens at max(40, round(presentation.columns / 4)); without a reported width, open as before",
+        "never ask again in the session; a width the user dragged is kept by Claude Code and wins; never store a width as the user choice",
+        "an inline drawing (main screen) or a missing, zero or odd width asks nothing and never fails",
+        "document the width and that a dragged width wins in docs/panel.md"
+      ]
+    },
+    {
+      "id": "P57.5",
+      "phase": "P57",
+      "title": "A real Claude Code run of a small change",
+      "reqs": [
+        "R72"
+      ],
+      "files": [
+        "tools/l3-suite.sh",
+        "tools/l3-results/smallchange.json"
+      ],
+      "after": [
+        "P53.1",
+        "P53.2",
+        "P53.3",
+        "P53.4",
+        "P54.1",
+        "P54.2",
+        "P54.3",
+        "P55.1",
+        "P55.2",
+        "P55.3",
+        "P55.4",
+        "P55.5",
+        "P55.6",
+        "P56.1",
+        "P56.2",
+        "P56.3",
+        "P56.4",
+        "P57.1",
+        "P57.2",
+        "P57.3",
+        "P57.4",
+        "P58.1"
+      ],
+      "status": "planned",
+      "tasks": [
+        "add the smallchange scenario: a shipped greet.sh project; the user asks one small change in plain words through /vbw:vibe",
+        "facts from the record, git and the transcript: no planning workflow, one approval decision, one plan, its check passed, QA quick at most, the change committed",
+        "run it in the real app, commit the result with its fixture, cost and not-tested list, and name it in the suite header and the default list"
+      ]
     }
   ],
   "fixes": [
@@ -9598,6 +10877,12 @@
       "text": "Until 2.1 a release runs the suite on macOS and Linux plus greenfield and the real-app scenarios of the changed area; the full real-app suite runs only before 2.1",
       "why": "owner 2026-10-06: the owner is the only user; the full suite (~1.5 h) is kept for the 2.1 launch",
       "at": "2026-10-06T16:32:46Z"
+    },
+    {
+      "id": "D141",
+      "text": "Kernel budget raised from 3,500 to 3,800 lines",
+      "why": "owner 2026-10-06: the merged milestone needs about 250 lines (parallel proof, plan rules, narrow apply, one approval per phase); squeezing risks behaviour changes",
+      "at": "2026-10-06T17:15:55Z"
     }
   ],
   "commands": {
@@ -10186,11 +11471,5 @@
     "scope": [],
     "passed": true
   },
-  "lease": {
-    "run": "plan-20261006T163341Z",
-    "kind": "plan",
-    "started_at": "2026-10-06T16:33:41Z",
-    "files": null,
-    "session": "9cd2cc30-8c86-4520-9d71-a0e82aff5407"
-  }
+  "lease": null
 }

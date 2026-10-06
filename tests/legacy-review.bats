@@ -241,12 +241,8 @@ review() { "$VBW" legacy review < /dev/null; }
   [[ "$output" == *"legacy"*"review"* ]]
 }
 
-@test "R65: the kernel with the review stays within 3,500 lines" {
+@test "R65: the kernel with the review stays within its budget (kept in one place: tests/standards.bats)" {
   grep -q 'review' "$PLUGIN_ROOT/lib/cmd-legacy.sh"
-  local total=0 file n
-  while IFS= read -r file; do
-    n=$(grep -cvE '^[[:space:]]*(#|$)' "$file" || true)
-    total=$((total + n))
-  done < <({ printf '%s\n' "$PLUGIN_ROOT/bin/vbw"; find "$PLUGIN_ROOT/lib" "$PLUGIN_ROOT/hooks" "$PLUGIN_ROOT/scripts" -type f \( -name '*.sh' -o -name '*.jq' \) 2> /dev/null; } | LC_ALL=C sort)
-  [ "$total" -le 3500 ]
+  run bats --filter 'kernel stays within' "$REPO_ROOT/tests/standards.bats"
+  [ "$status" -eq 0 ] || { echo "$output"; false; }
 }

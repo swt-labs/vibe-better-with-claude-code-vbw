@@ -70,7 +70,8 @@ teardown() { vbw_teardown; }
   [ "$status" -eq 0 ] || { echo "$output"; false; }
 }
 
-@test "R61: the kernel stays within 3,500 lines and the router within 1,400 words" {
-  [ "$(cat "$PLUGIN_ROOT"/bin/vbw "$PLUGIN_ROOT"/lib/*.sh | wc -l)" -le 3500 ]
+@test "R61: the kernel stays within its budget (kept in one place: tests/standards.bats) and the router within 1,400 words" {
+  run bats --filter 'kernel stays within' "$REPO_ROOT/tests/standards.bats"
+  [ "$status" -eq 0 ] || { echo "$output"; false; }
   [ "$(wc -w < "$PLUGIN_ROOT/skills/vibe/SKILL.md")" -le 1400 ]
 }
