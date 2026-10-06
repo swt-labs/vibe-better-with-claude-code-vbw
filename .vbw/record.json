@@ -4307,7 +4307,14 @@
           "to": "deep",
           "reason": "Dev blocked P44.4: The real-app run (L3, Claude Code 2.1.289, window 200 columns) shows a defect in plugin/hooks/panel.js, outside this plan's files: the panel never redraws by itself. The debug log has '[WARN] [vbw] $.ui.invalidate dropped: HooksError: ui.invalidate: takes \"ui.render\", \"prompt.section\", ... (host check)': panel.js calls $.ui.invalidate() with no event name (redrawIfChanged). Seen: after '/vbw-sound off' the panel still says 'Sound is on.' (the choice is saved), and a state change (need, progress) shows only when the pane is reopened. R51 requires updates within a few seconds. Fix: call $.ui.invalidate('ui.render') (check the host's argument form), and check tests/panel (the fake's invalidate must also demand the name). The scenario is committed and passes every other fact (milestone, progress, doing, need, cost, no basis yet, click-close stays closed after restart, sound off kept); only sound_shown_off fails. After the fix, rerun: bash tools/l3-suite.sh panel, then commit tools/l3-results/panel.json."
         }
-      ]
+      ],
+      "qa": {
+        "result": "pass",
+        "tier": "deep",
+        "tree": "11ceeea168c7a7686ef44b7e34d1784b4a2e22cb53720c5f83d25dd46c281a36",
+        "at": "2026-10-06T05:22:17Z",
+        "note": "24/24 checks"
+      }
     },
     {
       "id": "P45",
@@ -8351,6 +8358,11 @@
       "id": "T19",
       "text": "qa.jq names a phase cycle as a problem even when plans are acyclic (P46.7 after P47.4, P47.5/P47.6 after P46.x): interleaved phases are legitimate; report it as a note, keep the recheck closure",
       "status": "open"
+    },
+    {
+      "id": "T20",
+      "text": "verifying workflow: after each QA agent returns, confirm its verdict reached the record (vbw show qa); the P44 QA agent on 2026-10-06 returned pass without running vbw qa record, costing a re-run",
+      "status": "open"
     }
   ],
   "decisions": [
@@ -9651,5 +9663,11 @@
     "scope": [],
     "passed": true
   },
-  "lease": null
+  "lease": {
+    "run": "qa-20261006T051621Z",
+    "kind": "qa",
+    "started_at": "2026-10-06T05:16:21Z",
+    "files": [],
+    "session": "9cd2cc30-8c86-4520-9d71-a0e82aff5407"
+  }
 }
