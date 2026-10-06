@@ -23,9 +23,9 @@ cmd_next() {
   next_code_changed "$record" && changed=true
   # A VBW 1 plan not yet converted (docs/convert.md).
   [ -d "$VBW_ROOT/.vbw-planning" ] && ! printf '%s' "$record" | jq -e 'has("converted") or .project.legacy.choice == "fresh"' > /dev/null && legacy=true
-  # Tracked files, and of those the code: outside .vbw/ and not markdown or text.
-  counts=$(git -C "$VBW_ROOT" ls-files -z 2> /dev/null | jq -Rs '[split("\u0000")[] | select(length > 0)]
-    | {tracked: length, code: ([.[] | select((startswith(".vbw/") or test("\\.(md|markdown|txt)$")) | not)] | length)}')
+  # Tracked files, and of those the code: outside .vbw/ and not documentation (is_doc).
+  counts=$(git -C "$VBW_ROOT" ls-files -z 2> /dev/null | jq -Rs "$VBW_JQ_DEFS"'[split("\u0000")[] | select(length > 0)]
+    | {tracked: length, code: ([.[] | select((startswith(".vbw/") or is_doc) | not)] | length)}')
   qa=$(qa_state "$record")
   # A plan that names a plan or phase that is not there cannot be judged.
   jq -e '.problems | any(.[]; contains("does not exist")) | not' <<< "$qa" > /dev/null || vbw_die "$(jq -r '.problems | join("; ")' <<< "$qa")"
