@@ -1360,6 +1360,7 @@ shipped_seed() {
   "$VBW" approve > /dev/null || return 1
   printf '#!/bin/sh\necho "Hello, ${1:-world}!"\n' > greet.sh && chmod +x greet.sh
   "$VBW" commit P1.1 "feat(P1.1): greet.sh" > /dev/null || return 1
+  # shellcheck disable=SC1010 # "plan done" is a vbw subcommand
   "$VBW" plan done P1.1 > /dev/null || return 1
   "$VBW" prove > /dev/null || return 1
   "$VBW" qa record P1 pass standard "seeded" > /dev/null || return 1
