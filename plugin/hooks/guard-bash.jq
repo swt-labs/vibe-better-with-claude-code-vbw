@@ -61,6 +61,13 @@ def simple($q):
 
 def shell: test("^(sh|bash|zsh|dash|ksh)$");
 
+# The bodies of the $(...) and `...` the shell runs inside a double-quoted
+# string; an escaped \$ or \` is text, so naming a command there runs nothing.
+def substitutions:
+  .[1:-1] | match("\\\\.|\\$(?<p>\\((?:[^()\\\\]|\\\\.|\\g<p>)*\\))|`(?<b>(?:[^`\\\\]|\\\\.)*)`"; "g")
+  | .captures[] | select(.string != null) | .string | (if startswith("(") then .[1:-1] else . end)
+  | gsub("\\\\(?<c>[\"\\\\$`])"; .c);
+
 # Every simple command the shell would run.
 def commands($depth):
   strip_heredocs | mask as $m
@@ -73,7 +80,7 @@ def commands($depth):
                | select($i != null) | .args[$i + 1] // empty),
               ($c | select(.cmd == "eval") | .args | join(" ")) )
           | commands($depth - 1) ) ),
-    ( select($depth > 0) | $m.q[] | select(startswith("\"")) | unquote | select(test("\\$\\(|`")) | commands($depth - 1) );
+    ( select($depth > 0) | $m.q[] | select(startswith("\"")) | substitutions | commands($depth - 1) );
 
 # --- rules -------------------------------------------------------------------
 
