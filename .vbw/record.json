@@ -10116,7 +10116,7 @@
       "req": "R69",
       "source": "qa",
       "attempts": 0,
-      "status": "open",
+      "status": "fixed",
       "note": "P56.2 task 4 promised cleanup of every background process on error or interrupt. plugin/lib/checks.sh (commit 7cd1aa96, checks_run_all) starts each check as a background subshell and collects pids, but nothing stops or waits for them when vbw prove gets TERM/INT/HUP: the guard only removes the output directory, so running checks go on as orphans and then write into a deleted folder. A Ctrl-C in a terminal reaches them through the process group; a TERM sent to vbw alone does not. No test in tests/prove-parallel.bats covers an interrupted parallel proof, so the promise is untested. Evidence is by reading the code; I could not run an interrupt experiment (QA may not write files). Options: (a, recommended) have the interrupt handler wait for the running checks to finish before cleaning up, which fits the rule that VBW never kills processes, and add a test; (b) change P56.2 task 4 to say only files are cleaned up, and record that as a decision."
     },
     {
@@ -10124,7 +10124,7 @@
       "req": "R71",
       "source": "qa",
       "attempts": 0,
-      "status": "open",
+      "status": "fixed",
       "note": "Plan P57.2 task 1 says documentation is 'markdown, text, rst'. Commit de5e4b4d made it markdown and rst only (plugin/lib/rigor-defs.jq is_doc), so a .txt-only change still needs a check. No recorded decision approves this. plugin/agents/lead.md (577a317d) still tells the Lead that 'markdown, text, rst' need no check, so the Lead prompt and the kernel disagree. Either follow the plan and fix the code, or record the decision and correct the plan text and Lead prompt and docs."
     },
     {
@@ -10132,14 +10132,14 @@
       "req": "R71",
       "source": "qa",
       "attempts": 0,
-      "status": "open",
+      "status": "fixed",
       "note": "The 'documentation' definition is not in one place. plugin/lib/cmd-next.sh line 28 still counts .md, .markdown and .txt (not .rst) as non-code for the early tier, while rigor-defs.jq is_doc is md, markdown, rst. The Dev's own blocked note listed '.rst in cmd-next.sh facts' as not done, and no commit finished it. P57.2 task 1 says define it once."
     },
     {
       "id": "F43",
       "req": "R69",
       "attempts": 0,
-      "status": "open",
+      "status": "fixed",
       "note": "C120 null"
     }
   ],
