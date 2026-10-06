@@ -8389,7 +8389,7 @@
       "req": "R67",
       "source": "qa",
       "attempts": 0,
-      "status": "open",
+      "status": "fixed",
       "note": "docs/interview.md line 86 still says vbw next returns profile.ask: true only at the spec step. P51.1 changed next.jq so it is also true at the convert step. The plan's docs task covered only the old-folder sentence, but the doc now contradicts the code. Fix: say 'at the spec step, or at the convert step when a VBW 1 folder has no choice yet'."
     },
     {
@@ -8397,7 +8397,7 @@
       "req": "R67",
       "source": "qa",
       "attempts": 0,
-      "status": "open",
+      "status": "fixed",
       "note": "Commit a21fa989 changed tools/l3-results/nolegacy.json, a file P51.2 does not list (P51.2 lists only legacy.json). No decision records it. Fix: record a decision that the nolegacy re-run result stands, or add the file to the plan."
     }
   ],
@@ -9235,6 +9235,12 @@
       "id": "D131",
       "at": "2026-10-06T14:03:25Z",
       "text": "Contract approved: 64 requirements, 92 checks, 141 plans (0c258a8febbd)"
+    },
+    {
+      "id": "D132",
+      "text": "F38: keep commit a21fa989 (tools/l3-results/nolegacy.json re-run on the P51 fix)",
+      "why": "chosen by VBW: release evidence (step 2 of the release) for the scenario that pairs with legacy; P51.2's task ran both scenarios but listed only legacy.json; history is never rewritten",
+      "at": "2026-10-06T14:51:30Z"
     }
   ],
   "commands": {
