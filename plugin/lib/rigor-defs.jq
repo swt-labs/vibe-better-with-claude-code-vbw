@@ -29,8 +29,9 @@ def sig_breaks: if . >= 4 then "deep" elif . >= 1 then "standard" else "express"
 def sig_tests($existing; $has_tests): if $existing and ($has_tests | not) then "standard" else "express" end;
 # On the record: the project has its own tests to run (a test or check command).
 def has_tests: .commands.test != null or .commands.check != null;
-# A document (markdown, text) is never a risk path, whatever its name.
-def is_doc: test("\\.(md|markdown|txt|rst)$"; "i");
+# A document (Markdown, reStructuredText) is never a risk path, whatever its name.
+# Plain .txt is not a document: it is often data (word lists, fixtures, config).
+def is_doc: test("\\.(md|markdown|rst)$"; "i");
 
 # A documentation-only requirement: on a requirement, given the plans and the
 # checks that bear on it. Every plan serving it changes only documents, and no
