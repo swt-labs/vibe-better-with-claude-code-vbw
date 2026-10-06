@@ -5495,7 +5495,15 @@
         "breaks: R1, R2, R3, R10, R12, R13, R14, R22, R23, R24, R25, R26, R27, R28, R31, R32, R33, R35, R37, R38, R39, R40, R43, R44, R45, R46, R47, R48, R49, R50, R58, R60, R61, R62, R65, R66, R67",
         "tests: project test command"
       ],
-      "predicted": "deep"
+      "predicted": "deep",
+      "escalations": [
+        {
+          "at": "2026-10-06T17:31:09Z",
+          "from": "deep",
+          "to": "deep",
+          "reason": "Dev blocked P55.1: Tasks 1-5 are committed (vbw run confirm, quiet run end, closing agent in build/fix/QA/planning/mapping, help). Check C112 needs plugin/skills/vibe/SKILL.md changed (its R81 test: the router passes args.session, drops the 'vbw run end' after each workflow so at most 4 mentions remain, keeps --owner-closed). That file is not in the plan's files, so vbw commit refuses it. Add plugin/skills/vibe/SKILL.md to P55.1's files and rerun; I reverted my uncommitted router edit."
+        }
+      ]
     },
     {
       "id": "P56",
@@ -9079,7 +9087,7 @@
         "P53.2",
         "P53.3"
       ],
-      "status": "planned",
+      "status": "done",
       "tasks": [
         "describe which folders the proof copy links and which it keeps its own",
         "describe closing a plan whose work is already committed",
@@ -9124,7 +9132,7 @@
       "after": [
         "P54.1"
       ],
-      "status": "planned",
+      "status": "done",
       "tasks": [
         "during a run, judge Python, Node, Perl, Ruby and similar programs that write a file (inline code, scripts read from standard input, in-place edit flags) like a shell write outside the plan, with the same reason",
         "treat copying or printing the plan of record (cp, sort, awk, rsync, cat, jq) as reading, while writes to it stay refused",
@@ -9178,14 +9186,15 @@
       "after": [
         "P54.1"
       ],
-      "status": "planned",
+      "status": "blocked",
       "tasks": [
         "add vbw run confirm ID...: one line per plan, fix or phase of the open run saying whether its state or verdict was recorded, naming plainly the ones that were not (exit 1), changing nothing",
         "make vbw run end a quiet no-op, with no commit, when no run is open",
         "add a closing step to the build, fix and QA workflows: when args.session is given, a small agent labelled close run runs vbw run confirm for that run's ids and then vbw run end, and the workflow returns and logs what was not recorded (older tests call these workflows without a session and must see no extra agent)",
         "give the planning and mapping workflows the same closing step (run end only) on every way out",
         "list vbw run confirm in vbw help; keep verifying.js free of the words inputs, standing and recheck (an older test checks that)"
-      ]
+      ],
+      "note": "Tasks 1-5 are committed (vbw run confirm, quiet run end, closing agent in build/fix/QA/planning/mapping, help). Check C112 needs plugin/skills/vibe/SKILL.md changed (its R81 test: the router passes args.session, drops the 'vbw run end' after each workflow so at most 4 mentions remain, keeps --owner-closed). That file is not in the plan's files, so vbw commit refuses it. Add plugin/skills/vibe/SKILL.md to P55.1's files and rerun; I reverted my uncommitted router edit."
     },
     {
       "id": "P55.2",
@@ -9205,7 +9214,7 @@
       "after": [
         "P53.3"
       ],
-      "status": "planned",
+      "status": "done",
       "tasks": [
         "remember with each approval a fingerprint of the contract's structure (requirements, checks, plans), apart from the bytes of the check files; the contract fingerprint itself stays as it is",
         "while only the bytes of check files differ from what was approved, let vbw check and vbw plan done run and say which files wait for approval; any structural change still needs approval first",
