@@ -1618,6 +1618,27 @@
           "check": "C95"
         }
       ]
+    },
+    {
+      "id": "R67",
+      "text": "When a project has a VBW 1 folder and the user has not been interviewed yet, VBW opens with the interview greeting and level question, and asks convert or start fresh right after the level answer",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M10",
+      "rules": [
+        {
+          "text": "with a VBW 1 folder and no interview, vbw next at convert says the interview is due, from the level question",
+          "check": "C96"
+        },
+        {
+          "text": "after the interview, the convert step does not ask for it again",
+          "check": "C96"
+        },
+        {
+          "text": "the router interviews before spec or convert work",
+          "check": "C96"
+        }
+      ]
     }
   ],
   "checks": [
@@ -2697,6 +2718,17 @@
       ],
       "files": [
         "tests/qa-replan-keeps.bats"
+      ]
+    },
+    {
+      "id": "C96",
+      "req": "R67",
+      "run": [
+        "bats",
+        "tests/legacy-interview-order.bats"
+      ],
+      "files": [
+        "tests/legacy-interview-order.bats"
       ]
     }
   ],
@@ -4625,6 +4657,29 @@
         "qa_findings": 0,
         "escalations": 0
       }
+    },
+    {
+      "id": "P51",
+      "title": "Interview first, then the old VBW 1 folder",
+      "reqs": [
+        "R67"
+      ],
+      "milestone": "M10",
+      "goal": "A project with a VBW 1 folder and no interview opens with the greeting and level question; the convert-or-fresh question comes right after the level answer.",
+      "criteria": [
+        "vbw next says the interview is due at the convert step too",
+        "the router interviews before spec or convert work",
+        "the real-app legacy scenario sees the review question right after the level answer"
+      ],
+      "tier": "deep",
+      "reasons": [
+        "requirements: 1",
+        "files: 4 (26957 bytes)",
+        "risk: none",
+        "breaks: R13, R14, R22, R24, R26, R31, R35, R37, R38, R39, R40, R47, R48, R49, R50, R59, R60, R61, R65",
+        "tests: project test command"
+      ],
+      "predicted": "deep"
     }
   ],
   "plans": [
@@ -7994,6 +8049,44 @@
       "tasks": [
         "vbw apply keeps an existing phase's qa field with its escalations and outcome",
         "docs/proof.md says a re-plan keeps QA verdicts and the re-check rule decides what QA checks again"
+      ]
+    },
+    {
+      "id": "P51.1",
+      "phase": "P51",
+      "title": "The interview is due at the convert step too",
+      "reqs": [
+        "R67"
+      ],
+      "files": [
+        "plugin/lib/next.jq",
+        "plugin/skills/vibe/SKILL.md",
+        "docs/interview.md"
+      ],
+      "after": [],
+      "status": "planned",
+      "tasks": [
+        "vbw next: profile.ask is true at convert as at spec while the user has not been interviewed",
+        "router: profile.ask true means interview before any spec or convert work",
+        "docs/interview.md: with a VBW 1 folder the interview comes first, then the old-folder step"
+      ]
+    },
+    {
+      "id": "P51.2",
+      "phase": "P51",
+      "title": "Run the real-app legacy scenario again",
+      "reqs": [
+        "R67"
+      ],
+      "files": [
+        "tools/l3-results/legacy.json"
+      ],
+      "after": [
+        "P51.1"
+      ],
+      "status": "planned",
+      "tasks": [
+        "run bash tools/l3-suite.sh legacy nolegacy and commit legacy.json when it passes"
       ]
     }
   ],
