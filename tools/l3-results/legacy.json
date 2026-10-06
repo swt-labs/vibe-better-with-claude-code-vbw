@@ -1,9 +1,9 @@
 {
   "scenario": "legacy",
   "fixture": "greet.sh from scratch; a VBW 1 folder with one finished plan whose files exist; the user picks Start fresh, the option that is not recommended",
-  "cost_usd": 0.3167,
+  "cost_usd": 0.3103,
   "evidence_level": "L3",
-  "at": "2026-10-05T19:57:49Z",
+  "at": "2026-10-06T14:29:55Z",
   "passed": true,
   "facts": {
     "recommendation": "convert",
