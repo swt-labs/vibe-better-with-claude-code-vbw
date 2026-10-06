@@ -138,6 +138,42 @@ An accepted document stores each requirement's rules in the record
 the key on a first plan, nothing changes (see docs/proof.md for the approval
 consequence).
 
+### Changing one thing: `vbw apply --patch`
+
+```
+echo '{"checks": [{"id": "C2", "req": "R2", "run": ["sh", "tests/c2.sh", "--strict"], "files": ["tests/c2.sh"]}]}' | vbw apply --patch
+```
+
+The document may carry `plans`, `checks` and `rules`, in the same shape as a
+full apply, and nothing else. VBW merges them into the record:
+
+- a plan or check with an existing `id` replaces that one; a new `id` is added
+  (a new plan needs a phase that exists);
+- a rule is matched by requirement and text: the same text with another
+  `check` changes it, new text adds it, and the requirement's other rules stay;
+- phases, requirements and every plan, check and rule not named are untouched.
+
+A patch with `phases` is refused (`a patch carries plans, checks and rules,
+never phases: change phases with a full apply`). Every other rule of a full
+apply holds: a started plan cannot change, a rule must name a check of its
+requirement, and no build or fix run may be open. A refused patch writes
+nothing. A changed check or plan changes the contract, so the user approves it
+again (docs/proof.md).
+
+### Once work has started
+
+When any plan of a phase is no longer `planned`, a planning round (a full
+`vbw apply`) cannot reshape that phase. It is refused, with the reason, when it:
+
+- renames the phase or changes its requirements
+  (`P1 has work started: its title stays "Pay"`);
+- adds a phase for requirements another phase already covers
+  (`P3 is a new phase for requirements another phase already covers: once work has started, add plans to that phase`).
+
+A new phase for requirements nobody planned yet is still accepted, and before
+any work has started planning may rename and reshape phases freely. To add or
+change a plan in a started phase, add plans to it or use `vbw apply --patch`.
+
 ## Agents
 
 Agents are specifications of good output, not procedures (design §4). Each
