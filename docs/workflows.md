@@ -30,8 +30,47 @@ The router opens a lease before it starts a workflow and closes it after:
 
 ```
 vbw run start build P1.1 P1.2     # or: fix F1 F2 | plan | qa | map
+vbw run confirm P1.1 P1.2         # build, fix and qa runs: was it recorded?
 vbw run end
 ```
+
+A workflow closes its own run. The router passes `args.session` (its
+`${CLAUDE_SESSION_ID}`) to every workflow. Without it, a workflow closes
+nothing and the router ends the run as before. With it:
+
+- `vbw:building`, `vbw:fixing` and `vbw:verifying` finish with one last agent
+  that runs `vbw run confirm` for every plan, fix or phase of the run, then
+  `vbw run end` whatever confirm said. The workflow returns that agent's
+  answer as `confirmation`.
+- `vbw:planning` and `vbw:mapping` run `vbw run end` on every way out,
+  including a stop for decisions or an error.
+
+The router then finds no open run. `vbw run end` with nothing open prints
+`no run is open` and exits 0, so the router's own call is harmless.
+
+### `vbw run confirm ID...`
+
+Reads the record and prints one line per ID. It changes nothing.
+
+```
+$ vbw run confirm P1.1 P1.2
+P1.1: recorded (done)
+P1.2: not recorded (still building)
+```
+
+What counts as recorded, by the kind of the open run:
+
+| Run | ID is | Recorded when |
+|---|---|---|
+| `build` | a plan | its status is `done` or `blocked` |
+| `fix` | a fix | its status is no longer `open` |
+| `qa` | a phase | it holds a verdict dated after the run started |
+
+It exits 1 when any ID was not recorded: an agent that stopped early or
+skipped its `vbw plan done`, `vbw fix done` or `vbw qa record` is named, not
+hidden. A plan left `building` goes back to `planned` when the run ends, so
+the next wave picks it up. It also refuses, with an error, when no run is open, an unknown ID,
+the run is a `plan` or `map` run, or no IDs are given.
 
 `record.lease` is `{run, kind, started_at, session, files}`. `session` is the
 Claude Code session that opened the run (skills pass it as `VBW_SESSION_ID=${CLAUDE_SESSION_ID}`).
@@ -69,6 +108,7 @@ lease older than 24 hours is ignored (a crashed run must not lock a project).
 | `vbw plan done P1.2` / `vbw plan block P1.2 "reason"` | Dev | the plan's outcome. `done` is verified: none of the plan's files has uncommitted changes, and the checks of the requirements it completes pass. The plan also needs a commit with its `VBW-Plan` trailer (`vbw commit`); without one, every file must be committed in `HEAD` (for example by the approval commit) and a check of its requirements must pass, or `done` is refused and names the failing check. A blocked plan stops only the plans that depend on it (docs/next.md) |
 | `vbw fix done F1` or `vbw fix done F8 F9` | Dev | verified (several fixes in one command run the checks they serve once; one that cannot close is named, the others still close, and the exit code is non-zero): no uncommitted changes in the files it may touch, and the checks of every finished requirement those files serve pass; then awaiting proof |
 | `vbw apply < plan.json` | Lead | replace phases, plans and checks, and set each `auto` requirement's rules, in one validated write (refused while a build or fix run is open; a plan that has started must come back unchanged) |
+| `vbw apply --patch < patch.json` | Lead | change only the plans, checks and rules in the document; everything else stays byte for byte as it was |
 
 ## `vbw apply` and rules
 
