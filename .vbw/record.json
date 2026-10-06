@@ -1688,6 +1688,10 @@
         {
           "text": "a stop signal sent to vbw prove alone waits for its running checks, then cleans up; nothing outlives it",
           "check": "C120"
+        },
+        {
+          "text": "the check gate lock is never taken from a live owner: an empty owner file means retry, and only an owner-less lock left past a wait is taken over",
+          "check": "C122"
         }
       ]
     },
@@ -3463,6 +3467,17 @@
       ],
       "files": [
         "tests/doc-definition.bats"
+      ]
+    },
+    {
+      "id": "C122",
+      "req": "R69",
+      "run": [
+        "bats",
+        "tests/gate-race.bats"
+      ],
+      "files": [
+        "tests/gate-race.bats"
       ]
     }
   ],
@@ -9812,6 +9827,24 @@
       "tasks": [
         "the early tier counts code with the shared is_doc from rigor-defs.jq (through VBW_JQ_DEFS), not a list of its own (F42)",
         "the Lead is told documentation is markdown and rst; plain text keeps its check (F41, D144)"
+      ]
+    },
+    {
+      "id": "P56.5",
+      "phase": "P56",
+      "title": "The check gate lock is never taken from a live owner",
+      "reqs": [
+        "R69"
+      ],
+      "files": [
+        "plugin/lib/checks.sh"
+      ],
+      "after": [],
+      "status": "planned",
+      "tasks": [
+        "read the lock owner once; an empty or missing owner is a handover in progress: retry, never remove the lock (F44)",
+        "only a lock with no owner left past a wait, or a dead owner, is taken over",
+        "writing the owner never prints an error: if the lock vanished, retry"
       ]
     }
   ],
