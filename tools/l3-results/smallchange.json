@@ -1,0 +1,23 @@
+{
+  "scenario": "smallchange",
+  "fixture": "greet.sh shipped in a first milestone (one phase, one plan, QA passed, shipped); the user then asks for a --shout option in plain words; rigor auto",
+  "cost_usd": 0.77,
+  "evidence_level": "L3",
+  "at": "2026-10-06T20:01:18Z",
+  "passed": true,
+  "facts": {
+    "planning_workflow": false,
+    "approvals": 1,
+    "approved_by_choice": true,
+    "plans": 1,
+    "check_passed": true,
+    "qa_tier": "quick",
+    "change_committed": true
+  },
+  "not_tested": [
+    "a change that turns out to touch more than two files or a risk path (the planning workflow)",
+    "a project larger than the greet.sh fixture",
+    "the wording of what VBW tells the user (read by a person)",
+    "the user answering Not yet or in their own words at the approval"
+  ]
+}
