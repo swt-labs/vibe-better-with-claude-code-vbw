@@ -5551,7 +5551,22 @@
           "to": "deep",
           "reason": "Dev blocked P55.1: Tasks 1-5 are committed (vbw run confirm, quiet run end, closing agent in build/fix/QA/planning/mapping, help). Check C112 needs plugin/skills/vibe/SKILL.md changed (its R81 test: the router passes args.session, drops the 'vbw run end' after each workflow so at most 4 mentions remain, keeps --owner-closed). That file is not in the plan's files, so vbw commit refuses it. Add plugin/skills/vibe/SKILL.md to P55.1's files and rerun; I reverted my uncommitted router edit."
         }
-      ]
+      ],
+      "qa": {
+        "result": "pass",
+        "tier": "deep",
+        "tree": "5b1e9987ecb4cc07ac313eb61f2c8e557b7e38393b3e655a06447a1fd3b4756c",
+        "at": "2026-10-06T21:12:30Z",
+        "note": "14/14 checks"
+      },
+      "outcome": {
+        "tier": "deep",
+        "predicted": "deep",
+        "held": true,
+        "fix_rounds": 0,
+        "qa_findings": 0,
+        "escalations": 1
+      }
     },
     {
       "id": "P56",
