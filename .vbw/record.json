@@ -10883,6 +10883,11 @@
       "text": "Kernel budget raised from 3,500 to 3,800 lines",
       "why": "owner 2026-10-06: the merged milestone needs about 250 lines (parallel proof, plan rules, narrow apply, one approval per phase); squeezing risks behaviour changes",
       "at": "2026-10-06T17:15:55Z"
+    },
+    {
+      "id": "D142",
+      "at": "2026-10-06T17:21:20Z",
+      "text": "Contract approved: 79 requirements, 114 checks, 165 plans (87cc3d7086dc)"
     }
   ],
   "commands": {
