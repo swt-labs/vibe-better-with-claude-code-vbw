@@ -9840,7 +9840,7 @@
         "plugin/lib/checks.sh"
       ],
       "after": [],
-      "status": "planned",
+      "status": "done",
       "tasks": [
         "read the lock owner once; an empty or missing owner is a handover in progress: retry, never remove the lock (F44)",
         "only a lock with no owner left past a wait, or a dead owner, is taken over",
