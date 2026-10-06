@@ -4681,12 +4681,19 @@
       ],
       "predicted": "deep",
       "qa": {
-        "result": "fail",
+        "result": "pass",
         "tier": "deep",
-        "tree": "55d5692157aa121c75cf845373aa075c0395b4f5f276eb23519f63bb6fd3d0f9",
-        "at": "2026-10-06T14:51:14Z",
-        "note": "16/18 checks",
-        "rounds": 1
+        "tree": "9b3517d68215b2ea7cd1981439bc105cbd74257e998df2454a330b1e718fa92d",
+        "at": "2026-10-06T15:18:34Z",
+        "note": "18/18 checks"
+      },
+      "outcome": {
+        "tier": "deep",
+        "predicted": "deep",
+        "held": true,
+        "fix_rounds": 2,
+        "qa_findings": 2,
+        "escalations": 0
       }
     }
   ],
@@ -8389,7 +8396,7 @@
       "req": "R67",
       "source": "qa",
       "attempts": 0,
-      "status": "fixed",
+      "status": "closed",
       "note": "docs/interview.md line 86 still says vbw next returns profile.ask: true only at the spec step. P51.1 changed next.jq so it is also true at the convert step. The plan's docs task covered only the old-folder sentence, but the doc now contradicts the code. Fix: say 'at the spec step, or at the convert step when a VBW 1 folder has no choice yet'."
     },
     {
@@ -8397,7 +8404,7 @@
       "req": "R67",
       "source": "qa",
       "attempts": 0,
-      "status": "fixed",
+      "status": "closed",
       "note": "Commit a21fa989 changed tools/l3-results/nolegacy.json, a file P51.2 does not list (P51.2 lists only legacy.json). No decision records it. Fix: record a decision that the nolegacy re-run result stands, or add the file to the plan."
     }
   ],
@@ -9828,5 +9835,11 @@
     "scope": [],
     "passed": true
   },
-  "lease": null
+  "lease": {
+    "run": "qa-20261006T151041Z",
+    "kind": "qa",
+    "started_at": "2026-10-06T15:10:41Z",
+    "files": [],
+    "session": "9cd2cc30-8c86-4520-9d71-a0e82aff5407"
+  }
 }
