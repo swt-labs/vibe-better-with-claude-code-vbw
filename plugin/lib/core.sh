@@ -109,6 +109,47 @@ vbw_step_add() {
   return 0
 }
 
+# This clone's own settings: $(git-common-dir)/vbw/settings.json (shared by the
+# clone's worktrees, never in the shared record). Today: check_jobs, how many
+# checks run at the same time (1 to 64, default 4; 1 is sequential).
+vbw_clone_settings_file() {
+  local common
+  common=$(git rev-parse --path-format=absolute --git-common-dir 2> /dev/null) || vbw_die "not a git repository"
+  printf '%s/vbw/settings.json\n' "$common"
+}
+
+# vbw_check_jobs: the one reader of check_jobs; a missing or damaged file or
+# an out-of-range value gives the default.
+vbw_check_jobs() {
+  local file n
+  file=$(vbw_clone_settings_file) || return 1
+  n=$(jq -r '.check_jobs // empty' "$file" 2> /dev/null) || n=""
+  case "$n" in
+    [1-9] | [1-5][0-9] | 6[0-4]) printf '%s\n' "$n" ;;
+    *) printf '4\n' ;;
+  esac
+}
+
+# vbw_check_jobs_set N|default: atomic, locked change of check_jobs.
+vbw_check_jobs_set() {
+  local file tmp lock
+  file=$(vbw_clone_settings_file)
+  mkdir -p "${file%/*}"
+  lock="${file%/*}/settings.lock"
+  vbw_lock_take "$lock" "this clone's settings"
+  [ -f "$file" ] || printf '{}\n' > "$file"
+  tmp=$(mktemp "${file%/*}/settings.XXXXXX") || vbw_die "cannot write ${file%/*}"
+  vbw_guard_add file "$tmp"
+  if [ "$1" = default ]; then
+    jq 'del(.check_jobs)' "$file" > "$tmp" 2> /dev/null
+  else
+    jq --argjson n "$1" '.check_jobs = $n' "$file" > "$tmp" 2> /dev/null
+  fi || vbw_die "this clone's settings file is damaged ($file); delete it and set again"
+  mv "$tmp" "$file"
+  vbw_guard_drop "$tmp"
+  vbw_guard_drop "$lock"
+}
+
 # Absolute path of the enclosing git repository, or die.
 vbw_git_root() {
   local root

@@ -6,7 +6,9 @@
 # (architect|lead|dev|qa|scout|debugger|docs, VBW 1's team: opus, sonnet,
 # haiku or a model id; "default" removes the override; model.qa refuses Haiku:
 # QA needs Sonnet or stronger), rigor (auto|express|
-# standard|deep: auto computes each phase's tier, the others force it).
+# standard|deep: auto computes each phase's tier, the others force it),
+# check_jobs (1 to 64, default 4: checks run at the same time; kept in this
+# clone's own settings file in the git directory, not in the record).
 
 # Profiles name a model per workflow role (lib/profiles.json, shared with the
 # status line). The session itself always runs the user's model, which must be
@@ -69,6 +71,7 @@ cmd_config() {
   config_migrate_roles
   case "$sub" in
     "")
+      printf 'check_jobs: %s\n' "$(vbw_check_jobs)"
       record_read | jq -r --argjson p "$VBW_PROFILES" '.settings as $s
         | "profile: \($s.profile)", "autonomy: \($s.autonomy // "balanced")", "autonomy_cap: \($s.autonomy_cap)", "rigor: \($s.rigor // "auto")",
           ($p[$s.profile] + ($s.models // {}) | (if ((.qa // "") | ascii_downcase | contains("haiku")) then .qa = "sonnet" else . end) | to_entries[] | "model.\(.key): \(.value)")'
@@ -93,6 +96,13 @@ cmd_config() {
         autonomy_cap)
           [[ "$value" =~ ^[0-9]+$ ]] || vbw_usage_error "autonomy_cap must be a number of steps"
           record_update '.settings.autonomy_cap = ($v | tonumber)' --arg v "$value" ;;
+        check_jobs)
+          case "$value" in
+            default) ;;
+            [1-9] | [1-5][0-9] | 6[0-4]) ;;
+            *) vbw_usage_error "check_jobs must be a whole number from 1 to 64 (or default): how many checks run at the same time" ;;
+          esac
+          vbw_check_jobs_set "$value" ;;
         model.qa)
           case $(printf '%s' "$value" | tr '[:upper:]' '[:lower:]') in
             *haiku*) vbw_usage_error "model.qa must be Sonnet or stronger: QA needs Sonnet or stronger, not Haiku" ;;
@@ -108,7 +118,7 @@ cmd_config() {
           else
             record_update '.settings.models = ((.settings.models // {}) + {($r): $v})' --arg r "${key#model.}" --arg v "$value"
           fi ;;
-        *) vbw_usage_error "unknown setting $key (profile, autonomy, autonomy_cap, model.ROLE for $VBW_ROLES)" ;;
+        *) vbw_usage_error "unknown setting $key (profile, autonomy, autonomy_cap, check_jobs, model.ROLE for $VBW_ROLES)" ;;
       esac
       printf '%s = %s\n' "$key" "$value"
       ;;

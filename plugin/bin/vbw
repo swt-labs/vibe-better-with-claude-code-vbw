@@ -39,7 +39,7 @@ usage: vbw <command> [args]
   ship              mark the milestone shipped (when vbw next says ship)
   milestone start TITLE   open the next milestone after shipping
   milestone rename TITLE  name the current milestone
-  config [set KEY VALUE | models | autonomy | rigor [MODE]]   settings: profile, autonomy, autonomy_cap, rigor (auto express standard deep), model.ROLE (architect lead dev qa scout debugger docs)
+  config [set KEY VALUE | models | autonomy | rigor [MODE]]   settings: profile, autonomy, autonomy_cap, check_jobs (1-64, this clone), rigor (auto express standard deep), model.ROLE (architect lead dev qa scout debugger docs)
   auto on SESSION_ID|off [SESSION_ID]|status [SESSION_ID]|gate   autonomous runs, kept per session (gate: the Stop hook)
   statusline [status | on | off]   the VBW status line in your Claude settings
   workflows [status | on]   Claude Code's Dynamic workflows, which VBW plans and builds with
