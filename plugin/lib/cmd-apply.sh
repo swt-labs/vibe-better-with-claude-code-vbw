@@ -27,10 +27,30 @@
 . "$VBW_LIB/rigor.sh"
 
 cmd_apply() {
-  [ $# -eq 0 ] || vbw_usage_error "usage: vbw apply < plan.json"
+  local patch=false
+  [ "${1:-}" != --patch ] || { patch=true; shift; }
+  [ $# -eq 0 ] || vbw_usage_error "usage: vbw apply [--patch] < plan.json"
   vbw_require_project
-  local doc record problem hypo tiers one
+  local doc record problem hypo tiers one pdoc='{}'
   doc=$(cat)
+  if [ "$patch" = true ]; then
+    # --patch: plans, checks and rules to change, merged by id (rules by requirement and text)
+    # into the milestone; the merged whole then meets every rule a full apply does.
+    printf '%s' "$doc" | jq -e 'type == "object" and (has("phases") | not)' > /dev/null 2>&1 \
+      || vbw_die "a patch carries plans, checks and rules, never phases: change phases with a full apply"
+    pdoc=$(printf '%s' "$doc" | jq -c '{plans: (.plans // []), checks: (.checks // []), rules: (.rules // [])}')
+    doc=$(record_read | jq -c --argjson p "$pdoc" '.milestone.id as $m
+      | ([.phases[] | select(.milestone == $m)]) as $ph
+      | ([.requirements[] | select(.milestone == $m)]) as $rq
+      | def merge($old; $new; $keys): [$old[] | . as $o | ([$new[] | select(. as $n | $keys | all(. as $k | $n[$k] == $o[$k]))][0]) // $o]
+          + [$new[] | . as $n | select(any($old[]; . as $o | $keys | all(. as $k | $n[$k] == $o[$k])) | not)];
+      {phases: [$ph[] | {id, title, reqs} + with_entries(select(.key | IN("goal", "criteria")))
+          + (if (.proposed // .tier) != null then {tier: (.proposed // .tier)} else {} end)],
+       plans: merge([.plans[] | select(.phase as $x | any($ph[]; .id == $x)) | with_entries(select(.key | IN("id", "phase", "title", "reqs", "files", "after", "tasks", "role")))]; $p.plans; ["id"]),
+       checks: merge([.checks[] | select(.req as $x | any($rq[]; .id == $x))]; $p.checks; ["id"]),
+       rules: merge([$rq[] | .id as $q | (.rules // [])[] | {req: $q, text, check}]; $p.rules; ["req", "text"])}') \
+      || vbw_die "internal error: cannot merge the patch"
+  fi
   printf '%s' "$doc" | jq -e 'type == "object"' > /dev/null 2>&1 || vbw_die "apply needs a JSON object on stdin"
   printf '%s' "$doc" | jq -e '(keys - ["phases", "plans", "checks", "rules"]) == [] and all(.phases, .plans, .checks; type == "array")
       and ((has("rules") | not) or (.rules | type == "array" and all(.[]; type == "object" and (keys - ["req", "text", "check"]) == [] and (.text | type == "string" and length > 0))))' \
@@ -53,6 +73,16 @@ cmd_apply() {
         | select($new == null or ($new | {phase, reqs, files, after: (.after // [])}) != ($old | {phase, reqs, files, after}))
         | "\($old.id) is \($old.status): a plan that has started must stay as it is (same phase, requirements, files and order)"]
     | .[0] // empty')
+  [ -z "$problem" ] || vbw_die "refused: $problem"
+  problem=$(printf '%s' "$record" | jq -r --argjson d "$doc" '.milestone.id as $m | [.phases[] | select(.milestone == $m)] as $old
+    | select(any(.plans[]; .status != "planned" and (.phase as $p | any($old[]; .id == $p))))
+    | [($d.phases[] | . as $n | ([$old[] | select(.id == $n.id)][0]) as $o | select($o != null)
+        | if $o.title != $n.title then "\($n.id) has work started: its title stays \"\($o.title)\" (a phase is not renamed once planned work has started)"
+          elif ($o.reqs | sort) != ($n.reqs | sort) then "\($n.id) has work started: its requirements stay \($o.reqs | join(", "))" else empty end),
+       ($d.phases[] | . as $n | select(any($old[]; .id == $n.id) | not)
+        | select(any($old[]; any(.reqs[]; . as $q | any($n.reqs[]; . == $q))))
+        | "\($n.id) is a new phase for requirements another phase already covers: once work has started, add plans to that phase"
+      )] | .[0] // empty')
   [ -z "$problem" ] || vbw_die "refused: $problem"
   problem=$(printf '%s' "$record" | jq -r --argjson d "$doc" 'select($d | has("rules"))
     | . as $r | $d.rules as $rules
@@ -89,7 +119,8 @@ cmd_apply() {
     | (.plans | map({key: .id, value: .status}) | from_entries) as $status
     | [.phases[] | select(.milestone == $m)] as $old
     | [.plans[] | select(.status != "planned") | .phase] as $started
-    | .phases = [(.phases[] | select(.milestone != $m)), ($d.phases[] | . as $np | ([$old[] | select(.id == $np.id)][0]) as $o
+    | .checks as $c0
+    | .phases = (if $patch then .phases else [(.phases[] | select(.milestone != $m)), ($d.phases[] | . as $np | ([$old[] | select(.id == $np.id)][0]) as $o
                   | ([$tiers[] | select(.id == $np.id)][0]) as $a
                   | (.tier // null) as $sub
                   | ($mode | IN("express", "standard", "deep")) as $forced
@@ -106,14 +137,16 @@ cmd_apply() {
                             elif ($sub != null and $tier == $sub and $tier != $a.floor) then ["raised by the Architect"]
                             else [] end)),
                        predicted: (if $locked then ($o.predicted // $tier) else $tier end)}
-                    + ($o // {} | with_entries(select(.key | IN("escalations", "outcome", "qa")))))]
-    | .plans = [(.plans[] | select(.phase as $p | any($mine[]; . == $p) | not)),
-                ($d.plans[] | {id, phase, title, reqs, files, after: (.after // []), status: ($status[.id] // "planned")}
-                  + (with_entries(select(.key | IN("tasks", "role")))))]
-    | .checks = [(.checks[] | select(.req as $q | any($myreqs[]; . == $q) | not)), $d.checks[]]
+                    + ($o // {} | with_entries(select(.key | IN("escalations", "outcome", "qa")))))] end)
+    | ([($pd.plans // $d.plans)[] | {id, phase, title, reqs, files, after: (.after // []), status: ($status[.id] // "planned")}
+          + (with_entries(select(.key | IN("tasks", "role"))))]) as $np
+    | .plans = (if $patch then [.plans[] | . as $o | ([$np[] | select(.id == $o.id)][0]) // $o] + [$np[] | select($status[.id] == null)]
+        else [(.plans[] | select(.phase as $p | any($mine[]; . == $p) | not)), $np[]] end)
+    | .checks = (if $patch then [$c0[] | . as $o | ([$pd.checks[] | select(.id == $o.id)][0]) // $o] + [$pd.checks[] | select(.id as $i | $c0 | any(.id == $i) | not)]
+        else [($c0[] | select(.req as $q | any($myreqs[]; . == $q) | not)), $d.checks[]] end)
     | if $d | has("rules") then .requirements |= map(. as $q
         | if any($d.rules[]; .req == $q.id) then .rules = [$d.rules[] | select(.req == $q.id) | {text, check}] else . end)
-      else . end' --argjson d "$doc" --argjson tiers "$tiers" --arg mode "$(printf '%s' "$record" | jq -r '.settings.rigor // "auto"')"
+      else . end' --argjson d "$doc" --argjson tiers "$tiers" --argjson pd "$pdoc" --argjson patch "$patch" --arg mode "$(printf '%s' "$record" | jq -r '.settings.rigor // "auto"')"
   jq -r '.milestone.id as $m | ([.phases[] | select(.milestone == $m) | .id]) as $mine
     | "applied \($mine | length) phases, \([.plans[] | select(.phase as $p | any($mine[]; . == $p))] | length) plans, \(.checks | length) checks in all"' "$VBW_RECORD"
 }
