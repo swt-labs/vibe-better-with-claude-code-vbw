@@ -77,8 +77,8 @@ plans without workflows: one `vbw apply` with one phase, plan and check.
 | 2 | no requirements in the current milestone | `spec` (write its requirements in `.vbw/spec.md`) | yes |
 | 3 | the current milestone has no phases, an `auto` requirement has no check, or a current `auto` requirement is in no plan | `plan` (`detail.tier`: the early tier; plan workflow: phases, plans, contract checks, or direct `vbw apply` when express) | no |
 | 4 | contract not approved (never approved, or changed since) | `approve` (review and approve the contract) | yes |
-| 5 | a plan is `blocked` | `unblock` (a Dev reported a blocker) | yes |
-| 6 | plans ready to build: not `done`, every `after` plan `done` | `build` (one wave: the ready plans in order, skipping any that shares a file with one already in the wave) | no |
+| 5 | plans ready to build: not `done`, not `blocked`, every `after` plan `done` | `build` (one wave: the ready plans in order, skipping any that shares a file with one already in the wave). When a plan is `blocked`, the instruction names it with its reason and `detail.blocked` lists `{id, note}`; plans that depend on it wait, unrelated plans still run | no |
+| 6 | no plan is ready and a plan is `blocked` | `unblock` (a Dev reported a blocker; `detail.plans` and `detail.blocked` name every blocked plan and its reason) | yes |
 | 7 | a fix is `escalated` | `escalate` (the fix cap was reached) | yes |
 | 8 | current evidence has scope violations | `scope` (commits changed files outside their plans) | yes |
 | 9 | a fix is `open` | `fix` (`detail.fixes`, and `detail.groups`: fixes whose files overlap, one Dev each; a project command's fix may touch any file) | no |
