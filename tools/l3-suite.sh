@@ -11,14 +11,14 @@
 # L3_JOBS at a time (default 4); each one's lines print together when it ends.
 #
 # Scenarios: greenfield, reject, resume, change, convert, balanced, docs, qafix,
-# decision, debug, research, edgecase, leftover, recheck, approval, newcomer, senior, panel, tools, legacy, nolegacy. A user
+# decision, debug, research, edgecase, leftover, recheck, approval, newcomer, senior, panel, tools, legacy, nolegacy, smallchange. A user
 # answers every question with VBW's recommendation unless the scenario says otherwise.
 set -uo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 l3() { bash "$ROOT/tools/l3.sh" "$@"; }
 VBW="$ROOT/plugin/bin/vbw"
-ALL="greenfield reject resume change convert balanced docs qafix decision debug research edgecase leftover recheck approval newcomer senior panel tools legacy nolegacy"
+ALL="greenfield reject resume change convert balanced docs qafix decision debug research edgecase leftover recheck approval newcomer senior panel tools legacy nolegacy smallchange"
 RESULTS="$ROOT/tools/l3-results"
 STEPS=60
 
@@ -1338,6 +1338,81 @@ scenario_senior() {
     interview_outcome
     result_write senior "$fixture" "${cost_usd:-0}" "$passed" "$facts" \
       "$(interview_not_tested '["a person judging the wording (R41, human)","the middle level answers","a project larger than the greet.sh fixture","a second request carried through to the end"]')"
+  }
+}
+
+# A small change (R72): the project's first milestone (greet.sh) is shipped, and
+# the user asks for one small change in plain words. VBW takes it to done
+# through /vbw:vibe without the planning workflow: it plans one plan with its
+# check itself, the user approves once (the choice, Enter on Approve), it is
+# built and checked, and QA is quick at most. Facts come from the record, git and
+# the session transcript, never screen text.
+shipped_seed() {
+  printf '# Greetings\n\n## Requirements\n\n- R1 [auto] ./greet.sh Ana prints "Hello, Ana!"; without a name it prints "Hello, world!"\n' > .vbw/spec.md
+  "$VBW" spec sync > /dev/null || return 1
+  printf '[ "$(sh greet.sh Ana)" = "Hello, Ana!" ] && [ "$(sh greet.sh)" = "Hello, world!" ]\n' > test_greet.sh
+  printf '%s' '{"phases": [{"id": "P1", "title": "Greet", "reqs": ["R1"]}],
+    "plans": [{"id": "P1.1", "phase": "P1", "title": "greet.sh", "reqs": ["R1"], "files": ["greet.sh"], "after": [], "tasks": ["greet.sh prints Hello, NAME! or Hello, world! without a name"]}],
+    "checks": [{"id": "C1", "req": "R1", "run": ["sh", "test_greet.sh"], "files": ["test_greet.sh"]}],
+    "rules": [{"req": "R1", "text": "a name is greeted", "check": "C1"}, {"req": "R1", "text": "no name greets the world", "check": "C1"}]}' \
+    | "$VBW" apply > /dev/null || return 1
+  git add -A && git commit -qm "chore: plan" || return 1
+  "$VBW" approve > /dev/null || return 1
+  printf '#!/bin/sh\necho "Hello, ${1:-world}!"\n' > greet.sh && chmod +x greet.sh
+  "$VBW" commit P1.1 "feat(P1.1): greet.sh" > /dev/null || return 1
+  "$VBW" plan done P1.1 > /dev/null || return 1
+  "$VBW" prove > /dev/null || return 1
+  "$VBW" qa record P1 pass standard "seeded" > /dev/null || return 1
+  "$VBW" ship > /dev/null || return 1
+}
+
+scenario_smallchange() {
+  new_project
+  (cd "$dir" && "$VBW" init > /dev/null && "$VBW" config rigor auto > /dev/null && shipped_seed) \
+    || { say "setup failed: could not seed the shipped greet.sh project"; return 1; }
+  fixture="greet.sh shipped in a first milestone (one phase, one plan, QA passed, shipped); the user then asks for a --shout option in plain words; rigor auto"
+  seed_ms=$(jq -r '.milestone.id' "$dir/.vbw/record.json")
+  seed_approvals=$(jq '[.decisions[] | select(.text | startswith("Contract approved"))] | length' "$dir/.vbw/record.json")
+  seed_head=$(git -C "$dir" rev-parse HEAD)
+  chosen=false
+  start='/vbw:vibe Can greet.sh also shout? "./greet.sh --shout Ana" should print "HELLO, ANA!" in capitals. Just that small change.'
+  on_question() {
+    screen | grep -qE 'Approve contract [0-9a-f]{12}' || return 1
+    l3 keys "$scenario" Enter
+    chosen=true
+    return 0
+  }
+  # Done when the new milestone's work is built and checked: it waits to ship, or shipped.
+  done_yet() {
+    [ "$(jq -r '.milestone.id' "$dir/.vbw/record.json" 2> /dev/null)" != "$seed_ms" ] || return 1
+    shipped || [ "$(next_action)" = ship ]
+  }
+  checks() {
+    local passed=true n plans checks_ok=false tier planning=false committed=false out
+    # The session's transcript shows every Workflow it started.
+    workflow_started planning && planning=true
+    n=$(jq --argjson s "$seed_approvals" '[.decisions[] | select(.text | startswith("Contract approved"))] | length - $s' "$dir/.vbw/record.json" 2> /dev/null || echo 0)
+    plans=$(jq '. as $r | [$r.plans[] | select(. as $p | $r.phases[] | select(.id == $p.phase and .milestone == $r.milestone.id))] | length' "$dir/.vbw/record.json" 2> /dev/null || echo 0)
+    jq -e '. as $r | [$r.checks[] | select(.req as $q | $r.requirements[] | select(.id == $q and .milestone == $r.milestone.id))] as $c
+      | ($c | length) > 0 and all($c[]; $r.evidence.checks[.id].status == "pass")' "$dir/.vbw/record.json" > /dev/null 2>&1 && checks_ok=true
+    tier=$(jq -r '. as $r | [$r.phases[] | select(.milestone == $r.milestone.id) | .qa.tier // "none"] | last // "none"' "$dir/.vbw/record.json" 2> /dev/null || echo none)
+    # The change is in git: a plan commit since the seed that touches greet.sh, and the script does what was asked.
+    [ -n "$(git -C "$dir" log --format=%B "$seed_head..HEAD" -- greet.sh | grep '^VBW-Plan: ')" ] \
+      && out=$(cd "$dir" && sh greet.sh --shout Ana 2> /dev/null) && [ "$out" = "HELLO, ANA!" ] && committed=true
+    say "planning workflow: $planning, approvals: $n, plans: $plans, QA tier: $tier"
+    expect "no planning workflow was started" [ "$planning" = false ]
+    expect "one approval decision ($n)" [ "$n" -eq 1 ]
+    expect "the user approved by the choice" [ "$chosen" = true ]
+    expect "one plan ($plans)" [ "$plans" -eq 1 ]
+    expect "the plan's check passed" [ "$checks_ok" = true ]
+    expect "QA was quick at most ($tier)" [ "$tier" = quick ] || [ "$tier" = express ] || [ "$tier" = none ]
+    expect "the change is committed and greet.sh shouts" [ "$committed" = true ]
+    check_sh "no stray changes outside .vbw/runtime" '[ -z "$(git status --porcelain -- . ":(exclude).vbw/runtime")" ]'
+    [ "$failed" -eq 0 ] || passed=false
+    result_write smallchange "$fixture" "${cost_usd:-0}" "$passed" \
+      "$(jq -n --argjson pw "$planning" --argjson n "$n" --argjson c "$chosen" --argjson p "$plans" --argjson k "$checks_ok" --arg t "$tier" --argjson g "$committed" \
+        '{planning_workflow: $pw, approvals: $n, approved_by_choice: $c, plans: $p, check_passed: $k, qa_tier: $t, change_committed: $g}')" \
+      '["a change that turns out to touch more than two files or a risk path (the planning workflow)","a project larger than the greet.sh fixture","the wording of what VBW tells the user (read by a person)","the user answering Not yet or in their own words at the approval"]'
   }
 }
 
