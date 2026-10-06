@@ -8171,7 +8171,7 @@
         "plugin/lib/legacy-review.sh"
       ],
       "after": [],
-      "status": "planned",
+      "status": "done",
       "tasks": [
         "read each file time with vbw_mtime instead of stat -f/-c"
       ]
