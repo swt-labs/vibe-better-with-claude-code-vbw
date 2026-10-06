@@ -41,6 +41,8 @@ def fix_files($r): if .command then ["*"]
        if overlaps(.files; $p.files) then . else .ids += [$p.id] | .files += $p.files end)
    | .ids) as $ready
 | ([.plans[] | select(.status == "blocked") | .id]) as $blocked
+| ([.plans[] | select(.status == "blocked") | {id, note: (.note // "")}]) as $blocked_why
+| ($blocked_why | map(if .note == "" then .id else "\(.id) (\(.note))" end) | join(", ")) as $blocked_text
 | ([.fixes[] | select(.status == "escalated") | .id]) as $escalated
 | ([.fixes[] | select(.status == "open") | .id]) as $open_fixes
 # Open fixes that share files form one group, worked by one Dev.
@@ -81,11 +83,12 @@ def fix_files($r): if .command then ["*"]
     result("plan"; false; "Run the plan workflow: phases, plans and contract checks"; {tier: early_tier($tracked)})
   elif $approved | not then
     result("approve"; true; "Review and approve the contract (requirements, plans and checks)"; {})
-  elif ($blocked | length) > 0 then
-    result("unblock"; true; "Resolve the blocker reported for \($blocked | join(", "))"; {plans: $blocked})
   elif ($ready | length) > 0 then
-    result("build"; false; "Run the build workflow for \($ready | join(", "))"; {plans: $ready,
-      docs: [.plans[] | select(.role == "docs" and (.id as $i | any($ready[]; . == $i))) | .id]})
+    result("build"; false; "Run the build workflow for \($ready | join(", "))\(if ($blocked | length) > 0 then ". Blocked meanwhile, with their dependents waiting: \($blocked_text)" else "" end)"; {plans: $ready,
+      docs: [.plans[] | select(.role == "docs" and (.id as $i | any($ready[]; . == $i))) | .id]}
+      + (if ($blocked | length) > 0 then {blocked: $blocked_why} else {} end))
+  elif ($blocked | length) > 0 then
+    result("unblock"; true; "Resolve the blocker reported for \($blocked_text)"; {plans: $blocked, blocked: $blocked_why})
   elif ($escalated | length) > 0 then
     result("escalate"; true; "The fix cap was reached for \($escalated | join(", ")): decide how to proceed"; {fixes: $escalated})
   elif ($stale | not) and (.evidence.scope | length) > 0 then
