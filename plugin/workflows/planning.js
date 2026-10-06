@@ -24,6 +24,15 @@ const reqList = reqs ? `\n\nRequirements of this milestone (the only ones to con
 const opts = (role, extra) => Object.assign({ agentType: `vbw:${role}`, label: role },
   models[role] ? { model: models[role] } : {}, extra)
 
+const CLOSE_RESULT = {
+  type: 'object',
+  required: ['ended', 'recorded', 'report'],
+  properties: {
+    ended: { type: 'boolean' },
+    recorded: { type: 'boolean' },
+    report: { type: 'string' },
+  },
+}
 const DECISIONS = {
   type: 'object',
   required: ['decisions'],
@@ -87,10 +96,21 @@ const PLAN_RESULT = {
   },
 }
 
+// The run's own last step (R81): end the run on every way out. Only when the
+// router passed args.session.
+const session = (args && args.session) || ''
+const closeRun = async () => {
+  if (!session) return
+  const done = await agent(`Close this VBW run: run VBW_SESSION_ID=${session} vbw run end. Answer ended (it succeeded), recorded (true) and report (what it printed). Change nothing else.`,
+    Object.assign({ agentType: 'vbw:scout', label: 'close run', schema: CLOSE_RESULT }, models.scout ? { model: models.scout } : {}))
+  if (!done || !done.ended) log('the closing agent stopped: run vbw run end by hand')
+}
+
 // The user decides what matters to them before anything is planned: the
 // router asks, records the answers (vbw decide) and starts this workflow again
 // with decided: true, so each planning round asks at most once.
 if (!reqs || reqs.length === 0) {
+  await closeRun()
   return { status: 'blocked', summary: 'planning needs the requirements of this milestone (args.requirements, from vbw next --json) and got none', blockers: [], notes: [] }
 }
 
@@ -101,6 +121,7 @@ if (!decided) {
   const open = (found && found.decisions) || []
   if (open.length > 0) {
     log(`${open.length} decision(s) for the user before planning`)
+    await closeRun()
     return { status: 'needs_decisions', decisions: open }
   }
 }
@@ -109,6 +130,7 @@ phase('Scope')
 const scope = await agent(`Job 2: scope the current milestone into phases, each with a goal and goal-backward success criteria. Change nothing.${reqList}${voice}`,
   opts('architect', { schema: SCOPE, label: 'architect (scope)', phase: 'Scope' }))
 if (!scope || !scope.phases || scope.phases.length === 0) {
+  await closeRun()
   return { status: 'blocked', summary: 'the Architect could not scope the milestone', blockers: [], notes: [] }
 }
 
@@ -116,9 +138,11 @@ phase('Plan')
 const plan = await agent(`Plan these phases: research, decompose them into plans with tasks, write the checks, self-review, and apply with vbw apply. The kernel computes a rigor floor per phase from its signals and refuses a lower tier. Use these phases exactly as given, tier included:\n\n${JSON.stringify(scope.phases)}${voice}`,
   opts('lead', { schema: PLAN_RESULT, phase: 'Plan' }))
 if (!plan || !plan.applied) {
+  await closeRun()
   return { status: 'blocked', summary: plan ? plan.summary : 'the Lead did not finish', blockers: plan ? plan.blockers : [], notes: scope.notes }
 }
 
+await closeRun()
 return {
   status: 'planned',
   summary: plan.summary,
