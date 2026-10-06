@@ -120,6 +120,27 @@ approval: a fresh clone must approve before anything runs. The kernel accepts
 `vbw approve --hash FINGERPRINT` only when the fingerprint is the current
 contract's.
 
+### Test files edited while building
+
+Devs often adjust a test file while building a phase. VBW asks about those
+edits once, before the phase is proved, not once per edit.
+
+Each approval remembers the contract's structure (requirements, rules, checks,
+plans) next to the full hash. While only the bytes of check files differ from
+what was approved:
+
+- `vbw next` keeps building. `vbw check` runs, and prints
+  `vbw: waiting for approval (changed since approved): tests/pay.sh` on stderr.
+- When a phase is built and not yet proved, `vbw next` returns `approve` with
+  `detail.files`: every edited test file, sorted. Review them with
+  `vbw show contract --changes`, then approve once.
+- `vbw prove` refuses and names the files: `check files changed since it was
+  approved are waiting for approval: tests/pay.sh: review them, then /vbw:approve`.
+  Nothing is proved.
+
+A change to the structure (a new check, a changed `run`, a plan's files) is not
+waiting: the contract needs approval first, as before.
+
 ## Rules
 
 A rule is one condition, edge or error case that an `auto` requirement's text

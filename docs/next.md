@@ -76,7 +76,8 @@ plans without workflows: one `vbw apply` with one phase, plan and check.
 | 2a | no requirements in the current milestone, and a VBW 1 plan (`.vbw-planning/`) not converted yet | `convert` (`/vbw:convert`, or start fresh; docs/convert.md) | yes |
 | 2 | no requirements in the current milestone | `spec` (write its requirements in `.vbw/spec.md`) | yes |
 | 3 | the current milestone has no phases, an `auto` requirement has no check, or a current `auto` requirement is in no plan | `plan` (`detail.tier`: the early tier; plan workflow: phases, plans, contract checks, or direct `vbw apply` when express) | no |
-| 4 | contract not approved (never approved, or changed since) | `approve` (review and approve the contract) | yes |
+| 4 | contract not approved (never approved, or its structure changed since: requirements, checks, plans) | `approve` (review and approve the contract) | yes |
+| 4a | the contract is approved except for edits to the bytes of test files (a check's `files`), and a phase is built but not proved | `approve` with `detail.files`: the one approval of those test files, before they are proved (docs/proof.md) | yes |
 | 5 | plans ready to build: not `done`, not `blocked`, every `after` plan `done` | `build` (one wave: the ready plans in order, skipping any that shares a file with one already in the wave). When a plan is `blocked`, the instruction names it with its reason and `detail.blocked` lists `{id, note}`; plans that depend on it wait, unrelated plans still run | no |
 | 6 | no plan is ready and a plan is `blocked` | `unblock` (a Dev reported a blocker; `detail.plans` and `detail.blocked` name every blocked plan and its reason) | yes |
 | 7 | a fix is `escalated` | `escalate` (the fix cap was reached) | yes |
@@ -86,6 +87,10 @@ plans without workflows: one `vbw apply` with one phase, plan and check.
 | 10a | a phase of the current milestone is built and QA must check it again (never passed, failed, its own files, tests, goal or plan changed since it passed, or a phase it builds on was checked again; docs/proof.md). An express phase is skipped when every requirement is `auto` and it has no escalations; a `human` requirement or an escalation brings QA back | `qa` (`detail.phases`: only the phases to check again, not the whole project, and `detail.tier`: the highest QA tier of those phases in the profile's table) | no |
 | 11 | a `human` requirement is `open` | `accept` (one scenario at a time) | yes |
 | 12 | otherwise | `ship` (`vbw ship`, which refuses while the proven work is not committed: the proof reads files on disk, a shipped milestone must be in git history) | yes |
+
+While a Dev builds, edits to test files do not stop the build: only a change to
+the contract's structure does (row 4). Row 4a is the one approval for all of
+those edits, asked just before proof.
 
 Every result also carries a `qa` key: `{recheck, standing, problems}`. `recheck`
 maps each built phase QA must check again to its reasons in plain words
