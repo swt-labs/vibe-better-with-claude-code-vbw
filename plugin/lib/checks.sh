@@ -19,10 +19,12 @@ checks_begin() {
     printf 'vbw: waiting for approval (changed since approved): %s\n' "${waiting% }" >&2
   fi
   CHECK_OUT=$(mktemp -d "$VBW_RUNTIME/run.XXXXXX") || vbw_die "cannot create a directory in $VBW_RUNTIME"
+  vbw_guard_add dir "$CHECK_OUT"
 }
 
+# Removes the output directory (also on error or interrupt, through the guard).
 checks_end() {
-  rm -rf "$CHECK_OUT"
+  vbw_guard_drop "$CHECK_OUT"
 }
 
 # checks_exec TIMEOUT OUTFILE ARGV...: run ARGV from the project root, output to
@@ -165,9 +167,38 @@ checks_run_all() {
   for id in "${ids[@]}"; do
     printf '%s' "$record" | jq -e --arg id "$id" 'any(.checks[]; .id == $id)' > /dev/null || vbw_die "unknown check $id"
   done
+  local jobs
+  jobs=$(vbw_check_jobs) || jobs=1
+  if [ "$jobs" -le 1 ] || [ ${#ids[@]} -le 1 ]; then
+    for id in "${ids[@]}"; do
+      res=$(checks_run "$record" "$id")
+      all=$(printf '%s' "$all" | jq -c --arg id "$id" --argjson r "$res" '. + {($id): $r}')
+    done
+    printf '%s\n' "$all"
+    return 0
+  fi
+  # In parallel, at most $jobs at a time (bash 3.2 has no wait -n: finished
+  # jobs are counted with jobs -r). Each check runs in its own subshell, owning
+  # no guard of the parent, and leaves its result in a file; the gate still
+  # keeps alone checks by themselves. Results are joined in the checks' own order.
+  local n=0 pid
+  local pids=()
   for id in "${ids[@]}"; do
-    res=$(checks_run "$record" "$id")
-    all=$(printf '%s' "$all" | jq -c --arg id "$id" --argjson r "$res" '. + {($id): $r}')
+    while [ "$(jobs -r | wc -l)" -ge "$jobs" ]; do sleep 0.05; done
+    n=$((n + 1))
+    (
+      vbw_guard_reset
+      res=$(checks_run "$record" "$id") || exit 1
+      printf '%s\n' "$res" > "$CHECK_OUT/$n.res.tmp" && mv "$CHECK_OUT/$n.res.tmp" "$CHECK_OUT/$n.res"
+    ) &
+    pids+=($!)
+  done
+  for pid in "${pids[@]}"; do wait "$pid" || true; done
+  n=0
+  for id in "${ids[@]}"; do
+    n=$((n + 1))
+    [ -s "$CHECK_OUT/$n.res" ] || vbw_die "check $id did not finish"
+    all=$(printf '%s' "$all" | jq -c --arg id "$id" --slurpfile r "$CHECK_OUT/$n.res" '. + {($id): $r[0]}')
   done
   printf '%s\n' "$all"
 }
