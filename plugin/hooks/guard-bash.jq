@@ -117,6 +117,33 @@ def in_project:
   ( select(.cmd | test("^(ls|stat|test|\\[\\[?)$") | not) | [paths | select(secret_path)][0] // empty | secret_reason ),
   ( select((.out | any(.[]; record_path)) or ((.cmd | reader) | not) and any(.args[]; record_path)) | record_reason );
 
+# --- programs that write files (R76) -----------------------------------------
+
+def interpreter: test("^(python[0-9.]*|pypy[0-9]*|node|nodejs|deno|bun|perl|ruby|php|lua)$");
+
+# The paths a program's source text writes, read from the calls that name them
+# as string literals (a path held in a variable cannot be read). One regex, as
+# the guard's cost is mostly compiling it.
+def program_writes:
+  [match("(?:\\bopen\\(\\s*['\"`]([^'\"`\\\\]+)['\"`]\\s*,\\s*(?:mode\\s*=\\s*)?['\\\"][^'\\\"]*[wax+])|(?:\\bPath\\(\\s*['\"`]([^'\"`\\\\]+)['\"`]\\s*\\)\\s*\\.\\s*(?:write_text|write_bytes|unlink|touch|mkdir|rmdir|rename|replace|open\\(\\s*['\\\"][^'\\\"]*[wax+]))|(?:\\bopen\\s*\\(?\\s*\\w+\\s*,\\s*['\\\"]\\s*\\+?>>?\\s*([^'\\\"]+?)\\s*['\\\"])|(?:\\bopen\\s*\\(?\\s*\\w+\\s*,\\s*['\\\"]\\+?>>?['\\\"]\\s*,\\s*['\"`]([^'\"`\\\\]+)['\"`])|(?:\\.(?:writeFile|writeFileSync|appendFile|appendFileSync|createWriteStream|unlink|unlinkSync|rmSync|rmdirSync|mkdirSync|makedirs|rmtree|truncate)\\(\\s*['\"`]([^'\"`\\\\]+)['\"`])|(?:\\b(?:os|fs|File|FileUtils|shutil|Dir)\\.(?:remove|unlink|rmdir|mkdir|write|binwrite|delete|rm|rm_f|rm_rf|mkdir_p|touch|truncate|chmod)\\(?\\s*['\"`]([^'\"`\\\\]+)['\"`])|(?:\\b(?:unlink|mkdir|rmdir|file_put_contents)\\b\\s*\\(?\\s*['\"`]([^'\"`\\\\]+)['\"`])|(?:\\b(?:os|fs|File|FileUtils|shutil)\\.(?:rename|renameSync|replace|move|mv)\\(\\s*['\"`]([^'\"`\\\\]+)['\"`]\\s*,\\s*['\"`]([^'\"`\\\\]+)['\"`])|(?:\\brename\\b\\s*\\(?\\s*['\"`]([^'\"`\\\\]+)['\"`]\\s*,\\s*['\"`]([^'\"`\\\\]+)['\"`])|(?:\\b(?:shutil|FileUtils|fs)\\.(?:copy|copyfile|copy2|copytree|cp|cp_r|copyFile|copyFileSync)\\(\\s*['\"`][^'\"`\\\\]+['\"`]\\s*,\\s*['\"`]([^'\"`\\\\]+)['\"`])"; "g") | .captures[].string | select(. != null)];
+
+# perl -i and ruby -i edit the files they are given in place.
+def inplace_files:
+  select(.cmd | test("^(perl|ruby)$")) | select(any(.args[]; test("^-[A-Za-z]*i")))
+  | [.args | reduce .[] as $a ({skip: false, files: []};
+      if .skip then .skip = false
+      elif $a | test("^-[A-Za-z]*[eE]$") then .skip = true
+      elif $a | startswith("-") then .
+      else .files += [$a] end) | .files[]];
+
+# Programs read from standard input by a heredoc: the bodies strip_heredocs
+# drops, for the commands that run an interpreter.
+def heredoc_programs:
+  match("(?:^|\\n)[^\\n]*(?:\\b(?:python[0-9.]*|node|perl|ruby|php|deno|bun|lua)\\b[^\\n]*<<|<<[^\\n]*\\b(?:python[0-9.]*|node|perl|ruby|php|deno|bun|lua)\\b)-?[ \\t]*(['\\\"]?)(\\w+)\\1[^\\n]*\\n(.*?)\\n[ \\t]*\\2[ \\t]*(?:\\n|$)"; "gp") | .captures[2].string;
+
+def program_denial($g):
+  (.[] | project_path($g.hook.cwd // $root; $root) | lease_write_denial($g.lease; $g.record));
+
 # A subagent during a run (docs/workflows.md): commits go through vbw commit;
 # builders share one working tree, so nothing may move HEAD or other builders'
 # changes; files are restored and redirects written only within the run's files.
@@ -130,7 +157,8 @@ def in_run($g):
       ( select($s == "checkout" or ($s == "restore" and ((any($a[]; . == "--staged") and (any($a[]; test("^(--worktree|-W)$")) | not)) | not)))
         | (if $s == "checkout" then $a[(($a | index("--")) + 1):] else [$a[] | select(startswith("-") | not)] end)[]
         | project_path($g.hook.cwd // $root; $root) | lease_write_denial($g.lease; $g.record) ) ),
-  ( .out[] | project_path($g.hook.cwd // $root; $root) | lease_write_denial($g.lease; $g.record) );
+  ( .out[] | project_path($g.hook.cwd // $root; $root) | lease_write_denial($g.lease; $g.record) ),
+  ( select(.cmd | interpreter) | [((.args | join("\n")) | program_writes), inplace_files] | add | program_denial($g) );
 
 # Another session's open run (D11): shell writes of the files it writes.
 def foreign_run($g):
@@ -150,6 +178,9 @@ guard_context as $g
 | ( [$cmds[] | everywhere][0]
     // (select($g.project and $g.foreign != null) | [$cmds[] | foreign_run($g)][0])
     // (select($g.project)
-        | [$cmds[] | in_project][0] // (select($g.lease != null) | [$cmds[] | in_run($g)][0])) )
+        | [$cmds[] | in_project][0]
+          // (select($g.lease != null)
+              | [$cmds[] | in_run($g)][0]
+                // (select($c | test("<<")) | [$c | heredoc_programs | program_writes | program_denial($g)][0]))) )
 | select(. != null)
 | deny
