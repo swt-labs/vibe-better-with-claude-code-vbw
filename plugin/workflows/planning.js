@@ -101,7 +101,7 @@ const PLAN_RESULT = {
 const session = (args && args.session) || ''
 const closeRun = async () => {
   if (!session) return
-  const done = await agent(`Close this VBW run: run VBW_SESSION_ID=${session} vbw run end. Answer ended (it succeeded), recorded (true) and report (what it printed). Change nothing else.`,
+  const done = await agent(`Close this VBW run: run VBW_SESSION_ID=${session} vbw run end. Answer ended (it succeeded), recorded (true) and report (what it printed). Change nothing else.${voice}`,
     Object.assign({ agentType: 'vbw:scout', label: 'close run', schema: CLOSE_RESULT }, models.scout ? { model: models.scout } : {}))
   if (!done || !done.ended) log('the closing agent stopped: run vbw run end by hand')
 }

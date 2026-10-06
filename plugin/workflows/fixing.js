@@ -46,7 +46,7 @@ const session = (args && args.session) || ''
 const closeRun = async ids => {
   if (!session) return null
   const sh = c => `VBW_SESSION_ID=${session} ${c}`
-  const done = await agent(`Close this VBW run. Run ${sh(`vbw run confirm ${ids.join(' ')}`)} (it exits 1 when some fixes were not recorded), then, whatever it said, run ${sh('vbw run end')}. Answer ended (run end succeeded), recorded (confirm exited 0) and report (the lines for what was not recorded, else "all recorded; run ended"). Change nothing else.`,
+  const done = await agent(`Close this VBW run. Run ${sh(`vbw run confirm ${ids.join(' ')}`)} (it exits 1 when some fixes were not recorded), then, whatever it said, run ${sh('vbw run end')}. Answer ended (run end succeeded), recorded (confirm exited 0) and report (the lines for what was not recorded, else "all recorded; run ended"). Change nothing else.${voice}`,
     Object.assign({ agentType: 'vbw:scout', label: 'close run', schema: CLOSE_RESULT }, models.scout ? { model: models.scout } : {}))
   if (!done) log('the closing agent stopped: run vbw run confirm and vbw run end by hand')
   else if (!done.recorded || !done.ended) log(done.report)
