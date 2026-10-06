@@ -1,5 +1,67 @@
 # Changelog
 
+## [2.0.19] - 2026-10-06
+
+### Added
+
+- **A live VBW panel.** On Claude Code 2.1.287 or newer, a panel beside the
+  conversation shows, in plain words, the milestone and its progress, what VBW
+  is doing right now, whether it needs you and for what, what this session has
+  cost so far, and roughly how long the current step and the milestone have
+  left (or that there is no basis for an estimate yet). It updates by itself.
+  It opens by itself in a wide window; `/vbw-panel` opens it at any width.
+  Close it and it stays closed until you open it again. On older Claude Code,
+  or outside a VBW project, nothing changes. See `docs/panel.md`.
+- **A sound when VBW needs you.** A short sound, picked at random from the
+  ones shipped with VBW, plays once when VBW needs an approval, an answer or a
+  result checked. One click in the panel or `/vbw-sound` turns it off or on;
+  the choice is kept in your own settings, never in the project.
+- **Approve with Enter.** VBW now asks for approval as a choice: Approve
+  (first, so Enter approves), Not yet (VBW asks what to change), or your own
+  words. VBW's own code records the approval from your answer, for exactly the
+  contract shown, so Claude can never approve by itself. `/vbw:approve` still
+  works.
+- **The best tools for your project, with your permission.** Once the
+  interview knows what you are building, VBW asks whether to look for tools
+  that fit it: community skills, code-safety scanners, linters and formatters,
+  and test frameworks. On yes, Scouts research current options from trusted
+  sources and VBW proposes a short list, explained at your level; nothing is
+  installed until you approve it. It is asked once per project; `/vbw:skills`
+  runs it again any time. See `docs/tools.md`.
+- **Convert or start fresh, with a recommendation.** When a project still has a
+  VBW 1 folder, the interview first reviews it: how much was finished, when it
+  was last used, whether its plans still match the code, and any work left half
+  done. It then recommends converting or starting fresh, with its reasons, and
+  you choose. Start fresh leaves the old folder untouched. Run the review again
+  with `vbw legacy review`. See `docs/convert.md`.
+
+### Changed
+
+- **A friendlier first question.** The interview now opens with "Hello, Human!
+  Welcome to VBW. Let me interview you real quick to better adapt to you. What
+  is your level of proficiency?", with the same four options.
+- **Every stop says what VBW needs from you.** Each time VBW stops, its message
+  ends with one plain line saying what it needs from you now, or that it needs
+  nothing.
+
+### Fixed
+
+- **QA keeps its verdicts when the plan changes.** Adding or changing a phase
+  in the middle of a milestone used to clear every phase's QA pass, so QA
+  checked the whole milestone again. Now each phase keeps its pass; QA checks
+  only new phases and phases whose own files, tests, goal or plan changed.
+- **The interview comes first in a project with a VBW 1 folder.** VBW now
+  always opens with the greeting and the level question, then reviews the old
+  folder and asks whether to convert or start fresh.
+
+### Compatibility
+
+- The panel and the sound need Claude Code 2.1.287 or newer (`claude update`).
+  Everything else works on older versions as before.
+- The project record gains two optional answers (whether to look for tools,
+  and the convert-or-fresh choice). VBW 2.0.17 and 2.0.18 read records that
+  carry them.
+
 ## [2.0.18] - 2026-10-05
 
 ### Changed
