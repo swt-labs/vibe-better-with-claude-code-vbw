@@ -193,11 +193,16 @@ Because the copy holds only committed files, uncommitted edits and untracked
 files in the working folder change no result. A check file that is not
 committed as approved is refused: commit it, then `/vbw:approve`.
 
-Git-ignored files (`node_modules/`, `.env.local`, build caches) are the
-project's environment, not its code, so the copy links them in from the working
-folder. Untracked files that are not ignored never enter the copy (D54): to
-make one count, commit it or ignore it. Removing the copy never touches the
-files behind the links.
+Git-ignored files (`node_modules/`, `.venv/`, `.env.local`) are the project's
+environment, not its code, so the copy links them in from the working folder.
+Build output is not environment: the copy never links a folder named `target`,
+`dist`, `build`, `bin`, `out`, `__pycache__`, `.pytest_cache`, `.mypy_cache`,
+`.ruff_cache`, `.tox`, `.next`, `.nuxt`, `.gradle` or `coverage`, at any depth.
+The copy builds its own, so a proof never reads stale output from the working
+folder, and nothing it builds lands in the working folder or in another copy.
+Untracked files that are not ignored never enter the copy (D54): to make one
+count, commit it or ignore it. Removing the copy never touches the files behind
+the links.
 
 Evidence (`record.evidence`):
 
