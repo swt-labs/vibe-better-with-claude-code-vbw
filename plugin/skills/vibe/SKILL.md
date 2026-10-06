@@ -99,7 +99,7 @@ each: `vbw decide "<what was decided>" "<their reason, or the trade-off they acc
 `choices` it made itself (any can change), Architect's `notes` (offer `vbw todo add`).
 
 **approve** (needs user): `vbw show contract --changes` (after an earlier approval: explain just those). Else
-`vbw show contract`: explain each requirement, how checked, plans, files, commands that will run. Follow `vbw:suggest`, then ask with AskUserQuestion, using the approval question `vbw show contract` prints: "Approve" (first), "Not yet". User's own words come from the app's own-answer slot. Approve: the hook recorded it, continue the loop. Not yet: ask what to change. Own words: what to change, or a question. Typing `/vbw:approve` still works. You cannot approve.
+`vbw show contract`: explain each requirement, how checked, plans, files, commands that will run. Follow `vbw:suggest`, then AskUserQuestion with the approval question `vbw show contract` prints: "Approve" (first), "Not yet". Approve: hook recorded it; continue. Not yet: ask what to change. User's own words (own-answer slot): what to change, or a question. Ask only with the menu, never to type; typed `/vbw:approve` is still served. You cannot approve.
 Test files edited during the build wait for one approval just before proof (`detail.files`): say which and why, then ask the same way.
 
 **build**: `VBW_SESSION_ID=${CLAUDE_SESSION_ID} vbw run start build <detail.plans>`, Workflow `vbw:building` with
