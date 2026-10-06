@@ -4441,7 +4441,14 @@
           "to": "deep",
           "reason": "Dev blocked P47.7: tooling.js already reads args.profile and puts ${voice} in its only agent call (delivered by P47.2), so the task needs no change. The test 'every workflow agent call carries the profile' still fails only because it hard-codes [ \"$n\" -eq 7 ] workflows (tests/profile-levels.bats line 120) and there are now 8. Fixing it means editing tests/profile-levels.bats (and likely the 7-workflow count in tests/workflows.bats), which is outside this plan's files."
         }
-      ]
+      ],
+      "qa": {
+        "result": "pass",
+        "tier": "deep",
+        "tree": "bce261727fbb3fdbab4b2bccc09b8673ebdc76221b46cd0da3cedcee90d414cb",
+        "at": "2026-10-06T04:57:06Z",
+        "note": "30/30 checks"
+      }
     },
     {
       "id": "P48",
