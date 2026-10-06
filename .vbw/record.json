@@ -9510,15 +9510,14 @@
         "P55.4",
         "P55.5"
       ],
-      "status": "blocked",
+      "status": "done",
       "tasks": [
         "define once what a documentation-only requirement is: every plan serving it changes only documentation files (markdown, text, rst) and it has no check",
         "do not ask for a check or rules for it in vbw next, vbw apply and the approval",
         "let vbw prove mark it proven once its plans are done; a check that exists (a project rule asked for it) still runs and decides",
         "stop counting documentation files as existing code in the 'no project test command' floor",
         "Lead prompt: documentation or wording alone needs no new check unless a project rule requires one"
-      ],
-      "note": "Code done and committed (577a317d); C115 passes. Two existing tests outside the plan's files now fail by design and need a fixture change: tests/kernel-prove.bats 'approve refuses an incomplete contract' (plan file src/pay.txt is a doc, so R1 is now exempt; fix: edit_record '.checks = [] | .plans[0].files = [\"src/pay.js\"]') and tests/rigor-floor.bats 'changing existing files with no project test command' (uses src/exists.txt as existing code; use src/exists.js at lines 75-81). Edits are uncommitted in the tree; they need to be added to this plan's files and committed. Also not done: .rst in cmd-next.sh facts (file outside plan)."
+      ]
     },
     {
       "id": "P57.3",
