@@ -97,6 +97,13 @@ maps each built phase QA must check again to its reasons in plain words
 (`{"P2": ["builds on P1, which changed"]}`); `standing` lists the built phases
 whose pass stands; `problems` lists plan links that point nowhere or loop.
 
+At the `qa` step the result also carries `round.suite`: the proof's one run of
+the project's test command, `{command, status, exit, seconds, tail}`, or `null`
+when the project has no test command. `status` is the proof's (`pass`, `fail`,
+`timeout`, `skipped`), or `not run` when the proof did not include the command.
+The router gives `round` to the QA workflow, which hands it to every QA agent so
+none runs the suite again (docs/workflows.md).
+
 Rejecting a `human` requirement (`vbw req reject R2 "why"`) opens a fix item at
 once, so it is worked by row 9; when the fix is done the requirement returns to
 row 11 for acceptance.

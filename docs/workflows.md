@@ -239,6 +239,18 @@ Without `args.requirements`, or with an empty list, the workflow starts no
 agent and returns `status: "blocked"` with the summary "planning needs the
 requirements of this milestone ... and got none".
 
+## One test run per QA round
+
+A QA round does not run the project's test command once per agent. The proof
+already ran it (the project command named `test`), and `vbw next --json` returns
+that result as `round.suite` at the `qa` step: `{command, status, exit, seconds,
+tail}`. The router passes `round` to `vbw:verifying` as `args.round`, and the
+workflow adds the result to every QA agent's prompt with an instruction not to
+run the suite. When the command did not run (`skipped` or `not run`), the
+prompt says so and tells the agents not to retry it; the workflow logs it, and
+QA says in its summary that the suite was not run. A project without a test
+command has `round.suite` null and the prompts carry nothing.
+
 ## Rigor
 
 The router passes `args.rigor` (the `rigor` key of `vbw next --json`, docs/next.md)

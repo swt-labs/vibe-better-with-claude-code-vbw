@@ -61,6 +61,27 @@ A check proves one `auto` requirement. It lives in the record:
 timeout is stopped (by `timeout` where available, otherwise by `perl`'s alarm)
 and fails.
 
+### Checks run in parallel
+
+```text
+vbw config set check_jobs 8     # up to 8 checks at the same time
+vbw config set check_jobs 1     # one after another
+vbw config set check_jobs default
+```
+
+`vbw prove`, `vbw check` and the checks of `vbw fix done` run at most
+`check_jobs` checks at a time: 1 to 64, default 4. The setting belongs to this
+clone and is shared by its worktrees; it is not in the record or the contract,
+so changing it needs no approval. `vbw config` shows it. A missing or damaged
+setting means 4.
+
+The results are the same as running the checks one after another: the
+evidence lists them in the checks' own order, whatever order they finish in.
+Checks marked `alone` (below) still run by themselves. A proof of many checks
+takes about as long as its slowest checks, not the sum of all of them. Checks
+that share a resource and are not marked `alone` (a database, a fixed port) can
+disturb each other: mark them `alone`, or set `check_jobs` to 1.
+
 ### Checks that run alone
 
 ```json
@@ -212,7 +233,8 @@ clone (`vbw approve` keeps a copy of what it approved in `.vbw/runtime/`).
 1. Refuses unless the current contract hash is approved.
 2. Makes a clean copy of the committed code (`HEAD`) inside the project, under
    `.vbw/runtime/`.
-3. Runs every check, and every project command whose argv is approved, from the
+3. Runs every check (up to `check_jobs` at a time, `alone` checks by themselves),
+   and every project command whose argv is approved, from the
    root of that copy; an unapproved command is skipped and reported, never run.
    Then it removes the copy, also when interrupted.
 4. Scope: every commit with a `VBW-Plan:` trailer naming a plan in the record
@@ -338,6 +360,11 @@ every deviation from the plan are failures. Each failure is recorded with
 closes; the verdict with `vbw qa record PHASE pass|fail TIER`, against the
 phase's inputs (see "Which phases QA checks again"). A pass closes the phase's
 QA fixes; three failed rounds in a row escalate.
+
+The project's test command is not run again for QA. The proof runs it once
+(a project command, above) and `vbw next` hands that one result to the QA round
+(`round.suite`, docs/next.md). QA agents use it as evidence and do not run the
+suite themselves.
 
 ### Which phases QA checks again
 
