@@ -113,9 +113,13 @@ record_update() {
 # .vbw/record.json, .vbw/map.md, .vbw/.gitignore and the protected check
 # files) with `git commit --only`, so the user's staged work stays staged.
 # Called when a run ends, at approval and at ship. Nothing changed: no commit.
-# A failing commit (no git identity, a hook) warns and never undoes the step.
+# A failing commit (no git identity, a hook) warns with git's own reason and
+# never undoes the step; with --strict as first argument it prints the reason
+# alone and returns 1, for a caller that must stop (vbw approve).
 record_commit() {
-  local msg="$1" own=() changed=() untracked=() f
+  local strict=0
+  [ "${1:-}" != "--strict" ] || { strict=1; shift; }
+  local msg="$1" own=() changed=() untracked=() f why
   (
     # A subshell starts without the parent's traps: it guards only its own lock.
     vbw_guard_reset
@@ -129,11 +133,19 @@ record_commit() {
       < <(git ls-files -z --others --exclude-standard -- "${own[@]}")
     [ ${#changed[@]} -gt 0 ] || exit 0
     record_lock
-    { [ ${#untracked[@]} -eq 0 ] || git add -- "${untracked[@]}"; } &&
-      git commit --quiet --only -m "$msg" -- "${changed[@]}" > /dev/null 2>&1 \
-      || printf 'vbw: warning: could not commit VBW files (%s); commit them yourself\n' "$msg" >&2
+    if why=$({ [ ${#untracked[@]} -eq 0 ] || git add -- "${untracked[@]}"; } 2>&1 &&
+      git commit --quiet --only -m "$msg" -- "${changed[@]}" 2>&1); then
+      record_unlock
+      exit 0
+    fi
     record_unlock
-  )
+    if [ "$strict" = 1 ]; then
+      printf '%s\n' "$why" >&2
+    else
+      printf 'vbw: warning: could not commit VBW files (%s): %s; commit them yourself\n' "$msg" "$why" >&2
+    fi
+    exit 1
+  ) || [ "$strict" = 0 ]
 }
 
 # jq helper, prepended to update filters: the next free id with prefix P.

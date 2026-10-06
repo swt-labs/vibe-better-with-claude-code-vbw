@@ -30,8 +30,8 @@ cmd_approve() {
   if contract_approved "$hash"; then
     printf 'contract %s is already approved\n' "${hash:0:12}"
   else
-    consent_grant contract "$hash" "$(printf '%s' "$record" | jq -c \
-      '{requirements: (.requirements | length), checks: (.checks | length), plans: (.plans | length)}')"
+    local before
+    before=$(cat "$VBW_RECORD")
     record_update "$VBW_JQ_DEFS"'
       def express_text: . as $r | [.phases[] | select(.milestone == $r.milestone.id and .tier == "express") | .id as $p | .reqs as $q
           | "express: \($p) (\([$q[], ($r.checks[] | select(.req as $c | any($q[]; . == $c)) | .id), ($r.plans[] | select(.phase == $p) | .id)] | join(", ")))"]
@@ -39,7 +39,13 @@ cmd_approve() {
       .decisions += [{id: (.decisions | next_id("D")), at: $at,
         text: "Contract approved: \(.requirements | length) requirements, \(.checks | length) checks, \(.plans | length) plans (\($h[0:12]))\(express_text)"}]' \
       --arg h "$hash" --arg at "$(vbw_now)"
-    record_commit "chore(vbw): approve contract ${hash:0:12}"
+    if ! record_commit --strict "chore(vbw): approve contract ${hash:0:12}"; then
+      # Take the decision back: no approval without its commit.
+      record_update '.decisions |= map(select(.id != $d))' --arg d "$(printf '%s' "$before" | jq -r '.decisions | (map(.id | ltrimstr("D") | tonumber) | max // 0) + 1 | "D\(.)"')"
+      vbw_die "the approval commit failed (reason above); the contract is not approved"
+    fi
+    consent_grant contract "$hash" "$(printf '%s' "$record" | jq -c \
+      '{requirements: (.requirements | length), checks: (.checks | length), plans: (.plans | length)}')"
     printf 'approved contract %s\n' "${hash:0:12}"
   fi
   # Its structure alone: later edits to check files wait for one approval before proof.
