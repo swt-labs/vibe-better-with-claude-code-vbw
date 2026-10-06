@@ -5,7 +5,7 @@
   },
   "milestone": {
     "id": "M11",
-    "title": "Old-folder review works on Linux",
+    "title": "Faster, safer, unblocked",
     "status": "active"
   },
   "shipped": [
@@ -1661,6 +1661,118 @@
           "check": "C97"
         }
       ]
+    },
+    {
+      "id": "R69",
+      "text": "vbw prove runs the approved checks in parallel, except checks marked alone, which still run by themselves; the results are the same as running them one after another, and a proof of many checks finishes in a fraction of the time",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M11",
+      "rules": []
+    },
+    {
+      "id": "R70",
+      "text": "A QA round runs the project's test command once and gives its result to every QA agent of that round, instead of each agent running the whole suite again",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M11",
+      "rules": []
+    },
+    {
+      "id": "R71",
+      "text": "How deeply QA checks a phase follows the size and risk of its change: a small, low-risk change gets a quick check and never a deep one, and a change to wording or documentation alone needs no new check",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M11",
+      "rules": []
+    },
+    {
+      "id": "R72",
+      "text": "A small change (one or two files, low risk) goes from the user's request to done through /vbw:vibe without a planning workflow: VBW plans it itself as one plan with its check, the user approves once, it is built, checked and closed",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M11",
+      "rules": []
+    },
+    {
+      "id": "R73",
+      "text": "A project's proof never reuses build output from the working folder: the clean copy has its own build folders (for any language), so artifacts never point into another copy",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M11",
+      "rules": []
+    },
+    {
+      "id": "R74",
+      "text": "A plan whose files were already committed (for example by the approval commit) and whose checks pass can be marked done; a blocked or stuck plan never stops unrelated plans from being scheduled",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M11",
+      "rules": []
+    },
+    {
+      "id": "R75",
+      "text": "While VBW plans, its agents may write only VBW's own files and the test files the plan declares, so a planning run never blocks another session's folders",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M11",
+      "rules": []
+    },
+    {
+      "id": "R76",
+      "text": "A Dev's command that writes a file outside its plan through a program (Python, Node, Perl or similar) is refused like a shell write outside its plan",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M11",
+      "rules": []
+    },
+    {
+      "id": "R77",
+      "text": "Reading the plan of record (copying or printing it) or naming the approval command in plain text is never refused as a write or as an approval",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M11",
+      "rules": []
+    },
+    {
+      "id": "R78",
+      "text": "After each agent of a build, fix or QA workflow returns, VBW confirms that its plan state or verdict was recorded, and says plainly which ones were not",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M11",
+      "rules": []
+    },
+    {
+      "id": "R79",
+      "text": "The test-file edits made while building a phase are approved together once, before the phase is proved, instead of one approval for each edit",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M11",
+      "rules": []
+    },
+    {
+      "id": "R80",
+      "text": "One plan, check or rule can be changed without resubmitting the whole milestone, and a fix round cannot add phases or rename phases nobody asked for",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M11",
+      "rules": []
+    },
+    {
+      "id": "R81",
+      "text": "A project setting limits how many checks run at the same time; an approval whose commit fails stops and says why instead of only warning; a workflow ends its own run when it finishes",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M11",
+      "rules": []
+    },
+    {
+      "id": "R82",
+      "text": "The VBW panel opens at about a quarter of the terminal width (never narrower than 40 columns); a width the user sets by hand always wins",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M11",
+      "rules": []
     }
   ],
   "checks": [
@@ -9474,6 +9586,18 @@
       "text": "Maintainer tool tools/test-linux.sh: the suite in a CI-shaped Linux container before each push (T23)",
       "why": "2.0.19 reached GitHub with a Linux-only bug that CI found after the push; maintainer tooling, never shipped",
       "at": "2026-10-06T16:01:23Z"
+    },
+    {
+      "id": "D139",
+      "text": "One milestone for M12 and M13 (faster, safer, unblocked), released together with the M11 Linux fix; 2.0.20 is not pushed alone",
+      "why": "owner 2026-10-06: the owner is the only VBW user and is on macOS, so the Linux fix can wait for the next release; one milestone means one plan, one approval, one QA pass, one release",
+      "at": "2026-10-06T16:32:46Z"
+    },
+    {
+      "id": "D140",
+      "text": "Until 2.1 a release runs the suite on macOS and Linux plus greenfield and the real-app scenarios of the changed area; the full real-app suite runs only before 2.1",
+      "why": "owner 2026-10-06: the owner is the only user; the full suite (~1.5 h) is kept for the 2.1 launch",
+      "at": "2026-10-06T16:32:46Z"
     }
   ],
   "commands": {
@@ -9487,27 +9611,27 @@
     "autonomy_cap": 25
   },
   "evidence": {
-    "at": "2026-10-06T16:26:56Z",
+    "at": "2026-10-06T16:49:36Z",
     "contract": "2594b7d1d995a6e74bcb69ac0bce2c2ab721fd152601716f33aa8b591f975bb0",
-    "tree": "cb00dc4d7ecac85c269244523aa1e29eb736cdbd",
-    "head": "9997b34645da39c9650e3ed3a822bc6092c25efc",
+    "tree": "f549d7ffb8151591cc90a6a304393af94572101b",
+    "head": "f7c6ceb84c70d915384564f40587db4ca4961690",
     "checks": {
       "C1": {
         "status": "pass",
         "exit": 0,
-        "seconds": 15,
+        "seconds": 11,
         "tail": "1..1\nok 1 R1: grants from two worktrees of one clone, started together, are all kept"
       },
       "C2": {
         "status": "pass",
         "exit": 0,
-        "seconds": 9,
+        "seconds": 8,
         "tail": "1..3\nok 1 R2: an interrupted code fingerprint (prove, next) leaves no index file\nok 2 R2: the caller's EXIT trap still runs when vbw code is interrupted\nok 3 R2: the caller's EXIT trap survives a vbw write that completes"
       },
       "C3": {
         "status": "pass",
         "exit": 0,
-        "seconds": 8,
+        "seconds": 5,
         "tail": "1..11\nok 1 report: versions, doctor, and project state as counts and ids\nok 2 report: an empty count says none, never a blank\nok 3 report: never the spec's text, check output or file contents\nok 4 report: a corrupt record is named as corrupt without echoing its content\nok 5 report: outside a git repository it still prints, and says so\nok 6 report and rtk take no arguments beyond their usage\nok 7 rtk: not installed, with the install command that matches the machine\nok 8 rtk: installed shows its version and path; status equals no argument\nok 9 rtk: the Claude hook is on only when RTK's hook is in the user's settings\nok 10 rtk and report write nothing: no file in the project or settings changes\nok 11 docs/diagnostics.md says what the help says about both commands"
       },
       "C4": {
@@ -9519,25 +9643,25 @@
       "C5": {
         "status": "pass",
         "exit": 0,
-        "seconds": 1,
+        "seconds": 0,
         "tail": "1..1\nok 1 R5: QA failed a deviating build, naming the deviation; the fix loop closed it"
       },
       "C8": {
         "status": "pass",
         "exit": 0,
-        "seconds": 0,
+        "seconds": 1,
         "tail": "1..1\nok 1 R8: balanced autonomy, background QA: no Stop-hook errors, stopped at accept"
       },
       "C9": {
         "status": "pass",
         "exit": 0,
-        "seconds": 11,
+        "seconds": 7,
         "tail": "1..5\nok 1 blocking an approved plan keeps the approval and proceeds without re-approval\nok 2 resetting a blocked plan keeps the approval and the approved hash\nok 3 a plan's note does not change the contract hash\nok 4 changing a plan definition still withdraws the approval\nok 5 changing a check or a requirement still withdraws the approval"
       },
       "C10": {
         "status": "pass",
         "exit": 0,
-        "seconds": 9,
+        "seconds": 10,
         "tail": "1..3\nok 1 R11: a user rejection opens a fix and a later accept of that requirement closes it\nok 2 R11: a fix opened by QA stays open after the user accepts the requirement\nok 3 R11: the QA-opened fix closes only when QA records a passing verdict for the phase"
       },
       "C11": {
@@ -9573,7 +9697,7 @@
       "C16": {
         "status": "pass",
         "exit": 0,
-        "seconds": 1,
+        "seconds": 2,
         "tail": "1..7\nok 1 the repository's contributor files name only what exists\nok 2 no contributor file mentions .vbw-planning\nok 3 selftest: a clean tree passes\nok 4 selftest: a nonexistent path fails and is named\nok 5 selftest: a nonexistent /vbw: command fails\nok 6 selftest: .vbw-planning fails\nok 7 selftest: a bad path in an issue template fails"
       },
       "C17": {
@@ -9609,7 +9733,7 @@
       "C22": {
         "status": "pass",
         "exit": 0,
-        "seconds": 4,
+        "seconds": 5,
         "tail": "1..6\nok 1 the profile defines, for each tier, the agents with their count, the QA tier and the models\nok 2 express is one Dev; standard and deep keep the profile's models and QA tiers as before\nok 3 vbw next --json gives each phase exactly its profile cell, for every profile and tier\nok 4 a user's model override still wins over the tier's models\nok 5 a phase planned before tiers existed counts as standard\nok 6 the workflows and the router pass the tier's models and QA tier through"
       },
       "C23": {
@@ -9621,7 +9745,7 @@
       "C24": {
         "status": "pass",
         "exit": 0,
-        "seconds": 26,
+        "seconds": 25,
         "tail": "1..12\nok 1 a Dev block raises the tier and records the reason\nok 2 a standard phase is raised to deep, and a deep phase records the event and stays deep\nok 3 a fix that needs a second round raises the tier, a first failure does not\nok 4 QA finding a problem in an express phase raises it; in a standard phase it does not\nok 5 QA failing a phase a second time raises the tier\nok 6 a commit that touches a risk path raises the phase to deep\nok 7 a commit that grows well beyond its plan raises the tier one step; a small commit does not\nok 8 a proven requirement that fails raises the tier\nok 9 vbw tier raise raises, records the reason, and refuses to lower or repeat\nok 10 nothing lowers a raised tier: planning again and changing the mode keep it\nok 11 after a raise, the later steps use the raised tier's agents, QA tier and models\nok 12 vbw show phase shows the tier, the reason it was raised and the tier it started at"
       },
       "C25": {
@@ -9633,7 +9757,7 @@
       "C26": {
         "status": "pass",
         "exit": 0,
-        "seconds": 9,
+        "seconds": 8,
         "tail": "1..11\nok 1 the committed results are complete and every miss is stated\nok 2 the committed results cover both models and every case, with automatic rigor\nok 3 selftest: a complete set within twice plain's cost passes\nok 4 selftest: a missing cell fails\nok 5 selftest: a missing field, a wrong level or empty tiers fail\nok 6 selftest: a case above twice plain's cost fails unless the doc states the miss\nok 7 selftest: a failed case fails unless the doc states the miss\nok 8 selftest: only the highest round of a cell counts, and a rerun of a plain run supersedes the original\nok 9 selftest: tuning rounds are limited to two and each must be described\nok 10 selftest: --table prints a row per cell, with the cost ratio\nok 11 the doc quotes every adaptive table row and states the evidence level and what was not tested"
       },
       "C27": {
@@ -9657,7 +9781,7 @@
       "C30": {
         "status": "pass",
         "exit": 0,
-        "seconds": 1,
+        "seconds": 0,
         "tail": "1..5\nok 1 R34: the edge-case scenario exists, runs the real app and states its fixture and level\nok 2 R34: the edge case got a rule and a check before approval, and the check tests that edge\nok 3 R34: the leftover-file scenario exists, runs the real app and states its fixture and level\nok 4 R34: a leftover untracked file left the proof unchanged and was not in the proof copy\nok 5 R34: each scenario's result reflects only its own checks"
       },
       "C31": {
@@ -9687,7 +9811,7 @@
       "C35": {
         "status": "pass",
         "exit": 0,
-        "seconds": 6,
+        "seconds": 4,
         "tail": "1..10\nok 1 R37: the interview is a skill of its own, named interview, within a mode prompt's budget\nok 2 R37: the three fixed questions are asked in order with exactly the listed options\nok 3 R37: after the three, VBW asks briefly what is being built and for whom, and writes it into the spec Goals\nok 4 R37: at most three follow-up questions, written for that user's level and this project; zero is allowed\nok 5 R37: the last question asks where to keep the personal answers and applies the choice through the kernel\nok 6 R37: each answer is recorded as it is given, so an interrupted interview resumes at the first unanswered question\nok 7 R37: an interrupted interview records nothing as complete and resumes at the first unanswered question\nok 8 R37: an unrecognised answer to a fixed question is refused and never recorded\nok 9 R37: the router runs the interview before spec work, after mapping for existing code,\nok 10 R37: the router stays within its budget and the interview adds no more than a mode prompt"
       },
       "C36": {
@@ -9699,37 +9823,37 @@
       "C37": {
         "status": "pass",
         "exit": 0,
-        "seconds": 6,
+        "seconds": 5,
         "tail": "1..10\nok 1 R40: a declined suggestion is recorded in the project record by the kernel and never offered again\nok 2 R40: declining the same text twice is deduplicated, even with other case or spacing\nok 3 R40: a declined suggestion stays declined across sessions and milestones\nok 4 R40: a record from an older VBW (nothing declined) is read: none declined\nok 5 R40: the declined list is written only through the kernel's validated write path\nok 6 R40: the record change is additive under project, so older VBWs still read the project\nok 7 R40: the suggest skill offers at most three yes-or-no suggestions, only at spec proposal and plan approval\nok 8 R40: an accepted suggestion becomes a requirement or a recorded decision, a declined one is recorded and not offered again\nok 9 R40: suggestions follow the user's level and depth, zero is valid, and none duplicates a requirement or decision\nok 10 R40: the router offers suggestions at spec proposal and at plan approval, and nowhere else"
       },
       "C38": {
         "status": "pass",
         "exit": 0,
-        "seconds": 1,
+        "seconds": 0,
         "tail": "1..9\nok 1 R42: the newcomer scenario exists, runs the real app and states its fixture and level\nok 2 R42: the senior-engineer scenario exists, runs the real app and states its fixture and level\nok 3 R42: the newcomer answered the three fixed questions, what and for whom, the follow-ups and where to keep them\nok 4 R42: the senior engineer answered the three fixed questions, what and for whom, the follow-ups and where to keep them\nok 5 R42: each scenario's recorded answers (vbw interview, taken from the project) match what was answered\nok 6 R42: in each scenario a second request in a new session did not trigger the interview again\nok 7 R42: each scenario reaches the ship step\nok 8 R42: the two scenarios record different explanation depth and involvement, and their transcripts are saved for comparison\nok 9 R42: the release gate runs every scenario for a milestone release: both new scenarios are in the default list"
       },
       "C39": {
         "status": "pass",
         "exit": 0,
-        "seconds": 14,
+        "seconds": 11,
         "tail": "1..10\nok 1 apply accepts alone: true, keeps it in the record and shows it in the contract\nok 2 apply accepts alone: false\nok 3 a non-boolean alone is refused, naming the check, and changes nothing\nok 4 the alone marker is part of the contract hash\nok 5 adding the marker to an approved contract needs approving again\nok 6 removing the marker from an approved contract needs approving again\nok 7 the approval screen shows an added or removed marker\nok 8 a record whose checks use alone is schema 2, so an older VBW asks for an update instead of calling it corrupt\nok 9 a schema-1 record with an alone check, or a schema-2 record without one, is refused as corrupt\nok 10 a record newer than schema 2 still says it needs a newer VBW"
       },
       "C40": {
         "status": "pass",
         "exit": 0,
-        "seconds": 99,
+        "seconds": 93,
         "tail": "1..11\nok 1 an alone check and another check started together never overlap\nok 2 an alone check waits for a running check, and checks wait while it runs\nok 3 checks that are not alone still run in parallel, with unchanged output\nok 4 vbw prove holds the exclusion too\nok 5 the checks vbw fix done runs hold the exclusion too\nok 6 a check that times out while alone releases the exclusion\nok 7 a crashed vbw process leaves no lock that blocks later checks\nok 8 a wait beyond the limit fails naming the check being waited on\nok 9 checks of two different projects do not block each other\nok 10 the exclusion lives under .vbw/runtime and nothing is written outside the project\nok 11 without an alone marker behaviour is unchanged: no waiting, no lock left behind"
       },
       "C41": {
         "status": "pass",
         "exit": 0,
-        "seconds": 3,
+        "seconds": 1,
         "tail": "1..5\nok 1 docs/proof.md describes the alone marker of a check\nok 2 docs/record.md lists alone among a check's fields\nok 3 the kernel stays within its line budget\nok 4 the kernel code stays bash 3.2 compatible, without eval and without /tmp\nok 5 docs/record.md says a record whose checks use alone is schema 2, and why"
       },
       "C42": {
         "status": "pass",
         "exit": 0,
-        "seconds": 75,
+        "seconds": 41,
         "tail": "1..15\nok 1 a passing check is recorded with its time, the contract hash and a fingerprint of its files\nok 2 an unchanged pass is not rerun, and the output says so with the date of the pass\nok 3 a committed change to a served file reruns the check\nok 4 a changed approved contract reruns the check\nok 5 a check that last failed is rerun even when the files match an earlier pass\nok 6 a check that never ran is run, and a check with no declared files is always rerun\nok 7 a check whose served files cannot be fingerprinted is always rerun\nok 8 a pass is not recorded while a served file has uncommitted changes\nok 9 uncommitted changes in the fix's files still block closing, and nothing reruns\nok 10 vbw prove runs every check and records the passes the fix reuses\nok 11 vbw prove still fails on a failing check whatever was recorded\nok 12 closing outcomes are the same when a check is skipped: fixed for code, closed for a human requirement\nok 13 a missing or damaged passes file only means the checks run again\nok 14 the record never holds passes, so VBW 2.0.16 still reads it, and closing a fix leaves no record change to commit\nok 15 a pass of a check the contract no longer has is never used, and the record stays readable"
       },
       "C43": {
@@ -9741,37 +9865,37 @@
       "C44": {
         "status": "pass",
         "exit": 0,
-        "seconds": 53,
+        "seconds": 31,
         "tail": "1..11\nok 1 a single id behaves as it always did\nok 2 several fixes close in one command and a shared check runs once\nok 3 a code fix and a human requirement's fix each end as if closed alone\nok 4 an unknown id and a fix that is not open are named and the others still close\nok 5 a fix with uncommitted changes is named and the others still close\nok 6 a failing check fails only the fixes it serves, and is named\nok 7 a shared check that fails fails each fix it serves, not the fix of a human requirement\nok 8 the same id twice is closed once, without error\nok 9 checks that passed on unchanged files are reused across the named fixes\nok 10 checks marked alone still run alone while several fixes close\nok 11 fix retry still takes exactly one id, and fix done needs at least one"
       },
       "C45": {
         "status": "pass",
         "exit": 0,
-        "seconds": 2,
+        "seconds": 1,
         "tail": "1..4\nok 1 vbw help shows fix done with several ids\nok 2 docs/proof.md and docs/workflows.md show vbw fix done with several fixes\nok 3 the dev agent closes several fixes in one vbw fix done\nok 4 the kernel stays within its line budget"
       },
       "C46": {
         "status": "pass",
         "exit": 0,
-        "seconds": 11,
+        "seconds": 6,
         "tail": "1..3\nok 1 closing a fix, proving and keeping the interview answers in the project leave a record VBW 2.0.16 reads\nok 2 the fields 2.0.16 does not read raise the schema, never stay at schema 1\nok 3 a record carrying passes is refused as corrupt: passes belong to the clone, and no release wrote them"
       },
       "C47": {
         "status": "pass",
         "exit": 0,
-        "seconds": 84,
+        "seconds": 82,
         "tail": "1..15\nok 1 R47: a QA pass keeps one digest of the phase's own inputs in qa.tree; no new record field, the record stays schema 1\nok 2 R47: a phase that has never passed QA is checked\nok 3 R47: after one phase passes and the other does not, only the other is checked\nok 4 R47: a phase whose last verdict was fail is checked again, and a passing phase keeps its pass\nok 5 R47: two phases passed and a fix touches one: only that one is in the next QA list\nok 6 R47: a pass that stands is still a pass on the proven code: it counts for finishing the phase\nok 7 R47: changing a file of the phase alone is enough to check it again\nok 8 R47: changing a test of the phase alone is enough to check it again\nok 9 R47: changing the goal of the phase alone is enough to check it again\nok 10 R47: changing the plan of the phase alone is enough to check it again\nok 11 R47: a change to a file that belongs to no phase checks no phase\nok 12 R47: fixes that close without touching any phase file leave every pass standing\nok 13 R47: a record written before this change (qa.tree held the whole-folder fingerprint) is read without error and its phases are checked again once\nok 14 R47: QA still refuses a verdict on a proof older than the current code (R12)\nok 15 R47: the verify workflow checks exactly the phases it is given and holds no selection of its own"
       },
       "C48": {
         "status": "pass",
         "exit": 0,
-        "seconds": 58,
+        "seconds": 59,
         "tail": "1..9\nok 1 R49: a phase that builds on a re-checked phase is checked again though its own inputs did not change\nok 2 R49: it is transitive: A changes, B builds on A, C builds on B, and all three are checked again\nok 3 R49: a change in the middle checks it and what builds on it, not what it builds on\nok 4 R49: a dependency on a phase that is not re-checked adds nothing\nok 5 R49: a dependent that has itself never passed is already included and listed once\nok 6 R49: when the changed phase passes again but its dependent was not recorded, the dependent is still checked\nok 7 R49: when both are checked again, every pass stands and the milestone can ship\nok 8 R49: phases that build on each other in a cycle do not hang or crash, and the kernel names them\nok 9 R49: a plan that comes after a plan or a phase that does not exist is reported by name, not silently dropped"
       },
       "C49": {
         "status": "pass",
         "exit": 0,
-        "seconds": 66,
+        "seconds": 67,
         "tail": "1..13\nok 1 R48: a phase that failed last time is named with that reason, and the phase that passed is listed as standing\nok 2 R48: a phase that was never checked is named with that reason\nok 3 R48: each changed input is named: files, tests, goal or plan\nok 4 R48: a phase that builds on a re-checked phase names it\nok 5 R48: a phase with several reasons shows all of them\nok 6 R48: the reasons list is exactly the list of phases sent to QA, and the instruction states each reason\nok 7 R48: when nothing needs checking again, the output says so and lists every phase as standing\nok 8 R48: vbw show qa reports each reason in text and each phase whose pass stands\nok 9 R48: the answer the status line reads carries the reasons\nok 10 R48: for a user at 'never' and 'plain with terms explained', the reasons carry no unexplained jargon\nok 11 R48: the qa skill reads the reasons, tells the user at their level which phases are checked again and why, and which keep their pass\nok 12 R48: the docs describe the re-check rule and where the reasons appear\nok 13 R48: on a clone without the cache of what each pass covered, a re-checked phase still gets a plain reason"
       },
       "C50": {
@@ -9790,19 +9914,19 @@
         "status": "pass",
         "exit": 0,
         "seconds": 0,
-        "tail": "ok 14 - building the view changes nothing in its input\n  ---\n  duration_ms: 0.145959\n  type: 'test'\n  ...\n# Subtest: the Claude Code versions with mods start at 2.1.287\nok 15 - the Claude Code versions with mods start at 2.1.287\n  ---\n  duration_ms: 0.114417\n  type: 'test'\n  ...\n1..15\n# tests 15\n# suites 0\n# pass 15\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 59.543125"
+        "tail": "ok 14 - building the view changes nothing in its input\n  ---\n  duration_ms: 0.179125\n  type: 'test'\n  ...\n# Subtest: the Claude Code versions with mods start at 2.1.287\nok 15 - the Claude Code versions with mods start at 2.1.287\n  ---\n  duration_ms: 0.135709\n  type: 'test'\n  ...\n1..15\n# tests 15\n# suites 0\n# pass 15\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 56.879375"
       },
       "C53": {
         "status": "pass",
         "exit": 0,
         "seconds": 0,
-        "tail": "ok 8 - with no good state yet, an invalid file shows a neutral line\n  ---\n  duration_ms: 1.824917\n  type: 'test'\n  ...\n# Subtest: the panel is never drawn with undefined, NaN or object text\nok 9 - the panel is never drawn with undefined, NaN or object text\n  ---\n  duration_ms: 2.413459\n  type: 'test'\n  ...\n1..9\n# tests 9\n# suites 0\n# pass 9\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 86.125791"
+        "tail": "ok 8 - with no good state yet, an invalid file shows a neutral line\n  ---\n  duration_ms: 1.822291\n  type: 'test'\n  ...\n# Subtest: the panel is never drawn with undefined, NaN or object text\nok 9 - the panel is never drawn with undefined, NaN or object text\n  ---\n  duration_ms: 2.651458\n  type: 'test'\n  ...\n1..9\n# tests 9\n# suites 0\n# pass 9\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 85.411042"
       },
       "C54": {
         "status": "pass",
         "exit": 0,
         "seconds": 0,
-        "tail": "ok 6 - when Claude Code answers with failures the panel stays quiet\n  ---\n  duration_ms: 4.435333\n  type: 'test'\n  ...\n# Subtest: garbage in the project files never makes a hook fail\nok 7 - garbage in the project files never makes a hook fail\n  ---\n  duration_ms: 8.710667\n  type: 'test'\n  ...\n1..7\n# tests 7\n# suites 0\n# pass 7\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 74.237958"
+        "tail": "ok 6 - when Claude Code answers with failures the panel stays quiet\n  ---\n  duration_ms: 4.827542\n  type: 'test'\n  ...\n# Subtest: garbage in the project files never makes a hook fail\nok 7 - garbage in the project files never makes a hook fail\n  ---\n  duration_ms: 8.239041\n  type: 'test'\n  ...\n1..7\n# tests 7\n# suites 0\n# pass 7\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 79.861125"
       },
       "C55": {
         "status": "pass",
@@ -9820,31 +9944,31 @@
         "status": "pass",
         "exit": 0,
         "seconds": 0,
-        "tail": "ok 5 - during a run the panel redraws only when the minute it shows changes\n  ---\n  duration_ms: 9.716916\n  type: 'test'\n  ...\n# Subtest: a changed file is read once and drawn once, however many ticks follow\nok 6 - a changed file is read once and drawn once, however many ticks follow\n  ---\n  duration_ms: 2.598625\n  type: 'test'\n  ...\n1..6\n# tests 6\n# suites 0\n# pass 6\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 82.947167"
+        "tail": "ok 5 - during a run the panel redraws only when the minute it shows changes\n  ---\n  duration_ms: 9.318792\n  type: 'test'\n  ...\n# Subtest: a changed file is read once and drawn once, however many ticks follow\nok 6 - a changed file is read once and drawn once, however many ticks follow\n  ---\n  duration_ms: 2.250667\n  type: 'test'\n  ...\n1..6\n# tests 6\n# suites 0\n# pass 6\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 82.240625"
       },
       "C58": {
         "status": "pass",
         "exit": 0,
         "seconds": 0,
-        "tail": "ok 10 - opening and closing change no project data and no tracked file: the choice lives in the user store only\n  ---\n  duration_ms: 2.426166\n  type: 'test'\n  ...\n# Subtest: outside a VBW project the panel is never opened\nok 11 - outside a VBW project the panel is never opened\n  ---\n  duration_ms: 1.013834\n  type: 'test'\n  ...\n1..11\n# tests 11\n# suites 0\n# pass 11\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 91.377959"
+        "tail": "ok 10 - opening and closing change no project data and no tracked file: the choice lives in the user store only\n  ---\n  duration_ms: 1.746875\n  type: 'test'\n  ...\n# Subtest: outside a VBW project the panel is never opened\nok 11 - outside a VBW project the panel is never opened\n  ---\n  duration_ms: 0.741583\n  type: 'test'\n  ...\n1..11\n# tests 11\n# suites 0\n# pass 11\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 84.641125"
       },
       "C59": {
         "status": "pass",
         "exit": 0,
         "seconds": 0,
-        "tail": "ok 11 - a missing file or no player is silent: nothing plays and nothing is shown\n  ---\n  duration_ms: 2.519333\n  type: 'test'\n  ...\n# Subtest: on a version without mods the sound command does not exist and the panel stays off\nok 12 - on a version without mods the sound command does not exist and the panel stays off\n  ---\n  duration_ms: 0.811416\n  type: 'test'\n  ...\n1..12\n# tests 12\n# suites 0\n# pass 12\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 83.452208"
+        "tail": "ok 11 - a missing file or no player is silent: nothing plays and nothing is shown\n  ---\n  duration_ms: 1.988334\n  type: 'test'\n  ...\n# Subtest: on a version without mods the sound command does not exist and the panel stays off\nok 12 - on a version without mods the sound command does not exist and the panel stays off\n  ---\n  duration_ms: 0.703458\n  type: 'test'\n  ...\n1..12\n# tests 12\n# suites 0\n# pass 12\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 93.831792"
       },
       "C61": {
         "status": "pass",
         "exit": 0,
-        "seconds": 0,
-        "tail": "ok 4 - when the cost is not available the line is left out or says so, never a number\n  ---\n  duration_ms: 10.826833\n  type: 'test'\n  ...\n# Subtest: only read-only calls are made to learn the cost\nok 5 - only read-only calls are made to learn the cost\n  ---\n  duration_ms: 1.307917\n  type: 'test'\n  ...\n1..5\n# tests 5\n# suites 0\n# pass 5\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 79.489"
+        "seconds": 1,
+        "tail": "ok 4 - when the cost is not available the line is left out or says so, never a number\n  ---\n  duration_ms: 11.018\n  type: 'test'\n  ...\n# Subtest: only read-only calls are made to learn the cost\nok 5 - only read-only calls are made to learn the cost\n  ---\n  duration_ms: 1.435667\n  type: 'test'\n  ...\n1..5\n# tests 5\n# suites 0\n# pass 5\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 93.585833"
       },
       "C62": {
         "status": "pass",
         "exit": 0,
         "seconds": 0,
-        "tail": "ok 15 - a lease with an unreadable start gives no step estimate and no crash\n  ---\n  duration_ms: 0.056292\n  type: 'test'\n  ...\n# Subtest: estimating changes nothing in its input\nok 16 - estimating changes nothing in its input\n  ---\n  duration_ms: 0.133875\n  type: 'test'\n  ...\n1..16\n# tests 16\n# suites 0\n# pass 16\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 57.442542"
+        "tail": "ok 15 - a lease with an unreadable start gives no step estimate and no crash\n  ---\n  duration_ms: 0.095375\n  type: 'test'\n  ...\n# Subtest: estimating changes nothing in its input\nok 16 - estimating changes nothing in its input\n  ---\n  duration_ms: 0.156417\n  type: 'test'\n  ...\n1..16\n# tests 16\n# suites 0\n# pass 16\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 58.86925"
       },
       "C63": {
         "status": "pass",
@@ -9856,7 +9980,7 @@
         "status": "pass",
         "exit": 0,
         "seconds": 0,
-        "tail": "ok 10 - the estimate follows the clock: a minute later it has gone down, and it redraws only for that\n  ---\n  duration_ms: 12.26875\n  type: 'test'\n  ...\n# Subtest: the cost and the estimates share the panel\nok 11 - the cost and the estimates share the panel\n  ---\n  duration_ms: 1.942708\n  type: 'test'\n  ...\n1..11\n# tests 11\n# suites 0\n# pass 11\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 95.011708"
+        "tail": "ok 10 - the estimate follows the clock: a minute later it has gone down, and it redraws only for that\n  ---\n  duration_ms: 11.372125\n  type: 'test'\n  ...\n# Subtest: the cost and the estimates share the panel\nok 11 - the cost and the estimates share the panel\n  ---\n  duration_ms: 1.884\n  type: 'test'\n  ...\n1..11\n# tests 11\n# suites 0\n# pass 11\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 98.621333"
       },
       "C65": {
         "status": "pass",
@@ -9879,7 +10003,7 @@
       "C68": {
         "status": "pass",
         "exit": 0,
-        "seconds": 2,
+        "seconds": 3,
         "tail": "1..7\nok 1 R59: the first question of the interview skill is exactly the new greeting\nok 2 R59: the four options follow the greeting, in the same order and wording\nok 3 R59: choosing a level still records it and the interview continues at the next question\nok 4 R59: the later questions, the follow-up rules and the keep order are unchanged\nok 5 R59: the old opening wording is gone from the skill and the interview doc, which shows the greeting\nok 6 R59: the router and the interview prompt stay within their budgets\nok 7 R59: a returning user whose level is recorded is not asked the level question again"
       },
       "C70": {
@@ -9903,19 +10027,19 @@
       "C73": {
         "status": "pass",
         "exit": 0,
-        "seconds": 5,
+        "seconds": 6,
         "tail": "1..5\nok 1 R61: the contract view ends with the approval question naming the fingerprint, and the options Approve first, Not yet second\nok 2 R61: an approved contract shows no approval question\nok 3 R61: approve --hash with the current fingerprint approves it, like plain approve, and writes the decision once\nok 4 R61: approve --hash with a fingerprint that is no longer current approves nothing and says the contract changed\nok 5 R61: approve --hash refuses a malformed fingerprint and a contract that is not ready, changing nothing"
       },
       "C74": {
         "status": "pass",
         "exit": 0,
-        "seconds": 12,
+        "seconds": 13,
         "tail": "1..13\nok 1 R61: hooks.json runs one PostToolUse hook, only for AskUserQuestion\nok 2 R61: answering Approve to the question approves the contract the question named, with the same decision entry as /vbw:approve\nok 3 R61: the answer may come as a list of answers as well as a map from question to answer\nok 4 R61: when the contract changed after the question, Approve approves nothing and the user is told, and shown the new contract\nok 5 R61: answering Not yet approves nothing and VBW is told to ask what to change\nok 6 R61: the user's own words approve nothing, even words that contain Approve, and are handed on as what to change\nok 7 R61: the question may explain the contract after the fingerprint: Approve still approves it (real-app run)\nok 8 R61: the fingerprint counts only at the very start of the question and only as exactly 12 hex digits\nok 9 R61: any other question changes nothing and prints nothing, in a VBW project and outside one\nok 10 R61: an answer already approved says so in one sentence and writes no second decision\nok 11 R61: plain /vbw:approve first, then the choice: still one decision\nok 12 R61: with no contract ready to approve, nothing is approved and the user is told to type /vbw:approve\nok 13 R61: a damaged record leaves the file as it was, approves nothing and says why in one sentence"
       },
       "C75": {
         "status": "pass",
         "exit": 0,
-        "seconds": 7,
+        "seconds": 8,
         "tail": "1..7\nok 1 R61: a call to vbw approve from the model is still refused by the guard\nok 2 R61: an answer-shaped message that is not an AskUserQuestion answer approves nothing\nok 3 R61: a message written by the model that merely contains the answer does not approve\nok 4 R61: a question asked by a subagent approves nothing\nok 5 R61: the guard's rule and the hook are documented together: the hook does not appear as a way for agents\nok 6 R61: the answer hook's own cost on an unrelated answer is measured by the hook bench and is near the platform's startup\nok 7 R61: the kernel stays within 3,500 lines and the router within 1,400 words"
       },
       "C76": {
@@ -9951,26 +10075,26 @@
       "C81": {
         "status": "pass",
         "exit": 0,
-        "seconds": 1,
+        "seconds": 0,
         "tail": "1..8\nok 1 R62: the interview skill has a tools section, after what and for whom, the follow-ups and the keep question\nok 2 R62: it asks one plain yes/no question with AskUserQuestion and explains each kind of tool in a few words\nok 3 R62: it reads the remembered state and asks only once: an existing answer, yes or no, means it is not asked again\nok 4 R62: the answer is recorded as soon as it is given, yes or no\nok 5 R62: on no nothing is searched on the web, no Scout is started, nothing is installed, and the flow continues\nok 6 R62: on yes it hands over to the same research and proposal as /vbw:skills\nok 7 R62: it ends with one plain line saying what VBW needs now\nok 8 R62: the interview still reads its answers first and keeps 'keep' as the last of the interview's own questions"
       },
       "C82": {
         "status": "pass",
         "exit": 0,
-        "seconds": 0,
+        "seconds": 1,
         "tail": "1..7\nok 1 R62: docs/tools.md exists and says what the offer is, in plain words\nok 2 R62: it says the question is asked once per project and what yes and no do\nok 3 R62: it says where picks come from: trusted sources, open source as proposed picks, anything else with a warning\nok 4 R62: it says nothing is installed before approval, and that approving some installs only those\nok 5 R62: it says each approved tool goes into this project or all your projects, by your choice\nok 6 R62: it names /vbw:skills as the way to run it again any time and vbw tools as the stored answer\nok 7 R62: the README lists the offer and links the page"
       },
       "C83": {
         "status": "pass",
         "exit": 0,
-        "seconds": 1,
+        "seconds": 0,
         "tail": "1..4\nok 1 R62: the tools scenario exists, is in the default list and is named in the suite's header\nok 2 R62: it answers yes once, reads the stored answer, and checks nothing was installed before approval, from the record and git\nok 3 R62: it states what it did not test and its fixture\nok 4 R62: a committed result of it is honest: L3, passed, the answer stored once, nothing installed before approval; none is committed before it ran"
       },
       "C84": {
         "status": "pass",
         "exit": 0,
-        "seconds": 0,
-        "tail": "ok 3 - outside test mode the sound plays and the switch uses the user keys\n  ---\n  duration_ms: 3.330125\n  type: 'test'\n  ...\n# Subtest: a change on disk redraws the panel by itself, with the redraw naming ui.render\nok 4 - a change on disk redraws the panel by itself, with the redraw naming ui.render\n  ---\n  duration_ms: 2.853375\n  type: 'test'\n  ...\n1..4\n# tests 4\n# suites 0\n# pass 4\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 65.228709"
+        "seconds": 1,
+        "tail": "ok 3 - outside test mode the sound plays and the switch uses the user keys\n  ---\n  duration_ms: 3.033709\n  type: 'test'\n  ...\n# Subtest: a change on disk redraws the panel by itself, with the redraw naming ui.render\nok 4 - a change on disk redraws the panel by itself, with the redraw naming ui.render\n  ---\n  duration_ms: 2.671333\n  type: 'test'\n  ...\n1..4\n# tests 4\n# suites 0\n# pass 4\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 65.013333"
       },
       "C85": {
         "status": "pass",
@@ -10035,7 +10159,7 @@
       "C95": {
         "status": "pass",
         "exit": 0,
-        "seconds": 17,
+        "seconds": 19,
         "tail": "1..3\nok 1 R66: adding a phase mid-milestone keeps the QA verdicts of the phases already checked\nok 2 R66: after the new phase is built, QA checks only the new phase\nok 3 R66: a kept phase whose goal changed in the re-plan is still checked again"
       },
       "C96": {
@@ -10047,7 +10171,7 @@
       "C97": {
         "status": "pass",
         "exit": 0,
-        "seconds": 2,
+        "seconds": 1,
         "tail": "1..2\nok 1 R68: with GNU stat, an untracked folder is reviewed: readable, last use from its newest file\nok 2 R68: file times in the kernel come only from vbw_mtime"
       }
     },
@@ -10055,12 +10179,18 @@
       "test": {
         "status": "pass",
         "exit": 0,
-        "seconds": 226,
+        "seconds": 229,
         "tail": "ok 968 R62: a pick with no source link is dropped, never shown\nok 969 R62: respected open-source picks are proposed as they are; anything else carries a plain warning and is marked not trusted\nok 970 R62: the list is short: at most two picks per angle and six in all, trusted ones first\nok 971 R62: a Scout that fails or finds nothing is named in missing, the others' picks are kept, nothing stops\nok 972 R62: when every Scout fails the result is no picks and a plain note, not an error\nok 973 R62: when the stack cannot be determined no Scout is started and the note says so\nok 974 a replaced round-0 record with empty tiers does not fail the set\nok 975 a final record with empty tiers still fails\nok 976 the workflows and VBW 1's seven agents exist, and nothing else\nok 977 each workflow starts with a pure-literal meta naming itself after its file\nok 978 workflows never use what breaks resume or is unavailable (time, randomness, modules)\nok 979 every phase() title is declared in meta.phases\nok 980 every agentType names an agent this plugin ships\nok 981 agents have a name matching the file, a single-line description and a tool list\nok 982 agents stay within their size budget (about 1.5k tokens)\nok 983 agents only use vbw commands that exist\nok 984 agents that plan or judge the plan load the user's recorded decisions\nok 985 workflow scripts parse as JavaScript (when node is available)\nok 986 workflow schemas are objects whose required keys are all properties\nok 987 no workflow shares its name with a skill (/vbw:NAME would start the workflow)"
       }
     },
     "scope": [],
     "passed": true
   },
-  "lease": null
+  "lease": {
+    "run": "plan-20261006T163341Z",
+    "kind": "plan",
+    "started_at": "2026-10-06T16:33:41Z",
+    "files": null,
+    "session": "9cd2cc30-8c86-4520-9d71-a0e82aff5407"
+  }
 }

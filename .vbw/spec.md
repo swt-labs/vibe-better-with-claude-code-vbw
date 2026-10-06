@@ -75,6 +75,20 @@ VBW is a Claude Code plugin that makes it build software properly: the user agre
 - R66 [auto] Changing the plan mid-milestone (adding or changing phases) keeps each phase's QA pass; QA then checks again only new phases and phases whose own inputs changed
 - R67 [auto] When a project has a VBW 1 folder and the user has not been interviewed yet, VBW opens with the interview greeting and level question, and asks convert or start fresh right after the level answer
 - R68 [auto] The review of an old VBW 1 folder works on Linux as on macOS, including folders not tracked by git
+- R69 [auto] vbw prove runs the approved checks in parallel, except checks marked alone, which still run by themselves; the results are the same as running them one after another, and a proof of many checks finishes in a fraction of the time
+- R70 [auto] A QA round runs the project's test command once and gives its result to every QA agent of that round, instead of each agent running the whole suite again
+- R71 [auto] How deeply QA checks a phase follows the size and risk of its change: a small, low-risk change gets a quick check and never a deep one, and a change to wording or documentation alone needs no new check
+- R72 [auto] A small change (one or two files, low risk) goes from the user's request to done through /vbw:vibe without a planning workflow: VBW plans it itself as one plan with its check, the user approves once, it is built, checked and closed
+- R73 [auto] A project's proof never reuses build output from the working folder: the clean copy has its own build folders (for any language), so artifacts never point into another copy
+- R74 [auto] A plan whose files were already committed (for example by the approval commit) and whose checks pass can be marked done; a blocked or stuck plan never stops unrelated plans from being scheduled
+- R75 [auto] While VBW plans, its agents may write only VBW's own files and the test files the plan declares, so a planning run never blocks another session's folders
+- R76 [auto] A Dev's command that writes a file outside its plan through a program (Python, Node, Perl or similar) is refused like a shell write outside its plan
+- R77 [auto] Reading the plan of record (copying or printing it) or naming the approval command in plain text is never refused as a write or as an approval
+- R78 [auto] After each agent of a build, fix or QA workflow returns, VBW confirms that its plan state or verdict was recorded, and says plainly which ones were not
+- R79 [auto] The test-file edits made while building a phase are approved together once, before the phase is proved, instead of one approval for each edit
+- R80 [auto] One plan, check or rule can be changed without resubmitting the whole milestone, and a fix round cannot add phases or rename phases nobody asked for
+- R81 [auto] A project setting limits how many checks run at the same time; an approval whose commit fails stops and says why instead of only warning; a workflow ends its own run when it finishes
+- R82 [auto] The VBW panel opens at about a quarter of the terminal width (never narrower than 40 columns); a width the user sets by hand always wins
 
 <!-- One requirement per line: an id, how it is proved, and a user-observable
      statement. [auto] = a check can prove it; [human] = only a person can judge it.
