@@ -4530,6 +4530,13 @@
         "fix_rounds": 4,
         "qa_findings": 4,
         "escalations": 0
+      },
+      "qa": {
+        "result": "pass",
+        "tier": "deep",
+        "tree": "26ef791f41f2c430b3fafd4eabe2726286d35ea428de5e75555807af64a0bd41",
+        "at": "2026-10-06T05:05:24Z",
+        "note": "12/12 checks"
       }
     },
     {
