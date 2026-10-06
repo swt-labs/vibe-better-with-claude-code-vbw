@@ -1,5 +1,58 @@
 # Changelog
 
+## [2.0.20] - 2026-10-07
+
+### Changed
+
+- **Small changes stay small.** A request of one or two simple requirements
+  now goes from your words to done through `/vbw:vibe` without the planning
+  workflow: VBW plans it itself, you approve once, it is built, checked and
+  closed. How deeply QA checks a phase follows the size and risk of its change:
+  a change of one or two files with no risk gets a quick check, never a deep
+  one. A change to documentation only (Markdown or reStructuredText) needs no
+  new test. Plain `.txt` files are treated as data and keep their checks.
+- **Faster proof.** `vbw prove` runs your checks in parallel, four at a time by
+  default (`vbw config set check_jobs N`, 1 to 64, for this clone). Checks
+  marked "alone" still run by themselves, and the results are the same as
+  running them one after another. A QA round runs your test command once and
+  shares the result with every QA agent.
+- **Approve with Enter, every time.** VBW always asks for approval with the
+  approval menu; it never asks you to type `/vbw:approve` (typing it still
+  works).
+- **One approval per phase.** Test files edited while a phase is built are
+  approved together once, just before the phase is proved, instead of one
+  approval for each edit.
+- **Change one plan without starting over.** `vbw apply --patch` changes one
+  plan, check or rule and leaves the rest of the milestone as it is; a fix round
+  can no longer add or rename phases nobody asked for.
+- **The panel opens at a quarter of the terminal** (never narrower than 40
+  columns) instead of nearly half. A width you set by dragging always wins.
+
+### Fixed
+
+- **The proof never reuses build output.** The clean copy VBW proves in no
+  longer links build folders (`target`, `dist`, `build`, `__pycache__` and
+  similar) from your working folder, so compiled files never point into another
+  copy. Dependency folders such as `node_modules` and `.venv` are still shared.
+- **Plans no longer get stuck.** A plan whose work was already committed (for
+  example by the approval commit) can be closed once its checks pass, and a
+  blocked plan no longer stops unrelated plans from being built.
+- **Planning no longer blocks your other sessions.** While VBW plans, its
+  agents may write only VBW's own files and test files.
+- **Guards:** a Python, Node, Perl or Ruby command that writes a file outside a
+  build's plan is refused like a shell write; reading the plan of record or
+  naming the approval command in text is no longer refused.
+- **Nothing is lost silently.** Build, fix and QA workflows confirm that every
+  agent recorded its result, say plainly which did not, and end their own run.
+  An approval whose commit fails now stops and says why.
+- **The old-folder review works on Linux** (folders not tracked by git used to
+  fail there).
+
+### Compatibility
+
+- The `check_jobs` setting lives in this clone's git directory, not in the
+  project record. Records written by this version are read by 2.0.17 to 2.0.19.
+
 ## [2.0.19] - 2026-10-06
 
 ### Added
