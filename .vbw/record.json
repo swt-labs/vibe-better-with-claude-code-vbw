@@ -4679,7 +4679,15 @@
         "breaks: R13, R14, R22, R24, R26, R31, R35, R37, R38, R39, R40, R47, R48, R49, R50, R59, R60, R61, R65",
         "tests: project test command"
       ],
-      "predicted": "deep"
+      "predicted": "deep",
+      "qa": {
+        "result": "fail",
+        "tier": "deep",
+        "tree": "55d5692157aa121c75cf845373aa075c0395b4f5f276eb23519f63bb6fd3d0f9",
+        "at": "2026-10-06T14:51:14Z",
+        "note": "16/18 checks",
+        "rounds": 1
+      }
     }
   ],
   "plans": [
@@ -8375,6 +8383,22 @@
       "attempts": 0,
       "status": "closed",
       "note": "Commit 977ce2ef changes tests/standards.bats (a new brace-default rule). It carries no VBW-Plan trailer and no P47 plan lists the file, so it is work outside the agreed plan. Escalation text also names a P47.7 that does not exist in the plan."
+    },
+    {
+      "id": "F37",
+      "req": "R67",
+      "source": "qa",
+      "attempts": 0,
+      "status": "open",
+      "note": "docs/interview.md line 86 still says vbw next returns profile.ask: true only at the spec step. P51.1 changed next.jq so it is also true at the convert step. The plan's docs task covered only the old-folder sentence, but the doc now contradicts the code. Fix: say 'at the spec step, or at the convert step when a VBW 1 folder has no choice yet'."
+    },
+    {
+      "id": "F38",
+      "req": "R67",
+      "source": "qa",
+      "attempts": 0,
+      "status": "open",
+      "note": "Commit a21fa989 changed tools/l3-results/nolegacy.json, a file P51.2 does not list (P51.2 lists only legacy.json). No decision records it. Fix: record a decision that the nolegacy re-run result stands, or add the file to the plan."
     }
   ],
   "todos": [
@@ -9793,5 +9817,11 @@
     "scope": [],
     "passed": true
   },
-  "lease": null
+  "lease": {
+    "run": "qa-20261006T145029Z",
+    "kind": "qa",
+    "started_at": "2026-10-06T14:50:29Z",
+    "files": [],
+    "session": "9cd2cc30-8c86-4520-9d71-a0e82aff5407"
+  }
 }
