@@ -52,6 +52,18 @@ input names an `agent_type`) is also held to the lease. The main session never i
 | `git commit`, `push`, `rebase`, `merge`, `pull`, `cherry-pick`, `revert`, `am` | Commits go through `vbw commit`, with provenance |
 | `git stash` (except `list`, `show`), `switch`, `reset`, `checkout` of a branch; `git checkout -- PATH` or `git restore PATH` outside `lease.files` | Agents share one working tree: nothing may move HEAD or other agents' changes |
 
+**Programs that write files.** During a run, a subagent's `python`, `node`,
+`deno`, `bun`, `perl`, `ruby`, `php` or `lua` command is judged like a shell
+write: a file it writes outside `lease.files` gets the same refusal, naming the
+path. The guard reads the paths the program text names as string literals
+(`open('src/a.py', 'w')`, `Path('a').write_text`, `fs.writeFileSync('a', ...)`,
+`File.write`, `os.remove`, `shutil.copy` and similar), in `-c`/`-e` code and in
+a script given by heredoc (`python3 - <<'EOF'`), and the files given to
+`perl -i`/`ruby -i`. Still allowed: reading, running tests (`python3 -m pytest`,
+`node --test`), and writing inside the plan's files. A path held in a variable
+cannot be read, so this stays a guard rail (see the first paragraph). Outside a
+run, programs are not judged.
+
 **Another session's run** (D11): while a run with an owning session is open
 (under 24 hours), a call from a different session (`session_id` differs from
 `lease.session`), main conversation or agent, is denied when it writes a file in
@@ -79,6 +91,11 @@ The Bash guard judges what the shell would execute, not the text:
   inside double quotes, and the script given to `sh -c`/`bash -c` or `eval`
   (three levels deep).
 - Redirect targets (`> file`, `2>> file`, `< file`) are paths like arguments.
+
+Reading the plan of record is not writing it: `cat`, `jq`, `sort`, `awk`
+(without in-place editing), and `cp`, `rsync`, `install` or `ln` with the record
+as the source are allowed. A copier whose destination is the record, or any
+other program that names it, is refused.
 
 A command that contains none of the words any rule needs (`rm`, `git`, `vbw`,
 `consent`, `record.json`, a secret file name) is allowed without being read.
