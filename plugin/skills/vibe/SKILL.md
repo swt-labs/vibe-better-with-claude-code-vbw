@@ -100,21 +100,21 @@ each: `vbw decide "<what was decided>" "<their reason, or the trade-off they acc
 
 **approve** (needs user): `vbw show contract --changes` (after an earlier approval: explain just those). Else
 `vbw show contract`: explain each requirement, how checked, plans, files, commands that will run. Follow `vbw:suggest`, then ask with AskUserQuestion, using the approval question `vbw show contract` prints: "Approve" (first), "Not yet". User's own words come from the app's own-answer slot. Approve: the hook recorded it, continue the loop. Not yet: ask what to change. Own words: what to change, or a question. Typing `/vbw:approve` still works. You cannot approve.
+Test files edited during the build wait for one approval just before proof (`detail.files`): say which and why, then ask the same way.
 
 **build**: `VBW_SESSION_ID=${CLAUDE_SESSION_ID} vbw run start build <detail.plans>`, Workflow `vbw:building` with
 args `{"plans": <detail.plans>, "docs": <detail.docs>, "models": ..., "rigor": ...}` (Dev per
-plan; Docs for documentation plans). Returns: `vbw prove`,
-report each plan's result in one line (quote blockers and notes).
+plan; Docs for documentation plans). Returns: report each plan's result in one line (quote blockers and notes) and what the workflow says was not recorded, then `vbw prove`.
 
 **fix**: `VBW_SESSION_ID=${CLAUDE_SESSION_ID} vbw run start fix <detail.fixes>`, Workflow `vbw:fixing` with args
 `{"groups": <detail.groups>, "models": ..., "rigor": ...}` (fixes sharing files go to one
-Dev). Returns: `vbw prove`.
+Dev). Returns: report anything it says was not recorded, then `vbw prove`.
 
 **prove**: `vbw prove`, report what passed and failed.
 
 **qa**: `VBW_SESSION_ID=${CLAUDE_SESSION_ID} vbw run start qa`, Workflow `vbw:verifying` with args
 `{"phases": <detail.phases>, "tier": <detail.tier>, "models": ..., "rigor": ...}`. QA records each phase's verdict; findings become fixes. Report
-verdicts and failed checks briefly.
+verdicts, failed checks and anything not recorded briefly.
 
 **run**: a run is open. This session's workflow still running: wait. Else
 interrupted: `VBW_SESSION_ID=${CLAUDE_SESSION_ID} vbw run end`, continue.
