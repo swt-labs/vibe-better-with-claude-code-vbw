@@ -20,6 +20,16 @@ const top = Object.values((args && args.rigor) || {}).filter(c => c && c.models 
 const devModel = top ? top.models.dev : models.dev
 if (groups.length === 0) return { results: [], error: 'no fix groups given: pass args.groups from vbw next --json (detail.groups)' }
 
+const CLOSE_RESULT = {
+  type: 'object',
+  required: ['ended', 'recorded', 'report'],
+  properties: {
+    ended: { type: 'boolean' },
+    recorded: { type: 'boolean' },
+    report: { type: 'string' },
+  },
+}
+
 const FIX_RESULT = {
   type: 'object',
   required: ['status', 'summary', 'notes'],
@@ -28,6 +38,19 @@ const FIX_RESULT = {
     summary: { type: 'string' },
     notes: { type: 'array', items: { type: 'string' } },
   },
+}
+
+// The run's own last step (R78, R81): confirm what the agents recorded, say plainly
+// what was not, and end the run. Only when the router passed args.session.
+const session = (args && args.session) || ''
+const closeRun = async ids => {
+  if (!session) return null
+  const sh = c => `VBW_SESSION_ID=${session} ${c}`
+  const done = await agent(`Close this VBW run. Run ${sh(`vbw run confirm ${ids.join(' ')}`)} (it exits 1 when some fixes were not recorded), then, whatever it said, run ${sh('vbw run end')}. Answer ended (run end succeeded), recorded (confirm exited 0) and report (the lines for what was not recorded, else "all recorded; run ended"). Change nothing else.`,
+    Object.assign({ agentType: 'vbw:scout', label: 'close run', schema: CLOSE_RESULT }, models.scout ? { model: models.scout } : {}))
+  if (!done) log('the closing agent stopped: run vbw run confirm and vbw run end by hand')
+  else if (!done.recorded || !done.ended) log(done.report)
+  return done
 }
 
 phase('Fix')
@@ -43,4 +66,5 @@ const out = groups.map((ids, i) => results[i]
   : { fixes: ids, status: 'interrupted', summary: 'the Dev stopped before reporting', notes: [] })
 const interrupted = out.filter(r => r.status === 'interrupted').length
 if (interrupted > 0) log(`${interrupted} fixer(s) stopped before reporting; their fixes stay open`)
-return { results: out }
+const confirmation = await closeRun(groups.flat())
+return confirmation ? { results: out, confirmation } : { results: out }

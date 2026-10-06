@@ -16,6 +16,16 @@ const profile = (args && typeof args === 'object' && args.profile) || {}
 const voice = `\n\nThe user's level: ${profile.level || 'small scripts or no-code'}. Explanation depth: ${profile.depth || 'plain with technical terms explained'}. Involvement: ${profile.involvement || 'options with a recommendation'}. Write whatever the user will read at that level and depth.`
 if (phases.length === 0) return { results: [], error: 'no phases given: pass args.phases from vbw next --json' }
 
+const CLOSE_RESULT = {
+  type: 'object',
+  required: ['ended', 'recorded', 'report'],
+  properties: {
+    ended: { type: 'boolean' },
+    recorded: { type: 'boolean' },
+    report: { type: 'string' },
+  },
+}
+
 const VERDICT = {
   type: 'object',
   required: ['verdict', 'checks'],
@@ -38,6 +48,19 @@ const VERDICT = {
   },
 }
 
+// The run's own last step (R78, R81): confirm what the agents recorded, say plainly
+// what was not, and end the run. Only when the router passed args.session.
+const session = (args && args.session) || ''
+const closeRun = async ids => {
+  if (!session) return null
+  const sh = c => `VBW_SESSION_ID=${session} ${c}`
+  const done = await agent(`Close this VBW run. Run ${sh(`vbw run confirm ${ids.join(' ')}`)} (it exits 1 when some verdicts were not recorded), then, whatever it said, run ${sh('vbw run end')}. Answer ended (run end succeeded), recorded (confirm exited 0) and report (the lines for what was not recorded, else "all recorded; run ended"). Change nothing else.`,
+    Object.assign({ agentType: 'vbw:scout', label: 'close run', schema: CLOSE_RESULT }, models.scout ? { model: models.scout } : {}))
+  if (!done) log('the closing agent stopped: run vbw run confirm and vbw run end by hand')
+  else if (!done.recorded || !done.ended) log(done.report)
+  return done
+}
+
 phase('Verify')
 const cellOf = id => rigor[id] || {}
 const tierOf = id => cellOf(id).qa || tier
@@ -52,4 +75,5 @@ const out = phases.map((id, i) => results[i]
   : { phase: id, verdict: 'interrupted', checks: [], summary: 'QA stopped before reporting' })
 const failed = out.filter(r => r.verdict !== 'pass').length
 if (failed > 0) log(`${failed} phase(s) did not pass QA`)
-return { tier, results: out }
+const confirmation = await closeRun(phases)
+return confirmation ? { tier, results: out, confirmation } : { tier, results: out }
