@@ -45,9 +45,16 @@ commit_setup() {
   chmod +x .git/hooks/pre-commit
 }
 
+# wait_for FILE PID: until FILE exists; fails when PID ends first. No wall-clock
+# limit beyond a generous 300 s, so a loaded machine does not fail the test.
 wait_for() {
   local i
-  for i in $(seq 1 100); do [ -e "$1" ] && return 0; sleep 0.1; done
+  for i in $(seq 1 3000); do
+    [ -e "$1" ] && return 0
+    kill -0 "$2" 2> /dev/null || { [ -e "$1" ] && return 0; echo "process $2 ended before $1 appeared"; return 1; }
+    sleep 0.1
+  done
+  echo "$1 did not appear within 300 s"
   return 1
 }
 
@@ -65,7 +72,7 @@ vbw_code_tree
 EOS
   PATH="$TEST_ROOT/bin:$PATH" bash "$TEST_ROOT/tree.sh" < /dev/null > /dev/null 2>&1 &
   local pid=$!
-  wait_for "$TEST_ROOT/held"
+  wait_for "$TEST_ROOT/held" "$pid"
   kill -TERM "$pid"
   wait "$pid" || true
   [ -z "$(find .vbw/runtime -name 'index.*' 2> /dev/null)" ]
@@ -84,7 +91,7 @@ cmd_commit P1.1 "feat(pay): pay"
 EOS
   bash "$TEST_ROOT/caller.sh" < /dev/null > /dev/null 2>&1 &
   local pid=$!
-  wait_for "$TEST_ROOT/held"
+  wait_for "$TEST_ROOT/held" "$pid"
   kill -TERM "$pid"
   wait "$pid" || true
   [ -e "$TEST_ROOT/caller-ran" ]

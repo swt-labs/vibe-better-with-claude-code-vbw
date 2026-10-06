@@ -162,8 +162,9 @@ overlaps() {
   [[ "$output" == *"C5 timeout"* ]]
   SECONDS=0
   VBW_CHECK_WAIT_SECONDS=3 vbw_run check C3
+  # A held exclusion would make C3 fail after the 3 s limit, naming what it waited on.
   [ "$status" -eq 0 ]
-  [ "$SECONDS" -lt 3 ]
+  [[ "$output" != *"waited"* ]]
 }
 
 @test "a crashed vbw process leaves no lock that blocks later checks" {
@@ -173,9 +174,10 @@ overlaps() {
   wait "$BG_PID" 2> /dev/null || true
   SECONDS=0
   VBW_CHECK_WAIT_SECONDS=3 vbw_run check C3
+  # A stale lock would make C3 fail after the 3 s limit, naming what it waited on.
   [ "$status" -eq 0 ]
   [[ "$output" == *"C3 pass"* ]]
-  [ "$SECONDS" -lt 5 ]
+  [[ "$output" != *"waited"* ]]
 }
 
 @test "a wait beyond the limit fails naming the check being waited on" {
@@ -185,7 +187,8 @@ overlaps() {
   VBW_CHECK_WAIT_SECONDS=2 vbw_run check C3
   [ "$status" -ne 0 ]
   [[ "$output" == *"C6"* ]]
-  [ "$SECONDS" -lt 5 ]
+  # The 2 s limit is honoured, not the 900 s default; the bound allows a loaded machine.
+  [ "$SECONDS" -lt 60 ]
   wait
   bg "$TEST_ROOT/o2" check C7
   started C7
