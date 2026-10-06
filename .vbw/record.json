@@ -9536,7 +9536,7 @@
       "after": [
         "P57.2"
       ],
-      "status": "planned",
+      "status": "done",
       "tasks": [
         "add detail.small at the plan step: true for one or two [auto] requirements that name no risk path, with rigor not forced above express, whatever the repository's size; the early tier stays as it is",
         "in a repository tracking more than 30 files, put the tier floor at standard when an express phase's plans cover more than two files (reason shown), and keep small repositories as they are",
