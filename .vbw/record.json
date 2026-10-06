@@ -9319,7 +9319,7 @@
         "P55.2",
         "P55.4"
       ],
-      "status": "planned",
+      "status": "done",
       "tasks": [
         "router: pass session (${CLAUDE_SESSION_ID}) in every workflow's args, drop the run end after each workflow, keep the interrupted-run step; report what the workflow says was not recorded",
         "router: when test files wait for approval, the approval comes just before proof; explain it from detail.files",
@@ -9350,7 +9350,7 @@
         "P55.4",
         "P54.3"
       ],
-      "status": "planned",
+      "status": "done",
       "tasks": [
         "describe vbw run confirm and the workflows ending their own run",
         "describe the one approval before proof and the waiting test files",
@@ -9374,7 +9374,7 @@
       "after": [
         "P55.4"
       ],
-      "status": "planned",
+      "status": "done",
       "tasks": [
         "vbw config set check_jobs N (a whole number 1 to 64) and check_jobs default, kept in this clone's own settings file in the git directory, not in the shared record",
         "refuse any other value with a message naming check_jobs and the 1 to 64 range, changing nothing",
