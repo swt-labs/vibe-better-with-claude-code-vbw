@@ -13,9 +13,40 @@ cmd_run() {
   case "$sub" in
     start) [ $# -ge 1 ] || vbw_usage_error "usage: vbw run start plan | build PLAN... | fix FIX... | qa | map" ;;
     end) { [ $# -eq 0 ] || { [ $# -eq 1 ] && [ "$1" = "--owner-closed" ]; }; } || vbw_usage_error "usage: vbw run end [--owner-closed]" ;;
-    *) vbw_usage_error "usage: vbw run start KIND [IDS...] | vbw run end [--owner-closed]" ;;
+    confirm) [ $# -ge 1 ] || vbw_usage_error "usage: vbw run confirm ID..." ;;
+    *) vbw_usage_error "usage: vbw run start KIND [IDS...] | vbw run confirm ID... | vbw run end [--owner-closed]" ;;
   esac
   vbw_require_project
+  if [ "$sub" = confirm ]; then
+    # One line per plan, fix or phase of the open run: was its state or verdict
+    # recorded? Changes nothing. Exit 1 when any was not.
+    local ids report
+    ids=$(printf '%s\n' "$@" | jq -R . | jq -sc 'map(select(length > 0))')
+    report=$(record_read | jq -r --argjson ids "$ids" '
+      .lease as $l | if $l == null then "error: no run is open: nothing to confirm"
+      else $ids[] as $i
+        | if $l.kind == "build" then
+            ([.plans[] | select(.id == $i)][0]) as $p
+            | if $p == null then "error: unknown plan \($i)"
+              elif ($p.status | IN("done", "blocked")) then "\($i): recorded (\($p.status))"
+              else "\($i): not recorded (still \($p.status))" end
+          elif $l.kind == "fix" then
+            ([.fixes[] | select(.id == $i)][0]) as $f
+            | if $f == null then "error: unknown fix \($i)"
+              elif $f.status == "open" then "\($i): not recorded (still open)"
+              else "\($i): recorded (\($f.status))" end
+          elif $l.kind == "qa" then
+            ([.phases[] | select(.id == $i)][0]) as $p
+            | if $p == null then "error: unknown phase \($i)"
+              elif ($p.qa.at // null) != null and (($p.qa.at | fromdateiso8601) >= ($l.started_at | fromdateiso8601)) then "\($i): recorded (\($p.qa.result))"
+              else "\($i): not recorded (no verdict from this run)" end
+          else "error: a \($l.kind) run has nothing to confirm" end
+      end')
+    case "$report" in *"error: "*) vbw_die "$(printf '%s\n' "$report" | grep -m1 'error: ' | sed 's/^error: //')" ;; esac
+    printf '%s\n' "$report"
+    case "$report" in *"not recorded"*) return 1 ;; esac
+    return 0
+  fi
   if [ "$sub" = end ]; then
     # Plans an interrupted Dev left "building" go back to the next wave.
     # Only the session that owns the run ends it, unless the user states the
