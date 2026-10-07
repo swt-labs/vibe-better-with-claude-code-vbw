@@ -16,7 +16,12 @@ cmd_prove() {
   [ $# -eq 0 ] || vbw_usage_error "usage: vbw prove"
   vbw_require_project
   cd "$VBW_ROOT" || vbw_die "cannot enter $VBW_ROOT"
-  local record checks commands scope tree head ev at
+  local record checks commands scope tree head ev at mark=""
+  # This session's Stop hook waits while the mark names a live process (R98).
+  if [ -n "$(vbw_session)" ]; then
+    mark="$VBW_RUNTIME/proving.$(vbw_session)"
+    printf '%s\n' "$$" > "$mark" && vbw_guard_add file "$mark"
+  fi
   VBW_DIE_HOOK=proofcopy_warn_stale
   record=$(record_read)
   checks_begin "$record" strict
@@ -46,6 +51,7 @@ cmd_prove() {
   record_commit "chore(vbw): proof $(jq -r 'if .evidence.passed then "passed" else "not passed" end' "$VBW_RECORD")"
   # shellcheck disable=SC2034
   VBW_DIE_HOOK=; proofcopy_warn_stale
+  [ -z "$mark" ] || vbw_guard_drop "$mark"
   prove_summary
 }
 
