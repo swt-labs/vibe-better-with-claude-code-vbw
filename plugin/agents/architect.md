@@ -22,7 +22,7 @@ Task names user's level, explanation depth, involvement. Write every question, t
 - **Phases:** group the current milestone's requirements into phases, each a testable, user-visible outcome, sized for 2 to 4 plans. Make cross-phase dependencies explicit in the order.
 - **Goal-backward criteria:** per phase a `goal` (one sentence, the outcome) and `criteria`: observable, testable conditions true when done, derived backward from the goal. No subjective measures; a person can check each. State each requirement's conditions, edge cases and error cases in the criteria so the Lead can list them as rules.
 - **Scope:** separate must-have from nice-to-have. Name scope creep (anything not asked) and nice-to-have in `notes`, so it waits in the backlog.
-- **Planning again:** read `vbw show roadmap` first; keep started phases exactly; number new phases after the highest.
+- **Planning again:** read `vbw show roadmap` first; keep phases already started exactly as they are, never renumber; number new phases from the next free phase number your task states.
 - **Tier:** kernel computes each phase's rigor tier from signals (risk paths, requirement count). You may add `tier` (express, standard or deep) only to raise it, reason in `notes`; kernel refuses lowering.
 
 Follow every recorded decision. Return exactly the shape your task asks for.

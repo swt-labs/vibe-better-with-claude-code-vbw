@@ -12,9 +12,7 @@ hooks:
 
 # VBW
 
-Kernel decides next step; you carry it out and talk to user. First rule, even
-for a one-line fix: no project file changes until the contract is approved and
-a build runs.
+Kernel decides next step; you carry it out and talk to user. Even for a one-line fix: no project file changes until the contract is approved and a build runs.
 
 ```!
 "${CLAUDE_PLUGIN_ROOT}/bin/vbw" next --json 2>&1 || true
@@ -49,7 +47,7 @@ Every stop ends with a last line, **What I need from you:** <the one thing user 
 Never claim more than kernel output shows.
 
 `plan`, `build`, `fix` need the **Workflow** tool (the `workflows` line above turned it on). None: say why, stop. Pass
-`session` (`${CLAUDE_SESSION_ID}`: the workflow confirms what its agents recorded and ends its own run), `models` (from `vbw config models`), the next JSON's top-level `rigor` and its `profile` in every workflow's args.
+`session` (`${CLAUDE_SESSION_ID}`: the workflow confirms what its agents recorded and ends its own run), `models` (from `vbw config models`), the next JSON's top-level `rigor`, `effort` and its `profile` in every workflow's args.
 
 Before `spec` or a workflow `plan`: code and no `.vbw/map.md` → map first:
 `VBW_SESSION_ID=${CLAUDE_SESSION_ID} vbw run start map`, Workflow `vbw:mapping` (args as above),
@@ -58,7 +56,7 @@ write its `map` to `.vbw/map.md`, read it.
 Then, `profile.ask` true: follow `vbw:interview` before any spec or convert work; resume at
 `profile.pending`; unrecognised answer: ask again, record nothing.
 
-What user must see to decide goes inside AskUserQuestion, not in text before it.
+What user must see to decide goes inside AskUserQuestion.
 
 ## Profile
 
@@ -86,35 +84,32 @@ agreed requirement: `vbw spec add auto|human "statement"` (goals and constraints
 **plan** with `detail.tier` express or `detail.small`: no mapping, no planning workflow. Read the
 files the request names, then `vbw apply` one express phase with one
 plan (one or two files, tasks), one check that fails today, and the `rules` (each condition, edge and error case the requirement states, each with its check); go to **approve**.
-Ids continue the record's numbering (`vbw show roadmap`).
+New ids start at P<next_phase>.
 Example: `{"phases":[{"id":"P1","title":"Fix add","reqs":["R1"],"tier":"express"}],"plans":[{"id":"P1.1","phase":"P1","title":"Fix add","reqs":["R1"],"files":["calc.sh"],"after":[],"tasks":["add returns the sum"]}],"checks":[{"id":"C1","req":"R1","run":["sh","test.sh"],"files":["test.sh"]}],"rules":[{"req":"R1","text":"add returns the sum","check":"C1"}]}`
 Over two files, a risk path or a higher tier: planning workflow below.
 
 **plan**: `VBW_SESSION_ID=${CLAUDE_SESSION_ID} vbw run start plan`, Workflow `vbw:planning` with args
-`{"requirements": <requirements>, "models": ...}`. Status `needs_decisions`: user
+`{"requirements": <requirements>, "next_phase": <next_phase>, "models": ...}`. Status `needs_decisions`: user
 decides first. Ask each with AskUserQuestion, one at a time (why it matters in the question, each option's
 trade-off as description, recommended first, "(Recommended)"). Record
 each: `vbw decide "<what was decided>" "<their reason, or the trade-off they accepted>"`. Plan again: `VBW_SESSION_ID=${CLAUDE_SESSION_ID} vbw run start plan`, workflow with
-`{"requirements": <requirements>, "decided": true, "models": ...}`. Planned: give Lead's summary, the
+`{"requirements": <requirements>, "next_phase": <next_phase>, "decided": true, "models": ...}`. Planned: give Lead's summary, the
 `choices` it made itself (any can change), Architect's `notes` (offer `vbw todo add`). Then the approval menu, never a typed command.
 
 **approve** (needs user): `vbw show contract --changes` (after an earlier approval: explain just those). Else
-`vbw show contract`: explain each requirement, how checked, plans, files, commands that will run. Follow `vbw:suggest`, then AskUserQuestion with the approval question `vbw show contract` prints: "Approve" (first), "Not yet". Only ever ask with this menu; never ask the user to type /vbw:approve (it still works if typed). Approve: hook recorded it; continue. Not yet: ask what to change. User's own words (own-answer slot): what to change, or a question. You cannot approve.
+`vbw show contract`: explain each requirement, how checked, plans, files, commands that will run. Follow `vbw:suggest`, then AskUserQuestion with the approval question `vbw show contract` prints: "Approve" (first), "Not yet". Only this menu; never ask the user to type /vbw:approve. Approve: hook recorded it; continue. Not yet: ask what to change. User's own words (own-answer slot): what to change, or a question. You cannot approve.
 Test files edited during the build wait for one approval just before proof (`detail.files`): say which and why, then ask the same way.
 
 **build**: `VBW_SESSION_ID=${CLAUDE_SESSION_ID} vbw run start build <detail.plans>`, Workflow `vbw:building` with
-args `{"plans": <detail.plans>, "docs": <detail.docs>, "models": ..., "rigor": ...}` (Dev per
-plan; Docs for documentation plans). Returns: report each plan's result in one line (quote blockers, notes) and anything not recorded, then `VBW_SESSION_ID=${CLAUDE_SESSION_ID} vbw prove`.
+args `{"plans": <detail.plans>, "docs": <detail.docs>, "models": ..., "rigor": ...}` Returns: report each plan's result in one line (quote blockers, notes) and anything not recorded, then `VBW_SESSION_ID=${CLAUDE_SESSION_ID} vbw prove`.
 
 **fix**: `VBW_SESSION_ID=${CLAUDE_SESSION_ID} vbw run start fix <detail.fixes>`, Workflow `vbw:fixing` with args
-`{"groups": <detail.groups>, "models": ..., "rigor": ...}` (fixes sharing files go to one
-Dev). Returns: report anything it says was not recorded, then `VBW_SESSION_ID=${CLAUDE_SESSION_ID} vbw prove`.
+`{"groups": <detail.groups>, "models": ..., "rigor": ...}` Returns: report anything it says was not recorded, then `VBW_SESSION_ID=${CLAUDE_SESSION_ID} vbw prove`.
 
 **prove**: `VBW_SESSION_ID=${CLAUDE_SESSION_ID} vbw prove`, report what passed and failed.
 
 **qa**: `VBW_SESSION_ID=${CLAUDE_SESSION_ID} vbw run start qa`, Workflow `vbw:verifying` with args
-`{"phases": <detail.phases>, "tier": <detail.tier>, "round": <round, as in vbw next --json>, "models": ..., "rigor": ...}`. QA records each phase's verdict; findings become fixes. Report
-verdicts, failed checks and anything not recorded briefly.
+`{"phases": <detail.phases>, "tier": <detail.tier>, "round": <round, as in vbw next --json>, "models": ..., "rigor": ...}`. QA records each phase's verdict; findings become fixes. Report verdicts, failed checks and anything not recorded briefly.
 
 **run**: a run is open. This session's workflow still running: wait. Else
 interrupted: `VBW_SESSION_ID=${CLAUDE_SESSION_ID} vbw run end`, continue.
