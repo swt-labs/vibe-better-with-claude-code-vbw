@@ -15,6 +15,7 @@ import { gatherRun, findRun } from './panel-feed.js'
 import { stageModel, renderStage } from './panel-stage.js'
 import { statusText, whyText, todoArgs } from './panel-commands.js'
 import { renderPane } from './panel-pane.js'
+import { stateColor } from './panel-palette.js'
 import { SITES, turnPending } from './panel-sites.js'
 import { motionOf, spriteFrame, encodeCells, confettiFrames, sweepFrames, wrappedModel, celebration } from './panel-candy.js'
 
@@ -577,7 +578,7 @@ async function band($, st, e) {
   if (tree && m.sprites && ui.Raster) st.sprites = m.rows.map((r) => ({ key: 'vbw-sprite-' + r.id, role: r.role, pose: r.pose }))
   const top = []
   const cheer = cheering(st, now)
-  if (cheer) top.push(h(ui.Text, { key: 'vbw-cheer', color: 'green', wrap: 'truncate-end' }, cheer))
+  if (cheer) top.push(h(ui.Text, { key: 'vbw-cheer', color: stateColor('done'), wrap: 'truncate-end' }, cheer))
   const fx = st.burst
   const cells = fx && ui.Raster ? drawn(fx, cols(p.bodyColumns) ? p.bodyColumns : 80, e.requestId) : null
   if (cells) top.push(h(ui.Raster, { key: fx.key, columns: fx.cols, rows: fx.rows, cells }))
