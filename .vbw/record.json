@@ -2089,6 +2089,216 @@
           "check": "C119"
         }
       ]
+    },
+    {
+      "id": "R84",
+      "text": "Every part of the VBW panel (the band, Mission Control, Wrapped) takes its colours from one shared palette: each agent role has one colour everywhere (architect magenta, lead blue, dev green, qa yellow, scout cyan, debugger red, docs pink), and each state has one colour (running amber, done green, failed red, quiet or cut off grey)",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M12",
+      "rules": [
+        {
+          "text": "each agent role has one colour everywhere: architect magenta, lead blue, dev green, qa yellow, scout cyan, debugger red, docs pink",
+          "check": "C123"
+        },
+        {
+          "text": "each state has one colour: running amber, done green, failed red, quiet or cut off grey",
+          "check": "C123"
+        },
+        {
+          "text": "the band, Mission Control (cards, timeline, team, proof) and Wrapped (card, confetti, sprites, sweep) read the same palette values",
+          "check": "C123"
+        },
+        {
+          "text": "no panel file but the palette holds a colour literal, so a surface cannot define its own",
+          "check": "C123"
+        },
+        {
+          "text": "an unknown role or state falls back to a neutral grey and does not crash rendering",
+          "check": "C123"
+        },
+        {
+          "text": "with colour off a state is still told apart by its own mark and word",
+          "check": "C123"
+        }
+      ]
+    },
+    {
+      "id": "R85",
+      "text": "In Mission Control's Now tab, each agent card is framed in its role's colour and shows its state as a coloured mark and word (running, done, failed, quiet), so two agents of different roles never look the same",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M12",
+      "rules": [
+        {
+          "text": "each agent card is framed in its role's colour",
+          "check": "C125"
+        },
+        {
+          "text": "each card shows its state as a coloured mark and word: running, done, failed, quiet (cut off for a stopped run)",
+          "check": "C125"
+        },
+        {
+          "text": "two agents of different roles never render the same frame colour, whatever their state",
+          "check": "C125"
+        },
+        {
+          "text": "an unknown role is framed in the neutral grey and does not crash rendering",
+          "check": "C125"
+        },
+        {
+          "text": "with colour off the mark and the word still carry the state",
+          "check": "C125"
+        }
+      ]
+    },
+    {
+      "id": "R86",
+      "text": "In the band, each agent row shows its plan label and spinner in the role's colour, its time and tokens dimmed, and the run's cost in an accent colour in the header",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M12",
+      "rules": [
+        {
+          "text": "each band row shows its plan label and spinner in the role's colour",
+          "check": "C124"
+        },
+        {
+          "text": "each band row shows its time and tokens dimmed",
+          "check": "C124"
+        },
+        {
+          "text": "the header shows the run's cost in the accent colour, and no accent piece appears without a cost",
+          "check": "C124"
+        },
+        {
+          "text": "with colour off the band's states are still told apart by mark and word",
+          "check": "C124"
+        }
+      ]
+    },
+    {
+      "id": "R87",
+      "text": "An agent's activity is shown as a plain intention (for example editing app-topbar.tsx, running tests, recording P6.7 done) instead of the raw command; a script run through Python, Node or another interpreter is named by what it touches; the verb is coloured and the object dimmed",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M12",
+      "rules": [
+        {
+          "text": "a file tool is shown as an intention such as editing app-topbar.tsx",
+          "check": "C126"
+        },
+        {
+          "text": "a test run is shown as running tests, whichever runner",
+          "check": "C126"
+        },
+        {
+          "text": "a vbw command is shown as what VBW is doing, such as recording P6.7 done",
+          "check": "C126"
+        },
+        {
+          "text": "a script run through python, node or another interpreter is named by the file it runs, not by the interpreter",
+          "check": "C126"
+        },
+        {
+          "text": "an inline script, which has no file, is a short generic phrase, never its code",
+          "check": "C126"
+        },
+        {
+          "text": "an unrecognised command falls back to a short generic phrase, never an empty line, the raw command or a secret",
+          "check": "C126"
+        },
+        {
+          "text": "the verb is coloured and the object dimmed, in the band and on the cards",
+          "check": "C127"
+        },
+        {
+          "text": "a long object is truncated to the row width without breaking colour, and no colour code is written into the text",
+          "check": "C127"
+        },
+        {
+          "text": "what an agent says, and the quiet, done and failed phrases, stay one line in their own colour",
+          "check": "C127"
+        }
+      ]
+    },
+    {
+      "id": "R88",
+      "text": "When Claude Code shows a change to .vbw/record.json in the conversation, VBW shows one line saying what happened (for example VBW · build run started) instead of the full diff; the full diff still shows when the user expands the row",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M12",
+      "rules": [
+        {
+          "text": "a change to .vbw/record.json shown as an Edit, MultiEdit or Write appears as one line such as VBW · build run started",
+          "check": "C129"
+        },
+        {
+          "text": "the full diff still shows when the user expands the row",
+          "check": "C129"
+        },
+        {
+          "text": "a record.json change with no known meaning shows a generic one-line summary",
+          "check": "C129"
+        },
+        {
+          "text": "changes to other files, failed calls, odd input and projects outside VBW are untouched",
+          "check": "C129"
+        }
+      ]
+    },
+    {
+      "id": "R89",
+      "text": "Mission Control's tabs stay visible at the top of the pane however long its content is, and each sentence of the pane shows its key value in colour (progress green, estimate amber, cost in the accent colour, a need of the user yellow)",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M12",
+      "rules": [
+        {
+          "text": "the tabs stay visible at the top of the pane however long the content is and however far it is scrolled",
+          "check": "C128"
+        },
+        {
+          "text": "scrolling still moves the content under the tabs",
+          "check": "C128"
+        },
+        {
+          "text": "progress is shown in green, an estimate in amber, the cost in the accent colour and a need of the user in yellow",
+          "check": "C128"
+        },
+        {
+          "text": "a sentence with no value in it (no requirements, no estimate basis, no cost, nothing needed) stays plain",
+          "check": "C128"
+        }
+      ]
+    },
+    {
+      "id": "R90",
+      "text": "The panel's colours make it easy to tell at a glance which agent is which and what state each is in",
+      "proof": "human",
+      "status": "open",
+      "milestone": "M12"
+    },
+    {
+      "id": "R91",
+      "text": "When an agent starts, its new row in the band flashes briefly in its role's colour (about a second), only when the motion setting is full",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M12",
+      "rules": [
+        {
+          "text": "when an agent starts, its new row flashes in the role's colour for about a second",
+          "check": "C130"
+        },
+        {
+          "text": "the flash happens only when the motion setting is full",
+          "check": "C130"
+        },
+        {
+          "text": "the flash ends on its own, the band is redrawn, and the row is back in its normal colours",
+          "check": "C130"
+        }
+      ]
     }
   ],
   "checks": [
@@ -3483,6 +3693,113 @@
       ],
       "files": [
         "tests/gate-race.bats"
+      ]
+    },
+    {
+      "id": "C123",
+      "req": "R84",
+      "run": [
+        "node",
+        "--test",
+        "tests/panel/palette.test.mjs"
+      ],
+      "files": [
+        "tests/panel/palette.test.mjs",
+        "tests/panel/helpers/fake-mod.mjs"
+      ]
+    },
+    {
+      "id": "C124",
+      "req": "R86",
+      "run": [
+        "node",
+        "--test",
+        "tests/panel/band-colours.test.mjs"
+      ],
+      "files": [
+        "tests/panel/band-colours.test.mjs",
+        "tests/panel/helpers/fake-mod.mjs"
+      ]
+    },
+    {
+      "id": "C125",
+      "req": "R85",
+      "run": [
+        "node",
+        "--test",
+        "tests/panel/cards.test.mjs"
+      ],
+      "files": [
+        "tests/panel/cards.test.mjs",
+        "tests/panel/helpers/fake-mod.mjs"
+      ]
+    },
+    {
+      "id": "C126",
+      "req": "R87",
+      "run": [
+        "node",
+        "--test",
+        "tests/panel/intent.test.mjs"
+      ],
+      "files": [
+        "tests/panel/intent.test.mjs",
+        "tests/panel/helpers/fake-mod.mjs",
+        "tests/panel/helpers/feed-fs.mjs"
+      ]
+    },
+    {
+      "id": "C127",
+      "req": "R87",
+      "run": [
+        "node",
+        "--test",
+        "tests/panel/activity-render.test.mjs"
+      ],
+      "files": [
+        "tests/panel/activity-render.test.mjs",
+        "tests/panel/helpers/fake-mod.mjs"
+      ]
+    },
+    {
+      "id": "C128",
+      "req": "R89",
+      "run": [
+        "node",
+        "--test",
+        "tests/panel/pane.test.mjs"
+      ],
+      "files": [
+        "tests/panel/pane.test.mjs",
+        "tests/panel/helpers/fake-mod.mjs"
+      ]
+    },
+    {
+      "id": "C129",
+      "req": "R88",
+      "run": [
+        "node",
+        "--test",
+        "tests/panel/record-row.test.mjs"
+      ],
+      "files": [
+        "tests/panel/record-row.test.mjs",
+        "tests/panel/helpers/fake-mod.mjs",
+        "tests/panel/helpers/run.mjs"
+      ]
+    },
+    {
+      "id": "C130",
+      "req": "R91",
+      "run": [
+        "node",
+        "--test",
+        "tests/panel/flash.test.mjs"
+      ],
+      "files": [
+        "tests/panel/flash.test.mjs",
+        "tests/panel/helpers/fake-mod.mjs",
+        "tests/panel/helpers/run.mjs"
       ]
     }
   ],
@@ -5789,6 +6106,115 @@
         "qa_findings": 0,
         "escalations": 0
       }
+    },
+    {
+      "id": "P59",
+      "title": "Shared palette and role/state colours",
+      "reqs": [
+        "R84"
+      ],
+      "milestone": "M12",
+      "goal": "Every panel surface draws role and state colours from one shared palette, so a role or state has the same colour everywhere.",
+      "criteria": [
+        "One palette definition exists; the band, Mission Control and Wrapped each read colours from it and define none of their own",
+        "Roles map: architect magenta, lead blue, dev green, qa yellow, scout cyan, debugger red, docs pink; the same in all three surfaces",
+        "States map: running amber, done green, failed red, quiet or cut off grey; the same in all three surfaces",
+        "A test fails if any surface uses a colour literal outside the palette",
+        "An unknown role or state falls back to a neutral grey and does not crash rendering",
+        "Output stays readable with colour off (NO_COLOR or plain terminals): marks and words still carry the state"
+      ],
+      "tier": "deep",
+      "reasons": [
+        "requirements: 1",
+        "files: 11 (148492 bytes)",
+        "files: more than 2 in a repository tracking 684 files",
+        "risk: none",
+        "breaks: R51, R52, R53, R55, R56, R57, R58, R64, R82",
+        "tests: project test command"
+      ],
+      "predicted": "deep"
+    },
+    {
+      "id": "P60",
+      "title": "Colour-coded agent cards, band rows and readable activity",
+      "reqs": [
+        "R85",
+        "R86",
+        "R87"
+      ],
+      "milestone": "M12",
+      "goal": "Agents are told apart at a glance in Mission Control and the band, and each agent's activity reads as a plain intention.",
+      "criteria": [
+        "Now tab: each agent card has a frame in its role's colour and a coloured mark plus word for its state (running, done, failed, quiet); two roles never render the same frame colour",
+        "Band: each agent row shows plan label and spinner in the role's colour, time and tokens dimmed; the header shows run cost in the accent colour",
+        "Activity shows an intention such as editing app-topbar.tsx, running tests, recording P6.7 done instead of the raw command",
+        "A script run through python, node or another interpreter is named by the file it touches, not by the interpreter command",
+        "The verb is coloured and the object dimmed; an unrecognised command falls back to a short generic phrase, never an empty line or the raw command with secrets",
+        "Long object names are truncated to the row width without breaking colour codes"
+      ],
+      "tier": "deep",
+      "reasons": [
+        "requirements: 3",
+        "files: 8 (115336 bytes)",
+        "files: more than 2 in a repository tracking 684 files",
+        "risk: none",
+        "breaks: R51, R52, R53, R55, R56, R57, R58, R82",
+        "tests: project test command"
+      ],
+      "predicted": "deep"
+    },
+    {
+      "id": "P61",
+      "title": "Mission Control layout colour and record change summary",
+      "reqs": [
+        "R89",
+        "R88",
+        "R91"
+      ],
+      "milestone": "M12",
+      "goal": "Mission Control keeps its tabs on screen with meaningful key values highlighted, record.json changes show as one line, and new agents flash in the band.",
+      "criteria": [
+        "Mission Control tabs stay visible at the top however long the content is and however far it is scrolled",
+        "Each pane sentence shows its key value in colour: progress green, estimate amber, cost in the accent colour, a need of the user yellow",
+        "A change to .vbw/record.json shown in the conversation appears as one line such as VBW · build run started instead of the full diff",
+        "Expanding that row still shows the full diff",
+        "A record.json change with no known meaning shows a generic one-line summary; changes to other files are untouched",
+        "When an agent starts, its new row flashes in its role's colour for about one second, only when the motion setting is full",
+        "With motion setting not full, no flash happens",
+        "The flash ends on its own and leaves the row in its normal colours"
+      ],
+      "tier": "deep",
+      "reasons": [
+        "requirements: 3",
+        "files: 6 (83832 bytes)",
+        "files: more than 2 in a repository tracking 684 files",
+        "risk: none",
+        "breaks: R51, R52, R53, R55, R56, R57, R58, R64, R82",
+        "tests: project test command"
+      ],
+      "predicted": "deep"
+    },
+    {
+      "id": "P62",
+      "title": "Owner acceptance of panel colours",
+      "reqs": [
+        "R90"
+      ],
+      "milestone": "M12",
+      "goal": "The owner confirms the colours make agents and states easy to tell apart.",
+      "criteria": [
+        "The owner views the band, Mission Control and Wrapped during a real run and confirms each agent role and each state is distinguishable at a glance",
+        "Any colour the owner finds confusing is recorded as a finding, with the palette change that follows"
+      ],
+      "tier": "express",
+      "reasons": [
+        "requirements: 1",
+        "files: 0 (0 bytes)",
+        "risk: none",
+        "breaks: none",
+        "tests: project test command"
+      ],
+      "predicted": "express"
     }
   ],
   "plans": [
@@ -9857,6 +10283,270 @@
         "read the lock owner once; an empty or missing owner is a handover in progress: retry, never remove the lock (F44)",
         "only a lock with no owner left past a wait, or a dead owner, is taken over",
         "writing the owner never prints an error: if the lock vanished, retry"
+      ]
+    },
+    {
+      "id": "P59.1",
+      "phase": "P59",
+      "title": "One palette, and the Wrapped card reads it",
+      "reqs": [
+        "R84"
+      ],
+      "files": [
+        "plugin/hooks/panel-palette.js",
+        "plugin/hooks/panel-candy.js",
+        "tests/panel/candy.test.mjs"
+      ],
+      "after": [],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "New plugin/hooks/panel-palette.js: the seven role colours, the five state colours (running amber, done green, failed red, quiet and cut off grey), the neutral grey, the accent, need, progress and estimate colours, a mark and a word for each state, roleColor and stateColor that fall back to the neutral grey for anything unknown, and rgb() that turns a palette colour into the number a Raster cell takes",
+        "panel-candy.js: sprite figures, props, confetti and the sweep take their colours from the palette (rgb of a palette colour); remove its own colour table",
+        "panel-candy.js: the Wrapped card's header and border use the done colour from the palette; the confetti uses the seven role colours only",
+        "tests/panel/candy.test.mjs: update only the assertions that pinned the old private colours (an unknown role is now the neutral grey, confetti is role colours only)"
+      ]
+    },
+    {
+      "id": "P59.2",
+      "phase": "P59",
+      "title": "The band reads the palette",
+      "reqs": [
+        "R84"
+      ],
+      "files": [
+        "plugin/hooks/panel-stage.js",
+        "plugin/hooks/panel.js",
+        "tests/panel/stage.test.mjs"
+      ],
+      "after": [
+        "P59.1"
+      ],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "panel-stage.js: rows take role colours and done, failed and quiet colours from the palette; an unknown role is the neutral grey; a quiet row is grey, and its pose is chosen from the state, not from a colour",
+        "panel-stage.js: the gate card, the nudge and the weekly-limit lines take their colours from the palette",
+        "panel.js: the cheer line takes its colour from the palette; no colour literal is left in either file",
+        "tests/panel/stage.test.mjs: update only the assertions this changes (unknown role neutral grey, quiet grey instead of amber)"
+      ]
+    },
+    {
+      "id": "P59.3",
+      "phase": "P59",
+      "title": "Mission Control reads the palette",
+      "reqs": [
+        "R84"
+      ],
+      "files": [
+        "plugin/hooks/panel-mission-live.js",
+        "plugin/hooks/panel-mission-record.js",
+        "plugin/hooks/panel-pane.js",
+        "tests/panel/mission-live.test.mjs",
+        "tests/panel/mission-record.test.mjs"
+      ],
+      "after": [
+        "P59.1"
+      ],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "panel-mission-live.js: role colours, state frames, the slow lane and the cost bar take their colours from the palette (state frames only for now; role frames come in P60.2); unknown roles and states are the neutral grey",
+        "panel-mission-record.js: Proof cells use the state colours (passed done, failing failed, running running, not run grey) and the Team table uses the role colours from the palette",
+        "panel-pane.js: the need sentence takes the need colour from the palette; no colour literal is left in any of the three files",
+        "tests/panel/mission-live.test.mjs and mission-record.test.mjs: update only the assertions this changes (amber for a running state, neutral grey for unknown)"
+      ]
+    },
+    {
+      "id": "P60.1",
+      "phase": "P60",
+      "title": "Band rows: role colours, accent cost, verb and object",
+      "reqs": [
+        "R86",
+        "R87"
+      ],
+      "files": [
+        "plugin/hooks/panel-stage.js",
+        "tests/panel/stage.test.mjs"
+      ],
+      "after": [
+        "P59.2"
+      ],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "Plan label and spinner of each row in the role colour; time and tokens stay dimmed",
+        "Header: the run cost is its own piece of text in the accent colour; the rest of the header keeps its colour; no cost, no accent piece",
+        "Activity of a tool call is drawn as the verb in the role colour and the object dimmed; the whole phrase is cut to the room the row has (never splitting a colour); what an agent says and the quiet, done and failed phrases stay one state-coloured line",
+        "tests/panel/stage.test.mjs: update only the assertions this changes"
+      ]
+    },
+    {
+      "id": "P60.2",
+      "phase": "P60",
+      "title": "Mission Control cards: role frame, state mark and word, verb and object",
+      "reqs": [
+        "R85",
+        "R87"
+      ],
+      "files": [
+        "plugin/hooks/panel-mission-live.js",
+        "tests/panel/mission-live.test.mjs"
+      ],
+      "after": [
+        "P59.3"
+      ],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "Each card's frame is its role's colour (the card model's frame becomes the role colour)",
+        "Each card shows its state as a mark and a word in the state colour (running, done, failed, quiet; cut off for a stopped run), taken from the palette",
+        "Card activity is drawn as the verb in the role colour and the object dimmed, cut to the card's 40 characters with an ellipsis",
+        "tests/panel/mission-live.test.mjs: update only the assertions this changes (frame is the role colour, new state line)"
+      ]
+    },
+    {
+      "id": "P60.3",
+      "phase": "P60",
+      "title": "Activity reads as a plain intention",
+      "reqs": [
+        "R87"
+      ],
+      "files": [
+        "plugin/hooks/panel-intent.js",
+        "plugin/hooks/panel-feed.js",
+        "tests/panel/feed.test.mjs"
+      ],
+      "after": [],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "New plugin/hooks/panel-intent.js: turns a shell command into a short intention: running tests for test runners, a vbw command in the present tense (recording P6.7 done), a script run through an interpreter named by its file (running fix_topbar.py), running a script for inline code, and running a command for anything else",
+        "The intention is one short line (40 characters at most) and never carries the raw command, its flags or any secret in it",
+        "panel-feed.js: the Bash intention comes from panel-intent.js; the other tools keep theirs",
+        "tests/panel/feed.test.mjs: update only the assertions that expected the raw command"
+      ]
+    },
+    {
+      "id": "P60.4",
+      "phase": "P60",
+      "title": "Document the colours and the activity wording",
+      "reqs": [
+        "R85",
+        "R86",
+        "R87"
+      ],
+      "files": [
+        "docs/panel.md"
+      ],
+      "after": [
+        "P60.1",
+        "P60.2",
+        "P60.3"
+      ],
+      "status": "planned",
+      "role": "docs",
+      "tasks": [
+        "Add the shared palette: which colour each role and each state has, and that the marks and words carry the state when colour is off",
+        "Describe the agent cards (role frame, state mark and word) and the band rows (label, spinner, dimmed time and tokens, accent cost)",
+        "Describe how activity reads (editing a file, running tests, recording a plan done, a script by its file) and the generic fallback"
+      ]
+    },
+    {
+      "id": "P61.1",
+      "phase": "P61",
+      "title": "Mission Control: tabs stay on top, key values in colour",
+      "reqs": [
+        "R89"
+      ],
+      "files": [
+        "plugin/hooks/panel-pane.js",
+        "plugin/hooks/panel.js"
+      ],
+      "after": [
+        "P59.2",
+        "P59.3"
+      ],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "panel-pane.js: the tabs are a fixed head, and everything under them sits in one clipped body (key body, overflow hidden, height from the pane's bodyRows minus the head) so a long tab cannot push the tabs away",
+        "The body shows the content from the pane's scroll offset, so scrolling still moves it; without a scroll hint the pane draws as before",
+        "Pane sentences: progress in the progress colour, an estimate in the estimate colour, the cost in the accent colour, a need of the user in the need colour; each sentence stays one piece of text, and a sentence with no value in it stays plain",
+        "panel.js: pass the pane's scroll offset and bodyRows to renderPane"
+      ]
+    },
+    {
+      "id": "P61.2",
+      "phase": "P61",
+      "title": "New agents flash in the band",
+      "reqs": [
+        "R91"
+      ],
+      "files": [
+        "plugin/hooks/panel-stage.js",
+        "plugin/hooks/panel.js"
+      ],
+      "after": [
+        "P60.1",
+        "P61.1"
+      ],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "panel.js: keep when each agent was first drawn in the band and pass it to the band's model",
+        "panel-stage.js: a row less than about a second old has flash set, only at full motion and never for a finished row",
+        "panel-stage.js: a flashing row draws its role name and label inverted in the role colour; the same row after the flash has its normal colours",
+        "panel.js: the band redraws when the flash ends, so it never stays inverted (the signature includes the flash, a short timer runs only while one is on)"
+      ]
+    },
+    {
+      "id": "P61.3",
+      "phase": "P61",
+      "title": "A record.json change shows as one line",
+      "reqs": [
+        "R88"
+      ],
+      "files": [
+        "plugin/hooks/panel-lines.js",
+        "plugin/hooks/panel-sites.js",
+        "plugin/hooks/panel.js"
+      ],
+      "after": [
+        "P61.2"
+      ],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "panel-lines.js: recordEditIntent turns an Edit, MultiEdit or Write of a file ending in /.vbw/record.json into the existing one-line meaning (VBW · build run started, VBW · run closed, a generic VBW · record updated); null for anything else",
+        "panel-sites.js: the ToolUse site draws that line for those three tools; an expanded row, a failed call, another file or odd input keeps the engine's row",
+        "panel.js: register the ToolUse site for Edit, MultiEdit and Write"
+      ]
+    },
+    {
+      "id": "P61.4",
+      "phase": "P61",
+      "title": "Document the pane, the flash and the record line",
+      "reqs": [
+        "R88",
+        "R89",
+        "R91"
+      ],
+      "files": [
+        "docs/panel.md"
+      ],
+      "after": [
+        "P60.4",
+        "P61.1",
+        "P61.2",
+        "P61.3"
+      ],
+      "status": "planned",
+      "role": "docs",
+      "tasks": [
+        "Describe that Mission Control's tabs stay on top and which key value has which colour",
+        "Describe the one-line summary of a record.json change and that expanding the row shows the full diff",
+        "Describe the flash of a new agent, that it needs full motion, and how to set the motion level"
       ]
     }
   ],

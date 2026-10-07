@@ -90,6 +90,14 @@ VBW is a Claude Code plugin that makes it build software properly: the user agre
 - R81 [auto] A project setting limits how many checks run at the same time; an approval whose commit fails stops and says why instead of only warning; a workflow ends its own run when it finishes
 - R82 [auto] The VBW panel opens at about a quarter of the terminal width (never narrower than 40 columns); a width the user sets by hand always wins
 - R83 [auto] VBW always asks for approval with the approval menu, where Enter approves; it never asks the user to type /vbw:approve, which still works when the user types it
+- R84 [auto] Every part of the VBW panel (the band, Mission Control, Wrapped) takes its colours from one shared palette: each agent role has one colour everywhere (architect magenta, lead blue, dev green, qa yellow, scout cyan, debugger red, docs pink), and each state has one colour (running amber, done green, failed red, quiet or cut off grey)
+- R85 [auto] In Mission Control's Now tab, each agent card is framed in its role's colour and shows its state as a coloured mark and word (running, done, failed, quiet), so two agents of different roles never look the same
+- R86 [auto] In the band, each agent row shows its plan label and spinner in the role's colour, its time and tokens dimmed, and the run's cost in an accent colour in the header
+- R87 [auto] An agent's activity is shown as a plain intention (for example editing app-topbar.tsx, running tests, recording P6.7 done) instead of the raw command; a script run through Python, Node or another interpreter is named by what it touches; the verb is coloured and the object dimmed
+- R88 [auto] When Claude Code shows a change to .vbw/record.json in the conversation, VBW shows one line saying what happened (for example VBW · build run started) instead of the full diff; the full diff still shows when the user expands the row
+- R89 [auto] Mission Control's tabs stay visible at the top of the pane however long its content is, and each sentence of the pane shows its key value in colour (progress green, estimate amber, cost in the accent colour, a need of the user yellow)
+- R90 [human] The panel's colours make it easy to tell at a glance which agent is which and what state each is in
+- R91 [auto] When an agent starts, its new row in the band flashes briefly in its role's colour (about a second), only when the motion setting is full
 
 <!-- One requirement per line: an id, how it is proved, and a user-observable
      statement. [auto] = a check can prove it; [human] = only a person can judge it.
