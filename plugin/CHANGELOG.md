@@ -1,5 +1,61 @@
 # Changelog
 
+## [2.0.21] - 2026-10-07
+
+### Added
+
+- **See VBW work.** While VBW's agents work, the band above the prompt shows
+  the crew: one row per agent with its role, what it is doing right now (the
+  file it reads, the command it runs, or the last words it wrote), its time and
+  its tokens. An agent that has said nothing for 45 seconds is marked quiet, so
+  a hang is told apart from slow work.
+- **VBW needs you, one key away.** At every human step (approve, check, ship,
+  unblock and the rest) the band shows a card with numbered buttons. Buttons
+  only fill the prompt (`/vbw:approve`, `/vbw:verify`, ...); you press Enter.
+  Before a long run it warns when your weekly limit is past 80% and offers
+  `/compact` first when the context is past 85%.
+- **Mission Control.** `/vbw-panel` opens a pane with tabs: Now (the agents of
+  the run as cards; press one for its detail), Plan, Proof (one coloured cell
+  per check), Timeline, Decisions, Team and Costs.
+- **VBW in Claude Code's own lines:** the spinner says what VBW is doing, the
+  hint line under the prompt says what comes next, the footer shows the profile
+  or the autonomous run, a workflow's row and its finish notice read as VBW
+  steps (`✓ VBW planning finished · 3 phases · 9 plans · 14m`).
+- **Instant commands** that work even while VBW runs: `/vbw-status`, `/vbw-why`
+  (who holds the run and what blocks the next step) and `/vbw-todo` (park an
+  idea, or the selected text).
+- **Motion:** `vbw config set motion full|calm|off`. Full shows the crew as
+  small animated figures, confetti when a phase passes QA and a green sweep when
+  every check passes; calm uses dots and spinners; off is still text. The
+  default follows your interview answers. When a milestone ships, the pane shows
+  a VBW Wrapped card: requirements proven, checks, agents, fix rounds, time and
+  cost.
+
+### Changed
+
+- **The status line refreshes every 5 seconds,** so a run's time and agents no
+  longer look frozen while a workflow works. An existing VBW status line gets
+  the refresh on its own the next time you start a session in a VBW project.
+- **On Claude Code 2.1.287 and newer the status line is one line shorter:** the
+  agents and team line moved to the band and Mission Control. Older Claude Code
+  keeps it.
+
+### Fixed
+
+- **The panel counts requirements, like the status line** ("1 of 15
+  requirements done"), not phases.
+- **The panel comes on in your first session.** When `/vbw:vibe` sets up a
+  new project, the panel starts at its first question; no restart needed.
+- **Every step that waits for you is shown as one.** The panel said "nothing is
+  needed" at the unblock, scope, milestone and convert steps; it now says what
+  to do and plays the "needs you" sound.
+
+### What you need to do
+
+- Nothing. The pane, the one-line notes and the commands need Claude Code
+  2.1.287 or newer; the band above the prompt needs 2.1.290 or newer
+  (`claude update`). On older versions VBW works as before.
+
 ## [2.0.20] - 2026-10-07
 
 ### Changed
