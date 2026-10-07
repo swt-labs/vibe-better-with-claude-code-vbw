@@ -10541,7 +10541,7 @@
         "P61.2",
         "P61.3"
       ],
-      "status": "planned",
+      "status": "done",
       "role": "docs",
       "tasks": [
         "Describe that Mission Control's tabs stay on top and which key value has which colour",
