@@ -6,7 +6,7 @@
   "milestone": {
     "id": "M13",
     "title": "Core loop you can trust",
-    "status": "active"
+    "status": "shipped"
   },
   "shipped": [
     {
@@ -68,6 +68,11 @@
       "id": "M12",
       "title": "Panel colour and polish",
       "at": "2026-10-07T15:07:02Z"
+    },
+    {
+      "id": "M13",
+      "title": "Core loop you can trust",
+      "at": "2026-10-07T19:52:09Z"
     }
   ],
   "requirements": [
@@ -13790,6 +13795,11 @@
       "id": "D170",
       "at": "2026-10-07T19:32:38Z",
       "text": "Contract approved: 98 requirements, 155 checks, 198 plans (d872b5e1ded3)"
+    },
+    {
+      "id": "D171",
+      "at": "2026-10-07T19:52:09Z",
+      "text": "Shipped M13 Core loop you can trust: 8 requirements proven or accepted"
     }
   ],
   "commands": {
