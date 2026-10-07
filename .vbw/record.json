@@ -6161,7 +6161,22 @@
         "breaks: R51, R52, R53, R55, R56, R57, R58, R82",
         "tests: project test command"
       ],
-      "predicted": "deep"
+      "predicted": "deep",
+      "qa": {
+        "result": "pass",
+        "tier": "standard",
+        "tree": "2f282a6f56cf0eecff1598648621cdf90bbfdbb1dbaf740841a41d521aa6d48c",
+        "at": "2026-10-07T11:34:03Z",
+        "note": "12/12 checks"
+      },
+      "outcome": {
+        "tier": "deep",
+        "predicted": "deep",
+        "held": true,
+        "fix_rounds": 0,
+        "qa_findings": 0,
+        "escalations": 0
+      }
     },
     {
       "id": "P61",
