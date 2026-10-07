@@ -127,10 +127,19 @@ approval options: Approve, Not yet
   takes them as what to change, or as a question.
 
 The 12 characters in the question are the contract's fingerprint (the start of
-its hash). Approval covers exactly that contract. If the contract changed
-after the question was asked (a plan or check was edited meanwhile), nothing
-is approved: `the contract changed since you were asked (now ...): review it
-again`. Review it with `vbw show contract` and answer again.
+its hash). Approval covers exactly that contract. The question may carry more
+text after the fingerprint (a sentence, spaces or line breaks that Claude adds
+to explain what you approve). Choosing **Approve** still approves the contract
+the fingerprint names; the extra text changes nothing. The fingerprint must
+stay at the start of the question: a question that does not begin with
+`Approve contract <12 characters>?` is not the approval question, and nothing
+is approved.
+
+If the fingerprint is not the current contract's, nothing is approved. This
+happens when the contract changed after the question was asked (a plan or check
+was edited meanwhile), or when the fingerprint is wrong. VBW says
+`the contract changed since you were asked (now ...): review it again`. Review
+it with `vbw show contract` and answer the new question.
 
 Typing `/vbw:approve` still works and approves the current contract, without
 the question.
