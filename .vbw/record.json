@@ -10322,7 +10322,7 @@
       "after": [
         "P59.1"
       ],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "panel-stage.js: rows take role colours and done, failed and quiet colours from the palette; an unknown role is the neutral grey; a quiet row is grey, and its pose is chosen from the state, not from a colour",
@@ -10348,7 +10348,7 @@
       "after": [
         "P59.1"
       ],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "panel-mission-live.js: role colours, state frames, the slow lane and the cost bar take their colours from the palette (state frames only for now; role frames come in P60.2); unknown roles and states are the neutral grey",
