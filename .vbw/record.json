@@ -11170,10 +11170,11 @@
       "files": [
         "plugin/lib/checks.sh",
         "tests/gate-race.bats",
-        "tests/check-alone-runner.bats"
+        "tests/check-alone-runner.bats",
+        "docs/proof.md"
       ],
       "after": [],
-      "status": "blocked",
+      "status": "planned",
       "role": "dev",
       "tasks": [
         "Remove the 900 second limit and VBW_CHECK_WAIT_SECONDS: a waiting check keeps waiting while the holder's process is alive and takes over when it is gone or its registration is stale",
@@ -11181,8 +11182,7 @@
         "Stop all shell job warnings (wait: pid is not a child, Killed notices) in bash 3.2 and bash 5, including when a runner exits early",
         "Update the two old tests that assert the removed time limit (tests/gate-race.bats, tests/check-alone-runner.bats) to the new behavior, keeping what else they prove",
         "Keep the kernel within its line limit"
-      ],
-      "note": "docs/proof.md (lines ~101-104) still says a check waits at most 900 seconds and names VBW_CHECK_WAIT_SECONDS; check C148 requires that text gone. The file is not in P65.1's files, so I could not commit it. Code and tests are committed, C145-C148 pass with the docs edit in the working tree (uncommitted). Add docs/proof.md to the plan's files, then commit the edit."
+      ]
     },
     {
       "id": "P65.2",
@@ -12694,6 +12694,11 @@
       "id": "D150",
       "at": "2026-10-07T12:51:55Z",
       "text": "Contract approved: 91 requirements, 144 checks, 185 plans (d31c2fd142ee); express: P62 (R90)"
+    },
+    {
+      "id": "D151",
+      "at": "2026-10-07T13:06:19Z",
+      "text": "Contract approved: 91 requirements, 144 checks, 185 plans (64b692151b94); express: P62 (R90)"
     }
   ],
   "commands": {
