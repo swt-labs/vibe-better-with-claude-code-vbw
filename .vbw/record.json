@@ -13520,6 +13520,17 @@
       "id": "D160",
       "at": "2026-10-07T15:19:44Z",
       "text": "Contract approved: 99 requirements, 155 checks, 198 plans (bb8168a47416)"
+    },
+    {
+      "id": "D161",
+      "text": "Kernel budget 7,600 lines and all-prompts budget 22,800 words; router stays 1,400 words",
+      "why": "owner: double the limits; router kept because it loads every turn",
+      "at": "2026-10-07T15:20:21Z"
+    },
+    {
+      "id": "D162",
+      "at": "2026-10-07T15:20:35Z",
+      "text": "Contract approved: 99 requirements, 155 checks, 198 plans (4f8df19ed48f)"
     }
   ],
   "commands": {
