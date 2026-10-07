@@ -64,9 +64,9 @@ test('a meta that is not a JSON object gives null', () => {
 test('the activity is the intention of the last tool called', () => {
   const t = (name, input) => last([line.tool(T0, name, input)])
   assert.deepEqual(t('Read', { file_path: '/proj/.vbw/spec.md', offset: 48 }), { kind: 'tool', text: 'reading spec.md' })
-  assert.deepEqual(t('Bash', { command: 'cd "/proj/my app" && bats tests/prove.bats' }), { kind: 'tool', text: 'running bats tests/prove.bats' })
-  assert.deepEqual(t('bash', { command: 'vbw show plan P21.3' }), { kind: 'tool', text: 'running vbw show plan P21.3' })
-  assert.deepEqual(t('Bash', { command: 'cd /proj; git status --short;\n  grep -rn "predicted" plugin/lib plugin/bin' }), { kind: 'tool', text: 'running git status --short; grep -rn "predicted"…' })
+  assert.deepEqual(t('Bash', { command: 'cd "/proj/my app" && bats tests/prove.bats' }), { kind: 'tool', text: 'running tests' })
+  assert.deepEqual(t('bash', { command: 'vbw show plan P21.3' }), { kind: 'tool', text: 'showing plan P21.3' })
+  assert.deepEqual(t('Bash', { command: 'cd /proj; git status --short;\n  grep -rn "predicted" plugin/lib plugin/bin' }), { kind: 'tool', text: 'running a command' })
   assert.deepEqual(t('Edit', { file_path: '/proj/plugin/lib/record.sh', old_string: 'a', new_string: 'b' }), { kind: 'tool', text: 'editing record.sh' })
   assert.deepEqual(t('Write', { file_path: '/proj/plugin/hooks/approve-answer.sh', content: '#!/usr/bin/env bash' }), { kind: 'tool', text: 'editing approve-answer.sh' })
   assert.deepEqual(t('Grep', { pattern: 'lease', path: '/proj' }), { kind: 'tool', text: 'searching lease' })
@@ -88,7 +88,7 @@ test('streamed text gives its last 70 characters on one line, marked when cut', 
 
 test('the activity comes from the last assistant line, after tool results and attachments', () => {
   const rows = [line.user(T0), line.tool(T0 + 1000, 'Read', { file_path: '/p/a.md' }), line.result(T0 + 2000), line.text(T0 + 3000, 'Now the checks.'), line.tool(T0 + 4000, 'Bash', { command: 'bats tests' }), line.result(T0 + 5000), line.attachment(T0 + 5001)]
-  assert.deepEqual(last(rows), { kind: 'tool', text: 'running bats tests' })
+  assert.deepEqual(last(rows), { kind: 'tool', text: 'running tests' })
 })
 
 test('an agent thinking shows that it thinks', () => {

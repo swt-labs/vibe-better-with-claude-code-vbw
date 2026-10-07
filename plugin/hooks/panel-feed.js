@@ -7,6 +7,8 @@
 // only when its size or time changed, and a done agent's transcript at most once
 // more after it is done. The output is the run model (mods_build_plan.md).
 
+import { shellIntent } from './panel-intent.js'
+
 export const QUIET_MS = 45_000
 const ROLES = ['architect', 'lead', 'dev', 'qa', 'scout', 'debugger', 'docs']
 const MAX_READ = 4 * 1024 * 1024 // Claude Code refuses a larger read
@@ -77,10 +79,9 @@ export function parseMeta(text) {
 
 // What a tool call means, in a few words.
 const host = (u) => (/^[a-z]+:\/\/([^/?#]+)/i.exec(str(u)) || [])[1]
-const shell = (c) => cut(oneLine(str(c).replace(/^\s*cd\s+("[^"]*"|'[^']*'|\S+)\s*(&&|;)\s*/, '')), 41)
 const SAY = {
   read: ['reading', (i) => base(i.file_path)],
-  bash: ['running', (i) => shell(i.command)],
+  bash: ['', (i) => shellIntent(i.command)],
   edit: ['editing', (i) => base(i.file_path)],
   multiedit: ['editing', (i) => base(i.file_path)],
   write: ['editing', (i) => base(i.file_path)],
@@ -96,7 +97,7 @@ function intention(name, input) {
   const say = SAY[str(name).toLowerCase()]
   if (!say) return str(name) || 'working'
   const what = say[1](isObj(input) ? input : {})
-  return what ? say[0] + ' ' + what : say[0]
+  return say[0] ? (what ? say[0] + ' ' + what : say[0]) : what
 }
 
 function activityOf(blocks) {
