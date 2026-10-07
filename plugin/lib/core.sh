@@ -50,7 +50,7 @@ vbw_guard_run() {
   local p
   for p in ${VBW_GUARD_FILES[@]+"${VBW_GUARD_FILES[@]}"}; do rm -f "$p" 2>/dev/null || true; done
   for p in ${VBW_GUARD_LOCKS[@]+"${VBW_GUARD_LOCKS[@]}"}; do rmdir "$p" 2>/dev/null || true; done
-  for p in ${VBW_GUARD_DIRS[@]+"${VBW_GUARD_DIRS[@]}"}; do rm -rf "$p" 2>/dev/null || true; done
+  for p in ${VBW_GUARD_DIRS[@]+"${VBW_GUARD_DIRS[@]}"}; do chmod -R u+rwx "$p" 2>/dev/null || true; rm -rf "$p" 2>/dev/null || true; done
   VBW_GUARD_FILES=()
   VBW_GUARD_LOCKS=()
   VBW_GUARD_DIRS=()
@@ -60,7 +60,7 @@ vbw_guard_run() {
 # when nothing is left, the traps are removed again.
 vbw_guard_drop() {
   local p keep=()
-  for p in ${VBW_GUARD_DIRS[@]+"${VBW_GUARD_DIRS[@]}"}; do [ "$p" != "$1" ] || rm -rf "$1" 2>/dev/null || true; done
+  for p in ${VBW_GUARD_DIRS[@]+"${VBW_GUARD_DIRS[@]}"}; do [ "$p" != "$1" ] || { chmod -R u+rwx "$1" 2>/dev/null; rm -rf "$1" 2>/dev/null; } || true; done
   rm -f "$1" 2>/dev/null || true
   rmdir "$1" 2>/dev/null || true
   for p in ${VBW_GUARD_FILES[@]+"${VBW_GUARD_FILES[@]}"}; do [ "$p" = "$1" ] || keep+=("$p"); done
