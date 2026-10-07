@@ -151,7 +151,13 @@ record_commit() {
 # jq helper, prepended to update filters: the next free id with prefix P.
 # shellcheck disable=SC2016,SC2034 # jq text, not shell; used by the cmd-*.sh files
 # covers($p): a plan file entry covers PATH: the same path, or a directory
-# entry (ending in /) with PATH under it.
+# entry (ending in /) with PATH under it; two file lists overlap when either
+# covers the other ("*" is any file). wave($done): of these plans, the next
+# build wave: those whose after-plans are all in $done, no two sharing a file.
+# vbw next and the approval's waves line both use it (D166).
 VBW_JQ_DEFS='def next_id($p): (([.[]?.id | ltrimstr($p) | tonumber?] | max) // 0) + 1 | "\($p)\(.)";
 def covers($p): . as $e | $e == $p or (($e | endswith("/")) and ($p | startswith($e)));
+def overlaps($a; $b): any($a[], $b[]; . == "*") or any($a[]; . as $x | any($b[]; . as $y | ($x | covers($y)) or ($y | covers($x))));
+def wave($done): [.[] | select(all((.after // [])[]; . as $a | any($done[]; . == $a)))]
+  | reduce .[] as $p ({ids: [], files: []}; if overlaps(.files; $p.files) then . else .ids += [$p.id] | .files += $p.files end) | .ids;
 '"$(cat "$VBW_LIB/rigor-defs.jq")"

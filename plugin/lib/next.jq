@@ -18,11 +18,7 @@ def qa_rank: {quick: 0, standard: 1, deep: 2}[.];
 
 # Builders share one working tree, so work that touches the same file never runs
 # at the same time. "*" stands for any file.
-# A plan file entry covers PATH: the same path, or a directory entry (ending
-# in /) with PATH under it. Two file lists overlap when either covers the other.
-def covers($p): . as $e | $e == $p or (($e | endswith("/")) and ($p | startswith($e)));
-def overlaps($a; $b): any($a[], $b[]; . == "*")
-  or any($a[]; . as $x | any($b[]; . as $y | ($x | covers($y)) or ($y | covers($x))));
+# covers, overlaps and wave come with VBW_JQ_DEFS (record.sh).
 
 # The files a fix may touch (as in vbw run start fix): the files of the plans
 # serving its requirement; any file for a project command.
@@ -36,11 +32,7 @@ def fix_files($r): if .command then ["*"]
 | [.requirements[] | select(.milestone == $m)] as $current
 | (.plans | map(select(.status == "done") | .id)) as $done
 | . as $r
-| ([.plans[] | select(.status != "done" and .status != "blocked")
-             | select(all((.after // [])[]; . as $a | any($done[]; . == $a)))]
-   | reduce .[] as $p ({ids: [], files: []};
-       if overlaps(.files; $p.files) then . else .ids += [$p.id] | .files += $p.files end)
-   | .ids) as $ready
+| ([.plans[] | select(.status != "done" and .status != "blocked")] | wave($done)) as $ready
 | ([.plans[] | select(.status == "blocked") | .id]) as $blocked
 | ([.plans[] | select(.status == "blocked") | {id, note: (.note // "")}]) as $blocked_why
 | ($blocked_why | map(if .note == "" then .id else "\(.id) (\(.note))" end) | join(", ")) as $blocked_text
