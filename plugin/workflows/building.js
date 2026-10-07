@@ -5,7 +5,7 @@ export const meta = {
   phases: [{ title: 'Build', detail: 'a Dev (or Docs) per plan; disjoint files' }],
 }
 
-// args: {plans: ["P1.1", ...], docs?: ["P2.1"], models?: {dev?, docs?}, rigor?: {P1: {models}}} (docs/workflows.md).
+// args: {plans: ["P1.1", ...], docs?: ["P2.1"], effort?: {dev?: {build}, docs?: {build}, lead?: {close}}, models?: {dev?, docs?}, rigor?: {P1: {models}}} (docs/workflows.md).
 // docs: the plans the Lead marked as documentation, built by the Docs agent.
 const plans = (args && args.plans) || []
 const docs = (args && args.docs) || []
@@ -15,6 +15,13 @@ const rigor = (args && args.rigor) || {}
 // every agent writes what reaches the user at that level.
 const profile = (args && typeof args === 'object' && args.profile) || {}
 const voice = `\n\nThe user's level: ${profile.level || 'small scripts or no-code'}. Explanation depth: ${profile.depth || 'plain with technical terms explained'}. Involvement: ${profile.involvement || 'options with a recommendation'}. Write whatever the user will read at that level and depth.`
+// The effort the profile gives a role and step (args.effort, from vbw next --json): the option
+// for agent(), or nothing when there is no table or no value (agents then run as before).
+const table = (args && typeof args === 'object' && args.effort && typeof args.effort === 'object' && !Array.isArray(args.effort)) ? args.effort : {}
+const effortOf = (role, step) => {
+  const e = table[role] && typeof table[role] === 'object' ? table[role][step] : null
+  return e ? { effort: e } : {}
+}
 if (plans.length === 0) return { results: [], error: 'no plans given: pass args.plans from vbw next --json' }
 
 const CLOSE_RESULT = {
@@ -46,7 +53,7 @@ const closeRun = async ids => {
   const confirm = sh(`vbw run confirm ${ids.join(' ')}`)
   const end = sh('vbw run end')
   const done = await agent(`Close this VBW run (your own instructions, Close a run, allow it). Run ${confirm} (it exits 1 when some plans were not recorded), then, whatever it said, run ${end}. Answer ended (run end succeeded), recorded (confirm exited 0) and report (the lines for what was not recorded, else "all recorded; run ended"). Change nothing else.${voice}`,
-    Object.assign({ agentType: 'vbw:lead', label: 'close run', schema: CLOSE_RESULT }, models.lead ? { model: models.lead } : {}))
+    Object.assign({ agentType: 'vbw:lead', label: 'close run', schema: CLOSE_RESULT }, models.lead ? { model: models.lead } : {}, effortOf('lead', 'close')))
   if (!done) log(`the closing agent stopped: run by hand: ${confirm} ; then ${end}`)
   else {
     if (!done.recorded || !done.ended) log(done.report)
@@ -63,7 +70,7 @@ const results = await pipeline(plans, id => {
   const m = (cell && cell.models && cell.models[role]) || models[role]
   return agent(`Execute VBW plan ${id}. Start with: vbw show plan ${id}${voice}`,
     Object.assign({ agentType: `vbw:${role}`, label: `${role} ${id}`, phase: 'Build', schema: BUILD_RESULT },
-      m ? { model: m } : {}))
+      m ? { model: m } : {}, effortOf(role, 'build')))
 })
 
 // An agent that was stopped or died returns null: its plan stays "building"
