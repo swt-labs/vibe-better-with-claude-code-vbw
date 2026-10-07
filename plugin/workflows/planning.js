@@ -9,8 +9,10 @@ export const meta = {
   ],
 }
 
-// args: {requirements, models?: {architect?, lead?}, decided?: true} (docs/workflows.md).
+// args: {requirements, models?: {architect?, lead?}, decided?: true, effort?, next_phase?} (docs/workflows.md).
 // decided: the user has just answered this round's questions; plan now.
+// effort: {<role>: {<step>: level}} from vbw next --json; used only when it is an object, else agents run as before.
+// next_phase: the next free phase number; the Architect numbers new phases from it.
 const models = (args && args.models) || {}
 const decided = Boolean(args && args.decided)
 // The user's level, explanation depth and involvement (args.profile, from vbw next --json):
@@ -21,8 +23,17 @@ const voice = `\n\nThe user's level: ${profile.level || 'small scripts or no-cod
 // the only ones the Architect is shown, so it never asks about shipped work.
 const reqs = (args && Array.isArray(args.requirements)) ? args.requirements : null
 const reqList = reqs ? `\n\nRequirements of this milestone (the only ones to consider):\n${reqs.map(r => `- ${r.id} [${r.proof}] ${r.text}`).join('\n')}` : ''
-const opts = (role, extra) => Object.assign({ agentType: `vbw:${role}`, label: role },
-  models[role] ? { model: models[role] } : {}, extra)
+// The effort option for a role and step, or nothing when the table has none.
+const effortTable = (args && args.effort && typeof args.effort === 'object' && !Array.isArray(args.effort)) ? args.effort : null
+const effortFor = (role, step) => {
+  const t = effortTable && effortTable[role]
+  const level = t && typeof t === 'object' ? t[step] : undefined
+  return level ? { effort: level } : {}
+}
+const opts = (role, step, extra) => Object.assign({ agentType: `vbw:${role}`, label: role },
+  models[role] ? { model: models[role] } : {}, effortFor(role, step), extra)
+const nextPhase = args && args.next_phase
+const numbering = nextPhase ? ` Number the new phases from P${nextPhase}, in order, and keep phases already started exactly as they are.` : ''
 
 const CLOSE_RESULT = {
   type: 'object',
@@ -104,7 +115,7 @@ const closeRun = async (phaseIds = []) => {
   const end = `VBW_SESSION_ID=${session} vbw run end`
   const check = phaseIds.length === 0 ? '' : `First check that each planned phase has plans: ${phaseIds.map(id => `vbw show phase ${id}`).join('; ')}. `
   const done = await agent(`Close this VBW run (your own instructions, Close a run, allow it). ${check}Then, whatever you found, run ${end}. Answer ended (run end succeeded), recorded (${phaseIds.length === 0 ? 'true' : 'every phase has plans'}) and report (${phaseIds.length === 0 ? 'what it printed' : 'name each phase without plans, else "all recorded; run ended"'}). Change nothing else.${voice}`,
-    Object.assign({ agentType: 'vbw:lead', label: 'close run', schema: CLOSE_RESULT }, models.lead ? { model: models.lead } : {}))
+    Object.assign({ agentType: 'vbw:lead', label: 'close run', schema: CLOSE_RESULT }, models.lead ? { model: models.lead } : {}, effortFor('lead', 'close')))
   if (!done) log(`the closing agent stopped: run by hand: ${end}`)
   else {
     if (!done.recorded) log(done.report)
@@ -124,7 +135,7 @@ if (!reqs || reqs.length === 0) {
 if (!decided) {
   phase('Decide')
   const found = await agent(`Job 1: find the decisions this VBW project needs from its user before planning. Change nothing.${reqList}${voice}`,
-    opts('architect', { schema: DECISIONS, label: 'architect (decide)', phase: 'Decide' }))
+    opts('architect', 'decide', { schema: DECISIONS, label: 'architect (decide)', phase: 'Decide' }))
   const open = (found && found.decisions) || []
   if (open.length > 0) {
     log(`${open.length} decision(s) for the user before planning`)
@@ -134,8 +145,8 @@ if (!decided) {
 }
 
 phase('Scope')
-const scope = await agent(`Job 2: scope the current milestone into phases, each with a goal and goal-backward success criteria. Change nothing.${reqList}${voice}`,
-  opts('architect', { schema: SCOPE, label: 'architect (scope)', phase: 'Scope' }))
+const scope = await agent(`Job 2: scope the current milestone into phases, each with a goal and goal-backward success criteria. Change nothing.${numbering}${reqList}${voice}`,
+  opts('architect', 'scope', { schema: SCOPE, label: 'architect (scope)', phase: 'Scope' }))
 if (!scope || !scope.phases || scope.phases.length === 0) {
   await closeRun()
   return { status: 'blocked', summary: 'the Architect could not scope the milestone', blockers: [], notes: [] }
@@ -143,7 +154,7 @@ if (!scope || !scope.phases || scope.phases.length === 0) {
 
 phase('Plan')
 const plan = await agent(`Plan these phases: research, decompose them into plans with tasks, write the checks, self-review, and apply with vbw apply. The kernel computes a rigor floor per phase from its signals and refuses a lower tier. Use these phases exactly as given, tier included:\n\n${JSON.stringify(scope.phases)}${voice}`,
-  opts('lead', { schema: PLAN_RESULT, phase: 'Plan' }))
+  opts('lead', 'plan', { schema: PLAN_RESULT, phase: 'Plan' }))
 if (!plan || !plan.applied) {
   await closeRun()
   return { status: 'blocked', summary: plan ? plan.summary : 'the Lead did not finish', blockers: plan ? plan.blockers : [], notes: scope.notes }
