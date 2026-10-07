@@ -1,5 +1,49 @@
 # Changelog
 
+## [2.0.22] - 2026-10-07
+
+### Fixed
+
+- **`vbw prove` no longer breaks pnpm 11 projects or your installed packages.**
+  The clean copy a proof runs in used to link your git-ignored folders
+  (`node_modules`, `.env` files) from the working folder. pnpm 11 refuses a
+  linked `node_modules`, and a reinstall through the link could rewrite your
+  real packages to point into the copy. The copy now holds real copies, cloned
+  copy-on-write where the disk allows (APFS, and reflink file systems on Linux),
+  so nothing a proof does reaches your working folder. A folder that cannot be
+  read stops the proof before any check runs, and says which one.
+- **Damage from earlier versions is found.** After every proof, VBW looks for
+  links in your project that still point into an old proof copy and names each
+  one with the repair (in a pnpm project: delete `node_modules`, run
+  `pnpm install`). It says nothing when there are none.
+- **A long check marked alone no longer aborts the proof.** Checks waiting for
+  it keep waiting as long as it runs (the 900-second wait limit and its
+  setting are gone). A check that could not run shows as
+  `not run` with the reason, and every other result stands. The "not a child of
+  this shell" warnings are gone.
+
+### Changed
+
+- **Colour you can read at a glance.** The band, Mission Control and the
+  Wrapped card share one palette: each role has one colour everywhere
+  (architect magenta, lead blue, dev green, QA yellow, scout cyan, debugger
+  red, docs pink) and each state one colour and mark (● running amber,
+  ✓ done green, ✗ failed red, … quiet grey). Mission Control's cards are framed
+  in their agent's role colour. The band draws each agent's label and spinner
+  in its role colour, dims time and tokens, and shows the run's cost in purple.
+  With colour off, the marks and words still tell every state apart.
+- **Plain actions instead of raw commands.** An agent's activity reads
+  `editing app-topbar.tsx`, `running tests`, `recording P6.7 done` or
+  `running fix_topbar.py`; a command VBW does not know reads
+  `running a command`. Command lines, flags and secrets are never shown.
+- **A change to `.vbw/record.json` is one line** in the conversation
+  (`VBW · build run started`); expand the row (ctrl+o) for the full diff.
+- **Mission Control's tabs stay at the top** while its content scrolls, and the
+  key value of each sentence is coloured (progress green, estimate amber, cost
+  purple, anything VBW needs from you yellow).
+- **A new agent's row flashes** in its role colour for about a second, at full
+  motion only (`vbw config set motion full`).
+
 ## [2.0.21] - 2026-10-07
 
 ### Added
