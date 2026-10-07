@@ -13068,7 +13068,7 @@
         "plugin/lib/cmd-init.sh"
       ],
       "after": [],
-      "status": "planned",
+      "status": "done",
       "tasks": [
         "the notice says the commands run only after you approve them in the approval menu, with no /vbw:approve"
       ]
