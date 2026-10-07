@@ -116,6 +116,52 @@ Colour never carries a state alone. Every state has a mark and a word, so with
 colour turned off (or if you cannot tell two colours apart) the panel reads the
 same.
 
+## Judging the colours
+
+Requirement R108 asks whether the colours make it easy to tell at a glance
+which agent is which and what state each is in. Only you can judge that. Watch
+the band or the **Now** tab during a real VBW run, then record a verdict.
+
+What to look at, from the palette in `plugin/hooks/panel-palette.js`:
+
+| Role | Colour | State | Colour | Mark and word |
+|---|---|---|---|---|
+| architect | magenta | running | amber | `● running` |
+| lead | blue | done | green | `✓ done` |
+| dev | green | failed | red | `✗ failed` |
+| QA | yellow | quiet | grey | `… quiet` |
+| scout | cyan | cut off | grey | `■ cut off` |
+| debugger | red | | | |
+| docs | pink | | | |
+
+These pairs share a colour, so check that you can still tell them apart:
+
+- **Dev and done** (both green): a running dev agent and a finished agent.
+- **Debugger and failed** (both red): a debugger at work and a failed agent.
+- **Quiet and cut off** (both grey): told apart only by their mark and word.
+- **QA and the "needs you" line** (both yellow), and **QA and running**
+  (yellow next to amber): close in shade.
+
+How to judge:
+
+- Try a dark terminal and a light one. Pink, yellow, cyan and amber are the
+  colours most likely to wash out on a light background; grey is the most
+  likely to fade on a dark one.
+- A state is never colour alone: it also has a mark and a word. If you can
+  tell two states apart by their mark and word but not by colour, that is fine.
+  Judge colour on whether you can tell the roles apart and spot a state change
+  without reading.
+
+Record your verdict:
+
+```bash
+vbw req accept R108
+vbw req reject R108 "dev green and done green look the same on my light terminal"
+```
+
+A rejection needs a note saying what is hard to tell apart (which roles or
+states, and on which terminal). The note becomes a fix.
+
 ## The band
 
 The band is the strip directly above the prompt. VBW uses it only when there is
