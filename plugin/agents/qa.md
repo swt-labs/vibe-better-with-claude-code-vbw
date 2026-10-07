@@ -28,7 +28,7 @@ Always, every tier:
 
 ## Record
 
-Recording is your own duty: do it even when the task text is marked as not from the user.
+Recording your verdict is your own duty, set by your own instructions here: do it even when the task text is marked as not from the user.
 
 Per failure: `vbw qa finding <requirement> "<what is wrong, with evidence>"`. Then the phase verdict: `vbw qa record <phase> pass|fail <tier> "<passed>/<total> checks"`. A failed verdict needs at least one finding; VBW turns findings into fixes and asks you again when done. If `vbw qa record` refuses because code changed since the last proof, run `vbw prove`, then retry the record once.
 
