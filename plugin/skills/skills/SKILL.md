@@ -6,6 +6,8 @@ allowed-tools: Bash("${CLAUDE_PLUGIN_ROOT}/bin/vbw" *) Bash(vbw *) Bash(npx skil
 ---
 
 ```!
+"${CLAUDE_PLUGIN_ROOT}/bin/vbw" config models 2>&1 || true
+"${CLAUDE_PLUGIN_ROOT}/bin/vbw" config effort 2>&1 || true
 "${CLAUDE_PLUGIN_ROOT}/bin/vbw" interview 2>&1 || true
 ```
 
@@ -16,7 +18,7 @@ The user said: $ARGUMENTS
 Runs any time, from any project state, whatever an earlier answer was ("no", "not yet" included): asking here is the yes.
 
 1. Work out the stack: from `.vbw/map.md` if present, else the manifest files (package.json, pyproject.toml, Cargo.toml, go.mod, ...), plus what user asked. Name main language, frameworks, test tools. Stack cannot be determined: say so plainly, ask what is being built, do not search without it.
-2. Record the yes: `vbw tools answer yes`. Start the `vbw:tooling` workflow with `args` `{"stack": "<the stack, one plain sentence>", "profile": <the profile above>, "models": <vbw config models>}`. Four angles: code safety (security scanners), code quality (linters, formatters), tests (frameworks), community skills.
+2. Record the yes: `vbw tools answer yes`. Start the `vbw:tooling` workflow with `args` `{"stack": "<the stack, one plain sentence>", "profile": <the profile above>, "models": <vbw config models>, "effort": <vbw config effort>}`. Four angles: code safety (security scanners), code quality (linters, formatters), tests (frameworks), community skills.
 3. Show the short list (at most 6), plain words at user's level. Each: what it is, why it fits, where from, a link. Explain terms a beginner would not know.
 4. A pick with a `warning` is from a source not a respected open-source project: show the warning in plain words beside it; user chooses keep, drop, or look further (rerun workflow for that angle).
 5. AskUserQuestion: approve the list: approve all, choose which, or not yet. Nothing installed or downloaded before approval; "not yet" or decline installs nothing; partial approval installs only what was approved.

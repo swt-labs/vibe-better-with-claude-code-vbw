@@ -7,6 +7,7 @@ allowed-tools: Bash("${CLAUDE_PLUGIN_ROOT}/bin/vbw" *) Bash(vbw *) Workflow(vbw:
 
 ```!
 "${CLAUDE_PLUGIN_ROOT}/bin/vbw" config models 2>&1 || true
+"${CLAUDE_PLUGIN_ROOT}/bin/vbw" config effort 2>&1 || true
 "${CLAUDE_PLUGIN_ROOT}/bin/vbw" workflows on 2>&1 || true
 "${CLAUDE_PLUGIN_ROOT}/bin/vbw" interview 2>&1 || true
 ```
@@ -21,8 +22,8 @@ expected). VBW needs the Workflow tool: the `workflows` line above turns it on
 project the models line shows an error; omit `models`.)
 
 Start the Workflow `vbw:investigating` with args `{"problem": "<the problem>",
-"models": <the JSON above>, "profile": ...}`. When it returns, tell the user the root cause,
+"models": <the JSON above>, "effort": <the effort JSON above>, "profile": ...}`. When it returns, tell the user the root cause,
 its evidence, rejected hypotheses, confidence and the proposed fix, then ask whether to fix it now. If yes, start the Workflow again
 with args `{"problem": "<the problem>", "fix": <the diagnosis it returned>,
-"models": ..., "profile": ...}`: one Debugger fixes the root cause, adds a regression test,
+"models": ..., "effort": ..., "profile": ...}`: one Debugger fixes the root cause, adds a regression test,
 commits and verifies (`vbw prove` in a VBW project). Report what changed.
