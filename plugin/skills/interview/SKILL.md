@@ -29,20 +29,20 @@ Record each answer at once; an interrupted interview loses nothing. Offer exactl
    Options: decide and tell me; options with a recommendation; I make the calls.
    Record: `vbw interview set involvement "<option>"`.
 
-Kernel refuses other values and names allowed ones. On refusal or an answer fitting no option (free text, "Other"): never record it; ask again, same question, same options. Never guess nearest option.
+Kernel refuses other values and names allowed ones. On refusal or an answer fitting no option (free text, "Other"): never record it; ask again, same question, same options. Never guess the nearest.
 
 ## The old VBW 1 folder
 
 One extra step, right after the level answer, before any other question. Review above. `"legacy": false` (no folder) or `asked` true (a choice is recorded): skip it and say nothing; it is asked once.
 
-Else show it at the user's level and depth: how much was finished, when last used, whether plans still match the code, any work half done. Never guess or change the kernel's numbers, `recommendation` or `reasons`. Say any `notes` (what could not be read); never recommend converting what could not be read.
+Else show it at the user's level and depth: how much was finished, when last used, whether plans still match the code, any half-done work. Never change the kernel's numbers, `recommendation` or `reasons`. Say any `notes`; never recommend converting what could not be read.
 
 Ask with AskUserQuestion: the recommended option first, marked "(Recommended)", the other second, each with a short trade-off: "Convert it" (keeps your old plans, a few questions), "Start fresh" (clean slate). Either may be picked whatever was recommended; own words allowed.
 
 - convert: `vbw legacy choose convert`, run /vbw:convert, report the result; the old folder stays.
 - fresh: `vbw legacy choose fresh`. Nothing is converted, the folder is left untouched; carry on with the interview.
 
-Read-only: it only reads files, runs no command found there. `/vbw:convert` shows it again on demand.
+Read-only: runs no command found there. `/vbw:convert` shows it again on demand.
 
 ## What and for whom
 
@@ -59,7 +59,7 @@ Last question: where to keep personal answers (level, depth, involvement). Optio
 - private: `vbw interview keep private`
 - saved in the project: `vbw interview keep project`
 
-The interview is complete only after this command. If user stops before it, record nothing as complete; router asks again next time, resuming at first unanswered question.
+The interview is complete only after this command. If user stops before it, router asks again next time, resuming at first unanswered question.
 
 Afterwards say in one line how answers shape what follows, and that `/vbw:profile` changes any.
 
@@ -67,7 +67,7 @@ Afterwards say in one line how answers shape what follows, and that `/vbw:profil
 
 After keep, ask once whether VBW may look for tools. First `vbw tools`. If it holds an answer, yes or no: skip, never ask again; asked once per project.
 
-Else one plain yes/no question with AskUserQuestion. Explain each kind in a few words at user's level: skills (add-ons teaching Claude a craft), code-safety scanners (programs looking for security holes), linters (flag likely mistakes), formatters (tidy code layout), test frameworks (run automatic tests).
+Else one plain yes/no AskUserQuestion. Explain each kind in a few words at user's level: skills (add-ons teaching Claude a craft), code-safety scanners (look for security holes), linters (flag likely mistakes), formatters (tidy layout), test frameworks (run automatic tests).
 
 Record at once:
 
