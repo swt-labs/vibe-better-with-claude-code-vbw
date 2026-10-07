@@ -6730,7 +6730,15 @@
         "breaks: R12, R31, R32, R43, R44, R45, R46, R47, R48, R49, R61, R66, R69, R70, R73, R74, R78, R79, R80, R81, R83",
         "tests: project test command"
       ],
-      "predicted": "deep"
+      "predicted": "deep",
+      "escalations": [
+        {
+          "at": "2026-10-07T13:04:48Z",
+          "from": "deep",
+          "to": "deep",
+          "reason": "Dev blocked P65.1: docs/proof.md (lines ~101-104) still says a check waits at most 900 seconds and names VBW_CHECK_WAIT_SECONDS; check C148 requires that text gone. The file is not in P65.1's files, so I could not commit it. Code and tests are committed, C145-C148 pass with the docs edit in the working tree (uncommitted). Add docs/proof.md to the plan's files, then commit the edit."
+        }
+      ]
     }
   ],
   "plans": [
@@ -11077,7 +11085,7 @@
         "plugin/lib/core.sh"
       ],
       "after": [],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "Copy each git-ignored folder or file into the proof copy (a fast copy-on-write clone first, a plain copy when the file system refuses), keeping links inside as links; build-output folders, .git and .vbw stay out",
@@ -11165,7 +11173,7 @@
         "tests/check-alone-runner.bats"
       ],
       "after": [],
-      "status": "planned",
+      "status": "blocked",
       "role": "dev",
       "tasks": [
         "Remove the 900 second limit and VBW_CHECK_WAIT_SECONDS: a waiting check keeps waiting while the holder's process is alive and takes over when it is gone or its registration is stale",
@@ -11173,7 +11181,8 @@
         "Stop all shell job warnings (wait: pid is not a child, Killed notices) in bash 3.2 and bash 5, including when a runner exits early",
         "Update the two old tests that assert the removed time limit (tests/gate-race.bats, tests/check-alone-runner.bats) to the new behavior, keeping what else they prove",
         "Keep the kernel within its line limit"
-      ]
+      ],
+      "note": "docs/proof.md (lines ~101-104) still says a check waits at most 900 seconds and names VBW_CHECK_WAIT_SECONDS; check C148 requires that text gone. The file is not in P65.1's files, so I could not commit it. Code and tests are committed, C145-C148 pass with the docs edit in the working tree (uncommitted). Add docs/proof.md to the plan's files, then commit the edit."
     },
     {
       "id": "P65.2",
