@@ -2299,6 +2299,145 @@
           "check": "C130"
         }
       ]
+    },
+    {
+      "id": "R92",
+      "text": "The proof copy shares no writable folder with the working folder: git-ignored files and folders (dependencies, env files) are copied in, as a copy-on-write clone where the file system offers one, never linked; so a tool that refuses linked folders or writes into its dependency folders (for example pnpm 11 recursive runs and its dependency check) behaves in the proof as in the working folder, and nothing a proof does changes the working folder",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M12",
+      "rules": [
+        {
+          "text": "no git-ignored path in the proof copy is a symbolic link; each is a real file or folder with the working folder's content",
+          "check": "C131"
+        },
+        {
+          "text": "a write inside node_modules passes in the proof and the file does not exist in the working folder afterwards",
+          "check": "C132"
+        },
+        {
+          "text": "a check that fails when node_modules is a link (the pnpm 11 refusal) passes in vbw prove as in vbw check",
+          "check": "C132"
+        },
+        {
+          "text": "after a proof every file and link of the working folder, git-ignored ones and workspace links in node_modules included, is byte-identical",
+          "check": "C133"
+        },
+        {
+          "text": "links inside a copied folder are copied as links; a relative one keeps resolving in the copy; an absolute one into the working folder is reported with its path",
+          "check": "C134"
+        },
+        {
+          "text": "the copy uses a copy-on-write clone first and falls back to a plain copy where the clone is refused, with the same result",
+          "check": "C135"
+        },
+        {
+          "text": "build-output folders are not brought into the copy",
+          "check": "C136"
+        },
+        {
+          "text": ".git and .vbw paths are never copied into the copy",
+          "check": "C136"
+        },
+        {
+          "text": "an ignored folder that cannot be read fails the proof before any check runs, naming the path, and leaves no copy behind",
+          "check": "C137"
+        },
+        {
+          "text": "an interrupted proof removes the copy completely and never deletes anything outside it",
+          "check": "C138"
+        },
+        {
+          "text": "the copy is removed after the proof, read-only folders included",
+          "check": "C138"
+        },
+        {
+          "text": "docs/proof.md states that git-ignored files are copied, not linked, with the pnpm example and the clone-or-copy fallback",
+          "check": "C139"
+        }
+      ]
+    },
+    {
+      "id": "R93",
+      "text": "After a proof, VBW checks the working folder for links that point into its proof copies and names each one with how to repair it, so damage left by an earlier VBW is found; with none, it says nothing",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M12",
+      "rules": [
+        {
+          "text": "after a proof, links in the working folder (git-ignored folders included) whose target, absolute or relative, is inside .vbw/runtime/proof.* are each printed on their own line with path, target and repair",
+          "check": "C140"
+        },
+        {
+          "text": "the repair for a pnpm project is to delete node_modules and run pnpm install; otherwise to re-run the project's install command",
+          "check": "C140"
+        },
+        {
+          "text": "with no such link, nothing extra is printed; a link pointing elsewhere in .vbw or outside the project is not reported",
+          "check": "C140"
+        },
+        {
+          "text": "the scan changes nothing in the working folder, does not follow links and skips .git",
+          "check": "C141"
+        },
+        {
+          "text": "the scan runs also when the proof stops early with an error, and a failing proof still fails the same way",
+          "check": "C142"
+        },
+        {
+          "text": "the scan never turns a passing proof into a failing one",
+          "check": "C140"
+        },
+        {
+          "text": "the scan's time on a 50,000-file working folder is measured and bounded",
+          "check": "C143"
+        },
+        {
+          "text": "docs/proof.md describes the warning and the repair",
+          "check": "C144"
+        }
+      ]
+    },
+    {
+      "id": "R94",
+      "text": "In one proof, a check waiting for an alone check keeps waiting as long as that check is still running; a proof never aborts because a check waited: a check that cannot run is reported as not run with the reason, every other result stands, and the proof prints no shell job warnings",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M12",
+      "rules": [
+        {
+          "text": "a check waiting for an alone check keeps waiting as long as the alone check runs, with no fixed time limit, and then runs and reports",
+          "check": "C145"
+        },
+        {
+          "text": "the proof prints no shell job warning while checks wait for an alone check",
+          "check": "C145"
+        },
+        {
+          "text": "an interrupt during a wait removes the wait registration and leaves no gate file behind",
+          "check": "C145"
+        },
+        {
+          "text": "when the holder of the gate dies, a waiting check takes over and runs",
+          "check": "C146"
+        },
+        {
+          "text": "a check that cannot run is reported as not run with the reason, and the proof does not abort",
+          "check": "C147"
+        },
+        {
+          "text": "every other result stands and is recorded, and a not-run check counts as not passed",
+          "check": "C147"
+        },
+        {
+          "text": "no shell job warning is printed in bash 3.2 or bash 5, including when a check's runner ends early",
+          "check": "C147"
+        },
+        {
+          "text": "VBW_CHECK_WAIT_SECONDS is removed from the code and the docs no longer say it ends a wait",
+          "check": "C148"
+        }
+      ]
     }
   ],
   "checks": [
@@ -3800,6 +3939,240 @@
         "tests/panel/flash.test.mjs",
         "tests/panel/helpers/fake-mod.mjs",
         "tests/panel/helpers/run.mjs"
+      ]
+    },
+    {
+      "id": "C131",
+      "req": "R92",
+      "run": [
+        "bats",
+        "tests/proof-selfcontained.bats",
+        "-f",
+        "no git-ignored path of the copy is a link"
+      ],
+      "files": [
+        "tests/proof-selfcontained.bats"
+      ]
+    },
+    {
+      "id": "C132",
+      "req": "R92",
+      "run": [
+        "bats",
+        "tests/proof-selfcontained.bats",
+        "-f",
+        "a write inside node_modules|pnpm 11 refusal"
+      ],
+      "files": [
+        "tests/proof-selfcontained.bats"
+      ]
+    },
+    {
+      "id": "C133",
+      "req": "R92",
+      "run": [
+        "bats",
+        "tests/proof-selfcontained.bats",
+        "-f",
+        "byte-identical"
+      ],
+      "files": [
+        "tests/proof-selfcontained.bats"
+      ]
+    },
+    {
+      "id": "C134",
+      "req": "R92",
+      "run": [
+        "bats",
+        "tests/proof-selfcontained.bats",
+        "-f",
+        "links inside a copied folder stay links"
+      ],
+      "files": [
+        "tests/proof-selfcontained.bats"
+      ]
+    },
+    {
+      "id": "C135",
+      "req": "R92",
+      "run": [
+        "bats",
+        "tests/proof-selfcontained.bats",
+        "-f",
+        "copy-on-write clone first"
+      ],
+      "files": [
+        "tests/proof-selfcontained.bats"
+      ]
+    },
+    {
+      "id": "C136",
+      "req": "R92",
+      "run": [
+        "bats",
+        "tests/proof-selfcontained.bats",
+        "-f",
+        "build output is not brought in"
+      ],
+      "files": [
+        "tests/proof-selfcontained.bats"
+      ]
+    },
+    {
+      "id": "C137",
+      "req": "R92",
+      "run": [
+        "bats",
+        "tests/proof-selfcontained.bats",
+        "-f",
+        "cannot be read fails the proof"
+      ],
+      "files": [
+        "tests/proof-selfcontained.bats"
+      ]
+    },
+    {
+      "id": "C138",
+      "req": "R92",
+      "run": [
+        "bats",
+        "tests/proof-selfcontained.bats",
+        "-f",
+        "copy is removed after a proof|interrupted proof removes"
+      ],
+      "files": [
+        "tests/proof-selfcontained.bats"
+      ]
+    },
+    {
+      "id": "C139",
+      "req": "R92",
+      "run": [
+        "bats",
+        "tests/proof-copy-docs.bats",
+        "-f",
+        "R92: docs"
+      ],
+      "files": [
+        "tests/proof-copy-docs.bats"
+      ]
+    },
+    {
+      "id": "C140",
+      "req": "R93",
+      "run": [
+        "bats",
+        "tests/proof-stale-links.bats",
+        "-f",
+        "each stale link|not pnpm|with no such link|never turns a passing proof"
+      ],
+      "files": [
+        "tests/proof-stale-links.bats"
+      ]
+    },
+    {
+      "id": "C141",
+      "req": "R93",
+      "run": [
+        "bats",
+        "tests/proof-stale-links.bats",
+        "-f",
+        "changes nothing in the working folder"
+      ],
+      "files": [
+        "tests/proof-stale-links.bats"
+      ]
+    },
+    {
+      "id": "C142",
+      "req": "R93",
+      "run": [
+        "bats",
+        "tests/proof-stale-links.bats",
+        "-f",
+        "stops early with an error"
+      ],
+      "files": [
+        "tests/proof-stale-links.bats"
+      ]
+    },
+    {
+      "id": "C143",
+      "req": "R93",
+      "run": [
+        "bats",
+        "tests/proof-stale-links.bats",
+        "-f",
+        "50,000 files"
+      ],
+      "files": [
+        "tests/proof-stale-links.bats"
+      ]
+    },
+    {
+      "id": "C144",
+      "req": "R93",
+      "run": [
+        "bats",
+        "tests/proof-copy-docs.bats",
+        "-f",
+        "R93: docs"
+      ],
+      "files": [
+        "tests/proof-copy-docs.bats"
+      ]
+    },
+    {
+      "id": "C145",
+      "req": "R94",
+      "run": [
+        "bats",
+        "tests/check-wait-patient.bats",
+        "-f",
+        "shared checks wait for a long alone check|interrupt during a wait"
+      ],
+      "files": [
+        "tests/check-wait-patient.bats"
+      ]
+    },
+    {
+      "id": "C146",
+      "req": "R94",
+      "run": [
+        "bats",
+        "tests/check-wait-patient.bats",
+        "-f",
+        "holder dies"
+      ],
+      "files": [
+        "tests/check-wait-patient.bats"
+      ]
+    },
+    {
+      "id": "C147",
+      "req": "R94",
+      "run": [
+        "bats",
+        "tests/check-wait-patient.bats",
+        "-f",
+        "runner ends without a result|many quick checks"
+      ],
+      "files": [
+        "tests/check-wait-patient.bats"
+      ]
+    },
+    {
+      "id": "C148",
+      "req": "R94",
+      "run": [
+        "bats",
+        "tests/check-wait-patient.bats",
+        "-f",
+        "VBW_CHECK_WAIT_SECONDS is gone"
+      ],
+      "files": [
+        "tests/check-wait-patient.bats"
       ]
     }
   ],
@@ -6123,13 +6496,14 @@
         "An unknown role or state falls back to a neutral grey and does not crash rendering",
         "Output stays readable with colour off (NO_COLOR or plain terminals): marks and words still carry the state"
       ],
+      "proposed": "deep",
       "tier": "deep",
       "reasons": [
         "requirements: 1",
-        "files: 11 (148492 bytes)",
-        "files: more than 2 in a repository tracking 684 files",
+        "files: 11 (156450 bytes)",
+        "files: more than 2 in a repository tracking 694 files",
         "risk: none",
-        "breaks: R51, R52, R53, R55, R56, R57, R58, R64, R82",
+        "breaks: R51, R52, R53, R55, R56, R57, R58, R64, R82, R85, R86, R87, R88, R89, R91",
         "tests: project test command"
       ],
       "predicted": "deep",
@@ -6167,13 +6541,14 @@
         "The verb is coloured and the object dimmed; an unrecognised command falls back to a short generic phrase, never an empty line or the raw command with secrets",
         "Long object names are truncated to the row width without breaking colour codes"
       ],
+      "proposed": "deep",
       "tier": "deep",
       "reasons": [
         "requirements: 3",
-        "files: 8 (115336 bytes)",
-        "files: more than 2 in a repository tracking 684 files",
+        "files: 8 (127169 bytes)",
+        "files: more than 2 in a repository tracking 694 files",
         "risk: none",
-        "breaks: R51, R52, R53, R55, R56, R57, R58, R82",
+        "breaks: R51, R52, R53, R55, R56, R57, R58, R82, R84, R88, R89, R91",
         "tests: project test command"
       ],
       "predicted": "deep",
@@ -6213,13 +6588,14 @@
         "With motion setting not full, no flash happens",
         "The flash ends on its own and leaves the row in its normal colours"
       ],
+      "proposed": "deep",
       "tier": "deep",
       "reasons": [
         "requirements: 3",
-        "files: 6 (83832 bytes)",
-        "files: more than 2 in a repository tracking 684 files",
+        "files: 6 (92002 bytes)",
+        "files: more than 2 in a repository tracking 694 files",
         "risk: none",
-        "breaks: R51, R52, R53, R55, R56, R57, R58, R64, R82",
+        "breaks: R51, R52, R53, R55, R56, R57, R58, R64, R82, R84, R85, R86, R87",
         "tests: project test command"
       ],
       "predicted": "deep",
@@ -6251,6 +6627,7 @@
         "The owner views the band, Mission Control and Wrapped during a real run and confirms each agent role and each state is distinguishable at a glance",
         "Any colour the owner finds confusing is recorded as a finding, with the palette change that follows"
       ],
+      "proposed": "express",
       "tier": "express",
       "reasons": [
         "requirements: 1",
@@ -6260,6 +6637,100 @@
         "tests: project test command"
       ],
       "predicted": "express"
+    },
+    {
+      "id": "P63",
+      "title": "The proof copy is self-contained",
+      "reqs": [
+        "R92"
+      ],
+      "milestone": "M12",
+      "goal": "A proof runs in a copy that shares no writable folder with the working folder, so tools such as pnpm 11 behave in the proof as they do in place, and a proof cannot change the working folder.",
+      "criteria": [
+        "After vbw prove creates its copy, no path under the copy that is git-ignored in the working folder (node_modules, .env files and the like) is a symbolic link; each is a real file or folder with the same content as the working folder.",
+        "The copy uses a copy-on-write clone where the file system offers one (APFS clonefile, Linux reflink); where it does not, it falls back to a plain recursive copy, so the proof still runs and the result is the same.",
+        "Build-output folders (dist, build, .next, target and the other names already excluded) are still not brought in; the copy builds its own.",
+        "The .git and .vbw paths are never copied into the copy.",
+        "A fixture with a node_modules folder: a check that writes a file inside node_modules passes in the proof, and that file does not exist in the working folder afterwards.",
+        "A fixture check that fails when its node_modules is a symlink (the pnpm 11 task-run-state refusal) passes in vbw prove as it does in vbw check.",
+        "After a proof, every file and symlink in the working folder (git-ignored included) is byte-identical to before, including symlinks inside node_modules that point to workspace packages.",
+        "Symlinks that exist inside a copied folder (pnpm workspace links) are copied as links; a relative link keeps resolving inside the copy, and an absolute link into the working folder is reported in the proof output with its path rather than followed silently.",
+        "A git-ignored folder that cannot be read or copied makes the proof fail before any check runs, naming the path; it never leaves a half-made copy behind.",
+        "An interrupted proof (Ctrl-C) removes the copy completely, and removing the copy never deletes anything outside it.",
+        "The copy is removed after the proof and the disk space returns; docs/proof.md states that git-ignored files are copied, not linked, with the pnpm example and the clone-or-copy fallback.",
+        "Tests exist for: no links in the copy, write isolation, fallback to a plain copy, and removal; each is shown to fail with the old linking code."
+      ],
+      "tier": "deep",
+      "reasons": [
+        "requirements: 1",
+        "files: 3 (33619 bytes)",
+        "files: more than 2 in a repository tracking 694 files",
+        "risk: none",
+        "breaks: R1, R2, R12, R13, R14, R31, R32, R33, R43, R44, R45, R46, R47, R48, R49, R58, R61, R66, R69, R70, R73, R74, R78, R79, R80, R81, R83",
+        "tests: project test command"
+      ],
+      "predicted": "deep"
+    },
+    {
+      "id": "P64",
+      "title": "Find damage left by an earlier proof",
+      "reqs": [
+        "R93"
+      ],
+      "milestone": "M12",
+      "goal": "After a proof, VBW finds any link in the working folder that points into a proof copy and tells the user how to repair it; with none it says nothing.",
+      "criteria": [
+        "After vbw prove ends (pass, fail or abort), the working folder is scanned, including git-ignored folders such as node_modules, for symbolic links whose target is inside .vbw/runtime/proof.* (absolute or relative target).",
+        "Each link found is printed on its own line with its path, its target, and the repair step (for pnpm: delete node_modules and run pnpm install; otherwise re-run the project's install command).",
+        "With no such link the proof prints nothing extra, and the output is byte-identical to the output without the scan.",
+        "A link that points elsewhere in .vbw or outside the project is not reported.",
+        "The scan makes no change to the working folder; it only reads and prints.",
+        "The scan does not follow links and skips the .git folder; its time on a 50,000-file fixture is measured and recorded in the tests.",
+        "The scan runs also when the proof stops early with an error, and it never turns a passing proof into a failing one.",
+        "A fixture where a link into a stale proof copy is planted by hand: the warning names it and the repair step; a clean fixture prints nothing.",
+        "docs/proof.md describes the warning and the repair; tests cover warning, silence, and not-followed links."
+      ],
+      "tier": "deep",
+      "reasons": [
+        "requirements: 1",
+        "files: 4 (38557 bytes)",
+        "files: more than 2 in a repository tracking 694 files",
+        "risk: none",
+        "breaks: R1, R2, R12, R13, R14, R25, R31, R32, R33, R43, R44, R45, R46, R47, R48, R49, R58, R61, R66, R69, R70, R73, R74, R78, R79, R80, R81, R83",
+        "tests: project test command"
+      ],
+      "predicted": "deep"
+    },
+    {
+      "id": "P65",
+      "title": "A waiting check never aborts the proof",
+      "reqs": [
+        "R94"
+      ],
+      "milestone": "M12",
+      "goal": "In one proof, a check waiting for an alone check keeps waiting while that check runs, and a proof never aborts because a check waited.",
+      "criteria": [
+        "A check waiting for the gate keeps waiting as long as the process holding the gate is alive; the fixed 900 second limit no longer ends the wait while the holder is running.",
+        "If the holder dies or its registration goes stale, the waiting check takes over the gate and runs; it does not wait forever.",
+        "A check that cannot run is reported in the results as not run with the reason, and the proof does not die with 'check Cn did not finish'.",
+        "Every other check result stands and is recorded; a not-run check counts as not passed, so a proof with one never reports success.",
+        "No output contains 'is not a child of this shell' or any other shell job warning, including when a check subshell exits early, in both bash 3.2 and bash 5.",
+        "A fixture with one long alone check and several shared checks: all shared checks run after it and report results, and the proof prints no warnings.",
+        "Interrupt (Ctrl-C) during a wait removes the wait registration and leaves no gate files behind.",
+        "VBW_CHECK_WAIT_SECONDS is removed or documented as no longer ending a wait; docs and tests are updated to match.",
+        "Tests exist for long wait, dead holder takeover, not-run reporting and no job warnings; each is shown to fail with the old code."
+      ],
+      "proposed": "deep",
+      "tier": "deep",
+      "reasons": [
+        "requirements: 1",
+        "files: 4 (44958 bytes)",
+        "files: more than 2 in a repository tracking 694 files",
+        "risk: none",
+        "breaks: R12, R31, R32, R43, R44, R45, R46, R47, R48, R49, R61, R66, R69, R70, R73, R74, R78, R79, R80, R81, R83",
+        "tests: project test command"
+      ],
+      "predicted": "deep"
     }
   ],
   "plans": [
@@ -10593,6 +11064,138 @@
         "Describe the one-line summary of a record.json change and that expanding the row shows the full diff",
         "Describe the flash of a new agent, that it needs full motion, and how to set the motion level"
       ]
+    },
+    {
+      "id": "P63.1",
+      "phase": "P63",
+      "title": "Copy the ignored folders into the proof copy instead of linking them",
+      "reqs": [
+        "R92"
+      ],
+      "files": [
+        "plugin/lib/proofcopy.sh",
+        "plugin/lib/core.sh"
+      ],
+      "after": [],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "Copy each git-ignored folder or file into the proof copy (a fast copy-on-write clone first, a plain copy when the file system refuses), keeping links inside as links; build-output folders, .git and .vbw stay out",
+        "Report, by path, each link inside a copied folder that points into the working folder by absolute path (compare real paths, so macOS /var and /private/var match); on a folder that cannot be copied, name it in the error and remove the half-made copy before any check runs",
+        "Make removal complete and safe: also remove read-only folders the copy brings in (on interrupt too, in the shared cleanup), never follow a link out of the copy, and drop the old unlink-the-links step",
+        "Keep the net growth of the kernel small (it is near its line limit) and update the file's header comment"
+      ]
+    },
+    {
+      "id": "P63.2",
+      "phase": "P63",
+      "title": "Document that the proof copy holds copies, not links",
+      "reqs": [
+        "R92"
+      ],
+      "files": [
+        "docs/proof.md"
+      ],
+      "after": [
+        "P63.1"
+      ],
+      "status": "planned",
+      "role": "docs",
+      "tasks": [
+        "Replace the text that says ignored files are linked in with: they are copied, never linked, and why (pnpm 11 refuses linked node_modules and a proof must not change the working folder)",
+        "Describe the clone-or-plain-copy fallback, the absolute-link report and the unreadable-folder failure",
+        "Remove the sentence about removing the copy never touching the files behind the links"
+      ]
+    },
+    {
+      "id": "P64.1",
+      "phase": "P64",
+      "title": "Warn about links left pointing into a proof copy",
+      "reqs": [
+        "R93"
+      ],
+      "files": [
+        "plugin/lib/proofcopy.sh",
+        "plugin/lib/cmd-prove.sh",
+        "plugin/lib/core.sh"
+      ],
+      "after": [
+        "P63.1"
+      ],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "Add a read-only scan of the working folder (git-ignored folders included, links not followed, .git skipped) for links whose target, absolute or relative, resolves inside this project's .vbw/runtime/proof.* (compare real paths as well as the written ones; a look-alike path outside the project is not reported)",
+        "Print one line per link: its path, its target and the repair (pnpm project, detected by pnpm-lock.yaml or pnpm-workspace.yaml: delete node_modules and run pnpm install; otherwise re-run the project's install command); print nothing when there is none",
+        "Run the scan after every proof, also when the proof stops on an error, without changing its exit status or its other output",
+        "Keep the added kernel lines few"
+      ]
+    },
+    {
+      "id": "P64.2",
+      "phase": "P64",
+      "title": "Document the stale-link warning and its repair",
+      "reqs": [
+        "R93"
+      ],
+      "files": [
+        "docs/proof.md"
+      ],
+      "after": [
+        "P64.1",
+        "P63.2"
+      ],
+      "status": "planned",
+      "role": "docs",
+      "tasks": [
+        "Add a short section: what the warning looks like, when it appears and that it only reads",
+        "Give the repair steps for pnpm and for other projects"
+      ]
+    },
+    {
+      "id": "P65.1",
+      "phase": "P65",
+      "title": "Make waiting checks patient and a lost check visible",
+      "reqs": [
+        "R94"
+      ],
+      "files": [
+        "plugin/lib/checks.sh",
+        "tests/gate-race.bats",
+        "tests/check-alone-runner.bats"
+      ],
+      "after": [],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "Remove the 900 second limit and VBW_CHECK_WAIT_SECONDS: a waiting check keeps waiting while the holder's process is alive and takes over when it is gone or its registration is stale",
+        "When a check's runner ends without leaving a result, record that check as skipped with a tail starting 'not run:' and the reason; the proof goes on, every other result is recorded, and a skipped check counts as not passed",
+        "Stop all shell job warnings (wait: pid is not a child, Killed notices) in bash 3.2 and bash 5, including when a runner exits early",
+        "Update the two old tests that assert the removed time limit (tests/gate-race.bats, tests/check-alone-runner.bats) to the new behavior, keeping what else they prove",
+        "Keep the kernel within its line limit"
+      ]
+    },
+    {
+      "id": "P65.2",
+      "phase": "P65",
+      "title": "Document the patient wait and the not-run result",
+      "reqs": [
+        "R94"
+      ],
+      "files": [
+        "docs/proof.md"
+      ],
+      "after": [
+        "P65.1",
+        "P64.2"
+      ],
+      "status": "planned",
+      "role": "docs",
+      "tasks": [
+        "Rewrite the paragraph that says a check waits at most 900 seconds: it waits while the holder runs and takes over when the holder is gone",
+        "Document the not-run result (status skipped, reason in the tail) and that it counts as not passed",
+        "Remove the VBW_CHECK_WAIT_SECONDS sentence"
+      ]
     }
   ],
   "fixes": [
@@ -11227,6 +11830,11 @@
     {
       "id": "T51",
       "text": "Claude Code now frames workflow agent prompts as 'computed task, no user authority'; QA (P61, twice) skipped vbw qa record and a Scout refused run confirm. Workflow agents must get their write duties from their agent file mandate, not the task text; also suiteNote prints 'test command (undefined)'",
+      "status": "open"
+    },
+    {
+      "id": "T52",
+      "text": "Panel does not open at session launch in a wide window (owner, Portfolium, 2.0.22 build via --plugin-dir); it opens once a VBW run starts. R52 says it opens by itself: find the launch trigger gap and add the case to the panel L3 scenario",
       "status": "open"
     }
   ],

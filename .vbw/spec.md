@@ -98,6 +98,9 @@ VBW is a Claude Code plugin that makes it build software properly: the user agre
 - R89 [auto] Mission Control's tabs stay visible at the top of the pane however long its content is, and each sentence of the pane shows its key value in colour (progress green, estimate amber, cost in the accent colour, a need of the user yellow)
 - R90 [human] The panel's colours make it easy to tell at a glance which agent is which and what state each is in
 - R91 [auto] When an agent starts, its new row in the band flashes briefly in its role's colour (about a second), only when the motion setting is full
+- R92 [auto] The proof copy shares no writable folder with the working folder: git-ignored files and folders (dependencies, env files) are copied in, as a copy-on-write clone where the file system offers one, never linked; so a tool that refuses linked folders or writes into its dependency folders (for example pnpm 11 recursive runs and its dependency check) behaves in the proof as in the working folder, and nothing a proof does changes the working folder
+- R93 [auto] After a proof, VBW checks the working folder for links that point into its proof copies and names each one with how to repair it, so damage left by an earlier VBW is found; with none, it says nothing
+- R94 [auto] In one proof, a check waiting for an alone check keeps waiting as long as that check is still running; a proof never aborts because a check waited: a check that cannot run is reported as not run with the reason, every other result stands, and the proof prints no shell job warnings
 
 <!-- One requirement per line: an id, how it is proved, and a user-observable
      statement. [auto] = a check can prove it; [human] = only a person can judge it.
