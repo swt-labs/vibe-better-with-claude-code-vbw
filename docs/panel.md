@@ -144,7 +144,9 @@ change, the band shows less, never an error.
 
 ## Mission Control
 
-Mission Control is the pane. Its tabs run across the top; press one to switch:
+Mission Control is the pane. Its tabs run across the top, after the VBW
+portrait (a picture on terminals that draw images, such as kitty and Ghostty;
+the word `VBW` elsewhere); press one to switch:
 
 ```
 Now │ Plan │ Proof │ Timeline │ Decisions │ Team │ Costs
@@ -165,6 +167,12 @@ Now │ Plan │ Proof │ Timeline │ Decisions │ Team │ Costs
 - **Costs:** each VBW run of this session with its cost (the session cost added
   while the run was open, so "about"), by kind, and the session total. The list
   starts with the session: a new session starts again from zero.
+
+When a milestone ships, Mission Control opens on **VBW Wrapped**: the
+requirements proven, the checks passing, the agents and fix rounds, the time
+the milestone's steps took, its cost and its fastest and slowest steps. The
+agents and the cost count only the runs this session saw; what VBW cannot know
+says "unknown" or is left out. Press any tab to leave it.
 
 ## One-line notes
 
@@ -196,13 +204,6 @@ These answer at once, even while Claude is busy, and cost no model turn:
 | `/vbw-todo [idea]` | Parks an idea for later. With no text it takes the text you selected. VBW's own `vbw todo add` writes it |
 | `/vbw-panel` | Opens Mission Control |
 | `/vbw-sound` | Turns the "needs you" sound on or off |
-
-## Motion
-
-The band's spinners move calmly by default (one step a second). The motion
-level is `calm` unless your project's settings say `full` or `off`; VBW's own
-test sessions are always `off`, so what they show stays the same from run to
-run. With `off` the band shows a dot instead of a spinner.
 
 ## Cost
 
@@ -289,15 +290,31 @@ never in `.vbw/record.json`. The sound needs the panel, so it needs Claude Code
 How much the panel animates is a project setting, shared through git:
 
 ```bash
-vbw config set motion full     # crew sprites, confetti, the Wrapped card at ship
+vbw config set motion full     # crew sprites and celebrations
 vbw config set motion calm     # dots and spinners, no confetti
 vbw config set motion off      # static text
 vbw config set motion default  # let your interview level pick
 ```
 
+What each level shows:
+
+| | `full` | `calm` | `off` |
+|---|---|---|---|
+| Each agent in the band | a small figure in its role's colour, posed by what it does (reading, editing, running a command, writing, quiet, done, failed), moving about 10 times a second while the run works | a dot in its role's colour and a spinner that steps once a second | a dot and a still `·` |
+| A phase passes QA | about 1.5 s of confetti in the band | nothing | nothing |
+| All checks pass | one green sweep across the top of the Proof tab, and `✓ All checks pass` in the band for a minute | `✓ All checks pass` in the band for a minute | nothing |
+| A milestone ships | Mission Control opens on VBW Wrapped | the same | the same |
+
+The figures need three rows of the band for each agent; with less room the band
+shows dots. They move only while a VBW run works and the band shows them, and
+stop when the run ends. Figures, confetti and the sweep are drawn on the
+terminal only; other surfaces show the dots. VBW Wrapped is information, not
+decoration, so it opens at every level.
+
 Unset, the panel picks `full` if you told the interview you have never coded
-or write small scripts, and `calm` otherwise. In test mode it is always `off`,
-so test runs draw the same thing every time. `vbw config` shows the setting.
+or write small scripts, and `calm` otherwise (also before the interview). In
+test mode it is always `off`, so test runs draw the same thing every time.
+`vbw config` shows the setting.
 
 ## What it needs
 
