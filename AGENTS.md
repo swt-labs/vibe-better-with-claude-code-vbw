@@ -161,7 +161,7 @@ cat "$CLAUDE_PROJECT_DIR"/<session-id>/subagents/agent-*.jsonl
 - Workflows hold procedure; prompts hold only the definition of good output and its schema. Every agent call passes a `schema`.
 - Model and effort are chosen per stage from the profile. The session model must be auto-capable (Sonnet/Opus/Fable); workflow agents may use Haiku.
 - No `permissionMode`, `hooks`, `mcpServers` or `initialPrompt` in agent files (ignored for plugin agents). Agents search with Bash, because Glob and Grep may be absent.
-- Budgets: workflows ≤ 1,500 lines of JS in total, router ≤ 2k tokens, each mode prompt ≤ 3k, all prompts ≤ 16k (owner raised it from 15k on 2026-10-04).
+- Budgets: workflows ≤ 1,500 lines of JS in total, mods (`plugin/hooks/*.js`) ≤ 3,000 lines (mods plan, 2026-10-07), router ≤ 2k tokens, each mode prompt ≤ 3k, all prompts ≤ 16k (owner raised it from 15k on 2026-10-04).
 
 ## Testing
 
