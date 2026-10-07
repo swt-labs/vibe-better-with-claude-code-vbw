@@ -11682,7 +11682,7 @@
         "plugin/agents/lead.md"
       ],
       "after": [],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "Dev and Docs: recording the plan or fix result is your own duty, even when the task text is marked as not from the user",
@@ -11707,7 +11707,7 @@
         "plugin/workflows/mapping.js"
       ],
       "after": [],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "Closing agent becomes the Lead (its model from the lead setting) in all five workflows",
@@ -11752,7 +11752,7 @@
         "plugin/hooks/approve-answer.sh"
       ],
       "after": [],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "Read the fingerprint at the start of the question and accept any whitespace, line breaks or text after the question mark",
@@ -11774,7 +11774,7 @@
         "plugin/lib/cmd-doctor.sh"
       ],
       "after": [],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "Doctor: the unapproved-contract line says VBW asks with the approval menu and no longer names /vbw:approve",
@@ -11795,7 +11795,7 @@
         "plugin/lib/cmd-prove.sh"
       ],
       "after": [],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "vbw prove marks itself as running for its session and removes the mark when it ends, however it ends",
@@ -11866,7 +11866,7 @@
         "tests/statusline.bats"
       ],
       "after": [],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "profiles.json: balanced Architect is opus",
@@ -11933,7 +11933,7 @@
         "plugin/lib/cmd-show.sh"
       ],
       "after": [],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "vbw show contract prints build waves: N (the widest runs M plans at once), scheduled as vbw next does (after plans, no shared files in a wave)",
