@@ -108,6 +108,12 @@ VBW is a Claude Code plugin that makes it build software properly: the user agre
 - R100 [auto] After the plan changes (a new plan, a changed plan or a re-plan), VBW asks for approval only with the approval menu; it never tells the user to type /vbw:approve
 - R101 [auto] In the balanced profile the Architect runs on Opus and every other role on Sonnet; QA is never below Sonnet in any profile
 - R102 [auto] Planning splits each phase into plans that touch separate files wherever the work allows, so as many plans as possible build at the same time; the approval shows the number of build waves and how many plans the widest wave runs at once
+- R103 [auto] When the committed project files are identical to those of the last passing proof (only VBW's own record or spec changed), vbw prove reuses that proof's results for every check and command whose approved definition is unchanged, says so, and runs only the rest
+- R104 [auto] A phase is not checked by QA again when the only change since its pass is a recorded decision, a closed finding with no code change, or a removed requirement that only a person judges; a phase whose code, tests, goal or remaining requirements changed is still checked again
+- R105 [auto] A phase's rigor tier is not raised by proven requirements it could affect when each of them is guarded by an approved check the proof re-runs; only proven requirements no check guards raise it, and the tier's reasons still list what the phase could affect
+- R106 [auto] The Architect is given the next free phase number and proposes phases numbered from it, so planning never needs a renumbering round
+- R107 [auto] Each workflow agent runs at the effort its step needs, set per role and step by the profile (lower for closing a run and for documentation, higher for planning and QA), through Claude Code's per-agent effort setting; on a Claude Code without that setting, agents run as before
+- R108 [human] The panel's colours make it easy to tell at a glance which agent is which and what state each is in
 
 <!-- One requirement per line: an id, how it is proved, and a user-observable
      statement. [auto] = a check can prove it; [human] = only a person can judge it.

@@ -2633,6 +2633,350 @@
           "check": "C159"
         }
       ]
+    },
+    {
+      "id": "R103",
+      "text": "When the committed project files are identical to those of the last passing proof (only VBW's own record or spec changed), vbw prove reuses that proof's results for every check and command whose approved definition is unchanged, says so, and runs only the rest",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M14",
+      "rules": [
+        {
+          "text": "after a passing proof, recording a decision (only the record changes) and running vbw prove runs no check and no command",
+          "check": "C160"
+        },
+        {
+          "text": "the output names each reused check and command, says it was reused, and gives the time of the proof its result came from",
+          "check": "C160"
+        },
+        {
+          "text": "a change to spec.md alone (a new human requirement, approved again) reuses every result",
+          "check": "C160"
+        },
+        {
+          "text": "a check added since the last passing proof runs, and only it; the others are reused",
+          "check": "C160"
+        },
+        {
+          "text": "a check whose approved definition changed while the code is unchanged runs, and the rest are reused",
+          "check": "C160"
+        },
+        {
+          "text": "a project command whose approved argv changed runs, and the unchanged command is reused",
+          "check": "C160"
+        },
+        {
+          "text": "a check removed from the contract does not appear in the new proof's results",
+          "check": "C160"
+        },
+        {
+          "text": "a committed project file that differs from the last passing proof runs every check and command, as before",
+          "check": "C160"
+        },
+        {
+          "text": "uncommitted changes to project files (tracked edits or untracked files) reuse nothing and run every check and command",
+          "check": "C160"
+        },
+        {
+          "text": "when the last proof did not pass, nothing is reused and every check and command runs",
+          "check": "C160"
+        },
+        {
+          "text": "when the last proof was interrupted, nothing is reused and every check and command runs",
+          "check": "C160"
+        },
+        {
+          "text": "the proof that reuses results is recorded as current for the present code: vbw qa record accepts it and vbw status shows the requirements as proven",
+          "check": "C160"
+        },
+        {
+          "text": "a changed check that fails still fails the proof, while the unchanged checks stay passing and are reused",
+          "check": "C160"
+        },
+        {
+          "text": "docs/proof.md describes when results are reused, when nothing is, and how the output shows it",
+          "check": "C160"
+        }
+      ]
+    },
+    {
+      "id": "R104",
+      "text": "A phase is not checked by QA again when the only change since its pass is a recorded decision, a closed finding with no code change, or a removed requirement that only a person judges; a phase whose code, tests, goal or remaining requirements changed is still checked again",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M14",
+      "rules": [
+        {
+          "text": "a newly recorded decision does not list a passed phase for QA again",
+          "check": "C161"
+        },
+        {
+          "text": "a finding closed with no code change does not list a passed phase again",
+          "check": "C161"
+        },
+        {
+          "text": "removing one of the phase's [human] requirements does not list it again",
+          "check": "C161"
+        },
+        {
+          "text": "a decision, a closed finding and a removed [human] requirement together still do not list the phase",
+          "check": "C161"
+        },
+        {
+          "text": "a removed [human] requirement together with a code change lists the phase, with the reason",
+          "check": "C161"
+        },
+        {
+          "text": "a removed [human] requirement together with a changed goal lists the phase",
+          "check": "C161"
+        },
+        {
+          "text": "a decision together with a changed test lists the phase",
+          "check": "C161"
+        },
+        {
+          "text": "a finding closed together with a code change lists the phase",
+          "check": "C161"
+        },
+        {
+          "text": "a reworded [auto] requirement lists the phase again, and the reason (in plain words, naming the requirement) is shown in vbw next, the QA instruction and vbw show qa",
+          "check": "C162"
+        },
+        {
+          "text": "an [auto] requirement added to the phase lists it again with the reason shown",
+          "check": "C162"
+        },
+        {
+          "text": "an [auto] requirement removed from the phase lists it again",
+          "check": "C162"
+        },
+        {
+          "text": "a decision recorded together with a reworded [auto] requirement still lists the phase",
+          "check": "C162"
+        },
+        {
+          "text": "rewording a [human] requirement alone does not list the phase again",
+          "check": "C162"
+        },
+        {
+          "text": "docs/proof.md says which changes list a passed phase again and which do not",
+          "check": "C162"
+        }
+      ]
+    },
+    {
+      "id": "R105",
+      "text": "A phase's rigor tier is not raised by proven requirements it could affect when each of them is guarded by an approved check the proof re-runs; only proven requirements no check guards raise it, and the tier's reasons still list what the phase could affect",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M14",
+      "rules": [
+        {
+          "text": "a proven [auto] requirement guarded by an approved check does not raise the tier",
+          "check": "C163"
+        },
+        {
+          "text": "the reasons still list the guarded requirement with its check",
+          "check": "C163"
+        },
+        {
+          "text": "a [human] requirement a person accepted raises the tier and is named as what raised it",
+          "check": "C163"
+        },
+        {
+          "text": "with a guarded and an unguarded requirement the reasons mark each, and only the unguarded one raises the tier",
+          "check": "C163"
+        },
+        {
+          "text": "a requirement whose check changed since the approval is not guarded and raises the tier",
+          "check": "C163"
+        },
+        {
+          "text": "a requirement whose check file changed since the approval is not guarded",
+          "check": "C163"
+        },
+        {
+          "text": "a requirement whose check was never approved is not guarded",
+          "check": "C163"
+        },
+        {
+          "text": "a requirement with no check is not guarded",
+          "check": "C163"
+        },
+        {
+          "text": "a risk path still raises the tier of a phase whose proven requirement is guarded",
+          "check": "C163"
+        },
+        {
+          "text": "many files still raise the tier as before when the proven requirement is guarded",
+          "check": "C163"
+        },
+        {
+          "text": "the approval line shows what the phase could affect, what raised the tier and what is guarded",
+          "check": "C163"
+        },
+        {
+          "text": "docs/rigor.md explains guarded requirements and what raises the tier",
+          "check": "C163"
+        }
+      ]
+    },
+    {
+      "id": "R106",
+      "text": "The Architect is given the next free phase number and proposes phases numbered from it, so planning never needs a renumbering round",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M14",
+      "rules": [
+        {
+          "text": "vbw next --json states next_phase: 1 with no phase, else one after the highest phase number",
+          "check": "C164"
+        },
+        {
+          "text": "phase numbers compare as numbers (P10 is higher than P9)",
+          "check": "C164"
+        },
+        {
+          "text": "a sub-phase named in a plan or a decision (P65.1) counts as its whole number",
+          "check": "C164"
+        },
+        {
+          "text": "phases of a shipped milestone count",
+          "check": "C164"
+        },
+        {
+          "text": "a phase that was started counts",
+          "check": "C164"
+        },
+        {
+          "text": "a removed phase that a recorded decision names still counts",
+          "check": "C164"
+        },
+        {
+          "text": "letters that merely end in P and digits are not phase numbers",
+          "check": "C164"
+        },
+        {
+          "text": "planning again numbers new phases after the highest, including phases already started",
+          "check": "C164"
+        },
+        {
+          "text": "the number is part of every answer of vbw next, not only the plan step",
+          "check": "C164"
+        },
+        {
+          "text": "docs/next.md names next_phase and how the number is found",
+          "check": "C164"
+        },
+        {
+          "text": "the Architect's scoping task states the next free phase number from args.next_phase, whatever its value",
+          "check": "C165"
+        },
+        {
+          "text": "a planning run has no renumbering step: the phases come back numbered and reach the Lead as given",
+          "check": "C165"
+        },
+        {
+          "text": "planning again states the number and keeps started phases as they are",
+          "check": "C165"
+        },
+        {
+          "text": "without a number in the args, planning still runs",
+          "check": "C165"
+        },
+        {
+          "text": "the router passes next_phase on the first planning run and on the run after the user's decisions",
+          "check": "C165"
+        },
+        {
+          "text": "the Architect numbers new phases from the number its task gives",
+          "check": "C165"
+        },
+        {
+          "text": "the router and the prompts stay within their budgets",
+          "check": "C165"
+        }
+      ]
+    },
+    {
+      "id": "R107",
+      "text": "Each workflow agent runs at the effort its step needs, set per role and step by the profile (lower for closing a run and for documentation, higher for planning and QA), through Claude Code's per-agent effort setting; on a Claude Code without that setting, agents run as before",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M14",
+      "rules": [
+        {
+          "text": "the profile file has a table for each profile with a value Claude Code accepts for every role and step the workflows use",
+          "check": "C166"
+        },
+        {
+          "text": "closing a run and documentation get a lower effort than building, and planning and QA a higher one, in every profile",
+          "check": "C166"
+        },
+        {
+          "text": "vbw config effort prints the current profile's table and follows a profile change",
+          "check": "C166"
+        },
+        {
+          "text": "vbw next --json carries the same table",
+          "check": "C166"
+        },
+        {
+          "text": "a value Claude Code does not accept is refused naming the role and the step, by vbw config effort and by vbw next",
+          "check": "C166"
+        },
+        {
+          "text": "a value that is not text is refused the same way",
+          "check": "C166"
+        },
+        {
+          "text": "a missing role or step is refused naming it",
+          "check": "C166"
+        },
+        {
+          "text": "only the profile in use is judged",
+          "check": "C166"
+        },
+        {
+          "text": "the router and every skill that starts a workflow pass the effort table in the workflow's args",
+          "check": "C166"
+        },
+        {
+          "text": "the effort table is described in docs/workflows.md",
+          "check": "C166"
+        },
+        {
+          "text": "the prompts stay within their budgets",
+          "check": "C166"
+        },
+        {
+          "text": "planning (decide, scope, plan, close), building, fixing, QA, mapping, research, tool search and debugging each pass their role's and step's effort to every agent call",
+          "check": "C167"
+        },
+        {
+          "text": "the effort is the only new option on a call; the model, label and schema stay as they were",
+          "check": "C167"
+        },
+        {
+          "text": "with no effort table, agents run as before: no effort option, no error, nothing logged",
+          "check": "C167"
+        },
+        {
+          "text": "a gap in the table leaves that call as before and the others still get theirs",
+          "check": "C167"
+        },
+        {
+          "text": "an effort that is not a table is ignored without an error",
+          "check": "C167"
+        }
+      ]
+    },
+    {
+      "id": "R108",
+      "text": "The panel's colours make it easy to tell at a glance which agent is which and what state each is in",
+      "proof": "human",
+      "status": "open",
+      "milestone": "M14"
     }
   ],
   "checks": [
@@ -4499,6 +4843,102 @@
       ],
       "files": [
         "tests/lead-parallel.bats"
+      ]
+    },
+    {
+      "id": "C160",
+      "req": "R103",
+      "run": [
+        "bats",
+        "tests/proof-reuse.bats"
+      ],
+      "files": [
+        "tests/proof-reuse.bats"
+      ],
+      "timeout": 900
+    },
+    {
+      "id": "C161",
+      "req": "R104",
+      "run": [
+        "bats",
+        "tests/qa-recheck-skip.bats"
+      ],
+      "files": [
+        "tests/qa-recheck-skip.bats",
+        "tests/qa-skip-helper.bash"
+      ],
+      "timeout": 600
+    },
+    {
+      "id": "C162",
+      "req": "R104",
+      "run": [
+        "bats",
+        "tests/qa-recheck-requirements.bats"
+      ],
+      "files": [
+        "tests/qa-recheck-requirements.bats",
+        "tests/qa-skip-helper.bash"
+      ],
+      "timeout": 600
+    },
+    {
+      "id": "C163",
+      "req": "R105",
+      "run": [
+        "bats",
+        "tests/rigor-guarded.bats"
+      ],
+      "files": [
+        "tests/rigor-guarded.bats"
+      ],
+      "timeout": 600
+    },
+    {
+      "id": "C164",
+      "req": "R106",
+      "run": [
+        "bats",
+        "tests/next-phase.bats"
+      ],
+      "files": [
+        "tests/next-phase.bats"
+      ]
+    },
+    {
+      "id": "C165",
+      "req": "R106",
+      "run": [
+        "bats",
+        "tests/planning-number.bats"
+      ],
+      "files": [
+        "tests/planning-number.bats"
+      ]
+    },
+    {
+      "id": "C166",
+      "req": "R107",
+      "run": [
+        "bats",
+        "tests/effort-profile.bats"
+      ],
+      "files": [
+        "tests/effort-profile.bats"
+      ],
+      "timeout": 600
+    },
+    {
+      "id": "C167",
+      "req": "R107",
+      "run": [
+        "bats",
+        "tests/effort-workflows.bats"
+      ],
+      "files": [
+        "tests/effort-workflows.bats",
+        "tests/helpers/run-workflow-all.js"
       ]
     }
   ],
@@ -7297,6 +7737,120 @@
         "qa_findings": 3,
         "escalations": 0
       }
+    },
+    {
+      "id": "P70",
+      "title": "Proof reuses results when the code has not changed",
+      "reqs": [
+        "R103"
+      ],
+      "milestone": "M14",
+      "goal": "When only VBW's own record or spec changed since the last passing proof, vbw prove reuses that proof's results for every unchanged check and command, says so, and runs only what is new or changed.",
+      "criteria": [
+        "After a passing proof, changing only .vbw/record.json or .vbw/spec.md (for example by recording a decision) and running vbw prove runs no check or command whose approved definition is unchanged, and its output names each reused result and the time of the proof it came from",
+        "In that same situation, a check or command that was added or whose approved definition changed since the last passing proof is run, and only those are run",
+        "When any committed project file outside VBW's own record and spec differs from the last passing proof, vbw prove runs every check and command, as before",
+        "When the working folder has uncommitted changes to project files, vbw prove reuses nothing and runs every check and command, because the checks would see code the earlier proof never saw",
+        "When the last proof did not pass (a check failed or the proof was interrupted), vbw prove reuses nothing and runs every check and command",
+        "A check or command removed from the contract since the last passing proof does not appear in the new proof's results",
+        "The proof that reuses results is recorded as current for the present code, so vbw qa record accepts it (R12 still holds) and vbw status shows the requirements as proven",
+        "A test shows that changing one check's approved definition while the code is unchanged runs that check and reuses the rest"
+      ],
+      "proposed": "deep",
+      "tier": "deep",
+      "reasons": [
+        "requirements: 1",
+        "files: 3 (30658 bytes)",
+        "files: more than 2 in a repository tracking 707 files",
+        "risk: none",
+        "breaks: R12, R25, R31, R32, R43, R44, R45, R46, R47, R48, R49, R61, R66, R69, R70, R73, R74, R78, R79, R80, R81, R92, R93, R94, R97, R98, R100",
+        "tests: project test command"
+      ],
+      "predicted": "deep"
+    },
+    {
+      "id": "P71",
+      "title": "No repeated QA or raised rigor without a real reason",
+      "reqs": [
+        "R104",
+        "R105"
+      ],
+      "milestone": "M14",
+      "goal": "QA does not re-check a passed phase for changes that cannot affect its code, and a phase's rigor tier is raised only by proven requirements that no re-run check protects.",
+      "criteria": [
+        "A phase that passed QA is not listed for re-checking when the only change since its pass is a newly recorded decision",
+        "A phase that passed QA is not listed for re-checking when the only change is a finding closed without any code change",
+        "A phase that passed QA is not listed for re-checking when the only change is the removal of one of its [human] requirements (one only a person judges)",
+        "A phase that passed QA is listed for re-checking, with the reason shown, when its code or tests changed, its goal changed, an [auto] requirement of it was added, changed or removed, or a finding was closed together with a code change",
+        "When a skip-type change (decision, closed finding, removed [human] requirement) happens together with any change from the previous criterion, the phase is still listed for re-checking",
+        "A proven requirement a phase could affect does not raise the phase's tier when it is guarded by an approved check that the proof re-runs (a reused result from P70 counts, because it is only reused when the code is identical)",
+        "A proven requirement a phase could affect raises the phase's tier when no approved check guards it, for example a [human] requirement accepted by a person, or a requirement whose check is not approved",
+        "The tier's reasons still list every proven requirement the phase could affect, marking which are guarded by a check and which raised the tier",
+        "Other reasons to raise a tier (risk paths such as sign-in, payments, secrets, deletion or CI; many requirements; raises during a run) work exactly as before"
+      ],
+      "tier": "deep",
+      "reasons": [
+        "requirements: 2",
+        "files: 6 (47419 bytes)",
+        "files: more than 2 in a repository tracking 707 files",
+        "risk: none",
+        "breaks: R12, R22, R23, R24, R25, R26, R28, R29, R31, R32, R35, R43, R44, R45, R46, R47, R48, R49, R61, R66, R69, R70, R71, R72, R73, R74, R78, R79, R80, R81, R92, R93, R94, R97, R98, R100",
+        "tests: project test command"
+      ],
+      "predicted": "deep"
+    },
+    {
+      "id": "P72",
+      "title": "Planning numbered right first time and agents at the right effort",
+      "reqs": [
+        "R106",
+        "R107"
+      ],
+      "milestone": "M14",
+      "goal": "The Architect plans with the correct next phase number from the start, and each workflow agent works at the effort level its step needs, as set by the profile.",
+      "criteria": [
+        "The Architect's planning task states the next free phase number, which is one after the highest phase number in the record (shipped, started and removed phases included; sub-phases like P65.1 count as their whole number)",
+        "A planning run on a project with existing phases records the new phases numbered from that number, with no renumbering step in the run",
+        "Planning again keeps phases already started exactly as they are and numbers new ones after the highest",
+        "The profile file sets an effort level for each agent role and step, lower for closing a run and for documentation, higher for planning and QA; every role and step used by the workflows has a value",
+        "Each workflow agent call passes the effort level from the profile for its role and step through Claude Code's per-agent effort setting, and a test shows the value reaches the call",
+        "On a Claude Code that has no per-agent effort setting, agents run as they did before, with no error and no warning that stops the run",
+        "A profile with an effort value Claude Code does not accept is refused by VBW with a message naming the role and step, instead of failing mid-run"
+      ],
+      "tier": "deep",
+      "reasons": [
+        "requirements: 2",
+        "files: 21 (108068 bytes)",
+        "files: more than 2 in a repository tracking 707 files",
+        "risk: none",
+        "breaks: R12, R13, R14, R22, R23, R24, R25, R26, R27, R28, R31, R35, R36, R37, R38, R39, R40, R44, R47, R48, R49, R50, R60, R61, R62, R65, R67, R69, R70, R71, R72, R73, R74, R75, R76, R77, R78, R79, R80, R81, R83, R95, R96, R98, R99, R100, R101, R102",
+        "tests: project test command"
+      ],
+      "predicted": "deep"
+    },
+    {
+      "id": "P73",
+      "title": "Panel colours easy to read at a glance",
+      "reqs": [
+        "R108"
+      ],
+      "milestone": "M14",
+      "goal": "The owner looks at the live VBW panel during a real run and accepts that its colours make each agent and its state easy to tell apart.",
+      "criteria": [
+        "Each agent role shown in the panel has its own colour, and no two roles shown together share one",
+        "Each state an agent can be in (for example running, waiting, done, failed) is shown with a distinct colour or mark, so states differ even for the same role",
+        "The panel stays readable on both a dark and a light terminal background",
+        "The owner watches the panel during a real VBW run and records acceptance of R108, or records what is hard to tell apart, which becomes a fix"
+      ],
+      "tier": "deep",
+      "reasons": [
+        "requirements: 1",
+        "files: 1 (20472 bytes)",
+        "risk: none",
+        "breaks: R51, R52, R53, R55, R56, R57, R58, R82, R85, R86, R87, R88, R89, R91",
+        "tests: project test command"
+      ],
+      "predicted": "deep"
     }
   ],
   "plans": [
@@ -12058,6 +12612,331 @@
         "Describe how waves are counted",
         "Describe the approval line and an honest one-plan-per-wave result",
         "Describe how the Lead splits plans"
+      ]
+    },
+    {
+      "id": "P70.1",
+      "phase": "P70",
+      "title": "Prove reuses results of the last passing proof",
+      "reqs": [
+        "R103"
+      ],
+      "files": [
+        "plugin/lib/proofreuse.sh",
+        "plugin/lib/cmd-prove.sh"
+      ],
+      "after": [],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "New plugin/lib/proofreuse.sh: a fingerprint of each check's approved definition (the check as recorded: id, requirement, command, expected exit, output pattern, timeout, alone, files) and of each project command's argv; every result in the evidence keeps its fingerprint and the time it was really produced",
+        "proofreuse.sh: decide what may be reused, only when all hold: the last evidence passed and was completed (no unfinished marker), the committed code (HEAD without .vbw) is the evidence's, and the working folder has no change to project files (tracked or untracked); then reuse each passing check or command whose current fingerprint equals its recorded one; a skipped, failed or timed-out result is never reused",
+        "cmd-prove.sh: write an unfinished marker in .vbw/runtime just before the checks run and remove it only when the evidence is recorded, so an interrupted or failed proof reuses nothing next time; run only the checks and commands not reused (no clean copy when none is left); join reused and new results in the contract's order, with checks removed from the contract left out; record passes only for what really ran",
+        "cmd-prove.sh summary: a reused line says reused and the time of the proof it came from (kept through later proofs), a result that ran shows as before; the new proof is recorded as current for the present code (same contract hash, tree and head fields), so vbw qa record accepts it and vbw status shows the requirements as proven"
+      ]
+    },
+    {
+      "id": "P70.2",
+      "phase": "P70",
+      "title": "Document proof reuse",
+      "reqs": [
+        "R103"
+      ],
+      "files": [
+        "docs/proof.md"
+      ],
+      "after": [
+        "P70.1"
+      ],
+      "status": "planned",
+      "role": "docs",
+      "tasks": [
+        "docs/proof.md: when vbw prove reuses results (only VBW's own record or spec changed since a completed, passing proof) and what a result needs to be reused (an unchanged approved definition)",
+        "docs/proof.md: when it reuses nothing (a committed project file differs, uncommitted changes to project files, the last proof failed or was interrupted), and that a removed check is left out",
+        "docs/proof.md: how the output shows it (reused, with the time of the proof the result came from) and that a reusing proof is recorded as current, so vbw qa record accepts it"
+      ]
+    },
+    {
+      "id": "P71.1",
+      "phase": "P71",
+      "title": "QA is not repeated for changes that cannot affect a passed phase",
+      "reqs": [
+        "R104"
+      ],
+      "files": [
+        "plugin/lib/qa-inputs.sh",
+        "plugin/lib/qa.jq"
+      ],
+      "after": [],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "qa-inputs.sh: the phase's plan digest names its [auto] requirements (id and text) instead of every requirement id, so removing or rewording a [human] requirement (only a person judges it) no longer changes what QA covered, while adding, rewording or removing an [auto] one does",
+        "qa-inputs.sh: the clone's QA cache keeps the digest of those requirements beside the files, tests and plan digests of each phase and of the phases it builds on",
+        "qa.jq: a changed [auto] requirement is its own reason in plain words (for example: an [auto] requirement changed), shown with the other reasons in vbw next, vbw show qa and the QA instruction; a cache without that digest still lists the phase with the general reason",
+        "Decisions and findings closed with no code change are not inputs: leave them out of every digest, and keep the reasons free of technical words (digest, hash, tree)"
+      ]
+    },
+    {
+      "id": "P71.2",
+      "phase": "P71",
+      "title": "A guarded requirement does not raise a phase's rigor",
+      "reqs": [
+        "R105"
+      ],
+      "files": [
+        "plugin/lib/rigor.jq",
+        "plugin/lib/rigor.sh"
+      ],
+      "after": [],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "rigor.sh: find the guarded requirements: [auto] requirements with at least one check where every check is approved, meaning its definition and the digest of each of its files equal those in the last approved contract of this clone (.vbw/runtime/approved-contract.json, written by vbw approve); no approved contract or a changed or missing check means not guarded; pass the list to rigor.jq",
+        "rigor.jq: the requirements a phase could affect are proven or accepted ones (a [human] requirement a person accepted counts) outside the phase that share files with it; only those not guarded raise the tier, through the breaks signal",
+        "rigor.jq reasons: breaks: lists only the requirements that raised the tier (breaks: none when there are none), and a new line guarded: R1 (C1), R4 (C7, C8) names each guarded requirement with its checks, shown on the approval line too",
+        "Every other signal (risk paths, requirement count, files, bytes, tests, spread, Architect raises, escalations) stays exactly as before"
+      ]
+    },
+    {
+      "id": "P71.3",
+      "phase": "P71",
+      "title": "Document skipped QA re-checks and guarded requirements",
+      "reqs": [
+        "R104",
+        "R105"
+      ],
+      "files": [
+        "docs/proof.md",
+        "docs/rigor.md"
+      ],
+      "after": [
+        "P70.2",
+        "P71.1",
+        "P71.2"
+      ],
+      "status": "planned",
+      "role": "docs",
+      "tasks": [
+        "docs/proof.md: which changes list a passed phase for QA again (code, tests, goal, an [auto] requirement added, reworded or removed, and any of those together with a skip-type change) and which do not (a recorded decision, a finding closed with no code change, a removed [human] requirement), with the reason shown",
+        "docs/rigor.md: a proven requirement a phase could affect is guarded when an approved check the proof re-runs covers it (a reused result counts), and then it does not raise the tier; a [human] requirement a person accepted, or one whose check is not approved or changed since, does",
+        "docs/rigor.md: the reasons now show breaks: (what raised the tier) and guarded: (what did not), with an example"
+      ]
+    },
+    {
+      "id": "P72.1",
+      "phase": "P72",
+      "title": "The profile sets an effort for every role and step",
+      "reqs": [
+        "R107"
+      ],
+      "files": [
+        "plugin/lib/efforts.json",
+        "plugin/lib/effort.sh"
+      ],
+      "after": [],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "New plugin/lib/efforts.json: for each profile (quality, balanced, budget), for each role and step the workflows use, an effort of low, medium, high, xhigh or max: architect decide and scope; lead plan and close; dev build and fix; docs build; qa verify; scout survey and merge; debugger investigate, diagnose and fix",
+        "efforts.json values: closing a run and documentation lower than a Dev build; planning (architect decide and scope, lead plan) and QA verify higher than a Dev build, in every profile",
+        "New plugin/lib/effort.sh: effort_table PROFILE prints that profile's table as compact JSON; it refuses, with a message naming the role and the step (and the value), a value Claude Code does not accept (not low, medium, high, xhigh or max, or not text) and any missing role or step; only the profile in use is judged",
+        "effort.sh: bash 3.2, jq only for JSON, no eval; the error goes through vbw_die so every command that reads the table stops before a run starts"
+      ]
+    },
+    {
+      "id": "P72.2",
+      "phase": "P72",
+      "title": "vbw next states the next phase number and the effort table",
+      "reqs": [
+        "R106",
+        "R107"
+      ],
+      "files": [
+        "plugin/lib/next.jq",
+        "plugin/lib/cmd-next.sh"
+      ],
+      "after": [
+        "P72.1"
+      ],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "next.jq: a top-level next_phase in every answer: one after the highest phase number the record knows, taken from the ids of all phases (every milestone), the plans (id and phase) and the P-numbers named in decisions (so a removed phase that a decision names counts); a sub-phase such as P65.1 counts as 65; letters before the P (SHIP99) are not phase numbers; 1 when there is none",
+        "next.jq: a top-level effort carrying the table passed in",
+        "cmd-next.sh: read the current profile's table with effort_table (effort.sh) and pass it to next.jq; an invalid table stops vbw next with that message before any answer"
+      ]
+    },
+    {
+      "id": "P72.3",
+      "phase": "P72",
+      "title": "vbw config effort",
+      "reqs": [
+        "R107"
+      ],
+      "files": [
+        "plugin/lib/cmd-config.sh"
+      ],
+      "after": [
+        "P72.1"
+      ],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "cmd-config.sh: vbw config effort prints the current profile's effort table as compact JSON (what the skills pass to workflows as args.effort)",
+        "cmd-config.sh: the usage lines list config effort; it takes no arguments",
+        "cmd-config.sh: an invalid table exits non-zero with the message naming role and step from effort.sh, unchanged"
+      ]
+    },
+    {
+      "id": "P72.4",
+      "phase": "P72",
+      "title": "Planning workflow: next phase number and effort",
+      "reqs": [
+        "R106",
+        "R107"
+      ],
+      "files": [
+        "plugin/workflows/planning.js"
+      ],
+      "after": [],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "planning.js: a helper that reads args.effort (only when it is an object) and returns the effort option for a role and step, or nothing when there is none; document args.effort and args.next_phase in the args comment",
+        "planning.js: the Architect's decide and scope calls (steps decide and scope), the Lead's plan call (plan) and the closing call (close) pass the effort option; calls without a table stay exactly as before",
+        "planning.js: when args.next_phase is given, the Architect's scoping task says to number the new phases from P<next_phase> in order and to keep phases already started exactly as they are; the phases reach the Lead as given, and the run has no renumbering step"
+      ]
+    },
+    {
+      "id": "P72.5",
+      "phase": "P72",
+      "title": "Build, fix and QA workflows pass effort",
+      "reqs": [
+        "R107"
+      ],
+      "files": [
+        "plugin/workflows/building.js",
+        "plugin/workflows/fixing.js",
+        "plugin/workflows/verifying.js"
+      ],
+      "after": [],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "building.js: an effort helper as in planning.js; the Dev's call (build), the Docs agent's call (build) and the closing call (close) pass effort",
+        "fixing.js: the Dev's call (fix) and the closing call (close) pass effort",
+        "verifying.js: QA's call (verify) and the closing call (close) pass effort; with no table every call is exactly as before"
+      ]
+    },
+    {
+      "id": "P72.6",
+      "phase": "P72",
+      "title": "Mapping, research, tool search and debug workflows pass effort",
+      "reqs": [
+        "R107"
+      ],
+      "files": [
+        "plugin/workflows/mapping.js",
+        "plugin/workflows/researching.js",
+        "plugin/workflows/tooling.js",
+        "plugin/workflows/investigating.js"
+      ],
+      "after": [],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "mapping.js: the Scouts' angle calls (survey), the merge call (merge) and the closing call (close) pass effort",
+        "researching.js: the Scouts' angle calls (survey) and the answer call (merge) pass effort; tooling.js: the Scouts' calls (survey) pass effort",
+        "investigating.js: the Debuggers' angle calls (investigate), the diagnosis call (diagnose) and the fix call (fix) pass effort; with no table every call is exactly as before"
+      ]
+    },
+    {
+      "id": "P72.7",
+      "phase": "P72",
+      "title": "Router passes the next phase number and effort; Architect uses it",
+      "reqs": [
+        "R106",
+        "R107"
+      ],
+      "files": [
+        "plugin/skills/vibe/SKILL.md",
+        "plugin/agents/architect.md"
+      ],
+      "after": [],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "vibe/SKILL.md: both planning workflow calls pass \"next_phase\": <next_phase> (the next JSON's top-level next_phase) in their args, and the express step says new ids start at P<next_phase>",
+        "vibe/SKILL.md: the sentence listing what every workflow's args carry also names the next JSON's top-level effort",
+        "vibe/SKILL.md: trim wording elsewhere in the router so it stays within 1,400 words, losing no instruction",
+        "architect.md: number new phases from the next free phase number the task states, keep phases already started exactly as they are, never renumber; the agent stays within its word budget"
+      ]
+    },
+    {
+      "id": "P72.8",
+      "phase": "P72",
+      "title": "Debug, map, research and tool-search skills pass effort",
+      "reqs": [
+        "R107"
+      ],
+      "files": [
+        "plugin/skills/debug/SKILL.md",
+        "plugin/skills/map/SKILL.md",
+        "plugin/skills/research/SKILL.md",
+        "plugin/skills/skills/SKILL.md"
+      ],
+      "after": [],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "debug/SKILL.md: read vbw config effort with the models line (outside a VBW project it shows an error: omit effort) and pass \"effort\": <the effort JSON above> in the workflow's args, for the investigation and the fix",
+        "map/SKILL.md and research/SKILL.md: the same, in the args of their workflow",
+        "skills/SKILL.md: the same, in the args of the tool search",
+        "Every skill stays within its word budget, and the total of all prompts within 22,800 words"
+      ]
+    },
+    {
+      "id": "P72.9",
+      "phase": "P72",
+      "title": "Document the next phase number and the effort table",
+      "reqs": [
+        "R106",
+        "R107"
+      ],
+      "files": [
+        "docs/workflows.md",
+        "docs/next.md"
+      ],
+      "after": [
+        "P72.2",
+        "P72.3"
+      ],
+      "status": "planned",
+      "role": "docs",
+      "tasks": [
+        "docs/next.md: next_phase (one after the highest phase number in the record: shipped, started and removed phases that a decision names; a sub-phase counts as its whole number) and effort (the current profile's table) among the keys of vbw next --json",
+        "docs/workflows.md: args.effort and args.next_phase for each workflow; where the table lives (plugin/lib/efforts.json), its levels (low, medium, high, xhigh, max), its roles and steps, and vbw config effort",
+        "docs/workflows.md: a Claude Code without a per-agent effort setting runs agents as before; a value Claude Code does not accept is refused by VBW, naming role and step, before a run starts"
+      ]
+    },
+    {
+      "id": "P73.1",
+      "phase": "P73",
+      "title": "Guide to judging the panel colours",
+      "reqs": [
+        "R108"
+      ],
+      "files": [
+        "docs/panel.md"
+      ],
+      "after": [],
+      "status": "planned",
+      "role": "docs",
+      "tasks": [
+        "docs/panel.md: a short Judging the colours section that lists, from the shipped palette, each role's colour and each state's colour and mark, and names the pairs that share a colour (a role and a state, such as Dev and done) so the owner knows what to look at",
+        "docs/panel.md: how to judge on a dark and on a light terminal, and that a state also has a mark and a word",
+        "docs/panel.md: how to record the verdict (vbw req accept R108, or vbw req reject R108 with what is hard to tell apart, which becomes a fix)"
       ]
     }
   ],
