@@ -98,9 +98,12 @@ running or waiting, so a waiting alone check is not starved. The registration
 is released when the check ends, times out or is interrupted, and a
 registration left by a dead process is taken over.
 
-A check that cannot start waits at most 900 seconds, then fails with a message
-naming the check that holds it. Set `VBW_CHECK_WAIT_SECONDS` to change the
-limit. The wait is not part of the check's `timeout`, which counts only the run.
+A check that cannot start waits as long as the check holding the gate is alive,
+and takes over when that check's process is gone. There is no wait limit
+(`VBW_CHECK_WAIT_SECONDS` no longer exists), and the wait is not part of the
+check's `timeout`, which counts only the run. A check whose runner ends without
+leaving a result is recorded as `skipped` (its tail starts `not run:` with the
+reason) and counts as not passed; every other result stands.
 
 ## The contract and approval
 
