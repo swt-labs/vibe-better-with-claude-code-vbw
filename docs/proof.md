@@ -492,7 +492,22 @@ phase keeps its pass. A built phase is checked again when:
   even if its own inputs did not. A phase builds on another when one of its
   plans comes after a plan of the other, directly or through other phases.
 
+- one of its `[auto]` requirements was added, reworded or removed.
+
 Files and tests count as committed (`HEAD`), so commit work before QA.
+
+These changes do not list a passed phase again, because QA has nothing new to
+judge:
+
+- a recorded decision (it is not code, a test, a goal or a requirement);
+- a finding closed with no code change (the files are the same);
+- a removed `[human]` requirement, or a reworded one (QA never judges what only
+  a person can: `[human]` requirements are not among QA's inputs).
+
+The rule works on each input separately. A skip-type change that comes together
+with a listed change does not protect the phase: a decision plus a changed test,
+a closed finding plus a code change, or a removed `[human]` requirement plus a
+changed goal still list the phase, with the reason of the listed change.
 
 Re-planning mid-milestone (`vbw apply` with phases added or changed) keeps each
 existing phase's QA verdict. QA then checks again only the new phases and the
@@ -520,6 +535,7 @@ The reasons, in plain words:
 | `its files changed` | a file of one of its plans changed since it passed |
 | `its tests changed` | a check of its requirements, or a file of that check, changed |
 | `its goal or plan changed` | the goal or the plans changed |
+| `an [auto] requirement changed` | an `[auto]` requirement of the phase was added, reworded or removed |
 | `builds on P1, which changed` | a phase it builds on has changed inputs |
 | `its files, tests or plan changed` | something changed, but the cache that says what is missing |
 

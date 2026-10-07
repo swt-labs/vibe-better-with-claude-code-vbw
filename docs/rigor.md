@@ -37,6 +37,50 @@ is the highest tier any signal asks for.
 | proven requirements of other phases whose plans touch the same files | 1-3 | 4 or more |
 | existing files to change but no project test command | yes | |
 
+### Proven requirements a phase could affect
+
+A phase could affect a proven requirement of another phase when their plans
+touch the same files. Such a requirement is at risk of breaking, so it counts
+toward the `breaks` signal, unless it is guarded.
+
+A requirement is **guarded** when it is `[auto]`, has at least one check, and
+every one of its checks is approved: the check, and each file it lists, are the
+same as in the last contract you approved in this clone. `vbw prove` runs every
+check again (a result reused from an earlier proof counts, see
+docs/proof.md), so a break would show at once. A guarded requirement does not
+raise the tier.
+
+These do raise it:
+
+- a `[human]` requirement a person accepted: no check re-runs it;
+- an `[auto]` requirement whose check is not approved yet, or was edited (or
+  whose check file was edited) since the approval;
+- an `[auto]` requirement with no check.
+
+Guarding only covers this one signal. Many files, a risk word, a missing test
+command and the other signals raise the tier as before.
+
+The reasons list both groups. `breaks:` names the requirements that raised the
+tier (`none` when none did). `guarded:` names the requirements the phase could
+affect that did not, each with its checks; it is left out when there are none.
+
+```
+$ vbw show phase P2
+P2 Add export [planned]
+...
+tier: standard
+  - requirements: 1
+  - files: 2 (900 bytes)
+  - risk: none
+  - breaks: R3
+  - guarded: R1 (C1)
+  - tests: project test command
+```
+
+Here P2 touches the files of R1 (an `[auto]` requirement guarded by C1) and R3
+(a `[human]` requirement). Only R3 raises the tier. `vbw show contract` shows
+the same two parts on the phase's line.
+
 The reasons are stored with the tier and printed by `vbw show phase ID` and
 `vbw show contract`, so the tier is never a mystery. The Architect may raise a
 phase above its floor; `vbw apply` refuses a lower tier than the floor. The
