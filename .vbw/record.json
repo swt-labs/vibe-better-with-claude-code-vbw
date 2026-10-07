@@ -6770,12 +6770,11 @@
         }
       ],
       "qa": {
-        "result": "fail",
+        "result": "pass",
         "tier": "standard",
         "tree": "623c4314085fe35dbbf8a62047b47fe2b927b5d652cff5d7d4d45237b9ee470d",
-        "at": "2026-10-07T14:50:13Z",
-        "note": "16/18 checks",
-        "rounds": 1
+        "at": "2026-10-07T14:53:03Z",
+        "note": "18/18 checks"
       },
       "outcome": {
         "tier": "deep",
@@ -11635,7 +11634,7 @@
       "req": "R94",
       "source": "qa",
       "attempts": 0,
-      "status": "open",
+      "status": "closed",
       "note": "Work beyond the plan: commits 9a4287b0 and dc143c6a (both tagged P65.1) add a launch-order wait to checks_run_all in plugin/lib/checks.sh (the proof loop pauses after starting an alone check until it is at the gate). No task in P65.1 names this. Also tests/check-wait-patient.bats (the file all four checks C145-C148 protect) is not in P65.1's files list. Neither was declared in the plan; the plan or a recorded decision should cover them. Recommendation: amend P65.1 (add the ordering task and the test file) so the plan matches the code, since the ordering fix is small and the test 'shared checks wait for a long alone check' exercises it."
     }
   ],
@@ -12777,6 +12776,12 @@
       "text": "Per-agent dollars come from a dated price table shipped with VBW, shown as approximate, next to Claude Code's real session cost",
       "why": "owner: visible reconciliation; table updated each release",
       "at": "2026-10-07T14:37:30Z"
+    },
+    {
+      "id": "D156",
+      "text": "F49: keep commits 9a4287b0 and dc143c6a (P65.1: an alone check is at the gate before the next check launches)",
+      "why": "chosen by VBW: release-gate root-cause fix for R94; under load two shared checks entered the gate before the alone check registered (bash 5 suite, test 'shared checks wait for a long alone check'); it serves R94's waiting rule and is exercised by C145; tests/check-wait-patient.bats is the checks' protected file, not a plan file; history is never rewritten",
+      "at": "2026-10-07T14:51:17Z"
     }
   ],
   "commands": {
@@ -13671,5 +13676,11 @@
     "scope": [],
     "passed": true
   },
-  "lease": null
+  "lease": {
+    "run": "qa-20261007T145222Z",
+    "kind": "qa",
+    "started_at": "2026-10-07T14:52:22Z",
+    "files": [],
+    "session": "4130e174-7ef2-4e36-b853-fb2a8fd8511d"
+  }
 }
