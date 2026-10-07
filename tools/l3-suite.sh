@@ -831,7 +831,7 @@ scenario_panel() {
   new_project
   (cd "$dir" && "$VBW" init > /dev/null && "$VBW" config rigor standard > /dev/null && panel_seed) \
     || { say "setup failed: could not seed the two-phase project"; return 1; }
-  fixture="greet.sh and farewell.sh, two phases: the first passed QA, the second plan waits for the user's approval; no finished steps in the clone (so no estimate basis); window 200 columns wide"
+  fixture="greet.sh and farewell.sh, two phases: the first passed QA and its requirement R1 is proven, the second plan waits for the user's approval; no finished steps in the clone (so no estimate basis); window 200 columns wide"
   start="/vbw:panel"
   facts="{}"
   panel_text() { screen | sed 's/[[:space:]][[:space:]]*/ /g'; }
@@ -855,9 +855,9 @@ scenario_panel() {
     # The panel opens by itself in a wide window; if not, the user opens it with /vbw-panel.
     if [ "$(has "$(panel_wait "Working on")" "Working on")" = false ]; then l3 type "$scenario" "/vbw-panel"; fi
     mid=$(jq -r '.milestone.id' "$dir/.vbw/record.json")
-    s=$(panel_wait "Working on $mid:" "1 of 2 phases done" "Please approve the plan")
+    s=$(panel_wait "Working on $mid:" "1 of 2 requirements done" "Please approve the plan")
     printf '%s\n' "$s" > "$dir.panel.screen.txt"
-    facts=$(jq -n --arg m "$(has "$s" "Working on $mid:")" --arg p "$(has "$s" "1 of 2 phases done")" \
+    facts=$(jq -n --arg m "$(has "$s" "Working on $mid:")" --arg p "$(has "$s" "1 of 2 requirements done")" \
       --arg d "$(has "$s" "VBW is idle")" --arg n "$(has "$s" "Please approve the plan")" \
       --arg c "$(case "$s" in *"has cost \$"*|*"cost so far is not available"*) echo true ;; *) echo false ;; esac)" \
       --arg e "$(case "$s" in *"No estimate yet"*) echo "no basis yet" ;; *"min left"*) echo "approximate time" ;; *) echo "" ;; esac)" \
