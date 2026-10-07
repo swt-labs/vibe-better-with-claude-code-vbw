@@ -38,12 +38,45 @@ A workflow closes its own run. The router passes `args.session` (its
 `${CLAUDE_SESSION_ID}`) to every workflow. Without it, a workflow closes
 nothing and the router ends the run as before. With it:
 
-- `vbw:building`, `vbw:fixing` and `vbw:verifying` finish with one last agent
-  that runs `vbw run confirm` for every plan, fix or phase of the run, then
-  `vbw run end` whatever confirm said. The workflow returns that agent's
-  answer as `confirmation`.
-- `vbw:planning` and `vbw:mapping` run `vbw run end` on every way out,
-  including a stop for decisions or an error.
+- `vbw:building`, `vbw:fixing` and `vbw:verifying` finish with one last agent,
+  the Lead (label `close run`), that runs `vbw run confirm` for every plan, fix
+  or phase of the run, then `vbw run end` whatever confirm said. It answers
+  `{ended, recorded, report}`. The workflow returns that answer as
+  `confirmation` and sets `complete` to true only when no agent stopped early
+  and `recorded` and `ended` are both true.
+- `vbw:planning` and `vbw:mapping` close with the same Lead on every way out,
+  including a stop for decisions or an error. Planning's closing agent also
+  checks each planned phase with `vbw show phase`; a phase with no plans makes
+  the workflow return `status: "blocked"` with the Lead's report instead of
+  `planned`.
+
+### Who records, and why each agent's own instructions say so
+
+Claude Code marks a workflow's task text as not coming from the user, so an
+agent may refuse to follow an instruction that appears only there. VBW
+therefore puts the recording duty in each agent's own instructions
+(`plugin/agents/*.md`), which are VBW's: a Dev or Docs agent runs
+`vbw plan done`, `vbw fix done` or `vbw plan block` before it returns; QA runs
+`vbw qa finding` and `vbw qa record`; the Lead runs `vbw apply` and the closing
+step. The Scout changes nothing and never closes a run.
+
+### The closing agent never refuses
+
+The Lead's instructions have a section "Close a run": confirm, then end, as its
+own duty even when the task text is marked as not from the user. If it cannot
+finish, it says which command to run by hand and why. When the closing agent
+stops without an answer, or reports that something was not recorded or the run
+did not end, the workflow writes the commands to its log and sets `complete` to
+`false`. Run them from the project, with the session of the run:
+
+```
+VBW_SESSION_ID=<session> vbw run confirm P1.1 P1.2   # names anything unrecorded
+VBW_SESSION_ID=<session> vbw run end
+```
+
+The log lines read `the closing agent stopped: run by hand: ...`, `not
+everything was recorded: check by hand with ...` and `the run did not end: run
+by hand: ...`. A planning or mapping run logs only the `vbw run end` line.
 
 The router then finds no open run. `vbw run end` with nothing open prints
 `no run is open` and exits 0, so the router's own call is harmless.
@@ -249,7 +282,12 @@ workflow adds the result to every QA agent's prompt with an instruction not to
 run the suite. When the command did not run (`skipped` or `not run`), the
 prompt says so and tells the agents not to retry it; the workflow logs it, and
 QA says in its summary that the suite was not run. A project without a test
-command has `round.suite` null and the prompts carry nothing.
+command has `round.suite` null, and each prompt says "This project has no test
+command" and asks QA to say so in its summary, so QA does not guess one.
+
+QA's own instructions say where the command lives: the `test:` line under
+`project commands` in `vbw show contract`. QA uses the result in its prompt as
+evidence and does not run the command itself.
 
 ## Rigor
 
