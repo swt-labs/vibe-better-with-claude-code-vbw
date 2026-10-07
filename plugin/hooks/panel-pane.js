@@ -8,6 +8,7 @@
 import { nowModel, timelineModel, costsModel, renderNow, renderTimeline, renderCosts } from './panel-mission-live.js'
 import { planModel, proofModel, decisionsModel, teamModel, renderPlan, renderProof, renderDecisions, renderTeam } from './panel-mission-record.js'
 import { renderWrapped } from './panel-candy.js'
+import { NEED } from './panel-palette.js'
 
 export const TABS = [['now', 'Now'], ['plan', 'Plan'], ['proof', 'Proof'], ['timeline', 'Timeline'], ['decisions', 'Decisions'], ['team', 'Team'], ['costs', 'Costs']]
 
@@ -16,7 +17,7 @@ function summary(ui, v, st, on) {
   const { Box, Text, Button } = ui
   const rows = v.rows.map((r) =>
     h(Box, { key: r.id, flexDirection: 'column', marginBottom: 1 },
-      h(Text, { color: r.id === 'need' && v.need ? 'yellow' : undefined }, String(r.text)),
+      h(Text, { color: r.id === 'need' && v.need ? NEED : undefined }, String(r.text)),
       h(Text, { dimColor: true }, String(r.term))))
   rows.push(
     h(Box, { key: 'sound', flexDirection: 'row', marginBottom: 1 },

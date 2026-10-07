@@ -4,6 +4,8 @@
 // what a press asks for ({tab, phase}, {check}, {ask}, {fill}). Never throws:
 // odd input gives an empty model. No `$` here.
 
+import { roleColor, stateColor } from './panel-palette.js'
+
 const isObj = (x) => x !== null && typeof x === 'object' && !Array.isArray(x)
 const arr = (x) => (Array.isArray(x) ? x.filter(isObj) : [])
 const str = (x) => (typeof x === 'string' && x !== '' ? x : null)
@@ -70,7 +72,7 @@ export function planModel(input) {
 
 const TAIL_LINES = 20
 const CELL = {
-  passed: 'green', failing: 'red', running: 'yellow', none: 'gray',
+  passed: stateColor('done'), failing: stateColor('failed'), running: stateColor('running'), none: stateColor('quiet'),
 }
 
 export function checkDetail(record, id) {
@@ -143,9 +145,6 @@ export function decisionsModel(input) {
 // ---- Team -------------------------------------------------------------------
 
 export const ROLES = ['architect', 'lead', 'dev', 'qa', 'scout', 'debugger', 'docs']
-export const ROLE_COLOR = {
-  architect: 'magenta', lead: 'blue', dev: 'green', qa: 'yellow', scout: 'cyan', debugger: 'red', docs: '#ff87d7', agent: 'white',
-}
 // plugin/lib/profiles.json (a test holds the two equal).
 const S = 'sonnet'
 const PROFILES = {
@@ -169,7 +168,7 @@ export function teamModel(input) {
   const rows = ROLES.map((role) => {
     let model = over[role] || PROFILES[profile][role]
     if (role === 'qa' && /haiku/i.test(model)) model = S
-    return { role, model, override: !!over[role] && model === over[role], color: ROLE_COLOR[role] }
+    return { role, model, override: !!over[role] && model === over[role], color: roleColor(role) }
   })
   return {
     profile,

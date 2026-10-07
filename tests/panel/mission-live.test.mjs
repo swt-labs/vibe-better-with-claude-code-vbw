@@ -41,7 +41,7 @@ test('nowModel: the frame shows the state; a stopped run greys what was cut off'
     agent({ id: 'f', state: 'failed' }), agent({ id: 'q', state: 'quiet' }),
   ])
   const frames = (m) => Object.fromEntries(m.columns[0].cards.map((c) => [c.id, c.frame]))
-  assert.deepEqual(frames(nowModel({ run: r, now: S })), { w: 'yellow', d: 'green', f: 'red', q: 'gray' })
+  assert.deepEqual(frames(nowModel({ run: r, now: S })), { w: '#ffaf00', d: 'green', f: 'red', q: 'gray' })
   const stopped = nowModel({ run: { ...r, status: 'stopped', endedAt: S + MIN }, now: S + 2 * MIN })
   assert.deepEqual(frames(stopped), { w: 'gray', d: 'green', f: 'red', q: 'gray' })
   assert.equal(stopped.columns[0].cards[0].state, 'cut')
@@ -51,7 +51,7 @@ test('nowModel: a card carries its role colour, activity, tokens and a select ac
   const m = nowModel({ run: run([agent({ id: 'a9', role: 'qa', label: 'P55', tokens: 48_213, activity: { kind: 'tool', text: 'reading spec.md' } })]), now: S })
   const c = m.columns[0].cards[0]
   assert.deepEqual(c, {
-    id: 'a9', title: 'qa P55', role: 'qa', roleColor: 'yellow', state: 'working', frame: 'yellow',
+    id: 'a9', title: 'qa P55', role: 'qa', roleColor: 'yellow', state: 'working', frame: '#ffaf00',
     activity: 'reading spec.md', tokens: '48k tokens', selected: false, action: { select: 'a9' },
   })
   const big = nowModel({ run: run([agent({ tokens: 1_250_000 }), agent({ id: 'b', tokens: 900, role: 'docs' })]), now: S })

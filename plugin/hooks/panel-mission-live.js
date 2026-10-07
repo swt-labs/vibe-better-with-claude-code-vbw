@@ -4,6 +4,7 @@
 // the run model in, plain models out, trees built with h(); never throws.
 
 import { estimate, MIN_STEPS } from './panel-estimate.js'
+import { roleColor, stateColor, ACCENT } from './panel-palette.js'
 
 const isObj = (x) => x !== null && typeof x === 'object' && !Array.isArray(x)
 const num = (x) => typeof x === 'number' && Number.isFinite(x)
@@ -16,15 +17,17 @@ const safe = (fn) => (input) => {
   }
 }
 
-export const ROLE_COLORS = { architect: 'magenta', lead: 'blue', dev: 'green', qa: 'yellow', scout: 'cyan', debugger: 'red', docs: '#ff87d7', agent: 'white' }
-const FRAMES = { done: 'green', working: 'yellow', failed: 'red', quiet: 'gray', cut: 'gray' }
+const ROLES = ['architect', 'lead', 'dev', 'qa', 'scout', 'debugger', 'docs']
+const STATES = ['working', 'done', 'failed', 'quiet', 'cut']
+// A card's working state is the palette's running; the rest share their names.
+const frameOf = (state) => stateColor(state === 'working' ? 'running' : state)
 // A run kind and the step kind its finished leases are recorded under (steps.json).
 const STEP_KIND = { planning: 'plan', building: 'build', verifying: 'qa', fixing: 'fix', mapping: 'map' }
 const BARS = '▁▂▃▄▅▆▇█'
 const ACTIVITY_MAX = 40
 
 const clip = (s, n) => (s.length > n ? s.slice(0, n - 1) + '…' : s)
-const roleOf = (a) => (ROLE_COLORS[a.role] ? a.role : 'agent')
+const roleOf = (a) => (ROLES.includes(a.role) ? a.role : 'agent')
 const titleOf = (a) => [str(a.role) || 'agent', str(a.label)].filter(Boolean).join(' ')
 const agentsOf = (run) =>
   run.agents.filter((a) => isObj(a) && typeof a.id === 'string')
@@ -49,7 +52,7 @@ function tokens(n) {
 
 // The state an agent shows: what was still going when the run stopped is cut off.
 function stateOf(a, run) {
-  const s = FRAMES[a.state] ? a.state : 'quiet'
+  const s = STATES.includes(a.state) ? a.state : 'quiet'
   return run.status === 'stopped' && (s === 'working' || s === 'quiet') ? 'cut' : s
 }
 
@@ -71,7 +74,7 @@ export const nowModel = safe(({ run, now, selected }) => {
   const card = (a) => {
     const state = stateOf(a, run)
     return {
-      id: a.id, title: titleOf(a), role: roleOf(a), roleColor: ROLE_COLORS[roleOf(a)], state, frame: FRAMES[state],
+      id: a.id, title: titleOf(a), role: roleOf(a), roleColor: roleColor(roleOf(a)), state, frame: frameOf(state),
       activity: isObj(a.activity) && str(a.activity.text) ? clip(a.activity.text, ACTIVITY_MAX) : null,
       tokens: tokens(a.tokens), selected: a.id === selected, action: { select: a.id },
     }
@@ -131,7 +134,7 @@ export const timelineModel = safe(({ run, now, steps, width }) => {
     const a1 = num(a.endedAt) ? a.endedAt : end
     const from = Math.min(w - 1, Math.floor(col(a0)))
     return {
-      id: a.id, name: titleOf(a), role: roleOf(a), color: ROLE_COLORS[roleOf(a)], state: stateOf(a, run),
+      id: a.id, name: titleOf(a), role: roleOf(a), color: roleColor(roleOf(a)), state: stateOf(a, run),
       from, to: Math.max(from + 1, Math.ceil(col(a1))), seconds: Math.max(0, Math.round((a1 - a0) / 1000)), slow: false,
     }
   })
@@ -194,7 +197,7 @@ export function renderNow(ui, model, act) {
   const d = model.detail
   const detail = isObj(d)
     ? h(ui.Box, { flexDirection: 'column', marginTop: 1 },
-      h(ui.Text, { bold: true, color: ROLE_COLORS[d.role] }, d.label),
+      h(ui.Text, { bold: true, color: roleColor(d.role) }, d.label),
       h(ui.Text, null, 'Model: ' + (d.model || 'not known')),
       d.elapsed ? h(ui.Text, null, 'Elapsed: ' + d.elapsed) : null,
       d.activity ? h(ui.Text, null, 'Doing: ' + d.activity) : null,
@@ -212,7 +215,7 @@ export function renderTimeline(ui, model) {
   const lane = (l) =>
     h(ui.Box, { key: 'lane:' + l.id, flexDirection: 'row' },
       h(ui.Text, { color: l.color }, l.name.slice(0, nameW).padEnd(nameW + 1)),
-      h(ui.Text, { color: l.slow ? 'red' : l.color, bold: l.slow }, ' '.repeat(l.from) + '█'.repeat(l.to - l.from)),
+      h(ui.Text, { color: l.slow ? stateColor('failed') : l.color, bold: l.slow }, ' '.repeat(l.from) + '█'.repeat(l.to - l.from)),
       h(ui.Text, { dimColor: !l.slow }, ' ' + duration(l.seconds * 1000)))
   const sp = model.spark
   const spark = isObj(sp)
@@ -233,7 +236,7 @@ export function renderCosts(ui, model) {
   return h(ui.Box, { flexDirection: 'column' },
     ...(model.runs.length
       ? model.runs.map((r, i) => h(ui.Box, { key: 'cost:' + i },
-        h(ui.Text, null, r.name.padEnd(nameW + 1)), h(ui.Text, { color: 'cyan' }, '█'.repeat(r.bar)), h(ui.Text, { dimColor: true }, ' ' + r.text)))
+        h(ui.Text, null, r.name.padEnd(nameW + 1)), h(ui.Text, { color: ACCENT }, '█'.repeat(r.bar)), h(ui.Text, { dimColor: true }, ' ' + r.text)))
       : [h(ui.Text, { dimColor: true }, 'No VBW run has finished in this session yet.')]),
     ...model.kinds.map((k) => h(ui.Text, null, k.kind + ' (' + k.runs + (k.runs === 1 ? ' run' : ' runs') + '): ' + k.text)),
     h(ui.Text, { bold: true }, model.session))

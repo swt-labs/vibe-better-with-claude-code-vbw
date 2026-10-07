@@ -139,7 +139,7 @@ test('proof: one cell per check of the current milestone, coloured by its last r
     ['C2', 'passed', 'green'],
     ['C3', 'failing', 'red'],
     ['C4', 'failing', 'red'],
-    ['C5', 'running', 'yellow'],
+    ['C5', 'running', '#ffaf00'],
   ])
   assert.equal(m.cells[1].hover, 'C3 · R3: The panel shows an estimate')
   assert.deepEqual(m.cells[1].press, { check: 'C3' })
@@ -172,7 +172,7 @@ test('proof render: rows of coloured ■ cells with hover cards; presses ask for
   const pressed = []
   const tree = mr.renderProof(UI, mr.proofModel({ record: rec(), running: ['C5'], selected: 'C3' }), (a) => pressed.push(a))
   const cells = all(tree, (n) => n.type === 'Text' && n.children.join('') === '■')
-  assert.deepEqual(cells.map((c) => c.props.color), ['green', 'red', 'red', 'yellow'])
+  assert.deepEqual(cells.map((c) => c.props.color), ['green', 'red', 'red', '#ffaf00'])
   const card = find(tree, (n) => n.type === 'Box' && n.props.display === 'none' && n.props.hover && n.props.hover.display === 'flex')
   assert.ok(card, 'a hover card revealed on hover')
   assert.match(collect(card).join(' '), /C2 · R2: The panel shows the cost/)
