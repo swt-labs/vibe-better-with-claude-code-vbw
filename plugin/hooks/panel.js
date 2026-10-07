@@ -7,7 +7,8 @@
 // here must never reach the user's session. Every function that takes `$` lives in
 // this file (Claude Code follows `$` into this file's functions only); what is drawn
 // is worked out by the pure modules: panel-stage.js (the band), panel-sites.js (the
-// one-line sites and rows), panel-pane.js (Mission Control), panel-view.js.
+// one-line sites and rows), panel-pane.js (Mission Control), panel-view.js, and
+// panel-candy.js (motion, sprites, celebrations), whose frames this file blits.
 import { panelView, supports } from './panel-view.js'
 import { SOUNDS } from './panel-sounds.js'
 import { gatherRun, findRun } from './panel-feed.js'
@@ -15,6 +16,7 @@ import { stageModel, renderStage } from './panel-stage.js'
 import { statusText, whyText, todoArgs } from './panel-commands.js'
 import { renderPane } from './panel-pane.js'
 import { SITES, turnPending } from './panel-sites.js'
+import { motionOf, spriteFrame, encodeCells, confettiFrames, sweepFrames, wrappedModel, celebration } from './panel-candy.js'
 
 const PANE = 'vbw-panel'
 const TICK_MS = 2000
@@ -35,10 +37,40 @@ const kindOf = (name) => {
   return KINDS.includes(k) ? k : null
 }
 
-// The motion level (mods_4_vbw.md §3.7): a test session is always still; else the
-// record's `settings.motion`; else calm. panel-candy.js takes this seam over.
-const MOTIONS = ['full', 'calm', 'off']
-const motionOf = (st) => (st.silent ? 'off' : isObj(st.record) && isObj(st.record.settings) && MOTIONS.includes(st.record.settings.motion) ? st.record.settings.motion : 'calm')
+// The motion level (mods_4_vbw.md §3.7, panel-candy.js): a test session is always
+// still; else the record's `settings.motion`; else the interview level. The level
+// is the one `vbw next` read (private or kept in the project) once the interview is
+// done (before that, next fills a neutral level, which says nothing about the
+// person), else the project's kept answers; unknown, calm.
+const levelOf = (st) => {
+  const p = isObj(st.next) && isObj(st.next.profile) ? st.next.profile : null
+  if (p && p.interviewed === true) return p.level
+  const pr = isObj(st.record) && isObj(st.record.project) ? st.record.project : null
+  return pr && isObj(pr.interview) ? pr.interview.level : null
+}
+const motion = (st) => motionOf({ setting: isObj(st.record) && isObj(st.record.settings) ? st.record.settings.motion : null, level: levelOf(st), testMode: st.silent })
+const FRAME_MS = 100 // 10 frames a second, while something moves
+const AFTER_MS = 5000 // a celebration never drawn in this long is let go
+const CHEER_MS = 60000
+// A sprite's cells, encoded once per role, pose and frame (every pose has 2 or 3).
+const SPRITES = new Map()
+const spriteCells = (role, pose, n) => {
+  const k = role + ':' + pose + ':' + (n % 6)
+  if (!SPRITES.has(k)) SPRITES.set(k, encodeCells(spriteFrame({ role, pose, frame: n })))
+  return SPRITES.get(k)
+}
+// A celebration: its frames are made for the width of the site that first draws
+// it, encoded once; the first is drawn, the rest are blitted.
+const effect = (key, at, make) => ({ key, at, make, frames: null, i: 0, site: null })
+const drawn = (fx, columns, site) => {
+  if (!fx.frames) {
+    const f = fx.make(Math.min(512, Math.floor(columns)))
+    if (!f.length) return null
+    Object.assign(fx, { cols: f[0].cols, rows: f[0].rows, frames: f.map(encodeCells) })
+  }
+  fx.site = site
+  return fx.frames[Math.min(fx.i, fx.frames.length - 1)]
+}
 
 // Parse a project file; null when it is not a JSON object (half written, invalid).
 function parse(text) {
@@ -57,6 +89,8 @@ function fresh() {
     record: null, next: null, history: null, cost: null, health: null, auto: null, stepsPath: null, steps: null, shown: '', seen: {}, sized: false,
     root: null, sessionId: null, sessionDir: null, runRef: null, run: null, feed: {}, finder: {}, toolRuns: {}, leases: [],
     tab: 'now', phase: null, check: null, agent: null, collapsed: null, suggested: null, before: null, memo: {}, notice: null,
+    lastRec: null, crews: {}, anim: null, animBusy: false, frameNo: 0, bandId: null,
+    sprites: null, burst: null, sweep: null, cheer: null, wrapped: null,
   }
 }
 
@@ -74,7 +108,7 @@ const runCost = (st) => {
 
 // The band's model, for any width: what band() draws and the redraw check compares.
 const stage = (st, now, props) => stageModel({
-  run: st.run, next: st.next, now, health: st.health, cost: runCost(st), motion: motionOf(st),
+  run: st.run, next: st.next, now, health: st.health, cost: runCost(st), motion: motion(st),
   columns: isObj(props) ? props.bodyColumns : undefined, maxRows: isObj(props) ? props.maxRows : undefined,
 })
 
@@ -201,6 +235,91 @@ async function feed($, st) {
     if (kind && (!st.runRef || found.runId !== st.runRef.runId)) st.runRef = { runId: found.runId, kind }
   }
   if (st.runRef) st.run = await gatherRun(io, st.feed, { sessionDir: st.sessionDir, ...st.runRef })
+  // Each crew this session saw, for Wrapped's agent count.
+  if (isObj(st.run) && typeof st.run.runId === 'string' && Array.isArray(st.run.agents)) {
+    st.crews[st.run.runId] = { startedAt: st.run.startedAt, agents: st.run.agents.map((a) => (isObj(a) ? a.id : null)) }
+  }
+}
+
+// The runs this session saw, for Wrapped: each lease with what it cost (an open one
+// up to now), each workflow crew with its agents.
+const runsSeen = (st) => [
+  ...st.leases.map((l) => {
+    const end = l.costEnd === undefined ? st.cost : l.costEnd
+    return { startedAt: l.startedAt, cost: num(l.costStart) && num(end) ? end - l.costStart : null }
+  }),
+  ...Object.values(st.crews),
+]
+
+// What a change of the record earns (panel-candy.js): a phase passing QA, confetti
+// in the band (full motion); all checks green, the sweep over Proof (full) and a
+// line in the band (full and calm); a ship, the pane on VBW Wrapped (any motion:
+// it is information). The first snapshot is not news.
+async function celebrate($, st, now) {
+  const before = st.lastRec
+  if (before === st.record) return
+  st.lastRec = st.record
+  const c = celebration({ before, after: st.record })
+  const m = motion(st)
+  if (c === 'qa-pass' && m === 'full') st.burst = effect('vbw-confetti', now, (w) => confettiFrames({ cols: w, rows: 3, seed: now }))
+  if (c === 'all-green' && m !== 'off') st.cheer = { text: '✓ All checks pass', until: now + CHEER_MS }
+  if (c === 'all-green' && m === 'full') st.sweep = effect('vbw-sweep', now, (w) => sweepFrames({ cols: w }))
+  if (c === 'shipped') {
+    st.wrapped = wrappedModel({ record: st.record, runs: runsSeen(st), steps: st.steps })
+    if (st.wrapped) {
+      st.tab = 'wrapped'
+      await open($)
+    }
+  }
+}
+
+// Repaint by blit (no redraw): the crew's sprites while the run works and the band
+// shows them, and a celebration's frames once drawn; the loop stops when nothing moves.
+async function paint($, requestId, key, cells) {
+  try {
+    const r = await $.ui.blit({ requestId, key, cells })
+    return !(isObj(r) && r.deny)
+  } catch {
+    return false
+  }
+}
+
+function still(st) {
+  if (st.anim && st.anim.cancel) st.anim.cancel()
+  st.anim = null
+}
+
+function animate($, st) {
+  if (!st.anim) st.anim = $.clock.every(FRAME_MS, () => frame($, st))
+}
+
+async function frame($, st) {
+  if (st.animBusy) return
+  st.animBusy = true
+  try {
+    const n = ++st.frameNo
+    if (st.sprites && !(motion(st) === 'full' && isObj(st.run) && st.run.status === 'running')) st.sprites = null
+    for (const s of st.sprites || []) {
+      if (!(await paint($, st.bandId, s.key, spriteCells(s.role, s.pose, n)))) {
+        st.sprites = null
+        break
+      }
+    }
+    for (const k of ['burst', 'sweep']) {
+      const fx = st[k]
+      if (!fx || !fx.site) continue
+      fx.i++
+      if (fx.i >= fx.frames.length || !(await paint($, fx.site, fx.key, fx.frames[fx.i]))) {
+        st[k] = null
+        $.ui.invalidate('ui.render')
+      }
+    }
+    if (!st.sprites && !(st.burst && st.burst.site) && !(st.sweep && st.sweep.site)) still(st)
+  } catch {
+    still(st)
+  } finally {
+    st.animBusy = false
+  }
 }
 
 // Everything the panel shows, read afresh: each file only when it changed, never written.
@@ -251,7 +370,9 @@ async function suggest($, st) {
   }
 }
 
-const signature = (st, v, now) => JSON.stringify([v, st.sound, stage(st, now), st.run, st.auto, st.leases.length, st.tab, st.phase, st.check, st.agent, st.collapsed])
+const cheering = (st, now) => (st.cheer && st.cheer.until > now ? st.cheer.text : null)
+const signature = (st, v, now) => JSON.stringify([v, st.sound, stage(st, now), st.run, st.auto, st.leases.length, st.tab, st.phase, st.check, st.agent, st.collapsed,
+  cheering(st, now), !!st.burst, !!st.sweep])
 
 async function redrawIfChanged($, st, force) {
   const now = await $.clock.now()
@@ -274,6 +395,9 @@ async function tick($, st) {
   st.busy = true
   try {
     await gather($, st)
+    const now = await $.clock.now()
+    await celebrate($, st, now)
+    for (const k of ['burst', 'sweep']) if (st[k] && !st[k].site && now - st[k].at > AFTER_MS) st[k] = null
     await redrawIfChanged($, st)
   } catch {
     // keep the last good state
@@ -439,13 +563,27 @@ async function draw($, st, e, next) {
 
 // The Stage (panel-stage.js): the crew while a run works, the gate card when VBW
 // needs the person; yields to a survey and to a card the person put off (Later).
+// Above it, a celebration: the all-green line and the confetti burst. The sprites
+// and the confetti drawn here are what the frame loop blits.
 async function band($, st, e) {
   const p = isObj(e.props) ? e.props : {}
+  st.sprites = null
   if (p.hasSurvey) return null
-  const m = stage(st, await $.clock.now(), p)
-  if (!m || (m.key && m.key === st.collapsed)) return null
-  const tree = renderStage($.ui.resolve(e), m, (a) => act($, st, a))
-  return tree ? { tree } : null
+  const now = await $.clock.now()
+  const ui = $.ui.resolve(e)
+  const m = stage(st, now, p)
+  const tree = m && !(m.key && m.key === st.collapsed) ? renderStage(ui, m, (a) => act($, st, a)) : null
+  st.bandId = e.requestId
+  if (tree && m.sprites && ui.Raster) st.sprites = m.rows.map((r) => ({ key: 'vbw-sprite-' + r.id, role: r.role, pose: r.pose }))
+  const top = []
+  const cheer = cheering(st, now)
+  if (cheer) top.push(h(ui.Text, { key: 'vbw-cheer', color: 'green', wrap: 'truncate-end' }, cheer))
+  const fx = st.burst
+  const cells = fx && ui.Raster ? drawn(fx, cols(p.bodyColumns) ? p.bodyColumns : 80, e.requestId) : null
+  if (cells) top.push(h(ui.Raster, { key: fx.key, columns: fx.cols, rows: fx.rows, cells }))
+  if (st.sprites || cells) animate($, st)
+  if (!top.length) return tree ? { tree } : null
+  return { tree: h(ui.Box, { flexDirection: 'column' }, ...top, ...(tree ? [tree] : [])) }
 }
 
 export function register(on) {
@@ -471,6 +609,7 @@ export function register(on) {
       }
       st.sessionDir = await sessionDir($, root, st.sessionId)
       await gather($, st)
+      st.lastRec = st.record
       st.sound = (await $.store.get(st.keys.sound)) !== false
       const now = await $.clock.now()
       const v0 = view(st, now)
@@ -587,7 +726,11 @@ export function register(on) {
       const now = await $.clock.now()
       const v = view(st, now)
       const width = isObj(e.props) && cols(e.props.bodyColumns) ? e.props.bodyColumns : 50
-      return renderPane($.ui.resolve(e), { st, v, now, width }, {
+      const ui = $.ui.resolve(e)
+      const cells = st.sweep && st.tab === 'proof' && ui.Raster ? drawn(st.sweep, width, PANE) : null
+      if (cells) animate($, st)
+      const sweep = cells ? { cols: st.sweep.cols, cells } : null
+      return renderPane(ui, { st, v, now, width, sweep, wrapped: st.wrapped, portrait: $.plugin.root + '/assets/portrait.png' }, {
         act: (a) => act($, st, a),
         sound: () => setSound($, st, !st.sound),
       })
