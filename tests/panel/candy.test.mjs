@@ -184,6 +184,37 @@ test('renderWrapped draws the card in plain words', () => {
   assert.equal(renderWrapped(ui, null), null)
 })
 
+test('Wrapped counts agents only from runs that list them: cost-only runs say nothing about agents', () => {
+  const costOnly = runs.map(({ runId, startedAt, cost }) => ({ runId, startedAt, cost }))
+  const m = wrappedModel({ record: shippedRecord(), runs: costOnly, steps })
+  assert.equal(m.agents, null)
+  assert.equal(m.cost, 3.25)
+  const mixed = wrappedModel({ record: shippedRecord(), runs: [...costOnly, { runId: 'wf_9', startedAt: Date.parse(iso(300)), agents: [{ id: 'q' }] }], steps })
+  assert.equal(mixed.agents, 1)
+})
+
+test('sweepFrames: one green band crossing the width left to right, one row, ending clear', () => {
+  const { sweepFrames } = candy
+  const frames = sweepFrames({ cols: 40, n: 10 })
+  assert.equal(frames.length, 10)
+  const heads = []
+  for (const f of frames) {
+    assert.equal(f.cols, 40)
+    assert.equal(f.rows, 1)
+    assert.equal(f.cells.length, 40)
+    const lit = f.cells.map((c, x) => (c.ch !== ' ' ? x : -1)).filter((x) => x >= 0)
+    for (const x of lit) assert.equal(f.cells[x].fg, 0x5fd75f)
+    heads.push(lit.length ? Math.max(...lit) : -1)
+  }
+  assert.ok(heads[0] >= 0 && heads[0] < 10, 'starts at the left')
+  for (let i = 1; i < frames.length - 1; i++) assert.ok(heads[i] > heads[i - 1], 'moves right')
+  assert.ok(heads[frames.length - 2] >= 35, 'reaches the right edge')
+  assert.equal(heads[frames.length - 1], -1, 'ends clear')
+  assert.deepEqual(sweepFrames({ cols: 0 }), [])
+  assert.deepEqual(sweepFrames(undefined), [])
+  assert.equal(sweepFrames({ cols: 900, n: 3 })[0].cols, 512, 'a Raster is at most 512 wide')
+})
+
 const rec = (over = {}) => ({ shipped: [], phases: [{ id: 'P1' }], evidence: { passed: false, at: 't0' }, ...over })
 
 test('celebration: a ship beats a QA pass beats all green; no change, no celebration', () => {

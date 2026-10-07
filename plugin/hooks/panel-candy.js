@@ -132,6 +132,24 @@ export function confettiFrames(input) {
   return frames
 }
 
+// sweepFrames({ cols, n }): one green band crossing a one-row Raster left to
+// right in n frames (default 12), the last one clear: the all-green sweep.
+const GREEN = 0x5fd75f
+const TRAIL = ['█', '▓', '▒', '░']
+export function sweepFrames(input) {
+  const { cols, n = 12 } = isObj(input) ? input : {}
+  if (!Number.isInteger(cols) || !Number.isInteger(n) || cols < 1 || n < 2) return []
+  const w = Math.min(cols, 512)
+  return Array.from({ length: n }, (_, f) => {
+    const head = f === n - 1 ? -Infinity : Math.round((f * (w - 1)) / Math.max(1, n - 2))
+    const cells = Array.from({ length: w }, (_, x) => {
+      const ch = TRAIL[head - x]
+      return ch ? { ch, fg: GREEN, bg: DEFAULT } : { ch: ' ', fg: DEFAULT, bg: DEFAULT }
+    })
+    return { cols: w, rows: 1, cells }
+  })
+}
+
 // The VBW Wrapped card at ship: what the milestone took. A milestone's window
 // runs from the ship before it to its own ship; steps and runs outside it are
 // other milestones'. What VBW cannot know is null, never a guess.
@@ -155,6 +173,7 @@ export function wrappedModel(input) {
     .reduce((n, p) => n + (Number.isFinite(p.outcome?.fix_rounds) ? p.outcome.fix_rounds : 0), 0)
 
   const ourRuns = arr(runs).filter((r) => isObj(r) && within(r.startedAt))
+  const crews = ourRuns.filter((r) => Array.isArray(r.agents))
   const runCosts = ourRuns.filter((r) => Number.isFinite(r.cost))
   const ourSteps = arr(steps).filter((s) => isObj(s) && Number.isFinite(s.seconds) && s.seconds >= 0 && within(ms(s.started_at)) && within(ms(s.ended_at)))
   const brief = (s) => (s ? { kind: String(s.kind), run: String(s.run), seconds: s.seconds } : null)
@@ -164,7 +183,7 @@ export function wrappedModel(input) {
     milestone: { id: ship.id, title: typeof ship.title === 'string' ? ship.title : record.milestone?.id === ship.id ? String(record.milestone.title || '') : '' },
     requirements: { proven: reqs.filter((r) => r.status === 'proven').length, total: reqs.length },
     checks: { passing: checks.filter((c) => results[c.id]?.status === 'pass').length, total: checks.length },
-    agents: ourRuns.length ? ourRuns.reduce((n, r) => n + arr(r.agents).length, 0) : null,
+    agents: crews.length ? crews.reduce((n, r) => n + r.agents.length, 0) : null,
     fixRounds,
     seconds: ourSteps.length ? ourSteps.reduce((n, s) => n + s.seconds, 0) : null,
     cost: Number.isFinite(cost) ? cost : runCosts.length ? Math.round(runCosts.reduce((n, r) => n + r.cost, 0) * 100) / 100 : null,
