@@ -50,7 +50,8 @@ run's time and its working agents stay current while nothing else happens.
 A run is budgeted at 30 ms (no network, no git process). `vbw statusline on` on a
 VBW status line set by an older VBW (or by VBW 1) adds the interval and changes
 nothing else; an interval the user set is kept. `vbw statusline status` says
-when the interval is missing.
+when the interval is missing, `vbw doctor` warns about it, and a session that
+starts in a VBW project adds it on its own (only to VBW's own status line).
 
 The setting runs the newest installed VBW's `scripts/vbw-statusline.sh` from
 the plugin cache, because the plugin's directory changes with every update and

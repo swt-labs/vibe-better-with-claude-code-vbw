@@ -219,3 +219,22 @@ render() { cc_json | NO_COLOR=1 bash "$SL"; }
   [ "${#lines[@]}" -eq 4 ]
   [[ "${lines[1]}" == "Context "* ]]
 }
+
+@test "a session in a VBW project tops up the refresh interval of VBW's status line, and leaves any other status line alone" {
+  "$VBW" init > /dev/null
+  "$VBW" statusline on > /dev/null
+  jq 'del(.statusLine.refreshInterval)' "$SETTINGS" > "$TEST_ROOT/s.json" && cp "$TEST_ROOT/s.json" "$SETTINGS"
+  CLAUDE_PROJECT_DIR="$PROJECT" bash "$PLUGIN_ROOT/hooks/session-start.sh" < /dev/null > /dev/null
+  jq -e '.statusLine.refreshInterval == 5' "$SETTINGS"
+  printf '{"statusLine": {"type": "command", "command": "my-line"}}\n' > "$SETTINGS"
+  CLAUDE_PROJECT_DIR="$PROJECT" bash "$PLUGIN_ROOT/hooks/session-start.sh" < /dev/null > /dev/null
+  jq -e '.statusLine == {type: "command", command: "my-line"}' "$SETTINGS"
+}
+
+@test "doctor warns when VBW's status line has no refresh interval" {
+  "$VBW" init > /dev/null
+  "$VBW" statusline on > /dev/null
+  jq 'del(.statusLine.refreshInterval)' "$SETTINGS" > "$TEST_ROOT/s.json" && cp "$TEST_ROOT/s.json" "$SETTINGS"
+  run "$VBW" doctor
+  [[ "$output" == *"refreshes on events only"*"vbw statusline on"* ]]
+}

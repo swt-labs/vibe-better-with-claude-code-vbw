@@ -46,6 +46,11 @@ if [ -f "$root/.vbw/record.json" ]; then
     context="${context}VBW project made by a newer VBW (${state#vbw: }). Tell the user once: update VBW with /vbw:update, then restart Claude Code; VBW cannot work on this project until then."
     notice="This project was made by a newer VBW. Update with /vbw:update, then restart Claude Code."
   else
+    # VBW's status line set by an older VBW has no refresh interval: add it
+    # (only VBW's own line; `on` keeps every other setting).
+    case $("$vbw" statusline status 2> /dev/null) in
+      *"refreshed on events only"*) "$vbw" statusline on > /dev/null 2>&1 || true ;;
+    esac
     next=$(cd "$root" && "$vbw" next 2>&1 < /dev/null | head -n 1)
     context="${context}VBW project ($state). Next: $next. Continue with /vbw:vibe. The vbw command is on PATH (vbw help)."
   fi
