@@ -4,8 +4,11 @@
 // fill the prompt, open Mission Control or collapse the card; the person sends.
 // Otherwise nothing: the hint line already says what comes next, and the band
 // takes room only when there is work to watch or a decision to make.
+// With full motion and room for them, the crew theme: each agent is a 3-row
+// pixel sprite posed by what it does (panel-candy.js); panel.js animates them.
 // Pure: data in, a model out (stageModel), a tree out (renderStage). No `$`,
 // never changes its input, never throws.
+import { poseOf, spriteFrame, encodeCells } from './panel-candy.js'
 
 const isObj = (x) => x !== null && typeof x === 'object' && !Array.isArray(x)
 const num = (x) => typeof x === 'number' && Number.isFinite(x)
@@ -171,6 +174,15 @@ function crewOf(rn, now, columns, maxRows, motion, cost) {
     return { kind: 'crew', mode: 'line', header: { text: cut(parts.join(' · '), room), button }, rows: [], tally: null, more: 0 }
   }
   const full = maxRows >= 8
+  // Sprites: 3 rows an agent, all of them shown, while the run works.
+  const sprites = motion === 'full' && full && rn.status === 'running' && 1 + 3 * rows.length + (tally ? 1 : 0) <= maxRows
+  if (sprites) {
+    const byId = new Map(agents.map((a) => [a.id, a]))
+    rows = rows.map((r) => {
+      const a = byId.get(r.id)
+      return { ...r, spin: '', pose: r.glyph !== '●' ? a.state : r.activityColor === AMBER ? 'quiet' : poseOf(a.activity, 'working') }
+    })
+  }
   const parts = ['VBW ▸ ' + kind, status, str(rn.phase), time]
   if (full && num(cost) && cost >= 0) parts.push('≈$' + cost.toFixed(2) + ' this run')
   const room2 = maxRows - 1 - (tally ? 1 : 0)
@@ -179,7 +191,9 @@ function crewOf(rn, now, columns, maxRows, motion, cost) {
     more = rows.length - (room2 - 1)
     rows = rows.slice(0, room2 - 1)
   }
-  return { kind: 'crew', mode: full ? 'full' : 'compact', header: { text: cut(parts.filter(Boolean).join(' · '), room), button }, rows: fit(rows, columns, full), tally, more }
+  // A sprite takes 4 more columns than the dot, and is the row's only motion.
+  const model = { kind: 'crew', mode: full ? 'full' : 'compact', header: { text: cut(parts.filter(Boolean).join(' · '), room), button }, rows: fit(rows, sprites ? columns - 4 : columns, full), tally, more }
+  return sprites ? { ...model, sprites: true } : model
 }
 
 // --- the model ---------------------------------------------------------------
@@ -235,8 +249,11 @@ export function renderStage(ui, model, onAction) {
     if (model.kind !== 'crew' || !isObj(model.header) || !Array.isArray(model.rows)) return null
     const header = h(Box, { key: 'header', flexDirection: 'row', justifyContent: 'space-between' },
       h(Text, { bold: true, wrap: 'truncate-end' }, String(model.header.text)), button(model.header.button, 'mission'))
+    const sprite = model.sprites === true && ui.Raster ? (r) => h(ui.Raster, {
+      key: 'vbw-sprite-' + r.id, columns: 5, rows: 3, cells: encodeCells(spriteFrame({ role: r.role, pose: r.pose, frame: 0 })),
+    }) : null
     const rows = model.rows.map((r) => h(Box, { key: 'agent-' + r.id, flexDirection: 'row' },
-      h(Text, { color: r.glyphColor }, r.glyph),
+      sprite ? sprite(r) : h(Text, { color: r.glyphColor }, r.glyph),
       h(Text, { color: r.roleColor }, ' ' + pad(r.role, ROLE_W) + ' '),
       h(Text, null, r.label + '  '),
       ...(r.spin ? [h(Text, { color: r.roleColor }, r.spin + ' ')] : []),

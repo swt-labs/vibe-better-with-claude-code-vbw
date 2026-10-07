@@ -185,8 +185,8 @@ test('streamed text is quoted; tokens read as k or M; none is blank', () => {
   assert.equal(rows[2].activity, 'working')
 })
 
-test('the spinner cycles with time unless motion is off', () => {
-  const at = (now, motion) => stage.stageModel({ run: run([agent()]), now, maxRows: 12, columns: 100, motion }).rows[0].spin
+test('the spinner cycles with time unless motion is off (where no sprite moves instead)', () => {
+  const at = (now, motion) => stage.stageModel({ run: run([agent()]), now, maxRows: 5, columns: 100, motion }).rows[0].spin
   const frames = new Set([0, 1, 2, 3, 4, 5].map((i) => at(NOW + i * 250, 'full')))
   assert.ok(frames.size > 1, 'full motion moves')
   assert.equal(new Set([0, 1, 2, 3].map((i) => at(NOW + i * 1000, 'off'))).size, 1, 'motion off stands still')
@@ -331,6 +331,55 @@ test('render the crew: the header with its button, then one row per agent, colou
   walk(tree, (n) => {
     if (n.type === 'Text') for (const c of n.children) assert.equal(typeof c, 'string')
   })
+})
+
+// --- the crew theme (full motion) ---------------------------------------------
+
+const candy = await import(pathToFileURL(PLUGIN + '/hooks/panel-candy.js').href)
+const RUI = { ...UI, Raster: Object.freeze({ element: 'Raster' }) }
+const posed = [
+  agent(), agent({ id: 'b', role: 'lead', activity: { kind: 'text', text: 'Splitting' } }),
+  agent({ id: 'c', role: 'dev', state: 'done', endedAt: NOW - 5 * S, result: 'ok' }),
+  agent({ id: 'q', role: 'qa', lastSeenAt: NOW - 46 * S }),
+]
+
+test('full motion with room for them: sprites, each agent posed by what it does', () => {
+  const m = model({ run: run([...posed, agent({ id: 'f', role: 'scout', state: 'failed', result: 'boom', endedAt: NOW })]), maxRows: 16 })
+  assert.equal(m.sprites, true)
+  assert.ok(m.rows.every((r) => r.spin === ''), 'the sprite is the motion')
+  assert.deepEqual(m.rows.map((r) => r.pose), ['reading', 'streaming', 'done', 'quiet', 'failed'])
+  const ed = model({ run: run([agent({ activity: { kind: 'tool', text: 'editing panel.js' } })]) })
+  assert.equal(ed.rows[0].pose, 'editing')
+})
+
+test('no sprites when calm or off, after the run ended, or without three rows of room per agent', () => {
+  for (const motion of ['calm', 'off', undefined]) assert.ok(!model({ run: run(posed), maxRows: 16, motion }).sprites, String(motion))
+  assert.ok(!model({ run: run(posed, { status: 'completed', endedAt: NOW - 5 * S }), maxRows: 16 }).sprites, 'a finished run')
+  const tight = model({ run: run(posed), maxRows: 12 })
+  assert.equal(tight.mode, 'full')
+  assert.ok(!tight.sprites, '1 + 4 x 3 rows do not fit in 12')
+  assert.ok(tight.rows.every((r) => r.pose === undefined))
+})
+
+test('render sprites: one 5x3 Raster per agent in place of its dot and spinner; a table without Raster draws dots', () => {
+  const m = model({ run: run(posed), maxRows: 16, columns: 60 })
+  const tree = stage.renderStage(RUI, m)
+  const rasters = []
+  walk(tree, (n) => n.type === 'Raster' && rasters.push(n))
+  assert.deepEqual(rasters.map((r) => r.props.key), ['vbw-sprite-a1', 'vbw-sprite-b', 'vbw-sprite-c', 'vbw-sprite-q'])
+  assert.deepEqual([rasters[0].props.columns, rasters[0].props.rows], [5, 3])
+  assert.equal(rasters[0].props.cells, candy.encodeCells(candy.spriteFrame({ role: 'architect', pose: 'reading', frame: 0 })))
+  const texts = collect(tree)
+  assert.ok(!texts.some((t) => t === '●' || /^[⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏] $/.test(t)), texts.join('|'))
+  const long = [agent({ activity: { kind: 'tool', text: 'x'.repeat(200) } }), agent({ id: 'c', state: 'done', endedAt: NOW - 5 * S, result: 'y'.repeat(200) })]
+  for (const columns of [40, 60, 100]) {
+    walk(stage.renderStage(RUI, model({ run: run(long), maxRows: 16, columns })), (n) => {
+      if (n.type === 'Box' && /^agent-/.test(n.props.key || '')) assert.ok(len(collect(n).join('')) + 5 <= columns, columns + ': ' + collect(n).join(''))
+    })
+  }
+  const plain = stage.renderStage(UI, m)
+  assert.ok(collect(plain).includes('●'))
+  assert.equal(find(plain, (n) => n.type === 'Raster'), undefined)
 })
 
 test('render the tally and the overflow as dim lines', () => {
