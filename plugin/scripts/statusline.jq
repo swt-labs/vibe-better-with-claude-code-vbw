@@ -5,8 +5,9 @@
 # .vbw/runtime/auto.SESSION.json if it armed an autonomous run. jq skips missing files, so the sentinels mark which
 # optional input is which. Args: $branch, $color ("1" or ""),
 # $legacy (a VBW 1 plan, not converted), $agents (the workflow agents working
-# now: [{role, label, model}]), $profiles ([lib/profiles.json]). Output: 5
-# lines in a VBW project (the team or its working agents on line 2), else 4.
+# now: [{role, label, model}]), $profiles ([lib/profiles.json]). Output: 4
+# lines; in a VBW project under Claude Code older than 2.1.287, 5 (the team or
+# its working agents on line 2).
 
 def c($code; $s): if $color == "1" then "\u001b[\($code)m\($s)\u001b[0m" else $s end;
 def dim: c("2"; .);
@@ -41,6 +42,9 @@ def progress($done; $total): (if $total > 0 then $done * 100 / $total else 0 end
 | (if $s2 != null and $s2 >= 1 then $rest[0] else null end) as $next
 | (if $s2 != null then $rest[$s2 + 1] else null end) as $auto
 | now as $now
+# Claude Code 2.1.287 and later shows the working agents and the team in its own
+# panes, so line 2 is left out there; older (or unreported) versions keep it.
+| (($cc.version // "") | if type == "string" then [scan("[0-9]+") | tonumber][0:3] >= [2, 1, 287] else false end) as $slim
 
 # Line 1: VBW
 | ( if ($rec | type) != "object" then
@@ -64,10 +68,10 @@ def progress($done; $total): (if $total > 0 then $done * 100 / $total else 0 end
         + (if ($auto | type) == "object" then sep + c("35"; "⟳ auto \($auto.steps)/\($auto.cap)") else "" end)
     end ),
 
-# Line 2 (VBW projects): the agents working now, each in its role's colour with
-# its label and model; otherwise the team: each role's model, the profile and
-# how much VBW does on its own.
-  ( select(($rec | type) == "object")
+# Line 2 (VBW projects, Claude Code before 2.1.287): the agents working now, each
+# in its role's colour with its label and model; otherwise the team: each role's
+# model, the profile and how much VBW does on its own.
+  ( select(($rec | type) == "object" and ($slim | not))
     | if ($agents | length) > 0 then
         "Agents " + ([$agents[0:6][] | agent_dot(.role) + " " + c(.role | role_color; .role)
             + ((.role as $r | .label | ltrimstr($r) | ltrimstr(" ")) as $l | if $l != "" then " " + $l else "" end)

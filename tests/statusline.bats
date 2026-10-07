@@ -193,3 +193,29 @@ render() { cc_json | NO_COLOR=1 bash "$SL"; }
   vbw_run statusline off
   jq -e '.theme == "dark" and (has("statusLine") | not)' "$SETTINGS"
 }
+
+@test "from Claude Code 2.1.287 the agents and team line is dropped; line 1 keeps the agent count" {
+  "$VBW" init > /dev/null
+  "$VBW" run start plan > /dev/null
+  local t="$TEST_ROOT/session.jsonl" w="$TEST_ROOT/session/subagents/workflows/wf_1" v
+  mkdir -p "$w" && : > "$t"
+  : > "$w/agent-a.jsonl"
+  printf '{"agentType": "vbw:dev", "description": "dev P1.2", "model": "sonnet"}' > "$w/agent-a.meta.json"
+  for v in 2.1.287 2.1.291 2.2.0 3.0.0; do
+    run bash -c 'jq -nc --arg d "$1" --arg t "$2" --arg v "$4" "{workspace: {project_dir: \$d}, transcript_path: \$t, version: \$v}" | NO_COLOR=1 bash "$3"' _ "$PROJECT" "$t" "$SL" "$v"
+    [ "${#lines[@]}" -eq 4 ]
+    [[ "${lines[0]}" =~ "│ ▶ plan "[0-9]+s" · 1 agent working" ]]
+    [[ "${lines[1]}" == "Context "* ]]
+  done
+  # Older, or not reported: the line stays as it was.
+  for v in 2.1.286 2.1.29 2.0.300 "" garbage; do
+    run bash -c 'jq -nc --arg d "$1" --arg t "$2" --arg v "$4" "{workspace: {project_dir: \$d}, transcript_path: \$t, version: \$v}" | NO_COLOR=1 bash "$3"' _ "$PROJECT" "$t" "$SL" "$v"
+    [ "${#lines[@]}" -eq 5 ]
+    [ "${lines[1]}" = "Agents ● dev P1.2 sonnet" ]
+  done
+  # No agents: no team line either.
+  rm -f "$w/agent-a.jsonl"
+  run bash -c 'jq -nc --arg d "$1" "{workspace: {project_dir: \$d}, version: \"2.1.290\"}" | NO_COLOR=1 bash "$2"' _ "$PROJECT" "$SL"
+  [ "${#lines[@]}" -eq 4 ]
+  [[ "${lines[1]}" == "Context "* ]]
+}
