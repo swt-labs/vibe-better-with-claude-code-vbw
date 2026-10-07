@@ -23,6 +23,7 @@ const padStart = (s, n) => ' '.repeat(Math.max(0, n - len(s))) + s
 
 const QUIET_MS = 45000
 const DONE_MS = 60000
+const FLASH_MS = 1000 // a new row shows inverted this long (full motion only)
 const SPIN = '⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏'
 // A workflow follows these steps of `vbw next`: the moment health nudges matter.
 const RUNS = new Set(['plan', 'build', 'qa', 'fix'])
@@ -106,7 +107,7 @@ function card(kind, key, title, choices, hp, columns) {
 // --- the crew ----------------------------------------------------------------
 
 // One agent as the band shows it, or null when it is not drawn (done long ago).
-function rowOf(a, now, motion, ended) {
+function rowOf(a, now, motion, ended, born) {
   const role = str(a.role) || 'agent'
   const roleColor = colorOfRole(role)
   const start = num(a.startedAt) ? a.startedAt : now
@@ -120,7 +121,8 @@ function rowOf(a, now, motion, ended) {
     return { ...base, glyph: '✗', glyphColor: stateColor('failed'), activity: str(a.result) || 'failed', activityColor: stateColor('failed'),
       button: { label: 'details', action: { open: 'mission', tab: 'now', agent: str(a.id) } } }
   }
-  const row = { ...base, glyph: '●', glyphColor: roleColor }
+  const age = isObj(born) && num(born[base.id]) ? now - born[base.id] : -1
+  const row = { ...base, glyph: '●', glyphColor: roleColor, ...(motion === 'full' && age >= 0 && age < FLASH_MS ? { flash: true } : {}) }
   const seen = num(a.lastSeenAt) ? a.lastSeenAt : start
   if (a.state === 'quiet' || now - seen >= QUIET_MS) return { ...row, quiet: true, activity: 'quiet ' + clock(now - seen), activityColor: stateColor('quiet') }
   const act = isObj(a.activity) ? a.activity : null
@@ -147,10 +149,10 @@ function fit(rows, columns, full) {
   })
 }
 
-function crewOf(rn, now, columns, maxRows, motion, cost) {
+function crewOf(rn, now, columns, maxRows, motion, cost, born) {
   const ended = num(rn.endedAt) ? rn.endedAt : null
   const agents = rn.agents.filter((a) => isObj(a) && typeof a.id === 'string' && a.id)
-  let rows = agents.map((a) => rowOf(a, now, motion, ended)).filter(Boolean)
+  let rows = agents.map((a) => rowOf(a, now, motion, ended, born)).filter(Boolean)
   const doneAll = agents.filter((a) => a.state === 'done').length
   const doneShown = rows.filter((r) => r.glyph === '✓').length
   const tally = doneAll > doneShown ? doneAll - doneShown + ' done' : null
@@ -203,18 +205,18 @@ function crewOf(rn, now, columns, maxRows, motion, cost) {
 export function stageModel(input) {
   try {
     if (!isObj(input)) return null
-    const { run: rn, next: nx, health: hl, cost, motion } = input
+    const { run: rn, next: nx, health: hl, cost, motion, born } = input
     const now = num(input.now) ? input.now : Date.now()
     const columns = num(input.columns) && input.columns > 0 ? Math.floor(input.columns) : 80
     const maxRows = num(input.maxRows) && input.maxRows > 0 ? Math.floor(input.maxRows) : 8
     const crew = isObj(rn) && Array.isArray(rn.agents) && rn.agents.some((a) => isObj(a) && typeof a.id === 'string' && a.id)
-    if (crew && rn.status === 'running') return crewOf(rn, now, columns, maxRows, motion, cost)
+    if (crew && rn.status === 'running') return crewOf(rn, now, columns, maxRows, motion, cost, born)
     const action = isObj(nx) && typeof nx.action === 'string' ? nx.action : ''
     if (isObj(nx) && nx.gate === true) {
       const [sentence, choices, about] = gateOf(nx)
       return card('gate', 'gate:' + action + ':' + about, '⚑ VBW needs you · ' + sentence, choices, health(hl, action), columns)
     }
-    if (crew && num(rn.endedAt) && now - rn.endedAt < DONE_MS) return crewOf(rn, now, columns, maxRows, motion, cost)
+    if (crew && num(rn.endedAt) && now - rn.endedAt < DONE_MS) return crewOf(rn, now, columns, maxRows, motion, cost, born)
     if (isObj(nx) && RUNS.has(action)) {
       const hp = health(hl, action)
       if (hp.lines.length || hp.compact) return card('nudge', 'nudge:' + action, 'VBW · before the ' + action + ' run', [], hp, columns)
@@ -264,8 +266,8 @@ export function renderStage(ui, model, onAction) {
     }) : null
     const rows = model.rows.map((r) => h(Box, { key: 'agent-' + r.id, flexDirection: 'row' },
       sprite ? sprite(r) : h(Text, { color: r.glyphColor }, r.glyph),
-      h(Text, { color: r.roleColor }, ' ' + pad(r.role, ROLE_W) + ' '),
-      h(Text, { color: r.roleColor }, r.label + '  '),
+      h(Text, { color: r.roleColor, ...(r.flash ? { inverse: true } : {}) }, ' ' + pad(r.role, ROLE_W) + ' '),
+      h(Text, { color: r.roleColor, ...(r.flash ? { inverse: true } : {}) }, r.label + '  '),
       ...(r.spin ? [h(Text, { color: r.roleColor }, r.spin + ' ')] : []),
       ...intent(r),
       ...(r.tail ? [h(Text, { dimColor: true }, r.tail)] : []),

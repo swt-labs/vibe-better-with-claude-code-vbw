@@ -86,7 +86,7 @@ function parse(text) {
 // What the panel knows: the last good state of its files, the live run, what is drawn, what is asked.
 function fresh() {
   return {
-    live: false, timer: null, busy: false, question: null, sound: true, keys: keys(false), silent: false, wouldPlay: 0, alerted: null,
+    live: false, born: {}, timer: null, busy: false, question: null, sound: true, keys: keys(false), silent: false, wouldPlay: 0, alerted: null,
     record: null, next: null, history: null, cost: null, health: null, auto: null, stepsPath: null, steps: null, shown: '', seen: {}, sized: false,
     root: null, sessionId: null, sessionDir: null, runRef: null, run: null, feed: {}, finder: {}, toolRuns: {}, leases: [],
     tab: 'now', phase: null, check: null, agent: null, collapsed: null, suggested: null, before: null, memo: {}, notice: null,
@@ -110,7 +110,7 @@ const runCost = (st) => {
 // The band's model, for any width: what band() draws and the redraw check compares.
 const stage = (st, now, props) => stageModel({
   run: st.run, next: st.next, now, health: st.health, cost: runCost(st), motion: motion(st),
-  columns: isObj(props) ? props.bodyColumns : undefined, maxRows: isObj(props) ? props.maxRows : undefined,
+  born: st.born, columns: isObj(props) ? props.bodyColumns : undefined, maxRows: isObj(props) ? props.maxRows : undefined,
 })
 
 // Read a file only when its size or time changed; keep the old state when it cannot be used,
@@ -375,8 +375,17 @@ const cheering = (st, now) => (st.cheer && st.cheer.until > now ? st.cheer.text 
 const signature = (st, v, now) => JSON.stringify([v, st.sound, stage(st, now), st.run, st.auto, st.leases.length, st.tab, st.phase, st.check, st.agent, st.collapsed,
   cheering(st, now), !!st.burst, !!st.sweep])
 
+// Remember when each agent first showed; at full motion a new row flashes for a
+// second, and one short timer redraws the band when the flash is over.
+async function noteBorn($, st, now) {
+  const fresh = (isObj(st.run) && Array.isArray(st.run.agents) ? st.run.agents : []).filter((a) => isObj(a) && typeof a.id === 'string' && a.id && !(a.id in st.born))
+  for (const a of fresh) st.born[a.id] = now
+  if (fresh.length && motion(st) === 'full') $.clock.after(1050, () => redrawIfChanged($, st).catch(() => {}))
+}
+
 async function redrawIfChanged($, st, force) {
   const now = await $.clock.now()
+  await noteBorn($, st, now)
   const v = view(st, now)
   await alert($, st, v.need)
   await suggest($, st)
