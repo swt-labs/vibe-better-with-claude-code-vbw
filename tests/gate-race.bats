@@ -27,18 +27,23 @@ setup() {
 
 teardown() { vbw_teardown; }
 
-@test "R69: a lock whose owner file reads empty is not taken over at once: the check waits" {
+@test "R69: a lock whose owner file reads empty is not taken over at once: the check waits, then takes it over and runs" {
   mkdir -p .vbw/runtime/gate/mutex
   : > .vbw/runtime/gate/mutex/pid
-  VBW_CHECK_WAIT_SECONDS=2 run "$VBW" check C1
-  [ "$status" -ne 0 ] || { echo "the check took the lock: $output"; false; }
-  [[ "$output" == *"waited"* ]]
+  "$VBW" check C1 > "$TEST_ROOT/o1" 2>&1 < /dev/null 3>&- &
+  local pid=$!
+  sleep 1
+  kill -0 "$pid"
   [ -d .vbw/runtime/gate/mutex ]
+  local code=0
+  wait "$pid" || code=$?
+  [ "$code" -eq 0 ] || { cat "$TEST_ROOT/o1"; false; }
+  grep -q 'C1 pass' "$TEST_ROOT/o1"
 }
 
 @test "R69: a lock with no owner left for long is taken over, and the check runs" {
   mkdir -p .vbw/runtime/gate/mutex
-  VBW_CHECK_WAIT_SECONDS=30 run "$VBW" check C1
+  run "$VBW" check C1
   [ "$status" -eq 0 ] || { echo "$output"; false; }
   [[ "$output" == *"C1 pass"* ]]
 }

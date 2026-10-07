@@ -161,8 +161,8 @@ overlaps() {
   [ "$status" -eq 1 ]
   [[ "$output" == *"C5 timeout"* ]]
   SECONDS=0
-  VBW_CHECK_WAIT_SECONDS=3 vbw_run check C3
-  # A held exclusion would make C3 fail after the 3 s limit, naming what it waited on.
+  vbw_run check C3
+  # A held exclusion would make C3 fail naming what it waited on.
   [ "$status" -eq 0 ]
   [[ "$output" != *"waited"* ]]
 }
@@ -173,28 +173,20 @@ overlaps() {
   kill -9 "$BG_PID"
   wait "$BG_PID" 2> /dev/null || true
   SECONDS=0
-  VBW_CHECK_WAIT_SECONDS=3 vbw_run check C3
-  # A stale lock would make C3 fail after the 3 s limit, naming what it waited on.
+  vbw_run check C3
+  # A stale lock would make C3 fail naming what it waited on.
   [ "$status" -eq 0 ]
   [[ "$output" == *"C3 pass"* ]]
   [[ "$output" != *"waited"* ]]
 }
 
-@test "a wait beyond the limit fails naming the check being waited on" {
+@test "a check waits for the check holding the gate, however long, and then runs" {
   bg "$TEST_ROOT/o1" check C6
   started C6
-  SECONDS=0
-  VBW_CHECK_WAIT_SECONDS=2 vbw_run check C3
-  [ "$status" -ne 0 ]
-  [[ "$output" == *"C6"* ]]
-  # The 2 s limit is honoured, not the 900 s default; the bound allows a loaded machine.
-  [ "$SECONDS" -lt 60 ]
-  wait
-  bg "$TEST_ROOT/o2" check C7
-  started C7
-  VBW_CHECK_WAIT_SECONDS=2 vbw_run check C1
-  [ "$status" -ne 0 ]
-  [[ "$output" == *"C7"* ]]
+  vbw_run check C3
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"C3 pass"* ]]
+  before "$(t C6 end)" "$(t C3 start)"
   wait
 }
 
@@ -206,7 +198,7 @@ overlaps() {
   started C6
   cd "$other" || return 1
   SECONDS=0
-  VBW_CHECK_WAIT_SECONDS=3 vbw_run check C3
+  vbw_run check C3
   [ "$status" -eq 0 ]
   [ "$SECONDS" -lt 5 ]
   wait
