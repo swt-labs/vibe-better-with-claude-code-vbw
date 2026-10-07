@@ -7813,7 +7813,15 @@
         "breaks: R12, R22, R23, R24, R25, R26, R28, R29, R31, R32, R35, R43, R44, R45, R46, R47, R48, R49, R61, R66, R69, R70, R71, R72, R73, R74, R78, R79, R80, R81, R92, R93, R94, R97, R98, R100",
         "tests: project test command"
       ],
-      "predicted": "deep"
+      "predicted": "deep",
+      "qa": {
+        "result": "fail",
+        "tier": "standard",
+        "tree": "44d03a0254b1de879aa0b4f218a93a0ba2241365a1751b7b40544e8c22fa61fe",
+        "at": "2026-10-07T22:20:19Z",
+        "note": "19/20 checks",
+        "rounds": 1
+      }
     },
     {
       "id": "P72",
@@ -13504,6 +13512,14 @@
       "attempts": 0,
       "status": "open",
       "note": "Commit 1aee614f edited tests/fix-reuse.bats (test 'vbw prove runs every check...' renamed, expected run counts changed from C1=2,C2=2,C3=3 to 1,1,2). That file is protected by approved check C42 and is not in P70.1 or P70.2 files. The Dev stopped and asked for approval; the decisions list (D145-D174) has no entry approving it (D173 covers only the second-prove-reruns rule). Fix: record the owner or VBW decision that supersedes C42's old expectation, or get the edit approved through the contract."
+    },
+    {
+      "id": "F69",
+      "req": "R104",
+      "source": "qa",
+      "attempts": 0,
+      "status": "open",
+      "note": "Commit e07f6870 changed plugin/lib/qa.jq so a QA cache written before the requirements digest existed (no reqs field) compares only the fields it has. No test covers it: no tests/*.bats builds a cache without reqs (grep finds none), and the commit touches no test file. A change that drops the reqs==null branch would pass the suite. Add a regression test in tests/qa-recheck-requirements.bats (protected by C162): an old-format cache with an unchanged phase must not list it, with a changed file it must list it with the files reason."
     }
   ],
   "todos": [
