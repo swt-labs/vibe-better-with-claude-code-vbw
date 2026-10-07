@@ -6669,7 +6669,22 @@
         "breaks: R1, R2, R12, R13, R14, R31, R32, R33, R43, R44, R45, R46, R47, R48, R49, R58, R61, R66, R69, R70, R73, R74, R78, R79, R80, R81, R83",
         "tests: project test command"
       ],
-      "predicted": "deep"
+      "predicted": "deep",
+      "qa": {
+        "result": "pass",
+        "tier": "standard",
+        "tree": "f1eb6491585d022990fc0c9c9dc2117576530b34c41dae7468694e8cfeea18a3",
+        "at": "2026-10-07T13:24:07Z",
+        "note": "16/16 checks"
+      },
+      "outcome": {
+        "tier": "deep",
+        "predicted": "deep",
+        "held": true,
+        "fix_rounds": 0,
+        "qa_findings": 0,
+        "escalations": 0
+      }
     },
     {
       "id": "P64",
