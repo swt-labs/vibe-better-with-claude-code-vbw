@@ -36,5 +36,5 @@ if out=$(cd "$root" && "$vbw" approve --hash "$fp" 2>&1 < /dev/null); then
   esac
 fi
 why=$(printf '%s' "$out" | sed 's/^vbw: //' | tr '\n' ' ' | sed 's/  */ /g; s/ $//; s/[.:;] *$//')
-say "Nothing was approved: $why. Once that is fixed, VBW asks again with the approval menu (/vbw:approve also works)." \
+say "Nothing was approved: $why. Once that is fixed, VBW asks again with the approval menu." \
   "The user chose Approve for contract $fp but nothing was approved: $out. Tell the user why, then ask again with the approval menu (AskUserQuestion, the question vbw show contract prints) once it is fixed; vbw show contract shows what they approve."
