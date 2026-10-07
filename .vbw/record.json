@@ -10444,7 +10444,7 @@
         "P60.2",
         "P60.3"
       ],
-      "status": "planned",
+      "status": "done",
       "role": "docs",
       "tasks": [
         "Add the shared palette: which colour each role and each state has, and that the marks and words carry the state when colour is off",
@@ -10491,7 +10491,7 @@
         "P60.1",
         "P61.1"
       ],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "panel.js: keep when each agent was first drawn in the band and pass it to the band's model",
@@ -11142,6 +11142,11 @@
     {
       "id": "T46",
       "text": "Approval hook misses a question whose explanation starts on a new line after 'Approve contract <fp>?' (regex wants a space); accept any whitespace",
+      "status": "open"
+    },
+    {
+      "id": "T47",
+      "text": "Workflow closing step runs as vbw:scout, whose read-only mandate can refuse vbw run confirm/end (seen in M12 wave 3); give the close step an agent whose mandate allows it, in building, fixing and verifying",
       "status": "open"
     }
   ],
