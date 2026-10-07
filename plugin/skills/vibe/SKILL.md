@@ -96,21 +96,21 @@ decides first. Ask each with AskUserQuestion, one at a time (why it matters in t
 trade-off as description, recommended first, "(Recommended)"). Record
 each: `vbw decide "<what was decided>" "<their reason, or the trade-off they accepted>"`. Plan again: `VBW_SESSION_ID=${CLAUDE_SESSION_ID} vbw run start plan`, workflow with
 `{"requirements": <requirements>, "decided": true, "models": ...}`. Planned: give Lead's summary, the
-`choices` it made itself (any can change), Architect's `notes` (offer `vbw todo add`).
+`choices` it made itself (any can change), Architect's `notes` (offer `vbw todo add`). Then the approval menu, never a typed command.
 
 **approve** (needs user): `vbw show contract --changes` (after an earlier approval: explain just those). Else
-`vbw show contract`: explain each requirement, how checked, plans, files, commands that will run. Follow `vbw:suggest`, then AskUserQuestion with the approval question `vbw show contract` prints: "Approve" (first), "Not yet". Approve: hook recorded it; continue. Not yet: ask what to change. User's own words (own-answer slot): what to change, or a question. Ask only with the menu, never to type; typed `/vbw:approve` is still served. You cannot approve.
+`vbw show contract`: explain each requirement, how checked, plans, files, commands that will run. Follow `vbw:suggest`, then AskUserQuestion with the approval question `vbw show contract` prints: "Approve" (first), "Not yet". Approve: hook recorded it; continue. Not yet: ask what to change. User's own words (own-answer slot): what to change, or a question. You cannot approve.
 Test files edited during the build wait for one approval just before proof (`detail.files`): say which and why, then ask the same way.
 
 **build**: `VBW_SESSION_ID=${CLAUDE_SESSION_ID} vbw run start build <detail.plans>`, Workflow `vbw:building` with
 args `{"plans": <detail.plans>, "docs": <detail.docs>, "models": ..., "rigor": ...}` (Dev per
-plan; Docs for documentation plans). Returns: report each plan's result in one line (quote blockers and notes) and what the workflow says was not recorded, then `vbw prove`.
+plan; Docs for documentation plans). Returns: report each plan's result in one line (quote blockers and notes) and what the workflow says was not recorded, then `VBW_SESSION_ID=${CLAUDE_SESSION_ID} vbw prove`.
 
 **fix**: `VBW_SESSION_ID=${CLAUDE_SESSION_ID} vbw run start fix <detail.fixes>`, Workflow `vbw:fixing` with args
 `{"groups": <detail.groups>, "models": ..., "rigor": ...}` (fixes sharing files go to one
-Dev). Returns: report anything it says was not recorded, then `vbw prove`.
+Dev). Returns: report anything it says was not recorded, then `VBW_SESSION_ID=${CLAUDE_SESSION_ID} vbw prove`.
 
-**prove**: `vbw prove`, report what passed and failed.
+**prove**: `VBW_SESSION_ID=${CLAUDE_SESSION_ID} vbw prove`, report what passed and failed.
 
 **qa**: `VBW_SESSION_ID=${CLAUDE_SESSION_ID} vbw run start qa`, Workflow `vbw:verifying` with args
 `{"phases": <detail.phases>, "tier": <detail.tier>, "round": <round, as in vbw next --json>, "models": ..., "rigor": ...}`. QA records each phase's verdict; findings become fixes. Report
@@ -145,7 +145,7 @@ wrong: ask what, then `vbw req reject <id> "<their words>"`. Skip: leave it.
 
 **Changing the plan** (add, change or drop mid-way): `vbw spec add`, or edit `.vbw/spec.md` and `vbw spec sync` (dropping a
 requirement removes its checks and unstarted plans that only served it). `vbw next` then asks for planning again:
-Lead keeps finished work, user approves the changed contract.
+Lead keeps finished work; the approval menu follows.
 
 ## Rules
 
