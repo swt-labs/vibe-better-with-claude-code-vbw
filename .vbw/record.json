@@ -6132,7 +6132,15 @@
         "breaks: R51, R52, R53, R55, R56, R57, R58, R64, R82",
         "tests: project test command"
       ],
-      "predicted": "deep"
+      "predicted": "deep",
+      "qa": {
+        "result": "fail",
+        "tier": "deep",
+        "tree": "77b1eebd4e1d8409ac001fffa9f898bafb3411e51700b3e8a7869e3e0020c170",
+        "at": "2026-10-07T11:34:18Z",
+        "note": "22/24 checks",
+        "rounds": 1
+      }
     },
     {
       "id": "P60",
@@ -10948,6 +10956,14 @@
       "attempts": 0,
       "status": "closed",
       "note": "test fail"
+    },
+    {
+      "id": "F48",
+      "req": "R84",
+      "source": "qa",
+      "attempts": 0,
+      "status": "open",
+      "note": "Colour-off criterion not met on two surfaces. (1) Mission Control Proof grid (plugin/hooks/panel-mission-record.js:225) draws every check as the same '■'; only the colour tells passed, failing, running and not run apart, so with colour off the grid is identical squares (only the count line and hover text carry words). (2) The band (plugin/hooks/panel-stage.js:118-125) uses its own glyphs '✓' '✗' '●' instead of the palette's STATE_MARKS/STATE_WORDS (running there is '▶'); only the Now cards (panel-mission-live.js:78) read them. No test renders Proof or the band with colour stripped and checks state is still readable; tests/panel/palette.test.mjs only checks that the mark/word tables exist."
     }
   ],
   "todos": [
