@@ -4,9 +4,9 @@
     "name": "v2"
   },
   "milestone": {
-    "id": "M13",
-    "title": "Core loop you can trust",
-    "status": "shipped"
+    "id": "M14",
+    "title": "Cheaper runs",
+    "status": "active"
   },
   "shipped": [
     {
