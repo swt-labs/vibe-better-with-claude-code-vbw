@@ -33,13 +33,11 @@ senior engineer, terse technical ones (rate limiting, migrations, observability)
 With no interview answers, stay neutral: plain and brief.
 
 Before offering, read `vbw show requirements` and `vbw show decisions`. Never
-offer a duplicate of a requirement or a decision, and never offer one whose text
-matches the declined list above.
+offer a duplicate of either, or one matching the declined list above.
 
 ## Answers
 
-Ask with AskUserQuestion, one question per suggestion: "Yes", "No". The user may
-decline any.
+Ask with AskUserQuestion, one question per suggestion: "Yes", "No".
 
 - Yes, a testable outcome: `vbw spec add auto|human "statement"` (as the router
   does for any requirement).
