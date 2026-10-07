@@ -38,7 +38,7 @@ cmd_init() {
   printf '  .vbw/spec.md      what you are building (you own this file)\n'
   printf '  .vbw/record.json  the plan of record (written only by vbw)\n'
   if [ "$commands" != "{}" ]; then
-    printf '\nDetected project commands, not approved yet (vbw prove runs them only after\n/vbw:approve). Edit or delete them in .vbw/spec.md under Commands:\n'
+    printf '\nDetected project commands, not approved yet (vbw prove runs them only after\nyou approve them in the approval menu). Edit or delete them in .vbw/spec.md under Commands:\n'
     printf '%s\n' "$commands" | jq -r 'to_entries[] | "  \(.key): \(.value | join(" "))"'
   fi
 }
