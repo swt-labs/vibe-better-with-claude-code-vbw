@@ -7280,9 +7280,17 @@
       "qa": {
         "result": "pass",
         "tier": "standard",
-        "tree": "7422fb49530617767c9bf97059f3e5cdf081e0417fc78a52583b7b4c1f75e74c",
-        "at": "2026-10-07T18:39:11Z",
+        "tree": "e7204f2de2f0e132aec48b6a529e844361f8c4615685020ed1b5cb942f1e0fc9",
+        "at": "2026-10-07T19:49:28Z",
         "note": "16/16 checks"
+      },
+      "outcome": {
+        "tier": "deep",
+        "predicted": "deep",
+        "held": true,
+        "fix_rounds": 3,
+        "qa_findings": 3,
+        "escalations": 0
       }
     }
   ],
@@ -14742,5 +14750,11 @@
     "scope": [],
     "passed": true
   },
-  "lease": null
+  "lease": {
+    "run": "qa-20261007T194849Z",
+    "kind": "qa",
+    "started_at": "2026-10-07T19:48:49Z",
+    "files": [],
+    "session": "4130e174-7ef2-4e36-b853-fb2a8fd8511d"
+  }
 }
