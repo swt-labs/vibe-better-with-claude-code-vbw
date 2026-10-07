@@ -201,7 +201,8 @@ if type != "object" then ["record must be a JSON object"] else
           ( select((.autonomy_cap | int_in(1; 500)) | not) | "settings.autonomy_cap must be an integer 1-500" ),
           ( select(has("autonomy") and (.autonomy | one_of(["guided","balanced","hands-off"]) | not)) | "settings.autonomy must be guided, balanced or hands-off" ),
           ( select(has("rigor") and (.rigor | one_of(["auto","express","standard","deep"]) | not)) | "settings.rigor must be auto, express, standard or deep" ),
-          ( keys[] | select(one_of(["profile","autonomy","autonomy_cap","models","rigor"]) | not) | "settings has an unknown key: \(.)" ),
+          ( select(has("motion") and (.motion | one_of(["full","calm","off"]) | not)) | "settings.motion must be full, calm or off" ),
+          ( keys[] | select(one_of(["profile","autonomy","autonomy_cap","models","rigor","motion"]) | not) | "settings has an unknown key: \(.)" ),
           ( select(has("models")) | .models
             | if type != "object" then "settings.models must be an object" else
                 to_entries[] | select((.key | one_of(["architect","lead","dev","qa","scout","debugger","docs","planner","critic","builder"])) and (.value | nonempty) | not)

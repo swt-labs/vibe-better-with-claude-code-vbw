@@ -284,6 +284,21 @@ per-user store on your own machine, never committed, never in the project and
 never in `.vbw/record.json`. The sound needs the panel, so it needs Claude Code
 2.1.287 or newer.
 
+## Motion
+
+How much the panel animates is a project setting, shared through git:
+
+```bash
+vbw config set motion full     # crew sprites, confetti, the Wrapped card at ship
+vbw config set motion calm     # dots and spinners, no confetti
+vbw config set motion off      # static text
+vbw config set motion default  # let your interview level pick
+```
+
+Unset, the panel picks `full` if you told the interview you have never coded
+or write small scripts, and `calm` otherwise. In test mode it is always `off`,
+so test runs draw the same thing every time. `vbw config` shows the setting.
+
 ## What it needs
 
 The panel needs **Claude Code 2.1.287 or newer** (check with

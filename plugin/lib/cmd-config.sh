@@ -7,7 +7,8 @@
 # haiku or a model id; "default" removes the override; model.qa refuses Haiku:
 # QA needs Sonnet or stronger), rigor (auto|express|
 # standard|deep: auto computes each phase's tier, the others force it),
-# check_jobs (1 to 64, default 4: checks run at the same time; kept in this
+# motion (full|calm|off: the panel's animation; "default" removes it and the
+# panel picks by the interview level), check_jobs (1 to 64, default 4: checks run at the same time; kept in this
 # clone's own settings file in the git directory, not in the record).
 
 # Profiles name a model per workflow role (lib/profiles.json, shared with the
@@ -73,7 +74,7 @@ cmd_config() {
     "")
       printf 'check_jobs: %s\n' "$(vbw_check_jobs)"
       record_read | jq -r --argjson p "$VBW_PROFILES" '.settings as $s
-        | "profile: \($s.profile)", "autonomy: \($s.autonomy // "balanced")", "autonomy_cap: \($s.autonomy_cap)", "rigor: \($s.rigor // "auto")",
+        | "profile: \($s.profile)", "autonomy: \($s.autonomy // "balanced")", "autonomy_cap: \($s.autonomy_cap)", "rigor: \($s.rigor // "auto")", "motion: \($s.motion // "default")",
           ($p[$s.profile] + ($s.models // {}) | (if ((.qa // "") | ascii_downcase | contains("haiku")) then .qa = "sonnet" else . end) | to_entries[] | "model.\(.key): \(.value)")'
       ;;
     models)
@@ -96,6 +97,12 @@ cmd_config() {
         autonomy_cap)
           [[ "$value" =~ ^[0-9]+$ ]] || vbw_usage_error "autonomy_cap must be a number of steps"
           record_update '.settings.autonomy_cap = ($v | tonumber)' --arg v "$value" ;;
+        motion)
+          case "$value" in
+            full|calm|off) record_update '.settings.motion = $v' --arg v "$value" ;;
+            default) record_update '.settings |= del(.motion)' ;;
+            *) vbw_usage_error "motion must be full, calm or off (or default): how much the VBW panel animates" ;;
+          esac ;;
         check_jobs)
           case "$value" in
             default) ;;
@@ -118,7 +125,7 @@ cmd_config() {
           else
             record_update '.settings.models = ((.settings.models // {}) + {($r): $v})' --arg r "${key#model.}" --arg v "$value"
           fi ;;
-        *) vbw_usage_error "unknown setting $key (profile, autonomy, autonomy_cap, check_jobs, model.ROLE for $VBW_ROLES)" ;;
+        *) vbw_usage_error "unknown setting $key (profile, autonomy, autonomy_cap, motion, check_jobs, model.ROLE for $VBW_ROLES)" ;;
       esac
       printf '%s = %s\n' "$key" "$value"
       ;;
