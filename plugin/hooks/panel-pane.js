@@ -8,16 +8,30 @@
 import { nowModel, timelineModel, costsModel, renderNow, renderTimeline, renderCosts } from './panel-mission-live.js'
 import { planModel, proofModel, decisionsModel, teamModel, renderPlan, renderProof, renderDecisions, renderTeam } from './panel-mission-record.js'
 import { renderWrapped } from './panel-candy.js'
-import { NEED } from './panel-palette.js'
+import { NEED, PROGRESS, ESTIMATE, ACCENT } from './panel-palette.js'
+
+// The head: the portrait's 3 rows and the gap under it (the tabs wrap inside that).
+const HEAD_ROWS = 4
 
 export const TABS = [['now', 'Now'], ['plan', 'Plan'], ['proof', 'Proof'], ['timeline', 'Timeline'], ['decisions', 'Decisions'], ['team', 'Team'], ['costs', 'Costs']]
+
+// The colour of a sentence's key value; a sentence with no value in it stays plain.
+function tint(r, need) {
+  switch (r.id) {
+    case 'need': return need ? NEED : undefined
+    case 'progress': return /^No requirements/.test(String(r.text)) ? undefined : PROGRESS
+    case 'estimate-step': case 'estimate-milestone': return /^No estimate/.test(String(r.text)) ? undefined : ESTIMATE
+    case 'cost': return /not available/.test(String(r.text)) ? undefined : ACCENT
+    default: return undefined
+  }
+}
 
 // The panel's sentences (panel-view.js), each with its term in small text, and the sound switch.
 function summary(ui, v, st, on) {
   const { Box, Text, Button } = ui
   const rows = v.rows.map((r) =>
     h(Box, { key: r.id, flexDirection: 'column', marginBottom: 1 },
-      h(Text, { color: r.id === 'need' && v.need ? NEED : undefined }, String(r.text)),
+      h(Text, { color: tint(r, v.need) }, String(r.text)),
       h(Text, { dimColor: true }, String(r.term))))
   rows.push(
     h(Box, { key: 'sound', flexDirection: 'row', marginBottom: 1 },
@@ -56,5 +70,13 @@ export function renderPane(ui, input, on) {
   const head = h(Box, { key: 'head', flexDirection: 'row', columnGap: 1, marginBottom: 1 }, ...portrait, tabs)
   const sweep = tab === 'proof' && Raster && input.sweep ? [h(Raster, { key: 'vbw-sweep', columns: input.sweep.cols, rows: 1, cells: input.sweep.cells })] : []
   const view = wrapped ? renderWrapped(ui, wrapped) : body(ui, { ...input, st: { ...st, tab } }, act)
-  return h(Box, { flexDirection: 'column' }, head, ...(tab === 'now' ? summary(ui, v, st, on) : []), ...sweep, view)
+  const content = [...(tab === 'now' ? summary(ui, v, st, on) : []), ...sweep, view]
+  const sc = input.scroll
+  const rows = sc && Number.isInteger(sc.bodyRows) ? sc.bodyRows : 0
+  if (rows < 1) return h(Box, { flexDirection: 'column' }, head, ...content)
+  // The tabs are a fixed head; everything under them is one clipped body, shifted by the scroll offset.
+  const off = Number.isInteger(sc.offset) && sc.offset > 0 ? sc.offset : 0
+  const inner = h(Box, { key: 'body-rows', flexDirection: 'column', flexShrink: 0, marginTop: -off }, ...content)
+  return h(Box, { flexDirection: 'column' }, head,
+    h(Box, { key: 'body', flexDirection: 'column', overflow: 'hidden', height: Math.max(1, rows - HEAD_ROWS) }, inner))
 }

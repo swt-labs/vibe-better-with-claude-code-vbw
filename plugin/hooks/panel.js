@@ -749,7 +749,7 @@ export function register(on) {
       const cells = st.sweep && st.tab === 'proof' && ui.Raster ? drawn(st.sweep, width, PANE) : null
       if (cells) animate($, st)
       const sweep = cells ? { cols: st.sweep.cols, cells } : null
-      return renderPane(ui, { st, v, now, width, sweep, wrapped: st.wrapped, portrait: $.plugin.root + '/assets/portrait.png' }, {
+      return renderPane(ui, { st, v, now, width, sweep, wrapped: st.wrapped, scroll: isObj(e.props) ? e.props.scroll : null, portrait: $.plugin.root + '/assets/portrait.png' }, {
         act: (a) => act($, st, a),
         sound: () => setSound($, st, !st.sound),
       })
