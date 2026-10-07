@@ -44,8 +44,8 @@ touch the same files. Such a requirement is at risk of breaking, so it counts
 toward the `breaks` signal, unless it is guarded.
 
 A requirement is **guarded** when it is `[auto]`, has at least one check, and
-every one of its checks is approved: the check, and each file it lists, are the
-same as in the last contract you approved in this clone. `vbw prove` runs every
+every one of its checks is an approved check: the check, and each file it
+lists, are the same as in the last contract you approved in this clone. `vbw prove` runs every
 check again (a result reused from an earlier proof counts, see
 docs/proof.md), so a break would show at once. A guarded requirement does not
 raise the tier.
