@@ -106,6 +106,12 @@ one colour everywhere: the band, Mission Control and VBW Wrapped.
 Other colours: purple for the run's cost, yellow for "VBW needs you", green for
 progress, amber for time estimates, grey for secondary detail.
 
+In Mission Control's **Now** tab, each sentence shows its key value in one of
+these colours: the progress sentence in green, the two time-left sentences in
+amber, the session cost in purple, and the "needs you" sentence in yellow when
+VBW needs you. A sentence with no value in it ("No estimate yet", "The cost so
+far is not available") stays plain.
+
 Colour never carries a state alone. Every state has a mark and a word, so with
 colour turned off (or if you cannot tell two colours apart) the panel reads the
 same.
@@ -207,6 +213,9 @@ the word `VBW` elsewhere); press one to switch:
 ```
 Now │ Plan │ Proof │ Timeline │ Decisions │ Team │ Costs
 ```
+
+The tabs stay at the top of the pane however long the content is. When the
+content is taller than the pane, only the part under the tabs scrolls.
 
 - **Now:** the sentences above, the sound switch, then the running workflow as
   columns of agent cards by phase. Each card has a frame in its agent's role
