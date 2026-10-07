@@ -4,9 +4,9 @@
     "name": "v2"
   },
   "milestone": {
-    "id": "M12",
-    "title": "Panel colour and polish",
-    "status": "shipped"
+    "id": "M13",
+    "title": "Core loop you can trust",
+    "status": "active"
   },
   "shipped": [
     {
