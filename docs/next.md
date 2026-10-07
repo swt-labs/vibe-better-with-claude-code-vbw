@@ -62,6 +62,29 @@ declined in this project (docs/interview.md), oldest first, or `[]`. The
 "declined": ["Should visitors be able to search the page?"]
 ```
 
+Every answer also carries `next_phase`: the number the next new phase takes,
+one after the highest phase number the record knows. It counts shipped phases,
+started phases, plan ids and phases that a decision names (so a removed phase
+whose number a decision records is not reused). A sub-phase counts as its whole
+number: `P65.1` counts as 65. The planning workflow passes it to the Architect,
+which numbers new phases from it (docs/workflows.md).
+
+```json
+"next_phase": 73
+```
+
+Every answer also carries `effort`: the current profile's effort table, the
+level each role and step runs at (`vbw config effort` prints the same table;
+docs/workflows.md). The router passes it to every workflow as `args.effort`.
+
+```json
+"effort": { "architect": { "decide": "xhigh", "scope": "high" },
+            "lead": { "plan": "high", "close": "low" }, "dev": { "build": "medium", "fix": "medium" } }
+```
+
+(Shortened here; the real table has every role and step.) A table with a wrong
+value stops `vbw next` with an error that names the role and step.
+
 At the `plan` step, `detail.tier` is the early tier (docs/rigor.md): `express`
 for one small, risk-free `auto` requirement in a repository of at most 30
 tracked files, else `standard` (`deep` when forced). On `express` the router
