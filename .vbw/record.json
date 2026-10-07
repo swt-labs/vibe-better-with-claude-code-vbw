@@ -10298,7 +10298,7 @@
         "tests/panel/candy.test.mjs"
       ],
       "after": [],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "New plugin/hooks/panel-palette.js: the seven role colours, the five state colours (running amber, done green, failed red, quiet and cut off grey), the neutral grey, the accent, need, progress and estimate colours, a mark and a word for each state, roleColor and stateColor that fall back to the neutral grey for anything unknown, and rgb() that turns a palette colour into the number a Raster cell takes",
@@ -10418,7 +10418,7 @@
         "tests/panel/feed.test.mjs"
       ],
       "after": [],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "New plugin/hooks/panel-intent.js: turns a shell command into a short intention: running tests for test runners, a vbw command in the present tense (recording P6.7 done), a script run through an interpreter named by its file (running fix_topbar.py), running a script for inline code, and running a command for anything else",
@@ -11137,6 +11137,11 @@
     {
       "id": "T45",
       "text": "QA re-check scope: a phase is re-checked deeply when a phase it builds on changed only test-result files (2026-10-07: P55 re-checked because P57's tools/l3-results/smallchange.json was re-committed); judge dependency changes by kind, as R71 does for depth",
+      "status": "open"
+    },
+    {
+      "id": "T46",
+      "text": "Approval hook misses a question whose explanation starts on a new line after 'Approve contract <fp>?' (regex wants a space); accept any whitespace",
       "status": "open"
     }
   ],
