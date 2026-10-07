@@ -44,8 +44,8 @@ cmd_prove() {
   # The evidence is part of the plan of record: commit it, so a proof never
   # leaves VBW's own file modified in the user's working tree.
   record_commit "chore(vbw): proof $(jq -r 'if .evidence.passed then "passed" else "not passed" end' "$VBW_RECORD")"
-  VBW_DIE_HOOK=
-  proofcopy_warn_stale
+  # shellcheck disable=SC2034
+  VBW_DIE_HOOK=; proofcopy_warn_stale
   prove_summary
 }
 
