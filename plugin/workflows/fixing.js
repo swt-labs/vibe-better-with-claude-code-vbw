@@ -19,7 +19,7 @@ const top = Object.values((args && args.rigor) || {}).filter(c => c && c.models 
   .reduce((a, c) => (!a || (RANK[c.tier] || 0) > (RANK[a.tier] || 0) ? c : a), null)
 const devModel = top ? top.models.dev : models.dev
 // The effort the profile gives a role and step (args.effort, from vbw next --json): the option
-// for agent(), or nothing when there is no table or no value (agents then run as before).
+// for an agent call, or nothing when there is no table or no value (agents then run as before).
 const table = (args && typeof args === 'object' && args.effort && typeof args.effort === 'object' && !Array.isArray(args.effort)) ? args.effort : {}
 const effortOf = (role, step) => {
   const e = table[role] && typeof table[role] === 'object' ? table[role][step] : null

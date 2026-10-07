@@ -16,7 +16,7 @@ if (!problem) return { error: 'no problem given: pass args.problem' }
 const models = (args && typeof args === 'object' && args.models) || {}
 const model = models.debugger ? { model: models.debugger } : {}
 // The effort the profile gives a role and step (args.effort, from vbw next --json): the option
-// for agent(), or nothing when there is no table or no value (agents then run as before).
+// for an agent call, or nothing when there is no table or no value (agents then run as before).
 const table = (args && typeof args === 'object' && args.effort && typeof args.effort === 'object' && !Array.isArray(args.effort)) ? args.effort : {}
 const effortOf = (role, step) => {
   const e = table[role] && typeof table[role] === 'object' ? table[role][step] : null

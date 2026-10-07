@@ -16,7 +16,7 @@ const rigor = (args && args.rigor) || {}
 const profile = (args && typeof args === 'object' && args.profile) || {}
 const voice = `\n\nThe user's level: ${profile.level || 'small scripts or no-code'}. Explanation depth: ${profile.depth || 'plain with technical terms explained'}. Involvement: ${profile.involvement || 'options with a recommendation'}. Write whatever the user will read at that level and depth.`
 // The effort the profile gives a role and step (args.effort, from vbw next --json): the option
-// for agent(), or nothing when there is no table or no value (agents then run as before).
+// for an agent call, or nothing when there is no table or no value (agents then run as before).
 const table = (args && typeof args === 'object' && args.effort && typeof args.effort === 'object' && !Array.isArray(args.effort)) ? args.effort : {}
 const effortOf = (role, step) => {
   const e = table[role] && typeof table[role] === 'object' ? table[role][step] : null
