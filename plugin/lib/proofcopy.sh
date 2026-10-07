@@ -40,7 +40,8 @@ proofcopy_create() {
     while IFS= read -r -d '' l; do
       t=$(readlink "$PROOF_COPY/$l")
       case "$t" in /*) t=$(cd -P "$(dirname "$t")" 2> /dev/null && printf '%s/%s' "$(pwd -P)" "$(basename "$t")") || t=$(readlink "$PROOF_COPY/$l") ;; esac
-      case "$t" in "$real" | "$real"/*)
+      # A link into .vbw (an old proof copy) is the stale-link scan's to report.
+      case "$t" in "$real"/.vbw | "$real"/.vbw/*) ;; "$real" | "$real"/*)
         printf 'vbw: %s links into the working folder (%s); it is copied as a link\n' "$l" "$(readlink "$PROOF_COPY/$l")" >&2 ;;
       esac
     done < <(cd "$PROOF_COPY" && find "$p" -type l -print0)
@@ -71,7 +72,7 @@ proofcopy_warn_stale() {
 # proofcopy_copy SRC DST: a copy-on-write clone first, a plain copy when the
 # file system refuses; links inside stay links. A failed try leaves nothing.
 proofcopy_copy() {
-  local flag=--reflink=always
+  local flag=--reflink
   [ "$(uname)" != Darwin ] || flag=-c
   cp -RP "$flag" "$1" "$2" 2> /dev/null && return 0
   rm -rf "$2" 2> /dev/null || true
