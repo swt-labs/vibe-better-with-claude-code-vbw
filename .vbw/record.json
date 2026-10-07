@@ -6180,9 +6180,9 @@
       "qa": {
         "result": "pass",
         "tier": "standard",
-        "tree": "88e3a5d3985312e142e4d74f1bf3d0aabeb8932d14740bdbbf586c8bbc6334d1",
-        "at": "2026-10-07T11:49:44Z",
-        "note": "14/14 checks"
+        "tree": "08a60290897849d3ddeaf2c1b27d5157252549644c341c40303003b961ec9499",
+        "at": "2026-10-07T12:06:15Z",
+        "note": "12/12 checks"
       },
       "outcome": {
         "tier": "deep",
@@ -12843,5 +12843,11 @@
     "scope": [],
     "passed": true
   },
-  "lease": null
+  "lease": {
+    "run": "qa-20261007T120545Z",
+    "kind": "qa",
+    "started_at": "2026-10-07T12:05:45Z",
+    "files": [],
+    "session": "4130e174-7ef2-4e36-b853-fb2a8fd8511d"
+  }
 }
