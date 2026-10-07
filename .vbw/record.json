@@ -11732,7 +11732,7 @@
         "P66.1",
         "P66.2"
       ],
-      "status": "planned",
+      "status": "done",
       "role": "docs",
       "tasks": [
         "Explain that each agent records its own result from its own instructions",
@@ -11821,7 +11821,7 @@
         "P67.2",
         "P67.3"
       ],
-      "status": "planned",
+      "status": "done",
       "role": "docs",
       "tasks": [
         "Describe what may follow the fingerprint in the approval question and what a wrong fingerprint does",
@@ -11913,7 +11913,7 @@
       "after": [
         "P66.1"
       ],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "Decompose rule: plans on separate files so as many as possible build at the same time",
