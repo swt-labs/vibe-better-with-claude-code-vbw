@@ -20,7 +20,7 @@ teardown() { vbw_teardown; }
 plans() {
   jq --argjson p "$1" '.checks = [{id:"C1", req:"R1", run:["true"]}]
     | .phases = [{id:"P1", title:"Pay", reqs:["R1"], milestone:"M1"}]
-    | .plans = [$p[] | {id, phase:"P1", title:.id, reqs:["R1"], files, after:(.after // []), status:"planned"}]' \
+    | .plans = [$p[] | {id, phase:"P1", title:.id, reqs:["R1"], files, after:(.after // []), status:(.status // "planned")}]' \
     .vbw/record.json > "$TEST_ROOT/e.json" && cp "$TEST_ROOT/e.json" .vbw/record.json
 }
 
@@ -52,4 +52,18 @@ waves_line() { "$VBW" show contract < /dev/null | grep '^build waves:'; }
   plans '[{"id":"P1.1","files":["a.js"]}]'
   run "$VBW" show contract < /dev/null
   [[ "$output" == *"plans:"*"build waves:"*"approval question:"* ]] || { echo "$output"; false; }
+}
+
+@test "R102: a blocked plan is skipped, as vbw next skips it" {
+  plans '[{"id":"P1.1","files":["a.js"]},{"id":"P1.2","files":["b.js"],"status":"blocked"},{"id":"P1.3","files":["c.js"]}]'
+  [ "$(waves_line)" = "build waves: 1 (the widest runs 2 plans at once)" ]
+}
+
+@test "R102: the waves line and vbw next share one wave rule (D166): no copy of it in cmd-show.sh or next.jq" {
+  ! grep -qE 'def (overlaps|wave)\(' "$PLUGIN_ROOT/lib/cmd-show.sh" "$PLUGIN_ROOT/lib/next.jq"
+  grep -qE 'def wave\(' "$PLUGIN_ROOT/lib/record.sh"
+  plans '[{"id":"P1.1","files":["a.js"]},{"id":"P1.2","files":["a.js"]},{"id":"P1.3","files":["b.js"]}]'
+  git add -A > /dev/null && git commit -q -m "chore(vbw): plan" && "$VBW" approve > /dev/null
+  [ "$("$VBW" next --json < /dev/null | jq -r '.detail.plans | length')" = 2 ]
+  [ "$(waves_line)" = "build waves: 2 (the widest runs 2 plans at once)" ]
 }
