@@ -7213,7 +7213,15 @@
         "breaks: R1, R2, R3, R13, R14, R16, R24, R25, R27, R28, R31, R33, R35, R36, R38, R39, R40, R43, R44, R45, R46, R47, R49, R50, R51, R52, R53, R55, R57, R60, R61, R62, R65, R69, R70, R73, R74, R75, R76, R77, R78, R79, R80, R81",
         "tests: project test command"
       ],
-      "predicted": "deep"
+      "predicted": "deep",
+      "qa": {
+        "result": "fail",
+        "tier": "standard",
+        "tree": "d4cc183d131cce01b3b728346cee39f81cd53f7d1d7cd261225eb2d19fa22841",
+        "at": "2026-10-07T17:24:33Z",
+        "note": "17/19 checks",
+        "rounds": 1
+      }
     },
     {
       "id": "P69",
@@ -12446,6 +12454,22 @@
       "attempts": 0,
       "status": "open",
       "note": "plugin/hooks/approve-answer.sh line 39 still tells the user '/vbw:approve also works' in the message shown after a failed approval. R100 says no output tells the user to type /vbw:approve. The new tests (tests/approval-after-plan.bats) only scan the kernel and router output, so they miss this hook message."
+    },
+    {
+      "id": "F58",
+      "req": "R99",
+      "source": "qa",
+      "attempts": 0,
+      "status": "open",
+      "note": "Plan P68.1 task 4 says keep the kernel line count net zero, but commit 81faab44 adds 30 lines and removes 1 in plugin/lib/cmd-commit.sh (net +29). The kernel budget is now 7,600 lines (D161), so the limit is not broken, but the plan's own promise was and no decision records the change."
+    },
+    {
+      "id": "F59",
+      "req": "R101",
+      "source": "qa",
+      "attempts": 0,
+      "status": "open",
+      "note": "Plan P68.2 task 3 says the config skill change keeps the same word count. Commit db35868e changes '(default: Sonnet for all)' (5 words) to '(default: Opus for Architect, Sonnet for the rest)' (8 words), so it is 3 words longer in plugin/skills/config/SKILL.md."
     }
   ],
   "todos": [
