@@ -114,6 +114,7 @@ VBW is a Claude Code plugin that makes it build software properly: the user agre
 - R106 [auto] The Architect is given the next free phase number and proposes phases numbered from it, so planning never needs a renumbering round
 - R107 [auto] Each workflow agent runs at the effort its step needs, set per role and step by the profile (lower for closing a run and for documentation, higher for planning and QA), through Claude Code's per-agent effort setting; on a Claude Code without that setting, agents run as before
 - R108 [human] The panel's colours make it easy to tell at a glance which agent is which and what state each is in
+- R109 [auto] vbw init's notice about detected commands names the approval menu, never the typed /vbw:approve command
 
 <!-- One requirement per line: an id, how it is proved, and a user-observable
      statement. [auto] = a check can prove it; [human] = only a person can judge it.

@@ -2977,6 +2977,14 @@
       "proof": "human",
       "status": "open",
       "milestone": "M14"
+    },
+    {
+      "id": "R109",
+      "text": "vbw init's notice about detected commands names the approval menu, never the typed /vbw:approve command",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M14",
+      "rules": []
     }
   ],
   "checks": [
