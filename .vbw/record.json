@@ -11107,7 +11107,7 @@
       "after": [
         "P63.1"
       ],
-      "status": "planned",
+      "status": "done",
       "role": "docs",
       "tasks": [
         "Replace the text that says ignored files are linked in with: they are copied, never linked, and why (pnpm 11 refuses linked node_modules and a proof must not change the working folder)",
@@ -11130,7 +11130,7 @@
       "after": [
         "P63.1"
       ],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "Add a read-only scan of the working folder (git-ignored folders included, links not followed, .git skipped) for links whose target, absolute or relative, resolves inside this project's .vbw/runtime/proof.* (compare real paths as well as the written ones; a look-alike path outside the project is not reported)",
@@ -11174,7 +11174,7 @@
         "docs/proof.md"
       ],
       "after": [],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "Remove the 900 second limit and VBW_CHECK_WAIT_SECONDS: a waiting check keeps waiting while the holder's process is alive and takes over when it is gone or its registration is stale",
