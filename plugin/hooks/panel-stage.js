@@ -9,6 +9,7 @@
 // Pure: data in, a model out (stageModel), a tree out (renderStage). No `$`,
 // never changes its input, never throws.
 import { poseOf, spriteFrame, encodeCells } from './panel-candy.js'
+import { roleColor as colorOfRole, stateColor, NEED } from './panel-palette.js'
 
 const isObj = (x) => x !== null && typeof x === 'object' && !Array.isArray(x)
 const num = (x) => typeof x === 'number' && Number.isFinite(x)
@@ -20,10 +21,6 @@ const cut = (s, n) => (len(s) <= n ? s : n <= 0 ? '' : [...s].slice(0, n - 1).jo
 const pad = (s, n) => s + ' '.repeat(Math.max(0, n - len(s)))
 const padStart = (s, n) => ' '.repeat(Math.max(0, n - len(s))) + s
 
-export const ROLE_COLORS = Object.freeze({
-  architect: 'magenta', lead: 'blue', dev: 'green', qa: 'yellow', scout: 'cyan', debugger: 'red', docs: '#ff87d7', agent: 'white',
-})
-const AMBER = '#ffaf00'
 const QUIET_MS = 45000
 const DONE_MS = 60000
 const SPIN = '⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏'
@@ -94,7 +91,7 @@ function health(hl, action) {
   if (num(hl.weekPct) && hl.weekPct >= 80) {
     const w = Math.round(hl.weekPct)
     const per = num(hl.weekPerRun) && hl.weekPerRun > 0 ? 'a run like this used about ' + Math.round(hl.weekPerRun) + '% last time' : 'a long run may reach it'
-    out.lines.push({ text: 'Weekly limit ' + w + '%: ' + per + '.', color: hl.weekPct >= 90 ? 'red' : 'yellow' })
+    out.lines.push({ text: 'Weekly limit ' + w + '%: ' + per + '.', color: hl.weekPct >= 90 ? stateColor('failed') : NEED })
   }
   out.compact = num(hl.contextPct) && hl.contextPct >= 85
   return out
@@ -111,21 +108,21 @@ function card(kind, key, title, choices, hp, columns) {
 // One agent as the band shows it, or null when it is not drawn (done long ago).
 function rowOf(a, now, motion, ended) {
   const role = str(a.role) || 'agent'
-  const roleColor = ROLE_COLORS[role] || 'white'
+  const roleColor = colorOfRole(role)
   const start = num(a.startedAt) ? a.startedAt : now
   const end = num(a.endedAt) ? a.endedAt : null
   const base = { id: str(a.id), role, roleColor, label: str(a.label), elapsed: clock((end ?? now) - start), tokens: tokens(a.tokens), spin: '', button: null }
   if (a.state === 'done') {
     if ((end ?? ended ?? now) + DONE_MS <= now) return null
-    return { ...base, glyph: '✓', glyphColor: 'green', activity: 'done' + (str(a.result) ? ' · ' + a.result : ''), activityColor: 'green' }
+    return { ...base, glyph: '✓', glyphColor: stateColor('done'), activity: 'done' + (str(a.result) ? ' · ' + a.result : ''), activityColor: stateColor('done') }
   }
   if (a.state === 'failed') {
-    return { ...base, glyph: '✗', glyphColor: 'red', activity: str(a.result) || 'failed', activityColor: 'red',
+    return { ...base, glyph: '✗', glyphColor: stateColor('failed'), activity: str(a.result) || 'failed', activityColor: stateColor('failed'),
       button: { label: 'details', action: { open: 'mission', tab: 'now', agent: str(a.id) } } }
   }
   const row = { ...base, glyph: '●', glyphColor: roleColor }
   const seen = num(a.lastSeenAt) ? a.lastSeenAt : start
-  if (a.state === 'quiet' || now - seen >= QUIET_MS) return { ...row, activity: 'quiet ' + clock(now - seen), activityColor: AMBER }
+  if (a.state === 'quiet' || now - seen >= QUIET_MS) return { ...row, quiet: true, activity: 'quiet ' + clock(now - seen), activityColor: stateColor('quiet') }
   const act = isObj(a.activity) ? a.activity : null
   const text = act && str(act.text) ? (act.kind === 'text' ? '"' + act.text + '"' : act.text) : 'working'
   const step = motion === 'off' ? 0 : Math.floor(now / (motion === 'calm' ? 1000 : 250))
@@ -180,7 +177,7 @@ function crewOf(rn, now, columns, maxRows, motion, cost) {
     const byId = new Map(agents.map((a) => [a.id, a]))
     rows = rows.map((r) => {
       const a = byId.get(r.id)
-      return { ...r, spin: '', pose: r.glyph !== '●' ? a.state : r.activityColor === AMBER ? 'quiet' : poseOf(a.activity, 'working') }
+      return { ...r, spin: '', pose: r.glyph !== '●' ? a.state : r.quiet ? 'quiet' : poseOf(a.activity, 'working') }
     })
   }
   const parts = ['VBW ▸ ' + kind, status, str(rn.phase), time]
@@ -242,7 +239,7 @@ export function renderStage(ui, model, onAction) {
     if (model.kind === 'gate' || model.kind === 'nudge') {
       if (!Array.isArray(model.buttons)) return null
       return h(Box, { flexDirection: 'column' },
-        h(Text, { key: 'title', color: 'yellow', bold: model.kind === 'gate', wrap: 'truncate-end' }, String(model.title)),
+        h(Text, { key: 'title', color: NEED, bold: model.kind === 'gate', wrap: 'truncate-end' }, String(model.title)),
         ...(model.lines || []).map((l, i) => h(Text, { key: 'line-' + i, color: l.color, wrap: 'truncate-end' }, String(l.text))),
         h(Box, { key: 'buttons', flexDirection: 'row', flexWrap: 'wrap', columnGap: 2 }, ...model.buttons.map((b, i) => button(b, 'b' + i + '-' + b.label))))
     }

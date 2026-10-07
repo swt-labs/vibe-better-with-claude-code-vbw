@@ -169,7 +169,7 @@ test('an agent row: role dot in its colour, role, label, activity, elapsed and t
   assert.match(r.activity, /reading \.vbw\/spec\.md/)
   assert.equal(r.elapsed, '2m10s')
   assert.equal(r.tokens, '41k')
-  const colours = { architect: 'magenta', lead: 'blue', dev: 'green', qa: 'yellow', scout: 'cyan', debugger: 'red', docs: '#ff87d7', agent: 'white', mystery: 'white' }
+  const colours = { architect: 'magenta', lead: 'blue', dev: 'green', qa: 'yellow', scout: 'cyan', debugger: 'red', docs: '#ff87d7', agent: 'gray', mystery: 'gray' }
   for (const [role, c] of Object.entries(colours)) assert.equal(model({ run: run([agent({ role })]) }).rows[0].roleColor, c, role)
 })
 
@@ -192,10 +192,10 @@ test('the spinner cycles with time unless motion is off (where no sprite moves i
   assert.equal(new Set([0, 1, 2, 3].map((i) => at(NOW + i * 1000, 'off'))).size, 1, 'motion off stands still')
 })
 
-test('quiet: no sign of life for 45 s is marked quiet in amber, told apart from slow', () => {
+test('quiet: no sign of life for 45 s is marked quiet in grey, told apart from slow', () => {
   const r = model({ run: run([agent({ lastSeenAt: NOW - 46 * S })]) }).rows[0]
   assert.match(r.activity, /^quiet/)
-  assert.equal(r.activityColor, '#ffaf00')
+  assert.equal(r.activityColor, 'gray')
   assert.equal(r.spin, '')
   assert.match(model({ run: run([agent({ state: 'quiet' })]) }).rows[0].activity, /^quiet/)
   assert.doesNotMatch(model({ run: run([agent({ lastSeenAt: NOW - 44 * S })]) }).rows[0].activity, /quiet/)
