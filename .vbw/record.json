@@ -11892,7 +11892,7 @@
         "P68.1",
         "P68.2"
       ],
-      "status": "planned",
+      "status": "done",
       "role": "docs",
       "tasks": [
         "docs/workflows.md: add vbw commit --fix to the command table",
