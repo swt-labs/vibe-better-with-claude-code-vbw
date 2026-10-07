@@ -88,6 +88,28 @@ Nothing is needed from you right now.
 your turn
 ```
 
+## Colours
+
+One palette colours the whole panel, so a role has one colour and a state has
+one colour everywhere: the band, Mission Control and VBW Wrapped.
+
+| Role | Colour | | State | Colour | Mark and word |
+|---|---|---|---|---|---|
+| architect | magenta | | running | amber | `▶ running` |
+| lead | blue | | done | green | `✓ done` |
+| dev | green | | failed | red | `✗ failed` |
+| QA | yellow | | quiet | grey | `… quiet` |
+| scout | cyan | | cut off | grey | `■ cut off` |
+| debugger | red | | | | |
+| docs | pink | | | | |
+
+Other colours: purple for the run's cost, yellow for "VBW needs you", green for
+progress, amber for time estimates, grey for secondary detail.
+
+Colour never carries a state alone. Every state has a mark and a word, so with
+colour turned off (or if you cannot tell two colours apart) the panel reads the
+same.
+
 ## The band
 
 The band is the strip directly above the prompt. VBW uses it only when there is
@@ -103,10 +125,11 @@ VBW ▸ planning · Plan · 10m04s · ≈$3.20 this run                 [p] Miss
 ✓ scout      linux   done · 4 findings                              1m02s   12k
 ```
 
-- Each row has the role in its colour (architect magenta, lead blue, dev green,
-  QA yellow, scout cyan, debugger red, docs pink), the agent's label, what it
-  is doing now (the tool it calls, or the end of what it is writing), its time
-  and its context size.
+- Each row shows the role, the agent's label and the spinner in the role's
+  colour, then what the agent is doing now (see
+  [How activity reads](#how-activity-reads)), then its time and its context
+  size, dimmed.
+- In the header, the run's cost (`≈$3.20 this run`) is purple.
 - A finished agent shows ✓ and its one-line result for a minute, then joins a
   "done" count. A failed agent shows ✗, its reason and a **details** button.
 - An agent with no new step for 45 seconds is marked **quiet**, so a hang looks
@@ -142,6 +165,39 @@ change, the band shows less, never an error.
   a **/compact first** button when the context is 85% full or more. The button
   only fills `/compact` in.
 
+## How activity reads
+
+The band and the cards say what an agent is doing as a plain intention, not the
+raw command:
+
+```
+▶ editing app-topbar.tsx
+▶ running tests
+▶ recording P6.7 done
+▶ running fix_topbar.py
+```
+
+The verb (`editing`, `running`, `recording`) is in the role's colour and the
+object is dimmed. When an agent is writing text rather than calling a tool, the
+band shows the end of that text in quotes, dimmed.
+
+| The agent... | Shows |
+|---|---|
+| reads, edits or writes a file | `reading app.ts`, `editing app.ts` (the file name only) |
+| searches files or the web | `searching <pattern>`, `researching <query or site>` |
+| runs a test runner (`bats`, `pytest`, `npm test`, `cargo test`, `node --test`, ...) | `running tests` |
+| runs a `vbw` command | what it does: `recording P6.7 done`, `proving the checks`, `reading the next step` |
+| runs a script through Python, Node, Bash or another interpreter | `running <script file name>`, named by the file it runs |
+| runs a script given with `-c` or `-e`, or from input | `running a script` |
+| runs anything else | `running a command` |
+
+Setup commands such as `cd`, `export` and `echo` are skipped: the line shows
+the first command that does something. An intention is cut at 40 characters.
+
+For shell commands the panel shows only a known phrase or a bare file name,
+never the command's arguments or flags, so a secret on a command line does not
+reach the screen.
+
 ## Mission Control
 
 Mission Control is the pane. Its tabs run across the top, after the VBW
@@ -153,8 +209,11 @@ Now │ Plan │ Proof │ Timeline │ Decisions │ Team │ Costs
 ```
 
 - **Now:** the sentences above, the sound switch, then the running workflow as
-  columns of agent cards by phase. Press a card for that agent's model, time,
-  current step and result.
+  columns of agent cards by phase. Each card has a frame in its agent's role
+  colour, its state as a coloured mark and word (`▶ running`, `✓ done`,
+  `✗ failed`, `… quiet`), what the agent is doing, and its tokens, dimmed. Two
+  agents of different roles never look the same. Press a card for that agent's
+  model, time, current step and result.
 - **Plan:** one button per phase; each shows its goal, its plans with their
   files, and its checks with their commands.
 - **Proof:** one square per approved check (green passed, red failing, grey not
