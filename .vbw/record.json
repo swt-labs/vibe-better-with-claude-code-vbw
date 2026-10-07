@@ -7822,12 +7822,19 @@
       ],
       "predicted": "deep",
       "qa": {
-        "result": "fail",
+        "result": "pass",
         "tier": "standard",
         "tree": "44d03a0254b1de879aa0b4f218a93a0ba2241365a1751b7b40544e8c22fa61fe",
-        "at": "2026-10-07T22:20:19Z",
-        "note": "19/20 checks",
-        "rounds": 1
+        "at": "2026-10-07T22:30:10Z",
+        "note": "20/20 checks"
+      },
+      "outcome": {
+        "tier": "deep",
+        "predicted": "deep",
+        "held": true,
+        "fix_rounds": 1,
+        "qa_findings": 1,
+        "escalations": 0
       }
     },
     {
@@ -13525,7 +13532,7 @@
       "req": "R104",
       "source": "qa",
       "attempts": 0,
-      "status": "fixed",
+      "status": "closed",
       "note": "Commit e07f6870 changed plugin/lib/qa.jq so a QA cache written before the requirements digest existed (no reqs field) compares only the fields it has. No test covers it: no tests/*.bats builds a cache without reqs (grep finds none), and the commit touches no test file. A change that drops the reqs==null branch would pass the suite. Add a regression test in tests/qa-recheck-requirements.bats (protected by C162): an old-format cache with an unchanged phase must not list it, with a changed file it must list it with the files reason."
     }
   ],
