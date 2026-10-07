@@ -37,9 +37,18 @@ BENCH="$BATS_TEST_DIRNAME/../tools/bench-panel.sh"
   local f
   for f in "$PLUGIN_ROOT"/hooks/panel*.js; do
     [ -f "$f" ]
-    ! grep -nE '\$\.(http|mcp|model|process|env|settings|agent|tool)\b|\$\.fs\.(write|list)|fetch\(|XMLHttpRequest|WebSocket|node:|require\(|import\(|credentials|\.ssh|ANTHROPIC|api[_-]?key' "$f" || { echo "in $f"; false; }
+    ! grep -nE '\$\.(http|mcp|model|settings|agent|tool)\b|\$\.fs\.write|\$\.prompt\.submit|fetch\(|XMLHttpRequest|WebSocket|node:|require\(|import\(|credentials|\.ssh|ANTHROPIC|api[_-]?key' "$f" || { echo "in $f"; false; }
   done
   [ -f "$PLUGIN_ROOT/hooks/panel.js" ]
+}
+
+@test "mods plan: the one process the panel starts is the kernel, and it reads two environment names only" {
+  # /vbw-todo hands its text to `vbw todo add` (the kernel writes, mods_4_vbw.md §5);
+  # HOME and CLAUDE_CONFIG_DIR find this session's workflow folder (§4).
+  run grep -hoE '\$\.process\.[a-z]+\([^,]*' "$PLUGIN_ROOT"/hooks/panel*.js
+  [ "$output" = "\$.process.run([\$.plugin.root + '/bin/vbw'" ] || { echo "$output"; false; }
+  run grep -hoE '\$\.env\.[a-z]+\([^)]*\)' "$PLUGIN_ROOT"/hooks/panel*.js
+  [ "$(printf '%s\n' "$output" | sort -u | tr '\n' ' ')" = "\$.env.get('CLAUDE_CONFIG_DIR') \$.env.get('HOME') " ] || { echo "$output"; false; }
 }
 
 @test "R55: the panel never names the record as something to write" {

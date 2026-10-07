@@ -62,17 +62,21 @@ export function lease(kind, startedAtMs, extra = {}) {
   return { run: kind + '-1', kind, started_at: new Date(startedAtMs).toISOString().replace(/\.\d+Z$/, 'Z'), files: null, ...extra }
 }
 
+// A matcher holds when each of its keys matches; a nested object matches part of
+// a nested value ({ props: { tool: 'Bash' } }), as Claude Code's matchers do.
 function matches(matcher, e) {
   if (!matcher) return true
-  return Object.entries(matcher).every(([k, v]) => (Array.isArray(v) ? v.includes(e?.[k]) : e?.[k] === v))
+  return Object.entries(matcher).every(([k, v]) =>
+    Array.isArray(v) ? v.includes(e?.[k]) : v && typeof v === 'object' ? matches(v, e?.[k]) : e?.[k] === v)
 }
 
 // mount(options) loads a fresh copy of the panel module and registers its hooks.
 // options: version, root, files (path -> text), store (a Map shared between
 // mounts to model a restart), usage, usageError, placed (ui.open answer),
-// audioFails, modulePath.
+// audioFails, modulePath, env (name -> value), sessionId, process (argv -> result),
+// selection ($.ui.selection answer).
 export async function mount(options = {}) {
-  const o = { version: '2.1.289', root: ROOT, usage: { cost: { usd: 1.4234 } }, placed: true, ...options }
+  const o = { version: '2.1.289', root: ROOT, usage: { cost: { usd: 1.4234 } }, placed: true, env: {}, sessionId: 'sess-1', ...options }
   const files = new Map()
   const store = o.store || new Map()
   const invalidations = []
@@ -120,6 +124,20 @@ export async function mount(options = {}) {
     'session.version': () => ({ version: o.version, base: o.version }),
     'session.root': () => o.root,
     'session.cwd': () => o.root,
+    'session.id': () => o.sessionId,
+    'env.get': (name) => o.env[name],
+    'fs.list': (p) => {
+      const ds = dirs()
+      if (!ds.has(p)) throw new Error('ENOENT ' + p)
+      const out = []
+      for (const [fp, f] of files) if (path.posix.dirname(fp) === p) out.push({ name: path.posix.basename(fp), kind: 'file', size: f.text.length, mtimeMs: f.mtimeMs, isLink: false })
+      for (const d of ds) if (path.posix.dirname(d) === p) out.push({ name: path.posix.basename(d), kind: 'dir', size: 0, mtimeMs: 0, isLink: false })
+      return out
+    },
+    'prompt.fill': (a) => ({ isFilled: true, text: a.text }),
+    'prompt.suggest': () => ({ isShown: true }),
+    'process.run': (argv) => (typeof o.process === 'function' ? o.process(argv) : { exitCode: 0, stdout: 'added T1: ' + argv[argv.length - 1] + '\n', stderr: '' }),
+    'ui.selection': () => o.selection,
     'session.usage': () => {
       if (o.usageError) throw new Error('no ledger')
       return o.usage
@@ -190,7 +208,9 @@ export async function mount(options = {}) {
       },
     })
   const cache = {}
-  const $ = new Proxy({}, { get: (_, n) => (cache[n] ??= ns(String(n))) })
+  // $.plugin is plain data in Claude Code: the plugin's name and its directory.
+  const plugin = Object.freeze({ name: 'vbw', root: PLUGIN })
+  const $ = new Proxy({}, { get: (_, n) => (n === 'plugin' ? plugin : (cache[n] ??= ns(String(n)))) })
   h.$ = $
 
   const on = (event, a, b) => {
@@ -198,8 +218,11 @@ export async function mount(options = {}) {
     const fn = typeof a === 'function' ? a : b
     // In Claude Code a hook without a matcher runs for every such event (every
     // drawing, every command), each one a hop to the plugin's worker.
-    if (event === 'ui.render' && !(matcher && matcher.component === 'Pane' && matcher.requestId)) {
-      throw new Error('a ui.render hook must match { component: "Pane", requestId }: without it, it runs for every drawing in Claude Code')
+    if (event === 'ui.render' && !(matcher && matcher.component && (matcher.component !== 'Pane' || matcher.requestId))) {
+      throw new Error('a ui.render hook must match { component } (a Pane also its requestId): without it, it runs for every drawing in Claude Code')
+    }
+    if ((event === 'tool.call' || event === 'turn.step') && !(matcher && matcher.tool)) {
+      throw new Error('a ' + event + ' hook must match { tool }: without it, it runs for every call of every agent (decision P2)')
     }
     if (event === 'command.run' && !(matcher && matcher.command)) {
       throw new Error('a command.run hook must match { command }: without it, it runs for every command')
@@ -272,6 +295,10 @@ export async function mount(options = {}) {
     }
     return -1
   }
+  // Any other render site: draw(component, props, extra); the engine's own drawing is { type: 'engine', ref: component }.
+  h.draw = (component, props = {}, extra = {}) =>
+    h.fire('ui.render', { plugin: 'vbw', component, requestId: component + '-1', surface: 'terminal', viewport: { columns: 120, rows: 40 }, props, ...extra },
+      (ev) => ({ type: 'engine', ref: component, props: ev.props }))
   h.texts = async () => collect(await h.render())
   h.text = async () => (await h.texts()).join('\n')
   h.press = async (key) => {
@@ -321,4 +348,9 @@ export const ALLOWED = new Set([
   'clock.now', 'clock.every', 'clock.after',
   'ui.open', 'ui.close', 'ui.invalidate', 'ui.resolve',
   'command.register', 'audio.play',
+  // The run feed lists the session's workflow folder and finds it by the session id
+  // and the Claude config folder (HOME, CLAUDE_CONFIG_DIR: names, never values elsewhere).
+  'fs.list', 'session.id', 'env.get',
+  // Buttons fill the prompt and the approve gate suggests /vbw:approve; never a submit (Q1).
+  'prompt.fill', 'prompt.suggest',
 ])

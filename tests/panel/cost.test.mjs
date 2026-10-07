@@ -48,7 +48,8 @@ test('when the cost is not available the line is left out or says so, never a nu
     assert.deepEqual(money(text), [], JSON.stringify(options))
     assert.doesNotMatch(text, /\$/)
     assert.doesNotMatch(text, /undefined|NaN|null/)
-    for (const t of await h.texts()) if (/cost/i.test(t)) assert.match(t, /not available/i)
+    // Every line about the cost says it is not available (the Costs tab's button names a tab, not a cost).
+    for (const t of await h.texts()) if (/cost/i.test(t) && t !== 'Costs') assert.match(t, /not available/i)
     assert.deepEqual(h.errors, [])
   }
 })

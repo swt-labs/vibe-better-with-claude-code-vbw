@@ -34,7 +34,9 @@ test('it only calls what a read-only panel needs: no network, no credentials, no
   const used = h.names()
   const extra = used.filter((n) => !ALLOWED.has(n))
   assert.deepEqual(extra, [], 'calls outside the allowed set')
-  for (const n of used) assert.doesNotMatch(n, /^(http|mcp|model|process|env|settings|agent|tool|prompt|telemetry)\./)
+  for (const n of used) assert.doesNotMatch(n, /^(http|mcp|model|process|settings|agent|tool|telemetry)\.|^prompt\.submit$/)
+  // The environment is read for two names only, to find this session's folder.
+  for (const [name] of h.callsOf('env.get')) assert.ok(['HOME', 'CLAUDE_CONFIG_DIR'].includes(name), name)
   assert.deepEqual(h.errors, [])
 })
 
