@@ -270,6 +270,33 @@ folder, and nothing it builds lands in the working folder or in another copy.
 Untracked files that are not ignored never enter the copy (D54): to make one
 count, commit it or ignore it.
 
+#### Links left pointing into a proof copy
+
+An earlier VBW linked git-ignored folders into its proof copies. A link like
+that can survive in your working folder and break once the copy is deleted.
+After every `vbw prove`, VBW scans the working folder for such links and prints
+one line for each:
+
+```text
+vbw: node_modules/.bin/tsc -> /home/me/app/.vbw/runtime/proof.k3Xa9/node_modules/typescript/bin/tsc points into a proof copy of an earlier run; re-run the project install command
+```
+
+The line names the link, where it points, and the repair. It appears only when
+such a link exists; with none, VBW prints nothing. The scan only reads: it
+changes no file, never follows a link, skips `.git` and `.vbw`, and never turns
+a passing proof into a failing one. It also runs when the proof stops early
+with an error.
+
+To repair, rebuild the folder that holds the link:
+
+- **pnpm projects** (a `pnpm-lock.yaml` or `pnpm-workspace.yaml` exists): delete
+  `node_modules`, then run `pnpm install`.
+- **Other projects:** re-run the project's install command (`npm install`,
+  `pip install -r requirements.txt`, `bundle install`, and so on). If a link
+  remains, delete the folder it sits in and run the install command again.
+
+The warning stops once no link points into `.vbw/runtime/proof.*`.
+
 Evidence (`record.evidence`):
 
 ```json
