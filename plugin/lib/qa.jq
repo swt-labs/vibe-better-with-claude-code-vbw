@@ -26,17 +26,19 @@
     | select(.id as $i | [$r.plans[] | select(.phase == $i)] | length > 0 and all(.[]; .status == "done"))]) as $built
 | (def own: {files, tests, plan, reqs};
    def plain: "its files, tests or plan changed";
+   # A cache written before the [auto] requirements digest existed has no reqs: compare what it has.
+   def same($o; $n): $o != null and $o.files == $n.files and $o.tests == $n.tests and $o.plan == $n.plan and ($o.reqs == null or $o.reqs == $n.reqs);
    ($cache | if type == "object" then . else {} end) as $c
    | [$built[] | . as $ph | ($inputs[$ph.id]) as $cur | ($c[$ph.id]) as $old
      | (if $ph.qa == null then ["not checked yet"]
         else (if $ph.qa.result != "pass" then ["failed last time"] else [] end)
           + (if $ph.qa.tree == $cur.combined then []
-             else (if ($old | type == "object" and (.files | type == "string") and (.tests | type == "string") and (.plan | type == "string") and (.reqs | type == "string") and (.deps | type == "object"))
+             else (if ($old | type == "object" and (.files | type == "string") and (.tests | type == "string") and (.plan | type == "string") and (.reqs | type == "string" or . == null) and (.deps | type == "object"))
                    then ([if $old.files != $cur.files then "its files changed" else empty end,
                           if $old.tests != $cur.tests then "its tests changed" else empty end,
                           if $old.plan != $cur.plan then "its goal or plan changed" else empty end,
-                          if $old.reqs != $cur.reqs then "an [auto] requirement changed" else empty end]
-                         + [$closure[$ph.id][] as $d | select($old.deps[$d] != ($inputs[$d] | own)) | "builds on \($d), which changed"])
+                          if $old.reqs != null and $old.reqs != $cur.reqs then "an [auto] requirement changed" else empty end]
+                         + [$closure[$ph.id][] as $d | select(same($old.deps[$d]; $inputs[$d] | own) | not) | "builds on \($d), which changed"])
                    else [] end) | if length > 0 then . else [plain] end
              end)
         end) as $why
