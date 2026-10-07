@@ -141,7 +141,7 @@ test('proof: one cell per check of the current milestone, coloured by its last r
     ['C4', 'failing', 'red'],
     ['C5', 'running', '#ffaf00'],
   ])
-  assert.equal(m.cells[1].hover, 'C3 · R3: The panel shows an estimate')
+  assert.equal(m.cells[1].hover, 'C3 · failing · R3: The panel shows an estimate')
   assert.deepEqual(m.cells[1].press, { check: 'C3' })
   assert.deepEqual(m.counts, { passed: 1, failing: 2, running: 1, none: 0 })
   const idle = mr.proofModel({ record: rec() })
@@ -171,11 +171,14 @@ test('proof: checkDetail is the command and the last lines of output', () => {
 test('proof render: rows of coloured ■ cells with hover cards; presses ask for the detail', () => {
   const pressed = []
   const tree = mr.renderProof(UI, mr.proofModel({ record: rec(), running: ['C5'], selected: 'C3' }), (a) => pressed.push(a))
-  const cells = all(tree, (n) => n.type === 'Text' && n.children.join('') === '■')
+  const cells = all(tree, (n) => n.type === 'Text' && /^[✓✗●…]$/.test(n.children.join('')))
   assert.deepEqual(cells.map((c) => c.props.color), ['green', 'red', 'red', '#ffaf00'])
+  // Colour off: the mark alone tells the states apart, and the hover card says the word.
+  assert.deepEqual(cells.map((c) => c.children.join('')), ['✓', '✗', '✗', '●'])
+  assert.match(collect(find(tree, (n) => n.type === 'Box' && n.props.display === 'none')).join(' '), /C\d · (passed|failing|running|not run) · /)
   const card = find(tree, (n) => n.type === 'Box' && n.props.display === 'none' && n.props.hover && n.props.hover.display === 'flex')
   assert.ok(card, 'a hover card revealed on hover')
-  assert.match(collect(card).join(' '), /C2 · R2: The panel shows the cost/)
+  assert.match(collect(card).join(' '), /C2 · passed · R2: The panel shows the cost/)
   const press = buttons(tree).find((b) => b.props.label === 'C3')
   press.props.onPress({ surface: 'terminal' })
   assert.deepEqual(pressed, [{ check: 'C3' }])
@@ -187,7 +190,7 @@ test('proof render: rows of coloured ■ cells with hover cards; presses ask for
   }))
   const grid = mr.renderProof(BASIC, mr.proofModel({ record: many }))
   const rows = all(grid, (n) => n.type === 'Box' && n.props.key && n.props.key.startsWith('proof-row-'))
-  assert.deepEqual(rows.map((r) => all(r, (n) => n.type === 'Text' && n.children.join('') === '■').length), [20, 5])
+  assert.deepEqual(rows.map((r) => all(r, (n) => n.type === 'Text' && n.children.join('') === '…').length), [20, 5])
 })
 
 test('decisions: the current milestone, newest first, with question, answer and why', () => {

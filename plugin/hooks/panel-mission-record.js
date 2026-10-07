@@ -4,7 +4,7 @@
 // what a press asks for ({tab, phase}, {check}, {ask}, {fill}). Never throws:
 // odd input gives an empty model. No `$` here.
 
-import { roleColor, stateColor } from './panel-palette.js'
+import { roleColor, stateColor, STATE_MARKS } from './panel-palette.js'
 
 const isObj = (x) => x !== null && typeof x === 'object' && !Array.isArray(x)
 const arr = (x) => (Array.isArray(x) ? x.filter(isObj) : [])
@@ -71,9 +71,9 @@ export function planModel(input) {
 // ---- Proof ------------------------------------------------------------------
 
 const TAIL_LINES = 20
-const CELL = {
-  passed: stateColor('done'), failing: stateColor('failed'), running: stateColor('running'), none: stateColor('quiet'),
-}
+// A check cell is a palette state: its colour, and its mark and word for colour off.
+const CELL_STATE = { passed: 'done', failing: 'failed', running: 'running', none: 'quiet' }
+const CELL_WORD = { passed: 'passed', failing: 'failing', running: 'running', none: 'not run' }
 
 export function checkDetail(record, id) {
   const rec = isObj(record) ? record : {}
@@ -110,7 +110,8 @@ export function proofModel(input) {
       : st === 'fail' || st === 'timeout' ? 'failing'
       : !st && proven.has(c.req) ? 'passed' : 'none'
     counts[state]++
-    return { id: c.id, state, color: CELL[state], hover: c.id + ' · ' + reqText(rec, c.req), press: { check: c.id } }
+    const ps = CELL_STATE[state]
+    return { id: c.id, state, color: stateColor(ps), mark: STATE_MARKS[ps], hover: c.id + ' · ' + CELL_WORD[state] + ' · ' + reqText(rec, c.req), press: { check: c.id } }
   })
   const sel = isObj(input) ? input.selected : null
   return { cells, counts, detail: sel ? checkDetail(rec, sel) : null }
@@ -222,7 +223,7 @@ export function renderProof(ui, model, act) {
   const cells = Array.isArray(m.cells) ? m.cells : []
   if (!cells.length) return empty(ui, 'No checks are approved for this milestone yet.')
   const cell = (c) => h(els(ui).Box, { key: 'cell-' + c.id },
-    T(ui, { color: c.color }, '■'),
+    T(ui, { color: c.color }, c.mark || STATE_MARKS.quiet),
     h(els(ui).Box, { position: 'absolute', top: 1, left: 0, display: 'none', hover: { display: 'flex' }, borderStyle: 'round' },
       T(ui, null, c.hover)))
   const rows = []
