@@ -108,6 +108,13 @@ the current milestone that are not `done`, so it shrinks as the build goes on.
 The first number is how many waves the build takes; the second is the most
 plans any one wave runs at the same time.
 
+A phase that cannot be split shows the plain truth: when every plan waits for
+the one before it, or all of them write the same file, the line reads
+`build waves: 3 (the widest runs 1 plan at once)`. It never counts plans that
+run one after another as parallel. Read it as the approval check on the
+Lead's plan: a wide wave means plans build at the same time; a width of 1
+means the work builds one plan at a time.
+
 While a Dev builds, edits to test files do not stop the build: only a change to
 the contract's structure does (row 4). Row 4a is the one approval for all of
 those edits, asked just before proof.
