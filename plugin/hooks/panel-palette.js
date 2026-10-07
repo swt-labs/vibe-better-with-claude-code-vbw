@@ -18,7 +18,7 @@ export const PROGRESS = 'green'
 export const ESTIMATE = '#ffaf00'
 
 // A mark and a word per state, so the state reads with colour switched off.
-export const STATE_MARKS = { running: '▶', done: '✓', failed: '✗', quiet: '…', cut: '■' }
+export const STATE_MARKS = { running: '●', done: '✓', failed: '✗', quiet: '…', cut: '■' }
 export const STATE_WORDS = { running: 'running', done: 'done', failed: 'failed', quiet: 'quiet', cut: 'cut off' }
 
 const own = (o, k) => typeof k === 'string' && Object.prototype.hasOwnProperty.call(o, k)
