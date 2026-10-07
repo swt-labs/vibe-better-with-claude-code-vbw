@@ -9,7 +9,7 @@
 // Pure: data in, a model out (stageModel), a tree out (renderStage). No `$`,
 // never changes its input, never throws.
 import { poseOf, spriteFrame, encodeCells } from './panel-candy.js'
-import { roleColor as colorOfRole, stateColor, NEED, ACCENT } from './panel-palette.js'
+import { roleColor as colorOfRole, stateColor, STATE_MARKS, NEED, ACCENT } from './panel-palette.js'
 
 const isObj = (x) => x !== null && typeof x === 'object' && !Array.isArray(x)
 const num = (x) => typeof x === 'number' && Number.isFinite(x)
@@ -115,14 +115,14 @@ function rowOf(a, now, motion, ended, born) {
   const base = { id: str(a.id), role, roleColor, label: str(a.label), elapsed: clock((end ?? now) - start), tokens: tokens(a.tokens), spin: '', button: null }
   if (a.state === 'done') {
     if ((end ?? ended ?? now) + DONE_MS <= now) return null
-    return { ...base, glyph: '✓', glyphColor: stateColor('done'), activity: 'done' + (str(a.result) ? ' · ' + a.result : ''), activityColor: stateColor('done') }
+    return { ...base, glyph: STATE_MARKS.done, glyphColor: stateColor('done'), activity: 'done' + (str(a.result) ? ' · ' + a.result : ''), activityColor: stateColor('done') }
   }
   if (a.state === 'failed') {
-    return { ...base, glyph: '✗', glyphColor: stateColor('failed'), activity: str(a.result) || 'failed', activityColor: stateColor('failed'),
+    return { ...base, glyph: STATE_MARKS.failed, glyphColor: stateColor('failed'), activity: str(a.result) || 'failed', activityColor: stateColor('failed'),
       button: { label: 'details', action: { open: 'mission', tab: 'now', agent: str(a.id) } } }
   }
   const age = isObj(born) && num(born[base.id]) ? now - born[base.id] : -1
-  const row = { ...base, glyph: '●', glyphColor: roleColor, ...(motion === 'full' && age >= 0 && age < FLASH_MS ? { flash: true } : {}) }
+  const row = { ...base, glyph: STATE_MARKS.running, glyphColor: roleColor, ...(motion === 'full' && age >= 0 && age < FLASH_MS ? { flash: true } : {}) }
   const seen = num(a.lastSeenAt) ? a.lastSeenAt : start
   if (a.state === 'quiet' || now - seen >= QUIET_MS) return { ...row, quiet: true, activity: 'quiet ' + clock(now - seen), activityColor: stateColor('quiet') }
   const act = isObj(a.activity) ? a.activity : null
@@ -154,7 +154,7 @@ function crewOf(rn, now, columns, maxRows, motion, cost, born) {
   const agents = rn.agents.filter((a) => isObj(a) && typeof a.id === 'string' && a.id)
   let rows = agents.map((a) => rowOf(a, now, motion, ended, born)).filter(Boolean)
   const doneAll = agents.filter((a) => a.state === 'done').length
-  const doneShown = rows.filter((r) => r.glyph === '✓').length
+  const doneShown = rows.filter((r) => r.glyph === STATE_MARKS.done).length
   const tally = doneAll > doneShown ? doneAll - doneShown + ' done' : null
   let failedKey = false
   rows = rows.map((r) => {
@@ -180,7 +180,7 @@ function crewOf(rn, now, columns, maxRows, motion, cost, born) {
     const byId = new Map(agents.map((a) => [a.id, a]))
     rows = rows.map((r) => {
       const a = byId.get(r.id)
-      return { ...r, spin: '', pose: r.glyph !== '●' ? a.state : r.quiet ? 'quiet' : poseOf(a.activity, 'working') }
+      return { ...r, spin: '', pose: r.glyph !== STATE_MARKS.running ? a.state : r.quiet ? 'quiet' : poseOf(a.activity, 'working') }
     })
   }
   const parts = ['VBW ▸ ' + kind, status, str(rn.phase), time]

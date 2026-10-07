@@ -391,3 +391,11 @@ test('render the tally and the overflow as dim lines', () => {
   assert.ok(dims.some((t) => /^\+\d+ more$/.test(t)), dims.join('|'))
   assert.ok(dims.some((t) => t === '1 done'), dims.join('|'))
 })
+
+test('colour off: the band reads state from the palette marks, running, done and failed apart', async () => {
+  const P = await import(pathToFileURL(PLUGIN + '/hooks/panel-palette.js').href)
+  const m = model({ run: run([agent({ id: 'w' }), agent({ id: 'd', state: 'done', endedAt: NOW - 5 * S, result: 'ok' }), agent({ id: 'f', state: 'failed', endedAt: NOW - 5 * S, result: 'boom' })]), maxRows: 16, columns: 80 })
+  const glyph = (id) => m.rows.find((r) => r.id === id).glyph
+  assert.deepEqual([glyph('w'), glyph('d'), glyph('f')], [P.STATE_MARKS.running, P.STATE_MARKS.done, P.STATE_MARKS.failed])
+  assert.equal(new Set([glyph('w'), glyph('d'), glyph('f')]).size, 3)
+})
