@@ -7195,12 +7195,11 @@
       ],
       "predicted": "deep",
       "qa": {
-        "result": "fail",
+        "result": "pass",
         "tier": "standard",
         "tree": "7e9db913e1676a5b82aa0784a6b745716d404e9a51abe3bb942045b7b8913629",
-        "at": "2026-10-07T18:40:24Z",
-        "note": "22/23 checks",
-        "rounds": 2
+        "at": "2026-10-07T18:44:08Z",
+        "note": "12/12 checks"
       },
       "escalations": [
         {
@@ -7209,7 +7208,15 @@
           "to": "deep",
           "reason": "QA needs a second round"
         }
-      ]
+      ],
+      "outcome": {
+        "tier": "deep",
+        "predicted": "deep",
+        "held": true,
+        "fix_rounds": 3,
+        "qa_findings": 3,
+        "escalations": 1
+      }
     },
     {
       "id": "P68",
@@ -12544,7 +12551,7 @@
       "req": "R98",
       "source": "qa",
       "attempts": 0,
-      "status": "fixed",
+      "status": "closed",
       "note": "Plan P67.3 task 'Keep the kernel line count (net zero)' was not followed: commit 8be2ee30 adds 7 lines and removes 1 in plugin/lib/cmd-prove.sh (+6 net), and commit 5835a5d0 adds 5 and removes 1 in plugin/lib/cmd-auto.sh (+4 net), so the kernel grew by 10 lines. No recorded decision covers it (D165 names only P68.1, P68.2 and P69.2; D161 only raised the budget). Options: (1) recommended, record a decision that P67.3's net-zero limit is superseded by the doubled budget in D161, as D165 did for the others; the code is correct and tested; (2) trim 10 lines from the kernel."
     }
   ],
@@ -14727,5 +14734,11 @@
     "scope": [],
     "passed": true
   },
-  "lease": null
+  "lease": {
+    "run": "qa-20261007T184244Z",
+    "kind": "qa",
+    "started_at": "2026-10-07T18:42:44Z",
+    "files": [],
+    "session": "4130e174-7ef2-4e36-b853-fb2a8fd8511d"
+  }
 }
