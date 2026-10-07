@@ -7,7 +7,11 @@ import { mount, record, next, lease, dimTexts, ROOT, T0 } from './helpers/fake-m
 
 const REC = ROOT + '/.vbw/record.json'
 
-async function started(rec = record(), nxt = next(), options = {}) {
+// The current milestone M9 has five requirements, two of them done; R1 is of another milestone.
+const REQS = [['R1', 'M1', 'proven'], ['R2', 'M9', 'proven'], ['R3', 'M9', 'accepted'], ['R4', 'M9', 'open'], ['R5', 'M9', 'failing'], ['R6', 'M9', 'open']]
+  .map(([id, milestone, status]) => ({ id, text: id, proof: 'auto', status, milestone }))
+
+async function started(rec = record({ requirements: REQS }), nxt = next(), options = {}) {
   const h = await mount(options)
   h.project(rec, nxt)
   await h.start()
@@ -19,7 +23,7 @@ test('the pane shows the milestone, its progress, what VBW is doing and whether 
   const h = await started()
   const text = await h.text()
   assert.match(text, /Live VBW panel/)
-  assert.match(text, /2 of 5 phases/i)
+  assert.match(text, /2 of 5 requirements done/i)
   assert.match(text, /idle|nothing is running/i)
   assert.match(text, /nothing is needed/i)
   assert.deepEqual(h.errors, [])
@@ -38,12 +42,12 @@ test('the pane is drawn only for its own id; other panes are left alone', async 
   assert.deepEqual(other, { type: 'engine', ref: 'default' })
 })
 
-test('a phase finishing shows in the panel within 5 seconds, by itself', async () => {
+test('a requirement proven shows in the panel within 5 seconds, by itself', async () => {
   const h = await started()
-  const done = record().phases.map((p) => (p.milestone === 'M9' ? { ...p, qa: { result: 'pass' } } : p))
+  const done = REQS.map((r) => (r.milestone === 'M9' && r.status !== 'accepted' ? { ...r, status: 'proven' } : r))
   const before = h.count('ui.invalidate')
-  h.project(record({ phases: done }))
-  const took = await h.until(async () => /5 of 5 phases/i.test(await h.text()), 10000)
+  h.project(record({ requirements: done }))
+  const took = await h.until(async () => /5 of 5 requirements done/i.test(await h.text()), 10000)
   assert.ok(took >= 0 && took <= 5000, 'took ' + took + ' ms')
   assert.ok(h.count('ui.invalidate') > before, 'a redraw was asked for')
 })

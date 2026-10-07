@@ -12,27 +12,32 @@ const iso = (ms) => new Date(ms).toISOString().replace(/\.\d+Z$/, 'Z')
 const row = (v, id) => v.rows.find((r) => r.id === id)
 const show = (input) => view.panelView({ now: NOW, ...input })
 
-test('the milestone and its progress are plain sentences: phases done of total', () => {
-  const v = show({ record: record(), next: next() })
+// Requirements of the current milestone and their states, as the kernel stores them.
+const reqs = (...xs) => xs.map(([id, milestone, status]) => ({ id, text: id + ' holds', proof: 'auto', status, milestone }))
+
+test('the milestone and its progress are plain sentences: requirements done of total', () => {
+  const r = record({ requirements: reqs(['R1', 'M1', 'proven'], ['R2', 'M9', 'proven'], ['R3', 'M9', 'accepted'],
+    ['R4', 'M9', 'failing'], ['R5', 'M9', 'open'], ['R6', 'M9', 'rejected']) })
+  const v = show({ record: r, next: next() })
   assert.match(row(v, 'milestone').text, /M9/)
   assert.match(row(v, 'milestone').text, /Live VBW panel/)
-  // P42 and P43 passed QA; P44, P45 and P46 did not; P1 belongs to another milestone.
-  assert.match(row(v, 'progress').text, /2 of 5 phases/i)
+  // R2 is proven and R3 accepted; R4, R5 and R6 are not done; R1 belongs to another milestone.
+  assert.equal(row(v, 'progress').text, '2 of 5 requirements done.')
+  assert.equal(row(v, 'progress').term, 'requirements')
 })
 
-test('progress counts a single phase in the singular and says when nothing is planned', () => {
-  const one = record({ phases: [{ id: 'P1', title: 'A', milestone: 'M9', qa: { result: 'pass' } }] })
-  assert.match(row(show({ record: one, next: next() }), 'progress').text, /1 of 1 phase(?!s)/i)
-  const none = record({ phases: [] })
-  assert.match(row(show({ record: none, next: next() }), 'progress').text, /no phases/i)
+test('M11 defect: progress counts requirements as the status line does, not phases ("1 of 1 phase" beside "1/15")', () => {
+  const list = reqs(['R1', 'M9', 'proven'], ...Array.from({ length: 14 }, (_, i) => ['R' + (i + 2), 'M9', 'open']))
+  const r = record({ phases: [{ id: 'P1', title: 'A', milestone: 'M9', qa: { result: 'pass' } }], requirements: list })
+  assert.equal(row(show({ record: r, next: next() }), 'progress').text, '1 of 15 requirements done.')
 })
 
-test('a phase whose QA did not pass is not counted as done', () => {
-  const r = record({ phases: [
-    { id: 'P1', title: 'A', milestone: 'M9', qa: { result: 'fail' } },
-    { id: 'P2', title: 'B', milestone: 'M9' },
-  ] })
-  assert.match(row(show({ record: r, next: next() }), 'progress').text, /0 of 2 phases/i)
+test('progress counts a single requirement in the singular and says when none is set', () => {
+  const one = record({ requirements: reqs(['R1', 'M9', 'accepted']) })
+  assert.equal(row(show({ record: one, next: next() }), 'progress').text, '1 of 1 requirement done.')
+  for (const requirements of [[], undefined, 'x', [null, 5]]) {
+    assert.match(row(show({ record: record({ requirements }), next: next() }), 'progress').text, /no requirements/i)
+  }
 })
 
 test('what VBW is doing: idle, planning, building (naming the parts), checking, fixing, mapping', () => {

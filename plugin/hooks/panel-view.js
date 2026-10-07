@@ -84,17 +84,19 @@ export function panelView(input) {
   const { record: rec, next: nx, question, now, cost, steps } = isObj(input) ? input : {}
   if (!isObj(rec) || !isObj(rec.milestone) || !rec.milestone.id) return { rows: [NEUTRAL], need: null }
   const ph = (Array.isArray(rec.phases) ? rec.phases : []).filter((p) => isObj(p) && p.milestone === rec.milestone.id)
-  const done = ph.filter((p) => isObj(p.qa) && p.qa.result === 'pass').length
-  const progress = ph.length === 0 ? 'No phases are planned yet.'
-    : done + ' of ' + ph.length + (ph.length === 1 ? ' phase' : ' phases') + ' done.'
-  const phasesLeft = ph.length - done
+  const phasesLeft = ph.filter((p) => !(isObj(p.qa) && p.qa.result === 'pass')).length
+  // Progress as the status line counts it: the current milestone's requirements proven or accepted.
+  const rq = (Array.isArray(rec.requirements) ? rec.requirements : []).filter((r) => isObj(r) && r.milestone === rec.milestone.id)
+  const done = rq.filter((r) => r.status === 'proven' || r.status === 'accepted').length
+  const progress = rq.length === 0 ? 'No requirements are set yet.'
+    : done + ' of ' + rq.length + (rq.length === 1 ? ' requirement' : ' requirements') + ' done.'
   const open = isObj(rec.lease)
   const need = open ? null : needOf(nx, question)
   return {
     need,
     rows: [
       { id: 'milestone', text: 'Working on ' + rec.milestone.id + ': ' + (rec.milestone.title || 'untitled') + '.', term: 'milestone' },
-      { id: 'progress', text: progress, term: 'phases' },
+      { id: 'progress', text: progress, term: 'requirements' },
       doing(rec, Number.isFinite(now) ? now : Date.now()),
       ...estimateRows(rec, Array.isArray(steps) ? steps : [], phasesLeft, Number.isFinite(now) ? now : Date.now()),
       costRow(cost),
