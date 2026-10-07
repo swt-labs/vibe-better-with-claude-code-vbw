@@ -196,6 +196,11 @@ checks_run_all() {
       printf '%s\n' "$res" > "$CHECK_OUT/$n.res.tmp" && mv "$CHECK_OUT/$n.res.tmp" "$CHECK_OUT/$n.res"
     ) &
     pids+=($!)
+    # An alone check is at the gate before the next check starts, so a shared
+    # check launched after it never runs first.
+    if [ "$(printf '%s' "$record" | jq -r --arg id "$id" '.checks[] | select(.id == $id) | .alone // false')" = true ]; then
+      while kill -0 "$!" 2> /dev/null && [ ! -e "$VBW_RUNTIME/gate/reg.$$.$id" ] && [ ! -e "$VBW_RUNTIME/gate/want.$$.$id" ]; do sleep 0.05; done
+    fi
   done
   # Job notices (Killed, not a child) are the shell's own: silenced here.
   for pid in "${pids[@]}"; do { wait "$pid" || true; } 2> /dev/null; done
