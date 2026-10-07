@@ -49,11 +49,15 @@ auto_write() {
 
 # Prints a Stop hook decision, or nothing (the stop proceeds).
 auto_gate() {
-  local file session next action steps cap
+  local file session next action steps cap mark
   session=$(printf '%s' "$1" | jq -r '.session_id // empty' 2> /dev/null || true)
   [[ "$session" =~ ^[A-Za-z0-9_-]+$ ]] || return 0
   file="$VBW_RUNTIME/auto.$session.json"
   [ -f "$file" ] || return 0
+  # This session's proof is running in the background: ask for nothing, spend nothing.
+  # A mark of a dead process is stale and ignored.
+  mark="$VBW_RUNTIME/proving.$session"
+  [ -f "$mark" ] && kill -0 "$(cat "$mark")" 2> /dev/null && return 0
   # shellcheck source=cmd-next.sh
   . "$VBW_LIB/cmd-next.sh"
   next=$(cmd_next --json)
