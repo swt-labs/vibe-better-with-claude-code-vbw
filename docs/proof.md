@@ -250,6 +250,8 @@ clone (`vbw approve` keeps a copy of what it approved in `.vbw/runtime/`).
 3. Runs every check (up to `check_jobs` at a time, `alone` checks by themselves),
    and every project command whose argv is approved, from the
    root of that copy; an unapproved command is skipped and reported, never run.
+   Results of the last passing proof are reused where they still hold
+   ([Reusing results in `vbw prove`](#reusing-results-in-vbw-prove)).
    Then it removes the copy, also when interrupted.
 4. Scope: every commit with a `VBW-Plan:` trailer naming a plan in the record
    must change only that plan's files.
@@ -338,6 +340,52 @@ Statuses: `pass`, `fail`, `timeout`, `skipped`.
 An `auto` requirement is `proven` when all its checks pass and `failing`
 otherwise. Human requirements are untouched.
 
+### Reusing results in `vbw prove`
+
+Most commits after a passing proof change only VBW's own files: a recorded
+decision, a spec edit, a new human requirement. The code did not change, so
+running every check again would prove nothing new. `vbw prove` reuses the
+passing results and runs only the rest.
+
+```text
+C1 pass 2s reused (proof of 2026-10-07T20:49:55Z)
+C2 pass 3s
+lint pass 9s reused (proof of 2026-10-07T20:49:55Z)
+```
+
+Each line shows the seconds the result took when it ran and the time of that run. A result is reused when all of these hold:
+
+- The last proof passed and finished. Its committed code is identical to the
+  committed code now: only `.vbw/record.json` or `.vbw/spec.md` differ.
+- The working folder has no uncommitted or untracked project files.
+- The check's approved definition (its command, expected exit and output,
+  timeout, `alone`, `files` and requirement) or the project command's argv is
+  the same as when the result was produced.
+
+Every check and command that fails these runs, and the rest are reused. A
+changed check does not make the others run. A check added since the last proof
+runs. A check removed from the contract is left out of the new proof.
+
+Nothing is reused, and everything runs, when:
+
+- a committed project file differs from the last passing proof;
+- a tracked project file has uncommitted changes, or an untracked file that is
+  not ignored sits in the working folder;
+- the last proof failed, or was interrupted before it recorded its evidence;
+- nothing at all changed since the last passing proof (it is the latest commit
+  and `.vbw` is clean). A second `vbw prove` then is a deliberate re-run, for
+  when something outside the committed code changed, such as installed
+  dependencies.
+
+A reused result keeps the time and fingerprint of the run it came from, so
+reuse can chain across proofs without losing the original time. In the evidence,
+reused results carry `"reused": true`.
+
+A proof that reuses results is a full proof. It records the current contract
+and code, `passed` is set from every result, reused or new, and requirements
+become `proven` as usual. `vbw qa record` and `vbw next` accept it as current,
+so no further proof is asked for.
+
 ### Fix items
 
 A failure becomes a fix item: `req` for a failing requirement, `command` for a
@@ -405,8 +453,8 @@ The time is when that check passed. A check is skipped only when all of these ho
 
 A check with no `files`, or with a served path that is not committed, always
 runs and is never recorded. A check that fails loses its recorded pass.
-`vbw prove` is not affected: it runs every check, every time, from a clean copy
-of the committed code.
+`vbw prove` does not use this cache; it has its own reuse, described in
+[Reusing results in `vbw prove`](#reusing-results-in-vbw-prove).
 
 An escalated fix is a human gate (`vbw next`).
 
