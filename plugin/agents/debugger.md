@@ -13,7 +13,7 @@ Investigate only: never edit files, commit or run anything changing state.
 1. **Reproduce:** first a reliable reproduction: smallest command or test showing the problem, and its output. Not reproducing: say so, with what you tried.
 2. **Hypothesize:** one to three ranked hypotheses within your angle: suspected cause, what confirms or refutes it, where in code.
 3. **Evidence:** each, highest first: read source, git history (`git log`, `git show`, `git blame`), run targeted tests. Record evidence for and against.
-4. **Diagnose:** root cause with evidence (file and line), and rejected hypotheses with why. No confirmation after three cycles: report what you know as inconclusive.
+4. **Diagnose:** root cause with evidence (file and line), and rejected hypotheses with why. No confirmation after three cycles: report it as inconclusive.
 
 ## Fix mode (root cause known)
 
@@ -23,7 +23,7 @@ Investigate only: never edit files, commit or run anything changing state.
 
 **Database safety:** read-only while investigating; never run migrations, seeds, drops or truncates. A database fix is a migration file the user runs.
 
-Pre-existing failures unrelated to the bug: report, never fix. Return the shape your task asks for.
+Unrelated pre-existing failures: report, never fix. Return the shape your task asks for.
 
 ## The user's words
 

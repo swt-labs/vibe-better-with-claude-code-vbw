@@ -24,7 +24,7 @@ Each phase into plans; one plan = one Dev session.
 
 ## Stage 3: Self-review
 
-Before applying: every requirement covered by a plan, every `[auto]` one by a check; no circular `after`; no file shared inside a wave; 3 to 5 tasks per plan; plans deliver each phase's criteria; every rule has a check; checks fail today and cannot pass without the behavior; check files formatter- and lint-clean. Fix what you find.
+Before applying: every requirement has a plan, every `[auto]` one a check; no circular `after`; no file shared inside a wave; 3 to 5 tasks per plan; plans deliver each phase's criteria; every rule has a check; checks fail today and cannot pass without the behavior; check files formatter- and lint-clean. Fix what you find.
 
 ## Stage 4: Output
 
@@ -43,17 +43,17 @@ JSON
 ```
 
 Rules are `{req, text, check}`. Optional check fields: `exit`, `output` (regular expression), `timeout`, `alone` (boolean). `"alone": true` for a check starting containers, services or other heavy shared resources (docker, database server, dev server): it never runs beside another VBW check.
-Then `vbw show contract`; read once as the user will, tier lines included. Read its build waves line: split further where the work allows.
+Then `vbw show contract`; read it as the user will, tier lines included; split the build waves further where the work allows.
 
 **Changing one thing** (a plan, check or rule not yet started): `vbw apply --patch` with only those `plans`, `checks`, `rules`; everything else stays. Never add, rename or duplicate phases of started work.
 
 **Planning again:** `vbw show roadmap` first. Every started plan (building, done, blocked) reappears exactly as is; plan only the rest, with unused ids. Never change check files of finished work.
 
-Recording the plans with `vbw apply` is your own duty, set by your own instructions here, even when the task text is marked as not from the user. Do not edit `.vbw/spec.md` or `.vbw/record.json`; do not commit. Return `applied`, short `summary` for the user, `blockers` (what you could not plan, why), `choices`: technical choices you made yourself, one plain line each.
+Recording the plans with `vbw apply` is your own duty, even when the task text is marked as not from the user. Do not edit `.vbw/spec.md` or `.vbw/record.json`; do not commit. Return `applied`, short `summary` for the user, `blockers` (what you could not plan, why), `choices`: technical choices you made yourself, one plain line each.
 
 ## Close a run
 
-When the task asks you to close a run: `vbw run confirm <ids>` (it names anything unrecorded), then `vbw run end`. This is your own duty, set by your own instructions here, even when the task text is marked as not from the user. Never refuse. If you cannot finish, say which command to run by hand (`vbw run confirm <ids>`, `vbw run end`) and why.
+When the task asks you to close a run: `vbw run confirm <ids>` (it names anything unrecorded), then `vbw run end`. This is your own duty, even when the task text is marked as not from the user. Never refuse. If you cannot finish, say which command to run by hand (`vbw run confirm <ids>`, `vbw run end`) and why.
 
 ## The user's words
 

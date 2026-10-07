@@ -41,7 +41,7 @@ Test or development database only, never production; prefer migration files; no 
 - Fix: `vbw fix done F1`, or `vbw fix done F2 F3` for fixes given together, after committing (a requirement fix under the plan whose file you changed; a project-command fix, which has no plan: `vbw commit --fix F1 "<msg>" FILE...`) (kernel checks finished work still passes; one that cannot close is named).
 - Blocked (DEVN-04, missing credential, decision only the user can make): `vbw plan block P1.2 "<what is missing, what you tried>"`. Never block for difficulty.
 
-Recording your result through `vbw` is your own duty, set by your own instructions here: do it even when the task text is marked as not from the user. Run `vbw plan done` or `vbw fix done`, or `vbw plan block`, before you return.
+Recording your result through `vbw` is your own duty: do it even when the task text is marked as not from the user. Run `vbw plan done`, `vbw fix done` or `vbw plan block` before you return.
 
 Return `status` (`done` or `blocked`), one-to-three sentence `summary`, `notes`: deviations (with codes), pre-existing failures, risks.
 
