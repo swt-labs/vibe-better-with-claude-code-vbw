@@ -43,7 +43,7 @@ test('nowModel: the frame is the role colour; the state mark and word carry the 
   const frames = (m) => Object.fromEntries(m.columns[0].cards.map((c) => [c.id, c.frame]))
   const lines = (m) => Object.fromEntries(m.columns[0].cards.map((c) => [c.id, [c.mark + ' ' + c.word, c.stateColor]]))
   assert.deepEqual(frames(nowModel({ run: r, now: S })), { w: 'green', d: 'green', f: 'green', q: 'green' })
-  assert.deepEqual(lines(nowModel({ run: r, now: S })), { w: ['▶ running', '#ffaf00'], d: ['✓ done', 'green'], f: ['✗ failed', 'red'], q: ['… quiet', 'gray'] })
+  assert.deepEqual(lines(nowModel({ run: r, now: S })), { w: ['● running', '#ffaf00'], d: ['✓ done', 'green'], f: ['✗ failed', 'red'], q: ['… quiet', 'gray'] })
   const stopped = nowModel({ run: { ...r, status: 'stopped', endedAt: S + MIN }, now: S + 2 * MIN })
   assert.deepEqual(lines(stopped), { w: ['■ cut off', 'gray'], d: ['✓ done', 'green'], f: ['✗ failed', 'red'], q: ['■ cut off', 'gray'] })
   assert.equal(stopped.columns[0].cards[0].state, 'cut')
@@ -53,7 +53,7 @@ test('nowModel: a card carries its role colour, activity, tokens and a select ac
   const m = nowModel({ run: run([agent({ id: 'a9', role: 'qa', label: 'P55', tokens: 48_213, activity: { kind: 'tool', text: 'reading spec.md' } })]), now: S })
   const c = m.columns[0].cards[0]
   assert.deepEqual(c, {
-    id: 'a9', title: 'qa P55', role: 'qa', roleColor: 'yellow', state: 'working', frame: 'yellow', mark: '▶', word: 'running', stateColor: '#ffaf00',
+    id: 'a9', title: 'qa P55', role: 'qa', roleColor: 'yellow', state: 'working', frame: 'yellow', mark: '●', word: 'running', stateColor: '#ffaf00',
     activity: 'reading spec.md', tool: true, tokens: '48k tokens', selected: false, action: { select: 'a9' },
   })
   const big = nowModel({ run: run([agent({ tokens: 1_250_000 }), agent({ id: 'b', tokens: 900, role: 'docs' })]), now: S })
