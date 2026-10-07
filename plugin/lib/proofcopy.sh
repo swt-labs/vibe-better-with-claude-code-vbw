@@ -47,6 +47,42 @@ proofcopy_create() {
   done < <(git -C "$VBW_ROOT" ls-files -z --others --ignored --exclude-standard --directory)
 }
 
+# proofcopy_norm PATH: PATH with . and .. folded away (no file system access).
+proofcopy_norm() {
+  local IFS=/ part out=() parts=()
+  read -r -a parts <<< "$1"
+  for part in ${parts[@]+"${parts[@]}"}; do
+    case "$part" in
+      '' | .) ;;
+      ..) [ ${#out[@]} -eq 0 ] || unset "out[$((${#out[@]} - 1))]" ;;
+      *) out+=("$part") ;;
+    esac
+  done
+  printf '/%s' "${out[*]-}"
+}
+
+# proofcopy_warn_stale: read-only scan of the working folder (git-ignored
+# folders included, links never followed, .git and .vbw skipped) naming each
+# link that points into this project's proof copies, with the repair. Says
+# nothing when there is none. Never fails.
+proofcopy_warn_stale() {
+  local real l t n d r fix='re-run the project install command'
+  real=$(cd -P "$VBW_ROOT" 2> /dev/null && pwd -P) || return 0
+  { [ -f "$VBW_ROOT/pnpm-lock.yaml" ] || [ -f "$VBW_ROOT/pnpm-workspace.yaml" ]; } && fix='delete node_modules and run pnpm install'
+  while IFS= read -r -d '' l; do
+    t=$(readlink "$l") || continue
+    case "$t" in /*) ;; *) t="$(cd -P "$(dirname "$l")" 2> /dev/null && pwd -P)/$t" ;; esac
+    n=$(proofcopy_norm "$t")
+    d=$n
+    while [ ! -d "$d" ] && [ "$d" != / ]; do d=$(dirname "$d"); done
+    r=$(cd -P "$d" 2> /dev/null && pwd -P)${n#"$d"}
+    case "$n:$r" in "$VBW_ROOT/.vbw/runtime/proof."* | "$real/.vbw/runtime/proof."* | *":$real/.vbw/runtime/proof."*)
+      printf 'vbw: %s -> %s points into a proof copy of an earlier run; %s\n' "${l#./}" "$(readlink "$l")" "$fix" >&2 ;;
+    esac
+  done < <(cd "$VBW_ROOT" && find . \( -name .git -o -path ./.vbw \) -prune -o -type l -print0 2> /dev/null) || true
+  return 0
+}
+
 # proofcopy_copy SRC DST: a copy-on-write clone first, a plain copy when the
 # file system refuses; links inside stay links. A failed try leaves nothing.
 proofcopy_copy() {

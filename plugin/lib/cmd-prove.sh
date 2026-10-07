@@ -17,6 +17,7 @@ cmd_prove() {
   vbw_require_project
   cd "$VBW_ROOT" || vbw_die "cannot enter $VBW_ROOT"
   local record checks commands scope tree head ev at
+  VBW_DIE_HOOK=proofcopy_warn_stale
   record=$(record_read)
   checks_begin "$record" strict
   proofcopy_create
@@ -43,6 +44,8 @@ cmd_prove() {
   # The evidence is part of the plan of record: commit it, so a proof never
   # leaves VBW's own file modified in the user's working tree.
   record_commit "chore(vbw): proof $(jq -r 'if .evidence.passed then "passed" else "not passed" end' "$VBW_RECORD")"
+  VBW_DIE_HOOK=
+  proofcopy_warn_stale
   prove_summary
 }
 

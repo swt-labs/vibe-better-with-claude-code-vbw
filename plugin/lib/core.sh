@@ -5,6 +5,7 @@
 vbw_die() {
   printf 'vbw: %s\n' "$1" >&2
   vbw_guard_run
+  if [ -n "${VBW_DIE_HOOK:-}" ]; then local h=$VBW_DIE_HOOK; VBW_DIE_HOOK=; "$h" || true; fi
   exit "${2:-1}"
 }
 
