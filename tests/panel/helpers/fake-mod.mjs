@@ -74,7 +74,7 @@ function matches(matcher, e) {
 // options: version, root, files (path -> text), store (a Map shared between
 // mounts to model a restart), usage, usageError, placed (ui.open answer),
 // audioFails, modulePath, env (name -> value), sessionId, process (argv -> result),
-// selection ($.ui.selection answer).
+// selection ($.ui.selection answer), blit ($.ui.blit answer: a function of its argument).
 export async function mount(options = {}) {
   const o = { version: '2.1.289', root: ROOT, usage: { cost: { usd: 1.4234 } }, placed: true, env: {}, sessionId: 'sess-1', ...options }
   const files = new Map()
@@ -184,9 +184,16 @@ export async function mount(options = {}) {
     'ui.status': () => undefined,
     // As in Claude Code: resolve takes the render event (its surface), and the
     // elements are types that only h() turns into a tree; calling one throws.
+    // Raster and Image are the terminal's alone.
     'ui.resolve': (e) => {
       if (!e || typeof e.surface !== 'string') throw new Error('$.ui.resolve(e) needs the render event')
-      return { Box: ELEMENT('Box'), Text: ELEMENT('Text'), Button: ELEMENT('Button') }
+      const els = { Box: ELEMENT('Box'), Text: ELEMENT('Text'), Button: ELEMENT('Button') }
+      return e.surface === 'terminal' ? { ...els, Raster: ELEMENT('Raster'), Image: ELEMENT('Image') } : els
+    },
+    // As in Claude Code: {} once taken, or { deny } (not mounted, another size, ...).
+    'ui.blit': (a) => {
+      if (!a || typeof a.requestId !== 'string' || typeof a.key !== 'string' || (typeof a.cells !== 'string' && !a.source)) throw new Error('$.ui.blit needs { requestId, key, cells | source }')
+      return typeof o.blit === 'function' ? o.blit(a) : {}
     },
     'command.register': () => undefined,
     'audio.play': (clip) => {
@@ -353,4 +360,6 @@ export const ALLOWED = new Set([
   'fs.list', 'session.id', 'env.get',
   // Buttons fill the prompt and the approve gate suggests /vbw:approve; never a submit (Q1).
   'prompt.fill', 'prompt.suggest',
+  // Full motion repaints the band's sprites, confetti and the proof sweep in place.
+  'ui.blit',
 ])
