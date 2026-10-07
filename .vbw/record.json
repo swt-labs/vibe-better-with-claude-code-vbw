@@ -10515,7 +10515,7 @@
       "after": [
         "P61.2"
       ],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "panel-lines.js: recordEditIntent turns an Edit, MultiEdit or Write of a file ending in /.vbw/record.json into the existing one-line meaning (VBW · build run started, VBW · run closed, a generic VBW · record updated); null for anything else",
