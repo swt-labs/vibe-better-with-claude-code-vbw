@@ -233,7 +233,7 @@ test('team: role to model from the profile, overrides applied, QA never on Haiku
   const d = mr.teamModel({ record: record() })
   assert.equal(d.profile, 'balanced')
   assert.equal(d.autonomy, 'balanced')
-  assert.ok(d.rows.every((r) => r.model === 'sonnet'))
+  assert.deepEqual(d.rows.map((r) => r.model), ['opus', 'sonnet', 'sonnet', 'sonnet', 'sonnet', 'sonnet', 'sonnet'])
 })
 
 test('team: the built-in profile table matches plugin/lib/profiles.json', () => {
