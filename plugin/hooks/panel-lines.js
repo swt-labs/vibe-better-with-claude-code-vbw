@@ -232,3 +232,16 @@ export function recordDiffIntent(diffText) {
   if (/"result":\s*"(pass|fail)"/.test(added)) return 'VBW · recorded a QA verdict'
   return 'VBW · record updated'
 }
+
+// An Edit, MultiEdit or Write of .vbw/record.json, as what changed; null for any other call.
+export function recordEditIntent(call) {
+  if (!isObj(call) || !isObj(call.input) || typeof call.input.file_path !== 'string' || !/\/\.vbw\/record\.json$/.test(call.input.file_path)) return null
+  const { tool, input } = call
+  if (tool === 'Write') return typeof input.content === 'string' ? 'VBW · record updated' : null
+  const edits = tool === 'Edit' ? [input] : tool === 'MultiEdit' && Array.isArray(input.edits) ? input.edits : null
+  if (!edits) return null
+  const sign = (c, t) => String(t).split('\n').map((l) => c + l).join('\n')
+  const ok = edits.filter((x) => isObj(x) && typeof x.old_string === 'string' && typeof x.new_string === 'string')
+  if (!ok.length) return null
+  return recordDiffIntent(ok.map((x) => sign('-', x.old_string) + '\n' + sign('+', x.new_string)).join('\n'))
+}
