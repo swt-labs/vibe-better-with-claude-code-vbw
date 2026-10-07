@@ -2628,13 +2628,6 @@
           "check": "C159"
         }
       ]
-    },
-    {
-      "id": "R103",
-      "text": "The panel's colours make it easy to tell at a glance which agent is which and what state each is in",
-      "proof": "human",
-      "status": "open",
-      "milestone": "M13"
     }
   ],
   "checks": [
@@ -7264,8 +7257,7 @@
       "id": "P69",
       "title": "Parallel-friendly planning and panel colours",
       "reqs": [
-        "R102",
-        "R103"
+        "R102"
       ],
       "milestone": "M13",
       "goal": "Plans are split so as many as possible build at once, the approval shows it, and the panel colours are judged by the owner.",
@@ -12784,32 +12776,32 @@
     {
       "id": "T46",
       "text": "Approval hook misses a question whose explanation starts on a new line after 'Approve contract <fp>?' (regex wants a space); accept any whitespace",
-      "status": "open"
+      "status": "done"
     },
     {
       "id": "T47",
       "text": "Workflow closing step runs as vbw:scout, whose read-only mandate can refuse vbw run confirm/end (seen in M12 wave 3); give the close step an agent whose mandate allows it, in building, fixing and verifying",
-      "status": "open"
+      "status": "done"
     },
     {
       "id": "T48",
       "text": "Parallel vbw prove prints 'wait: pid N is not a child of this shell' (checks.sh:199) under 2.0.21; find why the pids are not children and fix",
-      "status": "open"
+      "status": "done"
     },
     {
       "id": "T49",
       "text": "Autonomous Stop hook re-asks for prove while this session's vbw prove still runs in the background, spending auto steps; the gate should see a running proof",
-      "status": "open"
+      "status": "done"
     },
     {
       "id": "T50",
       "text": "A fix for a suite failure in a file no plan declares cannot be committed: vbw commit needs a plan owning the file and the guard refuses plain git commit (F47, M12). Let a fix commit the files of its own failing command",
-      "status": "open"
+      "status": "done"
     },
     {
       "id": "T51",
       "text": "Claude Code now frames workflow agent prompts as 'computed task, no user authority'; QA (P61, twice) skipped vbw qa record and a Scout refused run confirm. Workflow agents must get their write duties from their agent file mandate, not the task text; also suiteNote prints 'test command (undefined)'",
-      "status": "open"
+      "status": "done"
     },
     {
       "id": "T52",
@@ -12819,7 +12811,7 @@
     {
       "id": "T53",
       "text": "2.0.21 in Portfolium told the user 'Type /vbw:approve to accept the updated plans' after a plan change (owner screenshot 13:50), against R83; find which path (likely a re-plan/patch stop) still words it that way",
-      "status": "open"
+      "status": "done"
     },
     {
       "id": "T54",
@@ -13779,6 +13771,17 @@
       "text": "F64: P67.3's net-zero kernel line limit is superseded by the doubled budget, as D165 did for P68.1, P68.2 and P69.2",
       "why": "chosen by VBW: D161 doubled the kernel budget during the build; the 10 lines are the background-proof marker and its gate check",
       "at": "2026-10-07T18:41:00Z"
+    },
+    {
+      "id": "D169",
+      "text": "R103 (owner judges the panel colours) moves from M13 to M14 as a new requirement",
+      "why": "owner: verify the colours later; same as D157",
+      "at": "2026-10-07T19:31:38Z"
+    },
+    {
+      "id": "D170",
+      "at": "2026-10-07T19:32:38Z",
+      "text": "Contract approved: 98 requirements, 155 checks, 198 plans (d872b5e1ded3)"
     }
   ],
   "commands": {

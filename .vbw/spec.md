@@ -108,7 +108,6 @@ VBW is a Claude Code plugin that makes it build software properly: the user agre
 - R100 [auto] After the plan changes (a new plan, a changed plan or a re-plan), VBW asks for approval only with the approval menu; it never tells the user to type /vbw:approve
 - R101 [auto] In the balanced profile the Architect runs on Opus and every other role on Sonnet; QA is never below Sonnet in any profile
 - R102 [auto] Planning splits each phase into plans that touch separate files wherever the work allows, so as many plans as possible build at the same time; the approval shows the number of build waves and how many plans the widest wave runs at once
-- R103 [human] The panel's colours make it easy to tell at a glance which agent is which and what state each is in
 
 <!-- One requirement per line: an id, how it is proved, and a user-observable
      statement. [auto] = a check can prove it; [human] = only a person can judge it.
