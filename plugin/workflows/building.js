@@ -43,10 +43,16 @@ const session = (args && args.session) || ''
 const closeRun = async ids => {
   if (!session) return null
   const sh = c => `VBW_SESSION_ID=${session} ${c}`
-  const done = await agent(`Close this VBW run. Run ${sh(`vbw run confirm ${ids.join(' ')}`)} (it exits 1 when some plans were not recorded), then, whatever it said, run ${sh('vbw run end')}. Answer ended (run end succeeded), recorded (confirm exited 0) and report (the lines for what was not recorded, else "all recorded; run ended"). Change nothing else.${voice}`,
-    Object.assign({ agentType: 'vbw:scout', label: 'close run', schema: CLOSE_RESULT }, models.scout ? { model: models.scout } : {}))
-  if (!done) log('the closing agent stopped: run vbw run confirm and vbw run end by hand')
-  else if (!done.recorded || !done.ended) log(done.report)
+  const confirm = sh(`vbw run confirm ${ids.join(' ')}`)
+  const end = sh('vbw run end')
+  const done = await agent(`Close this VBW run (your own instructions, Close a run, allow it). Run ${confirm} (it exits 1 when some plans were not recorded), then, whatever it said, run ${end}. Answer ended (run end succeeded), recorded (confirm exited 0) and report (the lines for what was not recorded, else "all recorded; run ended"). Change nothing else.${voice}`,
+    Object.assign({ agentType: 'vbw:lead', label: 'close run', schema: CLOSE_RESULT }, models.lead ? { model: models.lead } : {}))
+  if (!done) log(`the closing agent stopped: run by hand: ${confirm} ; then ${end}`)
+  else {
+    if (!done.recorded || !done.ended) log(done.report)
+    if (!done.recorded) log(`not everything was recorded: check by hand with ${confirm}`)
+    if (!done.ended) log(`the run did not end: run by hand: ${end}`)
+  }
   return done
 }
 
@@ -68,4 +74,5 @@ const out = plans.map((id, i) => results[i]
 const interrupted = out.filter(r => r.status === 'interrupted').length
 if (interrupted > 0) log(`${interrupted} agents stopped before reporting; their plans return to the next wave`)
 const confirmation = await closeRun(plans)
-return confirmation ? { results: out, confirmation } : { results: out }
+const complete = interrupted === 0 && (!session || Boolean(confirmation && confirmation.recorded && confirmation.ended))
+return confirmation ? { results: out, complete, confirmation } : { results: out, complete }

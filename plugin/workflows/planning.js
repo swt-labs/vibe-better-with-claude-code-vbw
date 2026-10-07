@@ -99,11 +99,18 @@ const PLAN_RESULT = {
 // The run's own last step (R81): end the run on every way out. Only when the
 // router passed args.session.
 const session = (args && args.session) || ''
-const closeRun = async () => {
-  if (!session) return
-  const done = await agent(`Close this VBW run: run VBW_SESSION_ID=${session} vbw run end. Answer ended (it succeeded), recorded (true) and report (what it printed). Change nothing else.${voice}`,
-    Object.assign({ agentType: 'vbw:scout', label: 'close run', schema: CLOSE_RESULT }, models.scout ? { model: models.scout } : {}))
-  if (!done || !done.ended) log('the closing agent stopped: run vbw run end by hand')
+const closeRun = async (phaseIds = []) => {
+  if (!session) return null
+  const end = `VBW_SESSION_ID=${session} vbw run end`
+  const check = phaseIds.length === 0 ? '' : `First check that each planned phase has plans: ${phaseIds.map(id => `vbw show phase ${id}`).join('; ')}. `
+  const done = await agent(`Close this VBW run (your own instructions, Close a run, allow it). ${check}Then, whatever you found, run ${end}. Answer ended (run end succeeded), recorded (${phaseIds.length === 0 ? 'true' : 'every phase has plans'}) and report (${phaseIds.length === 0 ? 'what it printed' : 'name each phase without plans, else "all recorded; run ended"'}). Change nothing else.${voice}`,
+    Object.assign({ agentType: 'vbw:lead', label: 'close run', schema: CLOSE_RESULT }, models.lead ? { model: models.lead } : {}))
+  if (!done) log(`the closing agent stopped: run by hand: ${end}`)
+  else {
+    if (!done.recorded) log(done.report)
+    if (!done.ended) log(`the run did not end: run by hand: ${end}`)
+  }
+  return done
 }
 
 // The user decides what matters to them before anything is planned: the
@@ -142,7 +149,10 @@ if (!plan || !plan.applied) {
   return { status: 'blocked', summary: plan ? plan.summary : 'the Lead did not finish', blockers: plan ? plan.blockers : [], notes: scope.notes }
 }
 
-await closeRun()
+const closed = await closeRun(scope.phases.map(p => p.id))
+if (closed && !closed.recorded) {
+  return { status: 'blocked', summary: `planning is not complete: ${closed.report}`, blockers: plan.blockers, notes: scope.notes }
+}
 return {
   status: 'planned',
   summary: plan.summary,
