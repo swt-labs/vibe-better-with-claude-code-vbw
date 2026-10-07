@@ -6770,11 +6770,12 @@
         }
       ],
       "qa": {
-        "result": "pass",
+        "result": "fail",
         "tier": "standard",
-        "tree": "7451a38bb32648e53d095444aa2223d608ac333a7ea1fa6e2acafd106a1fbdf2",
-        "at": "2026-10-07T13:23:23Z",
-        "note": "12/12 checks"
+        "tree": "623c4314085fe35dbbf8a62047b47fe2b927b5d652cff5d7d4d45237b9ee470d",
+        "at": "2026-10-07T14:50:13Z",
+        "note": "16/18 checks",
+        "rounds": 1
       },
       "outcome": {
         "tier": "deep",
@@ -11628,6 +11629,14 @@
       "attempts": 0,
       "status": "closed",
       "note": "Colour-off criterion not met on two surfaces. (1) Mission Control Proof grid (plugin/hooks/panel-mission-record.js:225) draws every check as the same '■'; only the colour tells passed, failing, running and not run apart, so with colour off the grid is identical squares (only the count line and hover text carry words). (2) The band (plugin/hooks/panel-stage.js:118-125) uses its own glyphs '✓' '✗' '●' instead of the palette's STATE_MARKS/STATE_WORDS (running there is '▶'); only the Now cards (panel-mission-live.js:78) read them. No test renders Proof or the band with colour stripped and checks state is still readable; tests/panel/palette.test.mjs only checks that the mark/word tables exist."
+    },
+    {
+      "id": "F49",
+      "req": "R94",
+      "source": "qa",
+      "attempts": 0,
+      "status": "open",
+      "note": "Work beyond the plan: commits 9a4287b0 and dc143c6a (both tagged P65.1) add a launch-order wait to checks_run_all in plugin/lib/checks.sh (the proof loop pauses after starting an alone check until it is at the gate). No task in P65.1 names this. Also tests/check-wait-patient.bats (the file all four checks C145-C148 protect) is not in P65.1's files list. Neither was declared in the plan; the plan or a recorded decision should cover them. Recommendation: amend P65.1 (add the ordering task and the test file) so the plan matches the code, since the ordering fix is small and the test 'shared checks wait for a long alone check' exercises it."
     }
   ],
   "todos": [
@@ -13662,5 +13671,11 @@
     "scope": [],
     "passed": true
   },
-  "lease": null
+  "lease": {
+    "run": "qa-20261007T144936Z",
+    "kind": "qa",
+    "started_at": "2026-10-07T14:49:36Z",
+    "files": [],
+    "session": "4130e174-7ef2-4e36-b853-fb2a8fd8511d"
+  }
 }
