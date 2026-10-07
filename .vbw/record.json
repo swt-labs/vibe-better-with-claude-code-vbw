@@ -12385,42 +12385,42 @@
       "id": "F50",
       "req": "R39",
       "attempts": 0,
-      "status": "open",
+      "status": "fixed",
       "note": "C36 fail (exit 1)"
     },
     {
       "id": "F51",
       "req": "R61",
       "attempts": 0,
-      "status": "open",
+      "status": "fixed",
       "note": "C74 fail (exit 1), C76 fail (exit 1)"
     },
     {
       "id": "F52",
       "req": "R70",
       "attempts": 0,
-      "status": "open",
+      "status": "fixed",
       "note": "C114 fail (exit 1)"
     },
     {
       "id": "F53",
       "req": "R76",
       "attempts": 0,
-      "status": "open",
+      "status": "fixed",
       "note": "C103 fail (exit 1)"
     },
     {
       "id": "F54",
       "req": "R83",
       "attempts": 0,
-      "status": "open",
+      "status": "fixed",
       "note": "C119 fail (exit 1)"
     },
     {
       "id": "F55",
       "command": "test",
       "attempts": 0,
-      "status": "open",
+      "status": "fixed",
       "note": "test fail"
     }
   ],
