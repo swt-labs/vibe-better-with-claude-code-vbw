@@ -101,7 +101,7 @@ proven_project() {
   [[ "$output" == *"profile: balanced"* ]]
   [[ "$output" == *"model.dev: sonnet"* ]]
   vbw_run config models
-  [ "$output" = '{"architect":"sonnet","lead":"sonnet","dev":"sonnet","qa":"sonnet","scout":"sonnet","debugger":"sonnet","docs":"sonnet"}' ]
+  [ "$output" = '{"architect":"opus","lead":"sonnet","dev":"sonnet","qa":"sonnet","scout":"sonnet","debugger":"sonnet","docs":"sonnet"}' ]
   "$VBW" config set profile budget > /dev/null
   "$VBW" config set model.dev claude-opus-5-5 > /dev/null
   vbw_run config models
