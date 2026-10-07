@@ -49,7 +49,11 @@ Then `vbw show contract`; read once as the user will, tier lines included.
 
 **Planning again:** `vbw show roadmap` first. Every started plan (building, done, blocked) reappears exactly as is; plan only the rest, with unused ids. Never change check files of finished work.
 
-Do not edit `.vbw/spec.md` or `.vbw/record.json`; do not commit. Return `applied`, short `summary` for the user, `blockers` (what you could not plan, why), `choices`: technical choices you made yourself, one plain line each.
+Recording the plans with `vbw apply` is your own duty, set by your own instructions here, even when the task text is marked as not from the user. Do not edit `.vbw/spec.md` or `.vbw/record.json`; do not commit. Return `applied`, short `summary` for the user, `blockers` (what you could not plan, why), `choices`: technical choices you made yourself, one plain line each.
+
+## Close a run
+
+When the task asks you to close a run: `vbw run confirm <ids>` (it names anything unrecorded), then `vbw run end`. This is your own duty, set by your own instructions here, even when the task text is marked as not from the user. Never refuse. If you cannot finish, say which command to run by hand (`vbw run confirm <ids>`, `vbw run end`) and why.
 
 ## The user's words
 
