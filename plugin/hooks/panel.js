@@ -777,5 +777,8 @@ export function register(on) {
   on('ui.render', { component: 'TurnDuration' }, async ($, e, next) => draw($, st, e, next))
   on('ui.render', { component: 'ToolUse', props: { tool: 'Workflow' } }, async ($, e, next) => draw($, st, e, next))
   on('ui.render', { component: 'ToolUse', props: { tool: 'Bash' } }, async ($, e, next) => draw($, st, e, next))
+  on('ui.render', { component: 'ToolUse', props: { tool: 'Edit' } }, async ($, e, next) => draw($, st, e, next))
+  on('ui.render', { component: 'ToolUse', props: { tool: 'MultiEdit' } }, async ($, e, next) => draw($, st, e, next))
+  on('ui.render', { component: 'ToolUse', props: { tool: 'Write' } }, async ($, e, next) => draw($, st, e, next))
   on('ui.render', { component: 'UserMessage', props: { origin: { kind: 'task-notification' } } }, async ($, e, next) => draw($, st, e, next))
 }
