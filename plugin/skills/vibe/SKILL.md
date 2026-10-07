@@ -43,7 +43,7 @@ or `vbw config set autonomy ...`). Approval, `accept` and shipping always stop f
 ## Loop
 
 Do step for `action`, run `VBW_SESSION_ID=${CLAUDE_SESSION_ID} vbw next --json`, do next step. Stop when `gate` is
-true, or a workflow runs in background (its result wakes you; then continue).
+true, or a workflow runs in background (its result wakes you; continue).
 At a stop, tell user in plain words what happened.
 Every stop ends with a last line, **What I need from you:** <the one thing user must do now>, or "nothing".
 Never claim more than kernel output shows.
@@ -79,7 +79,7 @@ recommendation, question); convert runs `vbw:convert`, fresh records `vbw legacy
 what it does, propose improvements. Else ask what it is for and who uses it. Propose user-observable,
 testable requirements: `[auto]` when a check can prove it, `[human]` when only a person can
 judge it (look, feel, tone); a document that must contain something is `[auto]`, how it reads is `[human]`. Propose what, not how: leave sign-in, storage, hosting, paid services
-to the decision round; write a constraint only when user stated it. Recommend; don't interrogate. Follow `vbw:suggest`. Add each
+to the decision round; write a constraint only if user stated it. Recommend; don't interrogate. Follow `vbw:suggest`. Add each
 agreed requirement: `vbw spec add auto|human "statement"` (goals and constraints go in `.vbw/spec.md`, then `vbw spec sync`). Default milestone title → `vbw milestone rename "<title>"`. Check
 `## Commands` in `.vbw/spec.md` (what every proof runs) fits what was agreed (right sub-project, right interpreter); fix there, then `vbw spec sync`.
 
@@ -88,7 +88,7 @@ files the request names, then `vbw apply` one express phase with one
 plan (one or two files, tasks), one check that fails today, and the `rules` (each condition, edge and error case the requirement states, each with its check); go to **approve**.
 Ids continue the record's numbering (`vbw show roadmap`).
 Example: `{"phases":[{"id":"P1","title":"Fix add","reqs":["R1"],"tier":"express"}],"plans":[{"id":"P1.1","phase":"P1","title":"Fix add","reqs":["R1"],"files":["calc.sh"],"after":[],"tasks":["add returns the sum"]}],"checks":[{"id":"C1","req":"R1","run":["sh","test.sh"],"files":["test.sh"]}],"rules":[{"req":"R1","text":"add returns the sum","check":"C1"}]}`
-Over two files, a risk path or a higher tier from apply: planning workflow below.
+Over two files, a risk path or a higher tier: planning workflow below.
 
 **plan**: `VBW_SESSION_ID=${CLAUDE_SESSION_ID} vbw run start plan`, Workflow `vbw:planning` with args
 `{"requirements": <requirements>, "models": ...}`. Status `needs_decisions`: user
@@ -127,7 +127,7 @@ Another session's run: never end it yourself. Ask once (AskUserQuestion): "Still
 once more (`vbw fix retry <id>`), or change the requirement or its check
 (contract then needs approval again).
 
-**scope** (needs user): `vbw show evidence`; say which commits changed files outside their plan; ask how to proceed. Never rewrite history.
+**scope** (needs user): `vbw show evidence`; say which commits changed files outside their plan; ask how to proceed; never rewrite history.
 
 **accept** (needs user): per requirement in `detail.requirements`, show the
 thing to judge: run it yourself when you can; put its output, or one concrete thing to try, in the question and the
@@ -135,14 +135,13 @@ thing to judge: run it yourself when you can; put its output, or one concrete th
 "Something's wrong", "Skip for now". Works: `vbw req accept <id>`. Something's
 wrong: ask what, then `vbw req reject <id> "<their words>"`. Skip: leave it.
 
-**ship** (needs user): summarize what was delivered (`vbw status`,
-`vbw show roadmap`), ask whether to ship. Yes: `vbw ship`.
+**ship** (needs user): summarize what was delivered (`vbw status`, `vbw show roadmap`); ask whether to ship. Yes: `vbw ship`.
 
 **milestone** (needs user): ask what next milestone is about,
-`vbw milestone start "<title>"`, then `spec`. 
+`vbw milestone start "<title>"`, then `spec`.
 
 **Changing the plan** (add, change or drop mid-way): `vbw spec add`, or edit `.vbw/spec.md` and `vbw spec sync` (a dropped
-requirement removes its checks and unstarted plans). `vbw next` then asks for planning again; Lead keeps finished work.
+requirement removes its checks and unstarted plans). `vbw next` then asks for planning again (Lead keeps finished work); the approval menu follows.
 
 ## Rules
 
