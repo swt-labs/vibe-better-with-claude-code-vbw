@@ -28,4 +28,14 @@ if command -v node >/dev/null 2>&1; then
   bash tools/bench-panel.sh
 fi
 
-bats --print-output-on-failure --jobs "$jobs" tests
+# Files that measure time run alone after the rest, so the parallel batch
+# cannot slow them past their limits (2026-10-07: a 24-check proof took 16 s
+# against 15 s inside the batch, 11 s alone).
+timed='tests/prove-parallel.bats tests/guard-cost.bats tests/bench-hooks.bats tests/proof-stale-links.bats'
+rest=()
+for f in tests/*.bats; do
+  case " $timed " in *" $f "*) ;; *) rest+=("$f") ;; esac
+done
+bats --print-output-on-failure --jobs "$jobs" "${rest[@]}"
+# shellcheck disable=SC2086 # the list is fixed paths without spaces
+bats --print-output-on-failure $timed
