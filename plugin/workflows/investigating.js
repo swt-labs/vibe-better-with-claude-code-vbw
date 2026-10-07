@@ -15,6 +15,13 @@ const problem = typeof args === 'string' ? args : args && args.problem
 if (!problem) return { error: 'no problem given: pass args.problem' }
 const models = (args && typeof args === 'object' && args.models) || {}
 const model = models.debugger ? { model: models.debugger } : {}
+// The effort the profile gives a role and step (args.effort, from vbw next --json): the option
+// for agent(), or nothing when there is no table or no value (agents then run as before).
+const table = (args && typeof args === 'object' && args.effort && typeof args.effort === 'object' && !Array.isArray(args.effort)) ? args.effort : {}
+const effortOf = (role, step) => {
+  const e = table[role] && typeof table[role] === 'object' ? table[role][step] : null
+  return e ? { effort: e } : {}
+}
 const fix = args && typeof args === 'object' ? args.fix : null
 // The user's level, explanation depth and involvement (args.profile, from vbw next --json):
 // every agent writes what reaches the user at that level.
@@ -38,7 +45,7 @@ const DONE = {
 if (fix) {
   phase('Fix')
   const done = await agent(`Fix mode (steps 5 to 7). Fix this bug at its root cause, add a regression test, verify, and document.\n\nProblem: ${problem}\n\nDiagnosis: ${JSON.stringify(fix)}${voice}`,
-    Object.assign({ agentType: 'vbw:debugger', label: 'debugger fix', phase: 'Fix', schema: DONE }, model))
+    Object.assign({ agentType: 'vbw:debugger', label: 'debugger fix', phase: 'Fix', schema: DONE }, model, effortOf('debugger', 'fix')))
   return { fixed: done }
 }
 
@@ -84,12 +91,12 @@ const DIAGNOSIS = {
 phase('Investigate')
 const reports = await parallel(LENSES.map(l => () =>
   agent(`Investigation mode (steps 1 to 4), from one angle only. Change nothing.\n\nProblem: ${problem}\n\nYour angle: ${l.ask}${voice}`,
-    Object.assign({ agentType: 'vbw:debugger', label: `debugger ${l.key}`, phase: 'Investigate', schema: EVIDENCE }, model))))
+    Object.assign({ agentType: 'vbw:debugger', label: `debugger ${l.key}`, phase: 'Investigate', schema: EVIDENCE }, model, effortOf('debugger', 'investigate')))))
 
 const evidence = LENSES.map((l, i) => ({ angle: l.key, report: reports[i] }))
 
 phase('Diagnose')
 const diagnosis = await agent(`Investigation mode, step 4: weigh this evidence into the root cause. Prefer causes with reproduced or traced evidence; check the deciding fact yourself before you conclude; list the hypotheses you rejected and why. Propose the minimal fix for the root cause, not the symptom. Change nothing.\n\nProblem: ${problem}\n\nEvidence: ${JSON.stringify(evidence)}${voice}`,
-  Object.assign({ agentType: 'vbw:debugger', label: 'debugger diagnose', phase: 'Diagnose', schema: DIAGNOSIS }, model))
+  Object.assign({ agentType: 'vbw:debugger', label: 'debugger diagnose', phase: 'Diagnose', schema: DIAGNOSIS }, model, effortOf('debugger', 'diagnose')))
 
 return { diagnosis, evidence }
