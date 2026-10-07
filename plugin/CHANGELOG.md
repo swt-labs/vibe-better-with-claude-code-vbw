@@ -1,5 +1,33 @@
 # Changelog
 
+## [2.0.24] - 2026-10-07
+
+### Changed
+
+- **Proofs reuse what is already proven.** When the committed code has not
+  changed since the last passing proof (only VBW's own record or spec did),
+  `vbw prove` reuses every result whose approved check or command is unchanged
+  and runs only the rest; each reused line says so (`C1 pass 2s reused (proof of
+  ...)`). A proof that failed or was interrupted is never reused, and proving
+  again with nothing committed since still runs everything fresh.
+- **Fewer QA rounds.** A phase that passed QA is not checked again when the
+  only change is a decision, a finding closed without code, or a requirement
+  that only you judge. A changed `[auto]` requirement is checked again and named
+  as the reason.
+- **Lighter tiers in mature projects.** Proven requirements that an approved
+  check guards no longer push a phase to the deep tier (the proof re-runs those
+  checks anyway). The tier's reasons list them as `guarded: R1 (C1)`.
+- **Each agent works at the effort its step needs.** A new effort table per
+  profile, role and step (low for closing a run, higher for planning and QA) is
+  passed to every workflow agent; `vbw config effort` shows it.
+- **Phases are numbered right the first time.** The Architect is told the next
+  free phase number.
+
+### Note
+
+- After updating, each phase that already passed QA is checked once more, one
+  time, because a plan's fingerprint no longer includes its requirement list.
+
 ## [2.0.23] - 2026-10-07
 
 ### Fixed
