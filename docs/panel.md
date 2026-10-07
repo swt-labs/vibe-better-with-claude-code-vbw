@@ -328,7 +328,8 @@ The panel needs **Claude Code 2.1.287 or newer** (check with
 - **Older Claude Code:** there is no panel and no error. Everything else in
   VBW, including the status line, works as before.
 - **Outside a VBW project** (no `.vbw/record.json`): there is no panel and no
-  error.
+  error. When `/vbw:vibe` sets a project up during the session, the panel comes
+  on at its first question (or your next prompt), with no restart.
 - **Anything unexpected inside the panel:** it stays out of the way. An error
   in the panel never reaches your session.
 

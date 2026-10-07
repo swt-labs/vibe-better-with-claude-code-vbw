@@ -586,44 +586,58 @@ async function band($, st, e) {
   return { tree: h(ui.Box, { flexDirection: 'column' }, ...top, ...(tree ? [tree] : [])) }
 }
 
+// Start the panel once the session's folder is a VBW project: at session start,
+// and again on a prompt, a question or a workflow while it is not (a first
+// session's /vbw:vibe sets the project up mid-session). No timer before that.
+async function begin($, st) {
+  if (st.live || st.unsupported === true) return
+  if (st.unsupported !== false) {
+    const ver = await $.session.version()
+    const v = isObj(ver) ? ver.version : ver
+    st.unsupported = !supports(v)
+    if (st.unsupported) return
+    st.band = supports(v, BAND_MIN_VERSION)
+  }
+  const root = await $.session.root()
+  if (typeof root !== 'string' || !(await $.fs.exists(root + '/.vbw/record.json'))) return
+  st.live = true
+  st.root = root
+  st.silent = await $.fs.exists(root + TEST_MARK)
+  st.keys = keys(st.silent)
+  st.stepsPath = await stepsPath($, root)
+  try {
+    st.sessionId = await $.session.id()
+  } catch {
+    st.sessionId = null
+  }
+  st.sessionDir = await sessionDir($, root, st.sessionId)
+  await gather($, st)
+  st.lastRec = st.record
+  st.sound = (await $.store.get(st.keys.sound)) !== false
+  const now = await $.clock.now()
+  const v0 = view(st, now)
+  st.alerted = v0.need ? v0.need.key : null // a need already standing at start is not announced
+  await suggest($, st)
+  st.shown = signature(st, v0, now)
+  if (st.timer && st.timer.cancel) st.timer.cancel()
+  st.timer = $.clock.every(TICK_MS, () => tick($, st))
+  for (const [name, description] of COMMANDS) $.command.register({ name, description, immediate: true })
+  if ((await $.store.get(st.keys.closed)) !== true) await open($)
+}
+async function wake($, st) {
+  try {
+    await begin($, st)
+  } catch {
+    // the panel stays out of the way
+  }
+}
+
 export function register(on) {
   const st = fresh()
 
   on('session.start', async ($, e, next) => {
     const out = await next(e)
-    try {
-      if (st.live) return out
-      const ver = await $.session.version()
-      if (!supports(isObj(ver) ? ver.version : ver)) return out
-      st.band = supports(isObj(ver) ? ver.version : ver, BAND_MIN_VERSION)
-      const root = await $.session.root()
-      if (typeof root !== 'string' || !(await $.fs.exists(root + '/.vbw/record.json'))) return out
-      st.live = true
-      st.root = root
-      st.silent = await $.fs.exists(root + TEST_MARK)
-      st.keys = keys(st.silent)
-      st.stepsPath = await stepsPath($, root)
-      try {
-        st.sessionId = await $.session.id()
-      } catch {
-        st.sessionId = null
-      }
-      st.sessionDir = await sessionDir($, root, st.sessionId)
-      await gather($, st)
-      st.lastRec = st.record
-      st.sound = (await $.store.get(st.keys.sound)) !== false
-      const now = await $.clock.now()
-      const v0 = view(st, now)
-      st.alerted = v0.need ? v0.need.key : null // a need already standing at start is not announced
-      await suggest($, st)
-      st.shown = signature(st, v0, now)
-      if (st.timer && st.timer.cancel) st.timer.cancel()
-      st.timer = $.clock.every(TICK_MS, () => tick($, st))
-      for (const [name, description] of COMMANDS) $.command.register({ name, description, immediate: true })
-      if ((await $.store.get(st.keys.closed)) !== true) await open($)
-    } catch {
-      // the panel stays out of the way
-    }
+    await wake($, st)
     return out
   })
 
@@ -670,6 +684,7 @@ export function register(on) {
 
   // A question to the user is a need while it is open.
   on('tool.call', { tool: 'AskUserQuestion' }, async ($, e, next) => {
+    if (!st.live) await wake($, st)
     if (!st.live) return next(e)
     st.question = { id: String(Date.now()) + Math.random() }
     try {
@@ -692,6 +707,7 @@ export function register(on) {
   // A VBW workflow launched by this session (main loop): its run id and folder
   // come back in the launch's result; the timer reads the run from there.
   on('tool.call', { tool: 'Workflow' }, async ($, e, next) => {
+    if (!st.live) await wake($, st)
     const out = await next(e)
     try {
       const r = isObj(out) && isObj(out.result) ? out.result : null
@@ -710,6 +726,7 @@ export function register(on) {
 
   // The record as a turn found it: the turn receipt says what moved.
   on('prompt.submit', async ($, e, next) => {
+    if (!st.live) await wake($, st)
     if (st.live) st.before = st.record
     return next(e)
   })

@@ -74,3 +74,30 @@ test('garbage in the project files never makes a hook fail', async () => {
     assert.deepEqual(h.errors, [], JSON.stringify(bad))
   }
 })
+
+// A first session starts in a folder with no project; /vbw:vibe sets it up
+// mid-session and asks its first question. No timer runs before the project exists
+// (R53): the panel checks again on the hooks it already has.
+test('a project set up during the session turns the panel on at the next question or prompt', async () => {
+  const h = await mount()
+  await h.start()
+  await h.fire('prompt.submit', { text: '/vbw:vibe a greeting script' })
+  await h.advance(4000)
+  for (const name of NOTHING) assert.equal(h.count(name), 0, name + ' before the project exists')
+  h.project(record(), next())
+  await h.fire('tool.call', { tool: 'AskUserQuestion', questions: [{ question: 'Which?' }] }, async () => ({ result: 'x' }))
+  await h.settle()
+  assert.ok(h.count('command.register') >= 1, 'the commands are registered')
+  assert.equal(h.count('clock.every') >= 1, true, 'the panel timer runs')
+  assert.notDeepEqual(await h.render(), { type: 'engine', ref: 'default' }, 'the pane is drawn')
+  assert.deepEqual(h.errors, [])
+})
+
+test('a prompt sent after the project appeared turns the panel on too', async () => {
+  const h = await mount()
+  await h.start()
+  h.project(record(), next())
+  await h.fire('prompt.submit', { text: 'carry on' })
+  await h.settle()
+  assert.ok(h.count('command.register') >= 1)
+})
