@@ -7178,7 +7178,15 @@
         "breaks: R12, R13, R14, R16, R22, R24, R25, R26, R31, R32, R33, R37, R39, R40, R43, R44, R45, R46, R47, R48, R49, R50, R60, R61, R65, R66, R67, R69, R70, R72, R73, R74, R78, R79, R80, R81, R83, R92, R93, R94",
         "tests: project test command"
       ],
-      "predicted": "deep"
+      "predicted": "deep",
+      "qa": {
+        "result": "fail",
+        "tier": "standard",
+        "tree": "155b3ea24b905259785da38516e7ab0b6d3f75c8152df2c1a9c2004bc1d02a9a",
+        "at": "2026-10-07T17:24:01Z",
+        "note": "21/23 checks",
+        "rounds": 1
+      }
     },
     {
       "id": "P68",
@@ -12422,6 +12430,22 @@
       "attempts": 0,
       "status": "closed",
       "note": "test fail"
+    },
+    {
+      "id": "F56",
+      "req": "R97",
+      "source": "qa",
+      "attempts": 0,
+      "status": "open",
+      "note": "Criterion 'a malformed fingerprint approves nothing and says why' is only half met. plugin/hooks/approve-answer.jq requires exactly 12 hex digits, so a question like 'Approve contract 1234abcd?' makes the hook print nothing: nothing is approved, but neither the user nor Claude is told why. Only the kernel (vbw approve --hash) explains, and the hook never reaches it for that case. tests/approve-fingerprint.bats ('a malformed fingerprint approves nothing') checks only that nothing was approved, not that a reason is given."
+    },
+    {
+      "id": "F57",
+      "req": "R100",
+      "source": "qa",
+      "attempts": 0,
+      "status": "open",
+      "note": "plugin/hooks/approve-answer.sh line 39 still tells the user '/vbw:approve also works' in the message shown after a failed approval. R100 says no output tells the user to type /vbw:approve. The new tests (tests/approval-after-plan.bats) only scan the kernel and router output, so they miss this hook message."
     }
   ],
   "todos": [
@@ -14580,5 +14604,11 @@
     "scope": [],
     "passed": true
   },
-  "lease": null
+  "lease": {
+    "run": "qa-20261007T172312Z",
+    "kind": "qa",
+    "started_at": "2026-10-07T17:23:12Z",
+    "files": [],
+    "session": "4130e174-7ef2-4e36-b853-fb2a8fd8511d"
+  }
 }
