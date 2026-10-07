@@ -39,7 +39,7 @@ test('a VBW workflow launched in this session shows its crew in the band within 
   const t = text(await band(h))
   assert.match(t, /VBW ▸ planning/)
   assert.match(t, /architect/)
-  assert.match(t, /reading spec\.md/)
+  assert.match(t, /reading\s+spec\.md/)
   assert.match(t, /"Splitting R69 into two plans"/)
   assert.match(t, /Mission Control/)
   assert.deepEqual(h.errors, [])
