@@ -12835,6 +12835,11 @@
       "id": "T56",
       "text": "The all-prompts word budget is held in three tests (profile-levels, approve-choice-docs, legacy-interview); keep it in one place like the kernel budget (standards.bats), so a budget change cannot miss a copy (missed on 2026-10-07, prompts trimmed needlessly)",
       "status": "open"
+    },
+    {
+      "id": "T57",
+      "text": "vbw init's detected-commands notice still names /vbw:approve (cmd-init.sh:41); R83 says VBW never asks the user to type it: reword to the approval menu",
+      "status": "open"
     }
   ],
   "decisions": [
