@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# vbw config [set KEY VALUE | models | autonomy]: project settings in
+# vbw config [set KEY VALUE | models | autonomy | effort]: project settings in
 # record.settings, shared through git. Keys: profile (quality|balanced|budget),
 # autonomy (guided|balanced|hands-off: how much /vbw:vibe does on its own;
 # balanced when unset), autonomy_cap (steps per autonomous run), model.<role>
@@ -16,6 +16,8 @@
 # auto-capable (build plan K7).
 # shellcheck source=rigor.sh
 . "$VBW_LIB/rigor.sh"
+# shellcheck source=effort.sh
+. "$VBW_LIB/effort.sh"
 VBW_PROFILES=$(jq -c . "$VBW_LIB/profiles.json")
 VBW_ROLES="architect lead dev qa scout debugger docs"
 
@@ -64,9 +66,9 @@ cmd_config() {
   case "$sub" in
     "") [ $# -eq 0 ] || vbw_usage_error "usage: vbw config" ;;
     rigor) [ $# -le 2 ] || vbw_usage_error "usage: vbw config rigor [auto|express|standard|deep]" ;;
-    models|autonomy) [ $# -eq 1 ] || vbw_usage_error "usage: vbw config $sub" ;;
+    models|autonomy|effort) [ $# -eq 1 ] || vbw_usage_error "usage: vbw config $sub" ;;
     set) [ $# -eq 3 ] || vbw_usage_error "usage: vbw config set KEY VALUE" ;;
-    *) vbw_usage_error "usage: vbw config | config models | config autonomy | config rigor [MODE] | config set KEY VALUE" ;;
+    *) vbw_usage_error "usage: vbw config | config models | config autonomy | config effort | config rigor [MODE] | config set KEY VALUE" ;;
   esac
   vbw_require_project
   config_migrate_roles
@@ -79,6 +81,9 @@ cmd_config() {
       ;;
     models)
       record_read | jq -c --argjson p "$VBW_PROFILES" '$p[.settings.profile] + (.settings.models // {}) | (if ((.qa // "") | ascii_downcase | contains("haiku")) then .qa = "sonnet" else . end)'
+      ;;
+    effort)
+      effort_table "$(record_read | jq -r ".settings.profile")"
       ;;
     autonomy)
       record_read | jq -r '.settings.autonomy // "balanced"'
