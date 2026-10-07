@@ -7262,7 +7262,15 @@
         "breaks: R13, R14, R22, R23, R24, R25, R26, R28, R31, R37, R39, R40, R45, R47, R48, R49, R50, R61, R69, R70, R71, R72, R73, R74, R78, R79, R80, R81",
         "tests: project test command"
       ],
-      "predicted": "deep"
+      "predicted": "deep",
+      "qa": {
+        "result": "fail",
+        "tier": "standard",
+        "tree": "53804426951f2b07e704d64ec0033ba48c7ea3023d0cbe5eb16b3be848c02689",
+        "at": "2026-10-07T17:24:38Z",
+        "note": "19/22 checks",
+        "rounds": 1
+      }
     }
   ],
   "plans": [
@@ -12485,6 +12493,30 @@
       "attempts": 0,
       "status": "open",
       "note": "Plan P68.2 task 3 says the config skill change keeps the same word count. Commit db35868e changes '(default: Sonnet for all)' (5 words) to '(default: Opus for Architect, Sonnet for the rest)' (8 words), so it is 3 words longer in plugin/skills/config/SKILL.md."
+    },
+    {
+      "id": "F60",
+      "req": "R102",
+      "source": "qa",
+      "attempts": 0,
+      "status": "open",
+      "note": "P69.2 task 3 says keep the kernel line count net zero, but commit bcca67ff grew plugin/lib/cmd-show.sh from 252 to 264 lines (+12). The plan was not followed (the kernel budget was raised to 7,600 by D161, but the plan text was not amended)."
+    },
+    {
+      "id": "F61",
+      "req": "R102",
+      "source": "qa",
+      "attempts": 0,
+      "status": "open",
+      "note": "P69.1 commit 8f51dee4 also rewrote lead.md wording the plan did not list: removed '(verified; ...)', '(kernel may refuse one below its floor)', and 'add plans to the phase' from the patch rule, plus reworded Stage 3. Plan task 4 meant a net-zero count, but lead.md went 839 to 836 words by cutting unrelated guidance. Those edits are undeclared changes beyond the plan."
+    },
+    {
+      "id": "F62",
+      "req": "R102",
+      "source": "qa",
+      "attempts": 0,
+      "status": "open",
+      "note": "waves() in plugin/lib/cmd-show.sh counts every plan not 'done', including 'blocked' ones, but vbw next (docs/next.md row 5) skips blocked plans. The plan and docs/next.md say the line is scheduled 'as vbw next does'; with a blocked plan the figure differs. No test covers it."
     }
   ],
   "todos": [
