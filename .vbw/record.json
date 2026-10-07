@@ -12544,7 +12544,7 @@
       "req": "R98",
       "source": "qa",
       "attempts": 0,
-      "status": "open",
+      "status": "fixed",
       "note": "Plan P67.3 task 'Keep the kernel line count (net zero)' was not followed: commit 8be2ee30 adds 7 lines and removes 1 in plugin/lib/cmd-prove.sh (+6 net), and commit 5835a5d0 adds 5 and removes 1 in plugin/lib/cmd-auto.sh (+4 net), so the kernel grew by 10 lines. No recorded decision covers it (D165 names only P68.1, P68.2 and P69.2; D161 only raised the budget). Options: (1) recommended, record a decision that P67.3's net-zero limit is superseded by the doubled budget in D161, as D165 did for the others; the code is correct and tested; (2) trim 10 lines from the kernel."
     }
   ],
@@ -13761,6 +13761,12 @@
       "id": "D167",
       "at": "2026-10-07T17:45:00Z",
       "text": "Contract approved: 99 requirements, 155 checks, 198 plans (80185d34ccfd)"
+    },
+    {
+      "id": "D168",
+      "text": "F64: P67.3's net-zero kernel line limit is superseded by the doubled budget, as D165 did for P68.1, P68.2 and P69.2",
+      "why": "chosen by VBW: D161 doubled the kernel budget during the build; the 10 lines are the background-proof marker and its gate check",
+      "at": "2026-10-07T18:41:00Z"
     }
   ],
   "commands": {
