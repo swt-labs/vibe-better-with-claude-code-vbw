@@ -7,7 +7,7 @@ import assert from 'node:assert/strict'
 import { PLUGIN, deepFreeze, collect } from './helpers/fake-mod.mjs'
 
 const candy = await import(PLUGIN + '/hooks/panel-candy.js')
-const { motionOf, spriteFrame, poseOf, encodeCells, confettiFrames, wrappedModel, renderWrapped, celebration, ROLE_COLORS, POSES } = candy
+const { motionOf, spriteFrame, poseOf, encodeCells, confettiFrames, wrappedModel, renderWrapped, celebration, POSES } = candy
 const DEFAULT = 0x01000000
 const E = (name) => Object.freeze({ element: name })
 const ui = { Box: E('Box'), Text: E('Text'), Button: E('Button') }
@@ -46,11 +46,11 @@ test('every pose has at least two frames of 5x3 cells, painted in the role colou
   assert.deepEqual(spriteFrame({ role: 'qa', pose: 'reading', frame: 2 }), spriteFrame({ role: 'qa', pose: 'reading', frame: 0 }), 'frames cycle')
 })
 
-test('each role has its own colour; an unknown role is drawn white; docs is pink', () => {
+test('each role has its own colour; an unknown role is the neutral grey; docs is pink', () => {
   const fig = (role) => spriteFrame({ role, pose: 'reading', frame: 0 }).cells[1].fg
   assert.equal(fig('docs'), 0xff87d7)
-  assert.equal(fig('nobody'), ROLE_COLORS.agent)
-  const roles = ['architect', 'lead', 'dev', 'qa', 'scout', 'debugger', 'docs', 'agent']
+  assert.equal(fig('nobody'), 0x808080)
+  const roles = ['architect', 'lead', 'dev', 'qa', 'scout', 'debugger', 'docs', 'nobody']
   assert.equal(new Set(roles.map(fig)).size, roles.length)
 })
 

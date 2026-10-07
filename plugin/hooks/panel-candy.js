@@ -3,11 +3,9 @@
 // Wrapped card at ship, and which celebration a record change earns. Pure:
 // values in, values or trees out; no `$`, never throws.
 
+import { ROLE_COLORS, NEUTRAL, roleColor, stateColor, rgb } from './panel-palette.js'
+
 const DEFAULT = 0x01000000 // the terminal's own colour, in a Raster cell
-export const ROLE_COLORS = {
-  architect: 0xd75fd7, lead: 0x5f87ff, dev: 0x5fd75f, qa: 0xffd75f,
-  scout: 0x5fd7ff, debugger: 0xff5f5f, docs: 0xff87d7, agent: 0xe4e4e4,
-}
 const isObj = (x) => x !== null && typeof x === 'object' && !Array.isArray(x)
 const arr = (x) => (Array.isArray(x) ? x : [])
 
@@ -26,14 +24,15 @@ export function motionOf(input) {
 // Sprites: 5 columns by 3 rows. Columns 0-2 are the figure, in the role's
 // colour; columns 3-4 are the prop that tells the pose, in its own colour.
 // The pose is the state: no frame is decoration only.
+const PROP = { neutral: rgb(NEUTRAL), done: rgb(stateColor('done')), quiet: rgb(stateColor('quiet')), failed: rgb(stateColor('failed')) }
 const SPRITES = {
-  reading: { prop: 0xe4e4e4, frames: [[' ▄   ', '▐█▌▐▀', '▐ ▌  '], [' ▄   ', '▐█▌▐▄', '▐ ▌  ']] },
-  editing: { prop: 0xaf875f, frames: [[' ▄  ▐', '▐█▌▀▌', '▐ ▌ ▀'], [' ▄   ', '▐█▌▄▄', '▐ ▌▐█']] },
-  shell: { prop: 0x808080, frames: [[' ▄   ', '▐█▌▀ ', '▌ ▐ ▄'], [' ▄   ', '▐█▌ ▀', ' █ ▄ ']] },
-  streaming: { prop: 0xe4e4e4, frames: [[' ▄ ▄▀', '▐█▌  ', '▐ ▌  '], [' ▄ ▀▄', '▐█▌▄ ', '▐ ▌  '], [' ▄ ██', '▐█▌▀ ', '▐ ▌  ']] },
-  done: { prop: 0x5fd75f, frames: [[' ▄  ✓', '▐█▌  ', '▐ ▌  '], ['▄▄▄✓ ', ' █   ', '▐ ▌  ']] },
-  quiet: { prop: 0xffaf00, frames: [[' ▄  z', '▐█▌  ', '▐ ▌  '], [' ▄ Z ', '▐█▌ z', '▐ ▌  ']] },
-  failed: { prop: 0xff5f5f, frames: [[' ▄  ✗', '▐█▌  ', '▐ ▌  '], [' ▄ ✗ ', '▐█▌  ', '▐ ▌  ']] },
+  reading: { prop: PROP.neutral, frames: [[' ▄   ', '▐█▌▐▀', '▐ ▌  '], [' ▄   ', '▐█▌▐▄', '▐ ▌  ']] },
+  editing: { prop: PROP.neutral, frames: [[' ▄  ▐', '▐█▌▀▌', '▐ ▌ ▀'], [' ▄   ', '▐█▌▄▄', '▐ ▌▐█']] },
+  shell: { prop: PROP.neutral, frames: [[' ▄   ', '▐█▌▀ ', '▌ ▐ ▄'], [' ▄   ', '▐█▌ ▀', ' █ ▄ ']] },
+  streaming: { prop: PROP.neutral, frames: [[' ▄ ▄▀', '▐█▌  ', '▐ ▌  '], [' ▄ ▀▄', '▐█▌▄ ', '▐ ▌  '], [' ▄ ██', '▐█▌▀ ', '▐ ▌  ']] },
+  done: { prop: PROP.done, frames: [[' ▄  ✓', '▐█▌  ', '▐ ▌  '], ['▄▄▄✓ ', ' █   ', '▐ ▌  ']] },
+  quiet: { prop: PROP.quiet, frames: [[' ▄  z', '▐█▌  ', '▐ ▌  '], [' ▄ Z ', '▐█▌ z', '▐ ▌  ']] },
+  failed: { prop: PROP.failed, frames: [[' ▄  ✗', '▐█▌  ', '▐ ▌  '], [' ▄ ✗ ', '▐█▌  ', '▐ ▌  ']] },
 }
 export const POSES = Object.keys(SPRITES)
 
@@ -44,7 +43,7 @@ export function spriteFrame(input) {
   if (!s) return null
   const n = s.frames.length
   const i = Number.isFinite(frame) ? ((Math.trunc(frame) % n) + n) % n : 0
-  const body = ROLE_COLORS[role] ?? ROLE_COLORS.agent
+  const body = rgb(roleColor(role))
   const cells = []
   for (const line of s.frames[i]) {
     ;[...line].forEach((ch, x) => cells.push({ ch, fg: ch === ' ' ? DEFAULT : x < 3 ? body : s.prop, bg: DEFAULT }))
@@ -87,7 +86,7 @@ export function encodeCells(grid) {
 }
 
 // confettiFrames({ cols, rows, n, seed }): n frames (default 15: 1.5 s at
-// 10 fps) of falling pieces in the crew's colours, the same for a seed, ending
+// 10 fps) of falling pieces in the seven role colours, the same for a seed, ending
 // clear. Sized to a Raster's limits (512 by 256).
 const PIECES = ['▀', '▄', '▌', '▐', '█', '•']
 function rng(seed) {
@@ -105,7 +104,7 @@ export function confettiFrames(input) {
   const w = Math.min(cols, 512)
   const ht = Math.min(rows, 256)
   const rand = rng(Number.isFinite(seed) ? seed : 1)
-  const colors = Object.values(ROLE_COLORS)
+  const colors = Object.values(ROLE_COLORS).map(rgb)
   const count = Math.max(3, Math.round((w * ht) / 6))
   // Each piece starts above or in the box and falls fast enough to leave it by the last frame.
   const last = Math.max(1, n - 1)
@@ -134,7 +133,7 @@ export function confettiFrames(input) {
 
 // sweepFrames({ cols, n }): one green band crossing a one-row Raster left to
 // right in n frames (default 12), the last one clear: the all-green sweep.
-const GREEN = 0x5fd75f
+const GREEN = rgb(stateColor('done'))
 const TRAIL = ['█', '▓', '▒', '░']
 export function sweepFrames(input) {
   const { cols, n = 12 } = isObj(input) ? input : {}
@@ -210,8 +209,8 @@ export function renderWrapped(ui, model) {
     [m.seconds === null ? 'time unknown' : duration(m.seconds), m.cost === null ? 'cost unknown' : '$' + m.cost.toFixed(2)].join(' · '),
   ]
   if (m.fastest) lines.push(`fastest: ${m.fastest.kind} ${duration(m.fastest.seconds)} · slowest: ${m.slowest.kind} ${duration(m.slowest.seconds)}`)
-  return h(Box, { flexDirection: 'column', borderStyle: 'round', borderColor: 'green', paddingX: 1 },
-    h(Text, { bold: true, color: 'green' }, `VBW Wrapped · ${m.milestone.id}${m.milestone.title ? ' ' + m.milestone.title : ''}`),
+  return h(Box, { flexDirection: 'column', borderStyle: 'round', borderColor: stateColor('done'), paddingX: 1 },
+    h(Text, { bold: true, color: stateColor('done') }, `VBW Wrapped · ${m.milestone.id}${m.milestone.title ? ' ' + m.milestone.title : ''}`),
     lines.map((l, i) => h(Text, { key: 'w' + i }, l)))
 }
 
