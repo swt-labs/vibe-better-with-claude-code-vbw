@@ -13727,6 +13727,11 @@
       "text": "The build-wave rule has one source: vbw show contract counts waves with the same jq code vbw next schedules with (next.jq), never a second copy",
       "why": "chosen by VBW: F62 is a symptom of the duplicate in cmd-show.sh; one copy cannot drift",
       "at": "2026-10-07T17:27:50Z"
+    },
+    {
+      "id": "D167",
+      "at": "2026-10-07T17:45:00Z",
+      "text": "Contract approved: 99 requirements, 155 checks, 198 plans (80185d34ccfd)"
     }
   ],
   "commands": {
