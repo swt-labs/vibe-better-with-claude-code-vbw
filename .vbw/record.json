@@ -7776,12 +7776,19 @@
         }
       ],
       "qa": {
-        "result": "fail",
+        "result": "pass",
         "tier": "standard",
         "tree": "d0cfc19f4fb1830b1af2b8c06be5361bfb38a1241d8756898822c1689657637f",
-        "at": "2026-10-07T22:19:19Z",
-        "note": "17/18 checks",
-        "rounds": 1
+        "at": "2026-10-07T22:25:31Z",
+        "note": "18/18 checks"
+      },
+      "outcome": {
+        "tier": "deep",
+        "predicted": "deep",
+        "held": true,
+        "fix_rounds": 1,
+        "qa_findings": 1,
+        "escalations": 1
       }
     },
     {
@@ -13510,7 +13517,7 @@
       "req": "R103",
       "source": "qa",
       "attempts": 0,
-      "status": "fixed",
+      "status": "closed",
       "note": "Commit 1aee614f edited tests/fix-reuse.bats (test 'vbw prove runs every check...' renamed, expected run counts changed from C1=2,C2=2,C3=3 to 1,1,2). That file is protected by approved check C42 and is not in P70.1 or P70.2 files. The Dev stopped and asked for approval; the decisions list (D145-D174) has no entry approving it (D173 covers only the second-prove-reruns rule). Fix: record the owner or VBW decision that supersedes C42's old expectation, or get the edit approved through the contract."
     },
     {
@@ -15798,5 +15805,11 @@
     "scope": [],
     "passed": true
   },
-  "lease": null
+  "lease": {
+    "run": "qa-20261007T222505Z",
+    "kind": "qa",
+    "started_at": "2026-10-07T22:25:05Z",
+    "files": [],
+    "session": "4130e174-7ef2-4e36-b853-fb2a8fd8511d"
+  }
 }
