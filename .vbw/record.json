@@ -12656,7 +12656,7 @@
       "after": [
         "P70.1"
       ],
-      "status": "planned",
+      "status": "done",
       "role": "docs",
       "tasks": [
         "docs/proof.md: when vbw prove reuses results (only VBW's own record or spec changed since a completed, passing proof) and what a result needs to be reused (an unchanged approved definition)",
@@ -12767,7 +12767,7 @@
       "after": [
         "P72.1"
       ],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "next.jq: a top-level next_phase in every answer: one after the highest phase number the record knows, taken from the ids of all phases (every milestone), the plans (id and phase) and the P-numbers named in decisions (so a removed phase that a decision names counts); a sub-phase such as P65.1 counts as 65; letters before the P (SHIP99) are not phase numbers; 1 when there is none",
@@ -12788,7 +12788,7 @@
       "after": [
         "P72.1"
       ],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "cmd-config.sh: vbw config effort prints the current profile's effort table as compact JSON (what the skills pass to workflows as args.effort)",
