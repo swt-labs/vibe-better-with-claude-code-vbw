@@ -88,6 +88,23 @@ test('when VBW needs the user it says what for', () => {
   assert.equal(row(v, 'need').text, v.need.text)
 })
 
+test('every human gate is a need, so the panel never says nothing is needed while VBW waits', () => {
+  const need = (n) => show({ record: record(), next: next(n) }).need
+  const blocked = need({ action: 'unblock', gate: true, detail: { plans: ['P44.1'], blocked: [{ id: 'P44.1', note: 'no API key' }] } })
+  assert.match(blocked.text, /blocked/i)
+  assert.match(blocked.text, /P44\.1/)
+  assert.notEqual(blocked.key, need({ action: 'unblock', gate: true, detail: { plans: ['P44.2'] } }).key)
+  assert.match(need({ action: 'scope', gate: true }).text, /outside/i)
+  assert.match(need({ action: 'milestone', gate: true }).text, /shipped/i)
+  assert.match(need({ action: 'convert', gate: true }).text, /VBW 1/)
+  assert.match(need({ action: 'something-new', gate: true }).text, /waiting for you/i)
+  for (const a of ['unblock', 'scope', 'milestone', 'convert', 'something-new']) {
+    const t = need({ action: a, gate: true }).text
+    assert.doesNotMatch(t, /\b(QA|lease|gate|contract|workflow)\b/i, a)
+  }
+  assert.equal(need({ action: 'build', gate: false }), null)
+})
+
 test('a question the user has to answer is a need', () => {
   const v = show({ record: record(), next: next(), question: { id: 'q1' } })
   assert.match(v.need.text, /question/i)

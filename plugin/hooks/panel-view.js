@@ -52,7 +52,11 @@ function needOf(nx, question) {
     case 'ship': return { key: 'ship', text: 'The milestone is ready: your go-ahead to ship it is needed.' }
     case 'spec': return { key: 'spec', text: 'VBW needs you to say what to build: the requirements.' }
     case 'escalate': { const f = list(d.fixes); return { key: 'escalate:' + f, text: 'A decision is needed from you on ' + f + '.' } }
-    default: return null
+    case 'unblock': { const p = list(d.plans); return { key: 'unblock:' + p, text: 'Work is blocked and needs you' + (p ? ': ' + p : '') + '.' } }
+    case 'scope': return { key: 'scope', text: 'Some changes went outside their planned files: your decision is needed.' }
+    case 'milestone': return { key: 'milestone', text: 'The milestone is shipped: say what to build next.' }
+    case 'convert': return { key: 'convert', text: 'A VBW 1 plan is here: bring it into VBW 2 or start fresh.' }
+    default: return { key: 'other:' + String(nx.action), text: 'VBW is waiting for you: run /vbw:vibe to see what for.' }
   }
 }
 
