@@ -15,6 +15,6 @@ Update with Claude Code's own plugin commands, one at a time:
 1. `claude plugin marketplace update vbw-marketplace`
 2. `claude plugin update vbw@vbw-marketplace`
 
-Then tell the user to run `/reload-plugins` (or restart Claude Code) so the new
-version loads, and to run `/vbw:whats-new` to see what changed. If a command
+Then tell the user to run `/reload-plugins` (or restart Claude Code) to load it,
+and `/vbw:whats-new` to see what changed. If a command
 fails, show its output and suggest `/plugin` to update from the menu.

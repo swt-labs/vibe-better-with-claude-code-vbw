@@ -18,12 +18,11 @@ extension). Copy the original next to it first (`<name>.original.md`), then
 rewrite the file in place:
 
 - **Remove:** articles, filler (just, really, basically), pleasantries,
-  hedging, connective fluff (however, furthermore) and redundant phrasing ("in
+  hedging, connective fluff (however, furthermore), redundant phrasing ("in
   order to" becomes "to").
 - **Keep exactly, byte for byte:** code blocks and inline code, URLs, file
   paths, commands, version numbers, environment variables, proper nouns.
 - **Keep the structure:** every heading's text, list nesting, tables, and every
   rule and fact. Fragments are fine; meaning must not change.
 
-Then report the size before and after (`wc -w`) and say that the original is
-kept as `<name>.original.md`.
+Then report the size before and after (`wc -w`); the original stays as `<name>.original.md`.

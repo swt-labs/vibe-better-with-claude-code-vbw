@@ -11,7 +11,7 @@ allowed-tools: Bash("${CLAUDE_PLUGIN_ROOT}/bin/vbw" *) Bash(vbw *)
 
 Write to the user's level, explanation depth and involvement (above; "-": plain words).
 
-Show the list above in plain words. Then say what they can do with any item:
+Show the list above in plain words, then what they can do with an item:
 bring it into the current work (`/vbw:discuss` or `/vbw:vibe` with the idea),
 mark it done (`vbw todo done <id>`), or drop it (`vbw todo drop <id>`). New
 ideas: `/vbw:todo <idea>`.

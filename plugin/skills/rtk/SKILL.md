@@ -15,11 +15,9 @@ Write to the user's level, explanation depth and involvement (above; "-": plain 
 The user said: $ARGUMENTS
 
 RTK (https://github.com/rtk-ai/rtk) shrinks command output before it reaches
-the context, through its own Claude Code hook. VBW's guard judges the command
-inside `rtk ...`.
+the context, through its own Claude Code hook. VBW's guard judges the command inside `rtk ...`.
 
-- **status** (or nothing asked): explain the state and what each action does;
-  ask what they want.
+- **status** (or nothing asked): explain the state and each action; ask what they want.
 - **install**: only with the user's yes, run the "install with" command shown
   above if RTK is not installed, then `rtk init -g` (RTK adds its own hook to
   the user's Claude settings), then `rtk --version` and `rtk gain` to confirm.
