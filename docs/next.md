@@ -115,6 +115,12 @@ run one after another as parallel. Read it as the approval check on the
 Lead's plan: a wide wave means plans build at the same time; a width of 1
 means the work builds one plan at a time.
 
+The Lead (`plugin/agents/lead.md`) aims for that line to be as wide as the
+work allows. It splits each phase into plans that touch separate files, lists
+only real dependencies in `after`, and puts plans that must share a file in
+separate waves. After applying the plan it reads `vbw show contract` and
+splits further where the work allows.
+
 While a Dev builds, edits to test files do not stop the build: only a change to
 the contract's structure does (row 4). Row 4a is the one approval for all of
 those edits, asked just before proof.
