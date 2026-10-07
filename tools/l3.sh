@@ -10,6 +10,7 @@
 #   tools/l3.sh click NAME COL ROW       click the mouse at that column and row (1-based, left button)
 #   tools/l3.sh wait NAME [SECONDS]      wait until Claude is idle (default 900 s), print the screen
 #   tools/l3.sh screen NAME              print the screen
+#   tools/l3.sh settled NAME             filter a screen (stdin) to what wait compares: above the prompt box
 #   tools/l3.sh stop NAME                end the session
 #   tools/l3.sh debuglog DIR             print the debug log path of the session started in DIR
 set -euo pipefail
@@ -19,10 +20,14 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 [ -z "${VBW_TEST_CLAUDE_CONFIG_DIR:-}" ] || export CLAUDE_CONFIG_DIR="$VBW_TEST_CLAUDE_CONFIG_DIR"
 cmd="${1:-}"
 name="${2:-}"
-[ -n "$cmd" ] && [ -n "$name" ] || { sed -n '6,14p' "$0" >&2; exit 2; }
+[ -n "$cmd" ] && [ -n "$name" ] || { sed -n '6,15p' "$0" >&2; exit 2; }
 session="vbw-l3-$name"
 
 screen() { tmux capture-pane -t "$session" -p -S -60; }
+# What wait compares: the screen above the prompt box. The box is the last two
+# border lines; under it the status line refreshes on its own every 5 seconds.
+# A screen with fewer than two border lines is kept whole.
+settled() { awk '{ line[NR] = $0 } /^─/ { b[++n] = NR } END { stop = n >= 2 ? b[n - 1] : NR + 1; for (i = 1; i < stop; i++) print line[i] }'; }
 
 case "$cmd" in
   start)
@@ -89,18 +94,21 @@ case "$cmd" in
       sleep 5
       waited=$((waited + 5))
       now=$(screen)
-      # Busy while Claude shows its interrupt hint or the screen still changes.
+      view=$(printf '%s\n' "$now" | settled)
+      # Busy while Claude shows its interrupt hint or the screen above the
+      # prompt box still changes.
       if printf '%s' "$now" | grep -q 'esc to interrupt'; then stable=0
-      elif [ "$now" = "$last" ]; then stable=$((stable + 5))
+      elif [ "$view" = "$last" ]; then stable=$((stable + 5))
       else stable=0
       fi
-      last=$now
+      last=$view
       [ "$stable" -ge 15 ] && break
     done
     screen
     [ "$waited" -lt "$limit" ] || { echo "(l3: still busy after ${limit}s)" >&2; exit 1; }
     ;;
   screen) screen ;;
+  settled) settled ;;
   debuglog) printf '%s.debug.log\n' "$name" ;;
   stop)
     # Escape first: a question left on screen would take "/exit" + Enter as
