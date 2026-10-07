@@ -257,6 +257,7 @@ Claude Code's own drawing whenever VBW has nothing to say.
 | The line that closes a turn | `VBW · plan approved · 3s` after a turn that moved VBW on |
 | The Workflow row | `VBW planning · started 16:33 · [p] watch live` |
 | A `vbw` command's row | what it did: `VBW · recorded P53.1 done` (its output stays below) |
+| A change to `.vbw/record.json` | one line saying what happened, for example `VBW · build run started`, instead of the full diff. Expand the row (ctrl+o) to see the full diff |
 | The "workflow finished" row | `✓ VBW planning finished · 3 phases · 9 plans · 21 checks · 14m · ≈$4.10`; the full row shows in the expanded transcript (ctrl+o) |
 
 The transcript Claude Code stores is never changed: these are drawings only.
