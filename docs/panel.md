@@ -370,9 +370,14 @@ What each level shows:
 | | `full` | `calm` | `off` |
 |---|---|---|---|
 | Each agent in the band | a small figure in its role's colour, posed by what it does (reading, editing, running a command, writing, quiet, done, failed), moving about 10 times a second while the run works | a dot in its role's colour and a spinner that steps once a second | a dot and a still `·` |
+| A new agent starts | its row in the band flashes in its role's colour for about a second | no flash | no flash |
 | A phase passes QA | about 1.5 s of confetti in the band | nothing | nothing |
 | All checks pass | one green sweep across the top of the Proof tab, and `✓ All checks pass` in the band for a minute | `✓ All checks pass` in the band for a minute | nothing |
 | A milestone ships | Mission Control opens on VBW Wrapped | the same | the same |
+
+The flash shows the role and label of the new row with its colours inverted. It
+needs `full` motion: set it with `vbw config set motion full` (see above). At
+`calm` and `off` a new agent's row appears without it.
 
 The figures need three rows of the band for each agent; with less room the band
 shows dots. They move only while a VBW run works and the band shows them, and
