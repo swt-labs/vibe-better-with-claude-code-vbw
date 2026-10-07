@@ -11836,6 +11836,16 @@
       "id": "T52",
       "text": "Panel does not open at session launch in a wide window (owner, Portfolium, 2.0.22 build via --plugin-dir); it opens once a VBW run starts. R52 says it opens by itself: find the launch trigger gap and add the case to the panel L3 scenario",
       "status": "open"
+    },
+    {
+      "id": "T53",
+      "text": "2.0.21 in Portfolium told the user 'Type /vbw:approve to accept the updated plans' after a plan change (owner screenshot 13:50), against R83; find which path (likely a re-plan/patch stop) still words it that way",
+      "status": "open"
+    },
+    {
+      "id": "T54",
+      "text": "claude --plugin-dir ./plugin did not override the installed 2.0.21 plugin (status line showed VBW 2.0.21); docs and CLAUDE.md say --plugin-dir is the local-dev path: find how to load the working tree over an installed copy, and document it",
+      "status": "open"
     }
   ],
   "decisions": [
@@ -12670,6 +12680,11 @@
       "id": "D149",
       "at": "2026-10-07T10:44:01Z",
       "text": "Contract approved: 88 requirements, 126 checks, 179 plans (bed776414c57); express: P62 (R90)"
+    },
+    {
+      "id": "D150",
+      "at": "2026-10-07T12:51:55Z",
+      "text": "Contract approved: 91 requirements, 144 checks, 185 plans (d31c2fd142ee); express: P62 (R90)"
     }
   ],
   "commands": {
