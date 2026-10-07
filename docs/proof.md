@@ -501,12 +501,12 @@ judge:
 
 - a recorded decision (it is not code, a test, a goal or a requirement);
 - a finding closed with no code change (the files are the same);
-- a removed `[human]` requirement, or a reworded one (QA never judges what only
+- a removed [human] requirement, or a reworded one (QA never judges what only
   a person can: `[human]` requirements are not among QA's inputs).
 
 The rule works on each input separately. A skip-type change that comes together
 with a listed change does not protect the phase: a decision plus a changed test,
-a closed finding plus a code change, or a removed `[human]` requirement plus a
+a closed finding plus a code change, or a removed [human] requirement plus a
 changed goal still list the phase, with the reason of the listed change.
 
 Re-planning mid-milestone (`vbw apply` with phases added or changed) keeps each
