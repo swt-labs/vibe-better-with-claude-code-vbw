@@ -3,6 +3,8 @@
 # existing regular files only), $ids (array of phase ids, or null = the
 # current milestone's phases).
 # $tracked: the number of files git tracks.
+# $guarded: [{req, checks}], the [auto] requirements every check of which is
+# approved (see rigor_guarded); they do not raise a tier.
 # Output: [{id, tier, floor, reasons}]. The floor comes from the signals alone;
 # tier is the phase's own tier when it is higher (the Architect may only raise).
 
@@ -32,10 +34,13 @@ def rid: ltrimstr("R") | tonumber? // 0;
         | ([$haystack[] | select(.text | test($c.re; "i")) | .src] | .[0]) as $hit
         | select($hit != null) | {name: $c.name, src: $hit} ] as $risk
     | ($ph.reqs) as $own
-    | ([$r.requirements[] | select(.status == "proven" and (.id as $q | $own | index($q) | not)) | .id as $q
+    | ([$r.requirements[] | select((.status == "proven" or .status == "accepted") and (.id as $q | $own | index($q) | not)) | .id as $q
         | select([$r.plans[] | select(.phase != $ph.id and (.reqs | index($q))) | .files[]
                   | . as $f | select($files | any(.[]; overlaps($f)))] | length > 0) | $q]
-       | sort_by(rid)) as $breaks
+       | sort_by(rid)) as $could
+    | ([$guarded[] | .req]) as $gids
+    | ($could | map(select(. as $q | $gids | index($q) | not))) as $breaks
+    | ([$guarded[] | select(.req as $q | $could | index($q))] | sort_by(.req | rid)) as $gcould
     | ( [ ($nreqs | sig_reqs),
           ($files | length | sig_files),
           ($bytes | sig_bytes),
@@ -52,6 +57,8 @@ def rid: ltrimstr("R") | tonumber? // 0;
                     (if ($risk | length) == 0 then "risk: none"
                      else "risk: " + ([$risk[] | "\(.name) (\(.src))"] | join(", ")) end),
                     (if ($breaks | length) == 0 then "breaks: none" else "breaks: " + ($breaks | join(", ")) end),
+                    (if ($gcould | length) == 0 then empty
+                     else "guarded: " + ([$gcould[] | "\(.req) (\(.checks | join(", ")))"] | join(", ")) end),
                     (if $has_tests then "tests: project test command" else "tests: no project test command" end)
                   ] + (if $tier != $floor then ["Architect raised the tier to \($tier)"] else [] end)) }
   ]
