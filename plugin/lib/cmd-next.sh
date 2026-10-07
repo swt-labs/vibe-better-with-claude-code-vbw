@@ -6,6 +6,8 @@
 . "$VBW_LIB/interview.sh"
 # shellcheck source=qa-inputs.sh
 . "$VBW_LIB/qa-inputs.sh"
+# shellcheck source=effort.sh
+. "$VBW_LIB/effort.sh"
 
 # qa_combined RECORD: {Pn: combined digest}, what a standing pass holds in qa.tree (D91).
 qa_combined() { qa_digests "$1" | jq -c 'map_values(.combined)'; }
@@ -15,7 +17,7 @@ qa_state() { jq -c --argjson inputs "$(qa_digests "$1")" --argjson cache "$(qa_c
 
 cmd_next() {
   vbw_require_project
-  local record hash counts approved=false changed=false legacy=false next qa waiting
+  local effort record hash counts approved=false changed=false legacy=false next qa waiting
   record=$(record_read)
   hash=$(contract_hash "$record")
   # Check files edited since the approval wait: the build goes on, the one approval comes before proof.
@@ -29,7 +31,9 @@ cmd_next() {
   qa=$(qa_state "$record")
   # A plan that names a plan or phase that is not there cannot be judged.
   jq -e '.problems | any(.[]; contains("does not exist")) | not' <<< "$qa" > /dev/null || vbw_die "$(jq -r '.problems | join("; ")' <<< "$qa")"
-  next=$(printf '%s' "$record" | jq -c --argjson tracked "$counts" --argjson approved "$approved" --arg waiting "$waiting" --arg contract "$hash" \
+  # The profile's effort table; a wrong table stops here, before any answer.
+  effort=$(effort_table "$(printf '%s' "$record" | jq -r '.settings.profile')") || exit 1
+  next=$(printf '%s' "$record" | jq -c --argjson effort "$effort" --argjson tracked "$counts" --argjson approved "$approved" --arg waiting "$waiting" --arg contract "$hash" \
     --argjson code_changed "$changed" --argjson legacy "$legacy" --argjson qa "$qa" --argjson profile "$(interview_effective "$record")" --arg session "$(vbw_session)" --slurpfile tiers "$VBW_LIB/tiers.json" "$VBW_JQ_DEFS$(cat "$VBW_LIB/next.jq")")
   # The status line shows the last answer (docs/statusline.md).
   printf '%s\n' "$next" > "$VBW_RUNTIME/next.json.$$" && mv "$VBW_RUNTIME/next.json.$$" "$VBW_RUNTIME/next.json"

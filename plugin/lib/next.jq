@@ -6,8 +6,11 @@
 # $tracked (the number of files git tracks, for the early tier).
 # $profile: interview_effective (lib/interview.sh); next fills unanswered ones with the neutral middle choice.
 # $tiers (slurped: [table]; lib/tiers.json: profile -> tier -> cell).
+# $effort: the current profile's effort table (lib/effort.sh), passed through as `effort`.
 # Output: {action, gate, instruction, detail, requirements (the active milestone's: id, text, proof), rigor, profile}; profile.ask is true only
-# at the spec or convert step with no completed interview (once per project).
+# at the spec or convert step with no completed interview (once per project). Every answer also carries
+# next_phase (one after the highest phase number the record knows: phase and plan ids, plan phases and the
+# P-numbers decisions name; P65.1 counts as 65; letters before the P do not) and effort.
 # First matching row wins.
 
 def result($action; $gate; $instruction; $detail):
@@ -71,6 +74,9 @@ def fix_files($r): if .command then ["*"]
         elif $nf <= 2 then "quick"
         elif $nf <= 9 then ([$cell, "standard"] | min_by(qa_rank))
         else $cell end)}] | from_entries) as $tiers_qa
+# The next free phase number (R106).
+| ([(.phases[].id), (.plans[] | .id, .phase), (.decisions[]?.text // empty)]
+   | map(strings | [scan("(?<![A-Za-z0-9])P([0-9]+)") | .[0] | tonumber] | .[]) | max // 0 | . + 1) as $next_phase
 | (if .lease != null and .lease.session != null and .lease.session != $session then
     result("run"; false; "A VBW \(.lease.kind) run (\(.lease.run)) belongs to another session: wait for it, or check vbw status"; {lease: .lease})
   elif .lease != null then
@@ -110,4 +116,4 @@ def fix_files($r): if .command then ["*"]
     result("accept"; true; "Accept or reject \($to_accept | join(", ")), one scenario at a time"; {requirements: $to_accept})
   else
     result("ship"; true; "Everything is proven and accepted: ship milestone \(.milestone.id)"; {})
-  end) as $n | $n + (if $n.action == "qa" then {round: {tiers: $tiers_qa, suite: (if (.commands.test // null) == null then null else (.evidence.commands.test // {command: "test", status: "not run"}) end)}} else {} end) + {requirements: [$current[] | {id, text, proof}], rigor: $rigor, qa: ($qa | {recheck, standing, problems}), declined: [(.project.declined // [])[].text], profile: ({level: "small scripts or no-code", depth: "plain with technical terms explained", involvement: "options with a recommendation"} + ($profile | with_entries(select(.value != null or .key == "kept" or .key == "pending"))) + {ask: ([$n.action] | inside(["spec","convert"]) and ($profile.interviewed | not))})}
+  end) as $n | $n + (if $n.action == "qa" then {round: {tiers: $tiers_qa, suite: (if (.commands.test // null) == null then null else (.evidence.commands.test // {command: "test", status: "not run"}) end)}} else {} end) + {next_phase: $next_phase, effort: $effort, requirements: [$current[] | {id, text, proof}], rigor: $rigor, qa: ($qa | {recheck, standing, problems}), declined: [(.project.declined // [])[].text], profile: ({level: "small scripts or no-code", depth: "plain with technical terms explained", involvement: "options with a recommendation"} + ($profile | with_entries(select(.value != null or .key == "kept" or .key == "pending"))) + {ask: ([$n.action] | inside(["spec","convert"]) and ($profile.interviewed | not))})}
