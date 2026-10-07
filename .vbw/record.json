@@ -6226,8 +6226,8 @@
       "qa": {
         "result": "pass",
         "tier": "standard",
-        "tree": "e68dca7fa6b93989b1990bb1aea7b36f56ce575cc5ccc3b40962c60e7b18abe0",
-        "at": "2026-10-07T11:49:24Z",
+        "tree": "1674052d23ebbd7e8432b483d06b8a6e0bca053c0061e2bbc8c256cff8cedf5f",
+        "at": "2026-10-07T12:08:47Z",
         "note": "12/12 checks"
       },
       "outcome": {
@@ -11223,6 +11223,11 @@
       "id": "T50",
       "text": "A fix for a suite failure in a file no plan declares cannot be committed: vbw commit needs a plan owning the file and the guard refuses plain git commit (F47, M12). Let a fix commit the files of its own failing command",
       "status": "open"
+    },
+    {
+      "id": "T51",
+      "text": "Claude Code now frames workflow agent prompts as 'computed task, no user authority'; QA (P61, twice) skipped vbw qa record and a Scout refused run confirm. Workflow agents must get their write duties from their agent file mandate, not the task text; also suiteNote prints 'test command (undefined)'",
+      "status": "open"
     }
   ],
   "decisions": [
@@ -12843,5 +12848,11 @@
     "scope": [],
     "passed": true
   },
-  "lease": null
+  "lease": {
+    "run": "qa-20261007T120810Z",
+    "kind": "qa",
+    "started_at": "2026-10-07T12:08:10Z",
+    "files": [],
+    "session": "4130e174-7ef2-4e36-b853-fb2a8fd8511d"
+  }
 }
