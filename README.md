@@ -323,7 +323,8 @@ You need one: `/vbw:vibe`. The rest exist for people who like to feel in control
 | `/vbw:pause`, `/vbw:resume` | Stop safely; pick up where you left off |
 | `/vbw:profile`, `/vbw:config` | How VBW works (how it talks to you, models, how much it does on its own); each setting |
 | `/vbw:skills`, `/vbw:rtk`, `/vbw:compress` | Look for the best tools for your project ([docs/tools.md](docs/tools.md)); output compression; terser instruction files |
-| `/vbw:panel`, `/vbw-panel`, `/vbw-sound` | Whether the panel works here; open the panel; turn the "needs you" sound on or off |
+| `/vbw:panel`, `/vbw-panel`, `/vbw-sound` | Whether the panel works here; open Mission Control; turn the "needs you" sound on or off ([docs/panel.md](docs/panel.md)) |
+| `/vbw-status`, `/vbw-why`, `/vbw-todo [idea]` | Instant, even mid-run and with no model turn: where things stand; who holds the run and what blocks it; park an idea |
 | `/vbw:doctor`, `/vbw:report` | Check the setup; prepare a bug report |
 | `/vbw:update`, `/vbw:whats-new`, `/vbw:uninstall` | Keep VBW current, or remove it and go back to prompting manually like it's 2024 |
 

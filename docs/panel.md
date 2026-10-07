@@ -1,15 +1,26 @@
 # The VBW panel
 
-The panel is a small pane inside Claude Code that tells you, in plain words,
-where your project stands and whether VBW is waiting for you. It opens by
-itself when a session starts in a VBW project.
+The panel is VBW inside Claude Code's own screen. It has two parts:
+
+- **The band** above the prompt: the agents at work while a VBW workflow runs,
+  or a card with buttons when VBW needs you (see [The band](#the-band)).
+- **Mission Control**, a pane beside the conversation: where your project
+  stands, in plain words, and seven tabs for the detail (see
+  [Mission Control](#mission-control)). It opens by itself when a session
+  starts in a VBW project.
+
+VBW also adds a few short lines to places Claude Code already draws (see
+[One-line notes](#one-line-notes)) and three instant commands (see
+[Instant commands](#instant-commands)).
+
+Mission Control's **Now** tab starts with these sentences:
 
 ```
 Working on M1: First milestone.
 milestone
 
-2 of 6 phases done.
-phases
+5 of 12 requirements done.
+requirements
 
 VBW is building: P1.2, P2.1 (4 min so far).
 build
@@ -27,12 +38,13 @@ Please approve the plan before VBW builds it.
 your turn
 ```
 
-Each sentence has a short technical term under it (`milestone`, `phases`,
+Each sentence has a short technical term under it (`milestone`, `requirements`,
 `build`, `session cost`, `your turn`), so you can learn the words VBW uses.
 The panel shows these things, top to bottom:
 
 1. **The milestone** you are working on.
-2. **Progress:** how many phases have passed their checks.
+2. **Progress:** how many of the milestone's requirements are done (proven by
+   their checks, or accepted by you), counted as the status line counts them.
 3. **What VBW is doing now:** planning, building (and which parts), checking
    the results, fixing what the checks found, mapping the project, or idle.
 4. **Time left**, when VBW can estimate it: for the current step and for the
@@ -60,8 +72,8 @@ A typical panel while a plan builds, before VBW has history to estimate from:
 Working on M1: First milestone.
 milestone
 
-2 of 6 phases done.
-phases
+5 of 12 requirements done.
+requirements
 
 VBW is building: P1.2 (4 min so far).
 build
@@ -75,6 +87,122 @@ session cost
 Nothing is needed from you right now.
 your turn
 ```
+
+## The band
+
+The band is the strip directly above the prompt. VBW uses it only when there is
+something to watch or something to decide; otherwise it is empty. A survey from
+Claude Code always takes it first.
+
+**While a VBW workflow runs**, the band shows the crew, one row per agent:
+
+```
+VBW ▸ planning · Plan · 10m04s · ≈$3.20 this run                 [p] Mission Control
+● architect  scope   ⠹ reading spec.md                              2m10s   41k
+● lead       P53     ⠼ "Splitting R69 into two plans: the runner…"  0m48s   18k
+✓ scout      linux   done · 4 findings                              1m02s   12k
+```
+
+- Each row has the role in its colour (architect magenta, lead blue, dev green,
+  QA yellow, scout cyan, debugger red, docs pink), the agent's label, what it
+  is doing now (the tool it calls, or the end of what it is writing), its time
+  and its context size.
+- A finished agent shows ✓ and its one-line result for a minute, then joins a
+  "done" count. A failed agent shows ✗, its reason and a **details** button.
+- An agent with no new step for 45 seconds is marked **quiet**, so a hang looks
+  different from slow work.
+- The cost is the session cost added since the run started, so it is "about".
+- With little room the rows shrink, down to one summary line.
+
+VBW reads this from the files Claude Code writes for each workflow run in this
+session's own folder (`<Claude config folder>/projects/<project>/<session>/`):
+which agents started, their type, their transcripts and the run's end. It finds
+the run from the moment `/vbw:vibe` launches it, and again after a reload while
+the run goes on. These files are Claude Code's own and undocumented: if they
+change, the band shows less, never an error.
+
+**When VBW needs you**, the band shows a card instead:
+
+```
+⚑ VBW needs you · the plan is ready: review it, then approve it to build
+[1: Review plan]   [2: Approve…]   [3: Discuss]   [4: Later]
+```
+
+- Press a digit from an empty prompt, or click.
+- **Review plan** (or Review proof, Review fixes) opens Mission Control on that
+  tab.
+- **Approve…**, **Verify…**, **Discuss** and the like put the command in your
+  prompt (`/vbw:approve`, …). **You press Enter.** No button ever sends a
+  command or answers for you.
+- **Later** hides the card until VBW needs something else; the hint line under
+  the prompt still says what is waiting.
+- When the plan is ready, `/vbw:approve` is also offered as the prompt's
+  suggestion (press Tab to take it).
+- Before a run, the card adds a warning when your weekly limit is past 80%, and
+  a **/compact first** button when the context is 85% full or more. The button
+  only fills `/compact` in.
+
+## Mission Control
+
+Mission Control is the pane. Its tabs run across the top; press one to switch:
+
+```
+Now │ Plan │ Proof │ Timeline │ Decisions │ Team │ Costs
+```
+
+- **Now:** the sentences above, the sound switch, then the running workflow as
+  columns of agent cards by phase. Press a card for that agent's model, time,
+  current step and result.
+- **Plan:** one button per phase; each shows its goal, its plans with their
+  files, and its checks with their commands.
+- **Proof:** one square per approved check (green passed, red failing, grey not
+  run). Press a check for its last output.
+- **Timeline:** one lane per agent against the run's clock, the three slowest
+  marked, and past steps of the same kind against their usual time.
+- **Decisions:** the milestone's decisions, newest first.
+- **Team:** which model each role uses, the profile, autonomy and rigor, with
+  buttons that fill `/vbw:config` and `/vbw:profile`.
+- **Costs:** each VBW run of this session with its cost (the session cost added
+  while the run was open, so "about"), by kind, and the session total. The list
+  starts with the session: a new session starts again from zero.
+
+## One-line notes
+
+VBW adds a few words to places Claude Code already draws. Each one keeps
+Claude Code's own drawing whenever VBW has nothing to say.
+
+| Where | What VBW adds |
+|---|---|
+| The spinner while a turn runs | ` · VBW building P53.2 (2/5)…` while a VBW run works |
+| The hint line under the prompt | `VBW: planning 10m`, `VBW needs you: /vbw:approve` or `VBW next: /vbw:vibe` |
+| The footer's mode labels | `VBW auto ⟳ 3/10` during an autonomous run, else the profile (`VBW careful`, `VBW standard`, `VBW fast`) |
+| The notes under the logo, once | `VBW M11 · 1/15 · next: /vbw:vibe` |
+| A question VBW asks | `VBW · a decision for M11` above the question |
+| The line that closes a turn | `VBW · plan approved · 3s` after a turn that moved VBW on |
+| The Workflow row | `VBW planning · started 16:33 · [p] watch live` |
+| A `vbw` command's row | what it did: `VBW · recorded P53.1 done` (its output stays below) |
+| The "workflow finished" row | `✓ VBW planning finished · 3 phases · 9 plans · 21 checks · 14m · ≈$4.10`; the full row shows in the expanded transcript (ctrl+o) |
+
+The transcript Claude Code stores is never changed: these are drawings only.
+
+## Instant commands
+
+These answer at once, even while Claude is busy, and cost no model turn:
+
+| Command | What it does |
+|---|---|
+| `/vbw-status` | Where the project stands: milestone, progress, what VBW is doing, what comes next |
+| `/vbw-why` | Who holds the VBW run and since when, and what is blocked |
+| `/vbw-todo [idea]` | Parks an idea for later. With no text it takes the text you selected. VBW's own `vbw todo add` writes it |
+| `/vbw-panel` | Opens Mission Control |
+| `/vbw-sound` | Turns the "needs you" sound on or off |
+
+## Motion
+
+The band's spinners move calmly by default (one step a second). The motion
+level is `calm` unless your project's settings say `full` or `off`; VBW's own
+test sessions are always `off`, so what they show stays the same from run to
+run. With `off` the band shows a dot instead of a spinner.
 
 ## Cost
 
@@ -170,11 +298,16 @@ The panel needs **Claude Code 2.1.287 or newer** (check with
 
 ## What it reads and what it costs
 
-The panel only reads local files: `.vbw/record.json` and
-`.vbw/runtime/next.json` in your project, and `steps.json` in your clone's git
-directory. It asks Claude Code for the session cost, read-only. It never writes, never uses the network and never
-runs another program. It reads a file again only when that file's size or
-modification time has changed, and redraws only when the sentences change.
+The panel only reads local files: `.vbw/record.json`,
+`.vbw/runtime/next.json` and this session's `.vbw/runtime/auto.<session>.json`
+in your project, `steps.json` in your clone's git directory, and the workflow
+run files in this session's own folder under the Claude config folder (found
+from `CLAUDE_CONFIG_DIR`, else `HOME`; no other environment variable is read).
+It asks Claude Code for the session cost, context fill and weekly limit,
+read-only. It never writes and never uses the network. The one program it runs
+is VBW's own `vbw todo add`, when you type `/vbw-todo`. It reads a file again
+only when that file's size or modification time has changed, and redraws only
+when what it shows changes (while agents work, that is every check).
 
 It checks every 2 seconds. Each check costs CPU time (user plus system,
 not time spent waiting) as follows, measured on a developer Mac with Node 22:
