@@ -95,7 +95,7 @@ one colour everywhere: the band, Mission Control and VBW Wrapped.
 
 | Role | Colour | | State | Colour | Mark and word |
 |---|---|---|---|---|---|
-| architect | magenta | | running | amber | `▶ running` |
+| architect | magenta | | running | amber | `● running` |
 | lead | blue | | done | green | `✓ done` |
 | dev | green | | failed | red | `✗ failed` |
 | QA | yellow | | quiet | grey | `… quiet` |
@@ -177,10 +177,10 @@ The band and the cards say what an agent is doing as a plain intention, not the
 raw command:
 
 ```
-▶ editing app-topbar.tsx
-▶ running tests
-▶ recording P6.7 done
-▶ running fix_topbar.py
+● editing app-topbar.tsx
+● running tests
+● recording P6.7 done
+● running fix_topbar.py
 ```
 
 The verb (`editing`, `running`, `recording`) is in the role's colour and the
@@ -219,7 +219,7 @@ content is taller than the pane, only the part under the tabs scrolls.
 
 - **Now:** the sentences above, the sound switch, then the running workflow as
   columns of agent cards by phase. Each card has a frame in its agent's role
-  colour, its state as a coloured mark and word (`▶ running`, `✓ done`,
+  colour, its state as a coloured mark and word (`● running`, `✓ done`,
   `✗ failed`, `… quiet`), what the agent is doing, and its tokens, dimmed. Two
   agents of different roles never look the same. Press a card for that agent's
   model, time, current step and result.
