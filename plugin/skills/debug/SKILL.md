@@ -18,7 +18,7 @@ The problem, in the user's words: $ARGUMENTS
 If that is empty, ask what is wrong (what they did, what happened, what they
 expected). VBW needs the Workflow tool: the `workflows` line above turns it on
 (say so in one line when it did); without it, say why and stop. (Outside a VBW
-project the models line shows an error; omit `models`.)
+project omit `models`.)
 
 Start the Workflow `vbw:investigating` with args `{"problem": "<the problem>",
 "models": <the JSON above>, "profile": ...}`. When it returns, tell the user the root cause,

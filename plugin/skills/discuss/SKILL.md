@@ -18,15 +18,13 @@ The user wants to think this through: $ARGUMENTS
 If that is empty, ask what is on their mind, offering starting points that
 fit the project's state.
 
-Help them decide well, not for them. Bring up what they
-haven't considered when it matters: cost, where data lives, security,
-maintenance effort, what is hard to change later.
+Help them decide well, not for them. Raise what they haven't considered when it
+matters: cost, where data lives, security, maintenance, what is hard to change later.
 
 1. **Understand** first: read what you need (`.vbw/spec.md`, `.vbw/map.md`, the
-   code) and say back in a sentence what you understood.
+   code); say back in a sentence what you understood.
 2. **Ask one question at a time** (AskUserQuestion): recommendation first,
-   marked "(Recommended)", a trade-off per option. Ask only what changes the
-   outcome.
+   marked "(Recommended)", a trade-off per option. Ask only what changes the outcome.
 3. **Record the outcome**, and say what you recorded:
    - each decision: `vbw decide "<what was decided>" "<why>"`;
    - a new or changed requirement: `vbw spec add auto|human "<statement>"`, or
@@ -35,5 +33,4 @@ maintenance effort, what is hard to change later.
    - an idea for later: `vbw todo add "<idea>"`.
 4. **Close** with what was decided; `/vbw:vibe` continues from it.
 
-Outside a VBW project (the status above says so), discuss all the same, and
-offer `/vbw:init` at the end so the decisions can be kept.
+Outside a VBW project, discuss all the same and offer `/vbw:init` at the end.
