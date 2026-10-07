@@ -256,6 +256,21 @@ clone (`vbw approve` keeps a copy of what it approved in `.vbw/runtime/`).
 5. Writes the evidence and updates requirements and fixes in one atomic record
    update, then prints a one-screen summary. Exit 0 only when everything passed.
 
+### Proof in the background during an autonomous run
+
+In an autonomous run (`/vbw:vibe --auto`), a stop hook runs each time Claude
+stops. It reads `vbw next` and, until a step needs you, tells Claude to do the
+next step. A proof can run in the background while Claude stops. To keep the hook
+from asking for the proof again, `vbw prove` writes a mark for its session,
+`.vbw/runtime/proving.SESSION_ID`, holding its process id, and removes it
+however the proof ends (also on an error or an interrupt).
+
+While that mark names a live process, the hook asks for nothing and spends no
+autonomous step (`settings.autonomy_cap`) on the proof. When the proof ends, its
+result wakes the session and the run continues. A mark left by a dead process is
+stale and ignored. The mark belongs to one session: another session's proof does
+not pause this session's run.
+
 Because the copy holds only committed files, uncommitted edits and untracked
 files in the working folder change no result. A check file that is not
 committed as approved is refused: commit it, then `/vbw:approve`.
