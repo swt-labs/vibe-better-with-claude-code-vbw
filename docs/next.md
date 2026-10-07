@@ -91,6 +91,23 @@ category, in a repository of any size; the router plans those the same way
 | 11 | a `human` requirement is `open` | `accept` (one scenario at a time) | yes |
 | 12 | otherwise | `ship` (`vbw ship`, which refuses while the proven work is not committed: the proof reads files on disk, a shipped milestone must be in git history) | yes |
 
+## Build waves
+
+`vbw show contract` prints one line under `plans:`, before the approval
+question:
+
+```text
+build waves: 3 (the widest runs 2 plans at once)
+```
+
+The count follows row 5: the same rule that picks each wave when `vbw next`
+schedules the build. A plan waits until every plan in its `after` is built.
+Two plans that share a file never run in the same wave, and a directory in
+`files` shares a file with everything under it. The line counts the plans of
+the current milestone that are not `done`, so it shrinks as the build goes on.
+The first number is how many waves the build takes; the second is the most
+plans any one wave runs at the same time.
+
 While a Dev builds, edits to test files do not stop the build: only a change to
 the contract's structure does (row 4). Row 4a is the one approval for all of
 those edits, asked just before proof.
