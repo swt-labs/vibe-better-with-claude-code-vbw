@@ -2273,13 +2273,6 @@
       ]
     },
     {
-      "id": "R90",
-      "text": "The panel's colours make it easy to tell at a glance which agent is which and what state each is in",
-      "proof": "human",
-      "status": "open",
-      "milestone": "M12"
-    },
-    {
       "id": "R91",
       "text": "When an agent starts, its new row in the band flashes briefly in its role's colour (about a second), only when the motion setting is full",
       "proof": "auto",
@@ -6614,29 +6607,6 @@
         "qa_findings": 0,
         "escalations": 0
       }
-    },
-    {
-      "id": "P62",
-      "title": "Owner acceptance of panel colours",
-      "reqs": [
-        "R90"
-      ],
-      "milestone": "M12",
-      "goal": "The owner confirms the colours make agents and states easy to tell apart.",
-      "criteria": [
-        "The owner views the band, Mission Control and Wrapped during a real run and confirms each agent role and each state is distinguishable at a glance",
-        "Any colour the owner finds confusing is recorded as a finding, with the palette change that follows"
-      ],
-      "proposed": "express",
-      "tier": "express",
-      "reasons": [
-        "requirements: 1",
-        "files: 0 (0 bytes)",
-        "risk: none",
-        "breaks: none",
-        "tests: project test command"
-      ],
-      "predicted": "express"
     },
     {
       "id": "P63",
@@ -11908,6 +11878,11 @@
       "id": "T54",
       "text": "claude --plugin-dir ./plugin did not override the installed 2.0.21 plugin (status line showed VBW 2.0.21); docs and CLAUDE.md say --plugin-dir is the local-dev path: find how to load the working tree over an installed copy, and document it",
       "status": "open"
+    },
+    {
+      "id": "T55",
+      "text": "A [human] requirement the owner wants to judge later cannot move to the next milestone; R90 was dropped and re-added. Consider 'defer to next milestone' that keeps the id",
+      "status": "open"
     }
   ],
   "decisions": [
@@ -12782,6 +12757,17 @@
       "text": "F49: keep commits 9a4287b0 and dc143c6a (P65.1: an alone check is at the gate before the next check launches)",
       "why": "chosen by VBW: release-gate root-cause fix for R94; under load two shared checks entered the gate before the alone check registered (bash 5 suite, test 'shared checks wait for a long alone check'); it serves R94's waiting rule and is exercised by C145; tests/check-wait-patient.bats is the checks' protected file, not a plan file; history is never rewritten",
       "at": "2026-10-07T14:51:17Z"
+    },
+    {
+      "id": "D157",
+      "text": "R90 (owner judges the panel colours) moves from M12 to M13 as a new requirement",
+      "why": "owner: verify colours in the next release; VBW has no carry-over for an open human requirement (noted as an idea)",
+      "at": "2026-10-07T14:54:35Z"
+    },
+    {
+      "id": "D158",
+      "at": "2026-10-07T14:55:00Z",
+      "text": "Contract approved: 90 requirements, 144 checks, 185 plans (4f21f7e17cc3)"
     }
   ],
   "commands": {
