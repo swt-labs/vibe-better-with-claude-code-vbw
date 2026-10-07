@@ -7,7 +7,7 @@
 // or { line, below } (one VBW line above, or below, the engine's own). Transcript
 // rows are text only, and a row's words are kept for that row (st.memo), so a
 // redraw never changes what it said.
-import { spinnerSuffix, hintTail, sessionModes, infoNotice, questionHeader, turnReceipt, workflowCard, runReceipt, vbwRowIntent } from './panel-lines.js'
+import { spinnerSuffix, hintTail, sessionModes, infoNotice, questionHeader, turnReceipt, workflowCard, runReceipt, vbwRowIntent, recordEditIntent } from './panel-lines.js'
 
 const isObj = (x) => x !== null && typeof x === 'object' && !Array.isArray(x)
 const props = (e) => (isObj(e) && isObj(e.props) ? e.props : {})
@@ -76,6 +76,7 @@ export const SITES = {
     const p = props(e)
     if (p.isErrored) return null
     if (p.tool === 'Workflow') return textOr(workflowCard({ input: p.input, run: st.run }))
+    if (p.tool === 'Edit' || p.tool === 'MultiEdit' || p.tool === 'Write') return p.isExpanded ? null : textOr(recordEditIntent({ tool: p.tool, input: p.input }))
     return textOr(p.tool === 'Bash' && isObj(p.input) ? vbwRowIntent({ command: p.input.command }) : null)
   },
   // The notification of this session's VBW run ending: the run receipt. Kept once
