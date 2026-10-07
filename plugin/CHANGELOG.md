@@ -1,5 +1,35 @@
 # Changelog
 
+## [2.0.23] - 2026-10-07
+
+### Fixed
+
+- **VBW's agents record their own results again.** Claude Code now marks the
+  task text a workflow gives its agents as not coming from you, and some agents
+  then skipped recording a plan's state or QA's verdict. Every agent now carries
+  that duty in its own instructions, and the run is closed by the Lead instead
+  of the read-only Scout, which sometimes refused. When something still is not
+  recorded, VBW says so and names the exact command to run by hand.
+- **Approve works however the question is written.** Choosing Approve in the
+  approval menu approves the contract it names even when an explanation follows
+  on a new line. A malformed contract code approves nothing and says why.
+- **No more "type /vbw:approve".** After any plan change VBW asks only with the
+  approval menu. Typing `/vbw:approve` yourself still works.
+- **Autonomous runs stop asking twice.** While this session's proof runs in the
+  background, the stop hook waits instead of asking for the proof again and
+  spending autonomous steps.
+- **A fix can commit what it changed.** A fix for a failing project command can
+  commit the files it changed, even ones no plan lists
+  (`vbw commit --fix F1 "fix(x): ..." FILE...`); the commit names the fix.
+
+### Changed
+
+- **The Architect runs on Opus in the Standard profile** (balanced); every
+  other role stays on Sonnet, and QA is never below Sonnet in any profile.
+- **Plans are split for parallel builds.** The Lead splits each phase into
+  plans on separate files wherever the work allows, and the approval shows the
+  build waves: `build waves: 3 (the widest runs 7 plans at once)`.
+
 ## [2.0.22] - 2026-10-07
 
 ### Fixed
