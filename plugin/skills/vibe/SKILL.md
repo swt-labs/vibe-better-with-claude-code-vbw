@@ -79,7 +79,7 @@ recommendation, question); convert runs `vbw:convert`, fresh records `vbw legacy
 what it does, propose improvements. Else ask what it is for and who uses it. Propose user-observable,
 testable requirements: `[auto]` when a check can prove it, `[human]` when only a person can
 judge it (look, feel, tone); a document that must contain something is `[auto]`, how it reads is `[human]`. Propose what, not how: leave sign-in, storage, hosting, paid services
-to the decision round; write a constraint only when user stated it. Recommend; don't interrogate. Then follow `vbw:suggest`. Add each
+to the decision round; write a constraint only when user stated it. Recommend; don't interrogate. Follow `vbw:suggest`. Add each
 agreed requirement: `vbw spec add auto|human "statement"` (goals and constraints go in `.vbw/spec.md`, then `vbw spec sync`). Default milestone title → `vbw milestone rename "<title>"`. Check
 `## Commands` in `.vbw/spec.md` (what every proof runs) fits what was agreed (right sub-project, right interpreter); fix there, then `vbw spec sync`.
 
@@ -99,12 +99,12 @@ each: `vbw decide "<what was decided>" "<their reason, or the trade-off they acc
 `choices` it made itself (any can change), Architect's `notes` (offer `vbw todo add`). Then the approval menu, never a typed command.
 
 **approve** (needs user): `vbw show contract --changes` (after an earlier approval: explain just those). Else
-`vbw show contract`: explain each requirement, how checked, plans, files, commands that will run. Follow `vbw:suggest`, then AskUserQuestion with the approval question `vbw show contract` prints: "Approve" (first), "Not yet". Approve: hook recorded it; continue. Not yet: ask what to change. User's own words (own-answer slot): what to change, or a question. You cannot approve.
+`vbw show contract`: explain each requirement, how checked, plans, files, commands that will run. Follow `vbw:suggest`, then AskUserQuestion with the approval question `vbw show contract` prints: "Approve" (first), "Not yet". Only ever ask with this menu; never ask the user to type /vbw:approve (it still works if typed). Approve: hook recorded it; continue. Not yet: ask what to change. User's own words (own-answer slot): what to change, or a question. You cannot approve.
 Test files edited during the build wait for one approval just before proof (`detail.files`): say which and why, then ask the same way.
 
 **build**: `VBW_SESSION_ID=${CLAUDE_SESSION_ID} vbw run start build <detail.plans>`, Workflow `vbw:building` with
 args `{"plans": <detail.plans>, "docs": <detail.docs>, "models": ..., "rigor": ...}` (Dev per
-plan; Docs for documentation plans). Returns: report each plan's result in one line (quote blockers and notes) and what the workflow says was not recorded, then `VBW_SESSION_ID=${CLAUDE_SESSION_ID} vbw prove`.
+plan; Docs for documentation plans). Returns: report each plan's result in one line (quote blockers, notes) and anything not recorded, then `VBW_SESSION_ID=${CLAUDE_SESSION_ID} vbw prove`.
 
 **fix**: `VBW_SESSION_ID=${CLAUDE_SESSION_ID} vbw run start fix <detail.fixes>`, Workflow `vbw:fixing` with args
 `{"groups": <detail.groups>, "models": ..., "rigor": ...}` (fixes sharing files go to one
@@ -118,8 +118,7 @@ verdicts, failed checks and anything not recorded briefly.
 
 **run**: a run is open. This session's workflow still running: wait. Else
 interrupted: `VBW_SESSION_ID=${CLAUDE_SESSION_ID} vbw run end`, continue.
-Another session's run: never end it yourself. Ask once (AskUserQuestion,
-naming it): "Still running: wait" (Recommended), or "That session is closed" →
+Another session's run: never end it yourself. Ask once (AskUserQuestion): "Still running: wait" (Recommended), or "That session is closed" →
 `VBW_SESSION_ID=${CLAUDE_SESSION_ID} vbw run end --owner-closed`, continue.
 
 **unblock** (needs user): `vbw show plan <id>` per blocked plan; say what Dev needs. Resolved: `vbw plan reset <id>`.
@@ -128,8 +127,7 @@ naming it): "Still running: wait" (Recommended), or "That session is closed" →
 once more (`vbw fix retry <id>`), or change the requirement or its check
 (contract then needs approval again).
 
-**scope** (needs user): `vbw show evidence`; say which commits changed files
-outside their plan; ask how to proceed. Never rewrite history.
+**scope** (needs user): `vbw show evidence`; say which commits changed files outside their plan; ask how to proceed. Never rewrite history.
 
 **accept** (needs user): per requirement in `detail.requirements`, show the
 thing to judge: run it yourself when you can; put its output, or one concrete thing to try, in the question and the
@@ -143,9 +141,8 @@ wrong: ask what, then `vbw req reject <id> "<their words>"`. Skip: leave it.
 **milestone** (needs user): ask what next milestone is about,
 `vbw milestone start "<title>"`, then `spec`. 
 
-**Changing the plan** (add, change or drop mid-way): `vbw spec add`, or edit `.vbw/spec.md` and `vbw spec sync` (dropping a
-requirement removes its checks and unstarted plans that only served it). `vbw next` then asks for planning again:
-Lead keeps finished work; the approval menu follows.
+**Changing the plan** (add, change or drop mid-way): `vbw spec add`, or edit `.vbw/spec.md` and `vbw spec sync` (a dropped
+requirement removes its checks and unstarted plans). `vbw next` then asks for planning again; Lead keeps finished work.
 
 ## Rules
 
