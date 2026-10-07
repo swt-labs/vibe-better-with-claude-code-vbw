@@ -7197,11 +7197,19 @@
       "qa": {
         "result": "fail",
         "tier": "standard",
-        "tree": "155b3ea24b905259785da38516e7ab0b6d3f75c8152df2c1a9c2004bc1d02a9a",
-        "at": "2026-10-07T17:24:01Z",
-        "note": "21/23 checks",
-        "rounds": 1
-      }
+        "tree": "7e9db913e1676a5b82aa0784a6b745716d404e9a51abe3bb942045b7b8913629",
+        "at": "2026-10-07T18:40:24Z",
+        "note": "22/23 checks",
+        "rounds": 2
+      },
+      "escalations": [
+        {
+          "at": "2026-10-07T18:40:24Z",
+          "from": "deep",
+          "to": "deep",
+          "reason": "QA needs a second round"
+        }
+      ]
     },
     {
       "id": "P68",
@@ -12473,7 +12481,7 @@
       "req": "R97",
       "source": "qa",
       "attempts": 0,
-      "status": "fixed",
+      "status": "closed",
       "note": "Criterion 'a malformed fingerprint approves nothing and says why' is only half met. plugin/hooks/approve-answer.jq requires exactly 12 hex digits, so a question like 'Approve contract 1234abcd?' makes the hook print nothing: nothing is approved, but neither the user nor Claude is told why. Only the kernel (vbw approve --hash) explains, and the hook never reaches it for that case. tests/approve-fingerprint.bats ('a malformed fingerprint approves nothing') checks only that nothing was approved, not that a reason is given."
     },
     {
@@ -12481,7 +12489,7 @@
       "req": "R100",
       "source": "qa",
       "attempts": 0,
-      "status": "fixed",
+      "status": "closed",
       "note": "plugin/hooks/approve-answer.sh line 39 still tells the user '/vbw:approve also works' in the message shown after a failed approval. R100 says no output tells the user to type /vbw:approve. The new tests (tests/approval-after-plan.bats) only scan the kernel and router output, so they miss this hook message."
     },
     {
@@ -12530,6 +12538,14 @@
       "attempts": 0,
       "status": "closed",
       "note": "test fail"
+    },
+    {
+      "id": "F64",
+      "req": "R98",
+      "source": "qa",
+      "attempts": 0,
+      "status": "open",
+      "note": "Plan P67.3 task 'Keep the kernel line count (net zero)' was not followed: commit 8be2ee30 adds 7 lines and removes 1 in plugin/lib/cmd-prove.sh (+6 net), and commit 5835a5d0 adds 5 and removes 1 in plugin/lib/cmd-auto.sh (+4 net), so the kernel grew by 10 lines. No recorded decision covers it (D165 names only P68.1, P68.2 and P69.2; D161 only raised the budget). Options: (1) recommended, record a decision that P67.3's net-zero limit is superseded by the doubled budget in D161, as D165 did for the others; the code is correct and tested; (2) trim 10 lines from the kernel."
     }
   ],
   "todos": [
