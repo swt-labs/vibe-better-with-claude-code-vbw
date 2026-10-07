@@ -102,7 +102,7 @@ section() { awk '/^## .*VBW 1/ { f = 1; print; next } f && /^## / { exit } f' "$
   [[ "$step" != *'"Convert it (Recommended)"'* ]]
 }
 
-@test "R65: the prompts stay within their budgets: the step 190 words, the interview 900, the router 1,400, every skill 2,000, all prompts 11,400" {
+@test "R65: the prompts stay within their budgets: the step 190 words, the interview 900, the router 1,400, every skill 2,000, all prompts 22,800" {
   [ "$(section | wc -w)" -le 190 ]
   [ -n "$(section)" ]
   [ "$(wc -w < "$SKILL")" -le 900 ]
@@ -112,5 +112,5 @@ section() { awk '/^## .*VBW 1/ { f = 1; print; next } f && /^## / { exit } f' "$
     w=$(wc -w < "$f"); total=$((total + w))
     [ "$w" -le 2000 ] || [ "$f" = "$ROUTER" ] || { echo "$f has $w words"; false; }
   done
-  [ "$total" -le 11400 ]
+  [ "$total" -le 22800 ]
 }

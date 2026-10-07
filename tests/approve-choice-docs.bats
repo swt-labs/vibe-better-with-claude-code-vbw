@@ -35,7 +35,7 @@ approve_step() { sed -n '/^\*\*approve\*\*/,/^\*\*build\*\*/p' "$ROUTER"; }
     w=$(wc -w < "$f"); total=$((total + w))
     [ "$w" -le 2000 ] || [ "$f" = "$ROUTER" ] || { echo "$f has $w words"; false; }
   done
-  [ "$total" -le 11400 ]
+  [ "$total" -le 22800 ]
 }
 
 @test "R61: the help lists the approval choice next to /vbw:approve" {

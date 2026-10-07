@@ -134,7 +134,7 @@ cat "$CLAUDE_PROJECT_DIR"/<session-id>/subagents/agent-*.jsonl
 
 - **Surface** (`plugin/skills/`): the `/vbw:vibe` router and utility skills, plus the statusline segment. Skills are specifications, not procedures.
 - **Engine** (`plugin/workflows/*.js`): all orchestration and all run-scoped logic (waves, retries, fix loops, budgets, fan-out and merge). Workflows receive state in `args` from `vbw next --json`. Agents write only through `vbw` subcommands.
-- **Kernel** (`plugin/bin/vbw` + `plugin/lib/*.sh`): the only writer of the plan of record (`.vbw/record.json`). It runs approved checks, commits with provenance, renders on demand and backs the hooks. Hard budget: 3,800 lines (owner raised it from 3,000 to 3,300 on 2026-10-04, to 3,500 on 2026-10-05 and to 3,800 on 2026-10-06).
+- **Kernel** (`plugin/bin/vbw` + `plugin/lib/*.sh`): the only writer of the plan of record (`.vbw/record.json`). It runs approved checks, commits with provenance, renders on demand and backs the hooks. Hard budget: 7,600 lines (owner raised it from 3,000 to 3,300 on 2026-10-04, 3,500 on 2026-10-05, 3,800 on 2026-10-06 and 7,600 on 2026-10-07).
 - **Agents** (`plugin/agents/`): VBW 1's team with its mandates: `architect`, `lead`, `dev`, `qa`, `scout`, `debugger`, `docs`. Each is a ≤1.5k-token specification of good output plus a tool list.
 - **Hooks** (`plugin/hooks/hooks.json`): guards scoped by the run lease and by `agent_type`. They are inert outside VBW projects.
 
@@ -161,7 +161,7 @@ cat "$CLAUDE_PROJECT_DIR"/<session-id>/subagents/agent-*.jsonl
 - Workflows hold procedure; prompts hold only the definition of good output and its schema. Every agent call passes a `schema`.
 - Model and effort are chosen per stage from the profile. The session model must be auto-capable (Sonnet/Opus/Fable); workflow agents may use Haiku.
 - No `permissionMode`, `hooks`, `mcpServers` or `initialPrompt` in agent files (ignored for plugin agents). Agents search with Bash, because Glob and Grep may be absent.
-- Budgets: workflows ≤ 1,500 lines of JS in total, mods (`plugin/hooks/*.js`) ≤ 3,500 lines (owner raised it from 3,000 on 2026-10-07), router ≤ 2k tokens, each mode prompt ≤ 3k, all prompts ≤ 16k (owner raised it from 15k on 2026-10-04).
+- Budgets: workflows ≤ 1,500 lines of JS in total, mods (`plugin/hooks/*.js`) ≤ 3,500 lines (owner raised it from 3,000 on 2026-10-07), router ≤ 2k tokens, each mode prompt ≤ 3k, all prompts ≤ 22,800 words, about 32k tokens (owner raised it from 15k tokens on 2026-10-04 and doubled it on 2026-10-07).
 
 ## Testing
 
