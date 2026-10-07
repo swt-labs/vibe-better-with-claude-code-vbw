@@ -10372,7 +10372,7 @@
       "after": [
         "P59.2"
       ],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "Plan label and spinner of each row in the role colour; time and tokens stay dimmed",
@@ -10396,7 +10396,7 @@
       "after": [
         "P59.3"
       ],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "Each card's frame is its role's colour (the card model's frame becomes the role colour)",
@@ -10467,7 +10467,7 @@
         "P59.2",
         "P59.3"
       ],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "panel-pane.js: the tabs are a fixed head, and everything under them sits in one clipped body (key body, overflow hidden, height from the pane's bodyRows minus the head) so a long tab cannot push the tabs away",
