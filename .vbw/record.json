@@ -4,9 +4,9 @@
     "name": "v2"
   },
   "milestone": {
-    "id": "M11",
-    "title": "Faster, safer, unblocked",
-    "status": "shipped"
+    "id": "M12",
+    "title": "Panel colour and polish",
+    "status": "active"
   },
   "shipped": [
     {
@@ -10232,12 +10232,12 @@
     {
       "id": "T2",
       "text": "vbw prove runs the approved checks in parallel (today one after another), so every user's proof is faster",
-      "status": "open"
+      "status": "done"
     },
     {
       "id": "T3",
       "text": "QA round runs the project's full test suite once and hands the result to the QA agents, not one run per agent (load spikes made the hook benchmark fail: F2, F5)",
-      "status": "open"
+      "status": "done"
     },
     {
       "id": "T4",
@@ -10322,7 +10322,7 @@
     {
       "id": "T20",
       "text": "verifying workflow: after each QA agent returns, confirm its verdict reached the record (vbw show qa); the P44 QA agent on 2026-10-06 returned pass without running vbw qa record, costing a re-run",
-      "status": "open"
+      "status": "done"
     },
     {
       "id": "T21",
@@ -10342,17 +10342,17 @@
     {
       "id": "T24",
       "text": "Guard false positives: a command that only reads .vbw/record.json (cp, cat into a script) or only names the approve subcommand in text is refused as a write/approval; seen 4+ times",
-      "status": "open"
+      "status": "done"
     },
     {
       "id": "T25",
       "text": "Guard gap: a Dev wrote a file outside its plan through Python (open().write) and the guard did not see it; Bash-only write detection",
-      "status": "open"
+      "status": "done"
     },
     {
       "id": "T26",
       "text": "Docs agent commits but does not run vbw plan done; the building workflow should confirm each plan's status after its agent returns (like T20 for QA)",
-      "status": "open"
+      "status": "done"
     },
     {
       "id": "T27",
@@ -10367,27 +10367,27 @@
     {
       "id": "T29",
       "text": "Field report (Portfolium market recorder, 2026-10-06), adopt: proof copy links target/ and other build output, so artifacts embed deleted proof paths (Rust); keep the proof copy at a stable path and never link build-output folders (language-agnostic)",
-      "status": "open"
+      "status": "done"
     },
     {
       "id": "T30",
       "text": "Field report, adopt: a plan whose work was committed by the approval commit can never be closed (plan done: no commit yet), and a stuck or blocked plan stops unrelated plans",
-      "status": "open"
+      "status": "done"
     },
     {
       "id": "T31",
       "text": "Field report, adopt: the planning lease lets agents write any file, blocking other sessions' folders; scope it to .vbw/ and the declared test files",
-      "status": "open"
+      "status": "done"
     },
     {
       "id": "T32",
       "text": "Field report, adopt: narrow apply (patch one plan or check without resubmitting the milestone); refuse unrequested phase additions and title changes in fix rounds; no Architect re-scope in decided rounds",
-      "status": "open"
+      "status": "done"
     },
     {
       "id": "T33",
       "text": "Field report, reshape: batch approvals per phase (one approval covering a phase's test edits before its proof) instead of per edit; declined: auto-approving 'mechanical' test edits (unsafe, unverifiable across languages)",
-      "status": "open"
+      "status": "done"
     },
     {
       "id": "T34",
@@ -10402,17 +10402,17 @@
     {
       "id": "T36",
       "text": "Maintainer release step (not shipped to users, owner 2026-10-06): before each push, a maintainer checks the Claude Code changelog since the last release by hand; never a VBW feature or scheduled job",
-      "status": "open"
+      "status": "done"
     },
     {
       "id": "T37",
       "text": "M13 LEAD (owner 2026-10-06): small changes stay small. Rigor proportional to the change, for any project from a snake game to a large Rust codebase: a one-file fix with a failing test goes approve -> build -> check -> done; changes that need no test (wording, docs) need no new check; QA depth by size and risk of the diff, never deep for a trivial change; fewer approvals (one per phase); measure time per change type before and after",
-      "status": "open"
+      "status": "done"
     },
     {
       "id": "T38",
       "text": "Field report, adopt (trimmed): a fixed setting for how many checks run at once; approval commit failure fails loudly; workflows end their own run. Dropped as gold plating: decision-number prefix, timeouts shown in the contract",
-      "status": "open"
+      "status": "done"
     },
     {
       "id": "T39",
@@ -10427,7 +10427,7 @@
     {
       "id": "T41",
       "text": "Panel width (owner 2026-10-06): open the VBW panel at about a quarter of the terminal width, not Claude Code's default share. $.ui.open takes columns (absolute; a width the user dragged always wins); the terminal width comes from a command's presentation.columns and from ui.render's viewport.columns, so request max(40, floor(width/4)), and re-request once the first render reports the width. Test with the fake mod (columns passed) and one real-app check",
-      "status": "open"
+      "status": "done"
     },
     {
       "id": "T42",
