@@ -13450,21 +13450,21 @@
       "id": "F65",
       "req": "R39",
       "attempts": 0,
-      "status": "open",
+      "status": "fixed",
       "note": "C36 fail (exit 1)"
     },
     {
       "id": "F66",
       "req": "R83",
       "attempts": 0,
-      "status": "open",
+      "status": "fixed",
       "note": "C119 fail (exit 1)"
     },
     {
       "id": "F67",
       "command": "test",
       "attempts": 0,
-      "status": "open",
+      "status": "fixed",
       "note": "test fail"
     }
   ],
