@@ -74,7 +74,17 @@ cmd_show() {
       hash=$(contract_hash "$record")
       contract_approved "$hash" && state="approved"
       printf 'contract %s (%s)\n' "${hash:0:12}" "$state"
-      printf '%s' "$record" | jq -r "$SHOW_JQ_DEFS"'
+      printf '%s' "$record" | jq -r "$VBW_JQ_DEFS$SHOW_JQ_DEFS"'
+        def overlaps($a; $b): any($a[], $b[]; . == "*") or any($a[]; . as $x | any($b[]; . as $y | ($x | covers($y)) or ($y | covers($x))));
+        # The milestone'"'"'s build waves as vbw next schedules them: the plans each wave runs.
+        def waves($m): . as $r
+          | {done: [.plans[] | select(.status == "done") | .id],
+             left: [.plans[] | select(.status != "done" and (.phase as $p | any($r.phases[]; .id == $p and .milestone == $m)))], w: []}
+          | until(.left | length == 0; .done as $d
+              | ([.left[] | select(all(.after[]; . as $a | any($d[]; . == $a)))]
+                 | reduce .[] as $p ({ids: [], files: []}; if overlaps(.files; $p.files) then . else .ids += [$p.id] | .files += $p.files end) | .ids) as $ids
+              | if ($ids | length) == 0 then .left = [] else .w += [$ids | length] | .done += $ids | .left |= map(select(.id as $i | any($ids[]; . == $i) | not)) end)
+          | .w;
         def express_line($r): $r.phases[] | select(.milestone == $r.milestone.id and .tier == "express") | .id as $p | .reqs as $q
           | "express: \($p) (\(([$q[], ($r.checks[] | select(.req as $c | any($q[]; . == $c)) | .id), ($r.plans[] | select(.phase == $p) | .id)]) | join(", ")))";
         . as $r
@@ -87,6 +97,8 @@ cmd_show() {
           (express_line($r) | "  " + .),
           "plans:",
           (.plans[] | "  \(.id) \(.title): \(.files | join(", "))\(if (.after | length) > 0 then " (after \(.after | join(", ")))" else "" end)"),
+          (waves($r.milestone.id) | select(length > 0)
+            | "build waves: \(length) (the widest runs \(max) plan\(if max == 1 then "" else "s" end) at once)"),
           "project commands:",
           (.commands | to_entries[] | "  \(.key): \(.value | argv_line)")'
       if [ "$state" != approved ]; then
