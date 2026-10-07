@@ -1,9 +1,9 @@
 {
   "scenario": "smallchange",
   "fixture": "greet.sh shipped in a first milestone (one phase, one plan, QA passed, shipped); the user then asks for a --shout option in plain words; rigor auto",
-  "cost_usd": 0.62,
+  "cost_usd": 0.77,
   "evidence_level": "L3",
-  "at": "2026-10-07T18:55:05Z",
+  "at": "2026-10-07T22:43:12Z",
   "passed": true,
   "facts": {
     "planning_workflow": false,

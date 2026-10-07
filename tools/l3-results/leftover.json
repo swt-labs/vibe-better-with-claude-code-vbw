@@ -1,9 +1,9 @@
 {
   "scenario": "leftover",
   "fixture": "greet.sh from scratch plus a committed lint.sh that fails when todos.txt exists; project command lint: sh lint.sh",
-  "cost_usd": 0.69,
+  "cost_usd": 0.72,
   "evidence_level": "L3",
-  "at": "2026-10-07T13:31:19Z",
+  "at": "2026-10-07T22:42:42Z",
   "passed": true,
   "facts": {
     "leftover_file": "todos.txt",
