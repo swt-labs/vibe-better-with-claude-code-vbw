@@ -35,7 +35,7 @@ test('every pose has at least two frames of 5x3 cells, painted in the role colou
     assert.equal(a.rows, 3)
     assert.equal(a.cells.length, 15)
     assert.notDeepEqual(a.cells, b.cells, pose + ' animates')
-    assert.ok(a.cells.some((c) => c.fg === ROLE_COLORS.dev), pose + ' wears the role colour')
+    assert.ok(a.cells.some((c) => c.fg === 0x5fd75f), pose + ' wears the role colour')
     assert.ok(a.cells.some((c) => /[▀▄▌▐█]/.test(c.ch)), pose + ' is drawn in half-blocks')
     for (const c of a.cells) {
       assert.equal([...c.ch].length, 1)
