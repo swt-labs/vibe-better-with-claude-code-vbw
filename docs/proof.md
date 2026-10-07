@@ -141,8 +141,10 @@ was edited meanwhile), or when the fingerprint is wrong. VBW says
 `the contract changed since you were asked (now ...): review it again`. Review
 it with `vbw show contract` and answer the new question.
 
-Typing `/vbw:approve` still works and approves the current contract, without
-the question.
+After any change to the plan (a new plan, a changed plan or a re-plan), VBW
+asks for approval only with this menu. It never tells you to type
+`/vbw:approve`. Typing `/vbw:approve` still works and approves the current
+contract, without the question.
 
 `vbw approve` (the user's answer or `/vbw:approve`, never the model) refuses an incomplete
 contract (no requirements, an `auto` requirement without a check, a missing
