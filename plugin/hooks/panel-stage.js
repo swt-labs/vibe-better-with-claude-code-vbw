@@ -9,7 +9,7 @@
 // Pure: data in, a model out (stageModel), a tree out (renderStage). No `$`,
 // never changes its input, never throws.
 import { poseOf, spriteFrame, encodeCells } from './panel-candy.js'
-import { roleColor as colorOfRole, stateColor, NEED } from './panel-palette.js'
+import { roleColor as colorOfRole, stateColor, NEED, ACCENT } from './panel-palette.js'
 
 const isObj = (x) => x !== null && typeof x === 'object' && !Array.isArray(x)
 const num = (x) => typeof x === 'number' && Number.isFinite(x)
@@ -124,9 +124,10 @@ function rowOf(a, now, motion, ended) {
   const seen = num(a.lastSeenAt) ? a.lastSeenAt : start
   if (a.state === 'quiet' || now - seen >= QUIET_MS) return { ...row, quiet: true, activity: 'quiet ' + clock(now - seen), activityColor: stateColor('quiet') }
   const act = isObj(a.activity) ? a.activity : null
-  const text = act && str(act.text) ? (act.kind === 'text' ? '"' + act.text + '"' : act.text) : 'working'
+  const said = act && str(act.text) && act.kind === 'text'
+  const text = act && str(act.text) ? (said ? '"' + act.text + '"' : act.text) : 'working'
   const step = motion === 'off' ? 0 : Math.floor(now / (motion === 'calm' ? 1000 : 250))
-  return { ...row, activity: text, activityColor: undefined, spin: motion === 'off' ? '·' : SPIN[step % SPIN.length] }
+  return { ...row, activity: text, activityColor: undefined, intent: !said, spin: motion === 'off' ? '·' : SPIN[step % SPIN.length] }
 }
 
 const ROLE_W = 9
@@ -181,7 +182,8 @@ function crewOf(rn, now, columns, maxRows, motion, cost) {
     })
   }
   const parts = ['VBW ▸ ' + kind, status, str(rn.phase), time]
-  if (full && num(cost) && cost >= 0) parts.push('≈$' + cost.toFixed(2) + ' this run')
+  const price = full && num(cost) && cost >= 0 ? '≈$' + cost.toFixed(2) + ' this run' : ''
+  if (price) parts.push(price)
   const room2 = maxRows - 1 - (tally ? 1 : 0)
   let more = 0
   if (rows.length > room2) {
@@ -189,7 +191,7 @@ function crewOf(rn, now, columns, maxRows, motion, cost) {
     rows = rows.slice(0, room2 - 1)
   }
   // A sprite takes 4 more columns than the dot, and is the row's only motion.
-  const model = { kind: 'crew', mode: full ? 'full' : 'compact', header: { text: cut(parts.filter(Boolean).join(' · '), room), button }, rows: fit(rows, sprites ? columns - 4 : columns, full), tally, more }
+  const model = { kind: 'crew', mode: full ? 'full' : 'compact', header: { text: cut(parts.filter(Boolean).join(' · '), room), ...(price ? { cost: price } : {}), button }, rows: fit(rows, sprites ? columns - 4 : columns, full), tally, more }
   return sprites ? { ...model, sprites: true } : model
 }
 
@@ -244,17 +246,28 @@ export function renderStage(ui, model, onAction) {
         h(Box, { key: 'buttons', flexDirection: 'row', flexWrap: 'wrap', columnGap: 2 }, ...model.buttons.map((b, i) => button(b, 'b' + i + '-' + b.label))))
     }
     if (model.kind !== 'crew' || !isObj(model.header) || !Array.isArray(model.rows)) return null
+    const head = String(model.header.text)
+    const price = typeof model.header.cost === 'string' && model.header.cost && head.endsWith(model.header.cost) ? model.header.cost : ''
     const header = h(Box, { key: 'header', flexDirection: 'row', justifyContent: 'space-between' },
-      h(Text, { bold: true, wrap: 'truncate-end' }, String(model.header.text)), button(model.header.button, 'mission'))
+      h(Box, { flexDirection: 'row' },
+        h(Text, { bold: true, wrap: 'truncate-end' }, price ? head.slice(0, head.length - price.length) : head),
+        ...(price ? [h(Text, { bold: true, color: ACCENT, wrap: 'truncate-end' }, price)] : [])),
+      button(model.header.button, 'mission'))
+    // A tool call is its verb (role colour) and its object (dim), cut as one phrase.
+    const intent = (r) => {
+      const at = r.intent ? r.activity.search(/\s/) : -1
+      if (at < 0) return [h(Text, { color: r.intent ? r.roleColor : r.activityColor, wrap: 'truncate-end' }, r.activity)]
+      return [h(Text, { color: r.roleColor }, r.activity.slice(0, at)), h(Text, { dimColor: true, wrap: 'truncate-end' }, r.activity.slice(at))]
+    }
     const sprite = model.sprites === true && ui.Raster ? (r) => h(ui.Raster, {
       key: 'vbw-sprite-' + r.id, columns: 5, rows: 3, cells: encodeCells(spriteFrame({ role: r.role, pose: r.pose, frame: 0 })),
     }) : null
     const rows = model.rows.map((r) => h(Box, { key: 'agent-' + r.id, flexDirection: 'row' },
       sprite ? sprite(r) : h(Text, { color: r.glyphColor }, r.glyph),
       h(Text, { color: r.roleColor }, ' ' + pad(r.role, ROLE_W) + ' '),
-      h(Text, null, r.label + '  '),
+      h(Text, { color: r.roleColor }, r.label + '  '),
       ...(r.spin ? [h(Text, { color: r.roleColor }, r.spin + ' ')] : []),
-      h(Text, { color: r.activityColor, wrap: 'truncate-end' }, r.activity),
+      ...intent(r),
       ...(r.tail ? [h(Text, { dimColor: true }, r.tail)] : []),
       ...(r.button ? [h(Text, null, '  '), button(r.button, 'details-' + r.id)] : [])))
     const dim = (key, text) => h(Box, { key, flexDirection: 'row' }, h(Text, { dimColor: true }, text))
