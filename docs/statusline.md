@@ -40,6 +40,14 @@ user's `settings.json` (`$CLAUDE_CONFIG_DIR`, else `~/.config/claude-code`, else
 `~/.claude`). A status line the user had before is saved next to it and
 `vbw statusline off` restores it. `vbw statusline status` says which is set.
 
+The setting also asks Claude Code to re-run the status line every 5 seconds
+(`statusLine.refreshInterval: 5`), on top of its event-driven redraws, so a
+run's time and its working agents stay current while nothing else happens.
+A run is budgeted at 30 ms (no network, no git process). `vbw statusline on` on a
+VBW status line set by an older VBW (or by VBW 1) adds the interval and changes
+nothing else; an interval the user set is kept. `vbw statusline status` says
+when the interval is missing.
+
 The setting runs the newest installed VBW's `scripts/vbw-statusline.sh` from
 the plugin cache, because the plugin's directory changes with every update and
 settings cannot use `${CLAUDE_PLUGIN_ROOT}`. It is the same setting VBW 1 used,

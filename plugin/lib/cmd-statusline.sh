@@ -40,12 +40,18 @@ cmd_statusline() {
   case "$sub" in
     status)
       if [ -z "$current" ]; then printf 'off: no status line is set (vbw statusline on)\n'
-      elif printf '%s' "$current" | grep -q 'vbw-statusline\.sh'; then printf 'on: the VBW status line\n'
+      elif printf '%s' "$current" | grep -q 'vbw-statusline\.sh'; then
+        if statusline_refreshes "$settings"; then printf 'on: the VBW status line\n'
+        else printf 'on: the VBW status line, refreshed on events only (vbw statusline on adds the 5-second refresh)\n'
+        fi
       else printf 'another status line is set (vbw statusline on switches to VBW and keeps it)\n'
       fi
       ;;
     on)
       if printf '%s' "$current" | grep -q 'vbw-statusline\.sh'; then
+        # Set by an older VBW, without the refresh interval: add it.
+        statusline_refreshes "$settings" || statusline_write "$settings" \
+          '.statusLine |= if type == "object" then .refreshInterval = 5 else {type: "command", command: $cmd, refreshInterval: 5} end'
         printf 'on: the VBW status line\n'
         return 0
       fi
@@ -53,7 +59,9 @@ cmd_statusline() {
         # Keep the user's own status line so that `off` can bring it back.
         jq '.statusLine' "$settings" > "$(statusline_backup)"
       fi
-      statusline_write "$settings" '.statusLine = {type: "command", command: $cmd}'
+      # Claude Code redraws the status line on events only; the interval
+      # (seconds) keeps run times and working agents current between them.
+      statusline_write "$settings" '.statusLine = {type: "command", command: $cmd, refreshInterval: 5}'
       if [ -n "$current" ]; then
         printf 'on: the VBW status line replaced yours, which is saved (vbw statusline off brings it back)\n'
       else
@@ -77,6 +85,12 @@ cmd_statusline() {
       fi
       ;;
   esac
+}
+
+# statusline_refreshes SETTINGS: the status line has a refresh interval (VBW's
+# 5 seconds, or one the user chose, which stays theirs).
+statusline_refreshes() {
+  jq -e '.statusLine | type == "object" and (.refreshInterval | type) == "number"' "$1" > /dev/null 2>&1
 }
 
 # Where the user's own status line is kept while VBW's is on.

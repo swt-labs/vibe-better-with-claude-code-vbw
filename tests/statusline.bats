@@ -172,3 +172,24 @@ render() { cc_json | NO_COLOR=1 bash "$SL"; }
   [ "${lines[1]}" = "Team   sonnet ● architect ● lead ● qa ● debugger ● docs │ opus ● dev │ haiku ● scout │ profile budget · autonomy balanced" ]
   [[ "${lines[2]}" == *"│ Tokens 2 in 195 out │ Cache 93% hit 3.8K write 55.5K read │"* ]]
 }
+
+@test "statusline on asks Claude Code to refresh it every 5 seconds, and tops up a setting made without it" {
+  vbw_run statusline on
+  jq -e '.statusLine.type == "command" and (.statusLine.command | contains("vbw-statusline.sh")) and .statusLine.refreshInterval == 5' "$SETTINGS"
+  # VBW's line set by an older VBW: on adds the interval and keeps every other setting.
+  jq '.theme = "dark" | .statusLine.padding = 1 | del(.statusLine.refreshInterval)' "$SETTINGS" > "$TEST_ROOT/s.json" && cp "$TEST_ROOT/s.json" "$SETTINGS"
+  vbw_run statusline status
+  [[ "$output" == "on: the VBW status line"*"vbw statusline on"* ]]
+  vbw_run statusline on
+  [ "$status" -eq 0 ]
+  [ "$output" = "on: the VBW status line" ]
+  jq -e '.theme == "dark" and .statusLine.padding == 1 and .statusLine.refreshInterval == 5' "$SETTINGS"
+  vbw_run statusline status
+  [ "$output" = "on: the VBW status line" ]
+  # An interval the user chose is theirs.
+  jq '.statusLine.refreshInterval = 10' "$SETTINGS" > "$TEST_ROOT/s.json" && cp "$TEST_ROOT/s.json" "$SETTINGS"
+  vbw_run statusline on
+  jq -e '.statusLine.refreshInterval == 10' "$SETTINGS"
+  vbw_run statusline off
+  jq -e '.theme == "dark" and (has("statusLine") | not)' "$SETTINGS"
+}
