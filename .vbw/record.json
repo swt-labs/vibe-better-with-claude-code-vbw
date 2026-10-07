@@ -11198,7 +11198,7 @@
         "P65.1",
         "P64.2"
       ],
-      "status": "planned",
+      "status": "done",
       "role": "docs",
       "tasks": [
         "Rewrite the paragraph that says a check waits at most 900 seconds: it waits while the holder runs and takes over when the holder is gone",
