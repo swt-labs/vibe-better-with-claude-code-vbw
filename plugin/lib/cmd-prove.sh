@@ -6,6 +6,8 @@
 . "$VBW_LIB/checks.sh"
 # shellcheck source=proofcopy.sh
 . "$VBW_LIB/proofcopy.sh"
+# shellcheck source=proofreuse.sh
+. "$VBW_LIB/proofreuse.sh"
 # shellcheck source=cmd-next.sh
 . "$VBW_LIB/cmd-next.sh"
 
@@ -25,20 +27,28 @@ cmd_prove() {
   VBW_DIE_HOOK=proofcopy_warn_stale
   record=$(record_read)
   checks_begin "$record" strict
-  proofcopy_create
-  proofcopy_verify "$CHECK_HASH" "$record"
-  # Checks and commands run on the clean copy; evidence and the record stay here.
-  cd "$PROOF_COPY" || vbw_die "cannot enter the clean copy"
-  checks=$(checks_run_all "$record")
-  commands=$(prove_commands "$record")
-  cd "$VBW_ROOT" || vbw_die "cannot enter $VBW_ROOT"
-  proofcopy_remove
+  proofreuse_plan "$record"
+  at=$(vbw_now)
+  # The marker stays until the evidence is recorded: a proof cut short reuses nothing next time.
+  : > "$(proofreuse_marker)" || vbw_die "cannot write $(proofreuse_marker)"
+  checks='{}' commands='{}'
+  if [ ${#TODO_CHECKS[@]} -gt 0 ] || [ "$TODO_COMMANDS" != '[]' ]; then
+    proofcopy_create
+    proofcopy_verify "$CHECK_HASH" "$record"
+    # Checks and commands run on the clean copy; evidence and the record stay here.
+    cd "$PROOF_COPY" || vbw_die "cannot enter the clean copy"
+    [ ${#TODO_CHECKS[@]} -eq 0 ] || checks=$(checks_run_all "$record" "${TODO_CHECKS[@]}")
+    commands=$(prove_commands "$record" "$TODO_COMMANDS")
+    cd "$VBW_ROOT" || vbw_die "cannot enter $VBW_ROOT"
+    proofcopy_remove
+  fi
   checks_end
   checks_record_passes "$record" "$checks" "$CHECK_HASH"
+  checks=$(proofreuse_join "$(printf '%s' "$record" | jq -c '[.checks[].id]')" "$REUSE_CHECKS" "$(proofreuse_stamp "$record" check "$checks" "$at")")
+  commands=$(proofreuse_join "$(printf '%s' "$record" | jq -c '.commands | keys')" "$REUSE_COMMANDS" "$(proofreuse_stamp "$record" command "$commands" "$at")")
   scope=$(prove_scope "$record")
   tree=$(vbw_code_tree) || vbw_die "cannot fingerprint the project files"
   head=$(vbw_head_tree) || vbw_die "cannot fingerprint the committed code"
-  at=$(vbw_now)
   # tree: the working folder (QA freshness, R12); head: the committed code the
   # checks ran on, so committing unproved edits later makes the proof stale.
   ev=$(jq -n --arg at "$at" --arg h "$CHECK_HASH" --arg tree "$tree" --arg head "$head" \
@@ -46,6 +56,7 @@ cmd_prove() {
     '{at: $at, contract: $h, tree: $tree, head: $head, checks: $c, commands: $m, scope: $s,
       passed: (all($c[]; .status == "pass") and all($m[]; .status == "pass" or .status == "skipped") and ($s | length) == 0)}')
   record_update "$VBW_JQ_DEFS$(cat "$VBW_LIB/prove.jq")" --argjson ev "$ev" --argjson cap "$VBW_FIX_CAP" --argjson cur "$(qa_combined "$record")" --arg at "$at"
+  rm -f "$(proofreuse_marker)"
   # The evidence is part of the plan of record: commit it, so a proof never
   # leaves VBW's own file modified in the user's working tree.
   record_commit "chore(vbw): proof $(jq -r 'if .evidence.passed then "passed" else "not passed" end' "$VBW_RECORD")"
@@ -58,6 +69,7 @@ cmd_prove() {
 # Project commands: run only those whose exact argv the user approved.
 prove_commands() {
   local name argv a all='{}' res
+  # $2: JSON array of the command names to run.
   while IFS= read -r -d '' name; do
     argv=()
     while IFS= read -r -d '' a; do argv+=("$a"); done \
@@ -69,7 +81,7 @@ prove_commands() {
       res='{"status":"skipped","exit":null,"seconds":0,"tail":"not approved"}'
     fi
     all=$(printf '%s' "$all" | jq -c --arg n "$name" --argjson r "$res" '. + {($n): $r}')
-  done < <(printf '%s' "$1" | jq -j '.commands | keys[] | . + "\u0000"')
+  done < <(printf '%s' "$1" | jq -j --argjson t "$2" '.commands | keys[] | select(. as $k | $t | index($k)) | . + "\u0000"')
   printf '%s\n' "$all"
 }
 # Scope: every commit whose VBW-Plan trailer names a plan in the record changes
@@ -96,9 +108,9 @@ prove_scope() {
 # One screen: what ran, what it means, what is next.
 prove_summary() {
   jq -r '.evidence as $e
-    | ($e.checks | to_entries[] | "  \(.key) \(.value.status)\(if .value.status == "fail" then " (exit \(.value.exit))" else "" end) \(.value.seconds)s"
+    | ($e.checks | to_entries[] | "  \(.key) \(.value.status)\(if .value.status == "fail" then " (exit \(.value.exit))" else "" end) \(.value.seconds)s\(if .value.reused then " reused (proof of \(.value.at))" else "" end)"
         + (if .value.status == "pass" then "" else ": " + (.value.tail | split("\n") | last // "") end)),
-      ($e.commands | to_entries[] | "  \(.key) \(.value.status)\(if .value.status == "skipped" then ": not approved" else " \(.value.seconds)s" end)"),
+      ($e.commands | to_entries[] | "  \(.key) \(.value.status)\(if .value.status == "skipped" then ": not approved" else " \(.value.seconds)s\(if .value.reused then " reused (proof of \(.value.at))" else "" end)" end)"),
       (if ($e.scope | length) == 0 then "  scope ok" else ($e.scope[] | "  scope: " + .) end),
       (.requirements[] | select(.proof == "auto") | "\(.id) \(.status)"),
       (.fixes[] | select(.status == "open" or .status == "escalated") | "\(.id) \(.status) (\(.req // .command), attempts \(.attempts)): \(.note)"),
