@@ -129,7 +129,7 @@ doctor_project() {
   fi
   if contract_approved "$(contract_hash "$(cat "$VBW_RECORD")")"; then doctor_line ok "the contract is approved"
   elif jq -e '(.checks | length) > 0' "$VBW_RECORD" > /dev/null; then
-    doctor_line info "the contract is not approved (yet, or since it changed): /vbw:approve after reviewing it"
+    doctor_line info "the contract is not approved (yet, or since it changed): VBW asks with the approval menu after you review it"
   fi
   doctor_guard
 }
