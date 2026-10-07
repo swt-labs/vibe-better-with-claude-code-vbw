@@ -14,7 +14,7 @@ Write to the user's level, explanation depth and involvement (above; "-": plain 
 
 The user wants a quick change: $ARGUMENTS
 
-If that is empty, ask what to fix. New user-visible behavior: recommend
+If that is empty, ask what to fix. If it is new user-visible behavior, say so and recommend
 `/vbw:vibe` instead, so it becomes a requirement with a check; do it as a
 quick fix only if they still want that.
 

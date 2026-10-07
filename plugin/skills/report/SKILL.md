@@ -15,8 +15,8 @@ Write to the user's level, explanation depth and involvement (above; "-": plain 
 
 The user said: $ARGUMENTS
 
-1. If unclear, ask what they did (which `/vbw:` command), what happened and
-   what they expected, one question at a time.
+1. If it is unclear, ask what happened: what they did (which `/vbw:` command),
+   what happened, what they expected. One question at a time.
 2. Draft the issue for https://github.com/swt-labs/vibe-better-with-claude-code-vbw:
    a short title, then **What happened**, **Expected**, **Steps**, and the
    diagnostics above. Remove anything private (project names, home paths, tokens) and say what.

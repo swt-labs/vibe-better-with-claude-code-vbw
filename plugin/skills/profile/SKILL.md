@@ -14,19 +14,19 @@ Write to the user's level, explanation depth and involvement.
 
 The user said: $ARGUMENTS
 
-Not a VBW project: set up first (`vbw init`, `vbw statusline on`; say so in one line), then run `vbw config` again.
+Output above says not a VBW project: set up first (`vbw init` and `vbw statusline on`, one line saying so), then run `vbw config` again.
 
 Presets (each sets two things with `vbw config set`):
 
 | Preset | `profile` (models) | `autonomy` | Good for |
 |---|---|---|---|
 | Careful | `quality` (Opus for the Architect, Lead, Dev and Debugger) | `guided`: explains each step and waits for "go" | learning, a first project, risky changes |
-| Standard | `balanced` (Opus for the Architect, Sonnet for the rest) | `balanced`: keeps going, stops for your decisions, approval, checking and shipping | most work (the default) |
+| Standard | `balanced` (Sonnet for every agent) | `balanced`: keeps going, stops for your decisions, approval, checking and shipping | most work (the default) |
 | Fast | `budget` (Haiku for Scout, Sonnet for the rest, QA included) | `hands-off`: takes its own recommendations on decisions and lists them for you | small changes, once you trust it |
 
 Preset named: apply it, show the result. Else show current settings and ask (AskUserQuestion) which preset, best fit first, or "My own mix" (then ask the two settings separately). Approval, checking and shipping always stop for the user.
 
-Interview answers above set how VBW talks to the user; show them in plain words. To change one answer: ask which and its new value (AskUserQuestion; a wrong value's error lists allowed ones), change only that one:
+Interview answers above (`vbw interview`) set how VBW talks to the user. Show them in plain words. To change one answer: ask which and its new value (AskUserQuestion; a wrong value's error lists allowed ones), change only that one answer:
 
 - `vbw interview set level VALUE`
 - `vbw interview set depth VALUE`

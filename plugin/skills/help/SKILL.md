@@ -11,7 +11,7 @@ allowed-tools: Bash("${CLAUDE_PLUGIN_ROOT}/bin/vbw" *) Bash(vbw *)
 
 Write to the user's level, explanation depth and involvement (above; "-": plain words).
 
-Show this as is:
+Show the user this, as is:
 
 **VBW turns what you want into proven, committed work.** You agree on
 requirements and decide; VBW plans them with tests, you approve, VBW builds in

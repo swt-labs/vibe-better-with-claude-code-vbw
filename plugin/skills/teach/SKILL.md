@@ -33,4 +33,4 @@ paths:
   offer to turn its Conventions section into rules; propose them one by one
   and save only the ones the user accepts.
 
-Write only under `.claude/rules/`; show what was saved.
+Write only under `.claude/rules/`. Show what was saved.

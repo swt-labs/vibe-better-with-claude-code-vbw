@@ -137,8 +137,8 @@ carries_profile() {
     case "$f" in */skills/vibe/SKILL.md) [ "$w" -le 1400 ] ;; *) [ "$w" -le 2000 ] ;; esac || { echo "$f has $w words"; false; }
   done < <(skills)
   echo "all prompts: $total words"
-  # About 1.4 tokens a word: 16k tokens is 11,400 words.
-  [ "$total" -le 11400 ]
+  # About 1.4 tokens a word: the owner doubled 11,400 words to 22,800 on 2026-10-07.
+  [ "$total" -le 22800 ]
 }
 
 @test "R39: the workflows stay within 1,500 lines of JavaScript" {

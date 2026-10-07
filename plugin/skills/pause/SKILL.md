@@ -13,7 +13,8 @@ allowed-tools: Bash("${CLAUDE_PLUGIN_ROOT}/bin/vbw" *) Bash(vbw *)
 
 Write to the user's level, explanation depth and involvement (above; "-": plain words).
 
-VBW keeps its state in `.vbw/`; nothing needs saving. Make the stop clean:
+VBW keeps its state in `.vbw/` as it goes, so nothing needs saving. Make sure
+the stop is clean:
 
 1. A VBW workflow still running: it finishes in the background if the session
    stays open; if they close Claude Code, its unfinished plans return to the

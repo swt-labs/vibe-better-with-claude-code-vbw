@@ -16,13 +16,16 @@ Write to the user's level, explanation depth and involvement (above; "-": plain 
 The question: $ARGUMENTS
 
 If it is empty, ask what they want to find out. VBW needs the Workflow tool:
-the `workflows` line above turns it on (say so in one line when it did);
-without it, say why and stop. (Outside a VBW project omit `models`.)
+the `workflows` line above turns Dynamic workflows on (say so in one line when
+it did); without the tool, say why and stop. (Outside a VBW project the models
+line shows an error; omit `models` then.)
 
-1. Say in one line what will be looked into and why.
+1. Say in one line what will be looked into, and why it matters here.
 2. Start the Workflow `vbw:researching` with args `{"question": "<the
    question>", "models": <the JSON above>, "profile": ...}`: four Scouts research it in parallel
    (official sources, practice, what is current, project fit); one weighs them.
-3. Give the answer: what is true, options with trade-offs, the recommendation,
-   sources with links, and what could not be confirmed (`missing`).
-4. If it settles a decision, offer `vbw decide "<decision>" "<why>"`. If it changes what to build, offer `/vbw:discuss` or `/vbw:vibe`.
+3. Give the user its answer in plain words: what is true, options with trade-offs,
+   the recommendation, sources with links, and what could not be confirmed
+   (angles in `missing`).
+4. If it settles a decision, offer to record it: `vbw decide "<decision>"
+   "<why>"`. If it changes what to build, offer `/vbw:discuss` or `/vbw:vibe`.

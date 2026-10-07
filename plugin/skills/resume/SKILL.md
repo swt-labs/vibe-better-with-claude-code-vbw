@@ -15,6 +15,7 @@ allowed-tools: Bash("${CLAUDE_PLUGIN_ROOT}/bin/vbw" *) Bash(vbw *)
 Write to the user's level, explanation depth and involvement (above; "-": plain words).
 
 In a few plain lines: where the project stands, the latest decisions that
-matter, ideas parked for later, and the next step. If a run was interrupted
-(next says `run`), say its unfinished work goes back to the next wave. Then ask whether to continue; on yes, continue with the `vbw:vibe`
+matter, any ideas parked for later, and the next step. If a run was
+interrupted (next says `run`), say that its unfinished work goes back to the
+next wave. Then ask whether to continue; on yes, continue with the `vbw:vibe`
 skill.

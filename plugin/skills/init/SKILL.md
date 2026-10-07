@@ -14,9 +14,10 @@ allowed-tools: Bash("${CLAUDE_PLUGIN_ROOT}/bin/vbw" *) Bash(vbw *)
 Write to the user's level, explanation depth and involvement (above; "-": plain words).
 
 Tell the user in a few lines what was set up (from the output above),
-including the VBW status line (if it replaced theirs, say `vbw statusline off`
-brings theirs back). If project commands were detected, say they run only after
-the user approves them. If VBW needs a git repository, offer `git init`.
+including the VBW status line (if it replaced their own status line, say that
+`vbw statusline off` brings theirs back). If project commands were detected,
+say they will run only after the user approves them. If VBW needs a git
+repository, offer to run `git init`.
 
 Headless use (`claude -p`, CI) needs one allow rule per workflow; mention only
 if asked: `Workflow(vbw:mapping)`, `Workflow(vbw:planning)`, `Workflow(vbw:verifying)`, `Workflow(vbw:researching)`,
