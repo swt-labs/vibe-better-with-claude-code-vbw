@@ -185,8 +185,7 @@ checks_run_all() {
   # jobs are counted with jobs -r). Each check runs in its own subshell, owning
   # no guard of the parent, and leaves its result in a file; the gate still
   # keeps alone checks by themselves. Results are joined in the checks' own order.
-  local n=0 pid
-  local pids=()
+  local n=0 pid pids=()
   for id in "${ids[@]}"; do
     while [ "$(jobs -r | wc -l)" -ge "$jobs" ]; do sleep 0.05; done
     n=$((n + 1))
@@ -198,9 +197,7 @@ checks_run_all() {
     pids+=($!)
     # An alone check is at the gate before the next check starts, so a shared
     # check launched after it never runs first.
-    if [ "$(printf '%s' "$record" | jq -r --arg id "$id" '.checks[] | select(.id == $id) | .alone // false')" = true ]; then
-      while kill -0 "$!" 2> /dev/null && [ ! -e "$VBW_RUNTIME/gate/reg.$$.$id" ] && [ ! -e "$VBW_RUNTIME/gate/want.$$.$id" ]; do sleep 0.05; done
-    fi
+    [ "$(printf '%s' "$record" | jq -r --arg id "$id" '.checks[] | select(.id == $id) | .alone // false')" != true ] || while kill -0 "$!" 2> /dev/null && [ ! -e "$VBW_RUNTIME/gate/reg.$$.$id" ] && [ ! -e "$VBW_RUNTIME/gate/want.$$.$id" ]; do sleep 0.05; done
   done
   # Job notices (Killed, not a child) are the shell's own: silenced here.
   for pid in "${pids[@]}"; do { wait "$pid" || true; } 2> /dev/null; done
