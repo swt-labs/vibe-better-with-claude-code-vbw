@@ -1,5 +1,5 @@
 {
   "quality": {"architect": "opus", "lead": "opus", "dev": "opus", "qa": "sonnet", "scout": "sonnet", "debugger": "opus", "docs": "sonnet"},
-  "balanced": {"architect": "sonnet", "lead": "sonnet", "dev": "sonnet", "qa": "sonnet", "scout": "sonnet", "debugger": "sonnet", "docs": "sonnet"},
+  "balanced": {"architect": "opus", "lead": "sonnet", "dev": "sonnet", "qa": "sonnet", "scout": "sonnet", "debugger": "sonnet", "docs": "sonnet"},
   "budget": {"architect": "sonnet", "lead": "sonnet", "dev": "sonnet", "qa": "sonnet", "scout": "haiku", "debugger": "sonnet", "docs": "sonnet"}
 }
