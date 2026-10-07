@@ -4,7 +4,7 @@
 // the run model in, plain models out, trees built with h(); never throws.
 
 import { estimate, MIN_STEPS } from './panel-estimate.js'
-import { roleColor, stateColor, ACCENT } from './panel-palette.js'
+import { roleColor, stateColor, ACCENT, STATE_MARKS, STATE_WORDS } from './panel-palette.js'
 
 const isObj = (x) => x !== null && typeof x === 'object' && !Array.isArray(x)
 const num = (x) => typeof x === 'number' && Number.isFinite(x)
@@ -20,7 +20,7 @@ const safe = (fn) => (input) => {
 const ROLES = ['architect', 'lead', 'dev', 'qa', 'scout', 'debugger', 'docs']
 const STATES = ['working', 'done', 'failed', 'quiet', 'cut']
 // A card's working state is the palette's running; the rest share their names.
-const frameOf = (state) => stateColor(state === 'working' ? 'running' : state)
+const paletteState = (state) => (state === 'working' ? 'running' : state)
 // A run kind and the step kind its finished leases are recorded under (steps.json).
 const STEP_KIND = { planning: 'plan', building: 'build', verifying: 'qa', fixing: 'fix', mapping: 'map' }
 const BARS = '▁▂▃▄▅▆▇█'
@@ -74,8 +74,10 @@ export const nowModel = safe(({ run, now, selected }) => {
   const card = (a) => {
     const state = stateOf(a, run)
     return {
-      id: a.id, title: titleOf(a), role: roleOf(a), roleColor: roleColor(roleOf(a)), state, frame: frameOf(state),
+      id: a.id, title: titleOf(a), role: roleOf(a), roleColor: roleColor(roleOf(a)), state, frame: roleColor(roleOf(a)),
+      mark: STATE_MARKS[paletteState(state)], word: STATE_WORDS[paletteState(state)], stateColor: stateColor(paletteState(state)),
       activity: isObj(a.activity) && str(a.activity.text) ? clip(a.activity.text, ACTIVITY_MAX) : null,
+      tool: isObj(a.activity) && a.activity.kind === 'tool',
       tokens: tokens(a.tokens), selected: a.id === selected, action: { select: a.id },
     }
   }
@@ -182,6 +184,15 @@ export const costsModel = safe(({ runs, sessionCost, width }) => {
 const NO_RUN = 'No VBW workflow runs in this session right now.'
 const empty = (ui, text) => h(ui.Box, { flexDirection: 'column' }, h(ui.Text, { dimColor: true }, text))
 
+// A tool intention is its verb in the role colour and the object dimmed; anything else is dimmed whole.
+function activityLine(ui, c) {
+  const i = c.tool ? c.activity.indexOf(' ') : -1
+  if (!c.tool) return h(ui.Text, { dimColor: true }, c.activity)
+  if (i < 0) return h(ui.Text, { color: c.roleColor }, c.activity)
+  return h(ui.Box, { flexDirection: 'row' },
+    h(ui.Text, { color: c.roleColor }, c.activity.slice(0, i)), h(ui.Text, { dimColor: true }, c.activity.slice(i)))
+}
+
 export function renderNow(ui, model, act) {
   if (!isObj(model) || !Array.isArray(model.columns)) return empty(ui, NO_RUN)
   const hd = model.header || {}
@@ -189,7 +200,8 @@ export function renderNow(ui, model, act) {
   const card = (c) =>
     h(ui.Box, { key: 'card-box:' + c.id, flexDirection: 'column', borderStyle: 'round', borderColor: c.frame, paddingX: 1 },
       h(ui.Button, { key: 'card:' + c.id, label: c.title, plain: true, onPress: () => { if (typeof act === 'function') act(c.action) } }),
-      c.activity ? h(ui.Text, { dimColor: true }, c.activity) : null,
+      h(ui.Text, { color: c.stateColor }, c.mark + ' ' + c.word),
+      c.activity ? activityLine(ui, c) : null,
       c.tokens ? h(ui.Text, { dimColor: true }, c.tokens) : null)
   const columns = model.columns.map((col) =>
     h(ui.Box, { key: 'col:' + col.title, flexDirection: 'column', marginRight: 1 },
