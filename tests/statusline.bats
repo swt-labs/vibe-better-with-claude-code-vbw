@@ -37,7 +37,7 @@ render() { cc_json | NO_COLOR=1 bash "$SL"; }
   "$VBW" next > /dev/null
   run render
   [[ "${lines[0]}" == "[VBW] project with space │ M1 First milestone │ ░░░░░░░░░░ 0/2 done │ next: plan" ]]
-  [[ "${lines[1]}" == "Team   sonnet ● architect ● lead ● dev ● qa ● scout ● debugger ● docs │ profile balanced · autonomy balanced" ]]
+  [[ "${lines[1]}" == "Team   opus ● architect │ sonnet ● lead ● dev ● qa ● scout ● debugger ● docs │ profile balanced · autonomy balanced" ]]
   [ "${#lines[@]}" -eq 5 ]
 }
 
