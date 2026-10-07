@@ -15,7 +15,10 @@ setup() {
   printf 'two\n' > src/other.txt
   printf 'three\n' > src/staged.txt
   git add src && git commit -q -m "chore(test): sources"
-  jq '.fixes = [{id:"F1", command:"test", attempts:0, status:"open", note:"test fail"},
+  # A fix names a known command or requirement, so the fixture records both.
+  jq '.commands = {test: ["true"]}
+    | .requirements = [{id:"R1", text:"Pay", proof:"auto", status:"open", milestone:"M1"}]
+    | .fixes = [{id:"F1", command:"test", attempts:0, status:"open", note:"test fail"},
                 {id:"F2", req:"R1", attempts:0, status:"open", note:"check fail"}]' \
     .vbw/record.json > "$TEST_ROOT/e.json" && cp "$TEST_ROOT/e.json" .vbw/record.json
   git add .vbw && git commit -q -m "chore(vbw): fixes"

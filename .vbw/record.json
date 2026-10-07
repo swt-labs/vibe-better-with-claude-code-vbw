@@ -11843,7 +11843,7 @@
       "after": [
         "P66.1"
       ],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "vbw commit --fix FIX MESSAGE FILE... commits only the named, changed files of an open project-command fix",
@@ -11955,7 +11955,7 @@
         "P69.1",
         "P69.2"
       ],
-      "status": "planned",
+      "status": "done",
       "role": "docs",
       "tasks": [
         "Describe how waves are counted",
