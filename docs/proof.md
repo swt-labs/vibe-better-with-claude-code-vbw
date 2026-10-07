@@ -250,15 +250,25 @@ files in the working folder change no result. A check file that is not
 committed as approved is refused: commit it, then `/vbw:approve`.
 
 Git-ignored files (`node_modules/`, `.venv/`, `.env.local`) are the project's
-environment, not its code, so the copy links them in from the working folder.
-Build output is not environment: the copy never links a folder named `target`,
+environment, not its code, so the copy holds them too. They are copied, not linked.
+A linked folder would let a proof write into the working folder, and some
+tools refuse a linked `node_modules` outright (pnpm 11 does). A copy behaves as
+the working folder does, and nothing a proof does changes the working folder.
+VBW makes a copy-on-write clone where the file system offers one (APFS on macOS,
+btrfs or XFS on Linux), which is instant and takes no extra space. Where it does
+not, VBW makes a plain copy, which is slower for a large folder.
+Links that sit inside a copied folder stay links. When one is an absolute link
+into the working folder, VBW prints a `vbw:` line naming it and still copies it
+as it is. If an ignored file or folder cannot be read, the proof stops with an
+error naming the path, instead of running on an incomplete copy.
+
+Build output is not environment: the copy never brings in a folder named `target`,
 `dist`, `build`, `bin`, `out`, `__pycache__`, `.pytest_cache`, `.mypy_cache`,
 `.ruff_cache`, `.tox`, `.next`, `.nuxt`, `.gradle` or `coverage`, at any depth.
 The copy builds its own, so a proof never reads stale output from the working
 folder, and nothing it builds lands in the working folder or in another copy.
 Untracked files that are not ignored never enter the copy (D54): to make one
-count, commit it or ignore it. Removing the copy never touches the files behind
-the links.
+count, commit it or ignore it.
 
 Evidence (`record.evidence`):
 
