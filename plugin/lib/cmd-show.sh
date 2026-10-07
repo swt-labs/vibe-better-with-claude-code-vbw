@@ -76,10 +76,10 @@ cmd_show() {
       printf 'contract %s (%s)\n' "${hash:0:12}" "$state"
       printf '%s' "$record" | jq -r "$VBW_JQ_DEFS$SHOW_JQ_DEFS"'
         def overlaps($a; $b): any($a[], $b[]; . == "*") or any($a[]; . as $x | any($b[]; . as $y | ($x | covers($y)) or ($y | covers($x))));
-        # The milestone'"'"'s build waves as vbw next schedules them: the plans each wave runs.
+        # The milestone'"'"'s build waves as vbw next schedules them (blocked plans are skipped): the plans each wave runs.
         def waves($m): . as $r
           | {done: [.plans[] | select(.status == "done") | .id],
-             left: [.plans[] | select(.status != "done" and (.phase as $p | any($r.phases[]; .id == $p and .milestone == $m)))], w: []}
+             left: [.plans[] | select(.status != "done" and .status != "blocked" and (.phase as $p | any($r.phases[]; .id == $p and .milestone == $m)))], w: []}
           | until(.left | length == 0; .done as $d
               | ([.left[] | select(all(.after[]; . as $a | any($d[]; . == $a)))]
                  | reduce .[] as $p ({ids: [], files: []}; if overlaps(.files; $p.files) then . else .ids += [$p.id] | .files += $p.files end) | .ids) as $ids
