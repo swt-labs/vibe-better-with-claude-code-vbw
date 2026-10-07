@@ -12467,7 +12467,7 @@
       "req": "R97",
       "source": "qa",
       "attempts": 0,
-      "status": "open",
+      "status": "fixed",
       "note": "Criterion 'a malformed fingerprint approves nothing and says why' is only half met. plugin/hooks/approve-answer.jq requires exactly 12 hex digits, so a question like 'Approve contract 1234abcd?' makes the hook print nothing: nothing is approved, but neither the user nor Claude is told why. Only the kernel (vbw approve --hash) explains, and the hook never reaches it for that case. tests/approve-fingerprint.bats ('a malformed fingerprint approves nothing') checks only that nothing was approved, not that a reason is given."
     },
     {
@@ -12475,7 +12475,7 @@
       "req": "R100",
       "source": "qa",
       "attempts": 0,
-      "status": "open",
+      "status": "fixed",
       "note": "plugin/hooks/approve-answer.sh line 39 still tells the user '/vbw:approve also works' in the message shown after a failed approval. R100 says no output tells the user to type /vbw:approve. The new tests (tests/approval-after-plan.bats) only scan the kernel and router output, so they miss this hook message."
     },
     {
@@ -12507,7 +12507,7 @@
       "req": "R102",
       "source": "qa",
       "attempts": 0,
-      "status": "open",
+      "status": "fixed",
       "note": "P69.1 commit 8f51dee4 also rewrote lead.md wording the plan did not list: removed '(verified; ...)', '(kernel may refuse one below its floor)', and 'add plans to the phase' from the patch rule, plus reworded Stage 3. Plan task 4 meant a net-zero count, but lead.md went 839 to 836 words by cutting unrelated guidance. Those edits are undeclared changes beyond the plan."
     },
     {
@@ -12515,7 +12515,7 @@
       "req": "R102",
       "source": "qa",
       "attempts": 0,
-      "status": "open",
+      "status": "fixed",
       "note": "waves() in plugin/lib/cmd-show.sh counts every plan not 'done', including 'blocked' ones, but vbw next (docs/next.md row 5) skips blocked plans. The plan and docs/next.md say the line is scheduled 'as vbw next does'; with a blocked plan the figure differs. No test covers it."
     }
   ],
