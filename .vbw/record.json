@@ -12483,7 +12483,7 @@
       "req": "R99",
       "source": "qa",
       "attempts": 0,
-      "status": "open",
+      "status": "fixed",
       "note": "Plan P68.1 task 4 says keep the kernel line count net zero, but commit 81faab44 adds 30 lines and removes 1 in plugin/lib/cmd-commit.sh (net +29). The kernel budget is now 7,600 lines (D161), so the limit is not broken, but the plan's own promise was and no decision records the change."
     },
     {
@@ -12491,7 +12491,7 @@
       "req": "R101",
       "source": "qa",
       "attempts": 0,
-      "status": "open",
+      "status": "fixed",
       "note": "Plan P68.2 task 3 says the config skill change keeps the same word count. Commit db35868e changes '(default: Sonnet for all)' (5 words) to '(default: Opus for Architect, Sonnet for the rest)' (8 words), so it is 3 words longer in plugin/skills/config/SKILL.md."
     },
     {
@@ -12499,7 +12499,7 @@
       "req": "R102",
       "source": "qa",
       "attempts": 0,
-      "status": "open",
+      "status": "fixed",
       "note": "P69.2 task 3 says keep the kernel line count net zero, but commit bcca67ff grew plugin/lib/cmd-show.sh from 252 to 264 lines (+12). The plan was not followed (the kernel budget was raised to 7,600 by D161, but the plan text was not amended)."
     },
     {
@@ -13715,6 +13715,18 @@
       "id": "D164",
       "at": "2026-10-07T17:10:46Z",
       "text": "Contract approved: 99 requirements, 155 checks, 198 plans (f7574ebbbd1f)"
+    },
+    {
+      "id": "D165",
+      "text": "F58, F59, F60: the plans' net-zero line and word limits (P68.1 task 4, P68.2 task 3, P69.2 task 3) are superseded by the doubled budgets",
+      "why": "chosen by VBW: D161 doubled the kernel and prompt budgets during the build, so growth within them is planned; the code stays",
+      "at": "2026-10-07T17:25:19Z"
+    },
+    {
+      "id": "D166",
+      "text": "The build-wave rule has one source: vbw show contract counts waves with the same jq code vbw next schedules with (next.jq), never a second copy",
+      "why": "chosen by VBW: F62 is a symptom of the duplicate in cmd-show.sh; one copy cannot drift",
+      "at": "2026-10-07T17:27:50Z"
     }
   ],
   "commands": {

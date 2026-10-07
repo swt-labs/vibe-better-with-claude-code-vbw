@@ -54,6 +54,8 @@ say() { printf '%s' "$output" | jq -r '.systemMessage // empty'; }
 @test "R97: a malformed fingerprint approves nothing, in the hook and in the kernel, and the kernel says what a fingerprint is" {
   run answer_hook "Approve contract ${FP:0:8}?"$'\n'"Summary" "Approve"
   [ "$(contract_state)" = "NOT APPROVED" ]
+  [[ "$(say)" == *"Nothing was approved"* && "$(say)" == *12* ]] || { echo "$output"; false; }
+  [[ "$output" != *"/vbw:approve"* ]]
   run "$VBW" approve --hash zzzzzzzzzzzz < /dev/null
   [ "$status" -ne 0 ]
   [[ "$output" == *12* ]]

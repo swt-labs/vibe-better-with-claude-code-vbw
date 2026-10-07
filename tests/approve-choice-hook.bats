@@ -79,11 +79,11 @@ say() { printf '%s' "$output" | jq -r '.systemMessage // empty'; }
   [ "$(approved_count)" = "1" ]
 }
 
-@test "R61: the fingerprint counts only at the very start of the question and only as exactly 12 hex digits" {
+@test "R61: the fingerprint counts only at the very start of the question and only as exactly 12 hex digits (a wrong length is refused with the reason)" {
   run answer_hook "Please $Q" "Approve"
   [ -z "$output" ]
   run answer_hook "Approve contract ${FP}0? It builds a script." "Approve"
-  [ -z "$output" ]
+  [[ "$(say)" == *"Nothing was approved"* && "$(say)" == *12* ]] || { echo "$output"; false; }
   run answer_hook "Approve contract ${FP}?It builds a script." "Approve"
   [ -z "$output" ]
   [ "$(contract_state)" = "NOT APPROVED" ]
@@ -122,7 +122,7 @@ say() { printf '%s' "$output" | jq -r '.systemMessage // empty'; }
   [ "$(approved_count)" = "1" ]
 }
 
-@test "R61: with no contract ready to approve, nothing is approved and the user is told to type /vbw:approve" {
+@test "R61: with no contract ready to approve, nothing is approved and the user is told why" {
   printf '# Shop\n\n## Requirements\n\n- R1 [auto] A customer can pay\n- R2 [auto] Another\n' > .vbw/spec.md
   "$VBW" spec sync > /dev/null
   local before
@@ -131,7 +131,7 @@ say() { printf '%s' "$output" | jq -r '.systemMessage // empty'; }
   [ "$status" -eq 0 ]
   [ "$(approved_count)" = "0" ]
   [ "$(jq -S . .vbw/record.json)" = "$before" ]
-  [[ "$(say)" == */vbw:approve* ]]
+  [[ "$(say)" == *"Nothing was approved"* && "$(say)" != */vbw:approve* ]]
   [ "$(printf '%s' "$(say)" | wc -l)" -eq 0 ]
 }
 
@@ -142,7 +142,7 @@ say() { printf '%s' "$output" | jq -r '.systemMessage // empty'; }
   [ "$status" -eq 0 ]
   cmp .vbw/record.json "$TEST_ROOT/damaged"
   [ -n "$(say)" ]
-  [[ "$(say)" == */vbw:approve* ]]
+  [[ "$(say)" == *"Nothing was approved"* && "$(say)" != */vbw:approve* ]]
   [ "$(printf '%s' "$(say)" | wc -l)" -eq 0 ]
   [ ! -e "$(git rev-parse --git-common-dir)/vbw/consent.json" ] || ! grep -q "$FP" "$(git rev-parse --git-common-dir)/vbw/consent.json"
 }
