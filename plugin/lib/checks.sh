@@ -63,7 +63,7 @@ checks_result() {
 # is registered and none is waiting. A short mutex directory makes the look and
 # the registration one step. Registrations of a dead process are taken over
 # (kill -0 is only a liveness probe), and every hold is released on exit,
-# interrupt or timeout through the guard.
+# or interrupt through the guard.
 
 # checks_gate_live FILE: the process named in the file's name (NAME.PID...) is alive.
 checks_gate_live() {
@@ -93,17 +93,16 @@ checks_gate_blocker() {
 
 # checks_gate_enter ID ALONE: wait for the gate, then register this check.
 checks_gate_enter() {
-  local id="$1" kind=shared g="$VBW_RUNTIME/gate" limit="${VBW_CHECK_WAIT_SECONDS:-900}" start blocker='' idle=0 want='' owner
+  local id="$1" kind=shared g="$VBW_RUNTIME/gate" idle=0 want='' owner
   [ "$2" != true ] || kind=alone
   mkdir -p "$g" || vbw_die "cannot create $g"
-  start=$(date +%s)
   while :; do
     if mkdir "$g/mutex" 2> /dev/null; then
       # The lock can vanish before its owner is written (taken as stale): retry.
       { printf '%s\n' "$$" > "$g/mutex/pid"; } 2> /dev/null || { sleep 0.1; continue; }
       vbw_guard_add dir "$g/mutex"
       idle=0
-      if blocker=$(checks_gate_blocker "$kind"); then
+      if checks_gate_blocker "$kind" > /dev/null; then
         # An alone check that has to wait holds back new shared checks, so it is not starved.
         if [ "$kind" = alone ] && [ -z "$want" ]; then
           want="$g/want.$$.$id"
@@ -111,7 +110,6 @@ checks_gate_enter() {
           vbw_guard_add file "$want"
         fi
       else
-        blocker=
         [ -z "$want" ] || vbw_guard_drop "$want"
         printf '%s\n' "$kind" > "$g/reg.$$.$id"
         vbw_guard_add file "$g/reg.$$.$id"
@@ -130,10 +128,6 @@ checks_gate_enter() {
         rm -rf "$g/mutex"
       fi
     fi
-    if [ $(( $(date +%s) - start )) -ge "$limit" ]; then
-      [ -z "$want" ] || vbw_guard_drop "$want"
-      vbw_die "check $id waited ${limit}s for ${blocker:-the check gate}: raise VBW_CHECK_WAIT_SECONDS or find what holds it (.vbw/runtime/gate)"
-    fi
     sleep 0.1
   done
 }
@@ -141,6 +135,12 @@ checks_gate_enter() {
 # checks_gate_leave ID: release this check's registration.
 checks_gate_leave() {
   vbw_guard_drop "$VBW_RUNTIME/gate/reg.$$.$1"
+}
+
+# checks_lost ID: the result of a check whose runner ended without leaving one.
+checks_lost() {
+  jq -n --arg id "$1" '{status: "skipped", exit: null, seconds: 0,
+    tail: "not run: the runner of \($id) ended without a result (it was killed or crashed)"}'
 }
 
 # checks_run RECORD ID: run one check; print its result object.
@@ -174,7 +174,8 @@ checks_run_all() {
   jobs=$(vbw_check_jobs) || jobs=1
   if [ "$jobs" -le 1 ] || [ ${#ids[@]} -le 1 ]; then
     for id in "${ids[@]}"; do
-      res=$(checks_run "$record" "$id")
+      res=$(checks_run "$record" "$id") || res=
+      [ -n "$res" ] || res=$(checks_lost "$id")
       all=$(printf '%s' "$all" | jq -c --arg id "$id" --argjson r "$res" '. + {($id): $r}')
     done
     printf '%s\n' "$all"
@@ -196,11 +197,12 @@ checks_run_all() {
     ) &
     pids+=($!)
   done
-  for pid in "${pids[@]}"; do wait "$pid" || true; done
+  # Job notices (Killed, not a child) are the shell's own: silenced here.
+  for pid in "${pids[@]}"; do { wait "$pid" || true; } 2> /dev/null; done
   n=0
   for id in "${ids[@]}"; do
     n=$((n + 1))
-    [ -s "$CHECK_OUT/$n.res" ] || vbw_die "check $id did not finish"
+    [ -s "$CHECK_OUT/$n.res" ] || checks_lost "$id" > "$CHECK_OUT/$n.res"
     all=$(printf '%s' "$all" | jq -c --arg id "$id" --slurpfile r "$CHECK_OUT/$n.res" '. + {($id): $r[0]}')
   done
   printf '%s\n' "$all"
