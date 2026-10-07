@@ -12723,7 +12723,7 @@
         "P71.1",
         "P71.2"
       ],
-      "status": "planned",
+      "status": "done",
       "role": "docs",
       "tasks": [
         "docs/proof.md: which changes list a passed phase for QA again (code, tests, goal, an [auto] requirement added, reworded or removed, and any of those together with a skip-type change) and which do not (a recorded decision, a finding closed with no code change, a removed [human] requirement), with the reason shown",
@@ -12920,7 +12920,7 @@
         "P72.2",
         "P72.3"
       ],
-      "status": "planned",
+      "status": "done",
       "role": "docs",
       "tasks": [
         "docs/next.md: next_phase (one after the highest phase number in the record: shipped, started and removed phases that a decision names; a sub-phase counts as its whole number) and effort (the current profile's table) among the keys of vbw next --json",
