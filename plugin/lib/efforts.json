@@ -1,0 +1,29 @@
+{
+  "quality": {
+    "architect": {"decide": "max", "scope": "xhigh"},
+    "lead": {"plan": "xhigh", "close": "medium"},
+    "dev": {"build": "high", "fix": "high"},
+    "docs": {"build": "medium"},
+    "qa": {"verify": "xhigh"},
+    "scout": {"survey": "medium", "merge": "medium"},
+    "debugger": {"investigate": "high", "diagnose": "xhigh", "fix": "high"}
+  },
+  "balanced": {
+    "architect": {"decide": "xhigh", "scope": "high"},
+    "lead": {"plan": "high", "close": "low"},
+    "dev": {"build": "medium", "fix": "medium"},
+    "docs": {"build": "low"},
+    "qa": {"verify": "high"},
+    "scout": {"survey": "low", "merge": "low"},
+    "debugger": {"investigate": "medium", "diagnose": "high", "fix": "medium"}
+  },
+  "budget": {
+    "architect": {"decide": "high", "scope": "high"},
+    "lead": {"plan": "high", "close": "low"},
+    "dev": {"build": "medium", "fix": "medium"},
+    "docs": {"build": "low"},
+    "qa": {"verify": "high"},
+    "scout": {"survey": "low", "merge": "low"},
+    "debugger": {"investigate": "medium", "diagnose": "medium", "fix": "medium"}
+  }
+}
