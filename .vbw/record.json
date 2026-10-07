@@ -13464,7 +13464,7 @@
       "id": "F67",
       "command": "test",
       "attempts": 1,
-      "status": "open",
+      "status": "fixed",
       "note": "test fail"
     }
   ],
