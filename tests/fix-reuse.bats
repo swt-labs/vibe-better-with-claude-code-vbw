@@ -144,7 +144,7 @@ runs() { if [ -f "$RUNS/$1" ]; then wc -l < "$RUNS/$1" | tr -d ' '; else printf 
   [ "$(runs C1)" = 1 ]
 }
 
-@test "vbw prove runs every check and records the passes the fix reuses" {
+@test "vbw prove records the passes a fix reuses, and reuses its own on unchanged code" {
   vbw_run prove
   [ "$status" -eq 0 ]
   [ "$(runs C1)" = 1 ] && [ "$(runs C2)" = 1 ] && [ "$(runs C3)" = 1 ]
@@ -157,8 +157,9 @@ runs() { if [ -f "$RUNS/$1" ]; then wc -l < "$RUNS/$1" | tr -d ' '; else printf 
   [ "$(runs C1)" = 1 ]
   [[ "$output" == *"C1 unchanged since its pass"* ]]
   vbw_run prove
-  # C3 declares no files, so closing F4 ran it too.
-  [ "$(runs C1)" = 2 ] && [ "$(runs C2)" = 2 ] && [ "$(runs C3)" = 3 ]
+  # C3 declares no files, so closing F4 ran it too. Only the record changed since
+  # the passing proof, so the proof reuses every result (R103) and runs nothing.
+  [ "$(runs C1)" = 1 ] && [ "$(runs C2)" = 1 ] && [ "$(runs C3)" = 2 ]
 }
 
 @test "vbw prove still fails on a failing check whatever was recorded" {
