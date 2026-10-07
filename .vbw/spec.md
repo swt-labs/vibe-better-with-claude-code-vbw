@@ -100,6 +100,15 @@ VBW is a Claude Code plugin that makes it build software properly: the user agre
 - R92 [auto] The proof copy shares no writable folder with the working folder: git-ignored files and folders (dependencies, env files) are copied in, as a copy-on-write clone where the file system offers one, never linked; so a tool that refuses linked folders or writes into its dependency folders (for example pnpm 11 recursive runs and its dependency check) behaves in the proof as in the working folder, and nothing a proof does changes the working folder
 - R93 [auto] After a proof, VBW checks the working folder for links that point into its proof copies and names each one with how to repair it, so damage left by an earlier VBW is found; with none, it says nothing
 - R94 [auto] In one proof, a check waiting for an alone check keeps waiting as long as that check is still running; a proof never aborts because a check waited: a check that cannot run is reported as not run with the reason, every other result stands, and the proof prints no shell job warnings
+- R95 [auto] Every agent of a VBW workflow (build, fix, QA, planning) records its own result through VBW (a plan's state, a fix's state, a phase's verdict) even though Claude Code marks a workflow's task text as not coming from the user; in the real Claude Code app a workflow ends with every result recorded and nothing recorded by hand, and the project's test command is named in what QA is told
+- R96 [auto] A workflow's closing step (confirm what its agents recorded, then end the run) is done by an agent whose own instructions allow it; it never refuses, and when it cannot finish it says which command to run by hand
+- R97 [auto] Choosing Approve in the approval menu approves the contract it names whatever text, spaces or line breaks follow the fingerprint in the question
+- R98 [auto] In an autonomous run, while this session's proof or workflow is still running in the background, the stop hook does not ask for that step again and spends no autonomous step on it
+- R99 [auto] A fix for a failing project command can commit the files it changed to make that command pass, even when no plan lists them, and the commit names the fix
+- R100 [auto] After the plan changes (a new plan, a changed plan or a re-plan), VBW asks for approval only with the approval menu; it never tells the user to type /vbw:approve
+- R101 [auto] In the balanced profile the Architect runs on Opus and every other role on Sonnet; QA is never below Sonnet in any profile
+- R102 [auto] Planning splits each phase into plans that touch separate files wherever the work allows, so as many plans as possible build at the same time; the approval shows the number of build waves and how many plans the widest wave runs at once
+- R103 [human] The panel's colours make it easy to tell at a glance which agent is which and what state each is in
 
 <!-- One requirement per line: an id, how it is proved, and a user-observable
      statement. [auto] = a check can prove it; [human] = only a person can judge it.

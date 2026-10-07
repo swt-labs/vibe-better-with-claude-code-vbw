@@ -2436,6 +2436,205 @@
           "check": "C148"
         }
       ]
+    },
+    {
+      "id": "R95",
+      "text": "Every agent of a VBW workflow (build, fix, QA, planning) records its own result through VBW (a plan's state, a fix's state, a phase's verdict) even though Claude Code marks a workflow's task text as not coming from the user; in the real Claude Code app a workflow ends with every result recorded and nothing recorded by hand, and the project's test command is named in what QA is told",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M13",
+      "rules": [
+        {
+          "text": "each agent role (Dev, Docs, QA, Lead) holds the duty to record its result in its own instructions, even when the task text is marked as not from the user",
+          "check": "C149"
+        },
+        {
+          "text": "the QA agent's instructions name the project's test command and where to read it",
+          "check": "C149"
+        },
+        {
+          "text": "QA is told the project's test command, with its result when it ran, or plainly that there is none",
+          "check": "C150"
+        },
+        {
+          "text": "a workflow reports complete only when every agent's result was recorded",
+          "check": "C150"
+        },
+        {
+          "text": "edge: when one agent's recording is missing, the closing report names it",
+          "check": "C150"
+        },
+        {
+          "text": "error: a workflow with an unrecorded or interrupted result is not reported as complete",
+          "check": "C150"
+        }
+      ]
+    },
+    {
+      "id": "R96",
+      "text": "A workflow's closing step (confirm what its agents recorded, then end the run) is done by an agent whose own instructions allow it; it never refuses, and when it cannot finish it says which command to run by hand",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M13",
+      "rules": [
+        {
+          "text": "the closing step (confirm, then end the run) is done by the Lead, whose own instructions allow it and say it never refuses",
+          "check": "C151"
+        },
+        {
+          "text": "all five workflows close with the Lead, never the read-only Scout",
+          "check": "C152"
+        },
+        {
+          "text": "when the closing step cannot finish, the output names the exact commands, with the session, to run by hand",
+          "check": "C152"
+        },
+        {
+          "text": "planning does not report planned when a phase has no recorded plans",
+          "check": "C152"
+        }
+      ]
+    },
+    {
+      "id": "R97",
+      "text": "Choosing Approve in the approval menu approves the contract it names whatever text, spaces or line breaks follow the fingerprint in the question",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M13",
+      "rules": [
+        {
+          "text": "choosing Approve approves the contract the question names, whatever text, spaces or line breaks follow the fingerprint",
+          "check": "C153"
+        },
+        {
+          "text": "a different fingerprint approves nothing and the user is told the contract changed",
+          "check": "C153"
+        },
+        {
+          "text": "a malformed fingerprint approves nothing and the kernel says what a fingerprint is",
+          "check": "C153"
+        },
+        {
+          "text": "the user's own words are never an approval",
+          "check": "C153"
+        }
+      ]
+    },
+    {
+      "id": "R98",
+      "text": "In an autonomous run, while this session's proof or workflow is still running in the background, the stop hook does not ask for that step again and spends no autonomous step on it",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M13",
+      "rules": [
+        {
+          "text": "while this session's proof runs in the background, the stop hook asks for nothing and spends no autonomous step",
+          "check": "C154"
+        },
+        {
+          "text": "while this session's workflow run is open, the stop hook asks for nothing and spends no step",
+          "check": "C154"
+        },
+        {
+          "text": "once the background step finishes, the stop hook resumes normally",
+          "check": "C154"
+        },
+        {
+          "text": "a background step of another session does not suppress this session's hook, and a dead proof leaves nothing that does",
+          "check": "C154"
+        }
+      ]
+    },
+    {
+      "id": "R99",
+      "text": "A fix for a failing project command can commit the files it changed to make that command pass, even when no plan lists them, and the commit names the fix",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M13",
+      "rules": [
+        {
+          "text": "a fix for a failing project command commits the files it changed even when no plan lists them",
+          "check": "C155"
+        },
+        {
+          "text": "the fix commit names the fix",
+          "check": "C155"
+        },
+        {
+          "text": "files the fix did not change or name, and files the user staged, are not committed",
+          "check": "C155"
+        },
+        {
+          "text": "error: no files, an unchanged file, .vbw/ files, an unknown fix, or a requirement fix is refused and commits nothing",
+          "check": "C155"
+        }
+      ]
+    },
+    {
+      "id": "R100",
+      "text": "After the plan changes (a new plan, a changed plan or a re-plan), VBW asks for approval only with the approval menu; it never tells the user to type /vbw:approve",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M13",
+      "rules": [
+        {
+          "text": "after a plan change VBW asks for approval only with the approval menu: doctor and the router never tell the user to type /vbw:approve",
+          "check": "C156"
+        },
+        {
+          "text": "no kernel output after apply, spec sync or a changed plan tells the user to type /vbw:approve",
+          "check": "C156"
+        }
+      ]
+    },
+    {
+      "id": "R101",
+      "text": "In the balanced profile the Architect runs on Opus and every other role on Sonnet; QA is never below Sonnet in any profile",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M13",
+      "rules": [
+        {
+          "text": "in the balanced profile the Architect runs on Opus and every other role on Sonnet",
+          "check": "C157"
+        },
+        {
+          "text": "QA is never below Sonnet in any profile, including after profile changes and a Haiku override",
+          "check": "C157"
+        }
+      ]
+    },
+    {
+      "id": "R102",
+      "text": "Planning splits each phase into plans that touch separate files wherever the work allows, so as many plans as possible build at the same time; the approval shows the number of build waves and how many plans the widest wave runs at once",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M13",
+      "rules": [
+        {
+          "text": "the approval shows the number of build waves and how many plans the widest wave runs at once",
+          "check": "C158"
+        },
+        {
+          "text": "edge: a phase that cannot be split shows one plan per wave honestly",
+          "check": "C158"
+        },
+        {
+          "text": "plans that share a file or wait for another plan fall into later waves",
+          "check": "C158"
+        },
+        {
+          "text": "the Lead splits each phase into plans on separate files, orders shared-file plans into separate waves, and reads the build waves line",
+          "check": "C159"
+        }
+      ]
+    },
+    {
+      "id": "R103",
+      "text": "The panel's colours make it easy to tell at a glance which agent is which and what state each is in",
+      "proof": "human",
+      "status": "open",
+      "milestone": "M13"
     }
   ],
   "checks": [
@@ -4171,6 +4370,137 @@
       ],
       "files": [
         "tests/check-wait-patient.bats"
+      ]
+    },
+    {
+      "id": "C149",
+      "req": "R95",
+      "run": [
+        "bats",
+        "tests/record-duty.bats",
+        "-f",
+        "R95"
+      ],
+      "files": [
+        "tests/record-duty.bats"
+      ]
+    },
+    {
+      "id": "C150",
+      "req": "R95",
+      "run": [
+        "bats",
+        "tests/workflow-closing.bats",
+        "-f",
+        "R95"
+      ],
+      "files": [
+        "tests/workflow-closing.bats"
+      ]
+    },
+    {
+      "id": "C151",
+      "req": "R96",
+      "run": [
+        "bats",
+        "tests/record-duty.bats",
+        "-f",
+        "R96"
+      ],
+      "files": [
+        "tests/record-duty.bats"
+      ]
+    },
+    {
+      "id": "C152",
+      "req": "R96",
+      "run": [
+        "bats",
+        "tests/workflow-closing.bats",
+        "-f",
+        "R96"
+      ],
+      "files": [
+        "tests/workflow-closing.bats"
+      ]
+    },
+    {
+      "id": "C153",
+      "req": "R97",
+      "run": [
+        "bats",
+        "tests/approve-fingerprint.bats"
+      ],
+      "files": [
+        "tests/approve-fingerprint.bats",
+        "tests/approve-choice-helper.bash"
+      ]
+    },
+    {
+      "id": "C154",
+      "req": "R98",
+      "run": [
+        "bats",
+        "tests/auto-gate-background.bats"
+      ],
+      "files": [
+        "tests/auto-gate-background.bats"
+      ]
+    },
+    {
+      "id": "C155",
+      "req": "R99",
+      "run": [
+        "bats",
+        "tests/fix-commit.bats"
+      ],
+      "files": [
+        "tests/fix-commit.bats"
+      ]
+    },
+    {
+      "id": "C156",
+      "req": "R100",
+      "run": [
+        "bats",
+        "tests/approval-after-plan.bats"
+      ],
+      "files": [
+        "tests/approval-after-plan.bats",
+        "tests/approve-choice-helper.bash"
+      ]
+    },
+    {
+      "id": "C157",
+      "req": "R101",
+      "run": [
+        "bats",
+        "tests/profile-balanced.bats"
+      ],
+      "files": [
+        "tests/profile-balanced.bats"
+      ]
+    },
+    {
+      "id": "C158",
+      "req": "R102",
+      "run": [
+        "bats",
+        "tests/contract-waves.bats"
+      ],
+      "files": [
+        "tests/contract-waves.bats"
+      ]
+    },
+    {
+      "id": "C159",
+      "req": "R102",
+      "run": [
+        "bats",
+        "tests/lead-parallel.bats"
+      ],
+      "files": [
+        "tests/lead-parallel.bats"
       ]
     }
   ],
@@ -6759,6 +7089,117 @@
         "qa_findings": 0,
         "escalations": 1
       }
+    },
+    {
+      "id": "P66",
+      "title": "Workflow agents record their own results",
+      "reqs": [
+        "R95",
+        "R96"
+      ],
+      "milestone": "M13",
+      "goal": "Every workflow (build, fix, QA, planning) ends in the real Claude Code app with all results recorded by its agents, and the closing step never refuses.",
+      "criteria": [
+        "Build, fix, QA and planning agents each record their result (plan state, fix state, phase verdict) through vbw subcommands even though Claude Code labels the workflow task text as not from the user; a run in the real app ends with nothing recorded by hand",
+        "The QA agent's instructions name the project's test command",
+        "The closing step (confirm what agents recorded, end the run) runs in an agent whose own instructions permit it, and does not refuse",
+        "If the closing step cannot finish, its output names the exact vbw command to run by hand",
+        "Edge: if one agent's recording fails, the closing step reports which result is missing instead of ending silently",
+        "Error: a workflow with an unrecorded result is not reported as complete"
+      ],
+      "proposed": "deep",
+      "tier": "deep",
+      "reasons": [
+        "requirements: 2",
+        "files: 10 (54469 bytes)",
+        "files: more than 2 in a repository tracking 698 files",
+        "risk: none",
+        "breaks: R12, R13, R14, R23, R24, R25, R26, R28, R31, R39, R44, R45, R50, R60, R61, R69, R70, R71, R73, R74, R75, R76, R77, R78, R79, R80, R81",
+        "tests: project test command"
+      ],
+      "predicted": "deep"
+    },
+    {
+      "id": "P67",
+      "title": "Approval and autonomous-stop fixes",
+      "reqs": [
+        "R97",
+        "R98",
+        "R100"
+      ],
+      "milestone": "M13",
+      "goal": "Approval always goes through the menu and works, and the autonomous stop hook does not nag for work still running.",
+      "criteria": [
+        "Choosing Approve approves the contract named by the fingerprint, even when the question has trailing text, extra spaces or line breaks after the fingerprint",
+        "A malformed or different fingerprint does not approve anything and says why",
+        "After a new plan, changed plan or re-plan, VBW asks for approval only through the approval menu; no output tells the user to type /vbw:approve",
+        "In an autonomous run, while this session's proof or workflow runs in the background, the stop hook does not request that step again and spends no autonomous step on it",
+        "Once the background step finishes, the stop hook resumes normally",
+        "A background step from another session does not suppress the hook"
+      ],
+      "tier": "deep",
+      "reasons": [
+        "requirements: 3",
+        "files: 7 (52213 bytes)",
+        "files: more than 2 in a repository tracking 698 files",
+        "risk: none",
+        "breaks: R12, R13, R14, R16, R22, R24, R25, R26, R31, R32, R33, R37, R39, R40, R43, R44, R45, R46, R47, R48, R49, R50, R60, R61, R65, R66, R67, R69, R70, R72, R73, R74, R78, R79, R80, R81, R83, R92, R93, R94",
+        "tests: project test command"
+      ],
+      "predicted": "deep"
+    },
+    {
+      "id": "P68",
+      "title": "Fix commits and role models",
+      "reqs": [
+        "R99",
+        "R101"
+      ],
+      "milestone": "M13",
+      "goal": "A fix for a failing project command can commit its files, and model choice follows the balanced profile rules.",
+      "criteria": [
+        "A fix for a failing project command commits the files it changed to make the command pass even when no plan lists them",
+        "The fix commit message names the fix",
+        "Files the fix did not change, and files the user staged, are not committed",
+        "In the balanced profile the Architect runs on Opus and every other role on Sonnet",
+        "QA is never below Sonnet in any profile, including after profile changes"
+      ],
+      "tier": "deep",
+      "reasons": [
+        "requirements: 2",
+        "files: 9 (85855 bytes)",
+        "files: more than 2 in a repository tracking 698 files",
+        "risk: none",
+        "breaks: R1, R2, R3, R13, R14, R16, R24, R25, R27, R28, R31, R33, R35, R36, R38, R39, R40, R43, R44, R45, R46, R47, R49, R50, R51, R52, R53, R55, R57, R60, R61, R62, R65, R69, R70, R73, R74, R75, R76, R77, R78, R79, R80, R81",
+        "tests: project test command"
+      ],
+      "predicted": "deep"
+    },
+    {
+      "id": "P69",
+      "title": "Parallel-friendly planning and panel colours",
+      "reqs": [
+        "R102",
+        "R103"
+      ],
+      "milestone": "M13",
+      "goal": "Plans are split so as many as possible build at once, the approval shows it, and the panel colours are judged by the owner.",
+      "criteria": [
+        "Planning splits each phase into plans touching separate files wherever the work allows; plans that must share a file are ordered in separate waves",
+        "The approval shows the number of build waves and how many plans the widest wave runs at once",
+        "Edge: a phase whose work cannot be split shows one plan per wave honestly, not an inflated figure",
+        "Human\\: the owner confirms the panel colours make each agent and its state clear at a glance"
+      ],
+      "tier": "deep",
+      "reasons": [
+        "requirements: 2",
+        "files: 3 (28342 bytes)",
+        "files: more than 2 in a repository tracking 698 files",
+        "risk: none",
+        "breaks: R13, R14, R22, R23, R24, R25, R26, R28, R31, R37, R39, R40, R45, R47, R48, R49, R50, R61, R69, R70, R71, R72, R73, R74, R78, R79, R80, R81",
+        "tests: project test command"
+      ],
+      "predicted": "deep"
     }
   ],
   "plans": [
@@ -11224,6 +11665,302 @@
         "Rewrite the paragraph that says a check waits at most 900 seconds: it waits while the holder runs and takes over when the holder is gone",
         "Document the not-run result (status skipped, reason in the tail) and that it counts as not passed",
         "Remove the VBW_CHECK_WAIT_SECONDS sentence"
+      ]
+    },
+    {
+      "id": "P66.1",
+      "phase": "P66",
+      "title": "Agents carry the recording duty in their own instructions",
+      "reqs": [
+        "R95",
+        "R96"
+      ],
+      "files": [
+        "plugin/agents/dev.md",
+        "plugin/agents/docs.md",
+        "plugin/agents/qa.md",
+        "plugin/agents/lead.md"
+      ],
+      "after": [],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "Dev and Docs: recording the plan or fix result is your own duty, even when the task text is marked as not from the user",
+        "QA: name the project's test command (the test line under project commands in vbw show contract) and keep recording the verdict with vbw qa record",
+        "Lead: add a Close a run section (vbw run confirm, then vbw run end, never refuse, name the command to run by hand if it cannot finish)",
+        "Trim wording in these four files so all prompts stay within their word budget"
+      ]
+    },
+    {
+      "id": "P66.2",
+      "phase": "P66",
+      "title": "Workflows close with the Lead and report what was not recorded",
+      "reqs": [
+        "R95",
+        "R96"
+      ],
+      "files": [
+        "plugin/workflows/building.js",
+        "plugin/workflows/fixing.js",
+        "plugin/workflows/verifying.js",
+        "plugin/workflows/planning.js",
+        "plugin/workflows/mapping.js"
+      ],
+      "after": [],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "Closing agent becomes the Lead (its model from the lead setting) in all five workflows",
+        "When the closing agent stops or cannot end the run, log the exact commands with the session to run by hand",
+        "Results carry a complete flag: false when an agent stopped or the closing report says something is not recorded",
+        "Verifying: always tell QA the test command, or plainly that the project has none",
+        "Planning: the closing agent checks each planned phase has plans, and an unrecorded phase makes the status blocked, not planned"
+      ]
+    },
+    {
+      "id": "P66.3",
+      "phase": "P66",
+      "title": "Document the recording duty and the closing step",
+      "reqs": [
+        "R95",
+        "R96"
+      ],
+      "files": [
+        "docs/workflows.md"
+      ],
+      "after": [
+        "P66.1",
+        "P66.2"
+      ],
+      "status": "planned",
+      "role": "docs",
+      "tasks": [
+        "Explain that each agent records its own result from its own instructions",
+        "Describe the closing agent, the complete flag and the commands to run by hand",
+        "Describe what QA is told about the project's test command"
+      ]
+    },
+    {
+      "id": "P67.1",
+      "phase": "P67",
+      "title": "Approve works whatever follows the fingerprint",
+      "reqs": [
+        "R97"
+      ],
+      "files": [
+        "plugin/hooks/approve-answer.jq",
+        "plugin/hooks/approve-answer.sh"
+      ],
+      "after": [],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "Read the fingerprint at the start of the question and accept any whitespace, line breaks or text after the question mark",
+        "Keep the exact 12-digit rule and the exact Approve answer rule",
+        "A different fingerprint approves nothing and the user is told in one sentence that the contract changed",
+        "Keep the kernel line count (net zero)"
+      ]
+    },
+    {
+      "id": "P67.2",
+      "phase": "P67",
+      "title": "Approval only through the menu, proof wording in the router",
+      "reqs": [
+        "R98",
+        "R100"
+      ],
+      "files": [
+        "plugin/skills/vibe/SKILL.md",
+        "plugin/lib/cmd-doctor.sh"
+      ],
+      "after": [],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "Doctor: the unapproved-contract line says VBW asks with the approval menu and no longer names /vbw:approve",
+        "Router: the plan and changing-the-plan steps hand over to the approval menu and never tell the user to type the command",
+        "Router: vbw prove runs with VBW_SESSION_ID so a background proof belongs to this session",
+        "Trim router wording to stay within 1,400 words and the shared prompt budget"
+      ]
+    },
+    {
+      "id": "P67.3",
+      "phase": "P67",
+      "title": "The stop hook waits for this session's background proof",
+      "reqs": [
+        "R98"
+      ],
+      "files": [
+        "plugin/lib/cmd-auto.sh",
+        "plugin/lib/cmd-prove.sh"
+      ],
+      "after": [],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "vbw prove marks itself as running for its session and removes the mark when it ends, however it ends",
+        "The autonomous gate stays silent and spends no step while this session's marked proof is alive; another session's mark is ignored",
+        "A stale mark of a dead process does not suppress the gate",
+        "Keep the kernel line count (net zero)"
+      ]
+    },
+    {
+      "id": "P67.4",
+      "phase": "P67",
+      "title": "Document approval and the background-proof rule",
+      "reqs": [
+        "R97",
+        "R98",
+        "R100"
+      ],
+      "files": [
+        "docs/proof.md"
+      ],
+      "after": [
+        "P67.1",
+        "P67.2",
+        "P67.3"
+      ],
+      "status": "planned",
+      "role": "docs",
+      "tasks": [
+        "Describe what may follow the fingerprint in the approval question and what a wrong fingerprint does",
+        "Describe that approval is asked only with the menu after any plan change",
+        "Describe the autonomous stop hook and a background proof"
+      ]
+    },
+    {
+      "id": "P68.1",
+      "phase": "P68",
+      "title": "A fix for a project command can commit its files",
+      "reqs": [
+        "R99"
+      ],
+      "files": [
+        "plugin/lib/cmd-commit.sh",
+        "plugin/agents/dev.md"
+      ],
+      "after": [
+        "P66.1"
+      ],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "vbw commit --fix FIX MESSAGE FILE... commits only the named, changed files of an open project-command fix",
+        "The commit carries a VBW-Fix trailer naming the fix; requirement fixes, unknown fixes, no files and .vbw/ paths are refused",
+        "Dev instructions: how a project-command fix commits",
+        "Keep the kernel and prompt line counts (net zero)"
+      ]
+    },
+    {
+      "id": "P68.2",
+      "phase": "P68",
+      "title": "Balanced profile runs the Architect on Opus",
+      "reqs": [
+        "R101"
+      ],
+      "files": [
+        "plugin/lib/profiles.json",
+        "plugin/skills/config/SKILL.md",
+        "tests/qa-model.bats",
+        "tests/statusline.bats"
+      ],
+      "after": [],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "profiles.json: balanced Architect is opus",
+        "Update the two earlier assertions that said balanced was all Sonnet (qa-model and statusline tests); they wait for one approval before proof",
+        "Config skill describes balanced with the Architect on Opus, same word count"
+      ]
+    },
+    {
+      "id": "P68.3",
+      "phase": "P68",
+      "title": "Document fix commits and the balanced models",
+      "reqs": [
+        "R99",
+        "R101"
+      ],
+      "files": [
+        "README.md",
+        "docs/record.md",
+        "docs/workflows.md"
+      ],
+      "after": [
+        "P66.3",
+        "P68.1",
+        "P68.2"
+      ],
+      "status": "planned",
+      "role": "docs",
+      "tasks": [
+        "docs/workflows.md: add vbw commit --fix to the command table",
+        "README: balanced runs the Architect on Opus, the rest on Sonnet",
+        "docs/record.md: profile description matches"
+      ]
+    },
+    {
+      "id": "P69.1",
+      "phase": "P69",
+      "title": "The Lead splits work for parallel builds",
+      "reqs": [
+        "R102"
+      ],
+      "files": [
+        "plugin/agents/lead.md"
+      ],
+      "after": [
+        "P66.1"
+      ],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "Decompose rule: plans on separate files so as many as possible build at the same time",
+        "Plans that must share a file go in separate waves with after",
+        "After applying, read the build waves line of the contract and split further where the work allows",
+        "Keep the prompt word count (net zero)"
+      ]
+    },
+    {
+      "id": "P69.2",
+      "phase": "P69",
+      "title": "The approval shows build waves and the widest wave",
+      "reqs": [
+        "R102"
+      ],
+      "files": [
+        "plugin/lib/cmd-show.sh"
+      ],
+      "after": [],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "vbw show contract prints build waves: N (the widest runs M plans at once), scheduled as vbw next does (after plans, no shared files in a wave)",
+        "One plan per wave shows honestly as widest 1 plan",
+        "Keep the kernel line count (net zero)"
+      ]
+    },
+    {
+      "id": "P69.3",
+      "phase": "P69",
+      "title": "Document the waves line",
+      "reqs": [
+        "R102"
+      ],
+      "files": [
+        "docs/next.md"
+      ],
+      "after": [
+        "P69.1",
+        "P69.2"
+      ],
+      "status": "planned",
+      "role": "docs",
+      "tasks": [
+        "Describe how waves are counted",
+        "Describe the approval line and an honest one-plan-per-wave result",
+        "Describe how the Lead splits plans"
       ]
     }
   ],
