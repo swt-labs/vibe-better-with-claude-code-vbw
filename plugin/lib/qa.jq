@@ -1,8 +1,8 @@
 # What QA must check again (R47, R49; docs/proof.md). Input: the record.
 # Arguments: $inputs (null, or the current digests of every phase of the active
-# milestone: {Pn: {files, tests, plan, combined}}, from lib/qa-inputs.sh) and
+# milestone: {Pn: {files, tests, plan, reqs, combined}}, from lib/qa-inputs.sh) and
 # $cache (null, or what each phase's last pass covered: {Pn: {files, tests,
-# plan, deps: {Pm: {files, tests, plan}}}}; this clone's file, so anything may
+# plan, reqs, deps: {Pm: {files, tests, plan, reqs}}}}; this clone's file, so anything may
 # be wrong with it). Output: {closure, recheck, standing, problems}. closure
 # maps a phase to every phase it builds on, directly or not (a phase builds on
 # another when one of its plans comes after a plan of the other).
@@ -24,17 +24,18 @@
 | ($missing + (if ($cyclic | length) > 0 then ["phases \($cyclic | join(", ")) build on each other (a cycle)"] else [] end)) as $problems
 | ([$r.phases[] | select(.id | IN($ids[]))
     | select(.id as $i | [$r.plans[] | select(.phase == $i)] | length > 0 and all(.[]; .status == "done"))]) as $built
-| (def own: {files, tests, plan};
+| (def own: {files, tests, plan, reqs};
    def plain: "its files, tests or plan changed";
    ($cache | if type == "object" then . else {} end) as $c
    | [$built[] | . as $ph | ($inputs[$ph.id]) as $cur | ($c[$ph.id]) as $old
      | (if $ph.qa == null then ["not checked yet"]
         else (if $ph.qa.result != "pass" then ["failed last time"] else [] end)
           + (if $ph.qa.tree == $cur.combined then []
-             else (if ($old | type == "object" and (.files | type == "string") and (.tests | type == "string") and (.plan | type == "string") and (.deps | type == "object"))
+             else (if ($old | type == "object" and (.files | type == "string") and (.tests | type == "string") and (.plan | type == "string") and (.reqs | type == "string") and (.deps | type == "object"))
                    then ([if $old.files != $cur.files then "its files changed" else empty end,
                           if $old.tests != $cur.tests then "its tests changed" else empty end,
-                          if $old.plan != $cur.plan then "its goal or plan changed" else empty end]
+                          if $old.plan != $cur.plan then "its goal or plan changed" else empty end,
+                          if $old.reqs != $cur.reqs then "an [auto] requirement changed" else empty end]
                          + [$closure[$ph.id][] as $d | select($old.deps[$d] != ($inputs[$d] | own)) | "builds on \($d), which changed"])
                    else [] end) | if length > 0 then . else [plain] end
              end)
