@@ -40,14 +40,14 @@ code_grep() {
   [ "$total" -le 1500 ]
 }
 
-@test "mod JavaScript stays within 3,000 lines (mods plan, 2026-10-07)" {
+@test "mod JavaScript stays within 3,500 lines (owner raised it from 3,000 on 2026-10-07)" {
   local total=0 file n
   while IFS= read -r file; do
     n=$(grep -cvE '^[[:space:]]*(//|$)' "$file" || true)
     total=$((total + n))
   done < <(find "$PLUGIN_ROOT/hooks" -type f -name '*.js' 2>/dev/null)
   echo "mod lines: $total"
-  [ "$total" -le 3000 ]
+  [ "$total" -le 3500 ]
 }
 
 @test "shipped plugin is under 2 MB (design §10, ledger D295; owner raised it from 1 MB on 2026-10-05 for the sounds)" {
