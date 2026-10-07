@@ -2984,7 +2984,12 @@
       "proof": "auto",
       "status": "open",
       "milestone": "M14",
-      "rules": []
+      "rules": [
+        {
+          "text": "the detected-commands notice names the approval menu and never /vbw:approve",
+          "check": "C168"
+        }
+      ]
     }
   ],
   "checks": [
@@ -4947,6 +4952,17 @@
       "files": [
         "tests/effort-workflows.bats",
         "tests/helpers/run-workflow-all.js"
+      ]
+    },
+    {
+      "id": "C168",
+      "req": "R109",
+      "run": [
+        "bats",
+        "tests/init-approval-wording.bats"
+      ],
+      "files": [
+        "tests/init-approval-wording.bats"
       ]
     }
   ],
@@ -7768,11 +7784,13 @@
       "tier": "deep",
       "reasons": [
         "requirements: 1",
-        "files: 3 (30658 bytes)",
-        "files: more than 2 in a repository tracking 707 files",
+        "files: 3 (39064 bytes)",
+        "files: more than 2 in a repository tracking 720 files",
         "risk: none",
-        "breaks: R12, R25, R31, R32, R43, R44, R45, R46, R47, R48, R49, R61, R66, R69, R70, R73, R74, R78, R79, R80, R81, R92, R93, R94, R97, R98, R100",
-        "tests: project test command"
+        "breaks: none",
+        "guarded: R12 (C11), R25 (C24), R31 (C27), R32 (C28), R43 (C42, C43), R44 (C44, C45), R45 (C39, C40, C41), R46 (C46), R47 (C47), R48 (C49, C50), R49 (C48), R61 (C73, C74, C75, C76, C77), R66 (C95), R69 (C110, C120, C122), R70 (C114), R73 (C98), R74 (C99, C100), R78 (C105, C106), R79 (C107), R80 (C108), R81 (C109, C111, C112, C113), R92 (C131, C132, C133, C134, C135, C136, C137, C138, C139), R93 (C140, C141, C142, C143, C144), R94 (C145, C146, C147, C148), R97 (C153), R98 (C154), R100 (C156), R104 (C161, C162), R105 (C163)",
+        "tests: project test command",
+        "raised by the Architect"
       ],
       "predicted": "deep",
       "escalations": [
@@ -7819,14 +7837,17 @@
         "The tier's reasons still list every proven requirement the phase could affect, marking which are guarded by a check and which raised the tier",
         "Other reasons to raise a tier (risk paths such as sign-in, payments, secrets, deletion or CI; many requirements; raises during a run) work exactly as before"
       ],
+      "proposed": "deep",
       "tier": "deep",
       "reasons": [
         "requirements: 2",
-        "files: 6 (47419 bytes)",
-        "files: more than 2 in a repository tracking 707 files",
+        "files: 6 (55114 bytes)",
+        "files: more than 2 in a repository tracking 720 files",
         "risk: none",
-        "breaks: R12, R22, R23, R24, R25, R26, R28, R29, R31, R32, R35, R43, R44, R45, R46, R47, R48, R49, R61, R66, R69, R70, R71, R72, R73, R74, R78, R79, R80, R81, R92, R93, R94, R97, R98, R100",
-        "tests: project test command"
+        "breaks: none",
+        "guarded: R12 (C11), R22 (C19), R23 (C20), R24 (C23), R25 (C24), R26 (C22), R28 (C25), R29 (C26), R31 (C27), R32 (C28), R35 (C31), R43 (C42, C43), R44 (C44, C45), R45 (C39, C40, C41), R46 (C46), R47 (C47), R48 (C49, C50), R49 (C48), R61 (C73, C74, C75, C76, C77), R66 (C95), R69 (C110, C120, C122), R70 (C114), R71 (C115, C121), R72 (C116, C118), R73 (C98), R74 (C99, C100), R78 (C105, C106), R79 (C107), R80 (C108), R81 (C109, C111, C112, C113), R92 (C131, C132, C133, C134, C135, C136, C137, C138, C139), R93 (C140, C141, C142, C143, C144), R94 (C145, C146, C147, C148), R97 (C153), R98 (C154), R100 (C156), R103 (C160)",
+        "tests: project test command",
+        "raised by the Architect"
       ],
       "predicted": "deep",
       "qa": {
@@ -7863,13 +7884,15 @@
         "On a Claude Code that has no per-agent effort setting, agents run as they did before, with no error and no warning that stops the run",
         "A profile with an effort value Claude Code does not accept is refused by VBW with a message naming the role and step, instead of failing mid-run"
       ],
+      "proposed": "deep",
       "tier": "deep",
       "reasons": [
         "requirements: 2",
-        "files: 21 (108068 bytes)",
-        "files: more than 2 in a repository tracking 707 files",
+        "files: 21 (120110 bytes)",
+        "files: more than 2 in a repository tracking 720 files",
         "risk: none",
-        "breaks: R12, R13, R14, R22, R23, R24, R25, R26, R27, R28, R31, R35, R36, R37, R38, R39, R40, R44, R47, R48, R49, R50, R60, R61, R62, R65, R67, R69, R70, R71, R72, R73, R74, R75, R76, R77, R78, R79, R80, R81, R83, R95, R96, R98, R99, R100, R101, R102",
+        "breaks: none",
+        "guarded: R12 (C11), R13 (C12), R14 (C13), R22 (C19), R23 (C20), R24 (C23), R25 (C24), R26 (C22), R27 (C21), R28 (C25), R31 (C27), R35 (C31), R36 (C32), R37 (C35), R38 (C33, C34), R39 (C36), R40 (C37), R44 (C44, C45), R47 (C47), R48 (C49, C50), R49 (C48), R50 (C51), R60 (C72, C94), R61 (C73, C74, C75, C76, C77), R62 (C78, C79, C80, C81, C82, C83, C93), R65 (C86, C87, C88, C89, C90), R67 (C96), R69 (C110, C120, C122), R70 (C114), R71 (C115, C121), R72 (C116, C118), R73 (C98), R74 (C99, C100), R75 (C101), R76 (C102, C103), R77 (C104), R78 (C105, C106), R79 (C107), R80 (C108), R81 (C109, C111, C112, C113), R83 (C119), R95 (C149, C150), R96 (C151, C152), R98 (C154), R99 (C155), R100 (C156), R101 (C157), R102 (C158, C159)",
         "tests: project test command"
       ],
       "predicted": "deep",
@@ -7903,13 +7926,16 @@
         "The panel stays readable on both a dark and a light terminal background",
         "The owner watches the panel during a real VBW run and records acceptance of R108, or records what is hard to tell apart, which becomes a fix"
       ],
+      "proposed": "deep",
       "tier": "deep",
       "reasons": [
         "requirements: 1",
-        "files: 1 (20472 bytes)",
+        "files: 1 (22298 bytes)",
         "risk: none",
-        "breaks: R51, R52, R53, R55, R56, R57, R58, R82, R85, R86, R87, R88, R89, R91",
-        "tests: project test command"
+        "breaks: none",
+        "guarded: R51 (C52, C53, C66), R52 (C58, C91), R53 (C54, C55), R55 (C56, C57), R56 (C61, C65), R57 (C59, C70, C71), R58 (C62, C63, C64, C67), R82 (C117), R85 (C125), R86 (C124), R87 (C126, C127), R88 (C129), R89 (C128), R91 (C130)",
+        "tests: project test command",
+        "raised by the Architect"
       ],
       "predicted": "deep",
       "qa": {
@@ -7919,6 +7945,30 @@
         "at": "2026-10-07T22:19:13Z",
         "note": "6/6 checks"
       }
+    },
+    {
+      "id": "P74",
+      "title": "vbw init points to the approval menu",
+      "reqs": [
+        "R109"
+      ],
+      "milestone": "M14",
+      "goal": "vbw init's detected-commands notice names the approval menu, never the typed /vbw:approve command",
+      "criteria": [
+        "the notice no longer contains /vbw:approve",
+        "the notice says the commands run after approval in the approval menu"
+      ],
+      "proposed": "express",
+      "tier": "express",
+      "reasons": [
+        "requirements: 1",
+        "files: 1 (4688 bytes)",
+        "risk: none",
+        "breaks: none",
+        "guarded: R22 (C19), R24 (C23)",
+        "tests: project test command"
+      ],
+      "predicted": "express"
     }
   ],
   "plans": [
@@ -12695,13 +12745,13 @@
       ],
       "after": [],
       "status": "done",
-      "role": "dev",
       "tasks": [
         "New plugin/lib/proofreuse.sh: a fingerprint of each check's approved definition (the check as recorded: id, requirement, command, expected exit, output pattern, timeout, alone, files) and of each project command's argv; every result in the evidence keeps its fingerprint and the time it was really produced",
         "proofreuse.sh: decide what may be reused, only when all hold: the last evidence passed and was completed (no unfinished marker), the committed code (HEAD without .vbw) is the evidence's, and the working folder has no change to project files (tracked or untracked); then reuse each passing check or command whose current fingerprint equals its recorded one; a skipped, failed or timed-out result is never reused",
         "cmd-prove.sh: write an unfinished marker in .vbw/runtime just before the checks run and remove it only when the evidence is recorded, so an interrupted or failed proof reuses nothing next time; run only the checks and commands not reused (no clean copy when none is left); join reused and new results in the contract's order, with checks removed from the contract left out; record passes only for what really ran",
         "cmd-prove.sh summary: a reused line says reused and the time of the proof it came from (kept through later proofs), a result that ran shows as before; the new proof is recorded as current for the present code (same contract hash, tree and head fields), so vbw qa record accepts it and vbw status shows the requirements as proven"
-      ]
+      ],
+      "role": "dev"
     },
     {
       "id": "P70.2",
@@ -12717,12 +12767,12 @@
         "P70.1"
       ],
       "status": "done",
-      "role": "docs",
       "tasks": [
         "docs/proof.md: when vbw prove reuses results (only VBW's own record or spec changed since a completed, passing proof) and what a result needs to be reused (an unchanged approved definition)",
         "docs/proof.md: when it reuses nothing (a committed project file differs, uncommitted changes to project files, the last proof failed or was interrupted), and that a removed check is left out",
         "docs/proof.md: how the output shows it (reused, with the time of the proof the result came from) and that a reusing proof is recorded as current, so vbw qa record accepts it"
-      ]
+      ],
+      "role": "docs"
     },
     {
       "id": "P71.1",
@@ -12737,13 +12787,13 @@
       ],
       "after": [],
       "status": "done",
-      "role": "dev",
       "tasks": [
         "qa-inputs.sh: the phase's plan digest names its [auto] requirements (id and text) instead of every requirement id, so removing or rewording a [human] requirement (only a person judges it) no longer changes what QA covered, while adding, rewording or removing an [auto] one does",
         "qa-inputs.sh: the clone's QA cache keeps the digest of those requirements beside the files, tests and plan digests of each phase and of the phases it builds on",
         "qa.jq: a changed [auto] requirement is its own reason in plain words (for example: an [auto] requirement changed), shown with the other reasons in vbw next, vbw show qa and the QA instruction; a cache without that digest still lists the phase with the general reason",
         "Decisions and findings closed with no code change are not inputs: leave them out of every digest, and keep the reasons free of technical words (digest, hash, tree)"
-      ]
+      ],
+      "role": "dev"
     },
     {
       "id": "P71.2",
@@ -12758,13 +12808,13 @@
       ],
       "after": [],
       "status": "done",
-      "role": "dev",
       "tasks": [
         "rigor.sh: find the guarded requirements: [auto] requirements with at least one check where every check is approved, meaning its definition and the digest of each of its files equal those in the last approved contract of this clone (.vbw/runtime/approved-contract.json, written by vbw approve); no approved contract or a changed or missing check means not guarded; pass the list to rigor.jq",
         "rigor.jq: the requirements a phase could affect are proven or accepted ones (a [human] requirement a person accepted counts) outside the phase that share files with it; only those not guarded raise the tier, through the breaks signal",
         "rigor.jq reasons: breaks: lists only the requirements that raised the tier (breaks: none when there are none), and a new line guarded: R1 (C1), R4 (C7, C8) names each guarded requirement with its checks, shown on the approval line too",
         "Every other signal (risk paths, requirement count, files, bytes, tests, spread, Architect raises, escalations) stays exactly as before"
-      ]
+      ],
+      "role": "dev"
     },
     {
       "id": "P71.3",
@@ -12784,12 +12834,12 @@
         "P71.2"
       ],
       "status": "done",
-      "role": "docs",
       "tasks": [
         "docs/proof.md: which changes list a passed phase for QA again (code, tests, goal, an [auto] requirement added, reworded or removed, and any of those together with a skip-type change) and which do not (a recorded decision, a finding closed with no code change, a removed [human] requirement), with the reason shown",
         "docs/rigor.md: a proven requirement a phase could affect is guarded when an approved check the proof re-runs covers it (a reused result counts), and then it does not raise the tier; a [human] requirement a person accepted, or one whose check is not approved or changed since, does",
         "docs/rigor.md: the reasons now show breaks: (what raised the tier) and guarded: (what did not), with an example"
-      ]
+      ],
+      "role": "docs"
     },
     {
       "id": "P72.1",
@@ -12804,13 +12854,13 @@
       ],
       "after": [],
       "status": "done",
-      "role": "dev",
       "tasks": [
         "New plugin/lib/efforts.json: for each profile (quality, balanced, budget), for each role and step the workflows use, an effort of low, medium, high, xhigh or max: architect decide and scope; lead plan and close; dev build and fix; docs build; qa verify; scout survey and merge; debugger investigate, diagnose and fix",
         "efforts.json values: closing a run and documentation lower than a Dev build; planning (architect decide and scope, lead plan) and QA verify higher than a Dev build, in every profile",
         "New plugin/lib/effort.sh: effort_table PROFILE prints that profile's table as compact JSON; it refuses, with a message naming the role and the step (and the value), a value Claude Code does not accept (not low, medium, high, xhigh or max, or not text) and any missing role or step; only the profile in use is judged",
         "effort.sh: bash 3.2, jq only for JSON, no eval; the error goes through vbw_die so every command that reads the table stops before a run starts"
-      ]
+      ],
+      "role": "dev"
     },
     {
       "id": "P72.2",
@@ -12828,12 +12878,12 @@
         "P72.1"
       ],
       "status": "done",
-      "role": "dev",
       "tasks": [
         "next.jq: a top-level next_phase in every answer: one after the highest phase number the record knows, taken from the ids of all phases (every milestone), the plans (id and phase) and the P-numbers named in decisions (so a removed phase that a decision names counts); a sub-phase such as P65.1 counts as 65; letters before the P (SHIP99) are not phase numbers; 1 when there is none",
         "next.jq: a top-level effort carrying the table passed in",
         "cmd-next.sh: read the current profile's table with effort_table (effort.sh) and pass it to next.jq; an invalid table stops vbw next with that message before any answer"
-      ]
+      ],
+      "role": "dev"
     },
     {
       "id": "P72.3",
@@ -12849,12 +12899,12 @@
         "P72.1"
       ],
       "status": "done",
-      "role": "dev",
       "tasks": [
         "cmd-config.sh: vbw config effort prints the current profile's effort table as compact JSON (what the skills pass to workflows as args.effort)",
         "cmd-config.sh: the usage lines list config effort; it takes no arguments",
         "cmd-config.sh: an invalid table exits non-zero with the message naming role and step from effort.sh, unchanged"
-      ]
+      ],
+      "role": "dev"
     },
     {
       "id": "P72.4",
@@ -12869,12 +12919,12 @@
       ],
       "after": [],
       "status": "done",
-      "role": "dev",
       "tasks": [
         "planning.js: a helper that reads args.effort (only when it is an object) and returns the effort option for a role and step, or nothing when there is none; document args.effort and args.next_phase in the args comment",
         "planning.js: the Architect's decide and scope calls (steps decide and scope), the Lead's plan call (plan) and the closing call (close) pass the effort option; calls without a table stay exactly as before",
         "planning.js: when args.next_phase is given, the Architect's scoping task says to number the new phases from P<next_phase> in order and to keep phases already started exactly as they are; the phases reach the Lead as given, and the run has no renumbering step"
-      ]
+      ],
+      "role": "dev"
     },
     {
       "id": "P72.5",
@@ -12890,12 +12940,12 @@
       ],
       "after": [],
       "status": "done",
-      "role": "dev",
       "tasks": [
         "building.js: an effort helper as in planning.js; the Dev's call (build), the Docs agent's call (build) and the closing call (close) pass effort",
         "fixing.js: the Dev's call (fix) and the closing call (close) pass effort",
         "verifying.js: QA's call (verify) and the closing call (close) pass effort; with no table every call is exactly as before"
-      ]
+      ],
+      "role": "dev"
     },
     {
       "id": "P72.6",
@@ -12912,12 +12962,12 @@
       ],
       "after": [],
       "status": "done",
-      "role": "dev",
       "tasks": [
         "mapping.js: the Scouts' angle calls (survey), the merge call (merge) and the closing call (close) pass effort",
         "researching.js: the Scouts' angle calls (survey) and the answer call (merge) pass effort; tooling.js: the Scouts' calls (survey) pass effort",
         "investigating.js: the Debuggers' angle calls (investigate), the diagnosis call (diagnose) and the fix call (fix) pass effort; with no table every call is exactly as before"
-      ]
+      ],
+      "role": "dev"
     },
     {
       "id": "P72.7",
@@ -12933,13 +12983,13 @@
       ],
       "after": [],
       "status": "done",
-      "role": "dev",
       "tasks": [
         "vibe/SKILL.md: both planning workflow calls pass \"next_phase\": <next_phase> (the next JSON's top-level next_phase) in their args, and the express step says new ids start at P<next_phase>",
         "vibe/SKILL.md: the sentence listing what every workflow's args carry also names the next JSON's top-level effort",
         "vibe/SKILL.md: trim wording elsewhere in the router so it stays within 1,400 words, losing no instruction",
         "architect.md: number new phases from the next free phase number the task states, keep phases already started exactly as they are, never renumber; the agent stays within its word budget"
-      ]
+      ],
+      "role": "dev"
     },
     {
       "id": "P72.8",
@@ -12956,13 +13006,13 @@
       ],
       "after": [],
       "status": "done",
-      "role": "dev",
       "tasks": [
         "debug/SKILL.md: read vbw config effort with the models line (outside a VBW project it shows an error: omit effort) and pass \"effort\": <the effort JSON above> in the workflow's args, for the investigation and the fix",
         "map/SKILL.md and research/SKILL.md: the same, in the args of their workflow",
         "skills/SKILL.md: the same, in the args of the tool search",
         "Every skill stays within its word budget, and the total of all prompts within 22,800 words"
-      ]
+      ],
+      "role": "dev"
     },
     {
       "id": "P72.9",
@@ -12981,12 +13031,12 @@
         "P72.3"
       ],
       "status": "done",
-      "role": "docs",
       "tasks": [
         "docs/next.md: next_phase (one after the highest phase number in the record: shipped, started and removed phases that a decision names; a sub-phase counts as its whole number) and effort (the current profile's table) among the keys of vbw next --json",
         "docs/workflows.md: args.effort and args.next_phase for each workflow; where the table lives (plugin/lib/efforts.json), its levels (low, medium, high, xhigh, max), its roles and steps, and vbw config effort",
         "docs/workflows.md: a Claude Code without a per-agent effort setting runs agents as before; a value Claude Code does not accept is refused by VBW, naming role and step, before a run starts"
-      ]
+      ],
+      "role": "docs"
     },
     {
       "id": "P73.1",
@@ -13000,11 +13050,27 @@
       ],
       "after": [],
       "status": "done",
-      "role": "docs",
       "tasks": [
         "docs/panel.md: a short Judging the colours section that lists, from the shipped palette, each role's colour and each state's colour and mark, and names the pairs that share a colour (a role and a state, such as Dev and done) so the owner knows what to look at",
         "docs/panel.md: how to judge on a dark and on a light terminal, and that a state also has a mark and a word",
         "docs/panel.md: how to record the verdict (vbw req accept R108, or vbw req reject R108 with what is hard to tell apart, which becomes a fix)"
+      ],
+      "role": "docs"
+    },
+    {
+      "id": "P74.1",
+      "phase": "P74",
+      "title": "Reword the detected-commands notice",
+      "reqs": [
+        "R109"
+      ],
+      "files": [
+        "plugin/lib/cmd-init.sh"
+      ],
+      "after": [],
+      "status": "planned",
+      "tasks": [
+        "the notice says the commands run only after you approve them in the approval menu, with no /vbw:approve"
       ]
     }
   ],
