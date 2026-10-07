@@ -10916,7 +10916,7 @@
       "id": "F47",
       "command": "test",
       "attempts": 0,
-      "status": "open",
+      "status": "fixed",
       "note": "test fail"
     }
   ],
@@ -11154,6 +11154,16 @@
     {
       "id": "T47",
       "text": "Workflow closing step runs as vbw:scout, whose read-only mandate can refuse vbw run confirm/end (seen in M12 wave 3); give the close step an agent whose mandate allows it, in building, fixing and verifying",
+      "status": "open"
+    },
+    {
+      "id": "T48",
+      "text": "Parallel vbw prove prints 'wait: pid N is not a child of this shell' (checks.sh:199) under 2.0.21; find why the pids are not children and fix",
+      "status": "open"
+    },
+    {
+      "id": "T49",
+      "text": "Autonomous Stop hook re-asks for prove while this session's vbw prove still runs in the background, spending auto steps; the gate should see a running proof",
       "status": "open"
     }
   ],
