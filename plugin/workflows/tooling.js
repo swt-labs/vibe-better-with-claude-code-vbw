@@ -9,6 +9,13 @@ export const meta = {
 const stack = args && typeof args === 'object' && typeof args.stack === 'string' ? args.stack.trim() : ''
 const models = (args && typeof args === 'object' && args.models) || {}
 const model = models.scout ? { model: models.scout } : {}
+// The effort the profile gives a role and step (args.effort, from vbw next --json): the option
+// for agent(), or nothing when there is no table or no value (agents then run as before).
+const table = (args && typeof args === 'object' && args.effort && typeof args.effort === 'object' && !Array.isArray(args.effort)) ? args.effort : {}
+const effortOf = (role, step) => {
+  const e = table[role] && typeof table[role] === 'object' ? table[role][step] : null
+  return e ? { effort: e } : {}
+}
 const profile = (args && typeof args === 'object' && args.profile) || {}
 const voice = `\n\nThe user's level: ${profile.level || 'small scripts or no-code'}. Explanation depth: ${profile.depth || 'plain with technical terms explained'}. Involvement: ${profile.involvement || 'options with a recommendation'}. Write whatever the user will read at that level and depth.`
 
@@ -51,7 +58,7 @@ if (!stack) {
 phase('Scout')
 const found = await Promise.all(ANGLES.map(a =>
   agent(`Find the current best-in-class options for one angle of this project: ${a.ask}.\n\nProject stack: ${stack}\n\nReturn at most ${PER_ANGLE} picks, each with what it is, why it fits this stack, one or more source links (https), and its origin: "respected-open-source" only for a well-known, actively maintained open-source project, otherwise "other". Prefer current, widely used options. Install nothing and change nothing.${voice}`,
-    Object.assign({ agentType: 'vbw:scout', label: `scout ${a.key}`, phase: 'Scout', schema: PICKS }, model))
+    Object.assign({ agentType: 'vbw:scout', label: `scout ${a.key}`, phase: 'Scout', schema: PICKS }, model, effortOf('scout', 'survey')))
     .catch(() => null)))
 
 const missing = []
