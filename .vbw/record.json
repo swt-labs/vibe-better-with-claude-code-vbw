@@ -6,7 +6,7 @@
   "milestone": {
     "id": "M12",
     "title": "Panel colour and polish",
-    "status": "active"
+    "status": "shipped"
   },
   "shipped": [
     {
@@ -63,6 +63,11 @@
       "id": "M11",
       "title": "Faster, safer, unblocked",
       "at": "2026-10-06T23:38:11Z"
+    },
+    {
+      "id": "M12",
+      "title": "Panel colour and polish",
+      "at": "2026-10-07T15:07:02Z"
     }
   ],
   "requirements": [
@@ -12768,6 +12773,11 @@
       "id": "D158",
       "at": "2026-10-07T14:55:00Z",
       "text": "Contract approved: 90 requirements, 144 checks, 185 plans (4f21f7e17cc3)"
+    },
+    {
+      "id": "D159",
+      "at": "2026-10-07T15:07:02Z",
+      "text": "Shipped M12 Panel colour and polish: 10 requirements proven or accepted"
     }
   ],
   "commands": {
