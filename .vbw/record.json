@@ -7766,7 +7766,15 @@
         "breaks: R12, R25, R31, R32, R43, R44, R45, R46, R47, R48, R49, R61, R66, R69, R70, R73, R74, R78, R79, R80, R81, R92, R93, R94, R97, R98, R100",
         "tests: project test command"
       ],
-      "predicted": "deep"
+      "predicted": "deep",
+      "escalations": [
+        {
+          "at": "2026-10-07T20:45:55Z",
+          "from": "deep",
+          "to": "deep",
+          "reason": "Dev blocked P70.1: Done and committed: proofreuse.sh and cmd-prove.sh; C160 passes (15/15). Blocked on a conflict with the older approved check C42: tests/fix-reuse.bats test 'vbw prove runs every check and records the passes the fix reuses' (line 161) expects a second vbw prove, after only a record edit and fix done, to run C1 and C2 again; R103 requires those results to be reused. Fix needs an edit to tests/fix-reuse.bats (outside this plan, needs approval): expect runs C1=1, C2=1, C3=2 at line 161."
+        }
+      ]
     },
     {
       "id": "P71",
@@ -12626,14 +12634,15 @@
         "plugin/lib/cmd-prove.sh"
       ],
       "after": [],
-      "status": "planned",
+      "status": "blocked",
       "role": "dev",
       "tasks": [
         "New plugin/lib/proofreuse.sh: a fingerprint of each check's approved definition (the check as recorded: id, requirement, command, expected exit, output pattern, timeout, alone, files) and of each project command's argv; every result in the evidence keeps its fingerprint and the time it was really produced",
         "proofreuse.sh: decide what may be reused, only when all hold: the last evidence passed and was completed (no unfinished marker), the committed code (HEAD without .vbw) is the evidence's, and the working folder has no change to project files (tracked or untracked); then reuse each passing check or command whose current fingerprint equals its recorded one; a skipped, failed or timed-out result is never reused",
         "cmd-prove.sh: write an unfinished marker in .vbw/runtime just before the checks run and remove it only when the evidence is recorded, so an interrupted or failed proof reuses nothing next time; run only the checks and commands not reused (no clean copy when none is left); join reused and new results in the contract's order, with checks removed from the contract left out; record passes only for what really ran",
         "cmd-prove.sh summary: a reused line says reused and the time of the proof it came from (kept through later proofs), a result that ran shows as before; the new proof is recorded as current for the present code (same contract hash, tree and head fields), so vbw qa record accepts it and vbw status shows the requirements as proven"
-      ]
+      ],
+      "note": "Done and committed: proofreuse.sh and cmd-prove.sh; C160 passes (15/15). Blocked on a conflict with the older approved check C42: tests/fix-reuse.bats test 'vbw prove runs every check and records the passes the fix reuses' (line 161) expects a second vbw prove, after only a record edit and fix done, to run C1 and C2 again; R103 requires those results to be reused. Fix needs an edit to tests/fix-reuse.bats (outside this plan, needs approval): expect runs C1=1, C2=1, C3=2 at line 161."
     },
     {
       "id": "P70.2",
@@ -12668,7 +12677,7 @@
         "plugin/lib/qa.jq"
       ],
       "after": [],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "qa-inputs.sh: the phase's plan digest names its [auto] requirements (id and text) instead of every requirement id, so removing or rewording a [human] requirement (only a person judges it) no longer changes what QA covered, while adding, rewording or removing an [auto] one does",
@@ -12689,7 +12698,7 @@
         "plugin/lib/rigor.sh"
       ],
       "after": [],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "rigor.sh: find the guarded requirements: [auto] requirements with at least one check where every check is approved, meaning its definition and the digest of each of its files equal those in the last approved contract of this clone (.vbw/runtime/approved-contract.json, written by vbw approve); no approved contract or a changed or missing check means not guarded; pass the list to rigor.jq",
@@ -12735,7 +12744,7 @@
         "plugin/lib/effort.sh"
       ],
       "after": [],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "New plugin/lib/efforts.json: for each profile (quality, balanced, budget), for each role and step the workflows use, an effort of low, medium, high, xhigh or max: architect decide and scope; lead plan and close; dev build and fix; docs build; qa verify; scout survey and merge; debugger investigate, diagnose and fix",
@@ -12800,7 +12809,7 @@
         "plugin/workflows/planning.js"
       ],
       "after": [],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "planning.js: a helper that reads args.effort (only when it is an object) and returns the effort option for a role and step, or nothing when there is none; document args.effort and args.next_phase in the args comment",
@@ -12821,7 +12830,7 @@
         "plugin/workflows/verifying.js"
       ],
       "after": [],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "building.js: an effort helper as in planning.js; the Dev's call (build), the Docs agent's call (build) and the closing call (close) pass effort",
@@ -12843,7 +12852,7 @@
         "plugin/workflows/investigating.js"
       ],
       "after": [],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "mapping.js: the Scouts' angle calls (survey), the merge call (merge) and the closing call (close) pass effort",
@@ -12864,7 +12873,7 @@
         "plugin/agents/architect.md"
       ],
       "after": [],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "vibe/SKILL.md: both planning workflow calls pass \"next_phase\": <next_phase> (the next JSON's top-level next_phase) in their args, and the express step says new ids start at P<next_phase>",
@@ -12887,7 +12896,7 @@
         "plugin/skills/skills/SKILL.md"
       ],
       "after": [],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "debug/SKILL.md: read vbw config effort with the models line (outside a VBW project it shows an error: omit effort) and pass \"effort\": <the effort JSON above> in the workflow's args, for the investigation and the fix",
@@ -12931,7 +12940,7 @@
         "docs/panel.md"
       ],
       "after": [],
-      "status": "planned",
+      "status": "done",
       "role": "docs",
       "tasks": [
         "docs/panel.md: a short Judging the colours section that lists, from the shipped palette, each role's colour and each state's colour and mark, and names the pairs that share a colour (a role and a state, such as Dev and done) so the owner knows what to look at",
