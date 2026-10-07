@@ -302,6 +302,52 @@ to the building, verifying and fixing workflows. It maps each phase id to
 
 Without `args.rigor`, each workflow uses `args.models` and `args.tier` as before.
 
+## Phase numbers
+
+The router passes `args.next_phase` (the `next_phase` key of `vbw next --json`,
+docs/next.md) to `vbw:planning`. The task of both Architect jobs tells it to
+number new phases from that number, in order, and to leave started phases as
+they are, so planning needs no renumbering round. Without it, the workflow adds
+no such instruction.
+
+## Effort
+
+Each agent runs at an effort level, set per role and step by the profile
+(`quality`, `balanced` or `budget`; docs/record.md). Lower levels go to closing
+a run and to documentation, higher ones to planning and QA.
+
+```
+vbw config effort
+{"architect":{"decide":"xhigh","scope":"high"},"lead":{"plan":"high","close":"low"},...}
+```
+
+The table lives in `plugin/lib/efforts.json`: one object per profile, each
+holding roles and, under each role, steps. The levels are `low`, `medium`,
+`high`, `xhigh` and `max`. The roles and steps:
+
+| Role | Steps |
+|---|---|
+| `architect` | `decide`, `scope` |
+| `lead` | `plan`, `close` |
+| `dev` | `build`, `fix` |
+| `docs` | `build` |
+| `qa` | `verify` |
+| `scout` | `survey`, `merge` |
+| `debugger` | `investigate`, `diagnose`, `fix` |
+
+`vbw next --json` returns the current profile's table as `effort`, and the
+router passes it to every workflow as `args.effort`. A workflow gives each
+agent call the level for its role and step through Claude Code's per-agent
+`effort` option. A role or step missing from `args.effort`, or an `args.effort`
+that is not an object, adds no option.
+
+A Claude Code without a per-agent effort setting runs agents as before.
+VBW refuses a value Claude Code does not accept (anything but the five levels
+above) before a run starts: `vbw next` and `vbw config effort` stop with an
+error naming the role and step, for example `the effort table for profile
+'balanced' is wrong at dev build: effort "huge" is not one of low, medium,
+high, xhigh, max (fix plugin/lib/efforts.json)`.
+
 ## Models
 
 A workflow agent inherits the session model unless `args.models` names one for
