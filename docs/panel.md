@@ -321,6 +321,10 @@ test mode it is always `off`, so test runs draw the same thing every time.
 The panel needs **Claude Code 2.1.287 or newer** (check with
 `claude --version`; update with `claude update`).
 
+- **The band above the prompt** (the crew and the cards) needs **2.1.290 or
+  newer**: earlier versions redraw a band forever when it changes height. On
+  2.1.287 to 2.1.289 the pane, the one-line notes and the commands work, and the
+  band stays Claude Code's own.
 - **Older Claude Code:** there is no panel and no error. Everything else in
   VBW, including the status line, works as before.
 - **Outside a VBW project** (no `.vbw/record.json`): there is no panel and no

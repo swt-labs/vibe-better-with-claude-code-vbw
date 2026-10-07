@@ -76,7 +76,7 @@ function matches(matcher, e) {
 // audioFails, modulePath, env (name -> value), sessionId, process (argv -> result),
 // selection ($.ui.selection answer), blit ($.ui.blit answer: a function of its argument).
 export async function mount(options = {}) {
-  const o = { version: '2.1.289', root: ROOT, usage: { cost: { usd: 1.4234 } }, placed: true, env: {}, sessionId: 'sess-1', ...options }
+  const o = { version: '2.1.292', root: ROOT, usage: { cost: { usd: 1.4234 } }, placed: true, env: {}, sessionId: 'sess-1', ...options }
   const files = new Map()
   const store = o.store || new Map()
   const invalidations = []

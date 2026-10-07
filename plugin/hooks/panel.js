@@ -9,7 +9,7 @@
 // is worked out by the pure modules: panel-stage.js (the band), panel-sites.js (the
 // one-line sites and rows), panel-pane.js (Mission Control), panel-view.js, and
 // panel-candy.js (motion, sprites, celebrations), whose frames this file blits.
-import { panelView, supports } from './panel-view.js'
+import { panelView, supports, BAND_MIN_VERSION } from './panel-view.js'
 import { SOUNDS } from './panel-sounds.js'
 import { gatherRun, findRun } from './panel-feed.js'
 import { stageModel, renderStage } from './panel-stage.js'
@@ -550,7 +550,7 @@ async function draw($, st, e, next) {
   if (!st.live) return next(e)
   let out = null
   try {
-    if (e.component === 'AbovePrompt') out = await band($, st, e)
+    if (e.component === 'AbovePrompt') out = st.band ? await band($, st, e) : null
     else {
       if (e.component === 'TurnDuration' && turnPending(st, e)) await refresh($, st, st.root + '/.vbw/record.json', 'record')
       out = SITES[e.component](st, e, await $.clock.now())
@@ -595,6 +595,7 @@ export function register(on) {
       if (st.live) return out
       const ver = await $.session.version()
       if (!supports(isObj(ver) ? ver.version : ver)) return out
+      st.band = supports(isObj(ver) ? ver.version : ver, BAND_MIN_VERSION)
       const root = await $.session.root()
       if (typeof root !== 'string' || !(await $.fs.exists(root + '/.vbw/record.json'))) return out
       st.live = true

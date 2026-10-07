@@ -12,12 +12,16 @@ const parts = (v) => {
   return m ? [Number(m[1]), Number(m[2]), Number(m[3])] : null
 }
 
-// True when this Claude Code version has the panel; anything unreadable counts as older.
-export function supports(version) {
+// The band redraws forever before 2.1.290 when its tree changes height (fixed in 2.1.290).
+export const BAND_MIN_VERSION = '2.1.290'
+
+// True when this Claude Code version has the panel (or, with `min`, that feature);
+// anything unreadable counts as older.
+export function supports(version, min = MIN_VERSION) {
   const v = parts(version)
-  if (!v) return false
-  const min = parts(MIN_VERSION)
-  for (let i = 0; i < 3; i++) if (v[i] !== min[i]) return v[i] > min[i]
+  const m = parts(min)
+  if (!v || !m) return false
+  for (let i = 0; i < 3; i++) if (v[i] !== m[i]) return v[i] > m[i]
   return true
 }
 

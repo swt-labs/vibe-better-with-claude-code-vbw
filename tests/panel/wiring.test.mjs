@@ -293,3 +293,12 @@ test('outside the project it reads only this session\'s own folder, and never se
   }
   assert.ok(paths.some((p) => p.startsWith(RUN_DIR)), 'the run was read')
 })
+
+// Claude Code before 2.1.290 redrew a band forever when its tree changed height
+// (fixed in 2.1.290); the crew changes height as agents come and go.
+test('the band draws from Claude Code 2.1.290; on older versions it leaves the engine its band', async () => {
+  const old = await started({ version: '2.1.289' }, record(), approve())
+  assert.ok(isEngine(await band(old), 'AbovePrompt'))
+  const now = await started({ version: '2.1.290' }, record(), approve())
+  assert.match(text(await band(now)), /needs you/)
+})
