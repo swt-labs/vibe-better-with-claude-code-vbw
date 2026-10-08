@@ -4,9 +4,9 @@
     "name": "v2"
   },
   "milestone": {
-    "id": "M14",
-    "title": "Cheaper runs",
-    "status": "shipped"
+    "id": "M15",
+    "title": "Smarter rounds",
+    "status": "active"
   },
   "shipped": [
     {
@@ -14449,7 +14449,7 @@
     {
       "id": "T15",
       "text": "Finding (M6 planning): the Architect proposed phase ids P1 and P2, already taken by M1; the Lead renumbered. The planning workflow should hand the Architect the next free phase id",
-      "status": "open"
+      "status": "done"
     },
     {
       "id": "T16",
@@ -14484,7 +14484,7 @@
     {
       "id": "T22",
       "text": "interview SKILL.md line 16 still says 'before any spec work'; say 'before any spec or convert work' like the router (cosmetic, QA note on P51)",
-      "status": "open"
+      "status": "done"
     },
     {
       "id": "T23",
@@ -14594,7 +14594,7 @@
     {
       "id": "T44",
       "text": "Claude Code 2.1.292 added an effort parameter to the Agent tool: VBW could pass its per-stage effort (profile) to each sub-agent",
-      "status": "open"
+      "status": "done"
     },
     {
       "id": "T45",
@@ -14659,12 +14659,12 @@
     {
       "id": "T57",
       "text": "vbw init's detected-commands notice still names /vbw:approve (cmd-init.sh:41); R83 says VBW never asks the user to type it: reword to the approval menu",
-      "status": "open"
+      "status": "done"
     },
     {
       "id": "T58",
       "text": "Selective proof: after a code change, re-run only the checks whose served files changed (R43's fingerprints) plus the project command, reusing the rest; today any code change re-runs all ~170 checks and the 1,300-test suite (10-16 min)",
-      "status": "open"
+      "status": "done"
     },
     {
       "id": "T59",
@@ -14674,7 +14674,7 @@
     {
       "id": "T60",
       "text": "Proof slowdown: the first 2.0.24 proof of this repo took 948 s vs 300-400 s before; measure proof copy creation (ignored folders copied since 2.0.22) and the suite",
-      "status": "open"
+      "status": "dropped"
     },
     {
       "id": "T61",
@@ -14689,7 +14689,7 @@
     {
       "id": "T63",
       "text": "Full proof only at its gate: vbw next asks for vbw prove --full when the next step after it is a QA round or shipping, not while a [human] acceptance is still open or no QA is due (2026-10-08: asked after an express phase with R108 open)",
-      "status": "open"
+      "status": "done"
     },
     {
       "id": "T64",
