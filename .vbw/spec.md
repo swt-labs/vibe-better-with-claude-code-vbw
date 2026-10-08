@@ -124,6 +124,12 @@ VBW is a Claude Code plugin that makes it build software properly: the user agre
 - R118 [auto] When a check or project command fails, the proof keeps its full output in the project's runtime folder, and vbw show fix names that file, so the failing test can be read without running everything again
 - R119 [auto] In the balanced profile the Lead also runs on Opus, and every role other than the Architect and the Lead runs on Sonnet
 - R120 [auto] When the approval hook puts "Approve contract <fingerprint>?" in front of a reworded approval question, the user is still shown the menu and answers it: the hook asks (permissionDecision ask), it never answers the question itself
+- R121 [auto] Every new request brought to /vbw:vibe gets a one-line triage before any planning: now (it joins the active milestone), next or later (it goes into the backlog with vbw todo), with the reason and a size (small, medium or large); the user confirms or overrides it in the same menu, and the outcome is recorded
+- R122 [auto] When the user overrides VBW's triage, VBW says once, plainly, what the idea displaces and its risk, then follows the user's choice and records it as a decision with the user's reason
+- R123 [auto] After vbw ship, and whenever the user asks, the Architect writes a what's-next recommendation from the record (open milestones and requirements, the backlog, decisions): a top pick with its reason and up to two runners-up, each with a size; the kernel stores it, and vbw status shows it
+- R124 [auto] The panel's Now tab shows a What's next section with the stored recommendation (top pick and reason, up to two runners-up with sizes) and a Suggest next button that puts the refresh request in the prompt without sending it
+- R125 [human] The What's next section's colour candy is subtle and elegant: a slow shimmer on its title and a soft pulse on the top pick when a new recommendation arrives, settling afterwards
+- R126 [auto] CI runs its actions on their Node 24 majors, and the Linux tests also run on the Ubuntu 26 image, before ubuntu-latest moves on 2026-10-19
 
 <!-- One requirement per line: an id, how it is proved, and a user-observable
      statement. [auto] = a check can prove it; [human] = only a person can judge it.
