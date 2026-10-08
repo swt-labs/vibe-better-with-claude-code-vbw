@@ -13,7 +13,7 @@ allowed-tools: Bash("${CLAUDE_PLUGIN_ROOT}/bin/vbw" *) Bash(vbw *) Bash(npx skil
 
 Answers so far above. Once kept, write every later message at the user's level, explanation depth and involvement.
 
-Router calls this when `profile.ask` is true: after mapping (existing code), before any spec work. Ask with AskUserQuestion, one question at a time, plain words. Skip the answers `profile` already holds: resume at first unanswered, named by `profile.pending` (`level`, `depth`, `involvement`, then `keep`). `vbw interview` shows same state.
+Router calls this when `profile.ask` is true: after mapping (existing code), before any spec or convert work. Ask with AskUserQuestion, one question at a time, plain words. Skip the answers `profile` already holds: resume at first unanswered, named by `profile.pending` (`level`, `depth`, `involvement`, then `keep`). `vbw interview` shows same state.
 
 ## The three fixed questions
 
