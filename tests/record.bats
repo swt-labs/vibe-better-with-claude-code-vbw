@@ -210,3 +210,12 @@ violations_after() {
   run violations_after '.settings.autonomy = "yolo"'
   [[ "$output" == *"settings.autonomy must be guided, balanced or hands-off"* ]]
 }
+
+@test "project.results is optional: a non-empty list of distinct relative folders ending in /, outside .vbw/" {
+  run violations_after '.project.results = ["results/", "reports/e2e/"]'
+  [ "$output" = "[]" ]
+  for bad in '[]' '["results"]' '["results/", "results/"]' '[".vbw/"]' '[".vbw/out/"]' '["../out/"]' '["/abs/"]' '["a/./b/"]' '"results/"'; do
+    run violations_after ".project.results = $bad"
+    [[ "$output" == *"project.results must be a non-empty array of distinct relative folders ending in /, outside .vbw/"* ]] || { echo "accepted: $bad"; false; }
+  done
+}
