@@ -4,9 +4,9 @@
     "name": "v2"
   },
   "milestone": {
-    "id": "M15",
-    "title": "Smarter rounds",
-    "status": "shipped"
+    "id": "M16",
+    "title": "What's next",
+    "status": "active"
   },
   "shipped": [
     {
@@ -15598,7 +15598,7 @@
     {
       "id": "T43",
       "text": "Keep each failing check's and command's full output under .vbw/runtime (last proof) and point to it from vbw show fix; the 20-line tail hid a failing test on 2026-10-06",
-      "status": "open"
+      "status": "done"
     },
     {
       "id": "T44",
@@ -15678,7 +15678,7 @@
     {
       "id": "T59",
       "text": "Small-change path not offered: vbw next said small=false for a one-file wording requirement (R109) because files are unknown at spec time; the router should try the express plan first when the request names one or two files, before a planning workflow",
-      "status": "open"
+      "status": "done"
     },
     {
       "id": "T60",
@@ -15713,16 +15713,61 @@
     {
       "id": "T66",
       "text": "Balanced profile: Lead on Opus too (owner decision D190); reword R101, update profiles.json, config/profile skills, README, panel team table and the tests that pin balanced (profile-balanced, qa-model, statusline, kernel-surface, mission-record)",
-      "status": "open"
+      "status": "done"
     },
     {
       "id": "T67",
       "text": "A documentation-only edit to a file a phase's docs plan lists (docs/proof.md) makes QA check the phase's code again (2026-10-08: a one-paragraph docs fix re-listed P70, P71, P75); R71 says documentation alone needs no new check: extend it to QA re-checks (a docs-only change gets at most a quick check of the docs)",
-      "status": "open"
+      "status": "done"
     },
     {
       "id": "T68",
       "text": "vbw approve compares the spec with the record but not the new '## Test results' list (P81.1 note): an edited, unsynced list approves the record's list; add it to the comparison with the commands",
+      "status": "open"
+    },
+    {
+      "id": "T69",
+      "text": "CI upkeep before 2026-10-19: bump actions/checkout and actions/setup-node to their Node 24 majors; run the Linux job once on the Ubuntu 26 image beside the current one (newer bats, shellcheck, jq, bash), fix what it finds, then let ubuntu-latest move",
+      "status": "open"
+    },
+    {
+      "id": "T70",
+      "text": "Hook audit: check every hook's decision output against the Claude Code hooks reference and pin its documented meaning in a test (2026-10-08: approve-ask returned allow + updatedInput, which CC reads as the hook answering AskUserQuestion; fixed by R120). Evaluate CC 2.1.295's opt-in blocking on hook failure for VBW's fail-open guards in the same audit",
+      "status": "open"
+    },
+    {
+      "id": "T71",
+      "text": "vbw plan block refuses a plan that is done (2026-10-08: a fix Dev blocked done P81.1, which raised P81 to deep and stayed)",
+      "status": "open"
+    },
+    {
+      "id": "T72",
+      "text": "The full vbw apply refuses a requirement of another milestone, as apply --add does since F82",
+      "status": "open"
+    },
+    {
+      "id": "T73",
+      "text": "verifying.js defaults missing round.suite fields: a hand-built round printed 'The project test command (undefined) ... Its output ends: undefined' in the QA prompt",
+      "status": "open"
+    },
+    {
+      "id": "T74",
+      "text": "Cost: at standard and deep, mutation-check a plan's own tests before its build ends, so QA stops finding tests that cannot fail one round at a time (M15: each deep QA round found 1-2 such gaps, about an hour per loop)",
+      "status": "open"
+    },
+    {
+      "id": "T75",
+      "text": "Cost: parallel fix groups each ran the full suite in vbw fix done (load 21, timing tests failed); share one test run across groups",
+      "status": "open"
+    },
+    {
+      "id": "T76",
+      "text": "Version the QA files digest, so a change of its formula is told apart from a file change (2.0.27 changed it: one recheck after updating for phases with docs)",
+      "status": "open"
+    },
+    {
+      "id": "T77",
+      "text": "docs/proof.md: a Test results folder name cannot contain spaces (the parser refuses it)",
       "status": "open"
     }
   ],
