@@ -8452,12 +8452,19 @@
       ],
       "predicted": "standard",
       "qa": {
-        "result": "fail",
+        "result": "pass",
         "tier": "standard",
         "tree": "e6b18a25fb94a05d969705e63056597f3a1b9e8ef98bd93e8964940567fed9ac",
-        "at": "2026-10-08T10:16:51Z",
-        "note": "10/11 checks",
-        "rounds": 1
+        "at": "2026-10-08T10:56:50Z",
+        "note": "15/15 checks"
+      },
+      "outcome": {
+        "tier": "standard",
+        "predicted": "standard",
+        "held": true,
+        "fix_rounds": 1,
+        "qa_findings": 1,
+        "escalations": 0
       }
     }
   ],
@@ -14352,7 +14359,7 @@
       "req": "R114",
       "source": "qa",
       "attempts": 0,
-      "status": "fixed",
+      "status": "closed",
       "note": "User docs not updated for the new behavior. CLAUDE.md requires docs/ and README.md to change whenever behavior changes. docs/guards.md ('Approving by answer', lines 20-25) and docs/proof.md (around line 129) describe only the PostToolUse answer hook and say the question is named 'Approve contract <12 hex>?'; neither mentions the new PreToolUse hook (plugin/hooks/approve-ask.jq, approve-ask.sh) that now puts that fingerprint in front of a paraphrased Approve/Not yet menu. grep for 'approve-ask' and 'R114' in docs/ and README.md finds nothing. Fix: one short paragraph in docs/guards.md (and a sentence in docs/proof.md) saying VBW adds the fingerprint to a paraphrased approval menu while the contract waits."
     },
     {
@@ -14693,6 +14700,11 @@
     {
       "id": "T66",
       "text": "Balanced profile: Lead on Opus too (owner decision D190); reword R101, update profiles.json, config/profile skills, README, panel team table and the tests that pin balanced (profile-balanced, qa-model, statusline, kernel-surface, mission-record)",
+      "status": "open"
+    },
+    {
+      "id": "T67",
+      "text": "A documentation-only edit to a file a phase's docs plan lists (docs/proof.md) makes QA check the phase's code again (2026-10-08: a one-paragraph docs fix re-listed P70, P71, P75); R71 says documentation alone needs no new check: extend it to QA re-checks (a docs-only change gets at most a quick check of the docs)",
       "status": "open"
     }
   ],
@@ -17375,5 +17387,11 @@
     "full": true,
     "passed": true
   },
-  "lease": null
+  "lease": {
+    "run": "qa-20261008T105542Z",
+    "kind": "qa",
+    "started_at": "2026-10-08T10:55:42Z",
+    "files": [],
+    "session": "4130e174-7ef2-4e36-b853-fb2a8fd8511d"
+  }
 }
