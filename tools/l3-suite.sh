@@ -1364,8 +1364,8 @@ milestone_seed() {
   "$VBW" commit P1.1 "feat(P1.1): greet.sh" > /dev/null || return 1
   # shellcheck disable=SC1010 # "plan done" is a vbw subcommand
   "$VBW" plan done P1.1 > /dev/null || return 1
+  # Proven, with no QA verdict yet: the milestone is in progress, not waiting to ship.
   "$VBW" prove --full > /dev/null || return 1
-  "$VBW" qa record P1 pass standard "seeded" > /dev/null || return 1
 }
 
 # The seeded phases and plans as they were defined (QA may re-check a phase).
@@ -1378,7 +1378,7 @@ scenario_smallchange() {
   new_project
   (cd "$dir" && "$VBW" init > /dev/null && "$VBW" config rigor auto > /dev/null && milestone_seed) \
     || { say "setup failed: could not seed the greet.sh milestone"; return 1; }
-  fixture="greet.sh in an active milestone (one requirement proven, its phase and plan done, QA passed, not shipped); the user then asks for a --shout option in plain words; rigor auto"
+  fixture="greet.sh in an active milestone (one requirement proven, its phase and plan done, QA not yet run); the user then asks for a --shout option in plain words; rigor auto"
   seed_ms=$(jq -r '.milestone.id' "$dir/.vbw/record.json")
   seed_reqs=$(jq -c --arg m "$seed_ms" '[.requirements[] | select(.milestone == $m) | .id]' "$dir/.vbw/record.json")
   seed_phases=$(jq -c '[.phases[].id]' "$dir/.vbw/record.json")
