@@ -7,6 +7,7 @@
 // no `$` here; presses go to `on.act(action)` and the sound switch to `on.sound()`.
 import { nowModel, timelineModel, costsModel, renderNow, renderTimeline, renderCosts } from './panel-mission-live.js'
 import { planModel, proofModel, decisionsModel, teamModel, renderPlan, renderProof, renderDecisions, renderTeam } from './panel-mission-record.js'
+import { renderNext } from './panel-next.js'
 import { renderWrapped } from './panel-candy.js'
 import { NEED, PROGRESS, ESTIMATE, ACCENT } from './panel-palette.js'
 
@@ -70,7 +71,8 @@ export function renderPane(ui, input, on) {
   const head = h(Box, { key: 'head', flexDirection: 'row', columnGap: 1, marginBottom: 1 }, ...portrait, tabs)
   const sweep = tab === 'proof' && Raster && input.sweep ? [h(Raster, { key: 'vbw-sweep', columns: input.sweep.cols, rows: 1, cells: input.sweep.cells })] : []
   const view = wrapped ? renderWrapped(ui, wrapped) : body(ui, { ...input, st: { ...st, tab } }, act)
-  const content = [...(tab === 'now' ? summary(ui, v, st, on) : []), ...sweep, view]
+  const upNext = tab === 'now' ? [renderNext(ui, { recommendation: input.recommendation, width: input.width, motion: input.motion, arrivedAt: input.arrivedAt, now: input.now }, act)] : []
+  const content = [...(tab === 'now' ? summary(ui, v, st, on) : []), ...upNext, ...sweep, view]
   const sc = input.scroll
   const rows = sc && Number.isInteger(sc.bodyRows) ? sc.bodyRows : 0
   if (rows < 1) return h(Box, { flexDirection: 'column' }, head, ...content)
