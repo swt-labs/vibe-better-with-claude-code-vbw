@@ -98,7 +98,8 @@ cmd_show() {
           (waves($r.milestone.id) | select(length > 0)
             | "build waves: \(length) (the widest runs \(max) plan\(if max == 1 then "" else "s" end) at once)"),
           "project commands:",
-          (.commands | to_entries[] | "  \(.key): \(.value | argv_line)")'
+          (.commands | to_entries[] | "  \(.key): \(.value | argv_line)"),
+          (.project.results // empty | "saved test results folders: \(join(", "))")'
       if [ "$state" != approved ]; then
         printf 'approval question: Approve contract %s?\napproval options: Approve, Not yet\n' "${hash:0:12}"
       fi
@@ -176,7 +177,9 @@ show_contract_changes() {
         ($old | select(has("commands")) | .commands as $oc
           | ($new.commands | to_entries[] | select($oc[.key] != .value)
               | "\(if $oc[.key] == null then "added" else "changed" end) project command \(.key): \(.value | argv_line)"),
-            ($oc | keys[] | select(. as $k | $new.commands | has($k) | not) | "removed project command \(.)")) ]
+            ($oc | keys[] | select(. as $k | $new.commands | has($k) | not) | "removed project command \(.)")),
+        (select($old.results != $new.results)
+          | "saved test results folders: \(($new.results // []) | if length == 0 then "none" else join(", ") end) (was \(($old.results // []) | if length == 0 then "none" else join(", ") end))") ]
     | if length == 0 then "no changes since the last approval" else "changes since the last approval:", (.[] | "  " + .) end'
 }
 
