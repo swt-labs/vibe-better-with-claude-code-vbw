@@ -125,6 +125,8 @@ rechecked() { next_json | jq -c '.qa.recheck | keys'; }
   docs_project
   printf '\n## Test results\n\n- results/\n' >> .vbw/spec.md
   "$VBW" spec sync > /dev/null
+  # Unapproved, the new folder exempts nothing: before any file changes, no phase is listed.
+  [ "$(rechecked)" = '[]' ] || { next_json | jq -c '{action, qa}'; false; }
   change "test: save results" results/run.json
   next_json | jq -e '.action == "approve" and (.qa.recheck | has("P1"))' || { next_json | jq -c '{action, qa}'; false; }
   vbw_run show qa
