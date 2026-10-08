@@ -50,14 +50,14 @@ cmd_apply() {
         and all(.plans, .checks, .rules; . == null or (type == "array" and all(.[]; type == "object")))' > /dev/null 2>&1 \
       || vbw_die "apply --add needs a JSON object with the new phases ({id, title, reqs}) and their plans, checks and rules"
     pdoc=$(printf '%s' "$doc" | jq -c '{phases, plans: (.plans // []), checks: (.checks // []), rules: (.rules // [])}')
-    problem=$(record_read | jq -r --argjson p "$pdoc" '.milestone.id as $m
+    problem=$(record_read | jq -r --argjson p "$pdoc" '. as $r | .milestone.id as $m
       | ([.phases[] | select(.milestone == $m)]) as $ph | [$p.phases[].id] as $new | [$p.phases[].reqs[]] as $newreqs
       | [($p.phases[] | select(.id as $i | any($ph[]; .id == $i)) | "\(.id) is already a phase of this milestone: --add takes new phases only"),
          ($p.phases[].reqs[] | . as $q | ([$ph[] | select(any(.reqs[]; . == $q))][0]) | select(. != null)
            | "\($q) is already covered by \(.id): --add takes requirements that have no phase yet"),
          ($p.plans[] | select(.phase as $x | $new | index($x) | not) | "\(.id // "a plan") is for \(.phase // "no phase"), not a phase this --add brings"),
-         ($p.plans[] | select(.id as $i | any(.plans[]?; .id == $i)) | "\(.id) is already a plan: --add takes new plans only"),
-         ($p.checks[] | select(.id as $i | any(.checks[]?; .id == $i)) | "\(.id) is already a check: --add takes new checks only"),
+         ($p.plans[] | select(.id as $i | any(($r.plans // [])[]; .id == $i)) | "\(.id) is already a plan: --add takes new plans only"),
+         ($p.checks[] | select(.id as $i | any(($r.checks // [])[]; .id == $i)) | "\(.id) is already a check: --add takes new checks only"),
          ($p.checks[], $p.rules[] | select(.req as $q | $newreqs | index($q) | not)
            | "\(.id // "the rule \"\(.text)\"") is for \(.req), not a requirement of the phases this --add brings")]
       | .[0] // empty') || vbw_die "internal error: cannot read the added phases"

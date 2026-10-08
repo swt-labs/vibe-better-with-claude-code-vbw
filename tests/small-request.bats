@@ -33,11 +33,12 @@ spec() {
   "$VBW" spec sync > /dev/null
 }
 
-# prior: R1 and R2 of the milestone are planned (phase P1, one plan each) and
-# R1's plan is done; the request comes after them.
+# planned: R1 and R2 of the milestone are planned (phase P1, one plan each)
+# and no work has started; the request comes after them.
+# prior: as planned, and R1's plan is done.
 PRIOR1='R1 [auto] Visitors can read the first note'
 PRIOR2='R2 [auto] Visitors can read the second note'
-prior() {
+planned() {
   spec "$PRIOR1" "$PRIOR2" "$@"
   printf 'true\n' > tests/n1.sh
   printf 'true\n' > tests/n2.sh
@@ -47,6 +48,9 @@ prior() {
     checks: [{id: "C1", req: "R1", run: ["sh", "tests/n1.sh"], files: ["tests/n1.sh"]},
              {id: "C2", req: "R2", run: ["sh", "tests/n2.sh"], files: ["tests/n2.sh"]}],
     rules: [{req: "R1", text: "first", check: "C1"}, {req: "R2", text: "second", check: "C2"}]}' | "$VBW" apply > /dev/null
+}
+prior() {
+  planned "$@"
   edit_record '(.plans[] | select(.id == "P1.1")).status = "done" | (.requirements[] | select(.id == "R1")).status = "proven"'
 }
 
@@ -162,6 +166,34 @@ part() { jq -cS "$1" .vbw/record.json; }
   [ "$status" -ne 0 ]
   [[ "$output" == *R2* || "$output" == *P2* ]] || { echo "$output"; false; }
   [ "$(cksum < .vbw/record.json)" = "$before" ]
+}
+
+# add_refused DOC TEXT: vbw apply --add of DOC fails, names TEXT, and the record is unchanged.
+add_refused() {
+  local before
+  before=$(cksum < .vbw/record.json)
+  run bash -c 'printf "%s" "$2" | "$1" apply --add' _ "$VBW" "$1"
+  [ "$status" -ne 0 ] || { echo "$output"; return 1; }
+  [[ "$output" == *"$2"* ]] || { echo "$output"; return 1; }
+  [ "$(cksum < .vbw/record.json)" = "$before" ]
+}
+
+@test "R116: in a milestone where no work has started, vbw apply --add refuses each conflict with its own reason and changes nothing" {
+  big_repo
+  planned 'R3 [auto] greet.sh prints HELLO, ANA! for --shout Ana'
+  jq -e '[.plans[] | select(.status != "planned")] == []' .vbw/record.json
+  # add_doc PHASE REQ PLAN PLAN_PHASE CHECK: one phase, one plan and one check.
+  add_doc() {
+    jq -nc --arg ph "$1" --arg q "$2" --arg pl "$3" --arg pp "$4" --arg c "$5" '{phases: [{id: $ph, title: "Shout", reqs: [$q]}],
+      plans: [{id: $pl, phase: $pp, title: "Shout", reqs: [$q], files: ["greet.sh"], after: []}],
+      checks: [{id: $c, req: $q, run: ["sh", "tests/shout.sh"], files: ["tests/shout.sh"]}],
+      rules: [{req: $q, text: "shouts", check: $c}]}'
+  }
+  add_refused "$(add_doc P1 R3 P1.9 P1 C3)" "P1 is already a phase of this milestone"
+  add_refused "$(add_doc P2 R2 P2.1 P2 C3)" "R2 is already covered by P1"
+  add_refused "$(add_doc P2 R3 P1.1 P2 C3)" "P1.1 is already a plan"
+  add_refused "$(add_doc P2 R3 P2.1 P2 C1)" "C1 is already a check"
+  add_refused "$(add_doc P2 R3 P1.3 P1 C3)" "P1.3 is for P1, not a phase this --add brings"
 }
 
 @test "R116: in a repository tracking more than 30 files, an express phase over more than two files is refused, through --add as through a full apply" {
