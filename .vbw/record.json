@@ -9528,7 +9528,15 @@
         "guarded: R1 (C1), R2 (C2), R3 (C3), R13 (C12), R14 (C13), R22 (C19), R23 (C20), R24 (C23), R25 (C24), R26 (C22), R27 (C21), R28 (C25), R31 (C27), R33 (C29), R37 (C35), R38 (C33, C34), R39 (C36), R40 (C37), R43 (C42, C43), R44 (C44, C45), R45 (C39, C40, C41), R46 (C46), R47 (C47), R49 (C48), R50 (C51), R51 (C52, C53, C66), R52 (C58, C91), R53 (C54, C55), R55 (C56, C57), R57 (C59, C70, C71), R60 (C72, C94), R61 (C73, C74, C75, C76, C77), R62 (C78, C79, C80, C81, C82, C83, C93), R65 (C86, C87, C88, C89, C90), R67 (C96), R70 (C114), R72 (C116, C118), R78 (C105, C106), R79 (C107), R80 (C108), R81 (C109, C111, C112, C113), R83 (C119), R98 (C154), R99 (C155), R100 (C156), R101 (C179), R106 (C164, C165), R107 (C166, C167), R111 (C171, C172, C173, C174, C175), R115 (C181), R116 (C182, C183), R119 (C180)",
         "tests: project test command"
       ],
-      "predicted": "deep"
+      "predicted": "deep",
+      "escalations": [
+        {
+          "at": "2026-10-08T23:50:31Z",
+          "from": "deep",
+          "to": "deep",
+          "reason": "Dev blocked P86.1: Tasks 1-4 done and committed; C187 passes. Cannot close: (1) tests/check-alone-contract.bats and tests/fixtures/records/future.json (protected, C29/C39) wait for owner approval; (2) plan names R121 but C188 (tests/triage-skill.bats, skill/docs work, docs/triage.md lacks small/medium/large) fails and is outside this plan's files."
+        }
+      ]
     },
     {
       "id": "P87",
@@ -15294,7 +15302,7 @@
         ".github/workflows/qa-review.yml"
       ],
       "after": [],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "ci.yml: actions/checkout@v4 to @v7 in both jobs and actions/setup-node@v4 to @v7 in the validate job (node-version stays 22); v7 is the current major of each and runs on Node 24 (checked in each action's action.yml: using node24)",
@@ -15321,14 +15329,15 @@
         "tests/check-alone-contract.bats"
       ],
       "after": [],
-      "status": "planned",
+      "status": "blocked",
       "role": "dev",
       "tasks": [
         "plugin/lib/cmd-todo.sh: vbw todo add [--sort next|later --size small|medium|large] TEXT; both flags or neither, anything else is a usage error and nothing is added; the item keeps sort and size; vbw todo list prints open and in-progress items next first, then later, then unsorted, each group by id; a sorted line reads 'T2 [next, small] Refunds', an unsorted one stays exactly 'T1 Dark mode' as today",
         "plugin/lib/record.jq and record.sh: a todo may carry sort (next or later) and size (small, medium or large), both or neither; record_update writes schema 3 when a todo is sorted (P87.1 adds the recommendation to this rule), else 2 when a check is alone, else 1; VBW_SCHEMA_MAX=3. tests/fixtures/records/future.json and the test 'a record newer than schema 2 still says it needs a newer VBW' in tests/check-alone-contract.bats move from schema 3 to 99: they used 3 to mean 'a future schema', which is now a real one. Both are protected check files of finished work (C29, C39), so this edit waits for the owner's approval before proof",
         "new plugin/lib/cmd-triage.sh: vbw triage [--json] reads the record once, starts nothing and writes nothing; --json prints {milestone: {id, title, status}, open: [{id, text, proof, status}] (the active milestone's requirements neither proven nor accepted; [] once the milestone is shipped), run: {run, kind, session, started_at} or null, todos: [{id, text, sort?, size?}] (open and in progress, in vbw todo list order)}; the text form prints the same facts on short lines, 'no run open' when there is none",
         "plugin/bin/vbw: dispatch triage; help lines for 'triage [--json]' and 'todo [list] | add [--sort next|later --size small|medium|large] TEXT | done ID | drop ID'; docs/record.md: the todo fields, schema 3 (a sorted todo) and VBW_SCHEMA_MAX 3, keeping the schema 2 'alone' paragraph"
-      ]
+      ],
+      "note": "Tasks 1-4 done and committed; C187 passes. Cannot close: (1) tests/check-alone-contract.bats and tests/fixtures/records/future.json (protected, C29/C39) wait for owner approval; (2) plan names R121 but C188 (tests/triage-skill.bats, skill/docs work, docs/triage.md lacks small/medium/large) fails and is outside this plan's files."
     },
     {
       "id": "P86.2",
@@ -15343,7 +15352,7 @@
         "plugin/skills/vibe/SKILL.md"
       ],
       "after": [],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "new plugin/skills/triage/SKILL.md (name triage; allowed-tools only Bash vbw, no Workflow or Agent; preloads \"${CLAUDE_PLUGIN_ROOT}/bin/vbw\" triage and vbw interview): when it applies (a new idea) and when not (an answer to a question VBW asked, 'continue' or 'go on', an approval); a request that already matches an existing requirement or open backlog item is named instead, with an offer to move a backlog item to now (vbw spec add, then vbw todo done)",
@@ -15366,7 +15375,7 @@
         "README.md"
       ],
       "after": [],
-      "status": "planned",
+      "status": "done",
       "role": "docs",
       "tasks": [
         "new docs/triage.md: what the triage is and when it happens (each new idea brought to /vbw:vibe, before any planning, at every autonomy setting), and what is not sorted (answers, 'continue', approvals, an idea VBW already has)",
@@ -15465,7 +15474,7 @@
         "plugin/hooks/panel-next.js"
       ],
       "after": [],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "new pure module plugin/hooks/panel-next.js (no $, never throws): the section's lines from record.recommendation in vbw status order (top pick with its size, its reason, each runner-up with its size, the written date); 'none yet' when the field is absent or malformed (any wrong type or missing field hides the pick lines), 'the backlog is empty' for {empty: true}; every line cut to the width with an ellipsis, never wrapped",
@@ -15511,7 +15520,7 @@
         "docs/panel.md"
       ],
       "after": [],
-      "status": "planned",
+      "status": "done",
       "role": "docs",
       "tasks": [
         "docs/panel.md, Now tab: the What's next section (the top pick with its reason and size, up to two runners-up with sizes, in the same order as vbw status; the 'none yet' and 'the backlog is empty' lines)",
