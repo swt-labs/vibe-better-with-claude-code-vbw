@@ -1,9 +1,9 @@
 {
   "scenario": "recheck",
   "fixture": "greet.sh and farewell.sh, one phase each, plan approved by the user before the session; rigor standard; after QA passes, one commit changes greet.sh and QA runs again",
-  "cost_usd": 0.67,
+  "cost_usd": 1.00,
   "evidence_level": "L3",
-  "at": "2026-10-06T13:21:41Z",
+  "at": "2026-10-08T20:26:30Z",
   "passed": true,
   "facts": {
     "changed_file": "greet.sh",
