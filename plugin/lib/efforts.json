@@ -1,6 +1,6 @@
 {
   "quality": {
-    "architect": {"decide": "max", "scope": "xhigh"},
+    "architect": {"decide": "max", "scope": "xhigh", "recommend": "high"},
     "lead": {"plan": "xhigh", "close": "medium"},
     "dev": {"build": "high", "fix": "high"},
     "docs": {"build": "medium"},
@@ -9,7 +9,7 @@
     "debugger": {"investigate": "high", "diagnose": "xhigh", "fix": "high"}
   },
   "balanced": {
-    "architect": {"decide": "xhigh", "scope": "high"},
+    "architect": {"decide": "xhigh", "scope": "high", "recommend": "medium"},
     "lead": {"plan": "high", "close": "low"},
     "dev": {"build": "medium", "fix": "medium"},
     "docs": {"build": "low"},
@@ -18,7 +18,7 @@
     "debugger": {"investigate": "medium", "diagnose": "high", "fix": "medium"}
   },
   "budget": {
-    "architect": {"decide": "high", "scope": "high"},
+    "architect": {"decide": "high", "scope": "high", "recommend": "medium"},
     "lead": {"plan": "high", "close": "low"},
     "dev": {"build": "medium", "fix": "medium"},
     "docs": {"build": "low"},
