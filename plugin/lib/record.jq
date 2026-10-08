@@ -46,7 +46,7 @@ if type != "object" then ["record must be a JSON object"] else
 | [
     ( select($r.schema != (if (($r.todos // []) | type) == "array" and any(($r.todos // [])[]?; type == "object" and (has("sort") or has("size"))) then 3
                            elif (($r.checks // []) | type) == "array" and any(($r.checks // [])[]?; type == "object" and .alone == true) then 2 else 1 end))
-      | "schema must be 3 when a todo is sorted, else 2 when a check is alone, else 1" ),
+      | "schema must be 3 when a todo is sorted; schema must be 2 when a check is alone, else 1" ),
     ( $r | keys[]
       | select(one_of(["schema","project","milestone","requirements","checks","phases","plans",
                        "fixes","todos","decisions","commands","settings","evidence","lease","shipped","converted"]) | not)
