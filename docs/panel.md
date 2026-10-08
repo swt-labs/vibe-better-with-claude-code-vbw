@@ -263,7 +263,7 @@ Now │ Plan │ Proof │ Timeline │ Decisions │ Team │ Costs
 The tabs stay at the top of the pane however long the content is. When the
 content is taller than the pane, only the part under the tabs scrolls.
 
-- **Now:** the sentences above, the sound switch, then the running workflow as
+- **Now:** the sentences above, the sound switch, [What's next](#whats-next), then the running workflow as
   columns of agent cards by phase. Each card has a frame in its agent's role
   colour, its state as a coloured mark and word (`● running`, `✓ done`,
   `✗ failed`, `… quiet`), what the agent is doing, and its tokens, dimmed. Two
@@ -281,6 +281,48 @@ content is taller than the pane, only the part under the tabs scrolls.
 - **Costs:** each VBW run of this session with its cost (the session cost added
   while the run was open, so "about"), by kind, and the session total. The list
   starts with the session: a new session starts again from zero.
+
+### What's next
+
+The **Now** tab has a **What's next** section with the recommendation VBW
+stored the last time it was asked what to work on next. It shows the same
+things, in the same order, as `vbw status`:
+
+```
+What's next                                        [Suggest next]
+Refunds for paid orders (small)
+  Customers ask for it most this month.
+Then: Gift cards (large), Dark mode (medium)
+```
+
+- The **top pick**, with its size (`small`, `medium` or `large`) and the reason
+  VBW gave for it.
+- Up to two **runners-up**, each with its size.
+- Before any recommendation is stored, one line says there is **none yet**.
+- When the recommendation found nothing to pick, one line says **the backlog
+  is empty**.
+- Long lines are cut to the pane's width. A stored recommendation the panel
+  cannot read hides the pick lines; the section and its button stay.
+
+The section follows the record: a new recommendation appears within a few
+seconds, with no restart.
+
+**Suggest next** asks for a fresh recommendation. It puts
+`/vbw:vibe what's next` in the prompt and never sends it: you press Enter, as
+with every other button. The request costs one Architect run.
+
+The section has two touches of colour, both from the palette above and both
+only with full motion (see [Motion](#motion)):
+
+- The title **shimmers** slowly.
+- The top pick gives a soft **pulse** when a new recommendation arrives.
+
+Both settle within a few seconds. Neither moves for a recommendation you have
+already seen, so opening the panel again does not replay them. With `motion`
+set to `calm` or `off`, or left unset with an interview level whose default is
+not `full`, the section is still. Whether the effect is subtle and elegant
+(R125) is yours to judge: watch a new recommendation arrive, then
+`vbw req accept R125` or `vbw req reject R125 "<what is off>"`.
 
 When a milestone ships, Mission Control opens on **VBW Wrapped**: the
 requirements proven, the checks passing, the agents and fix rounds, the time
@@ -415,6 +457,7 @@ What each level shows:
 
 | | `full` | `calm` | `off` |
 |---|---|---|---|
+| The What's next title and a new top pick | shimmer and pulse, then settle | still | still |
 | Each agent in the band | a small figure in its role's colour, posed by what it does (reading, editing, running a command, writing, quiet, done, failed), moving about 10 times a second while the run works | a dot in its role's colour and a spinner that steps once a second | a dot and a still `·` |
 | A new agent starts | its row in the band flashes in its role's colour for about a second | no flash | no flash |
 | A phase passes QA | about 1.5 s of confetti in the band | nothing | nothing |
