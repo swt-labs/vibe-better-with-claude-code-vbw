@@ -14335,7 +14335,7 @@
       "id": "F74",
       "req": "R53",
       "attempts": 0,
-      "status": "open",
+      "status": "fixed",
       "note": "C55 fail (exit 1)"
     }
   ],
