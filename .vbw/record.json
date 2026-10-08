@@ -15329,15 +15329,14 @@
         "tests/check-alone-contract.bats"
       ],
       "after": [],
-      "status": "blocked",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "plugin/lib/cmd-todo.sh: vbw todo add [--sort next|later --size small|medium|large] TEXT; both flags or neither, anything else is a usage error and nothing is added; the item keeps sort and size; vbw todo list prints open and in-progress items next first, then later, then unsorted, each group by id; a sorted line reads 'T2 [next, small] Refunds', an unsorted one stays exactly 'T1 Dark mode' as today",
         "plugin/lib/record.jq and record.sh: a todo may carry sort (next or later) and size (small, medium or large), both or neither; record_update writes schema 3 when a todo is sorted (P87.1 adds the recommendation to this rule), else 2 when a check is alone, else 1; VBW_SCHEMA_MAX=3. tests/fixtures/records/future.json and the test 'a record newer than schema 2 still says it needs a newer VBW' in tests/check-alone-contract.bats move from schema 3 to 99: they used 3 to mean 'a future schema', which is now a real one. Both are protected check files of finished work (C29, C39), so this edit waits for the owner's approval before proof",
         "new plugin/lib/cmd-triage.sh: vbw triage [--json] reads the record once, starts nothing and writes nothing; --json prints {milestone: {id, title, status}, open: [{id, text, proof, status}] (the active milestone's requirements neither proven nor accepted; [] once the milestone is shipped), run: {run, kind, session, started_at} or null, todos: [{id, text, sort?, size?}] (open and in progress, in vbw todo list order)}; the text form prints the same facts on short lines, 'no run open' when there is none",
         "plugin/bin/vbw: dispatch triage; help lines for 'triage [--json]' and 'todo [list] | add [--sort next|later --size small|medium|large] TEXT | done ID | drop ID'; docs/record.md: the todo fields, schema 3 (a sorted todo) and VBW_SCHEMA_MAX 3, keeping the schema 2 'alone' paragraph"
-      ],
-      "note": "Tasks 1-4 done and committed; C187 passes. Cannot close: (1) tests/check-alone-contract.bats and tests/fixtures/records/future.json (protected, C29/C39) wait for owner approval; (2) plan names R121 but C188 (tests/triage-skill.bats, skill/docs work, docs/triage.md lacks small/medium/large) fails and is outside this plan's files."
+      ]
     },
     {
       "id": "P86.2",
@@ -17722,6 +17721,11 @@
       "id": "D208",
       "at": "2026-10-08T23:28:19Z",
       "text": "Contract approved: 120 requirements, 188 checks, 250 plans (695cbb323166)"
+    },
+    {
+      "id": "D209",
+      "at": "2026-10-08T23:53:33Z",
+      "text": "Contract approved: 120 requirements, 188 checks, 250 plans (4e4dcb4d1a07)"
     }
   ],
   "commands": {
