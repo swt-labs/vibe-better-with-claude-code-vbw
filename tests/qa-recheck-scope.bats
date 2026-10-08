@@ -35,7 +35,7 @@ teardown() { vbw_teardown; }
   "$VBW" qa finding R1 "part 1 deviates from its plan" > /dev/null
   "$VBW" qa record P1 fail standard "1 deviation" > /dev/null
   "$VBW" fix done F1 > /dev/null
-  "$VBW" prove > /dev/null
+  "$VBW" prove --full > /dev/null
   [ "$(listed)" = '["P1"]' ]
 }
 
@@ -69,7 +69,7 @@ teardown() { vbw_teardown; }
   printf '# stricter\n' >> tests/p1.sh
   git add tests/p1.sh && git commit -q -m "test(p1): stricter"
   "$VBW" approve > /dev/null
-  "$VBW" prove > /dev/null
+  "$VBW" prove --full > /dev/null
   [ "$(listed)" = '["P1"]' ]
 }
 
@@ -83,7 +83,7 @@ teardown() { vbw_teardown; }
   qa_pass P1 P2
   edit_record '(.plans[] | select(.id == "P1.1")).tasks += ["also write a receipt"]'
   "$VBW" approve > /dev/null
-  "$VBW" prove > /dev/null
+  "$VBW" prove --full > /dev/null
   [ "$(listed)" = '["P1"]' ]
 }
 
@@ -91,7 +91,7 @@ teardown() { vbw_teardown; }
   qa_pass P1 P2
   printf 'loose\n' > src/loose.txt
   git add src/loose.txt && git commit -q -m "chore: loose file"
-  "$VBW" prove > /dev/null
+  "$VBW" prove --full > /dev/null
   [ "$(listed)" = '[]' ]
   next_json | jq -e '.action == "ship"'
 }
@@ -100,7 +100,7 @@ teardown() { vbw_teardown; }
   qa_pass P1 P2
   printf '# notes\n' > NOTES.md
   git add NOTES.md && git commit -q -m "docs: notes"
-  "$VBW" prove > /dev/null
+  "$VBW" prove --full > /dev/null
   jq -e 'all(.phases[]; .qa.result == "pass")' .vbw/record.json
   next_json | jq -e '.action == "ship" and .qa.recheck == {}'
 }

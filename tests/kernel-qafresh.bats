@@ -18,7 +18,7 @@ setup() {
   "$VBW" approve > /dev/null
   printf 'paid\n' > src/pay.txt && "$VBW" commit P1.1 "feat(pay): pay" > /dev/null
   "$VBW" plan done P1.1 > /dev/null
-  "$VBW" prove > /dev/null
+  "$VBW" prove --full > /dev/null
 }
 
 teardown() { vbw_teardown; }
@@ -39,7 +39,7 @@ teardown() { vbw_teardown; }
   printf 'more\n' > src/extra.txt
   run "$VBW" qa record P1 pass standard
   [ "$status" -ne 0 ]
-  "$VBW" prove > /dev/null
+  "$VBW" prove --full > /dev/null
   vbw_run qa record P1 pass standard
   [ "$status" -eq 0 ]
   jq -e '.phases[0].qa.result == "pass"' .vbw/record.json

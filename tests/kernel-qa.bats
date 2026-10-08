@@ -18,7 +18,7 @@ setup() {
   "$VBW" approve > /dev/null
   printf 'paid\n' > src/pay.txt && "$VBW" commit P1.1 "feat(pay): pay" > /dev/null
   "$VBW" plan done P1.1 > /dev/null
-  "$VBW" prove > /dev/null
+  "$VBW" prove --full > /dev/null
 }
 
 teardown() { vbw_teardown; }
@@ -45,7 +45,7 @@ teardown() { vbw_teardown; }
   echo "$output" | jq -e '.action == "fix" and .detail.fixes == ["F1"]'
   # The checks pass, but a proof never closes QA's finding.
   "$VBW" fix done F1 > /dev/null
-  "$VBW" prove > /dev/null
+  "$VBW" prove --full > /dev/null
   jq -e '.fixes[0].status == "fixed"' .vbw/record.json
   vbw_run qa record P1 pass standard
   jq -e '.fixes[0].status == "closed" and .phases[0].qa.result == "pass"' .vbw/record.json
@@ -55,7 +55,7 @@ teardown() { vbw_teardown; }
   "$VBW" qa record P1 pass standard > /dev/null
   printf 'paid\nmore\n' > src/pay.txt
   git add src/pay.txt && git commit -q -m "fix(pay): more"
-  "$VBW" prove > /dev/null
+  "$VBW" prove --full > /dev/null
   vbw_run next --json
   echo "$output" | jq -e '.action == "qa"'
   local round

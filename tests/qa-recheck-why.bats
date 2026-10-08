@@ -19,7 +19,7 @@ JARGON='fingerprint|hash|sha|digest|checksum|tree|blob|inputs'
   "$VBW" qa finding R1 "part 1 deviates from its plan" > /dev/null
   "$VBW" qa record P1 fail standard "1 deviation" > /dev/null
   "$VBW" fix done F1 > /dev/null
-  "$VBW" prove > /dev/null
+  "$VBW" prove --full > /dev/null
   next_json | jq -e '.qa.recheck.P1 | any(.[]; test("failed last time"))'
   next_json | jq -e '.qa.standing == ["P2"]'
 }
@@ -37,7 +37,7 @@ JARGON='fingerprint|hash|sha|digest|checksum|tree|blob|inputs'
   git add src/p1.txt tests/p2.sh && git commit -q -m "change"
   "$VBW" approve > /dev/null
   edit_record '(.phases[] | select(.id == "P3")).goal = "Part 3 works for everyone"'
-  "$VBW" prove > /dev/null
+  "$VBW" prove --full > /dev/null
   next_json | jq -e '.qa.recheck.P1 | any(.[]; test("files changed"))'
   next_json | jq -e '.qa.recheck.P2 | any(.[]; test("tests changed"))'
   next_json | jq -e '.qa.recheck.P3 | any(.[]; test("goal or plan changed"))'
@@ -58,7 +58,7 @@ JARGON='fingerprint|hash|sha|digest|checksum|tree|blob|inputs'
   printf '# stricter\n' >> tests/p2.sh
   git add -A && git commit -q -m "change"
   "$VBW" approve > /dev/null
-  "$VBW" prove > /dev/null
+  "$VBW" prove --full > /dev/null
   next_json | jq -e '.qa.recheck.P2 | length >= 3
     and any(.[]; test("files changed")) and any(.[]; test("tests changed")) and any(.[]; test("builds on P1"))'
 }
