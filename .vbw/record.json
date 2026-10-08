@@ -8945,12 +8945,11 @@
         }
       ],
       "qa": {
-        "result": "fail",
+        "result": "pass",
         "tier": "standard",
-        "tree": "58b00703a0116e429cd949aab1c748633e69361baac64db8e6e3f53529258631",
-        "at": "2026-10-08T18:52:17Z",
-        "note": "19/20 checks",
-        "rounds": 1
+        "tree": "83763b2e124c4545379d0157263d9fba0dd4e324c04a5fca79dd3e7c361f069c",
+        "at": "2026-10-08T19:55:18Z",
+        "note": "18/18 checks"
       },
       "outcome": {
         "tier": "deep",
@@ -15269,7 +15268,7 @@
       "req": "R118",
       "source": "qa",
       "attempts": 0,
-      "status": "fixed",
+      "status": "closed",
       "note": "vbw show fix lists a project command that was skipped (status skipped: not approved) as a failing project command and tells the Dev 'full output not kept: run vbw prove again'. Plan P83.2 task 1 and the criterion say the commands list holds every failing project command, and vbw prove itself counts a skipped command as passed (cmd-prove.sh:66, passed allows skipped). Cause: plugin/lib/cmd-show.sh show_work, def failing: . != null and .status != \"pass\", used for commands: [... select(.value | failing) ...]. Evidence: jq on {lint:{status:skipped}} with that filter returns [{name:lint,status:skipped}]. Reachable: commands are not part of the contract hash (contract.sh contract_core), so a command added or changed in spec.md after approval, or a named but unapproved quick (proofreuse.sh proofreuse_names), is recorded as skipped. Running vbw prove again does not help; the command needs approval. Fix: list only fail and timeout commands (and add a test in tests/prove-kept-output.bats with a skipped command)."
     },
     {
@@ -18391,5 +18390,11 @@
     "full": true,
     "passed": true
   },
-  "lease": null
+  "lease": {
+    "run": "qa-20261008T195232Z",
+    "kind": "qa",
+    "started_at": "2026-10-08T19:52:32Z",
+    "files": [],
+    "session": "4130e174-7ef2-4e36-b853-fb2a8fd8511d"
+  }
 }
