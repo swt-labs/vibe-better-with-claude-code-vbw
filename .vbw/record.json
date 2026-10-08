@@ -15194,7 +15194,7 @@
       "req": "R116",
       "source": "qa",
       "attempts": 0,
-      "status": "open",
+      "status": "fixed",
       "note": "The new safety refusals of 'vbw apply --add' are not really tested. plugin/lib/cmd-apply.sh lines 54-62 refuse a phase id that already exists, a requirement another phase already covers, a plan or check id already in use, and a plan for a phase the request does not bring. The only test (tests/small-request.bats, test 'vbw apply --add refuses a phase that exists, a requirement that already has a phase') uses a milestone where work has already started (P1.1 done), so if those lines were deleted the older 'work has started' refusals at lines 115-123 would still refuse with a message containing P1 or P2, and the test would still pass. In a milestone where nothing has started yet, those lines are the only guard, and no test covers that. The plan or check id in use and the wrong-phase plan refusals have no test at all. Recommended fix: add a case with no started work for each refusal and assert on each refusal's own message text (for example 'is already covered by', 'is already a phase of this milestone', 'is already a plan', 'is already a check')."
     },
     {
@@ -15210,7 +15210,7 @@
       "req": "R115",
       "source": "qa",
       "attempts": 0,
-      "status": "open",
+      "status": "fixed",
       "note": "docs/proof.md (Saved test results section, added in c58c01bd) says 'A folder named twice, or any other line in the section, is an error with its line number.' The code does not do that: plugin/lib/spec.jq only checks bullet lines (the '.res and ($l | test(\"^[-*+]\\\\s\"))' branch). A plain line such as 'We keep runs here.' or 'results/' without the leading '- ' is silently skipped: piping '## Test results\\n\\nWe keep runs here.\\n- results/' through spec.jq gives results [\"results/\"] and errors []. The failure is safe (a skipped line exempts nothing), but the document promises an error that never comes. Fix: either say only list lines are checked and other text is ignored, or make spec.jq report non-list lines and add a test for it."
     },
     {
@@ -15218,7 +15218,7 @@
       "req": "R115",
       "source": "qa",
       "attempts": 0,
-      "status": "open",
+      "status": "fixed",
       "note": "Several P81.1 behaviors have no test, against the project rule that every behavior gets a test (CLAUDE.md, Testing). Searching tests/ for 'Test results', 'project.results' and the parser's error text finds only tests/qa-recheck-docs.bats, which never checks: (1) spec.jq's error for a bad results line ('../', absolute path, .vbw/, '.' parts, a folder named twice); (2) the missing trailing '/' being added; (3) vbw spec sync removing project.results when the section goes; (4) record.jq rejecting a bad project.results (empty, not ending in '/', duplicates, .vbw/); (5) 'vbw show contract --changes' naming a changed folder list. I ran these by hand (spec.jq and record.jq on piped input) and they behave as the plan says today, but nothing would catch a break. Fix: add these cases to tests (they can sit beside the existing spec and record tests)."
     }
   ],
