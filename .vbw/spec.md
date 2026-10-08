@@ -106,7 +106,7 @@ VBW is a Claude Code plugin that makes it build software properly: the user agre
 - R98 [auto] In an autonomous run, while this session's proof or workflow is still running in the background, the stop hook does not ask for that step again and spends no autonomous step on it
 - R99 [auto] A fix for a failing project command can commit the files it changed to make that command pass, even when no plan lists them, and the commit names the fix
 - R100 [auto] After the plan changes (a new plan, a changed plan or a re-plan), VBW asks for approval only with the approval menu; it never tells the user to type /vbw:approve
-- R101 [auto] In the balanced profile the Architect runs on Opus and every other role on Sonnet; QA is never below Sonnet in any profile
+- R101 [auto] In the balanced profile the Architect runs on Opus; QA is never below Sonnet in any profile
 - R102 [auto] Planning splits each phase into plans that touch separate files wherever the work allows, so as many plans as possible build at the same time; the approval shows the number of build waves and how many plans the widest wave runs at once
 - R103 [auto] When the committed project files are identical to those of the last passing proof (only VBW's own record or spec changed), vbw prove reuses that proof's results for every check and command whose approved definition is unchanged, says so, and runs only the rest
 - R104 [auto] A phase is not checked by QA again when the only change since its pass is a recorded decision, a closed finding with no code change, or a removed requirement that only a person judges; a phase whose code, tests, goal or remaining requirements changed is still checked again
@@ -119,6 +119,10 @@ VBW is a Claude Code plugin that makes it build software properly: the user agre
 - R112 [auto] The interview skill says it runs before any spec or convert work, as the router does
 - R113 [auto] VBW's own files under .vbw/ (the spec, the record) never make QA check a passed phase again, even when a plan lists one of them; a change to the phase's other files still does
 - R114 [auto] When Claude asks the approval menu (options Approve and Not yet) without the contract's fingerprint while a contract waits for approval, VBW puts 'Approve contract <fingerprint>?' in front of the question, so the user's Approve approves exactly that contract; other questions, subagents' questions, a question that already names a fingerprint and an approved contract are left as they are
+- R115 [auto] A passed phase is not checked by QA again when the only files that changed since its pass are documentation (Markdown and other docs) or recorded test results; a change to its code, its tests or its goal still lists it again
+- R116 [auto] A request that names one or two files and no risk path is offered the small-change path (one express phase, one plan and its check, approved once) before any planning workflow starts; a larger or riskier request still goes to planning
+- R118 [auto] When a check or project command fails, the proof keeps its full output in the project's runtime folder, and vbw show fix names that file, so the failing test can be read without running everything again
+- R119 [auto] In the balanced profile the Lead also runs on Opus, and every role other than the Architect and the Lead runs on Sonnet
 
 <!-- One requirement per line: an id, how it is proved, and a user-observable
      statement. [auto] = a check can prove it; [human] = only a person can judge it.

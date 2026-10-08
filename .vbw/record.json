@@ -2599,20 +2599,11 @@
     },
     {
       "id": "R101",
-      "text": "In the balanced profile the Architect runs on Opus and every other role on Sonnet; QA is never below Sonnet in any profile",
+      "text": "In the balanced profile the Architect runs on Opus; QA is never below Sonnet in any profile",
       "proof": "auto",
-      "status": "proven",
-      "milestone": "M13",
-      "rules": [
-        {
-          "text": "in the balanced profile the Architect runs on Opus and every other role on Sonnet",
-          "check": "C157"
-        },
-        {
-          "text": "QA is never below Sonnet in any profile, including after profile changes and a Haiku override",
-          "check": "C157"
-        }
-      ]
+      "status": "open",
+      "milestone": "M15",
+      "rules": []
     },
     {
       "id": "R102",
@@ -3181,6 +3172,38 @@
           "check": "C178"
         }
       ]
+    },
+    {
+      "id": "R115",
+      "text": "A passed phase is not checked by QA again when the only files that changed since its pass are documentation (Markdown and other docs) or recorded test results; a change to its code, its tests or its goal still lists it again",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M15",
+      "rules": []
+    },
+    {
+      "id": "R116",
+      "text": "A request that names one or two files and no risk path is offered the small-change path (one express phase, one plan and its check, approved once) before any planning workflow starts; a larger or riskier request still goes to planning",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M15",
+      "rules": []
+    },
+    {
+      "id": "R118",
+      "text": "When a check or project command fails, the proof keeps its full output in the project's runtime folder, and vbw show fix names that file, so the failing test can be read without running everything again",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M15",
+      "rules": []
+    },
+    {
+      "id": "R119",
+      "text": "In the balanced profile the Lead also runs on Opus, and every role other than the Architect and the Lead runs on Sonnet",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M15",
+      "rules": []
     }
   ],
   "checks": [
