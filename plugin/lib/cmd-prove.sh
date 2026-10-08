@@ -15,7 +15,12 @@ VBW_FIX_CAP=3
 VBW_COMMAND_TIMEOUT=900
 
 cmd_prove() {
-  [ $# -eq 0 ] || vbw_usage_error "usage: vbw prove"
+  local full=0
+  case $# in
+    0) ;;
+    1) [ "$1" = --full ] || vbw_usage_error "usage: vbw prove [--full]"; full=1 ;;
+    *) vbw_usage_error "usage: vbw prove [--full]" ;;
+  esac
   vbw_require_project
   cd "$VBW_ROOT" || vbw_die "cannot enter $VBW_ROOT"
   local record checks commands scope tree head ev at mark=""
@@ -27,7 +32,7 @@ cmd_prove() {
   VBW_DIE_HOOK=proofcopy_warn_stale
   record=$(record_read)
   checks_begin "$record" strict
-  proofreuse_plan "$record"
+  proofreuse_plan "$record" "$full"
   at=$(vbw_now)
   # The marker stays until the evidence is recorded: a proof cut short reuses nothing next time.
   : > "$(proofreuse_marker)" || vbw_die "cannot write $(proofreuse_marker)"
@@ -45,15 +50,18 @@ cmd_prove() {
   checks_end
   checks_record_passes "$record" "$checks" "$CHECK_HASH"
   checks=$(proofreuse_join "$(printf '%s' "$record" | jq -c '[.checks[].id]')" "$REUSE_CHECKS" "$(proofreuse_stamp "$record" check "$checks" "$at")")
-  commands=$(proofreuse_join "$(printf '%s' "$record" | jq -c '.commands | keys')" "$REUSE_COMMANDS" "$(proofreuse_stamp "$record" command "$commands" "$at")")
+  commands=$(proofreuse_join "$PROVE_NAMES" "$REUSE_COMMANDS" "$(proofreuse_stamp "$record" command "$commands" "$at")")
   scope=$(prove_scope "$record")
   tree=$(vbw_code_tree) || vbw_die "cannot fingerprint the project files"
   head=$(vbw_head_tree) || vbw_die "cannot fingerprint the committed code"
   # tree: the working folder (QA freshness, R12); head: the committed code the
   # checks ran on, so committing unproved edits later makes the proof stale.
-  ev=$(jq -n --arg at "$at" --arg h "$CHECK_HASH" --arg tree "$tree" --arg head "$head" \
+  # full: nothing reused, no quick stand-in, every full command ran (R111).
+  ev=$(jq -n --arg at "$at" --arg h "$CHECK_HASH" --argjson standin "$QUICK_STANDIN" --arg tree "$tree" --arg head "$head" \
     --argjson c "$checks" --argjson m "$commands" --argjson s "$scope" \
     '{at: $at, contract: $h, tree: $tree, head: $head, checks: $c, commands: $m, scope: $s,
+      full: (($standin | not) and all($c[]; (.reused // false) | not) and all($m[]; (.reused // false) | not)
+             and all($m | to_entries[] | select(.key != "quick"); .value.status != "skipped")),
       passed: (all($c[]; .status == "pass") and all($m[]; .status == "pass" or .status == "skipped") and ($s | length) == 0)}')
   record_update "$VBW_JQ_DEFS$(cat "$VBW_LIB/prove.jq")" --argjson ev "$ev" --argjson cap "$VBW_FIX_CAP" --argjson cur "$(qa_combined "$record")" --arg at "$at"
   rm -f "$(proofreuse_marker)"
@@ -63,7 +71,7 @@ cmd_prove() {
   # shellcheck disable=SC2034
   VBW_DIE_HOOK=; proofcopy_warn_stale
   [ -z "$mark" ] || vbw_guard_drop "$mark"
-  prove_summary
+  prove_summary "$full"
 }
 
 # Project commands: run only those whose exact argv the user approved.
@@ -107,11 +115,15 @@ prove_scope() {
 
 # One screen: what ran, what it means, what is next.
 prove_summary() {
-  jq -r '.evidence as $e
+  jq -r --argjson fullrun "$1" '.evidence as $e
     | ($e.checks | to_entries[] | "  \(.key) \(.value.status)\(if .value.status == "fail" then " (exit \(.value.exit))" else "" end) \(.value.seconds)s\(if .value.reused then " reused (proof of \(.value.at))" else "" end)"
         + (if .value.status == "pass" then "" else ": " + (.value.tail | split("\n") | last // "") end)),
       ($e.commands | to_entries[] | "  \(.key) \(.value.status)\(if .value.status == "skipped" then ": not approved" else " \(.value.seconds)s\(if .value.reused then " reused (proof of \(.value.at))" else "" end)" end)"),
-      "  checks: \([$e.checks[] | select(.reused | not)] | length) ran, \([$e.checks[] | select(.reused)] | length) reused",
+      (if $fullrun == 1 then empty else "  checks: \([$e.checks[] | select(.reused | not)] | length) ran, \([$e.checks[] | select(.reused)] | length) reused" end),
+      (if $e.full != false then "  proof: full" else
+        "  proof: partial [" + ([ (if any(($e.checks[], $e.commands[]); .reused) then "results reused" else empty end),
+          (if ($e.commands | has("quick") and (.quick.status != "skipped") and (has("test") | not)) then "quick stood in for the test command" else empty end),
+          ($e.commands | to_entries[] | select(.key != "quick" and .value.status == "skipped") | "\(.key) not approved") ] | join(", ")) + "]" end),
       (if ($e.scope | length) == 0 then "  scope ok" else ($e.scope[] | "  scope: " + .) end),
       (.requirements[] | select(.proof == "auto") | "\(.id) \(.status)"),
       (.fixes[] | select(.status == "open" or .status == "escalated") | "\(.id) \(.status) (\(.req // .command), attempts \(.attempts)): \(.note)"),

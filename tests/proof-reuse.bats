@@ -218,6 +218,8 @@ decide() { "$VBW" decide "Use blue buttons" "the owner prefers them" > /dev/null
   jq -e '.requirements | all(.[]; .status == "proven")' .vbw/record.json
   vbw_run status
   [[ "$output" == *"requirements: 2/2 proven"* ]]
+  vbw_run prove --full
+  [ "$status" -eq 0 ] || { echo "$output"; false; }
   vbw_run qa record P1 pass standard
   [ "$status" -eq 0 ] || { echo "$output"; false; }
   vbw_run next --json

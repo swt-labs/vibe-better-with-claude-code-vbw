@@ -48,15 +48,40 @@ proofreuse_commands_ok() {
   printf '%s' "$1" | jq -e --arg head "$head" '.passed == true and .head == $head' > /dev/null
 }
 
-# proofreuse_plan RECORD: sets REUSE_CHECKS and REUSE_COMMANDS (the reused
+# proofreuse_names RECORD FULL: sets PROVE_NAMES (JSON array of the command
+# names this proof covers) and QUICK_STANDIN (true when the approved quick
+# command stands in for the test command). Full: every command but quick. Plain:
+# an approved quick replaces test; a quick that is named but not approved is
+# listed (and so reported skipped) and the test command runs (R111).
+proofreuse_names() {
+  local argv=() a
+  # shellcheck disable=SC2034 # read by cmd_prove
+  QUICK_STANDIN=false
+  if [ "$2" = 1 ]; then
+    PROVE_NAMES=$(printf '%s' "$1" | jq -c '.commands | keys - ["quick"]')
+    return 0
+  fi
+  PROVE_NAMES=$(printf '%s' "$1" | jq -c '.commands | keys')
+  printf '%s' "$1" | jq -e '.commands | has("quick") and has("test")' > /dev/null || return 0
+  while IFS= read -r -d '' a; do argv+=("$a"); done \
+    < <(printf '%s' "$1" | jq -j '.commands.quick[] + "\u0000"')
+  if consent_has command "$(vbw_sha256_argv "${argv[@]}")"; then
+    # shellcheck disable=SC2034 # read by cmd_prove
+    QUICK_STANDIN=true
+    PROVE_NAMES=$(printf '%s' "$PROVE_NAMES" | jq -c '. - ["test"]')
+  fi
+}
+
+# proofreuse_plan RECORD [FULL]: with FULL = 1 nothing is reused. Sets REUSE_CHECKS and REUSE_COMMANDS (the reused
 # results, as JSON objects), and TODO_CHECKS (array) and TODO_COMMANDS (JSON
 # array of names), which are what has to run. A check is reused when its last
 # result passed and both its approved definition and the committed content of
 # the files it depends on (R110) are what they were; a command, by R103.
 proofreuse_plan() {
   local record="$1" ev='' id fp sp old name
+  proofreuse_names "$record" "${2:-0}"
   REUSE_CHECKS='{}' REUSE_COMMANDS='{}' TODO_CHECKS=() TODO_COMMANDS='[]'
-  ev=$(proofreuse_last "$record") || ev=
+  if [ "${2:-0}" = 1 ]; then ev=; else ev=$(proofreuse_last "$record") || ev=; fi
   while IFS= read -r id; do
     [ -n "$id" ] || continue
     fp=$(proofreuse_check_fp "$record" "$id")
@@ -82,7 +107,7 @@ proofreuse_plan() {
     else
       TODO_COMMANDS=$(printf '%s' "$TODO_COMMANDS" | jq -c --arg n "$name" '. + [$n]')
     fi
-  done < <(printf '%s' "$record" | jq -j '.commands | keys[] | . + "\u0000"')
+  done < <(printf '%s' "$PROVE_NAMES" | jq -j '.[] + "\u0000"')
 }
 
 # proofreuse_stamp RECORD KIND RESULTS AT: add each new result's fingerprint

@@ -53,5 +53,10 @@ def ok: .status == "pass";
         | escalate_phases([.phases[] | select($fx.req != null and (.reqs | index($fx.req))) | .id]; null; "fix \($fx.id) needs a second round"; $at)
       else .fixes[$i].note = $t.note end)
 
+# A passing full test command settles a fix opened for a failing quick command.
+| if $ev.full == true and (($ev.commands.test // {}) | ok) then
+    .fixes |= map(if .command == "quick" and (.status | IN("open","fixed","escalated")) then .status = "closed" else . end)
+  else . end
+
 | .evidence = $ev
 | finish_phases($cur)
