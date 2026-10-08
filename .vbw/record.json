@@ -8765,7 +8765,15 @@
         "guarded: R3 (C3), R16 (C15), R23 (C20), R25 (C24), R27 (C21), R28 (C25), R31 (C27), R32 (C28), R33 (C29), R35 (C31), R36 (C32), R38 (C33, C34), R39 (C36), R40 (C37), R43 (C42, C43), R45 (C39, C40, C41), R46 (C46), R47 (C47), R49 (C48), R51 (C52, C53, C66), R52 (C58, C91), R53 (C54, C55), R55 (C56, C57), R57 (C59, C70, C71), R61 (C73, C74, C75, C76, C77), R62 (C78, C79, C80, C81, C82, C83, C93), R65 (C86, C87, C88, C89, C90), R81 (C109, C111, C112, C113), R84 (C123), R99 (C155), R107 (C166, C167), R111 (C171, C172, C173, C174, C175)",
         "tests: project test command"
       ],
-      "predicted": "deep"
+      "predicted": "deep",
+      "qa": {
+        "result": "fail",
+        "tier": "deep",
+        "tree": "53aecf26b170d572f1dc6ee5cce54a237bf4bd087a27b00399409d857af3afc8",
+        "at": "2026-10-08T15:45:10Z",
+        "note": "36/37 checks",
+        "rounds": 1
+      }
     },
     {
       "id": "P81",
@@ -15150,6 +15158,14 @@
       "attempts": 0,
       "status": "open",
       "note": "The new safety refusals of 'vbw apply --add' are not really tested. plugin/lib/cmd-apply.sh lines 54-62 refuse a phase id that already exists, a requirement another phase already covers, a plan or check id already in use, and a plan for a phase the request does not bring. The only test (tests/small-request.bats, test 'vbw apply --add refuses a phase that exists, a requirement that already has a phase') uses a milestone where work has already started (P1.1 done), so if those lines were deleted the older 'work has started' refusals at lines 115-123 would still refuse with a message containing P1 or P2, and the test would still pass. In a milestone where nothing has started yet, those lines are the only guard, and no test covers that. The plan or check id in use and the wrong-phase plan refusals have no test at all. Recommended fix: add a case with no started work for each refusal and assert on each refusal's own message text (for example 'is already covered by', 'is already a phase of this milestone', 'is already a plan', 'is already a check')."
+    },
+    {
+      "id": "F78",
+      "req": "R119",
+      "source": "qa",
+      "attempts": 0,
+      "status": "open",
+      "note": "docs/rigor.md still says the Lead runs on Sonnet in the balanced profile. Its table under 'What each tier runs' (docs/rigor.md lines 153-161) begins 'In the balanced profile:' and lists the standard tier as 'Lead, a Dev per plan, QA' with Models 'Sonnet', and the deep tier as 'Scout, Lead, a Dev per plan, QA' with Models 'Sonnet'. Since commit 7519ccd0, plugin/lib/profiles.json gives the balanced Lead opus, so this user document now disagrees with profiles.json. That breaks criterion 7 (user documents that describe the balanced profile show the Lead on Opus). Neither P80.2 nor C180 covers docs/rigor.md. Options: (a, recommended) change those two rows to say the Lead runs on Opus and Dev and QA on Sonnet, and add docs/rigor.md to the document check in tests/profile-lead-opus.bats; (b) change only the text; (c) drop the Models column and point readers to vbw config models."
     }
   ],
   "todos": [
