@@ -89,7 +89,7 @@ const sized = (args && args.round && args.round.tiers) || {}
 const tierOf = id => sized[id] || cellOf(id).qa || tier
 const modelOf = id => (cellOf(id).models && cellOf(id).models.qa) || models.qa
 const results = await pipeline(phases, id =>
-  agent(`Verify VBW phase ${id} at the ${tierOf(id)} tier, then record your findings and verdict with vbw qa (if qa record refuses a stale proof, run vbw prove, then retry the record once). Start with: vbw show phase ${id}${suiteNote}${voice}`,
+  agent(`Verify VBW phase ${id} at the ${tierOf(id)} tier, then record your findings and verdict with vbw qa (if qa record refuses a stale proof, run vbw prove --full, then retry the record once). Start with: vbw show phase ${id}${suiteNote}${voice}`,
     Object.assign({ agentType: 'vbw:qa', label: `qa ${id}`, phase: 'Verify', schema: VERDICT },
       modelOf(id) ? { model: modelOf(id) } : {}, effortOf('qa', 'verify'))))
 
