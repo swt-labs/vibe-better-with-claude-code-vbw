@@ -1,5 +1,51 @@
 # Changelog
 
+## [2.0.27] - 2026-10-08
+
+### Changed
+
+- **Small changes take the short path on their own.** When you ask for
+  something that names one or two files and touches no risky area, VBW adds one
+  phase with one plan and its check to your current milestone and asks you to
+  approve once, without the planning workflow. Earlier phases, plans, checks
+  and rules stay as they were. The phase gets the tier `vbw next` names:
+  express when the change allows it, standard for example in a project without
+  a test command. A larger or riskier request still goes to planning.
+- **QA stops re-checking for doc edits and saved test results.** A phase that
+  passed QA is not checked again when the only files changed since are
+  documentation (`.md`, `.markdown`, `.rst`), or saved test results in folders
+  your spec lists under a new `## Test results` section (that list is approved
+  like the rest of the contract). A change to code, tests, a file a check uses,
+  the goal or the plans still sends the phase back to QA, and so does a change
+  to the documents of a documentation-only phase.
+- **The Lead plans on Opus in the balanced profile**, like the Architect. Dev,
+  QA, Scout, Debugger and Docs stay on Sonnet. QA is never set below Sonnet.
+- **A failure's full output is kept.** When a check or project command fails or
+  times out, `vbw prove` keeps its whole output in `.vbw/runtime/output/` (one
+  file per check or command, git-ignored, removed when it passes), and
+  `vbw show fix` names that file, so a Dev can read the failing test without
+  running everything again.
+
+### Fixed
+
+- `vbw apply --add` refuses a requirement another milestone already covers or
+  owns, a plan or check id already in use, and a check or rule for an earlier
+  requirement. It no longer re-judges the tier of finished phases.
+- `vbw show fix` no longer lists a project command that was skipped because it
+  is not approved as a failure.
+- **The approval menu is shown again when Claude rewords it.** In 2.0.26, VBW's
+  fix for a reworded approval question told Claude Code the hook had answered
+  it, so the menu never appeared and Claude said you had not answered (typing
+  `/vbw:approve` still worked; nothing was approved without you). The menu now
+  appears with `Approve contract <code>?` in front, and your choice is recorded.
+
+### Note for updating
+
+- After updating, a phase in your current milestone that passed QA and whose
+  files include documentation or saved results is checked by QA once more:
+  2.0.27 fingerprints a phase's files without its docs, so the old fingerprint
+  no longer matches. This happens once.
+
 ## [2.0.26] - 2026-10-08
 
 ### Fixed

@@ -12,7 +12,7 @@
       "name": "vbw",
       "source": "./plugin",
       "description": "Development lifecycle plugin: spec, executable contract, parallel build, mechanical proof, human acceptance",
-      "version": "2.0.26",
+      "version": "2.0.27",
       "license": "MIT",
       "keywords": [
         "vibe-coding",
