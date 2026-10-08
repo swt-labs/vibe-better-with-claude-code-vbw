@@ -15,6 +15,7 @@ import { gatherRun, findRun } from './panel-feed.js'
 import { stageModel, renderStage } from './panel-stage.js'
 import { statusText, whyText, todoArgs } from './panel-commands.js'
 import { renderPane } from './panel-pane.js'
+import { candy as nextCandy, SETTLE_MS as NEXT_SETTLE_MS } from './panel-next.js'
 import { stateColor } from './panel-palette.js'
 import { SITES, turnPending } from './panel-sites.js'
 import { motionOf, spriteFrame, encodeCells, confettiFrames, sweepFrames, wrappedModel, celebration } from './panel-candy.js'
@@ -25,7 +26,7 @@ const TICK_MS = 2000
 // A project holding .vbw/runtime/test-mode is a VBW test session (R64): it plays no
 // audio and keeps its choices under test.* keys, never the user's.
 const TEST_MARK = '/.vbw/runtime/test-mode'
-const keys = (test) => ({ closed: (test ? 'test.' : '') + 'vbw-panel.closed', sound: (test ? 'test.' : '') + 'vbw-panel.sound' })
+const keys = (test) => ({ closed: (test ? 'test.' : '') + 'vbw-panel.closed', sound: (test ? 'test.' : '') + 'vbw-panel.sound', nextSeen: (test ? 'test.' : '') + 'vbw-panel.next-seen' })
 // One of the plugin's shipped sounds (assets/audio/<character>/), picked at random
 // for each request for the user; with none shipped, the panel is silent.
 const pick = () => (SOUNDS.length ? { asset: SOUNDS[Math.floor(Math.random() * SOUNDS.length)] } : null)
@@ -91,7 +92,7 @@ function fresh() {
     root: null, sessionId: null, sessionDir: null, runRef: null, run: null, feed: {}, finder: {}, toolRuns: {}, leases: [],
     tab: 'now', phase: null, check: null, agent: null, collapsed: null, suggested: null, before: null, memo: {}, notice: null,
     lastRec: null, crews: {}, anim: null, animBusy: false, frameNo: 0, bandId: null,
-    sprites: null, burst: null, sweep: null, cheer: null, wrapped: null,
+    sprites: null, burst: null, sweep: null, cheer: null, wrapped: null, nextSeen: null, nextAt: null, nextAnim: null,
   }
 }
 
@@ -372,7 +373,8 @@ async function suggest($, st) {
 }
 
 const cheering = (st, now) => (st.cheer && st.cheer.until > now ? st.cheer.text : null)
-const signature = (st, v, now) => JSON.stringify([v, st.sound, stage(st, now), st.run, st.auto, st.leases.length, st.tab, st.phase, st.check, st.agent, st.collapsed,
+const recOf = (st) => (isObj(st.record) ? st.record.recommendation : undefined)
+const signature = (st, v, now) => JSON.stringify([v, st.sound, recOf(st), nextCandy({ motion: motion(st), arrivedAt: st.nextAt, now }), stage(st, now), st.run, st.auto, st.leases.length, st.tab, st.phase, st.check, st.agent, st.collapsed,
   cheering(st, now), !!st.burst, !!st.sweep])
 
 // Remember when each agent first showed; at full motion a new row flashes for a
@@ -381,6 +383,35 @@ async function noteBorn($, st, now) {
   const fresh = (isObj(st.run) && Array.isArray(st.run.agents) ? st.run.agents : []).filter((a) => isObj(a) && typeof a.id === 'string' && a.id && !(a.id in st.born))
   for (const a of fresh) st.born[a.id] = now
   if (fresh.length && motion(st) === 'full') $.clock.after(1050, () => redrawIfChanged($, st).catch(() => {}))
+}
+
+// A recommendation with a written time not seen before (kept in the user's store, so
+// a restart does not replay it) starts the What's next candy: one redraw per frame
+// until it settles (panel-next.js), only with full motion.
+async function noteRecommendation($, st, now) {
+  const rec = recOf(st)
+  const at = isObj(rec) && typeof rec.at === 'string' && rec.at ? rec.at : null
+  if (!at || at === st.nextSeen) return
+  st.nextSeen = at
+  st.nextAt = now
+  try {
+    await $.store.set(st.keys.nextSeen, at)
+  } catch {
+    // it may move again after a restart
+  }
+  if (motion(st) !== 'full' || st.nextAnim) return
+  st.nextAnim = $.clock.every(FRAME_MS, async () => {
+    try {
+      const t = await $.clock.now()
+      await redrawIfChanged($, st)
+      if (t - st.nextAt >= NEXT_SETTLE_MS && st.nextAnim) {
+        st.nextAnim.cancel()
+        st.nextAnim = null
+      }
+    } catch {
+      // the next tick draws it
+    }
+  })
 }
 
 async function redrawIfChanged($, st, force) {
@@ -407,6 +438,7 @@ async function tick($, st) {
     await gather($, st)
     const now = await $.clock.now()
     await celebrate($, st, now)
+    await noteRecommendation($, st, now)
     for (const k of ['burst', 'sweep']) if (st[k] && !st[k].site && now - st[k].at > AFTER_MS) st[k] = null
     await redrawIfChanged($, st)
   } catch {
@@ -624,7 +656,10 @@ async function begin($, st) {
   await gather($, st)
   st.lastRec = st.record
   st.sound = (await $.store.get(st.keys.sound)) !== false
+  const stored = await $.store.get(st.keys.nextSeen)
+  st.nextSeen = typeof stored === 'string' ? stored : null
   const now = await $.clock.now()
+  await noteRecommendation($, st, now)
   const v0 = view(st, now)
   st.alerted = v0.need ? v0.need.key : null // a need already standing at start is not announced
   await suggest($, st)
@@ -758,7 +793,7 @@ export function register(on) {
       const cells = st.sweep && st.tab === 'proof' && ui.Raster ? drawn(st.sweep, width, PANE) : null
       if (cells) animate($, st)
       const sweep = cells ? { cols: st.sweep.cols, cells } : null
-      return renderPane(ui, { st, v, now, width, sweep, wrapped: st.wrapped, scroll: isObj(e.props) ? e.props.scroll : null, portrait: $.plugin.root + '/assets/portrait.png' }, {
+      return renderPane(ui, { st, v, now, width, sweep, recommendation: recOf(st), motion: motion(st), arrivedAt: st.nextAt, wrapped: st.wrapped, scroll: isObj(e.props) ? e.props.scroll : null, portrait: $.plugin.root + '/assets/portrait.png' }, {
         act: (a) => act($, st, a),
         sound: () => setSound($, st, !st.sound),
       })
