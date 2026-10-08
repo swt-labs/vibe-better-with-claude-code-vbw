@@ -143,6 +143,7 @@ lease older than 24 hours is ignored (a crashed run must not lock a project).
 | `vbw fix done F1` or `vbw fix done F8 F9` | Dev | verified (several fixes in one command run the checks they serve once; one that cannot close is named, the others still close, and the exit code is non-zero): no uncommitted changes in the files it may touch, and the checks of every finished requirement those files serve pass; then awaiting proof |
 | `vbw apply < plan.json` | Lead | replace phases, plans and checks, and set each `auto` requirement's rules, in one validated write (refused while a build or fix run is open; a plan that has started must come back unchanged) |
 | `vbw apply --patch < patch.json` | Lead | change only the plans, checks and rules in the document; everything else stays byte for byte as it was |
+| `vbw apply --add < phase.json` | router | add one new phase with its plans, checks and rules to the milestone; every other phase, plan, check and rule stays as it was |
 
 ## `vbw apply` and rules
 
@@ -193,6 +194,26 @@ apply holds: a started plan cannot change, a rule must name a check of its
 requirement, and no build or fix run may be open. A refused patch writes
 nothing. A changed check or plan changes the contract, so the user approves it
 again (docs/proof.md).
+
+### Adding one phase: `vbw apply --add`
+
+```
+echo '{"phases": [{"id": "P2", "title": "Shout", "reqs": ["R3"], "tier": "express"}],
+ "plans": [{"id": "P2.1", "phase": "P2", "title": "Shout", "reqs": ["R3"], "files": ["greet.sh"], "after": [], "tasks": ["--shout prints capitals"]}],
+ "checks": [{"id": "C3", "req": "R3", "run": ["sh", "tests/shout.sh"], "files": ["tests/shout.sh"]}],
+ "rules": [{"req": "R3", "text": "--shout Ana prints HELLO, ANA!", "check": "C3"}]}' | vbw apply --add
+```
+
+The router uses this for a small change (docs/rigor.md) in a milestone that
+already has work: the document holds one new phase, for requirements that
+have no phase yet, with its plans, checks and rules, in the same shape as a
+full apply. The milestone's other phases, plans, checks and rules stay as
+they were, started or not. `vbw apply --add` refuses, and writes nothing, a
+phase whose id already exists or a requirement that another phase already
+covers. Every rule of a full apply holds, including the express file limit:
+in a repository tracking more than 30 files, an express phase over more than
+two files is refused (`its signals set the floor at standard`). The new phase
+changes the contract, so you approve it once.
 
 ### Once work has started
 
