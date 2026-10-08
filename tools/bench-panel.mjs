@@ -5,6 +5,7 @@
 //   refresh: the timer fires, a file changed, the panel reads it, redraws and
 //   the draw is rendered.
 //   sound: a need for the user appears and the sound is played (the next tick it ends).
+//   whats-next: the record carries a recommendation that changes, so each refresh draws the section.
 //   glance: the cost changed and a step history changed: both are read, both estimates worked out, drawn.
 // Prints "tick <ms>", "refresh <ms>" and "sound <ms>". The stand-in's own work is included,
 // so the numbers are an upper bound on the panel's cost.
@@ -54,7 +55,15 @@ const glance = await measure(async (h, i) => {
   await h.advance(TICK_MS)
   await h.render()
 })
+// whats-next: a refresh whose record carries a stored recommendation (the Now tab draws the section)
+const REC = (i) => ({ at: '2026-10-09T10:00:' + String(i % 60).padStart(2, '0') + 'Z', top: { text: 'Refunds for paid orders', reason: 'Customers ask for it most this month.', size: 'small' }, runners: [{ text: 'Gift cards', size: 'large' }, { text: 'Dark mode', size: 'medium' }] })
+const whatsNext = await measure(async (h, i) => {
+  h.project(record({ recommendation: REC(i) }), next())
+  await h.advance(TICK_MS)
+  await h.render()
+})
 console.log('tick ' + tick.toFixed(3))
 console.log('refresh ' + refresh.toFixed(3))
 console.log('sound ' + sound.toFixed(3))
 console.log('glance ' + glance.toFixed(3))
+console.log('whats-next ' + whatsNext.toFixed(3))
