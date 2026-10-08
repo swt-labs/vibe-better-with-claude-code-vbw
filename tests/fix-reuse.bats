@@ -157,9 +157,9 @@ runs() { if [ -f "$RUNS/$1" ]; then wc -l < "$RUNS/$1" | tr -d ' '; else printf 
   [ "$(runs C1)" = 1 ]
   [[ "$output" == *"C1 unchanged since its pass"* ]]
   vbw_run prove
-  # C3 declares no files, so closing F4 ran it too. Only the record changed since
-  # the passing proof, so the proof reuses every result (R103) and runs nothing.
-  [ "$(runs C1)" = 1 ] && [ "$(runs C2)" = 1 ] && [ "$(runs C3)" = 2 ]
+  # C3 declares no files, so closing F4 ran it too, and the proof (R110) runs it
+  # again. Only the record changed since the passing proof, so every other result is reused.
+  [ "$(runs C1)" = 1 ] && [ "$(runs C2)" = 1 ] && [ "$(runs C3)" = 3 ]
 }
 
 @test "vbw prove still fails on a failing check whatever was recorded" {
