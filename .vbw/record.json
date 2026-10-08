@@ -14316,15 +14316,14 @@
         "plugin/lib/cmd-show.sh"
       ],
       "after": [],
-      "status": "blocked",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "spec.jq: a '## Test results' section of '- <folder>/' lines (relative, no '..', not .vbw/, a missing trailing slash added) gives the results list; a bad line is a spec error that names it",
         "vbw spec sync writes the list to project.results (absent when the section names none, removed when it goes); record.jq accepts project.results only as a non-empty array of distinct safe folder paths ending in '/', within schema 1 (older VBWs ignore unknown project fields)",
         "contract.sh: contract_core and contract_doc include the list only when it is present, so every contract without one keeps its fingerprint and adding or changing the list makes the contract wait for approval again",
         "vbw show contract lists the saved test results folders, and vbw show contract --changes names a changed list"
-      ],
-      "note": "F80 needs tests for spec.jq Test results errors and the added '/', spec sync removing project.results, record.jq rejecting bad project.results, and show contract --changes naming a changed folder list. No plan serving R115 declares a test file where they belong (tests/kernel-spec.bats, tests/record.bats, tests/kernel-show.bats are unprotected and fit; the guard refuses them in this run), and the only R115 test, tests/qa-recheck-docs.bats, is protected by C181. Needs a plan change: add those three test files to P81.1 (recommended), or add the cases to C181 with a new approval."
+      ]
     },
     {
       "id": "P81.2",
@@ -14578,6 +14577,28 @@
       "tasks": [
         "the router's small-path paragraph (plugin/skills/vibe/SKILL.md, **plan** with `detail.tier` express or `detail.small`) says `vbw apply --add` one phase at `detail.tier` with one plan (one or two files, tasks) instead of one express phase; the Example sets \"tier\" to that value; the real-app smallchange run had vbw next give small true with tier standard (no project test command), the router wrote express and vbw apply refused; no growth of the router budget",
         "docs/rigor.md: the small path adds one phase at `detail.tier` (express when its signals allow, standard for example in a repository without a project test command or tracking more than 30 files), numbered from next_phase, holding one plan"
+      ]
+    },
+    {
+      "id": "P81.4",
+      "phase": "P81",
+      "title": "Tests for the Test results list: parsing, sync and record validation",
+      "reqs": [
+        "R115"
+      ],
+      "files": [
+        "tests/kernel-spec.bats",
+        "tests/record.bats",
+        "tests/kernel-show.bats"
+      ],
+      "after": [
+        "P81.1"
+      ],
+      "status": "planned",
+      "tasks": [
+        "tests/kernel-spec.bats: spec.jq reports an error with its line number for a results line naming ../, an absolute path, .vbw/, a . part or a folder named twice; a folder without its trailing / gets one; plain text in the section is ignored; vbw spec sync removes project.results when the section goes (F80 items 1-3)",
+        "tests/record.bats: record.jq rejects a project.results that is empty, has an entry not ending in /, repeats an entry or names .vbw/ (F80 item 4)",
+        "tests/kernel-show.bats: vbw show contract --changes names a changed results folder list (F80 item 5)"
       ]
     }
   ],
@@ -16649,6 +16670,11 @@
       "id": "D199",
       "at": "2026-10-08T14:54:34Z",
       "text": "Contract approved: 113 requirements, 179 checks, 238 plans (f11c4e78ff0c)"
+    },
+    {
+      "id": "D200",
+      "at": "2026-10-08T16:31:38Z",
+      "text": "Contract approved: 113 requirements, 179 checks, 239 plans (bc4ae3cb1fd7)"
     }
   ],
   "commands": {
