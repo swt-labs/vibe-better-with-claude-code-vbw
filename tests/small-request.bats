@@ -194,6 +194,11 @@ add_refused() {
   add_refused "$(add_doc P2 R3 P1.1 P2 C3)" "P1.1 is already a plan"
   add_refused "$(add_doc P2 R3 P2.1 P2 C1)" "C1 is already a check"
   add_refused "$(add_doc P2 R3 P1.3 P1 C3)" "P1.3 is for P1, not a phase this --add brings"
+  # A check or a rule for an earlier requirement would change that requirement.
+  add_refused "$(add_doc P2 R3 P2.1 P2 C3 | jq -c '.checks += [{id: "C9", req: "R1", run: ["sh", "tests/shout.sh"], files: ["tests/shout.sh"]}]
+    | .rules += [{req: "R1", text: "greets twice", check: "C9"}]')" "C9 is for R1, not a requirement of the phases this --add brings"
+  add_refused "$(add_doc P2 R3 P2.1 P2 C3 | jq -c '.rules += [{req: "R1", text: "greets twice", check: "C1"}]')" \
+    "the rule \"greets twice\" is for R1, not a requirement of the phases this --add brings"
 }
 
 @test "R116: vbw apply --add refuses a requirement of an earlier milestone, covered there or not, and changes nothing" {
