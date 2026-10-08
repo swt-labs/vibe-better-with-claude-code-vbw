@@ -87,7 +87,7 @@ snap() {
   [[ "$output" != *"other-in-vbw"* ]]
   [[ "$output" != *"node_modules/near"* ]]
   # Every line is the proof's own summary.
-  ! printf '%s\n' "$output" | grep -vE '^(  C1 pass [0-9]+s|  scope ok|R1 [a-z]+|proved)$'
+  ! printf '%s\n' "$output" | grep -vE '^(  C1 pass [0-9]+s|  checks: [0-9]+ ran, [0-9]+ reused|  proof: (full|partial.*)|  scope ok|R1 [a-z]+|proved)$'
 }
 
 @test "R93: the scan changes nothing in the working folder, does not follow links, and skips .git" {

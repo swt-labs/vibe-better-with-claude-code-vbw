@@ -21,7 +21,7 @@ qa_skip_project() {
   "$VBW" commit P1.1 "feat(parts): parts one and three" > /dev/null
   # shellcheck disable=SC1010 # "plan done" is a vbw subcommand
   "$VBW" plan done P1.1 > /dev/null
-  "$VBW" prove > /dev/null
+  "$VBW" prove --full > /dev/null
   "$VBW" req accept R2 > /dev/null
   "$VBW" qa record P1 pass standard > /dev/null
 }
@@ -36,7 +36,7 @@ spec_drop() {
   cp "$TEST_ROOT/spec.md" .vbw/spec.md
   "$VBW" spec sync > /dev/null
   "$VBW" approve > /dev/null
-  "$VBW" prove > /dev/null
+  "$VBW" prove --full > /dev/null
 }
 
 # spec_reword FROM TO: change requirement wording in the spec, then sync, approve and prove.
@@ -47,7 +47,7 @@ spec_reword() {
   printf '%s\n' "${spec/$from/$to}" > .vbw/spec.md
   "$VBW" spec sync > /dev/null
   "$VBW" approve > /dev/null
-  "$VBW" prove > /dev/null
+  "$VBW" prove --full > /dev/null
 }
 
 # change_test: a stricter test for part one, committed, approved and proved.
@@ -55,5 +55,5 @@ change_test() {
   printf '# stricter\n' >> tests/p1.sh
   git add tests/p1.sh && git commit -q -m "test(p1): stricter"
   "$VBW" approve > /dev/null
-  "$VBW" prove > /dev/null
+  "$VBW" prove --full > /dev/null
 }

@@ -45,7 +45,7 @@ qa_build() {
     # shellcheck disable=SC1010 # "plan done" is a vbw subcommand
     "$VBW" plan done "P$i.1" > /dev/null
   done
-  "$VBW" prove > /dev/null
+  "$VBW" prove --full > /dev/null
 }
 
 # qa_project N [chain]: N built and proven phases, none checked by QA yet.
@@ -65,7 +65,7 @@ qa_pass() {
 qa_touch() {
   printf 'extra\n' >> "src/p$1.txt"
   git add "src/p$1.txt" && git commit -q -m "fix(p$1): touch"
-  "$VBW" prove > /dev/null
+  "$VBW" prove --full > /dev/null
 }
 
 # next_json: vbw next --json on the current project.

@@ -82,11 +82,11 @@ teardown() { vbw_teardown; }
   printf 'part2\n' > src/p2.txt
   git add -A && git commit -q -m "feat: all"
   edit_record '.plans |= map(.status = "done")'
-  "$VBW" prove > /dev/null
+  "$VBW" prove --full > /dev/null
   qa_pass P1 P2
   printf 'extra\n' >> src/p1.txt
   git add src/p1.txt && git commit -q -m "fix: touch"
-  "$VBW" prove > /dev/null
+  "$VBW" prove --full > /dev/null
   vbw_run next --json
   [ "$status" -eq 0 ]
   printf '%s' "$output" | jq -e '.qa.problems | length > 0 and any(.[]; contains("P1") and contains("P2"))'

@@ -26,7 +26,7 @@ teardown() { vbw_teardown; }
 
 @test "R104: a finding closed with no code change does not list the phase again" {
   edit_record '.fixes += [{id: "F1", req: "R1", attempts: 0, status: "open", note: "flaky check"}]'
-  "$VBW" prove > /dev/null
+  "$VBW" prove --full > /dev/null
   jq -e '.fixes[0].status == "closed"' .vbw/record.json
   [ "$(rechecked)" = '[]' ]
   [ "$(standing)" = '["P1"]' ]

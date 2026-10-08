@@ -32,7 +32,7 @@ replan_add() {
   "$VBW" commit P3.1 "feat(p3): part 3" > /dev/null
   # shellcheck disable=SC1010 # "plan done" is a vbw subcommand
   "$VBW" plan done P3.1 > /dev/null
-  "$VBW" prove > /dev/null
+  "$VBW" prove --full > /dev/null
   [ "$(listed)" = '["P3"]' ]
   next_json | jq -e '.qa.standing == ["P1","P2"]'
 }

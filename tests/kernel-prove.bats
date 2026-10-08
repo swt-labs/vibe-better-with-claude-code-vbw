@@ -303,9 +303,9 @@ build_pay() {
 @test "an edit proved while uncommitted, then committed, needs a new proof" {
   "$VBW" approve > /dev/null
   build_pay
-  "$VBW" prove > /dev/null
+  "$VBW" prove --full > /dev/null
   printf 'paid\n# later edit\n' > src/pay.txt
-  "$VBW" prove > /dev/null
+  "$VBW" prove --full > /dev/null
   vbw_run next --json
   [ "$(printf '%s' "$output" | jq -r '.action')" != prove ]
   git add src/pay.txt && git commit -q -m "feat(pay): later edit"
