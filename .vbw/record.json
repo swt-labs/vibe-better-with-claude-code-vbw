@@ -8347,12 +8347,11 @@
         }
       ],
       "qa": {
-        "result": "fail",
+        "result": "pass",
         "tier": "deep",
-        "tree": "b00c5e572c1ce3a7071c884449c8b583a81b55baeca1988b90245d57db9be6a4",
-        "at": "2026-10-08T10:19:08Z",
-        "note": "29/30 checks",
-        "rounds": 1
+        "tree": "34b6020ecb688925ed3f0c3b4f539c7095129dcfe99b571d71dc60aaa106756f",
+        "at": "2026-10-08T10:58:24Z",
+        "note": "30/30 checks"
       },
       "outcome": {
         "tier": "deep",
@@ -14367,7 +14366,7 @@
       "req": "R111",
       "source": "qa",
       "attempts": 0,
-      "status": "fixed",
+      "status": "closed",
       "note": "docs/proof.md lines 618-620 still say the QA agent handles a refused 'vbw qa record' by running plain 'vbw prove' and retrying. P76.3 changed plugin/agents/qa.md and plugin/workflows/verifying.js to 'vbw prove --full'; a plain prove can use the quick command, leave a partial proof, and be refused again. Fix: say 'vbw prove --full' there. Related, not in scope of this finding: plugin/lib/cmd-qa.sh:38 (code-changed refusal) and the 'prove' line in 'vbw help' (plugin/bin/vbw:31) still show plain 'vbw prove' with no [--full]."
     }
   ],
