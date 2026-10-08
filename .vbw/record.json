@@ -8277,7 +8277,15 @@
           "to": "deep",
           "reason": "Dev blocked P76.2: Code and in-plan tests are committed (fff624b2, 14fb7361, 580808ef). The plan's file list misses tests that record QA after a reused proof and now fail: tests/qa-recheck-helper.bash (qa_build/qa_touch: prove -> prove --full), tests/qa-skip-helper.bash, tests/qa-recheck-deps.bats, tests/qa-recheck-skip.bats, tests/qa-replan-keeps.bats, tests/kernel-prove.bats (line 308). Each needs 'vbw prove' changed to 'vbw prove --full' (verified green locally, then reverted because the commit refuses files outside the plan). Add these files to P76.2. tests/proof-stale-links.bats (approved check C140) also fails since P76.1: its summary regex rejects the new 'proof: full' and 'checks:' lines."
         }
-      ]
+      ],
+      "qa": {
+        "result": "fail",
+        "tier": "deep",
+        "tree": "041b18a3c55eb9368ac5d9f49f4c3c31727ed454e963aaf642436913c79190d9",
+        "at": "2026-10-08T03:35:53Z",
+        "note": "34/35 checks",
+        "rounds": 1
+      }
     }
   ],
   "plans": [
