@@ -53,8 +53,8 @@ folder per line:
 
 - Each line is `- <folder>/`: a path relative to the project root, with no `.`
   or `..` parts, outside `.vbw/`. A missing trailing `/` is added. A folder
-  named twice, or any other line in the section, is an error with its line
-  number.
+  named twice, or any other bullet in the section, is an error with its line
+  number. Text that is not a bullet is ignored, as in `## Requirements`.
 - `vbw spec sync` copies the list into the record (`project.results`,
   docs/record.md) and prints the new list. It is part of the contract: adding,
   changing or removing the list needs approval like any other spec change, and
