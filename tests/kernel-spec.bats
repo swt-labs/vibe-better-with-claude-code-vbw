@@ -168,3 +168,62 @@ write_spec() {
   vbw_run spec add auto "   "
   [ "$status" -eq 2 ]
 }
+
+# A spec whose Test results section holds the lines given (they start at line 9).
+write_results_spec() {
+  printf '# Shop\n\n## Requirements\n\n- R1 [auto] Pay\n\n## Test results\n\n%s\n' "$1" > .vbw/spec.md
+}
+
+@test "a bad Test results line is an error naming its line: .., absolute, .vbw/, a . part, a folder named twice" {
+  write_results_spec '- ../out/
+- /abs/out/
+- .vbw/out/
+- a/./b/
+- results/
+- results/'
+  cp .vbw/record.json "$TEST_ROOT/before.json"
+  vbw_run spec check
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"line 9: expected '- <folder>/'"*"got: - ../out/"* ]]
+  [[ "$output" == *"line 10: expected '- <folder>/'"*"got: - /abs/out/"* ]]
+  [[ "$output" == *"line 11: expected '- <folder>/'"*"got: - .vbw/out/"* ]]
+  [[ "$output" == *"line 12: expected '- <folder>/'"*"got: - a/./b/"* ]]
+  [[ "$output" == *"line 14: test results folder results/ is named twice"* ]]
+  [[ "$output" != *"line 13"* ]]
+  vbw_run spec sync
+  [ "$status" -eq 1 ]
+  cmp .vbw/record.json "$TEST_ROOT/before.json"
+}
+
+@test "a Test results folder without its trailing / gets one, and plain text in the section is ignored" {
+  write_results_spec '- results
+- reports/e2e/
+Plain text here is not a folder.
+  Nor is this indented line.'
+  vbw_run spec check
+  [ "$status" -eq 0 ]
+  vbw_run spec sync
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"test results folders: results/, reports/e2e/"* ]]
+  jq -e '.project.results == ["results/", "reports/e2e/"]' .vbw/record.json
+  write_results_spec '- results
+- results/'
+  vbw_run spec check
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"line 10: test results folder results/ is named twice"* ]]
+}
+
+@test "sync removes project.results when the Test results section goes, and adds none without one" {
+  printf '# Shop\n\n## Requirements\n\n- R1 [auto] Pay\n' > .vbw/spec.md
+  vbw_run spec sync
+  [ "$status" -eq 0 ]
+  jq -e '.project | has("results") | not' .vbw/record.json
+  write_results_spec '- results/'
+  "$VBW" spec sync > /dev/null
+  jq -e '.project.results == ["results/"]' .vbw/record.json
+  printf '# Shop\n\n## Requirements\n\n- R1 [auto] Pay\n' > .vbw/spec.md
+  vbw_run spec sync
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"removed the test results folders"* ]]
+  jq -e '.project | has("results") | not' .vbw/record.json
+}
