@@ -8897,12 +8897,19 @@
         }
       ],
       "qa": {
-        "result": "fail",
+        "result": "pass",
         "tier": "deep",
-        "tree": "977aec7c3136874a59114ba2febe3de1ac49e0593060866094753e3b5d409666",
-        "at": "2026-10-08T18:54:06Z",
-        "note": "31/32 checks",
-        "rounds": 3
+        "tree": "ea0af9186142ce1304efe93321783e23652491a7d2ab5fd7af6a04a1faab9767",
+        "at": "2026-10-08T19:56:14Z",
+        "note": "34/34 checks"
+      },
+      "outcome": {
+        "tier": "deep",
+        "predicted": "standard",
+        "held": false,
+        "fix_rounds": 3,
+        "qa_findings": 3,
+        "escalations": 3
       }
     },
     {
@@ -15276,7 +15283,7 @@
       "req": "R116",
       "source": "qa",
       "attempts": 0,
-      "status": "fixed",
+      "status": "closed",
       "note": "One safety refusal of 'vbw apply --add' has no test, so it could be deleted and every test would still pass. In plugin/lib/cmd-apply.sh, lines 64-65 refuse a check or a rule (a rule is one condition a requirement states, paired with the check that tests it) whose requirement is not one of the new phases, with the message 'is for R1, not a requirement of the phases this --add brings'. That refusal is the only thing that keeps an earlier requirement's checks and rules unchanged, which the plan promises (P82.2: 'every existing item stays byte for byte'; rule: 'vbw apply --add keeps every existing phase, plan, check and rule'). Evidence: no test contains that message (searched tests/*.bats). Reading the code without lines 64-65: a --add document for new phase P3 (R3) that also carries a check C9 for R1 and a rule for R1 on C9 passes every other test in the file (the rule names a check of R1 in the merged plan, line 132), and line 191 then gives R1 a new rule and the record a new check. Commit 3fdc4d86 says 'each --add refusal tested', which is not quite true. Options: (a, recommended) in tests/small-request.bats, test 'in a milestone where no work has started...', add two add_refused cases, a doc with an extra check for R1 and a doc with an extra rule for R1, each expecting 'is for R1, not a requirement of the phases this --add brings' (the file is protected by C182, so it needs one contract approval); (b) the same cases in a new unprotected test file, which would leave the R116 rules split across two files."
     }
   ],
