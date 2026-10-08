@@ -3418,7 +3418,92 @@
       "proof": "auto",
       "status": "open",
       "milestone": "M16",
-      "rules": []
+      "rules": [
+        {
+          "text": "vbw triage --json gives in one call the active milestone's id and title, its requirements not proven or accepted, whether a run is open, and the open backlog with sort and size",
+          "check": "C187"
+        },
+        {
+          "text": "vbw triage leaves out proven and accepted requirements and closed backlog items; after ship no requirement is open",
+          "check": "C187"
+        },
+        {
+          "text": "vbw triage writes nothing",
+          "check": "C187"
+        },
+        {
+          "text": "vbw todo add keeps a sort (next or later) and a size (small, medium or large); vbw todo list shows them, next before later",
+          "check": "C187"
+        },
+        {
+          "text": "backlog items added before this change still list as before, without a sort or size, unchanged",
+          "check": "C187"
+        },
+        {
+          "text": "a sort or size outside the allowed values, or one without the other, is refused and nothing is added",
+          "check": "C187"
+        },
+        {
+          "text": "the record validator accepts sorted items and refuses a bad sort or size",
+          "check": "C187"
+        },
+        {
+          "text": "a sorted item raises the schema to 3, so an older VBW asks for an update",
+          "check": "C187"
+        },
+        {
+          "text": "a 'now' idea added during a run is recorded at once, and planning waits for the run to end",
+          "check": "C187"
+        },
+        {
+          "text": "the triage skill loads the kernel's summary in one call and starts no agent or workflow",
+          "check": "C188"
+        },
+        {
+          "text": "the router sends every new request to the triage before any requirement, planning or file change",
+          "check": "C188"
+        },
+        {
+          "text": "one line per idea: the sort, a one-sentence reason and the size (small, medium or large)",
+          "check": "C188"
+        },
+        {
+          "text": "one AskUserQuestion menu: VBW's sort first, marked (Recommended), the two other sorts as the other options, no typed command",
+          "check": "C188"
+        },
+        {
+          "text": "no triage for an answer to VBW's question, 'continue' or 'go on', or an approval; a match to an existing requirement or backlog item is named, with an offer to move a backlog item to now",
+          "check": "C188"
+        },
+        {
+          "text": "several ideas get one line each in the same menu, up to four; more than four are sorted four at a time",
+          "check": "C188"
+        },
+        {
+          "text": "now adds the idea with vbw spec add and the normal flow continues; with no active milestone it starts the next milestone",
+          "check": "C188"
+        },
+        {
+          "text": "next and later add the idea with vbw todo add and its sort and size",
+          "check": "C188"
+        },
+        {
+          "text": "a request during a run is sorted without interrupting it, and a 'now' idea waits for the run to end",
+          "check": "C188"
+        },
+        {
+          "text": "the triage happens at every autonomy setting (guided, balanced, hands-off)",
+          "check": "C188"
+        },
+        {
+          "text": "the router stays within 1,400 words and all prompts within 22,800",
+          "check": "C188"
+        },
+        {
+          "text": "the user documentation explains the three sorts, the sizes and how to overrule, and README.md links it",
+          "check": "C188"
+        }
+      ]
     },
     {
       "id": "R122",
@@ -3426,7 +3511,32 @@
       "proof": "auto",
       "status": "open",
       "milestone": "M16",
-      "rules": []
+      "rules": [
+        {
+          "text": "a sort other than VBW's gets exactly one follow-up question, in a menu",
+          "check": "C189"
+        },
+        {
+          "text": "the question says plainly what the choice displaces and its risk ('now' grows the milestone, needs a new approval and delays planned work; 'later' instead of 'now' leaves an urgent problem unfixed)",
+          "check": "C189"
+        },
+        {
+          "text": "the options are one or two ready reasons, the user's own words, or keep VBW's sorting",
+          "check": "C189"
+        },
+        {
+          "text": "an overrule with a reason is followed and recorded with vbw decide naming the idea, VBW's sort, the user's sort and the reason",
+          "check": "C189"
+        },
+        {
+          "text": "keeping VBW's sorting applies VBW's sort and records no overrule",
+          "check": "C189"
+        },
+        {
+          "text": "the warning is said once per idea, never repeated, argued or asked again",
+          "check": "C189"
+        }
+      ]
     },
     {
       "id": "R123",
@@ -3434,7 +3544,92 @@
       "proof": "auto",
       "status": "open",
       "milestone": "M16",
-      "rules": []
+      "rules": [
+        {
+          "text": "vbw recommend stores a top pick with its reason and size, zero to two runners-up with sizes, and the time it was written",
+          "check": "C190"
+        },
+        {
+          "text": "a new recommendation replaces the earlier one, so only one is kept",
+          "check": "C190"
+        },
+        {
+          "text": "no top pick, an empty reason, a size other than small, medium or large, or more than two runners-up is refused with a message naming what is wrong, and the earlier recommendation stays",
+          "check": "C190"
+        },
+        {
+          "text": "a pick whose source is a shipped or proven requirement or a closed or unknown todo is refused",
+          "check": "C190"
+        },
+        {
+          "text": "a pick that is a declined suggestion is refused",
+          "check": "C190"
+        },
+        {
+          "text": "with no open requirement and an empty backlog the stored recommendation says the backlog is empty and vbw status says so; 'empty' is refused while work is open",
+          "check": "C190"
+        },
+        {
+          "text": "while a run is open the kernel stores nothing and says so",
+          "check": "C190"
+        },
+        {
+          "text": "the validator accepts records with and without a recommendation and refuses a damaged one",
+          "check": "C190"
+        },
+        {
+          "text": "a stored recommendation raises the schema to 3, so an older VBW asks for an update",
+          "check": "C190"
+        },
+        {
+          "text": "vbw status shows the top pick, its reason and size, each runner-up with its size, and the date written; --json carries it",
+          "check": "C190"
+        },
+        {
+          "text": "with none stored, vbw status says in one line there is none yet and how to ask for one",
+          "check": "C190"
+        },
+        {
+          "text": "the recommending workflow runs the Architect once with its profile model, its effort and a reply schema, and returns its recommendation",
+          "check": "C191"
+        },
+        {
+          "text": "the Architect is given only the record: open requirements, the backlog with sort and size, declined suggestions, the decisions, never shipped work",
+          "check": "C191"
+        },
+        {
+          "text": "with nothing open no Architect runs and the result says the backlog is empty",
+          "check": "C191"
+        },
+        {
+          "text": "when the Architect fails the workflow returns an error and no recommendation",
+          "check": "C191"
+        },
+        {
+          "text": "the what's-next skill loads the summary, runs the workflow and stores the result with vbw recommend",
+          "check": "C191"
+        },
+        {
+          "text": "when another run is open the skill says so and does not start the step",
+          "check": "C191"
+        },
+        {
+          "text": "a failure or refusal is told in one line, the earlier recommendation stays and the ship is not undone",
+          "check": "C191"
+        },
+        {
+          "text": "the router runs the step after vbw ship, which never waits for it, and when the user asks what's next",
+          "check": "C191"
+        },
+        {
+          "text": "the Architect's what's-next job uses only the record, never shipped requirements or declined suggestions, names each source and invents nothing",
+          "check": "C191"
+        },
+        {
+          "text": "the user documentation explains the recommendation, when it is written, its cost of one Architect run and how to ask for a new one",
+          "check": "C191"
+        }
+      ]
     },
     {
       "id": "R124",
@@ -3442,7 +3637,64 @@
       "proof": "auto",
       "status": "open",
       "milestone": "M16",
-      "rules": []
+      "rules": [
+        {
+          "text": "the Now tab's What's next section shows the top pick with its size, its reason, then each runner-up with its size, in vbw status order",
+          "check": "C192"
+        },
+        {
+          "text": "a new recommendation in the record appears without restarting or closing the panel",
+          "check": "C192"
+        },
+        {
+          "text": "with none stored the section says there is none yet and shows the button; an empty backlog is said as such",
+          "check": "C192"
+        },
+        {
+          "text": "a missing or malformed field hides the pick lines and never breaks the panel",
+          "check": "C192"
+        },
+        {
+          "text": "long picks and reasons are cut to the pane's width, never wrapped",
+          "check": "C192"
+        },
+        {
+          "text": "Suggest next fills the prompt with /vbw:vibe what's next and never sends it",
+          "check": "C192"
+        },
+        {
+          "text": "with no prompt box, pressing Suggest next does nothing and shows no error",
+          "check": "C192"
+        },
+        {
+          "text": "with full motion the title shimmers and the top pick pulses when a new written time arrives, then both settle within a few seconds",
+          "check": "C192"
+        },
+        {
+          "text": "the section's colours come from the panel's palette",
+          "check": "C192"
+        },
+        {
+          "text": "a recommendation already seen does not move, also after a restart",
+          "check": "C192"
+        },
+        {
+          "text": "with motion off or calm, by setting or by the interview level, the section is still",
+          "check": "C192"
+        },
+        {
+          "text": "the panel bench measures a refresh that draws the section within VBW_PANEL_BUDGET_MS",
+          "check": "C193"
+        },
+        {
+          "text": "all mod JavaScript stays within 3,500 lines",
+          "check": "C193"
+        },
+        {
+          "text": "docs/panel.md describes the What's next section and the Suggest next button",
+          "check": "C193"
+        }
+      ]
     },
     {
       "id": "R125",
@@ -3457,7 +3709,32 @@
       "proof": "auto",
       "status": "open",
       "milestone": "M16",
-      "rules": []
+      "rules": [
+        {
+          "text": "every actions/checkout and actions/setup-node step in the four workflow files is on v5 or later (Node 24)",
+          "check": "C186"
+        },
+        {
+          "text": "no step is left on v4 or another major that runs on Node 20",
+          "check": "C186"
+        },
+        {
+          "text": "the Tests job has three entries: macOS /bin/bash 3.2, Linux bash 5 on ubuntu-latest and Linux bash 5 on ubuntu-26.04",
+          "check": "C186"
+        },
+        {
+          "text": "the ubuntu-26.04 entry runs the same steps: checkout into a folder with a space, the same tool install, the same budgets, bash tools/test.sh",
+          "check": "C186"
+        },
+        {
+          "text": "the tool install uses the same package names on both Linux images and fails the job when a package is missing",
+          "check": "C186"
+        },
+        {
+          "text": "fail-fast stays off",
+          "check": "C186"
+        }
+      ]
     }
   ],
   "checks": [
@@ -5617,6 +5894,101 @@
       "files": [
         "tests/approve-ask-shown.bats"
       ]
+    },
+    {
+      "id": "C186",
+      "req": "R126",
+      "run": [
+        "bats",
+        "tests/ci-node24.bats"
+      ],
+      "files": [
+        "tests/ci-node24.bats"
+      ]
+    },
+    {
+      "id": "C187",
+      "req": "R121",
+      "run": [
+        "bats",
+        "tests/triage-kernel.bats"
+      ],
+      "files": [
+        "tests/triage-kernel.bats"
+      ],
+      "timeout": 600
+    },
+    {
+      "id": "C188",
+      "req": "R121",
+      "run": [
+        "bats",
+        "tests/triage-skill.bats"
+      ],
+      "files": [
+        "tests/triage-skill.bats"
+      ]
+    },
+    {
+      "id": "C189",
+      "req": "R122",
+      "run": [
+        "bats",
+        "tests/triage-overrule.bats"
+      ],
+      "files": [
+        "tests/triage-overrule.bats"
+      ]
+    },
+    {
+      "id": "C190",
+      "req": "R123",
+      "run": [
+        "bats",
+        "tests/recommend-store.bats"
+      ],
+      "files": [
+        "tests/recommend-store.bats"
+      ],
+      "timeout": 600
+    },
+    {
+      "id": "C191",
+      "req": "R123",
+      "run": [
+        "bats",
+        "tests/recommend-flow.bats"
+      ],
+      "files": [
+        "tests/recommend-flow.bats",
+        "tests/helpers/run-workflow.js"
+      ]
+    },
+    {
+      "id": "C192",
+      "req": "R124",
+      "run": [
+        "node",
+        "--test",
+        "tests/panel/whats-next.test.mjs"
+      ],
+      "files": [
+        "tests/panel/whats-next.test.mjs",
+        "tests/panel/helpers/fake-mod.mjs"
+      ]
+    },
+    {
+      "id": "C193",
+      "req": "R124",
+      "run": [
+        "bats",
+        "tests/panel-whats-next.bats"
+      ],
+      "files": [
+        "tests/panel-whats-next.bats"
+      ],
+      "alone": true,
+      "timeout": 600
     }
   ],
   "phases": [
@@ -9092,6 +9464,137 @@
         "qa_findings": 0,
         "escalations": 0
       }
+    },
+    {
+      "id": "P85",
+      "title": "CI on Node 24 actions and the Ubuntu 26 image",
+      "reqs": [
+        "R126"
+      ],
+      "milestone": "M16",
+      "goal": "GitHub's automatic test runs (CI) use the versions of their ready-made steps that run on Node 24, and the Linux tests also run on the new Ubuntu 26 machine image, before GitHub switches ubuntu-latest on 2026-10-19.",
+      "criteria": [
+        "Every ready-made step (an 'action', the 'uses:' lines) in all four files under .github/workflows/ (ci.yml, discord-release.yml, linked-issue.yml, qa-review.yml) is on a major version that runs on Node 24: actions/checkout v5 or later and actions/setup-node v5 or later; no step is left on v4 or on any other major that runs on Node 20.",
+        "The Tests job in ci.yml has three entries: macOS with /bin/bash 3.2, Linux bash 5 on ubuntu-latest, and Linux bash 5 on ubuntu-26.04; the new entry runs the same steps as the existing Linux one (checkout into a folder whose name contains a space, the same tool install, the same VBW_HOOK_BUDGET_MS and VBW_PANEL_BUDGET_MS values, bash tools/test.sh).",
+        "The tool install step works on both Linux images: it installs bats, shellcheck, jq and parallel by the same package names, and fails the job (not silently skips) when a package is missing.",
+        "fail-fast stays off, so a failure on one image never cancels the other entries.",
+        "A test in tests/ reads the workflow files and fails when any 'uses:' line names a pre-Node-24 major of actions/checkout or actions/setup-node, or when the ubuntu-26.04 Tests entry is missing; it is shown to fail on today's files before the change.",
+        "bash tools/test.sh passes locally after the change; the real proof (all three Tests jobs and the manifest validation job green on GitHub) is visible on the first CI run after the owner pushes, and that push needs the owner."
+      ],
+      "tier": "deep",
+      "reasons": [
+        "requirements: 1",
+        "files: 3 (6955 bytes)",
+        "files: more than 2 in a repository tracking 740 files",
+        "risk: CI (.github/workflows/ci.yml)",
+        "breaks: none",
+        "guarded: R55 (C56, C57)",
+        "tests: project test command"
+      ],
+      "predicted": "deep"
+    },
+    {
+      "id": "P86",
+      "title": "Triage of every new request",
+      "reqs": [
+        "R121",
+        "R122"
+      ],
+      "milestone": "M16",
+      "goal": "Each new idea brought to /vbw:vibe is sorted on one line as now, next or later, with a reason and a size, before any planning; the user confirms or overrules it in the same menu, an overrule gets one plain warning and a recorded reason, and the outcome is in the record.",
+      "criteria": [
+        "One kernel command gives the main conversation what it needs to sort an idea (decision D206): the active milestone's id and title, its requirements that are not yet proven or accepted, whether a run is open, and the open backlog items with their sort and size; it starts no agent or workflow and prints in a single call.",
+        "When /vbw:vibe receives a new request, before any requirement is added, any planning starts or any file changes, the user sees one line per idea: the sort (now: it joins the active milestone; next or later: it goes into the backlog), the reason in one sentence, and the size (small, medium or large).",
+        "That line is inside one AskUserQuestion menu whose first option is VBW's sort marked (Recommended) and whose other options are the two other sorts; no typed command is asked of the user.",
+        "A message that is not a new idea gets no triage: an answer to a question VBW asked, 'continue' or 'go on', an approval, or a request that already matches an existing requirement or open backlog item (that one is named instead, and VBW offers to move a backlog item to now).",
+        "A message with several distinct ideas gets one triage line per idea in the same menu, up to four ideas (the menu's limit); more than four are sorted four at a time.",
+        "Confirmed or chosen 'now': the idea is added to the active milestone with vbw spec add and the normal flow continues (planning again, then the approval menu); with no active milestone, 'now' starts the next milestone with the idea as its first requirement.",
+        "Confirmed or chosen 'next' or 'later': the idea is added with vbw todo, and vbw todo list shows its sort and size; next items are listed before later items; backlog items added before this change still list, without a sort or size, and nothing about them changes.",
+        "The triage does not interrupt a running build or check: a request that arrives during a run is sorted, and a 'now' idea waits for the run to end before planning picks it up.",
+        "Triage happens at every autonomy setting (guided, balanced, hands-off), because the user has just typed the request and is present.",
+        "When the user picks a sort other than VBW's, VBW asks exactly one follow-up question (decision D207) that says plainly what the choice displaces and its risk (for example: 'now' grows the milestone, sends the plan back for planning and a new approval, and delays the work already planned; 'later' instead of 'now' leaves a problem VBW judged urgent unfixed), with options: one or two ready reasons, the user's own words, or keep VBW's sorting.",
+        "After an overrule with a reason, VBW follows the user's sort and records a decision with vbw decide that names the idea, VBW's sort, the user's sort and the user's reason; 'keep VBW's sorting' applies VBW's sort and records no overrule.",
+        "The warning is said once per idea: VBW does not repeat it, argue, or ask again about the same idea in that conversation.",
+        "The triage instructions live outside the router (like vbw:suggest), so plugin/skills/vibe/SKILL.md stays within its 1,400-word limit (decision D161) and all prompts stay within 22,800 words; the standards tests pass.",
+        "The user documentation (docs/ and README.md where it describes /vbw:vibe and the backlog) explains the three sorts, the sizes and how to overrule."
+      ],
+      "tier": "deep",
+      "reasons": [
+        "requirements: 2",
+        "files: 12 (90952 bytes)",
+        "files: more than 2 in a repository tracking 740 files",
+        "risk: none",
+        "breaks: R20",
+        "guarded: R1 (C1), R2 (C2), R3 (C3), R13 (C12), R14 (C13), R22 (C19), R23 (C20), R24 (C23), R25 (C24), R26 (C22), R27 (C21), R28 (C25), R31 (C27), R33 (C29), R37 (C35), R38 (C33, C34), R39 (C36), R40 (C37), R43 (C42, C43), R44 (C44, C45), R45 (C39, C40, C41), R46 (C46), R47 (C47), R49 (C48), R50 (C51), R51 (C52, C53, C66), R52 (C58, C91), R53 (C54, C55), R55 (C56, C57), R57 (C59, C70, C71), R60 (C72, C94), R61 (C73, C74, C75, C76, C77), R62 (C78, C79, C80, C81, C82, C83, C93), R65 (C86, C87, C88, C89, C90), R67 (C96), R70 (C114), R72 (C116, C118), R78 (C105, C106), R79 (C107), R80 (C108), R81 (C109, C111, C112, C113), R83 (C119), R98 (C154), R99 (C155), R100 (C156), R101 (C179), R106 (C164, C165), R107 (C166, C167), R111 (C171, C172, C173, C174, C175), R115 (C181), R116 (C182, C183), R119 (C180)",
+        "tests: project test command"
+      ],
+      "predicted": "deep"
+    },
+    {
+      "id": "P87",
+      "title": "What's next recommendation after ship and on request",
+      "reqs": [
+        "R123"
+      ],
+      "milestone": "M16",
+      "goal": "After a milestone ships, and whenever the user asks, the Architect writes a what's-next recommendation from the record, the kernel stores it in the project record, and vbw status shows it.",
+      "criteria": [
+        "A kernel command stores a recommendation in .vbw/record.json (decision D205): one top pick with its reason and size, and zero to two runners-up each with a size, plus the time it was written; it replaces any earlier recommendation, so only one is kept.",
+        "The kernel refuses, with a message naming what is wrong, a recommendation with no top pick, an empty reason, a size other than small, medium or large, or more than two runners-up; a refused one leaves the earlier recommendation unchanged.",
+        "The record's validator accepts records with and without a recommendation; the record format version goes up, so an older VBW refuses the new record with its 'update VBW' message instead of misreading it.",
+        "After vbw ship succeeds inside /vbw:vibe, VBW runs the Architect once (with its usual model from the profile and a reply schema), and the kernel stores what it returns; the ship itself is already done and never waits for or depends on this step.",
+        "Asking /vbw:vibe what to do next (for example 'what's next' or 'suggest next') runs the same Architect step and stores a fresh recommendation; when another run is open, VBW says so and does not start the step.",
+        "The Architect works only from the record: open milestones and their unproven requirements, the open backlog with each item's sort and size from P86, and the decisions; requirements of shipped milestones and declined suggestions are never picked; each pick names its source (a todo id such as T65, or a requirement id) when it has one.",
+        "With no open requirements and an empty backlog, nothing is invented: the stored recommendation says the backlog is empty, and vbw status says so.",
+        "When the Architect fails or returns something the kernel refuses, the user is told in one line, the earlier recommendation stays, and the ship is not undone.",
+        "vbw status shows a what's-next part: the top pick, its reason and size, then each runner-up with its size, and the date it was written; with none stored, it shows one line saying there is none yet and how to ask for one.",
+        "Tests in tests/ cover storing, replacing, every refusal, the validator with and without the field, and both vbw status forms; each is shown to fail before the code.",
+        "The user documentation explains what the recommendation is, when it is written, that it costs one Architect run, and how to ask for a new one."
+      ],
+      "tier": "deep",
+      "reasons": [
+        "requirements: 1",
+        "files: 14 (111883 bytes)",
+        "files: more than 2 in a repository tracking 740 files",
+        "risk: none",
+        "breaks: R20",
+        "guarded: R1 (C1), R2 (C2), R3 (C3), R13 (C12), R14 (C13), R22 (C19), R23 (C20), R24 (C23), R25 (C24), R26 (C22), R27 (C21), R28 (C25), R31 (C27), R33 (C29), R37 (C35), R38 (C33, C34), R39 (C36), R40 (C37), R43 (C42, C43), R44 (C44, C45), R45 (C39, C40, C41), R46 (C46), R47 (C47), R49 (C48), R50 (C51), R51 (C52, C53, C66), R52 (C58, C91), R53 (C54, C55), R55 (C56, C57), R57 (C59, C70, C71), R60 (C72, C94), R61 (C73, C74, C75, C76, C77), R62 (C78, C79, C80, C81, C82, C83, C93), R65 (C86, C87, C88, C89, C90), R67 (C96), R69 (C110, C120, C122), R70 (C114), R72 (C116, C118), R73 (C98), R74 (C99, C100), R75 (C101), R76 (C102, C103), R77 (C104), R78 (C105, C106), R79 (C107), R80 (C108), R81 (C109, C111, C112, C113), R83 (C119), R95 (C149, C150), R96 (C151, C152), R98 (C154), R99 (C155), R100 (C156), R101 (C179), R106 (C164, C165), R107 (C166, C167), R111 (C171, C172, C173, C174, C175), R115 (C181), R116 (C182, C183), R118 (C184), R119 (C180)",
+        "tests: project test command"
+      ],
+      "predicted": "deep"
+    },
+    {
+      "id": "P88",
+      "title": "What's next in the panel, with its colour candy",
+      "reqs": [
+        "R124",
+        "R125"
+      ],
+      "milestone": "M16",
+      "goal": "The panel's Now tab shows the stored what's-next recommendation with a Suggest next button that fills the prompt without sending it, and the section's title shimmers slowly and its top pick pulses softly once when a new recommendation arrives.",
+      "criteria": [
+        "The Now tab has a 'What's next' section showing the stored top pick with its reason and size, and up to two runners-up each with its size, in the same order as vbw status.",
+        "The section updates when the record changes (a new recommendation appears without restarting Claude Code or closing the panel).",
+        "With no recommendation stored, the section shows one line saying there is none yet, plus the button; a record without the field, or with a malformed one, hides the pick lines and never breaks the panel.",
+        "Long picks and reasons are cut to the pane's width, never wrapped over other sections.",
+        "A 'Suggest next' button puts the refresh request (the /vbw:vibe what's-next request from P87) into the prompt and does not send it; the person sends it; with no prompt box available, pressing it does nothing and shows no error.",
+        "The section's title has a slow shimmer, and the top pick pulses softly when a recommendation with a new written-time arrives, then both settle to still colours within a few seconds; opening the panel on a recommendation already seen does not pulse.",
+        "With motion turned off or reduced (the record's settings.motion, or the interview level's default), the section shows its colours with no shimmer or pulse; the colours come from the panel's existing palette.",
+        "The panel stays within its budgets: per-refresh CPU within VBW_PANEL_BUDGET_MS in tools/bench-panel.sh, and all mods (plugin/hooks/*.js) within 3,500 lines; tests for the section model, the button's fill action, the empty and malformed cases and the motion-off case are shown to fail before the code.",
+        "docs/panel.md describes the What's next section and the Suggest next button.",
+        "The owner judges in the accept step that the shimmer and pulse are subtle and elegant (R125 accepted with vbw req accept)."
+      ],
+      "tier": "standard",
+      "reasons": [
+        "requirements: 2",
+        "files: 6 (64242 bytes)",
+        "files: more than 2 in a repository tracking 740 files",
+        "risk: none",
+        "breaks: none",
+        "guarded: R51 (C52, C53, C66), R52 (C58, C91), R53 (C54, C55), R55 (C56, C57), R56 (C61, C65), R57 (C59, C70, C71), R58 (C62, C63, C64, C67), R64 (C84, C85), R82 (C117), R84 (C123), R85 (C125), R86 (C124), R87 (C126, C127), R88 (C129), R89 (C128), R91 (C130)",
+        "tests: project test command"
+      ],
+      "predicted": "standard"
     }
   ],
   "plans": [
@@ -14777,6 +15280,244 @@
         "plugin/hooks/approve-ask.sh prints permissionDecision ask (not allow) with the rewritten updatedInput; its header comment says why: Claude Code reads allow with updatedInput on AskUserQuestion as the hook answering the question, so the menu was never shown (real app, Claude Code 2.1.295)",
         "docs/guards.md: the approval-question paragraph says the rewritten question is shown to you and the hook never answers it"
       ]
+    },
+    {
+      "id": "P85.1",
+      "phase": "P85",
+      "title": "CI on the Node 24 action majors and the Ubuntu 26.04 image",
+      "reqs": [
+        "R126"
+      ],
+      "files": [
+        ".github/workflows/ci.yml",
+        ".github/workflows/discord-release.yml",
+        ".github/workflows/qa-review.yml"
+      ],
+      "after": [],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "ci.yml: actions/checkout@v4 to @v7 in both jobs and actions/setup-node@v4 to @v7 in the validate job (node-version stays 22); v7 is the current major of each and runs on Node 24 (checked in each action's action.yml: using node24)",
+        "ci.yml Tests matrix: a third entry 'Linux, bash 5 (Ubuntu 26.04)' with os ubuntu-26.04 and bash_path /usr/bin after the ubuntu-latest one; the shared steps stay as they are (checkout into 'src dir', the tool install, VBW_HOOK_BUDGET_MS \"25\", VBW_PANEL_BUDGET_MS \"3\", bash tools/test.sh); fail-fast stays false; the install keeps the package names bats shellcheck jq parallel and no '|| true', so a missing package fails the job",
+        "discord-release.yml and qa-review.yml: actions/checkout@v4 to @v7 (neither runs on pull_request_target, so v7's block on checking out fork pull requests there does not apply); linked-issue.yml has no uses: line and stays unchanged",
+        "run bash tools/test.sh locally (tests/ci-node24.bats included); note in the plan's result that the real proof, all three Tests jobs and the manifest validation job green, is the first CI run after the owner pushes"
+      ]
+    },
+    {
+      "id": "P86.1",
+      "phase": "P86",
+      "title": "Kernel: vbw triage, sorted backlog items, record schema 3",
+      "reqs": [
+        "R121"
+      ],
+      "files": [
+        "plugin/lib/cmd-triage.sh",
+        "plugin/lib/cmd-todo.sh",
+        "plugin/bin/vbw",
+        "plugin/lib/record.jq",
+        "plugin/lib/record.sh",
+        "docs/record.md",
+        "tests/fixtures/records/future.json",
+        "tests/check-alone-contract.bats"
+      ],
+      "after": [],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "plugin/lib/cmd-todo.sh: vbw todo add [--sort next|later --size small|medium|large] TEXT; both flags or neither, anything else is a usage error and nothing is added; the item keeps sort and size; vbw todo list prints open and in-progress items next first, then later, then unsorted, each group by id; a sorted line reads 'T2 [next, small] Refunds', an unsorted one stays exactly 'T1 Dark mode' as today",
+        "plugin/lib/record.jq and record.sh: a todo may carry sort (next or later) and size (small, medium or large), both or neither; record_update writes schema 3 when a todo is sorted (P87.1 adds the recommendation to this rule), else 2 when a check is alone, else 1; VBW_SCHEMA_MAX=3. tests/fixtures/records/future.json and the test 'a record newer than schema 2 still says it needs a newer VBW' in tests/check-alone-contract.bats move from schema 3 to 99: they used 3 to mean 'a future schema', which is now a real one. Both are protected check files of finished work (C29, C39), so this edit waits for the owner's approval before proof",
+        "new plugin/lib/cmd-triage.sh: vbw triage [--json] reads the record once, starts nothing and writes nothing; --json prints {milestone: {id, title, status}, open: [{id, text, proof, status}] (the active milestone's requirements neither proven nor accepted; [] once the milestone is shipped), run: {run, kind, session, started_at} or null, todos: [{id, text, sort?, size?}] (open and in progress, in vbw todo list order)}; the text form prints the same facts on short lines, 'no run open' when there is none",
+        "plugin/bin/vbw: dispatch triage; help lines for 'triage [--json]' and 'todo [list] | add [--sort next|later --size small|medium|large] TEXT | done ID | drop ID'; docs/record.md: the todo fields, schema 3 (a sorted todo) and VBW_SCHEMA_MAX 3, keeping the schema 2 'alone' paragraph"
+      ]
+    },
+    {
+      "id": "P86.2",
+      "phase": "P86",
+      "title": "The triage skill and the router's pointer to it",
+      "reqs": [
+        "R121",
+        "R122"
+      ],
+      "files": [
+        "plugin/skills/triage/SKILL.md",
+        "plugin/skills/vibe/SKILL.md"
+      ],
+      "after": [],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "new plugin/skills/triage/SKILL.md (name triage; allowed-tools only Bash vbw, no Workflow or Agent; preloads \"${CLAUDE_PLUGIN_ROOT}/bin/vbw\" triage and vbw interview): when it applies (a new idea) and when not (an answer to a question VBW asked, 'continue' or 'go on', an approval); a request that already matches an existing requirement or open backlog item is named instead, with an offer to move a backlog item to now (vbw spec add, then vbw todo done)",
+        "the sorting menu: before any requirement, planning or file change, one line per idea (the sort, the reason in one sentence, the size small, medium or large) inside one AskUserQuestion; VBW's sort is the first option marked (Recommended), the two other sorts are the other options; up to four ideas per menu, more than four sorted four at a time; never ask the user to type a command; at every autonomy setting (guided, balanced, hands-off); during a run the idea is sorted without interrupting it, and a 'now' idea waits for the run to end",
+        "the outcomes: now: vbw spec add, then the normal flow (planning again, the approval menu); with no active milestone, vbw milestone start with the idea as its first requirement; next or later: vbw todo add --sort <sort> --size <size> \"<idea>\"",
+        "the overrule (D207): exactly one follow-up AskUserQuestion that says what the choice displaces and its risk ('now' grows the milestone, sends the plan back for a new approval and delays planned work; 'later' instead of 'now' leaves a problem VBW judged urgent unfixed), options one or two ready reasons, the user's own words, keep VBW's sorting; then follow the user's sort and run vbw decide \"Triage overrule: <idea>: VBW sorted <VBW's sort>, the user chose <user's sort>\" \"<the user's reason>\"; keep VBW's sorting applies VBW's sort and records no overrule; the warning is said once per idea, never repeated, argued or asked again",
+        "plugin/skills/vibe/SKILL.md: one short line sends every new request (in $ARGUMENTS or later in the conversation) to vbw:triage before spec, plan or any change; trim wording elsewhere so the router stays within 1,400 words (D161) and all prompts within 22,800"
+      ]
+    },
+    {
+      "id": "P86.3",
+      "phase": "P86",
+      "title": "Docs: now, next and later",
+      "reqs": [
+        "R121",
+        "R122"
+      ],
+      "files": [
+        "docs/triage.md",
+        "README.md"
+      ],
+      "after": [],
+      "status": "planned",
+      "role": "docs",
+      "tasks": [
+        "new docs/triage.md: what the triage is and when it happens (each new idea brought to /vbw:vibe, before any planning, at every autonomy setting), and what is not sorted (answers, 'continue', approvals, an idea VBW already has)",
+        "docs/triage.md: the three sorts (now joins the active milestone; next and later go to the backlog) and the sizes (small, medium, large); vbw todo list shows sort and size, next before later, and older items stay unsorted",
+        "docs/triage.md: how to overrule: pick another sort in the same menu; VBW says once what it displaces and the risk, and asks for a reason (a ready one or your own words) recorded as a decision, or you keep VBW's sorting",
+        "README.md: where /vbw:vibe and the backlog (/vbw:todo) are described, say new ideas are sorted now, next or later with a size, and link docs/triage.md"
+      ]
+    },
+    {
+      "id": "P87.1",
+      "phase": "P87",
+      "title": "Kernel: vbw recommend, the recommendation in the record and in vbw status",
+      "reqs": [
+        "R123"
+      ],
+      "files": [
+        "plugin/lib/cmd-recommend.sh",
+        "plugin/bin/vbw",
+        "plugin/lib/record.jq",
+        "plugin/lib/record.sh",
+        "plugin/lib/cmd-status.sh",
+        "docs/record.md"
+      ],
+      "after": [
+        "P86.1"
+      ],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "new plugin/lib/cmd-recommend.sh: vbw recommend reads one JSON object on stdin, {top: {text, reason, size, source?}, runners: [{text, size, source?}] (zero to two)} or {empty: true}, and stores .recommendation = {at, top, runners} or {at, empty: true}, replacing any earlier one; prints one line",
+        "refusals (exit 1, nothing changes, the message names what is wrong: top, reason, text, size, runners-up, JSON): no top pick, an empty or missing reason or text, a size other than small, medium or large, more than two runners-up, input that is not JSON; a source that is neither an open or in-progress todo nor a requirement of the active milestone that is not proven or accepted (named in the message); a pick whose text matches a declined suggestion (ignoring case and spacing, as vbw suggest does); {empty: true} while a requirement or backlog item is open; any open run",
+        "plugin/lib/record.jq: an optional top-level recommendation (at as ISO-8601 UTC, then exactly top and runners or empty: true, no other field); plugin/lib/record.sh: schema 3 also when a recommendation is stored, extending P86.1's rule",
+        "plugin/lib/cmd-status.sh: the text form ends with a what's-next part: \"what's next: <top> (<size>)\", its reason, \"then: <text> (<size>)\" per runner-up, \"written <YYYY-MM-DD>\"; empty: \"what's next: the backlog is empty (written <date>)\"; none: \"what's next: none yet (ask /vbw:vibe what's next)\"; --json gains recommendation (null when none)",
+        "plugin/bin/vbw: dispatch recommend and a help line 'recommend < JSON'; docs/record.md: the recommendation field and that it also makes the record schema 3"
+      ]
+    },
+    {
+      "id": "P87.2",
+      "phase": "P87",
+      "title": "The recommending workflow, the Architect's third job and the what's-next skill",
+      "reqs": [
+        "R123"
+      ],
+      "files": [
+        "plugin/workflows/recommending.js",
+        "plugin/lib/efforts.json",
+        "plugin/agents/architect.md",
+        "plugin/skills/whats-next/SKILL.md",
+        "plugin/skills/vibe/SKILL.md"
+      ],
+      "after": [
+        "P86.2"
+      ],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "new plugin/workflows/recommending.js (meta name recommending, one phase Recommend): args {summary (vbw triage --json), declined, models, effort, profile}; with summary.open and summary.todos both empty it returns {recommendation: {empty: true}} and runs no agent; else one vbw:architect call with models.architect, effort architect.recommend and a schema (top {text, reason, size: small|medium|large, source?}, runners maxItems 2 {text, size, source?}); the prompt lists the open requirements, the backlog with sort and size, the declined suggestions, says to read vbw show decisions, never to pick shipped work and to name each source; null or a throw returns {error}; else {recommendation: {top, runners}}",
+        "plugin/lib/efforts.json: architect.recommend in all three profiles (quality high, balanced medium, budget medium: a lighter judgement than scoping)",
+        "plugin/agents/architect.md: a third job, what's next: only from the record the task gives (open requirements, backlog sort and size) plus vbw show decisions; one top pick with a one-sentence reason and a size (small, medium or large), up to two runners-up with sizes, each with its source (T or R id) when it has one; never requirements of shipped milestones or declined suggestions; nothing invented; 'one of two jobs' becomes three; the file stays within 900 words",
+        "new plugin/skills/whats-next/SKILL.md (allowed-tools Bash vbw and Workflow(vbw:recommending); preloads vbw triage --json, vbw config models, vbw config effort, vbw suggest list, vbw interview): when a run is open, say so in one line and do not start; else Workflow vbw:recommending with those args, then pipe result.recommendation to vbw recommend; an error or a refusal is one line, the earlier recommendation stays, and a ship that came first stays shipped (never undone); then show the what's-next part of vbw status",
+        "plugin/skills/vibe/SKILL.md: ship step: after vbw ship succeeds, follow vbw:whats-next (the ship is done and never waits for it); a request such as 'what's next' or 'suggest next' follows vbw:whats-next; if the workflow permission must also be on the router, add Workflow(vbw:recommending) to its allowed-tools; the router stays within 1,400 words"
+      ]
+    },
+    {
+      "id": "P87.3",
+      "phase": "P87",
+      "title": "Docs: the what's-next recommendation",
+      "reqs": [
+        "R123"
+      ],
+      "files": [
+        "docs/whats-next.md",
+        "docs/workflows.md",
+        "README.md"
+      ],
+      "after": [
+        "P86.3"
+      ],
+      "status": "planned",
+      "role": "docs",
+      "tasks": [
+        "new docs/whats-next.md: what the recommendation is (a top pick with its reason and size, up to two runners-up with sizes, each naming its todo or requirement when it has one), that it is kept in the project record (D205), and how vbw status shows it (including 'none yet' and 'the backlog is empty')",
+        "docs/whats-next.md: when it is written (after each ship inside /vbw:vibe, which never waits for it, and when you ask '/vbw:vibe what's next' or 'suggest next'), not while another run is open; it costs one Architect run, none when nothing is open; a failure keeps the earlier one",
+        "docs/workflows.md: the recommending workflow (its args, one Architect call, no run lease, what it returns); README.md: what's next in the /vbw:vibe description, with a link to docs/whats-next.md"
+      ]
+    },
+    {
+      "id": "P88.1",
+      "phase": "P88",
+      "title": "The What's next section: model, candy and drawing",
+      "reqs": [
+        "R124",
+        "R125"
+      ],
+      "files": [
+        "plugin/hooks/panel-next.js"
+      ],
+      "after": [],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "new pure module plugin/hooks/panel-next.js (no $, never throws): the section's lines from record.recommendation in vbw status order (top pick with its size, its reason, each runner-up with its size, the written date); 'none yet' when the field is absent or malformed (any wrong type or missing field hides the pick lines), 'the backlog is empty' for {empty: true}; every line cut to the width with an ellipsis, never wrapped",
+        "the candy as a pure function of the motion level, the arrival time and now: the title 'What's next' gets a slow highlight sweeping across its letters and the top pick one soft pulse, only for motion full, both settling to still colours within 4 s of arrival; colours only from panel-palette.js (ACCENT as the base and one other palette colour as the highlight)",
+        "the drawing: a Box keyed 'whats-next' with the title Text pieces, the lines as Text (wrap truncate) and a 'Suggest next' Button whose press calls act({fill: \"/vbw:vibe what's next\"})"
+      ]
+    },
+    {
+      "id": "P88.2",
+      "phase": "P88",
+      "title": "Wire the section into the Now tab and the panel bench",
+      "reqs": [
+        "R124",
+        "R125"
+      ],
+      "files": [
+        "plugin/hooks/panel-pane.js",
+        "plugin/hooks/panel.js",
+        "tools/bench-panel.mjs",
+        "tools/bench-panel.sh"
+      ],
+      "after": [
+        "P88.1"
+      ],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "plugin/hooks/panel-pane.js: the Now tab draws the section after the panel's sentences and the sound switch, before the live workflow, from the record already gathered and the pane width",
+        "plugin/hooks/panel.js: when recommendation.at differs from the last one seen (kept in the per-user store under vbw-panel.next-seen, test.* in test mode), note the arrival time, store the new at, and redraw each frame (FRAME_MS) while the candy moves and only with motion full; stop once settled; a recommendation already seen does not move, also after a restart; the button's press goes through act() (prompt.fill, never sent; a missing prompt box is caught silently)",
+        "tools/bench-panel.mjs: a 'whats-next' measurement whose record carries a recommendation, so each refresh draws the section; tools/bench-panel.sh prints \"refresh with what's next: <ms> ms CPU\" and holds it to VBW_PANEL_BUDGET_MS like the others",
+        "run node --test tests/panel/*.test.mjs and bash tools/bench-panel.sh; every earlier panel test stays green"
+      ]
+    },
+    {
+      "id": "P88.3",
+      "phase": "P88",
+      "title": "Docs: What's next in the panel",
+      "reqs": [
+        "R124",
+        "R125"
+      ],
+      "files": [
+        "docs/panel.md"
+      ],
+      "after": [],
+      "status": "planned",
+      "role": "docs",
+      "tasks": [
+        "docs/panel.md, Now tab: the What's next section (the top pick with its reason and size, up to two runners-up with sizes, in the same order as vbw status; the 'none yet' and 'the backlog is empty' lines)",
+        "docs/panel.md: the Suggest next button puts /vbw:vibe what's next in the prompt and never sends it (you press Enter), and the request costs one Architect run",
+        "docs/panel.md: the colour candy, a slow shimmer on the title and a soft pulse on the top pick when a new recommendation arrives, settling within a few seconds; none with motion calm or off (settings.motion or the interview level's default) and none for a recommendation already seen"
+      ]
     }
   ],
   "fixes": [
@@ -16949,6 +17690,24 @@
       "id": "D204",
       "at": "2026-10-08T22:58:02Z",
       "text": "Shipped M15 Smarter rounds: 6 requirements proven or accepted"
+    },
+    {
+      "id": "D205",
+      "text": "The what's-next recommendation is kept in the project record (.vbw/record.json), shared with the project",
+      "why": "owner chose the recommended option: built from shared project data and costs a planner run; older VBW versions refuse the record until updated, no cost today",
+      "at": "2026-10-08T23:03:39Z"
+    },
+    {
+      "id": "D206",
+      "text": "VBW's main conversation triages each new idea (now, next, later) from a kernel summary of the plan",
+      "why": "owner chose the recommended option: instant, no extra usage; the Architect takes the deep look after ship and on Suggest next",
+      "at": "2026-10-08T23:03:39Z"
+    },
+    {
+      "id": "D207",
+      "text": "When the user overrules the triage, VBW asks once for the reason, in the same question as the warning (ready reasons, own words, or keep VBW's sorting)",
+      "why": "owner chose the recommended option: one click, every overrule has a reason on record",
+      "at": "2026-10-08T23:03:40Z"
     }
   ],
   "commands": {
