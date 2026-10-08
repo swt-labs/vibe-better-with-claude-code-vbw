@@ -8885,7 +8885,22 @@
           "to": "deep",
           "reason": "Dev blocked P83.3: docs written and committed (2d7cc166); vbw plan done refused: check C184 (tests/prove-kept-output.bats) fails and tests/qa-model.bats waits for approval, both outside this docs plan's files"
         }
-      ]
+      ],
+      "qa": {
+        "result": "pass",
+        "tier": "standard",
+        "tree": "822695f116a16c312d3790ea42b805c50d82e64a6f5efa9e5febb8d8641ac6a0",
+        "at": "2026-10-08T15:44:01Z",
+        "note": "24/24 checks"
+      },
+      "outcome": {
+        "tier": "deep",
+        "predicted": "standard",
+        "held": false,
+        "fix_rounds": 0,
+        "qa_findings": 0,
+        "escalations": 1
+      }
     }
   ],
   "plans": [
@@ -18216,5 +18231,11 @@
     "full": true,
     "passed": true
   },
-  "lease": null
+  "lease": {
+    "run": "qa-20261008T154048Z",
+    "kind": "qa",
+    "started_at": "2026-10-08T15:40:48Z",
+    "files": [],
+    "session": "4130e174-7ef2-4e36-b853-fb2a8fd8511d"
+  }
 }
