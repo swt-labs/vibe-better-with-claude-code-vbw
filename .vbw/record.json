@@ -14502,13 +14502,12 @@
       "after": [
         "P82.2"
       ],
-      "status": "blocked",
+      "status": "done",
       "tasks": [
         "tests/small-request.bats gains a regression test that fails today: a milestone with a finished express phase whose floor would now be standard once the new phase shares its file; vbw apply --add of one express phase for a new requirement is accepted, and the old phase keeps its tier, plans and status byte for byte",
         "cmd-apply.sh: with --add, the rigor floor and the one-plan-per-express rule are judged only for the phases the doc brings; existing phases keep the tier they were accepted at (the real-app smallchange run refused: P1 is planned at express but its signals set the floor at standard); the header comment and P82.2 wording say so",
         "tests/small-request.bats test 11 runs vbw prove --full before expecting ship, as vbw next has required since P76.2"
-      ],
-      "note": "Tasks 1 and 3 edit tests/small-request.bats, a protected check file (C182); the VBW guard refuses every edit to it during the build ('the contract is fixed while building'), and also refuses scratch files outside the plan. Task 2 (cmd-apply.sh: --add judges the rigor floor and one-plan-per-express rule only for the phases it brings) is committed as a8090702. Needed: a contract change that lets tests/small-request.bats gain the regression test (finished express P1 over 3 files in a repo that grew past 30 tracked files; --add of express P2 sharing src/a.js accepted, P1 byte for byte unchanged) and make test 11 run vbw prove --full before expecting ship, then one approval. C183 also needs a fresh L3 smallchange result (tools/l3-results/smallchange.json), not this plan's file."
+      ]
     }
   ],
   "fixes": [
@@ -16537,6 +16536,11 @@
       "id": "D197",
       "at": "2026-10-08T14:35:01Z",
       "text": "Contract approved: 113 requirements, 179 checks, 237 plans (289b3ed54c68)"
+    },
+    {
+      "id": "D198",
+      "at": "2026-10-08T14:46:46Z",
+      "text": "Contract approved: 113 requirements, 179 checks, 237 plans (976ba1f1786c)"
     }
   ],
   "commands": {
