@@ -22,18 +22,52 @@
 # settings.rigor forced to a tier overrides both. A phase that already existed
 # keeps escalations, outcome and its qa verdict (and the predicted tier, once work began), and a started or
 # escalated phase never records a lower tier than it has.
+# vbw apply --patch < DOC: only plans, checks and rules, merged by id (R80).
+# vbw apply --add < DOC: new phases with their plans, checks and rules (R116),
+# appended to the milestone; a phase id it already has, a requirement another
+# phase covers, or a plan or check id in use is refused and nothing changes.
+# Every existing item stays as it was; the merged whole meets every rule above.
 
 # shellcheck source=rigor.sh
 . "$VBW_LIB/rigor.sh"
 
 cmd_apply() {
-  local patch=false
-  [ "${1:-}" != --patch ] || { patch=true; shift; }
-  [ $# -eq 0 ] || vbw_usage_error "usage: vbw apply [--patch] < plan.json"
+  local patch=false add=false
+  case "${1:-}" in --patch) patch=true; shift ;; --add) add=true; shift ;; esac
+  [ $# -eq 0 ] || vbw_usage_error "usage: vbw apply [--patch | --add] < plan.json"
   vbw_require_project
   local doc record problem hypo tiers one pdoc='{}'
   doc=$(cat)
-  if [ "$patch" = true ]; then
+  if [ "$add" = true ]; then
+    # --add: new phases with their plans, checks and rules, appended to the milestone;
+    # every existing item stays as it is; the merged whole meets every rule a full apply does.
+    printf '%s' "$doc" | jq -e 'type == "object" and (.phases | type == "array" and length > 0)
+        and all(.phases[]; type == "object" and (.id | type == "string") and (.reqs | type == "array"))
+        and all(.plans, .checks, .rules; . == null or (type == "array" and all(.[]; type == "object")))' > /dev/null 2>&1 \
+      || vbw_die "apply --add needs a JSON object with the new phases ({id, title, reqs}) and their plans, checks and rules"
+    pdoc=$(printf '%s' "$doc" | jq -c '{phases, plans: (.plans // []), checks: (.checks // []), rules: (.rules // [])}')
+    problem=$(record_read | jq -r --argjson p "$pdoc" '.milestone.id as $m
+      | ([.phases[] | select(.milestone == $m)]) as $ph | [$p.phases[].id] as $new | [$p.phases[].reqs[]] as $newreqs
+      | [($p.phases[] | select(.id as $i | any($ph[]; .id == $i)) | "\(.id) is already a phase of this milestone: --add takes new phases only"),
+         ($p.phases[].reqs[] | . as $q | ([$ph[] | select(any(.reqs[]; . == $q))][0]) | select(. != null)
+           | "\($q) is already covered by \(.id): --add takes requirements that have no phase yet"),
+         ($p.plans[] | select(.phase as $x | $new | index($x) | not) | "\(.id // "a plan") is for \(.phase // "no phase"), not a phase this --add brings"),
+         ($p.plans[] | select(.id as $i | any(.plans[]?; .id == $i)) | "\(.id) is already a plan: --add takes new plans only"),
+         ($p.checks[] | select(.id as $i | any(.checks[]?; .id == $i)) | "\(.id) is already a check: --add takes new checks only"),
+         ($p.checks[], $p.rules[] | select(.req as $q | $newreqs | index($q) | not)
+           | "\(.id // "the rule \"\(.text)\"") is for \(.req), not a requirement of the phases this --add brings")]
+      | .[0] // empty') || vbw_die "internal error: cannot read the added phases"
+    [ -z "$problem" ] || vbw_die "refused: $problem"
+    doc=$(record_read | jq -c --argjson p "$pdoc" '.milestone.id as $m
+      | ([.phases[] | select(.milestone == $m)]) as $ph
+      | ([.requirements[] | select(.milestone == $m)]) as $rq
+      | {phases: [($ph[] | {id, title, reqs} + with_entries(select(.key | IN("goal", "criteria")))
+            + (if (.proposed // .tier) != null then {tier: (.proposed // .tier)} else {} end)), $p.phases[]],
+         plans: ([.plans[] | select(.phase as $x | any($ph[]; .id == $x)) | with_entries(select(.key | IN("id", "phase", "title", "reqs", "files", "after", "tasks", "role")))] + $p.plans),
+         checks: ([.checks[] | select(.req as $x | any($rq[]; .id == $x))] + $p.checks),
+         rules: ([$rq[] | .id as $q | (.rules // [])[] | {req: $q, text, check}] + $p.rules)}') \
+      || vbw_die "internal error: cannot merge the added phases"
+  elif [ "$patch" = true ]; then
     # --patch: plans, checks and rules to change, merged by id (rules by requirement and text)
     # into the milestone; the merged whole then meets every rule a full apply does.
     printf '%s' "$doc" | jq -e 'type == "object" and (has("phases") | not)' > /dev/null 2>&1 \
@@ -120,7 +154,7 @@ cmd_apply() {
     | [.phases[] | select(.milestone == $m)] as $old
     | [.plans[] | select(.status != "planned") | .phase] as $started
     | .checks as $c0
-    | .phases = (if $patch then .phases else [(.phases[] | select(.milestone != $m)), ($d.phases[] | . as $np | ([$old[] | select(.id == $np.id)][0]) as $o
+    | .phases = (if $patch then .phases else [(.phases[] | select($add or .milestone != $m)), ((if $add then $pd.phases else $d.phases end)[] | . as $np | ([$old[] | select(.id == $np.id)][0]) as $o
                   | ([$tiers[] | select(.id == $np.id)][0]) as $a
                   | (.tier // null) as $sub
                   | ($mode | IN("express", "standard", "deep")) as $forced
@@ -140,13 +174,13 @@ cmd_apply() {
                     + ($o // {} | with_entries(select(.key | IN("escalations", "outcome", "qa")))))] end)
     | ([($pd.plans // $d.plans)[] | {id, phase, title, reqs, files, after: (.after // []), status: ($status[.id] // "planned")}
           + (with_entries(select(.key | IN("tasks", "role"))))]) as $np
-    | .plans = (if $patch then [.plans[] | . as $o | ([$np[] | select(.id == $o.id)][0]) // $o] + [$np[] | select($status[.id] == null)]
+    | .plans = (if $patch or $add then [.plans[] | . as $o | ([$np[] | select(.id == $o.id)][0]) // $o] + [$np[] | select($status[.id] == null)]
         else [(.plans[] | select(.phase as $p | any($mine[]; . == $p) | not)), $np[]] end)
-    | .checks = (if $patch then [$c0[] | . as $o | ([$pd.checks[] | select(.id == $o.id)][0]) // $o] + [$pd.checks[] | select(.id as $i | $c0 | any(.id == $i) | not)]
+    | .checks = (if $patch or $add then [$c0[] | . as $o | ([$pd.checks[] | select(.id == $o.id)][0]) // $o] + [$pd.checks[] | select(.id as $i | $c0 | any(.id == $i) | not)]
         else [($c0[] | select(.req as $q | any($myreqs[]; . == $q) | not)), $d.checks[]] end)
     | if $d | has("rules") then .requirements |= map(. as $q
         | if any($d.rules[]; .req == $q.id) then .rules = [$d.rules[] | select(.req == $q.id) | {text, check}] else . end)
-      else . end' --argjson d "$doc" --argjson tiers "$tiers" --argjson pd "$pdoc" --argjson patch "$patch" --arg mode "$(printf '%s' "$record" | jq -r '.settings.rigor // "auto"')"
+      else . end' --argjson d "$doc" --argjson tiers "$tiers" --argjson pd "$pdoc" --argjson patch "$patch" --argjson add "$add" --arg mode "$(printf '%s' "$record" | jq -r '.settings.rigor // "auto"')"
   jq -r '.milestone.id as $m | ([.phases[] | select(.milestone == $m) | .id]) as $mine
     | "applied \($mine | length) phases, \([.plans[] | select(.phase as $p | any($mine[]; . == $p))] | length) plans, \(.checks | length) checks in all"' "$VBW_RECORD"
 }
