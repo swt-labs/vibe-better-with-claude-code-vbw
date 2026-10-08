@@ -8797,7 +8797,7 @@
         "A phase whose own product is documentation (every plan of it changes only documents) is still listed again when those documents change, because they are its code",
         "The reason QA gives for each phase it does list again still names what changed"
       ],
-      "tier": "standard",
+      "tier": "deep",
       "reasons": [
         "requirements: 1",
         "files: 8 (94250 bytes)",
@@ -8815,7 +8815,15 @@
         "at": "2026-10-08T15:45:46Z",
         "note": "17/19 checks",
         "rounds": 1
-      }
+      },
+      "escalations": [
+        {
+          "at": "2026-10-08T16:24:37Z",
+          "from": "standard",
+          "to": "deep",
+          "reason": "Dev blocked P81.1: F80 needs tests for spec.jq Test results errors and the added '/', spec sync removing project.results, record.jq rejecting bad project.results, and show contract --changes naming a changed folder list. No plan serving R115 declares a test file where they belong (tests/kernel-spec.bats, tests/record.bats, tests/kernel-show.bats are unprotected and fit; the guard refuses them in this run), and the only R115 test, tests/qa-recheck-docs.bats, is protected by C181. Needs a plan change: add those three test files to P81.1 (recommended), or add the cases to C181 with a new approval."
+        }
+      ]
     },
     {
       "id": "P82",
@@ -14308,14 +14316,15 @@
         "plugin/lib/cmd-show.sh"
       ],
       "after": [],
-      "status": "done",
+      "status": "blocked",
       "role": "dev",
       "tasks": [
         "spec.jq: a '## Test results' section of '- <folder>/' lines (relative, no '..', not .vbw/, a missing trailing slash added) gives the results list; a bad line is a spec error that names it",
         "vbw spec sync writes the list to project.results (absent when the section names none, removed when it goes); record.jq accepts project.results only as a non-empty array of distinct safe folder paths ending in '/', within schema 1 (older VBWs ignore unknown project fields)",
         "contract.sh: contract_core and contract_doc include the list only when it is present, so every contract without one keeps its fingerprint and adding or changing the list makes the contract wait for approval again",
         "vbw show contract lists the saved test results folders, and vbw show contract --changes names a changed list"
-      ]
+      ],
+      "note": "F80 needs tests for spec.jq Test results errors and the added '/', spec sync removing project.results, record.jq rejecting bad project.results, and show contract --changes naming a changed folder list. No plan serving R115 declares a test file where they belong (tests/kernel-spec.bats, tests/record.bats, tests/kernel-show.bats are unprotected and fit; the guard refuses them in this run), and the only R115 test, tests/qa-recheck-docs.bats, is protected by C181. Needs a plan change: add those three test files to P81.1 (recommended), or add the cases to C181 with a new approval."
     },
     {
       "id": "P81.2",
@@ -15172,7 +15181,7 @@
       "req": "R119",
       "source": "qa",
       "attempts": 0,
-      "status": "open",
+      "status": "fixed",
       "note": "docs/rigor.md still says the Lead runs on Sonnet in the balanced profile. Its table under 'What each tier runs' (docs/rigor.md lines 153-161) begins 'In the balanced profile:' and lists the standard tier as 'Lead, a Dev per plan, QA' with Models 'Sonnet', and the deep tier as 'Scout, Lead, a Dev per plan, QA' with Models 'Sonnet'. Since commit 7519ccd0, plugin/lib/profiles.json gives the balanced Lead opus, so this user document now disagrees with profiles.json. That breaks criterion 7 (user documents that describe the balanced profile show the Lead on Opus). Neither P80.2 nor C180 covers docs/rigor.md. Options: (a, recommended) change those two rows to say the Lead runs on Opus and Dev and QA on Sonnet, and add docs/rigor.md to the document check in tests/profile-lead-opus.bats; (b) change only the text; (c) drop the Models column and point readers to vbw config models."
     },
     {
