@@ -13752,7 +13752,7 @@
         "plugin/hooks/approve-ask.jq"
       ],
       "after": [],
-      "status": "planned",
+      "status": "done",
       "tasks": [
         "a PreToolUse hook on AskUserQuestion: when the user (no agent_type) is asked a question whose options include Approve and Not yet, the question does not start with 'Approve contract ' plus a fingerprint, and the contract is not approved, answer with updatedInput whose question is 'Approve contract <12-char fingerprint>? ' followed by the original question; otherwise print nothing",
         "the common path (any other question) stays one jq call; the fingerprint comes from vbw show contract"
