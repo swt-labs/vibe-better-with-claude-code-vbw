@@ -8767,12 +8767,19 @@
       ],
       "predicted": "deep",
       "qa": {
-        "result": "fail",
+        "result": "pass",
         "tier": "deep",
-        "tree": "53aecf26b170d572f1dc6ee5cce54a237bf4bd087a27b00399409d857af3afc8",
-        "at": "2026-10-08T15:45:10Z",
-        "note": "36/37 checks",
-        "rounds": 1
+        "tree": "4118025fed2b514079d0d76d257bdb4d315157f0d9d8914b82d4bd9b1682677d",
+        "at": "2026-10-08T17:20:18Z",
+        "note": "34/34 checks"
+      },
+      "outcome": {
+        "tier": "deep",
+        "predicted": "deep",
+        "held": true,
+        "fix_rounds": 2,
+        "qa_findings": 2,
+        "escalations": 0
       }
     },
     {
@@ -15202,7 +15209,7 @@
       "req": "R119",
       "source": "qa",
       "attempts": 0,
-      "status": "fixed",
+      "status": "closed",
       "note": "docs/rigor.md still says the Lead runs on Sonnet in the balanced profile. Its table under 'What each tier runs' (docs/rigor.md lines 153-161) begins 'In the balanced profile:' and lists the standard tier as 'Lead, a Dev per plan, QA' with Models 'Sonnet', and the deep tier as 'Scout, Lead, a Dev per plan, QA' with Models 'Sonnet'. Since commit 7519ccd0, plugin/lib/profiles.json gives the balanced Lead opus, so this user document now disagrees with profiles.json. That breaks criterion 7 (user documents that describe the balanced profile show the Lead on Opus). Neither P80.2 nor C180 covers docs/rigor.md. Options: (a, recommended) change those two rows to say the Lead runs on Opus and Dev and QA on Sonnet, and add docs/rigor.md to the document check in tests/profile-lead-opus.bats; (b) change only the text; (c) drop the Models column and point readers to vbw config models."
     },
     {
