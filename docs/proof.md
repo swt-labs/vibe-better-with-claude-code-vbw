@@ -422,6 +422,21 @@ Evidence (`record.evidence`):
 
 Statuses: `pass`, `fail`, `timeout`, `skipped`.
 
+`tail` holds only the end of the output. When a check or project command fails
+or times out, `vbw prove` keeps its full output in a file, so you can read the
+whole failure without running everything again:
+
+```text
+.vbw/runtime/output/C1.log            check C1
+.vbw/runtime/output/command-test.log  project command test
+```
+
+- There is one file per check or command, holding its latest failure; a newer
+  failure replaces it.
+- A pass removes the file.
+- A reused result, or a check that was skipped, leaves the file as it is.
+- `.vbw/runtime/` is git-ignored, so these files are never committed.
+
 An `auto` requirement is `proven` when all its checks pass and `failing`
 otherwise. Human requirements are untouched.
 
@@ -500,6 +515,12 @@ failing check is work in progress, not a defect, and opens nothing.
 uncommitted changes, and the checks of every finished requirement (all its plans
 `done`) that those files serve pass now. A fix cannot quietly break other work.
 A project command's fix is left to `vbw prove`, which runs the command.
+
+`vbw show fix F1` lists the failing checks and project commands, and under each
+one names its kept output file (`full output: .vbw/runtime/output/C1.log`). When
+no file is kept, for example after it was removed, it says
+`full output not kept: run vbw prove again`. With `--json`, each failing check
+and command has a `kept` field: the file's path, or `null`.
 
 ### Closing several fixes
 

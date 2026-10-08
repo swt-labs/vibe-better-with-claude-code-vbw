@@ -135,7 +135,7 @@ lease older than 24 hours is ignored (a crashed run must not lock a project).
 | Command | Who | What |
 |---|---|---|
 | `vbw show plan P1.2 [--json]` | Dev | the plan, its requirements, its checks, its files |
-| `vbw show fix F1 [--json]` | Dev | the fix, its requirement, failing checks and output, the files it may touch |
+| `vbw show fix F1 [--json]` | Dev | the fix, its requirement, failing checks and output (with the path of each kept full output, under `.vbw/runtime/output/`), the files it may touch |
 | `vbw check [--expect-red] [C1 ...]` | Dev | run approved checks, report, write nothing. `--expect-red`: every check must fail (red-first) |
 | `vbw commit P1.2 "feat(x): ..."` | Dev | commit the plan's changed files with provenance trailers |
 | `vbw commit --fix F1 "fix(x): ..." FILE...` | Dev | commit the named changed files of an open fix for a failing project command, even when no plan lists them. The commit carries a `VBW-Fix: F1` trailer. A requirement fix commits through its plan instead; `.vbw/` files are refused |
