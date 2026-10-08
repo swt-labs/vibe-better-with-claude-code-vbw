@@ -8816,12 +8816,11 @@
       ],
       "predicted": "standard",
       "qa": {
-        "result": "fail",
+        "result": "pass",
         "tier": "deep",
-        "tree": "de143f4bb51e544c30504dce0935e27b468b68f6e92bc9e5f61aabebf4bdf62c",
-        "at": "2026-10-08T17:22:15Z",
-        "note": "32/33 checks",
-        "rounds": 2
+        "tree": "177106c0e0b47f227ce3185fcc9efdb9b71c61531c7a49579b395a6e55323b72",
+        "at": "2026-10-08T18:59:58Z",
+        "note": "34/34 checks"
       },
       "escalations": [
         {
@@ -8836,7 +8835,15 @@
           "to": "deep",
           "reason": "QA needs a second round"
         }
-      ]
+      ],
+      "outcome": {
+        "tier": "deep",
+        "predicted": "standard",
+        "held": false,
+        "fix_rounds": 3,
+        "qa_findings": 3,
+        "escalations": 2
+      }
     },
     {
       "id": "P82",
@@ -15246,7 +15253,7 @@
       "req": "R115",
       "source": "qa",
       "attempts": 0,
-      "status": "fixed",
+      "status": "closed",
       "note": "The test for 'until a changed results-folder list is approved, a change inside the new folder still lists the phase' (tests/qa-recheck-docs.bats, protected by C181) cannot fail. It passes even with the approval rule removed. Evidence: in a scratch copy of HEAD I deleted the approval lookup in plugin/lib/qa-inputs.sh (the '&& contract_waiting \"$1\"' part of the 'res=' condition, so results folders are left out even before approval) and ran 'bats -f \"until a changed\" tests/qa-recheck-docs.bats': ok. The reason: the test only asserts that P1 is on the list after results/run.json changed, but without the approval rule P1 is listed anyway, because leaving results/run.json out changes P1's files fingerprint (digest) by itself. So nothing protects the safety rule of D195 (an unapproved folder list exempts nothing). Fix: in that test, assert the re-check list is still empty right after 'vbw spec sync' adds the unapproved folder and before any file changes (with the rule: empty; without it: P1 listed), then keep the existing assertion after the change. C181 protects this file, so the edit needs a new contract approval. Recommended over the alternative (a separate unprotected test file), because the case belongs with the other R115 rules C181 already guards."
     },
     {
