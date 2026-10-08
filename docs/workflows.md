@@ -209,8 +209,9 @@ already has work: the document holds one new phase, for requirements that
 have no phase yet, with its plans, checks and rules, in the same shape as a
 full apply. The milestone's other phases, plans, checks and rules stay as
 they were, started or not. `vbw apply --add` refuses, and writes nothing, a
-phase whose id already exists or a requirement that another phase already
-covers. Every rule of a full apply holds, including the express file limit:
+phase whose id already exists, a requirement that a phase of any milestone
+already covers (`R1 is already covered by P1`), or a requirement of an earlier
+milestone (`R2 belongs to milestone M1`). Every rule of a full apply holds, including the express file limit:
 in a repository tracking more than 30 files, an express phase over more than
 two files is refused (`its signals set the floor at standard`). The new phase
 changes the contract, so you approve it once.
