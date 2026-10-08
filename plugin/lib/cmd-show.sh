@@ -216,10 +216,24 @@ show_commits_for_req() {
 
 # show_work RECORD plan|fix ID [--json]: what a Dev needs, and nothing else.
 show_work() {
-  local json
-  json=$(printf '%s' "$1" | jq -c --arg kind "$2" --arg id "$3" '
+  # A fix names the kept output of each failing check and project command
+  # (R118): its path when the file exists, else null.
+  local json dir='' have='[]'
+  if [ "$2" = fix ]; then
+    # shellcheck source=checks.sh
+    . "$VBW_LIB/checks.sh"
+    dir=$(checks_kept check _)
+    dir=${dir%/*}
+    if [ -d "$VBW_ROOT/$dir" ]; then
+      have=$(find "$VBW_ROOT/$dir" -maxdepth 1 -type f -name '*.log' -print0 \
+        | jq -Rsc 'split("\u0000") | map(select(length > 0) | sub("^.*/"; ""))')
+    fi
+  fi
+  json=$(printf '%s' "$1" | jq -c --arg kind "$2" --arg id "$3" --arg dir "$dir" --argjson have "$have" '
     . as $r
-    | def checks_for($reqs): [$r.checks[] | select(.req as $q | any($reqs[]; . == $q))
+    | def kept($file): if any($have[]; . == $file) then "\($dir)/\($file)" else null end;
+      def failing: . != null and .status != "pass";
+      def checks_for($reqs): [$r.checks[] | select(.req as $q | any($reqs[]; . == $q))
         | . + {last: ($r.evidence.checks[.id] // null)}];
       if $kind == "plan" then
         [.plans[] | select(.id == $id)][0] as $p
@@ -233,9 +247,12 @@ show_work() {
         | if $f == null then null else
           {fix: $f,
            requirement: (if $f.req then [$r.requirements[] | select(.id == $f.req) | {id, text, proof}][0] else null end),
-           checks: (if $f.req then checks_for([$f.req]) else [] end),
+           checks: (if $f.req then checks_for([$f.req]) else [] end
+             | map(. + {kept: (if .last | failing then kept("\(.id).log") else null end)})),
            command: (if $f.command then {name: $f.command, argv: $r.commands[$f.command],
                                           last: ($r.evidence.commands[$f.command] // null)} else null end),
+           commands: [($r.evidence.commands // {}) | to_entries[] | select(.value | failing)
+             | {name: .key, status: .value.status, kept: kept("command-\(.key).log")}],
            plans: [$r.plans[] | select($f.req != null and any(.reqs[]; . == $f.req)) | {id, title, files}]} end
       end')
   [ "$json" != null ] || vbw_die "unknown $2 $3"
