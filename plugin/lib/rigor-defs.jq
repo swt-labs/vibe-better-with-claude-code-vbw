@@ -49,15 +49,25 @@ def doc_only($plans; $checks):
     and ([$checks[] | select(.req == $q.id)] | length == 0);
 def doc_only($r): doc_only($r.plans; $r.checks);
 
-# small_change: on the record, the current milestone's request is a small
-# change: one or two [auto] requirements naming no risk category, with rigor not
-# forced above express, whatever the size of the repository.
+# named_files: on a text, the distinct file names it names: words with an
+# extension (greet.sh, src/a.js, .github/workflows/ci.yml) or a dot file (.env);
+# a sentence's closing dot is not part of the word.
+def named_files:
+  [scan("[A-Za-z0-9_./-]+") | sub("\\.+$"; "") | select(test("\\.[A-Za-z][A-Za-z0-9]*$"))] | unique;
+
+# small_change: on the record, the current milestone's request (its
+# requirements in no phase yet; earlier planned or proven ones do not count) is
+# a small change: one or two [auto] requirements naming no risk category and,
+# together, at most two distinct files, with rigor not forced above express,
+# whatever the size of the repository.
 def small_change:
   .milestone.id as $m
-  | [.requirements[] | select(.milestone == $m)] as $cur
+  | ([.phases[]?.reqs[]?]) as $phased
+  | [.requirements[] | select(.milestone == $m) | select(.id as $q | $phased | index($q) | not)] as $cur
   | ((.settings.rigor // "auto") | IN("auto", "express"))
     and ($cur | length) >= 1 and ($cur | length) <= 2
-    and all($cur[]; .proof == "auto" and (.text | risk_name) == null);
+    and all($cur[]; .proof == "auto" and (.text | risk_name) == null)
+    and ([$cur[].text | named_files[]] | unique | length) <= 2;
 
 # early_tier($facts): on the record, the tier of the request before planning.
 # A forced mode (settings.rigor express|standard|deep) is that tier. In auto,
