@@ -9024,7 +9024,22 @@
         "tests: project test command",
         "raised by the Architect"
       ],
-      "predicted": "standard"
+      "predicted": "standard",
+      "qa": {
+        "result": "pass",
+        "tier": "quick",
+        "tree": "b7923d375f582f8d51d270591ada9ce22b2cbde2ed5e759c498135524bdf35d0",
+        "at": "2026-10-08T22:41:59Z",
+        "note": "6/6 checks"
+      },
+      "outcome": {
+        "tier": "standard",
+        "predicted": "standard",
+        "held": true,
+        "fix_rounds": 0,
+        "qa_findings": 0,
+        "escalations": 0
+      }
     }
   ],
   "plans": [
@@ -18488,5 +18503,11 @@
     "full": true,
     "passed": true
   },
-  "lease": null
+  "lease": {
+    "run": "qa-20261008T224049Z",
+    "kind": "qa",
+    "started_at": "2026-10-08T22:40:49Z",
+    "files": [],
+    "session": "4130e174-7ef2-4e36-b853-fb2a8fd8511d"
+  }
 }
