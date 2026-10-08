@@ -3143,7 +3143,7 @@
       "id": "R113",
       "text": "VBW's own files under .vbw/ (the spec, the record) never make QA check a passed phase again, even when a plan lists one of them; a change to the phase's other files still does",
       "proof": "auto",
-      "status": "open",
+      "status": "proven",
       "milestone": "M14",
       "rules": [
         {
@@ -8375,7 +8375,15 @@
         "guarded: R47 (C47), R49 (C48), R104 (C161, C162)",
         "tests: project test command"
       ],
-      "predicted": "express"
+      "predicted": "express",
+      "outcome": {
+        "tier": "express",
+        "predicted": "express",
+        "held": true,
+        "fix_rounds": 0,
+        "qa_findings": 0,
+        "escalations": 0
+      }
     }
   ],
   "plans": [
@@ -15621,10 +15629,10 @@
     "autonomy_cap": 25
   },
   "evidence": {
-    "at": "2026-10-08T08:51:56Z",
-    "contract": "9e4b891ece0ad82a02d88522c4507cced8f4dbf7d8e28afbe15f815531d08eb7",
-    "tree": "9a65ea0b91e22561b5499a28aa49165f8d5dbcc1",
-    "head": "9a65ea0b91e22561b5499a28aa49165f8d5dbcc1",
+    "at": "2026-10-08T09:04:02Z",
+    "contract": "4f5da3432f32c3c95a1eabad0641714e291937e09eef69ecf04bf6347ac2c189",
+    "tree": "45fba6a99cb8deb484374dbb70c562e8e5707e22",
+    "head": "45fba6a99cb8deb484374dbb70c562e8e5707e22",
     "checks": {
       "C1": {
         "status": "pass",
@@ -15953,7 +15961,8 @@
         "tail": "1..10\nok 1 R37: the interview is a skill of its own, named interview, within a mode prompt's budget\nok 2 R37: the three fixed questions are asked in order with exactly the listed options\nok 3 R37: after the three, VBW asks briefly what is being built and for whom, and writes it into the spec Goals\nok 4 R37: at most three follow-up questions, written for that user's level and this project; zero is allowed\nok 5 R37: the last question asks where to keep the personal answers and applies the choice through the kernel\nok 6 R37: each answer is recorded as it is given, so an interrupted interview resumes at the first unanswered question\nok 7 R37: an interrupted interview records nothing as complete and resumes at the first unanswered question\nok 8 R37: an unrecognised answer to a fixed question is refused and never recorded\nok 9 R37: the router runs the interview before spec work, after mapping for existing code,\nok 10 R37: the router stays within its budget and the interview adds no more than a mode prompt",
         "fp": "ed4bf2b3012baaaf890fde99b011a526fb9029c1cd5f33a0f67d3b776ae0597c",
         "at": "2026-10-08T08:51:56Z",
-        "served": "1cf8fbab54619bcf078d33c45cb8aff1e758d5102c3199e7d40eed4e041f8775"
+        "served": "1cf8fbab54619bcf078d33c45cb8aff1e758d5102c3199e7d40eed4e041f8775",
+        "reused": true
       },
       "C36": {
         "status": "pass",
@@ -16071,19 +16080,17 @@
         "seconds": 105,
         "tail": "1..15\nok 1 R47: a QA pass keeps one digest of the phase's own inputs in qa.tree; no new record field, the record stays schema 1\nok 2 R47: a phase that has never passed QA is checked\nok 3 R47: after one phase passes and the other does not, only the other is checked\nok 4 R47: a phase whose last verdict was fail is checked again, and a passing phase keeps its pass\nok 5 R47: two phases passed and a fix touches one: only that one is in the next QA list\nok 6 R47: a pass that stands is still a pass on the proven code: it counts for finishing the phase\nok 7 R47: changing a file of the phase alone is enough to check it again\nok 8 R47: changing a test of the phase alone is enough to check it again\nok 9 R47: changing the goal of the phase alone is enough to check it again\nok 10 R47: changing the plan of the phase alone is enough to check it again\nok 11 R47: a change to a file that belongs to no phase checks no phase\nok 12 R47: fixes that close without touching any phase file leave every pass standing\nok 13 R47: a record written before this change (qa.tree held the whole-folder fingerprint) is read without error and its phases are checked again once\nok 14 R47: QA still refuses a verdict on a proof older than the current code (R12)\nok 15 R47: the verify workflow checks exactly the phases it is given and holds no selection of its own",
         "fp": "3793047ee1fb62638d8dd2969257314b3b0d1d585d924ccb0d1585d6377aef7a",
-        "at": "2026-10-08T08:36:07Z",
-        "served": "7c06ef4ac3fe5a48b896543481453ef30db6242c2ac5f7e887bf332b07e653de",
-        "reused": true
+        "at": "2026-10-08T09:04:02Z",
+        "served": "89b0b49aa57f7dbd316b4dc4c1d97df0aac55dcf396ae6a220da0b03ffc6bcac"
       },
       "C48": {
         "status": "pass",
         "exit": 0,
-        "seconds": 77,
+        "seconds": 78,
         "tail": "1..9\nok 1 R49: a phase that builds on a re-checked phase is checked again though its own inputs did not change\nok 2 R49: it is transitive: A changes, B builds on A, C builds on B, and all three are checked again\nok 3 R49: a change in the middle checks it and what builds on it, not what it builds on\nok 4 R49: a dependency on a phase that is not re-checked adds nothing\nok 5 R49: a dependent that has itself never passed is already included and listed once\nok 6 R49: when the changed phase passes again but its dependent was not recorded, the dependent is still checked\nok 7 R49: when both are checked again, every pass stands and the milestone can ship\nok 8 R49: phases that build on each other in a cycle do not hang or crash, and the kernel names them\nok 9 R49: a plan that comes after a plan or a phase that does not exist is reported by name, not silently dropped",
         "fp": "b47c6a2b2fd7e4588aca832a13e805fc047d9766a43e793729a86964198de184",
-        "at": "2026-10-08T08:36:07Z",
-        "served": "5f8e8f6f82c2cac8367cda0348cd2d1b70b1df6ce987186ae121a7f80a1fa31d",
-        "reused": true
+        "at": "2026-10-08T09:04:02Z",
+        "served": "0e7f0fc9329a3c142ee89670eeb3eeff50c5ce8d82a9887532540f78aec248a3"
       },
       "C49": {
         "status": "pass",
@@ -16272,7 +16279,8 @@
         "tail": "1..7\nok 1 R59: the first question of the interview skill is exactly the new greeting\nok 2 R59: the four options follow the greeting, in the same order and wording\nok 3 R59: choosing a level still records it and the interview continues at the next question\nok 4 R59: the later questions, the follow-up rules and the keep order are unchanged\nok 5 R59: the old opening wording is gone from the skill and the interview doc, which shows the greeting\nok 6 R59: the router and the interview prompt stay within their budgets\nok 7 R59: a returning user whose level is recorded is not asked the level question again",
         "fp": "928767506f35851e735fd18bbee204edc2ecf5606e101457c45c56e9c3fdcc46",
         "at": "2026-10-08T08:51:56Z",
-        "served": "1a377290f77c4f1dfbc451cf91cab7086a3cb965a292bacd967426d4d9d4e4dd"
+        "served": "1a377290f77c4f1dfbc451cf91cab7086a3cb965a292bacd967426d4d9d4e4dd",
+        "reused": true
       },
       "C70": {
         "status": "pass",
@@ -16311,7 +16319,8 @@
         "tail": "1..5\nok 1 R61: the contract view ends with the approval question naming the fingerprint, and the options Approve first, Not yet second\nok 2 R61: an approved contract shows no approval question\nok 3 R61: approve --hash with the current fingerprint approves it, like plain approve, and writes the decision once\nok 4 R61: approve --hash with a fingerprint that is no longer current approves nothing and says the contract changed\nok 5 R61: approve --hash refuses a malformed fingerprint and a contract that is not ready, changing nothing",
         "fp": "0fc813c0fd1249e6e2114fee34a0ab4dac536a57684cdbaa37e336edeb76064c",
         "at": "2026-10-08T08:51:56Z",
-        "served": "7185c6eb60774496a4b43e3944a330ba8d2c173bb5b83c77b1abe8a1dafb04f9"
+        "served": "7185c6eb60774496a4b43e3944a330ba8d2c173bb5b83c77b1abe8a1dafb04f9",
+        "reused": true
       },
       "C74": {
         "status": "pass",
@@ -16320,7 +16329,8 @@
         "tail": "1..13\nok 1 R61: hooks.json runs one PostToolUse hook, only for AskUserQuestion\nok 2 R61: answering Approve to the question approves the contract the question named, with the same decision entry as /vbw:approve\nok 3 R61: the answer may come as a list of answers as well as a map from question to answer\nok 4 R61: when the contract changed after the question, Approve approves nothing and the user is told, and shown the new contract\nok 5 R61: answering Not yet approves nothing and VBW is told to ask what to change\nok 6 R61: the user's own words approve nothing, even words that contain Approve, and are handed on as what to change\nok 7 R61: the question may explain the contract after the fingerprint: Approve still approves it (real-app run)\nok 8 R61: the fingerprint counts only at the very start of the question and only as exactly 12 hex digits (a wrong length is refused with the reason)\nok 9 R61: any other question changes nothing and prints nothing, in a VBW project and outside one\nok 10 R61: an answer already approved says so in one sentence and writes no second decision\nok 11 R61: plain /vbw:approve first, then the choice: still one decision\nok 12 R61: with no contract ready to approve, nothing is approved and the user is told why\nok 13 R61: a damaged record leaves the file as it was, approves nothing and says why in one sentence",
         "fp": "2acac5870b75d929041806a6d857f3a6a08704f93a8a090487b79b1b9a378832",
         "at": "2026-10-08T08:51:56Z",
-        "served": "950c525a9c8e48636bf855bcb12f4ab03a0883ae9ceb61b0e71e48e993351d5a"
+        "served": "950c525a9c8e48636bf855bcb12f4ab03a0883ae9ceb61b0e71e48e993351d5a",
+        "reused": true
       },
       "C75": {
         "status": "pass",
@@ -16329,7 +16339,8 @@
         "tail": "1..7\nok 1 R61: a call to vbw approve from the model is still refused by the guard\nok 2 R61: an answer-shaped message that is not an AskUserQuestion answer approves nothing\nok 3 R61: a message written by the model that merely contains the answer does not approve\nok 4 R61: a question asked by a subagent approves nothing\nok 5 R61: the guard's rule and the hook are documented together: the hook does not appear as a way for agents\nok 6 R61: the answer hook's own cost on an unrelated answer is measured by the hook bench and is near the platform's startup\nok 7 R61: the kernel stays within its budget (kept in one place: tests/standards.bats) and the router within 1,400 words",
         "fp": "34ef9e9bae37f1bea2af836d3a5be9a0f3a4eff6f6a1e5fb5a00cf8fa2b218b0",
         "at": "2026-10-08T08:51:56Z",
-        "served": "9c231073933216f1cfa44ca3b1c5cc0b748a1c37301b0508992def07e60057d8"
+        "served": "9c231073933216f1cfa44ca3b1c5cc0b748a1c37301b0508992def07e60057d8",
+        "reused": true
       },
       "C76": {
         "status": "pass",
@@ -16338,7 +16349,8 @@
         "tail": "1..7\nok 1 R61: the router's approve step asks with AskUserQuestion, Approve first and Not yet second, from the question vbw show contract prints\nok 2 R61: the router tells Claude what to do with each answer: Approve continues, Not yet asks what to change, own words are what to change\nok 3 R61: the prompts stay within their budgets: router 1,400 words, every skill 2,000, all prompts 16k tokens\nok 4 R61: the help lists the approval choice next to /vbw:approve\nok 5 R61: docs/proof.md describes the choice, that Approve comes first so Enter approves, Not yet, own words, and that /vbw:approve still works\nok 6 R61: docs/guards.md explains the answer hook and why the model cannot approve through it\nok 7 R61: the README says approval is a choice where Enter approves, and /vbw:approve still works",
         "fp": "7b2f3c8fd16b43a30bbb02ec8ea26bcd6eaa001391d3d84ccf1a14ee0a449aca",
         "at": "2026-10-08T08:51:56Z",
-        "served": "f7fe2eef573bc3bf5c7cb68a196d919e1719f24854ff1dbdffa4e0bf85fce83a"
+        "served": "f7fe2eef573bc3bf5c7cb68a196d919e1719f24854ff1dbdffa4e0bf85fce83a",
+        "reused": true
       },
       "C77": {
         "status": "pass",
@@ -16347,7 +16359,8 @@
         "tail": "1..3\nok 1 R61: the approval scenario exists, is in the default list and is named in the suite's header\nok 2 R61: it answers the approval question with Enter, never by typing /vbw:approve, and checks the record and git\nok 3 R61: a committed result of it is honest: L3, passed, the choice was shown and Enter approved the shown contract; none is committed before it ran",
         "fp": "7a1189f7a1dddc360b59fca07f41681aa5f20b103eab671f4198e2a88404b0a1",
         "at": "2026-10-08T08:51:56Z",
-        "served": "5a71fa75d5bc71c130584e01cb2b9f7628479afb36cb994cb0bbbf5048363af7"
+        "served": "5a71fa75d5bc71c130584e01cb2b9f7628479afb36cb994cb0bbbf5048363af7",
+        "reused": true
       },
       "C78": {
         "status": "pass",
@@ -16356,7 +16369,8 @@
         "tail": "1..7\nok 1 R62: a new project has not been asked: vbw tools --json says asked false with no answer\nok 2 R62: the answer yes is remembered in the project record and any session or location sees it\nok 3 R62: on no the record shows the answer was no, and the build flow is unchanged\nok 4 R62: only yes or no is accepted; anything else is refused naming the choices and records nothing\nok 5 R62: the answer can be given again later (/vbw:skills after a no): the latest wins and the record stays valid\nok 6 R62: a record holding another project.tools answer is refused as corrupt\nok 7 R62: vbw --help lists the tools command",
         "fp": "9363157971128977364e4387d13c1682b49835d79a87a9eae719805bbb982cf4",
         "at": "2026-10-08T08:51:56Z",
-        "served": "fcd412070b104224ac015378af9995b782bfdfd8fe274a18802e71aba374773a"
+        "served": "fcd412070b104224ac015378af9995b782bfdfd8fe274a18802e71aba374773a",
+        "reused": true
       },
       "C79": {
         "status": "pass",
@@ -16365,7 +16379,8 @@
         "tail": "1..8\nok 1 R62: one Scout per angle (safety, quality, tests, skills), each given the project's stack and the user's words\nok 2 R62: every returned pick says what it is, why it fits, where it came from, and has at least one source link\nok 3 R62: a pick with no source link is dropped, never shown\nok 4 R62: respected open-source picks are proposed as they are; anything else carries a plain warning and is marked not trusted\nok 5 R62: the list is short: at most two picks per angle and six in all, trusted ones first\nok 6 R62: a Scout that fails or finds nothing is named in missing, the others' picks are kept, nothing stops\nok 7 R62: when every Scout fails the result is no picks and a plain note, not an error\nok 8 R62: when the stack cannot be determined no Scout is started and the note says so",
         "fp": "9f5b34a5c0fa0e4083db542ed81cee2275497a162545d707eee820a68912693e",
         "at": "2026-10-08T08:51:56Z",
-        "served": "4c0392632178e4d10b0dd2b59b081b86bee2abe5bdc57e7257d171a223db1052"
+        "served": "4c0392632178e4d10b0dd2b59b081b86bee2abe5bdc57e7257d171a223db1052",
+        "reused": true
       },
       "C80": {
         "status": "pass",
@@ -16374,7 +16389,8 @@
         "tail": "1..11\nok 1 R62: the skill starts the tooling workflow and may use it\nok 2 R62: it works out the stack first (the map, else the manifest files) and passes it to the workflow\nok 3 R62: it runs at any time, whatever the first answer was, and records that the user wants tools\nok 4 R62: the four angles and what a shown item holds: what it is, why it fits, where it came from, with a link\nok 5 R62: the list is short (a handful, not a catalogue)\nok 6 R62: a pick from an untrusted source is shown with its plain warning and the user chooses: keep, drop or look further\nok 7 R62: nothing is installed, downloaded or changed until the user approves the list; declining or 'not yet' installs nothing; a partial approval installs only what was approved\nok 8 R62: for each approved tool it asks whether it goes into this project only or into all the user's projects, and installs to that scope\nok 9 R62: when a Scout fails, finds nothing or the stack is unknown it says so plainly, shows what was found, installs nothing and does not stop the flow\nok 10 R62: it ends every stop with one plain line saying what VBW needs now\nok 11 R62: it keeps the user's words and no longer needs Node.js to search a registry by hand",
         "fp": "9db4d071b554bef4b207b97d4259dda7a41280c30299be4611d0ba17411f4532",
         "at": "2026-10-08T08:51:56Z",
-        "served": "385a761486d8de6edbc400ac8bb12d6c795ac1db07991a569bd3388ce273ee8d"
+        "served": "385a761486d8de6edbc400ac8bb12d6c795ac1db07991a569bd3388ce273ee8d",
+        "reused": true
       },
       "C81": {
         "status": "pass",
@@ -16383,7 +16399,8 @@
         "tail": "1..8\nok 1 R62: the interview skill has a tools section, after what and for whom, the follow-ups and the keep question\nok 2 R62: it asks one plain yes/no question with AskUserQuestion and explains each kind of tool in a few words\nok 3 R62: it reads the remembered state and asks only once: an existing answer, yes or no, means it is not asked again\nok 4 R62: the answer is recorded as soon as it is given, yes or no\nok 5 R62: on no nothing is searched on the web, no Scout is started, nothing is installed, and the flow continues\nok 6 R62: on yes it hands over to the same research and proposal as /vbw:skills\nok 7 R62: it ends with one plain line saying what VBW needs now\nok 8 R62: the interview still reads its answers first and keeps 'keep' as the last of the interview's own questions",
         "fp": "3f393df2fb7fae6dd4a9f72707b25d8e5ca8bfe373936b0773071be441e1dd7f",
         "at": "2026-10-08T08:51:56Z",
-        "served": "d77f2ff3334c13639ffd1ca8096601b22c4d464243043515cb4b227e82a4bbe3"
+        "served": "d77f2ff3334c13639ffd1ca8096601b22c4d464243043515cb4b227e82a4bbe3",
+        "reused": true
       },
       "C82": {
         "status": "pass",
@@ -16392,7 +16409,8 @@
         "tail": "1..7\nok 1 R62: docs/tools.md exists and says what the offer is, in plain words\nok 2 R62: it says the question is asked once per project and what yes and no do\nok 3 R62: it says where picks come from: trusted sources, open source as proposed picks, anything else with a warning\nok 4 R62: it says nothing is installed before approval, and that approving some installs only those\nok 5 R62: it says each approved tool goes into this project or all your projects, by your choice\nok 6 R62: it names /vbw:skills as the way to run it again any time and vbw tools as the stored answer\nok 7 R62: the README lists the offer and links the page",
         "fp": "3236e3a54670bb5374cc381784713c2c633056041ae8b65556f5c96ea47d4d2f",
         "at": "2026-10-08T08:51:56Z",
-        "served": "ca418aa702f40c55c0fa33706d1ff07baf601721cc5dad59446658d3c96c4aea"
+        "served": "ca418aa702f40c55c0fa33706d1ff07baf601721cc5dad59446658d3c96c4aea",
+        "reused": true
       },
       "C83": {
         "status": "pass",
@@ -16401,7 +16419,8 @@
         "tail": "1..4\nok 1 R62: the tools scenario exists, is in the default list and is named in the suite's header\nok 2 R62: it answers yes once, reads the stored answer, and checks nothing was installed before approval, from the record and git\nok 3 R62: it states what it did not test and its fixture\nok 4 R62: a committed result of it is honest: L3, passed, the answer stored once, nothing installed before approval; none is committed before it ran",
         "fp": "64460ee3163ff9e511be4127cabde76951cca9d98517b7d635143a5b9b464c25",
         "at": "2026-10-08T08:51:56Z",
-        "served": "93cc439c0ab27b09d9704086be7de6df753c8c0280a829fd62ad19fd762c8da4"
+        "served": "93cc439c0ab27b09d9704086be7de6df753c8c0280a829fd62ad19fd762c8da4",
+        "reused": true
       },
       "C84": {
         "status": "pass",
@@ -16430,7 +16449,8 @@
         "tail": "ok 1 R65: a project without a VBW 1 folder: legacy false, one line of JSON, exit 0, nothing else printed\nok 2 R65: the review works before VBW 2 is set up and reports no choice yet\nok 3 R65: how much was finished: plans with a summary against all readable plans\nok 4 R65: how recently it was used: the date and the days, from the commit that touched the folder\nok 5 R65: an untracked folder's last use comes from its newest file\nok 6 R65: whether the plans still match the code: the files and folders they name that still exist\nok 7 R65: a path that climbs out of the project or is absolute is never looked up\nok 8 R65: work half done: a phase started but not finished, and an unfinished build marker\nok 9 R65: a finished build marker is not half done work\nok 10 R65: a healthy folder is recommended for conversion, and the reasons name the numbers behind it\nok 11 R65: an old folder whose plans name files that are gone is recommended to start fresh, with the numbers\nok 12 R65: the same folder always gives the same review and recommendation\nok 13 R65: an empty folder: exit 0, valid JSON, says what could not be read, recommends fresh\nok 14 R65: plans that cannot be read (empty files) are named, never counted, and never recommended for conversion\nok 15 R65: a corrupt build marker and a missing project file are reported, the readable plans still count\nok 16 R65: a folder not in a git repository: exit 0, the last use from file times, the lack of git is said\nok 17 R65: the review writes nothing, runs nothing it finds in the folder, and changes no file\nok 18 R65: the recommended option comes first: recommendation is convert or fresh and the reasons are plain sentences\nok 19 R65: usage: review takes no argument and the help lists it\nok 20 R65: the kernel with the review stays within its budget (kept in one place: tests/standards.bats)",
         "fp": "667f10c1c406aa0247367aaa0adf075d8522339dd8f7d5d8257d70da57f2fe74",
         "at": "2026-10-08T08:51:56Z",
-        "served": "53e949d7e4dfdb82c52fa070523d40c6b262cd757783b941a0aa288bf3cc6fa6"
+        "served": "53e949d7e4dfdb82c52fa070523d40c6b262cd757783b941a0aa288bf3cc6fa6",
+        "reused": true
       },
       "C87": {
         "status": "pass",
@@ -16439,7 +16459,8 @@
         "tail": "1..13\nok 1 R65: choosing fresh is stored with the time; the review then shows the choice and that it was asked\nok 2 R65: choosing convert is stored too, and conversion itself is not marked done\nok 3 R65: a new project has not been asked: the review says asked false, choice null\nok 4 R65: the choice is remembered in the project, so another session or worktree path sees it and does not ask again\nok 5 R65: starting fresh converts nothing and leaves the old folder exactly as it was\nok 6 R65: after fresh, vbw next no longer says convert; without a choice, or after convert, it still does\nok 7 R65: the choice can be changed later: the latest wins and the record stays valid\nok 8 R65: only convert or fresh is accepted; anything else is refused naming the choices and nothing is recorded\nok 9 R65: with no VBW 1 folder there is nothing to choose: refused, nothing recorded\nok 10 R65: in a folder that is not a VBW project the choice is refused and writes nothing\nok 11 R65: a record with another project.legacy value is refused as corrupt\nok 12 R65: converting afterwards still works: legacy done marks it and keeps the old folder\nok 13 R65: the help lists choose",
         "fp": "c1ecc6414cceba1e5b3085f21051cc91fbe76955d01f2f485db30862519b3f16",
         "at": "2026-10-08T08:51:56Z",
-        "served": "3f7129185cc63aed8e9f25af10edc9876b1801d6c2b3e0944d1bafa5ce28f064"
+        "served": "3f7129185cc63aed8e9f25af10edc9876b1801d6c2b3e0944d1bafa5ce28f064",
+        "reused": true
       },
       "C88": {
         "status": "pass",
@@ -16448,7 +16469,8 @@
         "tail": "1..14\nok 1 R65: the interview skill has an old-folder section, and reads the review with its other facts\nok 2 R65: it comes right after the level answer and before any other question; no folder or a recorded choice skips it silently\nok 3 R65: the review is shown to the user, in plain words at their level and depth, built from the kernel's four facts\nok 4 R65: the numbers and the recommendation come from the kernel, never from the model's guess\nok 5 R65: what could not be read is said, and converting is never recommended for it\nok 6 R65: the choice is a question with AskUserQuestion: the recommended option first marked Recommended, the other second, each with a short trade-off\nok 7 R65: the user may pick either option whatever was recommended, or answer in their own words\nok 8 R65: picking convert records the choice and runs the existing conversion; the old folder stays and the result is reported\nok 9 R65: picking start fresh records it, converts nothing, leaves the folder untouched and the interview goes on\nok 10 R65: the question is asked once per project, and the review can still be run on demand\nok 11 R65: it reads files only: no command found in the old folder is run, nothing is written, no network\nok 12 R65: it is one extra interview step\nok 13 R65: the router's convert step defers to this step instead of a fixed recommendation\nok 14 R65: the prompts stay within their budgets: the step 190 words, the interview 900, the router 1,400, every skill 2,000, all prompts 22,800",
         "fp": "eca5d3a9a9ad312fb465c37f579184c464a55fbbbc73154362823c836e5fd69f",
         "at": "2026-10-08T08:51:56Z",
-        "served": "952d48d05db8c098064fc04b1aa98e3f597e5751bbb40913286e3c2d1e2a6d69"
+        "served": "952d48d05db8c098064fc04b1aa98e3f597e5751bbb40913286e3c2d1e2a6d69",
+        "reused": true
       },
       "C89": {
         "status": "pass",
@@ -16457,7 +16479,8 @@
         "tail": "1..8\nok 1 R65: docs/convert.md describes the review and says when it happens: in the interview, right after the level\nok 2 R65: it names the four things the review reports\nok 3 R65: it states the rule behind the recommendation, so the same folder always gets the same answer\nok 4 R65: it says what each choice does: convert runs /vbw:convert, start fresh converts nothing, the old folder is never changed\nok 5 R65: it covers what the review does with a folder it cannot read, and that the review only reads\nok 6 R65: it says the choice is asked once per project and the review can be run again on demand\nok 7 R65: docs/interview.md lists the old-folder step in the interview's order\nok 8 R65: the README lists the review and links the page",
         "fp": "dcdd6a772209b03149224c0c91be900ef081a8d4e1630677220b1acdb816c00b",
         "at": "2026-10-08T08:51:56Z",
-        "served": "61f192e4d047bc1fd411770d0eea4864c5ddf0c55c256f048170c8b861f900d0"
+        "served": "61f192e4d047bc1fd411770d0eea4864c5ddf0c55c256f048170c8b861f900d0",
+        "reused": true
       },
       "C90": {
         "status": "pass",
@@ -16466,7 +16489,8 @@
         "tail": "1..5\nok 1 R65: both scenarios exist, are in the default list and are named in the suite's header\nok 2 R65: legacy builds a fixture with a VBW 1 folder, picks the option that is not recommended, and reads the record and git\nok 3 R65: nolegacy uses a project without a VBW 1 folder and checks from the transcript that no review question was asked\nok 4 R65: the committed result of legacy: L3, passed, the review shown before another question, recommended option first, the other picked, nothing converted, folder untouched, not asked again\nok 5 R65: the committed result of nolegacy: L3, passed, the review question never asked, the interview completed",
         "fp": "ae9d78a5b0670495f52d26070b10c15ea89a86a4c45ae032d2e57ed12701ffd4",
         "at": "2026-10-08T08:51:56Z",
-        "served": "9f16b93f2730fe0be3d8ed8604210456b2aa62f94feaaae425a2570ad34461b6"
+        "served": "9f16b93f2730fe0be3d8ed8604210456b2aa62f94feaaae425a2570ad34461b6",
+        "reused": true
       },
       "C91": {
         "status": "pass",
@@ -16485,7 +16509,8 @@
         "tail": "1..3\nok 1 R59: the real-user script no longer looks for the old level question\nok 2 R59: the level options check is keyed on the greeting's question, with the four options in order\nok 3 R59: the interview counts as asked when the level question was asked",
         "fp": "b150d0c4ec034a179d372e5421f228b933a942212ffc02d9cc593da27688814e",
         "at": "2026-10-08T08:51:56Z",
-        "served": "f53536b9206d93ea30cf0b91bc7029b512d89dd4c68d9d2c4a47c280a827e117"
+        "served": "f53536b9206d93ea30cf0b91bc7029b512d89dd4c68d9d2c4a47c280a827e117",
+        "reused": true
       },
       "C93": {
         "status": "pass",
@@ -16494,7 +16519,8 @@
         "tail": "1..1\nok 1 R62: the interview may run the tooling workflow and npx skills, like /vbw:skills",
         "fp": "9f119e04fabc644348fb9809bee767e7c81e14e17c5485e83c312462a21e5205",
         "at": "2026-10-08T08:51:56Z",
-        "served": "b7daa97c34d7363489161b7ebf274d8171dc9ba9ed96dcb7285150e2946c5352"
+        "served": "b7daa97c34d7363489161b7ebf274d8171dc9ba9ed96dcb7285150e2946c5352",
+        "reused": true
       },
       "C94": {
         "status": "pass",
@@ -17169,22 +17195,20 @@
       "C161": {
         "status": "pass",
         "exit": 0,
-        "seconds": 66,
+        "seconds": 65,
         "tail": "1..9\nok 1 R104: right after its pass, the phase stands\nok 2 R104: a newly recorded decision does not list the phase again\nok 3 R104: a finding closed with no code change does not list the phase again\nok 4 R104: removing one of the phase's [human] requirements does not list the phase again\nok 5 R104: a decision, a closed finding and a removed [human] requirement together still do not list the phase\nok 6 R104: a removed [human] requirement together with a code change lists the phase, with the reason\nok 7 R104: a removed [human] requirement together with a changed goal lists the phase\nok 8 R104: a decision together with a changed test lists the phase\nok 9 R104: a finding closed together with a code change lists the phase",
         "fp": "291365e97c928d7eb165641db798d37f77366a746684cef33cdf71c2469a8d2a",
-        "at": "2026-10-08T08:36:07Z",
-        "served": "ac59f9a23de71ef90c739d7374369c4c5aabba33f4051114073c81065657ed05",
-        "reused": true
+        "at": "2026-10-08T09:04:02Z",
+        "served": "77b902a5e7344a1cbf7316587de2ca2421c094f1c57b6647478641ff0344208b"
       },
       "C162": {
         "status": "pass",
         "exit": 0,
-        "seconds": 47,
+        "seconds": 48,
         "tail": "1..7\nok 1 R104: a reworded [auto] requirement of the phase lists it again, naming the requirement as the reason\nok 2 R104: the reason for a reworded [auto] requirement reaches the QA instruction\nok 3 R104: an [auto] requirement added to the phase lists it again, naming the requirement\nok 4 R104: an [auto] requirement removed from the phase lists it again\nok 5 R104: a decision recorded together with a reworded [auto] requirement still lists the phase\nok 6 R104: rewording a [human] requirement alone is not an [auto] change: the phase stands\nok 7 R104: docs/proof.md says which changes do not list a passed phase again and which do",
         "fp": "1fc65ad0a8fefb345322a10d7fd640d1e224018a52a8e99d597cc117854563a1",
-        "at": "2026-10-08T08:36:07Z",
-        "served": "5814900f4d15223ee414540a8c93d7a95a2414740c027ebfea0b4a5204c2e617",
-        "reused": true
+        "at": "2026-10-08T09:04:02Z",
+        "served": "bd6f279aa16ce04f65b054ea309ce1dfb54355e78f7230ce959e5756195786b1"
       },
       "C163": {
         "status": "pass",
@@ -17269,38 +17293,38 @@
       "C171": {
         "status": "pass",
         "exit": 0,
-        "seconds": 39,
+        "seconds": 41,
         "tail": "1..9\nok 1 R111: a project without a quick command runs its test command as before, and a proof that ran everything is full\nok 2 R111: a named and approved quick command runs in place of the test command; every other command still runs\nok 3 R111: a proof that used the quick command in place of the test command is partial, in the summary and in the evidence\nok 4 R111: a quick command named but not approved is skipped, the full test command runs instead, and the summary says so\nok 5 R111: vbw prove --full reuses nothing and runs every check, the test command and every other command, but not the quick command\nok 6 R111: vbw prove with any other argument is refused with the usage line and runs nothing\nok 7 R111: a proof is full only when nothing was reused: a plain proof that reused a result is partial\nok 8 R111: a full proof is not full when a project command was not approved and so did not run\nok 9 R111: a failing quick command opens a fix for it, and a passing full proof closes that fix",
         "fp": "f1d480389b391aaf11885633fb685953d6db2ff659b2ff99d6259dbd2eb0ccbd",
-        "at": "2026-10-08T08:51:56Z",
-        "served": "37632d71d5d265e8f85c07a3062fa2a066b669e73c191c89dfc8dd8cd11514f3"
+        "at": "2026-10-08T09:04:02Z",
+        "served": "da7f12c9a3099c2c64ae6a28afc146295d05946bf92e93667a4c64c49d1a8635"
       },
       "C172": {
         "status": "pass",
         "exit": 0,
-        "seconds": 37,
+        "seconds": 39,
         "tail": "1..9\nok 1 R111: vbw qa record refuses a proof that is not full, changes nothing, and says to run vbw prove --full\nok 2 R111: the refusal for code that changed since the proof still applies first\nok 3 R111: vbw ship refuses a proof that is not full, changes nothing, and says to run vbw prove --full\nok 4 R111: before QA, vbw next asks for a full proof when the latest proof is not full, and --json marks it\nok 5 R111: before shipping, vbw next asks for a full proof when the latest proof is not full\nok 6 R111: with a full proof, vbw next goes on to QA and does not mark the detail as full\nok 7 R111: a refused verdict, then vbw prove --full, then the verdict is recorded\nok 8 R111: a proof recorded before the full flag existed counts as full\nok 9 R111: the test-command result QA agents are given comes from the full proof, never from the quick command",
         "fp": "034957b7335db669c48dc83613e6b23db40b207bf91d3906e85f125959646a09",
-        "at": "2026-10-08T08:51:56Z",
-        "served": "081e651f1f183a6408523b451b0b87916a88ab08ab2606b4c22dac47a721196b"
+        "at": "2026-10-08T09:04:02Z",
+        "served": "c62a727d0bab32a34320c9d4120f26b93c5bd12e15573f7e6d54f18317a14d2a"
       },
       "C173": {
         "status": "pass",
         "exit": 0,
-        "seconds": 1,
+        "seconds": 0,
         "tail": "1..5\nok 1 R111: the QA agent's instruction for a refused verdict says to run vbw prove --full, then try the record once more\nok 2 R111: the verifying workflow tells each QA agent to run vbw prove --full after a refused verdict, then record once more\nok 3 R111: the verifying workflow gives QA agents the test result of the round, which comes from the full proof\nok 4 R111: the router runs vbw prove --full when the next step marks the proof as full\nok 5 R111: the QA skill proves with vbw prove --full",
         "fp": "91e13acc11565f187ad4231a3ca64c45931e4289b151542ce4ea4cd966b33ece",
-        "at": "2026-10-08T08:51:56Z",
-        "served": "a0bff9b0d198ad3ba2701e716b26a139a75db50da0935a64e07d280ea80792b0"
+        "at": "2026-10-08T09:04:02Z",
+        "served": "50441c491f7116649837db05c7f9581814b9d38b47d322da96fcecb732f35a7e"
       },
       "C174": {
         "status": "pass",
         "exit": 0,
-        "seconds": 6,
+        "seconds": 5,
         "tail": "1..5\nok 1 R111: tools/test.sh --quick --list names shellcheck and the engineering rules\nok 2 R111: the quick mode runs every test file no approved check runs, and none that a check runs\nok 3 R111: the quick mode leaves out the timing benchmarks\nok 4 R111: tools/test.sh refuses other arguments with its usage line and runs nothing\nok 5 R111: VBW's spec names the quick mode as its quick command, and the record carries it",
         "fp": "ea8410462fa6587957008ad2de1329f5331f01d5fd1afc382372b9bc0886273a",
-        "at": "2026-10-08T08:51:56Z",
-        "served": "ebe50603e0987f54a0906accd722e94985fc501fe23406d575d6b4d24de6cc5a"
+        "at": "2026-10-08T09:04:02Z",
+        "served": "7ea44f8373da730410b37076da4708466970d9cf9987cdcef3d60a9c575be643"
       },
       "C175": {
         "status": "pass",
@@ -17308,8 +17332,8 @@
         "seconds": 0,
         "tail": "1..6\nok 1 R111: docs/proof.md explains how a project names its quick command, and that it needs approval and is never detected\nok 2 R111: docs/proof.md says a plain proof runs the quick command in place of the test command, and the full test command when the quick one is not approved\nok 3 R111: docs/proof.md explains vbw prove --full, when a full proof is needed, and what makes a proof full or partial\nok 4 R111: docs/proof.md quotes the two refusal messages\nok 5 R111: docs/proof.md no longer says a proof that reuses results is a full proof\nok 6 R111: docs/next.md and docs/record.md describe the full-proof step and the evidence's full field",
         "fp": "14584edac4beeddaa07cfb4ca8bfdb72f750c0b9be5043484d1ba0bd9c9a4430",
-        "at": "2026-10-08T08:51:56Z",
-        "served": "d5415630ca780c9990a431115d0fe1cd8061183600a9158e8e4b98bf50c9c765"
+        "at": "2026-10-08T09:04:02Z",
+        "served": "0c775d373b6618b57655d0fa177b27f663dfda7b5cd9d53b78e4a3b49c8da5f6"
       },
       "C176": {
         "status": "pass",
@@ -17318,17 +17342,27 @@
         "tail": "1..1\nok 1 R112: the interview skill says it runs before any spec or convert work",
         "fp": "4002fa3f1a9fa44d566bb65c40a6ece1616f5b349c654bee74c3f8e06a36e976",
         "at": "2026-10-08T08:51:56Z",
-        "served": "268d4349bd09373da402f1ceb94cd01eea5167625b3ded23e74ed71afff49637"
+        "served": "268d4349bd09373da402f1ceb94cd01eea5167625b3ded23e74ed71afff49637",
+        "reused": true
+      },
+      "C177": {
+        "status": "pass",
+        "exit": 0,
+        "seconds": 9,
+        "tail": "1..2\nok 1 R113: an edit to .vbw/spec.md, listed in the plan, does not list the passed phase again\nok 2 R113: a change to the phase's own source file still lists it again",
+        "fp": "548a1d95512440f794136459ed171819cfd7d2bfc7eda8d65b4102346f12b780",
+        "at": "2026-10-08T09:04:02Z",
+        "served": "8fdd93d2c547526e635568d847e3388f990f5a9ca4c13c86b2189aa11cd697b0"
       }
     },
     "commands": {
       "quick": {
         "status": "pass",
         "exit": 0,
-        "seconds": 92,
+        "seconds": 96,
         "tail": "ok 403 a running step shows how long it has run and how many agents are working\nok 404 the team line follows the profile and per-role models; tokens and prompt cache are shown\nok 405 statusline on asks Claude Code to refresh it every 5 seconds, and tops up a setting made without it\nok 406 from Claude Code 2.1.287 the agents and team line is dropped; line 1 keeps the agent count\nok 407 a session in a VBW project tops up the refresh interval of VBW's status line, and leaves any other status line alone\nok 408 doctor warns when VBW's status line has no refresh interval\nok 409 a replaced round-0 record with empty tiers does not fail the set\nok 410 a final record with empty tiers still fails\nok 411 the workflows and VBW 1's seven agents exist, and nothing else\nok 412 each workflow starts with a pure-literal meta naming itself after its file\nok 413 workflows never use what breaks resume or is unavailable (time, randomness, modules)\nok 414 every phase() title is declared in meta.phases\nok 415 every agentType names an agent this plugin ships\nok 416 agents have a name matching the file, a single-line description and a tool list\nok 417 agents stay within their size budget (about 1.5k tokens)\nok 418 agents only use vbw commands that exist\nok 419 agents that plan or judge the plan load the user's recorded decisions\nok 420 workflow scripts parse as JavaScript (when node is available)\nok 421 workflow schemas are objects whose required keys are all properties\nok 422 no workflow shares its name with a skill (/vbw:NAME would start the workflow)",
         "fp": "39badfe943b050203ea39a4288f8b2fa851d1825a6d4d783a9d149febf9e5db3",
-        "at": "2026-10-08T08:51:56Z"
+        "at": "2026-10-08T09:04:02Z"
       }
     },
     "scope": [],
