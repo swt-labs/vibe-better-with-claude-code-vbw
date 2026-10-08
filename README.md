@@ -112,6 +112,8 @@ This project exists to make AI coding better for everyone, and "everyone" means 
 
 `/vbw:vibe` reads where your project stands and does the next step: agree on what to build, plan, get your approval, build, check, fix, review, ship. You never need to know which step you're on. VBW knows. You just keep typing `/vbw:vibe`. Senior devs will call this an orchestration layer. Vibe coders will call it the button. Both are right, and only one of them will admit they press it all day.
 
+New ideas you bring to `/vbw:vibe` are sorted first: `now` (joins the active milestone), `next` or `later` (into the backlog, `/vbw:todo`), each with a size. You confirm or overrule in one menu. See [docs/triage.md](docs/triage.md).
+
 ### Done means checked
 
 Every requirement is one of two kinds: something a program can check, or something only you can judge. The first kind gets a check, written before the code, that fails until the work is right. The second kind comes back to you at the end. Nothing is marked done because an AI felt good about it.
