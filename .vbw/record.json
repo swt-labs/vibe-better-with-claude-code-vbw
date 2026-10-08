@@ -8449,7 +8449,15 @@
         "guarded: R51 (C52, C53, C66), R53 (C54, C55), R55 (C56, C57), R61 (C73, C74, C75, C76, C77)",
         "tests: project test command"
       ],
-      "predicted": "standard"
+      "predicted": "standard",
+      "qa": {
+        "result": "fail",
+        "tier": "standard",
+        "tree": "e6b18a25fb94a05d969705e63056597f3a1b9e8ef98bd93e8964940567fed9ac",
+        "at": "2026-10-08T10:16:51Z",
+        "note": "10/11 checks",
+        "rounds": 1
+      }
     }
   ],
   "plans": [
@@ -14337,6 +14345,14 @@
       "attempts": 0,
       "status": "closed",
       "note": "C55 fail (exit 1)"
+    },
+    {
+      "id": "F75",
+      "req": "R114",
+      "source": "qa",
+      "attempts": 0,
+      "status": "open",
+      "note": "User docs not updated for the new behavior. CLAUDE.md requires docs/ and README.md to change whenever behavior changes. docs/guards.md ('Approving by answer', lines 20-25) and docs/proof.md (around line 129) describe only the PostToolUse answer hook and say the question is named 'Approve contract <12 hex>?'; neither mentions the new PreToolUse hook (plugin/hooks/approve-ask.jq, approve-ask.sh) that now puts that fingerprint in front of a paraphrased Approve/Not yet menu. grep for 'approve-ask' and 'R114' in docs/ and README.md finds nothing. Fix: one short paragraph in docs/guards.md (and a sentence in docs/proof.md) saying VBW adds the fingerprint to a paraphrased approval menu while the contract waits."
     }
   ],
   "todos": [
@@ -17350,5 +17366,11 @@
     "full": true,
     "passed": true
   },
-  "lease": null
+  "lease": {
+    "run": "qa-20261008T101530Z",
+    "kind": "qa",
+    "started_at": "2026-10-08T10:15:30Z",
+    "files": [],
+    "session": "4130e174-7ef2-4e36-b853-fb2a8fd8511d"
+  }
 }
