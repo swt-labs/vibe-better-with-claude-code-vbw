@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Runs when the PreToolUse jq gate in hooks.json found, in an AskUserQuestion
+# Runs when the PreToolUse gate (approve-ask.jq) found, in an AskUserQuestion
 # call, a question with the options Approve and Not yet that does not start
 # with "Approve contract <fingerprint>?" (the gate also skips subagents and
 # every other question, so the common path costs one jq call). $1 is the hook
