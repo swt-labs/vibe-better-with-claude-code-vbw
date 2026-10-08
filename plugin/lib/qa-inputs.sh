@@ -18,16 +18,19 @@ qa_tree() {
 # qa_digests RECORD: {Pn: {files, tests, plan, reqs, combined, deps}} for the active
 # milestone's phases; deps lists every phase Pn builds on.
 qa_digests() {
-  local id line own='{}' out='{}' cl
+  local id line own='{}' out='{}' cl res=null
+  if printf '%s' "$1" | jq -e '(.project.results // []) != []' > /dev/null && contract_waiting "$1" > /dev/null; then
+    res=$(printf '%s' "$1" | jq -c '.project.results')
+  fi
   while read -r id line; do
     own=$(printf '%s' "$own" | jq -c --arg id "$id" --arg f "$(jq -r '.files[]' <<< "$line" | qa_tree)" --arg p "$(jq -c '.plan' <<< "$line" | vbw_sha256)" --arg q "$(jq -c '.auto' <<< "$line" | vbw_sha256)" \
       --arg t "$({ jq -c '.checks' <<< "$line"; jq -r '.check_files[]' <<< "$line" | qa_tree; } | vbw_sha256)" '. + {($id): {files: $f, tests: $t, plan: $p, reqs: $q}}')
-  done < <(printf '%s' "$1" | jq -r "$VBW_JQ_DEFS"'. as $r | $r.phases[] | select(.milestone == $r.milestone.id) | . as $ph
+  done < <(printf '%s' "$1" | jq -r --argjson res "$res" "$VBW_JQ_DEFS"'. as $r | $r.phases[] | select(.milestone == $r.milestone.id) | . as $ph
     | ([$r.checks[] | select(.req as $q | $ph.reqs | index($q))] | sort_by(.id)) as $ch
     | ([$r.requirements[] | select(.proof == "auto") | .id]) as $aid
     | [$r.plans[] | select(.phase == $ph.id) | [.files[]? | select((startswith(".vbw/") or startswith("./.vbw/")) | not)]] as $pf
     | (all($pf[]; all(.[]; is_doc))) as $docs_only
-    | "\(.id) " + ({files: ([$pf[][] | select($docs_only or (is_doc | not))] | unique),
+    | "\(.id) " + ({files: ([$pf[][] | select($docs_only or ((is_doc or (. as $f | any($res[]?; covers($f)))) | not))] | unique),
        checks: [$ch[] | {id, req, run, files}], check_files: ([$ch[] | .files[]?] | unique),
        auto: [$r.requirements[] | select(.proof == "auto" and (.id as $q | $ph.reqs | index($q))) | {id, text}],
        plan: {goal: $ph.goal, criteria: $ph.criteria,
