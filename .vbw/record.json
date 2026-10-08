@@ -14526,7 +14526,7 @@
       "after": [
         "P82.6"
       ],
-      "status": "planned",
+      "status": "done",
       "tasks": [
         "the router's small-path paragraph (plugin/skills/vibe/SKILL.md, **plan** with `detail.tier` express or `detail.small`) says `vbw apply --add` one phase at `detail.tier` with one plan (one or two files, tasks) instead of one express phase; the Example sets \"tier\" to that value; the real-app smallchange run had vbw next give small true with tier standard (no project test command), the router wrote express and vbw apply refused; no growth of the router budget",
         "docs/rigor.md: the small path adds one phase at `detail.tier` (express when its signals allow, standard for example in a repository without a project test command or tracking more than 30 files), numbered from next_phase, holding one plan"
