@@ -8807,7 +8807,15 @@
         "guarded: R10 (C9), R12 (C11), R13 (C12), R14 (C13), R22 (C19), R23 (C20), R24 (C23), R25 (C24), R27 (C21), R28 (C25), R31 (C27), R32 (C28), R33 (C29), R38 (C33, C34), R40 (C37), R43 (C42, C43), R44 (C44, C45), R45 (C39, C40, C41), R46 (C46), R47 (C47), R48 (C49, C50), R49 (C48), R61 (C73, C74, C75, C76, C77), R62 (C78, C79, C80, C81, C82, C83, C93), R65 (C86, C87, C88, C89, C90), R66 (C95), R69 (C110, C120, C122), R70 (C114), R73 (C98), R74 (C99, C100), R78 (C105, C106), R79 (C107), R80 (C108), R81 (C109, C111, C112, C113), R92 (C131, C132, C133, C134, C135, C136, C137, C138, C139), R93 (C140, C141, C142, C143, C144), R94 (C145, C146, C147, C148), R97 (C153), R98 (C154), R99 (C155), R100 (C156), R102 (C158, C159), R103 (C160), R104 (C161, C162), R105 (C163), R110 (C169, C170), R111 (C171, C172, C173, C174, C175), R113 (C177)",
         "tests: project test command"
       ],
-      "predicted": "standard"
+      "predicted": "standard",
+      "qa": {
+        "result": "fail",
+        "tier": "standard",
+        "tree": "047a8591ae974d5e7ffd51ea04208968b24b79ce9cb9162265a58195ee9306b3",
+        "at": "2026-10-08T15:45:46Z",
+        "note": "17/19 checks",
+        "rounds": 1
+      }
     },
     {
       "id": "P82",
@@ -15166,6 +15174,22 @@
       "attempts": 0,
       "status": "open",
       "note": "docs/rigor.md still says the Lead runs on Sonnet in the balanced profile. Its table under 'What each tier runs' (docs/rigor.md lines 153-161) begins 'In the balanced profile:' and lists the standard tier as 'Lead, a Dev per plan, QA' with Models 'Sonnet', and the deep tier as 'Scout, Lead, a Dev per plan, QA' with Models 'Sonnet'. Since commit 7519ccd0, plugin/lib/profiles.json gives the balanced Lead opus, so this user document now disagrees with profiles.json. That breaks criterion 7 (user documents that describe the balanced profile show the Lead on Opus). Neither P80.2 nor C180 covers docs/rigor.md. Options: (a, recommended) change those two rows to say the Lead runs on Opus and Dev and QA on Sonnet, and add docs/rigor.md to the document check in tests/profile-lead-opus.bats; (b) change only the text; (c) drop the Models column and point readers to vbw config models."
+    },
+    {
+      "id": "F79",
+      "req": "R115",
+      "source": "qa",
+      "attempts": 0,
+      "status": "open",
+      "note": "docs/proof.md (Saved test results section, added in c58c01bd) says 'A folder named twice, or any other line in the section, is an error with its line number.' The code does not do that: plugin/lib/spec.jq only checks bullet lines (the '.res and ($l | test(\"^[-*+]\\\\s\"))' branch). A plain line such as 'We keep runs here.' or 'results/' without the leading '- ' is silently skipped: piping '## Test results\\n\\nWe keep runs here.\\n- results/' through spec.jq gives results [\"results/\"] and errors []. The failure is safe (a skipped line exempts nothing), but the document promises an error that never comes. Fix: either say only list lines are checked and other text is ignored, or make spec.jq report non-list lines and add a test for it."
+    },
+    {
+      "id": "F80",
+      "req": "R115",
+      "source": "qa",
+      "attempts": 0,
+      "status": "open",
+      "note": "Several P81.1 behaviors have no test, against the project rule that every behavior gets a test (CLAUDE.md, Testing). Searching tests/ for 'Test results', 'project.results' and the parser's error text finds only tests/qa-recheck-docs.bats, which never checks: (1) spec.jq's error for a bad results line ('../', absolute path, .vbw/, '.' parts, a folder named twice); (2) the missing trailing '/' being added; (3) vbw spec sync removing project.results when the section goes; (4) record.jq rejecting a bad project.results (empty, not ending in '/', duplicates, .vbw/); (5) 'vbw show contract --changes' naming a changed folder list. I ran these by hand (spec.jq and record.jq on piped input) and they behave as the plan says today, but nothing would catch a break. Fix: add these cases to tests (they can sit beside the existing spec and record tests)."
     }
   ],
   "todos": [
