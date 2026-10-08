@@ -13438,7 +13438,7 @@
       "after": [
         "P75.1"
       ],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "vbw prove accepts only --full; any other argument is refused with 'usage: vbw prove [--full]' and nothing runs.",
@@ -13545,7 +13545,7 @@
       "after": [
         "P75.2"
       ],
-      "status": "planned",
+      "status": "done",
       "role": "docs",
       "tasks": [
         "docs/proof.md: how a project names its quick command (a Commands entry '- quick: ...'), that it needs approval like any other command, that VBW never detects or suggests one, that a plain proof runs it in place of the test command, and that an unapproved quick command makes the full test command run instead.",
