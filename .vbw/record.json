@@ -14481,6 +14481,27 @@
         "docs/proof.md, Fix items: vbw show fix names the kept file (--json: kept), or says the full output is not kept and to run vbw prove again",
         "docs/workflows.md: the vbw show fix row mentions the kept output"
       ]
+    },
+    {
+      "id": "P82.6",
+      "phase": "P82",
+      "title": "vbw apply --add judges the rigor floor of the phases it adds only",
+      "reqs": [
+        "R116"
+      ],
+      "files": [
+        "plugin/lib/cmd-apply.sh",
+        "tests/small-request.bats"
+      ],
+      "after": [
+        "P82.2"
+      ],
+      "status": "planned",
+      "tasks": [
+        "tests/small-request.bats gains a regression test that fails today: a milestone with a finished express phase whose floor would now be standard once the new phase shares its file; vbw apply --add of one express phase for a new requirement is accepted, and the old phase keeps its tier, plans and status byte for byte",
+        "cmd-apply.sh: with --add, the rigor floor and the one-plan-per-express rule are judged only for the phases the doc brings; existing phases keep the tier they were accepted at (the real-app smallchange run refused: P1 is planned at express but its signals set the floor at standard); the header comment and P82.2 wording say so",
+        "tests/small-request.bats test 11 runs vbw prove --full before expecting ship, as vbw next has required since P76.2"
+      ]
     }
   ],
   "fixes": [
@@ -16504,6 +16525,11 @@
       "id": "D196",
       "at": "2026-10-08T13:23:15Z",
       "text": "Contract approved: 113 requirements, 179 checks, 236 plans (5c60774ec910)"
+    },
+    {
+      "id": "D197",
+      "at": "2026-10-08T14:35:01Z",
+      "text": "Contract approved: 113 requirements, 179 checks, 237 plans (289b3ed54c68)"
     }
   ],
   "commands": {
