@@ -20,10 +20,13 @@ jobs:
           - name: Linux, bash 5
             os: ubuntu-latest
             bash_path: /usr/bin
+          - name: Linux, bash 5 (Ubuntu 26.04)
+            os: ubuntu-26.04
+            bash_path: /usr/bin
     steps:
       # Check out into a path containing a space: v1 had test and script bugs
       # that only a path like this exposes (ledger T2).
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           path: src dir
 
@@ -56,8 +59,8 @@ jobs:
     name: Plugin manifest validation
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
       - name: Validate plugin and marketplaces
