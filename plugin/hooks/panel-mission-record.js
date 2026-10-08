@@ -150,7 +150,7 @@ export const ROLES = ['architect', 'lead', 'dev', 'qa', 'scout', 'debugger', 'do
 const S = 'sonnet'
 const PROFILES = {
   quality: { architect: 'opus', lead: 'opus', dev: 'opus', qa: S, scout: S, debugger: 'opus', docs: S },
-  balanced: { architect: 'opus', lead: S, dev: S, qa: S, scout: S, debugger: S, docs: S },
+  balanced: { architect: 'opus', lead: 'opus', dev: S, qa: S, scout: S, debugger: S, docs: S },
   budget: { architect: S, lead: S, dev: S, qa: S, scout: 'haiku', debugger: S, docs: S },
 }
 const RENAMED = { planner: 'lead', critic: 'qa', builder: 'dev' }
