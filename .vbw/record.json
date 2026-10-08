@@ -14396,7 +14396,7 @@
         "P82.2",
         "P82.3"
       ],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "scenario_smallchange seeds an active milestone whose earlier requirement is planned and proven (its phase and plan done) instead of a shipped one; the user then asks for the --shout change in plain words, as now",
