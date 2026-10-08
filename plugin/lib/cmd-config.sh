@@ -4,8 +4,9 @@
 # autonomy (guided|balanced|hands-off: how much /vbw:vibe does on its own;
 # balanced when unset), autonomy_cap (steps per autonomous run), model.<role>
 # (architect|lead|dev|qa|scout|debugger|docs, VBW 1's team: opus, sonnet,
-# haiku or a model id; "default" removes the override; model.qa refuses Haiku:
-# QA needs Sonnet or stronger), rigor (auto|express|
+# haiku or a model id; "default" removes the override; model.qa refuses Haiku,
+# naming the allowed models: sonnet, opus or a stronger model id, or default,
+# since QA needs Sonnet or stronger), rigor (auto|express|
 # standard|deep: auto computes each phase's tier, the others force it),
 # motion (full|calm|off: the panel's animation; "default" removes it and the
 # panel picks by the interview level), check_jobs (1 to 64, default 4: checks run at the same time; kept in this
@@ -117,7 +118,7 @@ cmd_config() {
           vbw_check_jobs_set "$value" ;;
         model.qa)
           case $(printf '%s' "$value" | tr '[:upper:]' '[:lower:]') in
-            *haiku*) vbw_usage_error "model.qa must be Sonnet or stronger: QA needs Sonnet or stronger, not Haiku" ;;
+            *haiku*) vbw_usage_error "model.qa cannot be Haiku: QA needs Sonnet or stronger. Allowed: sonnet, opus or a stronger model id, or default" ;;
           esac
           if [ "$value" = default ]; then
             record_update '.settings.models |= del(.qa) | if (.settings.models // {}) == {} then .settings |= del(.models) else . end'
