@@ -176,6 +176,39 @@ part() { jq -cS "$1" .vbw/record.json; }
   [ "$(cksum < .vbw/record.json)" = "$before" ]
 }
 
+@test "R116: vbw apply --add judges only the phases it brings: a finished express phase whose floor is now standard keeps its tier, plans and status" {
+  # P1 is express over three files while the repository is small; once it
+  # tracks more than 30 files those three files set P1's floor at standard.
+  vbw_setup
+  vbw_git_project
+  "$VBW" init > /dev/null
+  edit_record '.commands.test = ["true"]'
+  spec 'R1 [auto] Visitors can read the notes'
+  mkdir -p tests
+  printf 'true\n' > tests/n1.sh
+  printf 'true\n' > tests/n2.sh
+  jq -nc '{phases: [{id: "P1", title: "Notes", reqs: ["R1"], tier: "express"}],
+    plans: [{id: "P1.1", phase: "P1", title: "Notes", reqs: ["R1"], files: ["src/a.js", "src/b.js", "src/c.js"], after: [], tasks: ["notes"]}],
+    checks: [{id: "C1", req: "R1", run: ["sh", "tests/n1.sh"], files: ["tests/n1.sh"]}],
+    rules: [{req: "R1", text: "notes", check: "C1"}]}' | "$VBW" apply > /dev/null
+  "$VBW" approve > /dev/null
+  edit_record '(.plans[] | select(.id == "P1.1")).status = "done" | (.requirements[] | select(.id == "R1")).status = "proven"'
+  mkdir -p many src
+  local i
+  for ((i = 1; i <= 40; i++)); do printf '%s\n' "$i" > "many/f$i.txt"; done
+  printf 'one\n' > src/a.js
+  git add many src && git commit -q -m "chore(test): the repository grows"
+  "$VBW" spec add auto "src/a.js says two" > /dev/null
+  local phase plans
+  phase=$(part '.phases[] | select(.id == "P1")'); plans=$(part '[.plans[] | select(.phase == "P1")]')
+  # The new express phase shares src/a.js with P1.
+  run bash -c 'printf "%s" "{\"phases\": [{\"id\": \"P2\", \"title\": \"Two\", \"reqs\": [\"R2\"], \"tier\": \"express\"}], \"plans\": [{\"id\": \"P2.1\", \"phase\": \"P2\", \"title\": \"Two\", \"reqs\": [\"R2\"], \"files\": [\"src/a.js\"], \"after\": [], \"tasks\": [\"two\"]}], \"checks\": [{\"id\": \"C2\", \"req\": \"R2\", \"run\": [\"sh\", \"tests/n2.sh\"], \"files\": [\"tests/n2.sh\"]}], \"rules\": [{\"req\": \"R2\", \"text\": \"two\", \"check\": \"C2\"}]}" | "$1" apply --add' _ "$VBW"
+  [ "$status" -eq 0 ] || { echo "$output"; false; }
+  [ "$(part '.phases[] | select(.id == "P1")')" = "$phase" ]
+  [ "$(part '[.plans[] | select(.phase == "P1")]')" = "$plans" ]
+  jq -e '(.phases[] | select(.id == "P2")).tier == "express" and ([.plans[] | select(.phase == "P2") | .id] == ["P2.1"])' .vbw/record.json
+}
+
 @test "R116: a small request added mid-milestone goes from plan to done with one approval" {
   big_repo
   spec "$PRIOR1"
@@ -213,7 +246,7 @@ part() { jq -cS "$1" .vbw/record.json; }
   "$VBW" commit P2.1 "feat(note): two" > /dev/null
   # shellcheck disable=SC1010 # "plan done" is a vbw subcommand
   "$VBW" plan done P2.1 > /dev/null
-  vbw_run prove
+  vbw_run prove --full
   [ "$status" -eq 0 ] || { echo "$output"; false; }
   run "$VBW" next --json < /dev/null
   printf '%s' "$output" | jq -e '.action == "ship"' || { echo "$output"; false; }
