@@ -44,7 +44,8 @@ usage: vbw <command> [args]
   auto on SESSION_ID|off [SESSION_ID]|status [SESSION_ID]|gate   autonomous runs, kept per session (gate: the Stop hook)
   statusline [status | on | off]   the VBW status line in your Claude settings
   workflows [status | on]   Claude Code's Dynamic workflows, which VBW plans and builds with
-  todo [list] | add TEXT | done ID | drop ID   the backlog
+  triage [--json]   the facts for sorting a new idea: milestone, open requirements, run, sorted backlog
+  todo [list] | add [--sort next|later --size small|medium|large] TEXT | done ID | drop ID   the backlog
   decide TEXT [WHY]   record a decision the user made, and why
   tier raise PHASE TIER REASON   raise a phase's rigor tier and record why (never lowered during a run)
   legacy [facts] | review | choose | done | remove   a VBW 1 project (.vbw-planning/): facts, review and recommendation, record convert or fresh, mark converted, remove
@@ -65,7 +66,7 @@ cmd="${1:-}"
 case "$cmd" in
   version) jq -r .version "$VBW_PLUGIN/.claude-plugin/plugin.json" ;;
   help|-h|--help) vbw_help ;;
-  init|status|todo|commit|next|show|spec|approve|check|prove|apply|run|plan|fix|req|qa|ship|config|auto|statusline|workflows|doctor|rtk|report|milestone|decide|legacy|tier|interview|suggest|tools)
+  init|status|triage|todo|commit|next|show|spec|approve|check|prove|apply|run|plan|fix|req|qa|ship|config|auto|statusline|workflows|doctor|rtk|report|milestone|decide|legacy|tier|interview|suggest|tools)
     # shellcheck source=/dev/null
     . "$VBW_LIB/cmd-$cmd.sh"
     "cmd_$cmd" "$@"
