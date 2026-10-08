@@ -8817,7 +8817,7 @@
         "In a repository tracking more than 30 files, `vbw apply` still refuses an express phase whose plan lists more than two files, so a request that turns out bigger falls back to planning",
         "The real-app small-change scenario (tools/l3-smallchange) covers a one-file request added to a milestone that already has planned or proven requirements and passes"
       ],
-      "tier": "standard",
+      "tier": "deep",
       "reasons": [
         "requirements: 1",
         "files: 9 (167216 bytes)",
@@ -8827,7 +8827,15 @@
         "guarded: R3 (C3), R4 (C4), R5 (C5), R8 (C8), R13 (C12), R14 (C13), R22 (C19), R23 (C20), R24 (C23), R25 (C24), R26 (C22), R27 (C21), R28 (C25), R29 (C26), R31 (C27), R34 (C30), R35 (C31), R37 (C35), R38 (C33, C34), R39 (C36), R40 (C37), R42 (C38), R43 (C42, C43), R44 (C44, C45), R45 (C39, C40, C41), R46 (C46), R47 (C47), R48 (C49, C50), R49 (C48), R50 (C51), R51 (C52, C53, C66), R59 (C68, C92), R60 (C72, C94), R61 (C73, C74, C75, C76, C77), R62 (C78, C79, C80, C81, C82, C83, C93), R64 (C84, C85), R65 (C86, C87, C88, C89, C90), R66 (C95), R67 (C96), R69 (C110, C120, C122), R70 (C114), R71 (C115, C121), R72 (C116, C118), R73 (C98), R74 (C99, C100), R75 (C101), R76 (C102, C103), R77 (C104), R78 (C105, C106), R79 (C107), R80 (C108), R81 (C109, C111, C112, C113), R83 (C119), R95 (C149, C150), R96 (C151, C152), R98 (C154), R99 (C155), R100 (C156), R102 (C158, C159), R104 (C161, C162), R105 (C163), R106 (C164, C165), R107 (C166, C167), R111 (C171, C172, C173, C174, C175)",
         "tests: project test command"
       ],
-      "predicted": "standard"
+      "predicted": "standard",
+      "escalations": [
+        {
+          "at": "2026-10-08T14:31:15Z",
+          "from": "standard",
+          "to": "deep",
+          "reason": "Dev blocked P82.4: Two blockers outside this plan's files. (1) Real product bug found by the L3 run (bash tools/l3-suite.sh smallchange, project /var/folders/xl/6lk7wfr15t79zn7fpz2lm1q80000gn/T/vbw-l3-smallchange.1UuIeS): after spec add R2, vbw next said plan with detail.small true; the router sent vbw apply --add with only the new P2 (express), and plugin/lib/cmd-apply.sh refused: 'P1 is planned at express but its signals set the floor at standard (requirements: 1; files: 1 (37 bytes); tests: no project test command)'. --add re-judges the tier floor of the existing, already built phase P1 (its floor now differs from when it was planned) instead of only the added phases; the router then fell back to the planning workflow, so planning_workflow was true and the scenario failed. Fix belongs in cmd-apply.sh (P82.2): with --add, check tier floors only for the phases in the request and keep existing phases' tiers. (2) C182 test 11 (tests/small-request.bats, protected check file) runs plain 'vbw prove' and expects next=ship, but since P76.2 vbw next asks for 'vbw prove --full' before QA or shipping; the test must call prove --full (needs a check-file edit and re-approval). Done here: tools/l3-suite.sh scenario rewritten and committed (74c51512); the failing L3 result was not committed (old passing smallchange.json kept so R72's check stays green); rerun task 3 after (1) is fixed."
+        }
+      ]
     },
     {
       "id": "P83",
@@ -14378,13 +14386,14 @@
         "P82.2",
         "P82.3"
       ],
-      "status": "planned",
+      "status": "blocked",
       "role": "dev",
       "tasks": [
         "scenario_smallchange seeds an active milestone whose earlier requirement is planned and proven (its phase and plan done) instead of a shipped one; the user then asks for the --shout change in plain words, as now",
         "its facts add prior_requirements (earlier requirements of that milestone), same_milestone (the request joined it) and prior_kept (earlier phases and plans unchanged); plans counts only the new plans; done is that milestone waiting to ship; tests/l3-smallchange.bats keeps passing",
         "run it in the real app (bash tools/l3-suite.sh smallchange) and commit its result, tools/l3-results/smallchange.json"
-      ]
+      ],
+      "note": "Two blockers outside this plan's files. (1) Real product bug found by the L3 run (bash tools/l3-suite.sh smallchange, project /var/folders/xl/6lk7wfr15t79zn7fpz2lm1q80000gn/T/vbw-l3-smallchange.1UuIeS): after spec add R2, vbw next said plan with detail.small true; the router sent vbw apply --add with only the new P2 (express), and plugin/lib/cmd-apply.sh refused: 'P1 is planned at express but its signals set the floor at standard (requirements: 1; files: 1 (37 bytes); tests: no project test command)'. --add re-judges the tier floor of the existing, already built phase P1 (its floor now differs from when it was planned) instead of only the added phases; the router then fell back to the planning workflow, so planning_workflow was true and the scenario failed. Fix belongs in cmd-apply.sh (P82.2): with --add, check tier floors only for the phases in the request and keep existing phases' tiers. (2) C182 test 11 (tests/small-request.bats, protected check file) runs plain 'vbw prove' and expects next=ship, but since P76.2 vbw next asks for 'vbw prove --full' before QA or shipping; the test must call prove --full (needs a check-file edit and re-approval). Done here: tools/l3-suite.sh scenario rewritten and committed (74c51512); the failing L3 result was not committed (old passing smallchange.json kept so R72's check stays green); rerun task 3 after (1) is fixed."
     },
     {
       "id": "P82.5",
@@ -14465,14 +14474,13 @@
         "P81.3",
         "P82.5"
       ],
-      "status": "blocked",
+      "status": "done",
       "role": "docs",
       "tasks": [
         "docs/proof.md: a failing or timed-out check or command keeps its full output in .vbw/runtime/output/ (one file each, the latest failure, removed on a pass, kept for a reused result, never committed)",
         "docs/proof.md, Fix items: vbw show fix names the kept file (--json: kept), or says the full output is not kept and to run vbw prove again",
         "docs/workflows.md: the vbw show fix row mentions the kept output"
-      ],
-      "note": "docs written and committed (2d7cc166); vbw plan done refused: check C184 (tests/prove-kept-output.bats) fails and tests/qa-model.bats waits for approval, both outside this docs plan's files"
+      ]
     }
   ],
   "fixes": [
