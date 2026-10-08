@@ -8817,11 +8817,11 @@
       "predicted": "standard",
       "qa": {
         "result": "fail",
-        "tier": "standard",
-        "tree": "047a8591ae974d5e7ffd51ea04208968b24b79ce9cb9162265a58195ee9306b3",
-        "at": "2026-10-08T15:45:46Z",
-        "note": "17/19 checks",
-        "rounds": 1
+        "tier": "deep",
+        "tree": "de143f4bb51e544c30504dce0935e27b468b68f6e92bc9e5f61aabebf4bdf62c",
+        "at": "2026-10-08T17:22:15Z",
+        "note": "32/33 checks",
+        "rounds": 2
       },
       "escalations": [
         {
@@ -8829,6 +8829,12 @@
           "from": "standard",
           "to": "deep",
           "reason": "Dev blocked P81.1: F80 needs tests for spec.jq Test results errors and the added '/', spec sync removing project.results, record.jq rejecting bad project.results, and show contract --changes naming a changed folder list. No plan serving R115 declares a test file where they belong (tests/kernel-spec.bats, tests/record.bats, tests/kernel-show.bats are unprotected and fit; the guard refuses them in this run), and the only R115 test, tests/qa-recheck-docs.bats, is protected by C181. Needs a plan change: add those three test files to P81.1 (recommended), or add the cases to C181 with a new approval."
+        },
+        {
+          "at": "2026-10-08T17:22:15Z",
+          "from": "deep",
+          "to": "deep",
+          "reason": "QA needs a second round"
         }
       ]
     },
@@ -15217,7 +15223,7 @@
       "req": "R115",
       "source": "qa",
       "attempts": 0,
-      "status": "fixed",
+      "status": "closed",
       "note": "docs/proof.md (Saved test results section, added in c58c01bd) says 'A folder named twice, or any other line in the section, is an error with its line number.' The code does not do that: plugin/lib/spec.jq only checks bullet lines (the '.res and ($l | test(\"^[-*+]\\\\s\"))' branch). A plain line such as 'We keep runs here.' or 'results/' without the leading '- ' is silently skipped: piping '## Test results\\n\\nWe keep runs here.\\n- results/' through spec.jq gives results [\"results/\"] and errors []. The failure is safe (a skipped line exempts nothing), but the document promises an error that never comes. Fix: either say only list lines are checked and other text is ignored, or make spec.jq report non-list lines and add a test for it."
     },
     {
@@ -15225,8 +15231,16 @@
       "req": "R115",
       "source": "qa",
       "attempts": 0,
-      "status": "fixed",
+      "status": "closed",
       "note": "Several P81.1 behaviors have no test, against the project rule that every behavior gets a test (CLAUDE.md, Testing). Searching tests/ for 'Test results', 'project.results' and the parser's error text finds only tests/qa-recheck-docs.bats, which never checks: (1) spec.jq's error for a bad results line ('../', absolute path, .vbw/, '.' parts, a folder named twice); (2) the missing trailing '/' being added; (3) vbw spec sync removing project.results when the section goes; (4) record.jq rejecting a bad project.results (empty, not ending in '/', duplicates, .vbw/); (5) 'vbw show contract --changes' naming a changed folder list. I ran these by hand (spec.jq and record.jq on piped input) and they behave as the plan says today, but nothing would catch a break. Fix: add these cases to tests (they can sit beside the existing spec and record tests)."
+    },
+    {
+      "id": "F81",
+      "req": "R115",
+      "source": "qa",
+      "attempts": 0,
+      "status": "open",
+      "note": "The test for 'until a changed results-folder list is approved, a change inside the new folder still lists the phase' (tests/qa-recheck-docs.bats, protected by C181) cannot fail. It passes even with the approval rule removed. Evidence: in a scratch copy of HEAD I deleted the approval lookup in plugin/lib/qa-inputs.sh (the '&& contract_waiting \"$1\"' part of the 'res=' condition, so results folders are left out even before approval) and ran 'bats -f \"until a changed\" tests/qa-recheck-docs.bats': ok. The reason: the test only asserts that P1 is on the list after results/run.json changed, but without the approval rule P1 is listed anyway, because leaving results/run.json out changes P1's files fingerprint (digest) by itself. So nothing protects the safety rule of D195 (an unapproved folder list exempts nothing). Fix: in that test, assert the re-check list is still empty right after 'vbw spec sync' adds the unapproved folder and before any file changes (with the rule: empty; without it: P1 listed), then keep the existing assertion after the change. C181 protects this file, so the edit needs a new contract approval. Recommended over the alternative (a separate unprotected test file), because the case belongs with the other R115 rules C181 already guards."
     }
   ],
   "todos": [
