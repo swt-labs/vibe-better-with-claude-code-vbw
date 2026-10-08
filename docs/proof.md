@@ -38,6 +38,33 @@ shipped work), and `vbw milestone start TITLE` opens the next milestone for new
 requirements. The kernel never rewrites the spec; `vbw spec add auto|human
 TEXT` only appends a line.
 
+### Saved test results: `## Test results`
+
+Some projects commit the output of their test runs (reports, recordings,
+snapshots). List the folders that hold them under `## Test results`, one
+folder per line:
+
+```markdown
+## Test results
+
+- results/
+- reports/benchmarks/
+```
+
+- Each line is `- <folder>/`: a path relative to the project root, with no `.`
+  or `..` parts, outside `.vbw/`. A missing trailing `/` is added. A folder
+  named twice, or any other line in the section, is an error with its line
+  number.
+- `vbw spec sync` copies the list into the record (`project.results`,
+  docs/record.md) and prints the new list. It is part of the contract: adding,
+  changing or removing the list needs approval like any other spec change, and
+  `vbw show contract` shows the folders and how they changed.
+- A file committed inside one of these folders is a saved test result. It does
+  not make QA check a passed phase again
+  ([Which phases QA checks again](#which-phases-qa-checks-again)).
+- No section, no exemption: when the spec names no folder, a saved result is a
+  file like any other.
+
 ## Checks
 
 A check proves one `auto` requirement. It lives in the record:
@@ -571,6 +598,24 @@ judge:
 - a finding closed with no code change (the files are the same);
 - a removed [human] requirement, or a reworded one (QA never judges what only
   a person can: `[human]` requirements are not among QA's inputs).
+- a change to documentation only: files ending in `.md`, `.markdown` or `.rst`.
+  A plain `.txt` file counts as data, so changing it lists the phase;
+- a change only to saved test results inside the approved `## Test results`
+  folders ([Saved test results](#saved-test-results--test-results)).
+
+These exceptions have limits. The phase is still listed when:
+
+- the file is one a check uses: a file in one of its checks' `files`, or named
+  in a check's command. That file is a test, even as Markdown or inside a
+  results folder;
+- every plan of the phase changes only documents (a documentation-only
+  phase): its documents are its code;
+- the same change also touches code, tests, the goal or the plans;
+- a results folder was added or removed but the new list is not approved yet.
+  Until approval, a file in the new folder counts like any other file.
+
+Changing the approved folder list checks once more each phase whose plans list
+files inside the folders added or removed; the new pass stores the new list.
 
 The rule works on each input separately. A skip-type change that comes together
 with a listed change does not protect the phase: a decision plus a changed test,
