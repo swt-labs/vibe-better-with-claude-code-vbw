@@ -110,6 +110,7 @@ category, in a repository of any size; the router plans those the same way
 | 8 | current evidence has scope violations | `scope` (commits changed files outside their plans) | yes |
 | 9 | a fix is `open` | `fix` (`detail.fixes`, and `detail.groups`: fixes whose files overlap, one Dev each; a project command's fix may touch any file) | no |
 | 10 | an `auto` requirement is not `proven`, or the evidence is stale (another contract, or the project files changed since; docs/proof.md) | `prove` | no |
+| 10b | the latest proof is partial (it reused results or used the quick command) and a phase is about to go to QA, or the milestone to ship | `prove` with `detail.full` true: `Run vbw prove --full: ...` (docs/proof.md) | no |
 | 10a | a phase of the current milestone is built and QA must check it again (never passed, failed, its own files, tests, goal or plan changed since it passed, or a phase it builds on was checked again; docs/proof.md). An express phase is skipped when every requirement is `auto` and it has no escalations; a `human` requirement or an escalation brings QA back | `qa` (`detail.phases`: only the phases to check again, not the whole project, and `detail.tier`: the highest QA tier of those phases in the profile's table) | no |
 | 11 | a `human` requirement is `open` | `accept` (one scenario at a time) | yes |
 | 12 | otherwise | `ship` (`vbw ship`, which refuses while the proven work is not committed: the proof reads files on disk, a shipped milestone must be in git history) | yes |

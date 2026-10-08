@@ -236,6 +236,27 @@ without the section keeps the commands it has. A command whose exact argv the
 user has not approved makes `vbw next` ask for approval again, and
 `vbw prove` runs only approved commands.
 
+### The quick command
+
+A project whose test command is slow can name a faster variant for build and
+fix rounds, with a `quick` entry:
+
+```markdown
+## Commands
+
+- test: cargo test --locked --workspace
+- quick: cargo test --locked --workspace --lib
+```
+
+The quick command needs approval like any other command: it is part of the
+contract, and `vbw prove` never runs it before the user approves it. VBW never
+detects a quick command and never suggests one (`vbw init` does not write one); only the
+user can say which subset of the tests is enough for a build round.
+
+A plain `vbw prove` runs the quick command in place of the test command. When
+the quick command is not approved, the summary says so and the full test
+command runs instead. `vbw prove --full` never runs the quick command.
+
 Any change to the contract (a check edited, a test file touched, a plan's files
 widened) changes the hash, and the contract is unapproved again until the user
 re-approves it. `vbw show contract` renders what is being approved, and
@@ -258,6 +279,37 @@ clone (`vbw approve` keeps a copy of what it approved in `.vbw/runtime/`).
    must change only that plan's files.
 5. Writes the evidence and updates requirements and fixes in one atomic record
    update, then prints a one-screen summary. Exit 0 only when everything passed.
+
+### Full and partial proofs: `vbw prove --full`
+
+```text
+usage: vbw prove [--full]
+```
+
+`vbw prove --full` reuses nothing. It runs every check, the test command and
+every other approved command, and never the quick command. Any other argument
+is refused with the usage line, and nothing runs.
+
+A proof is full only when all of these hold; otherwise it is partial:
+
+- it reused no result ([Reusing results](#reusing-results-in-vbw-prove)),
+- it ran the test command, not the quick command, and
+- every project command ran (none was skipped as not approved).
+
+The summary ends with `proof: full` or `proof: partial`, and the evidence
+records the same in its `full` field (docs/record.md).
+
+A full proof is needed at two points, QA and shipping. Both refuse a partial
+proof and change nothing:
+
+- `vbw qa record` prints:
+  `the last proof was partial: run vbw prove --full, then record the verdict again`
+- `vbw next` returns the `prove` step before QA or shipping, with an
+  instruction that starts `Run vbw prove --full: ...`; `vbw ship` refuses with
+  the same advice.
+
+Build and fix rounds use the plain, faster `vbw prove`. The test result QA
+agents receive always comes from the full proof.
 
 ### Proof in the background during an autonomous run
 
@@ -394,7 +446,8 @@ Some things to know:
 
 A proof that reuses results records the current contract and code. `passed` is
 set from every result, reused or new, and requirements become `proven` as
-usual. `vbw qa record` and `vbw next` accept it as current.
+usual. It is a partial proof: `vbw qa record` and `vbw ship` need a full one
+([`vbw prove --full`](#full-and-partial-proofs-vbw-prove---full)).
 
 ### Fix items
 
