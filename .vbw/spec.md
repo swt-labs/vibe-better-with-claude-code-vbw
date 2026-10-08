@@ -118,6 +118,7 @@ VBW is a Claude Code plugin that makes it build software properly: the user agre
 - R111 [auto] A project may name a fast variant of its test command for build and fix rounds; vbw prove --full runs every check and the full project commands, and vbw qa record and vbw ship refuse a proof that ran only part of them, saying to run vbw prove --full
 - R112 [auto] The interview skill says it runs before any spec or convert work, as the router does
 - R113 [auto] VBW's own files under .vbw/ (the spec, the record) never make QA check a passed phase again, even when a plan lists one of them; a change to the phase's other files still does
+- R114 [auto] When Claude asks the approval menu (options Approve and Not yet) without the contract's fingerprint while a contract waits for approval, VBW puts 'Approve contract <fingerprint>?' in front of the question, so the user's Approve approves exactly that contract; other questions, subagents' questions, a question that already names a fingerprint and an approved contract are left as they are
 
 <!-- One requirement per line: an id, how it is proved, and a user-observable
      statement. [auto] = a check can prove it; [human] = only a person can judge it.

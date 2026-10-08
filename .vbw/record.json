@@ -3155,6 +3155,27 @@
           "check": "C177"
         }
       ]
+    },
+    {
+      "id": "R114",
+      "text": "When Claude asks the approval menu (options Approve and Not yet) without the contract's fingerprint while a contract waits for approval, VBW puts 'Approve contract <fingerprint>?' in front of the question, so the user's Approve approves exactly that contract; other questions, subagents' questions, a question that already names a fingerprint and an approved contract are left as they are",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M14",
+      "rules": [
+        {
+          "text": "a paraphrased approval menu gets 'Approve contract <fp>?' in front",
+          "check": "C178"
+        },
+        {
+          "text": "Approve to the completed question approves that contract",
+          "check": "C178"
+        },
+        {
+          "text": "other questions, subagents, a named fingerprint and an approved contract are left alone",
+          "check": "C178"
+        }
+      ]
     }
   ],
   "checks": [
@@ -5230,6 +5251,17 @@
       ],
       "files": [
         "tests/qa-vbw-files.bats"
+      ]
+    },
+    {
+      "id": "C178",
+      "req": "R114",
+      "run": [
+        "bats",
+        "tests/approve-ask.bats"
+      ],
+      "files": [
+        "tests/approve-ask.bats"
       ]
     }
   ],
@@ -8052,7 +8084,7 @@
       "reasons": [
         "requirements: 1",
         "files: 3 (44858 bytes)",
-        "files: more than 2 in a repository tracking 729 files",
+        "files: more than 2 in a repository tracking 730 files",
         "risk: none",
         "breaks: none",
         "guarded: R12 (C11), R25 (C24), R31 (C27), R32 (C28), R43 (C42, C43), R44 (C44, C45), R45 (C39, C40, C41), R46 (C46), R47 (C47), R48 (C49, C50), R49 (C48), R61 (C73, C74, C75, C76, C77), R66 (C95), R69 (C110, C120, C122), R70 (C114), R73 (C98), R74 (C99, C100), R78 (C105, C106), R79 (C107), R80 (C108), R81 (C109, C111, C112, C113), R92 (C131, C132, C133, C134, C135, C136, C137, C138, C139), R93 (C140, C141, C142, C143, C144), R94 (C145, C146, C147, C148), R97 (C153), R98 (C154), R100 (C156), R104 (C161, C162), R105 (C163), R110 (C169, C170), R111 (C171, C172, C173, C174, C175)",
@@ -8108,11 +8140,11 @@
       "tier": "deep",
       "reasons": [
         "requirements: 2",
-        "files: 6 (57553 bytes)",
-        "files: more than 2 in a repository tracking 729 files",
+        "files: 6 (57616 bytes)",
+        "files: more than 2 in a repository tracking 730 files",
         "risk: none",
         "breaks: none",
-        "guarded: R12 (C11), R22 (C19), R23 (C20), R24 (C23), R25 (C24), R26 (C22), R28 (C25), R29 (C26), R31 (C27), R32 (C28), R35 (C31), R43 (C42, C43), R44 (C44, C45), R45 (C39, C40, C41), R46 (C46), R47 (C47), R48 (C49, C50), R49 (C48), R61 (C73, C74, C75, C76, C77), R66 (C95), R69 (C110, C120, C122), R70 (C114), R71 (C115, C121), R72 (C116, C118), R73 (C98), R74 (C99, C100), R78 (C105, C106), R79 (C107), R80 (C108), R81 (C109, C111, C112, C113), R92 (C131, C132, C133, C134, C135, C136, C137, C138, C139), R93 (C140, C141, C142, C143, C144), R94 (C145, C146, C147, C148), R97 (C153), R98 (C154), R100 (C156), R103 (C160), R110 (C169, C170), R111 (C171, C172, C173, C174, C175)",
+        "guarded: R12 (C11), R22 (C19), R23 (C20), R24 (C23), R25 (C24), R26 (C22), R28 (C25), R29 (C26), R31 (C27), R32 (C28), R35 (C31), R43 (C42, C43), R44 (C44, C45), R45 (C39, C40, C41), R46 (C46), R47 (C47), R48 (C49, C50), R49 (C48), R61 (C73, C74, C75, C76, C77), R66 (C95), R69 (C110, C120, C122), R70 (C114), R71 (C115, C121), R72 (C116, C118), R73 (C98), R74 (C99, C100), R78 (C105, C106), R79 (C107), R80 (C108), R81 (C109, C111, C112, C113), R92 (C131, C132, C133, C134, C135, C136, C137, C138, C139), R93 (C140, C141, C142, C143, C144), R94 (C145, C146, C147, C148), R97 (C153), R98 (C154), R100 (C156), R103 (C160), R110 (C169, C170), R111 (C171, C172, C173, C174, C175), R113 (C177)",
         "tests: project test command",
         "raised by the Architect"
       ],
@@ -8156,7 +8188,7 @@
       "reasons": [
         "requirements: 2",
         "files: 21 (120643 bytes)",
-        "files: more than 2 in a repository tracking 729 files",
+        "files: more than 2 in a repository tracking 730 files",
         "risk: none",
         "breaks: none",
         "guarded: R12 (C11), R13 (C12), R14 (C13), R22 (C19), R23 (C20), R24 (C23), R25 (C24), R26 (C22), R27 (C21), R28 (C25), R31 (C27), R35 (C31), R36 (C32), R37 (C35), R38 (C33, C34), R39 (C36), R40 (C37), R44 (C44, C45), R47 (C47), R48 (C49, C50), R49 (C48), R50 (C51), R60 (C72, C94), R61 (C73, C74, C75, C76, C77), R62 (C78, C79, C80, C81, C82, C83, C93), R65 (C86, C87, C88, C89, C90), R67 (C96), R69 (C110, C120, C122), R70 (C114), R71 (C115, C121), R72 (C116, C118), R73 (C98), R74 (C99, C100), R75 (C101), R76 (C102, C103), R77 (C104), R78 (C105, C106), R79 (C107), R80 (C108), R81 (C109, C111, C112, C113), R83 (C119), R95 (C149, C150), R96 (C151, C152), R98 (C154), R99 (C155), R100 (C156), R101 (C157), R102 (C158, C159), R111 (C171, C172, C173, C174, C175)",
@@ -8240,7 +8272,7 @@
       "reasons": [
         "requirements: 1",
         "files: 8 (93964 bytes)",
-        "files: more than 2 in a repository tracking 729 files",
+        "files: more than 2 in a repository tracking 730 files",
         "risk: none",
         "breaks: none",
         "guarded: R12 (C11), R22 (C19), R24 (C23), R25 (C24), R28 (C25), R31 (C27), R32 (C28), R43 (C42, C43), R44 (C44, C45), R45 (C39, C40, C41), R46 (C46), R47 (C47), R48 (C49, C50), R49 (C48), R61 (C73, C74, C75, C76, C77), R66 (C95), R69 (C110, C120, C122), R70 (C114), R73 (C98), R74 (C99, C100), R78 (C105, C106), R79 (C107), R80 (C108), R81 (C109, C111, C112, C113), R92 (C131, C132, C133, C134, C135, C136, C137, C138, C139), R93 (C140, C141, C142, C143, C144), R94 (C145, C146, C147, C148), R97 (C153), R98 (C154), R100 (C156), R102 (C158, C159), R103 (C160), R104 (C161, C162), R105 (C163), R111 (C171, C172, C173, C174, C175)",
@@ -8290,8 +8322,8 @@
       "tier": "deep",
       "reasons": [
         "requirements: 1",
-        "files: 28 (223310 bytes)",
-        "files: more than 2 in a repository tracking 729 files",
+        "files: 28 (223877 bytes)",
+        "files: more than 2 in a repository tracking 730 files",
         "risk: none",
         "breaks: none",
         "guarded: R11 (C10), R12 (C11), R13 (C12), R14 (C13), R16 (C15), R22 (C19), R23 (C20), R24 (C23), R25 (C24), R26 (C22), R27 (C21), R28 (C25), R31 (C27), R32 (C28), R33 (C29), R35 (C31), R37 (C35), R38 (C33, C34), R39 (C36), R40 (C37), R43 (C42, C43), R44 (C44, C45), R45 (C39, C40, C41), R46 (C46), R47 (C47), R48 (C49, C50), R49 (C48), R50 (C51), R55 (C56, C57), R60 (C72, C94), R61 (C73, C74, C75, C76, C77), R62 (C78, C79, C80, C81, C82, C83, C93), R65 (C86, C87, C88, C89, C90), R66 (C95), R67 (C96), R69 (C110, C120, C122), R70 (C114), R71 (C115, C121), R72 (C116, C118), R73 (C98), R74 (C99, C100), R78 (C105, C106), R79 (C107), R80 (C108), R81 (C109, C111, C112, C113), R83 (C119), R92 (C131, C132, C133, C134, C135, C136, C137, C138, C139), R93 (C140, C141, C142, C143, C144), R94 (C145, C146, C147, C148), R95 (C149, C150), R96 (C151, C152), R97 (C153), R98 (C154), R99 (C155), R100 (C156), R101 (C157), R102 (C158, C159), R103 (C160), R104 (C161, C162), R105 (C163), R106 (C164, C165), R107 (C166, C167), R110 (C169, C170)",
@@ -8369,7 +8401,7 @@
       "tier": "express",
       "reasons": [
         "requirements: 1",
-        "files: 1 (3950 bytes)",
+        "files: 1 (4013 bytes)",
         "risk: none",
         "breaks: none",
         "guarded: R47 (C47), R49 (C48), R104 (C161, C162)",
@@ -8384,6 +8416,31 @@
         "qa_findings": 0,
         "escalations": 0
       }
+    },
+    {
+      "id": "P79",
+      "title": "The approval menu always names its contract",
+      "reqs": [
+        "R114"
+      ],
+      "milestone": "M14",
+      "goal": "An approval menu Claude asks without the fingerprint gets it in front, so Approve approves exactly that contract",
+      "criteria": [
+        "a paraphrased approval menu gets 'Approve contract <fp>?' in front",
+        "Approve to it approves the contract",
+        "other questions, subagents, a named fingerprint and an approved contract are untouched"
+      ],
+      "proposed": "express",
+      "tier": "express",
+      "reasons": [
+        "requirements: 1",
+        "files: 2 (1423 bytes)",
+        "risk: none",
+        "breaks: none",
+        "guarded: R51 (C52, C53, C66), R53 (C54, C55), R55 (C56, C57), R61 (C73, C74, C75, C76, C77)",
+        "tests: project test command"
+      ],
+      "predicted": "express"
     }
   ],
   "plans": [
@@ -13680,6 +13737,24 @@
       "tasks": [
         "the files digest of a phase leaves out paths under .vbw/"
       ]
+    },
+    {
+      "id": "P79.1",
+      "phase": "P79",
+      "title": "PreToolUse hook on AskUserQuestion adds the fingerprint",
+      "reqs": [
+        "R114"
+      ],
+      "files": [
+        "plugin/hooks/hooks.json",
+        "plugin/hooks/approve-ask.sh"
+      ],
+      "after": [],
+      "status": "planned",
+      "tasks": [
+        "a PreToolUse hook on AskUserQuestion: when the user (no agent_type) is asked a question whose options include Approve and Not yet, the question does not start with 'Approve contract ' plus a fingerprint, and the contract is not approved, answer with updatedInput whose question is 'Approve contract <12-char fingerprint>? ' followed by the original question; otherwise print nothing",
+        "the common path (any other question) stays one jq call; the fingerprint comes from vbw show contract"
+      ]
     }
   ],
   "fixes": [
@@ -14566,6 +14641,11 @@
     {
       "id": "T64",
       "text": "Owner colour check of the panel (was R90, R103, R108): bring back as a [human] requirement once VBW runs a milestone large enough to judge the colours (owner, 2026-10-08)",
+      "status": "open"
+    },
+    {
+      "id": "T65",
+      "text": "M16 discussion (owner): vbw prove's default check parallelism should depend on the machine (4, 10 or 50 cores); today it is 4 everywhere (R69/R81 check_jobs)",
       "status": "open"
     }
   ],
@@ -15611,6 +15691,18 @@
       "id": "D187",
       "at": "2026-10-08T09:01:43Z",
       "text": "Contract approved: 108 requirements, 173 checks, 222 plans (4f5da3432f32); express: P74 (R109, C168, P74.1); express: P77 (R112, C176, P77.1); express: P78 (R113, C177, P78.1)"
+    },
+    {
+      "id": "D188",
+      "text": "Release gate: one local full suite under macOS /bin/bash 3.2 at half the cores plus the real-app scenarios; Linux and bash 5 run in CI, green before the owner updates; tools/test.sh uses half the cores",
+      "why": "owner: three local full runs at 100% CPU were overengineering for v2; CI already runs both platforms",
+      "at": "2026-10-08T09:16:57Z"
+    },
+    {
+      "id": "D189",
+      "text": "Release scenarios: only those of the changed area, plus greenfield when the core loop changed (router, vbw next, workflows, proof, QA)",
+      "why": "owner question: scenarios cost API credits; greenfield is the end-to-end smoke for the core loop only",
+      "at": "2026-10-08T09:19:31Z"
     }
   ],
   "commands": {
