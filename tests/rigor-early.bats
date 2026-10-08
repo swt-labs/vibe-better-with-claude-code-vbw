@@ -117,7 +117,8 @@ track_code() { # commit an existing source file
 @test "the router's express example is a document vbw apply accepts as express" {
   rigor_project 1
   local doc
-  doc=$(sed -n 's/^Example: `\(.*\)`\.\{0,1\}$/\1/p' "$BATS_TEST_DIRNAME/../plugin/skills/vibe/SKILL.md")
+  # The example names the command, then the document: `vbw apply --add` with `{...}`.
+  doc=$(sed -n 's/^Example: `vbw apply --add` with `\({.*}\)`\.\{0,1\}$/\1/p' "$BATS_TEST_DIRNAME/../plugin/skills/vibe/SKILL.md")
   [ -n "$doc" ]
   printf 'exit 1\n' > test.sh
   rigor_apply "$doc" > /dev/null
