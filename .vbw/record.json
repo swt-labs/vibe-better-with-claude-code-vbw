@@ -14352,7 +14352,7 @@
       "req": "R114",
       "source": "qa",
       "attempts": 0,
-      "status": "open",
+      "status": "fixed",
       "note": "User docs not updated for the new behavior. CLAUDE.md requires docs/ and README.md to change whenever behavior changes. docs/guards.md ('Approving by answer', lines 20-25) and docs/proof.md (around line 129) describe only the PostToolUse answer hook and say the question is named 'Approve contract <12 hex>?'; neither mentions the new PreToolUse hook (plugin/hooks/approve-ask.jq, approve-ask.sh) that now puts that fingerprint in front of a paraphrased Approve/Not yet menu. grep for 'approve-ask' and 'R114' in docs/ and README.md finds nothing. Fix: one short paragraph in docs/guards.md (and a sentence in docs/proof.md) saying VBW adds the fingerprint to a paraphrased approval menu while the contract waits."
     },
     {
@@ -14360,7 +14360,7 @@
       "req": "R111",
       "source": "qa",
       "attempts": 0,
-      "status": "open",
+      "status": "fixed",
       "note": "docs/proof.md lines 618-620 still say the QA agent handles a refused 'vbw qa record' by running plain 'vbw prove' and retrying. P76.3 changed plugin/agents/qa.md and plugin/workflows/verifying.js to 'vbw prove --full'; a plain prove can use the quick command, leave a partial proof, and be refused again. Fix: say 'vbw prove --full' there. Related, not in scope of this finding: plugin/lib/cmd-qa.sh:38 (code-changed refusal) and the 'prove' line in 'vbw help' (plugin/bin/vbw:31) still show plain 'vbw prove' with no [--full]."
     }
   ],
