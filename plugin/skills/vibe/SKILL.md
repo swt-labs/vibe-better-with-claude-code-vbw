@@ -12,7 +12,7 @@ hooks:
 
 # VBW
 
-Kernel decides next step; you carry it out and talk to user. Even for a one-line fix: no project file changes until the contract is approved and a build runs.
+Kernel decides next step; you carry it out. No project file changes until the contract is approved and a build runs.
 
 ```!
 "${CLAUDE_PLUGIN_ROOT}/bin/vbw" next --json 2>&1 || true
@@ -23,6 +23,8 @@ Kernel decides next step; you carry it out and talk to user. Even for a one-line
 
 User said: $ARGUMENTS
 
+Every new request (in $ARGUMENTS or later) goes to `vbw:triage` first, before spec, plan or any change.
+
 No JSON above (skill shell execution off): run `VBW_SESSION_ID=${CLAUDE_SESSION_ID} vbw next --json`, `vbw config
 models`, `vbw config autonomy` with Bash first. "not a VBW project": set it up
 yourself (`vbw init`, `vbw statusline on`; say what was set up in one line),
@@ -30,8 +32,7 @@ then `VBW_SESSION_ID=${CLAUDE_SESSION_ID} vbw next --json` again.
 
 ## Autonomy
 
-Last line above = how much VBW does alone (user changes it with `/vbw:profile`
-or `vbw config set autonomy ...`). Approval, `accept` and shipping always stop for user.
+Last line above = how much VBW does alone (`/vbw:profile` changes it). Approval, `accept` and shipping always stop for user.
 
 - **balanced**, **hands-off**: run `vbw auto on ${CLAUDE_SESSION_ID}` once; VBW keeps going until a step needs user.
 - **hands-off**: at `needs_decisions`, take the recommended option (as `decide and tell me` below).
@@ -42,9 +43,9 @@ or `vbw config set autonomy ...`). Approval, `accept` and shipping always stop f
 
 Do step for `action`, run `VBW_SESSION_ID=${CLAUDE_SESSION_ID} vbw next --json`, do next step. Stop when `gate` is
 true, or a workflow runs in background (its result wakes you; continue).
-At a stop, tell user in plain words what happened.
+At a stop, say plainly what happened.
 Every stop ends with a last line, **What I need from you:** <the one thing user must do now>, or "nothing".
-Never claim more than kernel output shows.
+Never claim more than kernel shows.
 
 `plan`, `build`, `fix` need the **Workflow** tool (the `workflows` line above turned it on). None: say why, stop. Pass
 `session` (`${CLAUDE_SESSION_ID}`: the workflow confirms what its agents recorded and ends its own run), `models` (from `vbw config models`), the next JSON's top-level `rigor`, `effort` and its `profile` in every workflow's args.
@@ -60,7 +61,7 @@ What user must see to decide goes inside AskUserQuestion.
 
 ## Profile
 
-Next JSON's `profile` = user's level, explanation depth, involvement. Speak at that level and depth in every message. At
+Next JSON's `profile` = user's level, explanation depth, involvement. Speak at that level and depth. At
 `needs_decisions`, by `profile.involvement`:
 
 - **decide and tell me**: decide with the recommended option,
@@ -86,7 +87,7 @@ files the request names, then `vbw apply --add` (with or without earlier phases)
 plan (one or two files, tasks), one check that fails today, and the `rules` (each condition, edge and error case the requirement states, each with its check); go to **approve**.
 New ids start at P<next_phase>; `"tier"` is `detail.tier` (here express).
 Example: `vbw apply --add` with `{"phases":[{"id":"P1","title":"Fix add","reqs":["R1"],"tier":"express"}],"plans":[{"id":"P1.1","phase":"P1","title":"Fix add","reqs":["R1"],"files":["calc.sh"],"after":[],"tasks":["add returns the sum"]}],"checks":[{"id":"C1","req":"R1","run":["sh","test.sh"],"files":["test.sh"]}],"rules":[{"req":"R1","text":"add returns the sum","check":"C1"}]}`
-Over two files, a risk path or a tier apply refuses: planning workflow below.
+Over two files, a risk path or a tier: apply refuses; use the planning workflow.
 
 **plan**: `VBW_SESSION_ID=${CLAUDE_SESSION_ID} vbw run start plan`, Workflow `vbw:planning` with args
 `{"requirements": <requirements>, "next_phase": <next_phase>, "models": ...}`. Status `needs_decisions`: user
