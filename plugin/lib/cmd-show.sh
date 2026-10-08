@@ -263,6 +263,7 @@ show_work() {
   printf '%s' "$json" | jq -r "$SHOW_JQ_DEFS"'
     def check_lines: .checks[] | "  \(.id) (\(.req)) " + check_line
       + (if .last then " — last: \(.last.status)" else "" end);
+    def full_output: if .kept then "    full output: \(.kept)" else "    full output not kept: run vbw prove again" end;
     if .plan then
       "\(.plan.id) \(.plan.title) [\(.plan.status)]\(if .plan.note then ": " + .plan.note else "" end)",
       "files: \(.plan.files | join(", "))",
@@ -274,9 +275,13 @@ show_work() {
       "\(.fix.id) [\(.fix.status), attempts \(.fix.attempts)]: \(.fix.note)",
       (if .requirement then "requirement: \(.requirement.id) \(.requirement.text)" else empty end),
       (if .command then "command \(.command.name): \(.command.argv | argv_line)\(if .command.last then " — last: \(.command.last.status)" else "" end)",
-         (.command.last.tail // "" | select(length > 0) | split("\n")[] | "    | " + .) else empty end),
+         (.command.last.tail // "" | select(length > 0) | split("\n")[] | "    | " + .),
+         (.command.name as $n | .commands[] | select(.name == $n) | full_output) else empty end),
       (if (.checks | length) > 0 then "checks:", check_lines else empty end),
-      (.checks[] | select(.last and .last.status != "pass") | .last.tail | select(length > 0) | split("\n")[] | "    | " + .),
+      (.checks[] | select(.last and .last.status != "pass")
+        | (.last.tail | select(length > 0) | split("\n")[] | "    | " + .), full_output),
+      ((.command.name // null) as $n | [.commands[] | select(.name != $n)]
+        | if length > 0 then "failing project commands:", (.[] | "  \(.name) — last: \(.status)", full_output) else empty end),
       (if (.plans | length) > 0 then "files (plans serving the requirement):", (.plans[] | "  \(.id): \(.files | join(", "))") else empty end)
     end'
 }
