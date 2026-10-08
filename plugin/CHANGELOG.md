@@ -1,5 +1,26 @@
 # Changelog
 
+## [2.0.25] - 2026-10-08
+
+### Changed
+
+- **A proof re-runs only what a change touches.** Each check's pass now carries
+  a fingerprint of the committed content of the files it serves (its own files
+  and the files of the plans behind its requirement). `vbw prove` runs a check
+  again only when those files or its approved definition changed, when its last
+  result was not a pass, or when it declares no files; every other check reuses
+  its pass. The summary says `checks: N ran, M reused`.
+- **A quick test command for build and fix rounds.** A project can name a
+  `quick` command next to `test` in its spec's Commands. A plain `vbw prove`
+  runs it in place of the full test command.
+- **QA and shipping still need everything.** `vbw prove --full` runs every check
+  and the full project commands and reuses nothing. `vbw qa record` and
+  `vbw ship` refuse a partial proof and say to run `vbw prove --full`; `vbw next`
+  asks for it before QA and shipping. The summary says `proof: full` or
+  `proof: partial`.
+- **vbw init** now points to the approval menu instead of `/vbw:approve` when it
+  lists the project commands it found.
+
 ## [2.0.24] - 2026-10-07
 
 ### Changed
