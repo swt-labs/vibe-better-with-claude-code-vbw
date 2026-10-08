@@ -14195,7 +14195,7 @@
         "tests/profile-balanced.bats"
       ],
       "after": [],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "plugin/lib/profiles.json: the balanced profile gives the Lead opus; the Architect stays opus and every other role sonnet; quality and budget stay as they are",
@@ -14219,7 +14219,7 @@
         "docs/record.md"
       ],
       "after": [],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "README.md profile table: the Standard row reads `balanced`: Opus for the Architect and the Lead, Sonnet for the rest",
@@ -14243,7 +14243,7 @@
         "plugin/lib/cmd-show.sh"
       ],
       "after": [],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "spec.jq: a '## Test results' section of '- <folder>/' lines (relative, no '..', not .vbw/, a missing trailing slash added) gives the results list; a bad line is a spec error that names it",
@@ -14307,7 +14307,7 @@
         "plugin/lib/rigor-defs.jq"
       ],
       "after": [],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "small_change looks only at the current milestone's requirements that are in no phase yet (the new request); earlier planned or proven requirements, [human] ones included, no longer count",
@@ -14327,7 +14327,7 @@
         "plugin/bin/vbw"
       ],
       "after": [],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "vbw apply --add < doc takes new phases with their plans, checks and rules; a phase id the milestone already has, or a requirement another phase already covers, is refused with the reason and nothing changes",
@@ -14346,7 +14346,7 @@
         "plugin/skills/vibe/SKILL.md"
       ],
       "after": [],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "the small path (plan with detail.tier express or detail.small) applies its one express phase, plan, check and rules with `vbw apply --add`, which works with or without earlier phases in the milestone; ids from P<next_phase>",
@@ -14391,7 +14391,7 @@
         "docs/workflows.md"
       ],
       "after": [],
-      "status": "planned",
+      "status": "done",
       "role": "docs",
       "tasks": [
         "docs/rigor.md, The small change: small is judged on the requirements with no phase yet, which name at most two files and no risk; an example inside a milestone with earlier work; the router adds the phase with vbw apply --add",
@@ -14411,7 +14411,7 @@
         "plugin/lib/cmd-prove.sh"
       ],
       "after": [],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "one helper names the kept file: .vbw/runtime/output/<check id>.log and .vbw/runtime/output/command-<name>.log",
