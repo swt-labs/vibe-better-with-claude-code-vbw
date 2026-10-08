@@ -199,6 +199,25 @@ OUT=.vbw/runtime/output
   printf '%s' "$output" | jq -e '[.checks[] | select(.id == "C1") | .kept] == [null]' || { echo "$output"; false; }
 }
 
+@test "R118: vbw show fix does not list a project command that was skipped as not approved as a failing one" {
+  plan '[{id: "C1", req: "R1", run: ["sh", "tests/c1.sh"], files: ["tests/c1.sh"]},
+         {id: "C2", req: "R2", run: ["sh", "tests/ok.sh"], files: ["tests/ok.sh"]},
+         {id: "C3", req: "R3", run: ["sh", "tests/ok.sh"], files: ["tests/ok.sh"]}]' '{test: ["sh", "tests/cmd.sh"]}'
+  # lint is added after the approval, so vbw prove skips it.
+  edit_record '.commands.lint = ["sh", "tests/ok.sh"]'
+  git add .vbw && git commit -q -m "chore(vbw): lint"
+  "$VBW" prove > /dev/null || true
+  jq -e '.evidence.commands.lint.status == "skipped" and .evidence.commands.test.status == "fail"' .vbw/record.json
+  local f1
+  f1=$(fix_of R1)
+  vbw_run show fix "$f1"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"test — last: fail"* ]] || { echo "$output"; false; }
+  [[ "$output" != *lint* ]] || { echo "$output"; false; }
+  vbw_run show fix "$f1" --json
+  printf '%s' "$output" | jq -e '[.commands[].name] == ["test"]' || { echo "$output"; false; }
+}
+
 @test "R118: kept output is never committed and never written outside .vbw/runtime" {
   plan '[{id: "C1", req: "R1", run: ["sh", "tests/c1.sh"], files: ["tests/c1.sh"]},
          {id: "C2", req: "R2", run: ["sh", "tests/ok.sh"], files: ["tests/ok.sh"]},

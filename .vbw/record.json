@@ -15269,7 +15269,7 @@
       "req": "R118",
       "source": "qa",
       "attempts": 0,
-      "status": "open",
+      "status": "fixed",
       "note": "vbw show fix lists a project command that was skipped (status skipped: not approved) as a failing project command and tells the Dev 'full output not kept: run vbw prove again'. Plan P83.2 task 1 and the criterion say the commands list holds every failing project command, and vbw prove itself counts a skipped command as passed (cmd-prove.sh:66, passed allows skipped). Cause: plugin/lib/cmd-show.sh show_work, def failing: . != null and .status != \"pass\", used for commands: [... select(.value | failing) ...]. Evidence: jq on {lint:{status:skipped}} with that filter returns [{name:lint,status:skipped}]. Reachable: commands are not part of the contract hash (contract.sh contract_core), so a command added or changed in spec.md after approval, or a named but unapproved quick (proofreuse.sh proofreuse_names), is recorded as skipped. Running vbw prove again does not help; the command needs approval. Fix: list only fail and timeout commands (and add a test in tests/prove-kept-output.bats with a skipped command)."
     },
     {
@@ -15277,7 +15277,7 @@
       "req": "R116",
       "source": "qa",
       "attempts": 0,
-      "status": "escalated",
+      "status": "fixed",
       "note": "One safety refusal of 'vbw apply --add' has no test, so it could be deleted and every test would still pass. In plugin/lib/cmd-apply.sh, lines 64-65 refuse a check or a rule (a rule is one condition a requirement states, paired with the check that tests it) whose requirement is not one of the new phases, with the message 'is for R1, not a requirement of the phases this --add brings'. That refusal is the only thing that keeps an earlier requirement's checks and rules unchanged, which the plan promises (P82.2: 'every existing item stays byte for byte'; rule: 'vbw apply --add keeps every existing phase, plan, check and rule'). Evidence: no test contains that message (searched tests/*.bats). Reading the code without lines 64-65: a --add document for new phase P3 (R3) that also carries a check C9 for R1 and a rule for R1 on C9 passes every other test in the file (the rule names a check of R1 in the merged plan, line 132), and line 191 then gives R1 a new rule and the record a new check. Commit 3fdc4d86 says 'each --add refusal tested', which is not quite true. Options: (a, recommended) in tests/small-request.bats, test 'in a milestone where no work has started...', add two add_refused cases, a doc with an extra check for R1 and a doc with an extra rule for R1, each expecting 'is for R1, not a requirement of the phases this --add brings' (the file is protected by C182, so it needs one contract approval); (b) the same cases in a new unprotected test file, which would leave the R116 rules split across two files."
     }
   ],
