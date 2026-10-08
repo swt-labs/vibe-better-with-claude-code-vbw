@@ -144,3 +144,33 @@ teardown() { vbw_teardown; }
   vbw_run show contract --changes
   [[ "$output" == *"removed rule R1: A payment succeeds"* ]]
 }
+
+@test "show contract lists the saved test results folders, and --changes names a changed list" {
+  # The snapshot an approval would have taken, with results only when present.
+  snapshot() {
+    jq -c '{requirements: (.requirements | map({key: .id, value: ({text, proof} + (if has("rules") then {rules} else {} end))}) | from_entries),
+            checks: (.checks | map({key: .id, value: .}) | from_entries),
+            plans: (.plans | map({key: .id, value: del(.status, .note)}) | from_entries),
+            commands: .commands, files: {}} + (if .project.results then {results: .project.results} else {} end)' \
+      .vbw/record.json > .vbw/runtime/approved-contract.json
+  }
+  set_results() { jq "$1" .vbw/record.json > "$TEST_ROOT/r.json" && cp "$TEST_ROOT/r.json" .vbw/record.json; }
+  snapshot
+  vbw_run show contract --changes
+  [[ "$output" == *"no changes since the last approval"* ]]
+  set_results '.project.results = ["results/"]'
+  vbw_run show contract
+  [[ "$output" == *"saved test results folders: results/"* ]]
+  vbw_run show contract --changes
+  [[ "$output" == *"saved test results folders: results/ (was none)"* ]]
+  snapshot
+  set_results '.project.results = ["results/", "reports/"]'
+  vbw_run show contract --changes
+  [[ "$output" == *"saved test results folders: results/, reports/ (was results/)"* ]]
+  snapshot
+  set_results '.project |= del(.results)'
+  vbw_run show contract
+  [[ "$output" != *"saved test results folders"* ]]
+  vbw_run show contract --changes
+  [[ "$output" == *"saved test results folders: none (was results/, reports/)"* ]]
+}
