@@ -1,4 +1,4 @@
-# The definition of .vbw/record.json, schema 1, or 2 when a check is alone (docs/record.md).
+# The definition of .vbw/record.json: schema 1, 2 when a check is alone, 3 when a todo is sorted (docs/record.md).
 # Input: the record. Output: a JSON array of violation messages; [] = valid.
 
 def nonempty: type == "string" and length > 0;
@@ -44,8 +44,9 @@ if type != "object" then ["record must be a JSON object"] else
 | ([($r.shipped // [])[]?.id] + [$r.milestone.id?]) as $milestones
 | ($plans | map({key: .id, value: (.after // [])}) | from_entries) as $graph
 | [
-    ( select($r.schema != (if (($r.checks // []) | type) == "array" and any(($r.checks // [])[]?; type == "object" and .alone == true) then 2 else 1 end))
-      | "schema must be 2 when a check is alone, else 1" ),
+    ( select($r.schema != (if (($r.todos // []) | type) == "array" and any(($r.todos // [])[]?; type == "object" and (has("sort") or has("size"))) then 3
+                           elif (($r.checks // []) | type) == "array" and any(($r.checks // [])[]?; type == "object" and .alone == true) then 2 else 1 end))
+      | "schema must be 3 when a todo is sorted, else 2 when a check is alone, else 1" ),
     ( $r | keys[]
       | select(one_of(["schema","project","milestone","requirements","checks","phases","plans",
                        "fixes","todos","decisions","commands","settings","evidence","lease","shipped","converted"]) | not)
@@ -185,8 +186,11 @@ if type != "object" then ["record must be a JSON object"] else
         status_rule(["open","fixed","closed","escalated"]) ),
 
     ( arr("todos")[]
-      | field_rule(["id","text","status"]),
+      | field_rule(["id","text","status","sort","size"]),
         ( select((.text | nonempty) | not) | "\(.id) needs non-empty text" ),
+        ( select(has("sort") != has("size")) | "\(.id) needs both sort and size, or neither" ),
+        ( select(has("sort") and ((.sort | one_of(["next","later"])) | not)) | "\(.id) has an invalid sort: \(.sort)" ),
+        ( select(has("size") and ((.size | one_of(["small","medium","large"])) | not)) | "\(.id) has an invalid size: \(.size)" ),
         status_rule(["open","in_progress","done","dropped"]) ),
 
     ( arr("decisions")[]

@@ -120,8 +120,8 @@ apply_doc() { printf '%s' "$1" | "$VBW" apply; }
   [ "$status" -eq 3 ]
 }
 
-@test "a record newer than schema 2 still says it needs a newer VBW" {
-  jq '.schema = 3' .vbw/record.json > "$TEST_ROOT/r.json" && cp "$TEST_ROOT/r.json" .vbw/record.json
+@test "a record newer than schema 3 still says it needs a newer VBW" {
+  jq '.schema = 99' .vbw/record.json > "$TEST_ROOT/r.json" && cp "$TEST_ROOT/r.json" .vbw/record.json
   vbw_run status
   [ "$status" -eq 4 ]
   [[ "$output" == *"newer VBW"* ]]
