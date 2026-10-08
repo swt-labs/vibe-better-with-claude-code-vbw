@@ -22,6 +22,15 @@
         ]
       },
       {
+        "matcher": "AskUserQuestion",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "jq -c 'select(.tool_name == \"AskUserQuestion\" and ((.agent_type // \"\") == \"\") and any((.tool_input.questions // [])[]?; ((.options // []) | map(.label) | (index(\"Approve\") != null and index(\"Not yet\") != null)) and ((.question // \"\") | test(\"^Approve contract [^\\\\s?]+\\\\?\") | not)))' 2>/dev/null | { IFS= read -r in && bash \"${CLAUDE_PLUGIN_ROOT}/hooks/approve-ask.sh\" \"$in\"; } 2>/dev/null || true"
+          }
+        ]
+      },
+      {
         "matcher": "Read|Write|Edit|MultiEdit|NotebookEdit|Grep",
         "hooks": [
           {
