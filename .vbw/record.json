@@ -6,7 +6,7 @@
   "milestone": {
     "id": "M14",
     "title": "Cheaper runs",
-    "status": "active"
+    "status": "shipped"
   },
   "shipped": [
     {
@@ -73,6 +73,11 @@
       "id": "M13",
       "title": "Core loop you can trust",
       "at": "2026-10-07T19:52:09Z"
+    },
+    {
+      "id": "M14",
+      "title": "Cheaper runs",
+      "at": "2026-10-08T11:54:34Z"
     }
   ],
   "requirements": [
@@ -15782,6 +15787,11 @@
       "text": "Balanced profile: Architect and Lead on Opus, every other role on Sonnet (QA never below Sonnet); first item of the release after 2.0.26",
       "why": "owner chose both on Opus; evidence 2026-10-08: most planning defects came from the Lead (missing plan files, a broken test setup)",
       "at": "2026-10-08T10:13:21Z"
+    },
+    {
+      "id": "D194",
+      "at": "2026-10-08T11:54:34Z",
+      "text": "Shipped M14 Cheaper runs: 11 requirements proven or accepted"
     }
   ],
   "commands": {
