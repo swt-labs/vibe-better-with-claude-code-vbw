@@ -14265,7 +14265,7 @@
       "after": [
         "P81.1"
       ],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "a phase's files digest leaves out documentation (is_doc from rigor-defs.jq through VBW_JQ_DEFS: .md, .markdown, .rst; plain .txt stays, D144) next to VBW's own .vbw/ files",
@@ -14288,7 +14288,7 @@
       "after": [
         "P80.2"
       ],
-      "status": "planned",
+      "status": "done",
       "role": "docs",
       "tasks": [
         "docs/proof.md, the spec part: the '## Test results' section, its folder lines, approval like any spec change, and no exemption when none is named (D195)",
@@ -14434,7 +14434,7 @@
         "P83.1",
         "P81.1"
       ],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "vbw show fix --json: each check gains kept (the kept file's path when it exists, else null), and a commands list holds every failing project command with name, status and kept",
@@ -15388,6 +15388,11 @@
     {
       "id": "T67",
       "text": "A documentation-only edit to a file a phase's docs plan lists (docs/proof.md) makes QA check the phase's code again (2026-10-08: a one-paragraph docs fix re-listed P70, P71, P75); R71 says documentation alone needs no new check: extend it to QA re-checks (a docs-only change gets at most a quick check of the docs)",
+      "status": "open"
+    },
+    {
+      "id": "T68",
+      "text": "vbw approve compares the spec with the record but not the new '## Test results' list (P81.1 note): an edited, unsynced list approves the record's list; add it to the comparison with the commands",
       "status": "open"
     }
   ],
