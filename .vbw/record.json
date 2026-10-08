@@ -8849,7 +8849,7 @@
         "When a kept file is missing (deleted, or another clone), `vbw show fix` says the full output is not kept and to run vbw prove again, instead of naming a file that does not exist",
         "Kept output is never committed and never written outside the project's .vbw/runtime folder"
       ],
-      "tier": "standard",
+      "tier": "deep",
       "reasons": [
         "requirements: 1",
         "files: 5 (90816 bytes)",
@@ -8859,7 +8859,15 @@
         "guarded: R12 (C11), R13 (C12), R14 (C13), R22 (C19), R24 (C23), R25 (C24), R28 (C25), R31 (C27), R32 (C28), R39 (C36), R43 (C42, C43), R44 (C44, C45), R45 (C39, C40, C41), R46 (C46), R47 (C47), R48 (C49, C50), R49 (C48), R50 (C51), R60 (C72, C94), R61 (C73, C74, C75, C76, C77), R66 (C95), R69 (C110, C120, C122), R70 (C114), R73 (C98), R74 (C99, C100), R75 (C101), R76 (C102, C103), R77 (C104), R78 (C105, C106), R79 (C107), R80 (C108), R81 (C109, C111, C112, C113), R83 (C119), R92 (C131, C132, C133, C134, C135, C136, C137, C138, C139), R93 (C140, C141, C142, C143, C144), R94 (C145, C146, C147, C148), R95 (C149, C150), R96 (C151, C152), R97 (C153), R98 (C154), R99 (C155), R100 (C156), R102 (C158, C159), R103 (C160), R104 (C161, C162), R105 (C163), R106 (C164, C165), R107 (C166, C167), R110 (C169, C170), R111 (C171, C172, C173, C174, C175)",
         "tests: project test command"
       ],
-      "predicted": "standard"
+      "predicted": "standard",
+      "escalations": [
+        {
+          "at": "2026-10-08T14:09:17Z",
+          "from": "standard",
+          "to": "deep",
+          "reason": "Dev blocked P83.3: docs written and committed (2d7cc166); vbw plan done refused: check C184 (tests/prove-kept-output.bats) fails and tests/qa-model.bats waits for approval, both outside this docs plan's files"
+        }
+      ]
     }
   ],
   "plans": [
@@ -14457,13 +14465,14 @@
         "P81.3",
         "P82.5"
       ],
-      "status": "planned",
+      "status": "blocked",
       "role": "docs",
       "tasks": [
         "docs/proof.md: a failing or timed-out check or command keeps its full output in .vbw/runtime/output/ (one file each, the latest failure, removed on a pass, kept for a reused result, never committed)",
         "docs/proof.md, Fix items: vbw show fix names the kept file (--json: kept), or says the full output is not kept and to run vbw prove again",
         "docs/workflows.md: the vbw show fix row mentions the kept output"
-      ]
+      ],
+      "note": "docs written and committed (2d7cc166); vbw plan done refused: check C184 (tests/prove-kept-output.bats) fails and tests/qa-model.bats waits for approval, both outside this docs plan's files"
     }
   ],
   "fixes": [
