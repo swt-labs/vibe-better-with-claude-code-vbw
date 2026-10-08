@@ -14594,7 +14594,7 @@
       "after": [
         "P81.1"
       ],
-      "status": "planned",
+      "status": "done",
       "tasks": [
         "tests/kernel-spec.bats: spec.jq reports an error with its line number for a results line naming ../, an absolute path, .vbw/, a . part or a folder named twice; a folder without its trailing / gets one; plain text in the section is ignored; vbw spec sync removes project.results when the section goes (F80 items 1-3)",
         "tests/record.bats: record.jq rejects a project.results that is empty, has an entry not ending in /, repeats an entry or names .vbw/ (F80 item 4)",
