@@ -260,11 +260,15 @@ part() { jq -cS "$1" .vbw/record.json; }
   printf '%s' "$small" | grep -q 'no planning workflow'
   printf '%s' "$small" | grep -q 'vbw apply --add'
   printf '%s' "$small" | grep -q 'next_phase'
+  # The phase takes the tier vbw next names: small can come with a standard floor.
+  printf '%s' "$small" | grep -q 'one phase at `detail.tier`'
+  ! printf '%s' "$small" | grep -q 'one express phase'
   printf '%s' "$small" | grep -qi 'approve'
   printf '%s' "$small" | grep -qiE 'over two files|risk path'
   grep -q 'Workflow `vbw:planning`' "$r"
   grep -q 'apply --add' "$REPO_ROOT/docs/workflows.md"
   grep -qiE 'no phase yet|not in any phase|without a phase' "$REPO_ROOT/docs/rigor.md"
   grep -qiE 'names? (one or two|at most two) files' "$REPO_ROOT/docs/rigor.md"
+  grep -q 'one phase at `detail.tier`' "$REPO_ROOT/docs/rigor.md"
   grep -qiE 'no phase yet|not in any phase|without a phase' "$REPO_ROOT/docs/next.md"
 }

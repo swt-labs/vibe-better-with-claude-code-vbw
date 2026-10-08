@@ -3249,7 +3249,7 @@
     },
     {
       "id": "R116",
-      "text": "A request that names one or two files and no risk path is offered the small-change path (one express phase, one plan and its check, approved once) before any planning workflow starts; a larger or riskier request still goes to planning",
+      "text": "A request that names one or two files and no risk path is offered the small-change path (one phase at the tier `vbw next` names, express when its signals allow, one plan and its check, approved once) before any planning workflow starts; a larger or riskier request still goes to planning",
       "proof": "auto",
       "status": "open",
       "milestone": "M15",
@@ -3279,7 +3279,7 @@
           "check": "C182"
         },
         {
-          "text": "the small path applies one express phase, plan and check numbered from next_phase with vbw apply --add, no planning workflow, approved once",
+          "text": "the small path applies one phase at the tier vbw next names, one plan and its check, numbered from next_phase with vbw apply --add, no planning workflow, approved once",
           "check": "C182"
         },
         {
@@ -3297,6 +3297,10 @@
         {
           "text": "the real-app smallchange scenario takes a one-file request in a milestone with earlier requirements to done and passes",
           "check": "C183"
+        },
+        {
+          "text": "vbw apply --add judges the rigor floor of the phases it adds only; existing phases keep their accepted tier",
+          "check": "C182"
         }
       ]
     },
@@ -14507,6 +14511,26 @@
         "cmd-apply.sh: with --add, the rigor floor and the one-plan-per-express rule are judged only for the phases the doc brings; existing phases keep the tier they were accepted at (the real-app smallchange run refused: P1 is planned at express but its signals set the floor at standard); the header comment and P82.2 wording say so",
         "tests/small-request.bats test 11 runs vbw prove --full before expecting ship, as vbw next has required since P76.2"
       ]
+    },
+    {
+      "id": "P82.7",
+      "phase": "P82",
+      "title": "The small path takes the tier vbw next names",
+      "reqs": [
+        "R116"
+      ],
+      "files": [
+        "plugin/skills/vibe/SKILL.md",
+        "docs/rigor.md"
+      ],
+      "after": [
+        "P82.6"
+      ],
+      "status": "planned",
+      "tasks": [
+        "the router's small-path paragraph (plugin/skills/vibe/SKILL.md, **plan** with `detail.tier` express or `detail.small`) says `vbw apply --add` one phase at `detail.tier` with one plan (one or two files, tasks) instead of one express phase; the Example sets \"tier\" to that value; the real-app smallchange run had vbw next give small true with tier standard (no project test command), the router wrote express and vbw apply refused; no growth of the router budget",
+        "docs/rigor.md: the small path adds one phase at `detail.tier` (express when its signals allow, standard for example in a repository without a project test command or tracking more than 30 files), numbered from next_phase, holding one plan"
+      ]
     }
   ],
   "fixes": [
@@ -16540,6 +16564,11 @@
       "id": "D198",
       "at": "2026-10-08T14:46:46Z",
       "text": "Contract approved: 113 requirements, 179 checks, 237 plans (976ba1f1786c)"
+    },
+    {
+      "id": "D199",
+      "at": "2026-10-08T14:54:34Z",
+      "text": "Contract approved: 113 requirements, 179 checks, 238 plans (f11c4e78ff0c)"
     }
   ],
   "commands": {
