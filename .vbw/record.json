@@ -14705,7 +14705,7 @@
         "docs/guards.md"
       ],
       "after": [],
-      "status": "planned",
+      "status": "done",
       "tasks": [
         "plugin/hooks/approve-ask.sh prints permissionDecision ask (not allow) with the rewritten updatedInput; its header comment says why: Claude Code reads allow with updatedInput on AskUserQuestion as the hook answering the question, so the menu was never shown (real app, Claude Code 2.1.295)",
         "docs/guards.md: the approval-question paragraph says the rewritten question is shown to you and the hook never answers it"
