@@ -25,7 +25,7 @@ qa_digests() {
   done < <(printf '%s' "$1" | jq -r '. as $r | $r.phases[] | select(.milestone == $r.milestone.id) | . as $ph
     | ([$r.checks[] | select(.req as $q | $ph.reqs | index($q))] | sort_by(.id)) as $ch
     | ([$r.requirements[] | select(.proof == "auto") | .id]) as $aid
-    | "\(.id) " + ({files: ([$r.plans[] | select(.phase == $ph.id) | .files[]?] | unique),
+    | "\(.id) " + ({files: ([$r.plans[] | select(.phase == $ph.id) | .files[]? | select((startswith(".vbw/") or startswith("./.vbw/")) | not)] | unique),
        checks: [$ch[] | {id, req, run, files}], check_files: ([$ch[] | .files[]?] | unique),
        auto: [$r.requirements[] | select(.proof == "auto" and (.id as $q | $ph.reqs | index($q))) | {id, text}],
        plan: {goal: $ph.goal, criteria: $ph.criteria,
