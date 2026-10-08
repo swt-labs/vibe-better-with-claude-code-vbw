@@ -12,7 +12,7 @@ hooks:
 
 # VBW
 
-Kernel decides next step; you carry it out. No project file changes until the contract is approved and a build runs.
+Kernel decides next step; you carry it out. Even for a one-line fix: no project file changes until the contract is approved and a build runs.
 
 ```!
 "${CLAUDE_PLUGIN_ROOT}/bin/vbw" next --json 2>&1 || true
@@ -23,7 +23,7 @@ Kernel decides next step; you carry it out. No project file changes until the co
 
 User said: $ARGUMENTS
 
-Every new request (in $ARGUMENTS or later) goes to `vbw:triage` first, before spec, plan or any change.
+Every new request (in $ARGUMENTS or later) goes to `vbw:triage` first.
 
 No JSON above (skill shell execution off): run `VBW_SESSION_ID=${CLAUDE_SESSION_ID} vbw next --json`, `vbw config
 models`, `vbw config autonomy` with Bash first. "not a VBW project": set it up
