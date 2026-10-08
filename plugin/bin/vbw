@@ -31,6 +31,7 @@ usage: vbw <command> [args]
   prove [--full]    run the approved checks and commands, record the evidence
   apply < PLAN      the planner's write: phases, plans and checks in one update
   apply --patch < P change only the plans, checks and rules given, the rest untouched
+  apply --add < P   add new phases with their plans, checks and rules, the rest untouched
   run start KIND [IDS] | run confirm ID... | run end [--owner-closed]   open the run lease, check what its agents recorded, close it
   plan done|block|reset ID   a plan's outcome (done is verified)
   fix done ID [ID...] | retry ID   fixes committed (checks they serve run once); retry an escalated fix
