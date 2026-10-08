@@ -2990,6 +2990,22 @@
           "check": "C168"
         }
       ]
+    },
+    {
+      "id": "R110",
+      "text": "vbw prove re-runs only the approved checks whose served files (the check's own files and the files of the plans serving its requirement) changed since their last pass, every check that declares no files, and every check whose definition changed; it reuses every other result and says so",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M14",
+      "rules": []
+    },
+    {
+      "id": "R111",
+      "text": "A project may name a fast variant of its test command for build and fix rounds; vbw prove --full runs every check and the full project commands, and vbw qa record and vbw ship refuse a proof that ran only part of them, saying to run vbw prove --full",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M14",
+      "rules": []
     }
   ],
   "checks": [
@@ -14906,6 +14922,12 @@
       "id": "D177",
       "at": "2026-10-07T23:44:41Z",
       "text": "Contract approved: 105 requirements, 164 checks, 214 plans (5184a91bcbf0); express: P74 (R109, C168, P74.1)"
+    },
+    {
+      "id": "D178",
+      "text": "Selective proof: build and fix rounds prove selectively; QA verdicts and shipping need a full proof (vbw prove --full)",
+      "why": "owner: yes, build it now; the full proof at QA and ship catches checks that miss a file they depend on",
+      "at": "2026-10-08T00:02:39Z"
     }
   ],
   "commands": {
