@@ -13482,7 +13482,7 @@
       "after": [
         "P76.1"
       ],
-      "status": "blocked",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "vbw qa record refuses a proof that is not full, leaves the record untouched, and says 'the last proof was partial: run vbw prove --full, then record the verdict again'. The refusal for code changed since the proof still comes first.",
@@ -13490,8 +13490,7 @@
         "vbw ship refuses the same way, through that answer (message names vbw prove --full), without changing the record; change cmd-ship.sh only if its message does not.",
         "The test-command result given to QA agents (round.suite) stays the full proof's test command result, never the quick command's.",
         "Update existing tests that record QA or ship after a proof that reused results, so they run vbw prove --full first."
-      ],
-      "note": "Code and in-plan tests are committed (fff624b2, 14fb7361, 580808ef). The plan's file list misses tests that record QA after a reused proof and now fail: tests/qa-recheck-helper.bash (qa_build/qa_touch: prove -> prove --full), tests/qa-skip-helper.bash, tests/qa-recheck-deps.bats, tests/qa-recheck-skip.bats, tests/qa-replan-keeps.bats, tests/kernel-prove.bats (line 308). Each needs 'vbw prove' changed to 'vbw prove --full' (verified green locally, then reverted because the commit refuses files outside the plan). Add these files to P76.2. tests/proof-stale-links.bats (approved check C140) also fails since P76.1: its summary regex rejects the new 'proof: full' and 'checks:' lines."
+      ]
     },
     {
       "id": "P76.3",
