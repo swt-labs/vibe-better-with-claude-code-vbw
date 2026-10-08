@@ -80,6 +80,7 @@ spec_sync() {
     | .plans = [.plans[] | .after = [.after[] | select(. as $a | any($ids[]; . == $a))]]
     | .phases = [.phases[] | .reqs = [.reqs[] | select(kept)] | select(.reqs | length > 0)]' --argjson s "$reqs"
   spec_sync_commands "$(printf '%s' "$1" | jq -c '.commands')"
+  spec_sync_results "$(printf '%s' "$1" | jq -c '.results')"
   printf 'record has %s requirements\n' "$(jq '.requirements | length' "$VBW_RECORD")"
 }
 
@@ -93,6 +94,15 @@ spec_sync_commands() {
         elif $o[.key] != .value then "changed command \(.key)" else empty end),
       ($o | keys[] | select(. as $k | $c | has($k) | not) | "removed command \(.)")'
   record_update '.commands = $c' --argjson c "$1"
+}
+
+# The record's project.results becomes the spec's Test results folders, and
+# goes when the spec names none. A changed list needs the user's approval.
+spec_sync_results() {
+  record_read | jq -r --argjson l "$1" '(.project.results // null) as $o
+    | select($o != $l)
+    | if $l == null then "removed the test results folders" else "test results folders: \($l | join(", "))" end'
+  record_update 'if $l == null then .project |= del(.results) else .project.results = $l end' --argjson l "$1"
 }
 
 # Insert "- R<next> [PROOF] TEXT" at the end of the Requirements section, then sync.

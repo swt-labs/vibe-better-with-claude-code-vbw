@@ -69,6 +69,10 @@ if type != "object" then ["record must be a JSON object"] else
     ( $r.project.legacy? | select(. != null)
       | select((type == "object" and (keys | sort) == ["at","choice"] and (.choice | one_of(["convert","fresh"])) and (.at | iso)) | not)
       | "project.legacy must be a choice (convert or fresh) and an ISO-8601 UTC time" ),
+    ( $r.project.results? | select(. != null)
+      | select((type == "array" and length > 0 and length == (unique | length)
+          and all(.[]; safe_path and endswith("/") and (split("/") | .[0] != ".vbw" and all(.[:-1][]; . != "" and . != ".")))) | not)
+      | "project.results must be a non-empty array of distinct relative folders ending in /, outside .vbw/" ),
     ( $r.project.declined? | select(. != null)
       | ( select(type != "array") | "project.declined must be an array" ),
         ( select(type == "array") | .[]
