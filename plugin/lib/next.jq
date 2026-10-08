@@ -110,6 +110,8 @@ def fix_files($r): if .command then ["*"]
     | result("approve"; true; "Approve the test files edited since the approval, once, before they are proved: \($wf | join(", "))"; {files: $wf})
   elif ($unproven | length) > 0 then
     result("prove"; false; "Run vbw prove for \($unproven | join(", "))"; {requirements: $unproven})
+  elif (.evidence.full == false) and (($to_verify | length) > 0 or ($to_accept | length) == 0) then
+    result("prove"; false; "Run vbw prove --full: QA and shipping need a proof that ran every check and every full project command"; {full: true})
   elif ($to_verify | length) > 0 then
     result("qa"; false; "Run the QA workflow (\($tier)) for \($to_verify | join(", ")): goal-backward verification of the built work. Checked again: \([$to_verify[] | "\(.) (\($qa.recheck[.] | join("; ")))"] | join(", "))\(if ($qa.standing | length) > 0 then ". Keeping their pass: \($qa.standing | join(", "))" else "" end)"; {phases: $to_verify, tier: $tier})
   elif ($to_accept | length) > 0 then
