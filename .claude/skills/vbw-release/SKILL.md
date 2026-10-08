@@ -7,9 +7,12 @@ description: Release a new VBW version - tests on both shells, the real-user sce
 
 Every step runs; a failure stops the release until its root cause is fixed.
 
-1. **Tests:** `bash tools/test.sh` (bash 5), then the same suite under macOS
-   `/bin/bash` 3.2, then on Linux with `bash tools/test-linux.sh` (Docker). Both must pass in full; the hook benchmark must be within
-   budget on an idle machine.
+1. **Tests:** `bash tools/test.sh` once, under macOS `/bin/bash` 3.2 (the
+   floor, `PATH="/bin:$PATH" /bin/bash tools/test.sh`); it uses half the cores.
+   Linux bash 5 and macOS bash 3.2 run again in CI after the push, and CI must be
+   green before the owner updates (owner decision, 2026-10-08).
+   `tools/test-linux.sh` stays for chasing a Linux-only failure. The hook
+   benchmark must be within budget.
 2. **Real-user scenarios:** `bash tools/l3-suite.sh [SCENARIO...]` (the real
    Claude Code TUI, driven as a user, 4 at a time; about $1-3 per scenario).
    Run `greenfield` plus every scenario that exercises what the release
