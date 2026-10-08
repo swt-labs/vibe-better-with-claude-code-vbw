@@ -26,7 +26,10 @@
 # vbw apply --add < DOC: new phases with their plans, checks and rules (R116),
 # appended to the milestone; a phase id it already has, a requirement another
 # phase covers, or a plan or check id in use is refused and nothing changes.
-# Every existing item stays as it was; the merged whole meets every rule above.
+# Every existing item stays as it was and keeps the tier it was accepted at:
+# the rigor floor and the one-plan-per-express rule judge only the phases the
+# doc brings (their signals see the whole milestone); every other rule above
+# holds for the merged whole.
 
 # shellcheck source=rigor.sh
 . "$VBW_LIB/rigor.sh"
@@ -36,11 +39,12 @@ cmd_apply() {
   case "${1:-}" in --patch) patch=true; shift ;; --add) add=true; shift ;; esac
   [ $# -eq 0 ] || vbw_usage_error "usage: vbw apply [--patch | --add] < plan.json"
   vbw_require_project
-  local doc record problem hypo tiers one pdoc='{}'
+  local doc record problem hypo tiers judged one pdoc='{}'
   doc=$(cat)
   if [ "$add" = true ]; then
     # --add: new phases with their plans, checks and rules, appended to the milestone;
-    # every existing item stays as it is; the merged whole meets every rule a full apply does.
+    # every existing item stays as it is, its tier included; the rigor floor and the
+    # one-plan-per-express rule judge the new phases only, every other rule the merged whole.
     printf '%s' "$doc" | jq -e 'type == "object" and (.phases | type == "array" and length > 0)
         and all(.phases[]; type == "object" and (.id | type == "string") and (.reqs | type == "array"))
         and all(.plans, .checks, .rules; . == null or (type == "array" and all(.[]; type == "object")))' > /dev/null 2>&1 \
@@ -133,7 +137,10 @@ cmd_apply() {
   hypo=$(printf '%s' "$record" | jq -c --argjson d "$doc" '.milestone.id as $m
     | .phases = [(.phases[] | select(.milestone != $m)), ($d.phases[] | {id, title, reqs, milestone: $m} + (with_entries(select(.key | IN("goal", "tier")))))]
     | .plans = [.plans[] | select(.phase as $p | $d.phases | any(.id == $p) | not)] + [$d.plans[] | {id, phase, title, reqs, files, after: (.after // [])}]')
-  tiers=$(printf '%s' "$hypo" | rigor_assess "$(printf '%s' "$doc" | jq -r '.phases[].id')" 2> /dev/null) \
+  # The phases judged: with --add only the ones it brings, else every phase of the doc.
+  judged=$doc
+  [ "$add" = false ] || judged=$pdoc
+  tiers=$(printf '%s' "$hypo" | rigor_assess "$(printf '%s' "$judged" | jq -r '.phases[].id')" 2> /dev/null) \
     || vbw_die "internal error: cannot compute the rigor tiers"
   problem=$(printf '%s' "$tiers" | jq -r --argjson d "$doc" '[.[] | . as $a | ([$d.phases[] | select(.id == $a.id)][0].tier) as $s
       | select($s != null and ($s | IN("express", "standard", "deep")) and (["express", "standard", "deep"] | index($s)) < (["express", "standard", "deep"] | index($a.floor)))
