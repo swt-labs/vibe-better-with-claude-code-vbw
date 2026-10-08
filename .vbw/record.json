@@ -13391,7 +13391,7 @@
         "tests/kernel-qafresh.bats"
       ],
       "after": [],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "Save, next to each check's result, a fingerprint of the committed content of the files that check depends on (its own files plus the files of every plan serving its requirement), beside the fingerprint of its approved definition. Use the existing checks_fingerprint; add no new file or ledger.",
@@ -13412,7 +13412,7 @@
         "docs/proof.md"
       ],
       "after": [],
-      "status": "planned",
+      "status": "done",
       "role": "docs",
       "tasks": [
         "Rewrite 'Reusing results in vbw prove': a check runs again when its served files (its own files and the files of every plan that serves its requirement) changed, when its approved definition changed, or when its last result was fail, timeout or lost; every other result is reused and shown as reused with the time it really ran, plus the line 'checks: N ran, M reused'.",
@@ -13498,7 +13498,7 @@
         "plugin/skills/qa/SKILL.md"
       ],
       "after": [],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "plugin/agents/qa.md: if vbw qa record refuses, run vbw prove --full, then record once more (replace the old advice to run vbw prove).",
