@@ -1,6 +1,6 @@
 # Workflows and agents
 
-VBW's engine is seven Claude Code workflows (`plugin/workflows/*.js`) and
+VBW's engine is eight Claude Code workflows (`plugin/workflows/*.js`) and
 VBW 1's team of seven agents (`plugin/agents/*.md`): Architect, Lead, Dev, QA,
 Scout, Debugger and Docs, with their VBW 1 mandates. The workflows hold the
 procedure: who runs, in what order, in parallel or not. The agents hold the
@@ -130,6 +130,23 @@ only read; the lease also tells the autonomy gate a workflow is still running). 
 
 The main session is never held to a lease, so the user can always step in. A
 lease older than 24 hours is ignored (a crashed run must not lock a project).
+
+## The recommending workflow
+
+`vbw:recommending` writes the what's-next recommendation
+([docs/whats-next.md](whats-next.md)). The `vbw:whats-next` skill runs it; it
+opens no run lease, and it is not started while another run is open.
+
+`args`: `summary` (the output of `vbw triage --json`), `declined` (declined
+suggestions), `models`, `effort` and `profile`. It makes one Architect call,
+with `models.architect`, the effort `architect.recommend` and a reply schema
+(top pick with `text`, `reason`, `size` and optional `source`; up to two
+runners-up). The Architect reads the record only.
+
+It returns `{recommendation: {top, runners}}`. With no open requirement and an
+empty backlog it runs no agent and returns `{recommendation: {empty: true}}`.
+If the Architect fails it returns `{error}` and no recommendation. The skill
+pipes a recommendation to `vbw recommend`, which stores it.
 
 ## Kernel commands agents use
 
@@ -273,7 +290,7 @@ that level and depth.
 
 Without `args.profile`, or for a missing value, the workflow uses the middle
 choices (`small scripts or no-code`, `plain with technical terms explained`,
-`options with a recommendation`). All seven workflows do this.
+`options with a recommendation`). All eight workflows do this.
 
 Each agent file has a section on the user's words: what reaches the user is the
 agent's summary, notes and questions, and those follow the level and depth.

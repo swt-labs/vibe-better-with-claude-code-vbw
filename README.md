@@ -114,6 +114,8 @@ This project exists to make AI coding better for everyone, and "everyone" means 
 
 New ideas you bring to `/vbw:vibe` are sorted first into now, next or later: `now` joins the active milestone; `next` and `later` go into the backlog (`/vbw:todo`), each with a size. You confirm or overrule in one menu. See [docs/triage.md](docs/triage.md).
 
+After each ship, and whenever you ask (`/vbw:vibe what's next`), the Architect recommends what to do next: a top pick with its reason and size, and up to two runners-up. `vbw status` shows it. See [docs/whats-next.md](docs/whats-next.md).
+
 ### Done means checked
 
 Every requirement is one of two kinds: something a program can check, or something only you can judge. The first kind gets a check, written before the code, that fails until the work is right. The second kind comes back to you at the end. Nothing is marked done because an AI felt good about it.
@@ -357,6 +359,7 @@ Here's when each one shows up to work:
 | Mapping | `/vbw:map`, or planning on existing code | a Scout per angle, then one merged map |
 | Researching | `/vbw:research` | four Scouts, then one sourced answer |
 | Investigating | `/vbw:debug` | three Debuggers (reproduce, trace, history), one diagnosis, then one fix |
+| Recommending | `/vbw:vibe` after a ship, or when you ask what's next | the Architect, once |
 
 The full reference is [docs/workflows.md](docs/workflows.md).
 
