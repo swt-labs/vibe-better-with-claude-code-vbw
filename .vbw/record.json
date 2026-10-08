@@ -14392,14 +14392,13 @@
         "P82.2",
         "P82.3"
       ],
-      "status": "blocked",
+      "status": "planned",
       "role": "dev",
       "tasks": [
         "scenario_smallchange seeds an active milestone whose earlier requirement is planned and proven (its phase and plan done) instead of a shipped one; the user then asks for the --shout change in plain words, as now",
         "its facts add prior_requirements (earlier requirements of that milestone), same_milestone (the request joined it) and prior_kept (earlier phases and plans unchanged); plans counts only the new plans; done is that milestone waiting to ship; tests/l3-smallchange.bats keeps passing",
         "run it in the real app (bash tools/l3-suite.sh smallchange) and commit its result, tools/l3-results/smallchange.json"
-      ],
-      "note": "Two blockers outside this plan's files. (1) Real product bug found by the L3 run (bash tools/l3-suite.sh smallchange, project /var/folders/xl/6lk7wfr15t79zn7fpz2lm1q80000gn/T/vbw-l3-smallchange.1UuIeS): after spec add R2, vbw next said plan with detail.small true; the router sent vbw apply --add with only the new P2 (express), and plugin/lib/cmd-apply.sh refused: 'P1 is planned at express but its signals set the floor at standard (requirements: 1; files: 1 (37 bytes); tests: no project test command)'. --add re-judges the tier floor of the existing, already built phase P1 (its floor now differs from when it was planned) instead of only the added phases; the router then fell back to the planning workflow, so planning_workflow was true and the scenario failed. Fix belongs in cmd-apply.sh (P82.2): with --add, check tier floors only for the phases in the request and keep existing phases' tiers. (2) C182 test 11 (tests/small-request.bats, protected check file) runs plain 'vbw prove' and expects next=ship, but since P76.2 vbw next asks for 'vbw prove --full' before QA or shipping; the test must call prove --full (needs a check-file edit and re-approval). Done here: tools/l3-suite.sh scenario rewritten and committed (74c51512); the failing L3 result was not committed (old passing smallchange.json kept so R72's check stays green); rerun task 3 after (1) is fixed."
+      ]
     },
     {
       "id": "P82.5",
