@@ -123,6 +123,7 @@ VBW is a Claude Code plugin that makes it build software properly: the user agre
 - R116 [auto] A request that names one or two files and no risk path is offered the small-change path (one phase at the tier `vbw next` names, express when its signals allow, one plan and its check, approved once) before any planning workflow starts; a larger or riskier request still goes to planning
 - R118 [auto] When a check or project command fails, the proof keeps its full output in the project's runtime folder, and vbw show fix names that file, so the failing test can be read without running everything again
 - R119 [auto] In the balanced profile the Lead also runs on Opus, and every role other than the Architect and the Lead runs on Sonnet
+- R120 [auto] When the approval hook puts "Approve contract <fingerprint>?" in front of a reworded approval question, the user is still shown the menu and answers it: the hook asks (permissionDecision ask), it never answers the question itself
 
 <!-- One requirement per line: an id, how it is proved, and a user-observable
      statement. [auto] = a check can prove it; [human] = only a person can judge it.

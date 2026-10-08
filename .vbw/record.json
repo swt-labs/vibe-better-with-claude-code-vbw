@@ -3385,6 +3385,27 @@
           "check": "C180"
         }
       ]
+    },
+    {
+      "id": "R120",
+      "text": "When the approval hook puts \"Approve contract <fingerprint>?\" in front of a reworded approval question, the user is still shown the menu and answers it: the hook asks (permissionDecision ask), it never answers the question itself",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M15",
+      "rules": [
+        {
+          "text": "a reworded approval question is rewritten with the fingerprint and the hook asks (permissionDecision ask)",
+          "check": "C185"
+        },
+        {
+          "text": "the hook never supplies answers",
+          "check": "C185"
+        },
+        {
+          "text": "the guards doc says the question is shown and never answered by the hook",
+          "check": "C185"
+        }
+      ]
     }
   ],
   "checks": [
@@ -5532,6 +5553,17 @@
       ],
       "files": [
         "tests/prove-kept-output.bats"
+      ]
+    },
+    {
+      "id": "C185",
+      "req": "R120",
+      "run": [
+        "bats",
+        "tests/approve-ask-shown.bats"
+      ],
+      "files": [
+        "tests/approve-ask-shown.bats"
       ]
     }
   ],
@@ -8966,6 +8998,33 @@
         "qa_findings": 0,
         "escalations": 1
       }
+    },
+    {
+      "id": "P84",
+      "title": "The approval hook shows the question, never answers it",
+      "reqs": [
+        "R120"
+      ],
+      "milestone": "M15",
+      "goal": "A reworded approval question reaches the user with the contract fingerprint in front, and the user answers it",
+      "criteria": [
+        "the hook returns permissionDecision ask with updatedInput",
+        "the hook never supplies answers",
+        "docs/guards.md says the rewritten question is shown, never answered by the hook",
+        "a real Claude Code session shows the rewritten menu and records the user's Approve"
+      ],
+      "proposed": "standard",
+      "tier": "standard",
+      "reasons": [
+        "requirements: 1",
+        "files: 2 (10690 bytes)",
+        "risk: none",
+        "breaks: none",
+        "guarded: R15 (C14), R61 (C73, C74, C75, C76, C77), R75 (C101), R76 (C102, C103), R77 (C104), R114 (C178)",
+        "tests: project test command",
+        "raised by the Architect"
+      ],
+      "predicted": "standard"
     }
   ],
   "plans": [
@@ -14633,6 +14692,24 @@
         "tests/record.bats: record.jq rejects a project.results that is empty, has an entry not ending in /, repeats an entry or names .vbw/ (F80 item 4)",
         "tests/kernel-show.bats: vbw show contract --changes names a changed results folder list (F80 item 5)"
       ]
+    },
+    {
+      "id": "P84.1",
+      "phase": "P84",
+      "title": "approve-ask.sh asks instead of allowing",
+      "reqs": [
+        "R120"
+      ],
+      "files": [
+        "plugin/hooks/approve-ask.sh",
+        "docs/guards.md"
+      ],
+      "after": [],
+      "status": "planned",
+      "tasks": [
+        "plugin/hooks/approve-ask.sh prints permissionDecision ask (not allow) with the rewritten updatedInput; its header comment says why: Claude Code reads allow with updatedInput on AskUserQuestion as the hook answering the question, so the menu was never shown (real app, Claude Code 2.1.295)",
+        "docs/guards.md: the approval-question paragraph says the rewritten question is shown to you and the hook never answers it"
+      ]
     }
   ],
   "fixes": [
@@ -16750,6 +16827,11 @@
       "id": "D202",
       "at": "2026-10-08T19:29:19Z",
       "text": "Contract approved: 113 requirements, 179 checks, 239 plans (d885ddd6be27)"
+    },
+    {
+      "id": "D203",
+      "at": "2026-10-08T20:30:53Z",
+      "text": "Contract approved: 114 requirements, 180 checks, 240 plans (83bd83143c33)"
     }
   ],
   "commands": {
