@@ -29,7 +29,7 @@ without_panel() {
 @test "R53: the panel is a mod named by hooks.json, next to the hooks it had, which are unchanged" {
   jq -e '.modules == ["./panel.js"]' "$PLUGIN_ROOT/hooks/hooks.json"
   # PostToolUse is R61's answer hook (tests/approve-choice-hook.bats pins it).
-  jq -e '(.hooks | keys | sort) == ["PostToolUse", "PreToolUse", "SessionStart"] and (.hooks.PreToolUse | length) == 2 and (.hooks.SessionStart | length) == 1' "$PLUGIN_ROOT/hooks/hooks.json"
+  jq -e '(.hooks | keys | sort) == ["PostToolUse", "PreToolUse", "SessionStart"] and (.hooks.PreToolUse | length) == 3 and (.hooks.SessionStart | length) == 1' "$PLUGIN_ROOT/hooks/hooks.json"
   [ -f "$PLUGIN_ROOT/hooks/panel.js" ] && [ -f "$PLUGIN_ROOT/hooks/panel-view.js" ]
   grep -q '^export function register' "$PLUGIN_ROOT/hooks/panel.js"
 }
