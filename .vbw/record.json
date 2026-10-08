@@ -6,7 +6,7 @@
   "milestone": {
     "id": "M15",
     "title": "Smarter rounds",
-    "status": "active"
+    "status": "shipped"
   },
   "shipped": [
     {
@@ -78,6 +78,11 @@
       "id": "M14",
       "title": "Cheaper runs",
       "at": "2026-10-08T11:54:34Z"
+    },
+    {
+      "id": "M15",
+      "title": "Smarter rounds",
+      "at": "2026-10-08T22:58:02Z"
     }
   ],
   "requirements": [
@@ -16847,6 +16852,11 @@
       "id": "D203",
       "at": "2026-10-08T20:30:53Z",
       "text": "Contract approved: 114 requirements, 180 checks, 240 plans (83bd83143c33)"
+    },
+    {
+      "id": "D204",
+      "at": "2026-10-08T22:58:02Z",
+      "text": "Shipped M15 Smarter rounds: 6 requirements proven or accepted"
     }
   ],
   "commands": {
