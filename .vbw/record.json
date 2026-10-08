@@ -8892,10 +8892,10 @@
       "qa": {
         "result": "fail",
         "tier": "deep",
-        "tree": "d4229437eddf04bc29ddf1712ba7d766bd33e2e69406ade9a932b1be7ec7ebb3",
-        "at": "2026-10-08T17:25:38Z",
-        "note": "33/34 checks",
-        "rounds": 2
+        "tree": "977aec7c3136874a59114ba2febe3de1ac49e0593060866094753e3b5d409666",
+        "at": "2026-10-08T18:54:06Z",
+        "note": "31/32 checks",
+        "rounds": 3
       }
     },
     {
@@ -15254,7 +15254,7 @@
       "req": "R116",
       "source": "qa",
       "attempts": 0,
-      "status": "fixed",
+      "status": "closed",
       "note": "vbw apply --add lets a new phase take over a requirement that a phase in an earlier milestone already covers, and then overwrites that requirement's rules. Plan P82.2 says --add refuses 'a requirement another phase already covers' and keeps 'every existing item byte for byte'. The check in plugin/lib/cmd-apply.sh (the 'is already covered by' line, about line 56) only looks at phases of the current milestone ($ph). Evidence: on a copy of the real-app project vbw-l3-smallchange.n0Yjk3 (M1 shipped with P1 covering R1; M2 active), after 'vbw spec add auto ...' I ran 'vbw apply --add' with a phase P3 for R1 and a check C9. It printed 'applied 2 phases, 2 plans, 3 checks in all' (exit 0), P3 now sits in M2 covering R1, and R1's two rules ('a name is greeted', 'no name greets the world', check C1) were replaced by one rule 'bye' on C9. A full vbw apply has the same gap (it was there before this phase), but --add promised the refusal. No test covers a requirement from another milestone. Options: (a, recommended) in --add, refuse a requirement that is covered by any phase in the record, or that belongs to another milestone, with the same 'is already covered by' message, and add a test with a shipped milestone; (b) also add the same refusal to the full vbw apply, so both paths agree; (c) only change the docs and plan wording to say 'in this milestone'."
     },
     {
@@ -15264,6 +15264,14 @@
       "attempts": 0,
       "status": "open",
       "note": "vbw show fix lists a project command that was skipped (status skipped: not approved) as a failing project command and tells the Dev 'full output not kept: run vbw prove again'. Plan P83.2 task 1 and the criterion say the commands list holds every failing project command, and vbw prove itself counts a skipped command as passed (cmd-prove.sh:66, passed allows skipped). Cause: plugin/lib/cmd-show.sh show_work, def failing: . != null and .status != \"pass\", used for commands: [... select(.value | failing) ...]. Evidence: jq on {lint:{status:skipped}} with that filter returns [{name:lint,status:skipped}]. Reachable: commands are not part of the contract hash (contract.sh contract_core), so a command added or changed in spec.md after approval, or a named but unapproved quick (proofreuse.sh proofreuse_names), is recorded as skipped. Running vbw prove again does not help; the command needs approval. Fix: list only fail and timeout commands (and add a test in tests/prove-kept-output.bats with a skipped command)."
+    },
+    {
+      "id": "F84",
+      "req": "R116",
+      "source": "qa",
+      "attempts": 0,
+      "status": "escalated",
+      "note": "One safety refusal of 'vbw apply --add' has no test, so it could be deleted and every test would still pass. In plugin/lib/cmd-apply.sh, lines 64-65 refuse a check or a rule (a rule is one condition a requirement states, paired with the check that tests it) whose requirement is not one of the new phases, with the message 'is for R1, not a requirement of the phases this --add brings'. That refusal is the only thing that keeps an earlier requirement's checks and rules unchanged, which the plan promises (P82.2: 'every existing item stays byte for byte'; rule: 'vbw apply --add keeps every existing phase, plan, check and rule'). Evidence: no test contains that message (searched tests/*.bats). Reading the code without lines 64-65: a --add document for new phase P3 (R3) that also carries a check C9 for R1 and a rule for R1 on C9 passes every other test in the file (the rule names a check of R1 in the merged plan, line 132), and line 191 then gives R1 a new rule and the record a new check. Commit 3fdc4d86 says 'each --add refusal tested', which is not quite true. Options: (a, recommended) in tests/small-request.bats, test 'in a milestone where no work has started...', add two add_refused cases, a doc with an extra check for R1 and a doc with an extra rule for R1, each expecting 'is for R1, not a requirement of the phases this --add brings' (the file is protected by C182, so it needs one contract approval); (b) the same cases in a new unprotected test file, which would leave the R116 rules split across two files."
     }
   ],
   "todos": [
