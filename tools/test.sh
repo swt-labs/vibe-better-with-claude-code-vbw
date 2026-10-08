@@ -27,7 +27,8 @@ quick_files() {
       tests/standards.bats|tests/standards-selftest.bats) echo "$f"; continue ;;
       tests/prove-parallel.bats|tests/guard-cost.bats|tests/bench-hooks.bats|tests/proof-stale-links.bats) continue ;;
     esac
-    printf '%s\n' "$covered" | grep -qxF "$f" || echo "$f"
+    # A here-string, not a pipe: under pipefail an early grep -q exit makes printf fail (SIGPIPE).
+    grep -qxF "$f" <<< "$covered" || echo "$f"
   done
 }
 
