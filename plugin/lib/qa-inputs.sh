@@ -7,6 +7,10 @@
 # digest is the pass's qa.tree in the record (no new field). The per-input
 # digests live in this clone's cache $(git-common-dir)/vbw/qa.json, which only
 # names the reason: missing or damaged reads as no cache. lib/qa.jq decides.
+# The files digest leaves out .vbw/, documentation (is_doc) and, only while the
+# contract naming them is approved, files in project.results folders (R115);
+# a file a phase's check lists or runs stays in, and so does every file of a
+# phase whose every plan lists only documentation: that is its code.
 
 # qa_tree: read paths (one per line), print the digest of what HEAD holds there.
 qa_tree() {
