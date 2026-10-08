@@ -13652,7 +13652,7 @@
         "plugin/skills/interview/SKILL.md"
       ],
       "after": [],
-      "status": "planned",
+      "status": "done",
       "tasks": [
         "say 'before any spec or convert work' in the interview skill"
       ]
