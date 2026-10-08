@@ -45,6 +45,7 @@ cmd_prove() {
     [ ${#TODO_CHECKS[@]} -eq 0 ] || checks=$(checks_run_all "$record" "${TODO_CHECKS[@]}")
     commands=$(prove_commands "$record" "$TODO_COMMANDS")
     cd "$VBW_ROOT" || vbw_die "cannot enter $VBW_ROOT"
+    checks_keep "$checks" "$commands"
     proofcopy_remove
   fi
   checks_end

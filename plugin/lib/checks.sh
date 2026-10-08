@@ -37,6 +37,29 @@ checks_kept() {
   esac
 }
 
+# checks_keep CHECKS COMMANDS: the results ({name: result}) of the checks and
+# project commands that just ran, their output still in CHECK_OUT. Each failure
+# or timeout moves its complete output to its kept file, replacing the older
+# one (renamed from a temporary file in the same folder, so a reader never sees
+# half a file).
+checks_keep() {
+  local kind name status out kept dir tmp
+  dir="$VBW_RUNTIME/output"
+  while IFS=$'\x1f' read -r -d '' kind name status; do
+    if [ "$kind" = check ]; then out="$CHECK_OUT/$name.out"; else out="$CHECK_OUT/cmd-$name.out"; fi
+    kept="$VBW_ROOT/$(checks_kept "$kind" "$name")"
+    case "$status" in
+      fail | timeout)
+        [ -f "$out" ] || continue
+        mkdir -p "$dir" || vbw_die "cannot create $dir"
+        tmp=$(mktemp "$dir/keep.XXXXXX") || vbw_die "cannot create a temporary file in $dir"
+        mv -f "$out" "$tmp" && mv -f "$tmp" "$kept" || { rm -f "$tmp"; vbw_die "cannot keep the output of $name in $kept"; }
+        ;;
+    esac
+  done < <(jq -n -j --argjson c "$1" --argjson m "$2" \
+    '($c | to_entries[] | "check\u001f\(.key)\u001f\(.value.status)\u0000"), ($m | to_entries[] | "command\u001f\(.key)\u001f\(.value.status)\u0000")')
+}
+
 # checks_exec TIMEOUT OUTFILE ARGV...: run ARGV from the project root, output to
 # OUTFILE, stopped at TIMEOUT seconds. Sets CHECK_CODE and CHECK_SECONDS.
 checks_exec() {
