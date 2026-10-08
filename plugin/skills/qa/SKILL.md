@@ -12,7 +12,7 @@ allowed-tools: Bash("${CLAUDE_PLUGIN_ROOT}/bin/vbw" *) Bash(vbw *)
 
 Write to the user's level, explanation depth and involvement (above; "-": plain words).
 
-1. If the contract is approved, run `vbw prove`; otherwise say the plan and its
+1. If the contract is approved, run `vbw prove --full`; otherwise say the plan and its
    tests wait for approval, ask only with the approval menu (AskUserQuestion),
    never to type a command, and stop.
 2. Explain the result in plain words, requirement by requirement: proven,
