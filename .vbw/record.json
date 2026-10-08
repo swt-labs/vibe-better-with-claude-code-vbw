@@ -2603,7 +2603,24 @@
       "proof": "auto",
       "status": "open",
       "milestone": "M15",
-      "rules": []
+      "rules": [
+        {
+          "text": "in the balanced profile vbw config models gives the Architect opus",
+          "check": "C179"
+        },
+        {
+          "text": "the planning workflow started with the balanced models runs the Architect on opus",
+          "check": "C179"
+        },
+        {
+          "text": "QA is sonnet or opus in every profile (quality, balanced, budget) and every rigor tier (express, standard, deep)",
+          "check": "C179"
+        },
+        {
+          "text": "vbw config set model.qa haiku is refused with a message naming the allowed models, and the setting is unchanged",
+          "check": "C179"
+        }
+      ]
     },
     {
       "id": "R102",
@@ -3179,7 +3196,56 @@
       "proof": "auto",
       "status": "open",
       "milestone": "M15",
-      "rules": []
+      "rules": [
+        {
+          "text": "a commit of only .md, .markdown or .rst files the phase lists leaves it off the list in vbw next --json and vbw show qa",
+          "check": "C181"
+        },
+        {
+          "text": "a commit of only a plain .txt file the phase lists puts it back on the list",
+          "check": "C181"
+        },
+        {
+          "text": "the spec names saved test results folders; adding or changing the list makes the contract wait for approval",
+          "check": "C181"
+        },
+        {
+          "text": "after approval, a commit of only files inside a listed results folder leaves the phase off the list",
+          "check": "C181"
+        },
+        {
+          "text": "a spec that names no results folder gives no exemption",
+          "check": "C181"
+        },
+        {
+          "text": "until a changed folder list is approved, a change inside the new folder puts the phase back on the list",
+          "check": "C181"
+        },
+        {
+          "text": "a file a check of the phase runs or lists counts as a test, even as Markdown or inside a results folder",
+          "check": "C181"
+        },
+        {
+          "text": "a commit of documentation and one code file puts the phase back on the list",
+          "check": "C181"
+        },
+        {
+          "text": "a change to the phase's goal, success criteria or plans puts it back on the list",
+          "check": "C181"
+        },
+        {
+          "text": "a phase built on another stays off when that phase changed only documentation or results, and is listed when its code changed",
+          "check": "C181"
+        },
+        {
+          "text": "a phase whose every plan changes only documents is listed again when they change",
+          "check": "C181"
+        },
+        {
+          "text": "each phase listed again still names what changed",
+          "check": "C181"
+        }
+      ]
     },
     {
       "id": "R116",
@@ -3187,7 +3253,52 @@
       "proof": "auto",
       "status": "open",
       "milestone": "M15",
-      "rules": []
+      "rules": [
+        {
+          "text": "small is judged on the requirements with no phase yet: earlier planned or proven ones, [human] included, do not count",
+          "check": "C182"
+        },
+        {
+          "text": "one or two new [auto] requirements naming one or two files and no risk are small",
+          "check": "C182"
+        },
+        {
+          "text": "a request naming three or more distinct files is not small",
+          "check": "C182"
+        },
+        {
+          "text": "a request naming a risk-path file or a risk category is not small",
+          "check": "C182"
+        },
+        {
+          "text": "three or more new requirements, or a new [human] one, are not small",
+          "check": "C182"
+        },
+        {
+          "text": "rigor forced to standard or deep is never small; auto and express keep the rules",
+          "check": "C182"
+        },
+        {
+          "text": "the small path applies one express phase, plan and check numbered from next_phase with vbw apply --add, no planning workflow, approved once",
+          "check": "C182"
+        },
+        {
+          "text": "vbw apply --add keeps every existing phase, plan, check and rule, and refuses a phase that exists or a requirement already covered",
+          "check": "C182"
+        },
+        {
+          "text": "a request that is not small goes to the planning workflow as before",
+          "check": "C182"
+        },
+        {
+          "text": "in a repository tracking more than 30 files an express phase over more than two files is refused",
+          "check": "C182"
+        },
+        {
+          "text": "the real-app smallchange scenario takes a one-file request in a milestone with earlier requirements to done and passes",
+          "check": "C183"
+        }
+      ]
     },
     {
       "id": "R118",
@@ -3195,7 +3306,48 @@
       "proof": "auto",
       "status": "open",
       "milestone": "M15",
-      "rules": []
+      "rules": [
+        {
+          "text": "a check that fails on its exit code or misses its expected output keeps its complete output in .vbw/runtime",
+          "check": "C184"
+        },
+        {
+          "text": "a check that times out keeps its complete output",
+          "check": "C184"
+        },
+        {
+          "text": "a project command that fails or times out keeps its complete output",
+          "check": "C184"
+        },
+        {
+          "text": "the kept output survives the end of the proof and the removal of its clean copy",
+          "check": "C184"
+        },
+        {
+          "text": "each check and command has one kept file, its latest failure replacing the old one",
+          "check": "C184"
+        },
+        {
+          "text": "a later pass removes the kept file; a reused result keeps it",
+          "check": "C184"
+        },
+        {
+          "text": "checks failing in parallel each keep their own complete file",
+          "check": "C184"
+        },
+        {
+          "text": "vbw show fix names the kept file of every failing check of its requirement and every failing project command, and --json gives the same paths",
+          "check": "C184"
+        },
+        {
+          "text": "a missing kept file makes vbw show fix say the output is not kept and to run vbw prove again",
+          "check": "C184"
+        },
+        {
+          "text": "kept output is never committed and never written outside .vbw/runtime",
+          "check": "C184"
+        }
+      ]
     },
     {
       "id": "R119",
@@ -3203,7 +3355,32 @@
       "proof": "auto",
       "status": "open",
       "milestone": "M15",
-      "rules": []
+      "rules": [
+        {
+          "text": "in the balanced profile vbw config models gives the Lead opus and dev, qa, scout, debugger and docs sonnet",
+          "check": "C180"
+        },
+        {
+          "text": "the planning workflow started with the balanced models runs the Lead (plan and close) on opus and no other agent on opus",
+          "check": "C180"
+        },
+        {
+          "text": "the quality and budget profiles give every role the same model as before",
+          "check": "C180"
+        },
+        {
+          "text": "a user's own per-role model setting wins over the balanced default",
+          "check": "C180"
+        },
+        {
+          "text": "the panel's team table matches plugin/lib/profiles.json",
+          "check": "C180"
+        },
+        {
+          "text": "README, the config and profile skills and docs/record.md show the Lead on Opus in balanced",
+          "check": "C180"
+        }
+      ]
     }
   ],
   "checks": [
@@ -5040,17 +5217,6 @@
       ]
     },
     {
-      "id": "C157",
-      "req": "R101",
-      "run": [
-        "bats",
-        "tests/profile-balanced.bats"
-      ],
-      "files": [
-        "tests/profile-balanced.bats"
-      ]
-    },
-    {
       "id": "C158",
       "req": "R102",
       "run": [
@@ -5290,6 +5456,78 @@
       ],
       "files": [
         "tests/approve-ask.bats"
+      ]
+    },
+    {
+      "id": "C179",
+      "req": "R101",
+      "run": [
+        "bats",
+        "tests/profile-architect-qa.bats"
+      ],
+      "files": [
+        "tests/profile-architect-qa.bats",
+        "tests/rigor-helper.bash",
+        "tests/helpers/run-workflow.js"
+      ]
+    },
+    {
+      "id": "C180",
+      "req": "R119",
+      "run": [
+        "bats",
+        "tests/profile-lead-opus.bats"
+      ],
+      "files": [
+        "tests/profile-lead-opus.bats",
+        "tests/helpers/run-workflow.js"
+      ]
+    },
+    {
+      "id": "C181",
+      "req": "R115",
+      "run": [
+        "bats",
+        "tests/qa-recheck-docs.bats"
+      ],
+      "files": [
+        "tests/qa-recheck-docs.bats",
+        "tests/qa-recheck-helper.bash"
+      ],
+      "timeout": 600
+    },
+    {
+      "id": "C182",
+      "req": "R116",
+      "run": [
+        "bats",
+        "tests/small-request.bats"
+      ],
+      "files": [
+        "tests/small-request.bats",
+        "tests/rigor-helper.bash"
+      ]
+    },
+    {
+      "id": "C183",
+      "req": "R116",
+      "run": [
+        "bats",
+        "tests/l3-smallchange-added.bats"
+      ],
+      "files": [
+        "tests/l3-smallchange-added.bats"
+      ]
+    },
+    {
+      "id": "C184",
+      "req": "R118",
+      "run": [
+        "bats",
+        "tests/prove-kept-output.bats"
+      ],
+      "files": [
+        "tests/prove-kept-output.bats"
       ]
     }
   ],
@@ -8493,6 +8731,135 @@
         "qa_findings": 1,
         "escalations": 0
       }
+    },
+    {
+      "id": "P80",
+      "title": "Balanced profile: Architect and Lead on Opus, everyone else on Sonnet",
+      "reqs": [
+        "R101",
+        "R119"
+      ],
+      "milestone": "M15",
+      "goal": "In the balanced profile the two planning roles (Architect and Lead) run on Opus and every other role runs on Sonnet, and QA never runs below Sonnet in any profile.",
+      "criteria": [
+        "In a project on the balanced profile, `vbw config models` lists architect opus, lead opus, and dev, qa, scout, debugger and docs sonnet",
+        "The planning workflow started from `vbw next --json` in the balanced profile launches the Architect and the Lead with model opus and every other agent with model sonnet",
+        "The quality and budget profiles give every role the same model as before this phase",
+        "In every profile (quality, balanced, budget) and every rigor tier (express, standard, deep), QA's model is sonnet or opus, never haiku",
+        "A request to put QA below Sonnet (for example `vbw config model.qa haiku`) is refused with a message naming the allowed models, and the setting is unchanged",
+        "A user's own per-role model setting (`vbw config model.<role> ...`) still takes precedence over the balanced profile's default for that role",
+        "The user documentation and skills that describe the balanced profile (README, the config and profile skills, the panel's team table) show the Lead on Opus and match `plugin/lib/profiles.json`",
+        "The tests that pin the balanced profile's models expect the Lead on Opus and pass"
+      ],
+      "tier": "deep",
+      "reasons": [
+        "requirements: 2",
+        "files: 12 (112172 bytes)",
+        "files: more than 2 in a repository tracking 734 files",
+        "risk: none",
+        "breaks: R20",
+        "guarded: R3 (C3), R16 (C15), R23 (C20), R25 (C24), R27 (C21), R28 (C25), R31 (C27), R32 (C28), R33 (C29), R35 (C31), R36 (C32), R38 (C33, C34), R39 (C36), R40 (C37), R43 (C42, C43), R45 (C39, C40, C41), R46 (C46), R47 (C47), R49 (C48), R51 (C52, C53, C66), R52 (C58, C91), R53 (C54, C55), R55 (C56, C57), R57 (C59, C70, C71), R61 (C73, C74, C75, C76, C77), R62 (C78, C79, C80, C81, C82, C83, C93), R65 (C86, C87, C88, C89, C90), R81 (C109, C111, C112, C113), R84 (C123), R99 (C155), R107 (C166, C167), R111 (C171, C172, C173, C174, C175)",
+        "tests: project test command"
+      ],
+      "predicted": "deep"
+    },
+    {
+      "id": "P81",
+      "title": "No QA re-check after documentation or saved test results change",
+      "reqs": [
+        "R115"
+      ],
+      "milestone": "M15",
+      "goal": "A phase that already passed QA is not put back on QA's list when the only files changed since its pass are documentation or saved test results in folders the project's spec names, while any change to its code, its tests or its goal still puts it back.",
+      "criteria": [
+        "After a phase passes QA, a commit that changes only .md, .markdown or .rst files listed by that phase's plans leaves the phase off QA's re-check list (`vbw next --json` qa.recheck and `vbw show qa`)",
+        "A commit that changes only a plain .txt file the phase lists still puts the phase back on the list (plain text is data, decision D144)",
+        "The project's spec can name folders that hold saved test results; the folder list is approved like any other spec change, so adding or changing it makes the contract wait for approval again",
+        "After that approval, a commit that changes only files inside a listed results folder leaves the passed phase off the re-check list",
+        "A project whose spec names no results folder gets no exemption: a change to any non-documentation file the phase lists still puts the phase back on the list (decision D195)",
+        "Until a changed results-folder list is approved, changes inside the new folder still put the phase back on the list",
+        "A file that one of the phase's checks runs or lists as its files counts as a test: changing it puts the phase back on the list even when it is Markdown or sits inside a results folder",
+        "A commit that changes both documentation and one code file of the phase puts the phase back on the list",
+        "A change to the phase's goal, success criteria or plans still puts it back on the list",
+        "A phase built on another phase stays off the list when that other phase changed only documentation or saved results, and is listed again when that other phase's code changed",
+        "A phase whose own product is documentation (every plan of it changes only documents) is still listed again when those documents change, because they are its code",
+        "The reason QA gives for each phase it does list again still names what changed"
+      ],
+      "tier": "standard",
+      "reasons": [
+        "requirements: 1",
+        "files: 8 (94250 bytes)",
+        "files: more than 2 in a repository tracking 734 files",
+        "risk: none",
+        "breaks: none",
+        "guarded: R10 (C9), R12 (C11), R13 (C12), R14 (C13), R22 (C19), R23 (C20), R24 (C23), R25 (C24), R27 (C21), R28 (C25), R31 (C27), R32 (C28), R33 (C29), R38 (C33, C34), R40 (C37), R43 (C42, C43), R44 (C44, C45), R45 (C39, C40, C41), R46 (C46), R47 (C47), R48 (C49, C50), R49 (C48), R61 (C73, C74, C75, C76, C77), R62 (C78, C79, C80, C81, C82, C83, C93), R65 (C86, C87, C88, C89, C90), R66 (C95), R69 (C110, C120, C122), R70 (C114), R73 (C98), R74 (C99, C100), R78 (C105, C106), R79 (C107), R80 (C108), R81 (C109, C111, C112, C113), R92 (C131, C132, C133, C134, C135, C136, C137, C138, C139), R93 (C140, C141, C142, C143, C144), R94 (C145, C146, C147, C148), R97 (C153), R98 (C154), R99 (C155), R100 (C156), R102 (C158, C159), R103 (C160), R104 (C161, C162), R105 (C163), R110 (C169, C170), R111 (C171, C172, C173, C174, C175), R113 (C177)",
+        "tests: project test command"
+      ],
+      "predicted": "standard"
+    },
+    {
+      "id": "P82",
+      "title": "Small requests get the small-change path",
+      "reqs": [
+        "R116"
+      ],
+      "milestone": "M15",
+      "goal": "A new request that names one or two files and touches no risk path is offered the small-change path (one express phase, one plan and its check, approved once) before any planning workflow starts, even inside a milestone that already has other work, while a larger or riskier request still goes to planning.",
+      "criteria": [
+        "Whether a request is small is judged on the requirements that have no phase yet (the new request), not on every requirement in the milestone: adding one [auto] requirement that names one file to a milestone whose other requirements are planned or proven makes `vbw next --json` report the plan step with detail.small true",
+        "A new request of one or two [auto] requirements whose text names one or two files, none of them a risk path, and no risk category (sign-in, payments, data migration, secrets, deletion, CI) is reported small",
+        "A request that names three or more files is not reported small",
+        "A request that names a risk-path file (for example .github/workflows/ci.yml or .env) or whose text names a risk category is not reported small",
+        "A request of three or more new requirements, or with a [human] requirement, is not reported small",
+        "With rigor forced to standard or deep (`vbw config rigor standard|deep`) no request is reported small; with auto or express the rules above apply",
+        "When the plan step is small, the router starts no planning workflow: it applies one express phase with one plan and one check, numbered from next_phase, and the user approves the contract once",
+        "When the plan step is not small, the router runs the planning workflow as before",
+        "In a repository tracking more than 30 files, `vbw apply` still refuses an express phase whose plan lists more than two files, so a request that turns out bigger falls back to planning",
+        "The real-app small-change scenario (tools/l3-smallchange) covers a one-file request added to a milestone that already has planned or proven requirements and passes"
+      ],
+      "tier": "standard",
+      "reasons": [
+        "requirements: 1",
+        "files: 9 (167216 bytes)",
+        "files: more than 2 in a repository tracking 734 files",
+        "risk: none",
+        "breaks: R41",
+        "guarded: R3 (C3), R4 (C4), R5 (C5), R8 (C8), R13 (C12), R14 (C13), R22 (C19), R23 (C20), R24 (C23), R25 (C24), R26 (C22), R27 (C21), R28 (C25), R29 (C26), R31 (C27), R34 (C30), R35 (C31), R37 (C35), R38 (C33, C34), R39 (C36), R40 (C37), R42 (C38), R43 (C42, C43), R44 (C44, C45), R45 (C39, C40, C41), R46 (C46), R47 (C47), R48 (C49, C50), R49 (C48), R50 (C51), R51 (C52, C53, C66), R59 (C68, C92), R60 (C72, C94), R61 (C73, C74, C75, C76, C77), R62 (C78, C79, C80, C81, C82, C83, C93), R64 (C84, C85), R65 (C86, C87, C88, C89, C90), R66 (C95), R67 (C96), R69 (C110, C120, C122), R70 (C114), R71 (C115, C121), R72 (C116, C118), R73 (C98), R74 (C99, C100), R75 (C101), R76 (C102, C103), R77 (C104), R78 (C105, C106), R79 (C107), R80 (C108), R81 (C109, C111, C112, C113), R83 (C119), R95 (C149, C150), R96 (C151, C152), R98 (C154), R99 (C155), R100 (C156), R102 (C158, C159), R104 (C161, C162), R105 (C163), R106 (C164, C165), R107 (C166, C167), R111 (C171, C172, C173, C174, C175)",
+        "tests: project test command"
+      ],
+      "predicted": "standard"
+    },
+    {
+      "id": "P83",
+      "title": "A failing check's full output is kept and named",
+      "reqs": [
+        "R118"
+      ],
+      "milestone": "M15",
+      "goal": "When a check or a project command fails during a proof, its full output is saved in the project's runtime folder and `vbw show fix` names that file, so the failure can be read without running the whole proof again.",
+      "criteria": [
+        "When a check fails (wrong exit code or missing expected output) during `vbw prove`, a file in .vbw/runtime holds that check's complete output, not only the last 20 lines",
+        "A check that times out keeps its complete output the same way",
+        "A project command (for example test or quick) that fails or times out keeps its complete output the same way",
+        "The kept output survives the end of the proof, including when the proof ran on a clean copy of the committed code that is then removed",
+        "Each check and each command has one kept file holding its latest failure; a new failure replaces the old one",
+        "When a check or command passes in a later proof, its kept failure file is removed; a check whose result is reused (not run again) keeps its file",
+        "Checks that fail in parallel in one proof each get their own complete, uninterrupted file",
+        "`vbw show fix <id>` names the kept file for every failing check of the fix's requirement and every failing project command; `vbw show fix <id> --json` gives the same paths",
+        "When a kept file is missing (deleted, or another clone), `vbw show fix` says the full output is not kept and to run vbw prove again, instead of naming a file that does not exist",
+        "Kept output is never committed and never written outside the project's .vbw/runtime folder"
+      ],
+      "tier": "standard",
+      "reasons": [
+        "requirements: 1",
+        "files: 5 (90816 bytes)",
+        "files: more than 2 in a repository tracking 734 files",
+        "risk: none",
+        "breaks: none",
+        "guarded: R12 (C11), R13 (C12), R14 (C13), R22 (C19), R24 (C23), R25 (C24), R28 (C25), R31 (C27), R32 (C28), R39 (C36), R43 (C42, C43), R44 (C44, C45), R45 (C39, C40, C41), R46 (C46), R47 (C47), R48 (C49, C50), R49 (C48), R50 (C51), R60 (C72, C94), R61 (C73, C74, C75, C76, C77), R66 (C95), R69 (C110, C120, C122), R70 (C114), R73 (C98), R74 (C99, C100), R75 (C101), R76 (C102, C103), R77 (C104), R78 (C105, C106), R79 (C107), R80 (C108), R81 (C109, C111, C112, C113), R83 (C119), R92 (C131, C132, C133, C134, C135, C136, C137, C138, C139), R93 (C140, C141, C142, C143, C144), R94 (C145, C146, C147, C148), R95 (C149, C150), R96 (C151, C152), R97 (C153), R98 (C154), R99 (C155), R100 (C156), R102 (C158, C159), R103 (C160), R104 (C161, C162), R105 (C163), R106 (C164, C165), R107 (C166, C167), R110 (C169, C170), R111 (C171, C172, C173, C174, C175)",
+        "tests: project test command"
+      ],
+      "predicted": "standard"
     }
   ],
   "plans": [
@@ -13808,6 +14175,295 @@
         "a PreToolUse hook on AskUserQuestion: when the user (no agent_type) is asked a question whose options include Approve and Not yet, the question does not start with 'Approve contract ' plus a fingerprint, and the contract is not approved, answer with updatedInput whose question is 'Approve contract <12-char fingerprint>? ' followed by the original question; otherwise print nothing",
         "the common path (any other question) stays one jq call; the fingerprint comes from vbw show contract"
       ]
+    },
+    {
+      "id": "P80.1",
+      "phase": "P80",
+      "title": "Lead on Opus in the balanced profile",
+      "reqs": [
+        "R101",
+        "R119"
+      ],
+      "files": [
+        "plugin/lib/profiles.json",
+        "plugin/hooks/panel-mission-record.js",
+        "plugin/lib/cmd-config.sh",
+        "tests/kernel-surface.bats",
+        "tests/statusline.bats",
+        "tests/panel/mission-record.test.mjs",
+        "tests/qa-model.bats",
+        "tests/profile-balanced.bats"
+      ],
+      "after": [],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "plugin/lib/profiles.json: the balanced profile gives the Lead opus; the Architect stays opus and every other role sonnet; quality and budget stay as they are",
+        "plugin/hooks/panel-mission-record.js: the panel's built-in team table gives the balanced Lead opus, so it matches profiles.json again",
+        "vbw config set model.qa refuses Haiku with a message that names the allowed models (sonnet, opus or a stronger model, or default) and still says QA needs Sonnet or stronger; the header comment says the same",
+        "update the tests that pin the old balanced Lead: tests/kernel-surface.bats (config models), tests/statusline.bats (the Team line groups architect and lead under opus), tests/panel/mission-record.test.mjs",
+        "tests/qa-model.bats (approved check C31): its balanced row expects the Lead on opus (this one edit waits for the user's approval before proof); remove tests/profile-balanced.bats, which tests/profile-architect-qa.bats and tests/profile-lead-opus.bats replace"
+      ]
+    },
+    {
+      "id": "P80.2",
+      "phase": "P80",
+      "title": "README, skills and record doc show the Lead on Opus",
+      "reqs": [
+        "R119"
+      ],
+      "files": [
+        "README.md",
+        "plugin/skills/config/SKILL.md",
+        "plugin/skills/profile/SKILL.md",
+        "docs/record.md"
+      ],
+      "after": [],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "README.md profile table: the Standard row reads `balanced`: Opus for the Architect and the Lead, Sonnet for the rest",
+        "plugin/skills/profile/SKILL.md: the Standard row reads `balanced` (Opus for the Architect and the Lead, Sonnet for the rest)",
+        "plugin/skills/config/SKILL.md: `balanced` (default: Opus for Architect and Lead, Sonnet for the rest); the model.qa line names the allowed models and keeps 'Sonnet or stronger'",
+        "docs/record.md settings row: balanced (default: Opus for the Architect and the Lead, Sonnet for every other role)"
+      ]
+    },
+    {
+      "id": "P81.1",
+      "phase": "P81",
+      "title": "The spec names saved test results folders",
+      "reqs": [
+        "R115"
+      ],
+      "files": [
+        "plugin/lib/spec.jq",
+        "plugin/lib/cmd-spec.sh",
+        "plugin/lib/record.jq",
+        "plugin/lib/contract.sh",
+        "plugin/lib/cmd-show.sh"
+      ],
+      "after": [],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "spec.jq: a '## Test results' section of '- <folder>/' lines (relative, no '..', not .vbw/, a missing trailing slash added) gives the results list; a bad line is a spec error that names it",
+        "vbw spec sync writes the list to project.results (absent when the section names none, removed when it goes); record.jq accepts project.results only as a non-empty array of distinct safe folder paths ending in '/', within schema 1 (older VBWs ignore unknown project fields)",
+        "contract.sh: contract_core and contract_doc include the list only when it is present, so every contract without one keeps its fingerprint and adding or changing the list makes the contract wait for approval again",
+        "vbw show contract lists the saved test results folders, and vbw show contract --changes names a changed list"
+      ]
+    },
+    {
+      "id": "P81.2",
+      "phase": "P81",
+      "title": "QA re-check leaves out documentation and saved results",
+      "reqs": [
+        "R115"
+      ],
+      "files": [
+        "plugin/lib/qa-inputs.sh"
+      ],
+      "after": [
+        "P81.1"
+      ],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "a phase's files digest leaves out documentation (is_doc from rigor-defs.jq through VBW_JQ_DEFS: .md, .markdown, .rst; plain .txt stays, D144) next to VBW's own .vbw/ files",
+        "it also leaves out files inside the project.results folders, only while the contract that holds that list is approved (contract_waiting succeeds); otherwise, and when no list is named, nothing is left out for results; the approval is looked up only when the record has a list",
+        "a file that one of the phase's checks lists in files or names in its run argv stays in, whatever its kind or folder; a phase whose every plan lists only documentation keeps all its files, because they are its code",
+        "qa_digests keeps its signature, so vbw next, show, qa and prove are unchanged; the reasons (its files changed, builds on Pn, which changed) and the cache follow the new files digest; the header comment states the rule"
+      ]
+    },
+    {
+      "id": "P81.3",
+      "phase": "P81",
+      "title": "Document the documentation and saved-results rule",
+      "reqs": [
+        "R115"
+      ],
+      "files": [
+        "docs/proof.md",
+        "docs/record.md"
+      ],
+      "after": [
+        "P80.2"
+      ],
+      "status": "planned",
+      "role": "docs",
+      "tasks": [
+        "docs/proof.md, the spec part: the '## Test results' section, its folder lines, approval like any spec change, and no exemption when none is named (D195)",
+        "docs/proof.md, Which phases QA checks again: documentation (.md, .markdown, .rst; .txt is data, D144) and saved test results in approved folders do not list a passed phase; files a check uses, documentation-only phases, mixed commits and goal or plan changes still do; changing the folder list re-checks once the phases that list files in the folders added or removed",
+        "docs/record.md: a project.results row (the approved folders, added within schema 1)"
+      ]
+    },
+    {
+      "id": "P82.1",
+      "phase": "P82",
+      "title": "Small is judged on the new request and the files it names",
+      "reqs": [
+        "R116"
+      ],
+      "files": [
+        "plugin/lib/rigor-defs.jq"
+      ],
+      "after": [],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "small_change looks only at the current milestone's requirements that are in no phase yet (the new request); earlier planned or proven requirements, [human] ones included, no longer count",
+        "it counts the distinct file names those requirements' texts name (words such as greet.sh, src/a.js, .env, .github/workflows/ci.yml); more than two is not small, none or one or two is",
+        "the risk check (risk_name on the text, which also catches risk-path names), the one-or-two [auto] requirements rule and the forced-rigor rule stay as they are; the comment states the new rule"
+      ]
+    },
+    {
+      "id": "P82.2",
+      "phase": "P82",
+      "title": "vbw apply --add adds a phase without resubmitting the milestone",
+      "reqs": [
+        "R116"
+      ],
+      "files": [
+        "plugin/lib/cmd-apply.sh",
+        "plugin/bin/vbw"
+      ],
+      "after": [],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "vbw apply --add < doc takes new phases with their plans, checks and rules; a phase id the milestone already has, or a requirement another phase already covers, is refused with the reason and nothing changes",
+        "the doc is merged into the milestone's current phases, plans, checks and rules (the --patch merge), so every existing item stays byte for byte as it was, and the merged whole meets every rule of a full apply: rigor floor, one plan per express phase, at most two files for express in a repository of more than 30 files, rules with their checks",
+        "the usage lines (cmd-apply.sh, vbw help) and the header comment name --add"
+      ]
+    },
+    {
+      "id": "P82.3",
+      "phase": "P82",
+      "title": "The router adds the small phase with vbw apply --add",
+      "reqs": [
+        "R116"
+      ],
+      "files": [
+        "plugin/skills/vibe/SKILL.md"
+      ],
+      "after": [],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "the small path (plan with detail.tier express or detail.small) applies its one express phase, plan, check and rules with `vbw apply --add`, which works with or without earlier phases in the milestone; ids from P<next_phase>",
+        "its example uses vbw apply --add; it keeps 'no planning workflow', 'two files', 'detail.small' and the line that sends anything larger to the planning workflow",
+        "the router stays within its 1,400-word budget (tests/standards.bats)"
+      ]
+    },
+    {
+      "id": "P82.4",
+      "phase": "P82",
+      "title": "Real-app scenario: a small request inside a milestone with earlier work",
+      "reqs": [
+        "R116"
+      ],
+      "files": [
+        "tools/l3-suite.sh",
+        "tools/l3-results/smallchange.json"
+      ],
+      "after": [
+        "P82.1",
+        "P82.2",
+        "P82.3"
+      ],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "scenario_smallchange seeds an active milestone whose earlier requirement is planned and proven (its phase and plan done) instead of a shipped one; the user then asks for the --shout change in plain words, as now",
+        "its facts add prior_requirements (earlier requirements of that milestone), same_milestone (the request joined it) and prior_kept (earlier phases and plans unchanged); plans counts only the new plans; done is that milestone waiting to ship; tests/l3-smallchange.bats keeps passing",
+        "run it in the real app (bash tools/l3-suite.sh smallchange) and commit its result, tools/l3-results/smallchange.json"
+      ]
+    },
+    {
+      "id": "P82.5",
+      "phase": "P82",
+      "title": "Document the small path for a new request",
+      "reqs": [
+        "R116"
+      ],
+      "files": [
+        "docs/rigor.md",
+        "docs/next.md",
+        "docs/workflows.md"
+      ],
+      "after": [],
+      "status": "planned",
+      "role": "docs",
+      "tasks": [
+        "docs/rigor.md, The small change: small is judged on the requirements with no phase yet, which name at most two files and no risk; an example inside a milestone with earlier work; the router adds the phase with vbw apply --add",
+        "docs/next.md: detail.small is judged on the requirements with no phase yet, with the file rule",
+        "docs/workflows.md: a vbw apply --add row in the command table and a short section next to vbw apply --patch"
+      ]
+    },
+    {
+      "id": "P83.1",
+      "phase": "P83",
+      "title": "vbw prove keeps a failure's full output",
+      "reqs": [
+        "R118"
+      ],
+      "files": [
+        "plugin/lib/checks.sh",
+        "plugin/lib/cmd-prove.sh"
+      ],
+      "after": [],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "one helper names the kept file: .vbw/runtime/output/<check id>.log and .vbw/runtime/output/command-<name>.log",
+        "after the checks and commands run, before the scratch folder is removed, each fail or timeout moves its complete output there, replacing the older file (a temporary file in that folder, then renamed), one per check even when checks ran in parallel",
+        "a pass removes that check's or command's kept file; results reused from an earlier proof, and checks that did not run, leave theirs as they are",
+        "nothing else changes: the evidence keeps its 20-line tail, nothing is committed, nothing is written outside .vbw/runtime (git-ignored)"
+      ]
+    },
+    {
+      "id": "P83.2",
+      "phase": "P83",
+      "title": "vbw show fix names the kept output",
+      "reqs": [
+        "R118"
+      ],
+      "files": [
+        "plugin/lib/cmd-show.sh"
+      ],
+      "after": [
+        "P83.1",
+        "P81.1"
+      ],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "vbw show fix --json: each check gains kept (the kept file's path when it exists, else null), and a commands list holds every failing project command with name, status and kept",
+        "the text names 'full output: <path>' under each failing check of the fix's requirement and each failing project command, or says 'full output not kept: run vbw prove again' when the file is missing",
+        "the 20-line tails and every other line stay as they are"
+      ]
+    },
+    {
+      "id": "P83.3",
+      "phase": "P83",
+      "title": "Document where a failure's full output is kept",
+      "reqs": [
+        "R118"
+      ],
+      "files": [
+        "docs/proof.md",
+        "docs/workflows.md"
+      ],
+      "after": [
+        "P81.3",
+        "P82.5"
+      ],
+      "status": "planned",
+      "role": "docs",
+      "tasks": [
+        "docs/proof.md: a failing or timed-out check or command keeps its full output in .vbw/runtime/output/ (one file each, the latest failure, removed on a pass, kept for a reused result, never committed)",
+        "docs/proof.md, Fix items: vbw show fix names the kept file (--json: kept), or says the full output is not kept and to run vbw prove again",
+        "docs/workflows.md: the vbw show fix row mentions the kept output"
+      ]
     }
   ],
   "fixes": [
@@ -15815,6 +16471,12 @@
       "id": "D194",
       "at": "2026-10-08T11:54:34Z",
       "text": "Shipped M14 Cheaper runs: 11 requirements proven or accepted"
+    },
+    {
+      "id": "D195",
+      "text": "Saved test results are named by the project: its spec lists its result folders (approved like any spec change); VBW guesses nothing, and a project that lists none gets no saving",
+      "why": "owner: clear and safe, like the quick command (D180); a wrong guess would let a real change skip review",
+      "at": "2026-10-08T12:50:07Z"
     }
   ],
   "commands": {
