@@ -118,6 +118,16 @@ proven_project() {
   jq -e '.settings.models == {lead: "opus", qa: "haiku", dev: "opus"}' .vbw/record.json
 }
 
+@test "docs/rigor.md's balanced tier table gives the Lead, Scout, Dev and QA their profile models" {
+  local doc="$REPO_ROOT/docs/rigor.md" row
+  jq -e '.balanced.lead == "opus" and .balanced.scout == "sonnet"' "$PLUGIN_ROOT/lib/profiles.json"
+  jq -e '[.balanced.standard.models, .balanced.deep.models] | all(.dev == "sonnet" and .qa == "sonnet")' "$PLUGIN_ROOT/lib/tiers.json"
+  row=$(grep -E '^\| `standard` \|' "$doc")
+  [[ "$row" == *"| Lead on Opus; Dev and QA on Sonnet |"* ]] || { echo "$row"; false; }
+  row=$(grep -E '^\| `deep` \|' "$doc")
+  [[ "$row" == *"| Lead on Opus; Scout, Dev and QA on Sonnet |"* ]] || { echo "$row"; false; }
+}
+
 @test "config refuses unknown keys and invalid values, and changes nothing" {
   cp .vbw/record.json "$TEST_ROOT/before.json"
   vbw_run config set profile turbo
