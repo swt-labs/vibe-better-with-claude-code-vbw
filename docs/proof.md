@@ -516,9 +516,9 @@ uncommitted changes, and the checks of every finished requirement (all its plans
 `done`) that those files serve pass now. A fix cannot quietly break other work.
 A project command's fix is left to `vbw prove`, which runs the command.
 
-`vbw show fix F1` lists the failing checks and project commands, and under each
-one names its kept output file (`full output: .vbw/runtime/output/C1.log`). When
-no file is kept, for example after it was removed, it says
+`vbw show fix F1` names each failing check's or project command's kept full output
+file (`full output: .vbw/runtime/output/C1.log`), listed under it. When no file is
+kept, for example after it was removed, it says
 `full output not kept: run vbw prove again`. With `--json`, each failing check
 and command has a `kept` field: the file's path, or `null`.
 
