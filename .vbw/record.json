@@ -14126,7 +14126,7 @@
       "req": "R111",
       "source": "qa",
       "attempts": 0,
-      "status": "open",
+      "status": "fixed",
       "note": "Deviation from the plan, not covered by a recorded decision. Commit 6928786e (test(R111)) edited 7 files that P76.2's file list does not contain: tests/kernel-prove.bats, tests/qa-recheck-deps.bats, tests/qa-recheck-helper.bash, tests/qa-recheck-skip.bats, tests/qa-replan-keeps.bats, tests/qa-skip-helper.bash, and tests/proof-stale-links.bats (a protected file of approved check C140). The edits are small and correct (vbw prove -> vbw prove --full; a summary pattern that allows the new 'proof:' and 'checks:' lines), and the Dev's escalation note on P76 asked for them, but the plan was not changed and the decisions list ends at D183 ('Contract approved ...') with no entry for it. Compare D175, which recorded the same kind of protected-test edit. Fix: record a decision (vbw decide) naming 6928786e and why (R111 makes a reused proof partial, so QA fixtures must prove with --full; the stale-link summary gained two lines), or add the files to P76.2. No code change is needed."
     },
     {
@@ -15478,6 +15478,12 @@
       "id": "D183",
       "at": "2026-10-08T02:07:50Z",
       "text": "Contract approved: 107 requirements, 171 checks, 221 plans (865052b107f8); express: P74 (R109, C168, P74.1)"
+    },
+    {
+      "id": "D184",
+      "text": "F70: commit 6928786e (7 older QA and proof test files moved to vbw prove --full and the new summary lines) stands: the owner approved those edits with contract 865052b107f8; they follow from R111",
+      "why": "owner approval in the menu, as D175",
+      "at": "2026-10-08T03:53:29Z"
     }
   ],
   "commands": {
