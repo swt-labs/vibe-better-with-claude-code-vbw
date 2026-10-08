@@ -50,7 +50,7 @@ next_models() { # PROFILE TIER: the P1 rigor models of vbw next --json
 
 @test "other roles keep their models: budget scout on haiku, express dev on haiku, the rest as before" {
   jq -e '.quality == {architect: "opus", lead: "opus", dev: "opus", qa: "sonnet", scout: "sonnet", debugger: "opus", docs: "sonnet"}
-    and .balanced == {architect: "opus", lead: "sonnet", dev: "sonnet", qa: "sonnet", scout: "sonnet", debugger: "sonnet", docs: "sonnet"}
+    and .balanced == {architect: "opus", lead: "opus", dev: "sonnet", qa: "sonnet", scout: "sonnet", debugger: "sonnet", docs: "sonnet"}
     and (.budget | del(.qa)) == {architect: "sonnet", lead: "sonnet", dev: "sonnet", scout: "haiku", debugger: "sonnet", docs: "sonnet"}' "$PROFILES"
   jq -e '(.quality | map_values(.models.dev)) == {express: "sonnet", standard: "opus", deep: "opus"}
     and (.balanced | map_values(.models.dev)) == {express: "sonnet", standard: "sonnet", deep: "sonnet"}
@@ -101,7 +101,7 @@ next_models() { # PROFILE TIER: the P1 rigor models of vbw next --json
   [[ "${lines[1]}" != *"haiku"* ]]
   edit_record '.settings.models = {qa: "opus"}'
   run bash -c 'jq -nc --arg d "$1" "{workspace: {project_dir: \$d}}" | NO_COLOR=1 bash "$2"' _ "$PROJECT" "$SL"
-  [[ "${lines[1]}" == *"● architect ● qa"* ]]
+  [[ "${lines[1]}" == *"● architect ● lead ● qa"* ]]
 }
 
 @test "the docs say QA never uses Haiku, and the budget profile no longer lists Haiku for QA" {
