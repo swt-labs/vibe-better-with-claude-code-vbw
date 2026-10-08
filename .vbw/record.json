@@ -3132,6 +3132,19 @@
           "check": "C175"
         }
       ]
+    },
+    {
+      "id": "R112",
+      "text": "The interview skill says it runs before any spec or convert work, as the router does",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M14",
+      "rules": [
+        {
+          "text": "the interview skill says before any spec or convert work",
+          "check": "C176"
+        }
+      ]
     }
   ],
   "checks": [
@@ -5185,6 +5198,17 @@
       ],
       "files": [
         "tests/proof-quick-docs.bats"
+      ]
+    },
+    {
+      "id": "C176",
+      "req": "R112",
+      "run": [
+        "bats",
+        "tests/interview-wording.bats"
+      ],
+      "files": [
+        "tests/interview-wording.bats"
       ]
     }
   ],
@@ -8006,11 +8030,11 @@
       "tier": "deep",
       "reasons": [
         "requirements: 1",
-        "files: 3 (39064 bytes)",
-        "files: more than 2 in a repository tracking 721 files",
+        "files: 3 (44858 bytes)",
+        "files: more than 2 in a repository tracking 728 files",
         "risk: none",
         "breaks: none",
-        "guarded: R12 (C11), R25 (C24), R31 (C27), R32 (C28), R43 (C42, C43), R44 (C44, C45), R45 (C39, C40, C41), R46 (C46), R47 (C47), R48 (C49, C50), R49 (C48), R61 (C73, C74, C75, C76, C77), R66 (C95), R69 (C110, C120, C122), R70 (C114), R73 (C98), R74 (C99, C100), R78 (C105, C106), R79 (C107), R80 (C108), R81 (C109, C111, C112, C113), R92 (C131, C132, C133, C134, C135, C136, C137, C138, C139), R93 (C140, C141, C142, C143, C144), R94 (C145, C146, C147, C148), R97 (C153), R98 (C154), R100 (C156), R104 (C161, C162), R105 (C163)",
+        "guarded: R12 (C11), R25 (C24), R31 (C27), R32 (C28), R43 (C42, C43), R44 (C44, C45), R45 (C39, C40, C41), R46 (C46), R47 (C47), R48 (C49, C50), R49 (C48), R61 (C73, C74, C75, C76, C77), R66 (C95), R69 (C110, C120, C122), R70 (C114), R73 (C98), R74 (C99, C100), R78 (C105, C106), R79 (C107), R80 (C108), R81 (C109, C111, C112, C113), R92 (C131, C132, C133, C134, C135, C136, C137, C138, C139), R93 (C140, C141, C142, C143, C144), R94 (C145, C146, C147, C148), R97 (C153), R98 (C154), R100 (C156), R104 (C161, C162), R105 (C163), R110 (C169, C170), R111 (C171, C172, C173, C174, C175)",
         "tests: project test command",
         "raised by the Architect"
       ],
@@ -8063,11 +8087,11 @@
       "tier": "deep",
       "reasons": [
         "requirements: 2",
-        "files: 6 (55114 bytes)",
-        "files: more than 2 in a repository tracking 721 files",
+        "files: 6 (57553 bytes)",
+        "files: more than 2 in a repository tracking 728 files",
         "risk: none",
         "breaks: none",
-        "guarded: R12 (C11), R22 (C19), R23 (C20), R24 (C23), R25 (C24), R26 (C22), R28 (C25), R29 (C26), R31 (C27), R32 (C28), R35 (C31), R43 (C42, C43), R44 (C44, C45), R45 (C39, C40, C41), R46 (C46), R47 (C47), R48 (C49, C50), R49 (C48), R61 (C73, C74, C75, C76, C77), R66 (C95), R69 (C110, C120, C122), R70 (C114), R71 (C115, C121), R72 (C116, C118), R73 (C98), R74 (C99, C100), R78 (C105, C106), R79 (C107), R80 (C108), R81 (C109, C111, C112, C113), R92 (C131, C132, C133, C134, C135, C136, C137, C138, C139), R93 (C140, C141, C142, C143, C144), R94 (C145, C146, C147, C148), R97 (C153), R98 (C154), R100 (C156), R103 (C160)",
+        "guarded: R12 (C11), R22 (C19), R23 (C20), R24 (C23), R25 (C24), R26 (C22), R28 (C25), R29 (C26), R31 (C27), R32 (C28), R35 (C31), R43 (C42, C43), R44 (C44, C45), R45 (C39, C40, C41), R46 (C46), R47 (C47), R48 (C49, C50), R49 (C48), R61 (C73, C74, C75, C76, C77), R66 (C95), R69 (C110, C120, C122), R70 (C114), R71 (C115, C121), R72 (C116, C118), R73 (C98), R74 (C99, C100), R78 (C105, C106), R79 (C107), R80 (C108), R81 (C109, C111, C112, C113), R92 (C131, C132, C133, C134, C135, C136, C137, C138, C139), R93 (C140, C141, C142, C143, C144), R94 (C145, C146, C147, C148), R97 (C153), R98 (C154), R100 (C156), R103 (C160), R110 (C169, C170), R111 (C171, C172, C173, C174, C175)",
         "tests: project test command",
         "raised by the Architect"
       ],
@@ -8110,11 +8134,11 @@
       "tier": "deep",
       "reasons": [
         "requirements: 2",
-        "files: 21 (120110 bytes)",
-        "files: more than 2 in a repository tracking 721 files",
+        "files: 21 (120643 bytes)",
+        "files: more than 2 in a repository tracking 728 files",
         "risk: none",
         "breaks: none",
-        "guarded: R12 (C11), R13 (C12), R14 (C13), R22 (C19), R23 (C20), R24 (C23), R25 (C24), R26 (C22), R27 (C21), R28 (C25), R31 (C27), R35 (C31), R36 (C32), R37 (C35), R38 (C33, C34), R39 (C36), R40 (C37), R44 (C44, C45), R47 (C47), R48 (C49, C50), R49 (C48), R50 (C51), R60 (C72, C94), R61 (C73, C74, C75, C76, C77), R62 (C78, C79, C80, C81, C82, C83, C93), R65 (C86, C87, C88, C89, C90), R67 (C96), R69 (C110, C120, C122), R70 (C114), R71 (C115, C121), R72 (C116, C118), R73 (C98), R74 (C99, C100), R75 (C101), R76 (C102, C103), R77 (C104), R78 (C105, C106), R79 (C107), R80 (C108), R81 (C109, C111, C112, C113), R83 (C119), R95 (C149, C150), R96 (C151, C152), R98 (C154), R99 (C155), R100 (C156), R101 (C157), R102 (C158, C159)",
+        "guarded: R12 (C11), R13 (C12), R14 (C13), R22 (C19), R23 (C20), R24 (C23), R25 (C24), R26 (C22), R27 (C21), R28 (C25), R31 (C27), R35 (C31), R36 (C32), R37 (C35), R38 (C33, C34), R39 (C36), R40 (C37), R44 (C44, C45), R47 (C47), R48 (C49, C50), R49 (C48), R50 (C51), R60 (C72, C94), R61 (C73, C74, C75, C76, C77), R62 (C78, C79, C80, C81, C82, C83, C93), R65 (C86, C87, C88, C89, C90), R67 (C96), R69 (C110, C120, C122), R70 (C114), R71 (C115, C121), R72 (C116, C118), R73 (C98), R74 (C99, C100), R75 (C101), R76 (C102, C103), R77 (C104), R78 (C105, C106), R79 (C107), R80 (C108), R81 (C109, C111, C112, C113), R83 (C119), R95 (C149, C150), R96 (C151, C152), R98 (C154), R99 (C155), R100 (C156), R101 (C157), R102 (C158, C159), R111 (C171, C172, C173, C174, C175)",
         "tests: project test command"
       ],
       "predicted": "deep",
@@ -8224,14 +8248,15 @@
         "docs/proof.md explains, in plain words, which checks run again, which are reused, and why a check with no declared files always runs.",
         "Tests cover each case above, and the existing proof-reuse and fix-close tests still pass."
       ],
+      "proposed": "standard",
       "tier": "standard",
       "reasons": [
         "requirements: 1",
-        "files: 8 (87799 bytes)",
-        "files: more than 2 in a repository tracking 721 files",
+        "files: 8 (93964 bytes)",
+        "files: more than 2 in a repository tracking 728 files",
         "risk: none",
         "breaks: none",
-        "guarded: R12 (C11), R22 (C19), R24 (C23), R25 (C24), R28 (C25), R31 (C27), R32 (C28), R43 (C42, C43), R44 (C44, C45), R45 (C39, C40, C41), R46 (C46), R47 (C47), R48 (C49, C50), R49 (C48), R61 (C73, C74, C75, C76, C77), R66 (C95), R69 (C110, C120, C122), R70 (C114), R73 (C98), R74 (C99, C100), R78 (C105, C106), R79 (C107), R80 (C108), R81 (C109, C111, C112, C113), R92 (C131, C132, C133, C134, C135, C136, C137, C138, C139), R93 (C140, C141, C142, C143, C144), R94 (C145, C146, C147, C148), R97 (C153), R98 (C154), R100 (C156), R102 (C158, C159), R103 (C160), R104 (C161, C162), R105 (C163)",
+        "guarded: R12 (C11), R22 (C19), R24 (C23), R25 (C24), R28 (C25), R31 (C27), R32 (C28), R43 (C42, C43), R44 (C44, C45), R45 (C39, C40, C41), R46 (C46), R47 (C47), R48 (C49, C50), R49 (C48), R61 (C73, C74, C75, C76, C77), R66 (C95), R69 (C110, C120, C122), R70 (C114), R73 (C98), R74 (C99, C100), R78 (C105, C106), R79 (C107), R80 (C108), R81 (C109, C111, C112, C113), R92 (C131, C132, C133, C134, C135, C136, C137, C138, C139), R93 (C140, C141, C142, C143, C144), R94 (C145, C146, C147, C148), R97 (C153), R98 (C154), R100 (C156), R102 (C158, C159), R103 (C160), R104 (C161, C162), R105 (C163), R111 (C171, C172, C173, C174, C175)",
         "tests: project test command"
       ],
       "predicted": "standard",
@@ -8274,14 +8299,15 @@
         "docs/proof.md and the user docs explain the quick command, when a full proof is needed, and the two refusal messages.",
         "Tests cover each case above, including a project without a quick command, an unapproved quick command, and a refusal followed by a successful vbw prove --full and record."
       ],
+      "proposed": "deep",
       "tier": "deep",
       "reasons": [
         "requirements: 1",
-        "files: 28 (214436 bytes)",
-        "files: more than 2 in a repository tracking 721 files",
+        "files: 28 (223235 bytes)",
+        "files: more than 2 in a repository tracking 728 files",
         "risk: none",
         "breaks: none",
-        "guarded: R11 (C10), R12 (C11), R13 (C12), R14 (C13), R16 (C15), R22 (C19), R23 (C20), R24 (C23), R25 (C24), R26 (C22), R27 (C21), R28 (C25), R31 (C27), R32 (C28), R33 (C29), R35 (C31), R37 (C35), R38 (C33, C34), R39 (C36), R40 (C37), R43 (C42, C43), R44 (C44, C45), R45 (C39, C40, C41), R46 (C46), R47 (C47), R48 (C49, C50), R49 (C48), R50 (C51), R55 (C56, C57), R60 (C72, C94), R61 (C73, C74, C75, C76, C77), R62 (C78, C79, C80, C81, C82, C83, C93), R65 (C86, C87, C88, C89, C90), R66 (C95), R67 (C96), R69 (C110, C120, C122), R70 (C114), R71 (C115, C121), R72 (C116, C118), R73 (C98), R74 (C99, C100), R78 (C105, C106), R79 (C107), R80 (C108), R81 (C109, C111, C112, C113), R83 (C119), R92 (C131, C132, C133, C134, C135, C136, C137, C138, C139), R93 (C140, C141, C142, C143, C144), R94 (C145, C146, C147, C148), R95 (C149, C150), R96 (C151, C152), R97 (C153), R98 (C154), R99 (C155), R100 (C156), R101 (C157), R102 (C158, C159), R103 (C160), R104 (C161, C162), R105 (C163), R106 (C164, C165), R107 (C166, C167)",
+        "guarded: R11 (C10), R12 (C11), R13 (C12), R14 (C13), R16 (C15), R22 (C19), R23 (C20), R24 (C23), R25 (C24), R26 (C22), R27 (C21), R28 (C25), R31 (C27), R32 (C28), R33 (C29), R35 (C31), R37 (C35), R38 (C33, C34), R39 (C36), R40 (C37), R43 (C42, C43), R44 (C44, C45), R45 (C39, C40, C41), R46 (C46), R47 (C47), R48 (C49, C50), R49 (C48), R50 (C51), R55 (C56, C57), R60 (C72, C94), R61 (C73, C74, C75, C76, C77), R62 (C78, C79, C80, C81, C82, C83, C93), R65 (C86, C87, C88, C89, C90), R66 (C95), R67 (C96), R69 (C110, C120, C122), R70 (C114), R71 (C115, C121), R72 (C116, C118), R73 (C98), R74 (C99, C100), R78 (C105, C106), R79 (C107), R80 (C108), R81 (C109, C111, C112, C113), R83 (C119), R92 (C131, C132, C133, C134, C135, C136, C137, C138, C139), R93 (C140, C141, C142, C143, C144), R94 (C145, C146, C147, C148), R95 (C149, C150), R96 (C151, C152), R97 (C153), R98 (C154), R99 (C155), R100 (C156), R101 (C157), R102 (C158, C159), R103 (C160), R104 (C161, C162), R105 (C163), R106 (C164, C165), R107 (C166, C167), R110 (C169, C170)",
         "tests: project test command"
       ],
       "predicted": "deep",
@@ -8308,6 +8334,29 @@
         "qa_findings": 1,
         "escalations": 1
       }
+    },
+    {
+      "id": "P77",
+      "title": "Interview wording matches the router",
+      "reqs": [
+        "R112"
+      ],
+      "milestone": "M14",
+      "goal": "The interview skill says it runs before any spec or convert work",
+      "criteria": [
+        "the interview skill names spec and convert work, as the router does"
+      ],
+      "proposed": "express",
+      "tier": "express",
+      "reasons": [
+        "requirements: 1",
+        "files: 1 (5606 bytes)",
+        "risk: none",
+        "breaks: none",
+        "guarded: R37 (C35), R59 (C68, C92), R61 (C73, C74, C75, C76, C77), R62 (C78, C79, C80, C81, C82, C83, C93), R65 (C86, C87, C88, C89, C90)",
+        "tests: project test command"
+      ],
+      "predicted": "express"
     }
   ],
   "plans": [
@@ -13430,14 +13479,14 @@
       ],
       "after": [],
       "status": "done",
-      "role": "dev",
       "tasks": [
         "Save, next to each check's result, a fingerprint of the committed content of the files that check depends on (its own files plus the files of every plan serving its requirement), beside the fingerprint of its approved definition. Use the existing checks_fingerprint; add no new file or ledger.",
         "Pick per check: reuse its last result only when it passed and both fingerprints match. Run it when its last result was fail, timeout or lost, when it declares no files, when a served file is not in the committed code, after an interrupted proof, and on a second proof with no commit since a passing one.",
         "Keep project commands on the existing R103 rule: reused only when the committed code is the same as at the passing proof and the command's argv is unchanged.",
         "Print one line 'checks: N ran, M reused' in the prove summary (reused results keep their own line with the time they really ran), and mark reused results the same way in vbw show evidence.",
         "Update the old expectations this requirement replaces in tests/proof-reuse.bats (an unrelated committed or uncommitted change no longer reruns checks; a failed proof no longer blocks reusing the other passes), and any other existing test that expected every check to rerun after an unrelated commit."
-      ]
+      ],
+      "role": "dev"
     },
     {
       "id": "P75.2",
@@ -13451,13 +13500,13 @@
       ],
       "after": [],
       "status": "done",
-      "role": "docs",
       "tasks": [
         "Rewrite 'Reusing results in vbw prove': a check runs again when its served files (its own files and the files of every plan that serves its requirement) changed, when its approved definition changed, or when its last result was fail, timeout or lost; every other result is reused and shown as reused with the time it really ran, plus the line 'checks: N ran, M reused'.",
         "Say why a check that declares no files always runs (VBW cannot know what it depends on), and that a check with a served path missing from the committed code always runs too.",
         "Say that a change in the working folder that is not committed does not make a check run again and is never counted as proven; that an interrupted proof reuses nothing; that a second vbw prove with no commit since a passing proof runs everything fresh; that project commands keep their own rule. Remove the old list that says any changed committed file reruns everything, and the sentence calling a reusing proof a full proof.",
         "Update step 3 of the 'vbw prove' list to match."
-      ]
+      ],
+      "role": "docs"
     },
     {
       "id": "P76.1",
@@ -13477,14 +13526,14 @@
         "P75.1"
       ],
       "status": "done",
-      "role": "dev",
       "tasks": [
         "vbw prove accepts only --full; any other argument is refused with 'usage: vbw prove [--full]' and nothing runs.",
         "A plain proof runs the approved quick command in place of the test command and runs every other command as before. If quick is named but not approved, the test command runs and quick is reported skipped (not approved). vbw prove --full runs every check, the test command and every other command, never quick, and reuses nothing.",
         "Record 'full' in the evidence: true only when no result was reused, quick did not stand in for the test command, and every full command ran (an unapproved command did not). Evidence recorded before this change has no 'full' and counts as full; record validation accepts the field.",
         "The prove summary shows 'proof: full' or 'proof: partial' (with the reason in brackets). A passing full test command also closes a fix opened for a failing quick command.",
         "In tests/proof-reuse.bats, make the old test that records QA after a reused proof run vbw prove --full first."
-      ]
+      ],
+      "role": "dev"
     },
     {
       "id": "P76.2",
@@ -13513,14 +13562,14 @@
         "P76.1"
       ],
       "status": "done",
-      "role": "dev",
       "tasks": [
         "vbw qa record refuses a proof that is not full, leaves the record untouched, and says 'the last proof was partial: run vbw prove --full, then record the verdict again'. The refusal for code changed since the proof still comes first.",
         "vbw next, when QA or shipping is the next step and the latest proof is not full, answers action prove with the instruction 'Run vbw prove --full: QA and shipping need a proof that ran every check and every full project command' and detail.full true. A proof with no 'full' field counts as full.",
         "vbw ship refuses the same way, through that answer (message names vbw prove --full), without changing the record; change cmd-ship.sh only if its message does not.",
         "The test-command result given to QA agents (round.suite) stays the full proof's test command result, never the quick command's.",
         "Update existing tests that record QA or ship after a proof that reused results, so they run vbw prove --full first."
-      ]
+      ],
+      "role": "dev"
     },
     {
       "id": "P76.3",
@@ -13537,13 +13586,13 @@
       ],
       "after": [],
       "status": "done",
-      "role": "dev",
       "tasks": [
         "plugin/agents/qa.md: if vbw qa record refuses, run vbw prove --full, then record once more (replace the old advice to run vbw prove).",
         "plugin/workflows/verifying.js: the instruction to each QA agent says the same; the test result still comes from the round given by vbw next.",
         "plugin/skills/vibe/SKILL.md: the prove step runs vbw prove --full when detail.full is true in vbw next --json, else vbw prove; keep the router within its size budget.",
         "plugin/skills/qa/SKILL.md: the QA skill proves with vbw prove --full."
-      ]
+      ],
+      "role": "dev"
     },
     {
       "id": "P76.4",
@@ -13560,13 +13609,13 @@
         "P76.1"
       ],
       "status": "done",
-      "role": "dev",
       "tasks": [
         "tools/test.sh takes only --quick, or --quick --list; any other argument is refused with 'usage: tools/test.sh [--quick [--list]]' before anything runs. No argument behaves exactly as today.",
         "--quick --list prints, one per line, the stages the quick mode runs: shellcheck, then every tests/*.bats that no approved check in .vbw/record.json runs or protects, minus the timing benchmarks (prove-parallel, guard-cost, bench-hooks, proof-stale-links), always including the engineering rules (standards.bats and its self-test). It runs nothing.",
         "--quick runs exactly that list: shellcheck on tools, then bats on those files; no hook or panel benchmarks.",
         "Add '- quick: bash tools/test.sh --quick' to the Commands in .vbw/spec.md and run vbw spec sync so the record carries it (the owner approves it in the approval menu)."
-      ]
+      ],
+      "role": "dev"
     },
     {
       "id": "P76.5",
@@ -13584,12 +13633,28 @@
         "P75.2"
       ],
       "status": "done",
-      "role": "docs",
       "tasks": [
         "docs/proof.md: how a project names its quick command (a Commands entry '- quick: ...'), that it needs approval like any other command, that VBW never detects or suggests one, that a plain proof runs it in place of the test command, and that an unapproved quick command makes the full test command run instead.",
         "docs/proof.md: vbw prove --full (reuses nothing, runs every check, the test command and every other command, never quick), what makes a proof full or partial, the summary line, and the usage line 'usage: vbw prove [--full]'.",
         "docs/proof.md: when a full proof is needed (QA and shipping) and the two refusal messages, quoted exactly: 'the last proof was partial: run vbw prove --full, then record the verdict again' for vbw qa record, and the vbw next instruction 'Run vbw prove --full: ...' that vbw ship shows.",
         "docs/next.md: the new prove step before QA or shipping. docs/record.md: the evidence's 'full' field and that evidence without it counts as full."
+      ],
+      "role": "docs"
+    },
+    {
+      "id": "P77.1",
+      "phase": "P77",
+      "title": "Reword the interview's start line",
+      "reqs": [
+        "R112"
+      ],
+      "files": [
+        "plugin/skills/interview/SKILL.md"
+      ],
+      "after": [],
+      "status": "planned",
+      "tasks": [
+        "say 'before any spec or convert work' in the interview skill"
       ]
     }
   ],
