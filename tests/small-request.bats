@@ -196,6 +196,27 @@ add_refused() {
   add_refused "$(add_doc P2 R3 P1.3 P1 C3)" "P1.3 is for P1, not a phase this --add brings"
 }
 
+@test "R116: vbw apply --add refuses a requirement of an earlier milestone, covered there or not, and changes nothing" {
+  big_repo
+  planned 'R3 [auto] greet.sh prints HELLO, ANA! for --shout Ana'
+  # M1 shipped: P1 covers R1; R2 stayed in M1 without a phase. R3 is the current milestone's.
+  edit_record '.shipped = [{id: "M1", title: "First", at: "2026-10-01T09:00:00Z"}]
+    | .milestone = {id: "M2", title: "Second", status: "active"}
+    | .requirements |= map(.milestone = (if .id == "R3" then "M2" else "M1" end))
+    | .phases = [{id: "P1", title: "Notes", reqs: ["R1"], milestone: "M1"}]
+    | .plans = [.plans[] | select(.id == "P1.1") | .status = "done"]
+    | .checks = [.checks[] | select(.id | IN("C1", "C2"))]'
+  add_one() {
+    jq -nc --arg q "$1" '{phases: [{id: "P3", title: "Again", reqs: [$q]}],
+      plans: [{id: "P3.1", phase: "P3", title: "Again", reqs: [$q], files: ["greet.sh"], after: []}],
+      checks: [{id: "C9", req: $q, run: ["sh", "tests/shout.sh"], files: ["tests/shout.sh"]}],
+      rules: [{req: $q, text: "bye", check: "C9"}]}'
+  }
+  add_refused "$(add_one R1)" "R1 is already covered by P1"
+  add_refused "$(add_one R2)" "R2 belongs to milestone M1"
+  jq -e '[.requirements[] | select(.id == "R1") | .rules[]] == [{text: "first", check: "C1"}]' .vbw/record.json
+}
+
 @test "R116: in a repository tracking more than 30 files, an express phase over more than two files is refused, through --add as through a full apply" {
   big_repo
   prior 'R3 [auto] greet.sh prints HELLO, ANA! for --shout Ana'

@@ -24,8 +24,9 @@
 # escalated phase never records a lower tier than it has.
 # vbw apply --patch < DOC: only plans, checks and rules, merged by id (R80).
 # vbw apply --add < DOC: new phases with their plans, checks and rules (R116),
-# appended to the milestone; a phase id it already has, a requirement another
-# phase covers, or a plan or check id in use is refused and nothing changes.
+# appended to the milestone; a phase id it already has, a requirement any
+# phase covers (in any milestone) or that belongs to another milestone, or a
+# plan or check id in use is refused and nothing changes.
 # Every existing item stays as it was and keeps the tier it was accepted at:
 # the rigor floor and the one-plan-per-express rule judge only the phases the
 # doc brings (their signals see the whole milestone); every other rule above
@@ -53,8 +54,10 @@ cmd_apply() {
     problem=$(record_read | jq -r --argjson p "$pdoc" '. as $r | .milestone.id as $m
       | ([.phases[] | select(.milestone == $m)]) as $ph | [$p.phases[].id] as $new | [$p.phases[].reqs[]] as $newreqs
       | [($p.phases[] | select(.id as $i | any($ph[]; .id == $i)) | "\(.id) is already a phase of this milestone: --add takes new phases only"),
-         ($p.phases[].reqs[] | . as $q | ([$ph[] | select(any(.reqs[]; . == $q))][0]) | select(. != null)
+         ($p.phases[].reqs[] | . as $q | ([$r.phases[] | select(any(.reqs[]; . == $q))][0]) | select(. != null)
            | "\($q) is already covered by \(.id): --add takes requirements that have no phase yet"),
+         ($p.phases[].reqs[] | . as $q | ([$r.requirements[] | select(.id == $q and .milestone != $m)][0]) | select(. != null)
+           | "\($q) belongs to milestone \(.milestone): --add takes requirements of this milestone"),
          ($p.plans[] | select(.phase as $x | $new | index($x) | not) | "\(.id // "a plan") is for \(.phase // "no phase"), not a phase this --add brings"),
          ($p.plans[] | select(.id as $i | any(($r.plans // [])[]; .id == $i)) | "\(.id) is already a plan: --add takes new plans only"),
          ($p.checks[] | select(.id as $i | any(($r.checks // [])[]; .id == $i)) | "\(.id) is already a check: --add takes new checks only"),
