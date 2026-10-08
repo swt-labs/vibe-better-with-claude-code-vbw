@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # The contract (docs/proof.md): requirements, checks, plans without their
-# status, and the contents of every check's files. Approved = its hash has
+# status, the saved test results folders when the spec names any, and the
+# contents of every check's files. Approved = its hash has
 # consent in the clone's git directory.
 
 # contract_hash RECORD_JSON: SHA-256 over a canonical rendering of the contract.
@@ -17,10 +18,12 @@ contract_hash() {
 }
 
 # contract_core RECORD_JSON: the contract's structure (requirements, checks,
-# plans), canonical, without the bytes of any check file.
+# plans, and results only when present, so older contracts keep their hash),
+# canonical, without the bytes of any check file.
 contract_core() {
   printf '%s' "$1" | jq -cS '{requirements: [.requirements[] | {id, text, proof} + (if has("rules") then {rules} else {} end)],
-                              checks: .checks, plans: [.plans[] | del(.status, .note)]}'
+                              checks: .checks, plans: [.plans[] | del(.status, .note)]}
+                             + (if .project.results then {results: .project.results} else {} end)'
 }
 
 # contract_shape RECORD_JSON: the fingerprint of that structure alone. Each
@@ -78,5 +81,5 @@ contract_doc() {
     checks: (.checks | map({key: .id, value: .}) | from_entries),
     plans: (.plans | map({key: .id, value: del(.status, .note)}) | from_entries),
     commands: .commands,
-    files: $files}'
+    files: $files} + (if .project.results then {results: .project.results} else {} end)'
 }
