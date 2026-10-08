@@ -378,7 +378,7 @@ Three presets cover most people. `/vbw:profile` switches them; `/vbw:config` cha
 | Preset | Models | Autonomy | Good for |
 | :--- | :--- | :--- | :--- |
 | **Careful** | `quality`: Opus for Architect, Lead, Dev and Debugger | `guided`: explains each step and waits for "go" | Learning, a first project, risky changes |
-| **Standard** | `balanced`: Opus for the Architect, Sonnet for the rest | `balanced`: keeps going, stops for your decisions, approval, checking and shipping | Most work (the default) |
+| **Standard** | `balanced`: Opus for the Architect and the Lead, Sonnet for the rest | `balanced`: keeps going, stops for your decisions, approval, checking and shipping | Most work (the default) |
 | **Fast** | `budget`: Haiku for Scout, Sonnet for the rest | `hands-off`: takes its own recommendations and lists them for you | Small changes, once you trust it |
 
 Approval, checking and shipping always stop for you, whatever the preset. Autonomy controls friction, not safety.
