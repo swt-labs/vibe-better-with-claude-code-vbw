@@ -13668,7 +13668,7 @@
         "plugin/lib/qa-inputs.sh"
       ],
       "after": [],
-      "status": "planned",
+      "status": "done",
       "tasks": [
         "the files digest of a phase leaves out paths under .vbw/"
       ]
