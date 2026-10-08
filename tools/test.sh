@@ -4,8 +4,38 @@
 # and once with bash 5. Fails on the first failing stage (no pipes).
 set -euo pipefail
 
+usage='usage: tools/test.sh [--quick [--list]]'
+quick=0
+list=0
+case "$#:${1-}:${2-}" in
+  0::) ;;
+  1:--quick:) quick=1 ;;
+  2:--quick:--list) quick=1 list=1 ;;
+  *) echo "$usage" >&2; exit 2 ;;
+esac
+
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
+
+# The quick mode: every test file no approved check runs or protects (those
+# run in proof), minus the timing benchmarks, plus the engineering rules always.
+quick_files() {
+  local covered f
+  covered="$(jq -r '[.checks[] | (.run[], (.files[]?))] | unique[] | select(test("^tests/[^/]+\\.bats$"))' .vbw/record.json)"
+  for f in tests/*.bats; do
+    case "$f" in
+      tests/standards.bats|tests/standards-selftest.bats) echo "$f"; continue ;;
+      tests/prove-parallel.bats|tests/guard-cost.bats|tests/bench-hooks.bats|tests/proof-stale-links.bats) continue ;;
+    esac
+    printf '%s\n' "$covered" | grep -qxF "$f" || echo "$f"
+  done
+}
+
+if [ "$list" = 1 ]; then
+  echo "shellcheck tools/*.sh"
+  quick_files
+  exit 0
+fi
 
 echo "bash: $(bash -c 'echo "$BASH_VERSION"')"
 
@@ -15,6 +45,17 @@ if command -v shellcheck >/dev/null 2>&1; then
   shellcheck -S warning -x "${tools_sh[@]}"
 else
   echo "shellcheck not installed; skipping tool lint" >&2
+fi
+
+if [ "$quick" = 1 ]; then
+  quick_list=()
+  while IFS= read -r f; do quick_list+=("$f"); done < <(quick_files)
+  jobs=1
+  if command -v parallel >/dev/null 2>&1; then
+    jobs="$(getconf _NPROCESSORS_ONLN 2>/dev/null || echo 4)"
+  fi
+  bats --print-output-on-failure --jobs "$jobs" "${quick_list[@]}"
+  exit 0
 fi
 
 jobs=1
