@@ -29,8 +29,8 @@ qa_digests() {
     | ([$r.checks[] | select(.req as $q | $ph.reqs | index($q))] | sort_by(.id)) as $ch
     | ([$r.requirements[] | select(.proof == "auto") | .id]) as $aid
     | [$r.plans[] | select(.phase == $ph.id) | [.files[]? | select((startswith(".vbw/") or startswith("./.vbw/")) | not)]] as $pf
-    | (all($pf[]; all(.[]; is_doc))) as $docs_only
-    | "\(.id) " + ({files: ([$pf[][] | select($docs_only or ((is_doc or (. as $f | any($res[]?; covers($f)))) | not))] | unique),
+    | (all($pf[]; all(.[]; is_doc))) as $docs_only | [$ch[] | (.files // [])[], (.run // [])[]] as $used
+    | "\(.id) " + ({files: ([$pf[][] | select(. as $f | $docs_only or any($used[]; . == $f) or ((is_doc or any($res[]?; covers($f))) | not))] | unique),
        checks: [$ch[] | {id, req, run, files}], check_files: ([$ch[] | .files[]?] | unique),
        auto: [$r.requirements[] | select(.proof == "auto" and (.id as $q | $ph.reqs | index($q))) | {id, text}],
        plan: {goal: $ph.goal, criteria: $ph.criteria,
