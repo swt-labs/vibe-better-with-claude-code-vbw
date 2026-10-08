@@ -233,6 +233,8 @@ show_work() {
     . as $r
     | def kept($file): if any($have[]; . == $file) then "\($dir)/\($file)" else null end;
       def failing: . != null and .status != "pass";
+      # A skipped command was not approved: vbw prove counts it as passed (R118).
+      def command_failing: .status == "fail" or .status == "timeout";
       def checks_for($reqs): [$r.checks[] | select(.req as $q | any($reqs[]; . == $q))
         | . + {last: ($r.evidence.checks[.id] // null)}];
       if $kind == "plan" then
@@ -251,7 +253,7 @@ show_work() {
              | map(. + {kept: (if .last | failing then kept("\(.id).log") else null end)})),
            command: (if $f.command then {name: $f.command, argv: $r.commands[$f.command],
                                           last: ($r.evidence.commands[$f.command] // null)} else null end),
-           commands: [($r.evidence.commands // {}) | to_entries[] | select(.value | failing)
+           commands: [($r.evidence.commands // {}) | to_entries[] | select(.value | command_failing)
              | {name: .key, status: .value.status, kept: kept("command-\(.key).log")}],
            plans: [$r.plans[] | select($f.req != null and any(.reqs[]; . == $f.req)) | {id, title, files}]} end
       end')
