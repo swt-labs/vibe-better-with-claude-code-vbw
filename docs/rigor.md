@@ -110,16 +110,33 @@ planning workflow. `vbw next --json` marks it at the `plan` step:
 { "action": "plan", "detail": { "tier": "standard", "small": true } }
 ```
 
-`detail.small` is `true` when the milestone has one or two requirements, all
-`auto`, none naming a risk category (the words above), and `vbw config rigor`
-is `auto` or `express`. It does not depend on the size of the repository, so
-a small request in a large repository is still small, even though its early
-tier (`detail.tier`) is `standard`. A `human` requirement, three or more
-requirements, a risk word or a forced `standard` or `deep` makes it `false`.
+`detail.small` is judged on the request: the milestone's requirements that
+have no phase yet. It is `true` when there are one or two of them, all `auto`,
+together they name at most two files (a file name such as `greet.sh` or
+`src/total.js`; the same file named twice counts once), none names a risk
+category (the words above) or a risk-path file (such as `.env` or
+`.github/workflows/ci.yml`), and `vbw config rigor` is `auto` or `express`.
+Requirements already planned in earlier phases, finished or not, `auto` or
+`human`, do not count. It does not depend on the size of the repository, so a
+small request in a large repository is still small, even though its early tier
+(`detail.tier`) is `standard`. A new `human` requirement, three or more new
+requirements, three or more named files, a risk word or path, or a forced
+`standard` or `deep` makes it `false`.
+
+Example: the milestone already has phase P1 (R1 done, R2 planned). You ask for
+one more thing:
+
+```
+vbw spec add auto "greet.sh prints HELLO, ANA! for --shout Ana"
+```
+
+R3 has no phase yet, names one file and no risk, so `detail.small` is `true`
+and `next_phase` is `2`.
 
 When `detail.small` or an `express` tier is set, the router plans the change
-itself: one `vbw apply` with one phase, one plan of one or two files, its
-check and its rules. You approve once. Then VBW builds, proves, checks (see
+itself: it adds one express phase, numbered from `next_phase`, with
+`vbw apply --add` (docs/workflows.md), holding one plan of one or two files,
+its check and its rules. P1 and its plans, checks and rules stay as they were. You approve once. Then VBW builds, proves, checks (see
 "QA depth") and closes it.
 
 One rule keeps this honest in a large repository. When git tracks more than 30
