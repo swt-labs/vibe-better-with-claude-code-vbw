@@ -13,13 +13,11 @@ Every step runs; a failure stops the release until its root cause is fixed.
    green before the owner updates (owner decision, 2026-10-08).
    `tools/test-linux.sh` stays for chasing a Linux-only failure. The hook
    benchmark must be within budget.
-2. **Real-user scenarios:** `bash tools/l3-suite.sh [SCENARIO...]` (the real
-   Claude Code TUI, driven as a user, 4 at a time; about $1-3 per scenario).
-   Run `greenfield` plus every scenario that exercises what the release
-   changed; the milestone already ran its own scenarios while it was built.
-   Run the full suite before the 2.1 launch. Until 2.1 (owner decision D140:
-   the owner is the only user) a release that changes the core `/vbw:vibe` loop
-   runs only those scenarios too. The release record names
+2. **Real-user scenarios:** `bash tools/l3-suite.sh SCENARIO...` (the real
+   Claude Code TUI, driven as a user; each scenario costs API credits). Run only
+   the scenarios of the area the release changed, plus `greenfield` when the
+   release touches the core loop (the router, `vbw next`, a workflow, the proof
+   or QA). The full suite runs before the 2.1 launch. The release record names
    the scenarios run and those not run. Every check must pass.
 3. **Version:** `bash tools/bump-version.sh --set X.Y.Z` (all five version files),
    then a `plugin/CHANGELOG.md` entry written for users: what they can do now,
