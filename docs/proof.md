@@ -133,7 +133,12 @@ to explain what you approve). Choosing **Approve** still approves the contract
 the fingerprint names; the extra text changes nothing. The fingerprint must
 stay at the start of the question: a question that does not begin with
 `Approve contract <12 characters>?` is not the approval question, and nothing
-is approved.
+is approved. So that a reworded question still works, VBW adds the start
+itself: when Claude asks a question with the options Approve and Not yet without
+the fingerprint while a contract waits for approval, VBW puts
+`Approve contract <12 characters>?` in front of it before you see it (the
+`PreToolUse` hook `hooks/approve-ask.jq` and `hooks/approve-ask.sh`), so
+Approve approves exactly the contract shown.
 
 If the fingerprint is not the current contract's, nothing is approved. This
 happens when the contract changed after the question was asked (a plan or check
@@ -615,9 +620,9 @@ the reason "its files, tests or plan changed".
 
 `vbw qa record` refuses a verdict when no proof exists yet, or when the project
 files differ from the proof's `tree` (the code changed since the last proof). The
-error asks for `vbw prove` first; the verdict is recorded only against a proof of
-the current code. The QA agent handles the refusal itself: it runs `vbw prove`
-and retries the record once.
+error asks for `vbw prove --full` first; the verdict is recorded only against a proof of
+the current code. The QA agent handles the refusal itself: it runs
+`vbw prove --full` and retries the record once.
 
 ### Freshness
 

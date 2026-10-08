@@ -28,7 +28,7 @@ usage: vbw <command> [args]
   show VIEW [ID]    roadmap | phase ID | req ID | plan ID | fix ID | contract [--changes] | evidence | decisions | requirements
   approve [--hash FINGERPRINT]   approve the contract and project commands (the user, via /vbw:approve; --hash only if it is still that contract)
   check [--expect-red] [CHECK...]   run approved checks and report (writes nothing)
-  prove             run the approved checks and commands, record the evidence
+  prove [--full]    run the approved checks and commands, record the evidence
   apply < PLAN      the planner's write: phases, plans and checks in one update
   apply --patch < P change only the plans, checks and rules given, the rest untouched
   run start KIND [IDS] | run confirm ID... | run end [--owner-closed]   open the run lease, check what its agents recorded, close it

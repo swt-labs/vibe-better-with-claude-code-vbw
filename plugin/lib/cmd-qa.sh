@@ -35,7 +35,7 @@ cmd_qa() {
   printf '%s' "$record" | jq -e '.evidence.tree' > /dev/null || vbw_die "no proof yet: QA verifies proven work (vbw prove first)"
   # shellcheck source=cmd-next.sh
   . "$VBW_LIB/cmd-next.sh"
-  ! next_code_changed "$record" || vbw_die "the code changed since the last proof: run vbw prove, then record the verdict again"
+  ! next_code_changed "$record" || vbw_die "the code changed since the last proof: run vbw prove --full, then record the verdict again"
   printf '%s' "$record" | jq -e '.evidence.full != false' > /dev/null || vbw_die "the last proof was partial: run vbw prove --full, then record the verdict again"
   # The pass covers this phase's inputs and those of the phases it builds on (D91).
   digests=$(qa_digests "$record")
