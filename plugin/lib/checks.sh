@@ -27,6 +27,16 @@ checks_end() {
   vbw_guard_drop "$CHECK_OUT"
 }
 
+# checks_kept check|command NAME: the file, relative to the project root, that
+# keeps the complete output of the check's or project command's latest failure
+# in vbw prove (R118). It lives under the git-ignored runtime folder.
+checks_kept() {
+  case "$1" in
+    check) printf '%s/output/%s.log\n' "${VBW_RUNTIME#"$VBW_ROOT"/}" "$2" ;;
+    *) printf '%s/output/command-%s.log\n' "${VBW_RUNTIME#"$VBW_ROOT"/}" "$2" ;;
+  esac
+}
+
 # checks_exec TIMEOUT OUTFILE ARGV...: run ARGV from the project root, output to
 # OUTFILE, stopped at TIMEOUT seconds. Sets CHECK_CODE and CHECK_SECONDS.
 checks_exec() {
