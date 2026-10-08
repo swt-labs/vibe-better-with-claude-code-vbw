@@ -8938,11 +8938,12 @@
         }
       ],
       "qa": {
-        "result": "pass",
+        "result": "fail",
         "tier": "standard",
-        "tree": "6462d3b4cce6568187c93f6f27a9406997838921fe6548830201e4ef5f5ce5ff",
-        "at": "2026-10-08T17:19:54Z",
-        "note": "20/20 checks"
+        "tree": "58b00703a0116e429cd949aab1c748633e69361baac64db8e6e3f53529258631",
+        "at": "2026-10-08T18:52:17Z",
+        "note": "19/20 checks",
+        "rounds": 1
       },
       "outcome": {
         "tier": "deep",
@@ -15255,6 +15256,14 @@
       "attempts": 0,
       "status": "fixed",
       "note": "vbw apply --add lets a new phase take over a requirement that a phase in an earlier milestone already covers, and then overwrites that requirement's rules. Plan P82.2 says --add refuses 'a requirement another phase already covers' and keeps 'every existing item byte for byte'. The check in plugin/lib/cmd-apply.sh (the 'is already covered by' line, about line 56) only looks at phases of the current milestone ($ph). Evidence: on a copy of the real-app project vbw-l3-smallchange.n0Yjk3 (M1 shipped with P1 covering R1; M2 active), after 'vbw spec add auto ...' I ran 'vbw apply --add' with a phase P3 for R1 and a check C9. It printed 'applied 2 phases, 2 plans, 3 checks in all' (exit 0), P3 now sits in M2 covering R1, and R1's two rules ('a name is greeted', 'no name greets the world', check C1) were replaced by one rule 'bye' on C9. A full vbw apply has the same gap (it was there before this phase), but --add promised the refusal. No test covers a requirement from another milestone. Options: (a, recommended) in --add, refuse a requirement that is covered by any phase in the record, or that belongs to another milestone, with the same 'is already covered by' message, and add a test with a shipped milestone; (b) also add the same refusal to the full vbw apply, so both paths agree; (c) only change the docs and plan wording to say 'in this milestone'."
+    },
+    {
+      "id": "F83",
+      "req": "R118",
+      "source": "qa",
+      "attempts": 0,
+      "status": "open",
+      "note": "vbw show fix lists a project command that was skipped (status skipped: not approved) as a failing project command and tells the Dev 'full output not kept: run vbw prove again'. Plan P83.2 task 1 and the criterion say the commands list holds every failing project command, and vbw prove itself counts a skipped command as passed (cmd-prove.sh:66, passed allows skipped). Cause: plugin/lib/cmd-show.sh show_work, def failing: . != null and .status != \"pass\", used for commands: [... select(.value | failing) ...]. Evidence: jq on {lint:{status:skipped}} with that filter returns [{name:lint,status:skipped}]. Reachable: commands are not part of the contract hash (contract.sh contract_core), so a command added or changed in spec.md after approval, or a named but unapproved quick (proofreuse.sh proofreuse_names), is recorded as skipped. Running vbw prove again does not help; the command needs approval. Fix: list only fail and timeout commands (and add a test in tests/prove-kept-output.bats with a skipped command)."
     }
   ],
   "todos": [
@@ -18362,5 +18371,11 @@
     "full": true,
     "passed": true
   },
-  "lease": null
+  "lease": {
+    "run": "qa-20261008T184936Z",
+    "kind": "qa",
+    "started_at": "2026-10-08T18:49:36Z",
+    "files": [],
+    "session": "4130e174-7ef2-4e36-b853-fb2a8fd8511d"
+  }
 }
