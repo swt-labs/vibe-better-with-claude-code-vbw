@@ -8881,15 +8881,21 @@
           "from": "deep",
           "to": "deep",
           "reason": "Dev blocked P82.6: Tasks 1 and 3 edit tests/small-request.bats, a protected check file (C182); the VBW guard refuses every edit to it during the build ('the contract is fixed while building'), and also refuses scratch files outside the plan. Task 2 (cmd-apply.sh: --add judges the rigor floor and one-plan-per-express rule only for the phases it brings) is committed as a8090702. Needed: a contract change that lets tests/small-request.bats gain the regression test (finished express P1 over 3 files in a repo that grew past 30 tracked files; --add of express P2 sharing src/a.js accepted, P1 byte for byte unchanged) and make test 11 run vbw prove --full before expecting ship, then one approval. C183 also needs a fresh L3 smallchange result (tools/l3-results/smallchange.json), not this plan's file."
+        },
+        {
+          "at": "2026-10-08T17:25:38Z",
+          "from": "deep",
+          "to": "deep",
+          "reason": "QA needs a second round"
         }
       ],
       "qa": {
         "result": "fail",
         "tier": "deep",
-        "tree": "f7417794dd5227eeffec075aafd098b966cf3c13a99a46e69a4024677cfaa4d1",
-        "at": "2026-10-08T15:44:23Z",
-        "note": "39/40 checks",
-        "rounds": 1
+        "tree": "d4229437eddf04bc29ddf1712ba7d766bd33e2e69406ade9a932b1be7ec7ebb3",
+        "at": "2026-10-08T17:25:38Z",
+        "note": "33/34 checks",
+        "rounds": 2
       }
     },
     {
@@ -15207,7 +15213,7 @@
       "req": "R116",
       "source": "qa",
       "attempts": 0,
-      "status": "fixed",
+      "status": "closed",
       "note": "The new safety refusals of 'vbw apply --add' are not really tested. plugin/lib/cmd-apply.sh lines 54-62 refuse a phase id that already exists, a requirement another phase already covers, a plan or check id already in use, and a plan for a phase the request does not bring. The only test (tests/small-request.bats, test 'vbw apply --add refuses a phase that exists, a requirement that already has a phase') uses a milestone where work has already started (P1.1 done), so if those lines were deleted the older 'work has started' refusals at lines 115-123 would still refuse with a message containing P1 or P2, and the test would still pass. In a milestone where nothing has started yet, those lines are the only guard, and no test covers that. The plan or check id in use and the wrong-phase plan refusals have no test at all. Recommended fix: add a case with no started work for each refusal and assert on each refusal's own message text (for example 'is already covered by', 'is already a phase of this milestone', 'is already a plan', 'is already a check')."
     },
     {
@@ -15241,6 +15247,14 @@
       "attempts": 0,
       "status": "open",
       "note": "The test for 'until a changed results-folder list is approved, a change inside the new folder still lists the phase' (tests/qa-recheck-docs.bats, protected by C181) cannot fail. It passes even with the approval rule removed. Evidence: in a scratch copy of HEAD I deleted the approval lookup in plugin/lib/qa-inputs.sh (the '&& contract_waiting \"$1\"' part of the 'res=' condition, so results folders are left out even before approval) and ran 'bats -f \"until a changed\" tests/qa-recheck-docs.bats': ok. The reason: the test only asserts that P1 is on the list after results/run.json changed, but without the approval rule P1 is listed anyway, because leaving results/run.json out changes P1's files fingerprint (digest) by itself. So nothing protects the safety rule of D195 (an unapproved folder list exempts nothing). Fix: in that test, assert the re-check list is still empty right after 'vbw spec sync' adds the unapproved folder and before any file changes (with the rule: empty; without it: P1 listed), then keep the existing assertion after the change. C181 protects this file, so the edit needs a new contract approval. Recommended over the alternative (a separate unprotected test file), because the case belongs with the other R115 rules C181 already guards."
+    },
+    {
+      "id": "F82",
+      "req": "R116",
+      "source": "qa",
+      "attempts": 0,
+      "status": "open",
+      "note": "vbw apply --add lets a new phase take over a requirement that a phase in an earlier milestone already covers, and then overwrites that requirement's rules. Plan P82.2 says --add refuses 'a requirement another phase already covers' and keeps 'every existing item byte for byte'. The check in plugin/lib/cmd-apply.sh (the 'is already covered by' line, about line 56) only looks at phases of the current milestone ($ph). Evidence: on a copy of the real-app project vbw-l3-smallchange.n0Yjk3 (M1 shipped with P1 covering R1; M2 active), after 'vbw spec add auto ...' I ran 'vbw apply --add' with a phase P3 for R1 and a check C9. It printed 'applied 2 phases, 2 plans, 3 checks in all' (exit 0), P3 now sits in M2 covering R1, and R1's two rules ('a name is greeted', 'no name greets the world', check C1) were replaced by one rule 'bye' on C9. A full vbw apply has the same gap (it was there before this phase), but --add promised the refusal. No test covers a requirement from another milestone. Options: (a, recommended) in --add, refuse a requirement that is covered by any phase in the record, or that belongs to another milestone, with the same 'is already covered by' message, and add a test with a shipped milestone; (b) also add the same refusal to the full vbw apply, so both paths agree; (c) only change the docs and plan wording to say 'in this milestone'."
     }
   ],
   "todos": [
