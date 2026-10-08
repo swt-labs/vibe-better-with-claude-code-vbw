@@ -8,7 +8,10 @@
 # "Approve contract <fingerprint>?", and the contract waits for approval, it
 # prints updatedInput with "Approve contract <12-char fingerprint>? " put in
 # front of that question, so the user's Approve approves exactly that
-# contract (approve-answer.jq reads it back). Anything else prints nothing.
+# contract (approve-answer.jq reads it back). It asks, never allows: Claude
+# Code reads "allow" with updatedInput on AskUserQuestion as the hook answering
+# the question itself, so the menu would not be shown (R120). Anything else
+# prints nothing.
 
 in=$1
 root=${CLAUDE_PROJECT_DIR:-$PWD}
@@ -25,4 +28,4 @@ jq -c --arg fp "$fp" '
       if ((.options // []) | map(.label) | (index("Approve") != null and index("Not yet") != null))
          and ((.question // "") | test("^Approve contract [^\\s?]+\\?") | not)
       then .question = "Approve contract \($fp)? " + (.question // "") else . end)
-  | {hookSpecificOutput: {hookEventName: "PreToolUse", permissionDecision: "allow", updatedInput: .}}' <<< "$in"
+  | {hookSpecificOutput: {hookEventName: "PreToolUse", permissionDecision: "ask", updatedInput: .}}' <<< "$in"
