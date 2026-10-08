@@ -28,7 +28,9 @@ as what to change. Before the question is shown, a `PreToolUse` hook on
 `AskUserQuestion` (`hooks/approve-ask.jq` and `hooks/approve-ask.sh`) adds
 `Approve contract <12 hex>?` in front of an Approve / Not yet menu Claude asked
 without it, while a contract waits for approval; other questions, a subagent's
-questions and a question that already names a fingerprint are left as they are.
+questions and a question that already names a fingerprint are left as they are. The rewritten
+question is shown to you as usual and you answer it: the hook never answers it
+for you.
 
 The model cannot approve through it. The hook sees only what the user
 answered: Claude Code reports an answer to `PostToolUse` only after the user
