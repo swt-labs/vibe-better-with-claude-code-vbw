@@ -2972,13 +2972,6 @@
       ]
     },
     {
-      "id": "R108",
-      "text": "The panel's colours make it easy to tell at a glance which agent is which and what state each is in",
-      "proof": "human",
-      "status": "open",
-      "milestone": "M14"
-    },
-    {
       "id": "R109",
       "text": "vbw init's notice about detected commands names the approval menu, never the typed /vbw:approve command",
       "proof": "auto",
@@ -3143,6 +3136,23 @@
         {
           "text": "the interview skill says before any spec or convert work",
           "check": "C176"
+        }
+      ]
+    },
+    {
+      "id": "R113",
+      "text": "VBW's own files under .vbw/ (the spec, the record) never make QA check a passed phase again, even when a plan lists one of them; a change to the phase's other files still does",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M14",
+      "rules": [
+        {
+          "text": "an edit to .vbw/spec.md listed in a plan does not list the passed phase again",
+          "check": "C177"
+        },
+        {
+          "text": "a change to the phase's other files still lists it again",
+          "check": "C177"
         }
       ]
     }
@@ -5209,6 +5219,17 @@
       ],
       "files": [
         "tests/interview-wording.bats"
+      ]
+    },
+    {
+      "id": "C177",
+      "req": "R113",
+      "run": [
+        "bats",
+        "tests/qa-vbw-files.bats"
+      ],
+      "files": [
+        "tests/qa-vbw-files.bats"
       ]
     }
   ],
@@ -8031,7 +8052,7 @@
       "reasons": [
         "requirements: 1",
         "files: 3 (44858 bytes)",
-        "files: more than 2 in a repository tracking 728 files",
+        "files: more than 2 in a repository tracking 729 files",
         "risk: none",
         "breaks: none",
         "guarded: R12 (C11), R25 (C24), R31 (C27), R32 (C28), R43 (C42, C43), R44 (C44, C45), R45 (C39, C40, C41), R46 (C46), R47 (C47), R48 (C49, C50), R49 (C48), R61 (C73, C74, C75, C76, C77), R66 (C95), R69 (C110, C120, C122), R70 (C114), R73 (C98), R74 (C99, C100), R78 (C105, C106), R79 (C107), R80 (C108), R81 (C109, C111, C112, C113), R92 (C131, C132, C133, C134, C135, C136, C137, C138, C139), R93 (C140, C141, C142, C143, C144), R94 (C145, C146, C147, C148), R97 (C153), R98 (C154), R100 (C156), R104 (C161, C162), R105 (C163), R110 (C169, C170), R111 (C171, C172, C173, C174, C175)",
@@ -8088,7 +8109,7 @@
       "reasons": [
         "requirements: 2",
         "files: 6 (57553 bytes)",
-        "files: more than 2 in a repository tracking 728 files",
+        "files: more than 2 in a repository tracking 729 files",
         "risk: none",
         "breaks: none",
         "guarded: R12 (C11), R22 (C19), R23 (C20), R24 (C23), R25 (C24), R26 (C22), R28 (C25), R29 (C26), R31 (C27), R32 (C28), R35 (C31), R43 (C42, C43), R44 (C44, C45), R45 (C39, C40, C41), R46 (C46), R47 (C47), R48 (C49, C50), R49 (C48), R61 (C73, C74, C75, C76, C77), R66 (C95), R69 (C110, C120, C122), R70 (C114), R71 (C115, C121), R72 (C116, C118), R73 (C98), R74 (C99, C100), R78 (C105, C106), R79 (C107), R80 (C108), R81 (C109, C111, C112, C113), R92 (C131, C132, C133, C134, C135, C136, C137, C138, C139), R93 (C140, C141, C142, C143, C144), R94 (C145, C146, C147, C148), R97 (C153), R98 (C154), R100 (C156), R103 (C160), R110 (C169, C170), R111 (C171, C172, C173, C174, C175)",
@@ -8135,7 +8156,7 @@
       "reasons": [
         "requirements: 2",
         "files: 21 (120643 bytes)",
-        "files: more than 2 in a repository tracking 728 files",
+        "files: more than 2 in a repository tracking 729 files",
         "risk: none",
         "breaks: none",
         "guarded: R12 (C11), R13 (C12), R14 (C13), R22 (C19), R23 (C20), R24 (C23), R25 (C24), R26 (C22), R27 (C21), R28 (C25), R31 (C27), R35 (C31), R36 (C32), R37 (C35), R38 (C33, C34), R39 (C36), R40 (C37), R44 (C44, C45), R47 (C47), R48 (C49, C50), R49 (C48), R50 (C51), R60 (C72, C94), R61 (C73, C74, C75, C76, C77), R62 (C78, C79, C80, C81, C82, C83, C93), R65 (C86, C87, C88, C89, C90), R67 (C96), R69 (C110, C120, C122), R70 (C114), R71 (C115, C121), R72 (C116, C118), R73 (C98), R74 (C99, C100), R75 (C101), R76 (C102, C103), R77 (C104), R78 (C105, C106), R79 (C107), R80 (C108), R81 (C109, C111, C112, C113), R83 (C119), R95 (C149, C150), R96 (C151, C152), R98 (C154), R99 (C155), R100 (C156), R101 (C157), R102 (C158, C159), R111 (C171, C172, C173, C174, C175)",
@@ -8156,40 +8177,6 @@
         "fix_rounds": 0,
         "qa_findings": 0,
         "escalations": 0
-      }
-    },
-    {
-      "id": "P73",
-      "title": "Panel colours easy to read at a glance",
-      "reqs": [
-        "R108"
-      ],
-      "milestone": "M14",
-      "goal": "The owner looks at the live VBW panel during a real run and accepts that its colours make each agent and its state easy to tell apart.",
-      "criteria": [
-        "Each agent role shown in the panel has its own colour, and no two roles shown together share one",
-        "Each state an agent can be in (for example running, waiting, done, failed) is shown with a distinct colour or mark, so states differ even for the same role",
-        "The panel stays readable on both a dark and a light terminal background",
-        "The owner watches the panel during a real VBW run and records acceptance of R108, or records what is hard to tell apart, which becomes a fix"
-      ],
-      "proposed": "deep",
-      "tier": "deep",
-      "reasons": [
-        "requirements: 1",
-        "files: 1 (22298 bytes)",
-        "risk: none",
-        "breaks: none",
-        "guarded: R51 (C52, C53, C66), R52 (C58, C91), R53 (C54, C55), R55 (C56, C57), R56 (C61, C65), R57 (C59, C70, C71), R58 (C62, C63, C64, C67), R82 (C117), R85 (C125), R86 (C124), R87 (C126, C127), R88 (C129), R89 (C128), R91 (C130)",
-        "tests: project test command",
-        "raised by the Architect"
-      ],
-      "predicted": "deep",
-      "qa": {
-        "result": "pass",
-        "tier": "quick",
-        "tree": "6d3c6e11383bd353f51bde9da5c2624973f376648b7c42dda1ced6e3a70b1a43",
-        "at": "2026-10-08T02:29:24Z",
-        "note": "6/6 checks"
       }
     },
     {
@@ -8253,7 +8240,7 @@
       "reasons": [
         "requirements: 1",
         "files: 8 (93964 bytes)",
-        "files: more than 2 in a repository tracking 728 files",
+        "files: more than 2 in a repository tracking 729 files",
         "risk: none",
         "breaks: none",
         "guarded: R12 (C11), R22 (C19), R24 (C23), R25 (C24), R28 (C25), R31 (C27), R32 (C28), R43 (C42, C43), R44 (C44, C45), R45 (C39, C40, C41), R46 (C46), R47 (C47), R48 (C49, C50), R49 (C48), R61 (C73, C74, C75, C76, C77), R66 (C95), R69 (C110, C120, C122), R70 (C114), R73 (C98), R74 (C99, C100), R78 (C105, C106), R79 (C107), R80 (C108), R81 (C109, C111, C112, C113), R92 (C131, C132, C133, C134, C135, C136, C137, C138, C139), R93 (C140, C141, C142, C143, C144), R94 (C145, C146, C147, C148), R97 (C153), R98 (C154), R100 (C156), R102 (C158, C159), R103 (C160), R104 (C161, C162), R105 (C163), R111 (C171, C172, C173, C174, C175)",
@@ -8303,8 +8290,8 @@
       "tier": "deep",
       "reasons": [
         "requirements: 1",
-        "files: 28 (223235 bytes)",
-        "files: more than 2 in a repository tracking 728 files",
+        "files: 28 (223310 bytes)",
+        "files: more than 2 in a repository tracking 729 files",
         "risk: none",
         "breaks: none",
         "guarded: R11 (C10), R12 (C11), R13 (C12), R14 (C13), R16 (C15), R22 (C19), R23 (C20), R24 (C23), R25 (C24), R26 (C22), R27 (C21), R28 (C25), R31 (C27), R32 (C28), R33 (C29), R35 (C31), R37 (C35), R38 (C33, C34), R39 (C36), R40 (C37), R43 (C42, C43), R44 (C44, C45), R45 (C39, C40, C41), R46 (C46), R47 (C47), R48 (C49, C50), R49 (C48), R50 (C51), R55 (C56, C57), R60 (C72, C94), R61 (C73, C74, C75, C76, C77), R62 (C78, C79, C80, C81, C82, C83, C93), R65 (C86, C87, C88, C89, C90), R66 (C95), R67 (C96), R69 (C110, C120, C122), R70 (C114), R71 (C115, C121), R72 (C116, C118), R73 (C98), R74 (C99, C100), R78 (C105, C106), R79 (C107), R80 (C108), R81 (C109, C111, C112, C113), R83 (C119), R92 (C131, C132, C133, C134, C135, C136, C137, C138, C139), R93 (C140, C141, C142, C143, C144), R94 (C145, C146, C147, C148), R95 (C149, C150), R96 (C151, C152), R97 (C153), R98 (C154), R99 (C155), R100 (C156), R101 (C157), R102 (C158, C159), R103 (C160), R104 (C161, C162), R105 (C163), R106 (C164, C165), R107 (C166, C167), R110 (C169, C170)",
@@ -8350,7 +8337,7 @@
       "tier": "express",
       "reasons": [
         "requirements: 1",
-        "files: 1 (5606 bytes)",
+        "files: 1 (5617 bytes)",
         "risk: none",
         "breaks: none",
         "guarded: R37 (C35), R59 (C68, C92), R61 (C73, C74, C75, C76, C77), R62 (C78, C79, C80, C81, C82, C83, C93), R65 (C86, C87, C88, C89, C90)",
@@ -8365,6 +8352,30 @@
         "qa_findings": 0,
         "escalations": 0
       }
+    },
+    {
+      "id": "P78",
+      "title": "QA ignores VBW's own files",
+      "reqs": [
+        "R113"
+      ],
+      "milestone": "M14",
+      "goal": "VBW's own files under .vbw/ never make QA check a passed phase again",
+      "criteria": [
+        "an edit to .vbw/spec.md listed in a plan does not list the passed phase again",
+        "a change to the phase's other files still does"
+      ],
+      "proposed": "express",
+      "tier": "express",
+      "reasons": [
+        "requirements: 1",
+        "files: 1 (3950 bytes)",
+        "risk: none",
+        "breaks: none",
+        "guarded: R47 (C47), R49 (C48), R104 (C161, C162)",
+        "tests: project test command"
+      ],
+      "predicted": "express"
     }
   ],
   "plans": [
@@ -13435,25 +13446,6 @@
       "role": "docs"
     },
     {
-      "id": "P73.1",
-      "phase": "P73",
-      "title": "Guide to judging the panel colours",
-      "reqs": [
-        "R108"
-      ],
-      "files": [
-        "docs/panel.md"
-      ],
-      "after": [],
-      "status": "done",
-      "tasks": [
-        "docs/panel.md: a short Judging the colours section that lists, from the shipped palette, each role's colour and each state's colour and mark, and names the pairs that share a colour (a role and a state, such as Dev and done) so the owner knows what to look at",
-        "docs/panel.md: how to judge on a dark and on a light terminal, and that a state also has a mark and a word",
-        "docs/panel.md: how to record the verdict (vbw req accept R108, or vbw req reject R108 with what is hard to tell apart, which becomes a fix)"
-      ],
-      "role": "docs"
-    },
-    {
       "id": "P74.1",
       "phase": "P74",
       "title": "Reword the detected-commands notice",
@@ -13663,6 +13655,22 @@
       "status": "done",
       "tasks": [
         "say 'before any spec or convert work' in the interview skill"
+      ]
+    },
+    {
+      "id": "P78.1",
+      "phase": "P78",
+      "title": "Leave .vbw/ paths out of a phase's file digest",
+      "reqs": [
+        "R113"
+      ],
+      "files": [
+        "plugin/lib/qa-inputs.sh"
+      ],
+      "after": [],
+      "status": "planned",
+      "tasks": [
+        "the files digest of a phase leaves out paths under .vbw/"
       ]
     }
   ],
@@ -14535,6 +14543,21 @@
     {
       "id": "T61",
       "text": "Standards rule: no 'printf/echo ... | grep -q' under pipefail when the input can exceed ~4 KB (SIGPIPE makes the pipe fail); found in tools/test.sh quick mode on Linux 2026-10-08 (fixed); kernel uses are short strings; tools/l3*.sh use it on screen dumps",
+      "status": "open"
+    },
+    {
+      "id": "T62",
+      "text": "No proof before a build: when the proof is out of date but plans are ready to build (or a plan is next), vbw next goes to build and proves after it; today it says prove first (780 s wasted on 2026-10-08)",
+      "status": "dropped"
+    },
+    {
+      "id": "T63",
+      "text": "Full proof only at its gate: vbw next asks for vbw prove --full when the next step after it is a QA round or shipping, not while a [human] acceptance is still open or no QA is due (2026-10-08: asked after an express phase with R108 open)",
+      "status": "open"
+    },
+    {
+      "id": "T64",
+      "text": "Owner colour check of the panel (was R90, R103, R108): bring back as a [human] requirement once VBW runs a milestone large enough to judge the colours (owner, 2026-10-08)",
       "status": "open"
     }
   ],
@@ -15569,6 +15592,12 @@
       "id": "D185",
       "at": "2026-10-08T08:50:01Z",
       "text": "Contract approved: 108 requirements, 172 checks, 222 plans (9e4b891ece0a); express: P74 (R109, C168, P74.1); express: P77 (R112, C176, P77.1)"
+    },
+    {
+      "id": "D186",
+      "text": "The panel colour check leaves M14 for the backlog until a milestone is large enough to judge it",
+      "why": "owner: this run was too small to judge; defer until VBW performs well",
+      "at": "2026-10-08T09:00:39Z"
     }
   ],
   "commands": {

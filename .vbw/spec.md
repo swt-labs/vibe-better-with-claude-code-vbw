@@ -113,11 +113,11 @@ VBW is a Claude Code plugin that makes it build software properly: the user agre
 - R105 [auto] A phase's rigor tier is not raised by proven requirements it could affect when each of them is guarded by an approved check the proof re-runs; only proven requirements no check guards raise it, and the tier's reasons still list what the phase could affect
 - R106 [auto] The Architect is given the next free phase number and proposes phases numbered from it, so planning never needs a renumbering round
 - R107 [auto] Each workflow agent runs at the effort its step needs, set per role and step by the profile (lower for closing a run and for documentation, higher for planning and QA), through Claude Code's per-agent effort setting; on a Claude Code without that setting, agents run as before
-- R108 [human] The panel's colours make it easy to tell at a glance which agent is which and what state each is in
 - R109 [auto] vbw init's notice about detected commands names the approval menu, never the typed /vbw:approve command
 - R110 [auto] vbw prove re-runs only the approved checks whose served files (the check's own files and the files of the plans serving its requirement) changed since their last pass, every check that declares no files, and every check whose definition changed; it reuses every other result and says so
 - R111 [auto] A project may name a fast variant of its test command for build and fix rounds; vbw prove --full runs every check and the full project commands, and vbw qa record and vbw ship refuse a proof that ran only part of them, saying to run vbw prove --full
 - R112 [auto] The interview skill says it runs before any spec or convert work, as the router does
+- R113 [auto] VBW's own files under .vbw/ (the spec, the record) never make QA check a passed phase again, even when a plan lists one of them; a change to the phase's other files still does
 
 <!-- One requirement per line: an id, how it is proved, and a user-observable
      statement. [auto] = a check can prove it; [human] = only a person can judge it.
