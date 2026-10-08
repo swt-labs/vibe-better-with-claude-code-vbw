@@ -37,7 +37,7 @@ More than four are sorted four at a time.
 | `next` | The idea goes into the backlog (`vbw todo add`), to be picked up soon. |
 | `later` | The idea goes into the backlog, to be picked up when there is room. |
 
-Each line also gives a one-sentence reason and a size:
+Each line also gives a one-sentence reason and a size: small, medium or large.
 
 | Size | Meaning |
 |---|---|
