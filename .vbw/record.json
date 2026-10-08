@@ -2997,7 +2997,60 @@
       "proof": "auto",
       "status": "open",
       "milestone": "M14",
-      "rules": []
+      "rules": [
+        {
+          "text": "a check whose own file, or a file of a plan serving its requirement, changed since its last pass runs again, and the checks that do not serve that file are reused",
+          "check": "C169"
+        },
+        {
+          "text": "a check that declares no files runs on every proof and is never reused",
+          "check": "C169"
+        },
+        {
+          "text": "a check whose approved definition changed runs again, and a check whose definition and served files are unchanged is reused even though the contract changed",
+          "check": "C169"
+        },
+        {
+          "text": "a check whose last result was fail, timeout or lost runs again even when none of its files changed",
+          "check": "C169"
+        },
+        {
+          "text": "after a proof in which one check failed and the others passed, the next proof runs the failed check and the checks with changed files and reuses the other passes",
+          "check": "C169"
+        },
+        {
+          "text": "a check with a served path that is not in the committed code runs on every proof",
+          "check": "C169"
+        },
+        {
+          "text": "a file changed in the working folder but not committed makes no check run again and is never counted as proven",
+          "check": "C169"
+        },
+        {
+          "text": "an interrupted proof (its unfinished marker is left behind) reuses nothing",
+          "check": "C169"
+        },
+        {
+          "text": "a second proof with no commit since the passing proof runs everything fresh",
+          "check": "C169"
+        },
+        {
+          "text": "a reused result keeps the time it really ran; the output marks it reused with that time, prints how many checks ran and were reused, and vbw show evidence marks it",
+          "check": "C169"
+        },
+        {
+          "text": "project commands keep the R103 rule: reused only when the committed code is the same as at the passing proof",
+          "check": "C169"
+        },
+        {
+          "text": "selective reuse adds no ledger or state file",
+          "check": "C169"
+        },
+        {
+          "text": "docs/proof.md explains which checks run again, which are reused, and why a check with no declared files always runs",
+          "check": "C170"
+        }
+      ]
     },
     {
       "id": "R111",
@@ -3005,7 +3058,80 @@
       "proof": "auto",
       "status": "open",
       "milestone": "M14",
-      "rules": []
+      "rules": [
+        {
+          "text": "a project without a quick command behaves as before, and a plain proof that happened to run everything counts as full",
+          "check": "C171"
+        },
+        {
+          "text": "a named and approved quick command runs in place of the test command in a plain proof, and every other command still runs",
+          "check": "C171"
+        },
+        {
+          "text": "a quick command named but not approved is skipped, the full test command runs instead, and the summary says it was not approved",
+          "check": "C171"
+        },
+        {
+          "text": "vbw prove --full reuses nothing and runs every check, the test command and every other command, but not the quick command",
+          "check": "C171"
+        },
+        {
+          "text": "vbw prove with any other argument is refused with the usage line",
+          "check": "C171"
+        },
+        {
+          "text": "the evidence records whether the proof was full: not when a result was reused, the quick command stood in for the test command, or a command did not run",
+          "check": "C171"
+        },
+        {
+          "text": "the vbw prove summary says whether the proof was full or partial",
+          "check": "C171"
+        },
+        {
+          "text": "a failing quick command opens a fix that a passing full proof closes",
+          "check": "C171"
+        },
+        {
+          "text": "vbw qa record refuses a proof that is not full, without changing the record, saying to run vbw prove --full, and the refusal for changed code still applies",
+          "check": "C172"
+        },
+        {
+          "text": "vbw ship refuses a proof that is not full, without changing the record, saying to run vbw prove --full",
+          "check": "C172"
+        },
+        {
+          "text": "when QA or shipping is next and the latest proof is not full, vbw next asks for vbw prove --full and the --json detail marks it as full",
+          "check": "C172"
+        },
+        {
+          "text": "a refusal followed by vbw prove --full lets the verdict be recorded, and a proof recorded before the full flag counts as full",
+          "check": "C172"
+        },
+        {
+          "text": "the test-command result given to QA agents comes from the full proof's test command, never from the quick command",
+          "check": "C172"
+        },
+        {
+          "text": "the QA agent and the verifying workflow say to run vbw prove --full after a refused verdict, then record once more",
+          "check": "C173"
+        },
+        {
+          "text": "the /vbw:vibe router runs vbw prove --full when the next step marks the proof as full",
+          "check": "C173"
+        },
+        {
+          "text": "VBW's own tools/test.sh --quick runs shellcheck, the engineering rules and the core test files, not the files approved checks run and not the timing benchmarks",
+          "check": "C174"
+        },
+        {
+          "text": "VBW's spec names the quick mode as its quick command",
+          "check": "C174"
+        },
+        {
+          "text": "the docs explain the quick command, when a full proof is needed, and the two refusal messages",
+          "check": "C175"
+        }
+      ]
     }
   ],
   "checks": [
@@ -4979,6 +5105,86 @@
       ],
       "files": [
         "tests/init-approval-wording.bats"
+      ]
+    },
+    {
+      "id": "C169",
+      "req": "R110",
+      "run": [
+        "bats",
+        "tests/proof-selective.bats"
+      ],
+      "files": [
+        "tests/proof-selective.bats"
+      ],
+      "timeout": 900
+    },
+    {
+      "id": "C170",
+      "req": "R110",
+      "run": [
+        "bats",
+        "tests/proof-selective-docs.bats"
+      ],
+      "files": [
+        "tests/proof-selective-docs.bats"
+      ]
+    },
+    {
+      "id": "C171",
+      "req": "R111",
+      "run": [
+        "bats",
+        "tests/proof-quick.bats"
+      ],
+      "files": [
+        "tests/proof-quick.bats"
+      ],
+      "timeout": 900
+    },
+    {
+      "id": "C172",
+      "req": "R111",
+      "run": [
+        "bats",
+        "tests/proof-full-gate.bats"
+      ],
+      "files": [
+        "tests/proof-full-gate.bats"
+      ],
+      "timeout": 900
+    },
+    {
+      "id": "C173",
+      "req": "R111",
+      "run": [
+        "bats",
+        "tests/proof-full-prompts.bats"
+      ],
+      "files": [
+        "tests/proof-full-prompts.bats"
+      ]
+    },
+    {
+      "id": "C174",
+      "req": "R111",
+      "run": [
+        "bats",
+        "tests/quick-mode.bats"
+      ],
+      "files": [
+        "tests/quick-mode.bats"
+      ]
+    },
+    {
+      "id": "C175",
+      "req": "R111",
+      "run": [
+        "bats",
+        "tests/proof-quick-docs.bats"
+      ],
+      "files": [
+        "tests/proof-quick-docs.bats"
       ]
     }
   ],
@@ -7801,7 +8007,7 @@
       "reasons": [
         "requirements: 1",
         "files: 3 (39064 bytes)",
-        "files: more than 2 in a repository tracking 720 files",
+        "files: more than 2 in a repository tracking 721 files",
         "risk: none",
         "breaks: none",
         "guarded: R12 (C11), R25 (C24), R31 (C27), R32 (C28), R43 (C42, C43), R44 (C44, C45), R45 (C39, C40, C41), R46 (C46), R47 (C47), R48 (C49, C50), R49 (C48), R61 (C73, C74, C75, C76, C77), R66 (C95), R69 (C110, C120, C122), R70 (C114), R73 (C98), R74 (C99, C100), R78 (C105, C106), R79 (C107), R80 (C108), R81 (C109, C111, C112, C113), R92 (C131, C132, C133, C134, C135, C136, C137, C138, C139), R93 (C140, C141, C142, C143, C144), R94 (C145, C146, C147, C148), R97 (C153), R98 (C154), R100 (C156), R104 (C161, C162), R105 (C163)",
@@ -7858,7 +8064,7 @@
       "reasons": [
         "requirements: 2",
         "files: 6 (55114 bytes)",
-        "files: more than 2 in a repository tracking 720 files",
+        "files: more than 2 in a repository tracking 721 files",
         "risk: none",
         "breaks: none",
         "guarded: R12 (C11), R22 (C19), R23 (C20), R24 (C23), R25 (C24), R26 (C22), R28 (C25), R29 (C26), R31 (C27), R32 (C28), R35 (C31), R43 (C42, C43), R44 (C44, C45), R45 (C39, C40, C41), R46 (C46), R47 (C47), R48 (C49, C50), R49 (C48), R61 (C73, C74, C75, C76, C77), R66 (C95), R69 (C110, C120, C122), R70 (C114), R71 (C115, C121), R72 (C116, C118), R73 (C98), R74 (C99, C100), R78 (C105, C106), R79 (C107), R80 (C108), R81 (C109, C111, C112, C113), R92 (C131, C132, C133, C134, C135, C136, C137, C138, C139), R93 (C140, C141, C142, C143, C144), R94 (C145, C146, C147, C148), R97 (C153), R98 (C154), R100 (C156), R103 (C160)",
@@ -7905,7 +8111,7 @@
       "reasons": [
         "requirements: 2",
         "files: 21 (120110 bytes)",
-        "files: more than 2 in a repository tracking 720 files",
+        "files: more than 2 in a repository tracking 721 files",
         "risk: none",
         "breaks: none",
         "guarded: R12 (C11), R13 (C12), R14 (C13), R22 (C19), R23 (C20), R24 (C23), R25 (C24), R26 (C22), R27 (C21), R28 (C25), R31 (C27), R35 (C31), R36 (C32), R37 (C35), R38 (C33, C34), R39 (C36), R40 (C37), R44 (C44, C45), R47 (C47), R48 (C49, C50), R49 (C48), R50 (C51), R60 (C72, C94), R61 (C73, C74, C75, C76, C77), R62 (C78, C79, C80, C81, C82, C83, C93), R65 (C86, C87, C88, C89, C90), R67 (C96), R69 (C110, C120, C122), R70 (C114), R71 (C115, C121), R72 (C116, C118), R73 (C98), R74 (C99, C100), R75 (C101), R76 (C102, C103), R77 (C104), R78 (C105, C106), R79 (C107), R80 (C108), R81 (C109, C111, C112, C113), R83 (C119), R95 (C149, C150), R96 (C151, C152), R98 (C154), R99 (C155), R100 (C156), R101 (C157), R102 (C158, C159)",
@@ -7978,7 +8184,7 @@
       "tier": "express",
       "reasons": [
         "requirements: 1",
-        "files: 1 (4688 bytes)",
+        "files: 1 (4713 bytes)",
         "risk: none",
         "breaks: none",
         "guarded: R22 (C19), R24 (C23)",
@@ -7993,6 +8199,77 @@
         "qa_findings": 0,
         "escalations": 0
       }
+    },
+    {
+      "id": "P75",
+      "title": "Proof re-runs only the checks whose files changed",
+      "reqs": [
+        "R110"
+      ],
+      "milestone": "M14",
+      "goal": "vbw prove runs again only the checks whose files, or whose approved definition, changed since they last passed, reuses every other passing result, and tells the user which results it reused.",
+      "criteria": [
+        "A check counts as unchanged only when both of these match its last passing result: its approved definition (the check's run command, expected exit, expected output, timeout, alone flag and file list) and the committed content of its served files. Served files are the check's own files plus the files of every plan that serves its requirement. This is the existing check fingerprint (D181); no new ledger or state file is added.",
+        "After a proof in which every check passed, a commit that changes only a file served by check A makes the next vbw prove run A again and reuse the result of every check that does not serve that file.",
+        "A check whose last result was fail, timeout or lost runs again, even when none of its files changed.",
+        "After a proof in which one check failed and the others passed, the next vbw prove runs the failed check plus any check whose served files changed, and reuses the other passes, even though that earlier proof as a whole did not pass.",
+        "A check that declares no files runs on every vbw prove and is never reused.",
+        "A check with a served path that is not in the committed code (HEAD) runs on every vbw prove and is never reused.",
+        "When one check's approved definition changes and the contract is approved again, that check runs again. A check whose definition and served files are unchanged is reused, even though the contract as a whole changed.",
+        "A file changed in the working folder but not committed does not make a check run again (the proof runs on a clean copy of the committed code, R32), and it is never counted as proven.",
+        "An interrupted proof (the unfinished marker is left behind) means the next vbw prove reuses nothing and runs every check.",
+        "A second vbw prove with no commit since the passing-proof commit still runs everything fresh (D173).",
+        "A reused result keeps the time it really ran. vbw prove prints it as reused, with that time, on the check's own line, and also prints one line saying how many checks ran and how many were reused. vbw show evidence marks it reused as well.",
+        "Project commands keep the existing reuse rule (R103): a command's result is reused only when the committed code is the same as at the proof that passed it, and its approved argv is unchanged.",
+        "docs/proof.md explains, in plain words, which checks run again, which are reused, and why a check with no declared files always runs.",
+        "Tests cover each case above, and the existing proof-reuse and fix-close tests still pass."
+      ],
+      "tier": "standard",
+      "reasons": [
+        "requirements: 1",
+        "files: 8 (87799 bytes)",
+        "files: more than 2 in a repository tracking 721 files",
+        "risk: none",
+        "breaks: none",
+        "guarded: R12 (C11), R22 (C19), R24 (C23), R25 (C24), R28 (C25), R31 (C27), R32 (C28), R43 (C42, C43), R44 (C44, C45), R45 (C39, C40, C41), R46 (C46), R47 (C47), R48 (C49, C50), R49 (C48), R61 (C73, C74, C75, C76, C77), R66 (C95), R69 (C110, C120, C122), R70 (C114), R73 (C98), R74 (C99, C100), R78 (C105, C106), R79 (C107), R80 (C108), R81 (C109, C111, C112, C113), R92 (C131, C132, C133, C134, C135, C136, C137, C138, C139), R93 (C140, C141, C142, C143, C144), R94 (C145, C146, C147, C148), R97 (C153), R98 (C154), R100 (C156), R102 (C158, C159), R103 (C160), R104 (C161, C162), R105 (C163)",
+        "tests: project test command"
+      ],
+      "predicted": "standard"
+    },
+    {
+      "id": "P76",
+      "title": "A quick test command for build rounds, a full proof for QA and shipping",
+      "reqs": [
+        "R111"
+      ],
+      "milestone": "M14",
+      "goal": "Build and fix rounds can use a project's faster test command. QA verdicts and shipping are accepted only after a full proof (vbw prove --full) that ran every check and every full project command.",
+      "criteria": [
+        "A project names its quick test command as a Commands entry called `quick` in .vbw/spec.md, for example `- quick: bash tools/test.sh --quick`. It needs approval like any other command. VBW never detects or suggests one (D180), and a project without one behaves as it does today.",
+        "When a quick command is named and approved, a plain vbw prove runs it in place of the test command and runs every other project command as before. The test command does not run.",
+        "When a quick command is named but not approved, a plain vbw prove runs the full test command instead, so a build round never goes untested. The summary says the quick command was not approved.",
+        "vbw prove --full reuses nothing. It runs every approved check, the test command and every other project command, but not the quick command, so nothing runs twice. vbw prove with any other argument is refused with the usage line.",
+        "The evidence records whether the proof was full. It is full only when every check and every full project command ran in that proof: none reused, and the quick command not used in place of the test command. A plain vbw prove that happened to run all of them counts as full.",
+        "vbw qa record refuses a proof that is not full, without changing the record, and its message says to run vbw prove --full. The existing refusal when the code changed since the proof still applies.",
+        "vbw ship refuses a proof that is not full, without changing the record, and its message says to run vbw prove --full.",
+        "When the next step would be QA or shipping and the latest proof is not full, vbw next asks for a proof and says to run vbw prove --full (the --json detail marks it as full). The /vbw:vibe router then runs vbw prove --full, so a normal run never reaches a refusal.",
+        "The QA agent's and the verifying workflow's instruction for a refused verdict says to run vbw prove --full, then try the record once more. The test-command result given to QA agents comes from the full proof's test command, never from the quick command.",
+        "The vbw prove summary says whether the proof was full or partial.",
+        "VBW's own project follows D179: tools/test.sh has a quick mode that runs shellcheck, the engineering rules and the core test files, but not the files approved checks already run and not the timing benchmarks. VBW's spec names that mode as its `quick` command.",
+        "docs/proof.md and the user docs explain the quick command, when a full proof is needed, and the two refusal messages.",
+        "Tests cover each case above, including a project without a quick command, an unapproved quick command, and a refusal followed by a successful vbw prove --full and record."
+      ],
+      "tier": "deep",
+      "reasons": [
+        "requirements: 1",
+        "files: 28 (214436 bytes)",
+        "files: more than 2 in a repository tracking 721 files",
+        "risk: none",
+        "breaks: none",
+        "guarded: R11 (C10), R12 (C11), R13 (C12), R14 (C13), R16 (C15), R22 (C19), R23 (C20), R24 (C23), R25 (C24), R26 (C22), R27 (C21), R28 (C25), R31 (C27), R32 (C28), R33 (C29), R35 (C31), R37 (C35), R38 (C33, C34), R39 (C36), R40 (C37), R43 (C42, C43), R44 (C44, C45), R45 (C39, C40, C41), R46 (C46), R47 (C47), R48 (C49, C50), R49 (C48), R50 (C51), R55 (C56, C57), R60 (C72, C94), R61 (C73, C74, C75, C76, C77), R62 (C78, C79, C80, C81, C82, C83, C93), R65 (C86, C87, C88, C89, C90), R66 (C95), R67 (C96), R69 (C110, C120, C122), R70 (C114), R71 (C115, C121), R72 (C116, C118), R73 (C98), R74 (C99, C100), R78 (C105, C106), R79 (C107), R80 (C108), R81 (C109, C111, C112, C113), R83 (C119), R92 (C131, C132, C133, C134, C135, C136, C137, C138, C139), R93 (C140, C141, C142, C143, C144), R94 (C145, C146, C147, C148), R95 (C149, C150), R96 (C151, C152), R97 (C153), R98 (C154), R99 (C155), R100 (C156), R101 (C157), R102 (C158, C159), R103 (C160), R104 (C161, C162), R105 (C163), R106 (C164, C165), R107 (C166, C167)",
+        "tests: project test command"
+      ],
+      "predicted": "deep"
     }
   ],
   "plans": [
@@ -13096,6 +13373,186 @@
       "tasks": [
         "the notice says the commands run only after you approve them in the approval menu, with no /vbw:approve"
       ]
+    },
+    {
+      "id": "P75.1",
+      "phase": "P75",
+      "title": "Proof reruns only the checks whose files changed",
+      "reqs": [
+        "R110"
+      ],
+      "files": [
+        "plugin/lib/proofreuse.sh",
+        "plugin/lib/cmd-prove.sh",
+        "plugin/lib/cmd-show.sh",
+        "tests/proof-reuse.bats",
+        "tests/kernel-prove.bats",
+        "tests/fix-reuse.bats",
+        "tests/kernel-qafresh.bats"
+      ],
+      "after": [],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "Save, next to each check's result, a fingerprint of the committed content of the files that check depends on (its own files plus the files of every plan serving its requirement), beside the fingerprint of its approved definition. Use the existing checks_fingerprint; add no new file or ledger.",
+        "Pick per check: reuse its last result only when it passed and both fingerprints match. Run it when its last result was fail, timeout or lost, when it declares no files, when a served file is not in the committed code, after an interrupted proof, and on a second proof with no commit since a passing one.",
+        "Keep project commands on the existing R103 rule: reused only when the committed code is the same as at the passing proof and the command's argv is unchanged.",
+        "Print one line 'checks: N ran, M reused' in the prove summary (reused results keep their own line with the time they really ran), and mark reused results the same way in vbw show evidence.",
+        "Update the old expectations this requirement replaces in tests/proof-reuse.bats (an unrelated committed or uncommitted change no longer reruns checks; a failed proof no longer blocks reusing the other passes), and any other existing test that expected every check to rerun after an unrelated commit."
+      ]
+    },
+    {
+      "id": "P75.2",
+      "phase": "P75",
+      "title": "Explain which checks run again in docs/proof.md",
+      "reqs": [
+        "R110"
+      ],
+      "files": [
+        "docs/proof.md"
+      ],
+      "after": [],
+      "status": "planned",
+      "role": "docs",
+      "tasks": [
+        "Rewrite 'Reusing results in vbw prove': a check runs again when its served files (its own files and the files of every plan that serves its requirement) changed, when its approved definition changed, or when its last result was fail, timeout or lost; every other result is reused and shown as reused with the time it really ran, plus the line 'checks: N ran, M reused'.",
+        "Say why a check that declares no files always runs (VBW cannot know what it depends on), and that a check with a served path missing from the committed code always runs too.",
+        "Say that a change in the working folder that is not committed does not make a check run again and is never counted as proven; that an interrupted proof reuses nothing; that a second vbw prove with no commit since a passing proof runs everything fresh; that project commands keep their own rule. Remove the old list that says any changed committed file reruns everything, and the sentence calling a reusing proof a full proof.",
+        "Update step 3 of the 'vbw prove' list to match."
+      ]
+    },
+    {
+      "id": "P76.1",
+      "phase": "P76",
+      "title": "vbw prove --full and the quick command",
+      "reqs": [
+        "R111"
+      ],
+      "files": [
+        "plugin/lib/cmd-prove.sh",
+        "plugin/lib/proofreuse.sh",
+        "plugin/lib/prove.jq",
+        "plugin/lib/record.jq",
+        "tests/proof-reuse.bats"
+      ],
+      "after": [
+        "P75.1"
+      ],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "vbw prove accepts only --full; any other argument is refused with 'usage: vbw prove [--full]' and nothing runs.",
+        "A plain proof runs the approved quick command in place of the test command and runs every other command as before. If quick is named but not approved, the test command runs and quick is reported skipped (not approved). vbw prove --full runs every check, the test command and every other command, never quick, and reuses nothing.",
+        "Record 'full' in the evidence: true only when no result was reused, quick did not stand in for the test command, and every full command ran (an unapproved command did not). Evidence recorded before this change has no 'full' and counts as full; record validation accepts the field.",
+        "The prove summary shows 'proof: full' or 'proof: partial' (with the reason in brackets). A passing full test command also closes a fix opened for a failing quick command.",
+        "In tests/proof-reuse.bats, make the old test that records QA after a reused proof run vbw prove --full first."
+      ]
+    },
+    {
+      "id": "P76.2",
+      "phase": "P76",
+      "title": "QA and shipping accept only a full proof",
+      "reqs": [
+        "R111"
+      ],
+      "files": [
+        "plugin/lib/cmd-qa.sh",
+        "plugin/lib/next.jq",
+        "plugin/lib/cmd-ship.sh",
+        "tests/kernel-qa.bats",
+        "tests/kernel-qafresh.bats",
+        "tests/kernel-accept.bats",
+        "tests/kernel-surface.bats",
+        "tests/kernel-next.bats",
+        "tests/next-phase.bats",
+        "tests/qa-recheck-scope.bats",
+        "tests/qa-recheck-why.bats",
+        "tests/rigor-escalation.bats",
+        "tests/rigor-prediction.bats",
+        "tests/rigor-early.bats"
+      ],
+      "after": [
+        "P76.1"
+      ],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "vbw qa record refuses a proof that is not full, leaves the record untouched, and says 'the last proof was partial: run vbw prove --full, then record the verdict again'. The refusal for code changed since the proof still comes first.",
+        "vbw next, when QA or shipping is the next step and the latest proof is not full, answers action prove with the instruction 'Run vbw prove --full: QA and shipping need a proof that ran every check and every full project command' and detail.full true. A proof with no 'full' field counts as full.",
+        "vbw ship refuses the same way, through that answer (message names vbw prove --full), without changing the record; change cmd-ship.sh only if its message does not.",
+        "The test-command result given to QA agents (round.suite) stays the full proof's test command result, never the quick command's.",
+        "Update existing tests that record QA or ship after a proof that reused results, so they run vbw prove --full first."
+      ]
+    },
+    {
+      "id": "P76.3",
+      "phase": "P76",
+      "title": "QA agent, QA workflow and router say vbw prove --full",
+      "reqs": [
+        "R111"
+      ],
+      "files": [
+        "plugin/agents/qa.md",
+        "plugin/workflows/verifying.js",
+        "plugin/skills/vibe/SKILL.md",
+        "plugin/skills/qa/SKILL.md"
+      ],
+      "after": [],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "plugin/agents/qa.md: if vbw qa record refuses, run vbw prove --full, then record once more (replace the old advice to run vbw prove).",
+        "plugin/workflows/verifying.js: the instruction to each QA agent says the same; the test result still comes from the round given by vbw next.",
+        "plugin/skills/vibe/SKILL.md: the prove step runs vbw prove --full when detail.full is true in vbw next --json, else vbw prove; keep the router within its size budget.",
+        "plugin/skills/qa/SKILL.md: the QA skill proves with vbw prove --full."
+      ]
+    },
+    {
+      "id": "P76.4",
+      "phase": "P76",
+      "title": "VBW's own quick test mode",
+      "reqs": [
+        "R111"
+      ],
+      "files": [
+        "tools/test.sh",
+        ".vbw/spec.md"
+      ],
+      "after": [
+        "P76.1"
+      ],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "tools/test.sh takes only --quick, or --quick --list; any other argument is refused with 'usage: tools/test.sh [--quick [--list]]' before anything runs. No argument behaves exactly as today.",
+        "--quick --list prints, one per line, the stages the quick mode runs: shellcheck, then every tests/*.bats that no approved check in .vbw/record.json runs or protects, minus the timing benchmarks (prove-parallel, guard-cost, bench-hooks, proof-stale-links), always including the engineering rules (standards.bats and its self-test). It runs nothing.",
+        "--quick runs exactly that list: shellcheck on tools, then bats on those files; no hook or panel benchmarks.",
+        "Add '- quick: bash tools/test.sh --quick' to the Commands in .vbw/spec.md and run vbw spec sync so the record carries it (the owner approves it in the approval menu)."
+      ]
+    },
+    {
+      "id": "P76.5",
+      "phase": "P76",
+      "title": "Explain the quick command and the full proof in the docs",
+      "reqs": [
+        "R111"
+      ],
+      "files": [
+        "docs/proof.md",
+        "docs/next.md",
+        "docs/record.md"
+      ],
+      "after": [
+        "P75.2"
+      ],
+      "status": "planned",
+      "role": "docs",
+      "tasks": [
+        "docs/proof.md: how a project names its quick command (a Commands entry '- quick: ...'), that it needs approval like any other command, that VBW never detects or suggests one, that a plain proof runs it in place of the test command, and that an unapproved quick command makes the full test command run instead.",
+        "docs/proof.md: vbw prove --full (reuses nothing, runs every check, the test command and every other command, never quick), what makes a proof full or partial, the summary line, and the usage line 'usage: vbw prove [--full]'.",
+        "docs/proof.md: when a full proof is needed (QA and shipping) and the two refusal messages, quoted exactly: 'the last proof was partial: run vbw prove --full, then record the verdict again' for vbw qa record, and the vbw next instruction 'Run vbw prove --full: ...' that vbw ship shows.",
+        "docs/next.md: the new prove step before QA or shipping. docs/record.md: the evidence's 'full' field and that evidence without it counts as full."
+      ]
     }
   ],
   "fixes": [
@@ -14928,6 +15385,24 @@
       "text": "Selective proof: build and fix rounds prove selectively; QA verdicts and shipping need a full proof (vbw prove --full)",
       "why": "owner: yes, build it now; the full proof at QA and ship catches checks that miss a file they depend on",
       "at": "2026-10-08T00:02:39Z"
+    },
+    {
+      "id": "D179",
+      "text": "VBW's own quick test command for build and fix rounds runs everything that is not already a check: shellcheck, the engineering rules and the core test files, without the check files and the timing benchmarks",
+      "why": "owner: nothing runs twice, nothing goes unwatched; the full suite runs at QA and ship (D178)",
+      "at": "2026-10-08T00:09:21Z"
+    },
+    {
+      "id": "D180",
+      "text": "A quick test command exists only when a project names one in its spec's Commands; VBW does not detect or suggest one",
+      "why": "owner: VBW serves every user through the mechanism itself; no detection code",
+      "at": "2026-10-08T00:09:21Z"
+    },
+    {
+      "id": "D181",
+      "text": "Selective proof uses the existing check fingerprint (checks_fingerprint: the check's approved definition plus the committed content of its served files), one source for fix close and vbw prove; no ledger or new state",
+      "why": "chosen by VBW: content-addressed, language-independent, already in the record; a check that misses a file it depends on is caught by the full proof at QA and ship",
+      "at": "2026-10-08T00:09:22Z"
     }
   ],
   "commands": {
