@@ -157,12 +157,13 @@ profile:
 | Tier | Agents | QA | Models |
 |---|---|---|---|
 | `express` | one Dev | `quick`, and only when needed (below) | Dev and QA on Sonnet |
-| `standard` | Lead, a Dev per plan, QA | `standard` | Sonnet |
-| `deep` | Scout, Lead, a Dev per plan, QA | `deep` | Sonnet |
+| `standard` | Lead, a Dev per plan, QA | `standard` | Lead on Opus; Dev and QA on Sonnet |
+| `deep` | Scout, Lead, a Dev per plan, QA | `deep` | Lead on Opus; Scout, Dev and QA on Sonnet |
 
 `quality` runs Dev on Opus from `standard` up and QA at `deep` for both upper
 tiers; `budget` runs `express` Dev on Haiku and `standard` QA at `quick`. Read the
-file for the exact table. Your own model overrides (`vbw config set model.dev opus`) win over the table.
+file for the exact table. The Lead, Scout and Architect take their models from
+`plugin/lib/profiles.json` (`vbw config models` prints them). Your own model overrides (`vbw config set model.dev opus`) win over the table.
 
 **QA never uses Haiku.** In every profile and tier, QA runs on Sonnet or a
 stronger model. Other roles keep the models their profile gives them.
