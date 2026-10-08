@@ -1341,13 +1341,15 @@ scenario_senior() {
   }
 }
 
-# A small change (R72): the project's first milestone (greet.sh) is shipped, and
-# the user asks for one small change in plain words. VBW takes it to done
-# through /vbw:vibe without the planning workflow: it plans one plan with its
-# check itself, the user approves once (the choice, Enter on Approve), it is
-# built and checked, and QA is quick at most. Facts come from the record, git and
-# the session transcript, never screen text.
-shipped_seed() {
+# A small change (R72, R116): the project's active milestone already holds
+# earlier work (greet.sh: its requirement planned and proven, its phase and plan
+# done, not shipped), and the user asks for one small change in plain words.
+# VBW adds it to that milestone through /vbw:vibe without the planning workflow:
+# it plans one plan with its check itself, the user approves once (the choice,
+# Enter on Approve), it is built and checked, QA is quick at most, the earlier
+# phases and plans stay as they were, and the milestone waits to ship. Facts
+# come from the record, git and the session transcript, never screen text.
+milestone_seed() {
   printf '# Greetings\n\n## Requirements\n\n- R1 [auto] ./greet.sh Ana prints "Hello, Ana!"; without a name it prints "Hello, world!"\n' > .vbw/spec.md
   "$VBW" spec sync > /dev/null || return 1
   printf '[ "$(sh greet.sh Ana)" = "Hello, Ana!" ] && [ "$(sh greet.sh)" = "Hello, world!" ]\n' > test_greet.sh
@@ -1362,17 +1364,26 @@ shipped_seed() {
   "$VBW" commit P1.1 "feat(P1.1): greet.sh" > /dev/null || return 1
   # shellcheck disable=SC1010 # "plan done" is a vbw subcommand
   "$VBW" plan done P1.1 > /dev/null || return 1
-  "$VBW" prove > /dev/null || return 1
+  "$VBW" prove --full > /dev/null || return 1
   "$VBW" qa record P1 pass standard "seeded" > /dev/null || return 1
-  "$VBW" ship > /dev/null || return 1
+}
+
+# The seeded phases and plans as they were defined (QA may re-check a phase).
+seeded_shape() {
+  jq -c --argjson ph "$1" --argjson pl "$2" '[.phases[] | select(.id | IN($ph[])) | {id, title, reqs, milestone}],
+    [.plans[] | select(.id | IN($pl[])) | {id, phase, title, reqs, files, tasks, status}]' "$dir/.vbw/record.json" 2> /dev/null
 }
 
 scenario_smallchange() {
   new_project
-  (cd "$dir" && "$VBW" init > /dev/null && "$VBW" config rigor auto > /dev/null && shipped_seed) \
-    || { say "setup failed: could not seed the shipped greet.sh project"; return 1; }
-  fixture="greet.sh shipped in a first milestone (one phase, one plan, QA passed, shipped); the user then asks for a --shout option in plain words; rigor auto"
+  (cd "$dir" && "$VBW" init > /dev/null && "$VBW" config rigor auto > /dev/null && milestone_seed) \
+    || { say "setup failed: could not seed the greet.sh milestone"; return 1; }
+  fixture="greet.sh in an active milestone (one requirement proven, its phase and plan done, QA passed, not shipped); the user then asks for a --shout option in plain words; rigor auto"
   seed_ms=$(jq -r '.milestone.id' "$dir/.vbw/record.json")
+  seed_reqs=$(jq -c --arg m "$seed_ms" '[.requirements[] | select(.milestone == $m) | .id]' "$dir/.vbw/record.json")
+  seed_phases=$(jq -c '[.phases[].id]' "$dir/.vbw/record.json")
+  seed_plans=$(jq -c '[.plans[].id]' "$dir/.vbw/record.json")
+  seed_shape=$(seeded_shape "$seed_phases" "$seed_plans")
   seed_approvals=$(jq '[.decisions[] | select(.text | startswith("Contract approved"))] | length' "$dir/.vbw/record.json")
   seed_head=$(git -C "$dir" rev-parse HEAD)
   chosen=false
@@ -1383,37 +1394,48 @@ scenario_smallchange() {
     chosen=true
     return 0
   }
-  # Done when the new milestone's work is built and checked: it waits to ship, or shipped.
+  # Done when the request is in the record and built and checked: the milestone waits to ship (or shipped).
   done_yet() {
-    [ "$(jq -r '.milestone.id' "$dir/.vbw/record.json" 2> /dev/null)" != "$seed_ms" ] || return 1
+    jq -e --argjson s "$seed_reqs" '[.requirements[] | select(.id | IN($s[]) | not)] | length > 0' "$dir/.vbw/record.json" > /dev/null 2>&1 || return 1
     shipped || [ "$(next_action)" = ship ]
   }
   checks() {
-    local passed=true n plans checks_ok=false tier planning=false committed=false out
+    local passed=true n plans prior=0 same=false kept=false qa_ok=false checks_ok=false tier planning=false committed=false out r="$dir/.vbw/record.json"
     # The session's transcript shows every Workflow it started.
     workflow_started planning && planning=true
-    n=$(jq --argjson s "$seed_approvals" '[.decisions[] | select(.text | startswith("Contract approved"))] | length - $s' "$dir/.vbw/record.json" 2> /dev/null || echo 0)
-    plans=$(jq '. as $r | [$r.plans[] | select(. as $p | $r.phases[] | select(.id == $p.phase and .milestone == $r.milestone.id))] | length' "$dir/.vbw/record.json" 2> /dev/null || echo 0)
+    n=$(jq --argjson s "$seed_approvals" '[.decisions[] | select(.text | startswith("Contract approved"))] | length - $s' "$r" 2> /dev/null || echo 0)
+    prior=$(jq --argjson s "$seed_reqs" --arg m "$seed_ms" '[.requirements[] | select(.milestone == $m and (.id | IN($s[])))] | length' "$r" 2> /dev/null || echo 0)
+    jq -e --argjson s "$seed_reqs" --arg m "$seed_ms" '.milestone.id == $m
+      and ([.requirements[] | select(.id | IN($s[]) | not)] as $new | ($new | length) > 0 and all($new[]; .milestone == $m))' "$r" > /dev/null 2>&1 && same=true
+    [ -n "$seed_shape" ] && [ "$(seeded_shape "$seed_phases" "$seed_plans")" = "$seed_shape" ] && kept=true
+    plans=$(jq --argjson s "$seed_plans" '. as $r | [$r.plans[] | select((.id | IN($s[]) | not) and (. as $p | any($r.phases[]; .id == $p.phase and .milestone == $r.milestone.id)))] | length' "$r" 2> /dev/null || echo 0)
     jq -e '. as $r | [$r.checks[] | select(.req as $q | $r.requirements[] | select(.id == $q and .milestone == $r.milestone.id))] as $c
-      | ($c | length) > 0 and all($c[]; $r.evidence.checks[.id].status == "pass")' "$dir/.vbw/record.json" > /dev/null 2>&1 && checks_ok=true
-    tier=$(jq -r '. as $r | [$r.phases[] | select(.milestone == $r.milestone.id) | .qa.tier // "none"] | last // "none"' "$dir/.vbw/record.json" 2> /dev/null || echo none)
+      | ($c | length) > 0 and all($c[]; $r.evidence.checks[.id].status == "pass")' "$r" > /dev/null 2>&1 && checks_ok=true
+    tier=$(jq -r --argjson s "$seed_phases" '. as $r | [$r.phases[] | select(.milestone == $r.milestone.id and (.id | IN($s[]) | not)) | .qa.tier // "none"] | last // "none"' "$r" 2> /dev/null || echo none)
     # The change is in git: a plan commit since the seed that touches greet.sh, and the script does what was asked.
     [ -n "$(git -C "$dir" log --format=%B "$seed_head..HEAD" -- greet.sh | grep '^VBW-Plan: ')" ] \
       && out=$(cd "$dir" && sh greet.sh --shout Ana 2> /dev/null) && [ "$out" = "HELLO, ANA!" ] && committed=true
-    say "planning workflow: $planning, approvals: $n, plans: $plans, QA tier: $tier"
+    say "planning workflow: $planning, approvals: $n, earlier requirements: $prior, new plans: $plans, QA tier: $tier"
+    expect "the milestone held earlier requirements ($prior)" [ "$prior" -ge 1 ]
+    expect "the request joined the active milestone" [ "$same" = true ]
+    expect "the earlier phases and plans are unchanged" [ "$kept" = true ]
     expect "no planning workflow was started" [ "$planning" = false ]
     expect "one approval decision ($n)" [ "$n" -eq 1 ]
     expect "the user approved by the choice" [ "$chosen" = true ]
-    expect "one plan ($plans)" [ "$plans" -eq 1 ]
-    expect "the plan's check passed" [ "$checks_ok" = true ]
-    expect "QA was quick at most ($tier)" [ "$tier" = quick ] || [ "$tier" = express ] || [ "$tier" = none ]
+    expect "one new plan ($plans)" [ "$plans" -eq 1 ]
+    expect "every check of the milestone passed" [ "$checks_ok" = true ]
+    case "$tier" in quick | express | none) qa_ok=true ;; esac
+    expect "QA was quick at most ($tier)" [ "$qa_ok" = true ]
     expect "the change is committed and greet.sh shouts" [ "$committed" = true ]
+    check "the milestone waits to ship" '.milestone.status != "shipped"'
     check_sh "no stray changes outside .vbw/runtime" '[ -z "$(git status --porcelain -- . ":(exclude).vbw/runtime")" ]'
     [ "$failed" -eq 0 ] || passed=false
     result_write smallchange "$fixture" "${cost_usd:-0}" "$passed" \
-      "$(jq -n --argjson pw "$planning" --argjson n "$n" --argjson c "$chosen" --argjson p "$plans" --argjson k "$checks_ok" --arg t "$tier" --argjson g "$committed" \
-        '{planning_workflow: $pw, approvals: $n, approved_by_choice: $c, plans: $p, check_passed: $k, qa_tier: $t, change_committed: $g}')" \
-      '["a change that turns out to touch more than two files or a risk path (the planning workflow)","a project larger than the greet.sh fixture","the wording of what VBW tells the user (read by a person)","the user answering Not yet or in their own words at the approval"]'
+      "$(jq -n --argjson pr "$prior" --argjson sm "$same" --argjson k "$kept" --argjson pw "$planning" --argjson n "$n" --argjson c "$chosen" \
+        --argjson p "$plans" --argjson ok "$checks_ok" --arg t "$tier" --argjson g "$committed" \
+        '{prior_requirements: $pr, same_milestone: $sm, prior_kept: $k, planning_workflow: $pw, approvals: $n, approved_by_choice: $c,
+          plans: $p, check_passed: $ok, qa_tier: $t, change_committed: $g}')" \
+      '["a change that turns out to touch more than two files or a risk path (the planning workflow)","a project larger than the greet.sh fixture","a request added to a milestone whose earlier work is still being built","the wording of what VBW tells the user (read by a person)","the user answering Not yet or in their own words at the approval"]'
   }
 }
 
