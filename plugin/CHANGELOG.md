@@ -1,5 +1,21 @@
 # Changelog
 
+## [2.0.26] - 2026-10-08
+
+### Fixed
+
+- **Approve always approves the contract you were shown.** When Claude words
+  the approval question in its own way and leaves out the contract's code, VBW
+  now puts `Approve contract <code>?` in front of it before you see it, so your
+  Approve is recorded. Before, a reworded question approved nothing.
+- **Editing the spec no longer sends a phase back to QA.** VBW's own files
+  under `.vbw/` (the spec and the record) never make QA check a passed phase
+  again, even when a plan lists them.
+- The QA refusal for changed code, `vbw help` and the docs now say
+  `vbw prove --full` wherever a QA verdict needs a full proof.
+- The interview skill says it runs before any spec or convert work, as the
+  router does.
+
 ## [2.0.25] - 2026-10-08
 
 ### Changed
