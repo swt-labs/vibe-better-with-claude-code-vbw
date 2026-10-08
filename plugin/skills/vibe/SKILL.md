@@ -23,7 +23,7 @@ Kernel decides next step; you carry it out. Even for a one-line fix: no project 
 
 User said: $ARGUMENTS
 
-Every new request (in $ARGUMENTS or later) goes to `vbw:triage` first.
+Every new request (in $ARGUMENTS or later) goes to `vbw:triage` first. "What's next" or "suggest next" follows `vbw:whats-next`.
 
 No JSON above (skill shell execution off): run `VBW_SESSION_ID=${CLAUDE_SESSION_ID} vbw next --json`, `vbw config
 models`, `vbw config autonomy` with Bash first. "not a VBW project": set it up
@@ -43,9 +43,9 @@ Last line above = how much VBW does alone (`/vbw:profile` changes it). Approval,
 
 Do step for `action`, run `VBW_SESSION_ID=${CLAUDE_SESSION_ID} vbw next --json`, do next step. Stop when `gate` is
 true, or a workflow runs in background (its result wakes you; continue).
-At a stop, say plainly what happened.
+At a stop, say what happened.
 Every stop ends with a last line, **What I need from you:** <the one thing user must do now>, or "nothing".
-Never claim more than kernel shows.
+Claim only what kernel shows.
 
 `plan`, `build`, `fix` need the **Workflow** tool (the `workflows` line above turned it on). None: say why, stop. Pass
 `session` (`${CLAUDE_SESSION_ID}`: the workflow confirms what its agents recorded and ends its own run), `models` (from `vbw config models`), the next JSON's top-level `rigor`, `effort` and its `profile` in every workflow's args.
@@ -98,7 +98,7 @@ each: `vbw decide "<what was decided>" "<their reason, or the trade-off they acc
 `choices` it made itself (any can change), Architect's `notes` (offer `vbw todo add`). Then the approval menu, never a typed command.
 
 **approve** (needs user): `vbw show contract --changes` (after an earlier approval: explain just those). Else
-`vbw show contract`: explain each requirement, how checked, plans, files, commands that will run. Follow `vbw:suggest`, then AskUserQuestion with the approval question `vbw show contract` prints: "Approve" (first), "Not yet". Only this menu; never ask the user to type /vbw:approve (typing it still works). Approve: hook recorded it; continue. Not yet: ask what to change. User's own words (own-answer slot): what to change, or a question. You cannot approve.
+`vbw show contract`: explain each requirement, how checked, plans, files, commands that will run. Follow `vbw:suggest`, then AskUserQuestion with the approval question `vbw show contract` prints: "Approve" (first), "Not yet". Only this menu; never ask the user to type /vbw:approve. Approve: hook recorded it; continue. Not yet: ask what to change. User's own words (own-answer slot): what to change, or a question. You cannot approve.
 Test files edited during the build wait for one approval just before proof (`detail.files`): say which and why, then ask the same way.
 
 **build**: `VBW_SESSION_ID=${CLAUDE_SESSION_ID} vbw run start build <detail.plans>`, Workflow `vbw:building` with
@@ -110,11 +110,11 @@ args `{"plans": <detail.plans>, "docs": <detail.docs>, "models": ..., "rigor": .
 **prove**: `VBW_SESSION_ID=${CLAUDE_SESSION_ID} vbw prove --full` when `detail.full` is true, else `vbw prove`; report what passed and failed.
 
 **qa**: `VBW_SESSION_ID=${CLAUDE_SESSION_ID} vbw run start qa`, Workflow `vbw:verifying` with args
-`{"phases": <detail.phases>, "tier": <detail.tier>, "round": <round, as in vbw next --json>, "models": ..., "rigor": ...}`. QA records each phase's verdict; findings become fixes. Report verdicts, failed checks and anything not recorded briefly.
+`{"phases": <detail.phases>, "tier": <detail.tier>, "round": <round, as in vbw next --json>, "models": ..., "rigor": ...}`. QA records each phase's verdict; findings become fixes. Report verdicts, failed checks, anything not recorded.
 
 **run**: a run is open. This session's workflow still running: wait. Else
 interrupted: `VBW_SESSION_ID=${CLAUDE_SESSION_ID} vbw run end`, continue.
-Another session's run: never end it yourself. Ask once (AskUserQuestion): "Still running: wait" (Recommended), or "That session is closed" →
+Another session's run: never end it. Ask once (AskUserQuestion): "Still running: wait" (Recommended), or "That session is closed" →
 `VBW_SESSION_ID=${CLAUDE_SESSION_ID} vbw run end --owner-closed`, continue.
 
 **unblock** (needs user): `vbw show plan <id>` per blocked plan; say what Dev needs. Resolved: `vbw plan reset <id>`.
@@ -127,11 +127,11 @@ once more (`vbw fix retry <id>`), or change the requirement or its check
 
 **accept** (needs user): per requirement in `detail.requirements`, show the
 thing to judge: run it yourself when you can; put its output, or one concrete thing to try, in the question and the
-`preview` of "Works". Visual: screenshot into `.vbw/runtime/` and open it (`open`, `xdg-open`). Ask with AskUserQuestion: "Works",
+`preview` of "Works". Visual: screenshot into `.vbw/runtime/` and open it. Ask with AskUserQuestion: "Works",
 "Something's wrong", "Skip for now". Works: `vbw req accept <id>`. Something's
 wrong: ask what, then `vbw req reject <id> "<their words>"`. Skip: leave it.
 
-**ship** (needs user): summarize what was delivered (`vbw status`, `vbw show roadmap`); ask whether to ship. Yes: `vbw ship`.
+**ship** (needs user): summarize what was delivered (`vbw status`, `vbw show roadmap`); ask whether to ship. Yes: `vbw ship`; then follow `vbw:whats-next` (the ship never waits for it).
 
 **milestone** (needs user): ask what next milestone is about,
 `vbw milestone start "<title>"`, then `spec`.
