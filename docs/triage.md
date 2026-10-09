@@ -61,6 +61,17 @@ T1 Dark mode
 
 Items added before sorting existed stay unsorted and list as before.
 
+An item already in the backlog gets its sort later, or a different one:
+
+```
+$ vbw todo sort T3 next small
+T3 [next, small] Refunds
+```
+
+It replaces both values, then lists the item in its group. An unknown or
+closed item, or a value other than `next`/`later` and `small`/`medium`/`large`,
+is refused and nothing changes.
+
 `vbw triage` prints what VBW looks at when it sorts: the active milestone, its
 requirements not yet proven or accepted, any open run and the open backlog.
 It writes nothing.
