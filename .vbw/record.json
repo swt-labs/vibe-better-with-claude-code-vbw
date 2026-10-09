@@ -9602,7 +9602,15 @@
         "guarded: R51 (C52, C53, C66), R52 (C58, C91), R53 (C54, C55), R55 (C56, C57), R56 (C61, C65), R57 (C59, C70, C71), R58 (C62, C63, C64, C67), R64 (C84, C85), R82 (C117), R84 (C123), R85 (C125), R86 (C124), R87 (C126, C127), R88 (C129), R89 (C128), R91 (C130)",
         "tests: project test command"
       ],
-      "predicted": "standard"
+      "predicted": "standard",
+      "qa": {
+        "result": "fail",
+        "tier": "standard",
+        "tree": "e63e10b95f314baaf3a40ae0b53d0f8a6a54b80b7cb885a4e106694c1b7bc78e",
+        "at": "2026-10-09T00:58:24Z",
+        "note": "16/17 checks",
+        "rounds": 1
+      }
     }
   ],
   "plans": [
@@ -16192,6 +16200,14 @@
       "attempts": 0,
       "status": "closed",
       "note": "test fail"
+    },
+    {
+      "id": "F87",
+      "req": "R124",
+      "source": "qa",
+      "attempts": 0,
+      "status": "open",
+      "note": "docs/panel.md 'What's next' example block does not match what the panel draws. Doc shows '[Suggest next]' on the title line, 'Refunds for paid orders (small)', and one line 'Then: Gift cards (large), Dark mode (medium)'. plugin/hooks/panel-next.js (nextLines/renderNext) draws the title alone, then 'Refunds for paid orders · small', the reason, each runner-up on its own line as '  Gift cards · large', a 'written YYYY-MM-DD' line, and the Suggest next button below the lines. Fix: make the example show the real layout (or say it is a sketch of vbw status's text), keeping the 'same order as vbw status' claim."
     }
   ],
   "todos": [
@@ -19468,5 +19484,11 @@
     "full": true,
     "passed": true
   },
-  "lease": null
+  "lease": {
+    "run": "qa-20261009T005710Z",
+    "kind": "qa",
+    "started_at": "2026-10-09T00:57:10Z",
+    "files": [],
+    "session": "4130e174-7ef2-4e36-b853-fb2a8fd8511d"
+  }
 }
