@@ -130,6 +130,15 @@ VBW is a Claude Code plugin that makes it build software properly: the user agre
 - R124 [auto] The panel's Now tab shows a What's next section with the stored recommendation (top pick and reason, up to two runners-up with sizes) and a Suggest next button that puts the refresh request in the prompt without sending it
 - R125 [human] The What's next section's colour candy is subtle and elegant: a slow shimmer on its title and a soft pulse on the top pick when a new recommendation arrives, settling afterwards
 - R126 [auto] CI runs its actions on their Node 24 majors, and the Linux tests also run on the Ubuntu 26 image, before ubuntu-latest moves on 2026-10-19
+- R127 [auto] vbw todo sort ID next|later small|medium|large sets the sort and size of an open backlog item, which then lists with them; an unknown or closed item, or a value outside those, is refused and nothing changes
+- R128 [auto] Every decision a VBW hook returns to Claude Code (permission decisions, blocking, added context, rewritten input) has a test that pins its documented Claude Code meaning, and no hook answers a question or allows an action in the user's place
+- R129 [auto] vbw plan block refuses a plan that is done, with a message that says so, and nothing changes
+- R130 [auto] The full vbw apply refuses a requirement that another milestone owns or already covers, as vbw apply --add does, and nothing changes
+- R131 [auto] The QA prompt names the project's test command and the end of its output; when the round does not carry them, the prompt says so in plain words and never prints undefined
+- R132 [auto] The QA files fingerprint carries a version, so a VBW update that changes how it is computed does not by itself send a passed phase back to QA
+- R133 [auto] The what's-next reply format refuses an empty source for a pick, so one empty source can never make the kernel refuse the whole recommendation
+- R134 [auto] docs/workflows.md lists every workflow in plugin/workflows (vbw:tooling included) with the right count, and docs/proof.md says a Test results folder name cannot contain spaces
+- R135 [auto] The router's triage line reads as a correct sentence whatever the user typed after /vbw:vibe, including nothing
 
 <!-- One requirement per line: an id, how it is proved, and a user-observable
      statement. [auto] = a check can prove it; [human] = only a person can judge it.

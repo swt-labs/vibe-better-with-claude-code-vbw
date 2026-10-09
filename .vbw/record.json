@@ -3740,6 +3740,275 @@
           "check": "C186"
         }
       ]
+    },
+    {
+      "id": "R127",
+      "text": "vbw todo sort ID next|later small|medium|large sets the sort and size of an open backlog item, which then lists with them; an unknown or closed item, or a value outside those, is refused and nothing changes",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M17",
+      "rules": [
+        {
+          "text": "every pairing of next or later with small, medium or large on an open item is recorded and the item lists as T<n> [sort, size] text",
+          "check": "C194"
+        },
+        {
+          "text": "an item sorted next lists in the next group, before later and unsorted items",
+          "check": "C194"
+        },
+        {
+          "text": "sorting an item that already has a sort and size replaces both; its id, text and status stay",
+          "check": "C194"
+        },
+        {
+          "text": "an item that does not exist is refused with a message naming the id, and the record is unchanged",
+          "check": "C194"
+        },
+        {
+          "text": "a done or dropped item is refused with a message saying it is closed, and the record is unchanged",
+          "check": "C194"
+        },
+        {
+          "text": "another sort, another size, a missing value or extra arguments is refused with the usage line, and the record is unchanged",
+          "check": "C194"
+        },
+        {
+          "text": "the sorted item shows its sort and size in vbw triage --json and in the backlog lines the recommending workflow gives the Architect",
+          "check": "C194"
+        },
+        {
+          "text": "the vbw todo usage text, vbw help and the user docs name vbw todo sort",
+          "check": "C194"
+        }
+      ]
+    },
+    {
+      "id": "R128",
+      "text": "Every decision a VBW hook returns to Claude Code (permission decisions, blocking, added context, rewritten input) has a test that pins its documented Claude Code meaning, and no hook answers a question or allows an action in the user's place",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M17",
+      "rules": [
+        {
+          "text": "SessionStart's added context, its message for the user and its silence outside a VBW project are pinned with their exact JSON",
+          "check": "C200"
+        },
+        {
+          "text": "the Bash and file guards deny with permissionDecision deny and a 'VBW guard:' reason, and give no answer to ordinary calls",
+          "check": "C200"
+        },
+        {
+          "text": "a guard failure gives no output and exit 0, never an allow, for each guard",
+          "check": "C200"
+        },
+        {
+          "text": "the AskUserQuestion PreToolUse hook answers ask with updatedInput, never allow, and nothing for other questions",
+          "check": "C200"
+        },
+        {
+          "text": "the PostToolUse approval hook only adds context and a message after the user answered, and only the exact answer Approve approves",
+          "check": "C200"
+        },
+        {
+          "text": "no hook ever answers allow, for any input",
+          "check": "C200"
+        },
+        {
+          "text": "the standards inventory fails on a new hook answer shape that has no pinning test, and on any allow",
+          "check": "C200"
+        },
+        {
+          "text": "hook timing stays within the hot-path budget (tools/bench-hooks.sh passes)",
+          "check": "C200"
+        }
+      ]
+    },
+    {
+      "id": "R129",
+      "text": "vbw plan block refuses a plan that is done, with a message that says so, and nothing changes",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M17",
+      "rules": [
+        {
+          "text": "blocking a done plan exits non-zero with a message that it is already done, and the record is byte-for-byte unchanged",
+          "check": "C196"
+        },
+        {
+          "text": "a planned or building plan is still marked blocked with its reason",
+          "check": "C196"
+        },
+        {
+          "text": "an unknown plan id is refused and nothing changes",
+          "check": "C196"
+        }
+      ]
+    },
+    {
+      "id": "R130",
+      "text": "The full vbw apply refuses a requirement that another milestone owns or already covers, as vbw apply --add does, and nothing changes",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M17",
+      "rules": [
+        {
+          "text": "a full apply listing a requirement that belongs to another milestone is refused with the --add message, and the record is unchanged",
+          "check": "C197"
+        },
+        {
+          "text": "a full apply listing a requirement a phase of another milestone covers is refused with the --add message, and the record is unchanged",
+          "check": "C197"
+        },
+        {
+          "text": "a full apply of only the active milestone's own requirements is accepted, re-planning included",
+          "check": "C197"
+        },
+        {
+          "text": "the same bad document gets the same message from the full apply and from --add",
+          "check": "C197"
+        }
+      ]
+    },
+    {
+      "id": "R131",
+      "text": "The QA prompt names the project's test command and the end of its output; when the round does not carry them, the prompt says so in plain words and never prints undefined",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M17",
+      "rules": [
+        {
+          "text": "when the suite ran, the QA prompt names the test command, its result and the end of its output",
+          "check": "C198"
+        },
+        {
+          "text": "a missing, null or empty command, output, exit code or time is named in plain words instead of a value",
+          "check": "C198"
+        },
+        {
+          "text": "no QA prompt from any mix of missing or present suite fields contains undefined or null",
+          "check": "C198"
+        },
+        {
+          "text": "with no suite, or a suite that did not run, the prompt keeps its instructions (no test command; do not retry)",
+          "check": "C198"
+        },
+        {
+          "text": "at the qa step vbw next hands over the project's own test command with the proof's result",
+          "check": "C198"
+        }
+      ]
+    },
+    {
+      "id": "R132",
+      "text": "The QA files fingerprint carries a version, so a VBW update that changes how it is computed does not by itself send a passed phase back to QA",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M17",
+      "rules": [
+        {
+          "text": "the fingerprint stored for a passed phase carries its version in the clone's QA cache, with no new record field",
+          "check": "C199"
+        },
+        {
+          "text": "after an update that changes the version, an unchanged passed phase stands: vbw next does not schedule QA and vbw show calls the pass current",
+          "check": "C199"
+        },
+        {
+          "text": "at the same version a different stored fingerprint is still a change",
+          "check": "C199"
+        },
+        {
+          "text": "a fingerprint with no version is treated as an older version, not as a change",
+          "check": "C199"
+        },
+        {
+          "text": "a real change to the phase's files, after the update or before it, sends it back to QA",
+          "check": "C199"
+        },
+        {
+          "text": "a change to the phase's tests, plan or requirements sends it back to QA",
+          "check": "C199"
+        }
+      ]
+    },
+    {
+      "id": "R133",
+      "text": "The what's-next reply format refuses an empty source for a pick, so one empty source can never make the kernel refuse the whole recommendation",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M17",
+      "rules": [
+        {
+          "text": "the reply schema refuses an empty source for the top pick",
+          "check": "C195"
+        },
+        {
+          "text": "the reply schema refuses an empty source for each runner-up",
+          "check": "C195"
+        },
+        {
+          "text": "T and R ids are still accepted as sources",
+          "check": "C195"
+        },
+        {
+          "text": "a pick with no source field is accepted by the schema, kept by the workflow and recorded by vbw recommend",
+          "check": "C195"
+        },
+        {
+          "text": "a reply whose sources are all valid T or R ids is recorded by vbw recommend exactly as before",
+          "check": "C195"
+        }
+      ]
+    },
+    {
+      "id": "R134",
+      "text": "docs/workflows.md lists every workflow in plugin/workflows (vbw:tooling included) with the right count, and docs/proof.md says a Test results folder name cannot contain spaces",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M17",
+      "rules": [
+        {
+          "text": "docs/workflows.md lists every plugin/workflows/*.js by its vbw:<name>, vbw:tooling included",
+          "check": "C201"
+        },
+        {
+          "text": "every count of workflows in docs/workflows.md equals the number of workflow files",
+          "check": "C201"
+        },
+        {
+          "text": "docs/proof.md's Test results section says a folder name cannot contain spaces",
+          "check": "C201"
+        },
+        {
+          "text": "vbw spec sync refuses a Test results folder whose name has a space, and changes nothing",
+          "check": "C201"
+        }
+      ]
+    },
+    {
+      "id": "R135",
+      "text": "The router's triage line reads as a correct sentence whatever the user typed after /vbw:vibe, including nothing",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M17",
+      "rules": [
+        {
+          "text": "the triage line reads correctly when nothing was typed after /vbw:vibe",
+          "check": "C202"
+        },
+        {
+          "text": "the triage line reads correctly after a single word or a long sentence",
+          "check": "C202"
+        },
+        {
+          "text": "the triage line reads correctly after text with punctuation or parentheses",
+          "check": "C202"
+        },
+        {
+          "text": "the router still sends every new request to vbw:triage and stays within its 1,400-word budget",
+          "check": "C202"
+        }
+      ]
     }
   ],
   "checks": [
@@ -5994,6 +6263,112 @@
       ],
       "alone": true,
       "timeout": 600
+    },
+    {
+      "id": "C194",
+      "req": "R127",
+      "run": [
+        "bats",
+        "tests/todo-sort.bats"
+      ],
+      "files": [
+        "tests/todo-sort.bats",
+        "tests/helpers/run-workflow.js"
+      ]
+    },
+    {
+      "id": "C195",
+      "req": "R133",
+      "run": [
+        "bats",
+        "tests/recommend-source.bats"
+      ],
+      "files": [
+        "tests/recommend-source.bats",
+        "tests/helpers/run-workflow.js"
+      ]
+    },
+    {
+      "id": "C196",
+      "req": "R129",
+      "run": [
+        "bats",
+        "tests/plan-block-done.bats"
+      ],
+      "files": [
+        "tests/plan-block-done.bats"
+      ]
+    },
+    {
+      "id": "C197",
+      "req": "R130",
+      "run": [
+        "bats",
+        "tests/apply-foreign-req.bats"
+      ],
+      "files": [
+        "tests/apply-foreign-req.bats"
+      ]
+    },
+    {
+      "id": "C198",
+      "req": "R131",
+      "run": [
+        "bats",
+        "tests/qa-prompt-suite.bats"
+      ],
+      "files": [
+        "tests/qa-prompt-suite.bats",
+        "tests/helpers/run-workflow.js"
+      ]
+    },
+    {
+      "id": "C199",
+      "req": "R132",
+      "run": [
+        "bats",
+        "tests/qa-fp-version.bats"
+      ],
+      "files": [
+        "tests/qa-fp-version.bats",
+        "tests/qa-recheck-helper.bash"
+      ],
+      "timeout": 600
+    },
+    {
+      "id": "C200",
+      "req": "R128",
+      "run": [
+        "bats",
+        "tests/hook-answers.bats"
+      ],
+      "files": [
+        "tests/hook-answers.bats",
+        "tests/approve-choice-helper.bash"
+      ],
+      "timeout": 600
+    },
+    {
+      "id": "C201",
+      "req": "R134",
+      "run": [
+        "bats",
+        "tests/docs-workflows-count.bats"
+      ],
+      "files": [
+        "tests/docs-workflows-count.bats"
+      ]
+    },
+    {
+      "id": "C202",
+      "req": "R135",
+      "run": [
+        "bats",
+        "tests/router-triage-line.bats"
+      ],
+      "files": [
+        "tests/router-triage-line.bats"
+      ]
     }
   ],
   "phases": [
@@ -9676,6 +10051,158 @@
         "qa_findings": 1,
         "escalations": 0
       }
+    },
+    {
+      "id": "P89",
+      "title": "Sort the backlog and keep recommendations whole",
+      "reqs": [
+        "R127",
+        "R133"
+      ],
+      "milestone": "M17",
+      "goal": "A user can set the priority and size of a backlog item that is already there, and one empty source in a what's-next reply can no longer make the kernel throw away the whole recommendation.",
+      "criteria": [
+        "`vbw todo sort T<n> next small` (and every pairing of next|later with small|medium|large) on an open backlog item records that sort and size, and `vbw todo list` then shows the item as `T<n> [next, small] <text>` in the next group",
+        "Sorting an item that already has a sort and size replaces both with the new values; the item's id, text and status are unchanged",
+        "`vbw todo sort` on an item that does not exist is refused with a message naming the id, exits non-zero, and `.vbw/record.json` is byte-for-byte unchanged",
+        "`vbw todo sort` on an item that is done or dropped is refused with a message saying the item is closed, exits non-zero, and the record is unchanged",
+        "A sort other than next or later, a size other than small, medium or large, a missing sort or size, or extra arguments is refused with the usage line, exits non-zero, and the record is unchanged",
+        "The item sorted with `vbw todo sort` appears with its sort and size in `vbw triage --json` and in the backlog lines the recommending workflow gives the Architect",
+        "`vbw todo` usage text, `vbw help` and the user docs list the new `sort` subcommand",
+        "The recommending workflow's reply schema refuses an empty string as `source` for the top pick and for each runner-up (for example `minLength: 1` or an id pattern), so such a reply never reaches `vbw recommend`",
+        "A pick with no `source` field at all is still accepted by the schema and by `vbw recommend`",
+        "A reply whose sources are all valid T or R ids is recorded by `vbw recommend` exactly as before (no change in accepted output)"
+      ],
+      "tier": "standard",
+      "reasons": [
+        "requirements: 2",
+        "files: 6 (30175 bytes)",
+        "files: more than 2 in a repository tracking 757 files",
+        "risk: none",
+        "breaks: none",
+        "guarded: R3 (C3), R13 (C12), R14 (C13), R24 (C23), R25 (C24), R27 (C21), R28 (C25), R31 (C27), R33 (C29), R38 (C33, C34), R40 (C37), R43 (C42, C43), R44 (C44, C45), R45 (C39, C40, C41), R46 (C46), R47 (C47), R49 (C48), R61 (C73, C74, C75, C76, C77), R62 (C78, C79, C80, C81, C82, C83, C93), R65 (C86, C87, C88, C89, C90), R78 (C105, C106), R80 (C108), R81 (C109, C111, C112, C113), R99 (C155), R101 (C179), R111 (C171, C172, C173, C174, C175), R115 (C181), R116 (C182, C183), R119 (C180), R121 (C187, C188), R122 (C189), R123 (C190, C191)",
+        "tests: project test command"
+      ],
+      "predicted": "standard"
+    },
+    {
+      "id": "P90",
+      "title": "Kernel refusals that leave the record untouched",
+      "reqs": [
+        "R129",
+        "R130"
+      ],
+      "milestone": "M17",
+      "goal": "Two kernel commands that today can make a wrong change, blocking a finished plan and a full apply that takes another milestone's requirement, now refuse with a clear message and change nothing.",
+      "criteria": [
+        "`vbw plan block P<n>.<m> REASON` on a plan whose status is done exits non-zero with a message that says the plan is already done, and `.vbw/record.json` is byte-for-byte unchanged",
+        "`vbw plan block` on a planned or in-progress plan still marks it blocked with the reason, as before",
+        "`vbw plan block` on a plan id that does not exist is refused and nothing changes (existing behaviour kept)",
+        "A full `vbw apply` (no --patch, no --add) whose phases list a requirement that belongs to another milestone is refused with the same message wording `vbw apply --add` gives, exits non-zero, and the record is unchanged",
+        "A full `vbw apply` whose phases list a requirement that a phase in another milestone already covers is refused with the matching `--add` message, exits non-zero, and the record is unchanged",
+        "A full `vbw apply` that lists only the active milestone's own requirements is accepted as before",
+        "The full apply and `--add` share one rule for this refusal, so the two cannot drift apart (a test feeds the same bad document to both and gets the same message)"
+      ],
+      "tier": "standard",
+      "reasons": [
+        "requirements: 2",
+        "files: 3 (45504 bytes)",
+        "files: more than 2 in a repository tracking 757 files",
+        "risk: none",
+        "breaks: none",
+        "guarded: R13 (C12), R14 (C13), R22 (C19), R23 (C20), R24 (C23), R25 (C24), R27 (C21), R28 (C25), R31 (C27), R39 (C36), R43 (C42, C43), R44 (C44, C45), R45 (C39, C40, C41), R46 (C46), R50 (C51), R60 (C72, C94), R66 (C95), R69 (C110, C120, C122), R70 (C114), R71 (C115, C121), R73 (C98), R74 (C99, C100), R75 (C101), R76 (C102, C103), R77 (C104), R78 (C105, C106), R79 (C107), R80 (C108), R81 (C109, C111, C112, C113), R95 (C149, C150), R96 (C151, C152), R99 (C155), R101 (C179), R106 (C164, C165), R107 (C166, C167), R116 (C182, C183), R118 (C184), R123 (C190, C191)",
+        "tests: project test command"
+      ],
+      "predicted": "standard"
+    },
+    {
+      "id": "P91",
+      "title": "QA rounds that read right and survive VBW updates",
+      "reqs": [
+        "R131",
+        "R132"
+      ],
+      "milestone": "M17",
+      "goal": "Every QA agent is told the project's test command and how its output ended in plain words, and updating VBW alone never sends an already passed phase back to QA.",
+      "criteria": [
+        "When the round carries a suite that ran, the QA prompt names the test command and includes the end of its output",
+        "When the round's suite lacks the command, the tail, the exit code or the time, the prompt says in plain words which piece is missing (for example 'the test command was not named', 'its output was not kept') instead of printing a value",
+        "No QA prompt built from any combination of missing or present suite fields contains the text `undefined` or `null` (a test builds the prompt for each case and checks)",
+        "When there is no suite at all, or the suite did not run, the prompt keeps today's instructions (no test command / do not retry)",
+        "The QA files fingerprint stored for a passed phase carries a version of how it was computed",
+        "After a VBW update that changes the fingerprint's version, a phase that passed QA and whose files have not changed still shows as passed in `vbw status` and `vbw next` does not schedule QA for it",
+        "A fingerprint written by an older VBW with no version is treated as an older version, not as a change to the phase",
+        "After an update, a real change to a passed phase's files, tests, plan or requirements still sends it back to QA, as it does today",
+        "The version lives in the existing QA fingerprint data (record qa.tree or the clone's qa cache); no new record field is added unless the record docs are updated with it"
+      ],
+      "tier": "standard",
+      "reasons": [
+        "requirements: 2",
+        "files: 9 (99905 bytes)",
+        "files: more than 2 in a repository tracking 757 files",
+        "risk: none",
+        "breaks: none",
+        "guarded: R12 (C11), R13 (C12), R14 (C13), R22 (C19), R24 (C23), R25 (C24), R26 (C22), R28 (C25), R31 (C27), R32 (C28), R33 (C29), R35 (C31), R37 (C35), R38 (C33, C34), R39 (C36), R40 (C37), R43 (C42, C43), R44 (C44, C45), R45 (C39, C40, C41), R46 (C46), R47 (C47), R48 (C49, C50), R49 (C48), R50 (C51), R61 (C73, C74, C75, C76, C77), R65 (C86, C87, C88, C89, C90), R66 (C95), R67 (C96), R69 (C110, C120, C122), R70 (C114), R71 (C115, C121), R72 (C116, C118), R73 (C98), R74 (C99, C100), R78 (C105, C106), R79 (C107), R80 (C108), R81 (C109, C111, C112, C113), R92 (C131, C132, C133, C134, C135, C136, C137, C138, C139), R93 (C140, C141, C142, C143, C144), R94 (C145, C146, C147, C148), R95 (C149, C150), R96 (C151, C152), R97 (C153), R98 (C154), R99 (C155), R100 (C156), R101 (C179), R102 (C158, C159), R103 (C160), R104 (C161, C162), R105 (C163), R106 (C164, C165), R107 (C166, C167), R110 (C169, C170), R111 (C171, C172, C173, C174, C175), R113 (C177), R115 (C181), R118 (C184), R119 (C180), R121 (C187, C188), R123 (C190, C191)",
+        "tests: project test command"
+      ],
+      "predicted": "standard"
+    },
+    {
+      "id": "P92",
+      "title": "Hook answers pinned to what Claude Code means by them",
+      "reqs": [
+        "R128"
+      ],
+      "milestone": "M17",
+      "goal": "Every answer a VBW hook gives Claude Code has a test that fixes its documented meaning, and none of them answers a question or allows an action for the user.",
+      "criteria": [
+        "For every hook in plugin/hooks/hooks.json (SessionStart, the Bash and file guards, the AskUserQuestion PreToolUse and PostToolUse hooks), each output shape it can return (deny, ask, added context, rewritten input, system message, no output) has a test that names the Claude Code meaning of that shape and checks the exact JSON",
+        "No hook ever returns `permissionDecision: \"allow\"`; a test scans every hook's possible outputs and fails if one appears",
+        "The AskUserQuestion PreToolUse hook that rewrites the question returns `permissionDecision: \"ask\"` with `updatedInput`, so the user still sees and answers the question; a test fails if it would return allow (which Claude Code reads as the hook answering it)",
+        "The PostToolUse approval hook only adds context and a message after the user has answered; it never supplies an answer, and only the user's exact answer 'Approve' approves",
+        "Guard denials use `permissionDecision: \"deny\"` with a `VBW guard:` reason and never turn into an allow on error: a hook failure produces no output (Claude Code's normal behaviour), tested for each guard",
+        "A standards test fails when a new hook output shape is added without a pinning test (each shape in the hook files is listed against a test)",
+        "Hook timing stays within the hot-path budget (`tools/bench-hooks.sh` passes)"
+      ],
+      "tier": "standard",
+      "reasons": [
+        "requirements: 1",
+        "files: 6 (43360 bytes)",
+        "files: more than 2 in a repository tracking 757 files",
+        "risk: none",
+        "breaks: none",
+        "guarded: R15 (C14), R21 (C16), R45 (C39, C40, C41), R61 (C73, C74, C75, C76, C77), R75 (C101), R76 (C102, C103), R77 (C104), R120 (C185)",
+        "tests: project test command"
+      ],
+      "predicted": "standard"
+    },
+    {
+      "id": "P93",
+      "title": "Docs and router wording that match the product",
+      "reqs": [
+        "R134",
+        "R135"
+      ],
+      "milestone": "M17",
+      "goal": "The workflow guide lists every workflow VBW ships with the right count, the proof guide states that test results folder names cannot contain spaces, and the router's triage sentence reads correctly whatever the user typed.",
+      "criteria": [
+        "docs/workflows.md lists every file in plugin/workflows/*.js by its `vbw:<name>`, `vbw:tooling` included, and states a count equal to the number of those files (nine today); a test derives the list and count from the directory and fails on a mismatch",
+        "Every place in docs/workflows.md that says how many workflows exist (for example 'All eight workflows do this') uses the same correct count",
+        "docs/proof.md, in the Test results section, says a folder name cannot contain spaces, and this matches what `vbw spec sync` does with such a folder (a test checks a spaced folder is refused)",
+        "The router line that sends new requests to `vbw:triage` reads as a correct sentence when `$ARGUMENTS` is empty, a single word, a long sentence, or text with punctuation or parentheses; a test renders it with each and checks there is no empty parenthesis or broken clause",
+        "The router stays within its 2k-token budget"
+      ],
+      "tier": "standard",
+      "reasons": [
+        "requirements: 2",
+        "files: 3 (69057 bytes)",
+        "files: more than 2 in a repository tracking 757 files",
+        "risk: none",
+        "breaks: none",
+        "guarded: R12 (C11), R13 (C12), R14 (C13), R22 (C19), R24 (C23), R25 (C24), R26 (C22), R28 (C25), R31 (C27), R32 (C28), R37 (C35), R39 (C36), R40 (C37), R43 (C42, C43), R44 (C44, C45), R45 (C39, C40, C41), R46 (C46), R47 (C47), R48 (C49, C50), R49 (C48), R50 (C51), R60 (C72, C94), R61 (C73, C74, C75, C76, C77), R65 (C86, C87, C88, C89, C90), R66 (C95), R67 (C96), R69 (C110, C120, C122), R70 (C114), R72 (C116, C118), R73 (C98), R74 (C99, C100), R75 (C101), R76 (C102, C103), R77 (C104), R78 (C105, C106), R79 (C107), R80 (C108), R81 (C109, C111, C112, C113), R83 (C119), R92 (C131, C132, C133, C134, C135, C136, C137, C138, C139), R93 (C140, C141, C142, C143, C144), R94 (C145, C146, C147, C148), R95 (C149, C150), R96 (C151, C152), R97 (C153), R98 (C154), R99 (C155), R100 (C156), R101 (C179), R103 (C160), R104 (C161, C162), R105 (C163), R106 (C164, C165), R107 (C166, C167), R110 (C169, C170), R111 (C171, C172, C173, C174, C175), R115 (C181), R116 (C182, C183), R118 (C184), R121 (C187, C188), R122 (C189), R123 (C190, C191)",
+        "tests: project test command"
+      ],
+      "predicted": "standard"
     }
   ],
   "plans": [
@@ -15599,6 +16126,270 @@
         "docs/panel.md: the Suggest next button puts /vbw:vibe what's next in the prompt and never sends it (you press Enter), and the request costs one Architect run",
         "docs/panel.md: the colour candy, a slow shimmer on the title and a soft pulse on the top pick when a new recommendation arrives, settling within a few seconds; none with motion calm or off (settings.motion or the interview level's default) and none for a recommendation already seen"
       ]
+    },
+    {
+      "id": "P89.1",
+      "phase": "P89",
+      "title": "Sort an item that is already in the backlog",
+      "reqs": [
+        "R127"
+      ],
+      "files": [
+        "plugin/lib/cmd-todo.sh",
+        "plugin/bin/vbw"
+      ],
+      "after": [],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "plugin/lib/cmd-todo.sh: new subcommand `vbw todo sort ID next|later small|medium|large`. It sets both the sort (next or later) and the size (small, medium or large) of an open or in-progress item in one record update, replacing any sort and size it had and keeping its id, text and status; it prints the item as `vbw todo list` shows it (`T3 [next, small] CSV export`)",
+        "Refusals, all checked before the record is touched so it stays byte-for-byte the same: an id that does not exist (`unknown todo T9`), an item that is done or dropped (the message says the item is closed, for example `T1 is closed (done): only an open item can be sorted`), and a sort or size outside the lists, a missing value or extra words (the usage line `usage: vbw todo sort ID next|later small|medium|large`, exit 2)",
+        "Usage text: the file's header comment and the `vbw todo` usage line list `sort ID next|later small|medium|large`; the `todo` line of `vbw help` in plugin/bin/vbw lists it too"
+      ]
+    },
+    {
+      "id": "P89.2",
+      "phase": "P89",
+      "title": "The what's-next reply can never carry an empty source",
+      "reqs": [
+        "R133"
+      ],
+      "files": [
+        "plugin/workflows/recommending.js"
+      ],
+      "after": [],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "plugin/workflows/recommending.js: in the reply schema (the shape Claude Code holds the Architect's answer to), the top pick's `source` gets `pattern: '^[TR][0-9]+$'` (a backlog id like T4 or a requirement id like R7), which also refuses an empty string; `source` stays optional",
+        "The same pattern on each runner-up's `source`, so one empty source can no longer reach `vbw recommend` and make it refuse the whole recommendation",
+        "Comment above the schema: why the source has a pattern; a pick without a source is still passed on without one, and the rest of the workflow is unchanged"
+      ]
+    },
+    {
+      "id": "P89.3",
+      "phase": "P89",
+      "title": "Docs: sorting an item already in the backlog",
+      "reqs": [
+        "R127",
+        "R133"
+      ],
+      "files": [
+        "docs/triage.md",
+        "docs/record.md",
+        "docs/whats-next.md"
+      ],
+      "after": [
+        "P89.1"
+      ],
+      "status": "planned",
+      "role": "docs",
+      "tasks": [
+        "docs/triage.md, The backlog: an item added without a sort (or sorted differently) gets one later with `vbw todo sort T3 next small`, which replaces both values and then lists the item in its group; an unknown or closed item, or another value, is refused and nothing changes",
+        "docs/record.md, the `todos[]` row: `vbw todo sort` sets or replaces both `sort` and `size` of an open item",
+        "docs/whats-next.md: a pick's source, when it has one, is a T or R id and is never empty"
+      ]
+    },
+    {
+      "id": "P90.1",
+      "phase": "P90",
+      "title": "A finished plan cannot be blocked",
+      "reqs": [
+        "R129"
+      ],
+      "files": [
+        "plugin/lib/cmd-plan.sh"
+      ],
+      "after": [],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "plugin/lib/cmd-plan.sh: `vbw plan block` on a plan whose status is done stops before any write, exit 1, with a message that says so and what to do instead, for example `P1.2 is already done: a finished plan cannot be blocked (vbw plan reset P1.2 first if it must be built again)`",
+        "A planned, building or blocked plan is still marked blocked with its reason and still raises its phase one rigor step, as today; an unknown plan id is still refused (`unknown plan P9.9`)",
+        "Header comment of cmd-plan.sh: block refuses a done plan"
+      ]
+    },
+    {
+      "id": "P90.2",
+      "phase": "P90",
+      "title": "The full apply refuses another milestone's requirement, with the --add rule",
+      "reqs": [
+        "R130"
+      ],
+      "files": [
+        "plugin/lib/cmd-apply.sh"
+      ],
+      "after": [],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "plugin/lib/cmd-apply.sh: move the two `--add` refusals (a requirement that belongs to another milestone; a requirement a phase already covers) into one jq definition that both paths call, told which phases count: every phase for --add, the phases of other milestones for the full apply (the active milestone's own phases are replaced by it). The message text stays word for word (tests/small-request.bats keeps passing)",
+        "The full apply (no --patch, no --add) runs that shared rule right after its shape checks and before every other rule, so such a document is refused with exactly the message --add gives, exit 1, and nothing is written",
+        "A full apply that lists only the active milestone's own requirements, re-planning included, is accepted as before; the --patch path is unchanged",
+        "Header comment of cmd-apply.sh: the full apply refuses what --add refuses about other milestones, through the one shared rule"
+      ]
+    },
+    {
+      "id": "P90.3",
+      "phase": "P90",
+      "title": "Docs: the two refusals that leave the record untouched",
+      "reqs": [
+        "R129",
+        "R130"
+      ],
+      "files": [
+        "docs/workflows.md"
+      ],
+      "after": [
+        "P90.1",
+        "P90.2",
+        "P93.1"
+      ],
+      "status": "planned",
+      "role": "docs",
+      "tasks": [
+        "docs/workflows.md, the `vbw plan done` / `vbw plan block` row: blocking a plan that is already done is refused and nothing changes (reset it first if it must be built again)",
+        "docs/workflows.md, the `vbw apply` row and section: the full apply refuses a requirement that another milestone owns or that a phase of another milestone already covers, with the same message as `vbw apply --add`, and writes nothing",
+        "docs/workflows.md, Adding one phase: the --add refusals about other milestones are the same rule the full apply uses"
+      ]
+    },
+    {
+      "id": "P91.1",
+      "phase": "P91",
+      "title": "QA is told the test command and its result in plain words",
+      "reqs": [
+        "R131"
+      ],
+      "files": [
+        "plugin/workflows/verifying.js",
+        "plugin/lib/next.jq"
+      ],
+      "after": [],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "plugin/lib/next.jq: at the qa step, `round.suite` carries the project's own test command as words (`commands.test` joined by spaces, for example `bash tools/test.sh`) when the proof's result does not name one; a result that names one keeps it, and the not-run fallback stays as it is (tests/qa-suite-once.bats keeps passing)",
+        "plugin/workflows/verifying.js: build the note for a suite that ran from the pieces it has: the command, the result, the exit code, the time and the end of the output; each piece that is missing, null or empty is said in plain words instead of a value ('the test command was not named', 'its result was not kept', 'its exit code was not kept', 'its time was not kept', 'its output was not kept')",
+        "verifying.js: the same for the did-not-run note and its log line, so no QA prompt or log line ever contains `undefined` or `null`; with no suite at all, or a suite that did not run, the instructions stay as today (no test command to look for; do not retry it)",
+        "Comments in verifying.js and next.jq: which suite pieces the round carries and how a missing one is worded"
+      ]
+    },
+    {
+      "id": "P91.2",
+      "phase": "P91",
+      "title": "A VBW update alone never sends a passed phase back to QA",
+      "reqs": [
+        "R132"
+      ],
+      "files": [
+        "plugin/lib/qa-inputs.sh",
+        "plugin/lib/qa.jq",
+        "plugin/lib/cmd-next.sh",
+        "plugin/lib/cmd-show.sh",
+        "plugin/lib/cmd-qa.sh"
+      ],
+      "after": [],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "plugin/lib/qa-inputs.sh: one line `QA_FP_VERSION=1`, the version of how qa_digests computes a phase's fingerprint (raised whenever that changes; a fingerprint without a version counts as version 0). qa_cache_put stores `version` and the commit the digests were taken at (HEAD) in each phase's entry of the clone's QA cache; the record keeps `qa.tree` exactly as it is (64 hex characters, no new field, schema unchanged)",
+        "qa-inputs.sh: qa_digests can fingerprint the phases as they were at a given commit (files and check files from that commit's tree, goal, plans and requirements from that commit's .vbw/record.json), with the current method",
+        "When a passed phase's stored fingerprint has another version or none: find the pass's commit (the cache entry's commit, else the earliest commit whose .vbw/record.json holds this phase's current qa entry, same tree and time), fingerprint the phase there with the current method and compare with now. The same means the pass stands; a difference gives the usual reasons (its files, tests, goal or plan, an [auto] requirement, a phase it builds on); no such commit means it is checked again as today. The result goes back into the clone's cache at the current version, so the history is read once per pass",
+        "plugin/lib/qa.jq and its callers (qa_state in cmd-next.sh, the phase view's `[on older code]` mark in cmd-show.sh, cmd-qa.sh when it records a pass) use that one judgment; at the same version a different fingerprint is still a change, read straight from the digests as today",
+        "Keep what is there: tests/kernel-qa.bats, qa-state.bats and the qa-recheck-* tests keep passing, including a record whose qa.tree was never committed (the old whole-folder fingerprint), which is still checked once; the bash 3.2 floor and the kernel line budget hold"
+      ]
+    },
+    {
+      "id": "P91.3",
+      "phase": "P91",
+      "title": "Docs: what QA is told, and QA after a VBW update",
+      "reqs": [
+        "R131",
+        "R132"
+      ],
+      "files": [
+        "docs/proof.md",
+        "docs/record.md"
+      ],
+      "after": [
+        "P91.1",
+        "P91.2",
+        "P89.3",
+        "P93.1"
+      ],
+      "status": "planned",
+      "role": "docs",
+      "tasks": [
+        "docs/proof.md, the QA round: every QA agent is told the project's test command, its result and how its output ended, and in plain words which of these were not kept",
+        "docs/proof.md, Which phases QA checks again: updating VBW alone never sends a passed phase back to QA; each pass's fingerprint carries the version of how it was computed, and after an update the phase is compared as it was at its pass, so only a real change to its files, tests, plan or requirements lists it again",
+        "docs/record.md, the `phases[]` row's note on the clone cache: each phase's entry also holds the fingerprint version and the commit it was taken at; the record itself is unchanged"
+      ]
+    },
+    {
+      "id": "P92.1",
+      "phase": "P92",
+      "title": "A standards rule: every hook answer is pinned, and no hook allows",
+      "reqs": [
+        "R128"
+      ],
+      "files": [
+        "tools/check-hook-answers.sh",
+        "tests/standards.bats",
+        "tests/standards-selftest.bats",
+        "CLAUDE.md",
+        "AGENTS.md"
+      ],
+      "after": [],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "New tools/check-hook-answers.sh HOOKS_DIR TEST_FILE (bash 3.2, shellcheck clean): on the non-comment lines of each *.jq and *.sh hook file it lists every answer shape (a `permissionDecision` value, a use of the jq `deny` helper, or one of the keys updatedInput, additionalContext, systemMessage, decision, continue, stopReason, suppressOutput written as an object key); each (file, shape) needs a `@test` line in TEST_FILE whose name gives the file name and then the shape; it prints each one missing and exits 1",
+        "The same tool exits 1, naming the file, when any hook code can answer `permissionDecision: \"allow\"` (or `decision: \"approve\"`), whatever tests exist",
+        "tests/standards.bats: a rule that runs tools/check-hook-answers.sh on plugin/hooks with tests/hook-answers.bats; tests/standards-selftest.bats: it passes on the repository as it is, fails on a copy with a new unpinned shape, and fails on a copy that answers allow",
+        "CLAUDE.md and AGENTS.md, Kernel and hook rules: every answer a hook gives Claude Code has a test pinning its documented meaning, and no hook answers allow (enforced by tests/standards.bats)"
+      ]
+    },
+    {
+      "id": "P92.2",
+      "phase": "P92",
+      "title": "Docs: what each hook answer means",
+      "reqs": [
+        "R128"
+      ],
+      "files": [
+        "docs/guards.md"
+      ],
+      "after": [],
+      "status": "planned",
+      "role": "docs",
+      "tasks": [
+        "docs/guards.md: a short table of every answer VBW's hooks give Claude Code (deny with a 'VBW guard:' reason, ask with a rewritten question, added context, a message for the user, no answer) and what Claude Code does with each",
+        "docs/guards.md: no hook ever answers allow, and why: on a question, allow would mean the hook answered it for the user; only the user's exact answer Approve approves",
+        "docs/guards.md: a hook that fails gives no answer, so Claude Code goes on as it normally would; a failure never turns into an allow"
+      ]
+    },
+    {
+      "id": "P93.1",
+      "phase": "P93",
+      "title": "Workflow guide, proof guide and the router's triage line",
+      "reqs": [
+        "R134",
+        "R135"
+      ],
+      "files": [
+        "docs/workflows.md",
+        "docs/proof.md",
+        "plugin/skills/vibe/SKILL.md"
+      ],
+      "after": [],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "docs/workflows.md: a table row for `vbw:tooling` (started by /vbw:skills and the interview after the user agrees to a tool search; one Scout per angle: safety, quality, tests, skills; a short sourced list of tools), so every file in plugin/workflows is listed",
+        "docs/workflows.md: every count of workflows says nine (the opening line and 'All eight workflows do this')",
+        "docs/proof.md, Saved test results: a folder name cannot contain spaces (`vbw spec sync` refuses such a line with its line number)",
+        "plugin/skills/vibe/SKILL.md: the triage line no longer puts the user's words inside a parenthesis: 'Every new request, now or later, goes to `vbw:triage` first; ...', so it reads correctly whatever was typed after /vbw:vibe, and the router keeps its 1,400-word count"
+      ]
     }
   ],
   "fixes": [
@@ -16672,22 +17463,22 @@
     {
       "id": "T70",
       "text": "Hook audit: check every hook's decision output against the Claude Code hooks reference and pin its documented meaning in a test (2026-10-08: approve-ask returned allow + updatedInput, which CC reads as the hook answering AskUserQuestion; fixed by R120). Evaluate CC 2.1.295's opt-in blocking on hook failure for VBW's fail-open guards in the same audit",
-      "status": "open"
+      "status": "done"
     },
     {
       "id": "T71",
       "text": "vbw plan block refuses a plan that is done (2026-10-08: a fix Dev blocked done P81.1, which raised P81 to deep and stayed)",
-      "status": "open"
+      "status": "done"
     },
     {
       "id": "T72",
       "text": "The full vbw apply refuses a requirement of another milestone, as apply --add does since F82",
-      "status": "open"
+      "status": "done"
     },
     {
       "id": "T73",
       "text": "verifying.js defaults missing round.suite fields: a hand-built round printed 'The project test command (undefined) ... Its output ends: undefined' in the QA prompt",
-      "status": "open"
+      "status": "done"
     },
     {
       "id": "T74",
@@ -16702,12 +17493,12 @@
     {
       "id": "T76",
       "text": "Version the QA files digest, so a change of its formula is told apart from a file change (2.0.27 changed it: one recheck after updating for phases with docs)",
-      "status": "open"
+      "status": "done"
     },
     {
       "id": "T77",
       "text": "docs/proof.md: a Test results folder name cannot contain spaces (the parser refuses it)",
-      "status": "open"
+      "status": "done"
     },
     {
       "id": "T78",
@@ -16717,12 +17508,12 @@
     {
       "id": "T79",
       "text": "docs/workflows.md says eight workflows; plugin/workflows has nine (tooling.js is missing from its table)",
-      "status": "open"
+      "status": "done"
     },
     {
       "id": "T80",
       "text": "recommending.js reply schema: minLength 1 on source, so an empty source cannot make the kernel refuse a whole recommendation",
-      "status": "open"
+      "status": "done"
     },
     {
       "id": "T81",
@@ -16770,7 +17561,7 @@
       "text": "vbw todo sort ID next|later small|medium|large: sort an existing backlog item, so items planned for a release are seen by triage and by the what's-next Architect (2026-10-09: the planned 2.0.29 items T70-T73 were unsorted, so the Architect never weighed them)",
       "sort": "next",
       "size": "small",
-      "status": "open"
+      "status": "done"
     }
   ],
   "decisions": [
