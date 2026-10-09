@@ -7,11 +7,13 @@ on:
 
 jobs:
   test:
-    name: Tests (${{ matrix.name }})
+    name: Tests (${{ matrix.name }}${{ matrix.shard && format(', shard {0} of 4', matrix.shard) || '' }})
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
+        os: [macos-latest]
+        shard: [1, 2, 3, 4]
         include:
           # macOS ships /bin/bash 3.2; that is the kernel's floor (build plan K2).
           - name: macOS, /bin/bash 3.2
@@ -50,10 +52,16 @@ jobs:
           VBW_HOOK_BUDGET_MS: "25"
           # The panel budget (0.5 ms of CPU per refresh) is calibrated the same way.
           VBW_PANEL_BUDGET_MS: "3"
+          SHARD: ${{ matrix.shard }}
+          SHARDS: 4
         run: |
           export PATH="${{ matrix.bash_path }}:$PATH"
           bash --version | head -1
-          bash tools/test.sh
+          if [ -n "$SHARD" ]; then
+            bash tools/test.sh --shard "$SHARD/$SHARDS"
+          else
+            bash tools/test.sh
+          fi
 
   validate:
     name: Plugin manifest validation
