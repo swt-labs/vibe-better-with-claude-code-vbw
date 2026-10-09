@@ -59,4 +59,11 @@ try {
   return { error: `the Architect could not recommend: ${e && e.message ? e.message : e}` }
 }
 if (!got || !got.top) return { error: 'the Architect returned no recommendation' }
-return { recommendation: { top: got.top, runners: Array.isArray(got.runners) ? got.runners.slice(0, 2) : [] } }
+// The kernel refuses a pick with a field it does not know, so keep only the declared fields.
+const keep = (pick, fields) => {
+  const o = {}
+  for (const f of fields) if (pick && pick[f] !== undefined) o[f] = pick[f]
+  return o
+}
+const runners = Array.isArray(got.runners) ? got.runners.slice(0, 2).map(r => keep(r, ['text', 'size', 'source'])) : []
+return { recommendation: { top: keep(got.top, ['text', 'reason', 'size', 'source']), runners } }
