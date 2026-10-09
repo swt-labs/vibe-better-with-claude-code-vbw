@@ -112,6 +112,12 @@ Root instructions in this repo have one canonical source: `AGENTS.md`. The track
   - macOS `/bin/bash` 3.2: four machines at once, each running its share (`--shard K/4`). In each share the timing-sensitive files run last, alone. Share 1 also runs the shellcheck lint and the benchmarks.
   - Linux bash 5 (two jobs, Ubuntu latest and 26.04): each runs the full suite.
   - A failing share fails CI.
+- What a push runs. The first CI step, "Decide what to test" (`tools/ci-scope.sh`), compares the push with the previous tip and picks one of three:
+  - **Full suite:** any change to `plugin/`, `tools/`, `docs/`, root documents, version files, `.github/`, test helpers or fixtures (anything under a `tests/` subfolder), or any path CI does not recognise. A new branch, a force push or a rewritten history also runs the full suite, because there is no safe previous tip to compare with.
+  - **Only the changed test files:** when the only changes are top-level `tests/*.bats` files. Deleted files are not run.
+  - **No tests:** when the only changes are `.vbw/record.json`, `.vbw/spec.md` or saved test results. Every job still shows success.
+  - Saved results folders come from the spec's Test results section. CI trusts only a folder named in the record both before and after the push, so a push cannot name a new folder to skip its own files.
+  - To see what CI chose and why, open the run log and read the "Decide what to test" step: it prints `scope=full|some|none`, the files and a plain-language `reason`. Run `bash tools/ci-scope.sh BASE HEAD` locally for the same answer.
 - Don't bump versions or edit `CHANGELOG.md`: the maintainer does that at release time (`tools/bump-version.sh`).
 
 ## Reporting bugs
