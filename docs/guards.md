@@ -110,11 +110,14 @@ could answer `allow`.
 ### A failing hook gives no answer
 
 The four guard and approval hook commands end in `|| true` and exit 0 with no
-output when they fail (bad input, missing `jq`, an unreadable record). The
+output when they fail (bad input, missing `jq`). The
 session-start hook has no `|| true`: if it fails (for example, no `jq`), it
 prints an error and exits non-zero, but it never prints a decision. In every
 case Claude Code goes on as it normally would. A failure never becomes an
-`allow`, and never a `deny`.
+`allow`, and a failing hook never becomes a `deny`. A corrupt
+`.vbw/record.json` is not a hook failure: the folder still counts as a VBW
+project, the guards stay on, and a guarded call such as `vbw approve` is still
+denied with a `VBW guard:` reason.
 
 ## How a command is read
 
