@@ -36,6 +36,8 @@ There is no setup script, no cache link and no command mirror. `--plugin-dir` lo
 ```bash
 bash tools/test.sh                   # shellcheck on tools + the full bats suite
 PATH="/bin:$PATH" bash tools/test.sh # the same under macOS /bin/bash 3.2
+bash tools/test.sh --shard 2/4       # share 2 of 4, the way CI's macOS jobs run it
+bash tools/test.sh --shard 2/4 --list # show that share without running it
 ```
 
 Write the failing test first. Fixes need a regression test shown to fail without the fix. `tests/standards.bats` encodes the engineering rules, so a change that breaks one fails CI.
