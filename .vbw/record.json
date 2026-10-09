@@ -17130,7 +17130,7 @@
       "id": "F94",
       "command": "test",
       "attempts": 0,
-      "status": "open",
+      "status": "fixed",
       "note": "test fail"
     }
   ],
