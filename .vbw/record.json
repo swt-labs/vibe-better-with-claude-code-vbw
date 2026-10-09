@@ -9491,7 +9491,22 @@
         "guarded: R55 (C56, C57)",
         "tests: project test command"
       ],
-      "predicted": "deep"
+      "predicted": "deep",
+      "qa": {
+        "result": "pass",
+        "tier": "deep",
+        "tree": "514ca827161eae484cd8faaf52ab64d2ae636f98535e48466b26cd7c4e322c71",
+        "at": "2026-10-09T00:58:33Z",
+        "note": "12/12 checks"
+      },
+      "outcome": {
+        "tier": "deep",
+        "predicted": "deep",
+        "held": true,
+        "fix_rounds": 0,
+        "qa_findings": 0,
+        "escalations": 0
+      }
     },
     {
       "id": "P86",
