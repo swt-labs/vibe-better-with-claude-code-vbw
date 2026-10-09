@@ -156,8 +156,9 @@ A command that contains none of the words any rule needs (`rm`, `git`, `vbw`,
   hook input; jq skips a missing file, so the second input says whether this is
   a VBW project.
 - **A guard can never block by accident.** Every PreToolUse command ends in
-  `|| true` (exit status 2 would block the call), and errors fall through to
-  "allow". A standards test enforces both.
+  `|| true` (exit status 2 would block the call), and a guard that errors
+  prints nothing, and Claude Code decides as it normally would. A standards test
+  enforces both.
 - **Budget:** VBW's own cost (the hook's CPU time minus that of the platform's
   `sh -c jq` startup) is at most 8 ms per call, or at most 1x that startup,
   measured by `tools/bench-hooks.sh` before every test run, including on a
