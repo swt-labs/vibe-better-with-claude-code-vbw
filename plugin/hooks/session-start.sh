@@ -6,6 +6,10 @@
 #
 # Also, in every session: remove VBW 1's command copies (build plan K15).
 
+# Without jq VBW can neither build its answer nor run its kernel (and the VBW 1
+# reload notice below needs jq too): end quietly, like the per-tool-call hooks.
+command -v jq > /dev/null 2>&1 || exit 0
+
 root=${CLAUDE_PROJECT_DIR:-$PWD}
 vbw="${0%/*}/../bin/vbw"
 
