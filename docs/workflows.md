@@ -1,6 +1,6 @@
 # Workflows and agents
 
-VBW's engine is eight Claude Code workflows (`plugin/workflows/*.js`) and
+VBW's engine is nine Claude Code workflows (`plugin/workflows/*.js`) and
 VBW 1's team of seven agents (`plugin/agents/*.md`): Architect, Lead, Dev, QA,
 Scout, Debugger and Docs, with their VBW 1 mandates. The workflows hold the
 procedure: who runs, in what order, in parallel or not. The agents hold the
@@ -17,6 +17,7 @@ standard: what good output is. Every write to the plan of record goes through
 | `vbw:researching` | the user runs `/vbw:research` | four Scouts (sources, practice, current state, this project), then one answer | a sourced answer with a recommendation |
 | `vbw:investigating` | the user runs `/vbw:debug` | three Debuggers (reproduce, trace, history), then one diagnosis; with the diagnosis given, one Debugger fixes it | the root cause with evidence and rejected hypotheses; or the fix, its regression test and commit |
 | `vbw:recommending` | after `vbw ship`, or the user asks `/vbw:vibe what's next` | one Architect | a recommendation: a top pick and up to two runners-up (docs/whats-next.md) |
+| `vbw:tooling` | the user runs `/vbw:skills`, or the interview, after the user agrees to a tool search | one Scout per angle (safety, quality, tests, skills) | a short sourced list of tools |
 
 After `build` and `fix`, the router runs `vbw prove` (deterministic, no agent);
 after a passing proof, QA verifies what the checks cannot (docs/proof.md). Then
@@ -290,7 +291,7 @@ that level and depth.
 
 Without `args.profile`, or for a missing value, the workflow uses the middle
 choices (`small scripts or no-code`, `plain with technical terms explained`,
-`options with a recommendation`). All eight workflows do this.
+`options with a recommendation`). All nine workflows do this.
 
 Each agent file has a section on the user's words: what reaches the user is the
 agent's summary, notes and questions, and those follow the level and depth.
