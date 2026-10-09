@@ -9,9 +9,9 @@ After you ship, and whenever you ask, VBW tells you what to work on next.
 ```
 what's next: Refunds (small)
   Customers ask for it most.
-then: Gift cards (large)
-then: Dark mode (medium)
-written 2026-10-09
+  then: Gift cards (large)
+  then: Dark mode (medium)
+  written 2026-10-09
 ```
 
 ## What it is
@@ -43,7 +43,7 @@ stored recommendation raises the record schema to 3 (see
 
 | State | What `vbw status` prints |
 |---|---|
-| a recommendation | the lines in the example above |
+| a recommendation | the lines in the example above (only the first is at the left edge) |
 | nothing open at all | `what's next: the backlog is empty (written <date>)` |
 | none written yet | `what's next: none yet (ask /vbw:vibe what's next)` |
 
