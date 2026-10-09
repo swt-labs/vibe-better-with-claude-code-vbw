@@ -23,7 +23,7 @@ Kernel decides next step; you carry it out. Even for a one-line fix: no project 
 
 User said: $ARGUMENTS
 
-Every new request ($ARGUMENTS or later) goes to `vbw:triage` first; "what's next" or "suggest next" follows `vbw:whats-next`.
+Every new request, now or later, goes to `vbw:triage` first; "what's next" or "suggest next" follows `vbw:whats-next`.
 
 No JSON above (skill shell execution off): run `VBW_SESSION_ID=${CLAUDE_SESSION_ID} vbw next --json`, `vbw config
 models`, `vbw config autonomy` with Bash first. "not a VBW project": set it up
