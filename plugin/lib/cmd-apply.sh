@@ -26,7 +26,10 @@
 # vbw apply --add < DOC: new phases with their plans, checks and rules (R116),
 # appended to the milestone; a phase id it already has, a requirement any
 # phase covers (in any milestone) or that belongs to another milestone, or a
-# plan or check id in use is refused and nothing changes.
+# plan or check id in use is refused and nothing changes. The full apply refuses
+# what --add refuses about other milestones (a requirement another milestone owns,
+# or one a phase of another milestone covers), through the one shared rule
+# (foreign_reqs), before every other rule; its own milestone's phases are replaced.
 # Every existing item stays as it was and keeps the tier it was accepted at:
 # the rigor floor and the one-plan-per-express rule judge only the phases the
 # doc brings (their signals see the whole milestone); every other rule above
@@ -34,6 +37,17 @@
 
 # shellcheck source=rigor.sh
 . "$VBW_LIB/rigor.sh"
+
+# foreign_reqs: the refusals --add and the full apply share. $scope is "all"
+# (--add: every phase counts as covering) or "others" (the full apply: only the
+# phases of other milestones; the active milestone's own are replaced).
+FOREIGN_REQS_JQ='def foreign_reqs($r; $m; $p; $scope):
+    [$p.phases[] | (.reqs | arrays)[]] as $reqs
+    | [($reqs[] | . as $q | ([$r.phases[] | select($scope == "all" or .milestone != $m) | select(any(.reqs[]; . == $q))][0]) | select(. != null)
+         | "\($q) is already covered by \(.id): --add takes requirements that have no phase yet"),
+       ($reqs[] | . as $q | ([$r.requirements[] | select(.id == $q and .milestone != $m)][0]) | select(. != null)
+         | "\($q) belongs to milestone \(.milestone): --add takes requirements of this milestone")];
+'
 
 cmd_apply() {
   local patch=false add=false
@@ -51,13 +65,10 @@ cmd_apply() {
         and all(.plans, .checks, .rules; . == null or (type == "array" and all(.[]; type == "object")))' > /dev/null 2>&1 \
       || vbw_die "apply --add needs a JSON object with the new phases ({id, title, reqs}) and their plans, checks and rules"
     pdoc=$(printf '%s' "$doc" | jq -c '{phases, plans: (.plans // []), checks: (.checks // []), rules: (.rules // [])}')
-    problem=$(record_read | jq -r --argjson p "$pdoc" '. as $r | .milestone.id as $m
+    problem=$(record_read | jq -r --argjson p "$pdoc" "$FOREIGN_REQS_JQ"'. as $r | .milestone.id as $m
       | ([.phases[] | select(.milestone == $m)]) as $ph | [$p.phases[].id] as $new | [$p.phases[].reqs[]] as $newreqs
       | [($p.phases[] | select(.id as $i | any($ph[]; .id == $i)) | "\(.id) is already a phase of this milestone: --add takes new phases only"),
-         ($p.phases[].reqs[] | . as $q | ([$r.phases[] | select(any(.reqs[]; . == $q))][0]) | select(. != null)
-           | "\($q) is already covered by \(.id): --add takes requirements that have no phase yet"),
-         ($p.phases[].reqs[] | . as $q | ([$r.requirements[] | select(.id == $q and .milestone != $m)][0]) | select(. != null)
-           | "\($q) belongs to milestone \(.milestone): --add takes requirements of this milestone"),
+         foreign_reqs($r; $m; $p; "all")[],
          ($p.plans[] | select(.phase as $x | $new | index($x) | not) | "\(.id // "a plan") is for \(.phase // "no phase"), not a phase this --add brings"),
          ($p.plans[] | select(.id as $i | any(($r.plans // [])[]; .id == $i)) | "\(.id) is already a plan: --add takes new plans only"),
          ($p.checks[] | select(.id as $i | any(($r.checks // [])[]; .id == $i)) | "\(.id) is already a check: --add takes new checks only"),
@@ -96,6 +107,11 @@ cmd_apply() {
   printf '%s' "$doc" | jq -e '(keys - ["phases", "plans", "checks", "rules"]) == [] and all(.phases, .plans, .checks; type == "array")
       and ((has("rules") | not) or (.rules | type == "array" and all(.[]; type == "object" and (keys - ["req", "text", "check"]) == [] and (.text | type == "string" and length > 0))))' \
     > /dev/null || vbw_die "apply needs phases, plans and checks, each an array, and optionally rules: [{req, text, check}]"
+  if [ "$add" = false ] && [ "$patch" = false ]; then
+    problem=$(record_read | jq -r --argjson p "$doc" "$FOREIGN_REQS_JQ"'. as $r | foreign_reqs($r; .milestone.id; $p; "others")[0] // empty') \
+      || vbw_die "internal error: cannot read the phases' requirements"
+    [ -z "$problem" ] || vbw_die "refused: $problem"
+  fi
   problem=$(printf '%s' "$doc" | jq -r '[
       (.phases[] | . as $o | keys[] | select(IN("id", "title", "reqs", "goal", "criteria", "tier") | not) | "\($o.id // "a phase") has an unknown field: \(.)"),
       (.plans[] | . as $o | keys[] | select(IN("id", "phase", "title", "reqs", "files", "after", "tasks", "role") | not) | "\($o.id // "a plan") has an unknown field: \(.)")
