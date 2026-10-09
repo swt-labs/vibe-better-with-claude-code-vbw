@@ -289,15 +289,19 @@ stored the last time it was asked what to work on next. It shows the same
 things, in the same order, as `vbw status`:
 
 ```
-What's next                                        [Suggest next]
-Refunds for paid orders (small)
+What's next
+Refunds for paid orders · small
   Customers ask for it most this month.
-Then: Gift cards (large), Dark mode (medium)
+  Gift cards · large
+  Dark mode · medium
+written 2026-10-09
+[Suggest next]
 ```
 
 - The **top pick**, with its size (`small`, `medium` or `large`) and the reason
   VBW gave for it.
-- Up to two **runners-up**, each with its size.
+- Up to two **runners-up**, each with its size, one per line.
+- The date the recommendation was **written**.
 - Before any recommendation is stored, one line says there is **none yet**.
 - When the recommendation found nothing to pick, one line says **the backlog
   is empty**.
