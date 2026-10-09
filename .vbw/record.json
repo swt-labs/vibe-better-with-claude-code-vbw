@@ -17238,7 +17238,7 @@
       "req": "R128",
       "source": "qa",
       "attempts": 0,
-      "status": "escalated",
+      "status": "fixed",
       "note": "docs/guards.md, table 'What each answer means', row 'A message for the user (systemMessage)': it says SessionStart sends this only for 'project made by a newer VBW'. plugin/hooks/session-start.sh (the line that sets notice when removed is not 0) also sends a systemMessage whenever it removes VBW 1 command copies ('VBW 2 removed the old VBW 1 commands. Type /reload-skills ...'), in any project or none. The plan task asks for a table of every answer VBW's hooks give; this row is incomplete. Fix: name that second case in the row (docs only; the shape itself is already pinned by tests/hook-answers.bats)."
     }
   ],
