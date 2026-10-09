@@ -1,5 +1,5 @@
 {
-  "schema": 2,
+  "schema": 3,
   "project": {
     "name": "v2"
   },
@@ -9555,8 +9555,8 @@
       "qa": {
         "result": "pass",
         "tier": "deep",
-        "tree": "96ae88800ded26d1375f13afc83408d9673d10b2c283a6d44aa500e5acb003ca",
-        "at": "2026-10-09T01:45:04Z",
+        "tree": "3b2aaef2ebaf499a1b7649fc67e4f0872df63ff20286f57893c385cd5792d024",
+        "at": "2026-10-09T12:26:27Z",
         "note": "30/30 checks"
       },
       "outcome": {
@@ -16722,6 +16722,13 @@
       "id": "T84",
       "text": "CI: split the macOS job across 3-4 machines (shards) so CI ends in about 15 min instead of 39",
       "status": "open"
+    },
+    {
+      "id": "T85",
+      "text": "Show a long proof's progress: the kernel writes checks done of total to .vbw/runtime/proving.<session>, and the panel and status line show \"proving: N of M checks, T min\" while Claude runs the proof in the background (no spinner then)",
+      "sort": "next",
+      "size": "medium",
+      "status": "open"
     }
   ],
   "decisions": [
@@ -19626,5 +19633,11 @@
     "full": true,
     "passed": true
   },
-  "lease": null
+  "lease": {
+    "run": "qa-20261009T122502Z",
+    "kind": "qa",
+    "started_at": "2026-10-09T12:25:02Z",
+    "files": [],
+    "session": "4130e174-7ef2-4e36-b853-fb2a8fd8511d"
+  }
 }
