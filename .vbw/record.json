@@ -17533,7 +17533,9 @@
     {
       "id": "T56",
       "text": "The all-prompts word budget is held in three tests (profile-levels, approve-choice-docs, legacy-interview); keep it in one place like the kernel budget (standards.bats), so a budget change cannot miss a copy (missed on 2026-10-07, prompts trimmed needlessly)",
-      "status": "open"
+      "status": "open",
+      "sort": "next",
+      "size": "small"
     },
     {
       "id": "T57",
@@ -17578,7 +17580,9 @@
     {
       "id": "T65",
       "text": "M16 discussion (owner): vbw prove's default check parallelism should depend on the machine (4, 10 or 50 cores); today it is 4 everywhere (R69/R81 check_jobs)",
-      "status": "open"
+      "status": "open",
+      "sort": "next",
+      "size": "small"
     },
     {
       "id": "T66",
@@ -17623,12 +17627,16 @@
     {
       "id": "T74",
       "text": "Cost: at standard and deep, mutation-check a plan's own tests before its build ends, so QA stops finding tests that cannot fail one round at a time (M15: each deep QA round found 1-2 such gaps, about an hour per loop)",
-      "status": "open"
+      "status": "open",
+      "sort": "next",
+      "size": "medium"
     },
     {
       "id": "T75",
       "text": "Cost: parallel fix groups each ran the full suite in vbw fix done (load 21, timing tests failed); share one test run across groups",
-      "status": "open"
+      "status": "open",
+      "sort": "next",
+      "size": "medium"
     },
     {
       "id": "T76",
@@ -17663,17 +17671,23 @@
     {
       "id": "T82",
       "text": "Tests: one prebuilt template project (git repo + vbw init + first commit) copied per test instead of building it each time; measured 0.33 s fixed setup per test on the owner's Mac, 88 files use it",
-      "status": "open"
+      "status": "open",
+      "sort": "next",
+      "size": "medium"
     },
     {
       "id": "T83",
       "text": "Release: stop running the full suite twice per release (vbw prove --full already runs it); the pre-push bash 3.2 run reuses the proof's result when the tree is unchanged",
-      "status": "open"
+      "status": "open",
+      "sort": "next",
+      "size": "small"
     },
     {
       "id": "T84",
       "text": "CI: split the macOS job across 3-4 machines (shards) so CI ends in about 15 min instead of 39",
-      "status": "open"
+      "status": "open",
+      "sort": "next",
+      "size": "small"
     },
     {
       "id": "T85",
@@ -17685,7 +17699,7 @@
     {
       "id": "T86",
       "text": "A docs-only fix after QA forces a second full proof (vbw prove --full, ~23 min on VBW) before QA rechecks; let the full proof reuse the suite result when only docs changed since it ran (as R115 does for QA)",
-      "sort": "later",
+      "sort": "next",
       "size": "small",
       "status": "open"
     },
@@ -20721,23 +20735,23 @@
   },
   "lease": null,
   "recommendation": {
-    "at": "2026-10-09T13:43:41Z",
+    "at": "2026-10-09T18:05:01Z",
     "top": {
-      "text": "Add 'vbw todo sort ID next|later small|medium|large', a command that sets the priority and size of an item already in the backlog.",
+      "text": "Stop the 'jq: command not found' error at session start. The startup hook should end quietly, like the other four hooks already do, and a regression test should check that it does.",
       "size": "small",
-      "reason": "It is small and marked next, and until it exists, unsorted planned items (like T70 to T73, meant for 2.0.29) stay invisible to triage and to the what's-next planner, so every later recommendation gets better once it ships.",
-      "source": "T88"
+      "reason": "It is the only item in the backlog that real users can see: when jq (a small JSON tool VBW needs) is missing, every new session opens with an error message, and the fix is a one-line change plus a test.",
+      "source": "T89"
     },
     "runners": [
       {
-        "text": "Show a long proof's progress: the kernel writes how many checks are done out of the total, and the panel and status line show 'proving: N of M checks, T min' while the proof runs in the background.",
-        "size": "medium",
-        "source": "T85"
-      },
-      {
-        "text": "Let the full proof reuse the last test-suite result when only documentation changed since it ran, so a docs-only fix after QA no longer costs a second full proof of about 23 minutes.",
+        "text": "After a fix that only changes documentation, let the full proof reuse the earlier test-suite result instead of running every check again. This saves about 23 minutes for each docs-only fix on VBW.",
         "size": "small",
         "source": "T86"
+      },
+      {
+        "text": "Keep the word limit for all prompts in one place (the engineering-rules test file), the way the kernel line limit is kept, so a budget change can no longer miss one of its three copies.",
+        "size": "small",
+        "source": "T56"
       }
     ]
   }
