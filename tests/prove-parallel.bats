@@ -83,10 +83,14 @@ results() { jq -c '.evidence | {passed, checks: (.checks | map_values({status, e
 
 @test "R69: a proof of 24 checks takes a fraction of the sequential time" {
   project 24
-  # 24 checks of one second each take 24 s one after another.
+  # 24 checks of one second each take at least 24 s one after another, so any
+  # proof under 24 s ran checks side by side. The bound is that floor, not a
+  # guess of this machine's speed: VBW's own work per check (a shell, git, jq)
+  # comes on top and is several seconds on a slow CI runner (15 s on macOS CI,
+  # 2026-10-09), while 4 at a time sleeps only 6 s.
   NAP=1 run bash -c 'start=$(date +%s); "$1" prove > /dev/null; echo $(( $(date +%s) - start ))' _ "$VBW"
   [ "$status" -eq 0 ]
-  [ "$output" -lt 15 ] || { echo "took $output s"; false; }
+  [ "$output" -lt 24 ] || { echo "took $output s"; false; }
   jq -e '.evidence.passed == true and (.evidence.checks | length) == 24' .vbw/record.json
 }
 
