@@ -139,14 +139,9 @@ VBW is a Claude Code plugin that makes it build software properly: the user agre
 - R133 [auto] The what's-next reply format refuses an empty source for a pick, so one empty source can never make the kernel refuse the whole recommendation
 - R134 [auto] docs/workflows.md lists every workflow in plugin/workflows (vbw:tooling included) with the right count, and docs/proof.md says a Test results folder name cannot contain spaces
 - R135 [auto] The router's triage line reads as a correct sentence whatever the user typed after /vbw:vibe, including nothing
-- R136 [auto] Every message VBW shows in the band and in the side pane disappears as soon as what it says stops being true (the question is answered, the milestone ships, the run ends, an agent finishes), without waiting for some other redraw
-- R137 [auto] The band no longer shows a 'VBW needs you' card with answer buttons: a question VBW asks appears only in Claude Code's own menu, so it can never be answered in two places
-- R138 [auto] The notification sound plays once per question, only when Claude Code's own menu is shown to the user, never twice for one question and never after it is answered
-- R139 [auto] An agent that has finished leaves the live crew list at once
 - R141 [auto] When jq is missing, starting a Claude Code session in a VBW project shows no 'jq: command not found' error: the session-start hook ends quietly like the other hooks
 - R142 [auto] CI splits the macOS test run across several machines, so a push that changes VBW code finishes CI in about 20 minutes or less
 - R143 [auto] When a push changes no shipped code, tools or docs, CI runs only the test files that changed, and skips the tests when only the VBW record or saved test results changed
-- R144 [human] In the real panel, nothing stale stays on screen: after answering a question, after a ship and after a run ends, the band and the pane show only what is true now
 
 <!-- One requirement per line: an id, how it is proved, and a user-observable
      statement. [auto] = a check can prove it; [human] = only a person can judge it.

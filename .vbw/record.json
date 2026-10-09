@@ -5,7 +5,7 @@
   },
   "milestone": {
     "id": "M18",
-    "title": "Honest panel",
+    "title": "Quiet start, faster CI",
     "status": "active"
   },
   "shipped": [
@@ -4016,44 +4016,45 @@
       ]
     },
     {
-      "id": "R136",
-      "text": "Every message VBW shows in the band and in the side pane disappears as soon as what it says stops being true (the question is answered, the milestone ships, the run ends, an agent finishes), without waiting for some other redraw",
-      "proof": "auto",
-      "status": "open",
-      "milestone": "M18",
-      "rules": []
-    },
-    {
-      "id": "R137",
-      "text": "The band no longer shows a 'VBW needs you' card with answer buttons: a question VBW asks appears only in Claude Code's own menu, so it can never be answered in two places",
-      "proof": "auto",
-      "status": "open",
-      "milestone": "M18",
-      "rules": []
-    },
-    {
-      "id": "R138",
-      "text": "The notification sound plays once per question, only when Claude Code's own menu is shown to the user, never twice for one question and never after it is answered",
-      "proof": "auto",
-      "status": "open",
-      "milestone": "M18",
-      "rules": []
-    },
-    {
-      "id": "R139",
-      "text": "An agent that has finished leaves the live crew list at once",
-      "proof": "auto",
-      "status": "open",
-      "milestone": "M18",
-      "rules": []
-    },
-    {
       "id": "R141",
       "text": "When jq is missing, starting a Claude Code session in a VBW project shows no 'jq: command not found' error: the session-start hook ends quietly like the other hooks",
       "proof": "auto",
       "status": "open",
       "milestone": "M18",
-      "rules": []
+      "rules": [
+        {
+          "text": "without jq, in a VBW project root the hook exits 0 with nothing on stdout or stderr and runs no kernel command",
+          "check": "C203"
+        },
+        {
+          "text": "without jq, in a project made by a newer VBW the hook exits 0 quietly and runs no kernel command",
+          "check": "C203"
+        },
+        {
+          "text": "without jq, in a folder holding only a VBW 1 plan (.vbw-planning/) the hook exits 0 quietly",
+          "check": "C203"
+        },
+        {
+          "text": "without jq, in a subfolder of a VBW project the hook exits 0 quietly",
+          "check": "C203"
+        },
+        {
+          "text": "without jq, in a folder that is not a VBW project the hook exits 0 quietly",
+          "check": "C203"
+        },
+        {
+          "text": "without jq the hook stops early and finishes well within the hook time budget",
+          "check": "C203"
+        },
+        {
+          "text": "with jq present, the existing session-start tests pass without edits",
+          "check": "C203"
+        },
+        {
+          "text": "the regression test removes jq from PATH itself (bash and git kept), so it never depends on the host having jq",
+          "check": "C203"
+        }
+      ]
     },
     {
       "id": "R142",
@@ -4061,7 +4062,72 @@
       "proof": "auto",
       "status": "open",
       "milestone": "M18",
-      "rules": []
+      "rules": [
+        {
+          "text": "the CI Tests matrix splits the macOS entry into 3 to 5 shards numbered 1 to N, while each Linux entry stays one job",
+          "check": "C205"
+        },
+        {
+          "text": "every shard checks out into a path with a space and puts the target bash first on PATH",
+          "check": "C205"
+        },
+        {
+          "text": "a shard job runs tools/test.sh --shard K/N with N the shard count; a job without a shard (Linux) runs the full suite",
+          "check": "C205"
+        },
+        {
+          "text": "the shard jobs have distinct names",
+          "check": "C205"
+        },
+        {
+          "text": "the CI budget settings VBW_HOOK_BUDGET_MS 25 and VBW_PANEL_BUDGET_MS 3 are unchanged",
+          "check": "C205"
+        },
+        {
+          "text": "shards never cancel each other (fail-fast off) and no step swallows a failing suite",
+          "check": "C205"
+        },
+        {
+          "text": "the plugin manifest validation job is unchanged",
+          "check": "C205"
+        },
+        {
+          "text": "for any shard count, together the shards list every tests/*.bats file exactly once",
+          "check": "C204"
+        },
+        {
+          "text": "the same inputs always give the same shares",
+          "check": "C204"
+        },
+        {
+          "text": "a newly added test file lands in exactly one shard with no list to edit",
+          "check": "C204"
+        },
+        {
+          "text": "shares are balanced by test count",
+          "check": "C204"
+        },
+        {
+          "text": "each shard runs its timed files alone after its parallel batch",
+          "check": "C204"
+        },
+        {
+          "text": "the tool lint and the hook and panel benchmarks run in shard 1 only",
+          "check": "C204"
+        },
+        {
+          "text": "a failing test file in a shard, in the batch or among the timed files, makes that shard fail",
+          "check": "C204"
+        },
+        {
+          "text": "with no arguments the full local run is unchanged: lint, benchmarks, every file on half the cores, timed files last",
+          "check": "C204"
+        },
+        {
+          "text": "an invalid shard argument (zero, out of range, not a number, malformed) exits 2 with the usage line and runs nothing",
+          "check": "C204"
+        }
+      ]
     },
     {
       "id": "R143",
@@ -4069,14 +4135,96 @@
       "proof": "auto",
       "status": "open",
       "milestone": "M18",
-      "rules": []
-    },
-    {
-      "id": "R144",
-      "text": "In the real panel, nothing stale stays on screen: after answering a question, after a ship and after a run ends, the band and the pane show only what is true now",
-      "proof": "human",
-      "status": "open",
-      "milestone": "M18"
+      "rules": [
+        {
+          "text": "a changed plugin file means the full suite",
+          "check": "C206"
+        },
+        {
+          "text": "a changed docs file or root document means the full suite",
+          "check": "C206"
+        },
+        {
+          "text": "a changed tools file outside the saved results folders means the full suite",
+          "check": "C206"
+        },
+        {
+          "text": "a change to the CI setup (.github/) means the full suite",
+          "check": "C206"
+        },
+        {
+          "text": "a push of only saved test results runs no tests",
+          "check": "C206"
+        },
+        {
+          "text": "a push of only the VBW record and spec runs no tests",
+          "check": "C206"
+        },
+        {
+          "text": "a push of only tests/*.bats files runs just those files",
+          "check": "C206"
+        },
+        {
+          "text": "the record or results plus a test file runs just that test file",
+          "check": "C206"
+        },
+        {
+          "text": "a changed test helper, helpers file or fixture means the full suite",
+          "check": "C206"
+        },
+        {
+          "text": "an unknown path means the full suite",
+          "check": "C206"
+        },
+        {
+          "text": "a test file deleted by the push is not run",
+          "check": "C206"
+        },
+        {
+          "text": "a renamed file counts under its new path, and a file moved out of shipped code still means the full suite",
+          "check": "C206"
+        },
+        {
+          "text": "every commit of the push counts, not only the last one",
+          "check": "C206"
+        },
+        {
+          "text": "an unknown previous tip (new branch, missing commit, rewritten history) means the full suite",
+          "check": "C206"
+        },
+        {
+          "text": "results folders are those the record names (project.results) at both tips; CI guesses no folder",
+          "check": "C206"
+        },
+        {
+          "text": "this repository's record names tools/l3-results/ and tools/baseline/results/ as saved results",
+          "check": "C206"
+        },
+        {
+          "text": "the script's answer always carries a reason, and the wrong number of arguments exits 2 with a usage line",
+          "check": "C206"
+        },
+        {
+          "text": "CI checks out the whole history and decides the scope from the push's old and new tips, or the pull request's base and head, before any test runs",
+          "check": "C207"
+        },
+        {
+          "text": "the choice and its reason are printed in the run log",
+          "check": "C207"
+        },
+        {
+          "text": "the full suite runs unless the answer is some or none, and a failing scope script fails the job",
+          "check": "C207"
+        },
+        {
+          "text": "the changed test files run with bats under the target bash on macOS and both Linux jobs, the list passed through env",
+          "check": "C207"
+        },
+        {
+          "text": "every test job always runs and reports success when no tests are needed (no job-level condition)",
+          "check": "C207"
+        }
+      ]
     }
   ],
   "checks": [
@@ -6436,6 +6584,67 @@
       ],
       "files": [
         "tests/router-triage-line.bats"
+      ]
+    },
+    {
+      "id": "C203",
+      "req": "R141",
+      "run": [
+        "bats",
+        "tests/hooks-session-nojq.bats",
+        "tests/hooks-session.bats",
+        "tests/hooks-session-guard.bats",
+        "tests/hooks-session-scope.bats"
+      ],
+      "files": [
+        "tests/hooks-session-nojq.bats"
+      ]
+    },
+    {
+      "id": "C204",
+      "req": "R142",
+      "run": [
+        "bats",
+        "tests/test-shards.bats"
+      ],
+      "files": [
+        "tests/test-shards.bats"
+      ]
+    },
+    {
+      "id": "C205",
+      "req": "R142",
+      "run": [
+        "bats",
+        "tests/ci-shards.bats",
+        "tests/ci-node24.bats"
+      ],
+      "files": [
+        "tests/ci-shards.bats"
+      ]
+    },
+    {
+      "id": "C206",
+      "req": "R143",
+      "run": [
+        "bats",
+        "tests/ci-scope.bats"
+      ],
+      "files": [
+        "tests/ci-scope.bats"
+      ]
+    },
+    {
+      "id": "C207",
+      "req": "R143",
+      "run": [
+        "bats",
+        "tests/ci-scope-wiring.bats",
+        "tests/ci-shards.bats",
+        "tests/ci-node24.bats"
+      ],
+      "files": [
+        "tests/ci-scope-wiring.bats"
       ]
     }
   ],
@@ -10370,6 +10579,93 @@
         "qa_findings": 0,
         "escalations": 0
       }
+    },
+    {
+      "id": "P94",
+      "title": "A quiet session start when jq is missing",
+      "reqs": [
+        "R141"
+      ],
+      "milestone": "M18",
+      "goal": "Opening Claude Code in any folder on a machine without jq (the small JSON tool VBW relies on) shows no error from VBW's session-start hook (the script VBW runs as a session opens); it ends silently, like VBW's other hooks already do.",
+      "criteria": [
+        "With jq absent from PATH, the session-start hook exits with code 0 and writes nothing to stderr (the error stream), so Claude Code shows no 'jq: command not found' line, in each of these folders: a VBW project root, a project made by a newer VBW, a folder holding only a VBW 1 plan (.vbw-planning/), a subfolder of a VBW project, and a folder that is not a VBW project.",
+        "With jq absent, the hook writes nothing to stdout (no half-built answer reaches Claude Code) and runs no vbw kernel command, so no kernel error can leak either.",
+        "With jq absent, the hook still finishes well within the hook time budget (it stops early rather than trying and failing).",
+        "With jq present, the hook's answers are unchanged in every one of the folders above: the existing session-start tests (hooks-session*.bats) pass without edits.",
+        "A regression test runs the hook with a PATH that has bash and git but no jq, and fails when the early quiet exit is removed.",
+        "The test is hermetic (tests/helper.bash): it never depends on whether the host machine has jq installed."
+      ],
+      "tier": "express",
+      "reasons": [
+        "requirements: 1",
+        "files: 1 (4003 bytes)",
+        "risk: none",
+        "breaks: none",
+        "tests: project test command"
+      ],
+      "predicted": "express"
+    },
+    {
+      "id": "P95",
+      "title": "The macOS test run split across several machines",
+      "reqs": [
+        "R142"
+      ],
+      "milestone": "M18",
+      "goal": "A push that changes VBW code finishes CI (GitHub's automatic test run) in about 20 minutes or less, because the slow macOS /bin/bash 3.2 test run is shared across several machines that run at the same time instead of one machine doing it all.",
+      "criteria": [
+        "The macOS /bin/bash 3.2 test job runs as several parallel jobs (shards: each machine takes a fixed share of the test files); every shard checks out into a path containing a space and puts /bin first on PATH, as today.",
+        "Together the shards run every tests/*.bats file exactly once: no file is skipped and none runs twice. A test proves this by listing each shard's files for a given shard count and comparing the union with tests/*.bats.",
+        "Shares are computed from tests/*.bats at run time, so a newly added test file lands in a shard with no list to edit by hand; the same inputs always give the same shares.",
+        "The timing-sensitive files (prove-parallel, guard-cost, bench-hooks, proof-stale-links) still run alone after their shard's parallel batch, and the hook and panel cost benchmarks and the shellcheck lint of tools/*.sh each run once across the shards, with the CI budget settings (VBW_HOOK_BUDGET_MS, VBW_PANEL_BUDGET_MS) unchanged.",
+        "A failing test in any shard makes CI fail; shards do not cancel each other (fail-fast stays off), so every shard reports its own failures.",
+        "The local full run is unchanged: bash tools/test.sh with no arguments runs every file on half the cores, timed files last, exactly as before; an invalid shard argument (zero, out of range, not a number) exits 2 with the usage line.",
+        "The two Linux bash 5 jobs and the plugin manifest validation job keep running the full suite and checks they run today.",
+        "On a push that changes a file under plugin/, the slowest macOS shard and the whole CI run finish in about 20 minutes or less, read from the run's job start and end times (baseline before this phase: 22 to 45 minutes for the single macOS job)."
+      ],
+      "tier": "deep",
+      "reasons": [
+        "requirements: 1",
+        "files: 3 (10562 bytes)",
+        "files: more than 2 in a repository tracking 768 files",
+        "risk: CI (.github/workflows/ci.yml)",
+        "breaks: none",
+        "guarded: R21 (C16), R55 (C56, C57), R111 (C171, C172, C173, C174, C175), R126 (C186)",
+        "tests: project test command"
+      ],
+      "predicted": "deep"
+    },
+    {
+      "id": "P96",
+      "title": "CI runs only what a push can affect",
+      "reqs": [
+        "R143"
+      ],
+      "milestone": "M18",
+      "goal": "A push that touches no shipped code, tools or docs runs only the test files it changed, and a push that changes only the VBW record or saved test results runs no tests at all, while any other change still runs the full suite.",
+      "criteria": [
+        "The changed files are all the files that differ across the whole push (every commit from the previous branch tip to the new one) or, for a pull request, between its base and its head; renamed files count under their new path.",
+        "If any changed file is outside the known safe set below, CI runs the full suite on every platform, exactly as after P95. This includes plugin/, tools/ (except the saved results folders), docs/, README.md and the other root documents, the version files, .github/ (the CI setup itself), and any path the rules do not recognise: an unknown path means full suite.",
+        "A changed test helper or fixture (anything under tests/ that is not a tests/*.bats file, such as helper.bash, helpers/ or fixtures/) means the full suite, because many test files load it.",
+        "When the only changes are tests/*.bats files (with or without record or results changes), CI runs just those test files, on macOS /bin/bash 3.2 and on both Linux bash 5 jobs; a test file deleted by the push is not run.",
+        "When the only changes are the VBW record (.vbw/record.json and .vbw/spec.md) or saved test results, CI runs no tests and every test job still reports success, not 'skipped' or 'pending', so a branch rule that waits for those job names is satisfied.",
+        "The saved test results folders are those the project's spec names (the record's project.results, decision D195); CI guesses no folder. This repository's spec names tools/l3-results and tools/baseline/results, so pushes like 'test(l3): scenario results' run no tests.",
+        "When the previous tip is unknown (a new branch, a force push that rewrote history, or a history too shallow to compare), CI runs the full suite.",
+        "The choice CI made (full suite, the list of test files, or none) and the reason are printed in the run log.",
+        "The rule that sorts changed paths into full, some or none is a script with its own bats tests covering each case above: plugin file, docs file, tools file, results-only, record-only, test-file-only, record plus test file, helper file, unknown path, deleted test file and unknown previous tip."
+      ],
+      "tier": "deep",
+      "reasons": [
+        "requirements: 1",
+        "files: 3 (7508 bytes)",
+        "files: more than 2 in a repository tracking 768 files",
+        "risk: CI (.github/workflows/ci.yml)",
+        "breaks: none",
+        "guarded: R21 (C16), R55 (C56, C57), R126 (C186)",
+        "tests: project test command"
+      ],
+      "predicted": "deep"
     }
   ],
   "plans": [
@@ -16554,6 +16850,155 @@
         "docs/proof.md, Saved test results: a folder name cannot contain spaces (`vbw spec sync` refuses such a line with its line number)",
         "plugin/skills/vibe/SKILL.md: the triage line no longer puts the user's words inside a parenthesis: 'Every new request, now or later, goes to `vbw:triage` first; ...', so it reads correctly whatever was typed after /vbw:vibe, and the router keeps its 1,400-word count"
       ]
+    },
+    {
+      "id": "P94.1",
+      "phase": "P94",
+      "title": "The session-start hook stops quietly when jq is missing",
+      "reqs": [
+        "R141"
+      ],
+      "files": [
+        "plugin/hooks/session-start.sh"
+      ],
+      "after": [],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "Run the approved test tests/hooks-session-nojq.bats and see it fail today for the expected reason: in four of the five folders the hook prints 'jq: command not found' and exits 127, and in a VBW project it runs the kernel",
+        "plugin/hooks/session-start.sh: as its first command, `command -v jq > /dev/null 2>&1 || exit 0`, with a comment saying why: without jq VBW can neither build its answer nor run its kernel, so the hook ends quietly like the per-tool-call hooks. It comes before the VBW 1 command cleanup too, because the reload notice that cleanup needs can only be sent with jq",
+        "Keep the jq-present behaviour: tests/hooks-session.bats, hooks-session-guard.bats and hooks-session-scope.bats pass without edits, under macOS /bin/bash 3.2 as well as bash 5; shellcheck and the engineering rules (tests/standards.bats) stay clean"
+      ]
+    },
+    {
+      "id": "P95.1",
+      "phase": "P95",
+      "title": "tools/test.sh can run one share of the suite",
+      "reqs": [
+        "R142"
+      ],
+      "files": [
+        "tools/test.sh"
+      ],
+      "after": [],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "Arguments: `--shard K/N` and `--shard K/N --list`, K and N whole numbers with 1 <= K <= N. Anything else (0, K above N, not a number, a missing or extra argument, --list first) prints `usage: tools/test.sh [--quick [--list]] | --shard K/N [--list]` and exits 2 before running anything. The no-argument run and --quick keep exactly their current behaviour (tests/quick-mode.bats keeps passing)",
+        "Shares: computed at run time from tests/*.bats, by test count (the number of `@test` lines): files sorted from most tests to fewest (ties by name), each given to the shard with the fewest tests so far (ties to the lowest number). Same files give the same shares; every file lands in exactly one shard; no list of files to maintain",
+        "A shard run: shard 1 alone runs the shellcheck lint of tools/*.sh, tools/bench-hooks.sh and, when node exists, tools/bench-panel.sh, as the full run does. Every shard runs its ordinary files in one `bats --print-output-on-failure --jobs J` batch (J = half the cores, as today), then its timed files (prove-parallel, guard-cost, bench-hooks, proof-stale-links, in that order) with plain `bats --print-output-on-failure`; an empty group is skipped; any failure makes the script exit non-zero",
+        "`--shard K/N --list` prints what shard K would run, one line each, and runs nothing: for shard 1 first the stages `shellcheck tools/*.sh`, `bash tools/bench-hooks.sh`, `bash tools/bench-panel.sh`, then the batch files, then the timed files. The timed-file list is written once and shared by the full, quick and shard runs",
+        "Bash 3.2 floor (no associative arrays, guarded array expansions under set -u), shellcheck clean; tests/test-shards.bats and tests/quick-mode.bats pass under macOS /bin/bash 3.2 and bash 5"
+      ]
+    },
+    {
+      "id": "P95.2",
+      "phase": "P95",
+      "title": "CI runs the macOS tests as four machines at once",
+      "reqs": [
+        "R142"
+      ],
+      "files": [
+        ".github/workflows/ci.yml"
+      ],
+      "after": [],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "Tests job matrix: a base of `os: [macos-latest]` and `shard: [1, 2, 3, 4]`; the macOS include entry (os macos-latest, bash_path /bin) joins all four shard jobs, and the two Linux include entries name another os, so each stays one job of its own. Keep exactly the three `- name:` entries, no exclude list and `fail-fast: false`, so the approved tests/ci-node24.bats keeps passing",
+        "Job name tells shards apart: `Tests (${{ matrix.name }}${{ matrix.shard && format(', shard {0} of 4', matrix.shard) || '' }})`",
+        "Run step: env `SHARD: ${{ matrix.shard }}` and `SHARDS: 4` next to the unchanged VBW_HOOK_BUDGET_MS \"25\" and VBW_PANEL_BUDGET_MS \"3\"; the script runs `bash tools/test.sh --shard \"$SHARD/$SHARDS\"` when SHARD is set, else `bash tools/test.sh` (the Linux entries' full suite). Checkout into `src dir` and `export PATH=\"${{ matrix.bash_path }}:$PATH\"` stay as they are; no continue-on-error, no `|| true`",
+        "Leave the validate job byte for byte as it is; run tests/ci-shards.bats and tests/ci-node24.bats"
+      ]
+    },
+    {
+      "id": "P95.3",
+      "phase": "P95",
+      "title": "Contributor guide: one share of the suite, and CI's four macOS machines",
+      "reqs": [
+        "R142"
+      ],
+      "files": [
+        "CONTRIBUTING.md"
+      ],
+      "after": [
+        "P95.1",
+        "P95.2"
+      ],
+      "status": "planned",
+      "role": "docs",
+      "tasks": [
+        "CONTRIBUTING.md test commands: add `bash tools/test.sh --shard K/N` (runs share K of N, the way CI's macOS jobs run it) and `--shard K/N --list` (shows the share without running it)",
+        "CONTRIBUTING.md CI section: the macOS /bin/bash 3.2 suite runs as four machines at once, each with its share, timing-sensitive files last and the lint and benchmarks on the first; the two Linux bash 5 jobs run the full suite; a failing share fails CI",
+        "Say that a new test file needs no list edit: shares are worked out from tests/*.bats on every run"
+      ]
+    },
+    {
+      "id": "P96.1",
+      "phase": "P96",
+      "title": "A script that decides what a push must test",
+      "reqs": [
+        "R143"
+      ],
+      "files": [
+        "tools/ci-scope.sh"
+      ],
+      "after": [],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "New tools/ci-scope.sh BASE HEAD (header comment, bash 3.2, shellcheck clean), working on the git repository of the current folder. Wrong number of arguments: a usage line and exit 2. BASE empty, all zeros, not a commit in this clone, or not an ancestor of HEAD (new branch, rewritten history, shallow clone): full suite, with that reason",
+        "Changed files: `git diff --name-status -z -M BASE HEAD` (NUL-separated, as the project's git rule asks), which covers every commit of the push. A renamed or copied file is sorted under its new path and its old path too (a file moved out of plugin/ still counts as a plugin change); a deleted file is sorted but never run",
+        "Sorting each path: .vbw/record.json and .vbw/spec.md need no tests; a path inside a saved results folder needs no tests only if that folder is in `.project.results` of .vbw/record.json at both BASE and HEAD (read with git show and jq; CI guesses no folder, and a push cannot name a new folder to skip its own files); a top-level tests/<name>.bats whose name has only letters, digits, '.', '_' or '-' is run unless deleted; every other path, an unknown one included, means the full suite",
+        "Output, three lines ready for GitHub's step outputs: `scope=full|some|none`, `files=` (the test files to run, sorted, space-separated; empty unless some) and `reason=` in plain words (the first path that forced the full suite, the test files, or 'only the VBW record or saved test results changed'); a push that only deletes test files gives none",
+        "Run tests/ci-scope.bats under macOS /bin/bash 3.2 and bash 5; its last test passes only once the spec's Test results section names tools/l3-results/ and tools/baseline/results/ (see the plan notes)"
+      ]
+    },
+    {
+      "id": "P96.2",
+      "phase": "P96",
+      "title": "CI asks the script first, then runs everything, some files or nothing",
+      "reqs": [
+        "R143"
+      ],
+      "files": [
+        ".github/workflows/ci.yml"
+      ],
+      "after": [
+        "P95.2",
+        "P96.1"
+      ],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "Tests job checkout: add `fetch-depth: 0`, so the previous tip can be compared (a shallow history would otherwise always mean the full suite)",
+        "New step `id: scope` after Install test tools, `shell: bash` (so a failing script fails the job through the pipe), in `src dir` with the target bash first on PATH: for a push it passes `github.event.before` and `github.sha`; for a pull request the merge base of `github.event.pull_request.base.sha` and `github.event.pull_request.head.sha` (empty if git cannot find one, which means the full suite) and the head; it runs `bash tools/ci-scope.sh \"$BASE\" \"$HEAD\" | tee -a \"$GITHUB_OUTPUT\"`, so the choice and reason show in the run log",
+        "Full-suite step (P95's shard logic unchanged): `if: steps.scope.outputs.scope != 'some' && steps.scope.outputs.scope != 'none'`, so a missing answer still runs everything",
+        "Changed-files step: `if: steps.scope.outputs.scope == 'some' && (!matrix.shard || matrix.shard == 1)`, env `FILES: ${{ steps.scope.outputs.files }}` (never pasted into the script text), target bash first on PATH, in `src dir`, `bats --print-output-on-failure $FILES`; it runs on the first macOS shard and on both Linux jobs. No job-level `if:`, so on scope none every job runs, skips its test steps and reports success",
+        "Run tests/ci-scope-wiring.bats, tests/ci-shards.bats and tests/ci-node24.bats; the validate job stays untouched"
+      ]
+    },
+    {
+      "id": "P96.3",
+      "phase": "P96",
+      "title": "Contributor guide: what each push makes CI run",
+      "reqs": [
+        "R143"
+      ],
+      "files": [
+        "CONTRIBUTING.md"
+      ],
+      "after": [
+        "P95.3",
+        "P96.2"
+      ],
+      "status": "planned",
+      "role": "docs",
+      "tasks": [
+        "CONTRIBUTING.md CI section: the full suite runs for any change to plugin/, tools/, docs/, root documents, version files, .github/, test helpers or fixtures, or any path CI does not recognise, and on a new branch or a force push",
+        "Only changed tests/*.bats files run when nothing else changed (deleted ones are not run); a push of only .vbw/record.json, .vbw/spec.md or saved test results runs no tests, and every job still shows success",
+        "Saved results folders come from the spec's Test results section (D195), named in the record before and after the push; the run log's 'Decide' step shows what CI chose and why"
+      ]
     }
   ],
   "fixes": [
@@ -17800,6 +18245,13 @@
       "sort": "next",
       "size": "small",
       "status": "done"
+    },
+    {
+      "id": "T92",
+      "text": "Final polish (panel trust, from M18): every band and pane message disappears as soon as it stops being true (P10); no 'VBW needs you' card with buttons in the band (P1); the sound plays once per question, only with Claude Code's own menu (B1); finished agents leave the crew list at once (P4); owner judges it by eye. Do together with P2, P3, P5, P6, P9, T64, T78, T81, T87",
+      "sort": "later",
+      "size": "medium",
+      "status": "open"
     }
   ],
   "decisions": [
@@ -19006,6 +19458,18 @@
       "id": "D218",
       "at": "2026-10-09T19:25:54Z",
       "text": "Contract approved: 129 requirements, 197 checks, 262 plans (89e5e8ad02bc)"
+    },
+    {
+      "id": "D219",
+      "text": "Panel trust work (stale messages, the band's question card, double sound, finished agents, owner's look check) moves to one final polish milestone before 2.1, with the other waiting panel ideas",
+      "why": "the panel code is reworked and judged by eye once; none of it puts projects at risk; until then the stale card and double sound remain",
+      "at": "2026-10-09T19:50:13Z"
+    },
+    {
+      "id": "D220",
+      "text": "M18 stays small: the session-start jq error and the two CI speedups",
+      "why": "ships soonest; T86 is the next what's-next pick after it",
+      "at": "2026-10-09T19:50:13Z"
     }
   ],
   "commands": {
