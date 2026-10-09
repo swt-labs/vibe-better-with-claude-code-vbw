@@ -21390,23 +21390,23 @@
   },
   "lease": null,
   "recommendation": {
-    "at": "2026-10-09T18:05:01Z",
+    "at": "2026-10-09T20:53:56Z",
     "top": {
-      "text": "Stop the 'jq: command not found' error at session start. The startup hook should end quietly, like the other four hooks already do, and a regression test should check that it does.",
+      "text": "Skip the second full check run after a fix that only changes documentation. Today, if QA (VBW's final review) finds a problem and the fix only edits documentation, VBW still reruns its whole test suite, about 23 minutes on VBW itself, before QA looks again. With this change, VBW reuses the earlier test results when only documentation has changed since they ran, the same way QA already does under R115.",
       "size": "small",
-      "reason": "It is the only item in the backlog that real users can see: when jq (a small JSON tool VBW needs) is missing, every new session opens with an error message, and the fix is a one-line change plus a test.",
-      "source": "T89"
+      "reason": "Decision D220 already named this as the next pick once M18 shipped, and M18 has now shipped (D222); it is a small change that saves about 23 minutes each time it applies.",
+      "source": "T86"
     },
     "runners": [
       {
-        "text": "After a fix that only changes documentation, let the full proof reuse the earlier test-suite result instead of running every check again. This saves about 23 minutes for each docs-only fix on VBW.",
+        "text": "Fix a QA depth bug. A phase that was raised to the strictest review level ('deep') is currently reviewed at the lighter 'standard' level, because a small-change shortcut still applies to it. This happened to P89, P90 and P92, and P92 failed QA four times. A phase that was raised should keep the review level it was given.",
         "size": "small",
-        "source": "T86"
+        "source": "T93"
       },
       {
-        "text": "Keep the word limit for all prompts in one place (the engineering-rules test file), the way the kernel line limit is kept, so a budget change can no longer miss one of its three copies.",
+        "text": "Backlog commands (vbw todo add, sort, done and drop) leave the project record file unsaved in git when they are the last command run. Have them commit it, as vbw recommend has done since 2.0.29, without touching any files the user has staged.",
         "size": "small",
-        "source": "T56"
+        "source": "T90"
       }
     ]
   }
