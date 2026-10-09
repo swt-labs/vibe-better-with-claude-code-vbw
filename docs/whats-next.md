@@ -33,8 +33,9 @@ and never a suggestion you declined (see [triage](triage.md)).
 ## Where it is kept
 
 The kernel stores the recommendation in the project record
-(`.vbw/record.json`, field `recommendation`) with the time it was written. One
-is kept: a new one replaces the old one. The kernel refuses a malformed one,
+(`.vbw/record.json`, field `recommendation`) with the time it was written, and
+commits the record (`chore(vbw): what's next`), so a ship leaves the project
+clean; your own staged files stay staged. One is kept: a new one replaces the old one. The kernel refuses a malformed one,
 or a pick whose todo or requirement is not open, and says what is wrong. A
 stored recommendation raises the record schema to 3 (see
 [record.md](record.md)).

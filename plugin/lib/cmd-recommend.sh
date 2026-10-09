@@ -66,4 +66,6 @@ cmd_recommend() {
   fi
   record_update '.recommendation = ({at: $at} + $r)' --arg at "$(vbw_now)" --argjson r "$out"
   jq -r '.recommendation | if .empty then "recommended: the backlog is empty" else "recommended: \(.top.text) (\(.top.size))" end' "$VBW_RECORD"
+  # It runs after vbw ship, the milestone's last command: nothing later commits it.
+  record_commit "chore(vbw): what's next"
 }
