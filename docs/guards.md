@@ -109,9 +109,12 @@ could answer `allow`.
 
 ### A failing hook gives no answer
 
-Every hook command ends in `|| true` and exits 0 with no output when it fails
-(bad input, missing `jq`, an unreadable record). Claude Code then goes on as
-it normally would. A failure never becomes an `allow`, and never a `deny`.
+The four guard and approval hook commands end in `|| true` and exit 0 with no
+output when they fail (bad input, missing `jq`, an unreadable record). The
+session-start hook has no `|| true`: if it fails (for example, no `jq`), it
+prints an error and exits non-zero, but it never prints a decision. In every
+case Claude Code goes on as it normally would. A failure never becomes an
+`allow`, and never a `deny`.
 
 ## How a command is read
 
