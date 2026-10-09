@@ -10,7 +10,7 @@
   "milestone": {
     "id": "M18",
     "title": "Quiet start, faster CI",
-    "status": "active"
+    "status": "shipped"
   },
   "shipped": [
     {
@@ -97,6 +97,11 @@
       "id": "M17",
       "title": "Sound foundations",
       "at": "2026-10-09T18:03:36Z"
+    },
+    {
+      "id": "M18",
+      "title": "Quiet start, faster CI",
+      "at": "2026-10-09T20:47:54Z"
     }
   ],
   "requirements": [
@@ -19524,6 +19529,11 @@
       "id": "D221",
       "at": "2026-10-09T20:09:49Z",
       "text": "Contract approved: 132 requirements, 202 checks, 269 plans (3533d9220c28); express: P94 (R141, C203, P94.1)"
+    },
+    {
+      "id": "D222",
+      "at": "2026-10-09T20:47:54Z",
+      "text": "Shipped M18 Quiet start, faster CI: 3 requirements proven or accepted"
     }
   ],
   "commands": {
