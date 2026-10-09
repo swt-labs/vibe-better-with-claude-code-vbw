@@ -31,6 +31,9 @@ jobs:
       - uses: actions/checkout@v7
         with:
           path: src dir
+          # The whole history, so the previous tip can be compared; a shallow
+          # clone would always mean the full suite.
+          fetch-depth: 0
 
       - name: Install test tools
         shell: bash
@@ -42,7 +45,30 @@ jobs:
             sudo apt-get install -y -qq bats shellcheck jq parallel
           fi
 
+      - name: Decide what to test
+        id: scope
+        shell: bash
+        working-directory: src dir
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          PUSH_BEFORE: ${{ github.event.before }}
+          PUSH_AFTER: ${{ github.sha }}
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          export PATH="${{ matrix.bash_path }}:$PATH"
+          if [ "$EVENT_NAME" = "pull_request" ]; then
+            # No merge base found means an empty base, which means the full suite.
+            BASE=$(git merge-base "$PR_BASE" "$PR_HEAD" || true)
+            HEAD="$PR_HEAD"
+          else
+            BASE="$PUSH_BEFORE"
+            HEAD="$PUSH_AFTER"
+          fi
+          bash tools/ci-scope.sh "$BASE" "$HEAD" | tee -a "$GITHUB_OUTPUT"
+
       - name: Run the suite with the target bash first on PATH
+        if: steps.scope.outputs.scope != 'some' && steps.scope.outputs.scope != 'none'
         working-directory: src dir
         env:
           # The hook budget (8 ms of VBW's own CPU per call, or 1x the platform's
@@ -62,6 +88,19 @@ jobs:
           else
             bash tools/test.sh
           fi
+
+      - name: Run the changed test files with the target bash first on PATH
+        if: steps.scope.outputs.scope == 'some' && (!matrix.shard || matrix.shard == 1)
+        working-directory: src dir
+        env:
+          FILES: ${{ steps.scope.outputs.files }}
+          VBW_HOOK_BUDGET_MS: "25"
+          VBW_PANEL_BUDGET_MS: "3"
+        run: |
+          export PATH="${{ matrix.bash_path }}:$PATH"
+          bash --version | head -1
+          # shellcheck disable=SC2086
+          bats --print-output-on-failure $FILES
 
   validate:
     name: Plugin manifest validation
