@@ -10646,7 +10646,22 @@
         "guarded: R21 (C16), R55 (C56, C57), R111 (C171, C172, C173, C174, C175), R126 (C186)",
         "tests: project test command"
       ],
-      "predicted": "deep"
+      "predicted": "deep",
+      "qa": {
+        "result": "pass",
+        "tier": "deep",
+        "tree": "61010a3ec4c2fde4889db3c1b9d2f230dffeebf862f202a824d8d44f3fe67e41",
+        "at": "2026-10-09T20:45:00Z",
+        "note": "20/20 checks"
+      },
+      "outcome": {
+        "tier": "deep",
+        "predicted": "deep",
+        "held": true,
+        "fix_rounds": 0,
+        "qa_findings": 0,
+        "escalations": 0
+      }
     },
     {
       "id": "P96",
