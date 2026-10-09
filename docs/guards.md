@@ -86,6 +86,33 @@ folders.
 A lease older than 24 hours holds no one. During a run the Bash fast path is off
 for subagents: every command they run is read.
 
+## What each answer means
+
+A hook gives Claude Code one of these answers. `tests/hook-answers.bats` pins
+each one to the exact JSON.
+
+| Answer | Sent by | What Claude Code does |
+|---|---|---|
+| `deny`, reason starting `VBW guard:` | the Bash and file guards | Blocks the tool call and shows Claude the reason, so it can choose another way |
+| `ask`, with a rewritten question (`updatedInput`) | the approval-menu hook on `AskUserQuestion` | Shows the rewritten question to you; you answer it |
+| Added context (`additionalContext`) | SessionStart; the approval-answer hook | Adds the text for Claude to read |
+| A message for the user (`systemMessage`) | SessionStart (project made by a newer VBW); the approval-answer hook | Shows you the message |
+| No answer (no output, exit 0) | every hook, when it has nothing to say | Goes on as it normally would: your permission settings and prompts decide |
+
+### No hook ever answers allow
+
+Claude Code reads `allow` as "the hook decided, do not ask the user". On a
+question that would mean the hook answered it in your place, so the approval
+hook answers `ask` instead. Only your exact answer `Approve` approves a
+contract. A standards test (`tools/check-hook-answers.sh`) fails if any hook
+could answer `allow`.
+
+### A failing hook gives no answer
+
+Every hook command ends in `|| true` and exits 0 with no output when it fails
+(bad input, missing `jq`, an unreadable record). Claude Code then goes on as
+it normally would. A failure never becomes an `allow`, and never a `deny`.
+
 ## How a command is read
 
 The Bash guard judges what the shell would execute, not the text:
