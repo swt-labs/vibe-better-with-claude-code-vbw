@@ -15401,7 +15401,7 @@
       "after": [
         "P86.1"
       ],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "new plugin/lib/cmd-recommend.sh: vbw recommend reads one JSON object on stdin, {top: {text, reason, size, source?}, runners: [{text, size, source?}] (zero to two)} or {empty: true}, and stores .recommendation = {at, top, runners} or {at, empty: true}, replacing any earlier one; prints one line",
@@ -15428,7 +15428,7 @@
       "after": [
         "P86.2"
       ],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "new plugin/workflows/recommending.js (meta name recommending, one phase Recommend): args {summary (vbw triage --json), declined, models, effort, profile}; with summary.open and summary.todos both empty it returns {recommendation: {empty: true}} and runs no agent; else one vbw:architect call with models.architect, effort architect.recommend and a schema (top {text, reason, size: small|medium|large, source?}, runners maxItems 2 {text, size, source?}); the prompt lists the open requirements, the backlog with sort and size, the declined suggestions, says to read vbw show decisions, never to pick shipped work and to name each source; null or a throw returns {error}; else {recommendation: {top, runners}}",
@@ -15453,7 +15453,7 @@
       "after": [
         "P86.3"
       ],
-      "status": "planned",
+      "status": "done",
       "role": "docs",
       "tasks": [
         "new docs/whats-next.md: what the recommendation is (a top pick with its reason and size, up to two runners-up with sizes, each naming its todo or requirement when it has one), that it is kept in the project record (D205), and how vbw status shows it (including 'none yet' and 'the backlog is empty')",
@@ -15498,7 +15498,7 @@
       "after": [
         "P88.1"
       ],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "plugin/hooks/panel-pane.js: the Now tab draws the section after the panel's sentences and the sound switch, before the live workflow, from the record already gathered and the pane width",
