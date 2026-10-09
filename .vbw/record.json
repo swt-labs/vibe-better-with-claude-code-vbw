@@ -16307,7 +16307,7 @@
       "req": "R123",
       "source": "qa",
       "attempts": 0,
-      "status": "open",
+      "status": "fixed",
       "note": "docs/whats-next.md shows the wrong layout for the vbw status what's-next part. Its example prints 'then: Gift cards (large)' and 'written 2026-10-09' at the left edge, and the docs table says vbw status prints 'the lines in the example above'. The real output (plugin/lib/cmd-status.sh lines 36-37) indents the reason, every 'then:' line and the 'written' line by two spaces; only the 'what's next: ...' line is at the left edge. Fix the example (and keep the table wording true) so the docs show exactly what vbw status prints."
     }
   ],
