@@ -4,9 +4,9 @@
     "name": "v2"
   },
   "milestone": {
-    "id": "M16",
-    "title": "What's next",
-    "status": "shipped"
+    "id": "M17",
+    "title": "Sound foundations",
+    "status": "active"
   },
   "shipped": [
     {
