@@ -1,5 +1,34 @@
 # Changelog
 
+## [2.0.28] - 2026-10-09
+
+### Added
+
+- **VBW sorts every new idea first.** When you bring a new feature, change or
+  fix to `/vbw:vibe`, VBW sorts it as now, next or later, with a one-line
+  reason and a size (small, medium or large), in one menu before anything is
+  planned or changed. `now` joins the active milestone; `next` and `later` go
+  into the backlog (`/vbw:todo`), listed in that order. If you overrule VBW's
+  sort, it asks your reason once and records it as a decision. See
+  `docs/triage.md`.
+- **What's next.** After you ship a milestone, and whenever you ask
+  `/vbw:vibe what's next`, the Architect reads your backlog and recommends the
+  best next item and two runners-up, each with its size and why. `vbw status`
+  shows it, and the panel's Now tab has a new What's next section with a
+  "Suggest next" button and a short colour animation when a new suggestion
+  arrives. See `docs/whats-next.md`.
+
+### Changed
+
+- CI uses the Node 24 versions of the GitHub actions and also runs on
+  Ubuntu 26.04.
+
+### Note for updating
+
+- A project that stores a sorted backlog item or a recommendation uses record
+  format 3. An older VBW opened on such a project says it needs a newer VBW
+  instead of misreading it; update every machine that works on the project.
+
 ## [2.0.27] - 2026-10-08
 
 ### Changed
