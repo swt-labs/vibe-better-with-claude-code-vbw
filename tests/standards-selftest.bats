@@ -132,3 +132,24 @@ vision_copy() {
   [ "$status" -ne 0 ]
   [[ "$output" == *"not the first rule"* ]]
 }
+
+@test "the hook answer check passes on the repository as it is" {
+  run bash "$REPO_ROOT/tools/check-hook-answers.sh" "$PLUGIN_ROOT/hooks" "$REPO_ROOT/tests/hook-answers.bats"
+  [ "$status" -eq 0 ] || { echo "$output"; false; }
+}
+
+@test "the hook answer check catches a new unpinned answer shape" {
+  cp -R "$PLUGIN_ROOT/hooks" "$TEST_ROOT/hooks"
+  printf '| {stopReason: "x"}\n' >> "$TEST_ROOT/hooks/guard-file.jq"
+  run bash "$REPO_ROOT/tools/check-hook-answers.sh" "$TEST_ROOT/hooks" "$REPO_ROOT/tests/hook-answers.bats"
+  [ "$status" -ne 0 ]
+  [[ "$output" == *guard-file.jq* && "$output" == *stopReason* ]]
+}
+
+@test "the hook answer check catches a hook that answers allow" {
+  cp -R "$PLUGIN_ROOT/hooks" "$TEST_ROOT/hooks"
+  printf '%s\n' "jq -nc '{hookSpecificOutput: {permissionDecision: \"allow\"}}'" >> "$TEST_ROOT/hooks/approve-ask.sh"
+  run bash "$REPO_ROOT/tools/check-hook-answers.sh" "$TEST_ROOT/hooks" "$REPO_ROOT/tests/hook-answers.bats"
+  [ "$status" -ne 0 ]
+  [[ "$output" == *approve-ask.sh* && "$output" == *allow* ]]
+}

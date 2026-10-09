@@ -170,3 +170,8 @@ code_grep() {
   run bash "$REPO_ROOT/tools/check-vision-rule.sh" "$REPO_ROOT"
   [ "$status" -eq 0 ] || { echo "$output"; false; }
 }
+
+@test "every answer a hook gives Claude Code has a test pinning its meaning, and no hook answers allow (R128)" {
+  run bash "$REPO_ROOT/tools/check-hook-answers.sh" "$PLUGIN_ROOT/hooks" "$REPO_ROOT/tests/hook-answers.bats"
+  [ "$status" -eq 0 ] || { echo "$output"; false; }
+}

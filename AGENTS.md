@@ -150,6 +150,7 @@ cat "$CLAUDE_PROJECT_DIR"/<session-id>/subagents/agent-*.jsonl
 - **Bash 3.2 is the floor** (macOS `/bin/bash`). No `mapfile`/`readarray`, no associative arrays, no case-modifying expansions, no `"${@}"`. Every array expansion under `set -u` is guarded (`${a[@]+"${a[@]}"}`).
 - **No data as code:** no `eval`, no `bash -c "$var"`. Commands from repo files run only as argv arrays, and only after consent recorded by content hash in the clone's git directory (`$(git rev-parse --git-common-dir)/vbw/consent.json`).
 - **Single writer:** only the kernel writes `.vbw/record.json`, through one locked, validated, atomic write path.
+- **Hook answers are pinned:** every answer a hook gives Claude Code has a test pinning its documented meaning, and no hook answers allow (enforced by `tests/standards.bats`).
 - **Git path listings use `-z`.** VBW commits use an explicit pathspec, never `git add -A`, and never disturb user-staged files.
 - **Paths come from substitution:** `${CLAUDE_PLUGIN_ROOT}` in skills, agents and workflows; `$0` or arguments in scripts. No cache globs, `/tmp` links, `ps` scraping or command mirrors.
 - **Nothing outside the project:** no writes to `/tmp`, other repos or git hooks, and no process killing. The one exception is the user's Claude Code `settings.json`, where VBW turns on its status line and Dynamic workflows (owner decision, 2026-10-01), keeping every other setting and a backup of a replaced status line. It must work under the Claude Code sandbox.
