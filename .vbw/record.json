@@ -10111,7 +10111,7 @@
         "A full `vbw apply` that lists only the active milestone's own requirements is accepted as before",
         "The full apply and `--add` share one rule for this refusal, so the two cannot drift apart (a test feeds the same bad document to both and gets the same message)"
       ],
-      "tier": "standard",
+      "tier": "deep",
       "reasons": [
         "requirements: 2",
         "files: 3 (45504 bytes)",
@@ -10121,7 +10121,15 @@
         "guarded: R13 (C12), R14 (C13), R22 (C19), R23 (C20), R24 (C23), R25 (C24), R27 (C21), R28 (C25), R31 (C27), R39 (C36), R43 (C42, C43), R44 (C44, C45), R45 (C39, C40, C41), R46 (C46), R50 (C51), R60 (C72, C94), R66 (C95), R69 (C110, C120, C122), R70 (C114), R71 (C115, C121), R73 (C98), R74 (C99, C100), R75 (C101), R76 (C102, C103), R77 (C104), R78 (C105, C106), R79 (C107), R80 (C108), R81 (C109, C111, C112, C113), R95 (C149, C150), R96 (C151, C152), R99 (C155), R101 (C179), R106 (C164, C165), R107 (C166, C167), R116 (C182, C183), R118 (C184), R123 (C190, C191)",
         "tests: project test command"
       ],
-      "predicted": "standard"
+      "predicted": "standard",
+      "escalations": [
+        {
+          "at": "2026-10-09T14:57:12Z",
+          "from": "standard",
+          "to": "deep",
+          "reason": "Dev blocked P90.3: x"
+        }
+      ]
     },
     {
       "id": "P91",
@@ -16147,7 +16155,7 @@
         "plugin/bin/vbw"
       ],
       "after": [],
-      "status": "planned",
+      "status": "done",
       "tasks": [
         "plugin/lib/cmd-todo.sh: new subcommand `vbw todo sort ID next|later small|medium|large`. It sets both the sort (next or later) and the size (small, medium or large) of an open or in-progress item in one record update, replacing any sort and size it had and keeping its id, text and status; it prints the item as `vbw todo list` shows it (`T3 [next, small] CSV export`)",
         "Refusals, all checked before the record is touched so it stays byte-for-byte the same: an id that does not exist (`unknown todo T9`), an item that is done or dropped (the message says the item is closed, for example `T1 is closed (done): only an open item can be sorted`), and a sort or size outside the lists, a missing value or extra words (the usage line `usage: vbw todo sort ID next|later small|medium|large`, exit 2)",
@@ -16188,7 +16196,7 @@
         "docs/whats-next.md"
       ],
       "after": [],
-      "status": "planned",
+      "status": "done",
       "tasks": [
         "docs/triage.md, The backlog: an item added without a sort (or sorted differently) gets one later with `vbw todo sort T3 next small`, which replaces both values and then lists the item in its group; an unknown or closed item, or another value, is refused and nothing changes",
         "docs/record.md, the `todos[]` row: `vbw todo sort` sets or replaces both `sort` and `size` of an open item",
@@ -16250,7 +16258,7 @@
         "P90.2",
         "P93.1"
       ],
-      "status": "planned",
+      "status": "done",
       "role": "docs",
       "tasks": [
         "docs/workflows.md, the `vbw plan done` / `vbw plan block` row: blocking a plan that is already done is refused and nothing changes (reset it first if it must be built again)",
