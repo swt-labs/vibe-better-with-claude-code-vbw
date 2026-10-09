@@ -27,7 +27,8 @@ cmd_todo() {
         case "$size" in small|medium|large) ;; *) vbw_usage_error "--size needs small, medium or large, together with --sort next or later" ;; esac
       fi
       ;;
-    sort) [ $# -eq 3 ] && [ "$2" = next -o "$2" = later ] && [ "$3" = small -o "$3" = medium -o "$3" = large ] \
+    sort) [ $# -eq 3 ] && { [ "$2" = next ] || [ "$2" = later ]; } \
+      && { [ "$3" = small ] || [ "$3" = medium ] || [ "$3" = large ]; } \
       || vbw_usage_error "usage: vbw todo sort ID next|later small|medium|large" ;;
     done|drop) [ $# -eq 1 ] || vbw_usage_error "usage: vbw todo $sub ID" ;;
     *) vbw_usage_error "usage: vbw todo [list] | add [--sort next|later --size small|medium|large] TEXT | sort ID next|later small|medium|large | done ID | drop ID" ;;
