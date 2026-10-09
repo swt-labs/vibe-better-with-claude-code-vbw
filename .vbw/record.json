@@ -10225,7 +10225,7 @@
         "A standards test fails when a new hook output shape is added without a pinning test (each shape in the hook files is listed against a test)",
         "Hook timing stays within the hot-path budget (`tools/bench-hooks.sh` passes)"
       ],
-      "tier": "standard",
+      "tier": "deep",
       "reasons": [
         "requirements: 1",
         "files: 6 (43360 bytes)",
@@ -10240,10 +10240,18 @@
         "result": "fail",
         "tier": "standard",
         "tree": "7b9343a014e9e54d919c82921e8812c9d882b66980109e124b2cfde060969d74",
-        "at": "2026-10-09T15:54:30Z",
-        "note": "15/16 checks",
-        "rounds": 1
-      }
+        "at": "2026-10-09T16:24:49Z",
+        "note": "17/18 checks",
+        "rounds": 2
+      },
+      "escalations": [
+        {
+          "at": "2026-10-09T16:24:49Z",
+          "from": "standard",
+          "to": "deep",
+          "reason": "QA needs a second round"
+        }
+      ]
     },
     {
       "id": "P93",
@@ -17206,8 +17214,16 @@
       "req": "R128",
       "source": "qa",
       "attempts": 0,
-      "status": "fixed",
+      "status": "closed",
       "note": "docs/guards.md line 112 says 'Every hook command ends in || true and exits 0 with no output when it fails'. That is false for SessionStart: plugin/hooks/hooks.json runs it as plain 'bash session-start.sh' (4 of the 5 hook commands have '|| true'). Evidence: running plugin/hooks/session-start.sh with jq missing from PATH prints 'jq: command not found' and exits 127, not 0. It still never answers allow (no JSON on stdout), but the doc states something the code does not do. Fix: either add '|| true' to the SessionStart command (and a regression test next to the 'failure gives no output and exit 0' test, which today covers only Bash/Read/Write) or reword the doc to what SessionStart really does."
+    },
+    {
+      "id": "F96",
+      "req": "R128",
+      "source": "qa",
+      "attempts": 0,
+      "status": "open",
+      "note": "docs/guards.md lines 111-117 (section 'A failing hook gives no answer') list 'an unreadable record' among failures where the guard exits 0 with no output and say a failure 'never becomes a deny'. That is false for the guards: a corrupt .vbw/record.json still counts as a VBW project (docs/guards.md line 43; plugin/hooks/common.jq guard_context uses 'try input catch {}' and sets project true; tests/hooks-guard.bats:137), so a guarded call such as 'vbw approve' is still denied with a 'VBW guard:' reason. The test that should pin this (tests/hook-answers.bats test 8, last lines) accepts either no output or a deny, so it cannot tell which is true. Fix: remove 'an unreadable record' from the failure list in the docs (say a corrupt record keeps the guards on and a guarded call is still denied), and make the test assert the exact outcome for 'ls' (no output) and for 'vbw approve' (deny with 'VBW guard:')."
     }
   ],
   "todos": [
@@ -20665,7 +20681,13 @@
     "full": true,
     "passed": true
   },
-  "lease": null,
+  "lease": {
+    "run": "qa-20261009T162242Z",
+    "kind": "qa",
+    "started_at": "2026-10-09T16:22:42Z",
+    "files": [],
+    "session": "4130e174-7ef2-4e36-b853-fb2a8fd8511d"
+  },
   "recommendation": {
     "at": "2026-10-09T13:43:41Z",
     "top": {
