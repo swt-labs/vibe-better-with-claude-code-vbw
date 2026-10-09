@@ -358,7 +358,7 @@ a run and to documentation, higher ones to planning and QA.
 
 ```
 vbw config effort
-{"architect":{"decide":"xhigh","scope":"high"},"lead":{"plan":"high","close":"low"},...}
+{"architect":{"decide":"xhigh","scope":"high","recommend":"medium"},"lead":{"plan":"high","close":"low"},...}
 ```
 
 The table lives in `plugin/lib/efforts.json`: one object per profile, each
@@ -367,7 +367,7 @@ holding roles and, under each role, steps. The levels are `low`, `medium`,
 
 | Role | Steps |
 |---|---|
-| `architect` | `decide`, `scope` |
+| `architect` | `decide`, `scope`, `recommend` |
 | `lead` | `plan`, `close` |
 | `dev` | `build`, `fix` |
 | `docs` | `build` |
