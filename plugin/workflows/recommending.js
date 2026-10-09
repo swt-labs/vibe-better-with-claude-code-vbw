@@ -17,7 +17,7 @@ const declined = Array.isArray(a.declined) ? a.declined : []
 const models = a.models || {}
 const table = (a.effort && typeof a.effort === 'object' && !Array.isArray(a.effort)) ? a.effort : {}
 const effort = table.architect && typeof table.architect === 'object' ? table.architect.recommend : null
-const profile = a.profile || {}
+const profile = (args && args.profile) || {}
 const voice = `\n\nThe user's level: ${profile.level || 'small scripts or no-code'}. Explanation depth: ${profile.depth || 'plain with technical terms explained'}. Involvement: ${profile.involvement || 'options with a recommendation'}. Write whatever the user will read at that level and depth.`
 
 if (open.length === 0 && todos.length === 0) return { recommendation: { empty: true } }

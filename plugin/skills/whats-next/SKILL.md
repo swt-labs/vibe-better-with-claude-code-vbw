@@ -15,7 +15,7 @@ effort: low
 "${CLAUDE_PLUGIN_ROOT}/bin/vbw" interview 2>&1 || true
 ```
 
-Above: the open requirements and backlog (`summary`), the models, the effort table, the declined suggestions and the user's level, depth and involvement.
+Above: the open requirements and backlog (`summary`), the models, the effort table, the declined suggestions and the user's answers. Write to the user's level, explanation depth and involvement ("-": plain words).
 
 ## Steps
 
