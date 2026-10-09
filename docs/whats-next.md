@@ -23,7 +23,7 @@ A recommendation has:
 - up to two **runners-up**, each with a size.
 
 A pick that comes from your backlog names its todo (`T4`); one that comes from
-the milestone names its requirement (`R7`). A pick can have neither.
+the milestone names its requirement (`R7`). A pick's source, when it has one, is a `T` or `R` id and is never empty: the kernel refuses an empty source.
 
 The Architect writes it from the record only: the open requirements, the
 backlog (each todo with its sort and size) and your decisions
