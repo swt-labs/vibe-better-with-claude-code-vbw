@@ -17230,7 +17230,7 @@
       "req": "R128",
       "source": "qa",
       "attempts": 0,
-      "status": "escalated",
+      "status": "fixed",
       "note": "docs/guards.md line 158-160 (Engineering section, \"A guard can never block by accident\") says errors \"fall through to \\\"allow\\\"\". The same file now says (lines 102-110 and 126-139) that no hook ever answers allow and that a failure gives no answer, never an allow. The two statements contradict each other for a reader. A guard that errors prints nothing and Claude Code decides as it normally would; reword that bullet to say so (no \"allow\" in quotes)."
     }
   ],
