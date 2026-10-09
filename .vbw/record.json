@@ -9635,12 +9635,11 @@
       ],
       "predicted": "standard",
       "qa": {
-        "result": "fail",
+        "result": "pass",
         "tier": "standard",
         "tree": "e63e10b95f314baaf3a40ae0b53d0f8a6a54b80b7cb885a4e106694c1b7bc78e",
-        "at": "2026-10-09T00:58:24Z",
-        "note": "16/17 checks",
-        "rounds": 1
+        "at": "2026-10-09T01:44:32Z",
+        "note": "17/17 checks"
       }
     }
   ],
@@ -16237,7 +16236,7 @@
       "req": "R124",
       "source": "qa",
       "attempts": 0,
-      "status": "fixed",
+      "status": "closed",
       "note": "docs/panel.md 'What's next' example block does not match what the panel draws. Doc shows '[Suggest next]' on the title line, 'Refunds for paid orders (small)', and one line 'Then: Gift cards (large), Dark mode (medium)'. plugin/hooks/panel-next.js (nextLines/renderNext) draws the title alone, then 'Refunds for paid orders · small', the reason, each runner-up on its own line as '  Gift cards · large', a 'written YYYY-MM-DD' line, and the Suggest next button below the lines. Fix: make the example show the real layout (or say it is a sketch of vbw status's text), keeping the 'same order as vbw status' claim."
     },
     {
@@ -19552,5 +19551,11 @@
     "full": true,
     "passed": true
   },
-  "lease": null
+  "lease": {
+    "run": "qa-20261009T014259Z",
+    "kind": "qa",
+    "started_at": "2026-10-09T01:42:59Z",
+    "files": [],
+    "session": "4130e174-7ef2-4e36-b853-fb2a8fd8511d"
+  }
 }
