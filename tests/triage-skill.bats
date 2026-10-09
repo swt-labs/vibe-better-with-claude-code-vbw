@@ -43,7 +43,10 @@ has() { flat "$1" | grep -qE -- "$2" || { echo "$(basename "$(dirname "$1")")/$(
 @test "R121: the line is inside one AskUserQuestion menu, VBW's sort first and marked (Recommended), the two other sorts as the other options, no typed command" {
   grep -qF 'AskUserQuestion' "$SKILL"
   grep -qF '(Recommended)' "$SKILL"
-  has "$SKILL" 'first'
+  has "$SKILL" 'first option'
+  has "$SKILL" 'line is inside'
+  has "$SKILL" 'question text.{0,80}(sort|line)'
+  has "$SKILL" '(print|show|write) no line before'
   has "$SKILL" '(two other|other two) sorts'
   has "$SKILL" 'never (ask|have) the user (to )?type|no typed command'
 }
@@ -112,4 +115,9 @@ has() { flat "$1" | grep -qE -- "$2" || { echo "$(basename "$(dirname "$1")")/$(
   has "$DOC" 'vbw todo list'
   grep -qF 'docs/triage.md' "$README"
   has "$README" 'now.{0,20}next.{0,20}later'
+}
+
+@test "F90: docs/triage.md shows the real vbw todo list format" {
+  grep -qF 'T3 [next, small] Refunds' "$DOC"
+  grep -qF 'T2 [later, large] Gift cards' "$DOC"
 }

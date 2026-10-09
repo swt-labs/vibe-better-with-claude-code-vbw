@@ -16237,7 +16237,7 @@
       "req": "R124",
       "source": "qa",
       "attempts": 0,
-      "status": "open",
+      "status": "fixed",
       "note": "docs/panel.md 'What's next' example block does not match what the panel draws. Doc shows '[Suggest next]' on the title line, 'Refunds for paid orders (small)', and one line 'Then: Gift cards (large), Dark mode (medium)'. plugin/hooks/panel-next.js (nextLines/renderNext) draws the title alone, then 'Refunds for paid orders · small', the reason, each runner-up on its own line as '  Gift cards · large', a 'written YYYY-MM-DD' line, and the Suggest next button below the lines. Fix: make the example show the real layout (or say it is a sketch of vbw status's text), keeping the 'same order as vbw status' claim."
     },
     {
@@ -16245,7 +16245,7 @@
       "req": "R123",
       "source": "qa",
       "attempts": 0,
-      "status": "open",
+      "status": "fixed",
       "note": "The new effort step architect.recommend is not registered in the kernel's list of effort steps: plugin/lib/effort.sh line 5, VBW_EFFORT_STEPS, still reads 'architect:decide,scope ...'. effort_table (vbw config effort) only checks the steps in that list, so a missing or invalid recommend value in any profile in plugin/lib/efforts.json is never refused, unlike every other step. The plan added recommend to efforts.json in all three profiles, so it must be validated like the rest. tests/recommend-flow.bats only checks the JSON file, not the kernel check."
     },
     {
@@ -16253,7 +16253,7 @@
       "req": "R123",
       "source": "qa",
       "attempts": 0,
-      "status": "open",
+      "status": "fixed",
       "note": "docs/workflows.md still documents only two Architect effort steps: the 'Role / Steps' table (around line 370) says 'architect | decide, scope', and the 'vbw config effort' example (around line 361) omits recommend, though efforts.json now has architect.recommend in every profile (commit 950726af). The effort docs were not updated with the new step (Contributing rule: update docs when behavior changes; P87.3 touched this file but not these lines)."
     },
     {
@@ -16261,7 +16261,7 @@
       "req": "R121",
       "source": "qa",
       "attempts": 0,
-      "status": "open",
+      "status": "fixed",
       "note": "docs/triage.md 'The backlog' section shows a 'vbw todo list' output that the command does not print. The doc shows 'T2 next   small   Refunds', 'T1 later  large   Gift cards', 'T3 Dark mode'. The real output (run in a scratch project with the same three items) is 'T3 [next, small] Refunds', 'T2 [later, large] Gift cards', 'T1 Dark mode', as plan P86.1 specifies ('T2 [next, small] Refunds'). Its ids also contradict the order they were added in. The user reads this page to learn the command, so fix the example to the real format. tests/triage-skill.bats only greps the doc for the words 'vbw todo list', so it cannot catch this."
     },
     {
@@ -16269,7 +16269,7 @@
       "req": "R121",
       "source": "qa",
       "attempts": 0,
-      "status": "open",
+      "status": "fixed",
       "note": "Criterion 3 and the plan say the one-line triage is INSIDE one AskUserQuestion menu. plugin/skills/triage/SKILL.md says 'One line per idea, then one AskUserQuestion with all of them', which reads as lines printed first and a menu after (docs/triage.md draws it the same way). The line text (sort, reason, size) must be in the menu itself, e.g. in each idea's question text and option descriptions, so the user decides from what the menu shows. The test 'R121: the line is inside one AskUserQuestion menu...' in tests/triage-skill.bats cannot fail on this: it only checks that the words AskUserQuestion, (Recommended), 'first' and 'two other sorts' appear anywhere in the skill, and 'first' is matched by any text. Fix the skill wording and make the test require that the line is put in the AskUserQuestion."
     }
   ],

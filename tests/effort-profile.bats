@@ -11,7 +11,7 @@ load helper
 
 EFFORTS="$PLUGIN_ROOT/lib/efforts.json"
 # The roles and steps the workflows use (docs/workflows.md).
-STEPS='{"architect":["decide","scope"],"lead":["plan","close"],"dev":["build","fix"],"docs":["build"],"qa":["verify"],"scout":["survey","merge"],"debugger":["investigate","diagnose","fix"]}'
+STEPS='{"architect":["decide","scope","recommend"],"lead":["plan","close"],"dev":["build","fix"],"docs":["build"],"qa":["verify"],"scout":["survey","merge"],"debugger":["investigate","diagnose","fix"]}'
 RANK='def rank: {low: 0, medium: 1, high: 2, xhigh: 3, max: 4}[.];'
 
 setup() {
@@ -128,4 +128,21 @@ plugin_copy() {
   [ "$status" -eq 0 ] || { echo "$output"; false; }
   run bats --filter "R39: prompts stay within" "$BATS_TEST_DIRNAME/profile-levels.bats"
   [ "$status" -eq 0 ] || { echo "$output"; false; }
+}
+
+@test "F88: a missing or invalid architect recommend step is refused like every other step" {
+  plugin_copy
+  jq 'del(.balanced.architect.recommend)' "$EFFORTS" > "$TEST_ROOT/plugin/lib/efforts.json"
+  run "$TEST_ROOT/plugin/bin/vbw" config effort < /dev/null
+  [ "$status" -ne 0 ]
+  [[ "$output" == *architect* && "$output" == *recommend* ]] || { echo "$output"; false; }
+  jq '.balanced.architect.recommend = "turbo"' "$EFFORTS" > "$TEST_ROOT/plugin/lib/efforts.json"
+  run "$TEST_ROOT/plugin/bin/vbw" config effort < /dev/null
+  [ "$status" -ne 0 ]
+  [[ "$output" == *recommend* && "$output" == *turbo* ]] || { echo "$output"; false; }
+}
+
+@test "F89: docs/workflows.md lists the architect recommend step in the table and the example" {
+  grep -qE '^\| `architect` \|.*`recommend`' "$REPO_ROOT/docs/workflows.md"
+  grep -qE '"architect":\{[^}]*"recommend"' "$REPO_ROOT/docs/workflows.md"
 }
