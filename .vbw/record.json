@@ -10144,7 +10144,22 @@
           "to": "deep",
           "reason": "Dev blocked P90.3: x"
         }
-      ]
+      ],
+      "qa": {
+        "result": "pass",
+        "tier": "standard",
+        "tree": "3a8bcb020565748e28528081005880c1178af6a6be311288fdc558eabef65d37",
+        "at": "2026-10-09T15:53:22Z",
+        "note": "15/15 checks"
+      },
+      "outcome": {
+        "tier": "deep",
+        "predicted": "standard",
+        "held": false,
+        "fix_rounds": 0,
+        "qa_findings": 0,
+        "escalations": 1
+      }
     },
     {
       "id": "P91",
