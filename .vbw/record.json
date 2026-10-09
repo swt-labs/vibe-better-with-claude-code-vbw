@@ -18306,6 +18306,48 @@
       "sort": "next",
       "size": "small",
       "status": "open"
+    },
+    {
+      "id": "T94",
+      "text": "Final polish details (brainstorm 2026-10-09, see a_non_prod_docs/brainstorm-2026-10-09.md): P2 tidy the band and pane; P3 a 'what's happening now' box at the top of the Now tab; P5 replace the big running-person animation with a one-line 'work is running' animation in the pane's Team tab under the agent list; P6 timestamps on mod messages ('[HH:MM] About 2 minutes left'); P9 rename: the strip above the prompt becomes Mission Control, the pane becomes Telemetry (/vbw-telemetry). With T92",
+      "sort": "later",
+      "size": "medium",
+      "status": "open"
+    },
+    {
+      "id": "T95",
+      "text": "Sessions tab in the pane (brainstorm P8): every Claude Code session working on this project and what it is doing, so after a reboot the user knows which chat to resume (claude --resume <id>) for which work; builds on the run lease; overlaps /vbw:pause and /vbw:resume",
+      "sort": "later",
+      "size": "medium",
+      "status": "open"
+    },
+    {
+      "id": "T96",
+      "text": "Costs tab in the pane (brainstorm C1, C2): one place for costs and tokens, colour-coded: this session vs all time, per agent and global; tokens leave the status line. Prerequisite for the night-shift budget ceiling (F1)",
+      "sort": "later",
+      "size": "medium",
+      "status": "open"
+    },
+    {
+      "id": "T97",
+      "text": "Machine load (brainstorm R1, owner's priority 2): measure first how many processes VBW really runs (parallel Devs x their checks x each test runner's workers), then cap by machine size (e.g. at most ~75% of cores), balanced by default and wider only at higher effort; with T65 (check_jobs per machine). Fans spin long on a 10-core Mac; users with fewer cores may give up",
+      "sort": "next",
+      "size": "medium",
+      "status": "open"
+    },
+    {
+      "id": "T98",
+      "text": "Are plans split as finely as they safely can be? (brainstorm A2): the Lead splits plans and the kernel schedules waves; more parallel agents cost CPU and tokens, so decide together with the machine-load item (R1)",
+      "sort": "next",
+      "size": "small",
+      "status": "open"
+    },
+    {
+      "id": "T99",
+      "text": "/vbw:loop, the night shift (brainstorm F1): unattended runs with delegated approval by an independent reviewer agent, a scope fence (new requirements parked as todos), never ship/push/deploy/delete/overspend unattended, human-judged items queued for the morning, a budget ceiling, and a morning report. README promise changes to 'nothing is approved without a record of who approved it, and you can undo it'. After machine load and the Costs tab; full design in a_non_prod_docs/brainstorm-2026-10-09.md",
+      "sort": "later",
+      "size": "large",
+      "status": "open"
     }
   ],
   "decisions": [
