@@ -9601,11 +9601,12 @@
       ],
       "predicted": "deep",
       "qa": {
-        "result": "pass",
+        "result": "fail",
         "tier": "deep",
-        "tree": "18c8377e66722cf788fd9a9909944997a6d91e5f33a5a39f07ba8d9c33117112",
-        "at": "2026-10-09T02:28:08Z",
-        "note": "30/30 checks"
+        "tree": "094acd32a067d4e62d22a674eebf9ec20ae18e187cafc654fb753f5aaf7f3e53",
+        "at": "2026-10-09T12:27:18Z",
+        "note": "33/34 checks",
+        "rounds": 1
       },
       "escalations": [
         {
@@ -16300,6 +16301,14 @@
       "attempts": 0,
       "status": "closed",
       "note": "A pick with a field the kernel does not know is refused whole, and nothing guards or tests that. plugin/lib/cmd-recommend.sh refuses 'has an unknown field' on the top pick and on each runner-up; probe: a runner-up {text, size, source, reason} gives 'vbw: runner-up 1 has an unknown field: reason' and nothing is stored. plugin/workflows/recommending.js passes got.top and got.runners to vbw recommend unfiltered, and its reply schema has no additionalProperties:false, so an Architect that gives runners-up a reason (natural: the top pick has one) loses the whole recommendation on every run. Also untested in tests/recommend-store.bats and tests/recommend-flow.bats: unknown-field refusals (top, runner-up, top level, empty with extra keys), empty source, runners not an array, a runner-up that is not an object (all work when probed by hand, but no test can fail on them). Fix: have the workflow keep only the declared fields of each pick (text, reason for top, size, source) or set additionalProperties:false in the schema, with a test that a runner-up carrying a reason still stores; add tests for the kernel's shape refusals."
+    },
+    {
+      "id": "F93",
+      "req": "R123",
+      "source": "qa",
+      "attempts": 0,
+      "status": "open",
+      "note": "docs/whats-next.md shows the wrong layout for the vbw status what's-next part. Its example prints 'then: Gift cards (large)' and 'written 2026-10-09' at the left edge, and the docs table says vbw status prints 'the lines in the example above'. The real output (plugin/lib/cmd-status.sh lines 36-37) indents the reason, every 'then:' line and the 'written' line by two spaces; only the 'what's next: ...' line is at the left edge. Fix the example (and keep the table wording true) so the docs show exactly what vbw status prints."
     }
   ],
   "todos": [
