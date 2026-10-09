@@ -16702,6 +16702,11 @@
       "id": "T80",
       "text": "recommending.js reply schema: minLength 1 on source, so an empty source cannot make the kernel refuse a whole recommendation",
       "status": "open"
+    },
+    {
+      "id": "T81",
+      "text": "Panel: use Button children (CC 2.1.295) so each What's next row is one pressable with a size chip and a dim reason",
+      "status": "open"
     }
   ],
   "decisions": [
