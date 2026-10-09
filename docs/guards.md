@@ -96,7 +96,7 @@ each one to the exact JSON.
 | `deny`, reason starting `VBW guard:` | the Bash and file guards | Blocks the tool call and shows Claude the reason, so it can choose another way |
 | `ask`, with a rewritten question (`updatedInput`) | the approval-menu hook on `AskUserQuestion` | Shows the rewritten question to you; you answer it |
 | Added context (`additionalContext`) | SessionStart; the approval-answer hook | Adds the text for Claude to read |
-| A message for the user (`systemMessage`) | SessionStart (project made by a newer VBW); the approval-answer hook | Shows you the message |
+| A message for the user (`systemMessage`) | SessionStart (project made by a newer VBW, or VBW 2 just removed old VBW 1 command copies and you must reload); the approval-answer hook | Shows you the message |
 | No answer (no output, exit 0) | every hook, when it has nothing to say | Goes on as it normally would: your permission settings and prompts decide |
 
 ### No hook ever answers allow
