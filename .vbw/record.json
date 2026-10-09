@@ -10239,10 +10239,10 @@
       "qa": {
         "result": "fail",
         "tier": "standard",
-        "tree": "7b9343a014e9e54d919c82921e8812c9d882b66980109e124b2cfde060969d74",
-        "at": "2026-10-09T16:24:49Z",
+        "tree": "9aa40f9ea0a5ff97a5e4d432ce93a37f7167a4a91e5e672fef02a9d09945228d",
+        "at": "2026-10-09T16:58:06Z",
         "note": "17/18 checks",
-        "rounds": 2
+        "rounds": 3
       },
       "escalations": [
         {
@@ -17222,8 +17222,16 @@
       "req": "R128",
       "source": "qa",
       "attempts": 0,
-      "status": "fixed",
+      "status": "closed",
       "note": "docs/guards.md lines 111-117 (section 'A failing hook gives no answer') list 'an unreadable record' among failures where the guard exits 0 with no output and say a failure 'never becomes a deny'. That is false for the guards: a corrupt .vbw/record.json still counts as a VBW project (docs/guards.md line 43; plugin/hooks/common.jq guard_context uses 'try input catch {}' and sets project true; tests/hooks-guard.bats:137), so a guarded call such as 'vbw approve' is still denied with a 'VBW guard:' reason. The test that should pin this (tests/hook-answers.bats test 8, last lines) accepts either no output or a deny, so it cannot tell which is true. Fix: remove 'an unreadable record' from the failure list in the docs (say a corrupt record keeps the guards on and a guarded call is still denied), and make the test assert the exact outcome for 'ls' (no output) and for 'vbw approve' (deny with 'VBW guard:')."
+    },
+    {
+      "id": "F97",
+      "req": "R128",
+      "source": "qa",
+      "attempts": 0,
+      "status": "escalated",
+      "note": "docs/guards.md line 158-160 (Engineering section, \"A guard can never block by accident\") says errors \"fall through to \\\"allow\\\"\". The same file now says (lines 102-110 and 126-139) that no hook ever answers allow and that a failure gives no answer, never an allow. The two statements contradict each other for a reader. A guard that errors prints nothing and Claude Code decides as it normally would; reword that bullet to say so (no \"allow\" in quotes)."
     }
   ],
   "todos": [
@@ -20686,7 +20694,13 @@
     "full": true,
     "passed": true
   },
-  "lease": null,
+  "lease": {
+    "run": "qa-20261009T165642Z",
+    "kind": "qa",
+    "started_at": "2026-10-09T16:56:42Z",
+    "files": [],
+    "session": "4130e174-7ef2-4e36-b853-fb2a8fd8511d"
+  },
   "recommendation": {
     "at": "2026-10-09T13:43:41Z",
     "top": {
