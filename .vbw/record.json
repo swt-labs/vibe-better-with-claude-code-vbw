@@ -19682,21 +19682,21 @@
   },
   "lease": null,
   "recommendation": {
-    "at": "2026-10-09T13:39:12Z",
+    "at": "2026-10-09T13:43:41Z",
     "top": {
-      "text": "Finish the gentle colour effects on the What's next section: a slow shimmer on its title, and a soft pulse on the top pick when a new recommendation arrives, which then fades and stops.",
+      "text": "Add 'vbw todo sort ID next|later small|medium|large', a command that sets the priority and size of an item already in the backlog.",
       "size": "small",
-      "reason": "It is the only requirement still open in the current milestone, so finishing it comes before anything new from the backlog.",
-      "source": "R125"
+      "reason": "It is small and marked next, and until it exists, unsorted planned items (like T70 to T73, meant for 2.0.29) stay invisible to triage and to the what's-next planner, so every later recommendation gets better once it ships.",
+      "source": "T88"
     },
     "runners": [
       {
-        "text": "Show progress while a long proof runs. A proof is VBW running all your project's checks, which can take many minutes. The panel and status line would say something like \"proving: 12 of 40 checks, 6 min\" instead of looking stuck.",
+        "text": "Show a long proof's progress: the kernel writes how many checks are done out of the total, and the panel and status line show 'proving: N of M checks, T min' while the proof runs in the background.",
         "size": "medium",
         "source": "T85"
       },
       {
-        "text": "Skip a second full proof when a fix after review only changed documentation (text files, not code). It would reuse the earlier test result and save about 23 minutes each time.",
+        "text": "Let the full proof reuse the last test-suite result when only documentation changed since it ran, so a docs-only fix after QA no longer costs a second full proof of about 23 minutes.",
         "size": "small",
         "source": "T86"
       }
