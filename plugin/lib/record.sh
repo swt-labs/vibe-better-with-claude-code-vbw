@@ -100,9 +100,9 @@ record_update() {
   v=$(record_violation "$VBW_RECORD") || vbw_die "record is corrupt: $v ($VBW_RECORD)" 3
   tmp=$(mktemp "$VBW_RUNTIME/record.XXXXXX") || vbw_die "cannot create a temporary file in $VBW_RUNTIME"
   vbw_guard_add file "$tmp"
-  # The schema follows the fields in use: 3 when a todo is sorted (R121), else 2 when a check is alone (R46), else 1.
+  # The schema follows the fields in use: 3 when a todo is sorted (R121) or a recommendation is stored (R123), else 2 when a check is alone (R46), else 1.
   jq "$@" "$filter
-    | .schema = (if (.todos | type) == \"array\" and any(.todos[]; type == \"object\" and (has(\"sort\") or has(\"size\"))) then 3
+    | .schema = (if has(\"recommendation\") or ((.todos | type) == \"array\" and any(.todos[]; type == \"object\" and (has(\"sort\") or has(\"size\")))) then 3
                 elif (.checks | type) == \"array\" and any(.checks[]; type == \"object\" and .alone == true) then 2 else 1 end)" "$VBW_RECORD" > "$tmp" 2>/dev/null || vbw_die "internal error: record update failed"
   v=$(record_violation "$tmp") || vbw_die "refused: $v"
   mv "$tmp" "$VBW_RECORD"

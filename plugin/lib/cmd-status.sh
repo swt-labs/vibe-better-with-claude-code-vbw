@@ -20,7 +20,8 @@ cmd_status() {
       phases: ([.phases[] | select(.milestone == $m)] | length),
       open_fixes: ([.fixes[] | select(.status == "open")] | length),
       open_todos: ([.todos[] | select(.status == "open" or .status == "in_progress")] | length),
-      interview: $iv
+      interview: $iv,
+      recommendation: (.recommendation // null)
     }'
     return 0
   fi
@@ -29,5 +30,9 @@ cmd_status() {
     "requirements: \([$cur[] | select(.status == "proven" or .status == "accepted")] | length)/\($cur | length) proven",
     "phases: \([.phases[] | select(.milestone == $m)] | length) · open fixes: \([.fixes[] | select(.status == "open")] | length) · open todos: \([.todos[] | select(.status == "open" or .status == "in_progress")] | length)",
     (if (.shipped | length) > 0 then "shipped: \([.shipped[] | "\(.id) \(.title)"] | join(", "))" else empty end),
-    (if $iv.interviewed then "interview (kept \($iv.kept)): level \($iv.level) · depth \($iv.depth) · involvement \($iv.involvement)" else "interview: the interview has not been done" end)'
+    (if $iv.interviewed then "interview (kept \($iv.kept)): level \($iv.level) · depth \($iv.depth) · involvement \($iv.involvement)" else "interview: the interview has not been done" end),
+    (.recommendation as $r | if $r == null then "what\u0027s next: none yet (ask /vbw:vibe what\u0027s next)"
+      elif $r.empty then "what\u0027s next: the backlog is empty (written \($r.at[0:10]))"
+      else "what\u0027s next: \($r.top.text) (\($r.top.size))", "  \($r.top.reason)",
+        ($r.runners[] | "  then: \(.text) (\(.size))"), "  written \($r.at[0:10])" end)'
 }

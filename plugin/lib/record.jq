@@ -44,12 +44,12 @@ if type != "object" then ["record must be a JSON object"] else
 | ([($r.shipped // [])[]?.id] + [$r.milestone.id?]) as $milestones
 | ($plans | map({key: .id, value: (.after // [])}) | from_entries) as $graph
 | [
-    ( select($r.schema != (if (($r.todos // []) | type) == "array" and any(($r.todos // [])[]?; type == "object" and (has("sort") or has("size"))) then 3
+    ( select($r.schema != (if ($r | has("recommendation")) or ((($r.todos // []) | type) == "array" and any(($r.todos // [])[]?; type == "object" and (has("sort") or has("size")))) then 3
                            elif (($r.checks // []) | type) == "array" and any(($r.checks // [])[]?; type == "object" and .alone == true) then 2 else 1 end))
-      | "schema must be 3 when a todo is sorted; schema must be 2 when a check is alone, else 1" ),
+      | "schema must be 3 when a todo is sorted or a recommendation is stored; schema must be 2 when a check is alone, else 1" ),
     ( $r | keys[]
       | select(one_of(["schema","project","milestone","requirements","checks","phases","plans",
-                       "fixes","todos","decisions","commands","settings","evidence","lease","shipped","converted"]) | not)
+                       "fixes","todos","decisions","commands","settings","evidence","lease","shipped","converted","recommendation"]) | not)
       | "unknown key: \(.)" ),
     ( ["requirements","checks","phases","plans","fixes","todos","decisions","shipped"][]
       | select(($r[.] | type) != "array") | "\(.) must be an array" ),
@@ -79,6 +79,19 @@ if type != "object" then ["record must be a JSON object"] else
         ( select(type == "array") | .[]
           | select((type == "object" and (keys | sort) == ["at","text"] and (.text | nonempty) and (.at | iso)) | not)
           | "project.declined entries need a text and an ISO-8601 UTC time" ) ),
+    ( $r.recommendation? | select(. != null)
+      | ( select(type != "object") | "recommendation must be an object" ),
+        ( select(type == "object")
+          | ( select((.at | iso) | not) | "recommendation.at must be an ISO-8601 UTC time" ),
+            ( if .empty == true then select((keys | sort) != ["at","empty"]) | "an empty recommendation has exactly at and empty"
+              else select((keys | sort) != ["at","runners","top"]) | "a recommendation has exactly at, top and runners" end ),
+            ( select(has("top"))
+              | ( .top | select((type == "object" and (.text | nonempty) and (.reason | nonempty) and (.size | one_of(["small","medium","large"]))
+                  and ((keys - ["text","reason","size","source"]) | length == 0) and ((has("source") | not) or (.source | nonempty))) | not)
+                  | "recommendation.top needs a text, a reason and a size (small, medium or large)" ),
+                ( .runners | select((type == "array" and length <= 2 and all(.[]; type == "object" and (.text | nonempty) and (.size | one_of(["small","medium","large"]))
+                  and ((keys - ["text","size","source"]) | length == 0) and ((has("source") | not) or (.source | nonempty)))) | not)
+                  | "recommendation.runners holds at most two runners-up, each with a text and a size" ) ) ) ),
     ( $r.milestone
       | ( select((.id? | type == "string" and test("^M[0-9]+$")) | not) | "milestone.id must look like M1" ),
         ( select((.title? | nonempty) | not) | "milestone.title must be a non-empty string" ),

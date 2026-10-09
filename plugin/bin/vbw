@@ -51,6 +51,7 @@ usage: vbw <command> [args]
   legacy [facts] | review | choose | done | remove   a VBW 1 project (.vbw-planning/): facts, review and recommendation, record convert or fresh, mark converted, remove
   interview [--json] | set level|depth|involvement VALUE | keep private|project   the interview's answers and where they are kept
   suggest decline TEXT | list   suggestions the user declined (never offered again)
+  recommend < JSON  store the what's-next recommendation (top pick, up to two runners-up) the Architect wrote
   doctor            check everything VBW needs, with the fix for anything wrong
   tools [--json] | answer yes|no   whether you allowed VBW to look for the best tools for this project
   rtk [status]      the state of RTK (command-output compression)
@@ -66,7 +67,7 @@ cmd="${1:-}"
 case "$cmd" in
   version) jq -r .version "$VBW_PLUGIN/.claude-plugin/plugin.json" ;;
   help|-h|--help) vbw_help ;;
-  init|status|triage|todo|commit|next|show|spec|approve|check|prove|apply|run|plan|fix|req|qa|ship|config|auto|statusline|workflows|doctor|rtk|report|milestone|decide|legacy|tier|interview|suggest|tools)
+  init|status|triage|todo|commit|next|show|spec|approve|check|prove|apply|run|plan|fix|req|qa|ship|config|auto|statusline|workflows|doctor|rtk|report|milestone|decide|legacy|tier|interview|suggest|recommend|tools)
     # shellcheck source=/dev/null
     . "$VBW_LIB/cmd-$cmd.sh"
     "cmd_$cmd" "$@"

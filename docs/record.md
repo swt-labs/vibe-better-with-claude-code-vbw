@@ -18,7 +18,7 @@ carries `VBW-Plan:`/`VBW-Req:` trailers, so the record stays small.
   forward in one tested step; an older kernel refuses a newer record (see
   Versioning).
 
-## Shape (schema 1; schema 2 when a check is alone; schema 3 when a todo is sorted)
+## Shape (schema 1; schema 2 when a check is alone; schema 3 when a todo is sorted or a recommendation is stored)
 
 ```json
 {
@@ -54,7 +54,7 @@ carries `VBW-Plan:`/`VBW-Req:` trailers, so the record stays small.
 
 | Field | Rules |
 |---|---|
-| `schema` | `3` when any todo has `sort` and `size`, else `2` when any check has `alone: true`, else `1`; anything else is corrupt |
+| `schema` | `3` when any todo has `sort` and `size` or a `recommendation` is stored, else `2` when any check has `alone: true`, else `1`; anything else is corrupt |
 | `project.name` | non-empty string |
 | `project.interview` | optional: the interview's answers kept in the project, `{ "level", "depth", "involvement", "at" }`: all three answers from the allowed values (`plugin/lib/interview.json`) and an ISO-8601 UTC time `at`; no other keys. Absent when the answers are kept private or not given yet. `vbw interview keep project` writes it (docs/interview.md). Added within schema 1: a record without it stays valid, so the schema stays 1 |
 | `project.declined` | optional: the suggestions the user declined, `[{ "text", "at" }]`, each a non-empty `text` and an ISO-8601 UTC time `at`; no other keys. `vbw suggest decline TEXT` appends one (a text equal to an existing one, ignoring case and spacing, is not added again); `vbw suggest list` prints them and `vbw next --json` returns the texts as `declined`. They are never offered again in the project (docs/interview.md). Absent until something is declined. Added within schema 1: a record without it stays valid, so the schema stays 1 |
@@ -66,6 +66,7 @@ carries `VBW-Plan:`/`VBW-Req:` trailers, so the record stays small.
 | `phases[]` | `id` `P<n>` unique; non-empty `title`; `milestone` as for requirements; `reqs[]` non-empty, existing requirements. Optional `goal` and `criteria[]` (the Architect's outcome and goal-backward success criteria) and `qa` (`{result, tier, tree, at, note?, rounds?}`: QA's verdict, `vbw qa record`; `tree` is a digest of the phase's own inputs (its files, its tests, its goal and plan) combined with those of the phases it builds on, as committed, not a git tree id; the schema is unchanged. The per-input digests that name the reason for a re-check live in the clone cache `<git-common-dir>/vbw/qa.json`, which is not part of the record). Optional rigor fields (docs/rigor.md): `tier` (`express`, `standard` or `deep`), `proposed` (the Architect's tier), `reasons[]` (why the tier), `predicted` (the tier the phase began at), `escalations[]` (`{at, from, to, reason}`, one per raise) and `outcome` (`{tier, predicted, held, fix_rounds, qa_findings, escalations}`, written once when the phase finishes). A phase has no stored status: it is derived from its plans (`planned`, `building`, `built` when every plan is done) |
 | `plans[]` | `id` `P<n>.<m>` unique, prefix equals `phase`; `phase` an existing phase; optional `tasks[]` (the Lead's, one commit each) and `role` (`dev`, or `docs` for a documentation plan); non-empty `title`; `reqs[]` non-empty, existing requirements; `files[]` non-empty, relative project paths (no `..`, no duplicates; a path ending in `/` is a directory and covers every file under it, for the guards, the proof's scope check and wave scheduling); `after[]` existing plan ids, no cycles; `status` `planned`, `building`, `done` or `blocked`; optional `note` (why it is blocked). A plan's commits are not stored: they are the commits whose `VBW-Plan:` trailer names it (`git log`) |
 | `fixes[]` | `id` `F<n>` unique; exactly one of `req` (an existing requirement) or `command` (a name in `commands`); optional `source` `qa` (a QA finding: only QA closes it); `attempts` integer ≥ 0; `status` `open`, `fixed`, `closed` or `escalated` (lifecycle in docs/proof.md); `note` string |
+| `recommendation` | optional: the what's-next recommendation, `{ "at", "top", "runners" }` or `{ "at", "empty": true }`, no other keys. `at` is an ISO-8601 UTC time; `top` is `{ "text", "reason", "size", "source"? }` with non-empty text and reason and a size of `small`, `medium` or `large`; `runners` holds zero to two `{ "text", "size", "source"? }`. A `source` is a todo id or a requirement id. `vbw recommend` (JSON on stdin) writes it, replacing any earlier one, and refuses a malformed one, a source that is not open, a declined pick, `empty` while work is open, and any open run; `vbw status` shows it (`--json`: `recommendation`, null when none). A stored recommendation makes the record schema 3 |
 | `todos[]` | `id` `T<n>` unique; non-empty `text`; `status` `open`, `in_progress`, `done` or `dropped`. Optional `sort` (`next` or `later`) and `size` (`small`, `medium` or `large`), both or neither (`vbw todo add --sort next --size small TEXT`; `vbw triage` and `vbw todo list` show next first, then later, then unsorted) |
 | `decisions[]` | `id` `D<n>` unique; non-empty `text`; optional `why` (non-empty: the reason the user gave); `at` an ISO-8601 UTC timestamp. `vbw decide TEXT [WHY]` records one |
 | `commands` | object of name → argv (a non-empty array of non-empty strings): the project's own test, lint and build commands, kept in line with the `## Commands` section of `.vbw/spec.md` by `vbw spec sync` (`vbw init` writes the detected ones there; docs/proof.md). Recording a command never runs it; `vbw prove` runs only commands whose argv hash has consent (see Consent) |
@@ -82,7 +83,7 @@ key is a typo, a stale field or a newer schema, and all three must be loud.
 A VBW reads every schema up to its own (`VBW_SCHEMA_MAX`, currently 3).
 The kernel writes the schema that the fields in use need: a record with a check
 that has `alone: true` is schema 2, every other record is schema 1. A record
-with a sorted todo (one with `sort` and `size`) is schema 3. A VBW that
+with a sorted todo (one with `sort` and `size`) or a stored `recommendation` is schema 3. A VBW that
 reads only schema 1 therefore asks for an update on a record that uses `alone`
 instead of calling it corrupt.
 
