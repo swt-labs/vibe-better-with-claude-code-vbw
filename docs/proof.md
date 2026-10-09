@@ -597,6 +597,14 @@ The project's test command is not run again for QA. The proof runs it once
 (`round.suite`, docs/next.md). QA agents use it as evidence and do not run the
 suite themselves.
 
+Every QA agent's prompt names the test command, its result (`pass`, `fail`,
+`timeout`, `skipped` or `not run`), its exit code, its time and how its output
+ended. A piece the round does not carry is named in plain words, for example
+"its output was not kept"; the prompt never prints `undefined`. When the
+command did not run, the agent is told not to retry it and to say in its
+summary that the suite was not run. When the project has no test command, the
+agent is told so and says so in its summary.
+
 ### Which phases QA checks again
 
 After a round of fixes, QA checks only the phases that need it. An untouched
@@ -612,6 +620,13 @@ phase keeps its pass. A built phase is checked again when:
 - one of its `[auto]` requirements was added, reworded or removed.
 
 Files and tests count as committed (`HEAD`), so commit work before QA.
+
+Updating VBW alone never lists a passed phase. Each pass's fingerprint carries
+the version of how it was computed. When an update changes that method, the
+phase is compared as it was at its pass (at the commit the pass was recorded
+at), computed the new way. Only a real change to its files, tests, plan or
+requirements lists it, with the usual reason. If that commit is not in this
+clone, the phase is checked again as described below.
 
 These changes do not list a passed phase again, because QA has nothing new to
 judge:
