@@ -1,5 +1,42 @@
 # Changelog
 
+## [2.0.29] - 2026-10-09
+
+### Added
+
+- **Sort an item already in the backlog.** `vbw todo sort T3 next small` sets
+  (or changes) an open item's sort and size, so items you planned earlier show
+  up in triage and in the what's-next suggestion. An unknown or closed item, or
+  another value, is refused and nothing changes.
+
+### Changed
+
+- **Every hook answer is pinned by a test.** Each answer VBW's hooks give
+  Claude Code (block, ask, added context, a message for you, no answer) has a
+  test that fixes its meaning, and a standards rule fails the build if any
+  hook could ever answer "allow" in your place. `docs/guards.md` explains each
+  answer.
+- **A VBW update alone no longer sends passed phases back to QA.** The QA
+  fingerprint now carries a version; after an update that changes how it is
+  computed, a passed phase is compared as it was when it passed, and only a
+  real change to its files, tests or plan lists it again.
+
+### Fixed
+
+- QA was always told "the project's test command (undefined)"; it is now told
+  the real command and how its run ended, in plain words, and a missing piece
+  is named instead of printed as "undefined".
+- `vbw plan block` refuses a plan that is already done, and the full
+  `vbw apply` refuses a requirement another milestone owns or already covers
+  (as `vbw apply --add` does); in both cases nothing changes.
+- After a ship, the what's-next suggestion is committed with the record, so
+  the project is no longer left with an uncommitted `.vbw/record.json`.
+- A what's-next pick can no longer carry an empty source, which could make
+  VBW refuse the whole suggestion.
+- The workflow guide lists all nine workflows, the proof guide says a test
+  results folder name cannot contain spaces, and the router's triage line
+  reads correctly whatever you type after `/vbw:vibe`.
+
 ## [2.0.28] - 2026-10-09
 
 ### Added
