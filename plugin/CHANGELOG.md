@@ -23,6 +23,14 @@
 - CI uses the Node 24 versions of the GitHub actions and also runs on
   Ubuntu 26.04.
 
+### Fixed
+
+- **No lost writes on Ubuntu 25.10 and 26.04.** Those systems ship a new
+  `mkdir` that does not refuse a folder that already exists, and VBW's locks
+  relied on that refusal: two VBW commands running at the same moment (two
+  worktrees, or parallel agents) could both write, and one change was lost.
+  VBW now takes its locks with bash itself, on every system.
+
 ### Note for updating
 
 - A project that stores a sorted backlog item or a recommendation uses record

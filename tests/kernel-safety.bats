@@ -95,7 +95,7 @@ EOS
   kill -TERM "$pid"
   wait "$pid" || true
   [ -e "$TEST_ROOT/caller-ran" ]
-  [ ! -d .vbw/runtime/lock ]
+  [ ! -e .vbw/runtime/lock ]
 }
 
 @test "R2: the caller's EXIT trap survives a vbw write that completes" {

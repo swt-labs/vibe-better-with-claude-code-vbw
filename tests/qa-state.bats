@@ -149,7 +149,7 @@ qa() { jq -c --argjson inputs "$2" --argjson cache "$3" -f "$PLUGIN_ROOT/lib/qa.
   local f
   f="$(git rev-parse --git-common-dir)/vbw/qa.json"
   jq -e '[.P1, .P2] | all(.[]; (.files, .tests, .plan) | type == "string")' "$f"
-  [ ! -d "$(git rev-parse --git-common-dir)/vbw/qa.lock" ]
+  [ ! -e "$(git rev-parse --git-common-dir)/vbw/qa.lock" ]
   run vbw_kernel '. "$VBW_LIB/qa-inputs.sh"; qa_cache_read | jq -c "keys"'
   [ "$output" = '["P1","P2"]' ]
   printf 'not json' > "$f"

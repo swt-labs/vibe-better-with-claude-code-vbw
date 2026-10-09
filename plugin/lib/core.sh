@@ -20,7 +20,7 @@ VBW_GUARD_DIRS=()
 VBW_GUARD_EXIT=0
 
 # vbw_guard_add KIND PATH: remove PATH on interrupt, die or vbw_guard_drop.
-# KIND is file, lock (a lock directory, rmdir) or dir (a directory tree, rm -rf;
+# KIND is file, lock (a lock file, or the lock directory of an older VBW) or dir (a directory tree, rm -rf;
 # rm never follows a symlink inside it).
 vbw_guard_add() {
   local kind="$1" path="$2"
@@ -46,11 +46,11 @@ vbw_guard_reset() {
   VBW_GUARD_EXIT=0
 }
 
-# Remove everything registered (files with rm, locks with rmdir).
+# Remove everything registered (files and locks with rm, an old lock directory with rmdir).
 vbw_guard_run() {
   local p
   for p in ${VBW_GUARD_FILES[@]+"${VBW_GUARD_FILES[@]}"}; do rm -f "$p" 2>/dev/null || true; done
-  for p in ${VBW_GUARD_LOCKS[@]+"${VBW_GUARD_LOCKS[@]}"}; do rmdir "$p" 2>/dev/null || true; done
+  for p in ${VBW_GUARD_LOCKS[@]+"${VBW_GUARD_LOCKS[@]}"}; do rm -f "$p" 2>/dev/null || rmdir "$p" 2>/dev/null || true; done
   for p in ${VBW_GUARD_DIRS[@]+"${VBW_GUARD_DIRS[@]}"}; do chmod -R u+rwx "$p" 2>/dev/null || true; rm -rf "$p" 2>/dev/null || true; done
   VBW_GUARD_FILES=()
   VBW_GUARD_LOCKS=()

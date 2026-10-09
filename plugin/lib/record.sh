@@ -52,7 +52,7 @@ record_unlock() {
 # writer had just taken, and two writes overlapped (lost updates, CI 2.0.2).
 vbw_is_stale() {
   local m
-  [ -d "$1" ] || return 1
+  [ -e "$1" ] || return 1
   m=$(vbw_mtime "$1")
   [ "$m" -gt 0 ] && [ $(( $(date +%s) - m )) -gt "$VBW_LOCK_STALE_SECONDS" ]
 }
@@ -67,19 +67,38 @@ record_lock() {
   vbw_lock_take "$VBW_RUNTIME/lock" "record"
 }
 
-# vbw_lock_take LOCKDIR WHAT: take the mkdir lock LOCKDIR, as described above;
-# it is released by vbw_guard_drop (and by the interrupt cleanup).
+# vbw_lock_create LOCK: create the lock file LOCK, failing when it exists. It
+# uses bash's own noclobber open (O_CREAT|O_EXCL), never an outside tool: the
+# Rust mkdir of Ubuntu 25.10 and 26.04 succeeds on an existing directory, so a
+# mkdir lock let two writers in (lost writes, CI 2026-10-09). A lock directory
+# left by an older VBW exists too, so it still excludes.
+vbw_lock_create() {
+  local r o="$-"
+  set -C
+  { : > "$1"; } 2> /dev/null
+  r=$?
+  case "$o" in *C*) ;; *) set +C ;; esac
+  return "$r"
+}
+
+# vbw_lock_remove LOCK: remove a lock file, or a lock directory an older VBW left.
+vbw_lock_remove() {
+  rm -f "$1" 2> /dev/null || rmdir "$1" 2> /dev/null || true
+}
+
+# vbw_lock_take LOCK WHAT: take the lock LOCK, as described above; it is
+# released by vbw_guard_drop (and by the interrupt cleanup).
 vbw_lock_take() {
   local lock="$1" brk="$1.break" deadline
   # A held lock is released or becomes breakable within the stale window, so
   # waiting twice that long is always enough, even under heavy load.
   deadline=$(( $(date +%s) + 2 * VBW_LOCK_STALE_SECONDS ))
-  until mkdir "$lock" 2>/dev/null; do
+  until vbw_lock_create "$lock"; do
     if vbw_is_stale "$lock"; then
-      vbw_is_stale "$brk" && rmdir "$brk" 2>/dev/null || true
-      if mkdir "$brk" 2>/dev/null; then
-        vbw_is_stale "$lock" && rmdir "$lock" 2>/dev/null || true
-        rmdir "$brk" 2>/dev/null || true
+      vbw_is_stale "$brk" && vbw_lock_remove "$brk"
+      if vbw_lock_create "$brk"; then
+        vbw_is_stale "$lock" && vbw_lock_remove "$lock"
+        vbw_lock_remove "$brk"
         continue
       fi
     fi
