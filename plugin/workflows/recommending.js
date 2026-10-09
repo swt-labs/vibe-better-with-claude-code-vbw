@@ -22,7 +22,6 @@ const voice = `\n\nThe user's level: ${profile.level || 'small scripts or no-cod
 
 if (open.length === 0 && todos.length === 0) return { recommendation: { empty: true } }
 
-const SIZE = { type: 'string', enum: ['small', 'medium', 'large'] }
 const SCHEMA = {
   type: 'object',
   required: ['top', 'runners'],
@@ -30,7 +29,7 @@ const SCHEMA = {
     top: {
       type: 'object',
       required: ['text', 'reason', 'size'],
-      properties: { text: { type: 'string' }, reason: { type: 'string' }, size: SIZE, source: { type: 'string' } },
+      properties: { text: { type: 'string' }, reason: { type: 'string' }, size: { type: 'string', enum: ['small', 'medium', 'large'] }, source: { type: 'string' } },
     },
     runners: {
       type: 'array',
@@ -38,7 +37,7 @@ const SCHEMA = {
       items: {
         type: 'object',
         required: ['text', 'size'],
-        properties: { text: { type: 'string' }, size: SIZE, source: { type: 'string' } },
+        properties: { text: { type: 'string' }, size: { type: 'string', enum: ['small', 'medium', 'large'] }, source: { type: 'string' } },
       },
     },
   },
