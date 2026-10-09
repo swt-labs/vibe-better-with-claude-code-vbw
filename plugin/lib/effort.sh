@@ -2,7 +2,7 @@
 # Per-agent effort: the table of the profile in use (lib/efforts.json).
 
 # The roles and steps the workflows use, as role:step,step.
-VBW_EFFORT_STEPS='architect:decide,scope lead:plan,close dev:build,fix docs:build qa:verify scout:survey,merge debugger:investigate,diagnose,fix'
+VBW_EFFORT_STEPS='architect:decide,scope,recommend lead:plan,close dev:build,fix docs:build qa:verify scout:survey,merge debugger:investigate,diagnose,fix'
 
 # effort_table PROFILE: the profile's table as compact JSON. Refuses, naming the
 # role, the step and the value, a value Claude Code does not accept (not low,
