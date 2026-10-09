@@ -60,7 +60,7 @@ cmd_qa() {
     | escalate_phases(if $rounds >= 2 then [$p] else [] end; null; "QA needs a second round"; $at)
     | finish_phases($cur)' \
     --arg p "$phase" --arg res "$result" --arg tier "$tier" --arg tree "$tree" --arg note "$note" \
-    --arg at "$(vbw_now)" --argjson cap "$VBW_QA_ROUNDS" --argjson cur "$(printf '%s' "$digests" | jq -c 'map_values(.combined)')"
+    --arg at "$(vbw_now)" --argjson cap "$VBW_QA_ROUNDS" --argjson cur "$(qa_combined "$record" "$digests" | jq -c --arg p "$phase" --arg t "$tree" '. + {($p): $t}')"
   qa_cache_put "$phase" "$digests"
   record_commit "chore(vbw): qa $phase $result"
   jq -r --arg p "$phase" '.phases[] | select(.id == $p) | "\(.id) qa \(.qa.result) (\(.qa.tier))\(if .qa.rounds then ", round \(.qa.rounds)" else "" end)"' "$VBW_RECORD"

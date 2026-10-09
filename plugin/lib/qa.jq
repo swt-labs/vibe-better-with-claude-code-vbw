@@ -1,9 +1,9 @@
 # What QA must check again (R47, R49; docs/proof.md). Input: the record.
-# Arguments: $inputs (null, or the current digests of every phase of the active
+# Arguments: $fpv (optional: the version of how the digests are computed, QA_FP_VERSION; absent, versions are not compared), $inputs (null, or the current digests of every phase of the active
 # milestone: {Pn: {files, tests, plan, reqs, combined}}, from lib/qa-inputs.sh) and
 # $cache (null, or what each phase's last pass covered: {Pn: {files, tests,
-# plan, reqs, deps: {Pm: {files, tests, plan, reqs}}}}; this clone's file, so anything may
-# be wrong with it). Output: {closure, recheck, standing, problems}. closure
+# plan, reqs, combined, version, tree, deps: {Pm: {files, tests, plan, reqs}}}}; this clone's
+# file, so anything may be wrong with it). Output: {closure, recheck, standing, problems}. closure
 # maps a phase to every phase it builds on, directly or not (a phase builds on
 # another when one of its plans comes after a plan of the other).
 # recheck maps each built phase that needs checking again to its reasons, in
@@ -24,6 +24,7 @@
 | ($missing + (if ($cyclic | length) > 0 then ["phases \($cyclic | join(", ")) build on each other (a cycle)"] else [] end)) as $problems
 | ([$r.phases[] | select(.id | IN($ids[]))
     | select(.id as $i | [$r.plans[] | select(.phase == $i)] | length > 0 and all(.[]; .status == "done"))]) as $built
+| ($ARGS.named.fpv) as $fpv
 | (def own: {files, tests, plan, reqs};
    def plain: "its files, tests or plan changed";
    # A cache written before the [auto] requirements digest existed has no reqs: compare what it has.
@@ -32,8 +33,9 @@
    | [$built[] | . as $ph | ($inputs[$ph.id]) as $cur | ($c[$ph.id]) as $old
      | (if $ph.qa == null then ["not checked yet"]
         else (if $ph.qa.result != "pass" then ["failed last time"] else [] end)
-          + (if $ph.qa.tree == $cur.combined then []
-             else (if ($old | type == "object" and (.files | type == "string") and (.tests | type == "string") and (.plan | type == "string") and (.reqs | type == "string" or . == null) and (.deps | type == "object"))
+          + (if $ph.qa.tree == $cur.combined
+                or ($old | type == "object" and .version == $fpv and .tree == $ph.qa.tree and .combined == $cur.combined) then []
+             else (if ($old | type == "object" and ($fpv == null or (.version // 0) == $fpv) and (.files | type == "string") and (.tests | type == "string") and (.plan | type == "string") and (.reqs | type == "string" or . == null) and (.deps | type == "object"))
                    then ([if $old.files != $cur.files then "its files changed" else empty end,
                           if $old.tests != $cur.tests then "its tests changed" else empty end,
                           if $old.plan != $cur.plan then "its goal or plan changed" else empty end,

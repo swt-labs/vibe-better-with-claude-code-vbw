@@ -9,11 +9,25 @@
 # shellcheck source=effort.sh
 . "$VBW_LIB/effort.sh"
 
-# qa_combined RECORD: {Pn: combined digest}, what a standing pass holds in qa.tree (D91).
-qa_combined() { qa_digests "$1" | jq -c 'map_values(.combined)'; }
+# qa_state RECORD [DIGESTS]: lib/qa.jq's answer (closure, recheck, standing, problems).
+# The one judgment of whether a pass stands; a pass of another fingerprint
+# version is first fingerprinted again at its own commit (qa_settle).
+qa_state() {
+  local d="${2:-}"
+  [ -n "$d" ] || d=$(qa_digests "$1")
+  qa_settle "$1" "$d"
+  jq -c --argjson inputs "$d" --argjson cache "$(qa_cache_read)" --argjson fpv "$QA_FP_VERSION" -f "$VBW_LIB/qa.jq" <<< "$1"
+}
 
-# qa_state RECORD: lib/qa.jq's answer (closure, recheck, standing, problems).
-qa_state() { jq -c --argjson inputs "$(qa_digests "$1")" --argjson cache "$(qa_cache_read)" -f "$VBW_LIB/qa.jq" <<< "$1"; }
+# qa_combined RECORD [DIGESTS]: {Pn: the phase's current fingerprint}: what a
+# standing pass holds in qa.tree (D91). A pass that stands across a fingerprint
+# version is held by the qa.tree it has.
+qa_combined() {
+  local d="${2:-}"
+  [ -n "$d" ] || d=$(qa_digests "$1")
+  qa_state "$1" "$d" | jq -c --argjson d "$d" --argjson r "$1" '. as $s | $d | map_values(.combined)
+    + ([$r.phases[] | select(.id as $i | $s.standing | index($i)) | select(.qa.tree != null) | {(.id): .qa.tree}] | add // {})'
+}
 
 cmd_next() {
   vbw_require_project
