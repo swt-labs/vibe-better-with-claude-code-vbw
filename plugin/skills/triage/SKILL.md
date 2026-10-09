@@ -24,7 +24,7 @@ Idea already matches a requirement or open backlog item: name it, no new entry. 
 
 ## The sorting menu
 
-One line per idea, then one AskUserQuestion with all of them. Each line: the sort, the reason in one sentence, the size (small, medium or large).
+One line per idea, one line each, all inside one AskUserQuestion; the line is inside it, so the user decides from what the menu shows. Per idea, the question text holds the idea and its line: the sort, the reason in one sentence, the size (small, medium or large). Each option's description repeats its sort's effect. Print no line before the menu.
 
 - **now**: joins the active milestone.
 - **next**, **later**: go into the backlog; next is the following milestone, later is someday.
