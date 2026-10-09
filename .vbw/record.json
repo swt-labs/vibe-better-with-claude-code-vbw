@@ -6,7 +6,7 @@
   "milestone": {
     "id": "M17",
     "title": "Sound foundations",
-    "status": "active"
+    "status": "shipped"
   },
   "shipped": [
     {
@@ -88,6 +88,11 @@
       "id": "M16",
       "title": "What's next",
       "at": "2026-10-09T13:42:47Z"
+    },
+    {
+      "id": "M17",
+      "title": "Sound foundations",
+      "at": "2026-10-09T18:03:36Z"
     }
   ],
   "requirements": [
@@ -18900,6 +18905,11 @@
       "id": "D216",
       "at": "2026-10-09T16:32:00Z",
       "text": "Contract approved: 129 requirements, 197 checks, 262 plans (88abf960d68b)"
+    },
+    {
+      "id": "D217",
+      "at": "2026-10-09T18:03:36Z",
+      "text": "Shipped M17 Sound foundations: 9 requirements proven or accepted"
     }
   ],
   "commands": {
