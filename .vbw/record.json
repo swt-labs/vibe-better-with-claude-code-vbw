@@ -4014,6 +4014,69 @@
           "check": "C202"
         }
       ]
+    },
+    {
+      "id": "R136",
+      "text": "Every message VBW shows in the band and in the side pane disappears as soon as what it says stops being true (the question is answered, the milestone ships, the run ends, an agent finishes), without waiting for some other redraw",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M18",
+      "rules": []
+    },
+    {
+      "id": "R137",
+      "text": "The band no longer shows a 'VBW needs you' card with answer buttons: a question VBW asks appears only in Claude Code's own menu, so it can never be answered in two places",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M18",
+      "rules": []
+    },
+    {
+      "id": "R138",
+      "text": "The notification sound plays once per question, only when Claude Code's own menu is shown to the user, never twice for one question and never after it is answered",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M18",
+      "rules": []
+    },
+    {
+      "id": "R139",
+      "text": "An agent that has finished leaves the live crew list at once",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M18",
+      "rules": []
+    },
+    {
+      "id": "R141",
+      "text": "When jq is missing, starting a Claude Code session in a VBW project shows no 'jq: command not found' error: the session-start hook ends quietly like the other hooks",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M18",
+      "rules": []
+    },
+    {
+      "id": "R142",
+      "text": "CI splits the macOS test run across several machines, so a push that changes VBW code finishes CI in about 20 minutes or less",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M18",
+      "rules": []
+    },
+    {
+      "id": "R143",
+      "text": "When a push changes no shipped code, tools or docs, CI runs only the test files that changed, and skips the tests when only the VBW record or saved test results changed",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M18",
+      "rules": []
+    },
+    {
+      "id": "R144",
+      "text": "In the real panel, nothing stale stays on screen: after answering a question, after a ship and after a run ends, the band and the pane show only what is true now",
+      "proof": "human",
+      "status": "open",
+      "milestone": "M18"
     }
   ],
   "checks": [
@@ -17685,7 +17748,7 @@
     {
       "id": "T84",
       "text": "CI: split the macOS job across 3-4 machines (shards) so CI ends in about 15 min instead of 39",
-      "status": "open",
+      "status": "done",
       "sort": "next",
       "size": "small"
     },
@@ -17722,7 +17785,7 @@
       "text": "SessionStart hook: end its hooks.json command in || true like the other four, so a missing jq never shows users 'jq: command not found' (exit 127) at session start; regression test beside 'failure gives no output and exit 0' (F95, 2026-10-09)",
       "sort": "next",
       "size": "small",
-      "status": "open"
+      "status": "done"
     },
     {
       "id": "T90",
@@ -17736,7 +17799,7 @@
       "text": "CI: when a push changes no shipped code, tools or docs, run only the changed test files; skip tests when only .vbw/ or tools/l3-results changed; any code change still runs the full suite (owner, 2026-10-09, after a 45 min CI rerun for a one-line test change)",
       "sort": "next",
       "size": "small",
-      "status": "open"
+      "status": "done"
     }
   ],
   "decisions": [
