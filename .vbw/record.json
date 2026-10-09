@@ -9601,12 +9601,11 @@
       ],
       "predicted": "deep",
       "qa": {
-        "result": "fail",
+        "result": "pass",
         "tier": "deep",
         "tree": "094acd32a067d4e62d22a674eebf9ec20ae18e187cafc654fb753f5aaf7f3e53",
-        "at": "2026-10-09T12:27:18Z",
-        "note": "33/34 checks",
-        "rounds": 1
+        "at": "2026-10-09T13:01:14Z",
+        "note": "30/30 checks"
       },
       "escalations": [
         {
@@ -16307,7 +16306,7 @@
       "req": "R123",
       "source": "qa",
       "attempts": 0,
-      "status": "fixed",
+      "status": "closed",
       "note": "docs/whats-next.md shows the wrong layout for the vbw status what's-next part. Its example prints 'then: Gift cards (large)' and 'written 2026-10-09' at the left edge, and the docs table says vbw status prints 'the lines in the example above'. The real output (plugin/lib/cmd-status.sh lines 36-37) indents the reason, every 'then:' line and the 'written' line by two spaces; only the 'what's next: ...' line is at the left edge. Fix the example (and keep the table wording true) so the docs show exactly what vbw status prints."
     }
   ],
@@ -16737,6 +16736,13 @@
       "text": "Show a long proof's progress: the kernel writes checks done of total to .vbw/runtime/proving.<session>, and the panel and status line show \"proving: N of M checks, T min\" while Claude runs the proof in the background (no spinner then)",
       "sort": "next",
       "size": "medium",
+      "status": "open"
+    },
+    {
+      "id": "T86",
+      "text": "A docs-only fix after QA forces a second full proof (vbw prove --full, ~23 min on VBW) before QA rechecks; let the full proof reuse the suite result when only docs changed since it ran (as R115 does for QA)",
+      "sort": "later",
+      "size": "small",
       "status": "open"
     }
   ],
@@ -19642,5 +19648,11 @@
     "full": true,
     "passed": true
   },
-  "lease": null
+  "lease": {
+    "run": "qa-20261009T125903Z",
+    "kind": "qa",
+    "started_at": "2026-10-09T12:59:03Z",
+    "files": [],
+    "session": "4130e174-7ef2-4e36-b853-fb2a8fd8511d"
+  }
 }
