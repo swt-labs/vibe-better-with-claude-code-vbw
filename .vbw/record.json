@@ -16291,7 +16291,7 @@
       "req": "R123",
       "source": "qa",
       "attempts": 0,
-      "status": "open",
+      "status": "fixed",
       "note": "A pick with a field the kernel does not know is refused whole, and nothing guards or tests that. plugin/lib/cmd-recommend.sh refuses 'has an unknown field' on the top pick and on each runner-up; probe: a runner-up {text, size, source, reason} gives 'vbw: runner-up 1 has an unknown field: reason' and nothing is stored. plugin/workflows/recommending.js passes got.top and got.runners to vbw recommend unfiltered, and its reply schema has no additionalProperties:false, so an Architect that gives runners-up a reason (natural: the top pick has one) loses the whole recommendation on every run. Also untested in tests/recommend-store.bats and tests/recommend-flow.bats: unknown-field refusals (top, runner-up, top level, empty with extra keys), empty source, runners not an array, a runner-up that is not an object (all work when probed by hand, but no test can fail on them). Fix: have the workflow keep only the declared fields of each pick (text, reason for top, size, source) or set additionalProperties:false in the schema, with a test that a runner-up carrying a reason still stores; add tests for the kernel's shape refusals."
     }
   ],

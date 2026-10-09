@@ -136,3 +136,12 @@ args() {
   has "$DOC" 'runners-up'
   grep -qF 'docs/whats-next.md' "$README"
 }
+
+@test "R123: fields the kernel does not know are dropped from every pick, so a runner-up with a reason still stores" {
+  local out label extra
+  out=$(wf "$(args "$SUMMARY")" '{}')
+  label=$(printf '%s' "$out" | jq -r '.calls[0].opts.label')
+  extra='{"top": {"text": "Refunds", "reason": "Customers ask for it most.", "size": "small", "source": "T4", "why": "x"}, "runners": [{"text": "Gift cards", "reason": "Later.", "size": "large", "source": "T9"}]}'
+  out=$(wf "$(args "$SUMMARY")" "$(jq -nc --arg l "$label" --argjson p "$extra" '{($l): $p}')")
+  printf '%s' "$out" | jq -e --argjson p "$PICK" '.result.recommendation == $p' || { echo "$out"; false; }
+}

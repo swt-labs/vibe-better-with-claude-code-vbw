@@ -73,6 +73,13 @@ size|{"top": {"text": "Refunds", "reason": "Asked for."}, "runners": []}
 runners-up|{"top": {"text": "A", "reason": "r", "size": "small"}, "runners": [{"text": "B", "size": "small"}, {"text": "C", "size": "small"}, {"text": "D", "size": "small"}]}
 text|{"top": {"text": "", "reason": "r", "size": "small"}, "runners": []}
 json|not json at all
+unknown field: why|{"top": {"text": "Refunds", "reason": "r", "size": "small", "why": "x"}, "runners": []}
+unknown field: reason|{"top": {"text": "Refunds", "reason": "r", "size": "small"}, "runners": [{"text": "B", "size": "small", "reason": "r"}]}
+unknown field: extra|{"top": {"text": "Refunds", "reason": "r", "size": "small"}, "runners": [], "extra": 1}
+exactly|{"empty": true, "extra": 1}
+empty source|{"top": {"text": "Refunds", "reason": "r", "size": "small", "source": ""}, "runners": []}
+runners must be an array|{"top": {"text": "Refunds", "reason": "r", "size": "small"}, "runners": "none"}
+runner-up 1 must be an object|{"top": {"text": "Refunds", "reason": "r", "size": "small"}, "runners": ["B"]}
 EOF
 }
 
