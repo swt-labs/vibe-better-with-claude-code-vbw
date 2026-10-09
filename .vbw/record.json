@@ -10237,12 +10237,11 @@
       ],
       "predicted": "standard",
       "qa": {
-        "result": "fail",
+        "result": "pass",
         "tier": "standard",
         "tree": "9aa40f9ea0a5ff97a5e4d432ce93a37f7167a4a91e5e672fef02a9d09945228d",
-        "at": "2026-10-09T17:30:19Z",
-        "note": "17/18 checks",
-        "rounds": 4
+        "at": "2026-10-09T18:00:45Z",
+        "note": "12/12 checks"
       },
       "escalations": [
         {
@@ -10251,7 +10250,15 @@
           "to": "deep",
           "reason": "QA needs a second round"
         }
-      ]
+      ],
+      "outcome": {
+        "tier": "deep",
+        "predicted": "standard",
+        "held": false,
+        "fix_rounds": 4,
+        "qa_findings": 4,
+        "escalations": 1
+      }
     },
     {
       "id": "P93",
@@ -17238,7 +17245,7 @@
       "req": "R128",
       "source": "qa",
       "attempts": 0,
-      "status": "fixed",
+      "status": "closed",
       "note": "docs/guards.md, table 'What each answer means', row 'A message for the user (systemMessage)': it says SessionStart sends this only for 'project made by a newer VBW'. plugin/hooks/session-start.sh (the line that sets notice when removed is not 0) also sends a systemMessage whenever it removes VBW 1 command copies ('VBW 2 removed the old VBW 1 commands. Type /reload-skills ...'), in any project or none. The plan task asks for a table of every answer VBW's hooks give; this row is incomplete. Fix: name that second case in the row (docs only; the shape itself is already pinned by tests/hook-answers.bats)."
     }
   ],
@@ -20702,7 +20709,13 @@
     "full": true,
     "passed": true
   },
-  "lease": null,
+  "lease": {
+    "run": "qa-20261009T175927Z",
+    "kind": "qa",
+    "started_at": "2026-10-09T17:59:27Z",
+    "files": [],
+    "session": "4130e174-7ef2-4e36-b853-fb2a8fd8511d"
+  },
   "recommendation": {
     "at": "2026-10-09T13:43:41Z",
     "top": {
