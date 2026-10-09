@@ -16687,6 +16687,21 @@
       "id": "T77",
       "text": "docs/proof.md: a Test results folder name cannot contain spaces (the parser refuses it)",
       "status": "open"
+    },
+    {
+      "id": "T78",
+      "text": "Panel: raise a native notification with $.ui.notify (CC 2.1.295) when a new What's next recommendation arrives and when VBW waits for the user",
+      "status": "open"
+    },
+    {
+      "id": "T79",
+      "text": "docs/workflows.md says eight workflows; plugin/workflows has nine (tooling.js is missing from its table)",
+      "status": "open"
+    },
+    {
+      "id": "T80",
+      "text": "recommending.js reply schema: minLength 1 on source, so an empty source cannot make the kernel refuse a whole recommendation",
+      "status": "open"
     }
   ],
   "decisions": [
