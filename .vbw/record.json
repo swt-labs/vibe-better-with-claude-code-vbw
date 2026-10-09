@@ -10073,7 +10073,7 @@
         "A pick with no `source` field at all is still accepted by the schema and by `vbw recommend`",
         "A reply whose sources are all valid T or R ids is recorded by `vbw recommend` exactly as before (no change in accepted output)"
       ],
-      "tier": "standard",
+      "tier": "deep",
       "reasons": [
         "requirements: 2",
         "files: 6 (30175 bytes)",
@@ -10083,7 +10083,15 @@
         "guarded: R3 (C3), R13 (C12), R14 (C13), R24 (C23), R25 (C24), R27 (C21), R28 (C25), R31 (C27), R33 (C29), R38 (C33, C34), R40 (C37), R43 (C42, C43), R44 (C44, C45), R45 (C39, C40, C41), R46 (C46), R47 (C47), R49 (C48), R61 (C73, C74, C75, C76, C77), R62 (C78, C79, C80, C81, C82, C83, C93), R65 (C86, C87, C88, C89, C90), R78 (C105, C106), R80 (C108), R81 (C109, C111, C112, C113), R99 (C155), R101 (C179), R111 (C171, C172, C173, C174, C175), R115 (C181), R116 (C182, C183), R119 (C180), R121 (C187, C188), R122 (C189), R123 (C190, C191)",
         "tests: project test command"
       ],
-      "predicted": "standard"
+      "predicted": "standard",
+      "escalations": [
+        {
+          "at": "2026-10-09T14:19:27Z",
+          "from": "standard",
+          "to": "deep",
+          "reason": "Dev blocked P89.1: Code done and committed (aa6b7ab9); 7 of 8 tests in C194 pass. The 8th needs 'vbw todo sort' written in docs/triage.md and docs/record.md, which are outside the plan's files (plugin/lib/cmd-todo.sh, plugin/bin/vbw). Plan needs docs/triage.md and docs/record.md added to its files, then one line in each."
+        }
+      ]
     },
     {
       "id": "P90",
@@ -16139,13 +16147,14 @@
         "plugin/bin/vbw"
       ],
       "after": [],
-      "status": "planned",
+      "status": "blocked",
       "role": "dev",
       "tasks": [
         "plugin/lib/cmd-todo.sh: new subcommand `vbw todo sort ID next|later small|medium|large`. It sets both the sort (next or later) and the size (small, medium or large) of an open or in-progress item in one record update, replacing any sort and size it had and keeping its id, text and status; it prints the item as `vbw todo list` shows it (`T3 [next, small] CSV export`)",
         "Refusals, all checked before the record is touched so it stays byte-for-byte the same: an id that does not exist (`unknown todo T9`), an item that is done or dropped (the message says the item is closed, for example `T1 is closed (done): only an open item can be sorted`), and a sort or size outside the lists, a missing value or extra words (the usage line `usage: vbw todo sort ID next|later small|medium|large`, exit 2)",
         "Usage text: the file's header comment and the `vbw todo` usage line list `sort ID next|later small|medium|large`; the `todo` line of `vbw help` in plugin/bin/vbw lists it too"
-      ]
+      ],
+      "note": "Code done and committed (aa6b7ab9); 7 of 8 tests in C194 pass. The 8th needs 'vbw todo sort' written in docs/triage.md and docs/record.md, which are outside the plan's files (plugin/lib/cmd-todo.sh, plugin/bin/vbw). Plan needs docs/triage.md and docs/record.md added to its files, then one line in each."
     },
     {
       "id": "P89.2",
@@ -16158,7 +16167,7 @@
         "plugin/workflows/recommending.js"
       ],
       "after": [],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "plugin/workflows/recommending.js: in the reply schema (the shape Claude Code holds the Architect's answer to), the top pick's `source` gets `pattern: '^[TR][0-9]+$'` (a backlog id like T4 or a requirement id like R7), which also refuses an empty string; `source` stays optional",
@@ -16201,7 +16210,7 @@
         "plugin/lib/cmd-plan.sh"
       ],
       "after": [],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "plugin/lib/cmd-plan.sh: `vbw plan block` on a plan whose status is done stops before any write, exit 1, with a message that says so and what to do instead, for example `P1.2 is already done: a finished plan cannot be blocked (vbw plan reset P1.2 first if it must be built again)`",
@@ -16220,7 +16229,7 @@
         "plugin/lib/cmd-apply.sh"
       ],
       "after": [],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "plugin/lib/cmd-apply.sh: move the two `--add` refusals (a requirement that belongs to another milestone; a requirement a phase already covers) into one jq definition that both paths call, told which phases count: every phase for --add, the phases of other milestones for the full apply (the active milestone's own phases are replaced by it). The message text stays word for word (tests/small-request.bats keeps passing)",
@@ -16265,7 +16274,7 @@
         "plugin/lib/next.jq"
       ],
       "after": [],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "plugin/lib/next.jq: at the qa step, `round.suite` carries the project's own test command as words (`commands.test` joined by spaces, for example `bash tools/test.sh`) when the proof's result does not name one; a result that names one keeps it, and the not-run fallback stays as it is (tests/qa-suite-once.bats keeps passing)",
@@ -16289,7 +16298,7 @@
         "plugin/lib/cmd-qa.sh"
       ],
       "after": [],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "plugin/lib/qa-inputs.sh: one line `QA_FP_VERSION=1`, the version of how qa_digests computes a phase's fingerprint (raised whenever that changes; a fingerprint without a version counts as version 0). qa_cache_put stores `version` and the commit the digests were taken at (HEAD) in each phase's entry of the clone's QA cache; the record keeps `qa.tree` exactly as it is (64 hex characters, no new field, schema unchanged)",
@@ -16340,7 +16349,7 @@
         "AGENTS.md"
       ],
       "after": [],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "New tools/check-hook-answers.sh HOOKS_DIR TEST_FILE (bash 3.2, shellcheck clean): on the non-comment lines of each *.jq and *.sh hook file it lists every answer shape (a `permissionDecision` value, a use of the jq `deny` helper, or one of the keys updatedInput, additionalContext, systemMessage, decision, continue, stopReason, suppressOutput written as an object key); each (file, shape) needs a `@test` line in TEST_FILE whose name gives the file name and then the shape; it prints each one missing and exits 1",
@@ -16360,7 +16369,7 @@
         "docs/guards.md"
       ],
       "after": [],
-      "status": "planned",
+      "status": "done",
       "role": "docs",
       "tasks": [
         "docs/guards.md: a short table of every answer VBW's hooks give Claude Code (deny with a 'VBW guard:' reason, ask with a rewritten question, added context, a message for the user, no answer) and what Claude Code does with each",
@@ -16382,7 +16391,7 @@
         "plugin/skills/vibe/SKILL.md"
       ],
       "after": [],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "docs/workflows.md: a table row for `vbw:tooling` (started by /vbw:skills and the interview after the user agrees to a tool search; one Scout per angle: safety, quality, tests, skills; a short sourced list of tools), so every file in plugin/workflows is listed",
