@@ -1,5 +1,25 @@
 # Changelog
 
+## [2.0.30] - 2026-10-09
+
+### Fixed
+
+- **No "jq: command not found" at session start.** Without `jq`, starting
+  Claude Code in a VBW project no longer shows an error: the session-start hook
+  ends quietly, like VBW's other hooks. `/vbw:doctor` still tells you `jq` is
+  missing.
+
+### Changed
+
+- The README is rewritten: the team, the loop and the engineering practices
+  behind each step, how the kernel differs from Claude Code on its own (with an
+  architecture diagram), and a features table.
+- For contributors: CI runs the macOS tests on four machines at once
+  (`bash tools/test.sh --shard K/N` runs one share locally), and a push that
+  changes no code, tools or docs runs only the test files it changed, or no
+  tests when only the VBW record or saved test results changed
+  (`tools/ci-scope.sh`; see CONTRIBUTING.md).
+
 ## [2.0.29] - 2026-10-09
 
 ### Added
