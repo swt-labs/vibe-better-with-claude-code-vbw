@@ -16147,14 +16147,13 @@
         "plugin/bin/vbw"
       ],
       "after": [],
-      "status": "blocked",
-      "role": "dev",
+      "status": "planned",
       "tasks": [
         "plugin/lib/cmd-todo.sh: new subcommand `vbw todo sort ID next|later small|medium|large`. It sets both the sort (next or later) and the size (small, medium or large) of an open or in-progress item in one record update, replacing any sort and size it had and keeping its id, text and status; it prints the item as `vbw todo list` shows it (`T3 [next, small] CSV export`)",
         "Refusals, all checked before the record is touched so it stays byte-for-byte the same: an id that does not exist (`unknown todo T9`), an item that is done or dropped (the message says the item is closed, for example `T1 is closed (done): only an open item can be sorted`), and a sort or size outside the lists, a missing value or extra words (the usage line `usage: vbw todo sort ID next|later small|medium|large`, exit 2)",
-        "Usage text: the file's header comment and the `vbw todo` usage line list `sort ID next|later small|medium|large`; the `todo` line of `vbw help` in plugin/bin/vbw lists it too"
-      ],
-      "note": "Code done and committed (aa6b7ab9); 7 of 8 tests in C194 pass. The 8th needs 'vbw todo sort' written in docs/triage.md and docs/record.md, which are outside the plan's files (plugin/lib/cmd-todo.sh, plugin/bin/vbw). Plan needs docs/triage.md and docs/record.md added to its files, then one line in each."
+        "Usage text: the file's header comment and the `vbw todo` usage line list `sort ID next|later small|medium|large`; the `todo` line of `vbw help` in plugin/bin/vbw lists it too",
+        "plugin/lib/cmd-todo.sh passes shellcheck: the sort argument test uses separate [ ] tests joined by || instead of -o (SC2166)"
+      ]
     },
     {
       "id": "P89.2",
@@ -16188,11 +16187,8 @@
         "docs/record.md",
         "docs/whats-next.md"
       ],
-      "after": [
-        "P89.1"
-      ],
+      "after": [],
       "status": "planned",
-      "role": "docs",
       "tasks": [
         "docs/triage.md, The backlog: an item added without a sort (or sorted differently) gets one later with `vbw todo sort T3 next small`, which replaces both values and then lists the item in its group; an unknown or closed item, or another value, is refused and nothing changes",
         "docs/record.md, the `todos[]` row: `vbw todo sort` sets or replaces both `sort` and `size` of an open item",
@@ -18757,6 +18753,11 @@
       "id": "D214",
       "at": "2026-10-09T14:18:07Z",
       "text": "Contract approved: 129 requirements, 197 checks, 262 plans (da39ee5d9cf5)"
+    },
+    {
+      "id": "D215",
+      "at": "2026-10-09T14:56:31Z",
+      "text": "Contract approved: 129 requirements, 197 checks, 262 plans (a23164e74546)"
     }
   ],
   "commands": {
