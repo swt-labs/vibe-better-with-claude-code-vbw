@@ -17723,6 +17723,13 @@
       "sort": "next",
       "size": "small",
       "status": "open"
+    },
+    {
+      "id": "T90",
+      "text": "vbw todo add, sort, done and drop leave .vbw/record.json uncommitted when they are the last command (as vbw recommend did until 2.0.29); commit the record after a backlog change, the user's staged files untouched",
+      "sort": "next",
+      "size": "small",
+      "status": "open"
     }
   ],
   "decisions": [
