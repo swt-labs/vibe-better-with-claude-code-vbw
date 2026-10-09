@@ -4,9 +4,9 @@
     "name": "v2"
   },
   "milestone": {
-    "id": "M17",
-    "title": "Sound foundations",
-    "status": "shipped"
+    "id": "M18",
+    "title": "Honest panel",
+    "status": "active"
   },
   "shipped": [
     {
