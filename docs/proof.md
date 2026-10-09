@@ -42,7 +42,8 @@ TEXT` only appends a line.
 
 Some projects commit the output of their test runs (reports, recordings,
 snapshots). List the folders that hold them under `## Test results`, one
-folder per line:
+folder per line. A folder name cannot contain spaces: `vbw spec sync`
+refuses such a line and prints its line number.
 
 ```markdown
 ## Test results
@@ -52,8 +53,7 @@ folder per line:
 ```
 
 - Each line is `- <folder>/`: a path relative to the project root, with no `.`
-  or `..` parts, outside `.vbw/`, and no spaces in the name (`vbw spec sync`
-  refuses such a line and prints its line number). A missing trailing `/` is added. A folder
+  or `..` parts, outside `.vbw/`. A missing trailing `/` is added. A folder
   named twice, or any other bullet in the section, is an error with its line
   number. Text that is not a bullet is ignored, as in `## Requirements`.
 - `vbw spec sync` copies the list into the record (`project.results`,
