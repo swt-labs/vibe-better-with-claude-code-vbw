@@ -3,7 +3,7 @@
 # verified, not claimed: the plan has a commit carrying its VBW-Plan trailer (or
 # all its files are committed in HEAD and a check of its requirements passes),
 # none of its files has uncommitted changes, and the checks of every requirement
-# it completes (no other open plan serves it) pass.
+# it completes (no other open plan serves it) pass. "block" refuses a done plan.
 
 cmd_plan() {
   local sub="${1:-}" id="${2:-}"
@@ -54,6 +54,8 @@ cmd_plan() {
       printf '%s done\n' "$id"
       ;;
     block)
+      printf '%s' "$record" | jq -e --arg p "$id" 'any(.plans[]; .id == $p and .status == "done") | not' > /dev/null \
+        || vbw_die "$id is already done: a finished plan cannot be blocked (vbw plan reset $id first if it must be built again)"
       # A blocked Dev raises the plan's phase one step, in the same update.
       record_update "$VBW_JQ_DEFS"'(.plans[] | select(.id == $p)) as $pl
         | (.plans[] | select(.id == $p)) |= (.status = "blocked" | .note = $why)
