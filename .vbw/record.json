@@ -10235,7 +10235,15 @@
         "guarded: R15 (C14), R21 (C16), R45 (C39, C40, C41), R61 (C73, C74, C75, C76, C77), R75 (C101), R76 (C102, C103), R77 (C104), R120 (C185)",
         "tests: project test command"
       ],
-      "predicted": "standard"
+      "predicted": "standard",
+      "qa": {
+        "result": "fail",
+        "tier": "standard",
+        "tree": "7b9343a014e9e54d919c82921e8812c9d882b66980109e124b2cfde060969d74",
+        "at": "2026-10-09T15:54:30Z",
+        "note": "15/16 checks",
+        "rounds": 1
+      }
     },
     {
       "id": "P93",
@@ -17192,6 +17200,14 @@
       "attempts": 0,
       "status": "closed",
       "note": "test fail"
+    },
+    {
+      "id": "F95",
+      "req": "R128",
+      "source": "qa",
+      "attempts": 0,
+      "status": "open",
+      "note": "docs/guards.md line 112 says 'Every hook command ends in || true and exits 0 with no output when it fails'. That is false for SessionStart: plugin/hooks/hooks.json runs it as plain 'bash session-start.sh' (4 of the 5 hook commands have '|| true'). Evidence: running plugin/hooks/session-start.sh with jq missing from PATH prints 'jq: command not found' and exits 127, not 0. It still never answers allow (no JSON on stdout), but the doc states something the code does not do. Fix: either add '|| true' to the SessionStart command (and a regression test next to the 'failure gives no output and exit 0' test, which today covers only Bash/Read/Write) or reword the doc to what SessionStart really does."
     }
   ],
   "todos": [
