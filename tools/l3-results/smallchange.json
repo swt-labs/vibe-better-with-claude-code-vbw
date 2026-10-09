@@ -1,9 +1,9 @@
 {
   "scenario": "smallchange",
   "fixture": "greet.sh in an active milestone (one requirement proven, its phase and plan done, QA not yet run); the user then asks for a --shout option in plain words; rigor auto",
-  "cost_usd": 0.70,
+  "cost_usd": 0.68,
   "evidence_level": "L3",
-  "at": "2026-10-09T10:31:10Z",
+  "at": "2026-10-09T18:20:05Z",
   "passed": true,
   "facts": {
     "prior_requirements": 1,
