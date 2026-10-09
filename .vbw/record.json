@@ -17730,6 +17730,13 @@
       "sort": "next",
       "size": "small",
       "status": "open"
+    },
+    {
+      "id": "T91",
+      "text": "CI: when a push changes no shipped code, tools or docs, run only the changed test files; skip tests when only .vbw/ or tools/l3-results changed; any code change still runs the full suite (owner, 2026-10-09, after a 45 min CI rerun for a one-line test change)",
+      "sort": "next",
+      "size": "small",
+      "status": "open"
     }
   ],
   "decisions": [
