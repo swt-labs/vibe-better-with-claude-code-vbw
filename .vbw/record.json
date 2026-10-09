@@ -9553,12 +9553,19 @@
         }
       ],
       "qa": {
-        "result": "fail",
+        "result": "pass",
         "tier": "deep",
-        "tree": "5bb8178cbe7cb7d72d4af3e6551694d21c35fdce162b1a841de7fd750bda50eb",
-        "at": "2026-10-09T00:59:13Z",
-        "note": "24/26 checks",
-        "rounds": 1
+        "tree": "96ae88800ded26d1375f13afc83408d9673d10b2c283a6d44aa500e5acb003ca",
+        "at": "2026-10-09T01:45:04Z",
+        "note": "30/30 checks"
+      },
+      "outcome": {
+        "tier": "deep",
+        "predicted": "deep",
+        "held": true,
+        "fix_rounds": 2,
+        "qa_findings": 2,
+        "escalations": 1
       }
     },
     {
@@ -16260,7 +16267,7 @@
       "req": "R121",
       "source": "qa",
       "attempts": 0,
-      "status": "fixed",
+      "status": "closed",
       "note": "docs/triage.md 'The backlog' section shows a 'vbw todo list' output that the command does not print. The doc shows 'T2 next   small   Refunds', 'T1 later  large   Gift cards', 'T3 Dark mode'. The real output (run in a scratch project with the same three items) is 'T3 [next, small] Refunds', 'T2 [later, large] Gift cards', 'T1 Dark mode', as plan P86.1 specifies ('T2 [next, small] Refunds'). Its ids also contradict the order they were added in. The user reads this page to learn the command, so fix the example to the real format. tests/triage-skill.bats only greps the doc for the words 'vbw todo list', so it cannot catch this."
     },
     {
@@ -16268,7 +16275,7 @@
       "req": "R121",
       "source": "qa",
       "attempts": 0,
-      "status": "fixed",
+      "status": "closed",
       "note": "Criterion 3 and the plan say the one-line triage is INSIDE one AskUserQuestion menu. plugin/skills/triage/SKILL.md says 'One line per idea, then one AskUserQuestion with all of them', which reads as lines printed first and a menu after (docs/triage.md draws it the same way). The line text (sort, reason, size) must be in the menu itself, e.g. in each idea's question text and option descriptions, so the user decides from what the menu shows. The test 'R121: the line is inside one AskUserQuestion menu...' in tests/triage-skill.bats cannot fail on this: it only checks that the words AskUserQuestion, (Recommended), 'first' and 'two other sorts' appear anywhere in the skill, and 'first' is matched by any text. Fix the skill wording and make the test require that the line is put in the AskUserQuestion."
     }
   ],
