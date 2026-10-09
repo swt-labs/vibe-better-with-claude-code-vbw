@@ -10091,7 +10091,22 @@
           "to": "deep",
           "reason": "Dev blocked P89.1: Code done and committed (aa6b7ab9); 7 of 8 tests in C194 pass. The 8th needs 'vbw todo sort' written in docs/triage.md and docs/record.md, which are outside the plan's files (plugin/lib/cmd-todo.sh, plugin/bin/vbw). Plan needs docs/triage.md and docs/record.md added to its files, then one line in each."
         }
-      ]
+      ],
+      "qa": {
+        "result": "pass",
+        "tier": "standard",
+        "tree": "3a10b6978c058b0f9803cc3e972a6eeff3593aaa4c43b6f7b0a28b1574aeca92",
+        "at": "2026-10-09T15:52:43Z",
+        "note": "14/14 checks"
+      },
+      "outcome": {
+        "tier": "deep",
+        "predicted": "standard",
+        "held": false,
+        "fix_rounds": 0,
+        "qa_findings": 0,
+        "escalations": 1
+      }
     },
     {
       "id": "P90",
