@@ -9603,11 +9603,19 @@
       "qa": {
         "result": "fail",
         "tier": "deep",
-        "tree": "519b4510dadff532e9984a769b2b116538e471eca70a6b07906fa4ab267f0d25",
-        "at": "2026-10-09T00:59:14Z",
-        "note": "28/30 checks",
-        "rounds": 1
-      }
+        "tree": "607e865b838cf95119ddf7509a1ea8bb042441dff28173df5f605173af72bf75",
+        "at": "2026-10-09T01:45:36Z",
+        "note": "31/32 checks",
+        "rounds": 2
+      },
+      "escalations": [
+        {
+          "at": "2026-10-09T01:45:36Z",
+          "from": "deep",
+          "to": "deep",
+          "reason": "QA needs a second round"
+        }
+      ]
     },
     {
       "id": "P88",
@@ -16251,7 +16259,7 @@
       "req": "R123",
       "source": "qa",
       "attempts": 0,
-      "status": "fixed",
+      "status": "closed",
       "note": "The new effort step architect.recommend is not registered in the kernel's list of effort steps: plugin/lib/effort.sh line 5, VBW_EFFORT_STEPS, still reads 'architect:decide,scope ...'. effort_table (vbw config effort) only checks the steps in that list, so a missing or invalid recommend value in any profile in plugin/lib/efforts.json is never refused, unlike every other step. The plan added recommend to efforts.json in all three profiles, so it must be validated like the rest. tests/recommend-flow.bats only checks the JSON file, not the kernel check."
     },
     {
@@ -16259,7 +16267,7 @@
       "req": "R123",
       "source": "qa",
       "attempts": 0,
-      "status": "fixed",
+      "status": "closed",
       "note": "docs/workflows.md still documents only two Architect effort steps: the 'Role / Steps' table (around line 370) says 'architect | decide, scope', and the 'vbw config effort' example (around line 361) omits recommend, though efforts.json now has architect.recommend in every profile (commit 950726af). The effort docs were not updated with the new step (Contributing rule: update docs when behavior changes; P87.3 touched this file but not these lines)."
     },
     {
@@ -16277,6 +16285,14 @@
       "attempts": 0,
       "status": "closed",
       "note": "Criterion 3 and the plan say the one-line triage is INSIDE one AskUserQuestion menu. plugin/skills/triage/SKILL.md says 'One line per idea, then one AskUserQuestion with all of them', which reads as lines printed first and a menu after (docs/triage.md draws it the same way). The line text (sort, reason, size) must be in the menu itself, e.g. in each idea's question text and option descriptions, so the user decides from what the menu shows. The test 'R121: the line is inside one AskUserQuestion menu...' in tests/triage-skill.bats cannot fail on this: it only checks that the words AskUserQuestion, (Recommended), 'first' and 'two other sorts' appear anywhere in the skill, and 'first' is matched by any text. Fix the skill wording and make the test require that the line is put in the AskUserQuestion."
+    },
+    {
+      "id": "F92",
+      "req": "R123",
+      "source": "qa",
+      "attempts": 0,
+      "status": "open",
+      "note": "A pick with a field the kernel does not know is refused whole, and nothing guards or tests that. plugin/lib/cmd-recommend.sh refuses 'has an unknown field' on the top pick and on each runner-up; probe: a runner-up {text, size, source, reason} gives 'vbw: runner-up 1 has an unknown field: reason' and nothing is stored. plugin/workflows/recommending.js passes got.top and got.runners to vbw recommend unfiltered, and its reply schema has no additionalProperties:false, so an Architect that gives runners-up a reason (natural: the top pick has one) loses the whole recommendation on every run. Also untested in tests/recommend-store.bats and tests/recommend-flow.bats: unknown-field refusals (top, runner-up, top level, empty with extra keys), empty source, runners not an array, a runner-up that is not an object (all work when probed by hand, but no test can fail on them). Fix: have the workflow keep only the declared fields of each pick (text, reason for top, size, source) or set additionalProperties:false in the schema, with a test that a runner-up carrying a reason still stores; add tests for the kernel's shape refusals."
     }
   ],
   "todos": [
