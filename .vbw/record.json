@@ -16866,7 +16866,7 @@
         "plugin/hooks/session-start.sh"
       ],
       "after": [],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "Run the approved test tests/hooks-session-nojq.bats and see it fail today for the expected reason: in four of the five folders the hook prints 'jq: command not found' and exits 127, and in a VBW project it runs the kernel",
@@ -16885,7 +16885,7 @@
         "tools/test.sh"
       ],
       "after": [],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "Arguments: `--shard K/N` and `--shard K/N --list`, K and N whole numbers with 1 <= K <= N. Anything else (0, K above N, not a number, a missing or extra argument, --list first) prints `usage: tools/test.sh [--quick [--list]] | --shard K/N [--list]` and exits 2 before running anything. The no-argument run and --quick keep exactly their current behaviour (tests/quick-mode.bats keeps passing)",
@@ -16906,7 +16906,7 @@
         ".github/workflows/ci.yml"
       ],
       "after": [],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "Tests job matrix: a base of `os: [macos-latest]` and `shard: [1, 2, 3, 4]`; the macOS include entry (os macos-latest, bash_path /bin) joins all four shard jobs, and the two Linux include entries name another os, so each stays one job of its own. Keep exactly the three `- name:` entries, no exclude list and `fail-fast: false`, so the approved tests/ci-node24.bats keeps passing",
@@ -16948,7 +16948,7 @@
         "tools/ci-scope.sh"
       ],
       "after": [],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "New tools/ci-scope.sh BASE HEAD (header comment, bash 3.2, shellcheck clean), working on the git repository of the current folder. Wrong number of arguments: a usage line and exit 2. BASE empty, all zeros, not a commit in this clone, or not an ancestor of HEAD (new branch, rewritten history, shallow clone): full suite, with that reason",
