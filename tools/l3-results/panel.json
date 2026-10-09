@@ -1,9 +1,9 @@
 {
   "scenario": "panel",
   "fixture": "greet.sh and farewell.sh, two phases: the first passed QA and its requirement R1 is proven, the second plan waits for the user's approval; no finished steps in the clone (so no estimate basis); window 200 columns wide",
-  "cost_usd": 0.1158,
+  "cost_usd": 0.1278,
   "evidence_level": "L3",
-  "at": "2026-10-07T13:28:54Z",
+  "at": "2026-10-09T10:30:20Z",
   "passed": true,
   "facts": {
     "milestone_shown": true,
