@@ -16330,7 +16330,7 @@
         "P89.3",
         "P93.1"
       ],
-      "status": "planned",
+      "status": "done",
       "role": "docs",
       "tasks": [
         "docs/proof.md, the QA round: every QA agent is told the project's test command, its result and how its output ended, and in plain words which of these were not kept",
