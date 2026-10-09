@@ -106,7 +106,10 @@ Root instructions in this repo have one canonical source: `AGENTS.md`. The track
 
 - Branch from `origin/main`. Commits use `{type}({scope}): {description}`, staged explicitly.
 - Fill in the PR template (What / Why / How, plus testing).
-- CI runs the suite on macOS `/bin/bash` 3.2 and on Linux bash 5, from a path with a space, and validates the plugin manifests.
+- CI runs from a path with a space and validates the plugin manifests. The suite runs three ways:
+  - macOS `/bin/bash` 3.2: four machines at once, each running its share (`--shard K/4`). In each share the timing-sensitive files run last, alone. Share 1 also runs the shellcheck lint and the benchmarks.
+  - Linux bash 5 (two jobs, Ubuntu latest and 26.04): each runs the full suite.
+  - A failing share fails CI.
 - Don't bump versions or edit `CHANGELOG.md`: the maintainer does that at release time (`tools/bump-version.sh`).
 
 ## Reporting bugs
