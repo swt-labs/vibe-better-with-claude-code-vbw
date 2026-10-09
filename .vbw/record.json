@@ -10677,7 +10677,22 @@
         "guarded: R21 (C16), R55 (C56, C57), R126 (C186)",
         "tests: project test command"
       ],
-      "predicted": "deep"
+      "predicted": "deep",
+      "qa": {
+        "result": "pass",
+        "tier": "deep",
+        "tree": "faf6670485d193c7391e347a16004b69610e895fd2e98adfb6e19202eb60ef7a",
+        "at": "2026-10-09T20:44:36Z",
+        "note": "30/30 checks"
+      },
+      "outcome": {
+        "tier": "deep",
+        "predicted": "deep",
+        "held": true,
+        "fix_rounds": 0,
+        "qa_findings": 0,
+        "escalations": 0
+      }
     }
   ],
   "plans": [
@@ -18264,6 +18279,13 @@
       "sort": "later",
       "size": "medium",
       "status": "open"
+    },
+    {
+      "id": "T93",
+      "text": "QA depth: next.jq applies the R71 small-change cap (risk: none, 3-9 files -> at most standard) even to a phase with escalations, so a phase raised to deep is verified at standard (P89, P90, P92 on 2026-10-09; P92 failed QA 4 times). A phase with escalations keeps its cell's QA depth",
+      "sort": "next",
+      "size": "small",
+      "status": "open"
     }
   ],
   "decisions": [
@@ -21341,7 +21363,13 @@
     "full": true,
     "passed": true
   },
-  "lease": null,
+  "lease": {
+    "run": "qa-20261009T204254Z",
+    "kind": "qa",
+    "started_at": "2026-10-09T20:42:54Z",
+    "files": [],
+    "session": "0ee781c3-c5b6-4a6c-889f-04b89f1fba4a"
+  },
   "recommendation": {
     "at": "2026-10-09T18:05:01Z",
     "top": {
