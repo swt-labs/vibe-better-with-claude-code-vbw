@@ -54,9 +54,9 @@ VBW's sort is the first menu option, marked `(Recommended)`.
 
 ```
 $ vbw todo list
-T2 next   small   Refunds
-T1 later  large   Gift cards
-T3 Dark mode
+T3 [next, small] Refunds
+T2 [later, large] Gift cards
+T1 Dark mode
 ```
 
 Items added before sorting existed stay unsorted and list as before.
