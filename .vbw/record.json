@@ -16996,7 +16996,7 @@
         "P95.3",
         "P96.2"
       ],
-      "status": "planned",
+      "status": "done",
       "role": "docs",
       "tasks": [
         "CONTRIBUTING.md CI section: the full suite runs for any change to plugin/, tools/, docs/, root documents, version files, .github/, test helpers or fixtures, or any path CI does not recognise, and on a new branch or a force push",
