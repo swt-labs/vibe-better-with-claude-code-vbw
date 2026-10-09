@@ -16707,6 +16707,21 @@
       "id": "T81",
       "text": "Panel: use Button children (CC 2.1.295) so each What's next row is one pressable with a size chip and a dim reason",
       "status": "open"
+    },
+    {
+      "id": "T82",
+      "text": "Tests: one prebuilt template project (git repo + vbw init + first commit) copied per test instead of building it each time; measured 0.33 s fixed setup per test on the owner's Mac, 88 files use it",
+      "status": "open"
+    },
+    {
+      "id": "T83",
+      "text": "Release: stop running the full suite twice per release (vbw prove --full already runs it); the pre-push bash 3.2 run reuses the proof's result when the tree is unchanged",
+      "status": "open"
+    },
+    {
+      "id": "T84",
+      "text": "CI: split the macOS job across 3-4 machines (shards) so CI ends in about 15 min instead of 39",
+      "status": "open"
     }
   ],
   "decisions": [
@@ -17878,6 +17893,11 @@
       "id": "D211",
       "at": "2026-10-09T02:02:28Z",
       "text": "Contract approved: 120 requirements, 188 checks, 250 plans (d95cf2db16cb)"
+    },
+    {
+      "id": "D212",
+      "at": "2026-10-09T12:01:51Z",
+      "text": "Contract approved: 120 requirements, 188 checks, 250 plans (ef6adbceb843)"
     }
   ],
   "commands": {
