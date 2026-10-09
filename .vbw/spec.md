@@ -153,3 +153,8 @@ VBW is a Claude Code plugin that makes it build software properly: the user agre
 
 - test: bash tools/test.sh
 - quick: bash tools/test.sh --quick
+
+## Test results
+
+- tools/l3-results/
+- tools/baseline/results/
