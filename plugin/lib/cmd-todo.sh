@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# vbw todo [list] | add [--sort next|later --size small|medium|large] TEXT | done ID | drop ID: the backlog in the plan of
+# vbw todo [list] | add [--sort next|later --size small|medium|large] TEXT | sort ID next|later small|medium|large | done ID | drop ID: the backlog in the plan of
 # record (ideas for later; they do not enter the current milestone by themselves).
 
 # The open and in-progress items, next first, then later, then unsorted, each group by id.
@@ -27,8 +27,10 @@ cmd_todo() {
         case "$size" in small|medium|large) ;; *) vbw_usage_error "--size needs small, medium or large, together with --sort next or later" ;; esac
       fi
       ;;
+    sort) [ $# -eq 3 ] && [ "$2" = next -o "$2" = later ] && [ "$3" = small -o "$3" = medium -o "$3" = large ] \
+      || vbw_usage_error "usage: vbw todo sort ID next|later small|medium|large" ;;
     done|drop) [ $# -eq 1 ] || vbw_usage_error "usage: vbw todo $sub ID" ;;
-    *) vbw_usage_error "usage: vbw todo [list] | add [--sort next|later --size small|medium|large] TEXT | done ID | drop ID" ;;
+    *) vbw_usage_error "usage: vbw todo [list] | add [--sort next|later --size small|medium|large] TEXT | sort ID next|later small|medium|large | done ID | drop ID" ;;
   esac
   vbw_require_project
   case "$sub" in
@@ -41,6 +43,14 @@ cmd_todo() {
       record_update "$VBW_JQ_DEFS"'.todos += [{id: (.todos | next_id("T")), text: $text} + (if $sort == "" then {} else {sort: $sort, size: $size} end) + {status: "open"}]' \
         --arg text "$1" --arg sort "$sort" --arg size "$size"
       jq -r '.todos[-1] | "added \(.id): \(.text)"' "$VBW_RECORD"
+      ;;
+    sort)
+      local state
+      state=$(record_read | jq -r --arg t "$1" '[.todos[] | select(.id == $t)][0] | if . == null then "unknown" else .status end')
+      [ "$state" != unknown ] || vbw_die "unknown todo $1"
+      case "$state" in open|in_progress) ;; *) vbw_die "$1 is closed ($state): only an open item can be sorted" ;; esac
+      record_update '(.todos[] | select(.id == $t)) |= (.sort = $sort | .size = $size)' --arg t "$1" --arg sort "$2" --arg size "$3"
+      record_read | jq -r --arg t "$1" '.todos[] | select(.id == $t) | "\(.id) [\(.sort), \(.size)] \(.text)"'
       ;;
     done|drop)
       local outcome=dropped

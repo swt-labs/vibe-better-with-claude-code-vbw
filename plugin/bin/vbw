@@ -45,7 +45,7 @@ usage: vbw <command> [args]
   statusline [status | on | off]   the VBW status line in your Claude settings
   workflows [status | on]   Claude Code's Dynamic workflows, which VBW plans and builds with
   triage [--json]   the facts for sorting a new idea: milestone, open requirements, run, sorted backlog
-  todo [list] | add [--sort next|later --size small|medium|large] TEXT | done ID | drop ID   the backlog
+  todo [list] | add [--sort next|later --size small|medium|large] TEXT | sort ID next|later small|medium|large | done ID | drop ID   the backlog
   decide TEXT [WHY]   record a decision the user made, and why
   tier raise PHASE TIER REASON   raise a phase's rigor tier and record why (never lowered during a run)
   legacy [facts] | review | choose | done | remove   a VBW 1 project (.vbw-planning/): facts, review and recommendation, record convert or fresh, mark converted, remove
