@@ -6,7 +6,7 @@
   "milestone": {
     "id": "M16",
     "title": "What's next",
-    "status": "active"
+    "status": "shipped"
   },
   "shipped": [
     {
@@ -83,6 +83,11 @@
       "id": "M15",
       "title": "Smarter rounds",
       "at": "2026-10-08T22:58:02Z"
+    },
+    {
+      "id": "M16",
+      "title": "What's next",
+      "at": "2026-10-09T13:42:47Z"
     }
   ],
   "requirements": [
@@ -3700,7 +3705,7 @@
       "id": "R125",
       "text": "The What's next section's colour candy is subtle and elegant: a slow shimmer on its title and a soft pulse on the top pick when a new recommendation arrives, settling afterwards",
       "proof": "human",
-      "status": "open",
+      "status": "accepted",
       "milestone": "M16"
     },
     {
@@ -9662,6 +9667,14 @@
         "tree": "e63e10b95f314baaf3a40ae0b53d0f8a6a54b80b7cb885a4e106694c1b7bc78e",
         "at": "2026-10-09T01:44:32Z",
         "note": "17/17 checks"
+      },
+      "outcome": {
+        "tier": "standard",
+        "predicted": "standard",
+        "held": true,
+        "fix_rounds": 1,
+        "qa_findings": 1,
+        "escalations": 0
       }
     }
   ],
@@ -16744,6 +16757,20 @@
       "sort": "later",
       "size": "small",
       "status": "open"
+    },
+    {
+      "id": "T87",
+      "text": "Panel: use the What's next colour candy (shimmer + soft pulse) as a general highlight for new things, staying until clicked where that makes sense (owner, 2026-10-09: loved it, barely saw it in 4 s)",
+      "sort": "later",
+      "size": "medium",
+      "status": "open"
+    },
+    {
+      "id": "T88",
+      "text": "vbw todo sort ID next|later small|medium|large: sort an existing backlog item, so items planned for a release are seen by triage and by the what's-next Architect (2026-10-09: the planned 2.0.29 items T70-T73 were unsorted, so the Architect never weighed them)",
+      "sort": "next",
+      "size": "small",
+      "status": "open"
     }
   ],
   "decisions": [
@@ -17920,6 +17947,11 @@
       "id": "D212",
       "at": "2026-10-09T12:01:51Z",
       "text": "Contract approved: 120 requirements, 188 checks, 250 plans (ef6adbceb843)"
+    },
+    {
+      "id": "D213",
+      "at": "2026-10-09T13:42:47Z",
+      "text": "Shipped M16 What's next: 6 requirements proven or accepted"
     }
   ],
   "commands": {
@@ -19648,5 +19680,26 @@
     "full": true,
     "passed": true
   },
-  "lease": null
+  "lease": null,
+  "recommendation": {
+    "at": "2026-10-09T13:39:12Z",
+    "top": {
+      "text": "Finish the gentle colour effects on the What's next section: a slow shimmer on its title, and a soft pulse on the top pick when a new recommendation arrives, which then fades and stops.",
+      "size": "small",
+      "reason": "It is the only requirement still open in the current milestone, so finishing it comes before anything new from the backlog.",
+      "source": "R125"
+    },
+    "runners": [
+      {
+        "text": "Show progress while a long proof runs. A proof is VBW running all your project's checks, which can take many minutes. The panel and status line would say something like \"proving: 12 of 40 checks, 6 min\" instead of looking stuck.",
+        "size": "medium",
+        "source": "T85"
+      },
+      {
+        "text": "Skip a second full proof when a fix after review only changed documentation (text files, not code). It would reuse the earlier test result and save about 23 minutes each time.",
+        "size": "small",
+        "source": "T86"
+      }
+    ]
+  }
 }
