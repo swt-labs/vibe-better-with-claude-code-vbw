@@ -113,11 +113,15 @@ POST='["hookSpecificOutput.additionalContext","hookSpecificOutput.hookEventName"
       [ -z "$output" ] || { echo "$tool $input: $output"; false; }
     done
   done
-  # A record that cannot be read: the guard still answers nothing or a deny, never an allow.
+  # A record that cannot be read still counts as a VBW project: the guards stay on.
   printf 'not json' > .vbw/record.json
   run bash_call "ls"
   [ "$status" -eq 0 ]
-  [ -z "$output" ] || printf '%s' "$output" | jq -e '.hookSpecificOutput.permissionDecision == "deny"' || { echo "$output"; false; }
+  [ -z "$output" ] || { echo "$output"; false; }
+  run bash_call "vbw approve"
+  [ "$status" -eq 0 ]
+  [ "$(printf '%s' "$output" | jq -r '.hookSpecificOutput.permissionDecision')" = "deny" ]
+  printf '%s' "$output" | jq -e '.hookSpecificOutput.permissionDecisionReason | startswith("VBW guard:")'
 }
 
 @test "R128: approve-ask.sh ask with updatedInput: the approval menu is rewritten and handed back as ask, so the user still sees and answers it" {

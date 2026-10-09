@@ -17222,7 +17222,7 @@
       "req": "R128",
       "source": "qa",
       "attempts": 0,
-      "status": "open",
+      "status": "fixed",
       "note": "docs/guards.md lines 111-117 (section 'A failing hook gives no answer') list 'an unreadable record' among failures where the guard exits 0 with no output and say a failure 'never becomes a deny'. That is false for the guards: a corrupt .vbw/record.json still counts as a VBW project (docs/guards.md line 43; plugin/hooks/common.jq guard_context uses 'try input catch {}' and sets project true; tests/hooks-guard.bats:137), so a guarded call such as 'vbw approve' is still denied with a 'VBW guard:' reason. The test that should pin this (tests/hook-answers.bats test 8, last lines) accepts either no output or a deny, so it cannot tell which is true. Fix: remove 'an unreadable record' from the failure list in the docs (say a corrupt record keeps the guards on and a guarded call is still denied), and make the test assert the exact outcome for 'ls' (no output) and for 'vbw approve' (deny with 'VBW guard:')."
     }
   ],
