@@ -12,7 +12,7 @@ effort: low
 "${CLAUDE_PLUGIN_ROOT}/bin/vbw" interview 2>&1 || true
 ```
 
-Above: the active milestone, its requirements, the open backlog and the user's level, depth and involvement. Speak at that level.
+Above: the active milestone, its requirements, the open backlog and the user's answers. Write to the user's level, explanation depth and involvement ("-": plain words).
 
 Router calls this for each new idea, before any requirement, planning or file change. At every autonomy setting (guided, balanced, hands-off) the idea is sorted and the user confirms or overrules it.
 
