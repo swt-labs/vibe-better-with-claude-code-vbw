@@ -158,9 +158,9 @@ pipes a recommendation to `vbw recommend`, which stores it.
 | `vbw check [--expect-red] [C1 ...]` | Dev | run approved checks, report, write nothing. `--expect-red`: every check must fail (red-first) |
 | `vbw commit P1.2 "feat(x): ..."` | Dev | commit the plan's changed files with provenance trailers |
 | `vbw commit --fix F1 "fix(x): ..." FILE...` | Dev | commit the named changed files of an open fix for a failing project command, even when no plan lists them. The commit carries a `VBW-Fix: F1` trailer. A requirement fix commits through its plan instead; `.vbw/` files are refused |
-| `vbw plan done P1.2` / `vbw plan block P1.2 "reason"` | Dev | the plan's outcome. `done` is verified: none of the plan's files has uncommitted changes, and the checks of the requirements it completes pass. The plan also needs a commit with its `VBW-Plan` trailer (`vbw commit`); without one, every file must be committed in `HEAD` (for example by the approval commit) and a check of its requirements must pass, or `done` is refused and names the failing check. A blocked plan stops only the plans that depend on it (docs/next.md) |
+| `vbw plan done P1.2` / `vbw plan block P1.2 "reason"` | Dev | the plan's outcome. `done` is verified: none of the plan's files has uncommitted changes, and the checks of the requirements it completes pass. The plan also needs a commit with its `VBW-Plan` trailer (`vbw commit`); without one, every file must be committed in `HEAD` (for example by the approval commit) and a check of its requirements must pass, or `done` is refused and names the failing check. A blocked plan stops only the plans that depend on it (docs/next.md). `block` refuses a plan that is already done, says so, and changes nothing; reset the plan first if it must be built again |
 | `vbw fix done F1` or `vbw fix done F8 F9` | Dev | verified (several fixes in one command run the checks they serve once; one that cannot close is named, the others still close, and the exit code is non-zero): no uncommitted changes in the files it may touch, and the checks of every finished requirement those files serve pass; then awaiting proof |
-| `vbw apply < plan.json` | Lead | replace phases, plans and checks, and set each `auto` requirement's rules, in one validated write (refused while a build or fix run is open; a plan that has started must come back unchanged) |
+| `vbw apply < plan.json` | Lead | replace phases, plans and checks, and set each `auto` requirement's rules, in one validated write (refused while a build or fix run is open; a plan that has started must come back unchanged; a requirement that another milestone owns or that a phase of another milestone already covers is refused with the `vbw apply --add` message, and nothing is written) |
 | `vbw apply --patch < patch.json` | Lead | change only the plans, checks and rules in the document; everything else stays byte for byte as it was |
 | `vbw apply --add < phase.json` | router | add one new phase with its plans, checks and rules to the milestone; every other phase, plan, check and rule stays as it was |
 
@@ -177,6 +177,11 @@ lists what each `auto` requirement states, with the check that tests it:
  "rules":  [{"req": "R1", "text": "A payment succeeds", "check": "C1"},
             {"req": "R1", "text": "Paying twice is refused", "check": "C2"}]}
 ```
+
+A full apply also refuses a requirement that belongs to another milestone
+(`R2 belongs to milestone M1`) or that a phase of another milestone already
+covers (`R1 is already covered by P1`). The message is the one `vbw apply --add`
+gives, and nothing is written.
 
 When the key is present, `vbw apply` refuses, writes nothing, and names the
 problem when:
@@ -230,7 +235,7 @@ full apply. The milestone's other phases, plans, checks and rules stay as
 they were, started or not. `vbw apply --add` refuses, and writes nothing, a
 phase whose id already exists, a requirement that a phase of any milestone
 already covers (`R1 is already covered by P1`), or a requirement of an earlier
-milestone (`R2 belongs to milestone M1`). Every rule of a full apply holds, including the express file limit:
+milestone (`R2 belongs to milestone M1`). These are the same refusals the full `vbw apply` makes. Every rule of a full apply holds, including the express file limit:
 in a repository tracking more than 30 files, an express phase over more than
 two files is refused (`its signals set the floor at standard`). The new phase
 changes the contract, so you approve it once.
