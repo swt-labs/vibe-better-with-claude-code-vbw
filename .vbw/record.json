@@ -16929,7 +16929,7 @@
         "P95.1",
         "P95.2"
       ],
-      "status": "planned",
+      "status": "done",
       "role": "docs",
       "tasks": [
         "CONTRIBUTING.md test commands: add `bash tools/test.sh --shard K/N` (runs share K of N, the way CI's macOS jobs run it) and `--shard K/N --list` (shows the share without running it)",
@@ -16972,7 +16972,7 @@
         "P95.2",
         "P96.1"
       ],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "Tests job checkout: add `fetch-depth: 0`, so the previous tip can be compared (a shallow history would otherwise always mean the full suite)",
