@@ -21378,13 +21378,7 @@
     "full": true,
     "passed": true
   },
-  "lease": {
-    "run": "qa-20261009T204254Z",
-    "kind": "qa",
-    "started_at": "2026-10-09T20:42:54Z",
-    "files": [],
-    "session": "0ee781c3-c5b6-4a6c-889f-04b89f1fba4a"
-  },
+  "lease": null,
   "recommendation": {
     "at": "2026-10-09T18:05:01Z",
     "top": {
