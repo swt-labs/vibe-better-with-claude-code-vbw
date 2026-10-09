@@ -21,6 +21,7 @@ const profile = (args && args.profile) || {}
 const voice = `\n\nThe user's level: ${profile.level || 'small scripts or no-code'}. Explanation depth: ${profile.depth || 'plain with technical terms explained'}. Involvement: ${profile.involvement || 'options with a recommendation'}. Write whatever the user will read at that level and depth.`
 
 if (open.length === 0 && todos.length === 0) return { recommendation: { empty: true } }
+// source is a backlog id (T4) or requirement id (R7). The pattern also refuses an empty string, which would make `vbw recommend` refuse the whole recommendation. A pick without a source is still passed on without one.
 
 const SCHEMA = {
   type: 'object',
@@ -29,7 +30,7 @@ const SCHEMA = {
     top: {
       type: 'object',
       required: ['text', 'reason', 'size'],
-      properties: { text: { type: 'string' }, reason: { type: 'string' }, size: { type: 'string', enum: ['small', 'medium', 'large'] }, source: { type: 'string' } },
+      properties: { text: { type: 'string' }, reason: { type: 'string' }, size: { type: 'string', enum: ['small', 'medium', 'large'] }, source: { type: 'string', pattern: '^[TR][0-9]+$' } },
     },
     runners: {
       type: 'array',
@@ -37,7 +38,7 @@ const SCHEMA = {
       items: {
         type: 'object',
         required: ['text', 'size'],
-        properties: { text: { type: 'string' }, size: { type: 'string', enum: ['small', 'medium', 'large'] }, source: { type: 'string' } },
+        properties: { text: { type: 'string' }, size: { type: 'string', enum: ['small', 'medium', 'large'] }, source: { type: 'string', pattern: '^[TR][0-9]+$' } },
       },
     },
   },
