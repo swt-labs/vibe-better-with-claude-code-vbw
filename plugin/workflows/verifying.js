@@ -74,14 +74,20 @@ const closeRun = async ids => {
   return done
 }
 
-// The proof's one run of the project's test command (args.round.suite, from vbw next --json):
-// every QA agent gets its result and none runs the suite again.
+// The proof's one run of the project's test command (args.round.suite, from vbw next --json).
+// The round carries command (the proof's, else the project's own, joined by spaces), status,
+// exit, seconds and tail (the end of the output). A piece that is missing, null or empty is
+// said in plain words, never printed as a value. Every QA agent gets the result; none runs the suite again.
 const suite = (args && args.round && args.round.suite) || null
 const ran = suite && suite.status !== 'skipped' && suite.status !== 'not run'
+const has = (v) => v !== undefined && v !== null && v !== ''
+const said = (v, missing, fmt) => (has(v) ? fmt(v) : missing)
+const cmdWords = suite ? said(suite.command, 'the test command was not named', (v) => `the project's test command (${v})`) : ''
+const statusWords = suite ? said(suite.status, 'its result was not kept', (v) => String(v)) : ''
 const suiteNote = !suite ? `\n\nThis project has no test command (vbw next found none to run). Do not look for one to run; say in your summary that there is no test command.` : ran
-  ? `\n\nThe project's test command (${suite.command}) ran once for this round: ${suite.status}, exit ${suite.exit}, ${suite.seconds}s. Its output ends: ${suite.tail}\nDo not run the project's test command; use this result.`
-  : `\n\nThe project's test command (${suite.command}) did not run in this round (${suite.status}). Do not retry it and do not run it yourself; say in your summary that the suite was not run.`
-if (suite && !ran) log(`the project's test command (${suite.command}) did not run (${suite.status}): QA agents were told not to retry it`)
+  ? `\n\nThe project's test command ran once for this round. Facts: ${cmdWords}; ${statusWords}; ${said(suite.exit, 'its exit code was not kept', (v) => `exit ${v}`)}; ${said(suite.seconds, 'its time was not kept', (v) => `${v}s`)}; ${said(suite.tail, 'its output was not kept', (v) => `its output ends: ${v}`)}.\nDo not run the project's test command; use this result.`
+  : `\n\nThe project's test command did not run in this round (${cmdWords}; ${statusWords}). Do not retry it and do not run it yourself; say in your summary that the suite was not run.`
+if (suite && !ran) log(`the project's test command did not run (${cmdWords}; ${statusWords}): QA agents were told not to retry it`)
 
 phase('Verify')
 const cellOf = id => rigor[id] || {}
