@@ -239,9 +239,139 @@ vbw_project() {
 }
 
 vbw_require_project() {
+  local up
   vbw_project
+  # Inside a submodule with no record of its own, the project is the nearest
+  # repository above it that has one (git's superproject, asked until none is left).
+  while [ ! -f "$VBW_RECORD" ] && up=$(git -C "$VBW_ROOT" rev-parse --show-superproject-working-tree 2> /dev/null) && [ -n "$up" ]; do
+    VBW_ROOT=$up
+    VBW_DIR="$VBW_ROOT/.vbw"
+    VBW_RECORD="$VBW_DIR/record.json"
+    VBW_RUNTIME="$VBW_DIR/runtime"
+  done
   [ -f "$VBW_RECORD" ] || vbw_die "not a VBW project (run /vbw:init)"
   mkdir -p "$VBW_RUNTIME"
+}
+
+# Repositories inside the project (docs/workflows.md, "Submodules"). A file is
+# tracked by the repository whose top folder is the nearest folder at or above it
+# that holds .git, the project's own repository when none below the project does
+# (the rule the guards use, hooks/project.sh); a path whose folder does not exist
+# yet is read the same way, folder by folder. A repository is named by its folder
+# relative to the project, "" for the project itself.
+
+# vbw_repos FILE...: sets VBW_REPOS, the repositories that track the
+# project-relative FILEs (first seen first), and VBW_REPO_OF, each FILE's
+# repository, in FILE order. Builtins only: no process per file.
+vbw_repos() {
+  local f d x seen
+  VBW_REPOS=()
+  VBW_REPO_OF=()
+  for f in "$@"; do
+    d=${f%/}
+    case "/$d/" in */../* | */./*) d= ;; esac
+    while [ -n "$d" ]; do
+      [ -d "$VBW_ROOT/$d" ] && [ -e "$VBW_ROOT/$d/.git" ] && break
+      case "$d" in */*) d=${d%/*} ;; *) d= ;; esac
+    done
+    VBW_REPO_OF+=("$d")
+    seen=0
+    for x in ${VBW_REPOS[@]+"${VBW_REPOS[@]}"}; do [ "$x" != "$d" ] || { seen=1; break; }; done
+    [ "$seen" = 1 ] || VBW_REPOS+=("$d")
+  done
+}
+
+# vbw_rel REPO FILE: the project-relative FILE relative to the repository REPO
+# that tracks it ("." for REPO's top folder), on one line.
+vbw_rel() {
+  if [ -z "$1" ]; then printf '%s\n' "$2"
+  elif [ "${2%/}" = "$1" ]; then printf '.\n'
+  else printf '%s\n' "${2#"$1"/}"; fi
+}
+
+# vbw_in_repo REPO FILE...: of the FILEs (the list vbw_repos was given), those
+# REPO tracks, relative to REPO (vbw_rel), NUL-ended.
+vbw_in_repo() {
+  local r="$1" f i=0
+  shift
+  for f in "$@"; do
+    [ "${VBW_REPO_OF[$i]}" != "$r" ] || printf '%s\0' "$(vbw_rel "$r" "$f")"
+    i=$((i + 1))
+  done
+}
+
+# vbw_changed REPO PATH...: of the pathspecs PATH (relative to REPO), the files
+# that differ from REPO's HEAD (changed, staged or not, or deleted) as "c", then
+# the new ones git does not ignore as "n", each "c|n NUL FILE NUL", FILE relative
+# to REPO. A repository's folder inside REPO (a moved submodule pointer) is never
+# listed: VBW commits inside a submodule, never its pointer in the one above.
+vbw_changed() {
+  local d="$VBW_ROOT${1:+/$1}" f
+  shift
+  git -C "$d" diff --name-only -z HEAD -- "$@" | while IFS= read -r -d '' f; do
+    [ -e "$d/$f/.git" ] || printf 'c\0%s\0' "$f"
+  done
+  git -C "$d" ls-files -z --others --exclude-standard -- "$@" | while IFS= read -r -d '' f; do
+    printf 'n\0%s\0' "$f"
+  done
+}
+
+# vbw_commit_paths MESSAGE TRAILERS FILE...: commit the project-relative FILEs
+# that changed (vbw_changed), one commit per repository that tracks one of them
+# (vbw_repos), each with MESSAGE and, when not empty, the trailer paragraph
+# TRAILERS. Only those files are committed (--only): the rest of each
+# repository's index and working tree stays as it was. Sets VBW_COMMITTED (the
+# files, project-relative) and VBW_COMMITS (per commit "REPO<TAB>HASH<TAB>COUNT").
+# Returns 1, committing nothing, when no FILE changed. Dies, committing nothing,
+# when a repository inside the project with changes is on no branch (its commit
+# would be dropped by the next submodule update), and when a commit fails. The
+# caller holds the project lock.
+vbw_commit_paths() {
+  local msg="$1" trailers="$2" r t f rels changed untracked hash
+  shift 2
+  VBW_COMMITTED=()
+  VBW_COMMITS=()
+  vbw_repos "$@"
+  local todo=()
+  for r in "${VBW_REPOS[@]}"; do
+    rels=()
+    while IFS= read -r -d '' f; do rels+=("$f"); done < <(vbw_in_repo "$r" "$@")
+    [ -n "$(vbw_changed "$r" "${rels[@]}" | tr -d '\0')" ] || continue
+    [ -z "$r" ] || git -C "$VBW_ROOT/$r" symbolic-ref -q HEAD > /dev/null \
+      || vbw_die "$r is on no branch: a commit there would be lost at the next submodule update
+Next: put it on a branch (git -C $r switch BRANCH), then commit again"
+    todo+=("$r")
+  done
+  [ ${#todo[@]} -gt 0 ] || return 1
+  for r in "${todo[@]}"; do
+    rels=() changed=() untracked=()
+    while IFS= read -r -d '' f; do rels+=("$f"); done < <(vbw_in_repo "$r" "$@")
+    while IFS= read -r -d '' t && IFS= read -r -d '' f; do
+      changed+=("$f")
+      [ "$t" = c ] || untracked+=("$f")
+      VBW_COMMITTED+=("${r:+$r/}$f")
+    done < <(vbw_changed "$r" "${rels[@]}")
+    [ ${#untracked[@]} -eq 0 ] || git -C "$VBW_ROOT${r:+/$r}" add -- "${untracked[@]}" || vbw_die "git add failed${r:+ in $r}"
+    if [ -n "$trailers" ]; then
+      git -C "$VBW_ROOT${r:+/$r}" commit --quiet --only -m "$msg" -m "$trailers" -- "${changed[@]}"
+    else
+      git -C "$VBW_ROOT${r:+/$r}" commit --quiet --only -m "$msg" -- "${changed[@]}"
+    fi || vbw_die "git commit failed${r:+ in $r}"
+    hash=$(git -C "$VBW_ROOT${r:+/$r}" rev-parse --short HEAD)
+    VBW_COMMITS+=("$r	$hash	${#changed[@]}")
+  done
+}
+
+# vbw_commits_say ID: one line per commit vbw_commit_paths made for ID.
+vbw_commits_say() {
+  local c r rest hash n
+  for c in "${VBW_COMMITS[@]}"; do
+    r=${c%%	*}
+    rest=${c#*	}
+    hash=${rest%%	*}
+    n=${rest#*	}
+    printf 'committed %s%s for %s (%d file%s)\n' "$hash" "${r:+ in $r}" "$1" "$n" "$([ "$n" -eq 1 ] || printf s)"
+  done
 }
 
 # SHA-256 hex digest of stdin (GNU coreutils or BSD/macOS shasum).
@@ -350,12 +480,18 @@ vbw_stamp_newer() {
 }
 
 # vbw_dirty_files FILE...: those of the project-relative FILEs that differ from
-# HEAD or are new, comma-separated.
+# HEAD or are new, comma-separated, each read in the repository that tracks it
+# (vbw_repos, vbw_changed).
 vbw_dirty_files() {
   [ $# -gt 0 ] || return 0
-  local f out=""
-  while IFS= read -r -d '' f; do out="$out${out:+, }$f"; done \
-    < <(cd "$VBW_ROOT" && { git diff --name-only -z HEAD -- "$@"; git ls-files -z --others --exclude-standard -- "$@"; })
+  local f r t rels out=""
+  vbw_repos "$@"
+  for r in "${VBW_REPOS[@]}"; do
+    rels=()
+    while IFS= read -r -d '' f; do rels+=("$f"); done < <(vbw_in_repo "$r" "$@")
+    while IFS= read -r -d '' t && IFS= read -r -d '' f; do out="$out${out:+, }${r:+$r/}$f"; done \
+      < <(vbw_changed "$r" "${rels[@]}")
+  done
   printf '%s' "$out"
 }
 

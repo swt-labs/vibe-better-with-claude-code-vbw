@@ -656,6 +656,36 @@ from the agent's working folder, so an absolute path under the project folder,
 `.vbw/runtime/scratch/` included, is judged by the run's rules (docs/guards.md).
 All nine workflows do this.
 
+## Submodules
+
+A project may hold other git repositories: submodules, or a clone nested in a
+folder. A plan or check file inside one is still named by its path from the
+project folder (`apps/mobile/src/comms.ts`), and VBW does its git work for that
+file in the repository that tracks it: the nearest folder at or above the file
+that holds `.git` (the rule the guards use, docs/guards.md).
+
+- `vbw commit` makes one commit per repository that holds a changed file, each
+  with the same message and trailers (`VBW-Plan:`, `VBW-Req:`, or `VBW-Fix:`),
+  and prints one line per commit, naming the submodule:
+  `committed 1a2b3c4 in apps/mobile for P1.1 (1 file)`. The approval's commit
+  of the check files does the same.
+- The project's pointer to the submodule is never moved: VBW commits inside the
+  submodule and stops there, since many projects bump submodule pointers only on
+  purpose. The project's `git status` shows the submodule as changed (`M
+  apps/mobile`) until you record the pointer yourself. A plan never commits a
+  pointer, even one whose files name the folder above the submodule.
+- A submodule with a changed file must be on a branch. On a detached HEAD (as
+  `git submodule update` leaves one) `vbw commit` commits nothing anywhere and
+  says `apps/mobile is on no branch`, with the way out (`git -C apps/mobile
+  switch BRANCH`): a commit there would be left behind by the next submodule
+  update.
+- `vbw plan done` reads the plan's files' changes, and looks for the plan's
+  commit, in the repository that tracks each file. In a submodule the record's
+  own history ([Whose commits VBW judges](proof.md#whose-commits-vbw-judges))
+  starts after the commit the record's first commit pointed the submodule at.
+- A `vbw` command run inside a submodule that has no `.vbw/` of its own works on
+  the project above it.
+
 ## The user's level
 
 The router passes `args.profile` (the `profile` key of `vbw next --json`,

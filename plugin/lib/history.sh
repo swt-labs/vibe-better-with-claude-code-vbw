@@ -28,3 +28,19 @@ history_args() {
     [ -z "$p" ] || HISTORY_ARGS+=("^$p")
   done < <(git -C "$VBW_ROOT" rev-parse "$base^@" 2> /dev/null)
 }
+
+# history_args_in REPO: HISTORY_ARGS for the repository REPO inside the project
+# (a submodule, named as vbw_repos names it; "" is the project: history_args).
+# A submodule has no record of its own, so its bound is the commit the record's
+# birth commit pointed it at: HEAD without that commit and its ancestors. When
+# the birth commit had no submodule there, or REPO lacks that commit, its whole
+# history.
+history_args_in() {
+  local base s
+  [ -n "$1" ] || { history_args; return 0; }
+  HISTORY_ARGS=(HEAD)
+  base=$(history_base)
+  [ -n "$base" ] || return 0
+  s=$(git -C "$VBW_ROOT" rev-parse -q --verify "$base:$1" 2> /dev/null) || return 0
+  ! git -C "$VBW_ROOT/$1" cat-file -e "$s^{commit}" 2> /dev/null || HISTORY_ARGS+=("^$s")
+}

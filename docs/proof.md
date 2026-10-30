@@ -723,7 +723,9 @@ loop's report) reads only the record's own history: the commits after the
 newest commit that added `.vbw/record.json`. The record is in git before any
 plan can commit, because `vbw approve` commits it and a build needs an approved
 contract. A project whose record was never committed keeps its whole history.
-One limit: an older branch merged in after the record was born is part of its
+A submodule has no record of its own: its own history starts after the commit
+the record's first commit pointed it at, or is all of it when that commit had no
+submodule there (docs/workflows.md, "Submodules"). One limit: an older branch merged in after the record was born is part of its
 history, because git has it after the record's first commit.
 
 ### Delivered files

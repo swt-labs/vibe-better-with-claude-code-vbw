@@ -2,7 +2,9 @@
 # vbw commit PLAN MESSAGE [FILE...]: commit the plan's declared files that
 # changed (or only the named FILEs, each covered by the plan: one commit per
 # task), with VBW-Plan/VBW-Req trailers. Nothing else in the working tree or the index is
-# touched: the user's own staged work stays staged. vbw commit --fix FIX MESSAGE
+# touched: the user's own staged work stays staged. A file inside a submodule is
+# committed in the submodule (one commit per repository; the submodule's pointer in
+# the project is never moved: docs/workflows.md, "Submodules"). vbw commit --fix FIX MESSAGE
 # FILE...: an open project-command fix commits the named changed files (VBW-Fix);
 # an open requirement fix, whatever opened it, commits the changed check files of
 # its requirement (VBW-Fix, VBW-Req). Commits are serialized with
@@ -54,22 +56,14 @@ Next: commit only the plan's files, or run vbw mutate $plan on a rule and streng
   record_lock
 
   # Changed = differs from HEAD (tracked, staged or not, incl. deletions) or new
-  # and not ignored. NUL-separated throughout: names may hold spaces or UTF-8.
-  local changed=() untracked=()
-  while IFS= read -r -d '' f; do changed+=("$f"); done \
-    < <(git diff --name-only -z HEAD -- "${files[@]}")
-  while IFS= read -r -d '' f; do untracked+=("$f"); changed+=("$f"); done \
-    < <(git ls-files -z --others --exclude-standard -- "${files[@]}")
-  [ ${#changed[@]} -gt 0 ] || vbw_die "nothing to commit for $plan"
-
-  [ ${#untracked[@]} -eq 0 ] || git add -- "${untracked[@]}"
-  git commit --quiet --only -m "$msg" -m "VBW-Plan: $plan
-VBW-Req: $reqs" -- "${changed[@]}" || vbw_die "git commit failed"
+  # and not ignored, each in the repository that tracks it (a submodule's files
+  # in the submodule): one commit per repository, no submodule pointer moved.
+  vbw_commit_paths "$msg" "VBW-Plan: $plan
+VBW-Req: $reqs" "${files[@]}" || vbw_die "nothing to commit for $plan"
 
   record_unlock
-  commit_escalate "$plan" "$planned" "${changed[@]}"
-  printf 'committed %s for %s (%d file%s)\n' "$(git rev-parse --short HEAD)" "$plan" \
-    "${#changed[@]}" "$([ ${#changed[@]} -eq 1 ] || printf s)"
+  commit_escalate "$plan" "$planned" "${VBW_COMMITTED[@]}"
+  vbw_commits_say "$plan"
 }
 
 # commit_escalate PLAN PLANNED_FILES CHANGED...: a changed file on a risk path
@@ -96,7 +90,7 @@ commit_escalate() {
 # VBW-Req. FILEs must have changed and may not be under .vbw/.
 cmd_commit_fix() {
   [ $# -ge 3 ] || vbw_usage_error "usage: vbw commit --fix FIX MESSAGE FILE..."
-  local fix="$1" msg="$2" f changed=() req=""
+  local fix="$1" msg="$2" f req=""
   shift 2
   printf '%s' "$msg" | grep -E "$VBW_COMMIT_RE" > /dev/null || vbw_usage_error "commit message must be 'type(scope): description'"
   vbw_require_project
@@ -122,18 +116,8 @@ cmd_commit_fix() {
   done
   cd "$VBW_ROOT" || vbw_die "cannot enter $VBW_ROOT"
   record_lock
-  while IFS= read -r -d '' f; do changed+=("$f"); done < <(
-    git diff --name-only -z HEAD -- "$@"
-    git ls-files -z --others --exclude-standard -- "$@")
-  [ ${#changed[@]} -gt 0 ] || vbw_die "nothing to commit for $fix: none of the named files changed"
-  git add -- "${changed[@]}"
-  if [ -n "$req" ]; then
-    git commit --quiet --only -m "$msg" -m "VBW-Fix: $fix
-VBW-Req: $req" -- "${changed[@]}" || vbw_die "git commit failed"
-  else
-    git commit --quiet --only -m "$msg" -m "VBW-Fix: $fix" -- "${changed[@]}" || vbw_die "git commit failed"
-  fi
+  vbw_commit_paths "$msg" "VBW-Fix: $fix${req:+
+VBW-Req: $req}" "$@" || vbw_die "nothing to commit for $fix: none of the named files changed"
   record_unlock
-  printf 'committed %s for %s (%d file%s)\n' "$(git rev-parse --short HEAD)" "$fix" \
-    "${#changed[@]}" "$([ ${#changed[@]} -eq 1 ] || printf s)"
+  vbw_commits_say "$fix"
 }

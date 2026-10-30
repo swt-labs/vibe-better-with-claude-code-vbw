@@ -30,12 +30,17 @@ cmd_plan() {
         < <(printf '%s' "$record" | jq -j --arg p "$id" '.plans[] | select(.id == $p) | .files[] | . + "\u0000"')
       dirty=$(vbw_dirty_files "${files[@]}")
       [ -z "$dirty" ] || vbw_die "$id has uncommitted changes in: $dirty"
-      if plan_has_commit "$id"; then trailer=1; else
+      if plan_has_commit "$id" ${files[@]+"${files[@]}"}; then trailer=1; else
         # Work committed some other way (the approval commit, a plain commit):
-        # every file must be tracked in HEAD, and a check must prove it below.
+        # every file must be tracked in HEAD of the repository that tracks it,
+        # and a check must prove it below.
         [ ${#files[@]} -gt 0 ] || vbw_die "$id has no commit yet: commit its work with vbw commit $id \"type(scope): ...\""
+        vbw_repos "${files[@]}"
+        local i=0 r
         for f in "${files[@]}"; do
-          [ -n "$(git -C "$VBW_ROOT" ls-tree -r --name-only -z HEAD -- "$f" 2> /dev/null | tr -d '\0')" ] \
+          r=${VBW_REPO_OF[$i]}
+          i=$((i + 1))
+          [ -n "$(git -C "$VBW_ROOT${r:+/$r}" ls-tree -r --name-only -z HEAD -- "$(vbw_rel "$r" "$f")" 2> /dev/null | tr -d '\0')" ] \
             || vbw_die "$id has no commit yet: $f is not committed (commit it with vbw commit $id \"type(scope): ...\")"
         done
       fi
@@ -110,14 +115,21 @@ plan_missing_breaks() {
       end'
 }
 
-# True when some commit of the record's own history (lib/history.sh) carries
-# "VBW-Plan: ID" (an exact token): an older commit naming the same id is an
-# old roadmap's, not this plan's.
+# plan_has_commit ID [FILE...]: true when some commit of the record's own
+# history (lib/history.sh) carries "VBW-Plan: ID" (an exact token): an older
+# commit naming the same id is an old roadmap's, not this plan's. Read in the
+# project's repository and in each submodule that tracks one of the plan's FILEs
+# (history_args_in), where vbw commit commits them.
 plan_has_commit() {
-  local line HISTORY_ARGS=()
-  history_args
-  while IFS= read -r line; do
-    [ "$line" = "$1" ] && return 0
-  done < <(git -C "$VBW_ROOT" log --format='%(trailers:key=VBW-Plan,valueonly)' "${HISTORY_ARGS[@]}" 2> /dev/null)
+  local id="$1" line r repos=("") HISTORY_ARGS=()
+  shift
+  vbw_repos "$@"
+  for r in ${VBW_REPOS[@]+"${VBW_REPOS[@]}"}; do [ -z "$r" ] || repos+=("$r"); done
+  for r in "${repos[@]}"; do
+    history_args_in "$r"
+    while IFS= read -r line; do
+      [ "$line" = "$id" ] && return 0
+    done < <(git -C "$VBW_ROOT${r:+/$r}" log --format='%(trailers:key=VBW-Plan,valueonly)' "${HISTORY_ARGS[@]}" 2> /dev/null)
+  done
   return 1
 }

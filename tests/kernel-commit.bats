@@ -137,6 +137,86 @@ teardown() { vbw_teardown; }
   git status --porcelain -- src/données.js | grep -q '^??'
 }
 
+# with_sub: a submodule at sub/ (its own repository, on branch main, holding
+# a.js), committed in the project, and a plan P1.3 whose files lie in it, one
+# in a folder that does not exist yet, and one in the project's own repository.
+with_sub() {
+  git init -q "$TEST_ROOT/subsrc"
+  printf 'a\n' > "$TEST_ROOT/subsrc/a.js"
+  git -C "$TEST_ROOT/subsrc" add a.js
+  git -C "$TEST_ROOT/subsrc" commit -q -m "chore: seed"
+  git -c protocol.file.allow=always submodule add -q "file://$TEST_ROOT/subsrc" sub
+  jq '.plans += [{id:"P1.3", phase:"P1", title:"Sub", reqs:["R1"], files:["sub/a.js", "sub/new dir/b.js", "src/root.js"], after:[], status:"building"}]' \
+    .vbw/record.json > "$TEST_ROOT/r.json" && cp "$TEST_ROOT/r.json" .vbw/record.json
+  git add .gitmodules sub .vbw/record.json
+  git commit -q -m "chore: add sub"
+}
+
+@test "a plan file inside a submodule is committed in the submodule, with trailers; the project and both indexes stay as they were" {
+  with_sub
+  local root_head sub_before
+  root_head=$(git rev-parse HEAD)
+  sub_before=$(git -C sub rev-parse HEAD)
+  printf 'mine\n' > notes.txt
+  git add notes.txt
+  printf 'theirs\n' > sub/other.js
+  git -C sub add other.js
+  printf 'a2\n' > sub/a.js
+  mkdir -p "sub/new dir"
+  printf 'b\n' > "sub/new dir/b.js"
+  vbw_run commit P1.3 "feat(sub): a and b"
+  [ "$status" -eq 0 ] || { echo "$output"; false; }
+  [[ "$output" == "committed "*" in sub for P1.3 (2 files)" ]] || { echo "$output"; false; }
+  [ "$(git rev-parse HEAD)" = "$root_head" ]
+  [ "$(git -C sub rev-parse HEAD^)" = "$sub_before" ]
+  [ "$(git -C sub show --name-only --format= -z HEAD | tr '\0' '\n' | LC_ALL=C sort | paste -sd , -)" = "a.js,new dir/b.js" ]
+  [ "$(git -C sub log -1 --format='%(trailers:key=VBW-Plan,valueonly)' | tr -d '[:space:]')" = "P1.3" ]
+  [ "$(git -C sub log -1 --format='%(trailers:key=VBW-Req,valueonly)' | tr -d '[:space:]')" = "R1" ]
+  [ "$(git -C sub log -1 --format=%s)" = "feat(sub): a and b" ]
+  # No pointer bump: the project's index holds the user's file and nothing else.
+  [ "$(git diff --cached --name-only)" = "notes.txt" ]
+  [ "$(git -C sub diff --cached --name-only)" = "other.js" ]
+}
+
+@test "a plan spanning the project and a submodule makes one commit in each" {
+  with_sub
+  printf 'r\n' > src/root.js
+  printf 'a2\n' > sub/a.js
+  vbw_run commit P1.3 "feat(sub): both"
+  [ "$status" -eq 0 ] || { echo "$output"; false; }
+  [[ "$output" == *"in sub for P1.3 (1 file)"* ]] || { echo "$output"; false; }
+  [ "$(printf '%s\n' "$output" | grep -c '^committed ')" -eq 2 ]
+  [ "$(git show --name-only --format= -z HEAD | tr '\0' '\n')" = "src/root.js" ]
+  [ "$(git -C sub show --name-only --format= -z HEAD | tr '\0' '\n')" = "a.js" ]
+  [ "$(git log -1 --format='%(trailers:key=VBW-Plan,valueonly)' | tr -d '[:space:]')" = "P1.3" ]
+  [ "$(git -C sub log -1 --format='%(trailers:key=VBW-Plan,valueonly)' | tr -d '[:space:]')" = "P1.3" ]
+}
+
+@test "a submodule on no branch is refused before anything is committed" {
+  with_sub
+  git -C sub checkout -q --detach
+  local root_head sub_head
+  root_head=$(git rev-parse HEAD)
+  sub_head=$(git -C sub rev-parse HEAD)
+  printf 'r\n' > src/root.js
+  printf 'a2\n' > sub/a.js
+  vbw_run commit P1.3 "feat(sub): both"
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"sub is on no branch"* ]] || { echo "$output"; false; }
+  [ "$(git rev-parse HEAD)" = "$root_head" ]
+  [ "$(git -C sub rev-parse HEAD)" = "$sub_head" ]
+}
+
+@test "vbw commit run inside a submodule commits for the project above it" {
+  with_sub
+  printf 'a2\n' > sub/a.js
+  cd sub
+  vbw_run commit P1.3 "feat(sub): from inside"
+  [ "$status" -eq 0 ] || { echo "$output"; false; }
+  cd "$PROJECT"
+  [ "$(git -C sub log -1 --format='%(trailers:key=VBW-Plan,valueonly)' | tr -d '[:space:]')" = "P1.3" ]
+}
+
 @test "a named file outside the plan is refused with its name" {
   printf 'x\n' > src/other.js
   printf 'pay\n' > "src/pay form.js"
