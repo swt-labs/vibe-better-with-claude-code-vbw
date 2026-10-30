@@ -44,3 +44,14 @@ history_args_in() {
   s=$(git -C "$VBW_ROOT" rev-parse -q --verify "$base:$1" 2> /dev/null) || return 0
   ! git -C "$VBW_ROOT/$1" cat-file -e "$s^{commit}" 2> /dev/null || HISTORY_ARGS+=("^$s")
 }
+
+# history_repos: sets HISTORY_REPOS, the repositories whose history holds VBW's
+# commits: the project ("") and each checked-out submodule (vbw_subs), named as
+# vbw_repos names them. Each is read with history_args_in and git -C
+# "$VBW_ROOT${r:+/$r}"; a path git prints there is relative to it, so a reader
+# names a file by its project path, "${r:+$r/}PATH".
+history_repos() {
+  local p
+  HISTORY_REPOS=("")
+  while IFS= read -r -d '' p; do HISTORY_REPOS+=("$p"); done < <(vbw_subs)
+}

@@ -119,11 +119,11 @@ plan_missing_breaks() {
 # history (lib/history.sh) carries "VBW-Plan: ID" (an exact token): an older
 # commit naming the same id is an old roadmap's, not this plan's. Read in the
 # project's repository and in each submodule that tracks one of the plan's FILEs
-# (history_args_in), where vbw commit commits them.
+# (vbw_plan_paths, history_args_in), where vbw commit commits them.
 plan_has_commit() {
   local id="$1" line r repos=("") HISTORY_ARGS=()
   shift
-  vbw_repos "$@"
+  vbw_plan_paths ${@+"$@"}
   for r in ${VBW_REPOS[@]+"${VBW_REPOS[@]}"}; do [ -z "$r" ] || repos+=("$r"); done
   for r in "${repos[@]}"; do
     history_args_in "$r"

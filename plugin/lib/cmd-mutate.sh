@@ -44,14 +44,19 @@ mutate_put() {
   vbw_stamp_newer "$dest" "$@"
 }
 
-# mutate_clean DEST FILE...: the files back to their last commit in DEST (removed when HEAD has none).
+# mutate_clean DEST FILE...: the files back to their last commit in DEST (removed when HEAD has none),
+# each from its own repository (a submodule's file from the submodule, in its folder of DEST).
 mutate_clean() {
-  local dest="$1" f
+  local dest="$1" f r rel i=0
   shift
+  vbw_repos "$@"
   for f in "$@"; do
+    r=${VBW_REPO_OF[$i]}
+    i=$((i + 1))
+    rel=$(vbw_rel "$r" "$f")
     rm -rf "${dest:?}/$f"
-    if git cat-file -e "HEAD:$f" 2> /dev/null; then
-      git archive HEAD -- "$f" | tar -x -C "$dest" || vbw_die "cannot restore $f in the proof copy"
+    if git -C "$VBW_ROOT${r:+/$r}" cat-file -e "HEAD:$rel" 2> /dev/null; then
+      git -C "$VBW_ROOT${r:+/$r}" archive HEAD -- "$rel" | tar -x -C "$dest${r:+/$r}" || vbw_die "cannot restore $f in the proof copy"
     fi
   done
   # Newer than the broken build, so the next unbroken run rebuilds the clean code.
@@ -281,13 +286,19 @@ cmd_mutate() {
   local dir
   dir=$(mktemp -d "$VBW_RUNTIME/mutate.XXXXXX") || vbw_die "cannot create a directory in $VBW_RUNTIME"
   vbw_guard_add dir "$dir"
+  # Each file's last commit is its own repository's (a submodule's file, its submodule's).
+  local i=0 r rel
+  vbw_repos "${broke[@]}"
   for f in "${broke[@]}"; do
+    r=${VBW_REPO_OF[$i]}
+    i=$((i + 1))
+    rel=$(vbw_rel "$r" "$f")
     if [ -e "$f" ] || [ -L "$f" ]; then
       mkdir -p "$dir/files/$(dirname "$f")"
       cp -pP "$f" "$dir/files/$f" || vbw_die "cannot set $f aside"
     fi
-    if git cat-file -e "HEAD:$f" 2> /dev/null; then
-      git restore --source=HEAD --worktree -- "$f" || vbw_die "cannot restore $f to its last commit"
+    if git -C "$VBW_ROOT${r:+/$r}" cat-file -e "HEAD:$rel" 2> /dev/null; then
+      git -C "$VBW_ROOT${r:+/$r}" restore --source=HEAD --worktree -- "$rel" || vbw_die "cannot restore $f to its last commit"
     else
       rm -f "$f"
     fi

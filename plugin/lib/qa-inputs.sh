@@ -34,11 +34,31 @@ vbw_scratch_json() {
   printf -v "$1" '%s' "$_f"
 }
 
-# qa_tree REV: read paths (one per line), print the digest of what commit REV holds there.
+# qa_tree REV: read paths (one per line), print the digest of what commit REV holds there,
+# each path in the repository that tracks it (vbw_repos; a folder entry also covers each
+# submodule inside it, vbw_plan_paths). A submodule is read at its own HEAD when REV is
+# HEAD, as vbw_head_tree counts it (vbw commit never moves its pointer), else at the commit
+# REV points it at. A project without submodules digests exactly what it always did.
 qa_tree() {
-  local p=() l
+  local p=() l r s rels
   while IFS= read -r l; do p+=("$l"); done
-  { [ ${#p[@]} -eq 0 ] || git -C "$VBW_ROOT" ls-tree -r "$1" -- "${p[@]}"; } | vbw_sha256
+  {
+    if [ ${#p[@]} -gt 0 ]; then
+      vbw_plan_paths "${p[@]}"
+      for r in "${VBW_REPOS[@]}"; do
+        rels=()
+        while IFS= read -r -d '' l; do rels+=("$l"); done < <(vbw_in_repo "$r")
+        if [ -z "$r" ]; then
+          git -C "$VBW_ROOT" ls-tree -r "$1" -- "${rels[@]}"
+        else
+          s=HEAD
+          [ "$1" = HEAD ] || s=$(git -C "$VBW_ROOT" rev-parse -q --verify "$1:$r" 2> /dev/null) || s=
+          printf '%s\n' "$r"
+          [ -z "$s" ] || git -C "$VBW_ROOT/$r" ls-tree -r "$s" -- "${rels[@]}"
+        fi
+      done
+    fi
+  } | vbw_sha256
 }
 
 # qa_digests RECORD [REV]: {Pn: {files, tests, plan, reqs, combined, deps}} for the active

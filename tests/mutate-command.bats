@@ -80,6 +80,31 @@ refused() {
     || { breaks P1.1; false; }
 }
 
+@test "R188: a break in a plan file inside a submodule runs on the submodule's code, is recorded red, and leaves the file as the submodule's last commit" {
+  git init -q "$TEST_ROOT/subsrc"
+  printf 'echo paid\n' > "$TEST_ROOT/subsrc/pay.sh"
+  git -C "$TEST_ROOT/subsrc" add pay.sh
+  git -C "$TEST_ROOT/subsrc" commit -q -m "chore: seed"
+  git -c protocol.file.allow=always submodule add -q "file://$TEST_ROOT/subsrc" sub
+  printf '[ "$(sh sub/pay.sh)" = paid ]\n' > tests/pay.sh
+  jq '(.plans[] | select(.id == "P1.1")).files = ["sub/pay.sh"]' .vbw/record.json > "$TEST_ROOT/e.json" && cp "$TEST_ROOT/e.json" .vbw/record.json
+  git add -A && git commit -q -m "chore: sub"
+  "$VBW" approve > /dev/null
+  printf 'echo unpaid\n' > sub/pay.sh
+  run "$VBW" mutate P1.1 R1.1 "prints unpaid instead of paid" sub/pay.sh < /dev/null
+  [ "$status" -eq 0 ] || { echo "$output"; false; }
+  breaks P1.1 | jq -e 'length == 1 and .[0].checks == {C1: "red"} and .[0].result == "red"' || { breaks P1.1; false; }
+  [ -z "$(git -C sub status --porcelain -- pay.sh)" ] || { git -C sub status --porcelain; false; }
+  cmp -s sub/pay.sh <(git -C sub show HEAD:pay.sh)
+  # A proof copy reused for the next break (mutate_clean) gets the file back from the
+  # submodule's last commit, in the submodule's folder of the copy.
+  mkdir -p "$TEST_ROOT/copy/sub"
+  printf 'echo broken\n' > "$TEST_ROOT/copy/sub/pay.sh"
+  # shellcheck disable=SC2016 # expanded by vbw_kernel
+  COPY="$TEST_ROOT/copy" vbw_kernel '. "$VBW_LIB/cmd-mutate.sh"; mutate_clean "$COPY" sub/pay.sh'
+  cmp -s "$TEST_ROOT/copy/sub/pay.sh" <(git -C sub show HEAD:pay.sh) || { ls -la "$TEST_ROOT/copy/sub"; false; }
+}
+
 @test "R188: a rule's own check is the one that runs, even when the requirement has others" {
   printf 'echo paid\necho paid\n' > src/pay.sh
   run "$VBW" mutate P1.1 R1.2 "prints paid twice" src/pay.sh < /dev/null

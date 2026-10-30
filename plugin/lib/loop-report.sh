@@ -6,9 +6,10 @@
 
 # loop_report_write RECORD_FILE: renders .vbw/loop-report.md from the record alone (plus the commits
 # of the record's own history, lib/history.sh, whose VBW-Plan trailer names a plan of an item's
-# milestone). Reads; the step commits the file.
+# milestone: the project's, then each submodule's, "(in SUB)" after its subject). Reads; the step
+# commits the file.
 loop_report_write() {
-  local rec=$1 spend log cur='null' id HISTORY_ARGS=()
+  local rec=$1 spend log cur='null' id r HISTORY_ARGS=() HISTORY_REPOS=()
   spend=$(loop_spend "$rec")
   # An item still in progress when the loop ended: its spend so far, as the park would freeze it (F184).
   id=$(jq -r '[.loop.items[] | select(.status == "in_progress")][0].id // empty' "$rec")
@@ -17,12 +18,19 @@ loop_report_write() {
   fi
   log=$(mktemp "$VBW_RUNTIME/report.XXXXXX") || vbw_die "cannot create a temporary file in $VBW_RUNTIME"
   vbw_guard_add file "$log"
-  history_args
-  git -C "$VBW_ROOT" log --format='%h%x1f%s%x1f%(trailers:key=VBW-Plan,valueonly,separator=%x20)' "${HISTORY_ARGS[@]}" > "$log" 2> /dev/null || : > "$log"
+  : > "$log"
+  history_repos
+  for r in "${HISTORY_REPOS[@]}"; do
+    history_args_in "$r"
+    # Each line "REPO, unit separator, hash, subject, plans".
+    git -C "$VBW_ROOT${r:+/$r}" log --format='%h%x1f%s%x1f%(trailers:key=VBW-Plan,valueonly,separator=%x20)' "${HISTORY_ARGS[@]}" 2> /dev/null \
+      | R=$r awk '{ print ENVIRON["R"] "\037" $0 }' >> "$log" || true
+  done
   jq -r --argjson spend "$spend" --argjson cur "$cur" --rawfile log "$log" "$LOOP_USD_JQ$LOOP_TIME_JQ"'
     def cost: if . == null then "unknown" else (.usd | usd) end;
     . as $r | .loop as $l
-    | ([$log | split("\n")[] | select(length > 0) | split("\u001f") | {hash: .[0], subject: .[1], plans: ((.[2] // "") | split(" "))}]) as $commits
+    | ([$log | split("\n")[] | select(length > 0) | split("\u001f")
+        | {hash: .[1], subject: (.[2] + (if .[0] != "" then " (in \(.[0]))" else "" end)), plans: ((.[3] // "") | split(" "))}]) as $commits
     | def plans_of($m): [$r.plans[] | select(.phase as $p | any($r.phases[]; .id == $p and .milestone == $m)) | .id];
       def commits_of($m): plans_of($m) as $p | [$commits[] | select(any(.plans[]; . as $x | $p | index($x) != null))];
       # The requirement of an item: by the id kept at its open; else the one of its milestone with its text (F191).

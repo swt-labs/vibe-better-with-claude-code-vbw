@@ -418,7 +418,7 @@ record_commit() {
     # committed in the submodule (vbw_commit_paths).
     [ -n "$(vbw_dirty_files "${own[@]}" 2> /dev/null)" ] || exit 0
     record_lock
-    if why=$(vbw_commit_paths "$msg" "" "${own[@]}" 2>&1); then
+    if why=$(vbw_commit_paths "$msg" "" "${own[@]}" 2>&1 || { printf '%s' "${VBW_COMMIT_ERR:-}"; exit 1; }); then
       record_unlock
       exit 0
     fi

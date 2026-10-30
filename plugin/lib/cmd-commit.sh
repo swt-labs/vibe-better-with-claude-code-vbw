@@ -58,11 +58,17 @@ Next: commit only the plan's files, or run vbw mutate $plan on a rule and streng
   # Changed = differs from HEAD (tracked, staged or not, incl. deletions) or new
   # and not ignored, each in the repository that tracks it (a submodule's files
   # in the submodule): one commit per repository, no submodule pointer moved.
+  # A commit that fails after another repository committed: what was committed
+  # is escalated and named, and the same command again commits the rest.
+  local rc=0
   vbw_commit_paths "$msg" "VBW-Plan: $plan
-VBW-Req: $reqs" "${files[@]}" || vbw_die "nothing to commit for $plan"
+VBW-Req: $reqs" "${files[@]}" || rc=$?
+  [ "$rc" != 1 ] || vbw_die "nothing to commit for $plan"
 
   record_unlock
-  commit_escalate "$plan" "$planned" "${VBW_COMMITTED[@]}"
+  [ ${#VBW_COMMITTED[@]} -eq 0 ] || commit_escalate "$plan" "$planned" "${VBW_COMMITTED[@]}"
+  [ "$rc" = 0 ] || vbw_die "$VBW_COMMIT_ERR
+Next: fix what stopped the commit (git's message above), then run vbw commit $plan again: it commits only the files still changed"
   vbw_commits_say "$plan"
 }
 
@@ -116,8 +122,12 @@ cmd_commit_fix() {
   done
   cd "$VBW_ROOT" || vbw_die "cannot enter $VBW_ROOT"
   record_lock
+  local rc=0
   vbw_commit_paths "$msg" "VBW-Fix: $fix${req:+
-VBW-Req: $req}" "$@" || vbw_die "nothing to commit for $fix: none of the named files changed"
+VBW-Req: $req}" "$@" || rc=$?
+  [ "$rc" != 1 ] || vbw_die "nothing to commit for $fix: none of the named files changed"
   record_unlock
+  [ "$rc" = 0 ] || vbw_die "$VBW_COMMIT_ERR
+Next: fix what stopped the commit (git's message above), then run vbw commit --fix $fix again with the same files: it commits only the files still changed"
   vbw_commits_say "$fix"
 }

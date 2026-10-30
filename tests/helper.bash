@@ -57,6 +57,18 @@ vbw_git_project() {
   git commit -q -m "chore(test): seed"
 }
 
+# vbw_submodule PATH: a submodule at PATH of the repository in the current folder
+# (its own repository, on branch main, holding a.js "a"), added to that index, not
+# committed. Its .git is a file, as git makes it.
+vbw_submodule() {
+  local src="$TEST_ROOT/subsrc-${1//\//-}"
+  git init -q "$src"
+  printf 'a\n' > "$src/a.js"
+  git -C "$src" add a.js
+  git -C "$src" commit -q -m "chore: seed"
+  git -c protocol.file.allow=always submodule add -q "file://$src" "$1"
+}
+
 # Run the kernel with stdin closed, so nothing can block on input.
 vbw_run() {
   run "$VBW" "$@" < /dev/null

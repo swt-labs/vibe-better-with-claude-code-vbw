@@ -111,15 +111,20 @@ code_grep() {
   local test_='^[[:space:]]*\[ ([^]$`;&|()<>]|'"$exp"')* \][[:space:]]*(;|&&|\|\|)'
   # The one program-free limit allowed first: the shell's own CPU-time limit (R165).
   local limit='^[[:space:]]*ulimit -t [0-9]+( 2>/dev/null)?[[:space:]]*;'
-  # The one loop allowed, exactly this text: the walk up to the project (the nearest
-  # folder holding .git, as hooks/project.sh and the kernel find it), [ ] tests and
-  # parameter expansion only.
+  # The only loops allowed, exactly these texts: the walk up to the project (the nearest
+  # folder holding .git, then from a submodule with no record the nearest folder above
+  # holding .git and a record, as hooks/project.sh and the kernel find it; a submodule
+  # is a .git file whose gitdir is under modules/, never a linked worktree's), [ ] tests,
+  # case, read from the .git file and parameter expansion only.
   local walk=' while [ "$p" != / ] && [ -n "$p" ] && [ ! -e "$p/.git" ]; do case "$p" in */*) p="${p%/*}"; p="${p:-/}" ;; *) p=/ ;; esac; done;'
+  local up=' while [ "$u" != / ] && [ -f "$u/.git" ] && [ ! -f "$u/.vbw/record.json" ]; do l=; read -r l < "$u/.git" || :; case "$l" in */modules/*) ;; *) break ;; esac; case "${l##*/worktrees/}" in "$l" | */*) ;; *) break ;; esac; case "$u" in */*) u="${u%/*}"; u="${u:-/}" ;; *) u=/ ;; esac; while [ "$u" != / ] && [ ! -e "$u/.git" ]; do case "$u" in */*) u="${u%/*}"; u="${u:-/}" ;; *) u=/ ;; esac; done; done;'
   [ -f "$hooks" ] || return 0
   while IFS= read -r cmd; do
     rest=$cmd
-    while [[ "$rest" =~ $assign || "$rest" =~ $test_ || "$rest" =~ $limit || "$rest" == "$walk"* ]]; do
-      if [[ "$rest" == "$walk"* ]]; then rest=${rest#"$walk"}; else rest=${rest#"${BASH_REMATCH[0]}"}; fi
+    while [[ "$rest" =~ $assign || "$rest" =~ $test_ || "$rest" =~ $limit || "$rest" == "$walk"* || "$rest" == "$up"* ]]; do
+      if [[ "$rest" == "$walk"* ]]; then rest=${rest#"$walk"}
+      elif [[ "$rest" == "$up"* ]]; then rest=${rest#"$up"}
+      else rest=${rest#"${BASH_REMATCH[0]}"}; fi
     done
     rest=${rest#"${rest%%[![:space:]]*}"}
     [[ "$rest" == "jq "* ]] || { echo "PreToolUse hook must be jq itself (only shell variable assignments and [ ] tests may come before it; no interpreter startup): $cmd"; false; }
