@@ -397,7 +397,7 @@ vbw_commit_paths() {
   VBW_COMMIT_ERR=
   vbw_plan_paths "$@"
   local todo=()
-  for r in "${VBW_REPOS[@]}"; do
+  for r in ${VBW_REPOS[@]+"${VBW_REPOS[@]}"}; do
     rels=()
     while IFS= read -r -d '' f; do rels+=("$f"); done < <(vbw_in_repo "$r")
     [ -n "$(vbw_changed "$r" "${rels[@]}" | tr -d '\0')" ] || continue
@@ -414,6 +414,9 @@ Next: put it on a branch (git -C $r switch BRANCH), then commit again"
       changed+=("$f")
       [ "$t" = c ] || untracked+=("$f")
     done < <(vbw_changed "$r" "${rels[@]}")
+    # Reverted since the first read: nothing of it to commit (and git commit --only
+    # with no path would commit the user's index).
+    [ ${#changed[@]} -gt 0 ] || continue
     ok=1
     [ ${#untracked[@]} -eq 0 ] || git -C "$VBW_ROOT${r:+/$r}" add -- "${untracked[@]}" || ok=0
     if [ "$ok" = 1 ] && [ -n "$trailers" ]; then
@@ -437,6 +440,7 @@ Next: put it on a branch (git -C $r switch BRANCH), then commit again"
     VBW_COMMIT_ERR="git commit failed in ${r:-the project}${done_say:+; already committed: $done_say}"
     return 2
   done
+  [ ${#VBW_COMMITS[@]} -gt 0 ] || return 1
 }
 
 # vbw_subs [REPO]: the submodules of the HEAD of the project (or of its repository
@@ -463,7 +467,7 @@ vbw_subs() {
 # vbw_commits_say ID: one line per commit vbw_commit_paths made for ID.
 vbw_commits_say() {
   local c r rest hash n
-  for c in "${VBW_COMMITS[@]}"; do
+  for c in ${VBW_COMMITS[@]+"${VBW_COMMITS[@]}"}; do
     r=${c%%	*}
     rest=${c#*	}
     hash=${rest%%	*}
@@ -590,7 +594,7 @@ vbw_dirty_files() {
   [ $# -gt 0 ] || return 0
   local f r t rels out=""
   vbw_plan_paths "$@"
-  for r in "${VBW_REPOS[@]}"; do
+  for r in ${VBW_REPOS[@]+"${VBW_REPOS[@]}"}; do
     rels=()
     while IFS= read -r -d '' f; do rels+=("$f"); done < <(vbw_in_repo "$r")
     while IFS= read -r -d '' t && IFS= read -r -d '' f; do out="$out${out:+, }${r:+$r/}$f"; done \

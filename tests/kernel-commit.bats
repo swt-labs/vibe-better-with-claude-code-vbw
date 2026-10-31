@@ -318,6 +318,21 @@ with_sub() {
   [[ "$subs" != *'$('* && "$subs" != *'`'* ]] || { echo "$output"; false; }
 }
 
+@test "a file reverted between the two reads of the changes commits nothing, the user's staged file included" {
+  printf 'mine\n' > notes.txt
+  git add notes.txt
+  printf 'pay\n' > "src/pay form.js"
+  local head
+  head=$(git rev-parse HEAD)
+  # The first read (which repositories have changes) sees the file; the second, none.
+  run vbw_kernel 'eval "first_$(declare -f vbw_changed)"
+    vbw_changed() { [ -e "$TEST_ROOT/read" ] && return 0; : > "$TEST_ROOT/read"; first_vbw_changed "$@"; }
+    set -u; rc=0; vbw_commit_paths "feat(pay): x" "" "src/pay form.js" || rc=$?; echo "rc=$rc"'
+  [ "$output" = "rc=1" ] || { echo "$output"; false; }
+  [ "$(git rev-parse HEAD)" = "$head" ]
+  [ "$(git diff --cached --name-only)" = "notes.txt" ]
+}
+
 @test "a nested clone that is not a submodule, under a plan's folder entry, is never committed as a pointer" {
   mkdir -p apps
   git init -q apps/lib

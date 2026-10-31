@@ -45,7 +45,7 @@ qa_tree() {
   {
     if [ ${#p[@]} -gt 0 ]; then
       vbw_plan_paths "${p[@]}"
-      for r in "${VBW_REPOS[@]}"; do
+      for r in ${VBW_REPOS[@]+"${VBW_REPOS[@]}"}; do
         rels=()
         while IFS= read -r -d '' l; do rels+=("$l"); done < <(vbw_in_repo "$r")
         if [ -z "$r" ]; then
