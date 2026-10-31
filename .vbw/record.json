@@ -17864,27 +17864,11 @@
     },
     {
       "id": "R235",
-      "text": "The R190 bench case 'status line (step running)' shows the step on every runner: the cause of the status line's first line once missing the running step on a Linux runner (PR #740, Linux bash 5 shard 3, VBW_BENCH_RUNS=1) is found and fixed at its source, with a regression test that fails without the fix (T205)",
+      "text": "A status line that misses the running step explains itself: the status line keeps jq's error text of its last render in .vbw/runtime/statusline.err (truncated each render, never creating the folder), and the R190 bench case 'status line (step running)' prints the line it read and that error text when the step is missing, so the one-off miss seen on a Linux runner (PR #740, Linux bash 5 shard 3, VBW_BENCH_RUNS=1) names its cause the next time it happens; finding and fixing that cause is backlog work (T205)",
       "proof": "auto",
       "status": "open",
       "milestone": "M48",
-      "rules": [
-        {
-          "text": "when the render fails, jq's error is written to .vbw/runtime/statusline.err inside the project and the fallback line '[VBW] status line unavailable' is printed",
-          "check": "C538",
-          "plan": "P189.1"
-        },
-        {
-          "text": "a good render leaves .vbw/runtime/statusline.err empty, overwritten each call; without a runtime folder nothing is written and the render still prints",
-          "check": "C538",
-          "plan": "P189.1"
-        },
-        {
-          "text": "the bench's 'the step was not shown, so the measure left it out' failure stays and is followed by the first line it read and, when the error file has text, that text, each prefixed with the case's label",
-          "check": "C539",
-          "plan": "P189.1"
-        }
-      ]
+      "rules": []
     },
     {
       "id": "R236",
@@ -17941,37 +17925,11 @@
     },
     {
       "id": "R238",
-      "text": "The real-user suite has a submodule scenario: tools/l3-suite.sh seeds a small project whose one submodule holds a file a plan changes, drives /vbw:vibe through plan, build, proof and ship, and judges in git and the record that the plan's commit landed in the submodule with its VBW-Plan trailer, the project commit moved the submodule pointer, the proof ran the check inside the submodule from the clean copy, and no user-staged file was committed; it is in the default list and pinned by its own test file (#732, #737)",
+      "text": "The real-user suite has a submodule scenario: tools/l3-suite.sh seeds a small project whose one submodule holds a file a plan changes, drives /vbw:vibe through plan, build, proof and ship, and judges in git and the record that the plan's commit landed in the submodule with its VBW-Plan trailer, the project's pointer to the submodule did not move and git status shows the submodule as changed, the proof ran the check inside the submodule from the clean copy, and no user-staged file was committed; it is in the default list and pinned by its own test file (#732, #737)",
       "proof": "auto",
       "status": "open",
       "milestone": "M48",
-      "rules": [
-        {
-          "text": "scenario_submodule is in ALL and the header; its seed adds one submodule at sub/ with git submodule add, on a branch, holding greet.sh and a test.sh that prints its git toplevel; the spec names sh sub/test.sh; a file is staged and left uncommitted in each repository",
-          "check": "C545",
-          "plan": "P191.2"
-        },
-        {
-          "text": "it judges in git and the record, never on screen: a VBW-Plan commit in the submodule changing the plan's file, the project's pointer to the submodule unmoved with git status showing it changed, the check run from the clean copy's submodule under .vbw/runtime/proof., both staged files untouched, and common_checks",
-          "check": "C545",
-          "plan": "P191.2"
-        },
-        {
-          "text": "result_write submodule records the facts plan_commit_in_submodule, pointer_unmoved, check_ran_in_copy_submodule and staged_files_untouched with the commit ids, and a not_tested list naming nested submodules, a detached HEAD, a plan spanning both repositories and the vbw auto loop",
-          "check": "C545",
-          "plan": "P191.2"
-        },
-        {
-          "text": "docs/proof.md names the submodule scenario and what it judges beside mapnotrun",
-          "check": "C545",
-          "plan": "P191.2"
-        },
-        {
-          "text": "a committed result, when there is one, is labelled L3 with passed true, cost above 0, the four facts true and a non-empty not_tested list; without it the case skips with 'no submodule result committed yet: a run writes it'",
-          "check": "C545",
-          "plan": "P191.2"
-        }
-      ]
+      "rules": []
     }
   ],
   "phases": [
@@ -64085,6 +64043,13 @@
       "text": "#694 (2.1.23, owner yes 2026-10-31): opt-in MCP tools for VBW agents, per server listed by the project; read-only roles get a tool only when the user marks it read-only; writing roles get every listed tool under the guards; first probe how Claude Code resolves plugin agents' tools: with mcp__ names and wildcards. VBW builds; halindrome tests on a project with code-graph and context-mode servers (before/after tool counts)",
       "sort": "next",
       "size": "medium",
+      "status": "open"
+    },
+    {
+      "id": "T208",
+      "text": "R235 cause (M48 narrowed R235 to observability): find and fix why the status line once missed the running step on a Linux runner (PR #740, Linux bash 5 shard 3); use .vbw/runtime/statusline.err and the bench's fuller failure line from the next occurrence; P189.2's findings are the start",
+      "sort": "next",
+      "size": "small",
       "status": "open"
     }
   ],
