@@ -410,7 +410,7 @@ provenance() { awk '/^NOMINAL_MS=/ { exit } /^#/ { b = b $0 " "; next } { b = ""
   ! printf '%s\n' "$block" | grep -qE 'guard-bash\.jq|guard-file\.jq|common\.jq|\$PLUGIN|hooks/' || { echo "the reference reads a shipped file"; false; }
 }
 
-@test "R231: the reference program and document are deterministic and of fixed size: the program within 10% of 25061 bytes, the document a JSON object of at least 50 KB, and the guard-shaped call runs on them" {
+@test "R231: the reference program and document are deterministic and of the sizes the provenance states, the document a JSON object of at least 50 KB, and the guard-shaped call runs on them" {
   local a="$TEST_ROOT/ref-a" b="$TEST_ROOT/ref-b" prog doc
   run env VBW_BENCH_REFERENCE_FILES="$a" bash "$BENCH"
   [ "$status" -eq 0 ] || { echo "$output"; false; }
@@ -420,9 +420,14 @@ provenance() { awk '/^NOMINAL_MS=/ { exit } /^#/ { b = b $0 " "; next } { b = ""
   doc=$(ls "$a"/*.json 2> /dev/null | head -n 1)
   [ -n "$prog" ] && [ -n "$doc" ] || { echo "no .jq program and .json document in $a:"; ls -la "$a"; false; }
   diff -r "$a" "$b" || { echo "two generations differ"; false; }
-  local size
+  # The sizes are the ones the provenance states (the proportion to the shipped
+  # guard is R233's case below).
+  local size stated
   size=$(wc -c < "$prog" | tr -d ' ')
-  [ "$size" -ge 22555 ] && [ "$size" -le 27567 ] || { echo "program size $size is not within 10% of 25061"; false; }
+  stated=$(provenance | grep -oE 'program of [0-9]+ bytes' | grep -oE '[0-9]+' | head -n 1)
+  [ "$stated" = "$size" ] || { echo "the provenance states a program of ${stated:-?} bytes; the bench writes $size"; false; }
+  stated=$(provenance | grep -oE 'document of [0-9]+ bytes' | grep -oE '[0-9]+' | head -n 1)
+  [ "$stated" = "$(wc -c < "$doc" | tr -d ' ')" ] || { echo "the provenance states a document of ${stated:-?} bytes; the bench writes $(wc -c < "$doc" | tr -d ' ')"; false; }
   [ "$(wc -c < "$doc" | tr -d ' ')" -ge 51200 ] || { echo "document smaller than 50 KB"; false; }
   jq -e 'type == "object"' "$doc" > /dev/null || { echo "the document is not a JSON object"; false; }
   printf '{}' > "$TEST_ROOT/end.json"
@@ -444,4 +449,113 @@ provenance() { awk '/^NOMINAL_MS=/ { exit } /^#/ { b = b $0 " "; next } { b = ""
   printf '%s' "$p" | grep -qi 'shard' || { echo "the GitHub figure is not tied to the shard-1 log"; false; }
   grep -qE '^NOMINAL_MS=[0-9]+\.[0-9]$' "$BENCH"
   grep -E '^NOMINAL_WHEN=' "$BENCH" | grep -qE 'January|February|March|April|May|June|July|August|September|October|November|December'
+}
+
+# R233 (T204): the guard-to-reference ratio tracks the guard on Linux as on macOS. The
+# cause of the Linux gap (PR #740: 1.33 to 1.63 against 0.98 to 1.02) is found by a
+# per-step measure (tests/bench-guard-steps.bats) and removed in the guard or the
+# reference, never by a wider allowance: the bench reads no operating system name and
+# CI sets no reference or budget of its own (the R151 case above). The provenance
+# comment restates the dated figures for the Mac, GitHub's macOS runner and the two
+# Linux images (ubuntu-latest with jq 1.7.1, Ubuntu 26.04 with jq 1.8.1).
+
+@test "R233: the provenance comment names the two Linux images with their jq versions and dated figures beside the Mac and GitHub macOS ones" {
+  local p
+  p=$(provenance)
+  printf '%s' "$p" | grep -q 'M1 Max' || { echo "no M1 Max figure"; false; }
+  printf '%s' "$p" | grep -qi 'macOS' || { echo "no GitHub macOS figure"; false; }
+  printf '%s' "$p" | grep -qiE 'ubuntu-latest|Ubuntu 24\.04' || { echo "no ubuntu-latest (24.04) figure"; false; }
+  printf '%s' "$p" | grep -qiE 'ubuntu-26\.04|Ubuntu 26\.04' || { echo "no Ubuntu 26.04 figure"; false; }
+  printf '%s' "$p" | grep -q 'jq 1\.7\.1' || { echo "the ubuntu-latest figure does not name jq 1.7.1"; false; }
+  printf '%s' "$p" | grep -q 'jq 1\.8\.1' || { echo "the Ubuntu 26.04 figure does not name jq 1.8.1"; false; }
+  # Each Linux image's sentence carries a figure in ms and a date.
+  printf '%s' "$p" | grep -qiE '(ubuntu-latest|Ubuntu 24\.04)[^.]*[0-9]+(\.[0-9]+)? ms' || { echo "no ms figure for ubuntu-latest"; false; }
+  printf '%s' "$p" | grep -qiE 'Ubuntu[ -]26\.04[^.]*[0-9]+(\.[0-9]+)? ms' || { echo "no ms figure for Ubuntu 26.04"; false; }
+  [ "$(printf '%s' "$p" | grep -oE '2026-1[0-2]-[0-9]{2}|202[7-9]-[0-9]{2}-[0-9]{2}' | wc -l | tr -d ' ')" -ge 2 ] || { echo "fewer than two dated measures"; false; }
+}
+
+@test "R233: the reference keeps the guard's proportion: its program is within 10% of the shipped Bash guard's size (PR #730 grew the guard; the reference follows or the guard shrinks)" {
+  local a="$TEST_ROOT/ref" size guard
+  run env VBW_BENCH_REFERENCE_FILES="$a" bash "$BENCH"
+  [ "$status" -eq 0 ] || { echo "$output"; false; }
+  size=$(wc -c < "$a/reference.jq" | tr -d ' ')
+  guard=$(wc -c < "$PLUGIN_ROOT/hooks/guard-bash.jq" | tr -d ' ')
+  [ "$((size * 10))" -ge "$((guard * 9))" ] && [ "$((size * 10))" -le "$((guard * 11))" ] \
+    || { echo "reference program $size bytes is not within 10% of the Bash guard's $guard bytes"; false; }
+}
+
+@test "R233: the gap is never closed by a wider allowance: the bench reads no operating system name and has one nominal figure" {
+  ! grep -nE 'uname|OSTYPE|RUNNER_OS|/etc/os-release' "$BENCH" || { echo "the bench branches on the operating system"; false; }
+  [ "$(grep -cE '^NOMINAL_MS=' "$BENCH")" -eq 1 ] || { echo "more than one nominal figure"; false; }
+  ! grep -nE 'NOMINAL_MS_(LINUX|MAC|UBUNTU)|LINUX_FACTOR|linux_factor' "$BENCH" || { echo "a per-OS nominal or factor"; false; }
+}
+
+# R234 (T205): tests/timed-bench-hooks.bats 'time a hook spends waiting is not counted as
+# its cost' judges as the bench does. Its judgement is one function, waiting_judge in
+# tests/bench-waiting.bash, over the bench's printed output, so it is shown here with
+# stand-in bench lines and never a real sleep:
+#   waiting_judge BUDGET MARGIN QUICK SLOW [SLOW2]
+# prints one line: 'busy S' when any given run's sh-and-jq startup S is above BUDGET
+# (the guard (git) line's '(sh and jq startup S ms)', or the bench's own 'machine too
+# busy to measure ... takes S ms' line); else 'ok' when SLOW's guard (git) own cost is
+# under QUICK's plus MARGIN; else 'again' when no SLOW2 is given (the caller measures
+# once more); else 'ok' when SLOW2's difference is under MARGIN; else 'fail' followed by
+# the words that name both measures. Exit 0 for busy, ok and again; 1 for fail.
+
+# bench_lines STARTUP OWN: a stand-in bench output whose guard (git) line reads OWN ms
+# own CPU with a startup of STARTUP ms, with the lines around it as the bench prints them.
+bench_lines() {
+  printf 'reference: 15.0 ms CPU per call; nominal 16.7 ms (an M1 Max Mac and GitHub'"'"'s macOS runner, October 2026); ratio 0.90\n'
+  printf 'large record: 2335179 bytes\n'
+  printf 'guard (git): %s ms own CPU per call (sh and jq startup %s ms); budget 100 ms\n' "$2" "$1"
+  printf 'guard (npm): 9.1 ms own CPU per call (sh and jq startup %s ms); budget 100 ms\n' "$1"
+}
+
+@test "R234: a first difference at or over the margin followed by one under it passes, and the first alone asks for the second measure" {
+  load "$BATS_TEST_DIRNAME/bench-waiting.bash"
+  run waiting_judge 20 25 "$(bench_lines 9.5 12.1)" "$(bench_lines 9.8 39.1)"
+  [ "$status" -eq 0 ] && [ "$output" = "again" ] || { echo "$output"; false; }
+  run waiting_judge 20 25 "$(bench_lines 9.5 12.1)" "$(bench_lines 9.8 39.1)" "$(bench_lines 9.6 15.2)"
+  [ "$status" -eq 0 ] && [ "$output" = "ok" ] || { echo "$output"; false; }
+  # A difference under the margin on the first measure needs no second one.
+  run waiting_judge 20 25 "$(bench_lines 9.5 12.1)" "$(bench_lines 9.8 30.0)"
+  [ "$status" -eq 0 ] && [ "$output" = "ok" ] || { echo "$output"; false; }
+  # Exactly the margin is over it, as the timed case always judged.
+  run waiting_judge 20 25 "$(bench_lines 9.5 12.0)" "$(bench_lines 9.8 37.0)"
+  [ "$status" -eq 0 ] && [ "$output" = "again" ] || { echo "$output"; false; }
+}
+
+@test "R234: two differences at or over the margin fail, and the words name both measures" {
+  load "$BATS_TEST_DIRNAME/bench-waiting.bash"
+  run waiting_judge 20 25 "$(bench_lines 9.5 12.1)" "$(bench_lines 9.8 39.1)" "$(bench_lines 9.6 40.3)"
+  [ "$status" -eq 1 ] || { echo "status $status: $output"; false; }
+  [[ "$output" == fail* ]] || { echo "$output"; false; }
+  [[ "$output" == *"12.1"* && "$output" == *"39.1"* && "$output" == *"40.3"* ]] || { echo "$output"; false; }
+  [[ "$output" == *first* && "$output" == *second* ]] || { echo "$output"; false; }
+}
+
+@test "R234: a startup above the hook budget in either run reads busy with the startup, as the bench's own rule; a startup at the budget never does" {
+  load "$BATS_TEST_DIRNAME/bench-waiting.bash"
+  run waiting_judge 20 25 "$(bench_lines 9.5 12.1)" "$(bench_lines 21.3 39.1)"
+  [ "$status" -eq 0 ] && [ "$output" = "busy 21.3" ] || { echo "$output"; false; }
+  run waiting_judge 20 25 "$(bench_lines 24.0 12.1)" "$(bench_lines 9.8 39.1)"
+  [ "$status" -eq 0 ] && [ "$output" = "busy 24.0" ] || { echo "$output"; false; }
+  # The bench's own busy line (its budget was above the startup, so no guard line follows).
+  run waiting_judge 20 25 "$(bench_lines 9.5 12.1)" "$(printf 'machine too busy to measure: sh and jq startup takes 101.2 ms CPU per call, above the 100 ms hook limit; nothing judged\n')"
+  [ "$status" -eq 0 ] && [ "$output" = "busy 101.2" ] || { echo "$output"; false; }
+  # At the budget the machine is not busy: the difference is judged.
+  run waiting_judge 20 25 "$(bench_lines 20.0 12.1)" "$(bench_lines 20.0 39.1)"
+  [ "$status" -eq 0 ] && [ "$output" = "again" ] || { echo "$output"; false; }
+}
+
+@test "R234: the timed waiting case judges through waiting_judge: it skips as busy, measures again on again, and fails with the judge's words" {
+  local f="$REPO_ROOT/tests/timed-bench-hooks.bats" body
+  grep -q 'load bench-waiting' "$f" || { echo "the timed file does not load tests/bench-waiting.bash"; false; }
+  body=$(sed -n '/^@test "time a hook spends waiting is not counted as its cost"/,/^}/p' "$f")
+  [ -n "$body" ] || { echo "no waiting case"; false; }
+  printf '%s\n' "$body" | grep -q 'waiting_judge' || { echo "the case does not call waiting_judge"; false; }
+  printf '%s\n' "$body" | grep -qE 'skip .*busy' || { echo "the case does not skip when busy"; false; }
+  printf '%s\n' "$body" | grep -q 'again' || { echo "the case does not measure again"; false; }
+  [ "$(printf '%s\n' "$body" | grep -c 'run bench')" -ge 3 ] || { echo "the case has no second measure of the waiting bench"; false; }
+  ! grep -qE 'sleep [0-9.]*[1-9]' "$REPO_ROOT/tests/bench-waiting.bash" || { echo "the judge sleeps"; false; }
 }

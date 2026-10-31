@@ -36,14 +36,15 @@
 # (the note is best effort). Fails, and the caller skips its update, where the
 # runtime folder is missing.
 proofsteps_lock() {
-  local l="$VBW_RUNTIME/step.lock" i=0 owner quiet=$SECONDS
+  local l="$VBW_RUNTIME/step.lock" i=0 owner quiet
   [ -d "$VBW_RUNTIME" ] || return 1
+  quiet=$(vbw_lock_seconds)
   while ! vbw_lock_dir "$l"; do
     owner=$(vbw_lock_holder "$l/pid")
     if [ -n "$owner" ]; then
-      quiet=$SECONDS
+      quiet=$(vbw_lock_seconds)
       if ! kill -0 "$owner" 2> /dev/null; then vbw_lock_takeover "$l/pid" "$owner" && return 0; fi
-    elif [ $((SECONDS - quiet)) -ge 5 ]; then
+    elif [ $(($(vbw_lock_seconds) - quiet)) -ge 5 ]; then
       vbw_lock_takeover "$l/pid" "" && return 0
     fi
     i=$((i + 1))

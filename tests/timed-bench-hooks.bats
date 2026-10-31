@@ -3,6 +3,7 @@
 # machine is not counted (the limits are in tests/bench-limits.bats).
 
 load helper
+load bench-waiting
 
 setup() {
   vbw_setup
@@ -21,20 +22,28 @@ bench() {
     bash "$BATS_TEST_DIRNAME/../tools/bench-hooks.sh"
 }
 
-# own_cost INPUT: the own cost the bench printed for one input, in ms.
-own_cost() { printf '%s\n' "$output" | sed -n "s/^guard ($1): \([0-9.]*\) ms.*/\1/p"; }
-
 @test "time a hook spends waiting is not counted as its cost" {
   # Both hooks start the same sleep process; one waits 50 ms in it. Measured by
   # the clock, the wait adds all 50 ms; as CPU time it adds nothing beyond noise
   # (CPU time still varies by several ms on a busy virtual machine, as in CI).
+  # Judged as the bench judges (tests/bench-waiting.bash): a run whose sh and jq
+  # startup reads busy is skipped, and a difference over the margin is measured once more.
   hooks_with '"sleep 0; " + .'
   run bench 100
-  local quick
-  quick=$(own_cost git)
+  local quick first second verdict
+  quick=$output
   hooks_with '"sleep 0.05; " + .'
   run bench 100
-  [ -n "$quick" ] && [ -n "$(own_cost git)" ] || { echo "$output"; false; }
-  perl -e 'exit($ARGV[0] - $ARGV[1] < 25 ? 0 : 1)' -- "$(own_cost git)" "$quick" \
-    || { echo "waiting counted: $quick ms without it, $(own_cost git) ms with it"; false; }
+  first=$output
+  verdict=$(waiting_judge 20 25 "$quick" "$first") || true
+  if [ "$verdict" = again ]; then
+    run bench 100
+    second=$output
+    verdict=$(waiting_judge 20 25 "$quick" "$first" "$second") || true
+  fi
+  case "$verdict" in
+    busy*) skip "the machine was busy: sh and jq startup ${verdict#busy } ms, above the 20 ms hook limit" ;;
+    ok) ;;
+    *) echo "$verdict"; false ;;
+  esac
 }

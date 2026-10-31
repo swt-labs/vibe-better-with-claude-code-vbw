@@ -1,5 +1,47 @@
 # Changelog
 
+## [2.1.22] - 2026-10-31
+
+A fourth community release. The guard fix is
+[@halindrome](https://github.com/halindrome)'s, and the rest makes VBW's own
+checks steady on every machine. Thank you.
+
+### Fixed
+
+- **The guard judges the files shell commands write.** An agent inside a run
+  could change a file outside its plan with `cp`, `rsync`, `install`, `ln`,
+  `mv`, `tee`, `sed -i` or `rm`, because the guard read only redirections and
+  the file tools. It now reads the targets of those commands too, including a
+  folder or a glob that reaches a protected check file, and refuses with the
+  usual next step. (#727, fixed by [@halindrome](https://github.com/halindrome)
+  in #730)
+- **The status line no longer loses its answer when the reader stops early.**
+  On bash 5.2 (Linux), a reader that took only the first line could cut the
+  status line off with a broken-pipe signal, so the first line came back
+  empty. The status line now ignores that signal and exits 0. It also keeps
+  jq's error text of its last render in `.vbw/runtime/statusline.err`, so a
+  status line that cannot render says why.
+- **The hook benchmark compares like with like on Linux.** The guard cases
+  leave out the shell's and jq's start-up time, but the reference kept it,
+  and start-up costs about 7 ms on a Mac against 2 ms on Linux, so Linux
+  runners read the guard as too slow. The reference is now measured the same
+  way, with a program the guard's size, and the nominal figure was measured
+  again. `VBW_BENCH_STEPS=1` prints the guard's cost step by step, and
+  `tools/test-linux.sh` can pick the Ubuntu image and run only the benchmark.
+- **Steadier tests.** The three waits for a lock without an owner count their
+  five seconds on one clock a test can set, the timed waiting test measures
+  again before failing and reports a busy machine as busy, and the real-user
+  scenarios read a spec section without its HTML comments.
+
+### Added
+
+- **A real-user scenario for projects with a git submodule** (`submodule`):
+  a plan whose file sits inside a submodule, judged in git and the record.
+  Its first run, on pull request #737, did not pass yet; #737 lands when it
+  does.
+
+Sizes, for information: kernel 760 KB (`plugin/bin/vbw` and `plugin/lib`), mods 342 KB (hooks, panel and status line), workflows 73 KB, prompts 109 KB (agents and skills).
+
 ## [2.1.21] - 2026-10-31
 
 A third community release. The first four items come from field reports by

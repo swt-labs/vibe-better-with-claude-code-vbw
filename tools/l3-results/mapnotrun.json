@@ -3,15 +3,15 @@
   "fixture": "greet.sh with a green test.sh and a red e2e.sh (the README presents e2e.sh as the long end-to-end run taking many minutes, both with their commands); vbw init before the session; the user types /vbw:vibe and answers with the recommendation",
   "cost_usd": 0.86,
   "evidence_level": "L3",
-  "at": "2026-10-31T11:07:27Z",
+  "at": "2026-10-31T20:23:38Z",
   "passed": true,
   "facts": {
     "map_marks_not_run": true,
-    "commands_lines": "- test: sh test.sh\n- test: npm test\n- build: [\"make\", \"release build\"]",
+    "commands_lines": "- test: sh test.sh",
     "green_in_commands": true,
     "red_in_commands": false,
     "narrower_in_commands": true,
-    "red_decision": "Commands: only sh test.sh (ran 2026-10-31 at 5738a17: green). e2e.sh left out; email greeting is a non-goal",
+    "red_decision": "Commands: sh e2e.sh ran 2026-10-31 at d942756: red (1 failing: the nightly greeting mail is sent)",
     "red_suite_ran": true
   },
   "not_tested": [

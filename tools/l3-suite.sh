@@ -12,14 +12,14 @@
 # each one's lines print together when it ends.
 #
 # Scenarios: greenfield, reject, resume, change, convert, balanced, docs, qafix,
-# decision, debug, research, edgecase, leftover, recheck, approval, newcomer, senior, panel, steptime, road, pluginoff, tools, legacy, nolegacy, smallchange, costs, loop, plugindir, sessions, taskbreak, fixchecks, failoutput, leaveout, hiddenrecord, latedecision, ignoredplanning, stalefix, mapsnapshot, alreadyfixed, mapnotrun. A user
+# decision, debug, research, edgecase, leftover, recheck, approval, newcomer, senior, panel, steptime, road, pluginoff, tools, legacy, nolegacy, smallchange, costs, loop, plugindir, sessions, taskbreak, fixchecks, failoutput, leaveout, hiddenrecord, latedecision, ignoredplanning, stalefix, mapsnapshot, alreadyfixed, mapnotrun, submodule. A user
 # answers every question with VBW's recommendation unless the scenario says otherwise.
 set -uo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 l3() { bash "$ROOT/tools/l3.sh" "$@"; }
 VBW="$ROOT/plugin/bin/vbw"
-ALL="greenfield reject resume change convert balanced docs qafix decision debug research edgecase leftover recheck approval newcomer senior panel steptime road pluginoff tools legacy nolegacy smallchange costs loop plugindir sessions taskbreak fixchecks failoutput leaveout hiddenrecord latedecision ignoredplanning stalefix mapsnapshot alreadyfixed mapnotrun"
+ALL="greenfield reject resume change convert balanced docs qafix decision debug research edgecase leftover recheck approval newcomer senior panel steptime road pluginoff tools legacy nolegacy smallchange costs loop plugindir sessions taskbreak fixchecks failoutput leaveout hiddenrecord latedecision ignoredplanning stalefix mapsnapshot alreadyfixed mapnotrun submodule"
 RESULTS="$ROOT/tools/l3-results"
 STEPS=60
 
@@ -43,6 +43,30 @@ new_project() {
 next_action() { (cd "$dir" && "$VBW" next --json 2> /dev/null | jq -r '.action // "none"') || echo none; }
 screen() { l3 screen "$scenario"; }
 default_idle() { l3 wait "$scenario" 1500 > /dev/null 2>&1 || true; }
+# spec_section_lines SPEC SECTION: the '- ' lines of the '## SECTION' section, after dropping every
+# <!-- ... --> block (one-line or multi-line; text outside a block on the same line is kept). One awk
+# reads to the end of the file, so no quiet grep can end it early (tools/check-pipefail-grep.sh).
+spec_section_lines() {
+  awk -v sec="$2" '
+    BEGIN { inc = 0; insec = 0 }
+    {
+      line = $0; out = ""
+      while (length(line) > 0) {
+        if (inc) {
+          i = index(line, "-->")
+          if (i == 0) { line = ""; break }
+          line = substr(line, i + 3); inc = 0
+        } else {
+          i = index(line, "<!--")
+          if (i == 0) { out = out line; line = ""; break }
+          out = out substr(line, 1, i - 1); line = substr(line, i + 4); inc = 1
+        }
+      }
+      if (out ~ /^## /) { insec = (out == "## " sec); next }
+      if (insec && out ~ /^- /) print out
+    }
+  ' "$1" 2> /dev/null
+}
 
 # Answer the question on screen with the first (recommended) option. A
 # multi-select question needs the option ticked, then Submit.
@@ -121,8 +145,10 @@ common_checks() {
   check "no open fixes, no lease" '(all(.fixes[]; .status == "closed")) and .lease == null'
   # grep -c reads everything: grep -q would close the pipe early, and under
   # pipefail the SIGPIPE in git log fails the check.
-  check_sh "plan work committed with provenance" '[ "$(git log --format=%B | grep -c "^VBW-Plan: ")" -gt 0 ]'
-  check_sh "no stray changes outside .vbw/runtime" '[ -z "$(git status --porcelain -- . ":(exclude).vbw/runtime")" ]'
+  # COMMON_SUBMODULE: a submodule path whose own history may hold the plan work (the project's
+  # history then has none); COMMON_ALLOW: extra pathspecs a scenario leaves changed on purpose.
+  check_sh "plan work committed with provenance" '[ "$(git log --format=%B | grep -c "^VBW-Plan: ")" -gt 0 ] || { [ -n "${COMMON_SUBMODULE:-}" ] && [ "$(git -C "$COMMON_SUBMODULE" log --format=%B | grep -c "^VBW-Plan: ")" -gt 0 ]; }'
+  check_sh "no stray changes outside .vbw/runtime" '[ -z "$(git status --porcelain -- . ":(exclude).vbw/runtime" ${COMMON_ALLOW:-})" ]'
 }
 
 # --- Results (docs/proof.md, D2): a scenario that proves a requirement writes
@@ -3255,7 +3281,7 @@ scenario_mapnotrun() {
   fixture="greet.sh with a green test.sh and a red e2e.sh (the README presents e2e.sh as the long end-to-end run taking many minutes, both with their commands); vbw init before the session; the user types /vbw:vibe and answers with the recommendation"
   start="/vbw:vibe"
   spec="$dir/.vbw/spec.md"
-  commands_lines() { sed -n '/^## Commands/,/^## /p' "$spec" 2> /dev/null | grep -E '^- ' || true; }
+  commands_lines() { spec_section_lines "$spec" Commands; }
   red_decision_text() { jq -r '[.decisions[]? | select((.text | startswith("Contract approved") | not) and (.text | test("e2e[.]sh"))) | .text] | first // empty' "$dir/.vbw/record.json" 2> /dev/null; }
   done_yet() { commands_lines | grep 'test\.sh' > /dev/null && [ -n "$(red_decision_text)" ]; }
   checks() {
@@ -3279,6 +3305,88 @@ scenario_mapnotrun() {
       "$(jq -n --argjson m "$marks" --arg c "$cmds" --argjson g "$green" --argjson r "$red" --argjson n "$narrower" --arg d "$dec" --argjson ran "$ran" \
         '{map_marks_not_run: $m, commands_lines: $c, green_in_commands: $g, red_in_commands: $r, narrower_in_commands: $n, red_decision: $d, red_suite_ran: $ran}')" \
       '["hands-off autonomy, where the router takes run it now by itself","a sub-project with its own green command (the one-test-file form was not driven)","a suite whose map mark says Not run but which the scout ran anyway (the mark is checked, not its truth)","a project larger than the greet.sh fixture","the wording of what VBW tells the user (read by a person)"]'
+  }
+}
+
+# submodule_seed: a plain local repository (on branch main, kept in a folder of its own beside the
+# project) holding greet.sh, red today (it prints "Hi"), and test.sh, which prints its git
+# toplevel, appends it to .vbw/runtime/toplevels.log of the project and checks greet.sh. It is
+# added at sub/ as a submodule (a repository inside a folder of the project; the project stores
+# one commit id for it) and committed; then vbw init and a spec with one requirement about
+# sub/greet.sh and the command sh sub/test.sh; last, one file staged and left uncommitted in the
+# project (staged.txt) and one in the submodule (sub/staged.txt).
+submodule_seed() {
+  local up log="$PWD/.vbw/runtime/toplevels.log"
+  up=$(mktemp -d "${TMPDIR:-/tmp}/vbw-l3-$scenario-up.XXXXXX") || return 1
+  git -C "$up" init -q -b main || return 1
+  git -C "$up" config user.email l3@vbw.local && git -C "$up" config user.name "VBW L3"
+  printf '#!/bin/sh\necho "Hi, $1!"\n' > "$up/greet.sh"
+  cat > "$up/test.sh" <<SH
+#!/bin/sh
+cd "\$(dirname "\$0")" || exit 1
+top=\$(git rev-parse --show-toplevel)
+echo "toplevel: \$top"
+printf '%s\\n' "\$top" >> "$log"
+if [ "\$(sh greet.sh Ana)" = "Hello, Ana!" ]; then echo "ok 1 a name is greeted"; else echo "not ok 1 a name is greeted"; exit 1; fi
+SH
+  git -C "$up" add greet.sh test.sh && git -C "$up" commit -qm "feat: greet.sh and its test" || return 1
+  GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=protocol.file.allow GIT_CONFIG_VALUE_0=always git submodule add -q "$up" sub > /dev/null 2>&1 || return 1
+  git -C sub config user.email l3@vbw.local && git -C sub config user.name "VBW L3"
+  git commit -qm "chore: add the sub submodule" -- .gitmodules sub || return 1
+  "$VBW" init > /dev/null || return 1
+  printf '# Greetings\n\n## Requirements\n\n- R1 [auto] sub/greet.sh: "sh greet.sh Ana" prints "Hello, Ana!"\n\n## Commands\n\n- test: sh sub/test.sh\n' > .vbw/spec.md
+  git add .vbw/spec.md && git commit -qm "chore: spec" -- .vbw/spec.md || return 1
+  printf 'mine\n' > staged.txt && git add staged.txt
+  printf 'mine\n' > sub/staged.txt && git -C sub add staged.txt
+}
+
+# submodule (R238, #732, #737): the plan's file lives in a submodule. The user types /vbw:vibe and
+# answers with the recommendation through plan, build, proof and ship. Judged in git and the
+# record, never on screen: a VBW-Plan commit in the submodule changing greet.sh; the project's
+# pointer to the submodule unmoved while git status shows it changed; the check run from the clean
+# copy's submodule (its --show-toplevel under .vbw/runtime/proof.*/sub); a file staged and left
+# uncommitted in each repository still staged and in no commit.
+scenario_submodule() {
+  new_project
+  (cd "$dir" && submodule_seed) || { say "setup failed: could not seed the project with a submodule"; return 1; }
+  fixture="a project with one submodule at sub/ (its own repository on branch main, holding greet.sh, red today, and test.sh printing its git toplevel; the spec names sh sub/test.sh), vbw init, a file staged and left uncommitted in the project and one in the submodule; the user types /vbw:vibe and answers with the recommendation to ship"
+  seed_pointer=$(git -C "$dir" rev-parse HEAD:sub)
+  seed_head=$(git -C "$dir" rev-parse HEAD)
+  seed_sub_head=$(git -C "$dir/sub" rev-parse HEAD)
+  start="/vbw:vibe"
+  checks() {
+    local passed=true c plan_commit="" pointer_now pointer_log moved=true status_line="" copy_top="" staged_ok=false in_commit=0
+    # shellcheck disable=SC2034 # read by common_checks
+    COMMON_SUBMODULE=sub COMMON_ALLOW=':(exclude)staged.txt :(exclude)sub'
+    # Commits of the submodule with the VBW-Plan trailer that changed greet.sh.
+    for c in $(git -C "$dir/sub" rev-list "$seed_sub_head..HEAD" 2> /dev/null); do
+      [ "$(git -C "$dir/sub" show -s --format=%B "$c" | grep -c '^VBW-Plan: P')" -gt 0 ] || continue
+      [ "$(git -C "$dir/sub" diff-tree --no-commit-id --name-only -r "$c" | grep -cx 'greet.sh')" -gt 0 ] || continue
+      plan_commit=$c; break
+    done
+    pointer_now=$(git -C "$dir" rev-parse HEAD:sub)
+    pointer_log=$(git -C "$dir" log --format=%H "$seed_head..HEAD" -- sub)
+    [ "$pointer_now" = "$seed_pointer" ] && [ -z "$pointer_log" ] && moved=false
+    status_line=$(git -C "$dir" status --porcelain -- sub)
+    # The recorded check output: the --show-toplevel line the check printed, kept in the run store by the check itself.
+    copy_top=$(cat "$dir/.vbw/runtime/toplevels.log" "$dir"/.vbw/runtime/output/*.log 2> /dev/null | grep -E '\.vbw/runtime/proof\.[^/]+/sub$' | head -n 1)
+    # Staged files: still staged in each repository, and in no commit of either.
+    if [ "$(git -C "$dir" diff --cached --name-only | grep -cx 'staged.txt')" -gt 0 ] && [ "$(git -C "$dir/sub" diff --cached --name-only | grep -cx 'staged.txt')" -gt 0 ]; then staged_ok=true; fi
+    in_commit=$(( $(git -C "$dir" log --format=%H --name-only "$seed_head..HEAD" | grep -cx 'staged.txt') + $(git -C "$dir/sub" log --format=%H --name-only "$seed_sub_head..HEAD" | grep -cx 'staged.txt') ))
+    say "plan commit in the submodule: ${plan_commit:-none}, pointer $seed_pointer -> $pointer_now, status: ${status_line:-none}, check toplevel: ${copy_top:-none}, staged commits: $in_commit"
+    common_checks
+    expect "the submodule holds a VBW-Plan commit that changed greet.sh (${plan_commit:-none})" [ -n "$plan_commit" ]
+    expect "the project's pointer to the submodule did not move and no project commit touched sub ($pointer_now)" [ "$moved" = false ]
+    expect "git status shows the submodule as changed ($status_line)" [ "$(printf '%s' "$status_line" | grep -cE '^( M|M ) sub$')" -gt 0 ]
+    expect "the check ran in the clean copy's submodule: its toplevel ends .vbw/runtime/proof.*/sub (${copy_top:-none})" [ -n "$copy_top" ]
+    expect "each repository still lists its staged file" [ "$staged_ok" = true ]
+    expect "no commit of either repository changed a staged file ($in_commit)" [ "$in_commit" -eq 0 ]
+    [ "$failed" -eq 0 ] || passed=false
+    result_write submodule "$fixture" "${cost_usd:-0}" "$passed" \
+      "$(jq -n --arg pc "$plan_commit" --arg sp "$seed_pointer" --arg np "$pointer_now" --arg st "$status_line" --arg ct "$copy_top" --argjson so "$staged_ok" --argjson ic "$in_commit" \
+        '{plan_commit_in_submodule: ($pc != ""), pointer_unmoved: ($sp == $np), check_ran_in_copy_submodule: ($ct != ""), staged_files_untouched: ($so and $ic == 0),
+          plan_commit: $pc, seed_pointer: $sp, pointer_at_end: $np, status_of_sub: $st, check_toplevel: $ct}')" \
+      '["nested submodules (a submodule inside the submodule)","a submodule left on a detached HEAD","a plan whose files span both repositories","the vbw auto loop path (this run used /vbw:vibe)","a submodule whose branch is checked out by someone else","the wording VBW shows the user (read by a person)"]'
   }
 }
 
