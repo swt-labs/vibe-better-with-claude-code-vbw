@@ -17,7 +17,7 @@ setup() { vbw_setup; }
 teardown() { vbw_teardown; }
 
 bench() {
-  run env VBW_HOOK_BUDGET_MS=100000 VBW_STATUSLINE_BUDGET_MS=100000 VBW_BENCH_RUNS=1 "$@" bash "$REPO_ROOT/tools/bench-hooks.sh"
+  run env VBW_HOOK_BUDGET_MS=100000 VBW_STATUSLINE_BUDGET_MS=100000 VBW_HANDBACK_BUDGET_MS=100000 VBW_BENCH_RUNS=1 "$@" bash "$REPO_ROOT/tools/bench-hooks.sh"
 }
 
 # measured: the label of every case the bench measured, in output order.

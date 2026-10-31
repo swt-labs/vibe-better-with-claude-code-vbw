@@ -174,10 +174,10 @@ line() {
   quiet_or_skip
   local input
   for input in git npm big interp read answer; do
-    line "^guard \\($input\\): -?[0-9.]+ ms own CPU per call.*; budget 20 ms(: OVER)?$" > /dev/null
+    line "^guard \\($input\\): -?[0-9.]+ ms own CPU per call.*; budget 20 ms(: OVER|: slow \\(ratio [0-9.]+, scaled budget [0-9.]+ ms\\))?$" > /dev/null
   done
-  line '^status line: [0-9.]+ ms CPU per call; budget 60 ms(: OVER)?$' > /dev/null
-  line '^status line \(large record\): [0-9.]+ ms CPU per call; budget 60 ms(: OVER)?$' > /dev/null
+  line '^status line: [0-9.]+ ms CPU per call; budget 60 ms(: OVER|: slow \(ratio [0-9.]+, scaled budget [0-9.]+ ms\))?$' > /dev/null
+  line '^status line \(large record\): [0-9.]+ ms CPU per call; budget 60 ms(: OVER|: slow \(ratio [0-9.]+, scaled budget [0-9.]+ ms\))?$' > /dev/null
   grep -qF 'VBW_HOOK_BUDGET_MS:-20}' "$BENCH"
   grep -qF 'VBW_STATUSLINE_BUDGET_MS:-60}' "$BENCH"
 }
