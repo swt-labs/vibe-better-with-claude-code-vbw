@@ -105,10 +105,10 @@ section_lines() {
 }
 
 @test "R237: a comment that opens and closes on one line between two real lines drops only itself; a multi-line block drops its lines; another section's lines never print" {
-  printf '# x\n\n## Requirements\n\n- R1 [auto] One\n\n## Commands\n\n- test: sh a.sh\n<!-- - lint: sh x.sh -->\n- build: sh b.sh\n<!--\n- old: sh y.sh\n- older: sh z.sh\n-->\n- e2e: sh c.sh\n\n## Other\n\n- not: a command\n' > "$TEST_ROOT/spec.md"
+  printf '# x\n\n## Requirements\n\n- R1 [auto] One\n\n## Commands\n\n- test: sh a.sh\n<!-- - lint: sh x.sh -->\n- build: sh b.sh\n<!--\n- old: sh y.sh\n- older: sh z.sh\n-->\n- e2e: sh c.sh\n<!-- note -->- tail: sh t.sh\n<!--\nx\n-->- after: sh d.sh\n\n## Other\n\n- not: a command\n' > "$TEST_ROOT/spec.md"
   run section_lines "$TEST_ROOT/spec.md" Commands
   [ "$status" -eq 0 ] || { echo "$output"; false; }
-  [ "${lines[0]}" = "- test: sh a.sh" ] && [ "${lines[1]}" = "- build: sh b.sh" ] && [ "${lines[2]}" = "- e2e: sh c.sh" ] && [ "${#lines[@]}" -eq 3 ] || { echo "$output"; false; }
+  [ "${lines[0]}" = "- test: sh a.sh" ] && [ "${lines[1]}" = "- build: sh b.sh" ] && [ "${lines[2]}" = "- e2e: sh c.sh" ] && [ "${lines[3]}" = "- tail: sh t.sh" ] && [ "${lines[4]}" = "- after: sh d.sh" ] && [ "${#lines[@]}" -eq 5 ] || { echo "$output"; false; }
 }
 
 @test "R237: commands_lines calls the helper, and no scenario pipes a raw spec section into grep '^- '" {
