@@ -290,6 +290,28 @@ A command that contains none of the words any rule needs (`rm`, `git`, `vbw`,
   difference over its margin is measured once more. CI runs it with the same
   limit as a local run.
 
+  Why the reference is measured net of startup (R233, measured 2026-10-31 with
+  `VBW_BENCH_STEPS=1 bash tools/bench-hooks.sh`, on the Mac and in
+  `tools/test-linux.sh`'s containers; CPU ms per call of the git input, 100 runs;
+  the reference row is the bench's call as the step table runs it, startup included):
+
+  | step | macOS (M1 Max, jq 1.7.1) | ubuntu-latest (24.04, jq 1.7.1) | Ubuntu 26.04 (jq 1.8.1) |
+  |---|---|---|---|
+  | sh startup | 4.2 | 0.4 | 0.4 |
+  | jq startup | 6.9 | 1.9 | 1.9 |
+  | program compile (Bash guard, startup included) | 19.2 | 15.1 | 15.1 |
+  | program run (whole guard call, startup included) | 21.0 | 17.5 | 16.3 |
+  | reference (startup included) | 15.7 | 12.4 | 11.7 |
+
+  The cause: the guard's cases subtract the shell and jq startup, which is 6.9 ms on a
+  Mac and 1.9 ms on Linux, but the reference kept it, so the same guard cost 1.0 times the
+  reference on macOS and 1.3 to 1.6 on Linux (PR #740); the guard's compile and run costs
+  are alike on both. The reference now subtracts the startup too, and its program is the
+  guard's size (28798 against 28744 bytes) with a regex in every helper. The guard's own
+  cost (git input) beside the reference's own cost: macOS 14.1 and 8.8 ms (1.60), ubuntu-latest
+  15.6 and 10.5 (1.49), Ubuntu 26.04 14.4 and 9.8 (1.47), each Linux quotient within 1.25
+  of macOS's. The nominal figure is one, 10.3 ms, with no per-system allowance.
+
 ## SessionStart
 
 In a VBW project, one line of context: the project state and what comes next.
