@@ -231,4 +231,11 @@ case "$last" in
 esac
 # Optional files that are missing make jq complain on a good render too: only a
 # failed render keeps its error text.
-if [ -n "$out" ]; then { : > "$errf"; } 2> /dev/null; printf '%s\n' "$out"; else printf '[VBW] status line unavailable\n'; fi
+# The answer is written once the render is done. A reader that has what it needs
+# and closes the pipe early (the bench's `| head -n 1`) must not turn a good
+# render into a failure: bash 5.2 on Linux writes the answer in more than one
+# piece, and the piece after the reader's exit would kill this script with
+# SIGPIPE (status 141). So SIGPIPE is ignored here and a failed write is quiet
+# (the answer is no longer wanted); the exit status stays 0.
+trap '' PIPE
+if [ -n "$out" ]; then { : > "$errf"; } 2> /dev/null; { printf '%s\n' "$out"; } 2> /dev/null || :; else { printf '[VBW] status line unavailable\n'; } 2> /dev/null || :; fi
