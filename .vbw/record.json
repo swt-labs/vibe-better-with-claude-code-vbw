@@ -64892,6 +64892,13 @@
       "sort": "next",
       "size": "small",
       "status": "open"
+    },
+    {
+      "id": "T212",
+      "text": "R233 CI target not met (PR #741, 2026-10-31): guard-to-reference quotient macOS 1.39 vs Ubuntu 26.04 1.82 (1.31x, target 1.25); Linux cases now read slow (pass) instead of OVER. Dispatch bench-steps.yml on main for x86_64 step tables and find the Linux-only part of the guard's compile/run cost",
+      "sort": "next",
+      "size": "small",
+      "status": "open"
     }
   ],
   "decisions": [
