@@ -335,7 +335,8 @@ show_contract_changes() {
     # In the repository that tracks it (a submodule's file in the submodule).
     vbw_repos "$f"
     g="$VBW_ROOT${VBW_REPO_OF[0]:+/${VBW_REPO_OF[0]}}"
-    rel=$(vbw_rel "${VBW_REPO_OF[0]}" "$f")
+    vbw_rel "${VBW_REPO_OF[0]}" "$f"
+    rel=$VBW_REL
     c=
     for h in $(git -C "$g" log --format=%H -- "$rel" 2> /dev/null); do
       if [ "$(git -C "$g" show "$h:$rel" 2> /dev/null | vbw_sha256)" = "$want" ]; then

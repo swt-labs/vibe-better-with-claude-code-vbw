@@ -40,7 +40,8 @@ cmd_plan() {
         for f in "${files[@]}"; do
           r=${VBW_REPO_OF[$i]}
           i=$((i + 1))
-          [ -n "$(git -C "$VBW_ROOT${r:+/$r}" ls-tree -r --name-only -z HEAD -- "$(vbw_rel "$r" "$f")" 2> /dev/null | tr -d '\0')" ] \
+          vbw_rel "$r" "$f"
+          [ -n "$(git -C "$VBW_ROOT${r:+/$r}" ls-tree -r --name-only -z HEAD -- "$VBW_REL" 2> /dev/null | tr -d '\0')" ] \
             || vbw_die "$id has no commit yet: $f is not committed (commit it with vbw commit $id \"type(scope): ...\")"
         done
       fi

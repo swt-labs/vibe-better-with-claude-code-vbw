@@ -312,12 +312,13 @@ vbw_repos() {
   done
 }
 
-# vbw_rel REPO FILE: the project-relative FILE relative to the repository REPO
-# that tracks it ("." for REPO's top folder), on one line.
+# vbw_rel REPO FILE: sets VBW_REL, the project-relative FILE relative to the
+# repository REPO that tracks it ("." for REPO's top folder). Builtins only: no
+# subshell per file.
 vbw_rel() {
-  if [ -z "$1" ]; then printf '%s\n' "$2"
-  elif [ "${2%/}" = "$1" ]; then printf '.\n'
-  else printf '%s\n' "${2#"$1"/}"; fi
+  if [ -z "$1" ]; then VBW_REL=$2
+  elif [ "${2%/}" = "$1" ]; then VBW_REL=.
+  else VBW_REL=${2#"$1"/}; fi
 }
 
 # vbw_plan_paths ENTRY...: vbw_repos over the plan file ENTRYs and, for each
@@ -348,7 +349,10 @@ vbw_plan_paths() {
 vbw_in_repo() {
   local r="$1" f i=0
   for f in ${VBW_PATHS[@]+"${VBW_PATHS[@]}"}; do
-    [ "${VBW_REPO_OF[$i]}" != "$r" ] || printf '%s\0' "$(vbw_rel "$r" "$f")"
+    if [ "${VBW_REPO_OF[$i]}" = "$r" ]; then
+      vbw_rel "$r" "$f"
+      printf '%s\0' "$VBW_REL"
+    fi
     i=$((i + 1))
   done
 }

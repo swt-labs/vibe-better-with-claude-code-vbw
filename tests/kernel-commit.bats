@@ -308,6 +308,16 @@ with_sub() {
   [ "$output" = "[]" ] || { echo "$output"; false; }
 }
 
+@test "each plan file is named relative to its repository with no subshell per file" {
+  with_sub
+  run vbw_kernel 'vbw_repos sub/a.js sub/ src/x.js; vbw_in_repo sub | tr "\0" ,; printf "|"; vbw_in_repo "" | tr "\0" ,'
+  [ "$output" = "a.js,.,|src/x.js," ] || { echo "$output"; false; }
+  # vbw_commit_paths, vbw_dirty_files and the QA tree run it per file on every vbw next.
+  run vbw_kernel 'declare -f vbw_in_repo vbw_rel'
+  local subs=${output//'$(('/}
+  [[ "$subs" != *'$('* && "$subs" != *'`'* ]] || { echo "$output"; false; }
+}
+
 @test "a submodule folder swapped for a symlink to a repository outside the project is no submodule of it" {
   with_sub
   run vbw_kernel 'vbw_subs | tr "\0" "\n"'

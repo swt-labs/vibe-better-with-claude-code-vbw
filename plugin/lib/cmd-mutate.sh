@@ -53,7 +53,8 @@ mutate_clean() {
   for f in "$@"; do
     r=${VBW_REPO_OF[$i]}
     i=$((i + 1))
-    rel=$(vbw_rel "$r" "$f")
+    vbw_rel "$r" "$f"
+    rel=$VBW_REL
     rm -rf "${dest:?}/$f"
     if git -C "$VBW_ROOT${r:+/$r}" cat-file -e "HEAD:$rel" 2> /dev/null; then
       git -C "$VBW_ROOT${r:+/$r}" archive HEAD -- "$rel" | tar -x -C "$dest${r:+/$r}" || vbw_die "cannot restore $f in the proof copy"
@@ -292,7 +293,8 @@ cmd_mutate() {
   for f in "${broke[@]}"; do
     r=${VBW_REPO_OF[$i]}
     i=$((i + 1))
-    rel=$(vbw_rel "$r" "$f")
+    vbw_rel "$r" "$f"
+    rel=$VBW_REL
     if [ -e "$f" ] || [ -L "$f" ]; then
       mkdir -p "$dir/files/$(dirname "$f")"
       cp -pP "$f" "$dir/files/$f" || vbw_die "cannot set $f aside"
