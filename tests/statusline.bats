@@ -293,11 +293,15 @@ render_with() { cc_json | NO_COLOR=1 bash "$1"; }
 # (bash 5.2 on Linux writes in pieces: the late piece killed it with SIGPIPE, status 141).
 @test "R235: a reader that has left does not fail the render, a good one or the fallback (status 0, no SIGPIPE)" {
   "$VBW" init > /dev/null
-  set -o pipefail
-  cc_json | NO_COLOR=1 bash "$PLUGIN_ROOT/scripts/vbw-statusline.sh" | true
-  [ "${PIPESTATUS[1]}" -eq 0 ]
+  local st
+  # The pipeline runs in a fresh bash: on bash 3.2 bats' DEBUG trap resets PIPESTATUS,
+  # in the test body and in its subshells alike.
+  # shellcheck disable=SC2016 # expanded by the inner bash
+  st=$(cc_json | bash -c 'NO_COLOR=1 bash "$1" | true; echo "${PIPESTATUS[0]}"' _ "$PLUGIN_ROOT/scripts/vbw-statusline.sh")
+  [ "$st" = 0 ] || { echo "status line exited $st under a reader that left"; false; }
   cp -R "$PLUGIN_ROOT" "$TEST_ROOT/plugin"
   printf '\n| ) (\n' >> "$TEST_ROOT/plugin/scripts/statusline.jq"
-  cc_json | NO_COLOR=1 bash "$TEST_ROOT/plugin/scripts/vbw-statusline.sh" | true
-  [ "${PIPESTATUS[1]}" -eq 0 ]
+  # shellcheck disable=SC2016 # expanded by the inner bash
+  st=$(cc_json | bash -c 'NO_COLOR=1 bash "$1" | true; echo "${PIPESTATUS[0]}"' _ "$TEST_ROOT/plugin/scripts/vbw-statusline.sh")
+  [ "$st" = 0 ] || { echo "fallback render exited $st under a reader that left"; false; }
 }
