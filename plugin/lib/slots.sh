@@ -98,7 +98,8 @@ slots_nap() {
 # create of vbw_lock_create (no process of its own). A folder of that name, left
 # by an older VBW with its pid in slots.lock/pid, excludes just the same.
 slots_lock() {
-  local lock="$SLOTS_DIR/slots.lock" n=0 quiet=$SECONDS owner file probe
+  local lock="$SLOTS_DIR/slots.lock" n=0 quiet owner file probe
+  quiet=$(vbw_lock_seconds)
   while :; do
     if vbw_lock_create "$lock"; then
       SLOTS_LOCKED=$lock
@@ -118,15 +119,15 @@ slots_lock() {
       owner=$(vbw_lock_holder "$file")
       if [ -n "$owner" ] && slots_live "$owner"; then
         # A live owner is not an error: the wait for it has no end.
-        quiet=$SECONDS
-      elif [ -n "$owner" ] || [ $((SECONDS - quiet)) -ge 5 ]; then
+        quiet=$(vbw_lock_seconds)
+      elif [ -n "$owner" ] || [ $(($(vbw_lock_seconds) - quiet)) -ge 5 ]; then
         # An owner that is gone, or none for 5 s: take the lock over (a rename,
         # never a removal). Only a lock that cannot be taken over for 30 s gives up.
         if vbw_lock_takeover "$file" "$owner"; then
           SLOTS_LOCKED=$lock
           return 0
         fi
-        [ $((SECONDS - quiet)) -lt 30 ] || return 2
+        [ $(($(vbw_lock_seconds) - quiet)) -lt 30 ] || return 2
       fi
     fi
     n=$((n + 1))
