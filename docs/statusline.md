@@ -164,6 +164,17 @@ status line still renders. It never writes `.vbw/record.json`.
 `vbw run start` and `vbw run end` read it to work out what a run cost, and
 `vbw show costs` reads it for the milestone totals (docs/costs.md).
 
+## The error file
+
+When the render fails, jq's error text is kept in `.vbw/runtime/statusline.err`
+so a one-off `[VBW] status line unavailable` can be explained afterwards. The
+file holds jq's error output of the last render only: it is emptied at the start
+of every render, so a good render leaves it empty, and it lives inside the
+project. It is written only when `.vbw/runtime` already exists; the status line
+never creates the folder. `tools/bench-hooks.sh` prints the line it read and this
+file's text when the running step is missing from the `status line (step
+running)` case.
+
 ## Engineering
 
 - One jq program renders all the lines from Claude Code's JSON, the record,
@@ -186,8 +197,8 @@ status line still renders. It never writes `.vbw/record.json`.
 - Started in a subfolder, it shows the project that folder is in: the nearest
   folder up that holds `.git`, the same project the kernel and the guards use.
 - No network, no git process (the branch is read from
-  `.git/HEAD`, also in linked worktrees). The one thing it writes is the cost side
-  file below, never the record.
+  `.git/HEAD`, also in linked worktrees). It writes the cost side
+  file and the error file above, never the record.
 - It reads stdin with a timeout (Claude Code may send nothing on the first
   render) and never fails: a bad render prints `[VBW] status line unavailable`.
 - Exit 3 is the hand-back signal: the script prints nothing and exits 3 both
