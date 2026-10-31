@@ -63,6 +63,9 @@ seed() { sed -n '/^submodule_seed()/,/^}/p' "$SUITE"; }
 
 @test "R238: a committed result of the submodule scenario, when there is one, is labelled honestly and states the four facts true" {
   local f="$RESULTS/submodule.json"
+  # What a run will write is held to the same label before any result exists.
+  sed -n '/^result_write()/,/^}/p' "$SUITE" | grep -qF 'evidence_level: "L3"' || { echo "result_write does not label results L3"; false; }
+  body submodule | grep -qE 'result_write submodule "\$fixture" "\$\{cost_usd:-0\}" "\$passed"' || { echo "the scenario does not write fixture, cost and passed"; false; }
   [ -f "$f" ] || skip "no submodule result committed yet: a run writes it"
   jq -e '.scenario == "submodule" and .passed == true and .evidence_level == "L3"
     and (.fixture | type == "string" and length > 0) and (.cost_usd | type == "number" and . > 0)
