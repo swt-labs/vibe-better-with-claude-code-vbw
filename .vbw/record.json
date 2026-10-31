@@ -64878,6 +64878,13 @@
       "sort": "next",
       "size": "small",
       "status": "open"
+    },
+    {
+      "id": "T210",
+      "text": "Owner question 2026-10-31: plugin.json author and both marketplace.json owners say 'Tiago Serôdio' with a personal Gmail; switch to SWT Labs with a project contact; LICENSE copyright only if SWT Labs is the legal holder (owner decides name, contact and timing)",
+      "sort": "later",
+      "size": "small",
+      "status": "open"
     }
   ],
   "decisions": [
