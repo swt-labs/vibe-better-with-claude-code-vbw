@@ -148,6 +148,15 @@ record_unlock() {
   vbw_guard_drop "$VBW_RUNTIME/lock"
 }
 
+# vbw_lock_seconds: the clock the 5 s counts of the note lock, the slot store's lock
+# and the alone-check gate read: VBW_LOCK_CLOCK when set (a test injects whole
+# seconds, one per look), else bash's SECONDS. Real SECONDS once ticked during a case
+# on Ubuntu 26.04 and a 5 s count read 4 tries (T206, PR #740). A count that never
+# goes down between two reads.
+vbw_lock_seconds() {
+  printf '%s' "${VBW_LOCK_CLOCK:-$SECONDS}"
+}
+
 # vbw_lock_alive PID: true while process PID runs (kill -0 is only a liveness
 # probe; a process of another user answers "not permitted" and counts as running).
 vbw_lock_alive() {
