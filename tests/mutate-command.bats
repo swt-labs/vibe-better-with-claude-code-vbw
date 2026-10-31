@@ -80,16 +80,22 @@ refused() {
     || { breaks P1.1; false; }
 }
 
-@test "R188: a break in a plan file inside a submodule runs on the submodule's code, is recorded red, and leaves the file as the submodule's last commit" {
-  git init -q "$TEST_ROOT/subsrc"
+# with_sub_pay: P1.1's file is pay.sh in a submodule at sub/ (on branch main), and C1 checks it.
+with_sub_pay() {
+  git init -q -b main "$TEST_ROOT/subsrc"
   printf 'echo paid\n' > "$TEST_ROOT/subsrc/pay.sh"
   git -C "$TEST_ROOT/subsrc" add pay.sh
   git -C "$TEST_ROOT/subsrc" commit -q -m "chore: seed"
-  git -c protocol.file.allow=always submodule add -q "file://$TEST_ROOT/subsrc" sub
+  git -c protocol.file.allow=always submodule add -q -b main "file://$TEST_ROOT/subsrc" sub
+  git -C sub checkout -q main
   printf '[ "$(sh sub/pay.sh)" = paid ]\n' > tests/pay.sh
   jq '(.plans[] | select(.id == "P1.1")).files = ["sub/pay.sh"]' .vbw/record.json > "$TEST_ROOT/e.json" && cp "$TEST_ROOT/e.json" .vbw/record.json
   git add -A && git commit -q -m "chore: sub"
   "$VBW" approve > /dev/null
+}
+
+@test "R188: a break in a plan file inside a submodule runs on the submodule's code, is recorded red, and leaves the file as the submodule's last commit" {
+  with_sub_pay
   printf 'echo unpaid\n' > sub/pay.sh
   run "$VBW" mutate P1.1 R1.1 "prints unpaid instead of paid" sub/pay.sh < /dev/null
   [ "$status" -eq 0 ] || { echo "$output"; false; }
@@ -103,6 +109,24 @@ refused() {
   # shellcheck disable=SC2016 # expanded by vbw_kernel
   COPY="$TEST_ROOT/copy" vbw_kernel '. "$VBW_LIB/cmd-mutate.sh"; mutate_clean "$COPY" sub/pay.sh'
   cmp -s "$TEST_ROOT/copy/sub/pay.sh" <(git -C sub show HEAD:pay.sh) || { ls -la "$TEST_ROOT/copy/sub"; false; }
+}
+
+@test "R188: a commit in a submodule makes the checks run on the unbroken code again: a check it broke is refused, never a kill" {
+  with_sub_pay
+  printf 'echo unpaid\n' > sub/pay.sh
+  run "$VBW" mutate P1.1 R1.1 "prints unpaid instead of paid" sub/pay.sh < /dev/null
+  [ "$status" -eq 0 ] || { echo "$output"; false; }
+  # A bug committed in the submodule: the project's HEAD does not move.
+  local head sum
+  head=$(git rev-parse HEAD)
+  printf 'echo nope\n' > sub/pay.sh
+  git -C sub commit -q -am "feat(pay): a bug"
+  [ "$(git rev-parse HEAD)" = "$head" ]
+  sum=$(record_sum)
+  printf 'echo unpaid\n' > sub/pay.sh
+  run "$VBW" mutate P1.1 R1.1 "prints unpaid again" sub/pay.sh < /dev/null
+  refused "$sum"
+  [[ "$output" == *"do not pass on the unbroken code"*C1* ]] || { echo "$output"; false; }
 }
 
 @test "R188: a rule's own check is the one that runs, even when the requirement has others" {

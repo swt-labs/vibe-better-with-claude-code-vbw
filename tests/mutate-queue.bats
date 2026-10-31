@@ -142,15 +142,15 @@ queue() {
 }
 
 # R217 (M45 QA, kernel F323): the queued path records each result through the one
-# mutate_record, with its nine documented arguments and no list of the check's
+# mutate_record, with its ten documented arguments and no list of the check's
 # files: pending and strengthened come from strengthen_files, never from the files
 # of the checks a break ran.
-@test "R217: the queued path passes mutate_record no check files, only the nine documented arguments" {
+@test "R217: the queued path passes mutate_record no check files, only the ten documented arguments" {
   local f="$PLUGIN_ROOT/lib/mutate-queue.sh" call
   ! awk '/^  for e in "\$\{keep\[@\]\}"; do$/, /rm -rf "\$e"/' "$f" | grep -q cfiles || { echo "mutate-queue.sh still builds a per-break list of the check's files"; false; }
   call=$(awk '/mutate_record /, /\|\| surv=1$/' "$f" | tr -d '\\\n' | tr -s ' ')
   [ -n "$call" ] || { echo "no mutate_record call found in mutate-queue.sh"; false; }
-  [[ "$call" == *'"$(printf '"'"'%s'"'"' "$m" | jq -c .files)" || surv=1'* ]] || { echo "the call does not end with FILES_JSON: $call"; false; }
+  [[ "$call" == *'"$(printf '"'"'%s'"'"' "$m" | jq -c .files)" "$tree" || surv=1'* ]] || { echo "the call does not end with FILES_JSON TREE: $call"; false; }
 }
 
 # R230 (#738): one vbw mutate PLAN --run at a time per plan. The run takes a marker,
@@ -225,7 +225,9 @@ started() { [ "$(ls "$BAR" | grep -c '^[0-9]')" -ge 1 ]; }
   [ "$status" -ne 0 ] && [[ "$output" == *"no break waits for P1.1"* ]] || { echo "$output"; false; }
   [ ! -d .vbw/runtime/mutate-queue/P1.1 ] || { ls -A .vbw/runtime/mutate-queue/P1.1; false; }
   queue R1.1 "prints unpaid" 'echo unpaid'
-  git commit --allow-empty -q -m "move head"
+  # Other committed code (a commit that changes no file leaves the break valid).
+  printf 'x\n' > other.txt
+  git add other.txt && git commit -q -m "move head"
   run "$VBW" mutate P1.1 --run < /dev/null
   [ "$status" -ne 0 ] && [[ "$output" == *"queued at another commit"* ]] || { echo "$output"; false; }
   [ ! -d .vbw/runtime/mutate-queue/P1.1 ] || { ls -A .vbw/runtime/mutate-queue/P1.1; false; }

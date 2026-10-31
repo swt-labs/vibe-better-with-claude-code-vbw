@@ -280,8 +280,12 @@ cmd_mutate() {
   if [ ${#cfiles[@]} -gt 0 ] && [ -n "$(vbw_dirty_files "${cfiles[@]}")" ]; then
     vbw_die "check files differ from the last commit: $(vbw_dirty_files "${cfiles[@]}"): commit them first, so the break is run against the approved tests"
   fi
-  local head
+  # head: the project's commit (a survivor's strengthened files are diffed from it);
+  # tree: the committed code with each submodule at its own HEAD (vbw_head_tree), the
+  # key of "already ran unbroken", since a commit in a submodule leaves head as it was.
+  local head tree
   head=$(git rev-parse HEAD) || vbw_die "the project has no commit yet"
+  tree=$(vbw_head_tree) || vbw_die "cannot fingerprint the committed code"
   checks_begin "$record"
   # The broken bytes are set aside and the files go back to HEAD, before any check starts.
   local dir
@@ -308,21 +312,21 @@ cmd_mutate() {
   # Queued (T174): the break waits, set aside, for vbw mutate PLAN --run.
   if [ "$queue" = 1 ]; then
     checks_end
-    mutate_queue_add "$plan" "$dir" "$(jq -nc --arg t "$target" --arg q "$req" --argjson k "$rk" --arg c "$check" --arg w "$what" --arg h "$head" \
+    mutate_queue_add "$plan" "$dir" "$(jq -nc --arg t "$target" --arg q "$req" --argjson k "$rk" --arg c "$check" --arg w "$what" --arg h "$head" --arg tr "$tree" \
       --argjson files "$(printf '%s\n' "${files[@]}" | jq -R . | jq -sc .)" --argjson broke "$(printf '%s\n' "${broke[@]}" | jq -R . | jq -sc .)" \
-      '{target: $t, req: $q, rk: $k, check: $c, what: $w, files: $files, broke: $broke, head: $h}')"
+      '{target: $t, req: $q, rk: $k, check: $c, what: $w, files: $files, broke: $broke, head: $h, tree: $tr}')"
     return 0
   fi
   # One red check is the proof (T157): the checks run one at a time, fastest first by their last
   # recorded time (a check never run counts as slowest), until one goes red; a survivor runs them all.
-  # A check runs unbroken first, unless a recorded break at this HEAD already ran it (it passed then).
+  # A check runs unbroken first, unless a recorded break of this committed code already ran it (it passed then).
   local results='{}' order base c one copy bad rc=0
   mutate_time_begin
   proofcopy_create_slots 1
   copy=${PROOF_COPIES[0]}
   mutate_tstep copies
-  base=$(printf '%s' "$record" | jq -c --arg p "$plan" --arg h "$head" \
-    '[.plans[] | select(.id == $p) | (.mutations // [])[] | select(.head == $h) | (.checks // {}) | keys[]] | unique')
+  base=$(printf '%s' "$record" | jq -c --arg p "$plan" --arg t "$tree" \
+    '[.plans[] | select(.id == $p) | (.mutations // [])[] | select(.tree == $t) | (.checks // {}) | keys[]] | unique')
   order=$(proofreuse_store_read | jq -r --argjson ids "$ids" '.runs as $r
     | [$ids[] | {id: ., s: ($r["check:" + .].seconds // 1e9)}] | sort_by(.s, .id)[] | .id')
   for c in $order; do
@@ -355,21 +359,22 @@ $ways"
   mutate_tstep copies
   checks_end
   mutate_record "$plan" "$target" "$what" "$head" "$results" "$record" "${ruledoc:-}" "${tk:-}" \
-    "$(printf '%s\n' "${files[@]}" | jq -R . | jq -sc .)" || rc=$?
+    "$(printf '%s\n' "${files[@]}" | jq -R . | jq -sc .)" "$tree" || rc=$?
   mutate_time_say
   slots_say
   return "$rc"
 }
 
-# mutate_record PLAN TARGET WHAT HEAD RESULTS RECORD RULEDOC TASK FILES_JSON:
-# record one break's results (the checks it ran broken) under the plan and say
+# mutate_record PLAN TARGET WHAT HEAD RESULTS RECORD RULEDOC TASK FILES_JSON TREE:
+# record one break's results (the checks it ran broken; HEAD the project's commit,
+# TREE the committed code as vbw_head_tree counts it) under the plan and say
 # what they show; exit 1 for a survivor. RULEDOC is the rule's {req, text, check}
 # (empty for a task), TASK the task's number (empty for a rule); CHECK_WAITING is
 # the files checks_begin found waiting for approval. The pending and strengthened
 # files come from strengthen_files, the one definition of the files a plan may
 # strengthen (R210, R217), never from the files of the checks the break ran.
 mutate_record() {
-  local plan="$1" target="$2" what="$3" head="$4" results="$5" record="$6" ruledoc="$7" tk="$8" filesj="$9"
+  local plan="$1" target="$2" what="$3" head="$4" results="$5" record="$6" ruledoc="$7" tk="$8" filesj="$9" tree="${10}"
   local sfiles f
   sfiles=$(printf '%s' "$record" | jq -c --arg p "$plan" "$VBW_JQ_DEFS"'strengthen_files($p)')
   # What was recorded for this target before: a survivor, if the last one was.
@@ -399,9 +404,9 @@ mutate_record() {
     fi
   fi
   entry=$(jq -nc --argjson rule "${ruledoc:-null}" --argjson k "${tk:-0}" --arg what "$what" --argjson files "$filesj" \
-    --argjson marks "$marks" --arg result "$result" --arg at "$(vbw_now)" --arg head "$head" --argjson strong "$strong" --argjson pending "$pending" '
+    --argjson marks "$marks" --arg result "$result" --arg at "$(vbw_now)" --arg head "$head" --arg tree "$tree" --argjson strong "$strong" --argjson pending "$pending" '
     (if $rule != null then {rule: {req: $rule.req, text: $rule.text}} else {task: $k} end)
-    + {what: $what, files: $files, checks: $marks, result: $result, at: $at, head: $head}
+    + {what: $what, files: $files, checks: $marks, result: $result, at: $at, head: $head, tree: $tree}
     + (if ($strong | length) > 0 then {strengthened: $strong} else {} end)
     + (if ($pending | length) > 0 then {pending: $pending} else {} end)')
   # A survivor of a plan of the open build run opens the files the plan may strengthen for the run (strengthen_files, R210).

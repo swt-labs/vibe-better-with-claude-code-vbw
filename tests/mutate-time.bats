@@ -121,7 +121,7 @@ C1 red" ] || { echo "$output"; false; }
   [ -z "$AFTER" ] || { echo "lines after the split: $AFTER"; false; }
   [ "$(names | tr '\n' '|')" = "copies|unbroken|break R1.1|waits|saving|" ] || { names; false; }
   sum_ok
-  last_break P1.1 | jq -e '(keys | sort) == ["at","checks","files","head","result","rule","what"] and .result == "red" and .checks == {C1: "red"}' || { last_break P1.1; false; }
+  last_break P1.1 | jq -e '(keys | sort) == ["at","checks","files","head","result","rule","tree","what"] and .result == "red" and .checks == {C1: "red"}' || { last_break P1.1; false; }
   [ "$(cat src/pay.sh)" = "$(git show HEAD:src/pay.sh)" ]
 }
 
@@ -133,7 +133,7 @@ C1 red" ] || { echo "$output"; false; }
   [ "$BEFORE" = "survivor: R2.1 (a receipt is printed): C2 still pass" ] || { echo "$output"; false; }
   [ -z "$AFTER" ] || { echo "$output"; false; }
   [ "$(names | tr '\n' '|')" = "copies|unbroken|break R2.1|waits|saving|" ] || { names; false; }
-  last_break P1.2 | jq -e '.result == "survivor" and (keys | sort) == ["at","checks","files","head","result","rule","what"]' || { last_break P1.2; false; }
+  last_break P1.2 | jq -e '.result == "survivor" and (keys | sort) == ["at","checks","files","head","result","rule","tree","what"]' || { last_break P1.2; false; }
 }
 
 @test "R207: a task break names its entry by the task" {

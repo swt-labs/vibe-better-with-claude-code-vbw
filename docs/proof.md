@@ -1450,8 +1450,9 @@ plan on each rule.
 
 A break with several checks (a task break) runs them one at a time, fastest
 first by their last recorded time, and stops at the first that goes red; a
-survivor runs them all. Each check first runs once on the unbroken code at that
-commit, unless an earlier break at the same commit already ran it. A slow test
+survivor runs them all. Each check first runs once on the unbroken code, unless
+an earlier break of the same committed code (each submodule at its own `HEAD`)
+already ran it. A slow test
 suite therefore pays for the checks a break needs, not for every check.
 
 - A check that notices the break is **red**: the rule is covered.
