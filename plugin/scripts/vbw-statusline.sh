@@ -229,4 +229,6 @@ case "$last" in
       { { [ -d "$root/.vbw/runtime" ] || mkdir -p "$root/.vbw/runtime"; } && printf '%s\n' "$last" > "$side.$$" && mv -f "$side.$$" "$side"; } 2> /dev/null || rm -f "$side.$$" 2> /dev/null
     fi ;;
 esac
-if [ -n "$out" ]; then printf '%s\n' "$out"; else printf '[VBW] status line unavailable\n'; fi
+# Optional files that are missing make jq complain on a good render too: only a
+# failed render keeps its error text.
+if [ -n "$out" ]; then { : > "$errf"; } 2> /dev/null; printf '%s\n' "$out"; else printf '[VBW] status line unavailable\n'; fi
