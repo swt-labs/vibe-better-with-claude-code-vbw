@@ -64599,7 +64599,7 @@
       "text": "Guard per-call cost (2026-10-27): R219's unreadable_calls regex is compiled into guard-bash.jq on every call and adds about 1.5 ms (git case 10.6 to 12.1 ms, interp 10.3 to 12.9 ms, A/B against v2.1.17). Keep it out of the common path (a second jq program run only for interpreter commands) or cheapen it",
       "sort": "next",
       "size": "small",
-      "status": "open"
+      "status": "done"
     },
     {
       "id": "T198",
