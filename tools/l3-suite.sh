@@ -43,6 +43,30 @@ new_project() {
 next_action() { (cd "$dir" && "$VBW" next --json 2> /dev/null | jq -r '.action // "none"') || echo none; }
 screen() { l3 screen "$scenario"; }
 default_idle() { l3 wait "$scenario" 1500 > /dev/null 2>&1 || true; }
+# spec_section_lines SPEC SECTION: the '- ' lines of the '## SECTION' section, after dropping every
+# <!-- ... --> block (one-line or multi-line; text outside a block on the same line is kept). One awk
+# reads to the end of the file, so no quiet grep can end it early (tools/check-pipefail-grep.sh).
+spec_section_lines() {
+  awk -v sec="$2" '
+    BEGIN { inc = 0; insec = 0 }
+    {
+      line = $0; out = ""
+      while (length(line) > 0) {
+        if (inc) {
+          i = index(line, "-->")
+          if (i == 0) { line = ""; break }
+          line = substr(line, i + 3); inc = 0
+        } else {
+          i = index(line, "<!--")
+          if (i == 0) { out = out line; line = ""; break }
+          out = out substr(line, 1, i - 1); line = substr(line, i + 4); inc = 1
+        }
+      }
+      if (out ~ /^## /) { insec = (out == "## " sec); next }
+      if (insec && out ~ /^- /) print out
+    }
+  ' "$1" 2> /dev/null
+}
 
 # Answer the question on screen with the first (recommended) option. A
 # multi-select question needs the option ticked, then Submit.
@@ -3255,7 +3279,7 @@ scenario_mapnotrun() {
   fixture="greet.sh with a green test.sh and a red e2e.sh (the README presents e2e.sh as the long end-to-end run taking many minutes, both with their commands); vbw init before the session; the user types /vbw:vibe and answers with the recommendation"
   start="/vbw:vibe"
   spec="$dir/.vbw/spec.md"
-  commands_lines() { sed -n '/^## Commands/,/^## /p' "$spec" 2> /dev/null | grep -E '^- ' || true; }
+  commands_lines() { spec_section_lines "$spec" Commands; }
   red_decision_text() { jq -r '[.decisions[]? | select((.text | startswith("Contract approved") | not) and (.text | test("e2e[.]sh"))) | .text] | first // empty' "$dir/.vbw/record.json" 2> /dev/null; }
   done_yet() { commands_lines | grep 'test\.sh' > /dev/null && [ -n "$(red_decision_text)" ]; }
   checks() {
