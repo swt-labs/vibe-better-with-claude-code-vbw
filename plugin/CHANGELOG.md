@@ -21,12 +21,15 @@ checks steady on every machine. Thank you.
   empty. The status line now ignores that signal and exits 0. It also keeps
   jq's error text of its last render in `.vbw/runtime/statusline.err`, so a
   status line that cannot render says why.
-- **The hook benchmark compares like with like on Linux.** The guard cases
-  leave out the shell's and jq's start-up time, but the reference kept it,
-  and start-up costs about 7 ms on a Mac against 2 ms on Linux, so Linux
-  runners read the guard as too slow. The reference is now measured the same
-  way, with a program the guard's size, and the nominal figure was measured
-  again. `VBW_BENCH_STEPS=1` prints the guard's cost step by step, and
+- **The hook benchmark measures its reference like the guard.** The guard
+  cases leave out the shell's and jq's start-up time, but the reference kept
+  it, and start-up costs about 7 ms on a Mac against 2 ms on Linux. The
+  reference is now measured the same way, with a program the guard's size,
+  and the nominal figure was measured again, so a slow Linux runner reads
+  "slow" against its scaled budget instead of failing. The gap is smaller but
+  not closed: on GitHub's Linux runners the guard still costs about 1.3 times
+  what the reference predicts relative to macOS, and that is traced next.
+  `VBW_BENCH_STEPS=1` prints the guard's cost step by step, and
   `tools/test-linux.sh` can pick the Ubuntu image and run only the benchmark.
 - **Steadier tests.** The three waits for a lock without an owner count their
   five seconds on one clock a test can set, the timed waiting test measures
