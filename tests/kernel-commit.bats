@@ -318,6 +318,24 @@ with_sub() {
   [[ "$subs" != *'$('* && "$subs" != *'`'* ]] || { echo "$output"; false; }
 }
 
+@test "a nested clone that is not a submodule, under a plan's folder entry, is never committed as a pointer" {
+  mkdir -p apps
+  git init -q apps/lib
+  printf 'l\n' > apps/lib/l.js
+  git -C apps/lib add l.js
+  git -C apps/lib commit -q -m "chore: seed"
+  jq '.plans += [{id:"P1.4", phase:"P1", title:"Apps", reqs:["R1"], files:["apps/"], after:[], status:"building"}]' \
+    .vbw/record.json > "$TEST_ROOT/r.json" && cp "$TEST_ROOT/r.json" .vbw/record.json
+  git add .vbw/record.json
+  git commit -q -m "chore: apps"
+  printf 'w\n' > apps/web.js
+  vbw_run commit P1.4 "feat(apps): web"
+  [ "$status" -eq 0 ] || { echo "$output"; false; }
+  [ "$(git show --name-only --format= HEAD)" = "apps/web.js" ] || { git show --stat HEAD; false; }
+  [ -z "$(git ls-tree HEAD apps/lib)" ]
+  [ -z "$(git diff --cached --name-only)" ]
+}
+
 @test "a submodule folder swapped for a symlink to a repository outside the project is no submodule of it" {
   with_sub
   run vbw_kernel 'vbw_subs | tr "\0" "\n"'

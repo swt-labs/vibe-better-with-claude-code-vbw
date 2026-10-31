@@ -360,8 +360,9 @@ vbw_in_repo() {
 # vbw_changed REPO PATH...: of the pathspecs PATH (relative to REPO), the files
 # that differ from REPO's HEAD (changed, staged or not, or deleted) as "c", then
 # the new ones git does not ignore as "n", each "c|n NUL FILE NUL", FILE relative
-# to REPO. A repository's folder inside REPO (a moved submodule pointer) is never
-# listed: VBW commits inside a submodule, never its pointer in the one above.
+# to REPO. A repository's folder inside REPO (a moved submodule pointer, or a
+# nested clone that is no submodule, which git lists as "DIR/") is never listed:
+# VBW commits inside a repository, never a pointer to it in the one above.
 vbw_changed() {
   local d="$VBW_ROOT${1:+/$1}" f
   shift
@@ -369,7 +370,7 @@ vbw_changed() {
     [ -e "$d/$f/.git" ] || printf 'c\0%s\0' "$f"
   done
   git -C "$d" ls-files -z --others --exclude-standard -- "$@" | while IFS= read -r -d '' f; do
-    printf 'n\0%s\0' "$f"
+    [ -e "$d/${f%/}/.git" ] || printf 'n\0%s\0' "$f"
   done
 }
 
