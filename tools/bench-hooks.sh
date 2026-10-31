@@ -319,7 +319,7 @@ if [ "${VBW_BENCH_STEPS:-}" = 1 ]; then
   {
     printf 'step\tgit\tnpm\tbig\tinterp\n'
     for i in 0 1 2 3 4; do printf '%s%s\n' "${steps_rows[$i]}" "${steps_cells[$i]}"; done
-  } | column -t -s "$(printf '\t')"
+  } | awk -F"\t" '{ printf "%-16s %-6s %-6s %-6s %s\n", $1, $2, $3, $4, $5 }'
   exit 0
 fi
 
