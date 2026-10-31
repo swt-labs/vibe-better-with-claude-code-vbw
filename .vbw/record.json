@@ -17868,7 +17868,23 @@
       "proof": "auto",
       "status": "open",
       "milestone": "M48",
-      "rules": []
+      "rules": [
+        {
+          "text": "when the render fails, jq's error is written to .vbw/runtime/statusline.err inside the project and the fallback line '[VBW] status line unavailable' is printed",
+          "check": "C538",
+          "plan": "P189.1"
+        },
+        {
+          "text": "a good render leaves .vbw/runtime/statusline.err empty, overwritten each call; without a runtime folder nothing is written and the render still prints",
+          "check": "C538",
+          "plan": "P189.1"
+        },
+        {
+          "text": "the bench's 'the step was not shown, so the measure left it out' failure stays and is followed by the first line it read and, when the error file has text, that text, each prefixed with the case's label",
+          "check": "C539",
+          "plan": "P189.1"
+        }
+      ]
     },
     {
       "id": "R236",
@@ -17929,7 +17945,33 @@
       "proof": "auto",
       "status": "open",
       "milestone": "M48",
-      "rules": []
+      "rules": [
+        {
+          "text": "scenario_submodule is in ALL and the header; its seed adds one submodule at sub/ with git submodule add, on a branch, holding greet.sh and a test.sh that prints its git toplevel; the spec names sh sub/test.sh; a file is staged and left uncommitted in each repository",
+          "check": "C545",
+          "plan": "P191.2"
+        },
+        {
+          "text": "it judges in git and the record, never on screen: a VBW-Plan commit in the submodule changing the plan's file, the project's pointer to the submodule unmoved with git status showing it changed, the check run from the clean copy's submodule under .vbw/runtime/proof., both staged files untouched, and common_checks",
+          "check": "C545",
+          "plan": "P191.2"
+        },
+        {
+          "text": "result_write submodule records the facts plan_commit_in_submodule, pointer_unmoved, check_ran_in_copy_submodule and staged_files_untouched with the commit ids, and a not_tested list naming nested submodules, a detached HEAD, a plan spanning both repositories and the vbw auto loop",
+          "check": "C545",
+          "plan": "P191.2"
+        },
+        {
+          "text": "docs/proof.md names the submodule scenario and what it judges beside mapnotrun",
+          "check": "C545",
+          "plan": "P191.2"
+        },
+        {
+          "text": "a committed result, when there is one, is labelled L3 with passed true, cost above 0, the four facts true and a non-empty not_tested list; without it the case skips with 'no submodule result committed yet: a run writes it'",
+          "check": "C545",
+          "plan": "P191.2"
+        }
+      ]
     }
   ],
   "phases": [
@@ -67038,6 +67080,34 @@
       "text": "#737's real-session run is a new real-user scenario in tools/l3-suite.sh (a small project with one submodule and a plan whose file is inside it), run on #737's branch before merge",
       "why": "VBW's own run is the evidence the review asked for; the scenario serves every later submodule change and #735's acceptance; a contributor's report alone is not VBW's evidence",
       "at": "2026-10-31T15:05:19Z"
+    },
+    {
+      "id": "D543",
+      "text": "R235 is narrowed to a miss explaining itself; the cause fix is backlog work",
+      "why": "The miss did not reproduce in 60 local Linux runs; a requirement must not read proven while its cause is unknown; the error file and the bench's fuller failure line make the next occurrence name its cause",
+      "at": "2026-10-31T15:51:11Z"
+    },
+    {
+      "id": "D544",
+      "text": "R238 judges that the project's pointer to the submodule did not move",
+      "why": "PR #737 never moves the pointer by design (docs/workflows.md Submodules); moving it behind the user's back is a side effect VBW avoids",
+      "at": "2026-10-31T15:51:13Z"
+    },
+    {
+      "id": "D545",
+      "at": "2026-10-31T15:52:44Z",
+      "text": "Contract approved: 227 requirements, 540 checks, 574 plans (701d291d396e)",
+      "plans": [
+        "P188.1",
+        "P188.2",
+        "P189.1",
+        "P189.2",
+        "P190.1",
+        "P190.2",
+        "P190.3",
+        "P191.1",
+        "P191.2"
+      ]
     }
   ],
   "commands": {
