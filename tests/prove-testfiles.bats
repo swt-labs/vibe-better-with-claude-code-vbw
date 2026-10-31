@@ -64,6 +64,29 @@ teardown_file() { fixture_teardown; }
   grep -rq 'boom-b' .vbw/runtime/output/
 }
 
+@test "R167: a test file inside a submodule is a test file of its own and runs in the proof copy" {
+  git init -q "$TEST_ROOT/libsrc"
+  mkdir -p "$TEST_ROOT/libsrc/tests"
+  printf '[ -f lib/tests/t_lib.sh ]\n' > "$TEST_ROOT/libsrc/tests/t_lib.sh"
+  git -C "$TEST_ROOT/libsrc" add tests
+  git -C "$TEST_ROOT/libsrc" commit -q -m "chore: seed"
+  git -c protocol.file.allow=always submodule add -q "file://$TEST_ROOT/libsrc" lib
+  sed 's|^- files: tests/t_\*\.sh$|- files: tests/t_*.sh lib/tests/*.sh|' .vbw/spec.md > "$TEST_ROOT/spec.md" && cp "$TEST_ROOT/spec.md" .vbw/spec.md
+  "$VBW" spec sync > /dev/null
+  git add -A && git commit -q -m "chore: lib"
+  "$VBW" approve > /dev/null
+  vbw_run prove
+  jq -e '.evidence.test_files | keys == ["lib/tests/t_lib.sh","tests/t_a.sh","tests/t_b.sh"] and .["lib/tests/t_lib.sh"].status == "pass"' .vbw/record.json \
+    || { echo "$output"; jq '.evidence.test_files' .vbw/record.json; false; }
+  vbw_run prove
+  jq -e '.evidence.test_files["lib/tests/t_lib.sh"].reused == true' .vbw/record.json || { echo "$output"; false; }
+  # A commit in the submodule runs its test file again.
+  printf '[ -f lib/tests/t_lib.sh ]\ntrue\n' > lib/tests/t_lib.sh
+  git -C lib commit -q -am "test: lib"
+  vbw_run prove
+  jq -e '.evidence.test_files["lib/tests/t_lib.sh"] | .status == "pass" and (.reused | not)' .vbw/record.json || { echo "$output"; false; }
+}
+
 @test "R167: a test file an approved check runs is not a test file of its own" {
   jq '.checks[0].run = ["sh","tests/t_a.sh"]' .vbw/record.json > "$TEST_ROOT/edit.json" && cp "$TEST_ROOT/edit.json" .vbw/record.json
   git add -A && git commit -q -m "chore(vbw): check runs t_a"
