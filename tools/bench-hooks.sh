@@ -92,10 +92,10 @@ SIZES="51 500 2000"
 # five runs of this script on 2026-10-31. GitHub's macOS runner: not yet measured in this form;
 # the latest known is the earlier figure of 16.7 ms with the startup counted, in the bench
 # shard 1 log of pull request #740 (2026-10-31), to be replaced from the shard 1 log of the next pull request.
-# ubuntu-latest 9.7 ms (jq 1.7.1, ubuntu:24.04 in the container of tools/test-linux.sh on the Mac, 2026-10-31).
-# Ubuntu 26.04 9.5 ms (jq 1.8.1, the same container with ubuntu:26.04, 2026-10-31). The largest is pinned,
+# ubuntu-latest 10.3 ms (jq 1.7.1, ubuntu:24.04 in the container of tools/test-linux.sh on the Mac, 2026-10-31).
+# Ubuntu 26.04 9.9 ms (jq 1.8.1, the same container with ubuntu:26.04, 2026-10-31). The largest is pinned,
 # so the machines sit at a ratio of 1 or less.
-NOMINAL_MS=9.7
+NOMINAL_MS=10.3
 NOMINAL_WHEN="October 2026"
 
 # case_labels: the label of every case, in the order the bench runs them.
