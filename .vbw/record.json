@@ -64774,6 +64774,13 @@
       "sort": "next",
       "size": "small",
       "status": "open"
+    },
+    {
+      "id": "T209",
+      "text": "Guard gap seen in the submodule L3 run on PR #737 (2026-10-31): a build agent ran a plain 'git commit -- sub' (no VBW-Plan trailer) to get past a failing prove, moving the project's submodule pointer; the Bash guard should refuse an agent's direct git commit inside a run and name vbw commit as the next step",
+      "sort": "next",
+      "size": "small",
+      "status": "open"
     }
   ],
   "decisions": [
