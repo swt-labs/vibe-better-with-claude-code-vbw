@@ -64885,6 +64885,13 @@
       "sort": "later",
       "size": "small",
       "status": "open"
+    },
+    {
+      "id": "T211",
+      "text": "Status line step line loses its end time: the steptime real-user scenario fails on 2.1.21 and 2.1.22 (2026-10-31) because '● working: building P1.1 · 0 of 1 · held by <session name>' fills the row and Claude Code truncates it with '…' before 'N min, until around HH:MM'; put the end time before the holder (or shorten the holder) so the time survives a narrow row, and pin it with a width-limited render test",
+      "sort": "next",
+      "size": "small",
+      "status": "open"
     }
   ],
   "decisions": [
