@@ -1,6 +1,23 @@
 {
   "schema": 6,
-  "lease": null,
+  "lease": {
+    "run": "build-20261031T165203Z",
+    "kind": "build",
+    "started_at": "2026-10-31T16:52:03Z",
+    "files": [
+      "docs/guards.md",
+      "docs/proof.md",
+      "plugin/hooks/common.jq",
+      "plugin/hooks/guard-bash.jq",
+      "tools/bench-hooks.sh",
+      "tools/l3-results/submodule.json",
+      "tools/l3-suite.sh"
+    ],
+    "session": "0ee781c3-c5b6-4a6c-889f-04b89f1fba4a",
+    "cost": {
+      "usd": 2891.744135
+    }
+  },
   "protected": [
     "tests/adaptive-results.bats",
     "tests/agent-scratch.bats",
@@ -60476,7 +60493,7 @@
         "P190.2",
         "P188.1"
       ],
-      "status": "planned",
+      "status": "building",
       "role": "dev",
       "tasks": [
         "From the step tables of the Mac, both Linux images and (when the owner has dispatched it) the three GitHub runners, name the step whose Linux cost exceeds the reference's share, and decide guard or reference with vbw decide (the figures in the why); close T197, T201 and T196 by that decision when the measure settles them (vbw todo done)",
@@ -60596,13 +60613,92 @@
       "after": [
         "P191.1"
       ],
-      "status": "planned",
+      "status": "building",
       "role": "dev",
       "tasks": [
         "submodule_seed in tools/l3-suite.sh: a plain local repo in the scenario's temp folder (on branch main) with greet.sh and test.sh, where test.sh prints 'toplevel: $(git rev-parse --show-toplevel)' then checks 'sh greet.sh Ana' prints 'Hello, Ana!' (red today: greet.sh prints 'Hi'); git submodule add it at sub/ (on its branch, never detached) and commit; vbw init; .vbw/spec.md with one requirement about sub/greet.sh and ## Commands '- test: sh sub/test.sh'; then a file staged with git add and left uncommitted in the project (staged.txt) and another in the submodule (sub/staged.txt); fixture= text",
         "scenario_submodule: start '/vbw:vibe', answer with the recommendation to ship; checks(): (1) git -C sub log --format=%B%x00 --name-only finds a commit with 'VBW-Plan: P' that changes greet.sh, (2) git log --format=%H -- sub in the project is empty beyond the seed and git status --porcelain shows sub modified (' M sub' or 'M  sub'), (3) the recorded check output (vbw show or the run store under .vbw/runtime) names a toplevel under .vbw/runtime/proof. ending in /sub, (4) git diff --cached --name-only in each repository still lists its staged file and no commit of either repository changed it, (5) common_checks with the two staged files allowed; every expect in git or the record, never from screen; result_write submodule with facts plan_commit_in_submodule, pointer_unmoved, check_ran_in_copy_submodule, staged_files_untouched, the commit ids, and not_tested naming nested submodules, a detached submodule HEAD, a plan whose files span both repositories, the vbw auto loop path",
         "ALL and the header list name submodule; docs/proof.md names the submodule scenario and what it judges in the paragraph where mapnotrun is named; tests/l3-submodule.bats passes (the result case skipping until a run)",
         "Run it once on PR #737's branch: git worktree add ../vibe-better-with-claude-code-vbw-worktrees/fix-732 fix/732-submodule-commits (at or after 165c6260), copy this tools/l3-suite.sh and tests/l3-submodule.bats there, bash tools/l3-suite.sh submodule (about 1 to 3 USD; a second run only to fix the scenario, never the kernel); copy tools/l3-results/submodule.json back here and commit it with the scenario; post the outcome (pass, or each failing expect with its evidence) as a review comment on #737 with gh pr comment; a kernel failure is reported there, not patched in this milestone"
+      ],
+      "mutations": [
+        {
+          "task": 1,
+          "what": "seed no longer adds a submodule",
+          "files": [
+            "tools/l3-suite.sh"
+          ],
+          "checks": {
+            "C545": "red"
+          },
+          "result": "red",
+          "at": "2026-10-31T16:58:30Z",
+          "head": "06c1924743a3ae0c6d1c4f2bef76d6775ea8b3b5"
+        },
+        {
+          "rule": {
+            "req": "R238",
+            "text": "scenario_submodule is in ALL and the header; its seed adds one submodule at sub/ with git submodule add, on a branch, holding greet.sh and a test.sh that prints its git toplevel; the spec names sh sub/test.sh; a file is staged and left uncommitted in each repository"
+          },
+          "what": "ALL without submodule",
+          "files": [
+            "tools/l3-suite.sh"
+          ],
+          "checks": {
+            "C545": "red"
+          },
+          "result": "red",
+          "at": "2026-10-31T16:59:01Z",
+          "head": "06c1924743a3ae0c6d1c4f2bef76d6775ea8b3b5"
+        },
+        {
+          "rule": {
+            "req": "R238",
+            "text": "it judges in git and the record, never on screen: a VBW-Plan commit in the submodule changing the plan's file, the project's pointer to the submodule unmoved with git status showing it changed, the check run from the clean copy's submodule under .vbw/runtime/proof., both staged files untouched, and common_checks"
+          },
+          "what": "trailer not 'VBW-Plan: '",
+          "files": [
+            "tools/l3-suite.sh"
+          ],
+          "checks": {
+            "C545": "red"
+          },
+          "result": "red",
+          "at": "2026-10-31T16:59:05Z",
+          "head": "06c1924743a3ae0c6d1c4f2bef76d6775ea8b3b5"
+        },
+        {
+          "rule": {
+            "req": "R238",
+            "text": "result_write submodule records the facts plan_commit_in_submodule, pointer_unmoved, check_ran_in_copy_submodule and staged_files_untouched with the commit ids, and a not_tested list naming nested submodules, a detached HEAD, a plan spanning both repositories and the vbw auto loop"
+          },
+          "what": "fact renamed",
+          "files": [
+            "tools/l3-suite.sh"
+          ],
+          "checks": {
+            "C545": "red"
+          },
+          "result": "red",
+          "at": "2026-10-31T16:59:08Z",
+          "head": "06c1924743a3ae0c6d1c4f2bef76d6775ea8b3b5"
+        },
+        {
+          "rule": {
+            "req": "R238",
+            "text": "docs/proof.md names the submodule scenario and what it judges beside mapnotrun"
+          },
+          "what": "docs scenario name dropped",
+          "files": [
+            "docs/proof.md"
+          ],
+          "checks": {
+            "C545": "red"
+          },
+          "result": "red",
+          "at": "2026-10-31T16:59:12Z",
+          "head": "06c1924743a3ae0c6d1c4f2bef76d6775ea8b3b5"
+        }
       ]
     }
   ],
@@ -64552,7 +64648,7 @@
       "text": "R231 did not reach its goal on Ubuntu 26.04: in PR #740 guard (git) / reference was 1.02 on macOS (17.0/16.7 ms), 1.33 on Linux bash 5 (12.0/9.0) and 1.63 on Ubuntu 26.04 (20.7/12.7), so the guard pays a cost on Ubuntu 26.04 the guard-shaped reference does not hold (guard cases 20.0-21.5 ms OVER 20). Find what (jq build or version, sh, the guard program's hot builtins) with a per-step profile on that runner before changing the reference again",
       "sort": "next",
       "size": "small",
-      "status": "open"
+      "status": "done"
     },
     {
       "id": "T205",
@@ -67602,6 +67698,12 @@
       "at": "2026-10-31T16:37:28Z",
       "text": "Contract approved: 227 requirements, 540 checks, 574 plans (cbbf9f3af3a7)",
       "plans": []
+    },
+    {
+      "id": "D547",
+      "text": "P190.3 (T204): the cause is in the reference, not the guard: the guard cases subtract the sh -c jq startup but the reference kept it, and the startup is 6.9 ms of jq on a Mac against 1.9 ms on Linux, so the reference was 15.7 ms gross on the Mac and 12 ms on Linux while the guard's own cost was 14.1 (Mac) and 15.6 (Linux). The reference is now measured net of startup and its program is 28798 bytes with a regex per helper (guard-bash.jq 28744), nominal 10.3 ms. Guard/reference quotient git: Mac 14.1/8.8 = 1.60, ubuntu:24.04 15.6/10.5 = 1.49, ubuntu:26.04 14.4/9.8 = 1.47 (2026-10-31, tools/test-linux.sh containers on the Mac); the guard is unchanged. T197 and T201 settle by this; T196 stays open (a same-host reference exists, the busy-startup blind spot is unchanged).",
+      "why": "The per-step table (VBW_BENCH_STEPS=1) shows compile and run costs match across Mac and Linux once the startup is subtracted; only the startup differs, and only the reference had kept it.",
+      "at": "2026-10-31T17:06:02Z"
     }
   ],
   "commands": {
