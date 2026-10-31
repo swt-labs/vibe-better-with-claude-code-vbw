@@ -7289,7 +7289,7 @@
   "milestone": {
     "id": "M48",
     "title": "Linux bench gap and steady tests",
-    "status": "active"
+    "status": "shipped"
   },
   "shipped": [
     {
@@ -7521,6 +7521,11 @@
       "id": "M47",
       "title": "Community batch 3: router uses the map, suggestions in time, one mutate run per plan, guard-shaped bench reference, mutate timing test",
       "at": "2026-10-31T10:58:52Z"
+    },
+    {
+      "id": "M48",
+      "title": "Linux bench gap and steady tests",
+      "at": "2026-10-31T20:16:19Z"
     }
   ],
   "requirements": [
@@ -67930,6 +67935,11 @@
       "at": "2026-10-31T20:05:22Z",
       "text": "Contract approved: 227 requirements, 540 checks, 574 plans (fafc5be4db74)",
       "plans": []
+    },
+    {
+      "id": "D553",
+      "at": "2026-10-31T20:16:19Z",
+      "text": "Shipped M48 Linux bench gap and steady tests: 6 requirements proven or accepted"
     }
   ],
   "commands": {
@@ -79877,6 +79887,10 @@
             "usd": 0,
             "at": "2026-10-31T14:52:57Z"
           }
+        },
+        "total": {
+          "usd": 34.005135,
+          "sessions": 45
         }
       }
     }
