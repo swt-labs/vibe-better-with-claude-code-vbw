@@ -292,6 +292,37 @@ jq -nc --arg d "$work" '{hook_event_name: "PostToolUse", tool_name: "AskUserQues
   tool_input: {questions: [{question: "Which database should the app use?", options: [{label: "SQLite"}, {label: "Postgres"}]}]},
   tool_response: {answers: {"Which database should the app use?": "SQLite"}}}' > "$work/answer.json"
 
+# VBW_BENCH_STEPS=1 (R233): instead of judging cases, print one table of the CPU ms per call
+# (cpu_pair's method, RUNS runs) of the steps one Bash guard call is made of, for the git,
+# npm, big and interp inputs: sh startup, jq startup, the program compiled alone (the
+# hooks.json call's flags over empty inputs), the whole hooks.json call, and the
+# reference call. It judges no case and prints no guard line.
+if [ "${VBW_BENCH_STEPS:-}" = 1 ]; then
+  steps_hook=$(jq -r '[.hooks.PreToolUse[] | select(.matcher as $m | "Bash" | test("^(" + $m + ")$"))][0].hooks[0].command' "$hooks_json")
+  steps_compile="jq -nc --rawfile glance /dev/null --arg root \"$work\" --arg dir \"$work\" --arg open 0 -f \"$PLUGIN/hooks/guard-bash.jq\" - /dev/null \"$PLUGIN/hooks/end.json\""
+  steps_ref="jq -nc --rawfile glance \"$work/glance.json\" --arg root \"$work\" --arg dir \"$work\" --arg open 0 -f \"$work/reference/reference.jq\" - \"$work/reference/reference.json\" \"$work/end.json\""
+  printf 'steps: CPU ms per call over %s runs\n' "$RUNS"
+  steps_rows=("sh startup" "jq startup" "program compile" "program run" "reference")
+  steps_cells=("" "" "" "" "")
+  for input in git npm big interp; do
+    read -r _ c0 < <(cpu_pair /dev/null true ":")
+    read -r _ c1 < <(cpu_pair /dev/null true "jq -n empty")
+    read -r _ c2 < <(cpu_pair /dev/null true "$steps_compile")
+    read -r _ c3 < <(cpu_pair "$work/$input.json" true "$steps_hook")
+    read -r _ c4 < <(cpu_pair /dev/null true "$steps_ref")
+    steps_cells[0]="${steps_cells[0]}	$c0"
+    steps_cells[1]="${steps_cells[1]}	$c1"
+    steps_cells[2]="${steps_cells[2]}	$c2"
+    steps_cells[3]="${steps_cells[3]}	$c3"
+    steps_cells[4]="${steps_cells[4]}	$c4"
+  done
+  {
+    printf 'step\tgit\tnpm\tbig\tinterp\n'
+    for i in 0 1 2 3 4; do printf '%s%s\n' "${steps_rows[$i]}" "${steps_cells[$i]}"; done
+  } | column -t -s "$(printf '\t')"
+  exit 0
+fi
+
 # The large project: a record of more than 2 MB in its own folder, the same build
 # lease plus a long history (requirements with rules, checks, phases, plans and
 # decisions of a shipped milestone, every text padded), keys in the writer's
