@@ -1,9 +1,9 @@
 {
   "scenario": "greenfield",
   "fixture": "greet.sh from scratch; one small milestone; the user types /vbw:vibe and the build runs to the end",
-  "cost_usd": 0.72,
+  "cost_usd": 0.4309,
   "evidence_level": "L3",
-  "at": "2026-10-31T11:06:24Z",
+  "at": "2026-10-31T20:22:02Z",
   "passed": true,
   "facts": {
     "report_own_work_line": true,
