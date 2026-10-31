@@ -60226,13 +60226,112 @@
         "P189.1",
         "P190.1"
       ],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "Reproduce or rule out each candidate with evidence, never a guess: (a) a jq failure inside render (now visible in statusline.err), (b) jq 1.7.1 against 1.8.1 in now, todateiso8601, fromdateiso8601, localtime, mktime and strflocaltime as statusline.jq and the bench's step.json use them, (c) mins() null when the start lands in the same minute, (d) the record-versus-glance newer test with whole-second file times, (e) 'tomorrow' across midnight UTC against the runner's zone, and (f) the bench's own probe (pipefail with head -n 1, the status line's exit status): crafted step.json and record files and a set clock (TZ), plus 20 runs of the step case (VBW_BENCH_ONLY, VBW_BENCH_RUNS=1) on this Mac and in both Linux images through tools/test-linux.sh --image ... --bench; the PR #740 shard-3 log (run 41195043482) is the one observed miss; the Lead's 30 runs in each arm64 image on 2026-10-31 showed 0 misses; counts per candidate in the summary",
         "Name the cause and its evidence in docs/panel.md's step section (one short paragraph) and in the regression test's header comment; when no candidate reproduces, say so there, name what statusline.err will show on the next miss, and block the plan with the finding (vbw plan block) rather than guess a fix; when the bench's own step fixture (tools/bench-hooks.sh, P190's file) is the cause, block the plan naming the fixture fix for a plan of its own",
         "Fix at the source in plugin/scripts/statusline.jq or vbw-statusline.sh, never by loosening the bench's check or its failure text; tests/statusline-step-miss.bats (new) reproduces the miss with the cause's exact conditions (an injected clock or crafted step.json/record, no real wait) and is shown to fail without the fix",
         "Run tests/statusline-step-miss.bats under /bin/bash, bash 5, jq 1.7.1 and jq 1.8.1 (both images through tools/test-linux.sh -- bats tests/statusline-step-miss.bats); 20 consecutive runs of the step bench case in each Linux image and on this Mac print the case's line and no miss; counts in the summary"
+      ],
+      "mutations": [
+        {
+          "task": 1,
+          "none": "task 1 is an investigation: it changes no code",
+          "at": "2026-10-31T16:47:05Z"
+        },
+        {
+          "task": 2,
+          "none": "task 2 writes docs/panel.md and a test header comment: no behaviour",
+          "at": "2026-10-31T16:47:08Z"
+        },
+        {
+          "task": 4,
+          "none": "task 4 runs checks in Linux images: no code of its own",
+          "at": "2026-10-31T16:47:12Z"
+        },
+        {
+          "rule": {
+            "req": "R235",
+            "text": "when the render fails, jq's error is written to .vbw/runtime/statusline.err inside the project and the fallback line '[VBW] status line unavailable' is printed"
+          },
+          "what": "jq's error no longer goes to statusline.err",
+          "files": [
+            "plugin/scripts/vbw-statusline.sh"
+          ],
+          "checks": {
+            "C538": "red"
+          },
+          "result": "red",
+          "at": "2026-10-31T16:47:56Z",
+          "head": "586ff13faf60bea2b5b1d3d854a5caf78937a0f4"
+        },
+        {
+          "rule": {
+            "req": "R235",
+            "text": "a good render leaves .vbw/runtime/statusline.err empty, overwritten each call; without a runtime folder nothing is written and the render still prints"
+          },
+          "what": "a good render no longer empties statusline.err",
+          "files": [
+            "plugin/scripts/vbw-statusline.sh"
+          ],
+          "checks": {
+            "C538": "red"
+          },
+          "result": "red",
+          "at": "2026-10-31T16:48:00Z",
+          "head": "586ff13faf60bea2b5b1d3d854a5caf78937a0f4"
+        },
+        {
+          "rule": {
+            "req": "R235",
+            "text": "the bench's 'the step was not shown, so the measure left it out' failure stays and is followed by the first line it read and, when the error file has text, that text, each prefixed with the case's label"
+          },
+          "what": "the fallback line's text changed, so the bench's first line differs",
+          "files": [
+            "plugin/scripts/vbw-statusline.sh"
+          ],
+          "checks": {
+            "C539": "red"
+          },
+          "result": "red",
+          "at": "2026-10-31T16:48:03Z",
+          "head": "586ff13faf60bea2b5b1d3d854a5caf78937a0f4"
+        },
+        {
+          "task": 3,
+          "what": "SIGPIPE no longer ignored at the final write",
+          "files": [
+            "plugin/scripts/vbw-statusline.sh"
+          ],
+          "checks": {
+            "C539": "green",
+            "C538": "green"
+          },
+          "result": "survivor",
+          "at": "2026-10-31T16:48:38Z",
+          "head": "586ff13faf60bea2b5b1d3d854a5caf78937a0f4"
+        },
+        {
+          "task": 3,
+          "what": "SIGPIPE no longer ignored at the final write",
+          "files": [
+            "plugin/scripts/vbw-statusline.sh"
+          ],
+          "checks": {
+            "C539": "green",
+            "C538": "red"
+          },
+          "result": "red",
+          "at": "2026-10-31T16:49:31Z",
+          "head": "fb8c6bc6a01c5a30d258f3bb760d9bffbee3c66e",
+          "strengthened": [
+            "tests/statusline.bats"
+          ],
+          "pending": [
+            "tests/statusline.bats"
+          ]
+        }
       ]
     },
     {
@@ -60313,12 +60412,51 @@
       "after": [
         "P189.1"
       ],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "tools/bench-hooks.sh: VBW_BENCH_STEPS=1 mode, taken after the inputs are written and before any case: for git, npm, big and interp measure with cpu_pair (RUNS runs, alternating) sh startup (sh -c :), jq startup (jq -n empty), program compile alone (the guard program with the hooks.json call's flags over empty inputs: --rawfile glance /dev/null, -f guard-bash.jq - /dev/null end.json with stdin empty), program run (the full hooks.json PreToolUse Bash command on the input) and the reference call (the R222 reference as the bench runs it); print 'steps: CPU ms per call over N runs' then one table, header 'step git npm big interp', rows sh startup, jq startup, program compile, program run, reference, one decimal; exit 0 without judging a case or printing a guard line",
         ".github/workflows/bench-steps.yml (new): on workflow_dispatch only; matrix os macos-latest, ubuntu-latest, ubuntu-26.04; checkout into 'src dir'; install jq (brew on macOS, apt on Linux); print bash --version and jq --version; run VBW_BENCH_STEPS=1 VBW_BENCH_RUNS=100 bash tools/bench-hooks.sh; tests/bench-guard-steps.bats and tests/ci-shards.bats pass",
         "Produce the table on this Mac and in both Linux images (bash tools/test-linux.sh --image ubuntu:24.04 -- env VBW_BENCH_STEPS=1 bash tools/bench-hooks.sh, then ubuntu:26.04); keep the three tables in the summary for P190.3; the GitHub tables need the owner's push and one dispatch (gh workflow run bench-steps.yml --ref plow/2.1.22): leave that command in the summary"
+      ],
+      "mutations": [
+        {
+          "task": 3,
+          "none": "task 3 is a measurement run producing no code; the tables go in the summary for P190.3",
+          "at": "2026-10-31T16:45:16Z"
+        },
+        {
+          "rule": {
+            "req": "R233",
+            "text": "VBW_BENCH_STEPS=1 bash tools/bench-hooks.sh prints one table of CPU ms per call over the stated runs: rows sh startup, jq startup, program compile, program run, reference; columns git, npm, big, interp; it judges no case"
+          },
+          "what": "renamed the reference row",
+          "files": [
+            "tools/bench-hooks.sh"
+          ],
+          "checks": {
+            "C541": "red"
+          },
+          "result": "red",
+          "at": "2026-10-31T16:45:54Z",
+          "head": "586ff13faf60bea2b5b1d3d854a5caf78937a0f4"
+        },
+        {
+          "rule": {
+            "req": "R233",
+            "text": "a workflow_dispatch job (.github/workflows/bench-steps.yml) runs the step table on macos-latest, ubuntu-latest and ubuntu-26.04 with jq's version printed, and never on push or pull request"
+          },
+          "what": "dropped ubuntu-26.04 runner",
+          "files": [
+            ".github/workflows/bench-steps.yml"
+          ],
+          "checks": {
+            "C541": "red"
+          },
+          "result": "red",
+          "at": "2026-10-31T16:45:58Z",
+          "head": "586ff13faf60bea2b5b1d3d854a5caf78937a0f4"
+        }
       ]
     },
     {
@@ -60358,14 +60496,90 @@
         "tools/l3-suite.sh"
       ],
       "after": [],
-      "status": "blocked",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "tools/l3-suite.sh: spec_section_lines SPEC SECTION, one awk over the file: from the '## SECTION' heading to the next '## ' heading, drop every <!-- ... --> block (one-line and multi-line, the text outside a block on the same line kept), print the lines starting '- '; reads to the end, no quiet grep (tools/check-pipefail-grep.sh)",
         "mapnotrun's commands_lines calls spec_section_lines \"$spec\" Commands; grep finds no other scenario reading a raw section with sed | grep '^- '",
         "bash tools/test.sh --lint, bash tools/check-pipefail-grep.sh plugin tools and tests/l3-mapnotrun.bats pass"
       ],
-      "note": "C544 case 1 (tests/l3-mapnotrun.bats line 100) appends '- test: sh test.sh' to the END of the template spec, which is the '## Clean copy' section (the template order is Commands, then Clean copy), so no correct spec_section_lines SPEC Commands can print it. The check file is protected and approved; it must insert the line into the Commands section after the comment (e.g. before '## Clean copy'). Helper and commands_lines change are done in tools/l3-suite.sh (uncommitted); cases 2 and 3 pass, lint and pipefail pass."
+      "mutations": [
+        {
+          "task": 3,
+          "none": "task 3 only runs lint and checks, it ships no code",
+          "at": "2026-10-31T16:39:44Z"
+        },
+        {
+          "rule": {
+            "req": "R237",
+            "text": "spec_section_lines SPEC SECTION prints a section's '- ' lines after dropping every <!-- ... --> block; on the template's spec (vbw init) it prints nothing, and a command written after the comment is the only line printed"
+          },
+          "what": "comments never recognized",
+          "files": [
+            "tools/l3-suite.sh"
+          ],
+          "checks": {
+            "C544": "red"
+          },
+          "result": "red",
+          "at": "2026-10-31T16:40:38Z",
+          "head": "afa60933595e85939123f4dc9b9de27dd220c431"
+        },
+        {
+          "rule": {
+            "req": "R237",
+            "text": "a comment that opens and closes on one line between two real lines drops only itself, a multi-line block drops its lines, and another section's lines never print"
+          },
+          "what": "text after a closing --> dropped",
+          "files": [
+            "tools/l3-suite.sh"
+          ],
+          "checks": {
+            "C544": "green"
+          },
+          "result": "survivor",
+          "at": "2026-10-31T16:40:42Z",
+          "head": "afa60933595e85939123f4dc9b9de27dd220c431"
+        },
+        {
+          "rule": {
+            "req": "R237",
+            "text": "mapnotrun's commands_lines calls the helper and no scenario pipes a raw spec section into grep '^- '"
+          },
+          "what": "commands_lines raw sed",
+          "files": [
+            "tools/l3-suite.sh"
+          ],
+          "checks": {
+            "C544": "red"
+          },
+          "result": "red",
+          "at": "2026-10-31T16:40:47Z",
+          "head": "afa60933595e85939123f4dc9b9de27dd220c431"
+        },
+        {
+          "rule": {
+            "req": "R237",
+            "text": "a comment that opens and closes on one line between two real lines drops only itself, a multi-line block drops its lines, and another section's lines never print"
+          },
+          "what": "text after a closing --> dropped",
+          "files": [
+            "tools/l3-suite.sh"
+          ],
+          "checks": {
+            "C544": "red"
+          },
+          "result": "red",
+          "at": "2026-10-31T16:42:04Z",
+          "head": "9360a945eaea04ae583064024af6179f78bbe62f",
+          "strengthened": [
+            "tests/l3-mapnotrun.bats"
+          ],
+          "pending": [
+            "tests/l3-mapnotrun.bats"
+          ]
+        }
+      ]
     },
     {
       "id": "P191.2",
@@ -76315,6 +76529,17 @@
         "ended": "2026-10-31T16:14:54Z",
         "cost": {
           "usd": 1.273267
+        }
+      },
+      {
+        "id": "build-20261031T163817Z",
+        "kind": "build",
+        "session": "0ee781c3-c5b6-4a6c-889f-04b89f1fba4a",
+        "milestone": "M48",
+        "started": "2026-10-31T16:38:17Z",
+        "ended": "2026-10-31T16:51:01Z",
+        "cost": {
+          "usd": 1.380325
         }
       }
     ],
