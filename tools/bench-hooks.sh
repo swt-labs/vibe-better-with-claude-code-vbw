@@ -86,12 +86,16 @@ SIZES="51 500 2000"
 # reference block below, on the two nominal machines, measured NOMINAL_WHEN. This is a
 # debt: measure it again whenever the workload or the nominal machines change.
 # October 2026. The workload is one jq call of the guard's shape (--rawfile glance, --arg root,
-# --arg dir, --arg open, -f PROGRAM - DOCUMENT END) over a program of 24760 bytes and a
-# document of 86107 bytes, both written by this script. M1 Max Mac: 14.7 to 15.8 ms over
-# five runs of this script on 2026-10-31. GitHub's macOS runner: 16.7 ms in the bench
-# shard 1 log of pull request #740 (2026-10-31). The larger of the two is pinned, so both
-# machines sit at a ratio of 1 or less.
-NOMINAL_MS=16.7
+# --arg dir, --arg open, -f PROGRAM - DOCUMENT END) over a program of 28798 bytes and a
+# document of 86107 bytes, both written by this script; its cost is the call's CPU minus the
+# sh -c jq startup beside it, as a guard case's own cost is (R233). M1 Max Mac: 8.8 to 9.4 ms over
+# five runs of this script on 2026-10-31. GitHub's macOS runner: not yet measured in this form;
+# the latest known is the earlier figure of 16.7 ms with the startup counted, in the bench
+# shard 1 log of pull request #740 (2026-10-31), to be replaced from the shard 1 log of the next pull request.
+# ubuntu-latest 9.7 ms (jq 1.7.1, ubuntu:24.04 in the container of tools/test-linux.sh on the Mac, 2026-10-31).
+# Ubuntu 26.04 9.5 ms (jq 1.8.1, the same container with ubuntu:26.04, 2026-10-31). The largest is pinned,
+# so the machines sit at a ratio of 1 or less.
+NOMINAL_MS=9.7
 NOMINAL_WHEN="October 2026"
 
 # case_labels: the label of every case, in the order the bench runs them.
@@ -171,8 +175,8 @@ export CLAUDE_PLUGIN_ROOT="$PLUGIN" CLAUDE_PROJECT_DIR="$work"
 reference_files() {
   mkdir -p "$1"
   awk 'BEGIN {
-    for (i = 1; i <= 101; i++)
-      printf "def h%d($v; $w): if ($v | type) == \"object\" then ($v | keys | map(select(startswith(\"k%d\"))) | length) + $w elif ($v | type) == \"array\" then ($v | map(tostring | length) | add // 0) + %d else ($v | tostring | ascii_downcase | length) end;\n", i, i % 7, i
+    for (i = 1; i <= 108; i++)
+      printf "def h%d($v; $w): if ($v | type) == \"object\" then ($v | keys | map(select(startswith(\"k%d\") or test(\"^c[0-9]+$\"))) | length) + $w elif ($v | type) == \"array\" then ($v | map(tostring | length) | add // 0) + %d else ($v | tostring | ascii_downcase | length) end;\n", i, i % 7, i
     print "($glance | fromjson) as $g"
     print "| ([inputs] | .[-2:]) as $in"
     print "| $in[0] as $doc"
@@ -181,7 +185,7 @@ reference_files() {
     print "| [$checks[] | select((.run | join(\" \") | test(\"^sh \")) and (.files | length) > 0)] as $kept"
     print "| (($root | length) + ($dir | length) + ($open | tonumber)) as $n"
     printf "| [$doc"
-    for (i = 1; i <= 101; i += 5) printf ", h%d($doc; $n)", i
+    for (i = 1; i <= 108; i += 4) printf ", h%d($doc; $n)", i
     print "] as $parts"
     print "| {schema: ($g.schema // 0), kept: ($kept | length), end: ($end | length), parts: ($parts | map(numbers) | add)}"
   }' > "$1/reference.jq"
@@ -260,8 +264,12 @@ fi
 
 # The reference (R222): one fixed jq workload, run through sh -c as the hooks are, on
 # this machine in this run, before any record is built or case judged: one jq call of the
-# guard's shape (R231) over the bench's own program and document.
-read -r _ measured < <(cpu_pair /dev/null "jq -n empty" "jq -nc --rawfile glance \"$work/glance.json\" --arg root \"$work\" --arg dir \"$work\" --arg open 0 -f \"$work/reference/reference.jq\" - \"$work/reference/reference.json\" \"$work/end.json\"")
+# guard's shape (R231) over the bench's own program and document. Its cost is the call's
+# CPU minus that of the sh -c jq startup beside it, as a guard case's own cost is (R233:
+# the startup is a few ms on a Mac and under one on Linux, so a reference that kept it
+# gave the guard 1.3 to 1.6 times the reference on Linux against 1.0 on macOS).
+read -r shell total < <(cpu_pair /dev/null "jq -n empty" "jq -nc --rawfile glance \"$work/glance.json\" --arg root \"$work\" --arg dir \"$work\" --arg open 0 -f \"$work/reference/reference.jq\" - \"$work/reference/reference.json\" \"$work/end.json\"")
+measured=$(perl -e 'printf "%.1f", $ARGV[0] - $ARGV[1]' -- "$total" "$shell")
 [ -z "${VBW_BENCH_REFERENCE_MS:-}" ] || measured="$VBW_BENCH_REFERENCE_MS"
 RATIO=$(perl -e 'printf "%.2f", $ARGV[0] / $ARGV[1]' -- "$measured" "$NOMINAL_MS")
 SLOW=0
