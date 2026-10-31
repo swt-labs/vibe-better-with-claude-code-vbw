@@ -285,7 +285,10 @@ A command that contains none of the words any rule needs (`rm`, `git`, `vbw`,
   (an added subprocess costs several ms) still shows. When the machine is too
   busy to measure (starting the shell and jq alone takes longer than 20 ms),
   the benchmark reports that the machine is busy, judges nothing and does not
-  fail. CI runs it with the same limit as a local run.
+  fail. The timed test case `tests/timed-bench-hooks.bats` (time a hook spends
+  waiting) applies the same rule: a busy machine is reported, not failed, and a
+  difference over its margin is measured once more. CI runs it with the same
+  limit as a local run.
 
 ## SessionStart
 
