@@ -31,6 +31,7 @@
     "tests/autonomy-words.bats",
     "tests/baseline-cases.bats",
     "tests/baseline-results.bats",
+    "tests/bench-guard-steps.bats",
     "tests/bench-limits-docs.bats",
     "tests/bench-limits.bats",
     "tests/bench-protected.bats",
@@ -167,6 +168,7 @@
     "tests/l3-smallchange-added.bats",
     "tests/l3-smallchange.bats",
     "tests/l3-step-time.bats",
+    "tests/l3-submodule.bats",
     "tests/l3-taskbreak.bats",
     "tests/l3-testmode.bats",
     "tests/l3-tools.bats",
@@ -177,6 +179,7 @@
     "tests/legacy-interview.bats",
     "tests/legacy-review-linux.bats",
     "tests/legacy-review.bats",
+    "tests/lock-exclusive.bats",
     "tests/loop-approve-waits.bats",
     "tests/loop-approve.bats",
     "tests/loop-cycle.bats",
@@ -454,6 +457,7 @@
     "tests/step-units-history.bats",
     "tests/stop-line.bats",
     "tests/suggestions.bats",
+    "tests/test-linux.bats",
     "tests/test-shards.bats",
     "tests/testfiles-docs.bats",
     "tests/testfiles-empty.bats",
@@ -7126,6 +7130,152 @@
       ],
       "files": [
         "tests/mutate-time.bats"
+      ]
+    },
+    {
+      "id": "C535",
+      "req": "R234",
+      "run": [
+        "bats",
+        "--print-output-on-failure",
+        "--filter",
+        "R234",
+        "tests/bench-limits.bats"
+      ],
+      "files": [
+        "tests/bench-limits.bats"
+      ]
+    },
+    {
+      "id": "C536",
+      "req": "R234",
+      "run": [
+        "bats",
+        "--print-output-on-failure",
+        "--filter",
+        "R234",
+        "tests/bench-limits-docs.bats"
+      ],
+      "files": [
+        "tests/bench-limits-docs.bats"
+      ]
+    },
+    {
+      "id": "C537",
+      "req": "R236",
+      "run": [
+        "bats",
+        "--print-output-on-failure",
+        "tests/lock-exclusive.bats"
+      ],
+      "files": [
+        "tests/lock-exclusive.bats"
+      ]
+    },
+    {
+      "id": "C538",
+      "req": "R235",
+      "run": [
+        "bats",
+        "--print-output-on-failure",
+        "--filter",
+        "R235",
+        "tests/statusline.bats"
+      ],
+      "files": [
+        "tests/statusline.bats"
+      ]
+    },
+    {
+      "id": "C539",
+      "req": "R235",
+      "run": [
+        "bats",
+        "--print-output-on-failure",
+        "--filter",
+        "R235",
+        "tests/step-bench.bats"
+      ],
+      "files": [
+        "tests/step-bench.bats"
+      ]
+    },
+    {
+      "id": "C540",
+      "req": "R233",
+      "run": [
+        "bats",
+        "--print-output-on-failure",
+        "tests/test-linux.bats"
+      ],
+      "files": [
+        "tests/test-linux.bats"
+      ]
+    },
+    {
+      "id": "C541",
+      "req": "R233",
+      "run": [
+        "bats",
+        "--print-output-on-failure",
+        "tests/bench-guard-steps.bats"
+      ],
+      "files": [
+        "tests/bench-guard-steps.bats"
+      ]
+    },
+    {
+      "id": "C542",
+      "req": "R233",
+      "run": [
+        "bats",
+        "--print-output-on-failure",
+        "--filter",
+        "R233",
+        "tests/bench-limits.bats"
+      ],
+      "files": [
+        "tests/bench-limits.bats"
+      ]
+    },
+    {
+      "id": "C543",
+      "req": "R233",
+      "run": [
+        "bats",
+        "--print-output-on-failure",
+        "--filter",
+        "R233",
+        "tests/bench-limits-docs.bats"
+      ],
+      "files": [
+        "tests/bench-limits-docs.bats"
+      ]
+    },
+    {
+      "id": "C544",
+      "req": "R237",
+      "run": [
+        "bats",
+        "--print-output-on-failure",
+        "--filter",
+        "R237",
+        "tests/l3-mapnotrun.bats"
+      ],
+      "files": [
+        "tests/l3-mapnotrun.bats"
+      ]
+    },
+    {
+      "id": "C545",
+      "req": "R238",
+      "run": [
+        "bats",
+        "--print-output-on-failure",
+        "tests/l3-submodule.bats"
+      ],
+      "files": [
+        "tests/l3-submodule.bats"
       ]
     }
   ],
@@ -17587,7 +17737,7 @@
           "check": "C532"
         },
         {
-          "text": "the reference program and document are deterministic and of fixed size: the program within 10% of 25061 bytes, the document a JSON object of at least 50 KB, and the guard-shaped call runs on them; VBW_BENCH_REFERENCE_FILES=DIR writes them for inspection",
+          "text": "the reference program and document are deterministic and of the sizes the provenance states (their proportion to the shipped guard is R233's rule): the document a JSON object of at least 50 KB, the guard-shaped call runs on them, and VBW_BENCH_REFERENCE_FILES=DIR writes them for inspection",
           "check": "C532"
         },
         {
@@ -17635,7 +17785,48 @@
       "proof": "auto",
       "status": "open",
       "milestone": "M48",
-      "rules": []
+      "rules": [
+        {
+          "text": "tools/test-linux.sh takes --image (ubuntu:24.04 by default, ubuntu:26.04 accepted; another image or an unknown option exits 2 with the usage before any build) and without arguments still runs the release run in ubuntu:24.04",
+          "check": "C540",
+          "plan": "P190.1"
+        },
+        {
+          "text": "tools/test-linux.sh --bench runs only the hook bench inside the container, and a command after -- runs in place of the release run with its words kept",
+          "check": "C540",
+          "plan": "P190.1"
+        },
+        {
+          "text": "VBW_BENCH_STEPS=1 bash tools/bench-hooks.sh prints one table of CPU ms per call over the stated runs: rows sh startup, jq startup, program compile, program run, reference; columns git, npm, big, interp; it judges no case",
+          "check": "C541",
+          "plan": "P190.2"
+        },
+        {
+          "text": "a workflow_dispatch job (.github/workflows/bench-steps.yml) runs the step table on macos-latest, ubuntu-latest and ubuntu-26.04 with jq's version printed, and never on push or pull request",
+          "check": "C541",
+          "plan": "P190.2"
+        },
+        {
+          "text": "the reference program stays within 10% of the shipped Bash guard's size, so the reference keeps the guard's proportion after PR #730 grew the guard",
+          "check": "C542",
+          "plan": "P190.3"
+        },
+        {
+          "text": "the provenance comment names the Mac, GitHub macOS, ubuntu-latest (jq 1.7.1) and Ubuntu 26.04 (jq 1.8.1) figures in ms with their dates",
+          "check": "C542",
+          "plan": "P190.3"
+        },
+        {
+          "text": "the gap is never closed by a wider allowance: the bench reads no operating system name and has one nominal figure",
+          "check": "C542",
+          "plan": "P190.3"
+        },
+        {
+          "text": "docs/guards.md's Budget bullet holds the per-step table for the three runners, names the two jq versions, names the cause in one sentence and dates the measure",
+          "check": "C543",
+          "plan": "P190.3"
+        }
+      ]
     },
     {
       "id": "R234",
@@ -17643,7 +17834,33 @@
       "proof": "auto",
       "status": "open",
       "milestone": "M48",
-      "rules": []
+      "rules": [
+        {
+          "text": "a difference at or over the 25 ms margin on the first waiting measure is measured once more; the case fails only when the second difference is also at or over the margin",
+          "check": "C535",
+          "plan": "P188.1"
+        },
+        {
+          "text": "the failure's words name both measures, the first and the second, with the quick figure",
+          "check": "C535",
+          "plan": "P188.1"
+        },
+        {
+          "text": "when either bench run's sh-and-jq startup is above the 20 ms hook budget the case passes with a skip that says the machine was busy and names the startup, as the bench's own busy rule; a startup at or under the budget never skips",
+          "check": "C535",
+          "plan": "P188.1"
+        },
+        {
+          "text": "the judging is one function over the bench's printed lines (waiting_judge in tests/bench-waiting.bash), shown with stand-in lines and no real sleep; the timed case calls it, skips on busy and measures again on again",
+          "check": "C535",
+          "plan": "P188.1"
+        },
+        {
+          "text": "docs/guards.md says, where it describes the busy rule, that the timed waiting case tests/timed-bench-hooks.bats applies the same rule",
+          "check": "C536",
+          "plan": "P188.1"
+        }
+      ]
     },
     {
       "id": "R235",
@@ -17651,7 +17868,23 @@
       "proof": "auto",
       "status": "open",
       "milestone": "M48",
-      "rules": []
+      "rules": [
+        {
+          "text": "when the render fails, jq's error is written to .vbw/runtime/statusline.err inside the project and the fallback line '[VBW] status line unavailable' is printed",
+          "check": "C538",
+          "plan": "P189.1"
+        },
+        {
+          "text": "a good render leaves .vbw/runtime/statusline.err empty, overwritten each call; without a runtime folder nothing is written and the render still prints",
+          "check": "C538",
+          "plan": "P189.1"
+        },
+        {
+          "text": "the bench's 'the step was not shown, so the measure left it out' failure stays and is followed by the first line it read and, when the error file has text, that text, each prefixed with the case's label",
+          "check": "C539",
+          "plan": "P189.1"
+        }
+      ]
     },
     {
       "id": "R236",
@@ -17659,7 +17892,28 @@
       "proof": "auto",
       "status": "open",
       "milestone": "M48",
-      "rules": []
+      "rules": [
+        {
+          "text": "vbw_lock_seconds in plugin/lib/record.sh returns VBW_LOCK_CLOCK when set and bash's SECONDS otherwise, a count that never goes down between two reads",
+          "check": "C537",
+          "plan": "P188.2"
+        },
+        {
+          "text": "the note lock's takeover of a folder left 5 s without an owner's id is counted on that clock: exactly 5 tries however the real SECONDS moves during the case",
+          "check": "C537",
+          "plan": "P188.2"
+        },
+        {
+          "text": "the slot store's lock counts its 5 s on the same clock, and the alone-check gate reads the same function; none of the three lock loops reads SECONDS directly",
+          "check": "C537",
+          "plan": "P188.2"
+        },
+        {
+          "text": "no test in tests/lock-exclusive.bats advances SECONDS as its clock, and the file's other lock cases still hold",
+          "check": "C537",
+          "plan": "P188.2"
+        }
+      ]
     },
     {
       "id": "R237",
@@ -17667,7 +17921,57 @@
       "proof": "auto",
       "status": "open",
       "milestone": "M48",
-      "rules": []
+      "rules": [
+        {
+          "text": "spec_section_lines SPEC SECTION prints a section's '- ' lines after dropping every <!-- ... --> block; on the template's spec (vbw init) it prints nothing, and a command written after the comment is the only line printed",
+          "check": "C544",
+          "plan": "P191.1"
+        },
+        {
+          "text": "a comment that opens and closes on one line between two real lines drops only itself, a multi-line block drops its lines, and another section's lines never print",
+          "check": "C544",
+          "plan": "P191.1"
+        },
+        {
+          "text": "mapnotrun's commands_lines calls the helper and no scenario pipes a raw spec section into grep '^- '",
+          "check": "C544",
+          "plan": "P191.1"
+        }
+      ]
+    },
+    {
+      "id": "R238",
+      "text": "The real-user suite has a submodule scenario: tools/l3-suite.sh seeds a small project whose one submodule holds a file a plan changes, drives /vbw:vibe through plan, build, proof and ship, and judges in git and the record that the plan's commit landed in the submodule with its VBW-Plan trailer, the project commit moved the submodule pointer, the proof ran the check inside the submodule from the clean copy, and no user-staged file was committed; it is in the default list and pinned by its own test file (#732, #737)",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M48",
+      "rules": [
+        {
+          "text": "scenario_submodule is in ALL and the header; its seed adds one submodule at sub/ with git submodule add, on a branch, holding greet.sh and a test.sh that prints its git toplevel; the spec names sh sub/test.sh; a file is staged and left uncommitted in each repository",
+          "check": "C545",
+          "plan": "P191.2"
+        },
+        {
+          "text": "it judges in git and the record, never on screen: a VBW-Plan commit in the submodule changing the plan's file, the project's pointer to the submodule unmoved with git status showing it changed, the check run from the clean copy's submodule under .vbw/runtime/proof., both staged files untouched, and common_checks",
+          "check": "C545",
+          "plan": "P191.2"
+        },
+        {
+          "text": "result_write submodule records the facts plan_commit_in_submodule, pointer_unmoved, check_ran_in_copy_submodule and staged_files_untouched with the commit ids, and a not_tested list naming nested submodules, a detached HEAD, a plan spanning both repositories and the vbw auto loop",
+          "check": "C545",
+          "plan": "P191.2"
+        },
+        {
+          "text": "docs/proof.md names the submodule scenario and what it judges beside mapnotrun",
+          "check": "C545",
+          "plan": "P191.2"
+        },
+        {
+          "text": "a committed result, when there is one, is labelled L3 with passed true, cost above 0, the four facts true and a non-empty not_tested list; without it the case skips with 'no submodule result committed yet: a run writes it'",
+          "check": "C545",
+          "plan": "P191.2"
+        }
+      ]
     }
   ],
   "phases": [
@@ -26734,6 +27038,128 @@
         "qa_findings": 0,
         "escalations": 0
       }
+    },
+    {
+      "id": "P188",
+      "title": "Tests count no real time: the bench's waiting case judges like the bench, the note lock reads an injected clock",
+      "reqs": [
+        "R234",
+        "R236"
+      ],
+      "milestone": "M48",
+      "goal": "The two timed-or-clock-bound tests that went red on busy GitHub runners in PR #740 give the same verdict on any machine: the bench's 'waiting is not counted' case measures again and reports busy as the bench does, and the note lock's 5 s takeover is counted on a clock the test controls.",
+      "criteria": [
+        "R234: tests/timed-bench-hooks.bats 'time a hook spends waiting is not counted as its cost' runs the second (sleep 0.05) bench once more when the difference is at or over its 25 ms margin, and fails only when the second difference is also at or over the margin; the failure text names both measures (first and second).",
+        "R234: when either bench run's guard line reports 'sh and jq startup S ms' with S above the hook budget the case passes with a skip (bats skip) whose text says the machine was busy and names S, mirroring the bench's own 'machine too busy to measure' rule at tools/bench-hooks.sh:255-259; a startup at or under the budget never skips.",
+        "R234: an L1 case in the same file (or tests/bench-limits.bats where the bench's rule lives) shows the new judging with a stand-in bench output: a first difference over the margin followed by one under passes; two over fail; a busy startup skips. The stand-in is a fake bench script or an injected bench line, never a real sleep of 50 ms.",
+        "R236: proofsteps_lock (plugin/lib/proofsteps.sh:38-54) reads its seconds from one function (recommended: vbw_lock_seconds in plugin/lib/record.sh next to vbw_lock_dir, vbw_lock_holder and vbw_lock_takeover) which returns the injected clock when VBW_LOCK_CLOCK (or the chosen name) is set and bash's SECONDS otherwise, following prooftime_clock's injection form at plugin/lib/prooftime.sh:46-57; slots_lock (plugin/lib/slots.sh:101-129) and the alone-check gate (plugin/lib/checks.sh:283-284) read the same function, so the three 5 s counts share one clock.",
+        "R236: tests/lock-exclusive.bats 'a note lock folder left 5 s without an owner's id is taken over' advances only the injected clock in its sleep() override and never SECONDS; it reads 'taken after 5 tries' on every machine, and a test that forces the real SECONDS to tick during the case (set SECONDS to 59.9 s worth before, or inject a clock and sleep across a second boundary only in a dedicated L1 proof of the helper, no real sleep in the suite) still reads 5 tries.",
+        "R236: the sibling cases in tests/lock-exclusive.bats that override sleep() and advance SECONDS (lines 125-140: the 'gave up' case and any other at the same pattern) move to the injected clock, so no test in the file writes SECONDS.",
+        "R236: an L1 case pins the helper alone: with the injected clock set it returns the injected value; unset it returns a number that does not decrease across two reads; the three lock functions contain no direct read of $SECONDS (a grep over plugin/lib/proofsteps.sh, slots.sh and checks.sh lock loops finds none).",
+        "R236: tests/machine-tracking.bats, tests/machine-bookkeeping.bats and tests/check-alone-runner.bats (real holds, no SECONDS override) pass unchanged under /bin/bash 3.2 and bash 5.",
+        "Both: no sleep is added to any non-timed test file; docs/proof.md or docs/guards.md says, where the bench's busy rule is described, that the timed test case applies the same rule."
+      ],
+      "tier": "deep",
+      "reasons": [
+        "requirements: 2",
+        "files: 7 (109948 bytes)",
+        "files: more than 2 in a repository tracking 1226 files",
+        "risk: none",
+        "breaks: R15, R151, R162, R190, R219, R222, R231",
+        "guarded: R1 (C1), R2 (C2), R22 (C19), R23 (C20), R25 (C24), R33 (C29), R38 (C33, C34), R43 (C42, C43), R45 (C39, C40, C41), R46 (C46), R47 (C47), R49 (C48), R61 (C73, C74, C75, C76, C77), R69 (C110, C120, C122), R75 (C101), R76 (C102, C103), R77 (C104), R79 (C107), R81 (C109, C111, C112, C113), R83 (C119), R94 (C145, C146, C147, C148), R118 (C184), R120 (C185), R121 (C187, C188), R123 (C190, C191), R128 (C200), R146 (C211), R148 (C213, C214, C216, C238), R149 (C217, C218, C219, C220, C221, C222), R150 (C223, C224, C225, C226, C227, C228, C229, C230), R152 (C233, C234), R160 (C247, C263, C264), R165 (C252), R166 (C253, C254, C255, C256, C267), R167 (C257, C258, C259, C260), R177 (C287, C288), R178 (C290, C291, C292, C293, C294, C295, C296, C311), R179 (C297, C298, C299, C300, C301, C302, C303, C304, C305, C306, C312), R180 (C307, C308, C309, C310), R181 (C313, C314, C315, C316, C317, C318, C319, C320, C321), R188 (C350, C351, C352, C353, C354, C355, C356, C357, C358, C359), R191 (C389, C390, C391, C392, C393, C394, C395, C396, C397, C398, C399, C400), R192 (C401, C402, C403, C404, C405, C406, C407, C408, C409, C410), R194 (C417, C418, C419), R195 (C420, C421, C422), R198 (C423), R202 (C432, C433, C434, C435, C436, C437, C438, C439, C440, C441, C442, C443, C444, C445, C446, C447), R208 (C464, C465, C466, C468), R209 (C469, C470, C471, C472, C473), R210 (C474, C475, C476), R226 (C510, C511)",
+        "tests: project test command"
+      ],
+      "predicted": "deep"
+    },
+    {
+      "id": "P189",
+      "title": "The status line shows the running step on every runner",
+      "reqs": [
+        "R235"
+      ],
+      "milestone": "M48",
+      "goal": "The bench case 'status line (step running)' shows the step's '1 of 2 · N min, until around HH:MM' on macOS and both Linux images every time, because the one-off miss on a Linux runner is explained and fixed where it starts.",
+      "criteria": [
+        "R235: the cause of the missing step in PR #740's Linux bash 5 shard 3 run is reproduced or ruled out for each candidate and the chosen cause is named with its evidence in the fix's test comment and in docs/guards.md's bench paragraph or docs/panel.md's step section: candidates to cover are (a) any jq failure inside render() at plugin/scripts/vbw-statusline.sh:201-203 printing '[VBW] status line unavailable' (line 225) instead of the line, (b) jq 1.7.1 (ubuntu-latest) versus 1.8.1 (ubuntu-26.04) differences in now/todateiso8601/strptime used by statusline.jq:58-84 and the bench's step.json at tools/bench-hooks.sh:410-413, (c) mins() returning null under one minute (statusline.jq:72-84) when the end lands within the same minute, (d) the record-versus-glance 'newer' test at vbw-statusline.sh:166-168 with whole-second file times, (e) the 'tomorrow' wording across midnight UTC versus the runner's local zone.",
+        "R235: the fix lands in the shipped status line (plugin/scripts/statusline.jq or vbw-statusline.sh) or in the bench's step fixture when the bench itself was wrong, never by loosening the bench's check at tools/bench-hooks.sh:414-419; the failure text 'the step was not shown, so the measure left it out' stays and tests/step-bench.bats:26-31 still pins it.",
+        "R235: a regression test (in tests/statusline.bats or tests/step-bench.bats, the file of the area) reproduces the miss with the cause's exact conditions (an injected clock or a crafted step.json/record, never a real wait) and is shown to fail without the fix and pass with it; it passes under /bin/bash 3.2, bash 5, jq 1.7.1 and jq 1.8.1 (the container of tools/test-linux.sh with its image argument from P190, or both images run by hand before P190 lands).",
+        "R235: the bench run with VBW_BENCH_RUNS=1 and VBW_BENCH_ONLY='status line (step running)' (as tests/step-bench.bats:19-22 runs it) prints the case's line and no 'the step was not shown' in 20 consecutive runs inside the Linux container and on this Mac; the counts are recorded in the plan's summary.",
+        "R235: when the render falls back to '[VBW] status line unavailable' (line 225) the reason is now observable: the status line writes jq's stderr to .vbw/runtime/statusline.err (or the chosen name, inside the project, overwritten each call) so a future miss names its cause; the bench's failure text prints that file's content when present; the hot-path budget (statusline ≤ 60 ms, tools/bench-hooks.sh) still holds."
+      ],
+      "tier": "deep",
+      "reasons": [
+        "requirements: 1",
+        "files: 6 (128384 bytes)",
+        "files: more than 2 in a repository tracking 1226 files",
+        "risk: none",
+        "breaks: R125, R151, R190, R219, R222, R224, R231",
+        "guarded: R16 (C15), R35 (C31), R48 (C49, C50), R51 (C52, C53, C66), R52 (C58, C91), R53 (C54, C55), R55 (C56, C57), R56 (C61, C65), R57 (C59, C70, C71), R58 (C62, C63, C64, C67), R61 (C73, C74, C75, C76, C77), R76 (C102, C103), R77 (C104), R82 (C117), R85 (C125), R86 (C124), R87 (C126, C127), R88 (C129), R89 (C128), R91 (C130), R124 (C192, C193), R149 (C217, C218, C219, C220, C221, C222), R150 (C223, C224, C225, C226, C227, C228, C229, C230), R173 (C281, C282, C283, C284, C285, C286, C289), R180 (C307, C308, C309, C310), R184 (C328, C329, C330, C331, C332, C333), R185 (C334, C335, C336, C337, C338, C339, C340, C341, C342, C343), R189 (C360, C361, C362, C363, C364, C365, C366, C367, C368, C369, C370, C371, C372, C373), R191 (C389, C390, C391, C392, C393, C394, C395, C396, C397, C398, C399, C400), R192 (C401, C402, C403, C404, C405, C406, C407, C408, C409, C410), R199 (C424, C425, C430), R200 (C426, C427, C431), R227 (C520, C521)",
+        "tests: project test command"
+      ],
+      "predicted": "deep"
+    },
+    {
+      "id": "P190",
+      "title": "Linux guard cost found and removed",
+      "reqs": [
+        "R233"
+      ],
+      "milestone": "M48",
+      "goal": "The guard-to-reference ratio on GitHub's Linux runners is within 1.25 of macOS's because the per-step measure named what the guard spends on Linux that the reference does not, and that cost was removed in the guard or the reference, with the figures in docs/guards.md.",
+      "criteria": [
+        "R233: before any measure, origin/main is merged into plow/2.1.22 with PR #730's guard (plugin/hooks/guard-bash.jq, common.jq: about 1 ms more compile per call, D541); the measure runs on that guard. If #730 is not yet on main when the phase starts, the phase waits (it is the owner's merge) and no measure is taken on the older guard.",
+        "R233: tools/test-linux.sh takes an image argument (default ubuntu:24.04; ubuntu:26.04 accepted) and a mode that runs only the bench or a named step script instead of the whole release run, so one guard call can be measured per step in either image; the script stays maintainer tooling under tools/, shellcheck-clean (bash tools/test.sh --lint).",
+        "R233: a per-step measure script (tools/bench-steps.sh or a mode of tools/bench-hooks.sh) splits one Bash guard call as hooks.json runs it (plugin/hooks/hooks.json PreToolUse Bash: ulimit, the sh loop to .git, four file tests, one jq -nc ... -f guard-bash.jq) into: sh startup, jq startup (jq -n empty), program compile alone (the guard program over empty inputs), program run (the full call), and the reference call (tools/bench-hooks.sh:264-269), each as CPU ms per call over the bench's RUNS with cpu_pair's method (tools/bench-hooks.sh:204-220); it prints one table with the same five steps for the git, npm, big and interp inputs; the same script runs on this Mac and in both Linux images (arm64 locally, x86_64 on CI through a one-off CI step or a workflow_dispatch job, since the chip differs).",
+        "R233: the table from macOS, ubuntu-latest (jq 1.7.1) and ubuntu-26.04 (jq 1.8.1) is written into docs/guards.md's bench paragraph (docs/guards.md:267-287), with the cause stated in one sentence (for example 'jq 1.8.1 compiles regexes N ms slower per site; the guard has 68 test() sites and the reference one' or whatever the measure shows) and the date; the paragraph that today names only Mac figures also names Linux figures per guard.",
+        "R233: the cause is removed at its source: either the guard (plugin/hooks/guard-bash.jq, common.jq) no longer pays it (for example regex sites merged or replaced by string tests where the regex buys nothing, keeping every test in tests/hooks-guard.bats and tests/hooks-session-guard.bats green) or the reference (tools/bench-hooks.sh reference_files, lines 171-191) carries the same kind of work in the same proportion (regex sites, program size 38.6 KB, inputs) so the ratio tracks the guard; the choice and its reason are in the plan's summary and a decision. A change to NOMINAL_MS alone, a Linux-only budget, or a per-OS factor is not acceptable.",
+        "R233: tests/bench-limits.bats's R231 cases (reference shape, sizes within 10% of the stated bytes, provenance comment) are updated to the new reference when it changes, with the provenance comment at tools/bench-hooks.sh:88-96 restating the dated figures for the Mac, GitHub macOS and the two Linux images.",
+        "R233: measured on CI (the PR's own run, in the shard-1 bench logs of macos-latest, ubuntu-latest and ubuntu-26.04): every Linux guard case's own-cost divided by that runner's reference is within 1.25 times macOS's same quotient, and no Linux guard case line reads OVER on a runner whose reference line shows a ratio at or under 1.00; the three log excerpts (reference line plus each guard line) are quoted in the plan's summary and the progress log. The requirement's 'next release's CI' is this same observation on the 2.1.22 release PR.",
+        "R233: if the per-step measure (T197) shows R219's regex is the cause, T197 is closed by the phase's decision; T201 (done by R231) and T196 (superseded by R222) are closed as stale in the same decision."
+      ],
+      "tier": "deep",
+      "reasons": [
+        "requirements: 1",
+        "files: 6 (104150 bytes)",
+        "files: more than 2 in a repository tracking 1226 files",
+        "risk: CI (.github/workflows/bench-steps.yml)",
+        "breaks: R15, R151, R162, R190, R219, R222, R224, R231",
+        "guarded: R61 (C73, C74, C75, C76, C77), R75 (C101), R76 (C102, C103), R77 (C104), R83 (C119), R120 (C185), R128 (C200), R149 (C217, C218, C219, C220, C221, C222), R150 (C223, C224, C225, C226, C227, C228, C229, C230), R152 (C233, C234), R160 (C247, C263, C264), R165 (C252), R166 (C253, C254, C255, C256, C267), R177 (C287, C288), R178 (C290, C291, C292, C293, C294, C295, C296, C311), R179 (C297, C298, C299, C300, C301, C302, C303, C304, C305, C306, C312), R180 (C307, C308, C309, C310), R181 (C313, C314, C315, C316, C317, C318, C319, C320, C321), R184 (C328, C329, C330, C331, C332, C333), R185 (C334, C335, C336, C337, C338, C339, C340, C341, C342, C343), R188 (C350, C351, C352, C353, C354, C355, C356, C357, C358, C359), R192 (C401, C402, C403, C404, C405, C406, C407, C408, C409, C410), R194 (C417, C418, C419), R198 (C423), R210 (C474, C475, C476)",
+        "tests: project test command"
+      ],
+      "predicted": "deep"
+    },
+    {
+      "id": "P191",
+      "title": "Real-user suite: spec sections read without comments, and a submodule scenario",
+      "reqs": [
+        "R237",
+        "R238"
+      ],
+      "milestone": "M48",
+      "goal": "The real-user suite judges a spec's ## Commands from its visible lines only, and has a submodule scenario that drives /vbw:vibe through plan, build, proof and ship on a project with one submodule and judges in git and the record what PR #737's kernel does there.",
+      "criteria": [
+        "R237: tools/l3-suite.sh has one helper (spec_section_lines SPEC SECTION, or the chosen name) that prints a section's '- ' lines after dropping every <!-- ... --> block, single-line and multi-line, and every scenario that read ## Commands with the raw sed at line 3258 (commands_lines in mapnotrun and any other scenario grep finds) calls it; no scenario pipes the raw spec section into grep '^- ' any more.",
+        "R237: with a spec whose ## Commands holds only the template's comment (plugin/lib/cmd-init.sh:91-98: '- test: npm test' and '- build: [\"make\", \"release build\"]' inside <!-- -->) the helper prints nothing; with a command written after the comment it prints that line only; with a comment that opens and closes on one line between two real lines it prints the two real lines.",
+        "R237: tests/l3-mapnotrun.bats gains the pin: it sources or extracts the helper from the suite and runs it on a spec made from cmd-init's template (vbw init in a temp project, so the template is the real one) plus one visible command, and asserts the comment's commands are absent and the visible one present; it also asserts by text that commands_lines calls the helper and no longer contains the raw 'sed -n ... | grep -E '^- '' form.",
+        "R237: tools/check-pipefail-grep.sh (tests/standards.bats) stays green on the changed suite (D537: the quiet greps read to the end).",
+        "R238: tools/l3-suite.sh has scenario_submodule (name 'submodule' in ALL at line 22 and in the header list at lines 14-15) whose seed makes a project with a README, vbw init, and one submodule at sub/ (added with git submodule add from a local bare or plain repo inside the scenario's temp folder, on a branch, never detached) holding greet.sh and its test sub/test.sh; the spec names the check inside the submodule (run: sh sub/test.sh); the user types /vbw:vibe and answers with the recommendation through plan, build, proof and ship; one plan's file is sub/greet.sh.",
+        "R238: the scenario judges, never on screen text: (1) in sub/'s git log a commit carrying 'VBW-Plan: P' whose changed files include greet.sh (or the plan's file), (2) the project's own log holds no commit that changes the gitlink sub/ (the pointer did not move: PR #737's design, docs/workflows.md 'Submodules', and the project's git status reads 'M sub' or ' M sub' after the run), (3) the proof ran the check inside the submodule from the clean copy: the seeded sub/test.sh prints its own git toplevel (git rev-parse --show-toplevel) and the recorded check output or the run store names a path under .vbw/runtime/proof. and ending in /sub, not the project folder, (4) a user-staged file (a file the seed stages with git add in the project and another staged in the submodule before the session, never committed by the seed) is still staged and uncommitted at the end, in both repositories, (5) common_checks: milestone shipped, every requirement proven or accepted, no lease, no stray changes outside .vbw/runtime and the two staged files.",
+        "R238: result_write submodule writes tools/l3-results/submodule.json with facts for each judged item (plan_commit_in_submodule, pointer_unmoved, check_ran_in_copy_submodule, staged_files_untouched, and the commit ids) and a not_tested list naming at least: nested submodules, a detached submodule HEAD, a plan whose files span both repositories, the loop (vbw auto) path.",
+        "R238: tests/l3-submodule.bats (new, the scenario's own file, on tests/l3-mapnotrun.bats's pattern) pins: the scenario exists, is in ALL and the header, writes 'result_write submodule ', seeds with 'git submodule add', judges 'VBW-Plan: ', '--show-toplevel' and 'git status' and never 'screen |' with grep; and, when tools/l3-results/submodule.json exists, that it is labelled L3 with passed true, cost > 0, the four facts true, and a non-empty not_tested list; without the file it skips with the text 'no submodule result committed yet: a run writes it'.",
+        "R238: the scenario is run once on PR #737's branch (fix/732-submodule-commits at or after 165c6260, with this phase's tools/l3-suite.sh and tests/l3-submodule.bats cherry-picked or copied onto it in a worktree, since the suite drives the plugin at its own ROOT) with tools/l3-suite.sh submodule; the result file it writes is committed with the scenario; the run's outcome (pass or each failing expect) is posted as a review comment on #737 before the owner merges it; a failure of the kernel there is reported on #737, not patched in this milestone.",
+        "R238: docs/proof.md's list of real-user scenarios (where mapnotrun is named) names submodule with one line of what it judges."
+      ],
+      "tier": "deep",
+      "reasons": [
+        "requirements: 2",
+        "files: 3 (324680 bytes)",
+        "files: more than 2 in a repository tracking 1226 files",
+        "risk: none",
+        "breaks: R41, R190, R216, R220, R228",
+        "guarded: R4 (C4), R5 (C5), R8 (C8), R12 (C11), R31 (C27), R32 (C28), R34 (C30), R42 (C38), R43 (C42, C43), R44 (C44, C45), R45 (C39, C40, C41), R46 (C46), R47 (C47), R48 (C49, C50), R49 (C48), R51 (C52, C53, C66), R59 (C68, C92), R61 (C73, C74, C75, C76, C77), R62 (C78, C79, C80, C81, C82, C83, C93), R64 (C84, C85), R65 (C86, C87, C88, C89, C90), R66 (C95), R69 (C110, C120, C122), R70 (C114), R72 (C116, C118), R73 (C98), R74 (C99, C100), R78 (C105, C106), R79 (C107), R80 (C108), R81 (C109, C111, C112, C113), R92 (C131, C132, C133, C134, C135, C136, C137, C138, C139), R93 (C140, C141, C142, C143, C144), R94 (C145, C146, C147, C148), R97 (C153), R98 (C154), R100 (C156), R103 (C160), R104 (C161, C162), R105 (C163), R110 (C169, C170), R111 (C171, C172, C173, C174, C175), R115 (C181), R116 (C182, C183), R118 (C184), R131 (C198), R132 (C199), R134 (C201), R135 (C202), R144 (C208, C209), R147 (C212, C215, C237), R148 (C213, C214, C216, C238), R152 (C233, C234), R153 (C235, C236, C239), R160 (C247, C263, C264), R161 (C248, C265, C266), R166 (C253, C254, C255, C256, C267), R167 (C257, C258, C259, C260), R168 (C261, C262), R169 (C268), R170 (C269), R173 (C281, C282, C283, C284, C285, C286, C289), R174 (C279, C280), R175 (C274, C275), R176 (C276, C277, C278), R180 (C307, C308, C309, C310), R181 (C313, C314, C315, C316, C317, C318, C319, C320, C321), R182 (C322, C323, C324, C325, C326), R183 (C327), R184 (C328, C329, C330, C331, C332, C333), R185 (C334, C335, C336, C337, C338, C339, C340, C341, C342, C343), R188 (C350, C351, C352, C353, C354, C355, C356, C357, C358, C359), R189 (C360, C361, C362, C363, C364, C365, C366, C367, C368, C369, C370, C371, C372, C373), R191 (C389, C390, C391, C392, C393, C394, C395, C396, C397, C398, C399, C400), R193 (C411, C412), R194 (C417, C418, C419), R195 (C420, C421, C422), R196 (C415, C416), R197 (C413, C414), R199 (C424, C425, C430), R200 (C426, C427, C431), R201 (C428, C429), R202 (C432, C433, C434, C435, C436, C437, C438, C439, C440, C441, C442, C443, C444, C445, C446, C447), R203 (C448, C449, C450), R204 (C451, C452, C453, C454), R205 (C455, C456, C457, C458, C467), R206 (C459, C460), R207 (C461, C462, C463), R208 (C464, C465, C466, C468), R209 (C469, C470, C471, C472, C473), R210 (C474, C475, C476), R211 (C477, C478, C479), R212 (C480, C481, C482), R213 (C483, C484), R214 (C485, C486, C487), R215 (C488, C489, C490), R217 (C494, C495), R221 (C504), R226 (C510, C511), R232 (C534)",
+        "tests: project test command"
+      ],
+      "predicted": "deep"
     }
   ],
   "plans": [
@@ -59486,6 +59912,210 @@
           "head": "fb01760e70c55a74a108c54536e421fcd5010f81"
         }
       ]
+    },
+    {
+      "id": "P188.1",
+      "phase": "P188",
+      "title": "The bench's waiting case judges like the bench: measure again, report busy",
+      "reqs": [
+        "R234"
+      ],
+      "files": [
+        "tests/timed-bench-hooks.bats",
+        "tests/bench-waiting.bash",
+        "docs/guards.md"
+      ],
+      "after": [],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "tests/bench-waiting.bash (new, loaded by bats): waiting_judge BUDGET MARGIN QUICK SLOW [SLOW2] over the bench's printed lines: prints 'busy S' when any given run's sh-and-jq startup S (the guard (git) line's '(sh and jq startup S ms)' or the bench's own 'machine too busy to measure ... takes S ms' line) is above BUDGET; else 'ok' when SLOW's guard (git) own cost minus QUICK's is under MARGIN; else 'again' without SLOW2; else 'ok' or 'fail <words naming the first and second measures with the quick figure>' (exit 1 on fail); no sleep, bash 3.2 (perl for the decimal compare, as the bench)",
+        "tests/timed-bench-hooks.bats: the waiting case loads bench-waiting, keeps its two bench runs, calls waiting_judge 20 25 on their outputs; on 'busy S' it skips with 'the machine was busy: sh and jq startup S ms, above the 20 ms hook limit'; on 'again' it runs the sleep 0.05 bench once more and judges the three outputs; on 'fail' it prints the judge's words and fails",
+        "docs/guards.md Budget bullet, where the busy rule is described: the timed test case tests/timed-bench-hooks.bats applies the same rule (busy is reported, not failed; a difference over the margin is measured once more)",
+        "Run tests/timed-bench-hooks.bats once under /bin/bash and once under bash 5 (alone, as the release run does) and the R234 cases of tests/bench-limits.bats and tests/bench-limits-docs.bats; figures in the summary"
+      ]
+    },
+    {
+      "id": "P188.2",
+      "phase": "P188",
+      "title": "One lock clock: vbw_lock_seconds, injected by VBW_LOCK_CLOCK, read by the three 5 s locks",
+      "reqs": [
+        "R236"
+      ],
+      "files": [
+        "plugin/lib/record.sh",
+        "plugin/lib/proofsteps.sh",
+        "plugin/lib/slots.sh",
+        "plugin/lib/checks.sh"
+      ],
+      "after": [],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "plugin/lib/record.sh: vbw_lock_seconds beside vbw_lock_dir, vbw_lock_holder and vbw_lock_takeover: prints VBW_LOCK_CLOCK when set (a test's injected clock, whole seconds), else bash's SECONDS; the comment names the injection and why (T206: real SECONDS ticked on Ubuntu 26.04 and a 5 s count read 4 tries)",
+        "plugin/lib/proofsteps.sh proofsteps_lock: quiet and the 5 s count read $(vbw_lock_seconds), no SECONDS",
+        "plugin/lib/slots.sh slots_lock: quiet, the 5 s takeover and the 30 s give-up read $(vbw_lock_seconds), no SECONDS",
+        "plugin/lib/checks.sh checks_gate_enter: lost and the 5 s count read $(vbw_lock_seconds), no SECONDS; then run tests/lock-exclusive.bats, tests/machine-tracking.bats, tests/machine-bookkeeping.bats and tests/check-alone-runner.bats under /bin/bash and under bash 5, unchanged"
+      ]
+    },
+    {
+      "id": "P189.1",
+      "phase": "P189",
+      "title": "A status line miss is explained: jq's error kept in .vbw/runtime/statusline.err, the bench prints the line it read",
+      "reqs": [
+        "R235"
+      ],
+      "files": [
+        "plugin/scripts/vbw-statusline.sh",
+        "tools/bench-hooks.sh",
+        "docs/statusline.md"
+      ],
+      "after": [],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "plugin/scripts/vbw-statusline.sh render(): jq's stderr goes to $root/.vbw/runtime/statusline.err when that folder exists (one [ -d ] test, no process; /dev/null otherwise, never making the folder), truncated on each call so a good render leaves it empty; the header comment names the file as the second thing the script writes",
+        "tools/bench-hooks.sh statusline(): when the first line has no step, after the failure line print 'status line<label>: first line: <the line read>' and, when $dir/.vbw/runtime/statusline.err has text, each of its lines as 'status line<label>: statusline.err: <line>'; the failure text itself unchanged",
+        "docs/statusline.md: the error file, what it holds, that it is overwritten on every render and lives inside the project; docs/guards.md untouched here",
+        "Run tools/bench-hooks.sh with VBW_BENCH_ONLY naming the three status line cases under /bin/bash: the status line stays within 60 ms; the R235 cases of tests/statusline.bats and tests/step-bench.bats pass; figures in the summary"
+      ]
+    },
+    {
+      "id": "P189.2",
+      "phase": "P189",
+      "title": "The missing step on the Linux runner: each candidate reproduced or ruled out, the cause named, fixed at its source with a regression test",
+      "reqs": [
+        "R235"
+      ],
+      "files": [
+        "plugin/scripts/statusline.jq",
+        "plugin/scripts/vbw-statusline.sh",
+        "docs/panel.md",
+        "tests/statusline-step-miss.bats"
+      ],
+      "after": [
+        "P189.1",
+        "P190.1"
+      ],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "Reproduce or rule out each candidate with evidence, never a guess: (a) a jq failure inside render (now visible in statusline.err), (b) jq 1.7.1 against 1.8.1 in now, todateiso8601, fromdateiso8601, localtime, mktime and strflocaltime as statusline.jq and the bench's step.json use them, (c) mins() null when the start lands in the same minute, (d) the record-versus-glance newer test with whole-second file times, (e) 'tomorrow' across midnight UTC against the runner's zone, and (f) the bench's own probe (pipefail with head -n 1, the status line's exit status): crafted step.json and record files and a set clock (TZ), plus 20 runs of the step case (VBW_BENCH_ONLY, VBW_BENCH_RUNS=1) on this Mac and in both Linux images through tools/test-linux.sh --image ... --bench; the PR #740 shard-3 log (run 41195043482) is the one observed miss; the Lead's 30 runs in each arm64 image on 2026-10-31 showed 0 misses; counts per candidate in the summary",
+        "Name the cause and its evidence in docs/panel.md's step section (one short paragraph) and in the regression test's header comment; when no candidate reproduces, say so there, name what statusline.err will show on the next miss, and block the plan with the finding (vbw plan block) rather than guess a fix; when the bench's own step fixture (tools/bench-hooks.sh, P190's file) is the cause, block the plan naming the fixture fix for a plan of its own",
+        "Fix at the source in plugin/scripts/statusline.jq or vbw-statusline.sh, never by loosening the bench's check or its failure text; tests/statusline-step-miss.bats (new) reproduces the miss with the cause's exact conditions (an injected clock or crafted step.json/record, no real wait) and is shown to fail without the fix",
+        "Run tests/statusline-step-miss.bats under /bin/bash, bash 5, jq 1.7.1 and jq 1.8.1 (both images through tools/test-linux.sh -- bats tests/statusline-step-miss.bats); 20 consecutive runs of the step bench case in each Linux image and on this Mac print the case's line and no miss; counts in the summary"
+      ]
+    },
+    {
+      "id": "P190.1",
+      "phase": "P190",
+      "title": "tools/test-linux.sh: the image to shape the container after, and what to run inside",
+      "reqs": [
+        "R233"
+      ],
+      "files": [
+        "tools/test-linux.sh"
+      ],
+      "after": [],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "tools/test-linux.sh: --image IMAGE (default ubuntu:24.04; ubuntu:26.04 accepted; any other image, or an unknown option, exits 2 with a usage line before any docker call); the built image is tagged per base image so the two never share a tag",
+        "--bench runs bash tools/bench-hooks.sh inside the container in place of the release run; everything after -- is the command to run inside, each word quoted into the container's bash -c script with printf %q (argv kept, no eval of data); default stays bash tools/test.sh --release",
+        "Header comment states the three forms and that the image names CI's two Linux jobs (ubuntu-latest with jq 1.7.1, Ubuntu 26.04 with jq 1.8.1); bash tools/test.sh --lint clean; tests/test-linux.bats passes",
+        "Run bash tools/test-linux.sh --image ubuntu:26.04 --bench once for real and keep its reference and guard lines in the summary"
+      ]
+    },
+    {
+      "id": "P190.2",
+      "phase": "P190",
+      "title": "The per-step measure of one guard call: VBW_BENCH_STEPS=1 table, and a CI job to run it on the three runners",
+      "reqs": [
+        "R233"
+      ],
+      "files": [
+        "tools/bench-hooks.sh",
+        ".github/workflows/bench-steps.yml"
+      ],
+      "after": [
+        "P189.1"
+      ],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "tools/bench-hooks.sh: VBW_BENCH_STEPS=1 mode, taken after the inputs are written and before any case: for git, npm, big and interp measure with cpu_pair (RUNS runs, alternating) sh startup (sh -c :), jq startup (jq -n empty), program compile alone (the guard program with the hooks.json call's flags over empty inputs: --rawfile glance /dev/null, -f guard-bash.jq - /dev/null end.json with stdin empty), program run (the full hooks.json PreToolUse Bash command on the input) and the reference call (the R222 reference as the bench runs it); print 'steps: CPU ms per call over N runs' then one table, header 'step git npm big interp', rows sh startup, jq startup, program compile, program run, reference, one decimal; exit 0 without judging a case or printing a guard line",
+        ".github/workflows/bench-steps.yml (new): on workflow_dispatch only; matrix os macos-latest, ubuntu-latest, ubuntu-26.04; checkout into 'src dir'; install jq (brew on macOS, apt on Linux); print bash --version and jq --version; run VBW_BENCH_STEPS=1 VBW_BENCH_RUNS=100 bash tools/bench-hooks.sh; tests/bench-guard-steps.bats and tests/ci-shards.bats pass",
+        "Produce the table on this Mac and in both Linux images (bash tools/test-linux.sh --image ubuntu:24.04 -- env VBW_BENCH_STEPS=1 bash tools/bench-hooks.sh, then ubuntu:26.04); keep the three tables in the summary for P190.3; the GitHub tables need the owner's push and one dispatch (gh workflow run bench-steps.yml --ref plow/2.1.22): leave that command in the summary"
+      ]
+    },
+    {
+      "id": "P190.3",
+      "phase": "P190",
+      "title": "The Linux cost named and removed in the guard or the reference; nominal and provenance remeasured; the figures in docs/guards.md",
+      "reqs": [
+        "R233"
+      ],
+      "files": [
+        "tools/bench-hooks.sh",
+        "plugin/hooks/guard-bash.jq",
+        "plugin/hooks/common.jq",
+        "docs/guards.md"
+      ],
+      "after": [
+        "P190.2",
+        "P188.1"
+      ],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "From the step tables of the Mac, both Linux images and (when the owner has dispatched it) the three GitHub runners, name the step whose Linux cost exceeds the reference's share, and decide guard or reference with vbw decide (the figures in the why); close T197, T201 and T196 by that decision when the measure settles them (vbw todo done)",
+        "Remove the cause at its source: either plugin/hooks/guard-bash.jq and common.jq no longer pay it (regex sites merged or replaced by string tests where the regex buys nothing; every case of tests/hooks-guard.bats and tests/hooks-session-guard.bats green), or tools/bench-hooks.sh reference_files carries the same kind of work in the guard's proportion (program within 10% of guard-bash.jq's size, regex sites in proportion to the guard's); never NOMINAL_MS alone, a Linux-only budget or a per-OS factor; the R233 cases of tests/bench-limits.bats pass",
+        "Remeasure NOMINAL_MS on this Mac (five runs, dated) for the changed workload and restate the provenance comment above it: the shape, the program and document sizes exactly as the bench writes them, the Mac, GitHub macOS (from the PR's shard-1 log once it exists; until then the latest known, marked so), ubuntu-latest (jq 1.7.1) and Ubuntu 26.04 (jq 1.8.1) figures with their dates",
+        "docs/guards.md Budget bullet: the per-step table for macOS, ubuntu-latest and Ubuntu 26.04 (five rows, a column per runner), the cause in one sentence, the date, and Linux guard figures beside the Mac ones; the summary quotes the reference and guard lines of the PR's shard-1 logs for the three runners once the owner's CI run exists, with each Linux quotient within 1.25 of macOS's"
+      ]
+    },
+    {
+      "id": "P191.1",
+      "phase": "P191",
+      "title": "The suite reads a spec section without its HTML comments",
+      "reqs": [
+        "R237"
+      ],
+      "files": [
+        "tools/l3-suite.sh"
+      ],
+      "after": [],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "tools/l3-suite.sh: spec_section_lines SPEC SECTION, one awk over the file: from the '## SECTION' heading to the next '## ' heading, drop every <!-- ... --> block (one-line and multi-line, the text outside a block on the same line kept), print the lines starting '- '; reads to the end, no quiet grep (tools/check-pipefail-grep.sh)",
+        "mapnotrun's commands_lines calls spec_section_lines \"$spec\" Commands; grep finds no other scenario reading a raw section with sed | grep '^- '",
+        "bash tools/test.sh --lint, bash tools/check-pipefail-grep.sh plugin tools and tests/l3-mapnotrun.bats pass"
+      ]
+    },
+    {
+      "id": "P191.2",
+      "phase": "P191",
+      "title": "Real-user scenario submodule: a plan whose file lives in a submodule, run on PR #737's branch",
+      "reqs": [
+        "R238"
+      ],
+      "files": [
+        "tools/l3-suite.sh",
+        "docs/proof.md",
+        "tools/l3-results/submodule.json"
+      ],
+      "after": [
+        "P191.1"
+      ],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "submodule_seed in tools/l3-suite.sh: a plain local repo in the scenario's temp folder (on branch main) with greet.sh and test.sh, where test.sh prints 'toplevel: $(git rev-parse --show-toplevel)' then checks 'sh greet.sh Ana' prints 'Hello, Ana!' (red today: greet.sh prints 'Hi'); git submodule add it at sub/ (on its branch, never detached) and commit; vbw init; .vbw/spec.md with one requirement about sub/greet.sh and ## Commands '- test: sh sub/test.sh'; then a file staged with git add and left uncommitted in the project (staged.txt) and another in the submodule (sub/staged.txt); fixture= text",
+        "scenario_submodule: start '/vbw:vibe', answer with the recommendation to ship; checks(): (1) git -C sub log --format=%B%x00 --name-only finds a commit with 'VBW-Plan: P' that changes greet.sh, (2) git log --format=%H -- sub in the project is empty beyond the seed and git status --porcelain shows sub modified (' M sub' or 'M  sub'), (3) the recorded check output (vbw show or the run store under .vbw/runtime) names a toplevel under .vbw/runtime/proof. ending in /sub, (4) git diff --cached --name-only in each repository still lists its staged file and no commit of either repository changed it, (5) common_checks with the two staged files allowed; every expect in git or the record, never from screen; result_write submodule with facts plan_commit_in_submodule, pointer_unmoved, check_ran_in_copy_submodule, staged_files_untouched, the commit ids, and not_tested naming nested submodules, a detached submodule HEAD, a plan whose files span both repositories, the vbw auto loop path",
+        "ALL and the header list name submodule; docs/proof.md names the submodule scenario and what it judges in the paragraph where mapnotrun is named; tests/l3-submodule.bats passes (the result case skipping until a run)",
+        "Run it once on PR #737's branch: git worktree add ../vibe-better-with-claude-code-vbw-worktrees/fix-732 fix/732-submodule-commits (at or after 165c6260), copy this tools/l3-suite.sh and tests/l3-submodule.bats there, bash tools/l3-suite.sh submodule (about 1 to 3 USD; a second run only to fix the scenario, never the kernel); copy tools/l3-results/submodule.json back here and commit it with the scenario; post the outcome (pass, or each failing expect with its evidence) as a review comment on #737 with gh pr comment; a kernel failure is reported there, not patched in this milestone"
+      ]
     }
   ],
   "fixes": [
@@ -66425,6 +67055,24 @@
       "id": "D539",
       "at": "2026-10-31T10:58:52Z",
       "text": "Shipped M47 Community batch 3: router uses the map, suggestions in time, one mutate run per plan, guard-shaped bench reference, mutate timing test: 5 requirements proven or accepted"
+    },
+    {
+      "id": "D540",
+      "text": "2.1.22 holds M48's five fixes plus PRs #730 and #737 (the latter after its round-2 review and a real-session run); the #735 and #738 designs move to 2.1.23",
+      "why": "The five fixes turn the Linux CI checks steady; #730 and #737 are delivered by halindrome and promised for 2.1.22; the designs stay offered to halindrome until 2026-11-04, so VBW cannot build them inside 2.1.22 without taking the offer back; a correction comment goes on #735 and #738",
+      "at": "2026-10-31T15:05:11Z"
+    },
+    {
+      "id": "D541",
+      "text": "Merge #730 as soon as its macOS CI shards and manifest pass, before R233 is measured",
+      "why": "Owner answer 2026-10-31: #730 adds about 1 ms per guard call; measuring R233 on the merged guard avoids a second measuring round and a red release check",
+      "at": "2026-10-31T15:05:15Z"
+    },
+    {
+      "id": "D542",
+      "text": "#737's real-session run is a new real-user scenario in tools/l3-suite.sh (a small project with one submodule and a plan whose file is inside it), run on #737's branch before merge",
+      "why": "VBW's own run is the evidence the review asked for; the scenario serves every later submodule change and #735's acceptance; a contributor's report alone is not VBW's evidence",
+      "at": "2026-10-31T15:05:19Z"
     }
   ],
   "commands": {
@@ -75330,6 +75978,17 @@
         "ended": "2026-10-31T15:04:15Z",
         "cost": {
           "usd": 5.269973
+        }
+      },
+      {
+        "id": "plan-20261031T150644Z",
+        "kind": "plan",
+        "session": "0ee781c3-c5b6-4a6c-889f-04b89f1fba4a",
+        "milestone": "M48",
+        "started": "2026-10-31T15:06:44Z",
+        "ended": "2026-10-31T15:50:22Z",
+        "cost": {
+          "usd": 13.596138
         }
       }
     ],

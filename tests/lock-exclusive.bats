@@ -126,11 +126,12 @@ in_runtime() {
   printf '%s\n' "$live" > "$TEST_ROOT/runtime/step.lock/pid"
   # The waiter has waited 7 s when the owner's file is gone for one look (another waiter
   # renamed it to check it, as vbw_lock_takeover does, and links it back at once).
+  # The seconds are the injected clock (R236, VBW_LOCK_CLOCK), one per look, never real time.
   # shellcheck disable=SC2016 # expanded by in_runtime
-  run in_runtime 'tries=0
+  run in_runtime 'tries=0 VBW_LOCK_CLOCK=0
     sleep() {
       tries=$((tries + 1))
-      SECONDS=$((SECONDS + 1))
+      VBW_LOCK_CLOCK=$((VBW_LOCK_CLOCK + 1))
       if [ "$tries" -eq 7 ]; then mv "$l/pid" "$l/pid.away"; fi
       if [ "$tries" -eq 8 ]; then mv "$l/pid.away" "$l/pid"; fi
     }
@@ -141,10 +142,51 @@ in_runtime() {
 
 @test "R190: a note lock folder left 5 s without an owner's id is taken over" {
   mkdir -p "$TEST_ROOT/runtime/step.lock"
+  # The 5 s are counted on the injected clock (R236, T206: on Ubuntu 26.04 bash's real
+  # SECONDS ticked during the case and the lock was taken after 4 tries). Each look
+  # advances the injected clock by one second and the real SECONDS by a hundred: a lock
+  # that still read SECONDS would be taken after the first look, never the fifth.
   # shellcheck disable=SC2016 # expanded by in_runtime
-  run in_runtime 'tries=0
-    sleep() { tries=$((tries + 1)); SECONDS=$((SECONDS + 1)); }
+  run in_runtime 'tries=0 VBW_LOCK_CLOCK=0
+    sleep() { tries=$((tries + 1)); VBW_LOCK_CLOCK=$((VBW_LOCK_CLOCK + 1)); SECONDS=$((SECONDS + 100)); }
     if proofsteps_lock; then echo "taken after $tries tries"; else echo "gave up"; fi; [ "$(cat "$l/pid")" = "$$" ] && echo "mine"'
+  [ "${lines[0]}" = "taken after 5 tries" ] && [ "${lines[1]}" = "mine" ] || { echo "$output"; false; }
+}
+
+# R236 (T206): the three locks that count 5 s without an owner's id (the note lock in
+# proofsteps.sh, the slot store's lock in slots.sh, the alone-check gate in checks.sh)
+# read their seconds from one function, vbw_lock_seconds in record.sh: the injected
+# clock VBW_LOCK_CLOCK when set, bash's SECONDS otherwise. No test here writes SECONDS.
+
+@test "R236: vbw_lock_seconds returns the injected clock when VBW_LOCK_CLOCK is set, and otherwise a count of seconds that never goes down" {
+  # shellcheck disable=SC2016 # expanded by in_runtime
+  run in_runtime 'VBW_LOCK_CLOCK=42 vbw_lock_seconds; unset VBW_LOCK_CLOCK; a=$(vbw_lock_seconds); b=$(vbw_lock_seconds); echo "$a $b"'
+  [ "${lines[0]}" = "42" ] || { echo "$output"; false; }
+  local a b
+  read -r a b <<< "${lines[1]}"
+  [[ "$a" =~ ^[0-9]+$ ]] && [[ "$b" =~ ^[0-9]+$ ]] && [ "$b" -ge "$a" ] || { echo "$output"; false; }
+}
+
+@test "R236: the note lock, the slot lock and the alone-check gate read vbw_lock_seconds and never SECONDS directly" {
+  local f fn body
+  for f in proofsteps.sh:proofsteps_lock slots.sh:slots_lock checks.sh:checks_gate_enter; do
+    fn=${f#*:}
+    body=$(sed -n "/^$fn()/,/^}/p" "$PLUGIN_ROOT/lib/${f%%:*}")
+    [ -n "$body" ] || { echo "no $fn in ${f%%:*}"; false; }
+    ! printf '%s\n' "$body" | grep -q 'SECONDS' || { echo "$fn still reads SECONDS:"; printf '%s\n' "$body" | grep -n 'SECONDS'; false; }
+    printf '%s\n' "$body" | grep -q 'vbw_lock_seconds' || { echo "$fn does not read vbw_lock_seconds"; false; }
+  done
+  grep -q '^vbw_lock_seconds()' "$PLUGIN_ROOT/lib/record.sh" || { echo "vbw_lock_seconds is not defined in record.sh"; false; }
+  # No test in this file advances SECONDS as its clock; the one write left is the decoy of a hundred.
+  [ "$(grep -cE 'SECONDS=\$\(\(SECONDS \+ 1\)\)' "$BATS_TEST_FILENAME")" -eq 0 ] || { echo "a test still advances SECONDS by one"; false; }
+}
+
+@test "R236: the slot store's lock counts its 5 s without an owner's id on the same injected clock" {
+  mkdir -p "$TEST_ROOT/runtime/slots.lock"
+  # shellcheck disable=SC2016 # expanded by in_runtime
+  run in_runtime '. "$VBW_LIB/slots.sh"; SLOTS_DIR="$VBW_RUNTIME"; tries=0 VBW_LOCK_CLOCK=0
+    sleep() { tries=$((tries + 1)); VBW_LOCK_CLOCK=$((VBW_LOCK_CLOCK + 1)); SECONDS=$((SECONDS + 100)); }
+    if slots_lock; then echo "taken after $tries tries"; else echo "gave up $?"; fi; [ "$(cat "$VBW_RUNTIME/slots.lock/pid")" = "$$" ] && echo "mine"'
   [ "${lines[0]}" = "taken after 5 tries" ] && [ "${lines[1]}" = "mine" ] || { echo "$output"; false; }
 }
 
