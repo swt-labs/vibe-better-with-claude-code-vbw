@@ -70,7 +70,8 @@ shown() {
 
 @test "R235: the step shows at local times around midnight, in any zone (the day word is tomorrow or none)" {
   note -300 720
-  now=$(date -u +%s)
+  # The same clock the note's times come from (jq's now), read once to place the zones.
+  now=$(jq -n 'now | floor')
   # Local clocks 23:40 to 00:10, as POSIX zones (east of UTC is "-"): the step ends 12 minutes ahead.
   for want in 1420 1430 1438 1439 0 5 10; do
     off=$(((want - (now / 60 % 1440) + 2880) % 1440))

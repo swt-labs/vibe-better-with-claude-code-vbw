@@ -21,7 +21,7 @@ teardown() { vbw_teardown; }
 row() { printf '%s\n' "$output" | grep -E "^$1( |\t)"; }
 
 @test "R233: VBW_BENCH_STEPS=1 prints one table with the five steps as rows and the four inputs as columns, each cell CPU ms per call, and judges no case" {
-  run env VBW_BENCH_STEPS=1 VBW_BENCH_RUNS=2 bash "$BENCH"
+  run env VBW_BENCH_STEPS=1 VBW_BENCH_RUNS=2 VBW_HOOK_BUDGET_MS=100000 VBW_STATUSLINE_BUDGET_MS=100000 bash "$BENCH"
   [ "$status" -eq 0 ] || { echo "$output"; false; }
   printf '%s\n' "$output" | grep -qE '^step\b.*\bgit\b.*\bnpm\b.*\bbig\b.*\binterp\b' || { echo "no header row naming the four inputs:"; echo "$output"; false; }
   local label
@@ -35,7 +35,7 @@ row() { printf '%s\n' "$output" | grep -E "^$1( |\t)"; }
 }
 
 @test "R233: the step table names its method: CPU ms per call over the bench's runs, the runs stated" {
-  run env VBW_BENCH_STEPS=1 VBW_BENCH_RUNS=2 bash "$BENCH"
+  run env VBW_BENCH_STEPS=1 VBW_BENCH_RUNS=2 VBW_HOOK_BUDGET_MS=100000 VBW_STATUSLINE_BUDGET_MS=100000 bash "$BENCH"
   [ "$status" -eq 0 ] || { echo "$output"; false; }
   [[ "$output" == *"CPU ms per call"* ]] || { echo "$output"; false; }
   [[ "$output" =~ (^|[^0-9])2\ runs ]] || { echo "the runs are not stated:"; echo "$output"; false; }

@@ -167,18 +167,18 @@ in_runtime() {
   [[ "$a" =~ ^[0-9]+$ ]] && [[ "$b" =~ ^[0-9]+$ ]] && [ "$b" -ge "$a" ] || { echo "$output"; false; }
 }
 
-@test "R236: the note lock, the slot lock and the alone-check gate read vbw_lock_seconds and never SECONDS directly" {
+@test "R236: the note lock, the slot lock and the alone-check gate read vbw_lock_seconds and never the shell's seconds counter directly" {
   local f fn body
   for f in proofsteps.sh:proofsteps_lock slots.sh:slots_lock checks.sh:checks_gate_enter; do
     fn=${f#*:}
     body=$(sed -n "/^$fn()/,/^}/p" "$PLUGIN_ROOT/lib/${f%%:*}")
     [ -n "$body" ] || { echo "no $fn in ${f%%:*}"; false; }
-    ! printf '%s\n' "$body" | grep -q 'SECONDS' || { echo "$fn still reads SECONDS:"; printf '%s\n' "$body" | grep -n 'SECONDS'; false; }
+    ! printf '%s\n' "$body" | grep -q 'SECOND[S]' || { echo "$fn still reads the shell's seconds counter:"; printf '%s\n' "$body" | grep -n 'SECOND[S]'; false; }
     printf '%s\n' "$body" | grep -q 'vbw_lock_seconds' || { echo "$fn does not read vbw_lock_seconds"; false; }
   done
   grep -q '^vbw_lock_seconds()' "$PLUGIN_ROOT/lib/record.sh" || { echo "vbw_lock_seconds is not defined in record.sh"; false; }
   # No test in this file advances SECONDS as its clock; the one write left is the decoy of a hundred.
-  [ "$(grep -cE 'SECONDS=\$\(\(SECONDS \+ 1\)\)' "$BATS_TEST_FILENAME")" -eq 0 ] || { echo "a test still advances SECONDS by one"; false; }
+  [ "$(grep -cE 'SECOND[S]=\$\(\(SECOND[S] \+ 1\)\)' "$BATS_TEST_FILENAME")" -eq 0 ] || { echo "a test still advances the shell's seconds counter by one"; false; }
 }
 
 @test "R236: the slot store's lock counts its 5 s without an owner's id on the same injected clock" {
