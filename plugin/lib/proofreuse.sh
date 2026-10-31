@@ -315,10 +315,17 @@ proofreuse_diffs() {
   dir=$(proofreuse_scratch)
   vbw_guard_add dir "$dir"
   : > "$dir/stream"
+  # A submodule moved between the trees (vbw_head_tree counts it at its own HEAD)
+  # makes the code that tree's runs ran on unknown: git lists only the submodule's
+  # folder, never the files that changed inside it, so no read list can vouch.
+  local subs=() p
+  while IFS= read -r -d '' p; do subs+=("$p"); done < <(vbw_subs)
   # Per tree: the tree, the name-status pairs git printed, then =OK or =FAIL (a status is never "=").
   while IFS= read -r -d '' tree; do
     printf '%s\0' "$tree" >> "$dir/stream"
-    if git -C "$VBW_ROOT" diff-tree -z -r --no-renames --name-status "$tree" "$1" >> "$dir/stream" 2> /dev/null; then
+    if [ ${#subs[@]} -gt 0 ] && ! git -C "$VBW_ROOT" diff-tree -r -z --quiet "$tree" "$1" -- "${subs[@]}" 2> /dev/null; then
+      printf '=FAIL\0' >> "$dir/stream"
+    elif git -C "$VBW_ROOT" diff-tree -z -r --no-renames --name-status "$tree" "$1" >> "$dir/stream" 2> /dev/null; then
       printf '=OK\0' >> "$dir/stream"
     else
       printf '=FAIL\0' >> "$dir/stream"

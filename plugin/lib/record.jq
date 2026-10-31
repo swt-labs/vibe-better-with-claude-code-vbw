@@ -65,7 +65,7 @@ def mutation_ok:
           and (.rule | type == "object" and (keys | sort) == ["req","text"] and (.req | nonempty) and (.text | nonempty))
           and (.head | type == "string" and test("^[0-9a-f]{40}$"))
         else (keys | sort) == ["at","none","task"] and (.task | int_in(1; 9999)) end)
-      else (keys - ["rule","task","what","files","checks","result","at","head","strengthened","pending"] == [])
+      else (keys - ["rule","task","what","files","checks","result","at","head","tree","strengthened","pending"] == [])
         and (has("rule") != has("task"))
         and ((has("rule") | not) or (.rule | type == "object" and (keys | sort) == ["req","text"] and (.req | nonempty) and (.text | nonempty)))
         and ((has("task") | not) or (.task | int_in(1; 9999)))
@@ -74,6 +74,7 @@ def mutation_ok:
         and (.checks | type == "object" and length > 0 and all(.[]; one_of(["red","green"])))
         and (.result == (if all(.checks[]; . == "green") then "survivor" else "red" end))
         and (.head | type == "string" and test("^[0-9a-f]{40}$"))
+        and ((has("tree") | not) or (.tree | type == "string" and test("^[0-9a-f]{40}([0-9a-f]{24})?$")))
         and ((has("strengthened") | not) or (.strengthened | type == "array" and all(.[]; safe_path)))
         and ((has("pending") | not) or (.pending | type == "array" and length > 0 and all(.[]; safe_path)))
       end);

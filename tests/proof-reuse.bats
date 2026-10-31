@@ -126,6 +126,39 @@ decide() { "$VBW" decide "Use blue buttons" "the owner prefers them" > /dev/null
   [ "$(ran)" = "" ] || { echo "ran: $(ran)"; false; }
 }
 
+@test "a check reading a submodule runs on the submodule's committed code, its ignored files included; an uncommitted change there runs nothing, a commit there runs it again; no copy is left in the submodule" {
+  git init -q "$TEST_ROOT/subsrc"
+  printf 'paid\n' > "$TEST_ROOT/subsrc/pay.txt"
+  printf 'deps/\n' > "$TEST_ROOT/subsrc/.gitignore"
+  git -C "$TEST_ROOT/subsrc" add pay.txt .gitignore
+  git -C "$TEST_ROOT/subsrc" commit -q -m "chore: seed"
+  git -c protocol.file.allow=always submodule add -q "file://$TEST_ROOT/subsrc" sub
+  mkdir -p sub/deps
+  printf 'lib\n' > sub/deps/lib
+  cat > tests/c5.sh << 'SH'
+echo "C5$1" >> "$RANLOG"
+grep -qx paid sub/pay.txt && [ -f sub/deps/lib ]
+SH
+  edit_record '.checks += [{id:"C5", req:"R1", run:["sh","tests/c5.sh"], files:["tests/c5.sh"]}]'
+  git add -A && git commit -q -m "chore: sub"
+  "$VBW" approve > /dev/null
+  vbw_run prove
+  [ "$status" -eq 0 ] || { echo "$output"; false; }
+  [[ "$(ran)" == *"C5 "* ]] || { echo "ran: $(ran)"; false; }
+  : > "$RANLOG"
+  printf 'unpaid\n' > sub/pay.txt
+  decide
+  vbw_run prove
+  [ "$status" -eq 0 ] || { echo "$output"; false; }
+  [ "$(ran)" = "" ] || { echo "ran: $(ran)"; false; }
+  git -C sub commit -q -am "feat: unpaid"
+  decide
+  vbw_run prove
+  [ "$status" -ne 0 ] || { echo "$output"; false; }
+  [[ "$(ran)" == *"C5 "* ]] || { echo "ran: $(ran)"; false; }
+  [ "$(git -C sub worktree list --porcelain | grep -c '^worktree ')" -eq 1 ] || { git -C sub worktree list; false; }
+}
+
 @test "R103: an untracked project file in the working folder runs nothing" {
   printf 'buy milk\n' > todos.txt
   vbw_run prove

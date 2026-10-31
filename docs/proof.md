@@ -641,6 +641,9 @@ form in `.vbw/spec.md`.
 2. Makes a clean copy of the committed code (`HEAD`) inside the project, under
    `.vbw/runtime/`. The copy's folder is named after the process that made it
    (its owner, by process id), for example `.vbw/runtime/proof.48213.k3Xa9Q`.
+   Each checked-out submodule is in it at the submodule's own `HEAD`, with its
+   git-ignored files, since `vbw commit` commits there and leaves the project's
+   pointer where it was (docs/workflows.md, "Submodules").
 3. Runs every check (up to `check_jobs` at a time, `alone` checks by themselves),
    and every project command whose argv is approved, from the
    root of that copy; an unapproved command is skipped and reported, never run.
@@ -712,7 +715,12 @@ loop's report) reads only the record's own history: the commits after the
 newest commit that added `.vbw/record.json`. The record is in git before any
 plan can commit, because `vbw approve` commits it and a build needs an approved
 contract. A project whose record was never committed keeps its whole history.
-One limit: an older branch merged in after the record was born is part of its
+Each of those readers also reads each checked-out submodule's history, where
+`vbw commit` commits the plan files inside it, and names a file there by its
+path from the project folder. A submodule has no record of its own: its own
+history starts after the commit the record's first commit pointed it at, or is
+all of it when that commit had no submodule there (docs/workflows.md,
+"Submodules"). One limit: an older branch merged in after the record was born is part of its
 history, because git has it after the record's first commit.
 
 ### Delivered files
@@ -1235,6 +1243,11 @@ They read `checks: N ran, M reused` and `test files: N ran, M reused`. After
   run in the project, open each proof copy's `.git` file to see whether it is a
   repository of its own, exactly as git inside the copy does. A unit running
   meanwhile counts as reading through git and runs again in the next proof.
+- A commit in a submodule runs every check and command again: git names only
+  the submodule's folder as changed, never the files inside it, so no read list
+  can vouch for a run made before. Files read inside a submodule are on the read
+  lists by their project paths (`apps/mobile/src/comms.ts`), and git run inside a
+  submodule of the copy counts as reading through git.
 
 To run everything fresh, use `vbw prove --full`, or prove again with
 nothing committed since a passing proof (a second `vbw prove` is a deliberate re-run).
@@ -1426,8 +1439,9 @@ plan on each rule.
 
 A break with several checks (a task break) runs them one at a time, fastest
 first by their last recorded time, and stops at the first that goes red; a
-survivor runs them all. Each check first runs once on the unbroken code at that
-commit, unless an earlier break at the same commit already ran it. A slow test
+survivor runs them all. Each check first runs once on the unbroken code, unless
+an earlier break of the same committed code (each submodule at its own `HEAD`)
+already ran it. A slow test
 suite therefore pays for the checks a break needs, not for every check.
 
 - A check that notices the break is **red**: the rule is covered.

@@ -262,7 +262,7 @@ show_contract_changes() {
     printf 'no earlier approval in this clone: the whole contract is new (vbw show contract)\n'
     return 0
   fi
-  local lines line f want h c diff
+  local lines line f want h c diff g rel
   lines=$(contract_doc "$1" | jq -r --slurpfile old "$before" "$SHOW_JQ_DEFS"'
     . as $new | $old[0] as $old
     | [ ($new.requirements | to_entries[] | select($old.requirements[.key] == null)
@@ -332,9 +332,14 @@ show_contract_changes() {
     esac
     f=${line#"  changed test file "}
     want=$(jq -r --arg f "$f" '.files[$f]' "$before")
+    # In the repository that tracks it (a submodule's file in the submodule).
+    vbw_repos "$f"
+    g="$VBW_ROOT${VBW_REPO_OF[0]:+/${VBW_REPO_OF[0]}}"
+    vbw_rel "${VBW_REPO_OF[0]}" "$f"
+    rel=$VBW_REL
     c=
-    for h in $(git -C "$VBW_ROOT" log --format=%H -- "$f" 2> /dev/null); do
-      if [ "$(git -C "$VBW_ROOT" show "$h:$f" 2> /dev/null | vbw_sha256)" = "$want" ]; then
+    for h in $(git -C "$g" log --format=%H -- "$rel" 2> /dev/null); do
+      if [ "$(git -C "$g" show "$h:$rel" 2> /dev/null | vbw_sha256)" = "$want" ]; then
         c=$h
         break
       fi
@@ -342,7 +347,7 @@ show_contract_changes() {
     if [ -z "$c" ]; then
       printf "    the approved content of %s is not in the project's git history, so no diff can be shown\n" "$f"
     else
-      diff=$(git -C "$VBW_ROOT" -c color.ui=never diff --no-ext-diff "$c" -- "$f")
+      diff=$(git -C "$g" -c color.ui=never diff --no-ext-diff "$c" -- "$rel")
       printf '%s\n' "$diff" | sed 's/^/    /'
     fi
   done <<< "$lines"
@@ -371,19 +376,23 @@ def check_line: (.run | argv_line)
 
 # Commits of the record's own history (lib/history.sh) whose VBW-Req trailer
 # lists REQ as an exact token (not a substring: R1 must not match R12). An older
-# commit naming the same id is an old roadmap's, not this requirement's.
+# commit naming the same id is an old roadmap's, not this requirement's. The
+# project's commits first, then each submodule's (history_repos), "(in SUB)" after each.
 show_commits_for_req() {
-  local req="$1" line subject reqs r HISTORY_ARGS=()
+  local req="$1" line subject reqs r q HISTORY_ARGS=() HISTORY_REPOS=()
   # shellcheck source=history.sh
   . "$VBW_LIB/history.sh"
-  history_args
-  while IFS= read -r line; do
-    subject=${line%%$'\x1f'*}
-    reqs=${line#*$'\x1f'}
-    for r in $(printf '%s' "$reqs" | tr ',' ' '); do
-      [ "$r" = "$req" ] && { vbw_out '  %s\n' "$subject"; break; }
-    done
-  done < <(git -C "$VBW_ROOT" log --format='%h %s%x1f%(trailers:key=VBW-Req,valueonly,separator=%x2C)' "${HISTORY_ARGS[@]}" 2>/dev/null)
+  history_repos
+  for q in "${HISTORY_REPOS[@]}"; do
+    history_args_in "$q"
+    while IFS= read -r line; do
+      subject=${line%%$'\x1f'*}
+      reqs=${line#*$'\x1f'}
+      for r in $(printf '%s' "$reqs" | tr ',' ' '); do
+        [ "$r" = "$req" ] && { vbw_out '  %s%s\n' "$subject" "${q:+ (in $q)}"; break; }
+      done
+    done < <(git -C "$VBW_ROOT${q:+/$q}" log --format='%h %s%x1f%(trailers:key=VBW-Req,valueonly,separator=%x2C)' "${HISTORY_ARGS[@]}" 2>/dev/null)
+  done
 }
 
 # show_work RECORD plan|fix ID [--json]: what a Dev needs, and nothing else.

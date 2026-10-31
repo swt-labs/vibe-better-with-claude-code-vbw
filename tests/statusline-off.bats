@@ -120,6 +120,22 @@ snapshot() { find "$PROJECT" -type f -exec cksum {} + | sort; }
   DIR="$PROJECT/src/deep" hidden
 }
 
+@test "R184: started in a submodule with no record of its own, the settings are read from the VBW project above it" {
+  "$VBW" init > /dev/null
+  vbw_submodule "mod dir"
+  vbw_in "$PROJECT/.claude/settings.json" false
+  DIR="$PROJECT/mod dir" hidden
+}
+
+@test "R184: started in a linked worktree nested in a VBW project, with no record of its own, the project's settings are not read" {
+  "$VBW" init > /dev/null
+  local c wt="$PROJECT/.claude/worktrees/w t"
+  c=$(git -C "$PROJECT" commit-tree -m empty "$(git -C "$PROJECT" mktree < /dev/null)")
+  git -C "$PROJECT" worktree add -q -b wt "$wt" "$c"
+  vbw_in "$PROJECT/.claude/settings.json" false
+  DIR="$wt" shown
+}
+
 @test "R184: nothing that does not turn VBW off changes anything: missing files, no entry, another plugin off, or a file that is not JSON" {
   shown
   local body

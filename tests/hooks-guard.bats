@@ -134,6 +134,32 @@ denied() {
   denied
 }
 
+@test "a session started in a submodule with no record of its own is guarded as the VBW project above it, as the kernel finds it" {
+  vbw_submodule "mod dir"
+  mkdir -p "mod dir/deep"
+  run bash_call 'git reset --hard' "$PROJECT/mod dir/deep"
+  denied
+  run file_call Write "$PROJECT/.vbw/record.json" "$PROJECT/mod dir"
+  denied
+  # The kernel works on the same project from there.
+  (cd "$PROJECT/mod dir/deep" && "$VBW" status < /dev/null > /dev/null) || { echo "vbw status failed in the submodule"; false; }
+}
+
+@test "a linked worktree nested in a VBW project, with no record of its own, is its own project: guards inert, the kernel refuses" {
+  # A branch with no record: an empty commit.
+  local c wt="$PROJECT/.claude/worktrees/w t"
+  c=$(git commit-tree -m empty "$(git mktree < /dev/null)")
+  git worktree add -q -b wt "$wt" "$c"
+  run bash_call 'git reset --hard' "$wt"
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+  run file_call Write "$wt/.vbw/record.json" "$wt"
+  [ -z "$output" ]
+  run bash -c 'cd "$1" && "$2" status < /dev/null' _ "$wt" "$VBW"
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"not a VBW project"* ]] || { echo "$output"; false; }
+}
+
 @test "a session started in a subfolder of a VBW project is guarded as at its root; the project is the git top, never a folder above it" {
   local sub="$PROJECT/Sub Folder With Spaces"
   mkdir -p "$sub"

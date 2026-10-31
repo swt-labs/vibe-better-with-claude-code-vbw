@@ -42,7 +42,8 @@ fi
 
 # vbw_project_of DIR: sets root to the project of a session started in DIR, the
 # nearest folder up that holds .git (walked without a git process), or DIR itself
-# when no folder up holds one: the rule every part of VBW shares.
+# when no folder up holds one, or, from a submodule with no record of its own,
+# the VBW project above it: the rule every part of VBW shares.
 # shellcheck source-path=SCRIPTDIR source=../hooks/project.sh
 . "$plugin/hooks/project.sh"
 

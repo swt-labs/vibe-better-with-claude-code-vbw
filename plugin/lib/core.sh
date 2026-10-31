@@ -239,9 +239,241 @@ vbw_project() {
 }
 
 vbw_require_project() {
+  local up l
   vbw_project
+  # Inside a submodule (its .git is a file whose gitdir: line names a folder under
+  # modules/) with no record of its own, the project is the nearest folder above
+  # it holding .git and a record: the walk the guards and the status line make
+  # (hooks/project.sh), so a session there is guarded as the project the commands
+  # work on. A clone inside the project (its .git a folder) and a linked worktree
+  # inside it (its gitdir worktrees/NAME) stay projects of their own. The command
+  # then runs from that project's folder, so every path and bare git command
+  # reads the project, as from its own folder.
+  up=$VBW_ROOT
+  while [ "$up" != / ] && [ -f "$up/.git" ] && [ ! -f "$up/.vbw/record.json" ]; do
+    l=; read -r l < "$up/.git" || :
+    case "$l" in */modules/*) ;; *) break ;; esac
+    case "${l##*/worktrees/}" in "$l" | */*) ;; *) break ;; esac
+    up=${up%/*}
+    up=${up:-/}
+    while [ "$up" != / ] && [ ! -e "$up/.git" ]; do up=${up%/*}; up=${up:-/}; done
+  done
+  if [ "$up" != "$VBW_ROOT" ] && [ -f "$up/.vbw/record.json" ] && [ -e "$up/.git" ]; then
+    VBW_ROOT=$up
+    VBW_DIR="$VBW_ROOT/.vbw"
+    VBW_RECORD="$VBW_DIR/record.json"
+    VBW_RUNTIME="$VBW_DIR/runtime"
+    cd "$VBW_ROOT" || vbw_die "cannot enter $VBW_ROOT"
+  fi
   [ -f "$VBW_RECORD" ] || vbw_die "not a VBW project (run /vbw:init)"
   mkdir -p "$VBW_RUNTIME"
+}
+
+# Repositories inside the project (docs/workflows.md, "Submodules"). A file is
+# tracked by the repository whose top folder is the nearest folder at or above it
+# that holds .git, the project's own repository when none below the project does
+# (the rule the guards use, hooks/project.sh); a path whose folder does not exist
+# yet is read the same way, folder by folder. A repository is named by its folder
+# relative to the project, "" for the project itself. A folder holding .git that
+# a symbolic link takes outside the project is no repository of the project: VBW
+# acts on nothing outside it, and its files are the project's, whose git refuses
+# a path beyond a symbolic link (the guards judge such a path by its name too).
+
+# vbw_inside DIR: the project-relative DIR is a folder inside the project, symbolic
+# links resolved. One subshell per folder asked, remembered for the process.
+vbw_inside() {
+  local p k="$VBW_ROOT/$1" root
+  case "${VBW_INSIDE:-}" in *$'\037'"$k"$'\037'*) return 0 ;; esac
+  root=$(cd -P "$VBW_ROOT" 2> /dev/null && pwd -P) || return 1
+  p=$(cd -P "$k" 2> /dev/null && pwd -P) || return 1
+  case "$p" in "$root"/?*) VBW_INSIDE="${VBW_INSIDE:-$'\037'}$k"$'\037' ;; *) return 1 ;; esac
+}
+
+# vbw_repos FILE...: sets VBW_REPOS, the repositories that track the
+# project-relative FILEs (first seen first), VBW_REPO_OF, each FILE's
+# repository, in FILE order, and VBW_PATHS, the FILEs (vbw_in_repo reads them).
+# Builtins only, but for one vbw_inside per folder holding .git.
+vbw_repos() {
+  local f d x seen
+  VBW_REPOS=()
+  VBW_REPO_OF=()
+  VBW_PATHS=(${@+"$@"})
+  for f in "$@"; do
+    d=${f%/}
+    case "/$d/" in */../* | */./*) d= ;; esac
+    while [ -n "$d" ]; do
+      [ -d "$VBW_ROOT/$d" ] && [ -e "$VBW_ROOT/$d/.git" ] && vbw_inside "$d" && break
+      case "$d" in */*) d=${d%/*} ;; *) d= ;; esac
+    done
+    VBW_REPO_OF+=("$d")
+    seen=0
+    for x in ${VBW_REPOS[@]+"${VBW_REPOS[@]}"}; do [ "$x" != "$d" ] || { seen=1; break; }; done
+    [ "$seen" = 1 ] || VBW_REPOS+=("$d")
+  done
+}
+
+# vbw_rel REPO FILE: sets VBW_REL, the project-relative FILE relative to the
+# repository REPO that tracks it ("." for REPO's top folder). Builtins only: no
+# subshell per file.
+vbw_rel() {
+  if [ -z "$1" ]; then VBW_REL=$2
+  elif [ "${2%/}" = "$1" ]; then VBW_REL=.
+  else VBW_REL=${2#"$1"/}; fi
+}
+
+# vbw_plan_paths ENTRY...: vbw_repos over the plan file ENTRYs and, for each
+# folder entry (ending in /) or *, each checked-out submodule inside it, as
+# "SUB/": the folder's own entry reaches only the files of the repository that
+# holds the folder, and a submodule's files are its own repository's (covers()
+# counts them as the folder's). No folder entry: no git command.
+vbw_plan_paths() {
+  local e s want=0 subs=() all=("$@")
+  for e in "$@"; do case "$e" in */ | '*') want=1 ;; esac; done
+  if [ "$want" = 1 ]; then
+    while IFS= read -r -d '' s; do subs+=("$s"); done < <(vbw_subs)
+    for s in ${subs[@]+"${subs[@]}"}; do
+      for e in "$@"; do
+        e=${e#./}
+        case "$e" in
+          '*') all+=("$s/"); break ;;
+          */) if [ "$e" != "$s/" ] && [ "${s#"$e"}" != "$s" ]; then all+=("$s/"); break; fi ;;
+        esac
+      done
+    done
+  fi
+  vbw_repos ${all[@]+"${all[@]}"}
+}
+
+# vbw_in_repo REPO: of the files vbw_repos was given (VBW_PATHS), those REPO
+# tracks, relative to REPO (vbw_rel), NUL-ended.
+vbw_in_repo() {
+  local r="$1" f i=0
+  for f in ${VBW_PATHS[@]+"${VBW_PATHS[@]}"}; do
+    if [ "${VBW_REPO_OF[$i]}" = "$r" ]; then
+      vbw_rel "$r" "$f"
+      printf '%s\0' "$VBW_REL"
+    fi
+    i=$((i + 1))
+  done
+}
+
+# vbw_changed REPO PATH...: of the pathspecs PATH (relative to REPO), the files
+# that differ from REPO's HEAD (changed, staged or not, or deleted) as "c", then
+# the new ones git does not ignore as "n", each "c|n NUL FILE NUL", FILE relative
+# to REPO. A repository's folder inside REPO (a moved submodule pointer, or a
+# nested clone that is no submodule, which git lists as "DIR/") is never listed:
+# VBW commits inside a repository, never a pointer to it in the one above.
+vbw_changed() {
+  local d="$VBW_ROOT${1:+/$1}" f
+  shift
+  git -C "$d" diff --name-only -z HEAD -- "$@" | while IFS= read -r -d '' f; do
+    [ -e "$d/$f/.git" ] || printf 'c\0%s\0' "$f"
+  done
+  git -C "$d" ls-files -z --others --exclude-standard -- "$@" | while IFS= read -r -d '' f; do
+    [ -e "$d/${f%/}/.git" ] || printf 'n\0%s\0' "$f"
+  done
+}
+
+# vbw_commit_paths MESSAGE TRAILERS FILE...: commit the project-relative plan
+# FILEs that changed (vbw_changed; a folder entry covers the submodules inside it,
+# vbw_plan_paths), one commit per repository that tracks one of them, each with
+# MESSAGE and, when not empty, the trailer paragraph TRAILERS. Only those files
+# are committed (--only): the rest of each repository's index and working tree
+# stays as it was. Sets VBW_COMMITTED (the files committed, project-relative) and
+# VBW_COMMITS (per commit "REPO<TAB>HASH<TAB>COUNT"). Returns 1, committing
+# nothing, when no FILE changed. Dies, committing nothing, when a repository
+# inside the project with changes is on no branch (its commit would be dropped by
+# the next submodule update). When a repository's git add or commit fails, the
+# repositories after it are not tried: returns 2 with VBW_COMMIT_ERR, one line
+# naming the repository that failed and each commit already made (still in
+# VBW_COMMITTED and VBW_COMMITS, for the caller to escalate); the caller says how
+# to finish (its command again commits only what is still changed, since what was
+# committed no longer differs). The caller holds the project lock.
+vbw_commit_paths() {
+  local msg="$1" trailers="$2" r t f rels changed untracked hash c cr n ok done_say=""
+  shift 2
+  VBW_COMMITTED=()
+  VBW_COMMITS=()
+  VBW_COMMIT_ERR=
+  vbw_plan_paths "$@"
+  local todo=()
+  for r in ${VBW_REPOS[@]+"${VBW_REPOS[@]}"}; do
+    rels=()
+    while IFS= read -r -d '' f; do rels+=("$f"); done < <(vbw_in_repo "$r")
+    [ -n "$(vbw_changed "$r" "${rels[@]}" | tr -d '\0')" ] || continue
+    [ -z "$r" ] || git -C "$VBW_ROOT/$r" symbolic-ref -q HEAD > /dev/null \
+      || vbw_die "$r is on no branch: a commit there would be lost at the next submodule update
+Next: put it on a branch (git -C $r switch BRANCH), then commit again"
+    todo+=("$r")
+  done
+  [ ${#todo[@]} -gt 0 ] || return 1
+  for r in "${todo[@]}"; do
+    rels=() changed=() untracked=()
+    while IFS= read -r -d '' f; do rels+=("$f"); done < <(vbw_in_repo "$r")
+    while IFS= read -r -d '' t && IFS= read -r -d '' f; do
+      changed+=("$f")
+      [ "$t" = c ] || untracked+=("$f")
+    done < <(vbw_changed "$r" "${rels[@]}")
+    # Reverted since the first read: nothing of it to commit (and git commit --only
+    # with no path would commit the user's index).
+    [ ${#changed[@]} -gt 0 ] || continue
+    ok=1
+    [ ${#untracked[@]} -eq 0 ] || git -C "$VBW_ROOT${r:+/$r}" add -- "${untracked[@]}" || ok=0
+    if [ "$ok" = 1 ] && [ -n "$trailers" ]; then
+      git -C "$VBW_ROOT${r:+/$r}" commit --quiet --only -m "$msg" -m "$trailers" -- "${changed[@]}" || ok=0
+    elif [ "$ok" = 1 ]; then
+      git -C "$VBW_ROOT${r:+/$r}" commit --quiet --only -m "$msg" -- "${changed[@]}" || ok=0
+    fi
+    if [ "$ok" = 1 ]; then
+      hash=$(git -C "$VBW_ROOT${r:+/$r}" rev-parse --short HEAD)
+      VBW_COMMITS+=("$r	$hash	${#changed[@]}")
+      for f in "${changed[@]}"; do VBW_COMMITTED+=("${r:+$r/}$f"); done
+      continue
+    fi
+    for c in ${VBW_COMMITS[@]+"${VBW_COMMITS[@]}"}; do
+      cr=${c%%	*}
+      t=${c#*	}
+      n=${t#*	}
+      done_say="$done_say${done_say:+, }${t%%	*} in ${cr:-the project} ($n file$([ "$n" -eq 1 ] || printf s))"
+    done
+    # shellcheck disable=SC2034 # read by the callers (cmd-commit.sh, record.sh)
+    VBW_COMMIT_ERR="git commit failed in ${r:-the project}${done_say:+; already committed: $done_say}"
+    return 2
+  done
+  [ ${#VBW_COMMITS[@]} -gt 0 ] || return 1
+}
+
+# vbw_subs [REPO]: the submodules of the HEAD of the project (or of its repository
+# REPO, a folder relative to the project) that are checked out, one level deep,
+# "PATH\0" each, relative to that repository: the paths .gitmodules names that
+# HEAD holds as a submodule and whose folder holds .git. No .gitmodules: nothing,
+# no git command.
+# shellcheck disable=SC2120 # cmd-ship.sh passes REPO
+vbw_subs() {
+  local line paths=() top="$VBW_ROOT${1:+/$1}"
+  [ -f "$top/.gitmodules" ] || return 0
+  # -z: "key NEWLINE value NUL" per entry.
+  while IFS= read -r -d '' line; do
+    line=${line#*$'\n'}
+    # Inside the project only: a checkout swapped for a symbolic link out is no submodule.
+    if [ -e "$top/$line/.git" ] && vbw_inside "${1:+$1/}$line"; then paths+=("$line"); fi
+  done < <(git -C "$top" config -z -f .gitmodules --get-regexp '^submodule\..*\.path$' 2> /dev/null)
+  [ ${#paths[@]} -gt 0 ] || return 0
+  git -C "$top" ls-tree -z HEAD -- "${paths[@]}" 2> /dev/null | while IFS= read -r -d '' line; do
+    case "$line" in "160000 commit "*) printf '%s\0' "${line#*$'\t'}" ;; esac
+  done
+}
+
+# vbw_commits_say ID: one line per commit vbw_commit_paths made for ID.
+vbw_commits_say() {
+  local c r rest hash n
+  for c in ${VBW_COMMITS[@]+"${VBW_COMMITS[@]}"}; do
+    r=${c%%	*}
+    rest=${c#*	}
+    hash=${rest%%	*}
+    n=${rest#*	}
+    printf 'committed %s%s for %s (%d file%s)\n' "$hash" "${r:+ in $r}" "$1" "$n" "$([ "$n" -eq 1 ] || printf s)"
+  done
 }
 
 # SHA-256 hex digest of stdin (GNU coreutils or BSD/macOS shasum).
@@ -263,16 +495,22 @@ vbw_sha256() {
 # vbw_head_tree: the tree of the committed code (HEAD, without .vbw and
 # .vbw-planning), which is what vbw prove runs on: the fingerprint of what a
 # proof proved. Prints nothing when there is no commit yet.
+# A checked-out submodule counts at its own HEAD (vbw_subs), not at the commit
+# the project points it at: what the proof copy holds (lib/proofcopy.sh).
 vbw_head_tree() {
-  local idx status
+  local idx status p sha subs=()
   git -C "$VBW_ROOT" rev-parse -q --verify HEAD > /dev/null 2>&1 || return 0
+  while IFS= read -r -d '' p; do
+    sha=$(git -C "$VBW_ROOT/$p" rev-parse -q --verify HEAD 2> /dev/null) && subs+=("160000,$sha,$p")
+  done < <(vbw_subs)
   idx=$(mktemp "$VBW_RUNTIME/index.XXXXXX") || return 1
   vbw_guard_add file "$idx"
   (
     cd "$VBW_ROOT" || exit 1
     export GIT_INDEX_FILE="$idx"
-    git read-tree HEAD &&
-      git rm -r -q --cached --ignore-unmatch -- .vbw .vbw-planning > /dev/null 2>&1 &&
+    git read-tree HEAD || exit 1
+    for p in ${subs[@]+"${subs[@]}"}; do git update-index --cacheinfo "$p" || exit 1; done
+    git rm -r -q --cached --ignore-unmatch -- .vbw .vbw-planning > /dev/null 2>&1 &&
       git write-tree
   )
   status=$?
@@ -350,12 +588,18 @@ vbw_stamp_newer() {
 }
 
 # vbw_dirty_files FILE...: those of the project-relative FILEs that differ from
-# HEAD or are new, comma-separated.
+# HEAD or are new, comma-separated, each read in the repository that tracks it
+# (vbw_plan_paths: a folder entry covers the submodules inside it; vbw_changed).
 vbw_dirty_files() {
   [ $# -gt 0 ] || return 0
-  local f out=""
-  while IFS= read -r -d '' f; do out="$out${out:+, }$f"; done \
-    < <(cd "$VBW_ROOT" && { git diff --name-only -z HEAD -- "$@"; git ls-files -z --others --exclude-standard -- "$@"; })
+  local f r t rels out=""
+  vbw_plan_paths "$@"
+  for r in ${VBW_REPOS[@]+"${VBW_REPOS[@]}"}; do
+    rels=()
+    while IFS= read -r -d '' f; do rels+=("$f"); done < <(vbw_in_repo "$r")
+    while IFS= read -r -d '' t && IFS= read -r -d '' f; do out="$out${out:+, }${r:+$r/}$f"; done \
+      < <(vbw_changed "$r" "${rels[@]}")
+  done
   printf '%s' "$out"
 }
 

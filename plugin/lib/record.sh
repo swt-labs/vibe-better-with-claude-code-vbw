@@ -378,7 +378,7 @@ record_hidden() {
 record_commit() {
   local strict=0
   [ "${1:-}" != "--strict" ] || { strict=1; shift; }
-  local msg="$1" own=() changed=() untracked=() f why hidden
+  local msg="$1" own=() f why hidden
   shift
   local only=("$@")
   (
@@ -405,13 +405,11 @@ record_commit() {
       fi
       printf '%s\n' "$hidden" | sed 's/^/vbw: warning: /' >&2
     fi
-    while IFS= read -r -d '' f; do changed+=("$f"); done < <(git diff --name-only -z HEAD -- "${own[@]}" 2> /dev/null)
-    while IFS= read -r -d '' f; do untracked+=("$f"); changed+=("$f"); done \
-      < <(git ls-files -z --others --exclude-standard -- "${own[@]}")
-    [ ${#changed[@]} -gt 0 ] || exit 0
+    # Each file in the repository that tracks it: a check file in a submodule is
+    # committed in the submodule (vbw_commit_paths).
+    [ -n "$(vbw_dirty_files "${own[@]}" 2> /dev/null)" ] || exit 0
     record_lock
-    if why=$({ [ ${#untracked[@]} -eq 0 ] || git add -- "${untracked[@]}"; } 2>&1 &&
-      git commit --quiet --only -m "$msg" -- "${changed[@]}" 2>&1); then
+    if why=$(vbw_commit_paths "$msg" "" "${own[@]}" 2>&1 || { printf '%s' "${VBW_COMMIT_ERR:-}"; exit 1; }); then
       record_unlock
       exit 0
     fi

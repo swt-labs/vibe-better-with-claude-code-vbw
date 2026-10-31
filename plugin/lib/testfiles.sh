@@ -41,11 +41,14 @@ testfiles_ids() {
 
 # testfiles_list RECORD: the test files, NUL separated: the committed files the
 # declared pathspecs match, minus every file the run of an approved check names.
+# A submodule's files count, by their project paths (--recurse-submodules: the
+# pathspecs are matched as the project's, inside each submodule): the proof copy
+# holds each submodule at its own HEAD (docs/workflows.md, "Submodules").
 testfiles_list() {
   local specs=() a
   while IFS= read -r -d '' a; do specs+=("$a"); done < <(printf '%s' "$1" | jq -j '.test_files.files[] + "\u0000"')
   [ ${#specs[@]} -gt 0 ] || return 0
-  git -C "$VBW_ROOT" ls-files -z -- ${specs[@]+"${specs[@]}"} \
+  git -C "$VBW_ROOT" ls-files -z --recurse-submodules -- ${specs[@]+"${specs[@]}"} \
     | jq -Rs -j --slurpfile r <(printf '%s' "$1") '[$r[0].checks[].run[]] as $run
         | split("\u0000")[] | . as $p | select(length > 0 and (any($run[]; . == $p) | not)) | . + "\u0000"'
 }
@@ -149,12 +152,13 @@ testfiles_finish() {
 }
 
 # testfiles_matches RECORD: how many committed files the form's pathspecs match,
-# before the files an approved check runs are taken out.
+# before the files an approved check runs are taken out (a submodule's included,
+# as testfiles_list counts them).
 testfiles_matches() {
   local specs=() a
   while IFS= read -r -d '' a; do specs+=("$a"); done < <(printf '%s' "$1" | jq -j '.test_files.files[] + "\u0000"')
   [ ${#specs[@]} -gt 0 ] || { printf '0\n'; return 0; }
-  git -C "$VBW_ROOT" ls-files -z -- ${specs[@]+"${specs[@]}"} | tr -cd '\000' | wc -c | tr -d ' '
+  git -C "$VBW_ROOT" ls-files -z --recurse-submodules -- ${specs[@]+"${specs[@]}"} | tr -cd '\000' | wc -c | tr -d ' '
 }
 
 # testfiles_command RECORD RESULTS: the test command's place in the evidence when the

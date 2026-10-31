@@ -14,7 +14,8 @@
 # writes remembers that run's read list; a later run in the same copy that
 # reads it adds that list to its own.
 #
-# Per slot a state folder (outside the copy) holds: files and dirs (the
+# Per slot a state folder (outside the copy) holds: tracked (the tracked paths,
+# a submodule's under its folder, reads_tracked), files and dirs (the
 # tracked paths, "./"-prefixed, NUL-separated), kids.json ({kids: folder -> names
 # directly in it, files: the tracked file paths}), built (the files under build
 # folders the copy was made with, NUL-separated), unbuilt (the build output the
@@ -180,13 +181,14 @@ reads_reset() {
     [ "$exact" = true ] || reads_mark "$st/mark0" 0 || return 1
     # A worktree's .git is a file (gitrepository-layout): the collection's sign of git use.
     [ -f "$copy/.git" ] || return 1
-    git -C "$copy" ls-files -z | jq -Rs -j '
+    reads_tracked "$copy" > "$st/tracked" || return 1
+    jq -Rs -j '
       (split("\u0000") | map(select(length > 0))) as $f
-      | ($f[] | "./" + . + "\u0000")' > "$st/files" || return 1
-    git -C "$copy" ls-files -z | jq -Rs -j '
+      | ($f[] | "./" + . + "\u0000")' "$st/tracked" > "$st/files" || return 1
+    jq -Rs -j '
       (split("\u0000") | map(select(length > 0))) as $f
       | ([$f[] | split("/") | . as $p | range(1; length) | $p[:.] | join("/")] | unique | map("./" + .)) as $d
-      | ("." , $d[]) + "\u0000"' > "$st/dirs" || return 1
+      | ("." , $d[]) + "\u0000"' "$st/tracked" > "$st/dirs" || return 1
     reads_kids "$st/files" > "$st/kids.json" || return 1
     reads_built "$copy" > "$st/built" || return 1
     : > "$st/ready" || return 1
@@ -213,6 +215,28 @@ reads_reset() {
   fi
   reads_touch "$st/dirs" "$copy"
   touch -a -t "$READS_OLD" "$copy/.git" 2> /dev/null || return 1
+  reads_subgits "$copy" | xargs -0 -r touch -a -t "$READS_OLD" 2> /dev/null || return 1
+}
+
+# reads_tracked COPY: the copy's tracked paths, NUL-separated, each checked-out
+# submodule's (vbw_subs, a worktree of its own in the copy, lib/proofcopy.sh)
+# under its folder.
+reads_tracked() {
+  local p
+  git -C "$1" ls-files -z || return 1
+  while IFS= read -r -d '' p; do
+    [ -e "$1/$p/.git" ] || continue
+    git -C "$1/$p" ls-files -z | jq -Rj --arg p "$p" 'split("\u0000")[] | select(length > 0) | $p + "/" + . + "\u0000"' || return 1
+  done < <(vbw_subs)
+}
+
+# reads_subgits COPY: the .git file of each submodule's worktree in the copy,
+# NUL-separated: git used there is git use as much as in the copy itself.
+reads_subgits() {
+  local p
+  while IFS= read -r -d '' p; do
+    [ ! -f "$1/$p/.git" ] || vbw_out '%s\0' "$1/$p/.git"
+  done < <(vbw_subs)
 }
 
 # reads_kids FILES: what a collection needs to know of the tracked paths in FILES (NUL-
@@ -273,6 +297,7 @@ reads_collect() {
   local -a names
   skip=$(reads_program_dir "$copy" "${3:-}") || skip=
   [ -z "$(find "$copy/.git" -maxdepth 0 -anewer "$st/ref" -print 2> /dev/null)" ] || git=true
+  [ "$git" = true ] || [ -z "$(reads_subgits "$copy" | xargs -0 -r -I{} find {} -maxdepth 0 -anewer "$st/ref" -print 2> /dev/null)" ] || git=true
   (cd "$copy" && find . -path ./.git -prune -o -anewer "$st/ref" -print0) > "$st/moved" 2> /dev/null || true
   # The tracked paths never change (the copy is a detached checkout): sorted out once at the
   # first reset, here only when a state lacks it.

@@ -30,8 +30,9 @@
 # plan's id (T163); the revert itself counts as any commit outside a plan. Out:
 # the files the current milestone's plans own and VBW left in place, [{file,
 # plan, commit, at, state ("mode blob"), by}]. Each record is built once, so a
-# commit of 20,000 files costs no more per path than a small one. VBW_JQ_DEFS
-# prepended (covers).
+# commit of 20,000 files costs no more per path than a small one. Each path is
+# named by its project path: $pre (the submodule's folder and a slash, "" for
+# the project) before what git printed. VBW_JQ_DEFS prepended (covers).
 # shellcheck disable=SC2016 # a jq program
 DELIVERED_JQ='$rec[0] as $r
   | ([$undone | scan("This reverts commit ([0-9a-f]{40,64})\\.") | {key: .[0], value: true}] | from_entries) as $gone
@@ -42,7 +43,7 @@ DELIVERED_JQ='$rec[0] as $r
   | ($r.project.results // []) as $res
   | split("\u0000") as $t
   | [foreach range(0; $t | length) as $k ({e: null, c: null, o: null};
-      if .e != null then .o = {c: .c, f: $t[$k], e: .e} | .e = null
+      if .e != null then .o = {c: .c, f: ($pre + $t[$k]), e: .e} | .e = null
       else ($t[$k] | sub("^\n+"; "")) as $x
         | if $x == "" then .o = null
           elif ($x | startswith(":")) then .e = ($x[1:] | split(" ")) | .o = null
@@ -68,12 +69,12 @@ DELIVERED_JQ='$rec[0] as $r
      | {file: $f, plan: .own, commit: .exp.commit, at: (.exp.at | todate), state: .exp.state, by}]'
 
 # DELIVERED_HEAD_JQ, over what HEAD holds for those files ($head: git ls-tree -r
-# -z, "mode type blob", a tab and the path per entry) and the files ($d): the
-# deviations, [{file, plan, commit, at, change (deleted or changed), by}], by
-# plan and file.
+# -z, "mode type blob", a tab and the path per entry, the path after $pre) and
+# the files ($d): the deviations, [{file, plan, commit, at, change (deleted or
+# changed), by}], by plan and file.
 # shellcheck disable=SC2016 # a jq program
 DELIVERED_HEAD_JQ='($head | split("\u0000") | map(select(length > 0) | index("\t") as $i
-    | {key: .[$i + 1:], value: (.[0:$i] | split(" ") | "\(.[0]) \(.[2])")}) | from_entries) as $now
+    | {key: ($pre + .[$i + 1:]), value: (.[0:$i] | split(" ") | "\(.[0]) \(.[2])")}) | from_entries) as $now
   | [$d[0][] | ($now[.file]) as $n | select($n != .state)
      | {file, plan, commit, at, change: (if $n == null then "deleted" else "changed" end), by}]
   | sort_by(.plan, .file)'
@@ -89,39 +90,48 @@ DELIVERED_DEFS='def deviation_line: "\(.file) (\(.plan)) \(.change) outside any 
 '
 
 # delivered_deviations RECORD: the deviations of the current milestone's plans
-# (above), as a JSON array. git lists the record's own history once to find how
-# far back the oldest commit naming one of those plans lies, walks it once to
-# there, reads the park's reverts once (only when there are any) and lists HEAD
-# once for the files found; jq does the rest, so the shell runs the same
-# commands whatever the length of the history or the number of files.
+# (above), as a JSON array. In each repository VBW commits in (history_repos:
+# the project and each submodule, whose files a plan names by project path),
+# git lists the record's own history once to find how far back the oldest
+# commit naming one of those plans lies, walks it once to there, reads the
+# park's reverts once (only when there are any) and lists HEAD once for the
+# files found; jq does the rest, so the shell runs the same commands whatever
+# the length of the history or the number of files.
 delivered_deviations() {
-  local dir n out HISTORY_ARGS
+  local dir n out r g i=0 HISTORY_ARGS HISTORY_REPOS
   mkdir -p "$VBW_RUNTIME" || vbw_die "cannot create $VBW_RUNTIME"
   dir=$(mktemp -d "$VBW_RUNTIME/delivered.XXXXXX") || vbw_die "cannot create a temporary folder in $VBW_RUNTIME"
   vbw_guard_add dir "$dir"
   printf '%s' "$1" > "$dir/rec.json" || vbw_die "cannot write $dir/rec.json"
-  history_args
-  n=$(git -C "$VBW_ROOT" log -z --topo-order --format='%(trailers:key=VBW-Plan,valueonly,separator=%x2C)' "${HISTORY_ARGS[@]}" 2> /dev/null \
-    | jq -R -s --slurpfile rec "$dir/rec.json" '$rec[0] as $r | ([$r.phases[] | select(.milestone == $r.milestone.id) | .id]) as $now
-        | ([$r.plans[] | select(.phase | IN($now[])) | .id]) as $mine
-        | split("\u0000") | map(ltrimstr("\n") | split(",") | any(.[]; IN($mine[]))) | (rindex(true) // -1) + 1') || n=0
-  if [ "${n:-0}" -gt 0 ]; then
-    git -C "$VBW_ROOT" log -z --topo-order --no-renames --raw --no-abbrev --max-count="$n" \
-      --format='%H%x1f%ct%x1f%(trailers:key=VBW-Plan,valueonly,separator=%x2C)%x1f%(trailers:key=VBW-Fix,valueonly,separator=%x2C)' "${HISTORY_ARGS[@]}" > "$dir/log" 2> /dev/null \
-      || { vbw_guard_drop "$dir"; vbw_die "internal error: the check of delivered files could not read the history"; }
-  else
-    : > "$dir/log"
-  fi
-  # The messages of the park's reverts, which name the commits each undid: one listing, none without a park.
+  # The messages of the park's reverts, which name the commits each undid: one listing per repository, none without a park.
   printf '%s' "$1" | jq -r '(.loop.items // [])[].reverts[]?' > "$dir/reverts"
-  : > "$dir/undone"
-  [ ! -s "$dir/reverts" ] || git -C "$VBW_ROOT" log --stdin --no-walk=unsorted --ignore-missing --format='%B%x00' < "$dir/reverts" > "$dir/undone" 2> /dev/null || : > "$dir/undone"
-  jq -R -s -c --slurpfile rec "$dir/rec.json" --rawfile undone "$dir/undone" "$VBW_JQ_DEFS$DELIVERED_JQ" "$dir/log" > "$dir/mine" \
-    || { vbw_guard_drop "$dir"; vbw_die "internal error: the check of delivered files could not read the history"; }
-  # A listing that fails is no listing: reading it as empty would call every file deleted.
-  jq -j '.[] | .file + "\u0000"' "$dir/mine" | xargs -0 -r git -C "$VBW_ROOT" --literal-pathspecs ls-tree -r -z HEAD -- > "$dir/head" 2> /dev/null \
-    || { vbw_guard_drop "$dir"; vbw_die "internal error: the check of delivered files could not list HEAD"; }
-  out=$(jq -n -c --slurpfile d "$dir/mine" --rawfile head "$dir/head" "$DELIVERED_HEAD_JQ") \
+  history_repos
+  for r in "${HISTORY_REPOS[@]}"; do
+    i=$((i + 1))
+    g="$VBW_ROOT${r:+/$r}"
+    history_args_in "$r"
+    n=$(git -C "$g" log -z --topo-order --format='%(trailers:key=VBW-Plan,valueonly,separator=%x2C)' "${HISTORY_ARGS[@]}" 2> /dev/null \
+      | jq -R -s --slurpfile rec "$dir/rec.json" '$rec[0] as $r | ([$r.phases[] | select(.milestone == $r.milestone.id) | .id]) as $now
+          | ([$r.plans[] | select(.phase | IN($now[])) | .id]) as $mine
+          | split("\u0000") | map(ltrimstr("\n") | split(",") | any(.[]; IN($mine[]))) | (rindex(true) // -1) + 1') || n=0
+    if [ "${n:-0}" -gt 0 ]; then
+      git -C "$g" log -z --topo-order --no-renames --raw --no-abbrev --max-count="$n" \
+        --format='%H%x1f%ct%x1f%(trailers:key=VBW-Plan,valueonly,separator=%x2C)%x1f%(trailers:key=VBW-Fix,valueonly,separator=%x2C)' "${HISTORY_ARGS[@]}" > "$dir/log" 2> /dev/null \
+        || { vbw_guard_drop "$dir"; vbw_die "internal error: the check of delivered files could not read the history${r:+ of $r}"; }
+    else
+      : > "$dir/log"
+    fi
+    : > "$dir/undone"
+    [ ! -s "$dir/reverts" ] || git -C "$g" log --stdin --no-walk=unsorted --ignore-missing --format='%B%x00' < "$dir/reverts" > "$dir/undone" 2> /dev/null || : > "$dir/undone"
+    jq -R -s -c --slurpfile rec "$dir/rec.json" --rawfile undone "$dir/undone" --arg pre "${r:+$r/}" "$VBW_JQ_DEFS$DELIVERED_JQ" "$dir/log" > "$dir/mine" \
+      || { vbw_guard_drop "$dir"; vbw_die "internal error: the check of delivered files could not read the history${r:+ of $r}"; }
+    # A listing that fails is no listing: reading it as empty would call every file deleted.
+    jq -j --arg pre "${r:+$r/}" '.[] | (.file | ltrimstr($pre)) + "\u0000"' "$dir/mine" | xargs -0 -r git -C "$g" --literal-pathspecs ls-tree -r -z HEAD -- > "$dir/head" 2> /dev/null \
+      || { vbw_guard_drop "$dir"; vbw_die "internal error: the check of delivered files could not list HEAD${r:+ of $r}"; }
+    jq -n -c --slurpfile d "$dir/mine" --rawfile head "$dir/head" --arg pre "${r:+$r/}" "$DELIVERED_HEAD_JQ" > "$dir/dev.$i" \
+      || { vbw_guard_drop "$dir"; vbw_die "internal error: the check of delivered files could not read HEAD${r:+ of $r}"; }
+  done
+  out=$(jq -s -c 'add | sort_by(.plan, .file)' "$dir"/dev.*) \
     || { vbw_guard_drop "$dir"; vbw_die "internal error: the check of delivered files could not read HEAD"; }
   vbw_guard_drop "$dir"
   printf '%s\n' "$out"
