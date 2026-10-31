@@ -94,7 +94,7 @@ def session_dir($g): $g.hook.cwd // $ARGS.named.dir // $root;
 
 # A plan file entry covers PATH: the same path, or a directory entry (ending
 # in /) with PATH under it.
-def covers($p): . as $e | $e == $p or (($e | endswith("/")) and ($p | startswith($e)));
+def covers($p): . as $e | $e == $p or $e == $p + "/" or (($e | endswith("/")) and ($p | startswith($e)));
 
 # PATH (project-relative) is a test file, by place or by name: the one
 # definition of what a planning run may write besides .vbw/ (R75).
@@ -115,6 +115,10 @@ def lease_write_denial($lease; $record):
     "\(.) is a protected check file of another requirement: the fix may edit only the check files of its own requirement (\(($lease.editable // []) | if length > 0 then join(", ") else "none is exclusive to it" end))\n"
     + (if $lease.new_tests == true then "Next: leave \(.) as it is; put the regression test in a new test file and register it with vbw fix check"
        else "Next: leave \(.) as it is; fix the code through the plan, and edit only the files named above" end)
+  # A folder a shell command names whole (rm -r, a copy into it) holding one (#727), ahead of
+  # the test files a fix may add, which may sit under such a folder.
+  elif ($lease.kind | test("^(build|fix)$")) and (. as $p | any($record.protected[]?; startswith($p + "/"))) then
+    "\(.) holds a protected check file (\(. as $p | [$record.protected[] | select(startswith($p + "/"))] | join(", "))): the contract is fixed while building\nNext: leave the protected check files as they are; name only the files you write"
   elif $lease.new_tests == true and test_path then empty
   elif $lease.kind == "plan" and $lease.files != null and (. as $p | any($lease.files[]; covers($p)) | not) then
     "\(.) cannot be written while planning: planning writes the project's test files and .vbw/; product code is the build's\nNext: leave \(.) as it is; put the check in a test file, or name \(.) in a plan's files so the build writes it"
@@ -156,11 +160,21 @@ def run_write_denial($g):
 # program's file): the shell would expand ~, $VAR, $(...) and backticks and the
 # guard cannot, so such a path counts as outside (D304). A file tool's path is
 # never expanded, so run_write_denial takes it as written (D311: app/routes/$id.tsx
-# is a plan file like any other).
+# is a plan file like any other). A glob the shell expands is refused under build
+# and fix when it may match a protected check file or a folder above one (#727;
+# * may cross /, as zsh's ** does; a pattern the guard cannot read counts as
+# matching). Brace expansion is not read: a check file changed that way stops
+# the proof until the user approves it (docs/proof.md).
+def protected_glob($record):
+  ("^" + gsub("(?<c>[.+(){}^$|\\\\]|\\*\\*/|\\*|\\?|\\[!)"; {"**/": "(.*/)?", "*": ".*", "?": "[^/]", "[!": "[^"}[.c] // "\\" + .c) + "(/.*)?$") as $re
+  | try [$record.protected[]? | select(test($re))] catch [$record.protected[]?];
 def shell_write_denial($g):
-  . as $o
-  | if $o | unresolved_path then $o | outside_denial($g.lease; "cannot be resolved by the guard (~ or a shell expansion), so it counts as outside the project")
-    else run_write_denial($g) end;
+  if unresolved_path then outside_denial($g.lease; "cannot be resolved by the guard (~ or a shell expansion), so it counts as outside the project")
+  elif test("[*?\\[]") and (($g.lease.kind // "") | test("^(build|fix)$")) then
+    ((project_path(session_dir($g); $root) // "") as $p | $p | protected_glob($g.record) | select(. != [])
+     | "\($p) matches a protected check file (\(join(", "))): the contract is fixed while building\nNext: leave the protected check files as they are; name only the files you write")
+    // run_write_denial($g)
+  else run_write_denial($g) end;
 
 # The name vbw run start stored for FOREIGN's run: the glance's holder when it is
 # that run's, else null.
