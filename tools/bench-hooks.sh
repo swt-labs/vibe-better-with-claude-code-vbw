@@ -398,7 +398,7 @@ guards() {
 # running build's note (R190, .vbw/runtime/step.json) is on disk, and the bench
 # fails when the step's end time did not show in the first line.
 statusline() {
-  local dir="$1" label="$2" cmd total line first
+  local dir="$1" label="$2" cmd total line first errline
   selected "status line$label" || return 0
   # With the cost fields Claude Code sends, so the side file write (R173) is inside the measure.
   jq -nc --arg d "$dir" '{session_id: "bench", workspace: {project_dir: $d}, cwd: $d, model: {display_name: "Opus"},
@@ -424,6 +424,12 @@ statusline() {
       *"1 of 2 · "*" min, until around "[0-9][0-9]:[0-9][0-9]* | *"1 of 2 · "*" min, until around tomorrow "[0-9][0-9]:[0-9][0-9]*) ;;
       *)
         printf 'status line%s: the step was not shown, so the measure left it out\n' "$label" >&2
+        printf 'status line%s: first line: %s\n' "$label" "$first" >&2
+        if [ -s "$dir/.vbw/runtime/statusline.err" ]; then
+          while IFS= read -r errline || [ -n "$errline" ]; do
+            printf 'status line%s: statusline.err: %s\n' "$label" "$errline" >&2
+          done < "$dir/.vbw/runtime/statusline.err"
+        fi
         status=1 ;;
     esac
   fi
