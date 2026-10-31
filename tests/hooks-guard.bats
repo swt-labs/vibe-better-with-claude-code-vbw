@@ -202,6 +202,8 @@ lease() {
      | {schema: 4, lease: {run: "r1", kind: $k, started_at: $at, files: $f},
         protected: ([.checks[].files // [] | .[]] | unique)} + del(.schema, .lease, .protected)' .vbw/record.json > "$TEST_ROOT/l.json"
   cp "$TEST_ROOT/l.json" .vbw/record.json
+  # An open run, as vbw run start leaves it: a guard that fails then blocks, so allowed_sh cannot pass on a crash.
+  mkdir -p .vbw/runtime && : > .vbw/runtime/run-open
 }
 
 @test "during a build, a subagent writes only the run's files" {
@@ -219,6 +221,141 @@ lease() {
   [ -z "$output" ]
   run as_agent Read "{\"file_path\": \"$PROJECT/src/other.js\"}"
   [ -z "$output" ]
+}
+
+# why COMMAND: the guard's reason for a subagent's Bash call, or "allow".
+why() { as_agent Bash "$(jq -nc --arg c "$1" '{command: $c}')" | jq -rn '[inputs][0].hookSpecificOutput.permissionDecisionReason // "allow"'; }
+
+# judged_as COMMAND PATH: COMMAND is refused with the very reason a redirect to PATH gets.
+judged_as() {
+  local got want
+  got=$(why "$1") want=$(why "echo x > $2")
+  [ "$want" != allow ] || { echo "the redirect to $2 is allowed"; return 1; }
+  [ "$got" = "$want" ] || { printf 'not judged as a write of %s: %s\n  got:  %s\n  want: %s\n' "$2" "$1" "$got" "$want"; return 1; }
+}
+# allowed_sh COMMAND: the guard answers nothing and exits 0 (a crash under the open run exits 2 with a message).
+allowed_sh() {
+  run as_agent Bash "$(jq -nc --arg c "$1" '{command: $c}')"
+  [ "$status" -eq 0 ] && [ -z "$output" ] || { printf 'refused: %s\n  status %s: %s\n' "$1" "$status" "$output"; return 1; }
+}
+
+@test "#727: during a run, the files cp, rsync, install, ln, mv, tee, sed -i and rm write are judged like a redirect's" {
+  lease build '["src/pay.js", "lib/"]'
+  judged_as 'cp x.js src/other.js' src/other.js
+  judged_as 'cp -f x.js src/other.js' src/other.js
+  judged_as 'rsync -a x.js src/other.js' src/other.js
+  judged_as 'install -m 644 x.js src/other.js' src/other.js
+  judged_as 'ln -s x.js src/other.js' src/other.js
+  judged_as 'ln -s lib/a/other.js' other.js
+  judged_as 'cp lib/a.js lib/b.js src/' src/a.js
+  judged_as 'cp -R lib/x src/' src/x
+  judged_as 'cp -t src lib/a.js' src/a.js
+  judged_as 'cp -rt src lib/a.js' src/a.js
+  judged_as 'cp -tsrc lib/a.js' src/a.js
+  judged_as 'cp --target-directory=src lib/a.js' src/a.js
+  judged_as 'cp --target src lib/a.js' src/a.js
+  judged_as 'install -Dt src lib/a.js' src/a.js
+  # The first t takes the rest of the word as the folder, even a word that ends like -m.
+  judged_as 'install -tfoo lib/a.js' foo/a.js
+  # rsync's -t is --times, not a target folder.
+  judged_as 'rsync -a -t x.js src/other.js' src/other.js
+  judged_as 'rsync -a --remove-source-files src/other.js lib/' src/other.js
+  judged_as 'mv src/pay.js src/other.js' src/other.js
+  judged_as 'mv -f src/other.js src/pay.js' src/other.js
+  judged_as 'rm src/other.js' src/other.js
+  judged_as 'rm -f lib/a.js src/other.js' src/other.js
+  judged_as 'sed -i s/a/b/ src/other.js' src/other.js
+  judged_as "sed -i '' s/a/b/ src/other.js" src/other.js
+  judged_as 'sed -i.bak -e s/a/b/ src/pay.js src/other.js' src/other.js
+  # The script given by -f, -e glued or --expression is never judged; the file after it is.
+  judged_as 'sed -f fix.sed -i src/other.js' src/other.js
+  judged_as 'sed -es/a/b/ -i src/other.js' src/other.js
+  judged_as 'sed --expression=s/a/b/ -i src/other.js' src/other.js
+  judged_as 'sed --expression s/a/b/ -i src/other.js' src/other.js
+  # After a bare -i, a dot word is BSD's suffix or GNU's file: it is judged as a file too.
+  judged_as 'sed -e s/x/y/ -i .eslintrc' .eslintrc
+  judged_as 'sed -i .eslintrc -e s/x/y/ src/pay.js' .eslintrc
+  judged_as 'echo x | tee src/other.js' src/other.js
+  judged_as 'tee -a src/other.js < x' src/other.js
+  # Reading from a file outside the run's files, or from a protected one, writes nothing there.
+  allowed_sh 'cp x.js src/pay.js'
+  allowed_sh 'cp -f src/other.js src/pay.js'
+  allowed_sh 'cp tests/pay.test.js lib/pay.test.js'
+  allowed_sh 'cp -R src/other lib/'
+  allowed_sh 'cp src/a.js src/b.js lib/'
+  allowed_sh 'cp -t lib/ src/other.js'
+  allowed_sh 'mv -f lib/a.js lib/b.js'
+  allowed_sh 'rsync -a src/other.js lib/other.js'
+  allowed_sh 'install -m 644 src/other.js src/pay.js'
+  # A flag's value is not a file the command writes.
+  allowed_sh 'install -m 644 x/pay.js src/'
+  allowed_sh 'rsync -a --exclude node_modules x/pay.js src/'
+  allowed_sh 'rsync -t src/other.js lib/other.js'
+  allowed_sh 'rsync -a src/other.js lib/'
+  allowed_sh 'cp -S .orig x/pay.js src/'
+  allowed_sh 'rsync -e ssh x/pay.js src/'
+  # A folder the run owns, named with a trailing / (#727 QA round 2).
+  allowed_sh 'rsync -a assets/ lib/'
+  allowed_sh 'cp -r assets/ lib/'
+  allowed_sh 'rm -rf lib/'
+  # . and .. are folders.
+  judged_as 'cp lib/a.js .' a.js
+  judged_as 'mv lib/a.js ..' ../a.js
+  allowed_sh 'ln -s ../src/other.js lib/link.js'
+  allowed_sh 'rm .vbw/runtime/scratch/x.log'
+  allowed_sh 'rm -f lib/a.js'
+  allowed_sh 'sed -i s/a/b/ src/pay.js'
+  allowed_sh "sed -i '' s/a/b/ src/pay.js"
+  allowed_sh 'sed -i.bak s/a/b/ src/pay.js'
+  allowed_sh 'sed -i -e s/a/b/ -e s/c/d/ src/pay.js'
+  allowed_sh 'echo x | tee src/pay.js lib/log'
+  allowed_sh 'sed s/a/b/ src/other.js > lib/out.js'
+}
+
+@test "#727: during a run, a shell tool writing a protected check file, or a folder that holds one, is refused like a redirect" {
+  lease build '["src/pay.js", "tests/pay.test.js"]'
+  judged_as 'cp x.js tests/pay.test.js' tests/pay.test.js
+  judged_as 'sed -i s/expect/skip/ tests/pay.test.js' tests/pay.test.js
+  judged_as 'rm tests/pay.test.js' tests/pay.test.js
+  judged_as 'mv tests/pay.test.js src/pay.js' tests/pay.test.js
+  [[ "$(why 'cp x.js tests/pay.test.js')" == *"is a protected check file"* ]] || false
+  allowed_sh 'cp tests/pay.test.js src/pay.js'
+  # A folder named whole: the guard reads text and cannot tell a folder from a file, so a write that
+  # may land on a protected file under it (rm -r, a copy into it) is refused.
+  lease build 'null'
+  [[ "$(why 'rm -rf tests')" == *"tests holds a protected check file (tests/pay.test.js)"* ]] || { why 'rm -rf tests'; false; }
+  [[ "$(why 'cp x/pay.test.js tests')" == *"tests holds a protected check file"* ]] || false
+  allowed_sh 'rm -rf build'
+  allowed_sh 'cp x.js src'
+  # A glob the shell expands is judged by the protected files it may match.
+  [[ "$(why 'sed -i s/expect/skip/ tests/*.test.js')" == *"tests/*.test.js matches a protected check file (tests/pay.test.js)"* ]] || { why 'sed -i s/expect/skip/ tests/*.test.js'; false; }
+  [[ "$(why 'rm -rf t*')" == *"matches a protected check file"* ]] || false
+  [[ "$(why 'rm tests/pay.test.?s')" == *"matches a protected check file"* ]] || false
+  [[ "$(why 'rm tests/pay.test.[!x]s')" == *"matches a protected check file"* ]] || false
+  # A pattern the guard cannot read counts as matching.
+  [[ "$(why 'rm tests/[z-a]*')" == *"matches a protected check file"* ]] || false
+  allowed_sh 'rm -f build/*.js'
+  allowed_sh 'rm -f tests/*.snap'
+  allowed_sh 'rm tests/pay.test.[!j]s'
+  # * may cross /, as zsh's ** does.
+  [[ "$(why 'sed -i s/a/b/ tests/**/pay.test.js')" == *"matches a protected check file"* ]] || false
+  [[ "$(why 'rm t*/pay.test.js')" == *"matches a protected check file"* ]] || false
+  # Under a fix run that may add tests, a test folder holding a protected check file is still refused.
+  jq '.lease.kind = "fix" | .lease.new_tests = true | .protected = ["tests/unit/pay.test.js"]' .vbw/record.json > "$TEST_ROOT/l.json" && cp "$TEST_ROOT/l.json" .vbw/record.json
+  [[ "$(why 'rm -rf tests/unit')" == *"tests/unit holds a protected check file (tests/unit/pay.test.js)"* ]] || { why 'rm -rf tests/unit'; false; }
+  allowed_sh 'cp x.js tests/unit/new.test.js'
+  lease build 'null'
+  # A file tool's path is taken as written, never as a pattern (D311).
+  run as_agent Write "{\"file_path\": \"$PROJECT/t*\"}"
+  [ "$status" -eq 0 ] && [ -z "$output" ]
+}
+
+@test "#727: during planning, a shell copy onto product code is refused like a redirect" {
+  lease plan '[".vbw/"]'
+  judged_as 'cp x.js src/other.js' src/other.js
+  judged_as 'mv tests/a.test.js src/a.js' src/a.js
+  allowed_sh 'cp src/other.js tests/other.test.js'
+  allowed_sh 'cp x.md .vbw/notes.md'
 }
 
 @test "during a build, protected check files are read-only and commits go through vbw" {

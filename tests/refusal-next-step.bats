@@ -262,6 +262,8 @@ blocks() {
   blocks "another session's files (Bash)" Bash "$(bin 'printf x > src/c.txt' "" s2)"
   blocks "a protected check file (file tool)" Edit "$(fin Edit tests/c1.sh vbw:dev)"
   blocks "a protected check file (Bash)" Bash "$(bin 'printf x > tests/c1.sh' vbw:dev)"
+  blocks "a folder that holds a protected check file (Bash)" Bash "$(bin 'rm -r tests' vbw:dev)"
+  blocks "a glob that matches a protected check file (Bash)" Bash "$(bin 'sed -i s/a/b/ tests/c*.sh' vbw:dev)"
   blocks "a file outside the run's plan (file tool)" Write "$(fin Write README.md vbw:dev)"
   blocks "a file outside the run's plan (Bash)" Bash "$(bin 'printf x > README.md' vbw:dev)"
   blocks "a program writing a file the guard cannot name (Bash)" Bash "$(bin $'python3 - <<\'EOF\'\np = "tests/c1.sh"\nopen(p, "w").write("x")\nEOF' vbw:dev)"

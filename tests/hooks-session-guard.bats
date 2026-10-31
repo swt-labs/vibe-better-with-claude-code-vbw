@@ -62,6 +62,19 @@ shell() {
   denied
   run shell sessB "echo 'x' > src/other.js"
   [ "$(printf '%s' "$output" | jq -r '.hookSpecificOutput.permissionDecision // "allow"' 2> /dev/null || echo allow)" != deny ]
+  # The same reading of shell writes as the run's own guard (#727): a copy onto the file, any copier;
+  # a copy from it reads it and writes elsewhere.
+  local c
+  for c in 'rsync -a x.js src/pay.js' 'ln -sf x.js src/pay.js' 'cp lib/pay.js src/' 'mv src/pay.js src/old.js'; do
+    run shell sessB "$c"
+    denied || { echo "not denied: $c"; return 1; }
+  done
+  run shell sessB 'cp src/pay.js backup.js'
+  [ -z "$output" ]
+  # After a bare -i, a dot word is BSD's suffix or GNU's file: judged as a file too.
+  jq '.lease.files += [".eslintrc"]' .vbw/record.json > "$TEST_ROOT/e.json" && cp "$TEST_ROOT/e.json" .vbw/record.json
+  run shell sessB 'sed -e s/x/y/ -i .eslintrc'
+  denied || { echo "not denied: $output"; return 1; }
 }
 
 @test "files the run does not write stay editable from another session" {
