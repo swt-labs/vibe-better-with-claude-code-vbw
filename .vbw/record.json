@@ -27122,12 +27122,19 @@
       ],
       "predicted": "deep",
       "qa": {
-        "result": "fail",
+        "result": "pass",
         "tier": "deep",
-        "tree": "34e5c248063fa01bc8078916079db408d9d8499bd0631efe7262785f1827435b",
-        "at": "2026-10-31T19:20:43Z",
-        "note": "19/20 checks",
-        "rounds": 1
+        "tree": "80cbb96e6e6819d39abc388b7862ed3abeb3c0ce0392d4d79e0d6d118a52cb91",
+        "at": "2026-10-31T20:13:49Z",
+        "note": "20/20 checks"
+      },
+      "outcome": {
+        "tier": "deep",
+        "predicted": "deep",
+        "held": true,
+        "fix_rounds": 1,
+        "qa_findings": 1,
+        "escalations": 0
       }
     },
     {
@@ -63531,7 +63538,7 @@
       "req": "R235",
       "source": "qa",
       "attempts": 0,
-      "status": "fixed",
+      "status": "closed",
       "note": "The SIGPIPE regression test in tests/statusline.bats:295-303 (R235: 'a reader that has left does not fail the render', protected by approved check C538) fails every time under macOS /bin/bash 3.2: 'tests/statusline.bats: line 298: [: : integer expression expected'. Reproduced twice with PATH=/bin:$PATH bats --filter 'R235: a reader that has left' tests/statusline.bats; it passes under bash 5.3. Cause: bats installs a DEBUG trap, and under bash 3.2 that trap overwrites PIPESTATUS, so ${PIPESTATUS[1]} is empty (on bash 3.2 the same trap makes PIPESTATUS[0] read 0). The criterion and CLAUDE.md require the regression test to pass under /bin/bash 3.2 (CI runs it there). The first test of tests/statusline-step-miss.bats (line ~58, ${PIPESTATUS[0]} -eq 0) has the same flaw: under 3.2 it reads the trap's 0, so it cannot fail there. A regression test should take the script's exit status without PIPESTATUS, for example run bash -c 'set -o pipefail; NO_COLOR=1 bash SL < in.json | true' and assert $status = 0, and it must still go red when 'trap '' PIPE' is removed.",
       "phase": "P189"
     }
