@@ -27159,7 +27159,15 @@
         "guarded: R4 (C4), R5 (C5), R8 (C8), R12 (C11), R31 (C27), R32 (C28), R34 (C30), R42 (C38), R43 (C42, C43), R44 (C44, C45), R45 (C39, C40, C41), R46 (C46), R47 (C47), R48 (C49, C50), R49 (C48), R51 (C52, C53, C66), R59 (C68, C92), R61 (C73, C74, C75, C76, C77), R62 (C78, C79, C80, C81, C82, C83, C93), R64 (C84, C85), R65 (C86, C87, C88, C89, C90), R66 (C95), R69 (C110, C120, C122), R70 (C114), R72 (C116, C118), R73 (C98), R74 (C99, C100), R78 (C105, C106), R79 (C107), R80 (C108), R81 (C109, C111, C112, C113), R92 (C131, C132, C133, C134, C135, C136, C137, C138, C139), R93 (C140, C141, C142, C143, C144), R94 (C145, C146, C147, C148), R97 (C153), R98 (C154), R100 (C156), R103 (C160), R104 (C161, C162), R105 (C163), R110 (C169, C170), R111 (C171, C172, C173, C174, C175), R115 (C181), R116 (C182, C183), R118 (C184), R131 (C198), R132 (C199), R134 (C201), R135 (C202), R144 (C208, C209), R147 (C212, C215, C237), R148 (C213, C214, C216, C238), R152 (C233, C234), R153 (C235, C236, C239), R160 (C247, C263, C264), R161 (C248, C265, C266), R166 (C253, C254, C255, C256, C267), R167 (C257, C258, C259, C260), R168 (C261, C262), R169 (C268), R170 (C269), R173 (C281, C282, C283, C284, C285, C286, C289), R174 (C279, C280), R175 (C274, C275), R176 (C276, C277, C278), R180 (C307, C308, C309, C310), R181 (C313, C314, C315, C316, C317, C318, C319, C320, C321), R182 (C322, C323, C324, C325, C326), R183 (C327), R184 (C328, C329, C330, C331, C332, C333), R185 (C334, C335, C336, C337, C338, C339, C340, C341, C342, C343), R188 (C350, C351, C352, C353, C354, C355, C356, C357, C358, C359), R189 (C360, C361, C362, C363, C364, C365, C366, C367, C368, C369, C370, C371, C372, C373), R191 (C389, C390, C391, C392, C393, C394, C395, C396, C397, C398, C399, C400), R193 (C411, C412), R194 (C417, C418, C419), R195 (C420, C421, C422), R196 (C415, C416), R197 (C413, C414), R199 (C424, C425, C430), R200 (C426, C427, C431), R201 (C428, C429), R202 (C432, C433, C434, C435, C436, C437, C438, C439, C440, C441, C442, C443, C444, C445, C446, C447), R203 (C448, C449, C450), R204 (C451, C452, C453, C454), R205 (C455, C456, C457, C458, C467), R206 (C459, C460), R207 (C461, C462, C463), R208 (C464, C465, C466, C468), R209 (C469, C470, C471, C472, C473), R210 (C474, C475, C476), R211 (C477, C478, C479), R212 (C480, C481, C482), R213 (C483, C484), R214 (C485, C486, C487), R215 (C488, C489, C490), R217 (C494, C495), R221 (C504), R226 (C510, C511), R232 (C534)",
         "tests: project test command"
       ],
-      "predicted": "deep"
+      "predicted": "deep",
+      "escalations": [
+        {
+          "at": "2026-10-31T15:59:24Z",
+          "from": "deep",
+          "to": "deep",
+          "reason": "Dev blocked P191.1: C544 case 1 (tests/l3-mapnotrun.bats line 100) appends '- test: sh test.sh' to the END of the template spec, which is the '## Clean copy' section (the template order is Commands, then Clean copy), so no correct spec_section_lines SPEC Commands can print it. The check file is protected and approved; it must insert the line into the Commands section after the comment (e.g. before '## Clean copy'). Helper and commands_lines change are done in tools/l3-suite.sh (uncommitted); cases 2 and 3 pass, lint and pipefail pass."
+        }
+      ]
     }
   ],
   "plans": [
@@ -59926,13 +59934,100 @@
         "docs/guards.md"
       ],
       "after": [],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "tests/bench-waiting.bash (new, loaded by bats): waiting_judge BUDGET MARGIN QUICK SLOW [SLOW2] over the bench's printed lines: prints 'busy S' when any given run's sh-and-jq startup S (the guard (git) line's '(sh and jq startup S ms)' or the bench's own 'machine too busy to measure ... takes S ms' line) is above BUDGET; else 'ok' when SLOW's guard (git) own cost minus QUICK's is under MARGIN; else 'again' without SLOW2; else 'ok' or 'fail <words naming the first and second measures with the quick figure>' (exit 1 on fail); no sleep, bash 3.2 (perl for the decimal compare, as the bench)",
         "tests/timed-bench-hooks.bats: the waiting case loads bench-waiting, keeps its two bench runs, calls waiting_judge 20 25 on their outputs; on 'busy S' it skips with 'the machine was busy: sh and jq startup S ms, above the 20 ms hook limit'; on 'again' it runs the sleep 0.05 bench once more and judges the three outputs; on 'fail' it prints the judge's words and fails",
         "docs/guards.md Budget bullet, where the busy rule is described: the timed test case tests/timed-bench-hooks.bats applies the same rule (busy is reported, not failed; a difference over the margin is measured once more)",
         "Run tests/timed-bench-hooks.bats once under /bin/bash and once under bash 5 (alone, as the release run does) and the R234 cases of tests/bench-limits.bats and tests/bench-limits-docs.bats; figures in the summary"
+      ],
+      "mutations": [
+        {
+          "task": 4,
+          "none": "task 4 only runs the timed file; it has no code of its own to break",
+          "at": "2026-10-31T16:02:19Z"
+        },
+        {
+          "rule": {
+            "req": "R234",
+            "text": "a difference at or over the 25 ms margin on the first waiting measure is measured once more; the case fails only when the second difference is also at or over the margin"
+          },
+          "what": "no second measure: first over-margin fails at once",
+          "files": [
+            "tests/bench-waiting.bash"
+          ],
+          "checks": {
+            "C535": "red"
+          },
+          "result": "red",
+          "at": "2026-10-31T16:03:13Z",
+          "head": "a79ff413ffc21c1682cf15bfd551da737a1e8641"
+        },
+        {
+          "rule": {
+            "req": "R234",
+            "text": "the failure's words name both measures, the first and the second, with the quick figure"
+          },
+          "what": "fail words omit the first measure figure",
+          "files": [
+            "tests/bench-waiting.bash"
+          ],
+          "checks": {
+            "C535": "red"
+          },
+          "result": "red",
+          "at": "2026-10-31T16:03:20Z",
+          "head": "a79ff413ffc21c1682cf15bfd551da737a1e8641"
+        },
+        {
+          "rule": {
+            "req": "R234",
+            "text": "when either bench run's sh-and-jq startup is above the 20 ms hook budget the case passes with a skip that says the machine was busy and names the startup, as the bench's own busy rule; a startup at or under the budget never skips"
+          },
+          "what": "startup equal to the budget reads busy",
+          "files": [
+            "tests/bench-waiting.bash"
+          ],
+          "checks": {
+            "C535": "red"
+          },
+          "result": "red",
+          "at": "2026-10-31T16:03:25Z",
+          "head": "a79ff413ffc21c1682cf15bfd551da737a1e8641"
+        },
+        {
+          "rule": {
+            "req": "R234",
+            "text": "the judging is one function over the bench's printed lines (waiting_judge in tests/bench-waiting.bash), shown with stand-in lines and no real sleep; the timed case calls it, skips on busy and measures again on again"
+          },
+          "what": "timed case no longer skips on busy",
+          "files": [
+            "tests/timed-bench-hooks.bats"
+          ],
+          "checks": {
+            "C535": "red"
+          },
+          "result": "red",
+          "at": "2026-10-31T16:03:30Z",
+          "head": "a79ff413ffc21c1682cf15bfd551da737a1e8641"
+        },
+        {
+          "rule": {
+            "req": "R234",
+            "text": "docs/guards.md says, where it describes the busy rule, that the timed waiting case tests/timed-bench-hooks.bats applies the same rule"
+          },
+          "what": "docs drop the timed-case sentence",
+          "files": [
+            "docs/guards.md"
+          ],
+          "checks": {
+            "C536": "red"
+          },
+          "result": "red",
+          "at": "2026-10-31T16:03:38Z",
+          "head": "a79ff413ffc21c1682cf15bfd551da737a1e8641"
+        }
       ]
     },
     {
@@ -59949,13 +60044,92 @@
         "plugin/lib/checks.sh"
       ],
       "after": [],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "plugin/lib/record.sh: vbw_lock_seconds beside vbw_lock_dir, vbw_lock_holder and vbw_lock_takeover: prints VBW_LOCK_CLOCK when set (a test's injected clock, whole seconds), else bash's SECONDS; the comment names the injection and why (T206: real SECONDS ticked on Ubuntu 26.04 and a 5 s count read 4 tries)",
         "plugin/lib/proofsteps.sh proofsteps_lock: quiet and the 5 s count read $(vbw_lock_seconds), no SECONDS",
         "plugin/lib/slots.sh slots_lock: quiet, the 5 s takeover and the 30 s give-up read $(vbw_lock_seconds), no SECONDS",
         "plugin/lib/checks.sh checks_gate_enter: lost and the 5 s count read $(vbw_lock_seconds), no SECONDS; then run tests/lock-exclusive.bats, tests/machine-tracking.bats, tests/machine-bookkeeping.bats and tests/check-alone-runner.bats under /bin/bash and under bash 5, unchanged"
+      ],
+      "mutations": [
+        {
+          "rule": {
+            "req": "R236",
+            "text": "vbw_lock_seconds in plugin/lib/record.sh returns VBW_LOCK_CLOCK when set and bash's SECONDS otherwise, a count that never goes down between two reads"
+          },
+          "what": "vbw_lock_seconds ignores the injected clock",
+          "files": [
+            "plugin/lib/record.sh"
+          ],
+          "checks": {
+            "C537": "red"
+          },
+          "result": "red",
+          "at": "2026-10-31T16:11:39Z",
+          "head": "a79ff413ffc21c1682cf15bfd551da737a1e8641"
+        },
+        {
+          "rule": {
+            "req": "R236",
+            "text": "the note lock's takeover of a folder left 5 s without an owner's id is counted on that clock: exactly 5 tries however the real SECONDS moves during the case"
+          },
+          "what": "note lock takes over after 4 s, not 5",
+          "files": [
+            "plugin/lib/proofsteps.sh"
+          ],
+          "checks": {
+            "C537": "red"
+          },
+          "result": "red",
+          "at": "2026-10-31T16:11:47Z",
+          "head": "a79ff413ffc21c1682cf15bfd551da737a1e8641"
+        },
+        {
+          "rule": {
+            "req": "R236",
+            "text": "the slot store's lock counts its 5 s on the same clock, and the alone-check gate reads the same function; none of the three lock loops reads SECONDS directly"
+          },
+          "what": "slot lock reads SECONDS",
+          "files": [
+            "plugin/lib/slots.sh"
+          ],
+          "checks": {
+            "C537": "red"
+          },
+          "result": "red",
+          "at": "2026-10-31T16:11:52Z",
+          "head": "a79ff413ffc21c1682cf15bfd551da737a1e8641"
+        },
+        {
+          "rule": {
+            "req": "R236",
+            "text": "no test in tests/lock-exclusive.bats advances SECONDS as its clock, and the file's other lock cases still hold"
+          },
+          "what": "live owner no longer resets the quiet count",
+          "files": [
+            "plugin/lib/proofsteps.sh"
+          ],
+          "checks": {
+            "C537": "red"
+          },
+          "result": "red",
+          "at": "2026-10-31T16:11:56Z",
+          "head": "a79ff413ffc21c1682cf15bfd551da737a1e8641"
+        },
+        {
+          "task": 4,
+          "what": "alone-check gate reads SECONDS",
+          "files": [
+            "plugin/lib/checks.sh"
+          ],
+          "checks": {
+            "C537": "red"
+          },
+          "result": "red",
+          "at": "2026-10-31T16:13:12Z",
+          "head": "a79ff413ffc21c1682cf15bfd551da737a1e8641"
+        }
       ]
     },
     {
@@ -59971,13 +60145,68 @@
         "docs/statusline.md"
       ],
       "after": [],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "plugin/scripts/vbw-statusline.sh render(): jq's stderr goes to $root/.vbw/runtime/statusline.err when that folder exists (one [ -d ] test, no process; /dev/null otherwise, never making the folder), truncated on each call so a good render leaves it empty; the header comment names the file as the second thing the script writes",
         "tools/bench-hooks.sh statusline(): when the first line has no step, after the failure line print 'status line<label>: first line: <the line read>' and, when $dir/.vbw/runtime/statusline.err has text, each of its lines as 'status line<label>: statusline.err: <line>'; the failure text itself unchanged",
         "docs/statusline.md: the error file, what it holds, that it is overwritten on every render and lives inside the project; docs/guards.md untouched here",
         "Run tools/bench-hooks.sh with VBW_BENCH_ONLY naming the three status line cases under /bin/bash: the status line stays within 60 ms; the R235 cases of tests/statusline.bats and tests/step-bench.bats pass; figures in the summary"
+      ],
+      "mutations": [
+        {
+          "task": 3,
+          "none": "docs/statusline.md is prose; no check reads it",
+          "at": "2026-10-31T16:00:52Z"
+        },
+        {
+          "rule": {
+            "req": "R235",
+            "text": "when the render fails, jq's error is written to .vbw/runtime/statusline.err inside the project and the fallback line '[VBW] status line unavailable' is printed"
+          },
+          "what": "render's jq stderr to /dev/null instead of the error file",
+          "files": [
+            "plugin/scripts/vbw-statusline.sh"
+          ],
+          "checks": {
+            "C538": "red"
+          },
+          "result": "red",
+          "at": "2026-10-31T16:01:22Z",
+          "head": "a79ff413ffc21c1682cf15bfd551da737a1e8641"
+        },
+        {
+          "rule": {
+            "req": "R235",
+            "text": "a good render leaves .vbw/runtime/statusline.err empty, overwritten each call; without a runtime folder nothing is written and the render still prints"
+          },
+          "what": "good render no longer empties the error file",
+          "files": [
+            "plugin/scripts/vbw-statusline.sh"
+          ],
+          "checks": {
+            "C538": "red"
+          },
+          "result": "red",
+          "at": "2026-10-31T16:01:26Z",
+          "head": "a79ff413ffc21c1682cf15bfd551da737a1e8641"
+        },
+        {
+          "rule": {
+            "req": "R235",
+            "text": "the bench's 'the step was not shown, so the measure left it out' failure stays and is followed by the first line it read and, when the error file has text, that text, each prefixed with the case's label"
+          },
+          "what": "bench no longer prints the first line it read",
+          "files": [
+            "tools/bench-hooks.sh"
+          ],
+          "checks": {
+            "C539": "red"
+          },
+          "result": "red",
+          "at": "2026-10-31T16:01:30Z",
+          "head": "a79ff413ffc21c1682cf15bfd551da737a1e8641"
+        }
       ]
     },
     {
@@ -60017,13 +60246,57 @@
         "tools/test-linux.sh"
       ],
       "after": [],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "tools/test-linux.sh: --image IMAGE (default ubuntu:24.04; ubuntu:26.04 accepted; any other image, or an unknown option, exits 2 with a usage line before any docker call); the built image is tagged per base image so the two never share a tag",
         "--bench runs bash tools/bench-hooks.sh inside the container in place of the release run; everything after -- is the command to run inside, each word quoted into the container's bash -c script with printf %q (argv kept, no eval of data); default stays bash tools/test.sh --release",
         "Header comment states the three forms and that the image names CI's two Linux jobs (ubuntu-latest with jq 1.7.1, Ubuntu 26.04 with jq 1.8.1); bash tools/test.sh --lint clean; tests/test-linux.bats passes",
         "Run bash tools/test-linux.sh --image ubuntu:26.04 --bench once for real and keep its reference and guard lines in the summary"
+      ],
+      "mutations": [
+        {
+          "task": 3,
+          "none": "header comment text only; no behaviour to break",
+          "at": "2026-10-31T16:00:43Z"
+        },
+        {
+          "task": 4,
+          "none": "a one-off real run of the script; no code of the plan to break",
+          "at": "2026-10-31T16:00:48Z"
+        },
+        {
+          "rule": {
+            "req": "R233",
+            "text": "tools/test-linux.sh takes --image (ubuntu:24.04 by default, ubuntu:26.04 accepted; another image or an unknown option exits 2 with the usage before any build) and without arguments still runs the release run in ubuntu:24.04"
+          },
+          "what": "accepted debian:12 as an image",
+          "files": [
+            "tools/test-linux.sh"
+          ],
+          "checks": {
+            "C540": "red"
+          },
+          "result": "red",
+          "at": "2026-10-31T16:01:14Z",
+          "head": "a79ff413ffc21c1682cf15bfd551da737a1e8641"
+        },
+        {
+          "rule": {
+            "req": "R233",
+            "text": "tools/test-linux.sh --bench runs only the hook bench inside the container, and a command after -- runs in place of the release run with its words kept"
+          },
+          "what": "--bench ran the release run",
+          "files": [
+            "tools/test-linux.sh"
+          ],
+          "checks": {
+            "C540": "red"
+          },
+          "result": "red",
+          "at": "2026-10-31T16:01:19Z",
+          "head": "a79ff413ffc21c1682cf15bfd551da737a1e8641"
+        }
       ]
     },
     {
@@ -60085,13 +60358,14 @@
         "tools/l3-suite.sh"
       ],
       "after": [],
-      "status": "planned",
+      "status": "blocked",
       "role": "dev",
       "tasks": [
         "tools/l3-suite.sh: spec_section_lines SPEC SECTION, one awk over the file: from the '## SECTION' heading to the next '## ' heading, drop every <!-- ... --> block (one-line and multi-line, the text outside a block on the same line kept), print the lines starting '- '; reads to the end, no quiet grep (tools/check-pipefail-grep.sh)",
         "mapnotrun's commands_lines calls spec_section_lines \"$spec\" Commands; grep finds no other scenario reading a raw section with sed | grep '^- '",
         "bash tools/test.sh --lint, bash tools/check-pipefail-grep.sh plugin tools and tests/l3-mapnotrun.bats pass"
-      ]
+      ],
+      "note": "C544 case 1 (tests/l3-mapnotrun.bats line 100) appends '- test: sh test.sh' to the END of the template spec, which is the '## Clean copy' section (the template order is Commands, then Clean copy), so no correct spec_section_lines SPEC Commands can print it. The check file is protected and approved; it must insert the line into the Commands section after the comment (e.g. before '## Clean copy'). Helper and commands_lines change are done in tools/l3-suite.sh (uncommitted); cases 2 and 3 pass, lint and pipefail pass."
     },
     {
       "id": "P191.2",
@@ -76024,6 +76298,17 @@
         "ended": "2026-10-31T15:50:22Z",
         "cost": {
           "usd": 13.596138
+        }
+      },
+      {
+        "id": "build-20261031T155315Z",
+        "kind": "build",
+        "session": "0ee781c3-c5b6-4a6c-889f-04b89f1fba4a",
+        "milestone": "M48",
+        "started": "2026-10-31T15:53:15Z",
+        "ended": "2026-10-31T16:14:54Z",
+        "cost": {
+          "usd": 1.273267
         }
       }
     ],
