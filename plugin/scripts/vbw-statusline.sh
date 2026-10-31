@@ -4,9 +4,11 @@
 # state. This path is the one the statusLine setting looks for in the newest
 # installed VBW, so an update switches the status line over by itself.
 # No network and no git process: the branch is read from .git/HEAD directly.
-# The one file it writes is the session's cost side file (.vbw/runtime/
-# cost.SESSION.json, R173), through a temporary name and a rename. It never
-# fails: a broken render prints a single line.
+# The first file it writes is the session's cost side file (.vbw/runtime/
+# cost.SESSION.json, R173), through a temporary name and a rename. The second
+# is .vbw/runtime/statusline.err (R235): jq's error text of the last render,
+# truncated on every call (empty after a good render), written only when that
+# folder exists. It never fails: a broken render prints a single line.
 #
 # Where the VBW plugin is turned off (R184: enabledPlugins["vbw@vbw-marketplace"]
 # false in the project's .claude/settings.local.json, then its .claude/
@@ -197,10 +199,15 @@ if [ ${#registry_args[@]} -gt 0 ]; then
 else
   registry() { echo '{}'; }
 fi
+# jq's error text of the last render (R235): kept in the runtime folder when it
+# exists (one test, no process; never created), truncated by each render.
+errf=/dev/null
+[ ! -d "$root/.vbw/runtime" ] || errf="$root/.vbw/runtime/statusline.err"
+{ : > "$errf"; } 2> /dev/null || errf=/dev/null
 render() {
   jq -nr --slurpfile registry <(registry) --argjson cc "$input" --arg branch "$branch" --arg color "$color" --arg legacy "$legacy" --arg sid "$sid" --argjson deadpid "$1" --argjson agents "$agents" --slurpfile profiles "$plugin/lib/profiles.json" -f "$here/statusline.jq" \
     "$plugin/.claude-plugin/plugin.json" "$recfile" "$end" \
-    "$root/.vbw/runtime/next.json" "$end" "$root/.vbw/runtime/step.json" "$end" "$auto" 2> /dev/null
+    "$root/.vbw/runtime/next.json" "$end" "$root/.vbw/runtime/step.json" "$end" "$auto" 2> "$errf"
 }
 out=$(render 0)
 case "$out" in
