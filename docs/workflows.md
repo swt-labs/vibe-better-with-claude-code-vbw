@@ -713,15 +713,28 @@ project's, and git refuses to commit a path beyond a symbolic link.
   project (docs/guards.md). A clone nested in the project (its `.git` a folder)
   and a linked worktree nested in it (its `.git` file points into a
   `worktrees/` folder) stay projects of their own.
-- One level: apart from `vbw ship`'s check, a submodule inside a submodule is
-  not followed, and a repository
-  nested in the project without being its submodule is committed in, but not
-  brought into the proof copy or read by the readers above.
-- Two things still read only the project's repository: a parked loop item's
-  commits in a submodule are not reverted by the park, and a mutation's record
-  names the project's commit only, so `vbw mutate`'s "already ran at this
-  commit" and the loop's approval of strengthened check files do not see a
-  commit made only in a submodule (the loop then leaves that approval to you).
+- `vbw mutate` judges a break by the committed code with each submodule at its
+  own `HEAD`: a commit made only in a submodule makes the checks run on the
+  unbroken code again, and drops a break queued before it.
+- `## Test files` matches its pathspecs inside each submodule too: a test file
+  in a submodule is a test file of its own, named by its project path.
+
+Known limits:
+
+- **A parked loop item** reverts its commits in the project only: its commits in
+  a submodule stay.
+- **The loop's approval of strengthened check files** reads the project's
+  history only: for a check file in a submodule it leaves the approval to you.
+- **Uncommitted edits inside a submodule** are not seen by `vbw next`'s
+  fingerprint of the working folder or by proof reuse: a submodule counts at its
+  `HEAD` until you commit there.
+- **One level of submodules:** apart from `vbw ship`'s check, a submodule
+  inside a submodule is not followed (its folder is empty in the proof copy, so
+  a check or test file reading inside it fails).
+- **A clone nested in the project that is not its submodule:** a plan file named
+  inside it is committed there, but a plan's folder entry above it does not
+  reach into it (its pointer is never committed either), and it is not brought
+  into the proof copy, the fingerprints or the readers of VBW's history.
 
 ## The user's level
 
