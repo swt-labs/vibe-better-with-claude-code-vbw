@@ -154,7 +154,7 @@ record_unlock() {
 # on Ubuntu 26.04 and a 5 s count read 4 tries (T206, PR #740). A count that never
 # goes down between two reads.
 vbw_lock_seconds() {
-  printf '%s' "${VBW_LOCK_CLOCK:-$SECONDS}"
+  printf '%s\n' "${VBW_LOCK_CLOCK:-$SECONDS}"
 }
 
 # vbw_lock_alive PID: true while process PID runs (kill -0 is only a liveness
