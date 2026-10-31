@@ -63402,6 +63402,13 @@
       "sort": "next",
       "size": "small",
       "status": "open"
+    },
+    {
+      "id": "T206",
+      "text": "CI flake in PR #740 run 3 (Ubuntu 26.04 shard 2): tests/lock-exclusive.bats 'R190: a note lock folder left 5 s without an owner's id is taken over' expected 'taken after 5 tries' and saw 4; the test counts real-time tries outside the timed files (inject the clock, as R232 did for mutate-time)",
+      "sort": "next",
+      "size": "small",
+      "status": "open"
     }
   ],
   "decisions": [
