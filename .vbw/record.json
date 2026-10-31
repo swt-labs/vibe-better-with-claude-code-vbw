@@ -64627,7 +64627,7 @@
       "text": "tools/bench-hooks.sh: the reference workload is compute-bound (a jq range of 30000) while the guard's cost is startup and parse bound, so on GitHub's Ubuntu 26.04 runner (jq 1.8.1) the reference ran at ratio 0.90 and every guard case came out 20.2–21.5 ms against the 20 ms budget: OVER, not slow (PR #739 CI, 2026-10-30). Shape the reference like a guard call (one jq reading a JSON document of fixed size with a program of fixed size) so its ratio tracks the hooks' cost; keep the nominal figure from the same shape",
       "sort": "next",
       "size": "small",
-      "status": "open"
+      "status": "done"
     },
     {
       "id": "T202",
