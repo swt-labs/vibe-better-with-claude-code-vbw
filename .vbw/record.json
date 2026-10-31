@@ -63445,14 +63445,14 @@
       "id": "F334",
       "req": "R151",
       "attempts": 0,
-      "status": "open",
+      "status": "fixed",
       "note": "C231 fail (exit 1)"
     },
     {
       "id": "F335",
       "req": "R152",
       "attempts": 0,
-      "status": "open",
+      "status": "fixed",
       "note": "C233 fail (exit 1)"
     }
   ],
@@ -67827,6 +67827,12 @@
       "id": "D548",
       "at": "2026-10-31T17:35:06Z",
       "text": "Contract approved: 227 requirements, 540 checks, 574 plans (5e1871687742)",
+      "plans": []
+    },
+    {
+      "id": "D549",
+      "at": "2026-10-31T19:13:07Z",
+      "text": "Contract approved: 227 requirements, 540 checks, 574 plans (eec635015d51)",
       "plans": []
     }
   ],
