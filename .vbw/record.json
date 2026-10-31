@@ -67808,6 +67808,12 @@
       "text": "P190.3 (T204): the cause is in the reference, not the guard: the guard cases subtract the sh -c jq startup but the reference kept it, and the startup is 6.9 ms of jq on a Mac against 1.9 ms on Linux, so the reference was 15.7 ms gross on the Mac and 12 ms on Linux while the guard's own cost was 14.1 (Mac) and 15.6 (Linux). The reference is now measured net of startup and its program is 28798 bytes with a regex per helper (guard-bash.jq 28744), nominal 10.3 ms. Guard/reference quotient git: Mac 14.1/8.8 = 1.60, ubuntu:24.04 15.6/10.5 = 1.49, ubuntu:26.04 14.4/9.8 = 1.47 (2026-10-31, tools/test-linux.sh containers on the Mac); the guard is unchanged. T197 and T201 settle by this; T196 stays open (a same-host reference exists, the busy-startup blind spot is unchanged).",
       "why": "The per-step table (VBW_BENCH_STEPS=1) shows compile and run costs match across Mac and Linux once the startup is subtracted; only the startup differs, and only the reference had kept it.",
       "at": "2026-10-31T17:06:02Z"
+    },
+    {
+      "id": "D548",
+      "at": "2026-10-31T17:35:06Z",
+      "text": "Contract approved: 227 requirements, 540 checks, 574 plans (5e1871687742)",
+      "plans": []
     }
   ],
   "commands": {
