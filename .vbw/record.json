@@ -63409,6 +63409,13 @@
       "sort": "next",
       "size": "small",
       "status": "open"
+    },
+    {
+      "id": "T207",
+      "text": "#694 (2.1.23, owner yes 2026-10-31): opt-in MCP tools for VBW agents, per server listed by the project; read-only roles get a tool only when the user marks it read-only; writing roles get every listed tool under the guards; first probe how Claude Code resolves plugin agents' tools: with mcp__ names and wildcards. VBW builds; halindrome tests on a project with code-graph and context-mode servers (before/after tool counts)",
+      "sort": "next",
+      "size": "medium",
+      "status": "open"
     }
   ],
   "decisions": [
