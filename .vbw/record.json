@@ -1,6 +1,15 @@
 {
   "schema": 6,
-  "lease": null,
+  "lease": {
+    "run": "qa-20261031T200935Z",
+    "kind": "qa",
+    "started_at": "2026-10-31T20:09:35Z",
+    "files": [],
+    "session": "0ee781c3-c5b6-4a6c-889f-04b89f1fba4a",
+    "cost": {
+      "usd": 2900.171823
+    }
+  },
   "protected": [
     "tests/adaptive-results.bats",
     "tests/agent-scratch.bats",
@@ -27207,12 +27216,19 @@
         }
       ],
       "qa": {
-        "result": "fail",
+        "result": "pass",
         "tier": "deep",
         "tree": "3d48c8bceea34a9b6e6aff4c6323b499a1e09a0b371a9ea2c63933a991916b11",
-        "at": "2026-10-31T19:19:20Z",
-        "note": "19/20 checks",
-        "rounds": 1
+        "at": "2026-10-31T20:11:56Z",
+        "note": "22/22 checks"
+      },
+      "outcome": {
+        "tier": "deep",
+        "predicted": "deep",
+        "held": true,
+        "fix_rounds": 1,
+        "qa_findings": 1,
+        "escalations": 1
       }
     }
   ],
@@ -63506,7 +63522,7 @@
       "req": "R238",
       "source": "qa",
       "attempts": 0,
-      "status": "fixed",
+      "status": "closed",
       "note": "Plan task 4 and the phase criterion say the run's result file (tools/l3-results/submodule.json) is copied back and committed with the scenario. It is not: git log --all shows no commit of tools/l3-results/submodule.json, and the file exists only untracked in ../fix-732 (passed false, pointer_unmoved false, check_ran_in_copy_submodule false, cost 5.35). The run and the review comment on #737 (issuecomment-6546777787) were done, but leaving the file out is a deviation no recorded decision covers. The plan's own test (tests/l3-submodule.bats, R238.5) requires a committed result to say passed true, so committing the honest failing result would turn that test red: the plan contradicts itself and needs the user's call. Regression test to add once decided: a committed tools/l3-results/submodule.json exists and the test holds it to what the run really judged (label L3, cost above 0, facts consistent with passed, non-empty not_tested), or a recorded decision that a failing run's result stays uncommitted until a passing run.",
       "phase": "P191"
     },
