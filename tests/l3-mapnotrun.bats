@@ -97,7 +97,9 @@ section_lines() {
   grep -q '^- test: npm test' .vbw/spec.md || { echo "the template no longer holds the commented commands"; false; }
   run section_lines .vbw/spec.md Commands
   [ "$status" -eq 0 ] && [ -z "$output" ] || { echo "status $status, output: $output"; false; }
-  printf -- '- test: sh test.sh\n' >> .vbw/spec.md
+  # The line goes inside ## Commands, right after its comment (the template's last section is another one).
+  awk '/^## Commands/ { c = 1 } { print } c && /^-->/ { print "- test: sh test.sh"; c = 0 }' .vbw/spec.md > .vbw/spec.md.new && mv .vbw/spec.md.new .vbw/spec.md
+  grep -q '^- test: sh test.sh$' .vbw/spec.md || { echo "the line was not placed"; false; }
   run section_lines .vbw/spec.md Commands
   [ "$status" -eq 0 ] && [ "$output" = "- test: sh test.sh" ] || { echo "status $status, output: $output"; false; }
 }
