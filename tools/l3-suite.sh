@@ -2906,19 +2906,25 @@ scenario_testforms() {
   fixture="greet.sh in a monorepo with apps/web and apps/mob, each with its own test runner (run.sh, which fails when it is not started in its subproject) and one test file; the spec names one test-file form per subproject with its dir; one requirement, approved by the user before the session; rigor auto; the user types /vbw:vibe and the build runs to the end"
   start="/vbw:vibe"
   checks() {
-    local passed=true r="$dir/.vbw/record.json" proof=false forms=false named=false
+    local passed=true r="$dir/.vbw/record.json" proof=false forms=false named=false reused=false
     jq -e '.evidence.passed == true' "$r" > /dev/null 2>&1 && proof=true
     jq -e '.evidence.test_files | (.["apps/web/tests/t_main.sh"].form == "web") and (.["apps/mob/tests/t_main.sh"].form == "mob")
       and .["apps/web/tests/t_main.sh"].status == "pass" and .["apps/mob/tests/t_main.sh"].status == "pass"' "$r" > /dev/null 2>&1 && forms=true
     jq -e '.evidence.commands.test.command | startswith("web: sh run.sh {file}; mob: sh run.sh {file}")' "$r" > /dev/null 2>&1 && named=true
-    say "proof passed: $proof; each form ran its file: $forms; test command names both forms: $named"
+    # Design criterion 6: a commit no test file reads, then a proof, reuses every file unit.
+    printf '# Notes\n' > "$dir/NOTES.md"
+    git -C "$dir" add NOTES.md && git -C "$dir" commit -qm "docs: notes"
+    (cd "$dir" && "$VBW" prove > /dev/null 2>&1) || true
+    jq -e '.evidence.passed == true and (.evidence.test_files | length == 2 and all(.[]; .reused == true))' "$r" > /dev/null 2>&1 && reused=true
+    say "proof passed: $proof; each form ran its file: $forms; test command names both forms: $named; a second proof reused every test file: $reused"
     common_checks
     expect "the proof passed ($proof)" [ "$proof" = true ]
     expect "each subproject's test file ran with its own form, in its dir, and passed ($forms)" [ "$forms" = true ]
     expect "the test command's place in the evidence names both forms ($named)" [ "$named" = true ]
+    expect "a proof after a commit no test file reads passed and reused both test files ($reused)" [ "$reused" = true ]
     [ "$failed" -eq 0 ] || passed=false
     result_write testforms "$fixture" "${cost_usd:-0}" "$passed" \
-      "$(jq -n --argjson p "$proof" --argjson f "$forms" --argjson n "$named" '{proof_passed: $p, forms_ran: $f, command_names_forms: $n}')" \
+      "$(jq -n --argjson p "$proof" --argjson f "$forms" --argjson n "$named" --argjson u "$reused" '{proof_passed: $p, forms_ran: $f, command_names_forms: $n, second_proof_reused_all: $u}')" \
       '["the Lead proposing the forms itself from the map (the forms are seeded)","a form whose dir is a submodule (waits on #737)","a change in one subproject rerunning only its files (tests/testfiles-forms.bats holds it)","real test runners (vitest, jest, pytest)","the forms in the approval question as drawn on screen"]'
   }
 }

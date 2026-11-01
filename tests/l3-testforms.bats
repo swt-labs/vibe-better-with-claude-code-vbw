@@ -23,7 +23,7 @@ body() { sed -n "/^scenario_$1()/,/^}/p" "$SUITE"; }
   local k
   body testforms | grep -q 'result_write testforms '
   body testforms | grep -qF '.evidence.test_files'
-  for k in proof_passed forms_ran command_names_forms; do body testforms | grep -qF "$k"; done
+  for k in proof_passed forms_ran command_names_forms second_proof_reused_all; do body testforms | grep -qF "$k"; done
   if body testforms | grep -qE 'screen \|.*grep'; then false; fi
 }
 
