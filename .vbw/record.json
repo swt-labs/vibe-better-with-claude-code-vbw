@@ -69148,6 +69148,19 @@
       "text": "MCP mechanism (P192, after the probe of tools/probes/mcp-tools.json): agent files drop the tools: allowlist; each role's file names disallowedTools for the built-ins it must not have (read-only roles: Write, Edit, NotebookEdit), so agents inherit the session's MCP tools; one PreToolUse guard for VBW agents refuses any tool outside the role's built-in list and the record's settings.mcp by role, so a new Claude Code built-in or an unnamed MCP tool is refused, not leaked, and a project naming nothing keeps today's effective tools. The probe is extended first to confirm a plugin agent honours disallowedTools and inherits MCP with tools: omitted, and to measure the hook's cost on Read calls; if either fails, the fallback is per-project agent copies kept fresh by the kernel.",
       "why": "The probe showed no pool entry (mcp__*, mcp__*__*, mcp__.*) gives all MCP tools, and per-server entries cannot be written into shipped plugin files per project. Inheritance plus a role allowlist enforced by a hook keeps one shipped set of agent files (nothing to go stale) and turns unknown tools into refusals. Known cost: agents see all tool descriptions. Lead decision, 2026-11-01.",
       "at": "2026-11-01T13:41:00Z"
+    },
+    {
+      "id": "D562",
+      "at": "2026-11-01T14:30:08Z",
+      "text": "Contract approved: 232 requirements, 556 checks, 585 plans (ce282b9c873c)",
+      "plans": [
+        "P192.1",
+        "P192.3",
+        "P195.1",
+        "P195.2",
+        "P192.5",
+        "P195.3"
+      ]
     }
   ],
   "commands": {
