@@ -307,27 +307,43 @@ jq -nc --arg d "$work" '{hook_event_name: "PostToolUse", tool_name: "AskUserQues
 # reference call. It judges no case and prints no guard line.
 if [ "${VBW_BENCH_STEPS:-}" = 1 ]; then
   steps_hook=$(jq -r '[.hooks.PreToolUse[] | select(.matcher as $m | "Bash" | test("^(" + $m + ")$"))][0].hooks[0].command' "$hooks_json")
+  steps_prelude="${steps_hook%%jq -nc*}"
   steps_compile="jq -nc --rawfile glance /dev/null --arg root \"$work\" --arg dir \"$work\" --arg open 0 -f \"$PLUGIN/hooks/guard-bash.jq\" - /dev/null \"$PLUGIN/hooks/end.json\""
   steps_ref="jq -nc --rawfile glance \"$work/glance.json\" --arg root \"$work\" --arg dir \"$work\" --arg open 0 -f \"$work/reference/reference.jq\" - \"$work/reference/reference.json\" \"$work/end.json\""
-  printf 'steps: CPU ms per call over %s runs\n' "$RUNS"
-  steps_rows=("sh startup" "jq startup" "program compile" "program run" "reference")
-  steps_cells=("" "" "" "" "")
+  steps_refcompile="jq -nc --rawfile glance /dev/null --arg root \"$work\" --arg dir \"$work\" --arg open 0 -f \"$work/reference/reference.jq\" - /dev/null /dev/null"
+  printf 'steps: CPU ms per call over %s runs, net of the sh and jq startup; the quotient in parentheses is to the reference run\n' "$RUNS"
+  # The gross rows are the startups. Each net row is a pair's difference to its own startup
+  # (the shell prelude to sh alone, the others to sh and jq together), printed as 'N.N (Q.QQ)'
+  # with Q the quotient to the reference run of the same column (1.00 for the reference run).
+  # A difference below zero is measurement noise and prints as 0.0.
+  net() { perl -e 'my $d = $ARGV[1] - $ARGV[0]; printf "%.1f", $d > 0 ? $d : 0' -- "$1" "$2"; }
+  steps_rows=("sh startup" "jq startup" "shell prelude" "program compile" "program run" "reference compile" "reference run")
+  steps_cells=("" "" "" "" "" "" "")
   for input in git npm big interp; do
-    read -r _ c0 < <(cpu_pair /dev/null true ":")
-    read -r _ c1 < <(cpu_pair /dev/null true "jq -n empty")
-    read -r _ c2 < <(cpu_pair /dev/null true "$steps_compile")
-    read -r _ c3 < <(cpu_pair "$work/$input.json" true "$steps_hook")
-    read -r _ c4 < <(cpu_pair /dev/null true "$steps_ref")
+    read -r c0 c1 < <(cpu_pair /dev/null ":" "jq -n empty")
+    read -r a b < <(cpu_pair "$work/$input.json" ":" "$steps_prelude")
+    n2=$(net "$a" "$b")
+    read -r a b < <(cpu_pair /dev/null "jq -n empty" "$steps_compile")
+    n3=$(net "$a" "$b")
+    read -r a b < <(cpu_pair "$work/$input.json" "jq -n empty" "$steps_hook")
+    n4=$(net "$a" "$b")
+    read -r a b < <(cpu_pair /dev/null "jq -n empty" "$steps_refcompile")
+    n5=$(net "$a" "$b")
+    read -r a b < <(cpu_pair /dev/null "jq -n empty" "$steps_ref")
+    n6=$(net "$a" "$b")
     steps_cells[0]="${steps_cells[0]}	$c0"
     steps_cells[1]="${steps_cells[1]}	$c1"
-    steps_cells[2]="${steps_cells[2]}	$c2"
-    steps_cells[3]="${steps_cells[3]}	$c3"
-    steps_cells[4]="${steps_cells[4]}	$c4"
+    q=2
+    for v in "$n2" "$n3" "$n4" "$n5"; do
+      steps_cells[$q]="${steps_cells[$q]}	$(perl -e 'printf "%s (%.2f)", $ARGV[0], $ARGV[1] > 0 ? $ARGV[0] / $ARGV[1] : 0' -- "$v" "$n6")"
+      q=$((q + 1))
+    done
+    steps_cells[6]="${steps_cells[6]}	$n6 (1.00)"
   done
   {
     printf 'step\tgit\tnpm\tbig\tinterp\n'
-    for i in 0 1 2 3 4; do printf '%s%s\n' "${steps_rows[$i]}" "${steps_cells[$i]}"; done
-  } | awk -F"\t" '{ printf "%-16s %-6s %-6s %-6s %s\n", $1, $2, $3, $4, $5 }'
+    for i in 0 1 2 3 4 5 6; do printf '%s%s\n' "${steps_rows[$i]}" "${steps_cells[$i]}"; done
+  } | awk -F"\t" '{ printf "%-18s %-14s %-14s %-14s %s\n", $1, $2, $3, $4, $5 }'
   exit 0
 fi
 
