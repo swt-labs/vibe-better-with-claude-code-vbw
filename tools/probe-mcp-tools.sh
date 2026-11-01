@@ -208,8 +208,8 @@ else add hook_every_tool '(no tools: line; hook matcher omitted)' "RESULT: MISSE
 every=$(printf '%s' "$cases" | jq -r '.hook_every_tool.result | startswith("RESULT: ALL")')
 if [ "$every" = true ]; then matcher=null; else matcher='"set"'; fi
 
-# builtins: the non-mcp__ tools inherit_omitted's agent listed.
-builtins=$(printf '%s' "$inherit_raw" | jq -Rsc '[capture("TOOLS:(?<t>.*)"; "s").t | split(",")[] | gsub("^[ `\"]+|[ `\"\\.]+$"; "") | select(length > 0 and (startswith("mcp__") | not))] | unique' 2> /dev/null || echo '[]')
+# builtins: the tool names (never mcp__, one name each, deferred ones included) inherit_omitted's agent listed.
+builtins=$(printf '%s' "$inherit_raw" | jq -Rsc '[capture("TOOLS:(?<t>.*)"; "s").t | split(",")[] | sub("^.*: "; "") | gsub("^[ `\"(]+|[ `\".)]+$"; "") | select(test("^[A-Z][A-Za-z0-9]*$"))] | unique' 2> /dev/null || echo '[]')
 [ -n "$builtins" ] || builtins='[]'
 
 # always_allowed: every tool other than Read that an agent with 'tools: Read ...' or the

@@ -1,6 +1,6 @@
 {
   "probe": "mcp-tools",
-  "at": "2026-11-01T14:52:59Z",
+  "at": "2026-11-01T16:26:03Z",
   "claude_version": "2.1.316 (Claude Code)",
   "cases": {
     "server_wildcard": {
@@ -37,11 +37,11 @@
     },
     "inherit_omitted": {
       "tools_line": "(no tools: line)",
-      "result": "RESULT: NOTE-TOKEN-7731 TOOLS: Agent, Bash, Edit, ListAgents, Read, ReportFindings, Skill, ToolSearch, Write, SubagentHandback, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, mcp__probe__read_note (also loaded by deferred search, not yet fetched via ToolSearch: CronCreate, CronDelete, CronList, DesignSync, EnterWorktree, ExitWorktree, LSP, ListMcpResourcesTool, Monitor, NotebookEdit, PushNotification, ReadMcpResourceDirTool, ReadMcpResourceTool, RemoteTrigger, SendMessage, TaskStop, WebFetch, WebSearch, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, mcp__probe__write_note)"
+      "result": "RESULT: NOTE-TOKEN-7731 TOOLS: Agent, Bash, Edit, ListAgents, Read, ReportFindings, Skill, ToolSearch, Write, SubagentHandback, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, mcp__probe__read_note, mcp__probe__write_note, CronCreate, CronDelete, CronList, DesignSync, EnterWorktree, ExitWorktree, LSP, ListMcpResourcesTool, Monitor, NotebookEdit, PushNotification, ReadMcpResourceDirTool, ReadMcpResourceTool, RemoteTrigger, SendMessage, TaskStop, WebFetch, WebSearch, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>"
     },
     "disallowed_honoured": {
       "tools_line": "disallowedTools: Write, Edit, NotebookEdit, Bash",
-      "result": "RESULT: NOT-WRITTEN RESULT: NOT-WRITTEN. The Write tool is not available in this session. It is not in my tool list, and ToolSearch select:Write returned no match. I did not write /Users/tiagoserodio/Documents/AI Stuff/vibe-better-with-claude-code-vbw-worktrees/v2/.vbw/runtime/scratch/probe-mcp-tools/proj/probe-written.txt by any other route."
+      "result": "RESULT: NOT-WRITTEN RESULT: NOT-WRITTEN. The Write tool is not available in this agent session. Its schema was not among my tools, and ToolSearch select:Write returned \"No matching deferred tools found\". I did not create /Users/tiagoserodio/Documents/AI Stuff/vibe-better-with-claude-code-vbw-worktrees/v2/.vbw/runtime/scratch/probe-mcp-tools/proj/probe-written.txt by any other route, because you asked for the Write tool specifically."
     },
     "hook_every_tool": {
       "tools_line": "(no tools: line; hook matcher omitted)",
@@ -51,6 +51,7 @@
   "builtins": [
     "Agent",
     "Bash",
+    "CronCreate",
     "CronDelete",
     "CronList",
     "DesignSync",
@@ -75,15 +76,14 @@
     "ToolSearch",
     "WebFetch",
     "WebSearch",
-    "Write",
-    "not yet fetched via ToolSearch: CronCreate"
+    "Write"
   ],
   "always_allowed": [
     "StructuredOutput",
     "SubagentHandback"
   ],
   "hook_matcher": null,
-  "hook_read_cpu_ms": 5.8,
+  "hook_read_cpu_ms": 5.5,
   "mechanism": "D561: the agents drop the tools: allowlist and inherit the session's MCP tools; each names disallowedTools for the built-ins outside its role (honoured by a plugin agent); one PreToolUse tools guard, matcher omitted, sees every tool by agent_type and refuses what the role may not use",
   "decision": "D561"
 }
