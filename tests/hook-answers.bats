@@ -260,6 +260,8 @@ tools_call() {
   done
   run tools_call Read vbw:qa
   [ "$status" -eq 0 ] && [ -z "$output" ] || { echo "vbw:qa Read: $output"; false; }
+  run tools_call SubagentHandback vbw:qa
+  [ "$status" -eq 0 ] && [ -z "$output" ] || { echo "vbw:qa SubagentHandback: $output"; false; }
   "$VBW" config set mcp github:read-only > /dev/null
   run tools_call mcp__github__get_issue vbw:qa
   [ "$status" -eq 0 ] && [ -z "$output" ] || { echo "vbw:qa opened MCP tool: $output"; false; }

@@ -162,6 +162,14 @@ names_role() { printf '%s\n' "$1" | grep -qE "(^|[^a-z])$2([^a-z]|$)"; }
     run tool_call "$tool"
     [ "$status" -eq 0 ] && [ -z "$output" ] || { echo "with a corrupt record the main session's $tool got an answer: $output"; false; }
   done
+  # a run open and the record corrupt: the main session's call is still not blocked (the
+  # hook command reads no project file for it)
+  mkdir -p .vbw/runtime && : > .vbw/runtime/run-open
+  run tool_call Read
+  [ "$status" -eq 0 ] && [ -z "$output" ] || { echo "with a run open and a corrupt record the main session was blocked ($status): $output"; false; }
+  run tool_call Read "my-plugin:reviewer"
+  [ "$status" -eq 0 ] && [ -z "$output" ] || { echo "with a run open and a corrupt record another plugin's agent was blocked ($status): $output"; false; }
+  rm -f .vbw/runtime/run-open
   mkdir -p "$TEST_ROOT/plain" && git -C "$TEST_ROOT/plain" init -q
   run tool_call FutureTool vbw:qa "$TEST_ROOT/plain"
   [ "$status" -eq 0 ] && [ -z "$output" ] || { echo "the hook answered outside a VBW project: $output"; false; }
