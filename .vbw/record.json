@@ -17977,6 +17977,46 @@
           "plan": "P191.2"
         }
       ]
+    },
+    {
+      "id": "R239",
+      "text": "The Bash guard refuses an agent's direct history change inside a run: a git commit, merge, rebase, cherry-pick, revert, am or commit-tree run by an agent under a run lease (including one aimed at a submodule with -C or cd) is refused with vbw commit named as the next step, while vbw's own commits and the user's commands outside agents are untouched (T209: a build agent ran git commit -- sub in the submodule real-user run on PR #737)",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M49",
+      "rules": []
+    },
+    {
+      "id": "R240",
+      "text": "The status line keeps a running step's end time on a narrow row: the step line puts 'N min, until around HH:MM' before the holder's name, so a row that Claude Code truncates loses the holder first, pinned by a width-limited render test and by the steptime real-user scenario passing (T211)",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M49",
+      "rules": []
+    },
+    {
+      "id": "R241",
+      "text": "A project can name the MCP servers whose tools VBW's agents may use, in one documented place (docs/ says where and how); a project that names none gives every VBW agent exactly the tools it has today. The mechanism is chosen from a recorded probe of how Claude Code resolves a plugin agent's tools with mcp__ names and wildcards (#694, T207)",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M49",
+      "rules": []
+    },
+    {
+      "id": "R242",
+      "text": "Named MCP tools reach VBW's agents by role: Dev, Debugger and Docs get every named tool; Architect, Lead, Scout and QA get a named tool only when the user marked it read-only, never by a guess from its name; inside a run every agent's file changes are still judged by the guards and limited to the run's files (#694)",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M49",
+      "rules": []
+    },
+    {
+      "id": "R243",
+      "text": "The hook bench's Linux gap is found at its step: bench-steps.yml's step tables from GitHub's macOS and Ubuntu runners name the guard step whose cost is Linux-only, docs/guards.md states it with its figures, and the cause is removed so that on the release's CI every runner's guard-to-reference quotient is within 1.25 times macOS's (T212: 1.31x in PR #741)",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M49",
+      "rules": []
     }
   ],
   "phases": [
@@ -77038,6 +77078,17 @@
         "ended": "2026-10-31T20:14:46Z",
         "cost": {
           "usd": 0.938523
+        }
+      },
+      {
+        "id": "plan-20261101T121238Z",
+        "kind": "plan",
+        "session": "0ee781c3-c5b6-4a6c-889f-04b89f1fba4a",
+        "milestone": "M49",
+        "started": "2026-11-01T12:12:38Z",
+        "ended": "2026-11-01T12:31:51Z",
+        "cost": {
+          "usd": 5.741746
         }
       }
     ],
