@@ -62769,12 +62769,46 @@
         "P192.3",
         "P195.2"
       ],
-      "status": "planned",
+      "status": "done",
       "role": "docs",
       "tasks": [
         "docs/guards.md, 'MCP tools by role': VBW's agents inherit the session's tools (no tools: list; each role's disallowedTools hides the built-ins it must not have), and the tools guard, one PreToolUse entry with no matcher, sees every tool a VBW agent calls: the role's own built-ins (the seven roles' lists), the MCP tools the setting opens to the role, and nothing else, so a tool outside the role's own, one a Claude Code update adds included, is refused; replace 'PreToolUse on `mcp__` tools'; the main session is never judged and pays one small jq per tool call; the Engineering bullet that names `guard-mcp.jq` (a PreToolUse jq entry on `mcp__` tools) names guard-tools.jq, its omitted matcher and its guard (tools) cases, the main session's among them",
         "docs/workflows.md: the 'Every refusal and its next step' table gains 'Guards: a tool outside the agent's role (another role's built-in, or one VBW does not know) | The agent goes on with its own tools; a tool a role should have is a VBW change, not a setting'; the Agents section's MCP paragraph says agents inherit the session's tools and the guard holds each to its role",
         "tests/mcp-docs.bats passes"
+      ],
+      "mutations": [
+        {
+          "rule": {
+            "req": "R242",
+            "text": "the docs say which roles get what, that a reading role never gets a tool by a guess from its name, and that an MCP tool's writes are judged after the fact by the run's scope check ('changed X, which is not in the plan'), never before the call"
+          },
+          "what": "said a reading role sometimes gets a tool by a guess",
+          "files": [
+            "docs/guards.md"
+          ],
+          "checks": {
+            "C553": "red"
+          },
+          "result": "red",
+          "at": "2026-11-01T16:44:46Z",
+          "head": "95e1f4f362d8f632d99d2d9f578cc5e06380f6a9"
+        },
+        {
+          "rule": {
+            "req": "R242",
+            "text": "docs/guards.md's MCP section says the guard sees every tool a VBW agent calls, so a tool outside the role's own, one a Claude Code update adds included, is refused, and no longer that it runs only on mcp__ tools; docs/workflows.md's refusal table has the row for a tool outside the agent's role"
+          },
+          "what": "removed the refusal-table row's wording",
+          "files": [
+            "docs/workflows.md"
+          ],
+          "checks": {
+            "C553": "red"
+          },
+          "result": "red",
+          "at": "2026-11-01T16:45:20Z",
+          "head": "95e1f4f362d8f632d99d2d9f578cc5e06380f6a9"
+        }
       ]
     },
     {
@@ -79250,6 +79284,17 @@
         "ended": "2026-11-01T16:41:56Z",
         "cost": {
           "usd": 0.593259
+        }
+      },
+      {
+        "id": "build-20261101T164256Z",
+        "kind": "build",
+        "session": "0ee781c3-c5b6-4a6c-889f-04b89f1fba4a",
+        "milestone": "M49",
+        "started": "2026-11-01T16:42:56Z",
+        "ended": "2026-11-01T16:46:54Z",
+        "cost": {
+          "usd": 0.373795
         }
       }
     ],
