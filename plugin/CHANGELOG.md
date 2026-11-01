@@ -1,5 +1,52 @@
 # Changelog
 
+## [2.1.23] - 2026-11-01
+
+VBW's agents can now use your project's MCP tools. The idea came from
+[@halindrome](https://github.com/halindrome)'s report (#694). Thank you.
+
+### Added
+
+- **MCP tools for VBW's agents, by role.** Name the MCP servers your agents
+  may use with `vbw config set mcp "SERVER SERVER:read-only
+  SERVER:read-only=TOOL,TOOL"`. Dev, Debugger and Docs get every tool of a
+  named server. Architect, Lead, Scout and QA get only what you mark
+  read-only: a whole server, or the tools you list. VBW never guesses from a
+  tool's name. With nothing named, every agent has exactly the tools it had
+  before, and every MCP call from a VBW agent is refused. A new guard judges
+  each tool call a VBW agent makes, new Claude Code tools included. Your own
+  session and other plugins' agents are never judged. Inside a run, an MCP
+  tool's file changes still have to stay within the plan's files. The setting
+  is shown by `vbw config` and in the panel. See "MCP tools by role" in
+  `docs/guards.md`. (#694, from [@halindrome](https://github.com/halindrome))
+
+### Fixed
+
+- **No hand commits while VBW drives.** An agent under a run can no longer
+  write history with `git commit-tree`, the one form the guard missed.
+  Commit, merge, rebase, cherry-pick, revert and am were already refused.
+  While an autonomous run or a loop is armed, VBW's own chat is refused the
+  same commands, and `git pull` too, each refusal naming `vbw commit` as the
+  next step. The vibe skill says the chat never commits plan work by hand.
+  Your own commands in your own terminal are never checked.
+- **The status line's step end time.** The real-user check for it read an
+  old pattern. The status line itself was right: it shows "until around
+  HH:MM" as the chat and the Comms pane do.
+- **The Linux speed gap in the hook benchmark is closed.** jq drops the
+  definitions a program never calls before it compiles. The guard calls all
+  of its own, but the benchmark's reference called about one in four, so the
+  reference compiled less and Linux looked slow. The reference now calls four
+  in five of its definitions, and the nominal figure is 17.8 ms. On GitHub's
+  runners the guard-to-reference figure is now 0.79 on macOS against 0.78 and
+  0.77 on Ubuntu. `docs/guards.md` has the step table.
+
+### For you to do
+
+- Nothing. Projects that set no `mcp` keep today's tools. The plan of record
+  moves to schema 7 only when you set `mcp`.
+
+Sizes, for information: kernel 764 KB (`plugin/bin/vbw` and `plugin/lib`), mods 349 KB (hooks, panel and status line), workflows 74 KB, prompts 113 KB (agents and skills).
+
 ## [2.1.22] - 2026-10-31
 
 A fourth community release. The guard fix is
