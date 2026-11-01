@@ -1,6 +1,15 @@
 {
   "schema": 6,
-  "lease": null,
+  "lease": {
+    "run": "qa-20261101T214021Z",
+    "kind": "qa",
+    "started_at": "2026-11-01T21:40:21Z",
+    "files": [],
+    "session": "0ee781c3-c5b6-4a6c-889f-04b89f1fba4a",
+    "cost": {
+      "usd": 2963.528769
+    }
+  },
   "protected": [
     "tests/adaptive-results.bats",
     "tests/agent-scratch.bats",
@@ -27987,12 +27996,19 @@
         }
       ],
       "qa": {
-        "result": "fail",
+        "result": "pass",
         "tier": "deep",
-        "tree": "8b5189622e6fdad2ab6780e5b655e8cc2e7851782af9df369c4a9a5b49316ce9",
-        "at": "2026-11-01T20:00:09Z",
-        "note": "24/25 checks",
-        "rounds": 1
+        "tree": "f65574c456441f31e64537d88a60d7a60ec37a8603ea329767850900ce3e7973",
+        "at": "2026-11-01T21:41:23Z",
+        "note": "5/5 checks (re-check round 2)"
+      },
+      "outcome": {
+        "tier": "deep",
+        "predicted": "deep",
+        "held": true,
+        "fix_rounds": 1,
+        "qa_findings": 1,
+        "escalations": 2
       }
     }
   ],
@@ -65650,7 +65666,7 @@
       "req": "R243",
       "source": "qa",
       "attempts": 0,
-      "status": "fixed",
+      "status": "closed",
       "note": "docs/guards.md line 384 ends the P195 section with \"The nominal figure is one, 10.3 ms, with no per-system allowance.\" That number is false after this phase: commit e990b864 changed NOMINAL_MS in tools/bench-hooks.sh (line 100) from 10.3 to 17.8, because the reference now compiles more of its definitions. A reader checking the doc against the bench gets the wrong nominal figure (the bench prints \"nominal 17.8\"). Regression test: in tests/bench-linux-step-docs.bats (or bench-limits-docs.bats) read NOMINAL_MS from tools/bench-hooks.sh and fail when docs/guards.md states a different nominal ms figure.",
       "phase": "P195"
     }
@@ -70227,6 +70243,12 @@
       "at": "2026-11-01T20:42:25Z",
       "text": "Contract approved: 232 requirements, 556 checks, 585 plans (3301f29b1a88)",
       "plans": []
+    },
+    {
+      "id": "D575",
+      "text": "Keep docs/guards.md changed by f0afd6ff (F344)",
+      "why": "The owner chose keep: the bench section's nominal figure now matches the bench's NOMINAL_MS 17.8 ms; QA found the old 10.3 ms",
+      "at": "2026-11-01T21:39:58Z"
     }
   ],
   "commands": {
