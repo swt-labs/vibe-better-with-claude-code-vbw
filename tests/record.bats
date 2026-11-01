@@ -55,7 +55,7 @@ violations_after() {
   [ "$output" = "[]" ]
 }
 
-@test "rejects a schema that does not match the record: older records follow their fields, format 4 carries protected" {
+@test "R241: rejects a schema that does not match the record: older records follow their fields, format 4 carries protected" {
   run violations_after '.schema = 2'
   [[ "$output" == *"schema must be 2 when a check is alone, else 1"* ]]
   run violations_after 'del(.schema)'
@@ -63,7 +63,7 @@ violations_after() {
   run violations_after '.schema = 4'
   [[ "$output" == *"protected is missing"* ]]
   run violations_after '.protected = ["tests/pay.test.ts"]'
-  [[ "$output" == *"protected is only for a schema-4, 5 or 6 record"* ]] || false
+  [[ "$output" == *"protected is only for a schema-4, 5, 6 or 7 record"* ]] || false
   run violations_after '.schema = 4 | .protected = ["tests/pay.test.ts"]'
   [ "$output" = "[]" ]
   run violations_after '.schema = 4 | .protected = []'

@@ -229,3 +229,56 @@ hm_of() {
   grep -qF 'c("38;5;214"; "⚑ needs you' "$PLUGIN_ROOT/scripts/statusline.jq"
   grep -qF 'c("38;5;77"; "✓ idle' "$PLUGIN_ROOT/scripts/statusline.jq"
 }
+
+# R240 (T211, D558): the end time reaches the status line from a step note exactly as a
+# run writes it, and the real-user suite's status line pattern reads it. The steptime
+# scenario recorded no status line time in about 120 samples on 2026-10-31 while the
+# chat and Comms had it; these cases hold the render on the real note shape and tie the
+# suite's pattern to the status line's wording, so the two can never diverge unseen.
+
+# L3_STATUS_UNTIL: the one pattern tools/l3-suite.sh reads the status line's end time
+# with, taken from the suite itself (its one top-level definition).
+suite_pattern() {
+  local line
+  line=$(grep -m1 '^L3_STATUS_UNTIL=' "$REPO_ROOT/tools/l3-suite.sh") || { echo "tools/l3-suite.sh defines no top-level L3_STATUS_UNTIL"; return 1; }
+  printf '%s\n' "$line" > "$TEST_ROOT/pattern.sh"
+  # shellcheck disable=SC1091
+  . "$TEST_ROOT/pattern.sh"
+  [ -n "${L3_STATUS_UNTIL:-}" ] || { echo "L3_STATUS_UNTIL is empty"; return 1; }
+}
+
+@test "R240: a build note exactly as a run writes it (units and road keys) shows the end time in the step's first minute, then with the minutes" {
+  step_seed build 600 2 3
+  "$VBW" run start build P1.1 > /dev/null
+  # The note the kernel wrote: every key step_start writes, plus the road.
+  for k in kind run session pid started_at ids doing parts proof first_end end late units road; do
+    jq -e --arg k "$k" 'has($k)' "$NOTE" > /dev/null || { echo "the run's note has no $k:"; cat "$NOTE"; false; }
+  done
+  jq -e '.end != null and .end == .first_end' "$NOTE" > /dev/null || { echo "the run's note has no end:"; cat "$NOTE"; false; }
+  run render
+  [ "$status" -eq 0 ]
+  [[ "${lines[0]}" == *"● working: building P1.1 · 0 of 1 · until around $(hm end)"* ]] || { echo "${lines[0]}"; cat "$NOTE"; false; }
+  [[ "${lines[0]}" != *" min, until"* ]] || { echo "a minutes prefix in the first minute: ${lines[0]}"; false; }
+  step_back 300
+  run render
+  [[ "${lines[0]}" == *"● working: building P1.1 · 0 of 1 · 5 min, until around $(hm end)"* ]] || { echo "${lines[0]}"; false; }
+}
+
+@test "R240: a proof note exactly as plugin/lib/proofsteps.sh writes it at its start (proof null, road key) shows its end time" {
+  jq -n --argjson pid "$LIVE" 'def s($n): (now | floor) + $n | todateiso8601;
+    {kind: "proof", run: null, session: "s1", pid: $pid, started_at: s(-20), ids: [], doing: "proving 0 of 6 checks",
+     parts: {done: 0, total: 6}, proof: null, first_end: s(60), end: s(60), late: false, road: null}' > "$NOTE"
+  run render
+  [ "$status" -eq 0 ]
+  [[ "${lines[0]}" == *"● working: proving 0 of 6 checks · until around $(hm end)"* ]] || { echo "${lines[0]}"; false; }
+}
+
+@test "R240: the real-user suite's status line pattern reads the HH:MM the status line prints, so the two cannot diverge unseen" {
+  suite_pattern
+  step_seed build 600 2 3
+  "$VBW" run start build P1.1 > /dev/null
+  run render
+  local got
+  got=$(printf '%s\n' "${lines[0]}" | grep -oE "$L3_STATUS_UNTIL" | head -1 | grep -oE '[0-9]{2}:[0-9]{2}$' || true)
+  [ "$got" = "$(hm end | grep -oE '[0-9]{2}:[0-9]{2}$')" ] || { echo "pattern '$L3_STATUS_UNTIL' read '$got' from: ${lines[0]}"; false; }
+}

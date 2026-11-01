@@ -57,14 +57,15 @@ agents() { find "$PLUGIN_ROOT/agents" -name '*.md' | LC_ALL=C sort; }
   done < <(workflows)
 }
 
-@test "agents have a name matching the file, a single-line description and a tool list" {
+@test "agents have a name matching the file, a single-line description and a disallowedTools line (no tools: allowlist)" {
   local f name
   while IFS= read -r f; do
     name=$(basename "$f" .md)
     [ "$(sed -n 1p "$f")" = "---" ]
     grep -qx "name: $name" "$f" || { echo "name is not $name: $f"; false; }
     grep -qE '^description: .{20,}$' "$f" || { echo "description missing or empty: $f"; false; }
-    grep -qE '^tools: [A-Z]' "$f" || { echo "tools missing: $f"; false; }
+    grep -qE '^disallowedTools: [A-Z]' "$f" || { echo "disallowedTools missing: $f"; false; }
+    ! grep -q '^tools:' "$f" || { echo "tools: allowlist present: $f"; false; }
   done < <(agents)
 }
 

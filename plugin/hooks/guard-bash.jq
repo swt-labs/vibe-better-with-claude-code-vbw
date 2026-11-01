@@ -345,6 +345,15 @@ def program_denial($g):
 def unreadable_denial:
   (.[] | "\(.) writes a file the guard cannot name: the program gives its target through a variable, an expression or another call, so the guard cannot read where it writes\nNext: name the file as a literal path in the program, or write it with the Edit tool (Write for a new file)");
 
+# VBW's own chat (no agent_type) while its autonomous run is armed or a loop runs
+# (R239): plan work is committed by vbw commit, never by hand. The user's own
+# commands are never checked.
+def chat_drives($g):
+  select($g.lease == null and ($g.hook.agent_type // "") == "" and ($g.armed or $g.loop_on))
+  | select(.cmd == "git") | git_words as $w | ($w[0] // "") as $s
+  | select($s | test("^(commit|commit-tree|push|rebase|merge|pull|cherry-pick|revert|am)$"))
+  | "git \($s) by VBW's chat while \(if $g.armed then "an autonomous run is armed" else "a loop runs" end): plan work is committed by vbw commit PLAN \"type(scope): description\" inside the run, never by hand\nNext: follow the proof's Next line, or run vbw commit PLAN \"type(scope): description\"; the user commits by hand from their own terminal";
+
 # A subagent during a run (docs/workflows.md): commits go through vbw commit;
 # builders share one working tree, so nothing may move HEAD or other builders'
 # changes; files are restored and written by the shell (shell_writes) only
@@ -352,8 +361,8 @@ def unreadable_denial:
 def in_run($g):
   ( select(written(glance_path)) | glance_reason ),
   ( select(.cmd == "git") | git_words as $w | ($w[0] // "") as $s | $w[1:] as $a
-    | ( select($s | test("^(commit|push|rebase|merge|pull|cherry-pick|revert|am)$"))
-        | "git \($s) by a builder: commits go through vbw commit PLAN \"type(scope): description\"" ),
+    | ( select($s | test("^(commit|commit-tree|push|rebase|merge|pull|cherry-pick|revert|am)$"))
+        | "git \($s) by a builder: commits go through vbw commit PLAN \"type(scope): description\"\nNext: run vbw commit PLAN \"type(scope): description\" with the files you changed" ),
       ( select(($s == "stash" and (($a[0] // "") | test("^(list|show)$") | not)) or ($s | test("^(switch|reset)$"))
                or ($s == "checkout" and (any($a[]; . == "--") | not)))
         | "git \($s) by a builder changes the working tree other builders share: undo your own change by editing your files" ),
@@ -382,6 +391,7 @@ guard_context(true) as $g
     // (select($g.project and $g.foreign != null) | [$cmds[] | foreign_run($g)][0])
     // (select($g.project)
         | [$cmds[] | in_project($g)][0]
+          // [$cmds[] | chat_drives($g)][0]
           // (select($g.lease != null)
               | [$cmds[] | in_run($g)][0]
                 // (select($c | test("<<")) | ([$c | heredoc_programs | program_writes | program_denial($g)][0])

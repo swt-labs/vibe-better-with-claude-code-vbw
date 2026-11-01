@@ -79,8 +79,9 @@ nothing_built() {
   [ "$status" -eq 2 ]
   local listed
   listed=$(printf '%s\n' "$output" | sed -n -E 's/^  (.*):$/\1/p')
-  # Six inputs on five projects, the loop case on two, and six status lines.
-  [ "$(printf '%s\n' "$listed" | wc -l | tr -d ' ')" -eq 38 ] || { echo "$listed"; false; }
+  # Seven inputs on five projects, the tools guard in the main session, the loop case on two,
+  # and six status lines.
+  [ "$(printf '%s\n' "$listed" | wc -l | tr -d ' ')" -eq 44 ] || { echo "$listed"; false; }
   printf '%s\n' "$listed" | grep -qxF 'status line (no project)' || { echo "the no-project hand-back is not a case:"; echo "$listed"; false; }
   bench
   [ "$status" -eq 0 ] || { echo "$output"; false; }

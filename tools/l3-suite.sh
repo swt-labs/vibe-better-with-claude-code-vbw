@@ -22,6 +22,8 @@ VBW="$ROOT/plugin/bin/vbw"
 ALL="greenfield reject resume change convert balanced docs qafix decision debug research edgecase leftover recheck approval newcomer senior panel steptime road pluginoff tools legacy nolegacy smallchange costs loop plugindir sessions taskbreak fixchecks failoutput leaveout hiddenrecord latedecision ignoredplanning stalefix mapsnapshot alreadyfixed mapnotrun submodule"
 RESULTS="$ROOT/tools/l3-results"
 STEPS=60
+# The status line's end time since d7f73771: 'until around HH:MM', with a day word when the end is not today.
+L3_STATUS_UNTIL='until around ([A-Za-z]+ )?[0-9]{2}:[0-9]{2}'
 
 say() { printf '[%s] %s\n' "$scenario" "$*"; }
 
@@ -1309,8 +1311,8 @@ scenario_panel() {
 # Comms, and `vbw next` says so; it ends the run. Phase 2: it seeds a history of
 # three finished builds (and proofs) in the clone, the user types /vbw:vibe, and the
 # build runs through the real window. Sampled every 2 s from the screen: VBW's
-# message in the chat ("until around HH:MM"), the status line under the prompt
-# box ("until HH:MM") and Comms (the "VBW ▸" strip: "until around HH:MM") must read
+# message in the chat ("until around HH:MM"), under the prompt box the
+# status line prints 'until around HH:MM' too, and Comms (the "VBW ▸" strip: "until around HH:MM") must read
 # the same time; the status line's "proving N of M checks" must count up.
 steptime_seed() {
   local i
@@ -1366,15 +1368,15 @@ scenario_steptime() {
     sw_chat=$(printf '%s\n' "$s" | sed 's/│.*//' | awk '/^─/ { exit } /VBW ▸/ { exit } { print }')
     sw_screen=$s
   }
-  st_time() { grep -oE "$1 (tomorrow )?[0-9]{2}:[0-9]{2}" | head -1 | grep -oE '[0-9]{2}:[0-9]{2}$' || true; }
+  st_time() { grep -oE "$1" | head -1 | grep -oE '[0-9]{2}:[0-9]{2}$' || true; }
   # One sample, a tab-separated line: chat time, status line time, Comms time, the status line's
   # proof count (done, total) and the note's first end in local time.
   st_sample() {
     local chat sl cm n m note
     st_read || return 1
-    chat=$(printf '%s\n' "$sw_chat" | grep -iE 'building|fixing|proving|checking' | st_time 'until around')
-    sl=$(printf '%s\n' "$sw_status" | st_time 'until')
-    cm=$(printf '%s\n' "$sw_comms" | st_time 'until around')
+    chat=$(printf '%s\n' "$sw_chat" | grep -iE 'building|fixing|proving|checking' | st_time 'until around (tomorrow )?[0-9]{2}:[0-9]{2}')
+    sl=$(printf '%s\n' "$sw_status" | st_time "$L3_STATUS_UNTIL")
+    cm=$(printf '%s\n' "$sw_comms" | st_time 'until around (tomorrow )?[0-9]{2}:[0-9]{2}')
     n="" m=""
     if printf '%s\n' "$sw_status" | grep -E 'proving [0-9]+ of [0-9]+ checks' > /dev/null; then
       n=$(printf '%s\n' "$sw_status" | grep -oE 'proving [0-9]+ of [0-9]+ checks' | head -1 | grep -oE '[0-9]+' | sed -n 1p)
@@ -1551,7 +1553,7 @@ scenario_road() {
     pr=$(printf '%s\n' "$rd_panel" | rd_road_time)
     sh=0
     printf '%s\n' "$rd_status" | grep -iE 'milestone end|no milestone end' > /dev/null && sh=1
-    sl=$(printf '%s\n' "$rd_status" | grep -oE 'until (tomorrow )?[0-9]{2}:[0-9]{2}' | head -1 | grep -oE '[0-9]{2}:[0-9]{2}$' || true)
+    sl=$(printf '%s\n' "$rd_status" | grep -oE "$L3_STATUS_UNTIL" | head -1 | grep -oE '[0-9]{2}:[0-9]{2}$' || true)
     nr=$(jq -r '(.road.end // empty) | fromdateiso8601 | localtime | strftime("%H:%M")' "$dir/.vbw/runtime/step.json" 2> /dev/null || true)
     # The screen while the build runs and the chat has the milestone's time (kept for the reader).
     case "$rd_panel" in *"Current step: building"*) printf '%s\n' "$rd_screen" > "$dir.road.building.screen.txt" ;; esac

@@ -37,7 +37,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "ulimit -t 5 2>/dev/null; s=\"${CLAUDE_PROJECT_DIR:-$PWD}\"; p=\"$s\"; while [ \"$p\" != / ] && [ -n \"$p\" ] && [ ! -e \"$p/.git\" ]; do case \"$p\" in */*) p=\"${p%/*}\"; p=\"${p:-/}\" ;; *) p=/ ;; esac; done; [ -e \"$p/.git\" ] || p=\"$s\"; r=\"$p/.vbw/record.json\"; g=/dev/null; d=\"$p/.vbw/runtime/glance.json\"; [ -f \"$r\" ] && [ -f \"$d\" ] && [ -r \"$d\" ] && [ \"$d\" -nt \"$r\" ] && g=\"$d\"; o=0; [ -e \"$p/.vbw/runtime/run-open\" ] && o=1; jq -nc --rawfile glance \"$g\" --arg root \"$p\" --arg dir \"$s\" --arg open \"$o\" -f \"${CLAUDE_PLUGIN_ROOT}/hooks/guard-bash.jq\" - \"$r\" \"${CLAUDE_PLUGIN_ROOT}/hooks/end.json\" 2>/dev/null || { [ \"$o\" = 1 ] && { echo \"VBW guard: the guard failed while a run is open, so this call is blocked. Next: run vbw doctor to see why, then retry\" >&2; exit 2; }; true; }"
+            "command": "ulimit -t 5 2>/dev/null; s=\"${CLAUDE_PROJECT_DIR:-$PWD}\"; p=\"$s\"; while [ \"$p\" != / ] && [ -n \"$p\" ] && [ ! -e \"$p/.git\" ]; do case \"$p\" in */*) p=\"${p%/*}\"; p=\"${p:-/}\" ;; *) p=/ ;; esac; done; [ -e \"$p/.git\" ] || p=\"$s\"; r=\"$p/.vbw/record.json\"; g=/dev/null; d=\"$p/.vbw/runtime/glance.json\"; [ -f \"$r\" ] && [ -f \"$d\" ] && [ -r \"$d\" ] && [ \"$d\" -nt \"$r\" ] && g=\"$d\"; o=0; [ -e \"$p/.vbw/runtime/run-open\" ] && o=1; jq -nc --rawfile glance \"$g\" --arg root \"$p\" --arg dir \"$s\" --arg open \"$o\" -f \"${CLAUDE_PLUGIN_ROOT}/hooks/guard-bash.jq\" - \"$r\" \"${CLAUDE_PLUGIN_ROOT}/hooks/end.json\" --args \"$p\"/.vbw/runtime/auto.*.json 2>/dev/null || { [ \"$o\" = 1 ] && { echo \"VBW guard: the guard failed while a run is open, so this call is blocked. Next: run vbw doctor to see why, then retry\" >&2; exit 2; }; true; }"
           }
         ]
       },
@@ -56,6 +56,14 @@
           {
             "type": "command",
             "command": "ulimit -t 5 2>/dev/null; s=\"${CLAUDE_PROJECT_DIR:-$PWD}\"; p=\"$s\"; while [ \"$p\" != / ] && [ -n \"$p\" ] && [ ! -e \"$p/.git\" ]; do case \"$p\" in */*) p=\"${p%/*}\"; p=\"${p:-/}\" ;; *) p=/ ;; esac; done; [ -e \"$p/.git\" ] || p=\"$s\"; r=\"$p/.vbw/record.json\"; g=/dev/null; d=\"$p/.vbw/runtime/glance.json\"; [ -f \"$r\" ] && [ -f \"$d\" ] && [ -r \"$d\" ] && [ \"$d\" -nt \"$r\" ] && g=\"$d\"; o=0; [ -e \"$p/.vbw/runtime/run-open\" ] && o=1; jq -nc --rawfile glance \"$g\" --arg root \"$p\" --arg dir \"$s\" --arg open \"$o\" -f \"${CLAUDE_PLUGIN_ROOT}/hooks/guard-file.jq\" - \"$r\" \"${CLAUDE_PLUGIN_ROOT}/hooks/end.json\" 2>/dev/null || { [ \"$o\" = 1 ] && { echo \"VBW guard: the guard failed while a run is open, so this call is blocked. Next: run vbw doctor to see why, then retry\" >&2; exit 2; }; true; }"
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "ulimit -t 5 2>/dev/null; jq -c 'select((.agent_type // \"\") | test(\"^vbw:(architect|lead|dev|qa|scout|debugger|docs)$\"))' 2>/dev/null | { IFS= read -r in || exit 0; s=\"${CLAUDE_PROJECT_DIR:-$PWD}\"; p=\"$s\"; while [ \"$p\" != / ] && [ -n \"$p\" ] && [ ! -e \"$p/.git\" ]; do case \"$p\" in */*) p=\"${p%/*}\"; p=\"${p:-/}\" ;; *) p=/ ;; esac; done; [ -e \"$p/.git\" ] || p=\"$s\"; r=\"$p/.vbw/record.json\"; g=/dev/null; d=\"$p/.vbw/runtime/glance.json\"; [ -f \"$r\" ] && [ -f \"$d\" ] && [ -r \"$d\" ] && [ \"$d\" -nt \"$r\" ] && g=\"$d\"; o=0; [ -e \"$p/.vbw/runtime/run-open\" ] && o=1; printf '%s\\n' \"$in\" | jq -nc --rawfile glance \"$g\" --arg root \"$p\" --arg dir \"$s\" --arg open \"$o\" -f \"${CLAUDE_PLUGIN_ROOT}/hooks/guard-tools.jq\" - \"$r\" \"${CLAUDE_PLUGIN_ROOT}/hooks/end.json\" 2>/dev/null || exit $((3 + o)); } || { [ $? -eq 4 ] && { echo \"VBW guard: the guard failed while a run is open, so this call is blocked. Next: run vbw doctor to see why, then retry\" >&2; exit 2; }; true; }"
           }
         ]
       }

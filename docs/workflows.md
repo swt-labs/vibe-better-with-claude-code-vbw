@@ -193,7 +193,7 @@ only read; the lease also tells the autonomy gate a workflow is still running). 
 
 - it writes only files in `lease.files` (when not null); in a `plan` run, also test files;
 - it never writes a protected check file (any check's `files`) during `build` or `fix`;
-- it never runs `git commit`, `push`, `rebase`, `merge`, `pull`, `cherry-pick`, `revert` or `am`: commits go through `vbw commit`;
+- it never runs `git commit`, `commit-tree`, `push`, `rebase`, `merge`, `pull`, `cherry-pick`, `revert` or `am`: commits go through `vbw commit`;
 - it never moves HEAD or other agents' changes in the shared working tree: no `git stash` (except `list`/`show`), `switch`, `reset`, or `checkout` of a branch, and `git checkout -- PATH`/`git restore PATH` only for paths in `lease.files`.
 
 The main session is never held to a lease, so the user can always step in. A
@@ -557,12 +557,16 @@ Each refusal below ends with `Next: ` and the step in the right column
 | Guards (docs/guards.md): a secret file, the record, the consent file, `vbw approve` | Use the `vbw` command or `/vbw:approve` instead of writing directly |
 | Guards: a file outside the run's plan, a protected check file, a read-only run, another session's files | Leave the file; report the need, or work on other files until the run ends |
 | Guards: a project file that is neither a test file nor under `.vbw/`, written while planning | Leave the file; put the check in a test file, or name the file in a plan's files so the build writes it |
+| Guards: `git commit-tree` (with commit, push, rebase, merge, pull, cherry-pick, revert, am) by an agent under a lease | Commit through `vbw commit PLAN "type(scope): description"` |
+| Guards: a git history change by VBW's chat while an autonomous run or loop is armed | Follow the proof's Next line, or `vbw commit`; the user's own commands are never checked |
 | Guards: a program (python, node, perl, ruby, ...) writing a file the guard cannot name, its target a variable, an expression or another call | name the file as a literal path in the program, or write it with the Edit tool (Write for a new file) |
 | Guards: a shell command (`rm -r`, `cp`, `mv`, `tee`, `sed -i`, ...) writing a folder that holds a protected check file | Leave the protected check files as they are; name only the files you write |
 | Guards: a shell command writing a glob that may match a protected check file (`sed -i … tests/*.sh`) | Leave the protected check files as they are; name only the files you write, without a glob that reaches a check file |
 | Guards: `vbw loop start` by a tool call (arming the loop) | Ask the user to run `/vbw:loop` with the items and the ceiling they choose |
 | Guards: `vbw loop next` or `vbw loop park` by a tool call (the loop steps) | End your turn; the loop's Stop hook gives the next step |
 | Guards: a push, release, publish or deploy while a loop is on (leaving the project) | Wait for the loop to end, or stop it with `/vbw:loop stop`, then do it yourself |
+| Guards: an MCP tool the project has not opened to the agent's role | The user adds or marks it with `vbw config set mcp` |
+| Guards: a tool outside the agent's role (another role's built-in, or one VBW does not know) | The agent goes on with its own tools; a tool a role should have is a VBW change, not a setting |
 | Guards: a guard that failed during a run | Run `vbw doctor`, then retry |
 
 An unknown option prints the usage line for the three modes and exits 2.
@@ -626,6 +630,12 @@ needed.
   diagnose; in fix mode a minimal root-cause fix with a regression test.
 - **Docs**: documentation plans (README, changelog, guides, API and inline
   docs), concise and example-first; documentation files only.
+
+**MCP tools by role.** A project names the MCP servers its agents may use with
+`vbw config set mcp`. Dev, Debugger and Docs get every named tool; Architect,
+Lead, Scout and QA only a tool marked read-only. Agents inherit the session's
+tools, and the tools guard holds each to its role. See "MCP tools by role" in
+[docs/guards.md](guards.md).
 
 ## The project folder
 

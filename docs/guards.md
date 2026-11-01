@@ -158,7 +158,9 @@ input names an `agent_type`) is also held to the lease. The main session never i
 | Writing a protected check file (any check's `files`) during `build` or `fix`, or, by a shell command, a folder that holds one or a glob that may match one (`sed -i … tests/*.test.js`, `rm -r t*`; `*` may cross `/`, as zsh's `**` does; brace expansion is not read, and a check file changed that way stops the proof until the user approves it) | The contract is fixed while building; the one exception in a `build` run: after `vbw mutate` records a survivor, the check files that a check of the plan's own rules names, shared with other requirements' checks or not, open for the run's agents; a check file no check of the plan's own rules names stays protected. The opened files wait for one approval before the proof (docs/proof.md). The Lead runs the project's formatter and linter on check files before approval, and Devs format only their own files, so a formatter never changes an approved file |
 | Writing a protected check file during a `fix` run | Allowed for every requirement fix, a proof's fix included, for the check files of the fix's own requirement that no other requirement lists; they wait for one approval before the proof (docs/proof.md). A fix for a QA finding may also create a new test file. A project-command fix opens no check file. Any other check file stays protected; the refusal names the file and the files the fix may edit, and for a QA fix ends with `Next: put the regression test in a new test file and register it with vbw fix check` |
 | Under `build` or `fix`, an agent's file write on a record of schema 1 to 3, which has no `protected` list | The guard cannot tell which files are protected, so it refuses until the record is saved by this VBW as schema 4. Run any `vbw` command that writes the record (such as `/vbw:vibe`) from the main session, then retry |
-| `git commit`, `push`, `rebase`, `merge`, `pull`, `cherry-pick`, `revert`, `am` | Commits go through `vbw commit`, with provenance |
+| An MCP tool (`mcp__SERVER__TOOL`) the project has not opened to the agent's role (no setting, a server not named, or, for Architect, Lead, Scout and QA, a tool not marked read-only) | Agents use only the MCP tools the project named for their role (section "MCP tools by role"). The refusal names the role and ends with `Next: the user adds or marks it with vbw config set mcp` |
+| `git commit`, `commit-tree`, `push`, `rebase`, `merge`, `pull`, `cherry-pick`, `revert`, `am` | Commits go through `vbw commit`, with provenance |
+| The same git commands (`commit`, `commit-tree`, `push`, ...) from VBW's chat (a hook input with no `agent_type`) while its autonomous run is armed (`.vbw/runtime/auto.<session>.json`) or the record holds a loop that has not ended | Follow the proof's Next line, or commit with `vbw commit`. With no armed run and no loop the chat is not checked: the user's own commands are never checked, in the chat or the terminal |
 | `git stash` (except `list`, `show`), `switch`, `reset`, `checkout` of a branch; `git checkout -- PATH` or `git restore PATH` outside `lease.files` | Agents share one working tree: nothing may move HEAD or other agents' changes |
 
 **Programs that write files.** During a run, a subagent's `python`, `node`,
@@ -250,11 +252,58 @@ other program that names it, is refused.
 A command that contains none of the words any rule needs (`rm`, `git`, `vbw`,
 `consent`, `record.json`, a secret file name) is allowed without being read.
 
+## MCP tools by role
+
+A project opens MCP servers to VBW's agents with one setting. It lives in
+`record.settings.mcp`, so every clone of the project shares it through the record.
+
+```
+vbw config set mcp "github docs:read-only search:read-only=query,fetch"
+vbw config set mcp default
+```
+
+- `SERVER` opens every tool of the server to the writing roles only.
+- `SERVER:read-only` marks a pure server (all its tools only read) as read-only
+  in one word: every tool is open to every role.
+- `SERVER:read-only=TOOL,TOOL` marks a mixed server's read-only tools, by the
+  names `/mcp` shows. Its other tools stay with the writing roles.
+- `default` removes the setting. `vbw config` shows it as you set it, or
+  `mcp: none`. With no setting every agent has exactly the tools it has
+  today, and every MCP call is refused.
+
+**Who gets what.** Dev, Debugger and Docs get every named tool. Architect, Lead,
+Scout and QA get a tool only when you marked it read-only, never by a guess from
+its name: `read_file`, `get_issue` or `search_docs` with no mark is refused for
+them. The main session and agents that are not VBW's are never judged.
+
+**The refusal** is a `VBW guard:` reason that names the agent's role and the
+tool (or the server, when the setting does not name it) and ends with
+`Next: add or mark it with vbw config set mcp`. For a reading role it says the
+tool is not marked read-only.
+
+**Every tool, not only MCP tools.** VBW's agents inherit the session's tools (no
+`tools:` list); each role's `disallowedTools` hides the built-ins it must not have.
+The tools guard is one PreToolUse entry with no matcher, so it sees
+every tool a VBW agent calls. It lets through the role's own built-ins, the MCP
+tools the setting opens to the role, and the tools Claude Code gives every agent.
+Any other tool is refused: another role's built-in, or one VBW does not know, such as
+one a Claude Code update adds. The refusal names the tool, the role and a next step. The main
+session is never judged and pays one small jq per tool call.
+
+**What the guard cannot see.** It judges the call, not what the
+server does inside. The guards see Write, Edit and Bash calls, so a
+file an MCP tool writes is judged after the fact, by the run's scope check
+(`<commit> (<plan>) changed <file>, which is not in the plan`),
+never before the call. Mark a server read-only only when its tools really only read.
+
 ## Engineering
 
 - **Per-tool-call hooks are jq itself** (build plan K20): no shell script, no
   interpreter startup of our own. On a Mac, Homebrew bash takes 9 ms just to
   start; jq is required by VBW anyway.
+- **The tools guard** (`guard-tools.jq`, one PreToolUse jq entry with the matcher
+  omitted, so it sees every tool an agent calls) is one more hook the bench
+  measures, as the `guard (tools)` cases, the main session's call among them.
 - **The guard command's own shell tests pick the input; jq does the rest.** The
   tests are built into the shell (no other program): they pick the glance, or
   nothing when it is not current. jq then reads the hook input, the record only
@@ -303,14 +352,36 @@ A command that contains none of the words any rule needs (`rm`, `git`, `vbw`,
   | program run (whole guard call, startup included) | 21.0 | 17.5 | 16.3 |
   | reference (startup included) | 15.7 | 12.4 | 11.7 |
 
-  The cause: the guard's cases subtract the shell and jq startup, which is 6.9 ms on a
-  Mac and 1.9 ms on Linux, but the reference kept it, so the same guard cost 1.0 times the
-  reference on macOS and 1.3 to 1.6 on Linux (PR #740); the guard's compile and run costs
-  are alike on both. The reference now subtracts the startup too, and its program is the
-  guard's size (28798 against 28744 bytes) with a regex in every helper. The guard's own
-  cost (git input) beside the reference's own cost: macOS 14.1 and 8.8 ms (1.60), ubuntu-latest
-  15.6 and 10.5 (1.49), Ubuntu 26.04 14.4 and 9.8 (1.47), each Linux quotient within 1.25
-  of macOS's. The nominal figure is one, 10.3 ms, with no per-system allowance.
+  The cause of PR #740's gap: the guard's cases subtract the shell and jq startup, which is
+  6.9 ms on a Mac and 1.9 ms on Linux, but the reference kept it. The reference now
+  subtracts the startup too (the shell prelude row is the shell's own part of it).
+
+  The Linux-only step, found at its row (R243, T212): **program compile**, the time jq
+  takes to bind and generate code for the guard's own definitions, which it never runs.
+  `.github/workflows/bench-steps.yml` ran every step on GitHub's three runners; the table
+  gives the mean net ms of each step (CPU, per call), and its quotient to the reference run in
+  parentheses (the reference run is 1.00 by definition; the gross startup rows are
+  left out, they carry no quotient). Before is run 41312931896; after is run 41319529368 (both recorded in
+  `tools/probes/guard-steps.json`).
+
+| runner and run | shell prelude | program compile | program run | reference compile | reference run |
+|---|---|---|---|---|---|
+| macos-latest, before | 0.2 (0.02) | 16.7 (1.48) | 19.1 (1.69) | 8.2 (0.73) | 11.4 (1.00) |
+| ubuntu-latest, before | 0.1 (0.01) | 13.9 (2.08) | 15.0 (2.24) | 4.8 (0.72) | 6.7 (1.00) |
+| ubuntu-26.04, before | 0.1 (0.01) | 14.1 (2.13) | 15.0 (2.27) | 4.7 (0.71) | 6.6 (1.00) |
+| macos-latest, after | 0.2 (0.01) | 11.7 (0.68) | 13.7 (0.79) | 12.9 (0.75) | 17.3 (1.00) |
+| ubuntu-latest, after | 0.0 (0.00) | 17.9 (0.73) | 19.0 (0.78) | 21.0 (0.86) | 24.5 (1.00) |
+| ubuntu-26.04, after | 0.0 (0.00) | 17.9 (0.73) | 19.0 (0.77) | 20.9 (0.85) | 24.5 (1.00) |
+
+  The net rows subtract the shell and jq startup; the quotient is the step's net ms over
+  the reference run's net ms. The cause: the reference compiled one trivial set of
+  definitions while the guard compiles all of its own, and that compile costs about 1.35
+  times more on Linux than on macOS (run 41317320402; not the regex library, not
+  includes, not parsing). The fix is in the reference, not the guard: it now calls four in
+  five of its definitions, so it carries the same compile work. The target, measured after
+  the fix: each Ubuntu runner's program run quotient is within 1.25 times macOS's. The
+  figures are 0.78 and 0.77 against 0.79, about 0.99 times macOS's. The nominal figure is
+  one, 17.8 ms, with no per-system allowance.
 
 ## SessionStart
 

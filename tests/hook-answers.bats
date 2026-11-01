@@ -228,3 +228,41 @@ POST='["hookSpecificOutput.additionalContext","hookSpecificOutput.hookEventName"
   grep -qF 'tools/check-hook-answers.sh' "$REPO_ROOT/tests/standards.bats"
   grep -qF 'tools/check-hook-answers.sh' "$REPO_ROOT/tests/standards-selftest.bats"
 }
+
+# R242 (#694, D561): the tools guard's answers, pinned like the other guards'. Its entry has
+# no matcher (it sees every tool), so the call runs that entry's command by what it runs.
+tools_call() {
+  local cmd
+  cmd=$(jq -r '[.hooks.PreToolUse[] | select(.hooks[0].command | contains("hooks/guard-tools.jq"))][0].hooks[0].command // empty' "$PLUGIN_ROOT/hooks/hooks.json")
+  [ -n "$cmd" ] || { echo "no PreToolUse entry runs hooks/guard-tools.jq"; return 3; }
+  jq -nc --arg t "$1" --arg a "${2:-}" --arg d "$PROJECT" \
+    '{hook_event_name: "PreToolUse", session_id: "s1", tool_name: $t, cwd: $d, tool_input: {query: "x"}}
+     + (if $a == "" then {} else {agent_id: "a1", agent_type: $a} end)' \
+    | CLAUDE_PLUGIN_ROOT="$PLUGIN_ROOT" CLAUDE_PROJECT_DIR="$PROJECT" sh -c "$cmd"
+}
+
+@test "R242 R128: guard-tools.jq deny and systemMessage: a VBW agent's call of an MCP tool the project has not opened to its role, or of a tool outside its role, is denied with a 'VBW guard:' reason, and the user sees what was refused" {
+  local tool
+  for tool in mcp__github__get_issue Write FutureTool; do
+    run tools_call "$tool" vbw:qa
+    [ "$status" -eq 0 ] || { echo "$output"; false; }
+    [ "$(shape "$output")" = "$DENY" ] || { echo "$tool: $output"; false; }
+    printf '%s' "$output" | jq -e '.hookSpecificOutput | .hookEventName == "PreToolUse" and .permissionDecision == "deny" and (.permissionDecisionReason | startswith("VBW guard: "))'
+    printf '%s' "$output" | jq -e "$USER_LINE" || { echo "$output"; false; }
+  done
+}
+
+@test "R242 R128: guard-tools.jq no output: the main session's call of any tool, and a VBW agent's call of its own tool or of a tool the project opened to its role, get no answer" {
+  local tool
+  for tool in mcp__github__get_issue Read FutureTool; do
+    run tools_call "$tool"
+    [ "$status" -eq 0 ] && [ -z "$output" ] || { echo "main session $tool: $output"; false; }
+  done
+  run tools_call Read vbw:qa
+  [ "$status" -eq 0 ] && [ -z "$output" ] || { echo "vbw:qa Read: $output"; false; }
+  run tools_call SubagentHandback vbw:qa
+  [ "$status" -eq 0 ] && [ -z "$output" ] || { echo "vbw:qa SubagentHandback: $output"; false; }
+  "$VBW" config set mcp github:read-only > /dev/null
+  run tools_call mcp__github__get_issue vbw:qa
+  [ "$status" -eq 0 ] && [ -z "$output" ] || { echo "vbw:qa opened MCP tool: $output"; false; }
+}

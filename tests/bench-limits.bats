@@ -29,10 +29,11 @@ teardown() { vbw_teardown; }
 burn() { printf "perl -e '1 while (times)[0] + (times)[1] < %s / 1000'" "$1"; }
 
 # hooks_with MATCHER COMMAND: every PreToolUse hook whose matcher matches
-# MATCHER first runs COMMAND, then runs as before.
+# MATCHER first runs COMMAND, then runs as before; an omitted matcher (the tools guard,
+# R242) matches every tool, as in Claude Code.
 hooks_with() {
   jq --arg m "$1" --arg b "$2; " \
-    '(.hooks.PreToolUse[] | select(.matcher | test($m)) | .hooks[].command) |= ($b + .)' \
+    '(.hooks.PreToolUse[] | select(.matcher == null or (.matcher | test($m))) | .hooks[].command) |= ($b + .)' \
     "$PLUGIN_ROOT/hooks/hooks.json" > "$TEST_ROOT/plugin/hooks/hooks.json"
 }
 

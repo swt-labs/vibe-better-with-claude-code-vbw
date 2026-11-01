@@ -30,6 +30,7 @@ Change asked: make it with `vbw config set KEY VALUE`, show the result. Else sho
 - `check_jobs`: how many checks run at the same time, shared by every VBW command in this project, 1 to 64; `default`: three quarters of the processor cores (at least 1). Kept in this clone, not in the record. The computer-wide limit (three quarters of the cores, shared by every VBW project, not a setting; docs/proof.md) caps it.
 - `command_timeout`: seconds `vbw prove` lets one project command (the test command above all) run before stopping it, 1 to 86400; `default`: 3600 (60 minutes). A check keeps its own timeout.
 - `check_budget`: seconds one unit of a proof (a check, project command or test file) may take before the summaries name it over budget, 1 to 86400; `default`: 120. Reported only, never a limit.
+- `mcp`: the MCP servers whose tools the agents may use, entries separated by spaces: `SERVER` (open to the writing agents only: Dev, Debugger and Docs), `SERVER:read-only` (a pure read-only server: every agent) or `SERVER:read-only=TOOL,TOOL` (a mixed server: those tools for every agent, the rest for the writing agents); names use letters, digits, `_`, `.` and `-`. `default`: none, the agents keep exactly their built-in tools. Shared through git; the panel shows it read-only.
 - Status line: `vbw statusline on` or `off`.
 
 Your own session keeps the model you chose with `/model`; it must be Sonnet, Opus or Fable for auto mode.

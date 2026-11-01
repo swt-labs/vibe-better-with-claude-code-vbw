@@ -71,8 +71,8 @@ denied_as() {
 
 @test "R180: the words in text, reads and the project's own commands stay allowed under a loop" {
   local c
-  for c in 'git commit -m "docs: never git push during the loop"' 'echo "npm publish later"' 'git log origin/main..HEAD' 'gh pr view 12' 'gh release list' \
-           'npm test' 'cargo build' 'docker build .' 'vbw prove' 'git fetch origin' 'git pull --ff-only'; do
+  for c in 'git log --grep "never git push during the loop"' 'echo "npm publish later"' 'git log origin/main..HEAD' 'gh pr view 12' 'gh release list' \
+           'npm test' 'cargo build' 'docker build .' 'vbw prove' 'git fetch origin' 'git diff origin/main'; do
     run bash_call "$c"
     [ -z "$output" ] || { echo "denied: $c -> $output"; false; }
   done

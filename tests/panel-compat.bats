@@ -29,8 +29,8 @@ without_panel() {
 @test "R53: the panel is a mod named by hooks.json, next to the hooks it had, which are unchanged" {
   jq -e '.modules == ["./panel.js"]' "$PLUGIN_ROOT/hooks/hooks.json"
   # PostToolUse is R61's answer hook (tests/approve-choice-hook.bats pins it); Stop drives a loop (T150) and StopFailure
-  # marks its time away (T156, tests/loop-stop-hook.bats).
-  jq -e '(.hooks | keys | sort) == ["PostToolUse", "PreToolUse", "SessionStart", "Stop", "StopFailure"] and (.hooks.Stop | length) == 1 and (.hooks.StopFailure | length) == 1 and (.hooks.PreToolUse | length) == 3 and (.hooks.SessionStart | length) == 1' "$PLUGIN_ROOT/hooks/hooks.json"
+  # marks its time away (T156, tests/loop-stop-hook.bats); the fourth PreToolUse entry is R242's tools guard (tests/guard-tools.bats).
+  jq -e '(.hooks | keys | sort) == ["PostToolUse", "PreToolUse", "SessionStart", "Stop", "StopFailure"] and (.hooks.Stop | length) == 1 and (.hooks.StopFailure | length) == 1 and (.hooks.PreToolUse | length) == 4 and (.hooks.SessionStart | length) == 1' "$PLUGIN_ROOT/hooks/hooks.json"
   [ -f "$PLUGIN_ROOT/hooks/panel.js" ] && [ -f "$PLUGIN_ROOT/hooks/panel-view.js" ]
   grep -q '^export function register' "$PLUGIN_ROOT/hooks/panel.js"
 }
