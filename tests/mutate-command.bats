@@ -129,6 +129,22 @@ with_sub_pay() {
   [[ "$output" == *"do not pass on the unbroken code"*C1* ]] || { echo "$output"; false; }
 }
 
+@test "R188: a check whose definition changed runs on the unbroken code again though the code did not change: red there is refused, never a kill" {
+  printf 'echo unpaid\n' > src/pay.sh
+  run "$VBW" mutate P1.1 R1.1 "prints unpaid instead of paid" src/pay.sh < /dev/null
+  [ "$status" -eq 0 ] || { echo "$output"; false; }
+  # C1 now fails on any code; the user approves it. The record lives in .vbw,
+  # outside the code tree, so only the contract tells the two runs apart.
+  jq '(.checks[] | select(.id == "C1")).run = ["sh", "-c", "exit 1", "tests/pay.sh"]' .vbw/record.json > "$TEST_ROOT/e.json" && cp "$TEST_ROOT/e.json" .vbw/record.json
+  "$VBW" approve > /dev/null
+  local sum
+  sum=$(record_sum)
+  printf 'echo unpaid\n' > src/pay.sh
+  run "$VBW" mutate P1.1 R1.1 "prints unpaid again" src/pay.sh < /dev/null
+  refused "$sum"
+  [[ "$output" == *"do not pass on the unbroken code"*C1* ]] || { echo "$output"; false; }
+}
+
 @test "R188: a rule's own check is the one that runs, even when the requirement has others" {
   printf 'echo paid\necho paid\n' > src/pay.sh
   run "$VBW" mutate P1.1 R1.2 "prints paid twice" src/pay.sh < /dev/null

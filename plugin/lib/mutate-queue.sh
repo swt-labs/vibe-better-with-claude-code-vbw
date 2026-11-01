@@ -81,6 +81,15 @@ mutate_queue_release() {
 }
 
 # mutate_queue_run PLAN: vbw mutate PLAN --run.
+# mutate_unbroken_base RECORD PLAN TREE: the ids of the checks a recorded break
+# of PLAN already ran unbroken on this committed code (TREE, vbw_head_tree) under
+# this contract (CHECK_HASH, set by checks_begin): a check's argv lives in the
+# record, outside the tree, so the tree alone would skip a changed check.
+mutate_unbroken_base() {
+  printf '%s' "$1" | jq -c --arg p "$2" --arg t "$3" --arg k "$CHECK_HASH" \
+    '[.plans[] | select(.id == $p) | (.mutations // [])[] | select(.tree == $t and .contract == $k) | (.checks // {}) | keys[]] | unique'
+}
+
 mutate_queue_run() {
   local plan="$1" record head tree e entries=() keep=() stale=0 surv=0 bad='' checks ids=() cfiles=() f base unb=() n i k
   vbw_require_project
@@ -110,8 +119,7 @@ mutate_queue_run() {
     vbw_die "check files differ from the last commit: $(vbw_dirty_files "${cfiles[@]}"): commit them first, so the breaks are run against the approved tests"
   fi
   checks_begin "$record"
-  base=$(printf '%s' "$record" | jq -c --arg p "$plan" --arg t "$tree" \
-    '[.plans[] | select(.id == $p) | (.mutations // [])[] | select(.tree == $t) | (.checks // {}) | keys[]] | unique')
+  base=$(mutate_unbroken_base "$record" "$plan" "$tree")
   for f in "${ids[@]}"; do
     printf '%s' "$base" | jq -e --arg c "$f" 'index($c) != null' > /dev/null || unb+=("$f")
   done

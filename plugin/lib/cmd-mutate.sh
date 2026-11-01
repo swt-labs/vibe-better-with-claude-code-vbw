@@ -325,8 +325,7 @@ cmd_mutate() {
   proofcopy_create_slots 1
   copy=${PROOF_COPIES[0]}
   mutate_tstep copies
-  base=$(printf '%s' "$record" | jq -c --arg p "$plan" --arg t "$tree" \
-    '[.plans[] | select(.id == $p) | (.mutations // [])[] | select(.tree == $t) | (.checks // {}) | keys[]] | unique')
+  base=$(mutate_unbroken_base "$record" "$plan" "$tree")
   order=$(proofreuse_store_read | jq -r --argjson ids "$ids" '.runs as $r
     | [$ids[] | {id: ., s: ($r["check:" + .].seconds // 1e9)}] | sort_by(.s, .id)[] | .id')
   for c in $order; do
@@ -404,9 +403,10 @@ mutate_record() {
     fi
   fi
   entry=$(jq -nc --argjson rule "${ruledoc:-null}" --argjson k "${tk:-0}" --arg what "$what" --argjson files "$filesj" \
-    --argjson marks "$marks" --arg result "$result" --arg at "$(vbw_now)" --arg head "$head" --arg tree "$tree" --argjson strong "$strong" --argjson pending "$pending" '
+    --argjson marks "$marks" --arg result "$result" --arg at "$(vbw_now)" --arg head "$head" --arg tree "$tree" --arg contract "$CHECK_HASH" \
+    --argjson strong "$strong" --argjson pending "$pending" '
     (if $rule != null then {rule: {req: $rule.req, text: $rule.text}} else {task: $k} end)
-    + {what: $what, files: $files, checks: $marks, result: $result, at: $at, head: $head, tree: $tree}
+    + {what: $what, files: $files, checks: $marks, result: $result, at: $at, head: $head, tree: $tree, contract: $contract}
     + (if ($strong | length) > 0 then {strengthened: $strong} else {} end)
     + (if ($pending | length) > 0 then {pending: $pending} else {} end)')
   # A survivor of a plan of the open build run opens the files the plan may strengthen for the run (strengthen_files, R210).
