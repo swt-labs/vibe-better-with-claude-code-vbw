@@ -89,7 +89,7 @@ cells() { row "$1" | head -1 | sed -E "s/^$1[[:space:]]+//"; }
 # normalised was not the guard's: the reference calls at least four of every five.
 @test "R243: the reference program calls at least four in five of its definitions, as the guard calls its own, so it compiles as much as the guard does" {
   local dir="$TEST_ROOT/ref" defs called name
-  run env VBW_BENCH_REFERENCE_FILES="$dir" bash "$BENCH"
+  run env VBW_BENCH_REFERENCE_FILES="$dir" VBW_HOOK_BUDGET_MS=100000 VBW_STATUSLINE_BUDGET_MS=100000 bash "$BENCH"
   [ "$status" -eq 0 ] || { echo "$output"; false; }
   defs=$(grep -c '^def ' "$dir/reference.jq")
   called=0

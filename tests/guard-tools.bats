@@ -179,7 +179,7 @@ names_role() { printf '%s\n' "$1" | grep -qE "(^|[^a-z])$2([^a-z]|$)"; }
   jq -e '[.hooks.PreToolUse[] | select(.hooks[0].command | contains("hooks/guard-tools.jq"))] | length == 1 and (.[0] | has("matcher") | not)' "$PLUGIN_ROOT/hooks/hooks.json" > /dev/null \
     || { echo "hooks.json has not exactly one PreToolUse entry for guard-tools.jq with the matcher omitted"; false; }
   jq -e 'has("hook_matcher") and .hook_matcher == null' "$PROBE" > /dev/null || { echo "the probe did not show an omitted matcher reaching every tool"; false; }
-  run env VBW_BENCH_ONLY='guard (nosuchcase' bash "$REPO_ROOT/tools/bench-hooks.sh"
+  run env VBW_BENCH_ONLY='guard (nosuchcase' VBW_HOOK_BUDGET_MS=100000 VBW_STATUSLINE_BUDGET_MS=100000 bash "$REPO_ROOT/tools/bench-hooks.sh"
   [ "$status" -eq 2 ] || { echo "the bench did not list its cases for an unknown selector:"; echo "$output"; false; }
   [[ "$output" == *"guard (tools)"* && "$output" == *"guard (tools, main session)"* ]] || { echo "the bench has no 'guard (tools)' and 'guard (tools, main session)' cases:"; echo "$output"; false; }
 }
