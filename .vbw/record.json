@@ -68752,6 +68752,22 @@
       "text": "R240 reworded: the status line shows the same end time as the chat and Comms in the steptime scenario; the cause is found in what the status line reads, pinned by a render test fed a step note exactly as a run writes it, plus the scenario passing",
       "why": "The planning research showed the end time already precedes the holder and the row was not truncated; the status line never received the end time in about 120 samples. Lead decision, 2026-11-01.",
       "at": "2026-11-01T12:32:41Z"
+    },
+    {
+      "id": "D559",
+      "at": "2026-11-01T13:21:32Z",
+      "text": "Contract approved: 232 requirements, 554 checks, 583 plans (c1dfb136e2c2)",
+      "plans": [
+        "P192.1",
+        "P192.2",
+        "P192.4",
+        "P192.3",
+        "P193.1",
+        "P193.2",
+        "P194.1",
+        "P195.1",
+        "P195.2"
+      ]
     }
   ],
   "commands": {
