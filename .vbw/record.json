@@ -61920,7 +61920,7 @@
         "P193.1",
         "P195.1"
       ],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "plugin/hooks/guard-tools.jq (includes holder and common like the other guards): only VBW agents are judged (agent_type ^vbw:(architect|lead|dev|qa|scout|debugger|docs)$ in a VBW project; anything else no answer). The role's built-ins (architect, qa: Read, Grep, Glob, Bash; lead: those plus Write, Edit, WebFetch; dev, debugger, docs: those plus Write, Edit; scout: those plus WebSearch, WebFetch) and the tools Claude Code gives every agent (tools/probes/mcp-tools.json always_allowed, a literal list with a comment naming the probe) get no answer. An mcp__ tool is judged by record.settings.mcp: the server is the entry whose mcp__<server>__ is the longest prefix of tool_name; no entry: deny '<tool>: this project's MCP setting names no server <server> for VBW's agents (mcp: <entries or none>)\\nNext: the user adds it with vbw config set mcp \"<entries> <server>\" for the writing agents (dev, debugger, docs) or \"<entries> <server>:read-only\" for every agent; as the <role>, work without it meanwhile'; a writing role, read_only true, or the tool named in a read_only list: no answer; else deny '<tool> is not marked read-only, so the <role> (a reading agent: architect, lead, scout, qa) may not call it; VBW never guesses from a name such as read_, get_ or search_\\nNext: the user marks it with vbw config set mcp \"... <server>:read-only\" (the whole server) or \"... <server>:read-only=<tool>\" (this tool); meanwhile work without it'. Any other tool: deny '<tool> is not one of the <role>'s tools (<list>): VBW refuses a tool it does not give the role, a new Claude Code tool included\\nNext: as the <role>, do the work with your own tools'. Every answer through common.jq's deny, never allow",
@@ -61928,6 +61928,354 @@
         "plugin/agents/*.md (all seven): the tools: line goes; 'disallowedTools:' names, in the probe's order, every tool of tools/probes/mcp-tools.json builtins that is neither the role's own nor in always_allowed (so architect, qa and scout name Write, Edit and NotebookEdit); one sentence in each body: 'Tools: you have your role's tools and the MCP tools this project names for your role (vbw config set mcp); a refusal names the user's next step, so report it and go on without the tool'; tests/workflows.bats's agent frontmatter case checks a disallowedTools line and no tools: line instead of a tool list",
         "tools/bench-hooks.sh: guard cases for the tools guard, 'guard (tools)' (a vbw:qa agent calling mcp__github__get_issue on the bench's record, no setting: the refusal path), its large-record and N-checks variants, and 'guard (tools, main session)' (a main-session Read call: the path every chat tool call pays), measured against the 20 ms budget like the other guard cases; guards() picks the entry that runs guard-tools.jq for them (its matcher is omitted); VBW_BENCH_ONLY='guard (tools' bash tools/bench-hooks.sh within budget on this Mac",
         "Under /bin/bash 3.2 and bash 5: tests/agents-tools.bats, tests/guard-tools.bats, tests/hook-answers.bats, tests/standards.bats, tests/workflows.bats, tests/agents-checks.bats and tests/hooks-guard.bats pass"
+      ],
+      "mutations": [
+        {
+          "rule": {
+            "req": "R241",
+            "text": "the mechanism built is the one the probe supports: every agent's tools line carries the one MCP pool entry the probe names (tools_entry), the same in all seven agents"
+          },
+          "what": "dev.md gets a tools: allowlist",
+          "files": [
+            "plugin/agents/dev.md"
+          ],
+          "checks": {
+            "C549": "red"
+          },
+          "result": "red",
+          "at": "2026-11-01T16:36:30Z",
+          "head": "5aef6dd78d8f089c2c64017de0277f36e8f5803f"
+        },
+        {
+          "rule": {
+            "req": "R241",
+            "text": "with no MCP setting every agent's built-in tools are exactly today's, pinned from plugin/agents/*.md (architect, qa: Read, Grep, Glob, Bash; lead: those plus Write, Edit, WebFetch; dev, debugger, docs: those plus Write, Edit; scout: those plus WebSearch, WebFetch), and no agent uses disallowedTools"
+          },
+          "what": "lead loses WebFetch",
+          "files": [
+            "plugin/hooks/guard-tools.jq"
+          ],
+          "checks": {
+            "C549": "red"
+          },
+          "result": "red",
+          "at": "2026-11-01T16:36:33Z",
+          "head": "5aef6dd78d8f089c2c64017de0277f36e8f5803f"
+        },
+        {
+          "rule": {
+            "req": "R241",
+            "text": "the mechanism built is D561's: no agent file has a tools: allowlist and each names disallowedTools, so VBW's agents inherit the session's MCP tools"
+          },
+          "what": "scout drops disallowedTools",
+          "files": [
+            "plugin/agents/scout.md"
+          ],
+          "checks": {
+            "C549": "red"
+          },
+          "result": "red",
+          "at": "2026-11-01T16:36:37Z",
+          "head": "5aef6dd78d8f089c2c64017de0277f36e8f5803f"
+        },
+        {
+          "rule": {
+            "req": "R241",
+            "text": "with no MCP setting every agent's effective built-in tools are exactly today's (architect, qa: Read, Grep, Glob, Bash; lead: those plus Write, Edit, WebFetch; dev, debugger, docs: those plus Write, Edit; scout: those plus WebSearch, WebFetch): the tools guard opens these to the role and refuses every other built-in the probe found"
+          },
+          "what": "own built-ins no longer opened",
+          "files": [
+            "plugin/hooks/guard-tools.jq"
+          ],
+          "checks": {
+            "C549": "red"
+          },
+          "result": "red",
+          "at": "2026-11-01T16:36:41Z",
+          "head": "5aef6dd78d8f089c2c64017de0277f36e8f5803f"
+        },
+        {
+          "rule": {
+            "req": "R241",
+            "text": "each agent's disallowedTools names every built-in the probe found outside its role (the tools Claude Code gives every agent aside) and none of its own, so architect, qa and scout are never offered Write, Edit or NotebookEdit"
+          },
+          "what": "qa may be offered Write",
+          "files": [
+            "plugin/agents/qa.md"
+          ],
+          "checks": {
+            "C549": "red"
+          },
+          "result": "red",
+          "at": "2026-11-01T16:36:44Z",
+          "head": "5aef6dd78d8f089c2c64017de0277f36e8f5803f"
+        },
+        {
+          "rule": {
+            "req": "R242",
+            "text": "with no MCP setting every VBW agent's MCP call is refused, the refusal naming the agent's role and vbw config set mcp as the next step"
+          },
+          "what": "refusal drops the role",
+          "files": [
+            "plugin/hooks/guard-tools.jq"
+          ],
+          "checks": {
+            "C551": "red"
+          },
+          "result": "red",
+          "at": "2026-11-01T16:36:48Z",
+          "head": "5aef6dd78d8f089c2c64017de0277f36e8f5803f"
+        },
+        {
+          "rule": {
+            "req": "R242",
+            "text": "a server named without a mark is open to Dev, Debugger and Docs and closed to Architect, Lead, Scout and QA, whose refusal says the tool is not marked read-only and names vbw config set mcp"
+          },
+          "what": "roles inverted for unmarked server",
+          "files": [
+            "plugin/hooks/guard-tools.jq"
+          ],
+          "checks": {
+            "C551": "red"
+          },
+          "result": "red",
+          "at": "2026-11-01T16:36:51Z",
+          "head": "5aef6dd78d8f089c2c64017de0277f36e8f5803f"
+        },
+        {
+          "rule": {
+            "req": "R242",
+            "text": "a pure server marked read-only as a whole is open, every tool, to every role"
+          },
+          "what": "whole-server read-only ignored",
+          "files": [
+            "plugin/hooks/guard-tools.jq"
+          ],
+          "checks": {
+            "C551": "red"
+          },
+          "result": "red",
+          "at": "2026-11-01T16:36:55Z",
+          "head": "5aef6dd78d8f089c2c64017de0277f36e8f5803f"
+        },
+        {
+          "rule": {
+            "req": "R242",
+            "text": "a mixed server opens only its listed read-only tools to the reading roles; its other tools stay the writing roles'"
+          },
+          "what": "listed read-only tools inverted",
+          "files": [
+            "plugin/hooks/guard-tools.jq"
+          ],
+          "checks": {
+            "C551": "red"
+          },
+          "result": "red",
+          "at": "2026-11-01T16:36:58Z",
+          "head": "5aef6dd78d8f089c2c64017de0277f36e8f5803f"
+        },
+        {
+          "rule": {
+            "req": "R242",
+            "text": "a tool whose name suggests reading (read_*, get_*, search_*) but carries no mark is refused for the reading roles: never a guess from the name"
+          },
+          "what": "name guess opens read_ get_ search_",
+          "files": [
+            "plugin/hooks/guard-tools.jq"
+          ],
+          "checks": {
+            "C551": "red"
+          },
+          "result": "red",
+          "at": "2026-11-01T16:37:02Z",
+          "head": "5aef6dd78d8f089c2c64017de0277f36e8f5803f"
+        },
+        {
+          "rule": {
+            "req": "R242",
+            "text": "a server the setting does not name is refused for every role, matched as a whole name, naming the server and the setting as the next step"
+          },
+          "what": "server matched by prefix not whole name",
+          "files": [
+            "plugin/hooks/guard-tools.jq"
+          ],
+          "checks": {
+            "C551": "red"
+          },
+          "result": "red",
+          "at": "2026-11-01T16:37:05Z",
+          "head": "5aef6dd78d8f089c2c64017de0277f36e8f5803f"
+        },
+        {
+          "rule": {
+            "req": "R242",
+            "text": "the main session and an agent that is not VBW's are never judged, and outside a VBW project the hook gives no answer"
+          },
+          "what": "outside a project still judged",
+          "files": [
+            "plugin/hooks/guard-tools.jq"
+          ],
+          "checks": {
+            "C551": "red"
+          },
+          "result": "red",
+          "at": "2026-11-01T16:37:09Z",
+          "head": "5aef6dd78d8f089c2c64017de0277f36e8f5803f"
+        },
+        {
+          "rule": {
+            "req": "R242",
+            "text": "the hook's answers are pinned: deny with a 'VBW guard:' reason and a systemMessage for the user, no output for the main session or an opened tool, and no allow"
+          },
+          "what": "answer is allow",
+          "files": [
+            "plugin/hooks/guard-tools.jq"
+          ],
+          "checks": {
+            "C552": "red"
+          },
+          "result": "red",
+          "at": "2026-11-01T16:37:13Z",
+          "head": "5aef6dd78d8f089c2c64017de0277f36e8f5803f"
+        },
+        {
+          "rule": {
+            "req": "R242",
+            "text": "the hook's answers are pinned: deny with a 'VBW guard:' reason and a systemMessage for the user, no output for the main session or a tool open to the role, and no allow"
+          },
+          "what": "opened tool answers {}",
+          "files": [
+            "plugin/hooks/guard-tools.jq"
+          ],
+          "checks": {
+            "C552": "green"
+          },
+          "result": "survivor",
+          "at": "2026-11-01T16:37:16Z",
+          "head": "5aef6dd78d8f089c2c64017de0277f36e8f5803f"
+        },
+        {
+          "rule": {
+            "req": "R242",
+            "text": "a VBW agent's call of a tool outside its role's own (another role's built-in, or a tool VBW does not know, such as one a Claude Code update adds) is refused naming the tool, the role and a next step; the tools Claude Code gives every agent (the probe's always_allowed) are never refused"
+          },
+          "what": "always-allowed tools refused",
+          "files": [
+            "plugin/hooks/guard-tools.jq"
+          ],
+          "checks": {
+            "C551": "red"
+          },
+          "result": "red",
+          "at": "2026-11-01T16:37:20Z",
+          "head": "5aef6dd78d8f089c2c64017de0277f36e8f5803f"
+        },
+        {
+          "rule": {
+            "req": "R242",
+            "text": "the main session, for any tool and even with a corrupt record, and an agent that is not VBW's are never judged, and outside a VBW project the hook gives no answer"
+          },
+          "what": "main session reaches the guard",
+          "files": [
+            "plugin/hooks/hooks.json"
+          ],
+          "checks": {
+            "C551": "green"
+          },
+          "result": "survivor",
+          "at": "2026-11-01T16:37:23Z",
+          "head": "5aef6dd78d8f089c2c64017de0277f36e8f5803f"
+        },
+        {
+          "rule": {
+            "req": "R242",
+            "text": "the hook is a PreToolUse jq entry on mcp__ tools in hooks.json and the bench measures it as the guard (mcp) case"
+          },
+          "what": "bench label renamed",
+          "files": [
+            "tools/bench-hooks.sh"
+          ],
+          "checks": {
+            "C551": "red"
+          },
+          "result": "red",
+          "at": "2026-11-01T16:37:27Z",
+          "head": "5aef6dd78d8f089c2c64017de0277f36e8f5803f"
+        },
+        {
+          "rule": {
+            "req": "R242",
+            "text": "the hook is one PreToolUse entry in hooks.json with the matcher omitted (the probe showed it reaches every tool an agent calls), running guard-tools.jq, and the bench measures it as the guard (tools) cases, the main session's call among them"
+          },
+          "what": "matcher added to tools entry",
+          "files": [
+            "plugin/hooks/hooks.json"
+          ],
+          "checks": {
+            "C551": "red"
+          },
+          "result": "red",
+          "at": "2026-11-01T16:37:30Z",
+          "head": "5aef6dd78d8f089c2c64017de0277f36e8f5803f"
+        },
+        {
+          "rule": {
+            "req": "R242",
+            "text": "the main session, for any tool and even with a corrupt record, and an agent that is not VBW's are never judged, and outside a VBW project the hook gives no answer"
+          },
+          "what": "main session reaches the guard",
+          "files": [
+            "plugin/hooks/hooks.json"
+          ],
+          "checks": {
+            "C551": "red"
+          },
+          "result": "red",
+          "at": "2026-11-01T16:39:22Z",
+          "head": "5046d36cde7b198212c8429677afe815927702d8",
+          "strengthened": [
+            "tests/guard-tools.bats",
+            "tests/hook-answers.bats"
+          ],
+          "pending": [
+            "tests/guard-tools.bats"
+          ]
+        },
+        {
+          "rule": {
+            "req": "R242",
+            "text": "the hook's answers are pinned: deny with a 'VBW guard:' reason and a systemMessage for the user, no output for the main session or a tool open to the role, and no allow"
+          },
+          "what": "opened tool answers {}",
+          "files": [
+            "plugin/hooks/guard-tools.jq"
+          ],
+          "checks": {
+            "C552": "green"
+          },
+          "result": "survivor",
+          "at": "2026-11-01T16:39:50Z",
+          "head": "5046d36cde7b198212c8429677afe815927702d8"
+        },
+        {
+          "rule": {
+            "req": "R242",
+            "text": "the hook's answers are pinned: deny with a 'VBW guard:' reason and a systemMessage for the user, no output for the main session or a tool open to the role, and no allow"
+          },
+          "what": "a role's own tool answers a denial",
+          "files": [
+            "plugin/hooks/guard-tools.jq"
+          ],
+          "checks": {
+            "C552": "red"
+          },
+          "result": "red",
+          "at": "2026-11-01T16:40:30Z",
+          "head": "5046d36cde7b198212c8429677afe815927702d8",
+          "pending": [
+            "tests/hook-answers.bats"
+          ]
+        }
       ]
     },
     {
@@ -78891,6 +79239,17 @@
         "ended": "2026-11-01T16:27:10Z",
         "cost": {
           "usd": 0.564013
+        }
+      },
+      {
+        "id": "build-20261101T162806Z",
+        "kind": "build",
+        "session": "0ee781c3-c5b6-4a6c-889f-04b89f1fba4a",
+        "milestone": "M49",
+        "started": "2026-11-01T16:28:06Z",
+        "ended": "2026-11-01T16:41:56Z",
+        "cost": {
+          "usd": 0.593259
         }
       }
     ],
