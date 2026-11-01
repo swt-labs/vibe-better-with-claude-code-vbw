@@ -37,5 +37,8 @@ printf '%s\n' "$cells" | jq -R -s --arg id "$run" --arg sha "$sha" --arg when "$
       | map({runner: .[0], row: .[1], cells: (.[2] | split(" +"; null) | map(select(length > 0) | tonumber)
           | [range(0; length; 2) as $i | {ms: .[$i], q: .[$i + 1]}])})
       | group_by(.runner) | map({key: .[0].runner, value: (map({key: .row, value: .cells}) | from_entries)}) | from_entries) } as $new
-  | $old[0] | .runs = ([.runs[] | select(.id != $new.id)] + [$new])' > "$out.new"
+  | if ($new.tables | length > 0) and all($new.tables[]; length == 5 and all(.[]; length == 4))
+    then $old[0] | .runs = ([.runs[] | select(.id != $new.id)] + [$new])
+    else error("run " + $id + " has no net rows with quotients (a table older than the net rows)") end' > "$out.new" \
+  || { rm -f "$out.new"; exit 1; }
 mv "$out.new" "$out"
