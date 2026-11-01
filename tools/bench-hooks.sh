@@ -86,16 +86,18 @@ SIZES="51 500 2000"
 # reference block below, on the two nominal machines, measured NOMINAL_WHEN. This is a
 # debt: measure it again whenever the workload or the nominal machines change.
 # October 2026. The workload is one jq call of the guard's shape (--rawfile glance, --arg root,
-# --arg dir, --arg open, -f PROGRAM - DOCUMENT END) over a program of 28798 bytes and a
+# --arg dir, --arg open, -f PROGRAM - DOCUMENT END) over a program of 29698 bytes and a
 # document of 86107 bytes, both written by this script; its cost is the call's CPU minus the
-# sh -c jq startup beside it, as a guard case's own cost is (R233). M1 Max Mac: 8.8 to 9.4 ms over
-# five runs of this script on 2026-10-31. GitHub's macOS runner: not yet measured in this form;
+# sh -c jq startup beside it, as a guard case's own cost is (R233). The program calls four of
+# every five of its definitions, as the guard calls all of its own (R243: jq drops an uncalled
+# definition before code generation). M1 Max Mac: 16.0 to 16.3 ms over
+# five runs of this script on 2026-11-01. GitHub's macOS runner: not yet measured in this form;
 # the latest known is the earlier figure of 16.7 ms with the startup counted, in the bench
 # shard 1 log of pull request #740 (2026-10-31), to be replaced from the shard 1 log of the next pull request.
-# ubuntu-latest 10.3 ms (jq 1.7.1, ubuntu:24.04 in the container of tools/test-linux.sh on the Mac, 2026-10-31).
-# Ubuntu 26.04 9.9 ms (jq 1.8.1, the same container with ubuntu:26.04, 2026-10-31). The largest is pinned,
+# ubuntu-latest 17.8 ms (jq 1.7.1, ubuntu:24.04 in the container of tools/test-linux.sh on the Mac, 2026-11-01).
+# Ubuntu 26.04 17.6 ms (jq 1.8.1, the same container with ubuntu:26.04, 2026-11-01). The largest is pinned,
 # so the machines sit at a ratio of 1 or less.
-NOMINAL_MS=10.3
+NOMINAL_MS=17.8
 NOMINAL_WHEN="October 2026"
 
 # case_labels: the label of every case, in the order the bench runs them.
@@ -171,7 +173,13 @@ export CLAUDE_PLUGIN_ROOT="$PLUGIN" CLAUDE_PROJECT_DIR="$work"
 # own text into DIR: reference.jq (about 25 KB, the size of the shipped Bash guard, built
 # of fixed helper definitions and a body that reads $glance, $root, $dir, $open and its
 # inputs the way a guard does) and reference.json (a fixed object of about 60 KB). The
-# content is deterministic and read from no shipped file and no project file.
+# content is deterministic and read from no shipped file and no project file. Four of every
+# five definitions are called: the guard calls every one of its own, and jq drops a
+# definition nothing calls before it generates code, so a reference that called one in four
+# compiled for a third of the guard's time (5.9 against 13 ms on the Mac; 5.2 against 15.9
+# to 20.4 on GitHub's Linux runners, bench-steps.yml run 41317320402, the compile split).
+# The guard's compile, spread over the definitions it needs (no one construct, include or
+# builtin carries it), is what the quotient normalises, so the reference compiles as much (R243).
 reference_files() {
   mkdir -p "$1"
   awk 'BEGIN {
@@ -185,7 +193,7 @@ reference_files() {
     print "| [$checks[] | select((.run | join(\" \") | test(\"^sh \")) and (.files | length) > 0)] as $kept"
     print "| (($root | length) + ($dir | length) + ($open | tonumber)) as $n"
     printf "| [$doc"
-    for (i = 1; i <= 108; i += 4) printf ", h%d($doc; $n)", i
+    for (i = 1; i <= 108; i++) if (i % 5 != 0) printf ", h%d($doc; $n)", i
     print "] as $parts"
     print "| {schema: ($g.schema // 0), kept: ($kept | length), end: ($end | length), parts: ($parts | map(numbers) | add)}"
   }' > "$1/reference.jq"
