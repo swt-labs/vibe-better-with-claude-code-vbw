@@ -349,18 +349,19 @@ never before the call. Mark a server read-only only when its tools really only r
   The Linux-only step, found at its row (R243, T212): **program compile**, the time jq
   takes to bind and generate code for the guard's own definitions, which it never runs.
   `.github/workflows/bench-steps.yml` ran every step on GitHub's three runners; the table
-  gives the mean net ms of each step, and its quotient to the reference run in
-  parentheses (the reference run is 1.00 by definition; the startup rows carry no
-  quotient). Before is run 41312931896; after is run 41319529368 (both recorded in
+  gives the mean net ms of each step (CPU, per call), and its quotient to the reference run in
+  parentheses (the reference run is 1.00 by definition; the gross startup rows are
+  left out, they carry no quotient). Before is run 41312931896; after is run 41319529368 (both recorded in
   `tools/probes/guard-steps.json`).
 
-  | step | macos-latest before | ubuntu-latest before | ubuntu-26.04 before | macos-latest after | ubuntu-latest after | ubuntu-26.04 after |
-  |---|---|---|---|---|---|---|
-  | shell prelude | 0.2 (0.02) | 0.1 (0.01) | 0.1 (0.01) | 0.2 (0.01) | 0.0 (0.00) | 0.0 (0.00) |
-  | program compile | 16.7 (1.48) | 13.9 (2.08) | 14.1 (2.13) | 11.7 (0.68) | 17.9 (0.73) | 17.9 (0.73) |
-  | program run | 19.1 (1.69) | 15.0 (2.24) | 15.0 (2.27) | 13.7 (0.79) | 19.0 (0.78) | 19.0 (0.77) |
-  | reference compile | 8.2 (0.73) | 4.8 (0.72) | 4.7 (0.71) | 12.9 (0.75) | 21.0 (0.86) | 20.9 (0.85) |
-  | reference run | 11.4 (1.00) | 6.7 (1.00) | 6.6 (1.00) | 17.3 (1.00) | 24.5 (1.00) | 24.5 (1.00) |
+| runner and run | shell prelude | program compile | program run | reference compile | reference run |
+|---|---|---|---|---|---|
+| macos-latest, before | 0.2 (0.02) | 16.7 (1.48) | 19.1 (1.69) | 8.2 (0.73) | 11.4 (1.00) |
+| ubuntu-latest, before | 0.1 (0.01) | 13.9 (2.08) | 15.0 (2.24) | 4.8 (0.72) | 6.7 (1.00) |
+| ubuntu-26.04, before | 0.1 (0.01) | 14.1 (2.13) | 15.0 (2.27) | 4.7 (0.71) | 6.6 (1.00) |
+| macos-latest, after | 0.2 (0.01) | 11.7 (0.68) | 13.7 (0.79) | 12.9 (0.75) | 17.3 (1.00) |
+| ubuntu-latest, after | 0.0 (0.00) | 17.9 (0.73) | 19.0 (0.78) | 21.0 (0.86) | 24.5 (1.00) |
+| ubuntu-26.04, after | 0.0 (0.00) | 17.9 (0.73) | 19.0 (0.77) | 20.9 (0.85) | 24.5 (1.00) |
 
   The net rows subtract the shell and jq startup; the quotient is the step's net ms over
   the reference run's net ms. The cause: the reference compiled one trivial set of
