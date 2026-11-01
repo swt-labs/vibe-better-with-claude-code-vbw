@@ -1311,8 +1311,8 @@ scenario_panel() {
 # Comms, and `vbw next` says so; it ends the run. Phase 2: it seeds a history of
 # three finished builds (and proofs) in the clone, the user types /vbw:vibe, and the
 # build runs through the real window. Sampled every 2 s from the screen: VBW's
-# message in the chat ("until around HH:MM"), the status line (under the prompt box,
-# it prints 'until around HH:MM') and Comms (the "VBW ▸" strip: "until around HH:MM") must read
+# message in the chat ("until around HH:MM"), under the prompt box the
+# status line prints 'until around HH:MM' too, and Comms (the "VBW ▸" strip: "until around HH:MM") must read
 # the same time; the status line's "proving N of M checks" must count up.
 steptime_seed() {
   local i
