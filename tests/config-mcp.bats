@@ -49,7 +49,7 @@ VALUE='github:read-only ctx:read-only=search,get_context playwright'
 @test "R241: a malformed server or tool name, mark or list is refused with a usage line naming the accepted form, and nothing changes" {
   "$VBW" config set mcp "github:read-only" > /dev/null
   local bad
-  for bad in 'git/hub''github:rw' 'github:read-only=' 'github:read-only=a,,b' ':read-only' '-github' 'github:' 'github:read-only=run!' 'github github' '' 'github:read-only:x'; do
+  for bad in 'git/hub''github:rw' 'github:read-only=' 'github:read-only=a,,b' ':read-only' '-github' 'github:' 'github:read-only=run!' 'github:read-only=-x' 'github:read-only=ok,.y' 'github github' '' 'github:read-only:x'; do
     vbw_run config set mcp "$bad"
     [ "$status" -eq 2 ] || { echo "accepted: '$bad' -> $output"; false; }
     [[ "$output" == *"SERVER:read-only=TOOL,TOOL"* && "$output" == *"SERVER:read-only"* ]] || { echo "the refusal of '$bad' does not name the accepted form: $output"; false; }
