@@ -34,7 +34,7 @@ CASES='["server_wildcard", "single_tool", "unconfigured_beside", "agent_type", "
   [ -f "$RESULT" ] || { echo "the probe has not been run: no result at tools/probes/mcp-tools.json"; false; }
   jq -e --argjson c "$CASES" '.probe == "mcp-tools" and (.at | type == "string" and . >= "2026-11-01")
     and (.claude_version | type == "string" and length > 0)
-    and (.cases | type == "object") and ([.cases | keys[]] | contains($c))' "$RESULT" || { cat "$RESULT"; false; }
+    and (.cases | type == "object") and (.cases | keys as $k | $c | all(.[]; . as $n | $k | any(. == $n)))' "$RESULT" || { cat "$RESULT"; false; }
   jq -e '[.cases[] | (.tools_line | type == "string" and length > 0) and (.result | type == "string" and length > 0)] | all' "$RESULT" || { echo "a case lacks its tools_line or result"; cat "$RESULT"; false; }
   jq -e '.decision == "D561" and (.mechanism | type == "string" and test("disallowedTools"))' "$RESULT" || { jq '{decision, mechanism}' "$RESULT"; false; }
   jq -e '[.decisions[] | select(.id == "D561")] | length == 1 and (.[0].text | test("disallowedTools"))' "$REPO_ROOT/.vbw/record.json" > /dev/null \
