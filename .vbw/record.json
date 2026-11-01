@@ -1,6 +1,15 @@
 {
   "schema": 6,
-  "lease": null,
+  "lease": {
+    "run": "qa-20261101T195833Z",
+    "kind": "qa",
+    "started_at": "2026-11-01T19:58:33Z",
+    "files": [],
+    "session": "0ee781c3-c5b6-4a6c-889f-04b89f1fba4a",
+    "cost": {
+      "usd": 2960.093273
+    }
+  },
   "protected": [
     "tests/adaptive-results.bats",
     "tests/agent-scratch.bats",
@@ -27899,7 +27908,22 @@
           "to": "deep",
           "reason": "Dev blocked P194.1: C557 R240.4 case (tests/l3-step-time.bats line 57) fails independent of the code: the file has no setup(), so TEST_ROOT is empty and 'grep ... > $TEST_ROOT/pattern.sh' writes to /pattern.sh (Read-only file system). The suite's L3_STATUS_UNTIL is defined once and correct; the other 2 R240 cases and C556 pass; the steptime L3 run passed and is committed. The protected check file needs 'setup() { vbw_setup; }' (or mktemp) and a new approval; I may not edit it."
         }
-      ]
+      ],
+      "qa": {
+        "result": "pass",
+        "tier": "deep",
+        "tree": "6133a774b25cb86dafff0c8e96acb6f0f5d0cb6e128837a5c33cdfce94a428a6",
+        "at": "2026-11-01T20:00:06Z",
+        "note": "30/30 checks"
+      },
+      "outcome": {
+        "tier": "deep",
+        "predicted": "standard",
+        "held": false,
+        "fix_rounds": 0,
+        "qa_findings": 0,
+        "escalations": 1
+      }
     },
     {
       "id": "P195",
@@ -65591,6 +65615,15 @@
       "attempts": 0,
       "status": "closed",
       "note": "C516 fail (exit 1)"
+    },
+    {
+      "id": "F344",
+      "req": "R243",
+      "source": "qa",
+      "attempts": 0,
+      "status": "open",
+      "note": "docs/guards.md line 384 ends the P195 section with \"The nominal figure is one, 10.3 ms, with no per-system allowance.\" That number is false after this phase: commit e990b864 changed NOMINAL_MS in tools/bench-hooks.sh (line 100) from 10.3 to 17.8, because the reference now compiles more of its definitions. A reader checking the doc against the bench gets the wrong nominal figure (the bench prints \"nominal 17.8\"). Regression test: in tests/bench-linux-step-docs.bats (or bench-limits-docs.bats) read NOMINAL_MS from tools/bench-hooks.sh and fail when docs/guards.md states a different nominal ms figure.",
+      "phase": "P195"
     }
   ],
   "todos": [
