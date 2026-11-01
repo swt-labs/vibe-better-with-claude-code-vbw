@@ -158,6 +158,7 @@ input names an `agent_type`) is also held to the lease. The main session never i
 | Writing a protected check file (any check's `files`) during `build` or `fix`, or, by a shell command, a folder that holds one or a glob that may match one (`sed -i … tests/*.test.js`, `rm -r t*`; `*` may cross `/`, as zsh's `**` does; brace expansion is not read, and a check file changed that way stops the proof until the user approves it) | The contract is fixed while building; the one exception in a `build` run: after `vbw mutate` records a survivor, the check files that a check of the plan's own rules names, shared with other requirements' checks or not, open for the run's agents; a check file no check of the plan's own rules names stays protected. The opened files wait for one approval before the proof (docs/proof.md). The Lead runs the project's formatter and linter on check files before approval, and Devs format only their own files, so a formatter never changes an approved file |
 | Writing a protected check file during a `fix` run | Allowed for every requirement fix, a proof's fix included, for the check files of the fix's own requirement that no other requirement lists; they wait for one approval before the proof (docs/proof.md). A fix for a QA finding may also create a new test file. A project-command fix opens no check file. Any other check file stays protected; the refusal names the file and the files the fix may edit, and for a QA fix ends with `Next: put the regression test in a new test file and register it with vbw fix check` |
 | Under `build` or `fix`, an agent's file write on a record of schema 1 to 3, which has no `protected` list | The guard cannot tell which files are protected, so it refuses until the record is saved by this VBW as schema 4. Run any `vbw` command that writes the record (such as `/vbw:vibe`) from the main session, then retry |
+| An MCP tool (`mcp__SERVER__TOOL`) the project has not opened to the agent's role (no setting, a server not named, or, for Architect, Lead, Scout and QA, a tool not marked read-only) | Agents use only the MCP tools the project named for their role (section "MCP tools by role"). The refusal names the role and ends with `Next: the user adds or marks it with vbw config set mcp` |
 | `git commit`, `push`, `rebase`, `merge`, `pull`, `cherry-pick`, `revert`, `am` | Commits go through `vbw commit`, with provenance |
 | `git stash` (except `list`, `show`), `switch`, `reset`, `checkout` of a branch; `git checkout -- PATH` or `git restore PATH` outside `lease.files` | Agents share one working tree: nothing may move HEAD or other agents' changes |
 
@@ -250,11 +251,48 @@ other program that names it, is refused.
 A command that contains none of the words any rule needs (`rm`, `git`, `vbw`,
 `consent`, `record.json`, a secret file name) is allowed without being read.
 
+## MCP tools by role
+
+A project opens MCP servers to VBW's agents with one setting. It lives in
+`record.settings.mcp`, so every clone of the project shares it through the record.
+
+```
+vbw config set mcp "github docs:read-only search:read-only=query,fetch"
+vbw config set mcp default
+```
+
+- `SERVER` opens every tool of the server to the writing roles only.
+- `SERVER:read-only` marks a pure server (all its tools only read) as read-only
+  in one word: every tool is open to every role.
+- `SERVER:read-only=TOOL,TOOL` marks a mixed server's read-only tools, by the
+  names `/mcp` shows. Its other tools stay with the writing roles.
+- `default` removes the setting. `vbw config` shows it as you set it, or
+  `mcp: none`. With no setting every agent has exactly the tools it has
+  today, and every MCP call is refused.
+
+**Who gets what.** Dev, Debugger and Docs get every named tool. Architect, Lead,
+Scout and QA get a tool only when you marked it read-only, never by a guess from
+its name: `read_file`, `get_issue` or `search_docs` with no mark is refused for
+them. The main session and agents that are not VBW's are never judged.
+
+**The refusal** is a `VBW guard:` reason that names the agent's role and the
+tool (or the server, when the setting does not name it) and ends with
+`Next: add or mark it with vbw config set mcp`. For a reading role it says the
+tool is not marked read-only.
+
+**What the guard cannot see.** It judges the call (PreToolUse on `mcp__` tools),
+not what the server does inside. The guards see Write, Edit and Bash calls, so a
+file an MCP tool writes is judged after the fact, by the run's scope check
+(`<commit> (<plan>) changed <file>, which is not in the plan`), never before the
+call. Mark a server read-only only when its tools really only read.
+
 ## Engineering
 
 - **Per-tool-call hooks are jq itself** (build plan K20): no shell script, no
   interpreter startup of our own. On a Mac, Homebrew bash takes 9 ms just to
   start; jq is required by VBW anyway.
+- **The MCP guard** (`guard-mcp.jq`, a PreToolUse jq entry on `mcp__` tools) is
+  one more hook the bench measures, as the `guard (mcp)` case.
 - **The guard command's own shell tests pick the input; jq does the rest.** The
   tests are built into the shell (no other program): they pick the glance, or
   nothing when it is not current. jq then reads the hook input, the record only
