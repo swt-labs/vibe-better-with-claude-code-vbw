@@ -61565,7 +61565,7 @@
         "tools/probes/mcp-tools.json"
       ],
       "after": [],
-      "status": "done",
+      "status": "planned",
       "role": "dev",
       "tasks": [
         "tools/probe-mcp-tools.sh (bash 3.2, shellcheck-clean, header comment listing every case): keep the eight cases already run and add, each {tools_line, result}: inherit_omitted (reader.md with no tools: line; asked to call read_note and then to list every tool it has on one line 'TOOLS: a, b, c'; result as the other cases, the token when the call worked); disallowed_honoured (no tools: line, 'disallowedTools: Write, Edit, NotebookEdit, Bash'; asked to create proj/probe-written.txt with the Write tool; result 'RESULT: NOT-WRITTEN <the agent's words>' when the file is absent and the hook log holds no Write, Edit or NotebookEdit call of the agent, else 'RESULT: WRITTEN <what happened>'); hook_every_tool (the probe plugin's PreToolUse entry with the matcher omitted, as today; an agent with tools omitted calls Read, Bash and read_note; result 'RESULT: ALL <tool=agent_type list>' when the hook log holds each of those calls with agent_type mcpprobe:reader, else 'RESULT: MISSED <list>'); the foreign workflow's agent() call to mcpprobe:reader passes a schema, so the log shows the tool Claude Code gives a schema-returning agent",
@@ -61904,7 +61904,7 @@
         "P193.1",
         "P195.1"
       ],
-      "status": "blocked",
+      "status": "planned",
       "role": "dev",
       "tasks": [
         "plugin/hooks/guard-tools.jq (includes holder and common like the other guards): only VBW agents are judged (agent_type ^vbw:(architect|lead|dev|qa|scout|debugger|docs)$ in a VBW project; anything else no answer). The role's built-ins (architect, qa: Read, Grep, Glob, Bash; lead: those plus Write, Edit, WebFetch; dev, debugger, docs: those plus Write, Edit; scout: those plus WebSearch, WebFetch) and the tools Claude Code gives every agent (tools/probes/mcp-tools.json always_allowed, a literal list with a comment naming the probe) get no answer. An mcp__ tool is judged by record.settings.mcp: the server is the entry whose mcp__<server>__ is the longest prefix of tool_name; no entry: deny '<tool>: this project's MCP setting names no server <server> for VBW's agents (mcp: <entries or none>)\\nNext: the user adds it with vbw config set mcp \"<entries> <server>\" for the writing agents (dev, debugger, docs) or \"<entries> <server>:read-only\" for every agent; as the <role>, work without it meanwhile'; a writing role, read_only true, or the tool named in a read_only list: no answer; else deny '<tool> is not marked read-only, so the <role> (a reading agent: architect, lead, scout, qa) may not call it; VBW never guesses from a name such as read_, get_ or search_\\nNext: the user marks it with vbw config set mcp \"... <server>:read-only\" (the whole server) or \"... <server>:read-only=<tool>\" (this tool); meanwhile work without it'. Any other tool: deny '<tool> is not one of the <role>'s tools (<list>): VBW refuses a tool it does not give the role, a new Claude Code tool included\\nNext: as the <role>, do the work with your own tools'. Every answer through common.jq's deny, never allow",
@@ -61912,8 +61912,7 @@
         "plugin/agents/*.md (all seven): the tools: line goes; 'disallowedTools:' names, in the probe's order, every tool of tools/probes/mcp-tools.json builtins that is neither the role's own nor in always_allowed (so architect, qa and scout name Write, Edit and NotebookEdit); one sentence in each body: 'Tools: you have your role's tools and the MCP tools this project names for your role (vbw config set mcp); a refusal names the user's next step, so report it and go on without the tool'; tests/workflows.bats's agent frontmatter case checks a disallowedTools line and no tools: line instead of a tool list",
         "tools/bench-hooks.sh: guard cases for the tools guard, 'guard (tools)' (a vbw:qa agent calling mcp__github__get_issue on the bench's record, no setting: the refusal path), its large-record and N-checks variants, and 'guard (tools, main session)' (a main-session Read call: the path every chat tool call pays), measured against the 20 ms budget like the other guard cases; guards() picks the entry that runs guard-tools.jq for them (its matcher is omitted); VBW_BENCH_ONLY='guard (tools' bash tools/bench-hooks.sh within budget on this Mac",
         "Under /bin/bash 3.2 and bash 5: tests/agents-tools.bats, tests/guard-tools.bats, tests/hook-answers.bats, tests/standards.bats, tests/workflows.bats, tests/agents-checks.bats and tests/hooks-guard.bats pass"
-      ],
-      "note": "C549 (tests/agents-tools.bats case 'each agent's disallowedTools names every built-in the probe found') cannot pass: tools/probes/mcp-tools.json (P192.1's file, done, outside this plan) holds a junk entry in builtins, 'not yet fetched via ToolSearch: CronCreate' (the probe script's parse of the deferred-tools note in the agent's reply, tools/probe-mcp-tools.sh line 212 splits on ',' only). The check splits it on spaces and demands that each of 'not', 'yet', 'fetched', 'via', 'ToolSearch:' be disallowed, which no agent file can honestly do. Fix needed in P192.1's files: the builtins parse must drop the '(also loaded by deferred search, not yet fetched via ToolSearch: ' prefix and keep CronCreate as its own entry (the other deferred tools in that parenthesis are already listed apart), then the probe result is re-recorded. Done in this plan: guard-tools.jq, hooks.json entry (fail-closed shape passes standards.bats), seven agents (disallowedTools lists written from the clean builtins plus CronCreate), tests/workflows.bats frontmatter case, bench cases (guard (tools) variants 7.3 ms, main session 0.5 ms). C551 and C552 pass; agents-checks, hook-answers, hooks-guard, standards, workflows pass under /bin/bash. Mutation not run: C549 is not green."
+      ]
     },
     {
       "id": "P193.1",
@@ -69637,6 +69636,12 @@
       "text": "P192.1 rerun: tools/probe-mcp-tools.sh's builtins parse split the agent's tool list on commas only and kept 'not yet fetched via ToolSearch: CronCreate' as one entry; parse each item to its tool name (the deferred tools included, CronCreate among them), re-record tools/probes/mcp-tools.json by running the probe, then P192.3 regenerates each agent's disallowedTools from the corrected list and drops the hand-added CronCreate if the list now carries it.",
       "why": "P192.3 blocked on the junk entry (C549 cannot pass honestly); C546 now refuses a non-name entry. Lead decision, 2026-11-01.",
       "at": "2026-11-01T15:20:16Z"
+    },
+    {
+      "id": "D570",
+      "at": "2026-11-01T16:21:55Z",
+      "text": "Contract approved: 232 requirements, 556 checks, 585 plans (61fbd1f32304)",
+      "plans": []
     }
   ],
   "commands": {
