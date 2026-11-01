@@ -28,3 +28,15 @@ bench_section() { sed -n '/^## Engineering/,/^## SessionStart/p' "$DOC"; }
   ! bench_section | grep -q 'each Linux quotient within 1.25' || { echo "the disproved claim is still in docs/guards.md"; false; }
   bench_section | grep -qE '1\.25' || { echo "the 1.25 target is not stated with the measured figures"; false; }
 }
+
+# F344: the docs stated the nominal figure from before the reference was reshaped (10.3 ms
+# against the bench's 17.8 ms). Every "nominal ... N ms" figure in the bench section is the
+# bench's own NOMINAL_MS.
+@test "R243: every nominal figure the bench section states is the bench's own NOMINAL_MS" {
+  local nominal stated
+  nominal=$(sed -n -E 's/^NOMINAL_MS=([0-9.]+)$/\1/p' "$REPO_ROOT/tools/bench-hooks.sh")
+  [ -n "$nominal" ] || { echo "no NOMINAL_MS in tools/bench-hooks.sh"; false; }
+  stated=$(bench_section | tr '\n' ' ' | grep -oE 'nominal figure is[[:space:]]+one, [0-9]+\.[0-9]+ ms' | grep -oE '[0-9]+\.[0-9]+' || true)
+  [ -n "$stated" ] || { echo "the bench section states no nominal figure"; false; }
+  [ "$stated" = "$nominal" ] || { echo "docs/guards.md states nominal $stated ms; the bench's NOMINAL_MS is $nominal"; false; }
+}
