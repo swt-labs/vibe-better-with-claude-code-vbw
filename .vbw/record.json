@@ -27805,6 +27805,12 @@
           "from": "deep",
           "to": "deep",
           "reason": "Dev blocked P192.1: Probe script extended and run on Claude Code 2.1.316: inherit_omitted has the token, disallowed_honoured NOT-WRITTEN, hook_every_tool ALL, hook_read_cpu_ms 5.6, always_allowed [StructuredOutput, SubagentHandback]. But the agent with tools omitted lists no Grep or Glob (this build has none; they are not even in its ToolSearch deferred list), so builtins lacks them and the protected test tests/mcp-probe.bats (builtins contains Read, Grep, Glob, Bash, Write, Edit, WebFetch, WebSearch) fails; I cannot fake or weaken that. This also bears on D561 R241.14/15: the guard cannot 'refuse every other built-in the probe found' for Grep/Glob if Claude Code does not offer them to agents. Nothing committed; new script and result kept in .vbw/runtime/scratch/probe-mcp-tools.new.sh and mcp-tools.new.json. Lead should decide: relax the builtins check to the tools the build offers (Grep/Glob optional) or replan."
+        },
+        {
+          "at": "2026-11-01T15:17:55Z",
+          "from": "deep",
+          "to": "deep",
+          "reason": "Dev blocked P192.3: C549 (tests/agents-tools.bats case 'each agent's disallowedTools names every built-in the probe found') cannot pass: tools/probes/mcp-tools.json (P192.1's file, done, outside this plan) holds a junk entry in builtins, 'not yet fetched via ToolSearch: CronCreate' (the probe script's parse of the deferred-tools note in the agent's reply, tools/probe-mcp-tools.sh line 212 splits on ',' only). The check splits it on spaces and demands that each of 'not', 'yet', 'fetched', 'via', 'ToolSearch:' be disallowed, which no agent file can honestly do. Fix needed in P192.1's files: the builtins parse must drop the '(also loaded by deferred search, not yet fetched via ToolSearch: ' prefix and keep CronCreate as its own entry (the other deferred tools in that parenthesis are already listed apart), then the probe result is re-recorded. Done in this plan: guard-tools.jq, hooks.json entry (fail-closed shape passes standards.bats), seven agents (disallowedTools lists written from the clean builtins plus CronCreate), tests/workflows.bats frontmatter case, bench cases (guard (tools) variants 7.3 ms, main session 0.5 ms). C551 and C552 pass; agents-checks, hook-answers, hooks-guard, standards, workflows pass under /bin/bash. Mutation not run: C549 is not green."
         }
       ]
     },
@@ -61893,7 +61899,7 @@
         "P193.1",
         "P195.1"
       ],
-      "status": "planned",
+      "status": "blocked",
       "role": "dev",
       "tasks": [
         "plugin/hooks/guard-tools.jq (includes holder and common like the other guards): only VBW agents are judged (agent_type ^vbw:(architect|lead|dev|qa|scout|debugger|docs)$ in a VBW project; anything else no answer). The role's built-ins (architect, qa: Read, Grep, Glob, Bash; lead: those plus Write, Edit, WebFetch; dev, debugger, docs: those plus Write, Edit; scout: those plus WebSearch, WebFetch) and the tools Claude Code gives every agent (tools/probes/mcp-tools.json always_allowed, a literal list with a comment naming the probe) get no answer. An mcp__ tool is judged by record.settings.mcp: the server is the entry whose mcp__<server>__ is the longest prefix of tool_name; no entry: deny '<tool>: this project's MCP setting names no server <server> for VBW's agents (mcp: <entries or none>)\\nNext: the user adds it with vbw config set mcp \"<entries> <server>\" for the writing agents (dev, debugger, docs) or \"<entries> <server>:read-only\" for every agent; as the <role>, work without it meanwhile'; a writing role, read_only true, or the tool named in a read_only list: no answer; else deny '<tool> is not marked read-only, so the <role> (a reading agent: architect, lead, scout, qa) may not call it; VBW never guesses from a name such as read_, get_ or search_\\nNext: the user marks it with vbw config set mcp \"... <server>:read-only\" (the whole server) or \"... <server>:read-only=<tool>\" (this tool); meanwhile work without it'. Any other tool: deny '<tool> is not one of the <role>'s tools (<list>): VBW refuses a tool it does not give the role, a new Claude Code tool included\\nNext: as the <role>, do the work with your own tools'. Every answer through common.jq's deny, never allow",
@@ -61901,7 +61907,8 @@
         "plugin/agents/*.md (all seven): the tools: line goes; 'disallowedTools:' names, in the probe's order, every tool of tools/probes/mcp-tools.json builtins that is neither the role's own nor in always_allowed (so architect, qa and scout name Write, Edit and NotebookEdit); one sentence in each body: 'Tools: you have your role's tools and the MCP tools this project names for your role (vbw config set mcp); a refusal names the user's next step, so report it and go on without the tool'; tests/workflows.bats's agent frontmatter case checks a disallowedTools line and no tools: line instead of a tool list",
         "tools/bench-hooks.sh: guard cases for the tools guard, 'guard (tools)' (a vbw:qa agent calling mcp__github__get_issue on the bench's record, no setting: the refusal path), its large-record and N-checks variants, and 'guard (tools, main session)' (a main-session Read call: the path every chat tool call pays), measured against the 20 ms budget like the other guard cases; guards() picks the entry that runs guard-tools.jq for them (its matcher is omitted); VBW_BENCH_ONLY='guard (tools' bash tools/bench-hooks.sh within budget on this Mac",
         "Under /bin/bash 3.2 and bash 5: tests/agents-tools.bats, tests/guard-tools.bats, tests/hook-answers.bats, tests/standards.bats, tests/workflows.bats, tests/agents-checks.bats and tests/hooks-guard.bats pass"
-      ]
+      ],
+      "note": "C549 (tests/agents-tools.bats case 'each agent's disallowedTools names every built-in the probe found') cannot pass: tools/probes/mcp-tools.json (P192.1's file, done, outside this plan) holds a junk entry in builtins, 'not yet fetched via ToolSearch: CronCreate' (the probe script's parse of the deferred-tools note in the agent's reply, tools/probe-mcp-tools.sh line 212 splits on ',' only). The check splits it on spaces and demands that each of 'not', 'yet', 'fetched', 'via', 'ToolSearch:' be disallowed, which no agent file can honestly do. Fix needed in P192.1's files: the builtins parse must drop the '(also loaded by deferred search, not yet fetched via ToolSearch: ' prefix and keep CronCreate as its own entry (the other deferred tools in that parenthesis are already listed apart), then the probe result is re-recorded. Done in this plan: guard-tools.jq, hooks.json entry (fail-closed shape passes standards.bats), seven agents (disallowedTools lists written from the clean builtins plus CronCreate), tests/workflows.bats frontmatter case, bench cases (guard (tools) variants 7.3 ms, main session 0.5 ms). C551 and C552 pass; agents-checks, hook-answers, hooks-guard, standards, workflows pass under /bin/bash. Mutation not run: C549 is not green."
     },
     {
       "id": "P193.1",
@@ -62382,13 +62389,36 @@
       "after": [
         "P195.1"
       ],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "tools/bench-steps-result.sh RUN_ID before|after (bash 3.2, shellcheck-clean): reads each job of a bench-steps.yml run with gh run view (read only), takes the runner from the job name 'Steps (<os>)' and the commit from the run, parses the step table's net rows into four {ms, q} cells per row, and merges {id, sha, when, tables: {<runner>: {<row>: [cells]}}} by run id into tools/probes/guard-steps.json ({probe: \"guard-steps\", runs}); jq builds the JSON",
         "Record the before runs 41312931896 and 41305323924 and commit; then block with the note 'before tables committed: the lead session runs gh workflow run bench-steps.yml --ref plow/2.1.23 on the fix (P195.1's last commit, pushed) and gives the run id; a macOS run whose reference run spreads more than 2 ms across its four columns is run again'",
         "Record that after run and commit; tests/bench-steps-result.bats passes under /bin/bash 3.2; when an Ubuntu runner's mean program run quotient is over 1.25 times macos-latest's, block with the tables instead (the fix did not reach its target)",
         "vbw decide \"R243: the Linux-only guard step is <row>: before <figures per runner> (runs 41312931896, 41305323924), after <figures> (run <id>); cause <cause>, removed by <change>\" \"<why this change and not the others>\""
+      ],
+      "mutations": [
+        {
+          "rule": {
+            "req": "R243",
+            "text": "tools/probes/guard-steps.json, written by tools/bench-steps-result.sh from bench-steps.yml runs, holds the before run 41312931896 and an after run with step tables from macos-latest, ubuntu-latest and ubuntu-26.04, and in the after run each Ubuntu runner's mean program run quotient is within 1.25 times macos-latest's"
+          },
+          "what": "after run's ubuntu-latest program run quotients set to 2.0",
+          "files": [
+            "tools/probes/guard-steps.json"
+          ],
+          "checks": {
+            "C561": "red"
+          },
+          "result": "red",
+          "at": "2026-11-01T15:12:39Z",
+          "head": "43c506c5a7ddce4ecaf8392108c01990ed982a3e"
+        },
+        {
+          "task": 4,
+          "none": "task 4 only records a decision (vbw decide), no code to break",
+          "at": "2026-11-01T15:12:47Z"
+        }
       ]
     }
   ],
@@ -69584,6 +69614,18 @@
       "at": "2026-11-01T14:44:33Z",
       "text": "Contract approved: 232 requirements, 556 checks, 585 plans (a50a9b7c7991)",
       "plans": []
+    },
+    {
+      "id": "D567",
+      "text": "P195.3: the after run is bench-steps.yml run 41319529368 (plow/2.1.23 after e990b864, the reference calling four in five of its functions); the before run is 41312931896. After: program run quotient to the reference run, columns git npm big interp: macos-latest 0.77 0.75 0.86 0.79 (reference 18.7 ms, ratio 1.05); ubuntu-latest 0.77 0.76 0.78 0.81 (reference 24.7 ms, ratio 1.39); ubuntu-26.04 0.77 0.76 0.77 0.80 (reference 24.5 ms, ratio 1.38). Each Ubuntu mean is within 1.25 times macOS's (about 0.99x).",
+      "why": "Lead hand-off of the after run the plan blocks on, 2026-11-01.",
+      "at": "2026-11-01T15:08:38Z"
+    },
+    {
+      "id": "D568",
+      "text": "R243: the Linux-only guard step is program compile (jq binding and code generation of guard-bash.jq's own definitions, never executed): mean program run quotient to the reference run before macos-latest 1.69, ubuntu-latest 2.24, ubuntu-26.04 2.27 (run 41312931896; run 41305323924 predates the net rows), after 0.79, 0.78, 0.77 (run 41319529368; Ubuntu/macOS 0.99); cause: the reference compiled one trivial definition set while the guard compiles all its own, a cost 1.35x higher on Linux (D564), removed by the reference calling four in five of its definitions (P195.1, e990b864)",
+      "why": "The compile cost is jq's own and the same for any program with those definitions, so the fair fix is a reference that carries the same work, not a change to the shipped guard; oniguruma, includes and parsing were ruled out by the compile split (run 41317320402).",
+      "at": "2026-11-01T15:12:10Z"
     }
   ],
   "commands": {
@@ -78743,6 +78785,17 @@
         "ended": "2026-11-01T15:05:40Z",
         "cost": {
           "usd": 1.287358
+        }
+      },
+      {
+        "id": "build-20261101T150841Z",
+        "kind": "build",
+        "session": "0ee781c3-c5b6-4a6c-889f-04b89f1fba4a",
+        "milestone": "M49",
+        "started": "2026-11-01T15:08:41Z",
+        "ended": "2026-11-01T15:18:33Z",
+        "cost": {
+          "usd": 1.178536
         }
       }
     ],
