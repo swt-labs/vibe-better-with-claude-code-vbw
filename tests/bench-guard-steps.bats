@@ -82,3 +82,20 @@ cells() { row "$1" | head -1 | sed -E "s/^$1[[:space:]]+//"; }
   [[ "$output" == *"net of"*"startup"* ]] || { echo "the method line does not say the net rows subtract the startup:"; echo "$output"; false; }
   [[ "$output" == *"quotient"* ]] || { echo "the method line does not name the quotient:"; echo "$output"; false; }
 }
+
+# R243 (compile split, bench-steps.yml run 41317320402): jq drops a definition nothing calls
+# before it generates code, and the guard calls every one of its own. A reference that called
+# one definition in four compiled for a third of the guard's time, so the quotient it
+# normalised was not the guard's: the reference calls at least four of every five.
+@test "R243: the reference program calls at least four in five of its definitions, as the guard calls its own, so it compiles as much as the guard does" {
+  local dir="$TEST_ROOT/ref" defs called name
+  run env VBW_BENCH_REFERENCE_FILES="$dir" bash "$BENCH"
+  [ "$status" -eq 0 ] || { echo "$output"; false; }
+  defs=$(grep -c '^def ' "$dir/reference.jq")
+  called=0
+  for name in $(sed -n -E 's/^def ([a-z0-9_]+)\(.*/\1/p' "$dir/reference.jq"); do
+    if grep -v '^def ' "$dir/reference.jq" | grep -qE "(^|[^a-z0-9_])$name\("; then called=$((called + 1)); fi
+  done
+  [ "$defs" -gt 0 ] || { echo "no definitions"; false; }
+  [ "$((called * 5))" -ge "$((defs * 4))" ] || { echo "the reference calls $called of its $defs definitions"; false; }
+}
