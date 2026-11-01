@@ -87,6 +87,31 @@ teardown_file() { fixture_teardown; }
   jq -e '.evidence.test_files["lib/tests/t_lib.sh"] | .status == "pass" and (.reused | not)' .vbw/record.json || { echo "$output"; false; }
 }
 
+@test "R167: a pathspec reaches into a submodule only when it names it, and one level deep, as the proof copy holds them" {
+  local s
+  for s in lib vendor deep; do
+    git init -q "$TEST_ROOT/${s}src"
+    mkdir -p "$TEST_ROOT/${s}src/tests"
+    printf 'true\n' > "$TEST_ROOT/${s}src/tests/t_$s.sh"
+    git -C "$TEST_ROOT/${s}src" add tests
+    git -C "$TEST_ROOT/${s}src" commit -q -m "chore: seed"
+  done
+  # deep is a submodule of lib: a second level.
+  git -C "$TEST_ROOT/libsrc" -c protocol.file.allow=always submodule add -q "file://$TEST_ROOT/deepsrc" deep
+  git -C "$TEST_ROOT/libsrc" commit -q -m "chore: deep"
+  git -c protocol.file.allow=always submodule add -q "file://$TEST_ROOT/libsrc" lib
+  git -C lib -c protocol.file.allow=always submodule update -q --init
+  git -c protocol.file.allow=always submodule add -q "file://$TEST_ROOT/vendorsrc" vendor
+  # */tests/t_*.sh matches vendor's test file but names no submodule; lib/deep/... names one two levels down.
+  sed 's|^- files: tests/t_\*\.sh$|- files: tests/t_*.sh lib/tests/*.sh */tests/t_*.sh lib/deep/tests/*.sh|' .vbw/spec.md > "$TEST_ROOT/spec.md" && cp "$TEST_ROOT/spec.md" .vbw/spec.md
+  "$VBW" spec sync > /dev/null
+  git add -A && git commit -q -m "chore: subs"
+  "$VBW" approve > /dev/null
+  vbw_run prove
+  jq -e '.evidence.test_files | keys == ["lib/tests/t_lib.sh","tests/t_a.sh","tests/t_b.sh"]' .vbw/record.json \
+    || { echo "$output"; jq '.evidence.test_files | keys' .vbw/record.json; false; }
+}
+
 @test "R167: a test file an approved check runs is not a test file of its own" {
   jq '.checks[0].run = ["sh","tests/t_a.sh"]' .vbw/record.json > "$TEST_ROOT/edit.json" && cp "$TEST_ROOT/edit.json" .vbw/record.json
   git add -A && git commit -q -m "chore(vbw): check runs t_a"

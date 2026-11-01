@@ -39,16 +39,35 @@ testfiles_ids() {
   rm -rf "$d"
 }
 
-# testfiles_list RECORD: the test files, NUL separated: the committed files the
-# declared pathspecs match, minus every file the run of an approved check names.
-# A submodule's files count, by their project paths (--recurse-submodules: the
-# pathspecs are matched as the project's, inside each submodule): the proof copy
-# holds each submodule at its own HEAD (docs/workflows.md, "Submodules").
-testfiles_list() {
-  local specs=() a
+# testfiles_ls RECORD: the committed files the declared pathspecs match, NUL
+# separated, by their project paths. A submodule's files count only for the
+# pathspecs that name it (start with its path and a /), matched inside it, and
+# only for the submodules vbw_subs finds (one level, checked out): those the
+# proof copy holds, at their own HEAD. So a pattern such as */tests/*.sh never
+# picks up a vendored submodule's tests, and a submodule's pointer is no file.
+testfiles_ls() {
+  local specs=() subs=() rel=() a s
   while IFS= read -r -d '' a; do specs+=("$a"); done < <(printf '%s' "$1" | jq -j '.test_files.files[] + "\u0000"')
   [ ${#specs[@]} -gt 0 ] || return 0
-  git -C "$VBW_ROOT" ls-files -z --recurse-submodules -- ${specs[@]+"${specs[@]}"} \
+  while IFS= read -r -d '' s; do subs+=("$s"); done < <(vbw_subs)
+  git -C "$VBW_ROOT" ls-files -z -- ${specs[@]+"${specs[@]}"} \
+    | jq -Rj --argjson s "$(printf '%s\0' ${subs[@]+"${subs[@]}"} | jq -Rsc 'split("\u0000")[:-1]')" \
+      'split("\u0000")[:-1][] | select(. as $p | any($s[]; . == $p) | not) | . + "\u0000"'
+  for s in ${subs[@]+"${subs[@]}"}; do
+    rel=()
+    for a in ${specs[@]+"${specs[@]}"}; do
+      case "$a" in "$s"/*) rel+=("${a#"$s"/}") ;; esac
+    done
+    [ ${#rel[@]} -gt 0 ] || continue
+    git -C "$VBW_ROOT/$s" ls-files -z -- "${rel[@]/#/:(top)}" \
+      | jq -Rj --arg s "$s" 'split("\u0000")[:-1][] | $s + "/" + . + "\u0000"'
+  done
+}
+
+# testfiles_list RECORD: the test files, NUL separated: the files testfiles_ls
+# lists, minus every file the run of an approved check names.
+testfiles_list() {
+  testfiles_ls "$1" \
     | jq -Rs -j --slurpfile r <(printf '%s' "$1") '[$r[0].checks[].run[]] as $run
         | split("\u0000")[] | . as $p | select(length > 0 and (any($run[]; . == $p) | not)) | . + "\u0000"'
 }
@@ -151,15 +170,9 @@ testfiles_finish() {
     | jq -c 'map_values(del(.reads, .dirs, .git, .id) | if .reused and .status == "pass" then .exit = 0 else . end)'
 }
 
-# testfiles_matches RECORD: how many committed files the form's pathspecs match,
-# before the files an approved check runs are taken out (a submodule's included,
-# as testfiles_list counts them).
-testfiles_matches() {
-  local specs=() a
-  while IFS= read -r -d '' a; do specs+=("$a"); done < <(printf '%s' "$1" | jq -j '.test_files.files[] + "\u0000"')
-  [ ${#specs[@]} -gt 0 ] || { printf '0\n'; return 0; }
-  git -C "$VBW_ROOT" ls-files -z --recurse-submodules -- ${specs[@]+"${specs[@]}"} | tr -cd '\000' | wc -c | tr -d ' '
-}
+# testfiles_matches RECORD: how many committed files the form's pathspecs match
+# (testfiles_ls), before the files an approved check runs are taken out.
+testfiles_matches() { testfiles_ls "$1" | tr -cd '\000' | wc -c | tr -d ' '; }
 
 # testfiles_command RECORD RESULTS: the test command's place in the evidence when the
 # test files ran in its stead: one result, passing when every test file passed
