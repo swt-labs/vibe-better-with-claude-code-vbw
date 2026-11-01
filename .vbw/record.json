@@ -70254,10 +70254,10 @@
     }
   },
   "evidence": {
-    "at": "2026-11-01T19:53:48Z",
-    "contract": "5248a6dc5eb16036772195179b625236ec8e3acc9251c970f3574d064bb88a19",
-    "tree": "da055d3756536f7ede2ae07096eb0e0377db8cd7",
-    "head": "da055d3756536f7ede2ae07096eb0e0377db8cd7",
+    "at": "2026-11-01T20:43:38Z",
+    "contract": "3301f29b1a883e8825edb2d37b927eea311672250d4d6a1e1becf57e38d11647",
+    "tree": "316109ef8064932992459c4dce75cd672c4a544c",
+    "head": "316109ef8064932992459c4dce75cd672c4a544c",
     "checks": {
       "C1": {
         "status": "pass",
@@ -70732,9 +70732,9 @@
         "exit": 0,
         "seconds": 11.3,
         "tail": "1..5\nok 1 R53: the panel is a mod named by hooks.json, next to the hooks it had, which are unchanged\nok 2 R53: Claude Code's own validator reads the module and lists the hooks the panel registers\nok 3 R53: the status line is byte for byte what it is without the panel, in a VBW project\nok 4 R53: the status line is byte for byte what it is without the panel, outside a VBW project, with colour too\nok 5 R53: the status line and the kernel know nothing of the panel, so an older Claude Code prints nothing extra",
-        "fp": "99b0b5dfc176cee0cb0aac0aaba7deaddcbf8b4074c02958b48278313fd54b6e",
         "at": "2026-11-01T19:53:48Z",
-        "why": "last result failed"
+        "fp": "99b0b5dfc176cee0cb0aac0aaba7deaddcbf8b4074c02958b48278313fd54b6e",
+        "reused": true
       },
       "C56": {
         "status": "pass",
@@ -70892,20 +70892,20 @@
       "C75": {
         "status": "pass",
         "exit": 0,
-        "seconds": 11.7,
+        "seconds": 11.6,
         "tail": "1..6\nok 1 R61: a call to vbw approve from the model is still refused by the guard\nok 2 R61: an answer-shaped message that is not an AskUserQuestion answer approves nothing\nok 3 R61: a message written by the model that merely contains the answer does not approve\nok 4 R61: a question asked by a subagent approves nothing\nok 5 R61: the guard's rule and the hook are documented together: the hook does not appear as a way for agents\nok 6 R61: the answer hook's own cost on an unrelated answer is measured by the hook bench",
-        "at": "2026-11-01T18:25:30Z",
         "fp": "34ef9e9bae37f1bea2af836d3a5be9a0f3a4eff6f6a1e5fb5a00cf8fa2b218b0",
-        "reused": true
+        "at": "2026-11-01T20:43:38Z",
+        "why": "docs/guards.md changed"
       },
       "C76": {
         "status": "pass",
         "exit": 0,
-        "seconds": 0.5,
+        "seconds": 0.8,
         "tail": "1..5\nok 1 R61: the router's approve step asks with AskUserQuestion, Approve first and Not yet second, from the question vbw show contract prints\nok 2 R61: the help lists /vbw:approve\nok 3 R61: docs/proof.md names the options Approve and Not yet, the Enter key, /vbw:approve and the fingerprint\nok 4 R61: docs/guards.md names the answer hook: AskUserQuestion and PostToolUse\nok 5 R61: the README says approval is a choice where Enter approves, and /vbw:approve still works",
-        "at": "2026-11-01T18:25:30Z",
         "fp": "7b2f3c8fd16b43a30bbb02ec8ea26bcd6eaa001391d3d84ccf1a14ee0a449aca",
-        "reused": true
+        "at": "2026-11-01T20:43:38Z",
+        "why": "docs/guards.md changed"
       },
       "C77": {
         "status": "pass",
@@ -71135,11 +71135,11 @@
       "C102": {
         "status": "pass",
         "exit": 0,
-        "seconds": 20.4,
+        "seconds": 28.7,
         "tail": "1..14\nok 1 R76: Python writing a file outside the plan is refused\nok 2 R76: a Python script read from standard input is judged too\nok 3 R76: Node, Perl and Ruby writing a file outside the plan are refused\nok 4 R76: the refusal is the one a shell write outside the plan gets, for the same path\nok 5 R76: the same programs writing a file inside the plan are allowed\nok 6 R76: programs that only read, or that run tests, are allowed\nok 7 R76: outside a run, programs are not judged at all\nok 8 R219: a program naming its write target through a variable, an expression or another call is refused on a build lease whose files do not hold the file\nok 9 R219: the reason names the call as written and ends with its own Next line; the user sees the call text first\nok 10 R219: both inline forms of every interpreter the guard reads are judged, under build, fix, qa, map and plan leases; outside a run programs are not judged\nok 11 R219: the R76 order is kept: a literal path outside the plan gets the R76 refusal naming the path, and an unreadable target is refused even when the lease allows any project file\nok 12 R219: a program that writes nothing, a heredoc fed to a non-interpreter, a script file run by name and a string method on a bare variable pass\nok 13 R219: the guard's header states the unreadable-target rule beside the heredoc-as-data rule, and the hook benchmark's program command holds a literal path and a path held in a variable\nok 14 R219 words: docs/guards.md states the rule, docs/workflows.md's refusal table carries the Guards row with the guard's Next text, and the Dev brief says a program names its file as a literal path",
-        "at": "2026-11-01T18:25:30Z",
         "fp": "10817797b6ede91f81fd60f95fe9f4873815e281346cb72394d3aa2100245fcb",
-        "reused": true
+        "at": "2026-11-01T20:43:38Z",
+        "why": "docs/guards.md changed"
       },
       "C103": {
         "status": "pass",
@@ -72044,11 +72044,11 @@
       "C204": {
         "status": "pass",
         "exit": 0,
-        "seconds": 15.4,
+        "seconds": 20.5,
         "tail": "1..8\nok 1 R142: for 1 to 5 shards, together the shards list every tests/*.bats file exactly once\nok 2 R142: the same inputs give the same shares\nok 3 R142: shares are balanced by test count: no shard of 4 holds much more than a quarter of the tests\nok 4 R142: a newly added test file lands in exactly one shard, with no list to edit\nok 5 R142: the tool lint and the hook and panel benchmarks are listed by shard 1 only\nok 6 R142: a shard runs its share in one parallel batch, then its timed files alone, and only shard 1 lints and benchmarks\nok 7 R142: a failing test file in a shard makes the shard fail, in the batch and in the timed files\nok 8 R142: an invalid shard argument exits 2 with the usage line and runs nothing",
         "fp": "a7a168580dd6010bf07effe9337ea968f9b2d34565451af92b8c3264f462f124",
-        "at": "2026-11-01T19:53:48Z",
-        "why": "tests/bench-guard-steps.bats changed"
+        "at": "2026-11-01T20:43:38Z",
+        "why": "tests/bench-linux-step-docs.bats changed"
       },
       "C205": {
         "status": "pass",
@@ -72251,11 +72251,11 @@
       "C227": {
         "status": "pass",
         "exit": 0,
-        "seconds": 0.6,
+        "seconds": 0.9,
         "tail": "1..5\nok 1 R150: docs/record.md names the protected field, the reader's highest schema as in record.sh, and schema 5 only for a chosen effort\nok 2 R150: docs/record.md and docs/guards.md no longer mention a 50-check threshold\nok 3 R150: docs/record.md no longer says this VBW writes schema 1, 2 or 3\nok 4 R150: docs/guards.md no longer says the guards read the checks on older records\nok 5 R150: docs/guards.md quotes the refusal on a record without the list: not saved by this VBW yet",
-        "at": "2026-11-01T18:25:30Z",
         "fp": "fde15b5a39bf902f673c2924685ace71849bdab140a62410c61e6b35e46eea79",
-        "reused": true
+        "at": "2026-11-01T20:43:38Z",
+        "why": "docs/guards.md changed"
       },
       "C228": {
         "status": "pass",
@@ -72278,38 +72278,38 @@
       "C230": {
         "status": "pass",
         "exit": 0,
-        "seconds": 1.1,
+        "seconds": 2.0,
         "tail": "1..3\nok 1 R150: docs/guards.md names the glance and the record file\nok 2 R150: docs/record.md names the glance's fields: schema, lease and protected\nok 3 R150: no guide says the guards stream the record or read only its beginning",
-        "at": "2026-11-01T18:25:30Z",
         "fp": "931236c6f466e60b04dd647e3ca23cb248f98899cd547bb9dae01a725e6feeb5",
-        "reused": true
+        "at": "2026-11-01T20:43:38Z",
+        "why": "docs/guards.md changed"
       },
       "C231": {
         "status": "pass",
         "exit": 0,
         "seconds": 64.9,
         "tail": "stdout, naming cost, budget, ratio and scaled budget, and the bench exits 0\nok 11 R222: on a slow machine a case above budget times ratio still fails: OVER on stderr, exit 1, and the measure-again rule names the scaled budget\nok 12 R222: on a machine at nominal speed or faster (ratio 1 or less) the absolute budgets apply unchanged, with today's lines\nok 13 R222: the busy rule stays: when sh and jq startup alone are above the hook limit the bench reports busy, judges nothing, reference or not, and exits 0\nok 14 R231: the reference is one jq call of the guard's shape, over the bench's own program and document, never the shipped guard, a project file or the old counting program\nok 15 R231: the reference program and document are deterministic and of the sizes the provenance states, the document a JSON object of at least 50 KB, and the guard-shaped call runs on them\nok 16 R231: the provenance comment names the shape and the sizes, the M1 Max figures from five dated runs and GitHub's shard-1 figure, and NOMINAL_WHEN names a month\nok 17 R233: the provenance comment names the two Linux images with their jq versions and dated figures beside the Mac and GitHub macOS ones\nok 18 R233: the reference keeps the guard's proportion: its program is within 10% of the shipped Bash guard's size (PR #730 grew the guard; the reference follows or the guard shrinks)\nok 19 R233: the gap is never closed by a wider allowance: the bench reads no operating system name and has one nominal figure\nok 20 R234: a first difference at or over the margin followed by one under it passes, and the first alone asks for the second measure\nok 21 R234: two differences at or over the margin fail, and the words name both measures\nok 22 R234: a startup above the hook budget in either run reads busy with the startup, as the bench's own rule; a startup at the budget never does\nok 23 R234: the timed waiting case judges through waiting_judge: it skips as busy, measures again on again, and fails with the judge's words",
-        "fp": "e793b124a2853ca98406f9890c1b9dfdad8f49b126f175a6b723f4671450cecf",
         "at": "2026-11-01T19:53:48Z",
-        "why": "last result failed"
+        "fp": "e793b124a2853ca98406f9890c1b9dfdad8f49b126f175a6b723f4671450cecf",
+        "reused": true
       },
       "C232": {
         "status": "pass",
         "exit": 0,
-        "seconds": 1.3,
+        "seconds": 2.0,
         "tail": "1..7\nok 1 R151, R222: CI runs the benchmark with the local defaults: no CI-only hook or status line limit, and no stand-in reference\nok 2 R151, R222: docs/guards.md states the 20 ms limit per hook call as the meaning on a nominal machine, the reference, the ratio and the slow report, the busy-machine report, and no longer 8 ms\nok 3 R151, R222: docs/statusline.md states the 60 ms limit, the reference and the ratio, and no longer 30 ms\nok 4 R151, R222: the hot-path rule of CLAUDE.md states 20 ms per hook call, 60 ms for the status line, the reference and ratio with the slow report, and the busy report\nok 5 R231: docs/guards.md describes the reference workload as a guard-shaped jq call over a fixed document and program\nok 6 R233: docs/guards.md's bench paragraph holds the per-step table for the three runners, names the cause in one sentence, and dates the measure\nok 7 R234: docs/guards.md says, where it describes the busy rule, that the timed waiting case applies the same rule",
-        "at": "2026-11-01T18:25:30Z",
         "fp": "d7937c95b020615d8e2067e59f4c70693e4f3ef976f8188a026ed9786c3f1097",
-        "reused": true
+        "at": "2026-11-01T20:43:38Z",
+        "why": "docs/guards.md changed"
       },
       "C233": {
         "status": "pass",
         "exit": 0,
-        "seconds": 20.0,
+        "seconds": 32.5,
         "tail": "1..9\nok 1 R152: bash tools/test.sh with no option runs the lint and every test file except the timed ones, and neither benchmark\nok 2 R152: bash tools/test.sh --release runs the lint, both benchmarks, the suite in one parallel batch, then the timed files alone\nok 3 R152: the release run fails when a benchmark, the batch or a timed file fails\nok 4 R152: --quick still runs without the benchmarks and without any timed file\nok 5 R152: the CI shards together make one release run: shard 1 runs both benchmarks, each shard runs its timed files alone after its batch\nok 6 R152: tools/test.sh refuses --release with other arguments, naming the release way in its usage line, and runs nothing\nok 7 R152: CI runs the release way: every job runs its shard of the release run\nok 8 R152: the clock rule sees every kind of timer a test file could read, and passes comments and plain words\nok 9 R152: no test file of the default run measures a duration; the timed tests live in tests/timed-*.bats",
         "fp": "d6a91300a2cc3c178950148fe6689a3b3301183cc8e7951d2509592e254757f9",
-        "at": "2026-11-01T19:53:48Z",
-        "why": "last result failed"
+        "at": "2026-11-01T20:43:38Z",
+        "why": "tests/bench-linux-step-docs.bats changed"
       },
       "C234": {
         "status": "pass",
@@ -72476,11 +72476,11 @@
       "C252": {
         "status": "pass",
         "exit": 0,
-        "seconds": 64.4,
+        "seconds": 62.9,
         "tail": "1..10\nok 1 R165: during a run a guard that crashes blocks the write or command, saying the guard failed and to run vbw doctor\nok 2 R165: started in a subfolder of the project, during a run a guard that crashes still blocks\nok 3 R165: during a run a guard that cannot start blocks: the guard file missing or unreadable\nok 4 R165: during a run a guard that cannot start because jq is missing blocks\nok 5 R165: during a run a guard that runs past its time limit is stopped and the action blocked; docs/guards.md states the limit\nok 6 R165: during a run a record that cannot be parsed blocks the action when the guard must read it\nok 7 R165: the run-open marker exists exactly while a run is open, outlives a record that cannot be read, and a broken guard goes quiet when the run ends\nok 8 R165: in a VBW project with no open run a failing guard lets the action through as before\nok 9 R165: outside VBW projects a failing or missing guard changes nothing and prints nothing\nok 10 R165: with the guards intact a run still gets their ordinary answers, and the doctor's guard self-test passes",
-        "at": "2026-11-01T18:25:30Z",
         "fp": "3974be14db366f168f2e9b291226dfca3486024f14d0076397606898b8e370f2",
-        "reused": true
+        "at": "2026-11-01T20:43:38Z",
+        "why": "docs/guards.md changed"
       },
       "C253": {
         "status": "pass",
@@ -72539,10 +72539,10 @@
       "C259": {
         "status": "pass",
         "exit": 0,
-        "seconds": 1.4,
+        "seconds": 2.3,
         "tail": "1..5\nok 1 R167: VBW's spec declares its single-file form: bats on one file\nok 2 R167: VBW's declared test files are every tracked tests/*.bats except the timed ones\nok 3 R167: VBW's spec names the shell lint as its own project command\nok 4 R167: bash tools/test.sh --lint runs shellcheck on every shell file under tools/ and runs no test file\nok 5 R167: tools/test.sh keeps its usage line and documents --lint in it",
         "fp": "a4c3fc4a1c937f7ed83dbad83a14a23b4a955b4576464496a0b301351ed0b484",
-        "at": "2026-11-01T19:53:48Z",
+        "at": "2026-11-01T20:43:38Z",
         "why": "reads the project through git"
       },
       "C260": {
@@ -72665,11 +72665,11 @@
       "C273": {
         "status": "pass",
         "exit": 0,
-        "seconds": 12.9,
+        "seconds": 16.0,
         "tail": "1..2\nok 1 R172: no test file writes a bats file and also starts the real bats\nok 2 R172: the rule sees the pattern that failed on Linux, and passes the filter form and the stand-in form",
         "fp": "ab7e91af533b5933eea6fff46b276d511c63f30112f526ece27beda6a441b2d5",
-        "at": "2026-11-01T19:53:48Z",
-        "why": "tests/bench-guard-steps.bats changed"
+        "at": "2026-11-01T20:43:38Z",
+        "why": "tests/bench-linux-step-docs.bats changed"
       },
       "C274": {
         "status": "pass",
@@ -72800,11 +72800,11 @@
       "C288": {
         "status": "pass",
         "exit": 0,
-        "seconds": 0.4,
+        "seconds": 1.4,
         "tail": "1..3\nok 1 R177: the refusal's advice, the Dev brief, the Lead brief and docs/guards.md name the one scratch folder\nok 2 R177: no brief and no refusal sends an agent to /tmp or to .vbw/runtime/ itself\nok 3 R177 (F136): the Lead brief keeps its dependency rule on after",
-        "at": "2026-11-01T18:25:30Z",
         "fp": "3e98485614a739e4cec0fd2e91ea371c29fee63d138061b8cf75037a80949557",
-        "reused": true
+        "at": "2026-11-01T20:43:38Z",
+        "why": "docs/guards.md changed"
       },
       "C289": {
         "status": "pass",
@@ -72854,11 +72854,11 @@
       "C294": {
         "status": "pass",
         "exit": 0,
-        "seconds": 7.4,
+        "seconds": 13.5,
         "tail": "1..7\nok 1 R178: vbw loop start from any tool call is denied, however it is spelled, with the pinned text\nok 2 R178: the kernel's loop steps, vbw loop next and vbw loop park, are denied from any tool call with the pinned text\nok 3 R178: vbw loop stop, status and help, and the words in text, stay allowed\nok 4 R178: the /vbw:loop skill is user-invoked only and arms the loop in its preamble with the user's own arguments\nok 5 R178: no other skill arms the loop, and the guards doc names the denial\nok 6 R178 (F167): --help as a value arms nothing: only a bare help form passes the guard\nok 7 R178 (D324): the /vbw:loop preamble has three lines: the interview answers, vbw loop start with the user's arguments, vbw loop status",
-        "at": "2026-11-01T18:25:30Z",
         "fp": "cc6dd087b3b5e652ca0d1d5b2ad7badaa9dd137a8c8f849a6f4f613246a179dd",
-        "reused": true
+        "at": "2026-11-01T20:43:38Z",
+        "why": "docs/guards.md changed"
       },
       "C295": {
         "status": "pass",
@@ -72973,9 +72973,9 @@
         "exit": 0,
         "seconds": 25.8,
         "tail": "1..11\nok 1 R180: under a loop every form of git push is denied for the main session and for agents\nok 2 R180: under a loop releases, publishes and deploys are denied with their pinned texts\nok 3 R180: the words in text, reads and the project's own commands stay allowed under a loop\nok 4 R180: the denial holds when the guard reads the record instead of the glance, and ends with the loop\nok 5 R180: outside a loop today's rules stand: a plain git push, a pull request and a publish stay allowed\nok 6 R180: the hook bench measures the guard with a loop on\nok 7 R180 (F164): git's global options with their value as the next word hide no push: --git-dir, --work-tree, --namespace\nok 8 R180 (F165): heroku pipelines:promote is denied with its pinned text\nok 9 R180 (F175): an option's value or a toolchain word before the subcommand hides nothing: cargo +nightly publish, npm --tag next publish, docker --context x push, gh -R a/b release create\nok 10 R180 (F180): a trigger word that is an argument, not the subcommand, is allowed while a loop is on: cargo test publish, npm run publish, gh issue list --label release, docker run --name push\nok 11 R180 (F206): a redirect glued to the subcommand hides no push or publish: git push>out.log, npm publish>log, docker push>x; a descriptor number stays with its redirect",
-        "fp": "ed92d94276e5d6e4e244c9bc9e25195d97802233c37c07095a6a627fad8bf79d",
         "at": "2026-11-01T19:53:48Z",
-        "why": "last result failed"
+        "fp": "ed92d94276e5d6e4e244c9bc9e25195d97802233c37c07095a6a627fad8bf79d",
+        "reused": true
       },
       "C308": {
         "status": "pass",
@@ -72998,11 +72998,11 @@
       "C310": {
         "status": "pass",
         "exit": 0,
-        "seconds": 0.8,
+        "seconds": 2.9,
         "tail": "1..6\nok 1 R180: the loop scenario exists, is in the default list and the header, and writes its own result\nok 2 R180: the scenario arms two items with a small ceiling, one ships and one escalates twice and parks, checked in the record, the report and git\nok 3 R180: a committed result of the loop scenario, when there is one, is labelled honestly\nok 4 R180: docs/loop.md, docs/guards.md and README name the loop's commands and status\nok 5 R180 (F183): the scenario judges reverts only when the parked item had commits, and names the gap in not_tested when it had none; a committed result keeps that promise\nok 6 R180 (F190): the loop result's remote and tag counts are the ones the scenario measured, never constants",
-        "at": "2026-11-01T18:25:30Z",
         "fp": "c24572d1e9fcd2c40bd783369a81a8b57084a86a4dad1a08dfbed0930f59fd41",
-        "reused": true
+        "at": "2026-11-01T20:43:38Z",
+        "why": "docs/guards.md changed"
       },
       "C311": {
         "status": "pass",
@@ -73277,11 +73277,11 @@
       "C341": {
         "status": "pass",
         "exit": 0,
-        "seconds": 0.3,
+        "seconds": 1.4,
         "tail": "1..3\nok 1 R185 (F218): docs/guards.md names the session record as an allowed write outside the project, with its folder and lifetime\nok 2 R185 (F218): AGENTS.md's nothing-outside-the-project rule names three exceptions, the session record among them\nok 3 R185 (F218): the session-start hook writes its record only under the documented folder",
-        "at": "2026-11-01T18:25:30Z",
         "fp": "6d3502ce93460d91d522a738ddbd30fd4fb8c53c280a4713577144e4023c7a46",
-        "reused": true
+        "at": "2026-11-01T20:43:38Z",
+        "why": "docs/guards.md changed"
       },
       "C342": {
         "status": "pass",
@@ -73511,11 +73511,11 @@
       "C367": {
         "status": "pass",
         "exit": 0,
-        "seconds": 1.5,
+        "seconds": 1.3,
         "tail": "1..7\nok 1 R189: docs/panel.md describes the what's happening now box at the top of the Now tab\nok 2 B5: docs/panel.md says the box draws the step's parts as a strip with its figure, and the milestone's end with its basis\nok 3 2.1.11: docs/panel.md says a time on another day names the day\nok 4 R189: docs/panel.md shows events and messages starting with their clock time\nok 5 R189: docs/panel.md says each What's next row is a button that fills the prompt, with a size chip\nok 6 R189: docs/panel.md says new things stay marked until you have seen them\nok 7 R227: docs/panel.md says the Now panel's empty state reads 'VBW is not waiting on you.', and the old sentence is gone from plugin/ and docs/",
-        "at": "2026-11-01T18:25:30Z",
         "fp": "48b511ca85c7e42f6fae876587ba1711959f96c5fca1ebf28235beb691faa441",
-        "reused": true
+        "at": "2026-11-01T20:43:38Z",
+        "why": "docs/guards.md changed"
       },
       "C368": {
         "status": "pass",
@@ -73862,11 +73862,11 @@
       "C406": {
         "status": "pass",
         "exit": 0,
-        "seconds": 1.8,
+        "seconds": 2.1,
         "tail": "1..13\nok 1 R192: docs/guards.md names the list of chats as VBW's one read outside the project, read-only, beside the three writes\nok 2 R192: docs/workflows.md says the record's lease keeps its shape and the name lives in holder.json and the glance\nok 3 R192: docs/record.md names the glance's holder field and that the record never carries the name\nok 4 R192: docs/statusline.md shows the run cell's leading and held by forms, with the 20-character cut\nok 5 R192: docs/panel.md lists the Sessions tab with its short name and describes its rows\nok 6 R192: docs/panel.md describes Comms' run-started line, the Now box's held by, and /vbw-why by name\nok 7 R192: docs/next.md describes rename_hint: when it comes, once per project, never applied\nok 8 R192: docs/panel.md's /vbw-why row names the holder by name and keeps the file count and wait for it\nok 9 R192: docs/panel.md counts six tabs, names Sess in the narrow row, and links the one read outside the project to guards.md\nok 10 R192: docs/panel.md says the Sessions tab is read-only and re-read on the tick only while shown or a lease is open\nok 11 T105: docs/parallel-sessions.md exists and README's docs table has a row naming it\nok 12 T105: docs/panel.md's Sessions section links the guide\nok 13 T105: the guide says what a reader needs and lists its sources, each an existing file",
-        "at": "2026-11-01T18:25:30Z",
         "fp": "f21a0d89816566896c75354360e174b4462b5930abf6fe5212e1920e8514739b",
-        "reused": true
+        "at": "2026-11-01T20:43:38Z",
+        "why": "docs/guards.md changed"
       },
       "C407": {
         "status": "pass",
@@ -73952,11 +73952,11 @@
       "C416": {
         "status": "pass",
         "exit": 0,
-        "seconds": 0.9,
+        "seconds": 1.1,
         "tail": "1..3\nok 1 R196: docs/proof.md's mutation section gives the sentence in its exact words and says the pending file still needs the one approval before the proof\nok 2 R210: docs/proof.md, docs/record.md, docs/guards.md, the Dev prompt and the router say the strengthening rule in the same words: own rules' checks, shared files included, the rest refused by name, the whole diff at the approval\nok 3 R217: docs/proof.md's 'caught by the pending one' paragraph and docs/record.md's mutations description say the pending and strengthened files are among the files the plan may strengthen, those of its own rules' checks",
-        "at": "2026-11-01T18:25:30Z",
         "fp": "76af8e260e3e75cb3140e8d089863ca4c519c653098d13a6fc3eff495962a452",
-        "reused": true
+        "at": "2026-11-01T20:43:38Z",
+        "why": "docs/guards.md changed"
       },
       "C417": {
         "status": "pass",
@@ -73981,9 +73981,9 @@
         "exit": 0,
         "seconds": 0.7,
         "tail": "1..4\nok 1 R194: docs/workflows.md's vbw commit --fix row: a requirement fix commits its requirement's check files with both trailers, code through the plan, one approval\nok 2 R194: docs/guards.md's fix-run row: every requirement fix's run opens its own requirement's check files, a proof's fix included\nok 3 R194: docs/proof.md's fix section says a requirement fix commits its own check files with vbw commit --fix and that they wait for one approval\nok 4 R194: docs/record.md describes the lease's editable for a requirement fix of any source and new_tests only for QA",
-        "at": "2026-11-01T18:25:30Z",
         "fp": "f89ea58b7f32bf5842c9606d1054452dad95320daee08467060dad4e5437267f",
-        "reused": true
+        "at": "2026-11-01T20:43:38Z",
+        "why": "docs/guards.md changed"
       },
       "C420": {
         "status": "pass",
@@ -74015,11 +74015,11 @@
       "C423": {
         "status": "pass",
         "exit": 0,
-        "seconds": 24.9,
+        "seconds": 24.3,
         "tail": "1..5\nok 1 R198: the hook runs vbw next once and never vbw status\nok 2 R198: the context names the project with the words of vbw status's first line\nok 3 R198: a glance older than the record gives the record's milestone, not the glance's\nok 4 R198: a record written by a newer VBW still gives the update notice, without vbw status\nok 5 R198: docs/guards.md says the hook runs vbw next once and reads the project line from the glance",
-        "at": "2026-11-01T18:25:30Z",
         "fp": "dc4f6c9b1783fd4f701cac0220f88ff09b0910f81e4531d312e3b24dcef3f037",
-        "reused": true
+        "at": "2026-11-01T20:43:38Z",
+        "why": "docs/guards.md changed"
       },
       "C424": {
         "status": "pass",
@@ -74114,10 +74114,10 @@
       "C434": {
         "status": "pass",
         "exit": 0,
-        "seconds": 47.4,
+        "seconds": 53.6,
         "tail": "1..4\nok 1 R202: --generate builds a stand-in of at least the asked size, approved, with cache-writing and cache-reading units\nok 2 R202: the measurement prints every figure for a proof, a one-file fix round and vbw next\nok 3 R202: the sampler of the written-file lists polls at least five times a second, so a fast proof is still seen\nok 4 R202: nothing of a real user project is in the tool or in what it generates",
         "fp": "23729cd8ad38ab6e167a995bfb1b9288496cd3335bae0e6b534d82be4f5e38a7",
-        "at": "2026-11-01T19:53:48Z",
+        "at": "2026-11-01T20:43:38Z",
         "why": "reads the project through git"
       },
       "C435": {
@@ -74492,11 +74492,11 @@
       "C476": {
         "status": "pass",
         "exit": 0,
-        "seconds": 0.8,
+        "seconds": 0.9,
         "tail": "1..1\nok 1 R210: docs/proof.md, docs/record.md, docs/guards.md, the Dev prompt and the router say the strengthening rule in the same words: own rules' checks, shared files included, the rest refused by name, the whole diff at the approval",
-        "at": "2026-11-01T18:25:30Z",
         "fp": "776db977567bcab38c0d56010489468b8f7fd08763aab8e3cf53b203447f02c0",
-        "reused": true
+        "at": "2026-11-01T20:43:38Z",
+        "why": "docs/guards.md changed"
       },
       "C477": {
         "status": "pass",
@@ -74690,11 +74690,11 @@
       "C498": {
         "status": "pass",
         "exit": 0,
-        "seconds": 1.6,
+        "seconds": 2.2,
         "tail": "1..1\nok 1 R219 words: docs/guards.md states the rule, docs/workflows.md's refusal table carries the Guards row with the guard's Next text, and the Dev brief says a program names its file as a literal path",
-        "at": "2026-11-01T18:25:30Z",
         "fp": "4d0ea4cc9c89cbf797dc32d794dada8bda841eef4cc614e2ec03ec5b6c0ad315",
-        "reused": true
+        "at": "2026-11-01T20:43:38Z",
+        "why": "docs/guards.md changed"
       },
       "C499": {
         "status": "pass",
@@ -74755,18 +74755,18 @@
         "exit": 0,
         "seconds": 7.1,
         "tail": "1..5\nok 1 R222: the bench measures one fixed reference workload first and prints its cost, the nominal cost on the named machines and the ratio, once and before any case\nok 2 R222: on a machine twenty times slower than nominal, a guard and a status line above their budgets but within budget times ratio are reported slow on stdout, naming cost, budget, ratio and scaled budget, and the bench exits 0\nok 3 R222: on a slow machine a case above budget times ratio still fails: OVER on stderr, exit 1, and the measure-again rule names the scaled budget\nok 4 R222: on a machine at nominal speed or faster (ratio 1 or less) the absolute budgets apply unchanged, with today's lines\nok 5 R222: the busy rule stays: when sh and jq startup alone are above the hook limit the bench reports busy, judges nothing, reference or not, and exits 0",
-        "fp": "6facdc1c158cb409b5619e89a08c6382694df4faf64d51e333b32e0600ea4025",
         "at": "2026-11-01T19:53:48Z",
-        "why": "last result failed"
+        "fp": "6facdc1c158cb409b5619e89a08c6382694df4faf64d51e333b32e0600ea4025",
+        "reused": true
       },
       "C506": {
         "status": "pass",
         "exit": 0,
-        "seconds": 0.6,
+        "seconds": 1.2,
         "tail": "1..4\nok 1 R151, R222: CI runs the benchmark with the local defaults: no CI-only hook or status line limit, and no stand-in reference\nok 2 R151, R222: docs/guards.md states the 20 ms limit per hook call as the meaning on a nominal machine, the reference, the ratio and the slow report, the busy-machine report, and no longer 8 ms\nok 3 R151, R222: docs/statusline.md states the 60 ms limit, the reference and the ratio, and no longer 30 ms\nok 4 R151, R222: the hot-path rule of CLAUDE.md states 20 ms per hook call, 60 ms for the status line, the reference and ratio with the slow report, and the busy report",
-        "at": "2026-11-01T18:25:30Z",
         "fp": "d7c70740db2378c8ab187ea32c19622b6abdce595c292dfcdf0c5686caf82f02",
-        "reused": true
+        "at": "2026-11-01T20:43:38Z",
+        "why": "docs/guards.md changed"
       },
       "C507": {
         "status": "pass",
@@ -74780,10 +74780,10 @@
       "C508": {
         "status": "pass",
         "exit": 0,
-        "seconds": 1.8,
+        "seconds": 3.3,
         "tail": "1..2\nok 1 R223 standards: tools/check-jq-builtins.sh refuses a jq program that uses a builtin newer than 1.7.0 unless the file defines the name, naming file and line, and passes the plugin\nok 2 R223 standards: each CI shard prints jq --version beside bash --version",
         "fp": "d4ee780802f6df0f483f9b8715273cc59c441ec7d3a3d358965da4a52071dfad",
-        "at": "2026-11-01T19:53:48Z",
+        "at": "2026-11-01T20:43:38Z",
         "why": "reads the project through git"
       },
       "C509": {
@@ -74854,9 +74854,9 @@
         "exit": 0,
         "seconds": 26.8,
         "tail": "1..1\nok 1 R152, R224: without a selector the bench is the full bench: every case it can be asked for runs, in the listed order, the no-project hand-back among them",
-        "fp": "7b24b1520940530db7e95a4a7a40867b88aababf48d210d1d0e75f161170e96d",
         "at": "2026-11-01T19:53:48Z",
-        "why": "last result failed"
+        "fp": "7b24b1520940530db7e95a4a7a40867b88aababf48d210d1d0e75f161170e96d",
+        "reused": true
       },
       "C517": {
         "status": "pass",
@@ -74897,11 +74897,11 @@
       "C521": {
         "status": "pass",
         "exit": 0,
-        "seconds": 0.5,
+        "seconds": 0.8,
         "tail": "1..1\nok 1 R227: docs/panel.md says the Now panel's empty state reads 'VBW is not waiting on you.', and the old sentence is gone from plugin/ and docs/",
-        "at": "2026-11-01T18:25:30Z",
         "fp": "0d7a58220c7b20ec03a42c5e85173d90b47ca9c9448567ca5bb500a832533870",
-        "reused": true
+        "at": "2026-11-01T20:43:38Z",
+        "why": "docs/guards.md changed"
       },
       "C522": {
         "status": "pass",
@@ -74998,18 +74998,18 @@
         "exit": 0,
         "seconds": 2.3,
         "tail": "1..3\nok 1 R231: the reference is one jq call of the guard's shape, over the bench's own program and document, never the shipped guard, a project file or the old counting program\nok 2 R231: the reference program and document are deterministic and of the sizes the provenance states, the document a JSON object of at least 50 KB, and the guard-shaped call runs on them\nok 3 R231: the provenance comment names the shape and the sizes, the M1 Max figures from five dated runs and GitHub's shard-1 figure, and NOMINAL_WHEN names a month",
-        "fp": "0cc2dc103c38b99364fa189897659f21e788f0a607324c8ffeaafcf785f33ea5",
         "at": "2026-11-01T19:53:48Z",
-        "why": "tests/bench-limits.bats changed"
+        "fp": "0cc2dc103c38b99364fa189897659f21e788f0a607324c8ffeaafcf785f33ea5",
+        "reused": true
       },
       "C533": {
         "status": "pass",
         "exit": 0,
-        "seconds": 0.6,
+        "seconds": 0.9,
         "tail": "1..1\nok 1 R231: docs/guards.md describes the reference workload as a guard-shaped jq call over a fixed document and program",
-        "at": "2026-11-01T18:25:30Z",
         "fp": "d8322d904955be824fa3af5dbda555bf58041a0d7d4797983cb11120da253355",
-        "reused": true
+        "at": "2026-11-01T20:43:38Z",
+        "why": "docs/guards.md changed"
       },
       "C534": {
         "status": "pass",
@@ -75025,18 +75025,18 @@
         "exit": 0,
         "seconds": 3.0,
         "tail": "1..4\nok 1 R234: a first difference at or over the margin followed by one under it passes, and the first alone asks for the second measure\nok 2 R234: two differences at or over the margin fail, and the words name both measures\nok 3 R234: a startup above the hook budget in either run reads busy with the startup, as the bench's own rule; a startup at the budget never does\nok 4 R234: the timed waiting case judges through waiting_judge: it skips as busy, measures again on again, and fails with the judge's words",
-        "fp": "f2246ccd6690c1de3a0c387115d8c2c3294854bb7a0bc174e4945b15b9d81c7a",
         "at": "2026-11-01T19:53:48Z",
-        "why": "tests/bench-limits.bats changed"
+        "fp": "f2246ccd6690c1de3a0c387115d8c2c3294854bb7a0bc174e4945b15b9d81c7a",
+        "reused": true
       },
       "C536": {
         "status": "pass",
         "exit": 0,
-        "seconds": 0.6,
+        "seconds": 1.0,
         "tail": "1..1\nok 1 R234: docs/guards.md says, where it describes the busy rule, that the timed waiting case applies the same rule",
-        "at": "2026-11-01T18:25:30Z",
         "fp": "2456958f40e9da67edb73b41ba5ae83a5e061845e72b555f0facf00b0da6d2ad",
-        "reused": true
+        "at": "2026-11-01T20:43:38Z",
+        "why": "docs/guards.md changed"
       },
       "C537": {
         "status": "pass",
@@ -75068,10 +75068,10 @@
       "C540": {
         "status": "pass",
         "exit": 0,
-        "seconds": 3.0,
+        "seconds": 4.5,
         "tail": "1..4\nok 1 R233: without arguments the container is ubuntu:24.04 and runs the release run, as before\nok 2 R233: --image ubuntu:26.04 shapes the container after that image and --bench runs only the hook bench\nok 3 R233: a command after -- runs inside the container in place of the release run, its words kept\nok 4 R233: an unknown option or an image the script does not know exits 2 with the usage and builds nothing",
         "fp": "4babb0ea3b7fd899ad23ca30b774bd9248999e3a134b11344a30f5a48780e52d",
-        "at": "2026-11-01T19:53:48Z",
+        "at": "2026-11-01T20:43:38Z",
         "why": "reads the project through git"
       },
       "C541": {
@@ -75079,27 +75079,27 @@
         "exit": 0,
         "seconds": 10.4,
         "tail": "1..6\nok 1 R233: VBW_BENCH_STEPS=1 prints one table with the five steps as rows and the four inputs as columns, each cell CPU ms per call, and judges no case\nok 2 R233: the step table names its method: CPU ms per call over the bench's runs, the runs stated\nok 3 R233: a workflow_dispatch job runs the step table on macos-latest, ubuntu-latest and ubuntu-26.04, and never on a pull request\nok 4 R243: the table has the net rows shell prelude, program compile, program run, reference compile and reference run, each with four figures and four quotients\nok 5 R243: the reference run's quotient is 1.00 by definition, and the method line says the net rows subtract the startup and name their quotient to the reference run\nok 6 R243: the reference program calls at least four in five of its definitions, as the guard calls its own, so it compiles as much as the guard does",
-        "fp": "da90ef34106f1ae50af92a84348bf11d6dfbcf734da2075005a78a3b551fb0de",
         "at": "2026-11-01T19:53:48Z",
-        "why": "tests/bench-guard-steps.bats changed"
+        "fp": "da90ef34106f1ae50af92a84348bf11d6dfbcf734da2075005a78a3b551fb0de",
+        "reused": true
       },
       "C542": {
         "status": "pass",
         "exit": 0,
         "seconds": 2.4,
         "tail": "1..3\nok 1 R233: the provenance comment names the two Linux images with their jq versions and dated figures beside the Mac and GitHub macOS ones\nok 2 R233: the reference keeps the guard's proportion: its program is within 10% of the shipped Bash guard's size (PR #730 grew the guard; the reference follows or the guard shrinks)\nok 3 R233: the gap is never closed by a wider allowance: the bench reads no operating system name and has one nominal figure",
-        "fp": "e7d14564310d1327bfc7e215e0879b8f874bab0e1c8408199ecc650b9597b501",
         "at": "2026-11-01T19:53:48Z",
-        "why": "tests/bench-limits.bats changed"
+        "fp": "e7d14564310d1327bfc7e215e0879b8f874bab0e1c8408199ecc650b9597b501",
+        "reused": true
       },
       "C543": {
         "status": "pass",
         "exit": 0,
-        "seconds": 0.8,
+        "seconds": 0.9,
         "tail": "1..1\nok 1 R233: docs/guards.md's bench paragraph holds the per-step table for the three runners, names the cause in one sentence, and dates the measure",
-        "at": "2026-11-01T18:25:30Z",
         "fp": "ec0fc6f6ae3f29e730c9bf22e8284905373fb6cbf52059f54424e4f404526b06",
-        "reused": true
+        "at": "2026-11-01T20:43:38Z",
+        "why": "docs/guards.md changed"
       },
       "C544": {
         "status": "pass",
@@ -75158,20 +75158,20 @@
       "C550": {
         "status": "pass",
         "exit": 0,
-        "seconds": 0.6,
+        "seconds": 0.8,
         "tail": "1..2\nok 1 R241: docs/guards.md has an MCP section naming the setting's place, the command form and the read-only mark\nok 2 R241: docs/workflows.md's Agents section links to the MCP section of docs/guards.md",
-        "at": "2026-11-01T18:25:30Z",
         "fp": "de032089180373bd13519c0095a8cfa0df320fb8425d3c90ea5a819ae1f29bdb",
-        "reused": true
+        "at": "2026-11-01T20:43:38Z",
+        "why": "docs/guards.md changed"
       },
       "C551": {
         "status": "pass",
         "exit": 0,
         "seconds": 10.6,
         "tail": "1..9\nok 1 R242: with no MCP setting, every agent's MCP call is refused: the effective tool set is today's, and the refusal names the role and vbw config set mcp\nok 2 R242: a server the setting names without a mark is open to Dev, Debugger and Docs and closed to Architect, Lead, Scout and QA\nok 3 R242: a pure server marked read-only as a whole is open to every role\nok 4 R242: a mixed server opens only its listed read-only tools to the reading roles; its other tools stay the writers'\nok 5 R242: a tool whose name suggests reading (read_*, get_*, search_*) but carries no mark is refused for the reading roles: never a guess from the name\nok 6 R242: a server the setting does not name is refused for every role, naming the server and the setting as the next step\nok 7 R242: a tool outside the role's own (another role's built-in, or one VBW does not know) is refused naming the role; the tools Claude Code gives every agent are never refused\nok 8 R242: the main session (any tool, even with a corrupt record) and an agent that is not VBW's are never judged, and outside a VBW project the hook is inert\nok 9 R242: the hook is one PreToolUse entry with the matcher omitted, as the probe showed reaches every tool, runs guard-tools.jq, and the bench measures it as its own guard cases",
-        "fp": "f478266f04e29b73507e372da521eae7d6a44a40e8211a111ef94d5acb364f51",
         "at": "2026-11-01T19:53:48Z",
-        "why": "tests/guard-tools.bats changed"
+        "fp": "f478266f04e29b73507e372da521eae7d6a44a40e8211a111ef94d5acb364f51",
+        "reused": true
       },
       "C552": {
         "status": "pass",
@@ -75185,11 +75185,11 @@
       "C553": {
         "status": "pass",
         "exit": 0,
-        "seconds": 0.7,
+        "seconds": 1.0,
         "tail": "1..2\nok 1 R242: the section says which roles get what, and that an MCP tool's writes are judged after the fact by the scope check, never before the call\nok 2 R242: the section says the guard sees every tool a VBW agent calls, so a tool outside the role's own (one a Claude Code update adds) is refused, and the refusal table has its row",
-        "at": "2026-11-01T18:25:30Z",
         "fp": "63775b03e9400743120ab2642430078526221380fc34eab02504d007e35ef922",
-        "reused": true
+        "at": "2026-11-01T20:43:38Z",
+        "why": "docs/guards.md changed"
       },
       "C554": {
         "status": "pass",
@@ -75203,11 +75203,11 @@
       "C555": {
         "status": "pass",
         "exit": 0,
-        "seconds": 0.6,
+        "seconds": 1.0,
         "tail": "1..3\nok 1 R239: the vibe skill states that the chat never commits plan work by hand, naming every git history command, that commits go through vbw commit inside the run, and that it follows the proof's Next line\nok 2 R239: docs/guards.md's refusal table names commit-tree beside commit, the chat's refusal while armed or in a loop, and that the user's own commands are never checked\nok 3 R239: docs/workflows.md's 'Every refusal and its next step' table has the two refusals with vbw commit as the next step",
-        "at": "2026-11-01T18:25:30Z",
         "fp": "fc0cf63a3ef3d0a4633da1a9584df262a256682dbb998469b8988409a9ace582",
-        "reused": true
+        "at": "2026-11-01T20:43:38Z",
+        "why": "docs/guards.md changed"
       },
       "C556": {
         "status": "pass",
@@ -75232,18 +75232,18 @@
         "exit": 0,
         "seconds": 6.0,
         "tail": "1..3\nok 1 R243: the table has the net rows shell prelude, program compile, program run, reference compile and reference run, each with four figures and four quotients\nok 2 R243: the reference run's quotient is 1.00 by definition, and the method line says the net rows subtract the startup and name their quotient to the reference run\nok 3 R243: the reference program calls at least four in five of its definitions, as the guard calls its own, so it compiles as much as the guard does",
-        "fp": "8beaa95cbf4ba3641b249a0fa503e1aca3c454b77cfc9c063fd8a8f478b2a553",
         "at": "2026-11-01T19:53:48Z",
-        "why": "tests/bench-guard-steps.bats changed"
+        "fp": "8beaa95cbf4ba3641b249a0fa503e1aca3c454b77cfc9c063fd8a8f478b2a553",
+        "reused": true
       },
       "C559": {
         "status": "pass",
         "exit": 0,
-        "seconds": 0.5,
-        "tail": "1..2\nok 1 R243: the bench section names the Linux-only step with figures from GitHub's three runners\nok 2 R243: the disproved claim that each Linux quotient is within 1.25 of macOS's is gone, replaced by the measured figures",
-        "at": "2026-11-01T18:25:30Z",
+        "seconds": 0.9,
+        "tail": "1..3\nok 1 R243: the bench section names the Linux-only step with figures from GitHub's three runners\nok 2 R243: the disproved claim that each Linux quotient is within 1.25 of macOS's is gone, replaced by the measured figures\nok 3 R243: every nominal figure the bench section states is the bench's own NOMINAL_MS",
         "fp": "3bc415e05415cd671c4cf718af5bcdeeede3f18df82988c00859b587a2fa01c7",
-        "reused": true
+        "at": "2026-11-01T20:43:38Z",
+        "why": "docs/guards.md changed"
       },
       "C560": {
         "status": "pass",
@@ -75277,7 +75277,7 @@
       "test": {
         "status": "pass",
         "exit": 0,
-        "seconds": 2574.2,
+        "seconds": 2584,
         "tail": "",
         "command": "bats --print-output-on-failure {file} (one test file per run)",
         "of_files": true
@@ -75854,11 +75854,11 @@
       "tests/qa-refusal-wording.bats": {
         "status": "pass",
         "exit": 0,
-        "seconds": 0.4,
+        "seconds": 0.3,
         "tail": "1..3\nok 1 vbw help shows prove with its --full option\nok 2 the qa record refusal for changed code and the proof docs name vbw prove --full\nok 3 the docs name the approval-menu hook that adds the fingerprint (R114)",
-        "at": "2026-11-01T18:25:30Z",
         "fp": "1b5af615b0da59c3548eca6d43770348a3929315e1a56aa14dc604774edf2cd3",
-        "reused": true
+        "at": "2026-11-01T20:43:38Z",
+        "why": "docs/guards.md changed"
       },
       "tests/qa-reused-proof.bats": {
         "status": "pass",
@@ -76016,19 +76016,19 @@
       "tests/standards-selftest.bats": {
         "status": "pass",
         "exit": 0,
-        "seconds": 75.5,
+        "seconds": 84.9,
         "tail": "ok 3 process killing is caught\nok 4 the signal-free liveness probe kill -0 passes, any other kill is caught\nok 5 /tmp paths are caught\nok 6 git path listings without -z are caught, with -z pass\nok 7 plugin-root discovery is caught\nok 8 a clean file breaks no rule\nok 9 hooks naming a missing file are caught\nok 10 per-tool-call hooks that start a shell or can exit non-zero are caught\nok 11 per-tool-call hooks: only assignments and [ ] tests may come before jq, and the command must end in || true\nok 12 the vision rule check passes on the repository as it is\nok 13 the vision rule check catches the rule removed from a contributor file\nok 14 the vision rule check catches the rule moved below another rule in AGENTS.md\nok 15 the privacy guard lists the files that hold a word, in any case, and never the word\nok 16 the privacy guard passes a clean tree: comments and blank lines in the list are not words\nok 17 the privacy guard checks nothing, and says so, without a list or without words\nok 18 the privacy guard in tracked mode reads every tracked file of this repository, .vbw/ included\nok 19 the privacy guard refuses bad usage\nok 20 the hook answer check passes on the repository as it is\nok 21 the hook answer check catches a new unpinned answer shape\nok 22 the hook answer check catches a hook that answers allow",
         "fp": "cea597da7e37298b1c50fd07c24fcfcd6ab9c1e90cc14912ac62ec844e47ba39",
-        "at": "2026-11-01T19:53:48Z",
+        "at": "2026-11-01T20:43:38Z",
         "why": "reads the project through git"
       },
       "tests/standards.bats": {
         "status": "pass",
         "exit": 0,
-        "seconds": 12.1,
+        "seconds": 12.4,
         "tail": "1..17\nok 1 no eval or data-as-code (ledger D108, D139)\nok 2 no bash-4-only features: macOS /bin/bash 3.2 is the floor (K2, ledger D294)\nok 3 never terminates processes (ledger D54, D285–D288)\nok 4 no predictable /tmp paths or writes outside the project (K3, ledger D296)\nok 5 git path listings are NUL-separated (ledger D293)\nok 6 no plugin-root discovery: paths come from ${CLAUDE_PLUGIN_ROOT} substitution or $0 (K4)\nok 7 shell files parse on the minimum bash and pass shellcheck\nok 8 plugin manifests are valid\nok 9 hooks.json is valid and every file a hook names exists in hooks/\nok 10 per-tool-call hooks run jq directly and never exit non-zero (K20)\nok 11 Claude Code's own validator accepts the plugin and the marketplace\nok 12 no brace-literal parameter defaults (a default of {} written inside the expansion): bash 3.2 keeps the backslash (tests and tools too)\nok 13 the vision rule is VBW's first development rule, and every contributor file states it (owner mandate, 2026-10-06)\nok 14 every answer a hook gives Claude Code has a test pinning its meaning, and no hook answers allow (R128)\nok 15 no tracked file, .vbw/ included, names a private project of the owner (owner rule, 2026-10-21; needs the maintainer-local list, skipped without it)\nok 16 no shell code pipes into a quiet grep: grep -q stops early, and under pipefail the producer's SIGPIPE fails the pipeline (tools/check-pipefail-grep.sh)\nok 17 self-test: the pipefail rule refuses each quiet grep after a pipe, whatever the producer, naming its line, and passes every form that reads to the end",
         "fp": "0081e8d9fb717ee39eded21e9282e34e071705efe4349f4a472013dd63d63d6c",
-        "at": "2026-11-01T19:53:48Z",
+        "at": "2026-11-01T20:43:38Z",
         "why": "reads the project through git"
       },
       "tests/statusline-step-miss.bats": {
@@ -76052,11 +76052,11 @@
       "tests/test-negations-rule.bats": {
         "status": "pass",
         "exit": 0,
-        "seconds": 2.6,
+        "seconds": 2.8,
         "tail": "1..3\nok 1 rule: no test file of VBW asserts with a negated command that is not its block's last\nok 2 rule self-test: a negated command before the end of a test, of a helper or of a loop body is caught\nok 3 rule self-test: a negated last command, one with its own failure and here-document text pass",
         "fp": "8c61ff59230361dbdb436c003e3fb43eb1501c47b194eac97219f68f139b7f49",
-        "at": "2026-11-01T19:53:48Z",
-        "why": "tests/bench-guard-steps.bats changed"
+        "at": "2026-11-01T20:43:38Z",
+        "why": "tests/bench-linux-step-docs.bats changed"
       },
       "tests/testfiles-spec.bats": {
         "status": "pass",
@@ -76124,18 +76124,29 @@
     },
     "scope": [],
     "undone": [],
-    "deviations": [],
+    "deviations": [
+      {
+        "file": "docs/guards.md",
+        "plan": "P192.5",
+        "commit": "95e1f4f362d8f632d99d2d9f578cc5e06380f6a9",
+        "at": "2026-11-01T16:44:14Z",
+        "change": "changed",
+        "by": [
+          "f0afd6ff7706d4f99d918a13b4e561ee129485b2"
+        ]
+      }
+    ],
     "causes": [],
     "full": false,
     "passed": true,
-    "record": "2f6f9cfc62cbba43a14385e0a9b6f062c39d60499ea7ce82908a779b7b7b5e6b",
+    "record": "0bf6b0f185041bfa76fa74604b52ae49fca190745b2ec9af9084dc62b9348bdd",
     "own": {
-      "planning": 21.97,
-      "copies": 26.136,
-      "tracking": 4.797,
-      "saving": 2.044,
-      "record": 11.571,
-      "wall": 256.85
+      "planning": 24.207,
+      "copies": 26.742,
+      "tracking": 13.791,
+      "saving": 2.919,
+      "record": 14.46,
+      "wall": 244.554
     }
   },
   "test_files": {
