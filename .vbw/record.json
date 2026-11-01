@@ -61554,14 +61554,85 @@
         "tools/probes/mcp-tools.json"
       ],
       "after": [],
-      "status": "blocked",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "tools/probe-mcp-tools.sh (bash 3.2, shellcheck-clean, header comment listing every case): keep the eight cases already run and add, each {tools_line, result}: inherit_omitted (reader.md with no tools: line; asked to call read_note and then to list every tool it has on one line 'TOOLS: a, b, c'; result as the other cases, the token when the call worked); disallowed_honoured (no tools: line, 'disallowedTools: Write, Edit, NotebookEdit, Bash'; asked to create proj/probe-written.txt with the Write tool; result 'RESULT: NOT-WRITTEN <the agent's words>' when the file is absent and the hook log holds no Write, Edit or NotebookEdit call of the agent, else 'RESULT: WRITTEN <what happened>'); hook_every_tool (the probe plugin's PreToolUse entry with the matcher omitted, as today; an agent with tools omitted calls Read, Bash and read_note; result 'RESULT: ALL <tool=agent_type list>' when the hook log holds each of those calls with agent_type mcpprobe:reader, else 'RESULT: MISSED <list>'); the foreign workflow's agent() call to mcpprobe:reader passes a schema, so the log shows the tool Claude Code gives a schema-returning agent",
         "The result file's top level: builtins (the non-mcp__ tools inherit_omitted's agent listed, sorted), always_allowed (every tool other than Read that an agent with 'tools: Read' or the schema-returning agent called or listed in this run's hook log and replies, e.g. SubagentHandback; the tools Claude Code gives every agent whatever its tools line), hook_matcher null (the omitted form, when hook_every_tool is ALL), hook_read_cpu_ms (CPU ms per call, sh and jq startup included, over 100 runs measured as tools/bench-hooks.sh's cpu_pair does, of the main-session path P192.3 builds: sh -c running a jq program of its own, no include, that passes the hook input on only when agent_type matches ^vbw:(architect|lead|dev|qa|scout|debugger|docs)$, fed a main-session Read input), mechanism (D561's mechanism in one line, naming disallowedTools and the tools guard), decision \"D561\"; tools_entry is dropped",
         "Run it on this machine (claude --version recorded) and commit tools/probes/mcp-tools.json; tests/mcp-probe.bats passes under /bin/bash 3.2. If inherit_omitted lacks the token, disallowed_honoured is WRITTEN, hook_every_tool is MISSED or hook_read_cpu_ms is over 20, commit nothing and block this plan with the evidence: D561's fallback (per-project agent copies kept fresh by the kernel) is then replanned by the Lead; record no decision either way (D561 is recorded)"
       ],
-      "note": "Probe script extended and run on Claude Code 2.1.316: inherit_omitted has the token, disallowed_honoured NOT-WRITTEN, hook_every_tool ALL, hook_read_cpu_ms 5.6, always_allowed [StructuredOutput, SubagentHandback]. But the agent with tools omitted lists no Grep or Glob (this build has none; they are not even in its ToolSearch deferred list), so builtins lacks them and the protected test tests/mcp-probe.bats (builtins contains Read, Grep, Glob, Bash, Write, Edit, WebFetch, WebSearch) fails; I cannot fake or weaken that. This also bears on D561 R241.14/15: the guard cannot 'refuse every other built-in the probe found' for Grep/Glob if Claude Code does not offer them to agents. Nothing committed; new script and result kept in .vbw/runtime/scratch/probe-mcp-tools.new.sh and mcp-tools.new.json. Lead should decide: relax the builtins check to the tools the build offers (Grep/Glob optional) or replan."
+      "mutations": [
+        {
+          "rule": {
+            "req": "R241",
+            "text": "a recorded probe (tools/probe-mcp-tools.sh, its committed result tools/probes/mcp-tools.json, a decision) states how Claude Code resolves a plugin agent's tools with a whole server (mcp__<server>__*), one tool (mcp__<server>__<tool>), an unconfigured server beside resolving entries, the agent_type a hook sees, and whether a workflow's agent() reaches an agent not the plugin's own"
+          },
+          "what": "renamed the foreign_agent case key in the result",
+          "files": [
+            "tools/probes/mcp-tools.json"
+          ],
+          "checks": {
+            "C546": "green"
+          },
+          "result": "survivor",
+          "at": "2026-11-01T14:54:00Z",
+          "head": "27e27cfdbad43f039398c24ee8ff8be2c5553f44"
+        },
+        {
+          "rule": {
+            "req": "R241",
+            "text": "a recorded probe (tools/probe-mcp-tools.sh, its committed result tools/probes/mcp-tools.json naming decision D561, which the record holds) states how Claude Code resolves a plugin agent's tools with a whole server (mcp__<server>__*), one tool (mcp__<server>__<tool>), an unconfigured server beside resolving entries, the agent_type a hook sees and whether a workflow's agent() reaches an agent not the plugin's own; and, for D561, that an agent with tools: omitted inherits the session's MCP tool, that a plugin agent honours disallowedTools, that a hook with the matcher omitted reaches every tool an agent calls, the built-ins an agent inherits, the tools Claude Code gives every agent, and the main-session hook path's CPU on a Read call, within 20 ms"
+          },
+          "what": "hook CPU set to 50 ms",
+          "files": [
+            "tools/probes/mcp-tools.json"
+          ],
+          "checks": {
+            "C546": "red"
+          },
+          "result": "red",
+          "at": "2026-11-01T14:54:04Z",
+          "head": "27e27cfdbad43f039398c24ee8ff8be2c5553f44"
+        },
+        {
+          "rule": {
+            "req": "R241",
+            "text": "the probe treats Grep and Glob as optional built-ins (Claude Code 2.1.316 gives agents neither; D565) and its committed result names no MCP tool but the probe server's own, so a machine's other servers and claude.ai connectors never reach the file"
+          },
+          "what": "another server's tool name in the result",
+          "files": [
+            "tools/probes/mcp-tools.json"
+          ],
+          "checks": {
+            "C546": "red"
+          },
+          "result": "red",
+          "at": "2026-11-01T14:54:08Z",
+          "head": "27e27cfdbad43f039398c24ee8ff8be2c5553f44"
+        },
+        {
+          "rule": {
+            "req": "R241",
+            "text": "a recorded probe (tools/probe-mcp-tools.sh, its committed result tools/probes/mcp-tools.json, a decision) states how Claude Code resolves a plugin agent's tools with a whole server (mcp__<server>__*), one tool (mcp__<server>__<tool>), an unconfigured server beside resolving entries, the agent_type a hook sees, and whether a workflow's agent() reaches an agent not the plugin's own"
+          },
+          "what": "renamed the foreign_agent case key in the result",
+          "files": [
+            "tools/probes/mcp-tools.json"
+          ],
+          "checks": {
+            "C546": "red"
+          },
+          "result": "red",
+          "at": "2026-11-01T14:54:43Z",
+          "head": "0d6318908073effcfb587858ba323cebffc27e6c",
+          "strengthened": [
+            "tests/mcp-probe.bats"
+          ],
+          "pending": [
+            "tests/mcp-probe.bats"
+          ]
+        }
+      ]
     },
     {
       "id": "P192.2",
@@ -62145,7 +62216,7 @@
       "after": [
         "P193.1"
       ],
-      "status": "blocked",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "tools/bench-hooks.sh VBW_BENCH_STEPS=1: the table keeps the gross rows 'sh startup' and 'jq startup' and gives net rows (startup subtracted), each cell 'N.N (Q.QQ)' with Q the quotient to the reference run's cell: 'shell prelude' (the hooks.json command cut before `jq`, run with the input, minus sh startup), 'program compile' (the guard over empty inputs minus jq startup), 'program run' (the whole hooks.json call with the input and the record read, minus sh and jq startup), 'reference compile' (reference.jq over empty inputs minus jq startup) and 'reference run' (the reference call minus startup, so its own quotient is 1.00); the method line says 'net of the sh and jq startup; the quotient in parentheses is to the reference run'; the two R233 cases keep passing (the rows they name stay)",
@@ -62185,9 +62256,72 @@
           "result": "red",
           "at": "2026-11-01T13:46:21Z",
           "head": "808bfcde39f77e9fc5941b55d333ee9af49435de"
+        },
+        {
+          "rule": {
+            "req": "R243",
+            "text": "the step table has net rows shell prelude, program compile, program run, reference compile and reference run, each cell a net ms figure with its quotient to the reference run; the gross startup rows carry no quotient"
+          },
+          "what": "renamed the shell prelude row",
+          "files": [
+            "tools/bench-hooks.sh"
+          ],
+          "checks": {
+            "C558": "red"
+          },
+          "result": "red",
+          "at": "2026-11-01T15:02:44Z",
+          "head": "e990b864689a095d6dff1ab510bf7f6125af64a8"
+        },
+        {
+          "rule": {
+            "req": "R243",
+            "text": "the reference run's quotient is 1.00 by definition, and the method line says the net rows subtract the startup and names the quotient"
+          },
+          "what": "reference run quotient printed 1.10",
+          "files": [
+            "tools/bench-hooks.sh"
+          ],
+          "checks": {
+            "C558": "red"
+          },
+          "result": "red",
+          "at": "2026-11-01T15:02:47Z",
+          "head": "e990b864689a095d6dff1ab510bf7f6125af64a8"
+        },
+        {
+          "task": 3,
+          "what": "reference calls one definition in four again",
+          "files": [
+            "tools/bench-hooks.sh"
+          ],
+          "checks": {
+            "C558": "green"
+          },
+          "result": "survivor",
+          "at": "2026-11-01T15:03:15Z",
+          "head": "e990b864689a095d6dff1ab510bf7f6125af64a8"
+        },
+        {
+          "task": 3,
+          "what": "reference calls one definition in four again",
+          "files": [
+            "tools/bench-hooks.sh"
+          ],
+          "checks": {
+            "C558": "red"
+          },
+          "result": "red",
+          "at": "2026-11-01T15:04:27Z",
+          "head": "191c37e57f3abeaed57b5f3c39df7c50eab738b1",
+          "strengthened": [
+            "tests/bench-guard-steps.bats"
+          ],
+          "pending": [
+            "tests/bench-guard-steps.bats"
+          ]
         }
-      ],
-      "note": "compile split committed at 9b97715c: the lead session pushes plow/2.1.23, runs gh workflow run bench-steps.yml --ref plow/2.1.23 and gives the run id"
+      ]
     },
     {
       "id": "P195.2",
@@ -78598,6 +78732,17 @@
         "ended": "2026-11-01T14:43:28Z",
         "cost": {
           "usd": 0.171671
+        }
+      },
+      {
+        "id": "build-20261101T144513Z",
+        "kind": "build",
+        "session": "0ee781c3-c5b6-4a6c-889f-04b89f1fba4a",
+        "milestone": "M49",
+        "started": "2026-11-01T14:45:13Z",
+        "ended": "2026-11-01T15:05:40Z",
+        "cost": {
+          "usd": 1.287358
         }
       }
     ],
