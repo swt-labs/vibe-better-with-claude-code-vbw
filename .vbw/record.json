@@ -18379,6 +18379,11 @@
           "text": "the probe treats Grep and Glob as optional built-ins (Claude Code 2.1.316 gives agents neither; D565) and its committed result names no MCP tool but the probe server's own, so a machine's other servers and claude.ai connectors never reach the file",
           "check": "C546",
           "plan": "P192.1"
+        },
+        {
+          "text": "every built-in the probe records is one tool name (a capital letter, then letters or digits), never a fragment of the session's prose such as a deferred-tools note",
+          "check": "C546",
+          "plan": "P192.1"
         }
       ]
     },
@@ -69626,6 +69631,12 @@
       "text": "R243: the Linux-only guard step is program compile (jq binding and code generation of guard-bash.jq's own definitions, never executed): mean program run quotient to the reference run before macos-latest 1.69, ubuntu-latest 2.24, ubuntu-26.04 2.27 (run 41312931896; run 41305323924 predates the net rows), after 0.79, 0.78, 0.77 (run 41319529368; Ubuntu/macOS 0.99); cause: the reference compiled one trivial definition set while the guard compiles all its own, a cost 1.35x higher on Linux (D564), removed by the reference calling four in five of its definitions (P195.1, e990b864)",
       "why": "The compile cost is jq's own and the same for any program with those definitions, so the fair fix is a reference that carries the same work, not a change to the shipped guard; oniguruma, includes and parsing were ruled out by the compile split (run 41317320402).",
       "at": "2026-11-01T15:12:10Z"
+    },
+    {
+      "id": "D569",
+      "text": "P192.1 rerun: tools/probe-mcp-tools.sh's builtins parse split the agent's tool list on commas only and kept 'not yet fetched via ToolSearch: CronCreate' as one entry; parse each item to its tool name (the deferred tools included, CronCreate among them), re-record tools/probes/mcp-tools.json by running the probe, then P192.3 regenerates each agent's disallowedTools from the corrected list and drops the hand-added CronCreate if the list now carries it.",
+      "why": "P192.3 blocked on the junk entry (C549 cannot pass honestly); C546 now refuses a non-name entry. Lead decision, 2026-11-01.",
+      "at": "2026-11-01T15:20:16Z"
     }
   ],
   "commands": {
@@ -78796,6 +78807,17 @@
         "ended": "2026-11-01T15:18:33Z",
         "cost": {
           "usd": 1.178536
+        }
+      },
+      {
+        "id": "plan-20261101T151918Z",
+        "kind": "plan",
+        "session": "0ee781c3-c5b6-4a6c-889f-04b89f1fba4a",
+        "milestone": "M49",
+        "started": "2026-11-01T15:19:18Z",
+        "ended": "2026-11-01T15:20:25Z",
+        "cost": {
+          "usd": 0.12112
         }
       }
     ],

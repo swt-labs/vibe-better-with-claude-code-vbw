@@ -46,7 +46,7 @@ CASES='["server_wildcard", "single_tool", "unconfigured_beside", "agent_type", "
   jq -e '.cases.inherit_omitted.result // "" | contains("NOTE-TOKEN-7731")' "$RESULT" || { jq .cases.inherit_omitted "$RESULT"; false; }
   jq -e '.cases.disallowed_honoured | (.tools_line | test("disallowedTools")) and (.result | startswith("RESULT: NOT-WRITTEN"))' "$RESULT" || { jq .cases.disallowed_honoured "$RESULT"; false; }
   jq -e 'has("hook_matcher") and .hook_matcher == null and (.cases.hook_every_tool.result | startswith("RESULT: ALL"))' "$RESULT" || { jq '{hook_matcher, hook_every_tool: .cases.hook_every_tool}' "$RESULT"; false; }
-  jq -e '(.builtins | type == "array" and (contains(["Read", "Bash", "Write", "Edit", "WebFetch", "WebSearch"])) and all(.[]; startswith("mcp__") | not))
+  jq -e '(.builtins | type == "array" and (contains(["Read", "Bash", "Write", "Edit", "WebFetch", "WebSearch"])) and all(.[]; startswith("mcp__") | not) and all(.[]; test("^[A-Z][A-Za-z0-9]*$")))
     and (.always_allowed | type == "array" and all(.[]; type == "string" and (startswith("mcp__") | not)))
     and (.hook_read_cpu_ms | type == "number" and . > 0 and . <= 20)' "$RESULT" || { jq '{builtins, always_allowed, hook_read_cpu_ms}' "$RESULT"; false; }
 }
