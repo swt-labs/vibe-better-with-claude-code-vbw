@@ -20,7 +20,9 @@
 # budget; 120 when unset, "default" removes it; a report, never a limit: lib/unittime.sh),
 # sound (off, or a folder name under assets/audio/ that holds an mp3: the panel's "needs you"
 # sound plays from that folder; "default" removes it and the panel picks among every shipped sound;
-# this clone's own choice, kept with check_jobs in the clone's settings file, not in the record).
+# this clone's own choice, kept with check_jobs in the clone's settings file, not in the record),
+# mcp (entries separated by spaces: SERVER, SERVER:read-only or SERVER:read-only=TOOL,TOOL; the MCP
+# servers whose tools the agents may use, "default" removes it; a record holding one is schema 7).
 
 # Profiles name a model per workflow role (lib/profiles.json, shared with the
 # status line). The session itself always runs the user's model, which must be
@@ -130,6 +132,49 @@ config_sound_value() {
   fi
 }
 
+# config_mcp_usage: the refusal naming every form mcp accepts.
+config_mcp_usage() {
+  vbw_usage_error "mcp must be SERVER, SERVER:read-only or SERVER:read-only=TOOL,TOOL (names: letters, digits, _ . -), separated by spaces, or default"
+}
+
+# config_mcp_set VALUE: store the entries of VALUE as settings.mcp (default
+# removes it). Validates every entry before anything is written.
+config_mcp_set() {
+  local value="$1" e name rest tools t lines="" seen=" " entries=()
+  if [ "$value" = default ]; then
+    record_update '.settings |= del(.mcp)'
+    return 0
+  fi
+  case "$value" in *[!\ A-Za-z0-9_.:,=-]*) config_mcp_usage ;; esac
+  for e in $value; do entries+=("$e"); done
+  [ ${#entries[@]} -gt 0 ] || config_mcp_usage
+  for e in "${entries[@]}"; do
+    name="${e%%:*}"
+    [[ "$name" =~ ^[A-Za-z0-9][A-Za-z0-9_.-]*$ ]] || config_mcp_usage
+    case "$seen" in *" $name "*) config_mcp_usage ;; esac
+    seen="$seen$name "
+    if [ "$name" = "$e" ]; then
+      lines="$lines$name"$'\topen\n'
+      continue
+    fi
+    rest="${e#*:}"
+    case "$rest" in
+      read-only) lines="$lines$name"$'\tall\n' ;;
+      read-only=*)
+        tools="${rest#read-only=}"
+        [ -n "$tools" ] || config_mcp_usage
+        case ",$tools," in *",,"*) config_mcp_usage ;; esac
+        for t in ${tools//,/ }; do
+          [[ "$t" =~ ^[A-Za-z0-9][A-Za-z0-9_.-]*$ ]] || config_mcp_usage
+        done
+        lines="$lines$name"$'\ttools\t'"$tools"$'\n' ;;
+      *) config_mcp_usage ;;
+    esac
+  done
+  record_update '.settings.mcp = [$l | split("\n")[] | select(. != "") | split("\t")
+    | {server: .[0], read_only: (if .[1] == "open" then false elif .[1] == "all" then true else (.[2] | split(",")) end)}]' --arg l "$lines"
+}
+
 cmd_config() {
   local sub="${1:-}"
   case "$sub" in
@@ -150,7 +195,8 @@ cmd_config() {
         | "profile: \($s.profile)", "autonomy: \($s.autonomy // "balanced")", "autonomy_cap: \($s.autonomy_cap)", "rigor: \($s.rigor // "auto")", "motion: \($s.motion // "default")", "command_timeout: \($s.command_timeout // 3600) seconds",
           "check_budget: \($s.check_budget // 120) seconds a unit (reported, never enforced)",
           ($p[$s.profile] + ($s.models // {}) | (if ((.qa // "") | ascii_downcase | contains("haiku")) then .qa = "sonnet" else . end) | to_entries[] | "model.\(.key): \(.value)"),
-          ($p[$s.profile] | keys_unsorted[] as $r | "effort.\($r): \(($s.efforts // {})[$r] // "default")")'
+          ($p[$s.profile] | keys_unsorted[] as $r | "effort.\($r): \(($s.efforts // {})[$r] // "default")"),
+          "mcp: \(if ($s.mcp // null) == null then "none" else [$s.mcp[] | .server + (if .read_only == false then "" elif .read_only == true then ":read-only" else ":read-only=" + (.read_only | join(",")) end)] | join(" ") end)"'
       ;;
     models)
       record_read | jq -c --argjson p "$VBW_PROFILES" '$p[.settings.profile] + (.settings.models // {}) | (if ((.qa // "") | ascii_downcase | contains("haiku")) then .qa = "sonnet" else . end)'
@@ -181,6 +227,7 @@ cmd_config() {
             default) record_update '.settings |= del(.motion)' ;;
             *) vbw_usage_error "motion must be full, calm or off (or default): how much the VBW panel animates" ;;
           esac ;;
+        mcp) config_mcp_set "$value" ;;
         sound)
           case "$value" in
             default) vbw_clone_setting_set sound default ;;
@@ -234,7 +281,7 @@ cmd_config() {
             low|medium|high|xhigh|max) record_update '.settings.efforts = ((.settings.efforts // {}) + {($r): $v})' --arg r "${key#effort.}" --arg v "$value" ;;
             *) vbw_usage_error "$key must be low, medium, high, xhigh or max (or default): how hard that helper thinks at every step, over the profile's choice" ;;
           esac ;;
-        *) vbw_usage_error "unknown setting $key (profile, autonomy, autonomy_cap, motion, sound, check_jobs, command_timeout, check_budget, model.ROLE or effort.ROLE for $VBW_ROLES)" ;;
+        *) vbw_usage_error "unknown setting $key (profile, autonomy, autonomy_cap, motion, sound, check_jobs, command_timeout, check_budget, mcp, model.ROLE or effort.ROLE for $VBW_ROLES)" ;;
       esac
       printf '%s = %s\n' "$key" "$value"
       ;;
