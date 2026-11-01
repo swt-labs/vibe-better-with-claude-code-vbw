@@ -159,6 +159,34 @@ SH
   [ "$(git -C sub worktree list --porcelain | grep -c '^worktree ')" -eq 1 ] || { git -C sub worktree list; false; }
 }
 
+# #737: Claude Code's sandbox refuses to create any file named .gitmodules, so
+# a copy that checks one out dies in a session ("unable to create file
+# .gitmodules: Operation not permitted"). The copy leaves every .gitmodules
+# unwritten (git reads it from the index) and its git status stays clean.
+@test "a project with a submodule gets a clean copy without writing a .gitmodules file, its own or the submodule's, and git there still knows the submodule" {
+  git init -q "$TEST_ROOT/subsrc"
+  printf 'paid\n' > "$TEST_ROOT/subsrc/pay.txt"
+  printf '[submodule "x"]\n\tpath = x\n\turl = ./x\n' > "$TEST_ROOT/subsrc/.gitmodules"
+  git -C "$TEST_ROOT/subsrc" add pay.txt .gitmodules
+  git -C "$TEST_ROOT/subsrc" commit -q -m "chore: seed"
+  git -c protocol.file.allow=always submodule add -q "file://$TEST_ROOT/subsrc" sub
+  cat > tests/c5.sh << 'SH'
+echo "C5$1" >> "$RANLOG"
+for f in .gitmodules sub/.gitmodules; do [ ! -e "$f" ] || { echo "the copy wrote $f"; exit 1; }; done
+[ -z "$(git status --porcelain)" ] || { git status --porcelain; exit 1; }
+[ -z "$(git -C sub status --porcelain)" ] || { git -C sub status --porcelain; exit 1; }
+[ "$(git config --blob HEAD:.gitmodules submodule.sub.path)" = sub ] || exit 1
+git submodule status sub > /dev/null || exit 1
+grep -qx paid sub/pay.txt
+SH
+  edit_record '.checks += [{id:"C5", req:"R1", run:["sh","tests/c5.sh"], files:["tests/c5.sh"]}]'
+  git add -A && git commit -q -m "chore: sub"
+  "$VBW" approve > /dev/null
+  vbw_run prove
+  [ "$status" -eq 0 ] || { echo "$output"; false; }
+  [[ "$(ran)" == *"C5 "* ]] || { echo "ran: $(ran)"; false; }
+}
+
 @test "R103: an untracked project file in the working folder runs nothing" {
   printf 'buy milk\n' > todos.txt
   vbw_run prove

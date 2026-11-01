@@ -159,6 +159,17 @@ proofcopy_sweep() {
   return 0
 }
 
+# proofcopy_checkout REPO DEST: a detached worktree of REPO's HEAD at DEST, every
+# file checked out but the .gitmodules files: Claude Code's sandbox refuses to
+# create a file of that name, so they stay unwritten, marked skip-worktree (git
+# status stays clean, and git reads them from the index). Git's error on stderr.
+proofcopy_checkout() {
+  git -C "$1" -c core.hooksPath=/dev/null worktree add -q --no-checkout --detach "$2" HEAD > /dev/null || return 1
+  git -C "$2" read-tree HEAD || return 1
+  git -C "$2" ls-files -z -- ':(glob)**/.gitmodules' | git -C "$2" update-index -z --skip-worktree --stdin || return 1
+  git -C "$2" checkout-index -a -q -u
+}
+
 # proofcopy_make: one more copy, added to PROOF_COPIES.
 proofcopy_make() {
   local dir p real copy first='' l
@@ -170,15 +181,15 @@ proofcopy_make() {
   PROOF_COPIES+=("$copy")
   PROOF_COPY=$copy
   git -C "$VBW_ROOT" worktree prune 2> /dev/null || true
-  git -C "$VBW_ROOT" -c core.hooksPath=/dev/null worktree add -q --detach "$copy" HEAD > /dev/null 2>&1 \
-    || { proofcopy_remove; vbw_die "cannot make a clean copy of the committed code (does the project have a commit?)"; }
+  l=$(proofcopy_checkout "$VBW_ROOT" "$copy" 2>&1) \
+    || { proofcopy_remove; vbw_die "cannot make a clean copy of the committed code: ${l##*$'\n'}"; }
   # Each checked-out submodule: a detached worktree of its own HEAD (its committed
   # code, which vbw commit moves; the project's pointer may lag), in its folder.
   local subs=()
   while IFS= read -r -d '' p; do subs+=("$p"); done < <(vbw_subs)
   for p in ${subs[@]+"${subs[@]}"}; do
-    git -C "$VBW_ROOT/$p" -c core.hooksPath=/dev/null worktree add -q --detach "$copy/$p" HEAD > /dev/null 2>&1 \
-      || { proofcopy_remove; vbw_die "cannot make a clean copy of the submodule $p's committed code"; }
+    l=$(proofcopy_checkout "$VBW_ROOT/$p" "$copy/$p" 2>&1) \
+      || { proofcopy_remove; vbw_die "cannot make a clean copy of the submodule $p's committed code: ${l##*$'\n'}"; }
   done
   real=$(cd -P "$VBW_ROOT" && pwd -P) || vbw_die "cannot resolve $VBW_ROOT"
   if [ -f "${VBW_RECORD:-}" ]; then
