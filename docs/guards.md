@@ -281,8 +281,17 @@ tool (or the server, when the setting does not name it) and ends with
 `Next: add or mark it with vbw config set mcp`. For a reading role it says the
 tool is not marked read-only.
 
-**What the guard cannot see.** It judges the call (PreToolUse on `mcp__` tools),
-not what the server does inside. The guards see Write, Edit and Bash calls, so a
+**Every tool, not only MCP tools.** VBW's agents inherit the session's tools (no
+`tools:` list); each role's `disallowedTools` hides the built-ins it must not have.
+The tools guard is one PreToolUse entry with no matcher, so it sees
+every tool a VBW agent calls. It lets through the role's own built-ins, the MCP
+tools the setting opens to the role, and the tools Claude Code gives every agent.
+Any other tool is refused: another role's built-in, or one VBW does not know, such as
+one a Claude Code update adds. The refusal names the tool, the role and a next step. The main
+session is never judged and pays one small jq per tool call.
+
+**What the guard cannot see.** It judges the call, not what the
+server does inside. The guards see Write, Edit and Bash calls, so a
 file an MCP tool writes is judged after the fact, by the run's scope check
 (`<commit> (<plan>) changed <file>, which is not in the plan`),
 never before the call. Mark a server read-only only when its tools really only read.
@@ -292,8 +301,9 @@ never before the call. Mark a server read-only only when its tools really only r
 - **Per-tool-call hooks are jq itself** (build plan K20): no shell script, no
   interpreter startup of our own. On a Mac, Homebrew bash takes 9 ms just to
   start; jq is required by VBW anyway.
-- **The MCP guard** (`guard-mcp.jq`, a PreToolUse jq entry on `mcp__` tools) is
-  one more hook the bench measures, as the `guard (mcp)` case.
+- **The tools guard** (`guard-tools.jq`, one PreToolUse jq entry with the matcher
+  omitted, so it sees every tool an agent calls) is one more hook the bench
+  measures, as the `guard (tools)` cases, the main session's call among them.
 - **The guard command's own shell tests pick the input; jq does the rest.** The
   tests are built into the shell (no other program): they pick the glance, or
   nothing when it is not current. jq then reads the hook input, the record only
