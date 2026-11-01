@@ -15,6 +15,9 @@ RESULT="$REPO_ROOT/tools/l3-results/steptime.json"
 
 body() { sed -n '/^scenario_steptime()/,/^}/p' "$SUITE"; }
 
+setup() { vbw_setup; }
+teardown() { vbw_teardown; }
+
 @test "R190: the suite has a steptime scenario that seeds a step history and records each fact" {
   [ -n "$(body)" ] || { echo "tools/l3-suite.sh has no scenario_steptime"; false; }
   body | grep -q 'steps.json' || { echo "scenario_steptime does not seed the step history"; false; }

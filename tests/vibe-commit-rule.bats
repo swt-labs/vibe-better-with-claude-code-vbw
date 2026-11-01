@@ -20,11 +20,17 @@ WORKFLOWS="$REPO_ROOT/docs/workflows.md"
   done
   grep -q 'vbw commit' "$SKILL" && grep -qiE 'commits? go(es)? through `?vbw commit`? inside the run' "$SKILL" \
     || { echo "the skill does not say commits go through vbw commit inside the run"; false; }
-  grep -qiE "follow(s)? the proof'?s `?Next`? line" "$SKILL" || { echo "the skill does not say the chat follows the proof's Next line"; false; }
+  # Fixed strings: a backtick inside double quotes would run as a command and drop part of the pattern.
+  [[ "$line" == *"follows the proof's Next line"* ]] || { echo "the hand-commit rule does not say the chat follows the proof's Next line: $line"; false; }
+  local prove
+  prove=$(grep '^\*\*prove\*\*:' "$SKILL")
+  [[ "$prove" == *"follow the proof's Next line"* || "$prove" == *"follow the proof's line that starts with Next:"* ]] \
+    || { echo "the prove step does not say to follow the proof's Next line: $prove"; false; }
+  [[ "$prove" == *"never a commit of your own"* ]] || { echo "the prove step does not rule out a commit of the chat's own: $prove"; false; }
 }
 
 @test "R239: docs/guards.md's refusal table names commit-tree beside commit, the chat's refusal while armed or in a loop, and that the user's own commands are never checked" {
-  grep -E '^\|.*`commit`' "$GUARDS" | grep -q 'commit-tree' || { echo "the guards table row for git commit does not name commit-tree"; false; }
+  grep -E '^\| `git commit`, ' "$GUARDS" | grep -qF '`commit-tree`' || { echo "the guards table row for git commit does not name commit-tree"; false; }
   grep -qiE '^\|.*(armed|autonomous run).*loop' "$GUARDS" || { echo "no table row for the chat's git commands while an autonomous run or loop is armed"; false; }
   grep -qi "user's own commands are never checked" "$GUARDS" || { echo "docs/guards.md does not say the user's own commands are never checked"; false; }
 }

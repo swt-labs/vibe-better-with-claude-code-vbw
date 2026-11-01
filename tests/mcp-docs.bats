@@ -37,3 +37,11 @@ section() { awk '/^## .*MCP/ { on = 1; print; next } /^## / { on = 0 } on' "$GUA
   sed -n '/^## Agents/,/^## The project folder/p' "$WORKFLOWS" | grep -q 'MCP' || { echo "the Agents section does not mention MCP tools"; false; }
   sed -n '/^## Agents/,/^## The project folder/p' "$WORKFLOWS" | grep -q 'guards.md' || { echo "the Agents section does not link to docs/guards.md"; false; }
 }
+
+@test "R242: the section says the guard sees every tool a VBW agent calls, so a tool outside the role's own (one a Claude Code update adds) is refused, and the refusal table has its row" {
+  section | grep -qiE 'every tool (a VBW agent|an agent) calls' || { echo "the section does not say the guard sees every tool a VBW agent calls"; false; }
+  section | grep -qi 'Claude Code update\|Claude Code adds' || { echo "the section does not say a tool a Claude Code update adds is refused"; false; }
+  ! section | grep -qF 'PreToolUse on `mcp__` tools' || { echo "the section still says the guard runs only on mcp__ tools"; false; }
+  sed -n '/^### Every refusal and its next step/,/^### Refusals reach the user/p' "$WORKFLOWS" | grep -E '^\| Guards:' | grep -qi "outside.*role\|not one of.*role" \
+    || { echo "the refusal table has no row for a tool outside the agent's role"; false; }
+}

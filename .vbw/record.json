@@ -39,6 +39,7 @@
     "tests/bench-protected.bats",
     "tests/bench-select.bats",
     "tests/bench-statusline-cost.bats",
+    "tests/bench-steps-result.bats",
     "tests/big-record-commands.bats",
     "tests/big-record-docs.bats",
     "tests/big-record-helper.bash",
@@ -113,11 +114,11 @@
     "tests/guard-cost.bats",
     "tests/guard-fail-closed.bats",
     "tests/guard-interpreters.bats",
-    "tests/guard-mcp.bats",
     "tests/guard-outside.bats",
     "tests/guard-plan-writes.bats",
     "tests/guard-protected.bats",
     "tests/guard-reads-approval.bats",
+    "tests/guard-tools.bats",
     "tests/help-every-command.bats",
     "tests/helper-quiet-git.bats",
     "tests/helper.bash",
@@ -394,6 +395,7 @@
     "tests/record-newer.bats",
     "tests/record-protected.bats",
     "tests/record-v4-compat.bats",
+    "tests/record.bats",
     "tests/refusal-next-step.bats",
     "tests/release-reuse-helper.bash",
     "tests/release-reuse-partial.bats",
@@ -7359,10 +7361,10 @@
       "run": [
         "bats",
         "--print-output-on-failure",
-        "tests/guard-mcp.bats"
+        "tests/guard-tools.bats"
       ],
       "files": [
-        "tests/guard-mcp.bats"
+        "tests/guard-tools.bats"
       ]
     },
     {
@@ -7473,6 +7475,35 @@
       ],
       "files": [
         "tests/bench-linux-step-docs.bats"
+      ]
+    },
+    {
+      "id": "C560",
+      "req": "R241",
+      "run": [
+        "bats",
+        "--print-output-on-failure",
+        "--filter",
+        "R241",
+        "tests/record.bats",
+        "tests/record-protected.bats"
+      ],
+      "files": [
+        "tests/record.bats",
+        "tests/record-protected.bats",
+        "tests/protected-helper.bash"
+      ]
+    },
+    {
+      "id": "C561",
+      "req": "R243",
+      "run": [
+        "bats",
+        "--print-output-on-failure",
+        "tests/bench-steps-result.bats"
+      ],
+      "files": [
+        "tests/bench-steps-result.bats"
       ]
     }
   ],
@@ -18318,6 +18349,31 @@
           "text": "docs/guards.md has an MCP section naming where the setting lives (record.settings.mcp), the exact command form, the read-only mark and default, and docs/workflows.md's Agents section links to it",
           "check": "C550",
           "plan": "P192.4"
+        },
+        {
+          "text": "a recorded probe (tools/probe-mcp-tools.sh, its committed result tools/probes/mcp-tools.json naming decision D561, which the record holds) states how Claude Code resolves a plugin agent's tools with a whole server (mcp__<server>__*), one tool (mcp__<server>__<tool>), an unconfigured server beside resolving entries, the agent_type a hook sees and whether a workflow's agent() reaches an agent not the plugin's own; and, for D561, that an agent with tools: omitted inherits the session's MCP tool, that a plugin agent honours disallowedTools, that a hook with the matcher omitted reaches every tool an agent calls, the built-ins an agent inherits, the tools Claude Code gives every agent, and the main-session hook path's CPU on a Read call, within 20 ms",
+          "check": "C546",
+          "plan": "P192.1"
+        },
+        {
+          "text": "the mechanism built is D561's: no agent file has a tools: allowlist and each names disallowedTools, so VBW's agents inherit the session's MCP tools",
+          "check": "C549",
+          "plan": "P192.3"
+        },
+        {
+          "text": "with no MCP setting every agent's effective built-in tools are exactly today's (architect, qa: Read, Grep, Glob, Bash; lead: those plus Write, Edit, WebFetch; dev, debugger, docs: those plus Write, Edit; scout: those plus WebSearch, WebFetch): the tools guard opens these to the role and refuses every other built-in the probe found",
+          "check": "C549",
+          "plan": "P192.3"
+        },
+        {
+          "text": "each agent's disallowedTools names every built-in the probe found outside its role (the tools Claude Code gives every agent aside) and none of its own, so architect, qa and scout are never offered Write, Edit or NotebookEdit",
+          "check": "C549",
+          "plan": "P192.3"
+        },
+        {
+          "text": "this VBW reads up to schema 7: a schema-8 record asks for a newer VBW naming schema 7 as its highest, and the record check allows protected on a schema-4, 5, 6 or 7 record",
+          "check": "C560",
+          "plan": "P192.2"
         }
       ]
     },
@@ -18377,6 +18433,31 @@
           "text": "the docs say which roles get what, that a reading role never gets a tool by a guess from its name, and that an MCP tool's writes are judged after the fact by the run's scope check ('changed X, which is not in the plan'), never before the call",
           "check": "C553",
           "plan": "P192.4"
+        },
+        {
+          "text": "the main session, for any tool and even with a corrupt record, and an agent that is not VBW's are never judged, and outside a VBW project the hook gives no answer",
+          "check": "C551",
+          "plan": "P192.3"
+        },
+        {
+          "text": "the hook is one PreToolUse entry in hooks.json with the matcher omitted (the probe showed it reaches every tool an agent calls), running guard-tools.jq, and the bench measures it as the guard (tools) cases, the main session's call among them",
+          "check": "C551",
+          "plan": "P192.3"
+        },
+        {
+          "text": "the hook's answers are pinned: deny with a 'VBW guard:' reason and a systemMessage for the user, no output for the main session or a tool open to the role, and no allow",
+          "check": "C552",
+          "plan": "P192.3"
+        },
+        {
+          "text": "a VBW agent's call of a tool outside its role's own (another role's built-in, or a tool VBW does not know, such as one a Claude Code update adds) is refused naming the tool, the role and a next step; the tools Claude Code gives every agent (the probe's always_allowed) are never refused",
+          "check": "C551",
+          "plan": "P192.3"
+        },
+        {
+          "text": "docs/guards.md's MCP section says the guard sees every tool a VBW agent calls, so a tool outside the role's own, one a Claude Code update adds included, is refused, and no longer that it runs only on mcp__ tools; docs/workflows.md's refusal table has the row for a tool outside the agent's role",
+          "check": "C553",
+          "plan": "P192.5"
         }
       ]
     },
@@ -18406,6 +18487,11 @@
           "text": "the disproved claim that each Linux quotient is within 1.25 of macOS's is gone, and the 1.25 target is stated with the measured figures",
           "check": "C559",
           "plan": "P195.2"
+        },
+        {
+          "text": "tools/probes/guard-steps.json, written by tools/bench-steps-result.sh from bench-steps.yml runs, holds the before run 41312931896 and an after run with step tables from macos-latest, ubuntu-latest and ubuntu-26.04, and in the after run each Ubuntu runner's mean program run quotient is within 1.25 times macos-latest's",
+          "check": "C561",
+          "plan": "P195.3"
         }
       ]
     }
@@ -61442,7 +61528,7 @@
     {
       "id": "P192.1",
       "phase": "P192",
-      "title": "Probe: how Claude Code gives a plugin agent MCP tools",
+      "title": "Probe, extended for D561: agents inherit MCP tools, disallowedTools holds, one hook sees every tool",
       "reqs": [
         "R241"
       ],
@@ -61454,9 +61540,9 @@
       "status": "blocked",
       "role": "dev",
       "tasks": [
-        "tools/probe-mcp-tools.sh (bash 3.2, shellcheck-clean): under .vbw/runtime/scratch/ it writes a throwaway plugin (agents/reader.md with the tools line under test; a PreToolUse hook that appends the hook input's agent_type to a scratch file) and a tiny stdio MCP server (one node script answering initialize, tools/list with read_note and write_note, tools/call) registered in a scratch .mcp.json named probe; one headless `claude -p --plugin-dir` session per case, each asking the agent to call the server's read_note and report the tool result: server_wildcard (`tools: Read, mcp__probe__*`), single_tool (`tools: Read, mcp__probe__read_note`), unconfigured_beside (`tools: Read, mcp__nosuch__*, mcp__probe__*`), agent_type (what the hook saw for an agent started as <plugin>:reader), foreign_agent (a Dynamic workflow of a second throwaway plugin calling agent() with agentType vbw:dev and <plugin>:reader: which agents it reaches); each case records {tools_line, result} in the words the session gave; the script prints the table and writes tools/probes/mcp-tools.json {probe: \"mcp-tools\", at, claude_version, cases, tools_entry, mechanism, decision}",
-        "Run the probe on this machine (`claude --version` recorded) and commit tools/probes/mcp-tools.json: tools_entry is the entry form the probe showed Claude Code honours as a pool of every MCP tool in a plugin agent's tools line (expected `mcp__*`; if a bare `mcp__*` is not honoured, the form that is: the broadest working one); mechanism is 'tools pool entry in every agent plus the MCP guard by role from record.settings.mcp' when the probe supports it; if no tools-line form gives a pool, block this plan with the probe's evidence so the Lead replans (the alternatives, per-project agent copies or dropping tools: for disallowedTools, are then on the table)",
-        "Record the decision: `vbw decide \"MCP tools reach VBW's agents by <mechanism>; probe tools/probe-mcp-tools.sh (<at>, Claude Code <version>): server wildcard <result>, single tool <result>, unconfigured server beside resolving entries <result>, hook agent_type <value>, foreign agent <result>\" \"<why per-project agent copies (stale on a plugin update) and disallowedTools denylists (new built-in tools leak in) were not taken>\"`; write its id (Dnnn) into the result file's decision field and commit the file again"
+        "tools/probe-mcp-tools.sh (bash 3.2, shellcheck-clean, header comment listing every case): keep the eight cases already run and add, each {tools_line, result}: inherit_omitted (reader.md with no tools: line; asked to call read_note and then to list every tool it has on one line 'TOOLS: a, b, c'; result as the other cases, the token when the call worked); disallowed_honoured (no tools: line, 'disallowedTools: Write, Edit, NotebookEdit, Bash'; asked to create proj/probe-written.txt with the Write tool; result 'RESULT: NOT-WRITTEN <the agent's words>' when the file is absent and the hook log holds no Write, Edit or NotebookEdit call of the agent, else 'RESULT: WRITTEN <what happened>'); hook_every_tool (the probe plugin's PreToolUse entry with the matcher omitted, as today; an agent with tools omitted calls Read, Bash and read_note; result 'RESULT: ALL <tool=agent_type list>' when the hook log holds each of those calls with agent_type mcpprobe:reader, else 'RESULT: MISSED <list>'); the foreign workflow's agent() call to mcpprobe:reader passes a schema, so the log shows the tool Claude Code gives a schema-returning agent",
+        "The result file's top level: builtins (the non-mcp__ tools inherit_omitted's agent listed, sorted), always_allowed (every tool other than Read that an agent with 'tools: Read' or the schema-returning agent called or listed in this run's hook log and replies, e.g. SubagentHandback; the tools Claude Code gives every agent whatever its tools line), hook_matcher null (the omitted form, when hook_every_tool is ALL), hook_read_cpu_ms (CPU ms per call, sh and jq startup included, over 100 runs measured as tools/bench-hooks.sh's cpu_pair does, of the main-session path P192.3 builds: sh -c running a jq program of its own, no include, that passes the hook input on only when agent_type matches ^vbw:(architect|lead|dev|qa|scout|debugger|docs)$, fed a main-session Read input), mechanism (D561's mechanism in one line, naming disallowedTools and the tools guard), decision \"D561\"; tools_entry is dropped",
+        "Run it on this machine (claude --version recorded) and commit tools/probes/mcp-tools.json; tests/mcp-probe.bats passes under /bin/bash 3.2. If inherit_omitted lacks the token, disallowed_honoured is WRITTEN, hook_every_tool is MISSED or hook_read_cpu_ms is over 20, commit nothing and block this plan with the evidence: D561's fallback (per-project agent copies kept fresh by the kernel) is then replanned by the Lead; record no decision either way (D561 is recorded)"
       ],
       "note": "Probe ran (Claude Code 2.1.316, tools/probes/mcp-tools.json): mcp__probe__* , mcp__probe__read_note, and mcp__nosuch__*,mcp__probe__* all resolve (read_note returned the token); the hook saw agent_type mcpprobe:reader; a workflow agent() reached both a stub vbw:dev and mcpprobe:reader. But NO pool form gives all MCP tools: 'mcp__*', 'mcp__*__*', 'mcp__.*' each left the agent with only Read (+SubagentHandback). So the planned mechanism (one mcp__* entry in every agent plus a guard) is unsupported; Lead must replan: alternatives are per-project agent copies or dropping tools: for disallowedTools, or generating per-server entries (mcp__<server>__*) from record.settings.mcp. Decision not recorded; result file has tools_entry mcp__<server>__*, decision null."
     },
@@ -61545,13 +61631,13 @@
     {
       "id": "P192.3",
       "phase": "P192",
-      "title": "The MCP guard: named tools reach agents by role",
+      "title": "The tools guard: each VBW agent keeps its role's tools and gets the named MCP tools by role",
       "reqs": [
         "R241",
         "R242"
       ],
       "files": [
-        "plugin/hooks/guard-mcp.jq",
+        "plugin/hooks/guard-tools.jq",
         "plugin/hooks/hooks.json",
         "plugin/agents/architect.md",
         "plugin/agents/lead.md",
@@ -61560,7 +61646,8 @@
         "plugin/agents/scout.md",
         "plugin/agents/debugger.md",
         "plugin/agents/docs.md",
-        "tools/bench-hooks.sh"
+        "tools/bench-hooks.sh",
+        "tests/workflows.bats"
       ],
       "after": [
         "P192.1",
@@ -61570,10 +61657,11 @@
       "status": "planned",
       "role": "dev",
       "tasks": [
-        "plugin/hooks/guard-mcp.jq (includes holder and common like the other guards; guard_context(false)): no answer unless the hook input is a VBW project's and its agent_type matches ^vbw:(architect|lead|dev|qa|scout|debugger|docs)$ (the main session, another plugin's agent and a project without a record are never judged); the server is the setting entry whose `mcp__<server>__` is the longest prefix of tool_name; no entry: deny '<tool>: this project's MCP setting names no server <server> for VBW's agents (mcp: <entries or none>)\\nNext: the user adds it with vbw config set mcp \"<entries> <server>\" for the writing agents (dev, debugger, docs) or \"<entries> <server>:read-only\" for every agent; as the <role>, work without it meanwhile'; a writing role (dev, debugger, docs), or read_only true, or the tool's name in a read_only list: no answer; else deny '<tool> is not marked read-only, so the <role> (a reading agent: architect, lead, scout, qa) may not call it; VBW never guesses from a name such as read_, get_ or search_\\nNext: the user marks it with vbw config set mcp \"... <server>:read-only\" (the whole server) or \"... <server>:read-only=<tool>\" (this tool); meanwhile work without it'; every answer goes through common.jq's deny (deny plus systemMessage), never allow",
-        "plugin/hooks/hooks.json: a PreToolUse entry with matcher `mcp__.*` whose command is the Bash guard's shell prelude followed by jq -f guard-mcp.jq over the same inputs (the glance when current, else the record, then end.json), ending in the fail-closed handler like the others; tests/standards.bats's shape rule, tests/hook-answers.bats (R242 cases) and tests/guard-mcp.bats pass under /bin/bash 3.2 and bash 5",
-        "plugin/agents/*.md (all seven): the tools line keeps today's built-in tools and gains, last, the one pool entry tools/probes/mcp-tools.json names as tools_entry (expected `mcp__*`); one sentence in each agent's body: 'MCP tools: this project's setting (vbw config set mcp) names which you may use for your role; a refusal names the user's next step, so report it and go on without the tool'; tests/agents-tools.bats, tests/workflows.bats and tests/agents-checks.bats pass",
-        "tools/bench-hooks.sh: GUARD_INPUTS gains mcp, an input of a vbw:qa agent calling mcp__github__get_issue on the bench's record (no setting: the refusal path), measured as 'guard (mcp)', 'guard (mcp, large record)' and 'guard (mcp, N checks)' against the 20 ms budget like the other guard inputs; the guards() function picks the hook by tool_name as it does; `VBW_BENCH_ONLY='guard (mcp' bash tools/bench-hooks.sh` within budget on this machine"
+        "plugin/hooks/guard-tools.jq (includes holder and common like the other guards): only VBW agents are judged (agent_type ^vbw:(architect|lead|dev|qa|scout|debugger|docs)$ in a VBW project; anything else no answer). The role's built-ins (architect, qa: Read, Grep, Glob, Bash; lead: those plus Write, Edit, WebFetch; dev, debugger, docs: those plus Write, Edit; scout: those plus WebSearch, WebFetch) and the tools Claude Code gives every agent (tools/probes/mcp-tools.json always_allowed, a literal list with a comment naming the probe) get no answer. An mcp__ tool is judged by record.settings.mcp: the server is the entry whose mcp__<server>__ is the longest prefix of tool_name; no entry: deny '<tool>: this project's MCP setting names no server <server> for VBW's agents (mcp: <entries or none>)\\nNext: the user adds it with vbw config set mcp \"<entries> <server>\" for the writing agents (dev, debugger, docs) or \"<entries> <server>:read-only\" for every agent; as the <role>, work without it meanwhile'; a writing role, read_only true, or the tool named in a read_only list: no answer; else deny '<tool> is not marked read-only, so the <role> (a reading agent: architect, lead, scout, qa) may not call it; VBW never guesses from a name such as read_, get_ or search_\\nNext: the user marks it with vbw config set mcp \"... <server>:read-only\" (the whole server) or \"... <server>:read-only=<tool>\" (this tool); meanwhile work without it'. Any other tool: deny '<tool> is not one of the <role>'s tools (<list>): VBW refuses a tool it does not give the role, a new Claude Code tool included\\nNext: as the <role>, do the work with your own tools'. Every answer through common.jq's deny, never allow",
+        "plugin/hooks/hooks.json: one PreToolUse entry with the matcher omitted (the probe's hook_matcher). Its command first runs a small jq program of its own (no include, reading only stdin) that passes the hook input on, compact, only for a VBW agent, as the AskUserQuestion entry pipes approve-ask.jq; only then the Bash guard's shell prelude and jq -f guard-tools.jq over the same inputs (glance when current, else the record, then end.json), ending in the fail-closed handler for that second stage only: the main session's call of any tool reads no project file and gets no answer, a corrupt record included; tests/standards.bats's shape rule passes",
+        "plugin/agents/*.md (all seven): the tools: line goes; 'disallowedTools:' names, in the probe's order, every tool of tools/probes/mcp-tools.json builtins that is neither the role's own nor in always_allowed (so architect, qa and scout name Write, Edit and NotebookEdit); one sentence in each body: 'Tools: you have your role's tools and the MCP tools this project names for your role (vbw config set mcp); a refusal names the user's next step, so report it and go on without the tool'; tests/workflows.bats's agent frontmatter case checks a disallowedTools line and no tools: line instead of a tool list",
+        "tools/bench-hooks.sh: guard cases for the tools guard, 'guard (tools)' (a vbw:qa agent calling mcp__github__get_issue on the bench's record, no setting: the refusal path), its large-record and N-checks variants, and 'guard (tools, main session)' (a main-session Read call: the path every chat tool call pays), measured against the 20 ms budget like the other guard cases; guards() picks the entry that runs guard-tools.jq for them (its matcher is omitted); VBW_BENCH_ONLY='guard (tools' bash tools/bench-hooks.sh within budget on this Mac",
+        "Under /bin/bash 3.2 and bash 5: tests/agents-tools.bats, tests/guard-tools.bats, tests/hook-answers.bats, tests/standards.bats, tests/workflows.bats, tests/agents-checks.bats and tests/hooks-guard.bats pass"
       ]
     },
     {
@@ -61796,9 +61884,9 @@
       "role": "dev",
       "tasks": [
         "tools/bench-hooks.sh VBW_BENCH_STEPS=1: the table keeps the gross rows 'sh startup' and 'jq startup' and gives net rows (startup subtracted), each cell 'N.N (Q.QQ)' with Q the quotient to the reference run's cell: 'shell prelude' (the hooks.json command cut before `jq`, run with the input, minus sh startup), 'program compile' (the guard over empty inputs minus jq startup), 'program run' (the whole hooks.json call with the input and the record read, minus sh and jq startup), 'reference compile' (reference.jq over empty inputs minus jq startup) and 'reference run' (the reference call minus startup, so its own quotient is 1.00); the method line says 'net of the sh and jq startup; the quotient in parentheses is to the reference run'; the two R233 cases keep passing (the rows they name stay)",
-        "Before tables: this Mac, tools/test-linux.sh's ubuntu:24.04 and ubuntu:26.04 containers, and GitHub's macos-latest, ubuntu-latest and ubuntu-26.04 through .github/workflows/bench-steps.yml (`gh workflow run bench-steps.yml --ref <this branch>` once the user has pushed the branch; this plan's note names the run ids); the one step whose Linux quotient exceeds macOS's by more than the others is named",
-        "Probe the Architect's candidate causes with the step rows (the reference's regexes are shaped unlike the guard's long alternations and lookarounds, so compile costs differ per platform's oniguruma; the hook's shell prelude; the record read) and remove the cause in the guard, the reference or the bench's method (never a per-system allowance or a higher limit, D547); the guard's behaviour is unchanged (tests/hooks-guard.bats, guard-*.bats, hook-answers.bats, standards.bats pass under /bin/bash 3.2) and `bash tools/bench-hooks.sh` keeps every guard case within 20 ms",
-        "After tables on the same runners (a macOS run whose reference varies as on 2026-11-01, 14.8-20.1 ms, is repeated); `vbw decide \"R243: the Linux-only guard step is <step>: <before figures per runner> ... <after figures>; cause <cause>, removed by <change>; bench-steps.yml runs <ids>\" \"<why this change and not the others>\"`; bench-steps.yml gains nothing but, if needed, a line printing the reference's spread so a noisy run is visible"
+        "Before tables (given): bench-steps.yml run 41312931896 (plow/2.1.23 at 808bfcde; 41305323924 on main agrees): on Linux the guard's program compile is about 14 ms on every runner while the reference compile falls to 4.7 (7.0 on macOS), so the compile quotient is about 2.1 on Linux against 1.1 to 1.9 on macOS, and run minus compile is about 1 ms on Linux: the Linux-only part is the guard program's compile. tools/bench-hooks.sh VBW_BENCH_STEPS=compile prints a second table, CPU ms per call net of jq -n empty over VBW_BENCH_RUNS runs, one row per program over empty inputs, with its bytes and top-level definition count: (a) guard-bash.jq as shipped; (b) the same with holder.jq and common.jq inlined into one file (include resolution); (c) the guard and its includes with every top-level body replaced by empty (parse only: the definitions go unreferenced); (d) the same with each body kept under 'if false then BODY else empty end' (binding and code generation, nothing run); (e) common.jq and holder.jq alone in (d)'s form; (f) a program naming under 'if false' only the jq builtins the guard calls (their own definitions bound); (g) the reference (the reference compile row); bench-steps.yml runs it after the step table and prints the oniguruma library version beside jq's; commit, then block this plan with the note 'compile split committed at <sha>: the lead session pushes plow/2.1.23, runs gh workflow run bench-steps.yml --ref plow/2.1.23 and gives the run id' (a Dev cannot push or dispatch)",
+        "From that run (gh run view RUN --log, read only): name the row whose Linux figure does not fall as the reference's does, and remove the cause at its root. If one construct the guard owns (an include, the definitions' count or shape, a builtin it binds, work done before the first input) carries most of the Linux excess, remove it in plugin/hooks/guard-bash.jq with the behaviour unchanged, because that cost is the guard's own and every user pays it; if the fix belongs in common.jq or holder.jq (outside this plan's files), block with the evidence so the Lead plans it. Only if the cost is the guard's compile as such, spread over definitions it needs, change the reference in tools/bench-hooks.sh (reference_files) to reproduce the guard's compile shape (an included module of common.jq's size and definition count, the builtins the guard binds), because the reference then misstates the workload it normalises; never a per-system allowance or a higher limit (D547). Name which, and why, in the commit body",
+        "tests/hooks-guard.bats, tests/guard-*.bats, tests/hook-answers.bats, tests/standards.bats and tests/bench-guard-steps.bats pass under /bin/bash 3.2; bash tools/bench-hooks.sh keeps every guard case within 20 ms on this Mac"
       ],
       "mutations": [
         {
@@ -61847,15 +61935,61 @@
         "docs/guards.md"
       ],
       "after": [
-        "P195.1",
+        "P195.3",
         "P193.2"
       ],
       "status": "planned",
       "role": "docs",
       "tasks": [
-        "docs/guards.md bench section: replace the sentence claiming each Linux quotient within 1.25 of macOS's (disproved by PR #741: macOS 1.39, Ubuntu 26.04 1.82) by a table of the step figures from GitHub's three runners (rows macos-latest, ubuntu-latest, ubuntu-26.04; the net ms and quotient of each step), one sentence naming the Linux-only step by its row name and the cause found, and the 1.25 target as measured on the pull request's CI after the fix",
-        "Keep the reference table and the net-of-startup explanation consistent with the new rows (reference compile and reference run; shell prelude), naming bench-steps.yml as the workflow that measured them and the decision's run ids",
+        "docs/guards.md bench section: replace the sentence claiming each Linux quotient within 1.25 of macOS's (disproved by PR #741: macOS 1.39, Ubuntu 26.04 1.82) by a table of the step figures from GitHub's three runners (rows macos-latest, ubuntu-latest, ubuntu-26.04; the net ms and quotient of each step, before and after the fix, from tools/probes/guard-steps.json), one sentence naming the Linux-only step by its row name and the cause found, and the 1.25 target as measured after the fix",
+        "Keep the reference table and the net-of-startup explanation consistent with the new rows (reference compile and reference run; shell prelude), naming bench-steps.yml as the workflow that measured them and the run ids of the R243 decision",
         "tests/bench-linux-step-docs.bats and tests/bench-limits-docs.bats pass"
+      ]
+    },
+    {
+      "id": "P192.5",
+      "phase": "P192",
+      "title": "Docs: the tools guard sees every tool a VBW agent calls",
+      "reqs": [
+        "R242"
+      ],
+      "files": [
+        "docs/guards.md",
+        "docs/workflows.md"
+      ],
+      "after": [
+        "P192.3",
+        "P195.2"
+      ],
+      "status": "planned",
+      "role": "docs",
+      "tasks": [
+        "docs/guards.md, 'MCP tools by role': VBW's agents inherit the session's tools (no tools: list; each role's disallowedTools hides the built-ins it must not have), and the tools guard, one PreToolUse entry with no matcher, sees every tool a VBW agent calls: the role's own built-ins (the seven roles' lists), the MCP tools the setting opens to the role, and nothing else, so a tool outside the role's own, one a Claude Code update adds included, is refused; replace 'PreToolUse on `mcp__` tools'; the main session is never judged and pays one small jq per tool call; the Engineering bullet that names `guard-mcp.jq` (a PreToolUse jq entry on `mcp__` tools) names guard-tools.jq, its omitted matcher and its guard (tools) cases, the main session's among them",
+        "docs/workflows.md: the 'Every refusal and its next step' table gains 'Guards: a tool outside the agent's role (another role's built-in, or one VBW does not know) | The agent goes on with its own tools; a tool a role should have is a VBW change, not a setting'; the Agents section's MCP paragraph says agents inherit the session's tools and the guard holds each to its role",
+        "tests/mcp-docs.bats passes"
+      ]
+    },
+    {
+      "id": "P195.3",
+      "phase": "P195",
+      "title": "The step tables before and after the fix, recorded from GitHub's runners",
+      "reqs": [
+        "R243"
+      ],
+      "files": [
+        "tools/bench-steps-result.sh",
+        "tools/probes/guard-steps.json"
+      ],
+      "after": [
+        "P195.1"
+      ],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "tools/bench-steps-result.sh RUN_ID before|after (bash 3.2, shellcheck-clean): reads each job of a bench-steps.yml run with gh run view (read only), takes the runner from the job name 'Steps (<os>)' and the commit from the run, parses the step table's net rows into four {ms, q} cells per row, and merges {id, sha, when, tables: {<runner>: {<row>: [cells]}}} by run id into tools/probes/guard-steps.json ({probe: \"guard-steps\", runs}); jq builds the JSON",
+        "Record the before runs 41312931896 and 41305323924 and commit; then block with the note 'before tables committed: the lead session runs gh workflow run bench-steps.yml --ref plow/2.1.23 on the fix (P195.1's last commit, pushed) and gives the run id; a macOS run whose reference run spreads more than 2 ms across its four columns is run again'",
+        "Record that after run and commit; tests/bench-steps-result.bats passes under /bin/bash 3.2; when an Ubuntu runner's mean program run quotient is over 1.25 times macos-latest's, block with the tables instead (the fix did not reach its target)",
+        "vbw decide \"R243: the Linux-only guard step is <row>: before <figures per runner> (runs 41312931896, 41305323924), after <figures> (run <id>); cause <cause>, removed by <change>\" \"<why this change and not the others>\""
       ]
     }
   ],
@@ -78129,6 +78263,17 @@
         "ended": "2026-11-01T13:46:49Z",
         "cost": {
           "usd": 0.788547
+        }
+      },
+      {
+        "id": "plan-20261101T134907Z",
+        "kind": "plan",
+        "session": "0ee781c3-c5b6-4a6c-889f-04b89f1fba4a",
+        "milestone": "M49",
+        "started": "2026-11-01T13:49:07Z",
+        "ended": "2026-11-01T14:09:30Z",
+        "cost": {
+          "usd": 6.407861
         }
       }
     ],
