@@ -1,6 +1,6 @@
 #!/usr/bin/env bats
-# R167: vbw apply (full, --patch and --add) takes an optional "test_files"
-# {run, files}, refuses a bad one before anything changes, writes a good one as
+# R167, #735: vbw apply (full, --patch and --add) takes an optional "test_files"
+# ({run, files}, or named forms {name, dir?, run, files}), refuses a bad one before anything changes, writes a good one as
 # the spec's `## Test files` section (replacing an older one) and syncs the spec.
 # The user approves the form with the contract. L1.
 
@@ -82,4 +82,29 @@ form() { printf '"test_files": {"run": %s, "files": %s}' "$1" "$2"; }
   before=$(cat .vbw/spec.md)
   printf '{%s}' "$FULL" | "$VBW" apply > /dev/null
   [ "$(cat .vbw/spec.md)" = "$before" ]
+}
+
+FORMS='"test_files": [{"name": "web", "dir": "apps/web", "run": ["npx", "vitest", "run", "{file}"], "files": ["apps/web/**/*.test.ts"]},
+  {"name": "api", "run": ["pytest", "{file}"], "files": ["api/tests/test_*.py"]}]'
+
+@test "#735: apply takes named forms, writes them nested under their names, and syncs them into the record" {
+  printf '{%s, %s}' "$FULL" "$FORMS" | "$VBW" apply > /dev/null
+  [ "$(awk '/^## Test files/ {on = 1; next} on && NF' .vbw/spec.md | tr '\n' '|')" = \
+    '- web:|  - dir: apps/web|  - run: npx vitest run {file}|  - files: apps/web/**/*.test.ts|- api:|  - run: pytest {file}|  - files: api/tests/test_*.py|' ]
+  [ "$(jq -c '.test_files' .vbw/record.json)" = '[{"name":"web","dir":"apps/web","run":["npx","vitest","run","{file}"],"files":["apps/web/**/*.test.ts"]},{"name":"api","dir":null,"run":["pytest","{file}"],"files":["api/tests/test_*.py"]}]' ]
+}
+
+@test "#735: a named form whose pathspec lies outside its dir, or that a committed file shares with another form, is refused and nothing changes" {
+  before=$(cat .vbw/spec.md)
+  run bash -c 'printf "%s" "$1" | "$2" apply' _ "{$FULL, \"test_files\": [{\"name\": \"web\", \"dir\": \"apps/web\", \"run\": [\"sh\", \"{file}\"], \"files\": [\"apps/other/*.sh\"]}]}" "$VBW"
+  [ "$status" -ne 0 ] || { echo "$output"; false; }
+  [[ "$output" == *"full apply refused: test_files: the files of form web must lie under its dir apps/web/"* ]] || { echo "$output"; false; }
+  mkdir -p apps/web && printf 'x\n' > apps/web/t.sh && git add apps/web/t.sh && git commit -q -m "test: t"
+  run bash -c 'printf "%s" "$1" | "$2" apply' _ "{$FULL, \"test_files\": [{\"name\": \"a\", \"run\": [\"sh\", \"{file}\"], \"files\": [\"apps/*.sh\"]}, {\"name\": \"b\", \"run\": [\"sh\", \"{file}\"], \"files\": [\"apps/web/*.sh\"]}]}" "$VBW"
+  [ "$status" -ne 0 ] || { echo "$output"; false; }
+  [[ "$output" == *"test_files: apps/web/t.sh is matched by forms a and b"* ]] || { echo "$output"; false; }
+  run bash -c 'printf "%s" "$1" | "$2" apply' _ "{$FULL, \"test_files\": [{\"run\": [\"sh\", \"{file}\"], \"files\": [\"t.sh\"]}]}" "$VBW"
+  [[ "$output" == *"test_files must be"* ]] || { echo "$output"; false; }
+  [ "$(cat .vbw/spec.md)" = "$before" ]
+  [ "$(jq '.plans | length' .vbw/record.json)" -eq 0 ]
 }
