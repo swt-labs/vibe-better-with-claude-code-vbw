@@ -7517,7 +7517,7 @@
   "milestone": {
     "id": "M49",
     "title": "MCP tools for agents, commit guard, status line time",
-    "status": "active"
+    "status": "shipped"
   },
   "shipped": [
     {
@@ -7754,6 +7754,11 @@
       "id": "M48",
       "title": "Linux bench gap and steady tests",
       "at": "2026-10-31T20:16:19Z"
+    },
+    {
+      "id": "M49",
+      "title": "MCP tools for agents, commit guard, status line time",
+      "at": "2026-11-01T22:01:34Z"
     }
   ],
   "requirements": [
@@ -70240,6 +70245,11 @@
       "text": "Keep docs/guards.md changed by f0afd6ff (F344)",
       "why": "The owner chose keep: the bench section's nominal figure now matches the bench's NOMINAL_MS 17.8 ms; QA found the old 10.3 ms",
       "at": "2026-11-01T21:39:58Z"
+    },
+    {
+      "id": "D576",
+      "at": "2026-11-01T22:01:34Z",
+      "text": "Shipped M49 MCP tools for agents, commit guard, status line time: 5 requirements proven or accepted"
     }
   ],
   "commands": {
@@ -82670,6 +82680,10 @@
             "usd": 0,
             "at": "2026-11-01T12:10:22Z"
           }
+        },
+        "total": {
+          "usd": 51.660977,
+          "sessions": 46
         }
       }
     }
