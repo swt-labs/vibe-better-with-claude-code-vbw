@@ -704,7 +704,10 @@ project's, and git refuses to commit a path beyond a symbolic link.
   record's first commit pointed the submodule at.
 - The proof copy (`vbw prove`, `vbw mutate`, `vbw fix done`) holds each
   checked-out submodule at its own `HEAD`, and `vbw mutate` puts a broken file
-  back as its own repository's last commit (docs/proof.md, `vbw prove`).
+  back as its own repository's last commit (docs/proof.md, `vbw prove`). The
+  copy leaves every `.gitmodules` file unwritten (git reads it from the index,
+  and the copy's `git status` stays clean): Claude Code's sandbox refuses to
+  create a file of that name.
 - `vbw ship` wants every file committed: a submodule's files in the submodule,
   every level down (a changed file in a submodule's own submodule is named by
   its project path too). A moved pointer does not count as uncommitted work.
@@ -714,10 +717,15 @@ project's, and git refuses to commit a path beyond a symbolic link.
   and a linked worktree nested in it (its `.git` file points into a
   `worktrees/` folder) stay projects of their own.
 - `vbw mutate` judges a break by the committed code with each submodule at its
-  own `HEAD`: a commit made only in a submodule makes the checks run on the
-  unbroken code again, and drops a break queued before it.
-- `## Test files` matches its pathspecs inside each submodule too: a test file
-  in a submodule is a test file of its own, named by its project path.
+  own `HEAD`, under the contract it ran with: a commit made only in a submodule,
+  or an approved change to a check's `run`, makes the checks run on the
+  unbroken code again; a commit made only in a submodule also drops a break
+  queued before it.
+- `## Test files` matches a pathspec inside a submodule only when the pathspec
+  names it (`apps/mobile/src/**/*.spec.ts`): a test file there is a test file
+  of its own, named by its project path. A pattern that names no submodule
+  (`*/tests/*.sh`) matches the project's own files only, so a vendored
+  submodule's tests never become units.
 
 Known limits:
 
@@ -729,8 +737,17 @@ Known limits:
   fingerprint of the working folder or by proof reuse: a submodule counts at its
   `HEAD` until you commit there.
 - **One level of submodules:** apart from `vbw ship`'s check, a submodule
-  inside a submodule is not followed (its folder is empty in the proof copy, so
-  a check or test file reading inside it fails).
+  inside a submodule is not followed: its folder is empty in the proof copy, so
+  a check reading inside it fails, and `## Test files` lists none of its files.
+- **A survivor strengthened only in a submodule:** `vbw mutate` finds the
+  strengthened check files by diffing the project's history from the survivor's
+  `head`, so a check file strengthened and committed only in a submodule is not
+  marked strengthened, and the next red break of that rule reports that the
+  break survives the approved check.
+- **A submodule that was once a VBW project:** when the record's first commit
+  had no submodule at that path, VBW reads the submodule's whole history, so
+  `VBW-Plan:` commits from its own earlier VBW work can count as a plan's
+  commit there.
 - **A clone nested in the project that is not its submodule:** a plan file named
   inside it is committed there, but a plan's folder entry above it does not
   reach into it (its pointer is never committed either), and it is not brought
