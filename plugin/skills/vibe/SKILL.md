@@ -125,7 +125,7 @@ args `{"plans": <detail.plans>, "docs": <detail.docs>, "models": ..., "rigor": .
 **fix**: `VBW_SESSION_ID=${CLAUDE_SESSION_ID} vbw run start fix <detail.fixes>`, Workflow `vbw:fixing` with args
 `{"groups": <detail.groups>, "models": ..., "rigor": ...}` Returns: anything not recorded, then `VBW_SESSION_ID=${CLAUDE_SESSION_ID} vbw prove`.
 
-**prove**: `VBW_SESSION_ID=${CLAUDE_SESSION_ID} vbw prove --full` when `detail.full` is true, else `vbw prove`; report what passed and failed, then follow the proof's Next line (never a commit of your own).
+**prove**: `VBW_SESSION_ID=${CLAUDE_SESSION_ID} vbw prove --full` when `detail.full` is true, else `vbw prove`; report what passed and failed, then follow the proof's line that starts with Next: (never a commit of your own).
 
 **qa**: `VBW_SESSION_ID=${CLAUDE_SESSION_ID} vbw run start qa`, Workflow `vbw:verifying` with args
 `{"phases": <detail.phases>, "tier": <detail.tier>, "round": <the whole `round` object of vbw next --json (tiers, suite, focus), never a number>, "models": ..., "rigor": ...}`. `vbw next --json` carries `round` before and after `vbw run start qa`. Report verdicts, failed checks, anything not recorded.
