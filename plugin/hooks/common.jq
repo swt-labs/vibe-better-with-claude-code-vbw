@@ -7,7 +7,10 @@
 # PROJECT/.vbw/record.json, which jq skips when it does not exist;
 # hooks/end.json, the sentinel "vbw-guard-end". So after the hook input, the
 # next input is the record (a VBW project), the sentinel (not one), or a parse
-# error (a corrupt record: still a VBW project).
+# error (a corrupt record: still a VBW project). The Bash guard also gets the
+# session arm files as positional arguments (--args PROJECT/.vbw/runtime/auto.*.json,
+# expanded by the shell; an unmatched pattern stays literal and names no session):
+# $ARGS.positional, read for guard_context's armed (R239).
 #
 # The guard has two sources for the schema, lease and protected check files
 # (R150). The glance (.vbw/runtime/glance.json, decision D238) is a small file
@@ -63,6 +66,7 @@ def guard_context(writes):
   | (($record.lease | select(type == "object" and (try (now - (.started_at | fromdateiso8601) < 86400) catch false))) // null) as $live
   | {hook: $hook, project: $r.project, record: $record, holder: $r.holder,
      loop_on: ($record.loop | type == "object" and (.ended // null) == null),
+     armed: (($hook.session_id // "") as $sid | $sid != "" and any($ARGS.positional[]?; endswith("/auto.\($sid).json"))),
      lease: (if ($hook.agent_type // "") != "" then $live else null end),
      foreign: (($live | select((.session // "") != "" and ($hook.session_id // .session) != .session) | . + {holder: $r.holder}) // null)};
 
