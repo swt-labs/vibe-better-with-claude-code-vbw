@@ -27964,7 +27964,15 @@
           "to": "deep",
           "reason": "Dev blocked P195.1: compile split committed at 9b97715c: the lead session pushes plow/2.1.23, runs gh workflow run bench-steps.yml --ref plow/2.1.23 and gives the run id"
         }
-      ]
+      ],
+      "qa": {
+        "result": "fail",
+        "tier": "deep",
+        "tree": "8b5189622e6fdad2ab6780e5b655e8cc2e7851782af9df369c4a9a5b49316ce9",
+        "at": "2026-11-01T20:00:09Z",
+        "note": "24/25 checks",
+        "rounds": 1
+      }
     }
   ],
   "plans": [
