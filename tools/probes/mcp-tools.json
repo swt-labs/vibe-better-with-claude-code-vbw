@@ -1,6 +1,6 @@
 {
   "probe": "mcp-tools",
-  "at": "2026-11-01T13:31:30Z",
+  "at": "2026-11-01T14:52:59Z",
   "claude_version": "2.1.316 (Claude Code)",
   "cases": {
     "server_wildcard": {
@@ -33,10 +33,57 @@
     },
     "foreign_agent": {
       "tools_line": "Read, mcp__probe__*",
-      "result": "```json\n{\"vbw:dev\":\"reached: STUB-DEV\",\"mcpprobe:reader\":\"reached: RESULT: NOTE-TOKEN-7731\"}\n```"
+      "result": "```json\n{\"vbw:dev\":\"reached: STUB-DEV\",\"mcpprobe:reader\":\"reached: {\\\"line\\\":\\\"RESULT: NOTE-TOKEN-7731\\\"}\"}\n```"
+    },
+    "inherit_omitted": {
+      "tools_line": "(no tools: line)",
+      "result": "RESULT: NOTE-TOKEN-7731 TOOLS: Agent, Bash, Edit, ListAgents, Read, ReportFindings, Skill, ToolSearch, Write, SubagentHandback, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, mcp__probe__read_note (also loaded by deferred search, not yet fetched via ToolSearch: CronCreate, CronDelete, CronList, DesignSync, EnterWorktree, ExitWorktree, LSP, ListMcpResourcesTool, Monitor, NotebookEdit, PushNotification, ReadMcpResourceDirTool, ReadMcpResourceTool, RemoteTrigger, SendMessage, TaskStop, WebFetch, WebSearch, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, mcp__probe__write_note)"
+    },
+    "disallowed_honoured": {
+      "tools_line": "disallowedTools: Write, Edit, NotebookEdit, Bash",
+      "result": "RESULT: NOT-WRITTEN RESULT: NOT-WRITTEN. The Write tool is not available in this session. It is not in my tool list, and ToolSearch select:Write returned no match. I did not write /Users/tiagoserodio/Documents/AI Stuff/vibe-better-with-claude-code-vbw-worktrees/v2/.vbw/runtime/scratch/probe-mcp-tools/proj/probe-written.txt by any other route."
+    },
+    "hook_every_tool": {
+      "tools_line": "(no tools: line; hook matcher omitted)",
+      "result": "RESULT: ALL Bash=mcpprobe:reader, Read=mcpprobe:reader, mcp__probe__read_note=mcpprobe:reader"
     }
   },
-  "tools_entry": "mcp__<server>__*",
-  "mechanism": "none: no tools-line form gave a pool of every MCP tool; only a whole named server (mcp__<server>__*) or one tool resolves",
-  "decision": null
+  "builtins": [
+    "Agent",
+    "Bash",
+    "CronDelete",
+    "CronList",
+    "DesignSync",
+    "Edit",
+    "EnterWorktree",
+    "ExitWorktree",
+    "LSP",
+    "ListAgents",
+    "ListMcpResourcesTool",
+    "Monitor",
+    "NotebookEdit",
+    "PushNotification",
+    "Read",
+    "ReadMcpResourceDirTool",
+    "ReadMcpResourceTool",
+    "RemoteTrigger",
+    "ReportFindings",
+    "SendMessage",
+    "Skill",
+    "SubagentHandback",
+    "TaskStop",
+    "ToolSearch",
+    "WebFetch",
+    "WebSearch",
+    "Write",
+    "not yet fetched via ToolSearch: CronCreate"
+  ],
+  "always_allowed": [
+    "StructuredOutput",
+    "SubagentHandback"
+  ],
+  "hook_matcher": null,
+  "hook_read_cpu_ms": 5.8,
+  "mechanism": "D561: the agents drop the tools: allowlist and inherit the session's MCP tools; each names disallowedTools for the built-ins outside its role (honoured by a plugin agent); one PreToolUse tools guard, matcher omitted, sees every tool by agent_type and refuses what the role may not use",
+  "decision": "D561"
 }

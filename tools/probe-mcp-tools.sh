@@ -14,8 +14,16 @@
 #   agent_type           what a hook saw for an agent started as <plugin>:reader
 #   foreign_agent        a Dynamic workflow of a second plugin calling agent() with
 #                        agentType vbw:dev (a stub plugin named vbw) and <plugin>:reader
-# Writes tools/probes/mcp-tools.json {probe, at, claude_version, cases, tools_entry,
-# mechanism, decision}; the decision id is added by hand after `vbw decide`.
+#                        (the reader call passes a schema, so the log shows the tool Claude
+#                        Code gives a schema-returning agent)
+#   inherit_omitted      no tools: line; asked to call read_note and list every tool it has
+#   disallowed_honoured  no tools: line, disallowedTools: Write, Edit, NotebookEdit, Bash;
+#                        asked to create proj/probe-written.txt with the Write tool
+#   hook_every_tool      the probe plugin's PreToolUse entry has no matcher; an agent with
+#                        tools omitted calls Read, Bash and read_note; the hook log must hold all
+# Writes tools/probes/mcp-tools.json {probe, at, claude_version, cases, builtins,
+# always_allowed, hook_matcher, hook_read_cpu_ms, mechanism, decision}. Only built-in tools
+# and the probe server's own tools reach the file: other MCP tool names are scrubbed (D565).
 # Usage: bash tools/probe-mcp-tools.sh [--model MODEL]   (default sonnet)
 set -euo pipefail
 
@@ -68,7 +76,9 @@ export const meta = {
 const out = {}
 for (const type of ['vbw:dev', 'mcpprobe:reader']) {
   try {
-    const r = await agent('Reply with one short line: your agent type and the word REACHED.', { agentType: type, label: type })
+    const opts = { agentType: type, label: type }
+    if (type === 'mcpprobe:reader') opts.schema = { type: 'object', properties: { line: { type: 'string' } }, required: ['line'] }
+    const r = await agent('Reply with one short line: your agent type and the word REACHED.', opts)
     out[type] = 'reached: ' + String(typeof r === 'string' ? r : JSON.stringify(r)).slice(0, 200)
   } catch (e) {
     out[type] = 'refused: ' + String(e && e.message ? e.message : e).slice(0, 300)
@@ -98,16 +108,19 @@ cat > "$work/proj/.mcp.json" << EOF
 EOF
 settings='{"enabledPlugins":{"vbw@vbw-marketplace":false},"enableWorkflows":true,"enableAllProjectMcpServers":true}'
 
-agent_file() { # TOOLS_LINE
-  cat > "$work/plugin/agents/reader.md" << EOF
----
-name: reader
-description: Probe agent. Calls the probe MCP server's read_note and reports what came back.
-tools: $1
----
-Call the tool whose name ends in read_note (server probe) once, with no arguments. Reply with one line: RESULT: followed by the tool's exact text, or RESULT: NO-TOOL followed by the names of every tool you do have.
-EOF
+reader_body="Call the tool whose name ends in read_note (server probe) once, with no arguments. Reply with one line: RESULT: followed by the tool's exact text, or RESULT: NO-TOOL followed by the names of every tool you do have."
+agent_file() { # TOOLS_LINE (empty: no tools: line) [EXTRA-FRONTMATTER-LINE [BODY]]
+  {
+    printf -- '---\nname: reader\ndescription: Probe agent. Calls the probe MCP server and reports what came back.\n'
+    if [ -n "$1" ]; then printf 'tools: %s\n' "$1"; fi
+    if [ -n "${2:-}" ]; then printf '%s\n' "$2"; fi
+    printf -- '---\n%s\n' "${3:-$reader_body}"
+  } > "$work/plugin/agents/reader.md"
 }
+
+# scrub: keep the probe server's tools (and the unconfigured nosuch entry) but no other MCP tool
+# name, so a machine's other servers and claude.ai connectors never reach the committed file.
+scrub() { perl -pe 's/mcp__(?!probe__|nosuch__)[A-Za-z0-9_.-]+/<other-mcp-tool>/g'; }
 
 # session NAME PROMPT [PLUGIN-DIR...]: one headless session in the scratch project; prints the reply.
 session() {
@@ -119,6 +132,7 @@ session() {
   (cd "$work/proj" && claude -p --model "$model" --permission-mode auto --max-turns 12 ${dirs[@]+"${dirs[@]}"} \
     --settings "$settings" --allowedTools "Agent,Task,Workflow,mcp__probe__*" \
     --output-format json < "$work/out/$name.prompt" > "$work/out/$name.json" 2> "$work/out/$name.err") || true
+  cp "$hooklog" "$work/out/$name.hooks" 2> /dev/null || true
   jq -r '.result // "no result"' "$work/out/$name.json" 2> /dev/null || echo "no result"
 }
 
@@ -126,8 +140,10 @@ ask_reader="Use the Agent tool once with subagent_type mcpprobe:reader and the p
 
 cases='{}'
 add() { # NAME TOOLS_LINE RESULT
-  cases=$(printf '%s' "$cases" | jq -c --arg n "$1" --arg t "$2" --arg r "$3" '. + {($n): {tools_line: $t, result: $r}}')
-  printf '%-20s %-48s %s\n' "$1" "$2" "$(printf '%s' "$3" | head -c 140 | tr '\n' ' ')" >&2
+  local r
+  r=$(printf '%s' "$3" | scrub)
+  cases=$(printf '%s' "$cases" | jq -c --arg n "$1" --arg t "$2" --arg r "$r" '. + {($n): {tools_line: $t, result: $r}}')
+  printf '%-20s %-48s %s\n' "$1" "$2" "$(printf '%s' "$r" | head -c 140 | tr '\n' ' ')" >&2
 }
 run_tools_case() { # NAME TOOLS_LINE
   local r
@@ -153,25 +169,81 @@ allseen=$(jq -rs 'map("\(.tool)=\(.agent_type)") | join("; ")' "$hooklog" 2> /de
 add agent_type 'Read, mcp__probe__*' "hook agent_type for the read_note call: ${seen:-none}; every call: ${allseen:-none}"
 
 # foreign_agent: a workflow of the second plugin, a stub plugin named vbw, and the probe plugin.
+# The workflow's reader call passes a schema; the hook log shows the tool that agent is given.
 agent_file 'Read, mcp__probe__*'
+: > "$hooklog"
 r=$(session foreign_agent "Call the Workflow tool with name wfprobe:foreign. Wait for it to finish, then reply with its returned result as JSON, verbatim." "$work/wf" "$work/vbw" "$work/plugin")
 add foreign_agent 'Read, mcp__probe__*' "$r"
 
-# ---- the verdicts, read from the sessions' words ----
-honoured() { printf '%s' "$cases" | jq -e --arg n "$1" '.[$n].result | contains("NOTE-TOKEN-7731")' > /dev/null; }
-entry=''
-for c in all_servers_pool pool_double_star pool_dot_star; do
-  if [ -z "$entry" ] && honoured "$c"; then entry=$(printf '%s' "$cases" | jq -r --arg n "$c" '.[$n].tools_line | split(", ") | last'); fi
-done
-if [ -n "$entry" ]; then mechanism='tools pool entry in every agent plus the MCP guard by role from record.settings.mcp'
+# inherit_omitted: no tools: line. Does the agent get the session's MCP tool, and which tools does it list?
+agent_file '' '' "Call the tool whose name ends in read_note (server probe) once, with no arguments. Then reply with one line: RESULT: followed by the tool's exact text, or RESULT: NO-TOOL if you could not call it; then on the same line TOOLS: followed by the exact names of every tool you have, separated by commas."
+: > "$hooklog"
+r=$(session inherit_omitted "$ask_reader" "$work/plugin")
+inherit_raw="$r"
+add inherit_omitted '(no tools: line)' "$r"
+
+# disallowed_honoured: no tools: line, disallowedTools names the writers; asked to write a file.
+agent_file '' 'disallowedTools: Write, Edit, NotebookEdit, Bash' "Create the file proj/probe-written.txt containing the word hello, using the Write tool. Reply with one line: RESULT: WRITTEN if you wrote it, or RESULT: NOT-WRITTEN followed by why not."
+rm -f "$work/proj/probe-written.txt" "$work/proj/proj/probe-written.txt"
+: > "$hooklog"
+r=$(session disallowed_honoured "Use the Agent tool once with subagent_type mcpprobe:reader and the prompt: create the file proj/probe-written.txt with the Write tool. Then reply with that agent's reply, verbatim, on one line." "$work/plugin")
+writes=$(jq -rs '[.[] | select(.agent_type == "mcpprobe:reader" and (.tool | IN("Write", "Edit", "NotebookEdit")))] | length' "$hooklog" 2> /dev/null || echo 1)
+if [ ! -e "$work/proj/probe-written.txt" ] && [ ! -e "$work/proj/proj/probe-written.txt" ] && [ "$writes" = 0 ]; then
+  add disallowed_honoured 'disallowedTools: Write, Edit, NotebookEdit, Bash' "RESULT: NOT-WRITTEN ${r:-no reply}"
 else
-  entry='mcp__<server>__*'
-  mechanism='none: no tools-line form gave a pool of every MCP tool; only a whole named server (mcp__<server>__*) or one tool resolves'
+  add disallowed_honoured 'disallowedTools: Write, Edit, NotebookEdit, Bash' "RESULT: WRITTEN file present: $([ -e "$work/proj/probe-written.txt" ] && echo yes || echo no); agent write calls: $writes; reply: ${r:-no reply}"
 fi
+
+# hook_every_tool: the probe plugin's PreToolUse entry has no matcher; an agent with tools omitted
+# calls Read, Bash and read_note; the log must hold each with agent_type mcpprobe:reader.
+agent_file '' '' "Do three things in order: use the Read tool on the file .mcp.json; use the Bash tool to run: echo bash-ran; call the tool whose name ends in read_note (server probe). Then reply with one line: RESULT: DONE."
+: > "$hooklog"
+session hook_every_tool "Use the Agent tool once with subagent_type mcpprobe:reader and the prompt: read .mcp.json, run echo bash-ran with Bash, and call read_note. Then reply with that agent's reply, verbatim." "$work/plugin" > /dev/null
+got=$(jq -rs '[.[] | select(.agent_type == "mcpprobe:reader" and (.tool | IN("Read", "Bash", "mcp__probe__read_note"))) | "\(.tool)=\(.agent_type)"] | unique | join(", ")' "$hooklog" 2> /dev/null || true)
+missing=$(jq -rs '. as $l | [("Read", "Bash", "mcp__probe__read_note") | select(. as $t | $l | any(.[]; .tool == $t and .agent_type == "mcpprobe:reader") | not)] | join(", ")' "$hooklog" 2> /dev/null || echo "log unreadable")
+if [ -z "$missing" ]; then add hook_every_tool '(no tools: line; hook matcher omitted)' "RESULT: ALL $got"
+else add hook_every_tool '(no tools: line; hook matcher omitted)' "RESULT: MISSED $missing (seen: ${got:-none})"; fi
+
+# ---- the verdicts, read from the sessions' words ----
+every=$(printf '%s' "$cases" | jq -r '.hook_every_tool.result | startswith("RESULT: ALL")')
+if [ "$every" = true ]; then matcher=null; else matcher='"set"'; fi
+
+# builtins: the non-mcp__ tools inherit_omitted's agent listed.
+builtins=$(printf '%s' "$inherit_raw" | jq -Rsc '[capture("TOOLS:(?<t>.*)"; "s").t | split(",")[] | gsub("^[ `\"]+|[ `\"\\.]+$"; "") | select(length > 0 and (startswith("mcp__") | not))] | unique' 2> /dev/null || echo '[]')
+[ -n "$builtins" ] || builtins='[]'
+
+# always_allowed: every tool other than Read that an agent with 'tools: Read ...' or the
+# schema-returning agent called (hook log) or listed (NO-TOOL replies), no MCP tool.
+{ for n in server_wildcard single_tool unconfigured_beside all_servers_pool pool_double_star pool_dot_star agent_type foreign_agent; do
+    [ -f "$work/out/$n.hooks" ] && jq -r 'select(.agent_type != null) | .tool' "$work/out/$n.hooks"
+  done
+  printf '%s' "$cases" | jq -r '.[] | .result | select(contains("NO-TOOL")) | sub(".*NO-TOOL"; "") | split(",")[]'
+} 2> /dev/null | tr -d ' `".' | grep -vx 'Read' | grep -v '^$' | grep -v '^mcp__' | sort -u > "$work/always.txt" || true
+always=$(jq -Rsc 'split("\n") | map(select(length > 0))' "$work/always.txt")
+
+# hook_read_cpu_ms: CPU ms per call over 100 runs (sh and jq startup included, as
+# tools/bench-hooks.sh's cpu_pair measures) of the main-session path: sh -c running a jq program
+# that passes the hook input on only when agent_type matches a VBW agent, fed a Read input.
+printf '%s\n' '{"hook_event_name":"PreToolUse","tool_name":"Read","tool_input":{"file_path":"README.md"},"session_id":"s"}' > "$work/read-input.json"
+hookcmd="jq -c 'select((.agent_type // \"\") | test(\"^vbw:(architect|lead|dev|qa|scout|debugger|docs)\$\"))'"
+runs=100
+: > "$work/times.log"
+for ((i = 0; i < runs; i++)); do
+  times >> "$work/times.log"
+  sh -c "$hookcmd" < "$work/read-input.json" > /dev/null 2>&1 || true
+  times >> "$work/times.log"
+done
+cpu=$(awk -v runs="$runs" '
+  function sec(s) { sub(/s$/, "", s); split(s, p, "m"); return p[1] * 60 + p[2] }
+  NR % 2 == 0 { t[++n] = sec($1) + sec($2) }
+  END { for (k = 1; k + 1 <= n; k += 2) sum += t[k + 1] - t[k]; printf "%.1f", sum * 1000 / runs }' "$work/times.log")
+
+mechanism="D561: the agents drop the tools: allowlist and inherit the session's MCP tools; each names disallowedTools for the built-ins outside its role (honoured by a plugin agent); one PreToolUse tools guard, matcher omitted, sees every tool by agent_type and refuses what the role may not use"
 
 version=$(claude --version | head -1)
 mkdir -p "$here/tools/probes"
-jq -n --arg at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" --arg v "$version" --argjson c "$cases" --arg e "$entry" --arg m "$mechanism" \
-  '{probe: "mcp-tools", at: $at, claude_version: $v, cases: $c, tools_entry: $e, mechanism: $m, decision: null}' \
+jq -n --arg at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" --arg v "$version" --argjson c "$cases" --argjson b "$builtins" --argjson a "$always" \
+  --argjson m "$matcher" --argjson cpu "$cpu" --arg mech "$mechanism" \
+  '{probe: "mcp-tools", at: $at, claude_version: $v, cases: $c, builtins: $b, always_allowed: $a, hook_matcher: $m, hook_read_cpu_ms: $cpu, mechanism: $mech, decision: "D561"}' \
   > "$here/tools/probes/mcp-tools.json"
 echo "wrote tools/probes/mcp-tools.json" >&2
