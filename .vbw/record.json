@@ -69444,6 +69444,12 @@
       "text": "P192.1: Grep and Glob are optional built-ins. Claude Code 2.1.316 gives agents no Grep and no Glob (absent even from deferred tools), as CLAUDE.md already notes (agents search with Bash). The probe records the built-ins the build offers; checks require Read, Bash, Write, Edit, WebFetch, WebSearch and accept Grep and Glob present or absent; each role keeps Grep and Glob in its own set so a build that offers them works; the guard never refuses them to a role that lists them. The probe result records only built-in tools and the probe server's tools, never the machine's other MCP or claude.ai connector tool names.",
       "why": "Probe evidence (P192.1 blocked note, 2026-11-01); a machine's connector names are private data and do not belong in a committed file. Lead decision.",
       "at": "2026-11-01T14:41:59Z"
+    },
+    {
+      "id": "D566",
+      "at": "2026-11-01T14:44:33Z",
+      "text": "Contract approved: 232 requirements, 556 checks, 585 plans (a50a9b7c7991)",
+      "plans": []
     }
   ],
   "commands": {
