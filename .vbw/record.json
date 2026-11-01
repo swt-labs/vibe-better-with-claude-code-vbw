@@ -65554,42 +65554,42 @@
       "id": "F338",
       "req": "R53",
       "attempts": 0,
-      "status": "open",
+      "status": "fixed",
       "note": "C55 fail (exit 1)"
     },
     {
       "id": "F339",
       "req": "R151",
       "attempts": 0,
-      "status": "open",
+      "status": "fixed",
       "note": "C231 fail (exit 1)"
     },
     {
       "id": "F340",
       "req": "R152",
       "attempts": 0,
-      "status": "open",
+      "status": "fixed",
       "note": "C233 fail (exit 1)"
     },
     {
       "id": "F341",
       "req": "R180",
       "attempts": 0,
-      "status": "open",
+      "status": "fixed",
       "note": "C307 fail (exit 1)"
     },
     {
       "id": "F342",
       "req": "R222",
       "attempts": 0,
-      "status": "open",
+      "status": "fixed",
       "note": "C505 fail (exit 1)"
     },
     {
       "id": "F343",
       "req": "R224",
       "attempts": 0,
-      "status": "open",
+      "status": "fixed",
       "note": "C516 fail (exit 1)"
     }
   ],
@@ -70146,6 +70146,18 @@
       "id": "D571",
       "at": "2026-11-01T18:24:25Z",
       "text": "Contract approved: 232 requirements, 556 checks, 585 plans (e6619ce25a47)",
+      "plans": []
+    },
+    {
+      "id": "D572",
+      "text": "Under an armed loop the chat's git pull is refused with commit, merge and the rest; R180's allowed-commands case drops git pull and keeps git fetch",
+      "why": "R239 refuses from the chat the agents' history list, which holds pull: a pull is a merge or a rebase that moves HEAD under the record mid-loop; fetch changes no history (proof 1 of M49, F341)",
+      "at": "2026-11-01T19:28:38Z"
+    },
+    {
+      "id": "D573",
+      "at": "2026-11-01T19:52:51Z",
+      "text": "Contract approved: 232 requirements, 556 checks, 585 plans (5248a6dc5eb1)",
       "plans": []
     }
   ],
