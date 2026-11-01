@@ -347,6 +347,96 @@ if [ "${VBW_BENCH_STEPS:-}" = 1 ]; then
   exit 0
 fi
 
+# VBW_BENCH_STEPS=compile (R243): the compile of the guard, split. A second table: CPU ms
+# per call net of `jq -n empty` (cpu_pair's method, RUNS runs), one row per program over
+# empty inputs, with its bytes and its count of top-level definitions:
+#   (a) guard-bash.jq as shipped; (b) the same with holder.jq and common.jq inlined into one
+#   file (no include resolution); (c) the guard and its includes with every top-level body
+#   replaced by empty (parse only: the definitions go unreferenced); (d) the same with each
+#   body kept under 'if false then BODY else empty end' (binding and code generation, nothing
+#   run); (e) common.jq and holder.jq alone, in (d)'s form; (f) a program naming under
+#   'if false' only the jq builtins the guard calls (their own definitions bound); (g) the
+#   reference (the reference compile row). The row that does not fall on Linux as (g) does
+#   names the construct that costs there.
+if [ "${VBW_BENCH_STEPS:-}" = compile ]; then
+  cdir="$work/compile"
+  mkdir -p "$cdir/c/hooks" "$cdir/c/lib" "$cdir/d/hooks" "$cdir/d/lib" "$cdir/b"
+  # reshape MODE SRC DST: SRC with each top-level definition body (and the main program, if
+  # any) replaced by 'empty' (MODE empty) or put under 'if false' (MODE false). Comment-only
+  # lines are dropped; a definition runs from its column-0 'def' to the next column-0 line.
+  reshape() {
+    perl -e '
+      my ($mode, $src, $dst) = @ARGV;
+      my $wrap = sub { $mode eq "empty" ? "empty" : "if false then $_[0] else empty end" };
+      open my $in, "<", $src or die; my @l = <$in>; close $in;
+      open my $out, ">", $dst or die;
+      my $i = 0;
+      while ($i < @l) {
+        my $s = $l[$i];
+        if ($s =~ /^def /) {
+          my $chunk = $s; $i++;
+          while ($i < @l && $l[$i] !~ /^(def |#|\S)/) { $chunk .= $l[$i]; $i++; }
+          $chunk = join "", grep { !/^\s*#/ } split /^/, $chunk;
+          $chunk =~ s/\s+\z//;
+          $chunk =~ /\A(def\s+\w+(?:\([^)]*\))?\s*:)(.*);\z/s or die "no def in: $chunk";
+          print $out "$1 " . $wrap->($2) . ";\n";
+        } elsif ($s =~ /^(#|include |import |\s*$)/) {
+          print $out $s if $s =~ /^(include |import )/; $i++;
+        } else {
+          my $main = join "", grep { !/^\s*#/ } @l[$i .. $#l];
+          $main =~ s/\s+\z//;
+          print $out $wrap->($main) . "\n"; last;
+        }
+      }
+      close $out;' -- "$1" "$2" "$3"
+  }
+  for m in c:empty d:false; do
+    reshape "${m#*:}" "$PLUGIN/hooks/guard-bash.jq" "$cdir/${m%%:*}/hooks/guard-bash.jq"
+    reshape "${m#*:}" "$PLUGIN/hooks/common.jq" "$cdir/${m%%:*}/hooks/common.jq"
+    reshape "${m#*:}" "$PLUGIN/lib/holder.jq" "$cdir/${m%%:*}/lib/holder.jq"
+  done
+  { cat "$PLUGIN/lib/holder.jq" "$PLUGIN/hooks/common.jq"; grep -vE '^include ' "$PLUGIN/hooks/guard-bash.jq"; } > "$cdir/b/guard-inline.jq"
+  printf 'include "holder" {search: "../lib"};\ninclude "common" {search: "./"};\nempty\n' > "$cdir/d/hooks/modules.jq"
+  # (f): the builtins (by name and arity, from jq itself) the guard's files mention outside
+  # string literals and do not define themselves, each named once under 'if false'.
+  jq -nr '[builtins[] | select(startswith("_") | not)] | .[]' > "$cdir/builtins.txt"
+  cat "$PLUGIN/hooks/guard-bash.jq" "$PLUGIN/hooks/common.jq" "$PLUGIN/lib/holder.jq" \
+    | perl -e '
+        open my $b, "<", $ARGV[0] or die; my %arity;
+        while (<$b>) { chomp; my ($n, $a) = split m{/}; push @{$arity{$n}}, $a; }
+        local $/; my $t = <STDIN>;
+        $t =~ s/^\s*#.*$//mg; $t =~ s/"(?:[^"\\]|\\.)*"//g;
+        my %own = map { $_ => 1 } $t =~ /\bdef\s+(\w+)/g;
+        my %seen; my @calls;
+        for my $w ($t =~ /(?<![\w\$.])([a-z_]\w*)\b/g) {
+          next if $seen{$w}++ || $own{$w} || !$arity{$w};
+          push @calls, map { $_ ? "$w(" . join(";", (".") x $_) . ")" : $w } @{$arity{$w}};
+        }
+        print "if false then (", join(", ", @calls), ") else empty end\n";' -- "$cdir/builtins.txt" > "$cdir/builtins.jq"
+  cflags="--rawfile glance /dev/null --arg root \"$work\" --arg dir \"$work\" --arg open 0"
+  printf 'compile: CPU ms per call over %s runs, net of jq -n empty; each program over empty inputs\n' "$RUNS"
+  # crow LABEL PROGRAM FILE...: one row; bytes and definitions are counted over the FILEs.
+  crow() {
+    local label="$1" prog="$2" a b defs bytes
+    shift 2
+    bytes=$(cat "$@" | wc -c | tr -d ' ')
+    defs=$(cat "$@" | grep -c '^def ' || true)
+    read -r a b < <(cpu_pair /dev/null "jq -n empty" "jq -nc $cflags -f \"$prog\" - /dev/null /dev/null")
+    printf '%s\t%s\t%s\t%s\n' "$label" "$bytes" "$defs" "$(perl -e 'my $d = $ARGV[1] - $ARGV[0]; printf "%.1f", $d > 0 ? $d : 0' -- "$a" "$b")"
+  }
+  {
+    printf 'program\tbytes\tdefinitions\tms\n'
+    crow "(a) guard as shipped" "$PLUGIN/hooks/guard-bash.jq" "$PLUGIN/hooks/guard-bash.jq" "$PLUGIN/hooks/common.jq" "$PLUGIN/lib/holder.jq"
+    crow "(b) includes inlined" "$cdir/b/guard-inline.jq" "$cdir/b/guard-inline.jq"
+    crow "(c) parse only" "$cdir/c/hooks/guard-bash.jq" "$cdir/c/hooks/guard-bash.jq" "$cdir/c/hooks/common.jq" "$cdir/c/lib/holder.jq"
+    crow "(d) bodies under if false" "$cdir/d/hooks/guard-bash.jq" "$cdir/d/hooks/guard-bash.jq" "$cdir/d/hooks/common.jq" "$cdir/d/lib/holder.jq"
+    crow "(e) modules, as (d)" "$cdir/d/hooks/modules.jq" "$cdir/d/hooks/common.jq" "$cdir/d/lib/holder.jq"
+    crow "(f) builtins bound" "$cdir/builtins.jq" "$cdir/builtins.jq"
+    crow "(g) reference" "$work/reference/reference.jq" "$work/reference/reference.jq"
+  } | awk -F"\t" '{ printf "%-28s %-8s %-12s %s\n", $1, $2, $3, $4 }'
+  exit 0
+fi
+
 # The large project: a record of more than 2 MB in its own folder, the same build
 # lease plus a long history (requirements with rules, checks, phases, plans and
 # decisions of a shipped milestone, every text padded), keys in the writer's

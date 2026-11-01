@@ -40,3 +40,16 @@ jobs:
         shell: bash
         working-directory: src dir
         run: VBW_BENCH_STEPS=1 VBW_BENCH_RUNS=100 bash tools/bench-hooks.sh
+
+      # R243: the guard's compile split by construct (include resolution, definitions,
+      # builtins), beside the oniguruma library jq's regex builtins use.
+      - name: Compile split
+        shell: bash
+        working-directory: src dir
+        run: |
+          if [ "$RUNNER_OS" = "macOS" ]; then
+            brew list --versions oniguruma
+          else
+            dpkg -s libonig5 libonig6 2>/dev/null | grep -E '^(Package|Version):' || true
+          fi
+          VBW_BENCH_STEPS=compile VBW_BENCH_RUNS=100 bash tools/bench-hooks.sh
