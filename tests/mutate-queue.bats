@@ -233,6 +233,23 @@ started() { [ "$(ls "$BAR" | grep -c '^[0-9]')" -ge 1 ]; }
   [ ! -d .vbw/runtime/mutate-queue/P1.1 ] || { ls -A .vbw/runtime/mutate-queue/P1.1; false; }
 }
 
+@test "a break queued before breaks carried tree is judged by its head: the same commit runs it, another commit drops it" {
+  local m
+  queue R1.1 "prints unpaid" 'echo unpaid'
+  m=$(ls -d .vbw/runtime/mutate-queue/P1.1/*/meta.json)
+  jq 'del(.tree)' "$m" > "$TEST_ROOT/m.json" && cp "$TEST_ROOT/m.json" "$m"
+  run "$VBW" mutate P1.1 --run < /dev/null
+  [ "$status" -eq 0 ] || { echo "$output"; false; }
+  [[ "$output" == *"R1.1 red: prints unpaid"* ]] || { echo "$output"; false; }
+  queue R1.1 "prints unpaid" 'echo unpaid'
+  m=$(ls -d .vbw/runtime/mutate-queue/P1.1/*/meta.json)
+  jq 'del(.tree)' "$m" > "$TEST_ROOT/m.json" && cp "$TEST_ROOT/m.json" "$m"
+  printf 'x\n' > other.txt
+  git add other.txt && git commit -q -m "move head"
+  run "$VBW" mutate P1.1 --run < /dev/null
+  [ "$status" -ne 0 ] && [[ "$output" == *"queued at another commit"* ]] || { echo "$output"; false; }
+}
+
 @test "R230: two --run of the same plan never both make copies: the second is refused while the first holds its slot, one set of copies exists, and each entry is recorded once" {
   touch "$BAR/hold"
   queue R1.1 "prints unpaid" 'echo unpaid'

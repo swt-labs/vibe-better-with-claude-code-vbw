@@ -105,7 +105,8 @@ mutate_queue_run() {
   head=$(git rev-parse HEAD) || vbw_die "the project has no commit yet"
   tree=$(vbw_head_tree) || vbw_die "cannot fingerprint the committed code"
   for e in "${entries[@]}"; do
-    if [ "$(jq -r '.tree // ""' "$e/meta.json")" = "$tree" ]; then keep+=("$e"); continue; fi
+    # A break queued before breaks carried tree is judged by its head.
+    if jq -e --arg t "$tree" --arg h "$head" 'if has("tree") then .tree == $t else .head == $h end' "$e/meta.json" > /dev/null; then keep+=("$e"); continue; fi
     printf '%s was queued at another commit, so its break is of older files: break it again\n' "$(jq -r .target "$e/meta.json")" >&2
     rm -rf "$e"
     stale=1
