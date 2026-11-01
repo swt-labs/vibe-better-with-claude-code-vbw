@@ -46,7 +46,13 @@ CASES='["server_wildcard", "single_tool", "unconfigured_beside", "agent_type", "
   jq -e '.cases.inherit_omitted.result // "" | contains("NOTE-TOKEN-7731")' "$RESULT" || { jq .cases.inherit_omitted "$RESULT"; false; }
   jq -e '.cases.disallowed_honoured | (.tools_line | test("disallowedTools")) and (.result | startswith("RESULT: NOT-WRITTEN"))' "$RESULT" || { jq .cases.disallowed_honoured "$RESULT"; false; }
   jq -e 'has("hook_matcher") and .hook_matcher == null and (.cases.hook_every_tool.result | startswith("RESULT: ALL"))' "$RESULT" || { jq '{hook_matcher, hook_every_tool: .cases.hook_every_tool}' "$RESULT"; false; }
-  jq -e '(.builtins | type == "array" and (contains(["Read", "Grep", "Glob", "Bash", "Write", "Edit", "WebFetch", "WebSearch"])) and all(.[]; startswith("mcp__") | not))
+  jq -e '(.builtins | type == "array" and (contains(["Read", "Bash", "Write", "Edit", "WebFetch", "WebSearch"])) and all(.[]; startswith("mcp__") | not))
     and (.always_allowed | type == "array" and all(.[]; type == "string" and (startswith("mcp__") | not)))
     and (.hook_read_cpu_ms | type == "number" and . > 0 and . <= 20)' "$RESULT" || { jq '{builtins, always_allowed, hook_read_cpu_ms}' "$RESULT"; false; }
+}
+
+@test "R241: the probe result names no MCP tool but the probe's own (D565: Grep and Glob may be absent; a machine's other servers and connectors stay out of the file)" {
+  [ -f "$RESULT" ] || { echo "no probe result"; false; }
+  jq -e '[.. | strings | scan("mcp__[A-Za-z0-9][A-Za-z0-9_.-]*?__") | select(test("^mcp__(probe|nosuch)__") | not)] | length == 0' "$RESULT" > /dev/null \
+    || { jq '[.. | strings | scan("mcp__[A-Za-z0-9][A-Za-z0-9_.-]*?__") | select(test("^mcp__(probe|nosuch)__") | not)] | unique' "$RESULT"; false; }
 }

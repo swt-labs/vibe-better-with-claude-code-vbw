@@ -18374,6 +18374,11 @@
           "text": "this VBW reads up to schema 7: a schema-8 record asks for a newer VBW naming schema 7 as its highest, and the record check allows protected on a schema-4, 5, 6 or 7 record",
           "check": "C560",
           "plan": "P192.2"
+        },
+        {
+          "text": "the probe treats Grep and Glob as optional built-ins (Claude Code 2.1.316 gives agents neither; D565) and its committed result names no MCP tool but the probe server's own, so a machine's other servers and claude.ai connectors never reach the file",
+          "check": "C546",
+          "plan": "P192.1"
         }
       ]
     },
@@ -69427,6 +69432,18 @@
       "text": "R240: the end time never reached the steptime scenario because its sampler read the status line with 'until HH:MM' while the status line has printed 'until around HH:MM' since d7f73771 (2026-10-24 16:54, after the last pass at 02:35); the render on a note exactly as a run writes it is pinned by tests/statusline-step.bats; supersedes D558's clause placing the cause in what the status line reads",
       "why": "bats --filter R240 tests/statusline-step.bats under /bin/bash: 3 of 3 pass on the unchanged status line",
       "at": "2026-11-01T14:32:18Z"
+    },
+    {
+      "id": "D564",
+      "text": "P195.1 tasks 3-4: the compile split ran on GitHub, bench-steps.yml run 41317320402 (plow/2.1.23 at 9b97715c). Compile ms, (a) guard as shipped / (d) bodies under if false / (e) modules alone / (g) reference: macos-latest 11.1 / 11.1 / 0.8 / 5.1 (oniguruma 6.9.10); ubuntu-latest 15.9 / 17.4 / 0.8 / 5.2 (libonig5 6.9.9); ubuntu-26.04 20.4 / 23.5 / 1.0 / 7.1 (libonig5 6.9.10). Parse only is ~0 everywhere. So the Linux-only excess is in compiling (binding and code generation of) guard-bash.jq's own definitions, never executed: guard/reference compile 2.18 macOS vs 3.06 and 2.87 Ubuntu (about 1.35x). Not oniguruma (same 6.9.10 on macOS and 26.04), not includes, not parsing. Use this run id; push and dispatch again for the after run.",
+      "why": "Lead hand-off of the run the plan blocked on, 2026-11-01.",
+      "at": "2026-11-01T14:41:56Z"
+    },
+    {
+      "id": "D565",
+      "text": "P192.1: Grep and Glob are optional built-ins. Claude Code 2.1.316 gives agents no Grep and no Glob (absent even from deferred tools), as CLAUDE.md already notes (agents search with Bash). The probe records the built-ins the build offers; checks require Read, Bash, Write, Edit, WebFetch, WebSearch and accept Grep and Glob present or absent; each role keeps Grep and Glob in its own set so a build that offers them works; the guard never refuses them to a role that lists them. The probe result records only built-in tools and the probe server's tools, never the machine's other MCP or claude.ai connector tool names.",
+      "why": "Probe evidence (P192.1 blocked note, 2026-11-01); a machine's connector names are private data and do not belong in a committed file. Lead decision.",
+      "at": "2026-11-01T14:41:59Z"
     }
   ],
   "commands": {
@@ -78564,6 +78581,17 @@
         "ended": "2026-11-01T14:39:41Z",
         "cost": {
           "usd": 1.270025
+        }
+      },
+      {
+        "id": "plan-20261101T144217Z",
+        "kind": "plan",
+        "session": "0ee781c3-c5b6-4a6c-889f-04b89f1fba4a",
+        "milestone": "M49",
+        "started": "2026-11-01T14:42:17Z",
+        "ended": "2026-11-01T14:43:28Z",
+        "cost": {
+          "usd": 0.171671
         }
       }
     ],
