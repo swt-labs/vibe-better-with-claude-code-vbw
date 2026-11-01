@@ -209,7 +209,17 @@ refused() {
   done
 }
 
-@test "#735: a files pathspec of a form with dir outside that dir is refused" {
+@test "#735: a dir with glob characters is refused with its line: the cd uses its literal text" {
+  local d
+  for d in 'apps/*' 'apps/w?b' 'apps/[w]eb'; do
+    refused "- a:
+  - dir: $d
+  - run: sh {file}
+  - files: $d/x.t" "line 14" "the dir of form a" "no glob characters"
+  done
+}
+
+@test "#735: a files pathspec of a form with dir outside that dir, or with . or .. parts, is refused" {
   refused '- webapp:
   - dir: apps/webapp
   - run: sh {file}
@@ -217,6 +227,33 @@ refused() {
   refused '- dir: apps/a
 - run: sh {file}
 - files: elsewhere/*.t' "line 15" "must lie under its dir apps/a/"
+  # git normalises the pathspec: this one lists apps/mobile's files under webapp.
+  refused '- webapp:
+  - dir: apps/webapp
+  - run: sh {file}
+  - files: apps/webapp/../mobile/*.t' "line 16" "must lie under its dir apps/webapp/" "apps/webapp/../mobile/*.t"
+  refused '- webapp:
+  - dir: apps/webapp
+  - run: sh {file}
+  - files: :!apps/webapp/./x.t apps/webapp/*.t' "line 16" ":!apps/webapp/./x.t"
+}
+
+@test "#735: a dir that is, or lies under, a committed symbolic link is refused at check and sync" {
+  mkdir -p apps real/web
+  ln -s ../.. apps/web
+  ln -s real top
+  printf 'true\n' > real/web/x.t
+  git add apps/web top real && git commit -q -m "test: links"
+  refused '- web:
+  - dir: apps/web
+  - run: sh {file}
+  - files: apps/web/*.t' "line 13" "the dir of form web, apps/web/, is a symbolic link in the commit, or lies under one"
+  refused '- dir: top/web
+- run: sh {file}
+- files: top/web/*.t' "line 11" "the dir of the Test files section, top/web/, is a symbolic link"
+  run "$VBW" spec sync
+  [ "$status" -ne 0 ] && [[ "$output" == *"is a symbolic link"* ]] || { echo "$output"; false; }
+  jq -e 'has("test_files") | not' .vbw/record.json > /dev/null
 }
 
 @test "#735: top-level run, files or dir lines beside a named form, and a nested line outside one, are refused with the line" {

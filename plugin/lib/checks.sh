@@ -369,7 +369,7 @@ checks_units_load() {
 # copy and place are free once its slot and its gate place are given back
 # (checks_unit_free): the next unit starts while this one writes its result.
 checks_unit_run() {
-  local i=$1 name out t want re alone copy here=$PWD st="" reads=true res t0 collected=false list a c
+  local i=$1 name out t want re alone copy here=$PWD st="" reads=true res t0 collected=false list a c why base
   name=${CU_NAME[i]} out=$CHECK_OUT/${CU_OUT[i]} t=${CU_TIMEOUT[i]} want=${CU_EXIT[i]} re=${CU_OUTPUT[i]} alone=${CU_ALONE[i]}
   a=${CU_AT[i]} c=${CU_ARGC[i]} list=$CU_DIR/$i.reads
   if [ -n "${2:-}" ]; then
@@ -391,16 +391,26 @@ checks_unit_run() {
     reads_reset "$copy" "$st" || reads=false
     [ -z "$t0" ] || prooftime_span tracking "$t0"
   fi
-  # A unit with a folder (a test file form's dir) runs in it; a folder the commit
-  # does not have fails the unit, naming it, and runs nothing.
-  if [ -z "${CU_IN[i]:-}" ]; then
-    checks_exec "$t" "$out" ${CU_ARGV[@]+"${CU_ARGV[@]:a:c}"}
-  elif cd "./${CU_IN[i]}" 2> /dev/null; then
-    checks_exec "$t" "$out" ${CU_ARGV[@]+"${CU_ARGV[@]:a:c}"}
-    cd "${copy:-$here}" || return 1
-  else
-    vbw_out 'the folder %s/ (the dir of the test file form) is not in the commit: no test file of the form can run\n' "${CU_IN[i]}" > "$out"
+  # A unit with a folder (a test file form's dir) runs in it. A folder the commit
+  # does not have, or one a link leads out of the copy, fails the unit, naming
+  # it, and runs nothing.
+  why=
+  if [ -n "${CU_IN[i]:-}" ]; then
+    why="is not in the commit"
+    base=$(pwd -P)
+    if cd -P "./${CU_IN[i]}" 2> /dev/null; then
+      case "$PWD/" in
+        "$base"/?*) why= ;;
+        *) why="leads outside the clean copy (a symbolic link)"; cd "$base" || return 1 ;;
+      esac
+    fi
+  fi
+  if [ -n "$why" ]; then
+    vbw_out 'the folder %s/ (the dir of the test file form) %s: no test file of the form can run\n' "${CU_IN[i]}" "$why" > "$out"
     CHECK_CODE=1 CHECK_SECONDS=0
+  else
+    checks_exec "$t" "$out" ${CU_ARGV[@]+"${CU_ARGV[@]:a:c}"}
+    [ -z "${CU_IN[i]:-}" ] || cd "${copy:-$here}" || return 1
   fi
   if [ -n "$st" ]; then
     t0=

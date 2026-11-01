@@ -103,6 +103,10 @@ FORMS='"test_files": [{"name": "web", "dir": "apps/web", "run": ["npx", "vitest"
   run bash -c 'printf "%s" "$1" | "$2" apply' _ "{$FULL, \"test_files\": [{\"name\": \"a\", \"run\": [\"sh\", \"{file}\"], \"files\": [\"apps/*.sh\"]}, {\"name\": \"b\", \"run\": [\"sh\", \"{file}\"], \"files\": [\"apps/web/*.sh\"]}]}" "$VBW"
   [ "$status" -ne 0 ] || { echo "$output"; false; }
   [[ "$output" == *"test_files: apps/web/t.sh is matched by forms a and b"* ]] || { echo "$output"; false; }
+  ln -s apps/web link && git add link && git commit -q -m "test: link"
+  run bash -c 'printf "%s" "$1" | "$2" apply' _ "{$FULL, \"test_files\": [{\"name\": \"l\", \"dir\": \"link\", \"run\": [\"sh\", \"{file}\"], \"files\": [\"link/*.sh\"]}]}" "$VBW"
+  [ "$status" -ne 0 ] || { echo "$output"; false; }
+  [[ "$output" == *"test_files: the dir of form l, link/, is a symbolic link in the commit"* ]] || { echo "$output"; false; }
   run bash -c 'printf "%s" "$1" | "$2" apply' _ "{$FULL, \"test_files\": [{\"run\": [\"sh\", \"{file}\"], \"files\": [\"t.sh\"]}]}" "$VBW"
   [[ "$output" == *"test_files must be"* ]] || { echo "$output"; false; }
   [ "$(cat .vbw/spec.md)" = "$before" ]

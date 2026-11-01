@@ -107,13 +107,23 @@ spec_sync() {
   printf 'record has %s requirements\n' "$(jq '.requirements | length' "$VBW_RECORD")"
 }
 
-# Every Clean copy path must be git-ignored when something is there: only
-# ignored paths are copied in, so only they can be left out. A path with nothing
-# at it is accepted (nothing to leave out). Dies on the first refusal, before any write.
-# spec_test_files_overlap PARSED: "LINE<tab>MESSAGE" when a committed file is
-# matched by two test file forms (a test file belongs to one form: it never runs
-# twice), LINE the later form's; nothing otherwise.
-spec_test_files_overlap() {
+# spec_test_files_refusal PARSED: "LINE<tab>MESSAGE" for the first refusal of the
+# test file forms against the commit, LINE the form's; nothing otherwise. A dir
+# that is, or lies under, a committed symbolic link is refused: the copy keeps
+# the link, and the cd would follow it out of the copy. A committed file two
+# forms match is refused: a test file belongs to one form, and never runs twice.
+spec_test_files_refusal() {
+  local dirs hit
+  dirs=$(printf '%s' "$1" | jq -c '.test_file_lines as $l | [(.test_files | if type == "array" then . else [] end)
+    | to_entries[] | select(.value.dir != null)
+    | {line: $l[.key], name: .value.name, dir: .value.dir, up: (.value.dir | split("/") as $s | [range(1; ($s | length) + 1) | $s[:.] | join("/")])}]')
+  if [ "$dirs" != '[]' ]; then
+    hit=$(git -C "$VBW_ROOT" ls-files -s -z | jq -Rrs --slurpfile d <(printf '%s' "$dirs") '
+      [split("\u0000")[] | select(startswith("120000 ")) | sub("^[^\t]*\t"; "")] as $links
+      | first($d[0][] | select(any(.up[]; . as $u | $links | index([$u]))) | . as $f
+        | "\($f.line)\tthe dir of \(if $f.name == null then "the Test files section" else "form \($f.name)" end), \($f.dir)/, is a symbolic link in the commit, or lies under one: a form runs in a real folder of the clean copy") // empty')
+    [ -z "$hit" ] || { printf '%s\n' "$hit"; return 0; }
+  fi
   printf '%s' "$1" | jq -e '.test_files | type == "array" and length > 1' > /dev/null || return 0
   # shellcheck source=testfiles.sh
   . "$VBW_LIB/testfiles.sh"
@@ -122,13 +132,16 @@ spec_test_files_overlap() {
       | "\($s.test_file_lines[.[1].i])\t\(.[0].p) is matched by forms \($s.test_files[.[0].i].name) and \($s.test_files[.[1].i].name): a test file belongs to one form") // empty'
 }
 
-# spec_verify_test_files PARSED: dies on a file two forms match, naming its line.
+# spec_verify_test_files PARSED: dies on the first refusal of the test file forms, naming its line.
 spec_verify_test_files() {
   local hit
-  hit=$(spec_test_files_overlap "$1")
+  hit=$(spec_test_files_refusal "$1")
   [ -z "$hit" ] || vbw_die "spec.md line ${hit%%$'\t'*}: ${hit#*$'\t'}"
 }
 
+# Every Clean copy path must be git-ignored when something is there: only
+# ignored paths are copied in, so only they can be left out. A path with nothing
+# at it is accepted (nothing to leave out). Dies on the first refusal, before any write.
 spec_verify_leave_out() {
   local line path p
   while IFS=$'\t' read -r line path; do

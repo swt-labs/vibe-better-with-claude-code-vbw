@@ -204,7 +204,7 @@ apply_test_files_spec() {
   parsed=$(jq -Rs -f "$VBW_LIB/spec.jq" < "$APPLY_TF_SPEC") || apply_internal "cannot read the test-file form back"
   printf '%s' "$parsed" | jq -e '.errors == []' > /dev/null \
     || apply_refuse "test_files: $(printf '%s' "$parsed" | jq -r '.errors[0] | sub("^line [0-9]+: "; "")')"
-  hit=$(spec_test_files_overlap "$parsed")
+  hit=$(spec_test_files_refusal "$parsed")
   [ -z "$hit" ] || apply_refuse "test_files: ${hit#*$'\t'}"
 }
 

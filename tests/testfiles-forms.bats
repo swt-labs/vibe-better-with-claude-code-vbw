@@ -1,4 +1,6 @@
 #!/usr/bin/env bats
+# Named test file forms are their own requirement area (#735), apart from the
+# single form of testfiles-form.bats, testfiles-spec.bats and prove-testfiles.bats.
 # #735 (docs/proof.md, Test files): several named single-file forms, one per test
 # runner. Each form's files run with its own run argv, in the form's dir when it
 # has one ({file} is then the path relative to that dir); a change reruns only the
@@ -85,6 +87,29 @@ forms_project() {
     checks_run_units '"'"'[{"name": "u", "out": "u.out", "argv": ["sh", "-c", "echo ran >> \"$RANLOG\""], "timeout": 30, "exit": 0, "output": "", "alone": false, "dir": "apps/nope"}]'"'"' > "$TEST_ROOT/u.json"'
   jq -e '.u.status == "fail" and (.u.tail | contains("the folder apps/nope/ (the dir of the test file form) is not in the commit"))' "$TEST_ROOT/u.json"
   [ ! -s "$RANLOG" ]
+}
+
+@test "#735: a unit whose folder leads outside the copy through a link fails naming the folder, and runs nothing" {
+  ln -s ../.. apps/out
+  # shellcheck disable=SC2016 # expanded by vbw_kernel
+  vbw_kernel '. "$VBW_LIB/checks.sh"; mkdir -p "$VBW_RUNTIME"; CHECK_OUT=$(mktemp -d "$VBW_RUNTIME/run.XXXXXX")
+    checks_run_units '"'"'[{"name": "u", "out": "u.out", "argv": ["sh", "-c", "echo ran >> \"$RANLOG\""], "timeout": 30, "exit": 0, "output": "", "alone": false, "dir": "apps/out"}]'"'"' > "$TEST_ROOT/u.json"'
+  jq -e '.u.status == "fail" and (.u.tail | contains("the folder apps/out/ (the dir of the test file form) leads outside the clean copy"))' "$TEST_ROOT/u.json" \
+    || { jq . "$TEST_ROOT/u.json"; false; }
+  [ ! -s "$RANLOG" ]
+}
+
+@test "#735: a file two forms match, committed after the forms were synced, fails the test command naming it and both forms" {
+  printf -- '- extra:\n  - run: sh {file}\n  - files: apps/web/tests/x_*.sh\n' >> .vbw/spec.md
+  "$VBW" spec sync > /dev/null
+  git add -A && git commit -q -m "chore(vbw): extra"
+  "$VBW" approve > /dev/null
+  printf 'true\n' > apps/web/tests/x_one.sh
+  git add apps/web/tests/x_one.sh && git commit -q -m "test: x"
+  run "$VBW" prove < /dev/null
+  [ "$status" -ne 0 ] || { echo "$output"; false; }
+  jq -e '.evidence.commands.test | .status == "fail" and (.tail | contains("apps/web/tests/x_one.sh is matched by forms web and extra"))' .vbw/record.json \
+    || { jq .evidence.commands.test .vbw/record.json; false; }
 }
 
 @test "#735: one unnamed form without a dir keeps its fingerprint; a dir is part of a form's fingerprint" {

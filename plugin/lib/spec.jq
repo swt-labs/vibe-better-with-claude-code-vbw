@@ -41,8 +41,8 @@ def tf_apply($n; $k; $v; $l):
       else .run = $a end
   else ($v | rtrimstr("/")) as $d
     | if .dir != null then .err = "line \($n): \(tf_label) has two dir lines"
-      elif $d == "" or ($v | bad_leave_out) then
-        .err = "line \($n): the dir of \(tf_label) must be a folder relative to the project root, with no '.' or '..' parts, outside .vbw/ and .git/, got: \($v)"
+      elif $d == "" or ($v | bad_leave_out) or ($d | test("[*?\\[]")) then
+        .err = "line \($n): the dir of \(tf_label) must be a folder relative to the project root, with no '.' or '..' parts and no glob characters (* ? [), outside .vbw/ and .git/, got: \($v)"
       else .dir = $d end
   end;
 # tf_line(LINE_NO; FORM_INDEX; KEY; VALUE; LINE): apply the line to form FORM_INDEX, its refusal to .errors.
@@ -127,8 +127,8 @@ split("\n") | map(sub("\r$"; ""))
     | .errors += [$fs[]
         | if .run == null then "line \(.line): \(tf_label) needs a '- run: <command with {file}>' line"
           elif .files == [] then "line \(.line): \(tf_label) needs a '- files: <git pathspecs>' line"
-          elif .dir != null then . as $f | (.files[] | select(.p | ltrimstr(":!") | startswith($f.dir + "/") | not)
-            | "line \(.line): the files of \($f | tf_label) must lie under its dir \($f.dir)/ (each pathspec starts with it), got: \(.p)")
+          elif .dir != null then . as $f | (.files[] | select(.p | ltrimstr(":!") | (startswith($f.dir + "/") | not) or any(split("/")[]; . == "." or . == ".."))
+            | "line \(.line): the files of \($f | tf_label) must lie under its dir \($f.dir)/ (each pathspec starts with it, with no '.' or '..' parts), got: \(.p)")
           else empty end]
   end
 | .tforms as $fs

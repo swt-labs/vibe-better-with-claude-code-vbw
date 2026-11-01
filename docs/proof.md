@@ -682,14 +682,17 @@ subproject, names one form per runner, with the lines nested under the name:
 where a runner finds its own configuration. With a dir, `{file}` is the test
 file's path relative to its dir (`src/cart.test.ts`, not
 `apps/webapp/src/cart.test.ts`), and every pathspec of the form must lie under
-it. A single form may take a top-level `- dir:` line too. A name is letters,
+it, with no `.` or `..` parts. A dir is a real folder: no `.` or `..` parts, no
+glob characters (`*`, `?`, `[`), and not a committed symbolic link or under one.
+A single form may take a top-level `- dir:` line too. A name is letters,
 digits, `_` or `-`, and given once; one section uses one shape, top-level lines
 or named forms, never both. `vbw spec check` and `vbw spec sync` refuse a
 committed file matched by two forms, naming the file, both forms and the later
 form's line: a test file belongs to one form, so it never runs twice. A form whose
 dir holds no committed file matches nothing, so the test command fails naming the
 form (below). If a matched file's folder is still missing from the proof's clean
-copy, that file fails and names the folder, and nothing runs for it. The Lead proposes the form with the runner's
+copy, or leads out of the copy through a link, that file fails and names the
+folder, and nothing runs for it. The Lead proposes the form with the runner's
 documented syntax (`vbw apply`, see docs/workflows.md). `vbw init` never writes
 one: VBW never guesses a form.
 
