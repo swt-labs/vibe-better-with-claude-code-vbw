@@ -41,3 +41,45 @@ body() { sed -n '/^scenario_steptime()/,/^}/p' "$SUITE"; }
     and (.facts.proof_counts as $c | all(range(1; $c | length); $c[.] >= $c[. - 1]) and ($c[-1] > $c[0]))
     and .facts.no_history_no_end_time == true' "$RESULT" || { cat "$RESULT"; false; }
 }
+
+# R240 (T211, D558): the status line's end time reaches the steptime scenario. The
+# scenario's sampler kept the status line pattern 'until HH:MM' after commit d7f73771
+# (2026-10-24) changed the status line to 'until around HH:MM', so it recorded nothing
+# there in about 120 samples on 2026-10-31 while the chat and Comms had the time. The
+# suite now reads the status line with one top-level pattern, L3_STATUS_UNTIL, which
+# tests/statusline-step.bats runs over a real render; both scenarios that read the status
+# line use it, and the comment describes the wording the status line prints.
+
+road_body() { sed -n '/^scenario_road()/,/^}/p' "$SUITE"; }
+
+@test "R240: the suite defines L3_STATUS_UNTIL once at top level, accepting 'until around HH:MM' with an optional day word" {
+  [ "$(grep -c '^L3_STATUS_UNTIL=' "$SUITE")" -eq 1 ] || { echo "L3_STATUS_UNTIL is not defined exactly once at top level"; false; }
+  grep -m1 '^L3_STATUS_UNTIL=' "$SUITE" > "$TEST_ROOT/pattern.sh"
+  # shellcheck disable=SC1091
+  . "$TEST_ROOT/pattern.sh"
+  local s
+  for s in 'until around 14:20' 'until around tomorrow 00:20' '● working: building P1.1 · 0 of 1 · until around 14:20'; do
+    printf '%s\n' "$s" | grep -qE "$L3_STATUS_UNTIL" || { echo "'$L3_STATUS_UNTIL' does not read: $s"; false; }
+  done
+  # The old wording is not what the status line prints, so the pattern must not read it as a time.
+  ! printf '%s\n' 'until 14:20' | grep -qE "$L3_STATUS_UNTIL" || { echo "'$L3_STATUS_UNTIL' still reads the old 'until HH:MM'"; false; }
+}
+
+@test "R240: the steptime sampler and the road scenario read the status line column with L3_STATUS_UNTIL, and no stale 'until HH:MM' pattern remains" {
+  body | grep -E '^\s*sl=' | grep -q 'L3_STATUS_UNTIL' || { echo "steptime's status line column is not read with L3_STATUS_UNTIL:"; body | grep -E '^\s*sl='; false; }
+  road_body | grep -E '^\s*sl=' | grep -q 'L3_STATUS_UNTIL' || { echo "the road scenario's status line column is not read with L3_STATUS_UNTIL:"; road_body | grep -E '^\s*sl='; false; }
+  ! grep -q "st_time 'until'" "$SUITE" || { echo "the stale st_time 'until' call remains"; false; }
+  ! grep -qE "'until \(tomorrow \)\?\[0-9\]" "$SUITE" || { echo "a stale inline 'until (tomorrow )?HH:MM' pattern remains"; false; }
+  # The comment above the scenario describes the status line's wording as it prints today.
+  sed -n '/^# steptime (R190/,/^steptime_seed()/p' "$SUITE" | grep -q 'status line.*until around' || { echo "the scenario's comment does not say the status line prints 'until around HH:MM'"; false; }
+  ! sed -n '/^# steptime (R190/,/^steptime_seed()/p' "$SUITE" | grep -qE '\("until HH:MM"\)' || { echo "the scenario's comment still says the status line prints 'until HH:MM'"; false; }
+}
+
+@test "R240: the committed result is from a run on the fixed suite (2026-11-01 or later) with the status line's end time equal to the chat's and Comms'" {
+  [ -f "$RESULT" ] || { echo "no steptime result is committed"; false; }
+  jq -e '.scenario == "steptime" and .evidence_level == "L3" and .passed == true
+    and (.at | type == "string" and . >= "2026-11-01")
+    and (.facts.statusline_end | test("^[0-9]{2}:[0-9]{2}$"))
+    and .facts.statusline_end == .facts.chat_end and .facts.statusline_end == .facts.comms_end
+    and .facts.same_end == true and (.facts.screen_samples > 0)' "$RESULT" || { cat "$RESULT"; false; }
+}

@@ -4,6 +4,7 @@
   "protected": [
     "tests/adaptive-results.bats",
     "tests/agent-scratch.bats",
+    "tests/agents-tools.bats",
     "tests/apply-beside-started.bats",
     "tests/apply-foreign-req.bats",
     "tests/apply-keeps-mutations.bats",
@@ -34,6 +35,7 @@
     "tests/bench-guard-steps.bats",
     "tests/bench-limits-docs.bats",
     "tests/bench-limits.bats",
+    "tests/bench-linux-step-docs.bats",
     "tests/bench-protected.bats",
     "tests/bench-select.bats",
     "tests/bench-statusline-cost.bats",
@@ -66,6 +68,7 @@
     "tests/command-timeout-docs.bats",
     "tests/command-timeout-report.bats",
     "tests/command-timeout.bats",
+    "tests/config-mcp.bats",
     "tests/config-qa.bats",
     "tests/config-rigor-bash32.bats",
     "tests/config-skill-check-jobs.bats",
@@ -110,6 +113,7 @@
     "tests/guard-cost.bats",
     "tests/guard-fail-closed.bats",
     "tests/guard-interpreters.bats",
+    "tests/guard-mcp.bats",
     "tests/guard-outside.bats",
     "tests/guard-plan-writes.bats",
     "tests/guard-protected.bats",
@@ -124,6 +128,7 @@
     "tests/hidden-record-docs.bats",
     "tests/hidden-record.bats",
     "tests/hook-answers.bats",
+    "tests/hooks-guard.bats",
     "tests/hooks-session-guard.bats",
     "tests/hooks-session-nojq.bats",
     "tests/human-later.bats",
@@ -213,6 +218,8 @@
     "tests/machine-tracking.bats",
     "tests/machine-turns.bats",
     "tests/machine-wait-line.bats",
+    "tests/mcp-docs.bats",
+    "tests/mcp-probe.bats",
     "tests/measure-proof-speed.bats",
     "tests/measure-two-proofs.bats",
     "tests/mutate-command.bats",
@@ -301,6 +308,7 @@
     "tests/panel/record-row.test.mjs",
     "tests/panel/safe.test.mjs",
     "tests/panel/schema4.test.mjs",
+    "tests/panel/settings.test.mjs",
     "tests/panel/sound.test.mjs",
     "tests/panel/testmode.test.mjs",
     "tests/panel/view.test.mjs",
@@ -474,6 +482,7 @@
     "tests/triage-kernel.bats",
     "tests/triage-overrule.bats",
     "tests/triage-skill.bats",
+    "tests/vibe-commit-rule.bats",
     "tests/workflow-closing.bats",
     "tests/workflows-run-end.bats"
   ],
@@ -7276,6 +7285,194 @@
       ],
       "files": [
         "tests/l3-submodule.bats"
+      ]
+    },
+    {
+      "id": "C546",
+      "req": "R241",
+      "run": [
+        "bats",
+        "--print-output-on-failure",
+        "tests/mcp-probe.bats"
+      ],
+      "files": [
+        "tests/mcp-probe.bats"
+      ]
+    },
+    {
+      "id": "C547",
+      "req": "R241",
+      "run": [
+        "bats",
+        "--print-output-on-failure",
+        "tests/config-mcp.bats"
+      ],
+      "files": [
+        "tests/config-mcp.bats"
+      ]
+    },
+    {
+      "id": "C548",
+      "req": "R241",
+      "run": [
+        "node",
+        "--test",
+        "--test-name-pattern",
+        "R241",
+        "tests/panel/settings.test.mjs"
+      ],
+      "files": [
+        "tests/panel/settings.test.mjs",
+        "tests/panel/helpers/fake-mod.mjs",
+        "tests/panel/r189/helpers/screen.mjs"
+      ]
+    },
+    {
+      "id": "C549",
+      "req": "R241",
+      "run": [
+        "bats",
+        "--print-output-on-failure",
+        "tests/agents-tools.bats"
+      ],
+      "files": [
+        "tests/agents-tools.bats"
+      ]
+    },
+    {
+      "id": "C550",
+      "req": "R241",
+      "run": [
+        "bats",
+        "--print-output-on-failure",
+        "--filter",
+        "R241",
+        "tests/mcp-docs.bats"
+      ],
+      "files": [
+        "tests/mcp-docs.bats"
+      ]
+    },
+    {
+      "id": "C551",
+      "req": "R242",
+      "run": [
+        "bats",
+        "--print-output-on-failure",
+        "tests/guard-mcp.bats"
+      ],
+      "files": [
+        "tests/guard-mcp.bats"
+      ]
+    },
+    {
+      "id": "C552",
+      "req": "R242",
+      "run": [
+        "bats",
+        "--print-output-on-failure",
+        "--filter",
+        "R242",
+        "tests/hook-answers.bats"
+      ],
+      "files": [
+        "tests/hook-answers.bats",
+        "tests/approve-choice-helper.bash"
+      ]
+    },
+    {
+      "id": "C553",
+      "req": "R242",
+      "run": [
+        "bats",
+        "--print-output-on-failure",
+        "--filter",
+        "R242",
+        "tests/mcp-docs.bats"
+      ],
+      "files": [
+        "tests/mcp-docs.bats"
+      ]
+    },
+    {
+      "id": "C554",
+      "req": "R239",
+      "run": [
+        "bats",
+        "--print-output-on-failure",
+        "--filter",
+        "R239",
+        "tests/hooks-guard.bats"
+      ],
+      "files": [
+        "tests/hooks-guard.bats"
+      ]
+    },
+    {
+      "id": "C555",
+      "req": "R239",
+      "run": [
+        "bats",
+        "--print-output-on-failure",
+        "tests/vibe-commit-rule.bats"
+      ],
+      "files": [
+        "tests/vibe-commit-rule.bats"
+      ]
+    },
+    {
+      "id": "C556",
+      "req": "R240",
+      "run": [
+        "bats",
+        "--print-output-on-failure",
+        "--filter",
+        "R240",
+        "tests/statusline-step.bats"
+      ],
+      "files": [
+        "tests/statusline-step.bats",
+        "tests/step-helper.bash"
+      ]
+    },
+    {
+      "id": "C557",
+      "req": "R240",
+      "run": [
+        "bats",
+        "--print-output-on-failure",
+        "--filter",
+        "R240",
+        "tests/l3-step-time.bats"
+      ],
+      "files": [
+        "tests/l3-step-time.bats"
+      ]
+    },
+    {
+      "id": "C558",
+      "req": "R243",
+      "run": [
+        "bats",
+        "--print-output-on-failure",
+        "--filter",
+        "R243",
+        "tests/bench-guard-steps.bats"
+      ],
+      "files": [
+        "tests/bench-guard-steps.bats"
+      ]
+    },
+    {
+      "id": "C559",
+      "req": "R243",
+      "run": [
+        "bats",
+        "--print-output-on-failure",
+        "tests/bench-linux-step-docs.bats"
+      ],
+      "files": [
+        "tests/bench-linux-step-docs.bats"
       ]
     }
   ],
@@ -17980,19 +18177,85 @@
     },
     {
       "id": "R239",
-      "text": "The Bash guard refuses an agent's direct history change inside a run: a git commit, merge, rebase, cherry-pick, revert, am or commit-tree run by an agent under a run lease (including one aimed at a submodule with -C or cd) is refused with vbw commit named as the next step, while vbw's own commits and the user's commands outside agents are untouched (T209: a build agent ran git commit -- sub in the submodule real-user run on PR #737)",
+      "text": "No plain git history change bypasses vbw commit while VBW drives: the Bash guard refuses git commit-tree from an agent under a run lease as it already refuses commit, merge, rebase, cherry-pick, revert and am (including the -C, cd, subshell and sh -c forms), and refuses the same commands from VBW's own chat while an autonomous run or loop is armed (.vbw/runtime/auto.SESSION.json), each refusal naming vbw commit as the next step; the vibe skill states that the chat never commits plan work by hand and follows the proof's Next line; the user's own commands are never checked (T209: the chat ran git commit -- sub after a failed proof in the submodule real-user run on PR #737; D557)",
       "proof": "auto",
       "status": "open",
       "milestone": "M49",
-      "rules": []
+      "rules": [
+        {
+          "text": "an agent under a lease is refused git commit-tree in its plain, -C, cd &&, subshell and sh -c forms, each refusal naming vbw commit PLAN",
+          "check": "C554",
+          "plan": "P193.1"
+        },
+        {
+          "text": "while this session's autonomous run is armed, the chat's commit, commit-tree, push, rebase, merge, pull, cherry-pick, revert and am, in the same forms, are refused with a reason naming the armed run and vbw commit, and a next step",
+          "check": "C554",
+          "plan": "P193.1"
+        },
+        {
+          "text": "while the record holds a loop that has not ended, the same commands are refused naming the loop; an ended loop holds no one",
+          "check": "C554",
+          "plan": "P193.1"
+        },
+        {
+          "text": "the hook reads the session's own arm file only: another session's armed run never holds this chat, and an input with no session id is nobody's armed run",
+          "check": "C554",
+          "plan": "P193.1"
+        },
+        {
+          "text": "with no arm file and no live loop the chat's git commands are allowed as today, and vbw commit stays allowed from every caller, armed or under a lease",
+          "check": "C554",
+          "plan": "P193.1"
+        },
+        {
+          "text": "T209's command (git commit -m ... -- sub && git status --short && vbw prove) from the main session is refused when armed and allowed when not",
+          "check": "C554",
+          "plan": "P193.1"
+        },
+        {
+          "text": "the vibe skill states that the chat never commits plan work by hand, naming git commit, commit-tree, merge, rebase, cherry-pick, revert and am, that commits go through vbw commit inside the run, and that it follows the proof's Next line",
+          "check": "C555",
+          "plan": "P193.2"
+        },
+        {
+          "text": "docs/guards.md's refusal table names commit-tree beside commit and the chat's refusal while armed or in a loop, docs/workflows.md's refusal table has both rows with vbw commit as the next step, and both say the user's own commands are never checked",
+          "check": "C555",
+          "plan": "P193.2"
+        }
+      ]
     },
     {
       "id": "R240",
-      "text": "The status line keeps a running step's end time on a narrow row: the step line puts 'N min, until around HH:MM' before the holder's name, so a row that Claude Code truncates loses the holder first, pinned by a width-limited render test and by the steptime real-user scenario passing (T211)",
+      "text": "The status line shows a running step's end time as the chat and the Comms pane do: in the steptime real-user scenario its step line carries the same 'N min, until around HH:MM' from the step's first minute; the cause of it never reaching the status line (about 120 samples on 2026-10-31, chat and Comms had it) is found in what the status line reads and fixed there, pinned by a render test fed a step note exactly as a run writes it, and the scenario passes (T211; D558)",
       "proof": "auto",
       "status": "open",
       "milestone": "M49",
-      "rules": []
+      "rules": [
+        {
+          "text": "a build note exactly as a run writes it (every key step_start writes plus road) renders '● working: building P1.1 · 0 of 1 · until around HH:MM' in the step's first minute, with no minutes prefix, and 'N min, until around HH:MM' after it",
+          "check": "C556"
+        },
+        {
+          "text": "a proof note exactly as plugin/lib/proofsteps.sh writes it at its start (proof null, road key) renders its end time",
+          "check": "C556"
+        },
+        {
+          "text": "the suite's status line pattern (L3_STATUS_UNTIL), run over a real render, reads the HH:MM of the note's end, so the status line's wording and the scenario's pattern cannot diverge unseen",
+          "check": "C556"
+        },
+        {
+          "text": "tools/l3-suite.sh defines L3_STATUS_UNTIL once at top level, accepting 'until around HH:MM' with an optional day word and not the old 'until HH:MM'",
+          "check": "C557"
+        },
+        {
+          "text": "the steptime sampler and the road scenario read the status line column with L3_STATUS_UNTIL, no stale pattern remains, and the scenario's comment describes the status line's current wording",
+          "check": "C557"
+        },
+        {
+          "text": "the committed steptime result is from a passing run on 2026-11-01 or later with the status line's end time equal to the chat's and Comms'",
+          "check": "C557"
+        }
+      ]
     },
     {
       "id": "R241",
@@ -18000,7 +18263,63 @@
       "proof": "auto",
       "status": "open",
       "milestone": "M49",
-      "rules": []
+      "rules": [
+        {
+          "text": "a recorded probe (tools/probe-mcp-tools.sh, its committed result tools/probes/mcp-tools.json, a decision) states how Claude Code resolves a plugin agent's tools with a whole server (mcp__<server>__*), one tool (mcp__<server>__<tool>), an unconfigured server beside resolving entries, the agent_type a hook sees, and whether a workflow's agent() reaches an agent not the plugin's own",
+          "check": "C546",
+          "plan": "P192.1"
+        },
+        {
+          "text": "the mechanism built is the one the probe supports: every agent's tools line carries the one MCP pool entry the probe names (tools_entry), the same in all seven agents",
+          "check": "C549",
+          "plan": "P192.3"
+        },
+        {
+          "text": "with no MCP setting every agent's built-in tools are exactly today's, pinned from plugin/agents/*.md (architect, qa: Read, Grep, Glob, Bash; lead: those plus Write, Edit, WebFetch; dev, debugger, docs: those plus Write, Edit; scout: those plus WebSearch, WebFetch), and no agent uses disallowedTools",
+          "check": "C549",
+          "plan": "P192.3"
+        },
+        {
+          "text": "vbw config set mcp VALUE stores each entry (SERVER, SERVER:read-only, SERVER:read-only=TOOL,TOOL) in record.settings.mcp with its mark, in the order given, and prints the setting",
+          "check": "C547",
+          "plan": "P192.2"
+        },
+        {
+          "text": "vbw config shows the setting in the form it was set, and 'mcp: none' without one",
+          "check": "C547",
+          "plan": "P192.2"
+        },
+        {
+          "text": "vbw config set mcp default removes the setting",
+          "check": "C547",
+          "plan": "P192.2"
+        },
+        {
+          "text": "a malformed server or tool name, mark or list is refused with a usage line naming the accepted form, and nothing changes",
+          "check": "C547",
+          "plan": "P192.2"
+        },
+        {
+          "text": "the record carries the setting as schema 7, validated (needs schema 7; schema 7 only with it; a malformed stored entry or a server twice refused), so an older VBW says the project needs a newer VBW, never that the record is corrupt",
+          "check": "C547",
+          "plan": "P192.2"
+        },
+        {
+          "text": "the config skill and the README's settings table know the mcp key, its form and its read-only mark",
+          "check": "C547",
+          "plan": "P192.2"
+        },
+        {
+          "text": "the panel's settings pane shows the setting as vbw config prints it, read-only, naming vbw config set mcp beside it",
+          "check": "C548",
+          "plan": "P192.2"
+        },
+        {
+          "text": "docs/guards.md has an MCP section naming where the setting lives (record.settings.mcp), the exact command form, the read-only mark and default, and docs/workflows.md's Agents section links to it",
+          "check": "C550",
+          "plan": "P192.4"
+        }
+      ]
     },
     {
       "id": "R242",
@@ -18008,7 +18327,58 @@
       "proof": "auto",
       "status": "open",
       "milestone": "M49",
-      "rules": []
+      "rules": [
+        {
+          "text": "with no MCP setting every VBW agent's MCP call is refused, the refusal naming the agent's role and vbw config set mcp as the next step",
+          "check": "C551",
+          "plan": "P192.3"
+        },
+        {
+          "text": "a server named without a mark is open to Dev, Debugger and Docs and closed to Architect, Lead, Scout and QA, whose refusal says the tool is not marked read-only and names vbw config set mcp",
+          "check": "C551",
+          "plan": "P192.3"
+        },
+        {
+          "text": "a pure server marked read-only as a whole is open, every tool, to every role",
+          "check": "C551",
+          "plan": "P192.3"
+        },
+        {
+          "text": "a mixed server opens only its listed read-only tools to the reading roles; its other tools stay the writing roles'",
+          "check": "C551",
+          "plan": "P192.3"
+        },
+        {
+          "text": "a tool whose name suggests reading (read_*, get_*, search_*) but carries no mark is refused for the reading roles: never a guess from the name",
+          "check": "C551",
+          "plan": "P192.3"
+        },
+        {
+          "text": "a server the setting does not name is refused for every role, matched as a whole name, naming the server and the setting as the next step",
+          "check": "C551",
+          "plan": "P192.3"
+        },
+        {
+          "text": "the main session and an agent that is not VBW's are never judged, and outside a VBW project the hook gives no answer",
+          "check": "C551",
+          "plan": "P192.3"
+        },
+        {
+          "text": "the hook is a PreToolUse jq entry on mcp__ tools in hooks.json and the bench measures it as the guard (mcp) case",
+          "check": "C551",
+          "plan": "P192.3"
+        },
+        {
+          "text": "the hook's answers are pinned: deny with a 'VBW guard:' reason and a systemMessage for the user, no output for the main session or an opened tool, and no allow",
+          "check": "C552",
+          "plan": "P192.3"
+        },
+        {
+          "text": "the docs say which roles get what, that a reading role never gets a tool by a guess from its name, and that an MCP tool's writes are judged after the fact by the run's scope check ('changed X, which is not in the plan'), never before the call",
+          "check": "C553",
+          "plan": "P192.4"
+        }
+      ]
     },
     {
       "id": "R243",
@@ -18016,7 +18386,28 @@
       "proof": "auto",
       "status": "open",
       "milestone": "M49",
-      "rules": []
+      "rules": [
+        {
+          "text": "the step table has net rows shell prelude, program compile, program run, reference compile and reference run, each cell a net ms figure with its quotient to the reference run; the gross startup rows carry no quotient",
+          "check": "C558",
+          "plan": "P195.1"
+        },
+        {
+          "text": "the reference run's quotient is 1.00 by definition, and the method line says the net rows subtract the startup and names the quotient",
+          "check": "C558",
+          "plan": "P195.1"
+        },
+        {
+          "text": "docs/guards.md's bench section names the Linux-only step by its row name with figures from GitHub's three runners (macos-latest, ubuntu-latest, ubuntu-26.04) and the workflow that measured them",
+          "check": "C559",
+          "plan": "P195.2"
+        },
+        {
+          "text": "the disproved claim that each Linux quotient is within 1.25 of macOS's is gone, and the 1.25 target is stated with the measured figures",
+          "check": "C559",
+          "plan": "P195.2"
+        }
+      ]
     }
   ],
   "phases": [
@@ -27273,6 +27664,121 @@
         "qa_findings": 1,
         "escalations": 1
       }
+    },
+    {
+      "id": "P192",
+      "title": "MCP tools for VBW's agents, named per project and given by role",
+      "reqs": [
+        "R241",
+        "R242"
+      ],
+      "milestone": "M49",
+      "goal": "A project names, in one documented place, the MCP servers (add-on programs that give Claude extra tools) whose tools VBW's agents may use, with a read-only mark per server or per tool; the agents that write get every named tool, the agents that only read get the read-only ones, and a project that names none gives every agent exactly the tools it has today.",
+      "criteria": [
+        "A recorded probe (a decision in the record naming the script and its output) states how Claude Code resolves a plugin agent's `tools:` list with mcp__ names: a whole server as mcp__<server>__*, one tool as mcp__<server>__<tool>, an entry naming a server that is not configured beside entries that resolve, and whether a workflow's agent() call with agentType vbw:<role> can reach any agent other than the plugin's own; the mechanism built in this phase is the one the probe supports, and the decision says why the alternatives were not taken.",
+        "The MCP tool list is a project setting in .vbw/record.json .settings, set with `vbw config set` (D555), shown by `vbw config` and by the panel's settings pane: a pure server is marked read-only in one word, a mixed server lists its read-only tools by the names /mcp shows (D556); a malformed server or tool name is refused with a usage line naming the accepted form; the setting travels with the record to every clone.",
+        "With no MCP setting, every agent's effective tool set equals today's list (architect, qa: Read, Grep, Glob, Bash; lead: those plus Write, Edit, WebFetch; dev, debugger, docs: those plus Write, Edit; scout: those plus WebSearch, WebFetch), and a test pins these lists from plugin/agents/*.md so a change to any agent's tools fails a test (none pins them today).",
+        "With a setting, Dev, Debugger and Docs may use every named tool; Architect, Lead, Scout and QA may use a tool only when the user marked it read-only (its server marked as a whole, or the tool named); a tool whose name suggests reading (read_*, get_*, search_*) but carries no mark is refused for those roles; a refusal names the agent's role and `vbw config set` as the next step; each case is pinned by a test with fixtures for both a pure and a mixed server.",
+        "Any new or changed hook stays within its budget (own CPU per call at most 20 ms in tools/bench-hooks.sh), gives no allow answer, is inert outside a VBW project, and each of its answers has a test pinning its meaning (tests/standards.bats rules).",
+        "Inside a run, an agent's file changes through Write, Edit and Bash are judged as today by the guards and limited to the run's files; a file an MCP tool writes outside the plan's files is caught by the run's scope check (plugin/lib/cmd-prove.sh: 'changed X, which is not in the plan') and the docs state that an MCP tool's writes are judged after the fact, not before the call.",
+        "docs/ has one place (the Agents section of docs/workflows.md or a section of docs/guards.md, linked from the other) that says where the setting lives, the exact command form, the read-only mark, which roles get what, and the after-the-fact judgement of MCP writes; the config skill (plugin/skills/config/SKILL.md) knows the new key; README's settings mention is updated if it lists settings; the existing tests of docs wording pass.",
+        "Every test file of the changed areas (hooks-guard.bats, guard-*.bats, config tests, agents-checks.bats, workflows.bats, standards.bats) passes under /bin/bash 3.2 and bash 5."
+      ],
+      "proposed": "deep",
+      "tier": "deep",
+      "reasons": [
+        "requirements: 2",
+        "files: 21 (325981 bytes)",
+        "files: more than 2 in a repository tracking 1232 files",
+        "risk: none",
+        "breaks: R20, R128, R190, R233",
+        "guarded: R1 (C1), R2 (C2), R3 (C3), R12 (C11), R13 (C12), R14 (C13), R15 (C14), R22 (C19), R23 (C20), R24 (C23), R25 (C24), R27 (C21), R28 (C25), R31 (C27), R33 (C29), R35 (C31), R36 (C32), R38 (C33, C34), R39 (C36), R40 (C37), R43 (C42, C43), R44 (C44, C45), R45 (C39, C40, C41), R46 (C46), R47 (C47), R49 (C48), R50 (C51), R51 (C52, C53, C66), R52 (C58, C91), R53 (C54, C55), R55 (C56, C57), R57 (C59, C70, C71), R60 (C72, C94), R61 (C73, C74, C75, C76, C77), R62 (C78, C79, C80, C81, C82, C83, C93), R65 (C86, C87, C88, C89, C90), R69 (C110, C120, C122), R70 (C114), R71 (C115, C121), R73 (C98), R74 (C99, C100), R75 (C101), R76 (C102, C103), R77 (C104), R78 (C105, C106), R79 (C107), R80 (C108), R81 (C109, C111, C112, C113), R95 (C149, C150), R96 (C151, C152), R99 (C155), R101 (C179), R102 (C158, C159), R106 (C164, C165), R107 (C166, C167), R111 (C171, C172, C173, C174, C175), R114 (C178), R115 (C181), R116 (C182, C183), R118 (C184), R119 (C180), R120 (C185), R121 (C187, C188), R122 (C189), R123 (C190, C191), R127 (C194), R129 (C196), R130 (C197), R131 (C198), R132 (C199), R133 (C195), R134 (C201), R135 (C202), R144 (C208, C209), R146 (C211), R147 (C212, C215, C237), R148 (C213, C214, C216, C238), R149 (C217, C218, C219, C220, C221, C222), R150 (C223, C224, C225, C226, C227, C228, C229, C230), R151 (C231, C232), R152 (C233, C234), R153 (C235, C236, C239), R154 (C240), R156 (C242, C243), R157 (C244), R158 (C245), R159 (C246), R160 (C247, C263, C264), R161 (C248, C265, C266), R162 (C249), R163 (C250), R165 (C252), R166 (C253, C254, C255, C256, C267), R167 (C257, C258, C259, C260), R173 (C281, C282, C283, C284, C285, C286, C289), R177 (C287, C288), R178 (C290, C291, C292, C293, C294, C295, C296, C311), R179 (C297, C298, C299, C300, C301, C302, C303, C304, C305, C306, C312), R180 (C307, C308, C309, C310), R181 (C313, C314, C315, C316, C317, C318, C319, C320, C321), R182 (C322, C323, C324, C325, C326), R184 (C328, C329, C330, C331, C332, C333), R185 (C334, C335, C336, C337, C338, C339, C340, C341, C342, C343), R186 (C344, C345, C346, C347, C348), R187 (C349), R188 (C350, C351, C352, C353, C354, C355, C356, C357, C358, C359), R189 (C360, C361, C362, C363, C364, C365, C366, C367, C368, C369, C370, C371, C372, C373), R191 (C389, C390, C391, C392, C393, C394, C395, C396, C397, C398, C399, C400), R192 (C401, C402, C403, C404, C405, C406, C407, C408, C409, C410), R193 (C411, C412), R194 (C417, C418, C419), R196 (C415, C416), R197 (C413, C414), R198 (C423), R201 (C428, C429), R202 (C432, C433, C434, C435, C436, C437, C438, C439, C440, C441, C442, C443, C444, C445, C446, C447), R203 (C448, C449, C450), R204 (C451, C452, C453, C454), R205 (C455, C456, C457, C458, C467), R207 (C461, C462, C463), R208 (C464, C465, C466, C468), R209 (C469, C470, C471, C472, C473), R210 (C474, C475, C476), R211 (C477, C478, C479), R212 (C480, C481, C482), R213 (C483, C484), R215 (C488, C489, C490), R216 (C491, C492, C493), R217 (C494, C495), R219 (C497, C498, C499), R220 (C500, C501, C502, C503), R222 (C505, C506), R223 (C507, C508, C509), R224 (C512, C513, C514, C515, C516), R225 (C517, C518, C519), R228 (C522, C523, C524, C525), R229 (C526, C527, C528, C529), R230 (C530, C531), R231 (C532, C533), R234 (C535, C536), R235 (C538, C539), R236 (C537)",
+        "tests: project test command"
+      ],
+      "predicted": "deep"
+    },
+    {
+      "id": "P193",
+      "title": "No plain git commit bypasses vbw commit while VBW drives",
+      "reqs": [
+        "R239"
+      ],
+      "milestone": "M49",
+      "goal": "While VBW drives (an agent under a run lease, or VBW's own chat during an armed autonomous run or loop), every plain git history change is refused with vbw commit named as the next step, the vibe skill says the chat never commits plan work by hand and follows the proof's Next line, and the user's own commands are never checked.",
+      "criteria": [
+        "plugin/hooks/guard-bash.jq's agent refusal list (in_run, today commit|push|rebase|merge|pull|cherry-pick|revert|am) also refuses git commit-tree; tests/hooks-guard.bats pins commit-tree in its plain form and in the -C, `cd sub &&`, subshell and `sh -c` forms, each refusal containing 'vbw commit PLAN' as the next step.",
+        "From the main session (hook input without agent_type) while .vbw/runtime/auto.<session_id>.json exists (an armed autonomous run) or the record holds a loop that has not ended, the same commands (commit, commit-tree, push, rebase, merge, pull, cherry-pick, revert, am) in the same forms are refused with a reason that names the armed run or loop and `vbw commit` as the next step; the hook learns the armed state from the session's own arm file only, never another session's.",
+        "From the main session with no arm file and no live loop, every one of those commands is allowed as today (the user's own chat and terminal are never checked); `vbw commit ...` itself stays allowed from every caller; a regression test replays T209's command (`git commit -m \"...\" -- sub && git status --short && vbw prove`) from the main session: refused when armed, allowed when not.",
+        "The Bash guard's own CPU per call stays at most 20 ms in tools/bench-hooks.sh, no answer allows, and every new answer has a pinning test.",
+        "plugin/skills/vibe/SKILL.md states that the chat never commits plan work by hand (no git commit, commit-tree, merge, rebase, cherry-pick, revert or am on plan files), that commits go through `vbw commit` inside the run, and that after a proof the chat follows the proof's Next line; a test fails when those sentences leave the skill.",
+        "docs/guards.md and the refusal table in docs/workflows.md ('Every refusal and its next step') name the new refusals, when they apply (agent under a lease; chat while armed or in a loop) and that the user's own commands are never checked; the existing docs tests pass.",
+        "tests/hooks-guard.bats and the other guard-*.bats files pass under /bin/bash 3.2 and bash 5."
+      ],
+      "tier": "standard",
+      "reasons": [
+        "requirements: 1",
+        "files: 6 (143538 bytes)",
+        "files: more than 2 in a repository tracking 1232 files",
+        "risk: none",
+        "breaks: R128, R190, R233",
+        "guarded: R13 (C12), R14 (C13), R15 (C14), R22 (C19), R24 (C23), R25 (C24), R26 (C22), R28 (C25), R31 (C27), R37 (C35), R39 (C36), R40 (C37), R44 (C44, C45), R50 (C51), R51 (C52, C53, C66), R53 (C54, C55), R55 (C56, C57), R60 (C72, C94), R61 (C73, C74, C75, C76, C77), R65 (C86, C87, C88, C89, C90), R67 (C96), R69 (C110, C120, C122), R70 (C114), R72 (C116, C118), R73 (C98), R74 (C99, C100), R75 (C101), R76 (C102, C103), R77 (C104), R78 (C105, C106), R79 (C107), R80 (C108), R81 (C109, C111, C112, C113), R83 (C119), R95 (C149, C150), R96 (C151, C152), R98 (C154), R99 (C155), R100 (C156), R101 (C179), R106 (C164, C165), R107 (C166, C167), R111 (C171, C172, C173, C174, C175), R114 (C178), R116 (C182, C183), R118 (C184), R120 (C185), R121 (C187, C188), R122 (C189), R123 (C190, C191), R129 (C196), R130 (C197), R134 (C201), R135 (C202), R147 (C212, C215, C237), R148 (C213, C214, C216, C238), R149 (C217, C218, C219, C220, C221, C222), R150 (C223, C224, C225, C226, C227, C228, C229, C230), R151 (C231, C232), R156 (C242, C243), R157 (C244), R158 (C245), R159 (C246), R160 (C247, C263, C264), R161 (C248, C265, C266), R162 (C249), R163 (C250), R165 (C252), R166 (C253, C254, C255, C256, C267), R167 (C257, C258, C259, C260), R171 (C270), R177 (C287, C288), R178 (C290, C291, C292, C293, C294, C295, C296, C311), R179 (C297, C298, C299, C300, C301, C302, C303, C304, C305, C306, C312), R180 (C307, C308, C309, C310), R181 (C313, C314, C315, C316, C317, C318, C319, C320, C321), R182 (C322, C323, C324, C325, C326), R186 (C344, C345, C346, C347, C348), R188 (C350, C351, C352, C353, C354, C355, C356, C357, C358, C359), R191 (C389, C390, C391, C392, C393, C394, C395, C396, C397, C398, C399, C400), R192 (C401, C402, C403, C404, C405, C406, C407, C408, C409, C410), R193 (C411, C412), R194 (C417, C418, C419), R196 (C415, C416), R197 (C413, C414), R198 (C423), R201 (C428, C429), R203 (C448, C449, C450), R207 (C461, C462, C463), R209 (C469, C470, C471, C472, C473), R210 (C474, C475, C476), R211 (C477, C478, C479), R212 (C480, C481, C482), R213 (C483, C484), R215 (C488, C489, C490), R216 (C491, C492, C493), R219 (C497, C498, C499), R220 (C500, C501, C502, C503), R222 (C505, C506), R228 (C522, C523, C524, C525), R229 (C526, C527, C528, C529), R230 (C530, C531), R231 (C532, C533), R234 (C535, C536)",
+        "tests: project test command"
+      ],
+      "predicted": "standard"
+    },
+    {
+      "id": "P194",
+      "title": "The status line's step end time reaches the steptime scenario",
+      "reqs": [
+        "R240"
+      ],
+      "milestone": "M49",
+      "goal": "In the steptime real-user scenario the status line's step line is read with the same 'until around HH:MM' as the chat and the Comms pane from the step's first minute, the status line's render is pinned on a step note exactly as a run writes it, and the scenario passes again.",
+      "criteria": [
+        "tests/statusline-step.bats renders the status line from a build note with every key step_start writes today (kind, run, session, pid, started_at, ids, doing, parts, proof, first_end, end, late, units) plus the road key step_road_note_set adds, under a matching lease, at a clock within the step's first minute, and the working row reads '● working: building P1.1 · 0 of 1 · until around HH:MM' (no minutes prefix in the first minute) and, after the first minute, 'N min, until around HH:MM'; a proof note exactly as plugin/lib/proofsteps.sh writes it is rendered the same way.",
+        "If that render test shows the time missing on the real note shape, the cause is fixed in plugin/scripts/statusline.jq or vbw-statusline.sh and the fix is named in a decision; if the render test passes on the unchanged code, a decision supersedes the clause of D558 that places the cause in what the status line reads, with the evidence: commit d7f73771 (2026-10-24 16:54) changed the status line's wording from 'until HH:MM' to 'until around HH:MM' after the last pass (02:35 that day), and the scenario's sampler kept the old pattern.",
+        "tools/l3-suite.sh's steptime sampler (st_time 'until' at the status line column, lines 1369-1376) and the road scenario's status line pattern (line 1554) accept the wording the status line prints ('until around HH:MM', with an optional day word such as 'tomorrow'); the comment at lines 1312-1313 describes the status line's current wording.",
+        "A test fails whenever the status line's wording and the scenario's status line pattern diverge again: it renders statusline.jq with a note and runs the suite's status line pattern over the row, expecting the HH:MM of the note's end.",
+        "The steptime scenario is run on the fixed code and its result is committed to tools/l3-results/steptime.json only from a passing run (D551's rule), with facts.statusline_end equal to facts.chat_end and facts.comms_end and `at` on or after 2026-11-01; tests/l3-step-time.bats, statusline-step.bats and statusline-step-miss.bats pass under /bin/bash 3.2."
+      ],
+      "tier": "standard",
+      "reasons": [
+        "requirements: 1",
+        "files: 4 (267784 bytes)",
+        "files: more than 2 in a repository tracking 1232 files",
+        "risk: none",
+        "breaks: R41, R190",
+        "guarded: R4 (C4), R5 (C5), R8 (C8), R16 (C15), R34 (C30), R35 (C31), R42 (C38), R48 (C49, C50), R51 (C52, C53, C66), R59 (C68, C92), R61 (C73, C74, C75, C76, C77), R62 (C78, C79, C80, C81, C82, C83, C93), R64 (C84, C85), R65 (C86, C87, C88, C89, C90), R72 (C116, C118), R116 (C182, C183), R149 (C217, C218, C219, C220, C221, C222), R173 (C281, C282, C283, C284, C285, C286, C289), R180 (C307, C308, C309, C310), R184 (C328, C329, C330, C331, C332, C333), R185 (C334, C335, C336, C337, C338, C339, C340, C341, C342, C343), R189 (C360, C361, C362, C363, C364, C365, C366, C367, C368, C369, C370, C371, C372, C373), R191 (C389, C390, C391, C392, C393, C394, C395, C396, C397, C398, C399, C400), R192 (C401, C402, C403, C404, C405, C406, C407, C408, C409, C410), R199 (C424, C425, C430), R200 (C426, C427, C431), R201 (C428, C429), R202 (C432, C433, C434, C435, C436, C437, C438, C439, C440, C441, C442, C443, C444, C445, C446, C447), R205 (C455, C456, C457, C458, C467), R207 (C461, C462, C463), R208 (C464, C465, C466, C468), R209 (C469, C470, C471, C472, C473), R224 (C512, C513, C514, C515, C516), R228 (C522, C523, C524, C525), R235 (C538, C539), R237 (C544), R238 (C545)",
+        "tests: project test command"
+      ],
+      "predicted": "standard"
+    },
+    {
+      "id": "P195",
+      "title": "The Linux-only guard cost found at its step and removed",
+      "reqs": [
+        "R243"
+      ],
+      "milestone": "M49",
+      "goal": "The hook bench's step tables from GitHub's macOS and Ubuntu runners name the one guard step whose cost is Linux-only, docs/guards.md states it with its figures, and the cause is removed so that on the release's CI every runner's guard-to-reference quotient is within 1.25 times macOS's.",
+      "criteria": [
+        "tools/bench-hooks.sh's step table (VBW_BENCH_STEPS=1) splits the guard call finely enough to single out one step: at least the hook command's shell prelude alone (the part before jq), the guard program compiled with no input, the guard over each input with the record read, the reference compiled alone and the reference run, each as net CPU ms (startup subtracted) with its quotient to the reference; tests/bench-guard-steps.bats pins the new rows.",
+        "bench-steps.yml is run on macos-latest, ubuntu-latest and ubuntu-26.04 before and after the fix; the before tables name the step whose Linux quotient exceeds macOS's by more than the others (today: program run 1.87 vs 1.30, compile 1.75 vs 1.41, git input), and a decision records the run ids, the step and the cause.",
+        "docs/guards.md's bench section states the Linux-only step with the measured figures from GitHub's runners (replacing the claim that each Linux quotient is within 1.25 of macOS's, which PR #741 disproved: macOS 1.39 vs Ubuntu 26.04 1.82).",
+        "The cause is removed in the guard, the reference or the bench's method, never by a per-system allowance or a higher limit (D547: one nominal figure, no per-system allowance); the guard's behaviour is unchanged (tests/hooks-guard.bats and guard-*.bats pass) and the hook's own CPU stays at most 20 ms nominal.",
+        "On the pull request's CI release run (the sharded bench on macOS, ubuntu-latest and ubuntu-26.04), every runner's guard-to-reference quotient is within 1.25 times macOS's, with the figures quoted in the progress log; a run on the macOS runner whose reference varies as it did on 2026-11-01 (14.8-20.1 ms) is repeated rather than read as a pass."
+      ],
+      "tier": "deep",
+      "reasons": [
+        "requirements: 1",
+        "files: 4 (93672 bytes)",
+        "files: more than 2 in a repository tracking 1232 files",
+        "risk: CI (.github/workflows/bench-steps.yml)",
+        "breaks: R128, R190, R233",
+        "guarded: R15 (C14), R61 (C73, C74, C75, C76, C77), R75 (C101), R76 (C102, C103), R77 (C104), R83 (C119), R120 (C185), R149 (C217, C218, C219, C220, C221, C222), R150 (C223, C224, C225, C226, C227, C228, C229, C230), R151 (C231, C232), R160 (C247, C263, C264), R162 (C249), R165 (C252), R166 (C253, C254, C255, C256, C267), R177 (C287, C288), R178 (C290, C291, C292, C293, C294, C295, C296, C311), R179 (C297, C298, C299, C300, C301, C302, C303, C304, C305, C306, C312), R180 (C307, C308, C309, C310), R181 (C313, C314, C315, C316, C317, C318, C319, C320, C321), R184 (C328, C329, C330, C331, C332, C333), R185 (C334, C335, C336, C337, C338, C339, C340, C341, C342, C343), R188 (C350, C351, C352, C353, C354, C355, C356, C357, C358, C359), R192 (C401, C402, C403, C404, C405, C406, C407, C408, C409, C410), R194 (C417, C418, C419), R198 (C423), R210 (C474, C475, C476), R219 (C497, C498, C499), R222 (C505, C506), R224 (C512, C513, C514, C515, C516), R231 (C532, C533), R234 (C535, C536), R235 (C538, C539)",
+        "tests: project test command"
+      ],
+      "predicted": "deep"
     }
   ],
   "plans": [
@@ -60902,6 +61408,221 @@
           ]
         }
       ]
+    },
+    {
+      "id": "P192.1",
+      "phase": "P192",
+      "title": "Probe: how Claude Code gives a plugin agent MCP tools",
+      "reqs": [
+        "R241"
+      ],
+      "files": [
+        "tools/probe-mcp-tools.sh",
+        "tools/probes/mcp-tools.json"
+      ],
+      "after": [],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "tools/probe-mcp-tools.sh (bash 3.2, shellcheck-clean): under .vbw/runtime/scratch/ it writes a throwaway plugin (agents/reader.md with the tools line under test; a PreToolUse hook that appends the hook input's agent_type to a scratch file) and a tiny stdio MCP server (one node script answering initialize, tools/list with read_note and write_note, tools/call) registered in a scratch .mcp.json named probe; one headless `claude -p --plugin-dir` session per case, each asking the agent to call the server's read_note and report the tool result: server_wildcard (`tools: Read, mcp__probe__*`), single_tool (`tools: Read, mcp__probe__read_note`), unconfigured_beside (`tools: Read, mcp__nosuch__*, mcp__probe__*`), agent_type (what the hook saw for an agent started as <plugin>:reader), foreign_agent (a Dynamic workflow of a second throwaway plugin calling agent() with agentType vbw:dev and <plugin>:reader: which agents it reaches); each case records {tools_line, result} in the words the session gave; the script prints the table and writes tools/probes/mcp-tools.json {probe: \"mcp-tools\", at, claude_version, cases, tools_entry, mechanism, decision}",
+        "Run the probe on this machine (`claude --version` recorded) and commit tools/probes/mcp-tools.json: tools_entry is the entry form the probe showed Claude Code honours as a pool of every MCP tool in a plugin agent's tools line (expected `mcp__*`; if a bare `mcp__*` is not honoured, the form that is: the broadest working one); mechanism is 'tools pool entry in every agent plus the MCP guard by role from record.settings.mcp' when the probe supports it; if no tools-line form gives a pool, block this plan with the probe's evidence so the Lead replans (the alternatives, per-project agent copies or dropping tools: for disallowedTools, are then on the table)",
+        "Record the decision: `vbw decide \"MCP tools reach VBW's agents by <mechanism>; probe tools/probe-mcp-tools.sh (<at>, Claude Code <version>): server wildcard <result>, single tool <result>, unconfigured server beside resolving entries <result>, hook agent_type <value>, foreign agent <result>\" \"<why per-project agent copies (stale on a plugin update) and disallowedTools denylists (new built-in tools leak in) were not taken>\"`; write its id (Dnnn) into the result file's decision field and commit the file again"
+      ]
+    },
+    {
+      "id": "P192.2",
+      "phase": "P192",
+      "title": "The mcp setting: vbw config set mcp, vbw config, schema 7, the panel row, the config skill and the README",
+      "reqs": [
+        "R241"
+      ],
+      "files": [
+        "plugin/lib/cmd-config.sh",
+        "plugin/lib/record.jq",
+        "plugin/lib/record.sh",
+        "plugin/hooks/panel-settings.js",
+        "plugin/skills/config/SKILL.md",
+        "README.md",
+        "docs/record.md"
+      ],
+      "after": [],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "plugin/lib/cmd-config.sh: `vbw config set mcp VALUE`, VALUE being entries separated by spaces, each SERVER (open to the writing agents), SERVER:read-only (a pure server, every agent) or SERVER:read-only=TOOL,TOOL (a mixed server: these tools for every agent, the rest for the writing agents), names matching ^[A-Za-z0-9][A-Za-z0-9_.-]*$, no server twice, no empty tool, stored as .settings.mcp = [{server, read_only: true|false|[tools]}] in the order given, printed `mcp = VALUE`; `default` removes it; anything else is a usage error (exit 2) whose line names the accepted forms `SERVER, SERVER:read-only or SERVER:read-only=TOOL,TOOL (names: letters, digits, _ . -), separated by spaces, or default`; `vbw config` prints `mcp: <entries as set>` or `mcp: none` after check_budget; the header comment and the unknown-setting list name the key",
+        "plugin/lib/record.sh and record.jq: schema 7 while settings.mcp is present (VBW_SCHEMA_MAX=7; the writer picks 7 when .settings.mcp exists, else 6/5/4 as today); the validator: settings.mcp is a non-empty array of {server, read_only} objects with the name rule, read_only true, false or a non-empty array of tool names, servers unique, 'settings.mcp needs schema 7' under a lower schema, 'schema 7 is only for a record with settings.mcp' without it, the protected rules extended to schema 7, mcp added to the known settings keys; docs/record.md's schema row and settings description updated; the glance needs no change (settings is already in it)",
+        "plugin/hooks/panel-settings.js: a read-only row { key: 'mcp', label: 'MCP tools', ... } under its own group ('Agents'), drawn from the kernel's `mcp:` line with the value in the accent, no controls (no Button), and the note 'vbw config set mcp SERVER[:read-only[=TOOL,TOOL]]' beside it; settingArgv returns null for the key, so no press changes it",
+        "plugin/skills/config/SKILL.md: a `mcp` line giving the three entry forms (SERVER, SERVER:read-only, SERVER:read-only=TOOL,TOOL), the read-only mark's meaning (every agent; else only Dev, Debugger and Docs) and default; README.md's settings table: a row | `mcp` | ... | naming the read-only mark; the config tests, tests/config-mcp.bats and tests/panel/settings.test.mjs pass under /bin/bash 3.2 and bash 5"
+      ]
+    },
+    {
+      "id": "P192.4",
+      "phase": "P192",
+      "title": "Docs: MCP tools by role",
+      "reqs": [
+        "R241",
+        "R242"
+      ],
+      "files": [
+        "docs/guards.md",
+        "docs/workflows.md"
+      ],
+      "after": [],
+      "status": "planned",
+      "role": "docs",
+      "tasks": [
+        "docs/guards.md: a section '## MCP tools by role' saying the setting lives in record.settings.mcp (shared through the record with every clone), the command `vbw config set mcp \"SERVER SERVER:read-only SERVER:read-only=TOOL,TOOL\"` and `default`, the marks (a pure server read-only in one word; a mixed server's read-only tools by the names /mcp shows), which roles get what (Dev, Debugger and Docs every named tool; Architect, Lead, Scout and QA only a tool marked read-only, never by a guess from a name such as read_, get_ or search_), the refusal's words and its next step (the role named, `vbw config set mcp`), and that a file an MCP tool writes is judged after the fact by the run's scope check ('<commit> (<plan>) changed <file>, which is not in the plan'), never before the call, because the guards see Write, Edit and Bash calls, not what a server does inside",
+        "docs/guards.md's refusal table: a row for an MCP tool the project has not opened to the agent's role (next step: the user adds or marks it with vbw config set mcp); the engineering section names the new guard (guard-mcp.jq, PreToolUse on mcp__ tools) among the hooks the bench measures",
+        "docs/workflows.md: the Agents section gets a paragraph on MCP tools by role linking to docs/guards.md's section; the table 'Every refusal and its next step' gets the row 'Guards: an MCP tool the project has not opened to the agent's role | The user adds or marks it with `vbw config set mcp`'"
+      ]
+    },
+    {
+      "id": "P192.3",
+      "phase": "P192",
+      "title": "The MCP guard: named tools reach agents by role",
+      "reqs": [
+        "R241",
+        "R242"
+      ],
+      "files": [
+        "plugin/hooks/guard-mcp.jq",
+        "plugin/hooks/hooks.json",
+        "plugin/agents/architect.md",
+        "plugin/agents/lead.md",
+        "plugin/agents/dev.md",
+        "plugin/agents/qa.md",
+        "plugin/agents/scout.md",
+        "plugin/agents/debugger.md",
+        "plugin/agents/docs.md",
+        "tools/bench-hooks.sh"
+      ],
+      "after": [
+        "P192.1",
+        "P193.1",
+        "P195.1"
+      ],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "plugin/hooks/guard-mcp.jq (includes holder and common like the other guards; guard_context(false)): no answer unless the hook input is a VBW project's and its agent_type matches ^vbw:(architect|lead|dev|qa|scout|debugger|docs)$ (the main session, another plugin's agent and a project without a record are never judged); the server is the setting entry whose `mcp__<server>__` is the longest prefix of tool_name; no entry: deny '<tool>: this project's MCP setting names no server <server> for VBW's agents (mcp: <entries or none>)\\nNext: the user adds it with vbw config set mcp \"<entries> <server>\" for the writing agents (dev, debugger, docs) or \"<entries> <server>:read-only\" for every agent; as the <role>, work without it meanwhile'; a writing role (dev, debugger, docs), or read_only true, or the tool's name in a read_only list: no answer; else deny '<tool> is not marked read-only, so the <role> (a reading agent: architect, lead, scout, qa) may not call it; VBW never guesses from a name such as read_, get_ or search_\\nNext: the user marks it with vbw config set mcp \"... <server>:read-only\" (the whole server) or \"... <server>:read-only=<tool>\" (this tool); meanwhile work without it'; every answer goes through common.jq's deny (deny plus systemMessage), never allow",
+        "plugin/hooks/hooks.json: a PreToolUse entry with matcher `mcp__.*` whose command is the Bash guard's shell prelude followed by jq -f guard-mcp.jq over the same inputs (the glance when current, else the record, then end.json), ending in the fail-closed handler like the others; tests/standards.bats's shape rule, tests/hook-answers.bats (R242 cases) and tests/guard-mcp.bats pass under /bin/bash 3.2 and bash 5",
+        "plugin/agents/*.md (all seven): the tools line keeps today's built-in tools and gains, last, the one pool entry tools/probes/mcp-tools.json names as tools_entry (expected `mcp__*`); one sentence in each agent's body: 'MCP tools: this project's setting (vbw config set mcp) names which you may use for your role; a refusal names the user's next step, so report it and go on without the tool'; tests/agents-tools.bats, tests/workflows.bats and tests/agents-checks.bats pass",
+        "tools/bench-hooks.sh: GUARD_INPUTS gains mcp, an input of a vbw:qa agent calling mcp__github__get_issue on the bench's record (no setting: the refusal path), measured as 'guard (mcp)', 'guard (mcp, large record)' and 'guard (mcp, N checks)' against the 20 ms budget like the other guard inputs; the guards() function picks the hook by tool_name as it does; `VBW_BENCH_ONLY='guard (mcp' bash tools/bench-hooks.sh` within budget on this machine"
+      ]
+    },
+    {
+      "id": "P193.1",
+      "phase": "P193",
+      "title": "The Bash guard: commit-tree for agents; the chat's git history changes while armed or in a loop",
+      "reqs": [
+        "R239"
+      ],
+      "files": [
+        "plugin/hooks/guard-bash.jq",
+        "plugin/hooks/common.jq",
+        "plugin/hooks/hooks.json"
+      ],
+      "after": [],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "plugin/hooks/hooks.json (Bash entry) and common.jq: the session's arm files reach jq as positional arguments, `--args \"$p\"/.vbw/runtime/auto.*.json` after end.json (the shell expands the glob; an unmatched pattern stays literal and names no session; nothing changes before `jq`, so tests/standards.bats's prelude rule holds); guard_context gains armed: true when the hook input's session_id is non-empty and one positional path ends in /auto.<that session_id>.json, so the hook reads the session's own arm file only; docs comment at the top of common.jq names the new input",
+        "plugin/hooks/guard-bash.jq in_run: commit-tree joins commit|push|rebase|merge|pull|cherry-pick|revert|am; the reason stays 'git <s> by a builder: commits go through vbw commit PLAN \"type(scope): description\"' and ends with 'Next: run vbw commit PLAN \"type(scope): description\" with the files you changed'",
+        "plugin/hooks/guard-bash.jq: a new rule chat_drives($g) for a hook input with no agent_type ($g.lease null) while $g.armed or $g.loop_on: the same git commands, in every form the guard reads (plain, -C, cd &&, subshell, sh -c, eval), are refused with 'git <s> by VBW's chat while an autonomous run is armed' (or 'while a loop runs'): 'plan work is committed by vbw commit PLAN \"type(scope): description\" inside the run, never by hand\\nNext: follow the proof's Next line, or run vbw commit PLAN \"type(scope): description\"; the user commits by hand from their own terminal'; `vbw commit`, read-only git commands and every command outside that list stay unjudged; the rule sits after everywhere and in_project and before in_run in the chain; may_matter is unchanged (git is a word of it)",
+        "Run under /bin/bash 3.2 and bash 5: tests/hooks-guard.bats, tests/guard-*.bats, tests/hook-answers.bats, tests/refusal-next-step.bats, tests/standards.bats; `VBW_BENCH_ONLY='guard (' bash tools/bench-hooks.sh` shows the Bash guard's own CPU within the 20 ms budget with the new argument"
+      ]
+    },
+    {
+      "id": "P193.2",
+      "phase": "P193",
+      "title": "The vibe skill and the docs say the chat never commits plan work by hand",
+      "reqs": [
+        "R239"
+      ],
+      "files": [
+        "plugin/skills/vibe/SKILL.md",
+        "docs/guards.md",
+        "docs/workflows.md"
+      ],
+      "after": [
+        "P192.4"
+      ],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "plugin/skills/vibe/SKILL.md, Rules: 'The chat never commits plan work by hand (no git commit, commit-tree, merge, rebase, cherry-pick, revert or am on plan files): commits go through `vbw commit` inside the run (the workflows' agents run it). After a proof the chat follows the proof's Next line, never a commit of its own.'; the prove step says the same in one clause",
+        "docs/guards.md: the refusal table's git row reads `git commit`, `commit-tree`, `push`, ...; a new row for the chat (a hook input with no agent_type) while its autonomous run is armed (.vbw/runtime/auto.<session>.json) or the record holds a loop that has not ended, the same commands refused with vbw commit as the next step, and the sentence 'With no armed run and no loop the chat is not checked: the user's own commands are never checked, in the chat or the terminal'; the lease paragraph adds commit-tree",
+        "docs/workflows.md: the lease bullet adds commit-tree; the table 'Every refusal and its next step' gets 'Guards: `git commit-tree` (with commit, push, rebase, merge, pull, cherry-pick, revert, am) by an agent under a lease | Commit through `vbw commit PLAN \"type(scope): description\"`' and 'Guards: a git history change by VBW's chat while an autonomous run or loop is armed | Follow the proof's Next line, or `vbw commit`; the user's own commands are never checked'; tests/vibe-commit-rule.bats and the existing docs tests pass"
+      ]
+    },
+    {
+      "id": "P194.1",
+      "phase": "P194",
+      "title": "The suite reads the status line's 'until around HH:MM'; the scenario passes again",
+      "reqs": [
+        "R240"
+      ],
+      "files": [
+        "tools/l3-suite.sh",
+        "plugin/scripts/statusline.jq",
+        "plugin/scripts/vbw-statusline.sh",
+        "tools/l3-results/steptime.json"
+      ],
+      "after": [],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "tools/l3-suite.sh: one top-level constant beside RESULTS and STEPS, `L3_STATUS_UNTIL='until around ([A-Za-z]+ )?[0-9]{2}:[0-9]{2}'` (the status line's wording since d7f73771, with an optional day word), used by the steptime sampler's status line column (st_time takes the whole pattern: `sl=$(printf '%s\\n' \"$sw_status\" | st_time \"$L3_STATUS_UNTIL\")`, the chat and Comms keep 'until around') and by the road scenario's `sl=` line; the comment above scenario_steptime says the status line prints 'until around HH:MM'",
+        "Run `PATH=\"/bin:$PATH\" bats --filter R240 tests/statusline-step.bats`: the two render cases on the real note shapes pass on the unchanged status line (they did at planning), so record `vbw decide \"R240: the end time never reached the steptime scenario because its sampler read the status line with 'until HH:MM' while the status line has printed 'until around HH:MM' since d7f73771 (2026-10-24 16:54, after the last pass at 02:35); the render on a note exactly as a run writes it is pinned by tests/statusline-step.bats; supersedes D558's clause placing the cause in what the status line reads\" \"<the evidence>\"`; if a render case fails instead, fix plugin/scripts/statusline.jq or vbw-statusline.sh and name the fix in the decision",
+        "Run the steptime scenario in the real Claude Code window (`bash tools/l3-suite.sh steptime`, L3) and commit tools/l3-results/steptime.json only from a passing run (D551): facts.statusline_end equal to facts.chat_end and facts.comms_end, at on or after 2026-11-01; a failing run is read from its samples file and fixed before a second run, never committed",
+        "Run under /bin/bash 3.2: tests/l3-step-time.bats, tests/statusline-step.bats, tests/statusline-step-miss.bats, tests/l3-road.bats"
+      ]
+    },
+    {
+      "id": "P195.1",
+      "phase": "P195",
+      "title": "The step table singles out the Linux-only step and its cause is removed",
+      "reqs": [
+        "R243"
+      ],
+      "files": [
+        "tools/bench-hooks.sh",
+        "plugin/hooks/guard-bash.jq",
+        ".github/workflows/bench-steps.yml"
+      ],
+      "after": [
+        "P193.1"
+      ],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "tools/bench-hooks.sh VBW_BENCH_STEPS=1: the table keeps the gross rows 'sh startup' and 'jq startup' and gives net rows (startup subtracted), each cell 'N.N (Q.QQ)' with Q the quotient to the reference run's cell: 'shell prelude' (the hooks.json command cut before `jq`, run with the input, minus sh startup), 'program compile' (the guard over empty inputs minus jq startup), 'program run' (the whole hooks.json call with the input and the record read, minus sh and jq startup), 'reference compile' (reference.jq over empty inputs minus jq startup) and 'reference run' (the reference call minus startup, so its own quotient is 1.00); the method line says 'net of the sh and jq startup; the quotient in parentheses is to the reference run'; the two R233 cases keep passing (the rows they name stay)",
+        "Before tables: this Mac, tools/test-linux.sh's ubuntu:24.04 and ubuntu:26.04 containers, and GitHub's macos-latest, ubuntu-latest and ubuntu-26.04 through .github/workflows/bench-steps.yml (`gh workflow run bench-steps.yml --ref <this branch>` once the user has pushed the branch; this plan's note names the run ids); the one step whose Linux quotient exceeds macOS's by more than the others is named",
+        "Probe the Architect's candidate causes with the step rows (the reference's regexes are shaped unlike the guard's long alternations and lookarounds, so compile costs differ per platform's oniguruma; the hook's shell prelude; the record read) and remove the cause in the guard, the reference or the bench's method (never a per-system allowance or a higher limit, D547); the guard's behaviour is unchanged (tests/hooks-guard.bats, guard-*.bats, hook-answers.bats, standards.bats pass under /bin/bash 3.2) and `bash tools/bench-hooks.sh` keeps every guard case within 20 ms",
+        "After tables on the same runners (a macOS run whose reference varies as on 2026-11-01, 14.8-20.1 ms, is repeated); `vbw decide \"R243: the Linux-only guard step is <step>: <before figures per runner> ... <after figures>; cause <cause>, removed by <change>; bench-steps.yml runs <ids>\" \"<why this change and not the others>\"`; bench-steps.yml gains nothing but, if needed, a line printing the reference's spread so a noisy run is visible"
+      ]
+    },
+    {
+      "id": "P195.2",
+      "phase": "P195",
+      "title": "docs/guards.md states the Linux-only step with its figures",
+      "reqs": [
+        "R243"
+      ],
+      "files": [
+        "docs/guards.md"
+      ],
+      "after": [
+        "P195.1",
+        "P193.2"
+      ],
+      "status": "planned",
+      "role": "docs",
+      "tasks": [
+        "docs/guards.md bench section: replace the sentence claiming each Linux quotient within 1.25 of macOS's (disproved by PR #741: macOS 1.39, Ubuntu 26.04 1.82) by a table of the step figures from GitHub's three runners (rows macos-latest, ubuntu-latest, ubuntu-26.04; the net ms and quotient of each step), one sentence naming the Linux-only step by its row name and the cause found, and the 1.25 target as measured on the pull request's CI after the fix",
+        "Keep the reference table and the net-of-startup explanation consistent with the new rows (reference compile and reference run; shell prelude), naming bench-steps.yml as the workflow that measured them and the decision's run ids",
+        "tests/bench-linux-step-docs.bats and tests/bench-limits-docs.bats pass"
+      ]
     }
   ],
   "fixes": [
@@ -68007,6 +68728,30 @@
       "at": "2026-10-31T23:36:39Z",
       "text": "Contract approved: 227 requirements, 540 checks, 574 plans (c8c289118e7b)",
       "plans": []
+    },
+    {
+      "id": "D555",
+      "text": "MCP tool list lives in the project's shared VBW record, set with vbw config and shown by vbw config and the panel (#694)",
+      "why": "One setting per project for every clone, like Claude Code's own .mcp.json; a teammate without a server just gets no such tool. Lead decision under the owner's mandate, 2026-11-01.",
+      "at": "2026-11-01T12:32:34Z"
+    },
+    {
+      "id": "D556",
+      "text": "Read-only marks: a pure server is marked read-only in one word, a mixed server lists its few read-only tools by the names /mcp shows (#694)",
+      "why": "A whole-server mark is wrong for mixed servers such as context-mode (runs commands and searches); per tool only is too heavy for pure servers. Lead decision, 2026-11-01.",
+      "at": "2026-11-01T12:32:37Z"
+    },
+    {
+      "id": "D557",
+      "text": "R239 reworded: add git commit-tree to the agent refusal; hold VBW's own chat to the same rule while it drives on its own (armed autonomous run or loop, .vbw/runtime/auto.SESSION.json), refusal naming vbw commit; the vibe skill also states that the chat never commits plan work by hand and follows the proof's Next line; the user's own terminal is never checked",
+      "why": "The planning research showed the T209 commit came from the chat after the run ended, not from an agent; agents are already refused every form but commit-tree. Enforcing while VBW drives plus a written rule when the user drives keeps the user free to step in. Lead decision, 2026-11-01.",
+      "at": "2026-11-01T12:32:39Z"
+    },
+    {
+      "id": "D558",
+      "text": "R240 reworded: the status line shows the same end time as the chat and Comms in the steptime scenario; the cause is found in what the status line reads, pinned by a render test fed a step note exactly as a run writes it, plus the scenario passing",
+      "why": "The planning research showed the end time already precedes the holder and the row was not truncated; the status line never received the end time in about 120 samples. Lead decision, 2026-11-01.",
+      "at": "2026-11-01T12:32:41Z"
     }
   ],
   "commands": {
@@ -77089,6 +77834,17 @@
         "ended": "2026-11-01T12:31:51Z",
         "cost": {
           "usd": 5.741746
+        }
+      },
+      {
+        "id": "plan-20261101T123347Z",
+        "kind": "plan",
+        "session": "0ee781c3-c5b6-4a6c-889f-04b89f1fba4a",
+        "milestone": "M49",
+        "started": "2026-11-01T12:33:47Z",
+        "ended": "2026-11-01T13:20:05Z",
+        "cost": {
+          "usd": 15.403239
         }
       }
     ],

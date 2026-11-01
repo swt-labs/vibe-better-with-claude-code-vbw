@@ -51,3 +51,34 @@ row() { printf '%s\n' "$output" | grep -E "^$1( |\t)"; }
   grep -q 'tools/bench-hooks.sh' "$wf"
   grep -q 'jq --version' "$wf" || { echo "the job does not print jq's version, so the table cannot be read against it"; false; }
 }
+
+# R243 (T212): the step table splits one guard call finely enough to single out the step
+# whose cost is Linux-only. Beside the gross startup rows, each net row (startup subtracted)
+# carries its quotient to the reference run in parentheses: the hook command's shell prelude
+# alone (the part before jq), the guard program compiled with no input, the guard over each
+# input with the record read, the reference compiled alone and the reference run.
+
+# cells ROW: the row's cells after its label, as 'N.N (Q.QQ)' pairs or bare figures.
+cells() { row "$1" | head -1 | sed -E "s/^$1[[:space:]]+//"; }
+
+@test "R243: the table has the net rows shell prelude, program compile, program run, reference compile and reference run, each with four figures and four quotients" {
+  run env VBW_BENCH_STEPS=1 VBW_BENCH_RUNS=2 VBW_HOOK_BUDGET_MS=100000 VBW_STATUSLINE_BUDGET_MS=100000 bash "$BENCH"
+  [ "$status" -eq 0 ] || { echo "$output"; false; }
+  local label
+  for label in 'shell prelude' 'program compile' 'program run' 'reference compile' 'reference run'; do
+    [ -n "$(row "$label")" ] || { echo "no row for $label:"; echo "$output"; false; }
+    [ "$(cells "$label" | grep -oE '(^|[[:space:]])-?[0-9]+\.[0-9]+ \([0-9]+\.[0-9]{2}\)' | wc -l | tr -d ' ')" -ge 4 ] \
+      || { echo "the $label row has fewer than four 'ms (quotient)' cells: $(row "$label")"; false; }
+  done
+  for label in 'sh startup' 'jq startup'; do
+    [ -z "$(cells "$label" | grep -oE '\([0-9]+\.[0-9]{2}\)')" ] || { echo "the gross $label row carries a quotient: $(row "$label")"; false; }
+  done
+}
+
+@test "R243: the reference run's quotient is 1.00 by definition, and the method line says the net rows subtract the startup and name their quotient to the reference run" {
+  run env VBW_BENCH_STEPS=1 VBW_BENCH_RUNS=2 VBW_HOOK_BUDGET_MS=100000 VBW_STATUSLINE_BUDGET_MS=100000 bash "$BENCH"
+  [ "$status" -eq 0 ] || { echo "$output"; false; }
+  [ "$(cells 'reference run' | grep -oE '\([0-9]+\.[0-9]{2}\)' | sort -u)" = "(1.00)" ] || { echo "the reference run row is not its own unit: $(row 'reference run')"; false; }
+  [[ "$output" == *"net of"*"startup"* ]] || { echo "the method line does not say the net rows subtract the startup:"; echo "$output"; false; }
+  [[ "$output" == *"quotient"* ]] || { echo "the method line does not name the quotient:"; echo "$output"; false; }
+}

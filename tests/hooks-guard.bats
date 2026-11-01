@@ -421,3 +421,88 @@ allowed_sh() {
   run as_agent Bash '{"command": "vbw qa finding R1 \"no receipt\""}'
   [ -z "$output" ]
 }
+
+# R239 (T209, D557): no plain git history change bypasses vbw commit while VBW drives.
+# An agent under a lease is refused git commit-tree as it is refused commit (in every form
+# the guard reads: plain, -C, cd &&, a subshell, sh -c). VBW's own chat (a hook input with no
+# agent_type) is refused the same commands while its own autonomous run is armed
+# (.vbw/runtime/auto.SESSION.json, read for the session's own id only) or the record holds
+# a loop that has not ended; with neither, the chat's commands are allowed as today, since
+# the user's own commands are never checked.
+
+# chat_call COMMAND [SESSION]: the guard's decision on a Bash call from the main session.
+chat_call() {
+  jq -nc --arg c "$1" --arg s "${2:-s1}" --arg d "$PROJECT" \
+    '{hook_event_name: "PreToolUse", session_id: $s, tool_name: "Bash", cwd: $d, tool_input: {command: $c}}' \
+    | vbw_hook PreToolUse Bash
+}
+chat_reason() { chat_call "$1" "${2:-s1}" | jq -rn '[inputs][0].hookSpecificOutput.permissionDecisionReason // "allow"'; }
+
+R239_FORMS=('git commit-tree HEAD^{tree} -m wip' 'git -C . commit-tree HEAD^{tree} -m wip' 'cd sub && git commit-tree HEAD^{tree} -m wip'
+  '(git commit-tree HEAD^{tree} -m wip)' "sh -c 'git commit-tree HEAD^{tree} -m wip'")
+
+@test "R239: an agent under a lease is refused git commit-tree in its plain, -C, cd &&, subshell and sh -c forms, each naming vbw commit PLAN" {
+  lease build '["src/pay.js"]'
+  local c r
+  for c in "${R239_FORMS[@]}"; do
+    r=$(why "$c")
+    [ "$r" != allow ] || { echo "not refused: $c"; false; }
+    [[ "$r" == *"commit-tree"* && "$r" == *"vbw commit PLAN"* ]] || { echo "the refusal of '$c' does not name commit-tree and vbw commit PLAN: $r"; false; }
+  done
+}
+
+@test "R239: while this session's autonomous run is armed, the chat is refused every git history change, naming the armed run and vbw commit" {
+  "$VBW" auto on s1 > /dev/null
+  local c r
+  for c in 'git commit -m wip' 'git commit-tree HEAD^{tree} -m wip' 'git push' 'git rebase main' 'git merge feature' 'git pull' 'git cherry-pick abc' 'git revert HEAD' 'git am patch.mbox' \
+           'git -C . commit -m wip' 'cd sub && git commit -m wip' '(git commit -m wip)' "sh -c 'git commit -m wip'"; do
+    r=$(chat_reason "$c")
+    [ "$r" != allow ] || { echo "not refused while armed: $c"; false; }
+    [[ "$r" == *"armed"* && "$r" == *"vbw commit"* ]] || { echo "the refusal of '$c' names neither the armed run nor vbw commit: $r"; false; }
+    [[ "$r" == *"Next:"* ]] || { echo "no next step: $r"; false; }
+  done
+}
+
+@test "R239: while the record holds a loop that has not ended, the chat is refused the same commands, naming the loop" {
+  jq --arg at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" '.loop = {session: "s1", started_at: $at, items: []}' .vbw/record.json > "$TEST_ROOT/loop.json" && cp "$TEST_ROOT/loop.json" .vbw/record.json
+  local c r
+  for c in 'git commit -m wip' 'git commit-tree HEAD^{tree} -m wip' 'git rebase main' 'git cherry-pick abc'; do
+    r=$(chat_reason "$c")
+    [ "$r" != allow ] || { echo "not refused in a loop: $c"; false; }
+    [[ "$r" == *"loop"* && "$r" == *"vbw commit"* ]] || { echo "the refusal of '$c' names neither the loop nor vbw commit: $r"; false; }
+  done
+  # An ended loop holds no one.
+  jq --arg at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" '.loop.ended = $at' .vbw/record.json > "$TEST_ROOT/loop.json" && cp "$TEST_ROOT/loop.json" .vbw/record.json
+  [ "$(chat_reason 'git commit -m wip')" = allow ] || { echo "refused after the loop ended"; false; }
+}
+
+@test "R239: the hook reads the session's own arm file only: another session's armed run never holds this chat" {
+  "$VBW" auto on other > /dev/null
+  [ "$(chat_reason 'git commit -m wip' s1)" = allow ] || { echo "held by another session's arm file: $(chat_reason 'git commit -m wip' s1)"; false; }
+  [ "$(chat_reason 'git commit -m wip' other)" != allow ] || { echo "the armed session itself is not held"; false; }
+  # A hook input with no session id is nobody's armed run.
+  run bash_call 'git commit -m wip'
+  [ -z "$output" ] || { echo "held with no session id: $output"; false; }
+}
+
+@test "R239: with no arm file and no live loop, the chat's git commands are allowed as today, and vbw commit stays allowed from every caller" {
+  local c
+  for c in 'git commit -m wip' 'git commit-tree HEAD^{tree} -m wip' 'git push' 'git rebase main' 'git merge feature' 'git pull' 'git cherry-pick abc' 'git revert HEAD' 'git am patch.mbox'; do
+    [ "$(chat_reason "$c")" = allow ] || { echo "the user's own chat was checked: $c -> $(chat_reason "$c")"; false; }
+  done
+  "$VBW" auto on s1 > /dev/null
+  [ "$(chat_reason 'vbw commit P1.1 "feat(pay): card form"')" = allow ] || { echo "vbw commit refused while armed"; false; }
+  [ "$(chat_reason 'git status && git log -3')" = allow ] || { echo "a read-only git command refused while armed"; false; }
+  lease build '["src/pay.js"]'
+  allowed_sh 'vbw commit P1.1 "feat(pay): card form"'
+}
+
+@test "R239 (T209): the chat's 'git commit -- sub && git status --short && vbw prove' after a failed proof is refused when armed and allowed when not" {
+  local c='git commit -m "fix(sub): greet" -- sub && git status --short && vbw prove'
+  [ "$(chat_reason "$c")" = allow ] || { echo "refused with no armed run: $(chat_reason "$c")"; false; }
+  "$VBW" auto on s1 > /dev/null
+  local r
+  r=$(chat_reason "$c")
+  [ "$r" != allow ] || { echo "T209's command was not refused while armed"; false; }
+  [[ "$r" == *"git commit"* && "$r" == *"vbw commit"* ]] || { echo "$r"; false; }
+}

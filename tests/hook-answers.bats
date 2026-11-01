@@ -228,3 +228,28 @@ POST='["hookSpecificOutput.additionalContext","hookSpecificOutput.hookEventName"
   grep -qF 'tools/check-hook-answers.sh' "$REPO_ROOT/tests/standards.bats"
   grep -qF 'tools/check-hook-answers.sh' "$REPO_ROOT/tests/standards-selftest.bats"
 }
+
+# R242 (#694): the MCP guard's answers, pinned like the other guards'.
+mcp_call() {
+  jq -nc --arg t "$1" --arg a "${2:-}" --arg d "$PROJECT" \
+    '{hook_event_name: "PreToolUse", session_id: "s1", tool_name: $t, cwd: $d, tool_input: {query: "x"}}
+     + (if $a == "" then {} else {agent_id: "a1", agent_type: $a} end)' | vbw_hook PreToolUse "$1"
+}
+
+@test "R242 R128: guard-mcp.jq deny and systemMessage: a VBW agent's call of an MCP tool the project has not opened to its role is denied with a 'VBW guard:' reason, and the user sees what was refused" {
+  run mcp_call mcp__github__get_issue vbw:qa
+  [ "$status" -eq 0 ]
+  [ "$(shape "$output")" = "$DENY" ] || { echo "$output"; false; }
+  printf '%s' "$output" | jq -e '.hookSpecificOutput | .hookEventName == "PreToolUse" and .permissionDecision == "deny" and (.permissionDecisionReason | startswith("VBW guard: "))'
+  printf '%s' "$output" | jq -e "$USER_LINE" || { echo "$output"; false; }
+}
+
+@test "R242 R128: guard-mcp.jq no output: the main session's MCP call, and a VBW agent's call of a tool the project opened to its role, get no answer" {
+  run mcp_call mcp__github__get_issue
+  [ "$status" -eq 0 ]
+  [ -z "$output" ] || { echo "$output"; false; }
+  jq '.settings.mcp = [{server: "github", read_only: true}]' .vbw/record.json > "$TEST_ROOT/m.json" && cp "$TEST_ROOT/m.json" .vbw/record.json
+  run mcp_call mcp__github__get_issue vbw:qa
+  [ "$status" -eq 0 ]
+  [ -z "$output" ] || { echo "$output"; false; }
+}

@@ -28,7 +28,7 @@ const SID = 'session-1'
 function kernel() {
   const k = {
     profile: 'balanced', autonomy: 'balanced', autonomy_cap: '25', rigor: 'auto', motion: 'default', check_jobs: '6',
-    command_timeout: '3600', check_budget: '120', sound: 'default', statusline: 'off',
+    command_timeout: '3600', check_budget: '120', sound: 'default', statusline: 'off', mcp: 'none',
     models: { architect: 'opus', lead: 'opus', dev: 'sonnet', qa: 'sonnet', scout: 'sonnet', debugger: 'sonnet', docs: 'sonnet' },
     interview: { kept: 'private', interviewed: true, level: 'professionally', depth: 'technical and brief', involvement: 'options with a recommendation', pending: null },
     workflows: 'default', auto: null, efforts: {},
@@ -43,7 +43,7 @@ function kernel() {
       return out(['check_jobs: ' + k.check_jobs + ' (default: three quarters of the processor cores)',
         'machine limit: 6 (three quarters of this computer\'s processor cores (8), rounded down, at least 1 and at most 64; shared by every VBW project on this computer; not a setting)',
         'profile: ' + k.profile, 'autonomy: ' + k.autonomy, 'autonomy_cap: ' + k.autonomy_cap, 'rigor: ' + k.rigor, 'motion: ' + k.motion,
-        'sound: ' + k.sound, 'command_timeout: ' + k.command_timeout + ' seconds', 'check_budget: ' + k.check_budget + ' seconds a unit (reported, never enforced)',
+        'sound: ' + k.sound, 'command_timeout: ' + k.command_timeout + ' seconds', 'check_budget: ' + k.check_budget + ' seconds a unit (reported, never enforced)', 'mcp: ' + k.mcp,
         ...Object.entries(k.models).map(([r, m]) => 'model.' + r + ': ' + m),
         ...Object.keys(k.models).map((r) => 'effort.' + r + ': ' + (k.efforts[r] || 'default'))].join('\n') + '\n')
     }
@@ -329,4 +329,26 @@ test('the rows fit at 80, 100 and 140 columns: no line wider than the pane', asy
 test('the tab never reads or writes the record file: panel-settings.js reaches nothing but its inputs', () => {
   const src = fs.readFileSync(PLUGIN + '/hooks/panel-settings.js', 'utf8')
   assert.doesNotMatch(src, /record\.json|\$\.|fetch\(|require\(|node:/)
+})
+
+// R241 (#694): the MCP tool list (record.settings.mcp, `vbw config set mcp`) is a row of the tab:
+// its value is the kernel's `mcp:` line as written (or none), shown read-only with the command
+// to change it; no press runs anything for it.
+test('R241: the mcp row shows the setting as vbw config prints it, read-only, with vbw config set mcp named beside it', async () => {
+  const kn = kernel()
+  const st = state({ pressed: [] })
+  await settings(st, kn, null)
+  let row = rowOf(draw(st), 'mcp')
+  assert.ok(row, 'no row mcp')
+  let v = texts(row).find((t) => t.props.key === 'value')
+  assert.ok(v && v.text.startsWith('none'), 'with no setting the row shows none, got ' + (v && v.text))
+  assert.equal(v.props.color, P.ACCENT, 'the value is in the accent')
+  assert.equal(buttons(row).length, 0, 'the mcp row has no controls')
+  assert.match(collect(row).join(' '), /vbw config set mcp/, 'the row names the command that changes it')
+  assert.equal(S.settingArgv({ key: 'mcp', value: 'github:read-only' }, SID), null, 'no press changes the MCP list')
+  kn.k.mcp = 'github:read-only ctx:read-only=search,get_context playwright'
+  await settings(st, kn, null)
+  row = rowOf(draw(st, NOW, 140), 'mcp')
+  v = texts(row).find((t) => t.props.key === 'value')
+  assert.ok(v && v.text.startsWith('github:read-only ctx:read-only=search,get_context playwright'), 'the row shows the setting as written, got ' + (v && v.text))
 })
