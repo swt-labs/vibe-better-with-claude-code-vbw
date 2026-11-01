@@ -342,14 +342,35 @@ never before the call. Mark a server read-only only when its tools really only r
   | program run (whole guard call, startup included) | 21.0 | 17.5 | 16.3 |
   | reference (startup included) | 15.7 | 12.4 | 11.7 |
 
-  The cause: the guard's cases subtract the shell and jq startup, which is 6.9 ms on a
-  Mac and 1.9 ms on Linux, but the reference kept it, so the same guard cost 1.0 times the
-  reference on macOS and 1.3 to 1.6 on Linux (PR #740); the guard's compile and run costs
-  are alike on both. The reference now subtracts the startup too, and its program is the
-  guard's size (28798 against 28744 bytes) with a regex in every helper. The guard's own
-  cost (git input) beside the reference's own cost: macOS 14.1 and 8.8 ms (1.60), ubuntu-latest
-  15.6 and 10.5 (1.49), Ubuntu 26.04 14.4 and 9.8 (1.47), each Linux quotient within 1.25
-  of macOS's. The nominal figure is one, 10.3 ms, with no per-system allowance.
+  The cause of PR #740's gap: the guard's cases subtract the shell and jq startup, which is
+  6.9 ms on a Mac and 1.9 ms on Linux, but the reference kept it. The reference now
+  subtracts the startup too (the shell prelude row is the shell's own part of it).
+
+  The Linux-only step, found at its row (R243, T212): **program compile**, the time jq
+  takes to bind and generate code for the guard's own definitions, which it never runs.
+  `.github/workflows/bench-steps.yml` ran every step on GitHub's three runners; the table
+  gives the mean net ms of each step, and its quotient to the reference run in
+  parentheses (the reference run is 1.00 by definition; the startup rows carry no
+  quotient). Before is run 41312931896; after is run 41319529368 (both recorded in
+  `tools/probes/guard-steps.json`).
+
+  | step | macos-latest before | ubuntu-latest before | ubuntu-26.04 before | macos-latest after | ubuntu-latest after | ubuntu-26.04 after |
+  |---|---|---|---|---|---|---|
+  | shell prelude | 0.2 (0.02) | 0.1 (0.01) | 0.1 (0.01) | 0.2 (0.01) | 0.0 (0.00) | 0.0 (0.00) |
+  | program compile | 16.7 (1.48) | 13.9 (2.08) | 14.1 (2.13) | 11.7 (0.68) | 17.9 (0.73) | 17.9 (0.73) |
+  | program run | 19.1 (1.69) | 15.0 (2.24) | 15.0 (2.27) | 13.7 (0.79) | 19.0 (0.78) | 19.0 (0.77) |
+  | reference compile | 8.2 (0.73) | 4.8 (0.72) | 4.7 (0.71) | 12.9 (0.75) | 21.0 (0.86) | 20.9 (0.85) |
+  | reference run | 11.4 (1.00) | 6.7 (1.00) | 6.6 (1.00) | 17.3 (1.00) | 24.5 (1.00) | 24.5 (1.00) |
+
+  The net rows subtract the shell and jq startup; the quotient is the step's net ms over
+  the reference run's net ms. The cause: the reference compiled one trivial set of
+  definitions while the guard compiles all of its own, and that compile costs about 1.35
+  times more on Linux than on macOS (run 41317320402; not the regex library, not
+  includes, not parsing). The fix is in the reference, not the guard: it now calls four in
+  five of its definitions, so it carries the same compile work. The target, measured after
+  the fix: each Ubuntu runner's program run quotient is within 1.25 times macOS's. The
+  figures are 0.78 and 0.77 against 0.79, about 0.99 times macOS's. The nominal figure is
+  one, 10.3 ms, with no per-system allowance.
 
 ## SessionStart
 
