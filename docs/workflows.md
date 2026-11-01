@@ -563,6 +563,7 @@ Each refusal below ends with `Next: ` and the step in the right column
 | Guards: `vbw loop start` by a tool call (arming the loop) | Ask the user to run `/vbw:loop` with the items and the ceiling they choose |
 | Guards: `vbw loop next` or `vbw loop park` by a tool call (the loop steps) | End your turn; the loop's Stop hook gives the next step |
 | Guards: a push, release, publish or deploy while a loop is on (leaving the project) | Wait for the loop to end, or stop it with `/vbw:loop stop`, then do it yourself |
+| Guards: an MCP tool the project has not opened to the agent's role | The user adds or marks it with `vbw config set mcp` |
 | Guards: a guard that failed during a run | Run `vbw doctor`, then retry |
 
 An unknown option prints the usage line for the three modes and exits 2.
@@ -626,6 +627,11 @@ needed.
   diagnose; in fix mode a minimal root-cause fix with a regression test.
 - **Docs**: documentation plans (README, changelog, guides, API and inline
   docs), concise and example-first; documentation files only.
+
+**MCP tools by role.** A project names the MCP servers its agents may use with
+`vbw config set mcp`. Dev, Debugger and Docs get every named tool; Architect,
+Lead, Scout and QA only a tool marked read-only. See "MCP tools by role" in
+[docs/guards.md](guards.md).
 
 ## The project folder
 
