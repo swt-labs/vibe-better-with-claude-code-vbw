@@ -89,3 +89,19 @@ merge_prompt() {
   printf '%s' "$section" | grep -qi 'before planning' || { echo "docs/proof.md does not place the question before planning"; false; }
   printf '%s' "$section" | grep -qi 'run it now' || { echo "docs/proof.md does not name the run-it-now option"; false; }
 }
+
+# #735: several named forms, one per test runner, each with an optional dir.
+@test "#735 docs: docs/proof.md shows named forms with dir, and says where a form runs, that a file belongs to one form and how the summary names them" {
+  local section
+  section=$(sed -n '/^## Test files/,/^## `vbw prove`/p' "$DOC" | tr '\n' ' ' | tr -s ' ')
+  sed -n '/^## Test files/,/^## `vbw prove`/p' "$DOC" | grep -qE '^  - dir: ' || { echo "no nested dir line"; false; }
+  printf '%s' "$section" | grep -qF 'relative to its dir' || { echo "{file} relative to dir not said"; false; }
+  printf '%s' "$section" | grep -qF 'matched by two forms' || { echo "the overlap refusal is not said"; false; }
+  printf '%s' "$section" | grep -qF '(webapp 2 ran, 30 reused; mobile 1 ran, 11 reused)' || { echo "the per-form count is not shown"; false; }
+}
+
+@test "#735 docs: docs/record.md and docs/workflows.md give both test_files shapes, and the Lead proposes one form per runner" {
+  grep -qF '{name, dir, run, files}' "$REPO_ROOT/docs/record.md"
+  grep -qF '"name"' "$FLOW"
+  grep -E '^8\. \*\*One-file test form' "$LEAD" | grep -qF 'one form per test runner'
+}

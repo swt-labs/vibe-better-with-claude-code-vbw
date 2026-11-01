@@ -660,7 +660,36 @@ section in `.vbw/spec.md`, beside `## Commands`:
 
 `run` is the command for one test file; it names `{file}` exactly once, and VBW
 puts each test file's path there. `files` lists the git pathspecs of the test
-files, one or more per line. The Lead proposes the form with the runner's
+files, one or more per line.
+
+A project with several test runners, such as a monorepo with one per
+subproject, names one form per runner, with the lines nested under the name:
+
+```markdown
+## Test files
+
+- webapp:
+  - dir: apps/webapp
+  - run: npx vitest run {file}
+  - files: apps/webapp/**/*.test.ts
+- mobile:
+  - dir: apps/mobile
+  - run: npx jest {file}
+  - files: apps/mobile/**/*.test.tsx
+```
+
+`dir` is optional: the folder of the project the form's runs start in, which is
+where a runner finds its own configuration. With a dir, `{file}` is the test
+file's path relative to its dir (`src/cart.test.ts`, not
+`apps/webapp/src/cart.test.ts`), and every pathspec of the form must lie under
+it. A single form may take a top-level `- dir:` line too. A name is letters,
+digits, `_` or `-`, and given once; one section uses one shape, top-level lines
+or named forms, never both. `vbw spec check` and `vbw spec sync` refuse a
+committed file matched by two forms, naming the file, both forms and the later
+form's line: a test file belongs to one form, so it never runs twice. A form whose
+dir holds no committed file matches nothing, so the test command fails naming the
+form (below). If a matched file's folder is still missing from the proof's clean
+copy, that file fails and names the folder, and nothing runs for it. The Lead proposes the form with the runner's
 documented syntax (`vbw apply`, see docs/workflows.md). `vbw init` never writes
 one: VBW never guesses a form.
 
@@ -679,6 +708,15 @@ failed. The summary counts them, as `test files: N ran, M reused`:
   test files: 3 ran, 41 reused
 ```
 
+With named forms the line counts each form, and each test file's result in the
+evidence names its form:
+
+```
+  test files: 3 ran, 41 reused (webapp 2 ran, 30 reused; mobile 1 ran, 11 reused)
+```
+
+A change re-runs only the test files that read it, whatever their form.
+
 A failing test file fails the proof, and the proof names it. `vbw prove --full`
 runs every test file on its own and reuses none.
 
@@ -688,10 +726,10 @@ with a form, neither the test command nor the quick command runs.
 
 When that leaves no test file to run (every file the form matches is run by
 an approved check), the test command counts as covered by those checks: it
-passes with `test files: 0 ran, 0 reused`, and the summary says so. When the
+passes with `test files: 0 ran, 0 reused`, and the summary says so. When a
 form matches no committed file at all, the test command fails, the summary
-names the pathspecs, and a fix opens for it: add the test files, or change the
-form in `.vbw/spec.md`.
+names the form and its pathspecs, and a fix opens for it: add the test files,
+or change the form in `.vbw/spec.md`.
 
 ## `vbw prove`
 
