@@ -1,0 +1,42 @@
+{
+  "probe": "mcp-tools",
+  "at": "2026-11-01T13:31:30Z",
+  "claude_version": "2.1.316 (Claude Code)",
+  "cases": {
+    "server_wildcard": {
+      "tools_line": "Read, mcp__probe__*",
+      "result": "RESULT: NOTE-TOKEN-7731"
+    },
+    "single_tool": {
+      "tools_line": "Read, mcp__probe__read_note",
+      "result": "RESULT: NOTE-TOKEN-7731"
+    },
+    "unconfigured_beside": {
+      "tools_line": "Read, mcp__nosuch__*, mcp__probe__*",
+      "result": "RESULT: NOTE-TOKEN-7731"
+    },
+    "all_servers_pool": {
+      "tools_line": "Read, mcp__*",
+      "result": "RESULT: NO-TOOL Read, SubagentHandback"
+    },
+    "pool_double_star": {
+      "tools_line": "Read, mcp__*__*",
+      "result": "RESULT: NO-TOOL Read, SubagentHandback"
+    },
+    "pool_dot_star": {
+      "tools_line": "Read, mcp__.*",
+      "result": "RESULT: NO-TOOL Read, SubagentHandback"
+    },
+    "agent_type": {
+      "tools_line": "Read, mcp__probe__*",
+      "result": "hook agent_type for the read_note call: mcpprobe:reader; every call: Agent=null; mcp__probe__read_note=mcpprobe:reader; SubagentHandback=mcpprobe:reader"
+    },
+    "foreign_agent": {
+      "tools_line": "Read, mcp__probe__*",
+      "result": "```json\n{\"vbw:dev\":\"reached: STUB-DEV\",\"mcpprobe:reader\":\"reached: RESULT: NOTE-TOKEN-7731\"}\n```"
+    }
+  },
+  "tools_entry": "mcp__<server>__*",
+  "mechanism": "none: no tools-line form gave a pool of every MCP tool; only a whole named server (mcp__<server>__*) or one tool resolves",
+  "decision": null
+}
