@@ -61565,7 +61565,7 @@
         "tools/probes/mcp-tools.json"
       ],
       "after": [],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "tools/probe-mcp-tools.sh (bash 3.2, shellcheck-clean, header comment listing every case): keep the eight cases already run and add, each {tools_line, result}: inherit_omitted (reader.md with no tools: line; asked to call read_note and then to list every tool it has on one line 'TOOLS: a, b, c'; result as the other cases, the token when the call worked); disallowed_honoured (no tools: line, 'disallowedTools: Write, Edit, NotebookEdit, Bash'; asked to create proj/probe-written.txt with the Write tool; result 'RESULT: NOT-WRITTEN <the agent's words>' when the file is absent and the hook log holds no Write, Edit or NotebookEdit call of the agent, else 'RESULT: WRITTEN <what happened>'); hook_every_tool (the probe plugin's PreToolUse entry with the matcher omitted, as today; an agent with tools omitted calls Read, Bash and read_note; result 'RESULT: ALL <tool=agent_type list>' when the hook log holds each of those calls with agent_type mcpprobe:reader, else 'RESULT: MISSED <list>'); the foreign workflow's agent() call to mcpprobe:reader passes a schema, so the log shows the tool Claude Code gives a schema-returning agent",
@@ -61642,6 +61642,22 @@
           "pending": [
             "tests/mcp-probe.bats"
           ]
+        },
+        {
+          "rule": {
+            "req": "R241",
+            "text": "every built-in the probe records is one tool name (a capital letter, then letters or digits), never a fragment of the session's prose such as a deferred-tools note"
+          },
+          "what": "added a prose fragment to builtins",
+          "files": [
+            "tools/probes/mcp-tools.json"
+          ],
+          "checks": {
+            "C546": "red"
+          },
+          "result": "red",
+          "at": "2026-11-01T16:26:35Z",
+          "head": "09b528d0f9c34ccedf70a73c849c625a0fb7643d"
         }
       ]
     },
@@ -62348,12 +62364,46 @@
         "P195.3",
         "P193.2"
       ],
-      "status": "planned",
+      "status": "done",
       "role": "docs",
       "tasks": [
         "docs/guards.md bench section: replace the sentence claiming each Linux quotient within 1.25 of macOS's (disproved by PR #741: macOS 1.39, Ubuntu 26.04 1.82) by a table of the step figures from GitHub's three runners (rows macos-latest, ubuntu-latest, ubuntu-26.04; the net ms and quotient of each step, before and after the fix, from tools/probes/guard-steps.json), one sentence naming the Linux-only step by its row name and the cause found, and the 1.25 target as measured after the fix",
         "Keep the reference table and the net-of-startup explanation consistent with the new rows (reference compile and reference run; shell prelude), naming bench-steps.yml as the workflow that measured them and the run ids of the R243 decision",
         "tests/bench-linux-step-docs.bats and tests/bench-limits-docs.bats pass"
+      ],
+      "mutations": [
+        {
+          "rule": {
+            "req": "R243",
+            "text": "docs/guards.md's bench section names the Linux-only step by its row name with figures from GitHub's three runners (macos-latest, ubuntu-latest, ubuntu-26.04) and the workflow that measured them"
+          },
+          "what": "removed Linux-only label from the step sentence",
+          "files": [
+            "docs/guards.md"
+          ],
+          "checks": {
+            "C559": "red"
+          },
+          "result": "red",
+          "at": "2026-11-01T16:24:39Z",
+          "head": "e9c0fab55a1a0eed166824986a7b0b304926c209"
+        },
+        {
+          "rule": {
+            "req": "R243",
+            "text": "the disproved claim that each Linux quotient is within 1.25 of macOS's is gone, and the 1.25 target is stated with the measured figures"
+          },
+          "what": "changed the 1.25 target to 1.5",
+          "files": [
+            "docs/guards.md"
+          ],
+          "checks": {
+            "C559": "red"
+          },
+          "result": "red",
+          "at": "2026-11-01T16:24:50Z",
+          "head": "e9c0fab55a1a0eed166824986a7b0b304926c209"
+        }
       ]
     },
     {
@@ -78823,6 +78873,17 @@
         "ended": "2026-11-01T15:20:25Z",
         "cost": {
           "usd": 0.12112
+        }
+      },
+      {
+        "id": "build-20261101T162231Z",
+        "kind": "build",
+        "session": "0ee781c3-c5b6-4a6c-889f-04b89f1fba4a",
+        "milestone": "M49",
+        "started": "2026-11-01T16:22:31Z",
+        "ended": "2026-11-01T16:27:10Z",
+        "cost": {
+          "usd": 0.564013
         }
       }
     ],
