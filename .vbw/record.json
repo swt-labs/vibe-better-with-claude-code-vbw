@@ -27844,7 +27844,22 @@
           "to": "deep",
           "reason": "Dev blocked P192.3: C549 (tests/agents-tools.bats case 'each agent's disallowedTools names every built-in the probe found') cannot pass: tools/probes/mcp-tools.json (P192.1's file, done, outside this plan) holds a junk entry in builtins, 'not yet fetched via ToolSearch: CronCreate' (the probe script's parse of the deferred-tools note in the agent's reply, tools/probe-mcp-tools.sh line 212 splits on ',' only). The check splits it on spaces and demands that each of 'not', 'yet', 'fetched', 'via', 'ToolSearch:' be disallowed, which no agent file can honestly do. Fix needed in P192.1's files: the builtins parse must drop the '(also loaded by deferred search, not yet fetched via ToolSearch: ' prefix and keep CronCreate as its own entry (the other deferred tools in that parenthesis are already listed apart), then the probe result is re-recorded. Done in this plan: guard-tools.jq, hooks.json entry (fail-closed shape passes standards.bats), seven agents (disallowedTools lists written from the clean builtins plus CronCreate), tests/workflows.bats frontmatter case, bench cases (guard (tools) variants 7.3 ms, main session 0.5 ms). C551 and C552 pass; agents-checks, hook-answers, hooks-guard, standards, workflows pass under /bin/bash. Mutation not run: C549 is not green."
         }
-      ]
+      ],
+      "qa": {
+        "result": "pass",
+        "tier": "deep",
+        "tree": "ed4121a0e9255edc8a67846d2c30e49964b6c19d73ab2e804111d09674829441",
+        "at": "2026-11-01T20:02:11Z",
+        "note": "32/32 checks"
+      },
+      "outcome": {
+        "tier": "deep",
+        "predicted": "deep",
+        "held": true,
+        "fix_rounds": 0,
+        "qa_findings": 0,
+        "escalations": 4
+      }
     },
     {
       "id": "P193",
