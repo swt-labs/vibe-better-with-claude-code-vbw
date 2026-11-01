@@ -472,6 +472,17 @@ Evidence: the wording is pinned at L1 by bats checks of the skills and these
 docs. At L3 only the `mapnotrun` scenario in `tools/l3-suite.sh` covers it, and
 only once it has run; nothing beyond that is claimed.
 
+The `submodule` scenario in the same file covers a plan whose file lives in a
+submodule (a repository kept inside a folder of the project; the project stores
+only a pointer to it). It drives `/vbw:vibe` through plan, build, proof and ship
+and judges, in git and the record and never on screen: the plan's commit is in
+the submodule with its `VBW-Plan` trailer; the project's pointer to the
+submodule did not move while `git status` shows it changed; the check ran from
+the clean copy's submodule under `.vbw/runtime/proof.*`; and a file staged and
+left uncommitted in each repository is still staged and in no commit. Nested
+submodules, a detached submodule, a plan spanning both repositories and the
+`vbw auto` path are not covered.
+
 ### The time limit of project commands
 
 A project command (the test run above all) runs for up to 3600 seconds

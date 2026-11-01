@@ -114,3 +114,36 @@ old_limits() {
     false
   }
 }
+
+# R233 (T204): docs/guards.md's bench paragraph names the Linux figures beside the Mac
+# ones: a per-step table (sh startup, jq startup, program compile, program run, the
+# reference) for macOS, ubuntu-latest (jq 1.7.1) and Ubuntu 26.04 (jq 1.8.1), the cause of
+# the Linux gap in one sentence, and the date of the measure.
+
+@test "R233: docs/guards.md's bench paragraph holds the per-step table for the three runners, names the cause in one sentence, and dates the measure" {
+  local g="$REPO_ROOT/docs/guards.md" para
+  para=$(sed -n '/^- \*\*Budget:\*\*/,/^## /p' "$g")
+  [ -n "$para" ] || { echo "no Budget bullet before the next section"; false; }
+  printf '%s\n' "$para" | grep -qiE 'ubuntu-latest|ubuntu 24\.04' || { echo "no ubuntu-latest figure"; false; }
+  printf '%s\n' "$para" | grep -qiE 'ubuntu[ -]26\.04' || { echo "no Ubuntu 26.04 figure"; false; }
+  printf '%s\n' "$para" | grep -q 'jq 1\.7\.1' && printf '%s\n' "$para" | grep -q 'jq 1\.8\.1' || { echo "the two jq versions are not named"; false; }
+  # A table with a row per step and a column per runner.
+  printf '%s\n' "$para" | grep -qE '^\s*\|.*macOS.*\|' || { echo "no table header naming macOS"; false; }
+  local row
+  for row in 'sh startup' 'jq startup' 'compile' 'run' 'reference'; do
+    printf '%s\n' "$para" | grep -iE '^\s*\|' | grep -qi "$row" || { echo "no table row for $row"; false; }
+  done
+  printf '%s\n' "$para" | grep -qiE 'cause' || { echo "the cause is not named"; false; }
+  printf '%s\n' "$para" | grep -qE '2026-1[0-2]-[0-9]{2}|(1|2|3)?[0-9] (November|December) 2026|(November|December) 2026' || { echo "the measure is not dated"; false; }
+}
+
+# R234 (T205): where docs/guards.md describes the bench's busy rule it says the timed test
+# case tests/timed-bench-hooks.bats applies the same rule (busy is reported, not failed;
+# a difference over the margin is measured once more).
+
+@test "R234: docs/guards.md says, where it describes the busy rule, that the timed waiting case applies the same rule" {
+  local g="$REPO_ROOT/docs/guards.md" para
+  para=$(sed -n '/^- \*\*Budget:\*\*/,/^## /p' "$g")
+  printf '%s\n' "$para" | grep -q 'timed-bench-hooks.bats' || { echo "the Budget bullet does not name tests/timed-bench-hooks.bats"; false; }
+  flat "$g" | grep -qE 'timed-bench-hooks\.bats[^.]*(same rule|as the bench does|measured once more)' || { echo "the Budget bullet does not say the timed case applies the same rule"; false; }
+}

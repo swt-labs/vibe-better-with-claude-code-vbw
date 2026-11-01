@@ -1,0 +1,42 @@
+name: Bench steps
+
+# R233: the per-step CPU cost of one Bash guard call (sh startup, jq startup, program
+# compile, program run, reference) on the three runners CI uses. Run by hand only:
+#   gh workflow run bench-steps.yml --ref <branch>
+
+on:
+  workflow_dispatch:
+
+jobs:
+  steps:
+    name: Steps (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, ubuntu-latest, ubuntu-26.04]
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          path: src dir
+
+      - name: Install jq
+        shell: bash
+        run: |
+          if [ "$RUNNER_OS" = "macOS" ]; then
+            brew install jq
+          else
+            sudo apt-get update -qq
+            sudo apt-get install -y -qq jq
+          fi
+
+      - name: Print versions
+        shell: bash
+        run: |
+          bash --version | head -1
+          jq --version
+
+      - name: Step table
+        shell: bash
+        working-directory: src dir
+        run: VBW_BENCH_STEPS=1 VBW_BENCH_RUNS=100 bash tools/bench-hooks.sh

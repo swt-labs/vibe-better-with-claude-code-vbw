@@ -280,8 +280,8 @@ checks_gate_enter() {
         checks_gate_live "x.$owner" || { vbw_lock_takeover "$file" "$owner" && took=1; }
       else
         # No owner for about 5 s: one that died before it wrote its id.
-        [ -n "$lost" ] || lost=$SECONDS
-        if [ $((SECONDS - lost)) -ge 5 ] && vbw_lock_takeover "$file" ""; then took=1; fi
+        [ -n "$lost" ] || lost=$(vbw_lock_seconds)
+        if [ $(($(vbw_lock_seconds) - lost)) -ge 5 ] && vbw_lock_takeover "$file" ""; then took=1; fi
       fi
     fi
     [ "$took" = 1 ] || slots_nap "$idle"

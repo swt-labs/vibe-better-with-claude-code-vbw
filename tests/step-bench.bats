@@ -30,3 +30,25 @@ teardown() { vbw_teardown; }
   [ "$status" -eq 1 ] || { echo "$output"; false; }
   [[ "$output" == *"status line (step running): the step was not shown, so the measure left it out"* ]] || { echo "$output"; false; }
 }
+
+# R235 (T205): a miss of the step is explained. When the first line has no step the
+# bench prints the first line it read and, when the status line's error file
+# (.vbw/runtime/statusline.err, written by the render) has text, that text, each
+# prefixed with the case's label; the failure text itself stays as pinned above.
+
+@test "R235: when the status line falls back, the bench's failure names the first line and jq's error from statusline.err" {
+  printf '\n| ) (\n' >> "$TEST_ROOT/plugin/scripts/statusline.jq"
+  run env VBW_BENCH_ONLY='status line (step running)' VBW_BENCH_PLUGIN_ROOT="$TEST_ROOT/plugin" VBW_BENCH_RUNS=1 VBW_HOOK_BUDGET_MS=100000 VBW_STATUSLINE_BUDGET_MS=100000 bash "$REPO_ROOT/tools/bench-hooks.sh"
+  [ "$status" -eq 1 ] || { echo "$output"; false; }
+  [[ "$output" == *"status line (step running): the step was not shown, so the measure left it out"* ]] || { echo "$output"; false; }
+  [[ "$output" == *"status line (step running): first line: [VBW] status line unavailable"* ]] || { echo "$output"; false; }
+  [[ "$output" == *"status line (step running): statusline.err: jq: error"* ]] || { echo "$output"; false; }
+}
+
+@test "R235: a status line that renders without the step names the line it read, and no error file text" {
+  sed -i.bak 's/until /untl /g' "$TEST_ROOT/plugin/scripts/statusline.jq"
+  run env VBW_BENCH_ONLY='status line (step running)' VBW_BENCH_PLUGIN_ROOT="$TEST_ROOT/plugin" VBW_BENCH_RUNS=1 VBW_HOOK_BUDGET_MS=100000 VBW_STATUSLINE_BUDGET_MS=100000 bash "$REPO_ROOT/tools/bench-hooks.sh"
+  [ "$status" -eq 1 ] || { echo "$output"; false; }
+  [[ "$output" == *"status line (step running): first line: "*"1 of 2"* ]] || { echo "$output"; false; }
+  [[ "$output" != *"statusline.err:"* ]] || { echo "$output"; false; }
+}

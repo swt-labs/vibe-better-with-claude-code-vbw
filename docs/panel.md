@@ -593,6 +593,17 @@ not working here). The box follows a change of state within one refresh (about
 +-------------------------------------+
 ```
 
+The running step also shows on the status line's first line, read from the
+same note. The one time the speed check of that line missed the step (a Linux
+runner, 2026-10-31) the cause was the check's reader, not the text: it takes
+only the first line and leaves, and on bash 5.2 the status line wrote its
+answer in more than one piece, so a late piece hit the closed pipe and ended
+the script with status 141. The status line now ignores a closed pipe and
+exits 0 (tests/statusline-step-miss.bats). A jq error, the same-minute start,
+a glance written in the record's second and a step ending after midnight were
+tried and are not the cause. If a miss ever shows an error text, it is in
+`.vbw/runtime/statusline.err`.
+
 ### Clock times
 
 Events and messages start with their clock time in brackets, so you can tell

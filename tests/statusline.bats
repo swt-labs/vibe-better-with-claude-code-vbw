@@ -252,3 +252,56 @@ render() { cc_json | NO_COLOR=1 bash "$SL"; }
   run "$VBW" doctor
   [[ "$output" == *"refreshes on events only"*"vbw statusline on"* ]]
 }
+
+# R235 (T205): a render that fails is not silent. jq's stderr of the render goes to
+# .vbw/runtime/statusline.err (overwritten each call, inside the project), so a miss of
+# the step on a runner names its cause; after a good render the file is empty. No new
+# process: one redirection, so the 60 ms budget holds (tools/bench-hooks.sh).
+
+# render_with SCRIPT: the render through another copy of the status line script.
+render_with() { cc_json | NO_COLOR=1 bash "$1"; }
+
+@test "R235: when the render fails, .vbw/runtime/statusline.err holds jq's error and the fallback line is printed" {
+  "$VBW" init > /dev/null
+  cp -R "$PLUGIN_ROOT" "$TEST_ROOT/plugin"
+  printf '\n| ) (\n' >> "$TEST_ROOT/plugin/scripts/statusline.jq"
+  run render_with "$TEST_ROOT/plugin/scripts/vbw-statusline.sh"
+  [ "${lines[0]}" = "[VBW] status line unavailable" ] || { echo "$output"; false; }
+  [ -s .vbw/runtime/statusline.err ] || { echo "no .vbw/runtime/statusline.err written"; ls -la .vbw/runtime; false; }
+  grep -q 'jq: error' .vbw/runtime/statusline.err || { echo "the file does not hold jq's error:"; cat .vbw/runtime/statusline.err; false; }
+}
+
+@test "R235: a good render leaves .vbw/runtime/statusline.err empty, overwritten each call" {
+  "$VBW" init > /dev/null
+  printf 'stale error from an earlier call\n' > .vbw/runtime/statusline.err
+  run render
+  [[ "${lines[0]}" == "[VBW] project with space"* ]] || { echo "$output"; false; }
+  [ -f .vbw/runtime/statusline.err ] || { echo "the file was not written"; false; }
+  [ ! -s .vbw/runtime/statusline.err ] || { echo "a good render left text in it:"; cat .vbw/runtime/statusline.err; false; }
+}
+
+@test "R235: without a runtime folder the render still prints and writes nothing outside the project" {
+  "$VBW" init > /dev/null
+  rm -rf .vbw/runtime
+  run render
+  [[ "${lines[0]}" == "[VBW] project with space"* ]] || { echo "$output"; false; }
+  [ ! -e .vbw/runtime/statusline.err ] || { echo "the render made the runtime folder for its error file"; false; }
+}
+
+# R235 (P189.2): the bench reads the first line through `| head -n 1` under pipefail; a
+# reader that leaves before the answer is written must not fail the status line
+# (bash 5.2 on Linux writes in pieces: the late piece killed it with SIGPIPE, status 141).
+@test "R235: a reader that has left does not fail the render, a good one or the fallback (status 0, no SIGPIPE)" {
+  "$VBW" init > /dev/null
+  local st
+  # The pipeline runs in a fresh bash: on bash 3.2 bats' DEBUG trap resets PIPESTATUS,
+  # in the test body and in its subshells alike.
+  # shellcheck disable=SC2016 # expanded by the inner bash
+  st=$(cc_json | bash -c 'NO_COLOR=1 bash "$1" | true; echo "${PIPESTATUS[0]}"' _ "$PLUGIN_ROOT/scripts/vbw-statusline.sh")
+  [ "$st" = 0 ] || { echo "status line exited $st under a reader that left"; false; }
+  cp -R "$PLUGIN_ROOT" "$TEST_ROOT/plugin"
+  printf '\n| ) (\n' >> "$TEST_ROOT/plugin/scripts/statusline.jq"
+  # shellcheck disable=SC2016 # expanded by the inner bash
+  st=$(cc_json | bash -c 'NO_COLOR=1 bash "$1" | true; echo "${PIPESTATUS[0]}"' _ "$TEST_ROOT/plugin/scripts/vbw-statusline.sh")
+  [ "$st" = 0 ] || { echo "fallback render exited $st under a reader that left"; false; }
+}
