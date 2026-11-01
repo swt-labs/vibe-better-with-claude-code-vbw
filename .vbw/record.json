@@ -27794,6 +27794,12 @@
           "from": "deep",
           "to": "deep",
           "reason": "Dev blocked P192.1: Probe ran (Claude Code 2.1.316, tools/probes/mcp-tools.json): mcp__probe__* , mcp__probe__read_note, and mcp__nosuch__*,mcp__probe__* all resolve (read_note returned the token); the hook saw agent_type mcpprobe:reader; a workflow agent() reached both a stub vbw:dev and mcpprobe:reader. But NO pool form gives all MCP tools: 'mcp__*', 'mcp__*__*', 'mcp__.*' each left the agent with only Read (+SubagentHandback). So the planned mechanism (one mcp__* entry in every agent plus a guard) is unsupported; Lead must replan: alternatives are per-project agent copies or dropping tools: for disallowedTools, or generating per-server entries (mcp__<server>__*) from record.settings.mcp. Decision not recorded; result file has tools_entry mcp__<server>__*, decision null."
+        },
+        {
+          "at": "2026-11-01T14:39:19Z",
+          "from": "deep",
+          "to": "deep",
+          "reason": "Dev blocked P192.1: Probe script extended and run on Claude Code 2.1.316: inherit_omitted has the token, disallowed_honoured NOT-WRITTEN, hook_every_tool ALL, hook_read_cpu_ms 5.6, always_allowed [StructuredOutput, SubagentHandback]. But the agent with tools omitted lists no Grep or Glob (this build has none; they are not even in its ToolSearch deferred list), so builtins lacks them and the protected test tests/mcp-probe.bats (builtins contains Read, Grep, Glob, Bash, Write, Edit, WebFetch, WebSearch) fails; I cannot fake or weaken that. This also bears on D561 R241.14/15: the guard cannot 'refuse every other built-in the probe found' for Grep/Glob if Claude Code does not offer them to agents. Nothing committed; new script and result kept in .vbw/runtime/scratch/probe-mcp-tools.new.sh and mcp-tools.new.json. Lead should decide: relax the builtins check to the tools the build offers (Grep/Glob optional) or replan."
         }
       ]
     },
@@ -27893,6 +27899,12 @@
           "from": "deep",
           "to": "deep",
           "reason": "Dev blocked P195.1: Task 1 done (808bfcde; C558 green, R243.1/R243.2 mutations red). Tasks 2-4 need GitHub runner step tables: gh workflow run bench-steps.yml needs the branch pushed by the user (publishing). Local before-figures (Mac, ubuntu:24.04/26.04 containers on the Mac, 100 runs): program run quotient 1.65-1.79 Mac vs 1.37-1.81 Linux, program compile 1.38-1.48 vs 1.29-1.61, shell prelude ~0, reference compile 0.67 vs 0.62-0.78: no step is Linux-only locally; the Linux gap shows only on GitHub's runners, so the cause cannot be found or removed without those tables."
+        },
+        {
+          "at": "2026-11-01T14:34:48Z",
+          "from": "deep",
+          "to": "deep",
+          "reason": "Dev blocked P195.1: compile split committed at 9b97715c: the lead session pushes plow/2.1.23, runs gh workflow run bench-steps.yml --ref plow/2.1.23 and gives the run id"
         }
       ]
     }
@@ -61544,7 +61556,7 @@
         "The result file's top level: builtins (the non-mcp__ tools inherit_omitted's agent listed, sorted), always_allowed (every tool other than Read that an agent with 'tools: Read' or the schema-returning agent called or listed in this run's hook log and replies, e.g. SubagentHandback; the tools Claude Code gives every agent whatever its tools line), hook_matcher null (the omitted form, when hook_every_tool is ALL), hook_read_cpu_ms (CPU ms per call, sh and jq startup included, over 100 runs measured as tools/bench-hooks.sh's cpu_pair does, of the main-session path P192.3 builds: sh -c running a jq program of its own, no include, that passes the hook input on only when agent_type matches ^vbw:(architect|lead|dev|qa|scout|debugger|docs)$, fed a main-session Read input), mechanism (D561's mechanism in one line, naming disallowedTools and the tools guard), decision \"D561\"; tools_entry is dropped",
         "Run it on this machine (claude --version recorded) and commit tools/probes/mcp-tools.json; tests/mcp-probe.bats passes under /bin/bash 3.2. If inherit_omitted lacks the token, disallowed_honoured is WRITTEN, hook_every_tool is MISSED or hook_read_cpu_ms is over 20, commit nothing and block this plan with the evidence: D561's fallback (per-project agent copies kept fresh by the kernel) is then replanned by the Lead; record no decision either way (D561 is recorded)"
       ],
-      "note": "Probe ran (Claude Code 2.1.316, tools/probes/mcp-tools.json): mcp__probe__* , mcp__probe__read_note, and mcp__nosuch__*,mcp__probe__* all resolve (read_note returned the token); the hook saw agent_type mcpprobe:reader; a workflow agent() reached both a stub vbw:dev and mcpprobe:reader. But NO pool form gives all MCP tools: 'mcp__*', 'mcp__*__*', 'mcp__.*' each left the agent with only Read (+SubagentHandback). So the planned mechanism (one mcp__* entry in every agent plus a guard) is unsupported; Lead must replan: alternatives are per-project agent copies or dropping tools: for disallowedTools, or generating per-server entries (mcp__<server>__*) from record.settings.mcp. Decision not recorded; result file has tools_entry mcp__<server>__*, decision null."
+      "note": "Probe script extended and run on Claude Code 2.1.316: inherit_omitted has the token, disallowed_honoured NOT-WRITTEN, hook_every_tool ALL, hook_read_cpu_ms 5.6, always_allowed [StructuredOutput, SubagentHandback]. But the agent with tools omitted lists no Grep or Glob (this build has none; they are not even in its ToolSearch deferred list), so builtins lacks them and the protected test tests/mcp-probe.bats (builtins contains Read, Grep, Glob, Bash, Write, Edit, WebFetch, WebSearch) fails; I cannot fake or weaken that. This also bears on D561 R241.14/15: the guard cannot 'refuse every other built-in the probe found' for Grep/Glob if Claude Code does not offer them to agents. Nothing committed; new script and result kept in .vbw/runtime/scratch/probe-mcp-tools.new.sh and mcp-tools.new.json. Lead should decide: relax the builtins check to the tools the build offers (Grep/Glob optional) or replan."
     },
     {
       "id": "P192.2",
@@ -61563,7 +61575,7 @@
         "docs/record.md"
       ],
       "after": [],
-      "status": "blocked",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "plugin/lib/cmd-config.sh: `vbw config set mcp VALUE`, VALUE being entries separated by spaces, each SERVER (open to the writing agents), SERVER:read-only (a pure server, every agent) or SERVER:read-only=TOOL,TOOL (a mixed server: these tools for every agent, the rest for the writing agents), names matching ^[A-Za-z0-9][A-Za-z0-9_.-]*$, no server twice, no empty tool, stored as .settings.mcp = [{server, read_only: true|false|[tools]}] in the order given, printed `mcp = VALUE`; `default` removes it; anything else is a usage error (exit 2) whose line names the accepted forms `SERVER, SERVER:read-only or SERVER:read-only=TOOL,TOOL (names: letters, digits, _ . -), separated by spaces, or default`; `vbw config` prints `mcp: <entries as set>` or `mcp: none` after check_budget; the header comment and the unknown-setting list name the key",
@@ -61571,7 +61583,158 @@
         "plugin/hooks/panel-settings.js: a read-only row { key: 'mcp', label: 'MCP tools', ... } under its own group ('Agents'), drawn from the kernel's `mcp:` line with the value in the accent, no controls (no Button), and the note 'vbw config set mcp SERVER[:read-only[=TOOL,TOOL]]' beside it; settingArgv returns null for the key, so no press changes it",
         "plugin/skills/config/SKILL.md: a `mcp` line giving the three entry forms (SERVER, SERVER:read-only, SERVER:read-only=TOOL,TOOL), the read-only mark's meaning (every agent; else only Dev, Debugger and Docs) and default; README.md's settings table: a row | `mcp` | ... | naming the read-only mark; the config tests, tests/config-mcp.bats and tests/panel/settings.test.mjs pass under /bin/bash 3.2 and bash 5"
       ],
-      "note": "All four tasks built and committed; C548 passes, C547 has 6 of 7 cases green. Blocked by approved check files I cannot change: (1) tests/config-mcp.bats case 4 lists 'git hub' as a value that must be refused (exit 2), but the same file's VALUE and the plan say entries are separated by spaces, so 'git hub' is two valid open servers (git, hub); no implementation can satisfy both. Replan: change that case's bad value (e.g. 'git$hub' or 'git/hub'). (2) My schema 7 makes two other approved tests stale, outside this plan's files: tests/record-protected.bats case 'this VBW reads up to schema 6 and asks for a newer VBW on schema 7' (VBW_SCHEMA_MAX is now 7 as the plan requires; it must use schema 8) and tests/record.bats case 'rejects a schema that does not match the record' (expects the message 'protected is only for a schema-4, 5 or 6 record'; now '... 4, 5, 6 or 7 record'). Mutation step not run."
+      "mutations": [
+        {
+          "rule": {
+            "req": "R241",
+            "text": "vbw config set mcp VALUE stores each entry (SERVER, SERVER:read-only, SERVER:read-only=TOOL,TOOL) in record.settings.mcp with its mark, in the order given, and prints the setting"
+          },
+          "what": "all maps to false",
+          "files": [
+            "plugin/lib/cmd-config.sh"
+          ],
+          "checks": {
+            "C547": "red"
+          },
+          "result": "red",
+          "at": "2026-11-01T14:34:25Z",
+          "head": "e80d6ca2e68ca16c9f45c40c899c64c25520b725"
+        },
+        {
+          "rule": {
+            "req": "R241",
+            "text": "vbw config shows the setting in the form it was set, and 'mcp: none' without one"
+          },
+          "what": "display drops :read-only",
+          "files": [
+            "plugin/lib/cmd-config.sh"
+          ],
+          "checks": {
+            "C547": "red"
+          },
+          "result": "red",
+          "at": "2026-11-01T14:34:28Z",
+          "head": "e80d6ca2e68ca16c9f45c40c899c64c25520b725"
+        },
+        {
+          "rule": {
+            "req": "R241",
+            "text": "vbw config set mcp default removes the setting"
+          },
+          "what": "default deletes wrong key",
+          "files": [
+            "plugin/lib/cmd-config.sh"
+          ],
+          "checks": {
+            "C547": "red"
+          },
+          "result": "red",
+          "at": "2026-11-01T14:34:32Z",
+          "head": "e80d6ca2e68ca16c9f45c40c899c64c25520b725"
+        },
+        {
+          "rule": {
+            "req": "R241",
+            "text": "a malformed server or tool name, mark or list is refused with a usage line naming the accepted form, and nothing changes"
+          },
+          "what": "tool name unchecked",
+          "files": [
+            "plugin/lib/cmd-config.sh"
+          ],
+          "checks": {
+            "C547": "green"
+          },
+          "result": "survivor",
+          "at": "2026-11-01T14:34:36Z",
+          "head": "e80d6ca2e68ca16c9f45c40c899c64c25520b725"
+        },
+        {
+          "rule": {
+            "req": "R241",
+            "text": "the record carries the setting as schema 7, validated (needs schema 7; schema 7 only with it; a malformed stored entry or a server twice refused), so an older VBW says the project needs a newer VBW, never that the record is corrupt"
+          },
+          "what": "twice check dropped",
+          "files": [
+            "plugin/lib/record.jq"
+          ],
+          "checks": {
+            "C547": "red"
+          },
+          "result": "red",
+          "at": "2026-11-01T14:34:40Z",
+          "head": "e80d6ca2e68ca16c9f45c40c899c64c25520b725"
+        },
+        {
+          "rule": {
+            "req": "R241",
+            "text": "the config skill and the README's settings table know the mcp key, its form and its read-only mark"
+          },
+          "what": "README mcp row removed",
+          "files": [
+            "README.md"
+          ],
+          "checks": {
+            "C547": "red"
+          },
+          "result": "red",
+          "at": "2026-11-01T14:34:43Z",
+          "head": "e80d6ca2e68ca16c9f45c40c899c64c25520b725"
+        },
+        {
+          "rule": {
+            "req": "R241",
+            "text": "the panel's settings pane shows the setting as vbw config prints it, read-only, naming vbw config set mcp beside it"
+          },
+          "what": "panel note removed",
+          "files": [
+            "plugin/hooks/panel-settings.js"
+          ],
+          "checks": {
+            "C548": "red"
+          },
+          "result": "red",
+          "at": "2026-11-01T14:34:48Z",
+          "head": "e80d6ca2e68ca16c9f45c40c899c64c25520b725"
+        },
+        {
+          "rule": {
+            "req": "R241",
+            "text": "this VBW reads up to schema 7: a schema-8 record asks for a newer VBW naming schema 7 as its highest, and the record check allows protected on a schema-4, 5, 6 or 7 record"
+          },
+          "what": "schema max 6",
+          "files": [
+            "plugin/lib/record.sh"
+          ],
+          "checks": {
+            "C560": "red"
+          },
+          "result": "red",
+          "at": "2026-11-01T14:34:51Z",
+          "head": "e80d6ca2e68ca16c9f45c40c899c64c25520b725"
+        },
+        {
+          "rule": {
+            "req": "R241",
+            "text": "a malformed server or tool name, mark or list is refused with a usage line naming the accepted form, and nothing changes"
+          },
+          "what": "tool name unchecked",
+          "files": [
+            "plugin/lib/cmd-config.sh"
+          ],
+          "checks": {
+            "C547": "red"
+          },
+          "result": "red",
+          "at": "2026-11-01T14:35:42Z",
+          "head": "d490b74b1238e5129523c7cd84c25f98ef15594d",
+          "strengthened": [
+            "tests/config-mcp.bats"
+          ],
+          "pending": [
+            "tests/config-mcp.bats"
+          ]
+        }
+      ]
     },
     {
       "id": "P192.4",
@@ -61855,7 +62018,7 @@
         "tools/l3-results/steptime.json"
       ],
       "after": [],
-      "status": "blocked",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "tools/l3-suite.sh: one top-level constant beside RESULTS and STEPS, `L3_STATUS_UNTIL='until around ([A-Za-z]+ )?[0-9]{2}:[0-9]{2}'` (the status line's wording since d7f73771, with an optional day word), used by the steptime sampler's status line column (st_time takes the whole pattern: `sl=$(printf '%s\\n' \"$sw_status\" | st_time \"$L3_STATUS_UNTIL\")`, the chat and Comms keep 'until around') and by the road scenario's `sl=` line; the comment above scenario_steptime says the status line prints 'until around HH:MM'",
@@ -61863,7 +62026,104 @@
         "Run the steptime scenario in the real Claude Code window (`bash tools/l3-suite.sh steptime`, L3) and commit tools/l3-results/steptime.json only from a passing run (D551): facts.statusline_end equal to facts.chat_end and facts.comms_end, at on or after 2026-11-01; a failing run is read from its samples file and fixed before a second run, never committed",
         "Run under /bin/bash 3.2: tests/l3-step-time.bats, tests/statusline-step.bats, tests/statusline-step-miss.bats, tests/l3-road.bats"
       ],
-      "note": "C557 R240.4 case (tests/l3-step-time.bats line 57) fails independent of the code: the file has no setup(), so TEST_ROOT is empty and 'grep ... > $TEST_ROOT/pattern.sh' writes to /pattern.sh (Read-only file system). The suite's L3_STATUS_UNTIL is defined once and correct; the other 2 R240 cases and C556 pass; the steptime L3 run passed and is committed. The protected check file needs 'setup() { vbw_setup; }' (or mktemp) and a new approval; I may not edit it."
+      "mutations": [
+        {
+          "rule": {
+            "req": "R240",
+            "text": "the committed steptime result is from a passing run on 2026-11-01 or later with the status line's end time equal to the chat's and Comms'"
+          },
+          "what": "result status line end differs",
+          "files": [
+            "tools/l3-results/steptime.json"
+          ],
+          "checks": {
+            "C557": "red"
+          },
+          "result": "red",
+          "at": "2026-11-01T14:35:04Z",
+          "head": "9b97715c80017cb8e5d997b0ec6f6f9a1baf033e"
+        },
+        {
+          "rule": {
+            "req": "R240",
+            "text": "a build note exactly as a run writes it (every key step_start writes plus road) renders '● working: building P1.1 · 0 of 1 · until around HH:MM' in the step's first minute, with no minutes prefix, and 'N min, until around HH:MM' after it"
+          },
+          "what": "mins prefix shown in the first minute",
+          "files": [
+            "plugin/scripts/statusline.jq"
+          ],
+          "checks": {
+            "C556": "red"
+          },
+          "result": "red",
+          "at": "2026-11-01T14:37:21Z",
+          "head": "d490b74b1238e5129523c7cd84c25f98ef15594d"
+        },
+        {
+          "rule": {
+            "req": "R240",
+            "text": "a proof note exactly as plugin/lib/proofsteps.sh writes it at its start (proof null, road key) renders its end time"
+          },
+          "what": "proof notes show no end",
+          "files": [
+            "plugin/scripts/statusline.jq"
+          ],
+          "checks": {
+            "C556": "red"
+          },
+          "result": "red",
+          "at": "2026-11-01T14:37:25Z",
+          "head": "d490b74b1238e5129523c7cd84c25f98ef15594d"
+        },
+        {
+          "rule": {
+            "req": "R240",
+            "text": "the suite's status line pattern (L3_STATUS_UNTIL), run over a real render, reads the HH:MM of the note's end, so the status line's wording and the scenario's pattern cannot diverge unseen"
+          },
+          "what": "pattern needs a 3-digit minute",
+          "files": [
+            "tools/l3-suite.sh"
+          ],
+          "checks": {
+            "C556": "red"
+          },
+          "result": "red",
+          "at": "2026-11-01T14:37:28Z",
+          "head": "d490b74b1238e5129523c7cd84c25f98ef15594d"
+        },
+        {
+          "rule": {
+            "req": "R240",
+            "text": "tools/l3-suite.sh defines L3_STATUS_UNTIL once at top level, accepting 'until around HH:MM' with an optional day word and not the old 'until HH:MM'"
+          },
+          "what": "pattern is the old until HH:MM",
+          "files": [
+            "tools/l3-suite.sh"
+          ],
+          "checks": {
+            "C557": "red"
+          },
+          "result": "red",
+          "at": "2026-11-01T14:37:32Z",
+          "head": "d490b74b1238e5129523c7cd84c25f98ef15594d"
+        },
+        {
+          "rule": {
+            "req": "R240",
+            "text": "the steptime sampler and the road scenario read the status line column with L3_STATUS_UNTIL, no stale pattern remains, and the scenario's comment describes the status line's current wording"
+          },
+          "what": "road scenario reads the stale pattern",
+          "files": [
+            "tools/l3-suite.sh"
+          ],
+          "checks": {
+            "C557": "red"
+          },
+          "result": "red",
+          "at": "2026-11-01T14:37:36Z",
+          "head": "d490b74b1238e5129523c7cd84c25f98ef15594d"
+        }
+      ]
     },
     {
       "id": "P195.1",
@@ -61922,7 +62182,7 @@
           "head": "808bfcde39f77e9fc5941b55d333ee9af49435de"
         }
       ],
-      "note": "Task 1 done (808bfcde; C558 green, R243.1/R243.2 mutations red). Tasks 2-4 need GitHub runner step tables: gh workflow run bench-steps.yml needs the branch pushed by the user (publishing). Local before-figures (Mac, ubuntu:24.04/26.04 containers on the Mac, 100 runs): program run quotient 1.65-1.79 Mac vs 1.37-1.81 Linux, program compile 1.38-1.48 vs 1.29-1.61, shell prelude ~0, reference compile 0.67 vs 0.62-0.78: no step is Linux-only locally; the Linux gap shows only on GitHub's runners, so the cause cannot be found or removed without those tables."
+      "note": "compile split committed at 9b97715c: the lead session pushes plow/2.1.23, runs gh workflow run bench-steps.yml --ref plow/2.1.23 and gives the run id"
     },
     {
       "id": "P195.2",
@@ -69161,6 +69421,12 @@
         "P192.5",
         "P195.3"
       ]
+    },
+    {
+      "id": "D563",
+      "text": "R240: the end time never reached the steptime scenario because its sampler read the status line with 'until HH:MM' while the status line has printed 'until around HH:MM' since d7f73771 (2026-10-24 16:54, after the last pass at 02:35); the render on a note exactly as a run writes it is pinned by tests/statusline-step.bats; supersedes D558's clause placing the cause in what the status line reads",
+      "why": "bats --filter R240 tests/statusline-step.bats under /bin/bash: 3 of 3 pass on the unchanged status line",
+      "at": "2026-11-01T14:32:18Z"
     }
   ],
   "commands": {
@@ -78287,6 +78553,17 @@
         "ended": "2026-11-01T14:09:30Z",
         "cost": {
           "usd": 6.407861
+        }
+      },
+      {
+        "id": "build-20261101T143113Z",
+        "kind": "build",
+        "session": "0ee781c3-c5b6-4a6c-889f-04b89f1fba4a",
+        "milestone": "M49",
+        "started": "2026-11-01T14:31:13Z",
+        "ended": "2026-11-01T14:39:41Z",
+        "cost": {
+          "usd": 1.270025
         }
       }
     ],
