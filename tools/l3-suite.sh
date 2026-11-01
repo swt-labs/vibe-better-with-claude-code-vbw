@@ -12,14 +12,14 @@
 # each one's lines print together when it ends.
 #
 # Scenarios: greenfield, reject, resume, change, convert, balanced, docs, qafix,
-# decision, debug, research, edgecase, leftover, recheck, approval, newcomer, senior, panel, steptime, road, pluginoff, tools, legacy, nolegacy, smallchange, costs, loop, plugindir, sessions, taskbreak, fixchecks, failoutput, leaveout, hiddenrecord, latedecision, ignoredplanning, stalefix, mapsnapshot, alreadyfixed, mapnotrun, submodule. A user
+# decision, debug, research, edgecase, leftover, recheck, approval, newcomer, senior, panel, steptime, road, pluginoff, tools, legacy, nolegacy, smallchange, costs, loop, plugindir, sessions, taskbreak, fixchecks, failoutput, leaveout, hiddenrecord, latedecision, ignoredplanning, stalefix, mapsnapshot, alreadyfixed, mapnotrun, submodule, testforms. A user
 # answers every question with VBW's recommendation unless the scenario says otherwise.
 set -uo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 l3() { bash "$ROOT/tools/l3.sh" "$@"; }
 VBW="$ROOT/plugin/bin/vbw"
-ALL="greenfield reject resume change convert balanced docs qafix decision debug research edgecase leftover recheck approval newcomer senior panel steptime road pluginoff tools legacy nolegacy smallchange costs loop plugindir sessions taskbreak fixchecks failoutput leaveout hiddenrecord latedecision ignoredplanning stalefix mapsnapshot alreadyfixed mapnotrun submodule"
+ALL="greenfield reject resume change convert balanced docs qafix decision debug research edgecase leftover recheck approval newcomer senior panel steptime road pluginoff tools legacy nolegacy smallchange costs loop plugindir sessions taskbreak fixchecks failoutput leaveout hiddenrecord latedecision ignoredplanning stalefix mapsnapshot alreadyfixed mapnotrun submodule testforms"
 RESULTS="$ROOT/tools/l3-results"
 STEPS=60
 # The status line's end time since d7f73771: 'until around HH:MM', with a day word when the end is not today.
@@ -2868,6 +2868,58 @@ scenario_leaveout() {
       "$(jq -n --argjson n "$named" --argjson l "$leave" --argjson p "$proof" --argjson w "$without" \
         '{contract_names_path: $n, leave_out: $l, proof_passed: $p, copy_without_data: $w}')" \
       '["a listed path that is a folder whose files alone are ignored (tests/clean-copy-proof.bats holds it)","a clone without the data folder","the fix, mutate and fix-done copies (tests/clean-copy-proof.bats holds them)","the approval question as drawn on screen","a data folder of real size, or a disk without instant clones"]'
+  }
+}
+
+# testforms_seed: a monorepo with two subprojects (apps/web, apps/mob), each with its own
+# test runner (run.sh, which takes a test file's path relative to its subproject and runs it
+# from there), the spec naming one test-file form per subproject with its dir, one
+# requirement (greet.sh) and its check. Approved, nothing built.
+testforms_seed() {
+  local p
+  for p in web mob; do
+    mkdir -p "apps/$p/src" "apps/$p/tests"
+    printf '%s\n' "$p" > "apps/$p/src/main.txt"
+    printf '[ -f "%s" ] || { echo "run from the wrong folder"; exit 1; }\nsh "$1"\n' "src/main.txt" > "apps/$p/run.sh"
+    printf 'grep -qx %s src/main.txt\n' "$p" > "apps/$p/tests/t_main.sh"
+  done
+  printf '# Greetings\n\n## Requirements\n\n- R1 [auto] ./greet.sh Ana prints "Hello, Ana!"\n\n## Commands\n\n- test: sh apps/web/run.sh tests/t_main.sh\n\n## Test files\n\n- web:\n  - dir: apps/web\n  - run: sh run.sh {file}\n  - files: apps/web/tests/*.sh\n- mob:\n  - dir: apps/mob\n  - run: sh run.sh {file}\n  - files: apps/mob/tests/*.sh\n' > .vbw/spec.md
+  "$VBW" spec sync > /dev/null || return 1
+  printf '[ "$(sh greet.sh Ana)" = "Hello, Ana!" ]\n' > test_greet.sh
+  printf '%s' '{"phases": [{"id": "P1", "title": "Greet", "reqs": ["R1"]}],
+    "plans": [{"id": "P1.1", "phase": "P1", "title": "greet.sh", "reqs": ["R1"], "files": ["greet.sh"], "after": [], "tasks": ["greet.sh prints Hello, NAME!"]}],
+    "checks": [{"id": "C1", "req": "R1", "run": ["sh", "test_greet.sh"], "files": ["test_greet.sh"]}],
+    "rules": [{"req": "R1", "text": "a name is greeted", "check": "C1"}]}' \
+    | "$VBW" apply > /dev/null || return 1
+  git add -A && git commit -qm "chore: plan" || return 1
+  "$VBW" approve > /dev/null || return 1
+}
+
+# testforms (#735): a monorepo whose subprojects have test runners of their own, one named
+# test-file form each with its dir; the build runs to the end. Judged in the record: the proof
+# passed, each subproject's test file ran with its own form (evidence names the form), and the
+# test command's place names both forms; never on screen.
+scenario_testforms() {
+  new_project
+  (cd "$dir" && "$VBW" init > /dev/null && "$VBW" config rigor auto > /dev/null && testforms_seed) \
+    || { say "setup failed: could not seed the project with two subprojects and their test-file forms"; return 1; }
+  fixture="greet.sh in a monorepo with apps/web and apps/mob, each with its own test runner (run.sh, which fails when it is not started in its subproject) and one test file; the spec names one test-file form per subproject with its dir; one requirement, approved by the user before the session; rigor auto; the user types /vbw:vibe and the build runs to the end"
+  start="/vbw:vibe"
+  checks() {
+    local passed=true r="$dir/.vbw/record.json" proof=false forms=false named=false
+    jq -e '.evidence.passed == true' "$r" > /dev/null 2>&1 && proof=true
+    jq -e '.evidence.test_files | (.["apps/web/tests/t_main.sh"].form == "web") and (.["apps/mob/tests/t_main.sh"].form == "mob")
+      and .["apps/web/tests/t_main.sh"].status == "pass" and .["apps/mob/tests/t_main.sh"].status == "pass"' "$r" > /dev/null 2>&1 && forms=true
+    jq -e '.evidence.commands.test.command | startswith("web: sh run.sh {file}; mob: sh run.sh {file}")' "$r" > /dev/null 2>&1 && named=true
+    say "proof passed: $proof; each form ran its file: $forms; test command names both forms: $named"
+    common_checks
+    expect "the proof passed ($proof)" [ "$proof" = true ]
+    expect "each subproject's test file ran with its own form, in its dir, and passed ($forms)" [ "$forms" = true ]
+    expect "the test command's place in the evidence names both forms ($named)" [ "$named" = true ]
+    [ "$failed" -eq 0 ] || passed=false
+    result_write testforms "$fixture" "${cost_usd:-0}" "$passed" \
+      "$(jq -n --argjson p "$proof" --argjson f "$forms" --argjson n "$named" '{proof_passed: $p, forms_ran: $f, command_names_forms: $n}')" \
+      '["the Lead proposing the forms itself from the map (the forms are seeded)","a form whose dir is a submodule (waits on #737)","a change in one subproject rerunning only its files (tests/testfiles-forms.bats holds it)","real test runners (vitest, jest, pytest)","the forms in the approval question as drawn on screen"]'
   }
 }
 
