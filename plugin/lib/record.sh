@@ -486,6 +486,12 @@ record_commit() {
 VBW_JQ_DEFS='def next_id($p): (([.[]?.id | ltrimstr($p) | tonumber?] | max) // 0) + 1 | "\($p)\(.)";
 def next_fix_id: (.fixes + [(.parked // [])[].ids[]? | select(startswith("F")) | {id: .}]) | next_id("F");
 def covers($p): . as $e | $e == $p or (($e | endswith("/")) and ($p | startswith($e)));
+# tf_forms: the test file forms of a record or a parsed spec, always an array of
+# {name, dir, run, files}: the one-form {run, files} reads as an unnamed form at the root.
+def tf_forms: (.test_files // null) | if . == null then [] elif type == "object" then [{name: null, dir: null, run, files}] else . end;
+# One test file form for a message: "[NAME: ]RUN (files PATHSPECS[, in DIR/])".
+def tf_say: (if .name == null then "" else .name + ": " end) + (.run | join(" "))
+  + " (files \(.files | join(" "))" + (if .dir == null then "" else ", in \(.dir)/" end) + ")";
 # A text names $f (a path or a commit) as a word of its own: a closing dot of a sentence, or a
 # leading ./, does not hide it; NOTES.md names neither NOTES.md.bak nor docs/NOTES.md.
 def names($f): split($f) as $s | any(range(0; ($s | length) - 1);

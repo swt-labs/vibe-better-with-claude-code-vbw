@@ -18,7 +18,7 @@ cmd_spec() {
   local parsed
   parsed=$(spec_parse)
   case "$sub" in
-    sync|check) spec_verify_leave_out "$parsed" ;;
+    sync|check) spec_verify_leave_out "$parsed"; spec_verify_test_files "$parsed" ;;
   esac
   case "$sub" in
     check)
@@ -110,6 +110,25 @@ spec_sync() {
 # Every Clean copy path must be git-ignored when something is there: only
 # ignored paths are copied in, so only they can be left out. A path with nothing
 # at it is accepted (nothing to leave out). Dies on the first refusal, before any write.
+# spec_test_files_overlap PARSED: "LINE<tab>MESSAGE" when a committed file is
+# matched by two test file forms (a test file belongs to one form: it never runs
+# twice), LINE the later form's; nothing otherwise.
+spec_test_files_overlap() {
+  printf '%s' "$1" | jq -e '.test_files | type == "array" and length > 1' > /dev/null || return 0
+  # shellcheck source=testfiles.sh
+  . "$VBW_LIB/testfiles.sh"
+  testfiles_owned "$1" | jq -r --slurpfile s <(printf '%s' "$1") '$s[0] as $s
+    | first(group_by(.p)[] | select(length > 1)
+      | "\($s.test_file_lines[.[1].i])\t\(.[0].p) is matched by forms \($s.test_files[.[0].i].name) and \($s.test_files[.[1].i].name): a test file belongs to one form") // empty'
+}
+
+# spec_verify_test_files PARSED: dies on a file two forms match, naming its line.
+spec_verify_test_files() {
+  local hit
+  hit=$(spec_test_files_overlap "$1")
+  [ -z "$hit" ] || vbw_die "spec.md line ${hit%%$'\t'*}: ${hit#*$'\t'}"
+}
+
 spec_verify_leave_out() {
   local line path p
   while IFS=$'\t' read -r line path; do

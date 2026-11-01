@@ -337,13 +337,14 @@ checks_unit() {
 
 # checks_units_load UNITS: every unit's launch data, from one jq pass over the
 # units (a JSON array): CU_COUNT units; for unit I, CU_NAME, CU_OUT, CU_TIMEOUT,
-# CU_EXIT, CU_OUTPUT, CU_ALONE, CU_PIN (the copy it names, or empty) and its
+# CU_EXIT, CU_OUTPUT, CU_ALONE, CU_PIN (the copy it names, or empty), CU_IN
+# (the folder of the copy it runs in, .dir: empty for the copy's root) and its
 # argv, CU_ARGC[I] words of CU_ARGV from CU_AT[I]. checks_run_units declares them.
 checks_units_load() {
   local f=() a k=0 c
   while IFS= read -r -d '' a; do f+=("$a"); done < <(printf '%s' "$1" | jq -j '.[]
     | [.name, .out, (.timeout | tostring), (.exit | tostring), .output, (.alone | tostring), (.slot // "" | tostring),
-       (.argv | length | tostring)] + .argv | .[] + "\u0000"')
+       (.dir // ""), (.argv | length | tostring)] + .argv | .[] + "\u0000"')
   CU_COUNT=0
   while [ "$k" -lt ${#f[@]} ]; do
     CU_NAME[CU_COUNT]=${f[k]}
@@ -353,11 +354,12 @@ checks_units_load() {
     CU_OUTPUT[CU_COUNT]=${f[k + 4]}
     CU_ALONE[CU_COUNT]=${f[k + 5]}
     CU_PIN[CU_COUNT]=${f[k + 6]}
-    c=${f[k + 7]}
+    CU_IN[CU_COUNT]=${f[k + 7]}
+    c=${f[k + 8]}
     CU_AT[CU_COUNT]=${#CU_ARGV[@]}
     CU_ARGC[CU_COUNT]=$c
-    [ "$c" -eq 0 ] || CU_ARGV+=("${f[@]:k + 8:c}")
-    k=$((k + 8 + c))
+    [ "$c" -eq 0 ] || CU_ARGV+=("${f[@]:k + 9:c}")
+    k=$((k + 9 + c))
     CU_COUNT=$((CU_COUNT + 1))
   done
 }
@@ -389,7 +391,17 @@ checks_unit_run() {
     reads_reset "$copy" "$st" || reads=false
     [ -z "$t0" ] || prooftime_span tracking "$t0"
   fi
-  checks_exec "$t" "$out" ${CU_ARGV[@]+"${CU_ARGV[@]:a:c}"}
+  # A unit with a folder (a test file form's dir) runs in it; a folder the commit
+  # does not have fails the unit, naming it, and runs nothing.
+  if [ -z "${CU_IN[i]:-}" ]; then
+    checks_exec "$t" "$out" ${CU_ARGV[@]+"${CU_ARGV[@]:a:c}"}
+  elif cd "./${CU_IN[i]}" 2> /dev/null; then
+    checks_exec "$t" "$out" ${CU_ARGV[@]+"${CU_ARGV[@]:a:c}"}
+    cd "${copy:-$here}" || return 1
+  else
+    vbw_out 'the folder %s/ (the dir of the test file form) is not in the commit: no test file of the form can run\n' "${CU_IN[i]}" > "$out"
+    CHECK_CODE=1 CHECK_SECONDS=0
+  fi
   if [ -n "$st" ]; then
     t0=
     [ -z "${PROOFTIME_FILE:-}" ] || t0=$(prooftime_clock)
@@ -524,7 +536,7 @@ checks_units_parallel() {
 # (vbw mutate --run: each break is in its own copy). Results are in the units' order.
 checks_run_units() {
   local jobs slots cap i slot res CU_DIR CU_WAKE='' CU_RUNNER='' CU_COUNT=0
-  local CU_NAME=() CU_OUT=() CU_TIMEOUT=() CU_EXIT=() CU_OUTPUT=() CU_ALONE=() CU_PIN=() CU_AT=() CU_ARGC=() CU_ARGV=()
+  local CU_NAME=() CU_OUT=() CU_TIMEOUT=() CU_EXIT=() CU_OUTPUT=() CU_ALONE=() CU_PIN=() CU_IN=() CU_AT=() CU_ARGC=() CU_ARGV=()
   checks_units_load "$1"
   [ "$CU_COUNT" -gt 0 ] || { printf '{}\n'; return 0; }
   jobs=$(vbw_check_jobs) || jobs=1

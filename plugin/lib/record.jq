@@ -374,10 +374,22 @@ if type != "object" then ["record must be a JSON object"] else
         end ),
     ( $r.test_files
       | select(. != null)
-      | select((type == "object" and (keys == ["files","run"]) and (.run | argv)
-                and ((.run | [.[] | [match("\\{file\\}"; "g")] | length] | add) == 1)
-                and (.files | type == "array" and length > 0 and all(.[]; type == "string" and length > 0))) | not)
-      | "test_files must be {run, files}: run an argv naming {file} exactly once, files a non-empty array of git pathspecs" ),
+      # One form is {run, files}; several, or one with a name or a dir, an array of
+      # {name, dir, run, files} (docs/record.md), never one unnamed form without dir.
+      | def tf_ok: (.run | argv) and ((.run | [.[] | [match("\\{file\\}"; "g")] | length] | add) == 1)
+          and (.files | type == "array" and length > 0 and all(.[]; type == "string" and length > 0));
+        def tf_dir: . == null or (type == "string" and (split("/") as $s | (startswith("/") | not)
+          and all($s[]; . != "" and . != "." and . != "..") and $s[0] != ".vbw" and $s[0] != ".git"));
+        select((if type == "object" then keys == ["files","run"] and tf_ok
+          elif type == "array" then length > 0
+            and all(.[]; type == "object" and keys == ["dir","files","name","run"] and tf_ok and (.dir | tf_dir)
+              and (.name == null or (.name | type == "string" and test("^[A-Za-z0-9_-]+$")))
+              and (. as $f | $f.dir == null or all($f.files[]; ltrimstr(":!") | startswith($f.dir + "/"))))
+            and ([.[].name] | unique | length) == length
+            and (length == 1 or all(.[]; .name != null))
+            and ((length == 1 and .[0].name == null and .[0].dir == null) | not)
+          else false end) | not)
+      | "test_files must be {run, files}, or an array of named forms {name, dir, run, files}: run an argv naming {file} exactly once, files a non-empty array of git pathspecs under dir" ),
     ( $r.evidence
       | select(. != null)
       | if type != "object" then "evidence must be null or an object" else

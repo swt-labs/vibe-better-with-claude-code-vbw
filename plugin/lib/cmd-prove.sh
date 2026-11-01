@@ -472,7 +472,9 @@ prove_summary() {
         | if ($c | length) == 1 then "  ran everything: \($c[0])"
           elif ($c | length) > 1 then "  ran everything, because:", ($c[] | "  - \(.)") else empty end),
       "  checks: \([$e.checks[] | select(.reused | not)] | length) ran, \([$e.checks[] | select(.reused)] | length) reused",
-      "  test files: \([($e.test_files // {})[] | select(.reused | not)] | length) ran, \([($e.test_files // {})[] | select(.reused)] | length) reused",
+      "  test files: \([($e.test_files // {})[] | select(.reused | not)] | length) ran, \([($e.test_files // {})[] | select(.reused)] | length) reused"
+        + ([($e.test_files // {})[] | select(.form != null)] | group_by(.form)
+           | if length == 0 then "" else " (" + (map("\(.[0].form) \([.[] | select(.reused | not)] | length) ran, \([.[] | select(.reused)] | length) reused") | join("; ")) + ")" end),
       (if ($e.commands.test // null) != null and ($e.commands.test.of_files | not) and ($e.commands.test.reused | not) and ($e.commands.test.status != "skipped")
          then "  test command ran whole: no single-file form is declared" else empty end),
       (if ($e.commands.test // null) != null and $e.commands.test.of_files and (($e.test_files // {}) | length) == 0

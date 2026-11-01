@@ -135,3 +135,113 @@ FORM='- run: sh {file}
   [[ "$output" == *"approved test file form"* ]] || { echo "$output"; false; }
   jq -e 'any(.granted[]; .kind == "test_files")' "$(git rev-parse --git-common-dir)/vbw/consent.json" > /dev/null
 }
+
+# #735: several named forms, each with its own run, files and optional dir.
+FORMS='- webapp:
+  - dir: apps/webapp
+  - run: sh run.sh {file}
+  - files: apps/webapp/src/*.t
+- mobile:
+  - run: ["sh", "apps/mobile/run.sh", "{file}"]
+  - files: apps/mobile/*.t
+  - files: apps/mobile/more/*.t'
+
+@test "#735: named forms parse into an array of {name, dir, run, files}, dir null when absent" {
+  spec "$FORMS"
+  run "$VBW" spec sync
+  [ "$status" -eq 0 ] || { echo "$output"; false; }
+  jq -e '.test_files == [
+    {name: "webapp", dir: "apps/webapp", run: ["sh","run.sh","{file}"], files: ["apps/webapp/src/*.t"]},
+    {name: "mobile", dir: null, run: ["sh","apps/mobile/run.sh","{file}"], files: ["apps/mobile/*.t","apps/mobile/more/*.t"]}]' .vbw/record.json \
+    || { jq .test_files .vbw/record.json; false; }
+}
+
+@test "#735: the unnamed shape stays {run, files}; with a top-level dir it is one form with a null name" {
+  spec "$FORM"
+  "$VBW" spec sync > /dev/null
+  [ "$(jq -c '.test_files' .vbw/record.json)" = '{"run":["sh","{file}"],"files":["tests/t_*.sh"]}' ]
+  spec '- dir: apps/a/
+- run: sh {file}
+- files: apps/a/t_*.sh'
+  run "$VBW" spec sync
+  [ "$status" -eq 0 ] || { echo "$output"; false; }
+  [ "$(jq -c '.test_files' .vbw/record.json)" = '[{"name":null,"dir":"apps/a","run":["sh","{file}"],"files":["apps/a/t_*.sh"]}]' ] \
+    || { jq -c .test_files .vbw/record.json; false; }
+}
+
+# refused SPEC_LINES TEXT...: spec check refuses the section, naming every TEXT.
+refused() {
+  local t
+  spec "$1"
+  shift
+  run "$VBW" spec check
+  [ "$status" -ne 0 ] || { echo "accepted: $output"; return 1; }
+  for t in "$@"; do [[ "$output" == *"$t"* ]] || { echo "missing '$t' in: $output"; return 1; }; done
+}
+
+@test "#735: a form without run or files, a form named twice and a run naming {file} twice are refused with the line" {
+  refused '- a:
+  - files: x/*.t' "line 13" "form a needs a '- run:"
+  refused '- a:
+  - run: sh {file}' "line 13" "form a needs a '- files:"
+  refused '- a:
+  - run: sh {file}
+  - files: x/*.t
+- a:
+  - run: sh {file}
+  - files: y/*.t' "line 16" "form a is named twice"
+  refused '- a:
+  - run: sh {file} {file}
+  - files: x/*.t' "line 14" "{file} exactly once"
+  refused '- a:
+  - run: sh {file}
+  - run: sh {file}
+  - files: x/*.t' "line 15" "form a has two run lines"
+}
+
+@test "#735: a dir that is absolute, has . or .. parts, or lies under .vbw/ or .git/ is refused with its line" {
+  local d
+  for d in /abs a/../b ./a .vbw/x .git; do
+    refused "- a:
+  - dir: $d
+  - run: sh {file}
+  - files: $d/x.t" "line 14" "the dir of form a"
+  done
+}
+
+@test "#735: a files pathspec of a form with dir outside that dir is refused" {
+  refused '- webapp:
+  - dir: apps/webapp
+  - run: sh {file}
+  - files: apps/other/*.t' "line 16" "the files of form webapp must lie under its dir apps/webapp/"
+  refused '- dir: apps/a
+- run: sh {file}
+- files: elsewhere/*.t' "line 15" "must lie under its dir apps/a/"
+}
+
+@test "#735: top-level run, files or dir lines beside a named form, and a nested line outside one, are refused with the line" {
+  refused '- run: sh {file}
+- a:
+  - run: sh {file}
+  - files: x/*.t' "line 14" "mixes"
+  refused '- a:
+  - run: sh {file}
+  - files: x/*.t
+- files: y/*.t' "line 16" "mixes"
+  refused '  - run: sh {file}' "line 13" "named form"
+}
+
+@test "#735: a committed file matched by two forms is refused at check and sync, naming it and both forms" {
+  mkdir -p apps/a
+  printf 'true\n' > apps/a/x.t
+  git add apps/a/x.t && git commit -q -m "test: x"
+  refused '- one:
+  - run: sh {file}
+  - files: apps/a/*.t
+- two:
+  - run: sh {file}
+  - files: apps/*/x.t' "line 16" "apps/a/x.t is matched by forms one and two"
+  run "$VBW" spec sync
+  [ "$status" -ne 0 ] && [[ "$output" == *"matched by forms one and two"* ]] || { echo "$output"; false; }
+  jq -e 'has("test_files") | not' .vbw/record.json > /dev/null
+}

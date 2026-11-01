@@ -39,7 +39,7 @@ testfiles_ids() {
   rm -rf "$d"
 }
 
-# testfiles_ls RECORD: the committed files the declared pathspecs match, NUL
+# testfiles_ls PATHSPEC...: the committed files one form's pathspecs match, NUL
 # separated, by their project paths. A submodule's files count only for the
 # pathspecs that name it (start with its path and a /), matched inside it, and
 # only for the submodules vbw_subs finds (one level, checked out): those the
@@ -48,9 +48,8 @@ testfiles_ids() {
 # exclude that names a submodule (:!, :^ or :(exclude)) is passed into it. A
 # project without submodules lists as it did before them: one git, no filter.
 testfiles_ls() {
-  local specs=() subs=() rel=() inc a s
-  while IFS= read -r -d '' a; do specs+=("$a"); done < <(printf '%s' "$1" | jq -j '.test_files.files[] + "\u0000"')
-  [ ${#specs[@]} -gt 0 ] || return 0
+  local specs=("$@") subs=() rel=() inc a s
+  [ $# -gt 0 ] || return 0
   # vbw_subs finds none without .gitmodules, or a .git file (a copy may hold it in its index only).
   if [ -f "$VBW_ROOT/.gitmodules" ] || [ -f "$VBW_ROOT/.git" ]; then
     while IFS= read -r -d '' s; do subs+=("$s"); done < <(vbw_subs)
@@ -77,12 +76,41 @@ testfiles_ls() {
   done
 }
 
-# testfiles_list RECORD: the test files, NUL separated: the files testfiles_ls
-# lists, minus every file the run of an approved check names.
-testfiles_list() {
-  testfiles_ls "$1" \
-    | jq -Rs -j --slurpfile r <(printf '%s' "$1") '[$r[0].checks[].run[]] as $run
-        | split("\u0000")[] | . as $p | select(length > 0 and (any($run[]; . == $p) | not)) | . + "\u0000"'
+# testfiles_owned RECORD: the committed files each form's pathspecs match, as a
+# JSON array of {p, i} (the project path and the form's index in tf_forms), in
+# form order and git's order within a form. A file two forms match is listed twice.
+# RECORD may also be a parsed spec (vbw spec check and sync refuse such a file).
+testfiles_owned() {
+  local n i=0 specs a
+  n=$(printf '%s' "$1" | jq "$VBW_JQ_DEFS"'tf_forms | length')
+  while [ "$i" -lt "$n" ]; do
+    specs=()
+    while IFS= read -r -d '' a; do specs+=("$a"); done < <(printf '%s' "$1" | jq -j --argjson i "$i" "$VBW_JQ_DEFS"'tf_forms[$i].files[] + "\u0000"')
+    testfiles_ls ${specs[@]+"${specs[@]}"} | jq -Rsc --argjson i "$i" 'split("\u0000")[:-1] | map({p: ., i: $i})'
+    i=$((i + 1))
+  done | jq -sc 'add // []'
+}
+
+# testfiles_index RECORD: TF_INDEX, the test files of the proof as JSON:
+# owned [{p, i}] (each file once, by the first form that matches it, minus every
+# file the run of an approved check names), dups [{p, forms}] (files two forms
+# match, which fail the test command: a file never runs twice, nor is it dropped,
+# silently), match [N per form] (the files each form matches before the approved
+# checks' files are taken out, R169) and map {p: i} (for the fingerprints,
+# PROOFREUSE_TFMAP). TF_PATHS, the owned paths in order.
+testfiles_index() {
+  local p
+  TF_INDEX=$(testfiles_owned "$1" | jq -c --slurpfile r <(printf '%s' "$1") "$VBW_JQ_DEFS"'
+    ($r[0] | tf_forms) as $fs | [$r[0].checks[].run[]] as $run | . as $all
+    | (reduce $all[] as $x ({seen: {}, out: []}; if .seen[$x.p] then . else .seen[$x.p] = true | .out += [$x] end) | .out) as $one
+    | {owned: [$one[] | select(.p as $p | any($run[]; . == $p) | not)],
+       dups: [$all | group_by(.p)[] | select(length > 1) | {p: .[0].p, forms: map($fs[.i].name // "unnamed")}],
+       match: [range(0; $fs | length) as $i | [$all[] | select(.i == $i)] | length]}
+    | .map = ([.owned[] | {key: .p, value: .i}] | from_entries)')
+  # shellcheck disable=SC2034 # read by proofreuse_fps_need
+  PROOFREUSE_TFMAP=$(printf '%s' "$TF_INDEX" | jq -c '.map')
+  TF_PATHS=()
+  while IFS= read -r -d '' p; do TF_PATHS+=("$p"); done < <(printf '%s' "$TF_INDEX" | jq -j '.owned[].p + "\u0000"')
 }
 
 # testfiles_fp RECORD PATH: fingerprint of a test file's approved definition
@@ -105,6 +133,7 @@ testfiles_keys() {
 testfiles_plan() {
   local record="$1" off='' head='' keys verdicts p
   TF_PATHS=() TF_TODO=() TF_REUSE='{}' TF_WHY='{}'
+  TF_INDEX='{"owned": [], "dups": [], "match": [], "map": {}}'
   testfiles_on "$record" || return 0
   PROVE_NAMES=$(printf '%s' "$PROVE_NAMES" | jq -c '. - ["test", "quick"]')
   TODO_COMMANDS=$(printf '%s' "$TODO_COMMANDS" | jq -c '. - ["test", "quick"]')
@@ -112,7 +141,7 @@ testfiles_plan() {
   WHY_COMMANDS=$(printf '%s' "$WHY_COMMANDS" | jq -c 'del(.test, .quick)')
   # shellcheck disable=SC2034 # read by cmd_prove
   QUICK_STANDIN=false
-  while IFS= read -r -d '' p; do TF_PATHS+=("$p"); done < <(testfiles_list "$record")
+  testfiles_index "$record"
   [ ${#TF_PATHS[@]} -gt 0 ] || return 0
   keys=$(testfiles_keys)
   proofreuse_fps_need "$record" "$keys"
@@ -137,18 +166,21 @@ testfiles_plan() {
 # own (several at a time, in slot copies); {path: result}, each result with
 # "id" (its output file's name) and its read list. The units' names come from
 # one hashing pass (testfiles_ids), the units from one jq pass over the record:
-# the form's argv with {file} replaced, and the command timeout (the seconds a
-# test file may take, as a project command).
+# the argv of the file's form (TF_INDEX) with {file} replaced by the file's path
+# relative to the form's dir, the dir the unit runs in, and the command timeout
+# (the seconds a test file may take, as a project command).
 testfiles_run() {
   local ids res
   [ ${#TF_TODO[@]} -gt 0 ] || { printf '{}\n'; return 0; }
   ids=$(testfiles_ids "${TF_TODO[@]}")
-  res=$(checks_run_units "$(printf '%s' "$1" | jq -c --argjson d "$VBW_COMMAND_TIMEOUT" \
-    --rawfile p <(printf '%s\0' "${TF_TODO[@]}") --rawfile n <(printf '%s' "$ids") '
-    (.settings.command_timeout // $d) as $t | .test_files.run as $run
+  res=$(checks_run_units "$(printf '%s' "$1" | jq -c --argjson d "$VBW_COMMAND_TIMEOUT" --slurpfile x <(printf '%s' "$TF_INDEX") \
+    --rawfile p <(printf '%s\0' "${TF_TODO[@]}") --rawfile n <(printf '%s' "$ids") "$VBW_JQ_DEFS"'
+    (.settings.command_timeout // $d) as $t | tf_forms as $fs
     | ($p | split("\u0000")[:-1]) as $ps | ($n | split("\n")) as $ns
-    | [range(0; $ps | length) as $k | $ns[$k] as $id
-       | {name: $id, out: "\($id).out", argv: [$run[] | split("{file}") | join($ps[$k])], timeout: $t, exit: 0, output: "", alone: false}]')")
+    | [range(0; $ps | length) as $k | $ns[$k] as $id | $fs[$x[0].map[$ps[$k]] // 0] as $f
+       | (if $f.dir == null then $ps[$k] else $ps[$k] | ltrimstr($f.dir + "/") end) as $rel
+       | {name: $id, out: "\($id).out", argv: [$f.run[] | split("{file}") | join($rel)], timeout: $t, exit: 0, output: "", alone: false}
+         + (if $f.dir == null then {} else {dir: $f.dir} end)]')")
   printf '%s' "$res" | jq -c --rawfile p <(printf '%s\0' "${TF_TODO[@]}") --rawfile n <(printf '%s' "$ids") '. as $r
     | ($p | split("\u0000")[:-1]) as $ps | ($n | split("\n")) as $ns
     | [range(0; $ps | length) as $k | {key: $ps[$k], value: ($r[$ns[$k]] + {id: $ns[$k]})}] | from_entries'
@@ -173,6 +205,7 @@ testfiles_save() {
 # testfiles_finish RECORD RESULTS AT: the results of the test files for the
 # evidence, in the files' order: the new ones stamped with their definition's
 # fingerprint, the time and the reason they ran, joined with the reused ones.
+# With named forms each result names its form.
 testfiles_finish() {
   local out order
   out=$(proofreuse_annotate "$1" file "$2" "$3" "$TF_WHY")
@@ -180,32 +213,39 @@ testfiles_finish() {
   if [ ${#TF_PATHS[@]} -eq 0 ]; then order='[]'
   else order=$(printf '%s\0' "${TF_PATHS[@]}" | jq -Rsc 'split("\u0000")[:-1]'); fi
   proofreuse_join "$order" "$TF_REUSE" "$out" \
-    | jq -c 'map_values(del(.reads, .dirs, .git, .id) | if .reused and .status == "pass" then .exit = 0 else . end)'
+    | jq -c --slurpfile x <(printf '%s' "$TF_INDEX") --slurpfile r <(printf '%s' "$1") "$VBW_JQ_DEFS"'($r[0] | tf_forms) as $fs
+      | with_entries(.key as $p | .value |= (del(.reads, .dirs, .git, .id) | if .reused and .status == "pass" then .exit = 0 else . end
+          | ($fs[$x[0].map[$p] // 0].name) as $n | if $n == null then . else . + {form: $n} end))'
 }
-
-# testfiles_matches RECORD: how many committed files the form's pathspecs match
-# (testfiles_ls), before the files an approved check runs are taken out.
-testfiles_matches() { testfiles_ls "$1" | tr -cd '\000' | wc -c | tr -d ' '; }
 
 # testfiles_command RECORD RESULTS: the test command's place in the evidence when the
 # test files ran in its stead: one result, passing when every test file passed
 # (reused when every one was), so a failing test file fails the proof, opens a
-# fix for the test command and QA sees the suite's state. With no test file left
-# to run (R169): a pass that says every matching file runs as an approved check,
-# or, when the pathspecs match no committed file, a failure that names them.
+# fix for the test command and QA sees the suite's state. It fails, naming them,
+# when a form's pathspecs match no committed file (R169) or a file is matched by
+# two forms (TF_INDEX). With no test file left to run otherwise: a pass that says
+# every matching file runs as an approved check. With named forms the command
+# names each form's run.
 testfiles_command() {
-  printf '%s' "$2" | jq -c --arg run "$(printf '%s' "$1" | jq -r '.test_files.run | join(" ")')" \
-    --argjson matches "$(testfiles_matches "$1")" --arg specs "$(printf '%s' "$1" | jq -r '.test_files.files | join(" ")')" '
-    [.[]] as $r | [$r[] | select(.status != "pass")] as $bad
-    | if ($r | length) == 0 then
-        (if $matches > 0 then {status: "pass", exit: 0, seconds: 0, tail: "every file the form matches runs as an approved check; nothing is left to run as a test file"}
-         else {status: "fail", exit: 1, seconds: 0, tail: "the test-file form matches no tracked file (\($specs)): add the test files, or change the form in .vbw/spec.md"} end)
-        + {command: ($run + " (one test file per run)"), of_files: true}
+  printf '%s' "$2" | jq -c --slurpfile x <(printf '%s' "$TF_INDEX") --slurpfile rec <(printf '%s' "$1") "$VBW_JQ_DEFS"'
+    ($rec[0] | tf_forms) as $fs | $x[0] as $ix
+    | ((if ($fs | length) == 1 and $fs[0].name == null then $fs[0].run | join(" ")
+        else [$fs[] | "\(.name): \(.run | join(" "))"] | join("; ") end) + " (one test file per run)") as $cmd
+    | ([range(0; $fs | length) as $i | select(($ix.match[$i] // 0) == 0) | $fs[$i]
+        | if .name == null then "the test-file form matches no tracked file (\(.files | join(" "))): add the test files, or change the form in .vbw/spec.md"
+          else "test file form \(.name) matches no tracked file (\(.files | join(" "))): add its test files, or change the form in .vbw/spec.md" end]
+       + [$ix.dups[] | "\(.p) is matched by forms \(.forms | join(" and ")): a test file belongs to one form; change the forms in .vbw/spec.md"]) as $wrong
+    | [.[]] as $r | [$r[] | select(.status != "pass")] as $bad
+    | if ($wrong | length) > 0 then
+        {status: "fail", exit: 1, seconds: ([$r[].seconds // 0] | add // 0 | . * 10 | round / 10),
+         tail: ($wrong + [to_entries[] | select(.value.status != "pass") | "\(.key) \(.value.status)"] | join("\n")), command: $cmd, of_files: true}
+      elif ($r | length) == 0 then
+        {status: "pass", exit: 0, seconds: 0, tail: "every file the form matches runs as an approved check; nothing is left to run as a test file", command: $cmd, of_files: true}
       else
         {status: (if ($bad | length) == 0 then "pass" elif all($bad[]; .status == "timeout") then "timeout" else "fail" end),
          exit: (if ($bad | length) == 0 then 0 else null end), seconds: ([$r[].seconds // 0] | add // 0 | . * 10 | round / 10),
          tail: ([to_entries[] | select(.value.status != "pass") | "\(.key) \(.value.status)"] | join("\n")),
-         command: ($run + " (one test file per run)"), of_files: true}
+         command: $cmd, of_files: true}
         + (if all($r[]; .reused) then {reused: true, at: ([$r[].at] | max)} else {} end)
       end'
 }

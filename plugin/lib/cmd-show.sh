@@ -118,7 +118,8 @@ cmd_show() {
               wait_lines($r; $w)),
           "project commands:",
           (.commands | to_entries[] | "  \(.key): \(.value | argv_line)"),
-          (.test_files // empty | "  test file form: \(.run | join(" ")) (one test file per run; test files: \(.files | join(" ")))"),
+          (.test_files // empty | if type == "object" then "  test file form: \(.run | join(" ")) (one test file per run; test files: \(.files | join(" ")))"
+            else .[] | "  test file form \(.name // "unnamed")\(if .dir == null then "" else " (in \(.dir)/)" end): \(.run | join(" ")) (one test file per run; test files: \(.files | join(" ")))" end),
           (.project.results // empty | "saved test results folders: \(join(", "))"),
           (.project.leave_out // empty | "clean copy leaves out: \(join(", "))")'
       printf '%s' "$record" | jq -r '[.requirements[] | select(.queued) | "  \(.id) [\(.proof)] \(.text)"]
@@ -293,7 +294,7 @@ show_contract_changes() {
 # array of plain lines (the same diff the approval question counts); needs the earlier
 # approval's snapshot.
 contract_change_lines() {
-  contract_doc "$1" | jq -c --slurpfile old "$VBW_RUNTIME/approved-contract.json" "$SHOW_JQ_DEFS"'
+  contract_doc "$1" | jq -c --slurpfile old "$VBW_RUNTIME/approved-contract.json" "$VBW_JQ_DEFS$SHOW_JQ_DEFS"'
     . as $new | $old[0] as $old
     | [ ($new.requirements | to_entries[] | select($old.requirements[.key] == null)
           | "added requirement \(.key) [\(.value.proof)] \(.value.text)"),
@@ -361,7 +362,14 @@ contract_change_lines() {
               | "\(if $oc[.key] == null then "added" else "changed" end) project command \(.key): \(.value | argv_line)"),
             ($oc | keys[] | select(. as $k | $new.commands | has($k) | not) | "removed project command \(.)")),
         (select(($old.test_files // null) != ($new.test_files // null))
-          | "test file form: \(($new.test_files // null) | if . == null then "none" else "\(.run | join(" ")) (files \(.files | join(" ")))" end)"),
+          | if ($old.test_files | type) != "array" and ($new.test_files | type) != "array" then
+              "test file form: \(($new.test_files // null) | if . == null then "none" else "\(.run | join(" ")) (files \(.files | join(" ")))" end)"
+            else ($old | tf_forms | map({key: (.name // ""), value: .}) | from_entries) as $of
+              | ($new | tf_forms | map({key: (.name // ""), value: .}) | from_entries) as $nf
+              | ($nf | to_entries[] | select($of[.key] != .value)
+                  | "\(if $of[.key] == null then "added" else "changed" end) test file form \(.value | tf_say)"),
+                ($of | to_entries[] | select($nf[.key] == null) | "removed test file form \(.key | if . == "" then "unnamed" else . end)")
+            end),
         (select($old.results != $new.results)
           | "saved test results folders: \(($new.results // []) | if length == 0 then "none" else join(", ") end) (was \(($old.results // []) | if length == 0 then "none" else join(", ") end))"),
         (select(($old.leave_out // []) != ($new.leave_out // []))
