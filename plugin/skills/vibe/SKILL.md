@@ -125,7 +125,7 @@ args `{"plans": <detail.plans>, "docs": <detail.docs>, "models": ..., "rigor": .
 **fix**: `VBW_SESSION_ID=${CLAUDE_SESSION_ID} vbw run start fix <detail.fixes>`, Workflow `vbw:fixing` with args
 `{"groups": <detail.groups>, "models": ..., "rigor": ...}` Returns: anything not recorded, then `VBW_SESSION_ID=${CLAUDE_SESSION_ID} vbw prove`.
 
-**prove**: `VBW_SESSION_ID=${CLAUDE_SESSION_ID} vbw prove --full` when `detail.full` is true, else `vbw prove`; report what passed and failed.
+**prove**: `VBW_SESSION_ID=${CLAUDE_SESSION_ID} vbw prove --full` when `detail.full` is true, else `vbw prove`; report what passed and failed, then follow the proof's Next line (never a commit of your own).
 
 **qa**: `VBW_SESSION_ID=${CLAUDE_SESSION_ID} vbw run start qa`, Workflow `vbw:verifying` with args
 `{"phases": <detail.phases>, "tier": <detail.tier>, "round": <the whole `round` object of vbw next --json (tiers, suite, focus), never a number>, "models": ..., "rigor": ...}`. `vbw next --json` carries `round` before and after `vbw run start qa`. Report verdicts, failed checks, anything not recorded.
@@ -164,3 +164,4 @@ wrong: ask what, then `vbw req reject <id> "<their words>"`. Skip for now: `vbw 
 - Only kernel writes `.vbw/record.json`; agents and you change state through
   `vbw` commands.
 - Never approve, never run `git push`, never weaken a check.
+- The chat never commits plan work by hand (no git commit, commit-tree, merge, rebase, cherry-pick, revert or am on plan files): commits go through `vbw commit` inside the run (the workflows' agents run it). After a proof the chat follows the proof's Next line, never a commit of its own.
