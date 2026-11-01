@@ -283,8 +283,8 @@ tool is not marked read-only.
 **What the guard cannot see.** It judges the call (PreToolUse on `mcp__` tools),
 not what the server does inside. The guards see Write, Edit and Bash calls, so a
 file an MCP tool writes is judged after the fact, by the run's scope check
-(`<commit> (<plan>) changed <file>, which is not in the plan`), never before the
-call. Mark a server read-only only when its tools really only read.
+(`<commit> (<plan>) changed <file>, which is not in the plan`),
+never before the call. Mark a server read-only only when its tools really only read.
 
 ## Engineering
 
