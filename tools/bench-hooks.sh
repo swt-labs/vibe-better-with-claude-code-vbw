@@ -80,7 +80,7 @@ STATUS_MS="${VBW_STATUSLINE_BUDGET_MS:-60}"
 HANDBACK_MS="${VBW_HANDBACK_BUDGET_MS:-10}"
 RUNS="${VBW_BENCH_RUNS:-100}"
 PLUGIN="${VBW_BENCH_PLUGIN_ROOT:-$ROOT/plugin}"
-GUARD_INPUTS="git npm big interp read answer"
+GUARD_INPUTS="git npm big interp read answer tools"
 SIZES="51 500 2000"
 # The reference workload's nominal cost (R222): CPU ms per call of the workload in the
 # reference block below, on the two nominal machines, measured NOMINAL_WHEN. This is a
@@ -105,6 +105,7 @@ case_labels() {
   local input n
   for input in $GUARD_INPUTS; do printf 'guard (%s)\n' "$input"; done
   for input in $GUARD_INPUTS; do printf 'guard (%s, large record)\n' "$input"; done
+  printf '%s\n' 'guard (tools, main session)'
   printf '%s\n' 'guard (loop)' 'guard (loop, large record)'
   for n in $SIZES; do
     for input in $GUARD_INPUTS; do printf 'guard (%s, %s checks)\n' "$input" "$n"; done
@@ -302,6 +303,8 @@ jq -nc --arg d "$work" --arg b "$big" '{tool_name: "Bash", cwd: $d, tool_input: 
 jq -nc --arg d "$work" '{tool_name: "Bash", cwd: $d, session_id: "bench", agent_id: "x1", agent_type: "workflow-subagent", tool_input: {command:
   "python3 - <<'\''EOF'\''\nimport json\nwith open(\"src/pay.py\", \"w\") as f:\n    json.dump({\"paid\": True}, f)\np = \"src/pay.py\"\nwith open(p, \"w\") as g:\n    g.write(\"x\")\nprint(open(\"src/pay.py\").read())\nEOF"}}' > "$work/interp.json"
 jq -nc --arg d "$work" '{tool_name: "Read", cwd: $d, tool_input: {file_path: ($d + "/src/app.js")}}' > "$work/read.json"
+# A VBW QA agent calling an MCP tool the project's setting does not name: the tools guard's refusal path (R242).
+jq -nc --arg d "$work" '{hook_event_name: "PreToolUse", session_id: "bench", tool_name: "mcp__github__get_issue", cwd: $d, tool_input: {}, agent_id: "x2", agent_type: "vbw:qa"}' > "$work/tools.json"
 # An answered question unrelated to approval: the PostToolUse hook runs after
 # every AskUserQuestion and must stay cheap when the answer is not an approval.
 jq -nc --arg d "$work" '{hook_event_name: "PostToolUse", tool_name: "AskUserQuestion", cwd: $d,
@@ -514,6 +517,9 @@ for n in $SIZES; do
   if wanted ", $n checks)|"; then sized "$n"; fi
 done
 
+# tools_hook: the command of the PreToolUse entry that runs guard-tools.jq (its matcher is omitted: it sees every tool).
+tools_hook() { jq -r '[.hooks.PreToolUse[] | select(.hooks[0].command | contains("hooks/guard-tools.jq"))][0].hooks[0].command' "$hooks_json"; }
+
 # guards DIR LABEL [INPUTS]: measure every input (default: all but loop) against
 # the project at DIR; LABEL is the empty string, or ", large record".
 status=0
@@ -526,7 +532,8 @@ guards() {
     tool=$(jq -r .tool_name "$work/$input.json")
     event=PreToolUse
     [ "$input" != answer ] || event=PostToolUse
-    hook=$(jq -r --arg t "$tool" --arg e "$event" '[.hooks[$e][] | select(.matcher as $m | $t | test("^(" + $m + ")$"))][0].hooks[0].command' "$hooks_json")
+    hook=$(jq -r --arg t "$tool" --arg e "$event" '[.hooks[$e][] | select(.matcher as $m | $m != null and ($t | test("^(" + $m + ")$")))][0].hooks[0].command' "$hooks_json")
+    [ "$input" != tools ] || hook=$(tools_hook)
     file="$work/$input.json"
     if [ "$dir" != "$work" ]; then
       file="$work/$input.large.json"
@@ -711,6 +718,19 @@ loaded() {
 
 guards "$work" ""
 guards "$large" ", large record"
+# The main session's call of any tool, the path every chat tool call pays: the tools hook passes nothing on and reads no project file.
+if selected 'guard (tools, main session)'; then
+  export CLAUDE_PROJECT_DIR="$work"
+  base="jq -nc 'input | empty' - \"$work/.vbw/record.json\" \"$CLAUDE_PLUGIN_ROOT/hooks/end.json\" 2>/dev/null || true"
+  read -r shell total < <(cpu_pair "$work/read.json" "$base" "$(tools_hook)")
+  own=$(perl -e 'printf "%.1f", $ARGV[0] - $ARGV[1]' -- "$total" "$shell")
+  if over "$own" "$BUDGET_MS"; then
+    again "guard (tools, main session)" "$own ms own CPU per call (sh and jq startup $shell ms)" "$BUDGET_MS"
+    read -r shell total < <(cpu_pair "$work/read.json" "$base" "$(tools_hook)")
+    own=$(perl -e 'printf "%.1f", $ARGV[0] - $ARGV[1]' -- "$total" "$shell")
+  fi
+  verdict "$(printf 'guard (tools, main session): %s ms own CPU per call (sh and jq startup %s ms); budget %s ms' "$own" "$shell" "$BUDGET_MS")" "$own" "$BUDGET_MS"
+fi
 # A loop on and no lease: the main session's push, judged like the others.
 jq -nc --arg d "$work" '{tool_name: "Bash", cwd: $d, session_id: "bench", tool_input: {command: "git push origin main"}}' > "$work/loop.json"
 loopproj() {
