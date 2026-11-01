@@ -27800,7 +27800,15 @@
         "guarded: R15 (C14), R61 (C73, C74, C75, C76, C77), R75 (C101), R76 (C102, C103), R77 (C104), R83 (C119), R120 (C185), R149 (C217, C218, C219, C220, C221, C222), R150 (C223, C224, C225, C226, C227, C228, C229, C230), R151 (C231, C232), R160 (C247, C263, C264), R162 (C249), R165 (C252), R166 (C253, C254, C255, C256, C267), R177 (C287, C288), R178 (C290, C291, C292, C293, C294, C295, C296, C311), R179 (C297, C298, C299, C300, C301, C302, C303, C304, C305, C306, C312), R180 (C307, C308, C309, C310), R181 (C313, C314, C315, C316, C317, C318, C319, C320, C321), R184 (C328, C329, C330, C331, C332, C333), R185 (C334, C335, C336, C337, C338, C339, C340, C341, C342, C343), R188 (C350, C351, C352, C353, C354, C355, C356, C357, C358, C359), R192 (C401, C402, C403, C404, C405, C406, C407, C408, C409, C410), R194 (C417, C418, C419), R198 (C423), R210 (C474, C475, C476), R219 (C497, C498, C499), R222 (C505, C506), R224 (C512, C513, C514, C515, C516), R231 (C532, C533), R234 (C535, C536), R235 (C538, C539)",
         "tests: project test command"
       ],
-      "predicted": "deep"
+      "predicted": "deep",
+      "escalations": [
+        {
+          "at": "2026-11-01T13:46:28Z",
+          "from": "deep",
+          "to": "deep",
+          "reason": "Dev blocked P195.1: Task 1 done (808bfcde; C558 green, R243.1/R243.2 mutations red). Tasks 2-4 need GitHub runner step tables: gh workflow run bench-steps.yml needs the branch pushed by the user (publishing). Local before-figures (Mac, ubuntu:24.04/26.04 containers on the Mac, 100 runs): program run quotient 1.65-1.79 Mac vs 1.37-1.81 Linux, program compile 1.38-1.48 vs 1.29-1.61, shell prelude ~0, reference compile 0.67 vs 0.62-0.78: no step is Linux-only locally; the Linux gap shows only on GitHub's runners, so the cause cannot be found or removed without those tables."
+        }
+      ]
     }
   ],
   "plans": [
@@ -61703,12 +61711,46 @@
       "after": [
         "P192.4"
       ],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "plugin/skills/vibe/SKILL.md, Rules: 'The chat never commits plan work by hand (no git commit, commit-tree, merge, rebase, cherry-pick, revert or am on plan files): commits go through `vbw commit` inside the run (the workflows' agents run it). After a proof the chat follows the proof's Next line, never a commit of its own.'; the prove step says the same in one clause",
         "docs/guards.md: the refusal table's git row reads `git commit`, `commit-tree`, `push`, ...; a new row for the chat (a hook input with no agent_type) while its autonomous run is armed (.vbw/runtime/auto.<session>.json) or the record holds a loop that has not ended, the same commands refused with vbw commit as the next step, and the sentence 'With no armed run and no loop the chat is not checked: the user's own commands are never checked, in the chat or the terminal'; the lease paragraph adds commit-tree",
         "docs/workflows.md: the lease bullet adds commit-tree; the table 'Every refusal and its next step' gets 'Guards: `git commit-tree` (with commit, push, rebase, merge, pull, cherry-pick, revert, am) by an agent under a lease | Commit through `vbw commit PLAN \"type(scope): description\"`' and 'Guards: a git history change by VBW's chat while an autonomous run or loop is armed | Follow the proof's Next line, or `vbw commit`; the user's own commands are never checked'; tests/vibe-commit-rule.bats and the existing docs tests pass"
+      ],
+      "mutations": [
+        {
+          "rule": {
+            "req": "R239",
+            "text": "the vibe skill states that the chat never commits plan work by hand, naming git commit, commit-tree, merge, rebase, cherry-pick, revert and am, that commits go through vbw commit inside the run, and that it follows the proof's Next line"
+          },
+          "what": "dropped 'vbw commit' from the commits-go-through clause",
+          "files": [
+            "plugin/skills/vibe/SKILL.md"
+          ],
+          "checks": {
+            "C555": "red"
+          },
+          "result": "red",
+          "at": "2026-11-01T13:42:49Z",
+          "head": "808bfcde39f77e9fc5941b55d333ee9af49435de"
+        },
+        {
+          "rule": {
+            "req": "R239",
+            "text": "docs/guards.md's refusal table names commit-tree beside commit and the chat's refusal while armed or in a loop, docs/workflows.md's refusal table has both rows with vbw commit as the next step, and both say the user's own commands are never checked"
+          },
+          "what": "dropped the user's-own-commands sentence from the workflows row",
+          "files": [
+            "docs/workflows.md"
+          ],
+          "checks": {
+            "C555": "red"
+          },
+          "result": "red",
+          "at": "2026-11-01T13:43:18Z",
+          "head": "808bfcde39f77e9fc5941b55d333ee9af49435de"
+        }
       ]
     },
     {
@@ -61750,14 +61792,49 @@
       "after": [
         "P193.1"
       ],
-      "status": "planned",
+      "status": "blocked",
       "role": "dev",
       "tasks": [
         "tools/bench-hooks.sh VBW_BENCH_STEPS=1: the table keeps the gross rows 'sh startup' and 'jq startup' and gives net rows (startup subtracted), each cell 'N.N (Q.QQ)' with Q the quotient to the reference run's cell: 'shell prelude' (the hooks.json command cut before `jq`, run with the input, minus sh startup), 'program compile' (the guard over empty inputs minus jq startup), 'program run' (the whole hooks.json call with the input and the record read, minus sh and jq startup), 'reference compile' (reference.jq over empty inputs minus jq startup) and 'reference run' (the reference call minus startup, so its own quotient is 1.00); the method line says 'net of the sh and jq startup; the quotient in parentheses is to the reference run'; the two R233 cases keep passing (the rows they name stay)",
         "Before tables: this Mac, tools/test-linux.sh's ubuntu:24.04 and ubuntu:26.04 containers, and GitHub's macos-latest, ubuntu-latest and ubuntu-26.04 through .github/workflows/bench-steps.yml (`gh workflow run bench-steps.yml --ref <this branch>` once the user has pushed the branch; this plan's note names the run ids); the one step whose Linux quotient exceeds macOS's by more than the others is named",
         "Probe the Architect's candidate causes with the step rows (the reference's regexes are shaped unlike the guard's long alternations and lookarounds, so compile costs differ per platform's oniguruma; the hook's shell prelude; the record read) and remove the cause in the guard, the reference or the bench's method (never a per-system allowance or a higher limit, D547); the guard's behaviour is unchanged (tests/hooks-guard.bats, guard-*.bats, hook-answers.bats, standards.bats pass under /bin/bash 3.2) and `bash tools/bench-hooks.sh` keeps every guard case within 20 ms",
         "After tables on the same runners (a macOS run whose reference varies as on 2026-11-01, 14.8-20.1 ms, is repeated); `vbw decide \"R243: the Linux-only guard step is <step>: <before figures per runner> ... <after figures>; cause <cause>, removed by <change>; bench-steps.yml runs <ids>\" \"<why this change and not the others>\"`; bench-steps.yml gains nothing but, if needed, a line printing the reference's spread so a noisy run is visible"
-      ]
+      ],
+      "mutations": [
+        {
+          "rule": {
+            "req": "R243",
+            "text": "the step table has net rows shell prelude, program compile, program run, reference compile and reference run, each cell a net ms figure with its quotient to the reference run; the gross startup rows carry no quotient"
+          },
+          "what": "renamed the shell prelude row",
+          "files": [
+            "tools/bench-hooks.sh"
+          ],
+          "checks": {
+            "C558": "red"
+          },
+          "result": "red",
+          "at": "2026-11-01T13:46:17Z",
+          "head": "808bfcde39f77e9fc5941b55d333ee9af49435de"
+        },
+        {
+          "rule": {
+            "req": "R243",
+            "text": "the reference run's quotient is 1.00 by definition, and the method line says the net rows subtract the startup and names the quotient"
+          },
+          "what": "reference run quotient printed 1.10",
+          "files": [
+            "tools/bench-hooks.sh"
+          ],
+          "checks": {
+            "C558": "red"
+          },
+          "result": "red",
+          "at": "2026-11-01T13:46:21Z",
+          "head": "808bfcde39f77e9fc5941b55d333ee9af49435de"
+        }
+      ],
+      "note": "Task 1 done (808bfcde; C558 green, R243.1/R243.2 mutations red). Tasks 2-4 need GitHub runner step tables: gh workflow run bench-steps.yml needs the branch pushed by the user (publishing). Local before-figures (Mac, ubuntu:24.04/26.04 containers on the Mac, 100 runs): program run quotient 1.65-1.79 Mac vs 1.37-1.81 Linux, program compile 1.38-1.48 vs 1.29-1.61, shell prelude ~0, reference compile 0.67 vs 0.62-0.78: no step is Linux-only locally; the Linux gap shows only on GitHub's runners, so the cause cannot be found or removed without those tables."
     },
     {
       "id": "P195.2",
@@ -68931,6 +69008,12 @@
       "text": "R240: the end time never reached the steptime scenario because its sampler read the status line with 'until HH:MM' while the status line has printed 'until around HH:MM' since d7f73771 (2026-10-24 16:54, after the last pass at 02:35); the render on a note exactly as a run writes it is pinned by tests/statusline-step.bats; supersedes D558's clause placing the cause in what the status line reads",
       "why": "bats --filter R240 tests/statusline-step.bats under /bin/bash: 3 of 3 pass on the unchanged status line",
       "at": "2026-11-01T13:24:34Z"
+    },
+    {
+      "id": "D561",
+      "text": "MCP mechanism (P192, after the probe of tools/probes/mcp-tools.json): agent files drop the tools: allowlist; each role's file names disallowedTools for the built-ins it must not have (read-only roles: Write, Edit, NotebookEdit), so agents inherit the session's MCP tools; one PreToolUse guard for VBW agents refuses any tool outside the role's built-in list and the record's settings.mcp by role, so a new Claude Code built-in or an unnamed MCP tool is refused, not leaked, and a project naming nothing keeps today's effective tools. The probe is extended first to confirm a plugin agent honours disallowedTools and inherits MCP with tools: omitted, and to measure the hook's cost on Read calls; if either fails, the fallback is per-project agent copies kept fresh by the kernel.",
+      "why": "The probe showed no pool entry (mcp__*, mcp__*__*, mcp__.*) gives all MCP tools, and per-server entries cannot be written into shipped plugin files per project. Inheritance plus a role allowlist enforced by a hook keeps one shipped set of agent files (nothing to go stale) and turns unknown tools into refusals. Known cost: agents see all tool descriptions. Lead decision, 2026-11-01.",
+      "at": "2026-11-01T13:41:00Z"
     }
   ],
   "commands": {
@@ -78035,6 +78118,17 @@
         "ended": "2026-11-01T13:38:05Z",
         "cost": {
           "usd": 1.975798
+        }
+      },
+      {
+        "id": "build-20261101T134023Z",
+        "kind": "build",
+        "session": "0ee781c3-c5b6-4a6c-889f-04b89f1fba4a",
+        "milestone": "M49",
+        "started": "2026-11-01T13:40:23Z",
+        "ended": "2026-11-01T13:46:49Z",
+        "cost": {
+          "usd": 0.788547
         }
       }
     ],
