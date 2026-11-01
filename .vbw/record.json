@@ -65650,7 +65650,7 @@
       "req": "R243",
       "source": "qa",
       "attempts": 0,
-      "status": "open",
+      "status": "fixed",
       "note": "docs/guards.md line 384 ends the P195 section with \"The nominal figure is one, 10.3 ms, with no per-system allowance.\" That number is false after this phase: commit e990b864 changed NOMINAL_MS in tools/bench-hooks.sh (line 100) from 10.3 to 17.8, because the reference now compiles more of its definitions. A reader checking the doc against the bench gets the wrong nominal figure (the bench prints \"nominal 17.8\"). Regression test: in tests/bench-linux-step-docs.bats (or bench-limits-docs.bats) read NOMINAL_MS from tools/bench-hooks.sh and fail when docs/guards.md states a different nominal ms figure.",
       "phase": "P195"
     }
@@ -70220,6 +70220,12 @@
       "id": "D573",
       "at": "2026-11-01T19:52:51Z",
       "text": "Contract approved: 232 requirements, 556 checks, 585 plans (5248a6dc5eb1)",
+      "plans": []
+    },
+    {
+      "id": "D574",
+      "at": "2026-11-01T20:42:25Z",
+      "text": "Contract approved: 232 requirements, 556 checks, 585 plans (3301f29b1a88)",
       "plans": []
     }
   ],
