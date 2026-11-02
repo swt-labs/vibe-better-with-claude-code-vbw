@@ -224,6 +224,7 @@ doctor_project() {
     done <<< "$hidden"
   fi
   doctor_big_ignored
+  doctor_kept
   [ -n "$v" ] && return 0
   if jq -e '.lease != null' "$VBW_RECORD" > /dev/null; then
     doctor_line warn "a run is open ($(jq -r .lease.run "$VBW_RECORD"))" "if no VBW workflow is running: vbw run end"
@@ -260,4 +261,18 @@ doctor_guard() {
   if printf '%s' "$out" | jq -es 'any(.[]; type == "object" and .hookSpecificOutput.permissionDecision == "deny")' > /dev/null 2>&1; then doctor_line ok "the guards work"
   else doctor_line fail "the guards do not work with this jq" "update jq, then run vbw doctor again"
   fi
+}
+
+# The kept clean copies (docs/proof.md, "Kept copies"), each with its size: the
+# disk they hold between commands. Says nothing when there is none.
+doctor_kept() {
+  local d kb list=''
+  # shellcheck source=proofcopy.sh
+  . "$VBW_LIB/proofcopy.sh"
+  for d in "$VBW_ROOT"/.vbw/runtime/proof.keep.*; do
+    [ -d "$d" ] && [ ! -L "$d" ] || continue
+    kb=$(du -sk "$d" 2> /dev/null | awk 'NR == 1 {printf "%d", $1}') || kb=0
+    list="$list${list:+, }${d##*/} $(proofcopy_fmt_kb "${kb:-0}")"
+  done
+  [ -z "$list" ] || doctor_line info "kept clean copies in .vbw/runtime: $list (each command brings them up to date; remove them while no command runs to free the disk)"
 }

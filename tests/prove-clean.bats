@@ -128,7 +128,7 @@ SH
   [ "$status" -eq 0 ]
 }
 
-@test "R32: the copy lives inside the project, is gone after the proof, and the folder is unchanged" {
+@test "R32 #738: the copy lives inside the project, is kept for the next command with no owner, and the folder is unchanged" {
   export PROBE="$TEST_ROOT/where"
   printf 'buy milk\n' > todos.txt
   printf 'edited\n' >> README.md
@@ -142,8 +142,9 @@ SH
   [ -f "$PROBE" ]
   [[ "$(cat "$PROBE")" == "$real"/* ]]
   [ "$(cat "$PROBE")" != "$real" ]
-  [ ! -e "$(cat "$PROBE")" ]
-  [ -z "$(find .vbw/runtime -maxdepth 1 -name 'proof*' 2> /dev/null)" ]
+  [[ "$(cat "$PROBE")" == "$real"/.vbw/runtime/proof.keep.1/tree* ]] || { cat "$PROBE"; false; }
+  [ ! -e .vbw/runtime/proof.keep.1/pid ]
+  [ -z "$(find .vbw/runtime -maxdepth 1 -name 'proof*' ! -name proof.keep.1 2> /dev/null)" ]
 }
 
 @test "R32: an interrupted proof removes its copy and leaves the folder unchanged" {

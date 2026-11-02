@@ -126,7 +126,7 @@ decide() { "$VBW" decide "Use blue buttons" "the owner prefers them" > /dev/null
   [ "$(ran)" = "" ] || { echo "ran: $(ran)"; false; }
 }
 
-@test "a check reading a submodule runs on the submodule's committed code, its ignored files included; an uncommitted change there runs nothing, a commit there runs it again; no copy is left in the submodule" {
+@test "a check reading a submodule runs on the submodule's committed code, its ignored files included; an uncommitted change there runs nothing, a commit there runs it again; the submodule holds no copy but the kept one (#738)" {
   git init -q "$TEST_ROOT/subsrc"
   printf 'paid\n' > "$TEST_ROOT/subsrc/pay.txt"
   printf 'deps/\n' > "$TEST_ROOT/subsrc/.gitignore"
@@ -156,7 +156,9 @@ SH
   vbw_run prove
   [ "$status" -ne 0 ] || { echo "$output"; false; }
   [[ "$(ran)" == *"C5 "* ]] || { echo "ran: $(ran)"; false; }
-  [ "$(git -C sub worktree list --porcelain | grep -c '^worktree ')" -eq 1 ] || { git -C sub worktree list; false; }
+  # Beside the submodule itself, one worktree per kept copy, none elsewhere.
+  [ "$(git -C sub worktree list --porcelain | grep -c '^worktree ')" -eq $((1 + $(ls -d .vbw/runtime/proof.keep.* | wc -l))) ] || { git -C sub worktree list; false; }
+  [ -z "$(git -C sub worktree list --porcelain | grep '^worktree ' | sed 1d | grep -v '/\.vbw/runtime/proof\.keep\.[0-9]*/tree/sub$')" ] || { git -C sub worktree list; false; }
 }
 
 # sub_with_gitmodules: a submodule "sub" whose own tree holds a .gitmodules, committed.
@@ -217,8 +219,9 @@ exec "$REAL_GIT" "$@"
 SH
   chmod +x "$TEST_ROOT/fakebin/git"
   # shellcheck disable=SC2016 # expanded by vbw_kernel
-  REAL_GIT=$(command -v git) PATH="$TEST_ROOT/fakebin:$PATH" vbw_kernel '. "$VBW_LIB/proofcopy.sh"; mkdir -p "$VBW_RUNTIME"
-    proofcopy_make
+  REAL_GIT=$(command -v git) PATH="$TEST_ROOT/fakebin:$PATH" vbw_kernel '. "$VBW_LIB/proofcopy.sh"; PROOF_SLOTS=("$VBW_RUNTIME/proof.keep.1"); mkdir -p "${PROOF_SLOTS[0]}"
+    proofcopy_make "${PROOF_SLOTS[0]}"
+    PROOF_COPY=${PROOF_SLOTS[0]}/tree
     for f in .gitmodules sub/.gitmodules; do [ ! -e "$PROOF_COPY/$f" ] || { echo "the copy wrote $f"; exit 1; }; done
     [ -z "$(git -C "$PROOF_COPY" status --porcelain)" ] || { git -C "$PROOF_COPY" status --porcelain; exit 1; }
     [ -z "$(git -C "$PROOF_COPY/sub" status --porcelain)" ] || exit 1

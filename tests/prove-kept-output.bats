@@ -85,8 +85,10 @@ OUT=.vbw/runtime/output
   cmp "$OUT/C1.log" <(expected C1 50)
   cmp "$OUT/C2.log" <(expected C2 30)
   [ ! -e "$OUT/C3.log" ]
-  # The proof's clean copy and its scratch folders are gone; the kept files stay.
-  [ -z "$(find .vbw/runtime -maxdepth 1 \( -name 'proof.*' -o -name 'run.*' \) -print)" ]
+  # The proof's scratch folders are gone and its clean copy is kept for the next
+  # command (#738), held by none; the kept files stay.
+  [ -z "$(find .vbw/runtime -maxdepth 1 \( -name 'proof.*' ! -name 'proof.keep.*' -o -name 'run.*' \) -print)" ]
+  [ -z "$(find .vbw/runtime -path '*/proof.keep.*/pid' -print)" ]
 }
 
 @test "R118: a check that times out keeps its complete output" {

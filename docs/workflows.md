@@ -318,22 +318,27 @@ cannot fail, and QA would otherwise find it one round at a time.
   compete for the same slots. A long run can pass Claude Code's 10-minute limit
   for one command, so start it in the background, wait for it and read its
   whole result.
-- **Where the time went:** a break that ran ends with two lines, after the
+- **Where the time went:** a break that ran ends with three lines, after the
   result lines (and after a survivor's line, which keeps its exit 1):
 
 ```
 VBW's own work: 0.4 of 1.2 min
   steps of 24.6 s: copies 3.1, unbroken 9.0, break R3.1 11.2, waits 0.0, saving 1.3
+  copies: 1 kept copy claimed (0 refreshed), 0 made
 ```
 
   Each entry is one step:
-  `copies` is making, breaking, restoring and removing the clean copies;
+  `copies` is making or bringing up to date the clean copies, then breaking,
+  restoring and handing them back;
   `unbroken` is the checks on the unbroken code;
   each break has one entry, named by its target (`break R3.1`, `break task2`);
   with `--run` side by side, one entry per wave names its targets (`breaks R1.1 R1.2`);
   `waits` is the seconds spent waiting for a computer-wide slot;
   `saving` is recording the result in the record.
   The figures are measured by the proof's clock, and the steps sum to the total within rounding.
+  The last line says what the run did with its clean copies: the kept copies it
+  claimed, of those the ones that needed an ignored path copied again, and the
+  copies it made (docs/proof.md, Kept copies).
   The breakdown changes no verdict, record or exit code.
   A refusal prints no breakdown, and `--queue` and `--none` print none.
 - **VBW undoes the break.** The named files go back to their last commit,

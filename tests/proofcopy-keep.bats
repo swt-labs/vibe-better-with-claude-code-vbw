@@ -1,0 +1,341 @@
+#!/usr/bin/env bats
+# #738 (docs/proof.md, "Kept copies"): the clean copies are kept between
+# commands in .vbw/runtime/proof.keep.N/ and brought up to date when the next
+# command claims them, instead of being made again. A kept copy, when a command
+# starts using it, holds exactly what a fresh copy made then would hold: the
+# committed code of HEAD and nothing uncommitted or untracked; the git-ignored
+# paths as the working folder has them now, less build folders and the ## Clean
+# copy list; nothing a previous unit built or wrote. A slot is owned through its
+# pid file; a dead owner's slot is free, a live owner's is left alone; a command
+# that is interrupted removes the slots it holds; the sweep removes a slot unused
+# for 24 hours or numbered past check_jobs. vbw prove --full makes fresh copies.
+# The evidence's own.copy_slots counts the copies claimed, refreshed and made.
+# L1: the kernel on a fixture project with ignored folders, whose check can list
+# the copy it runs in (PROBE), write into it (WRITE) and be held (HOLD).
+
+load helper
+load fixture-helper
+
+keep_project() {
+  vbw_setup
+  vbw_git_project
+  "$VBW" init > /dev/null
+  printf 'node_modules/\ncache/\n.env\ndist/\n' > .gitignore
+  mkdir -p node_modules/pkg cache src tests
+  printf 'v1\n' > node_modules/pkg/index.js
+  printf 'a\n' > node_modules/pkg/a.js
+  printf 'gone\n' > node_modules/pkg/gone.js
+  printf 'c\n' > cache/c.txt
+  printf 'SECRET=1\n' > .env
+  printf 'paid\n' > src/pay.txt
+  cat > tests/pay.sh << 'SH'
+[ -z "${MARK:-}" ] || touch "$MARK/start.$$"
+while [ -n "${HOLD:-}" ] && [ ! -e "$MARK/release" ]; do sleep 0.1; done
+[ -z "${PROBE:-}" ] || find . -name .git -prune -o -print | LC_ALL=C sort > "$PROBE"
+grep -qx paid src/pay.txt
+cat node_modules/pkg/index.js > /dev/null
+if [ -n "${WRITE:-}" ]; then
+  mkdir -p dist node_modules/.cache
+  echo out > dist/out
+  echo stray > stray
+  echo cache > node_modules/.cache/x
+  echo edited >> src/pay.txt
+fi
+SH
+  printf 'grep -qx paid src/pay.txt\n' > tests/two.sh
+  printf 'grep -qx paid src/pay.txt\n' > tests/three.sh
+  printf '# Shop\n\n## Requirements\n\n- R1 [auto] A customer can pay\n' > .vbw/spec.md
+  "$VBW" spec sync > /dev/null
+  jq -nc '{phases: [{id: "P1", title: "Shop", reqs: ["R1"], goal: "g", criteria: ["c"], tier: "standard"}],
+    plans: [{id: "P1.1", phase: "P1", title: "Pay", reqs: ["R1"], files: ["src/pay.txt"], after: [], role: "dev", tasks: ["pay"]}],
+    checks: [{id: "C1", req: "R1", run: ["sh", "tests/pay.sh"], files: ["tests/pay.sh"]}],
+    rules: [{req: "R1", text: "paying works", check: "C1"}]}' | "$VBW" apply > /dev/null
+  jq '.plans[0].status = "done"' .vbw/record.json > "$TEST_ROOT/edit.json" && cp "$TEST_ROOT/edit.json" .vbw/record.json
+  rm -f .vbw/runtime/glance.json
+  git add -A && git commit -q -m "feat(shop): start"
+  "$VBW" approve > /dev/null
+}
+
+setup_file() { fixture_build keep keep_project; }
+setup() {
+  fixture_copy keep
+  LIVE=()
+  export MARK="$TEST_ROOT/mark" PROBE="$TEST_ROOT/probe"
+  mkdir -p "$MARK"
+}
+teardown() {
+  local p
+  for p in ${LIVE[@]+"${LIVE[@]}"}; do kill "$p" 2> /dev/null || true; done
+  touch "$MARK/release" 2> /dev/null || true
+  wait 2> /dev/null || true
+  chmod -R u+rwx "$TEST_ROOT" 2> /dev/null || true
+  vbw_teardown
+}
+teardown_file() { fixture_teardown; }
+
+slot() { printf '.vbw/runtime/proof.keep.%s\n' "$1"; }
+inode() { ls -di "$1" | awk '{print $1}'; }
+# counts: what the last proof did with its copies.
+counts() { jq -c '.evidence.own.copy_slots | {claimed, refreshed, made}' .vbw/record.json; }
+# bump TEXT: commit a change to the file C1 reads, so the next proof runs it.
+bump() {
+  printf 'paid\n%s\n' "$1" > src/pay.txt
+  git add src/pay.txt && git commit -q -m "feat(shop): $1"
+}
+prove_ok() {
+  vbw_run prove "$@"
+  [ "$status" -eq 0 ] || { echo "$output"; return 1; }
+  jq -e '.evidence.passed' .vbw/record.json > /dev/null || { jq .evidence .vbw/record.json; return 1; }
+}
+# snap DIR: every file with its checksum, every link with its target and every
+# folder of DIR, sorted; the worktree's own .git file and .vbw (the record, which each proof commits) left out.
+snap() {
+  (cd "$1" && find . \( -name .git -o -path ./.vbw \) -prune -o \( -type f -exec cksum {} + \) -o \( -type l -exec sh -c 'for l; do printf "%s -> %s\n" "$l" "$(readlink "$l")"; done' sh {} + \) -o -type d -print) | LC_ALL=C sort
+}
+dead_pid() {
+  local p
+  sh -c 'exit 0' &
+  p=$!
+  wait "$p" || true
+  printf '%s\n' "$p"
+}
+live_pid() {
+  sleep 300 &
+  PID_LIVE=$!
+  LIVE+=("$PID_LIVE")
+}
+count() { find "$MARK" -name "$1.*" | wc -l | tr -d ' '; }
+# code_head: the commit the last proof ran on (the proof commits the record after it).
+code_head() { git log -1 --format=%H --invert-grep --grep='^chore(vbw): proof'; }
+
+@test "#738: a proof leaves its copy in proof.keep.1 with no owner; the next proof claims it and makes none; --full makes a fresh one" {
+  prove_ok
+  [ -d "$(slot 1)/tree" ] && [ -f "$(slot 1)/tree/src/pay.txt" ]
+  [ ! -e "$(slot 1)/pid" ] || { echo "the slot is still owned by $(cat "$(slot 1)/pid")"; false; }
+  [ "$(find .vbw/runtime -maxdepth 1 -name 'proof.*' | wc -l | tr -d ' ')" -eq 1 ] || { ls .vbw/runtime; false; }
+  [ "$(counts)" = '{"claimed":0,"refreshed":0,"made":1}' ] || { counts; false; }
+  git worktree list --porcelain | grep -qF "/proof.keep.1/tree" || { git worktree list; false; }
+  local ino
+  ino=$(inode "$(slot 1)/tree")
+  bump two
+  prove_ok
+  [ "$(counts)" = '{"claimed":1,"refreshed":0,"made":0}' ] || { counts; false; }
+  [ "$(inode "$(slot 1)/tree")" = "$ino" ] || { echo "the copy was made again"; false; }
+  [ ! -e "$(slot 2)" ] || { ls .vbw/runtime; false; }
+  prove_ok --full
+  [ "$(counts)" = '{"claimed":0,"refreshed":0,"made":1}' ] || { counts; false; }
+  [ ! -e "$(slot 2)" ] || { ls .vbw/runtime; false; }
+  [ ! -e "$(slot 1)/pid" ]
+}
+
+@test "#738: an uncommitted edit, an untracked file and a staged file reach no kept copy; the claimed copy runs on the new commit" {
+  prove_ok
+  bump two
+  printf 'paid\nUNCOMMITTED\n' > src/pay.txt
+  printf 'u\n' > src/untracked.txt
+  printf 's\n' > src/staged.txt
+  git add src/staged.txt
+  prove_ok
+  [ "$(counts)" = '{"claimed":1,"refreshed":0,"made":0}' ] || { counts; false; }
+  [ "$(cat "$(slot 1)/tree/src/pay.txt")" = "$(printf 'paid\ntwo')" ] || { cat "$(slot 1)/tree/src/pay.txt"; false; }
+  [ ! -e "$(slot 1)/tree/src/untracked.txt" ] && [ ! -e "$(slot 1)/tree/src/staged.txt" ] || { ls "$(slot 1)/tree/src"; false; }
+  [ "$(git -C "$(slot 1)/tree" rev-parse HEAD)" = "$(code_head)" ]
+  if grep -qE 'untracked|staged' "$PROBE"; then cat "$PROBE"; false; fi
+}
+
+@test "#738: ignored paths added, edited, renamed and deleted are brought up to date; a newly listed or no longer ignored path leaves the copy; the copy equals a fresh one" {
+  prove_ok
+  printf 'new\n' > node_modules/pkg/new.js
+  # An edit that keeps an old modification time is still seen.
+  printf 'v2\n' > node_modules/pkg/index.js
+  touch -t 202001010000 node_modules/pkg/index.js
+  mv node_modules/pkg/a.js node_modules/pkg/b.js
+  rm node_modules/pkg/gone.js
+  # .env is no longer ignored; cache/ is left out of every clean copy.
+  printf 'node_modules/\ncache/\ndist/\n' > .gitignore
+  printf '\n## Clean copy\n\n- cache/\n' >> .vbw/spec.md
+  "$VBW" spec sync > /dev/null
+  rm -f .vbw/runtime/glance.json
+  git add .gitignore .vbw && git commit -q -m "chore: leave cache out"
+  "$VBW" approve > /dev/null
+  bump two
+  prove_ok
+  [ "$(counts)" = '{"claimed":1,"refreshed":1,"made":0}' ] || { counts; false; }
+  local t
+  t=$(slot 1)/tree
+  [ "$(cat "$t/node_modules/pkg/new.js")" = new ] && [ "$(cat "$t/node_modules/pkg/index.js")" = v2 ] || { ls -la "$t/node_modules/pkg"; false; }
+  [ -f "$t/node_modules/pkg/b.js" ] && [ ! -e "$t/node_modules/pkg/a.js" ] && [ ! -e "$t/node_modules/pkg/gone.js" ] || { ls -la "$t/node_modules/pkg"; false; }
+  [ ! -e "$t/cache" ] || { echo "the listed cache/ is still in the copy"; false; }
+  [ ! -e "$t/.env" ] || { echo ".env, no longer ignored, is still in the copy"; false; }
+  local kept
+  kept=$(snap "$t")
+  prove_ok --full
+  [ "$(counts)" = '{"claimed":0,"refreshed":0,"made":1}' ] || { counts; false; }
+  diff <(printf '%s\n' "$kept") <(snap "$(slot 1)/tree")
+}
+
+@test "#738: what a unit wrote (a build folder, a stray file, a file in a kept ignored folder, an edited tracked file) is gone when the next command claims the copy" {
+  WRITE=1 prove_ok
+  [ -f "$(slot 1)/tree/dist/out" ] && [ -f "$(slot 1)/tree/node_modules/.cache/x" ] || { echo "the unit wrote nothing"; false; }
+  bump two
+  prove_ok
+  local t
+  t=$(slot 1)/tree
+  [ ! -e "$t/dist" ] && [ ! -e "$t/stray" ] && [ ! -e "$t/node_modules/.cache" ] || { ls -la "$t" "$t/node_modules"; false; }
+  if grep -qE '^\./(dist|stray|node_modules/\.cache)' "$PROBE"; then cat "$PROBE"; false; fi
+  [ "$(cat "$t/src/pay.txt")" = "$(printf 'paid\ntwo')" ] || { cat "$t/src/pay.txt"; false; }
+  [ "$(cat "$t/node_modules/pkg/index.js")" = v1 ]
+}
+
+@test "#738: a slot whose owner has ended is claimed; one whose owner runs is left alone and another is made" {
+  prove_ok
+  dead_pid > "$(slot 1)/pid"
+  bump two
+  prove_ok
+  [ "$(counts)" = '{"claimed":1,"refreshed":0,"made":0}' ] || { counts; false; }
+  [ ! -e "$(slot 1)/pid" ]
+  live_pid
+  printf '%s\n' "$PID_LIVE" > "$(slot 1)/pid"
+  printf 'mine\n' > "$(slot 1)/tree/held.txt"
+  bump three
+  prove_ok
+  [ "$(counts)" = '{"claimed":0,"refreshed":0,"made":1}' ] || { counts; false; }
+  [ -d "$(slot 2)/tree" ] && [ ! -e "$(slot 2)/pid" ]
+  [ "$(cat "$(slot 1)/tree/held.txt")" = mine ] && [ "$(cat "$(slot 1)/pid")" = "$PID_LIVE" ]
+}
+
+@test "#738: an interrupted proof removes the copy it holds; the next proof makes it again at the same place" {
+  prove_ok
+  bump two
+  rm -f "$MARK"/start.*
+  HOLD=1 "$VBW" prove > "$TEST_ROOT/out" 2>&1 < /dev/null &
+  local pid=$! i
+  for i in $(seq 1 100); do [ "$(count start)" -ge 1 ] && break; sleep 0.1; done
+  [ "$(count start)" -ge 1 ]
+  [ -f "$(slot 1)/pid" ] && [ "$(cat "$(slot 1)/pid")" = "$pid" ] || { ls -la "$(slot 1)"; false; }
+  kill -TERM "$pid"
+  wait "$pid" || true
+  touch "$MARK/release"
+  [ ! -e "$(slot 1)" ] || { echo "the interrupted proof left its copy"; ls -la "$(slot 1)"; false; }
+  prove_ok
+  [ "$(counts)" = '{"claimed":0,"refreshed":0,"made":1}' ] || { counts; false; }
+  [ -f "$(slot 1)/tree/src/pay.txt" ]
+  [ "$(git worktree list --porcelain | grep -c '/proof.keep.1/tree')" -eq 1 ] || { git worktree list; false; }
+}
+
+@test "#738: a kept copy whose refresh fails, or that has no manifest, is removed and made fresh" {
+  prove_ok
+  printf 'gitdir: /nowhere\n' > "$(slot 1)/tree/.git"
+  bump two
+  prove_ok
+  [ "$(counts)" = '{"claimed":0,"refreshed":0,"made":1}' ] || { counts; false; }
+  [ "$(git -C "$(slot 1)/tree" rev-parse HEAD)" = "$(code_head)" ]
+  rm "$(slot 1)/manifest"
+  bump three
+  prove_ok
+  [ "$(counts)" = '{"claimed":0,"refreshed":0,"made":1}' ] || { counts; false; }
+  [ -f "$(slot 1)/manifest" ]
+}
+
+@test "#738: in a copy of the project folder, a kept copy that still belongs to the original is made fresh and the original's copy is not touched" {
+  prove_ok
+  local orig=$PWD head
+  head=$(git -C "$(slot 1)/tree" rev-parse HEAD)
+  # The commit is in both repositories, so git could bring the original's copy to it.
+  bump two
+  cp -Rp "$orig" "$TEST_ROOT/moved"
+  cd "$TEST_ROOT/moved"
+  prove_ok
+  [ "$(counts)" = '{"claimed":0,"refreshed":0,"made":1}' ] || { counts; false; }
+  [ "$(git -C "$(slot 1)/tree" rev-parse --path-format=absolute --git-common-dir)" = "$(git rev-parse --path-format=absolute --git-common-dir)" ] \
+    || { echo "the copy still belongs to the original"; false; }
+  [ "$(git -C "$orig/$(slot 1)/tree" rev-parse HEAD)" = "$head" ] || { echo "the original's kept copy was moved"; false; }
+  [ -z "$(git -C "$orig/$(slot 1)/tree" status --porcelain)" ] || { git -C "$orig/$(slot 1)/tree" status; false; }
+}
+
+@test "#738: no command makes more copies than it has units" {
+  "$VBW" config set check_jobs 4 > /dev/null
+  prove_ok --full
+  [ "$(jq '.evidence.own.copy_slots | .claimed + .made' .vbw/record.json)" -eq 1 ] || { counts; false; }
+  [ "$(find .vbw/runtime -maxdepth 1 -name 'proof.keep.*' | wc -l | tr -d ' ')" -eq 1 ] || { ls .vbw/runtime; false; }
+  jq '.checks += [{id: "C2", req: "R1", run: ["sh", "tests/two.sh"], files: ["tests/two.sh"]}, {id: "C3", req: "R1", run: ["sh", "tests/three.sh"], files: ["tests/three.sh"]}]
+    | .protected = ([.checks[].files[]] | unique)' .vbw/record.json > "$TEST_ROOT/edit.json" && cp "$TEST_ROOT/edit.json" .vbw/record.json
+  git add -A && git commit -q -m "chore: two more checks"
+  "$VBW" approve > /dev/null
+  "$VBW" config set check_jobs 2 > /dev/null
+  prove_ok --full
+  [ "$(jq '.evidence.own.copy_slots | .claimed + .made' .vbw/record.json)" -eq 2 ] || { counts; false; }
+  [ "$(find .vbw/runtime -maxdepth 1 -name 'proof.keep.*' | wc -l | tr -d ' ')" -eq 2 ] || { ls .vbw/runtime; false; }
+  jq '.fixes = [{id: "F1", req: "R1", attempts: 0, status: "open", note: "a"}]' .vbw/record.json > "$TEST_ROOT/edit.json" && cp "$TEST_ROOT/edit.json" .vbw/record.json
+  git add -A && git commit -q -m "chore(vbw): fix"
+  "$VBW" approve > /dev/null
+  "$VBW" config set check_jobs 4 > /dev/null
+  vbw_run fix "done" F1
+  [ "$status" -eq 0 ] || { echo "$output"; false; }
+  [ "$(find .vbw/runtime -maxdepth 1 -name 'proof.keep.*' | wc -l | tr -d ' ')" -le 3 ] || { ls .vbw/runtime; false; }
+}
+
+@test "#738: the sweep removes a slot unused for 24 hours and one numbered past check_jobs, never one whose owner runs" {
+  "$VBW" config set check_jobs 2 > /dev/null
+  prove_ok
+  local ino
+  ino=$(inode "$(slot 1)/tree")
+  touch -t 202001010000 "$(slot 1)"
+  # Past the cap: one free, one whose owner runs.
+  mkdir -p "$(slot 3)" "$(slot 4)"
+  git worktree add -q --detach "$(slot 3)/tree" HEAD
+  git worktree add -q --detach "$(slot 4)/tree" HEAD
+  live_pid
+  printf '%s\n' "$PID_LIVE" > "$(slot 4)/pid"
+  bump two
+  prove_ok
+  [ "$(counts)" = '{"claimed":0,"refreshed":0,"made":1}' ] || { counts; false; }
+  [ "$(inode "$(slot 1)/tree")" != "$ino" ] || { echo "the idle slot was claimed, not removed"; false; }
+  [ ! -e "$(slot 3)" ] || { echo "the slot past the cap is still there"; false; }
+  ! git worktree list --porcelain | grep -qF '/proof.keep.3/tree' || { git worktree list; false; }
+  [ -d "$(slot 4)/tree" ] || { echo "a slot whose owner runs was removed"; false; }
+}
+
+@test "#738: a submodule's committed code and ignored paths are brought up to date in a kept copy" {
+  git init -q "$TEST_ROOT/subsrc"
+  printf 'paid\n' > "$TEST_ROOT/subsrc/pay.txt"
+  printf 'deps/\n' > "$TEST_ROOT/subsrc/.gitignore"
+  git -C "$TEST_ROOT/subsrc" add pay.txt .gitignore
+  git -C "$TEST_ROOT/subsrc" commit -q -m "chore: seed"
+  git -c protocol.file.allow=always submodule add -q "file://$TEST_ROOT/subsrc" sub
+  mkdir -p sub/deps && printf 'd1\n' > sub/deps/d.txt
+  git add -A && git commit -q -m "chore: sub"
+  prove_ok --full
+  [ "$(cat "$(slot 1)/tree/sub/deps/d.txt")" = d1 ] || { ls -la "$(slot 1)/tree/sub"; false; }
+  printf 'paid\nsub2\n' > sub/pay.txt
+  git -C sub commit -q -am "feat: sub2"
+  printf 'd2\n' > sub/deps/d.txt
+  printf 'junk\n' > "$(slot 1)/tree/sub/junk.txt"
+  bump two
+  prove_ok
+  [ "$(counts)" = '{"claimed":1,"refreshed":1,"made":0}' ] || { counts; false; }
+  [ "$(git -C "$(slot 1)/tree/sub" rev-parse HEAD)" = "$(git -C sub rev-parse HEAD)" ]
+  [ "$(cat "$(slot 1)/tree/sub/deps/d.txt")" = d2 ] && [ ! -e "$(slot 1)/tree/sub/junk.txt" ] || { ls -la "$(slot 1)/tree/sub"; false; }
+}
+
+@test "#738: vbw show evidence names the copies claimed, refreshed and made; vbw doctor names each kept copy with its size" {
+  prove_ok
+  bump two
+  prove_ok
+  vbw_run show evidence
+  [ "$status" -eq 0 ] || { echo "$output"; false; }
+  printf '%s\n' "$output" | grep -qE 'copies: 1 kept copy claimed \(0 refreshed\), 0 made' || { echo "$output"; false; }
+  vbw_run doctor
+  printf '%s\n' "$output" | grep -qE 'kept clean cop(y|ies).*proof\.keep\.1 [0-9.]+ [KMG]?B' || { echo "$output"; false; }
+}
+
+@test "#738: evidence whose own has no copy_slots still reads; a malformed copy_slots makes the record corrupt" {
+  prove_ok
+  jq 'del(.evidence.own.copy_slots)' .vbw/record.json > "$TEST_ROOT/edit.json" && cp "$TEST_ROOT/edit.json" .vbw/record.json
+  vbw_run show evidence
+  [ "$status" -eq 0 ] || { echo "$output"; false; }
+  jq '.evidence.own.copy_slots = {claimed: -1, refreshed: 0, made: 0, refresh: 0}' .vbw/record.json > "$TEST_ROOT/edit.json" && cp "$TEST_ROOT/edit.json" .vbw/record.json
+  vbw_run show evidence
+  [ "$status" -ne 0 ] || { echo "$output"; false; }
+  [[ "$output" == *"evidence.own"* ]] || { echo "$output"; false; }
+}

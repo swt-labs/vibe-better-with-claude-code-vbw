@@ -3,8 +3,9 @@
 # test file in setup_file and copied for each test. A copy holds no path of the
 # fixture, a test's writes never reach the fixture or another test, each test has
 # its own HOME and Claude config folder, the build runs once per file under
-# bats --jobs, a copied loop_project proves exactly as a freshly built one, and a
-# fixture that holds its own path is refused at build time. L1.
+# bats --jobs, a copied loop_project proves exactly as a freshly built one, a
+# fixture keeps no kept proof copy (#738), and a fixture that holds its own path
+# is refused at build time. L1.
 
 load helper
 load loop-helper
@@ -203,6 +204,17 @@ prove_story() {
   grep -q '^proof 1: status 0$' "$BATS_TEST_TMPDIR/copied"
   sed -n '/^proof 1:/,/^proof 2:/p' "$BATS_TEST_TMPDIR/copied" | grep -q 'C1 pass Ns reused'
   sed -n '/^proof 3:/,$p' "$BATS_TEST_TMPDIR/copied" | grep -E '^ +C1 ' | grep -vq reused
+}
+
+@test "#738: a fixture keeps no proof copy of its builder's proofs, and a copy makes its own" {
+  local root
+  root=$(fixture_root loop)
+  [ -z "$(find "$root" -path '*/.vbw/runtime/proof.*' -prune -print)" ] || { find "$root" -path '*/.vbw/runtime/proof.*' -prune -print; false; }
+  [ -z "$(find "$root" -path '*/.git/worktrees' -prune -print)" ] || { find "$root" -path '*/.git/worktrees/*' -prune -print; false; }
+  fixture_copy loop
+  vbw_run prove --full
+  jq -e '.evidence.own.copy_slots | .claimed == 0 and .made >= 1' .vbw/record.json || { jq .evidence.own .vbw/record.json; false; }
+  [ -z "$(git worktree list --porcelain | grep '^worktree ' | sed 1d | grep -vF "$(pwd -P)/.vbw/runtime/proof.keep.")" ] || { git worktree list; false; }
 }
 
 # Builders whose fixture holds its own path, each in another place.

@@ -114,8 +114,9 @@ mixed_change() {
   [[ "$(nth 3)" =~ $OWN_RE ]] || { echo "line 3 from the end: $(nth 3)"; echo "$output"; false; }
   [ "$(nth 2)" = "ran again: 5 of 5 units; top reasons: this clone has no earlier recorded run (5)" ] || { echo "$output"; false; }
   [ "$(first)" = "run again: 5 of 5 units; top reasons: this clone has no earlier recorded run (5)" ] || { echo "$output"; false; }
-  jq -e '.evidence.own | type == "object" and (keys == ["copies","planning","record","saving","tracking","wall"])
-    and all(.[]; type == "number" and . >= 0) and .wall >= .planning' .vbw/record.json || { jq .evidence.own .vbw/record.json; false; }
+  jq -e '.evidence.own | type == "object" and (keys == ["copies","copy_slots","planning","record","saving","tracking","wall"])
+    and (del(.copy_slots) | all(.[]; type == "number" and . >= 0)) and .wall >= .planning
+    and (.copy_slots | .claimed == 0 and .refreshed == 0 and .made >= 1 and .refresh == 0)' .vbw/record.json || { jq .evidence.own .vbw/record.json; false; }
   jq -e '.evidence.causes == ["this clone has no earlier recorded run"]' .vbw/record.json || { jq .evidence.causes .vbw/record.json; false; }
 }
 

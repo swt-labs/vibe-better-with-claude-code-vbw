@@ -84,7 +84,7 @@ mutate_rule_none() {
     noreads=$(reads_probe "$VBW_RUNTIME" 2>&1) || true
     proofcopy_create_slots 1
     res=$(checks_run_all "$record" "$check")
-    proofcopy_remove
+    proofcopy_release
     res=$(printf '%s' "$res" | jq -c --argjson off "$([ -n "$noreads" ] && echo true || echo false)" "$PROVE_FLAT")
     proofreuse_save "$record" "$res" '{}' "$tree" "$(vbw_now)"
     printf 'ran %s once to record its read list\n' "$check"
@@ -151,7 +151,8 @@ mutate_time_begin() {
 }
 
 # mutate_time_say: the two lines of where the time went (R207), after the result
-# lines; nothing without a timer. Every figure is measured: the steps tile the wall.
+# lines, then the line of what the run did with its clean copies (#738); nothing
+# without a timer. Every figure is measured: the steps tile the wall.
 mutate_time_say() {
   [ -n "$PROOFTIME_FILE" ] || return 0
   prooftime_step saving
@@ -164,6 +165,9 @@ mutate_time_say() {
       "  steps of \($d.wall | s) s: copies \($d | v("copies") | s), unbroken \($d | v("unbroken") | s), "
         + ([$d.steps[] | select(.k | test("^breaks? ")) | "\(.k) \(.v | s)"] | join(", "))
         + ", waits \($d | v("waits") | s), saving \($d | v("saving") | s)"'
+  # What the run did with its clean copies (#738), as vbw show evidence says it for a proof.
+  printf '  copies: %s kept cop%s claimed (%s refreshed), %s made\n' "$PROOFCOPY_CLAIMED" \
+    "$([ "$PROOFCOPY_CLAIMED" -eq 1 ] && echo y || echo ies)" "$PROOFCOPY_REFRESHED" "$PROOFCOPY_MADE"
   prooftime_end
 }
 
@@ -354,7 +358,7 @@ $ways"
     mutate_tstep copies
     printf '%s' "$one" | jq -e 'all(.[]; .status == "pass")' > /dev/null || break
   done
-  proofcopy_remove
+  proofcopy_release
   mutate_tstep copies
   checks_end
   mutate_record "$plan" "$target" "$what" "$head" "$results" "$record" "${ruledoc:-}" "${tk:-}" \

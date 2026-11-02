@@ -27,9 +27,10 @@ VBW_FIX_CAP=3
 
 cmd_prove() {
   local full=0
+  # shellcheck disable=SC2034 # PROOFCOPY_FRESH is read by proofcopy_create_slots
   case $# in
     0) ;;
-    1) [ "$1" = --full ] || vbw_usage_error "usage: vbw prove [--full]"; full=1 ;;
+    1) [ "$1" = --full ] || vbw_usage_error "usage: vbw prove [--full]"; full=1; PROOFCOPY_FRESH=1 ;;
     *) vbw_usage_error "usage: vbw prove [--full]" ;;
   esac
   vbw_require_project
@@ -93,7 +94,7 @@ cmd_prove() {
     proofsteps_units "$checks" "$commands" "$files"
     checks_keep "$checks" "$commands" "$files"
     prooftime_step saving
-    proofcopy_remove
+    proofcopy_release
     prooftime_step copies
   fi
   checks_end

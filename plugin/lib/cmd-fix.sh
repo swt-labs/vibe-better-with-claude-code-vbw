@@ -293,7 +293,7 @@ cmd_fix() {
     # A failure's complete output stays readable under vbw prove's names (R195).
     checks_keep "$results" '{}' "$tfres"
     prooftime_step saving
-    proofcopy_remove
+    proofcopy_release
     prooftime_step copies
     checks_end
     began=0

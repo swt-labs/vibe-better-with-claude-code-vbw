@@ -108,7 +108,9 @@ future_stamp() {
   [ "$status" -eq 0 ] || { echo "$output"; false; }
   breaks | jq -e 'length == 1 and .[0].checks == {C3: "red"} and .[0].result == "red"' || { breaks; false; }
   same_as_head src/extra.txt
-  [ -z "$(find .vbw/runtime -maxdepth 1 -name 'proof.*' -print)" ]
+  # #738: the copy is kept for the next command, held by none.
+  [ -z "$(find .vbw/runtime -maxdepth 1 -name 'proof.*' ! -name 'proof.keep.*' -print)" ]
+  [ -z "$(find .vbw/runtime -path '*/proof.keep.*/pid' -print)" ]
 }
 
 @test "R197: the copy's newest time is read in one pass, not one stat per file, and an unreadable folder does not stop it" {

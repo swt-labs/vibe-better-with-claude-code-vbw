@@ -139,7 +139,8 @@ stdout_only() { run sh -c 'cmd=$1; shift; exec "$cmd" "$@" 2> /dev/null' _ "$VBW
   [ "$status" -eq 0 ] || { echo "$output"; false; }
   [ "$(said)" -eq 0 ] || { echo "$output"; false; }
   printf 'data 256000\ncache 256001\nlogs 0\ntmpd 0\n' > "$SIZES"
-  vbw_run prove
+  # --full makes the copy again (#738): a claimed kept copy copies no unchanged path.
+  vbw_run prove --full
   [ "$status" -eq 0 ] || { echo "$output"; false; }
   [ "$(said)" -eq 1 ] || { echo "$output"; false; }
   printf '%s\n' "$output" | grep -q '^vbw: .*cache/ 250\.0 MB, data/ 250\.0 MB' || { echo "$output"; false; }

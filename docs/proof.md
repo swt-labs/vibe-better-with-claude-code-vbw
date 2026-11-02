@@ -697,8 +697,10 @@ form in `.vbw/spec.md`.
 
 1. Refuses unless the current contract hash is approved.
 2. Makes a clean copy of the committed code (`HEAD`) inside the project, under
-   `.vbw/runtime/`. The copy's folder is named after the process that made it
-   (its owner, by process id), for example `.vbw/runtime/proof.48213.k3Xa9Q`.
+   `.vbw/runtime/`, or claims one an earlier command kept there and brings it
+   up to date, so it holds exactly what a fresh copy would
+   ([Kept copies](#kept-copies)). The copy's folder is a numbered slot, for
+   example `.vbw/runtime/proof.keep.1`, owned by the process using it.
    Each checked-out submodule is in it at the submodule's own `HEAD`, with its
    git-ignored files, since `vbw commit` commits there and leaves the project's
    pointer where it was (docs/workflows.md, "Submodules").
@@ -707,7 +709,8 @@ form in `.vbw/spec.md`.
    root of that copy; an unapproved command is skipped and reported, never run.
    A check whose last pass is still valid for the files it read is reused, not
    run again ([Reusing results in `vbw prove`](#reusing-results-in-vbw-prove)).
-   Then it removes the copy, also when interrupted.
+   Then it hands the copy back for the next command to claim; when interrupted,
+   it removes the copy instead.
 4. Scope: every commit of the record's own history
    ([Whose commits VBW judges](#whose-commits-vbw-judges)) with a `VBW-Plan:`
    trailer naming a plan of the current milestone must change only that plan's
@@ -874,7 +877,10 @@ usage: vbw prove [--full]
 ```
 
 `vbw prove --full` runs everything fresh: every approved check and every
-approved project command, and never the quick command. It reuses nothing. Any
+approved project command, and never the quick command. It reuses nothing.
+It claims no kept copy either: it makes fresh copies, which become the kept
+ones for the next command ([Kept copies](#kept-copies)). This is the way out
+when you doubt a kept copy. Any
 other argument is refused with the usage line, and nothing runs.
 
 A plain `vbw prove` may reuse results
@@ -960,14 +966,68 @@ count, commit it or ignore it.
 To keep a big ignored folder out of the copy, list it under
 [`## Clean copy`](#clean-copy-clean-copy).
 
+#### Kept copies
+
+Copying a large `node_modules` can take longer than the checks themselves, so
+the clean copies are kept between commands instead of being made again each
+time. `vbw prove`, `vbw fix done` and `vbw mutate` keep each copy in a numbered
+slot, `.vbw/runtime/proof.keep.1`, `proof.keep.2` and so on: one per unit that
+runs at once, never more than `check_jobs`, and never more than the command has
+units to run. A slot's `pid` file names the process using it. A command claims
+the free slots in order (no owner, or an owner that has ended) and makes a new
+slot only when none is free; it never touches a slot whose owner still runs.
+When the command ends normally it hands each slot back, copy and all. When it
+is interrupted or stops on an error it removes the slots it holds, since a
+half-used copy is not trusted.
+
+Before any unit runs, a claimed copy is brought up to date, so it holds
+exactly what a copy made fresh at that moment would hold:
+
+- the committed code of `HEAD` (each submodule at its own `HEAD`), and nothing
+  uncommitted, untracked or staged from the working folder (`git reset --hard`);
+- the git-ignored paths as the working folder has them now, less build folders
+  and the `## Clean copy` list: a path new to the list is copied in, a path
+  gone from it, newly listed under `## Clean copy` or no longer ignored is
+  removed, and a path still on it is copied again only when it changed;
+- nothing an earlier unit built or wrote: `git clean -ffdx` removes every
+  other file, and a kept ignored path that a unit wrote into (a cache inside
+  `node_modules`, say) is copied again.
+
+A kept ignored path counts as changed when any entry in it, in the working
+folder, changed after the copy was last brought up to date, or when its number
+of entries differs. VBW reads each entry's change time (ctime), which every
+write, rename or permission change moves and no tool can set back, so an
+install that keeps the packages' old modification times is still seen. One
+walk of `node_modules` takes about a second; copying it again took 46 seconds
+on the project that prompted this. When any of these steps fails, or the
+project's set of submodules changed, the slot is emptied and the copy made
+fresh in it. `vbw prove --full` always makes fresh copies.
+
+`vbw show evidence` says what the last proof did with its copies
+(`copies: 1 kept copy claimed (0 refreshed), 0 made`; refreshed counts the
+claimed copies that needed an ignored path copied again or removed), and the
+record keeps it in `evidence.own.copy_slots` (docs/record.md). `vbw mutate`
+prints the same line after its own-work lines.
+`vbw doctor` names each kept copy with its size. The kept copies take disk space between commands (with a
+copy-on-write clone, little); to free it, remove `.vbw/runtime/proof.keep.*`
+while no VBW command runs.
+
 #### Leftover proof copies
 
-A proof killed outright can leave its copy behind. The next `vbw prove` or
-`vbw fix done` removes every leftover copy whose owner (the process named in
-the folder) has ended, together with its git worktree entry. It never removes a
-copy whose owner still runs. A copy without an owner in its name (made by an
-older VBW) goes once it is more than 24 hours old. A copy that cannot be
-removed (a locked file) leaves the result unchanged and prints one line:
+A kept copy that nothing uses goes on its own: the next `vbw prove`,
+`vbw fix done` or `vbw mutate` removes a free slot unused for more than 24
+hours, and one numbered past `check_jobs` (left from a time the setting was
+higher). It never removes a slot whose owner still runs.
+
+A proof killed outright (`kill -9`) cannot remove its slot; the slot's owner
+has then ended, so the next command claims it and empties it when it cannot be
+brought up to date. Copies made by an older VBW sit in folders named after the
+process that made it (its owner, by process id), for example
+`.vbw/runtime/proof.48213.k3Xa9Q`. The next command removes each one whose
+owner has ended, together with its git worktree entry, and never one whose
+owner still runs. A copy without an owner in its name goes once it is more than
+24 hours old. A copy that cannot be removed (a locked file) leaves the result
+unchanged and prints one line:
 `vbw: cannot remove the leftover proof copy <path>; remove it by hand`.
 
 #### Links left pointing into a proof copy
