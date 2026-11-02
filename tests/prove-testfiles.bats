@@ -93,6 +93,7 @@ teardown_file() { fixture_teardown; }
     git init -q "$TEST_ROOT/${s}src"
     mkdir -p "$TEST_ROOT/${s}src/tests"
     printf 'true\n' > "$TEST_ROOT/${s}src/tests/t_$s.sh"
+    printf 'true\n' > "$TEST_ROOT/${s}src/tests/t_skip.sh"
     git -C "$TEST_ROOT/${s}src" add tests
     git -C "$TEST_ROOT/${s}src" commit -q -m "chore: seed"
   done
@@ -102,14 +103,34 @@ teardown_file() { fixture_teardown; }
   git -c protocol.file.allow=always submodule add -q "file://$TEST_ROOT/libsrc" lib
   git -C lib -c protocol.file.allow=always submodule update -q --init
   git -c protocol.file.allow=always submodule add -q "file://$TEST_ROOT/vendorsrc" vendor
-  # */tests/t_*.sh matches vendor's test file but names no submodule; lib/deep/... names one two levels down.
-  sed 's|^- files: tests/t_\*\.sh$|- files: tests/t_*.sh lib/tests/*.sh */tests/t_*.sh lib/deep/tests/*.sh|' .vbw/spec.md > "$TEST_ROOT/spec.md" && cp "$TEST_ROOT/spec.md" .vbw/spec.md
+  # */tests/t_*.sh matches vendor's test file but names no submodule; lib/deep/... names one two levels down;
+  # the excludes that name lib, in each of git's spellings, reach into it.
+  sed 's|^- files: tests/t_\*\.sh$|- files: tests/t_*.sh lib/tests/*.sh */tests/t_*.sh lib/deep/tests/*.sh :!lib/tests/t_skip.sh :(exclude)lib/tests/t_lib.sh|' .vbw/spec.md > "$TEST_ROOT/spec.md" && cp "$TEST_ROOT/spec.md" .vbw/spec.md
   "$VBW" spec sync > /dev/null
   git add -A && git commit -q -m "chore: subs"
   "$VBW" approve > /dev/null
   vbw_run prove
-  jq -e '.evidence.test_files | keys == ["lib/tests/t_lib.sh","tests/t_a.sh","tests/t_b.sh"]' .vbw/record.json \
+  jq -e '.evidence.test_files | keys == ["tests/t_a.sh","tests/t_b.sh"]' .vbw/record.json \
     || { echo "$output"; jq '.evidence.test_files | keys' .vbw/record.json; false; }
+}
+
+# log_calls: git and jq on PATH log their names to $TEST_ROOT/calls, then run.
+log_calls() {
+  local t
+  mkdir -p "$TEST_ROOT/logbin"
+  for t in git jq; do
+    printf '#!/bin/sh\necho %s >> "$TEST_ROOT/calls"\nexec %s "$@"\n' "$t" "$(command -v "$t")" > "$TEST_ROOT/logbin/$t"
+    chmod +x "$TEST_ROOT/logbin/$t"
+  done
+}
+
+@test "#737: without a submodule, listing the test files costs one git and one jq, as before submodules" {
+  log_calls
+  # shellcheck disable=SC2016 # expanded by vbw_kernel
+  PATH="$TEST_ROOT/logbin:$PATH" vbw_kernel '. "$VBW_LIB/testfiles.sh"; : > "$TEST_ROOT/calls"
+    testfiles_ls "$(cat "$VBW_RECORD")" | tr "\0" "\n" > "$TEST_ROOT/listed"'
+  [ "$(tr '\n' ' ' < "$TEST_ROOT/listed")" = "tests/t_a.sh tests/t_b.sh " ] || { cat "$TEST_ROOT/listed"; false; }
+  [ "$(sort "$TEST_ROOT/calls" | tr '\n' ' ')" = "git jq " ] || { cat "$TEST_ROOT/calls"; false; }
 }
 
 @test "R167: a test file an approved check runs is not a test file of its own" {

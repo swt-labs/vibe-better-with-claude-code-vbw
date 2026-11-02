@@ -44,22 +44,35 @@ testfiles_ids() {
 # pathspecs that name it (start with its path and a /), matched inside it, and
 # only for the submodules vbw_subs finds (one level, checked out): those the
 # proof copy holds, at their own HEAD. So a pattern such as */tests/*.sh never
-# picks up a vendored submodule's tests, and a submodule's pointer is no file.
+# picks up a vendored submodule's tests, and a submodule's pointer is no file. An
+# exclude that names a submodule (:!, :^ or :(exclude)) is passed into it. A
+# project without submodules lists as it did before them: one git, no filter.
 testfiles_ls() {
-  local specs=() subs=() rel=() a s
+  local specs=() subs=() rel=() inc a s
   while IFS= read -r -d '' a; do specs+=("$a"); done < <(printf '%s' "$1" | jq -j '.test_files.files[] + "\u0000"')
   [ ${#specs[@]} -gt 0 ] || return 0
-  while IFS= read -r -d '' s; do subs+=("$s"); done < <(vbw_subs)
-  git -C "$VBW_ROOT" ls-files -z -- ${specs[@]+"${specs[@]}"} \
-    | jq -Rj --argjson s "$(printf '%s\0' ${subs[@]+"${subs[@]}"} | jq -Rsc 'split("\u0000")[:-1]')" \
+  # vbw_subs finds none without .gitmodules, or a .git file (a copy may hold it in its index only).
+  if [ -f "$VBW_ROOT/.gitmodules" ] || [ -f "$VBW_ROOT/.git" ]; then
+    while IFS= read -r -d '' s; do subs+=("$s"); done < <(vbw_subs)
+  fi
+  if [ ${#subs[@]} -eq 0 ]; then
+    git -C "$VBW_ROOT" ls-files -z -- "${specs[@]}"
+    return
+  fi
+  git -C "$VBW_ROOT" ls-files -z -- "${specs[@]}" \
+    | jq -Rj --argjson s "$(printf '%s\0' "${subs[@]}" | jq -Rsc 'split("\u0000")[:-1]')" \
       'split("\u0000")[:-1][] | select(. as $p | any($s[]; . == $p) | not) | . + "\u0000"'
-  for s in ${subs[@]+"${subs[@]}"}; do
-    rel=()
-    for a in ${specs[@]+"${specs[@]}"}; do
-      case "$a" in "$s"/*) rel+=("${a#"$s"/}") ;; esac
+  for s in "${subs[@]}"; do
+    rel=() inc=''
+    for a in "${specs[@]}"; do
+      case "$a" in
+        "$s"/*) rel+=(":(top)${a#"$s"/}") inc=1 ;;
+        ":!$s"/* | ":^$s"/*) rel+=(":(top,exclude)${a#*"$s"/}") ;;
+        ":(exclude)$s"/*) rel+=(":(top,exclude)${a#*"$s"/}") ;;
+      esac
     done
-    [ ${#rel[@]} -gt 0 ] || continue
-    git -C "$VBW_ROOT/$s" ls-files -z -- "${rel[@]/#/:(top)}" \
+    [ -n "$inc" ] || continue
+    git -C "$VBW_ROOT/$s" ls-files -z -- "${rel[@]}" \
       | jq -Rj --arg s "$s" 'split("\u0000")[:-1][] | $s + "/" + . + "\u0000"'
   done
 }
