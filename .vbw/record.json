@@ -67655,6 +67655,13 @@
       "sort": "next",
       "size": "small",
       "status": "open"
+    },
+    {
+      "id": "T218",
+      "text": "Proof reuse inside moved submodules: #737's rule counts every recorded run unknown when a submodule pointer moves, so a project whose work lives in submodules reuses nothing (halindrome's monorepo, 5 submodules: ~4 of each proof's 5.5 min rerun units; #744 comment 2026-11-02). Diff inside each moved submodule (old HEAD..new HEAD per submodule) and judge units by the files that changed, as the project's own diff does",
+      "sort": "next",
+      "size": "medium",
+      "status": "open"
     }
   ],
   "decisions": [
