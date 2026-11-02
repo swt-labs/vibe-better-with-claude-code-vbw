@@ -67033,7 +67033,7 @@
       "text": "Committed result files carry the maintainer's absolute checkout path (tools/probes/mcp-tools.json foreign_agent and disallowed_honoured cases, tools/l3-results/plugindir*.json, .vbw/record.json notes; seen 2026-11-01): probes and the L3 suite write paths relative to the project, and a standards test refuses /Users/ or /home/ paths in tracked result files",
       "sort": "next",
       "size": "small",
-      "status": "open"
+      "status": "done"
     },
     {
       "id": "T214",
