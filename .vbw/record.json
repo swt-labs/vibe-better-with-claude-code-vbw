@@ -66963,7 +66963,7 @@
       "text": "L3 mapnotrun judge: commands_lines in tools/l3-suite.sh reads the spec's ## Commands with sed and counts lines inside the <!-- --> example block (test: npm test, build: ...), so a command written only in a comment would be judged present; skip comment blocks and pin it in tests/l3-mapnotrun.bats (seen in the 2.1.21 run, result unaffected)",
       "sort": "next",
       "size": "small",
-      "status": "open"
+      "status": "done"
     },
     {
       "id": "T204",
