@@ -478,7 +478,7 @@ only a pointer to it). It drives `/vbw:vibe` through plan, build, proof and ship
 and judges, in git and the record and never on screen: the plan's commit is in
 the submodule with its `VBW-Plan` trailer; the project's pointer to the
 submodule did not move while `git status` shows it changed; the check ran from
-the clean copy's submodule under `.vbw/runtime/proof.*`; and a file staged and
+the clean copy's submodule under `.vbw/runtime/proof.*/tree/sub`; and a file staged and
 left uncommitted in each repository is still staged and in no commit. Nested
 submodules, a detached submodule, a plan spanning both repositories and the
 `vbw auto` path are not covered.
