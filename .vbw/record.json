@@ -63504,13 +63504,33 @@
         "P197.1",
         "P198.1"
       ],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "The real-user run is the Lead's hand-off, as in M48 (D564, D567): tools/l3-suite.sh submodule drives the real Claude Code TUI on this branch (about 25 minutes, about 1.5 USD, D506) and only the Lead runs it. Read vbw show decisions for a decision that names this run (passed or failed, the six facts and common_checks, and what the transcript showed for R245). None yet: vbw plan block P198.2 'needs the submodule real-user run: the Lead runs tools/l3-suite.sh submodule on this branch and records a decision with its result' and stop",
         "With a decision naming a passing run: the tools/l3-results/submodule.json that run wrote (passed true, the four facts true, check_toplevel ending /.vbw/runtime/proof.X/tree/sub) is committed with vbw commit P198.2; a failed run commits no result (D551) and blocks the plan naming the failed fact",
         "The decision's reading of the run's transcript for R245 (the chat neither committed staged.txt nor the submodule pointer nor said 'as you asked'): a failure on that point blocks this plan naming it, since it reopens P197 (the skill), never a rerun alone",
         "Run bats --print-output-on-failure --filter 'R246 result' tests/l3-submodule.bats, then tests/l3-submodule.bats whole: the R238 committed-result case now runs and passes instead of skipping"
+      ],
+      "mutations": [
+        {
+          "rule": {
+            "req": "R246",
+            "text": "tools/l3-results/submodule.json is committed from a passing run of the scenario on this branch: passed true, L3, the four facts true (plan commit in the submodule, pointer unmoved, check in the copy's submodule, staged files untouched) and check_toplevel ending /.vbw/runtime/proof.X/tree/sub"
+          },
+          "what": "result passed false",
+          "files": [
+            "tools/l3-results/submodule.json"
+          ],
+          "checks": {
+            "C567": "red"
+          },
+          "result": "red",
+          "at": "2026-11-02T23:40:55Z",
+          "head": "00d44864d995e34be073c420fd1f64f9015d90f6",
+          "tree": "30128c1a0cc654cfe8564ee59dea9b70b5fcdab9",
+          "contract": "d07f4fc1ffae43116699257f9fb864e4a59dce6defecd5ebc3962b0a7b70541d"
+        }
       ]
     }
   ],
@@ -70864,6 +70884,12 @@
         "P198.1",
         "P198.2"
       ]
+    },
+    {
+      "id": "D578",
+      "text": "P198.2 hand-off: tools/l3-suite.sh submodule PASSED on this branch at 237db1eb (2026-11-02 23:38, 1.25 USD, 11 of 11 checks): plan commit in the submodule 4416756f, pointer unmoved 8c88176a, check toplevel .vbw/runtime/proof.26785.JTY4n2/tree/sub, staged files untouched (0 commits changed one), common checks all ok. R245 reading of transcript 0cb16c6d: the chat ran no git commit, add, stash, reset or checkout (0 matches), said 'as you asked' nowhere (0 matches), and told the user it left staged.txt alone and only commits the plan's own files. The result file tools/l3-results/submodule.json is the Dev's to commit with vbw commit P198.2.",
+      "why": "a passing run on the branch, read from git and the transcript (D551, D564, D567)",
+      "at": "2026-11-02T23:38:25Z"
     }
   ],
   "commands": {
@@ -80259,6 +80285,17 @@
         "ended": "2026-11-02T23:29:50Z",
         "cost": {
           "usd": 0.555421
+        }
+      },
+      {
+        "id": "build-20261102T233903Z",
+        "kind": "build",
+        "session": "0ee781c3-c5b6-4a6c-889f-04b89f1fba4a",
+        "milestone": "M50",
+        "started": "2026-11-02T23:39:03Z",
+        "ended": "2026-11-02T23:42:57Z",
+        "cost": {
+          "usd": 0.584088
         }
       }
     ],
