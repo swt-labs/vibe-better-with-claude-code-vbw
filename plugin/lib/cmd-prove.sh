@@ -263,22 +263,24 @@ prove_stamp() { proofreuse_annotate "$@"; }
 # git lists the history once, jq does the rest: the shell runs the same
 # commands whatever its length (R204). PROVE_SCOPE_PARSE_JQ reads git's stream
 # (git log -z --topo-order --raw: per commit a header "hash, unit separator,
-# trailer values", then per changed path ":old-mode new-mode old-blob new-blob
-# status" and the path; a merge lists nothing) into commits newest first,
-# [{h, p (first VBW-Plan value or ""), f (paths), fwd, bwd}]: fwd is the change
-# as "path old-pair new-pair" entries in git's path order, bwd the same with
-# the pairs swapped, so B undoes A exactly when B's bwd is A's fwd. Records are
-# built without growing a string or an array inside the state, so a commit of
-# 20,000 files costs no more per path than a small one.
+# commit time, unit separator, trailer values", then per changed path
+# ":old-mode new-mode old-blob new-blob status" and the path; a merge lists
+# nothing) of the repository $r (a submodule's folder, "" for the project) into
+# commits newest first, [{h, t (commit time), p (first VBW-Plan value or ""), r,
+# f (project paths: $pre, the folder and a slash, before git's), fwd, bwd}]: fwd
+# is the change as "path old-pair new-pair" entries in git's path order, bwd the
+# same with the pairs swapped, so B undoes A exactly when B's bwd is A's fwd.
+# Records are built without growing a string or an array inside the state, so a
+# commit of 20,000 files costs no more per path than a small one.
 # shellcheck disable=SC2016 # a jq program
 PROVE_SCOPE_PARSE_JQ='split("\u0000") as $t
   | [foreach range(0; $t | length) as $k ({e: null, n: -1, o: null};
-      if .e != null then .o = {k: .n, f: $t[$k], e: .e} | .e = null
+      if .e != null then .o = {k: .n, f: ($pre + $t[$k]), e: .e} | .e = null
       else ($t[$k] | sub("^\n+"; "")) as $x
         | if $x == "" then .o = null
           elif ($x | startswith(":")) then .e = ($x[1:] | split(" ")) | .o = null
-          else .n += 1 | ($x | index("\u001f")) as $u
-            | .o = {k: .n, h: $x[0:$u], p: ($x[$u + 1:] | split("\n")[0] // "")}
+          else .n += 1 | ($x | split("\u001f")) as $s
+            | .o = {k: .n, h: $s[0], t: ($s[1] | tonumber), p: (($s[2] // "") | split("\n")[0] // "")}
           end
       end;
       .o // empty)] as $l
@@ -286,15 +288,18 @@ PROVE_SCOPE_PARSE_JQ='split("\u0000") as $t
       .[$g[0].k | tostring] = {f: ($g | map(.f)),
         fwd: ($g | map("\(.f)\u001f\(.e[0])\u001f\(.e[2])\u001f\(.e[1])\u001f\(.e[3])\u001e") | add),
         bwd: ($g | map("\(.f)\u001f\(.e[1])\u001f\(.e[3])\u001f\(.e[0])\u001f\(.e[2])\u001e") | add)})) as $by
-  | [$l[] | select(has("h")) | {h, p} + ($by[.k | tostring] // {f: [], fwd: "", bwd: ""})]'
+  | [$l[] | select(has("h")) | {h, t, p, r: $r} + ($by[.k | tostring] // {f: [], fwd: "", bwd: ""})]'
 
-# PROVE_SCOPE_JQ, over the commits ($c), the pairs known not to descend ($no,
-# "older newer" -> true) and the park's reverts ($park, commit -> revert):
+# PROVE_SCOPE_JQ, over the commits ($c, each repository's newest first, one
+# after the other: a mirror image names the same project paths, so it is always
+# in the same repository), the pairs known not to descend ($no, "older newer" ->
+# true) and the park's reverts ($park, commit -> revert):
 # newest first, a commit is taken by the nearest later commit that is still
 # standing, has taken nothing yet and is its mirror image; a taken commit takes
 # nothing, so an undo that is itself undone clears nothing. A pair is taken as
 # descending unless $no says otherwise: the caller checks each pair in .pairs
-# with git once and runs this again while a check fails. The undoing commit is
+# ([older, newer, repository]) with git once, in its repository, and runs this
+# again while a check fails. The undoing commit is
 # not judged when its original carries a trailer. Cleared pairs are listed as
 # found, the undoing commit's entry before its original's, then the commits a
 # park's revert cleared. Only plans of the current milestone are judged and listed.
@@ -309,7 +314,7 @@ PROVE_SCOPE_JQ='$c[0] as $c | $no[0] as $no | $park[0] as $park | $rec[0] as $r
             else
               .taken[$i | tostring] = true
               | .took[$j | tostring] = (if $x.p != "" then 2 else 1 end)
-              | .pairs += [[$x.h, $c[$j].h]]
+              | .pairs += [[$x.h, $c[$j].h, $x.r]]
               | .cleared += (if $c[$j].p != "" and $x.p != "" then [{commit: $c[$j].h, plan: $c[$j].p, by: $x.h}] else [] end)
                   + (if $x.p != "" then [{commit: $x.h, plan: $x.p, by: $c[$j].h}] else [] end)
             end
@@ -320,18 +325,19 @@ PROVE_SCOPE_JQ='$c[0] as $c | $no[0] as $no | $park[0] as $park | $rec[0] as $r
   | ($r.plans | map(select(.phase as $p | $now | index($p) != null)) | map({key: .id, value: .files}) | from_entries) as $files
   | ($r.plans | map(.id as $i | {key: $i, value: ($r | strengthen_files($i))}) | from_entries) as $own
   | {pairs,
-     cand: [$judge[] | select($park[.h] == null and $files[.p] != null) | .h as $h | .p as $p | .f[]
+     cand: [$judge[] | select($park[.h] == null and $files[.p] != null) | .h as $h | .t as $t | .p as $p | .f[]
        | select(. as $f | (any($files[$p][]; covers($f)) or ($own[$p] | index($f) != null)) | not)
-       | {h: $h, p: $p, f: .}],
+       | {h: $h, t: $t, p: $p, f: .}],
      undone: ([.cleared[], ($judge[] | select($park[.h] != null) | {commit: .h, plan: .p, by: $park[.h]})] | map(select($files[.plan] != null)))}'
 
 # prove_scope RECORD: {scope: the violations, undone: the cleared commits [{commit, plan, by}]}.
-# It walks only the record's own history (history.sh): plan ids restart with a new record, so a
+# It walks only the record's own history (history.sh), in each repository VBW commits in
+# (history_repos: the project and each submodule): plan ids restart with a new record, so a
 # commit older than the record is never judged as today's plan of the same id. The walk stops at
 # the oldest commit with a VBW-Plan trailer: nothing older can be judged or clear one that is, so
 # a long history from before VBW costs one plain listing.
 prove_scope() {
-  local dir r sha n hi hj more known=' ' HISTORY_ARGS
+  local dir r sha n hi hj g i=0 more known=' ' HISTORY_ARGS HISTORY_REPOS
   # shellcheck source=cmd-commit.sh
   . "$VBW_LIB/cmd-commit.sh"
   mkdir -p "$VBW_RUNTIME" || vbw_die "cannot create $VBW_RUNTIME"
@@ -346,33 +352,42 @@ prove_scope() {
     done < <(git log -1 --format=%B "$r" 2> /dev/null | sed -n 's/^This reverts commit \([0-9a-f]\{40\}\)\..*/\1/p')
   done < <(printf '%s' "$1" | jq -r '(.loop.items // [])[].reverts[]?')
   jq -R -s -c 'reduce (split("\n")[] | select(length > 0) | split(" ")) as $p ({}; if has($p[0]) then . else .[$p[0]] = $p[1] end)' "$dir/park" > "$dir/park.json"
-  # How far back the first commit with a trailer lies, in the same order as the walk below.
-  history_args
-  n=$(git log -z --topo-order --format='%x1f%(trailers:key=VBW-Plan,valueonly)' "${HISTORY_ARGS[@]}" 2> /dev/null \
-    | jq -R -s 'split("\u0000") | map(ltrimstr("\n") | ltrimstr("\u001f") != "") | (rindex(true) // -1) + 1') || n=0
-  if [ "${n:-0}" -gt 0 ]; then
-    git log -z --topo-order --no-renames --raw --no-abbrev --max-count="$n" --format='%H%x1f%(trailers:key=VBW-Plan,valueonly)' "${HISTORY_ARGS[@]}" > "$dir/log" 2> /dev/null || : > "$dir/log"
-  else
-    : > "$dir/log"
-  fi
-  jq -R -s -c "$PROVE_SCOPE_PARSE_JQ" "$dir/log" > "$dir/commits" || { vbw_guard_drop "$dir"; vbw_die "internal error: the scope check could not read the history"; }
+  # Per repository: how far back the first commit with a trailer lies, in the same order as the walk below.
+  history_repos
+  for r in "${HISTORY_REPOS[@]}"; do
+    i=$((i + 1))
+    g="$VBW_ROOT${r:+/$r}"
+    history_args_in "$r"
+    n=$(git -C "$g" log -z --topo-order --format='%x1f%(trailers:key=VBW-Plan,valueonly)' "${HISTORY_ARGS[@]}" 2> /dev/null \
+      | jq -R -s 'split("\u0000") | map(ltrimstr("\n") | ltrimstr("\u001f") != "") | (rindex(true) // -1) + 1') || n=0
+    if [ "${n:-0}" -gt 0 ]; then
+      git -C "$g" log -z --topo-order --no-renames --raw --no-abbrev --max-count="$n" --format='%H%x1f%ct%x1f%(trailers:key=VBW-Plan,valueonly)' "${HISTORY_ARGS[@]}" > "$dir/log" 2> /dev/null || : > "$dir/log"
+    else
+      : > "$dir/log"
+    fi
+    jq -R -s -c --arg r "$r" --arg pre "${r:+$r/}" "$PROVE_SCOPE_PARSE_JQ" "$dir/log" > "$dir/commits.$i" \
+      || { vbw_guard_drop "$dir"; vbw_die "internal error: the scope check could not read the history${r:+ of $r}"; }
+  done
+  jq -s -c 'add' "$dir"/commits.* > "$dir/commits" || { vbw_guard_drop "$dir"; vbw_die "internal error: the scope check could not read the history"; }
   printf '{}' > "$dir/no"
   : > "$dir/nolist"
   while :; do
     jq -n -c --slurpfile c "$dir/commits" --slurpfile no "$dir/no" --slurpfile park "$dir/park.json" --slurpfile rec <(printf '%s' "$1") \
       "$VBW_JQ_DEFS$PROVE_SCOPE_JQ" > "$dir/out" || { vbw_guard_drop "$dir"; vbw_die "internal error: the scope check failed"; }
-    # Each pair is checked once: does the undoing commit descend from its original?
+    # Each pair is checked once, in its repository: does the undoing commit descend from its original?
     more=0
-    while IFS=' ' read -r hi hj; do
+    while IFS=' ' read -r hi hj r; do
       case "$known" in *" $hi:$hj "*) continue ;; esac
       known="$known$hi:$hj "
-      git merge-base --is-ancestor "$hi" "$hj" 2> /dev/null && continue
+      git -C "$VBW_ROOT${r:+/$r}" merge-base --is-ancestor "$hi" "$hj" 2> /dev/null && continue
       printf '%s %s\n' "$hi" "$hj" >> "$dir/nolist"
       more=1
-    done < <(jq -r '.pairs[] | "\(.[0]) \(.[1])"' "$dir/out")
+    done < <(jq -r '.pairs[] | "\(.[0]) \(.[1]) \(.[2])"' "$dir/out")
     [ "$more" = 1 ] || break
     jq -R -s -c 'split("\n") | map(select(length > 0) | {key: ., value: true}) | from_entries' "$dir/nolist" > "$dir/no"
   done
+  # The record's versions are the project's: its own history again.
+  history_args
   prove_scope_then "$1" "$dir"
   vbw_guard_drop "$dir"
 }
@@ -398,10 +413,12 @@ PROVE_SCOPE_THEN_JQ='$o[0] as $o | $t[0] as $t | $b[0] as $b | $v[0] as $v | $re
 
 # prove_scope_then RECORD DIR: the scope answer ({scope, undone}) from DIR/out. With no
 # candidate it is the check's own; else each candidate is judged again by the record
-# version it descends from (git ancestry, not clock time) and the user's decisions.
-# Cost: the fixed git processes (one log of the commits' times, one of the record's
-# versions, one cat-file of those since the oldest base) plus one git log per distinct
-# flagged commit, which stops at the first record commit it meets.
+# version it descends from (git ancestry, not clock time) and the user's decisions. A
+# commit's time is its own, read in its repository with the history (.cand[].t); a
+# submodule's commit has no record in its ancestry, so it is judged by every version.
+# Cost: the fixed git processes (one log of the record's versions, one cat-file of those
+# since the oldest base) plus one git log per distinct flagged commit, which stops at
+# the first record commit it meets.
 prove_scope_then() {
   local dir="$2" hs=() h base
   if ! jq -e '.cand | length > 0' "$dir/out" > /dev/null; then
@@ -409,8 +426,7 @@ prove_scope_then() {
     return 0
   fi
   while IFS= read -r h; do hs+=("$h"); done < <(jq -r '[.cand[].h] | unique[]' "$dir/out")
-  git log --no-walk=unsorted --format='%H %ct' "${hs[@]}" 2> /dev/null \
-    | jq -R -s -c 'split("\n") | map(select(length > 0) | split(" ") | {key: .[0], value: (.[1] | tonumber)}) | from_entries' > "$dir/times"
+  jq -c '[.cand[] | {key: .h, value: .t}] | from_entries' "$dir/out" > "$dir/times"
   # The record commit each flagged commit descends from: the last one in its ancestry.
   : > "$dir/bases"
   for h in "${hs[@]}"; do

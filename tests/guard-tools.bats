@@ -175,6 +175,15 @@ names_role() { printf '%s\n' "$1" | grep -qE "(^|[^a-z])$2([^a-z]|$)"; }
   [ "$status" -eq 0 ] && [ -z "$output" ] || { echo "the hook answered outside a VBW project: $output"; false; }
 }
 
+@test "#732: an agent in a submodule with no record of its own is judged as the VBW project above it" {
+  vbw_submodule "mod dir"
+  mkdir -p "mod dir/deep"
+  local r
+  r=$(reason mcp__github__get_issue vbw:dev "$PROJECT/mod dir/deep")
+  [ "$r" != allow ] || { echo "an MCP call from a submodule went unjudged"; false; }
+  names_role "$r" dev || { echo "$r"; false; }
+}
+
 @test "R242: the hook is one PreToolUse entry with the matcher omitted, as the probe showed reaches every tool, runs guard-tools.jq, and the bench measures it as its own guard cases" {
   jq -e '[.hooks.PreToolUse[] | select(.hooks[0].command | contains("hooks/guard-tools.jq"))] | length == 1 and (.[0] | has("matcher") | not)' "$PLUGIN_ROOT/hooks/hooks.json" > /dev/null \
     || { echo "hooks.json has not exactly one PreToolUse entry for guard-tools.jq with the matcher omitted"; false; }

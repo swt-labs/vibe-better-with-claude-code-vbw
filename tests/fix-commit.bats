@@ -51,6 +51,24 @@ teardown() { vbw_teardown; }
   [ -n "$(git status --porcelain -- src/other.txt)" ]
 }
 
+@test "R99: a fix's file inside a submodule is committed in the submodule, with the trailer; the project's HEAD stays" {
+  git init -q "$TEST_ROOT/subsrc"
+  printf 'a\n' > "$TEST_ROOT/subsrc/a.txt"
+  git -C "$TEST_ROOT/subsrc" add a.txt
+  git -C "$TEST_ROOT/subsrc" commit -q -m "chore: seed"
+  git -c protocol.file.allow=always submodule add -q "file://$TEST_ROOT/subsrc" sub
+  git commit -q -m "chore: sub"
+  local head
+  head=$(git rev-parse HEAD)
+  printf 'fixed\n' >> sub/a.txt
+  run "$VBW" commit --fix F1 "fix(test): make the test command pass" sub/a.txt < /dev/null
+  [ "$status" -eq 0 ] || { echo "$output"; false; }
+  [[ "$output" == "committed "*" in sub for F1 (1 file)" ]] || { echo "$output"; false; }
+  [ "$(git rev-parse HEAD)" = "$head" ]
+  [ "$(git -C sub show --name-only --format= HEAD)" = "a.txt" ]
+  [ "$(git -C sub log -1 --format='%(trailers:key=VBW-Fix,valueonly)' | tr -d '[:space:]')" = "F1" ]
+}
+
 @test "R99: a new file the fix created is committed" {
   printf 'new\n' > src/added.txt
   run "$VBW" commit --fix F1 "fix(test): add the missing file" src/added.txt < /dev/null

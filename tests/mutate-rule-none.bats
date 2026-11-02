@@ -130,6 +130,23 @@ no_reads() {
   run_of C2 | jq -e '.status == "pass" and (.reads | index("src/pay.sh") != null)' || { run_of C2; false; }
 }
 
+@test "R203: a check that reads a plan file inside a submodule is refused the same way, naming the file by its project path" {
+  git init -q "$TEST_ROOT/subsrc"
+  printf 'measured\n' > "$TEST_ROOT/subsrc/measure.txt"
+  git -C "$TEST_ROOT/subsrc" add measure.txt
+  git -C "$TEST_ROOT/subsrc" commit -q -m "chore: seed"
+  git -c protocol.file.allow=always submodule add -q "file://$TEST_ROOT/subsrc" sub
+  printf 'cat sub/measure.txt > /dev/null\n' > tests/notes.sh
+  edit_record '(.plans[] | select(.id == "P1.2")).files += ["sub/measure.txt"]'
+  git add -A && git commit -q -m "chore: sub"
+  "$VBW" approve > /dev/null
+  local sum
+  sum=$(record_sum)
+  run "$VBW" mutate P1.1 R1.4 --none "nothing to break" < /dev/null
+  refused "$sum"
+  says "C5 reads sub/measure.txt (P1.2)" "break the rule in that code instead"
+}
+
 @test "R203: a plan whose files are * covers every file, and is named so" {
   local sum
   edit_record '(.plans[] | select(.id == "P1.2")).files = ["*"]'

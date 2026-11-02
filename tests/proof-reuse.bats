@@ -126,6 +126,120 @@ decide() { "$VBW" decide "Use blue buttons" "the owner prefers them" > /dev/null
   [ "$(ran)" = "" ] || { echo "ran: $(ran)"; false; }
 }
 
+@test "a check reading a submodule runs on the submodule's committed code, its ignored files included; an uncommitted change there runs nothing, a commit there runs it again; no copy is left in the submodule" {
+  git init -q "$TEST_ROOT/subsrc"
+  printf 'paid\n' > "$TEST_ROOT/subsrc/pay.txt"
+  printf 'deps/\n' > "$TEST_ROOT/subsrc/.gitignore"
+  git -C "$TEST_ROOT/subsrc" add pay.txt .gitignore
+  git -C "$TEST_ROOT/subsrc" commit -q -m "chore: seed"
+  git -c protocol.file.allow=always submodule add -q "file://$TEST_ROOT/subsrc" sub
+  mkdir -p sub/deps
+  printf 'lib\n' > sub/deps/lib
+  cat > tests/c5.sh << 'SH'
+echo "C5$1" >> "$RANLOG"
+grep -qx paid sub/pay.txt && [ -f sub/deps/lib ]
+SH
+  edit_record '.checks += [{id:"C5", req:"R1", run:["sh","tests/c5.sh"], files:["tests/c5.sh"]}]'
+  git add -A && git commit -q -m "chore: sub"
+  "$VBW" approve > /dev/null
+  vbw_run prove
+  [ "$status" -eq 0 ] || { echo "$output"; false; }
+  [[ "$(ran)" == *"C5 "* ]] || { echo "ran: $(ran)"; false; }
+  : > "$RANLOG"
+  printf 'unpaid\n' > sub/pay.txt
+  decide
+  vbw_run prove
+  [ "$status" -eq 0 ] || { echo "$output"; false; }
+  [ "$(ran)" = "" ] || { echo "ran: $(ran)"; false; }
+  git -C sub commit -q -am "feat: unpaid"
+  decide
+  vbw_run prove
+  [ "$status" -ne 0 ] || { echo "$output"; false; }
+  [[ "$(ran)" == *"C5 "* ]] || { echo "ran: $(ran)"; false; }
+  [ "$(git -C sub worktree list --porcelain | grep -c '^worktree ')" -eq 1 ] || { git -C sub worktree list; false; }
+}
+
+# sub_with_gitmodules: a submodule "sub" whose own tree holds a .gitmodules, committed.
+sub_with_gitmodules() {
+  git init -q "$TEST_ROOT/subsrc"
+  printf 'paid\n' > "$TEST_ROOT/subsrc/pay.txt"
+  printf '[submodule "x"]\n\tpath = x\n\turl = ./x\n' > "$TEST_ROOT/subsrc/.gitmodules"
+  git -C "$TEST_ROOT/subsrc" add pay.txt .gitmodules
+  git -C "$TEST_ROOT/subsrc" commit -q -m "chore: seed"
+  git -c protocol.file.allow=always submodule add -q "file://$TEST_ROOT/subsrc" sub
+}
+
+# #737: a copy is the plain checkout: a check that reads .gitmodules as a file
+# passes in the proof as it does in the working folder.
+@test "a project with a submodule gets a plain copy: a check that reads .gitmodules, its own or the submodule's, passes there" {
+  sub_with_gitmodules
+  cat > tests/c5.sh << 'SH'
+echo "C5$1" >> "$RANLOG"
+[ "$(git config -f .gitmodules --get-regexp path)" = "submodule.sub.path sub" ] || exit 1
+grep -q 'path = x' sub/.gitmodules || exit 1
+[ -z "$(git status --porcelain)" ] || { git status --porcelain; exit 1; }
+[ -z "$(git -C sub status --porcelain)" ] || { git -C sub status --porcelain; exit 1; }
+[ -z "$(git ls-files -v | grep -v '^H ')" ] || { git ls-files -v; exit 1; }
+grep -qx paid sub/pay.txt
+SH
+  edit_record '.checks += [{id:"C5", req:"R1", run:["sh","tests/c5.sh"], files:["tests/c5.sh"]}]'
+  git add -A && git commit -q -m "chore: sub"
+  "$VBW" approve > /dev/null
+  vbw_run prove
+  [ "$status" -eq 0 ] || { echo "$output"; false; }
+  [[ "$(ran)" == *"C5 "* ]] || { echo "ran: $(ran)"; false; }
+}
+
+# #737: Claude Code's sandbox refuses to create any file named .gitmodules
+# ("unable to create file .gitmodules: Operation not permitted"). A fake git
+# stands in for it: a worktree add that writes a .gitmodules fails with git's
+# message, its half-made worktree left behind. Only then is the copy made again
+# with every .gitmodules unwritten (git reads it from the index), git status
+# clean, and VBW's own lookup in the copy still finds the submodule.
+@test "when the sandbox refuses .gitmodules, the copy is made again without it, git status stays clean, and VBW finds the submodule in the copy" {
+  sub_with_gitmodules
+  git add -A && git commit -q -m "chore: sub"
+  mkdir -p "$TEST_ROOT/fakebin"
+  cat > "$TEST_ROOT/fakebin/git" << 'SH'
+#!/bin/sh
+case " $* " in
+  *" worktree add "*" --no-checkout "*) exec "$REAL_GIT" "$@" ;;
+  *" worktree add "*)
+    "$REAL_GIT" "$@" || exit
+    for a; do dest=$prev; prev=$a; done
+    [ -e "$dest/.gitmodules" ] || exit 0
+    rm -f "$dest/.gitmodules"
+    echo "error: unable to create file .gitmodules: Operation not permitted" >&2
+    echo "fatal: Could not reset index file to revision 'HEAD'." >&2
+    exit 128 ;;
+esac
+exec "$REAL_GIT" "$@"
+SH
+  chmod +x "$TEST_ROOT/fakebin/git"
+  # shellcheck disable=SC2016 # expanded by vbw_kernel
+  REAL_GIT=$(command -v git) PATH="$TEST_ROOT/fakebin:$PATH" vbw_kernel '. "$VBW_LIB/proofcopy.sh"; mkdir -p "$VBW_RUNTIME"
+    proofcopy_make
+    for f in .gitmodules sub/.gitmodules; do [ ! -e "$PROOF_COPY/$f" ] || { echo "the copy wrote $f"; exit 1; }; done
+    [ -z "$(git -C "$PROOF_COPY" status --porcelain)" ] || { git -C "$PROOF_COPY" status --porcelain; exit 1; }
+    [ -z "$(git -C "$PROOF_COPY/sub" status --porcelain)" ] || exit 1
+    grep -qx paid "$PROOF_COPY/sub/pay.txt" || exit 1
+    [ "$(VBW_ROOT=$PROOF_COPY vbw_subs | tr "\0" "\n")" = sub ] || { echo "vbw_subs in the copy: $(VBW_ROOT=$PROOF_COPY vbw_subs | tr "\0" " ")"; exit 1; }
+    [ "$(git -C "$VBW_ROOT" worktree list --porcelain | grep -c "^worktree ")" -eq 2 ] || { git -C "$VBW_ROOT" worktree list; exit 1; }
+    proofcopy_remove'
+}
+
+@test "#737: without a submodule, a copy costs one git process, as before submodules" {
+  mkdir -p "$TEST_ROOT/logbin"
+  printf '#!/bin/sh\necho git >> "$TEST_ROOT/calls"\nexec %s "$@"\n' "$(command -v git)" > "$TEST_ROOT/logbin/git"
+  chmod +x "$TEST_ROOT/logbin/git"
+  # shellcheck disable=SC2016 # expanded by vbw_kernel
+  PATH="$TEST_ROOT/logbin:$PATH" vbw_kernel '. "$VBW_LIB/proofcopy.sh"; : > "$TEST_ROOT/calls"
+    proofcopy_checkout "$VBW_ROOT" "$TEST_ROOT/c"'
+  grep -qx paid "$TEST_ROOT/c/src/pay.txt"
+  [ "$(wc -l < "$TEST_ROOT/calls" | tr -d ' ')" -eq 1 ] || { cat "$TEST_ROOT/calls"; false; }
+  git worktree remove --force "$TEST_ROOT/c"
+}
+
 @test "R103: an untracked project file in the working folder runs nothing" {
   printf 'buy milk\n' > todos.txt
   vbw_run prove

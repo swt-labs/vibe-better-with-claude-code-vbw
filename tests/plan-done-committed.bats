@@ -104,6 +104,71 @@ status_of() { jq -r --arg p "$1" '.plans[] | select(.id == $p) | .status' .vbw/r
   [ "$(status_of P1.1)" != done ]
 }
 
+# sub_plan [OLD]: the plan's file and its check's subject move into a submodule
+# at sub/ (OLD: its history already holds a commit whose VBW-Plan trailer names
+# P1.1, an old roadmap's), added before the record is first committed, then the
+# contract is approved.
+sub_plan() {
+  git init -q "$TEST_ROOT/subsrc"
+  printf 'unpaid\n' > "$TEST_ROOT/subsrc/pay.txt"
+  git -C "$TEST_ROOT/subsrc" add pay.txt
+  git -C "$TEST_ROOT/subsrc" commit -q -m "chore: seed"
+  [ -z "${1:-}" ] || git -C "$TEST_ROOT/subsrc" commit -q --allow-empty -m "feat: old" -m "VBW-Plan: P1.1"
+  git -c protocol.file.allow=always submodule add -q "file://$TEST_ROOT/subsrc" sub
+  printf 'grep -qx paid sub/pay.txt\n' > tests/pay.sh
+  jq '(.plans[] | select(.id == "P1.1")).files = ["sub/pay.txt"]' .vbw/record.json > "$TEST_ROOT/e.json" && cp "$TEST_ROOT/e.json" .vbw/record.json
+  git add -A && git commit -q -m "chore: sub"
+  "$VBW" approve > /dev/null
+}
+
+@test "a plan whose file is in a submodule: its vbw commit there is found and the plan closes" {
+  sub_plan
+  printf 'paid\n' > sub/pay.txt
+  "$VBW" commit P1.1 "feat(pay): pay" > /dev/null
+  vbw_run plan done P1.1
+  [ "$status" -eq 0 ] || { echo "$output"; false; }
+  [ "$(status_of P1.1)" = done ]
+}
+
+@test "a plan whose file is in a submodule: an uncommitted change there still stops done" {
+  sub_plan
+  printf 'paid\n' > sub/pay.txt
+  vbw_run plan done P1.1
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"uncommitted changes in: sub/pay.txt"* ]] || { echo "$output"; false; }
+  [ "$(status_of P1.1)" != done ]
+}
+
+@test "a plan whose file is in a submodule: the submodule's commits older than the record are not the plan's" {
+  sub_plan old
+  vbw_run plan done P1.1
+  [ "$status" -ne 0 ]
+  # Judged as work committed without a trailer, not as the plan's commit.
+  [[ "$output" == *"is committed but its checks do not pass"* ]] || { echo "$output"; false; }
+  [ "$(status_of P1.1)" != done ]
+}
+
+@test "a check file in a submodule is committed there by the approval, and the plan built beside it closes" {
+  git init -q "$TEST_ROOT/subsrc"
+  printf 'unpaid\n' > "$TEST_ROOT/subsrc/pay.txt"
+  git -C "$TEST_ROOT/subsrc" add pay.txt
+  git -C "$TEST_ROOT/subsrc" commit -q -m "chore: seed"
+  git -c protocol.file.allow=always submodule add -q "file://$TEST_ROOT/subsrc" sub
+  printf 'grep -qx paid sub/pay.txt\n' > sub/pay.sh
+  jq '(.plans[] | select(.id == "P1.1")).files = ["sub/pay.txt"]
+    | .checks = [{id:"C1", req:"R1", run:["sh","sub/pay.sh"], files:["sub/pay.sh"]}] | .protected = ["sub/pay.sh"]' \
+    .vbw/record.json > "$TEST_ROOT/e.json" && cp "$TEST_ROOT/e.json" .vbw/record.json
+  git add .gitmodules sub && git commit -q -m "chore: sub"
+  vbw_run approve
+  [ "$status" -eq 0 ] || { echo "$output"; false; }
+  [ -z "$(git -C sub status --porcelain -- pay.sh)" ] || { git -C sub status --porcelain; false; }
+  [ "$(git -C sub log -1 --format= --name-only)" = "pay.sh" ]
+  printf 'paid\n' > sub/pay.txt
+  "$VBW" commit P1.1 "feat(pay): pay" > /dev/null
+  vbw_run plan done P1.1
+  [ "$status" -eq 0 ] || { echo "$output"; false; }
+}
+
 @test "R74: with an old roadmap's commit in the history, a commit after the record still counts" {
   git commit -q --allow-empty -m "feat: old" -m "VBW-Plan: P1.1"
   git add tests && git commit -q -m "test(pay): the check"

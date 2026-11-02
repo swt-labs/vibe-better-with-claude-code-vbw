@@ -7,6 +7,11 @@
 # folder. Build output is not environment: the copy builds its own, so no
 # artifact of a proof points into the working folder or another copy.
 #
+# A checked-out submodule (vbw_subs) gets a detached worktree of its own HEAD in
+# its folder of the copy, and its own ignored paths are copied in the same way:
+# vbw commit commits there and leaves the project's pointer where it was
+# (docs/workflows.md, "Submodules"), so its HEAD is its committed code.
+#
 # A copy's folder is .vbw/runtime/proof.PID.XXXXXX: PID is the vbw process that
 # made it. The next proof (proofcopy_create_slots) removes each copy whose owner
 # has ended (kill -0 fails), never one whose owner runs. A copy without an owner
@@ -148,9 +153,27 @@ proofcopy_sweep() {
     chmod -R u+rwx "$claim" > /dev/null 2>&1 || true
     rm -rf "$claim" > /dev/null 2>&1 || true
     git -C "$VBW_ROOT" worktree prune > /dev/null 2>&1 || true
+    proofcopy_prune_subs
     [ ! -e "$claim" ] || printf 'vbw: cannot remove the leftover proof copy %s; remove it by hand\n' ".vbw/runtime/${claim##*/}" >&2
   done
   return 0
+}
+
+# proofcopy_checkout REPO DEST: a detached worktree of REPO's HEAD at DEST. When
+# git cannot write it (Claude Code's sandbox refuses to create any file named
+# .gitmodules), the half-made one goes and it is made again with every file but
+# the .gitmodules files, which stay unwritten, marked skip-worktree: git status
+# stays clean, git reads them from the index, and so does vbw_subs, told by
+# vbw-gitmodules-index in the copy's git directory. Git's error on stderr.
+proofcopy_checkout() {
+  git -C "$1" -c core.hooksPath=/dev/null worktree add -q --detach "$2" HEAD > /dev/null 2>&1 && return 0
+  rm -rf "$2"
+  git -C "$1" worktree prune
+  git -C "$1" -c core.hooksPath=/dev/null worktree add -q --no-checkout --detach "$2" HEAD > /dev/null || return 1
+  git -C "$2" read-tree HEAD || return 1
+  git -C "$2" ls-files -z -- ':(glob)**/.gitmodules' | git -C "$2" update-index -z --skip-worktree --stdin || return 1
+  git -C "$2" checkout-index -a -q -u || return 1
+  : > "$(git -C "$2" rev-parse --absolute-git-dir)/vbw-gitmodules-index"
 }
 
 # proofcopy_make: one more copy, added to PROOF_COPIES.
@@ -164,8 +187,16 @@ proofcopy_make() {
   PROOF_COPIES+=("$copy")
   PROOF_COPY=$copy
   git -C "$VBW_ROOT" worktree prune 2> /dev/null || true
-  git -C "$VBW_ROOT" -c core.hooksPath=/dev/null worktree add -q --detach "$copy" HEAD > /dev/null 2>&1 \
-    || { proofcopy_remove; vbw_die "cannot make a clean copy of the committed code (does the project have a commit?)"; }
+  l=$(proofcopy_checkout "$VBW_ROOT" "$copy" 2>&1) \
+    || { proofcopy_remove; vbw_die "cannot make a clean copy of the committed code: ${l##*$'\n'}"; }
+  # Each checked-out submodule: a detached worktree of its own HEAD (its committed
+  # code, which vbw commit moves; the project's pointer may lag), in its folder.
+  local subs=()
+  while IFS= read -r -d '' p; do subs+=("$p"); done < <(vbw_subs)
+  for p in ${subs[@]+"${subs[@]}"}; do
+    l=$(proofcopy_checkout "$VBW_ROOT/$p" "$copy/$p" 2>&1) \
+      || { proofcopy_remove; vbw_die "cannot make a clean copy of the submodule $p's committed code: ${l##*$'\n'}"; }
+  done
   real=$(cd -P "$VBW_ROOT" && pwd -P) || vbw_die "cannot resolve $VBW_ROOT"
   if [ -f "${VBW_RECORD:-}" ]; then
     while IFS= read -r l; do
@@ -179,6 +210,15 @@ proofcopy_make() {
     ! proofcopy_is_build_dir "$p" || continue
     proofcopy_entry "$p"
   done < <(git -C "$VBW_ROOT" ls-files -z --others --ignored --exclude-standard --directory)
+  # A submodule's ignored paths (its dependencies) are its own repository's to list.
+  local s q
+  for s in ${subs[@]+"${subs[@]}"}; do
+    while IFS= read -r -d '' q; do
+      p="$s/${q%/}"
+      ! proofcopy_is_build_dir "$p" || continue
+      proofcopy_entry "$p"
+    done < <(git -C "$VBW_ROOT/$s" ls-files -z --others --ignored --exclude-standard --directory)
+  done
 }
 
 # proofcopy_entry P: copy the ignored path P into the copy being made (the
@@ -271,8 +311,19 @@ proofcopy_remove() {
     vbw_guard_drop "$(dirname "$c")"
   done
   git -C "$VBW_ROOT" worktree prune 2> /dev/null || true
+  proofcopy_prune_subs
   PROOF_COPIES=()
   PROOF_COPY=
+}
+
+# proofcopy_prune_subs: each submodule forgets the worktrees of removed copies
+# (removing a copy's folder removed theirs). Never fails.
+proofcopy_prune_subs() {
+  local p
+  while IFS= read -r -d '' p; do
+    git -C "$VBW_ROOT/$p" worktree prune > /dev/null 2>&1 || true
+  done < <(vbw_subs)
+  return 0
 }
 
 # proofcopy_verify HASH RECORD: die naming every check file whose committed

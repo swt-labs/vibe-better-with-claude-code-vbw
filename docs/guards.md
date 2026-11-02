@@ -133,7 +133,14 @@ does: the top folder of the git repository, which is the nearest folder at or
 above the session's folder (`$CLAUDE_PROJECT_DIR`) that holds `.git`, never a
 folder above it. A session started in a subfolder of a VBW project is guarded
 exactly as one started at its top folder; a git repository inside the project
-(a submodule, a nested clone) is a project of its own. A path in a tool call
+is a project of its own, with one exception: a submodule (its `.git` is a file
+whose `gitdir:` line points into a `modules/` folder) with no
+`.vbw/record.json` of its own belongs to the nearest folder above it that holds
+`.git` and a record, so a session started there is guarded as the VBW project
+that `vbw` commands there work on (docs/workflows.md, "Submodules"). A clone
+nested in the project (its `.git` is a folder) and a linked worktree nested in
+it (its `.git` file points into a `worktrees/` folder) stay projects of their
+own. A path in a tool call
 that is not absolute is read from the session's working folder, as the tool
 reads it, and "outside the project" means outside that top folder:
 

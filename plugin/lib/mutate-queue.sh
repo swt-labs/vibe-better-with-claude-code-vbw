@@ -4,12 +4,12 @@
 #   vbw mutate PLAN --run                       run every queued break of PLAN, side by side
 # A queued break waits in .vbw/runtime/mutate-queue/PLAN/NNNN/: files/ holds its
 # broken bytes (a file it deleted is absent), meta.json what it is {target, req,
-# rk, check, what, files, broke, head}. The run judges each break as the single
-# form does: the rule's check once on the unbroken code at HEAD (unless a recorded
-# break at HEAD already ran it), then each break in its own proof copy, as many at
+# rk, check, what, files, broke, head, tree}. The run judges each break as the single
+# form does: the rule's check once on the unbroken code (unless a recorded break of
+# the same committed code, tree as vbw_head_tree counts it, already ran it), then each break in its own proof copy, as many at
 # a time as there are copies (check_jobs, under the computer-wide slots), and each
-# result recorded in queue order (mutate_record). A break queued at another commit
-# is dropped and named: its bytes belong to older files.
+# result recorded in queue order (mutate_record). A break queued at other committed
+# code (another commit of the project or of a submodule) is dropped and named: its bytes belong to older files.
 # One --run of a plan at a time (R230): the run holds the marker
 # .vbw/runtime/mutate-queue/PLAN/run.pid with its own pid from before it reads any
 # entry until it ends, on every end. A second run finds a live pid and is refused;
@@ -81,8 +81,17 @@ mutate_queue_release() {
 }
 
 # mutate_queue_run PLAN: vbw mutate PLAN --run.
+# mutate_unbroken_base RECORD PLAN TREE: the ids of the checks a recorded break
+# of PLAN already ran unbroken on this committed code (TREE, vbw_head_tree) under
+# this contract (CHECK_HASH, set by checks_begin): a check's argv lives in the
+# record, outside the tree, so the tree alone would skip a changed check.
+mutate_unbroken_base() {
+  printf '%s' "$1" | jq -c --arg p "$2" --arg t "$3" --arg k "$CHECK_HASH" \
+    '[.plans[] | select(.id == $p) | (.mutations // [])[] | select(.tree == $t and .contract == $k) | (.checks // {}) | keys[]] | unique'
+}
+
 mutate_queue_run() {
-  local plan="$1" record head e entries=() keep=() stale=0 surv=0 bad='' checks ids=() cfiles=() f base unb=() n i k
+  local plan="$1" record head tree e entries=() keep=() stale=0 surv=0 bad='' checks ids=() cfiles=() f base unb=() n i k
   vbw_require_project
   cd "$VBW_ROOT" || vbw_die "cannot enter $VBW_ROOT"
   record=$(record_read)
@@ -94,8 +103,10 @@ mutate_queue_run() {
     vbw_die "no break waits for $plan: make each break and queue it with vbw mutate $plan Rn.k --queue \"what you broke\" FILE..., then run vbw mutate $plan --run"
   fi
   head=$(git rev-parse HEAD) || vbw_die "the project has no commit yet"
+  tree=$(vbw_head_tree) || vbw_die "cannot fingerprint the committed code"
   for e in "${entries[@]}"; do
-    if [ "$(jq -r .head "$e/meta.json")" = "$head" ]; then keep+=("$e"); continue; fi
+    # A break queued before breaks carried tree is judged by its head.
+    if jq -e --arg t "$tree" --arg h "$head" 'if has("tree") then .tree == $t else .head == $h end' "$e/meta.json" > /dev/null; then keep+=("$e"); continue; fi
     printf '%s was queued at another commit, so its break is of older files: break it again\n' "$(jq -r .target "$e/meta.json")" >&2
     rm -rf "$e"
     stale=1
@@ -109,8 +120,7 @@ mutate_queue_run() {
     vbw_die "check files differ from the last commit: $(vbw_dirty_files "${cfiles[@]}"): commit them first, so the breaks are run against the approved tests"
   fi
   checks_begin "$record"
-  base=$(printf '%s' "$record" | jq -c --arg p "$plan" --arg h "$head" \
-    '[.plans[] | select(.id == $p) | (.mutations // [])[] | select(.head == $h) | (.checks // {}) | keys[]] | unique')
+  base=$(mutate_unbroken_base "$record" "$plan" "$tree")
   for f in "${ids[@]}"; do
     printf '%s' "$base" | jq -e --arg c "$f" 'index($c) != null' > /dev/null || unb+=("$f")
   done
@@ -171,7 +181,7 @@ mutate_queue_run() {
     m=$(jq -c . "$e/meta.json")
     ruledoc=$(printf '%s' "$record" | jq -c --argjson m "$m" '.requirements[] | select(.id == $m.req) | (.rules // [])[$m.rk - 1] | {req: $m.req, text, check}')
     mutate_record "$plan" "$(printf '%s' "$m" | jq -r .target)" "$(printf '%s' "$m" | jq -r .what)" "$head" "$(cat "$e/result.json")" \
-      "$(record_read)" "$ruledoc" "" "$(printf '%s' "$m" | jq -c .files)" || surv=1
+      "$(record_read)" "$ruledoc" "" "$(printf '%s' "$m" | jq -c .files)" "$tree" || surv=1
     rm -rf "$e"
   done
   mutate_queue_release "$plan"

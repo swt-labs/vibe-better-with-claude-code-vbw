@@ -5,6 +5,19 @@
 # written for the work before the ship, so the ship retires it (R123). A [human] requirement the
 # user skipped (vbw req skip) is marked later: vbw milestone start moves it on.
 
+# ship_dirty_subs REPO: adds to the caller's dirty, by project path, each changed
+# file of every checked-out submodule of REPO ("" for the project), every level down.
+ship_dirty_subs() {
+  local s p entry
+  while IFS= read -r -d '' s; do
+    p="${1:+$1/}$s"
+    while IFS= read -r -d '' entry; do
+      dirty="$dirty $p/${entry:3}"
+    done < <(git -C "$VBW_ROOT/$p" status --porcelain=v1 -z --no-renames --untracked-files=all --ignore-submodules=all)
+    ship_dirty_subs "$p"
+  done < <(vbw_subs "$1")
+}
+
 cmd_ship() {
   [ $# -eq 0 ] || vbw_usage_error "usage: vbw ship"
   vbw_require_project
@@ -14,10 +27,14 @@ cmd_ship() {
   action=$(cmd_next --json | jq -r .action)
   [ "$action" = ship ] || vbw_die "not ready to ship: vbw next says $action ($(cmd_next | cut -d: -f2- | sed 's/^ //'))"
   # The proof reads the files on disk; shipped work must also be in git history.
+  # A submodule's files are read in the submodule, at every level down; its
+  # pointer moving is no change (vbw commit never moves it: docs/workflows.md,
+  # "Submodules").
   local entry dirty=""
   while IFS= read -r -d '' entry; do
     dirty="$dirty ${entry:3}"
-  done < <(git -C "$VBW_ROOT" status --porcelain=v1 -z --no-renames --untracked-files=all -- . ':(exclude).vbw')
+  done < <(git -C "$VBW_ROOT" status --porcelain=v1 -z --no-renames --untracked-files=all --ignore-submodules=all -- . ':(exclude).vbw')
+  ship_dirty_subs ""
   [ -z "$dirty" ] || vbw_die "the proven work is not committed:$dirty (commit it, then vbw ship)"
   # Freeze the milestone's cost; null (unknown) when no session has figures.
   local total
