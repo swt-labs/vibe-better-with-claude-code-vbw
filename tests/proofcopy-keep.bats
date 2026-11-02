@@ -21,7 +21,11 @@ keep_project() {
   vbw_git_project
   "$VBW" init > /dev/null
   printf 'node_modules/\ncache/\n.env\ndist/\n' > .gitignore
-  mkdir -p node_modules/pkg cache src tests
+  mkdir -p node_modules/pkg node_modules/other cache src tests
+  printf 'k\n' > node_modules/other/keep.js
+  # 200 entries no test changes: few changed entries are copied one by one.
+  mkdir -p node_modules/big
+  for i in $(seq 1 200); do printf '%s\n' "$i" > "node_modules/big/f$i.js"; done
   printf 'v1\n' > node_modules/pkg/index.js
   printf 'a\n' > node_modules/pkg/a.js
   printf 'gone\n' > node_modules/pkg/gone.js
@@ -39,6 +43,9 @@ if [ -n "${WRITE:-}" ]; then
   echo out > dist/out
   echo stray > stray
   echo cache > node_modules/.cache/x
+  echo edited >> node_modules/pkg/a.js
+  rm -f node_modules/pkg/gone.js
+  [ "$WRITE" != most ] || for f in node_modules/big/*; do echo w >> "$f"; done
   echo edited >> src/pay.txt
 fi
 SH
@@ -143,8 +150,10 @@ code_head() { git log -1 --format=%H --invert-grep --grep='^chore(vbw): proof'; 
   if grep -qE 'untracked|staged' "$PROBE"; then cat "$PROBE"; false; fi
 }
 
-@test "#738: ignored paths added, edited, renamed and deleted are brought up to date; a newly listed or no longer ignored path leaves the copy; the copy equals a fresh one" {
+@test "#738: ignored paths added, edited, renamed and deleted are brought up to date, and only they are copied again; a newly listed or no longer ignored path leaves the copy; the copy equals a fresh one" {
   prove_ok
+  local ino
+  ino=$(inode "$(slot 1)/tree/node_modules/other/keep.js")
   printf 'new\n' > node_modules/pkg/new.js
   # An edit that keeps an old modification time is still seen.
   printf 'v2\n' > node_modules/pkg/index.js
@@ -167,6 +176,7 @@ code_head() { git log -1 --format=%H --invert-grep --grep='^chore(vbw): proof'; 
   [ -f "$t/node_modules/pkg/b.js" ] && [ ! -e "$t/node_modules/pkg/a.js" ] && [ ! -e "$t/node_modules/pkg/gone.js" ] || { ls -la "$t/node_modules/pkg"; false; }
   [ ! -e "$t/cache" ] || { echo "the listed cache/ is still in the copy"; false; }
   [ ! -e "$t/.env" ] || { echo ".env, no longer ignored, is still in the copy"; false; }
+  [ "$(inode "$t/node_modules/other/keep.js")" = "$ino" ] || { echo "an unchanged file of node_modules was copied again"; false; }
   local kept
   kept=$(snap "$t")
   prove_ok --full
@@ -174,9 +184,11 @@ code_head() { git log -1 --format=%H --invert-grep --grep='^chore(vbw): proof'; 
   diff <(printf '%s\n' "$kept") <(snap "$(slot 1)/tree")
 }
 
-@test "#738: what a unit wrote (a build folder, a stray file, a file in a kept ignored folder, an edited tracked file) is gone when the next command claims the copy" {
+@test "#738: what a unit wrote (a build folder, a stray file, a file in a kept ignored folder, an edited or deleted one there, an edited tracked file) is undone when the next command claims the copy, and nothing else is copied again" {
   WRITE=1 prove_ok
-  [ -f "$(slot 1)/tree/dist/out" ] && [ -f "$(slot 1)/tree/node_modules/.cache/x" ] || { echo "the unit wrote nothing"; false; }
+  [ -f "$(slot 1)/tree/dist/out" ] && [ -f "$(slot 1)/tree/node_modules/.cache/x" ] && [ ! -e "$(slot 1)/tree/node_modules/pkg/gone.js" ] || { echo "the unit wrote nothing"; false; }
+  local ino
+  ino=$(inode "$(slot 1)/tree/node_modules/other/keep.js")
   bump two
   prove_ok
   local t
@@ -184,7 +196,20 @@ code_head() { git log -1 --format=%H --invert-grep --grep='^chore(vbw): proof'; 
   [ ! -e "$t/dist" ] && [ ! -e "$t/stray" ] && [ ! -e "$t/node_modules/.cache" ] || { ls -la "$t" "$t/node_modules"; false; }
   if grep -qE '^\./(dist|stray|node_modules/\.cache)' "$PROBE"; then cat "$PROBE"; false; fi
   [ "$(cat "$t/src/pay.txt")" = "$(printf 'paid\ntwo')" ] || { cat "$t/src/pay.txt"; false; }
-  [ "$(cat "$t/node_modules/pkg/index.js")" = v1 ]
+  [ "$(cat "$t/node_modules/pkg/index.js")" = v1 ] && [ "$(cat "$t/node_modules/pkg/a.js")" = a ] && [ "$(cat "$t/node_modules/pkg/gone.js")" = gone ] \
+    || { ls -la "$t/node_modules/pkg"; false; }
+  [ "$(inode "$t/node_modules/other/keep.js")" = "$ino" ] || { echo "an unchanged file of node_modules was copied again"; false; }
+  [ "$(counts)" = '{"claimed":1,"refreshed":1,"made":0}' ] || { counts; false; }
+}
+
+@test "#738: when a unit wrote into most of a kept ignored path, the path is copied again whole, as cloning it costs less than entry by entry" {
+  WRITE=most prove_ok
+  local ino
+  ino=$(inode "$(slot 1)/tree/node_modules/other/keep.js")
+  bump two
+  prove_ok
+  [ "$(inode "$(slot 1)/tree/node_modules/other/keep.js")" != "$ino" ] || { echo "node_modules was brought up to date entry by entry"; false; }
+  [ "$(cat "$(slot 1)/tree/node_modules/big/f7.js")" = 7 ] && [ "$(cat "$(slot 1)/tree/node_modules/pkg/a.js")" = a ] || { echo "the unit's writes are still there"; false; }
 }
 
 @test "#738: a slot whose owner has ended is claimed; one whose owner runs is left alone and another is made" {
@@ -327,6 +352,8 @@ code_head() { git log -1 --format=%H --invert-grep --grep='^chore(vbw): proof'; 
   printf '%s\n' "$output" | grep -qE 'copies: 1 kept copy claimed \(0 refreshed\), 0 made' || { echo "$output"; false; }
   vbw_run doctor
   printf '%s\n' "$output" | grep -qE 'kept clean cop(y|ies).*proof\.keep\.1 [0-9.]+ [KMG]?B' || { echo "$output"; false; }
+  # du counts a clone's blocks in full: on APFS six 9.5 GB copies held 7 GB of disk in all.
+  printf '%s\n' "$output" | grep -q 'shares with the working folder' || { echo "$output"; false; }
 }
 
 @test "#738: evidence whose own has no copy_slots still reads; a malformed copy_slots makes the record corrupt" {

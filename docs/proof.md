@@ -988,16 +988,26 @@ exactly what a copy made fresh at that moment would hold:
 - the git-ignored paths as the working folder has them now, less build folders
   and the `## Clean copy` list: a path new to the list is copied in, a path
   gone from it, newly listed under `## Clean copy` or no longer ignored is
-  removed, and a path still on it is copied again only when it changed;
+  removed, and in a path still on it only the entries that changed are
+  copied again or removed;
 - nothing an earlier unit built or wrote: `git clean -ffdx` removes every
-  other file, and a kept ignored path that a unit wrote into (a cache inside
-  `node_modules`, say) is copied again.
+  other file, and inside a kept ignored path (a cache in `node_modules` or
+  `.angular`, say) each entry a unit wrote is copied again from the working
+  folder, or removed when the working folder has none.
 
 A kept ignored path counts as changed when any entry in it, in the working
 folder, changed after the copy was last brought up to date, or when its number
 of entries differs. VBW reads each entry's change time (ctime), which every
 write, rename or permission change moves and no tool can set back, so an
-install that keeps the packages' old modification times is still seen. One
+install that keeps the packages' old modification times is still seen. A
+folder's own change time moves when an entry in it is added, removed or
+renamed, so the folders whose listing changed are matched to the working
+folder's and every other changed entry is copied again. A path is copied again
+whole instead when more than one in 20 of its entries changed (a clone of the
+whole path then costs less: on APFS one entry on its own costs about 25 times
+its share of a whole clone), when its number of entries differs with no
+changed entry, or when it cannot be brought up to date entry by entry (a
+read-only folder, an entry that became a folder). One
 walk of `node_modules` takes about a second; copying it again took 46 seconds
 on the project that prompted this. When any of these steps fails, or the
 project's set of submodules changed, the slot is emptied and the copy made
@@ -1010,7 +1020,9 @@ record keeps it in `evidence.own.copy_slots` (docs/record.md). `vbw mutate`
 prints the same line after its own-work lines.
 `vbw doctor` names each kept copy with its size. The kept copies take disk space between commands (with a
 copy-on-write clone, little); to free it, remove `.vbw/runtime/proof.keep.*`
-while no VBW command runs.
+while no VBW command runs. The size `vbw doctor` gives counts in full the
+blocks a clone shares with the working folder: on one APFS project six kept
+copies of 9.5 GB each held about 7 GB of disk in all.
 
 #### Leftover proof copies
 

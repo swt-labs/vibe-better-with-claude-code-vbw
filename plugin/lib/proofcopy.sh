@@ -27,11 +27,13 @@
 # and then holds what a copy made fresh at that moment would hold: git reset
 # --hard to HEAD (each submodule to its own HEAD); git clean -ffdx, sparing only
 # the ignored paths that are still to be copied in and were copied before; each
-# ignored path new to the list copied in, and one copied again when it is
-# stale: an entry of its source changed after stamp (its change time, find
-# -newercm, which no tool sets back, unlike a modification time), its number of
-# entries differs from the manifest's, or an entry of it in the copy changed
-# after done (a unit wrote there). A failing step, a slot without a manifest, a
+# ignored path new to the list copied in; in one copied before, the entries that
+# changed brought up to date one by one (proofcopy_sync): those of its source
+# changed after stamp (their change time, find -newercm, which no tool sets back,
+# unlike a modification time) and those of the copy changed after done (a unit
+# wrote there). It is copied again whole when its number of entries differs from
+# the manifest's with no changed entry, or an entry cannot be brought up to date
+# on its own. A failing step, a slot without a manifest, a
 # changed set of submodules, or vbw prove --full (PROOFCOPY_FRESH): the copy is
 # removed and made fresh in its slot. Every git command in a copy runs only
 # after the copy is checked to be a repository of its own and a worktree of the
@@ -285,19 +287,26 @@ proofcopy_pattern() {
 # of entries, or "new") that is new or stale; then write done, the manifest and
 # the stamp. Sets PROOFCOPY_CHANGED when a path was copied.
 proofcopy_fill() {
-  local d=$1 p old c
+  local d=$1 p old c w
   : > "$d/counts" || vbw_die "cannot write in $d"
   while IFS= read -r -d '' p && IFS= read -r -d '' old; do
     c=''
     if [ "$old" != new ]; then
+      # The copy's walk (did a unit write there?) runs beside the source's: each
+      # reads every entry of a large node_modules, a few seconds apiece.
+      find "$copy/$p" -newercm "$d/done" -print -quit > "$d/wrote" 2> /dev/null &
+      w=$!
       c=$(proofcopy_walk "$VBW_ROOT/$p" "$d/stamp")
-      if [ "$c" != "$old" ] || { [ ! -e "$copy/$p" ] && [ ! -L "$copy/$p" ]; } \
-        || [ -n "$(find "$copy/$p" -newercm "$d/done" -print -quit 2> /dev/null)" ]; then
+      wait "$w" || true
+      if { [ ! -e "$copy/$p" ] && [ ! -L "$copy/$p" ]; } || { [ "$c" != stale ] && [ "$c" != "$old" ]; }; then
         c=''
+      elif [ "$c" = stale ] || [ -s "$d/wrote" ]; then
+        # Only the entries that changed, on either side, are copied again.
+        if proofcopy_sync "$p" "$d" "$old"; then c=synced; else c=''; fi
       fi
     fi
-    if [ -z "$c" ]; then
-      proofcopy_put "$p"
+    if [ "$c" = synced ] || [ -z "$c" ]; then
+      [ -n "$c" ] || proofcopy_put "$p"
       PROOFCOPY_CHANGED=1
       c=$(proofcopy_walk "$VBW_ROOT/$p" "$d/stamp.next")
       # Changed while it was copied: the next claim copies it again.
@@ -309,7 +318,53 @@ proofcopy_fill() {
   proofcopy_subs_json | jq -c --rawfile c "$d/counts" '{subs: ., paths: ($c | split("\u0000")[:-1] | [range(0; length; 2) as $i | {key: .[$i], value: (.[$i + 1] | tonumber)}] | from_entries)}' > "$d/manifest.next" \
     && mv "$d/manifest.next" "$d/manifest" && mv "$d/stamp.next" "$d/stamp" \
     || vbw_die "cannot write the manifest of $d"
-  rm -f "$d/plan" "$d/counts"
+  rm -f "$d/plan" "$d/counts" "$d/wrote" "$d/dirty" "$d/kids"
+}
+
+# proofcopy_sync P SLOT OLD: bring the copy's ignored path P to the working folder's
+# by the entries that changed: those of the copy changed after SLOT/done (a unit
+# wrote them) and those of the working folder changed after SLOT/stamp, parents
+# first. A changed folder present on both sides gets its listing matched (a
+# child added, removed or renamed changes its folder's change time); any other
+# changed entry is copied again or removed. Fails, leaving the whole path to be
+# copied again, when more than one in 20 of its entries changed, or a step fails
+# (a read-only folder, a type that changed).
+proofcopy_sync() {
+  local p=$1 d=$2 q s c n
+  { (cd "$copy" && find "$p" -newercm "$d/done" -print0) && (cd "$VBW_ROOT" && find "$p" -newercm "$d/stamp" -print0); } 2> /dev/null \
+    | LC_ALL=C sort -zu > "$d/dirty" || return 1
+  # One entry costs about 25 times more on its own (a process each) than inside
+  # a clone of the whole path (measured on APFS, 2,500 entries): past one in 20
+  # of OLD, the path's entries in the manifest, the whole path is cheaper.
+  n=$(tr -cd '\0' < "$d/dirty" | wc -c)
+  [ $((n * 20)) -le "$3" ] || return 1
+  while IFS= read -r -d '' q; do
+    s=$VBW_ROOT/$q
+    c=$copy/$q
+    if [ -d "$s" ] && [ ! -L "$s" ] && [ -d "$c" ] && [ ! -L "$c" ]; then
+      [ -w "$c" ] || return 1
+      (cd "$c" && find . -mindepth 1 -maxdepth 1 -print0) > "$d/kids" || return 1
+      while IFS= read -r -d '' n; do
+        n=${n#./}
+        [ -e "$s/$n" ] || [ -L "$s/$n" ] || { chmod -R u+rwx "$c/$n" 2> /dev/null; rm -rf "${c:?}/$n"; } || return 1
+      done < "$d/kids"
+      (cd "$s" && find . -mindepth 1 -maxdepth 1 -print0) > "$d/kids" || return 1
+      while IFS= read -r -d '' n; do
+        n=${n#./}
+        [ -e "$c/$n" ] || [ -L "$c/$n" ] || proofcopy_copy "$s/$n" "$c/$n" || return 1
+      done < "$d/kids"
+    elif [ ! -e "$s" ] && [ ! -L "$s" ]; then
+      # Gone from the source (most often already gone with its parent's listing).
+      [ ! -e "$c" ] && [ ! -L "$c" ] || { chmod -R u+rwx "$c" 2> /dev/null; rm -rf "$c"; } || return 1
+    elif [ ! -e "$c" ] && [ ! -L "$c" ]; then
+      proofcopy_copy "$s" "$c" || return 1
+    elif [ -d "$s" ] && [ ! -L "$s" ] || [ -d "$c" ] && [ ! -L "$c" ]; then
+      return 1
+    else
+      [ -w "$(dirname "$c")" ] && rm -f "$c" && proofcopy_copy "$s" "$c" || return 1
+    fi
+  done < "$d/dirty"
+  rm -f "$d/dirty" "$d/kids"
 }
 
 # proofcopy_walk PATH STAMP: one walk of PATH: "stale" when an entry of it
