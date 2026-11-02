@@ -28216,7 +28216,15 @@
         "guarded: R13 (C12), R14 (C13), R24 (C23), R25 (C24), R26 (C22), R28 (C25), R31 (C27), R37 (C35), R39 (C36), R40 (C37), R44 (C44, C45), R47 (C47), R49 (C48), R50 (C51), R60 (C72, C94), R69 (C110, C120, C122), R70 (C114), R71 (C115, C121), R72 (C116, C118), R73 (C98), R75 (C101), R76 (C102, C103), R77 (C104), R78 (C105, C106), R79 (C107), R80 (C108), R81 (C109, C111, C112, C113), R95 (C149, C150), R96 (C151, C152), R101 (C179), R102 (C158, C159), R106 (C164, C165), R107 (C166, C167), R111 (C171, C172, C173, C174, C175), R116 (C182, C183), R118 (C184), R123 (C190, C191), R129 (C196), R130 (C197), R134 (C201), R135 (C202), R147 (C212, C215, C237), R148 (C213, C214, C216, C238), R149 (C217, C218, C219, C220, C221, C222), R156 (C242, C243), R157 (C244), R158 (C245), R159 (C246), R160 (C247, C263, C264), R161 (C248, C265, C266), R162 (C249), R163 (C250), R166 (C253, C254, C255, C256, C267), R167 (C257, C258, C259, C260), R171 (C270), R173 (C281, C282, C283, C284, C285, C286, C289), R179 (C297, C298, C299, C300, C301, C302, C303, C304, C305, C306, C312), R180 (C307, C308, C309, C310), R182 (C322, C323, C324, C325, C326), R186 (C344, C345, C346, C347, C348), R190 (C374, C375, C376, C377, C378, C379, C380, C381, C382, C383, C384, C385, C386, C387, C388), R191 (C389, C390, C391, C392, C393, C394, C395, C396, C397, C398, C399, C400), R192 (C401, C402, C403, C404, C405, C406, C407, C408, C409, C410), R193 (C411, C412), R194 (C417, C418, C419), R196 (C415, C416), R197 (C413, C414), R202 (C432, C433, C434, C435, C436, C437, C438, C439, C440, C441, C442, C443, C444, C445, C446, C447), R209 (C469, C470, C471, C472, C473), R210 (C474, C475, C476), R211 (C477, C478, C479), R212 (C480, C481, C482), R213 (C483, C484), R215 (C488, C489, C490), R216 (C491, C492, C493), R219 (C497, C498, C499), R220 (C500, C501, C502, C503), R228 (C522, C523, C524, C525), R229 (C526, C527, C528, C529), R241 (C546, C547, C548, C549, C550, C560)",
         "tests: project test command"
       ],
-      "predicted": "deep"
+      "predicted": "deep",
+      "escalations": [
+        {
+          "at": "2026-11-02T23:20:12Z",
+          "from": "deep",
+          "to": "deep",
+          "reason": "Dev blocked P196.1: C562 test 2 (tests/kernel-surface.bats line 114) cannot pass: after the plan file is committed, vbw next asks for QA again ('P1 (its files changed)') because the QA digest reads the files as committed (HEAD), and the QA pass was recorded while the edit was uncommitted. The test expects ship to succeed after only 'vbw commit' + 'vbw prove', with no new 'vbw qa record'. The ship refusal itself (my cmd-ship.sh change, committed 6b09e7e4) works: the other 3 R244 cases pass and standards.bats shell lint passes. Needs the check file fixed (add 'vbw qa record P1 pass standard' before the last ship) and re-approved; it is a protected check file I may not edit."
+        }
+      ]
     },
     {
       "id": "P197",
@@ -63218,13 +63226,14 @@
         "plugin/lib/cmd-ship.sh"
       ],
       "after": [],
-      "status": "planned",
+      "status": "blocked",
       "role": "dev",
       "tasks": [
         "ship_uncommitted in plugin/lib/cmd-ship.sh computes the blocking set as vbw commit's own helpers do (plugin/lib/core.sh vbw_plan_paths, vbw_in_repo, vbw_changed; no second definition of ownership): the file entries (an exact file, a folder entry ending in /, or *) of every plan whose phase has .milestone equal to .milestone.id, plus every path of the record's .protected list; each changed, deleted or new untracked file is listed by project path (a file in a submodule, or in a submodule's own submodule reached by an exact entry, as 'sub/inner dir/i.txt'), labelled '(plan P1.1)', '(plans P1.1, P1.2)' when several plans name it, '(protected check file)', or '(plan P1.1, protected check file)'; ship_dirty_subs and the git status walk of every file (the old lines 10-19 and 34-37) are removed, so a moved submodule pointer and any file of the user's own never count",
         "The refusal text is built by ship_uncommitted alone: it prints 'the milestone's work is not committed:' then one line per blocking file, sorted by path, exactly as two spaces, the project path and its label (for example '  src/pay.txt (plan P1.1)'), then a last line starting 'Next: ' with one 'vbw commit <plan> \"type(scope): description\"' per plan that has blocking files joined by '; ', plus 'vbw commit --fix FIX \"type(scope): description\" FILE for a check file of an open fix' when a protected check file blocks, ending ', then vbw ship'; it returns 1 after printing, and prints nothing and returns 0 when nothing blocks; cmd_ship calls it after the vbw next check and dies with that text through vbw_die (so the first line reads 'vbw: the milestone's work is not committed:'), otherwise shipping exactly as today; the strings 'the proven work is not committed' and 'commit it, then vbw ship' exist nowhere in plugin/",
         "Run under macOS bash (PATH=\"/bin:$PATH\"): bats --print-output-on-failure --filter 'R244:' tests/kernel-surface.bats, then the whole tests/kernel-surface.bats, tests/kernel-commit.bats, tests/refusal-next-step.bats and tests/standards.bats; fix what fails inside cmd-ship.sh only (bash 3.2: no mapfile, arrays guarded under set -u; no builtin write while a child is live, so a loop fed by a process substitution writes through vbw_out; no quiet grep after a pipe; record-sized data reaches jq through a pipe, never --arg)"
-      ]
+      ],
+      "note": "C562 test 2 (tests/kernel-surface.bats line 114) cannot pass: after the plan file is committed, vbw next asks for QA again ('P1 (its files changed)') because the QA digest reads the files as committed (HEAD), and the QA pass was recorded while the edit was uncommitted. The test expects ship to succeed after only 'vbw commit' + 'vbw prove', with no new 'vbw qa record'. The ship refusal itself (my cmd-ship.sh change, committed 6b09e7e4) works: the other 3 R244 cases pass and standards.bats shell lint passes. Needs the check file fixed (add 'vbw qa record P1 pass standard' before the last ship) and re-approved; it is a protected check file I may not edit."
     },
     {
       "id": "P196.2",
@@ -63238,13 +63247,33 @@
         "docs/next.md"
       ],
       "after": [],
-      "status": "planned",
+      "status": "done",
       "role": "docs",
       "tasks": [
         "docs/workflows.md, section Submodules: the bullet 'vbw ship wants every file committed ...' becomes: vbw ship wants only the milestone's own files committed (the files its plans name and the protected check files, the same set vbw commit commits), in the project and in each checked-out submodule by project path (a plan file inside a submodule's own submodule, named by an exact entry, is named by its project path too); the user's own files, staged or not, never block the ship and are never named by it; a moved submodule pointer is no change (D544); the words 'wants every file committed' are gone from the file",
         "docs/workflows.md, table 'Every refusal and its next step': a new row that starts with '| `vbw ship`:' for an uncommitted change to a file of the milestone's work (a plan's file or a protected check file, in the project or in a submodule, named by project path with the plan that names it; the user's own files never block), whose next-step column reads: commit it with `vbw commit PLAN \"type(scope): description\"` (a check file of an open fix with `vbw commit --fix FIX \"type(scope): description\" FILE`), then `vbw ship`",
         "docs/next.md, row 12 of the action table (ship): vbw ship refuses while a file of the milestone's work is uncommitted (its plans' files and the protected check files, in the project or in a submodule by project path), names each one with its plan and vbw commit as the next step; a user's own file never blocks it and is never named; the proof reads files on disk, so the milestone's work must be in git history before it ships; the words 'refuses while the proven work is not committed' are gone",
         "Run bats --print-output-on-failure --filter 'R244 docs' tests/kernel-surface.bats and tests/vibe-commit-rule.bats (its R239 table cases still pass with the new row)"
+      ],
+      "mutations": [
+        {
+          "rule": {
+            "req": "R244",
+            "text": "docs/workflows.md (Submodules, and a vbw ship row in the refusal table with vbw commit as the next step) and docs/next.md (the ship row) say only the milestone's own files must be committed and the user's own files never block"
+          },
+          "what": "Submodules bullet back to every file",
+          "files": [
+            "docs/workflows.md"
+          ],
+          "checks": {
+            "C563": "red"
+          },
+          "result": "red",
+          "at": "2026-11-02T23:15:04Z",
+          "head": "43a0ec530c929ab965190b0053b242384f1f25cd",
+          "tree": "a831d8baa3dfbfb2a5879e7a4f906d8da36b0cd0",
+          "contract": "549fbdbe8e4a23cd70e7ba6fe1716b556c1456a43856f010929ce689852af25a"
+        }
       ]
     },
     {
@@ -63303,12 +63332,50 @@
         "docs/proof.md"
       ],
       "after": [],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "tools/l3-suite.sh, scenario_submodule: the copy_top line's grep -E pattern becomes '\\.vbw/runtime/proof\\.[^/]+/tree/sub$' (proofcopy_make puts the clean copy at .vbw/runtime/proof.<pid>.<rand>/tree and each submodule at its path inside it, plugin/lib/proofcopy.sh); the expect line for the check's toplevel and the scenario's header comment say 'proof.*/tree/sub' instead of 'proof.*/sub'; nothing else in the scenario changes",
         "docs/proof.md, the submodule scenario paragraph: the check ran from the clean copy's submodule under .vbw/runtime/proof.*/tree/sub",
         "Run bats --print-output-on-failure --filter 'R246:' tests/l3-submodule.bats, then tests/l3-submodule.bats whole (the R238 cases keep passing), bash tools/test.sh --lint and bash tools/check-pipefail-grep.sh tools"
+      ],
+      "mutations": [
+        {
+          "rule": {
+            "req": "R246",
+            "text": "the scenario's copy_top pattern, read from the scenario body, matches a toplevel line as a run writes it (an absolute path ending /.vbw/runtime/proof.X/tree/sub) and not the old /proof.X/sub form, the project's own sub or a folder below the copy's sub; the expect line names proof.*/tree/sub"
+          },
+          "what": "copy_top pattern back to old /sub form",
+          "files": [
+            "tools/l3-suite.sh"
+          ],
+          "checks": {
+            "C566": "red"
+          },
+          "result": "red",
+          "at": "2026-11-02T23:15:39Z",
+          "head": "43a0ec530c929ab965190b0053b242384f1f25cd",
+          "tree": "a831d8baa3dfbfb2a5879e7a4f906d8da36b0cd0",
+          "contract": "549fbdbe8e4a23cd70e7ba6fe1716b556c1456a43856f010929ce689852af25a"
+        },
+        {
+          "rule": {
+            "req": "R246",
+            "text": "docs/proof.md's submodule paragraph says the toplevel is under .vbw/runtime/proof.*/tree/sub"
+          },
+          "what": "docs paragraph back to proof.*",
+          "files": [
+            "docs/proof.md"
+          ],
+          "checks": {
+            "C566": "red"
+          },
+          "result": "red",
+          "at": "2026-11-02T23:15:43Z",
+          "head": "43a0ec530c929ab965190b0053b242384f1f25cd",
+          "tree": "a831d8baa3dfbfb2a5879e7a4f906d8da36b0cd0",
+          "contract": "549fbdbe8e4a23cd70e7ba6fe1716b556c1456a43856f010929ce689852af25a"
+        }
       ]
     },
     {
@@ -80059,6 +80126,17 @@
         "ended": "2026-11-02T23:11:42Z",
         "cost": {
           "usd": 15.389118
+        }
+      },
+      {
+        "id": "build-20261102T231348Z",
+        "kind": "build",
+        "session": "0ee781c3-c5b6-4a6c-889f-04b89f1fba4a",
+        "milestone": "M50",
+        "started": "2026-11-02T23:13:48Z",
+        "ended": "2026-11-02T23:20:39Z",
+        "cost": {
+          "usd": 1.481983
         }
       }
     ],
