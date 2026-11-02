@@ -66914,7 +66914,7 @@
       "text": "Bench blind spot (F327, 2026-10-27): a uniformly slow CI runner passes the busy test (startup under 20 ms) yet fails every absolute budget (Ubuntu 26.04 shards 1 and 2 of the 2.1.18 release run, hooks at 20-21 ms, status line over 60 ms, same code 11-12 ms elsewhere). Give the bench a same-host reference (a budget scaled by the measured startup against a reference startup) or a second run on a fresh runner",
       "sort": "next",
       "size": "small",
-      "status": "open"
+      "status": "done"
     },
     {
       "id": "T197",
