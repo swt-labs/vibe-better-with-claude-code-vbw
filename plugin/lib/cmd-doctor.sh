@@ -263,8 +263,9 @@ doctor_guard() {
   fi
 }
 
-# The kept clean copies (docs/proof.md, "Kept copies"), each with its size: the
-# disk they hold between commands. Says nothing when there is none.
+# The kept clean copies (docs/proof.md, "Kept copies"), each with its size (du:
+# blocks a clone shares with the working folder count in full, so the disk held
+# can be far less). Says nothing when there is none.
 doctor_kept() {
   local d kb list=''
   # shellcheck source=proofcopy.sh
@@ -274,5 +275,5 @@ doctor_kept() {
     kb=$(du -sk "$d" 2> /dev/null | awk 'NR == 1 {printf "%d", $1}') || kb=0
     list="$list${list:+, }${d##*/} $(proofcopy_fmt_kb "${kb:-0}")"
   done
-  [ -z "$list" ] || doctor_line info "kept clean copies in .vbw/runtime: $list (each command brings them up to date; remove them while no command runs to free the disk)"
+  [ -z "$list" ] || doctor_line info "kept clean copies in .vbw/runtime: $list (each size counts in full what a copy-on-write clone shares with the working folder; each command brings them up to date; remove them while no command runs to free the disk)"
 }
