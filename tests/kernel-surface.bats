@@ -105,11 +105,13 @@ ship_next_line() {
   [[ "$output" == *"vbw commit P1.1"* ]] || { echo "$output"; false; }
   jq -e '.milestone.status != "shipped"' .vbw/record.json
   "$VBW" commit P1.1 "feat(pay): more" > /dev/null
-  # The committed edit was never proved as committed code: prove again, then ship.
+  # The committed edit was never proved or judged as committed code: prove and
+  # record QA again (QA reads the files as committed), then ship.
   vbw_run ship
   [ "$status" -eq 1 ]
   [[ "$output" == *"prove"* ]]
   "$VBW" prove > /dev/null
+  "$VBW" qa record P1 pass standard > /dev/null
   vbw_run ship
   [ "$status" -eq 0 ] || { echo "$output"; false; }
 }
