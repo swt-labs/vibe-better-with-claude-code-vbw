@@ -66977,7 +66977,7 @@
       "text": "Two CI flakes in PR #740, neither file changed since 2.1.20: tests/timed-bench-hooks.bats 'waiting is not counted' failed on a busy macOS runner (sh and jq startup 9.5 ms, 12.1 vs 39.1 ms against a 25 ms margin; measure once more before failing, as the bench does); tests/step-bench.bats R190 'step running' failed on Linux bash 5 shard 3 (the status line did not show the step once, VBW_BENCH_RUNS=1)",
       "sort": "next",
       "size": "small",
-      "status": "open"
+      "status": "done"
     },
     {
       "id": "T206",
