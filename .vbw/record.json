@@ -67676,6 +67676,13 @@
       "sort": "next",
       "size": "small",
       "status": "open"
+    },
+    {
+      "id": "T221",
+      "text": "Record schema 8: #737 (67146842) added the mutation keys tree and contract without a schema bump, so a 2.1.23 kernel calls such a record corrupt ('P196.2 mutations must be recorded breaks') instead of asking for an update (record.sh record_newer_schema). Bump to schema 8 when a mutation carries tree or contract, validate like settings.mcp/schema 7, docs/record.md; and a standards check that a new record key comes with a schema bump (found 2026-11-02: the installed approval hook refused the M50 approval)",
+      "sort": "next",
+      "size": "small",
+      "status": "open"
     }
   ],
   "decisions": [
