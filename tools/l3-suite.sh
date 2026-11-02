@@ -3347,7 +3347,7 @@ SH
 # answers with the recommendation through plan, build, proof and ship. Judged in git and the
 # record, never on screen: a VBW-Plan commit in the submodule changing greet.sh; the project's
 # pointer to the submodule unmoved while git status shows it changed; the check run from the clean
-# copy's submodule (its --show-toplevel under .vbw/runtime/proof.*/sub); a file staged and left
+# copy's submodule (its --show-toplevel under .vbw/runtime/proof.*/tree/sub); a file staged and left
 # uncommitted in each repository still staged and in no commit.
 scenario_submodule() {
   new_project
@@ -3372,7 +3372,7 @@ scenario_submodule() {
     [ "$pointer_now" = "$seed_pointer" ] && [ -z "$pointer_log" ] && moved=false
     status_line=$(git -C "$dir" status --porcelain -- sub)
     # The recorded check output: the --show-toplevel line the check printed, kept in the run store by the check itself.
-    copy_top=$(cat "$dir/.vbw/runtime/toplevels.log" "$dir"/.vbw/runtime/output/*.log 2> /dev/null | grep -E '\.vbw/runtime/proof\.[^/]+/sub$' | head -n 1)
+    copy_top=$(cat "$dir/.vbw/runtime/toplevels.log" "$dir"/.vbw/runtime/output/*.log 2> /dev/null | grep -E '\.vbw/runtime/proof\.[^/]+/tree/sub$' | head -n 1)
     # Staged files: still staged in each repository, and in no commit of either.
     if [ "$(git -C "$dir" diff --cached --name-only | grep -cx 'staged.txt')" -gt 0 ] && [ "$(git -C "$dir/sub" diff --cached --name-only | grep -cx 'staged.txt')" -gt 0 ]; then staged_ok=true; fi
     in_commit=$(( $(git -C "$dir" log --format=%H --name-only "$seed_head..HEAD" | grep -cx 'staged.txt') + $(git -C "$dir/sub" log --format=%H --name-only "$seed_sub_head..HEAD" | grep -cx 'staged.txt') ))
@@ -3381,7 +3381,7 @@ scenario_submodule() {
     expect "the submodule holds a VBW-Plan commit that changed greet.sh (${plan_commit:-none})" [ -n "$plan_commit" ]
     expect "the project's pointer to the submodule did not move and no project commit touched sub ($pointer_now)" [ "$moved" = false ]
     expect "git status shows the submodule as changed ($status_line)" [ "$(printf '%s' "$status_line" | grep -cE '^( M|M ) sub$')" -gt 0 ]
-    expect "the check ran in the clean copy's submodule: its toplevel ends .vbw/runtime/proof.*/sub (${copy_top:-none})" [ -n "$copy_top" ]
+    expect "the check ran in the clean copy's submodule: its toplevel ends .vbw/runtime/proof.*/tree/sub (${copy_top:-none})" [ -n "$copy_top" ]
     expect "each repository still lists its staged file" [ "$staged_ok" = true ]
     expect "no commit of either repository changed a staged file ($in_commit)" [ "$in_commit" -eq 0 ]
     [ "$failed" -eq 0 ] || passed=false
