@@ -67041,6 +67041,13 @@
       "sort": "next",
       "size": "small",
       "status": "done"
+    },
+    {
+      "id": "T215",
+      "text": "vbw ship refuses any uncommitted file, so a user's own staged file blocks the ship and pushes the session to commit it (L3 submodule on #737, 2026-11-02): refuse only uncommitted changes to files the milestone's plans or checks own; regression case in the ship tests; then the submodule scenario's staged-file facts can pass",
+      "sort": "next",
+      "size": "small",
+      "status": "open"
     }
   ],
   "decisions": [
