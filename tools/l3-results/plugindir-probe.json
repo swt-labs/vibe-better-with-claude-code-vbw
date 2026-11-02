@@ -7,22 +7,22 @@
   "passed": false,
   "facts": {
     "claude_version": "2.1.296",
-    "tree_root": "/Users/tiagoserodio/Documents/AI Stuff/vibe-better-with-claude-code-vbw-worktrees/v2/.vbw/runtime/scratch/plugindir-tree",
+    "tree_root": "<checkout>/.vbw/runtime/scratch/plugindir-tree",
     "tree_version": "2.0.35+tree",
     "installed_version": "2.0.35",
     "loaded_copies": [
-      "/Users/tiagoserodio/.claude/plugins/cache/vbw-marketplace/vbw/2.0.35",
-      "/Users/tiagoserodio/Documents/AI Stuff/vibe-better-with-claude-code-vbw-worktrees/v2/.vbw/runtime/scratch/plugindir-tree"
+      "~/.claude/plugins/cache/vbw-marketplace/vbw/2.0.35",
+      "<checkout>/.vbw/runtime/scratch/plugindir-tree"
     ],
     "tree_overrides_installed": true,
     "plugin_bins_on_path": [
-      "/Users/tiagoserodio/.claude/plugins/cache/vbw-marketplace/vbw/2.0.35/bin",
-      "/Users/tiagoserodio/Documents/AI Stuff/vibe-better-with-claude-code-vbw-worktrees/v2/.vbw/runtime/scratch/plugindir-tree/bin"
+      "~/.claude/plugins/cache/vbw-marketplace/vbw/2.0.35/bin",
+      "<checkout>/.vbw/runtime/scratch/plugindir-tree/bin"
     ],
-    "session_vbw_path": "/Users/tiagoserodio/.claude/plugins/cache/vbw-marketplace/vbw/2.0.35/bin/vbw",
+    "session_vbw_path": "~/.claude/plugins/cache/vbw-marketplace/vbw/2.0.35/bin/vbw",
     "session_vbw_version": "2.0.35",
     "session_env_applied": true,
-    "agent_vbw_path": "/Users/tiagoserodio/.claude/plugins/cache/vbw-marketplace/vbw/2.0.35/bin/vbw",
+    "agent_vbw_path": "~/.claude/plugins/cache/vbw-marketplace/vbw/2.0.35/bin/vbw",
     "agent_vbw_version": "2.0.35",
     "agent_env_applied": true,
     "hooks_from": [

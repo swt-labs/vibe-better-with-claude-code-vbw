@@ -230,7 +230,8 @@ result_write() {
   jq -n --arg n "$1" --arg fx "$2" --arg cost "${3:-0}" --argjson passed "$4" \
     --argjson facts "$5" --argjson nt "$6" --arg at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
     '{scenario: $n, fixture: $fx, cost_usd: ($cost | tonumber), evidence_level: "L3",
-      at: $at, passed: $passed, facts: $facts, not_tested: $nt}' > "$RESULTS/$1.json"
+      at: $at, passed: $passed, facts: $facts, not_tested: $nt}' \
+    | jq --arg root "$ROOT" --arg home "${HOME:-}" -f "$ROOT/tools/mask-paths.jq" > "$RESULTS/$1.json"
   say "result written: tools/l3-results/$1.json"
 }
 

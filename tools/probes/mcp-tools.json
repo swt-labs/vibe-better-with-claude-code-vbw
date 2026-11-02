@@ -41,7 +41,7 @@
     },
     "disallowed_honoured": {
       "tools_line": "disallowedTools: Write, Edit, NotebookEdit, Bash",
-      "result": "RESULT: NOT-WRITTEN RESULT: NOT-WRITTEN. The Write tool is not available in this agent session. Its schema was not among my tools, and ToolSearch select:Write returned \"No matching deferred tools found\". I did not create /Users/tiagoserodio/Documents/AI Stuff/vibe-better-with-claude-code-vbw-worktrees/v2/.vbw/runtime/scratch/probe-mcp-tools/proj/probe-written.txt by any other route, because you asked for the Write tool specifically."
+      "result": "RESULT: NOT-WRITTEN RESULT: NOT-WRITTEN. The Write tool is not available in this agent session. Its schema was not among my tools, and ToolSearch select:Write returned \"No matching deferred tools found\". I did not create <checkout>/.vbw/runtime/scratch/probe-mcp-tools/proj/probe-written.txt by any other route, because you asked for the Write tool specifically."
     },
     "hook_every_tool": {
       "tools_line": "(no tools: line; hook matcher omitted)",

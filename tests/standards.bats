@@ -219,3 +219,16 @@ code_grep() {
   run bash "$REPO_ROOT/tools/check-pipefail-grep.sh"
   [ "$status" -eq 2 ]
 }
+
+@test "no committed result file names a home folder: the L3 results and the probes write the checkout as <checkout> and the home folder as ~ (T213)" {
+  cd "$REPO_ROOT"
+  local hits
+  hits=$(git ls-files -z -- tools/l3-results tools/probes | xargs -0 grep -l -E '/(Users|home)/[^/"]+/' 2> /dev/null || true)
+  [ -z "$hits" ] || { echo "result files that name a home folder:"; echo "$hits"; false; }
+  local s
+  for s in tools/l3-suite.sh tools/probe-mcp-tools.sh; do
+    grep -q "tools/mask-paths.jq" "$s" || { echo "$s writes its result without tools/mask-paths.jq"; false; }
+  done
+  run jq -c --arg root "/Users/jane/My work/vbw" --arg home "/Users/jane" -f tools/mask-paths.jq <<< '{"a":"/Users/jane/My work/vbw/plugin","b":["/Users/jane/.claude/x",1],"c":"plain"}'
+  [ "$output" = '{"a":"<checkout>/plugin","b":["~/.claude/x",1],"c":"plain"}' ] || { echo "masked: $output"; false; }
+}
