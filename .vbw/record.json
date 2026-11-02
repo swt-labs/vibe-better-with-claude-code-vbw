@@ -7505,6 +7505,90 @@
       "files": [
         "tests/bench-steps-result.bats"
       ]
+    },
+    {
+      "id": "C562",
+      "req": "R244",
+      "run": [
+        "bats",
+        "--print-output-on-failure",
+        "--filter",
+        "R244:",
+        "tests/kernel-surface.bats"
+      ],
+      "files": [
+        "tests/kernel-surface.bats"
+      ]
+    },
+    {
+      "id": "C563",
+      "req": "R244",
+      "run": [
+        "bats",
+        "--print-output-on-failure",
+        "--filter",
+        "R244 docs",
+        "tests/kernel-surface.bats"
+      ],
+      "files": [
+        "tests/kernel-surface.bats"
+      ]
+    },
+    {
+      "id": "C564",
+      "req": "R245",
+      "run": [
+        "bats",
+        "--print-output-on-failure",
+        "--filter",
+        "R245:",
+        "tests/vibe-commit-rule.bats"
+      ],
+      "files": [
+        "tests/vibe-commit-rule.bats"
+      ]
+    },
+    {
+      "id": "C565",
+      "req": "R245",
+      "run": [
+        "bats",
+        "--print-output-on-failure",
+        "--filter",
+        "R245 docs",
+        "tests/vibe-commit-rule.bats"
+      ],
+      "files": [
+        "tests/vibe-commit-rule.bats"
+      ]
+    },
+    {
+      "id": "C566",
+      "req": "R246",
+      "run": [
+        "bats",
+        "--print-output-on-failure",
+        "--filter",
+        "R246:",
+        "tests/l3-submodule.bats"
+      ],
+      "files": [
+        "tests/l3-submodule.bats"
+      ]
+    },
+    {
+      "id": "C567",
+      "req": "R246",
+      "run": [
+        "bats",
+        "--print-output-on-failure",
+        "--filter",
+        "R246 result",
+        "tests/l3-submodule.bats"
+      ],
+      "files": [
+        "tests/l3-submodule.bats"
+      ]
     }
   ],
   "project": {
@@ -18509,6 +18593,103 @@
           "plan": "P195.3"
         }
       ]
+    },
+    {
+      "id": "R244",
+      "text": "vbw ship refuses only uncommitted changes to the milestone's own files: the files its plans name and the protected check files, in the project and in each checked-out submodule by project path; a user's own staged or unstaged file outside them never blocks the ship and is never named by it; the refusal names each blocking file and vbw commit as the next step (T215: the submodule real-user run on 2026-11-02 was blocked by the fixture's user-staged files, as main would be)",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M50",
+      "rules": [
+        {
+          "text": "the files that can block a ship are exactly the ones vbw commit would commit for the milestone: the file entries (exact, folder/ or *) of every plan whose phase is in the active milestone and the record's protected check files, resolved with vbw_plan_paths, vbw_in_repo and vbw_changed; an uncommitted edit to a plan-named file refuses the ship, naming the file and its plan",
+          "check": "C562",
+          "plan": "P196.1"
+        },
+        {
+          "text": "a deleted plan-named file and an edited protected check file are named, the check file as a protected check file; a plan file of a shipped milestone is not",
+          "check": "C562",
+          "plan": "P196.1"
+        },
+        {
+          "text": "a user's own file outside the milestone's files, untracked or staged, in the project or in a submodule, never blocks the ship and never appears in its output; when nothing blocks, the milestone ships with those files left as they were",
+          "check": "C562",
+          "plan": "P196.1"
+        },
+        {
+          "text": "submodules are covered by project path at every level an entry reaches: an uncommitted plan file in sub and one in 'sub/inner dir' (an exact entry) each refuse the ship as 'sub/pay.txt' and 'sub/inner dir/i.txt'; the moved submodule pointer is no change",
+          "check": "C562",
+          "plan": "P196.1"
+        },
+        {
+          "text": "the refusal is one message naming every blocking file with the plan that names it (or that it is a protected check file) and ends with a line starting 'Next:' that names vbw commit; 'the proven work is not committed' and 'commit it, then vbw ship' are gone",
+          "check": "C562",
+          "plan": "P196.1"
+        },
+        {
+          "text": "docs/workflows.md (Submodules, and a vbw ship row in the refusal table with vbw commit as the next step) and docs/next.md (the ship row) say only the milestone's own files must be committed and the user's own files never block",
+          "check": "C563",
+          "plan": "P196.2"
+        }
+      ]
+    },
+    {
+      "id": "R245",
+      "text": "VBW's chat never commits a file VBW did not write and never claims an instruction it did not get: the vibe skill states that the chat commits nothing by hand, on a ship refusal included, and asks the user what to do with their own uncommitted files instead of acting on them; a standards test pins both statements in the skill, and no kernel message tells the chat to commit a file outside the milestone's work (T217: after three empty /vbw:vibe turns the chat committed the user's staged files and the submodule pointer and said 'as you asked'; R239 covers only an armed loop)",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M50",
+      "rules": [
+        {
+          "text": "the vibe skill says the chat commits nothing by hand, a ship refusal included (no git commit, add, stash, checkout or reset of files, no commit of a submodule pointer), and follows the refusal's Next line",
+          "check": "C564",
+          "plan": "P197.1"
+        },
+        {
+          "text": "the vibe skill says a user's own uncommitted files (anything VBW did not write) are the user's: never committed, staged, stashed, discarded or named as blocking; the chat asks the user what to do and waits",
+          "check": "C564",
+          "plan": "P197.1"
+        },
+        {
+          "text": "the vibe skill says the chat never attributes an instruction the user did not type (no 'as you asked'), and that an empty or unclear /vbw:vibe turn runs vbw next and reports its action, never inferring a request from silence",
+          "check": "C564",
+          "plan": "P197.1"
+        },
+        {
+          "text": "no message in plugin/lib/*.sh or plugin/skills tells the chat to commit a file outside the milestone's work: 'commit it, then vbw ship' and 'the proven work is not committed' are gone, and every message telling to commit names vbw commit, check files or VBW's own files",
+          "check": "C564",
+          "plan": "P197.1"
+        },
+        {
+          "text": "docs/guards.md and docs/workflows.md say, where the R239 rows are, that the rule also holds on a ship refusal and that the user's own files are never committed by VBW's chat",
+          "check": "C565",
+          "plan": "P197.2"
+        }
+      ]
+    },
+    {
+      "id": "R246",
+      "text": "The submodule real-user scenario judges the clean copy's submodule where proofcopy makes it (.vbw/runtime/proof.X/tree/sub), pinned by a case in tests/l3-submodule.bats fed a toplevel line as a run writes it, and the scenario passes on main with its result committed (T216: the 2026-11-02 run's check did run there and the fact read none)",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M50",
+      "rules": [
+        {
+          "text": "the scenario's copy_top pattern, read from the scenario body, matches a toplevel line as a run writes it (an absolute path ending /.vbw/runtime/proof.X/tree/sub) and not the old /proof.X/sub form, the project's own sub or a folder below the copy's sub; the expect line names proof.*/tree/sub",
+          "check": "C566",
+          "plan": "P198.1"
+        },
+        {
+          "text": "docs/proof.md's submodule paragraph says the toplevel is under .vbw/runtime/proof.*/tree/sub",
+          "check": "C566",
+          "plan": "P198.1"
+        },
+        {
+          "text": "tools/l3-results/submodule.json is committed from a passing run of the scenario on this branch: passed true, L3, the four facts true (plan commit in the submodule, pointer unmoved, check in the copy's submodule, staged files untouched) and check_toplevel ending /.vbw/runtime/proof.X/tree/sub",
+          "check": "C567",
+          "plan": "P198.2"
+        }
+      ]
     }
   ],
   "phases": [
@@ -28006,6 +28187,92 @@
         "qa_findings": 1,
         "escalations": 2
       }
+    },
+    {
+      "id": "P196",
+      "title": "vbw ship refuses only the milestone's own uncommitted files",
+      "reqs": [
+        "R244"
+      ],
+      "milestone": "M50",
+      "goal": "vbw ship blocks only on uncommitted changes to files this milestone's plans name or its checks protect, in the project and in every checked-out submodule, names each one by project path with vbw commit as the next step, and never blocks on or names a file of the user's own.",
+      "criteria": [
+        "The set of files that can block a ship is exactly the set vbw commit would commit for the milestone: for every plan whose phase belongs to the active milestone (.milestone.id), its file entries (an exact file, a folder entry ending in /, or *) resolved with vbw_plan_paths, vbw_in_repo and vbw_changed from plugin/lib/core.sh, plus every path in the record's .protected list resolved the same way; no second definition of ownership is written in cmd-ship.sh.",
+        "A folder entry or * owns every uncommitted file under it, new untracked files included, so a user's new file inside a plan folder blocks and is named; an uncommitted edit to, or deletion of, a plan-named file blocks and is named.",
+        "A file outside the milestone's plan files and protected check files (staged or unstaged, tracked or untracked, in the project or in any checked-out submodule) never blocks the ship and never appears in any ship output; a moved submodule pointer still never counts (D544).",
+        "Submodules are covered at every level down by project path: a plan file or protected check file inside a submodule, or inside a submodule's own submodule (named by an exact entry such as 'sub/inner dir/i.txt'), blocks when uncommitted there, and the refusal names it as 'sub/inner dir/i.txt' relative to the project.",
+        "The refusal is one message that names every blocking file by project path, says which plan names each (or that it is a protected check file), and ends with a line starting 'Next:' that names vbw commit as the next step; the old wording 'the proven work is not committed' and '(commit it, then vbw ship)' no longer exist in plugin/.",
+        "When nothing blocks, vbw ship proceeds exactly as today (milestone shipped, cost frozen, decision recorded) with the user's own uncommitted files left untouched and unmentioned.",
+        "tests/kernel-surface.bats pins the new behaviour under /bin/bash: an untracked notes.txt named by no plan and no check does not block the ship and is absent from the output; an uncommitted change to a plan-named file and to a protected check file each refuse, naming the file and vbw commit on the Next line; in the submodule case, sub/scratch.txt (no plan) does not block while an uncommitted plan or protected file in sub and in 'sub/inner dir' each refuse by project path; the exact refusal shape (file names and the Next line) is asserted, not only '*not committed*'.",
+        "docs/workflows.md (Submodules section and the 'Every refusal and its next step' table, which gains a row for this refusal with vbw commit as the next step) and docs/next.md (the ship row of the action table) describe the new rule: only the milestone's own files must be committed, a user's own file never blocks."
+      ],
+      "tier": "deep",
+      "reasons": [
+        "requirements: 1",
+        "files: 3 (87114 bytes)",
+        "files: more than 2 in a repository tracking 1247 files",
+        "risk: none",
+        "breaks: R74, R99, R188, R203, R207, R230, R239, R242",
+        "guarded: R13 (C12), R14 (C13), R24 (C23), R25 (C24), R26 (C22), R28 (C25), R31 (C27), R37 (C35), R39 (C36), R40 (C37), R44 (C44, C45), R47 (C47), R49 (C48), R50 (C51), R60 (C72, C94), R69 (C110, C120, C122), R70 (C114), R71 (C115, C121), R72 (C116, C118), R73 (C98), R75 (C101), R76 (C102, C103), R77 (C104), R78 (C105, C106), R79 (C107), R80 (C108), R81 (C109, C111, C112, C113), R95 (C149, C150), R96 (C151, C152), R101 (C179), R102 (C158, C159), R106 (C164, C165), R107 (C166, C167), R111 (C171, C172, C173, C174, C175), R116 (C182, C183), R118 (C184), R123 (C190, C191), R129 (C196), R130 (C197), R134 (C201), R135 (C202), R147 (C212, C215, C237), R148 (C213, C214, C216, C238), R149 (C217, C218, C219, C220, C221, C222), R156 (C242, C243), R157 (C244), R158 (C245), R159 (C246), R160 (C247, C263, C264), R161 (C248, C265, C266), R162 (C249), R163 (C250), R166 (C253, C254, C255, C256, C267), R167 (C257, C258, C259, C260), R171 (C270), R173 (C281, C282, C283, C284, C285, C286, C289), R179 (C297, C298, C299, C300, C301, C302, C303, C304, C305, C306, C312), R180 (C307, C308, C309, C310), R182 (C322, C323, C324, C325, C326), R186 (C344, C345, C346, C347, C348), R190 (C374, C375, C376, C377, C378, C379, C380, C381, C382, C383, C384, C385, C386, C387, C388), R191 (C389, C390, C391, C392, C393, C394, C395, C396, C397, C398, C399, C400), R192 (C401, C402, C403, C404, C405, C406, C407, C408, C409, C410), R193 (C411, C412), R194 (C417, C418, C419), R196 (C415, C416), R197 (C413, C414), R202 (C432, C433, C434, C435, C436, C437, C438, C439, C440, C441, C442, C443, C444, C445, C446, C447), R209 (C469, C470, C471, C472, C473), R210 (C474, C475, C476), R211 (C477, C478, C479), R212 (C480, C481, C482), R213 (C483, C484), R215 (C488, C489, C490), R216 (C491, C492, C493), R219 (C497, C498, C499), R220 (C500, C501, C502, C503), R228 (C522, C523, C524, C525), R229 (C526, C527, C528, C529), R241 (C546, C547, C548, C549, C550, C560)",
+        "tests: project test command"
+      ],
+      "predicted": "deep"
+    },
+    {
+      "id": "P197",
+      "title": "The chat never commits the user's files and never claims an instruction it did not get",
+      "reqs": [
+        "R245"
+      ],
+      "milestone": "M50",
+      "goal": "VBW's chat commits nothing by hand, a ship refusal included, asks the user what to do with their own uncommitted files instead of acting on them, never says 'as you asked' for something the user did not type, and no kernel message tells the chat to commit a file outside the milestone's work.",
+      "criteria": [
+        "plugin/skills/vibe/SKILL.md states in its Rules that the chat commits nothing by hand, on a ship refusal included (no git commit, add, stash, checkout or reset of files, and no commit of a submodule pointer); on a ship refusal it quotes the refusal whole (existing rule) and follows its Next line, which is a vbw commit of the named milestone files only.",
+        "SKILL.md states that a user's own uncommitted files (anything VBW did not write) are the user's: the chat never commits, stages, stashes, discards or names them as blocking; when they come up (the user asks, or a kernel message mentions them) the chat asks the user what to do and waits.",
+        "SKILL.md states that the chat never attributes an instruction to the user that the user did not type (no 'as you asked' for an action the user did not request); an empty or unclear /vbw:vibe turn runs vbw next and reports its action, it never infers a request from silence.",
+        "A test in tests/vibe-commit-rule.bats (the vibe commit-rule area, beside the R239 case) pins both statements by grepping the skill: the 'commits nothing by hand' sentence names a ship refusal, and the user's-own-files sentence says the chat asks the user; it fails on the skill as it is before this phase.",
+        "A test case greps plugin/lib/*.sh and plugin/skills for every message that tells the chat to commit and asserts none names a file outside milestone work: the only commit instructions are vbw commit of plan or fix files (cmd-plan.sh, cmd-fix.sh, core.sh's 'then commit again') and the ship refusal from P196; 'commit it, then vbw ship' is absent.",
+        "docs/workflows.md's refusal table and docs/guards.md say, where the R239 rows are, that the rule also holds on a ship refusal and that the user's own files are never committed by VBW's chat."
+      ],
+      "tier": "deep",
+      "reasons": [
+        "requirements: 1",
+        "files: 3 (110057 bytes)",
+        "files: more than 2 in a repository tracking 1247 files",
+        "risk: none",
+        "breaks: R74, R99, R151, R188, R203, R207, R222, R230, R231, R233, R234, R239, R242",
+        "guarded: R13 (C12), R14 (C13), R15 (C14), R22 (C19), R24 (C23), R25 (C24), R26 (C22), R28 (C25), R31 (C27), R37 (C35), R39 (C36), R40 (C37), R44 (C44, C45), R50 (C51), R60 (C72, C94), R61 (C73, C74, C75, C76, C77), R65 (C86, C87, C88, C89, C90), R67 (C96), R69 (C110, C120, C122), R70 (C114), R72 (C116, C118), R73 (C98), R75 (C101), R76 (C102, C103), R77 (C104), R78 (C105, C106), R79 (C107), R80 (C108), R81 (C109, C111, C112, C113), R83 (C119), R95 (C149, C150), R96 (C151, C152), R98 (C154), R100 (C156), R101 (C179), R106 (C164, C165), R107 (C166, C167), R111 (C171, C172, C173, C174, C175), R116 (C182, C183), R118 (C184), R120 (C185), R121 (C187, C188), R122 (C189), R123 (C190, C191), R128 (C200), R129 (C196), R130 (C197), R134 (C201), R135 (C202), R147 (C212, C215, C237), R148 (C213, C214, C216, C238), R149 (C217, C218, C219, C220, C221, C222), R150 (C223, C224, C225, C226, C227, C228, C229, C230), R156 (C242, C243), R157 (C244), R158 (C245), R159 (C246), R160 (C247, C263, C264), R161 (C248, C265, C266), R162 (C249), R163 (C250), R165 (C252), R166 (C253, C254, C255, C256, C267), R167 (C257, C258, C259, C260), R171 (C270), R177 (C287, C288), R178 (C290, C291, C292, C293, C294, C295, C296, C311), R179 (C297, C298, C299, C300, C301, C302, C303, C304, C305, C306, C312), R180 (C307, C308, C309, C310), R181 (C313, C314, C315, C316, C317, C318, C319, C320, C321), R182 (C322, C323, C324, C325, C326), R186 (C344, C345, C346, C347, C348), R190 (C374, C375, C376, C377, C378, C379, C380, C381, C382, C383, C384, C385, C386, C387, C388), R191 (C389, C390, C391, C392, C393, C394, C395, C396, C397, C398, C399, C400), R192 (C401, C402, C403, C404, C405, C406, C407, C408, C409, C410), R193 (C411, C412), R194 (C417, C418, C419), R196 (C415, C416), R197 (C413, C414), R198 (C423), R201 (C428, C429), R209 (C469, C470, C471, C472, C473), R210 (C474, C475, C476), R211 (C477, C478, C479), R212 (C480, C481, C482), R213 (C483, C484), R215 (C488, C489, C490), R216 (C491, C492, C493), R219 (C497, C498, C499), R220 (C500, C501, C502, C503), R228 (C522, C523, C524, C525), R229 (C526, C527, C528, C529), R241 (C546, C547, C548, C549, C550, C560), R243 (C558, C559, C561)",
+        "tests: project test command"
+      ],
+      "predicted": "deep"
+    },
+    {
+      "id": "P198",
+      "title": "The submodule scenario judges the copy's tree/sub and passes with its result committed",
+      "reqs": [
+        "R246"
+      ],
+      "milestone": "M50",
+      "goal": "The submodule real-user scenario finds the check's toplevel where proofcopy puts the clean copy's submodule (.vbw/runtime/proof.X/tree/sub), a bats case pins that match on a line exactly as a run writes it, and the scenario passes on the branch that lands on main with tools/l3-results/submodule.json committed.",
+      "criteria": [
+        "tools/l3-suite.sh's copy_top grep in scenario_submodule matches a toplevel line ending in '/.vbw/runtime/proof.<anything>/tree/sub' and nothing else (not '/proof.X/sub', not the project's own '/sub'); the expect line's wording names 'proof.*/tree/sub'.",
+        "tests/l3-submodule.bats gains a case that extracts the copy_top pattern from the scenario body (never a copy of it) and feeds it one absolute line as the seeded sub/test.sh writes it (an absolute path ending /.vbw/runtime/proof.12345.AbCdEf/tree/sub): it matches; the same line in the old form proof.12345.AbCdEf/sub and the project's own sub path do not; the case fails on the regex before the fix.",
+        "docs/proof.md's submodule paragraph says the toplevel is under .vbw/runtime/proof.*/tree/sub.",
+        "After P196 and P197 are built, the submodule scenario runs on this milestone's branch (tools/l3-suite.sh, about 25 minutes and about 1.5 USD, D506) and passes all six facts and common_checks: a VBW-Plan commit in the submodule changing greet.sh, pointer unmoved, git status showing sub changed, check toplevel under proof.*/tree/sub, staged.txt still staged in both repositories, no commit of either repository touching staged.txt.",
+        "tools/l3-results/submodule.json is committed from that passing run only (D551), and the committed-result case in tests/l3-submodule.bats runs and passes instead of skipping.",
+        "The run's transcript is read for R245's wording: the chat neither commits staged.txt nor the submodule pointer nor says 'as you asked'; a failure on that point reopens P197, not a rerun alone."
+      ],
+      "tier": "deep",
+      "reasons": [
+        "requirements: 1",
+        "files: 3 (334854 bytes)",
+        "files: more than 2 in a repository tracking 1247 files",
+        "risk: none",
+        "breaks: R41, R74, R103, R184, R185, R188, R203, R207, R232, R238",
+        "guarded: R4 (C4), R5 (C5), R8 (C8), R12 (C11), R31 (C27), R32 (C28), R34 (C30), R42 (C38), R43 (C42, C43), R44 (C44, C45), R45 (C39, C40, C41), R46 (C46), R47 (C47), R48 (C49, C50), R49 (C48), R51 (C52, C53, C66), R59 (C68, C92), R61 (C73, C74, C75, C76, C77), R62 (C78, C79, C80, C81, C82, C83, C93), R64 (C84, C85), R65 (C86, C87, C88, C89, C90), R66 (C95), R69 (C110, C120, C122), R70 (C114), R72 (C116, C118), R73 (C98), R78 (C105, C106), R79 (C107), R80 (C108), R81 (C109, C111, C112, C113), R92 (C131, C132, C133, C134, C135, C136, C137, C138, C139), R93 (C140, C141, C142, C143, C144), R94 (C145, C146, C147, C148), R97 (C153), R98 (C154), R100 (C156), R104 (C161, C162), R105 (C163), R110 (C169, C170), R111 (C171, C172, C173, C174, C175), R115 (C181), R116 (C182, C183), R118 (C184), R131 (C198), R132 (C199), R134 (C201), R135 (C202), R144 (C208, C209), R147 (C212, C215, C237), R148 (C213, C214, C216, C238), R152 (C233, C234), R153 (C235, C236, C239), R160 (C247, C263, C264), R161 (C248, C265, C266), R166 (C253, C254, C255, C256, C267), R167 (C257, C258, C259, C260), R168 (C261, C262), R169 (C268), R170 (C269), R173 (C281, C282, C283, C284, C285, C286, C289), R174 (C279, C280), R175 (C274, C275), R176 (C276, C277, C278), R180 (C307, C308, C309, C310), R181 (C313, C314, C315, C316, C317, C318, C319, C320, C321), R182 (C322, C323, C324, C325, C326), R183 (C327), R189 (C360, C361, C362, C363, C364, C365, C366, C367, C368, C369, C370, C371, C372, C373), R190 (C374, C375, C376, C377, C378, C379, C380, C381, C382, C383, C384, C385, C386, C387, C388), R191 (C389, C390, C391, C392, C393, C394, C395, C396, C397, C398, C399, C400), R193 (C411, C412), R194 (C417, C418, C419), R195 (C420, C421, C422), R196 (C415, C416), R197 (C413, C414), R199 (C424, C425, C430), R200 (C426, C427, C431), R201 (C428, C429), R202 (C432, C433, C434, C435, C436, C437, C438, C439, C440, C441, C442, C443, C444, C445, C446, C447), R204 (C451, C452, C453, C454), R205 (C455, C456, C457, C458, C467), R206 (C459, C460), R208 (C464, C465, C466, C468), R209 (C469, C470, C471, C472, C473), R210 (C474, C475, C476), R211 (C477, C478, C479), R212 (C480, C481, C482), R213 (C483, C484), R214 (C485, C486, C487), R215 (C488, C489, C490), R216 (C491, C492, C493), R217 (C494, C495), R220 (C500, C501, C502, C503), R221 (C504), R226 (C510, C511), R228 (C522, C523, C524, C525), R237 (C544), R240 (C556, C557)",
+        "tests: project test command"
+      ],
+      "predicted": "deep"
     }
   ],
   "plans": [
@@ -62939,6 +63206,134 @@
           "at": "2026-11-01T15:12:47Z"
         }
       ]
+    },
+    {
+      "id": "P196.1",
+      "phase": "P196",
+      "title": "vbw ship blocks only on the milestone's own uncommitted files (one definition with vbw commit)",
+      "reqs": [
+        "R244"
+      ],
+      "files": [
+        "plugin/lib/cmd-ship.sh"
+      ],
+      "after": [],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "ship_uncommitted in plugin/lib/cmd-ship.sh computes the blocking set as vbw commit's own helpers do (plugin/lib/core.sh vbw_plan_paths, vbw_in_repo, vbw_changed; no second definition of ownership): the file entries (an exact file, a folder entry ending in /, or *) of every plan whose phase has .milestone equal to .milestone.id, plus every path of the record's .protected list; each changed, deleted or new untracked file is listed by project path (a file in a submodule, or in a submodule's own submodule reached by an exact entry, as 'sub/inner dir/i.txt'), labelled '(plan P1.1)', '(plans P1.1, P1.2)' when several plans name it, '(protected check file)', or '(plan P1.1, protected check file)'; ship_dirty_subs and the git status walk of every file (the old lines 10-19 and 34-37) are removed, so a moved submodule pointer and any file of the user's own never count",
+        "The refusal text is built by ship_uncommitted alone: it prints 'the milestone's work is not committed:' then one line per blocking file, sorted by path, exactly as two spaces, the project path and its label (for example '  src/pay.txt (plan P1.1)'), then a last line starting 'Next: ' with one 'vbw commit <plan> \"type(scope): description\"' per plan that has blocking files joined by '; ', plus 'vbw commit --fix FIX \"type(scope): description\" FILE for a check file of an open fix' when a protected check file blocks, ending ', then vbw ship'; it returns 1 after printing, and prints nothing and returns 0 when nothing blocks; cmd_ship calls it after the vbw next check and dies with that text through vbw_die (so the first line reads 'vbw: the milestone's work is not committed:'), otherwise shipping exactly as today; the strings 'the proven work is not committed' and 'commit it, then vbw ship' exist nowhere in plugin/",
+        "Run under macOS bash (PATH=\"/bin:$PATH\"): bats --print-output-on-failure --filter 'R244:' tests/kernel-surface.bats, then the whole tests/kernel-surface.bats, tests/kernel-commit.bats, tests/refusal-next-step.bats and tests/standards.bats; fix what fails inside cmd-ship.sh only (bash 3.2: no mapfile, arrays guarded under set -u; no builtin write while a child is live, so a loop fed by a process substitution writes through vbw_out; no quiet grep after a pipe; record-sized data reaches jq through a pipe, never --arg)"
+      ]
+    },
+    {
+      "id": "P196.2",
+      "phase": "P196",
+      "title": "The docs say vbw ship wants only the milestone's own files committed",
+      "reqs": [
+        "R244"
+      ],
+      "files": [
+        "docs/workflows.md",
+        "docs/next.md"
+      ],
+      "after": [],
+      "status": "planned",
+      "role": "docs",
+      "tasks": [
+        "docs/workflows.md, section Submodules: the bullet 'vbw ship wants every file committed ...' becomes: vbw ship wants only the milestone's own files committed (the files its plans name and the protected check files, the same set vbw commit commits), in the project and in each checked-out submodule by project path (a plan file inside a submodule's own submodule, named by an exact entry, is named by its project path too); the user's own files, staged or not, never block the ship and are never named by it; a moved submodule pointer is no change (D544); the words 'wants every file committed' are gone from the file",
+        "docs/workflows.md, table 'Every refusal and its next step': a new row that starts with '| `vbw ship`:' for an uncommitted change to a file of the milestone's work (a plan's file or a protected check file, in the project or in a submodule, named by project path with the plan that names it; the user's own files never block), whose next-step column reads: commit it with `vbw commit PLAN \"type(scope): description\"` (a check file of an open fix with `vbw commit --fix FIX \"type(scope): description\" FILE`), then `vbw ship`",
+        "docs/next.md, row 12 of the action table (ship): vbw ship refuses while a file of the milestone's work is uncommitted (its plans' files and the protected check files, in the project or in a submodule by project path), names each one with its plan and vbw commit as the next step; a user's own file never blocks it and is never named; the proof reads files on disk, so the milestone's work must be in git history before it ships; the words 'refuses while the proven work is not committed' are gone",
+        "Run bats --print-output-on-failure --filter 'R244 docs' tests/kernel-surface.bats and tests/vibe-commit-rule.bats (its R239 table cases still pass with the new row)"
+      ]
+    },
+    {
+      "id": "P197.1",
+      "phase": "P197",
+      "title": "The vibe skill: the chat commits nothing by hand, leaves the user's files alone and claims no instruction it did not get",
+      "reqs": [
+        "R245"
+      ],
+      "files": [
+        "plugin/skills/vibe/SKILL.md"
+      ],
+      "after": [
+        "P196.1"
+      ],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "plugin/skills/vibe/SKILL.md, Rules, one new bullet on one line right after the R239 bullet ('The chat never commits plan work by hand ...'): 'The chat commits nothing by hand, on a ship refusal included: no git commit, add, stash, checkout or reset of files, and no commit of a submodule pointer. A ship refusal is quoted whole (above) and its Next line followed: a `vbw commit` of the named milestone files only.' (the words 'commits nothing by hand', 'ship refusal', 'git commit', 'add', 'stash', 'checkout', 'reset', 'submodule pointer' and 'Next line' must all be on that one line)",
+        "Rules, one new bullet on one line after it: 'A user's own uncommitted files (anything VBW did not write) are the user's: the chat never commits, stages, stashes, discards or names them as blocking; when they come up (the user asks, or a kernel message mentions them) the chat asks the user what to do and waits.' (the words 'anything VBW did not write', \"user's own uncommitted files\", 'never commits', 'stages', 'stashes', 'discards', 'blocking', 'asks the user' and 'waits' on that one line)",
+        "Rules, one new bullet: 'Never attribute an instruction to the user that the user did not type (no \"as you asked\" for an action the user did not request). An empty or unclear `/vbw:vibe` turn runs `vbw next` and reports its action; it never infers a request from silence.' (the line holding 'as you asked' also holds 'did not type'; the line holding 'from silence' also holds 'empty', 'vbw next' and 'reports its action')",
+        "Run under macOS bash: bats --print-output-on-failure --filter 'R245:' tests/vibe-commit-rule.bats (its kernel-message case passes once P196.1's ship wording is gone, which this plan waits for), then tests/vibe-commit-rule.bats whole, tests/skills.bats and tests/standards.bats"
+      ]
+    },
+    {
+      "id": "P197.2",
+      "phase": "P197",
+      "title": "The docs say the no-commit rule holds on a ship refusal and the user's files are never committed by VBW's chat",
+      "reqs": [
+        "R245"
+      ],
+      "files": [
+        "docs/guards.md",
+        "docs/workflows.md"
+      ],
+      "after": [
+        "P196.2"
+      ],
+      "status": "planned",
+      "role": "docs",
+      "tasks": [
+        "docs/guards.md, the Bash-guard table row for the same git commands from VBW's chat while its autonomous run is armed or a loop has not ended (the row after the `git commit`, `commit-tree` row): its right column also says that the rule holds on a ship refusal too (the chat follows the refusal's Next line, a vbw commit of the milestone's own files) and that the user's own files are never committed by VBW's chat: it asks the user what to do with them (the words 'ship refusal', \"user's own files\" and 'never committed' on that row's line)",
+        "docs/workflows.md, table 'Every refusal and its next step', the row 'Guards: a git history change by VBW's chat while an autonomous run or loop is armed': its next-step column also says the rule holds on a ship refusal (follow the refusal's Next line, a vbw commit of the milestone's files) and that the user's own files are never committed by VBW's chat, which asks the user what to do with them (the words 'ship refusal' and \"user's own files\" on that row's line; 'vbw commit' and \"the user's own commands are never checked\" stay)",
+        "Run bats --print-output-on-failure --filter 'R245 docs' tests/vibe-commit-rule.bats, then tests/vibe-commit-rule.bats whole and tests/contributor-files.bats"
+      ]
+    },
+    {
+      "id": "P198.1",
+      "phase": "P198",
+      "title": "The submodule scenario judges the copy's toplevel at proof.*/tree/sub",
+      "reqs": [
+        "R246"
+      ],
+      "files": [
+        "tools/l3-suite.sh",
+        "docs/proof.md"
+      ],
+      "after": [],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "tools/l3-suite.sh, scenario_submodule: the copy_top line's grep -E pattern becomes '\\.vbw/runtime/proof\\.[^/]+/tree/sub$' (proofcopy_make puts the clean copy at .vbw/runtime/proof.<pid>.<rand>/tree and each submodule at its path inside it, plugin/lib/proofcopy.sh); the expect line for the check's toplevel and the scenario's header comment say 'proof.*/tree/sub' instead of 'proof.*/sub'; nothing else in the scenario changes",
+        "docs/proof.md, the submodule scenario paragraph: the check ran from the clean copy's submodule under .vbw/runtime/proof.*/tree/sub",
+        "Run bats --print-output-on-failure --filter 'R246:' tests/l3-submodule.bats, then tests/l3-submodule.bats whole (the R238 cases keep passing), bash tools/test.sh --lint and bash tools/check-pipefail-grep.sh tools"
+      ]
+    },
+    {
+      "id": "P198.2",
+      "phase": "P198",
+      "title": "The submodule scenario passes on this branch and its result is committed",
+      "reqs": [
+        "R246"
+      ],
+      "files": [
+        "tools/l3-results/submodule.json"
+      ],
+      "after": [
+        "P196.1",
+        "P197.1",
+        "P198.1"
+      ],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "The real-user run is the Lead's hand-off, as in M48 (D564, D567): tools/l3-suite.sh submodule drives the real Claude Code TUI on this branch (about 25 minutes, about 1.5 USD, D506) and only the Lead runs it. Read vbw show decisions for a decision that names this run (passed or failed, the six facts and common_checks, and what the transcript showed for R245). None yet: vbw plan block P198.2 'needs the submodule real-user run: the Lead runs tools/l3-suite.sh submodule on this branch and records a decision with its result' and stop",
+        "With a decision naming a passing run: the tools/l3-results/submodule.json that run wrote (passed true, the four facts true, check_toplevel ending /.vbw/runtime/proof.X/tree/sub) is committed with vbw commit P198.2; a failed run commits no result (D551) and blocks the plan naming the failed fact",
+        "The decision's reading of the run's transcript for R245 (the chat neither committed staged.txt nor the submodule pointer nor said 'as you asked'): a failure on that point blocks this plan naming it, since it reopens P197 (the skill), never a rerun alone",
+        "Run bats --print-output-on-failure --filter 'R246 result' tests/l3-submodule.bats, then tests/l3-submodule.bats whole: the R238 committed-result case now runs and passes instead of skipping"
+      ]
     }
   ],
   "fixes": [
@@ -79640,6 +80035,17 @@
         "ended": "2026-11-01T21:42:38Z",
         "cost": {
           "usd": 0.574574
+        }
+      },
+      {
+        "id": "plan-20261102T223845Z",
+        "kind": "plan",
+        "session": "0ee781c3-c5b6-4a6c-889f-04b89f1fba4a",
+        "milestone": "M50",
+        "started": "2026-11-02T22:38:45Z",
+        "ended": "2026-11-02T23:11:42Z",
+        "cost": {
+          "usd": 15.389118
         }
       }
     ],
