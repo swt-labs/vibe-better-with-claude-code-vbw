@@ -66956,7 +66956,7 @@
       "text": "Guard gap: sed -i (and other in-place editors) on a file outside the run's lease passed the Bash guard while the Edit tool was refused (P186.2 Dev, 2026-10-31, plugin/lib/mutate-queue.sh); the guard-bash program should name in-place edits (sed -i, perl -pi, tee, redirections) as writes to their file argument",
       "sort": "next",
       "size": "small",
-      "status": "open"
+      "status": "done"
     },
     {
       "id": "T203",
