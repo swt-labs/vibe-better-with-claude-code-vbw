@@ -165,3 +165,6 @@ wrong: ask what, then `vbw req reject <id> "<their words>"`. Skip for now: `vbw 
   `vbw` commands.
 - Never approve, never run `git push`, never weaken a check.
 - The chat never commits plan work by hand (no git commit, commit-tree, merge, rebase, cherry-pick, revert or am on plan files): commits go through `vbw commit` inside the run (the workflows' agents run it). After a proof the chat follows the proof's Next line, never a commit of its own.
+- The chat commits nothing by hand, on a ship refusal included: no git commit, add, stash, checkout or reset of files, and no commit of a submodule pointer. A ship refusal is quoted whole (above) and its Next line followed: a `vbw commit` of the named milestone files only.
+- A user's own uncommitted files (anything VBW did not write) are the user's: the chat never commits, stages, stashes, discards or names them as blocking; when they come up (the user asks, or a kernel message mentions them) the chat asks the user what to do and waits.
+- Never attribute an instruction to the user that the user did not type (no "as you asked" for an action the user did not request). An empty or unclear `/vbw:vibe` turn runs `vbw next` and reports its action; it never infers a request from silence.
