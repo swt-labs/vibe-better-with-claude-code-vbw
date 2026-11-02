@@ -67040,7 +67040,7 @@
       "text": "Linux CI: tests/plugindir-bench.bats R185 'loaded copy above 60 ms fails' reads slow at ratio 2.50 (scaled 150 ms > injected 140 ms) on both bash 5 shard 3 jobs of PR #743; pin VBW_BENCH_REFERENCE_MS to the nominal so the case judges the absolute limit",
       "sort": "next",
       "size": "small",
-      "status": "open"
+      "status": "done"
     }
   ],
   "decisions": [
