@@ -67662,6 +67662,13 @@
       "sort": "next",
       "size": "medium",
       "status": "open"
+    },
+    {
+      "id": "T219",
+      "text": "own.tracking cost on big ignored trees: ~97 s per proof on a monorepo with 250k node_modules entries per copy (#744 comment 2026-11-02), the largest share of VBW's own work; measure where reads_reset/reads tracking spends it and cut it",
+      "sort": "later",
+      "size": "medium",
+      "status": "open"
     }
   ],
   "decisions": [
