@@ -63226,14 +63226,13 @@
         "plugin/lib/cmd-ship.sh"
       ],
       "after": [],
-      "status": "blocked",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "ship_uncommitted in plugin/lib/cmd-ship.sh computes the blocking set as vbw commit's own helpers do (plugin/lib/core.sh vbw_plan_paths, vbw_in_repo, vbw_changed; no second definition of ownership): the file entries (an exact file, a folder entry ending in /, or *) of every plan whose phase has .milestone equal to .milestone.id, plus every path of the record's .protected list; each changed, deleted or new untracked file is listed by project path (a file in a submodule, or in a submodule's own submodule reached by an exact entry, as 'sub/inner dir/i.txt'), labelled '(plan P1.1)', '(plans P1.1, P1.2)' when several plans name it, '(protected check file)', or '(plan P1.1, protected check file)'; ship_dirty_subs and the git status walk of every file (the old lines 10-19 and 34-37) are removed, so a moved submodule pointer and any file of the user's own never count",
         "The refusal text is built by ship_uncommitted alone: it prints 'the milestone's work is not committed:' then one line per blocking file, sorted by path, exactly as two spaces, the project path and its label (for example '  src/pay.txt (plan P1.1)'), then a last line starting 'Next: ' with one 'vbw commit <plan> \"type(scope): description\"' per plan that has blocking files joined by '; ', plus 'vbw commit --fix FIX \"type(scope): description\" FILE for a check file of an open fix' when a protected check file blocks, ending ', then vbw ship'; it returns 1 after printing, and prints nothing and returns 0 when nothing blocks; cmd_ship calls it after the vbw next check and dies with that text through vbw_die (so the first line reads 'vbw: the milestone's work is not committed:'), otherwise shipping exactly as today; the strings 'the proven work is not committed' and 'commit it, then vbw ship' exist nowhere in plugin/",
         "Run under macOS bash (PATH=\"/bin:$PATH\"): bats --print-output-on-failure --filter 'R244:' tests/kernel-surface.bats, then the whole tests/kernel-surface.bats, tests/kernel-commit.bats, tests/refusal-next-step.bats and tests/standards.bats; fix what fails inside cmd-ship.sh only (bash 3.2: no mapfile, arrays guarded under set -u; no builtin write while a child is live, so a loop fed by a process substitution writes through vbw_out; no quiet grep after a pipe; record-sized data reaches jq through a pipe, never --arg)"
-      ],
-      "note": "C562 test 2 (tests/kernel-surface.bats line 114) cannot pass: after the plan file is committed, vbw next asks for QA again ('P1 (its files changed)') because the QA digest reads the files as committed (HEAD), and the QA pass was recorded while the edit was uncommitted. The test expects ship to succeed after only 'vbw commit' + 'vbw prove', with no new 'vbw qa record'. The ship refusal itself (my cmd-ship.sh change, committed 6b09e7e4) works: the other 3 R244 cases pass and standards.bats shell lint passes. Needs the check file fixed (add 'vbw qa record P1 pass standard' before the last ship) and re-approved; it is a protected check file I may not edit."
+      ]
     },
     {
       "id": "P196.2",
@@ -63289,13 +63288,87 @@
       "after": [
         "P196.1"
       ],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "plugin/skills/vibe/SKILL.md, Rules, one new bullet on one line right after the R239 bullet ('The chat never commits plan work by hand ...'): 'The chat commits nothing by hand, on a ship refusal included: no git commit, add, stash, checkout or reset of files, and no commit of a submodule pointer. A ship refusal is quoted whole (above) and its Next line followed: a `vbw commit` of the named milestone files only.' (the words 'commits nothing by hand', 'ship refusal', 'git commit', 'add', 'stash', 'checkout', 'reset', 'submodule pointer' and 'Next line' must all be on that one line)",
         "Rules, one new bullet on one line after it: 'A user's own uncommitted files (anything VBW did not write) are the user's: the chat never commits, stages, stashes, discards or names them as blocking; when they come up (the user asks, or a kernel message mentions them) the chat asks the user what to do and waits.' (the words 'anything VBW did not write', \"user's own uncommitted files\", 'never commits', 'stages', 'stashes', 'discards', 'blocking', 'asks the user' and 'waits' on that one line)",
         "Rules, one new bullet: 'Never attribute an instruction to the user that the user did not type (no \"as you asked\" for an action the user did not request). An empty or unclear `/vbw:vibe` turn runs `vbw next` and reports its action; it never infers a request from silence.' (the line holding 'as you asked' also holds 'did not type'; the line holding 'from silence' also holds 'empty', 'vbw next' and 'reports its action')",
         "Run under macOS bash: bats --print-output-on-failure --filter 'R245:' tests/vibe-commit-rule.bats (its kernel-message case passes once P196.1's ship wording is gone, which this plan waits for), then tests/vibe-commit-rule.bats whole, tests/skills.bats and tests/standards.bats"
+      ],
+      "mutations": [
+        {
+          "rule": {
+            "req": "R245",
+            "text": "the vibe skill says the chat commits nothing by hand, a ship refusal included (no git commit, add, stash, checkout or reset of files, no commit of a submodule pointer), and follows the refusal's Next line"
+          },
+          "what": "reworded commits nothing by hand",
+          "files": [
+            "plugin/skills/vibe/SKILL.md"
+          ],
+          "checks": {
+            "C564": "red"
+          },
+          "result": "red",
+          "at": "2026-11-02T23:28:23Z",
+          "head": "ab2d9ee7940b04bc47b1b47be2c36090a9a3020d",
+          "tree": "2e3a061bf0239b93f989a2e8d6ddcd749f1d3fd7",
+          "contract": "d07f4fc1ffae43116699257f9fb864e4a59dce6defecd5ebc3962b0a7b70541d"
+        },
+        {
+          "rule": {
+            "req": "R245",
+            "text": "the vibe skill says a user's own uncommitted files (anything VBW did not write) are the user's: never committed, staged, stashed, discarded or named as blocking; the chat asks the user what to do and waits"
+          },
+          "what": "changed anything VBW did not write",
+          "files": [
+            "plugin/skills/vibe/SKILL.md"
+          ],
+          "checks": {
+            "C564": "red"
+          },
+          "result": "red",
+          "at": "2026-11-02T23:28:26Z",
+          "head": "ab2d9ee7940b04bc47b1b47be2c36090a9a3020d",
+          "tree": "2e3a061bf0239b93f989a2e8d6ddcd749f1d3fd7",
+          "contract": "d07f4fc1ffae43116699257f9fb864e4a59dce6defecd5ebc3962b0a7b70541d"
+        },
+        {
+          "rule": {
+            "req": "R245",
+            "text": "the vibe skill says the chat never attributes an instruction the user did not type (no 'as you asked'), and that an empty or unclear /vbw:vibe turn runs vbw next and reports its action, never inferring a request from silence"
+          },
+          "what": "from silence changed",
+          "files": [
+            "plugin/skills/vibe/SKILL.md"
+          ],
+          "checks": {
+            "C564": "red"
+          },
+          "result": "red",
+          "at": "2026-11-02T23:28:30Z",
+          "head": "ab2d9ee7940b04bc47b1b47be2c36090a9a3020d",
+          "tree": "2e3a061bf0239b93f989a2e8d6ddcd749f1d3fd7",
+          "contract": "d07f4fc1ffae43116699257f9fb864e4a59dce6defecd5ebc3962b0a7b70541d"
+        },
+        {
+          "rule": {
+            "req": "R245",
+            "text": "no message in plugin/lib/*.sh or plugin/skills tells the chat to commit a file outside the milestone's work: 'commit it, then vbw ship' and 'the proven work is not committed' are gone, and every message telling to commit names vbw commit, check files or VBW's own files"
+          },
+          "what": "added commit it, then vbw ship",
+          "files": [
+            "plugin/skills/vibe/SKILL.md"
+          ],
+          "checks": {
+            "C564": "red"
+          },
+          "result": "red",
+          "at": "2026-11-02T23:28:34Z",
+          "head": "ab2d9ee7940b04bc47b1b47be2c36090a9a3020d",
+          "tree": "2e3a061bf0239b93f989a2e8d6ddcd749f1d3fd7",
+          "contract": "d07f4fc1ffae43116699257f9fb864e4a59dce6defecd5ebc3962b0a7b70541d"
+        }
       ]
     },
     {
@@ -63312,12 +63385,50 @@
       "after": [
         "P196.2"
       ],
-      "status": "planned",
+      "status": "done",
       "role": "docs",
       "tasks": [
         "docs/guards.md, the Bash-guard table row for the same git commands from VBW's chat while its autonomous run is armed or a loop has not ended (the row after the `git commit`, `commit-tree` row): its right column also says that the rule holds on a ship refusal too (the chat follows the refusal's Next line, a vbw commit of the milestone's own files) and that the user's own files are never committed by VBW's chat: it asks the user what to do with them (the words 'ship refusal', \"user's own files\" and 'never committed' on that row's line)",
         "docs/workflows.md, table 'Every refusal and its next step', the row 'Guards: a git history change by VBW's chat while an autonomous run or loop is armed': its next-step column also says the rule holds on a ship refusal (follow the refusal's Next line, a vbw commit of the milestone's files) and that the user's own files are never committed by VBW's chat, which asks the user what to do with them (the words 'ship refusal' and \"user's own files\" on that row's line; 'vbw commit' and \"the user's own commands are never checked\" stay)",
         "Run bats --print-output-on-failure --filter 'R245 docs' tests/vibe-commit-rule.bats, then tests/vibe-commit-rule.bats whole and tests/contributor-files.bats"
+      ],
+      "mutations": [
+        {
+          "rule": {
+            "req": "R245",
+            "text": "docs/guards.md and docs/workflows.md say, where the R239 rows are, that the rule also holds on a ship refusal and that the user's own files are never committed by VBW's chat"
+          },
+          "what": "guards row: ship refusal reworded",
+          "files": [
+            "docs/guards.md"
+          ],
+          "checks": {
+            "C565": "red"
+          },
+          "result": "red",
+          "at": "2026-11-02T23:26:03Z",
+          "head": "fda63a3fd6770f9917dd5e577646796d4aae104b",
+          "tree": "3af545badccca3951d00ed3e515ffb9419136432",
+          "contract": "d07f4fc1ffae43116699257f9fb864e4a59dce6defecd5ebc3962b0a7b70541d"
+        },
+        {
+          "rule": {
+            "req": "R245",
+            "text": "docs/guards.md and docs/workflows.md say, where the R239 rows are, that the rule also holds on a ship refusal and that the user's own files are never committed by VBW's chat"
+          },
+          "what": "workflows row: user's own files reworded",
+          "files": [
+            "docs/workflows.md"
+          ],
+          "checks": {
+            "C565": "red"
+          },
+          "result": "red",
+          "at": "2026-11-02T23:26:29Z",
+          "head": "fda63a3fd6770f9917dd5e577646796d4aae104b",
+          "tree": "3af545badccca3951d00ed3e515ffb9419136432",
+          "contract": "d07f4fc1ffae43116699257f9fb864e4a59dce6defecd5ebc3962b0a7b70541d"
+        }
       ]
     },
     {
@@ -80137,6 +80248,17 @@
         "ended": "2026-11-02T23:20:39Z",
         "cost": {
           "usd": 1.481983
+        }
+      },
+      {
+        "id": "build-20261102T232422Z",
+        "kind": "build",
+        "session": "0ee781c3-c5b6-4a6c-889f-04b89f1fba4a",
+        "milestone": "M50",
+        "started": "2026-11-02T23:24:22Z",
+        "ended": "2026-11-02T23:29:50Z",
+        "cost": {
+          "usd": 0.555421
         }
       }
     ],
