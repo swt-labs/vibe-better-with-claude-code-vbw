@@ -67669,6 +67669,13 @@
       "sort": "later",
       "size": "medium",
       "status": "open"
+    },
+    {
+      "id": "T220",
+      "text": "tests/road-next.bats R191 pattern refuses 'until around tomorrow HH:MM' (fails near midnight, passes on rerun; #744 comment 2026-11-02): allow the day word the status line prints since d7f73771, with a case at 23:5x",
+      "sort": "next",
+      "size": "small",
+      "status": "open"
     }
   ],
   "decisions": [
