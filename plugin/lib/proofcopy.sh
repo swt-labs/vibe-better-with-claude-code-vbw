@@ -159,15 +159,21 @@ proofcopy_sweep() {
   return 0
 }
 
-# proofcopy_checkout REPO DEST: a detached worktree of REPO's HEAD at DEST, every
-# file checked out but the .gitmodules files: Claude Code's sandbox refuses to
-# create a file of that name, so they stay unwritten, marked skip-worktree (git
-# status stays clean, and git reads them from the index). Git's error on stderr.
+# proofcopy_checkout REPO DEST: a detached worktree of REPO's HEAD at DEST. When
+# git cannot write it (Claude Code's sandbox refuses to create any file named
+# .gitmodules), the half-made one goes and it is made again with every file but
+# the .gitmodules files, which stay unwritten, marked skip-worktree: git status
+# stays clean, git reads them from the index, and so does vbw_subs, told by
+# vbw-gitmodules-index in the copy's git directory. Git's error on stderr.
 proofcopy_checkout() {
+  git -C "$1" -c core.hooksPath=/dev/null worktree add -q --detach "$2" HEAD > /dev/null 2>&1 && return 0
+  rm -rf "$2"
+  git -C "$1" worktree prune
   git -C "$1" -c core.hooksPath=/dev/null worktree add -q --no-checkout --detach "$2" HEAD > /dev/null || return 1
   git -C "$2" read-tree HEAD || return 1
   git -C "$2" ls-files -z -- ':(glob)**/.gitmodules' | git -C "$2" update-index -z --skip-worktree --stdin || return 1
-  git -C "$2" checkout-index -a -q -u
+  git -C "$2" checkout-index -a -q -u || return 1
+  : > "$(git -C "$2" rev-parse --absolute-git-dir)/vbw-gitmodules-index"
 }
 
 # proofcopy_make: one more copy, added to PROOF_COPIES.

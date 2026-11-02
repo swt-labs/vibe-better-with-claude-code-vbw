@@ -447,17 +447,25 @@ Next: put it on a branch (git -C $r switch BRANCH), then commit again"
 # REPO, a folder relative to the project) that are checked out, one level deep,
 # "PATH\0" each, relative to that repository: the paths .gitmodules names that
 # HEAD holds as a submodule and whose folder holds .git. No .gitmodules: nothing,
-# no git command.
+# no git command; but a proof copy made where .gitmodules cannot be written holds
+# it only in its index, and says so in its git directory (lib/proofcopy.sh).
 # shellcheck disable=SC2120 # cmd-ship.sh passes REPO
 vbw_subs() {
-  local line paths=() top="$VBW_ROOT${1:+/$1}"
-  [ -f "$top/.gitmodules" ] || return 0
+  local line g='' paths=() top="$VBW_ROOT${1:+/$1}" src=(-f .gitmodules)
+  if [ ! -f "$top/.gitmodules" ]; then
+    [ -f "$top/.git" ] || return 0
+    IFS= read -r g < "$top/.git" || :
+    g=${g#gitdir: }
+    case "$g" in '') return 0 ;; /*) ;; *) g="$top/$g" ;; esac
+    [ -f "$g/vbw-gitmodules-index" ] || return 0
+    src=(--blob :.gitmodules)
+  fi
   # -z: "key NEWLINE value NUL" per entry.
   while IFS= read -r -d '' line; do
     line=${line#*$'\n'}
     # Inside the project only: a checkout swapped for a symbolic link out is no submodule.
     if [ -e "$top/$line/.git" ] && vbw_inside "${1:+$1/}$line"; then paths+=("$line"); fi
-  done < <(git -C "$top" config -z -f .gitmodules --get-regexp '^submodule\..*\.path$' 2> /dev/null)
+  done < <(git -C "$top" config -z "${src[@]}" --get-regexp '^submodule\..*\.path$' 2> /dev/null)
   [ ${#paths[@]} -gt 0 ] || return 0
   git -C "$top" ls-tree -z HEAD -- "${paths[@]}" 2> /dev/null | while IFS= read -r -d '' line; do
     case "$line" in "160000 commit "*) printf '%s\0' "${line#*$'\t'}" ;; esac

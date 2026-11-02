@@ -704,10 +704,11 @@ project's, and git refuses to commit a path beyond a symbolic link.
   record's first commit pointed the submodule at.
 - The proof copy (`vbw prove`, `vbw mutate`, `vbw fix done`) holds each
   checked-out submodule at its own `HEAD`, and `vbw mutate` puts a broken file
-  back as its own repository's last commit (docs/proof.md, `vbw prove`). The
-  copy leaves every `.gitmodules` file unwritten (git reads it from the index,
-  and the copy's `git status` stays clean): Claude Code's sandbox refuses to
-  create a file of that name.
+  back as its own repository's last commit (docs/proof.md, `vbw prove`). When
+  git cannot write the copy because Claude Code's sandbox refuses to create a
+  file named `.gitmodules`, VBW makes it again with every `.gitmodules` file
+  unwritten: git reads it from the index, VBW still finds the submodules, and
+  the copy's `git status` stays clean.
 - `vbw ship` wants every file committed: a submodule's files in the submodule,
   every level down (a changed file in a submodule's own submodule is named by
   its project path too). A moved pointer does not count as uncommitted work.
@@ -722,12 +723,19 @@ project's, and git refuses to commit a path beyond a symbolic link.
   unbroken code again; a commit made only in a submodule also drops a break
   queued before it.
 - `## Test files` matches a pathspec inside a submodule only when the pathspec
-  names it (`apps/mobile/src/**/*.spec.ts`): a test file there is a test file
-  of its own, named by its project path. A pattern that names no submodule
-  (`*/tests/*.sh`) matches the project's own files only, so a vendored
+  names it (`apps/mobile/src/**/*.spec.ts`), and an exclude that names it
+  (`:!apps/mobile/src/legacy/**`) applies inside it: a test file there is a
+  test file of its own, named by its project path. A pattern that names no
+  submodule (`*/tests/*.sh`) matches the project's own files only, so a vendored
   submodule's tests never become units.
 
 Known limits:
+
+- **A check that reads `.gitmodules` as a file, under Claude Code's sandbox:**
+  the sandbox keeps VBW from writing `.gitmodules` into the proof copy, so such
+  a check fails in the proof while it passes in your working folder. Read it
+  through git instead (`git config --blob :.gitmodules ...`). Outside the
+  sandbox the copy holds the file.
 
 - **A parked loop item** reverts its commits in the project only: its commits in
   a submodule stay.
