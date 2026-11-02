@@ -62,6 +62,9 @@ LARGE_GUARDS='guard (git, large record)|guard (npm, large record)|guard (big, la
 STATUSLINES='status line:|status line (large record):'
 
 # bench [ENV=VALUE...]: the benchmark on the copied plugin, two calls per input.
+# A case that adds work and expects a failure pins VBW_BENCH_REFERENCE_MS=1 (ratio 1 or
+# less: the absolute budget, R222), so a slow runner scaling the budget past the added
+# work cannot read it as slow (T214). The R222 cases measure the ratio itself.
 bench() {
   run env VBW_BENCH_PLUGIN_ROOT="$TEST_ROOT/plugin" VBW_BENCH_RUNS=2 "$@" bash "$BENCH"
 }
@@ -87,7 +90,7 @@ line() {
 
 @test "R151: a guard whose own cost is above 20 ms per call fails the bench, and the line names the input, the cost and the 20 ms limit" {
   hooks_with '^Bash$' "$(burn 100)"
-  bench VBW_BENCH_ONLY="guard (git)|guard (npm)|guard (big)|guard (interp)|guard (git, large record)|guard (big, 2000 checks)"
+  bench VBW_BENCH_REFERENCE_MS=1 VBW_BENCH_ONLY="guard (git)|guard (npm)|guard (big)|guard (interp)|guard (git, large record)|guard (big, 2000 checks)"
   quiet_or_skip
   [ "$status" -eq 1 ] || {
     printf '%s\n' "$output"
@@ -150,7 +153,7 @@ line() {
 
 @test "R151: the status line above 60 ms per call fails the bench on the small and the large record, naming the cost and the 60 ms limit" {
   statusline_burns 100
-  bench VBW_BENCH_ONLY="$STATUSLINES"
+  bench VBW_BENCH_REFERENCE_MS=1 VBW_BENCH_ONLY="$STATUSLINES"
   quiet_or_skip
   [ "$status" -eq 1 ] || {
     printf '%s\n' "$output"
@@ -236,14 +239,14 @@ line() {
 @test "R151: VBW_HOOK_BUDGET_MS and VBW_STATUSLINE_BUDGET_MS override the two limits, the busy threshold following the hook limit" {
   hooks_with '^Bash$' "$(burn 100)"
   statusline_burns 100
-  bench VBW_BENCH_ONLY="guard (git)|status line:" VBW_HOOK_BUDGET_MS=50 VBW_STATUSLINE_BUDGET_MS=1000
+  bench VBW_BENCH_REFERENCE_MS=1 VBW_BENCH_ONLY="guard (git)|status line:" VBW_HOOK_BUDGET_MS=50 VBW_STATUSLINE_BUDGET_MS=1000
   [ "$status" -eq 1 ] || {
     printf '%s\n' "$output"
     false
   }
   line '^guard \(git\): [0-9.]+ ms own CPU per call.*; budget 50 ms: OVER$' > /dev/null
   line '^status line: [0-9.]+ ms CPU per call; budget 1000 ms$' > /dev/null
-  bench VBW_BENCH_ONLY="guard (git)|status line:" VBW_HOOK_BUDGET_MS=1000 VBW_STATUSLINE_BUDGET_MS=50
+  bench VBW_BENCH_REFERENCE_MS=1 VBW_BENCH_ONLY="guard (git)|status line:" VBW_HOOK_BUDGET_MS=1000 VBW_STATUSLINE_BUDGET_MS=50
   [ "$status" -eq 1 ] || {
     printf '%s\n' "$output"
     false
