@@ -67055,6 +67055,13 @@
       "sort": "next",
       "size": "small",
       "status": "open"
+    },
+    {
+      "id": "T217",
+      "text": "Router: with vbw ship refused on user-staged files, the session (Sonnet) committed the user's staged files and the submodule pointer after three empty /vbw:vibe turns, and told the user 'as you asked' (nobody asked). The main session must never commit files VBW did not write, and must not claim an instruction it did not get; find where /vbw:vibe allows it and pin it (L3 submodule transcript 63c8b55a, 2026-11-02)",
+      "sort": "next",
+      "size": "small",
+      "status": "open"
     }
   ],
   "decisions": [
