@@ -380,7 +380,7 @@ add_sub() {
   prove_ok
   [ "$(counts)" = '{"claimed":1,"refreshed":0,"made":0}' ] || { counts; false; }
   [ "$(git rev-parse feature)" = "$f" ] && [ "$(git -C sub rev-parse subfeature)" = "$s" ] || { git log --oneline --all; false; }
-  ! git -C "$(slot 1)/tree" symbolic-ref -q HEAD && ! git -C "$(slot 1)/tree/sub" symbolic-ref -q HEAD
+  ! git -C "$(slot 1)/tree" symbolic-ref -q HEAD && ! git -C "$(slot 1)/tree/sub" symbolic-ref -q HEAD || { echo "a copy is on a branch"; false; }
   [ "$(git -C "$(slot 1)/tree" rev-parse HEAD)" = "$(code_head)" ] && [ "$(git -C "$(slot 1)/tree/sub" rev-parse HEAD)" = "$(git -C sub rev-parse HEAD)" ]
 }
 
