@@ -68392,6 +68392,11 @@
       "id": "T229",
       "text": "Kernel latency on large records (field report 2026-11-03): vbw next --json and vbw todo add take tens of seconds on a 225-plan, 231-check record, so the approve/build/prove loop is bounded by the kernel. Reproduce with a synthetic record of that size, profile the jq passes, cut to under a second; add a timed case",
       "status": "open"
+    },
+    {
+      "id": "T230",
+      "text": "The clean copy never copies git worktrees (field report 2026-11-03): 2.1.13 copied .claude/worktrees (133 GB) into the proof copy; exclude every path git worktree list names inside the project and the .claude/worktrees folder by rule, and name them at vbw init (goes with T186)",
+      "status": "open"
     }
   ],
   "decisions": [
