@@ -7642,7 +7642,7 @@
   "milestone": {
     "id": "M51",
     "title": "The record's schema is one table: schema 8 for recorded breaks, and a new key needs a bump",
-    "status": "active"
+    "status": "shipped"
   },
   "shipped": [
     {
@@ -7889,6 +7889,11 @@
       "id": "M50",
       "title": "VBW never touches the user's files: ship, the router and the submodule scenario",
       "at": "2026-11-03T09:30:59Z"
+    },
+    {
+      "id": "M51",
+      "title": "The record's schema is one table: schema 8 for recorded breaks, and a new key needs a bump",
+      "at": "2026-11-03T14:05:25Z"
     }
   ],
   "requirements": [
@@ -71621,6 +71626,11 @@
       "at": "2026-11-03T13:51:57Z",
       "text": "Contract approved: 237 requirements, 565 checks, 594 plans (e8ee0a0faae1)",
       "plans": []
+    },
+    {
+      "id": "D585",
+      "at": "2026-11-03T14:05:25Z",
+      "text": "Shipped M51 The record's schema is one table: schema 8 for recorded breaks, and a new key needs a bump: 2 requirements proven or accepted"
     }
   ],
   "commands": {
@@ -84623,6 +84633,10 @@
             "usd": 0,
             "at": "2026-11-03T09:37:10Z"
           }
+        },
+        "total": {
+          "usd": 26.162797,
+          "sessions": 47
         }
       }
     }
