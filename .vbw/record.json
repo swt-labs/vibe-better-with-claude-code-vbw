@@ -71274,6 +71274,16 @@
       "text": "R247: a record whose schema is below what its content needs loads and is raised to the table's answer on its next write, as a schema 1 to 3 record already does; only a schema above its content is refused as corrupt",
       "why": "Records written since 67146842 landed on main (2026-11-01, after v2.1.23: the marketplace serves main) carry tree/contract under schema 4 to 7, VBW's own record included (schema 6, 10 breaks); the strict rule would stop every command on them with no VBW command able to repair it; a doctor repair path would add a migration command the docs promise does not exist",
       "at": "2026-11-03T09:47:13Z"
+    },
+    {
+      "id": "D583",
+      "at": "2026-11-03T11:15:32Z",
+      "text": "Contract approved: 237 requirements, 565 checks, 594 plans (2937f4882060)",
+      "plans": [
+        "P199.1",
+        "P199.2",
+        "P200.1"
+      ]
     }
   ],
   "commands": {
