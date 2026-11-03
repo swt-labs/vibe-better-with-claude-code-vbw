@@ -18829,6 +18829,46 @@
           "check": "C570"
         }
       ]
+    },
+    {
+      "id": "R249",
+      "text": "Kernel latency on large records (T229; a 225-plan project saw tens of seconds per command, VBW's own 4.4 MB record of 594 plans measured 10.7 s for vbw next --json and 11.9 s for vbw status, of which the validator took 1 s per read, run two or three times per command, the chat-list lookup ran one jq per session entry, and each command parsed the record about twenty times): on the R149 large twin (over 2 MB) vbw next --json, vbw status, vbw show roadmap and vbw triage --json each finish within 1.5 s and vbw todo add within 2.5 s, budgets scaled by the machine ratio as tools/bench-hooks.sh scales its own and measured in the release run (tests/timed-*.bats), never in vbw prove; because the validator runs once per record content (the digest of the last validated bytes is kept under .vbw/runtime and a record whose bytes match it is not validated again; any other content, a hand edit or an older VBW's write included, is), the chat list is read and matched in one jq pass with no per-entry loop, and next and status compute their fields in one jq pass over the record instead of one parse per field; every R149 twin comparison still holds",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M52",
+      "rules": []
+    },
+    {
+      "id": "R250",
+      "text": "Amendments without a stop (T225): a correction that does not change what any check asserts is an amendment, not a new contract: the main session adds a file to a plan's files or to a check's files, or records a dependency of a plan on another plan's check, with vbw apply --amend, while the contract stays approved and an open run stays open and its Devs keep building; the amendment is recorded on the plan or check (what, when, by which session) and listed at the next gate (the next approval, vbw show contract --changes and the ship) as the amendments made since approval; a change to a check's command, to its expected result or to a requirement's text is never an amendment and keeps the approval gate; a Dev, Docs or any run agent is refused vbw apply --amend by the guard, as it is refused vbw apply; a plan that depends on another plan's check reaches plan done with that check unrun when its own checks are green, recorded as built, awaiting that check, and the requirement stays unproven until the check runs (T228; field case: an older check protected a script a later plan had to edit, and the one-line fix cost vbw apply --patch, a re-approval and vbw plan reset)",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M52",
+      "rules": []
+    },
+    {
+      "id": "R251",
+      "text": "A judgeable approval question (T225): when approval is needed because a check or a requirement changed, vbw show contract --changes states for each changed item what it promised before and what it promises now, one plain line each, and the approval question names the count of changed items and the count of amendments since the last approval beside the fingerprint, so an operator who is not a developer can judge the change; the approve hook records the answer to that exact question as today (field case: an operator asked to approve a check text change they could not judge; the approval became a formality)",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M52",
+      "rules": []
+    },
+    {
+      "id": "R252",
+      "text": "Spec additions during an open run queue (T226): vbw spec add while a run is open does not un-approve the contract and does not stop the run's agents; the requirement is appended to the spec, synced into the record as pending for the next plan step, and named by vbw next once the run has ended; vbw show contract lists it as queued, not as part of the approved contract (field case: a finding added mid-build stopped the Devs, so findings were kept outside VBW and added by hand between runs)",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M52",
+      "rules": []
+    },
+    {
+      "id": "R253",
+      "text": "The clean copy never carries git worktrees, and large ignored folders are named (T230, T186): every clean copy (proof, mutate and check) leaves out the folder of every worktree of the project's repository that lies inside the project (git worktree list) and .claude/worktrees, whatever the Clean copy section says, and vbw init and vbw doctor name each git-ignored folder over 500 MB inside the project as a candidate for the Clean copy section with its size (field case: 2.1.13 copied 133 GB of .claude/worktrees into the proof copy)",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M52",
+      "rules": []
     }
   ],
   "phases": [
@@ -68401,6 +68441,11 @@
     {
       "id": "T231",
       "text": "vbw apply refuses a docs plan against a requirement whose checks only code can satisfy (field report 2026-11-03): such a plan can never prove the requirement and its tasks could not close until a --none decision; the Lead's planning spec gets the same rule",
+      "status": "open"
+    },
+    {
+      "id": "T232",
+      "text": "Prompt leak probe (field report 2026-11-03): on a real project, three Devs and the run's confirmer answered a question the operator had typed in the main chat mid-turn, so the building workflow's agents saw the chat's latest user message. building.js composes prompts from the plan, the profile and the project folder only, so the text reached them another way (the Workflow tool or the Agent spawn). Probe with a marker message and a tiny workflow whose agent is asked to repeat any user text it sees; if the harness adds it, strip it or report it upstream; the agents must receive only the plan",
       "status": "open"
     }
   ],
