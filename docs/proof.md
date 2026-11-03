@@ -974,7 +974,9 @@ time. `vbw prove`, `vbw fix done` and `vbw mutate` keep each copy in a numbered
 slot, `.vbw/runtime/proof.keep.1`, `proof.keep.2` and so on: one per unit that
 runs at once, never more than `check_jobs`, and never more than the command has
 units to run. A slot's `pid` file names the process using it. A command claims
-the free slots in order (no owner, or an owner that has ended) and makes a new
+the free slots in order (no owner, an owner that has ended, or a `pid` file
+that has stayed empty for 5 seconds: an owner that died before it wrote its
+id) and makes a new
 slot only when none is free; it never touches a slot whose owner still runs.
 When the command ends normally it hands each slot back, copy and all. When it
 is interrupted or stops on an error it removes the slots it holds, since a
@@ -984,7 +986,9 @@ Before any unit runs, a claimed copy is brought up to date, so it holds
 exactly what a copy made fresh at that moment would hold:
 
 - the committed code of `HEAD` (each submodule at its own `HEAD`), and nothing
-  uncommitted, untracked or staged from the working folder (`git reset --hard`);
+  uncommitted, untracked or staged from the working folder (`HEAD` detached,
+  then `git reset --hard`: a branch a unit checked out in the copy stays where
+  it is);
 - the git-ignored paths as the working folder has them now, less build folders
   and the `## Clean copy` list: a path new to the list is copied in, a path
   gone from it, newly listed under `## Clean copy` or no longer ignored is
@@ -1011,7 +1015,15 @@ read-only folder, an entry that became a folder). One
 walk of `node_modules` takes about a second; copying it again took 46 seconds
 on the project that prompted this. When any of these steps fails, or the
 project's set of submodules changed, the slot is emptied and the copy made
-fresh in it. `vbw prove --full` always makes fresh copies.
+fresh in it. So is a copy that is not, or no longer, a worktree made for its
+place: a copied project folder, a linked folder on its path, or a `.git` file
+naming another worktree. Git runs in a copy without `GIT_DIR`, `GIT_WORK_TREE`,
+`GIT_INDEX_FILE` or `GIT_COMMON_DIR`, so an exported one never points it at the
+working folder's repository. After it marks when a copy was brought up to date,
+and again when it is done, VBW waits for the clock to move on (at most a
+second on HFS+, which keeps whole seconds; a few milliseconds elsewhere), so a
+change in the same instant is never missed.
+`vbw prove --full` always makes fresh copies.
 
 `vbw show evidence` says what the last proof did with its copies
 (`copies: 1 kept copy claimed (0 refreshed), 0 made`; refreshed counts the
@@ -1029,7 +1041,8 @@ copies of 9.5 GB each held about 7 GB of disk in all.
 A kept copy that nothing uses goes on its own: the next `vbw prove`,
 `vbw fix done` or `vbw mutate` removes a free slot unused for more than 24
 hours, and one numbered past `check_jobs` (left from a time the setting was
-higher). It never removes a slot whose owner still runs.
+higher). It never removes a slot whose owner still runs; a slot it cannot move
+aside to remove is handed back as it is.
 
 A proof killed outright (`kill -9`) cannot remove its slot; the slot's owner
 has then ended, so the next command claims it and empties it when it cannot be

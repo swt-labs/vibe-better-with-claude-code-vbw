@@ -3,10 +3,11 @@
 # (tests/timed-*.bats), never in vbw prove: on a project with a 50 MB ignored
 # folder of 5,000 files, a second proof that claims the kept copy spends less
 # time bringing it up to date (evidence.own.copy_slots.refresh) than half the
-# time the first proof spent in copies (evidence.own.copies, making it). The
-# copies step also counts work no copy changes (checking the committed check
-# files against the approved ones, the step bookkeeping), so the refresh alone is
-# compared. The figures come from the proof's own clock.
+# time the first proof spent making it. The copies step (evidence.own.copies)
+# also counts work no copy changes (checking the committed check files against
+# the approved ones, the step bookkeeping): the second proof's copies less its
+# refresh is that work, taken off the first proof's copies to leave the making
+# alone. The figures come from the proof's own clock.
 
 load helper
 
@@ -39,7 +40,7 @@ setup() {
 teardown() { vbw_teardown; }
 
 @test "#738: a second proof claiming the kept copy of a 50 MB ignored folder is brought up to date in less than half the time the first proof spent making it" {
-  local first second
+  local first second rest make
   vbw_run prove
   [ "$status" -eq 0 ] || { echo "$output"; false; }
   jq -e '.evidence.own.copy_slots.made == 1' .vbw/record.json > /dev/null || { jq .evidence.own .vbw/record.json; false; }
@@ -50,6 +51,8 @@ teardown() { vbw_teardown; }
   [ "$status" -eq 0 ] || { echo "$output"; false; }
   jq -e '.evidence.own.copy_slots | .claimed == 1 and .made == 0' .vbw/record.json > /dev/null || { jq .evidence.own .vbw/record.json; false; }
   second=$(jq '.evidence.own.copy_slots.refresh' .vbw/record.json)
-  echo "first proof: $first s in copies; second proof: $second s bringing the kept copy up to date"
-  awk -v a="$first" -v b="$second" 'BEGIN { exit !(b < a / 2) }' || { echo "the kept copy saved too little"; false; }
+  rest=$(jq '.evidence.own.copies - .evidence.own.copy_slots.refresh' .vbw/record.json)
+  make=$(awk -v a="$first" -v r="$rest" 'BEGIN { printf "%.3f", a - r }')
+  echo "first proof: $first s in copies, about $make s of it making the copy; second proof: $second s bringing it up to date"
+  awk -v m="$make" -v b="$second" 'BEGIN { exit !(m > 0 && b < m / 2) }' || { echo "the kept copy saved too little"; false; }
 }

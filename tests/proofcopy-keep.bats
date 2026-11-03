@@ -114,6 +114,17 @@ live_pid() {
 count() { find "$MARK" -name "$1.*" | wc -l | tr -d ' '; }
 # code_head: the commit the last proof ran on (the proof commits the record after it).
 code_head() { git log -1 --format=%H --invert-grep --grep='^chore(vbw): proof'; }
+# add_sub: a submodule sub with an ignored deps/ folder, committed.
+add_sub() {
+  git init -q "$TEST_ROOT/subsrc"
+  printf 'paid\n' > "$TEST_ROOT/subsrc/pay.txt"
+  printf 'deps/\n' > "$TEST_ROOT/subsrc/.gitignore"
+  git -C "$TEST_ROOT/subsrc" add pay.txt .gitignore
+  git -C "$TEST_ROOT/subsrc" commit -q -m "chore: seed"
+  git -c protocol.file.allow=always submodule add -q "file://$TEST_ROOT/subsrc" sub
+  mkdir -p sub/deps && printf 'd1\n' > sub/deps/d.txt
+  git add -A && git commit -q -m "chore: sub"
+}
 
 @test "#738: a proof leaves its copy in proof.keep.1 with no owner; the next proof claims it and makes none; --full makes a fresh one" {
   prove_ok
@@ -212,13 +223,27 @@ code_head() { git log -1 --format=%H --invert-grep --grep='^chore(vbw): proof'; 
   [ "$(cat "$(slot 1)/tree/node_modules/big/f7.js")" = 7 ] && [ "$(cat "$(slot 1)/tree/node_modules/pkg/a.js")" = a ] || { echo "the unit's writes are still there"; false; }
 }
 
-@test "#738: a slot whose owner has ended is claimed; one whose owner runs is left alone and another is made" {
+@test "#738: a slot whose owner has ended, or whose pid file stayed empty for 5 s, is claimed; one whose owner runs, or whose empty pid file is new, is left alone and another is made" {
   prove_ok
   dead_pid > "$(slot 1)/pid"
   bump two
   prove_ok
   [ "$(counts)" = '{"claimed":1,"refreshed":0,"made":0}' ] || { counts; false; }
   [ ! -e "$(slot 1)/pid" ]
+  # An owner that died before it wrote its id, as the alone-check gate judges one.
+  : > "$(slot 1)/pid"
+  touch -t 202001010000 "$(slot 1)/pid"
+  bump empty
+  prove_ok
+  [ "$(counts)" = '{"claimed":1,"refreshed":0,"made":0}' ] || { counts; false; }
+  [ ! -e "$(slot 1)/pid" ]
+  : > "$(slot 1)/pid"
+  bump fresh
+  prove_ok
+  [ "$(counts)" = '{"claimed":0,"refreshed":0,"made":1}' ] || { counts; false; }
+  [ -e "$(slot 1)/pid" ] && [ -d "$(slot 2)/tree" ]
+  rm -rf "$(slot 2)" "$(slot 1)/pid"
+  git worktree prune
   live_pid
   printf '%s\n' "$PID_LIVE" > "$(slot 1)/pid"
   printf 'mine\n' > "$(slot 1)/tree/held.txt"
@@ -303,33 +328,29 @@ code_head() { git log -1 --format=%H --invert-grep --grep='^chore(vbw): proof'; 
 @test "#738: the sweep removes a slot unused for 24 hours and one numbered past check_jobs, never one whose owner runs" {
   "$VBW" config set check_jobs 2 > /dev/null
   prove_ok
-  local ino
-  ino=$(inode "$(slot 1)/tree")
-  touch -t 202001010000 "$(slot 1)"
+  # Slot 2 is idle for 24 hours, slot 1 is not: the proof claims slot 1, and slot
+  # 2 is gone. (An inode check cannot tell: ext4 hands a new folder the inode of
+  # the one just removed.)
+  mkdir -p "$(slot 2)" "$(slot 3)" "$(slot 4)"
+  git worktree add -q --detach "$(slot 2)/tree" HEAD
+  touch -t 202001010000 "$(slot 2)"
   # Past the cap: one free, one whose owner runs.
-  mkdir -p "$(slot 3)" "$(slot 4)"
   git worktree add -q --detach "$(slot 3)/tree" HEAD
   git worktree add -q --detach "$(slot 4)/tree" HEAD
   live_pid
   printf '%s\n' "$PID_LIVE" > "$(slot 4)/pid"
   bump two
   prove_ok
-  [ "$(counts)" = '{"claimed":0,"refreshed":0,"made":1}' ] || { counts; false; }
-  [ "$(inode "$(slot 1)/tree")" != "$ino" ] || { echo "the idle slot was claimed, not removed"; false; }
+  [ "$(counts)" = '{"claimed":1,"refreshed":0,"made":0}' ] || { counts; false; }
+  [ ! -e "$(slot 2)" ] || { echo "the idle slot is still there"; false; }
+  ! git worktree list --porcelain | grep -qF '/proof.keep.2/tree' || { git worktree list; false; }
   [ ! -e "$(slot 3)" ] || { echo "the slot past the cap is still there"; false; }
   ! git worktree list --porcelain | grep -qF '/proof.keep.3/tree' || { git worktree list; false; }
   [ -d "$(slot 4)/tree" ] || { echo "a slot whose owner runs was removed"; false; }
 }
 
 @test "#738: a submodule's committed code and ignored paths are brought up to date in a kept copy" {
-  git init -q "$TEST_ROOT/subsrc"
-  printf 'paid\n' > "$TEST_ROOT/subsrc/pay.txt"
-  printf 'deps/\n' > "$TEST_ROOT/subsrc/.gitignore"
-  git -C "$TEST_ROOT/subsrc" add pay.txt .gitignore
-  git -C "$TEST_ROOT/subsrc" commit -q -m "chore: seed"
-  git -c protocol.file.allow=always submodule add -q "file://$TEST_ROOT/subsrc" sub
-  mkdir -p sub/deps && printf 'd1\n' > sub/deps/d.txt
-  git add -A && git commit -q -m "chore: sub"
+  add_sub
   prove_ok --full
   [ "$(cat "$(slot 1)/tree/sub/deps/d.txt")" = d1 ] || { ls -la "$(slot 1)/tree/sub"; false; }
   printf 'paid\nsub2\n' > sub/pay.txt
@@ -341,6 +362,81 @@ code_head() { git log -1 --format=%H --invert-grep --grep='^chore(vbw): proof'; 
   [ "$(counts)" = '{"claimed":1,"refreshed":1,"made":0}' ] || { counts; false; }
   [ "$(git -C "$(slot 1)/tree/sub" rev-parse HEAD)" = "$(git -C sub rev-parse HEAD)" ]
   [ "$(cat "$(slot 1)/tree/sub/deps/d.txt")" = d2 ] && [ ! -e "$(slot 1)/tree/sub/junk.txt" ] || { ls -la "$(slot 1)/tree/sub"; false; }
+}
+
+@test "#738: a branch a unit checked out in a kept copy, of the project or of a submodule, never moves when the copy is brought up to date" {
+  add_sub
+  prove_ok --full
+  git branch feature
+  git -C sub branch subfeature
+  local f s
+  f=$(git rev-parse feature)
+  s=$(git -C sub rev-parse subfeature)
+  git -C "$(slot 1)/tree" checkout -q feature
+  git -C "$(slot 1)/tree/sub" checkout -q subfeature
+  printf 'paid\nsub2\n' > sub/pay.txt
+  git -C sub commit -q -am "feat: sub2"
+  bump two
+  prove_ok
+  [ "$(counts)" = '{"claimed":1,"refreshed":0,"made":0}' ] || { counts; false; }
+  [ "$(git rev-parse feature)" = "$f" ] && [ "$(git -C sub rev-parse subfeature)" = "$s" ] || { git log --oneline --all; false; }
+  ! git -C "$(slot 1)/tree" symbolic-ref -q HEAD && ! git -C "$(slot 1)/tree/sub" symbolic-ref -q HEAD
+  [ "$(git -C "$(slot 1)/tree" rev-parse HEAD)" = "$(code_head)" ] && [ "$(git -C "$(slot 1)/tree/sub" rev-parse HEAD)" = "$(git -C sub rev-parse HEAD)" ]
+}
+
+@test "#738: an exported GIT_DIR naming the project's repository never reaches its index through a kept copy" {
+  prove_ok
+  bump two
+  printf 's\n' > src/staged.txt
+  git add src/staged.txt
+  GIT_DIR="$PWD/.git" prove_ok
+  [ "$(counts)" = '{"claimed":1,"refreshed":0,"made":0}' ] || { counts; false; }
+  [ "$(git diff --cached --name-only)" = src/staged.txt ] || { git status; false; }
+}
+
+@test "#738: proofcopy_own refuses a copy's folder that is a link (to the project's own submodule) and a copy whose .git names another copy's git dir" {
+  add_sub
+  "$VBW" config set check_jobs 2 > /dev/null
+  mkdir -p "$(slot 1)" "$(slot 2)"
+  git worktree add -q --detach "$(slot 1)/tree" HEAD
+  git worktree add -q --detach "$(slot 2)/tree" HEAD
+  git -C sub worktree add -q --detach "$PWD/$(slot 1)/tree/sub.real" HEAD
+  ln -s "$PWD/sub" "$(slot 1)/tree/sub"
+  # shellcheck disable=SC2016 # expanded by vbw_kernel
+  run vbw_kernel '. "$VBW_LIB/proofcopy.sh"; t=$VBW_RUNTIME/proof.keep.1/tree
+    proofcopy_own "$t" "$VBW_ROOT" && echo own
+    proofcopy_own "$t/sub.real" "$VBW_ROOT/sub" && echo real
+    proofcopy_own "$t/sub" "$VBW_ROOT/sub" && echo link
+    cp "$VBW_RUNTIME/proof.keep.2/tree/.git" "$t/.git"
+    proofcopy_own "$t" "$VBW_ROOT" && echo other
+    true'
+  [ "$output" = "$(printf 'own\nreal')" ] || { echo "$output"; false; }
+}
+
+@test "#738: an ignored path gone from the working folder leaves the copy, and the copy counts as refreshed" {
+  prove_ok
+  rm -rf cache
+  bump two
+  prove_ok
+  [ ! -e "$(slot 1)/tree/cache" ] || { ls -la "$(slot 1)/tree"; false; }
+  [ "$(counts)" = '{"claimed":1,"refreshed":1,"made":0}' ] || { counts; false; }
+}
+
+@test "#738: a sweep that cannot move a slot aside hands it back instead of keeping it" {
+  prove_ok
+  # shellcheck disable=SC2016 # expanded by vbw_kernel
+  vbw_kernel '. "$VBW_LIB/proofcopy.sh"; d=$VBW_RUNTIME/proof.keep.1
+    mkdir "$VBW_RUNTIME/proof.$$.swept-proof.keep.1"
+    proofcopy_take "$d" && vbw_guard_forget "$d" && proofcopy_sweep_rm "$d"'
+  [ -d "$(slot 1)/tree" ] && [ ! -e "$(slot 1)/pid" ] || { ls -la "$(slot 1)"; false; }
+}
+
+@test "#738: proofcopy_tick returns only once a change made after it is newer than the file it waited on" {
+  # shellcheck disable=SC2016 # expanded by vbw_kernel
+  run vbw_kernel '. "$VBW_LIB/proofcopy.sh"; mkdir -p "$VBW_RUNTIME"; f=$VBW_RUNTIME/t
+    : > "$f"; touch -A 01 "$f" 2> /dev/null || touch -d "+1 second" "$f"
+    proofcopy_tick "$f"; : > "$f.after"; [ -z "$(find "$f.after" -newercm "$f" -print)" ] || echo newer'
+  [ "$output" = newer ] || { echo "status $status: $output"; false; }
 }
 
 @test "#738: vbw show evidence names the copies claimed, refreshed and made; vbw doctor names each kept copy with its size" {

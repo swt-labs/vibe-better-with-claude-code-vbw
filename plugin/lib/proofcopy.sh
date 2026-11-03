@@ -19,13 +19,16 @@
 # was last brought to: its submodules, and each ignored path copied in with its
 # number of entries), stamp (written before that began) and done (written when
 # it ended). A command claims free slots in order, up to the copies it needs,
-# and makes a slot only when none is free. On a normal finish it hands each back
+# and makes a slot only when none is free; a slot whose pid file has stayed
+# empty for 5 s is free too (an owner that died before it wrote its id, as the
+# alone-check gate judges one). On a normal finish it hands each back
 # (proofcopy_release: the pid file goes, the copy stays); an interrupt or
 # vbw_die removes the slots it holds, as a half-used copy is not trusted.
 #
 # A claimed copy is brought up to date before any unit runs (proofcopy_refresh)
-# and then holds what a copy made fresh at that moment would hold: git reset
-# --hard to HEAD (each submodule to its own HEAD); git clean -ffdx, sparing only
+# and then holds what a copy made fresh at that moment would hold: HEAD
+# detached and git reset --hard to the project's HEAD (each submodule to its
+# own; a branch a unit checked out there never moves); git clean -ffdx, sparing only
 # the ignored paths that are still to be copied in and were copied before; each
 # ignored path new to the list copied in; in one copied before, the entries that
 # changed brought up to date one by one (proofcopy_sync): those of its source
@@ -36,9 +39,12 @@
 # on its own. A failing step, a slot without a manifest, a
 # changed set of submodules, or vbw prove --full (PROOFCOPY_FRESH): the copy is
 # removed and made fresh in its slot. Every git command in a copy runs only
-# after the copy is checked to be a repository of its own and a worktree of the
-# project's (proofcopy_own): git finds a repository by walking up, and above the
-# copy is the user's project; a copied project folder holds the original's.
+# after the copy is checked to be a worktree made for that place (proofcopy_own):
+# git finds a repository by walking up, and above the copy is the user's project;
+# a copied project folder holds the original's; a linked folder can lead to the
+# user's own checkout. It runs without GIT_DIR and its kin (proofcopy_git). The
+# stamp and done are each followed by a wait for the clock to move past them
+# (proofcopy_tick), so no change in their tick is missed.
 #
 # The sweep (proofcopy_sweep, before every command's copies) removes a free slot
 # unused for 24 hours (the slot folder's own modification time, which a claim
@@ -137,7 +143,12 @@ proofcopy_take() {
   if [ -d "$1" ] && [ ! -L "$1" ]; then
     if ! vbw_lock_create "$1/pid"; then
       h=$(vbw_lock_holder "$1/pid")
-      { [ -n "$h" ] && ! vbw_lock_alive "$h" && vbw_lock_takeover "$1/pid" "$h"; } || return 1
+      if [ -n "$h" ]; then
+        { ! vbw_lock_alive "$h" && vbw_lock_takeover "$1/pid" "$h"; } || return 1
+      else
+        # No id for 5 s: an owner that died before it wrote one (the alone-check gate's rule).
+        { [ $(($(date +%s) - $(vbw_mtime "$1/pid"))) -ge 5 ] && vbw_lock_takeover "$1/pid" ""; } || return 1
+      fi
     fi
   elif [ -e "$1" ] || [ -L "$1" ]; then
     return 1
@@ -172,17 +183,59 @@ proofcopy_ready() {
   PROOF_COPIES+=("$d/tree")
 }
 
-# proofcopy_own DIR REPO: DIR is the top of a git repository of its own (a
-# copy's worktree), never a folder git would take for part of a repository
-# above it, and a worktree of REPO: in a copied project folder the kept copy's
-# .git still names the original's repository, which git would change.
+# proofcopy_git ARG...: git without the variables that point it at a repository
+# (GIT_DIR and its kin): exported, they would make a command run in a copy act on
+# the user's repository and index.
+proofcopy_git() (
+  unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE GIT_COMMON_DIR
+  exec git "$@"
+)
+
+# proofcopy_own DIR REPO: DIR, a folder under the project, is a worktree of
+# REPO made for this place: no link anywhere on its path below the project (a
+# linked folder can lead to the user's own checkout), the top of a repository of
+# its own (never a folder git would take for part of one above it), sharing
+# REPO's repository (in a copied project folder the kept copy's .git still names
+# the original's, which git would change), with a git dir among REPO's worktrees
+# whose gitdir file names DIR itself.
 proofcopy_own() {
-  local top here
+  local top here real common gd
   [ -f "$1/.git" ] || return 1
-  top=$(git -C "$1" rev-parse --show-toplevel 2> /dev/null) || return 1
+  case "$1" in "$VBW_ROOT"/*) ;; *) return 1 ;; esac
+  real=$(cd -P "$VBW_ROOT" 2> /dev/null && pwd -P) || return 1
   here=$(cd -P "$1" 2> /dev/null && pwd -P) || return 1
+  [ "$here" = "$real${1#"$VBW_ROOT"}" ] || return 1
+  top=$(proofcopy_git -C "$1" rev-parse --show-toplevel 2> /dev/null) || return 1
   [ "$(cd -P "$top" 2> /dev/null && pwd -P)" = "$here" ] || return 1
-  [ "$(git -C "$1" rev-parse --path-format=absolute --git-common-dir 2> /dev/null)" = "$(git -C "$2" rev-parse --path-format=absolute --git-common-dir 2> /dev/null)" ]
+  common=$(proofcopy_git -C "$1" rev-parse --path-format=absolute --git-common-dir 2> /dev/null) || return 1
+  [ "$common" = "$(proofcopy_git -C "$2" rev-parse --path-format=absolute --git-common-dir 2> /dev/null)" ] || return 1
+  gd=$(proofcopy_git -C "$1" rev-parse --absolute-git-dir 2> /dev/null) || return 1
+  case "$gd" in "$common"/worktrees/*) ;; *) return 1 ;; esac
+  top=$(cat "$gd/gitdir" 2> /dev/null) || return 1
+  [ "$(cd -P "$(dirname "$top")" 2> /dev/null && pwd -P)" = "$here" ]
+}
+
+# proofcopy_reset COPY SHA: COPY's HEAD detached at SHA, then its index and
+# files reset to it. A branch a unit checked out in the copy stays where it is:
+# reset --hard alone would move it.
+proofcopy_reset() {
+  proofcopy_git -C "$1" update-ref --no-deref HEAD "$2" > /dev/null 2>&1 \
+    && proofcopy_git -C "$1" -c submodule.recurse=false reset -q --hard "$2" > /dev/null 2>&1
+}
+
+# proofcopy_tick FILE: return once the clock, as the file system records a
+# change, has moved past FILE's modification time, so a change made after the
+# return is strictly newer (find -newercm is strict: one in the same tick, about
+# 4 ms on Linux and 1 s on HFS+, would be missed). Gives up after about 3 s.
+proofcopy_tick() {
+  local i=0
+  touch "$1.tick" 2> /dev/null || return 0
+  while [ -z "$(find "$1.tick" -newercm "$1" -print 2> /dev/null)" ] && [ "$i" -lt 300 ]; do
+    sleep 0.01
+    touch "$1.tick" 2> /dev/null || break
+    i=$((i + 1))
+  done
+  rm -f "$1.tick"
 }
 
 # proofcopy_subs_json: the project's checked-out submodules, as a JSON array.
@@ -208,6 +261,7 @@ proofcopy_left_read() {
 proofcopy_make() {
   local d=$1 copy=$1/tree real l p subs=()
   touch "$d/stamp.next" || vbw_die "cannot write in $d"
+  proofcopy_tick "$d/stamp.next"
   l=$(proofcopy_checkout "$VBW_ROOT" "$copy" 2>&1) \
     || { proofcopy_remove; vbw_die "cannot make a clean copy of the committed code: ${l##*$'\n'}"; }
   # Each checked-out submodule: a detached worktree of its own HEAD (its committed
@@ -233,14 +287,15 @@ proofcopy_refresh() {
   # leaves a slot the next claim empties.
   mv "$d/manifest" "$d/manifest.old" 2> /dev/null || return 1
   touch "$d/stamp.next" || return 1
+  proofcopy_tick "$d/stamp.next"
   p=$(git -C "$VBW_ROOT" rev-parse HEAD) || return 1
-  git -C "$copy" -c submodule.recurse=false reset -q --hard "$p" > /dev/null 2>&1 || return 1
+  proofcopy_reset "$copy" "$p" || return 1
   while IFS= read -r -d '' s; do subs+=("$s"); done < <(vbw_subs)
   [ "$(proofcopy_subs_json)" = "$(jq -c '.subs' "$d/manifest.old" 2> /dev/null)" ] || return 1
   for s in ${subs[@]+"${subs[@]}"}; do
     proofcopy_own "$copy/$s" "$VBW_ROOT/$s" || return 1
-    p=$(git -C "$VBW_ROOT/$s" rev-parse HEAD) || return 1
-    git -C "$copy/$s" -c submodule.recurse=false reset -q --hard "$p" > /dev/null 2>&1 || return 1
+    p=$(proofcopy_git -C "$VBW_ROOT/$s" rev-parse HEAD) || return 1
+    proofcopy_reset "$copy/$s" "$p" || return 1
   done
   proofcopy_left_read
   proofcopy_paths | jq -j -Rs --slurpfile m "$d/manifest.old" '$m[0].paths as $o
@@ -256,6 +311,8 @@ proofcopy_refresh() {
     kept+=("$p")
     owner+=("$s")
   done < "$d/plan"
+  # A path copied in before and no longer to be: git clean removes it below.
+  [ "${#kept[@]}" -eq "$(jq '.paths | length' "$d/manifest.old")" ] || PROOFCOPY_CHANGED=1
   for s in '' ${subs[@]+"${subs[@]}"}; do
     ex=()
     i=0
@@ -263,7 +320,7 @@ proofcopy_refresh() {
       if [ "${owner[i]}" = "$s" ]; then ex+=(-e "/$(proofcopy_pattern "${kept[i]#"${s:+$s/}"}")"); fi
       i=$((i + 1))
     done
-    git -C "$copy${s:+/$s}" -c submodule.recurse=false clean -q -ffdx ${ex[@]+"${ex[@]}"} > /dev/null 2>&1 || return 1
+    proofcopy_git -C "$copy${s:+/$s}" -c submodule.recurse=false clean -q -ffdx ${ex[@]+"${ex[@]}"} > /dev/null 2>&1 || return 1
   done
   real=$(cd -P "$VBW_ROOT" && pwd -P) || return 1
   proofcopy_fill "$d"
@@ -315,6 +372,8 @@ proofcopy_fill() {
     vbw_out '%s\0%s\0' "$p" "$c" >> "$d/counts"
   done < "$d/plan"
   touch "$d/done" || vbw_die "cannot write in $d"
+  # A unit's write in the copy, made after this, is strictly newer than done.
+  proofcopy_tick "$d/done"
   proofcopy_subs_json | jq -c --rawfile c "$d/counts" '{subs: ., paths: ($c | split("\u0000")[:-1] | [range(0; length; 2) as $i | {key: .[$i], value: (.[$i + 1] | tonumber)}] | from_entries)}' > "$d/manifest.next" \
     && mv "$d/manifest.next" "$d/manifest" && mv "$d/stamp.next" "$d/stamp" \
     || vbw_die "cannot write the manifest of $d"
@@ -547,8 +606,8 @@ proofcopy_drop_held() {
 # worktree entries; one warning line when it will not go.
 proofcopy_sweep_rm() {
   local claim="$VBW_RUNTIME/proof.$$.swept-${1##*/}"
-  [ ! -e "$claim" ] || return 0
-  mv "$1" "$claim" 2> /dev/null || return 0
+  # Not moved aside: a slot this command held is handed back, never kept.
+  { [ ! -e "$claim" ] && mv "$1" "$claim" 2> /dev/null; } || { rm -f "$1/pid"; return 0; }
   chmod -R u+rwx "$claim" > /dev/null 2>&1 || true
   rm -rf "$claim" > /dev/null 2>&1 || true
   git -C "$VBW_ROOT" worktree prune > /dev/null 2>&1 || true
@@ -567,10 +626,10 @@ proofcopy_checkout() {
   rm -rf "$2"
   git -C "$1" worktree prune
   git -C "$1" -c core.hooksPath=/dev/null worktree add -q --no-checkout --detach "$2" HEAD > /dev/null || return 1
-  git -C "$2" read-tree HEAD || return 1
-  git -C "$2" ls-files -z -- ':(glob)**/.gitmodules' | git -C "$2" update-index -z --skip-worktree --stdin || return 1
-  git -C "$2" checkout-index -a -q -u || return 1
-  : > "$(git -C "$2" rev-parse --absolute-git-dir)/vbw-gitmodules-index"
+  proofcopy_git -C "$2" read-tree HEAD || return 1
+  proofcopy_git -C "$2" ls-files -z -- ':(glob)**/.gitmodules' | proofcopy_git -C "$2" update-index -z --skip-worktree --stdin || return 1
+  proofcopy_git -C "$2" checkout-index -a -q -u || return 1
+  : > "$(proofcopy_git -C "$2" rev-parse --absolute-git-dir)/vbw-gitmodules-index"
 }
 
 # Worktrees (R253): the folder of every worktree of the repository that lies
