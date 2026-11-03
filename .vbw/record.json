@@ -7601,7 +7601,7 @@
   "milestone": {
     "id": "M50",
     "title": "VBW never touches the user's files: ship, the router and the submodule scenario",
-    "status": "active"
+    "status": "shipped"
   },
   "shipped": [
     {
@@ -7843,6 +7843,11 @@
       "id": "M49",
       "title": "MCP tools for agents, commit guard, status line time",
       "at": "2026-11-01T22:01:34Z"
+    },
+    {
+      "id": "M50",
+      "title": "VBW never touches the user's files: ship, the router and the submodule scenario",
+      "at": "2026-11-03T09:30:59Z"
     }
   ],
   "requirements": [
@@ -71001,6 +71006,11 @@
       "at": "2026-11-03T07:09:03Z",
       "text": "Contract approved: 235 requirements, 562 checks, 591 plans (ef891440aa41)",
       "plans": []
+    },
+    {
+      "id": "D581",
+      "at": "2026-11-03T09:30:59Z",
+      "text": "Shipped M50 VBW never touches the user's files: ship, the router and the submodule scenario: 3 requirements proven or accepted"
     }
   ],
   "commands": {
@@ -83734,6 +83744,10 @@
             "usd": 0,
             "at": "2026-11-02T22:35:51Z"
           }
+        },
+        "total": {
+          "usd": 28.667795,
+          "sessions": 47
         }
       }
     }
