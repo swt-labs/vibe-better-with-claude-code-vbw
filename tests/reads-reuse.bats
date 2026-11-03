@@ -281,9 +281,9 @@ open_fix() {
   [ "$(basename "$(cat "$TEST_ROOT/c1.pwd")")" = tree ]
 }
 
-@test "R175: a passing proof records the fingerprint of the record without its evidence, so a later record change is no 'nothing committed'" {
+@test "R175: a passing proof records the fingerprint of the record without its evidence or schema, so a later record change is no 'nothing committed'" {
   fixture_copy wiring
-  [ "$(jq -r '.evidence.record' .vbw/record.json)" = "$(jq -c 'del(.evidence)' .vbw/record.json | vbw_kernel 'vbw_sha256')" ]
+  [ "$(jq -r '.evidence.record' .vbw/record.json)" = "$(jq -c 'del(.evidence, .schema)' .vbw/record.json | vbw_kernel 'vbw_sha256')" ]
   "$VBW" decide "Pay by card" "the owner's choice" > /dev/null
   change src/other.txt
   vbw_run prove

@@ -139,9 +139,15 @@ proofreuse_check_fp() { proofreuse_fp_of "$1" "check:$2"; }
 # and the time limit it runs under (settings.command_timeout, else the default).
 proofreuse_command_fp() { proofreuse_fp_of "$1" "command:$2"; }
 
+# proofreuse_record_fp: the fingerprint of the record on stdin as a proof judges
+# it (D296): without its evidence, and without its schema, which record-schema.jq
+# derives from the rest and which the evidence itself can raise (own.copy_slots),
+# so the proof's own write never changes what it fingerprinted.
+proofreuse_record_fp() { jq -c 'del(.evidence, .schema)' | vbw_sha256; }
+
 # proofreuse_proved RECORD HEAD: succeed when nothing changed since the
 # record's last passing proof (evidence.passed): the record is as that proof
-# left it (its fingerprint without the evidence equals evidence.record, so the
+# left it (its fingerprint, proofreuse_record_fp, equals evidence.record, so the
 # contract, the commands and every decision, verdict or backlog item are as
 # proved: D296, D302), the project's files have the fingerprint it recorded
 # (vbw_code_tree equals evidence.tree) and the committed code is the tree it
@@ -153,7 +159,7 @@ proofreuse_proved() {
   local tree ev_head ev_rec
   printf '%s' "$1" | jq -e '.evidence.passed == true' > /dev/null 2>&1 || return 1
   ev_rec=$(printf '%s' "$1" | jq -r '.evidence.record // empty')
-  [ -n "$ev_rec" ] && [ "$ev_rec" = "$(printf '%s' "$1" | jq -c 'del(.evidence)' | vbw_sha256)" ] || return 1
+  [ -n "$ev_rec" ] && [ "$ev_rec" = "$(printf '%s' "$1" | proofreuse_record_fp)" ] || return 1
   tree=$(printf '%s' "$1" | jq -r '.evidence.tree // empty')
   [ -n "$tree" ] && [ "$(vbw_code_tree 2> /dev/null)" = "$tree" ] || return 1
   ev_head=$(printf '%s' "$1" | jq -r '.evidence.head // empty')

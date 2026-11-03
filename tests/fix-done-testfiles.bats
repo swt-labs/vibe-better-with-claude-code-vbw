@@ -64,7 +64,7 @@ proved_now() {
   local code head fp
   code=$(vbw_kernel 'vbw_code_tree'); head=$(vbw_kernel 'vbw_head_tree')
   edit_record '.evidence.passed = true | .evidence.tree = "'"$code"'" | .evidence.head = "'"$head"'"'
-  fp=$(vbw_kernel 'jq -c "del(.evidence)" "$VBW_RECORD" | vbw_sha256')
+  fp=$(vbw_kernel 'jq -c "del(.evidence, .schema)" "$VBW_RECORD" | vbw_sha256')
   edit_record '.evidence.record = "'"$fp"'"'
 }
 
