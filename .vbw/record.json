@@ -18840,7 +18840,7 @@
     },
     {
       "id": "R250",
-      "text": "Amendments without a stop (T225): a correction that does not change what any check asserts is an amendment, not a new contract: the main session adds a file to a plan's files or to a check's files, or records a dependency of a plan on another plan's check, with vbw apply --amend, while the contract stays approved and an open run stays open and its Devs keep building; the amendment is recorded on the plan or check (what, when, by which session) and listed at the next gate (the next approval, vbw show contract --changes and the ship) as the amendments made since approval; a change to a check's command, to its expected result or to a requirement's text is never an amendment and keeps the approval gate; a Dev, Docs or any run agent is refused vbw apply --amend by the guard, as it is refused vbw apply; a plan that depends on another plan's check reaches plan done with that check unrun when its own checks are green, recorded as built, awaiting that check, and the requirement stays unproven until the check runs (T228; field case: an older check protected a script a later plan had to edit, and the one-line fix cost vbw apply --patch, a re-approval and vbw plan reset)",
+      "text": "Amendments without a stop (T225): a correction that does not change what any check asserts is an amendment, not a new contract: the main session adds a file to a plan's files (never a protected check file) or to a check's files, or records a dependency of a plan on another plan's check, with vbw apply --amend, while the contract stays approved and an open run stays open and its Devs keep building; the amendment is recorded on the plan or check (what, when, by which session) and listed at the next gate (the next approval, vbw show contract --changes and the ship) as the amendments made since approval; a change to a check's command, to its expected result or to a requirement's text is never an amendment and keeps the approval gate; a Dev, Docs or any run agent is refused vbw apply --amend by the guard, as it is refused vbw apply; a plan that depends on another plan's check reaches plan done with that check unrun when its own checks are green, recorded as built, awaiting that check, and the requirement stays unproven until the check runs; a check change on a started plan (vbw apply --patch) no longer needs vbw plan reset: the plan keeps its progress and the run stays open, and the gate asks for approval of what the check now asserts; the guard's refusal of a write to a protected check file states the rule in one line (a protected check file is never edited during a build; the main session changes the check with vbw apply --patch, then the user approves it) (T228; field case: an older check protected a script a later plan had to edit, and the one-line fix cost vbw apply --patch, a re-approval and vbw plan reset)",
       "proof": "auto",
       "status": "open",
       "milestone": "M52",
@@ -18865,6 +18865,14 @@
     {
       "id": "R253",
       "text": "The clean copy never carries git worktrees, and large ignored folders are named (T230, T186): every clean copy (proof, mutate and check) leaves out the folder of every worktree of the project's repository that lies inside the project (git worktree list) and .claude/worktrees, whatever the Clean copy section says, and vbw init and vbw doctor name each git-ignored folder over 500 MB inside the project as a candidate for the Clean copy section with its size (field case: 2.1.13 copied 133 GB of .claude/worktrees into the proof copy)",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M52",
+      "rules": []
+    },
+    {
+      "id": "R254",
+      "text": "A write is judged by the project it lands in (T233; reproduced 2026-11-03: with the hook's project folder a linked git worktree whose committed record has no lease, a Dev's cd into the main checkout followed by a Python write to a protected check file, a shell write to it by absolute path and an Edit of it by absolute path all passed with no decision, while the same calls from the main checkout are refused): the Bash and file guards resolve every write target to its own project (the nearest folder above the target holding .vbw/record.json beside .git, a path after cd, an absolute path and a path reached from a linked worktree included) and judge it by that project's record and lease exactly as a write from inside that project, with the same refusal texts; a target inside a worktree or project of its own is judged by that project's own record, so two VBW projects in one clone stay separate; the extra record read happens only when a target leaves the hook's project; cases in tests/guard-fail-closed.bats or a new guard file run the real hooks from a linked worktree as the project folder",
       "proof": "auto",
       "status": "open",
       "milestone": "M52",
@@ -81274,6 +81282,17 @@
         "ended": "2026-11-03T14:00:21Z",
         "cost": {
           "usd": 0.977197
+        }
+      },
+      {
+        "id": "plan-20261103T223247Z",
+        "kind": "plan",
+        "session": "0ee781c3-c5b6-4a6c-889f-04b89f1fba4a",
+        "milestone": "M52",
+        "started": "2026-11-03T22:32:47Z",
+        "ended": "2026-11-03T22:43:39Z",
+        "cost": {
+          "usd": 7.193763
         }
       }
     ],
