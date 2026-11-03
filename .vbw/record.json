@@ -68377,6 +68377,11 @@
       "id": "T226",
       "text": "vbw spec add during an open run un-approves the contract and stops the Devs mid-build (field report 2026-11-03): queue the addition into the next contract instead; the open contract and run stay valid",
       "status": "open"
+    },
+    {
+      "id": "T227",
+      "text": "Checks that run in the main session (field report 2026-11-03): a check may declare where it runs (the main session, which holds a project's exclusive lane or lock, instead of a Dev); the kernel runs it there at plan done or prove and records the result as evidence. Case: a plan whose task was 'run merge gates' closed without running them because a Dev cannot claim the heavy lane, and the kernel counted the plan done",
+      "status": "open"
     }
   ],
   "decisions": [
