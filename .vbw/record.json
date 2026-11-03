@@ -68447,6 +68447,11 @@
       "id": "T232",
       "text": "Prompt leak probe (field report 2026-11-03): on a real project, three Devs and the run's confirmer answered a question the operator had typed in the main chat mid-turn, so the building workflow's agents saw the chat's latest user message. building.js composes prompts from the plan, the profile and the project folder only, so the text reached them another way (the Workflow tool or the Agent spawn). Probe with a marker message and a tiny workflow whose agent is asked to repeat any user text it sees; if the harness adds it, strip it or report it upstream; the agents must receive only the plan",
       "status": "open"
+    },
+    {
+      "id": "T233",
+      "text": "Guard bypass to confirm (field report 2026-11-03): a Dev's Python write through standard input (python - <<EOF ... open(path,'w')) reached a protected check file during a build while the Edit tool's write to the same file was refused a moment later; the guard 'could not read that write's target so it let it through', the opposite of R219's fail-closed rule. Reproduce from the command shape the project's lead sends (first line verbatim, literal or variable path, lease open or not) with a case in tests/guard-interpreters.bats shown red, then fix in M52",
+      "status": "open"
     }
   ],
   "decisions": [
