@@ -43,9 +43,9 @@ The fix: remove that line, or change it to .vbw/runtime/
   to `jq` through files and pipes, so every `vbw` command keeps working however
   large the record grows.
 - **Key order:** the writer puts `schema`, `lease`, `protected` and `checks`
-  first, in that order, then the rest. Every record VBW writes is schema 4 (5
-  while it holds a helper's chosen effort, 7 while it holds `settings.mcp`) and has all four. A record with another key order, written by an older VBW, still
-  works.
+  first, in that order, then the rest. Every record VBW writes has all four; its
+  schema is the answer of the Versioning table. A record with another key order,
+  written by an older VBW, still works.
 - **The glance:** `.vbw/runtime/glance.json` holds the record's `schema`,
   `lease` and `protected` for the guards (docs/guards.md), besides what the
   status line shows. Every record write rewrites it in the same locked write and
@@ -97,7 +97,7 @@ The fix: remove that line, or change it to .vbw/runtime/
 
 | Field | Rules |
 |---|---|
-| `schema` | `4`, `5` while `settings.efforts` is set, `6` once a decision carries `plans`, or `7` while `settings.mcp` is set (`settings.mcp` on a schema other than 7, schema 7 without it, or a malformed or doubled entry is corrupt): VBW writes every record as schema 4 and raises it to 5 only for a chosen effort and to 6 only for a decision that names its plans, so an older VBW asks to be updated instead of calling the record corrupt. Corrupt: a schema 4, 5, 6 or 7 record with no `protected` list, a `protected` list that differs from the checks, a `protected` list on a record below schema 4, `settings.efforts` on a schema other than 5, 6 or 7, schema 5 without `settings.efforts`, a decision with `plans` on a schema other than 6, schema 6 without one, or any other value (older VBWs wrote 1 to 3, see Versioning) |
+| `schema` | the number the Versioning table gives the record's content; corrupt when above it, or when `protected` is missing on schema 4 or above or present below it; any other value is corrupt (older VBWs wrote 1 to 3, see Versioning) |
 | `project.name` | non-empty string |
 | `project.interview` | optional: the interview's answers kept in the project, `{ "level", "depth", "involvement", "at" }`: all three answers from the allowed values (`plugin/lib/interview.json`) and an ISO-8601 UTC time `at`; no other keys. Absent when the answers are kept private or not given yet. `vbw interview keep project` writes it (docs/interview.md). Added within schema 1: a record without it stays valid, so the schema stays 1 |
 | `project.declined` | optional: the suggestions the user declined, `[{ "text", "at" }]`, each a non-empty `text` and an ISO-8601 UTC time `at`; no other keys. `vbw suggest decline TEXT` appends one (a text equal to an existing one, ignoring case and spacing, is not added again); `vbw suggest list` prints them and `vbw next --json` returns the texts as `declined`. They are never offered again in the project (docs/interview.md). Absent until something is declined. Added within schema 1: a record without it stays valid, so the schema stays 1 |
@@ -113,9 +113,9 @@ The fix: remove that line, or change it to .vbw/runtime/
 | `fixes[]` | `id` `F<n>` unique; exactly one of `req` (an existing requirement) or `command` (a name in `commands`); optional `source` `qa` (a QA finding: only QA closes it) and, for a finding, `phase` (an existing phase: the one whose QA found it; a verdict changes only its own phase's findings, D332); optional `restore`, a file path, on a requirement's fix that is not a finding (`vbw fix restore`: a proof closes it once the file no longer deviates, docs/proof.md); `attempts` integer ≥ 0; `status` `open`, `fixed`, `closed` or `escalated` (lifecycle in docs/proof.md); `note` string |
 | `recommendation` | optional: the what's-next recommendation, `{ "at", "top", "runners" }` or `{ "at", "empty": true }`, no other keys. `at` is an ISO-8601 UTC time; `top` is `{ "text", "reason", "size", "source"? }` with non-empty text and reason and a size of `small`, `medium` or `large`; `runners` holds zero to two `{ "text", "size", "source"? }`. A `source` is a todo id or a requirement id. `vbw recommend` (JSON on stdin) writes it, replacing any earlier one, and refuses a malformed one, a source that is not open, a declined pick, `empty` while work is open, and any open run; `vbw status` shows it (`--json`: `recommendation`, null when none). A stored recommendation makes the record schema 3 |
 | `todos[]` | `id` `T<n>` unique; non-empty `text`; `status` `open`, `in_progress`, `done` or `dropped`. Optional `sort` (`next` or `later`) and `size` (`small`, `medium` or `large`), both or neither (`vbw todo add --sort next --size small TEXT`; `vbw todo sort ID next small` sets or replaces both on an open item; `vbw triage` and `vbw todo list` show next first, then later, then unsorted) |
-| `decisions[]` | `id` `D<n>` unique; non-empty `text`; optional `why` (non-empty: the reason the user gave); `at` an ISO-8601 UTC timestamp; optional `plans` (an approval's decision: the ids of the plans that approval changed, which `vbw show decisions --since-approval PLAN` reads; a record holding one is schema 6). `vbw decide TEXT [WHY]` records one |
+| `decisions[]` | `id` `D<n>` unique; non-empty `text`; optional `why` (non-empty: the reason the user gave); `at` an ISO-8601 UTC timestamp; optional `plans` (an approval's decision: the ids of the plans that approval changed, which `vbw show decisions --since-approval PLAN` reads; see Versioning). `vbw decide TEXT [WHY]` records one |
 | `commands` | object of name → argv (a non-empty array of non-empty strings): the project's own test, lint and build commands, kept in line with the `## Commands` section of `.vbw/spec.md` by `vbw spec sync` (`vbw init` writes the detected ones there; docs/proof.md). Recording a command never runs it; `vbw prove` runs only commands whose argv hash has consent (see Consent) |
-| `settings` | `profile` `quality`, `balanced` (default: Opus for the Architect and the Lead, Sonnet for every other role) or `budget`: the models VBW 1's team runs on (QA never runs below Sonnet) (`vbw config`, `lib/profiles.json`); optional `rigor` `auto` (the default when unset), `express`, `standard` or `deep`: computes each phase's tier or forces it (`vbw config rigor`, docs/rigor.md); optional `autonomy` `guided`, `balanced` (the default when unset) or `hands-off`: how much `/vbw:vibe` does on its own (`/vbw:profile`); `autonomy_cap` steps per autonomous run (1–500, default 25); optional `motion` `full`, `calm` or `off`: how much the VBW panel animates (`vbw config set motion`; unset, the panel picks `full` for users new to code and `calm` otherwise; test mode is always `off`); optional `command_timeout` a whole number of seconds from 1 to 86400 (3600 when unset): how long `vbw prove` lets a project command run, shared with the project (`vbw config set command_timeout`, docs/proof.md); optional `check_budget` a whole number of seconds from 1 to 86400 (120 when unset): how long a unit of a proof may take before the reports name it over budget, never a limit (`vbw config set check_budget`, docs/proof.md); optional `models` overrides per agent (`architect`, `lead`, `dev`, `qa`, `scout`, `debugger`, `docs`; the earlier names `planner`, `critic`, `builder` are renamed to `lead`, `qa`, `dev` on first use); optional `efforts`, a helper's chosen effort for every step of that role over the profile's table (`architect`, `lead`, `dev`, `qa`, `scout`, `debugger`, `docs`, each `low`, `medium`, `high`, `xhigh` or `max`; `vbw config set effort.dev high`, `default` removes it, and without any the key goes): a record holding it is schema 5; optional `mcp`, the MCP servers the agents may use, a non-empty array of `{ "server", "read_only" }` (server names of letters, digits, `_`, `.` and `-`, each once; `read_only` `true` for a pure read-only server open to every agent, `false` for a server open to the writing agents only, or a non-empty array of tool names open to every agent for a mixed server) (`vbw config set mcp SERVER[:read-only[=TOOL,TOOL]]`, `default` removes it): a record holding it is schema 7 |
+| `settings` | `profile` `quality`, `balanced` (default: Opus for the Architect and the Lead, Sonnet for every other role) or `budget`: the models VBW 1's team runs on (QA never runs below Sonnet) (`vbw config`, `lib/profiles.json`); optional `rigor` `auto` (the default when unset), `express`, `standard` or `deep`: computes each phase's tier or forces it (`vbw config rigor`, docs/rigor.md); optional `autonomy` `guided`, `balanced` (the default when unset) or `hands-off`: how much `/vbw:vibe` does on its own (`/vbw:profile`); `autonomy_cap` steps per autonomous run (1–500, default 25); optional `motion` `full`, `calm` or `off`: how much the VBW panel animates (`vbw config set motion`; unset, the panel picks `full` for users new to code and `calm` otherwise; test mode is always `off`); optional `command_timeout` a whole number of seconds from 1 to 86400 (3600 when unset): how long `vbw prove` lets a project command run, shared with the project (`vbw config set command_timeout`, docs/proof.md); optional `check_budget` a whole number of seconds from 1 to 86400 (120 when unset): how long a unit of a proof may take before the reports name it over budget, never a limit (`vbw config set check_budget`, docs/proof.md); optional `models` overrides per agent (`architect`, `lead`, `dev`, `qa`, `scout`, `debugger`, `docs`; the earlier names `planner`, `critic`, `builder` are renamed to `lead`, `qa`, `dev` on first use); optional `efforts`, a helper's chosen effort for every step of that role over the profile's table (`architect`, `lead`, `dev`, `qa`, `scout`, `debugger`, `docs`, each `low`, `medium`, `high`, `xhigh` or `max`; `vbw config set effort.dev high`, `default` removes it, and without any the key goes; see Versioning); optional `mcp`, the MCP servers the agents may use, a non-empty array of `{ "server", "read_only" }` (server names of letters, digits, `_`, `.` and `-`, each once; `read_only` `true` for a pure read-only server open to every agent, `false` for a server open to the writing agents only, or a non-empty array of tool names open to every agent for a mixed server) (`vbw config set mcp SERVER[:read-only[=TOOL,TOOL]]`, `default` removes it; see Versioning) |
 | `evidence` | `null` or the last `vbw prove` result: `at`, `contract` (the hash proved), `tree` (the git tree id of the working folder's project files), `head` (the tree of the committed code the checks ran on; both decide freshness, docs/proof.md), `record` (the SHA-256 of the record without its evidence as that proof left it: with `tree` and `head` unchanged it tells a deliberate re-run from a record-only change, docs/proof.md), `full` (true when nothing was reused, no command was skipped and the quick command did not stand in; evidence without it counts as full, docs/proof.md), `passed`, `checks` and `commands` (name → `{status, exit, seconds, tail, fp, at}`), `test_files` (path → the same, when the spec declares a single-file form; `commands.test` is then one summary result marked `of_files: true`) `scope[]` violations and `undone`, an array of `{commit, plan, by}` (the 40-hex id of a commit the scope check left unjudged, the plan its trailer names, the 40-hex id of the commit that undid it; `[]` when none; a malformed entry makes the record corrupt) (docs/proof.md). A record written before this field still reads, and `vbw show evidence` prints nothing for it. `deviations` is an array of `{file, plan, commit, at, change, by}`: a file a plan of the current milestone delivered that `HEAD` no longer holds as VBW's last commit of it (`commit`, a commit id, made at `at`) left it; `change` is `deleted` or `changed`, `by` the ids of the commits outside any plan that changed it after (`[]` when only a merge did); `plan` is the plan that owns the file. It is `[]` when there are none, a malformed entry makes the record corrupt, and evidence without it lists none (docs/proof.md, Delivered files). A result that ran carries `why` (the reason it ran); a reused result, the test command's included, carries `reused: true` and keeps the `at` of the proof that really ran it. Reuse follows each unit's read list (the files it opened and the folders it listed), kept in the clone at `.git/vbw/runs.json`, never in the record (docs/proof.md). `own` is where the proof's time went, in seconds: `planning`, `copies`, `tracking`, `saving`, `record` (VBW's own steps, measured by the clock) and `wall` (the whole command, up to the end of its record step; `tracking` is summed over units that run side by side, so the steps can add up to more than `wall`); a malformed `own` makes the record corrupt. `causes` lists the whole-proof causes that made units run (`[]` when the reuse rule decided alone); it stays small however many files a commit adds: more than three unseen files are one cause with their count and the first three paths (docs/proof.md). `vbw show evidence` prints the steps and each unit's reason, and says `not recorded` for both on a record written before these fields (docs/proof.md). A proof that reused anything has `full` false; QA and shipping accept it all the same A unit's `seconds` is a number to a tenth of a second (whole seconds in an older record). |
 | `converted` | optional: `{ "from": ".vbw-planning", "at" }`, set by `vbw legacy done` once a VBW 1 plan was brought in (docs/convert.md) |
 | `protected` | always present, right after `lease`: the sorted list of every file an approved check protects (the union of all checks' `files`), each path once; an empty list when there are no checks. The writer keeps it equal to the checks on every write. The guards read it instead of the checks (docs/guards.md). Corrupt when it is missing on schema 4, when it differs from the checks, or when it is on a record below schema 4 |
@@ -128,18 +128,30 @@ key is a typo, a stale field or a newer schema, and all three must be loud.
 
 ## Versioning
 
-A VBW reads every schema up to its own (`VBW_SCHEMA_MAX`, currently 7). Every
-record this VBW writes is schema 4, or 5 while it holds `settings.efforts`
-(VBW 2.1.13): a VBW up to 2.1.12 reads up to schema 4, so it asks to be updated
-for such a record, and a project without a chosen effort stays readable by it.
-A record becomes schema 6 once an approval records the plans it changed
-(`decisions[].plans`, #705), which happens from the second contract approval
-in a clone on: a VBW that reads up to schema 5 asks to be updated for it.
+The schema says which features a record holds, so an older VBW that cannot read
+one asks to be updated instead of calling the record corrupt. One table gives it:
+
+| Feature | Schema |
+|---|---|
+| `settings.efforts` | 5 |
+| a decision that names its plans (`decisions[].plans`) | 6 |
+| `settings.mcp` | 7 |
+| a recorded break that carries `tree` or `contract` (`plans[].mutations[]`) | 8 |
+
+The rule:
+
+- The highest feature present wins, and 4 is the floor: every record this VBW
+  writes is at least 4.
+- A record below its content loads and is raised to the table's answer on its
+  next write (D582), as a record of schema 1 to 3 already is.
+- A record above its content is corrupt; the message names the feature that
+  schema is only for.
+- A VBW reads every schema up to its own (`VBW_SCHEMA_MAX`, currently 8), which is
+  the table's top. A newer record makes it ask to be updated.
+- There is no migration command.
 
 Records of schemas 1 to 3, which an older VBW wrote, have no `protected` list.
-They are still read, and they become schema 4 on their next write. There is no
-migration command. An older VBW that opens a record this VBW wrote says it
-needs a newer VBW.
+They are still read, and they become schema 4 on their next write.
 
 History of what older VBWs wrote:
 a record whose checks use `alone` was schema 2, so an older VBW asks to update
@@ -158,7 +170,9 @@ this project needs a newer VBW: its record was written with schema 2, this VBW r
 
 The refusal comes before any validation, so the record is never called
 corrupt, and it covers reads and writes: the file is never modified.
-`vbw doctor` reports the same condition with the same advice.
+`vbw doctor` reports the same condition with the same advice, and gives the same
+two answers as before: a newer schema means update VBW; a corrupt record means
+restore it from git. A record below its content reaches neither, since it loads.
 
 Exit codes of a command that opens the record:
 
