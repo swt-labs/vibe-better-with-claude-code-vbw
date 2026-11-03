@@ -135,7 +135,7 @@ untouched() { jq -e '.milestone.title == "Next" and ([.requirements[] | select(.
   [[ "$(reason)" == *"s9"* ]] || { reason; false; }
 }
 
-@test "R179 (F179): a kernel step the loop runs itself that refuses (a ship on a dirty tree) ends the loop with the reason, the item and the step, and the report" {
+@test "R179 (F179): a kernel step the loop runs itself that refuses (a ship with the plan's file uncommitted) ends the loop with the reason, the item and the step, and the report" {
   VBW_SESSION_ID=s1 "$VBW" loop start T1 T2 --no-ceiling > /dev/null
   [ "$(step)" = plan ]
   loop_plan "$(item_req "Visitors can read a greeting")" "$(jq -r .next_phase "$TEST_ROOT/step.json" | sed 's/^/P/')"
@@ -153,9 +153,10 @@ untouched() { jq -e '.milestone.title == "Next" and ([.requirements[] | select(.
   jq -e '.lease == null and (.costs.runs | length) == 1 and .costs.runs[0].kind == "build"' .vbw/record.json
   [ "$(step)" = prove ] || { cat "$TEST_ROOT/step.json"; false; }
   loop_prove
-  # A stray file outside .vbw makes vbw ship refuse: the loop must say so, not go quiet.
-  : > stray.txt
-  # The working tree changed, so the kernel asks for a proof first; the proof passes (a stray file is no test), then the ship refuses.
+  # An uncommitted edit to the plan's own file makes vbw ship refuse (R244: a stray
+  # file of the user's never does): the loop must say so, not go quiet.
+  printf 'hello\nagain\n' > src/greet.txt
+  # The working tree changed, so the kernel asks for a proof first; the proof passes (greet.txt still says hello), then the ship refuses.
   [ "$(step)" = prove ] || { cat "$TEST_ROOT/step.json"; false; }
   loop_prove
   [ "$(step)" = stopped ] || { cat "$TEST_ROOT/step.json"; false; }
@@ -163,7 +164,8 @@ untouched() { jq -e '.milestone.title == "Next" and ([.requirements[] | select(.
     || { jq .loop.ended .vbw/record.json; false; }
   [ -f .vbw/loop-report.md ]
   grep -q 'ship was refused' .vbw/loop-report.md
-  [ -f stray.txt ]
+  # The loop committed nothing on its own: the edit is still on disk, uncommitted.
+  [ "$(git status --porcelain -- src/greet.txt)" = " M src/greet.txt" ]
   # The cut-off item's cost line shows its spend so far, never "not counted yet" once the loop has ended (F184).
   ! grep -q 'not counted yet' .vbw/loop-report.md || { cat .vbw/loop-report.md; false; }
   grep -qE '^- T1 \(in_progress\): .* so far \(cut off when the loop ended\)' .vbw/loop-report.md || { cat .vbw/loop-report.md; false; }
