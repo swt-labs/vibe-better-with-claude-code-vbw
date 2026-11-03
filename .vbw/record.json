@@ -68357,6 +68357,11 @@
       "id": "T222",
       "text": "Proof reuse when a submodule moves (#745, halindrome): diff inside each moved submodule (git -C sub diff-tree between the two gitlinks, paths prefixed with the folder) and judge units by the files that changed; stay unknown when the old gitlink is missing, a submodule was added or removed, or a nested submodule moved. Measured: all 8 units rerun on every proof of a 5-submodule monorepo, about 4 of 5.5 min. Already adopted as a to-do in the #744 thread; release after 2.1.24.",
       "status": "open"
+    },
+    {
+      "id": "T223",
+      "text": "Hook bench: the reference workload is measured once at the start, so a runner that slows down later in the run fails a calm code path (2.1.24 release: macOS shard 1 twice OVER by 0.2-0.7 ms with sh+jq startup at 11-12.7 ms against 6.5-9 on the same run; 6 attempts). When a case is over its scaled budget, re-measure the reference beside it and judge the second measure against the fresh ratio; print both ratios.",
+      "status": "open"
     }
   ],
   "decisions": [
