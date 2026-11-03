@@ -68387,6 +68387,11 @@
       "id": "T228",
       "text": "plan done when the blocking check belongs to a later plan (field report 2026-11-03): allow it with the dependency recorded (built, awaiting Cnnn); the requirement stays unproven until that check runs. Case: P10.3 waited on P16.3's live-session check",
       "status": "open"
+    },
+    {
+      "id": "T229",
+      "text": "Kernel latency on large records (field report 2026-11-03): vbw next --json and vbw todo add take tens of seconds on a 225-plan, 231-check record, so the approve/build/prove loop is bounded by the kernel. Reproduce with a synthetic record of that size, profile the jq passes, cut to under a second; add a timed case",
+      "status": "open"
     }
   ],
   "decisions": [
