@@ -66275,14 +66275,14 @@
       "id": "F345",
       "req": "R179",
       "attempts": 0,
-      "status": "open",
+      "status": "fixed",
       "note": "C301 fail (exit 1)"
     },
     {
       "id": "F346",
       "command": "test",
       "attempts": 0,
-      "status": "open",
+      "status": "fixed",
       "note": "test fail"
     }
   ],
@@ -70949,6 +70949,12 @@
       "id": "D579",
       "at": "2026-11-03T00:07:17Z",
       "text": "Contract approved: 235 requirements, 562 checks, 591 plans (d07f4fc1ffae)",
+      "plans": []
+    },
+    {
+      "id": "D580",
+      "at": "2026-11-03T07:09:03Z",
+      "text": "Contract approved: 235 requirements, 562 checks, 591 plans (ef891440aa41)",
       "plans": []
     }
   ],
