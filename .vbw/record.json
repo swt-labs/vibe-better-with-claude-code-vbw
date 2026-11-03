@@ -68362,6 +68362,11 @@
       "id": "T223",
       "text": "Hook bench: the reference workload is measured once at the start, so a runner that slows down later in the run fails a calm code path (2.1.24 release: macOS shard 1 twice OVER by 0.2-0.7 ms with sh+jq startup at 11-12.7 ms against 6.5-9 on the same run; 6 attempts). When a case is over its scaled budget, re-measure the reference beside it and judge the second measure against the fresh ratio; print both ratios.",
       "status": "open"
+    },
+    {
+      "id": "T224",
+      "text": "proofcopy: git calls in a clean copy or a submodule outside proofcopy_git (reads.sh:226,229 git ls-files in the copy; proofcopy.sh:448 ls-files and :620 worktree add in a submodule): with GIT_DIR exported they act on the project. Route them through one helper that unsets GIT_DIR, GIT_WORK_TREE, GIT_INDEX_FILE and GIT_COMMON_DIR (the #744 review found the gap; #744 adds proofcopy_git for its own calls).",
+      "status": "open"
     }
   ],
   "decisions": [
