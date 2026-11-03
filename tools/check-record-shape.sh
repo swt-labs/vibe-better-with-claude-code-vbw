@@ -31,7 +31,7 @@ lists=$(grep -vE '^[[:space:]]*#' "$lib/record.jq" | tr '\n' ' ' | { grep -oE "$
 rows=$(jq -r -n -L "$lib" 'include "record-schema"; schema_features[] | "\(.schema) \(.feature)"' |
   while IFS= read -r r; do printf 'record-schema.jq: %s\n' "$r"; done | sorted)
 iv=$(jq -r 'to_entries[] | "\(.key)=\(.value | sort | join(","))"' "$lib/interview.json" |
-  while IFS= read -r r; do printf 'interview.json: %s\n' "$r"; done | sorted)
+  while IFS= read -r r; do printf '%s.json: %s\n' interview "$r"; done | sorted)
 shape=$(printf '%s\n%s\n%s\n' "$lists" "$rows" "$iv")
 
 if command -v shasum > /dev/null 2>&1; then

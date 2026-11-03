@@ -138,7 +138,7 @@ one asks to be updated instead of calling the record corrupt. One table gives it
 | `settings.mcp` | 7 |
 | a recorded break that carries `tree` or `contract` (`plans[].mutations[]`) | 8 |
 
-A new key or allowed value of the record (a key list or enum in `record.jq`, an interview value) needs a schema bump: a new table row, with `VBW_SCHEMA_MAX` and this page moved with it. `tools/check-record-shape.sh` enforces it against the digest pinned in `tests/standards.bats`. "Added within schema N: a record without it stays valid, so the schema stays N" is not used for new keys from this change on; the rows above that describe past additions keep their history.
+A new key or allowed value of the record needs a schema bump (a key list or enum in `record.jq`, an interview value): a new table row, with `VBW_SCHEMA_MAX` and this page moved with it. `tools/check-record-shape.sh` enforces it against the digest pinned in `tests/standards.bats`. "Added within schema N: a record without it stays valid, so the schema stays N" is not used for new keys from this change on; the rows above that describe past additions keep their history.
 
 The rule:
 
