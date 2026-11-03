@@ -68397,6 +68397,11 @@
       "id": "T230",
       "text": "The clean copy never copies git worktrees (field report 2026-11-03): 2.1.13 copied .claude/worktrees (133 GB) into the proof copy; exclude every path git worktree list names inside the project and the .claude/worktrees folder by rule, and name them at vbw init (goes with T186)",
       "status": "open"
+    },
+    {
+      "id": "T231",
+      "text": "vbw apply refuses a docs plan against a requirement whose checks only code can satisfy (field report 2026-11-03): such a plan can never prove the requirement and its tasks could not close until a --none decision; the Lead's planning spec gets the same rule",
+      "status": "open"
     }
   ],
   "decisions": [
