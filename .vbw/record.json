@@ -1,5 +1,5 @@
 {
-  "schema": 6,
+  "schema": 8,
   "lease": null,
   "protected": [
     "tests/adaptive-results.bats",
@@ -63801,12 +63801,176 @@
         "plugin/lib/record.sh"
       ],
       "after": [],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "Add plugin/lib/record-schema.jq, the schema table, definitions only (an included jq module may hold no main expression): `def schema_floor: 4;`; `def schema_features: [` opening the table on its own line, one row per feature as an object {schema, feature, present} evaluated on the record (null input works): {schema: 5, feature: \"settings.efforts\", present: settings.efforts set}, {schema: 6, feature: \"a decision that names its plans\", present: a decisions[] object with a plans key}, {schema: 7, feature: \"settings.mcp\", present: settings.mcp set}, {schema: 8, feature: \"a recorded break that carries tree or contract\", present: a plans[].mutations[] object with a tree or a contract key}; `def schema_of:` the highest schema of the rows present, schema_floor when none; `def schema_top:` the highest schema in the table. The feature words are exact: the refusal message and the docs use them, and tests/standards.bats (R248) digests the rows as `N feature`",
         "plugin/lib/record.jq reads the table: `include \"record-schema\" {search: \"./\"};` right after the header comment (every `jq -f record.jq` caller then works without -L); replace the per-schema rules (lines 109-124: protected on 4/5/6/7, mcp/7, efforts/5, decision plans/6) with three rules: a record of schema_floor or above must carry protected and a record with protected must be schema_floor or above ('protected is missing: a record of schema 4 or above must carry the protected field' / 'protected is only for a record of schema 4 or above', the number from schema_floor); a numeric schema above (the record | schema_of) is corrupt as 'schema N is only for a record with <the table row's feature>'; the legacy rule for a record without protected (3 with a sorted todo or a recommendation, 2 with an alone check, else 1) kept with its guard written as 'below schema_floor' instead of the list of numbers. No literal 5, 6, 7 or 8 and no new literal string list in record.jq (R248 pins today's lists: adding one moves its digest). Header comment (lines 1-6): format 4, protected, and 'the schema record-schema.jq computes', no per-schema prose",
         "plugin/lib/record.sh: VBW_SCHEMA_MAX=8, its header comment naming record-schema.jq as the definition (no per-feature numbers); record_update's writer runs `jq \"$@\" -L \"$VBW_LIB\" \"include \\\"record-schema\\\"; $filter | {schema: schema_of, lease: ...` in place of the if/elif chain (an include goes before the filter's own defs, so a filter starting with definitions still works); the comment above it says the schema comes from the table. Then verify: `plugin/bin/vbw status` exits 0 in this repository (its record is schema 6 with ten breaks carrying tree and contract: it loads and the build's first write raises it to 8), and under /bin/bash `PATH=\"/bin:$PATH\" bats tests/record-schema.bats tests/record.bats tests/record-newer.bats tests/record-protected.bats tests/config-mcp.bats tests/briefs-decisions.bats tests/effort-profile.bats tests/kernel-core.bats tests/kernel-consent.bats tests/scope-undone-record.bats tests/loop-park-schema.bats tests/check-alone-contract.bats tests/triage-kernel.bats tests/mutate-command.bats` passes (the test files of the area; none of the mutate files needs an edit)"
+      ],
+      "mutations": [
+        {
+          "rule": {
+            "req": "R247",
+            "text": "the schema is one definition: plugin/lib/record-schema.jq holds the table (settings.efforts 5, a decision that names its plans 6, settings.mcp 7, a recorded break that carries tree or contract 8) as rows {schema, feature, present} and schema_of; record.jq includes it and record_update computes the schema with it"
+          },
+          "what": "schema_of takes the lowest feature, not the highest",
+          "files": [
+            "plugin/lib/record-schema.jq"
+          ],
+          "checks": {
+            "C568": "red"
+          },
+          "result": "red",
+          "at": "2026-11-03T11:30:32Z",
+          "head": "404672567ef461f3c9f26aebf6d92b1e34cae410",
+          "tree": "a60c5d863faf999a6c815722b0426858daa487e9",
+          "contract": "2937f48820606df5f300afacccfd430ea053173dbca26ad91861fcd445407bf3"
+        },
+        {
+          "rule": {
+            "req": "R247",
+            "text": "no per-feature if/elif chain remains in record_update and no per-schema rule in record.jq; no literal schema 5, 6, 7 or 8 is written in record.sh or record.jq outside VBW_SCHEMA_MAX, and their header comments name the module; the legacy rule for schema 1 to 3 stays"
+          },
+          "what": "a per-feature if with literal 7 back in record_update",
+          "files": [
+            "plugin/lib/record.sh"
+          ],
+          "checks": {
+            "C568": "red"
+          },
+          "result": "red",
+          "at": "2026-11-03T11:30:36Z",
+          "head": "404672567ef461f3c9f26aebf6d92b1e34cae410",
+          "tree": "a60c5d863faf999a6c815722b0426858daa487e9",
+          "contract": "2937f48820606df5f300afacccfd430ea053173dbca26ad91861fcd445407bf3"
+        },
+        {
+          "rule": {
+            "req": "R247",
+            "text": "on every write the highest feature present wins and 4 is the floor: vbw mutate on a fresh project writes schema 8 with a break carrying tree and contract; without a break settings.mcp gives 7, a decision's plans 6, settings.efforts 5, none 4"
+          },
+          "what": "every write is schema 4",
+          "files": [
+            "plugin/lib/record.sh"
+          ],
+          "checks": {
+            "C568": "red"
+          },
+          "result": "red",
+          "at": "2026-11-03T11:30:40Z",
+          "head": "404672567ef461f3c9f26aebf6d92b1e34cae410",
+          "tree": "a60c5d863faf999a6c815722b0426858daa487e9",
+          "contract": "2937f48820606df5f300afacccfd430ea053173dbca26ad91861fcd445407bf3"
+        },
+        {
+          "rule": {
+            "req": "R247",
+            "text": "a schema above the table's answer is refused as corrupt (exit 3, vbw doctor says restore the record from git), the message naming the feature that schema is only for: 8 a recorded break that carries tree or contract, 7 settings.mcp, 6 a decision that names its plans, 5 settings.efforts"
+          },
+          "what": "a schema above the table is no longer refused",
+          "files": [
+            "plugin/lib/record.jq"
+          ],
+          "checks": {
+            "C568": "red"
+          },
+          "result": "red",
+          "at": "2026-11-03T11:30:43Z",
+          "head": "404672567ef461f3c9f26aebf6d92b1e34cae410",
+          "tree": "a60c5d863faf999a6c815722b0426858daa487e9",
+          "contract": "2937f48820606df5f300afacccfd430ea053173dbca26ad91861fcd445407bf3"
+        },
+        {
+          "rule": {
+            "req": "R247",
+            "text": "a schema below the table's answer loads (vbw status exit 0, vbw doctor says the record is valid, neither doctor message) and the next write raises it, changing nothing else: a schema-6 record with a break carrying tree and contract (the shape of VBW's own record) becomes 8, schema 4 with settings.mcp 7, schema 5 with a decision's plans 6, schema 4 with settings.efforts 5"
+          },
+          "what": "a record 3 or more below the table's answer is refused",
+          "files": [
+            "plugin/lib/record.jq"
+          ],
+          "checks": {
+            "C568": "green"
+          },
+          "result": "survivor",
+          "at": "2026-11-03T11:30:47Z",
+          "head": "404672567ef461f3c9f26aebf6d92b1e34cae410",
+          "tree": "a60c5d863faf999a6c815722b0426858daa487e9",
+          "contract": "2937f48820606df5f300afacccfd430ea053173dbca26ad91861fcd445407bf3"
+        },
+        {
+          "rule": {
+            "req": "R247",
+            "text": "protected is stated once against the floor: a record of schema 4 or above without it, or one below 4 with it, is corrupt with a message saying 'schema 4 or above'; a schema that is not a number stays corrupt"
+          },
+          "what": "the floor itself no longer counts as protected-carrying",
+          "files": [
+            "plugin/lib/record.jq"
+          ],
+          "checks": {
+            "C568": "red"
+          },
+          "result": "red",
+          "at": "2026-11-03T11:30:51Z",
+          "head": "404672567ef461f3c9f26aebf6d92b1e34cae410",
+          "tree": "a60c5d863faf999a6c815722b0426858daa487e9",
+          "contract": "2937f48820606df5f300afacccfd430ea053173dbca26ad91861fcd445407bf3"
+        },
+        {
+          "rule": {
+            "req": "R247",
+            "text": "VBW_SCHEMA_MAX is 8 and equals the table's top: a schema-9 record exits 4 saying the project needs a newer VBW and that this VBW reads up to schema 8, never that it is corrupt, and vbw doctor says to update VBW"
+          },
+          "what": "VBW_SCHEMA_MAX is 9, not the table's top",
+          "files": [
+            "plugin/lib/record.sh"
+          ],
+          "checks": {
+            "C568": "red"
+          },
+          "result": "red",
+          "at": "2026-11-03T11:30:55Z",
+          "head": "404672567ef461f3c9f26aebf6d92b1e34cae410",
+          "tree": "a60c5d863faf999a6c815722b0426858daa487e9",
+          "contract": "2937f48820606df5f300afacccfd430ea053173dbca26ad91861fcd445407bf3"
+        },
+        {
+          "rule": {
+            "req": "R247",
+            "text": "T221: a kernel whose VBW_SCHEMA_MAX is 7 reading the schema-8 record this VBW's vbw mutate wrote exits 4 'needs a newer VBW', never 3 'record is corrupt', and leaves the record unchanged; a break's tree and contract shape is pinned through the validator (mutation_ok)"
+          },
+          "what": "a newer schema exits 3 as corrupt instead of 4",
+          "files": [
+            "plugin/lib/record.sh"
+          ],
+          "checks": {
+            "C568": "red"
+          },
+          "result": "red",
+          "at": "2026-11-03T11:30:59Z",
+          "head": "404672567ef461f3c9f26aebf6d92b1e34cae410",
+          "tree": "a60c5d863faf999a6c815722b0426858daa487e9",
+          "contract": "2937f48820606df5f300afacccfd430ea053173dbca26ad91861fcd445407bf3"
+        },
+        {
+          "rule": {
+            "req": "R247",
+            "text": "a schema below the table's answer loads (vbw status exit 0, vbw doctor says the record is valid, neither doctor message) and the next write raises it, changing nothing else: a schema-6 record with a break carrying tree and contract (the shape of VBW's own record) becomes 8, schema 4 with settings.mcp 7, schema 5 with a decision's plans 6, schema 4 with settings.efforts 5"
+          },
+          "what": "a schema-5 record with a decision's plans is refused",
+          "files": [
+            "plugin/lib/record.jq"
+          ],
+          "checks": {
+            "C568": "red"
+          },
+          "result": "red",
+          "at": "2026-11-03T11:31:36Z",
+          "head": "404672567ef461f3c9f26aebf6d92b1e34cae410",
+          "tree": "a60c5d863faf999a6c815722b0426858daa487e9",
+          "contract": "2937f48820606df5f300afacccfd430ea053173dbca26ad91861fcd445407bf3"
+        }
       ]
     },
     {
@@ -63820,12 +63984,32 @@
         "docs/record.md"
       ],
       "after": [],
-      "status": "planned",
+      "status": "done",
       "role": "docs",
       "tasks": [
         "Versioning section: replace the per-schema prose (currently 7, 'schema 4, or 5 while...', the 5/6 paragraphs) with one table `| Feature | Schema |` of four rows, the feature words as plugin/lib/record-schema.jq names them: `settings.efforts` 5; a decision that names its plans (`decisions[].plans`) 6; `settings.mcp` 7; a recorded break that carries `tree` or `contract` (`plans[].mutations[]`) 8. Beside it, the rule in plain words: the highest feature present wins and 4 is the floor (every record this VBW writes); a record whose schema is below what its content needs loads and is raised to the table's answer on its next write (D582), as a schema 1 to 3 record already does; a record whose schema is above what it holds is corrupt, the message naming the feature that schema is only for; `VBW_SCHEMA_MAX`, currently 8, is the table's top; there is no migration command. Keep the history paragraph of what older VBWs wrote (schemas 1 to 3) as history",
         "The Shape section points to the table instead of restating numbers: the key-order note (lines 45-48: no '5 while ... 7 while ...'; say the schema is the Versioning table's answer), the `schema` row (line 100: 'the number the Versioning table gives the record's content; corrupt when above it, or when protected is missing on schema 4 or above or present below it'; name Versioning, list no per-schema cases), the `decisions[]` row (line 116: drop 'a record holding one is schema 6', point to Versioning), the `settings` row (line 118: drop 'a record holding it is schema 5' and 'schema 7', point to Versioning). The `protected` row keeps 'schema 4' as the floor",
         "Versioning's exit-code and doctor paragraph: say that `vbw doctor` gives the same two answers as before (a newer schema: update VBW; a corrupt record: restore it from git) and that a record below its content reaches neither, since it loads. Check the file reads as one rule in one place: `grep -n 'schema [5-8]' docs/record.md` finds the table and the history paragraph only. Then `bats tests/record-schema-docs.bats tests/protected-docs.bats` (protected-docs passes only once P199.1 sets VBW_SCHEMA_MAX=8; its own line here is the `currently 8`)"
+      ],
+      "mutations": [
+        {
+          "rule": {
+            "req": "R247",
+            "text": "docs/record.md states the rule once, in Versioning: the table's four rows, 4 the floor, the highest feature wins, a record below its content loads and is raised on its next write, one above it is corrupt, VBW_SCHEMA_MAX currently 8, no migration command; the key-order note and the schema, decisions and settings rows point to the table instead of restating numbers"
+          },
+          "what": "VBW_SCHEMA_MAX stated as currently 7",
+          "files": [
+            "docs/record.md"
+          ],
+          "checks": {
+            "C569": "red"
+          },
+          "result": "red",
+          "at": "2026-11-03T11:17:43Z",
+          "head": "28b7b711b5dcb152ec3a123faf58a24bb9c6ff34",
+          "tree": "9c7ff0cf5843db74a97e633d569125fccdd10664",
+          "contract": "2937f48820606df5f300afacccfd430ea053173dbca26ad91861fcd445407bf3"
+        }
       ]
     },
     {
@@ -80775,6 +80959,17 @@
         "ended": "2026-11-03T10:26:12Z",
         "cost": {
           "usd": 13.391375
+        }
+      },
+      {
+        "id": "build-20261103T111621Z",
+        "kind": "build",
+        "session": "0ee781c3-c5b6-4a6c-889f-04b89f1fba4a",
+        "milestone": "M51",
+        "started": "2026-11-03T11:16:21Z",
+        "ended": "2026-11-03T11:32:52Z",
+        "cost": {
+          "usd": 1.382071
         }
       }
     ],
