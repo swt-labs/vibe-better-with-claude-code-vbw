@@ -683,7 +683,11 @@ where a runner finds its own configuration. With a dir, `{file}` is the test
 file's path relative to its dir (`src/cart.test.ts`, not
 `apps/webapp/src/cart.test.ts`), and every pathspec of the form must lie under
 it, with no `.` or `..` parts; an exclude does too, in any of git's spellings
-(`:!`, `:^` or `:(exclude)`, as in `:!apps/webapp/src/slow.test.ts`). A dir is a real folder: no `.` or `..` parts, no
+(`:!`, `:^` or `:(exclude)`, as in `:!apps/webapp/src/slow.test.ts`). Other
+pathspec magic (`:(glob)`, `:(icase)`, `:(top)` or `:/`, or an exclude combined
+with one) is refused in a form with a dir, naming it: it changes what git
+matches, so the pathspec's text no longer shows that its files lie under the
+dir. A dir is a real folder: no `.` or `..` parts, no
 glob characters (`*`, `?`, `[`), and not a committed symbolic link or under one.
 A single form may take a top-level `- dir:` line too. A name is letters,
 digits, `_` or `-`, and given once; one section uses one shape, top-level lines

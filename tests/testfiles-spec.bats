@@ -260,6 +260,17 @@ refused() {
   done
 }
 
+@test "#735: a form with a dir refuses pathspec magic other than the three excludes, naming the magic, not the dir" {
+  local x
+  # glob, icase and top change what git matches, so the under-dir check of the text proves nothing.
+  for x in ':(glob)' ':(icase)' ':(top)' ':/' ':(exclude,glob)' ':(glob,exclude)'; do
+    refused "- dir: apps/a
+- run: sh {file}
+- files: ${x}apps/a/b.t apps/a/*.t" "line 15" "no pathspec magic but an exclude" "${x}apps/a/b.t"
+    [[ "$output" != *"must lie under its dir"* ]] || { echo "$x: $output"; false; }
+  done
+}
+
 @test "#735: spec.jq, record.jq and the kernel's jq defs strip an exclude with the same pathspec_path" {
   local f defs=()
   for f in lib/spec.jq lib/record.jq lib/record.sh; do

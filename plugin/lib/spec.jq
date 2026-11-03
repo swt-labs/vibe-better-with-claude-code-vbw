@@ -130,8 +130,14 @@ split("\n") | map(sub("\r$"; ""))
     | .errors += [$fs[]
         | if .run == null then "line \(.line): \(tf_label) needs a '- run: <command with {file}>' line"
           elif .files == [] then "line \(.line): \(tf_label) needs a '- files: <git pathspecs>' line"
-          elif .dir != null then . as $f | (.files[] | select(.p | pathspec_path | (startswith($f.dir + "/") | not) or any(split("/")[]; . == "." or . == ".."))
-            | "line \(.line): the files of \($f | tf_label) must lie under its dir \($f.dir)/ (each pathspec starts with it, with no '.' or '..' parts), got: \(.p)")
+          # Other magic (glob, icase, top, ...) changes what git matches, so the
+          # under-dir test of the text would prove nothing: refused by name.
+          elif .dir != null then . as $f | (.files[]
+            | if .p | pathspec_path | startswith(":") then
+                "line \(.line): the files of \($f | tf_label) take no pathspec magic but an exclude (:!, :^ or :(exclude)) in a form with a dir, got: \(.p)"
+              elif .p | pathspec_path | (startswith($f.dir + "/") | not) or any(split("/")[]; . == "." or . == "..") then
+                "line \(.line): the files of \($f | tf_label) must lie under its dir \($f.dir)/ (each pathspec starts with it, with no '.' or '..' parts), got: \(.p)"
+              else empty end)
           else empty end]
   end
 | .tforms as $fs
