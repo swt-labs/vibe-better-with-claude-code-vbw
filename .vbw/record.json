@@ -68372,6 +68372,11 @@
       "id": "T225",
       "text": "Amendment path (field report 2026-11-03, a Rust/Python project, 46 build rounds): a correction that does not change what a check asserts (a check or plan gaining a file, a dependency between plans) is recorded as an amendment and shown at the next gate, with no stop and no approval; a reworded rule or check text keeps approval, and the approval question becomes judgeable (what the check promised before and after, one line each) instead of a fingerprint. Case: an older check protected a deploy test script a later plan had to edit; one-line fix cost vbw apply --patch, a re-approval and vbw plan reset. Same root as the fixture approvals of M45, M49, M51",
       "status": "open"
+    },
+    {
+      "id": "T226",
+      "text": "vbw spec add during an open run un-approves the contract and stops the Devs mid-build (field report 2026-11-03): queue the addition into the next contract instead; the open contract and run stay valid",
+      "status": "open"
     }
   ],
   "decisions": [
