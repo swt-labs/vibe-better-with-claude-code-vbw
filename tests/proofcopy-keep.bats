@@ -394,14 +394,17 @@ add_sub() {
   [ "$(git diff --cached --name-only)" = src/staged.txt ] || { git status; false; }
 }
 
-@test "#738: proofcopy_own refuses a copy's folder that is a link (to the project's own submodule) and a copy whose .git names another copy's git dir" {
+@test "#738: proofcopy_own refuses a copy's folder that is a link (to another worktree of the submodule, which every other check accepts) and a copy whose .git names another copy's git dir" {
   add_sub
   "$VBW" config set check_jobs 2 > /dev/null
   mkdir -p "$(slot 1)" "$(slot 2)"
   git worktree add -q --detach "$(slot 1)/tree" HEAD
   git worktree add -q --detach "$(slot 2)/tree" HEAD
   git -C sub worktree add -q --detach "$PWD/$(slot 1)/tree/sub.real" HEAD
-  ln -s "$PWD/sub" "$(slot 1)/tree/sub"
+  # The worktree add left an empty tree/sub (the gitlink): replace it, or the link lands inside it.
+  rmdir "$(slot 1)/tree/sub"
+  ln -s "$PWD/$(slot 1)/tree/sub.real" "$(slot 1)/tree/sub"
+  [ -L "$(slot 1)/tree/sub" ] || { ls -la "$(slot 1)/tree"; false; }
   # shellcheck disable=SC2016 # expanded by vbw_kernel
   run vbw_kernel '. "$VBW_LIB/proofcopy.sh"; t=$VBW_RUNTIME/proof.keep.1/tree
     proofcopy_own "$t" "$VBW_ROOT" && echo own
