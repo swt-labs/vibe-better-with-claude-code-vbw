@@ -67723,7 +67723,7 @@
       "text": "L3 submodule scenario: copy_top regex expects .vbw/runtime/proof.X/sub, copies are at proof.X/tree/sub (the check did run there on 2026-11-02); fix the regex with a case in tests/l3-submodule.bats, rerun after the ship fix",
       "sort": "next",
       "size": "small",
-      "status": "open"
+      "status": "done"
     },
     {
       "id": "T217",
