@@ -68367,6 +68367,11 @@
       "id": "T224",
       "text": "proofcopy: git calls in a clean copy or a submodule outside proofcopy_git (reads.sh:226,229 git ls-files in the copy; proofcopy.sh:448 ls-files and :620 worktree add in a submodule): with GIT_DIR exported they act on the project. Route them through one helper that unsets GIT_DIR, GIT_WORK_TREE, GIT_INDEX_FILE and GIT_COMMON_DIR (the #744 review found the gap; #744 adds proofcopy_git for its own calls).",
       "status": "open"
+    },
+    {
+      "id": "T225",
+      "text": "Amendment path (field report 2026-11-03, a Rust/Python project, 46 build rounds): a correction that does not change what a check asserts (a check or plan gaining a file, a dependency between plans) is recorded as an amendment and shown at the next gate, with no stop and no approval; a reworded rule or check text keeps approval, and the approval question becomes judgeable (what the check promised before and after, one line each) instead of a fingerprint. Case: an older check protected a deploy test script a later plan had to edit; one-line fix cost vbw apply --patch, a re-approval and vbw plan reset. Same root as the fixture approvals of M45, M49, M51",
+      "status": "open"
     }
   ],
   "decisions": [
