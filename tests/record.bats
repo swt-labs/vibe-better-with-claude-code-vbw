@@ -63,7 +63,7 @@ violations_after() {
   run violations_after '.schema = 4'
   [[ "$output" == *"protected is missing"* ]]
   run violations_after '.protected = ["tests/pay.test.ts"]'
-  [[ "$output" == *"protected is only for a schema-4, 5, 6 or 7 record"* ]] || false
+  [[ "$output" == *"protected is only for a record of schema 4 or above"* ]] || { echo "$output"; false; }
   run violations_after '.schema = 4 | .protected = ["tests/pay.test.ts"]'
   [ "$output" = "[]" ]
   run violations_after '.schema = 4 | .protected = []'
@@ -222,7 +222,7 @@ violations_after() {
   [[ "$output" == *"converted must be"* ]]
 }
 
-@test "#705: an approval's decision may name the plans it changed, as an array of plan ids, only on a schema-6 record" {
+@test "#705: an approval's decision may name the plans it changed, as an array of plan ids; schema 6 is only for a record with one, and a lower schema loads (D582)" {
   local six='.schema = 6 | .protected = ["tests/pay.test.ts"]'
   run violations_after "$six | .decisions[0].plans = [\"P1.1\"]"
   [ "$output" = "[]" ] || { echo "$output"; false; }
@@ -232,8 +232,9 @@ violations_after() {
   [[ "$output" == *"D1 plans must be an array of plan ids"* ]] || { echo "$output"; false; }
   run violations_after "$six | .decisions[0].plans = [\"\"]"
   [[ "$output" == *"D1 plans must be an array of plan ids"* ]] || { echo "$output"; false; }
+  # A schema below its content is not corrupt: it loads, and the next write raises it (R247, D582).
   run violations_after '.schema = 4 | .protected = ["tests/pay.test.ts"] | .decisions[0].plans = ["P1.1"]'
-  [[ "$output" == *"a decision that names its plans needs schema 6"* ]] || { echo "$output"; false; }
+  [ "$output" = "[]" ] || { echo "$output"; false; }
   run violations_after "$six"
   [[ "$output" == *"schema 6 is only for a record with a decision that names its plans"* ]] || { echo "$output"; false; }
   run violations_after "$six | .decisions[0].plans = [\"P1.1\"] | .settings.efforts = {dev: \"high\"}"

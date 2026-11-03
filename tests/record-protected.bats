@@ -157,17 +157,6 @@ corrupt_everywhere() {
   done
 }
 
-@test "R150 R241: this VBW reads up to schema 7 and asks for a newer VBW on schema 8, naming schema 7 as its highest" {
-  protected_apply 3
-  vbw_run status
-  [ "$status" -eq 0 ] || { echo "$output"; false; }
-  record_edit '.schema = 8'
-  vbw_run status
-  [ "$status" -eq 4 ] || { echo "$output"; false; }
-  [[ "$output" == *"needs a newer VBW"* ]]
-  [[ "$output" == *"reads up to schema 7"* ]] || { echo "$output"; false; }
-}
-
 @test "R150: the writer and the validator hold no 50-check threshold" {
   local f
   for f in "$PLUGIN_ROOT/lib/record.sh" "$PLUGIN_ROOT/lib/record.jq"; do

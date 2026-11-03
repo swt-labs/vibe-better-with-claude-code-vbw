@@ -9,12 +9,12 @@ load helper
 # paragraphs FILE: each paragraph (or table row block) of FILE on one line.
 paragraphs() { awk 'BEGIN { RS = "" } { gsub(/\n/, " "); print }' "$1"; }
 
-@test "R150: docs/record.md names the protected field, the reader's highest schema as in record.sh, and schema 5 only for a chosen effort" {
+@test "R150: docs/record.md names the protected field and the reader's highest schema as in record.sh" {
   local doc="$REPO_ROOT/docs/record.md" max
   grep -q '`protected`' "$doc"
   max=$(sed -n 's/^VBW_SCHEMA_MAX=//p' "$PLUGIN_ROOT/lib/record.sh")
   grep -q "\`VBW_SCHEMA_MAX\`, currently $max" "$doc"
-  paragraphs "$doc" | grep -q 'schema 4, or 5 while it holds `settings.efforts`'
+  # Which schema a chosen effort makes is the schema table's row (R247, tests/record-schema.bats).
 }
 
 @test "R150: docs/record.md and docs/guards.md no longer mention a 50-check threshold" {
