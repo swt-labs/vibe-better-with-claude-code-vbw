@@ -64027,13 +64027,123 @@
         "P199.1",
         "P199.2"
       ],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "tools/check-record-shape.sh PLUGIN_ROOT PINNED_SCHEMA PINNED_DIGEST (`#!/usr/bin/env bash`, header comment, `set -euo pipefail`, exactly three arguments else usage and exit 2, bash 3.2 only: no mapfile, associative arrays or eval; shellcheck clean). It builds the shape text, one line per item, each section's lines sorted with LC_ALL=C: (1) `record.jq: a,b,c` for every literal array of string literals in PLUGIN_ROOT/lib/record.jq, found after dropping the lines whose first non-blank character is # and joining the rest into one line (a list may span lines), with the regex `\\[[[:space:]]*\"[^\"]*\"([[:space:]]*,[[:space:]]*\"[^\"]*\")*[[:space:]]*\\]` (grep -oE), each list's names sorted and joined by commas (89 lists today, a superset of the 62 one_of/keys -/field_rule/(keys | sort) forms); (2) `record-schema.jq: N feature` for each row of `jq -r -n -L PLUGIN_ROOT/lib 'include \"record-schema\"; schema_features[] | \"\\(.schema) \\(.feature)\"'`; (3) `interview.json: key=v1,v2` for each array of interview.json read through jq (`to_entries[] | \"\\(.key)=\\(.value | sort | join(\",\"))\"`)",
         "The digest and the verdict: SHA-256 of the shape text (`shasum -a 256` when present, else `sha256sum`), compared with PINNED_DIGEST; the table's top (`schema_top` from the module), VBW_SCHEMA_MAX (`sed -n 's/^VBW_SCHEMA_MAX=//p' PLUGIN_ROOT/lib/record.sh`) and PINNED_SCHEMA compared with each other. Exit 0 when the digest matches and the three numbers are equal; else exit 1 printing, when the digest differs, a line saying the accepted shape changed and `computed digest: <sha256>` (the test and the maintainer copy it from there); when the numbers differ, `schema numbers differ: table T, VBW_SCHEMA_MAX M, pinned P`; and in both cases a Next line naming the three places to touch (the schema table in plugin/lib/record-schema.jq, VBW_SCHEMA_MAX in plugin/lib/record.sh, docs/record.md) and the pin (tests/standards.bats, R248_DIGEST beside R248_SCHEMA). The shipped plugin after P199 digests to 06419432fa74417834df5cc77d2c46a670132ceed563789da3059562ec7280a9, the value tests/standards.bats pins; a different value means the extraction differs from the one described here, not that the pin moves",
         "docs/record.md, Versioning, one sentence beside the table: a new key or allowed value of the record (a key list or enum in record.jq, an interview value) needs a schema bump, a new table row with VBW_SCHEMA_MAX and the docs moved with it, enforced by tools/check-record-shape.sh against the digest pinned in tests/standards.bats; the practice 'added within schema N: a record without it stays valid, so the schema stays N' is not used for new keys from this change on (the existing rows that describe past additions keep their history)",
         "Verify under /bin/bash: `PATH=\"/bin:$PATH\" bats tests/standards.bats tests/standards-selftest.bats` passes (the three R248 cases included: the pin, the self-test's refused and accepted copies, the docs sentence) and `bash tools/test.sh --lint` is clean; the check itself runs in well under a second"
+      ],
+      "mutations": [
+        {
+          "rule": {
+            "req": "R248",
+            "text": "tools/check-record-shape.sh digests the record's accepted shape (every literal key list and enum in record.jq, the schema table's rows, interview.json's arrays) and the shipped plugin digests to the pin written in tests/standards.bats beside the pinned schema; the table's top, VBW_SCHEMA_MAX and the pinned schema are checked equal"
+          },
+          "what": "interview values left out of the digest",
+          "files": [
+            "tools/check-record-shape.sh"
+          ],
+          "checks": {
+            "C570": "red"
+          },
+          "result": "red",
+          "at": "2026-11-03T11:40:52Z",
+          "head": "05e1bd328b68b81812e427432042810b1cc5c46e",
+          "tree": "167a29ec14476082fb9f39221858d29f1041ad65",
+          "contract": "2937f48820606df5f300afacccfd430ea053173dbca26ad91861fcd445407bf3"
+        },
+        {
+          "rule": {
+            "req": "R248",
+            "text": "a key added to record.jq's top-level list, a key removed from its settings list, a value added to interview.json's level array, or a row added to the schema table changes the digest and fails the check until the pin is moved; the refusal names the three places (the schema table in plugin/lib/record-schema.jq, VBW_SCHEMA_MAX in plugin/lib/record.sh, docs/record.md) and the pin in tests/standards.bats, and prints the computed digest"
+          },
+          "what": "the refusal no longer names docs/record.md",
+          "files": [
+            "tools/check-record-shape.sh"
+          ],
+          "checks": {
+            "C570": "red"
+          },
+          "result": "red",
+          "at": "2026-11-03T11:40:56Z",
+          "head": "05e1bd328b68b81812e427432042810b1cc5c46e",
+          "tree": "167a29ec14476082fb9f39221858d29f1041ad65",
+          "contract": "2937f48820606df5f300afacccfd430ea053173dbca26ad91861fcd445407bf3"
+        },
+        {
+          "rule": {
+            "req": "R248",
+            "text": "VBW_SCHEMA_MAX raised with the table unmoved, or the table raised with VBW_SCHEMA_MAX unmoved, is refused with its own line naming the table's top, VBW_SCHEMA_MAX and the pinned schema"
+          },
+          "what": "table top no longer compared with VBW_SCHEMA_MAX",
+          "files": [
+            "tools/check-record-shape.sh"
+          ],
+          "checks": {
+            "C570": "red"
+          },
+          "result": "red",
+          "at": "2026-11-03T11:40:59Z",
+          "head": "05e1bd328b68b81812e427432042810b1cc5c46e",
+          "tree": "167a29ec14476082fb9f39221858d29f1041ad65",
+          "contract": "2937f48820606df5f300afacccfd430ea053173dbca26ad91861fcd445407bf3"
+        },
+        {
+          "rule": {
+            "req": "R248",
+            "text": "a comment line, blank lines or a line break in record.jq outside a list, or the names of one list reordered, leave the digest unchanged and the check passing"
+          },
+          "what": "names inside a list no longer sorted",
+          "files": [
+            "tools/check-record-shape.sh"
+          ],
+          "checks": {
+            "C570": "red"
+          },
+          "result": "red",
+          "at": "2026-11-03T11:41:03Z",
+          "head": "05e1bd328b68b81812e427432042810b1cc5c46e",
+          "tree": "167a29ec14476082fb9f39221858d29f1041ad65",
+          "contract": "2937f48820606df5f300afacccfd430ea053173dbca26ad91861fcd445407bf3"
+        },
+        {
+          "rule": {
+            "req": "R248",
+            "text": "the check is bash 3.2 clean (no mapfile, associative arrays or eval), reads interview.json only through jq, and takes exactly three arguments (usage, exit 2)"
+          },
+          "what": "an eval line added",
+          "files": [
+            "tools/check-record-shape.sh"
+          ],
+          "checks": {
+            "C570": "red"
+          },
+          "result": "red",
+          "at": "2026-11-03T11:41:07Z",
+          "head": "05e1bd328b68b81812e427432042810b1cc5c46e",
+          "tree": "167a29ec14476082fb9f39221858d29f1041ad65",
+          "contract": "2937f48820606df5f300afacccfd430ea053173dbca26ad91861fcd445407bf3"
+        },
+        {
+          "rule": {
+            "req": "R248",
+            "text": "docs/record.md says in Versioning, beside the table, that a new key or allowed value of the record needs a schema bump, naming tools/check-record-shape.sh as the check"
+          },
+          "what": "docs no longer name the check script",
+          "files": [
+            "docs/record.md"
+          ],
+          "checks": {
+            "C570": "red"
+          },
+          "result": "red",
+          "at": "2026-11-03T11:41:11Z",
+          "head": "05e1bd328b68b81812e427432042810b1cc5c46e",
+          "tree": "167a29ec14476082fb9f39221858d29f1041ad65",
+          "contract": "2937f48820606df5f300afacccfd430ea053173dbca26ad91861fcd445407bf3"
+        }
       ]
     }
   ],
@@ -80970,6 +81080,17 @@
         "ended": "2026-11-03T11:32:52Z",
         "cost": {
           "usd": 1.382071
+        }
+      },
+      {
+        "id": "build-20261103T113336Z",
+        "kind": "build",
+        "session": "0ee781c3-c5b6-4a6c-889f-04b89f1fba4a",
+        "milestone": "M51",
+        "started": "2026-11-03T11:33:36Z",
+        "ended": "2026-11-03T11:41:59Z",
+        "cost": {
+          "usd": 0.744472
         }
       }
     ],
