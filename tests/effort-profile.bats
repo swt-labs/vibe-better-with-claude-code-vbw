@@ -188,12 +188,14 @@ plugin_copy() {
   [ "$(cat .vbw/record.json)" = "$before" ]
 }
 
-@test "effort.ROLE: the record check refuses an effort under schema 4, schema 5 without one, and a level Claude Code does not take" {
+@test "effort.ROLE: an effort under schema 4 loads and the next write raises the record to 5 (D582); schema 5 without one and a level Claude Code does not take are refused" {
   "$VBW" config set effort.dev high > /dev/null
   cp .vbw/record.json "$TEST_ROOT/good.json"
   jq '.schema = 4' "$TEST_ROOT/good.json" > .vbw/record.json
   vbw_run status
-  [ "$status" -eq 3 ] && [[ "$output" == *"schema 5"* ]] || { echo "$output"; false; }
+  [ "$status" -eq 0 ] || { echo "$output"; false; }
+  "$VBW" decide "raise it" > /dev/null
+  jq -e '.schema == 5' .vbw/record.json || { echo "schema $(jq .schema .vbw/record.json) after the write, not 5"; false; }
   jq '.settings |= del(.efforts)' "$TEST_ROOT/good.json" > .vbw/record.json
   vbw_run status
   [ "$status" -eq 3 ] && [[ "$output" == *"schema 5"* ]] || { echo "$output"; false; }

@@ -74,3 +74,33 @@ seed() { sed -n '/^submodule_seed()/,/^}/p' "$SUITE"; }
     and .facts.check_ran_in_copy_submodule == true and .facts.staged_files_untouched == true
     and (.facts | (.plan_commit // .submodule_commit // .commit_ids) | type == "string" or type == "object" or type == "array")' "$f"
 }
+
+# R246 (T216): proofcopy makes the clean copy's submodule at .vbw/runtime/proof.X/tree/sub
+# (proofcopy_make: the copy is proof.<pid>.<rand>/tree, each submodule at its path inside
+# it), so the scenario's copy_top grep must match a toplevel line ending there, as the seeded
+# sub/test.sh writes it (an absolute path), and nothing else.
+
+@test "R246: the scenario's copy_top pattern matches a toplevel line as a run writes it, ending /.vbw/runtime/proof.X/tree/sub, and not the old /proof.X/sub form or the project's own sub" {
+  local pat run_line="/home/ana/vbw-l3/project/.vbw/runtime/proof.12345.AbCdEf/tree/sub"
+  # The pattern is read from the scenario body, never copied here.
+  pat=$(body submodule | sed -n "s/.*copy_top=.*grep -E '\([^']*\)'.*/\1/p" | head -n 1)
+  [ -n "$pat" ] || { echo "no copy_top grep -E pattern in scenario_submodule"; false; }
+  grep -E "$pat" <<< "$run_line" > /dev/null || { echo "the pattern $pat does not match the line a run writes: $run_line"; false; }
+  ! grep -E "$pat" <<< "/home/ana/vbw-l3/project/.vbw/runtime/proof.12345.AbCdEf/sub" > /dev/null || { echo "the pattern $pat matches the old proof.X/sub form"; false; }
+  ! grep -E "$pat" <<< "/home/ana/vbw-l3/project/sub" > /dev/null || { echo "the pattern $pat matches the project's own sub"; false; }
+  ! grep -E "$pat" <<< "/home/ana/vbw-l3/project/.vbw/runtime/proof.12345.AbCdEf/tree/sub/inner" > /dev/null || { echo "the pattern $pat matches a folder below the copy's sub"; false; }
+  body submodule | grep -F 'proof.*/tree/sub' > /dev/null || { echo "the expect line does not name proof.*/tree/sub"; false; }
+}
+
+@test "R246: docs/proof.md's submodule paragraph says the toplevel is under .vbw/runtime/proof.*/tree/sub" {
+  grep -F 'proof.*/tree/sub' "$REPO_ROOT/docs/proof.md" > /dev/null || { echo "docs/proof.md does not name .vbw/runtime/proof.*/tree/sub"; false; }
+}
+
+@test "R246 result: the submodule scenario's result is committed from a passing run, with the four facts true and the check's toplevel under proof.*/tree/sub" {
+  local f="$RESULTS/submodule.json"
+  [ -f "$f" ] || { echo "tools/l3-results/submodule.json is not committed: the scenario has not passed on this branch (D551: a result is committed only from a passing run)"; false; }
+  jq -e '.scenario == "submodule" and .passed == true and .evidence_level == "L3"
+    and .facts.plan_commit_in_submodule == true and .facts.pointer_unmoved == true
+    and .facts.check_ran_in_copy_submodule == true and .facts.staged_files_untouched == true
+    and (.facts.check_toplevel | type == "string" and test("/\\.vbw/runtime/proof\\.[^/]+/tree/sub$"))' "$f"
+}

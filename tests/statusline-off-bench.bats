@@ -31,6 +31,9 @@ burn() { printf "perl -e '1 while (times)[0] + (times)[1] < %s / 1000'" "$1"; }
 CASES='status line (VBW off)|status line:|status line (large record):'
 OFF='status line (VBW off)'
 
+# A case that adds work and expects a failure pins VBW_BENCH_REFERENCE_MS=1 (ratio 1 or
+# less: the absolute budget, R222), so a slow runner scaling the budget past the added
+# work cannot read it as slow (T214). The R222 cases measure the ratio itself.
 bench() {
   run env VBW_BENCH_ONLY="$CASES" VBW_STATUSLINE_BUDGET_MS=60 VBW_BENCH_PLUGIN_ROOT="$TEST_ROOT/plugin" VBW_BENCH_RUNS=2 "$@" bash "$BENCH"
 }
@@ -86,7 +89,7 @@ line() {
     sed -n '2,$p' "$SCRIPT"
   } > "$TEST_ROOT/sl.sh"
   cat "$TEST_ROOT/sl.sh" > "$SCRIPT"
-  bench VBW_BENCH_ONLY="$OFF"
+  bench VBW_BENCH_REFERENCE_MS=1 VBW_BENCH_ONLY="$OFF"
   quiet_or_skip
   [ "$status" -eq 1 ] || {
     printf '%s\n' "$output"
@@ -169,7 +172,7 @@ line() {
     sed -n '2,$p' "$SCRIPT"
   } > "$TEST_ROOT/sl.sh"
   cat "$TEST_ROOT/sl.sh" > "$SCRIPT"
-  bench VBW_BENCH_ONLY='status line (no project)'
+  bench VBW_BENCH_REFERENCE_MS=1 VBW_BENCH_ONLY='status line (no project)'
   quiet_or_skip
   [ "$status" -eq 1 ] || {
     printf '%s\n' "$output"

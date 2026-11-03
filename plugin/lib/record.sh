@@ -28,14 +28,13 @@ record_violation() {
   return 1
 }
 
-# Schemas 1 to 7 are read. Every record this VBW writes is format 4 (D232): the
-# protected field (the sorted list of every file a check protects) near its top, so
-# the guards never read the checks (R150); its schema is 4, 5 while it holds a
-# helper's chosen effort (settings.efforts), or 6 once a decision names the plans an
-# approval changed (#705), or 7 while settings.mcp is set (R241), so an older VBW says the project needs a newer VBW instead
+# Schemas 1 to VBW_SCHEMA_MAX are read. Every record this VBW writes is format 4 (D232):
+# the protected field (the sorted list of every file a check protects) near its top, so
+# the guards never read the checks (R150); its schema is computed by record-schema.jq,
+# the one definition (R247), so an older VBW says the project needs a newer VBW instead
 # of calling the record corrupt. Records of schemas 1 to 3 written by an older VBW
 # are read and become format 4 on their next write.
-VBW_SCHEMA_MAX=7
+VBW_SCHEMA_MAX=8
 
 # The schema of the record at FILE when it is a number above the highest this
 # VBW reads (written by a newer VBW); empty and status 1 otherwise. A
@@ -313,13 +312,13 @@ record_update() {
   v=$(record_violation "$VBW_RECORD") || vbw_die "record is corrupt: $v ($VBW_RECORD)" 3
   tmp=$(mktemp "$VBW_RUNTIME/record.XXXXXX") || vbw_die "cannot create a temporary file in $VBW_RUNTIME"
   vbw_guard_add file "$tmp"
-  # Every write produces format 4 (D232, R150): schema 4 (5 while settings.efforts
-  # is set, 6 once a decision names its plans) and protected, the sorted list of every string in the checks' files,
+  # Every write produces format 4 (D232, R150): the schema the table in record-schema.jq
+  # gives (R247) and protected, the sorted list of every string in the checks' files,
   # each once ([] without checks or files). Key order: schema, lease, protected,
   # checks, then the rest, so the guards read the beginning of the file alone (R149,
   # R150). An older record (schema 1 to 3) becomes format 4 here.
-  jq "$@" "$filter
-    | {schema: (if (.settings.mcp // null) != null then 7 elif any(.decisions[]?; has(\"plans\")) then 6 elif (.settings.efforts // null) != null then 5 else 4 end), lease: (.lease // null),
+  jq "$@" -L "$VBW_LIB" "include \"record-schema\"; $filter
+    | {schema: schema_of, lease: (.lease // null),
        protected: ([(.checks // [])[]? | objects | .files? | arrays | .[] | strings] | unique)}
       + (if has(\"checks\") then {checks} else {checks: []} end) + del(.schema, .lease, .protected, .checks)" "$VBW_RECORD" > "$tmp" 2>/dev/null || vbw_die "internal error: record update failed"
   v=$(record_violation "$tmp") || vbw_die "refused: $v"$'\n'"Next: nothing was written; give the command a valid value (the line above names what would break), or run vbw doctor if the record itself is damaged"

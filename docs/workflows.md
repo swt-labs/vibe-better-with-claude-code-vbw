@@ -542,6 +542,7 @@ Each refusal below ends with `Next: ` and the step in the right column
 | `vbw apply`: a missing rule, or a rule naming no check of its requirement | Add one rule per condition, each with its check |
 | `vbw apply`: a check whose rules two plans own that build one after the other, or beside each other (a shared wave) | give each plan's rules a check of their own (a separate test file, or the same file with a case filter as a distinct check), or move the rules to one plan |
 | `vbw apply`: a requirement whose rules name a plan on only some of them | name a plan on every rule of the requirement, or on none (vbw apply --patch rewords a rule: {"rule": "Rn.k", "plan": "P1.1"}) |
+| `vbw ship`: an uncommitted change to a file of the milestone's work (a plan's file or a protected check file, in the project or in a submodule, named by project path with the plan that names it; your own files never block) | commit it with `vbw commit PLAN "type(scope): description"` (a check file of an open fix with `vbw commit --fix FIX "type(scope): description" FILE`), then `vbw ship` |
 | `vbw apply`: a tier below its floor, or an express phase with two plans | Raise the tier, or merge the plans |
 | `vbw apply`: a build or fix run is open | End the run (`vbw run end`), then plan again |
 | `vbw run start`: an unknown plan or fix | Check the id with `vbw status` |
@@ -558,7 +559,7 @@ Each refusal below ends with `Next: ` and the step in the right column
 | Guards: a file outside the run's plan, a protected check file, a read-only run, another session's files | Leave the file; report the need, or work on other files until the run ends |
 | Guards: a project file that is neither a test file nor under `.vbw/`, written while planning | Leave the file; put the check in a test file, or name the file in a plan's files so the build writes it |
 | Guards: `git commit-tree` (with commit, push, rebase, merge, pull, cherry-pick, revert, am) by an agent under a lease | Commit through `vbw commit PLAN "type(scope): description"` |
-| Guards: a git history change by VBW's chat while an autonomous run or loop is armed | Follow the proof's Next line, or `vbw commit`; the user's own commands are never checked |
+| Guards: a git history change by VBW's chat while an autonomous run or loop is armed | Follow the proof's Next line, or `vbw commit`; the user's own commands are never checked. The rule holds on a ship refusal too: follow the refusal's Next line, a `vbw commit` of the milestone's files. The user's own files are never committed by VBW's chat, which asks the user what to do with them |
 | Guards: a program (python, node, perl, ruby, ...) writing a file the guard cannot name, its target a variable, an expression or another call | name the file as a literal path in the program, or write it with the Edit tool (Write for a new file) |
 | Guards: a shell command (`rm -r`, `cp`, `mv`, `tee`, `sed -i`, ...) writing a folder that holds a protected check file | Leave the protected check files as they are; name only the files you write |
 | Guards: a shell command writing a glob that may match a protected check file (`sed -i … tests/*.sh`) | Leave the protected check files as they are; name only the files you write, without a glob that reaches a check file |
@@ -709,9 +710,12 @@ project's, and git refuses to commit a path beyond a symbolic link.
   file named `.gitmodules`, VBW makes it again with every `.gitmodules` file
   unwritten: git reads it from the index, VBW still finds the submodules, and
   the copy's `git status` stays clean.
-- `vbw ship` wants every file committed: a submodule's files in the submodule,
-  every level down (a changed file in a submodule's own submodule is named by
-  its project path too). A moved pointer does not count as uncommitted work.
+- `vbw ship` wants only the milestone's own files committed: the files its
+  plans name and the protected check files (the same set `vbw commit` commits),
+  in the project and in each checked-out submodule, named by project path. A
+  plan file inside a submodule's own submodule, named by an exact entry, is named
+  by its project path too. Your own files, staged or not, never block the ship
+  and are never named by it. A moved submodule pointer is no change.
 - A `vbw` command run inside a submodule that has no `.vbw/` of its own works on
   the project above it, and a Claude session started there is guarded as that
   project (docs/guards.md). A clone nested in the project (its `.git` a folder)

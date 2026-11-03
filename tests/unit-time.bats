@@ -126,7 +126,8 @@ figures() { printf '%s/vbw/unit-time.json' "$(git rev-parse --path-format=absolu
   [ "$status" -eq 0 ] || { echo "$output"; false; }
   n=$(printf '%s\n' "$output" | grep -n '^ran again: ' | cut -d: -f1)
   [ -n "$n" ] || { echo "$output"; false; }
-  [[ "$(printf '%s\n' "$output" | sed -n "$((n + 1))p")" =~ ^slowest\ units:\ C1\ [01]\ s\ \( ]] || { echo "$output"; false; }
+  # The place is the claim, not the figure: a unit's time prints with a decimal when it is short (0.1 s).
+  [[ "$(printf '%s\n' "$output" | sed -n "$((n + 1))p")" =~ ^slowest\ units:\ C1\ [0-9.]+\ s\ \( ]] || { echo "$output"; false; }
 }
 
 @test "unit time: vbw show evidence prints the total of every current unit as it last ran, the ten slowest and every unit over the budget" {

@@ -1,5 +1,61 @@
 # Changelog
 
+## [2.1.24] - 2026-11-03
+
+Plans whose files live in a git submodule now build, prove, commit and
+ship. The submodule work is [@halindrome](https://github.com/halindrome)'s
+(#737, fixing #732), and their report of what the real-user run then met
+drove the ship and record fixes below. Thank you.
+
+### Fixed
+
+- **Plan files inside a git submodule.** Each file is committed in the
+  repository that tracks it, so a plan whose files sit in a submodule no
+  longer ends "nothing to commit". The kernel is still the only committer,
+  and the project's submodule pointer is never moved: moving it stays your
+  choice. The clean copy checks out each submodule at its own commit, a
+  proof's fingerprint includes every submodule's commit, files read inside a
+  submodule are recorded by their project path, and `vbw mutate` restores a
+  broken submodule file from the submodule's own repository. A `vbw` command
+  run inside a submodule works on the parent project, and the guards and the
+  status line follow the same rule. Known limits are listed under
+  "Submodules" in `docs/workflows.md`. (#732, #737, from
+  [@halindrome](https://github.com/halindrome))
+- **`vbw ship` blocks only on the milestone's own files.** It refuses while
+  a file of the milestone's work is uncommitted: the files its plans name and
+  the protected check files, in the project or in a submodule, each named
+  with its plan and `vbw commit` as the next step. Your own staged or
+  unstaged files never block the ship and are never named by it. Before, any
+  uncommitted file blocked it.
+- **VBW's chat never commits your files.** The vibe skill states that the
+  chat commits nothing by hand, on a ship refusal included, and asks you what
+  to do with your own uncommitted files instead of acting on them. A real-user
+  run had seen the chat commit a user's staged files after three empty turns
+  and call it "as you asked".
+- **The record's schema is one table.** A record whose recorded break carries
+  the committed tree or the contract is schema 8, so a VBW up to 2.1.23 asks
+  to be updated instead of calling the record corrupt. The writer and the
+  validator share one table of the features that raised the schema (schema 5
+  to 8); the highest feature present wins and 4 is the floor. A record whose
+  schema is below its content, as one written by 2.1.23 after #737 can be, is
+  read and raised on its next write; only a schema above its content is
+  corrupt, and the refusal names the feature that schema is only for. From now
+  on a new record key or value fails VBW's own checks until the schema is
+  bumped (`tools/check-record-shape.sh`). See "Versioning" in `docs/record.md`.
+- **VBW's own checks.** The submodule real-user scenario judges the clean
+  copy's submodule where the proof makes it. The over-budget speed cases
+  judge the absolute budget on any runner, which closes the Linux-only
+  failure 2.1.23 reported. Result files of the real-user runs mask the
+  checkout and home paths.
+
+### For you to do
+
+- Update, then restart Claude Code. If your project's record was written by
+  2.1.23 after the submodule change, nothing else: it loads and is raised to
+  schema 8 on its next write.
+
+Sizes, for information (file bytes): kernel 772 KB (`plugin/bin/vbw` and `plugin/lib`), mods 318 KB (hooks, panel and status line), workflows 72 KB, prompts 111 KB (agents and skills).
+
 ## [2.1.23] - 2026-11-01
 
 VBW's agents can now use your project's MCP tools. The idea came from

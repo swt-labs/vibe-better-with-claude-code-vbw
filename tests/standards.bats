@@ -219,3 +219,120 @@ code_grep() {
   run bash "$REPO_ROOT/tools/check-pipefail-grep.sh"
   [ "$status" -eq 2 ]
 }
+
+@test "no committed result file names a home folder: the L3 results and the probes write the checkout as <checkout> and the home folder as ~ (T213)" {
+  cd "$REPO_ROOT"
+  local hits
+  hits=$(git ls-files -z -- tools/l3-results tools/probes | xargs -0 grep -l -E '/(Users|home)/[^/"]+/' 2> /dev/null || true)
+  [ -z "$hits" ] || { echo "result files that name a home folder:"; echo "$hits"; false; }
+  local s
+  for s in tools/l3-suite.sh tools/probe-mcp-tools.sh; do
+    grep -q "tools/mask-paths.jq" "$s" || { echo "$s writes its result without tools/mask-paths.jq"; false; }
+  done
+  run jq -c --arg root "/Users/jane/My work/vbw" --arg home "/Users/jane" -f tools/mask-paths.jq <<< '{"a":"/Users/jane/My work/vbw/plugin","b":["/Users/jane/.claude/x",1],"c":"plain"}'
+  [ "$output" = '{"a":"<checkout>/plugin","b":["~/.claude/x",1],"c":"plain"}' ] || { echo "masked: $output"; false; }
+}
+
+# R248 (T221; docs/record.md Versioning): a new key or allowed value of the record
+# comes with a schema bump. tools/check-record-shape.sh digests the record's accepted
+# shape (every literal key list and enum in record.jq, the schema table's rows in
+# record-schema.jq, the interview values in interview.json) and compares it with the
+# digest pinned here beside the pinned VBW_SCHEMA_MAX; it also checks the table's top,
+# VBW_SCHEMA_MAX and the pin agree. Moving the pin is the deliberate act a shape change
+# needs: add the table row (plugin/lib/record-schema.jq), set VBW_SCHEMA_MAX
+# (plugin/lib/record.sh), describe it in docs/record.md, then copy the digest the check
+# prints into R248_DIGEST. A layout-only change (comments, whitespace, line breaks, the
+# order of names inside a list) never moves it.
+R248_SCHEMA=8
+R248_DIGEST=06419432fa74417834df5cc77d2c46a670132ceed563789da3059562ec7280a9
+
+@test "R248: the record's accepted shape is pinned: record.jq's key lists and enums, the schema table's rows and the interview values digest to R248_DIGEST, and the table's top, VBW_SCHEMA_MAX and R248_SCHEMA agree (tools/check-record-shape.sh)" {
+  [ "$PLUGIN_ROOT" = "$REPO_ROOT/plugin" ] || skip "not the shipped plugin"
+  run bash "$REPO_ROOT/tools/check-record-shape.sh" "$PLUGIN_ROOT" "$R248_SCHEMA" "$R248_DIGEST"
+  [ "$status" -eq 0 ] || { echo "$output"; false; }
+}
+
+@test "R248 self-test: the shape check refuses a key or value added to or removed from record.jq, interview.json or the schema table, and VBW_SCHEMA_MAX moved alone, naming the three places and the pin; the unchanged copy and layout-only changes pass" {
+  # The self-tests run this file against a stand-in plugin many times; the check reads the shipped one.
+  [ "$PLUGIN_ROOT" = "$REPO_ROOT/plugin" ] || skip "not the shipped plugin"
+  local check="$REPO_ROOT/tools/check-record-shape.sh" d schema digest hits
+  [ -f "$check" ] || { echo "no tools/check-record-shape.sh"; false; }
+  # bash 3.2 clean, no data as code (the standards grep covers the plugin, not tools/).
+  hits=$(grep -nE '(^|[^[:alnum:]_])(mapfile|readarray|eval)[[:space:]]|(declare|local)[[:space:]]+-[a-zA-Z]*A[[:space:]]' "$check" | grep -vE '^[0-9]+:[[:space:]]*#' || true)
+  [ -z "$hits" ] || { echo "the check is not bash 3.2 clean:"; echo "$hits"; false; }
+  # interview.json is read only through jq.
+  hits=$(grep -nE 'interview\.json' "$check" | grep -vE 'jq|^[0-9]+:[[:space:]]*#|\[ -f' || true)
+  [ -z "$hits" ] || { echo "interview.json is read without jq:"; echo "$hits"; false; }
+  d=$(mktemp -d "${BATS_TEST_TMPDIR:?}/shape.XXXXXX")
+  # fresh: a copy of the shipped plugin's lib, the files the check reads.
+  fresh() { rm -rf "$d/lib"; mkdir -p "$d/lib"; cp "$REPO_ROOT/plugin/lib/record.jq" "$REPO_ROOT/plugin/lib/record-schema.jq" "$REPO_ROOT/plugin/lib/record.sh" "$REPO_ROOT/plugin/lib/interview.json" "$d/lib/"; }
+  fresh
+  schema=$(sed -n 's/^VBW_SCHEMA_MAX=//p' "$d/lib/record.sh")
+  [ -n "$schema" ]
+  # A wrong pin is refused and the check prints the digest it computed, to copy.
+  run bash "$check" "$d" "$schema" 0000000000000000000000000000000000000000000000000000000000000000
+  [ "$status" -eq 1 ] || { echo "exit $status: $output"; false; }
+  digest=$(printf '%s\n' "$output" | sed -n 's/^computed digest: //p')
+  [[ "$digest" =~ ^[0-9a-f]{64}$ ]] || { echo "no 'computed digest: <sha256>' line: $output"; false; }
+  [ "$digest" = "$R248_DIGEST" ] || { echo "the shipped shape digests to $digest, the pin is $R248_DIGEST"; false; }
+  # refused: the last run exited 1 and named the three places and the pin.
+  refused() {
+    [ "$status" -eq 1 ] || { echo "$1: exit $status: $output"; return 1; }
+    local place
+    for place in plugin/lib/record-schema.jq VBW_SCHEMA_MAX plugin/lib/record.sh docs/record.md tests/standards.bats; do
+      [[ "$output" == *"$place"* ]] || { echo "$1: the refusal does not name $place: $output"; return 1; }
+    done
+  }
+  # The unchanged copy passes.
+  run bash "$check" "$d" "$schema" "$digest"
+  [ "$status" -eq 0 ] || { echo "unchanged: $output"; false; }
+  # A key added to record.jq's top-level key list.
+  fresh; sed -i.bak 's/"schema","project","milestone"/"schema","project","probe","milestone"/' "$d/lib/record.jq"
+  grep -q '"probe"' "$d/lib/record.jq"
+  run bash "$check" "$d" "$schema" "$digest"
+  refused "a key added to the top-level list"
+  [[ "$output" != *"computed digest: $digest"* ]] || { echo "the digest did not move for an added key"; false; }
+  # A key removed from the settings key list.
+  fresh; sed -i.bak 's/"rigor","motion","command_timeout"/"rigor","command_timeout"/' "$d/lib/record.jq"
+  ! grep -q '"rigor","motion"' "$d/lib/record.jq" || false
+  run bash "$check" "$d" "$schema" "$digest"
+  refused "a key removed from the settings list"
+  # A value appended to interview.json's level array.
+  fresh; jq '.level += ["wizard"]' "$REPO_ROOT/plugin/lib/interview.json" > "$d/lib/interview.json"
+  run bash "$check" "$d" "$schema" "$digest"
+  refused "a value added to interview.json"
+  # A row added to the schema table with the pin unmoved: the digest moves and the numbers differ.
+  fresh; sed -i.bak 's/^def schema_features: \[/def schema_features: [ {schema: 9, feature: "a probe", present: false},/' "$d/lib/record-schema.jq"
+  grep -q '"a probe"' "$d/lib/record-schema.jq"
+  run bash "$check" "$d" "$schema" "$digest"
+  refused "a table row added"
+  [[ "$output" == *"table 9"* && "$output" == *"VBW_SCHEMA_MAX $schema"* && "$output" == *"pinned $schema"* ]] || { echo "the numbers line does not name each value: $output"; false; }
+  # VBW_SCHEMA_MAX raised with the table unmoved: the digest holds, the numbers differ.
+  fresh; sed -i.bak "s/^VBW_SCHEMA_MAX=.*\$/VBW_SCHEMA_MAX=$((schema + 1))/" "$d/lib/record.sh"
+  run bash "$check" "$d" "$schema" "$digest"
+  refused "VBW_SCHEMA_MAX raised alone"
+  [[ "$output" == *"table $schema"* && "$output" == *"VBW_SCHEMA_MAX $((schema + 1))"* && "$output" == *"pinned $schema"* ]] || { echo "the numbers line does not name each value: $output"; false; }
+  [[ "$output" != *"computed digest:"* ]] || { echo "the digest moved although no list changed: $output"; false; }
+  # Layout-only changes pass: a comment line, a blank line, names reordered inside one list.
+  fresh; { printf '# a new comment line\n'; cat "$REPO_ROOT/plugin/lib/record.jq"; } > "$d/lib/record.jq"
+  run bash "$check" "$d" "$schema" "$digest"
+  [ "$status" -eq 0 ] || { echo "a comment line moved the digest: $output"; false; }
+  fresh; { cat "$REPO_ROOT/plugin/lib/record.jq"; printf '\n\n'; } > "$d/lib/record.jq"
+  run bash "$check" "$d" "$schema" "$digest"
+  [ "$status" -eq 0 ] || { echo "blank lines moved the digest: $output"; false; }
+  fresh; sed -i.bak 's/"schema","project","milestone"/"project","milestone","schema"/' "$d/lib/record.jq"
+  grep -q '"project","milestone","schema"' "$d/lib/record.jq"
+  run bash "$check" "$d" "$schema" "$digest"
+  [ "$status" -eq 0 ] || { echo "reordering names in a list moved the digest: $output"; false; }
+  # Usage.
+  run bash "$check" "$d" "$schema"
+  [ "$status" -eq 2 ]
+}
+
+@test "R248: docs/record.md says beside the schema table that a new key or allowed value of the record needs a schema bump, naming tools/check-record-shape.sh" {
+  [ "$PLUGIN_ROOT" = "$REPO_ROOT/plugin" ] || skip "not the shipped plugin"
+  local section
+  section=$(awk '/^## Versioning/ { on = 1 } /^## Consent/ { on = 0 } on' "$REPO_ROOT/docs/record.md")
+  printf '%s\n' "$section" | grep -q 'tools/check-record-shape.sh' || { echo "the Versioning section does not name tools/check-record-shape.sh"; false; }
+  printf '%s\n' "$section" | grep -qiE 'new key[^.]*(bump|raise|new schema|schema number)|(bump|raise)[^.]*new key' || { echo "the Versioning section does not say a new key needs a schema bump"; false; }
+}

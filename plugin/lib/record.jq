@@ -1,10 +1,13 @@
 # The definition of .vbw/record.json (docs/record.md). Format 4 (D232) is what every write produces:
-# schema 4 (5 while settings.efforts holds a helper's chosen effort, 7 while settings.mcp is set) and protected, the sorted
+# the schema record-schema.jq computes and protected, the sorted
 # list of every file a check protects, each once ([] without checks), so a guard reads the list
 # without reading through the checks (R150). The older formats stay valid until their next write:
 # schema 1, 2 when a check is alone, 3 when a todo is sorted or a recommendation is stored; they
 # carry no protected field.
 # Input: the record. Output: a JSON array of violation messages; [] = valid.
+include "record-schema" {search: "./"};
+
+def at_floor: type == "number" and . == floor and . >= schema_floor;
 
 def nonempty: type == "string" and length > 0;
 def iso: type == "string" and test("^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$");
@@ -106,23 +109,15 @@ if type != "object" then ["record must be a JSON object"] else
 | ([($r.shipped // [])[]?.id] + [($r.parked // [])[]?.id] + [$r.milestone.id?]) as $milestones
 | ($plans | map({key: .id, value: (.after // [])}) | from_entries) as $graph
 | [
-    ( select(($r | has("protected") | not) and ($r.schema == 4 or $r.schema == 5 or $r.schema == 6 or $r.schema == 7))
-      | "protected is missing: a schema-4, 5, 6 or 7 record must carry the protected field" ),
-    ( select(($r | has("protected")) and $r.schema != 4 and $r.schema != 5 and $r.schema != 6 and $r.schema != 7)
-      | "protected is only for a schema-4, 5, 6 or 7 record" ),
-    ( select((($r.settings // {}) | type) == "object" and (($r.settings.mcp // null) != null) and $r.schema != 7)
-      | "settings.mcp needs schema 7, so a VBW that reads only up to schema 6 asks for an update" ),
-    ( select($r.schema == 7 and ((($r.settings // {}) | type) != "object" or ($r.settings.mcp // null) == null))
-      | "schema 7 is only for a record with settings.mcp; without it the schema is 4, 5 or 6" ),
-    ( select((($r.settings // {}) | type) == "object" and (($r.settings.efforts // null) != null)
-             and $r.schema != 5 and $r.schema != 6 and $r.schema != 7)
-      | "settings.efforts needs schema 5 (6 with a decision's plans), so a VBW that reads only up to schema 4 asks for an update" ),
-    ( select($r.schema == 5 and ((($r.settings // {}) | type) != "object" or ($r.settings.efforts // null) == null))
-      | "schema 5 is only for a record with settings.efforts; without them the schema is 4" ),
-    ( select(((($r.decisions // []) | type) == "array" and any(($r.decisions // [])[]?; type == "object" and has("plans"))) != ($r.schema == 6) and $r.schema != 7)
-      | if $r.schema == 6 then "schema 6 is only for a record with a decision that names its plans"
-        else "a decision that names its plans needs schema 6, so a VBW that reads only up to schema 5 asks for an update" end ),
-    ( select(($r | has("protected") | not) and $r.schema != 4 and $r.schema != 5 and $r.schema != 6 and $r.schema != 7
+    ( select(($r | has("protected") | not) and ($r.schema | at_floor))
+      | "protected is missing: a record of schema \(schema_floor) or above must carry the protected field" ),
+    ( select(($r | has("protected")) and ($r.schema | at_floor | not))
+      | "protected is only for a record of schema \(schema_floor) or above" ),
+    ( ($r | schema_of) as $answer
+      | select(($r.schema | at_floor) and $r.schema > $answer)
+      | first(schema_features[] | select(.schema == $r.schema) | .feature)
+      | "schema \($r.schema) is only for a record with \(.)" ),
+    ( select(($r | has("protected") | not) and ($r.schema | at_floor | not)
              and $r.schema != (if ($r | has("recommendation")) or ((($r.todos // []) | type) == "array" and any(($r.todos // [])[]?; type == "object" and (has("sort") or has("size")))) then 3
                                elif (($r.checks // []) | type) == "array" and any(($r.checks // [])[]?; type == "object" and .alone == true) then 2 else 1 end))
       | "schema must be 3 when a todo is sorted or a recommendation is stored; schema must be 2 when a check is alone, else 1" ),

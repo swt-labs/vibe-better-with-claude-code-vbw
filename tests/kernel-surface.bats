@@ -59,36 +59,100 @@ proven_project() {
 
 # --- ship --------------------------------------------------------------------
 
-@test "ship is refused while the working folder has uncommitted files, naming them" {
+# R244 (T215, D544): vbw ship blocks only on uncommitted changes to the milestone's own
+# files, the files its plans name and the protected check files, resolved as vbw commit
+# resolves them (vbw_plan_paths, vbw_in_repo, vbw_changed), in the project and in each
+# checked-out submodule by project path; the user's own files never block and are never
+# named. ship_uncommitted (cmd-ship.sh) is the one definition: it prints the whole refusal
+# (each blocking file on its own line as "  FILE (plan P1.1)" or "  FILE (protected check
+# file)", last line "Next: ..." naming vbw commit) and returns 1, or prints nothing and
+# returns 0.
+
+# ship_next_line OUTPUT: the refusal's last non-empty line starts "Next: " and names vbw commit.
+ship_next_line() {
+  local last
+  last=$(printf '%s\n' "$1" | sed '/^[[:space:]]*$/d' | tail -n 1)
+  [[ "$last" == "Next: "* && "$last" == *"vbw commit"* ]] || { printf 'no Next line naming vbw commit at the end of the refusal:\n%s\n' "$1"; return 1; }
+}
+
+@test "R244: a user's own untracked and staged files never block the ship, are never named by it, and are left as they were" {
   printf 'notes\n' > notes.txt
+  printf 'mine\n' > mine.txt && git add mine.txt
   proven_project
   "$VBW" qa record P1 pass standard > /dev/null
   "$VBW" req accept R2 > /dev/null
-  # Proof runs on the committed code: an untracked file does not change it, but
-  # shipping still wants everything in git history.
   vbw_run ship
-  [ "$status" -eq 1 ]
-  [[ "$output" == *"not committed"* && "$output" == *"notes.txt"* ]]
+  [ "$status" -eq 0 ] || { echo "$output"; false; }
+  [[ "$output" != *"notes.txt"* && "$output" != *"mine.txt"* && "$output" != *"not committed"* ]] || { echo "$output"; false; }
+  jq -e '.milestone.status == "shipped"' .vbw/record.json
+  [ "$(git status --porcelain -- notes.txt)" = "?? notes.txt" ]
+  [ "$(git status --porcelain -- mine.txt)" = "A  mine.txt" ]
+}
+
+@test "R244: an uncommitted edit to a plan-named file refuses the ship in one message naming the file with its plan and vbw commit on the Next line; once committed and proved again, it ships" {
+  proven_project
+  # The edit is proved while uncommitted: the proof reads the files on disk.
+  printf 'paid\nmore\n' > src/pay.txt
+  "$VBW" prove > /dev/null
+  "$VBW" qa record P1 pass standard > /dev/null
+  "$VBW" req accept R2 > /dev/null
+  vbw_run ship
+  [ "$status" -eq 1 ] || { echo "$output"; false; }
+  [[ "$output" == *"not committed"* ]] || { echo "$output"; false; }
+  [[ "$output" == *"  src/pay.txt (plan P1.1)"* ]] || { echo "$output"; false; }
+  [[ "$output" != *"the proven work is not committed"* && "$output" != *"commit it, then vbw ship"* ]] || { echo "$output"; false; }
+  ship_next_line "$output"
+  [[ "$output" == *"vbw commit P1.1"* ]] || { echo "$output"; false; }
   jq -e '.milestone.status != "shipped"' .vbw/record.json
-  git add notes.txt
-  vbw_run ship
-  [ "$status" -eq 1 ]
-  git commit -q -m "docs: notes" -- notes.txt
-  # The committed notes were never part of a proof: prove again, then ship.
+  "$VBW" commit P1.1 "feat(pay): more" > /dev/null
+  # The committed edit was never proved or judged as committed code: prove and
+  # record QA again (QA reads the files as committed), then ship.
   vbw_run ship
   [ "$status" -eq 1 ]
   [[ "$output" == *"prove"* ]]
   "$VBW" prove > /dev/null
+  "$VBW" qa record P1 pass standard > /dev/null
   vbw_run ship
-  [ "$status" -eq 0 ]
+  [ "$status" -eq 0 ] || { echo "$output"; false; }
 }
 
-@test "ship: work vbw commit committed in a submodule ships with the pointer left moved; an uncommitted file inside the submodule is refused by its project path" {
+@test "R244: the blocking set is the milestone's plan files and protected check files: a deleted plan file and an edited protected check file are named, a shipped milestone's plan file and the user's files are not" {
+  mkdir -p src tests
+  printf 'paid\n' > src/pay.txt
+  printf 'true\n' > tests/pay.sh
+  printf 'old\n' > src/old.txt
+  git add src tests && git commit -q -m "feat: seed" -- src tests
+  edit_record '.checks = [{id: "C1", req: "R1", run: ["sh", "tests/pay.sh"], files: ["tests/pay.sh"]}] | .protected = ["tests/pay.sh"]
+    | .requirements += [{id: "R3", text: "Old", proof: "auto", status: "proven", milestone: "M0"}]
+    | .shipped = [{id: "M0", title: "Old", at: "2026-01-01T00:00:00Z"}]
+    | .phases = [{id: "P0", title: "Old", reqs: ["R3"], milestone: "M0"}, {id: "P1", title: "Pay", reqs: ["R1", "R2"], milestone: "M1"}]
+    | .plans = [{id: "P0.1", phase: "P0", title: "Old", reqs: ["R3"], files: ["src/old.txt"], after: [], status: "done"},
+                {id: "P1.1", phase: "P1", title: "Pay", reqs: ["R1"], files: ["src/pay.txt"], after: [], status: "done"}]'
+  rm src/pay.txt
+  printf 'false\n' > tests/pay.sh
+  printf 'older\n' > src/old.txt
+  printf 'notes\n' > notes.txt
+  printf 'mine\n' > mine.txt && git add mine.txt
+  # shellcheck disable=SC2016 # expanded by vbw_kernel
+  run vbw_kernel '. "$VBW_LIB/cmd-ship.sh"; ship_uncommitted'
+  [ "$status" -eq 1 ] || { echo "$output"; false; }
+  [[ "$output" == *"  src/pay.txt (plan P1.1)"* ]] || { echo "$output"; false; }
+  [[ "$output" == *"  tests/pay.sh (protected check file)"* ]] || { echo "$output"; false; }
+  [[ "$output" != *"old.txt"* && "$output" != *"notes.txt"* && "$output" != *"mine.txt"* ]] || { echo "$output"; false; }
+  ship_next_line "$output"
+  git checkout -q -- src/pay.txt tests/pay.sh
+  # shellcheck disable=SC2016 # expanded by vbw_kernel
+  run vbw_kernel '. "$VBW_LIB/cmd-ship.sh"; ship_uncommitted'
+  [ "$status" -eq 0 ] || { echo "$output"; false; }
+  [ -z "$output" ] || { echo "$output"; false; }
+}
+
+@test "R244: in submodules, by project path: an uncommitted plan file in sub and in 'sub/inner dir' each refuse the ship, a user's file in sub never blocks, and the pointer stays moved" {
   git init -q "$TEST_ROOT/subsrc"
   printf 'paid\n' > "$TEST_ROOT/subsrc/pay.txt"
   git -C "$TEST_ROOT/subsrc" add pay.txt
   git -C "$TEST_ROOT/subsrc" commit -q -m "chore: seed"
-  # The submodule holds a submodule of its own.
+  # The submodule holds a submodule of its own; an exact plan entry reaches into it.
   git init -q "$TEST_ROOT/innersrc"
   printf 'i\n' > "$TEST_ROOT/innersrc/i.txt"
   git -C "$TEST_ROOT/innersrc" add i.txt
@@ -100,27 +164,45 @@ proven_project() {
   git commit -q -m "chore: sub"
   edit_record '.checks = [{id: "C1", req: "R1", run: ["grep", "-qx", "paid", "sub/pay.txt"]}]
     | .phases = [{id: "P1", title: "Pay", reqs: ["R1", "R2"], milestone: "M1"}]
-    | .plans = [{id: "P1.1", phase: "P1", title: "Pay", reqs: ["R1"], files: ["sub/pay.txt"], after: [], status: "done"}]'
+    | .plans = [{id: "P1.1", phase: "P1", title: "Pay", reqs: ["R1"], files: ["sub/pay.txt", "sub/inner dir/i.txt"], after: [], status: "done"}]'
   "$VBW" approve > /dev/null
   printf 'paid\nagain\n' > sub/pay.txt
   "$VBW" commit P1.1 "feat(pay): again" > /dev/null
+  printf 'scratch\n' > sub/scratch.txt
   "$VBW" prove > /dev/null
   "$VBW" qa record P1 pass standard > /dev/null
   "$VBW" req accept R2 > /dev/null
-  printf 'scratch\n' > sub/scratch.txt
-  vbw_run ship
-  [ "$status" -eq 1 ]
-  [[ "$output" == *"not committed: sub/scratch.txt"* ]] || { echo "$output"; false; }
-  rm sub/scratch.txt
-  # Every level down: a file changed in the submodule's own submodule.
+  printf 'paid\nmore\n' > sub/pay.txt
   printf 'i2\n' > "sub/inner dir/i.txt"
   vbw_run ship
-  [ "$status" -eq 1 ]
-  [[ "$output" == *"not committed: sub/inner dir/i.txt"* ]] || { echo "$output"; false; }
+  [ "$status" -eq 1 ] || { echo "$output"; false; }
+  [[ "$output" == *"  sub/pay.txt (plan P1.1)"* ]] || { echo "$output"; false; }
+  [[ "$output" == *"  sub/inner dir/i.txt (plan P1.1)"* ]] || { echo "$output"; false; }
+  [[ "$output" != *"scratch.txt"* ]] || { echo "$output"; false; }
+  ship_next_line "$output"
+  [[ "$output" == *"vbw commit P1.1"* ]] || { echo "$output"; false; }
+  git -C sub checkout -q -- pay.txt
   git -C "sub/inner dir" checkout -q -- i.txt
   vbw_run ship
   [ "$status" -eq 0 ] || { echo "$output"; false; }
+  [[ "$output" != *"scratch.txt"* ]] || { echo "$output"; false; }
+  [ -f sub/scratch.txt ]
   git status --porcelain -- sub | grep -q '^ M sub$'
+}
+
+@test "R244 docs: docs/workflows.md (Submodules, the refusal table's vbw ship row) and docs/next.md (the ship row) say only the milestone's own files must be committed and the user's own files never block" {
+  local wf="$REPO_ROOT/docs/workflows.md" nx="$REPO_ROOT/docs/next.md" table row
+  sed -n '/^## Submodules/,/^## /p' "$wf" | grep -i "vbw ship" | grep -qi "milestone's own files" || { echo "the Submodules section does not say vbw ship wants only the milestone's own files"; false; }
+  ! grep -qF 'wants every file committed' "$wf" || { echo "docs/workflows.md still says vbw ship wants every file committed"; false; }
+  table=$(sed -n '/^### Every refusal and its next step/,/^### Refusals reach the user/p' "$wf")
+  row=$(printf '%s\n' "$table" | grep -E '^\| `vbw ship`:')
+  [ -n "$row" ] || { echo "the refusal table has no vbw ship row"; false; }
+  [[ "$row" == *"vbw commit"* ]] || { echo "the vbw ship row does not name vbw commit as the next step: $row"; false; }
+  printf '%s\n' "$row" | grep -qi "own file" || { echo "the vbw ship row does not say the user's own files never block: $row"; false; }
+  row=$(grep -E '^\| 12 \|' "$nx")
+  [[ "$row" == *"vbw ship"* ]] || { echo "docs/next.md has no ship row"; false; }
+  printf '%s\n' "$row" | grep -i "own file" | grep -qi "never block" || { echo "the ship row of docs/next.md does not say a user's own file never blocks: $row"; false; }
+  ! grep -qF 'refuses while the proven work is not committed' "$nx" || { echo "docs/next.md still says the ship refuses while the proven work is not committed"; false; }
 }
 
 @test "ship is refused until vbw next says ship, then marks the milestone shipped" {

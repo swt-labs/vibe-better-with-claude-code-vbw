@@ -245,5 +245,5 @@ mkdir -p "$here/tools/probes"
 jq -n --arg at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" --arg v "$version" --argjson c "$cases" --argjson b "$builtins" --argjson a "$always" \
   --argjson m "$matcher" --argjson cpu "$cpu" --arg mech "$mechanism" \
   '{probe: "mcp-tools", at: $at, claude_version: $v, cases: $c, builtins: $b, always_allowed: $a, hook_matcher: $m, hook_read_cpu_ms: $cpu, mechanism: $mech, decision: "D561"}' \
-  > "$here/tools/probes/mcp-tools.json"
+  | jq --arg root "$here" --arg home "${HOME:-}" -f "$here/tools/mask-paths.jq" > "$here/tools/probes/mcp-tools.json"
 echo "wrote tools/probes/mcp-tools.json" >&2

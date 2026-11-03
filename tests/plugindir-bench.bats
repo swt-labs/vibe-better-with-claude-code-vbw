@@ -64,6 +64,8 @@ line() {
 }
 
 @test "R185: a loaded copy's status line above 60 ms fails the bench, naming the cost and the limit" {
+  # The reference is pinned under nominal (ratio 1 or less: the absolute budget, R222), so
+  # a slow runner scaling the budget past the injected 100 ms cannot read it as slow (T214).
   local sl="$TEST_ROOT/plugin/scripts/vbw-statusline.sh"
   {
     sed -n 1p "$PLUGIN_ROOT/scripts/vbw-statusline.sh"
@@ -71,7 +73,7 @@ line() {
     echo
     sed -n '2,$p' "$PLUGIN_ROOT/scripts/vbw-statusline.sh"
   } > "$sl"
-  bench VBW_BENCH_ONLY="$LOADED"
+  bench VBW_BENCH_ONLY="$LOADED" VBW_BENCH_REFERENCE_MS=1
   quiet_or_skip
   [ "$status" -eq 1 ] || {
     printf '%s\n' "$output"

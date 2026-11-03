@@ -23,7 +23,8 @@ RESULT="$REPO_ROOT/tools/l3-results/plugindir.json"
   jq -e '.scenario == "plugindir" and .evidence_level == "L3" and .passed == true
     and (.fixture | type == "string" and length > 0) and (.cost_usd | type == "number" and . > 0)
     and (.at | type == "string") and (.not_tested | type == "array" and length > 0)
-    and (.facts.tree_root | type == "string" and startswith("/"))
+    # The path is absolute, or masked as ~ or <checkout> by tools/mask-paths.jq (T213).
+    and (.facts.tree_root | type == "string" and test("^(/|~/|<checkout>/)"))
     and (.facts.tree_version | type == "string" and length > 0)
     and (.facts.installed_version | type == "string" and length > 0)
     and .facts.tree_version != .facts.installed_version

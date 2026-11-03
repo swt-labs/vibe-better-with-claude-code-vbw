@@ -57,12 +57,14 @@ VALUE='github:read-only ctx:read-only=search,get_context playwright'
   done
 }
 
-@test "R241: the record check refuses settings.mcp under schema 6, schema 7 without it, and a malformed stored entry" {
+@test "R241: settings.mcp under schema 6 loads and the next write raises the record to 7 (D582); schema 7 without it and a malformed stored entry are refused" {
   "$VBW" config set mcp "$VALUE" > /dev/null
   cp .vbw/record.json "$TEST_ROOT/good.json"
   jq '.schema = 6' "$TEST_ROOT/good.json" > .vbw/record.json
   vbw_run status
-  [ "$status" -eq 3 ] && [[ "$output" == *"schema 7"* ]] || { echo "$output"; false; }
+  [ "$status" -eq 0 ] || { echo "$output"; false; }
+  "$VBW" decide "raise it" > /dev/null
+  jq -e '.schema == 7' .vbw/record.json || { echo "schema $(jq .schema .vbw/record.json) after the write, not 7"; false; }
   jq '.settings |= del(.mcp)' "$TEST_ROOT/good.json" > .vbw/record.json
   vbw_run status
   [ "$status" -eq 3 ] && [[ "$output" == *"schema 7"* ]] || { echo "$output"; false; }
