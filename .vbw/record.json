@@ -1,6 +1,15 @@
 {
   "schema": 8,
-  "lease": null,
+  "lease": {
+    "run": "qa-20261103T135652Z",
+    "kind": "qa",
+    "started_at": "2026-11-03T13:56:52Z",
+    "files": [],
+    "session": "0ee781c3-c5b6-4a6c-889f-04b89f1fba4a",
+    "cost": {
+      "usd": 3031.668256
+    }
+  },
   "protected": [
     "tests/adaptive-results.bats",
     "tests/agent-scratch.bats",
@@ -28535,7 +28544,22 @@
         "guarded: R25 (C24), R28 (C25), R31 (C27), R33 (C29), R38 (C33, C34), R40 (C37), R43 (C42, C43), R45 (C39, C40, C41), R46 (C46), R47 (C47), R49 (C48), R99 (C155), R101 (C179), R111 (C171, C172, C173, C174, C175), R115 (C181), R119 (C180), R121 (C187, C188), R123 (C190, C191), R127 (C194), R131 (C198), R132 (C199), R133 (C195), R144 (C208, C209), R149 (C217, C218, C219, C220, C221, C222), R153 (C235, C236, C239), R166 (C253, C254, C255, C256, C267), R173 (C281, C282, C283, C284, C285, C286, C289), R178 (C290, C291, C292, C293, C294, C295, C296, C311), R179 (C297, C298, C299, C300, C301, C302, C303, C304, C305, C306, C312), R180 (C307, C308, C309, C310), R188 (C350, C351, C352, C353, C354, C355, C356, C357, C358, C359), R192 (C401, C402, C403, C404, C405, C406, C407, C408, C409, C410), R202 (C432, C433, C434, C435, C436, C437, C438, C439, C440, C441, C442, C443, C444, C445, C446, C447), R203 (C448, C449, C450), R204 (C451, C452, C453, C454), R205 (C455, C456, C457, C458, C467), R208 (C464, C465, C466, C468), R210 (C474, C475, C476), R211 (C477, C478, C479), R212 (C480, C481, C482), R213 (C483, C484), R217 (C494, C495), R225 (C517, C518, C519)",
         "tests: project test command"
       ],
-      "predicted": "standard"
+      "predicted": "standard",
+      "qa": {
+        "result": "pass",
+        "tier": "quick",
+        "tree": "c5637fadfe5ad92e2054b9437a855dd143e6e03ff413e557f99b8e0169c81f37",
+        "at": "2026-11-03T13:58:29Z",
+        "note": "8/8 checks"
+      },
+      "outcome": {
+        "tier": "standard",
+        "predicted": "standard",
+        "held": true,
+        "fix_rounds": 0,
+        "qa_findings": 0,
+        "escalations": 0
+      }
     }
   ],
   "plans": [
