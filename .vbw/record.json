@@ -18695,6 +18695,22 @@
           "plan": "P198.2"
         }
       ]
+    },
+    {
+      "id": "R247",
+      "text": "Record schema 8 (T221): a record whose recorded break (plans[].mutations[]) carries tree or contract is schema 8, so a VBW up to 2.1.23 asks to be updated instead of calling the record corrupt; the schema is one definition shared by the writer (record_update) and the validator (record.jq): a table of the features that raised it (settings.efforts 5, a decision's plans 6, settings.mcp 7, a break's tree or contract 8), the highest feature present wins and 4 is the floor, with no per-feature if/elif chain or per-schema rule left in either; the validator refuses a schema that differs from the table's answer, naming the feature that needs the higher schema or the feature the schema is only for; VBW_SCHEMA_MAX is 8; vbw mutate writes a schema-8 record; docs/record.md lists the table once",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M51",
+      "rules": []
+    },
+    {
+      "id": "R248",
+      "text": "A new record key or value comes with a schema bump: a standards check (tools/check-record-shape.sh, tests/standards.bats) digests the record's accepted shape (every literal key list and enum in record.jq and the schema table, plus the interview values in interview.json) and compares it with the digest pinned beside VBW_SCHEMA_MAX in the test, so a key or value added to or removed from the shape fails the check until the schema table gains a row and the pin is moved with it; the message names the three places to touch (the table, VBW_SCHEMA_MAX, docs/record.md) and the pin; the table's highest schema, VBW_SCHEMA_MAX and the pinned schema are checked equal",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M51",
+      "rules": []
     }
   ],
   "phases": [
@@ -80480,6 +80496,17 @@
         "ended": "2026-11-03T07:18:33Z",
         "cost": {
           "usd": 1.307558
+        }
+      },
+      {
+        "id": "plan-20261103T093823Z",
+        "kind": "plan",
+        "session": "0ee781c3-c5b6-4a6c-889f-04b89f1fba4a",
+        "milestone": "M51",
+        "started": "2026-11-03T09:38:23Z",
+        "ended": "2026-11-03T09:45:41Z",
+        "cost": {
+          "usd": 3.262596
         }
       }
     ],
