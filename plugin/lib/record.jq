@@ -380,11 +380,13 @@ if type != "object" then ["record must be a JSON object"] else
           and (.files | type == "array" and length > 0 and all(.[]; type == "string" and length > 0));
         def tf_dir: . == null or (type == "string" and (split("/") as $s | (startswith("/") | not)
           and all($s[]; . != "" and . != "." and . != "..") and $s[0] != ".vbw" and $s[0] != ".git"));
+        # The same def is in spec.jq and VBW_JQ_DEFS.
+        def pathspec_path: sub("^(:!|:\\^|:\\(exclude\\))"; "");
         select((if type == "object" then keys == ["files","run"] and tf_ok
           elif type == "array" then length > 0
             and all(.[]; type == "object" and keys == ["dir","files","name","run"] and tf_ok and (.dir | tf_dir)
               and (.name == null or (.name | type == "string" and test("^[A-Za-z0-9_-]+$")))
-              and (. as $f | $f.dir == null or all($f.files[]; ltrimstr(":!") | startswith($f.dir + "/"))))
+              and (. as $f | $f.dir == null or all($f.files[]; pathspec_path | startswith($f.dir + "/"))))
             and ([.[].name] | unique | length) == length
             and (length == 1 or all(.[]; .name != null))
             and ((length == 1 and .[0].name == null and .[0].dir == null) | not)

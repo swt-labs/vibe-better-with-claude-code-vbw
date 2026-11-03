@@ -28,6 +28,9 @@ def file_slots: [.[] | [match("\\{file\\}"; "g")] | length] | add;
 # True when a clean copy path is unsafe: absolute, an empty, "." or ".." segment, or under .vbw or .git.
 def bad_leave_out: (rtrimstr("/") | split("/")) as $s
   | startswith("/") or any($s[]; . == "" or . == "." or . == "..") or ($s[0] == ".vbw" or $s[0] == ".git");
+# A pathspec without its exclude prefix (:!, :^ or :(exclude)), as git reads it;
+# unchanged when it has none. The same def is in record.jq and VBW_JQ_DEFS.
+def pathspec_path: sub("^(:!|:\\^|:\\(exclude\\))"; "");
 # A test file form: how its messages name it.
 def tf_label: if .name == null then "the Test files section" else "form \(.name)" end;
 # tf_apply(LINE_NO; KEY; VALUE; LINE): one run, files or dir line applied to a
@@ -127,7 +130,7 @@ split("\n") | map(sub("\r$"; ""))
     | .errors += [$fs[]
         | if .run == null then "line \(.line): \(tf_label) needs a '- run: <command with {file}>' line"
           elif .files == [] then "line \(.line): \(tf_label) needs a '- files: <git pathspecs>' line"
-          elif .dir != null then . as $f | (.files[] | select(.p | ltrimstr(":!") | (startswith($f.dir + "/") | not) or any(split("/")[]; . == "." or . == ".."))
+          elif .dir != null then . as $f | (.files[] | select(.p | pathspec_path | (startswith($f.dir + "/") | not) or any(split("/")[]; . == "." or . == ".."))
             | "line \(.line): the files of \($f | tf_label) must lie under its dir \($f.dir)/ (each pathspec starts with it, with no '.' or '..' parts), got: \(.p)")
           else empty end]
   end

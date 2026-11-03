@@ -45,8 +45,8 @@ $rec[0] as $r
       + (if $r.test_files == null then [] else
            [$r.checks[].run[]] as $ran
            | [($r.test_files | if type == "array" then .[] else . end) as $tf
-               | ([$tf.files[] | select(startswith(":!") | not) | globre | "^\(.)$"]) as $inc
-               | ([$tf.files[] | select(startswith(":!")) | ltrimstr(":!") | globre | "^\(.)$"]) as $exc
+               | ([$tf.files[] | select(pathspec_path == .) | globre | "^\(.)$"]) as $inc
+               | ([$tf.files[] | pathspec_path as $p | select($p != .) | $p | globre | "^\(.)$"]) as $exc
                | $cs[].files[]? | select(. as $f | any($inc[]; . as $p | $f | test($p)) and (any($exc[]; . as $p | $f | test($p)) | not)
                    and (any($ran[]; . == $f) | not)) | "file:\(.)"] | unique
          end);

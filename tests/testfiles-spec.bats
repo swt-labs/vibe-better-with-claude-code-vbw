@@ -238,6 +238,36 @@ refused() {
   - files: :!apps/webapp/./x.t apps/webapp/*.t' "line 16" ":!apps/webapp/./x.t"
 }
 
+@test "#735: a form with a dir takes the :!, :^ and :(exclude) spellings of an exclude under it, and git applies each" {
+  local x
+  mkdir -p apps/a
+  printf 'true\n' > apps/a/a.t
+  printf 'true\n' > apps/a/b.t
+  git add apps/a && git commit -q -m "test: a and b"
+  for x in ':!' ':^' ':(exclude)'; do
+    spec "- dir: apps/a
+- run: sh {file}
+- files: ${x}apps/a/b.t apps/a/*.t"
+    run "$VBW" spec sync
+    [ "$status" -eq 0 ] || { echo "$x: $output"; false; }
+    jq -e --arg x "${x}apps/a/b.t" '.test_files[0].files == [$x, "apps/a/*.t"]' .vbw/record.json > /dev/null \
+      || { jq -c .test_files .vbw/record.json; false; }
+    # shellcheck disable=SC2016 # expanded by vbw_kernel
+    [ "$(vbw_kernel '. "$VBW_LIB/testfiles.sh"; testfiles_owned "$(cat "$VBW_RECORD")"' | jq -c '[.[].p]')" = '["apps/a/a.t"]' ]
+    refused "- dir: apps/a
+- run: sh {file}
+- files: ${x}apps/other/b.t apps/a/*.t" "line 15" "must lie under its dir apps/a/" "${x}apps/other/b.t"
+  done
+}
+
+@test "#735: spec.jq, record.jq and the kernel's jq defs strip an exclude with the same pathspec_path" {
+  local f defs=()
+  for f in lib/spec.jq lib/record.jq lib/record.sh; do
+    defs+=("$(grep -o 'def pathspec_path:.*;' "$PLUGIN_ROOT/$f")") # cmm-exempt
+  done
+  [ -n "${defs[0]}" ] && [ "${defs[0]}" = "${defs[1]}" ] && [ "${defs[0]}" = "${defs[2]}" ] || { printf '%s\n' "${defs[@]}"; false; }
+}
+
 @test "#735: a dir that is, or lies under, a committed symbolic link is refused at check and sync" {
   mkdir -p apps real/web
   ln -s ../.. apps/web

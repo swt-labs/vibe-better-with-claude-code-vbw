@@ -489,6 +489,8 @@ def covers($p): . as $e | $e == $p or (($e | endswith("/")) and ($p | startswith
 # tf_forms: the test file forms of a record or a parsed spec, always an array of
 # {name, dir, run, files}: the one-form {run, files} reads as an unnamed form at the root.
 def tf_forms: (.test_files // null) | if . == null then [] elif type == "object" then [{name: null, dir: null, run, files}] else . end;
+# A pathspec without its exclude prefix (:!, :^ or :(exclude)); the same def is in spec.jq and in the validator.
+def pathspec_path: sub("^(:!|:\\^|:\\(exclude\\))"; "");
 # One test file form for a message: "[NAME: ]RUN (files PATHSPECS[, in DIR/])".
 def tf_say: (if .name == null then "" else .name + ": " end) + (.run | join(" "))
   + " (files \(.files | join(" "))" + (if .dir == null then "" else ", in \(.dir)/" end) + ")";

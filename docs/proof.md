@@ -682,7 +682,8 @@ subproject, names one form per runner, with the lines nested under the name:
 where a runner finds its own configuration. With a dir, `{file}` is the test
 file's path relative to its dir (`src/cart.test.ts`, not
 `apps/webapp/src/cart.test.ts`), and every pathspec of the form must lie under
-it, with no `.` or `..` parts. A dir is a real folder: no `.` or `..` parts, no
+it, with no `.` or `..` parts; an exclude does too, in any of git's spellings
+(`:!`, `:^` or `:(exclude)`, as in `:!apps/webapp/src/slow.test.ts`). A dir is a real folder: no `.` or `..` parts, no
 glob characters (`*`, `?`, `[`), and not a committed symbolic link or under one.
 A single form may take a top-level `- dir:` line too. A name is letters,
 digits, `_` or `-`, and given once; one section uses one shape, top-level lines
