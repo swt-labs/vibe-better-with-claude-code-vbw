@@ -68382,6 +68382,11 @@
       "id": "T227",
       "text": "Checks that run in the main session (field report 2026-11-03): a check may declare where it runs (the main session, which holds a project's exclusive lane or lock, instead of a Dev); the kernel runs it there at plan done or prove and records the result as evidence. Case: a plan whose task was 'run merge gates' closed without running them because a Dev cannot claim the heavy lane, and the kernel counted the plan done",
       "status": "open"
+    },
+    {
+      "id": "T228",
+      "text": "plan done when the blocking check belongs to a later plan (field report 2026-11-03): allow it with the dependency recorded (built, awaiting Cnnn); the requirement stays unproven until that check runs. Case: P10.3 waited on P16.3's live-session check",
+      "status": "open"
     }
   ],
   "decisions": [
