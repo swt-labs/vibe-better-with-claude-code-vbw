@@ -1,29 +1,6 @@
 {
   "schema": 8,
-  "lease": {
-    "run": "build-20261104T101203Z",
-    "kind": "build",
-    "started_at": "2026-11-04T10:12:03Z",
-    "files": [
-      "docs/guards.md",
-      "docs/workflows.md",
-      "plugin/hooks/common.jq",
-      "plugin/hooks/guard-bash.jq",
-      "plugin/hooks/guard-file.jq",
-      "plugin/hooks/guard-read.jq",
-      "plugin/hooks/hooks.json",
-      "plugin/hooks/read.sh",
-      "plugin/lib/cmd-apply.sh",
-      "plugin/lib/cmd-approve.sh",
-      "plugin/lib/cmd-ship.sh",
-      "plugin/lib/contract.sh",
-      "tools/bench-hooks.sh"
-    ],
-    "session": "0ee781c3-c5b6-4a6c-889f-04b89f1fba4a",
-    "cost": {
-      "usd": 3147.077242
-    }
-  },
+  "lease": null,
   "protected": [
     "tests/adaptive-results.bats",
     "tests/agent-scratch.bats",
@@ -65747,7 +65724,7 @@
       "after": [
         "P202.3"
       ],
-      "status": "building",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "hooks.json and read.sh, the second pass: the Bash and file guard commands keep jq first (the K20 standard, tests/standards.bats) in the house pipe form the AskUserQuestion and tools hooks already use: jq -rc ... -f guard-bash.jq (or guard-file.jq) ... | { reader }; the guard programs print, raw, either nothing, one deny JSON line, or a request block, and always end with the line vbw-guard-done; the reader is . \"${CLAUDE_PLUGIN_ROOT}/hooks/read.sh\" (POSIX sh, sourced so no process starts): it prints a deny line as it is, exits non-zero when the end line is missing (jq failed, missing or past its time limit: the existing fail-closed handler then answers exactly as today, tests/guard-fail-closed.bats and tests/hook-answers.bats pass), and serves a request: line 1 vbw-read, line 2 the hook input as one compact JSON line, then one line target<TAB><absolute path> per write target that leaves the hook's project; for each target it walks up to the nearest folder holding .vbw/record.json beside .git (a file or a folder), a target with no such folder judged as today (R177, named none to the second pass), and runs one second pass per other project: jq -rc -f guard-read.jq with that project's record (or its glance when newer) by --rawfile, its .vbw/runtime/run-open as --arg, the hook JSON on stdin and its targets as --args; guard-read.jq includes holder and common only (small compile, D564) and judges each target through project_path against that project's root and lease_write_denial, foreign_denial or outside_denial with the same session rule as inside it (an agent of the lease's session is held to the lease, another session to foreign), so the refusal text is exactly the one the write gets from inside; a record it cannot read while its run-open exists is refused fail-closed with today's text and exit 2 (tests/guard-cross-project.bats; tests/hook-answers.bats' guard-read.jq pin)",
@@ -65755,6 +65732,100 @@
         "guard-file.jq: an Edit, Write, MultiEdit or NotebookEdit path outside the hook's project becomes a request the same way; a target inside a worktree or project with a record of its own is judged by that record (two VBW projects in one clone stay separate); a target outside every project is judged as today (R177: refused under the hook's own project's run, allowed otherwise)",
         "tools/bench-hooks.sh: a guard (cross-project) case beside the same-project ones (a build agent's shell write into another project's folder under that project's run, so the second pass is measured), selectable with VBW_BENCH_ONLY and within the hook budget; every existing case stays within budget",
         "docs/guards.md: one plain sentence that a write is judged by the project it lands in, wherever the command runs from; \"How a command is read\" describes the second pass (what the first pass asks for, what the reader reads, that nothing but jq runs before the first pass) and the fast path's three new triggers; \"When a guard fails\" names the end line"
+      ],
+      "mutations": [
+        {
+          "task": 5,
+          "none": "docs/guards.md is prose: no check reads it for this plan's behaviour, so there is no behaviour to break",
+          "at": "2026-11-04T10:50:24Z"
+        },
+        {
+          "task": 3,
+          "what": "the file guard never asks for the project an outside path lands in",
+          "files": [
+            "plugin/hooks/guard-file.jq"
+          ],
+          "checks": {
+            "C583": "red"
+          },
+          "result": "red",
+          "at": "2026-11-04T10:51:11Z",
+          "head": "aebd8b1e50730cfdc8cc54dfdc33c00219fc3dd9",
+          "tree": "e7c1818e8c1803a5627c03a73816f1bc2fb08f71",
+          "contract": "bb2bddea3e3fe9ffb0cb633f445fc531086846d247fcb70f9093a018abb1d703"
+        },
+        {
+          "rule": {
+            "req": "R254",
+            "text": "from a linked worktree, a cd into the main checkout followed by a program write, a shell write by absolute path, an Edit by absolute path and a path through .. are refused under that project's run with the very reasons the same calls get inside it, the protected-file text included"
+          },
+          "what": "with_cwd ignores cd: the working folder after a cd stays the hook's",
+          "files": [
+            "plugin/hooks/guard-bash.jq"
+          ],
+          "checks": {
+            "C583": "red"
+          },
+          "result": "red",
+          "at": "2026-11-04T10:51:42Z",
+          "head": "aebd8b1e50730cfdc8cc54dfdc33c00219fc3dd9",
+          "tree": "e7c1818e8c1803a5627c03a73816f1bc2fb08f71",
+          "contract": "bb2bddea3e3fe9ffb0cb633f445fc531086846d247fcb70f9093a018abb1d703"
+        },
+        {
+          "rule": {
+            "req": "R254",
+            "text": "the same calls are allowed once that project has no run open; a target inside a worktree with a record of its own is judged by that record; a target outside every project is judged as today"
+          },
+          "what": "read.sh drops the refusal of a target in no project",
+          "files": [
+            "plugin/hooks/read.sh"
+          ],
+          "checks": {
+            "C583": "red"
+          },
+          "result": "red",
+          "at": "2026-11-04T10:51:45Z",
+          "head": "aebd8b1e50730cfdc8cc54dfdc33c00219fc3dd9",
+          "tree": "e7c1818e8c1803a5627c03a73816f1bc2fb08f71",
+          "contract": "bb2bddea3e3fe9ffb0cb633f445fc531086846d247fcb70f9093a018abb1d703"
+        },
+        {
+          "rule": {
+            "req": "R254",
+            "text": "a target whose project's record cannot be read while its run is open is refused fail-closed with today's text, from any project folder"
+          },
+          "what": "read.sh lets a project whose pass fails during its run through",
+          "files": [
+            "plugin/hooks/read.sh"
+          ],
+          "checks": {
+            "C583": "red"
+          },
+          "result": "red",
+          "at": "2026-11-04T10:51:48Z",
+          "head": "aebd8b1e50730cfdc8cc54dfdc33c00219fc3dd9",
+          "tree": "e7c1818e8c1803a5627c03a73816f1bc2fb08f71",
+          "contract": "bb2bddea3e3fe9ffb0cb633f445fc531086846d247fcb70f9093a018abb1d703"
+        },
+        {
+          "rule": {
+            "req": "R254",
+            "text": "tools/bench-hooks.sh has a cross-project case beside the same-project ones, so the extra record read is measured"
+          },
+          "what": "the bench's case list no longer names the cross-project case",
+          "files": [
+            "tools/bench-hooks.sh"
+          ],
+          "checks": {
+            "C583": "red"
+          },
+          "result": "red",
+          "at": "2026-11-04T10:51:51Z",
+          "head": "aebd8b1e50730cfdc8cc54dfdc33c00219fc3dd9",
+          "tree": "e7c1818e8c1803a5627c03a73816f1bc2fb08f71",
+          "contract": "bb2bddea3e3fe9ffb0cb633f445fc531086846d247fcb70f9093a018abb1d703"
+        }
       ]
     },
     {
@@ -82946,6 +83017,17 @@
         "ended": "2026-11-04T10:11:17Z",
         "cost": {
           "usd": 0.695051
+        }
+      },
+      {
+        "id": "build-20261104T101203Z",
+        "kind": "build",
+        "session": "0ee781c3-c5b6-4a6c-889f-04b89f1fba4a",
+        "milestone": "M52",
+        "started": "2026-11-04T10:12:03Z",
+        "ended": "2026-11-04T10:52:56Z",
+        "cost": {
+          "usd": 5.469306
         }
       }
     ],
