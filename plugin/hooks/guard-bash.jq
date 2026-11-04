@@ -140,7 +140,10 @@ def chat_drives($g):
 # changes; files are restored and written by the shell (shell_writes) only
 # within the run's files.
 def in_run($g):
-  ( apply_call | "vbw apply changes the plan of record: only the main session runs it, in every mode (--amend, --patch, --add included)\nNext: report it so the main session amends or patches the plan" ),
+  # The Lead's job under a plan run is vbw apply (plain, --patch, --add); --amend stays the main session's (R250).
+  ( apply_call
+    | select((($g.hook.agent_type // "") == "vbw:lead" and ($g.lease.kind // "") == "plan" and (.args | any(.[]; . == "--amend") | not)) | not)
+    | "vbw apply changes the plan of record: only the main session runs it, in every mode (--amend, --patch, --add included)\nNext: report it so the main session amends or patches the plan" ),
   ( select(written(glance_path)) | glance_reason ),
   ( select(.cmd == "git") | git_words as $w | ($w[0] // "") as $s | $w[1:] as $a
     | ( select($s | test("^(commit|commit-tree|push|rebase|merge|pull|cherry-pick|revert|am)$"))
