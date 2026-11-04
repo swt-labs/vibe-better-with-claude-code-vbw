@@ -46,6 +46,10 @@ The fix: remove that line, or change it to .vbw/runtime/
   first, in that order, then the rest. Every record VBW writes has all four; its
   schema is the answer of the Versioning table. A record with another key order,
   written by an older VBW, still works.
+- **The check fingerprint:** `.vbw/runtime/validated.json` holds the fingerprint
+  of the record bytes last found correct and of VBW's own validator text, so the
+  next read skips the check. Any change to either (a hand edit, another VBW
+  version) checks the record again in full. Deleting it is harmless.
 - **The glance:** `.vbw/runtime/glance.json` holds the record's `schema`,
   `lease` and `protected` for the guards (docs/guards.md), besides what the
   status line shows. Every record write rewrites it in the same locked write and
