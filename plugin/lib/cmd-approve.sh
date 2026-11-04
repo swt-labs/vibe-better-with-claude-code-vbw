@@ -72,6 +72,17 @@ approve_record() {
   approve_commands "$record"
 }
 
+# approve_repin RECORD: an amendment (vbw apply --amend, R250) keeps the contract approved: the consent for
+# the amended contract's hash and shape and the approved-contract snapshot are written for it, as the
+# approval wrote them for the contract before. No decision and no commit: nobody was asked.
+approve_repin() {
+  consent_grant contract "$(contract_hash "$1")" "$(printf '%s' "$1" | jq -c \
+    '{requirements: (.requirements | length), checks: (.checks | length), plans: (.plans | length)}')"
+  consent_grant shape "$(contract_shape "$1")" '{}'
+  contract_doc "$1" > "$VBW_RUNTIME/approved-contract.json.$$" \
+    && mv "$VBW_RUNTIME/approved-contract.json.$$" "$VBW_RUNTIME/approved-contract.json"
+}
+
 # approve_decide TEXT SUBJECT WHAT [PLANS]: the approval's decision with TEXT and its strict commit with SUBJECT;
 # the decision is taken back when the commit fails (no approval without its commit), naming WHAT is not approved.
 # PLANS, a JSON array of plan ids, is kept on the decision as the plans the approval changed.
@@ -79,7 +90,9 @@ approve_decide() {
   local before
   before=$(cat "$VBW_RECORD")
   record_update "$VBW_JQ_DEFS"'
-    .decisions += [{id: (.decisions | next_id("D")), at: $at, text: $text} + (if $plans == null then {} else {plans: $plans} end)]' \
+    .decisions += [{id: (.decisions | next_id("D")), at: $at, text: $text} + (if $plans == null then {} else {plans: $plans} end)]
+    # The approval takes the recorded amendments with it (R250); the files and awaits they added stay.
+    | .plans |= map(del(.amendments)) | .checks |= map(del(.amendments))' \
     --arg text "$1" --arg at "$(vbw_now)" --argjson plans "${4:-null}"
   if ! record_commit --strict "$2"; then
     record_update '.decisions |= map(select(.id != $d))' --arg d "$(printf '%s' "$before" | jq -r '.decisions | (map(.id | ltrimstr("D") | tonumber) | max // 0) + 1 | "D\(.)"')"

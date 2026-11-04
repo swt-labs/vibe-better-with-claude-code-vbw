@@ -15,7 +15,7 @@
 VBW_CONTRACT_DEFS='def canon: if type == "object" then to_entries | map(.value |= canon) | sort_by(.key) | from_entries
   elif type == "array" then map(canon) else . end;
 def contract_core: {requirements: [.requirements[] | {id, text, proof} + (if has("rules") then {rules} else {} end)],
-                    checks: .checks, plans: [.plans[] | del(.status, .note, .mutations)]}
+                    checks: [.checks[] | del(.amendments)], plans: [.plans[] | del(.status, .note, .mutations, .amendments, .awaits)]}
                    + (if .project.results then {results: .project.results} else {} end)
                    + (if .project.leave_out then {leave_out: .project.leave_out} else {} end)
                    + (if .test_files then {test_files} else {} end);
@@ -48,7 +48,9 @@ contract_hash_from() {
 
 # contract_core RECORD_JSON: the contract's structure (requirements, checks,
 # plans, and results and leave_out only when present, so older contracts keep their hash),
-# canonical, without the bytes of any check file.
+# canonical, without the bytes of any check file. A plan's amendments and awaits and a
+# check's amendments are left out (R250): an amendment changes no check's assertion, so
+# it never moves the hash; the files an amendment added stay in.
 contract_core() {
   printf '%s' "$1" | jq -cS "$VBW_CONTRACT_DEFS"'contract_core'
 }
@@ -67,7 +69,7 @@ contract_shape() {
 contract_held() {
   contract_approved "$(contract_hash "$1")" && return 0
   printf '%s' "$1" | jq -r --slurpfile old "$VBW_RUNTIME/approved-contract.json" '.checks[] | select(has("fix")) | . as $c
-    | select($old[0].checks[$c.id] != $c) | .id' 2> /dev/null \
+    | select($old[0].checks[$c.id] != ($c | del(.amendments))) | .id' 2> /dev/null \
     || printf '%s' "$1" | jq -r '.checks[] | select(has("fix")) | .id'
 }
 
@@ -89,7 +91,7 @@ contract_waiting_with() {
   consent_has shape "$shape" || return 1
   # One path per line: a shell variable cannot hold NUL bytes (bash 5 warns, bash 3.2 drops them).
   held=$(printf '%s' "$1" | jq -r --slurpfile old "$old" '.checks[] | select(has("fix")) | . as $c
-    | select($old[0].checks[$c.id] != $c) | .files[]?' 2> /dev/null) \
+    | select($old[0].checks[$c.id] != ($c | del(.amendments))) | .files[]?' 2> /dev/null) \
     || held=$(printf '%s' "$1" | jq -r '.checks[] | select(has("fix")) | .files[]?')
   while IFS= read -r -d '' f; do
     all="$all$f"$'\n'
@@ -140,10 +142,20 @@ contract_doc() {
   done < <(printf '%s' "$1" | jq -j '[.checks[].files // [] | .[]] | unique[] | . + "\u0000"')
   printf '%s' "$1" | jq -c --slurpfile f_files <(printf '%s' "$files") '$f_files[0] as $files | {
     requirements: (.requirements | map({key: .id, value: ({text, proof} + (if has("rules") then {rules} else {} end))}) | from_entries),
-    checks: (.checks | map({key: .id, value: .}) | from_entries),
-    plans: (.plans | map({key: .id, value: del(.status, .note, .mutations)}) | from_entries),
+    checks: (.checks | map({key: .id, value: del(.amendments)}) | from_entries),
+    plans: (.plans | map({key: .id, value: del(.status, .note, .mutations, .amendments, .awaits)}) | from_entries),
     commands: .commands,
     files: $files} + (if .project.results then {results: .project.results} else {} end)
     + (if .project.leave_out then {leave_out: .project.leave_out} else {} end)
     + (if .test_files then {test_files} else {} end)'
+}
+
+# contract_amendments_block RECORD_JSON: the amendments recorded since the last approval, the
+# block vbw show contract --changes, vbw show contract and vbw ship share (R250): the heading
+# and one line per amendment, two-space indented, plans then checks in record order. Prints
+# nothing when none is recorded.
+contract_amendments_block() {
+  printf '%s' "$1" | jq -r '[(.plans[], .checks[]) | .id as $i | (.amendments // [])[]
+      | "  \($i): \(.what) (\(.at), session \(.session // "unknown"))"]
+    | if length > 0 then "amendments since the last approval:", .[] else empty end'
 }
