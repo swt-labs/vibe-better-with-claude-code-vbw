@@ -171,3 +171,9 @@ def fix_files($r): if .command then ["*"]
 | if .gate then . + {since: (($prev | try fromjson catch null) as $p
     | if ($p | type) == "object" and $p.gate == true and $p.action == .action and $p.detail == .detail and ($p.since | type) == "string"
       then $p.since else (now | todate) end)} else . end
+# The amendments recorded since the previous answer (R250, D586), told once: amendments_seen
+# is every amendment the record holds now ("id at what"), kept in the answer file; the ones the
+# previous answer did not hold are carried as amendments [{id, what}].
+| ([($r.plans[]?, $r.checks[]?) | .id as $i | (.amendments // [])[] | {key: "\($i) \(.at) \(.what)", id: $i, what: .what}]) as $am
+| (($prev | try fromjson catch null) as $p | if ($p | type) == "object" then ($p.amendments_seen // []) else [] end) as $seen
+| . + {amendments: [$am[] | select(.key as $k | $seen | index($k) | not) | {id, what}], amendments_seen: [$am[].key]}

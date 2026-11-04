@@ -180,6 +180,8 @@ cmd_next() {
   else
     road=$(jq -c '.road // empty' "$VBW_RUNTIME/next.json" 2> /dev/null) || road=
     [ -z "$road" ] || next=$(printf '%s' "$next" | jq -c --argjson road "$road" '. + {road: $road}')
+    # A caller inside the kernel does not tell the router's amendments: the kept answer holds the ones already told (R250, D586).
+    next=$(printf '%s' "$next" | jq -c --slurpfile p <(cat "$VBW_RUNTIME/next.json" 2> /dev/null || true) '.amendments = [] | .amendments_seen = (($p[0] // {}).amendments_seen // [])')
   fi
   # The status line shows the last answer (docs/statusline.md).
   printf '%s\n' "$next" > "$VBW_RUNTIME/next.json.$$" && mv "$VBW_RUNTIME/next.json.$$" "$VBW_RUNTIME/next.json"
