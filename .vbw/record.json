@@ -65372,14 +65372,56 @@
       "after": [
         "P201.1"
       ],
-      "status": "blocked",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "record-schema.jq: one new row {schema: 9, feature: \"an amendment, an awaited check or a queued requirement\", present: any plan or check with an amendments list, any plan with an awaits list, or any requirement with queued true}; record.sh VBW_SCHEMA_MAX=9; a record with none of the three is written at schema 8 as today; a schema-9 record without them is corrupt with \"schema 9 is only for an amendment, an awaited check or a queued requirement\" (tests/amend.bats, filter 'R250 schema'; tests/record-schema.bats)",
         "record.jq: the field_rule lists become exactly [\"id\",\"text\",\"proof\",\"status\",\"milestone\",\"rules\",\"skipped\",\"later\",\"queued\"] for requirements, [\"id\",\"req\",\"run\",\"files\",\"exit\",\"output\",\"timeout\",\"alone\",\"fix\",\"amendments\"] for checks and [\"id\",\"phase\",\"title\",\"reqs\",\"files\",\"after\",\"status\",\"note\",\"tasks\",\"role\",\"mutations\",\"amendments\",\"awaits\"] for plans; one def validates each amendment as an object whose (keys | sort) == [\"at\",\"session\",\"what\"], what a non-empty string, at an ISO-8601 UTC time, session a string or null; awaits an array of check ids belonging to the plan's own requirements; queued exactly true; anything else corrupt with a message naming the field; tools/check-record-shape.sh then prints the digest tests/standards.bats already pins for schema 9 (R248): run bats tests/standards.bats tests/record-schema.bats tests/record-schema-docs.bats under PATH=/bin:$PATH",
         "docs/record.md: row 9 in the Versioning table (amendment, await, queued -> 9), the three fields where the plan, check and requirement fields are described (what an amendment holds, what awaits means, what queued means), VBW_SCHEMA_MAX currently 9; an older kernel refuses a schema-9 record as newer, as M51 defines"
       ],
-      "note": "C574 cannot pass: its second case (tests/amend.bats line 86) asserts jq -e '.schema == 8' on the shop fixture record right after edit_record, but that record is schema 4 (vbw init writes 4; nothing in the fixture raises it; edit_record does not change it). With that one assertion changed to .schema == 4 the case passes (checked in a copy in .vbw/runtime/scratch/amend2.bats; case 1 passes as is). Schema 9, VBW_SCHEMA_MAX 9, validator, R248 digest and docs are built and committed. Needs the main session to vbw apply --patch the check file and get it approved, then re-run."
+      "mutations": [
+        {
+          "task": 3,
+          "none": "docs/record.md is prose; no rule check of this plan (C574) reads it, tests/record-schema-docs.bats guards its schema statements",
+          "at": "2026-11-04T10:10:21Z"
+        },
+        {
+          "rule": {
+            "req": "R250",
+            "text": "schema 9 is one row of the table, for an amendment, an awaited check or a queued requirement; VBW_SCHEMA_MAX is 9; a schema-9 record with none of them is corrupt"
+          },
+          "what": "VBW_SCHEMA_MAX lowered to 8",
+          "files": [
+            "plugin/lib/record.sh"
+          ],
+          "checks": {
+            "C574": "red"
+          },
+          "result": "red",
+          "at": "2026-11-04T10:10:46Z",
+          "head": "8fa80071f53e3a7adf1735072f7ed266231967dd",
+          "tree": "84a1c526d7fcb4d922de28941eb08d0d435b11ef",
+          "contract": "bb2bddea3e3fe9ffb0cb633f445fc531086846d247fcb70f9093a018abb1d703"
+        },
+        {
+          "rule": {
+            "req": "R250",
+            "text": "the validator accepts amendments {what, at, session or null} on plans and checks, awaits naming checks of the plan's own requirements, and queued true, and refuses every malformed form naming the field"
+          },
+          "what": "amendment key check inverted",
+          "files": [
+            "plugin/lib/record.jq"
+          ],
+          "checks": {
+            "C574": "red"
+          },
+          "result": "red",
+          "at": "2026-11-04T10:10:49Z",
+          "head": "8fa80071f53e3a7adf1735072f7ed266231967dd",
+          "tree": "84a1c526d7fcb4d922de28941eb08d0d435b11ef",
+          "contract": "bb2bddea3e3fe9ffb0cb633f445fc531086846d247fcb70f9093a018abb1d703"
+        }
+      ]
     },
     {
       "id": "P202.2",
@@ -65422,14 +65464,56 @@
         "docs/guards.md"
       ],
       "after": [],
-      "status": "blocked",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "guard-bash.jq: under any run lease, a run agent's Bash call that runs vbw apply in any mode (plain, --patch, --add, --amend), by any path to vbw, after a cd, inside a substitution or through a pipe, is refused with exactly the two lines \"vbw apply changes the plan of record: only the main session runs it, in every mode (--amend, --patch, --add included)\\nNext: report it so the main session amends or patches the plan\"; vbw status, vbw show contract, vbw plan done and the other kernel commands stay allowed, and the main session (no agent_type) is never refused (tests/hooks-guard.bats, filter R250)",
         "common.jq: lease_write_denial's protected-file text becomes exactly \"<file> is a protected check file: a protected check file is never edited during a build\\nNext: leave <file> as it is; the main session changes the check with vbw apply --patch, then the user approves it\" (the other-requirement fix text is unchanged); every pinned hook answer in tests/guard-protected.bats and tests/hooks-guard.bats passes under PATH=/bin:$PATH, and tools/check-hook-answers.sh still finds no allow",
         "docs/guards.md: the \"What is denied\" table gains the vbw apply row (every mode, every run agent, the two-line refusal) and the protected check file row states the new one-line rule and its Next line; the plan skill's words live in docs/workflows.md (P202.2)"
       ],
-      "note": "Tasks 1-3 committed (e9d0fb10, fb1d3946, 9adf0750) and C577/C578 pass, but the mutation step cannot run: tests/hooks-guard.bats has an uncommitted edit (the R250.12 test compares after the 'VBW guard: ' prefix; the committed version fails against the real hook) that is waiting for approval; vbw mutate refuses while a check file differs from the last commit, and vbw commit P202.3 refuses the file as not the plan's, the write guard also keeps me from restoring it. Needs the main session to commit that check file (or approve it), then mutation of R250.12 and R250.13 and the docs task (--none) can run."
+      "mutations": [
+        {
+          "task": 3,
+          "none": "task 3 only edits docs/guards.md, which no code or check reads; the rules' checks cover the guard texts it describes",
+          "at": "2026-11-04T10:09:12Z"
+        },
+        {
+          "rule": {
+            "req": "R250",
+            "text": "during a run, a run agent's vbw apply in any mode (plain, --patch, --add, --amend; by any path, after a cd, in a substitution) is refused by the guard in two lines, the rule and the next step; the main session and the other kernel commands are never refused"
+          },
+          "what": "vbw apply matcher renamed so the refusal never fires",
+          "files": [
+            "plugin/hooks/guard-bash.jq"
+          ],
+          "checks": {
+            "C577": "red"
+          },
+          "result": "red",
+          "at": "2026-11-04T10:09:37Z",
+          "head": "8fa80071f53e3a7adf1735072f7ed266231967dd",
+          "tree": "84a1c526d7fcb4d922de28941eb08d0d435b11ef",
+          "contract": "bb2bddea3e3fe9ffb0cb633f445fc531086846d247fcb70f9093a018abb1d703"
+        },
+        {
+          "rule": {
+            "req": "R250",
+            "text": "the guard's refusal of a write to a protected check file states the rule in one line: a protected check file is never edited during a build; the main session changes the check with vbw apply --patch, then the user approves it"
+          },
+          "what": "protected-file rule text negated",
+          "files": [
+            "plugin/hooks/common.jq"
+          ],
+          "checks": {
+            "C578": "red"
+          },
+          "result": "red",
+          "at": "2026-11-04T10:09:40Z",
+          "head": "8fa80071f53e3a7adf1735072f7ed266231967dd",
+          "tree": "84a1c526d7fcb4d922de28941eb08d0d435b11ef",
+          "contract": "bb2bddea3e3fe9ffb0cb633f445fc531086846d247fcb70f9093a018abb1d703"
+        }
+      ]
     },
     {
       "id": "P202.4",
@@ -82816,6 +82900,17 @@
         "ended": "2026-11-04T02:42:54Z",
         "cost": {
           "usd": 6.488986
+        }
+      },
+      {
+        "id": "build-20261104T100652Z",
+        "kind": "build",
+        "session": "0ee781c3-c5b6-4a6c-889f-04b89f1fba4a",
+        "milestone": "M52",
+        "started": "2026-11-04T10:06:52Z",
+        "ended": "2026-11-04T10:11:17Z",
+        "cost": {
+          "usd": 0.695051
         }
       }
     ],
