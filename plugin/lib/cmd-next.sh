@@ -85,25 +85,22 @@ def record_work:
 # next_prepare: read the record and make everything vbw next and vbw status judge
 # from, in one pass (VBW_NEXT_PASS). Sets, in the caller's shell: NP_RECORD (the
 # record), NP_WORK (its working record: what every part of the answer reads in its
-# place), NP_HASH and NP_SHAPE (the contract's hash and shape), NP_NEXT_PHASE. Exits
-# like record_read when the record cannot be read.
+# place), NP_NEXT_PHASE, NP_FILES (the check files, a JSON array) and NP_PASS (the
+# pass's output file, removed when the command ends; the contract's hash and shape
+# are worked out from it by next_decide, only when an answer is judged). Exits like
+# record_read when the record cannot be read.
 next_prepare() {
   vbw_require_project
-  local pass facts core shape
+  local facts
   NP_RECORD=$(record_read) || return $?
   mkdir -p "$VBW_RUNTIME"
-  pass=$(mktemp "$VBW_RUNTIME/pass.XXXXXX") || vbw_die "cannot create a temporary file in $VBW_RUNTIME"
-  vbw_guard_add file "$pass"
-  printf '%s' "$NP_RECORD" | jq -r "$VBW_CONTRACT_DEFS$VBW_NEXT_PASS" > "$pass" || vbw_die "record is corrupt: the contract cannot be read ($VBW_RECORD)" 3
-  facts=$(sed -n 3p "$pass")
+  NP_PASS=$(mktemp "$VBW_RUNTIME/pass.XXXXXX") || vbw_die "cannot create a temporary file in $VBW_RUNTIME"
+  vbw_guard_add file "$NP_PASS"
+  printf '%s' "$NP_RECORD" | jq -r "$VBW_CONTRACT_DEFS$VBW_NEXT_PASS" > "$NP_PASS" || vbw_die "record is corrupt: the contract cannot be read ($VBW_RECORD)" 3
+  facts=$(sed -n 3p "$NP_PASS")
   NP_NEXT_PHASE=$(printf '%s' "$facts" | jq -r '.next_phase')
-  core=$(sed -n 1p "$pass")
-  NP_HASH=$(contract_hash_from "$core" "$(printf '%s' "$facts" | jq -c '.files')")
-  shape=$(sed -n 2p "$pass")
-  NP_SHAPE=$(printf '%s\n' "${shape:-$core}" | vbw_sha256)
-  NP_WORK=$(sed -n 4p "$pass")
-  vbw_guard_drop "$pass"
-  rm -f "$pass" 2> /dev/null || true
+  NP_FILES=$(printf '%s' "$facts" | jq -c '.files')
+  NP_WORK=$(sed -n 4p "$NP_PASS")
 }
 
 # next_answer: vbw next's answer without the step and the road (lib/next.jq), on
@@ -122,11 +119,17 @@ next_road_input() {
 
 # next_decide: the answer next_prepare's record gives (see next_answer).
 next_decide() {
-  local effort record hash counts approved=false changed=false legacy=false next qa waiting profile problems="" holder prev=/dev/null adoc=/dev/null
+  local core shape="" effort record hash counts approved=false changed=false legacy=false next qa waiting profile problems="" holder prev=/dev/null adoc=/dev/null
   record=$NP_WORK
-  hash=$NP_HASH
+  # The contract's hash, and its shape while the hash is not approved, from the pass's core lines.
+  core=$(sed -n 1p "$NP_PASS")
+  hash=$(contract_hash_from "$core" "$NP_FILES")
+  if ! contract_approved "$hash"; then
+    shape=$(sed -n 2p "$NP_PASS")
+    shape=$(printf '%s\n' "${shape:-$core}" | vbw_sha256)
+  fi
   # Check files edited since the approval wait: the build goes on, the one approval comes before proof.
-  waiting=$(contract_waiting_with "$record" "$hash" "$NP_SHAPE") && commands_approved "$record" && approved=true
+  waiting=$(contract_waiting_with "$record" "$hash" "$shape") && commands_approved "$record" && approved=true
   # An unapproved contract that approval would refuse is not offered for approval (R171).
   [ "$approved" = true ] || problems=$(approve_problems "$record")
   next_code_changed "$record" && changed=true
