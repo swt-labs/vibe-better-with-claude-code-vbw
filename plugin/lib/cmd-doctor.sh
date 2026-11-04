@@ -243,12 +243,12 @@ doctor_big_ignored() {
   if [ -f "$VBW_RECORD" ]; then
     listed=$(jq -r '(.project.leave_out // [])[] | sub("/+$"; "")' "$VBW_RECORD" 2> /dev/null) || listed=''
   fi
-  while IFS= read -r line; do
+  proofcopy_big_ignored 2> /dev/null | while IFS= read -r line; do
     [ -n "$line" ] || continue
     name=${line%% (*}
-    if [ -n "$listed" ] && printf '%s\n' "$listed" | grep -qxF "${name%/}"; then continue; fi
+    if [ -n "$listed" ] && grep -qxF -- "${name%/}" <<< "$listed"; then continue; fi
     doctor_line info "large git-ignored folder $line is copied into every proof copy" "list $name under Clean copy in .vbw/spec.md, then vbw spec sync"
-  done < <(proofcopy_big_ignored 2> /dev/null)
+  done
 }
 
 # The guard works with this jq: it must deny a destructive command here.
