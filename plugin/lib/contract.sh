@@ -14,7 +14,7 @@
 # shellcheck disable=SC2016
 VBW_CONTRACT_DEFS='def canon: if type == "object" then to_entries | map(.value |= canon) | sort_by(.key) | from_entries
   elif type == "array" then map(canon) else . end;
-def contract_core: {requirements: [.requirements[] | {id, text, proof} + (if has("rules") then {rules} else {} end)],
+def contract_core: {requirements: [.requirements[] | select(.queued | not) | {id, text, proof} + (if has("rules") then {rules} else {} end)],
                     checks: [.checks[] | del(.amendments)], plans: [.plans[] | del(.status, .note, .mutations, .amendments, .awaits)]}
                    + (if .project.results then {results: .project.results} else {} end)
                    + (if .project.leave_out then {leave_out: .project.leave_out} else {} end)
@@ -141,7 +141,7 @@ contract_doc() {
     fi
   done < <(printf '%s' "$1" | jq -j '[.checks[].files // [] | .[]] | unique[] | . + "\u0000"')
   printf '%s' "$1" | jq -c --slurpfile f_files <(printf '%s' "$files") '$f_files[0] as $files | {
-    requirements: (.requirements | map({key: .id, value: ({text, proof} + (if has("rules") then {rules} else {} end))}) | from_entries),
+    requirements: (.requirements | map(select(.queued | not)) | map({key: .id, value: ({text, proof} + (if has("rules") then {rules} else {} end))}) | from_entries),
     checks: (.checks | map({key: .id, value: del(.amendments)}) | from_entries),
     plans: (.plans | map({key: .id, value: del(.status, .note, .mutations, .amendments, .awaits)}) | from_entries),
     commands: .commands,
