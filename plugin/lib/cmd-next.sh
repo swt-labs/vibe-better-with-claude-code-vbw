@@ -48,16 +48,85 @@ qa_combined() {
     + ([$r.phases[] | select(.id as $i | $s.standing | index($i)) | select(.qa.tree != null) | {(.id): .qa.tree}] | add // {})'
 }
 
+# The one pass over the record (R249): everything vbw next and vbw status read from
+# a record of any size, worked out in one jq run, so a large record is parsed once
+# (besides the schema probe of record_read). Four lines of output, each one line:
+#   1. the contract core (VBW_CONTRACT_DEFS), which the shell hashes;
+#   2. the core of the contract without the checks a fix added, when it has any
+#      (empty otherwise: the shape is then the core's own);
+#   3. {files, next_phase}: the check files, and the next free phase number (R106:
+#      one after the highest phase number the record knows: phase and plan ids, plan
+#      phases and the P-numbers decisions name; P65.1 counts as 65; letters before the
+#      P do not);
+#   4. the working record: the record without the bodies of its finished history, a
+#      record of a size that does not grow with the project's past. What is left out
+#      is what no part of vbw next or vbw status reads: the goal and criteria of the
+#      phases of a shipped milestone, the tasks of a done plan of such a phase, and the
+#      text and reason of a decision, except the decisions made at or after the first
+#      delivered file the last proof found changed outside any plan (lib/qa.jq names a
+#      file in those). Anything that reads more reads the record itself.
+# shellcheck disable=SC2016
+VBW_NEXT_PASS='def next_phase_number: ([(.phases[].id), (.plans[] | .id, .phase), (.decisions[]?.text // empty), ((.parked // [])[].ids[]?)]
+    | map(strings | [scan("(?<![A-Za-z0-9])P([0-9]+)") | .[0] | tonumber] | .[]) | max // 0 | . + 1);
+def record_work:
+  ((.shipped // []) | map(.id)) as $old
+  | ([.phases[] | select(.milestone as $m | $old | index($m)) | .id]) as $old_phases
+  | ((.evidence.deviations // []) as $dv | if ($dv | length) == 0 then null
+      elif any($dv[]; (.at | type) != "string") then "" else ([$dv[].at] | min) end) as $from
+  | .phases |= map(if (.milestone as $m | $old | index($m)) then del(.goal, .criteria) else . end)
+  | .plans |= map(if .status == "done" and (.phase as $p | $old_phases | index($p)) then del(.tasks) else . end)
+  | .decisions |= map(if $from != null and ((.at // "") >= $from) then . else del(.text, .why) end);
+. as $r
+| ($r | contract_core | canon | tojson),
+  (if any($r.checks[]; has("fix")) then ($r | without_fix | contract_core | canon | tojson) else "" end),
+  ({files: ($r | contract_files), next_phase: ($r | next_phase_number)} | tojson),
+  ($r | record_work | tojson)'
+
+# next_prepare: read the record and make everything vbw next and vbw status judge
+# from, in one pass (VBW_NEXT_PASS). Sets, in the caller's shell: NP_RECORD (the
+# record), NP_WORK (its working record: what every part of the answer reads in its
+# place), NP_HASH and NP_SHAPE (the contract's hash and shape), NP_NEXT_PHASE. Exits
+# like record_read when the record cannot be read.
+next_prepare() {
+  vbw_require_project
+  local pass facts core shape
+  NP_RECORD=$(record_read) || return $?
+  mkdir -p "$VBW_RUNTIME"
+  pass=$(mktemp "$VBW_RUNTIME/pass.XXXXXX") || vbw_die "cannot create a temporary file in $VBW_RUNTIME"
+  vbw_guard_add file "$pass"
+  printf '%s' "$NP_RECORD" | jq -r "$VBW_CONTRACT_DEFS$VBW_NEXT_PASS" > "$pass" || vbw_die "record is corrupt: the contract cannot be read ($VBW_RECORD)" 3
+  facts=$(sed -n 3p "$pass")
+  NP_NEXT_PHASE=$(printf '%s' "$facts" | jq -r '.next_phase')
+  core=$(sed -n 1p "$pass")
+  NP_HASH=$(contract_hash_from "$core" "$(printf '%s' "$facts" | jq -c '.files')")
+  shape=$(sed -n 2p "$pass")
+  NP_SHAPE=$(printf '%s\n' "${shape:-$core}" | vbw_sha256)
+  NP_WORK=$(sed -n 4p "$pass")
+  vbw_guard_drop "$pass"
+  rm -f "$pass" 2> /dev/null || true
+}
+
 # next_answer: vbw next's answer without the step and the road (lib/next.jq), on
 # stdout; it writes nothing. The one place the answer is judged, so the command,
 # vbw status and the road (lib/road.sh) read the same one.
 next_answer() {
-  vbw_require_project
+  next_prepare || return $?
+  next_decide
+}
+
+# next_road_input: next_decide's answer for the road, {} when it cannot be judged
+# (step_road_status, after next_prepare).
+next_road_input() {
+  next_decide 2> /dev/null || echo '{}'
+}
+
+# next_decide: the answer next_prepare's record gives (see next_answer).
+next_decide() {
   local effort record hash counts approved=false changed=false legacy=false next qa waiting profile problems="" holder prev=/dev/null adoc=/dev/null
-  record=$(record_read) || return $?
-  hash=$(contract_hash "$record")
+  record=$NP_WORK
+  hash=$NP_HASH
   # Check files edited since the approval wait: the build goes on, the one approval comes before proof.
-  waiting=$(contract_waiting "$record") && commands_approved "$record" && approved=true
+  waiting=$(contract_waiting_with "$record" "$hash" "$NP_SHAPE") && commands_approved "$record" && approved=true
   # An unapproved contract that approval would refuse is not offered for approval (R171).
   [ "$approved" = true ] || problems=$(approve_problems "$record")
   next_code_changed "$record" && changed=true
@@ -77,22 +146,24 @@ next_answer() {
   [ -f "$VBW_RUNTIME/next.json" ] && prev="$VBW_RUNTIME/next.json"
   [ "$approved" = true ] || [ ! -f "$VBW_RUNTIME/approved-contract.json" ] || adoc="$VBW_RUNTIME/approved-contract.json"
   next=$(printf '%s' "$record" | jq -c --rawfile prev "$prev" --slurpfile approved_doc "$adoc" --argjson effort "$effort" --argjson tracked "$counts" --argjson approved "$approved" --arg waiting "$waiting" --arg problems "$problems" --arg contract "$hash" \
-    --argjson code_changed "$changed" --argjson legacy "$legacy" --slurpfile qa <(printf '%s' "$qa") --argjson profile "$profile" --arg session "$(vbw_session)" --arg holder "$holder" --slurpfile tiers "$VBW_LIB/tiers.json" "$VBW_JQ_DEFS$(cat "$VBW_LIB/next.jq")")
+    --argjson code_changed "$changed" --argjson legacy "$legacy" --slurpfile qa <(printf '%s' "$qa") --argjson profile "$profile" --arg session "$(vbw_session)" --arg holder "$holder" --argjson next_phase "$NP_NEXT_PHASE" --slurpfile tiers "$VBW_LIB/tiers.json" "$VBW_JQ_DEFS$(cat "$VBW_LIB/next.jq")")
   printf '%s\n' "$next"
 }
 
 cmd_next() {
   vbw_require_project
   local next record step road hint replan
-  next=$(next_answer) || exit $?
+  next_prepare || exit $?
+  next=$(next_decide) || exit $?
   # The step to run, with its end time and the sentence to say (R190, D425), and the
   # road, the end of the milestone (R191, D438). Only the command asks for them: a
   # caller inside the kernel (the Stop hook's gate, ship, the loop) never pays for
   # the proof's reuse plan and keeps the road of the previous answer, so the
   # status line and Mission Control keep the last vbw next's road.
   if [ "${FUNCNAME[1]:-main}" = main ]; then
-    record=$(record_read)
-    step=$(step_next "$record" "$next")
+    # The working record stands for the record in all of it; a proof's reuse plan reads the record itself.
+    record=$NP_WORK
+    step=$(step_next "$record" "$next" "$NP_RECORD")
     road=$(step_road "$record" "$next" "$(step_live_note "$(printf '%s' "$record" | jq -r '.lease.run // ""')")")
     next=$(printf '%s' "$next" | jq -c --argjson step "$step" --argjson road "${road:-null}" '. + {step: $step, road: $road}')
     # What a yes to a suggestion that adds a requirement costs at the approval (R229).

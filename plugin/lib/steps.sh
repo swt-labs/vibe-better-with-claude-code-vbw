@@ -262,14 +262,15 @@ step_road_note_set() {
   [ -z "$out" ] || step_note_write "$out"
 }
 
-# step_road_status RECORD STEP_JSON: the road vbw status carries: the live note's
+# step_road_status RECORD STEP_JSON [INPUT]: the road vbw status carries: the live note's
 # own road while a step runs (STEP_JSON is the note, or null), else the road now.
+# INPUT, a command, prints vbw next's answer for the road (default step_road_input).
 step_road_status() {
   local road note=""
   road=$(printf '%s' "$2" | jq -c 'select(type == "object") | .road | select(type == "object")' 2> /dev/null) || road=
   if [ -n "$road" ]; then printf '%s\n' "$road"; return 0; fi
   [ "$2" = null ] || note=$2
-  step_road "$1" "$(step_road_input)" "$note"
+  step_road "$1" "$(${3:-step_road_input})" "$note"
 }
 
 # step_start KIND IDS_JSON: write the note of the run that just started (the
@@ -429,9 +430,11 @@ step_proof_units_plan() {
   ) 2> /dev/null || echo '{"units": [], "top": null}'
 }
 
-# step_next RECORD NEXT: the step vbw next --json carries: {kind, ids, parts,
+# step_next RECORD NEXT [FULL]: the step vbw next --json carries: {kind, ids, parts,
 # seconds, end, say} for an answer that runs a step (plan, build, fix, qa, a
 # proof with units left to run), else null. A kind without parts has parts null.
+# RECORD may be vbw next's working record (lib/cmd-next.sh); the proof's reuse plan
+# reads FULL, the record itself, when it is given.
 step_next() {
   local kind ids='[]' parts=null full units n seconds='' size=null plan why=null
   case "$(printf '%s' "$2" | jq -r .action)" in
@@ -443,7 +446,7 @@ step_next() {
       kind=proof
       full=0
       printf '%s' "$2" | jq -e '.detail.full == true' > /dev/null && full=1
-      plan=$(step_proof_plan "$1" "$full")
+      plan=$(step_proof_plan "${3:-$1}" "$full")
       units=$(printf '%s' "$plan" | jq -c '.units' 2> /dev/null) || units='[]'
       why=$(printf '%s' "$plan" | jq -c '.top' 2> /dev/null) || why=null
       parts=$(printf '%s' "$units" | jq 'length' 2> /dev/null) || parts=0
