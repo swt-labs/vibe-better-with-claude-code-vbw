@@ -200,6 +200,10 @@ def approve_call:
   (if .cmd | shell then {cmd: ((.args[0] // "") | basename), args: .args[1:]} else . end)
   | select(.cmd == "vbw" and (.args[0] // "") == "approve");
 
+def apply_call:
+  (if .cmd | shell then {cmd: ((.args[0] // "") | basename), args: .args[1:]} else . end)
+  | select(.cmd == "vbw" and (.args[0] // "") == "apply");
+
 def loop_call:
   (if .cmd | shell then {cmd: ((.args[0] // "") | basename), args: .args[1:]} else . end)
   | select(.cmd == "vbw" and (.args[0] // "") == "loop")
@@ -359,6 +363,7 @@ def chat_drives($g):
 # changes; files are restored and written by the shell (shell_writes) only
 # within the run's files.
 def in_run($g):
+  ( apply_call | "vbw apply changes the plan of record: only the main session runs it, in every mode (--amend, --patch, --add included)\nNext: report it so the main session amends or patches the plan" ),
   ( select(written(glance_path)) | glance_reason ),
   ( select(.cmd == "git") | git_words as $w | ($w[0] // "") as $s | $w[1:] as $a
     | ( select($s | test("^(commit|commit-tree|push|rebase|merge|pull|cherry-pick|revert|am)$"))
