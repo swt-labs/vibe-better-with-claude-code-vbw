@@ -1,30 +1,6 @@
 {
   "schema": 8,
-  "lease": {
-    "run": "build-20261104T115226Z",
-    "kind": "build",
-    "started_at": "2026-11-04T11:52:26Z",
-    "files": [
-      "plugin/agents/lead.md",
-      "plugin/lib/cmd-next.sh",
-      "plugin/lib/cmd-plan.sh",
-      "plugin/lib/cmd-prove.sh",
-      "plugin/lib/cmd-show.sh",
-      "plugin/lib/cmd-status.sh",
-      "plugin/lib/next.jq",
-      "plugin/lib/prove.jq",
-      "plugin/skills/vibe/SKILL.md"
-    ],
-    "session": "0ee781c3-c5b6-4a6c-889f-04b89f1fba4a",
-    "cost": {
-      "usd": 3160.394229
-    },
-    "editable": [
-      "tests/amend.bats",
-      "tests/guard-protected.bats",
-      "tests/hooks-guard.bats"
-    ]
-  },
+  "lease": null,
   "protected": [
     "tests/adaptive-results.bats",
     "tests/agent-scratch.bats",
@@ -65701,7 +65677,7 @@
         "P202.2",
         "P201.3"
       ],
-      "status": "building",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "cmd-plan.sh: vbw plan done on a plan with awaits requires only the plan's own checks green: an awaited check (another plan's) is not run and not required, no fix opens for it, and the plan's status becomes done; its requirement stays unproven until the awaited check passes (tests/amend.bats, filter 'R250 awaits')",
@@ -65808,6 +65784,26 @@
           "strengthened": [
             "tests/amend.bats"
           ],
+          "pending": [
+            "tests/amend.bats"
+          ]
+        },
+        {
+          "task": 3,
+          "what": "status never names an awaited check",
+          "files": [
+            "plugin/lib/cmd-status.sh"
+          ],
+          "checks": {
+            "C574": "green",
+            "C575": "green",
+            "C576": "red"
+          },
+          "result": "red",
+          "at": "2026-11-04T12:09:02Z",
+          "head": "013b8196c2654534f982e6b193bb058b39a186eb",
+          "tree": "1127101eee18d677325f25681f3faed00862eef2",
+          "contract": "ef76554957f113b447250c30b81b13193a3427ee6cdbc46049ffa4e0c7c6615a",
           "pending": [
             "tests/amend.bats"
           ]
@@ -83613,6 +83609,17 @@
         "ended": "2026-11-04T11:36:55Z",
         "cost": {
           "usd": 5.26149
+        }
+      },
+      {
+        "id": "build-20261104T115226Z",
+        "kind": "build",
+        "session": "0ee781c3-c5b6-4a6c-889f-04b89f1fba4a",
+        "milestone": "M52",
+        "started": "2026-11-04T11:52:26Z",
+        "ended": "2026-11-04T12:10:35Z",
+        "cost": {
+          "usd": 1.650394
         }
       }
     ],
