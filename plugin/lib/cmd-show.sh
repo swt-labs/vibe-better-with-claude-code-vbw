@@ -121,6 +121,7 @@ cmd_show() {
           (.test_files // empty | "  test file form: \(.run | join(" ")) (one test file per run; test files: \(.files | join(" ")))"),
           (.project.results // empty | "saved test results folders: \(join(", "))"),
           (.project.leave_out // empty | "clean copy leaves out: \(join(", "))")'
+      contract_amendments_block "$record"
       if [ "$state" != approved ]; then
         printf 'approval question: Approve contract %s?\napproval options: Approve, Not yet\n' "${hash:0:12}"
       fi
@@ -260,6 +261,7 @@ show_contract_changes() {
   local before="$VBW_RUNTIME/approved-contract.json"
   if [ ! -f "$before" ]; then
     printf 'no earlier approval in this clone: the whole contract is new (vbw show contract)\n'
+    contract_amendments_block "$1"
     return 0
   fi
   local lines line f want h c diff g rel
@@ -351,6 +353,8 @@ show_contract_changes() {
       printf '%s\n' "$diff" | sed 's/^/    /'
     fi
   done <<< "$lines"
+  # The amendments made since the last approval (R250): never changed checks or plans.
+  contract_amendments_block "$1"
 }
 
 # jq helpers for rendering checks. An argv is shown shell-quoted where needed.
