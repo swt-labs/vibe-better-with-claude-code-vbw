@@ -132,3 +132,66 @@ same_as() {
   [ "$status" -eq 0 ] || { echo "$status: $output"; false; }
   [[ "$output" == *$'\nguard (cross-project'* ]] || { echo "$output"; false; }
 }
+
+# end_run DIR: ends the build run open in DIR.
+end_run() { (cd "$1" && VBW_SESSION_ID=s1 "$VBW" run end > /dev/null); }
+# start_run DIR: a build run of P1.1 in DIR (its lease files src/pay.txt; tests/c1.sh protected).
+start_run() { (cd "$1" && VBW_SESSION_ID=s1 "$VBW" run start build P1.1 > /dev/null); }
+
+@test "R254: a target in a project nested inside the hook's own project is judged by the nested project's record: refused with the reason the same write gets from inside it while its build run is open, allowed once it has no run" {
+  end_run "$MAIN"
+  local nest="$MAIN/.claude/worktrees/x"
+  mkdir -p "$MAIN/.claude/worktrees"
+  git worktree add -q "$nest" -b nested > /dev/null 2>&1
+  start_run "$nest"
+  hook "$nest" Edit "$(edit_in "$nest" "$nest/tests/c1.sh")"
+  denied
+  local want
+  want=$(reason)
+  [[ "$want" == *"protected check file"* ]] || { echo "$want"; false; }
+  hook "$MAIN" Edit "$(edit_in "$MAIN" "$nest/tests/c1.sh")"
+  denied
+  [ "$(reason)" = "$want" ] || { printf 'differs\n  from MAIN: %s\n  inside:    %s\n' "$(reason)" "$want"; false; }
+  hook "$MAIN" Bash "$(bash_in "$MAIN" "echo x >> \"$nest/tests/c1.sh\"")"
+  denied
+  [ "$(reason)" = "$want" ] || { printf 'differs\n  from MAIN: %s\n  inside:    %s\n' "$(reason)" "$want"; false; }
+  # The hook project's own files stay judged by its own record: no run there, so allowed.
+  hook "$MAIN" Edit "$(edit_in "$MAIN" "$MAIN/tests/c1.sh")"
+  allowed
+  end_run "$nest"
+  hook "$MAIN" Edit "$(edit_in "$MAIN" "$nest/tests/c1.sh")"
+  allowed
+  hook "$MAIN" Bash "$(bash_in "$MAIN" "echo x >> \"$nest/tests/c1.sh\"")"
+  allowed
+}
+
+@test "R254: between two projects with different leases the target's own record decides, in both directions, for Bash and Edit: MAIN under its run writing into WT (no run) is allowed, and WT under its run written from MAIN (no run) is refused with WT's own reason" {
+  # Direction one: the hook project holds the run, the target's project does not.
+  hook "$MAIN" Edit "$(edit_in "$MAIN" "$WT/tests/c1.sh")"
+  allowed
+  hook "$MAIN" Bash "$(bash_in "$MAIN" "echo x > \"$WT/tests/x.sh\"")"
+  allowed
+  hook "$MAIN" Bash "$(bash_in "$MAIN" "printf x >> \"$WT/tests/c1.sh\"")"
+  allowed
+  # Direction two: the target's project holds the run, the hook project does not.
+  end_run "$MAIN"
+  start_run "$WT"
+  hook "$WT" Edit "$(edit_in "$WT" "$WT/tests/c1.sh")"
+  denied
+  local want
+  want=$(reason)
+  [[ "$want" == *"protected check file"* ]] || { echo "$want"; false; }
+  hook "$MAIN" Edit "$(edit_in "$MAIN" "$WT/tests/c1.sh")"
+  denied
+  [ "$(reason)" = "$want" ] || { printf 'differs\n  from MAIN: %s\n  inside WT: %s\n' "$(reason)" "$want"; false; }
+  hook "$MAIN" Bash "$(bash_in "$MAIN" "printf x >> \"$WT/tests/c1.sh\"")"
+  denied
+  [ "$(reason)" = "$want" ] || { printf 'differs\n  from MAIN: %s\n  inside WT: %s\n' "$(reason)" "$want"; false; }
+  hook "$WT" Bash "$(bash_in "$WT" 'echo x > tests/x.sh')"
+  want=$(reason)
+  hook "$MAIN" Bash "$(bash_in "$MAIN" "echo x > \"$WT/tests/x.sh\"")"
+  [ "$(reason)" = "$want" ] || { printf 'differs\n  from MAIN: %s\n  inside WT: %s\n' "$(reason)" "$want"; false; }
+  # MAIN itself, with no run, is not held.
+  hook "$MAIN" Edit "$(edit_in "$MAIN" "$MAIN/tests/c1.sh")"
+  allowed
+}
