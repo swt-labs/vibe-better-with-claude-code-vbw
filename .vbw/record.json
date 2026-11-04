@@ -70503,6 +70503,11 @@
       "id": "T235",
       "text": "vbw spec sync drops every rule of a reworded requirement (found 2026-11-04: rewording one clause of R255 removed its 13 rules, restored by hand from the last commit by vbw apply --patch); the rules should stay, marked for the Lead to review; same family as T234",
       "status": "open"
+    },
+    {
+      "id": "T236",
+      "text": "A docs plan of a code requirement closes on the breaks its requirement's code plans recorded: a documentation plan cannot break code, and closing one cost a lead decision five times in one milestone of the Rust project; related to T231",
+      "status": "open"
     }
   ],
   "decisions": [
