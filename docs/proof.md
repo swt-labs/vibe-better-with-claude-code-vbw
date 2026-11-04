@@ -245,6 +245,23 @@ is big and no check needs it (a data folder of many gigabytes), list it under
 - The list is part of the contract: adding a path changes the contract, so it reads NOT APPROVED and the approval question is asked again. `vbw show contract` prints the line `clean copy leaves out: data/, cache/`, and `vbw show contract --changes` names the new list and the old one (`clean copy leaves out: data/, cache/ (was data/)`, `none` for an empty side).
 - Every clean copy (`vbw prove`, `vbw fix done`, `vbw mutate`) skips the listed paths and everything under them, including ignored files inside a listed folder. The other ignored paths are still copied in. A listed path that no longer exists changes nothing, and the next `vbw spec sync` still accepts it.
 - Leaving a path out changes no result: the next proof reuses what it can, as before. No section, no change: every ignored path is copied in.
+- Git worktrees are always left out, whatever this section says: the folder of every worktree of the project's repository that lies inside the project (`git worktree list`) and `.claude/worktrees`. A worktree nested under an ignored folder is skipped by descending around it, and a worktree whose folder is gone causes no error.
+- Large ignored folders are named. `vbw init` prints each git-ignored folder over 500 MB (the threshold `VBW_PROOFCOPY_PLAIN_KB` shares) as a candidate and writes it into the spec as a commented suggestion, never as a live line, so `vbw spec sync` leaves nothing out until you uncomment it. `vbw doctor` names the candidates the section does not list yet, with their sizes, and says nothing when none is over or all are listed. A worktree is never a candidate.
+
+Example. `vbw init` in a project with a 1.2 GB ignored `data/` folder prints:
+
+```text
+Large git-ignored folders (each is copied into every proof copy). They are written as
+commented suggestions in .vbw/spec.md under Clean copy; uncomment a line to leave it out:
+  data/ (1.2 GB)
+```
+
+and the template of `.vbw/spec.md` gains, after the `## Clean copy` comment:
+
+```markdown
+<!-- Large git-ignored folders found here; to leave one out, remove the comment marks around its line: -->
+<!-- - data/ -->
+```
 
 ## The contract and approval
 
