@@ -109,3 +109,15 @@ queued() { jq -e --arg q "$1" '.requirements[] | select(.id == $q) | .queued == 
   jq -e '.requirements[0].text == "A customer can pay by card" and .lease.kind == "build"' .vbw/record.json
   queued R3
 }
+
+@test "R252: only a build or fix run queues: with a plan, qa or map run open vbw spec add leaves no queued mark and the contract reads changed, as with no run" {
+  local k
+  for k in plan qa map; do
+    fixture_copy shop
+    as_main run start "$k" > /dev/null
+    vbw_run spec add auto "A customer gets a refund"
+    [ "$status" -eq 0 ] || { echo "$k: $output"; false; }
+    jq -e '(.requirements | length == 3) and ([.requirements[] | select(has("queued"))] | length == 0)' .vbw/record.json || { echo "$k run queued a requirement"; false; }
+    ! approved || { echo "$k: still approved"; false; }
+  done
+}
