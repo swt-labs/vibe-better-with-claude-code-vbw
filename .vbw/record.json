@@ -29156,6 +29156,18 @@
           "from": "deep",
           "to": "deep",
           "reason": "Dev blocked P202.3: C577 (tests/hooks-guard.bats, R250 test at line 387, protected) compares the guard's whole permissionDecisionReason to the two lines with no 'VBW guard: ' prefix, but common.jq's deny always prefixes every reason with 'VBW guard: ' (pinned by tests/hook-answers.bats R128 and others). My guard now gives exactly the two lines after that prefix (got: 'VBW guard: vbw apply changes ... \\nNext: report it so the main session amends or patches the plan'); the test can only pass by special-casing this one denial without the prefix, which I will not do. The check needs the reason read with ltrimstr('VBW guard: ') (as hook-answers.bats does), via vbw apply --patch and re-approval. Done and green: task 1 guard-bash.jq apply_call rule and task 2 common.jq protected text (C578 passes); task 3 docs/guards.md not yet written; changes uncommitted."
+        },
+        {
+          "at": "2026-11-04T01:31:20Z",
+          "from": "deep",
+          "to": "deep",
+          "reason": "Dev blocked P202.3: Tasks 1-3 committed (e9d0fb10, fb1d3946, 9adf0750) and C577/C578 pass, but the mutation step cannot run: tests/hooks-guard.bats has an uncommitted edit (the R250.12 test compares after the 'VBW guard: ' prefix; the committed version fails against the real hook) that is waiting for approval; vbw mutate refuses while a check file differs from the last commit, and vbw commit P202.3 refuses the file as not the plan's, the write guard also keeps me from restoring it. Needs the main session to commit that check file (or approve it), then mutation of R250.12 and R250.13 and the docs task (--none) can run."
+        },
+        {
+          "at": "2026-11-04T01:36:14Z",
+          "from": "deep",
+          "to": "deep",
+          "reason": "Dev blocked P202.1: C574 cannot pass: its second case (tests/amend.bats line 86) asserts jq -e '.schema == 8' on the shop fixture record right after edit_record, but that record is schema 4 (vbw init writes 4; nothing in the fixture raises it; edit_record does not change it). With that one assertion changed to .schema == 4 the case passes (checked in a copy in .vbw/runtime/scratch/amend2.bats; case 1 passes as is). Schema 9, VBW_SCHEMA_MAX 9, validator, R248 digest and docs are built and committed. Needs the main session to vbw apply --patch the check file and get it approved, then re-run."
         }
       ]
     },
@@ -65135,7 +65147,7 @@
       "after": [
         "P201.1"
       ],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "contract.sh: the contract core becomes one jq definition (contract_core, in a module the one-pass programs include and contract.sh loads) so a one-pass program can emit the core beside its other fields and the shell hashes it, with no second parse of the record; contract_hash, contract_waiting and contract_shape keep their names, arguments and output, so every caller outside this plan stays as it is",
@@ -65143,6 +65155,205 @@
         "cmd-status.sh, road.sh and road.jq: vbw status and vbw show roadmap compute their lines in one pass the same way (at most two record-sized jq calls after a warm digest), byte-identical to today on the R149 twins; every twin comparison of tests/big-record-commands.bats, big-record-writes.bats, big-record-hooks.bats, big-record-scratch.bats and big-record-docs.bats still passes",
         "cmd-triage.sh and cmd-todo.sh: vbw triage --json and vbw todo add get the one-pass treatment where they miss their budget on the large twin (todo add: one read and one write of the record, no parse per field)",
         "commit tests/timed-big-record.bats as written at planning (its budgets are the requirement's: next --json, status, show roadmap and triage --json within 1.5 s, todo add within 2.5 s, scaled by the bench ratio as tools/bench-hooks.sh scales its own, busy and slow reported as the bench does) and run it under PATH=/bin:$PATH until every case reads within; it belongs to the release run only (the spec's Test files leaves tests/timed-*.bats out of vbw prove); the measured before-and-after times of vbw next --json and vbw status on VBW's own record go in the plan's result for the release notes"
+      ],
+      "mutations": [
+        {
+          "rule": {
+            "req": "R249",
+            "text": "a record whose bytes match the digest kept under .vbw/runtime (validated.json: record and validator digests) is not validated again"
+          },
+          "what": "record_digest_matches answers no, so every read validates the record again",
+          "files": [
+            "plugin/lib/contract.sh"
+          ],
+          "checks": {
+            "C571": "red"
+          },
+          "result": "red",
+          "at": "2026-11-04T02:35:25Z",
+          "head": "96fba23b6710a0bc0c041b683daeadc5bf45a0cd",
+          "tree": "de0d96c3e2b6128d1fb96542c1f1b544dfe05835",
+          "contract": "aeb16a036d0a6458d877a9cafc311a26387433febd45fa45f65e9d288e81dbff"
+        },
+        {
+          "rule": {
+            "req": "R249",
+            "text": "any other content is validated: a hand edit stays corrupt (exit 3), a compact rewrite of the same JSON is validated once and gives the same output, a newer schema still exits 4"
+          },
+          "what": "record_violation never refuses, so a hand edited record is no longer corrupt",
+          "files": [
+            "plugin/lib/contract.sh"
+          ],
+          "checks": {
+            "C571": "red"
+          },
+          "result": "red",
+          "at": "2026-11-04T02:35:28Z",
+          "head": "96fba23b6710a0bc0c041b683daeadc5bf45a0cd",
+          "tree": "de0d96c3e2b6128d1fb96542c1f1b544dfe05835",
+          "contract": "aeb16a036d0a6458d877a9cafc311a26387433febd45fa45f65e9d288e81dbff"
+        },
+        {
+          "rule": {
+            "req": "R249",
+            "text": "the validator's own text is part of the digest: a changed record.jq, record-schema.jq or interview.json validates the record again"
+          },
+          "what": "the validator digest covers record.jq only, so record-schema.jq and interview.json no longer count",
+          "files": [
+            "plugin/lib/contract.sh"
+          ],
+          "checks": {
+            "C571": "red"
+          },
+          "result": "red",
+          "at": "2026-11-04T02:35:32Z",
+          "head": "96fba23b6710a0bc0c041b683daeadc5bf45a0cd",
+          "tree": "de0d96c3e2b6128d1fb96542c1f1b544dfe05835",
+          "contract": "aeb16a036d0a6458d877a9cafc311a26387433febd45fa45f65e9d288e81dbff"
+        },
+        {
+          "rule": {
+            "req": "R249",
+            "text": "a .vbw/runtime that cannot be written is never an error: same output, exit 0, nothing on stderr"
+          },
+          "what": "a runtime folder that cannot be written is an error: the digest is written without a fallback",
+          "files": [
+            "plugin/lib/contract.sh"
+          ],
+          "checks": {
+            "C571": "red"
+          },
+          "result": "red",
+          "at": "2026-11-04T02:35:35Z",
+          "head": "96fba23b6710a0bc0c041b683daeadc5bf45a0cd",
+          "tree": "de0d96c3e2b6128d1fb96542c1f1b544dfe05835",
+          "contract": "aeb16a036d0a6458d877a9cafc311a26387433febd45fa45f65e9d288e81dbff"
+        },
+        {
+          "rule": {
+            "req": "R249",
+            "text": "the chat list is read and matched in one jq pass with no per-entry loop: vbw next --json on 500 chats of the project makes as many jq calls as on 5, and still carries the rename hint"
+          },
+          "what": "the chat list is read with one jq start per chat of the list",
+          "files": [
+            "plugin/lib/cmd-next.sh"
+          ],
+          "checks": {
+            "C572": "red"
+          },
+          "result": "red",
+          "at": "2026-11-04T02:35:38Z",
+          "head": "96fba23b6710a0bc0c041b683daeadc5bf45a0cd",
+          "tree": "de0d96c3e2b6128d1fb96542c1f1b544dfe05835",
+          "contract": "aeb16a036d0a6458d877a9cafc311a26387433febd45fa45f65e9d288e81dbff"
+        },
+        {
+          "rule": {
+            "req": "R249",
+            "text": "after a warm digest, vbw next --json and vbw status each read the record through at most two record-sized jq calls, so their fields come from one pass"
+          },
+          "what": "vbw status reads the record again after its pass",
+          "files": [
+            "plugin/lib/cmd-status.sh"
+          ],
+          "checks": {
+            "C573": "red"
+          },
+          "result": "red",
+          "at": "2026-11-04T02:35:41Z",
+          "head": "96fba23b6710a0bc0c041b683daeadc5bf45a0cd",
+          "tree": "de0d96c3e2b6128d1fb96542c1f1b544dfe05835",
+          "contract": "aeb16a036d0a6458d877a9cafc311a26387433febd45fa45f65e9d288e81dbff"
+        },
+        {
+          "rule": {
+            "req": "R249",
+            "text": "on the large twin, vbw next --json, vbw status, vbw show roadmap and vbw triage --json finish within 1.5 s and vbw todo add within 2.5 s, scaled by the bench ratio, measured in the release run's tests/timed-big-record.bats and never in vbw prove"
+          },
+          "what": "the working record is the whole record, so the passes after the first parse it all again",
+          "files": [
+            "plugin/lib/cmd-next.sh"
+          ],
+          "checks": {
+            "C573": "red"
+          },
+          "result": "red",
+          "at": "2026-11-04T02:35:44Z",
+          "head": "96fba23b6710a0bc0c041b683daeadc5bf45a0cd",
+          "tree": "de0d96c3e2b6128d1fb96542c1f1b544dfe05835",
+          "contract": "aeb16a036d0a6458d877a9cafc311a26387433febd45fa45f65e9d288e81dbff"
+        },
+        {
+          "task": 1,
+          "what": "the pass's contract core keeps the record's key order, so its hash is not the contract's hash",
+          "files": [
+            "plugin/lib/contract.sh"
+          ],
+          "checks": {
+            "C571": "green",
+            "C572": "green",
+            "C573": "green"
+          },
+          "result": "survivor",
+          "at": "2026-11-04T02:37:46Z",
+          "head": "96fba23b6710a0bc0c041b683daeadc5bf45a0cd",
+          "tree": "de0d96c3e2b6128d1fb96542c1f1b544dfe05835",
+          "contract": "aeb16a036d0a6458d877a9cafc311a26387433febd45fa45f65e9d288e81dbff"
+        },
+        {
+          "task": 1,
+          "what": "the pass's contract core keeps the record's key order, so its hash is not the contract's hash",
+          "files": [
+            "plugin/lib/contract.sh"
+          ],
+          "checks": {
+            "C571": "green",
+            "C572": "green",
+            "C573": "red"
+          },
+          "result": "red",
+          "at": "2026-11-04T02:40:06Z",
+          "head": "6050a89491f4e28abaf5328e4fa180619a228863",
+          "tree": "ab2dba75dfe1f8fd62b2e97c3580c441869d816c",
+          "contract": "f9f925bb4a92ea1eea62c105ab3e473da315021cd2e7fdedb75b82efd8e22b36",
+          "strengthened": [
+            "tests/big-record-fast.bats"
+          ],
+          "pending": [
+            "tests/big-record-fast.bats"
+          ]
+        },
+        {
+          "rule": {
+            "req": "R249",
+            "text": "every R149 twin comparison still holds (tests/big-record.bats, run by the proof)"
+          },
+          "what": "vbw next answers phase number 0 as the next free one, from the pass's number",
+          "files": [
+            "plugin/lib/next.jq"
+          ],
+          "checks": {
+            "C573": "red"
+          },
+          "result": "red",
+          "at": "2026-11-04T02:41:14Z",
+          "head": "6050a89491f4e28abaf5328e4fa180619a228863",
+          "tree": "ab2dba75dfe1f8fd62b2e97c3580c441869d816c",
+          "contract": "f9f925bb4a92ea1eea62c105ab3e473da315021cd2e7fdedb75b82efd8e22b36",
+          "pending": [
+            "tests/big-record-fast.bats"
+          ]
+        },
+        {
+          "task": 4,
+          "none": "no change: vbw triage --json and vbw todo add already finish within their budgets on the large twin (109 ms and 683 ms), so cmd-triage.sh and cmd-todo.sh are untouched",
+          "at": "2026-11-04T02:41:21Z"
+        },
+        {
+          "task": 5,
+          "none": "the task commits the timed test file itself; there is no code of the plan in it to break",
+          "at": "2026-11-04T02:41:24Z"
+        }
       ]
     },
     {
@@ -65161,13 +65372,14 @@
       "after": [
         "P201.1"
       ],
-      "status": "planned",
+      "status": "blocked",
       "role": "dev",
       "tasks": [
         "record-schema.jq: one new row {schema: 9, feature: \"an amendment, an awaited check or a queued requirement\", present: any plan or check with an amendments list, any plan with an awaits list, or any requirement with queued true}; record.sh VBW_SCHEMA_MAX=9; a record with none of the three is written at schema 8 as today; a schema-9 record without them is corrupt with \"schema 9 is only for an amendment, an awaited check or a queued requirement\" (tests/amend.bats, filter 'R250 schema'; tests/record-schema.bats)",
         "record.jq: the field_rule lists become exactly [\"id\",\"text\",\"proof\",\"status\",\"milestone\",\"rules\",\"skipped\",\"later\",\"queued\"] for requirements, [\"id\",\"req\",\"run\",\"files\",\"exit\",\"output\",\"timeout\",\"alone\",\"fix\",\"amendments\"] for checks and [\"id\",\"phase\",\"title\",\"reqs\",\"files\",\"after\",\"status\",\"note\",\"tasks\",\"role\",\"mutations\",\"amendments\",\"awaits\"] for plans; one def validates each amendment as an object whose (keys | sort) == [\"at\",\"session\",\"what\"], what a non-empty string, at an ISO-8601 UTC time, session a string or null; awaits an array of check ids belonging to the plan's own requirements; queued exactly true; anything else corrupt with a message naming the field; tools/check-record-shape.sh then prints the digest tests/standards.bats already pins for schema 9 (R248): run bats tests/standards.bats tests/record-schema.bats tests/record-schema-docs.bats under PATH=/bin:$PATH",
         "docs/record.md: row 9 in the Versioning table (amendment, await, queued -> 9), the three fields where the plan, check and requirement fields are described (what an amendment holds, what awaits means, what queued means), VBW_SCHEMA_MAX currently 9; an older kernel refuses a schema-9 record as newer, as M51 defines"
-      ]
+      ],
+      "note": "C574 cannot pass: its second case (tests/amend.bats line 86) asserts jq -e '.schema == 8' on the shop fixture record right after edit_record, but that record is schema 4 (vbw init writes 4; nothing in the fixture raises it; edit_record does not change it). With that one assertion changed to .schema == 4 the case passes (checked in a copy in .vbw/runtime/scratch/amend2.bats; case 1 passes as is). Schema 9, VBW_SCHEMA_MAX 9, validator, R248 digest and docs are built and committed. Needs the main session to vbw apply --patch the check file and get it approved, then re-run."
     },
     {
       "id": "P202.2",
@@ -65217,7 +65429,7 @@
         "common.jq: lease_write_denial's protected-file text becomes exactly \"<file> is a protected check file: a protected check file is never edited during a build\\nNext: leave <file> as it is; the main session changes the check with vbw apply --patch, then the user approves it\" (the other-requirement fix text is unchanged); every pinned hook answer in tests/guard-protected.bats and tests/hooks-guard.bats passes under PATH=/bin:$PATH, and tools/check-hook-answers.sh still finds no allow",
         "docs/guards.md: the \"What is denied\" table gains the vbw apply row (every mode, every run agent, the two-line refusal) and the protected check file row states the new one-line rule and its Next line; the plan skill's words live in docs/workflows.md (P202.2)"
       ],
-      "note": "C577 (tests/hooks-guard.bats, R250 test at line 387, protected) compares the guard's whole permissionDecisionReason to the two lines with no 'VBW guard: ' prefix, but common.jq's deny always prefixes every reason with 'VBW guard: ' (pinned by tests/hook-answers.bats R128 and others). My guard now gives exactly the two lines after that prefix (got: 'VBW guard: vbw apply changes ... \\nNext: report it so the main session amends or patches the plan'); the test can only pass by special-casing this one denial without the prefix, which I will not do. The check needs the reason read with ltrimstr('VBW guard: ') (as hook-answers.bats does), via vbw apply --patch and re-approval. Done and green: task 1 guard-bash.jq apply_call rule and task 2 common.jq protected text (C578 passes); task 3 docs/guards.md not yet written; changes uncommitted."
+      "note": "Tasks 1-3 committed (e9d0fb10, fb1d3946, 9adf0750) and C577/C578 pass, but the mutation step cannot run: tests/hooks-guard.bats has an uncommitted edit (the R250.12 test compares after the 'VBW guard: ' prefix; the committed version fails against the real hook) that is waiting for approval; vbw mutate refuses while a check file differs from the last commit, and vbw commit P202.3 refuses the file as not the plan's, the write guard also keeps me from restoring it. Needs the main session to commit that check file (or approve it), then mutation of R250.12 and R250.13 and the docs task (--none) can run."
     },
     {
       "id": "P202.4",
@@ -65355,12 +65567,50 @@
       "after": [
         "P204.1"
       ],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "cmd-init.sh: vbw init prints proofcopy_big_ignored's lines as candidates for the Clean copy section and writes each candidate as a commented suggestion inside the section's template, nothing uncommented (D54), so vbw spec sync writes no leave_out from them; nothing is printed or written when none is over (tests/clean-copy-worktrees.bats, filter 'R253 candidates'; the existing init tests pass unchanged)",
         "cmd-doctor.sh: vbw doctor names the candidates the Clean copy section does not list yet, with their sizes, and says nothing when none is over or every one is listed (the existing doctor tests pass unchanged)",
         "docs/proof.md Clean copy section: worktrees inside the project and .claude/worktrees are always left out, nested ones by descending around them, a gone worktree is harmless; vbw init and vbw doctor name git-ignored folders over 500 MB as candidates (commented suggestions at init; doctor for the unlisted ones), the threshold VBW_PROOFCOPY_PLAIN_KB shares; one worked example of the init output and the commented template line"
+      ],
+      "mutations": [
+        {
+          "rule": {
+            "req": "R253",
+            "text": "vbw init names each git-ignored folder over the threshold (500 MB; VBW_PROOFCOPY_PLAIN_KB in tests) with its size and writes it as a commented suggestion in the Clean copy template, nothing uncommented; a worktree is never a candidate; nothing is said when none is over"
+          },
+          "what": "init writes the suggestion uncommented",
+          "files": [
+            "plugin/lib/cmd-init.sh"
+          ],
+          "checks": {
+            "C582": "red"
+          },
+          "result": "red",
+          "at": "2026-11-04T01:33:14Z",
+          "head": "3e9860f07106670abfcff317bb8e1195be601f7e",
+          "tree": "574f056641d8ae7430b03a5fd01b9a5957ae57b5",
+          "contract": "aeb16a036d0a6458d877a9cafc311a26387433febd45fa45f65e9d288e81dbff"
+        },
+        {
+          "rule": {
+            "req": "R253",
+            "text": "vbw doctor names the candidates the Clean copy section does not list yet, with their sizes, and says nothing when none is over or every one is listed"
+          },
+          "what": "doctor ignores the listed folders",
+          "files": [
+            "plugin/lib/cmd-doctor.sh"
+          ],
+          "checks": {
+            "C582": "red"
+          },
+          "result": "red",
+          "at": "2026-11-04T01:33:17Z",
+          "head": "3e9860f07106670abfcff317bb8e1195be601f7e",
+          "tree": "574f056641d8ae7430b03a5fd01b9a5957ae57b5",
+          "contract": "aeb16a036d0a6458d877a9cafc311a26387433febd45fa45f65e9d288e81dbff"
+        }
       ]
     },
     {
@@ -82544,6 +82794,17 @@
         "ended": "2026-11-04T01:24:35Z",
         "cost": {
           "usd": 1.885507
+        }
+      },
+      {
+        "id": "build-20261104T012745Z",
+        "kind": "build",
+        "session": "0ee781c3-c5b6-4a6c-889f-04b89f1fba4a",
+        "milestone": "M52",
+        "started": "2026-11-04T01:27:45Z",
+        "ended": "2026-11-04T02:42:54Z",
+        "cost": {
+          "usd": 6.488986
         }
       }
     ],

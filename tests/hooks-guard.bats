@@ -391,7 +391,7 @@ allowed_sh() {
            '"${CLAUDE_PLUGIN_ROOT}/bin/vbw" apply --amend < doc.json' 'cd src && vbw apply --amend < ../doc.json' 'echo "$(vbw apply --patch < doc.json)"' \
            'cat doc.json | vbw apply --amend' 'VBW_SESSION_ID=x vbw apply --amend < doc.json'; do
     r=$(why "$c")
-    [ "$r" = $'vbw apply changes the plan of record: only the main session runs it, in every mode (--amend, --patch, --add included)\nNext: report it so the main session amends or patches the plan' ] \
+    [ "${r#VBW guard: }" = $'vbw apply changes the plan of record: only the main session runs it, in every mode (--amend, --patch, --add included)\nNext: report it so the main session amends or patches the plan' ] \
       || { printf 'not refused as the main session'"'"'s command: %s\n  got: %s\n' "$c" "$r"; false; }
   done
   allowed_sh 'vbw status'
