@@ -255,6 +255,10 @@ DOCS
   as_main run end > /dev/null
   vbw_run prove
   jq -e '.requirements[0].status != "proven" and .plans[0].status == "done"' .vbw/record.json
+  # The awaited check is left unrun while P2.1 is not built: no fix opens for it, the plan keeps reading built.
+  jq -e '(.fixes | length) == 0 and .evidence.checks.C3.status != "pass" and .evidence.checks.C3.status != "fail" and .requirements[0].status != "failing"' .vbw/record.json || { jq -c '[.fixes, .evidence.checks.C3, .requirements[0].status]' .vbw/record.json; false; }
+  vbw_run status
+  [[ "$output" == *"P1.1 built, awaiting C3"* ]] || { echo "$output"; false; }
   as_main run start build P2.1 > /dev/null
   printf 'sent\n' > src/receipt.txt
   as_main commit P2.1 "feat(receipt): sent" > /dev/null
