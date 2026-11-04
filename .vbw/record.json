@@ -71007,6 +71007,13 @@
       "sort": "next",
       "size": "large",
       "status": "open"
+    },
+    {
+      "id": "T242",
+      "text": "vbw next on a large real record: 2.1.25 brings 10.7 s to about 2.7 s on VBW's own 4.5 MB record, over R249's 1.5 s budget, which the R149 twin meets. Remaining: an unapproved contract and the proof and approve actions still read the record several times (approve_problems, spec parsing, step_proof_plan, step_replan_say); add the timed case on the plans-heavy twin to tests/timed-big-record.bats",
+      "sort": "next",
+      "size": "small",
+      "status": "open"
     }
   ],
   "decisions": [
