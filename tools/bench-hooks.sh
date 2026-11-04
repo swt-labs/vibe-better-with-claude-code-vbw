@@ -106,6 +106,7 @@ case_labels() {
   for input in $GUARD_INPUTS; do printf 'guard (%s)\n' "$input"; done
   for input in $GUARD_INPUTS; do printf 'guard (%s, large record)\n' "$input"; done
   printf '%s\n' 'guard (tools, main session)'
+  printf '%s\n' 'guard (cross-project)'
   printf '%s\n' 'guard (loop)' 'guard (loop, large record)'
   for n in $SIZES; do
     for input in $GUARD_INPUTS; do printf 'guard (%s, %s checks)\n' "$input" "$n"; done
@@ -730,6 +731,36 @@ if selected 'guard (tools, main session)'; then
     own=$(perl -e 'printf "%.1f", $ARGV[0] - $ARGV[1]' -- "$total" "$shell")
   fi
   verdict "$(printf 'guard (tools, main session): %s ms own CPU per call (sh and jq startup %s ms); budget %s ms' "$own" "$shell" "$BUDGET_MS")" "$own" "$BUDGET_MS"
+fi
+# A write that lands in another project (R254): a build agent's shell write into the folder of a
+# second project that has its own build run open. The Bash guard asks read.sh, which runs the
+# second pass over that project's record, so this case pays both jq calls. Their platform part
+# is two jq startups (the baseline), as the others' is one; the budget is the others'.
+if selected 'guard (cross-project)'; then
+  other="$work/other-project"
+  mkdir -p "$other/.vbw/runtime" "$other/tests"
+  git -C "$other" init -q
+  jq -nc --arg t "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+    '{schema: 4, lease: {run: "build-2", kind: "build", session: "bench", started_at: $t, files: ["src/pay.py"]}, protected: ["tests/c1.sh"], checks: []}' > "$other/.vbw/record.json"
+  : > "$other/.vbw/runtime/run-open"
+  jq -nc --arg d "$work" --arg o "$other" '{tool_name: "Bash", cwd: $d, session_id: "bench", agent_id: "x3", agent_type: "workflow-subagent", tool_input: {command: ("printf x > " + $o + "/tests/c1.sh")}}' > "$work/cross.json"
+  export CLAUDE_PROJECT_DIR="$work"
+  hook=$(jq -r '[.hooks.PreToolUse[] | select(.matcher as $m | $m != null and ("Bash" | test("^(" + $m + ")$")))][0].hooks[0].command' "$hooks_json")
+  one="jq -nc 'input | empty' - \"$work/.vbw/record.json\" \"$CLAUDE_PLUGIN_ROOT/hooks/end.json\" 2>/dev/null"
+  base="$one; $one || true"
+  out=$(sh -c "$hook" < "$work/cross.json" 2> /dev/null || true)
+  if [[ "$out" != *'"permissionDecision":"deny"'* ]]; then
+    printf 'guard (cross-project): the other project'"'"'s run did not refuse the write, so the measure left the second pass out\n' >&2
+    status=1
+  fi
+  read -r shell total < <(cpu_pair "$work/cross.json" "$base" "$hook")
+  own=$(perl -e 'printf "%.1f", $ARGV[0] - $ARGV[1]' -- "$total" "$shell")
+  if over "$own" "$BUDGET_MS"; then
+    again "guard (cross-project)" "$own ms own CPU per call (sh and two jq startups $shell ms)" "$BUDGET_MS"
+    read -r shell total < <(cpu_pair "$work/cross.json" "$base" "$hook")
+    own=$(perl -e 'printf "%.1f", $ARGV[0] - $ARGV[1]' -- "$total" "$shell")
+  fi
+  verdict "$(printf 'guard (cross-project): %s ms own CPU per call (sh and two jq startups %s ms); budget %s ms' "$own" "$shell" "$BUDGET_MS")" "$own" "$BUDGET_MS"
 fi
 # A loop on and no lease: the main session's push, judged like the others.
 jq -nc --arg d "$work" '{tool_name: "Bash", cwd: $d, session_id: "bench", tool_input: {command: "git push origin main"}}' > "$work/loop.json"
