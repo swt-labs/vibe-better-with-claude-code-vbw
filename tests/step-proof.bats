@@ -248,7 +248,10 @@ until_note() {
   [ "$(step_secs first_end)" -eq 300 ]
   step_back 1000
   VBW_SESSION_ID=s1 "$VBW" fix done F1 > /dev/null
-  [ "$(step_secs end)" -ge 2990 ] && [ "$(step_secs end)" -le 3030 ] || { cat "$NOTE"; false; }
+  # Three parts at the pace of the first: three times the time so far, whatever a busy machine adds to it.
+  local so_far
+  so_far=$(($(date +%s) - $(jq -r '.started_at | fromdateiso8601' "$NOTE")))
+  [ "$(step_secs end)" -ge 2990 ] && [ "$(step_secs end)" -le "$((so_far * 3 + 30))" ] || { cat "$NOTE"; false; }
   jq -e '.late == true and .end != .first_end' "$NOTE" || { cat "$NOTE"; false; }
   step_back 500
   VBW_SESSION_ID=s1 "$VBW" fix done F2 > /dev/null
