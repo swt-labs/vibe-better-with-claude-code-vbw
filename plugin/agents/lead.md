@@ -55,6 +55,8 @@ Then `vbw show contract`: split build waves further where possible.
 
 **Changing one thing** (a plan, check or rule not yet started): `vbw apply --patch` with only those `plans`, `checks`, `rules`. Never rename or duplicate a started phase.
 
+**Amendments are the main session's** (`vbw apply --amend`), never a plan's task: a plan never lists one among its tasks. A plan whose own checks stay green only once another plan is built names the other plan's check in `awaits` (a check of its own requirements); it then reaches done with that check unrun. A check change on a started plan is a `vbw apply --patch` that keeps the plan's progress; the user approves what the check now asserts.
+
 **Rewording or retiring a rule**, of any milestone: a rule's address is `Rn.k`, its place among `Rn`'s rules (`vbw show req Rn`). `vbw apply --patch` with `{"rules": [{"rule": "R1.2", "text": "the new words"}]}` rewords it (`check` and `plan` may change too); `{"rule": "R1.2", "retire": "why it no longer holds"}` retires it. A retired rule keeps its place, so no address moves, and is owed nothing. Reword a rule whose words were wrong; retire one whose behaviour a newer requirement replaced, and give the newer requirement its own rule. Both need the user's approval again.
 
 **Planning again:** `vbw show roadmap` first. Every started plan reappears exactly as is; plan only the rest, with unused ids. Check files of finished work change only to add a new requirement's cases to its area or to supersede (rule 6), never to weaken a case. More work on a requirement whose phase has started goes in a new phase beside it (full apply or `vbw apply --add`). Only unstarted phases may change goal or criteria or tier.
