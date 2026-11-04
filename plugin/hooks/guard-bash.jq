@@ -338,10 +338,37 @@ def inplace_files:
       elif $a | startswith("-") then .
       else .files += [$a] end) | .files[]];
 
-# Programs read from standard input by a heredoc: the bodies strip_heredocs
-# drops, for the commands that run an interpreter.
-def heredoc_programs:
-  match("(?:^|\\n)[^\\n]*(?:\\b(?:python[0-9.]*|node|perl|ruby|php|deno|bun|lua)\\b[^\\n]*<<|<<[^\\n]*\\b(?:python[0-9.]*|node|perl|ruby|php|deno|bun|lua)\\b)-?[ \\t]*(['\\\"]?)(\\w+)\\1[^\\n]*\\n(.*?)\\n[ \\t]*\\2[ \\t]*(?:\\n|$)"; "gp") | .captures[2].string;
+# The working folder each command runs in (R254): each command of the array gets .cwd, the
+# folder in effect when it runs, which a cd moves for the commands after it (a cd to ~, $VAR,
+# an expansion or - is not resolved and leaves it, as before). Subshell scope is not read.
+def with_cwd($start):
+  reduce .[] as $c ({cwd: $start, out: []};
+    .cwd as $w | .out += [$c + {cwd: $w}]
+    | if $c.cmd == "cd" then ([$c.args[] | select(startswith("-") | not)][0]) as $t
+        | if $t == null or ($t | test("^~|[$`]")) then . else .cwd = ($t | abs_path($w)) end
+      else . end)
+  | .out;
+
+# The guard of a command as it runs: the same, with the working folder the command has.
+def here($g): . as $k | $g | .hook.cwd = $k.cwd;
+
+# Programs read from standard input by a heredoc: the bodies strip_heredocs drops, for the
+# commands that run an interpreter, with the working folder of the line that starts each.
+def heredoc_cwds($start):
+  . as $t
+  | match("(?:^|\\n)[^\\n]*(?:\\b(?:python[0-9.]*|node|perl|ruby|php|deno|bun|lua)\\b[^\\n]*<<|<<[^\\n]*\\b(?:python[0-9.]*|node|perl|ruby|php|deno|bun|lua)\\b)-?[ \\t]*(['\\\"]?)(\\w+)\\1[^\\n]*\\n(.*?)\\n[ \\t]*\\2[ \\t]*(?:\\n|$)"; "gp") as $m
+  | {text: $m.captures[2].string,
+     cwd: ([$t[:$m.offset + 1 + ($m.string[1:] | index("\n"))] | commands(3)] | with_cwd($start) | last.cwd // $start)};
+
+# The files a command writes by name, as written: what the run's rules judge (in_run) and
+# what a guard asks read.sh about when one lies in another project (R254).
+def git_paths:
+  select(.cmd == "git") | git_words as $w | ($w[0] // "") as $s | $w[1:] as $a
+  | select($s == "checkout" or ($s == "restore" and ((any($a[]; . == "--staged") and (any($a[]; test("^(--worktree|-W)$")) | not)) | not)))
+  | (if $s == "checkout" then $a[(($a | index("--")) + 1):] else [$a[] | select(startswith("-") | not)] end)[];
+def write_targets:
+  shell_writes, git_paths,
+  ( select(.cmd | interpreter) | [((.args | join("\n")) | program_writes), inplace_files] | add | .[] );
 
 def program_denial($g):
   (.[] | shell_write_denial($g));
@@ -370,10 +397,8 @@ def in_run($g):
         | "git \($s) by a builder: commits go through vbw commit PLAN \"type(scope): description\"\nNext: run vbw commit PLAN \"type(scope): description\" with the files you changed" ),
       ( select(($s == "stash" and (($a[0] // "") | test("^(list|show)$") | not)) or ($s | test("^(switch|reset)$"))
                or ($s == "checkout" and (any($a[]; . == "--") | not)))
-        | "git \($s) by a builder changes the working tree other builders share: undo your own change by editing your files" ),
-      ( select($s == "checkout" or ($s == "restore" and ((any($a[]; . == "--staged") and (any($a[]; test("^(--worktree|-W)$")) | not)) | not)))
-        | (if $s == "checkout" then $a[(($a | index("--")) + 1):] else [$a[] | select(startswith("-") | not)] end)[]
-        | shell_write_denial($g) ) ),
+        | "git \($s) by a builder changes the working tree other builders share: undo your own change by editing your files" ) ),
+  ( git_paths | shell_write_denial($g) ),
   ( shell_writes | shell_write_denial($g) ),
   ( select(.cmd | interpreter) | [((.args | join("\n")) | program_writes), inplace_files] | add | program_denial($g) ),
   ( select(.cmd | interpreter) | (.args | join("\n")) | unreadable_calls | unreadable_denial );
@@ -388,18 +413,30 @@ def foreign_run($g):
 # is allowed unread. During a run a subagent's every command is read.
 def may_matter: test("rm|git|vbw|gh|npm|cargo|twine|gem|docker|vercel|netlify|fly|heroku|wrangler|publish|push|deploy|consent|record\\.json|\\.env|\\.(pem|key|p12|pfx|kdbx|keystore|jks)|id_(rsa|dsa|ecdsa|ed25519)|netrc|pgpass|npmrc|pypirc|credentials");
 
-guard_context(true) as $g
-| ($g.hook.tool_input.command // "") as $c
-| select($g.lease != null or $g.foreign != null or ($c | may_matter))
-| [$c | commands(3)] as $cmds
-| ( [$cmds[] | everywhere][0]
-    // (select($g.project and $g.foreign != null) | [$cmds[] | foreign_run($g)][0])
-    // (select($g.project)
-        | [$cmds[] | in_project($g)][0]
-          // [$cmds[] | chat_drives($g)][0]
-          // (select($g.lease != null)
-              | [$cmds[] | in_run($g)][0]
-                // (select($c | test("<<")) | ([$c | heredoc_programs | program_writes | program_denial($g)][0])
-                    // ([$c | heredoc_programs | unreadable_calls | unreadable_denial][0])))) )
-| select(. != null)
-| deny
+# A write can land in another project (R254): an agent's call, and a command that names an
+# absolute path, a .. segment or cd, are read whatever the words.
+def reaches: test("(^|[^\\w.])/\\w|(^|[\\s/\"'=])\\.\\.($|[\\s/\"';&|)])|(^|[^\\w.-])cd($|[^\\w.-])");
+
+def run:
+  guard_context(true) as $g
+  | ($g.hook.tool_input.command // "") as $c
+  | select($g.lease != null or $g.foreign != null or ($g.hook.agent_type // "") != "" or ($c | may_matter or reaches))
+  | session_dir($g) as $start
+  | ([$c | commands(3)] | with_cwd($start)) as $cmds
+  | [$c | select(test("<<")) | heredoc_cwds($start)] as $hds
+  | ( [$cmds[] | everywhere][0]
+      // (select($g.project and $g.foreign != null) | [$cmds[] | here($g) as $k | foreign_run($k)][0])
+      // (select($g.project)
+          | [$cmds[] | in_project($g)][0]
+            // [$cmds[] | chat_drives($g)][0]
+            // (select($g.lease != null)
+                | [$cmds[] | here($g) as $k | in_run($k)][0]
+                  // ([$hds[] | . as $h | ($g | .hook.cwd = $h.cwd) as $k | $h.text | program_writes | program_denial($k)][0])
+                  // ([$hds[] | .text | unreadable_calls | unreadable_denial][0]))) // null) as $deny
+  | if $deny != null then $deny | deny
+    elif $g.project then
+      request($g; [($cmds[] | here($g) as $k | write_targets | request_target($k; true)),
+                         ($hds[] | . as $h | ($g | .hook.cwd = $h.cwd) as $k | .text | program_writes[] | request_target($k; true))])
+    else empty end;
+
+run, "vbw-guard-done"
