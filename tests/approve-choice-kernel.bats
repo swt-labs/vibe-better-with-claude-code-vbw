@@ -25,7 +25,8 @@ teardown_file() { fixture_teardown; }
   [ "$status" -eq 0 ]
   local fp
   fp=$(fingerprint)
-  [[ "$output" == *$'\n'"approval question: Approve contract $fp?"$'\n'* ]] || [[ "$output" == *$'\n'"approval question: Approve contract $fp?" ]]
+  # The counts of R251 may follow the question; the question itself is unchanged.
+  [[ "$output" == *$'\n'"approval question: Approve contract $fp?"* ]]
   echo "$output" | grep -qx 'approval options: Approve, Not yet'
   [ "$(contract_state)" = "NOT APPROVED" ]
 }

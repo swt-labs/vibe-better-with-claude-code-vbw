@@ -1,5 +1,5 @@
 {
-  "schema": 9,
+  "schema": 8,
   "lease": null,
   "protected": [
     "tests/adaptive-results.bats",
@@ -65862,13 +65862,6 @@
         "cmd-show.sh, cmd-status.sh, cmd-run.sh, cmd-next.sh and next.jq: vbw show contract prints the block \"queued (not in the approved contract):\" with \"  R3 [auto] <text>\" per queued requirement after the approved items; vbw status prints \"queued: 1 requirement (R3)\" (plural \"2 requirements (R3, R4)\") while the run is open and nothing when none is queued; vbw run end clears every queued mark, so the requirements then count as pending (unplanned) and vbw next names them; vbw show contract then lists them as part of the contract that is not approved yet, with no queued block",
         "docs/proof.md: the approval section states the before -> after lines, the counts in the question and the first-approval form, and that the amendment count beside the fingerprint is informational; the spec section states what queued means (a requirement added while a run is open waits outside the approved contract until the run ends, then is planned as any new requirement)"
       ],
-      "amendments": [
-        {
-          "what": "file plugin/lib/contract.sh added",
-          "at": "2026-11-04T12:40:14Z",
-          "session": "0ee781c3"
-        }
-      ],
       "mutations": [
         {
           "rule": {
@@ -74228,6 +74221,12 @@
       "id": "D596",
       "at": "2026-11-04T12:39:54Z",
       "text": "Contract approved: 244 requirements, 579 checks, 606 plans (9fbdf5407d7d)",
+      "plans": []
+    },
+    {
+      "id": "D597",
+      "at": "2026-11-04T16:15:51Z",
+      "text": "Contract approved: 244 requirements, 579 checks, 606 plans (5dc8ef67ff44)",
       "plans": []
     }
   ],
