@@ -29236,7 +29236,15 @@
           "to": "deep",
           "reason": "Dev blocked P203.1: DEVN-04: (1) the plan says contract_core already leaves queued requirements out, but plugin/lib/contract.sh does not: it needs 'select(.queued | not)' in contract_core and contract_doc (a file outside this plan; I made that 2-line edit once by mistake before the guard caught it, it is uncommitted in the tree and wanted by this plan; the guard now refuses even undoing it). (2) tests/spec-queue.bats case 1 fails at 'vbw commit P1.1': src/pay.txt is already committed in the fixture, so there is nothing to commit; the test needs to change the file first (e.g. printf 'paid\\n\\n' > src/pay.txt). Done and committed: tasks 1-4 in cmd-show/cmd-spec/cmd-run/cmd-status (tests/approval-question.bats all 4 pass; spec-queue cases 2-4 pass). Not done: task 5 docs/proof.md, mutation step."
         }
-      ]
+      ],
+      "qa": {
+        "result": "fail",
+        "tier": "deep",
+        "tree": "fe28ea1d44cf87850238df24598844b1756f3205e7177f0175f71dd68d115a51",
+        "at": "2026-11-04T16:28:04Z",
+        "note": "25/26 checks",
+        "rounds": 1
+      }
     },
     {
       "id": "P204",
@@ -69376,6 +69384,51 @@
       "attempts": 0,
       "status": "closed",
       "note": "test fail"
+    },
+    {
+      "id": "F352",
+      "req": "R252",
+      "source": "qa",
+      "attempts": 0,
+      "status": "open",
+      "note": "vbw spec add / spec sync queue a new requirement under ANY open run, not only a build or fix run. plugin/lib/cmd-spec.sh spec_sync sets '(.lease != null) as $open' and queues on it, but the agreed rule (criterion 4, plan P203.1 task 3, docs/proof.md 'while a build or fix run is open') is lease kind build or fix; lease kinds are plan, build, fix, qa and map (cmd-run.sh:146-148). So a requirement added during a plan, qa or map run is also left out of the contract, which is not what was agreed or documented. In a plan run it is also risky: the Lead can read the new spec line and write checks for it, and those checks would then sit in the contract while their requirement is left out until the run ends. No test pins the kinds (tests/spec-queue.bats only opens a build run). Regression test: with a plan run open (and again a qa run), vbw spec add leaves no queued mark and the contract reads changed as today; with a fix run open it queues. If the wider behaviour is wanted instead, it needs the user's recorded decision, the same test inverted and the docs sentence changed; do not decide that in the fix.",
+      "phase": "P203"
+    },
+    {
+      "id": "F353",
+      "req": "R254",
+      "source": "qa",
+      "attempts": 0,
+      "status": "open",
+      "note": "A write into a VBW project (or linked worktree) nested inside the hook's own project is judged by the outer project's record, not the nested project's own. plugin/hooks/common.jq request_target drops every target whose absolute path starts with the hook's root (select(startswith(root/) | not)), so read.sh never walks up to the nested folder holding .vbw/record.json beside .git. Criterion 1 and R254 require the target's nearest project to be found and, when it is not the hook's own, judged by its record; docs/guards.md (lines 147-149) itself says a nested clone or nested worktree stays a project of its own (Claude Code's own worktrees live under <repo>/.claude/worktrees). Effect: hook in MAIN with no run, a Dev of another session writing MAIN/.claude/worktrees/x/tests/c1.sh while x has a build run open is allowed, while the same write from inside x is refused (the same side door, nested layout). Regression test: hook project MAIN with no lease, a nested project holding a record with a build lease that protects tests/c1.sh; an Edit and a Bash redirect by that path from MAIN must be refused with the reason the same write gets from inside the nested project, and allowed when the nested project has no run.",
+      "phase": "P205"
+    },
+    {
+      "id": "F354",
+      "req": "R249",
+      "source": "qa",
+      "attempts": 0,
+      "status": "open",
+      "note": "vbw next --json is not one pass on a real large record. Measured here on VBW's own 4,568,530-byte record, digest warm, three runs: 6.6 s wall (3.4 s user + 2.3 s system); vbw status 0.87 s. A shell trace of one run shows about 25 jq calls piping the working record (next_decide in plugin/lib/cmd-next.sh: legacy probe, qa_state/qa_digests with several, next_holder, effort_table twice, interview_effective, next.jq), and contract_core is run again through contract_waiting inside qa_digests (plugin/lib/qa-inputs.sh:81 -> plugin/lib/contract.sh:42, about 1.5 s) after the pass already computed it. The working record of VBW's own record is still 2,624,103 bytes, so every one of those calls is record-sized. The criterion says at most two jq invocations read the record per command, on the twins and on VBW's own record. Why the test is green: tests/big-record-fast.bats counts only jq inputs of 1,048,576 bytes or more, and the large twin's bulk (tests/big-record-helper.bash: filler in history goals, criteria, tasks, decision texts) is exactly what record_work drops, so its working record is tiny and the repeated parses are invisible. Regression test should catch: a twin whose bulk sits in what record_work keeps (plans' files, evidence, requirement texts and rules of the active milestone, project.results), with the shim counting any jq call that reads a working-record-sized input (for example 100 KB) and asserting at most two for next --json and status, plus a timed case on that twin.",
+      "phase": "P201"
+    },
+    {
+      "id": "F355",
+      "req": "R254",
+      "source": "qa",
+      "attempts": 0,
+      "status": "open",
+      "note": "Test gap: tests/guard-cross-project.bats never runs the case R254.2 promises, 'a target inside a worktree with a record of its own is judged by that record', from a hook project that holds the run. Case 2 only writes the worktree's own files from the worktree as the hook project (a same-project judgement, no project lookup), and the outside-every-project case uses a folder with no record. No case has the hook in a project with a build lease (or none) writing into another project whose record differs: e.g. hook in MAIN under its run writing WT/tests/c1.sh (WT has no lease: must be allowed, not MAIN's outside-the-project refusal), or WT with its own build lease while the hook project has none (must be refused with WT's reason). A read.sh that took the hook's record, or the wrong folder, for the nearest project would pass every case. Regression test: both directions, Bash and Edit, between two projects with different leases.",
+      "phase": "P205"
+    },
+    {
+      "id": "F356",
+      "req": "R249",
+      "source": "qa",
+      "attempts": 0,
+      "status": "open",
+      "note": "Deviation from P201.3 task 2: the task says qa-inputs.sh, qa.jq, steps.sh, interview.sh and effort.sh take their facts from the caller's pass (or the glance) instead of re-reading the record, and road.sh/road.jq compute their lines in one pass. The commits of the phase (14797696, bf3bf7b3, 3834f7f8, 96fba23b) changed contract.sh, cmd-next.sh, next.jq, steps.sh and cmd-status.sh only; qa-inputs.sh, qa.jq, interview.sh, effort.sh, road.sh and road.jq are untouched, and no decision records dropping that work. The shortcut was a smaller 'working record' (record_work in cmd-next.sh) that every part keeps re-parsing; it works only while the record's bulk is finished history. Regression test should catch: the same as the first finding, a call-count assertion on a twin whose bulk is not finished history, which fails while qa_digests, effort_table, interview_effective and next_holder each parse the record themselves.",
+      "phase": "P201"
     }
   ],
   "todos": [
