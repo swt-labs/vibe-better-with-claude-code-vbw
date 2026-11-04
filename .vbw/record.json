@@ -73998,6 +73998,17 @@
       "at": "2026-11-04T11:52:04Z",
       "text": "Contract approved: 244 requirements, 579 checks, 606 plans (4d0e087bb911)",
       "plans": []
+    },
+    {
+      "id": "D595",
+      "text": "P203.1's blockers: contract.sh needs queued requirements left out of the contract core, added to the plan by vbw apply --amend (the Dev's two-line edit stays uncommitted for the plan to commit); tests/spec-queue.bats case 1 changes the file before committing. A Dev wrote contract.sh through a Python script under the installed 2.1.24 guard: the gap R255 closes, reproduced in our own build; 2.1.25 is the fix",
+      "at": "2026-11-04T12:17:05Z"
+    },
+    {
+      "id": "D596",
+      "at": "2026-11-04T12:39:54Z",
+      "text": "Contract approved: 244 requirements, 579 checks, 606 plans (9fbdf5407d7d)",
+      "plans": []
     }
   ],
   "commands": {

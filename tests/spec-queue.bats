@@ -62,6 +62,7 @@ queued() { jq -e --arg q "$1" '.requirements[] | select(.id == $q) | .queued == 
   [[ "$output" != *$'\nrequirements:'*"R3"*$'\nplans:'* ]] || { echo "R3 is listed among the approved requirements: $output"; false; }
   vbw_run status
   [[ "$output" == *"queued: 1 requirement (R3)"* ]] || { echo "$output"; false; }
+  printf 'paid\n\n' > src/pay.txt
   as_main commit P1.1 "feat(pay): paid" > /dev/null
   run as_main plan "done" P1.1
   [ "$status" -eq 0 ] || { echo "$status: $output"; false; }
