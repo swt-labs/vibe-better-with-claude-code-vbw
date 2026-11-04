@@ -70513,6 +70513,11 @@
       "id": "T237",
       "text": "A file several plans may append to in one wave (a test catalog, an open-items register): today one such ledger serializes every plan that touches it (the Rust project: 11 build waves, the widest 5 plans); evaluate a declared append-only file in the plan schema",
       "status": "open"
+    },
+    {
+      "id": "T238",
+      "text": "Check after 2.1.25 whether a Dev's relative path inside a nested workspace still resolves against the project root (field refusal from the Rust project: a test helper listed in the plan under its workspace folder was refused as outside the run's files when named relative to the crate); P205.1 resolves targets after cd, so it may be fixed; needs a regression test either way",
+      "status": "open"
     }
   ],
   "decisions": [
