@@ -31,19 +31,50 @@ contract_hash() {
 
 # contract_hash_from CORE FILES_JSON: contract_hash of a contract whose core line
 # (contract_core's output) and list of check files (a JSON array of paths) the
-# caller already has. The paths are piped into the loop, which writes every byte
-# the hash reads (its own and vbw_sha256's): run in a child, the loop has no live
-# child of its own whose exit could interrupt a write (vbw_out, core.sh), and
-# costs nothing per file.
+# caller already has. A writer in a pipeline prints every byte the hash reads: run in
+# a child, the writer has no live
+# child of its own whose exit could interrupt a write (vbw_out, core.sh). The files'
+# digests come from one hashing process for all of them (contract_file_digests).
 contract_hash_from() {
-  local f
+  local f i=0 paths=()
+  while IFS= read -r -d '' f; do paths+=("$f"); done < <(printf '%s' "$2" | jq -j '.[] + "\u0000"')
+  contract_file_digests ${paths[@]+"${paths[@]}"}
   {
     printf '%s\n' "$1"
-    printf '%s' "$2" | jq -j '.[] + "\u0000"' | while IFS= read -r -d '' f; do
-      printf '\0%s\0' "$f"
-      if [ -f "$VBW_ROOT/$f" ]; then vbw_sha256 < "$VBW_ROOT/$f"; else printf 'missing\n'; fi
+    for f in ${paths[@]+"${paths[@]}"}; do
+      printf '\0%s\0%s\n' "$f" "${CONTRACT_DIGESTS[$i]}"
+      i=$((i + 1))
     done
   } | vbw_sha256
+}
+
+# contract_file_digests FILE...: CONTRACT_DIGESTS holds, in order, the SHA-256 of each
+# project file ("missing" for one that is not a readable file): one hashing process for
+# up to 300 files, not one per file (a project has hundreds of check files).
+contract_file_digests() {
+  local f i out l chunk=() want=()
+  CONTRACT_DIGESTS=()
+  for f in "$@"; do
+    if [ -f "$VBW_ROOT/$f" ] && [ -r "$VBW_ROOT/$f" ]; then want+=(1) chunk+=("$VBW_ROOT/$f"); else want+=(0); fi
+  done
+  local -a sums=()
+  i=0
+  while [ "$i" -lt ${#chunk[@]} ]; do
+    if command -v sha256sum > /dev/null 2>&1; then
+      out=$(sha256sum -- "${chunk[@]:$i:300}")
+    else
+      out=$(shasum -a 256 -- "${chunk[@]:$i:300}")
+    fi
+    while IFS= read -r l; do
+      l=${l#\\}
+      sums+=("${l%% *}")
+    done <<< "$out"
+    i=$((i + 300))
+  done
+  local k=0
+  for f in ${want[@]+"${want[@]}"}; do
+    if [ "$f" = 1 ]; then CONTRACT_DIGESTS+=("${sums[$k]}"); k=$((k + 1)); else CONTRACT_DIGESTS+=(missing); fi
+  done
 }
 
 # contract_core RECORD_JSON: the contract's structure (requirements, checks,
@@ -85,7 +116,7 @@ contract_waiting() {
 # already has the contract's hash (contract_hash) and, when it has it, the shape
 # (contract_shape; worked out here otherwise, and only when the hash is not approved).
 contract_waiting_with() {
-  local f d old="$VBW_RUNTIME/approved-contract.json" out="" all="" held="" shape="${3:-}"
+  local f old="$VBW_RUNTIME/approved-contract.json" out="" all="" held="" shape="${3:-}" pairs=""
   contract_approved "$2" && return 0
   [ -n "$shape" ] || shape=$(contract_shape "$1")
   consent_has shape "$shape" || return 1
@@ -93,15 +124,21 @@ contract_waiting_with() {
   held=$(printf '%s' "$1" | jq -r --slurpfile old "$old" '.checks[] | select(has("fix")) | . as $c
     | select($old[0].checks[$c.id] != ($c | del(.amendments))) | .files[]?' 2> /dev/null) \
     || held=$(printf '%s' "$1" | jq -r '.checks[] | select(has("fix")) | .files[]?')
-  while IFS= read -r -d '' f; do
+  local paths=() i=0
+  while IFS= read -r -d '' f; do paths+=("$f"); done < <(printf '%s' "$1" | jq -j '[.checks[].files // [] | .[]] | unique[] | . + "\u0000"')
+  contract_file_digests ${paths[@]+"${paths[@]}"}
+  for f in ${paths[@]+"${paths[@]}"}; do
     all="$all$f"$'\n'
-    d=missing
-    [ ! -f "$VBW_ROOT/$f" ] || d=$(vbw_sha256 < "$VBW_ROOT/$f")
-    if [ "$(jq -r --arg f "$f" '.files[$f] // "new"' "$old" 2> /dev/null)" != "$d" ] \
-      || printf '%s\n' "$held" | grep -xF -- "$f" > /dev/null; then
-      out="$out$f"$'\n'
-    fi
-  done < <(printf '%s' "$1" | jq -j '[.checks[].files // [] | .[]] | unique[] | . + "\u0000"')
+    pairs="$pairs$f"$'\t'"${CONTRACT_DIGESTS[$i]}"$'\n'
+    i=$((i + 1))
+  done
+  # The files whose bytes differ from the approved ones (a file the approval does not know is
+  # new), or that a fix added: one jq run for all of them, not one per file. An approval
+  # snapshot that cannot be read leaves every file changed.
+  out=$(printf '%s' "$pairs" | jq -Rr --slurpfile old "$old" --arg held "$held" '($held | split("\n")) as $h
+    | split("\t") | select(length == 2) | . as [$f, $d]
+    | select((($old[0].files // {})[$f] // "new") != $d or ($h | index($f) != null)) | $f' 2> /dev/null && printf x) \
+    && out=${out%x} || out=$all
   printf '%s' "${out:-$all}"
 }
 

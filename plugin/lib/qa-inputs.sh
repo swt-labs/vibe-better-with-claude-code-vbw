@@ -19,6 +19,32 @@
 # the pass is fingerprinted again at its own commit (qa_settle).
 QA_FP_VERSION=2
 
+# jq definitions the one pass over the record (lib/cmd-next.sh, R249) shares with the
+# functions below, so a caller that has the record's facts from its pass passes them on and
+# the record is not parsed again for each:
+#   qa_listing($res): one line per phase of the active milestone, "Pn {json}": the inputs its
+#     digests are made of (files, checks, check files, auto requirements, plan); $res is
+#     project.results, or null while the contract naming it is not approved;
+#   qa_settle_in: the active milestone's passed phases, {id, qa, built}, what qa_settle reads;
+#   qa_prog($inputs; $cache): lib/qa.jq (run with --argjson fpv).
+# shellcheck disable=SC2016
+VBW_QA_DEFS='def qa_listing($res): . as $r | $r.phases[] | select(.milestone == $r.milestone.id) | . as $ph
+    | ([$r.checks[] | select(.req as $q | $ph.reqs | index($q))] | sort_by(.id)) as $ch
+    | ([$r.requirements[] | select(.proof == "auto") | .id]) as $aid
+    | [$r.plans[] | select(.phase == $ph.id) | [.files[]? | select((startswith(".vbw/") or startswith("./.vbw/")) | not)]] as $pf
+    | (all($pf[]; all(.[]; is_doc))) as $docs_only | [$ch[] | (.files // [])[], (.run // [])[]] as $used
+    | "\(.id) " + ({files: ([$pf[][] | select(. as $f | $docs_only or any($used[]; . == $f) or ((is_doc or any($res[]?; covers($f))) | not))] | unique),
+       checks: [$ch[] | {id, req, run, files}], check_files: ([$ch[] | .files[]?] | unique),
+       auto: [$r.requirements[] | select(.proof == "auto" and (.id as $q | $ph.reqs | index($q))) | {id, text}],
+       plan: {goal: $ph.goal, criteria: $ph.criteria,
+              plans: [$r.plans[] | select(.phase == $ph.id) | {id, title, reqs: [.reqs[]? | select(. as $q | $aid | index($q))], files, after, tasks}]}} | tojson);
+def qa_settle_in: . as $r | [$r.phases[] | select(.milestone == $r.milestone.id and .qa.result == "pass")
+    | {id, qa, built: (.id as $i | [$r.plans[] | select(.phase == $i)] | length > 0 and all(.[]; .status == "done"))}];
+def qa_prog($inputs; $cache):
+'"$(cat "$VBW_LIB/qa.jq")"'
+;
+'
+
 # vbw_scratch_json VAR VALUE: put VALUE in a new file inside .vbw/runtime, removed when the
 # command ends or fails (vbw_guard_add), and set VAR to its path. For a jq call that
 # record_update makes: bash 3.2 closes a <(...) handed to a function as soon as the
@@ -65,24 +91,19 @@ qa_tree() {
 # milestone's phases as commit REV (default HEAD) holds their files and checks'
 # files and RECORD their goal, plans and requirements; deps lists every phase Pn builds on.
 qa_digests() {
-  local id line own='{}' out='{}' cl res=null rev="${2:-HEAD}"
-  if printf '%s' "$1" | jq -e '(.project.results // []) != []' > /dev/null && contract_waiting "$1" > /dev/null; then
+  local id line own='{}' out='{}' cl res=null rev="${2:-HEAD}" pre=0
+  # The caller's pass (QA_PRE_LISTING, QA_PRE_CLOSURE: set by next_decide for the record it
+  # judged) stands in for the two reads of the record, for the current commit only.
+  [ "$rev" = HEAD ] && [ -n "${QA_PRE_CLOSURE:-}" ] && pre=1
+  if [ "$pre" = 0 ] && printf '%s' "$1" | jq -e '(.project.results // []) != []' > /dev/null && contract_waiting "$1" > /dev/null; then
     res=$(printf '%s' "$1" | jq -c '.project.results')
   fi
   while read -r id line; do
     own=$(printf '%s' "$own" | jq -c --arg id "$id" --arg f "$(printf '%s' "$line" | jq -r '.files[]' | qa_tree "$rev")" --arg p "$(printf '%s' "$line" | jq -c '.plan' | vbw_sha256)" --arg q "$(printf '%s' "$line" | jq -c '.auto' | vbw_sha256)" \
       --arg t "$({ printf '%s' "$line" | jq -c '.checks'; printf '%s' "$line" | jq -r '.check_files[]' | qa_tree "$rev"; } | vbw_sha256)" '. + {($id): {files: $f, tests: $t, plan: $p, reqs: $q}}')
-  done < <(printf '%s' "$1" | jq -r --slurpfile res <(printf '%s' "$res") "$VBW_JQ_DEFS"'$res[0] as $res | . as $r | $r.phases[] | select(.milestone == $r.milestone.id) | . as $ph
-    | ([$r.checks[] | select(.req as $q | $ph.reqs | index($q))] | sort_by(.id)) as $ch
-    | ([$r.requirements[] | select(.proof == "auto") | .id]) as $aid
-    | [$r.plans[] | select(.phase == $ph.id) | [.files[]? | select((startswith(".vbw/") or startswith("./.vbw/")) | not)]] as $pf
-    | (all($pf[]; all(.[]; is_doc))) as $docs_only | [$ch[] | (.files // [])[], (.run // [])[]] as $used
-    | "\(.id) " + ({files: ([$pf[][] | select(. as $f | $docs_only or any($used[]; . == $f) or ((is_doc or any($res[]?; covers($f))) | not))] | unique),
-       checks: [$ch[] | {id, req, run, files}], check_files: ([$ch[] | .files[]?] | unique),
-       auto: [$r.requirements[] | select(.proof == "auto" and (.id as $q | $ph.reqs | index($q))) | {id, text}],
-       plan: {goal: $ph.goal, criteria: $ph.criteria,
-              plans: [$r.plans[] | select(.phase == $ph.id) | {id, title, reqs: [.reqs[]? | select(. as $q | $aid | index($q))], files, after, tasks}]}} | tojson)')
-  cl=$(printf '%s' "$1" | jq -c --argjson fpv "$QA_FP_VERSION" --argjson inputs null --argjson cache null "$VBW_JQ_DEFS$(cat "$VBW_LIB/qa.jq")" | jq -c '.closure')
+  done < <(if [ "$pre" = 1 ]; then [ -z "$QA_PRE_LISTING" ] || printf '%s\n' "$QA_PRE_LISTING"; else printf '%s' "$1" | jq -r --argjson res "$res" "$VBW_JQ_DEFS$VBW_QA_DEFS"'qa_listing($res)'; fi)
+  if [ "$pre" = 1 ]; then cl=$QA_PRE_CLOSURE
+  else cl=$(printf '%s' "$1" | jq -c --argjson fpv "$QA_FP_VERSION" "$VBW_JQ_DEFS$VBW_QA_DEFS"'qa_prog(null; null) | .closure'); fi
   while IFS=$'\t' read -r id line; do
     out=$(printf '%s' "$out" | jq -c --arg id "$id" --arg c "$(printf '%s' "$line" | vbw_sha256)" --slurpfile own <(printf '%s' "$own") --slurpfile cl <(printf '%s' "$cl") \
       '. + {($id): ($own[0][$id] + {combined: $c, deps: $cl[0][$id]})}')
@@ -150,18 +171,20 @@ qa_pass_commit() {
 # is stored, and the phase is checked again as before. The history is read once
 # per pass: after this the entry is current.
 qa_settle() {
-  local id cache qa c old rec
+  local id cache qa c old rec settle="${QA_PRE_SETTLE:-}"
   cache=$(qa_cache_read)
+  # The passed phases, from the caller's pass when it has one (QA_PRE_SETTLE), else from the record.
+  [ -n "$settle" ] || settle=$(printf '%s' "$1" | jq -c "$VBW_QA_DEFS"'qa_settle_in')
   while IFS= read -r id; do
-    qa=$(printf '%s' "$1" | jq -c --arg p "$id" '.phases[] | select(.id == $p) | .qa')
+    qa=$(printf '%s' "$settle" | jq -c --arg p "$id" '.[] | select(.id == $p) | .qa')
     c=$(qa_pass_commit "$id" "$qa" "$(printf '%s' "$cache" | jq -r --arg p "$id" '.[$p].commit // empty')")
     [ -n "$c" ] || continue
     rec=$(git -C "$VBW_ROOT" show "$c:.vbw/record.json" 2> /dev/null) || continue
     old=$(qa_digests "$rec" "$c" 2> /dev/null) || continue
     printf '%s' "$old" | jq -e --arg p "$id" 'has($p)' > /dev/null || continue
     qa_cache_put "$id" "$old" "$c" "$(printf '%s' "$qa" | jq -r '.tree')"
-  done < <(printf '%s' "$1" | jq -r --slurpfile dg <(printf '%s' "$2") --slurpfile cg <(printf '%s' "$cache") --argjson v "$QA_FP_VERSION" '$dg[0] as $d | $cg[0] as $c | . as $r
-    | $r.phases[] | select(.milestone == $r.milestone.id and .qa.result == "pass" and .qa.tree != ($d[.id].combined // .qa.tree)
-        and ((($c | if type == "object" then . else {} end)[.id] | type == "object" and ((.version // 0) != $v))))
-    | select(.id as $i | [$r.plans[] | select(.phase == $i)] | length > 0 and all(.[]; .status == "done")) | .id')
+  done < <(printf '%s' "$settle" | jq -r --slurpfile dg <(printf '%s' "$2") --slurpfile cg <(printf '%s' "$cache") --argjson v "$QA_FP_VERSION" '$dg[0] as $d | $cg[0] as $c
+    | .[] | select(.qa.tree != ($d[.id].combined // .qa.tree)
+        and ((($c | if type == "object" then . else {} end)[.id] | type == "object" and ((.version // 0) != $v)))
+        and .built) | .id')
 }

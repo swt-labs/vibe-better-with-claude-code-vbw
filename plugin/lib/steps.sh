@@ -197,14 +197,10 @@ step_qa_phases() {
     | [.phases[] | select(.milestone == $m and $qa[0].recheck[.id] != null and needs_qa(.tier // "standard"; $current)) | .id]' 2> /dev/null || echo '[]'
 }
 
-# step_size RECORD KIND IDS_JSON: the size of a step for step_expect, from the
-# record: build [{id, tier, tasks, breaks}] (a plan's tier is its phase's, standard
-# when the phase has none; breaks: the rules it owes the mutation check,
-# owed_rules), fix {tier} (the highest tier among the phases of the
-# fixes' requirements, null when no phase serves them), plan {reqs} (the active
-# milestone's requirements not proven or accepted), qa [{id, tier}].
-step_size() {
-  printf '%s' "$1" | jq -c --arg k "$2" --argjson ids "$3" "$VBW_JQ_DEFS"'
+# The jq definition of step_size, shared with the one run that judges vbw next (lib/cmd-next.sh),
+# which works out the size of the step beside its answer.
+# shellcheck disable=SC2016
+VBW_STEP_SIZE_DEFS='def step_size_prog($k; $ids):
     def tier_of($pid): ([.phases[]? | select(.id == $pid)][0].tier) // "standard";
     if $k == "build" then
       [$ids[] as $i | ([.plans[]? | select(.id == $i)][0]) as $p
@@ -218,7 +214,17 @@ step_size() {
       | {reqs: ([.requirements[]? | select(.milestone == $m and .status != "proven" and .status != "accepted")] | length)}
     elif $k == "qa" then
       [$ids[] as $i | {id: $i, tier: tier_of($i)}]
-    else null end' 2> /dev/null || echo null
+    else null end;
+'
+
+# step_size RECORD KIND IDS_JSON: the size of a step for step_expect, from the
+# record: build [{id, tier, tasks, breaks}] (a plan's tier is its phase's, standard
+# when the phase has none; breaks: the rules it owes the mutation check,
+# owed_rules), fix {tier} (the highest tier among the phases of the
+# fixes' requirements, null when no phase serves them), plan {reqs} (the active
+# milestone's requirements not proven or accepted), qa [{id, tier}].
+step_size() {
+  printf '%s' "$1" | jq -c --arg k "$2" --argjson ids "$3" "$VBW_JQ_DEFS$VBW_STEP_SIZE_DEFS"'step_size_prog($k; $ids)' 2> /dev/null || echo null
 }
 
 # step_road RECORD NEXT NOTE: the road (lib/road.sh) with the running build's
@@ -457,7 +463,10 @@ step_next() {
   step_kind_has_parts "$kind" && [ "$parts" = null ] && parts=$(printf '%s' "$ids" | jq 'length')
   n=$parts
   [ "$n" = null ] && n=0
-  [ "$kind" = proof ] || size=$(step_size "$1" "$kind" "$ids")
+  # NP_STEP_SIZE: the size vbw next worked out beside its answer (lib/cmd-next.sh), when it has it.
+  if [ "$kind" != proof ]; then
+    if [ -n "${NP_STEP_SIZE:-}" ]; then size=$NP_STEP_SIZE; else size=$(step_size "$1" "$kind" "$ids"); fi
+  fi
   seconds=$(step_expect "$kind" "$size")
   jq -nc --arg k "$kind" --argjson ids "$ids" --argjson parts "$parts" --arg s "$seconds" --argjson why "$why" "$VBW_STEP_DEFS"'
     (now | floor) as $t

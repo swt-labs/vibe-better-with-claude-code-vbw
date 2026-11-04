@@ -12,16 +12,24 @@
 
 cmd_status() {
   vbw_require_project
-  local record interview step road
-  # One pass over the record (next_prepare): its working record holds all that status shows,
-  # and the road's answer of vbw next is judged from the same pass.
+  local slim interview step road out
+  # One pass over the record (next_prepare): its slim form holds all that status shows,
+  # and the road is worked out with vbw next's answer in the one run that judges it.
   next_prepare || exit $?
-  record=$NP_WORK
-  interview=$(interview_effective "$record")
-  step=$(step_status "$(printf '%s' "$record" | jq -r '.lease.run // ""')")
-  road=$(step_road_status "$record" "$step" next_road_input)
+  slim=$NP_SLIM
+  interview=$(interview_effective "$slim")
+  step=$(step_status "$(printf '%s' "$slim" | jq -r '.lease.run // ""')")
+  road=$(printf '%s' "$step" | jq -c 'select(type == "object") | .road | select(type == "object")' 2> /dev/null) || road=
+  if [ -z "$road" ]; then
+    # shellcheck disable=SC2034  # read by next_decide
+    [ "$step" = null ] || NP_NOTE=$step
+    # shellcheck disable=SC2034
+    NP_WANT_ROAD=1
+    out=$(next_decide 2> /dev/null) || out=
+    road=$(printf '%s' "$out" | jq -c '.road // null' 2> /dev/null) || road=null
+  fi
   if [ "${1:-}" = "--json" ]; then
-    printf '%s\n' "$record" | jq --argjson iv "$interview" --argjson step "$step" --argjson road "${road:-null}" '.milestone.id as $m | [.requirements[] | select(.milestone == $m)] as $cur | {
+    printf '%s\n' "$slim" | jq --argjson iv "$interview" --argjson step "$step" --argjson road "${road:-null}" '.milestone.id as $m | [.requirements[] | select(.milestone == $m)] as $cur | {
       milestone: .milestone,
       shipped: [.shipped[].id],
       parked: [(.parked // [])[].id],
@@ -37,7 +45,7 @@ cmd_status() {
     }'
     return 0
   fi
-  printf '%s\n' "$record" | jq -r --argjson iv "$interview" --argjson step "$step" --argjson road "${road:-null}" "$VBW_STEP_DEFS"'.milestone.id as $m | [.requirements[] | select(.milestone == $m)] as $cur |
+  printf '%s\n' "$slim" | jq -r --argjson iv "$interview" --argjson step "$step" --argjson road "${road:-null}" "$VBW_STEP_DEFS"'.milestone.id as $m | [.requirements[] | select(.milestone == $m)] as $cur |
     "\(.project.name) · \(.milestone.id) \(.milestone.title) (\(.milestone.status))",
     "requirements: \([$cur[] | select(.status == "proven" or .status == "accepted")] | length)/\($cur | length) proven",
     ([.requirements[] | select(.queued) | .id] | if length > 0 then "queued: \(length) requirement\(if length == 1 then "" else "s" end) (\(join(", ")))" else empty end),
