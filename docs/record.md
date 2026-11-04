@@ -55,9 +55,11 @@ The fix: remove that line, or change it to .vbw/runtime/
   status line shows. Every record write rewrites it in the same locked write and
   sets the record's file time one second back, so the glance stays newer. Any
   `vbw` command rewrites a missing or out-of-date glance.
-  While a run is open it also holds `holder`, `{run, session, session_name}`
+  While a run is open it also holds `holder`, `{run, session, session_name, head}`
   (`null` otherwise): the name of the chat that holds the run, on this computer
-  only. The record and `costs.runs` never carry `session_name`.
+  only, and `head`, the project's commit when `vbw run start` ran (`null` when it
+  had none), which the Bash guard compares a script file with (docs/guards.md).
+  The record and `costs.runs` never carry `session_name` or `head`.
   It is never the source of truth, and it is safe to delete.
 - **Stable ids:** ids are assigned once and never reused or renumbered.
 - **Versioned:** `schema` is an integer. A newer kernel reads an older record

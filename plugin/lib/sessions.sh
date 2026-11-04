@@ -86,16 +86,19 @@ sessions_project_entries() {
 
 holder_file() { printf '%s/holder.json' "$VBW_RUNTIME"; }
 
-# holder_write RUN SID: .vbw/runtime/holder.json {run, session, session_name}
-# (session_name null when unknown), through a temporary name and a rename.
+# holder_write RUN SID: .vbw/runtime/holder.json {run, session, session_name, head}
+# (session_name null when unknown; head, the project's commit when the run starts,
+# null when it has none: the Bash guard compares a script file with it, R255), through
+# a temporary name and a rename.
 holder_write() {
-  local name tmp
+  local name tmp head
   name=$(sessions_name "$2")
+  head=$(git -C "$VBW_ROOT" rev-parse --verify --quiet HEAD 2> /dev/null) || head=''
   mkdir -p "$VBW_RUNTIME" 2> /dev/null || return 0
   tmp=$(mktemp "$VBW_RUNTIME/holder.XXXXXX" 2> /dev/null) || return 0
   vbw_guard_add file "$tmp"
-  if jq -nc --arg r "$1" --arg s "$2" --arg n "$name" \
-    '{run: $r, session: $s, session_name: (if $n == "" then null else $n end)}' > "$tmp" 2> /dev/null; then
+  if jq -nc --arg r "$1" --arg s "$2" --arg n "$name" --arg h "$head" \
+    '{run: $r, session: $s, session_name: (if $n == "" then null else $n end), head: (if $h == "" then null else $h end)}' > "$tmp" 2> /dev/null; then
     mv "$tmp" "$(holder_file)" 2> /dev/null || true
   fi
   vbw_guard_drop "$tmp"

@@ -73,7 +73,7 @@ record_glance_write() {
       plans: [.plans[]? | select(.status == "building")],
       holder: (($h | try fromjson catch null) as $f
         | if ($f | type) == "object" and .lease != null and $f.run == .lease.run
-          then {run: $f.run, session: ($f.session // null), session_name: ($f.session_name // null)} else null end)}' \
+          then {run: $f.run, session: ($f.session // null), session_name: ($f.session_name // null), head: ($f.head // null)} else null end)}' \
     "$VBW_RECORD" > "$tmp" 2> /dev/null; then
     record_open_marker "$tmp"
     mv "$tmp" "$VBW_RUNTIME/glance.json" 2> /dev/null || true
