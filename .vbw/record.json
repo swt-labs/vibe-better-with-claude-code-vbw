@@ -1,6 +1,25 @@
 {
-  "schema": 8,
-  "lease": null,
+  "schema": 9,
+  "lease": {
+    "run": "build-20261104T124037Z",
+    "kind": "build",
+    "started_at": "2026-11-04T12:40:37Z",
+    "files": [
+      "docs/proof.md",
+      "plugin/lib/cmd-next.sh",
+      "plugin/lib/cmd-run.sh",
+      "plugin/lib/cmd-show.sh",
+      "plugin/lib/cmd-spec.sh",
+      "plugin/lib/cmd-status.sh",
+      "plugin/lib/contract.sh",
+      "plugin/lib/next.jq",
+      "plugin/lib/spec.jq"
+    ],
+    "session": "0ee781c3-c5b6-4a6c-889f-04b89f1fba4a",
+    "cost": {
+      "usd": 3163.877581
+    }
+  },
   "protected": [
     "tests/adaptive-results.bats",
     "tests/agent-scratch.bats",
@@ -65834,13 +65853,14 @@
         "plugin/lib/cmd-status.sh",
         "plugin/lib/cmd-next.sh",
         "plugin/lib/next.jq",
-        "docs/proof.md"
+        "docs/proof.md",
+        "plugin/lib/contract.sh"
       ],
       "after": [
         "P202.4",
         "P204.2"
       ],
-      "status": "blocked",
+      "status": "building",
       "role": "dev",
       "tasks": [
         "cmd-show.sh show_contract_changes: each changed item is one plain line stating before -> after for every field that changed: a check as \"  changed check C1 (R1): run sh tests/pay.sh -> bash tests/pay.sh --strict; exit 0 -> 1; output none -> paid; timeout none -> 30 s; files tests/pay.sh -> tests/pay.sh, tests/pay-data.txt\" (a missing value reads none, a timeout in seconds, only the fields that changed), a plan as \"  changed plan P2.1 Receipt: files src/receipt.txt -> src/receipt.txt, src/mail.txt; after P1.1 -> none\", a requirement as \"  changed requirement R1: [auto] A customer can pay -> [auto] A customer can pay by card\"; added and removed items keep today's lines; amendments stay in their own block and never count as changes (tests/approval-question.bats)",
@@ -65849,7 +65869,13 @@
         "cmd-show.sh, cmd-status.sh, cmd-run.sh, cmd-next.sh and next.jq: vbw show contract prints the block \"queued (not in the approved contract):\" with \"  R3 [auto] <text>\" per queued requirement after the approved items; vbw status prints \"queued: 1 requirement (R3)\" (plural \"2 requirements (R3, R4)\") while the run is open and nothing when none is queued; vbw run end clears every queued mark, so the requirements then count as pending (unplanned) and vbw next names them; vbw show contract then lists them as part of the contract that is not approved yet, with no queued block",
         "docs/proof.md: the approval section states the before -> after lines, the counts in the question and the first-approval form, and that the amendment count beside the fingerprint is informational; the spec section states what queued means (a requirement added while a run is open waits outside the approved contract until the run ends, then is planned as any new requirement)"
       ],
-      "note": "DEVN-04: (1) the plan says contract_core already leaves queued requirements out, but plugin/lib/contract.sh does not: it needs 'select(.queued | not)' in contract_core and contract_doc (a file outside this plan; I made that 2-line edit once by mistake before the guard caught it, it is uncommitted in the tree and wanted by this plan; the guard now refuses even undoing it). (2) tests/spec-queue.bats case 1 fails at 'vbw commit P1.1': src/pay.txt is already committed in the fixture, so there is nothing to commit; the test needs to change the file first (e.g. printf 'paid\\n\\n' > src/pay.txt). Done and committed: tasks 1-4 in cmd-show/cmd-spec/cmd-run/cmd-status (tests/approval-question.bats all 4 pass; spec-queue cases 2-4 pass). Not done: task 5 docs/proof.md, mutation step."
+      "amendments": [
+        {
+          "what": "file plugin/lib/contract.sh added",
+          "at": "2026-11-04T12:40:14Z",
+          "session": "0ee781c3"
+        }
+      ]
     },
     {
       "id": "P204.1",
@@ -70654,6 +70680,13 @@
     {
       "id": "T240",
       "text": "The Docs agent's prompt says a docs plan records its tasks with vbw mutate --none and leaves rules bound to code plans alone: today a Docs agent tries vbw mutate Rn.k --none, is refused (break the rule in that code instead) and blocks, though the rule needs nothing from it (the Rust project: one plan blocked; the kernel already closes such a plan on its code plans' breaks once tasks are recorded --none)",
+      "status": "open"
+    },
+    {
+      "id": "T241",
+      "text": "2.1.26 is the Rust release (owner, 2026-11-04): first Rust stack pack, what Dev, Lead and QA are told (tests ahead of their code, lockfiles, check shapes, pinned outputs), chosen by the files a plan touches, outside the contract's fingerprint; with T234 and T235; test test = false with clippy first; judged by rerunning the Rust project's failure list; the init question and kernel plug-in points later; main-session and external checks move after it; at release, one GitHub issue as the home of the discussion and a Discord post linking to it (docs/ideas.md, Stack packs)",
+      "sort": "next",
+      "size": "large",
       "status": "open"
     }
   ],
