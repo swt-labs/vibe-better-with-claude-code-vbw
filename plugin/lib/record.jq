@@ -21,6 +21,10 @@ def results: type == "object" and all(.[];
   type == "object" and (.status | one_of(["pass","fail","timeout","skipped"]))
   and (.exit == null or (.exit | int_in(0; 255))) and (.seconds | type == "number")
   and (.tail | type == "string"));
+# One amendment (R250): what was added, when, and the session's short id (or null).
+def amendment_ok: type == "object" and (keys | sort) == ["at","session","what"]
+  and (.what | nonempty) and (.at | iso) and (.session == null or (.session | type) == "string");
+def amendments_ok: type == "array" and all(.[]; amendment_ok);
 def ids: [.[]?.id];
 def has_id($x): any(.[]?; .id == $x);
 def tier: one_of(["express","standard","deep"]);
@@ -115,8 +119,9 @@ if type != "object" then ["record must be a JSON object"] else
       | "protected is only for a record of schema \(schema_floor) or above" ),
     ( ($r | schema_of) as $answer
       | select(($r.schema | at_floor) and $r.schema > $answer)
-      | first(schema_features[] | select(.schema == $r.schema) | .feature)
-      | "schema \($r.schema) is only for a record with \(.)" ),
+      # A row says how its feature is introduced in the refusal: "lead" (default "a record with ").
+      | first(schema_features[] | select(.schema == $r.schema))
+      | "schema \($r.schema) is only for \(.lead // "a record with ")\(.feature)" ),
     ( select(($r | has("protected") | not) and ($r.schema | at_floor | not)
              and $r.schema != (if ($r | has("recommendation")) or ((($r.todos // []) | type) == "array" and any(($r.todos // [])[]?; type == "object" and (has("sort") or has("size")))) then 3
                                elif (($r.checks // []) | type) == "array" and any(($r.checks // [])[]?; type == "object" and .alone == true) then 2 else 1 end))
@@ -208,7 +213,8 @@ if type != "object" then ["record must be a JSON object"] else
     id_rules(arr("decisions"); "^D[0-9]+$"),
 
     ( $reqs[]
-      | field_rule(["id","text","proof","status","milestone","rules","skipped","later"]),
+      | field_rule(["id","text","proof","status","milestone","rules","skipped","later","queued"]),
+        ( select(has("queued") and .queued != true) | "\(.id) queued can only be true" ),
         ( select((has("skipped") and .skipped != true) or (has("later") and .later != true)) | "\(.id) skipped and later can only be true" ),
         ( select((has("skipped") or has("later")) and .proof != "human") | "\(.id) is auto-proved and cannot be skipped" ),
         ( select(has("later") and (has("skipped") | not)) | "\(.id) moves to the next milestone only when skipped" ),
@@ -234,7 +240,8 @@ if type != "object" then ["record must be a JSON object"] else
         ( select(.proof == "auto" and (.status | one_of(["accepted","rejected"]))) | "\(.id) is auto-proved and cannot be \(.status)" ) ),
 
     ( $checks[]
-      | field_rule(["id","req","run","files","exit","output","timeout","alone","fix"]),
+      | field_rule(["id","req","run","files","exit","output","timeout","alone","fix","amendments"]),
+        ( select(has("amendments") and ((.amendments | amendments_ok) | not)) | "\(.id) amendments must be [{what, at, session}]" ),
         ( . as $c | select(has("fix") and ((.fix | type) != "string" or (arr("fixes") | has_id($c.fix) | not))) | "\(.id) fix must be the id of an existing fix" ),
         ( . as $o | select(($reqs | has_id($o.req)) | not) | "\(.id) references unknown requirement \(.req)" ),
         ( . as $o | select(any($reqs[]; .id == $o.req and .proof == "human")) | "\(.id) checks human-proved \(.req): only a person can judge it" ),
@@ -274,7 +281,10 @@ if type != "object" then ["record must be a JSON object"] else
         ( . as $p | (.reqs // [])[] | . as $x | select(($reqs | has_id($x)) | not) | "\($p.id) references unknown requirement \(.)" ) ),
 
     ( $plans[]
-      | field_rule(["id","phase","title","reqs","files","after","status","note","tasks","role","mutations"]),
+      | field_rule(["id","phase","title","reqs","files","after","status","note","tasks","role","mutations","amendments","awaits"]),
+        ( select(has("amendments") and ((.amendments | amendments_ok) | not)) | "\(.id) amendments must be [{what, at, session}]" ),
+        ( . as $p | select(has("awaits") and ((.awaits | type == "array" and all(.[]; . as $a | any($checks[]; .id == $a and (. as $c | $p.reqs | type == "array" and any(.[]; . == $c.req))))) | not))
+          | "\(.id) awaits must be an array of checks of its own requirements" ),
         ( select(has("mutations") and ((.mutations | type == "array" and all(.[]; mutation_ok)) | not)) | "\(.id) mutations must be recorded breaks (vbw mutate)" ),
         ( select(has("tasks") and ((.tasks | type == "array" and length > 0) and all(.tasks[]; nonempty) | not)) | "\(.id) tasks must be a non-empty array of non-empty strings" ),
         ( select(has("role") and (.role | one_of(["dev","docs"]) | not)) | "\(.id) role must be dev or docs" ),
