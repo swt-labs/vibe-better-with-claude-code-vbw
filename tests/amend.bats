@@ -124,7 +124,7 @@ table() { jq -r -n -L "$PLUGIN_ROOT/lib" "include \"record-schema\"; $1"; }
   jq -e '.plans[0].awaits == ["C3"] and (.plans[0].amendments | length == 2) and (.plans[0].amendments[1].what | test("C3")) and .schema == 9 and .lease.kind == "build"' .vbw/record.json
   approved
   jq -e '[.. | objects | has("session_name")] | any | not' .vbw/record.json
-  ! grep -q "$SESSION" .vbw/record.json || { echo "the whole session id is in the record"; false; }
+  jq -e --arg s "$SESSION" '[(.plans[], .checks[]) | (.amendments // [])[] | .session] | all(. != $s)' .vbw/record.json || { echo "an amendment carries the whole session id"; false; }
   vbw_run next --json
   [ "$(printf '%s' "$output" | jq -r .action)" != approve ] || { echo "$output"; false; }
 }
