@@ -84,11 +84,10 @@ The first Rust profile would hold: check forms for `cargo test -p <crate> --test
 
 **First contents for Rust, from one real project, by measured cost:**
 
-1. **Tests written ahead of their code.** A Rust test naming an API not yet written fails by compile error, so one such target turns every whole-crate command red. A target declared `test = false` is skipped by whole-crate commands, while its explicit `--test name` still fails red. The profile declares it that way at planning and removes the declaration once it compiles.
-2. **Build folders out of the copies.** Leave `target/` out and point each copy at a shared target folder.
-3. **Workspace lockfiles.** A dependency added to a crate changes the lockfile of every workspace that path-depends on it.
-4. **Check shapes.** One crate per check during development, the whole workspace only in one serialized heavy lane.
-5. **Pinned outputs.** A behaviour change also moves baselines, generated pages and digests, and cargo alone never catches that, so the profile asks for their re-pin in the same change.
+1. **Tests written ahead of their code.** A Rust test naming an API not yet written fails by compile error, so one such target turns every whole-crate command red. A target declared `test = false` is skipped by whole-crate commands, while its explicit `--test name` still fails red. The profile declares it that way at planning and removes the declaration once it compiles. This was checked with `cargo test` and `cargo check --all-targets`, so test it with clippy before relying on it.
+2. **Workspace lockfiles.** A dependency added to a crate changes the lockfile of every workspace that path-depends on it.
+3. **Check shapes.** One crate per check during development, the whole workspace only in one serialized heavy lane.
+4. **Pinned outputs.** A behaviour change also moves baselines, generated pages and digests, and cargo alone never catches that, so the profile asks for their re-pin in the same change.
 **Open questions.** Keep the profile out of the contract's identity: a profile upgrade must not un-approve every plan (compare the amendment work in R250). How is a profile chosen when a plan's files span two trees? What is in a pack and how is it versioned beside VBW itself? Measure before believing: judge the first Rust profile by what it removes from a real project's failure list (a planned test that does not compile, a missing lockfile entry, a clippy gate that fails on a planned check), not by how it reads. A language-specific fork of VBW was considered and rejected: one kernel, profiles as packs.
 
 **Size.** Large.
