@@ -225,8 +225,8 @@ def deny: {hookSpecificOutput: {hookEventName: "PreToolUse", permissionDecision:
 def request_target($g; $shell):
   select((test("^/dev/(null|stdout|stderr|tty)$|[\t\n]") or ($shell and unresolved_path)) | not)
   | . as $o | abs_path(session_dir($g)) as $a
-  | select(($a | startswith(($root | rtrimstr("/")) + "/")) | not)
-  | [$a, (if $g.lease != null then $o | outside_denial($g.lease) | deny | tojson else "" end)];
+  | if ($a | startswith(($root | rtrimstr("/")) + "/")) then [$a, ""]
+    else [$a, (if $g.lease != null then $o | outside_denial($g.lease) | deny | tojson else "" end)] end;
 
 # The request itself, printed instead of a decision: vbw-read, the hook input without its
 # tool_input (one JSON line), then one line target<TAB>path<TAB>refusal per target.

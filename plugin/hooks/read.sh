@@ -7,7 +7,7 @@
 #   command's fail-closed handler then answers: blocked during a run, silent otherwise.
 # - A decision: printed as it is.
 # - A request: line 1 vbw-read, line 2 the hook input as one JSON line, then one line
-#   target<TAB>absolute path<TAB>refusal per write target that leaves the hook's project. The
+#   target<TAB>absolute path<TAB>refusal per write target (one inside the hook's own folder too, since a project nested there is its own). The
 #   refusal is what the target gets when no project holds it (R177: refused under the hook's
 #   own run), or empty. Each target is walked up to the nearest folder holding
 #   .vbw/record.json beside .git; with none, the refusal (if any) is the answer. Otherwise
@@ -60,7 +60,9 @@ while [ -n "$vbw_rest" ]; do
     case $vbw_d in */*) vbw_d=${vbw_d%/*}; vbw_d=${vbw_d:-/} ;; *) vbw_d=/ ;; esac
     if [ -f "$vbw_d/.vbw/record.json" ] && [ -e "$vbw_d/.git" ]; then vbw_p=$vbw_d; break; fi
   done
-  if [ -n "$vbw_p" ]; then
+  if [ -n "$vbw_p" ] && [ "$vbw_p" = "${p:-}" ]; then
+    :
+  elif [ -n "$vbw_p" ]; then
     vbw_groups=$vbw_groups$vbw_p$vbw_tab$vbw_t$vbw_nl
   else
     vbw_fb=${vbw_line#*"$vbw_tab"}
