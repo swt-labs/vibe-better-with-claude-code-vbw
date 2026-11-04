@@ -162,8 +162,10 @@ record_digest_write() {
 # date. The record and its file time are never changed.
 record_read() {
   local v
-  record_refuse_newer
+  # Bytes the digest names were validated by this validator, which refuses a newer schema: the
+  # schema probe (a parse of the whole record) is only for any other bytes (R249).
   if ! record_digest_matches "$VBW_RECORD"; then
+    record_refuse_newer
     v=$(record_violation "$VBW_RECORD") || vbw_die "record is corrupt: $v ($VBW_RECORD)" 3
     record_digest_write "$VBW_RECORD"
   fi
