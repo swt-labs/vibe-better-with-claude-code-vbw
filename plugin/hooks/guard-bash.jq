@@ -167,6 +167,66 @@ def may_matter: test("rm|git|vbw|gh|npm|cargo|twine|gem|docker|vercel|netlify|fl
 # absolute path, a .. segment or cd, are read whatever the words.
 def reaches: test("(^|[^\\w.])/\\w|(^|[\\s/\"'=])\\.\\.($|[\\s/\"';&|)])|(^|[^\\w.-])cd($|[^\\w.-])");
 
+# --- script files run by name (R255) ----------------------------------------
+#
+# Under a run lease, an interpreter or a shell that runs a file by name (python FILE,
+# python < FILE, bash FILE) runs a program the agent may have written: the file is read like an
+# inline program. When the command writes the file itself (a heredoc into it or through tee,
+# an echo or printf of a literal), the text is known now and judged at once. Otherwise the file
+# is on disk, and the guard asks read.sh for it (a script request line): committed and
+# unchanged since the run started it is the project's own and runs as before, any other is read
+# (read.sh, guard-read.jq). A script the guard cannot obtain is refused as unreadable, never
+# allowed by default. A file the command changes in any other way (cp, sed -i, a redirect
+# from a variable) cannot be read before it runs, so it is refused the same way.
+
+# The files the command writes by name, with the text each gets: from a heredoc (its body,
+# literal unless its delimiter is unquoted and the body expands something) or from an echo or
+# printf (its words), else text null. A command already counted for a heredoc is not counted
+# again for the file it writes.
+def command_writers($cmds; $raw; $start):
+  [$raw | select(test("<<")) | heredocs | . as $h
+   | ([$h.head | commands(3)] | with_cwd($start; resolve) | last.cwd // $start) as $w
+   | ($h.line | commands(3)) as $x
+   | $x | shell_writes
+   | {file: ., cwd: $w, text: $h.text, literal: ($h.quoted or ($h.text | test("[$`]") | not)), line: $x.text}] as $hw
+  | [$cmds[] | select(.cmd | test("^(echo|printf)$")) | . as $k | ($k.args | join("\n")) as $t | $k.out[]
+     | {file: ., cwd: $k.cwd, text: $t, literal: ($t | test("[$`]") | not), line: $k.text}] as $lw
+  | [$cmds[] | . as $k | select(($hw | map(.line) | index($k.text)) == null) | select(.cmd | test("^(echo|printf)$") | not)
+     | shell_writes | {file: ., cwd: $k.cwd, text: null, literal: false}] as $uw
+  | $hw + $lw + $uw;
+
+# One object for each script file the commands run: {deny} (a refusal), {request} (the line
+# for read.sh: start commit or -, interpreter, path as written, absolute path, working folder)
+# or {deny: null, targets} (the text is known and judged clean; the paths it writes outside the
+# project, for the request of the call).
+def script_rules($g; $cmds; $raw; $start):
+  def wd: . as $w | $w.target | shell_write_denial($g | .hook.cwd = $w.cwd);
+  def wabs: . as $x | $x.file | abs_path($x.cwd);
+  [$cmds[] | . as $k | script_call | . + {cwd: $k.cwd}] as $sc
+  | select($sc | length > 0)
+  | command_writers($cmds; $raw; $start) as $w
+  | $sc[] | . as $s
+  | if ($s.file | unresolved_path or test("[\t\n]")) then {deny: script_unreadable($s.file; $s.interp)}
+    else
+      ($s | wabs) as $a
+      | [$w[] | select(.file | (unresolved_path or test("[\t\n]")) | not) | select(wabs == $a)] as $m
+      | if ($m | length) == 0 then {request: [($g.holder.head // "-"), $s.interp, $s.file, $a, $s.cwd]}
+        elif $m | any(.literal | not) then {deny: script_unreadable($s.file; $s.interp)}
+        else
+          ([$m[].text] | join("\n")) as $t
+          | {deny: ([$t | script_denials($s.file; $s.interp; $s.cwd; resolve; wd)][0]),
+             targets: [$t | script_findings($s.interp; $s.cwd; resolve) | select(.unreadable == null) | . as $f
+                       | ($g | .hook.cwd = $f.cwd) as $k | $f.target | request_target($k; true)]}
+        end
+    end;
+
+# The request a guard prints for read.sh: request (common.jq) with the script lines.
+def request_all($g; $targets; $scripts):
+  select(($targets | length) + ($scripts | length) > 0)
+  | "vbw-read", ($g.hook | {session_id, agent_type, tool_name, cwd} | tojson),
+    ($targets | unique[] | "target\t\(.[0])\t\(.[1])"),
+    ($scripts | unique[] | "script\t" + join("\t"));
+
 def run:
   guard_context(true) as $g
   | ($g.hook.tool_input.command // "") as $c
@@ -175,6 +235,7 @@ def run:
   | ([$c | commands(3)] | with_cwd($start; resolve)) as $cmds
   | [$c | select(test("<<")) | heredoc_programs
        | . + {cwd: ([.head | commands(3)] | with_cwd($start; resolve) | last.cwd // $start)}] as $hds
+  | (if $g.lease != null then [script_rules($g; $cmds; $c; $start)] else [] end) as $sr
   | ( [$cmds[] | everywhere][0]
       // (select($g.project and $g.foreign != null) | [$cmds[] | here($g) as $k | foreign_run($k)][0])
       // (select($g.project)
@@ -183,11 +244,14 @@ def run:
             // (select($g.lease != null)
                 | [$cmds[] | here($g) as $k | in_run($k)][0]
                   // ([$hds[] | . as $h | ($g | .hook.cwd = $h.cwd) as $k | $h.text | program_writes | map(.target) | program_denial(shell_write_denial($k))][0])
-                  // ([$hds[] | .text | unreadable_calls | unreadable_denial][0]))) // null) as $deny
+                  // ([$hds[] | .text | unreadable_calls | unreadable_denial][0])
+                  // ([$sr[] | .deny | select(. != null)][0]))) // null) as $deny
   | if $deny != null then $deny | deny
     elif $g.project then
-      request($g; [($cmds[] | here($g) as $k | write_targets | request_target($k; true)),
-                         ($hds[] | . as $h | ($g | .hook.cwd = $h.cwd) as $k | .text | program_writes[].target | request_target($k; true))])
+      request_all($g; [($cmds[] | here($g) as $k | write_targets | request_target($k; true)),
+                         ($hds[] | . as $h | ($g | .hook.cwd = $h.cwd) as $k | .text | program_writes[].target | request_target($k; true)),
+                         ($sr[] | .targets[]?)];
+                  [$sr[] | .request | select(. != null)])
     else empty end;
 
 run, "vbw-guard-done"

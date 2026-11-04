@@ -327,7 +327,7 @@ def script_call:
       else .file = $a end)) as $w
   | (if $w.inline then null
      else $w.file // ([.in[] | select(startswith("<") | not)][0]) end) as $f
-  | select($f != null and (($c | test("^(deno|bun)$")) | not or ($f | test("[./]"))))
+  | select($f != null and ((($c | test("^(deno|bun)$")) | not) or ($f | test("[./]"))))
   | {interp: $c, file: $f};
 
 # The text of a script, as what it writes: {call, target, cwd} for a write whose target is
