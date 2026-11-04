@@ -1,25 +1,6 @@
 {
   "schema": 9,
-  "lease": {
-    "run": "build-20261104T124037Z",
-    "kind": "build",
-    "started_at": "2026-11-04T12:40:37Z",
-    "files": [
-      "docs/proof.md",
-      "plugin/lib/cmd-next.sh",
-      "plugin/lib/cmd-run.sh",
-      "plugin/lib/cmd-show.sh",
-      "plugin/lib/cmd-spec.sh",
-      "plugin/lib/cmd-status.sh",
-      "plugin/lib/contract.sh",
-      "plugin/lib/next.jq",
-      "plugin/lib/spec.jq"
-    ],
-    "session": "0ee781c3-c5b6-4a6c-889f-04b89f1fba4a",
-    "cost": {
-      "usd": 3163.877581
-    }
-  },
+  "lease": null,
   "protected": [
     "tests/adaptive-results.bats",
     "tests/agent-scratch.bats",
@@ -65860,7 +65841,7 @@
         "P202.4",
         "P204.2"
       ],
-      "status": "building",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "cmd-show.sh show_contract_changes: each changed item is one plain line stating before -> after for every field that changed: a check as \"  changed check C1 (R1): run sh tests/pay.sh -> bash tests/pay.sh --strict; exit 0 -> 1; output none -> paid; timeout none -> 30 s; files tests/pay.sh -> tests/pay.sh, tests/pay-data.txt\" (a missing value reads none, a timeout in seconds, only the fields that changed), a plan as \"  changed plan P2.1 Receipt: files src/receipt.txt -> src/receipt.txt, src/mail.txt; after P1.1 -> none\", a requirement as \"  changed requirement R1: [auto] A customer can pay -> [auto] A customer can pay by card\"; added and removed items keep today's lines; amendments stay in their own block and never count as changes (tests/approval-question.bats)",
@@ -65874,6 +65855,170 @@
           "what": "file plugin/lib/contract.sh added",
           "at": "2026-11-04T12:40:14Z",
           "session": "0ee781c3"
+        }
+      ],
+      "mutations": [
+        {
+          "rule": {
+            "req": "R251",
+            "text": "vbw show contract --changes states before -> after for a changed check's command, exit, output, timeout and files, for a changed plan's files and order, and for a changed requirement's text, one plain line each"
+          },
+          "what": "exit before -> after not stated",
+          "files": [
+            "plugin/lib/cmd-show.sh"
+          ],
+          "checks": {
+            "C579": "red"
+          },
+          "result": "red",
+          "at": "2026-11-04T12:44:55Z",
+          "head": "29ac4b9d5d116f38223260e1c862e8cf888ec98d",
+          "tree": "22c9fe03f39ea31a72c6981d493c097a9bf07ad7",
+          "contract": "ad0bebd39c7c07785d9fc229e1d111f09870140c2384f6aa598b507628b72a3a"
+        },
+        {
+          "rule": {
+            "req": "R251",
+            "text": "a check amended since approval is listed among the amendments, never as a changed check"
+          },
+          "what": "amendments counted in the contract",
+          "files": [
+            "plugin/lib/contract.sh"
+          ],
+          "checks": {
+            "C579": "green"
+          },
+          "result": "survivor",
+          "at": "2026-11-04T12:44:58Z",
+          "head": "29ac4b9d5d116f38223260e1c862e8cf888ec98d",
+          "tree": "22c9fe03f39ea31a72c6981d493c097a9bf07ad7",
+          "contract": "ad0bebd39c7c07785d9fc229e1d111f09870140c2384f6aa598b507628b72a3a"
+        },
+        {
+          "rule": {
+            "req": "R251",
+            "text": "the approval question stays Approve contract <12 hex>? and the counts of changed items and of amendments since the last approval follow it, from the same diff; a first approval names the items instead"
+          },
+          "what": "first approval names plan not plans",
+          "files": [
+            "plugin/lib/cmd-show.sh"
+          ],
+          "checks": {
+            "C579": "red"
+          },
+          "result": "red",
+          "at": "2026-11-04T12:45:01Z",
+          "head": "29ac4b9d5d116f38223260e1c862e8cf888ec98d",
+          "tree": "22c9fe03f39ea31a72c6981d493c097a9bf07ad7",
+          "contract": "ad0bebd39c7c07785d9fc229e1d111f09870140c2384f6aa598b507628b72a3a"
+        },
+        {
+          "rule": {
+            "req": "R251",
+            "text": "the approve hook records the answer to that exact question as today: the options line and the hooks' regexes are unchanged"
+          },
+          "what": "options line changed",
+          "files": [
+            "plugin/lib/cmd-show.sh"
+          ],
+          "checks": {
+            "C579": "red"
+          },
+          "result": "red",
+          "at": "2026-11-04T12:45:04Z",
+          "head": "29ac4b9d5d116f38223260e1c862e8cf888ec98d",
+          "tree": "22c9fe03f39ea31a72c6981d493c097a9bf07ad7",
+          "contract": "ad0bebd39c7c07785d9fc229e1d111f09870140c2384f6aa598b507628b72a3a"
+        },
+        {
+          "rule": {
+            "req": "R252",
+            "text": "vbw spec add while a run is open appends the line to the spec and syncs the requirement as queued; the contract stays approved and the run's agents are not stopped (lease kept, vbw check and vbw plan done keep working)"
+          },
+          "what": "spec sync never queues",
+          "files": [
+            "plugin/lib/cmd-spec.sh"
+          ],
+          "checks": {
+            "C580": "red"
+          },
+          "result": "red",
+          "at": "2026-11-04T12:45:07Z",
+          "head": "29ac4b9d5d116f38223260e1c862e8cf888ec98d",
+          "tree": "22c9fe03f39ea31a72c6981d493c097a9bf07ad7",
+          "contract": "ad0bebd39c7c07785d9fc229e1d111f09870140c2384f6aa598b507628b72a3a"
+        },
+        {
+          "rule": {
+            "req": "R252",
+            "text": "vbw show contract lists a queued requirement as queued, not as part of the approved contract, and vbw status names the queued count while the run is open"
+          },
+          "what": "status label changed",
+          "files": [
+            "plugin/lib/cmd-status.sh"
+          ],
+          "checks": {
+            "C580": "red"
+          },
+          "result": "red",
+          "at": "2026-11-04T12:45:10Z",
+          "head": "29ac4b9d5d116f38223260e1c862e8cf888ec98d",
+          "tree": "22c9fe03f39ea31a72c6981d493c097a9bf07ad7",
+          "contract": "ad0bebd39c7c07785d9fc229e1d111f09870140c2384f6aa598b507628b72a3a"
+        },
+        {
+          "rule": {
+            "req": "R252",
+            "text": "vbw run end clears the queued mark; the requirement then counts as pending and vbw next names it"
+          },
+          "what": "run end keeps queued mark",
+          "files": [
+            "plugin/lib/cmd-run.sh"
+          ],
+          "checks": {
+            "C580": "red"
+          },
+          "result": "red",
+          "at": "2026-11-04T12:45:14Z",
+          "head": "29ac4b9d5d116f38223260e1c862e8cf888ec98d",
+          "tree": "22c9fe03f39ea31a72c6981d493c097a9bf07ad7",
+          "contract": "ad0bebd39c7c07785d9fc229e1d111f09870140c2384f6aa598b507628b72a3a"
+        },
+        {
+          "rule": {
+            "req": "R252",
+            "text": "with no run open vbw spec add behaves as today; a hand-written new requirement synced during a run queues, while a hand edit to an existing requirement's text still un-approves"
+          },
+          "what": "queues with no run open",
+          "files": [
+            "plugin/lib/cmd-spec.sh"
+          ],
+          "checks": {
+            "C580": "red"
+          },
+          "result": "red",
+          "at": "2026-11-04T12:45:17Z",
+          "head": "29ac4b9d5d116f38223260e1c862e8cf888ec98d",
+          "tree": "22c9fe03f39ea31a72c6981d493c097a9bf07ad7",
+          "contract": "ad0bebd39c7c07785d9fc229e1d111f09870140c2384f6aa598b507628b72a3a"
+        },
+        {
+          "rule": {
+            "req": "R251",
+            "text": "a check amended since approval is listed among the amendments, never as a changed check"
+          },
+          "what": "an amended check reads as a changed check",
+          "files": [
+            "plugin/lib/cmd-show.sh"
+          ],
+          "checks": {
+            "C579": "red"
+          },
+          "result": "red",
+          "at": "2026-11-04T12:46:30Z",
+          "head": "81f646ff2058960d1d729f15e8607c63c6280b81",
+          "tree": "22c9fe03f39ea31a72c6981d493c097a9bf07ad7",
+          "contract": "ad0bebd39c7c07785d9fc229e1d111f09870140c2384f6aa598b507628b72a3a"
         }
       ]
     },
@@ -83684,6 +83829,17 @@
         "ended": "2026-11-04T12:15:36Z",
         "cost": {
           "usd": 0.815256
+        }
+      },
+      {
+        "id": "build-20261104T124037Z",
+        "kind": "build",
+        "session": "0ee781c3-c5b6-4a6c-889f-04b89f1fba4a",
+        "milestone": "M52",
+        "started": "2026-11-04T12:40:37Z",
+        "ended": "2026-11-04T12:47:24Z",
+        "cost": {
+          "usd": 1.123056
         }
       }
     ],
