@@ -41,6 +41,10 @@ cmd_status() {
     "\(.project.name) · \(.milestone.id) \(.milestone.title) (\(.milestone.status))",
     "requirements: \([$cur[] | select(.status == "proven" or .status == "accepted")] | length)/\($cur | length) proven",
     "phases: \([.phases[] | select(.milestone == $m)] | length) · open fixes: \([.fixes[] | select(.status == "open")] | length) · open todos: \([.todos[] | select(.status == "open" or .status == "in_progress")] | length)",
+    # A built plan whose awaited check has no passing result yet (R250), derived here, never stored.
+    (. as $r | .plans[] | select(.status == "done") | . as $p
+      | [(.awaits // [])[] | select(($r.evidence.checks[.].status // "") != "pass")] | select(length > 0)
+      | "\($p.id) built, awaiting \(join(", "))"),
     (if $step != null then "now: \(step_sentence($step; now | floor))" else empty end),
     (if $road != null then $road.say else empty end),
     (if (.shipped | length) > 0 then "shipped: \([.shipped[] | "\(.id) \(.title)"] | join(", "))" else empty end),

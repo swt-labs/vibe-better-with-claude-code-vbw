@@ -28,7 +28,7 @@ cmd_show() {
              ((.phases[] | select(.milestone == $r.milestone.id)) as $ph
                | "  \($ph.id) \($ph.title) [\($ph | phase_status($r))]",
                  ($r.plans[] | select(.phase == $ph.id)
-                   | "    \(.id) \(.title) [\(.status)]\(if (.after | length) > 0 then " after \(.after | join(", "))" else "" end)\(if .status == "blocked" and .note then ": " + .note else "" end)"))
+                   | "    \(.id) \(.title) [\(plan_state($r))]\(if (.after | length) > 0 then " after \(.after | join(", "))" else "" end)\(if .status == "blocked" and .note then ": " + .note else "" end)"))
            end)'
       ;;
     phase)
@@ -364,6 +364,10 @@ SHOW_JQ_DEFS='
 def phase_status($r): .id as $id | [$r.plans[] | select(.phase == $id) | .status] as $s
   | if ($s | length) > 0 and all($s[]; . == "done") then "built"
     elif any($s[]; . != "planned") then "building" else "planned" end;
+# A built plan whose awaited check has no passing result yet reads "built, awaiting Cn" (R250); derived, never stored.
+def plan_state($r): . as $p | if .status == "done"
+  then ([(.awaits // [])[] | select(($r.evidence.checks[.].status // "") != "pass")] | if length > 0 then "built, awaiting \(join(", "))" else $p.status end)
+  else .status end;
 def argv_line: map(if test("^[A-Za-z0-9_./:=@%+-]+$") then . else @sh end) | join(" ");
 # A rule is shown by its address Rn.k, its place among the requirement'"'"'s rules (T168).
 def rule_lines: if .proof == "auto" then .id as $q |
