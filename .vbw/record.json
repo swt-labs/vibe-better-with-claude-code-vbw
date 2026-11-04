@@ -5,6 +5,7 @@
     "tests/adaptive-results.bats",
     "tests/agent-scratch.bats",
     "tests/agents-tools.bats",
+    "tests/amend.bats",
     "tests/apply-beside-started.bats",
     "tests/apply-foreign-req.bats",
     "tests/apply-keeps-mutations.bats",
@@ -15,6 +16,7 @@
     "tests/apply-unstarted-goal.bats",
     "tests/approval-after-plan.bats",
     "tests/approval-menu.bats",
+    "tests/approval-question.bats",
     "tests/approve-ask-shown.bats",
     "tests/approve-ask.bats",
     "tests/approve-choice-docs.bats",
@@ -42,6 +44,7 @@
     "tests/bench-steps-result.bats",
     "tests/big-record-commands.bats",
     "tests/big-record-docs.bats",
+    "tests/big-record-fast.bats",
     "tests/big-record-helper.bash",
     "tests/big-record-hooks.bats",
     "tests/big-record-scratch.bats",
@@ -63,6 +66,7 @@
     "tests/clean-copy-docs.bats",
     "tests/clean-copy-proof.bats",
     "tests/clean-copy-spec.bats",
+    "tests/clean-copy-worktrees.bats",
     "tests/close-haiku-docs.bats",
     "tests/close-haiku-runs.bats",
     "tests/close-haiku.bats",
@@ -112,12 +116,14 @@
     "tests/glance-helper.bash",
     "tests/glance-write.bats",
     "tests/guard-cost.bats",
+    "tests/guard-cross-project.bats",
     "tests/guard-fail-closed.bats",
     "tests/guard-interpreters.bats",
     "tests/guard-outside.bats",
     "tests/guard-plan-writes.bats",
     "tests/guard-protected.bats",
     "tests/guard-reads-approval.bats",
+    "tests/guard-script-files.bats",
     "tests/guard-tools.bats",
     "tests/help-every-command.bats",
     "tests/helper-quiet-git.bats",
@@ -445,6 +451,7 @@
     "tests/show-plan-owner.bats",
     "tests/small-change.bats",
     "tests/small-request.bats",
+    "tests/spec-queue.bats",
     "tests/standards.bats",
     "tests/statusline-handback.bats",
     "tests/statusline-off-bench.bats",
@@ -7629,6 +7636,194 @@
       ],
       "files": [
         "tests/standards.bats"
+      ]
+    },
+    {
+      "id": "C571",
+      "req": "R249",
+      "run": [
+        "bats",
+        "--print-output-on-failure",
+        "--filter",
+        "R249 digest",
+        "tests/big-record-fast.bats"
+      ],
+      "files": [
+        "tests/big-record-fast.bats"
+      ]
+    },
+    {
+      "id": "C572",
+      "req": "R249",
+      "run": [
+        "bats",
+        "--print-output-on-failure",
+        "--filter",
+        "R249 chat list",
+        "tests/big-record-fast.bats"
+      ],
+      "files": [
+        "tests/big-record-fast.bats"
+      ]
+    },
+    {
+      "id": "C573",
+      "req": "R249",
+      "run": [
+        "bats",
+        "--print-output-on-failure",
+        "--filter",
+        "R249 one pass",
+        "tests/big-record-fast.bats"
+      ],
+      "files": [
+        "tests/big-record-fast.bats"
+      ]
+    },
+    {
+      "id": "C574",
+      "req": "R250",
+      "run": [
+        "bats",
+        "--print-output-on-failure",
+        "--filter",
+        "R250 schema",
+        "tests/amend.bats"
+      ],
+      "files": [
+        "tests/amend.bats"
+      ]
+    },
+    {
+      "id": "C575",
+      "req": "R250",
+      "run": [
+        "bats",
+        "--print-output-on-failure",
+        "--filter",
+        "R250 amend",
+        "tests/amend.bats"
+      ],
+      "files": [
+        "tests/amend.bats"
+      ]
+    },
+    {
+      "id": "C576",
+      "req": "R250",
+      "run": [
+        "bats",
+        "--print-output-on-failure",
+        "--filter",
+        "R250 awaits",
+        "tests/amend.bats"
+      ],
+      "files": [
+        "tests/amend.bats"
+      ]
+    },
+    {
+      "id": "C577",
+      "req": "R250",
+      "run": [
+        "bats",
+        "--print-output-on-failure",
+        "--filter",
+        "R250",
+        "tests/hooks-guard.bats"
+      ],
+      "files": [
+        "tests/hooks-guard.bats"
+      ]
+    },
+    {
+      "id": "C578",
+      "req": "R250",
+      "run": [
+        "bats",
+        "--print-output-on-failure",
+        "--filter",
+        "is refused with today",
+        "tests/guard-protected.bats"
+      ],
+      "files": [
+        "tests/guard-protected.bats"
+      ]
+    },
+    {
+      "id": "C579",
+      "req": "R251",
+      "run": [
+        "bats",
+        "--print-output-on-failure",
+        "tests/approval-question.bats"
+      ],
+      "files": [
+        "tests/approval-question.bats"
+      ]
+    },
+    {
+      "id": "C580",
+      "req": "R252",
+      "run": [
+        "bats",
+        "--print-output-on-failure",
+        "tests/spec-queue.bats"
+      ],
+      "files": [
+        "tests/spec-queue.bats"
+      ]
+    },
+    {
+      "id": "C581",
+      "req": "R253",
+      "run": [
+        "bats",
+        "--print-output-on-failure",
+        "--filter",
+        "R253 copy",
+        "tests/clean-copy-worktrees.bats"
+      ],
+      "files": [
+        "tests/clean-copy-worktrees.bats"
+      ]
+    },
+    {
+      "id": "C582",
+      "req": "R253",
+      "run": [
+        "bats",
+        "--print-output-on-failure",
+        "--filter",
+        "R253 candidates",
+        "tests/clean-copy-worktrees.bats"
+      ],
+      "files": [
+        "tests/clean-copy-worktrees.bats"
+      ]
+    },
+    {
+      "id": "C583",
+      "req": "R254",
+      "run": [
+        "bats",
+        "--print-output-on-failure",
+        "tests/guard-cross-project.bats"
+      ],
+      "files": [
+        "tests/guard-cross-project.bats"
+      ]
+    },
+    {
+      "id": "C584",
+      "req": "R255",
+      "run": [
+        "bats",
+        "--print-output-on-failure",
+        "tests/guard-script-files.bats"
+      ],
+      "files": [
+        "tests/guard-script-files.bats"
       ]
     }
   ],
@@ -18836,7 +19031,48 @@
       "proof": "auto",
       "status": "open",
       "milestone": "M52",
-      "rules": []
+      "rules": [
+        {
+          "text": "a record whose bytes match the digest kept under .vbw/runtime (validated.json: record and validator digests) is not validated again",
+          "check": "C571",
+          "plan": "P201.1"
+        },
+        {
+          "text": "any other content is validated: a hand edit stays corrupt (exit 3), a compact rewrite of the same JSON is validated once and gives the same output, a newer schema still exits 4",
+          "check": "C571",
+          "plan": "P201.1"
+        },
+        {
+          "text": "the validator's own text is part of the digest: a changed record.jq, record-schema.jq or interview.json validates the record again",
+          "check": "C571",
+          "plan": "P201.1"
+        },
+        {
+          "text": "a .vbw/runtime that cannot be written is never an error: same output, exit 0, nothing on stderr",
+          "check": "C571",
+          "plan": "P201.1"
+        },
+        {
+          "text": "the chat list is read and matched in one jq pass with no per-entry loop: vbw next --json on 500 chats of the project makes as many jq calls as on 5, and still carries the rename hint",
+          "check": "C572",
+          "plan": "P201.2"
+        },
+        {
+          "text": "after a warm digest, vbw next --json and vbw status each read the record through at most two record-sized jq calls, so their fields come from one pass",
+          "check": "C573",
+          "plan": "P201.3"
+        },
+        {
+          "text": "on the large twin, vbw next --json, vbw status, vbw show roadmap and vbw triage --json finish within 1.5 s and vbw todo add within 2.5 s, scaled by the bench ratio, measured in the release run's tests/timed-big-record.bats and never in vbw prove",
+          "check": "C573",
+          "plan": "P201.3"
+        },
+        {
+          "text": "every R149 twin comparison still holds (tests/big-record.bats, run by the proof)",
+          "check": "C573",
+          "plan": "P201.3"
+        }
+      ]
     },
     {
       "id": "R250",
@@ -18844,7 +19080,78 @@
       "proof": "auto",
       "status": "open",
       "milestone": "M52",
-      "rules": []
+      "rules": [
+        {
+          "text": "schema 9 is one row of the table, for an amendment, an awaited check or a queued requirement; VBW_SCHEMA_MAX is 9; a schema-9 record with none of them is corrupt",
+          "check": "C574",
+          "plan": "P202.1"
+        },
+        {
+          "text": "the validator accepts amendments {what, at, session or null} on plans and checks, awaits naming checks of the plan's own requirements, and queued true, and refuses every malformed form naming the field",
+          "check": "C574",
+          "plan": "P202.1"
+        },
+        {
+          "text": "vbw apply --amend adds a file to a plan's files (the lease follows during a run) or to a check's files (the protected list follows), or records awaits, while the contract stays approved and an open run stays open",
+          "check": "C575",
+          "plan": "P202.2"
+        },
+        {
+          "text": "a protected check file added to a plan is refused naming it and the protected rule; a check of another requirement in awaits is refused naming the check and the requirement; an unknown id and a document that is not JSON are refused",
+          "check": "C575",
+          "plan": "P202.2"
+        },
+        {
+          "text": "a change to a check's command or expected result, a requirement's text, a plan's title, after or rules, a phase or any removal is never an amendment: refused in one line naming the field and vbw apply --patch with approval, record unchanged",
+          "check": "C575",
+          "plan": "P202.2"
+        },
+        {
+          "text": "an unapproved contract cannot be amended (refused naming --patch); with no run open an approved contract is amended the same way",
+          "check": "C575",
+          "plan": "P202.2"
+        },
+        {
+          "text": "each amendment is recorded on the plan or check as what, when (ISO UTC) and the session's 8-character short id, never a name (D445); the next approval clears them",
+          "check": "C575",
+          "plan": "P202.2"
+        },
+        {
+          "text": "a check change on a started plan by vbw apply --patch keeps the plan's status, tasks and commits and the run open, and the contract then reads NOT APPROVED; a plan --patch during a run is still refused",
+          "check": "C575",
+          "plan": "P202.2"
+        },
+        {
+          "text": "a plan with awaits reaches plan done with its own checks green and the awaited check unrun; it reads built, awaiting <check> in vbw status and vbw show roadmap and its requirement stays unproven until the check passes, when it reads done",
+          "check": "C576",
+          "plan": "P202.4"
+        },
+        {
+          "text": "the amendments made since approval are listed by vbw show contract --changes and in vbw show contract's approval block, never as changed checks or plans",
+          "check": "C576",
+          "plan": "P202.4"
+        },
+        {
+          "text": "vbw next --json carries a new amendment (id, what) once, so the router says one chat line",
+          "check": "C576",
+          "plan": "P202.4"
+        },
+        {
+          "text": "during a run, a run agent's vbw apply in any mode (plain, --patch, --add, --amend; by any path, after a cd, in a substitution) is refused by the guard in two lines, the rule and the next step; the main session and the other kernel commands are never refused",
+          "check": "C577",
+          "plan": "P202.3"
+        },
+        {
+          "text": "the guard's refusal of a write to a protected check file states the rule in one line: a protected check file is never edited during a build; the main session changes the check with vbw apply --patch, then the user approves it",
+          "check": "C578",
+          "plan": "P202.3"
+        },
+        {
+          "text": "vbw ship lists the amendments made since the last approval, in the very lines vbw show contract --changes prints, before it says shipped; the amendments stay on the plan or check as history",
+          "check": "C575",
+          "plan": "P202.2"
+        }
+      ]
     },
     {
       "id": "R251",
@@ -18852,7 +19159,28 @@
       "proof": "auto",
       "status": "open",
       "milestone": "M52",
-      "rules": []
+      "rules": [
+        {
+          "text": "vbw show contract --changes states before -> after for a changed check's command, exit, output, timeout and files, for a changed plan's files and order, and for a changed requirement's text, one plain line each",
+          "check": "C579",
+          "plan": "P203.1"
+        },
+        {
+          "text": "a check amended since approval is listed among the amendments, never as a changed check",
+          "check": "C579",
+          "plan": "P203.1"
+        },
+        {
+          "text": "the approval question stays Approve contract <12 hex>? and the counts of changed items and of amendments since the last approval follow it, from the same diff; a first approval names the items instead",
+          "check": "C579",
+          "plan": "P203.1"
+        },
+        {
+          "text": "the approve hook records the answer to that exact question as today: the options line and the hooks' regexes are unchanged",
+          "check": "C579",
+          "plan": "P203.1"
+        }
+      ]
     },
     {
       "id": "R252",
@@ -18860,7 +19188,28 @@
       "proof": "auto",
       "status": "open",
       "milestone": "M52",
-      "rules": []
+      "rules": [
+        {
+          "text": "vbw spec add while a run is open appends the line to the spec and syncs the requirement as queued; the contract stays approved and the run's agents are not stopped (lease kept, vbw check and vbw plan done keep working)",
+          "check": "C580",
+          "plan": "P203.1"
+        },
+        {
+          "text": "vbw show contract lists a queued requirement as queued, not as part of the approved contract, and vbw status names the queued count while the run is open",
+          "check": "C580",
+          "plan": "P203.1"
+        },
+        {
+          "text": "vbw run end clears the queued mark; the requirement then counts as pending and vbw next names it",
+          "check": "C580",
+          "plan": "P203.1"
+        },
+        {
+          "text": "with no run open vbw spec add behaves as today; a hand-written new requirement synced during a run queues, while a hand edit to an existing requirement's text still un-approves",
+          "check": "C580",
+          "plan": "P203.1"
+        }
+      ]
     },
     {
       "id": "R253",
@@ -18868,7 +19217,28 @@
       "proof": "auto",
       "status": "open",
       "milestone": "M52",
-      "rules": []
+      "rules": [
+        {
+          "text": "every clean copy leaves out the folder of every worktree of the repository inside the project (git worktree list) and .claude/worktrees, whatever the Clean copy section says, while the other ignored paths are copied as before",
+          "check": "C581",
+          "plan": "P204.1"
+        },
+        {
+          "text": "a worktree nested under an ignored folder is skipped by descending around it, and a worktree whose folder is gone causes no error",
+          "check": "C581",
+          "plan": "P204.1"
+        },
+        {
+          "text": "vbw init names each git-ignored folder over the threshold (500 MB; VBW_PROOFCOPY_PLAIN_KB in tests) with its size and writes it as a commented suggestion in the Clean copy template, nothing uncommented; a worktree is never a candidate; nothing is said when none is over",
+          "check": "C582",
+          "plan": "P204.2"
+        },
+        {
+          "text": "vbw doctor names the candidates the Clean copy section does not list yet, with their sizes, and says nothing when none is over or every one is listed",
+          "check": "C582",
+          "plan": "P204.2"
+        }
+      ]
     },
     {
       "id": "R254",
@@ -18876,7 +19246,102 @@
       "proof": "auto",
       "status": "open",
       "milestone": "M52",
-      "rules": []
+      "rules": [
+        {
+          "text": "from a linked worktree, a cd into the main checkout followed by a program write, a shell write by absolute path, an Edit by absolute path and a path through .. are refused under that project's run with the very reasons the same calls get inside it, the protected-file text included",
+          "check": "C583",
+          "plan": "P205.1"
+        },
+        {
+          "text": "the same calls are allowed once that project has no run open; a target inside a worktree with a record of its own is judged by that record; a target outside every project is judged as today",
+          "check": "C583",
+          "plan": "P205.1"
+        },
+        {
+          "text": "a target whose project's record cannot be read while its run is open is refused fail-closed with today's text, from any project folder",
+          "check": "C583",
+          "plan": "P205.1"
+        },
+        {
+          "text": "tools/bench-hooks.sh has a cross-project case beside the same-project ones, so the extra record read is measured",
+          "check": "C583",
+          "plan": "P205.1"
+        }
+      ]
+    },
+    {
+      "id": "R255",
+      "text": "A program the agent wrote during the run is judged like an inline program (T233; reproduced 2026-11-03: under a build lease, a Dev's one command wrote a Python file into .vbw/runtime/scratch by heredoc and ran it with python FILE, and the file's open('tests/x.sh','w') on a protected check file passed with no decision; the same with the file written by an earlier call, and with a shell script run by bash FILE, passed too; the project's own committed scripts run by name are allowed, as today): when an interpreter or shell (python, node, perl, ruby, php, lua, deno, bun, sh, bash, zsh) runs a file by name under a run lease, the guard reads the program: from the heredoc or redirection that writes that file in the same command when there is one, else from the file itself when it exists and is not a committed, unchanged file of the project at the run's start; that program's writes are judged by the inline rules (R76: a literal target outside the plan's files or on a protected check file is refused by name; R219: a target the guard cannot name is refused as unreadable); a file that is committed and unchanged at the run's start runs as today; a file that cannot be read at all is refused as unreadable under a lease; outside a run nothing changes; the refusal names the script file and the call inside it; the cost stays within the hook budget (one git lookup per script file)",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M52",
+      "rules": [
+        {
+          "text": "under a run lease, an interpreter or shell run with a file as its program (the first argument that is not an option, or a file redirected in with <) takes the program's text from the same command when that command writes the file by heredoc, tee, echo or printf, with no disk read and no git call",
+          "check": "C584",
+          "plan": "P206.1"
+        },
+        {
+          "text": "a file the command does not write is read from disk when it is untracked, ignored or changed since the commit the run started on",
+          "check": "C584",
+          "plan": "P206.1"
+        },
+        {
+          "text": "a committed script unchanged since the run started runs unread and allowed, as today, at the cost of one git lookup",
+          "check": "C584",
+          "plan": "P206.1"
+        },
+        {
+          "text": "a script committed during the run is still read, because the comparison uses the run's starting commit recorded at vbw run start; HEAD stands in when none was recorded",
+          "check": "C584",
+          "plan": "P206.1"
+        },
+        {
+          "text": "the text's literal writes are judged by the inline rules with the lease's own text: a protected check file or a file outside the plan's files is refused by name (R76)",
+          "check": "C584",
+          "plan": "P206.1"
+        },
+        {
+          "text": "a write whose target the guard cannot name is refused as unreadable, the call named (R219)",
+          "check": "C584",
+          "plan": "P206.1"
+        },
+        {
+          "text": "a shell script run by sh, bash or zsh is read as a command: a redirect into a protected check file is refused by name, a redirect target holding a shell expansion as today's unresolvable path, and a nested interpreter program inside it is read",
+          "check": "C584",
+          "plan": "P206.1"
+        },
+        {
+          "text": "the refusal names the script file, the interpreter and the call as written before the rule and its Next line: <FILE> (run by <interpreter>): <call as written> writes <target>: <the lease's text>",
+          "check": "C584",
+          "plan": "P206.1"
+        },
+        {
+          "text": "a script the guard cannot obtain under a lease (a path holding ~ or a shell expansion, a missing or unreadable file no part of the command writes) is refused as unreadable, naming the path and the next step (the Edit tool, or the program inline), never allowed by default",
+          "check": "C584",
+          "plan": "P206.1"
+        },
+        {
+          "text": "a program that writes nothing or only inside the plan's files passes; python < FILE is read like python FILE",
+          "check": "C584",
+          "plan": "P206.1"
+        },
+        {
+          "text": "the inline forms (-c, -e, -m, a heredoc on standard input) answer as before with no git call; outside a run every case is allowed and nothing is read",
+          "check": "C584",
+          "plan": "P206.1"
+        },
+        {
+          "text": "the disk read and the git lookup happen only for a script run by name under a lease with no same-command text, at most one lookup per file; tools/bench-hooks.sh measures a script-file input (GUARD_INPUTS) within the hook budget",
+          "check": "C584",
+          "plan": "P206.1"
+        },
+        {
+          "text": "the record and its schema are untouched: the guard writes nothing, and the run's starting commit lives in .vbw/runtime/holder.json and the glance only",
+          "check": "C584",
+          "plan": "P206.1"
+        }
+      ]
     }
   ],
   "phases": [
@@ -28619,6 +29084,195 @@
         "qa_findings": 0,
         "escalations": 0
       }
+    },
+    {
+      "id": "P201",
+      "title": "Fast kernel on large records",
+      "reqs": [
+        "R249"
+      ],
+      "milestone": "M52",
+      "goal": "On a project with a record over 2 MB, the everyday VBW commands answer in about a second instead of ten, because the record is checked once per content and read in one pass.",
+      "criteria": [
+        "The record's correctness check (the validator, the jq program plugin/lib/record.jq) runs at most once per distinct record content: after a successful check, a digest (a short fingerprint of the exact bytes) is kept in a file under .vbw/runtime together with a fingerprint of the validator's own text (record.jq plus interview.json); a later read whose record bytes and validator text both match that digest skips the validator; any other bytes (a kernel write, a hand edit, a write by an older VBW) or a changed validator text run it again in full, and the test shows a hand-edited record is still refused as corrupt after a cached read.",
+        "The digest file is written only under .vbw/runtime, never into the record, never outside the project; a missing, unreadable or unwritable digest file is never an error: the command validates in full and goes on (test: digest folder read-only, command still succeeds and output is identical).",
+        "sessions_project_entries (plugin/lib/sessions.sh) and sessions_name build the physical-path map and match the current session in one jq invocation over the registry, with no shell loop running one jq per entry; a registry with 500 entries gives the same chat list as before (existing sessions tests pass unchanged).",
+        "vbw next --json and vbw status each compute their fields in one jq pass over the record (the record is parsed once, piped or --rawfile/--slurpfile, never one jq per field): a count of jq invocations that read the record in cmd-next.sh and cmd-status.sh during one command is at most two (record read plus the one-pass program) and their output is byte-identical to the current output on the R149 twins and on VBW's own record.",
+        "New timed cases in a tests/timed-*.bats file (run only by bash tools/test.sh --release, never by vbw prove) measure on the R149 large twin (over 2,097,152 bytes, tests/big-record-helper.bash): vbw next --json, vbw status, vbw show roadmap and vbw triage --json each within 1.5 s and vbw todo add within 2.5 s, each budget multiplied by the machine ratio that tools/bench-hooks.sh computes (reference workload against NOMINAL_MS, VBW_BENCH_REFERENCE_MS honoured), reporting slow-not-failed and busy exactly as the bench does.",
+        "Every existing R149 twin comparison (tests/big-record-commands.bats, big-record-writes.bats, big-record-hooks.bats, big-record-scratch.bats, big-record-docs.bats) still passes: small and large twin give the same output and record step by step.",
+        "Release step of the maintainer, not a check (no test asserts it): measured on VBW's own 4.4 MB record (594 plans) and written into the release notes as evidence: vbw next --json and vbw status times before and after, on the same machine in the same run.",
+        "docs name the digest file (docs/record.md or the runtime files section) in one plain sentence: what it is, that deleting it is harmless."
+      ],
+      "proposed": "deep",
+      "tier": "deep",
+      "reasons": [
+        "requirements: 1",
+        "files: 17 (165680 bytes)",
+        "files: more than 2 in a repository tracking 1252 files",
+        "risk: none",
+        "breaks: R150, R247, R248",
+        "guarded: R1 (C1), R2 (C2), R10 (C9), R13 (C12), R14 (C13), R22 (C19), R23 (C20), R24 (C23), R25 (C24), R26 (C22), R28 (C25), R31 (C27), R33 (C29), R35 (C31), R37 (C35), R38 (C33, C34), R40 (C37), R43 (C42, C43), R45 (C39, C40, C41), R46 (C46), R47 (C47), R48 (C49, C50), R49 (C48), R50 (C51), R65 (C86, C87, C88, C89, C90), R67 (C96), R70 (C114), R71 (C115, C121), R72 (C116, C118), R74 (C99, C100), R79 (C107), R81 (C109, C111, C112, C113), R99 (C155), R101 (C179), R104 (C161, C162), R106 (C164, C165), R107 (C166, C167), R111 (C171, C172, C173, C174, C175), R113 (C177), R115 (C181), R119 (C180), R121 (C187, C188), R123 (C190, C191), R127 (C194), R131 (C198), R132 (C199), R133 (C195), R144 (C208, C209), R145 (C210), R146 (C211), R149 (C217, C218, C219, C220, C221, C222), R153 (C235, C236, C239), R160 (C247, C263, C264), R161 (C248, C265, C266), R165 (C252), R166 (C253, C254, C255, C256, C267), R167 (C257, C258, C259, C260), R171 (C270), R173 (C281, C282, C283, C284, C285, C286, C289), R178 (C290, C291, C292, C293, C294, C295, C296, C311), R179 (C297, C298, C299, C300, C301, C302, C303, C304, C305, C306, C312), R180 (C307, C308, C309, C310), R188 (C350, C351, C352, C353, C354, C355, C356, C357, C358, C359), R190 (C374, C375, C376, C377, C378, C379, C380, C381, C382, C383, C384, C385, C386, C387, C388), R191 (C389, C390, C391, C392, C393, C394, C395, C396, C397, C398, C399, C400), R192 (C401, C402, C403, C404, C405, C406, C407, C408, C409, C410), R194 (C417, C418, C419), R202 (C432, C433, C434, C435, C436, C437, C438, C439, C440, C441, C442, C443, C444, C445, C446, C447), R203 (C448, C449, C450), R204 (C451, C452, C453, C454), R205 (C455, C456, C457, C458, C467), R208 (C464, C465, C466, C468), R209 (C469, C470, C471, C472, C473), R210 (C474, C475, C476), R211 (C477, C478, C479), R212 (C480, C481, C482), R213 (C483, C484), R217 (C494, C495), R225 (C517, C518, C519), R229 (C526, C527, C528, C529), R236 (C537), R241 (C546, C547, C548, C549, C550, C560)",
+        "tests: project test command"
+      ],
+      "predicted": "deep"
+    },
+    {
+      "id": "P202",
+      "title": "Amendments without a stop",
+      "reqs": [
+        "R250"
+      ],
+      "milestone": "M52",
+      "goal": "While Devs are building, the main session can widen a plan's or a check's file list or make a plan wait for another plan's check without un-approving the contract or stopping the run, while any change to what a check asserts still goes through the user's approval.",
+      "criteria": [
+        "vbw apply --amend < doc.json exists (plugin/lib/cmd-apply.sh) and accepts exactly three kinds of change: a file added to a plan's files, a file added to a check's files, and a plan's dependency on another plan's check (a new plan field, e.g. awaits: [\"Cnnn\"]); anything else in the document (a check's run, exit, output, timeout, a requirement's text, a removed file, a new plan or check) is refused with a one-line reason naming the field and saying it needs vbw apply --patch and approval.",
+        "A file added to a plan's files that is a protected check file (in .protected, recomputed at cmd-apply.sh:441) is refused by --amend with a one-line reason; the T225 field case (an older check protects a script a later plan must edit) is served by --patch (criterion below), not by --amend.",
+        "--amend works while a build or fix run is open (the run-open refusal at cmd-apply.sh:312 does not apply to it) and while the contract is approved; after it the contract still reads approved (vbw show contract state, contract_waiting succeeds, vbw check and vbw plan done keep working for the open run's Devs), because the approved fingerprint is re-pinned to the amended contract by the amendment itself or contract_core is defined so an amendment leaves it unchanged; an unapproved contract is amended too but stays unapproved.",
+        "Each amendment is recorded on the plan or check it changes (a list field: what changed, when in UTC, and the session's short id, never its name, per D445) and listed as 'amendments since approval' by vbw show contract --changes, by the next approval text (vbw show contract and vbw next's approval question) and by vbw ship; approving clears the list of pending amendments (they stay in the record's history on the plan or check).",
+        "vbw ship lists the amendments made since the last approval has its own case in tests/amend.bats (check C575's filter 'R250 amend'): a small fixture with one plan is built to shipped (plan done with its checks green, prove, ship) after an amendment, and the ship's output names each amendment (plan or check, what changed) in the same wording vbw show contract --changes uses; the big-record twins are not needed for it.",
+        "The moment an amendment is recorded, vbw next --json carries it once so the router says one chat line to the user with nothing to answer (D586); the line names the plan or check and the file or dependency.",
+        "A new record schema row 9 covers every new key of this milestone at once (plan amendments, check amendments, plan awaits, and the queued-requirement marker P203 uses), with the VBW_SCHEMA_MAX bump (plugin/lib/record.sh:36, plugin/lib/record-schema.jq), the validator's field whitelists (record.jq:237, 277), cmd-apply.sh's field lists, docs/record.md and the tools/check-record-shape.sh pin (R248); a record written with schema 9 is refused by an older kernel as newer, as M51 defines.",
+        "The Bash guard refuses vbw apply (all modes, --amend and --patch included) to every run agent (Dev, Docs, QA, Scout, Debugger, Lead) beside approve_call in plugin/hooks/guard-bash.jq, with a two-line refusal (rule, Next: report it so the main session amends or patches the plan); the main session (no agent_type) is never refused by the guard; a test pins the answer in tests/hooks-guard.bats or tests/guard-protected.bats.",
+        "A plan whose awaits names a check of another plan reaches vbw plan done when its own commits and own checks are green even if that check has not run or does not pass yet; its status is recorded as built with the awaited check named (shown by vbw status and vbw show roadmap as 'built, awaiting Cnnn'), and the requirement that check proves stays unproven (vbw show requirements, the ship refusal) until the check runs and passes; when the check later passes the plan reads done without a second plan done.",
+        "vbw apply --patch on a started plan (status not planned) no longer requires the plan's files, reqs or after to stay the same when the change is a check change: the plan keeps its status, tasks and commits, the open build or fix run stays open, and the contract reads 'changed since approval' so the next gate asks for approval of what the check now asserts; vbw plan reset is not needed and the test shows a started plan's tasks survive the patch.",
+        "The protected-check-file refusal under build and fix leases (plugin/hooks/common.jq:134) is one line of rule plus one Next line: 'X is a protected check file: a protected check file is never edited during a build' and 'Next: leave X as it is; the main session changes the check with vbw apply --patch, then the user approves it'; the pinned hook-answer tests are updated to the new text, and no hook answer allows.",
+        "docs/guards.md, docs/record.md and the plan skill name --amend, the three allowed amendment kinds, what is never an amendment, and the awaiting state in plain words."
+      ],
+      "proposed": "deep",
+      "tier": "deep",
+      "reasons": [
+        "requirements: 1",
+        "files: 21 (431839 bytes)",
+        "files: more than 2 in a repository tracking 1252 files",
+        "risk: none",
+        "breaks: R128, R150, R239, R242, R247, R248",
+        "guarded: R1 (C1), R2 (C2), R10 (C9), R13 (C12), R14 (C13), R15 (C14), R22 (C19), R23 (C20), R24 (C23), R25 (C24), R26 (C22), R27 (C21), R28 (C25), R31 (C27), R32 (C28), R33 (C29), R35 (C31), R37 (C35), R38 (C33, C34), R39 (C36), R40 (C37), R43 (C42, C43), R44 (C44, C45), R45 (C39, C40, C41), R46 (C46), R47 (C47), R48 (C49, C50), R49 (C48), R50 (C51), R60 (C72, C94), R61 (C73, C74, C75, C76, C77), R62 (C78, C79, C80, C81, C82, C83, C93), R65 (C86, C87, C88, C89, C90), R66 (C95), R67 (C96), R69 (C110, C120, C122), R70 (C114), R71 (C115, C121), R72 (C116, C118), R73 (C98), R74 (C99, C100), R75 (C101), R76 (C102, C103), R77 (C104), R78 (C105, C106), R79 (C107), R80 (C108), R81 (C109, C111, C112, C113), R83 (C119), R93 (C140, C141, C142, C143, C144), R95 (C149, C150), R96 (C151, C152), R98 (C154), R99 (C155), R100 (C156), R101 (C179), R102 (C158, C159), R103 (C160), R106 (C164, C165), R107 (C166, C167), R110 (C169, C170), R111 (C171, C172, C173, C174, C175), R115 (C181), R116 (C182, C183), R118 (C184), R119 (C180), R120 (C185), R121 (C187, C188), R122 (C189), R123 (C190, C191), R127 (C194), R129 (C196), R130 (C197), R131 (C198), R132 (C199), R133 (C195), R134 (C201), R135 (C202), R144 (C208, C209), R145 (C210), R146 (C211), R147 (C212, C215, C237), R148 (C213, C214, C216, C238), R149 (C217, C218, C219, C220, C221, C222), R151 (C231, C232), R153 (C235, C236, C239), R156 (C242, C243), R157 (C244), R158 (C245), R159 (C246), R160 (C247, C263, C264), R161 (C248, C265, C266), R162 (C249), R163 (C250), R165 (C252), R166 (C253, C254, C255, C256, C267), R167 (C257, C258, C259, C260), R168 (C261, C262), R169 (C268), R171 (C270), R173 (C281, C282, C283, C284, C285, C286, C289), R174 (C279, C280), R177 (C287, C288), R178 (C290, C291, C292, C293, C294, C295, C296, C311), R179 (C297, C298, C299, C300, C301, C302, C303, C304, C305, C306, C312), R180 (C307, C308, C309, C310), R181 (C313, C314, C315, C316, C317, C318, C319, C320, C321), R182 (C322, C323, C324, C325, C326), R186 (C344, C345, C346, C347, C348), R188 (C350, C351, C352, C353, C354, C355, C356, C357, C358, C359), R190 (C374, C375, C376, C377, C378, C379, C380, C381, C382, C383, C384, C385, C386, C387, C388), R191 (C389, C390, C391, C392, C393, C394, C395, C396, C397, C398, C399, C400), R192 (C401, C402, C403, C404, C405, C406, C407, C408, C409, C410), R193 (C411, C412), R194 (C417, C418, C419), R195 (C420, C421, C422), R196 (C415, C416), R197 (C413, C414), R198 (C423), R201 (C428, C429), R202 (C432, C433, C434, C435, C436, C437, C438, C439, C440, C441, C442, C443, C444, C445, C446, C447), R203 (C448, C449, C450), R204 (C451, C452, C453, C454), R205 (C455, C456, C457, C458, C467), R207 (C461, C462, C463), R208 (C464, C465, C466, C468), R209 (C469, C470, C471, C472, C473), R210 (C474, C475, C476), R211 (C477, C478, C479), R212 (C480, C481, C482), R213 (C483, C484), R215 (C488, C489, C490), R216 (C491, C492, C493), R217 (C494, C495), R218 (C496), R219 (C497, C498, C499), R220 (C500, C501, C502, C503), R221 (C504), R222 (C505, C506), R225 (C517, C518, C519), R228 (C522, C523, C524, C525), R229 (C526, C527, C528, C529), R230 (C530, C531), R231 (C532, C533), R233 (C540, C541, C542, C543), R234 (C535, C536), R236 (C537), R241 (C546, C547, C548, C549, C550, C560), R243 (C558, C559, C561), R244 (C562, C563), R245 (C564, C565)",
+        "tests: project test command"
+      ],
+      "predicted": "deep"
+    },
+    {
+      "id": "P203",
+      "title": "A judgeable approval question and spec additions that queue",
+      "reqs": [
+        "R251",
+        "R252"
+      ],
+      "milestone": "M52",
+      "goal": "An operator who is not a developer can see exactly what changed before approving, and a requirement added while Devs are building waits in a queue instead of stopping them.",
+      "criteria": [
+        "vbw show contract --changes prints, for every changed check, one plain line of what it promised before and one of what it promises now (command line, expected exit and output, timeout, files), and for every changed plan its files before and after, in the same before -> after form the requirements already use (cmd-show.sh:259-325); a check that only gained a file through an amendment is listed under amendments, not under changes.",
+        "The approval question stays exactly 'Approve contract <12 hex>?' so plugin/hooks/approve-ask.sh's regex (^Approve contract [^\\s?]+\\?) and approve-answer.sh's fingerprint extraction match unchanged; the counts go after the question mark in the same question text (e.g. 'Approve contract 1a2b3c4d5e6f? 2 changes, 1 amendment since the last approval'), the options stay exactly 'Approve' and 'Not yet', and the approve hook records the answer for that fingerprint as today (tests/approve-choice-guard.bats and the hook tests pass with the new text).",
+        "A first approval (nothing approved before) names the count of items to approve and no amendment count; the counts come from the same diff show --changes prints, so a test asserting 3 changed items in the listing sees 3 in the question.",
+        "vbw spec add while a build or fix run is open (lease kind build or fix) appends '- Rn [proof] text' to the spec's Requirements section as today and syncs it into the record as a requirement carrying the queued marker (schema 9 row from P202); contract_core (plugin/lib/contract.sh) leaves queued requirements out, so the contract fingerprint and its approved state do not change (test: approved before, run open, spec add, still approved, vbw check and vbw plan done keep working for the run's Devs).",
+        "vbw show contract lists each queued requirement under a 'queued (not in the approved contract)' heading, never among the approved requirements; vbw status names the count of queued requirements while the run is open.",
+        "When the run ends (vbw run end), the queued marker is cleared by the kernel and vbw next names the requirement as pending for the next plan step; from then on it enters the contract as any new requirement does (the contract reads changed, approval is asked with the P203 question).",
+        "vbw spec add with no run open behaves exactly as today (no queued marker, contract changes, approval asked); vbw spec sync of a spec edited by hand during an open run also queues new requirements and never un-approves (hand edits to existing requirement texts still un-approve, as R250 requires).",
+        "docs (the spec and approval pages) say in plain words what 'queued' means and that an amendment count beside the fingerprint is informational."
+      ],
+      "proposed": "standard",
+      "tier": "standard",
+      "reasons": [
+        "requirements: 2",
+        "files: 8 (187411 bytes)",
+        "files: more than 2 in a repository tracking 1252 files",
+        "risk: none",
+        "breaks: none",
+        "guarded: R12 (C11), R13 (C12), R14 (C13), R22 (C19), R24 (C23), R25 (C24), R26 (C22), R28 (C25), R31 (C27), R32 (C28), R35 (C31), R37 (C35), R38 (C33, C34), R40 (C37), R43 (C42, C43), R44 (C44, C45), R45 (C39, C40, C41), R46 (C46), R47 (C47), R48 (C49, C50), R49 (C48), R50 (C51), R58 (C62, C63, C64, C67), R61 (C73, C74, C75, C76, C77), R65 (C86, C87, C88, C89, C90), R66 (C95), R67 (C96), R69 (C110, C120, C122), R70 (C114), R71 (C115, C121), R72 (C116, C118), R73 (C98), R74 (C99, C100), R75 (C101), R78 (C105, C106), R79 (C107), R80 (C108), R81 (C109, C111, C112, C113), R92 (C131, C132, C133, C134, C135, C136, C137, C138, C139), R93 (C140, C141, C142, C143, C144), R94 (C145, C146, C147, C148), R97 (C153), R98 (C154), R100 (C156), R102 (C158, C159), R103 (C160), R104 (C161, C162), R105 (C163), R106 (C164, C165), R107 (C166, C167), R110 (C169, C170), R111 (C171, C172, C173, C174, C175), R115 (C181), R118 (C184), R123 (C190, C191), R131 (C198), R132 (C199), R134 (C201), R135 (C202), R144 (C208, C209), R145 (C210), R147 (C212, C215, C237), R148 (C213, C214, C216, C238), R149 (C217, C218, C219, C220, C221, C222), R152 (C233, C234), R153 (C235, C236, C239), R160 (C247, C263, C264), R161 (C248, C265, C266), R162 (C249), R166 (C253, C254, C255, C256, C267), R167 (C257, C258, C259, C260), R168 (C261, C262), R169 (C268), R170 (C269), R171 (C270), R173 (C281, C282, C283, C284, C285, C286, C289), R174 (C279, C280), R175 (C274, C275), R176 (C276, C277, C278), R179 (C297, C298, C299, C300, C301, C302, C303, C304, C305, C306, C312), R181 (C313, C314, C315, C316, C317, C318, C319, C320, C321), R182 (C322, C323, C324, C325, C326), R183 (C327), R188 (C350, C351, C352, C353, C354, C355, C356, C357, C358, C359), R190 (C374, C375, C376, C377, C378, C379, C380, C381, C382, C383, C384, C385, C386, C387, C388), R191 (C389, C390, C391, C392, C393, C394, C395, C396, C397, C398, C399, C400), R192 (C401, C402, C403, C404, C405, C406, C407, C408, C409, C410), R193 (C411, C412), R194 (C417, C418, C419), R195 (C420, C421, C422), R196 (C415, C416), R197 (C413, C414), R202 (C432, C433, C434, C435, C436, C437, C438, C439, C440, C441, C442, C443, C444, C445, C446, C447), R203 (C448, C449, C450), R204 (C451, C452, C453, C454), R205 (C455, C456, C457, C458, C467), R206 (C459, C460), R209 (C469, C470, C471, C472, C473), R210 (C474, C475, C476), R211 (C477, C478, C479), R212 (C480, C481, C482), R213 (C483, C484), R214 (C485, C486, C487), R215 (C488, C489, C490), R216 (C491, C492, C493), R217 (C494, C495), R220 (C500, C501, C502, C503), R221 (C504), R226 (C510, C511), R228 (C522, C523, C524, C525), R229 (C526, C527, C528, C529), R232 (C534), R238 (C545), R246 (C566, C567)",
+        "tests: project test command"
+      ],
+      "predicted": "standard"
+    },
+    {
+      "id": "P204",
+      "title": "Clean copies that never carry worktrees, and large ignored folders named",
+      "reqs": [
+        "R253"
+      ],
+      "milestone": "M52",
+      "goal": "A proof, mutate or check copy never copies another git worktree or .claude/worktrees, and the user is told at init and doctor which huge ignored folders they should list in the Clean copy section.",
+      "criteria": [
+        "proofcopy_entries (plugin/lib/proofcopy.sh:200-212) skips every folder of a worktree of the project's repository that lies inside the project (from git worktree list --porcelain, paths resolved physically, VBW's own proof copies under .vbw/runtime already skipped) and .claude/worktrees whether or not ## Clean copy lists them; a test puts a linked worktree with a 1 MB ignored file inside the project and asserts the proof copy contains neither the worktree folder nor .claude/worktrees while every other ignored path is still copied.",
+        "A worktree folder nested under an ignored folder is skipped by descending around it (the D509 way, never copy-then-delete); a worktree listed by git but no longer on disk causes no error.",
+        "The 500 MB plain-copy line (proofcopy.sh:86-108) never counts a skipped worktree folder toward the three largest paths.",
+        "vbw init prints one line per git-ignored folder over 500 MB inside the project (size via du -sk, threshold shared with VBW_PROOFCOPY_PLAIN_KB) as a candidate for the ## Clean copy section with its size in plain units, and writes those folders as commented suggestions in the section template (cmd-init.sh:105-111); nothing is added to the section uncommented (D54: no silent setting).",
+        "vbw doctor prints the same lines for folders over 500 MB that the ## Clean copy section does not already list, and prints nothing about size when none qualifies; folders already listed, worktree folders and .claude/worktrees are never named as candidates.",
+        "A project with no ignored folder over 500 MB sees no new output from init or doctor (existing init and doctor tests pass unchanged apart from the added cases).",
+        "docs/proof.md (or the clean-copy page) states in one sentence that worktrees and .claude/worktrees are always left out, and that init and doctor name large ignored folders."
+      ],
+      "proposed": "standard",
+      "tier": "standard",
+      "reasons": [
+        "requirements: 1",
+        "files: 4 (127956 bytes)",
+        "files: more than 2 in a repository tracking 1252 files",
+        "risk: none",
+        "breaks: R150",
+        "guarded: R12 (C11), R22 (C19), R24 (C23), R31 (C27), R32 (C28), R33 (C29), R43 (C42, C43), R44 (C44, C45), R45 (C39, C40, C41), R46 (C46), R47 (C47), R48 (C49, C50), R49 (C48), R61 (C73, C74, C75, C76, C77), R66 (C95), R69 (C110, C120, C122), R70 (C114), R73 (C98), R74 (C99, C100), R78 (C105, C106), R79 (C107), R80 (C108), R81 (C109, C111, C112, C113), R83 (C119), R92 (C131, C132, C133, C134, C135, C136, C137, C138, C139), R93 (C140, C141, C142, C143, C144), R94 (C145, C146, C147, C148), R97 (C153), R98 (C154), R100 (C156), R103 (C160), R104 (C161, C162), R105 (C163), R109 (C168), R110 (C169, C170), R111 (C171, C172, C173, C174, C175), R115 (C181), R118 (C184), R131 (C198), R132 (C199), R134 (C201), R135 (C202), R144 (C208, C209), R147 (C212, C215, C237), R148 (C213, C214, C216, C238), R149 (C217, C218, C219, C220, C221, C222), R152 (C233, C234), R153 (C235, C236, C239), R160 (C247, C263, C264), R161 (C248, C265, C266), R166 (C253, C254, C255, C256, C267), R167 (C257, C258, C259, C260), R168 (C261, C262), R169 (C268), R170 (C269), R174 (C279, C280), R175 (C274, C275), R176 (C276, C277, C278), R181 (C313, C314, C315, C316, C317, C318, C319, C320, C321), R182 (C322, C323, C324, C325, C326), R183 (C327), R184 (C328, C329, C330, C331, C332, C333), R185 (C334, C335, C336, C337, C338, C339, C340, C341, C342, C343), R188 (C350, C351, C352, C353, C354, C355, C356, C357, C358, C359), R192 (C401, C402, C403, C404, C405, C406, C407, C408, C409, C410), R193 (C411, C412), R194 (C417, C418, C419), R195 (C420, C421, C422), R196 (C415, C416), R197 (C413, C414), R202 (C432, C433, C434, C435, C436, C437, C438, C439, C440, C441, C442, C443, C444, C445, C446, C447), R203 (C448, C449, C450), R204 (C451, C452, C453, C454), R205 (C455, C456, C457, C458, C467), R206 (C459, C460), R208 (C464, C465, C466, C468), R209 (C469, C470, C471, C472, C473), R210 (C474, C475, C476), R211 (C477, C478, C479), R212 (C480, C481, C482), R213 (C483, C484), R214 (C485, C486, C487), R215 (C488, C489, C490), R216 (C491, C492, C493), R217 (C494, C495), R218 (C496), R220 (C500, C501, C502, C503), R221 (C504), R223 (C507, C508, C509), R225 (C517, C518, C519), R226 (C510, C511), R228 (C522, C523, C524, C525), R232 (C534), R238 (C545), R246 (C566, C567)",
+        "tests: project test command"
+      ],
+      "predicted": "standard"
+    },
+    {
+      "id": "P205",
+      "title": "A write is judged by the project it lands in",
+      "reqs": [
+        "R254"
+      ],
+      "milestone": "M52",
+      "goal": "A Dev who writes into another VBW project on the same machine, by cd, by absolute path or from a linked worktree, is judged by that project's record exactly as a write from inside it, so protected files can no longer be changed through a side door.",
+      "criteria": [
+        "For every write target the Bash guard and the file guard compute the target's absolute path (after any cd in the command, as today's --arg dir tracking does) and find its own project: the nearest folder above it holding .vbw/record.json beside .git (a file or a folder .git); when that project is the hook's own project the judgement is unchanged and no extra file is read.",
+        "When the target's project differs from the hook's, the guard reads that project's .vbw/record.json (and its glance when newer, and its .vbw/runtime/run-open marker) and judges the write by that record's lease, plan files and protected list with exactly the refusal texts the write would get from inside that project; the session check of the lease stays as today.",
+        "The three reproduced calls from a linked worktree (cd MAIN && python heredoc writing tests/x.sh; echo x > MAIN/tests/x.sh; Edit of MAIN/tests/x.sh) are refused when MAIN's record holds a build lease that protects or excludes tests/x.sh, and allowed when MAIN has no run; the writes to the worktree's own copy stay judged by the worktree's own record (two VBW projects in one clone stay separate).",
+        "A target outside every VBW project (no record above it) is judged as today (the outside-project rule, R177/D300); a target whose project record is unreadable is refused fail-closed with today's unreadable-target text.",
+        "Cases run the real hooks (plugin/hooks/hooks.json's command, not a jq unit) from a linked worktree as the project folder, in tests/guard-fail-closed.bats or a new tests/guard-cross-project.bats, for Bash and for Edit/Write, covering cd, absolute path and the worktree case, allowed and refused.",
+        "tools/bench-hooks.sh gains a case for a cross-project write and the guard's own CPU stays within the 20 ms budget on the same-project path (no extra read there) and within budget on the cross-project path.",
+        "docs/guards.md says in one plain sentence that a write is judged by the project it lands in, wherever the command runs from."
+      ],
+      "proposed": "deep",
+      "tier": "deep",
+      "reasons": [
+        "requirements: 1",
+        "files: 8 (131047 bytes)",
+        "files: more than 2 in a repository tracking 1252 files",
+        "risk: none",
+        "breaks: R128, R150, R239, R242",
+        "guarded: R15 (C14), R51 (C52, C53, C66), R53 (C54, C55), R55 (C56, C57), R61 (C73, C74, C75, C76, C77), R75 (C101), R76 (C102, C103), R77 (C104), R83 (C119), R114 (C178), R120 (C185), R149 (C217, C218, C219, C220, C221, C222), R151 (C231, C232), R160 (C247, C263, C264), R162 (C249), R165 (C252), R166 (C253, C254, C255, C256, C267), R177 (C287, C288), R178 (C290, C291, C292, C293, C294, C295, C296, C311), R179 (C297, C298, C299, C300, C301, C302, C303, C304, C305, C306, C312), R180 (C307, C308, C309, C310), R181 (C313, C314, C315, C316, C317, C318, C319, C320, C321), R184 (C328, C329, C330, C331, C332, C333), R185 (C334, C335, C336, C337, C338, C339, C340, C341, C342, C343), R188 (C350, C351, C352, C353, C354, C355, C356, C357, C358, C359), R190 (C374, C375, C376, C377, C378, C379, C380, C381, C382, C383, C384, C385, C386, C387, C388), R192 (C401, C402, C403, C404, C405, C406, C407, C408, C409, C410), R194 (C417, C418, C419), R198 (C423), R210 (C474, C475, C476), R219 (C497, C498, C499), R222 (C505, C506), R224 (C512, C513, C514, C515, C516), R231 (C532, C533), R233 (C540, C541, C542, C543), R234 (C535, C536), R235 (C538, C539), R241 (C546, C547, C548, C549, C550, C560), R243 (C558, C559, C561), R245 (C564, C565)",
+        "tests: project test command"
+      ],
+      "predicted": "deep"
+    },
+    {
+      "id": "P206",
+      "title": "A program the agent wrote during the run is judged like an inline program",
+      "reqs": [
+        "R255"
+      ],
+      "milestone": "M52",
+      "goal": "A script a Dev writes during a run and then runs by its file name (python FILE, bash FILE) is judged by the files it writes exactly as the same program typed inline would be, so a protected check file can no longer be changed by putting the program in a file first.",
+      "criteria": [
+        "Under any run lease (plan, build, fix, qa, map), when a command runs an interpreter or a shell (python with any version suffix, pypy, node, nodejs, perl, ruby, php, lua, deno, bun, sh, bash, zsh) with a file as its program (the first argument that is not an option, or a file redirected into it with <), the Bash guard (plugin/hooks/guard-bash.jq, reached through plugin/hooks/hooks.json's command) obtains that program's text in this order: (1) from the same command when it writes that file there (a heredoc body redirected or teed into the file, or the literal text echoed or printed into it), without reading the disk; (2) else from the file on disk when it exists and is not a committed file unchanged since the run started (a file that is untracked, ignored, or whose content differs from the commit the run started on is read); the inline forms (-c, -e, a heredoc on standard input, -m module) stay exactly as today and outside a run nothing changes (the may_matter skip still applies).",
+        "The text so obtained is judged by the inline rules with the lease's own refusal texts: for an interpreter, program_writes (R76: a literal target outside the lease's files, or a protected check file, is refused by name) and unreadable_calls (R219: a target the guard cannot name is refused as unreadable); for sh, bash or zsh, the script text is read as the guard reads a command (its redirects, shell_writes, nested interpreter programs and heredocs, to the same depth), so a redirect into a protected check file is refused by name and a redirect target holding a shell expansion is refused as today's unresolvable path.",
+        "The refusal names the script file and the offending call inside it before the rule, in a pinned form: '<FILE> (run by <interpreter>): <call as written> writes <target>' followed by the existing refusal text and Next line for that target (protected check file, outside the plan's files, or 'writes a file the guard cannot name'); a program that writes nothing, or writes only inside the lease's files, passes.",
+        "A script that is a committed file of the project and unchanged since the run started runs as today, unread and allowed (python3 tools/x.py, bash tools/test.sh); the comparison uses the commit the run started on, so a script the Dev committed during the run with vbw commit is still read; when the guard does not know the run's starting commit (a run started by an older VBW, no runtime holder data) HEAD stands in, and the choice is stated in docs/guards.md.",
+        "A script file the guard cannot obtain at all under a lease (the path holds a shell expansion, or the file is missing or unreadable and no same-command text writes it) is refused as unreadable with the script path and Next line (write the program with the Edit tool and run it, or give the program inline), never allowed by default; the hook's existing fail-closed answer for a failed guard during a run is unchanged.",
+        "The disk read and the git comparison happen only on this path: a command under a lease that runs a script file by name with no same-command text; every other command keeps today's single jq pass; each script file costs at most one git lookup (git ls-files --error-unmatch plus git diff --quiet <start commit> -- FILE, or one equivalent command), and the same-project heredoc and inline cases keep today's cost.",
+        "tools/bench-hooks.sh gains a script-file input in GUARD_INPUTS (a build agent's 'python3 .vbw/runtime/scratch/x.py' with the untracked file present), so it is measured plain, on the large record and per check count; the guard's own CPU stays within the 20 ms budget on that case and on every existing case; tests/big-record-hooks.bats still answers the same on both twins.",
+        "A new check file tests/guard-script-files.bats runs the real hooks (vbw_hook from tests/helper.bash, hook inputs as tests/guard-protected.bats builds them) under a build lease whose protected list holds a check file, with cases red today: a same-command heredoc writing a Python file into .vbw/runtime/scratch then 'python FILE' whose open('tests/x.sh','w') is refused naming the script and the call; the same script written by an earlier call then run; 'bash FILE' on an untracked shell script redirecting into the protected file; a committed unchanged script by name stays allowed; a script committed during the run is read; a variable or missing script path is refused as unreadable; the inline heredoc and -c forms give the same answers as before; outside a run every case is allowed; the record's schema and the record itself are unchanged by this phase.",
+        "docs/guards.md's Programs paragraph (lines 172-185) replaces 'a script file run by name is not read' with the new rule in plain words: which files are read, that the project's committed scripts run as before, what the refusal names, and the starting-commit rule; the guard-answer table gains the row with the pinned refusal."
+      ],
+      "tier": "deep",
+      "reasons": [
+        "requirements: 1",
+        "files: 10 (176778 bytes)",
+        "files: more than 2 in a repository tracking 1252 files",
+        "risk: none",
+        "breaks: R128, R150, R239, R242, R247, R248",
+        "guarded: R1 (C1), R2 (C2), R15 (C14), R22 (C19), R23 (C20), R25 (C24), R28 (C25), R31 (C27), R33 (C29), R38 (C33, C34), R40 (C37), R43 (C42, C43), R45 (C39, C40, C41), R46 (C46), R47 (C47), R49 (C48), R51 (C52, C53, C66), R53 (C54, C55), R55 (C56, C57), R61 (C73, C74, C75, C76, C77), R75 (C101), R76 (C102, C103), R77 (C104), R81 (C109, C111, C112, C113), R83 (C119), R99 (C155), R101 (C179), R111 (C171, C172, C173, C174, C175), R114 (C178), R115 (C181), R119 (C180), R120 (C185), R121 (C187, C188), R123 (C190, C191), R127 (C194), R131 (C198), R132 (C199), R133 (C195), R144 (C208, C209), R146 (C211), R149 (C217, C218, C219, C220, C221, C222), R151 (C231, C232), R153 (C235, C236, C239), R160 (C247, C263, C264), R162 (C249), R165 (C252), R166 (C253, C254, C255, C256, C267), R173 (C281, C282, C283, C284, C285, C286, C289), R177 (C287, C288), R178 (C290, C291, C292, C293, C294, C295, C296, C311), R179 (C297, C298, C299, C300, C301, C302, C303, C304, C305, C306, C312), R180 (C307, C308, C309, C310), R181 (C313, C314, C315, C316, C317, C318, C319, C320, C321), R184 (C328, C329, C330, C331, C332, C333), R185 (C334, C335, C336, C337, C338, C339, C340, C341, C342, C343), R188 (C350, C351, C352, C353, C354, C355, C356, C357, C358, C359), R190 (C374, C375, C376, C377, C378, C379, C380, C381, C382, C383, C384, C385, C386, C387, C388), R191 (C389, C390, C391, C392, C393, C394, C395, C396, C397, C398, C399, C400), R192 (C401, C402, C403, C404, C405, C406, C407, C408, C409, C410), R194 (C417, C418, C419), R198 (C423), R202 (C432, C433, C434, C435, C436, C437, C438, C439, C440, C441, C442, C443, C444, C445, C446, C447), R203 (C448, C449, C450), R204 (C451, C452, C453, C454), R205 (C455, C456, C457, C458, C467), R208 (C464, C465, C466, C468), R209 (C469, C470, C471, C472, C473), R210 (C474, C475, C476), R211 (C477, C478, C479), R212 (C480, C481, C482), R213 (C483, C484), R217 (C494, C495), R219 (C497, C498, C499), R222 (C505, C506), R224 (C512, C513, C514, C515, C516), R225 (C517, C518, C519), R231 (C532, C533), R233 (C540, C541, C542, C543), R234 (C535, C536), R235 (C538, C539), R236 (C537), R241 (C546, C547, C548, C549, C550, C560), R243 (C558, C559, C561), R245 (C564, C565)",
+        "tests: project test command"
+      ],
+      "predicted": "deep"
     }
   ],
   "plans": [
@@ -64228,6 +64882,324 @@
           "contract": "2937f48820606df5f300afacccfd430ea053173dbca26ad91861fcd445407bf3"
         }
       ]
+    },
+    {
+      "id": "P201.1",
+      "phase": "P201",
+      "title": "Validate once: the record's digest under .vbw/runtime",
+      "reqs": [
+        "R249"
+      ],
+      "files": [
+        "plugin/lib/record.sh",
+        "docs/record.md"
+      ],
+      "after": [],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "record.sh: record_read hashes the record's bytes and the validator's own text (record.jq, record-schema.jq and interview.json, in that order) with the hash function the kernel already uses for the contract, and skips the jq validator when .vbw/runtime/validated.json holds exactly {record: <hex>, validator: <hex>} matching both; any other bytes (a hand edit, an older VBW's write, a compact rewrite of the same JSON) are validated as today and, when valid, the digest file is rewritten through a temporary name and a rename with the new pair; the command's output is the same either way; a corrupt record (exit 3) and a newer schema (exit 4) answer as today and never leave a digest; the record's bytes never reach a command line (pipe, --rawfile or --slurpfile)",
+        "record.sh: record_update writes the digest for the bytes it writes, so the next read skips the validator; a .vbw/runtime that is missing, unreadable or cannot be written is never an error (same output, exit 0, nothing on stderr: the digest is simply not kept and the record validated in full); the digest lives only under .vbw/runtime, never in the record and never outside the project; run bats tests/big-record-fast.bats --filter 'R249 digest' and tests/record.bats under PATH=/bin:$PATH",
+        "docs/record.md, the runtime files list: .vbw/runtime/validated.json in plain words: the fingerprint of the record bytes last found correct and of VBW's own validator text, so the next read skips the check; any change to either (a hand edit, another VBW version) checks the record again in full; deleting it is harmless"
+      ]
+    },
+    {
+      "id": "P201.2",
+      "phase": "P201",
+      "title": "The chat list read and matched in one jq pass",
+      "reqs": [
+        "R249"
+      ],
+      "files": [
+        "plugin/lib/sessions.sh"
+      ],
+      "after": [],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "sessions.sh: sessions_project_entries runs one jq program over the whole registry (every sessions/*.json as inputs or one --slurpfile list) that selects and shapes the entries of the project (cwd under the project after physical-path resolution, with the sessionId, name, nameSource, pid and updatedAt the callers need) in one output, with no shell loop and no jq call per entry; an entry missing a field is skipped as today",
+        "sessions.sh: sessions_name, holder_display and sessions_rename_hint (D444) take their answer from that one pass and give exactly today's output, so vbw next --json on a registry of 500 chats of the project starts jq as many times as on 5 (tests/big-record-fast.bats, filter 'R249 chat list'); every existing sessions, holder and rename-hint test passes unchanged under PATH=/bin:$PATH",
+        "sessions.sh: no other function of the file loops over registry entries running jq (the holder lookup included); the header comment states the one-pass rule and why (a 594-plan project's chat list cost one jq start per open chat, T229)"
+      ]
+    },
+    {
+      "id": "P201.3",
+      "phase": "P201",
+      "title": "next, status, roadmap, triage and todo in one pass; the timed budgets",
+      "reqs": [
+        "R249"
+      ],
+      "files": [
+        "plugin/lib/cmd-next.sh",
+        "plugin/lib/next.jq",
+        "plugin/lib/cmd-status.sh",
+        "plugin/lib/road.sh",
+        "plugin/lib/road.jq",
+        "plugin/lib/contract.sh",
+        "plugin/lib/qa-inputs.sh",
+        "plugin/lib/qa.jq",
+        "plugin/lib/steps.sh",
+        "plugin/lib/interview.sh",
+        "plugin/lib/effort.sh",
+        "plugin/lib/cmd-triage.sh",
+        "plugin/lib/cmd-todo.sh",
+        "tests/timed-big-record.bats"
+      ],
+      "after": [
+        "P201.1"
+      ],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "contract.sh: the contract core becomes one jq definition (contract_core, in a module the one-pass programs include and contract.sh loads) so a one-pass program can emit the core beside its other fields and the shell hashes it, with no second parse of the record; contract_hash, contract_waiting and contract_shape keep their names, arguments and output, so every caller outside this plan stays as it is",
+        "cmd-next.sh and next.jq: vbw next --json reads the record once (a file argument, a pipe, --rawfile or --slurpfile, never --arg) and computes every field it answers (state, action, qa state, pending work, the approval state's inputs, the rename hint's inputs) in that one pass; qa-inputs.sh, qa.jq, steps.sh, interview.sh and effort.sh take the facts they need from the caller's pass (or the glance) instead of re-reading the record, each keeping its output; after a warm digest at most two record-sized jq calls (1,048,576 bytes or more of input) in the whole command, byte-identical output to today on the R149 twins (tests/big-record-fast.bats, filter 'R249 one pass')",
+        "cmd-status.sh, road.sh and road.jq: vbw status and vbw show roadmap compute their lines in one pass the same way (at most two record-sized jq calls after a warm digest), byte-identical to today on the R149 twins; every twin comparison of tests/big-record-commands.bats, big-record-writes.bats, big-record-hooks.bats, big-record-scratch.bats and big-record-docs.bats still passes",
+        "cmd-triage.sh and cmd-todo.sh: vbw triage --json and vbw todo add get the one-pass treatment where they miss their budget on the large twin (todo add: one read and one write of the record, no parse per field)",
+        "commit tests/timed-big-record.bats as written at planning (its budgets are the requirement's: next --json, status, show roadmap and triage --json within 1.5 s, todo add within 2.5 s, scaled by the bench ratio as tools/bench-hooks.sh scales its own, busy and slow reported as the bench does) and run it under PATH=/bin:$PATH until every case reads within; it belongs to the release run only (the spec's Test files leaves tests/timed-*.bats out of vbw prove); the measured before-and-after times of vbw next --json and vbw status on VBW's own record go in the plan's result for the release notes"
+      ]
+    },
+    {
+      "id": "P202.1",
+      "phase": "P202",
+      "title": "Schema 9: amendments, awaited checks and queued requirements",
+      "reqs": [
+        "R250"
+      ],
+      "files": [
+        "plugin/lib/record-schema.jq",
+        "plugin/lib/record.jq",
+        "plugin/lib/record.sh",
+        "docs/record.md"
+      ],
+      "after": [
+        "P201.1"
+      ],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "record-schema.jq: one new row {schema: 9, feature: \"an amendment, an awaited check or a queued requirement\", present: any plan or check with an amendments list, any plan with an awaits list, or any requirement with queued true}; record.sh VBW_SCHEMA_MAX=9; a record with none of the three is written at schema 8 as today; a schema-9 record without them is corrupt with \"schema 9 is only for an amendment, an awaited check or a queued requirement\" (tests/amend.bats, filter 'R250 schema'; tests/record-schema.bats)",
+        "record.jq: the field_rule lists become exactly [\"id\",\"text\",\"proof\",\"status\",\"milestone\",\"rules\",\"skipped\",\"later\",\"queued\"] for requirements, [\"id\",\"req\",\"run\",\"files\",\"exit\",\"output\",\"timeout\",\"alone\",\"fix\",\"amendments\"] for checks and [\"id\",\"phase\",\"title\",\"reqs\",\"files\",\"after\",\"status\",\"note\",\"tasks\",\"role\",\"mutations\",\"amendments\",\"awaits\"] for plans; one def validates each amendment as an object whose (keys | sort) == [\"at\",\"session\",\"what\"], what a non-empty string, at an ISO-8601 UTC time, session a string or null; awaits an array of check ids belonging to the plan's own requirements; queued exactly true; anything else corrupt with a message naming the field; tools/check-record-shape.sh then prints the digest tests/standards.bats already pins for schema 9 (R248): run bats tests/standards.bats tests/record-schema.bats tests/record-schema-docs.bats under PATH=/bin:$PATH",
+        "docs/record.md: row 9 in the Versioning table (amendment, await, queued -> 9), the three fields where the plan, check and requirement fields are described (what an amendment holds, what awaits means, what queued means), VBW_SCHEMA_MAX currently 9; an older kernel refuses a schema-9 record as newer, as M51 defines"
+      ]
+    },
+    {
+      "id": "P202.2",
+      "phase": "P202",
+      "title": "vbw apply --amend: the approval re-pinned, --patch on a started plan, the ship's list",
+      "reqs": [
+        "R250"
+      ],
+      "files": [
+        "plugin/lib/cmd-apply.sh",
+        "plugin/lib/cmd-approve.sh",
+        "plugin/lib/contract.sh",
+        "plugin/lib/cmd-ship.sh",
+        "docs/workflows.md"
+      ],
+      "after": [
+        "P201.3",
+        "P202.1"
+      ],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "cmd-apply.sh: vbw apply --amend < doc, the main session's fourth mode, on an approved contract only (else refused in one line naming \"not approved\" and \"--patch\"), with or without an open run (the run-open refusal does not apply to it): the document holds plans[] with id and files (additions only; a protected check file is refused in one line naming the file and \"protected check file\") or awaits (check ids of the plan's own requirements; another requirement's check is refused naming the check and the requirement), and checks[] with id and files (additions only); an unknown id, a document that is not JSON, and any other field or any removal (a title, a run, an exit, an output, a timeout, an after, a rule, a phase, a file taken away) is refused in one line naming the field, \"--patch\" and approval, with the record unchanged; the kept-field lists of the full apply and --patch keep a plan's amendments and awaits and a check's amendments across re-plans (tests/amend.bats, filter 'R250 amend')",
+        "cmd-apply.sh and contract.sh: each accepted amendment is appended to the plan's or check's amendments as {what: one plain line naming the change (\"file src/card.txt added\", \"awaits C3\"), at: ISO-8601 UTC, session: the 8-character short id of VBW_SESSION_ID or null, never a name (D445)}; contract_core leaves amendments, awaits and queued requirements out (the amended plan files and check files stay in); the approval is re-pinned by the amendment itself: approved-contract.json and the consent are rewritten for the amended core, so vbw show contract still reads approved, contract_waiting succeeds and vbw next never answers approve for an amendment; during an open build run a plan-file addition extends lease.files and a check-file addition extends protected at once, so vbw check and vbw plan done keep working for the run's Devs",
+        "cmd-approve.sh: vbw approve clears every amendments list on plans and checks (the approval takes them with it; the added files and awaits stay); cmd-apply.sh --patch: a check change while the plan it serves is started keeps the plan's status, tasks and commits and an open build run stays open, and the contract then reads NOT APPROVED until the user approves what the check now asserts; a --patch of plans during an open run is still refused (\"run is open\"); the started-plan refusal of a check change is removed",
+        "contract.sh and cmd-ship.sh: one helper prints the block vbw show contract --changes, vbw show contract and vbw ship share: the heading \"amendments since the last approval:\" and one line per amendment, two-space indented, \"  P1.1: file src/card.txt added (2026-11-03T10:00:00Z, session 01234567)\" (\"session unknown\" for null), plans then checks in record order; vbw ship prints it before its \"shipped M1 ...\" line whenever amendments are recorded (tests/amend.bats, the ship case of filter 'R250 amend')",
+        "docs/workflows.md: the apply table gains the --amend row (the three changes it may record, what it refuses and sends to --patch, what it records on the plan or check, that the contract stays approved and the run open, the router's one chat line) and the --patch row drops vbw plan reset for a check change on a started plan"
+      ]
+    },
+    {
+      "id": "P202.3",
+      "phase": "P202",
+      "title": "Guard texts: vbw apply refused to run agents, the protected-file rule in one line",
+      "reqs": [
+        "R250"
+      ],
+      "files": [
+        "plugin/hooks/guard-bash.jq",
+        "plugin/hooks/common.jq",
+        "docs/guards.md"
+      ],
+      "after": [],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "guard-bash.jq: under any run lease, a run agent's Bash call that runs vbw apply in any mode (plain, --patch, --add, --amend), by any path to vbw, after a cd, inside a substitution or through a pipe, is refused with exactly the two lines \"vbw apply changes the plan of record: only the main session runs it, in every mode (--amend, --patch, --add included)\\nNext: report it so the main session amends or patches the plan\"; vbw status, vbw show contract, vbw plan done and the other kernel commands stay allowed, and the main session (no agent_type) is never refused (tests/hooks-guard.bats, filter R250)",
+        "common.jq: lease_write_denial's protected-file text becomes exactly \"<file> is a protected check file: a protected check file is never edited during a build\\nNext: leave <file> as it is; the main session changes the check with vbw apply --patch, then the user approves it\" (the other-requirement fix text is unchanged); every pinned hook answer in tests/guard-protected.bats and tests/hooks-guard.bats passes under PATH=/bin:$PATH, and tools/check-hook-answers.sh still finds no allow",
+        "docs/guards.md: the \"What is denied\" table gains the vbw apply row (every mode, every run agent, the two-line refusal) and the protected check file row states the new one-line rule and its Next line; the plan skill's words live in docs/workflows.md (P202.2)"
+      ]
+    },
+    {
+      "id": "P202.4",
+      "phase": "P202",
+      "title": "Awaiting a check; amendments listed at the gates and told once",
+      "reqs": [
+        "R250"
+      ],
+      "files": [
+        "plugin/lib/cmd-plan.sh",
+        "plugin/lib/cmd-prove.sh",
+        "plugin/lib/prove.jq",
+        "plugin/lib/cmd-status.sh",
+        "plugin/lib/cmd-show.sh",
+        "plugin/lib/cmd-next.sh",
+        "plugin/lib/next.jq",
+        "plugin/skills/vibe/SKILL.md",
+        "plugin/agents/lead.md"
+      ],
+      "after": [
+        "P202.2",
+        "P201.3"
+      ],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "cmd-plan.sh: vbw plan done on a plan with awaits requires only the plan's own checks green: an awaited check (another plan's) is not run and not required, no fix opens for it, and the plan's status becomes done; its requirement stays unproven until the awaited check passes (tests/amend.bats, filter 'R250 awaits')",
+        "cmd-prove.sh and prove.jq: a proof leaves an awaited check unrun while the plan that builds it is not done (no fix for it, the awaiting plan stays done, its requirement unproven); once that plan is built the check runs as any other and the requirement proves",
+        "cmd-status.sh and cmd-show.sh: while an awaited check has no passing result the plan reads \"P1.1 built, awaiting C3\" in vbw status and \"P1.1 Pay [built, awaiting C3]\" in vbw show roadmap, and \"[done]\" once it passes, derived live from the record and never stored; vbw show contract --changes prints the shared amendments block (P202.2's helper) and never lists an amended plan or check as a changed check or changed plan; vbw show contract prints the same block in its approval section when amendments exist",
+        "cmd-next.sh and next.jq: vbw next --json carries amendments: [{id, what}] for the amendments recorded since the previous next.json, computed in the one pass (P201.3), once: the next call carries none until a new amendment is recorded (D586)",
+        "plugin/skills/vibe/SKILL.md: the router's one chat line for an amendment carried by vbw next --json (the plan or check and what changed, nothing to answer), and when the main session uses vbw apply --amend (a file added to a plan or a check, a dependency on another plan's check) instead of --patch (anything a check asserts); plugin/agents/lead.md: amendments are the main session's, never a plan's task; a plan that needs another plan's check names it in awaits; a check change on a started plan is a --patch that keeps the plan's progress"
+      ]
+    },
+    {
+      "id": "P203.1",
+      "phase": "P203",
+      "title": "A judgeable approval question, and spec additions that queue",
+      "reqs": [
+        "R251",
+        "R252"
+      ],
+      "files": [
+        "plugin/lib/cmd-show.sh",
+        "plugin/lib/cmd-spec.sh",
+        "plugin/lib/spec.jq",
+        "plugin/lib/cmd-run.sh",
+        "plugin/lib/cmd-status.sh",
+        "plugin/lib/cmd-next.sh",
+        "plugin/lib/next.jq",
+        "docs/proof.md"
+      ],
+      "after": [
+        "P202.4",
+        "P204.2"
+      ],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "cmd-show.sh show_contract_changes: each changed item is one plain line stating before -> after for every field that changed: a check as \"  changed check C1 (R1): run sh tests/pay.sh -> bash tests/pay.sh --strict; exit 0 -> 1; output none -> paid; timeout none -> 30 s; files tests/pay.sh -> tests/pay.sh, tests/pay-data.txt\" (a missing value reads none, a timeout in seconds, only the fields that changed), a plan as \"  changed plan P2.1 Receipt: files src/receipt.txt -> src/receipt.txt, src/mail.txt; after P1.1 -> none\", a requirement as \"  changed requirement R1: [auto] A customer can pay -> [auto] A customer can pay by card\"; added and removed items keep today's lines; amendments stay in their own block and never count as changes (tests/approval-question.bats)",
+        "cmd-show.sh: the approval question line stays \"approval question: Approve contract <12 hex>?\" with the counts after the question mark from the same diff: \"? 2 changes since the last approval\", \"? 1 change, 1 amendment since the last approval\" (singular and plural, a zero count left out) and on a first approval \"? first approval: 2 requirements, 2 checks, 2 plans\"; \"approval options: Approve, Not yet\" is unchanged and the approve hooks' regex (^Approve contract [^\\s?]+\\?) matches as today (tests/approve-choice-guard.bats and tests/hook-answers.bats pass)",
+        "cmd-spec.sh and spec.jq: while a build or fix run is open, vbw spec add appends the line to the spec as today and vbw spec sync writes each new requirement into the record with queued: true (schema 9; a hand-written new line included); a hand edit to an existing requirement's text syncs as today and un-approves; with no run open nothing changes; contract_core already leaves queued requirements out (P202.2), so the contract stays approved, the lease and the run's agents are untouched, and vbw check and vbw plan done keep working (tests/spec-queue.bats)",
+        "cmd-show.sh, cmd-status.sh, cmd-run.sh, cmd-next.sh and next.jq: vbw show contract prints the block \"queued (not in the approved contract):\" with \"  R3 [auto] <text>\" per queued requirement after the approved items; vbw status prints \"queued: 1 requirement (R3)\" (plural \"2 requirements (R3, R4)\") while the run is open and nothing when none is queued; vbw run end clears every queued mark, so the requirements then count as pending (unplanned) and vbw next names them; vbw show contract then lists them as part of the contract that is not approved yet, with no queued block",
+        "docs/proof.md: the approval section states the before -> after lines, the counts in the question and the first-approval form, and that the amendment count beside the fingerprint is informational; the spec section states what queued means (a requirement added while a run is open waits outside the approved contract until the run ends, then is planned as any new requirement)"
+      ]
+    },
+    {
+      "id": "P204.1",
+      "phase": "P204",
+      "title": "Clean copies skip every worktree inside the project",
+      "reqs": [
+        "R253"
+      ],
+      "files": [
+        "plugin/lib/proofcopy.sh"
+      ],
+      "after": [],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "proofcopy.sh proofcopy_entries: before the copy, list the repository's worktrees (git worktree list --porcelain, each path made physical with pwd -P so symlinked folders compare) and leave out every one that lies inside the project, plus .claude/worktrees, whatever the Clean copy section lists; the other ignored paths are copied as today; vbw prove, vbw check and vbw mutate share the one path and the fast copy path is kept (no file-by-file fallback for a project with worktrees) (tests/clean-copy-worktrees.bats, filter 'R253 copy')",
+        "proofcopy.sh: a worktree nested under a folder the copy walks (an ignored folder included) is skipped by descending around it (D509), never by dropping its parent and never by copy-then-delete; a worktree git still lists but whose folder is gone (prunable) causes no error and no output",
+        "proofcopy.sh: the 500 MB plain-copy line never counts a skipped worktree folder toward the three largest paths; one helper (proofcopy_big_ignored) names each git-ignored folder inside the project whose size (du -sk) is over the threshold VBW_PROOFCOPY_PLAIN_KB already sets (500 MB by default, so tests lower it), one line \"big/ (1.0 GB)\" each with one decimal in MB or GB, a worktree folder and .claude/worktrees never candidates: the source of vbw init's and vbw doctor's lines (P204.2)"
+      ]
+    },
+    {
+      "id": "P204.2",
+      "phase": "P204",
+      "title": "init and doctor name large ignored folders",
+      "reqs": [
+        "R253"
+      ],
+      "files": [
+        "plugin/lib/cmd-init.sh",
+        "plugin/lib/cmd-doctor.sh",
+        "docs/proof.md"
+      ],
+      "after": [
+        "P204.1"
+      ],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "cmd-init.sh: vbw init prints proofcopy_big_ignored's lines as candidates for the Clean copy section and writes each candidate as a commented suggestion inside the section's template, nothing uncommented (D54), so vbw spec sync writes no leave_out from them; nothing is printed or written when none is over (tests/clean-copy-worktrees.bats, filter 'R253 candidates'; the existing init tests pass unchanged)",
+        "cmd-doctor.sh: vbw doctor names the candidates the Clean copy section does not list yet, with their sizes, and says nothing when none is over or every one is listed (the existing doctor tests pass unchanged)",
+        "docs/proof.md Clean copy section: worktrees inside the project and .claude/worktrees are always left out, nested ones by descending around them, a gone worktree is harmless; vbw init and vbw doctor name git-ignored folders over 500 MB as candidates (commented suggestions at init; doctor for the unlisted ones), the threshold VBW_PROOFCOPY_PLAIN_KB shares; one worked example of the init output and the commented template line"
+      ]
+    },
+    {
+      "id": "P205.1",
+      "phase": "P205",
+      "title": "A write is judged by the project it lands in",
+      "reqs": [
+        "R254"
+      ],
+      "files": [
+        "plugin/hooks/hooks.json",
+        "plugin/hooks/common.jq",
+        "plugin/hooks/guard-bash.jq",
+        "plugin/hooks/guard-file.jq",
+        "plugin/hooks/guard-read.jq",
+        "plugin/hooks/read.sh",
+        "tools/bench-hooks.sh",
+        "docs/guards.md"
+      ],
+      "after": [
+        "P202.3"
+      ],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "hooks.json and read.sh, the second pass: the Bash and file guard commands keep jq first (the K20 standard, tests/standards.bats) in the house pipe form the AskUserQuestion and tools hooks already use: jq -rc ... -f guard-bash.jq (or guard-file.jq) ... | { reader }; the guard programs print, raw, either nothing, one deny JSON line, or a request block, and always end with the line vbw-guard-done; the reader is . \"${CLAUDE_PLUGIN_ROOT}/hooks/read.sh\" (POSIX sh, sourced so no process starts): it prints a deny line as it is, exits non-zero when the end line is missing (jq failed, missing or past its time limit: the existing fail-closed handler then answers exactly as today, tests/guard-fail-closed.bats and tests/hook-answers.bats pass), and serves a request: line 1 vbw-read, line 2 the hook input as one compact JSON line, then one line target<TAB><absolute path> per write target that leaves the hook's project; for each target it walks up to the nearest folder holding .vbw/record.json beside .git (a file or a folder), a target with no such folder judged as today (R177, named none to the second pass), and runs one second pass per other project: jq -rc -f guard-read.jq with that project's record (or its glance when newer) by --rawfile, its .vbw/runtime/run-open as --arg, the hook JSON on stdin and its targets as --args; guard-read.jq includes holder and common only (small compile, D564) and judges each target through project_path against that project's root and lease_write_denial, foreign_denial or outside_denial with the same session rule as inside it (an agent of the lease's session is held to the lease, another session to foreign), so the refusal text is exactly the one the write gets from inside; a record it cannot read while its run-open exists is refused fail-closed with today's text and exit 2 (tests/guard-cross-project.bats; tests/hook-answers.bats' guard-read.jq pin)",
+        "guard-bash.jq: every write target (redirects, shell_writes, a program's literal targets, git checkout and restore paths) is resolved to an absolute path after any cd in the command (a cd DIR joined by && or ; moves the working folder for the simple commands after it, relative to the hook's cwd), judged as today when it stays inside the hook's project, and turned into a request line when it leaves it; the fast path (may_matter) is lifted for an agent call (agent_type set) and for a command naming an absolute path, a .. segment or cd, so a worktree Dev's write into the main checkout is read; a same-project call keeps today's single jq pass and cost (tools/bench-hooks.sh's existing cases)",
+        "guard-file.jq: an Edit, Write, MultiEdit or NotebookEdit path outside the hook's project becomes a request the same way; a target inside a worktree or project with a record of its own is judged by that record (two VBW projects in one clone stay separate); a target outside every project is judged as today (R177: refused under the hook's own project's run, allowed otherwise)",
+        "tools/bench-hooks.sh: a guard (cross-project) case beside the same-project ones (a build agent's shell write into another project's folder under that project's run, so the second pass is measured), selectable with VBW_BENCH_ONLY and within the hook budget; every existing case stays within budget",
+        "docs/guards.md: one plain sentence that a write is judged by the project it lands in, wherever the command runs from; \"How a command is read\" describes the second pass (what the first pass asks for, what the reader reads, that nothing but jq runs before the first pass) and the fast path's three new triggers; \"When a guard fails\" names the end line"
+      ]
+    },
+    {
+      "id": "P206.1",
+      "phase": "P206",
+      "title": "Script files run by name are read like inline programs",
+      "reqs": [
+        "R255"
+      ],
+      "files": [
+        "plugin/lib/sessions.sh",
+        "plugin/lib/record.sh",
+        "docs/record.md",
+        "plugin/hooks/hooks.json",
+        "plugin/hooks/guard-bash.jq",
+        "plugin/hooks/programs.jq",
+        "plugin/hooks/guard-read.jq",
+        "plugin/hooks/read.sh",
+        "tools/bench-hooks.sh",
+        "docs/guards.md"
+      ],
+      "after": [
+        "P205.1",
+        "P201.2",
+        "P202.1"
+      ],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "sessions.sh and record.sh: vbw run start records the run's starting commit: holder_write adds head (git rev-parse HEAD of the project, null when there is no commit) to .vbw/runtime/holder.json beside run, session and session_name, and the glance's holder carries it ({run, session, session_name, head}); the record never holds it (no schema change, D445); docs/record.md's glance sentence names head",
+        "programs.jq: program_writes (now also giving each call's text as written, from its head through the closing parenthesis of its arguments), unreadable_calls, inplace_files, heredoc_programs, program_denial and unreadable_denial move from guard-bash.jq into one module that guard-bash.jq and guard-read.jq each include directly (jq 1.8.2 and nested includes, common.jq's header); guard-bash.jq's answers and compile cost are unchanged (tools/bench-hooks.sh, tests/hooks-guard.bats, tests/guard-protected.bats)",
+        "guard-bash.jq, the first pass: under any run lease, a simple command whose program is an interpreter (python with any version suffix, pypy, node, nodejs, perl, ruby, php, lua, deno, bun) or a shell (sh, bash, zsh) with a file as its program (the first argument that is not an option, with -c, -e, -m and - still the inline forms; or a file redirected into it with <) is a script-file call; its text is taken from the same command when that command writes the file (a heredoc body whose command redirects or tees into the file, a printf or echo of a literal into it) and judged at once, an interpreter's text by program_writes and unreadable_calls, a shell's text by commands() to the same depth (redirects, shell_writes, nested programs and heredocs), with the refusals in the pinned forms of tests/guard-script-files.bats: \"<FILE> (run by <interpreter>): <call as written> writes <target>: \" followed by the lease's own text for that target (lease_write_denial, outside_denial or the unresolvable-path text) and its Next line; \"<FILE> (run by <interpreter>): \" followed by unreadable_denial's text for a call whose target the guard cannot name; a script path holding ~ or a shell expansion, or a missing file no part of the command writes: \"<PATH> (run by <interpreter>): a script the guard cannot read: its path holds a shell expansion, or no readable file is at it and this command does not write it\\nNext: write the program with the Edit tool and run it, or give the program inline (-c, or a heredoc on standard input)\"; a file the command does not write becomes one request line script<TAB><start commit or ->TAB<interpreter>TAB<path as written>TAB<absolute path>, the start commit from the glance's holder.head; outside a run nothing changes (the may_matter skip still applies)",
+        "read.sh and guard-read.jq: for each script line one git lookup, git -C ROOT ls-files --error-unmatch -- FILE && git -C ROOT diff --quiet START -- FILE (START the run's starting commit, HEAD standing in for -): committed and unchanged means the file is not read and the call is allowed as today; otherwise the file is read by --rawfile (missing or unreadable: the unreadable-script refusal above); guard-read.jq judges the text with programs.jq and common.jq exactly as the first pass judges same-command text, python < FILE included, with the identical refusal forms; the disk read and the git lookup happen only on this path (tests/guard-script-files.bats counts the hook's git calls)",
+        "tools/bench-hooks.sh and docs/guards.md: a script input in GUARD_INPUTS (a build agent's python3 .vbw/runtime/scratch/x.py with the untracked file present in every measured project folder, so script.json is measured plain, on the large record and per check count) within the hook budget, every existing case still within it, tests/big-record-hooks.bats answering the same on both twins; docs/guards.md's Programs paragraph replaces \"a script file run by name is not read\" with the new rule in plain words (which files are read, that the project's committed scripts run as before, what the refusal names, the starting-commit rule and that HEAD stands in for a run started by an older VBW) and the \"What is denied\" table gains the row with the pinned refusal"
+      ]
     }
   ],
   "fixes": [
@@ -71739,6 +72711,18 @@
       "id": "D585",
       "at": "2026-11-03T14:05:25Z",
       "text": "Shipped M51 The record's schema is one table: schema 8 for recorded breaks, and a new key needs a bump: 2 requirements proven or accepted"
+    },
+    {
+      "id": "D586",
+      "text": "An amendment made during a build (a file added to a plan or a check, a plan made to wait for another plan's check) is told to the user in one chat line the moment it happens, with no pause and nothing to answer, and listed again at the next gate (approval, show contract --changes, ship)",
+      "why": "The approval fingerprint covers each plan's file list, so a silent widening would make the approval dishonest; one line per amendment costs nothing and a build can run for hours (46 rounds in the field report). Architect's recommendation, decided as lead under the mandate (D-lead)",
+      "at": "2026-11-03T22:44:10Z"
+    },
+    {
+      "id": "D587",
+      "text": "Rigor for M52 is auto, not express: express forces one plan per phase (the kernel refused the Lead's 14-plan split: P201 is express: one plan, merge its plans or raise its tier), which put 21 files in one plan; the kernel computes each phase's tier from its size, and the Lead's split builds in 3 waves of up to 4 parallel Devs",
+      "why": "Express is VBW's gear for small changes; a 7-requirement milestone that rewrites the contract fingerprint and the kernel's read path is not one. The Lead's recommendation; decided as lead. The owner's wish was less ceremony, which the amendment path delivers for everyone instead of a setting on our own project",
+      "at": "2026-11-04T00:09:47Z"
     }
   ],
   "commands": {
@@ -71764,7 +72748,7 @@
       "architect": "fable",
       "lead": "fable"
     },
-    "rigor": "express"
+    "rigor": "auto"
   },
   "evidence": {
     "at": "2026-11-03T13:53:06Z",
@@ -81293,6 +82277,17 @@
         "ended": "2026-11-03T22:43:39Z",
         "cost": {
           "usd": 7.193763
+        }
+      },
+      {
+        "id": "plan-20261104T000951Z",
+        "kind": "plan",
+        "session": "0ee781c3-c5b6-4a6c-889f-04b89f1fba4a",
+        "milestone": "M52",
+        "started": "2026-11-04T00:09:51Z",
+        "ended": "2026-11-04T01:03:34Z",
+        "cost": {
+          "usd": 20.212601
         }
       }
     ],

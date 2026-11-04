@@ -384,6 +384,29 @@ allowed_sh() {
   allowed_sh 'cp x.md .vbw/notes.md'
 }
 
+@test "R250: during a run, vbw apply in any mode (plain, --patch, --add, --amend; by any path, after a cd, in a substitution) is refused to every run agent in two lines, the rule and the next step; the main session is never refused" {
+  lease build '["src/pay.js"]'
+  local c r
+  for c in 'vbw apply < plan.json' 'vbw apply --patch < doc.json' 'vbw apply --add < phase.json' 'vbw apply --amend < doc.json' \
+           '"${CLAUDE_PLUGIN_ROOT}/bin/vbw" apply --amend < doc.json' 'cd src && vbw apply --amend < ../doc.json' 'echo "$(vbw apply --patch < doc.json)"' \
+           'cat doc.json | vbw apply --amend' 'VBW_SESSION_ID=x vbw apply --amend < doc.json'; do
+    r=$(why "$c")
+    [ "$r" = $'vbw apply changes the plan of record: only the main session runs it, in every mode (--amend, --patch, --add included)\nNext: report it so the main session amends or patches the plan' ] \
+      || { printf 'not refused as the main session'"'"'s command: %s\n  got: %s\n' "$c" "$r"; false; }
+  done
+  allowed_sh 'vbw status'
+  allowed_sh 'vbw show contract'
+  allowed_sh 'vbw plan done P1.1'
+  for c in 'vbw apply < plan.json' 'vbw apply --amend < doc.json' 'vbw apply --patch < doc.json'; do
+    run bash_call "$c"
+    [ -z "$output" ] || { echo "the main session was refused: $c -> $output"; false; }
+  done
+  lease fix '["src/pay.js"]'
+  [ "$(why 'vbw apply --amend < doc.json')" != allow ] || { echo "allowed under a fix run"; false; }
+  lease qa '[]'
+  [ "$(why 'vbw apply --patch < doc.json')" != allow ] || { echo "allowed under a qa run"; false; }
+}
+
 @test "during a build, protected check files are read-only and commits go through vbw" {
   lease build '["src/pay.js", "tests/pay.test.js"]'
   run as_agent Edit "{\"file_path\": \"$PROJECT/tests/pay.test.js\"}"
