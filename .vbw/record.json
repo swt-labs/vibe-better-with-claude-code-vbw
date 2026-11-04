@@ -1,6 +1,29 @@
 {
   "schema": 8,
-  "lease": null,
+  "lease": {
+    "run": "build-20261104T101203Z",
+    "kind": "build",
+    "started_at": "2026-11-04T10:12:03Z",
+    "files": [
+      "docs/guards.md",
+      "docs/workflows.md",
+      "plugin/hooks/common.jq",
+      "plugin/hooks/guard-bash.jq",
+      "plugin/hooks/guard-file.jq",
+      "plugin/hooks/guard-read.jq",
+      "plugin/hooks/hooks.json",
+      "plugin/hooks/read.sh",
+      "plugin/lib/cmd-apply.sh",
+      "plugin/lib/cmd-approve.sh",
+      "plugin/lib/cmd-ship.sh",
+      "plugin/lib/contract.sh",
+      "tools/bench-hooks.sh"
+    ],
+    "session": "0ee781c3-c5b6-4a6c-889f-04b89f1fba4a",
+    "cost": {
+      "usd": 3147.077242
+    }
+  },
   "protected": [
     "tests/adaptive-results.bats",
     "tests/agent-scratch.bats",
@@ -29168,6 +29191,12 @@
           "from": "deep",
           "to": "deep",
           "reason": "Dev blocked P202.1: C574 cannot pass: its second case (tests/amend.bats line 86) asserts jq -e '.schema == 8' on the shop fixture record right after edit_record, but that record is schema 4 (vbw init writes 4; nothing in the fixture raises it; edit_record does not change it). With that one assertion changed to .schema == 4 the case passes (checked in a copy in .vbw/runtime/scratch/amend2.bats; case 1 passes as is). Schema 9, VBW_SCHEMA_MAX 9, validator, R248 digest and docs are built and committed. Needs the main session to vbw apply --patch the check file and get it approved, then re-run."
+        },
+        {
+          "at": "2026-11-04T10:22:33Z",
+          "from": "deep",
+          "to": "deep",
+          "reason": "Dev blocked P202.2: Tasks 1-5 are built and committed; C575 passes 4 of 6 cases. Case 1 ends with grep -q on the whole session id in .vbw/record.json, but vbw run start (plugin/lib/cmd-run.sh, not this plan's file) stores the full id in lease.session by design, so it cannot pass in this plan's files. Case 6 (ship) needs vbw show contract --changes to print the amendments block (plugin/lib/cmd-show.sh, P202.4's file); the shared helper contract_amendments_block exists and vbw ship prints it. Mutation step not run."
         }
       ]
     },
@@ -65441,7 +65470,7 @@
         "P201.3",
         "P202.1"
       ],
-      "status": "planned",
+      "status": "blocked",
       "role": "dev",
       "tasks": [
         "cmd-apply.sh: vbw apply --amend < doc, the main session's fourth mode, on an approved contract only (else refused in one line naming \"not approved\" and \"--patch\"), with or without an open run (the run-open refusal does not apply to it): the document holds plans[] with id and files (additions only; a protected check file is refused in one line naming the file and \"protected check file\") or awaits (check ids of the plan's own requirements; another requirement's check is refused naming the check and the requirement), and checks[] with id and files (additions only); an unknown id, a document that is not JSON, and any other field or any removal (a title, a run, an exit, an output, a timeout, an after, a rule, a phase, a file taken away) is refused in one line naming the field, \"--patch\" and approval, with the record unchanged; the kept-field lists of the full apply and --patch keep a plan's amendments and awaits and a check's amendments across re-plans (tests/amend.bats, filter 'R250 amend')",
@@ -65449,7 +65478,8 @@
         "cmd-approve.sh: vbw approve clears every amendments list on plans and checks (the approval takes them with it; the added files and awaits stay); cmd-apply.sh --patch: a check change while the plan it serves is started keeps the plan's status, tasks and commits and an open build run stays open, and the contract then reads NOT APPROVED until the user approves what the check now asserts; a --patch of plans during an open run is still refused (\"run is open\"); the started-plan refusal of a check change is removed",
         "contract.sh and cmd-ship.sh: one helper prints the block vbw show contract --changes, vbw show contract and vbw ship share: the heading \"amendments since the last approval:\" and one line per amendment, two-space indented, \"  P1.1: file src/card.txt added (2026-11-03T10:00:00Z, session 01234567)\" (\"session unknown\" for null), plans then checks in record order; vbw ship prints it before its \"shipped M1 ...\" line whenever amendments are recorded (tests/amend.bats, the ship case of filter 'R250 amend')",
         "docs/workflows.md: the apply table gains the --amend row (the three changes it may record, what it refuses and sends to --patch, what it records on the plan or check, that the contract stays approved and the run open, the router's one chat line) and the --patch row drops vbw plan reset for a check change on a started plan"
-      ]
+      ],
+      "note": "Tasks 1-5 are built and committed; C575 passes 4 of 6 cases. Case 1 ends with grep -q on the whole session id in .vbw/record.json, but vbw run start (plugin/lib/cmd-run.sh, not this plan's file) stores the full id in lease.session by design, so it cannot pass in this plan's files. Case 6 (ship) needs vbw show contract --changes to print the amendments block (plugin/lib/cmd-show.sh, P202.4's file); the shared helper contract_amendments_block exists and vbw ship prints it. Mutation step not run."
     },
     {
       "id": "P202.3",
@@ -65717,7 +65747,7 @@
       "after": [
         "P202.3"
       ],
-      "status": "planned",
+      "status": "building",
       "role": "dev",
       "tasks": [
         "hooks.json and read.sh, the second pass: the Bash and file guard commands keep jq first (the K20 standard, tests/standards.bats) in the house pipe form the AskUserQuestion and tools hooks already use: jq -rc ... -f guard-bash.jq (or guard-file.jq) ... | { reader }; the guard programs print, raw, either nothing, one deny JSON line, or a request block, and always end with the line vbw-guard-done; the reader is . \"${CLAUDE_PLUGIN_ROOT}/hooks/read.sh\" (POSIX sh, sourced so no process starts): it prints a deny line as it is, exits non-zero when the end line is missing (jq failed, missing or past its time limit: the existing fail-closed handler then answers exactly as today, tests/guard-fail-closed.bats and tests/hook-answers.bats pass), and serves a request: line 1 vbw-read, line 2 the hook input as one compact JSON line, then one line target<TAB><absolute path> per write target that leaves the hook's project; for each target it walks up to the nearest folder holding .vbw/record.json beside .git (a file or a folder), a target with no such folder judged as today (R177, named none to the second pass), and runs one second pass per other project: jq -rc -f guard-read.jq with that project's record (or its glance when newer) by --rawfile, its .vbw/runtime/run-open as --arg, the hook JSON on stdin and its targets as --args; guard-read.jq includes holder and common only (small compile, D564) and judges each target through project_path against that project's root and lease_write_denial, foreign_denial or outside_denial with the same session rule as inside it (an agent of the lease's session is held to the lease, another session to foreign), so the refusal text is exactly the one the write gets from inside; a record it cannot read while its run-open exists is refused fail-closed with today's text and exit 2 (tests/guard-cross-project.bats; tests/hook-answers.bats' guard-read.jq pin)",
@@ -69991,6 +70021,11 @@
     {
       "id": "T233",
       "text": "Guard bypass to confirm (field report 2026-11-03): a Dev's Python write through standard input (python - <<EOF ... open(path,'w')) reached a protected check file during a build while the Edit tool's write to the same file was refused a moment later; the guard 'could not read that write's target so it let it through', the opposite of R219's fail-closed rule. Reproduce from the command shape the project's lead sends (first line verbatim, literal or variable path, lease open or not) with a case in tests/guard-interpreters.bats shown red, then fix in M52",
+      "status": "open"
+    },
+    {
+      "id": "T234",
+      "text": "A reworded rule keeps its recorded breaks: vbw mutate records a break keyed on the rule's {req, text} (cmd-mutate.sh), so when vbw spec sync rewords a rule (a parenthesis added) the break no longer matches, vbw show plan lists it unnumbered and vbw plan done refuses the next plan for want of a red break; the fix belongs in spec sync (re-key the recorded breaks of a rule whose position in the requirement holds and whose text changed) or in a stable rule key; field case 2026-11-02 from the Rust project: two breaks re-queued and re-run, 8 min of its heavy lane",
       "status": "open"
     }
   ],
