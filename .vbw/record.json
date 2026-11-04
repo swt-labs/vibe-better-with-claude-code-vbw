@@ -119,6 +119,7 @@
     "tests/guard-cross-project.bats",
     "tests/guard-fail-closed.bats",
     "tests/guard-interpreters.bats",
+    "tests/guard-lead-apply.bats",
     "tests/guard-outside.bats",
     "tests/guard-plan-writes.bats",
     "tests/guard-protected.bats",
@@ -7825,6 +7826,19 @@
       "files": [
         "tests/guard-script-files.bats"
       ]
+    },
+    {
+      "id": "C585",
+      "req": "R250",
+      "run": [
+        "bats",
+        "--print-output-on-failure",
+        "tests/guard-lead-apply.bats"
+      ],
+      "files": [
+        "tests/guard-lead-apply.bats"
+      ],
+      "fix": "F357"
     }
   ],
   "project": {
@@ -69405,7 +69419,7 @@
       "req": "R252",
       "source": "qa",
       "attempts": 0,
-      "status": "open",
+      "status": "fixed",
       "note": "vbw spec add / spec sync queue a new requirement under ANY open run, not only a build or fix run. plugin/lib/cmd-spec.sh spec_sync sets '(.lease != null) as $open' and queues on it, but the agreed rule (criterion 4, plan P203.1 task 3, docs/proof.md 'while a build or fix run is open') is lease kind build or fix; lease kinds are plan, build, fix, qa and map (cmd-run.sh:146-148). So a requirement added during a plan, qa or map run is also left out of the contract, which is not what was agreed or documented. In a plan run it is also risky: the Lead can read the new spec line and write checks for it, and those checks would then sit in the contract while their requirement is left out until the run ends. No test pins the kinds (tests/spec-queue.bats only opens a build run). Regression test: with a plan run open (and again a qa run), vbw spec add leaves no queued mark and the contract reads changed as today; with a fix run open it queues. If the wider behaviour is wanted instead, it needs the user's recorded decision, the same test inverted and the docs sentence changed; do not decide that in the fix.",
       "phase": "P203"
     },
@@ -69414,7 +69428,7 @@
       "req": "R254",
       "source": "qa",
       "attempts": 0,
-      "status": "open",
+      "status": "fixed",
       "note": "A write into a VBW project (or linked worktree) nested inside the hook's own project is judged by the outer project's record, not the nested project's own. plugin/hooks/common.jq request_target drops every target whose absolute path starts with the hook's root (select(startswith(root/) | not)), so read.sh never walks up to the nested folder holding .vbw/record.json beside .git. Criterion 1 and R254 require the target's nearest project to be found and, when it is not the hook's own, judged by its record; docs/guards.md (lines 147-149) itself says a nested clone or nested worktree stays a project of its own (Claude Code's own worktrees live under <repo>/.claude/worktrees). Effect: hook in MAIN with no run, a Dev of another session writing MAIN/.claude/worktrees/x/tests/c1.sh while x has a build run open is allowed, while the same write from inside x is refused (the same side door, nested layout). Regression test: hook project MAIN with no lease, a nested project holding a record with a build lease that protects tests/c1.sh; an Edit and a Bash redirect by that path from MAIN must be refused with the reason the same write gets from inside the nested project, and allowed when the nested project has no run.",
       "phase": "P205"
     },
@@ -69423,7 +69437,7 @@
       "req": "R249",
       "source": "qa",
       "attempts": 0,
-      "status": "open",
+      "status": "fixed",
       "note": "vbw next --json is not one pass on a real large record. Measured here on VBW's own 4,568,530-byte record, digest warm, three runs: 6.6 s wall (3.4 s user + 2.3 s system); vbw status 0.87 s. A shell trace of one run shows about 25 jq calls piping the working record (next_decide in plugin/lib/cmd-next.sh: legacy probe, qa_state/qa_digests with several, next_holder, effort_table twice, interview_effective, next.jq), and contract_core is run again through contract_waiting inside qa_digests (plugin/lib/qa-inputs.sh:81 -> plugin/lib/contract.sh:42, about 1.5 s) after the pass already computed it. The working record of VBW's own record is still 2,624,103 bytes, so every one of those calls is record-sized. The criterion says at most two jq invocations read the record per command, on the twins and on VBW's own record. Why the test is green: tests/big-record-fast.bats counts only jq inputs of 1,048,576 bytes or more, and the large twin's bulk (tests/big-record-helper.bash: filler in history goals, criteria, tasks, decision texts) is exactly what record_work drops, so its working record is tiny and the repeated parses are invisible. Regression test should catch: a twin whose bulk sits in what record_work keeps (plans' files, evidence, requirement texts and rules of the active milestone, project.results), with the shim counting any jq call that reads a working-record-sized input (for example 100 KB) and asserting at most two for next --json and status, plus a timed case on that twin.",
       "phase": "P201"
     },
@@ -69432,7 +69446,7 @@
       "req": "R254",
       "source": "qa",
       "attempts": 0,
-      "status": "open",
+      "status": "fixed",
       "note": "Test gap: tests/guard-cross-project.bats never runs the case R254.2 promises, 'a target inside a worktree with a record of its own is judged by that record', from a hook project that holds the run. Case 2 only writes the worktree's own files from the worktree as the hook project (a same-project judgement, no project lookup), and the outside-every-project case uses a folder with no record. No case has the hook in a project with a build lease (or none) writing into another project whose record differs: e.g. hook in MAIN under its run writing WT/tests/c1.sh (WT has no lease: must be allowed, not MAIN's outside-the-project refusal), or WT with its own build lease while the hook project has none (must be refused with WT's reason). A read.sh that took the hook's record, or the wrong folder, for the nearest project would pass every case. Regression test: both directions, Bash and Edit, between two projects with different leases.",
       "phase": "P205"
     },
@@ -69441,7 +69455,7 @@
       "req": "R249",
       "source": "qa",
       "attempts": 0,
-      "status": "open",
+      "status": "fixed",
       "note": "Deviation from P201.3 task 2: the task says qa-inputs.sh, qa.jq, steps.sh, interview.sh and effort.sh take their facts from the caller's pass (or the glance) instead of re-reading the record, and road.sh/road.jq compute their lines in one pass. The commits of the phase (14797696, bf3bf7b3, 3834f7f8, 96fba23b) changed contract.sh, cmd-next.sh, next.jq, steps.sh and cmd-status.sh only; qa-inputs.sh, qa.jq, interview.sh, effort.sh, road.sh and road.jq are untouched, and no decision records dropping that work. The shortcut was a smaller 'working record' (record_work in cmd-next.sh) that every part keeps re-parsing; it works only while the record's bulk is finished history. Regression test should catch: the same as the first finding, a call-count assertion on a twin whose bulk is not finished history, which fails while qa_digests, effort_table, interview_effective and next_holder each parse the record themselves.",
       "phase": "P201"
     },
@@ -69450,7 +69464,7 @@
       "req": "R250",
       "source": "qa",
       "attempts": 0,
-      "status": "open",
+      "status": "fixed",
       "note": "The new guard rule refuses 'vbw apply' to the Lead during planning. plugin/hooks/guard-bash.jq puts apply_call in in_run($g), which runs for every run lease of any kind, and a Lead is a run agent (agent_type set). But planning needs the Lead to run it: plugin/workflows/planning.js:202 tells the Lead to 'apply with vbw apply' inside a 'vbw run start plan' lease, and plugin/agents/lead.md lines 42, 56 and 64 make 'vbw apply' / 'vbw apply --patch' the Lead's own duty. Evidence: I fed the real PreToolUse Bash hook (plugin/hooks/hooks.json command) a call from agent_type vbw:lead with 'vbw apply <<EOF' and it answered deny, 'vbw apply changes the plan of record: only the main session runs it ...'; the rule never looks at lease.kind. tests/hooks-guard.bats R250 (line 387) only tries build, fix and qa leases, so no test covers a plan lease, and the mutation record could not catch it. Once this ships, every planning run (and every Lead --patch) is blocked. Regression test to add: under 'lease plan', a vbw:lead agent's 'vbw apply', 'vbw apply --patch' and 'vbw apply --add' are allowed, while the same calls under build, fix and qa leases (and from Dev, Docs, QA, Scout, Debugger) are still refused with the two lines.",
       "phase": "P202"
     },
@@ -69459,7 +69473,7 @@
       "req": "R250",
       "source": "qa",
       "attempts": 0,
-      "status": "open",
+      "status": "fixed",
       "note": "A proof leaves an awaited check unrun far longer than the plan says. plugin/lib/cmd-prove.sh prove_awaited holds every check named in any plan's awaits while ANY other plan of the whole record is not done (select(any($r.plans[]; .id != $p.id and .status != \"done\"))). P202.4's task and the goal say it is held only while the plan that builds it is not done, and that 'once that plan is built the check runs as any other and the requirement proves'. Evidence: running that jq on {P1.1 done, reqs R1, awaits C3; P2.1 done, reqs R1; P3.1 planned, reqs R3} still prints C3, although P2.1, the only other builder of R1, is done. So in a normal milestone with any later phase still open the awaited check is not run by the proof, and R1 stays unproven. It also silences the check of an earlier, already shipped milestone for as long as the new milestone has an open plan, because awaits stays on the shipped plan; checks guard earlier requirements by re-running on every proof. tests/amend.bats 'R250 awaits' has only two plans, so it cannot tell 'the builder is not done' from 'some plan is not done' (the task2 survivor was strengthened only on that case). Regression test to add: a three-plan fixture (P1.1 awaits C3, P2.1 builds the same requirement, P3.1 of an unrelated requirement left planned): after P2.1 is done, vbw prove runs C3 and R1 reads proven; and a done plan with awaits whose builders are all done has its check re-run by every later proof.",
       "phase": "P202"
     }
@@ -74363,6 +74377,11 @@
       "id": "D599",
       "text": "Keep tools/bench-hooks.sh as changed by the lead (448fad83, 914eab4f): the reference follows the guard and nominal is re-pinned, D593",
       "at": "2026-11-04T16:23:00Z"
+    },
+    {
+      "id": "D600",
+      "text": "QA round 1 of M52: F357 a vbw:lead agent may run vbw apply (plain, --patch, --add, never --amend) under a plan run, every other agent and run stays refused, because the Lead's job is apply; F358 an awaited check is held only while a plan serving its requirement is not done; F352 queuing only during build and fix runs, as agreed; F353 the guard asks for a nested project under the hook's root too; F354 and F356 next reads from one pass as planned, with a fixture whose bulk is not finished history, the criterion stands",
+      "at": "2026-11-04T16:30:51Z"
     }
   ],
   "commands": {
@@ -84187,6 +84206,17 @@
         "ended": "2026-11-04T16:30:06Z",
         "cost": {
           "usd": 4.004163
+        }
+      },
+      {
+        "id": "fix-20261104T163054Z",
+        "kind": "fix",
+        "session": "0ee781c3-c5b6-4a6c-889f-04b89f1fba4a",
+        "milestone": "M52",
+        "started": "2026-11-04T16:30:54Z",
+        "ended": "2026-11-04T17:49:35Z",
+        "cost": {
+          "usd": 8.7192
         }
       }
     ],
