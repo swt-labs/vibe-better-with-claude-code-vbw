@@ -29149,7 +29149,15 @@
         "guarded: R1 (C1), R2 (C2), R10 (C9), R13 (C12), R14 (C13), R15 (C14), R22 (C19), R23 (C20), R24 (C23), R25 (C24), R26 (C22), R27 (C21), R28 (C25), R31 (C27), R32 (C28), R33 (C29), R35 (C31), R37 (C35), R38 (C33, C34), R39 (C36), R40 (C37), R43 (C42, C43), R44 (C44, C45), R45 (C39, C40, C41), R46 (C46), R47 (C47), R48 (C49, C50), R49 (C48), R50 (C51), R60 (C72, C94), R61 (C73, C74, C75, C76, C77), R62 (C78, C79, C80, C81, C82, C83, C93), R65 (C86, C87, C88, C89, C90), R66 (C95), R67 (C96), R69 (C110, C120, C122), R70 (C114), R71 (C115, C121), R72 (C116, C118), R73 (C98), R74 (C99, C100), R75 (C101), R76 (C102, C103), R77 (C104), R78 (C105, C106), R79 (C107), R80 (C108), R81 (C109, C111, C112, C113), R83 (C119), R93 (C140, C141, C142, C143, C144), R95 (C149, C150), R96 (C151, C152), R98 (C154), R99 (C155), R100 (C156), R101 (C179), R102 (C158, C159), R103 (C160), R106 (C164, C165), R107 (C166, C167), R110 (C169, C170), R111 (C171, C172, C173, C174, C175), R115 (C181), R116 (C182, C183), R118 (C184), R119 (C180), R120 (C185), R121 (C187, C188), R122 (C189), R123 (C190, C191), R127 (C194), R129 (C196), R130 (C197), R131 (C198), R132 (C199), R133 (C195), R134 (C201), R135 (C202), R144 (C208, C209), R145 (C210), R146 (C211), R147 (C212, C215, C237), R148 (C213, C214, C216, C238), R149 (C217, C218, C219, C220, C221, C222), R151 (C231, C232), R153 (C235, C236, C239), R156 (C242, C243), R157 (C244), R158 (C245), R159 (C246), R160 (C247, C263, C264), R161 (C248, C265, C266), R162 (C249), R163 (C250), R165 (C252), R166 (C253, C254, C255, C256, C267), R167 (C257, C258, C259, C260), R168 (C261, C262), R169 (C268), R171 (C270), R173 (C281, C282, C283, C284, C285, C286, C289), R174 (C279, C280), R177 (C287, C288), R178 (C290, C291, C292, C293, C294, C295, C296, C311), R179 (C297, C298, C299, C300, C301, C302, C303, C304, C305, C306, C312), R180 (C307, C308, C309, C310), R181 (C313, C314, C315, C316, C317, C318, C319, C320, C321), R182 (C322, C323, C324, C325, C326), R186 (C344, C345, C346, C347, C348), R188 (C350, C351, C352, C353, C354, C355, C356, C357, C358, C359), R190 (C374, C375, C376, C377, C378, C379, C380, C381, C382, C383, C384, C385, C386, C387, C388), R191 (C389, C390, C391, C392, C393, C394, C395, C396, C397, C398, C399, C400), R192 (C401, C402, C403, C404, C405, C406, C407, C408, C409, C410), R193 (C411, C412), R194 (C417, C418, C419), R195 (C420, C421, C422), R196 (C415, C416), R197 (C413, C414), R198 (C423), R201 (C428, C429), R202 (C432, C433, C434, C435, C436, C437, C438, C439, C440, C441, C442, C443, C444, C445, C446, C447), R203 (C448, C449, C450), R204 (C451, C452, C453, C454), R205 (C455, C456, C457, C458, C467), R207 (C461, C462, C463), R208 (C464, C465, C466, C468), R209 (C469, C470, C471, C472, C473), R210 (C474, C475, C476), R211 (C477, C478, C479), R212 (C480, C481, C482), R213 (C483, C484), R215 (C488, C489, C490), R216 (C491, C492, C493), R217 (C494, C495), R218 (C496), R219 (C497, C498, C499), R220 (C500, C501, C502, C503), R221 (C504), R222 (C505, C506), R225 (C517, C518, C519), R228 (C522, C523, C524, C525), R229 (C526, C527, C528, C529), R230 (C530, C531), R231 (C532, C533), R233 (C540, C541, C542, C543), R234 (C535, C536), R236 (C537), R241 (C546, C547, C548, C549, C550, C560), R243 (C558, C559, C561), R244 (C562, C563), R245 (C564, C565)",
         "tests: project test command"
       ],
-      "predicted": "deep"
+      "predicted": "deep",
+      "escalations": [
+        {
+          "at": "2026-11-04T01:16:12Z",
+          "from": "deep",
+          "to": "deep",
+          "reason": "Dev blocked P202.3: C577 (tests/hooks-guard.bats, R250 test at line 387, protected) compares the guard's whole permissionDecisionReason to the two lines with no 'VBW guard: ' prefix, but common.jq's deny always prefixes every reason with 'VBW guard: ' (pinned by tests/hook-answers.bats R128 and others). My guard now gives exactly the two lines after that prefix (got: 'VBW guard: vbw apply changes ... \\nNext: report it so the main session amends or patches the plan'); the test can only pass by special-casing this one denial without the prefix, which I will not do. The check needs the reason read with ltrimstr('VBW guard: ') (as hook-answers.bats does), via vbw apply --patch and re-approval. Done and green: task 1 guard-bash.jq apply_call rule and task 2 common.jq protected text (C578 passes); task 3 docs/guards.md not yet written; changes uncommitted."
+        }
+      ]
     },
     {
       "id": "P203",
@@ -64895,12 +64903,91 @@
         "docs/record.md"
       ],
       "after": [],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "record.sh: record_read hashes the record's bytes and the validator's own text (record.jq, record-schema.jq and interview.json, in that order) with the hash function the kernel already uses for the contract, and skips the jq validator when .vbw/runtime/validated.json holds exactly {record: <hex>, validator: <hex>} matching both; any other bytes (a hand edit, an older VBW's write, a compact rewrite of the same JSON) are validated as today and, when valid, the digest file is rewritten through a temporary name and a rename with the new pair; the command's output is the same either way; a corrupt record (exit 3) and a newer schema (exit 4) answer as today and never leave a digest; the record's bytes never reach a command line (pipe, --rawfile or --slurpfile)",
         "record.sh: record_update writes the digest for the bytes it writes, so the next read skips the validator; a .vbw/runtime that is missing, unreadable or cannot be written is never an error (same output, exit 0, nothing on stderr: the digest is simply not kept and the record validated in full); the digest lives only under .vbw/runtime, never in the record and never outside the project; run bats tests/big-record-fast.bats --filter 'R249 digest' and tests/record.bats under PATH=/bin:$PATH",
         "docs/record.md, the runtime files list: .vbw/runtime/validated.json in plain words: the fingerprint of the record bytes last found correct and of VBW's own validator text, so the next read skips the check; any change to either (a hand edit, another VBW version) checks the record again in full; deleting it is harmless"
+      ],
+      "mutations": [
+        {
+          "task": 3,
+          "none": "docs-only task: docs/record.md prose has no executable behaviour to break",
+          "at": "2026-11-04T01:17:26Z"
+        },
+        {
+          "rule": {
+            "req": "R249",
+            "text": "a record whose bytes match the digest kept under .vbw/runtime (validated.json: record and validator digests) is not validated again"
+          },
+          "what": "digest never matches",
+          "files": [
+            "plugin/lib/record.sh"
+          ],
+          "checks": {
+            "C571": "red"
+          },
+          "result": "red",
+          "at": "2026-11-04T01:18:09Z",
+          "head": "51e4aba85967b76751e8031211d88a53df681788",
+          "tree": "10fd59ce57d2504cd5124a983cb417d1975706d3",
+          "contract": "92dea9175d84d39045689661d95e9d0a50409e4452ebafd56d7fd72aa6c155ea"
+        },
+        {
+          "rule": {
+            "req": "R249",
+            "text": "any other content is validated: a hand edit stays corrupt (exit 3), a compact rewrite of the same JSON is validated once and gives the same output, a newer schema still exits 4"
+          },
+          "what": "read never validates",
+          "files": [
+            "plugin/lib/record.sh"
+          ],
+          "checks": {
+            "C571": "red"
+          },
+          "result": "red",
+          "at": "2026-11-04T01:18:12Z",
+          "head": "51e4aba85967b76751e8031211d88a53df681788",
+          "tree": "10fd59ce57d2504cd5124a983cb417d1975706d3",
+          "contract": "92dea9175d84d39045689661d95e9d0a50409e4452ebafd56d7fd72aa6c155ea"
+        },
+        {
+          "rule": {
+            "req": "R249",
+            "text": "the validator's own text is part of the digest: a changed record.jq, record-schema.jq or interview.json validates the record again"
+          },
+          "what": "digest ignores record-schema.jq and interview.json",
+          "files": [
+            "plugin/lib/record.sh"
+          ],
+          "checks": {
+            "C571": "red"
+          },
+          "result": "red",
+          "at": "2026-11-04T01:18:15Z",
+          "head": "51e4aba85967b76751e8031211d88a53df681788",
+          "tree": "10fd59ce57d2504cd5124a983cb417d1975706d3",
+          "contract": "92dea9175d84d39045689661d95e9d0a50409e4452ebafd56d7fd72aa6c155ea"
+        },
+        {
+          "rule": {
+            "req": "R249",
+            "text": "a .vbw/runtime that cannot be written is never an error: same output, exit 0, nothing on stderr"
+          },
+          "what": "unwritable runtime dies",
+          "files": [
+            "plugin/lib/record.sh"
+          ],
+          "checks": {
+            "C571": "red"
+          },
+          "result": "red",
+          "at": "2026-11-04T01:18:18Z",
+          "head": "51e4aba85967b76751e8031211d88a53df681788",
+          "tree": "10fd59ce57d2504cd5124a983cb417d1975706d3",
+          "contract": "92dea9175d84d39045689661d95e9d0a50409e4452ebafd56d7fd72aa6c155ea"
+        }
       ]
     },
     {
@@ -64914,12 +65001,112 @@
         "plugin/lib/sessions.sh"
       ],
       "after": [],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "sessions.sh: sessions_project_entries runs one jq program over the whole registry (every sessions/*.json as inputs or one --slurpfile list) that selects and shapes the entries of the project (cwd under the project after physical-path resolution, with the sessionId, name, nameSource, pid and updatedAt the callers need) in one output, with no shell loop and no jq call per entry; an entry missing a field is skipped as today",
         "sessions.sh: sessions_name, holder_display and sessions_rename_hint (D444) take their answer from that one pass and give exactly today's output, so vbw next --json on a registry of 500 chats of the project starts jq as many times as on 5 (tests/big-record-fast.bats, filter 'R249 chat list'); every existing sessions, holder and rename-hint test passes unchanged under PATH=/bin:$PATH",
         "sessions.sh: no other function of the file loops over registry entries running jq (the holder lookup included); the header comment states the one-pass rule and why (a 594-plan project's chat list cost one jq start per open chat, T229)"
+      ],
+      "mutations": [
+        {
+          "rule": {
+            "req": "R249",
+            "text": "the chat list is read and matched in one jq pass with no per-entry loop: vbw next --json on 500 chats of the project makes as many jq calls as on 5, and still carries the rename hint"
+          },
+          "what": "jq call per distinct folder in the loop",
+          "files": [
+            "plugin/lib/sessions.sh"
+          ],
+          "checks": {
+            "C572": "green"
+          },
+          "result": "survivor",
+          "at": "2026-11-04T01:19:14Z",
+          "head": "4afaef20476674f6e055921143158373d78adf81",
+          "tree": "561852bd831519b1c0fa86803956803e4296951b",
+          "contract": "92dea9175d84d39045689661d95e9d0a50409e4452ebafd56d7fd72aa6c155ea"
+        },
+        {
+          "rule": {
+            "req": "R249",
+            "text": "the chat list is read and matched in one jq pass with no per-entry loop: vbw next --json on 500 chats of the project makes as many jq calls as on 5, and still carries the rename hint"
+          },
+          "what": "jq call per distinct folder in the loop",
+          "files": [
+            "plugin/lib/sessions.sh"
+          ],
+          "checks": {
+            "C572": "red"
+          },
+          "result": "red",
+          "at": "2026-11-04T01:21:48Z",
+          "head": "8b75badf4f5cbbadeef2fed11ca97ecaf96e3164",
+          "tree": "f18ba7625572e8461e26a0ee50cf5947368d03c6",
+          "contract": "13ab90ca3ad936e10675a7504cd7950e14eab268e5fe0d012b45518b315b3c21",
+          "strengthened": [
+            "tests/big-record-fast.bats"
+          ],
+          "pending": [
+            "tests/big-record-fast.bats"
+          ]
+        },
+        {
+          "task": 2,
+          "what": "rename hint needs three chats",
+          "files": [
+            "plugin/lib/sessions.sh"
+          ],
+          "checks": {
+            "C572": "green"
+          },
+          "result": "survivor",
+          "at": "2026-11-04T01:22:27Z",
+          "head": "8b75badf4f5cbbadeef2fed11ca97ecaf96e3164",
+          "tree": "f18ba7625572e8461e26a0ee50cf5947368d03c6",
+          "contract": "13ab90ca3ad936e10675a7504cd7950e14eab268e5fe0d012b45518b315b3c21"
+        },
+        {
+          "task": 3,
+          "none": "header comment only; nothing executable to break",
+          "at": "2026-11-04T01:22:30Z"
+        },
+        {
+          "task": 1,
+          "none": "reached by the R249.5 and task2 breaks",
+          "at": "2026-11-04T01:22:33Z"
+        },
+        {
+          "task": 2,
+          "what": "rename hint needs three chats",
+          "files": [
+            "plugin/lib/sessions.sh"
+          ],
+          "checks": {
+            "C572": "red"
+          },
+          "result": "red",
+          "at": "2026-11-04T01:23:34Z",
+          "head": "fac2cb2167de7bf3a8a192101c83dcd358a23723",
+          "tree": "eec2ecb719f2fe16301aba71d761731f42b45367",
+          "contract": "25a914b4e925769597ccb9eb81a146b2bb94ba5f403ccc1458c458f009ee7b3c",
+          "strengthened": [
+            "tests/big-record-fast.bats"
+          ],
+          "pending": [
+            "tests/big-record-fast.bats"
+          ]
+        },
+        {
+          "task": 1,
+          "none": "reached by the R249.5 and task2 breaks",
+          "at": "2026-11-04T01:23:37Z"
+        },
+        {
+          "task": 3,
+          "none": "header comment only; nothing executable to break",
+          "at": "2026-11-04T01:23:40Z"
+        }
       ]
     },
     {
@@ -65023,13 +65210,14 @@
         "docs/guards.md"
       ],
       "after": [],
-      "status": "planned",
+      "status": "blocked",
       "role": "dev",
       "tasks": [
         "guard-bash.jq: under any run lease, a run agent's Bash call that runs vbw apply in any mode (plain, --patch, --add, --amend), by any path to vbw, after a cd, inside a substitution or through a pipe, is refused with exactly the two lines \"vbw apply changes the plan of record: only the main session runs it, in every mode (--amend, --patch, --add included)\\nNext: report it so the main session amends or patches the plan\"; vbw status, vbw show contract, vbw plan done and the other kernel commands stay allowed, and the main session (no agent_type) is never refused (tests/hooks-guard.bats, filter R250)",
         "common.jq: lease_write_denial's protected-file text becomes exactly \"<file> is a protected check file: a protected check file is never edited during a build\\nNext: leave <file> as it is; the main session changes the check with vbw apply --patch, then the user approves it\" (the other-requirement fix text is unchanged); every pinned hook answer in tests/guard-protected.bats and tests/hooks-guard.bats passes under PATH=/bin:$PATH, and tools/check-hook-answers.sh still finds no allow",
         "docs/guards.md: the \"What is denied\" table gains the vbw apply row (every mode, every run agent, the two-line refusal) and the protected check file row states the new one-line rule and its Next line; the plan skill's words live in docs/workflows.md (P202.2)"
-      ]
+      ],
+      "note": "C577 (tests/hooks-guard.bats, R250 test at line 387, protected) compares the guard's whole permissionDecisionReason to the two lines with no 'VBW guard: ' prefix, but common.jq's deny always prefixes every reason with 'VBW guard: ' (pinned by tests/hook-answers.bats R128 and others). My guard now gives exactly the two lines after that prefix (got: 'VBW guard: vbw apply changes ... \\nNext: report it so the main session amends or patches the plan'); the test can only pass by special-casing this one denial without the prefix, which I will not do. The check needs the reason read with ltrimstr('VBW guard: ') (as hook-answers.bats does), via vbw apply --patch and re-approval. Done and green: task 1 guard-bash.jq apply_call rule and task 2 common.jq protected text (C578 passes); task 3 docs/guards.md not yet written; changes uncommitted."
     },
     {
       "id": "P202.4",
@@ -65106,12 +65294,50 @@
         "plugin/lib/proofcopy.sh"
       ],
       "after": [],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "proofcopy.sh proofcopy_entries: before the copy, list the repository's worktrees (git worktree list --porcelain, each path made physical with pwd -P so symlinked folders compare) and leave out every one that lies inside the project, plus .claude/worktrees, whatever the Clean copy section lists; the other ignored paths are copied as today; vbw prove, vbw check and vbw mutate share the one path and the fast copy path is kept (no file-by-file fallback for a project with worktrees) (tests/clean-copy-worktrees.bats, filter 'R253 copy')",
         "proofcopy.sh: a worktree nested under a folder the copy walks (an ignored folder included) is skipped by descending around it (D509), never by dropping its parent and never by copy-then-delete; a worktree git still lists but whose folder is gone (prunable) causes no error and no output",
         "proofcopy.sh: the 500 MB plain-copy line never counts a skipped worktree folder toward the three largest paths; one helper (proofcopy_big_ignored) names each git-ignored folder inside the project whose size (du -sk) is over the threshold VBW_PROOFCOPY_PLAIN_KB already sets (500 MB by default, so tests lower it), one line \"big/ (1.0 GB)\" each with one decimal in MB or GB, a worktree folder and .claude/worktrees never candidates: the source of vbw init's and vbw doctor's lines (P204.2)"
+      ],
+      "mutations": [
+        {
+          "rule": {
+            "req": "R253",
+            "text": "every clean copy leaves out the folder of every worktree of the repository inside the project (git worktree list) and .claude/worktrees, whatever the Clean copy section says, while the other ignored paths are copied as before"
+          },
+          "what": "worktree paths never added to the skip list",
+          "files": [
+            "plugin/lib/proofcopy.sh"
+          ],
+          "checks": {
+            "C581": "red"
+          },
+          "result": "red",
+          "at": "2026-11-04T01:19:24Z",
+          "head": "221dff38f44504fd4b3c474d4100751296783790",
+          "tree": "81da1cbdd5fc47fe353e85a8d555f7f1057648ff",
+          "contract": "92dea9175d84d39045689661d95e9d0a50409e4452ebafd56d7fd72aa6c155ea"
+        },
+        {
+          "rule": {
+            "req": "R253",
+            "text": "a worktree nested under an ignored folder is skipped by descending around it, and a worktree whose folder is gone causes no error"
+          },
+          "what": "folder-gone worktree dropped from the skip list",
+          "files": [
+            "plugin/lib/proofcopy.sh"
+          ],
+          "checks": {
+            "C581": "red"
+          },
+          "result": "red",
+          "at": "2026-11-04T01:19:27Z",
+          "head": "221dff38f44504fd4b3c474d4100751296783790",
+          "tree": "81da1cbdd5fc47fe353e85a8d555f7f1057648ff",
+          "contract": "92dea9175d84d39045689661d95e9d0a50409e4452ebafd56d7fd72aa6c155ea"
+        }
       ]
     },
     {
@@ -82307,6 +82533,17 @@
         "ended": "2026-11-04T01:03:34Z",
         "cost": {
           "usd": 20.212601
+        }
+      },
+      {
+        "id": "build-20261104T011430Z",
+        "kind": "build",
+        "session": "0ee781c3-c5b6-4a6c-889f-04b89f1fba4a",
+        "milestone": "M52",
+        "started": "2026-11-04T01:14:30Z",
+        "ended": "2026-11-04T01:24:35Z",
+        "cost": {
+          "usd": 1.885507
         }
       }
     ],
