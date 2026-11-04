@@ -109,6 +109,8 @@ cmd_ship() {
           + (if ($moved | length) > 0 then "; moved to the next milestone to judge: \($moved | join(", "))" else "" end))}]' \
     --arg at "$(vbw_now)" --argjson total "$total"
   record_commit "chore(vbw): ship $(jq -r .milestone.id "$VBW_RECORD")"
+  # The amendments made since the last approval (R250), in the lines vbw show contract --changes prints.
+  contract_amendments_block "$(record_read)"
   jq -r '"shipped \(.milestone.id) \(.milestone.title)"' "$VBW_RECORD"
   # The test suite's cost, and how the milestone changed it (unittime.sh): a report, never a gate.
   # shellcheck source=unittime.sh
