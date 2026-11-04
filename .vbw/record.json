@@ -1,6 +1,15 @@
 {
   "schema": 8,
-  "lease": null,
+  "lease": {
+    "run": "qa-20261104T162318Z",
+    "kind": "qa",
+    "started_at": "2026-11-04T16:23:18Z",
+    "files": [],
+    "session": "0ee781c3-c5b6-4a6c-889f-04b89f1fba4a",
+    "cost": {
+      "usd": 3171.714183
+    }
+  },
   "protected": [
     "tests/adaptive-results.bats",
     "tests/agent-scratch.bats",
@@ -29257,7 +29266,22 @@
         "guarded: R12 (C11), R22 (C19), R24 (C23), R31 (C27), R32 (C28), R33 (C29), R43 (C42, C43), R44 (C44, C45), R45 (C39, C40, C41), R46 (C46), R47 (C47), R48 (C49, C50), R49 (C48), R61 (C73, C74, C75, C76, C77), R66 (C95), R69 (C110, C120, C122), R70 (C114), R73 (C98), R74 (C99, C100), R78 (C105, C106), R79 (C107), R80 (C108), R81 (C109, C111, C112, C113), R83 (C119), R92 (C131, C132, C133, C134, C135, C136, C137, C138, C139), R93 (C140, C141, C142, C143, C144), R94 (C145, C146, C147, C148), R97 (C153), R98 (C154), R100 (C156), R103 (C160), R104 (C161, C162), R105 (C163), R109 (C168), R110 (C169, C170), R111 (C171, C172, C173, C174, C175), R115 (C181), R118 (C184), R131 (C198), R132 (C199), R134 (C201), R135 (C202), R144 (C208, C209), R147 (C212, C215, C237), R148 (C213, C214, C216, C238), R149 (C217, C218, C219, C220, C221, C222), R152 (C233, C234), R153 (C235, C236, C239), R160 (C247, C263, C264), R161 (C248, C265, C266), R166 (C253, C254, C255, C256, C267), R167 (C257, C258, C259, C260), R168 (C261, C262), R169 (C268), R170 (C269), R174 (C279, C280), R175 (C274, C275), R176 (C276, C277, C278), R181 (C313, C314, C315, C316, C317, C318, C319, C320, C321), R182 (C322, C323, C324, C325, C326), R183 (C327), R184 (C328, C329, C330, C331, C332, C333), R185 (C334, C335, C336, C337, C338, C339, C340, C341, C342, C343), R188 (C350, C351, C352, C353, C354, C355, C356, C357, C358, C359), R192 (C401, C402, C403, C404, C405, C406, C407, C408, C409, C410), R193 (C411, C412), R194 (C417, C418, C419), R195 (C420, C421, C422), R196 (C415, C416), R197 (C413, C414), R202 (C432, C433, C434, C435, C436, C437, C438, C439, C440, C441, C442, C443, C444, C445, C446, C447), R203 (C448, C449, C450), R204 (C451, C452, C453, C454), R205 (C455, C456, C457, C458, C467), R206 (C459, C460), R208 (C464, C465, C466, C468), R209 (C469, C470, C471, C472, C473), R210 (C474, C475, C476), R211 (C477, C478, C479), R212 (C480, C481, C482), R213 (C483, C484), R214 (C485, C486, C487), R215 (C488, C489, C490), R216 (C491, C492, C493), R217 (C494, C495), R218 (C496), R220 (C500, C501, C502, C503), R221 (C504), R223 (C507, C508, C509), R225 (C517, C518, C519), R226 (C510, C511), R228 (C522, C523, C524, C525), R232 (C534), R238 (C545), R246 (C566, C567)",
         "tests: project test command"
       ],
-      "predicted": "standard"
+      "predicted": "standard",
+      "qa": {
+        "result": "pass",
+        "tier": "standard",
+        "tree": "93fd9d0c8da57f646198a884fd9c0874b17a0eb9db702ee4786c66ed08b1d661",
+        "at": "2026-11-04T16:24:57Z",
+        "note": "14/14 checks"
+      },
+      "outcome": {
+        "tier": "standard",
+        "predicted": "standard",
+        "held": true,
+        "fix_rounds": 0,
+        "qa_findings": 0,
+        "escalations": 0
+      }
     },
     {
       "id": "P205",
@@ -74228,6 +74252,16 @@
       "at": "2026-11-04T16:15:51Z",
       "text": "Contract approved: 244 requirements, 579 checks, 606 plans (5dc8ef67ff44)",
       "plans": []
+    },
+    {
+      "id": "D598",
+      "text": "Keep plugin/lib/cmd-doctor.sh as changed by the lead (6197373b, 56bf6dcb): the large-folder loop and the guard self-test, both needed by standards this milestone",
+      "at": "2026-11-04T16:22:57Z"
+    },
+    {
+      "id": "D599",
+      "text": "Keep tools/bench-hooks.sh as changed by the lead (448fad83, 914eab4f): the reference follows the guard and nominal is re-pinned, D593",
+      "at": "2026-11-04T16:23:00Z"
     }
   ],
   "commands": {
