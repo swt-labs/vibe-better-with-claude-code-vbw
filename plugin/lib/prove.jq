@@ -10,9 +10,11 @@ $ev[0] as $ev
 | ([ .requirements[] | select(.proof == "auto") | .id as $id
     | [$r.checks[] | select(.req == $id) | .id] as $ids
     | select($ids | length > 0)
-    | { key: "req", target: $id,
+    # An awaited check not run yet (R250): the requirement stays as it is and no fix opens.
+    | (any($ids[]; $checks[.].awaiting // false) and all($ids[]; ($checks[.].awaiting // false) or ($checks[.] | ok))) as $aw
+    | { key: "req", target: $id, awaiting: $aw,
         pass: all($ids[]; $checks[.] | ok),
-        built: all($r.plans[]; .status == "done" or (any(.reqs[]; . == $id) | not)),
+        built: (($aw | not) and all($r.plans[]; .status == "done" or (any(.reqs[]; . == $id) | not))),
         note: ([$ids[] | select($checks[.] | ok | not) | "\(.) \($checks[.].status)\(if $checks[.].exit != null then " (exit \($checks[.].exit))" else "" end)"] | join(", ")) } ]
   # A documentation-only requirement has no check: it is proven once its plans are done.
   + [ .requirements[] | select(.proof == "auto" and doc_only($r)) | .id as $id
@@ -31,7 +33,7 @@ $ev[0] as $ev
 # Requirements: proven when all their checks pass.
 | .requirements |= map(. as $q
     | ([$req_results[] | select(.target == $q.id)][0]) as $res
-    | if $res == null then . else .status = (if $res.pass then "proven" else "failing" end) end)
+    | if $res == null or ($res.awaiting // false) then . else .status = (if $res.pass then "proven" else "failing" end) end)
 
 # Fixes: close on pass; open on a failure once the work is built (every plan
 # serving the requirement, or every plan for a project command, is done: before

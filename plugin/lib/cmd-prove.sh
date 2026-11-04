@@ -34,7 +34,7 @@ cmd_prove() {
   esac
   vbw_require_project
   cd "$VBW_ROOT" || vbw_die "cannot enter $VBW_ROOT"
-  local causes record checks commands scope undone deviations tree head ev at evf curf noreads mark="" n files='{}' tfs='{}' tfsum alln=0 fp own
+  local causes record checks commands scope undone deviations tree head ev at evf curf noreads mark="" n files='{}' tfs='{}' tfsum alln=0 fp own awaited
   # This session's Stop hook waits while the mark names a live process (R98).
   if [ -n "$(vbw_session)" ]; then
     mark="$VBW_RUNTIME/proving.$(vbw_session)"
@@ -44,6 +44,9 @@ cmd_prove() {
   prooftime_begin
   record=$(record_read)
   checks_begin "$record" strict
+  # A check another plan builds waits, unrun, until that plan is built (R250).
+  awaited=$(prove_awaited "$record")
+  [ -z "$awaited" ] || CHECK_HELD="${CHECK_HELD:+$CHECK_HELD$'\n'}$awaited"
   # The file-system test first: where reads cannot be recorded nothing is reused.
   mkdir -p "$VBW_RUNTIME" || vbw_die "cannot create $VBW_RUNTIME"
   proofsteps_clean
@@ -108,6 +111,8 @@ cmd_prove() {
   prooftime_step saving
   slots_release vbw:save
   checks=$(prove_stamp "$record" check "$checks" "$at" "$WHY_CHECKS")
+  checks=$(printf '%s' "$checks" | jq -c --rawfile a <(printf '%s\n' "$awaited") '($a | split("\n")) as $ids
+    | with_entries(if .value.status == "waiting" and (.key | IN($ids[])) then .value += {awaiting: true, tail: "not run: it awaits the plan that builds it"} else . end)')
   commands=$(prove_stamp "$record" command "$commands" "$at" "$WHY_COMMANDS")
   # A reused pass ended as the check expects: its exit status is the expected one.
   checks=$(proofreuse_join "$(printf '%s' "$record" | jq -c '[.checks[].id]')" "$REUSE_CHECKS" "$checks" \
@@ -231,6 +236,13 @@ prove_unit_names() {
     for c in ${TF_TODO[@]+"${TF_TODO[@]}"}; do printf 'file:%s\n' "$c"; done
     proofsteps_command_names "$1" "$TODO_COMMANDS" | sed 's/^/command:/'
   } | proofsteps_names
+}
+
+# prove_awaited RECORD: the checks, one per line, that a plan awaits (R250) while
+# some other plan of the record is not done: the plan that builds them is not built yet.
+prove_awaited() {
+  printf '%s' "$1" | jq -r '. as $r | [$r.plans[] | . as $p | select((.awaits // []) | length > 0)
+    | select(any($r.plans[]; .id != $p.id and .status != "done")) | .awaits[]] | unique | .[]'
 }
 
 # prove_units RECORD: how many units this proof runs: the checks that are not held,
