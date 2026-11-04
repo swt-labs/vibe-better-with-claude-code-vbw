@@ -240,7 +240,9 @@ DOCS
 # --- awaiting a check, and the amendment told once (check: R250 awaits) -------------
 
 @test "R250 awaits: a plan that awaits a check reaches plan done with its own checks green, reads built, awaiting C3 in vbw status and vbw show roadmap, its requirement stays unproven until the check passes, and then the plan reads done without a second plan done" {
-  edit_record '.plans[0].awaits = ["C3"]'
+  # P2.1 builds what C3 reads, so it serves C3's requirement R1 as well.
+  edit_record '.plans[0].awaits = ["C3"] | .plans[1].reqs = ["R1", "R2"]'
+  as_main approve > /dev/null
   as_main run start build P1.1 > /dev/null
   printf 'paid\n' > src/pay.txt
   as_main commit P1.1 "feat(pay): paid" > /dev/null
@@ -272,6 +274,25 @@ DOCS
   [[ "$output" == *"P1.1 Pay [done]"* && "$output" != *"awaiting"* ]] || { echo "$output"; false; }
   vbw_run status
   [[ "$output" != *"awaiting"* ]] || { echo "$output"; false; }
+}
+
+@test "R250 awaits: an awaited check is held only while a plan serving its requirement is not done: with P1.1 awaiting C3, P2.1 serving the same requirement done and an unrelated P3.1 still planned, every proof runs C3" {
+  edit_record '.plans[0].awaits = ["C3"] | .plans[1].reqs = ["R1", "R2"]
+    | .phases += [{id: "P3", title: "Later", reqs: ["R2"], goal: "later", criteria: ["later"], tier: "express", milestone: .milestone.id}]
+    | .plans += [{id: "P3.1", phase: "P3", title: "Later", reqs: ["R2"], files: ["src/later.txt"], after: ["P2.1"], role: "dev", tasks: ["later"], status: "planned"}]'
+  as_main approve > /dev/null
+  printf 'paid\n' > src/pay.txt
+  edit_record '.plans[0].status = "done" | .plans[1].status = "planned"'
+  vbw_run prove
+  jq -e '.evidence.checks.C3.status != "pass" and .evidence.checks.C3.status != "fail"' .vbw/record.json || { jq -c '.evidence.checks.C3' .vbw/record.json; false; }
+  edit_record '.plans[1].status = "done"'
+  jq -e '.plans[2].status != "done" and .plans[1].status == "done"' .vbw/record.json
+  local n
+  for n in 1 2; do
+    vbw_run prove
+    jq -e '.evidence.checks.C3.status == "pass" or .evidence.checks.C3.status == "fail"' .vbw/record.json || { jq -c '.evidence.checks.C3' .vbw/record.json; false; }
+    edit_record 'del(.evidence.checks.C3)'
+  done
 }
 
 @test "R250 awaits: the amendments made since approval are listed by vbw show contract --changes, never as changed checks or plans, and in the approval block of vbw show contract" {
