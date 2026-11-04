@@ -73218,6 +73218,17 @@
         "P205.1",
         "P206.1"
       ]
+    },
+    {
+      "id": "D589",
+      "text": "D588: lead fixes between waves 2 and 3 of M52: cmd-doctor.sh's large-folder loop piped (loop-writes and quiet-grep standards), amend.bats case 2 asserts schema 4 (the fixture's), standards.bats R248 probe row moved to schema 10 with the top now 9, big-record-helper leftovers allow validated.json; the check-file edits go through one approval",
+      "at": "2026-11-04T02:50:19Z"
+    },
+    {
+      "id": "D590",
+      "at": "2026-11-04T10:05:44Z",
+      "text": "Contract approved: 244 requirements, 579 checks, 606 plans (bb2bddea3e3f)",
+      "plans": []
     }
   ],
   "commands": {

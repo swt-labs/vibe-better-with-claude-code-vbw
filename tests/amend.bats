@@ -83,7 +83,7 @@ table() { jq -r -n -L "$PLUGIN_ROOT/lib" "include \"record-schema\"; $1"; }
   edit_record '.plans[0].amendments = [{what: "file src/card.txt added", at: "2026-11-03T10:00:00Z", session: "01234567"}, {what: "awaits C3", at: "2026-11-03T10:01:00Z", session: null}]
     | .plans[0].awaits = ["C3"] | .checks[0].amendments = [{what: "file tests/pay-data.txt added", at: "2026-11-03T10:02:00Z", session: "01234567"}]
     | .requirements[1].queued = true'
-  jq -e '.schema == 8' .vbw/record.json
+  jq -e '.schema == 4' .vbw/record.json
   vbw_run status
   [ "$status" -eq 0 ] || { echo "$output"; false; }
   "$VBW" todo add "raise the schema" > /dev/null
