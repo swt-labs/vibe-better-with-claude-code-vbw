@@ -107,8 +107,13 @@ next_prepare() {
 # stdout; it writes nothing. The one place the answer is judged, so the command,
 # vbw status and the road (lib/road.sh) read the same one.
 next_answer() {
+  local rc=0
   next_prepare || return $?
-  next_decide
+  next_decide || rc=$?
+  # The pass's file is this call's own: a caller may run it in a subshell, whose
+  # guard list dies with it, so it is removed here, not left to the command's end.
+  vbw_guard_drop "$NP_PASS"
+  return $rc
 }
 
 # next_road_input: next_decide's answer for the road, {} when it cannot be judged
