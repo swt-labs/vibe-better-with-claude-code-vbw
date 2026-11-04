@@ -61,7 +61,7 @@ reads=0
 if [ "\$noinput" = 0 ] && { [ "\$files" = 0 ] || [ "\$stdin" = 1 ]; }; then reads=1; fi
 for a in "\${ORIG[@]}"; do
   if [ -p "\$a" ]; then f=\$(mktemp "\$log/shim-in/fd.XXXXXX"); cat "\$a" > "\$f"; a=\$f; fi
-  if [ -f "\$a" ] && [ "\$(wc -c < "\$a")" -ge 1048576 ]; then big=1; fi
+  if [ -f "\$a" ] && [ "\$(wc -c < "\$a")" -ge \${SHIM_BIG:-1048576} ]; then big=1; fi
   args+=("\$a")
 done
 line=\$(printf '%s' "\${ORIG[*]}" | tr '\n' ' ' | cut -c1-160)
@@ -69,7 +69,7 @@ printf '%s\n' "\$line" >> "\$log/calls.log"
 case " \${ORIG[*]} " in *record.jq*) printf '%s\n' "\$line" >> "\$log/validator.log" ;; esac
 if [ "\$reads" = 1 ] && [ ! -t 0 ]; then
   f=\$(mktemp "\$log/shim-in/in.XXXXXX"); cat > "\$f"
-  [ "\$(wc -c < "\$f")" -lt 1048576 ] || big=1
+  [ "\$(wc -c < "\$f")" -lt \${SHIM_BIG:-1048576} ] || big=1
   [ "\$big" = 0 ] || printf '%s\n' "\$line" >> "\$log/big.log"
   exec "\$real" "\${args[@]}" < "\$f"
 fi
@@ -203,7 +203,7 @@ nexts() {
   (cd "$BIG" && "$VBW" status > /dev/null)
   counted next --json
   [ "$CODE" -eq 0 ] || { echo "$OUT"; false; }
-  printf '%s' "$OUT" | jq -e '.action | type == "string"' > /dev/null
+  printf '%s' "$OUT" | jq -e '.action | type == "string"' > /dev/null || { echo "$OUT"; false; }
   [ "$(calls big)" -le 2 ] || { echo "vbw next --json parsed the record $(calls big) times:"; cat "$TEST_ROOT/big.log"; false; }
   counted status
   [ "$CODE" -eq 0 ] || { echo "$OUT"; false; }
@@ -243,4 +243,30 @@ nexts() {
     VBW_SESSION_ID=sess-1 "$VBW" next --json < /dev/null
   )
   printf '%s' "$out" | jq -e '.rename_hint == null' > /dev/null || { echo "hint with one chat: $out"; false; }
+}
+
+# kept_bulk: put the large twin's bulk where the working record keeps it (the files of its
+# plans, the evidence's output), not in finished history, which the working record drops.
+kept_bulk() {
+  jq -c --arg pad "$(printf '%60s' '' | tr ' ' x)" '.plans |= map(.files += [range(0; 250) | "src/bulk/\(.)-\($pad)"])' \
+    "$BIG/.vbw/record.json" > "$TEST_ROOT/bulk.json"
+  cp "$TEST_ROOT/bulk.json" "$BIG/.vbw/record.json"
+  rm -f "$BIG/.vbw/runtime/glance.json" "$BIG/.vbw/runtime/validated.json"
+}
+
+@test "R249 one pass: with the bulk in what the working record keeps, not in finished history, vbw next --json and vbw status each still read a working-record-sized input (100 KB or more) in at most two jq calls" {
+  shim
+  kept_bulk
+  # The contract planned and approved, as a build is: the state vbw next answers most often.
+  twin_doc > "$TEST_ROOT/doc.json"
+  (cd "$BIG" && "$VBW" apply < "$TEST_ROOT/doc.json" > /dev/null && "$VBW" approve > /dev/null && "$VBW" status > /dev/null) || { echo "the large twin could not be planned and approved"; false; }
+  export SHIM_BIG=100000
+  [ "$(wc -c < "$BIG/.vbw/record.json")" -gt 1000000 ]
+  counted next --json
+  [ "$CODE" -eq 0 ] || { echo "$OUT"; false; }
+  printf '%s' "$OUT" | jq -e '.action | type == "string"' > /dev/null || { echo "$OUT"; false; }
+  [ "$(calls big)" -le 2 ] || { echo "vbw next --json parsed a record-sized input $(calls big) times:"; cat "$TEST_ROOT/big.log"; false; }
+  counted status
+  [ "$CODE" -eq 0 ] || { echo "$OUT"; false; }
+  [ "$(calls big)" -le 2 ] || { echo "vbw status parsed a record-sized input $(calls big) times:"; cat "$TEST_ROOT/big.log"; false; }
 }
