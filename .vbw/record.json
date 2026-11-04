@@ -69342,7 +69342,7 @@
       "id": "F351",
       "command": "test",
       "attempts": 0,
-      "status": "open",
+      "status": "fixed",
       "note": "test fail"
     }
   ],
@@ -84031,6 +84031,17 @@
         "ended": "2026-11-04T12:47:24Z",
         "cost": {
           "usd": 1.123056
+        }
+      },
+      {
+        "id": "fix-20261104T134751Z",
+        "kind": "fix",
+        "session": "0ee781c3-c5b6-4a6c-889f-04b89f1fba4a",
+        "milestone": "M52",
+        "started": "2026-11-04T13:47:51Z",
+        "ended": "2026-11-04T14:49:31Z",
+        "cost": {
+          "usd": 0.915632
         }
       }
     ],
