@@ -163,8 +163,8 @@ registry() {
   rm -rf "$dir"
   mkdir -p "$dir"
   for i in $(seq 1 "$1"); do
-    printf '{"sessionId": "sess-%s", "cwd": "%s", "name": "Chat %s", "nameSource": "auto", "updatedAt": %s, "status": "idle"}\n' \
-      "$i" "$PWD" "$i" "$((1792300000000 + i))" > "$dir/$((1000 + i)).json"
+    printf '{"sessionId": "sess-%s", "cwd": "%s/sub %s", "name": "Chat %s", "nameSource": "auto", "updatedAt": %s, "status": "idle"}\n' \
+      "$i" "$PWD" "$i" "$i" "$((1792300000000 + i))" > "$dir/$((1000 + i)).json"
   done
   for i in 1 2 3; do
     printf '{"sessionId": "other-%s", "cwd": "%s/elsewhere %s", "name": "Other %s", "nameSource": "auto", "updatedAt": 1792300000000, "status": "idle"}\n' \
