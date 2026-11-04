@@ -239,10 +239,10 @@ prove_unit_names() {
 }
 
 # prove_awaited RECORD: the checks, one per line, that a plan awaits (R250) while
-# some other plan of the record is not done: the plan that builds them is not built yet.
+# another plan serving the check's requirement is not done: the plan that builds it is not built yet.
 prove_awaited() {
-  printf '%s' "$1" | jq -r '. as $r | [$r.plans[] | . as $p | select((.awaits // []) | length > 0)
-    | select(any($r.plans[]; .id != $p.id and .status != "done")) | .awaits[]] | unique | .[]'
+  printf '%s' "$1" | jq -r '. as $r | [$r.plans[] | . as $p | (.awaits // [])[] | . as $c
+    | select(any($r.checks[]; .id == $c and (.req as $q | any($r.plans[]; .id != $p.id and ((.reqs // []) | index($q) != null) and .status != "done")))) | $c] | unique | .[]'
 }
 
 # prove_units RECORD: how many units this proof runs: the checks that are not held,
