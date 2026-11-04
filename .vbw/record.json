@@ -1,5 +1,5 @@
 {
-  "schema": 8,
+  "schema": 9,
   "lease": null,
   "protected": [
     "tests/adaptive-results.bats",
@@ -65441,13 +65441,14 @@
         "plugin/lib/cmd-approve.sh",
         "plugin/lib/contract.sh",
         "plugin/lib/cmd-ship.sh",
-        "docs/workflows.md"
+        "docs/workflows.md",
+        "plugin/lib/cmd-show.sh"
       ],
       "after": [
         "P201.3",
         "P202.1"
       ],
-      "status": "blocked",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "cmd-apply.sh: vbw apply --amend < doc, the main session's fourth mode, on an approved contract only (else refused in one line naming \"not approved\" and \"--patch\"), with or without an open run (the run-open refusal does not apply to it): the document holds plans[] with id and files (additions only; a protected check file is refused in one line naming the file and \"protected check file\") or awaits (check ids of the plan's own requirements; another requirement's check is refused naming the check and the requirement), and checks[] with id and files (additions only); an unknown id, a document that is not JSON, and any other field or any removal (a title, a run, an exit, an output, a timeout, an after, a rule, a phase, a file taken away) is refused in one line naming the field, \"--patch\" and approval, with the record unchanged; the kept-field lists of the full apply and --patch keep a plan's amendments and awaits and a check's amendments across re-plans (tests/amend.bats, filter 'R250 amend')",
@@ -65456,7 +65457,146 @@
         "contract.sh and cmd-ship.sh: one helper prints the block vbw show contract --changes, vbw show contract and vbw ship share: the heading \"amendments since the last approval:\" and one line per amendment, two-space indented, \"  P1.1: file src/card.txt added (2026-11-03T10:00:00Z, session 01234567)\" (\"session unknown\" for null), plans then checks in record order; vbw ship prints it before its \"shipped M1 ...\" line whenever amendments are recorded (tests/amend.bats, the ship case of filter 'R250 amend')",
         "docs/workflows.md: the apply table gains the --amend row (the three changes it may record, what it refuses and sends to --patch, what it records on the plan or check, that the contract stays approved and the run open, the router's one chat line) and the --patch row drops vbw plan reset for a check change on a started plan"
       ],
-      "note": "Tasks 1-5 are built and committed; C575 passes 4 of 6 cases. Case 1 ends with grep -q on the whole session id in .vbw/record.json, but vbw run start (plugin/lib/cmd-run.sh, not this plan's file) stores the full id in lease.session by design, so it cannot pass in this plan's files. Case 6 (ship) needs vbw show contract --changes to print the amendments block (plugin/lib/cmd-show.sh, P202.4's file); the shared helper contract_amendments_block exists and vbw ship prints it. Mutation step not run."
+      "amendments": [
+        {
+          "what": "file plugin/lib/cmd-show.sh added",
+          "at": "2026-11-04T10:55:58Z",
+          "session": "0ee781c3"
+        }
+      ],
+      "mutations": [
+        {
+          "task": 5,
+          "none": "docs/workflows.md is prose; no check reads it",
+          "at": "2026-11-04T11:01:03Z"
+        },
+        {
+          "rule": {
+            "req": "R250",
+            "text": "vbw apply --amend adds a file to a plan's files (the lease follows during a run) or to a check's files (the protected list follows), or records awaits, while the contract stays approved and an open run stays open"
+          },
+          "what": "the lease no longer follows an added plan file",
+          "files": [
+            "plugin/lib/cmd-apply.sh"
+          ],
+          "checks": {
+            "C575": "red"
+          },
+          "result": "red",
+          "at": "2026-11-04T11:03:46Z",
+          "head": "8ca0a8087bc9b746b3e8482372971f8440ad561f",
+          "tree": "6c671fe9a832080ecc2e154bc3831e3c5479e598",
+          "contract": "17235e787dc418c4f6e42948436a8b9e87d6e22b086a3cd7565ced5245cadd6f"
+        },
+        {
+          "rule": {
+            "req": "R250",
+            "text": "a protected check file added to a plan is refused naming it and the protected rule; a check of another requirement in awaits is refused naming the check and the requirement; an unknown id and a document that is not JSON are refused"
+          },
+          "what": "a protected check file is accepted among a plan's files",
+          "files": [
+            "plugin/lib/cmd-apply.sh"
+          ],
+          "checks": {
+            "C575": "red"
+          },
+          "result": "red",
+          "at": "2026-11-04T11:03:49Z",
+          "head": "8ca0a8087bc9b746b3e8482372971f8440ad561f",
+          "tree": "6c671fe9a832080ecc2e154bc3831e3c5479e598",
+          "contract": "17235e787dc418c4f6e42948436a8b9e87d6e22b086a3cd7565ced5245cadd6f"
+        },
+        {
+          "rule": {
+            "req": "R250",
+            "text": "a change to a check's command or expected result, a requirement's text, a plan's title, after or rules, a phase or any removal is never an amendment: refused in one line naming the field and vbw apply --patch with approval, record unchanged"
+          },
+          "what": "a plan's title is accepted as an amendment field",
+          "files": [
+            "plugin/lib/cmd-apply.sh"
+          ],
+          "checks": {
+            "C575": "red"
+          },
+          "result": "red",
+          "at": "2026-11-04T11:03:53Z",
+          "head": "8ca0a8087bc9b746b3e8482372971f8440ad561f",
+          "tree": "6c671fe9a832080ecc2e154bc3831e3c5479e598",
+          "contract": "17235e787dc418c4f6e42948436a8b9e87d6e22b086a3cd7565ced5245cadd6f"
+        },
+        {
+          "rule": {
+            "req": "R250",
+            "text": "an unapproved contract cannot be amended (refused naming --patch); with no run open an approved contract is amended the same way"
+          },
+          "what": "an unapproved contract is amended anyway",
+          "files": [
+            "plugin/lib/cmd-apply.sh"
+          ],
+          "checks": {
+            "C575": "red"
+          },
+          "result": "red",
+          "at": "2026-11-04T11:03:57Z",
+          "head": "8ca0a8087bc9b746b3e8482372971f8440ad561f",
+          "tree": "6c671fe9a832080ecc2e154bc3831e3c5479e598",
+          "contract": "17235e787dc418c4f6e42948436a8b9e87d6e22b086a3cd7565ced5245cadd6f"
+        },
+        {
+          "rule": {
+            "req": "R250",
+            "text": "each amendment is recorded on the plan or check as what, when (ISO UTC) and the session's 8-character short id, never a name (D445); the next approval clears them"
+          },
+          "what": "the whole session id is recorded, not the short one",
+          "files": [
+            "plugin/lib/cmd-apply.sh"
+          ],
+          "checks": {
+            "C575": "red"
+          },
+          "result": "red",
+          "at": "2026-11-04T11:04:00Z",
+          "head": "8ca0a8087bc9b746b3e8482372971f8440ad561f",
+          "tree": "6c671fe9a832080ecc2e154bc3831e3c5479e598",
+          "contract": "17235e787dc418c4f6e42948436a8b9e87d6e22b086a3cd7565ced5245cadd6f"
+        },
+        {
+          "rule": {
+            "req": "R250",
+            "text": "a check change on a started plan by vbw apply --patch keeps the plan's status, tasks and commits and the run open, and the contract then reads NOT APPROVED; a plan --patch during a run is still refused"
+          },
+          "what": "a check patch during a build run is refused again",
+          "files": [
+            "plugin/lib/cmd-apply.sh"
+          ],
+          "checks": {
+            "C575": "red"
+          },
+          "result": "red",
+          "at": "2026-11-04T11:04:03Z",
+          "head": "8ca0a8087bc9b746b3e8482372971f8440ad561f",
+          "tree": "6c671fe9a832080ecc2e154bc3831e3c5479e598",
+          "contract": "17235e787dc418c4f6e42948436a8b9e87d6e22b086a3cd7565ced5245cadd6f"
+        },
+        {
+          "rule": {
+            "req": "R250",
+            "text": "vbw ship lists the amendments made since the last approval, in the very lines vbw show contract --changes prints, before it says shipped; the amendments stay on the plan or check as history"
+          },
+          "what": "the ship no longer lists the amendments",
+          "files": [
+            "plugin/lib/cmd-ship.sh"
+          ],
+          "checks": {
+            "C575": "red"
+          },
+          "result": "red",
+          "at": "2026-11-04T11:04:06Z",
+          "head": "8ca0a8087bc9b746b3e8482372971f8440ad561f",
+          "tree": "6c671fe9a832080ecc2e154bc3831e3c5479e598",
+          "contract": "17235e787dc418c4f6e42948436a8b9e87d6e22b086a3cd7565ced5245cadd6f"
+        }
+      ]
     },
     {
       "id": "P202.3",
@@ -65852,7 +65992,7 @@
         "P201.2",
         "P202.1"
       ],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "sessions.sh and record.sh: vbw run start records the run's starting commit: holder_write adds head (git rev-parse HEAD of the project, null when there is no commit) to .vbw/runtime/holder.json beside run, session and session_name, and the glance's holder carries it ({run, session, session_name, head}); the record never holds it (no schema change, D445); docs/record.md's glance sentence names head",
@@ -65860,6 +66000,266 @@
         "guard-bash.jq, the first pass: under any run lease, a simple command whose program is an interpreter (python with any version suffix, pypy, node, nodejs, perl, ruby, php, lua, deno, bun) or a shell (sh, bash, zsh) with a file as its program (the first argument that is not an option, with -c, -e, -m and - still the inline forms; or a file redirected into it with <) is a script-file call; its text is taken from the same command when that command writes the file (a heredoc body whose command redirects or tees into the file, a printf or echo of a literal into it) and judged at once, an interpreter's text by program_writes and unreadable_calls, a shell's text by commands() to the same depth (redirects, shell_writes, nested programs and heredocs), with the refusals in the pinned forms of tests/guard-script-files.bats: \"<FILE> (run by <interpreter>): <call as written> writes <target>: \" followed by the lease's own text for that target (lease_write_denial, outside_denial or the unresolvable-path text) and its Next line; \"<FILE> (run by <interpreter>): \" followed by unreadable_denial's text for a call whose target the guard cannot name; a script path holding ~ or a shell expansion, or a missing file no part of the command writes: \"<PATH> (run by <interpreter>): a script the guard cannot read: its path holds a shell expansion, or no readable file is at it and this command does not write it\\nNext: write the program with the Edit tool and run it, or give the program inline (-c, or a heredoc on standard input)\"; a file the command does not write becomes one request line script<TAB><start commit or ->TAB<interpreter>TAB<path as written>TAB<absolute path>, the start commit from the glance's holder.head; outside a run nothing changes (the may_matter skip still applies)",
         "read.sh and guard-read.jq: for each script line one git lookup, git -C ROOT ls-files --error-unmatch -- FILE && git -C ROOT diff --quiet START -- FILE (START the run's starting commit, HEAD standing in for -): committed and unchanged means the file is not read and the call is allowed as today; otherwise the file is read by --rawfile (missing or unreadable: the unreadable-script refusal above); guard-read.jq judges the text with programs.jq and common.jq exactly as the first pass judges same-command text, python < FILE included, with the identical refusal forms; the disk read and the git lookup happen only on this path (tests/guard-script-files.bats counts the hook's git calls)",
         "tools/bench-hooks.sh and docs/guards.md: a script input in GUARD_INPUTS (a build agent's python3 .vbw/runtime/scratch/x.py with the untracked file present in every measured project folder, so script.json is measured plain, on the large record and per check count) within the hook budget, every existing case still within it, tests/big-record-hooks.bats answering the same on both twins; docs/guards.md's Programs paragraph replaces \"a script file run by name is not read\" with the new rule in plain words (which files are read, that the project's committed scripts run as before, what the refusal names, the starting-commit rule and that HEAD stands in for a run started by an older VBW) and the \"What is denied\" table gains the row with the pinned refusal"
+      ],
+      "mutations": [
+        {
+          "rule": {
+            "req": "R255",
+            "text": "under a run lease, an interpreter or shell run with a file as its program (the first argument that is not an option, or a file redirected in with <) takes the program's text from the same command when that command writes the file by heredoc, tee, echo or printf, with no disk read and no git call"
+          },
+          "what": "text mode never chosen: the same-command writer is no longer recognised",
+          "files": [
+            "plugin/hooks/guard-bash.jq"
+          ],
+          "checks": {
+            "C584": "red"
+          },
+          "result": "red",
+          "at": "2026-11-04T11:33:29Z",
+          "head": "504c63dcb9abe1c414aa6e07ee67cd4223c37f84",
+          "tree": "6fed21e0faacdb689bde1e4c67f03f02488912c8",
+          "contract": "17235e787dc418c4f6e42948436a8b9e87d6e22b086a3cd7565ced5245cadd6f"
+        },
+        {
+          "rule": {
+            "req": "R255",
+            "text": "a file the command does not write is read from disk when it is untracked, ignored or changed since the commit the run started on"
+          },
+          "what": "a committed file changed on disk counts as unchanged: the diff against the start commit is skipped",
+          "files": [
+            "plugin/hooks/read.sh"
+          ],
+          "checks": {
+            "C584": "red"
+          },
+          "result": "red",
+          "at": "2026-11-04T11:33:32Z",
+          "head": "504c63dcb9abe1c414aa6e07ee67cd4223c37f84",
+          "tree": "6fed21e0faacdb689bde1e4c67f03f02488912c8",
+          "contract": "17235e787dc418c4f6e42948436a8b9e87d6e22b086a3cd7565ced5245cadd6f"
+        },
+        {
+          "rule": {
+            "req": "R255",
+            "text": "a committed script unchanged since the run started runs unread and allowed, as today, at the cost of one git lookup"
+          },
+          "what": "a committed unchanged script is no longer recognised: every script is read",
+          "files": [
+            "plugin/hooks/read.sh"
+          ],
+          "checks": {
+            "C584": "red"
+          },
+          "result": "red",
+          "at": "2026-11-04T11:33:35Z",
+          "head": "504c63dcb9abe1c414aa6e07ee67cd4223c37f84",
+          "tree": "6fed21e0faacdb689bde1e4c67f03f02488912c8",
+          "contract": "17235e787dc418c4f6e42948436a8b9e87d6e22b086a3cd7565ced5245cadd6f"
+        },
+        {
+          "rule": {
+            "req": "R255",
+            "text": "a script committed during the run is still read, because the comparison uses the run's starting commit recorded at vbw run start; HEAD stands in when none was recorded"
+          },
+          "what": "the glance drops the run's starting commit, so HEAD stands in",
+          "files": [
+            "plugin/lib/record.sh"
+          ],
+          "checks": {
+            "C584": "red"
+          },
+          "result": "red",
+          "at": "2026-11-04T11:33:38Z",
+          "head": "504c63dcb9abe1c414aa6e07ee67cd4223c37f84",
+          "tree": "6fed21e0faacdb689bde1e4c67f03f02488912c8",
+          "contract": "17235e787dc418c4f6e42948436a8b9e87d6e22b086a3cd7565ced5245cadd6f"
+        },
+        {
+          "rule": {
+            "req": "R255",
+            "text": "the text's literal writes are judged by the inline rules with the lease's own text: a protected check file or a file outside the plan's files is refused by name (R76)"
+          },
+          "what": "the refusal drops the lease's own text after the target",
+          "files": [
+            "plugin/hooks/programs.jq"
+          ],
+          "checks": {
+            "C584": "red"
+          },
+          "result": "red",
+          "at": "2026-11-04T11:33:41Z",
+          "head": "504c63dcb9abe1c414aa6e07ee67cd4223c37f84",
+          "tree": "6fed21e0faacdb689bde1e4c67f03f02488912c8",
+          "contract": "17235e787dc418c4f6e42948436a8b9e87d6e22b086a3cd7565ced5245cadd6f"
+        },
+        {
+          "rule": {
+            "req": "R255",
+            "text": "a write whose target the guard cannot name is refused as unreadable, the call named (R219)"
+          },
+          "what": "a script's call with a target the guard cannot name is no longer found",
+          "files": [
+            "plugin/hooks/programs.jq"
+          ],
+          "checks": {
+            "C584": "green"
+          },
+          "result": "survivor",
+          "at": "2026-11-04T11:33:44Z",
+          "head": "504c63dcb9abe1c414aa6e07ee67cd4223c37f84",
+          "tree": "6fed21e0faacdb689bde1e4c67f03f02488912c8",
+          "contract": "17235e787dc418c4f6e42948436a8b9e87d6e22b086a3cd7565ced5245cadd6f"
+        },
+        {
+          "rule": {
+            "req": "R255",
+            "text": "a shell script run by sh, bash or zsh is read as a command: a redirect into a protected check file is refused by name, a redirect target holding a shell expansion as today's unresolvable path, and a nested interpreter program inside it is read"
+          },
+          "what": "a shell script is read as a program, not as a command",
+          "files": [
+            "plugin/hooks/programs.jq"
+          ],
+          "checks": {
+            "C584": "red"
+          },
+          "result": "red",
+          "at": "2026-11-04T11:33:47Z",
+          "head": "504c63dcb9abe1c414aa6e07ee67cd4223c37f84",
+          "tree": "6fed21e0faacdb689bde1e4c67f03f02488912c8",
+          "contract": "17235e787dc418c4f6e42948436a8b9e87d6e22b086a3cd7565ced5245cadd6f"
+        },
+        {
+          "rule": {
+            "req": "R255",
+            "text": "the refusal names the script file, the interpreter and the call as written before the rule and its Next line: <FILE> (run by <interpreter>): <call as written> writes <target>: <the lease's text>"
+          },
+          "what": "the refusal leaves out the interpreter",
+          "files": [
+            "plugin/hooks/programs.jq"
+          ],
+          "checks": {
+            "C584": "red"
+          },
+          "result": "red",
+          "at": "2026-11-04T11:33:50Z",
+          "head": "504c63dcb9abe1c414aa6e07ee67cd4223c37f84",
+          "tree": "6fed21e0faacdb689bde1e4c67f03f02488912c8",
+          "contract": "17235e787dc418c4f6e42948436a8b9e87d6e22b086a3cd7565ced5245cadd6f"
+        },
+        {
+          "rule": {
+            "req": "R255",
+            "text": "a script the guard cannot obtain under a lease (a path holding ~ or a shell expansion, a missing or unreadable file no part of the command writes) is refused as unreadable, naming the path and the next step (the Edit tool, or the program inline), never allowed by default"
+          },
+          "what": "a missing script file reads as an empty one and is allowed",
+          "files": [
+            "plugin/hooks/read.sh"
+          ],
+          "checks": {
+            "C584": "red"
+          },
+          "result": "red",
+          "at": "2026-11-04T11:33:54Z",
+          "head": "504c63dcb9abe1c414aa6e07ee67cd4223c37f84",
+          "tree": "6fed21e0faacdb689bde1e4c67f03f02488912c8",
+          "contract": "17235e787dc418c4f6e42948436a8b9e87d6e22b086a3cd7565ced5245cadd6f"
+        },
+        {
+          "rule": {
+            "req": "R255",
+            "text": "a program that writes nothing or only inside the plan's files passes; python < FILE is read like python FILE"
+          },
+          "what": "a file redirected in with < is not taken as the script",
+          "files": [
+            "plugin/hooks/programs.jq"
+          ],
+          "checks": {
+            "C584": "red"
+          },
+          "result": "red",
+          "at": "2026-11-04T11:33:57Z",
+          "head": "504c63dcb9abe1c414aa6e07ee67cd4223c37f84",
+          "tree": "6fed21e0faacdb689bde1e4c67f03f02488912c8",
+          "contract": "17235e787dc418c4f6e42948436a8b9e87d6e22b086a3cd7565ced5245cadd6f"
+        },
+        {
+          "rule": {
+            "req": "R255",
+            "text": "the inline forms (-c, -e, -m, a heredoc on standard input) answer as before with no git call; outside a run every case is allowed and nothing is read"
+          },
+          "what": "python -m is no longer an inline form",
+          "files": [
+            "plugin/hooks/programs.jq"
+          ],
+          "checks": {
+            "C584": "red"
+          },
+          "result": "red",
+          "at": "2026-11-04T11:34:00Z",
+          "head": "504c63dcb9abe1c414aa6e07ee67cd4223c37f84",
+          "tree": "6fed21e0faacdb689bde1e4c67f03f02488912c8",
+          "contract": "17235e787dc418c4f6e42948436a8b9e87d6e22b086a3cd7565ced5245cadd6f"
+        },
+        {
+          "rule": {
+            "req": "R255",
+            "text": "the disk read and the git lookup happen only for a script run by name under a lease with no same-command text, at most one lookup per file; tools/bench-hooks.sh measures a script-file input (GUARD_INPUTS) within the hook budget"
+          },
+          "what": "the bench no longer measures the script input",
+          "files": [
+            "tools/bench-hooks.sh"
+          ],
+          "checks": {
+            "C584": "red"
+          },
+          "result": "red",
+          "at": "2026-11-04T11:34:03Z",
+          "head": "504c63dcb9abe1c414aa6e07ee67cd4223c37f84",
+          "tree": "6fed21e0faacdb689bde1e4c67f03f02488912c8",
+          "contract": "17235e787dc418c4f6e42948436a8b9e87d6e22b086a3cd7565ced5245cadd6f"
+        },
+        {
+          "rule": {
+            "req": "R255",
+            "text": "the record and its schema are untouched: the guard writes nothing, and the run's starting commit lives in .vbw/runtime/holder.json and the glance only"
+          },
+          "what": "the guard writes to the record",
+          "files": [
+            "plugin/hooks/read.sh"
+          ],
+          "checks": {
+            "C584": "red"
+          },
+          "result": "red",
+          "at": "2026-11-04T11:34:06Z",
+          "head": "504c63dcb9abe1c414aa6e07ee67cd4223c37f84",
+          "tree": "6fed21e0faacdb689bde1e4c67f03f02488912c8",
+          "contract": "17235e787dc418c4f6e42948436a8b9e87d6e22b086a3cd7565ced5245cadd6f"
+        },
+        {
+          "rule": {
+            "req": "R255",
+            "text": "a write whose target the guard cannot name is refused as unreadable, the call named (R219)"
+          },
+          "what": "a script's call with a target the guard cannot name is no longer found",
+          "files": [
+            "plugin/hooks/programs.jq"
+          ],
+          "checks": {
+            "C584": "red"
+          },
+          "result": "red",
+          "at": "2026-11-04T11:35:39Z",
+          "head": "6b0f6a376a12ab9755c45bd8c3377e66213431b9",
+          "tree": "f93ec1348196b346fe8eacbd41b7f81b68983632",
+          "contract": "fe7103fe421fc1ba2d564b4d18f9c6d39a0349b27dbfa4c6019d32310ef8e255",
+          "strengthened": [
+            "tests/guard-script-files.bats"
+          ],
+          "pending": [
+            "tests/guard-script-files.bats"
+          ]
+        }
       ]
     }
   ],
@@ -73425,6 +73825,11 @@
       "at": "2026-11-04T10:55:10Z",
       "text": "Contract approved: 244 requirements, 579 checks, 606 plans (a5c486c886fc)",
       "plans": []
+    },
+    {
+      "id": "D592",
+      "text": "Lead fixes after wave 4 of M52: amend.bats case 1 now keeps the whole session id out of the amendments, not out of the record, because the lease holds it by design; bench-select counts 45 cases with the cross-project guard; doctor's guard self-test reads the deny among the guard's lines; the show contract --changes wiring of the amendments block moves to P202.2 by vbw apply --amend, because its ship case needs it and P202.4 comes later",
+      "at": "2026-11-04T10:55:36Z"
     }
   ],
   "commands": {
@@ -83034,6 +83439,17 @@
         "ended": "2026-11-04T10:52:56Z",
         "cost": {
           "usd": 5.469306
+        }
+      },
+      {
+        "id": "build-20261104T105611Z",
+        "kind": "build",
+        "session": "0ee781c3-c5b6-4a6c-889f-04b89f1fba4a",
+        "milestone": "M52",
+        "started": "2026-11-04T10:56:11Z",
+        "ended": "2026-11-04T11:36:55Z",
+        "cost": {
+          "usd": 5.26149
         }
       }
     ],
