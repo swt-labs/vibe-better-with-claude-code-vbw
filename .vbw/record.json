@@ -1,5 +1,5 @@
 {
-  "schema": 9,
+  "schema": 8,
   "lease": null,
   "protected": [
     "tests/adaptive-results.bats",
@@ -65457,13 +65457,6 @@
         "contract.sh and cmd-ship.sh: one helper prints the block vbw show contract --changes, vbw show contract and vbw ship share: the heading \"amendments since the last approval:\" and one line per amendment, two-space indented, \"  P1.1: file src/card.txt added (2026-11-03T10:00:00Z, session 01234567)\" (\"session unknown\" for null), plans then checks in record order; vbw ship prints it before its \"shipped M1 ...\" line whenever amendments are recorded (tests/amend.bats, the ship case of filter 'R250 amend')",
         "docs/workflows.md: the apply table gains the --amend row (the three changes it may record, what it refuses and sends to --patch, what it records on the plan or check, that the contract stays approved and the run open, the router's one chat line) and the --patch row drops vbw plan reset for a check change on a started plan"
       ],
-      "amendments": [
-        {
-          "what": "file plugin/lib/cmd-show.sh added",
-          "at": "2026-11-04T10:55:58Z",
-          "session": "0ee781c3"
-        }
-      ],
       "mutations": [
         {
           "task": 5,
@@ -73855,6 +73848,12 @@
       "id": "D593",
       "text": "Hook budget for a script file run by name (R255): two budgets, because it takes two jq passes; this path is rare, runs only under a run lease and precedes an interpreter's own startup; the alternative, one jq reading the file, needs a redesign of the hook pipeline for 14 ms; every other call keeps 20 ms. The bench reference follows the guard's bytes (guard-bash.jq + programs.jq), nominal re-pinned at 28.9 ms",
       "at": "2026-11-04T11:43:43Z"
+    },
+    {
+      "id": "D594",
+      "at": "2026-11-04T11:52:04Z",
+      "text": "Contract approved: 244 requirements, 579 checks, 606 plans (4d0e087bb911)",
+      "plans": []
     }
   ],
   "commands": {

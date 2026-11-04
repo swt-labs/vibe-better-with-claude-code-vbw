@@ -388,7 +388,7 @@ bench_split() {
 # (jq -nc --rawfile glance F --arg root X --arg dir X --arg open 0 -f PROGRAM - DOCUMENT
 # END), so its ratio tracks the hooks' startup-and-parse-bound cost on every runner. The
 # program and the document are written by the bench itself with fixed, deterministic
-# content (the program within 10% of guard-bash.jq's 25061 bytes), never the shipped
+# content (the program within 10% of the Bash guard and the programs it includes), never the shipped
 # guard or a project file, so the reference does not drift with releases; the sizes are
 # stated in the provenance comment. VBW_BENCH_REFERENCE_FILES=DIR (tests) writes the two
 # files into DIR and exits without measuring. The nominal figure is remeasured for the
@@ -478,14 +478,14 @@ provenance() { awk '/^NOMINAL_MS=/ { exit } /^#/ { b = b $0 " "; next } { b = ""
   [ "$(printf '%s' "$p" | grep -oE '2026-1[0-2]-[0-9]{2}|202[7-9]-[0-9]{2}-[0-9]{2}' | wc -l | tr -d ' ')" -ge 2 ] || { echo "fewer than two dated measures"; false; }
 }
 
-@test "R233: the reference keeps the guard's proportion: its program is within 10% of the shipped Bash guard's size (PR #730 grew the guard; the reference follows or the guard shrinks)" {
+@test "R233: the reference keeps the guard's proportion: its program is within 10% of the size of the shipped Bash guard and the programs.jq it includes (PR #730 grew the guard; the reference follows or the guard shrinks)" {
   local a="$TEST_ROOT/ref" size guard
   run env VBW_BENCH_REFERENCE_FILES="$a" bash "$BENCH"
   [ "$status" -eq 0 ] || { echo "$output"; false; }
   size=$(wc -c < "$a/reference.jq" | tr -d ' ')
-  guard=$(wc -c < "$PLUGIN_ROOT/hooks/guard-bash.jq" | tr -d ' ')
+  guard=$(cat "$PLUGIN_ROOT/hooks/guard-bash.jq" "$PLUGIN_ROOT/hooks/programs.jq" | wc -c | tr -d ' ')
   [ "$((size * 10))" -ge "$((guard * 9))" ] && [ "$((size * 10))" -le "$((guard * 11))" ] \
-    || { echo "reference program $size bytes is not within 10% of the Bash guard's $guard bytes"; false; }
+    || { echo "reference program $size bytes is not within 10% of the $guard bytes of the Bash guard and programs.jq"; false; }
 }
 
 @test "R233: the gap is never closed by a wider allowance: the bench reads no operating system name and has one nominal figure" {
