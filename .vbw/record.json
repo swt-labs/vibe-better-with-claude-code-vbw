@@ -74485,6 +74485,11 @@
       "at": "2026-11-04T17:50:56Z",
       "text": "Contract approved: 244 requirements, 580 checks, 606 plans (f717a6642585)",
       "plans": []
+    },
+    {
+      "id": "D602",
+      "text": "Fix round 3 of M52: one cause for F359 to F362, F364 to F366: the speed fix skipped the newer-schema refusal on a matching digest, and the digest did not name VBW_SCHEMA_MAX; it now does. F363 was a timeout under load: the file passes alone. tests/big-record-fast.bats line 129 closes stdin, because its jq shim reads stdin and hung for two hours in a run with stdin open",
+      "at": "2026-11-04T21:00:02Z"
     }
   ],
   "commands": {
@@ -84329,6 +84334,17 @@
         "ended": "2026-11-04T17:49:35Z",
         "cost": {
           "usd": 8.7192
+        }
+      },
+      {
+        "id": "fix-20261104T190107Z",
+        "kind": "fix",
+        "session": "0ee781c3-c5b6-4a6c-889f-04b89f1fba4a",
+        "milestone": "M52",
+        "started": "2026-11-04T19:01:07Z",
+        "ended": "2026-11-04T21:00:06Z",
+        "cost": {
+          "usd": 2.784889
         }
       }
     ],

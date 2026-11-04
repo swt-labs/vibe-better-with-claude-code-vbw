@@ -126,7 +126,7 @@ calls() { [ -f "$TEST_ROOT/$1.log" ] && wc -l < "$TEST_ROOT/$1.log" | tr -d ' ' 
   (cd "$BIG" && "$copy" show roadmap > /dev/null)
   for f in record.jq record-schema.jq interview.json; do
     rm -f "$TEST_ROOT/validator.log"
-    (cd "$BIG" && PATH="$TEST_ROOT/shim:$PATH" "$copy" show roadmap > /dev/null)
+    (cd "$BIG" && PATH="$TEST_ROOT/shim:$PATH" "$copy" show roadmap < /dev/null > /dev/null)
     [ "$(calls validator)" -eq 0 ] || { echo "validated with nothing changed (before $f)"; false; }
     case "$f" in
       *.jq) printf '\n# changed\n' >> "$TEST_ROOT/plugin/lib/$f" ;;
