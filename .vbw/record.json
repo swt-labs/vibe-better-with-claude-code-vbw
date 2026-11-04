@@ -74389,6 +74389,12 @@
       "id": "D600",
       "text": "QA round 1 of M52: F357 a vbw:lead agent may run vbw apply (plain, --patch, --add, never --amend) under a plan run, every other agent and run stays refused, because the Lead's job is apply; F358 an awaited check is held only while a plan serving its requirement is not done; F352 queuing only during build and fix runs, as agreed; F353 the guard asks for a nested project under the hook's root too; F354 and F356 next reads from one pass as planned, with a fixture whose bulk is not finished history, the criterion stands",
       "at": "2026-11-04T16:30:51Z"
+    },
+    {
+      "id": "D601",
+      "at": "2026-11-04T17:50:56Z",
+      "text": "Contract approved: 244 requirements, 580 checks, 606 plans (f717a6642585)",
+      "plans": []
     }
   ],
   "commands": {
