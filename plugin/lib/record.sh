@@ -124,12 +124,13 @@ record_glance_current() {
 
 # The digest of the record last found correct (R249): .vbw/runtime/validated.json
 # holds {record, validator}, the sha256 of the record's bytes and of the validator's
-# own text (record.jq, record-schema.jq, interview.json, in that order). A record
+# own text (record.jq, record-schema.jq, interview.json, in that order) and the top
+# schema it reads, because the refusal of a newer schema depends on that too. A record
 # whose bytes and validator match it is not validated again; any other bytes are.
 # A runtime folder that cannot be read or written is never an error: the digest is
 # simply not kept.
 record_validator_digest() {
-  cat "$VBW_LIB/record.jq" "$VBW_LIB/record-schema.jq" "$VBW_LIB/interview.json" 2> /dev/null | vbw_sha256
+  { printf '%s\n' "$VBW_SCHEMA_MAX"; cat "$VBW_LIB/record.jq" "$VBW_LIB/record-schema.jq" "$VBW_LIB/interview.json" 2> /dev/null; } | vbw_sha256
 }
 
 # record_digest_matches FILE: true when the digest file names FILE's bytes and the validator.
