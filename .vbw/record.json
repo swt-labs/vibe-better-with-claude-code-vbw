@@ -19271,7 +19271,7 @@
     },
     {
       "id": "R255",
-      "text": "A program the agent wrote during the run is judged like an inline program (T233; reproduced 2026-11-03: under a build lease, a Dev's one command wrote a Python file into .vbw/runtime/scratch by heredoc and ran it with python FILE, and the file's open('tests/x.sh','w') on a protected check file passed with no decision; the same with the file written by an earlier call, and with a shell script run by bash FILE, passed too; the project's own committed scripts run by name are allowed, as today): when an interpreter or shell (python, node, perl, ruby, php, lua, deno, bun, sh, bash, zsh) runs a file by name under a run lease, the guard reads the program: from the heredoc or redirection that writes that file in the same command when there is one, else from the file itself when it exists and is not a committed, unchanged file of the project at the run's start; that program's writes are judged by the inline rules (R76: a literal target outside the plan's files or on a protected check file is refused by name; R219: a target the guard cannot name is refused as unreadable); a file that is committed and unchanged at the run's start runs as today; a file that cannot be read at all is refused as unreadable under a lease; outside a run nothing changes; the refusal names the script file and the call inside it; the cost stays within the hook budget (one git lookup per script file)",
+      "text": "A program the agent wrote during the run is judged like an inline program (T233; reproduced 2026-11-03: under a build lease, a Dev's one command wrote a Python file into .vbw/runtime/scratch by heredoc and ran it with python FILE, and the file's open('tests/x.sh','w') on a protected check file passed with no decision; the same with the file written by an earlier call, and with a shell script run by bash FILE, passed too; the project's own committed scripts run by name are allowed, as today): when an interpreter or shell (python, node, perl, ruby, php, lua, deno, bun, sh, bash, zsh) runs a file by name under a run lease, the guard reads the program: from the heredoc or redirection that writes that file in the same command when there is one, else from the file itself when it exists and is not a committed, unchanged file of the project at the run's start; that program's writes are judged by the inline rules (R76: a literal target outside the plan's files or on a protected check file is refused by name; R219: a target the guard cannot name is refused as unreadable); a file that is committed and unchanged at the run's start runs as today; a file that cannot be read at all is refused as unreadable under a lease; outside a run nothing changes; the refusal names the script file and the call inside it; the cost stays within the hook budget per pass (two jq passes, so twice the budget, and at most one git lookup per script file; only a script run by name under a lease pays this, every other call keeps one budget)",
       "proof": "auto",
       "status": "open",
       "milestone": "M52",
@@ -19332,7 +19332,7 @@
           "plan": "P206.1"
         },
         {
-          "text": "the disk read and the git lookup happen only for a script run by name under a lease with no same-command text, at most one lookup per file; tools/bench-hooks.sh measures a script-file input (GUARD_INPUTS) within the hook budget",
+          "text": "the disk read and the git lookup happen only for a script run by name under a lease with no same-command text, at most one lookup per file; tools/bench-hooks.sh measures a script-file input (GUARD_INPUTS) within two hook budgets, one per jq pass",
           "check": "C584",
           "plan": "P206.1"
         },
@@ -70498,6 +70498,11 @@
       "id": "T234",
       "text": "A reworded rule keeps its recorded breaks: vbw mutate records a break keyed on the rule's {req, text} (cmd-mutate.sh), so when vbw spec sync rewords a rule (a parenthesis added) the break no longer matches, vbw show plan lists it unnumbered and vbw plan done refuses the next plan for want of a red break; the fix belongs in spec sync (re-key the recorded breaks of a rule whose position in the requirement holds and whose text changed) or in a stable rule key; field case 2026-11-02 from the Rust project: two breaks re-queued and re-run, 8 min of its heavy lane",
       "status": "open"
+    },
+    {
+      "id": "T235",
+      "text": "vbw spec sync drops every rule of a reworded requirement (found 2026-11-04: rewording one clause of R255 removed its 13 rules, restored by hand from the last commit by vbw apply --patch); the rules should stay, marked for the Lead to review; same family as T234",
+      "status": "open"
     }
   ],
   "decisions": [
@@ -73830,6 +73835,11 @@
       "id": "D592",
       "text": "Lead fixes after wave 4 of M52: amend.bats case 1 now keeps the whole session id out of the amendments, not out of the record, because the lease holds it by design; bench-select counts 45 cases with the cross-project guard; doctor's guard self-test reads the deny among the guard's lines; the show contract --changes wiring of the amendments block moves to P202.2 by vbw apply --amend, because its ship case needs it and P202.4 comes later",
       "at": "2026-11-04T10:55:36Z"
+    },
+    {
+      "id": "D593",
+      "text": "Hook budget for a script file run by name (R255): two budgets, because it takes two jq passes; this path is rare, runs only under a run lease and precedes an interpreter's own startup; the alternative, one jq reading the file, needs a redesign of the hook pipeline for 14 ms; every other call keeps 20 ms. The bench reference follows the guard's bytes (guard-bash.jq + programs.jq), nominal re-pinned at 28.9 ms",
+      "at": "2026-11-04T11:43:43Z"
     }
   ],
   "commands": {
