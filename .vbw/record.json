@@ -69515,7 +69515,7 @@
       "id": "F359",
       "req": "R107",
       "attempts": 0,
-      "status": "open",
+      "status": "fixed",
       "note": "C166 fail (exit 1)"
     },
     {
@@ -69543,7 +69543,7 @@
       "id": "F363",
       "req": "R206",
       "attempts": 0,
-      "status": "open",
+      "status": "fixed",
       "note": "C459 timeout"
     },
     {
@@ -69564,7 +69564,7 @@
       "id": "F366",
       "command": "test",
       "attempts": 0,
-      "status": "open",
+      "status": "fixed",
       "note": "test fail"
     }
   ],
@@ -74490,6 +74490,12 @@
       "id": "D602",
       "text": "Fix round 3 of M52: one cause for F359 to F362, F364 to F366: the speed fix skipped the newer-schema refusal on a matching digest, and the digest did not name VBW_SCHEMA_MAX; it now does. F363 was a timeout under load: the file passes alone. tests/big-record-fast.bats line 129 closes stdin, because its jq shim reads stdin and hung for two hours in a run with stdin open",
       "at": "2026-11-04T21:00:02Z"
+    },
+    {
+      "id": "D603",
+      "at": "2026-11-04T21:21:49Z",
+      "text": "Contract approved: 244 requirements, 580 checks, 606 plans (13e9fda6db6b)",
+      "plans": []
     }
   ],
   "commands": {
