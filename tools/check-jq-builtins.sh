@@ -42,7 +42,9 @@ for file in ${files[@]+"${files[@]}"}; do
           while ((p = index(rest, name)) > 0) {
             before = (off + p > 1) ? substr(s, off + p - 1, 1) : ""
             after = substr(s, off + p + length(name), 1)
-            ok = !isword(before)
+            ok = !isword(before) && before != "." && before != "$"
+            # a variable name given to jq (--arg abs ...) is not a builtin call
+            if (ok && substr(s, 1, off + p - 1) ~ /--(arg|argjson|rawfile|slurpfile)[ \t]+$/) ok = 0
             if (call) ok = ok && after == "("
             else ok = ok && !isword(after)
             if (ok) { hit = 1; break }
