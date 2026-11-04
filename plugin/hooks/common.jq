@@ -131,7 +131,7 @@ def lease_write_denial($lease; $record):
   elif ($lease.kind | test("^(build|fix)$")) and ($record | has("protected") | not) then
     "\(.) cannot be written: this project's record was not saved by this VBW yet, so its protected check files are unknown; end the run and start it again, which saves the record\nNext: tell the session that started the run to end it (vbw run end) and start it again"
   elif ($lease.kind | test("^(build|fix)$")) and (. as $p | any($record.protected[]?; . == $p)) then
-    "\(.) is a protected check file: the contract is fixed while building\nNext: leave \(.) as it is; if the check is wrong, report it so the user can change the contract"
+    "\(.) is a protected check file: a protected check file is never edited during a build\nNext: leave \(.) as it is; the main session changes the check with vbw apply --patch, then the user approves it"
   else empty end;
 
 # Why a subagent may not write ORIGINAL (the path as given), which lies outside
