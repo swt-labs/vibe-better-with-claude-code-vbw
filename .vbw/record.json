@@ -29204,7 +29204,15 @@
           "to": "deep",
           "reason": "Dev blocked P202.2: Tasks 1-5 are built and committed; C575 passes 4 of 6 cases. Case 1 ends with grep -q on the whole session id in .vbw/record.json, but vbw run start (plugin/lib/cmd-run.sh, not this plan's file) stores the full id in lease.session by design, so it cannot pass in this plan's files. Case 6 (ship) needs vbw show contract --changes to print the amendments block (plugin/lib/cmd-show.sh, P202.4's file); the shared helper contract_amendments_block exists and vbw ship prints it. Mutation step not run."
         }
-      ]
+      ],
+      "qa": {
+        "result": "fail",
+        "tier": "deep",
+        "tree": "8f2bb5babc1e487e8700741549f4fb1e73177e0cedbd26afda7afa28081e7be5",
+        "at": "2026-11-04T16:29:28Z",
+        "note": "31/33 checks",
+        "rounds": 1
+      }
     },
     {
       "id": "P203",
@@ -69445,6 +69453,24 @@
       "status": "open",
       "note": "Deviation from P201.3 task 2: the task says qa-inputs.sh, qa.jq, steps.sh, interview.sh and effort.sh take their facts from the caller's pass (or the glance) instead of re-reading the record, and road.sh/road.jq compute their lines in one pass. The commits of the phase (14797696, bf3bf7b3, 3834f7f8, 96fba23b) changed contract.sh, cmd-next.sh, next.jq, steps.sh and cmd-status.sh only; qa-inputs.sh, qa.jq, interview.sh, effort.sh, road.sh and road.jq are untouched, and no decision records dropping that work. The shortcut was a smaller 'working record' (record_work in cmd-next.sh) that every part keeps re-parsing; it works only while the record's bulk is finished history. Regression test should catch: the same as the first finding, a call-count assertion on a twin whose bulk is not finished history, which fails while qa_digests, effort_table, interview_effective and next_holder each parse the record themselves.",
       "phase": "P201"
+    },
+    {
+      "id": "F357",
+      "req": "R250",
+      "source": "qa",
+      "attempts": 0,
+      "status": "open",
+      "note": "The new guard rule refuses 'vbw apply' to the Lead during planning. plugin/hooks/guard-bash.jq puts apply_call in in_run($g), which runs for every run lease of any kind, and a Lead is a run agent (agent_type set). But planning needs the Lead to run it: plugin/workflows/planning.js:202 tells the Lead to 'apply with vbw apply' inside a 'vbw run start plan' lease, and plugin/agents/lead.md lines 42, 56 and 64 make 'vbw apply' / 'vbw apply --patch' the Lead's own duty. Evidence: I fed the real PreToolUse Bash hook (plugin/hooks/hooks.json command) a call from agent_type vbw:lead with 'vbw apply <<EOF' and it answered deny, 'vbw apply changes the plan of record: only the main session runs it ...'; the rule never looks at lease.kind. tests/hooks-guard.bats R250 (line 387) only tries build, fix and qa leases, so no test covers a plan lease, and the mutation record could not catch it. Once this ships, every planning run (and every Lead --patch) is blocked. Regression test to add: under 'lease plan', a vbw:lead agent's 'vbw apply', 'vbw apply --patch' and 'vbw apply --add' are allowed, while the same calls under build, fix and qa leases (and from Dev, Docs, QA, Scout, Debugger) are still refused with the two lines.",
+      "phase": "P202"
+    },
+    {
+      "id": "F358",
+      "req": "R250",
+      "source": "qa",
+      "attempts": 0,
+      "status": "open",
+      "note": "A proof leaves an awaited check unrun far longer than the plan says. plugin/lib/cmd-prove.sh prove_awaited holds every check named in any plan's awaits while ANY other plan of the whole record is not done (select(any($r.plans[]; .id != $p.id and .status != \"done\"))). P202.4's task and the goal say it is held only while the plan that builds it is not done, and that 'once that plan is built the check runs as any other and the requirement proves'. Evidence: running that jq on {P1.1 done, reqs R1, awaits C3; P2.1 done, reqs R1; P3.1 planned, reqs R3} still prints C3, although P2.1, the only other builder of R1, is done. So in a normal milestone with any later phase still open the awaited check is not run by the proof, and R1 stays unproven. It also silences the check of an earlier, already shipped milestone for as long as the new milestone has an open plan, because awaits stays on the shipped plan; checks guard earlier requirements by re-running on every proof. tests/amend.bats 'R250 awaits' has only two plans, so it cannot tell 'the builder is not done' from 'some plan is not done' (the task2 survivor was strengthened only on that case). Regression test to add: a three-plan fixture (P1.1 awaits C3, P2.1 builds the same requirement, P3.1 of an unrelated requirement left planned): after P2.1 is done, vbw prove runs C3 and R1 reads proven; and a done plan with awaits whose builders are all done has its check re-run by every later proof.",
+      "phase": "P202"
     }
   ],
   "todos": [
