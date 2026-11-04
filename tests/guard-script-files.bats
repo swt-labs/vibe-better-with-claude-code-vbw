@@ -112,6 +112,12 @@ PY_WRITE='open("tests/c1.sh", "w").write("x")'
   denied "node FILE"
   [[ "$FIRST" == 'VBW guard: .vbw/runtime/scratch/w.js (run by node): '*'writeFileSync("tests/c1.sh"'*" writes tests/c1.sh: $PROTECTED" ]] \
     || { echo "the node refusal has another form: $FIRST"; false; }
+  # A write whose target the guard cannot name (a variable) is refused as unreadable, the call named (R219).
+  printf 'p = "tests/c1.sh"\nopen(p, "w").write("x")\n' > .vbw/runtime/scratch/u.py
+  call 'python3 .vbw/runtime/scratch/u.py'
+  denied "a script whose write target is held in a variable"
+  first 'VBW guard: .vbw/runtime/scratch/u.py (run by python3): open(p, "w") writes a file the guard cannot name: the program gives its target through a variable, an expression or another call, so the guard cannot read where it writes'
+  has 'Next: name the file as a literal path in the program, or write it with the Edit tool (Write for a new file)'
   call 'python3 .vbw/runtime/scratch/ok.py'
   allowed "a script writing only inside the plan's files"
 }
