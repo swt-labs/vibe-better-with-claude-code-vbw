@@ -18,6 +18,7 @@ Every idea here is an idea to evaluate, not an instruction to build. The problem
 | [A watch for process cost out of proportion](#a-watch-for-process-cost-out-of-proportion) | Medium |
 | [Offer CI for the user's project](#offer-ci-for-the-users-project) | Medium |
 | [Coordination between sessions on one repository](#coordination-between-sessions-on-one-repository) | Large |
+| [Codebase profiles, Rust first](#codebase-profiles-rust-first) | Large |
 | [A model profile for judgment-heavy roles](#a-model-profile-for-judgment-heavy-roles) | Small |
 | [Choose the sound](#choose-the-sound) | Small |
 | [A screenshot kept with a visual acceptance](#a-screenshot-kept-with-a-visual-acceptance) | Small to medium |
@@ -71,6 +72,20 @@ Every idea here is an idea to evaluate, not an instruction to build. The problem
 **Size.** Large.
 
 **Where.** `plugin/lib/sessions.sh`, `plugin/workflows/planning.js`, the hooks in `plugin/hooks/`.
+
+### Codebase profiles, Rust first
+
+**Problem.** VBW's competence per language lives in four places: the check forms (how a test is named and run), the planner's rules for a red check (it compiles and fails by assertion, never by a compile error), the mutation step (what a break looks like in that language) and the Dev's and QA's prompts (idioms, lints, lockfiles, build identity). Today these are one generic set, with per-project approvals bolted on. A Rust workspace shows the cost: a planned test that does not compile counts as red, a dependency added to one crate misses a workspace lockfile, a clippy gate fails on a planned check, and every plan rediscovers `--locked`.
+
+**Idea.** A *profile* makes each of the four a first-class, versioned unit, selected by the shape of the code, and shipped to everyone as a pack (`vbw init --pack rust`). One kernel, one record, one contract; the profile is chosen per plan by the files it touches, the way Claude Code rules scope by `paths:`. A repository with Rust workspaces beside Python scripts holds two check forms in one contract today; with profiles, a plan over the Rust tree gets the Rust Dev, the cargo forms and the Rust mutation rules, and a plan over the scripts gets the Python ones. Several Devs in one wave each run under their plan's profile, so "many agents, each under the right profile" needs no second kernel or record.
+
+The first Rust profile would hold: check forms for `cargo test -p <crate> --test <name>` and clippy, always `--locked`; the lockfile rule (a dependency added to a crate goes into every workspace lockfile that builds it, in the same commit); a red check must compile and fail by assertion; evidence names the build's commit and lockfile hash; plans cut one crate per plan, with shared registration points (`lib.rs` module lists, enums, `Cargo.lock`) set up once in an early plan; a mutation step that knows Rust targets (a bin, a test, a lib).
+
+**Open questions.** Keep the profile out of the contract's identity: a profile upgrade must not un-approve every plan (compare the amendment work in R250). How is a profile chosen when a plan's files span two trees? What is in a pack and how is it versioned beside VBW itself? Measure before believing: judge the first Rust profile by what it removes from a real project's failure list (a planned test that does not compile, a missing lockfile entry, a clippy gate that fails on a planned check), not by how it reads. A language-specific fork of VBW was considered and rejected: one kernel, profiles as packs.
+
+**Size.** Large.
+
+**Where.** The check forms in `plugin/lib/spec.jq` and `## Test files`; the planner's red-check rule in `plugin/agents/lead.md` and `plugin/workflows/planning.js`; the mutation step in `plugin/lib/cmd-mutate.sh` and `plugin/lib/mutate-queue.sh`; the Dev and QA prompts in `plugin/agents/`; a pack folder under `plugin/` read by `vbw init`.
 
 ### A model profile for judgment-heavy roles
 
