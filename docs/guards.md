@@ -167,6 +167,7 @@ input names an `agent_type`) is also held to the lease. The main session never i
 | Writing any path outside the project folder (file tools, shell redirects, programs that write files; `/tmp` included; in a shell command, a path the guard cannot resolve counts as outside: one starting with `~` or holding a shell expansion such as `$HOME`, since the guard reads the text and never expands it (a file tool's path is taken as written, so a plan file named `app/routes/$id.tsx` is written through the file tool); `/dev/null`, `/dev/stdout`, `/dev/stderr` and `/dev/tty` excepted) | A run writes only inside the project, and there only where the lease allows: nothing for a read-only run, the project's test files and `.vbw/` while planning, the plan's files while building. The refusal says so and ends with `Next: write inside the project folder instead, or put scratch work in .vbw/runtime/scratch/`; for a read-only run it ends with `Next: leave it; report what you needed in your result, this run's agents write nothing` |
 | During `plan`, writing a project file that is neither under `.vbw/` nor a test file (`tests/`, `test/`, `spec/` or `__tests__/` folders; `.t` files under `t/`; `*.test.*`, `*_test.*`, `*.spec.*`, `*_spec.*`, `test_*.py`) | Planning writes the spec, plans and tests, never product code. The refusal says planning writes the project's test files and `.vbw/` and that product code is the build's, and ends with `Next: leave <file> as it is; put the check in a test file, or name <file> in a plan's files so the build writes it` |
 | Writing `.vbw/runtime/glance.json` | Under any run, an agent's write is refused: only `vbw` writes the glance, like the record |
+| An interpreter or shell running a script file whose text writes a protected check file, a file outside the plan's files or outside the project, or a file the guard cannot name (`python3 .vbw/runtime/scratch/x.py`, `bash fix.sh`, `python3 < x.py`) | The script is read like an inline program. The refusal names it: `<file> (run by <interpreter>): <call as written> writes <target>: ` and then the same reason and `Next:` line that write gets inline. A script the guard cannot obtain is refused with `<file> (run by <interpreter>): a script the guard cannot read: its path holds a shell expansion, or no readable file is at it and this command does not write it` and `Next: write the program with the Edit tool and run it, or give the program inline (-c, or a heredoc on standard input)` |
 | Writing under `.vbw/runtime/scratch/` during a run | Allowed under `plan`, `build` and `fix`: the agents' one scratch folder for debugging scripts and logs, ignored by git and never read by a proof (agents create it). A read-only run (QA, mapping) still writes nothing, and under `build` or `fix` the rest of `.vbw/runtime/` stays refused as outside the run's files |
 | Running `vbw apply` in any mode (plain, `--patch`, `--add`, `--amend`), by any path to `vbw`, after a `cd`, inside a substitution or through a pipe, under any run | Refused to every run agent in two lines: `vbw apply changes the plan of record: only the main session runs it, in every mode (--amend, --patch, --add included)` and `Next: report it so the main session amends or patches the plan`. The main session (no agent) is never refused, and `vbw status`, `vbw show contract`, `vbw plan done` and the other kernel commands stay allowed |
 | Writing a protected check file (any check's `files`) during `build` or `fix`, or, by a shell command, a folder that holds one or a glob that may match one (`sed -i … tests/*.test.js`, `rm -r t*`; `*` may cross `/`, as zsh's `**` does; brace expansion is not read, and a check file changed that way stops the proof until the user approves it) | A protected check file is never edited during a build (`Next: leave <file> as it is; the main session changes the check with vbw apply --patch, then the user approves it`); the one exception in a `build` run: after `vbw mutate` records a survivor, the check files that a check of the plan's own rules names, shared with other requirements' checks or not, open for the run's agents; a check file no check of the plan's own rules names stays protected. The opened files wait for one approval before the proof (docs/proof.md). The Lead runs the project's formatter and linter on check files before approval, and Devs format only their own files, so a formatter never changes an approved file |
@@ -189,7 +190,42 @@ a script given by heredoc (`python3 - <<'EOF'`), and the files given to
 the guard cannot read (a variable, an expression, another call) is refused; the
 refusal names the call and the fix (a literal path, or the Edit tool). A program
 that writes nothing passes, and a script file run by name (`python3 tools/x.py`)
-is not read. Outside a run, programs are not judged.
+is read like an inline one (next paragraph). Outside a run, programs are not
+judged.
+
+**Script files run by name.** A program an agent wrote during the run is read
+too, however it is started. When `python`, `pypy`, `node`, `nodejs`, `perl`,
+`ruby`, `php`, `lua`, `deno` or `bun` (or `sh`, `bash` or `zsh`) runs a file
+(`python3 .vbw/runtime/scratch/x.py`, `bash fix.sh`, `python3 < x.py`), the
+guard reads that file's text and judges it exactly as it judges the same text
+given inline: the same files are refused for the same reasons. A shell script
+is read as a shell command (its redirects, its `cp` and `rm`, the programs it
+starts), a Python, Node, Perl or Ruby file as a program. Which text is read:
+
+- When the same command writes the file (a heredoc into it, `tee`, or an `echo`
+  or `printf` of a literal into it), the text comes from the command, and no
+  file or git lookup is made. A file the command changes in any other way (`cp`,
+  `sed -i`, a redirect from a variable or another command, a heredoc whose
+  body holds `$` or a backtick) cannot be known before it runs, so it is refused
+  as unreadable.
+- Otherwise the file on disk is read, unless it is the project's own: committed
+  and unchanged since the run started. The project's committed scripts
+  (`python3 tools/x.py`, `bash tools/build.sh`) run as before, unread, after
+  one git lookup. A script committed during the run is still read, because the
+  comparison is with the commit the run started on (`vbw run start` records it
+  in `.vbw/runtime/holder.json`; a run started by an older VBW has none, and
+  `HEAD` stands in). A file under `.vbw/runtime/` is the agents' own scratch
+  work, so it is read without the lookup.
+- A script the guard cannot obtain (a path starting with `~` or holding a shell
+  expansion, or a file that does not exist and that the command does not
+  write) is refused as unreadable, never allowed by default.
+
+The refusal names the script file, the interpreter and the call inside it:
+`<file> (run by <interpreter>): <call as written> writes <target>: ` followed by
+the text the same write gets inline. Two limits: a script that starts another
+script file by name is not followed, and a path a script writes outside the project is
+refused as outside it, without asking the project it lands in. A `-c`, `-e` or
+`-m` program and a heredoc on standard input stay inline programs, read as above.
 
 **Another session's run** (D11): while a run with an owning session is open
 (under 24 hours), a call from a different session (`session_id` differs from
@@ -286,15 +322,21 @@ hook's own run (an agent writes only inside the project), allowed otherwise.
 
 How it runs (the second pass). The first pass is the guard's one `jq` call, the
 only program that starts before it. It prints nothing, one decision, or a
-request: the hook input without its `tool_input`, and one line for each target
-that leaves the project (its absolute path and the refusal it gets when no
-project holds it). It always ends with the line `vbw-guard-done`. The reader,
+request: the hook input without its `tool_input` (with the command when a script
+line follows), one line for each target that leaves the project (its absolute
+path and the refusal it gets when no project holds it), and one line for each
+script file the command runs by name (the run's starting commit, the
+interpreter, the path as written and in full, the working folder, and whether
+the command writes the file itself). It always ends with the line `vbw-guard-done`. The reader,
 `hooks/read.sh`, is sourced by the hook command (POSIX `sh`, so no process starts
 for it) and reads that answer: a decision is printed as it is; for a request it
 walks each target up to its project and runs one more `jq` call per other
 project (`hooks/guard-read.jq`) over that project's record, or its glance when
 newer. That record is read only when a target leaves the hook's project, so a
-call that stays inside costs what it did.
+call that stays inside costs what it did. For a script line it makes the git
+lookup (the project's own committed script, unchanged since the run started,
+ends there) and runs one more `jq` call over the script's text, in the hook's
+own project; a call that runs no script file pays for neither.
 
 ## MCP tools by role
 

@@ -80,7 +80,7 @@ STATUS_MS="${VBW_STATUSLINE_BUDGET_MS:-60}"
 HANDBACK_MS="${VBW_HANDBACK_BUDGET_MS:-10}"
 RUNS="${VBW_BENCH_RUNS:-100}"
 PLUGIN="${VBW_BENCH_PLUGIN_ROOT:-$ROOT/plugin}"
-GUARD_INPUTS="git npm big interp read answer tools"
+GUARD_INPUTS="git npm big interp script read answer tools"
 SIZES="51 500 2000"
 # The reference workload's nominal cost (R222): CPU ms per call of the workload in the
 # reference block below, on the two nominal machines, measured NOMINAL_WHEN. This is a
@@ -303,6 +303,11 @@ jq -nc --arg d "$work" --arg b "$big" '{tool_name: "Bash", cwd: $d, tool_input: 
 # A build agent running Python from a heredoc on a build lease: the program is read for the files it writes.
 jq -nc --arg d "$work" '{tool_name: "Bash", cwd: $d, session_id: "bench", agent_id: "x1", agent_type: "workflow-subagent", tool_input: {command:
   "python3 - <<'\''EOF'\''\nimport json\nwith open(\"src/pay.py\", \"w\") as f:\n    json.dump({\"paid\": True}, f)\np = \"src/pay.py\"\nwith open(p, \"w\") as g:\n    g.write(\"x\")\nprint(open(\"src/pay.py\").read())\nEOF"}}' > "$work/interp.json"
+# A build agent running a Python script file by name (R255): .vbw/runtime/scratch/x.py is untracked and present
+# in every project folder measured (guards writes it), so the call takes the whole path: the guard's request,
+# read.sh's git lookup, and the second pass reading the file.
+jq -nc --arg d "$work" '{tool_name: "Bash", cwd: $d, session_id: "bench", agent_id: "x1", agent_type: "workflow-subagent", tool_input: {command:
+  "python3 .vbw/runtime/scratch/x.py"}}' > "$work/script.json"
 jq -nc --arg d "$work" '{tool_name: "Read", cwd: $d, tool_input: {file_path: ($d + "/src/app.js")}}' > "$work/read.json"
 # A VBW QA agent calling an MCP tool the project's setting does not name: the tools guard's refusal path (R242).
 jq -nc --arg d "$work" '{hook_event_name: "PreToolUse", session_id: "bench", tool_name: "mcp__github__get_issue", cwd: $d, tool_input: {}, agent_id: "x2", agent_type: "vbw:qa"}' > "$work/tools.json"
@@ -525,7 +530,7 @@ tools_hook() { jq -r '[.hooks.PreToolUse[] | select(.hooks[0].command | contains
 # the project at DIR; LABEL is the empty string, or ", large record".
 status=0
 guards() {
-  local dir="$1" label="$2" inputs="${3:-$GUARD_INPUTS}" input tool event hook shell total own line baseline file
+  local dir="$1" label="$2" inputs="${3:-$GUARD_INPUTS}" input tool event hook shell total own line baseline file budget
   export CLAUDE_PROJECT_DIR="$dir"
   baseline="jq -nc 'input | empty' - \"$dir/.vbw/record.json\" \"$CLAUDE_PLUGIN_ROOT/hooks/end.json\" 2>/dev/null || true"
   for input in $inputs; do
@@ -535,7 +540,15 @@ guards() {
     [ "$input" != answer ] || event=PostToolUse
     hook=$(jq -r --arg t "$tool" --arg e "$event" '[.hooks[$e][] | select(.matcher as $m | $m != null and ($t | test("^(" + $m + ")$")))][0].hooks[0].command' "$hooks_json")
     [ "$input" != tools ] || hook=$(tools_hook)
+    # A script file read by name (R255) pays the second pass, as the cross-project case does, and
+    # its git lookup is skipped for scratch files: two passes are two budgets.
+    budget=$BUDGET_MS
+    [ "$input" != script ] || budget=$(perl -e 'print $ARGV[0] * 2' -- "$BUDGET_MS")
     file="$work/$input.json"
+    if [ "$input" = script ]; then
+      mkdir -p "$dir/.vbw/runtime/scratch"
+      printf 'import json\nwith open("src/pay.py", "w") as f:\n    json.dump({"paid": True}, f)\nprint(open("src/pay.py").read())\n' > "$dir/.vbw/runtime/scratch/x.py"
+    fi
     if [ "$dir" != "$work" ]; then
       file="$work/$input.large.json"
       jq -c --arg o "$work" --arg d "$dir" 'walk(if type == "string" and startswith($o) then $d + .[($o | length):] else . end)' \
@@ -543,14 +556,14 @@ guards() {
     fi
     read -r shell total < <(cpu_pair "$file" "$baseline" "$hook")
     own=$(perl -e 'printf "%.1f", $ARGV[0] - $ARGV[1]' -- "$total" "$shell")
-    if over "$own" "$BUDGET_MS"; then
-      again "guard ($input$label)" "$own ms own CPU per call (sh and jq startup $shell ms)" "$BUDGET_MS"
+    if over "$own" "$budget"; then
+      again "guard ($input$label)" "$own ms own CPU per call (sh and jq startup $shell ms)" "$budget"
       read -r shell total < <(cpu_pair "$file" "$baseline" "$hook")
       own=$(perl -e 'printf "%.1f", $ARGV[0] - $ARGV[1]' -- "$total" "$shell")
     fi
     line=$(printf 'guard (%s%s): %s ms own CPU per call (sh and jq startup %s ms); budget %s ms' \
-      "$input" "$label" "$own" "$shell" "$BUDGET_MS")
-    verdict "$line" "$own" "$BUDGET_MS"
+      "$input" "$label" "$own" "$shell" "$budget")
+    verdict "$line" "$own" "$budget"
   done
 }
 
