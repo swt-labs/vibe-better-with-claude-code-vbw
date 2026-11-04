@@ -467,7 +467,7 @@ never before the call. Mark a server read-only only when its tools really only r
   five of its definitions, so it carries the same compile work. The target, measured after
   the fix: each Ubuntu runner's program run quotient is within 1.25 times macOS's. The
   figures are 0.78 and 0.77 against 0.79, about 0.99 times macOS's. The nominal figure is
-  one, 17.8 ms, with no per-system allowance.
+  one, 28.9 ms, with no per-system allowance.
 
 ## SessionStart
 
