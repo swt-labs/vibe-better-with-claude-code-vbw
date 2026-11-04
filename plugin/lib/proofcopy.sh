@@ -176,10 +176,88 @@ proofcopy_checkout() {
   : > "$(git -C "$2" rev-parse --absolute-git-dir)/vbw-gitmodules-index"
 }
 
+# Worktrees (R253): the folder of every worktree of the repository that lies
+# inside the project (git worktree list --porcelain, paths made physical), and
+# .claude/worktrees, are left out of every clean copy whatever the list says,
+# the same way a listed path is: a worktree under an ignored folder is skipped by
+# descending around it (D509), a worktree whose folder is gone is ignored.
+
+# proofcopy_worktrees: sets PROOFCOPY_WT to the project-relative paths of the
+# worktree folders inside the project, plus .claude/worktrees. Never fails.
+proofcopy_worktrees() {
+  local real l p d b
+  PROOFCOPY_WT=(.claude/worktrees)
+  real=$(cd -P "$VBW_ROOT" 2> /dev/null && pwd -P) || return 0
+  while IFS= read -r l; do
+    case "$l" in 'worktree '*) p=${l#worktree } ;; *) continue ;; esac
+    if [ -d "$p" ]; then
+      p=$(cd -P "$p" 2> /dev/null && pwd -P) || continue
+    else
+      d=$(cd -P "$(dirname "$p")" 2> /dev/null && pwd -P) || continue
+      b=${p##*/}
+      p="$d/$b"
+    fi
+    case "$p" in "$real"/*) ;; *) continue ;; esac
+    p=${p#"$real"/}
+    case "$p" in .vbw | .vbw/* | .git | .git/*) continue ;; esac
+    PROOFCOPY_WT+=("$p")
+  done < <(git -C "$VBW_ROOT" worktree list --porcelain 2> /dev/null)
+  return 0
+}
+
+# proofcopy_is_skipped P: P is, or lies under, a worktree folder.
+proofcopy_is_skipped() {
+  local w
+  for w in ${PROOFCOPY_WT[@]+"${PROOFCOPY_WT[@]}"}; do
+    case "$1" in "$w" | "$w"/*) return 0 ;; esac
+  done
+  return 1
+}
+
+# proofcopy_size_kb P: du -sk of the project-relative path P, a worktree folder
+# below it not counted (the sum of the children around it).
+proofcopy_size_kb() {
+  local p=$1 w parent='' c t=0 k
+  for w in ${PROOFCOPY_WT[@]+"${PROOFCOPY_WT[@]}"}; do
+    case "$w" in "$p"/*) parent=1 ;; esac
+  done
+  if [ -n "$parent" ] && [ -d "$VBW_ROOT/$p" ] && [ ! -L "$VBW_ROOT/$p" ]; then
+    while IFS= read -r -d '' c; do
+      ! proofcopy_is_skipped "$p/${c##*/}" || continue
+      k=$(proofcopy_size_kb "$p/${c##*/}")
+      t=$((t + k))
+    done < <(find "$VBW_ROOT/$p" -mindepth 1 -maxdepth 1 -print0)
+    printf '%d\n' "$t"
+    return 0
+  fi
+  du -sk "$VBW_ROOT/$p" 2> /dev/null | awk 'NR == 1 {t = $1} END {printf "%d\n", t}'
+}
+
+# proofcopy_big_ignored: one line "name/ (1.0 GB)" for each git-ignored folder
+# inside the project over VBW_PROOFCOPY_PLAIN_KB (500 MB by default); a worktree
+# folder and .claude/worktrees are never candidates and never counted. Never fails.
+proofcopy_big_ignored() {
+  local limit=${VBW_PROOFCOPY_PLAIN_KB:-512000} p kb
+  case "$limit" in '' | *[!0-9]*) limit=512000 ;; esac
+  proofcopy_worktrees
+  while IFS= read -r -d '' p; do
+    p=${p%/}
+    case "$p" in .git | .git/* | .vbw | .vbw/*) continue ;; esac
+    [ -d "$VBW_ROOT/$p" ] && [ ! -L "$VBW_ROOT/$p" ] || continue
+    ! proofcopy_is_skipped "$p" || continue
+    kb=$(proofcopy_size_kb "$p")
+    [ "${kb:-0}" -gt "$limit" ] || continue
+    vbw_out '%s/ (%s)\n' "$p" "$(proofcopy_fmt_kb "$kb")"
+  done < <(git -C "$VBW_ROOT" ls-files -z --others --ignored --exclude-standard --directory 2> /dev/null)
+  return 0
+}
+
 # proofcopy_make: one more copy, added to PROOF_COPIES.
 proofcopy_make() {
   local dir p real copy first='' l
   PROOFCOPY_LEFT=()
+  # Listed before the prune below, so a worktree whose folder is gone is still left out.
+  proofcopy_worktrees
   dir=$(mktemp -d "$VBW_RUNTIME/proof.$$.XXXXXX") || vbw_die "cannot create a directory in $VBW_RUNTIME"
   vbw_guard_add dir "$dir"
   copy="$dir/tree"
@@ -204,6 +282,8 @@ proofcopy_make() {
       [ -z "$l" ] || PROOFCOPY_LEFT+=("$l")
     done < <(jq -r '(.project.leave_out // [])[]' "$VBW_RECORD" 2> /dev/null)
   fi
+  PROOFCOPY_NUSER=${#PROOFCOPY_LEFT[@]}
+  for l in ${PROOFCOPY_WT[@]+"${PROOFCOPY_WT[@]}"}; do PROOFCOPY_LEFT+=("$l"); done
   while IFS= read -r -d '' p; do
     p=${p%/}
     case "$p" in .git | .git/* | .vbw | .vbw/*) continue ;; esac
@@ -227,15 +307,17 @@ proofcopy_make() {
 # are copied one by one around the listed path, as deep as the path goes, so
 # the data the list spares is never read.
 proofcopy_entry() {
-  local p=$1 L skip='' parent='' c l t
+  local p=$1 L skip='' parent='' listed='' c l t i=0
   for L in ${PROOFCOPY_LEFT[@]+"${PROOFCOPY_LEFT[@]}"}; do
     case "$p" in "$L" | "$L"/*) skip=1; break ;; esac
-    case "$L" in "$p"/*) parent=1 ;; esac
+    case "$L" in "$p"/*) parent=1; [ "$i" -ge "${PROOFCOPY_NUSER:-0}" ] || listed=1 ;; esac
+    i=$((i + 1))
   done
   [ -z "$skip" ] || return 0
   [ ! -e "$copy/$p" ] && [ ! -L "$copy/$p" ] || return 0
   if [ -n "$parent" ] && [ -d "$VBW_ROOT/$p" ] && [ ! -L "$VBW_ROOT/$p" ]; then
-    mkdir -p "$copy/$p"
+    # A folder that only holds a worktree is made when a child is copied into it.
+    [ -z "$listed" ] || mkdir -p "$copy/$p"
     while IFS= read -r -d '' c; do
       proofcopy_entry "$p/${c##*/}"
     done < <(find "$VBW_ROOT/$p" -mindepth 1 -maxdepth 1 -print0)
