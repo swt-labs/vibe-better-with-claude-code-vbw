@@ -70508,6 +70508,11 @@
       "id": "T236",
       "text": "A docs plan of a code requirement closes on the breaks its requirement's code plans recorded: a documentation plan cannot break code, and closing one cost a lead decision five times in one milestone of the Rust project; related to T231",
       "status": "open"
+    },
+    {
+      "id": "T237",
+      "text": "A file several plans may append to in one wave (a test catalog, an open-items register): today one such ledger serializes every plan that touches it (the Rust project: 11 build waves, the widest 5 plans); evaluate a declared append-only file in the plan schema",
+      "status": "open"
     }
   ],
   "decisions": [
