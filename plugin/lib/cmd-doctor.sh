@@ -223,6 +223,7 @@ doctor_project() {
       [ -z "$hid" ] || doctor_line fail "${hid%: "$fix"}" "$fix"
     done <<< "$hidden"
   fi
+  doctor_big_ignored
   [ -n "$v" ] && return 0
   if jq -e '.lease != null' "$VBW_RECORD" > /dev/null; then
     doctor_line warn "a run is open ($(jq -r .lease.run "$VBW_RECORD"))" "if no VBW workflow is running: vbw run end"
@@ -232,6 +233,22 @@ doctor_project() {
     doctor_line info "the contract is not approved (yet, or since it changed): VBW asks with the approval menu after you review it"
   fi
   doctor_guard
+}
+
+# Large git-ignored folders the Clean copy section does not list yet (R253).
+doctor_big_ignored() {
+  local line name listed=''
+  # shellcheck source=proofcopy.sh
+  . "$VBW_LIB/proofcopy.sh"
+  if [ -f "$VBW_RECORD" ]; then
+    listed=$(jq -r '(.project.leave_out // [])[] | sub("/+$"; "")' "$VBW_RECORD" 2> /dev/null) || listed=''
+  fi
+  while IFS= read -r line; do
+    [ -n "$line" ] || continue
+    name=${line%% (*}
+    if [ -n "$listed" ] && printf '%s\n' "$listed" | grep -qxF "${name%/}"; then continue; fi
+    doctor_line info "large git-ignored folder $line is copied into every proof copy" "list $name under Clean copy in .vbw/spec.md, then vbw spec sync"
+  done < <(proofcopy_big_ignored 2> /dev/null)
 }
 
 # The guard works with this jq: it must deny a destructive command here.
