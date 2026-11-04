@@ -40,6 +40,7 @@ cmd_status() {
   printf '%s\n' "$record" | jq -r --argjson iv "$interview" --argjson step "$step" --argjson road "${road:-null}" "$VBW_STEP_DEFS"'.milestone.id as $m | [.requirements[] | select(.milestone == $m)] as $cur |
     "\(.project.name) · \(.milestone.id) \(.milestone.title) (\(.milestone.status))",
     "requirements: \([$cur[] | select(.status == "proven" or .status == "accepted")] | length)/\($cur | length) proven",
+    ([.requirements[] | select(.queued) | .id] | if length > 0 then "queued: \(length) requirement\(if length == 1 then "" else "s" end) (\(join(", ")))" else empty end),
     "phases: \([.phases[] | select(.milestone == $m)] | length) · open fixes: \([.fixes[] | select(.status == "open")] | length) · open todos: \([.todos[] | select(.status == "open" or .status == "in_progress")] | length)",
     # A built plan whose awaited check has no passing result yet (R250), derived here, never stored.
     (. as $r | .plans[] | select(.status == "done") | . as $p

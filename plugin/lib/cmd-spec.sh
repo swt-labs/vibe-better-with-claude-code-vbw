@@ -85,11 +85,13 @@ spec_sync() {
     | .requirements as $old
     | [$old[].id | select(. as $id | any($s[]; .id == $id) | not)] as $gone
     | any($old[]; has("rules")) as $ruled
+    | (.lease != null) as $open
     | def kept: . as $q | any($gone[]; . == $q) | not;
       .requirements = [$s[] | . as $n | [$old[] | select(.id == $n.id)][0] as $o
         | if $o == null or $o.text != $n.text or $o.proof != $n.proof
           then {id: $n.id, text: $n.text, proof: $n.proof, status: "open", milestone: $m}
             + (if $n.proof == "auto" and $ruled then {rules: []} else {} end)
+            + (if $open and ($o == null or $o.queued == true) then {queued: true} else {} end)
           else $o end]
     | .checks = [.checks[] | select(.req | kept)]
     | .fixes = [.fixes[] | select((has("req") | not) or (.req | kept))]
