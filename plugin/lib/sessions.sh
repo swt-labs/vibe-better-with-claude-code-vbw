@@ -55,8 +55,12 @@ sessions_name() {
 # Folders are compared by their physical path (symbolic links resolved, as git
 # reports the project root), so /var and /private/var on macOS are one folder; a
 # folder that no longer exists is resolved through its nearest existing parent.
+# One-pass rule: the registry is read by one jq and matched by one jq, whatever
+# the number of chats; the shell only resolves each distinct folder (no jq per
+# entry), because a 594-plan project's chat list cost one jq start per open chat
+# (T229). No function of this file runs jq inside a loop over entries.
 sessions_project_entries() {
-  local reg root cwd phys map='{}' up tail
+  local reg root cwd phys map='' up tail
   reg=$(sessions_registry)
   root=$(cd "$1" 2> /dev/null && pwd -P) || root=${1%/}
   while IFS= read -r cwd; do
@@ -70,11 +74,12 @@ sessions_project_entries() {
       [ -n "$up" ] || up=/
     done
     case "$cwd" in /*) phys=${phys%/}$tail ;; *) phys=$cwd ;; esac
-    map=$(printf '%s' "$map" | jq -c --arg k "$cwd" --arg v "$phys" '. + {($k): $v}')
-  done < <(printf '%s' "$reg" | jq -r '.[] | .cwd | select(type == "string")' 2> /dev/null)
+    map+=$cwd$'\001'$phys$'\n'
+  done < <(printf '%s' "$reg" | jq -r '[.[] | .cwd | select(type == "string")] | unique | .[]' 2> /dev/null)
   # The binding is in parentheses of its own: after "and", jq 1.7 binds only the
   # term and jq 1.8 the whole "A and B" (its binding precedence changed).
-  printf '%s' "$reg" | jq -c --arg r "${root%/}" --argjson m "$map" '[.[] | select((.cwd | type) == "string"
+  printf '%s' "$reg" | jq -c --arg r "${root%/}" --arg ms "$map" '($ms | split("\n") | map(select(length > 0) | split("\u0001") | {(.[0]): .[1]}) | add // {}) as $m
+    | [.[] | select((.cwd | type) == "string"
     and (($m[.cwd] // .cwd | rtrimstr("/")) as $c | $c == $r or ($c | startswith($r + "/"))))]' 2> /dev/null || printf '[]\n'
   return 0
 }
