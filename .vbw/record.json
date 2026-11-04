@@ -70645,6 +70645,11 @@
       "sort": "later",
       "size": "small",
       "status": "open"
+    },
+    {
+      "id": "T240",
+      "text": "The Docs agent's prompt says a docs plan records its tasks with vbw mutate --none and leaves rules bound to code plans alone: today a Docs agent tries vbw mutate Rn.k --none, is refused (break the rule in that code instead) and blocks, though the rule needs nothing from it (the Rust project: one plan blocked; the kernel already closes such a plan on its code plans' breaks once tasks are recorded --none)",
+      "status": "open"
     }
   ],
   "decisions": [
