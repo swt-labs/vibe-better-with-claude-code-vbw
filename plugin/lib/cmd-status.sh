@@ -7,14 +7,19 @@
 . "$VBW_LIB/interview.sh"
 # shellcheck source=steps.sh
 . "$VBW_LIB/steps.sh"
+# shellcheck source=cmd-next.sh
+. "$VBW_LIB/cmd-next.sh"
 
 cmd_status() {
   vbw_require_project
   local record interview step road
-  record=$(record_read)
-  interview=$(interview_effective)
+  # One pass over the record (next_prepare): its working record holds all that status shows,
+  # and the road's answer of vbw next is judged from the same pass.
+  next_prepare || exit $?
+  record=$NP_WORK
+  interview=$(interview_effective "$record")
   step=$(step_status "$(printf '%s' "$record" | jq -r '.lease.run // ""')")
-  road=$(step_road_status "$record" "$step")
+  road=$(step_road_status "$record" "$step" next_road_input)
   if [ "${1:-}" = "--json" ]; then
     printf '%s\n' "$record" | jq --argjson iv "$interview" --argjson step "$step" --argjson road "${road:-null}" '.milestone.id as $m | [.requirements[] | select(.milestone == $m)] as $cur | {
       milestone: .milestone,
