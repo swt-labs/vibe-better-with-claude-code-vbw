@@ -172,7 +172,7 @@ hooks_json="$PLUGIN/hooks/hooks.json"
 export CLAUDE_PLUGIN_ROOT="$PLUGIN" CLAUDE_PROJECT_DIR="$work"
 
 # reference_files DIR (R231): the reference program and document, written from the bench's
-# own text into DIR: reference.jq (about 25 KB, the size of the shipped Bash guard, built
+# own text into DIR: reference.jq (about 41 KB, the size of the shipped Bash guard and the programs.jq it includes, built
 # of fixed helper definitions and a body that reads $glance, $root, $dir, $open and its
 # inputs the way a guard does) and reference.json (a fixed object of about 60 KB). The
 # content is deterministic and read from no shipped file and no project file. Four of every
@@ -185,7 +185,7 @@ export CLAUDE_PLUGIN_ROOT="$PLUGIN" CLAUDE_PROJECT_DIR="$work"
 reference_files() {
   mkdir -p "$1"
   awk 'BEGIN {
-    for (i = 1; i <= 108; i++)
+    for (i = 1; i <= 150; i++)
       printf "def h%d($v; $w): if ($v | type) == \"object\" then ($v | keys | map(select(startswith(\"k%d\") or test(\"^c[0-9]+$\"))) | length) + $w elif ($v | type) == \"array\" then ($v | map(tostring | length) | add // 0) + %d else ($v | tostring | ascii_downcase | length) end;\n", i, i % 7, i
     print "($glance | fromjson) as $g"
     print "| ([inputs] | .[-2:]) as $in"
@@ -195,7 +195,7 @@ reference_files() {
     print "| [$checks[] | select((.run | join(\" \") | test(\"^sh \")) and (.files | length) > 0)] as $kept"
     print "| (($root | length) + ($dir | length) + ($open | tonumber)) as $n"
     printf "| [$doc"
-    for (i = 1; i <= 108; i++) if (i % 5 != 0) printf ", h%d($doc; $n)", i
+    for (i = 1; i <= 150; i++) if (i % 5 != 0) printf ", h%d($doc; $n)", i
     print "] as $parts"
     print "| {schema: ($g.schema // 0), kept: ($kept | length), end: ($end | length), parts: ($parts | map(numbers) | add)}"
   }' > "$1/reference.jq"
