@@ -210,6 +210,19 @@ nexts() {
   [ "$(calls big)" -le 2 ] || { echo "vbw status parsed the record $(calls big) times:"; cat "$TEST_ROOT/big.log"; false; }
 }
 
+@test "R249 one pass: what the pass answers is what the record says: with the contract planned and approved, both twins give the same status and next answer, the build step of the two plans and the next free phase number" {
+  twin_doc > "$TEST_ROOT/doc.json"
+  TWIN_IN="$TEST_ROOT/doc.json" twin_step apply
+  twin_step approve
+  twin_step next --json
+  twin_step status
+  twin_step status --json
+  local out
+  out=$(cd "$BIG" && "$VBW" next --json < /dev/null)
+  printf '%s' "$out" | jq -e '.action == "build" and .detail.plans == ["P51.1", "P52.1"] and .next_phase == 53 and .step.kind == "build"' > /dev/null \
+    || { echo "the large twin does not answer build for P51.1 and P52.1 with phase 53 next: $out"; false; }
+}
+
 @test "R249 chat list: two chats of the project give the rename hint, one chat gives none" {
   shim
   local out
