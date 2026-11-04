@@ -209,3 +209,25 @@ nexts() {
   [ "$CODE" -eq 0 ] || { echo "$OUT"; false; }
   [ "$(calls big)" -le 2 ] || { echo "vbw status parsed the record $(calls big) times:"; cat "$TEST_ROOT/big.log"; false; }
 }
+
+@test "R249 chat list: two chats of the project give the rename hint, one chat gives none" {
+  shim
+  local out
+  mkdir -p "$TEST_ROOT/two chats"
+  (
+    cd "$TEST_ROOT/two chats" || exit 1
+    vbw_git_project
+    "$VBW" init > /dev/null
+    registry 2
+    VBW_SESSION_ID=sess-1 "$VBW" next --json < /dev/null | jq -e '.rename_hint | type == "string"' > /dev/null
+  ) || { echo "no hint with two chats on the project"; false; }
+  mkdir -p "$TEST_ROOT/one chat"
+  out=$(
+    cd "$TEST_ROOT/one chat" || exit 1
+    vbw_git_project
+    "$VBW" init > /dev/null
+    registry 1
+    VBW_SESSION_ID=sess-1 "$VBW" next --json < /dev/null
+  )
+  printf '%s' "$out" | jq -e '.rename_hint == null' > /dev/null || { echo "hint with one chat: $out"; false; }
+}
