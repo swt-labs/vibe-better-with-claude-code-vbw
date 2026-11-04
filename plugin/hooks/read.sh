@@ -15,17 +15,27 @@
 #   record and lease, exactly as a write from inside it, and its decision is the answer. A
 #   project whose pass fails while its run is open (.vbw/runtime/run-open) is refused as a
 #   failed guard is: the message of the command, exit 4, which the command turns into exit 2.
+# - A script line (R255), script<TAB>start<TAB>interpreter<TAB>path as written<TAB>absolute
+#   path<TAB>working folder, per script file the call runs by name that the command does not
+#   write: committed and unchanged since the run's start commit (the start field, - or a value
+#   that is no commit id standing for HEAD) it is the project's own and runs unread (two git
+#   calls: ls-files --error-unmatch, then diff --quiet); a folder is no script; any other is
+#   read by one pass of guard-read.jq in the hook's own project (--rawfile script), or, with
+#   no readable file at the path, refused as unreadable (--arg missing 1). The git lookup and
+#   the read happen on this path only. The hook command's variables p (project), s (session
+#   folder), r (record), g (glance) and o (run open) are the guard's own.
 # Prints only the answer. The whole reader is parameter expansion, tests, read and printf.
 
 vbw_nl='
 '
 vbw_tab='	'
-vbw_hook='' vbw_deny='' vbw_reqs='' vbw_read=0 vbw_done=0
+vbw_hook='' vbw_deny='' vbw_reqs='' vbw_scripts='' vbw_read=0 vbw_done=0
 while IFS= read -r vbw_line; do
   case $vbw_line in
     vbw-guard-done) vbw_done=1; break ;;
     vbw-read) vbw_read=1; IFS= read -r vbw_hook || exit 1 ;;
     "target$vbw_tab"*) vbw_reqs=$vbw_reqs$vbw_line$vbw_nl ;;
+    "script$vbw_tab"*) vbw_scripts=$vbw_scripts${vbw_line#script"$vbw_tab"}$vbw_nl ;;
     *) vbw_deny=$vbw_line ;;
   esac
 done
@@ -80,6 +90,32 @@ while [ -n "$vbw_rest" ]; do
       -f "${CLAUDE_PLUGIN_ROOT}/hooks/guard-read.jq" - "$vbw_p/.vbw/record.json" "${CLAUDE_PLUGIN_ROOT}/hooks/end.json" --args "$@" 2> /dev/null); then
     [ -z "$vbw_out" ] || { printf '%s\n' "$vbw_out"; exit 0; }
   elif [ "$vbw_o" = 1 ]; then
+    echo "VBW guard: the guard failed while a run is open, so this call is blocked. Next: run vbw doctor to see why, then retry" >&2
+    exit 4
+  fi
+done
+
+# Each script file: the project's own committed and unchanged ones run unread; the others are read.
+vbw_rest=$vbw_scripts
+while [ -n "$vbw_rest" ]; do
+  vbw_line=${vbw_rest%%"$vbw_nl"*}
+  vbw_rest=${vbw_rest#*"$vbw_nl"}
+  vbw_start=${vbw_line%%"$vbw_tab"*} vbw_line=${vbw_line#*"$vbw_tab"}
+  vbw_int=${vbw_line%%"$vbw_tab"*} vbw_line=${vbw_line#*"$vbw_tab"}
+  vbw_wr=${vbw_line%%"$vbw_tab"*} vbw_line=${vbw_line#*"$vbw_tab"}
+  vbw_abs=${vbw_line%%"$vbw_tab"*} vbw_cwd=${vbw_line#*"$vbw_tab"}
+  case $vbw_start in '' | *[!0-9a-fA-F]*) vbw_start=HEAD ;; esac
+  [ -d "$vbw_abs" ] && continue
+  if git -C "${p:-.}" ls-files --error-unmatch -- "$vbw_abs" > /dev/null 2>&1 \
+    && git -C "${p:-.}" diff --quiet "$vbw_start" -- "$vbw_abs" > /dev/null 2>&1; then
+    continue
+  fi
+  set -- --arg interp "$vbw_int" --arg written "$vbw_wr" --arg cwd "$vbw_cwd"
+  if [ -f "$vbw_abs" ] && [ -r "$vbw_abs" ]; then set -- "$@" --rawfile script "$vbw_abs"; else set -- "$@" --arg missing 1; fi
+  if vbw_out=$(printf '%s\n' "$vbw_hook" | jq -nrc --rawfile glance "${g:-/dev/null}" --arg root "$p" --arg dir "$s" --arg open "${o:-0}" "$@" \
+      -f "${CLAUDE_PLUGIN_ROOT}/hooks/guard-read.jq" - "$r" "${CLAUDE_PLUGIN_ROOT}/hooks/end.json" 2> /dev/null); then
+    [ -z "$vbw_out" ] || { printf '%s\n' "$vbw_out"; exit 0; }
+  elif [ "${o:-0}" = 1 ]; then
     echo "VBW guard: the guard failed while a run is open, so this call is blocked. Next: run vbw doctor to see why, then retry" >&2
     exit 4
   fi
