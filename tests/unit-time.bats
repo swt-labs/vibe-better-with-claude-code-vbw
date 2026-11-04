@@ -108,8 +108,8 @@ figures() { printf '%s/vbw/unit-time.json' "$(git rev-parse --path-format=absolu
   git add src/pay.txt && git commit -q -m "feat: pay more" -- src/pay.txt
   vbw_run prove
   [ "$status" -eq 0 ] || { echo "$output"; false; }
-  # A fast unit counts 0 or 1 s (whole seconds), so the integration cases pin the place, not the share.
-  [[ "$(nth 4)" =~ ^slowest\ units:\ C1\ [01]\ s\ \( ]] || { echo "$output"; false; }
+  # A fast unit counts a second or less, in tenths under one, so the integration cases pin the place, not the share.
+  [[ "$(nth 4)" =~ ^slowest\ units:\ C1\ [01](\.[0-9])?\ s\ \( ]] || { echo "$output"; false; }
   [[ "$(nth 3)" == "VBW's own work: "* ]] || { echo "$output"; false; }
   "$VBW" config set check_budget 10 > /dev/null
   edit_record '.evidence.checks.C1 |= (.seconds = 42 | del(.reused))'
