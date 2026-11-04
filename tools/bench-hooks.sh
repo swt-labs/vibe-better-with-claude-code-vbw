@@ -86,19 +86,19 @@ SIZES="51 500 2000"
 # reference block below, on the two nominal machines, measured NOMINAL_WHEN. This is a
 # debt: measure it again whenever the workload or the nominal machines change.
 # October 2026. The workload is one jq call of the guard's shape (--rawfile glance, --arg root,
-# --arg dir, --arg open, -f PROGRAM - DOCUMENT END) over a program of 29698 bytes and a
+# --arg dir, --arg open, -f PROGRAM - DOCUMENT END) over a program of 41188 bytes and a
 # document of 86107 bytes, both written by this script; its cost is the call's CPU minus the
 # sh -c jq startup beside it, as a guard case's own cost is (R233). The program calls four of
 # every five of its definitions, as the guard calls all of its own (R243: jq drops an uncalled
-# definition before code generation). M1 Max Mac: 16.0 to 16.3 ms over
-# five runs of this script on 2026-11-01. GitHub's macOS runner: not yet measured in this form;
+# definition before code generation). M1 Max Mac: 23.6 to 23.9 ms over
+# five runs of this script on 2026-11-04. GitHub's macOS runner: not yet measured in this form;
 # the latest known is the earlier figure of 16.7 ms with the startup counted, in the bench
 # shard 1 log of pull request #740 (2026-10-31), to be replaced from the shard 1 log of the next pull request.
-# ubuntu-latest 17.8 ms (jq 1.7.1, ubuntu:24.04 in the container of tools/test-linux.sh on the Mac, 2026-11-01).
-# Ubuntu 26.04 17.6 ms (jq 1.8.1, the same container with ubuntu:26.04, 2026-11-01). The largest is pinned,
+# ubuntu-latest 28.9 ms (jq 1.7.1, ubuntu:24.04 in the container of tools/test-linux.sh on the Mac, 2026-11-04).
+# Ubuntu 26.04 26.8 ms (jq 1.8.1, the same container with ubuntu:26.04, 2026-11-04). The largest is pinned,
 # so the machines sit at a ratio of 1 or less.
-NOMINAL_MS=17.8
-NOMINAL_WHEN="October 2026"
+NOMINAL_MS=28.9
+NOMINAL_WHEN="November 2026"
 
 # case_labels: the label of every case, in the order the bench runs them.
 case_labels() {
