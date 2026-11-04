@@ -1,6 +1,25 @@
 {
   "schema": 8,
-  "lease": null,
+  "lease": {
+    "run": "build-20261104T115226Z",
+    "kind": "build",
+    "started_at": "2026-11-04T11:52:26Z",
+    "files": [
+      "plugin/agents/lead.md",
+      "plugin/lib/cmd-next.sh",
+      "plugin/lib/cmd-plan.sh",
+      "plugin/lib/cmd-prove.sh",
+      "plugin/lib/cmd-show.sh",
+      "plugin/lib/cmd-status.sh",
+      "plugin/lib/next.jq",
+      "plugin/lib/prove.jq",
+      "plugin/skills/vibe/SKILL.md"
+    ],
+    "session": "0ee781c3-c5b6-4a6c-889f-04b89f1fba4a",
+    "cost": {
+      "usd": 3160.394229
+    }
+  },
   "protected": [
     "tests/adaptive-results.bats",
     "tests/agent-scratch.bats",
@@ -65677,7 +65696,7 @@
         "P202.2",
         "P201.3"
       ],
-      "status": "planned",
+      "status": "building",
       "role": "dev",
       "tasks": [
         "cmd-plan.sh: vbw plan done on a plan with awaits requires only the plan's own checks green: an awaited check (another plan's) is not run and not required, no fix opens for it, and the plan's status becomes done; its requirement stays unproven until the awaited check passes (tests/amend.bats, filter 'R250 awaits')",
@@ -70510,6 +70529,13 @@
     {
       "id": "T238",
       "text": "Check after 2.1.25 whether a Dev's relative path inside a nested workspace still resolves against the project root (field refusal from the Rust project: a test helper listed in the plan under its workspace folder was refused as outside the run's files when named relative to the crate); P205.1 resolves targets after cd, so it may be fixed; needs a regression test either way",
+      "status": "open"
+    },
+    {
+      "id": "T239",
+      "text": "Panel Settings tab saves space (owner, 2026-11-04): merge Models and Effort into one table of 7 role rows with a model and an effort value; a row with long or many choices shows its value and opens the choices in place on a click, one row open at a time, a choice sets and closes; short rows stay fully visible; so the settings now below the fold show without scrolling (plugin/hooks/panel-settings.js). After 2.1.25: cosmetic",
+      "sort": "later",
+      "size": "small",
       "status": "open"
     }
   ],
