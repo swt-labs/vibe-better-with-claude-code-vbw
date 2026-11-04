@@ -104,8 +104,14 @@ call happens:
 | Where | What happens |
 |---|---|
 | During a run (`.vbw/runtime/run-open` exists; the kernel keeps it with the glance) | The call is **blocked**. Claude sees `VBW guard: the guard failed while a run is open, so this call is blocked. Next: run vbw doctor to see why, then retry` (exit status 2). The same holds when the guard must read `.vbw/record.json` and cannot parse it |
+| During a run, in another project that a write lands in, when the second pass cannot read that project's record while its run is open | The same: the call is blocked with the same text |
 | In a VBW project with no open run | The call goes through, silently, as before |
 | Outside a VBW project | Nothing changes and nothing is printed |
+
+A guard that did not run to its end is told by its missing last line: the Bash
+and file guards print `vbw-guard-done` last, and the reader (`hooks/read.sh`)
+fails when it does not arrive (the guard crashed, was not found, or ran past its
+time limit), which the hook command treats as a failed guard.
 
 During a run the guard fails closed: a broken guard never lets a call through.
 Nothing ever answers allow.
@@ -259,6 +265,36 @@ other program that names it, is refused.
 
 A command that contains none of the words any rule needs (`rm`, `git`, `vbw`,
 `consent`, `record.json`, a secret file name) is allowed without being read.
+Three more things lift that: an agent's call (a subagent, whatever the words),
+a command that names an absolute path or a `..` segment, and a command that
+runs `cd`, because each can write into another project.
+
+**A write is judged by the project it lands in, wherever the command runs
+from.** Every write target (a redirect, a copier's destination, a program's
+literal file, a `git checkout` or `git restore` path, a file tool's path) is
+made absolute after any `cd` earlier in the command (a `cd DIR` joined by `&&`
+or `;` moves the working folder for the commands after it; a `cd` to `~`, a
+variable or `-` is not resolved and leaves it). One that stays inside the hook's
+project is judged there by its record and run, as above. One that leaves it
+is judged by the project it lands in: the nearest folder above the target
+holding `.vbw/record.json` beside `.git`, a linked worktree included. Two VBW
+projects in one clone stay separate, each judged by its own record. The
+refusal is the very one the same write gets from inside that project, and an
+agent of that run's session is held to its files while another session is held
+off, as inside. A target in no project is judged as before: refused under the
+hook's own run (an agent writes only inside the project), allowed otherwise.
+
+How it runs (the second pass). The first pass is the guard's one `jq` call, the
+only program that starts before it. It prints nothing, one decision, or a
+request: the hook input without its `tool_input`, and one line for each target
+that leaves the project (its absolute path and the refusal it gets when no
+project holds it). It always ends with the line `vbw-guard-done`. The reader,
+`hooks/read.sh`, is sourced by the hook command (POSIX `sh`, so no process starts
+for it) and reads that answer: a decision is printed as it is; for a request it
+walks each target up to its project and runs one more `jq` call per other
+project (`hooks/guard-read.jq`) over that project's record, or its glance when
+newer. That record is read only when a target leaves the hook's project, so a
+call that stays inside costs what it did.
 
 ## MCP tools by role
 
