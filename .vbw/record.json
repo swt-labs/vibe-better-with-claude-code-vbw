@@ -18,7 +18,12 @@
     "session": "0ee781c3-c5b6-4a6c-889f-04b89f1fba4a",
     "cost": {
       "usd": 3160.394229
-    }
+    },
+    "editable": [
+      "tests/amend.bats",
+      "tests/guard-protected.bats",
+      "tests/hooks-guard.bats"
+    ]
   },
   "protected": [
     "tests/adaptive-results.bats",
@@ -65704,6 +65709,109 @@
         "cmd-status.sh and cmd-show.sh: while an awaited check has no passing result the plan reads \"P1.1 built, awaiting C3\" in vbw status and \"P1.1 Pay [built, awaiting C3]\" in vbw show roadmap, and \"[done]\" once it passes, derived live from the record and never stored; vbw show contract --changes prints the shared amendments block (P202.2's helper) and never lists an amended plan or check as a changed check or changed plan; vbw show contract prints the same block in its approval section when amendments exist",
         "cmd-next.sh and next.jq: vbw next --json carries amendments: [{id, what}] for the amendments recorded since the previous next.json, computed in the one pass (P201.3), once: the next call carries none until a new amendment is recorded (D586)",
         "plugin/skills/vibe/SKILL.md: the router's one chat line for an amendment carried by vbw next --json (the plan or check and what changed, nothing to answer), and when the main session uses vbw apply --amend (a file added to a plan or a check, a dependency on another plan's check) instead of --patch (anything a check asserts); plugin/agents/lead.md: amendments are the main session's, never a plan's task; a plan that needs another plan's check names it in awaits; a check change on a started plan is a --patch that keeps the plan's progress"
+      ],
+      "mutations": [
+        {
+          "rule": {
+            "req": "R250",
+            "text": "a plan with awaits reaches plan done with its own checks green and the awaited check unrun; it reads built, awaiting <check> in vbw status and vbw show roadmap and its requirement stays unproven until the check passes, when it reads done"
+          },
+          "what": "plan done requires the awaited check too",
+          "files": [
+            "plugin/lib/cmd-plan.sh"
+          ],
+          "checks": {
+            "C576": "red"
+          },
+          "result": "red",
+          "at": "2026-11-04T12:02:03Z",
+          "head": "f7888aa18280e5090211109085dbbfb6c4ea8800",
+          "tree": "6a1f61f72bb487486866928aadde74ba89926a05",
+          "contract": "4d0e087bb9112981adb99682545eff4a3bc055ae2d922b50087613f1694a2cda"
+        },
+        {
+          "rule": {
+            "req": "R250",
+            "text": "the amendments made since approval are listed by vbw show contract --changes and in vbw show contract's approval block, never as changed checks or plans"
+          },
+          "what": "the changes view prints no amendments block",
+          "files": [
+            "plugin/lib/cmd-show.sh"
+          ],
+          "checks": {
+            "C576": "red"
+          },
+          "result": "red",
+          "at": "2026-11-04T12:02:06Z",
+          "head": "f7888aa18280e5090211109085dbbfb6c4ea8800",
+          "tree": "6a1f61f72bb487486866928aadde74ba89926a05",
+          "contract": "4d0e087bb9112981adb99682545eff4a3bc055ae2d922b50087613f1694a2cda"
+        },
+        {
+          "rule": {
+            "req": "R250",
+            "text": "vbw next --json carries a new amendment (id, what) once, so the router says one chat line"
+          },
+          "what": "an amendment is told on every answer",
+          "files": [
+            "plugin/lib/next.jq"
+          ],
+          "checks": {
+            "C576": "red"
+          },
+          "result": "red",
+          "at": "2026-11-04T12:02:09Z",
+          "head": "f7888aa18280e5090211109085dbbfb6c4ea8800",
+          "tree": "6a1f61f72bb487486866928aadde74ba89926a05",
+          "contract": "4d0e087bb9112981adb99682545eff4a3bc055ae2d922b50087613f1694a2cda"
+        },
+        {
+          "task": 5,
+          "none": "skills/agent prose: no check reads it, nothing to break",
+          "at": "2026-11-04T12:02:24Z"
+        },
+        {
+          "task": 2,
+          "what": "an awaited check is never held in a proof",
+          "files": [
+            "plugin/lib/cmd-prove.sh"
+          ],
+          "checks": {
+            "C574": "green",
+            "C575": "green",
+            "C576": "green",
+            "C577": "green",
+            "C578": "green"
+          },
+          "result": "survivor",
+          "at": "2026-11-04T12:04:42Z",
+          "head": "f7888aa18280e5090211109085dbbfb6c4ea8800",
+          "tree": "6a1f61f72bb487486866928aadde74ba89926a05",
+          "contract": "4d0e087bb9112981adb99682545eff4a3bc055ae2d922b50087613f1694a2cda"
+        },
+        {
+          "task": 2,
+          "what": "an awaited check is never held in a proof",
+          "files": [
+            "plugin/lib/cmd-prove.sh"
+          ],
+          "checks": {
+            "C574": "green",
+            "C575": "green",
+            "C576": "red"
+          },
+          "result": "red",
+          "at": "2026-11-04T12:07:42Z",
+          "head": "013b8196c2654534f982e6b193bb058b39a186eb",
+          "tree": "1127101eee18d677325f25681f3faed00862eef2",
+          "contract": "ef76554957f113b447250c30b81b13193a3427ee6cdbc46049ffa4e0c7c6615a",
+          "strengthened": [
+            "tests/amend.bats"
+          ],
+          "pending": [
+            "tests/amend.bats"
+          ]
+        }
       ]
     },
     {
@@ -70519,7 +70627,7 @@
     {
       "id": "T236",
       "text": "A docs plan of a code requirement closes on the breaks its requirement's code plans recorded: a documentation plan cannot break code, and closing one cost a lead decision five times in one milestone of the Rust project; related to T231",
-      "status": "open"
+      "status": "dropped"
     },
     {
       "id": "T237",
