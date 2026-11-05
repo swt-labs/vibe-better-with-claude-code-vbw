@@ -71133,7 +71133,7 @@
     {
       "id": "T222",
       "text": "Proof reuse when a submodule moves (#745, halindrome): diff inside each moved submodule (git -C sub diff-tree between the two gitlinks, paths prefixed with the folder) and judge units by the files that changed; stay unknown when the old gitlink is missing, a submodule was added or removed, or a nested submodule moved. Measured: all 8 units rerun on every proof of a 5-submodule monorepo, about 4 of 5.5 min. Already adopted as a to-do in the #744 thread; release after 2.1.24.",
-      "status": "open",
+      "status": "done",
       "sort": "next",
       "size": "medium"
     },
