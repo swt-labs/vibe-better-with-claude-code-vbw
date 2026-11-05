@@ -19072,7 +19072,7 @@
           "plan": "P201.2"
         },
         {
-          "text": "after a warm digest, vbw next --json and vbw status each read the record through at most two record-sized jq calls, so their fields come from one pass",
+          "text": "after a warm digest, on an approved contract, vbw next --json and vbw status each read the record through at most two record-sized jq calls, so their fields come from one pass; the approve and prove answers and an unapproved contract read it more and are T242's",
           "check": "C573",
           "plan": "P201.3"
         },
@@ -69615,7 +69615,7 @@
       "req": "R249",
       "source": "qa",
       "attempts": 0,
-      "status": "open",
+      "status": "fixed",
       "note": "The 'at most two record-sized jq reads' claim of F354/F356 holds only for one state: a contract planned and approved (the build state). tests/big-record-fast.bats 'R249 one pass: with the bulk in what the working record keeps' applies and approves first, then counts, so it never sees the other states. Read from the code (not run, the QA run cannot write a counting jq shim): (1) contract not approved (the state vbw next answers while a plan waits for approval, and in vbw status's road): plugin/lib/cmd-next.sh:177 calls approve_problems on the working record, which pipes it into two jq runs (plugin/lib/cmd-approve.sh, the spec-vs-record comparison and the 'has no check' listing), and in vbw next --json an 'approve' answer also runs step_replan_say, whose step_size jq reads the working record again (plugin/lib/cmd-next.sh:~290, steps.sh:320). With the bulk kept in the working record that is 5 record-sized reads, not 2. (2) a 'prove' answer: step_next passes the full record (NP_RECORD) to step_proof_plan, which runs proofreuse_plan, proofcauses_find, testfiles_plan, contract_held, prove_unit_names and prove_plan_object over it, many jq runs over the full 4.5 MB record on VBW's own project; the code comment admits it ('a proof's reuse plan reads the record itself'). The criterion and P201.3 task 2 say at most two after a warm digest, with no state excepted. Regression test should catch: on the kept-bulk twin with SHIM_BIG=100000, assert at most two record-sized jq calls for vbw next --json and vbw status in the unapproved state (before vbw approve), in the 'approve' answer, and in a 'prove' answer (all plans done), not only after apply+approve.",
       "phase": "P201"
     }
@@ -74564,6 +74564,17 @@
       "id": "D606",
       "at": "2026-11-05T00:50:02Z",
       "text": "Contract approved: 244 requirements, 580 checks, 606 plans (9b03f781c068)",
+      "plans": []
+    },
+    {
+      "id": "D607",
+      "text": "F369: R249.6 is narrowed to an approved contract for 2.1.25; the approve and prove answers and an unapproved contract go to T242. Why: next on VBW's own record went from 10.7 s to about 2.6 to 3.3 s; a third speed round touches the core files again (the second one broke the newer-schema refusal), costs a full proof of an hour and delays the Rust pack; the owner confirms by the approval",
+      "at": "2026-11-05T01:01:22Z"
+    },
+    {
+      "id": "D608",
+      "at": "2026-11-05T01:42:03Z",
+      "text": "Contract approved: 244 requirements, 580 checks, 606 plans (067ae1e5e81c)",
       "plans": []
     }
   ],
