@@ -19361,6 +19361,62 @@
           "plan": "P206.1"
         }
       ]
+    },
+    {
+      "id": "R256",
+      "text": "Proof work yields to the user's apps (owner, 2026-11-04: 95% CPU with VBW's limit of 7 units held): every unit of vbw prove, vbw fix done and vbw mutate runs at low priority (nice), so the machine stays usable; docs/proof.md says the machine limit counts units at once, not CPU, and that a unit may use more than one core",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M53",
+      "rules": []
+    },
+    {
+      "id": "R257",
+      "text": "A proof started inside a proof's unit takes one unit at a time by default (measured 2026-11-04: load 135 on 10 cores, because VBW's own tests start about twenty inner vbw prove processes, each with its own Claude config folder and so its own slot store, outside the machine limit): the outer run marks its units in the environment, a kernel so marked reads a check_jobs default of 1, and a check_jobs set in the project still wins, so tests of parallel lanes keep their lanes",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M53",
+      "rules": []
+    },
+    {
+      "id": "R258",
+      "text": "A reworded rule keeps its recorded breaks (T234; field case: a parenthesis added to two rules made the record list their breaks unnumbered, and vbw plan done refused the next plan until two gate runs were repeated): a break belongs to the rule by its place in the requirement, not its text, so vbw apply --patch rewording a rule or vbw spec sync keeping its place carries the rule's recorded breaks with it",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M53",
+      "rules": []
+    },
+    {
+      "id": "R259",
+      "text": "Rewording a requirement keeps its rules (T235; found 2026-11-04: rewording one clause of R255 removed its 13 rules through vbw spec sync): a changed requirement text keeps its rules, the requirement reads changed in vbw show contract --changes and the Lead reviews them at the next plan step; removing a rule stays an explicit vbw apply --patch",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M53",
+      "rules": []
+    },
+    {
+      "id": "R260",
+      "text": "Proof reuse survives a moved submodule (T222, #745, halindrome): when a submodule's commit differs between a run's recorded tree and HEAD, the diff runs inside the submodule between the two commits with paths prefixed by its folder and is judged by the same read-list rule; a run stays unknown when the old commit is missing, a submodule was added or removed, or a nested one moved; cases in tests/proof-reuse.bats",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M53",
+      "rules": []
+    },
+    {
+      "id": "R261",
+      "text": "The Rust stack pack (T241, owner 2026-11-04; docs/ideas.md Stack packs): plugin/packs/rust/ holds what Lead, Dev and QA are told about Rust, and a plan whose files include Cargo.toml or *.rs gets it, so a repository of several stacks gets each plan the right one; a project with no Rust gets nothing and pays no cost. A pack is text read by the workflows: it is outside the contract's fingerprint and the record's schema, so upgrading a pack never un-approves a plan and adding a stack is one more folder. First contents: a test target written ahead of its code is declared test = false in the manifest so whole-crate commands stay green while its explicit --test name still fails red, and the declaration goes once it compiles; a dependency added to a crate changes the lockfile of every workspace that path-depends on it, in the same commit; a check runs one crate with -j 2 and the whole workspace only alone; a behaviour change re-pins baselines, generated pages and digests in the same change. Paths in a nested workspace are given from the project root. docs/ says what a pack is and how to contribute one",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M53",
+      "rules": []
+    },
+    {
+      "id": "R262",
+      "text": "Real-user scenarios for what 2.1.25 left at L1: tools/l3-suite.sh gains scenarios where a user's build gets a file added by vbw apply --amend with the run open and the approval kept, a requirement added during a build queues and is planned after it, and a Dev's write from a linked worktree into the main checkout is refused",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M53",
+      "rules": []
     }
   ],
   "phases": [
@@ -71051,7 +71107,7 @@
       "text": "Proof reuse inside moved submodules: #737's rule counts every recorded run unknown when a submodule pointer moves, so a project whose work lives in submodules reuses nothing (halindrome's monorepo, 5 submodules: ~4 of each proof's 5.5 min rerun units; #744 comment 2026-11-02). Diff inside each moved submodule (old HEAD..new HEAD per submodule) and judge units by the files that changed, as the project's own diff does",
       "sort": "next",
       "size": "medium",
-      "status": "open"
+      "status": "done"
     },
     {
       "id": "T219",
