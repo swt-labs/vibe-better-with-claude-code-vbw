@@ -28,10 +28,10 @@ load helper
   # The field rows point to the table instead of restating numbers.
   row=$(grep -E '^\| `schema` \|' "$doc")
   [[ "$row" == *"Versioning"* ]] || { echo "the schema row does not point to Versioning: $row"; false; }
-  ! printf '%s\n' "$row" | grep -qE 'schema[- ][5-9]|`[5-9]`' || { echo "the schema row restates numbers: $row"; false; }
+  ! printf '%s\n' "$row" | grep -qE 'schema[- ]([5-9]|10)|`([5-9]|10)`' || { echo "the schema row restates numbers: $row"; false; }
   row=$(grep -E '^\| `decisions\[\]` \|' "$doc")
   ! printf '%s\n' "$row" | grep -qE 'schema[- ]6' || { echo "the decisions row restates schema 6: $row"; false; }
   row=$(grep -E '^\| `settings` \|' "$doc")
   ! printf '%s\n' "$row" | grep -qE 'schema[- ][57]' || { echo "the settings row restates schema 5 or 7: $row"; false; }
-  ! awk 'BEGIN { RS = "" } { gsub(/\n/, " "); print }' "$doc" | grep -E 'Key order' | grep -qE '[5-9] while|schema [5-9]' || { echo "the key-order note restates numbers"; false; }
+  ! awk 'BEGIN { RS = "" } { gsub(/\n/, " "); print }' "$doc" | grep -E 'Key order' | grep -qE '([5-9]|10) while|schema ([5-9]|10)' || { echo "the key-order note restates numbers"; false; }
 }
