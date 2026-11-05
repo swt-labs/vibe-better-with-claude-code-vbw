@@ -29271,9 +29271,9 @@
       "qa": {
         "result": "pass",
         "tier": "deep",
-        "tree": "ecde48052f0f7493dedd04cc7c0c49c2f40170c5c6adcabfb137610aca64c228",
-        "at": "2026-11-05T00:57:57Z",
-        "note": "6/6 checks (re-check round 2)"
+        "tree": "8ba61c20566f347fc61b02d2bc274b8c2ef19a3a58e583e2043e4446b3e7f0ba",
+        "at": "2026-11-05T12:12:36Z",
+        "note": "32/32 checks"
       },
       "outcome": {
         "tier": "deep",
