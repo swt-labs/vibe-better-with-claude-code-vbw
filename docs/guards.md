@@ -310,7 +310,8 @@ from.** Every write target (a redirect, a copier's destination, a program's
 literal file, a `git checkout` or `git restore` path, a file tool's path) is
 made absolute after any `cd` earlier in the command (a `cd DIR` joined by `&&`
 or `;` moves the working folder for the commands after it; a `cd` to `~`, a
-variable or `-` is not resolved and leaves it). One that stays inside the hook's
+variable or `-`, a `pushd` and a `git -C` are not resolved and leave it, so a
+relative path after one of them is judged in the folder the call started in). One that stays inside the hook's
 project is judged there by its record and run, as above. One that leaves it
 is judged by the project it lands in: the nearest folder above the target
 holding `.vbw/record.json` beside `.git`, a linked worktree included. Two VBW
