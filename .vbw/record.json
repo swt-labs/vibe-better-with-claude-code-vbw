@@ -29187,11 +29187,19 @@
       "qa": {
         "result": "fail",
         "tier": "deep",
-        "tree": "10d41d4580144e3c4618d0470286eea41c4c78109f9d8d5879d78275cfc8d7f1",
-        "at": "2026-11-04T16:28:17Z",
-        "note": "17/20 checks",
-        "rounds": 1
-      }
+        "tree": "e8ad8ed197a0d90a57bffb25cc114d0a0bf5ba6e2fcdcf6c76821daedf7bd867",
+        "at": "2026-11-05T00:59:35Z",
+        "note": "8/10 checks",
+        "rounds": 2
+      },
+      "escalations": [
+        {
+          "at": "2026-11-05T00:59:35Z",
+          "from": "deep",
+          "to": "deep",
+          "reason": "QA needs a second round"
+        }
+      ]
     },
     {
       "id": "P202",
@@ -29399,12 +29407,19 @@
       ],
       "predicted": "deep",
       "qa": {
-        "result": "fail",
+        "result": "pass",
         "tier": "standard",
-        "tree": "a171bcd16ab90f4355f5374e7294e31adb60cbf3ada17131eb20a59c5c5afd47",
-        "at": "2026-11-04T16:28:16Z",
-        "note": "9/11 checks",
-        "rounds": 1
+        "tree": "1a962a100d8829fd729455d0adf596d3375ee34d0d9e8cffdf693c545e57b558",
+        "at": "2026-11-05T00:59:32Z",
+        "note": "6/6 checks"
+      },
+      "outcome": {
+        "tier": "deep",
+        "predicted": "deep",
+        "held": true,
+        "fix_rounds": 2,
+        "qa_findings": 2,
+        "escalations": 0
       }
     },
     {
@@ -69485,7 +69500,7 @@
       "req": "R254",
       "source": "qa",
       "attempts": 0,
-      "status": "fixed",
+      "status": "closed",
       "note": "A write into a VBW project (or linked worktree) nested inside the hook's own project is judged by the outer project's record, not the nested project's own. plugin/hooks/common.jq request_target drops every target whose absolute path starts with the hook's root (select(startswith(root/) | not)), so read.sh never walks up to the nested folder holding .vbw/record.json beside .git. Criterion 1 and R254 require the target's nearest project to be found and, when it is not the hook's own, judged by its record; docs/guards.md (lines 147-149) itself says a nested clone or nested worktree stays a project of its own (Claude Code's own worktrees live under <repo>/.claude/worktrees). Effect: hook in MAIN with no run, a Dev of another session writing MAIN/.claude/worktrees/x/tests/c1.sh while x has a build run open is allowed, while the same write from inside x is refused (the same side door, nested layout). Regression test: hook project MAIN with no lease, a nested project holding a record with a build lease that protects tests/c1.sh; an Edit and a Bash redirect by that path from MAIN must be refused with the reason the same write gets from inside the nested project, and allowed when the nested project has no run.",
       "phase": "P205"
     },
@@ -69494,7 +69509,7 @@
       "req": "R249",
       "source": "qa",
       "attempts": 0,
-      "status": "fixed",
+      "status": "closed",
       "note": "vbw next --json is not one pass on a real large record. Measured here on VBW's own 4,568,530-byte record, digest warm, three runs: 6.6 s wall (3.4 s user + 2.3 s system); vbw status 0.87 s. A shell trace of one run shows about 25 jq calls piping the working record (next_decide in plugin/lib/cmd-next.sh: legacy probe, qa_state/qa_digests with several, next_holder, effort_table twice, interview_effective, next.jq), and contract_core is run again through contract_waiting inside qa_digests (plugin/lib/qa-inputs.sh:81 -> plugin/lib/contract.sh:42, about 1.5 s) after the pass already computed it. The working record of VBW's own record is still 2,624,103 bytes, so every one of those calls is record-sized. The criterion says at most two jq invocations read the record per command, on the twins and on VBW's own record. Why the test is green: tests/big-record-fast.bats counts only jq inputs of 1,048,576 bytes or more, and the large twin's bulk (tests/big-record-helper.bash: filler in history goals, criteria, tasks, decision texts) is exactly what record_work drops, so its working record is tiny and the repeated parses are invisible. Regression test should catch: a twin whose bulk sits in what record_work keeps (plans' files, evidence, requirement texts and rules of the active milestone, project.results), with the shim counting any jq call that reads a working-record-sized input (for example 100 KB) and asserting at most two for next --json and status, plus a timed case on that twin.",
       "phase": "P201"
     },
@@ -69503,7 +69518,7 @@
       "req": "R254",
       "source": "qa",
       "attempts": 0,
-      "status": "fixed",
+      "status": "closed",
       "note": "Test gap: tests/guard-cross-project.bats never runs the case R254.2 promises, 'a target inside a worktree with a record of its own is judged by that record', from a hook project that holds the run. Case 2 only writes the worktree's own files from the worktree as the hook project (a same-project judgement, no project lookup), and the outside-every-project case uses a folder with no record. No case has the hook in a project with a build lease (or none) writing into another project whose record differs: e.g. hook in MAIN under its run writing WT/tests/c1.sh (WT has no lease: must be allowed, not MAIN's outside-the-project refusal), or WT with its own build lease while the hook project has none (must be refused with WT's reason). A read.sh that took the hook's record, or the wrong folder, for the nearest project would pass every case. Regression test: both directions, Bash and Edit, between two projects with different leases.",
       "phase": "P205"
     },
@@ -69512,7 +69527,7 @@
       "req": "R249",
       "source": "qa",
       "attempts": 0,
-      "status": "fixed",
+      "status": "closed",
       "note": "Deviation from P201.3 task 2: the task says qa-inputs.sh, qa.jq, steps.sh, interview.sh and effort.sh take their facts from the caller's pass (or the glance) instead of re-reading the record, and road.sh/road.jq compute their lines in one pass. The commits of the phase (14797696, bf3bf7b3, 3834f7f8, 96fba23b) changed contract.sh, cmd-next.sh, next.jq, steps.sh and cmd-status.sh only; qa-inputs.sh, qa.jq, interview.sh, effort.sh, road.sh and road.jq are untouched, and no decision records dropping that work. The shortcut was a smaller 'working record' (record_work in cmd-next.sh) that every part keeps re-parsing; it works only while the record's bulk is finished history. Regression test should catch: the same as the first finding, a call-count assertion on a twin whose bulk is not finished history, which fails while qa_digests, effort_table, interview_effective and next_holder each parse the record themselves.",
       "phase": "P201"
     },
@@ -69603,6 +69618,15 @@
       "attempts": 0,
       "status": "closed",
       "note": "C377 fail (exit 1)"
+    },
+    {
+      "id": "F369",
+      "req": "R249",
+      "source": "qa",
+      "attempts": 0,
+      "status": "open",
+      "note": "The 'at most two record-sized jq reads' claim of F354/F356 holds only for one state: a contract planned and approved (the build state). tests/big-record-fast.bats 'R249 one pass: with the bulk in what the working record keeps' applies and approves first, then counts, so it never sees the other states. Read from the code (not run, the QA run cannot write a counting jq shim): (1) contract not approved (the state vbw next answers while a plan waits for approval, and in vbw status's road): plugin/lib/cmd-next.sh:177 calls approve_problems on the working record, which pipes it into two jq runs (plugin/lib/cmd-approve.sh, the spec-vs-record comparison and the 'has no check' listing), and in vbw next --json an 'approve' answer also runs step_replan_say, whose step_size jq reads the working record again (plugin/lib/cmd-next.sh:~290, steps.sh:320). With the bulk kept in the working record that is 5 record-sized reads, not 2. (2) a 'prove' answer: step_next passes the full record (NP_RECORD) to step_proof_plan, which runs proofreuse_plan, proofcauses_find, testfiles_plan, contract_held, prove_unit_names and prove_plan_object over it, many jq runs over the full 4.5 MB record on VBW's own project; the code comment admits it ('a proof's reuse plan reads the record itself'). The criterion and P201.3 task 2 say at most two after a warm digest, with no state excepted. Regression test should catch: on the kept-bulk twin with SHIM_BIG=100000, assert at most two record-sized jq calls for vbw next --json and vbw status in the unapproved state (before vbw approve), in the 'approve' answer, and in a 'prove' answer (all plans done), not only after apply+approve.",
+      "phase": "P201"
     }
   ],
   "todos": [
