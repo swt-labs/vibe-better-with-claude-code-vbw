@@ -34,7 +34,7 @@ record_violation() {
 # the one definition (R247), so an older VBW says the project needs a newer VBW instead
 # of calling the record corrupt. Records of schemas 1 to 3 written by an older VBW
 # are read and become format 4 on their next write.
-VBW_SCHEMA_MAX=8
+VBW_SCHEMA_MAX=9
 
 # The schema of the record at FILE when it is a number above the highest this
 # VBW reads (written by a newer VBW); empty and status 1 otherwise. A
@@ -73,7 +73,7 @@ record_glance_write() {
       plans: [.plans[]? | select(.status == "building")],
       holder: (($h | try fromjson catch null) as $f
         | if ($f | type) == "object" and .lease != null and $f.run == .lease.run
-          then {run: $f.run, session: ($f.session // null), session_name: ($f.session_name // null)} else null end)}' \
+          then {run: $f.run, session: ($f.session // null), session_name: ($f.session_name // null), head: ($f.head // null)} else null end)}' \
     "$VBW_RECORD" > "$tmp" 2> /dev/null; then
     record_open_marker "$tmp"
     mv "$tmp" "$VBW_RUNTIME/glance.json" 2> /dev/null || true
@@ -122,6 +122,40 @@ record_glance_current() {
   [ -f "$VBW_RUNTIME/glance.json" ] && [ "$VBW_RUNTIME/glance.json" -nt "$VBW_RECORD" ]
 }
 
+# The digest of the record last found correct (R249): .vbw/runtime/validated.json
+# holds {record, validator}, the sha256 of the record's bytes and of the validator's
+# own text (record.jq, record-schema.jq, interview.json, in that order) and the top
+# schema it reads, because the refusal of a newer schema depends on that too. A record
+# whose bytes and validator match it is not validated again; any other bytes are.
+# A runtime folder that cannot be read or written is never an error: the digest is
+# simply not kept.
+record_validator_digest() {
+  { printf '%s\n' "$VBW_SCHEMA_MAX"; cat "$VBW_LIB/record.jq" "$VBW_LIB/record-schema.jq" "$VBW_LIB/interview.json" 2> /dev/null; } | vbw_sha256
+}
+
+# record_digest_matches FILE: true when the digest file names FILE's bytes and the validator.
+record_digest_matches() {
+  local want got
+  [ -f "$VBW_RUNTIME/validated.json" ] || return 1
+  got=$(vbw_sha256 < "$1" 2> /dev/null) || return 1
+  want=$(jq -c '[.record, .validator]' "$VBW_RUNTIME/validated.json" 2> /dev/null) || return 1
+  [ "$want" = "[\"$got\",\"$(record_validator_digest)\"]" ]
+}
+
+# record_digest_write FILE: keep the digest of FILE's bytes (a temporary name, then a rename).
+record_digest_write() {
+  local rec val t
+  rec=$(vbw_sha256 < "$1" 2> /dev/null) || return 0
+  val=$(record_validator_digest)
+  t=$(mktemp "$VBW_RUNTIME/validated.XXXXXX" 2> /dev/null) || return 0
+  if printf '{"record":"%s","validator":"%s"}\n' "$rec" "$val" > "$t" 2> /dev/null; then
+    mv "$t" "$VBW_RUNTIME/validated.json" 2> /dev/null || rm -f "$t" 2> /dev/null || true
+  else
+    rm -f "$t" 2> /dev/null || true
+  fi
+  return 0
+}
+
 # The validated record on stdout; exit 3 if it is corrupt, 4 if it is newer.
 # A glance that is missing, not a regular file or not strictly newer than the
 # record (after a checkout, a reset, a hand edit, or a record an older VBW wrote)
@@ -129,8 +163,13 @@ record_glance_current() {
 # date. The record and its file time are never changed.
 record_read() {
   local v
-  record_refuse_newer
-  v=$(record_violation "$VBW_RECORD") || vbw_die "record is corrupt: $v ($VBW_RECORD)" 3
+  # Bytes the digest names were validated by this validator, which refuses a newer schema: the
+  # schema probe (a parse of the whole record) is only for any other bytes (R249).
+  if ! record_digest_matches "$VBW_RECORD"; then
+    record_refuse_newer
+    v=$(record_violation "$VBW_RECORD") || vbw_die "record is corrupt: $v ($VBW_RECORD)" 3
+    record_digest_write "$VBW_RECORD"
+  fi
   if ! record_glance_current; then
     (
       vbw_guard_reset
@@ -306,10 +345,14 @@ vbw_lock_take() {
 record_update() {
   local filter="$1" tmp v
   shift
-  record_refuse_newer
+  record_digest_matches "$VBW_RECORD" || record_refuse_newer
   record_lock
-  record_refuse_newer
-  v=$(record_violation "$VBW_RECORD") || vbw_die "record is corrupt: $v ($VBW_RECORD)" 3
+  # Bytes the digest names were validated by this validator (R249): only the record this
+  # write makes is validated, not again the one it starts from.
+  if ! record_digest_matches "$VBW_RECORD"; then
+    record_refuse_newer
+    v=$(record_violation "$VBW_RECORD") || vbw_die "record is corrupt: $v ($VBW_RECORD)" 3
+  fi
   tmp=$(mktemp "$VBW_RUNTIME/record.XXXXXX") || vbw_die "cannot create a temporary file in $VBW_RUNTIME"
   vbw_guard_add file "$tmp"
   # Every write produces format 4 (D232, R150): the schema the table in record-schema.jq
@@ -330,6 +373,7 @@ record_update() {
   rm -f "$VBW_RUNTIME/glance.json" 2> /dev/null || true
   mv "$tmp" "$VBW_RECORD"
   vbw_guard_drop "$tmp"
+  record_digest_write "$VBW_RECORD"
   record_glance_write
   record_unlock
 }

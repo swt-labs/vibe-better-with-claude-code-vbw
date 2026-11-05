@@ -112,6 +112,8 @@ each: `vbw decide "<what was decided>" "<their reason, or the trade-off they acc
 `choices` (any can change) and Architect's `notes` (offer `vbw todo add`); then the approval menu, never a typed command.
 Status `blocked`: give its summary and blockers. A requirement already met: AskUserQuestion, drop it (delete its line in `.vbw/spec.md`, then `vbw spec sync`) or reword it to what is still missing (edit it there, then `vbw spec sync`); record `vbw decide`; plan again with `requirements` from a new `vbw next --json`.
 
+**amendments**: when `vbw next --json` carries `amendments` (`[{id, what}]`), say one chat line naming each plan or check and what changed; nothing to answer, the contract stays approved. Make a correction yourself with `vbw apply --amend` when it changes what no check asserts: a file added to a plan's files or to a check's files, or a plan made to wait for another plan's check (`awaits`). Anything a check asserts (its command or expected result, a requirement's text, a plan's title, `after` or rules) is `vbw apply --patch` with the approval menu, never an amendment.
+
 **contract**: not ready for approval: do what `instruction` says (write the named check files, `vbw spec sync`), then `vbw next --json`.
 
 **approve** (needs user): `detail.changed` (this plan was approved before): `vbw show contract --changes`, say the plan changed and explain just those. Else

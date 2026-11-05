@@ -11,8 +11,12 @@ cmd_init() {
     return 0
   fi
   mkdir -p "$VBW_RUNTIME"
-  local name commands
+  local name commands big
   name=$(basename "$VBW_ROOT")
+  # Large git-ignored folders (R253): candidates for the Clean copy section.
+  # shellcheck source=proofcopy.sh
+  . "$VBW_LIB/proofcopy.sh"
+  big=$(proofcopy_big_ignored 2> /dev/null) || big=''
   commands=$(init_detect_commands "$VBW_ROOT")
   # The detected commands are a suggestion in spec.md, which the user owns; a
   # spec that already lists its own commands wins.
@@ -20,7 +24,7 @@ cmd_init() {
     commands=$(jq -Rs -f "$VBW_LIB/spec.jq" < "$VBW_DIR/spec.md" 2> /dev/null \
       | jq -c --argjson d "$commands" '.commands // $d' 2> /dev/null || printf '%s' "$commands")
   else
-    init_spec "$name" "$commands" > "$VBW_DIR/spec.md"
+    init_spec "$name" "$commands" "$big" > "$VBW_DIR/spec.md"
   fi
   jq -n --arg name "$name" --argjson commands "$commands" '{
     schema: 4,
@@ -53,6 +57,10 @@ cmd_init() {
   if [ "$commands" != "{}" ]; then
     printf '\nDetected project commands, not approved yet (vbw prove runs them only after\nyou approve them in the approval menu). Edit or delete them in .vbw/spec.md under Commands:\n'
     printf '%s\n' "$commands" | jq -r 'to_entries[] | "  \(.key): \(.value | join(" "))"'
+  fi
+  if [ -n "$big" ]; then
+    printf '\nLarge git-ignored folders (each is copied into every proof copy). They are written as\ncommented suggestions in .vbw/spec.md under Clean copy; uncomment a line to leave it out:\n'
+    printf '%s\n' "$big" | sed 's/^/  /'
   fi
   init_said
   init_hidden
@@ -110,6 +118,13 @@ EOF
 - data/
 -->
 EOF
+  local c
+  if [ -n "${3:-}" ]; then
+    printf '\n<!-- Large git-ignored folders found here; to leave one out, remove the comment marks around its line: -->\n'
+    while IFS= read -r c; do
+      [ -z "$c" ] || printf '<!-- - %s -->\n' "${c%% (*}"
+    done <<< "$3"
+  fi
 }
 
 # Detect the project's own test/lint/build commands as argv arrays (JSON object

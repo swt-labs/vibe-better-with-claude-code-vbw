@@ -223,6 +223,7 @@ doctor_project() {
       [ -z "$hid" ] || doctor_line fail "${hid%: "$fix"}" "$fix"
     done <<< "$hidden"
   fi
+  doctor_big_ignored
   [ -n "$v" ] && return 0
   if jq -e '.lease != null' "$VBW_RECORD" > /dev/null; then
     doctor_line warn "a run is open ($(jq -r .lease.run "$VBW_RECORD"))" "if no VBW workflow is running: vbw run end"
@@ -234,13 +235,29 @@ doctor_project() {
   doctor_guard
 }
 
+# Large git-ignored folders the Clean copy section does not list yet (R253).
+doctor_big_ignored() {
+  local line name listed=''
+  # shellcheck source=proofcopy.sh
+  . "$VBW_LIB/proofcopy.sh"
+  if [ -f "$VBW_RECORD" ]; then
+    listed=$(jq -r '(.project.leave_out // [])[] | sub("/+$"; "")' "$VBW_RECORD" 2> /dev/null) || listed=''
+  fi
+  proofcopy_big_ignored 2> /dev/null | while IFS= read -r line; do
+    [ -n "$line" ] || continue
+    name=${line%% (*}
+    if [ -n "$listed" ] && grep -qxF -- "${name%/}" <<< "$listed"; then continue; fi
+    doctor_line info "large git-ignored folder $line is copied into every proof copy" "list $name under Clean copy in .vbw/spec.md, then vbw spec sync"
+  done
+}
+
 # The guard works with this jq: it must deny a destructive command here.
 doctor_guard() {
   local out g=/dev/null d="${VBW_RECORD%/*}/runtime/glance.json"
   if [ -f "$VBW_RECORD" ] && [ -f "$d" ] && [ -r "$d" ] && [ "$d" -nt "$VBW_RECORD" ]; then g=$d; fi
   out=$(jq -nc --arg d "$VBW_ROOT" '{tool_name: "Bash", cwd: $d, tool_input: {command: "git reset --hard"}}' \
     | jq -nc --rawfile glance "$g" --arg root "$VBW_ROOT" -f "$VBW_PLUGIN/hooks/guard-bash.jq" - "$VBW_RECORD" "$VBW_PLUGIN/hooks/end.json" 2> /dev/null)
-  if printf '%s' "$out" | jq -e '.hookSpecificOutput.permissionDecision == "deny"' > /dev/null 2>&1; then doctor_line ok "the guards work"
+  if printf '%s' "$out" | jq -es 'any(.[]; type == "object" and .hookSpecificOutput.permissionDecision == "deny")' > /dev/null 2>&1; then doctor_line ok "the guards work"
   else doctor_line fail "the guards do not work with this jq" "update jq, then run vbw doctor again"
   fi
 }

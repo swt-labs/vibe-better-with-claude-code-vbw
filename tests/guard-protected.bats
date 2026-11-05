@@ -69,9 +69,12 @@ bash_in() { jq -nc --arg c "$1" --arg a "${2:-}" --arg s "${3:-s1}" '{hook_event
 file_in() { jq -nc --arg t "$1" --arg p "$2" --arg a "${3:-}" --arg s "${4:-s1}" '{hook_event_name: "PreToolUse", session_id: $s, tool_name: $t,
   tool_input: {file_path: $p, content: "x", old_string: "a", new_string: "b"}} + (if $a == "" then {} else {agent_id: "x1", agent_type: $a} end)'; }
 
-# The message the guards give today for a protected check file.
+# The message the guards give for a protected check file: the rule in one line and
+# the next step (R250): the main session changes the check with vbw apply --patch,
+# then the user approves it.
 protected_denied() {
-  [[ "$ANSWER" == *'"deny"'* && "$ANSWER" == *"is a protected check file: the contract is fixed while building"* ]] \
+  [[ "$ANSWER" == *'"deny"'* && "$ANSWER" == *"is a protected check file: a protected check file is never edited during a build"* \
+    && "$ANSWER" == *"Next: leave "*" as it is; the main session changes the check with vbw apply --patch, then the user approves it"* ]] \
     || { echo "not denied as protected: $ANSWER"; return 1; }
 }
 denied() { [[ "$ANSWER" == *'"deny"'* ]] || { echo "not denied: $ANSWER"; return 1; }; }

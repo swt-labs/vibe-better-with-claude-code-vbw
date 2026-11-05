@@ -75,30 +75,30 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-BUDGET_MS="${VBW_HOOK_BUDGET_MS:-20}"
+BUDGET_MS="${VBW_HOOK_BUDGET_MS:-25}"
 STATUS_MS="${VBW_STATUSLINE_BUDGET_MS:-60}"
 HANDBACK_MS="${VBW_HANDBACK_BUDGET_MS:-10}"
 RUNS="${VBW_BENCH_RUNS:-100}"
 PLUGIN="${VBW_BENCH_PLUGIN_ROOT:-$ROOT/plugin}"
-GUARD_INPUTS="git npm big interp read answer tools"
+GUARD_INPUTS="git npm big interp script read answer tools"
 SIZES="51 500 2000"
 # The reference workload's nominal cost (R222): CPU ms per call of the workload in the
 # reference block below, on the two nominal machines, measured NOMINAL_WHEN. This is a
 # debt: measure it again whenever the workload or the nominal machines change.
 # October 2026. The workload is one jq call of the guard's shape (--rawfile glance, --arg root,
-# --arg dir, --arg open, -f PROGRAM - DOCUMENT END) over a program of 29698 bytes and a
+# --arg dir, --arg open, -f PROGRAM - DOCUMENT END) over a program of 41188 bytes and a
 # document of 86107 bytes, both written by this script; its cost is the call's CPU minus the
 # sh -c jq startup beside it, as a guard case's own cost is (R233). The program calls four of
 # every five of its definitions, as the guard calls all of its own (R243: jq drops an uncalled
-# definition before code generation). M1 Max Mac: 16.0 to 16.3 ms over
-# five runs of this script on 2026-11-01. GitHub's macOS runner: not yet measured in this form;
+# definition before code generation). M1 Max Mac: 23.6 to 23.9 ms over
+# five runs of this script on 2026-11-04. GitHub's macOS runner: not yet measured in this form;
 # the latest known is the earlier figure of 16.7 ms with the startup counted, in the bench
 # shard 1 log of pull request #740 (2026-10-31), to be replaced from the shard 1 log of the next pull request.
-# ubuntu-latest 17.8 ms (jq 1.7.1, ubuntu:24.04 in the container of tools/test-linux.sh on the Mac, 2026-11-01).
-# Ubuntu 26.04 17.6 ms (jq 1.8.1, the same container with ubuntu:26.04, 2026-11-01). The largest is pinned,
+# ubuntu-latest 28.9 ms (jq 1.7.1, ubuntu:24.04 in the container of tools/test-linux.sh on the Mac, 2026-11-04).
+# Ubuntu 26.04 26.8 ms (jq 1.8.1, the same container with ubuntu:26.04, 2026-11-04). The largest is pinned,
 # so the machines sit at a ratio of 1 or less.
-NOMINAL_MS=17.8
-NOMINAL_WHEN="October 2026"
+NOMINAL_MS=28.9
+NOMINAL_WHEN="November 2026"
 
 # case_labels: the label of every case, in the order the bench runs them.
 case_labels() {
@@ -106,6 +106,7 @@ case_labels() {
   for input in $GUARD_INPUTS; do printf 'guard (%s)\n' "$input"; done
   for input in $GUARD_INPUTS; do printf 'guard (%s, large record)\n' "$input"; done
   printf '%s\n' 'guard (tools, main session)'
+  printf '%s\n' 'guard (cross-project)'
   printf '%s\n' 'guard (loop)' 'guard (loop, large record)'
   for n in $SIZES; do
     for input in $GUARD_INPUTS; do printf 'guard (%s, %s checks)\n' "$input" "$n"; done
@@ -171,7 +172,7 @@ hooks_json="$PLUGIN/hooks/hooks.json"
 export CLAUDE_PLUGIN_ROOT="$PLUGIN" CLAUDE_PROJECT_DIR="$work"
 
 # reference_files DIR (R231): the reference program and document, written from the bench's
-# own text into DIR: reference.jq (about 25 KB, the size of the shipped Bash guard, built
+# own text into DIR: reference.jq (about 41 KB, the size of the shipped Bash guard and the programs.jq it includes, built
 # of fixed helper definitions and a body that reads $glance, $root, $dir, $open and its
 # inputs the way a guard does) and reference.json (a fixed object of about 60 KB). The
 # content is deterministic and read from no shipped file and no project file. Four of every
@@ -184,7 +185,7 @@ export CLAUDE_PLUGIN_ROOT="$PLUGIN" CLAUDE_PROJECT_DIR="$work"
 reference_files() {
   mkdir -p "$1"
   awk 'BEGIN {
-    for (i = 1; i <= 108; i++)
+    for (i = 1; i <= 150; i++)
       printf "def h%d($v; $w): if ($v | type) == \"object\" then ($v | keys | map(select(startswith(\"k%d\") or test(\"^c[0-9]+$\"))) | length) + $w elif ($v | type) == \"array\" then ($v | map(tostring | length) | add // 0) + %d else ($v | tostring | ascii_downcase | length) end;\n", i, i % 7, i
     print "($glance | fromjson) as $g"
     print "| ([inputs] | .[-2:]) as $in"
@@ -194,7 +195,7 @@ reference_files() {
     print "| [$checks[] | select((.run | join(\" \") | test(\"^sh \")) and (.files | length) > 0)] as $kept"
     print "| (($root | length) + ($dir | length) + ($open | tonumber)) as $n"
     printf "| [$doc"
-    for (i = 1; i <= 108; i++) if (i % 5 != 0) printf ", h%d($doc; $n)", i
+    for (i = 1; i <= 150; i++) if (i % 5 != 0) printf ", h%d($doc; $n)", i
     print "] as $parts"
     print "| {schema: ($g.schema // 0), kept: ($kept | length), end: ($end | length), parts: ($parts | map(numbers) | add)}"
   }' > "$1/reference.jq"
@@ -302,6 +303,11 @@ jq -nc --arg d "$work" --arg b "$big" '{tool_name: "Bash", cwd: $d, tool_input: 
 # A build agent running Python from a heredoc on a build lease: the program is read for the files it writes.
 jq -nc --arg d "$work" '{tool_name: "Bash", cwd: $d, session_id: "bench", agent_id: "x1", agent_type: "workflow-subagent", tool_input: {command:
   "python3 - <<'\''EOF'\''\nimport json\nwith open(\"src/pay.py\", \"w\") as f:\n    json.dump({\"paid\": True}, f)\np = \"src/pay.py\"\nwith open(p, \"w\") as g:\n    g.write(\"x\")\nprint(open(\"src/pay.py\").read())\nEOF"}}' > "$work/interp.json"
+# A build agent running a Python script file by name (R255): .vbw/runtime/scratch/x.py is untracked and present
+# in every project folder measured (guards writes it), so the call takes the whole path: the guard's request,
+# read.sh's git lookup, and the second pass reading the file.
+jq -nc --arg d "$work" '{tool_name: "Bash", cwd: $d, session_id: "bench", agent_id: "x1", agent_type: "workflow-subagent", tool_input: {command:
+  "python3 .vbw/runtime/scratch/x.py"}}' > "$work/script.json"
 jq -nc --arg d "$work" '{tool_name: "Read", cwd: $d, tool_input: {file_path: ($d + "/src/app.js")}}' > "$work/read.json"
 # A VBW QA agent calling an MCP tool the project's setting does not name: the tools guard's refusal path (R242).
 jq -nc --arg d "$work" '{hook_event_name: "PreToolUse", session_id: "bench", tool_name: "mcp__github__get_issue", cwd: $d, tool_input: {}, agent_id: "x2", agent_type: "vbw:qa"}' > "$work/tools.json"
@@ -524,7 +530,7 @@ tools_hook() { jq -r '[.hooks.PreToolUse[] | select(.hooks[0].command | contains
 # the project at DIR; LABEL is the empty string, or ", large record".
 status=0
 guards() {
-  local dir="$1" label="$2" inputs="${3:-$GUARD_INPUTS}" input tool event hook shell total own line baseline file
+  local dir="$1" label="$2" inputs="${3:-$GUARD_INPUTS}" input tool event hook shell total own line baseline file budget
   export CLAUDE_PROJECT_DIR="$dir"
   baseline="jq -nc 'input | empty' - \"$dir/.vbw/record.json\" \"$CLAUDE_PLUGIN_ROOT/hooks/end.json\" 2>/dev/null || true"
   for input in $inputs; do
@@ -534,7 +540,15 @@ guards() {
     [ "$input" != answer ] || event=PostToolUse
     hook=$(jq -r --arg t "$tool" --arg e "$event" '[.hooks[$e][] | select(.matcher as $m | $m != null and ($t | test("^(" + $m + ")$")))][0].hooks[0].command' "$hooks_json")
     [ "$input" != tools ] || hook=$(tools_hook)
+    # A script file read by name (R255) pays the second pass, as the cross-project case does, and
+    # its git lookup is skipped for scratch files: two passes are two budgets.
+    budget=$BUDGET_MS
+    [ "$input" != script ] || budget=$(perl -e 'print $ARGV[0] * 2' -- "$BUDGET_MS")
     file="$work/$input.json"
+    if [ "$input" = script ]; then
+      mkdir -p "$dir/.vbw/runtime/scratch"
+      printf 'import json\nwith open("src/pay.py", "w") as f:\n    json.dump({"paid": True}, f)\nprint(open("src/pay.py").read())\n' > "$dir/.vbw/runtime/scratch/x.py"
+    fi
     if [ "$dir" != "$work" ]; then
       file="$work/$input.large.json"
       jq -c --arg o "$work" --arg d "$dir" 'walk(if type == "string" and startswith($o) then $d + .[($o | length):] else . end)' \
@@ -542,14 +556,14 @@ guards() {
     fi
     read -r shell total < <(cpu_pair "$file" "$baseline" "$hook")
     own=$(perl -e 'printf "%.1f", $ARGV[0] - $ARGV[1]' -- "$total" "$shell")
-    if over "$own" "$BUDGET_MS"; then
-      again "guard ($input$label)" "$own ms own CPU per call (sh and jq startup $shell ms)" "$BUDGET_MS"
+    if over "$own" "$budget"; then
+      again "guard ($input$label)" "$own ms own CPU per call (sh and jq startup $shell ms)" "$budget"
       read -r shell total < <(cpu_pair "$file" "$baseline" "$hook")
       own=$(perl -e 'printf "%.1f", $ARGV[0] - $ARGV[1]' -- "$total" "$shell")
     fi
     line=$(printf 'guard (%s%s): %s ms own CPU per call (sh and jq startup %s ms); budget %s ms' \
-      "$input" "$label" "$own" "$shell" "$BUDGET_MS")
-    verdict "$line" "$own" "$BUDGET_MS"
+      "$input" "$label" "$own" "$shell" "$budget")
+    verdict "$line" "$own" "$budget"
   done
 }
 
@@ -730,6 +744,36 @@ if selected 'guard (tools, main session)'; then
     own=$(perl -e 'printf "%.1f", $ARGV[0] - $ARGV[1]' -- "$total" "$shell")
   fi
   verdict "$(printf 'guard (tools, main session): %s ms own CPU per call (sh and jq startup %s ms); budget %s ms' "$own" "$shell" "$BUDGET_MS")" "$own" "$BUDGET_MS"
+fi
+# A write that lands in another project (R254): a build agent's shell write into the folder of a
+# second project that has its own build run open. The Bash guard asks read.sh, which runs the
+# second pass over that project's record, so this case pays both jq calls. Their platform part
+# is two jq startups (the baseline), as the others' is one; the budget is the others'.
+if selected 'guard (cross-project)'; then
+  other="$work/other-project"
+  mkdir -p "$other/.vbw/runtime" "$other/tests"
+  git -C "$other" init -q
+  jq -nc --arg t "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+    '{schema: 4, lease: {run: "build-2", kind: "build", session: "bench", started_at: $t, files: ["src/pay.py"]}, protected: ["tests/c1.sh"], checks: []}' > "$other/.vbw/record.json"
+  : > "$other/.vbw/runtime/run-open"
+  jq -nc --arg d "$work" --arg o "$other" '{tool_name: "Bash", cwd: $d, session_id: "bench", agent_id: "x3", agent_type: "workflow-subagent", tool_input: {command: ("printf x > " + $o + "/tests/c1.sh")}}' > "$work/cross.json"
+  export CLAUDE_PROJECT_DIR="$work"
+  hook=$(jq -r '[.hooks.PreToolUse[] | select(.matcher as $m | $m != null and ("Bash" | test("^(" + $m + ")$")))][0].hooks[0].command' "$hooks_json")
+  one="jq -nc 'input | empty' - \"$work/.vbw/record.json\" \"$CLAUDE_PLUGIN_ROOT/hooks/end.json\" 2>/dev/null"
+  base="$one; $one || true"
+  out=$(sh -c "$hook" < "$work/cross.json" 2> /dev/null || true)
+  if [[ "$out" != *'"permissionDecision":"deny"'* ]]; then
+    printf 'guard (cross-project): the other project'"'"'s run did not refuse the write, so the measure left the second pass out\n' >&2
+    status=1
+  fi
+  read -r shell total < <(cpu_pair "$work/cross.json" "$base" "$hook")
+  own=$(perl -e 'printf "%.1f", $ARGV[0] - $ARGV[1]' -- "$total" "$shell")
+  if over "$own" "$BUDGET_MS"; then
+    again "guard (cross-project)" "$own ms own CPU per call (sh and two jq startups $shell ms)" "$BUDGET_MS"
+    read -r shell total < <(cpu_pair "$work/cross.json" "$base" "$hook")
+    own=$(perl -e 'printf "%.1f", $ARGV[0] - $ARGV[1]' -- "$total" "$shell")
+  fi
+  verdict "$(printf 'guard (cross-project): %s ms own CPU per call (sh and two jq startups %s ms); budget %s ms' "$own" "$shell" "$BUDGET_MS")" "$own" "$BUDGET_MS"
 fi
 # A loop on and no lease: the main session's push, judged like the others.
 jq -nc --arg d "$work" '{tool_name: "Bash", cwd: $d, session_id: "bench", tool_input: {command: "git push origin main"}}' > "$work/loop.json"

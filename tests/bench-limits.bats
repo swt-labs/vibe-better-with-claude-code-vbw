@@ -1,7 +1,7 @@
 #!/usr/bin/env bats
 # R151 (CLAUDE.md hot paths, docs/guards.md, docs/statusline.md): the hook
 # benchmark fails only on a real slowdown. A guard fails when its own cost (its
-# CPU time minus the platform's sh and jq startup) is above 20 ms per call; the
+# CPU time minus the platform's sh and jq startup) is above 25 ms per call; the
 # status line fails above 60 ms per call; the old relative limit (1x the
 # startup) is gone. When the startup alone is above the hook limit the machine
 # is too busy to measure: the bench says so, with the startup, and passes
@@ -9,7 +9,7 @@
 # still override the limits. L1: the bench runs on a copy of the plugin whose
 # hooks or status line burn a known amount of CPU, and a busy machine is
 # simulated by a jq that burns CPU before it runs. Margins are wide (100 ms of
-# extra work against a 20 ms limit); a test that needs a quiet machine is
+# extra work against a 25 ms limit); a test that needs a quiet machine is
 # skipped when the bench itself reports the machine busy.
 
 bats_require_minimum_version 1.5.0
@@ -88,7 +88,7 @@ line() {
   printf '%s\n' "$l"
 }
 
-@test "R151: a guard whose own cost is above 20 ms per call fails the bench, and the line names the input, the cost and the 20 ms limit" {
+@test "R151: a guard whose own cost is above 25 ms per call fails the bench, and the line names the input, the cost and the 25 ms limit" {
   hooks_with '^Bash$' "$(burn 100)"
   bench VBW_BENCH_REFERENCE_MS=1 VBW_BENCH_ONLY="guard (git)|guard (npm)|guard (big)|guard (interp)|guard (git, large record)|guard (big, 2000 checks)"
   quiet_or_skip
@@ -98,7 +98,7 @@ line() {
   }
   local input l cost
   for input in git npm big interp "git, large record" "big, 2000 checks"; do
-    l=$(line "^guard \\($input\\): [0-9.]+ ms own CPU per call.*; budget 20 ms: OVER$") || {
+    l=$(line "^guard \\($input\\): [0-9.]+ ms own CPU per call.*; budget 25 ms: OVER$") || {
       echo "$l"
       false
     }
@@ -130,7 +130,7 @@ line() {
   [ "$(cat "$calls")" -eq 4 ] || { echo "the hook ran $(cat "$calls") times, not 2 runs twice"; false; }
 }
 
-@test "R151: a guard whose own cost is at or below 20 ms passes, however it compares with the startup (the old 1x limit no longer fails)" {
+@test "R151: a guard whose own cost is at or below 25 ms passes, however it compares with the startup (the old 1x limit no longer fails)" {
   # The file guard starts perl once more (about 8 ms of CPU on a Mac): its own
   # cost is above 8 ms and above the platform's startup on a quiet machine,
   # which the old limits (8 ms or 1x the startup) failed. The margin to the
@@ -140,7 +140,7 @@ line() {
   quiet_or_skip
   local l
   for l in "read" "read, large record" "read, 51 checks" "read, 2000 checks"; do
-    line "^guard \\($l\\): [0-9.]+ ms own CPU per call.*; budget 20 ms$" > /dev/null || {
+    line "^guard \\($l\\): [0-9.]+ ms own CPU per call.*; budget 25 ms$" > /dev/null || {
       line "^guard \\($l\\): " || true
       false
     }
@@ -173,16 +173,16 @@ line() {
   done
 }
 
-@test "R151: without settings the limits are 20 ms per guard call and 60 ms for the status line, also in the bench's defaults" {
+@test "R151: without settings the limits are 25 ms per guard call and 60 ms for the status line, also in the bench's defaults" {
   bench VBW_BENCH_ONLY="$GUARDS|$STATUSLINES"
   quiet_or_skip
   local input
   for input in git npm big interp read answer; do
-    line "^guard \\($input\\): -?[0-9.]+ ms own CPU per call.*; budget 20 ms(: OVER|: slow \\(ratio [0-9.]+, scaled budget [0-9.]+ ms\\))?$" > /dev/null
+    line "^guard \\($input\\): -?[0-9.]+ ms own CPU per call.*; budget 25 ms(: OVER|: slow \\(ratio [0-9.]+, scaled budget [0-9.]+ ms\\))?$" > /dev/null
   done
   line '^status line: [0-9.]+ ms CPU per call; budget 60 ms(: OVER|: slow \(ratio [0-9.]+, scaled budget [0-9.]+ ms\))?$' > /dev/null
   line '^status line \(large record\): [0-9.]+ ms CPU per call; budget 60 ms(: OVER|: slow \(ratio [0-9.]+, scaled budget [0-9.]+ ms\))?$' > /dev/null
-  grep -qF 'VBW_HOOK_BUDGET_MS:-20}' "$BENCH"
+  grep -qF 'VBW_HOOK_BUDGET_MS:-25}' "$BENCH"
   grep -qF 'VBW_STATUSLINE_BUDGET_MS:-60}' "$BENCH"
 }
 
@@ -199,13 +199,13 @@ line() {
     printf '%s\n' "$output"
     false
   }
-  # The line gives the measured startup (above the limit) and the 20 ms limit.
+  # The line gives the measured startup (above the limit) and the 25 ms limit.
   printf '%s\n' "$l" | grep -qE '(^|[^0-9.])(2[1-9]|[3-9][0-9]|[1-9][0-9]{2,})(\.[0-9]+)? ms' || {
-    echo "the busy line does not give a startup above 20 ms: $l"
+    echo "the busy line does not give a startup above 25 ms: $l"
     false
   }
-  printf '%s\n' "$l" | grep -qE '(^|[^0-9.])20 ms' || {
-    echo "the busy line does not name the 20 ms limit: $l"
+  printf '%s\n' "$l" | grep -qE '(^|[^0-9.])25 ms' || {
+    echo "the busy line does not name the 25 ms limit: $l"
     false
   }
   ! printf '%s\n' "$output" | grep -qE '^guard \(|^status line|OVER' || {
@@ -332,7 +332,7 @@ bench_split() {
   quiet_or_skip
   [ "$status" -eq 0 ] || { printf '%s\n%s\n' "$output" "$stderr"; false; }
   line '^reference: .*; ratio 20\.00$' > /dev/null
-  line '^guard \(git\): [0-9.]+ ms own CPU per call \(sh and jq startup [0-9.]+ ms\); budget 20 ms: slow \(ratio 20\.00, scaled budget 400\.0 ms\)$' > /dev/null
+  line '^guard \(git\): [0-9.]+ ms own CPU per call \(sh and jq startup [0-9.]+ ms\); budget 25 ms: slow \(ratio 20\.00, scaled budget 500\.0 ms\)$' > /dev/null
   line '^status line: [0-9.]+ ms CPU per call; budget 60 ms: slow \(ratio 20\.00, scaled budget 1200\.0 ms\)$' > /dev/null
   [[ "$stderr" != *OVER* ]] || { printf '%s\n' "$stderr"; false; }
   [[ "$output" != *"measured again"* ]] || { printf '%s\n' "$output"; false; }
@@ -349,12 +349,12 @@ bench_split() {
   quiet_or_skip
   [ "$status" -eq 1 ] || { printf '%s\n%s\n' "$output" "$stderr"; false; }
   line '^reference: .*; ratio 2\.00$' > /dev/null
-  printf '%s\n' "$stderr" | grep -qE '^guard \(git\): [0-9.]+ ms own CPU per call \(sh and jq startup [0-9.]+ ms\); budget 20 ms( \([^)]*\))?: OVER$' || {
+  printf '%s\n' "$stderr" | grep -qE '^guard \(git\): [0-9.]+ ms own CPU per call \(sh and jq startup [0-9.]+ ms\); budget 25 ms( \([^)]*\))?: OVER$' || {
     echo "no OVER line on stderr:"
     printf '%s\n' "$stderr"
     false
   }
-  line '^guard \(git\): measured again: the first measure gave [0-9.]+ ms own CPU per call \(sh and jq startup [0-9.]+ ms\), above the budget of 40\.0 ms$' > /dev/null
+  line '^guard \(git\): measured again: the first measure gave [0-9.]+ ms own CPU per call \(sh and jq startup [0-9.]+ ms\), above the budget of 50\.0 ms$' > /dev/null
   [[ "$output" != *": slow ("* ]] || { printf '%s\n' "$output"; false; }
 }
 
@@ -369,9 +369,9 @@ bench_split() {
   quiet_or_skip
   [ "$status" -eq 1 ] || { printf '%s\n' "$output"; false; }
   line '^reference: .*; ratio 0\.50$' > /dev/null
-  line '^guard \(git\): [0-9.]+ ms own CPU per call \(sh and jq startup [0-9.]+ ms\); budget 20 ms: OVER$' > /dev/null
-  line '^guard \(git\): measured again: the first measure gave [0-9.]+ ms own CPU per call \(sh and jq startup [0-9.]+ ms\), above the budget of 20 ms$' > /dev/null
-  line '^guard \(read\): -?[0-9.]+ ms own CPU per call \(sh and jq startup [0-9.]+ ms\); budget 20 ms(: OVER)?$' > /dev/null
+  line '^guard \(git\): [0-9.]+ ms own CPU per call \(sh and jq startup [0-9.]+ ms\); budget 25 ms: OVER$' > /dev/null
+  line '^guard \(git\): measured again: the first measure gave [0-9.]+ ms own CPU per call \(sh and jq startup [0-9.]+ ms\), above the budget of 25 ms$' > /dev/null
+  line '^guard \(read\): -?[0-9.]+ ms own CPU per call \(sh and jq startup [0-9.]+ ms\); budget 25 ms(: OVER)?$' > /dev/null
   [[ "$output" != *": slow ("* ]] || { printf '%s\n' "$output"; false; }
 }
 
@@ -388,7 +388,7 @@ bench_split() {
 # (jq -nc --rawfile glance F --arg root X --arg dir X --arg open 0 -f PROGRAM - DOCUMENT
 # END), so its ratio tracks the hooks' startup-and-parse-bound cost on every runner. The
 # program and the document are written by the bench itself with fixed, deterministic
-# content (the program within 10% of guard-bash.jq's 25061 bytes), never the shipped
+# content (the program within 10% of the Bash guard and the programs it includes), never the shipped
 # guard or a project file, so the reference does not drift with releases; the sizes are
 # stated in the provenance comment. VBW_BENCH_REFERENCE_FILES=DIR (tests) writes the two
 # files into DIR and exits without measuring. The nominal figure is remeasured for the
@@ -478,14 +478,14 @@ provenance() { awk '/^NOMINAL_MS=/ { exit } /^#/ { b = b $0 " "; next } { b = ""
   [ "$(printf '%s' "$p" | grep -oE '2026-1[0-2]-[0-9]{2}|202[7-9]-[0-9]{2}-[0-9]{2}' | wc -l | tr -d ' ')" -ge 2 ] || { echo "fewer than two dated measures"; false; }
 }
 
-@test "R233: the reference keeps the guard's proportion: its program is within 10% of the shipped Bash guard's size (PR #730 grew the guard; the reference follows or the guard shrinks)" {
+@test "R233: the reference keeps the guard's proportion: its program is within 10% of the size of the shipped Bash guard and the programs.jq it includes (PR #730 grew the guard; the reference follows or the guard shrinks)" {
   local a="$TEST_ROOT/ref" size guard
   run env VBW_BENCH_REFERENCE_FILES="$a" bash "$BENCH"
   [ "$status" -eq 0 ] || { echo "$output"; false; }
   size=$(wc -c < "$a/reference.jq" | tr -d ' ')
-  guard=$(wc -c < "$PLUGIN_ROOT/hooks/guard-bash.jq" | tr -d ' ')
+  guard=$(cat "$PLUGIN_ROOT/hooks/guard-bash.jq" "$PLUGIN_ROOT/hooks/programs.jq" | wc -c | tr -d ' ')
   [ "$((size * 10))" -ge "$((guard * 9))" ] && [ "$((size * 10))" -le "$((guard * 11))" ] \
-    || { echo "reference program $size bytes is not within 10% of the Bash guard's $guard bytes"; false; }
+    || { echo "reference program $size bytes is not within 10% of the $guard bytes of the Bash guard and programs.jq"; false; }
 }
 
 @test "R233: the gap is never closed by a wider allowance: the bench reads no operating system name and has one nominal figure" {

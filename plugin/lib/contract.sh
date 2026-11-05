@@ -5,31 +5,85 @@
 # test file form when the spec names them, and the contents of every check's
 # files. Approved = its hash has consent in the clone's git directory.
 
+# The contract's jq definitions (R249): the one place the contract core and the
+# list of check files are written, so vbw next and vbw status can emit the core
+# beside their other fields in their one pass over the record (lib/cmd-next.sh)
+# and the shell hashes it, with no second parse of the record. canon puts every
+# object's keys in sorted order, as jq -S prints them: contract_core | canon |
+# tojson is the line jq -cS prints for contract_core.
+# shellcheck disable=SC2016
+VBW_CONTRACT_DEFS='def canon: if type == "object" then to_entries | map(.value |= canon) | sort_by(.key) | from_entries
+  elif type == "array" then map(canon) else . end;
+def contract_core: {requirements: [.requirements[] | select(.queued | not) | {id, text, proof} + (if has("rules") then {rules} else {} end)],
+                    checks: [.checks[] | del(.amendments)], plans: [.plans[] | del(.status, .note, .mutations, .amendments, .awaits)]}
+                   + (if .project.results then {results: .project.results} else {} end)
+                   + (if .project.leave_out then {leave_out: .project.leave_out} else {} end)
+                   + (if .test_files then {test_files} else {} end);
+def contract_files: [.checks[].files // [] | .[]] | unique;
+def without_fix: .checks |= map(select(has("fix") | not));
+'
+
 # contract_hash RECORD_JSON: SHA-256 over a canonical rendering of the contract.
 # Each file contributes its path and its content digest ("missing" if absent).
-# The paths are piped into the loop, which writes every byte the hash reads (its
-# own and vbw_sha256's): run in a child, the loop has no live child of its own
-# whose exit could interrupt a write (vbw_out, core.sh), and costs nothing per file.
 contract_hash() {
-  local f
+  contract_hash_from "$(contract_core "$1")" "$(printf '%s' "$1" | jq -c "$VBW_CONTRACT_DEFS"'contract_files')"
+}
+
+# contract_hash_from CORE FILES_JSON: contract_hash of a contract whose core line
+# (contract_core's output) and list of check files (a JSON array of paths) the
+# caller already has. A writer in a pipeline prints every byte the hash reads: run in
+# a child, the writer has no live
+# child of its own whose exit could interrupt a write (vbw_out, core.sh). The files'
+# digests come from one hashing process for all of them (contract_file_digests).
+contract_hash_from() {
+  local f i=0 paths=()
+  while IFS= read -r -d '' f; do paths+=("$f"); done < <(printf '%s' "$2" | jq -j '.[] + "\u0000"')
+  contract_file_digests ${paths[@]+"${paths[@]}"}
   {
-    contract_core "$1"
-    printf '%s' "$1" | jq -j '[.checks[].files // [] | .[]] | unique[] | . + "\u0000"' | while IFS= read -r -d '' f; do
-      printf '\0%s\0' "$f"
-      if [ -f "$VBW_ROOT/$f" ]; then vbw_sha256 < "$VBW_ROOT/$f"; else printf 'missing\n'; fi
+    printf '%s\n' "$1"
+    for f in ${paths[@]+"${paths[@]}"}; do
+      printf '\0%s\0%s\n' "$f" "${CONTRACT_DIGESTS[$i]}"
+      i=$((i + 1))
     done
   } | vbw_sha256
 }
 
+# contract_file_digests FILE...: CONTRACT_DIGESTS holds, in order, the SHA-256 of each
+# project file ("missing" for one that is not a readable file): one hashing process for
+# up to 300 files, not one per file (a project has hundreds of check files).
+contract_file_digests() {
+  local f i out l chunk=() want=()
+  CONTRACT_DIGESTS=()
+  for f in "$@"; do
+    if [ -f "$VBW_ROOT/$f" ] && [ -r "$VBW_ROOT/$f" ]; then want+=(1) chunk+=("$VBW_ROOT/$f"); else want+=(0); fi
+  done
+  local -a sums=()
+  i=0
+  while [ "$i" -lt ${#chunk[@]} ]; do
+    if command -v sha256sum > /dev/null 2>&1; then
+      out=$(sha256sum -- "${chunk[@]:$i:300}")
+    else
+      out=$(shasum -a 256 -- "${chunk[@]:$i:300}")
+    fi
+    while IFS= read -r l; do
+      l=${l#\\}
+      sums+=("${l%% *}")
+    done <<< "$out"
+    i=$((i + 300))
+  done
+  local k=0
+  for f in ${want[@]+"${want[@]}"}; do
+    if [ "$f" = 1 ]; then CONTRACT_DIGESTS+=("${sums[$k]}"); k=$((k + 1)); else CONTRACT_DIGESTS+=(missing); fi
+  done
+}
+
 # contract_core RECORD_JSON: the contract's structure (requirements, checks,
 # plans, and results and leave_out only when present, so older contracts keep their hash),
-# canonical, without the bytes of any check file.
+# canonical, without the bytes of any check file. A plan's amendments and awaits and a
+# check's amendments are left out (R250): an amendment changes no check's assertion, so
+# it never moves the hash; the files an amendment added stay in.
 contract_core() {
-  printf '%s' "$1" | jq -cS '{requirements: [.requirements[] | {id, text, proof} + (if has("rules") then {rules} else {} end)],
-                              checks: .checks, plans: [.plans[] | del(.status, .note, .mutations)]}
-                             + (if .project.results then {results: .project.results} else {} end)
-                             + (if .project.leave_out then {leave_out: .project.leave_out} else {} end)
-                             + (if .test_files then {test_files} else {} end)'
+  printf '%s' "$1" | jq -cS "$VBW_CONTRACT_DEFS"'contract_core'
 }
 
 # contract_shape RECORD_JSON: the fingerprint of that structure alone, without
@@ -37,7 +91,7 @@ contract_core() {
 # kind "shape") beside the full hash, so edits to check files and the checks a
 # fix adds can wait for one approval before proof.
 contract_shape() {
-  contract_core "$(printf '%s' "$1" | jq -c '.checks |= map(select(has("fix") | not))')" | vbw_sha256
+  printf '%s' "$1" | jq -cS "$VBW_CONTRACT_DEFS"'without_fix | contract_core' | vbw_sha256
 }
 
 # contract_held RECORD_JSON: the ids, one per line, of the checks a fix added
@@ -46,7 +100,7 @@ contract_shape() {
 contract_held() {
   contract_approved "$(contract_hash "$1")" && return 0
   printf '%s' "$1" | jq -r --slurpfile old "$VBW_RUNTIME/approved-contract.json" '.checks[] | select(has("fix")) | . as $c
-    | select($old[0].checks[$c.id] != $c) | .id' 2> /dev/null \
+    | select($old[0].checks[$c.id] != ($c | del(.amendments))) | .id' 2> /dev/null \
     || printf '%s' "$1" | jq -r '.checks[] | select(has("fix")) | .id'
 }
 
@@ -55,22 +109,36 @@ contract_held() {
 # (prints those files, sorted, one per line; a check a fix added counts with all
 # its files until approved). Fails for any other contract.
 contract_waiting() {
-  local f d old="$VBW_RUNTIME/approved-contract.json" out="" all="" held=""
-  contract_approved "$(contract_hash "$1")" && return 0
-  consent_has shape "$(contract_shape "$1")" || return 1
+  contract_waiting_with "$1" "$(contract_hash "$1")"
+}
+
+# contract_waiting_with RECORD_JSON HASH [SHAPE]: contract_waiting for a caller that
+# already has the contract's hash (contract_hash) and, when it has it, the shape
+# (contract_shape; worked out here otherwise, and only when the hash is not approved).
+contract_waiting_with() {
+  local f old="$VBW_RUNTIME/approved-contract.json" out="" all="" held="" shape="${3:-}" pairs=""
+  contract_approved "$2" && return 0
+  [ -n "$shape" ] || shape=$(contract_shape "$1")
+  consent_has shape "$shape" || return 1
   # One path per line: a shell variable cannot hold NUL bytes (bash 5 warns, bash 3.2 drops them).
   held=$(printf '%s' "$1" | jq -r --slurpfile old "$old" '.checks[] | select(has("fix")) | . as $c
-    | select($old[0].checks[$c.id] != $c) | .files[]?' 2> /dev/null) \
+    | select($old[0].checks[$c.id] != ($c | del(.amendments))) | .files[]?' 2> /dev/null) \
     || held=$(printf '%s' "$1" | jq -r '.checks[] | select(has("fix")) | .files[]?')
-  while IFS= read -r -d '' f; do
+  local paths=() i=0
+  while IFS= read -r -d '' f; do paths+=("$f"); done < <(printf '%s' "$1" | jq -j '[.checks[].files // [] | .[]] | unique[] | . + "\u0000"')
+  contract_file_digests ${paths[@]+"${paths[@]}"}
+  for f in ${paths[@]+"${paths[@]}"}; do
     all="$all$f"$'\n'
-    d=missing
-    [ ! -f "$VBW_ROOT/$f" ] || d=$(vbw_sha256 < "$VBW_ROOT/$f")
-    if [ "$(jq -r --arg f "$f" '.files[$f] // "new"' "$old" 2> /dev/null)" != "$d" ] \
-      || printf '%s\n' "$held" | grep -xF -- "$f" > /dev/null; then
-      out="$out$f"$'\n'
-    fi
-  done < <(printf '%s' "$1" | jq -j '[.checks[].files // [] | .[]] | unique[] | . + "\u0000"')
+    pairs="$pairs$f"$'\t'"${CONTRACT_DIGESTS[$i]}"$'\n'
+    i=$((i + 1))
+  done
+  # The files whose bytes differ from the approved ones (a file the approval does not know is
+  # new), or that a fix added: one jq run for all of them, not one per file. An approval
+  # snapshot that cannot be read leaves every file changed.
+  out=$(printf '%s' "$pairs" | jq -Rr --slurpfile old "$old" --arg held "$held" '($held | split("\n")) as $h
+    | split("\t") | select(length == 2) | . as [$f, $d]
+    | select((($old[0].files // {})[$f] // "new") != $d or ($h | index($f) != null)) | $f' 2> /dev/null && printf x) \
+    && out=${out%x} || out=$all
   printf '%s' "${out:-$all}"
 }
 
@@ -110,11 +178,21 @@ contract_doc() {
     fi
   done < <(printf '%s' "$1" | jq -j '[.checks[].files // [] | .[]] | unique[] | . + "\u0000"')
   printf '%s' "$1" | jq -c --slurpfile f_files <(printf '%s' "$files") '$f_files[0] as $files | {
-    requirements: (.requirements | map({key: .id, value: ({text, proof} + (if has("rules") then {rules} else {} end))}) | from_entries),
-    checks: (.checks | map({key: .id, value: .}) | from_entries),
-    plans: (.plans | map({key: .id, value: del(.status, .note, .mutations)}) | from_entries),
+    requirements: (.requirements | map(select(.queued | not)) | map({key: .id, value: ({text, proof} + (if has("rules") then {rules} else {} end))}) | from_entries),
+    checks: (.checks | map({key: .id, value: del(.amendments)}) | from_entries),
+    plans: (.plans | map({key: .id, value: del(.status, .note, .mutations, .amendments, .awaits)}) | from_entries),
     commands: .commands,
     files: $files} + (if .project.results then {results: .project.results} else {} end)
     + (if .project.leave_out then {leave_out: .project.leave_out} else {} end)
     + (if .test_files then {test_files} else {} end)'
+}
+
+# contract_amendments_block RECORD_JSON: the amendments recorded since the last approval, the
+# block vbw show contract --changes, vbw show contract and vbw ship share (R250): the heading
+# and one line per amendment, two-space indented, plans then checks in record order. Prints
+# nothing when none is recorded.
+contract_amendments_block() {
+  printf '%s' "$1" | jq -r '[(.plans[], .checks[]) | .id as $i | (.amendments // [])[]
+      | "  \($i): \(.what) (\(.at), session \(.session // "unknown"))"]
+    | if length > 0 then "amendments since the last approval:", .[] else empty end'
 }

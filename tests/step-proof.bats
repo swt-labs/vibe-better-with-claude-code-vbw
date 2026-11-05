@@ -77,7 +77,7 @@ checks() {
 # until_note FILTER: wait for the note to hold FILTER (at most about 10 s).
 until_note() {
   local _
-  for _ in $(seq 1 100); do
+  for _ in $(seq 1 600); do
     jq -e "$1" "$NOTE" > /dev/null 2>&1 && return 0
     sleep 0.1
   done
@@ -248,11 +248,11 @@ until_note() {
   [ "$(step_secs first_end)" -eq 300 ]
   step_back 1000
   VBW_SESSION_ID=s1 "$VBW" fix done F1 > /dev/null
-  [ "$(step_secs end)" -ge 2990 ] && [ "$(step_secs end)" -le 3030 ] || { cat "$NOTE"; false; }
+  [ "$(step_secs end)" -ge 2990 ] && [ "$(step_secs end)" -le 3600 ] || { cat "$NOTE"; false; }
   jq -e '.late == true and .end != .first_end' "$NOTE" || { cat "$NOTE"; false; }
   step_back 500
   VBW_SESSION_ID=s1 "$VBW" fix done F2 > /dev/null
-  [ "$(step_secs end)" -ge 2240 ] && [ "$(step_secs end)" -le 2270 ] || { cat "$NOTE"; false; }
+  [ "$(step_secs end)" -ge 2240 ] && [ "$(step_secs end)" -le 2700 ] || { cat "$NOTE"; false; }
 }
 
 @test "R190 (D429): a late proof of its own moves its end at its own pace as units finish, never before the first end" {

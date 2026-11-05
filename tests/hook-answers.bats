@@ -266,3 +266,18 @@ tools_call() {
   run tools_call mcp__github__get_issue vbw:qa
   [ "$status" -eq 0 ] && [ -z "$output" ] || { echo "vbw:qa opened MCP tool: $output"; false; }
 }
+
+@test "R254 R128: guard-read.jq deny and systemMessage: a write that lands in another project under that project's run is denied with a 'VBW guard:' reason, which blocks it and tells Claude why, and shows the user what was refused" {
+  # The other project: a repository whose record holds a build run of this session, protecting tests/c1.sh.
+  mkdir -p "$TEST_ROOT/other/tests" "$TEST_ROOT/other/.vbw"
+  git -C "$TEST_ROOT/other" init -q
+  jq -nc --arg t "$(date -u +%Y-%m-%dT%H:%M:%SZ)" '{schema: 4, lease: {run: "build-1", kind: "build", session: "s1", started_at: $t, files: ["src/pay.txt"]},
+    protected: ["tests/c1.sh"], checks: [{id: "C1", req: "R1", run: ["sh", "tests/c1.sh"], files: ["tests/c1.sh"]}]}' > "$TEST_ROOT/other/.vbw/record.json"
+  run bash -c 'jq -nc --arg c "$1" --arg d "$2" "{hook_event_name: \"PreToolUse\", session_id: \"s1\", tool_name: \"Bash\", cwd: \$d, agent_id: \"a1\", agent_type: \"vbw:dev\", tool_input: {command: \$c}}" \
+    | CLAUDE_PLUGIN_ROOT="$3" CLAUDE_PROJECT_DIR="$2" sh -c "$4"' _ "printf x > '$TEST_ROOT/other/tests/c1.sh'" "$PROJECT" "$PLUGIN_ROOT" \
+    "$(jq -r '[.hooks.PreToolUse[] | select((.matcher // "") as $m | "Bash" | test("^(" + $m + ")$"))][0].hooks[0].command' "$PLUGIN_ROOT/hooks/hooks.json")"
+  [ "$status" -eq 0 ] || { echo "$status: $output"; false; }
+  [ "$(shape "$output")" = "$DENY" ] || { echo "$output"; false; }
+  printf '%s' "$output" | jq -e '.hookSpecificOutput | .hookEventName == "PreToolUse" and .permissionDecision == "deny" and (.permissionDecisionReason | startswith("VBW guard: ")) and (.permissionDecisionReason | contains("tests/c1.sh"))'
+  printf '%s' "$output" | jq -e "$USER_LINE" || { echo "$output"; false; }
+}

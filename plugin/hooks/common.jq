@@ -83,13 +83,18 @@ def glance_path: test("(^|/)\\.vbw/runtime/glance\\.json$");
 def scratch_path: test("^\\.vbw/runtime/scratch(/|$)");
 def consent_path: test("(^|/)vbw/(consent|runs)\\.json$");
 
-# PATH (relative to $cwd unless absolute) as a project-relative path, or null
-# when it lies outside $root. "." and ".." segments are resolved.
-def project_path($cwd; $root):
+# PATH (relative to $cwd unless absolute) as an absolute path; "." and ".." segments
+# are resolved.
+def abs_path($cwd):
   (if startswith("/") then . else "\($cwd)/\(.)" end)
   | reduce (split("/")[] | select(. != "" and . != ".")) as $s ([];
       if $s == ".." then .[:-1] else . + [$s] end)
-  | "/" + join("/")
+  | "/" + join("/");
+
+# PATH (relative to $cwd unless absolute) as a project-relative path, or null
+# when it lies outside $root.
+def project_path($cwd; $root):
+  abs_path($cwd)
   | if startswith(($root | rtrimstr("/")) + "/") then .[($root | rtrimstr("/") | length) + 1:] else null end;
 
 # The folder a relative path in a tool call is read from: the session's working
@@ -103,6 +108,8 @@ def covers($p): . as $e | $e == $p or $e == $p + "/" or (($e | endswith("/")) an
 # PATH (project-relative) is a test file, by place or by name: the one
 # definition of what a planning run may write besides .vbw/ (R75).
 def test_path: test("(^|/)(tests?|spec|__tests__)/|(^|/)t/.*\\.t$") or (basename | test("[._](test|spec)\\.|^test_.*\\.py$"));
+
+def protected_reason: "\(.) is a protected check file: a protected check file is never edited during a build\nNext: leave \(.) as it is; the main session changes the check with vbw apply --patch, then the user approves it";
 
 # Why a subagent may not write PATH (project-relative) under LEASE, or empty.
 def lease_write_denial($lease; $record):
@@ -126,12 +133,15 @@ def lease_write_denial($lease; $record):
   elif $lease.new_tests == true and test_path then empty
   elif $lease.kind == "plan" and $lease.files != null and (. as $p | any($lease.files[]; covers($p)) | not) then
     "\(.) cannot be written while planning: planning writes the project's test files and .vbw/; product code is the build's\nNext: leave \(.) as it is; put the check in a test file, or name \(.) in a plan's files so the build writes it"
+  # A protected check file outside the run's files is named for what it is: the plan cannot be replanned to write it.
+  elif ($lease.kind | test("^(build|fix)$")) and (. as $p | any($record.protected[]?; . == $p)) then
+    protected_reason
   elif $lease.files != null and (. as $p | any($lease.files[]; covers($p)) | not) then
     "\(.) is outside this run's files (\($lease.files | join(", "))): agents write only their plan's files\nNext: leave \(.) as it is; report that the plan needs it, so the plan can be replanned with vbw apply"
   elif ($lease.kind | test("^(build|fix)$")) and ($record | has("protected") | not) then
     "\(.) cannot be written: this project's record was not saved by this VBW yet, so its protected check files are unknown; end the run and start it again, which saves the record\nNext: tell the session that started the run to end it (vbw run end) and start it again"
   elif ($lease.kind | test("^(build|fix)$")) and (. as $p | any($record.protected[]?; . == $p)) then
-    "\(.) is a protected check file: the contract is fixed while building\nNext: leave \(.) as it is; if the check is wrong, report it so the user can change the contract"
+    protected_reason
   else empty end;
 
 # Why a subagent may not write ORIGINAL (the path as given), which lies outside
@@ -154,11 +164,14 @@ def outside_denial($lease): outside_denial($lease; "is outside the project");
 # project path; it counts as outside (D304).
 def unresolved_path: test("^~|[$`]");
 
-# Why a subagent may not write ORIGINAL (the path as given) under LEASE: a
-# path outside the project is denied (R177), one inside goes to the lease rules.
+# Why a subagent may not write ORIGINAL (the path as given) under LEASE: one inside
+# the project goes to the lease rules. One outside it is judged by the project it lands
+# in (R254): request_target below asks for that, and read.sh falls back to R177's refusal
+# (outside_denial) when no project holds the path; only a path a request cannot carry (a
+# tab or newline in it) is refused here.
 def run_write_denial($g):
   . as $o | project_path(session_dir($g); $root) as $p
-  | if $p == null then (if $o | test("^/dev/(null|stdout|stderr|tty)$") then empty else $o | outside_denial($g.lease) end) else $p | lease_write_denial($g.lease; $g.record) end;
+  | if $p == null then (if ($o | test("^/dev/(null|stdout|stderr|tty)$")) or ($o | test("[\t\n]") | not) then empty else $o | outside_denial($g.lease) end) else $p | lease_write_denial($g.lease; $g.record) end;
 
 # The same for a path in shell text (a redirect target, a git checkout path, a
 # program's file): the shell would expand ~, $VAR, $(...) and backticks and the
@@ -203,3 +216,22 @@ def consent_reason: "the consent file is written only by /vbw:approve, and the s
 def deny: {hookSpecificOutput: {hookEventName: "PreToolUse", permissionDecision: "deny",
   permissionDecisionReason: ("VBW guard: " + .)},
   systemMessage: ("VBW guard blocked this call: " + (split("\n")[0]))};
+
+# A write target that leaves the project, as the answer a guard gives for read.sh
+# (R254, docs/guards.md): [the absolute path, the refusal read.sh gives when no project
+# holds the path (one JSON line, "" when none)]. Input: the path as written. $shell: it is
+# shell text, where a path the guard cannot resolve (~ or an expansion) is refused in
+# place (D304). Nothing for a path inside the project, a device, or one a line cannot carry.
+def request_target($g; $shell):
+  select((test("^/dev/(null|stdout|stderr|tty)$|[\t\n]") or ($shell and unresolved_path)) | not)
+  | . as $o | abs_path(session_dir($g)) as $a
+  | if ($a | startswith(($root | rtrimstr("/")) + "/")) then [$a, ""]
+    else [$a, (if $g.lease != null then $o | outside_denial($g.lease) | deny | tojson else "" end)] end;
+
+# The request itself, printed instead of a decision: vbw-read, the hook input without its
+# tool_input (one JSON line), then one line target<TAB>path<TAB>refusal per target.
+# TARGETS: an array of request_target answers.
+def request($g; $targets):
+  select($targets | length > 0)
+  | "vbw-read", ($g.hook | {session_id, agent_type, tool_name, cwd} | tojson),
+    ($targets | unique[] | "target\t\(.[0])\t\(.[1])");

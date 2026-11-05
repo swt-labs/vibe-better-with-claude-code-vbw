@@ -38,6 +38,17 @@ shipped work), and `vbw milestone start TITLE` opens the next milestone for new
 requirements. The kernel never rewrites the spec; `vbw spec add auto|human
 TEXT` only appends a line.
 
+A requirement added while a build or fix run is open is **queued**. `vbw spec add`
+appends the line as usual, and `vbw spec sync` writes the new requirement (a
+hand-written new line too) into the record marked queued. A queued requirement waits
+outside the approved contract, so the contract stays approved and the run's agents
+are not stopped; `vbw show contract` lists it under `queued (not in the approved
+contract):` and `vbw status` says `queued: 1 requirement (R3)` while the run is open.
+When the run ends, the mark is cleared and the requirement is planned like any new
+requirement: it counts as unplanned, `vbw next` names it, and the contract then reads
+not approved until you approve it. A hand edit to an existing requirement's text is
+not queued: it un-approves the contract as always. With no run open nothing changes.
+
 ### Saved test results: `## Test results`
 
 Some projects commit the output of their test runs (reports, recordings,
@@ -245,6 +256,23 @@ is big and no check needs it (a data folder of many gigabytes), list it under
 - The list is part of the contract: adding a path changes the contract, so it reads NOT APPROVED and the approval question is asked again. `vbw show contract` prints the line `clean copy leaves out: data/, cache/`, and `vbw show contract --changes` names the new list and the old one (`clean copy leaves out: data/, cache/ (was data/)`, `none` for an empty side).
 - Every clean copy (`vbw prove`, `vbw fix done`, `vbw mutate`) skips the listed paths and everything under them, including ignored files inside a listed folder. The other ignored paths are still copied in. A listed path that no longer exists changes nothing, and the next `vbw spec sync` still accepts it.
 - Leaving a path out changes no result: the next proof reuses what it can, as before. No section, no change: every ignored path is copied in.
+- Git worktrees are always left out, whatever this section says: the folder of every worktree of the project's repository that lies inside the project (`git worktree list`) and `.claude/worktrees`. A worktree nested under an ignored folder is skipped by descending around it, and a worktree whose folder is gone causes no error.
+- Large ignored folders are named. `vbw init` prints each git-ignored folder over 500 MB (the threshold `VBW_PROOFCOPY_PLAIN_KB` shares) as a candidate and writes it into the spec as a commented suggestion, never as a live line, so `vbw spec sync` leaves nothing out until you uncomment it. `vbw doctor` names the candidates the section does not list yet, with their sizes, and says nothing when none is over or all are listed. A worktree is never a candidate.
+
+Example. `vbw init` in a project with a 1.2 GB ignored `data/` folder prints:
+
+```text
+Large git-ignored folders (each is copied into every proof copy). They are written as
+commented suggestions in .vbw/spec.md under Clean copy; uncomment a line to leave it out:
+  data/ (1.2 GB)
+```
+
+and the template of `.vbw/spec.md` gains, after the `## Clean copy` comment:
+
+```markdown
+<!-- Large git-ignored folders found here; to leave one out, remove the comment marks around its line: -->
+<!-- - data/ -->
+```
 
 ## The contract and approval
 
@@ -268,6 +296,25 @@ own question box. `vbw show contract` prints the question and its options:
 approval question: Approve contract 4cfe6f0859c9?
 approval options: Approve, Not yet
 ```
+
+What follows the question mark is a count from the same diff that
+`vbw show contract --changes` prints: `? 2 changes since the last approval`,
+`? 1 change, 1 amendment since the last approval` (a zero count is left out), and on
+a first approval the items instead: `? first approval: 2 requirements, 2 checks, 2
+plans`. `vbw show contract --changes` states each changed item as one plain line of
+`before -> after` for every field that changed, so you can judge it without reading
+code:
+
+```text
+  changed check C1 (R1): run sh tests/pay.sh -> bash tests/pay.sh --strict; exit 0 -> 1; output none -> paid; timeout none -> 30 s; files tests/pay.sh -> tests/pay.sh, tests/pay-data.txt
+  changed plan P2.1 Receipt: files src/receipt.txt -> src/receipt.txt, src/mail.txt; after P1.1 -> none
+  changed requirement R1: [auto] A customer can pay -> [auto] A customer can pay by card
+```
+
+A missing value reads `none` and a timeout is in seconds. A check amended since
+approval (`vbw apply --amend`) is listed in its own block and never counts as a
+change; the amendment count beside the fingerprint is informational, and the answer
+is recorded exactly as before.
 
 - **Approve** comes first, so pressing Enter approves the contract shown.
 - **Not yet** approves nothing; VBW asks what to change.

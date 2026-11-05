@@ -28,7 +28,7 @@ cmd_show() {
              ((.phases[] | select(.milestone == $r.milestone.id)) as $ph
                | "  \($ph.id) \($ph.title) [\($ph | phase_status($r))]",
                  ($r.plans[] | select(.phase == $ph.id)
-                   | "    \(.id) \(.title) [\(.status)]\(if (.after | length) > 0 then " after \(.after | join(", "))" else "" end)\(if .status == "blocked" and .note then ": " + .note else "" end)"))
+                   | "    \(.id) \(.title) [\(plan_state($r))]\(if (.after | length) > 0 then " after \(.after | join(", "))" else "" end)\(if .status == "blocked" and .note then ": " + .note else "" end)"))
            end)'
       ;;
     phase)
@@ -104,7 +104,7 @@ cmd_show() {
           | select(length > 0) | "  \($id) waits for \(join(", "))";
         . as $r
         | "requirements:",
-          (.requirements[] | . as $q | "  \(.id) [\(.proof)] \(.text)",
+          (.requirements[] | select(.queued | not) | . as $q | "  \(.id) [\(.proof)] \(.text)",
             (rule_lines | "    " + .),
             ($r.checks[] | select(.req == $q.id) | "    \(.id) " + check_line)),
           (([.phases[] | select(.milestone == $r.milestone.id and .tier)]) as $tp
@@ -121,8 +121,11 @@ cmd_show() {
           (.test_files // empty | "  test file form: \(.run | join(" ")) (one test file per run; test files: \(.files | join(" ")))"),
           (.project.results // empty | "saved test results folders: \(join(", "))"),
           (.project.leave_out // empty | "clean copy leaves out: \(join(", "))")'
+      printf '%s' "$record" | jq -r '[.requirements[] | select(.queued) | "  \(.id) [\(.proof)] \(.text)"]
+        | if length > 0 then "queued (not in the approved contract):", .[] else empty end'
+      contract_amendments_block "$record"
       if [ "$state" != approved ]; then
-        printf 'approval question: Approve contract %s?\napproval options: Approve, Not yet\n' "${hash:0:12}"
+        printf 'approval question: Approve contract %s?%s\napproval options: Approve, Not yet\n' "${hash:0:12}" "$(contract_question_counts "$record")"
       fi
       ;;
     requirements)
@@ -255,15 +258,42 @@ show_costs() {
   esac
 }
 
+# contract_question_counts RECORD_JSON: what follows the question mark of the approval question (R251):
+# " first approval: 2 requirements, 2 checks, 2 plans" without an earlier approval in this clone, else
+# the counts of changed items and of amendments from the same diff as vbw show contract --changes
+# (" 2 changes since the last approval", " 1 change, 1 amendment since the last approval"; a zero
+# count is left out, and with both zero nothing follows).
+contract_question_counts() {
+  if [ ! -f "$VBW_RUNTIME/approved-contract.json" ]; then
+    contract_doc "$1" | jq -r '" first approval: \(.requirements | length) requirements, \(.checks | length) checks, \(.plans | length) plans"'
+    return 0
+  fi
+  local n a
+  n=$(contract_change_lines "$1" | jq 'length')
+  a=$(printf '%s' "$1" | jq '[(.plans[], .checks[]) | (.amendments // [])[]] | length')
+  jq -nr --argjson n "$n" --argjson a "$a" '[(if $n > 0 then "\($n) change\(if $n == 1 then "" else "s" end)" else empty end),
+      (if $a > 0 then "\($a) amendment\(if $a == 1 then "" else "s" end)" else empty end)]
+    | if length == 0 then "" else " " + join(", ") + " since the last approval" end'
+}
+
 # What changed in the contract since the last approval in this clone.
 show_contract_changes() {
   local before="$VBW_RUNTIME/approved-contract.json"
   if [ ! -f "$before" ]; then
     printf 'no earlier approval in this clone: the whole contract is new (vbw show contract)\n'
+    contract_amendments_block "$1"
     return 0
   fi
-  local lines line f want h c diff g rel
-  lines=$(contract_doc "$1" | jq -r --slurpfile old "$before" "$SHOW_JQ_DEFS"'
+  local lines
+  lines=$(contract_change_lines "$1" | jq -r 'if length == 0 then "no changes since the last approval" else "changes since the last approval:", (.[] | "  " + .) end')
+  show_contract_changes_rest "$1" "$lines" "$before"
+}
+
+# contract_change_lines RECORD_JSON: the changed items since the last approval as a JSON
+# array of plain lines (the same diff the approval question counts); needs the earlier
+# approval's snapshot.
+contract_change_lines() {
+  contract_doc "$1" | jq -c --slurpfile old "$VBW_RUNTIME/approved-contract.json" "$SHOW_JQ_DEFS"'
     . as $new | $old[0] as $old
     | [ ($new.requirements | to_entries[] | select($old.requirements[.key] == null)
           | "added requirement \(.key) [\(.value.proof)] \(.value.text)"),
@@ -300,8 +330,18 @@ show_contract_changes() {
         ($old.checks | to_entries[] | select($new.checks[.key] == null)
           | "removed check \(.key) (\(.value.req))"),
         ($new.checks | to_entries[] | select($old.checks[.key] != null and $old.checks[.key] != .value)
-          | "changed check \(.key) (\(.value.req)): " + (.value | check_line)
-            + (if ($old.checks[.key].alone // false) and (.value.alone | not) then " [no longer alone]" else "" end)),
+          | .key as $k | .value as $n | $old.checks[$k] as $o
+          | def none($v): if $v == null or $v == "" or $v == [] then "none" else $v end;
+            def f($name; $a; $b): if $a != $b then "\($name) \($a) -> \($b)" else empty end;
+            [ f("run"; ($o.run | argv_line); ($n.run | argv_line)),
+              f("exit"; ($o.exit // 0); ($n.exit // 0)),
+              f("output"; none($o.output); none($n.output)),
+              f("timeout"; ($o.timeout | if . == null then "none" else "\(.) s" end); ($n.timeout | if . == null then "none" else "\(.) s" end)),
+              f("files"; none(($o.files // []) | join(", ")); none(($n.files // []) | join(", "))),
+              f("alone"; ($o.alone // false); ($n.alone // false)),
+              ((($o | del(.run, .exit, .output, .timeout, .files, .alone)) != ($n | del(.run, .exit, .output, .timeout, .files, .alone)))
+                | if . then "other fields changed (vbw show req \($n.req))" else empty end) ] as $d
+          | "changed check \($k) (\($n.req)): " + ($d | join("; "))),
         ($new.files | to_entries[] | select($old.files[.key] != null and $old.files[.key] != .value)
           | "changed test file \(.key)"),
         ($new.plans | to_entries[] | select($old.plans[.key] == null)
@@ -309,7 +349,12 @@ show_contract_changes() {
         ($old.plans | to_entries[] | select($new.plans[.key] == null)
           | "removed plan \(.key) \(.value.title)"),
         ($new.plans | to_entries[] | select($old.plans[.key] != null and $old.plans[.key] != .value)
-          | "changed plan \(.key) \(.value.title): \(.value.files | join(", "))\(if (.value.after | length) > 0 then " (after \(.value.after | join(", ")))" else "" end)"),
+          | .key as $k | .value as $n | $old.plans[$k] as $o
+          | def none($v): if $v == null or $v == [] then "none" else ($v | join(", ")) end;
+            [ (if $o.files != $n.files then "files \(none($o.files)) -> \(none($n.files))" else empty end),
+              (if $o.after != $n.after then "after \(none($o.after)) -> \(none($n.after))" else empty end),
+              ((($o | del(.files, .after)) != ($n | del(.files, .after))) | if . then "other fields changed (vbw show plan \($k))" else empty end) ] as $d
+          | "changed plan \($k) \($n.title): " + ($d | join("; "))),
         # Snapshots taken before commands were part of it list none.
         ($old | select(has("commands")) | .commands as $oc
           | ($new.commands | to_entries[] | select($oc[.key] != .value)
@@ -321,7 +366,12 @@ show_contract_changes() {
           | "saved test results folders: \(($new.results // []) | if length == 0 then "none" else join(", ") end) (was \(($old.results // []) | if length == 0 then "none" else join(", ") end))"),
         (select(($old.leave_out // []) != ($new.leave_out // []))
           | "clean copy leaves out: \(($new.leave_out // []) | if length == 0 then "none" else join(", ") end) (was \(($old.leave_out // []) | if length == 0 then "none" else join(", ") end))") ]
-    | if length == 0 then "no changes since the last approval" else "changes since the last approval:", (.[] | "  " + .) end')
+  '
+}
+
+# show_contract_changes_rest RECORD_JSON LINES BEFORE: the diff under each changed test file, then the amendments.
+show_contract_changes_rest() {
+  local lines=$2 before=$3 line f want h c diff g rel
   # Under each changed test file: the whole diff between the approved content
   # (found by hash in the file's git history) and the file as it is now.
   while IFS= read -r line; do
@@ -351,6 +401,8 @@ show_contract_changes() {
       printf '%s\n' "$diff" | sed 's/^/    /'
     fi
   done <<< "$lines"
+  # The amendments made since the last approval (R250): never changed checks or plans.
+  contract_amendments_block "$1"
 }
 
 # jq helpers for rendering checks. An argv is shown shell-quoted where needed.
@@ -360,6 +412,10 @@ SHOW_JQ_DEFS='
 def phase_status($r): .id as $id | [$r.plans[] | select(.phase == $id) | .status] as $s
   | if ($s | length) > 0 and all($s[]; . == "done") then "built"
     elif any($s[]; . != "planned") then "building" else "planned" end;
+# A built plan whose awaited check has no passing result yet reads "built, awaiting Cn" (R250); derived, never stored.
+def plan_state($r): . as $p | if .status == "done"
+  then ([(.awaits // [])[] | select(($r.evidence.checks[.].status // "") != "pass")] | if length > 0 then "built, awaiting \(join(", "))" else $p.status end)
+  else .status end;
 def argv_line: map(if test("^[A-Za-z0-9_./:=@%+-]+$") then . else @sh end) | join(" ");
 # A rule is shown by its address Rn.k, its place among the requirement'"'"'s rules (T168).
 def rule_lines: if .proof == "auto" then .id as $q |

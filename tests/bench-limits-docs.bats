@@ -2,7 +2,7 @@
 # R151: the speed limits are the same everywhere. CI
 # runs the hook benchmark with the same defaults as a local run (no CI-only
 # hook or status line limit), and docs/guards.md, docs/statusline.md and the
-# hot-path rule of CLAUDE.md state 20 ms per hook call, 60 ms for the status
+# hot-path rule of CLAUDE.md state 25 ms per hook call, 60 ms for the status
 # line and the busy-machine report; none still states 8 ms or 30 ms as the
 # limit. L1: the files are read as text.
 
@@ -29,10 +29,10 @@ old_limits() {
   }
 }
 
-@test "R151, R222: docs/guards.md states the 20 ms limit per hook call as the meaning on a nominal machine, the reference, the ratio and the slow report, the busy-machine report, and no longer 8 ms" {
+@test "R151, R222: docs/guards.md states the 25 ms limit per hook call as the meaning on a nominal machine, the reference, the ratio and the slow report, the busy-machine report, and no longer 8 ms" {
   local f="$REPO_ROOT/docs/guards.md"
-  flat "$f" | grep -qE '20 ?ms' || {
-    echo "docs/guards.md does not state 20 ms"
+  flat "$f" | grep -qE '25 ?ms' || {
+    echo "docs/guards.md does not state 25 ms"
     false
   }
   flat "$f" | grep -qF 'busy' || {
@@ -75,7 +75,7 @@ old_limits() {
   }
 }
 
-@test "R151, R222: the hot-path rule of CLAUDE.md states 20 ms per hook call, 60 ms for the status line, the reference and ratio with the slow report, and the busy report" {
+@test "R151, R222: the hot-path rule of CLAUDE.md states 25 ms per hook call, 60 ms for the status line, the reference and ratio with the slow report, and the busy report" {
   local rule
   rule=$(grep -E '^- \*\*Hot paths:\*\*' "$REPO_ROOT/CLAUDE.md") || {
     echo "CLAUDE.md has no hot-path rule"
@@ -85,8 +85,8 @@ old_limits() {
     echo "the rule does not state the reference, the ratio and the slow report: $rule"
     false
   }
-  printf '%s\n' "$rule" | grep -qE '20 ?ms' || {
-    echo "the rule does not state 20 ms: $rule"
+  printf '%s\n' "$rule" | grep -qE '25 ?ms' || {
+    echo "the rule does not state 25 ms: $rule"
     false
   }
   printf '%s\n' "$rule" | grep -qE '60 ?ms' || {

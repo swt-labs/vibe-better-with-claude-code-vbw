@@ -22,7 +22,7 @@ teardown() { vbw_teardown; }
   [ "$(loop_next s1 | jq -r .action)" = plan ]
   loop_plan "$(item_req "Visitors can read a greeting")" P2
   # The item's own work: the kernel learns a new plan field, and the item's plan carries it.
-  perl -pi -e 's/"role","mutations"\]/"role","mutations","probe"]/' kplug/lib/record.jq
+  perl -pi -e 's/"amendments","awaits"\]/"amendments","awaits","probe"]/' kplug/lib/record.jq
   grep -q '"probe"' kplug/lib/record.jq
   git commit -qm "feat(kernel): plans may carry a probe" -- kplug/lib/record.jq
   edit_record '(.plans[] | select(.id == "P2.1")).probe = 1'

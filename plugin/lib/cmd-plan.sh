@@ -3,7 +3,9 @@
 # verified, not claimed: the plan has a commit carrying its VBW-Plan trailer (or
 # all its files are committed in HEAD and a check of its requirements passes),
 # none of its files has uncommitted changes, and the checks of every requirement
-# it completes (no other open plan serves it) pass. "block" refuses a done plan.
+# it completes (no other open plan serves it) pass, except the checks it awaits
+# (R250): another plan builds those, and its requirement stays unproven until they
+# pass. "block" refuses a done plan.
 
 # shellcheck source=steps.sh
 . "$VBW_LIB/steps.sh"
@@ -51,14 +53,14 @@ cmd_plan() {
         . as $r | (.plans[] | select(.id == $p)) as $pl
         | $pl.reqs[] as $q
         | select(all($r.plans[]; .id == $p or .status == "done" or (any(.reqs[]; . == $q) | not)))
-        | $r.checks[] | select(.req == $q) | .id')
+        | $r.checks[] | select(.req == $q) | select(. as $c | ($pl.awaits // []) | index($c.id) | not) | .id')
       # shellcheck source=checks.sh
       . "$VBW_LIB/checks.sh"
       if [ "$trailer" -eq 0 ]; then
         # Without a trailer, the plan's own requirements need a passing check.
         local own=()
         while IFS= read -r f; do [ -n "$f" ] && own+=("$f"); done < <(printf '%s' "$record" | jq -r --arg p "$id" '
-          . as $r | (.plans[] | select(.id == $p)) as $pl | $r.checks[] | select(.req as $q | $pl.reqs | any(. == $q)) | .id')
+          . as $r | (.plans[] | select(.id == $p)) as $pl | $r.checks[] | select(.req as $q | $pl.reqs | any(. == $q)) | select(. as $c | ($pl.awaits // []) | index($c.id) | not) | .id')
         [ ${#own[@]} -gt 0 ] || vbw_die "$id has no commit with its trailer and no check of its requirements to prove its committed files"
         checks_must_pass "$record" "$id is committed but its checks do not pass" "${own[@]}"
       fi

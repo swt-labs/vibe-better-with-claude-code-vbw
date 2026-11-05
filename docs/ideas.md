@@ -18,6 +18,7 @@ Every idea here is an idea to evaluate, not an instruction to build. The problem
 | [A watch for process cost out of proportion](#a-watch-for-process-cost-out-of-proportion) | Medium |
 | [Offer CI for the user's project](#offer-ci-for-the-users-project) | Medium |
 | [Coordination between sessions on one repository](#coordination-between-sessions-on-one-repository) | Large |
+| [Stack packs, Rust first](#stack-packs-rust-first) | Large |
 | [A model profile for judgment-heavy roles](#a-model-profile-for-judgment-heavy-roles) | Small |
 | [Choose the sound](#choose-the-sound) | Small |
 | [A screenshot kept with a visual acceptance](#a-screenshot-kept-with-a-visual-acceptance) | Small to medium |
@@ -71,6 +72,33 @@ Every idea here is an idea to evaluate, not an instruction to build. The problem
 **Size.** Large.
 
 **Where.** `plugin/lib/sessions.sh`, `plugin/workflows/planning.js`, the hooks in `plugin/hooks/`.
+
+### Stack packs, Rust first
+
+**Problem.** VBW's competence per language lives in four places: the check forms (how a test is named and run), the planner's rules for a red check (it compiles and fails by assertion, never by a compile error), the mutation step (what a break looks like in that language) and the Dev's and QA's prompts (idioms, lints, lockfiles, build identity). Today these are one generic set, with per-project approvals bolted on. A Rust workspace shows the cost: a planned test that does not compile counts as red, a dependency added to one crate misses a workspace lockfile, a clippy gate fails on a planned check, and every plan rediscovers `--locked`.
+
+**Idea.** A *stack pack* makes each of the four a first-class, versioned unit, selected by the shape of the code, and shipped to everyone as a pack (`vbw init --pack rust`). One kernel, one record, one contract; the pack is chosen per plan by the files it touches, the way Claude Code rules scope by `paths:`. A repository with Rust workspaces beside Python scripts holds two check forms in one contract today; with profiles, a plan over the Rust tree gets the Rust Dev, the cargo forms and the Rust mutation rules, and a plan over the scripts gets the Python ones. Several Devs in one wave each run under their plan's profile, so "many agents, each under the right profile" needs no second kernel or record.
+
+The first Rust pack would hold: check forms for `cargo test -p <crate> --test <name>` and clippy, always `--locked`; the lockfile rule (a dependency added to a crate goes into every workspace lockfile that builds it, in the same commit); a red check must compile and fail by assertion; evidence names the build's commit and lockfile hash; plans cut one crate per plan, with shared registration points (`lib.rs` module lists, enums, `Cargo.lock`) set up once in an early plan; a mutation step that knows Rust targets (a bin, a test, a lib).
+
+**First contents for Rust, from one real project, by measured cost:**
+
+1. **Tests written ahead of their code.** A Rust test naming an API not yet written fails by compile error, so one such target turns every whole-crate command red. A target declared `test = false` is skipped by whole-crate commands, while its explicit `--test name` still fails red. The pack declares it that way at planning and removes the declaration once it compiles. This was checked with `cargo test` and `cargo check --all-targets`, so test it with clippy before relying on it.
+2. **Workspace lockfiles.** A dependency added to a crate changes the lockfile of every workspace that path-depends on it.
+3. **Check shapes.** One crate per check during development, the whole workspace only in one serialized heavy lane.
+4. **Pinned outputs.** A behaviour change also moves baselines, generated pages and digests, and cargo alone never catches that, so the pack asks for their re-pin in the same change.
+
+**The name.** It is a *stack pack*, because "profile" in VBW already means the models, autonomy and way of talking that `/vbw:profile` switches.
+
+**At `vbw init`.** With no code yet, init asks which stack the project will use. With code, it detects the stacks, shows what it found and asks the user to confirm or correct it. A repository can hold several stacks, and each plan takes its pack from the files it touches.
+
+**Your stack, for everyone.** Once packs exist, the aim is that anyone can create one for their own stack and open a pull request, so VBW gets stronger for everyone. A pack's prompts and conventions are easy to write. Its check forms and mutation step need places to plug into the kernel, and those come first. A pack ships after review and after it has shown its worth on a real codebase, because a weak pack makes checks look stronger than they are. A draft made during init stays in that project until then.
+
+**Open questions.** Keep the pack out of the contract's identity: a pack upgrade must not un-approve every plan (compare the amendment work in R250). How is a pack chosen when a plan's files span two trees? What is in a pack and how is it versioned beside VBW itself? Measure before believing: judge the first Rust pack by what it removes from a real project's failure list (a planned test that does not compile, a missing lockfile entry, a clippy gate that fails on a planned check), not by how it reads. A language-specific fork of VBW was considered and rejected: one kernel, profiles as packs.
+
+**Size.** Large.
+
+**Where.** The check forms in `plugin/lib/spec.jq` and `## Test files`; the planner's red-check rule in `plugin/agents/lead.md` and `plugin/workflows/planning.js`; the mutation step in `plugin/lib/cmd-mutate.sh` and `plugin/lib/mutate-queue.sh`; the Dev and QA prompts in `plugin/agents/`; a pack folder under `plugin/` read by `vbw init`.
 
 ### A model profile for judgment-heavy roles
 

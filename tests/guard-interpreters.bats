@@ -209,6 +209,8 @@ lease() {
 
 @test "R219: a program that writes nothing, a heredoc fed to a non-interpreter, a script file run by name and a string method on a bare variable pass" {
   local c
+  mkdir -p tools
+  printf 'print(1)\n' > tools/x.py
   for c in "python3 -c \"print(p)\"" \
            "python3 -c \"import json; d = json.load(open(p))\"" \
            "python3 -c \"open(p)\"" "python3 -c \"open(p, 'r')\"" "python3 -c \"open(p, 'rb')\"" \

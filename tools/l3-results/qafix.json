@@ -1,9 +1,9 @@
 {
   "scenario": "qafix",
   "fixture": "greet.sh plus NOTES.md (no check names it); guided autonomy stated in words; the built NOTES.md is deleted after the build, so only the delivered-files check can see the deviation; the user restores it",
-  "cost_usd": 1.52,
+  "cost_usd": 3.86,
   "evidence_level": "L3",
-  "at": "2026-10-25T21:24:14Z",
+  "at": "2026-11-05T12:47:04Z",
   "passed": true,
   "facts": {
     "deviation": "NOTES.md",

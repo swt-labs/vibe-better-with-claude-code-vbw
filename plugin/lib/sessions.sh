@@ -55,8 +55,12 @@ sessions_name() {
 # Folders are compared by their physical path (symbolic links resolved, as git
 # reports the project root), so /var and /private/var on macOS are one folder; a
 # folder that no longer exists is resolved through its nearest existing parent.
+# One-pass rule: the registry is read by one jq and matched by one jq, whatever
+# the number of chats; the shell only resolves each distinct folder (no jq per
+# entry), because a 594-plan project's chat list cost one jq start per open chat
+# (T229). No function of this file runs jq inside a loop over entries.
 sessions_project_entries() {
-  local reg root cwd phys map='{}' up tail
+  local reg root cwd phys map='' up tail
   reg=$(sessions_registry)
   root=$(cd "$1" 2> /dev/null && pwd -P) || root=${1%/}
   while IFS= read -r cwd; do
@@ -70,27 +74,31 @@ sessions_project_entries() {
       [ -n "$up" ] || up=/
     done
     case "$cwd" in /*) phys=${phys%/}$tail ;; *) phys=$cwd ;; esac
-    map=$(printf '%s' "$map" | jq -c --arg k "$cwd" --arg v "$phys" '. + {($k): $v}')
-  done < <(printf '%s' "$reg" | jq -r '.[] | .cwd | select(type == "string")' 2> /dev/null)
+    map+=$cwd$'\001'$phys$'\n'
+  done < <(printf '%s' "$reg" | jq -r '[.[] | .cwd | select(type == "string")] | unique | .[]' 2> /dev/null)
   # The binding is in parentheses of its own: after "and", jq 1.7 binds only the
   # term and jq 1.8 the whole "A and B" (its binding precedence changed).
-  printf '%s' "$reg" | jq -c --arg r "${root%/}" --argjson m "$map" '[.[] | select((.cwd | type) == "string"
+  printf '%s' "$reg" | jq -c --arg r "${root%/}" --arg ms "$map" '($ms | split("\n") | map(select(length > 0) | split("\u0001") | {(.[0]): .[1]}) | add // {}) as $m
+    | [.[] | select((.cwd | type) == "string"
     and (($m[.cwd] // .cwd | rtrimstr("/")) as $c | $c == $r or ($c | startswith($r + "/"))))]' 2> /dev/null || printf '[]\n'
   return 0
 }
 
 holder_file() { printf '%s/holder.json' "$VBW_RUNTIME"; }
 
-# holder_write RUN SID: .vbw/runtime/holder.json {run, session, session_name}
-# (session_name null when unknown), through a temporary name and a rename.
+# holder_write RUN SID: .vbw/runtime/holder.json {run, session, session_name, head}
+# (session_name null when unknown; head, the project's commit when the run starts,
+# null when it has none: the Bash guard compares a script file with it, R255), through
+# a temporary name and a rename.
 holder_write() {
-  local name tmp
+  local name tmp head
   name=$(sessions_name "$2")
+  head=$(git -C "$VBW_ROOT" rev-parse --verify --quiet HEAD 2> /dev/null) || head=''
   mkdir -p "$VBW_RUNTIME" 2> /dev/null || return 0
   tmp=$(mktemp "$VBW_RUNTIME/holder.XXXXXX" 2> /dev/null) || return 0
   vbw_guard_add file "$tmp"
-  if jq -nc --arg r "$1" --arg s "$2" --arg n "$name" \
-    '{run: $r, session: $s, session_name: (if $n == "" then null else $n end)}' > "$tmp" 2> /dev/null; then
+  if jq -nc --arg r "$1" --arg s "$2" --arg n "$name" --arg h "$head" \
+    '{run: $r, session: $s, session_name: (if $n == "" then null else $n end), head: (if $h == "" then null else $h end)}' > "$tmp" 2> /dev/null; then
     mv "$tmp" "$(holder_file)" 2> /dev/null || true
   fi
   vbw_guard_drop "$tmp"

@@ -54,6 +54,8 @@
 . "$VBW_LIB/rigor.sh"
 # shellcheck source=cmd-spec.sh
 . "$VBW_LIB/cmd-spec.sh"
+# shellcheck source=cmd-approve.sh
+. "$VBW_LIB/cmd-approve.sh"
 
 # foreign_reqs: the refusals --add and the full apply share. Only phases of other
 # milestones count as covering (a new phase may cover a requirement of this
@@ -84,6 +86,8 @@ RULES_JQ='def rule_edit($ops; $a): ([$ops[] | select(.rule == $a)][0]) as $o
 # record's own validation (an unknown requirement, a duplicate id, ...) take the last arm.
 apply_next() {
   case "$1" in
+    *"is not an amendment"* | *"must be an array of objects"* | *"would lose "* | *"protected check file: a plan"*) echo "send that change with vbw apply --patch, then the user approves it; --amend takes only files added to a plan or a check and the checks a plan awaits" ;;
+    "the contract is not approved"*) echo "send the change with vbw apply --patch, then the user approves it (vbw show contract)" ;;
     "a patch carries plans"*) echo "remove \"phases\" from the document, or send it to a full apply (vbw apply) to change phases" ;;
     "--add needs"*) echo "send --add a JSON object whose \"phases\" array holds the new phases, with their plans, checks and rules" ;;
     "test_files must be"*) echo "give test_files as {\"run\": [argv naming {file} once], \"files\": [git pathspecs]}, or leave it out" ;;
@@ -194,12 +198,93 @@ apply_write_test_files() {
   spec_sync "$(spec_parse)"
 }
 
+# The amendment's jq helpers (R250). adds($d): what the document $d adds to the record, one
+# row per plan or check that gains a file or an awaited check ({kind, id, files, awaits}); whats: a row's amendment lines.
+AMEND_JQ='def dedupe: reduce .[] as $x ([]; if index($x) then . else . + [$x] end);
+  def newfiles($old; $new): [$new[]? | select(. as $f | ($old | index($f)) | not)] | dedupe;
+  def adds($d): [(.plans[] | . as $p | ([$d.plans[]? | select(.id == $p.id)][0]) as $e | select($e != null)
+        | {kind: "plans", id, files: newfiles($p.files; $e.files), awaits: newfiles($p.awaits // []; $e.awaits)}),
+      (.checks[] | . as $c | ([$d.checks[]? | select(.id == $c.id)][0]) as $e | select($e != null)
+        | {kind: "checks", id, files: newfiles($c.files // []; $e.files), awaits: []})]
+    | map(select((.files | length) + (.awaits | length) > 0));
+  def whats: [.files[] | "file \(.) added"] + [.awaits[] | "awaits \(.)"];
+'
+
+# apply_amend: vbw apply --amend < DOC, the main session's fourth mode (R250). DOC holds
+# plans [{id, files?, awaits?}] and checks [{id, files?}]: files are additions only (the plan's
+# or check's own files and more; never a protected check file on a plan), awaits name checks
+# of the plan's own requirements. The contract must be approved; it stays approved (the
+# approval is re-pinned for the amended contract) and an open run stays open (a plan's
+# added file joins the lease of a building plan, a check's joins the protected files, at once).
+# Each addition is recorded on the plan or check as an amendment {what, at, session}, the
+# session by its 8-character short id, never a name (D445). Everything else is refused in one
+# line that sends it to vbw apply --patch and the user's approval, the record unchanged.
+apply_amend() {
+  local doc=$1 record problem sess adds
+  printf '%s' "$doc" | jq -e 'type == "object"' > /dev/null 2>&1 || apply_refuse "apply needs a JSON object on stdin"
+  record=$(record_read)
+  contract_approved "$(contract_hash "$record")" \
+    || apply_refuse "the contract is not approved: an amendment keeps an approved contract as it is, so send this change with vbw apply --patch and the user's approval"
+  problem=$(printf '%s' "$record" | jq -r --slurpfile f_d <(printf '%s' "$doc") '$f_d[0] as $d
+    | "change it with vbw apply --patch, then the user approves it" as $tail
+    | .checks as $ck | ([.checks[] | (.files // [])[]] | unique) as $prot
+    | def top: ($d | keys - ["plans", "checks"])[0:1][] | "\(.) is not an amendment: \($tail)";
+      def shape: ($d | to_entries[] | select(.key | IN("plans", "checks")) | select((.value | type == "array" and all(.[]; type == "object" and (.id | type == "string"))) | not)
+        | "\(.key) must be an array of objects that each name a plan or check by its id");
+      def entry($kind; $rows; $allowed):
+        ($d[$kind] // [])[] | . as $e | ([$rows[] | select(.id == $e.id)][0]) as $row
+        | if $row == null then "\($e.id) is not a \($kind | rtrimstr("s")) of the record: an amendment names one that exists"
+          else ($e | keys[] | select(. as $k | $allowed | index($k) | not) | "\($e.id) \(.) is not an amendment: \($tail)"),
+               (if ($e | has("files")) then
+                  if ($e.files | type == "array" and all(.[]; type == "string" and length > 0)) | not then "\($e.id) files must be an array of paths"
+                  else ($row.files // [])[] | . as $f | select(($e.files | index($f)) == null) | "\($e.id) files would lose \($f): a removal is not an amendment; \($tail)" end
+                else empty end),
+               (if $kind == "plans" and ($e | has("files")) and ($e.files | type == "array") then
+                  $e.files[] | . as $f | select(($row.files | index($f)) == null and ($prot | index($f)) != null)
+                  | "\($f) is a protected check file: a plan never takes one among its files; \($tail)"
+                else empty end),
+               (if $e | has("awaits") then
+                  if ($e.awaits | type == "array" and all(.[]; type == "string")) | not then "\($e.id) awaits must be an array of check ids"
+                  else $e.awaits[] | . as $a | ([$ck[] | select(.id == $a)][0]) as $c
+                    | if $c == null then "\($a) is not a check of the record: \($e.id) awaits one that exists"
+                      elif ($row.reqs | index($c.req)) == null then "\($a) is a check of \($c.req), which \($e.id) does not build (\($row.reqs | join(", "))): awaits names checks of the plan own requirements"
+                      else empty end end
+                else empty end)
+          end;
+      [top, shape, entry("plans"; .plans; ["id", "files", "awaits"]), entry("checks"; .checks; ["id", "files"])] | .[0] // empty' 2> /dev/null) \
+    || apply_internal "cannot judge the amendment"
+  [ -z "$problem" ] || apply_refuse "$problem"
+  vbw_scratch df "$doc"
+  sess=$(vbw_session)
+  adds=$(printf '%s' "$record" | jq -r --slurpfile f_d "$df" "$AMEND_JQ"'adds($f_d[0])[] | . as $x | $x | whats[] | "\($x.id): \(.)"') \
+    || apply_internal "cannot read the amendment"
+  if [ -z "$adds" ]; then
+    vbw_guard_drop "$df"
+    printf 'nothing to amend: the plans and checks named already hold those files and awaited checks\n'
+    return 0
+  fi
+  record_update "$AMEND_JQ"'$f_d[0] as $d | . as $r0 | adds($d) as $a
+    | [$a[] | select(.kind == "plans" and (.id as $i | any($r0.plans[]; .id == $i and .status == "building"))) | .files[]] as $la
+    | reduce $a[] as $x (.; (.[$x.kind][] | select(.id == $x.id))
+        |= (.files += $x.files | (if ($x.awaits | length) > 0 then .awaits = ((.awaits // []) + $x.awaits) else . end)
+            | .amendments = ((.amendments // []) + [$x | whats[] | {what: ., at: $at, session: (if $s == "" then null else $s[0:8] end)}])))
+    | if .lease != null and .lease.kind == "build" and (.lease.files | type) == "array" then .lease.files = ((.lease.files + $la) | dedupe) else . end' \
+    --slurpfile f_d "$df" --arg at "$(vbw_now)" --arg s "$sess"
+  vbw_guard_drop "$df"
+  approve_repin "$(record_read)"
+  printf '%s\n' "$adds" | sed 's/^/amended /'
+}
+
 cmd_apply() {
-  local patch=false add=false
+  local patch=false add=false amend=false
   MODE_NAME="full apply"
-  case "${1:-}" in --patch) patch=true; MODE_NAME="--patch"; shift ;; --add) add=true; MODE_NAME="--add"; shift ;; esac
-  [ $# -eq 0 ] || vbw_usage_error "usage: vbw apply < plan.json (full apply) | vbw apply --add < doc.json | vbw apply --patch < doc.json"
+  case "${1:-}" in --patch) patch=true; MODE_NAME="--patch"; shift ;; --add) add=true; MODE_NAME="--add"; shift ;; --amend) amend=true; MODE_NAME="--amend"; shift ;; esac
+  [ $# -eq 0 ] || vbw_usage_error "usage: vbw apply < plan.json (full apply) | vbw apply --add < doc.json | vbw apply --patch < doc.json | vbw apply --amend < doc.json"
   vbw_require_project
+  if [ "$amend" = true ]; then
+    apply_amend "$(cat)"
+    return 0
+  fi
   local doc record problem merged filter hypo tiers judged one pdoc='{}' df tf pf of ids p form=null ops='[]' addr
   doc=$(cat)
   if printf '%s' "$doc" | jq -e 'type == "object" and has("test_files")' > /dev/null 2>&1; then
@@ -309,7 +394,11 @@ cmd_apply() {
     | "\(.id // "a phase") has the tier \(.tier | tojson): the tier must be express, standard or deep"' | head -n 1)
   [ -z "$problem" ] || apply_refuse "$problem"
   record=$(record_read)
-  printf '%s' "$record" | jq -e '.lease == null or .lease.kind == "plan"' > /dev/null \
+  # A patch of checks alone may land while a build run is open (R250): the plans keep their progress,
+  # the run stays open, and the contract then waits for the user's approval of what the checks assert.
+  printf '%s' "$record" | jq -e --argjson patch "$patch" --slurpfile f_p <(printf '%s' "$pdoc") --slurpfile f_o <(printf '%s' "$ops") \
+    '.lease == null or .lease.kind == "plan"
+      or ($patch and .lease.kind == "build" and ($f_p[0].plans | length) == 0 and ($f_p[0].rules | length) == 0 and ($f_o[0] | length) == 0)' > /dev/null \
     || apply_refuse "a $(printf '%s' "$record" | jq -r .lease.kind) run is open: plan again after it ends (vbw run end)"
   problem=$(printf '%s' "$record" | jq -r --slurpfile f_d <(printf '%s' "$doc") '$f_d[0] as $d | .milestone.id as $m
     | ([.phases[] | select(.milestone == $m) | .id]) as $mine
@@ -421,14 +510,19 @@ cmd_apply() {
     | ([.plans[] | select(has("mutations")) | {key: .id, value: .mutations}] | from_entries) as $mut
     # and its note, the blocked reason, the same way (R213).
     | ([.plans[] | select(has("note")) | {key: .id, value: .note}] | from_entries) as $note
+    # and its amendments and awaited checks, and the amendments of a check (R250): history the Lead never re-sends.
+    | ([.plans[] | select(has("amendments") or has("awaits")) | {key: .id, value: with_entries(select(.key | IN("amendments", "awaits")))}] | from_entries) as $kept
+    | ([.checks[] | select(has("amendments")) | {key: .id, value: .amendments}] | from_entries) as $camd
     | ([($pd.plans // $d.plans)[] | {id, phase, title, reqs, files, after: (.after // []), status: ($status[.id] // "planned")}
           + (with_entries(select(.key | IN("tasks", "role"))))
           + (if $mut[.id] then {mutations: $mut[.id]} else {} end)
-          + (if $note[.id] then {note: $note[.id]} else {} end)]) as $np
+          + (if $note[.id] then {note: $note[.id]} else {} end)
+          + ($kept[.id] // {})]) as $np
     | .plans = (if $patch or $add then [.plans[] | . as $o | ([$np[] | select(.id == $o.id)][0]) // $o] + [$np[] | select($status[.id] == null)]
         else [(.plans[] | select(.phase as $p | any($mine[]; . == $p) | not)), $np[]] end)
     | .checks = (if $patch or $add then [$c0[] | . as $o | ([$pd.checks[] | select(.id == $o.id)][0]) // $o] + [$pd.checks[] | select(.id as $i | $c0 | any(.id == $i) | not)]
         else [($c0[] | select(.req as $q | any($myreqs[]; . == $q) | not)), $d.checks[]] end)
+    | .checks |= map(if $camd[.id] then . + {amendments: $camd[.id]} else . end)
     # The rules named by address first (T168), then the live rules laid around the retired ones.
     | .requirements |= map(.id as $q | if (.rules | type) == "array"
         then .rules = [.rules | to_entries[] | .key as $k | .value | rule_edit($ops; "\($q).\($k + 1)")] else . end)
