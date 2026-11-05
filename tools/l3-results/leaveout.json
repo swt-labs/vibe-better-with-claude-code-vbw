@@ -1,9 +1,9 @@
 {
   "scenario": "leaveout",
   "fixture": "greet.sh with a git-ignored data/ folder (listed under Clean copy in the spec) and an ignored cache/ folder, both holding files; one requirement, approved by the user before the session, its check writing from inside the proof's clean copy whether data and cache exist there; rigor auto; the user types /vbw:vibe and the build runs to the end",
-  "cost_usd": 0.2686,
+  "cost_usd": 0.4999,
   "evidence_level": "L3",
-  "at": "2026-10-27T09:46:05Z",
+  "at": "2026-11-05T12:28:54Z",
   "passed": true,
   "facts": {
     "contract_names_path": true,

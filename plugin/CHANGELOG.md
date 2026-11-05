@@ -1,5 +1,66 @@
 # Changelog
 
+## [2.1.25] - 2026-11-05
+
+VBW gets out of your way on big projects. Common commands are much faster, a
+small correction no longer stops a build, and a new requirement can wait its
+turn. These ideas came from field reports on a large real project. Next up is
+a first Rust stack pack, and you can help shape it in
+[discussion #747](https://github.com/swt-labs/vibe-better-with-claude-code-vbw/discussions/747).
+
+### New
+
+- **Faster commands on big projects.** VBW checks a record once per version of
+  its content, and `vbw next` and `vbw status` read it in one pass. On VBW's own
+  4.6 MB record, `vbw next --json` went from 10.7 s to about 2.1 s and
+  `vbw status` from 11.9 s to about 2.0 s; `vbw show roadmap` takes 0.2 s. A
+  write also checks only the record it makes, which saves about a second each
+  time on a record this size.
+- **Small corrections without a stop (`vbw apply --amend`).** The main session
+  can add a file to a plan or a check, or record that a plan waits for another
+  plan's check. The approval and the open run both stay in place, and the change
+  is listed at the next gate.
+- **Changing a check on a started plan** no longer needs `vbw plan reset`. The
+  plan keeps its progress, and you approve what the check now promises.
+- **Finishing a plan that waits on a later check.** It reads "built, awaiting
+  Cn" and its requirement proves once that check has run.
+- **Approval questions you can judge.** The question counts what changed and
+  what was amended, and `vbw show contract --changes` shows each change as
+  before and after.
+- **New requirements wait their turn.** `vbw spec add` during a build or fix
+  run queues the requirement for the next plan, and the agents keep working.
+- **Lighter clean copies.** They always leave out git worktrees inside the
+  project. `vbw init` and `vbw doctor` name ignored folders over 500 MB that you
+  may want to leave out too.
+
+### Fixed
+
+- **Stronger guards.** A write is judged by the project it lands in, after a
+  `cd`, by absolute path or from a linked worktree. A script an agent wrote is
+  read before it runs by name, and judged like the same code typed inline. An
+  agent other than the Lead planning can no longer run `vbw apply`. A refusal
+  of a protected check file now states the rule in one line.
+
+### Good to know
+
+- **Speed still to come.** `vbw next` on a record this size is still over our
+  1.5 s goal, and the steps that ask for approval or start a proof read the
+  record more often. That work is on our list.
+- **Folder changes the guard does not follow.** A `cd` to a variable or `~`, a
+  `pushd` and a `git -C` are not followed, so a relative path after one is judged
+  in the folder the command started in. `docs/guards.md` says so, and closing
+  `pushd` and `git -C` is on our list.
+- **A script run by name costs a little more.** The guard reads it in two passes,
+  so that one case has twice the usual time budget. Every other call keeps its
+  budget.
+
+### For you to do
+
+- Update, then restart Claude Code. Your project moves to record schema 9 on its
+  next write, so use 2.1.25 on every computer that works on the project.
+
+Sizes, for information (file bytes): kernel 833 KB (`plugin/bin/vbw` and `plugin/lib`), mods 353 KB (hooks, panel and status line), workflows 74 KB, prompts 115 KB (agents and skills).
+
 ## [2.1.24] - 2026-11-03
 
 Plans whose files live in a git submodule now build, prove, commit and
