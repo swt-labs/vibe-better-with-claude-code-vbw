@@ -7851,7 +7851,7 @@
   "milestone": {
     "id": "M52",
     "title": "Fast kernel on large records, amendments without a stop, clean copies that never carry worktrees",
-    "status": "active"
+    "status": "shipped"
   },
   "shipped": [
     {
@@ -8103,6 +8103,11 @@
       "id": "M51",
       "title": "The record's schema is one table: schema 8 for recorded breaks, and a new key needs a bump",
       "at": "2026-11-03T14:05:25Z"
+    },
+    {
+      "id": "M52",
+      "title": "Fast kernel on large records, amendments without a stop, clean copies that never carry worktrees",
+      "at": "2026-11-05T12:24:58Z"
     }
   ],
   "requirements": [
@@ -74619,6 +74624,11 @@
       "id": "D610",
       "text": "F371: for 2.1.25 a folder change the guard cannot read (cd to a variable or ~, pushd, git -C) stays a documented limit, in docs/guards.md, and goes to a todo. Why: QA's option A would refuse an ordinary cd \"$DIR\" to every Dev, on a guard meant to stop mistakes rather than an adversary; the gap needs a hook project and a target project that differ; the literal cd, absolute path, worktree and Edit forms the field case used are closed. pushd and git -C are plain gaps to close next",
       "at": "2026-11-05T12:16:53Z"
+    },
+    {
+      "id": "D611",
+      "at": "2026-11-05T12:24:58Z",
+      "text": "Shipped M52 Fast kernel on large records, amendments without a stop, clean copies that never carry worktrees: 7 requirements proven or accepted"
     }
   ],
   "commands": {
@@ -88222,6 +88232,10 @@
             "usd": 0,
             "at": "2026-11-03T22:19:30Z"
           }
+        },
+        "total": {
+          "usd": 149.010755,
+          "sessions": 48
         }
       }
     }
