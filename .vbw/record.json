@@ -71193,6 +71193,13 @@
       "sort": "next",
       "size": "small",
       "status": "open"
+    },
+    {
+      "id": "T244",
+      "text": "Bring the guard's cost back under 20 ms per call: a lighter first pass for commands with nothing to judge, or the second-pass definitions out of the first; the budget moved to 25 ms for 2.1.25 after CI measured 21.9 ms on GitHub's macOS runner",
+      "sort": "next",
+      "size": "medium",
+      "status": "open"
     }
   ],
   "decisions": [
@@ -74629,6 +74636,11 @@
       "id": "D611",
       "at": "2026-11-05T12:24:58Z",
       "text": "Shipped M52 Fast kernel on large records, amendments without a stop, clean copies that never carry worktrees: 7 requirements proven or accepted"
+    },
+    {
+      "id": "D612",
+      "text": "The guard's hook budget moves from 20 ms to 25 ms per call (a script run by name 50 ms). GitHub's macOS runner measured 21.9 ms after the guard work of M52; the owner said they cannot judge this and I decide. A design cut would have delayed the release by a day for 2 ms nobody feels. Bringing it back down is a todo.",
+      "at": "2026-11-05T14:39:03Z"
     }
   ],
   "commands": {
