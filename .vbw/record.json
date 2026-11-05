@@ -71234,7 +71234,7 @@
       "text": "2.1.26 is the Rust release (owner, 2026-11-04): first Rust stack pack, what Dev, Lead and QA are told (tests ahead of their code, lockfiles, check shapes, pinned outputs), chosen by the files a plan touches, outside the contract's fingerprint; with T234 and T235; test test = false with clippy first; judged by rerunning the Rust project's failure list; the init question and kernel plug-in points later; main-session and external checks move after it; at release, one GitHub issue as the home of the discussion and a Discord post linking to it (docs/ideas.md, Stack packs)",
       "sort": "next",
       "size": "large",
-      "status": "open"
+      "status": "done"
     },
     {
       "id": "T242",
