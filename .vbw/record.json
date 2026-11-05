@@ -29326,9 +29326,9 @@
       "qa": {
         "result": "pass",
         "tier": "deep",
-        "tree": "9889e18cdd3241bce3fac2c224feebfabd8f9a55ca24c291851f74a9ce3139c9",
-        "at": "2026-11-05T00:56:49Z",
-        "note": "6/6 checks"
+        "tree": "725171ac836441246df9d0e2f2a1707b854a7334b9d29b2d83f75467439448a3",
+        "at": "2026-11-05T12:12:40Z",
+        "note": "24/24 checks"
       },
       "outcome": {
         "tier": "deep",
@@ -69643,6 +69643,15 @@
       "status": "closed",
       "note": "A write still validates the record it starts from, even when the digest already names those bytes. plugin/lib/record.sh record_update (line ~351) runs 'v=$(record_violation \"$VBW_RECORD\")' unconditionally, without record_digest_matches; line ~363 then validates the new record and line ~372 writes its digest. So every distinct content is validated twice on the write path: once as the new record of one write, and again as the old record of the next write. Criterion 1 says the validator runs at most once per distinct record content. Cost measured read-only on VBW's own 4.4 MB record: one validator run (jq -f record.jq) takes 1.14 s, so every write command (todo add, plan done, decision, apply...) pays that extra second. tests/big-record-fast.bats pins only reads ('show roadmap'), never a write, so nothing catches it. Regression test should catch: with the jq counting shim, after a warm digest run 'vbw todo add' on the large twin and assert the validator (record.jq) runs exactly once (for the new record), not twice; and that a hand-edited record is still refused as corrupt by a write after a warm digest.",
       "phase": "P201"
+    },
+    {
+      "id": "F371",
+      "req": "R254",
+      "source": "qa",
+      "attempts": 0,
+      "status": "open",
+      "note": "A write after a folder change the guard cannot read still passes unjudged against another project. I ran the shipped Bash hook command (plugin/hooks/hooks.json, session 'other', agent vbw:dev) with the hook project = the main checkout (no run) and the target project = this checkout (qa run open, tests/ protected). Refused (correct): 'cd <abs> && echo x > tests/zz.sh', the same inside (...) or after a newline, 'echo x > <abs>/tests/zz.sh'. Allowed (exit 0, no decision, wrong): (1) 'M=<abs>; cd $M && echo x > tests/zz.sh' and 'cd \"$M\" && echo x > tests/zz.sh' (variable cd), (2) 'cd ~/x && echo x > tests/zz.sh', (3) 'pushd <abs> && echo x > tests/zz.sh', (4) 'git -C <abs> checkout -- tests/zz.sh' (git -C moves the folder the path is read in). with_cwd in plugin/hooks/programs.jq leaves the working folder at the hook's for these, so the relative target is judged against the hook's own project (docs/guards.md says so for ~, variable and -; pushd and git -C are not named). The phase goal says a write by cd into another project is judged by that project's record so protected files cannot change through a side door; 'cd $VAR' is the same side door one variable away, and the guard already refuses a direct unresolvable target (echo x > $F) as outside the project. Regression test (tests/guard-cross-project.bats, worktree as hook project, MAIN under a build run): 'cd \"$M\" && echo x > tests/x.sh', 'pushd \"$MAIN\" && echo x > tests/x.sh' and 'git -C \"$MAIN\" checkout -- tests/c1.sh' must each be refused (or, if the unresolved cd is kept as a documented limit, pushd and git -C must be resolved like cd and the limit stated in the plan/decisions).",
+      "phase": "P205"
     }
   ],
   "todos": [
