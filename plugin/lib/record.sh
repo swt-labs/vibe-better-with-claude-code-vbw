@@ -345,10 +345,14 @@ vbw_lock_take() {
 record_update() {
   local filter="$1" tmp v
   shift
-  record_refuse_newer
+  record_digest_matches "$VBW_RECORD" || record_refuse_newer
   record_lock
-  record_refuse_newer
-  v=$(record_violation "$VBW_RECORD") || vbw_die "record is corrupt: $v ($VBW_RECORD)" 3
+  # Bytes the digest names were validated by this validator (R249): only the record this
+  # write makes is validated, not again the one it starts from.
+  if ! record_digest_matches "$VBW_RECORD"; then
+    record_refuse_newer
+    v=$(record_violation "$VBW_RECORD") || vbw_die "record is corrupt: $v ($VBW_RECORD)" 3
+  fi
   tmp=$(mktemp "$VBW_RUNTIME/record.XXXXXX") || vbw_die "cannot create a temporary file in $VBW_RUNTIME"
   vbw_guard_add file "$tmp"
   # Every write produces format 4 (D232, R150): the schema the table in record-schema.jq
