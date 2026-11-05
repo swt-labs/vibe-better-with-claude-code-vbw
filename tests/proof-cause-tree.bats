@@ -86,7 +86,8 @@ commit_record() { git add -A .vbw && git commit -q -m "$1"; }
 }
 
 @test "R175: with no evidence the cause never fires, whatever the last commit's subject says" {
-  edit_record '.evidence = null'
+  # Without the evidence its copy_slots goes too: the floor is always a valid schema.
+  edit_record '.evidence = null | .schema = 4'
   commit_record "chore(vbw): state"
   git commit -q --allow-empty -m "chore(vbw): proof passed"
   run causes

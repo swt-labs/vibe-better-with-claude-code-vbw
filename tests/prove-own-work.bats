@@ -158,7 +158,8 @@ mixed_change() {
 
 @test "R202: a record written before this change still reads, and vbw show evidence says not recorded" {
   fixture_copy proved
-  edit_record 'del(.evidence.own, .evidence.causes) | .evidence.checks |= map_values(del(.why))'
+  # A record written before own is at the floor: without own.copy_slots it is schema 4.
+  edit_record 'del(.evidence.own, .evidence.causes) | .evidence.checks |= map_values(del(.why)) | .schema = 4'
   vbw_run show evidence
   [ "$status" -eq 0 ] || { echo "$output"; false; }
   printf '%s\n' "$output" | grep -q '^  own work: not recorded$' || { echo "$output"; false; }

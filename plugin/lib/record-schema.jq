@@ -20,7 +20,10 @@ def schema_features: [
   {schema: 9, feature: "an amendment, an awaited check or a queued requirement", lead: "",
    present: (((.plans | type) == "array" and any(.plans[]; type == "object" and (has("amendments") or has("awaits"))))
      or ((.checks | type) == "array" and any(.checks[]; type == "object" and has("amendments")))
-     or ((.requirements | type) == "array" and any(.requirements[]; type == "object" and .queued == true)))}
+     or ((.requirements | type) == "array" and any(.requirements[]; type == "object" and .queued == true)))},
+  # 10 is #735's (a list of test file forms).
+  {schema: 11, feature: "a proof that kept its clean copies",
+   present: ((.evidence | type) == "object" and (.evidence.own | type) == "object" and (.evidence.own | has("copy_slots")))}
 ];
 
 def schema_of: . as $r | [schema_features[] | select(.present) | .schema] | max // schema_floor;

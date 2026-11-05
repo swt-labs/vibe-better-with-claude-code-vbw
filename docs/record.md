@@ -144,6 +144,7 @@ one asks to be updated instead of calling the record corrupt. One table gives it
 | `settings.mcp` | 7 |
 | a recorded break that carries `tree` or `contract` (`plans[].mutations[]`) | 8 |
 | an amendment (`plans[].amendments`, `checks[].amendments`), an awaited check (`plans[].awaits`) or a queued requirement (`requirements[].queued`) | 9 |
+| a proof that kept its clean copies (`evidence.own.copy_slots`) | 11 |
 
 A new key or allowed value of the record needs a schema bump (a key list or enum in `record.jq`, an interview value): a new table row, with `VBW_SCHEMA_MAX` and this page moved with it. `tools/check-record-shape.sh` enforces it against the digest pinned in `tests/standards.bats`. "Added within schema N: a record without it stays valid, so the schema stays N" is not used for new keys from this change on; the rows above that describe past additions keep their history.
 
@@ -155,7 +156,7 @@ The rule:
   next write (D582), as a record of schema 1 to 3 already is.
 - A record above its content is corrupt; the message names the feature that
   schema is only for.
-- A VBW reads every schema up to its own (`VBW_SCHEMA_MAX`, currently 9), which is
+- A VBW reads every schema up to its own (`VBW_SCHEMA_MAX`, currently 11), which is
   the table's top. A newer record makes it ask to be updated: an older kernel
   refuses a schema-9 record as newer (M51).
 - There is no migration command.

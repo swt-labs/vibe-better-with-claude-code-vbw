@@ -243,8 +243,8 @@ code_grep() {
 # (plugin/lib/record.sh), describe it in docs/record.md, then copy the digest the check
 # prints into R248_DIGEST. A layout-only change (comments, whitespace, line breaks, the
 # order of names inside a list) never moves it.
-R248_SCHEMA=9
-R248_DIGEST=c28be9ea997039007511f92e00f14a09885798a662896b28c76040a6bdfb70ab
+R248_SCHEMA=11
+R248_DIGEST=64f2f7d967366f304845ac36c7a64c757846bad85270c8763aabd22af1c930ef
 
 @test "R248: the record's accepted shape is pinned: record.jq's key lists and enums, the schema table's rows and the interview values digest to R248_DIGEST, and the table's top, VBW_SCHEMA_MAX and R248_SCHEMA agree (tools/check-record-shape.sh)" {
   [ "$PLUGIN_ROOT" = "$REPO_ROOT/plugin" ] || skip "not the shipped plugin"
@@ -302,11 +302,11 @@ R248_DIGEST=c28be9ea997039007511f92e00f14a09885798a662896b28c76040a6bdfb70ab
   run bash "$check" "$d" "$schema" "$digest"
   refused "a value added to interview.json"
   # A row added to the schema table with the pin unmoved: the digest moves and the numbers differ.
-  fresh; sed -i.bak 's/^def schema_features: \[/def schema_features: [ {schema: 10, feature: "a probe", present: false},/' "$d/lib/record-schema.jq"
+  fresh; sed -i.bak "s/^def schema_features: \\[/def schema_features: [ {schema: $((schema + 1)), feature: \"a probe\", present: false},/" "$d/lib/record-schema.jq"
   grep -q '"a probe"' "$d/lib/record-schema.jq"
   run bash "$check" "$d" "$schema" "$digest"
   refused "a table row added"
-  [[ "$output" == *"table 10"* && "$output" == *"VBW_SCHEMA_MAX $schema"* && "$output" == *"pinned $schema"* ]] || { echo "the numbers line does not name each value: $output"; false; }
+  [[ "$output" == *"table $((schema + 1))"* && "$output" == *"VBW_SCHEMA_MAX $schema"* && "$output" == *"pinned $schema"* ]] || { echo "the numbers line does not name each value: $output"; false; }
   # VBW_SCHEMA_MAX raised with the table unmoved: the digest holds, the numbers differ.
   fresh; sed -i.bak "s/^VBW_SCHEMA_MAX=.*\$/VBW_SCHEMA_MAX=$((schema + 1))/" "$d/lib/record.sh"
   run bash "$check" "$d" "$schema" "$digest"

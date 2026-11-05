@@ -452,9 +452,11 @@ add_sub() {
   printf '%s\n' "$output" | grep -q 'shares with the working folder' || { echo "$output"; false; }
 }
 
-@test "#738: evidence whose own has no copy_slots still reads; a malformed copy_slots makes the record corrupt" {
+@test "#738: a proof's copy_slots makes the record schema 11; evidence whose own has no copy_slots still reads; a malformed copy_slots makes the record corrupt" {
   prove_ok
-  jq 'del(.evidence.own.copy_slots)' .vbw/record.json > "$TEST_ROOT/edit.json" && cp "$TEST_ROOT/edit.json" .vbw/record.json
+  jq -e '.schema == 11' .vbw/record.json || { echo "schema $(jq .schema .vbw/record.json), not 11"; false; }
+  jq -L "$PLUGIN_ROOT/lib" 'include "record-schema"; del(.evidence.own.copy_slots) | .schema = schema_of' .vbw/record.json > "$TEST_ROOT/edit.json" && cp "$TEST_ROOT/edit.json" .vbw/record.json
+  jq -e '.schema < 10' .vbw/record.json
   vbw_run show evidence
   [ "$status" -eq 0 ] || { echo "$output"; false; }
   jq '.evidence.own.copy_slots = {claimed: -1, refreshed: 0, made: 0, refresh: 0}' .vbw/record.json > "$TEST_ROOT/edit.json" && cp "$TEST_ROOT/edit.json" .vbw/record.json
