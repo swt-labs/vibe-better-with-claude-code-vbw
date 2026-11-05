@@ -1,6 +1,15 @@
 {
   "schema": 8,
-  "lease": null,
+  "lease": {
+    "run": "qa-20261105T122251Z",
+    "kind": "qa",
+    "started_at": "2026-11-05T12:22:51Z",
+    "files": [],
+    "session": "0ee781c3-c5b6-4a6c-889f-04b89f1fba4a",
+    "cost": {
+      "usd": 3206.935427
+    }
+  },
   "protected": [
     "tests/adaptive-results.bats",
     "tests/agent-scratch.bats",
@@ -29405,12 +29414,11 @@
       ],
       "predicted": "deep",
       "qa": {
-        "result": "fail",
+        "result": "pass",
         "tier": "standard",
         "tree": "2378bb58218790f7160586ee6e949a1dc219bef5be36deae78a4342cc644e7c3",
-        "at": "2026-11-05T12:12:46Z",
-        "note": "7/8 checks",
-        "rounds": 1
+        "at": "2026-11-05T12:23:37Z",
+        "note": "4/4 checks"
       },
       "outcome": {
         "tier": "deep",
@@ -69641,7 +69649,7 @@
       "req": "R254",
       "source": "qa",
       "attempts": 0,
-      "status": "fixed",
+      "status": "closed",
       "note": "A write after a folder change the guard cannot read still passes unjudged against another project. I ran the shipped Bash hook command (plugin/hooks/hooks.json, session 'other', agent vbw:dev) with the hook project = the main checkout (no run) and the target project = this checkout (qa run open, tests/ protected). Refused (correct): 'cd <abs> && echo x > tests/zz.sh', the same inside (...) or after a newline, 'echo x > <abs>/tests/zz.sh'. Allowed (exit 0, no decision, wrong): (1) 'M=<abs>; cd $M && echo x > tests/zz.sh' and 'cd \"$M\" && echo x > tests/zz.sh' (variable cd), (2) 'cd ~/x && echo x > tests/zz.sh', (3) 'pushd <abs> && echo x > tests/zz.sh', (4) 'git -C <abs> checkout -- tests/zz.sh' (git -C moves the folder the path is read in). with_cwd in plugin/hooks/programs.jq leaves the working folder at the hook's for these, so the relative target is judged against the hook's own project (docs/guards.md says so for ~, variable and -; pushd and git -C are not named). The phase goal says a write by cd into another project is judged by that project's record so protected files cannot change through a side door; 'cd $VAR' is the same side door one variable away, and the guard already refuses a direct unresolvable target (echo x > $F) as outside the project. Regression test (tests/guard-cross-project.bats, worktree as hook project, MAIN under a build run): 'cd \"$M\" && echo x > tests/x.sh', 'pushd \"$MAIN\" && echo x > tests/x.sh' and 'git -C \"$MAIN\" checkout -- tests/c1.sh' must each be refused (or, if the unresolved cd is kept as a documented limit, pushd and git -C must be resolved like cd and the limit stated in the plan/decisions).",
       "phase": "P205"
     }
