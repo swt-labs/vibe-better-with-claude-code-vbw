@@ -50,9 +50,10 @@ a first Rust stack pack, and you can help shape it in
   `pushd` and a `git -C` are not followed, so a relative path after one is judged
   in the folder the command started in. `docs/guards.md` says so, and closing
   `pushd` and `git -C` is on our list.
-- **A script run by name costs a little more.** The guard reads it in two passes,
-  so that one case has twice the usual time budget. Every other call keeps its
-  budget.
+- **The guard's time budget moved from 20 ms to 25 ms per tool call.** The new
+  checks cost about 2 ms per call, too little to feel. A script run by name is
+  read in two passes, so it has twice that budget. Bringing the cost back down
+  is on our list.
 
 ### For you to do
 

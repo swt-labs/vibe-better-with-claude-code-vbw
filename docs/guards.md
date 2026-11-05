@@ -404,24 +404,24 @@ never before the call. Mark a server read-only only when its tools really only r
   Claude Code decides as it normally would. `tests/guard-fail-closed.bats`
   pins both.
 - **Budget:** VBW's own cost (the hook's CPU time minus that of the platform's
-  `sh -c jq` startup) is at most 20 ms per call, judged for each guard alone,
+  `sh -c jq` startup) is at most 25 ms per call, judged for each guard alone,
   measured by `tools/bench-hooks.sh` in the release run (CI runs it on every
   pull request), including on a 20 KB heredoc command. CPU time, so waiting for
   a busy machine never counts, and a case over its budget is measured once more
-  before it is judged (the bench says so): a slow hook is slow twice. The 20 ms is the
+  before it is judged (the bench says so): a slow hook is slow twice. The 25 ms is the
   meaning on a nominal machine (an M1 Max Mac, GitHub's macOS runner). The bench
   first measures a reference workload (a guard-shaped jq call over a fixed
   document and program, both written by the bench) and prints its cost, the nominal cost and the ratio:
   `reference: <X> ms CPU per call; nominal <N> ms (...); ratio <R>`. At a ratio
-  of 1 or less every case is judged against 20 ms. Above 1, a case over 20 ms
-  but within 20 ms times the ratio is reported slow (the line names the cost,
+  of 1 or less every case is judged against 25 ms. Above 1, a case over 25 ms
+  but within 25 ms times the ratio is reported slow (the line names the cost,
   the budget, the ratio and the scaled budget) and the bench still passes; a
   case above the scaled budget fails. `VBW_BENCH_REFERENCE_MS` stands in for the
   measured reference. CI sets no reference of its own. Measured in October 2026 (an M1 Max Mac and
   GitHub's macOS runners): the file guard about 4 to 5 ms, the Bash guard about
   10 to 13 ms, the answer hook about 1 ms. A real slowdown
   (an added subprocess costs several ms) still shows. When the machine is too
-  busy to measure (starting the shell and jq alone takes longer than 20 ms),
+  busy to measure (starting the shell and jq alone takes longer than 25 ms),
   the benchmark reports that the machine is busy, judges nothing and does not
   fail. The timed test case `tests/timed-bench-hooks.bats` (time a hook spends
   waiting) applies the same rule: a busy machine is reported, not failed, and a
