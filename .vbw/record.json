@@ -84542,6 +84542,17 @@
         "cost": {
           "usd": 2.207068
         }
+      },
+      {
+        "id": "fix-20261105T121657Z",
+        "kind": "fix",
+        "session": "0ee781c3-c5b6-4a6c-889f-04b89f1fba4a",
+        "milestone": "M52",
+        "started": "2026-11-05T12:16:57Z",
+        "ended": "2026-11-05T12:17:03Z",
+        "cost": {
+          "usd": 0
+        }
       }
     ],
     "milestones": {
