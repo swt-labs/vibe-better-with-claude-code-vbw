@@ -71195,7 +71195,7 @@
     {
       "id": "T234",
       "text": "A reworded rule keeps its recorded breaks: vbw mutate records a break keyed on the rule's {req, text} (cmd-mutate.sh), so when vbw spec sync rewords a rule (a parenthesis added) the break no longer matches, vbw show plan lists it unnumbered and vbw plan done refuses the next plan for want of a red break; the fix belongs in spec sync (re-key the recorded breaks of a rule whose position in the requirement holds and whose text changed) or in a stable rule key; field case 2026-11-02 from the Rust project: two breaks re-queued and re-run, 8 min of its heavy lane",
-      "status": "open"
+      "status": "done"
     },
     {
       "id": "T235",
