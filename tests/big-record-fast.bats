@@ -107,6 +107,20 @@ calls() { [ -f "$TEST_ROOT/$1.log" ] && wc -l < "$TEST_ROOT/$1.log" | tr -d ' ' 
   [ "$(calls validator)" -ge 1 ] || { echo "the rewritten record was not validated"; false; }
 }
 
+@test "R249 digest: a write validates only the record it writes: the record it starts from, named by the digest, is not validated again, and one the digest does not name still is" {
+  shim
+  counted show roadmap
+  counted todo add "first"
+  [ "$CODE" -eq 0 ] || { echo "$OUT"; false; }
+  [ "$(calls validator)" -eq 1 ] || { echo "the write validated $(calls validator) times:"; cat "$TEST_ROOT/validator.log"; false; }
+  # A hand edit is any other bytes: the write refuses it as corrupt and leaves it as it is.
+  jq '.milestone = "not an object"' "$BIG/.vbw/record.json" > "$TEST_ROOT/edited.json"
+  cp "$TEST_ROOT/edited.json" "$BIG/.vbw/record.json"
+  counted todo add "second"
+  [ "$CODE" -eq 3 ] && [[ "$OUT" == *"record is corrupt"* ]] || { echo "exit $CODE: $OUT"; false; }
+  cmp -s "$TEST_ROOT/edited.json" "$BIG/.vbw/record.json" || { echo "the corrupt record was written over"; false; }
+}
+
 @test "R249 digest: a hand edit after a warm digest is still refused as corrupt, and a newer schema still asks for a newer VBW" {
   (cd "$BIG" && "$VBW" show roadmap > /dev/null)
   [ -f "$DIGEST" ]
