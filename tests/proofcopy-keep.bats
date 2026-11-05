@@ -195,6 +195,21 @@ add_sub() {
   diff <(printf '%s\n' "$kept") <(snap "$(slot 1)/tree")
 }
 
+@test "#738 (R253): a worktree added after the copy was kept, nested in a kept ignored folder, leaves the copy when it is brought up to date; the copy equals a fresh one" {
+  prove_ok
+  git worktree add -q node_modules/wt -b wt > /dev/null 2>&1
+  printf 'w\n' > node_modules/wt/note.txt
+  bump two
+  prove_ok
+  [ "$(counts)" = '{"claimed":1,"refreshed":1,"made":0}' ] || { counts; false; }
+  local t=$(slot 1)/tree kept
+  [ ! -e "$t/node_modules/wt" ] || { echo "the worktree is in the kept copy"; ls -la "$t/node_modules"; false; }
+  [ -f "$t/node_modules/other/keep.js" ] && [ -f "$t/node_modules/pkg/index.js" ] || { ls -la "$t/node_modules"; false; }
+  kept=$(snap "$t")
+  prove_ok --full
+  diff <(printf '%s\n' "$kept") <(snap "$(slot 1)/tree")
+}
+
 @test "#738: what a unit wrote (a build folder, a stray file, a file in a kept ignored folder, an edited or deleted one there, an edited tracked file) is undone when the next command claims the copy, and nothing else is copied again" {
   WRITE=1 prove_ok
   [ -f "$(slot 1)/tree/dist/out" ] && [ -f "$(slot 1)/tree/node_modules/.cache/x" ] && [ ! -e "$(slot 1)/tree/node_modules/pkg/gone.js" ] || { echo "the unit wrote nothing"; false; }
