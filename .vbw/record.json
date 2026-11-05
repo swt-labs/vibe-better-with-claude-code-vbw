@@ -29414,11 +29414,12 @@
       ],
       "predicted": "deep",
       "qa": {
-        "result": "pass",
+        "result": "fail",
         "tier": "standard",
-        "tree": "1a962a100d8829fd729455d0adf596d3375ee34d0d9e8cffdf693c545e57b558",
-        "at": "2026-11-05T00:59:32Z",
-        "note": "6/6 checks"
+        "tree": "2378bb58218790f7160586ee6e949a1dc219bef5be36deae78a4342cc644e7c3",
+        "at": "2026-11-05T12:12:46Z",
+        "note": "7/8 checks",
+        "rounds": 1
       },
       "outcome": {
         "tier": "deep",
