@@ -85,13 +85,16 @@ status_step() { "$VBW" status --json | jq -c '.step'; }
   step_back 1000
   step_finish P1.1 src/a.txt
   [ "$(step_secs first_end)" -eq 900 ] || { cat "$NOTE"; false; }
-  [ "$(step_secs end)" -ge 2990 ] && [ "$(step_secs end)" -le 3030 ] || { cat "$NOTE"; false; }
+  local so_far
+  so_far=$(($(date +%s) - $(jq -r '.started_at | fromdateiso8601' "$NOTE")))
+  [ "$(step_secs end)" -ge 2990 ] && [ "$(step_secs end)" -le "$((so_far * 3 + 30))" ] || { cat "$NOTE"; false; }
   jq -e '.late == true' "$NOTE" || { cat "$NOTE"; false; }
   status_step | jq -e '.late == true and .end != .first_end'
   # The second plan after 1500 s in all: 2250 s for three, still after 900 s.
   step_back 500
   step_finish P1.2 src/b.txt
-  [ "$(step_secs end)" -ge 2240 ] && [ "$(step_secs end)" -le 2270 ] || { cat "$NOTE"; false; }
+  so_far=$(($(date +%s) - $(jq -r '.started_at | fromdateiso8601' "$NOTE")))
+  [ "$(step_secs end)" -ge 2240 ] && [ "$(step_secs end)" -le "$((so_far * 3 / 2 + 30))" ] || { cat "$NOTE"; false; }
   jq -e '.late == true' "$NOTE" || { cat "$NOTE"; false; }
 }
 

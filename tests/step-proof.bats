@@ -255,7 +255,8 @@ until_note() {
   jq -e '.late == true and .end != .first_end' "$NOTE" || { cat "$NOTE"; false; }
   step_back 500
   VBW_SESSION_ID=s1 "$VBW" fix done F2 > /dev/null
-  [ "$(step_secs end)" -ge 2240 ] && [ "$(step_secs end)" -le 2270 ] || { cat "$NOTE"; false; }
+  so_far=$(($(date +%s) - $(jq -r '.started_at | fromdateiso8601' "$NOTE")))
+  [ "$(step_secs end)" -ge 2240 ] && [ "$(step_secs end)" -le "$((so_far * 3 / 2 + 30))" ] || { cat "$NOTE"; false; }
 }
 
 @test "R190 (D429): a late proof of its own moves its end at its own pace as units finish, never before the first end" {
