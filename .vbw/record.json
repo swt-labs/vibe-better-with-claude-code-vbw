@@ -84443,6 +84443,17 @@
         "cost": {
           "usd": 2.30858
         }
+      },
+      {
+        "id": "fix-20261105T010111Z",
+        "kind": "fix",
+        "session": "0ee781c3-c5b6-4a6c-889f-04b89f1fba4a",
+        "milestone": "M52",
+        "started": "2026-11-05T01:01:11Z",
+        "ended": "2026-11-05T01:01:19Z",
+        "cost": {
+          "usd": 0
+        }
       }
     ],
     "milestones": {
