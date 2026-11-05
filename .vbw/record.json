@@ -1,6 +1,15 @@
 {
   "schema": 8,
-  "lease": null,
+  "lease": {
+    "run": "qa-20261105T014622Z",
+    "kind": "qa",
+    "started_at": "2026-11-05T01:46:22Z",
+    "files": [],
+    "session": "0ee781c3-c5b6-4a6c-889f-04b89f1fba4a",
+    "cost": {
+      "usd": 3198.562976
+    }
+  },
   "protected": [
     "tests/adaptive-results.bats",
     "tests/agent-scratch.bats",
@@ -29179,9 +29188,9 @@
         "result": "fail",
         "tier": "deep",
         "tree": "e8ad8ed197a0d90a57bffb25cc114d0a0bf5ba6e2fcdcf6c76821daedf7bd867",
-        "at": "2026-11-05T00:59:35Z",
-        "note": "8/10 checks",
-        "rounds": 2
+        "at": "2026-11-05T01:50:07Z",
+        "note": "30/31 checks",
+        "rounds": 3
       },
       "escalations": [
         {
@@ -69615,8 +69624,17 @@
       "req": "R249",
       "source": "qa",
       "attempts": 0,
-      "status": "fixed",
+      "status": "closed",
       "note": "The 'at most two record-sized jq reads' claim of F354/F356 holds only for one state: a contract planned and approved (the build state). tests/big-record-fast.bats 'R249 one pass: with the bulk in what the working record keeps' applies and approves first, then counts, so it never sees the other states. Read from the code (not run, the QA run cannot write a counting jq shim): (1) contract not approved (the state vbw next answers while a plan waits for approval, and in vbw status's road): plugin/lib/cmd-next.sh:177 calls approve_problems on the working record, which pipes it into two jq runs (plugin/lib/cmd-approve.sh, the spec-vs-record comparison and the 'has no check' listing), and in vbw next --json an 'approve' answer also runs step_replan_say, whose step_size jq reads the working record again (plugin/lib/cmd-next.sh:~290, steps.sh:320). With the bulk kept in the working record that is 5 record-sized reads, not 2. (2) a 'prove' answer: step_next passes the full record (NP_RECORD) to step_proof_plan, which runs proofreuse_plan, proofcauses_find, testfiles_plan, contract_held, prove_unit_names and prove_plan_object over it, many jq runs over the full 4.5 MB record on VBW's own project; the code comment admits it ('a proof's reuse plan reads the record itself'). The criterion and P201.3 task 2 say at most two after a warm digest, with no state excepted. Regression test should catch: on the kept-bulk twin with SHIM_BIG=100000, assert at most two record-sized jq calls for vbw next --json and vbw status in the unapproved state (before vbw approve), in the 'approve' answer, and in a 'prove' answer (all plans done), not only after apply+approve.",
+      "phase": "P201"
+    },
+    {
+      "id": "F370",
+      "req": "R249",
+      "source": "qa",
+      "attempts": 0,
+      "status": "escalated",
+      "note": "A write still validates the record it starts from, even when the digest already names those bytes. plugin/lib/record.sh record_update (line ~351) runs 'v=$(record_violation \"$VBW_RECORD\")' unconditionally, without record_digest_matches; line ~363 then validates the new record and line ~372 writes its digest. So every distinct content is validated twice on the write path: once as the new record of one write, and again as the old record of the next write. Criterion 1 says the validator runs at most once per distinct record content. Cost measured read-only on VBW's own 4.4 MB record: one validator run (jq -f record.jq) takes 1.14 s, so every write command (todo add, plan done, decision, apply...) pays that extra second. tests/big-record-fast.bats pins only reads ('show roadmap'), never a write, so nothing catches it. Regression test should catch: with the jq counting shim, after a warm digest run 'vbw todo add' on the large twin and assert the validator (record.jq) runs exactly once (for the new record), not twice; and that a hand-edited record is still refused as corrupt by a write after a warm digest.",
       "phase": "P201"
     }
   ],
