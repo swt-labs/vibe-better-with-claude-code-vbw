@@ -1,6 +1,15 @@
 {
   "schema": 8,
-  "lease": null,
+  "lease": {
+    "run": "qa-20261105T005552Z",
+    "kind": "qa",
+    "started_at": "2026-11-05T00:55:52Z",
+    "files": [],
+    "session": "0ee781c3-c5b6-4a6c-889f-04b89f1fba4a",
+    "cost": {
+      "usd": 3195.47125
+    }
+  },
   "protected": [
     "tests/adaptive-results.bats",
     "tests/agent-scratch.bats",
@@ -29293,12 +29302,19 @@
         }
       ],
       "qa": {
-        "result": "fail",
+        "result": "pass",
         "tier": "deep",
-        "tree": "fe28ea1d44cf87850238df24598844b1756f3205e7177f0175f71dd68d115a51",
-        "at": "2026-11-04T16:28:04Z",
-        "note": "25/26 checks",
-        "rounds": 1
+        "tree": "9889e18cdd3241bce3fac2c224feebfabd8f9a55ca24c291851f74a9ce3139c9",
+        "at": "2026-11-05T00:56:49Z",
+        "note": "6/6 checks"
+      },
+      "outcome": {
+        "tier": "deep",
+        "predicted": "standard",
+        "held": false,
+        "fix_rounds": 1,
+        "qa_findings": 1,
+        "escalations": 1
       }
     },
     {
@@ -69453,7 +69469,7 @@
       "req": "R252",
       "source": "qa",
       "attempts": 0,
-      "status": "fixed",
+      "status": "closed",
       "note": "vbw spec add / spec sync queue a new requirement under ANY open run, not only a build or fix run. plugin/lib/cmd-spec.sh spec_sync sets '(.lease != null) as $open' and queues on it, but the agreed rule (criterion 4, plan P203.1 task 3, docs/proof.md 'while a build or fix run is open') is lease kind build or fix; lease kinds are plan, build, fix, qa and map (cmd-run.sh:146-148). So a requirement added during a plan, qa or map run is also left out of the contract, which is not what was agreed or documented. In a plan run it is also risky: the Lead can read the new spec line and write checks for it, and those checks would then sit in the contract while their requirement is left out until the run ends. No test pins the kinds (tests/spec-queue.bats only opens a build run). Regression test: with a plan run open (and again a qa run), vbw spec add leaves no queued mark and the contract reads changed as today; with a fix run open it queues. If the wider behaviour is wanted instead, it needs the user's recorded decision, the same test inverted and the docs sentence changed; do not decide that in the fix.",
       "phase": "P203"
     },
