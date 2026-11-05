@@ -71182,6 +71182,13 @@
       "sort": "next",
       "size": "small",
       "status": "open"
+    },
+    {
+      "id": "T243",
+      "text": "The cross-project guard resolves pushd and git -C like cd (F371: both are judged in the folder the call started in today); consider refusing a later relative write after a cd the guard cannot resolve, weighing false refusals of an ordinary cd \"$DIR\"",
+      "sort": "next",
+      "size": "small",
+      "status": "open"
     }
   ],
   "decisions": [
@@ -74608,6 +74615,11 @@
       "at": "2026-11-05T11:06:05Z",
       "text": "Contract approved: 244 requirements, 580 checks, 606 plans (628654549b0c)",
       "plans": []
+    },
+    {
+      "id": "D610",
+      "text": "F371: for 2.1.25 a folder change the guard cannot read (cd to a variable or ~, pushd, git -C) stays a documented limit, in docs/guards.md, and goes to a todo. Why: QA's option A would refuse an ordinary cd \"$DIR\" to every Dev, on a guard meant to stop mistakes rather than an adversary; the gap needs a hook project and a target project that differ; the literal cd, absolute path, worktree and Edit forms the field case used are closed. pushd and git -C are plain gaps to close next",
+      "at": "2026-11-05T12:16:53Z"
     }
   ],
   "commands": {
