@@ -71200,7 +71200,7 @@
     {
       "id": "T235",
       "text": "vbw spec sync drops every rule of a reworded requirement (found 2026-11-04: rewording one clause of R255 removed its 13 rules, restored by hand from the last commit by vbw apply --patch); the rules should stay, marked for the Lead to review; same family as T234",
-      "status": "open"
+      "status": "done"
     },
     {
       "id": "T236",
