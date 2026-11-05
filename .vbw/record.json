@@ -74604,8 +74604,8 @@
     "rigor": "auto"
   },
   "evidence": {
-    "at": "2026-11-05T00:50:48Z",
-    "contract": "9b03f781c068aa80eaee9959436cb68644927a71733f5a64e2b5fc28cd9ee315",
+    "at": "2026-11-05T01:42:57Z",
+    "contract": "067ae1e5e81c20147dc9ec8165474dfc252766b0fb930d23caea9db9b0a59fcd",
     "tree": "aed193189ba3d07a2e5b23117fc9216b250ab43b",
     "head": "aed193189ba3d07a2e5b23117fc9216b250ab43b",
     "checks": {
@@ -76396,9 +76396,9 @@
         "exit": 0,
         "seconds": 21.0,
         "tail": "1..8\nok 1 R142: for 1 to 5 shards, together the shards list every tests/*.bats file exactly once\nok 2 R142: the same inputs give the same shares\nok 3 R142: shares are balanced by test count: no shard of 4 holds much more than a quarter of the tests\nok 4 R142: a newly added test file lands in exactly one shard, with no list to edit\nok 5 R142: the tool lint and the hook and panel benchmarks are listed by shard 1 only\nok 6 R142: a shard runs its share in one parallel batch, then its timed files alone, and only shard 1 lints and benchmarks\nok 7 R142: a failing test file in a shard makes the shard fail, in the batch and in the timed files\nok 8 R142: an invalid shard argument exits 2 with the usage line and runs nothing",
-        "fp": "a7a168580dd6010bf07effe9337ea968f9b2d34565451af92b8c3264f462f124",
         "at": "2026-11-05T00:50:48Z",
-        "why": "tests/step-note.bats changed"
+        "fp": "a7a168580dd6010bf07effe9337ea968f9b2d34565451af92b8c3264f462f124",
+        "reused": true
       },
       "C205": {
         "status": "pass",
@@ -76657,9 +76657,9 @@
         "exit": 0,
         "seconds": 32.8,
         "tail": "1..9\nok 1 R152: bash tools/test.sh with no option runs the lint and every test file except the timed ones, and neither benchmark\nok 2 R152: bash tools/test.sh --release runs the lint, both benchmarks, the suite in one parallel batch, then the timed files alone\nok 3 R152: the release run fails when a benchmark, the batch or a timed file fails\nok 4 R152: --quick still runs without the benchmarks and without any timed file\nok 5 R152: the CI shards together make one release run: shard 1 runs both benchmarks, each shard runs its timed files alone after its batch\nok 6 R152: tools/test.sh refuses --release with other arguments, naming the release way in its usage line, and runs nothing\nok 7 R152: CI runs the release way: every job runs its shard of the release run\nok 8 R152: the clock rule sees every kind of timer a test file could read, and passes comments and plain words\nok 9 R152: no test file of the default run measures a duration; the timed tests live in tests/timed-*.bats",
-        "fp": "d6a91300a2cc3c178950148fe6689a3b3301183cc8e7951d2509592e254757f9",
         "at": "2026-11-05T00:50:48Z",
-        "why": "last result failed"
+        "fp": "d6a91300a2cc3c178950148fe6689a3b3301183cc8e7951d2509592e254757f9",
+        "reused": true
       },
       "C234": {
         "status": "pass",
@@ -76889,10 +76889,10 @@
       "C259": {
         "status": "pass",
         "exit": 0,
-        "seconds": 3.3,
+        "seconds": 1.5,
         "tail": "1..5\nok 1 R167: VBW's spec declares its single-file form: bats on one file\nok 2 R167: VBW's declared test files are every tracked tests/*.bats except the timed ones\nok 3 R167: VBW's spec names the shell lint as its own project command\nok 4 R167: bash tools/test.sh --lint runs shellcheck on every shell file under tools/ and runs no test file\nok 5 R167: tools/test.sh keeps its usage line and documents --lint in it",
         "fp": "a4c3fc4a1c937f7ed83dbad83a14a23b4a955b4576464496a0b301351ed0b484",
-        "at": "2026-11-05T00:50:48Z",
+        "at": "2026-11-05T01:42:57Z",
         "why": "reads the project through git"
       },
       "C260": {
@@ -77017,9 +77017,9 @@
         "exit": 0,
         "seconds": 18.8,
         "tail": "1..2\nok 1 R172: no test file writes a bats file and also starts the real bats\nok 2 R172: the rule sees the pattern that failed on Linux, and passes the filter form and the stand-in form",
-        "fp": "ab7e91af533b5933eea6fff46b276d511c63f30112f526ece27beda6a441b2d5",
         "at": "2026-11-05T00:50:48Z",
-        "why": "tests/step-note.bats changed"
+        "fp": "ab7e91af533b5933eea6fff46b276d511c63f30112f526ece27beda6a441b2d5",
+        "reused": true
       },
       "C274": {
         "status": "pass",
@@ -77944,18 +77944,18 @@
         "exit": 0,
         "seconds": 63.8,
         "tail": "1..10\nok 1 R190: vbw run start writes the note: kind, run, session, what it is doing, parts, start and end times\nok 2 R190: vbw status --json gives the running step as the note says it\nok 3 R190: each kind of step says what it is doing; QA names the phases it checks\nok 4 R190: each vbw plan done counts one more part done, at once\nok 5 R190 (D424): a late step with parts moves its end to this run's own pace, marked later than usual, and can move again\nok 6 R190 (D424): the end time never moves earlier than the first end time\nok 7 R190 (D424): a late step without parts keeps its first end time and says how many minutes past it it is\nok 8 R190: with no basis the note and vbw status say so: no end time\nok 9 R190: when the step ends its note goes; a note of an ended run is ignored and the next step replaces it\nok 10 R190: the note of a proof whose process is gone is never a running step, and the next step removes it",
-        "fp": "42eb3a1d0485f98d518e419ab80180a147d32f7141f7ca8ef176ddba2fc4b392",
         "at": "2026-11-05T00:50:48Z",
-        "why": "tests/step-note.bats changed"
+        "fp": "42eb3a1d0485f98d518e419ab80180a147d32f7141f7ca8ef176ddba2fc4b392",
+        "reused": true
       },
       "C377": {
         "status": "pass",
         "exit": 0,
         "seconds": 147.8,
         "tail": "1..11\nok 1 R190: with 4 lanes, 40 finished units read exactly 40 of 40, never fewer or more\nok 2 R190: four units that finish at the same moment all count: 40 of 40, never fewer\nok 3 R190: each finished unit counts before the next one starts; a proof's end time is its median time per unit times its units\nok 4 R190: a proof inside this session's build is what the build is doing now; the end time stays the build's\nok 5 R190: a proof of another session never replaces this session's step\nok 6 R190: a proof killed outright is never shown as running, and the next proof removes its note\nok 7 R190: the Stop hook still waits while a background proof runs\nok 8 R190: vbw fix done counts each fix it closes as one part done of the fix step\nok 9 R190: the note is rewritten under a lock: a proof waits while another writer holds it, and takes over a dead owner's\nok 10 R190 (D429): a late fix moves its end to its own pace, marked later than usual, never earlier than the first end\nok 11 R190 (D429): a late proof of its own moves its end at its own pace as units finish, never before the first end",
-        "fp": "1e4db9b4a0ea0b61d5465c87b821d9642c88631c5920216e1c4be865cf92e641",
         "at": "2026-11-05T00:50:48Z",
-        "why": "last result failed"
+        "fp": "1e4db9b4a0ea0b61d5465c87b821d9642c88631c5920216e1c4be865cf92e641",
+        "reused": true
       },
       "C378": {
         "status": "pass",
@@ -78464,10 +78464,10 @@
       "C434": {
         "status": "pass",
         "exit": 0,
-        "seconds": 73.3,
+        "seconds": 50.3,
         "tail": "1..4\nok 1 R202: --generate builds a stand-in of at least the asked size, approved, with cache-writing and cache-reading units\nok 2 R202: the measurement prints every figure for a proof, a one-file fix round and vbw next\nok 3 R202: the sampler of the written-file lists polls at least five times a second, so a fast proof is still seen\nok 4 R202: nothing of a real user project is in the tool or in what it generates",
         "fp": "23729cd8ad38ab6e167a995bfb1b9288496cd3335bae0e6b534d82be4f5e38a7",
-        "at": "2026-11-05T00:50:48Z",
+        "at": "2026-11-05T01:42:57Z",
         "why": "reads the project through git"
       },
       "C435": {
@@ -79130,10 +79130,10 @@
       "C508": {
         "status": "pass",
         "exit": 0,
-        "seconds": 3.8,
+        "seconds": 2.4,
         "tail": "1..2\nok 1 R223 standards: tools/check-jq-builtins.sh refuses a jq program that uses a builtin newer than 1.7.0 unless the file defines the name, naming file and line, and passes the plugin\nok 2 R223 standards: each CI shard prints jq --version beside bash --version",
         "fp": "d4ee780802f6df0f483f9b8715273cc59c441ec7d3a3d358965da4a52071dfad",
-        "at": "2026-11-05T00:50:48Z",
+        "at": "2026-11-05T01:42:57Z",
         "why": "reads the project through git"
       },
       "C509": {
@@ -79418,10 +79418,10 @@
       "C540": {
         "status": "pass",
         "exit": 0,
-        "seconds": 4.2,
+        "seconds": 3.5,
         "tail": "1..4\nok 1 R233: without arguments the container is ubuntu:24.04 and runs the release run, as before\nok 2 R233: --image ubuntu:26.04 shapes the container after that image and --bench runs only the hook bench\nok 3 R233: a command after -- runs inside the container in place of the release run, its words kept\nok 4 R233: an unknown option or an image the script does not know exits 2 with the usage and builds nothing",
         "fp": "4babb0ea3b7fd899ad23ca30b774bd9248999e3a134b11344a30f5a48780e52d",
-        "at": "2026-11-05T00:50:48Z",
+        "at": "2026-11-05T01:42:57Z",
         "why": "reads the project through git"
       },
       "C541": {
@@ -79843,7 +79843,7 @@
       "test": {
         "status": "pass",
         "exit": 0,
-        "seconds": 3473.4,
+        "seconds": 3485.9,
         "tail": "",
         "command": "bats --print-output-on-failure {file} (one test file per run)",
         "of_files": true
@@ -80582,10 +80582,10 @@
       "tests/standards-selftest.bats": {
         "status": "pass",
         "exit": 0,
-        "seconds": 103.4,
+        "seconds": 115.9,
         "tail": "ok 3 process killing is caught\nok 4 the signal-free liveness probe kill -0 passes, any other kill is caught\nok 5 /tmp paths are caught\nok 6 git path listings without -z are caught, with -z pass\nok 7 plugin-root discovery is caught\nok 8 a clean file breaks no rule\nok 9 hooks naming a missing file are caught\nok 10 per-tool-call hooks that start a shell or can exit non-zero are caught\nok 11 per-tool-call hooks: only assignments and [ ] tests may come before jq, and the command must end in || true\nok 12 the vision rule check passes on the repository as it is\nok 13 the vision rule check catches the rule removed from a contributor file\nok 14 the vision rule check catches the rule moved below another rule in AGENTS.md\nok 15 the privacy guard lists the files that hold a word, in any case, and never the word\nok 16 the privacy guard passes a clean tree: comments and blank lines in the list are not words\nok 17 the privacy guard checks nothing, and says so, without a list or without words\nok 18 the privacy guard in tracked mode reads every tracked file of this repository, .vbw/ included\nok 19 the privacy guard refuses bad usage\nok 20 the hook answer check passes on the repository as it is\nok 21 the hook answer check catches a new unpinned answer shape\nok 22 the hook answer check catches a hook that answers allow",
         "fp": "cea597da7e37298b1c50fd07c24fcfcd6ab9c1e90cc14912ac62ec844e47ba39",
-        "at": "2026-11-05T00:50:48Z",
+        "at": "2026-11-05T01:42:57Z",
         "why": "reads the project through git"
       },
       "tests/statusline-step-miss.bats": {
@@ -80620,9 +80620,9 @@
         "exit": 0,
         "seconds": 3.2,
         "tail": "1..3\nok 1 rule: no test file of VBW asserts with a negated command that is not its block's last\nok 2 rule self-test: a negated command before the end of a test, of a helper or of a loop body is caught\nok 3 rule self-test: a negated last command, one with its own failure and here-document text pass",
-        "fp": "8c61ff59230361dbdb436c003e3fb43eb1501c47b194eac97219f68f139b7f49",
         "at": "2026-11-05T00:50:48Z",
-        "why": "tests/step-note.bats changed"
+        "fp": "8c61ff59230361dbdb436c003e3fb43eb1501c47b194eac97219f68f139b7f49",
+        "reused": true
       },
       "tests/testfiles-spec.bats": {
         "status": "pass",
@@ -80717,14 +80717,14 @@
     "causes": [],
     "full": false,
     "passed": true,
-    "record": "e13b00f67d50fdc15cb143d3aa780e30ea5304c8b7ae74519ffc6ea70d97f0bf",
+    "record": "8c11e03693aa06ad4238f2ae9a6c4c21260694f2d7f82cec1a86f1e9ac533479",
     "own": {
-      "planning": 19.105,
-      "copies": 13.742,
-      "tracking": 6.973,
-      "saving": 2.319,
-      "record": 11.44,
-      "wall": 303.083
+      "planning": 18.734,
+      "copies": 9.636,
+      "tracking": 1.666,
+      "saving": 2.174,
+      "record": 10.822,
+      "wall": 212.734
     }
   },
   "test_files": {
