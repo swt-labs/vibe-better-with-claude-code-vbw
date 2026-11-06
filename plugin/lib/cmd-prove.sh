@@ -44,6 +44,7 @@ cmd_prove() {
   prooftime_begin
   record=$(record_read)
   checks_begin "$record" strict
+  checks_timer
   # A check another plan builds waits, unrun, until that plan is built (R250).
   awaited=$(prove_awaited "$record")
   [ -z "$awaited" ] || CHECK_HELD="${CHECK_HELD:+$CHECK_HELD$'\n'}$awaited"
@@ -170,6 +171,7 @@ cmd_prove() {
   local rc=0
   prove_summary "$causes" || rc=$?
   slots_say
+  [ -n "$CHECKS_NICE" ] || printf 'nice was not found: units ran at normal priority\n' >&2
   return "$rc"
 }
 
