@@ -73496,6 +73496,11 @@
       "sort": "next",
       "size": "medium",
       "status": "open"
+    },
+    {
+      "id": "T245",
+      "text": "Rust pack wording from field feedback (adopted): the Lead text says give a plan the whole crate, which blocks parallel plans in one crate; say a plan names every file it changes and two plans may share a crate when their files are disjoint, with Cargo.toml and lockfile changes in one plan at a time. QA text: a workspace-wide command is a finding only when it compiles or runs tests (a tool that only reads the lockfile is fine). Dev, Lead, QA and docs: a dependency added or moved, including through a path dependency the other workspace's manifest never names.",
+      "status": "open"
     }
   ],
   "decisions": [
