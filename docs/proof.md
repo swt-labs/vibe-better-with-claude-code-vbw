@@ -1246,6 +1246,17 @@ at its next save. Beside the store, `vbw/run-times.json` keeps each run's
 seconds alone, written with it. Time estimates read only that file, never the
 store, whose read lists can run to hundreds of MB (docs/panel.md).
 
+**A moved submodule.** A commit in a submodule runs only what read a changed
+file inside it. Git names only the submodule's folder as changed, so VBW asks
+git inside the submodule for the files that differ between the commit a run was
+made on and the current one, prefixes every path with the submodule's folder as
+the project sees it (`apps/mobile/src/comms.ts`) and judges those paths by the
+read lists exactly like a change in the project itself. A submodule whose
+commit did not move costs no git call inside it. Four cases stay unknown, and
+every check and command runs again: the recorded commit is missing from the
+submodule's repository, a submodule was added since, a submodule was removed
+since, or a nested submodule (one inside the submodule) moved.
+
 **Files a unit writes.** Build output a unit writes is removed before the next
 unit runs in its copy (see the clean copy, above), so no unit reads
 another's. Any other file a unit writes carries that unit's read list. A
@@ -1451,18 +1462,10 @@ They read `checks: N ran, M reused` and `test files: N ran, M reused`. After
   run in the project, open each proof copy's `.git` file to see whether it is a
   repository of its own, exactly as git inside the copy does. A unit running
   meanwhile counts as reading through git and runs again in the next proof.
-- A commit in a submodule runs only what read a changed file inside it. Git
-  names only the submodule's folder as changed, so VBW asks git inside the
-  submodule for the files that differ between the commit a run was made on and
-  the current one, prefixes every path with the submodule's folder as the
-  project sees it (`apps/mobile/src/comms.ts`) and judges those paths by the read
-  lists exactly like a change in the project itself. Files read inside a
-  submodule are on the read lists by those same project paths, and git run inside
-  a submodule of the copy counts as reading through git. A submodule whose
-  commit did not move costs no git call inside it. Four cases stay unknown, and
-  every check and command runs again: the recorded commit is missing from the
-  submodule's repository, a submodule was added since, a submodule was removed
-  since, or a nested submodule (one inside the submodule) moved.
+- Files read inside a submodule are on the read lists by their project paths
+  (`apps/mobile/src/comms.ts`), and git run inside a submodule of the copy
+  counts as reading through git. How a moved submodule is judged is in
+  "A moved submodule", above.
 
 To run everything fresh, use `vbw prove --full`, or prove again with
 nothing committed since a passing proof (a second `vbw prove` is a deliberate re-run).
