@@ -1,6 +1,15 @@
 {
   "schema": 12,
-  "lease": null,
+  "lease": {
+    "run": "qa-20261106T205843Z",
+    "kind": "qa",
+    "started_at": "2026-11-06T20:58:43Z",
+    "files": [],
+    "session": "0ee781c3-c5b6-4a6c-889f-04b89f1fba4a",
+    "cost": {
+      "usd": 3281.638624
+    }
+  },
   "protected": [
     "tests/adaptive-results.bats",
     "tests/agent-scratch.bats",
@@ -30111,12 +30120,19 @@
         }
       ],
       "qa": {
-        "result": "fail",
+        "result": "pass",
         "tier": "deep",
-        "tree": "8db5be608188fc2e868117f40954ffbadb5241309b1b9d7c7e5a9a3dafde5f29",
-        "at": "2026-11-06T16:46:10Z",
-        "note": "22/23 checks",
-        "rounds": 1
+        "tree": "c0b292dcf2456371246a9fd87ceddf23afe673b9caf298b40129a192c6ac8d25",
+        "at": "2026-11-06T20:59:55Z",
+        "note": "6/6 checks"
+      },
+      "outcome": {
+        "tier": "deep",
+        "predicted": "deep",
+        "held": true,
+        "fix_rounds": 1,
+        "qa_findings": 1,
+        "escalations": 1
       }
     },
     {
@@ -71913,7 +71929,7 @@
       "req": "R257",
       "source": "qa",
       "attempts": 0,
-      "status": "fixed",
+      "status": "closed",
       "note": "plugin/lib/checks.sh lines 131-132 (commit 90d73722, after the plan's tasks): checks_exec strips VBW_SLOT_STORE from a unit whenever SLOTS_MARK is empty. The comment says 'with the store off', but SLOTS_MARK is also empty in the nested state (slots_open sets SLOTS_STATE=nested when VBW_SLOT_STORE already names this store; slots_take then sets no mark, plugin/lib/slots.sh:240-250, 340-345). So a proof running inside another proof's unit on the same Claude config folder now starts its own units without the store variable; a third-level vbw prove in those units opens the store as a fresh run and takes slots, while every outer slot is held by ancestors waiting for it. Before this commit the variable passed through and the third level was nested (no slots of its own). Plan task 3 only adds VBW_PROOF_UNIT=1 beside VBW_SLOT_STORE; removing the store variable is added behaviour no task, rule or decision covers, and no test covers the nested-of-nested case (tests/check-jobs-nested.bats only checks store=unset when the store could not be made). Found by reading the code, not by running a three-level nest. Regression test: an outer prove with the store on whose unit runs a nested vbw prove (VBW_SLOT_STORE set to this store, same CLAUDE_CONFIG_DIR) whose unit prints VBW_SLOT_STORE must still see the store path; only a run with no store at all (SLOTS_STATE off or lost, and nothing inherited) drops it. Fix: unset it only when the run's own store is off, not when nested, or drop the unset and keep just the mark.",
       "phase": "P207"
     },
@@ -77025,6 +77041,30 @@
       "at": "2026-11-06T19:53:47Z",
       "text": "Contract approved: 251 requirements, 596 checks, 615 plans (d95b128b3a40)",
       "plans": []
+    },
+    {
+      "id": "D629",
+      "text": "Keep plugin/lib/record.sh changes from F380",
+      "why": "QA fix F380: old records with text breaks convert on read and the validated digest remembers it; covered by tests/break-by-place.bats and proved",
+      "at": "2026-11-06T20:58:28Z"
+    },
+    {
+      "id": "D630",
+      "text": "Keep docs/record.md changes from F380",
+      "why": "One sentence documenting what F380 changed in how records are read",
+      "at": "2026-11-06T20:58:30Z"
+    },
+    {
+      "id": "D631",
+      "text": "Keep docs/workflows.md changes for rustpack",
+      "why": "Names the new rustpack real-user scenario in the workflow docs",
+      "at": "2026-11-06T20:58:32Z"
+    },
+    {
+      "id": "D632",
+      "text": "Keep tools/l3-suite.sh changes for scenarios",
+      "why": "Adds rustpack and corrects amendfile and worktreewrite so they drive what they claim; all ran with results committed",
+      "at": "2026-11-06T20:58:33Z"
     }
   ],
   "commands": {
