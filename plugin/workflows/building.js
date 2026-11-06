@@ -95,6 +95,14 @@ const closeRun = async ids => {
 // #705: the plan's id, so an approval that left the plan as it was hides no decision from it.
 const SINCE = id => `vbw show decisions --since-approval ${id} (decisions recorded since the contract was last approved with a change to this plan: where one differs from the plan, the decision wins).`
 
+// R261: the stack packs (args.packs, args.packs_root from vbw next --json). A plan with a pack gets a
+// note naming the pack's dev text by path (the workflow reads no file); a plan without one gets the empty string.
+const packsRoot = (args && typeof args === 'object' && typeof args.packs_root === 'string' && args.packs_root) || ''
+const packNote = id => {
+  const names = (args && args.packs && args.packs.plans && Array.isArray(args.packs.plans[id])) ? args.packs.plans[id].filter(n => typeof n === 'string' && n) : []
+  return packsRoot && names.length ? `\n\nThis plan's stack pack text: read ${names.map(n => `${packsRoot}/${n}/dev.md`).join(' and ')} first.` : ''
+}
+
 phase('Build')
 const results = await pipeline(plans, id => {
   const role = docs.includes(id) ? 'docs' : 'dev'
@@ -102,7 +110,7 @@ const results = await pipeline(plans, id => {
   const m = (cell && cell.models && cell.models[role]) || models[role]
   const tier = cell && cell.tier
   const mutate = tier === 'standard' || tier === 'deep' ? ` This plan's rigor tier: ${tier}. Do the mutation step of your instructions before vbw plan done.` : ''
-  return ask(`Execute VBW plan ${id}. Start with: vbw show plan ${id}; then ${SINCE(id)}${mutate}${voice}`,
+  return ask(`Execute VBW plan ${id}. Start with: vbw show plan ${id}; then ${SINCE(id)}${mutate}${role === 'dev' ? packNote(id) : ''}${voice}`,
     Object.assign({ agentType: `vbw:${role}`, label: `${role} ${id}`, phase: 'Build', schema: BUILD_RESULT },
       m ? { model: m } : {}, effortOf(role, 'build')))
 })
