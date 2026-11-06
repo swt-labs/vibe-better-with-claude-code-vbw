@@ -76,7 +76,13 @@ spec_sync() {
     . as $rec | .requirements as $old
     | ($s[] | . as $n | [$old[] | select(.id == $n.id)][0] as $o
        | if $o == null then "added \(.id)"
-         elif $o.text != .text or $o.proof != .proof then "changed \(.id) (status reset to open)"
+         elif $o.text != .text or $o.proof != .proof then
+           "changed \(.id) (status reset to open"
+           + (if .proof == "auto" and $o.proof == "auto" and ($o.rules | type) == "array" then ", \($o.rules | length) rules kept"
+              elif .proof == "human" and $o.proof == "auto" then
+                ([$o.rules // [] | length | select(. > 0) | "\(.) rules"] + [[$rec.checks[] | select(.req == $o.id) | .id] | select(length > 0) | "checks \(join(", "))"]) as $lost
+                | if ($lost | length) > 0 then ", " + ($lost | join(" and ")) + " dropped" else "" end
+              else "" end) + ")"
          else empty end),
       ($old[] | select(.id as $id | any($s[]; .id == $id) | not) | .id as $id
         | "removed \($id)" + ([$rec.checks[] | select(.req == $id) | .id] | if length > 0 then " and its checks \(join(", "))" else "" end))'
@@ -88,12 +94,16 @@ spec_sync() {
     | ((.lease.kind // "") | test("^(build|fix)$")) as $open
     | def kept: . as $q | any($gone[]; . == $q) | not;
       .requirements = [$s[] | . as $n | [$old[] | select(.id == $n.id)][0] as $o
-        | if $o == null or $o.text != $n.text or $o.proof != $n.proof
+        | if $o != null and $o.text != $n.text and $o.proof == "auto" and $n.proof == "auto" and ($o.rules | type) == "array"
+          then $o + {text: $n.text, status: "open", reworded: true}
+            + (if $open and $o.queued == true then {queued: true} else {} end)
+          elif $o == null or $o.text != $n.text or $o.proof != $n.proof
           then {id: $n.id, text: $n.text, proof: $n.proof, status: "open", milestone: $m}
             + (if $n.proof == "auto" and $ruled then {rules: []} else {} end)
             + (if $open and ($o == null or $o.queued == true) then {queued: true} else {} end)
           else $o end]
-    | .checks = [.checks[] | select(.req | kept)]
+    | [$s[] | . as $n | select($n.proof == "human" and any($old[]; .id == $n.id and .proof == "auto")) | .id] as $human
+    | .checks = [.checks[] | select(.req | kept) | select(.req as $q | any($human[]; . == $q) | not)]
     | .fixes = [.fixes[] | select((has("req") | not) or (.req | kept))]
     | .plans = [.plans[] | .reqs = [.reqs[] | select(kept)] | select(.reqs | length > 0)]
     | ([.plans[].id]) as $ids
