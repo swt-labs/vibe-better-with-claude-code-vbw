@@ -152,3 +152,14 @@ marked() { VBW_PROOF_UNIT=1 "$VBW" "$@" < /dev/null; }
   seen=$(cd "$REPO_ROOT" && VBW_PROOF_UNIT=1 BATS_TEST_DIRNAME="$REPO_ROOT/tests" bash -c '. tests/helper.bash; printf "%s" "${VBW_PROOF_UNIT-gone}"')
   [ "$seen" = 1 ] || { echo "after loading the helper the mark reads: $seen"; false; }
 }
+
+@test "R257: a proof nested in a unit of a proof with the store on passes the store on, so a third level is nested too" {
+  vbw_run prove
+  [ "$status" -eq 0 ] || { echo "$output"; false; }
+  local store
+  store=$(sed -n 's/^mark=1 store=\(\/.*\)$/\1/p' "$CONC/env" | head -n 1)
+  [ -n "$store" ] || { cat "$CONC/env"; false; }
+  : > "$CONC/env"
+  VBW_PROOF_UNIT=1 VBW_SLOT_STORE="$store" "$VBW" prove < /dev/null > /dev/null
+  grep -q "^mark=1 store=$store\$" "$CONC/env" || { echo "nested run's unit:"; cat "$CONC/env"; false; }
+}
