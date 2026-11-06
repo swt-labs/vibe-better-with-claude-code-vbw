@@ -8071,7 +8071,7 @@
   "milestone": {
     "id": "M53",
     "title": "A first Rust stack pack, proofs that leave the machine usable, and a reworded rule that keeps its history",
-    "status": "active"
+    "status": "shipped"
   },
   "shipped": [
     {
@@ -8328,6 +8328,11 @@
       "id": "M52",
       "title": "Fast kernel on large records, amendments without a stop, clean copies that never carry worktrees",
       "at": "2026-11-05T12:24:58Z"
+    },
+    {
+      "id": "M53",
+      "title": "A first Rust stack pack, proofs that leave the machine usable, and a reworded rule that keeps its history",
+      "at": "2026-11-06T21:25:51Z"
     }
   ],
   "requirements": [
@@ -77063,6 +77068,11 @@
       "text": "Keep tools/l3-suite.sh changes for scenarios",
       "why": "Adds rustpack and corrects amendfile and worktreewrite so they drive what they claim; all ran with results committed",
       "at": "2026-11-06T20:58:33Z"
+    },
+    {
+      "id": "D633",
+      "at": "2026-11-06T21:25:51Z",
+      "text": "Shipped M53 A first Rust stack pack, proofs that leave the machine usable, and a reworded rule that keeps its history: 7 requirements proven or accepted"
     }
   ],
   "commands": {
@@ -91270,6 +91280,10 @@
             "usd": 0,
             "at": "2026-11-05T18:33:10Z"
           }
+        },
+        "total": {
+          "usd": 67.396455,
+          "sessions": 48
         }
       }
     }
