@@ -187,6 +187,8 @@ vbw_check_jobs() {
   local n
   n=$(vbw_check_jobs_set_value) || return 1
   if [ -n "$n" ]; then printf '%s\n' "$n"; return 0; fi
+  # Inside another proof's unit (marked by the outer run): one unit at a time.
+  if [ -n "${VBW_PROOF_UNIT:-}" ]; then printf '1\n'; return 0; fi
   vbw_machine_limit
 }
 
@@ -194,7 +196,13 @@ vbw_check_jobs() {
 vbw_check_jobs_source() {
   local n
   n=$(vbw_check_jobs_set_value) || return 1
-  if [ -n "$n" ]; then printf 'set\n'; else printf 'machine default\n'; fi
+  if [ -n "$n" ]; then
+    printf 'set\n'
+  elif [ -n "${VBW_PROOF_UNIT:-}" ]; then
+    printf "inside another proof's unit\n"
+  else
+    printf 'machine default\n'
+  fi
 }
 
 # vbw_clone_setting_set KEY JSON|default: atomic, locked change of one key of
