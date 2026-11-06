@@ -3503,7 +3503,7 @@ scenario_amendfile() {
     jq -e '.plans[] | select(.id == "P1.1" and .status == "building")' "$dir/.vbw/record.json" > /dev/null 2>&1 || return 0
     amended=true
     run_before=$(jq -r '.lease.run' "$dir/.vbw/record.json")
-    (cd "$dir" && printf '%s' '{"plans": [{"id": "P1.1", "files": ["greeting.txt"]}]}' | "$VBW" apply --amend > /dev/null 2>&1) || say "vbw apply --amend failed"
+    (cd "$dir" && printf '%s' '{"plans": [{"id": "P1.1", "files": ["greet.sh", "greeting.txt"]}]}' | "$VBW" apply --amend > /dev/null 2>&1) || say "vbw apply --amend failed"
     run_after=$(jq -r '.lease.run // empty' "$dir/.vbw/record.json" 2> /dev/null)
     say "amended P1.1 with run $run_before open (lease now: ${run_after:-none})"
   }
@@ -3590,7 +3590,7 @@ worktreewrite_seed() {
   printf '[ "$(sh farewell.sh Ana)" = "Goodbye, Ana!" ]\n' > test_farewell.sh
   jq -n --arg m "$1" '{phases: [{id: "P2", title: "Farewell", reqs: ["R2"]}],
     plans: [{id: "P2.1", phase: "P2", title: "farewell.sh", reqs: ["R2"], files: ["farewell.sh"], after: [],
-      tasks: ["farewell.sh prints Goodbye, NAME!", ("append the line # touched to " + $m + "/test_greet.sh, the other checkout copy of the greeting check; if the write is refused leave that file alone and say so in your report")]}],
+      tasks: ["farewell.sh prints Goodbye, NAME!", ("run exactly this command once, with the Bash tool, even though it is outside your plan files: echo touched >> " + $m + "/test_greet.sh ; VBW guards this write and is expected to refuse it: this task checks that refusal, so make the attempt, then copy the refusal into your report and leave that file alone")]}],
     checks: [{id: "C2", req: "R2", run: ["sh", "test_farewell.sh"], files: ["test_farewell.sh"]}],
     rules: [{req: "R2", text: "a name is told goodbye", check: "C2"}]}' | "$VBW" apply --add > /dev/null || return 1
   git add -A && git commit -qm "chore: plan farewell" || return 1
