@@ -69,11 +69,8 @@ record_sum() { cksum < .vbw/record.json; }
 breaks() { jq -c --arg p "$1" '[.plans[] | select(.id == $p) | .mutations // [] | .[]]' .vbw/record.json; }
 # ran ID: how many times check ID ran.
 ran() { grep -cx "$1" "$RANLOG" || true; }
-# same_as_head FILE: the working file is byte-identical to its last commit.
-same_as_head() {
-  [ -z "$(git status --porcelain -- "$1")" ] || { echo "$1 differs from HEAD: $(git status --porcelain -- "$1")"; return 1; }
-  cmp -s "$1" <(git show "HEAD:$1") || { echo "$1 is not its last commit"; return 1; }
-}
+# kept_break FILE: the working file still differs from its last commit (R265: the kernel never puts it back).
+kept_break() { [ -n "$(git status --porcelain -- "$1")" ] || { echo "$1 was put back to its last commit by the kernel"; return 1; }; }
 # refused SUM: the last run failed and the record is byte-identical to SUM.
 refused() {
   [ "$status" -ne 0 ] || { echo "not refused: $output"; return 1; }
@@ -98,7 +95,7 @@ build_more() {
   # C1 belongs to P1.2's rule and never ran; C4 is another requirement's.
   [ "$(ran C1)" -eq 0 ] || { echo "C1 ran: $(cat "$RANLOG")"; false; }
   [ "$(ran C4)" -eq 0 ] || { echo "C4 ran: $(cat "$RANLOG")"; false; }
-  same_as_head src/pay.sh
+  kept_break src/pay.sh
 }
 
 @test "R193: a check shared by several owed rules runs once; the record and the output list exactly the checks that ran" {
@@ -112,7 +109,7 @@ build_more() {
   [ "$(ran C2)" -eq 2 ] || { echo "C2 ran $(ran C2) times"; false; }
   [ "$(ran C3)" -eq 2 ] || { echo "C3 ran $(ran C3) times"; false; }
   [ "$(ran C1)" -eq 0 ] && [ "$(ran C4)" -eq 0 ] || { echo "$(cat "$RANLOG")"; false; }
-  same_as_head src/pay.sh
+  kept_break src/pay.sh
 }
 
 @test "R193: the plan that completes a requirement owes every rule of it, those naming other plans included; while another plan is open it owes only its own" {
@@ -122,12 +119,12 @@ build_more() {
   run "$VBW" mutate P1.2 task1 "adds a comment" src/more.sh < /dev/null
   [ "$status" -ne 0 ] && [[ "$output" == *survivor* ]] || { echo "$output"; false; }
   breaks P1.2 | jq -e '.[0].checks == {C1: "green"} and .[0].result == "survivor"' || { breaks P1.2; false; }
-  same_as_head src/more.sh
+  kept_break src/more.sh
   # With P1.1 and P1.3 done, P1.2 completes R1 and owes every rule of it.
   edit_record '(.plans[] | select(.id == "P1.1" or .id == "P1.3")).status = "done"'
   : > "$RANLOG"
-  printf 'echo more # noted\n' > src/more.sh
-  run "$VBW" mutate P1.2 task1 "adds a comment" src/more.sh < /dev/null
+  printf 'echo more # noted twice\n' > src/more.sh
+  run "$VBW" mutate P1.2 task1 "adds another comment" src/more.sh < /dev/null
   [ "$status" -ne 0 ] && [[ "$output" == *survivor* ]] || { echo "$output"; false; }
   breaks P1.2 | jq -e '.[1].checks == {C1: "green", C2: "green", C3: "green"} and .[1].result == "survivor"' || { breaks P1.2; false; }
   [ "$(ran C4)" -eq 0 ] || { echo "C4 ran: $(cat "$RANLOG")"; false; }
@@ -144,7 +141,7 @@ build_more() {
   [[ "$output" == *"--check"* ]] || { echo "no --check: $output"; false; }
   [[ "$output" == *"--none"* ]] || { echo "no --none: $output"; false; }
   [ "$(ran C4)" -eq 0 ]
-  same_as_head src/more.sh
+  kept_break src/more.sh
 }
 
 @test "R193: a plan owning no rule runs the checks of its requirements as before, and its refusal says so and names the Lead's remedy" {
@@ -156,7 +153,7 @@ build_more() {
   [[ "$output" == *C1* ]] || { echo "$output"; false; }
   [[ "$output" == *"owns no rule"* ]] || { echo "no 'owns no rule': $output"; false; }
   [[ "$output" == *"names a plan"* ]] || { echo "no 'names a plan': $output"; false; }
-  same_as_head src/note.txt
+  kept_break src/note.txt
   # Once every check of its requirements passes, the break runs them all, as before.
   build_more
   : > "$RANLOG"
@@ -165,7 +162,7 @@ build_more() {
   [ "$status" -ne 0 ] && [[ "$output" == *survivor* ]] || { echo "$output"; false; }
   breaks P1.3 | jq -e '.[0].checks == {C1: "green", C2: "green", C3: "green"} and .[0].result == "survivor"' || { breaks P1.3; false; }
   [ "$(ran C4)" -eq 0 ]
-  same_as_head src/note.txt
+  kept_break src/note.txt
 }
 
 @test "R193: --check still narrows the run and refuses another requirement's check; a rule break runs its own check as before" {
@@ -194,7 +191,7 @@ build_more() {
   [ "$(ran C2)" -eq 2 ] && [ "$(ran C3)" -eq 0 ] || { echo "$(cat "$RANLOG")"; false; }
   run "$VBW" mutate P1.1 R2.1 "prints unpaid" src/pay.sh < /dev/null
   [ "$status" -ne 0 ]
-  same_as_head src/pay.sh
+  kept_break src/pay.sh
 }
 
 @test "R193: the Dev's instructions say a task break runs the checks of the plan's own rules" {

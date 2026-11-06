@@ -88,7 +88,7 @@ above_base() {
   [ "$status" -eq 0 ] || [ "$status" -eq 1 ] || { echo "$status: $output"; false; }
   above_base C1
   : > "$NICELOG"
-  printf 'echo unpaid\n' > src/pay.sh
+  printf 'echo unpaid again\n' > src/pay.sh
   VBW_SESSION_ID=s1 "$VBW" mutate P1.1 R1.1 --queue "prints unpaid again" src/pay.sh < /dev/null > /dev/null
   run env VBW_SESSION_ID=s1 "$VBW" mutate P1.1 --run < /dev/null
   [ "$status" -eq 0 ] || [ "$status" -eq 1 ] || { echo "$status: $output"; false; }

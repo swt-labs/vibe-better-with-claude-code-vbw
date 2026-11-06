@@ -126,8 +126,8 @@ C1 red" ] || { echo "$output"; false; }
   [ -z "$AFTER" ] || { echo "lines after the split: $AFTER"; false; }
   [ "$(names | tr '\n' '|')" = "copies|unbroken|break R1.1|waits|saving|" ] || { names; false; }
   sum_ok
-  last_break P1.1 | jq -e '(keys | sort) == ["at","checks","contract","files","head","result","rule","tree","what"] and .result == "red" and .checks == {C1: "red"}' || { last_break P1.1; false; }
-  [ "$(cat src/pay.sh)" = "$(git show HEAD:src/pay.sh)" ]
+  last_break P1.1 | jq -e '(keys | sort) == ["at","checks","contract","digests","files","head","result","rule","tree","what"] and .result == "red" and .checks == {C1: "red"}' || { last_break P1.1; false; }
+  [ "$(cat src/pay.sh)" = "echo unpaid" ]
 }
 
 @test "R207: a survivor keeps its exit 1 and its line; the breakdown follows it" {

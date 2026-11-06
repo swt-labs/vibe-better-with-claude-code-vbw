@@ -55,7 +55,9 @@ edit_record() {
 tier() { edit_record ".phases[0].tier = \"$1\""; }
 status_of() { jq -r --arg p "$1" '.plans[] | select(.id == $p) | .status' .vbw/record.json; }
 # red PLAN TARGET: a break of src/pay.sh its check notices, recorded for TARGET.
-red() { printf 'echo unpaid\n' > src/pay.sh; "$VBW" mutate "$1" "$2" "prints unpaid" src/pay.sh < /dev/null > /dev/null; }
+# red PLAN RULE: a break C1 notices, recorded for RULE; its bytes name the rule (the same bytes twice
+# are refused, R265) and the Dev edits the break out after (the kernel leaves the file as given).
+red() { printf 'echo unpaid %s\n' "$2" > src/pay.sh; "$VBW" mutate "$1" "$2" "prints unpaid" src/pay.sh < /dev/null > /dev/null; git checkout -q -- src/pay.sh; }
 # refuses_naming PLAN WORD...: plan done refuses, names each WORD and vbw mutate.
 refuses_naming() {
   local p=$1 w
@@ -91,6 +93,7 @@ done_ok() {
   run "$VBW" mutate P1.1 R1.2 "prints oops on stderr" src/pay.sh < /dev/null
   [ "$status" -ne 0 ] && [[ "$output" == *survivor* ]] || { echo "$output"; false; }
   refuses_naming P1.1 R1.2
+  git checkout -q -- src/pay.sh
   printf '[ "$(sh src/pay.sh 2>&1)" = paid ]\n' > tests/pay.sh
   git commit -q -am "test(pay): nothing but paid, on either stream"
   printf 'echo paid\necho oops >&2\n' > src/pay.sh
@@ -145,12 +148,13 @@ done_ok() {
   done_ok P1.1
 }
 
-@test "R188: plan done refuses while the plan's files differ from their last commit, naming them" {
+@test "R188 R265: plan done refuses while the plan's files differ from their last commit, naming them: a break vbw mutate left in the file included" {
   red P1.1 R1.1
   red P1.1 R1.2
-  printf 'echo unpaid\n' > src/pay.sh
+  printf 'echo unpaid once more\n' > src/pay.sh
+  "$VBW" mutate P1.1 R1.1 "prints unpaid once more" src/pay.sh < /dev/null > /dev/null
   run "$VBW" plan done P1.1 < /dev/null
   [ "$status" -ne 0 ] || { echo "$output"; false; }
-  [[ "$output" == *src/pay.sh* ]] || { echo "$output"; false; }
+  [[ "$output" == *"P1.1 has uncommitted changes in: src/pay.sh"* ]] || { echo "$output"; false; }
   [ "$(status_of P1.1)" != done ]
 }

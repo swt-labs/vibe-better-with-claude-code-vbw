@@ -70,6 +70,7 @@ line() { show | grep -Eiq -- "$1" || { echo "no line matches $1:"; show; return 
   [ "$status" -ne 0 ] || { echo "$output"; false; }
   line 'R1\.2.*prints oops on stderr.*survivor'
   line 'C1[: ]+green'
+  git checkout -q -- src/pay.sh
   printf '[ "$(sh src/pay.sh 2>&1)" = paid ]\n' > tests/pay.sh
   git commit -q -am "test(pay): nothing but paid, on either stream"
   "$VBW" approve > /dev/null

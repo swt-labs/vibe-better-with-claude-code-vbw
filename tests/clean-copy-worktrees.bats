@@ -124,7 +124,7 @@ fresh() {
 
 @test "R253 candidates: vbw init prints one line per git-ignored folder over the threshold, with its size, and writes it as a commented suggestion in the Clean copy section, nothing uncommented; a worktree is never a candidate; nothing is printed when none is over" {
   fresh big
-  VBW_PROOFCOPY_PLAIN_KB=512 vbw_run init
+  VBW_PROOFCOPY_DISK=plain VBW_PROOFCOPY_PLAIN_KB=512 vbw_run init
   [ "$status" -eq 0 ] || { echo "$output"; false; }
   [[ "$output" == *"big/ (1.0 MB)"* ]] || { echo "$output"; false; }
   [[ "$output" != *"wt/"* ]] || { echo "a worktree is a candidate: $output"; false; }
@@ -136,19 +136,81 @@ fresh() {
   vbw_run init
   [ "$status" -eq 0 ] && [[ "$output" != *"big/"* ]] || { echo "$output"; false; }
   fresh ''
-  VBW_PROOFCOPY_PLAIN_KB=512 vbw_run init
+  VBW_PROOFCOPY_DISK=plain VBW_PROOFCOPY_PLAIN_KB=512 vbw_run init
   [ "$status" -eq 0 ] && [[ "$output" != *"big/"* && "$output" != *"wt/"* ]] || { echo "$output"; false; }
 }
 
 @test "R253 candidates: vbw doctor names each git-ignored folder over the threshold that the Clean copy section does not list yet, with its size, and says nothing when none is over or every one is listed" {
   fresh big
   "$VBW" init > /dev/null
-  VBW_PROOFCOPY_PLAIN_KB=512 vbw_run doctor
+  VBW_PROOFCOPY_DISK=plain VBW_PROOFCOPY_PLAIN_KB=512 vbw_run doctor
   [[ "$output" == *"big/ (1.0 MB)"* && "$output" != *"wt/"* ]] || { echo "$output"; false; }
   printf '\n## Clean copy\n\n- big/\n' >> .vbw/spec.md
   "$VBW" spec sync > /dev/null
-  VBW_PROOFCOPY_PLAIN_KB=512 vbw_run doctor
+  VBW_PROOFCOPY_DISK=plain VBW_PROOFCOPY_PLAIN_KB=512 vbw_run doctor
   [[ "$output" != *"big/ (1.0 MB)"* ]] || { echo "$output"; false; }
   vbw_run doctor
   [[ "$output" != *"big/"* ]] || { echo "$output"; false; }
+}
+
+# R267 (T249; docs/proof.md): the large-folder suggestion asks the disk, never the folder's
+# name. proofcopy_disk_kind answers clone when a copy-on-write clone of a small file under
+# .vbw/runtime succeeds (cp -c on macOS, cp --reflink=always elsewhere) and plain otherwise,
+# leaving nothing behind; VBW_PROOFCOPY_DISK=clone|plain injects the answer for tests. On a
+# plain disk vbw doctor and vbw init print today's leave-out suggestion; on a cloning disk
+# they print an info line (little cost, keeping can save rebuilds) with no leave-out step,
+# and vbw init writes no commented leave-out line, keeping the section and its comment.
+# fresh_named NAME: a git project with a 1 MB git-ignored folder NAME/ (no worktree).
+fresh_named() {
+  vbw_setup
+  vbw_git_project
+  printf '%s/\n' "$1" > .gitignore
+  git add .gitignore && git commit -q -m "chore: ignore"
+  mkdir -p "$1"
+  head -c 1048576 /dev/zero > "$1/blob.bin"
+}
+
+@test "R267 helper: proofcopy_disk_kind answers clone or plain by trying a clone under .vbw/runtime, leaves nothing there, and takes VBW_PROOFCOPY_DISK as the answer" {
+  fresh_named data
+  "$VBW" init > /dev/null
+  local kind
+  # shellcheck disable=SC2016 # expanded by vbw_kernel
+  kind=$(vbw_kernel '. "$VBW_LIB/proofcopy.sh"; proofcopy_disk_kind')
+  [ "$kind" = clone ] || [ "$kind" = plain ] || { echo "proofcopy_disk_kind answered: $kind"; false; }
+  [ -z "$(find .vbw/runtime -name 'disk*' -print 2> /dev/null)" ] || { echo "the probe left something: $(find .vbw/runtime -name 'disk*')"; false; }
+  # shellcheck disable=SC2016 # expanded by vbw_kernel
+  [ "$(VBW_PROOFCOPY_DISK=plain vbw_kernel '. "$VBW_LIB/proofcopy.sh"; proofcopy_disk_kind')" = plain ]
+  # shellcheck disable=SC2016 # expanded by vbw_kernel
+  [ "$(VBW_PROOFCOPY_DISK=clone vbw_kernel '. "$VBW_LIB/proofcopy.sh"; proofcopy_disk_kind')" = clone ]
+  grep -q 'VBW_PROOFCOPY_DISK' "$PLUGIN_ROOT/lib/proofcopy.sh" || { echo "the override is not documented in proofcopy.sh"; false; }
+  ! grep -nE 'PROOFCOPY_BUILD_DIRS' <(awk '/^proofcopy_disk_kind\(\)/, /^}/' "$PLUGIN_ROOT/lib/proofcopy.sh") || { echo "proofcopy_disk_kind reads the build-folder names"; false; }
+}
+
+@test "R267 doctor: a build-named folder (target/) on a plain disk gets the leave-out line; a data-named folder on a cloning disk gets the info line with no leave-out step: the disk decides, never the name" {
+  fresh_named target
+  "$VBW" init > /dev/null
+  VBW_PROOFCOPY_DISK=plain VBW_PROOFCOPY_PLAIN_KB=512 vbw_run doctor
+  [[ "$output" == *"target/ (1.0 MB)"* && "$output" == *"list target/ under Clean copy"* ]] || { echo "$output"; false; }
+  fresh_named data
+  "$VBW" init > /dev/null
+  VBW_PROOFCOPY_DISK=clone VBW_PROOFCOPY_PLAIN_KB=512 vbw_run doctor
+  [[ "$output" == *"data/ (1.0 MB)"* && "$output" == *"little cost"* ]] || { echo "$output"; false; }
+  [[ "$output" != *"list data/ under Clean copy"* && "$output" != *"leave"* ]] || { echo "a leave-out step on a cloning disk: $output"; false; }
+}
+
+@test "R267 init: target/ on a plain disk gets the commented leave-out line; data/ on a cloning disk gets the info line and no commented line, the section and its comment stay, and an existing spec is never rewritten" {
+  fresh_named target
+  VBW_PROOFCOPY_DISK=plain VBW_PROOFCOPY_PLAIN_KB=512 vbw_run init
+  [ "$status" -eq 0 ] && [[ "$output" == *"target/ (1.0 MB)"* && "$output" == *"uncomment"* ]] || { echo "$output"; false; }
+  grep -qF '<!-- - target/ -->' .vbw/spec.md || { echo "no commented leave-out line for target/"; false; }
+  fresh_named data
+  VBW_PROOFCOPY_DISK=clone VBW_PROOFCOPY_PLAIN_KB=512 vbw_run init
+  [ "$status" -eq 0 ] && [[ "$output" == *"data/ (1.0 MB)"* && "$output" == *"little cost"* ]] || { echo "$output"; false; }
+  [[ "$output" != *"uncomment"* ]] || { echo "a leave-out step on a cloning disk: $output"; false; }
+  ! grep -qF '<!-- - data/ -->' .vbw/spec.md || { echo "a commented leave-out line was written on a cloning disk"; false; }
+  grep -q '^## Clean copy' .vbw/spec.md && grep -q "Git-ignored paths the proof's clean copy leaves out" .vbw/spec.md || { echo "the Clean copy section or its comment is gone"; false; }
+  local sum
+  sum=$(cksum < .vbw/spec.md)
+  VBW_PROOFCOPY_DISK=clone VBW_PROOFCOPY_PLAIN_KB=512 vbw_run init
+  [ "$(cksum < .vbw/spec.md)" = "$sum" ] || { echo "vbw init rewrote an existing spec"; false; }
 }

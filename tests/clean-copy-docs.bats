@@ -106,3 +106,13 @@ prove_steps() { awk '/^## `vbw prove`/ {p=1; next} p && /^#{1,3} / {exit} p' "$P
 @test "#738: docs/record.md documents evidence.own.copy_slots with its four fields" {
   has_line "$(cat "$RECORD")" "copy_slots" "claimed, refreshed, made, refresh"
 }
+
+# R267 (T249): the docs say the suggestion follows the disk's answer.
+@test "R267 docs: docs/proof.md's init paragraph and doctor sentence say the leave-out suggestion is made only where the disk makes a plain copy, that a cloning disk gets the info line instead, and the proof-time line is unchanged" {
+  local folded
+  folded=$(tr '\n' ' ' < "$PROOF" | tr -s ' ')
+  printf '%s\n' "$folded" | grep -qiE 'vbw init[^.]*(copy-on-write|clone)[^.]*(plain|suggest)|(copy-on-write|clone)[^.]*vbw init[^.]*(plain|suggest)' || { echo "the init paragraph does not say the suggestion depends on the disk"; false; }
+  printf '%s\n' "$folded" | grep -qiE 'vbw doctor[^.]*(clone|copy-on-write)[^.]*(little cost|rebuild)|(little cost|rebuild)[^.]*vbw doctor' || { echo "the doctor sentence does not describe the cloning-disk line"; false; }
+  printf '%s\n' "$folded" | grep -qiE 'VBW_PROOFCOPY_DISK' || { echo "the test override is not documented"; false; }
+  grep -q '^VBW makes a copy-on-write clone where the file system offers one' "$PROOF" || { echo "the proof-time line changed"; false; }
+}

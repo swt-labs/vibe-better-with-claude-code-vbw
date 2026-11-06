@@ -68,15 +68,16 @@ queue() {
   printf '%s\n' "$body" > src/pay.sh
   run "$VBW" mutate P1.1 "$target" --queue "$what" src/pay.sh < /dev/null
   [ "$status" -eq 0 ] || { echo "$output"; return 1; }
-  [ "$(cat src/pay.sh)" = "$(git show HEAD:src/pay.sh)" ] || { echo "src/pay.sh was not put back: $(cat src/pay.sh)"; return 1; }
+  # R265: the kernel never touches the working copy; the file keeps the break.
+  [ "$(cat src/pay.sh)" = "$body" ] || { echo "src/pay.sh was changed by the kernel: $(cat src/pay.sh)"; return 1; }
 }
 
-@test "T174: --queue sets the break aside and puts the file back at once; nothing runs and nothing is recorded" {
+@test "T174: --queue sets the break aside at once and leaves the file as given; nothing runs and nothing is recorded" {
   queue R1.1 "prints unpaid" 'echo unpaid'
   [[ "$output" == *"R1.1 queued"* && "$output" == *"vbw mutate P1.1 --run"* ]] || { echo "$output"; false; }
   [ ! -f "$LOG" ] || { echo "a check ran: $(cat "$LOG")"; false; }
   [ "$(breaks)" = '[]' ] || { breaks; false; }
-  git diff --quiet -- src tests || { git status --short; false; }
+  git diff --quiet -- tests || { git status --short; false; }
 }
 
 @test "T174: --run runs the queued breaks side by side, the check once unbroken, and records each as red" {
@@ -91,7 +92,9 @@ queue() {
   [ "$(wc -l < "$LOG" | tr -d ' ')" -eq 3 ] || { cat "$LOG"; false; }
   [ "$(ls "$BAR" | grep -c '^met\.')" -eq 2 ] || { ls "$BAR"; false; }
   [ -z "$(ls -A .vbw/runtime/mutate-queue/P1.1 2> /dev/null)" ] || ls -R .vbw/runtime/mutate-queue
-  git diff --quiet -- src tests || { git status --short; false; }
+  # The working copy still holds the last break; the Dev edits it out before plan done.
+  [ "$(cat src/pay.sh)" = 'echo paid; echo more' ] || { cat src/pay.sh; false; }
+  git checkout -q -- src/pay.sh
   run "$VBW" plan done P1.1 < /dev/null
   [ "$status" -eq 0 ] || { echo "$output"; false; }
 }
@@ -133,6 +136,25 @@ queue() {
   git checkout -q -- src/pay.sh
   run "$VBW" mutate P1.1 --run < /dev/null
   [ "$status" -ne 0 ] && [[ "$output" == *"no break waits for P1.1"* && "$output" == *"--queue"* ]] || { echo "$output"; false; }
+}
+
+@test "R265: the same broken bytes queued twice, or sent singly after being queued, are refused in one line naming the queued break and its time; a queued entry carries the digests and so does its recorded result" {
+  queue R1.1 "prints unpaid" 'echo unpaid'
+  local d
+  d=$(shasum -a 256 src/pay.sh | cut -c1-64)
+  jq -e --arg d "$d" '.digests == {"src/pay.sh": $d} and (.at | type == "string")' .vbw/runtime/mutate-queue/P1.1/*/meta.json > /dev/null || { cat .vbw/runtime/mutate-queue/P1.1/*/meta.json; false; }
+  run "$VBW" mutate P1.1 R1.2 --queue "prints unpaid again" src/pay.sh < /dev/null
+  [ "$status" -ne 0 ] || { echo "$output"; false; }
+  [ "$(printf '%s\n' "$output" | grep -c .)" -eq 1 ] || { echo "$output"; false; }
+  [[ "$output" == *"R1.1"* && "$output" == *"not edited out"* && "$output" =~ 20[0-9][0-9]-[0-9][0-9]-[0-9][0-9]T ]] || { echo "$output"; false; }
+  [ "$(queue_entries | wc -l | tr -d ' ')" -eq 1 ] || { ls -R .vbw/runtime/mutate-queue; false; }
+  run "$VBW" mutate P1.1 R1.2 "prints unpaid again" src/pay.sh < /dev/null
+  [ "$status" -ne 0 ] && [[ "$output" == *"R1.1"* && "$output" == *"not edited out"* ]] || { echo "$output"; false; }
+  [ ! -f "$LOG" ] || { echo "a check ran: $(cat "$LOG")"; false; }
+  [ "$(breaks)" = '[]' ] || { breaks; false; }
+  run "$VBW" mutate P1.1 --run < /dev/null
+  [ "$status" -eq 0 ] || { echo "$output"; false; }
+  jq -e --arg d "$d" '.plans[0].mutations[0].digests == {"src/pay.sh": $d}' .vbw/record.json > /dev/null || { jq .plans[0].mutations .vbw/record.json; false; }
 }
 
 @test "T174: vbw plan done names queued breaks that have not run yet" {

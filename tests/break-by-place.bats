@@ -39,7 +39,9 @@ teardown_file() { fixture_teardown; }
 
 as_dev() { VBW_SESSION_ID=s1 "$VBW" "$@" < /dev/null; }
 # red TARGET: a break of src/pay.sh that C1 notices, recorded for TARGET (R1.1 or R1.2).
-red() { printf 'echo unpaid\n' > src/pay.sh; as_dev mutate P1.1 "$1" "prints unpaid" src/pay.sh > /dev/null; }
+# red RULE: a break C1 notices, recorded for RULE; its bytes name the rule (the same bytes twice are
+# refused, R265) and the Dev edits the break out after (the kernel leaves the file as given).
+red() { printf 'echo unpaid %s\n' "$1" > src/pay.sh; as_dev mutate P1.1 "$1" "prints unpaid" src/pay.sh > /dev/null; git checkout -q -- src/pay.sh; }
 # patch DOC: with the run closed, change the rules by address, approve again and reopen the build run.
 patch() {
   as_dev run end > /dev/null

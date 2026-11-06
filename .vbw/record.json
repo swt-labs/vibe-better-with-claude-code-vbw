@@ -8059,6 +8059,286 @@
       "files": [
         "tests/l3-l1-leftovers.bats"
       ]
+    },
+    {
+      "id": "C602",
+      "req": "R263",
+      "run": [
+        "bats",
+        "--print-output-on-failure",
+        "-f",
+        "R263",
+        "tests/packs.bats"
+      ],
+      "files": [
+        "tests/packs.bats"
+      ]
+    },
+    {
+      "id": "C603",
+      "req": "R263",
+      "run": [
+        "bats",
+        "--print-output-on-failure",
+        "-f",
+        "R263",
+        "tests/packs-docs.bats"
+      ],
+      "files": [
+        "tests/packs-docs.bats"
+      ]
+    },
+    {
+      "id": "C604",
+      "req": "R263",
+      "run": [
+        "bats",
+        "--print-output-on-failure",
+        "-f",
+        "R263:",
+        "tests/l3-results.bats"
+      ],
+      "files": [
+        "tests/l3-results.bats"
+      ]
+    },
+    {
+      "id": "C605",
+      "req": "R265",
+      "run": [
+        "bats",
+        "--print-output-on-failure",
+        "-f",
+        "R265",
+        "tests/mutate-command.bats"
+      ],
+      "files": [
+        "tests/mutate-command.bats"
+      ]
+    },
+    {
+      "id": "C606",
+      "req": "R265",
+      "run": [
+        "bats",
+        "--print-output-on-failure",
+        "-f",
+        "R265",
+        "tests/mutate-queue.bats"
+      ],
+      "files": [
+        "tests/mutate-queue.bats"
+      ]
+    },
+    {
+      "id": "C607",
+      "req": "R265",
+      "run": [
+        "bats",
+        "--print-output-on-failure",
+        "-f",
+        "R265",
+        "tests/mutate-isolation.bats"
+      ],
+      "files": [
+        "tests/mutate-isolation.bats"
+      ]
+    },
+    {
+      "id": "C608",
+      "req": "R265",
+      "run": [
+        "bats",
+        "--print-output-on-failure",
+        "-f",
+        "R265",
+        "tests/mutate-plan-done.bats"
+      ],
+      "files": [
+        "tests/mutate-plan-done.bats"
+      ]
+    },
+    {
+      "id": "C609",
+      "req": "R265",
+      "run": [
+        "bats",
+        "--print-output-on-failure",
+        "-f",
+        "R265 schema",
+        "tests/record-schema.bats"
+      ],
+      "files": [
+        "tests/record-schema.bats"
+      ]
+    },
+    {
+      "id": "C610",
+      "req": "R265",
+      "run": [
+        "bats",
+        "--print-output-on-failure",
+        "-f",
+        "R265 docs",
+        "tests/record-schema-docs.bats"
+      ],
+      "files": [
+        "tests/record-schema-docs.bats"
+      ]
+    },
+    {
+      "id": "C611",
+      "req": "R265",
+      "run": [
+        "bats",
+        "--print-output-on-failure",
+        "-f",
+        "R265",
+        "tests/mutate-prompts.bats"
+      ],
+      "files": [
+        "tests/mutate-prompts.bats"
+      ]
+    },
+    {
+      "id": "C612",
+      "req": "R265",
+      "run": [
+        "bats",
+        "--print-output-on-failure",
+        "-f",
+        "R265:",
+        "tests/l3-results.bats"
+      ],
+      "files": [
+        "tests/l3-results.bats"
+      ]
+    },
+    {
+      "id": "C613",
+      "req": "R264",
+      "run": [
+        "bats",
+        "--print-output-on-failure",
+        "-f",
+        "R264",
+        "tests/mutate-rule-none.bats"
+      ],
+      "files": [
+        "tests/mutate-rule-none.bats"
+      ]
+    },
+    {
+      "id": "C614",
+      "req": "R264",
+      "run": [
+        "bats",
+        "--print-output-on-failure",
+        "-f",
+        "R264 schema",
+        "tests/record-schema.bats"
+      ],
+      "files": [
+        "tests/record-schema.bats"
+      ]
+    },
+    {
+      "id": "C615",
+      "req": "R264",
+      "run": [
+        "bats",
+        "--print-output-on-failure",
+        "-f",
+        "R264 docs",
+        "tests/record-schema-docs.bats"
+      ],
+      "files": [
+        "tests/record-schema-docs.bats"
+      ]
+    },
+    {
+      "id": "C616",
+      "req": "R264",
+      "run": [
+        "bats",
+        "--print-output-on-failure",
+        "-f",
+        "R264",
+        "tests/mutate-rule-none-docs.bats"
+      ],
+      "files": [
+        "tests/mutate-rule-none-docs.bats"
+      ]
+    },
+    {
+      "id": "C617",
+      "req": "R266",
+      "run": [
+        "bats",
+        "--print-output-on-failure",
+        "-f",
+        "R266:",
+        "tests/apply-narrow.bats"
+      ],
+      "files": [
+        "tests/apply-narrow.bats"
+      ]
+    },
+    {
+      "id": "C618",
+      "req": "R266",
+      "run": [
+        "bats",
+        "--print-output-on-failure",
+        "-f",
+        "R266 docs",
+        "tests/apply-narrow.bats"
+      ],
+      "files": [
+        "tests/apply-narrow.bats"
+      ]
+    },
+    {
+      "id": "C619",
+      "req": "R267",
+      "run": [
+        "bats",
+        "--print-output-on-failure",
+        "-f",
+        "R267",
+        "tests/clean-copy-worktrees.bats"
+      ],
+      "files": [
+        "tests/clean-copy-worktrees.bats"
+      ]
+    },
+    {
+      "id": "C620",
+      "req": "R267",
+      "run": [
+        "bats",
+        "--print-output-on-failure",
+        "-f",
+        "R267",
+        "tests/clean-copy-docs.bats"
+      ],
+      "files": [
+        "tests/clean-copy-docs.bats"
+      ]
+    },
+    {
+      "id": "C621",
+      "req": "R267",
+      "run": [
+        "bats",
+        "--print-output-on-failure",
+        "-f",
+        "R267:",
+        "tests/l3-results.bats"
+      ],
+      "files": [
+        "tests/l3-results.bats"
+      ]
     }
   ],
   "project": {
@@ -17037,7 +17317,7 @@
       "milestone": "M42",
       "rules": [
         {
-          "text": "vbw mutate PLAN Rn.k --none REASON is accepted (exit 0, the entry written) only when the rule's check has a current recorded run with a read list, no git flag, and no read file or listed folder covered by a files entry of any plan of Rn, done or not",
+          "text": "accepted only when the check's run is current and has a read list that no file or folder of the requirement's plans covers; a run that read the project through git is the R264 case, accepted on its reason alone and marked git",
           "check": "C448",
           "plan": "P164.1"
         },
@@ -17057,7 +17337,7 @@
           "plan": "P164.1"
         },
         {
-          "text": "a run that read the project through git is refused saying its files are unknown; a run with no read list is refused saying the file system recorded none",
+          "text": "a run with no read list is refused saying the file system recorded none",
           "check": "C448",
           "plan": "P164.1"
         },
@@ -19927,11 +20207,52 @@
     },
     {
       "id": "R263",
-      "text": "Rust pack wording fits parallel plans and real commands (T245): the Lead is told a plan names every file it changes in a crate and that two plans may share a crate when their files are disjoint, with a Cargo.toml or lockfile change in one plan at a time; QA treats a workspace-wide command inside an ordinary check as a finding only when it compiles or runs tests, so a tool that only reads the lockfile is no finding; the Dev, Lead, QA texts and docs/packs.md cover a dependency added or moved, including one reached through a path dependency that the other workspace's manifest never names",
+      "text": "Rust pack wording fits parallel plans and real commands (T245): the Lead is told a plan names every file it changes in a crate and that two plans may share a crate when their files are disjoint, with a Cargo.toml or lockfile change in one plan at a time, a file many plans share (a module list in lib.rs or mod.rs, a shared enum, a manifest, a lockfile) set up once in an early skeleton plan or split per module so later plans do not wait on one file, and a later plan that needs a dependency the skeleton did not cover waiting on the plan that adds it, stated in the plan; QA treats a workspace-wide command inside an ordinary check as a finding only when it compiles or runs tests, so a tool that only reads the lockfile is no finding; the Dev, Lead, QA texts and docs/packs.md cover a dependency added or moved, including one reached through a path dependency that the other workspace's manifest never names",
       "proof": "auto",
       "status": "open",
       "milestone": "M54",
-      "rules": []
+      "rules": [
+        {
+          "text": "lead.md: a plan names every file it changes in a crate, and two plans may share a crate when their file lists have no file in common; the whole-crate rule is gone",
+          "check": "C602",
+          "plan": "P212.1"
+        },
+        {
+          "text": "lead.md: a change to Cargo.toml or a lockfile goes in one plan at a time",
+          "check": "C602",
+          "plan": "P212.1"
+        },
+        {
+          "text": "lead.md: a file many plans would touch (a module list in lib.rs or mod.rs, a shared enum, a manifest, a lockfile) is set up once in an early skeleton plan or split so each later plan owns its own module file",
+          "check": "C602",
+          "plan": "P212.1"
+        },
+        {
+          "text": "lead.md: a later plan that needs a dependency the skeleton did not add waits (an after entry) on the plan that adds it, and the plan says so",
+          "check": "C602",
+          "plan": "P212.1"
+        },
+        {
+          "text": "qa.md: a workspace-wide command inside an ordinary check is a finding only when it compiles or runs tests (cargo test, build, check, clippy); cargo metadata, cargo tree, cargo pkgid or a lockfile diff is no finding",
+          "check": "C602",
+          "plan": "P212.1"
+        },
+        {
+          "text": "dev.md, lead.md and qa.md cover a dependency added or moved between crates, one reached through a path dependency (the other workspace's manifest never names it) included: the Dev commits every affected lockfile, the Lead lists them, QA treats a missing one as a finding",
+          "check": "C602",
+          "plan": "P212.1"
+        },
+        {
+          "text": "docs/packs.md's Rust section holds those rules word for word with the pack texts",
+          "check": "C603",
+          "plan": "P212.1"
+        },
+        {
+          "text": "scenario_rustpack runs with the Lead planning a two-crate workspace and its result is committed as tools/l3-results/rustpack.json: the Lead's plans name every file they change and no two plans change the same file",
+          "check": "C604",
+          "plan": "P212.2"
+        }
+      ]
     },
     {
       "id": "R264",
@@ -19939,23 +20260,181 @@
       "proof": "auto",
       "status": "open",
       "milestone": "M54",
-      "rules": []
+      "rules": [
+        {
+          "text": "--none REASON on a check whose recorded run reads the project through git is accepted: entry {rule, none, git: true, at, head}, one line printed naming the check, git and the reason",
+          "check": "C613",
+          "plan": "P214.1"
+        },
+        {
+          "text": "an empty or missing reason is refused saying a reason is needed and why (no read list can vouch for the check); nothing runs, nothing is recorded",
+          "check": "C613",
+          "plan": "P214.1"
+        },
+        {
+          "text": "the validator accepts git: true only on a rule --none entry and refuses it on a task entry, a recorded break, or as any other value",
+          "check": "C613",
+          "plan": "P214.1"
+        },
+        {
+          "text": "the git mark is schema 14, the table's top, which VBW_SCHEMA_MAX follows; a none entry without it stays 12",
+          "check": "C614",
+          "plan": "P214.1"
+        },
+        {
+          "text": "docs/record.md's Versioning table has the row 14 and says VBW_SCHEMA_MAX is currently 14",
+          "check": "C615",
+          "plan": "P214.1"
+        },
+        {
+          "text": "vbw show contract and vbw show contract --changes list every git-read excuse since the last approval, one line each (plan, rule, check id, reason), in the block vbw ship shares; none is listed after the next approval",
+          "check": "C613",
+          "plan": "P214.1"
+        },
+        {
+          "text": "vbw show plan and vbw show req print 'no break possible: CHECK reads the project through git (REASON)', and vbw plan done counts the entry",
+          "check": "C613",
+          "plan": "P214.1"
+        },
+        {
+          "text": "docs/proof.md's mutation check section and docs/workflows.md's mutate row and section state the git case: accepted on its reason, marked git, listed at the next gate; a check with a read list never needs it",
+          "check": "C616",
+          "plan": "P214.2"
+        }
+      ]
     },
     {
       "id": "R265",
-      "text": "vbw mutate never loses uncommitted work (T247): uncommitted content in a file vbw mutate takes as a break is never lost: after the run the working copy holds what the kernel was given, or vbw mutate refuses before touching the file and says to commit first; plugin/agents/dev.md tells a Dev to commit before making a break",
+      "text": "vbw mutate never loses uncommitted work (T247): uncommitted content in a file vbw mutate takes as a break is never lost: vbw mutate never writes to or deletes the working copy, so after the run it holds exactly what the kernel was given and the Dev edits the break back out; the same broken bytes sent twice are refused as a forgotten break; plugin/agents/dev.md tells a Dev to commit before making a break and to edit the break out afterwards",
       "proof": "auto",
       "status": "open",
       "milestone": "M54",
-      "rules": []
+      "rules": [
+        {
+          "text": "after vbw mutate PLAN Rn.k WHAT FILE... every named file holds byte for byte what it held: content and mode, an untracked file still exists, a symlink is still a link, a deleted file stays deleted",
+          "check": "C605",
+          "plan": "P213.1"
+        },
+        {
+          "text": "after a taskK break the named files hold what the Dev gave, the same way",
+          "check": "C605",
+          "plan": "P213.1"
+        },
+        {
+          "text": "after vbw mutate --queue the file keeps the break; after --run the working copy still holds it",
+          "check": "C606",
+          "plan": "P213.1"
+        },
+        {
+          "text": "the checks are judged on the broken bytes through the set-aside copy while the working copy keeps the break; another Dev's vbw check meanwhile gets the unbroken result",
+          "check": "C607",
+          "plan": "P213.1"
+        },
+        {
+          "text": "cmd-mutate.sh and mutate-queue.sh run no git restore, no git checkout, and no rm on a project path outside .vbw/runtime",
+          "check": "C605",
+          "plan": "P213.1"
+        },
+        {
+          "text": "the same broken bytes sent twice at the same commit are refused in one line naming the earlier break (its target and time) and saying the break was not edited out, exit non-zero; nothing runs, nothing is recorded, and other bytes are accepted",
+          "check": "C605",
+          "plan": "P213.1"
+        },
+        {
+          "text": "the same bytes queued twice, or sent singly after being queued, are refused the same way, naming the queued break",
+          "check": "C606",
+          "plan": "P213.1"
+        },
+        {
+          "text": "each mutation entry gains digests: one sha-256 per broken file, 'absent' for a deleted file; the record validator requires the key on a recorded break and refuses a digest for a file the break did not name",
+          "check": "C605",
+          "plan": "P213.1"
+        },
+        {
+          "text": "a queued entry's meta.json carries the digests and the time, and its recorded result carries the digests",
+          "check": "C606",
+          "plan": "P213.1"
+        },
+        {
+          "text": "digests is schema 13, a table row of its own, which VBW_SCHEMA_MAX follows; a fresh vbw mutate record is schema 13",
+          "check": "C609",
+          "plan": "P213.1"
+        },
+        {
+          "text": "docs/record.md's Versioning table has the row 13 and the plans row describes the digests",
+          "check": "C610",
+          "plan": "P213.1"
+        },
+        {
+          "text": "vbw plan done still refuses 'ID has uncommitted changes in: FILES' while a break is left in a plan file",
+          "check": "C608",
+          "plan": "P213.1"
+        },
+        {
+          "text": "dev.md step 4: commit every finished task before a break, the kernel leaves the file as given, edit the break out right after each mutate and before the next --queue; 'it undoes the break' and 'check the file is unchanged' are gone",
+          "check": "C611",
+          "plan": "P213.2"
+        },
+        {
+          "text": "docs/workflows.md's mutate row and paragraph say the break stays in the working copy, the Dev edits it out and the same bytes twice are refused; 'VBW undoes the break' is gone",
+          "check": "C611",
+          "plan": "P213.2"
+        },
+        {
+          "text": "scenario_taskbreak runs with the break left in the working copy and its result is committed as tools/l3-results/taskbreak.json: the break was edited out and no file was lost",
+          "check": "C612",
+          "plan": "P213.3"
+        }
+      ]
     },
     {
       "id": "R266",
-      "text": "vbw apply --patch never answers with a raw error on a partial plan (T248): a plan row in a patch that names an existing plan and leaves out fields keeps that plan's other fields, as a check row's merge by id does, or is refused in one line naming the missing field; a jq error or an internal error about rigor tiers never reaches the caller, and docs/workflows.md says which it is",
+      "text": "vbw apply --patch never answers with a raw error on a partial plan (T248): a plan or check row in a patch that names an existing row and leaves out fields keeps that row's other fields, and an explicit null removes an optional field; a row that is new and lacks a required field is refused in one line naming it; a jq error or an internal error about rigor tiers never reaches the caller, and docs/workflows.md says so",
       "proof": "auto",
       "status": "open",
       "milestone": "M54",
-      "rules": []
+      "rules": [
+        {
+          "text": "a patch row naming an existing plan and leaving fields out keeps the plan's other fields (the T248 shapes: id and files only; no reqs; no files)",
+          "check": "C617",
+          "plan": "P215.1"
+        },
+        {
+          "text": "a patch row naming an existing check and leaving fields out keeps the check's other fields",
+          "check": "C617",
+          "plan": "P215.1"
+        },
+        {
+          "text": "an explicit null removes an optional field: plan after, tasks, role; check exit, output, timeout, alone, files",
+          "check": "C617",
+          "plan": "P215.1"
+        },
+        {
+          "text": "null on a required field (plan: phase, title, reqs, files; check: req, run) is refused in one line naming the row id and the field; the record is unchanged",
+          "check": "C617",
+          "plan": "P215.1"
+        },
+        {
+          "text": "a new row lacking a required field is refused as '--patch refused: ...' naming the row and the field, with a Next: line; nothing is written",
+          "check": "C617",
+          "plan": "P215.1"
+        },
+        {
+          "text": "no jq error text and no internal error about the rigor tiers reaches the caller",
+          "check": "C617",
+          "plan": "P215.1"
+        },
+        {
+          "text": "while a build run is open a plan or rule patch is still refused and a check-only partial row merges",
+          "check": "C617",
+          "plan": "P215.1"
+        },
+        {
+          "text": "docs/workflows.md's --patch row and merge list say a row with an existing id is merged field by field, an explicit null removes an optional field, and a missing required field is refused naming it",
+          "check": "C618",
+          "plan": "P215.2"
+        }
+      ]
     },
     {
       "id": "R267",
@@ -19963,7 +20442,33 @@
       "proof": "auto",
       "status": "open",
       "milestone": "M54",
-      "rules": []
+      "rules": [
+        {
+          "text": "proofcopy_disk_kind answers clone or plain by trying a copy-on-write clone of a small file under .vbw/runtime and leaves nothing behind; VBW_PROOFCOPY_DISK=clone|plain injects the answer; PROOFCOPY_BUILD_DIRS plays no part",
+          "check": "C619",
+          "plan": "P216.1"
+        },
+        {
+          "text": "vbw doctor: on a plain disk today's leave-out line; on a cloning disk an info line (little cost) with no leave-out step; the disk decides, never the folder's name (target/ on plain gets leave-out, data/ on clone gets keep)",
+          "check": "C619",
+          "plan": "P216.1"
+        },
+        {
+          "text": "vbw init: on a plain disk the commented leave-out line; on a cloning disk the info line, no commented leave-out line, the Clean copy section and its comment kept; an existing spec.md is never rewritten",
+          "check": "C619",
+          "plan": "P216.1"
+        },
+        {
+          "text": "docs/proof.md's init paragraph and doctor sentence say the suggestion follows the disk's answer and name the override; the proof-time line is unchanged",
+          "check": "C620",
+          "plan": "P216.2"
+        },
+        {
+          "text": "scenario_leaveout runs against the disk's own answer and its result is committed as tools/l3-results/leaveout.json with the answer and that the suggestion matched it",
+          "check": "C621",
+          "plan": "P216.3"
+        }
+      ]
     }
   ],
   "phases": [
@@ -30360,6 +30865,146 @@
         "qa_findings": 0,
         "escalations": 0
       }
+    },
+    {
+      "id": "P212",
+      "title": "Rust pack: plans that share a crate, and checks that only read the lockfile",
+      "reqs": [
+        "R263"
+      ],
+      "milestone": "M54",
+      "goal": "A Lead planning a Rust project cuts plans that can build side by side inside one crate without waiting on one shared file, and QA stops flagging harmless workspace-wide commands.",
+      "criteria": [
+        "plugin/packs/rust/lead.md tells the Lead, in its own words, each of these: a plan names every file it changes in a crate; two plans may share a crate when their file lists have no file in common; a change to Cargo.toml or a lockfile goes in one plan at a time; a file many plans would touch (a module list in lib.rs or mod.rs, a shared enum, a manifest, a lockfile) is set up once in an early skeleton plan or split so each later plan owns its own module file; a later plan that needs a dependency the skeleton did not add waits (an `after` entry) on the plan that adds it, and the plan says so.",
+        "plugin/packs/rust/qa.md says a workspace-wide command inside an ordinary check (one not marked alone) is a finding only when that command compiles or runs tests (cargo test, cargo build, cargo check, cargo clippy on the workspace); a command that only reads the lockfile or the manifest (cargo metadata, cargo tree, cargo pkgid, a lockfile diff) is no finding.",
+        "plugin/packs/rust/dev.md, lead.md and qa.md each cover a dependency that is added or moved between crates, including one reached through a path dependency (crate A depends on a local folder crate B, so B's new dependency must land in A's workspace Cargo.lock even though A's manifest never names it): the Dev commits every affected lockfile with the change, the Lead lists those lockfiles in the plan, QA treats a missing one as a finding.",
+        "docs/packs.md's Rust pack section lists these points so the docs match the pack texts word for word on the rules (the test compares them).",
+        "tests/packs.bats has a case per new sentence (lead: disjoint files, one manifest change at a time, skeleton or split, waiting on the adding plan; qa: compile-or-test qualification; all three: moved dependency, path dependency) and tests/packs-docs.bats pins docs/packs.md; each case fails on the current texts.",
+        "The rustpack real-user scenario (tools/l3-suite.sh scenario_rustpack) runs again on this branch and its result is committed as tools/l3-results/rustpack.json: the Lead's plans on the fixture name every file they change and no two plans change the same file."
+      ],
+      "tier": "deep",
+      "reasons": [
+        "requirements: 1",
+        "files: 7 (340976 bytes)",
+        "files: more than 2 in a repository tracking 1283 files",
+        "risk: none",
+        "breaks: R4, R5, R8, R41, R80, R188, R193, R196, R197, R203, R205, R207, R210, R230, R261",
+        "guarded: R13 (C12), R14 (C13), R25 (C24), R28 (C25), R31 (C27), R34 (C30), R39 (C36), R42 (C38), R44 (C44, C45), R48 (C49, C50), R50 (C51), R51 (C52, C53, C66), R59 (C68, C92), R60 (C72, C94), R61 (C73, C74, C75, C76, C77), R62 (C78, C79, C80, C81, C82, C83, C93), R64 (C84, C85), R65 (C86, C87, C88, C89, C90), R69 (C110, C120, C122), R70 (C114), R72 (C116, C118), R73 (C98), R74 (C99, C100), R75 (C101), R76 (C102, C103), R77 (C104), R78 (C105, C106), R79 (C107), R81 (C109, C111, C112, C113), R95 (C149, C150), R96 (C151, C152), R99 (C155), R101 (C179), R106 (C164, C165), R107 (C166, C167), R116 (C182, C183), R118 (C184), R123 (C190, C191), R129 (C196), R130 (C197), R134 (C201), R135 (C202), R147 (C212, C215, C237), R148 (C213, C214, C216, C238), R156 (C242, C243), R157 (C244), R158 (C245), R159 (C246), R160 (C247, C263, C264), R162 (C249), R163 (C250), R167 (C257, C258, C259, C260), R173 (C281, C282, C283, C284, C285, C286, C289), R179 (C297, C298, C299, C300, C301, C302, C303, C304, C305, C306, C312), R180 (C307, C308, C309, C310), R182 (C322, C323, C324, C325, C326), R184 (C328, C329, C330, C331, C332, C333), R185 (C334, C335, C336, C337, C338, C339, C340, C341, C342, C343), R186 (C344, C345, C346, C347, C348), R189 (C360, C361, C362, C363, C364, C365, C366, C367, C368, C369, C370, C371, C372, C373), R190 (C374, C375, C376, C377, C378, C379, C380, C381, C382, C383, C384, C385, C386, C387, C388), R191 (C389, C390, C391, C392, C393, C394, C395, C396, C397, C398, C399, C400), R192 (C401, C402, C403, C404, C405, C406, C407, C408, C409, C410), R194 (C417, C418, C419), R199 (C424, C425, C430), R200 (C426, C427, C431), R201 (C428, C429), R202 (C432, C433, C434, C435, C436, C437, C438, C439, C440, C441, C442, C443, C444, C445, C446, C447), R208 (C464, C465, C466, C468), R209 (C469, C470, C471, C472, C473), R211 (C477, C478, C479), R212 (C480, C481, C482), R213 (C483, C484), R215 (C488, C489, C490), R216 (C491, C492, C493), R219 (C497, C498, C499), R220 (C500, C501, C502, C503), R228 (C522, C523, C524, C525), R237 (C544), R238 (C545), R239 (C554, C555), R240 (C556, C557), R241 (C546, C547, C548, C549, C550, C560), R242 (C551, C552, C553), R244 (C562, C563), R245 (C564, C565), R246 (C566, C567), R250 (C574, C575, C576, C577, C578, C585), R262 (C601)",
+        "tests: project test command"
+      ],
+      "predicted": "deep"
+    },
+    {
+      "id": "P213",
+      "title": "vbw mutate never touches the working copy",
+      "reqs": [
+        "R265"
+      ],
+      "milestone": "M54",
+      "goal": "A Dev's uncommitted work is never lost by a mutation check: vbw mutate reads the break, runs the checks in its own copy, and leaves every file exactly as it found it.",
+      "criteria": [
+        "After `vbw mutate PLAN Rn.k WHAT FILE...`, `vbw mutate PLAN Rn.k --queue WHAT FILE...` and `vbw mutate PLAN taskK WHAT FILE...`, every named file holds byte for byte what it held before the command (same content, same mode, a symbolic link still a link); an untracked file named as a break still exists; a file the break deleted stays deleted. plugin/lib/cmd-mutate.sh and plugin/lib/mutate-queue.sh run no `git restore`, `git checkout` and no `rm` on any path under the project outside .vbw/runtime.",
+        "The checks are still judged on the broken bytes: the proof copy receives the named files from the set-aside copy exactly as today (red and survivor results, the strengthen and pending paths, the queue's --run) and the recorded mutation entry is the same as before but for the new key below; tests/mutate-command.bats, tests/mutate-isolation.bats and tests/mutate-queue.bats pass with the restore gone, and the mutate-isolation cases prove the working copy still holds the break while the proof copy ran it.",
+        "The same broken bytes sent twice are refused: when a named file's difference from its last commit is identical to the difference an earlier recorded break of this plan carried for that file, the command refuses in one line that names the earlier break (its target Rn.k or taskK and its time) and says the break was not edited out, exits non-zero, runs nothing and records nothing. The same holds for --queue (a second queue entry with the same bytes) and across a single break followed by a queued one.",
+        "To know an earlier break's bytes, each recorded mutation entry gains one key holding a digest per broken file (sha256 of the file's difference from the last commit, or of its absence); plugin/lib/record.jq validates it, the schema table gets its row (VBW_SCHEMA_MAX 12 becomes 13 as D614's rule prescribes) and docs/record.md names the key; an older record without it loads and is raised on its next write (D582).",
+        "`vbw plan done` still refuses a plan whose file holds a break (`ID has uncommitted changes in: FILES`): pinned by a case that runs a mutation and then plan done without editing the break out.",
+        "plugin/agents/dev.md step 4 tells the Dev to commit every finished task before making a break, that the kernel leaves the file as given, and to edit the break out right after each mutate (and before the next --queue); the sentences `it undoes the break` and `check the file is unchanged` are gone. docs/workflows.md (the mutate row near line 242 and the `VBW undoes the break` paragraph near line 344) say the file stays as the Dev left it and the Dev edits the break out; tests/mutate-prompts.bats or a docs test pins both.",
+        "The taskbreak real-user scenario (scenario_taskbreak) runs again and its result file is committed: the Dev commits, breaks, runs mutate, edits the break out, and the plan reaches done with no file lost."
+      ],
+      "tier": "deep",
+      "reasons": [
+        "requirements: 1",
+        "files: 10 (487453 bytes)",
+        "files: more than 2 in a repository tracking 1283 files",
+        "risk: deletion (R265)",
+        "breaks: R4, R5, R8, R41, R80, R188, R193, R196, R197, R203, R205, R207, R210, R217, R230, R247, R258",
+        "guarded: R1 (C1), R2 (C2), R13 (C12), R14 (C13), R22 (C19), R23 (C20), R24 (C23), R25 (C24), R27 (C21), R28 (C25), R31 (C27), R33 (C29), R34 (C30), R38 (C33, C34), R39 (C36), R40 (C37), R42 (C38), R43 (C42, C43), R44 (C44, C45), R45 (C39, C40, C41), R46 (C46), R47 (C47), R48 (C49, C50), R49 (C48), R50 (C51), R51 (C52, C53, C66), R59 (C68, C92), R60 (C72, C94), R61 (C73, C74, C75, C76, C77), R62 (C78, C79, C80, C81, C82, C83, C93), R64 (C84, C85), R65 (C86, C87, C88, C89, C90), R69 (C110, C120, C122), R70 (C114), R72 (C116, C118), R73 (C98), R74 (C99, C100), R75 (C101), R76 (C102, C103), R77 (C104), R78 (C105, C106), R79 (C107), R81 (C109, C111, C112, C113), R95 (C149, C150), R96 (C151, C152), R99 (C155), R101 (C179), R106 (C164, C165), R107 (C166, C167), R111 (C171, C172, C173, C174, C175), R115 (C181), R116 (C182, C183), R118 (C184), R119 (C180), R121 (C187, C188), R123 (C190, C191), R127 (C194), R129 (C196), R130 (C197), R131 (C198), R132 (C199), R133 (C195), R134 (C201), R135 (C202), R144 (C208, C209), R146 (C211), R147 (C212, C215, C237), R148 (C213, C214, C216, C238), R149 (C217, C218, C219, C220, C221, C222), R150 (C223, C224, C225, C226, C227, C228, C229, C230), R153 (C235, C236, C239), R156 (C242, C243), R157 (C244), R158 (C245), R159 (C246), R160 (C247, C263, C264), R161 (C248, C265, C266), R162 (C249), R163 (C250), R165 (C252), R166 (C253, C254, C255, C256, C267), R167 (C257, C258, C259, C260), R173 (C281, C282, C283, C284, C285, C286, C289), R177 (C287, C288), R178 (C290, C291, C292, C293, C294, C295, C296, C311), R179 (C297, C298, C299, C300, C301, C302, C303, C304, C305, C306, C312), R180 (C307, C308, C309, C310), R182 (C322, C323, C324, C325, C326), R184 (C328, C329, C330, C331, C332, C333), R185 (C334, C335, C336, C337, C338, C339, C340, C341, C342, C343), R186 (C344, C345, C346, C347, C348), R189 (C360, C361, C362, C363, C364, C365, C366, C367, C368, C369, C370, C371, C372, C373), R190 (C374, C375, C376, C377, C378, C379, C380, C381, C382, C383, C384, C385, C386, C387, C388), R191 (C389, C390, C391, C392, C393, C394, C395, C396, C397, C398, C399, C400), R192 (C401, C402, C403, C404, C405, C406, C407, C408, C409, C410), R194 (C417, C418, C419), R199 (C424, C425, C430), R200 (C426, C427, C431), R201 (C428, C429), R202 (C432, C433, C434, C435, C436, C437, C438, C439, C440, C441, C442, C443, C444, C445, C446, C447), R204 (C451, C452, C453, C454), R208 (C464, C465, C466, C468), R209 (C469, C470, C471, C472, C473), R211 (C477, C478, C479), R212 (C480, C481, C482), R213 (C483, C484), R215 (C488, C489, C490), R216 (C491, C492, C493), R219 (C497, C498, C499), R220 (C500, C501, C502, C503), R225 (C517, C518, C519), R228 (C522, C523, C524, C525), R236 (C537), R237 (C544), R238 (C545), R239 (C554, C555), R240 (C556, C557), R241 (C546, C547, C548, C549, C550, C560), R242 (C551, C552, C553), R244 (C562, C563), R245 (C564, C565), R246 (C566, C567), R248 (C570), R249 (C571, C572, C573), R250 (C574, C575, C576, C577, C578, C585), R255 (C584), R259 (C593, C594, C595), R262 (C601)",
+        "tests: project test command"
+      ],
+      "predicted": "deep"
+    },
+    {
+      "id": "P214",
+      "title": "A rule whose check reads git has an honest way out of vbw mutate",
+      "reqs": [
+        "R264"
+      ],
+      "milestone": "M54",
+      "goal": "A Dev whose rule is checked by a test that reads the project through git can record, with a reason, that no break is possible, and that excuse is visible at every gate instead of silently passing.",
+      "criteria": [
+        "`vbw mutate PLAN Rn.k --none \"REASON\"` on a rule whose check's recorded run has git == true (today refused at cmd-mutate.sh:106) is accepted: it records on the plan a none entry carrying a mark that the check read the project through git (one new key on the mutation entry, validated in plugin/lib/record.jq, with its schema row: VBW_SCHEMA_MAX 13 becomes 14 after P213, or 12 becomes 13 if P214 lands first) and prints one line saying the check reads the project through git, that no break was run, and the reason.",
+        "`vbw mutate PLAN Rn.k --none` with an empty or missing reason on such a check is refused by a message that says a reason is what it needs and why (the check reads the project through git, so no read list can vouch for the rule); nothing is recorded.",
+        "A rule whose check has a read list keeps today's judgement exactly: a read list touching the plans' files refuses and names them; a read list touching none accepts and records the plain none entry without the git mark; tests/mutate-rule-none.bats cases pass unchanged.",
+        "`vbw show contract --changes` and `vbw ship` (through plugin/lib/contract.sh's amendments block or a block beside it) list every git-read excuse recorded since the last approval, one line each with the plan, the rule Rn.k, the check id and the reason; `vbw show plan` and `vbw show req` print the entry as `no break possible: CHECK reads the project through git (REASON)` instead of `no code could change its outcome`.",
+        "`vbw plan done` counts the excuse as the rule's satisfied break (cmd-plan.sh:112 `has(\"none\")` already does); a case pins it.",
+        "docs/proof.md's R203 section and docs/workflows.md's mutate row say when the excuse applies, that it is listed at the next gate, and that a check with a read list never needs it; tests/mutate-rule-none-docs.bats pins the wording; the new command cases live in tests/mutate-rule-none.bats and the gate listing cases in the show-contract and ship test files of the amendments block."
+      ],
+      "tier": "deep",
+      "reasons": [
+        "requirements: 1",
+        "files: 9 (361583 bytes)",
+        "files: more than 2 in a repository tracking 1283 files",
+        "risk: none",
+        "breaks: R80, R188, R193, R196, R197, R203, R205, R207, R210, R214, R217, R230, R232, R247, R253, R256, R258",
+        "guarded: R1 (C1), R2 (C2), R10 (C9), R12 (C11), R13 (C12), R14 (C13), R22 (C19), R23 (C20), R24 (C23), R25 (C24), R27 (C21), R28 (C25), R31 (C27), R32 (C28), R33 (C29), R38 (C33, C34), R39 (C36), R40 (C37), R43 (C42, C43), R44 (C44, C45), R45 (C39, C40, C41), R46 (C46), R47 (C47), R48 (C49, C50), R49 (C48), R50 (C51), R60 (C72, C94), R61 (C73, C74, C75, C76, C77), R62 (C78, C79, C80, C81, C82, C83, C93), R65 (C86, C87, C88, C89, C90), R66 (C95), R69 (C110, C120, C122), R70 (C114), R73 (C98), R74 (C99, C100), R75 (C101), R76 (C102, C103), R77 (C104), R78 (C105, C106), R79 (C107), R81 (C109, C111, C112, C113), R92 (C131, C132, C133, C134, C135, C136, C137, C138, C139), R93 (C140, C141, C142, C143, C144), R94 (C145, C146, C147, C148), R95 (C149, C150), R96 (C151, C152), R97 (C153), R98 (C154), R99 (C155), R100 (C156), R101 (C179), R102 (C158, C159), R103 (C160), R104 (C161, C162), R105 (C163), R106 (C164, C165), R107 (C166, C167), R110 (C169, C170), R111 (C171, C172, C173, C174, C175), R115 (C181), R116 (C182, C183), R118 (C184), R119 (C180), R121 (C187, C188), R123 (C190, C191), R127 (C194), R129 (C196), R130 (C197), R131 (C198), R132 (C199), R133 (C195), R134 (C201), R135 (C202), R144 (C208, C209), R146 (C211), R147 (C212, C215, C237), R148 (C213, C214, C216, C238), R149 (C217, C218, C219, C220, C221, C222), R150 (C223, C224, C225, C226, C227, C228, C229, C230), R152 (C233, C234), R153 (C235, C236, C239), R156 (C242, C243), R157 (C244), R158 (C245), R159 (C246), R160 (C247, C263, C264), R161 (C248, C265, C266), R162 (C249), R163 (C250), R165 (C252), R166 (C253, C254, C255, C256, C267), R167 (C257, C258, C259, C260), R168 (C261, C262), R169 (C268), R170 (C269), R173 (C281, C282, C283, C284, C285, C286, C289), R174 (C279, C280), R175 (C274, C275), R176 (C276, C277, C278), R178 (C290, C291, C292, C293, C294, C295, C296, C311), R179 (C297, C298, C299, C300, C301, C302, C303, C304, C305, C306, C312), R180 (C307, C308, C309, C310), R181 (C313, C314, C315, C316, C317, C318, C319, C320, C321), R182 (C322, C323, C324, C325, C326), R183 (C327), R186 (C344, C345, C346, C347, C348), R191 (C389, C390, C391, C392, C393, C394, C395, C396, C397, C398, C399, C400), R192 (C401, C402, C403, C404, C405, C406, C407, C408, C409, C410), R194 (C417, C418, C419), R195 (C420, C421, C422), R202 (C432, C433, C434, C435, C436, C437, C438, C439, C440, C441, C442, C443, C444, C445, C446, C447), R204 (C451, C452, C453, C454), R206 (C459, C460), R208 (C464, C465, C466, C468), R209 (C469, C470, C471, C472, C473), R211 (C477, C478, C479), R212 (C480, C481, C482), R213 (C483, C484), R215 (C488, C489, C490), R216 (C491, C492, C493), R219 (C497, C498, C499), R220 (C500, C501, C502, C503), R221 (C504), R225 (C517, C518, C519), R226 (C510, C511), R228 (C522, C523, C524, C525), R236 (C537), R238 (C545), R239 (C554, C555), R241 (C546, C547, C548, C549, C550, C560), R242 (C551, C552, C553), R244 (C562, C563), R245 (C564, C565), R246 (C566, C567), R248 (C570), R249 (C571, C572, C573), R250 (C574, C575, C576, C577, C578, C585), R251 (C579), R252 (C580), R255 (C584), R257 (C588, C589), R259 (C593, C594, C595), R260 (C596, C597), R262 (C601)",
+        "tests: project test command"
+      ],
+      "predicted": "deep"
+    },
+    {
+      "id": "P215",
+      "title": "vbw apply --patch keeps a row's other fields and refuses in one line",
+      "reqs": [
+        "R266"
+      ],
+      "milestone": "M54",
+      "goal": "A Lead who patches one field of an existing plan or check gets a merged row, and a wrong patch gets one plain refusal instead of a raw jq or internal error.",
+      "criteria": [
+        "A patch plan row naming an existing id with some fields left out (for example only `id` and `title`) keeps that row's other fields (phase, reqs, files, after, tasks, role) from the record; the written record validates and `vbw show plan` shows the merged row. The same for a check row (run, files, req, exit, output, timeout, alone kept).",
+        "An explicit `null` on an optional field of an existing row removes it (plan: after, tasks, role; check: exit, output, timeout, alone, files where files are optional); `null` on a required field (plan: phase, title, reqs, files; check: req, run) is refused in one line naming the row id and the field.",
+        "A new row (an id the record lacks) missing a required field is refused in one line that names the row id and the field, in the `--patch refused: ...` form with its Next: line (apply_refuse at cmd-apply.sh:182), and nothing is written.",
+        "No jq error text (`Cannot iterate over null`, `jq: error`) and no `internal error: cannot compute the rigor tiers` reaches the caller for any partial or malformed row: the row validation runs before the merge and before rigor_assess, and tests/apply-narrow.bats sends the T248 shape (a plan row with id and one field) and a new plan with no reqs, asserting the one-line refusal or the merged result and the absence of those texts.",
+        "A patch carrying plans or rules while a build run is open is still refused as today (cmd-apply.sh:419-424); a check-only patch during a build still merges field by field.",
+        "docs/workflows.md (the --patch row near line 250 and the merge list near line 437) says a plan or check with an existing id is merged field by field, null removes an optional field, and a new row needs every required field; a docs test pins it."
+      ],
+      "tier": "deep",
+      "reasons": [
+        "requirements: 1",
+        "files: 2 (119836 bytes)",
+        "risk: none",
+        "breaks: R80, R188, R193, R196, R197, R203, R207, R210, R230",
+        "guarded: R13 (C12), R14 (C13), R22 (C19), R23 (C20), R24 (C23), R25 (C24), R27 (C21), R28 (C25), R31 (C27), R39 (C36), R43 (C42, C43), R44 (C44, C45), R45 (C39, C40, C41), R46 (C46), R50 (C51), R60 (C72, C94), R66 (C95), R69 (C110, C120, C122), R70 (C114), R71 (C115, C121), R73 (C98), R74 (C99, C100), R75 (C101), R76 (C102, C103), R77 (C104), R78 (C105, C106), R79 (C107), R81 (C109, C111, C112, C113), R95 (C149, C150), R96 (C151, C152), R99 (C155), R101 (C179), R106 (C164, C165), R107 (C166, C167), R116 (C182, C183), R118 (C184), R123 (C190, C191), R129 (C196), R130 (C197), R134 (C201), R135 (C202), R147 (C212, C215, C237), R148 (C213, C214, C216, C238), R149 (C217, C218, C219, C220, C221, C222), R156 (C242, C243), R157 (C244), R158 (C245), R159 (C246), R160 (C247, C263, C264), R162 (C249), R163 (C250), R167 (C257, C258, C259, C260), R179 (C297, C298, C299, C300, C301, C302, C303, C304, C305, C306, C312), R180 (C307, C308, C309, C310), R182 (C322, C323, C324, C325, C326), R186 (C344, C345, C346, C347, C348), R192 (C401, C402, C403, C404, C405, C406, C407, C408, C409, C410), R194 (C417, C418, C419), R209 (C469, C470, C471, C472, C473), R211 (C477, C478, C479), R212 (C480, C481, C482), R213 (C483, C484), R215 (C488, C489, C490), R216 (C491, C492, C493), R219 (C497, C498, C499), R220 (C500, C501, C502, C503), R228 (C522, C523, C524, C525), R239 (C554, C555), R241 (C546, C547, C548, C549, C550, C560), R242 (C551, C552, C553), R244 (C562, C563), R245 (C564, C565), R250 (C574, C575, C576, C577, C578, C585), R259 (C593, C594, C595), R262 (C601)",
+        "tests: project test command"
+      ],
+      "predicted": "deep"
+    },
+    {
+      "id": "P216",
+      "title": "The large-folder suggestion asks the disk",
+      "reqs": [
+        "R267"
+      ],
+      "milestone": "M54",
+      "goal": "vbw doctor and vbw init tell a user to leave a large git-ignored folder out of the clean copy only when their disk really copies it file by file; on a disk that clones instantly they say keeping it is cheap and can save rebuilds.",
+      "criteria": [
+        "plugin/lib/proofcopy.sh gains one helper that answers `clone` or `plain` by trying a copy-on-write clone (cp -c on macOS, cp --reflink elsewhere: the disk's instant copy that shares storage) of a small file it writes under .vbw/runtime inside the project, cleaning up after itself, never writing outside the project; the answer never comes from the folder's name, the stack or the language, and the name-based build-folder list (PROOFCOPY_BUILD_DIRS) plays no part in the suggestion.",
+        "On a plain-copy disk, `vbw doctor` prints today's line for each large git-ignored folder not already in project.leave_out (`large git-ignored folder X (size) is copied into every proof copy`, next step `list X under Clean copy in .vbw/spec.md, then vbw spec sync`); on a clone disk it prints an info line naming the folder and its size, saying each proof copy clones it at little cost and that keeping it can save rebuilds, with no leave-out next step.",
+        "`vbw init` on a plain-copy disk prints the leave-out paragraph and writes the commented leave-out lines under Clean copy in the new .vbw/spec.md as today; on a clone disk it prints the folders with the low-cost and saved-rebuilds wording, suggests no leave-out, and writes no commented leave-out lines (the Clean copy section and its explanatory comment stay); an existing spec.md is still never rewritten.",
+        "Tests run both branches on any machine by injecting the disk's answer (an override hook or variable the tests set, documented in the helper), and one case per command proves the answer is the probe's, not the name's: a folder named `target` on a plain disk gets the leave-out suggestion and a folder named `data` on a clone disk gets the keep wording; a case proves the helper itself returns `clone` or `plain` on the test machine's disk and leaves nothing behind. The cases live in tests/clean-copy-spec.bats, tests/plugindir-doctor.bats and tests/init-approval-wording.bats; tests/clean-copy-docs.bats pins the docs.",
+        "docs/proof.md (the init paragraph near lines 275-280 and the doctor line near line 1008) describe both wordings and that the disk is tested, not guessed; the proof-time line (R206, proofcopy_plain_say) is unchanged.",
+        "The leaveout real-user scenario (scenario_leaveout) runs again on this branch and its result is committed as tools/l3-results/leaveout.json, with the wording the scenario's disk gets."
+      ],
+      "tier": "deep",
+      "reasons": [
+        "requirements: 1",
+        "files: 6 (430896 bytes)",
+        "files: more than 2 in a repository tracking 1283 files",
+        "risk: none",
+        "breaks: R4, R5, R8, R41, R80, R188, R193, R196, R197, R203, R205, R207, R210, R214, R217, R232, R253, R256, R258",
+        "guarded: R12 (C11), R22 (C19), R24 (C23), R31 (C27), R32 (C28), R33 (C29), R34 (C30), R42 (C38), R43 (C42, C43), R44 (C44, C45), R45 (C39, C40, C41), R46 (C46), R47 (C47), R48 (C49, C50), R49 (C48), R51 (C52, C53, C66), R59 (C68, C92), R61 (C73, C74, C75, C76, C77), R62 (C78, C79, C80, C81, C82, C83, C93), R64 (C84, C85), R65 (C86, C87, C88, C89, C90), R66 (C95), R69 (C110, C120, C122), R70 (C114), R72 (C116, C118), R73 (C98), R74 (C99, C100), R78 (C105, C106), R79 (C107), R81 (C109, C111, C112, C113), R83 (C119), R92 (C131, C132, C133, C134, C135, C136, C137, C138, C139), R93 (C140, C141, C142, C143, C144), R94 (C145, C146, C147, C148), R97 (C153), R98 (C154), R100 (C156), R103 (C160), R104 (C161, C162), R105 (C163), R109 (C168), R110 (C169, C170), R111 (C171, C172, C173, C174, C175), R115 (C181), R116 (C182, C183), R118 (C184), R131 (C198), R132 (C199), R134 (C201), R135 (C202), R144 (C208, C209), R147 (C212, C215, C237), R148 (C213, C214, C216, C238), R149 (C217, C218, C219, C220, C221, C222), R150 (C223, C224, C225, C226, C227, C228, C229, C230), R152 (C233, C234), R153 (C235, C236, C239), R160 (C247, C263, C264), R161 (C248, C265, C266), R166 (C253, C254, C255, C256, C267), R167 (C257, C258, C259, C260), R168 (C261, C262), R169 (C268), R170 (C269), R173 (C281, C282, C283, C284, C285, C286, C289), R174 (C279, C280), R175 (C274, C275), R176 (C276, C277, C278), R180 (C307, C308, C309, C310), R181 (C313, C314, C315, C316, C317, C318, C319, C320, C321), R182 (C322, C323, C324, C325, C326), R183 (C327), R184 (C328, C329, C330, C331, C332, C333), R185 (C334, C335, C336, C337, C338, C339, C340, C341, C342, C343), R189 (C360, C361, C362, C363, C364, C365, C366, C367, C368, C369, C370, C371, C372, C373), R190 (C374, C375, C376, C377, C378, C379, C380, C381, C382, C383, C384, C385, C386, C387, C388), R191 (C389, C390, C391, C392, C393, C394, C395, C396, C397, C398, C399, C400), R192 (C401, C402, C403, C404, C405, C406, C407, C408, C409, C410), R194 (C417, C418, C419), R195 (C420, C421, C422), R199 (C424, C425, C430), R200 (C426, C427, C431), R201 (C428, C429), R202 (C432, C433, C434, C435, C436, C437, C438, C439, C440, C441, C442, C443, C444, C445, C446, C447), R204 (C451, C452, C453, C454), R206 (C459, C460), R208 (C464, C465, C466, C468), R209 (C469, C470, C471, C472, C473), R211 (C477, C478, C479), R212 (C480, C481, C482), R213 (C483, C484), R215 (C488, C489, C490), R216 (C491, C492, C493), R218 (C496), R220 (C500, C501, C502, C503), R221 (C504), R223 (C507, C508, C509), R225 (C517, C518, C519), R226 (C510, C511), R228 (C522, C523, C524, C525), R237 (C544), R238 (C545), R240 (C556, C557), R246 (C566, C567), R251 (C579), R252 (C580), R257 (C588, C589), R259 (C593, C594, C595), R260 (C596, C597), R262 (C601)",
+        "tests: project test command"
+      ],
+      "predicted": "deep"
     }
   ],
   "plans": [
@@ -68982,6 +69627,268 @@
           "contract": "fd7bfb3b23835dd08e5c06e13a2e3d325d839477f58b34fb4b625f8491ce0b9d"
         }
       ]
+    },
+    {
+      "id": "P212.1",
+      "phase": "P212",
+      "title": "Rust pack texts: disjoint files per crate, one manifest change at a time, real-command findings, moved dependencies; docs/packs.md word for word",
+      "reqs": [
+        "R263"
+      ],
+      "files": [
+        "plugin/packs/rust/lead.md",
+        "plugin/packs/rust/qa.md",
+        "plugin/packs/rust/dev.md",
+        "docs/packs.md"
+      ],
+      "after": [],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "lead.md: a plan names every file it changes; two plans share a crate when their file lists have no file in common; Cargo.toml or a lockfile changes in one plan at a time; a shared file (module list in lib.rs or mod.rs, a shared enum, manifest, lockfile) is set up once in an early skeleton plan or split per module; a later plan needing a dependency the skeleton did not add waits (after) on the plan that adds it and says so",
+        "qa.md: a workspace-wide command inside an ordinary check is a finding only when it compiles or runs tests (cargo test, build, check, clippy); cargo metadata, cargo tree, cargo pkgid or a lockfile diff is no finding",
+        "dev.md, lead.md, qa.md: a dependency added or moved between crates, one reached through a path dependency (the other workspace's manifest never names it) included: the Dev commits every affected lockfile, the Lead lists them in the plan, QA treats a missing one as a finding",
+        "docs/packs.md Rust section: the same rules, word for word with the pack texts"
+      ]
+    },
+    {
+      "id": "P212.2",
+      "phase": "P212",
+      "title": "scenario_rustpack: the Lead plans a two-crate workspace; result committed",
+      "reqs": [
+        "R263"
+      ],
+      "files": [
+        "tools/l3-suite.sh",
+        "tools/l3-results/rustpack.json",
+        "docs/workflows.md"
+      ],
+      "after": [
+        "P212.1",
+        "P213.2"
+      ],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "scenario_rustpack: a fixture whose spec asks for two features in one crate (or a two-crate workspace) with no seeded plan, so /vbw:vibe runs the Lead with the Rust pack; facts lead_planned, plan_files_named (every plan names each file it changes), plan_files_disjoint (no two plans change the same file), read from the record",
+        "docs/workflows.md rustpack scenario line: what the scenario now judges",
+        "run the scenario; commit tools/l3-results/rustpack.json (fixture, cost, L3, facts, not_tested)"
+      ]
+    },
+    {
+      "id": "P213.1",
+      "phase": "P213",
+      "title": "vbw mutate leaves the working copy alone: set-aside copy only, digests per broken file, the same bytes twice refused (schema 13)",
+      "reqs": [
+        "R265"
+      ],
+      "files": [
+        "plugin/lib/cmd-mutate.sh",
+        "plugin/lib/mutate-queue.sh",
+        "plugin/lib/record.jq",
+        "plugin/lib/record-schema.jq",
+        "plugin/lib/record.sh",
+        "docs/record.md"
+      ],
+      "after": [],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "cmd-mutate.sh and mutate-queue.sh: the broken bytes are copied to the set-aside folder and the checks judge them from there; no git restore, no git checkout, no rm of a project path: the working copy (content, mode, symlink, untracked, deleted) is never touched, directly, with --queue, or for taskK",
+        "digests: one sha-256 per broken file (\"absent\" for a deleted one) in each mutation entry and in each queued entry's meta.json (with at); mutate_record writes it; record.jq requires it on a recorded break and refuses a digest for a file the break did not name",
+        "the same bytes twice: before any check runs (after the dirty-check-file refusal), a break whose digests equal an earlier entry's or a queued entry's of the same plan at the same HEAD is refused in one line naming the earlier break's target and time, 'not edited out', exit non-zero, nothing run or recorded; also for --queue and for a single break after a queued one",
+        "record-schema.jq row 13 'a recorded break that carries digests', VBW_SCHEMA_MAX 13, docs/record.md: Versioning row and the plans row; vbw plan done keeps refusing 'ID has uncommitted changes in: FILES'"
+      ]
+    },
+    {
+      "id": "P213.2",
+      "phase": "P213",
+      "title": "Dev brief and docs/workflows.md: commit before a break, edit the break out, nothing is undone",
+      "reqs": [
+        "R265"
+      ],
+      "files": [
+        "plugin/agents/dev.md",
+        "docs/workflows.md"
+      ],
+      "after": [],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "dev.md step 4: commit every finished task before a break; the kernel leaves the file as given; edit the break out right after each vbw mutate and before the next --queue; remove 'it undoes the break' and 'check the file is unchanged'",
+        "docs/workflows.md: the vbw mutate row and the 'VBW undoes the break' paragraph say the break stays in the working copy, the Dev edits it out, the same bytes twice are refused naming the earlier break"
+      ]
+    },
+    {
+      "id": "P213.3",
+      "phase": "P213",
+      "title": "scenario_taskbreak re-run with the break left in the working copy; result committed",
+      "reqs": [
+        "R265"
+      ],
+      "files": [
+        "tools/l3-suite.sh",
+        "tools/l3-results/taskbreak.json"
+      ],
+      "after": [
+        "P213.1",
+        "P213.2",
+        "P212.2"
+      ],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "scenario_taskbreak: facts break_left_in_working_copy (the file held the break after vbw mutate, from the session log and git), break_edited_out (the Dev's next commit holds no break), no_file_lost (every plan file at the end matches its commit); fixchecks_seed and any seed that sends the same bytes twice sends distinct bytes per break",
+        "run the scenario; commit tools/l3-results/taskbreak.json"
+      ]
+    },
+    {
+      "id": "P214.1",
+      "phase": "P214",
+      "title": "vbw mutate --none on a git-reading check: accepted on its reason, marked git, listed at the gate (schema 14)",
+      "reqs": [
+        "R264"
+      ],
+      "files": [
+        "plugin/lib/cmd-mutate.sh",
+        "plugin/lib/record.jq",
+        "plugin/lib/record-schema.jq",
+        "plugin/lib/record.sh",
+        "docs/record.md",
+        "plugin/lib/contract.sh",
+        "plugin/lib/cmd-show.sh"
+      ],
+      "after": [
+        "P213.1"
+      ],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "mutate_rule_none: a recorded run with git == true is accepted: entry {rule, none, git: true, at, head}, one printed line naming the check, git and the reason; the empty-reason refusal says a reason is needed and why (no read list can vouch for a check that reads the project through git), before any run; the read-list cases unchanged",
+        "record.jq: git may only be true, only on a rule none entry; record-schema.jq row 14 'a rule entry marked git', VBW_SCHEMA_MAX 14; docs/record.md row and plans row",
+        "contract.sh contract_amendments_block: 'git-read excuses since the last approval:' then '  PLAN: Rn.k CHECK (REASON)' per entry recorded after the clone's last contract grant (so vbw show contract, --changes and vbw ship all print it); cmd-show.sh: show plan prints '  Rn.k: no break possible: CHECK reads the project through git (REASON)' and show req the same words in [breaks: ...]; cmd-plan.sh already counts a none entry"
+      ]
+    },
+    {
+      "id": "P214.2",
+      "phase": "P214",
+      "title": "docs/proof.md R203 section and docs/workflows.md: the git case of --none",
+      "reqs": [
+        "R264"
+      ],
+      "files": [
+        "docs/proof.md",
+        "docs/workflows.md"
+      ],
+      "after": [
+        "P214.1",
+        "P215.2",
+        "P216.2"
+      ],
+      "status": "planned",
+      "role": "docs",
+      "tasks": [
+        "docs/proof.md 'The mutation check': a check that reads the project through git is recorded --none on its reason alone, marked git, listed at the next gate (show contract, --changes, ship) until the next approval; a check with a read list never needs it",
+        "docs/workflows.md: the vbw mutate row names the git case; the mutation check section names the git-read excuses listing and the 'no break possible' line"
+      ]
+    },
+    {
+      "id": "P215.1",
+      "phase": "P215",
+      "title": "vbw apply --patch merges a row field by field and refuses in one line",
+      "reqs": [
+        "R266"
+      ],
+      "files": [
+        "plugin/lib/cmd-apply.sh"
+      ],
+      "after": [],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "validate every patch row before the merge: an existing-id row is merged onto the record's row field by field, an explicit null removes an optional field (plan: after, tasks, role; check: exit, output, timeout, alone, files)",
+        "refusals: null on a required field (plan: phase, title, reqs, files; check: req, run) and a new row lacking one are refused as '--patch refused: ...' in one line naming the row id and the field, with the Next: line, before rigor_assess, so no jq error and no 'internal error: cannot compute the rigor tiers' reaches the caller",
+        "the open-run rule as before: plans or rules during a build refused, a check-only partial row merges"
+      ]
+    },
+    {
+      "id": "P215.2",
+      "phase": "P215",
+      "title": "docs/workflows.md: the --patch row and merge list",
+      "reqs": [
+        "R266"
+      ],
+      "files": [
+        "docs/workflows.md"
+      ],
+      "after": [
+        "P212.2"
+      ],
+      "status": "planned",
+      "role": "docs",
+      "tasks": [
+        "the --patch row: a row with an existing id keeps its other fields; the merge list: merged field by field, explicit null removes an optional field, a missing required field is refused naming it"
+      ]
+    },
+    {
+      "id": "P216.1",
+      "phase": "P216",
+      "title": "proofcopy_disk_kind asks the disk; doctor and init follow its answer",
+      "reqs": [
+        "R267"
+      ],
+      "files": [
+        "plugin/lib/proofcopy.sh",
+        "plugin/lib/cmd-doctor.sh",
+        "plugin/lib/cmd-init.sh"
+      ],
+      "after": [],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "proofcopy.sh: proofcopy_disk_kind prints clone or plain by cloning a small file under $VBW_RUNTIME (cp -c on Darwin, cp --reflink=always elsewhere) and removing the probe; VBW_PROOFCOPY_DISK=clone|plain overrides it (documented in the file as the test override); never by name, stack or language, PROOFCOPY_BUILD_DIRS plays no part",
+        "cmd-doctor.sh: plain keeps today's line and next step; clone prints an info line (the folder is cloned at little cost; keeping it can save rebuilds) with no leave-out step",
+        "cmd-init.sh: plain keeps today's paragraph and commented leave-out lines; clone prints the info paragraph and writes no commented leave-out line, the Clean copy section and its comment stay; an existing spec.md is never rewritten"
+      ]
+    },
+    {
+      "id": "P216.2",
+      "phase": "P216",
+      "title": "docs/proof.md: the large-folder suggestion follows the disk",
+      "reqs": [
+        "R267"
+      ],
+      "files": [
+        "docs/proof.md"
+      ],
+      "after": [],
+      "status": "planned",
+      "role": "docs",
+      "tasks": [
+        "the init paragraph: vbw init suggests leaving a folder out only where the disk makes a plain copy, on a cloning disk it names the folder with its size and little cost; the doctor sentence likewise; the VBW_PROOFCOPY_DISK override named; the proof-time line unchanged"
+      ]
+    },
+    {
+      "id": "P216.3",
+      "phase": "P216",
+      "title": "scenario_leaveout re-run against the disk's answer; result committed",
+      "reqs": [
+        "R267"
+      ],
+      "files": [
+        "tools/l3-suite.sh",
+        "tools/l3-results/leaveout.json"
+      ],
+      "after": [
+        "P216.1",
+        "P213.3"
+      ],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "scenario_leaveout: facts disk_kind (proofcopy_disk_kind's answer on the machine) and suggestion_matches_disk (plain: the leave-out suggestion was made; clone: the info line and no commented line)",
+        "run the scenario; commit tools/l3-results/leaveout.json"
+      ]
     }
   ],
   "fixes": [
@@ -77143,6 +78050,24 @@
       "id": "D633",
       "at": "2026-11-06T21:25:51Z",
       "text": "Shipped M53 A first Rust stack pack, proofs that leave the machine usable, and a reworded rule that keeps its history: 7 requirements proven or accepted"
+    },
+    {
+      "id": "D634",
+      "text": "vbw mutate leaves the working file exactly as given; the Dev edits the break out",
+      "why": "Lead's decision under the owner's standing rule: nothing can be wiped and VBW never touches user files; cost is one edit per break, and repeated broken bytes and plan done catch a forgotten break",
+      "at": "2026-11-06T23:07:39Z"
+    },
+    {
+      "id": "D635",
+      "text": "A partial plan or check row in vbw apply --patch keeps the existing row's other fields; null removes an optional one",
+      "why": "Lead's decision under the owner's standing rule: matches --amend and rule edits, fewer round trips; docs change for plans and checks alike",
+      "at": "2026-11-06T23:07:40Z"
+    },
+    {
+      "id": "D636",
+      "text": "The Rust pack tells the Lead to set up shared files once in a skeleton plan or split them per module",
+      "why": "Adopted from the Rust project's lead: their project rule and plan counts, not a measurement; a general way to keep parallel plans from waiting on one file",
+      "at": "2026-11-06T23:07:42Z"
     }
   ],
   "commands": {
@@ -87501,6 +88426,17 @@
         "ended": "2026-11-06T23:06:46Z",
         "cost": {
           "usd": 7.849307
+        }
+      },
+      {
+        "id": "plan-20261106T230747Z",
+        "kind": "plan",
+        "session": "0ee781c3-c5b6-4a6c-889f-04b89f1fba4a",
+        "milestone": "M54",
+        "started": "2026-11-06T23:07:47Z",
+        "ended": "2026-11-06T23:53:16Z",
+        "cost": {
+          "usd": 21.190463
         }
       }
     ],

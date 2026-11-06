@@ -53,11 +53,8 @@ PENDING='survives the approved check; caught by the pending one'
 
 breaks() { jq -c '[.plans[] | select(.id == "P1.1") | .mutations // [] | .[]]' .vbw/record.json; }
 last_break() { breaks | jq -c 'last'; }
-# same_as_head FILE: the working file is byte-identical to its last commit.
-same_as_head() {
-  [ -z "$(git status --porcelain -- "$1")" ] || { echo "$1 differs from HEAD: $(git status --porcelain -- "$1")"; return 1; }
-  cmp -s "$1" <(git show "HEAD:$1") || { echo "$1 is not its last commit"; return 1; }
-}
+# kept_break FILE: the working file still differs from its last commit (R265: the kernel never puts it back).
+kept_break() { [ -n "$(git status --porcelain -- "$1")" ] || { echo "$1 was put back to its last commit by the kernel"; return 1; }; }
 # break_pay TARGET: the break C1 cannot notice as approved, for TARGET (R1.1 or task1).
 break_pay() {
   printf 'echo unpaid\n' > src/pay.sh
@@ -81,7 +78,7 @@ strengthen() {
   [ "$status" -eq 0 ] || { echo "$output"; false; }
   printf '%s\n' "$output" | grep -qF "R1.1 $PENDING: tests/pay.sh" || { echo "$output"; false; }
   last_break | jq -e '.rule == {req: "R1", k: 1} and .result == "red" and .checks == {C1: "red"} and .pending == ["tests/pay.sh"]' || { last_break; false; }
-  same_as_head src/pay.sh
+  kept_break src/pay.sh
 }
 
 @test "R196: the same words for a task break whose earlier survivor was recorded as a task" {
@@ -151,6 +148,7 @@ strengthen() {
   [ "$status" -eq 0 ] || { echo "$output"; false; }
   printf '%s\n' "$output" | grep -F "$PENDING" | grep -q 'tests/pay\.sh' || { echo "$output"; false; }
   "$VBW" show plan P1.1 --json < /dev/null | jq -e '.plan.mutations | last | .pending == ["tests/pay.sh"] and .result == "red"'
+  git checkout -q -- src/pay.sh
   # shellcheck disable=SC1010 # "done" is a vbw subcommand
   run "$VBW" plan done P1.1 < /dev/null
   [ "$status" -eq 0 ] || { echo "$output"; false; }
