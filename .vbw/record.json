@@ -68019,7 +68019,7 @@
       "after": [
         "P208.1"
       ],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "cmd-spec.sh: a changed [auto] text keeps the requirement's rules in their places and words, resets its status to open, sets reworded: true and says 'changed Rn (status reset to open, N rules kept)'; a proof change from auto to human drops the rules and the requirement's checks (their files leave protected) and the message names them, because the record allows neither on a human requirement; a change to auto still gives fresh rules: []",
@@ -68027,6 +68027,134 @@
         "planning.js and the vibe skill: the router passes detail.reworded as reworded in the planning workflow's args; the 'Plan these phases' prompt line names the reworded requirements when there are any, and is unchanged otherwise",
         "agents/lead.md: for a reworded requirement, review its kept rules: keep one that still holds, reword one whose words are now wrong, retire one whose behaviour changed, each through vbw apply --patch by address; a rule is removed only by an explicit retire, never by a sync",
         "docs/proof.md Rules and docs/record.md requirements row: a changed text keeps the rules (reworded, reviewed by the Lead at the next plan step), a change to human drops rules and checks, retire stays explicit; the sentence about resetting the rules to pending on a text change is gone"
+      ],
+      "mutations": [
+        {
+          "rule": {
+            "req": "R259",
+            "k": 1
+          },
+          "what": "a reworded requirement is not marked reworded",
+          "files": [
+            "plugin/lib/cmd-spec.sh"
+          ],
+          "checks": {
+            "C593": "red"
+          },
+          "result": "red",
+          "at": "2026-11-06T12:32:51Z",
+          "head": "0c8b69fbd1d14cd912d3e6b7c1bf13576c756be4",
+          "tree": "4e75a604a677dac0a68065e910d23865e3804ce3",
+          "contract": "7e2628a36313853977aa09f1571905202a29fc095bbfe8e8e28f875aae6e12cb"
+        },
+        {
+          "rule": {
+            "req": "R259",
+            "k": 2
+          },
+          "what": "a requirement changed to human keeps its checks",
+          "files": [
+            "plugin/lib/cmd-spec.sh"
+          ],
+          "checks": {
+            "C593": "red"
+          },
+          "result": "red",
+          "at": "2026-11-06T12:32:53Z",
+          "head": "0c8b69fbd1d14cd912d3e6b7c1bf13576c756be4",
+          "tree": "4e75a604a677dac0a68065e910d23865e3804ce3",
+          "contract": "7e2628a36313853977aa09f1571905202a29fc095bbfe8e8e28f875aae6e12cb"
+        },
+        {
+          "rule": {
+            "req": "R259",
+            "k": 3
+          },
+          "what": "the reworded requirement keeps its old text",
+          "files": [
+            "plugin/lib/cmd-spec.sh"
+          ],
+          "checks": {
+            "C593": "red"
+          },
+          "result": "red",
+          "at": "2026-11-06T12:32:55Z",
+          "head": "0c8b69fbd1d14cd912d3e6b7c1bf13576c756be4",
+          "tree": "4e75a604a677dac0a68065e910d23865e3804ce3",
+          "contract": "7e2628a36313853977aa09f1571905202a29fc095bbfe8e8e28f875aae6e12cb"
+        },
+        {
+          "rule": {
+            "req": "R259",
+            "k": 4
+          },
+          "what": "the plan step does not list the reworded requirements",
+          "files": [
+            "plugin/lib/next.jq"
+          ],
+          "checks": {
+            "C593": "red"
+          },
+          "result": "red",
+          "at": "2026-11-06T12:32:57Z",
+          "head": "0c8b69fbd1d14cd912d3e6b7c1bf13576c756be4",
+          "tree": "4e75a604a677dac0a68065e910d23865e3804ce3",
+          "contract": "7e2628a36313853977aa09f1571905202a29fc095bbfe8e8e28f875aae6e12cb"
+        },
+        {
+          "rule": {
+            "req": "R259",
+            "k": 5
+          },
+          "what": "the Lead's plan prompt does not name the reworded requirements",
+          "files": [
+            "plugin/workflows/planning.js"
+          ],
+          "checks": {
+            "C594": "red"
+          },
+          "result": "red",
+          "at": "2026-11-06T12:32:59Z",
+          "head": "0c8b69fbd1d14cd912d3e6b7c1bf13576c756be4",
+          "tree": "4e75a604a677dac0a68065e910d23865e3804ce3",
+          "contract": "7e2628a36313853977aa09f1571905202a29fc095bbfe8e8e28f875aae6e12cb"
+        },
+        {
+          "rule": {
+            "req": "R259",
+            "k": 6
+          },
+          "what": "the Lead's brief no longer says a rule is removed only by an explicit retire",
+          "files": [
+            "plugin/agents/lead.md"
+          ],
+          "checks": {
+            "C594": "red"
+          },
+          "result": "red",
+          "at": "2026-11-06T12:33:01Z",
+          "head": "0c8b69fbd1d14cd912d3e6b7c1bf13576c756be4",
+          "tree": "4e75a604a677dac0a68065e910d23865e3804ce3",
+          "contract": "7e2628a36313853977aa09f1571905202a29fc095bbfe8e8e28f875aae6e12cb"
+        },
+        {
+          "rule": {
+            "req": "R259",
+            "k": 7
+          },
+          "what": "proof.md again says a changed text resets the rules to pending",
+          "files": [
+            "docs/proof.md"
+          ],
+          "checks": {
+            "C595": "red"
+          },
+          "result": "red",
+          "at": "2026-11-06T12:33:03Z",
+          "head": "0c8b69fbd1d14cd912d3e6b7c1bf13576c756be4",
+          "tree": "4e75a604a677dac0a68065e910d23865e3804ce3",
+          "contract": "7e2628a36313853977aa09f1571905202a29fc095bbfe8e8e28f875aae6e12cb"
+        }
       ]
     },
     {
@@ -86144,6 +86272,17 @@
         "ended": "2026-11-06T12:25:50Z",
         "cost": {
           "usd": 0.178379
+        }
+      },
+      {
+        "id": "build-20261106T122603Z",
+        "kind": "build",
+        "session": "0ee781c3-c5b6-4a6c-889f-04b89f1fba4a",
+        "milestone": "M53",
+        "started": "2026-11-06T12:26:03Z",
+        "ended": "2026-11-06T12:33:46Z",
+        "cost": {
+          "usd": 0.907295
         }
       }
     ],
