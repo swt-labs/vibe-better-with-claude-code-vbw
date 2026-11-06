@@ -67748,7 +67748,7 @@
       "after": [
         "P208.2"
       ],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "record-schema.jq and record.sh: a new top row, schema 12, feature text exactly 'a break that names its rule by place or a requirement reworded with its rules kept', present when any break's rule has k or any requirement has reworded true; VBW_SCHEMA_MAX becomes 10 (tests/standards.bats already pins the digest of this shape: the draft in .vbw/runtime/scratch/schema10/lib digests to it, so change no other key list or value)",
@@ -86133,6 +86133,17 @@
         "ended": "2026-11-06T12:23:55Z",
         "cost": {
           "usd": 0.918335
+        }
+      },
+      {
+        "id": "build-20261106T122411Z",
+        "kind": "build",
+        "session": "0ee781c3-c5b6-4a6c-889f-04b89f1fba4a",
+        "milestone": "M53",
+        "started": "2026-11-06T12:24:11Z",
+        "ended": "2026-11-06T12:25:50Z",
+        "cost": {
+          "usd": 0.178379
         }
       }
     ],
