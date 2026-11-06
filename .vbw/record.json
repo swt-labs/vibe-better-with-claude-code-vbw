@@ -73521,6 +73521,11 @@
       "id": "T249",
       "text": "doctor and init suggest leaving large ignored folders out of the clean copy even on a copy-on-write disk (adapted from field feedback): there a build output folder costs little and saves rebuilds. On a copy-on-write disk say so and do not suggest it; keep the suggestion on a plain-copy disk. Measure the disk, do not special-case Rust.",
       "status": "open"
+    },
+    {
+      "id": "T250",
+      "text": "tests/proof-priority.bats line 124 fails on Linux: /bin links to /usr/bin, and a dangling link fails [ -e ], so ln runs twice; test [ -e ] or [ -L ]. Red on PR 749, Linux shard 3 only. Test-only.",
+      "status": "open"
     }
   ],
   "decisions": [
