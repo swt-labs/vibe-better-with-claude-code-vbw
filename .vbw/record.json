@@ -67441,7 +67441,7 @@
         "docs/proof.md"
       ],
       "after": [],
-      "status": "blocked",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "checks.sh: checks_exec runs every unit under nice (the system program that lowers a process's priority) by putting it before the timeout or perl command, when nice is on PATH (looked up once per process); no other file calls nice, so prove, fix done, mutate and the mutate queue all get it",
@@ -67450,7 +67450,278 @@
         "core.sh: vbw_check_jobs reads 1 when VBW_PROOF_UNIT is set and the clone has no valid check_jobs setting; vbw_check_jobs_source then prints a reason starting 'inside another proof's unit'; a set value (1 to 64) still wins and the range check is unchanged",
         "docs/proof.md, The computer-wide limit: the limit counts units running at once, not processor use; one unit may use more than one core (see Cores per unit); units run at low priority (nice) so the machine stays usable, at normal priority when nice is missing; a proof started inside another proof's unit (VBW_PROOF_UNIT) takes one unit at a time by default and the project's check_jobs setting overrides it"
       ],
-      "note": "Code and docs are done and committed (C587, C589 pass; proof-priority tests 1,3,4,5,6 and nested tests 2,4,5,6 pass). Three approved check cases fail for faults in the check files themselves, which I may not edit: (a) tests/proof-priority.bats 'fix done' case: its fixture never marks P1.1 done, so vbw fix done F1 finds no finished requirement and runs 0 checks (output 'checks: 0 ran'); needs status:\"done\" on the plan as tests/check-jobs-nested.bats has. (b) tests/check-jobs-nested.bats case 1: it runs vbw decide before the second prove, which changes the record so the first proof no longer counts as proved and the units are reused (all 'reused', none run), so the store-off env is never written; remove the decide. (c) same file case 3: the first 'marked prove' passes and closes F1, so 'marked fix done F1' says 'F1 is not open'; the fix must be reopened before it."
+      "mutations": [
+        {
+          "rule": {
+            "req": "R256",
+            "text": "a check run by vbw prove has a higher nice value than the same command run by hand"
+          },
+          "what": "nice removed from checks_exec",
+          "files": [
+            "plugin/lib/checks.sh"
+          ],
+          "checks": {
+            "C586": "red"
+          },
+          "result": "red",
+          "at": "2026-11-06T10:12:24Z",
+          "head": "90d7372212bd368ebe9b67168574053d7a1293d5",
+          "tree": "88548ae19f13c6b338b7f4de6ccce6d232e880a4",
+          "contract": "f1ba6fe1bcb190003013d53e8d3c8f0ca476c42b5a2cc95f09d3cfef34e2d065"
+        },
+        {
+          "rule": {
+            "req": "R256",
+            "text": "a check run by vbw fix done has a higher nice value than the same command run by hand"
+          },
+          "what": "nice removed from checks_exec",
+          "files": [
+            "plugin/lib/checks.sh"
+          ],
+          "checks": {
+            "C586": "red"
+          },
+          "result": "red",
+          "at": "2026-11-06T10:12:26Z",
+          "head": "90d7372212bd368ebe9b67168574053d7a1293d5",
+          "tree": "88548ae19f13c6b338b7f4de6ccce6d232e880a4",
+          "contract": "f1ba6fe1bcb190003013d53e8d3c8f0ca476c42b5a2cc95f09d3cfef34e2d065"
+        },
+        {
+          "rule": {
+            "req": "R256",
+            "text": "the checks vbw mutate runs, directly and from its queue (--queue, then --run), have a higher nice value than the same command run by hand"
+          },
+          "what": "nice removed from checks_exec",
+          "files": [
+            "plugin/lib/checks.sh"
+          ],
+          "checks": {
+            "C586": "red"
+          },
+          "result": "red",
+          "at": "2026-11-06T10:12:28Z",
+          "head": "90d7372212bd368ebe9b67168574053d7a1293d5",
+          "tree": "88548ae19f13c6b338b7f4de6ccce6d232e880a4",
+          "contract": "f1ba6fe1bcb190003013d53e8d3c8f0ca476c42b5a2cc95f09d3cfef34e2d065"
+        },
+        {
+          "rule": {
+            "req": "R256",
+            "text": "low priority changes nothing else: a failing unit keeps its exit code and its kept output in the evidence"
+          },
+          "what": "unit exit code forced to 1",
+          "files": [
+            "plugin/lib/checks.sh"
+          ],
+          "checks": {
+            "C586": "red"
+          },
+          "result": "red",
+          "at": "2026-11-06T10:12:29Z",
+          "head": "90d7372212bd368ebe9b67168574053d7a1293d5",
+          "tree": "88548ae19f13c6b338b7f4de6ccce6d232e880a4",
+          "contract": "f1ba6fe1bcb190003013d53e8d3c8f0ca476c42b5a2cc95f09d3cfef34e2d065"
+        },
+        {
+          "rule": {
+            "req": "R256",
+            "text": "one code path lowers the priority, checks_exec in plugin/lib/checks.sh; no command file runs nice itself"
+          },
+          "what": "cmd-prove.sh runs nice itself",
+          "files": [
+            "plugin/lib/cmd-prove.sh"
+          ],
+          "checks": {
+            "C586": "red"
+          },
+          "result": "red",
+          "at": "2026-11-06T10:12:31Z",
+          "head": "90d7372212bd368ebe9b67168574053d7a1293d5",
+          "tree": "88548ae19f13c6b338b7f4de6ccce6d232e880a4",
+          "contract": "f1ba6fe1bcb190003013d53e8d3c8f0ca476c42b5a2cc95f09d3cfef34e2d065"
+        },
+        {
+          "rule": {
+            "req": "R256",
+            "text": "when nice is not on PATH the units run at normal priority, the proof is not refused, and its summary says so in one line"
+          },
+          "what": "no-nice line removed",
+          "files": [
+            "plugin/lib/cmd-prove.sh"
+          ],
+          "checks": {
+            "C586": "red"
+          },
+          "result": "red",
+          "at": "2026-11-06T10:12:33Z",
+          "head": "90d7372212bd368ebe9b67168574053d7a1293d5",
+          "tree": "88548ae19f13c6b338b7f4de6ccce6d232e880a4",
+          "contract": "f1ba6fe1bcb190003013d53e8d3c8f0ca476c42b5a2cc95f09d3cfef34e2d065"
+        },
+        {
+          "rule": {
+            "req": "R256",
+            "text": "docs/proof.md's computer-wide limit section says the limit counts units running at once, not processor use, and that one unit may use more than one core, pointing to Cores per unit"
+          },
+          "what": "docs: not-processor-use and Cores per unit pointer removed",
+          "files": [
+            "docs/proof.md"
+          ],
+          "checks": {
+            "C587": "red"
+          },
+          "result": "red",
+          "at": "2026-11-06T10:12:35Z",
+          "head": "90d7372212bd368ebe9b67168574053d7a1293d5",
+          "tree": "88548ae19f13c6b338b7f4de6ccce6d232e880a4",
+          "contract": "f1ba6fe1bcb190003013d53e8d3c8f0ca476c42b5a2cc95f09d3cfef34e2d065"
+        },
+        {
+          "rule": {
+            "req": "R256",
+            "text": "docs/proof.md says units run at low priority (nice) so the machine stays usable, and that they run at normal priority when nice is missing"
+          },
+          "what": "docs: low priority claim removed",
+          "files": [
+            "docs/proof.md"
+          ],
+          "checks": {
+            "C587": "red"
+          },
+          "result": "red",
+          "at": "2026-11-06T10:12:37Z",
+          "head": "90d7372212bd368ebe9b67168574053d7a1293d5",
+          "tree": "88548ae19f13c6b338b7f4de6ccce6d232e880a4",
+          "contract": "f1ba6fe1bcb190003013d53e8d3c8f0ca476c42b5a2cc95f09d3cfef34e2d065"
+        },
+        {
+          "rule": {
+            "req": "R257",
+            "text": "vbw prove marks every unit's environment with VBW_PROOF_UNIT=1, with the computer-wide store on and with it off"
+          },
+          "what": "VBW_PROOF_UNIT mark removed",
+          "files": [
+            "plugin/lib/checks.sh"
+          ],
+          "checks": {
+            "C588": "red"
+          },
+          "result": "red",
+          "at": "2026-11-06T10:12:39Z",
+          "head": "90d7372212bd368ebe9b67168574053d7a1293d5",
+          "tree": "88548ae19f13c6b338b7f4de6ccce6d232e880a4",
+          "contract": "f1ba6fe1bcb190003013d53e8d3c8f0ca476c42b5a2cc95f09d3cfef34e2d065"
+        },
+        {
+          "rule": {
+            "req": "R257",
+            "text": "inside a marked unit vbw config shows check_jobs 1 and names the reason (inside another proof's unit), neither set nor machine default"
+          },
+          "what": "reason names machine default",
+          "files": [
+            "plugin/lib/core.sh"
+          ],
+          "checks": {
+            "C588": "red"
+          },
+          "result": "red",
+          "at": "2026-11-06T10:12:41Z",
+          "head": "90d7372212bd368ebe9b67168574053d7a1293d5",
+          "tree": "88548ae19f13c6b338b7f4de6ccce6d232e880a4",
+          "contract": "f1ba6fe1bcb190003013d53e8d3c8f0ca476c42b5a2cc95f09d3cfef34e2d065"
+        },
+        {
+          "rule": {
+            "req": "R257",
+            "text": "inside a marked unit vbw prove, vbw check and vbw fix done run one unit at a time"
+          },
+          "what": "nested default removed",
+          "files": [
+            "plugin/lib/core.sh"
+          ],
+          "checks": {
+            "C588": "red"
+          },
+          "result": "red",
+          "at": "2026-11-06T10:12:43Z",
+          "head": "90d7372212bd368ebe9b67168574053d7a1293d5",
+          "tree": "88548ae19f13c6b338b7f4de6ccce6d232e880a4",
+          "contract": "f1ba6fe1bcb190003013d53e8d3c8f0ca476c42b5a2cc95f09d3cfef34e2d065"
+        },
+        {
+          "rule": {
+            "req": "R257",
+            "text": "a check_jobs value set in the project wins over the nested default, and a value outside 1 to 64 is refused as today"
+          },
+          "what": "nested default beats set value",
+          "files": [
+            "plugin/lib/core.sh"
+          ],
+          "checks": {
+            "C588": "red"
+          },
+          "result": "red",
+          "at": "2026-11-06T10:12:45Z",
+          "head": "90d7372212bd368ebe9b67168574053d7a1293d5",
+          "tree": "88548ae19f13c6b338b7f4de6ccce6d232e880a4",
+          "contract": "f1ba6fe1bcb190003013d53e8d3c8f0ca476c42b5a2cc95f09d3cfef34e2d065"
+        },
+        {
+          "rule": {
+            "req": "R257",
+            "text": "without the mark nothing changes: the machine default of three quarters of the cores, or the set value"
+          },
+          "what": "machine default halved",
+          "files": [
+            "plugin/lib/core.sh"
+          ],
+          "checks": {
+            "C588": "red"
+          },
+          "result": "red",
+          "at": "2026-11-06T10:12:46Z",
+          "head": "90d7372212bd368ebe9b67168574053d7a1293d5",
+          "tree": "88548ae19f13c6b338b7f4de6ccce6d232e880a4",
+          "contract": "f1ba6fe1bcb190003013d53e8d3c8f0ca476c42b5a2cc95f09d3cfef34e2d065"
+        },
+        {
+          "rule": {
+            "req": "R257",
+            "text": "docs/proof.md says a proof started inside another proof's unit (VBW_PROOF_UNIT) takes one unit at a time by default and that the project's check_jobs setting overrides it"
+          },
+          "what": "docs: nested default removed",
+          "files": [
+            "docs/proof.md"
+          ],
+          "checks": {
+            "C589": "red"
+          },
+          "result": "red",
+          "at": "2026-11-06T10:12:48Z",
+          "head": "90d7372212bd368ebe9b67168574053d7a1293d5",
+          "tree": "88548ae19f13c6b338b7f4de6ccce6d232e880a4",
+          "contract": "f1ba6fe1bcb190003013d53e8d3c8f0ca476c42b5a2cc95f09d3cfef34e2d065"
+        },
+        {
+          "rule": {
+            "req": "R257",
+            "text": "tests/helper.bash never strips the mark, so a hermetic test started inside a unit sees it"
+          },
+          "what": "VBW_PROOF_UNIT mark removed",
+          "files": [
+            "plugin/lib/checks.sh"
+          ],
+          "checks": {
+            "C588": "red"
+          },
+          "result": "red",
+          "at": "2026-11-06T10:12:50Z",
+          "head": "90d7372212bd368ebe9b67168574053d7a1293d5",
+          "tree": "88548ae19f13c6b338b7f4de6ccce6d232e880a4",
+          "contract": "f1ba6fe1bcb190003013d53e8d3c8f0ca476c42b5a2cc95f09d3cfef34e2d065"
+        }
+      ]
     },
     {
       "id": "P208.1",
@@ -85581,6 +85852,17 @@
         "ended": "2026-11-06T09:48:16Z",
         "cost": {
           "usd": 0.907893
+        }
+      },
+      {
+        "id": "build-20261106T100136Z",
+        "kind": "build",
+        "session": "0ee781c3-c5b6-4a6c-889f-04b89f1fba4a",
+        "milestone": "M53",
+        "started": "2026-11-06T10:01:36Z",
+        "ended": "2026-11-06T10:14:16Z",
+        "cost": {
+          "usd": 0.895878
         }
       }
     ],
