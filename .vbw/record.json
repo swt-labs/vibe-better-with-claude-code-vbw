@@ -68702,13 +68702,123 @@
         "P210.2",
         "P210.3"
       ],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "scenario_amendfile: a build is open, a file is added to its plan by vbw apply --amend, the build finishes; judged in the record and git, never on screen text: the amendment entry (what, at, session) is recorded, the approval hash is unchanged, the run never ended early, plan done succeeded and the added file is in the plan's commit (facts amendment_recorded, approval_kept, run_not_ended_early, plan_done, added_file_in_commit)",
         "scenario_queuedreq: the user adds a requirement while a build runs; judged: queued during the run, cleared at run end, planned and built by a later plan, the first build's plans not re-planned (facts queued_during_run, cleared_at_run_end, planned_later, built_later, first_plans_kept)",
         "scenario_worktreewrite: a Dev working from a linked worktree (git worktree add) writes into the main checkout while its build run is open; judged: the guard's refusal (a reason starting 'VBW guard:') is in the run's refused list or the transcripts, the main checkout's file is unchanged, the Dev's own plan is done in its worktree (facts guard_refused, main_file_unchanged, worktree_plan_done)",
         "each scenario is in ALL and the header comment, starts from new_project, states its fixture, runs common_checks and ends with result_write NAME \"$fixture\" \"${cost_usd:-0}\" \"$passed\" FACTS NOT_TESTED; docs/workflows.md's scenario notes name the three and what each judges; no tools/l3-results file is written by hand: only a passing run writes one (D551), and the runs themselves (real Claude Code sessions, about 1 to 3 USD each) are the main session's step before the ship, not this plan's"
+      ],
+      "mutations": [
+        {
+          "rule": {
+            "req": "R262",
+            "k": 1
+          },
+          "what": "dropped amendfile from ALL",
+          "files": [
+            "tools/l3-suite.sh"
+          ],
+          "checks": {
+            "C601": "red"
+          },
+          "result": "red",
+          "at": "2026-11-06T13:24:38Z",
+          "head": "4996e25fa84b20fdfe6bc3156c076ddc5c1eff3f",
+          "tree": "9e048c667af90bbd5c3128439abee1fd2a637503",
+          "contract": "fd7bfb3b23835dd08e5c06e13a2e3d325d839477f58b34fb4b625f8491ce0b9d"
+        },
+        {
+          "rule": {
+            "req": "R262",
+            "k": 2
+          },
+          "what": "amendfile uses apply --patch",
+          "files": [
+            "tools/l3-suite.sh"
+          ],
+          "checks": {
+            "C601": "red"
+          },
+          "result": "red",
+          "at": "2026-11-06T13:24:40Z",
+          "head": "4996e25fa84b20fdfe6bc3156c076ddc5c1eff3f",
+          "tree": "9e048c667af90bbd5c3128439abee1fd2a637503",
+          "contract": "fd7bfb3b23835dd08e5c06e13a2e3d325d839477f58b34fb4b625f8491ce0b9d"
+        },
+        {
+          "rule": {
+            "req": "R262",
+            "k": 3
+          },
+          "what": "queuedreq fact renamed",
+          "files": [
+            "tools/l3-suite.sh"
+          ],
+          "checks": {
+            "C601": "red"
+          },
+          "result": "red",
+          "at": "2026-11-06T13:24:42Z",
+          "head": "4996e25fa84b20fdfe6bc3156c076ddc5c1eff3f",
+          "tree": "9e048c667af90bbd5c3128439abee1fd2a637503",
+          "contract": "fd7bfb3b23835dd08e5c06e13a2e3d325d839477f58b34fb4b625f8491ce0b9d"
+        },
+        {
+          "rule": {
+            "req": "R262",
+            "k": 4
+          },
+          "what": "worktreewrite judges no VBW guard: reason",
+          "files": [
+            "tools/l3-suite.sh"
+          ],
+          "checks": {
+            "C601": "red"
+          },
+          "result": "red",
+          "at": "2026-11-06T13:24:44Z",
+          "head": "4996e25fa84b20fdfe6bc3156c076ddc5c1eff3f",
+          "tree": "9e048c667af90bbd5c3128439abee1fd2a637503",
+          "contract": "fd7bfb3b23835dd08e5c06e13a2e3d325d839477f58b34fb4b625f8491ce0b9d"
+        },
+        {
+          "rule": {
+            "req": "R262",
+            "k": 5
+          },
+          "what": "docs name wtwrite",
+          "files": [
+            "docs/workflows.md"
+          ],
+          "checks": {
+            "C601": "red"
+          },
+          "result": "red",
+          "at": "2026-11-06T13:24:46Z",
+          "head": "4996e25fa84b20fdfe6bc3156c076ddc5c1eff3f",
+          "tree": "9e048c667af90bbd5c3128439abee1fd2a637503",
+          "contract": "fd7bfb3b23835dd08e5c06e13a2e3d325d839477f58b34fb4b625f8491ce0b9d"
+        },
+        {
+          "rule": {
+            "req": "R262",
+            "k": 6
+          },
+          "what": "queuedreq writes its result as passed whatever the verdict",
+          "files": [
+            "tools/l3-suite.sh"
+          ],
+          "checks": {
+            "C601": "red"
+          },
+          "result": "red",
+          "at": "2026-11-06T13:24:48Z",
+          "head": "4996e25fa84b20fdfe6bc3156c076ddc5c1eff3f",
+          "tree": "9e048c667af90bbd5c3128439abee1fd2a637503",
+          "contract": "fd7bfb3b23835dd08e5c06e13a2e3d325d839477f58b34fb4b625f8491ce0b9d"
+        }
       ]
     }
   ],
@@ -86767,6 +86877,17 @@
         "ended": "2026-11-06T13:19:17Z",
         "cost": {
           "usd": 0.492675
+        }
+      },
+      {
+        "id": "build-20261106T131933Z",
+        "kind": "build",
+        "session": "0ee781c3-c5b6-4a6c-889f-04b89f1fba4a",
+        "milestone": "M53",
+        "started": "2026-11-06T13:19:33Z",
+        "ended": "2026-11-06T13:25:14Z",
+        "cost": {
+          "usd": 1.081849
         }
       }
     ],
