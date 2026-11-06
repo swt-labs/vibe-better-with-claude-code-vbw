@@ -67746,9 +67746,9 @@
         "docs/proof.md"
       ],
       "after": [
-        "P207.1"
+        "P208.2"
       ],
-      "status": "blocked",
+      "status": "planned",
       "role": "dev",
       "tasks": [
         "record-schema.jq and record.sh: a new top row, schema 12, feature text exactly 'a break that names its rule by place or a requirement reworded with its rules kept', present when any break's rule has k or any requirement has reworded true; VBW_SCHEMA_MAX becomes 10 (tests/standards.bats already pins the digest of this shape: the draft in .vbw/runtime/scratch/schema10/lib digests to it, so change no other key list or value)",
@@ -67846,8 +67846,7 @@
           "tree": "2c2485cf352a300cad2583118e337cdfec65251c",
           "contract": "8226ce44508ab958178a3bb7a645f429c53e1195b57e14c5845112bfe5e86ac0"
         }
-      ],
-      "note": "Code, docs and C590/C592 are done and committed (dfeefeae, cf607840) and every rule/task break ran red. vbw plan done refuses because the first write after each vbw mutate now converts the break to {req, k} (task 3, as planned), while plan done's lookup (plugin/lib/cmd-plan.sh:112) and mutate's own matching (cmd-mutate.sh:390,405,412) still read .rule.text, so they no longer see any break. Those files are P208.2's (R258.4 to R258.8) and are outside this plan, so the plan cannot complete before P208.2 teaches them k. Also: plan text says VBW_SCHEMA_MAX becomes 10 and raises to 10, but main is already at 11, standards.bats pins 12, so I set 12. Option: reorder so P208.2's lookups land first, or let plan done tolerate k breaks."
+      ]
     },
     {
       "id": "P208.2",
@@ -67862,7 +67861,7 @@
         "plugin/lib/cmd-show.sh"
       ],
       "after": [
-        "P208.1"
+        "P207.1"
       ],
       "status": "planned",
       "role": "dev",
@@ -75993,6 +75992,20 @@
       "text": "Contract approved: 251 requirements, 596 checks, 615 plans (8226ce44508a)",
       "plans": [
         "P208.1"
+      ]
+    },
+    {
+      "id": "D619",
+      "text": "P208.2 goes before P208.1's close: P208.1's conversion makes breaks {req, k}, and plan done finds them only through P208.2's lookups; P208.1's code stays committed",
+      "at": "2026-11-06T10:46:53Z"
+    },
+    {
+      "id": "D620",
+      "at": "2026-11-06T12:13:39Z",
+      "text": "Contract approved: 251 requirements, 596 checks, 615 plans (7e2628a36313)",
+      "plans": [
+        "P208.1",
+        "P208.2"
       ]
     }
   ],
