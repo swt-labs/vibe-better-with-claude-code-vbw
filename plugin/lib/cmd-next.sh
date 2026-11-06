@@ -235,6 +235,42 @@ next_decide() {
   printf '%s' "$out" | jq -c '{next, size, road}'
 }
 
+# The jq program of the stack packs (docs/packs.md): a pattern without a slash matches a file's
+# basename, one with a slash the whole path; * matches within one path segment. $mf is the
+# manifests, $r the working record, $tracked the tracked files (NUL separated, read only at the
+# plan action), $pr the plugin folder. A project with no match gets neither packs nor packs_root.
+NEXT_PACKS_JQ='def rx: split("*") | map(gsub("(?<c>[^A-Za-z0-9_])"; "\\\(.c)")) | join("[^/]*") | "^" + . + "$";
+  def packs_of($files): [$mf[] | select(.patterns as $ps | any($files[]; . as $f | ($f | split("/") | last) as $b | any($ps[]; . as $p | (if contains("/") then $f else $b end) | test($p | rx)))) | .name];
+  ([$r[0].plans[]? | {id, phase, p: packs_of(.files // [])} | select(.p | length > 0)]) as $pl
+  | (if .action == "plan" then packs_of($tracked | split("\u0000") | map(select(. != ""))) else [] end) as $tp
+  | {plans: ($pl | map({(.id): .p}) | add // {}),
+     phases: ($pl | group_by(.phase) | map({(.[0].phase): ([.[].p[]] | unique)}) | add // {}),
+     project: (([$pl[].p[]] + $tp) | unique)} as $k
+  | if ($k.project | length) == 0 then . else . + {packs: ($k | with_entries(select(.value | length > 0))), packs_root: ($pr + "/packs")} end'
+
+# next_tracked NEXT: the project's tracked files (git ls-files -z) at the plan action, where no
+# plan exists yet for the Lead's pack; nothing otherwise. The answer's text is a cheap
+# prefilter: the jq program checks the action itself.
+next_tracked() {
+  case $1 in *'"action":"plan"'*) git -C "$VBW_ROOT" ls-files -z 2> /dev/null || : ;; esac
+}
+
+# next_with_root NEXT: the command's --json answer: NEXT with the project folder (vbw root) and,
+# for a project with a match, the packs of its plans, phases and files. One jq call whether or not
+# a pack folder exists; a pack file is read only for its manifest.
+next_with_root() {
+  local f manifests=()
+  for f in "$VBW_PLUGIN"/packs/*/pack.json; do
+    [ ! -f "$f" ] || manifests+=("$f")
+  done
+  if [ "${#manifests[@]}" -eq 0 ]; then
+    printf '%s\n' "$1" | jq -c --arg root "$VBW_ROOT" '. + {root: $root}'
+    return
+  fi
+  printf '%s\n' "$1" | jq -c --arg root "$VBW_ROOT" --arg pr "$VBW_PLUGIN" --slurpfile mf <(cat "${manifests[@]}") --slurpfile r <(printf '%s' "$NP_WORK") --rawfile tracked <(next_tracked "$1") \
+    ". + {root: \$root} | $NEXT_PACKS_JQ"
+}
+
 cmd_next() {
   vbw_require_project
   local next record step road hint replan out main=0
@@ -283,7 +319,7 @@ cmd_next() {
     # the kernel builds from it (the loop's step note), hold no path, so a copy of the project
     # never points back at it.
     if [ "${FUNCNAME[1]:-main}" = main ]; then
-      printf '%s\n' "$next" | jq -c --arg root "$VBW_ROOT" '. + {root: $root}'
+      next_with_root "$next"
     else
       printf '%s\n' "$next"
     fi
