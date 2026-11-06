@@ -121,7 +121,7 @@ above_base() {
   mkdir -p "$d"
   for dir in /usr/bin /bin; do
     for f in "$dir"/*; do
-      [ -e "$d/$(basename "$f")" ] || ln -s "$f" "$d/$(basename "$f")"
+      [ -e "$d/$(basename "$f")" ] || [ -L "$d/$(basename "$f")" ] || ln -s "$f" "$d/$(basename "$f")"
     done
   done
   rm -f "$d/nice"

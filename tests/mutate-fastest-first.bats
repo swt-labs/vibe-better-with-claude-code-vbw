@@ -50,7 +50,7 @@ marks() { jq -cS '.plans[0].mutations[-1].checks' .vbw/record.json; }
   printf 'echo unpaid\n' > src/pay.sh
   "$VBW" mutate P1.1 task1 "prints unpaid" src/pay.sh < /dev/null > /dev/null
   rm -f "$TEST_ROOT/slow.ran"
-  printf 'echo unpaid\n' > src/pay.sh
+  printf 'echo unpaid again\n' > src/pay.sh
   run "$VBW" mutate P1.1 task1 "prints unpaid again" src/pay.sh < /dev/null
   [ "$status" -eq 0 ] || { echo "$output"; false; }
   [ "$(marks)" = '{"C2":"red"}' ] || { marks; false; }
