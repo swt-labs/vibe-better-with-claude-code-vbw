@@ -179,6 +179,16 @@ The proof-wide steps hold one
 slot each, listed in the store as `vbw:plan` (reuse planning), `vbw:copies`
 (making the clean copies) and `vbw:save` (saving the run store).
 
+The limit counts units running at once, not processor use: one unit may use
+more than one core (see [Cores per unit](#cores-per-unit)). Units run at
+low priority (`nice`), so the machine stays usable while a proof runs; where
+`nice` is missing they run at normal priority and the proof's summary says so
+in one line.
+
+A proof started inside another proof's unit (the outer run marks its units with
+`VBW_PROOF_UNIT`) takes one unit at a time by default, because its slot store
+may be another one; the project's `check_jobs` setting overrides this default.
+
 `vbw next` never waits for a slot: it answers at once, even while every slot is held. A
 nested run (a proof started from inside a proof) takes no slot of its own.
 
