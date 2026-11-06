@@ -203,7 +203,11 @@ if (!scope || !scope.phases || scope.phases.length === 0) {
 }
 
 phase('Plan')
-const plan = await ask(`Plan these phases: research, decompose them into plans with tasks, write the checks, self-review, and apply with vbw apply. The kernel computes a rigor floor per phase from its signals and refuses a lower tier. Use these phases exactly as given, tier included:\n\n${JSON.stringify(scope.phases)}${rewordedLine}${strings(scope.notes).length ? `\n\nThe Architect's notes (what is out of scope waits in the backlog; do not plan it):\n${strings(scope.notes).map(s => `- ${s}`).join('\n')}` : ''}${findings(strings(scope.research))}${voice}`,
+// R261: the packs the project's tracked files match (args.packs.project, args.packs_root): the Lead is told the lead text by path.
+const packsRoot = (args && typeof args === 'object' && typeof args.packs_root === 'string' && args.packs_root) || ''
+const packNames = (args && args.packs && Array.isArray(args.packs.project)) ? args.packs.project.filter(n => typeof n === 'string' && n) : []
+const packLine = packsRoot && packNames.length ? `\n\nStack pack text: read ${packNames.map(n => `${packsRoot}/${n}/lead.md`).join(' and ')} first.` : ''
+const plan = await ask(`Plan these phases: research, decompose them into plans with tasks, write the checks, self-review, and apply with vbw apply. The kernel computes a rigor floor per phase from its signals and refuses a lower tier. Use these phases exactly as given, tier included:\n\n${JSON.stringify(scope.phases)}${rewordedLine}${strings(scope.notes).length ? `\n\nThe Architect's notes (what is out of scope waits in the backlog; do not plan it):\n${strings(scope.notes).map(s => `- ${s}`).join('\n')}` : ''}${findings(strings(scope.research))}${packLine}${voice}`,
   opts('lead', 'plan', { schema: PLAN_RESULT, phase: 'Plan' }))
 if (!plan || !plan.applied) {
   await closeRun()
