@@ -68179,13 +68179,186 @@
       "after": [
         "P208.3"
       ],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "proofreuse_diffs: when the one diff-tree per recorded tree shows a submodule entry (mode 160000) changed, diff inside that submodule between the recorded commit and the current one (git -C sub diff-tree -r --no-renames --name-status OLD NEW), prefix every path with the submodule's folder as the project sees it, and merge those paths into the tree's list so the read-list rule judges them like any top-level change; today's --quiet pass over the submodule paths goes",
         "the unknown cases stay unknown (=FAIL): the inner diff fails because the recorded commit is missing from the submodule's repository, a submodule entry was added or removed between the two trees, or the inner diff itself shows a 160000 entry changed (a nested submodule moved)",
         "no new cost when nothing moved: a tree whose submodule entries are unchanged keeps today's single diff-tree and runs no git inside the submodule; a project without submodules is untouched (tests/proof-reuse.bats:231)",
         "docs/proof.md, Reusing results: how a moved submodule is judged (the diff inside the submodule, paths prefixed with its folder, the read-list rule) and the four cases that stay unknown; the Limits bullet saying any commit in a submodule runs everything again is replaced"
+      ],
+      "mutations": [
+        {
+          "rule": {
+            "req": "R260",
+            "k": 1
+          },
+          "what": "no folder prefix on the inner paths",
+          "files": [
+            "plugin/lib/proofreuse.sh"
+          ],
+          "checks": {
+            "C596": "red"
+          },
+          "result": "red",
+          "at": "2026-11-06T12:56:59Z",
+          "head": "f963d39df783e3ea7742382acec2ca3a567f08ab",
+          "tree": "4ac658490e0036c37a1751d769dacb5764d3386c",
+          "contract": "f1f8ee599d2770ca3bcc210023d7828bec82d80a8866ac2c41226e1f9b2c950b"
+        },
+        {
+          "rule": {
+            "req": "R260",
+            "k": 2
+          },
+          "what": "a failed inner diff no longer makes the tree unknown",
+          "files": [
+            "plugin/lib/proofreuse.sh"
+          ],
+          "checks": {
+            "C596": "red"
+          },
+          "result": "red",
+          "at": "2026-11-06T12:57:01Z",
+          "head": "f963d39df783e3ea7742382acec2ca3a567f08ab",
+          "tree": "4ac658490e0036c37a1751d769dacb5764d3386c",
+          "contract": "f1f8ee599d2770ca3bcc210023d7828bec82d80a8866ac2c41226e1f9b2c950b"
+        },
+        {
+          "rule": {
+            "req": "R260",
+            "k": 3
+          },
+          "what": "an added submodule is treated as an ordinary path",
+          "files": [
+            "plugin/lib/proofreuse.sh"
+          ],
+          "checks": {
+            "C596": "red"
+          },
+          "result": "red",
+          "at": "2026-11-06T12:57:03Z",
+          "head": "f963d39df783e3ea7742382acec2ca3a567f08ab",
+          "tree": "4ac658490e0036c37a1751d769dacb5764d3386c",
+          "contract": "f1f8ee599d2770ca3bcc210023d7828bec82d80a8866ac2c41226e1f9b2c950b"
+        },
+        {
+          "rule": {
+            "req": "R260",
+            "k": 4
+          },
+          "what": "a removed submodule is treated as an ordinary path",
+          "files": [
+            "plugin/lib/proofreuse.sh"
+          ],
+          "checks": {
+            "C596": "red"
+          },
+          "result": "red",
+          "at": "2026-11-06T12:57:05Z",
+          "head": "f963d39df783e3ea7742382acec2ca3a567f08ab",
+          "tree": "4ac658490e0036c37a1751d769dacb5764d3386c",
+          "contract": "f1f8ee599d2770ca3bcc210023d7828bec82d80a8866ac2c41226e1f9b2c950b"
+        },
+        {
+          "rule": {
+            "req": "R260",
+            "k": 5
+          },
+          "what": "a moved nested submodule is followed instead of unknown",
+          "files": [
+            "plugin/lib/proofreuse.sh"
+          ],
+          "checks": {
+            "C596": "red"
+          },
+          "result": "red",
+          "at": "2026-11-06T12:57:07Z",
+          "head": "f963d39df783e3ea7742382acec2ca3a567f08ab",
+          "tree": "4ac658490e0036c37a1751d769dacb5764d3386c",
+          "contract": "f1f8ee599d2770ca3bcc210023d7828bec82d80a8866ac2c41226e1f9b2c950b"
+        },
+        {
+          "rule": {
+            "req": "R260",
+            "k": 6
+          },
+          "what": "a git diff runs inside the submodule though it did not move",
+          "files": [
+            "plugin/lib/proofreuse.sh"
+          ],
+          "checks": {
+            "C596": "green"
+          },
+          "result": "survivor",
+          "at": "2026-11-06T12:57:09Z",
+          "head": "f963d39df783e3ea7742382acec2ca3a567f08ab",
+          "tree": "4ac658490e0036c37a1751d769dacb5764d3386c",
+          "contract": "f1f8ee599d2770ca3bcc210023d7828bec82d80a8866ac2c41226e1f9b2c950b"
+        },
+        {
+          "rule": {
+            "req": "R260",
+            "k": 7
+          },
+          "what": "docs no longer name the nested-submodule case",
+          "files": [
+            "docs/proof.md"
+          ],
+          "checks": {
+            "C597": "red"
+          },
+          "result": "red",
+          "at": "2026-11-06T12:57:10Z",
+          "head": "f963d39df783e3ea7742382acec2ca3a567f08ab",
+          "tree": "4ac658490e0036c37a1751d769dacb5764d3386c",
+          "contract": "f1f8ee599d2770ca3bcc210023d7828bec82d80a8866ac2c41226e1f9b2c950b"
+        },
+        {
+          "rule": {
+            "req": "R260",
+            "k": 6
+          },
+          "what": "a git diff runs inside the submodule though it did not move",
+          "files": [
+            "plugin/lib/proofreuse.sh"
+          ],
+          "checks": {
+            "C596": "red"
+          },
+          "result": "red",
+          "at": "2026-11-06T13:01:03Z",
+          "head": "d48a9afc96c08c4508434a38a94440d9d379c98c",
+          "tree": "932b8ec3e0869c81ae73f0a1822b7d3d394eecd1",
+          "contract": "fd7bfb3b23835dd08e5c06e13a2e3d325d839477f58b34fb4b625f8491ce0b9d",
+          "strengthened": [
+            "tests/proof-reuse.bats"
+          ],
+          "pending": [
+            "tests/proof-reuse.bats"
+          ]
+        },
+        {
+          "rule": {
+            "req": "R260",
+            "k": 6
+          },
+          "what": "a git diff runs inside the submodule though it did not move",
+          "files": [
+            "plugin/lib/proofreuse.sh"
+          ],
+          "checks": {
+            "C596": "red"
+          },
+          "result": "red",
+          "at": "2026-11-06T13:03:22Z",
+          "head": "d48a9afc96c08c4508434a38a94440d9d379c98c",
+          "tree": "932b8ec3e0869c81ae73f0a1822b7d3d394eecd1",
+          "contract": "fd7bfb3b23835dd08e5c06e13a2e3d325d839477f58b34fb4b625f8491ce0b9d",
+          "pending": [
+            "tests/proof-reuse.bats"
+          ]
+        }
       ]
     },
     {
@@ -86308,6 +86481,17 @@
         "ended": "2026-11-06T12:40:38Z",
         "cost": {
           "usd": 0.605375
+        }
+      },
+      {
+        "id": "build-20261106T124849Z",
+        "kind": "build",
+        "session": "0ee781c3-c5b6-4a6c-889f-04b89f1fba4a",
+        "milestone": "M53",
+        "started": "2026-11-06T12:48:49Z",
+        "ended": "2026-11-06T13:05:26Z",
+        "cost": {
+          "usd": 0.770687
         }
       }
     ],
