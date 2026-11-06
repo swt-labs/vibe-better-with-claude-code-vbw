@@ -68622,12 +68622,68 @@
       "after": [
         "P209.1"
       ],
-      "status": "planned",
+      "status": "done",
       "role": "docs",
       "tasks": [
         "docs/packs.md: what a stack pack is; how a plan gets one (its files against the pack's patterns, Cargo.toml and *.rs for Rust; the Lead's pack from the project's tracked files, git ls-files, because plans do not exist yet at planning, the one place selection is per project); what the folder holds (pack.json with name and patterns, lead.md, dev.md, qa.md); that a pack is outside the contract and the record (editing one changes no hash, un-approves no plan, adds no record key)",
         "docs/packs.md, contributing: adding a stack is one more folder; the manifest and the three role texts; the real-codebase evidence a pack needs before it ships (what it removed from a real project's failure list) and the decision-style review",
         "CONTRIBUTING.md and README.md link to docs/packs.md; docs/ideas.md's Stack packs entry points to the shipped page and keeps only what is still open (init asking the stack, check forms and a mutation step per pack, versioning beside VBW), dropping the shipped first contents"
+      ],
+      "mutations": [
+        {
+          "rule": {
+            "req": "R261",
+            "k": 10
+          },
+          "what": "removed the tracked-files rule for the Lead",
+          "files": [
+            "docs/packs.md"
+          ],
+          "checks": {
+            "C600": "red"
+          },
+          "result": "red",
+          "at": "2026-11-06T13:18:14Z",
+          "head": "8cdd66c1ca8cf670803fbd250bc5e057cc80c96f",
+          "tree": "4d8d8023fb3ffc7a21fc50480d9a984f984b8fc5",
+          "contract": "fd7bfb3b23835dd08e5c06e13a2e3d325d839477f58b34fb4b625f8491ce0b9d"
+        },
+        {
+          "rule": {
+            "req": "R261",
+            "k": 11
+          },
+          "what": "README link to packs page broken",
+          "files": [
+            "README.md"
+          ],
+          "checks": {
+            "C600": "green"
+          },
+          "result": "survivor",
+          "at": "2026-11-06T13:18:25Z",
+          "head": "8cdd66c1ca8cf670803fbd250bc5e057cc80c96f",
+          "tree": "4d8d8023fb3ffc7a21fc50480d9a984f984b8fc5",
+          "contract": "fd7bfb3b23835dd08e5c06e13a2e3d325d839477f58b34fb4b625f8491ce0b9d"
+        },
+        {
+          "rule": {
+            "req": "R261",
+            "k": 11
+          },
+          "what": "README link to packs page broken",
+          "files": [
+            "README.md"
+          ],
+          "checks": {
+            "C600": "red"
+          },
+          "result": "red",
+          "at": "2026-11-06T13:18:36Z",
+          "head": "8cdd66c1ca8cf670803fbd250bc5e057cc80c96f",
+          "tree": "4d8d8023fb3ffc7a21fc50480d9a984f984b8fc5",
+          "contract": "fd7bfb3b23835dd08e5c06e13a2e3d325d839477f58b34fb4b625f8491ce0b9d"
+        }
       ]
     },
     {
@@ -86700,6 +86756,17 @@
         "ended": "2026-11-06T13:15:28Z",
         "cost": {
           "usd": 1.227884
+        }
+      },
+      {
+        "id": "build-20261106T131637Z",
+        "kind": "build",
+        "session": "0ee781c3-c5b6-4a6c-889f-04b89f1fba4a",
+        "milestone": "M53",
+        "started": "2026-11-06T13:16:37Z",
+        "ended": "2026-11-06T13:19:17Z",
+        "cost": {
+          "usd": 0.492675
         }
       }
     ],
