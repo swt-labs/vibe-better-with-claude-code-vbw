@@ -73501,6 +73501,11 @@
       "id": "T245",
       "text": "Rust pack wording from field feedback (adopted): the Lead text says give a plan the whole crate, which blocks parallel plans in one crate; say a plan names every file it changes and two plans may share a crate when their files are disjoint, with Cargo.toml and lockfile changes in one plan at a time. QA text: a workspace-wide command is a finding only when it compiles or runs tests (a tool that only reads the lockfile is fine). Dev, Lead, QA and docs: a dependency added or moved, including through a path dependency the other workspace's manifest never names.",
       "status": "open"
+    },
+    {
+      "id": "T246",
+      "text": "vbw mutate dead end (adapted from field feedback): a rule whose check reads git history can be neither broken by a file edit nor excused, because --none refuses a check that reads through git. Allow --none with a required reason for such a check, recorded and listed at the next gate and ship so the excuse stays visible. A git replace break in the proof copy declined for now: more machinery for a rare case.",
+      "status": "open"
     }
   ],
   "decisions": [
