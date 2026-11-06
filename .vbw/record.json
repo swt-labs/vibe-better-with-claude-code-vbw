@@ -19924,6 +19924,46 @@
           "plan": "P211.1"
         }
       ]
+    },
+    {
+      "id": "R263",
+      "text": "Rust pack wording fits parallel plans and real commands (T245): the Lead is told a plan names every file it changes in a crate and that two plans may share a crate when their files are disjoint, with a Cargo.toml or lockfile change in one plan at a time; QA treats a workspace-wide command inside an ordinary check as a finding only when it compiles or runs tests, so a tool that only reads the lockfile is no finding; the Dev, Lead, QA texts and docs/packs.md cover a dependency added or moved, including one reached through a path dependency that the other workspace's manifest never names",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M54",
+      "rules": []
+    },
+    {
+      "id": "R264",
+      "text": "A rule whose check reads git has a way out of vbw mutate (T246): vbw mutate --none on a check that reads the project through git is accepted only with a stated reason, the excuse is recorded on the rule with that reason and listed at the next gate (vbw show contract --changes and the ship); a check with a read list keeps today's judgement, and --none without a reason on a git-reading check keeps a refusal that says a reason is what it needs",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M54",
+      "rules": []
+    },
+    {
+      "id": "R265",
+      "text": "vbw mutate never loses uncommitted work (T247): uncommitted content in a file vbw mutate takes as a break is never lost: after the run the working copy holds what the kernel was given, or vbw mutate refuses before touching the file and says to commit first; plugin/agents/dev.md tells a Dev to commit before making a break",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M54",
+      "rules": []
+    },
+    {
+      "id": "R266",
+      "text": "vbw apply --patch never answers with a raw error on a partial plan (T248): a plan row in a patch that names an existing plan and leaves out fields keeps that plan's other fields, as a check row's merge by id does, or is refused in one line naming the missing field; a jq error or an internal error about rigor tiers never reaches the caller, and docs/workflows.md says which it is",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M54",
+      "rules": []
+    },
+    {
+      "id": "R267",
+      "text": "The large-folder suggestion knows the disk (T249): vbw doctor and vbw init suggest leaving a large git-ignored folder out of the clean copy only where copies are plain; where the disk makes copy-on-write clones they name the folder and say it costs little and that keeping it can save rebuilds, without suggesting the leave-out; the answer comes from testing a clone on the project's disk, never from the language or the folder's name",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M54",
+      "rules": []
     }
   ],
   "phases": [
@@ -87450,6 +87490,17 @@
         "ended": "2026-11-06T21:01:55Z",
         "cost": {
           "usd": 1.750659
+        }
+      },
+      {
+        "id": "plan-20261106T225444Z",
+        "kind": "plan",
+        "session": "0ee781c3-c5b6-4a6c-889f-04b89f1fba4a",
+        "milestone": "M54",
+        "started": "2026-11-06T22:54:44Z",
+        "ended": "2026-11-06T23:06:46Z",
+        "cost": {
+          "usd": 7.849307
         }
       }
     ],
