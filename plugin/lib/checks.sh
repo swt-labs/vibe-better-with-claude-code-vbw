@@ -103,8 +103,12 @@ checks_keep() {
 # where timeout --foreground works, else perl. Found once per process, before the
 # runners start (checks_run_units), never inside a unit's slot.
 CHECKS_TIMER=
+# CHECKS_NICE: "nice" (the system program that lowers a process's priority) when it
+# is on PATH, else empty; every unit then runs under it. Looked up with the timer.
+CHECKS_NICE=
 checks_timer() {
   [ -z "$CHECKS_TIMER" ] || return 0
+  if command -v nice > /dev/null 2>&1; then CHECKS_NICE=nice; else CHECKS_NICE=; fi
   if command -v timeout > /dev/null 2>&1 && timeout --foreground 5 true > /dev/null 2>&1; then CHECKS_TIMER=timeout; else CHECKS_TIMER=perl; fi
 }
 
@@ -136,9 +140,9 @@ checks_exec() {
   # it does under perl; without it GNU timeout starts a group of its own and an
   # interrupted run waited for its units to end (T148, Linux).
   if [ "$CHECKS_TIMER" = timeout ]; then
-    { time env -u VBW_SESSION_ID ${SLOTS_MARK:+"$SLOTS_MARK"} ${cenv[@]+"${cenv[@]}"} timeout --foreground -k 5 "$t" "$@" > "$out" 2>&1 < /dev/null || CHECK_CODE=$?; } 2> "$tf"
+    { time env -u VBW_SESSION_ID VBW_PROOF_UNIT=1 ${SLOTS_MARK:+"$SLOTS_MARK"} ${cenv[@]+"${cenv[@]}"} ${CHECKS_NICE:+"$CHECKS_NICE"} timeout --foreground -k 5 "$t" "$@" > "$out" 2>&1 < /dev/null || CHECK_CODE=$?; } 2> "$tf"
   else
-    { time env -u VBW_SESSION_ID ${SLOTS_MARK:+"$SLOTS_MARK"} ${cenv[@]+"${cenv[@]}"} perl -e '$SIG{ALRM} = "DEFAULT"; alarm shift @ARGV; exec { $ARGV[0] } @ARGV or do { print STDERR "cannot run $ARGV[0]: $!\n"; exit 127 }' \
+    { time env -u VBW_SESSION_ID VBW_PROOF_UNIT=1 ${SLOTS_MARK:+"$SLOTS_MARK"} ${cenv[@]+"${cenv[@]}"} ${CHECKS_NICE:+"$CHECKS_NICE"} perl -e '$SIG{ALRM} = "DEFAULT"; alarm shift @ARGV; exec { $ARGV[0] } @ARGV or do { print STDERR "cannot run $ARGV[0]: $!\n"; exit 127 }' \
       "$t" "$@" > "$out" 2>&1 < /dev/null || CHECK_CODE=$?; } 2> "$tf"
   fi
   CHECK_SECONDS=$SECONDS
