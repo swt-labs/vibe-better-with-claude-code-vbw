@@ -129,7 +129,9 @@ checks_exec() {
   fi
   # A unit holds a slot in this run's store only: with the store off it carries no
   # store of an outer run either (VBW_PROOF_UNIT marks it in both cases).
-  [ -n "$SLOTS_MARK" ] || unstore=(-u VBW_SLOT_STORE)
+  # A nested run (the store is the one it inherited, SLOTS_MARK empty) passes it on,
+  # so a run started deeper is nested too.
+  [ -n "$SLOTS_MARK" ] || [ "$SLOTS_STATE" = nested ] || unstore=(-u VBW_SLOT_STORE)
   checks_timer
   SECONDS=0
   CHECK_CODE=0
