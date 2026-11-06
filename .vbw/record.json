@@ -73516,6 +73516,11 @@
       "id": "T248",
       "text": "vbw apply --patch with a partial plan row dies with a raw jq error (reproduced on 2.1.26): a plan with only id and files, or no reqs, gives Cannot iterate over null; no files gives an internal error about rigor tiers. Merge given fields onto the existing plan, or refuse naming the missing field; never a raw jq error.",
       "status": "open"
+    },
+    {
+      "id": "T249",
+      "text": "doctor and init suggest leaving large ignored folders out of the clean copy even on a copy-on-write disk (adapted from field feedback): there a build output folder costs little and saves rebuilds. On a copy-on-write disk say so and do not suggest it; keep the suggestion on a plain-copy disk. Measure the disk, do not special-case Rust.",
+      "status": "open"
     }
   ],
   "decisions": [
