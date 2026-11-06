@@ -41,6 +41,9 @@ SH
 setup_file() { fixture_build built built_project; }
 setup() {
   fixture_copy built
+  # This file tests the machine default: a proof marks its own units (VBW_PROOF_UNIT, R257),
+  # which would make the kernel under test read 1 instead.
+  unset VBW_PROOF_UNIT
 }
 teardown() { vbw_teardown; }
 teardown_file() { fixture_teardown; }

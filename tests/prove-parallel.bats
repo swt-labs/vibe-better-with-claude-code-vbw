@@ -17,6 +17,9 @@ setup() {
   vbw_setup
   vbw_git_project
   "$VBW" init > /dev/null
+  # This file tests the machine default: a proof marks its own units (VBW_PROOF_UNIT, R257),
+  # which would make the kernel under test read 1 instead.
+  unset VBW_PROOF_UNIT
   local tool
   mkdir -p "$TEST_ROOT/bin"
   for tool in getconf nproc sysctl; do

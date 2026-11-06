@@ -3,12 +3,13 @@
 # plugin/lib/record-schema.jq, shared by the writer (record.sh record_update) and
 # the validator (record.jq): settings.efforts 5, a decision that names its plans 6,
 # settings.mcp 7, a recorded break (plans[].mutations[]) that carries tree or
-# contract 8, an amendment, an awaited check or a queued requirement (R250) 9; the
+# contract 8, an amendment, an awaited check or a queued requirement (R250) 9, a break
+# that names its rule by place or a reworded requirement (R258, R259) 10; the
 # highest feature present wins and 4 is the floor. A schema above
 # the table's answer is corrupt, named by the feature that schema is only for; a
 # schema below it loads and is raised on its next write, as a schema 1 to 3 record
-# already does. VBW_SCHEMA_MAX is 9, so a VBW up to 2.1.25 asks to be updated for
-# a record that carries an amendment instead of calling it corrupt. L1: the kernel on a
+# already does. VBW_SCHEMA_MAX is 10, so a VBW up to 2.1.26 asks to be updated for
+# a record that carries a break by place instead of calling it corrupt. L1: the kernel on a
 # fixture project with one mutation break.
 
 load helper
@@ -64,12 +65,12 @@ max_read() { sed -n 's/^VBW_SCHEMA_MAX=//p' "$PLUGIN_ROOT/lib/record.sh"; }
   # A module with a main expression cannot be included.
   run table '1'
   [ "$status" -eq 0 ] && [ "$output" = "1" ] || { echo "$output"; false; }
-  run table 'schema_features | all(.[]; type == "object" and (.schema | type) == "number" and (.feature | type) == "string" and has("present")) and (map(.schema) == [5, 6, 7, 8, 9])'
+  run table 'schema_features | all(.[]; type == "object" and (.schema | type) == "number" and (.feature | type) == "string" and has("present")) and (map(.schema) == [5, 6, 7, 8, 9, 10])'
   [ "$output" = "true" ] || { echo "rows: $(table 'schema_features | map({schema, feature})')"; false; }
   run table 'schema_features | map(.feature)'
-  [ "$output" = '["settings.efforts","a decision that names its plans","settings.mcp","a recorded break that carries tree or contract","an amendment, an awaited check or a queued requirement"]' ] || { echo "$output"; false; }
+  [ "$output" = '["settings.efforts","a decision that names its plans","settings.mcp","a recorded break that carries tree or contract","an amendment, an awaited check or a queued requirement","a break that names its rule by place or a requirement reworded with its rules kept"]' ] || { echo "$output"; false; }
   [ "$(table 'schema_floor')" = 4 ]
-  [ "$(table 'schema_top')" = 9 ]
+  [ "$(table 'schema_top')" = 10 ]
   [ "$(max_read)" = "$(table 'schema_top')" ] || { echo "VBW_SCHEMA_MAX $(max_read) is not the table's top $(table 'schema_top')"; false; }
   # Single-quoted jq literals only: bash 3.2 unescapes \" inside "$( "..." )" and splits the text.
   [ "$(schema_of 'null')" = 4 ]
@@ -203,12 +204,12 @@ max_read() { sed -n 's/^VBW_SCHEMA_MAX=//p' "$PLUGIN_ROOT/lib/record.sh"; }
   [ "$status" -eq 3 ] && [[ "$output" == *"corrupt"* ]] || { echo "$output"; false; }
 }
 
-@test "R247: this VBW reads up to schema 9: a schema-10 record exits 4 saying the project needs a newer VBW and that this VBW reads up to schema 9, never that it is corrupt" {
-  [ "$(max_read)" = 9 ] || { echo "VBW_SCHEMA_MAX is $(max_read)"; false; }
-  edit '.schema = 10'
+@test "R247: this VBW reads up to schema 10: a schema-11 record exits 4 saying the project needs a newer VBW and that this VBW reads up to schema 10, never that it is corrupt" {
+  [ "$(max_read)" = 10 ] || { echo "VBW_SCHEMA_MAX is $(max_read)"; false; }
+  edit '.schema = 11'
   vbw_run status
   [ "$status" -eq 4 ] || { echo "$output"; false; }
-  [[ "$output" == *"needs a newer VBW"* && "$output" == *"reads up to schema 9"* ]] || { echo "$output"; false; }
+  [[ "$output" == *"needs a newer VBW"* && "$output" == *"reads up to schema 10"* ]] || { echo "$output"; false; }
   [[ "$output" != *"corrupt"* ]] || { echo "$output"; false; }
   vbw_run doctor
   [[ "$output" == *"update VBW with /vbw:update"* && "$output" != *"corrupt"* ]] || { echo "$output"; false; }
@@ -234,4 +235,52 @@ max_read() { sed -n 's/^VBW_SCHEMA_MAX=//p' "$PLUGIN_ROOT/lib/record.sh"; }
   [[ "$output" == *"P1.1 mutations must be recorded breaks (vbw mutate)"* ]] || { echo "$output"; false; }
   run validate <(jq '.plans[0].mutations[0] |= del(.tree, .contract)' .vbw/record.json)
   [[ "$output" == *"schema 8 is only for a record with a recorded break that carries tree or contract"* ]] || { echo "$output"; false; }
+}
+
+# R258 (T234; docs/record.md Versioning, docs/proof.md): a recorded break names its rule by
+# place, {req, k}, so rewording a rule keeps its breaks. A new record key, so schema 10: the
+# table's top row, VBW_SCHEMA_MAX moves with it, and a requirement reworded with its rules
+# kept (R259, requirements[].reworded) is the row's other feature. A record whose breaks
+# carry the old {req, text} shape stays readable; its first write converts each break to the
+# place of the rule whose text it carries, and a break whose text matches no rule is kept as
+# it is (it counts for no rule, as before).
+
+@test "R258 schema 10: a break naming its rule by place and a reworded requirement are schema 10, the table's top, which VBW_SCHEMA_MAX follows" {
+  [ "$(schema_of '{plans: [{mutations: [{rule: {req: "R1", k: 1}, tree: "t"}]}]}')" = 10 ]
+  [ "$(schema_of '{plans: [{mutations: [{rule: {req: "R1", k: 2}, none: "nothing", at: "t", head: "h"}]}]}')" = 10 ]
+  [ "$(schema_of '{requirements: [{id: "R1", reworded: true}]}')" = 10 ]
+  [ "$(schema_of '{plans: [{mutations: [{rule: {req: "R1", text: "t"}, tree: "t"}]}]}')" = 8 ]
+  [ "$(table 'schema_top')" = 10 ]
+  [ "$(max_read)" = 10 ] || { echo "VBW_SCHEMA_MAX is $(max_read)"; false; }
+}
+
+@test "R258 schema 10: the validator accepts a break's rule as {req, k} (k 1 to 9999) and as the older {req, text}, and refuses every other shape; reworded can only be true" {
+  edit '.schema = 10 | .plans[0].mutations[0].rule = {req: "R1", k: 1}'
+  [ "$(validate)" = '[]' ] || { validate; false; }
+  edit '.plans[0].mutations[0].rule = {req: "R1", text: "paying prints paid"}'
+  [ "$(validate)" = '[]' ] || { validate; false; }
+  local bad
+  for bad in '{req: "R1", k: 0}' '{req: "R1", k: "1"}' '{req: "R1"}' '{req: "R1", k: 1, text: "paying prints paid"}' '{k: 1}'; do
+    edit ".plans[0].mutations[0].rule = $bad"
+    [ "$(validate)" != '[]' ] || { echo "accepted a break whose rule is $bad"; false; }
+  done
+  edit '.plans[0].mutations[0].rule = {req: "R1", k: 1} | .requirements[0].reworded = true'
+  [ "$(validate)" = '[]' ] || { validate; false; }
+  edit '.requirements[0].reworded = false'
+  [ "$(validate)" != '[]' ] || { echo "accepted reworded: false"; false; }
+}
+
+@test "R258 schema 10: a record whose breaks name their rules by text stays readable, and its first write converts each to the place of the rule with that text; a break matching no rule is kept as it is" {
+  # The fixture's break was written by this kernel; a second one, by hand, names no rule of R1.
+  edit '.plans[0].mutations[0].rule = {req: "R1", text: "paying prints paid"}
+    | .plans[0].mutations += [.plans[0].mutations[0] | .rule = {req: "R1", text: "no such rule"} | .what = "stray"]
+    | .schema = 8'
+  [ "$(validate)" = '[]' ] || { validate; false; }
+  vbw_run show plan P1.1
+  [ "$status" -eq 0 ] || { echo "$output"; false; }
+  "$VBW" decide "Use blue buttons" "the owner prefers them" > /dev/null
+  jq -e '.schema == 10
+    and .plans[0].mutations[0].rule == {req: "R1", k: 1}
+    and .plans[0].mutations[1].rule == {req: "R1", text: "no such rule"}' .vbw/record.json || { jq '.schema, .plans[0].mutations[].rule' .vbw/record.json; false; }
+  [ "$(validate)" = '[]' ] || { validate; false; }
 }

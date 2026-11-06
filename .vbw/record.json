@@ -49,11 +49,13 @@
     "tests/big-record-hooks.bats",
     "tests/big-record-scratch.bats",
     "tests/big-record-writes.bats",
+    "tests/break-by-place.bats",
     "tests/check-alone-contract.bats",
     "tests/check-alone-docs.bats",
     "tests/check-alone-runner.bats",
     "tests/check-jobs-docs.bats",
     "tests/check-jobs-machine.bats",
+    "tests/check-jobs-nested.bats",
     "tests/check-jobs-once.bats",
     "tests/check-jobs-regress.bats",
     "tests/check-jobs-shared.bats",
@@ -164,6 +166,7 @@
     "tests/l3-greeting.bats",
     "tests/l3-hiddenrecord.bats",
     "tests/l3-interview.bats",
+    "tests/l3-l1-leftovers.bats",
     "tests/l3-leaveout.bats",
     "tests/l3-legacy.bats",
     "tests/l3-loop.bats",
@@ -260,6 +263,8 @@
     "tests/no-bats-on-generated.bats",
     "tests/output-child-exit.bats",
     "tests/outside-writes-docs.bats",
+    "tests/packs-docs.bats",
+    "tests/packs.bats",
     "tests/panel-bench-render.bats",
     "tests/panel-call-docs.bats",
     "tests/panel-colours-docs.bats",
@@ -349,6 +354,7 @@
     "tests/proof-full-gate.bats",
     "tests/proof-full-prompts.bats",
     "tests/proof-plan-batch.bats",
+    "tests/proof-priority.bats",
     "tests/proof-quick-docs.bats",
     "tests/proof-quick.bats",
     "tests/proof-reuse.bats",
@@ -7839,6 +7845,220 @@
         "tests/guard-lead-apply.bats"
       ],
       "fix": "F357"
+    },
+    {
+      "id": "C586",
+      "req": "R256",
+      "run": [
+        "bats",
+        "--print-output-on-failure",
+        "tests/proof-priority.bats"
+      ],
+      "files": [
+        "tests/proof-priority.bats"
+      ]
+    },
+    {
+      "id": "C587",
+      "req": "R256",
+      "run": [
+        "bats",
+        "--print-output-on-failure",
+        "--filter",
+        "R256",
+        "tests/check-jobs-docs.bats"
+      ],
+      "files": [
+        "tests/check-jobs-docs.bats"
+      ]
+    },
+    {
+      "id": "C588",
+      "req": "R257",
+      "run": [
+        "bats",
+        "--print-output-on-failure",
+        "tests/check-jobs-nested.bats"
+      ],
+      "files": [
+        "tests/check-jobs-nested.bats"
+      ]
+    },
+    {
+      "id": "C589",
+      "req": "R257",
+      "run": [
+        "bats",
+        "--print-output-on-failure",
+        "--filter",
+        "R257",
+        "tests/check-jobs-docs.bats"
+      ],
+      "files": [
+        "tests/check-jobs-docs.bats"
+      ]
+    },
+    {
+      "id": "C590",
+      "req": "R258",
+      "run": [
+        "bats",
+        "--print-output-on-failure",
+        "--filter",
+        "R258 schema",
+        "tests/record-schema.bats"
+      ],
+      "files": [
+        "tests/record-schema.bats"
+      ]
+    },
+    {
+      "id": "C591",
+      "req": "R258",
+      "run": [
+        "bats",
+        "--print-output-on-failure",
+        "tests/break-by-place.bats"
+      ],
+      "files": [
+        "tests/break-by-place.bats"
+      ]
+    },
+    {
+      "id": "C592",
+      "req": "R258",
+      "run": [
+        "bats",
+        "--print-output-on-failure",
+        "--filter",
+        "R258 docs",
+        "tests/record-schema-docs.bats"
+      ],
+      "files": [
+        "tests/record-schema-docs.bats"
+      ]
+    },
+    {
+      "id": "C593",
+      "req": "R259",
+      "run": [
+        "bats",
+        "--print-output-on-failure",
+        "--filter",
+        "R259",
+        "tests/rules.bats"
+      ],
+      "files": [
+        "tests/rules.bats"
+      ]
+    },
+    {
+      "id": "C594",
+      "req": "R259",
+      "run": [
+        "bats",
+        "--print-output-on-failure",
+        "--filter",
+        "R259",
+        "tests/rules-prompts.bats"
+      ],
+      "files": [
+        "tests/rules-prompts.bats"
+      ]
+    },
+    {
+      "id": "C595",
+      "req": "R259",
+      "run": [
+        "bats",
+        "--print-output-on-failure",
+        "--filter",
+        "R259 docs",
+        "tests/rules-docs.bats"
+      ],
+      "files": [
+        "tests/rules-docs.bats"
+      ]
+    },
+    {
+      "id": "C596",
+      "req": "R260",
+      "run": [
+        "bats",
+        "--print-output-on-failure",
+        "--filter",
+        "R260",
+        "tests/proof-reuse.bats"
+      ],
+      "files": [
+        "tests/proof-reuse.bats"
+      ]
+    },
+    {
+      "id": "C597",
+      "req": "R260",
+      "run": [
+        "bats",
+        "--print-output-on-failure",
+        "--filter",
+        "R260 docs",
+        "tests/proof-speed-reuse-docs.bats"
+      ],
+      "files": [
+        "tests/proof-speed-reuse-docs.bats"
+      ]
+    },
+    {
+      "id": "C598",
+      "req": "R261",
+      "run": [
+        "bats",
+        "--print-output-on-failure",
+        "--filter",
+        "R261 folder|R261 next",
+        "tests/packs.bats"
+      ],
+      "files": [
+        "tests/packs.bats"
+      ]
+    },
+    {
+      "id": "C599",
+      "req": "R261",
+      "run": [
+        "bats",
+        "--print-output-on-failure",
+        "--filter",
+        "R261 workflow",
+        "tests/packs.bats"
+      ],
+      "files": [
+        "tests/packs.bats"
+      ]
+    },
+    {
+      "id": "C600",
+      "req": "R261",
+      "run": [
+        "bats",
+        "--print-output-on-failure",
+        "tests/packs-docs.bats"
+      ],
+      "files": [
+        "tests/packs-docs.bats"
+      ]
+    },
+    {
+      "id": "C601",
+      "req": "R262",
+      "run": [
+        "bats",
+        "--print-output-on-failure",
+        "tests/l3-l1-leftovers.bats"
+      ],
+      "files": [
+        "tests/l3-l1-leftovers.bats"
+      ]
     }
   ],
   "project": {
@@ -19368,7 +19588,48 @@
       "proof": "auto",
       "status": "open",
       "milestone": "M53",
-      "rules": []
+      "rules": [
+        {
+          "text": "a check run by vbw prove has a higher nice value than the same command run by hand",
+          "check": "C586",
+          "plan": "P207.1"
+        },
+        {
+          "text": "a check run by vbw fix done has a higher nice value than the same command run by hand",
+          "check": "C586",
+          "plan": "P207.1"
+        },
+        {
+          "text": "the checks vbw mutate runs, directly and from its queue (--queue, then --run), have a higher nice value than the same command run by hand",
+          "check": "C586",
+          "plan": "P207.1"
+        },
+        {
+          "text": "one code path lowers the priority, checks_exec in plugin/lib/checks.sh; no command file runs nice itself",
+          "check": "C586",
+          "plan": "P207.1"
+        },
+        {
+          "text": "low priority changes nothing else: a failing unit keeps its exit code and its kept output in the evidence",
+          "check": "C586",
+          "plan": "P207.1"
+        },
+        {
+          "text": "when nice is not on PATH the units run at normal priority, the proof is not refused, and its summary says so in one line",
+          "check": "C586",
+          "plan": "P207.1"
+        },
+        {
+          "text": "docs/proof.md's computer-wide limit section says the limit counts units running at once, not processor use, and that one unit may use more than one core, pointing to Cores per unit",
+          "check": "C587",
+          "plan": "P207.1"
+        },
+        {
+          "text": "docs/proof.md says units run at low priority (nice) so the machine stays usable, and that they run at normal priority when nice is missing",
+          "check": "C587",
+          "plan": "P207.1"
+        }
+      ]
     },
     {
       "id": "R257",
@@ -19376,7 +19637,43 @@
       "proof": "auto",
       "status": "open",
       "milestone": "M53",
-      "rules": []
+      "rules": [
+        {
+          "text": "vbw prove marks every unit's environment with VBW_PROOF_UNIT=1, with the computer-wide store on and with it off",
+          "check": "C588",
+          "plan": "P207.1"
+        },
+        {
+          "text": "inside a marked unit vbw config shows check_jobs 1 and names the reason (inside another proof's unit), neither set nor machine default",
+          "check": "C588",
+          "plan": "P207.1"
+        },
+        {
+          "text": "inside a marked unit vbw prove, vbw check and vbw fix done run one unit at a time",
+          "check": "C588",
+          "plan": "P207.1"
+        },
+        {
+          "text": "a check_jobs value set in the project wins over the nested default, and a value outside 1 to 64 is refused as today",
+          "check": "C588",
+          "plan": "P207.1"
+        },
+        {
+          "text": "without the mark nothing changes: the machine default of three quarters of the cores, or the set value",
+          "check": "C588",
+          "plan": "P207.1"
+        },
+        {
+          "text": "tests/helper.bash never strips the mark, so a hermetic test started inside a unit sees it",
+          "check": "C588",
+          "plan": "P207.1"
+        },
+        {
+          "text": "docs/proof.md says a proof started inside another proof's unit (VBW_PROOF_UNIT) takes one unit at a time by default and that the project's check_jobs setting overrides it",
+          "check": "C589",
+          "plan": "P207.1"
+        }
+      ]
     },
     {
       "id": "R258",
@@ -19384,7 +19681,53 @@
       "proof": "auto",
       "status": "open",
       "milestone": "M53",
-      "rules": []
+      "rules": [
+        {
+          "text": "a break naming its rule by place and a reworded requirement are schema 10, the table's top, which VBW_SCHEMA_MAX follows",
+          "check": "C590",
+          "plan": "P208.1"
+        },
+        {
+          "text": "the validator accepts a break's rule as {req, k} (k 1 to 9999) and as the older {req, text}, refuses every other shape, and accepts reworded only as true",
+          "check": "C590",
+          "plan": "P208.1"
+        },
+        {
+          "text": "a record whose breaks name their rules by text stays readable, and its first write converts each to the place of the rule with that text; a break matching no rule is kept as it is",
+          "check": "C590",
+          "plan": "P208.1"
+        },
+        {
+          "text": "a recorded break names its rule by place: its rule field is {req, k}, not {req, text}",
+          "check": "C591",
+          "plan": "P208.2"
+        },
+        {
+          "text": "a parenthesis added to two rules by vbw apply --patch keeps their breaks: vbw plan done accepts the plan and vbw show plan numbers the breaks Rn.k",
+          "check": "C591",
+          "plan": "P208.2"
+        },
+        {
+          "text": "a break of one rule never counts for another: plan done still names the rule without a break",
+          "check": "C591",
+          "plan": "P208.2"
+        },
+        {
+          "text": "a retired rule keeps its place and its breaks, the rule after it keeps its k and its break, and vbw show req lists each rule's breaks",
+          "check": "C591",
+          "plan": "P208.2"
+        },
+        {
+          "text": "vbw mutate finds an earlier survivor of a reworded rule by its place: a red break after the check was strengthened is marked strengthened",
+          "check": "C591",
+          "plan": "P208.2"
+        },
+        {
+          "text": "docs/record.md gives the break's rule as {req, k} with k the rule's place, says a full vbw apply that inserts or removes live rules moves the places under later breaks, has the table row 10 and describes the one-time conversion at the first write; docs/proof.md says a break is matched to its rule by place, so rewording keeps its breaks",
+          "check": "C592",
+          "plan": "P208.1"
+        }
+      ]
     },
     {
       "id": "R259",
@@ -19392,7 +19735,43 @@
       "proof": "auto",
       "status": "open",
       "milestone": "M53",
-      "rules": []
+      "rules": [
+        {
+          "text": "vbw spec sync with a changed [auto] text keeps the requirement's rules, their places and words, resets its status to open, marks it reworded and says 'changed Rn (status reset to open, N rules kept)'",
+          "check": "C593",
+          "plan": "P208.3"
+        },
+        {
+          "text": "a requirement whose proof changes from auto to human loses its rules and its checks, and the sync message names them",
+          "check": "C593",
+          "plan": "P208.3"
+        },
+        {
+          "text": "the reworded requirement reads changed in vbw show contract --changes and the contract needs approval again",
+          "check": "C593",
+          "plan": "P208.3"
+        },
+        {
+          "text": "at the next plan step vbw next --json lists the reworded requirements in detail.reworded and names them in the plan instruction; the Lead's full vbw apply clears the mark and keeps the rules",
+          "check": "C593",
+          "plan": "P208.3"
+        },
+        {
+          "text": "the router passes detail.reworded to the planning workflow, which names the reworded requirements in the Lead's plan prompt",
+          "check": "C594",
+          "plan": "P208.3"
+        },
+        {
+          "text": "the Lead's specification says to review a reworded requirement's kept rules (keep, reword or retire each through vbw apply --patch) and that a rule is removed only by an explicit retire, never by a sync",
+          "check": "C594",
+          "plan": "P208.3"
+        },
+        {
+          "text": "docs/proof.md's Rules section and docs/record.md's requirements row say a changed text keeps the rules (reworded, reviewed by the Lead), a change to human drops them, retire is explicit, and no longer say a changed text resets the rules to pending",
+          "check": "C595",
+          "plan": "P208.3"
+        }
+      ]
     },
     {
       "id": "R260",
@@ -19400,7 +19779,43 @@
       "proof": "auto",
       "status": "open",
       "milestone": "M53",
-      "rules": []
+      "rules": [
+        {
+          "text": "a moved submodule runs only the checks that read a changed file inside it, named by its project path (sub/pay.txt changed), reuses the rest, and the summary names the reused count",
+          "check": "C596",
+          "plan": "P209.1"
+        },
+        {
+          "text": "when the recorded submodule commit is missing from the submodule's repository the run stays unknown and everything runs again",
+          "check": "C596",
+          "plan": "P209.1"
+        },
+        {
+          "text": "a submodule added between the two trees keeps the run unknown",
+          "check": "C596",
+          "plan": "P209.1"
+        },
+        {
+          "text": "a submodule removed between the two trees keeps the run unknown",
+          "check": "C596",
+          "plan": "P209.1"
+        },
+        {
+          "text": "a moved nested submodule (one inside the submodule) keeps the run unknown",
+          "check": "C596",
+          "plan": "P209.1"
+        },
+        {
+          "text": "a submodule whose pointer did not move changes nothing: everything is reused and no git diff runs inside the submodule",
+          "check": "C596",
+          "plan": "P209.1"
+        },
+        {
+          "text": "docs/proof.md's reuse section says a moved submodule is diffed inside the submodule with its folder prefixed and judged by the read lists, names the four cases that stay unknown, and the older rule (any commit in a submodule runs everything again) is gone",
+          "check": "C597",
+          "plan": "P209.1"
+        }
+      ]
     },
     {
       "id": "R261",
@@ -19408,7 +19823,63 @@
       "proof": "auto",
       "status": "open",
       "milestone": "M53",
-      "rules": []
+      "rules": [
+        {
+          "text": "plugin/packs/rust holds pack.json with name rust and patterns Cargo.toml and *.rs, plus lead.md, dev.md and qa.md, and nothing else",
+          "check": "C598",
+          "plan": "P210.1"
+        },
+        {
+          "text": "each role text carries the four first contents (test = false, --test, compiles; Cargo.lock in the same commit; -j 2 and alone; baselines and digests) and the path rule (project root)",
+          "check": "C598",
+          "plan": "P210.1"
+        },
+        {
+          "text": "packs are not agents: plugin/agents still holds seven agents and no pack file carries agent frontmatter",
+          "check": "C598",
+          "plan": "P210.1"
+        },
+        {
+          "text": "vbw next --json names a plan's pack by its files (packs.plans), the phases' packs (packs.phases) and the project's (packs.project) with packs_root; a Python plan in the same wave gets none",
+          "check": "C598",
+          "plan": "P210.1"
+        },
+        {
+          "text": "a project with no match pays nothing: no packs key, no packs_root, and no more jq processes than a plugin tree without any pack folder",
+          "check": "C598",
+          "plan": "P210.1"
+        },
+        {
+          "text": "the Lead's pack comes from the project's tracked files at the plan step: a tracked Cargo.toml selects it, an untracked one does not",
+          "check": "C598",
+          "plan": "P210.1"
+        },
+        {
+          "text": "adding a stack is one more folder: a plugin tree with an extra pack gives a .py plan that pack without any code change",
+          "check": "C598",
+          "plan": "P210.1"
+        },
+        {
+          "text": "a pack is outside the contract and the record: editing a pack changes no contract hash, un-approves no plan and adds no key or schema move to the record",
+          "check": "C598",
+          "plan": "P210.1"
+        },
+        {
+          "text": "the build workflow hands a Dev its pack's dev text by path only for a plan that has one (a plan without one gets today's prompt unchanged), verify hands QA the qa text, planning hands the Lead the lead text, the router passes packs and packs_root, and no workflow reads a file",
+          "check": "C599",
+          "plan": "P210.2"
+        },
+        {
+          "text": "docs/packs.md says what a pack is, how a plan gets one (the Lead's from the tracked files), what the folder holds, that it never touches the contract or the record, and how to contribute one",
+          "check": "C600",
+          "plan": "P210.3"
+        },
+        {
+          "text": "CONTRIBUTING.md and README.md link to docs/packs.md, and docs/ideas.md's Stack packs entry points to it and keeps only what is still open",
+          "check": "C600",
+          "plan": "P210.3"
+        }
+      ]
     },
     {
       "id": "R262",
@@ -19416,7 +19887,38 @@
       "proof": "auto",
       "status": "open",
       "milestone": "M53",
-      "rules": []
+      "rules": [
+        {
+          "text": "the scenarios amendfile, queuedreq and worktreewrite exist in tools/l3-suite.sh, are in ALL and the header, start from new_project, state a fixture, run common_checks, judge nothing on screen text and write their result with fixture, cost and verdict",
+          "check": "C601",
+          "plan": "P211.1"
+        },
+        {
+          "text": "amendfile opens a build, adds a file to its plan with vbw apply --amend and judges the amendment entry (what, at, session), the kept approval, the unbroken run, plan done and the added file in the plan's commit",
+          "check": "C601",
+          "plan": "P211.1"
+        },
+        {
+          "text": "queuedreq adds a requirement while a build runs and judges the queued mark, its clearing at run end, the later plan and build, and that the first plans were not re-planned",
+          "check": "C601",
+          "plan": "P211.1"
+        },
+        {
+          "text": "worktreewrite has a Dev in a linked worktree write into the main checkout under its build run and judges the guard's refusal (VBW guard:), the unchanged file and the Dev's finished plan",
+          "check": "C601",
+          "plan": "P211.1"
+        },
+        {
+          "text": "docs/workflows.md names the three scenarios with what each judges",
+          "check": "C601",
+          "plan": "P211.1"
+        },
+        {
+          "text": "a committed result of each scenario, when there is one, is labelled L3 and passed with its fixture, cost and facts true; a result is written only by a passing run (D551)",
+          "check": "C601",
+          "plan": "P211.1"
+        }
+      ]
     }
   ],
   "phases": [
@@ -29526,6 +30028,152 @@
         "qa_findings": 0,
         "escalations": 0
       }
+    },
+    {
+      "id": "P207",
+      "title": "Proofs that leave the machine usable",
+      "reqs": [
+        "R256",
+        "R257"
+      ],
+      "milestone": "M53",
+      "goal": "A running proof, fix done or mutation check never makes the computer sluggish: every unit runs at low priority, and a proof that VBW's own tests start inside a unit runs one unit at a time unless that project asked for more.",
+      "criteria": [
+        "Every unit started by vbw prove, vbw fix done and vbw mutate (queued mutations included) runs its command at low priority: a check whose command prints its own priority (ps -o nice= -p $$) shows a value above 0 under each of the three commands, and 0 when the same command is run by hand. One code path does it (checks_exec in plugin/lib/checks.sh), so no unit kind is missed.",
+        "Low priority changes nothing else about a unit: its time limit, its read-list tracking, its slot in the computer-wide store, its exit code and its kept output are as before; the existing test files for prove, fix done and mutate pass unchanged.",
+        "When the nice program cannot be found on PATH, the units still run at normal priority and the proof's summary prints one line saying so; the proof is never refused for it.",
+        "docs/proof.md, section The computer-wide limit, says in plain words that the limit counts units running at once, not processor use; that one unit may use more than one core (and points to Cores per unit); and that units run at low priority (nice) so the machine stays usable. A test pins that wording (beside tests/check-jobs-docs.bats).",
+        "The outer run marks every unit's environment with one VBW variable that does not depend on which Claude config folder the inner kernel uses (VBW_SLOT_STORE alone is not enough: an inner kernel with its own CLAUDE_CONFIG_DIR has a different store path and today opens a fresh store at the full machine limit, plugin/lib/slots.sh:258). The mark is set whether or not the computer-wide store is in force.",
+        "A kernel started inside a marked unit reads a check_jobs default of 1: vbw config shows check_jobs as 1 and names the reason (inside another proof's unit); vbw prove, vbw check and vbw fix done there run one unit at a time (the parallel-count fixtures of tests/check-jobs-shared.bats and tests/check-jobs-machine.bats are reused to count).",
+        "A check_jobs value set in the inner project (vbw config set check_jobs N) still wins over the nested default, so VBW's own tests of parallel lanes keep their lanes; a value outside 1 to 64 is refused as today.",
+        "Without the mark nothing changes: a user's own vbw prove at the terminal keeps the machine default (three quarters of the cores) and the set value when there is one; tests/helper.bash never strips the mark, so a hermetic test started inside a unit sees it.",
+        "docs/proof.md says that a proof started inside another proof's unit takes one unit at a time by default and that the project's own check_jobs setting overrides it."
+      ],
+      "tier": "deep",
+      "reasons": [
+        "requirements: 2",
+        "files: 4 (185008 bytes)",
+        "files: more than 2 in a repository tracking 1264 files",
+        "risk: none",
+        "breaks: R31, R69, R81, R103, R147, R181, R202, R211, R212, R213, R215, R216, R220, R250",
+        "guarded: R1 (C1), R2 (C2), R12 (C11), R13 (C12), R14 (C13), R25 (C24), R32 (C28), R33 (C29), R43 (C42, C43), R44 (C44, C45), R45 (C39, C40, C41), R46 (C46), R47 (C47), R48 (C49, C50), R49 (C48), R58 (C62, C63, C64, C67), R61 (C73, C74, C75, C76, C77), R66 (C95), R70 (C114), R73 (C98), R74 (C99, C100), R78 (C105, C106), R79 (C107), R80 (C108), R83 (C119), R92 (C131, C132, C133, C134, C135, C136, C137, C138, C139), R93 (C140, C141, C142, C143, C144), R94 (C145, C146, C147, C148), R97 (C153), R98 (C154), R100 (C156), R104 (C161, C162), R105 (C163), R110 (C169, C170), R111 (C171, C172, C173, C174, C175), R115 (C181), R118 (C184), R131 (C198), R132 (C199), R134 (C201), R135 (C202), R144 (C208, C209), R148 (C213, C214, C216, C238), R149 (C217, C218, C219, C220, C221, C222), R152 (C233, C234), R153 (C235, C236, C239), R160 (C247, C263, C264), R161 (C248, C265, C266), R166 (C253, C254, C255, C256, C267), R167 (C257, C258, C259, C260), R168 (C261, C262), R169 (C268), R170 (C269), R174 (C279, C280), R175 (C274, C275), R176 (C276, C277, C278), R182 (C322, C323, C324, C325, C326), R183 (C327), R188 (C350, C351, C352, C353, C354, C355, C356, C357, C358, C359), R190 (C374, C375, C376, C377, C378, C379, C380, C381, C382, C383, C384, C385, C386, C387, C388), R191 (C389, C390, C391, C392, C393, C394, C395, C396, C397, C398, C399, C400), R193 (C411, C412), R194 (C417, C418, C419), R195 (C420, C421, C422), R196 (C415, C416), R197 (C413, C414), R203 (C448, C449, C450), R204 (C451, C452, C453, C454), R205 (C455, C456, C457, C458, C467), R206 (C459, C460), R209 (C469, C470, C471, C472, C473), R210 (C474, C475, C476), R214 (C485, C486, C487), R217 (C494, C495), R221 (C504), R223 (C507, C508, C509), R226 (C510, C511), R228 (C522, C523, C524, C525), R232 (C534), R236 (C537), R238 (C545), R246 (C566, C567), R251 (C579), R252 (C580), R253 (C581, C582)",
+        "tests: project test command"
+      ],
+      "predicted": "deep"
+    },
+    {
+      "id": "P208",
+      "title": "A reworded rule and a reworded requirement keep their history",
+      "reqs": [
+        "R258",
+        "R259"
+      ],
+      "milestone": "M53",
+      "goal": "Changing the words of a rule or of a requirement never loses the proof work already recorded against it: breaks stay with their rule by its place, and a requirement keeps its rules for the Lead to review.",
+      "criteria": [
+        "A recorded break names its rule by place, not by text: the break's rule field is {req, k} (k the rule's place among its requirement's rules, the Rn.k address of T168) instead of {req, text}. This is a new record key, so it is a new schema row (schema 10, docs/record.md Versioning), VBW_SCHEMA_MAX moves with it, tools/check-record-shape.sh's digest in tests/standards.bats is updated, and a record whose breaks carry the old {req, text} shape stays readable: its breaks keep counting for the rule whose text they carry until the record is written in the new shape (one conversion, text matched to place, at the first write that raises the schema).",
+        "After vbw apply --patch rewords a rule (its text changes, its place does not), that rule's recorded breaks still count: vbw plan done lists no 'Rules no recorded break has made a check fail' line for it (plugin/lib/cmd-plan.sh:112 judges by place), vbw show plan lists the break under its Rn.k number instead of unnumbered (plugin/lib/cmd-show.sh:562), and vbw mutate's 'already broken' judgement treats it as broken (plugin/lib/cmd-mutate.sh:386,401,408). The field case (a parenthesis added to two rules, then plan done refusing the next plan) is a test that fails without the change.",
+        "A retired rule keeps its place and its breaks; the rules after it keep their k and their breaks. vbw spec sync that keeps a rule's place carries its breaks (the R259 path below).",
+        "vbw spec sync with a changed [auto] requirement text keeps the requirement's rules (plugin/lib/cmd-spec.sh:91-93 today replaces the entry and gives rules: []): after the sync, vbw show req Rn lists the same rules, with the same addresses and their recorded breaks; the sync message says 'changed Rn (status reset to open, N rules kept)'. tests/rules.bats:118 ('a changed requirement loses its rules') is rewritten to the new rule, never stacked.",
+        "A requirement whose proof kind changes from auto to human loses its rules as today (a human requirement cannot carry rules, plugin/lib/record.jq:222), and the sync message says so.",
+        "The reworded requirement reads changed in vbw show contract --changes, and the contract needs approval again, as today (tests/spec-queue.bats:97 stays true).",
+        "At the next plan step, the Lead is told which requirements changed text while keeping rules, and reviews them: vbw next's plan instruction names them, the planning workflow passes them to the Lead, and the Lead's specification says to keep a rule that still holds, reword one whose words are now wrong, or retire one, each through vbw apply --patch. Removing a rule happens only by an explicit vbw apply --patch retire, never by sync.",
+        "docs/record.md (the record's shape and the schema row) and docs/proof.md (how a break is matched to its rule) say the new rule in plain words."
+      ],
+      "tier": "deep",
+      "reasons": [
+        "requirements: 2",
+        "files: 14 (387977 bytes)",
+        "files: more than 2 in a repository tracking 1264 files",
+        "risk: none",
+        "breaks: R31, R69, R81, R103, R147, R181, R202, R211, R212, R213, R215, R216, R220, R247, R248, R250",
+        "guarded: R1 (C1), R2 (C2), R12 (C11), R13 (C12), R14 (C13), R22 (C19), R23 (C20), R24 (C23), R25 (C24), R26 (C22), R27 (C21), R28 (C25), R32 (C28), R33 (C29), R35 (C31), R37 (C35), R38 (C33, C34), R39 (C36), R40 (C37), R43 (C42, C43), R44 (C44, C45), R45 (C39, C40, C41), R46 (C46), R47 (C47), R48 (C49, C50), R49 (C48), R50 (C51), R60 (C72, C94), R61 (C73, C74, C75, C76, C77), R62 (C78, C79, C80, C81, C82, C83, C93), R65 (C86, C87, C88, C89, C90), R66 (C95), R67 (C96), R70 (C114), R71 (C115, C121), R72 (C116, C118), R73 (C98), R74 (C99, C100), R78 (C105, C106), R79 (C107), R80 (C108), R83 (C119), R92 (C131, C132, C133, C134, C135, C136, C137, C138, C139), R93 (C140, C141, C142, C143, C144), R94 (C145, C146, C147, C148), R95 (C149, C150), R96 (C151, C152), R97 (C153), R98 (C154), R99 (C155), R100 (C156), R101 (C179), R102 (C158, C159), R104 (C161, C162), R105 (C163), R106 (C164, C165), R107 (C166, C167), R110 (C169, C170), R111 (C171, C172, C173, C174, C175), R115 (C181), R116 (C182, C183), R118 (C184), R119 (C180), R121 (C187, C188), R122 (C189), R123 (C190, C191), R127 (C194), R129 (C196), R130 (C197), R131 (C198), R132 (C199), R133 (C195), R134 (C201), R135 (C202), R144 (C208, C209), R145 (C210), R146 (C211), R148 (C213, C214, C216, C238), R149 (C217, C218, C219, C220, C221, C222), R150 (C223, C224, C225, C226, C227, C228, C229, C230), R152 (C233, C234), R153 (C235, C236, C239), R156 (C242, C243), R157 (C244), R158 (C245), R159 (C246), R160 (C247, C263, C264), R161 (C248, C265, C266), R162 (C249), R165 (C252), R166 (C253, C254, C255, C256, C267), R167 (C257, C258, C259, C260), R168 (C261, C262), R169 (C268), R170 (C269), R171 (C270), R173 (C281, C282, C283, C284, C285, C286, C289), R174 (C279, C280), R175 (C274, C275), R176 (C276, C277, C278), R177 (C287, C288), R178 (C290, C291, C292, C293, C294, C295, C296, C311), R179 (C297, C298, C299, C300, C301, C302, C303, C304, C305, C306, C312), R180 (C307, C308, C309, C310), R182 (C322, C323, C324, C325, C326), R183 (C327), R186 (C344, C345, C346, C347, C348), R188 (C350, C351, C352, C353, C354, C355, C356, C357, C358, C359), R190 (C374, C375, C376, C377, C378, C379, C380, C381, C382, C383, C384, C385, C386, C387, C388), R191 (C389, C390, C391, C392, C393, C394, C395, C396, C397, C398, C399, C400), R192 (C401, C402, C403, C404, C405, C406, C407, C408, C409, C410), R193 (C411, C412), R194 (C417, C418, C419), R195 (C420, C421, C422), R196 (C415, C416), R197 (C413, C414), R201 (C428, C429), R203 (C448, C449, C450), R204 (C451, C452, C453, C454), R205 (C455, C456, C457, C458, C467), R206 (C459, C460), R207 (C461, C462, C463), R208 (C464, C465, C466, C468), R209 (C469, C470, C471, C472, C473), R210 (C474, C475, C476), R214 (C485, C486, C487), R217 (C494, C495), R221 (C504), R225 (C517, C518, C519), R226 (C510, C511), R228 (C522, C523, C524, C525), R229 (C526, C527, C528, C529), R232 (C534), R236 (C537), R238 (C545), R239 (C554, C555), R241 (C546, C547, C548, C549, C550, C560), R242 (C551, C552, C553), R245 (C564, C565), R246 (C566, C567), R249 (C571, C572, C573), R251 (C579), R252 (C580), R253 (C581, C582), R255 (C584)",
+        "tests: project test command"
+      ],
+      "predicted": "deep"
+    },
+    {
+      "id": "P209",
+      "title": "Proof reuse survives a moved submodule",
+      "reqs": [
+        "R260"
+      ],
+      "milestone": "M53",
+      "goal": "When a project's submodule moves to another commit, the next proof runs only the checks that read a changed file inside it and reuses everything else, instead of running the whole proof again.",
+      "criteria": [
+        "Fixture in tests/proof-reuse.bats: a project with one submodule, a passing proof, then a commit inside the submodule that changes a file one check read and leaves another check's files untouched, and the project's pointer moved to it. The next vbw prove runs only the check that read the changed file and reuses the other; the proof's summary names the reused count.",
+        "The change inside the submodule is found by a diff inside the submodule between the recorded commit and the current one, with every path prefixed by the submodule's folder as the project sees it (sub/path), and judged by the same read-list rule as a top-level change (plugin/lib/proofreuse.sh:326 today marks the whole tree =FAIL, so every run reads 'the code it ran on is unknown').",
+        "A run stays unknown (every result runs again) in each of these cases, each a test: the recorded submodule commit is missing from the submodule's repository; a submodule was added between the two trees; a submodule was removed; a nested submodule (one inside the submodule) moved.",
+        "A submodule whose pointer did not move changes nothing: the proof costs the same git calls as today, and a project without any submodule still costs one git process for its copy (tests/proof-reuse.bats:231 stays green).",
+        "The existing submodule cases of tests/proof-reuse.bats (129, 174, 199) and tests/submodule-history.bats keep passing unchanged.",
+        "docs/proof.md, in the reuse section, says how a moved submodule is judged and names the cases that stay unknown."
+      ],
+      "tier": "deep",
+      "reasons": [
+        "requirements: 1",
+        "files: 2 (129920 bytes)",
+        "risk: none",
+        "breaks: R31, R69, R81, R103, R147, R181, R202, R211, R212, R213, R215, R216, R220",
+        "guarded: R12 (C11), R32 (C28), R43 (C42, C43), R44 (C44, C45), R45 (C39, C40, C41), R46 (C46), R47 (C47), R48 (C49, C50), R49 (C48), R61 (C73, C74, C75, C76, C77), R66 (C95), R70 (C114), R73 (C98), R74 (C99, C100), R78 (C105, C106), R79 (C107), R80 (C108), R92 (C131, C132, C133, C134, C135, C136, C137, C138, C139), R93 (C140, C141, C142, C143, C144), R94 (C145, C146, C147, C148), R97 (C153), R98 (C154), R100 (C156), R104 (C161, C162), R105 (C163), R110 (C169, C170), R111 (C171, C172, C173, C174, C175), R115 (C181), R118 (C184), R131 (C198), R132 (C199), R134 (C201), R135 (C202), R144 (C208, C209), R148 (C213, C214, C216, C238), R149 (C217, C218, C219, C220, C221, C222), R152 (C233, C234), R153 (C235, C236, C239), R160 (C247, C263, C264), R161 (C248, C265, C266), R166 (C253, C254, C255, C256, C267), R167 (C257, C258, C259, C260), R168 (C261, C262), R169 (C268), R170 (C269), R174 (C279, C280), R175 (C274, C275), R176 (C276, C277, C278), R182 (C322, C323, C324, C325, C326), R183 (C327), R188 (C350, C351, C352, C353, C354, C355, C356, C357, C358, C359), R193 (C411, C412), R194 (C417, C418, C419), R195 (C420, C421, C422), R196 (C415, C416), R197 (C413, C414), R203 (C448, C449, C450), R204 (C451, C452, C453, C454), R205 (C455, C456, C457, C458, C467), R206 (C459, C460), R209 (C469, C470, C471, C472, C473), R210 (C474, C475, C476), R214 (C485, C486, C487), R217 (C494, C495), R221 (C504), R226 (C510, C511), R228 (C522, C523, C524, C525), R232 (C534), R238 (C545), R246 (C566, C567), R251 (C579), R252 (C580), R253 (C581, C582)",
+        "tests: project test command"
+      ],
+      "predicted": "deep"
+    },
+    {
+      "id": "P210",
+      "title": "The first stack pack: Rust",
+      "reqs": [
+        "R261"
+      ],
+      "milestone": "M53",
+      "goal": "A plan that touches Rust code gets Rust-specific guidance for the Lead, the Dev and QA from a pack folder that any contributor can copy for another stack, while a project without Rust sees and pays nothing.",
+      "criteria": [
+        "plugin/packs/rust/ exists and holds a small manifest (the pack's name and the file patterns that select it: Cargo.toml and *.rs) plus one text per role (lead, dev, qa). The texts carry the four first contents and the path rule: a test target written before its code is declared test = false in Cargo.toml so whole-crate commands stay green while cargo test --test NAME still fails red, and the declaration is removed once it compiles (D613's probe: skipped by cargo test and cargo clippy --all-targets); a dependency added to a crate updates the Cargo.lock of every workspace that path-depends on it, in the same commit; a check runs one crate with -j 2 and the whole workspace only as a check marked alone; a behaviour change re-pins baselines, generated pages and digests in the same change; paths in a nested workspace are written from the project root. A structural test pins the folder, the manifest keys and that each role file names each content.",
+        "Selection is by the plan's files: a plan whose files include a path matching the pack's patterns has its pack named in the args vbw next --json gives the build and verify workflows, and the workflow adds the pack's dev text to that plan's Dev prompt and its qa text to the QA prompt (by path under ${CLAUDE_PLUGIN_ROOT}/packs/, since workflows read no files themselves). In one wave of a mixed repository, the Rust plan's Dev gets the pack and the Python plan's Dev gets a prompt byte-identical to today's. A test over the workflow source and over vbw next --json output pins both.",
+        "The Lead gets the pack at planning when the project's tracked files include a Cargo.toml or a *.rs file (git ls-files, plan files do not exist yet), so plans are cut Rust-aware; a project without such files gives the Lead today's prompt.",
+        "A project with no Rust pays nothing: vbw next --json carries no pack key, no pack file is read, and the next command's time on a record without matches does not grow beyond the test's measurement noise (the measurement in tests/next-proof-cache.bats or its neighbour is reused).",
+        "A pack is outside the contract and the record: editing any file under plugin/packs/ changes no contract hash (plugin/lib/contract.sh), un-approves no plan, and adds no key to .vbw/record.json (the schema stays where P208 leaves it; a test writes a record after a pack edit and checks the schema and the approval).",
+        "Adding a stack is one more folder: a test points VBW_TEST_PLUGIN_ROOT at a tree with an extra pack whose pattern is *.py and sees a plan with a .py file get it without any code change.",
+        "tests/workflows.bats still counts exactly 7 workflows and 7 agents; packs are not agents and add no agent file.",
+        "docs/packs.md says what a pack is, how a plan gets one, what its folder holds, that it never touches the contract, and how to contribute one (manifest, role texts, the real-codebase evidence a pack needs before it ships, D-style review); CONTRIBUTING.md and README.md link to it; docs/ideas.md's Stack packs entry points to the shipped page and keeps only what is still open (init asking the stack, check forms and mutation step per pack)."
+      ],
+      "tier": "deep",
+      "reasons": [
+        "requirements: 1",
+        "files: 10 (142291 bytes)",
+        "files: more than 2 in a repository tracking 1264 files",
+        "risk: none",
+        "breaks: R20, R31, R81, R250",
+        "guarded: R3 (C3), R12 (C11), R13 (C12), R14 (C13), R21 (C16), R22 (C19), R23 (C20), R24 (C23), R26 (C22), R37 (C35), R38 (C33, C34), R39 (C36), R40 (C37), R47 (C47), R49 (C48), R50 (C51), R51 (C52, C53, C66), R52 (C58, C91), R53 (C54, C55), R55 (C56, C57), R57 (C59, C70, C71), R60 (C72, C94), R61 (C73, C74, C75, C76, C77), R62 (C78, C79, C80, C81, C82, C83, C93), R65 (C86, C87, C88, C89, C90), R67 (C96), R70 (C114), R71 (C115, C121), R72 (C116, C118), R78 (C105, C106), R79 (C107), R80 (C108), R83 (C119), R95 (C149, C150), R96 (C151, C152), R98 (C154), R99 (C155), R100 (C156), R101 (C179), R106 (C164, C165), R107 (C166, C167), R111 (C171, C172, C173, C174, C175), R116 (C182, C183), R119 (C180), R121 (C187, C188), R122 (C189), R123 (C190, C191), R131 (C198), R132 (C199), R134 (C201), R135 (C202), R142 (C204, C205), R143 (C206, C207), R149 (C217, C218, C219, C220, C221, C222), R152 (C233, C234), R157 (C244), R160 (C247, C263, C264), R161 (C248, C265, C266), R164 (C251), R165 (C252), R170 (C269), R171 (C270), R179 (C297, C298, C299, C300, C301, C302, C303, C304, C305, C306, C312), R180 (C307, C308, C309, C310), R185 (C334, C335, C336, C337, C338, C339, C340, C341, C342, C343), R186 (C344, C345, C346, C347, C348), R188 (C350, C351, C352, C353, C354, C355, C356, C357, C358, C359), R189 (C360, C361, C362, C363, C364, C365, C366, C367, C368, C369, C370, C371, C372, C373), R190 (C374, C375, C376, C377, C378, C379, C380, C381, C382, C383, C384, C385, C386, C387, C388), R191 (C389, C390, C391, C392, C393, C394, C395, C396, C397, C398, C399, C400), R192 (C401, C402, C403, C404, C405, C406, C407, C408, C409, C410), R201 (C428, C429), R210 (C474, C475, C476), R223 (C507, C508, C509), R228 (C522, C523, C524, C525), R229 (C526, C527, C528, C529), R239 (C554, C555), R241 (C546, C547, C548, C549, C550, C560), R245 (C564, C565), R249 (C571, C572, C573), R251 (C579), R252 (C580)",
+        "tests: project test command"
+      ],
+      "predicted": "deep"
+    },
+    {
+      "id": "P211",
+      "title": "Real-user scenarios for what 2.1.25 left at L1",
+      "reqs": [
+        "R262"
+      ],
+      "milestone": "M53",
+      "goal": "The three behaviours 2.1.25 proved only with unit tests are each driven through the real Claude Code screen on a small project, so a passing run is evidence a user would get the same.",
+      "criteria": [
+        "tools/l3-suite.sh gains a scenario (name amendfile) where a build is open, a file is added to its plan by vbw apply --amend, and the build finishes: the record shows the amendment (what, when, session id), the contract's approval hash is unchanged, the run never ended early, plan done succeeded and the added file is in the plan's commit.",
+        "tools/l3-suite.sh gains a scenario (name queuedreq) where the user adds a requirement while a build runs: the record shows the requirement queued during the run, cleared at run end, then planned and built by a later plan, and the first build's plans were not re-planned.",
+        "tools/l3-suite.sh gains a scenario (name worktreewrite) where a Dev working from a linked worktree writes into the main checkout while the main checkout's build run is open: the guard's refusal (a reason starting 'VBW guard:') is in the run's refused list or transcript, the main checkout's file is unchanged, and the Dev's own plan still finishes in its worktree.",
+        "Each scenario is in the ALL list, writes its result through result_write with cost, and its result file is committed only from a passing run (D551). docs/workflows.md's scenario notes name the three.",
+        "Each of the three scenarios is run and passes before the milestone ships; the progress log names the runs, their cost in USD and anything not run."
+      ],
+      "tier": "deep",
+      "reasons": [
+        "requirements: 1",
+        "files: 2 (305800 bytes)",
+        "risk: none",
+        "breaks: R31, R41, R69, R81, R147, R202, R211, R212, R213, R215, R216, R220, R250",
+        "guarded: R4 (C4), R5 (C5), R8 (C8), R13 (C12), R14 (C13), R25 (C24), R28 (C25), R34 (C30), R39 (C36), R42 (C38), R44 (C44, C45), R48 (C49, C50), R50 (C51), R51 (C52, C53, C66), R59 (C68, C92), R60 (C72, C94), R61 (C73, C74, C75, C76, C77), R62 (C78, C79, C80, C81, C82, C83, C93), R64 (C84, C85), R65 (C86, C87, C88, C89, C90), R70 (C114), R72 (C116, C118), R73 (C98), R74 (C99, C100), R75 (C101), R76 (C102, C103), R77 (C104), R78 (C105, C106), R79 (C107), R80 (C108), R95 (C149, C150), R96 (C151, C152), R99 (C155), R101 (C179), R106 (C164, C165), R107 (C166, C167), R116 (C182, C183), R118 (C184), R123 (C190, C191), R129 (C196), R130 (C197), R134 (C201), R135 (C202), R148 (C213, C214, C216, C238), R156 (C242, C243), R157 (C244), R158 (C245), R159 (C246), R160 (C247, C263, C264), R162 (C249), R163 (C250), R167 (C257, C258, C259, C260), R173 (C281, C282, C283, C284, C285, C286, C289), R179 (C297, C298, C299, C300, C301, C302, C303, C304, C305, C306, C312), R180 (C307, C308, C309, C310), R182 (C322, C323, C324, C325, C326), R184 (C328, C329, C330, C331, C332, C333), R185 (C334, C335, C336, C337, C338, C339, C340, C341, C342, C343), R186 (C344, C345, C346, C347, C348), R188 (C350, C351, C352, C353, C354, C355, C356, C357, C358, C359), R189 (C360, C361, C362, C363, C364, C365, C366, C367, C368, C369, C370, C371, C372, C373), R190 (C374, C375, C376, C377, C378, C379, C380, C381, C382, C383, C384, C385, C386, C387, C388), R191 (C389, C390, C391, C392, C393, C394, C395, C396, C397, C398, C399, C400), R192 (C401, C402, C403, C404, C405, C406, C407, C408, C409, C410), R193 (C411, C412), R194 (C417, C418, C419), R196 (C415, C416), R197 (C413, C414), R199 (C424, C425, C430), R200 (C426, C427, C431), R201 (C428, C429), R203 (C448, C449, C450), R205 (C455, C456, C457, C458, C467), R207 (C461, C462, C463), R208 (C464, C465, C466, C468), R209 (C469, C470, C471, C472, C473), R210 (C474, C475, C476), R219 (C497, C498, C499), R228 (C522, C523, C524, C525), R230 (C530, C531), R237 (C544), R238 (C545), R239 (C554, C555), R240 (C556, C557), R241 (C546, C547, C548, C549, C550, C560), R242 (C551, C552, C553), R244 (C562, C563), R245 (C564, C565), R246 (C566, C567)",
+        "tests: project test command"
+      ],
+      "predicted": "deep"
     }
   ],
   "plans": [
@@ -66769,6 +67417,231 @@
           ]
         }
       ]
+    },
+    {
+      "id": "P207.1",
+      "phase": "P207",
+      "title": "Units run at low priority, and a proof inside a unit runs one at a time",
+      "reqs": [
+        "R256",
+        "R257"
+      ],
+      "files": [
+        "plugin/lib/checks.sh",
+        "plugin/lib/cmd-prove.sh",
+        "plugin/lib/core.sh",
+        "docs/proof.md"
+      ],
+      "after": [],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "checks.sh: checks_exec runs every unit under nice (the system program that lowers a process's priority) by putting it before the timeout or perl command, when nice is on PATH (looked up once per process); no other file calls nice, so prove, fix done, mutate and the mutate queue all get it",
+        "cmd-prove.sh: when nice was not found, the proof's screen says in one line that units ran at normal priority (the word nice appears once in the whole output); nothing is refused for it",
+        "checks.sh: every unit's environment carries VBW_PROOF_UNIT=1 beside VBW_SLOT_STORE, whether or not the computer-wide store is in force",
+        "core.sh: vbw_check_jobs reads 1 when VBW_PROOF_UNIT is set and the clone has no valid check_jobs setting; vbw_check_jobs_source then prints a reason starting 'inside another proof's unit'; a set value (1 to 64) still wins and the range check is unchanged",
+        "docs/proof.md, The computer-wide limit: the limit counts units running at once, not processor use; one unit may use more than one core (see Cores per unit); units run at low priority (nice) so the machine stays usable, at normal priority when nice is missing; a proof started inside another proof's unit (VBW_PROOF_UNIT) takes one unit at a time by default and the project's check_jobs setting overrides it"
+      ]
+    },
+    {
+      "id": "P208.1",
+      "phase": "P208",
+      "title": "Schema 10: a recorded break names its rule by place",
+      "reqs": [
+        "R258"
+      ],
+      "files": [
+        "plugin/lib/record.jq",
+        "plugin/lib/record-schema.jq",
+        "plugin/lib/record.sh",
+        "docs/record.md",
+        "docs/proof.md"
+      ],
+      "after": [
+        "P207.1"
+      ],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "record-schema.jq and record.sh: a new top row, schema 10, feature text exactly 'a break that names its rule by place or a requirement reworded with its rules kept', present when any break's rule has k or any requirement has reworded true; VBW_SCHEMA_MAX becomes 10 (tests/standards.bats already pins the digest of this shape: the draft in .vbw/runtime/scratch/schema10/lib digests to it, so change no other key list or value)",
+        "record.jq: a break's rule is {req, k} (k an integer from 1 to 9999) or the older {req, text}, and no other shape; requirements[] accepts reworded, exactly true (false is corrupt); a human requirement still cannot carry rules",
+        "record.sh: the first write of a record whose breaks name their rules by text converts each break to {req, k}, k being the 1-based place (retired rules counted) of the rule of that requirement whose text matches; a break whose text matches no rule is kept as it is; the write raises the schema to 10",
+        "docs/record.md: the plans row gives a break as rule: {req, k} with k the rule's place, says a full vbw apply that inserts or removes live rules in the middle of a requirement moves the places under the breaks that follow (the cost R258 chose), and Versioning gets row 10, VBW_SCHEMA_MAX 10 and the one-time conversion at the first write",
+        "docs/proof.md, The mutation check: a break belongs to its rule by its place (Rn.k), so rewording a rule keeps its breaks and retiring one keeps its place"
+      ]
+    },
+    {
+      "id": "P208.2",
+      "phase": "P208",
+      "title": "Breaks are recorded, counted and numbered by place",
+      "reqs": [
+        "R258"
+      ],
+      "files": [
+        "plugin/lib/cmd-mutate.sh",
+        "plugin/lib/cmd-plan.sh",
+        "plugin/lib/cmd-show.sh"
+      ],
+      "after": [
+        "P208.1"
+      ],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "cmd-mutate.sh: a red break, a survivor and a --none entry record rule: {req, k} from the Rn.k address; the earlier-survivor lookup (strengthened) and the already-broken judgement of a pending check compare rules by {req, k}, never by text",
+        "cmd-plan.sh: plan_missing_breaks matches a recorded break to an owed rule by its requirement and its place (the rule's n), so a reworded rule's breaks still count and a break of one rule never counts for another",
+        "cmd-show.sh: vbw show plan numbers a break Rn.k from its place without reading the rule's text; vbw show req lists under each rule, retired ones included, the breaks recorded against it"
+      ]
+    },
+    {
+      "id": "P208.3",
+      "phase": "P208",
+      "title": "A reworded requirement keeps its rules, and the Lead reviews them",
+      "reqs": [
+        "R259"
+      ],
+      "files": [
+        "plugin/lib/cmd-spec.sh",
+        "plugin/lib/next.jq",
+        "plugin/lib/cmd-apply.sh",
+        "plugin/workflows/planning.js",
+        "plugin/skills/vibe/SKILL.md",
+        "plugin/agents/lead.md",
+        "docs/proof.md",
+        "docs/record.md"
+      ],
+      "after": [
+        "P208.1"
+      ],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "cmd-spec.sh: a changed [auto] text keeps the requirement's rules in their places and words, resets its status to open, sets reworded: true and says 'changed Rn (status reset to open, N rules kept)'; a proof change from auto to human drops the rules and the requirement's checks (their files leave protected) and the message names them, because the record allows neither on a human requirement; a change to auto still gives fresh rules: []",
+        "next.jq and cmd-apply.sh: the plan action's detail.reworded lists the reworded requirements and the plan instruction names them with 'reworded' and that their rules were kept; a full vbw apply clears reworded on the requirements the milestone's phases cover and keeps their rules",
+        "planning.js and the vibe skill: the router passes detail.reworded as reworded in the planning workflow's args; the 'Plan these phases' prompt line names the reworded requirements when there are any, and is unchanged otherwise",
+        "agents/lead.md: for a reworded requirement, review its kept rules: keep one that still holds, reword one whose words are now wrong, retire one whose behaviour changed, each through vbw apply --patch by address; a rule is removed only by an explicit retire, never by a sync",
+        "docs/proof.md Rules and docs/record.md requirements row: a changed text keeps the rules (reworded, reviewed by the Lead at the next plan step), a change to human drops rules and checks, retire stays explicit; the sentence about resetting the rules to pending on a text change is gone"
+      ]
+    },
+    {
+      "id": "P209.1",
+      "phase": "P209",
+      "title": "Proof reuse through a moved submodule",
+      "reqs": [
+        "R260"
+      ],
+      "files": [
+        "plugin/lib/proofreuse.sh",
+        "docs/proof.md"
+      ],
+      "after": [
+        "P208.3"
+      ],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "proofreuse_diffs: when the one diff-tree per recorded tree shows a submodule entry (mode 160000) changed, diff inside that submodule between the recorded commit and the current one (git -C sub diff-tree -r --no-renames --name-status OLD NEW), prefix every path with the submodule's folder as the project sees it, and merge those paths into the tree's list so the read-list rule judges them like any top-level change; today's --quiet pass over the submodule paths goes",
+        "the unknown cases stay unknown (=FAIL): the inner diff fails because the recorded commit is missing from the submodule's repository, a submodule entry was added or removed between the two trees, or the inner diff itself shows a 160000 entry changed (a nested submodule moved)",
+        "no new cost when nothing moved: a tree whose submodule entries are unchanged keeps today's single diff-tree and runs no git inside the submodule; a project without submodules is untouched (tests/proof-reuse.bats:231)",
+        "docs/proof.md, Reusing results: how a moved submodule is judged (the diff inside the submodule, paths prefixed with its folder, the read-list rule) and the four cases that stay unknown; the Limits bullet saying any commit in a submodule runs everything again is replaced"
+      ]
+    },
+    {
+      "id": "P210.1",
+      "phase": "P210",
+      "title": "The Rust pack folder, and vbw next naming each plan's pack",
+      "reqs": [
+        "R261"
+      ],
+      "files": [
+        "plugin/packs/rust/",
+        "plugin/lib/cmd-next.sh"
+      ],
+      "after": [
+        "P209.1"
+      ],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "plugin/packs/rust/pack.json: {\"name\": \"rust\", \"patterns\": [\"Cargo.toml\", \"*.rs\"]} and nothing else in the folder but lead.md, dev.md and qa.md",
+        "the three role texts, each written for its reader (Lead: how to cut plans and checks; Dev: how to build and commit; QA: what to verify) and each naming the four first contents and the path rule: a test target written before its code is declared test = false in Cargo.toml so whole-crate commands stay green while cargo test --test NAME still fails red, and the declaration is removed once it compiles; a dependency added to a crate updates the Cargo.lock of every workspace that path-depends on it, in the same commit; a check runs one crate with -j 2 and the whole workspace only as a check marked alone; a behaviour change re-pins baselines, generated pages and digests in the same change; paths in a nested workspace are written from the project root",
+        "cmd-next.sh, the command's --json answer only (beside root): read every $VBW_PLUGIN/packs/*/pack.json by glob and, inside the one jq call that already adds root, compute packs.plans (plan id -> the packs whose patterns match one of its files; a pattern without a slash matches the file's basename), packs.phases (a phase's plans' packs) and, at the plan action, packs.project (the tracked files from git ls-files -z matched the same way), plus packs_root ($VBW_PLUGIN/packs); when nothing matches the answer carries neither packs nor packs_root",
+        "no cost without a match: no extra jq process whether or not a pack folder exists (tests/packs.bats counts them), no pack file read beyond the manifests, and the answer for a project without Rust is as today"
+      ]
+    },
+    {
+      "id": "P210.2",
+      "phase": "P210",
+      "title": "Workflows hand each agent its pack text",
+      "reqs": [
+        "R261"
+      ],
+      "files": [
+        "plugin/workflows/building.js",
+        "plugin/workflows/verifying.js",
+        "plugin/workflows/planning.js",
+        "plugin/skills/vibe/SKILL.md"
+      ],
+      "after": [
+        "P208.3",
+        "P209.1"
+      ],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "the vibe skill: the router passes the next JSON's top-level packs and packs_root into every workflow's args, in the sentence that already passes rigor, effort, profile and root",
+        "building.js: per plan, a note telling the Dev to read ${args.packs_root}/<pack>/dev.md first, computed from args.packs.plans[id] and the empty string when the plan has no pack, so a plan without one gets today's prompt byte for byte; the prompt's start 'Execute VBW plan ${id}. Start with: vbw show plan ${id}; then ${SINCE(id)}${mutate}' is unchanged",
+        "verifying.js and planning.js: QA's prompt per phase names the qa.md of each pack in args.packs.phases[id]; the Lead's plan prompt names the lead.md of each pack in args.packs.project; no workflow reads a file (paths only)"
+      ]
+    },
+    {
+      "id": "P210.3",
+      "phase": "P210",
+      "title": "docs/packs.md, and the pages that point to it",
+      "reqs": [
+        "R261"
+      ],
+      "files": [
+        "docs/packs.md",
+        "CONTRIBUTING.md",
+        "README.md",
+        "docs/ideas.md"
+      ],
+      "after": [
+        "P209.1"
+      ],
+      "status": "planned",
+      "role": "docs",
+      "tasks": [
+        "docs/packs.md: what a stack pack is; how a plan gets one (its files against the pack's patterns, Cargo.toml and *.rs for Rust; the Lead's pack from the project's tracked files, git ls-files, because plans do not exist yet at planning, the one place selection is per project); what the folder holds (pack.json with name and patterns, lead.md, dev.md, qa.md); that a pack is outside the contract and the record (editing one changes no hash, un-approves no plan, adds no record key)",
+        "docs/packs.md, contributing: adding a stack is one more folder; the manifest and the three role texts; the real-codebase evidence a pack needs before it ships (what it removed from a real project's failure list) and the decision-style review",
+        "CONTRIBUTING.md and README.md link to docs/packs.md; docs/ideas.md's Stack packs entry points to the shipped page and keeps only what is still open (init asking the stack, check forms and a mutation step per pack, versioning beside VBW), dropping the shipped first contents"
+      ]
+    },
+    {
+      "id": "P211.1",
+      "phase": "P211",
+      "title": "Three real-user scenarios in tools/l3-suite.sh",
+      "reqs": [
+        "R262"
+      ],
+      "files": [
+        "tools/l3-suite.sh",
+        "docs/workflows.md"
+      ],
+      "after": [
+        "P210.1",
+        "P210.2",
+        "P210.3"
+      ],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "scenario_amendfile: a build is open, a file is added to its plan by vbw apply --amend, the build finishes; judged in the record and git, never on screen text: the amendment entry (what, at, session) is recorded, the approval hash is unchanged, the run never ended early, plan done succeeded and the added file is in the plan's commit (facts amendment_recorded, approval_kept, run_not_ended_early, plan_done, added_file_in_commit)",
+        "scenario_queuedreq: the user adds a requirement while a build runs; judged: queued during the run, cleared at run end, planned and built by a later plan, the first build's plans not re-planned (facts queued_during_run, cleared_at_run_end, planned_later, built_later, first_plans_kept)",
+        "scenario_worktreewrite: a Dev working from a linked worktree (git worktree add) writes into the main checkout while its build run is open; judged: the guard's refusal (a reason starting 'VBW guard:') is in the run's refused list or the transcripts, the main checkout's file is unchanged, the Dev's own plan is done in its worktree (facts guard_refused, main_file_unchanged, worktree_plan_done)",
+        "each scenario is in ALL and the header comment, starts from new_project, states its fixture, runs common_checks and ends with result_write NAME \"$fixture\" \"${cost_usd:-0}\" \"$passed\" FACTS NOT_TESTED; docs/workflows.md's scenario notes name the three and what each judges; no tools/l3-results file is written by hand: only a passing run writes one (D551), and the runs themselves (real Claude Code sessions, about 1 to 3 USD each) are the main session's step before the ship, not this plan's"
+      ]
     }
   ],
   "fixes": [
@@ -74697,6 +75570,11 @@
       "id": "D612",
       "text": "The guard's hook budget moves from 20 ms to 25 ms per call (a script run by name 50 ms). GitHub's macOS runner measured 21.9 ms after the guard work of M52; the owner said they cannot judge this and I decide. A design cut would have delayed the release by a day for 2 ms nobody feels. Bringing it back down is a todo.",
       "at": "2026-11-05T14:39:03Z"
+    },
+    {
+      "id": "D613",
+      "text": "M53's plan order: R256 and R257 first (proof load), then R258, R259, R260, then R261 (the pack), R262 last; halindrome's PRs #742 and #744 are merged into plow/2.1.26 between the first two groups once their CI is green and their real-user scenarios pass. Probe 2026-11-05: test = false on a [[test]] target is skipped by cargo test and cargo clippy --all-targets, while cargo test --test NAME still fails by its compile error",
+      "at": "2026-11-05T18:34:39Z"
     }
   ],
   "commands": {
@@ -84640,6 +85518,17 @@
         "ended": "2026-11-05T12:23:54Z",
         "cost": {
           "usd": 0.522478
+        }
+      },
+      {
+        "id": "plan-20261105T183441Z",
+        "kind": "plan",
+        "session": "0ee781c3-c5b6-4a6c-889f-04b89f1fba4a",
+        "milestone": "M53",
+        "started": "2026-11-05T18:34:41Z",
+        "ended": "2026-11-06T04:06:34Z",
+        "cost": {
+          "usd": 34.923074
         }
       }
     ],

@@ -65,9 +65,10 @@ table() { jq -r -n -L "$PLUGIN_ROOT/lib" "include \"record-schema\"; $1"; }
 # --- schema 9 (check: R250 schema) --------------------------------------------------
 
 @test "R250 schema: schema 9 is one row of the table, 'an amendment, an awaited check or a queued requirement', VBW_SCHEMA_MAX is 9, and record.jq's key lists hold exactly queued, amendments and awaits (the shape tests/standards.bats pins)" {
-  [ "$(sed -n 's/^VBW_SCHEMA_MAX=//p' "$PLUGIN_ROOT/lib/record.sh")" = 9 ]
-  [ "$(table 'schema_top')" = 9 ]
-  [ "$(table 'schema_features[-1] | "\(.schema) \(.feature)"')" = "9 an amendment, an awaited check or a queued requirement" ]
+  # Schema 10 (R258) sits above this row: the top only grows.
+  [ "$(sed -n 's/^VBW_SCHEMA_MAX=//p' "$PLUGIN_ROOT/lib/record.sh")" -ge 9 ]
+  [ "$(table 'schema_top')" -ge 9 ]
+  [ "$(table 'schema_features[] | select(.schema == 9) | "\(.schema) \(.feature)"')" = "9 an amendment, an awaited check or a queued requirement" ]
   [ "$(table '{plans: [{amendments: []}]} | schema_of')" = 9 ]
   [ "$(table '{plans: [{awaits: ["C3"]}]} | schema_of')" = 9 ]
   [ "$(table '{checks: [{amendments: []}]} | schema_of')" = 9 ]

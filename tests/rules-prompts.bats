@@ -42,3 +42,26 @@ teardown() { vbw_teardown; }
   printf '%s\n' "$line" | grep -Eq 'refuses[^.]*case filter[^.]*no case' || { echo "the line does not say vbw apply refuses a case filter matching no case name"; false; }
   printf '%s\n' "$line" | grep -q 'protected' || { echo "the line does not say a Dev cannot add the cases later (check files are protected during the build)"; false; }
 }
+
+# R259 (T235): a requirement reworded with its rules kept is reviewed by the Lead at the
+# next plan step: the router passes vbw next's detail.reworded to the planning workflow,
+# the workflow names those requirements in the Lead's prompt, and the Lead's
+# specification says to keep a rule that still holds, reword one whose words are now
+# wrong, or retire one, each through vbw apply --patch; a rule is removed only so.
+
+@test "R259: the router passes detail.reworded to the planning workflow, which names the reworded requirements in the Lead's plan prompt" {
+  local p="$PLUGIN_ROOT/workflows/planning.js"
+  grep -q 'reworded' "$PLUGIN_ROOT/skills/vibe/SKILL.md" || { echo "the router does not pass detail.reworded"; false; }
+  grep -E 'vbw:planning|"requirements": <requirements>' "$PLUGIN_ROOT/skills/vibe/SKILL.md" | grep -q 'reworded' || { echo "the planning workflow's args do not carry reworded"; false; }
+  grep -q 'args.reworded\|args && args.reworded\|reworded' "$p" || { echo "planning.js never reads args.reworded"; false; }
+  grep -E 'Plan these phases' "$p" | grep -q 'reworded' || { echo "the Lead's plan prompt does not name the reworded requirements"; false; }
+}
+
+@test "R259: the Lead's specification says to review a reworded requirement's kept rules: keep, reword or retire each through vbw apply --patch, never removed by sync" {
+  local lead="$PLUGIN_ROOT/agents/lead.md"
+  grep -qi 'reworded' "$lead" || { echo "the Lead's brief never mentions a reworded requirement"; false; }
+  grep -iE 'reworded' "$lead" | grep -qiE 'rules' || { echo "the brief does not tie a reworded requirement to its kept rules"; false; }
+  grep -iE 'reworded|kept' "$lead" | grep -qiE 'retire' || { echo "the brief does not offer retiring a kept rule"; false; }
+  grep -iE 'reworded|kept' "$lead" | grep -qF -- '--patch' || { echo "the brief does not route the review through vbw apply --patch"; false; }
+  grep -qiE 'never by (a )?(spec )?sync|sync never removes|only (by|through) an explicit' "$lead" || { echo "the brief does not say a rule is removed only by an explicit retire"; false; }
+}

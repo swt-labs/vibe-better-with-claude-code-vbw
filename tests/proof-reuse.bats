@@ -324,3 +324,138 @@ SH
 @test "R103: docs/proof.md shows the reused count of the output" {
   grep -qE 'checks: [0-9N]+ ran, [0-9N]+ reused' "$REPO_ROOT/docs/proof.md"
 }
+
+# R260 (T222, #745; docs/proof.md, Reusing results): a moved submodule no longer makes
+# every result unknown. When a submodule's commit differs between a run's recorded tree
+# and HEAD, the diff runs inside the submodule between the two commits, every path
+# prefixed with the submodule's folder as the project sees it (sub/pay.txt), and is
+# judged by the same read-list rule as a top-level change. A run stays unknown (every
+# result runs again) when the recorded commit is missing from the submodule's
+# repository, when a submodule was added or removed between the two trees, and when a
+# nested submodule (one inside the submodule) moved. A submodule whose pointer did
+# not move costs no git call inside it. Each case builds its own submodule: git writes
+# the source path into the config, so a fixture copy could not carry one.
+
+# sub_two_files: a submodule "sub" holding pay.txt and other.txt, a check reading each
+# (C5 sub/pay.txt, C6 sub/other.txt), committed, approved and proved once.
+sub_two_files() {
+  git init -q "$TEST_ROOT/subsrc"
+  printf 'paid\n' > "$TEST_ROOT/subsrc/pay.txt"
+  printf 'other\n' > "$TEST_ROOT/subsrc/other.txt"
+  git -C "$TEST_ROOT/subsrc" add pay.txt other.txt
+  git -C "$TEST_ROOT/subsrc" commit -q -m "chore: seed"
+  git -c protocol.file.allow=always submodule add -q "file://$TEST_ROOT/subsrc" sub
+  sub_checks
+}
+# sub_checks: C5 reads sub/pay.txt and C6 sub/other.txt; approve and prove once, then empty the log.
+sub_checks() {
+  cat > tests/c5.sh << 'SH'
+echo "C5$1" >> "$RANLOG"
+grep -qx paid sub/pay.txt
+SH
+  cat > tests/c6.sh << 'SH'
+echo "C6$1" >> "$RANLOG"
+grep -qx other sub/other.txt
+SH
+  edit_record '.checks += [{id:"C5", req:"R1", run:["sh","tests/c5.sh"], files:["tests/c5.sh"]},
+      {id:"C6", req:"R1", run:["sh","tests/c6.sh"], files:["tests/c6.sh"]}]'
+  git add -A && git commit -q -m "chore: sub"
+  "$VBW" approve > /dev/null
+  "$VBW" prove > /dev/null
+  : > "$RANLOG"
+}
+# sub_move FILE TEXT: a commit inside the submodule that writes TEXT into FILE, and the
+# project's pointer moved to it.
+sub_move() {
+  printf '%s\n' "$2" > "sub/$1"
+  git -C sub commit -q -am "feat(sub): $1"
+  git add sub && git commit -q -m "chore: move sub"
+}
+ALL_SUB='C1 C2 C2b C5 C6 cmd-lint cmd-test '
+
+@test "R260: a moved submodule runs only the checks that read a changed file inside it, named by its project path, and reuses the rest; the summary names the reused count" {
+  sub_two_files
+  sub_move pay.txt 'paid
+again'
+  vbw_run prove
+  [ "$status" -eq 0 ] || { echo "$output"; false; }
+  [ "$(ran)" = "C5 " ] || { echo "ran: $(ran)"; false; }
+  [[ "$output" == *"sub/pay.txt changed"* ]] || { echo "the reason does not name the file by its project path: $output"; false; }
+  [[ "$output" == *"checks: 1 ran, 4 reused"* ]] || { echo "$output"; false; }
+  [[ "$output" != *"unknown"* ]] || { echo "$output"; false; }
+  : > "$RANLOG"
+  sub_move other.txt 'other
+again'
+  vbw_run prove
+  [ "$status" -eq 0 ] || { echo "$output"; false; }
+  [ "$(ran)" = "C6 " ] || { echo "ran: $(ran)"; false; }
+}
+
+@test "R260: when the recorded submodule commit is missing from the submodule's repository, the run stays unknown and everything runs again" {
+  sub_two_files
+  git -C sub commit -q --amend -m "chore: seed, rewritten"
+  git -C sub reflog expire --expire=now --all
+  git -C sub gc -q --prune=now
+  git add sub && git commit -q -m "chore: move sub to the rewritten commit"
+  vbw_run prove
+  [ "$status" -eq 0 ] || { echo "$output"; false; }
+  [ "$(ran)" = "$ALL_SUB" ] || { echo "ran: $(ran)"; false; }
+  [[ "$output" == *"unknown"* ]] || { echo "$output"; false; }
+}
+
+@test "R260: a submodule added between the two trees keeps the run unknown: everything runs again" {
+  sub_two_files
+  vbw_submodule sub2
+  git commit -q -m "chore: add sub2"
+  vbw_run prove
+  [ "$status" -eq 0 ] || { echo "$output"; false; }
+  [ "$(ran)" = "$ALL_SUB" ] || { echo "ran: $(ran)"; false; }
+  [[ "$output" == *"unknown"* ]] || { echo "$output"; false; }
+}
+
+@test "R260: a submodule removed between the two trees keeps the run unknown: everything runs again" {
+  sub_two_files
+  git rm -q -f sub
+  git commit -q -m "chore: remove sub"
+  vbw_run prove
+  [ "$(ran)" = "$ALL_SUB" ] || { echo "ran: $(ran)"; false; }
+  [[ "$output" == *"unknown"* ]] || { echo "$output"; false; }
+}
+
+@test "R260: a moved nested submodule (one inside the submodule) keeps the run unknown: everything runs again" {
+  git init -q "$TEST_ROOT/innersrc"
+  printf 'in\n' > "$TEST_ROOT/innersrc/a.txt"
+  git -C "$TEST_ROOT/innersrc" add a.txt
+  git -C "$TEST_ROOT/innersrc" commit -q -m "chore: inner"
+  git init -q "$TEST_ROOT/subsrc"
+  printf 'paid\n' > "$TEST_ROOT/subsrc/pay.txt"
+  printf 'other\n' > "$TEST_ROOT/subsrc/other.txt"
+  git -C "$TEST_ROOT/subsrc" add pay.txt other.txt
+  git -C "$TEST_ROOT/subsrc" -c protocol.file.allow=always submodule add -q "file://$TEST_ROOT/innersrc" inner
+  git -C "$TEST_ROOT/subsrc" commit -q -m "chore: seed"
+  git -c protocol.file.allow=always submodule add -q "file://$TEST_ROOT/subsrc" sub
+  git -c protocol.file.allow=always submodule update -q --init --recursive
+  sub_checks
+  printf 'in2\n' > sub/inner/a.txt
+  git -C sub/inner commit -q -am "feat(inner): in2"
+  git -C sub add inner
+  git -C sub commit -q -m "chore: move inner"
+  git add sub && git commit -q -m "chore: move sub"
+  vbw_run prove
+  [ "$status" -eq 0 ] || { echo "$output"; false; }
+  [ "$(ran)" = "$ALL_SUB" ] || { echo "ran: $(ran)"; false; }
+  [[ "$output" == *"unknown"* ]] || { echo "$output"; false; }
+}
+
+@test "R260: a submodule whose pointer did not move changes nothing: the proof reuses everything and runs no git diff inside the submodule" {
+  sub_two_files
+  decide
+  mkdir -p "$TEST_ROOT/logbin"
+  printf '#!/bin/sh\necho "$PWD|$*" >> "$TEST_ROOT/calls"\nexec %s "$@"\n' "$(command -v git)" > "$TEST_ROOT/logbin/git"
+  chmod +x "$TEST_ROOT/logbin/git"
+  : > "$TEST_ROOT/calls"
+  PATH="$TEST_ROOT/logbin:$PATH" run "$VBW" prove < /dev/null
+  [ "$status" -eq 0 ] || { echo "$output"; false; }
+  [ "$(ran)" = "" ] || { echo "ran: $(ran)"; false; }
+  ! grep -E 'diff' "$TEST_ROOT/calls" | grep -qE '/sub\|| -C [^|]*/sub |--git-dir' || { echo "a git diff ran inside the submodule:"; grep diff "$TEST_ROOT/calls"; false; }
+}

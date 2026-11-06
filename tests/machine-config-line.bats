@@ -18,7 +18,12 @@ one_check() {
 }
 
 setup_file() { fixture_build one one_check; }
-setup() { fixture_copy one; }
+setup() {
+  fixture_copy one
+  # This file tests the machine default: a proof marks its own units (VBW_PROOF_UNIT, R257),
+  # which would make the kernel under test read 1 instead.
+  unset VBW_PROOF_UNIT
+}
 teardown() { machine_teardown; }
 teardown_file() { fixture_teardown; }
 
