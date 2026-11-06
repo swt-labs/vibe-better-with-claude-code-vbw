@@ -74467,7 +74467,7 @@
     {
       "id": "T249",
       "text": "doctor and init suggest leaving large ignored folders out of the clean copy even on a copy-on-write disk (adapted from field feedback): there a build output folder costs little and saves rebuilds. On a copy-on-write disk say so and do not suggest it; keep the suggestion on a plain-copy disk. Measure the disk, do not special-case Rust.",
-      "status": "open"
+      "status": "done"
     },
     {
       "id": "T250",
