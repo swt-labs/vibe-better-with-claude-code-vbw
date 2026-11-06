@@ -30174,12 +30174,19 @@
         }
       ],
       "qa": {
-        "result": "fail",
+        "result": "pass",
         "tier": "deep",
-        "tree": "4d8b18c87148a8f943baa66fe04d22b5f11b682d0c49c34934a2aaa9171404d5",
-        "at": "2026-11-06T16:46:59Z",
-        "note": "21/22 checks",
-        "rounds": 1
+        "tree": "ee6e01d2a00de872b9f504b763e39f2248690dfcf22972b6615f2fb65b7f9241",
+        "at": "2026-11-06T21:00:01Z",
+        "note": "8/8 checks"
+      },
+      "outcome": {
+        "tier": "deep",
+        "predicted": "deep",
+        "held": true,
+        "fix_rounds": 1,
+        "qa_findings": 1,
+        "escalations": 1
       }
     },
     {
@@ -71938,7 +71945,7 @@
       "req": "R258",
       "source": "qa",
       "attempts": 0,
-      "status": "fixed",
+      "status": "closed",
       "note": "A record whose breaks still name their rule by text ({req, text}, written before schema 12) stays readable, but nothing that reads it before its first write counts those breaks. The phase criterion says they 'keep counting for the rule whose text they carry until the record is written in the new shape'. plugin/lib/cmd-plan.sh:112 matches only '.rule.k == $o.n' (a text break has no k, so plan done would still name its rule as having no break, if it runs on a record not yet converted, for example a build run opened by an older VBW and finished after an upgrade); plugin/lib/cmd-show.sh (tname, now \"\\(.rule.req).\\(.rule.k)\") prints such a break as 'R1.null' in vbw show plan, and rule_breaks in vbw show req lists nothing for it; plugin/lib/cmd-mutate.sh:392,407 compare '.rule == {req, k}' so an earlier text-shaped survivor is not found. Only plugin/lib/record.sh's write path converts. tests/record-schema.bats 'R258 schema 12: a record whose breaks name their rules by text stays readable' only asserts that vbw show plan exits 0, not that the break is counted or numbered. A regression test should take a schema-11 record with a text-shaped red break, run vbw show plan and vbw plan done (no write first) and assert the break is listed under Rn.k and counted; the simplest fix is one read-side normalisation (breaks_by_place applied in record_read) so every reader sees {req, k}.",
       "phase": "P208"
     }
