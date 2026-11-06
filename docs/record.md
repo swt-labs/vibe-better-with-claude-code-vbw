@@ -50,6 +50,8 @@ The fix: remove that line, or change it to .vbw/runtime/
   of the record bytes last found correct and of VBW's own validator text, so the
   next read skips the check. Any change to either (a hand edit, another VBW
   version) checks the record again in full. Deleting it is harmless.
+  It also says whether those bytes hold a break that names its rule by text, so a read
+  converts such a break to its place only when one is there.
 - **The glance:** `.vbw/runtime/glance.json` holds the record's `schema`,
   `lease` and `protected` for the guards (docs/guards.md), besides what the
   status line shows. Every record write rewrites it in the same locked write and

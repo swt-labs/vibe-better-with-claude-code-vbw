@@ -126,29 +126,34 @@ record_glance_current() {
 # holds {record, validator}, the sha256 of the record's bytes and of the validator's
 # own text (record.jq, record-schema.jq, interview.json, in that order) and the top
 # schema it reads, because the refusal of a newer schema depends on that too. A record
-# whose bytes and validator match it is not validated again; any other bytes are.
+# whose bytes and validator match it is not validated again; any other bytes are. It also
+# holds text_breaks: true when those bytes hold a break that names its rule by text (R258).
 # A runtime folder that cannot be read or written is never an error: the digest is
 # simply not kept.
 record_validator_digest() {
   { printf '%s\n' "$VBW_SCHEMA_MAX"; cat "$VBW_LIB/record.jq" "$VBW_LIB/record-schema.jq" "$VBW_LIB/interview.json" 2> /dev/null; } | vbw_sha256
 }
 
-# record_digest_matches FILE: true when the digest file names FILE's bytes and the validator.
+# record_digest_matches FILE: true when the digest file names FILE's bytes and the validator;
+# RECORD_TEXT_BREAKS then says what it holds of them.
 record_digest_matches() {
   local want got
   [ -f "$VBW_RUNTIME/validated.json" ] || return 1
   got=$(vbw_sha256 < "$1" 2> /dev/null) || return 1
-  want=$(jq -c '[.record, .validator]' "$VBW_RUNTIME/validated.json" 2> /dev/null) || return 1
-  [ "$want" = "[\"$got\",\"$(record_validator_digest)\"]" ]
+  want=$(jq -r '"\(.record) \(.validator) \(.text_breaks // false)"' "$VBW_RUNTIME/validated.json" 2> /dev/null) || return 1
+  [ "${want% *}" = "$got $(record_validator_digest)" ] || return 1
+  RECORD_TEXT_BREAKS=${want##* }
 }
 
-# record_digest_write FILE: keep the digest of FILE's bytes (a temporary name, then a rename).
+# record_digest_write FILE [true]: keep the digest of FILE's bytes (a temporary name, then a
+# rename); true when they hold a break that names its rule by text.
 record_digest_write() {
-  local rec val t
+  local rec val t extra=
+  [ "${2:-}" != true ] || extra=',"text_breaks":true'
   rec=$(vbw_sha256 < "$1" 2> /dev/null) || return 0
   val=$(record_validator_digest)
   t=$(mktemp "$VBW_RUNTIME/validated.XXXXXX" 2> /dev/null) || return 0
-  if printf '{"record":"%s","validator":"%s"}\n' "$rec" "$val" > "$t" 2> /dev/null; then
+  if printf '{"record":"%s","validator":"%s"%s}\n' "$rec" "$val" "$extra" > "$t" 2> /dev/null; then
     mv "$t" "$VBW_RUNTIME/validated.json" 2> /dev/null || rm -f "$t" 2> /dev/null || true
   else
     rm -f "$t" 2> /dev/null || true
@@ -168,7 +173,8 @@ record_read() {
   if ! record_digest_matches "$VBW_RECORD"; then
     record_refuse_newer
     v=$(record_violation "$VBW_RECORD") || vbw_die "record is corrupt: $v ($VBW_RECORD)" 3
-    record_digest_write "$VBW_RECORD"
+    RECORD_TEXT_BREAKS=$(jq '[.plans[]?.mutations[]?.rule? | objects | has("text")] | any' "$VBW_RECORD")
+    record_digest_write "$VBW_RECORD" "$RECORD_TEXT_BREAKS"
   fi
   if ! record_glance_current; then
     (
@@ -180,9 +186,9 @@ record_read() {
     ) || true
   fi
   # R258: a break that still names its rule by text counts for the rule of that text on
-  # every read, not only after the first write. The grep only decides whether the one jq
-  # pass is needed (a text-shaped break has "text" beside "req" in its rule).
-  if grep -A2 '"rule": {' "$VBW_RECORD" 2> /dev/null | grep -q '"text":'; then
+  # every read, not only after the first write. The digest says whether this pass is needed,
+  # so a record with none pays nothing.
+  if [ "$RECORD_TEXT_BREAKS" = true ]; then
     jq -L "$VBW_LIB" 'include "record-schema"; breaks_by_place' "$VBW_RECORD"
   else
     cat "$VBW_RECORD"
