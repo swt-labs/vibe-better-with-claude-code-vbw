@@ -74472,7 +74472,7 @@
     {
       "id": "T250",
       "text": "tests/proof-priority.bats line 124 fails on Linux: /bin links to /usr/bin, and a dangling link fails [ -e ], so ln runs twice; test [ -e ] or [ -L ]. Red on PR 749, Linux shard 3 only. Test-only.",
-      "status": "open"
+      "status": "done"
     }
   ],
   "decisions": [
