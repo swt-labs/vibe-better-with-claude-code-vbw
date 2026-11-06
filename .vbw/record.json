@@ -74457,7 +74457,7 @@
     {
       "id": "T247",
       "text": "vbw mutate can lose uncommitted work (adopted, by code reading, not yet reproduced): a named file's whole difference from HEAD counts as the break, and it is set aside and restored to HEAD, so an uncommitted line beside the break is dropped. Reproduce first with a failing test; no uncommitted work may be lost; the Dev prompt says commit before a break.",
-      "status": "open"
+      "status": "done"
     },
     {
       "id": "T248",
