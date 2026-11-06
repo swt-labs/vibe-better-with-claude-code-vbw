@@ -108,7 +108,7 @@ CHECKS_TIMER=
 CHECKS_NICE=
 checks_timer() {
   [ -z "$CHECKS_TIMER" ] || return 0
-  if command -v nice > /dev/null 2>&1; then CHECKS_NICE=nice; else CHECKS_NICE=; fi
+  if command -v nice > /dev/null 2>&1; then CHECKS_NICE='nice'; else CHECKS_NICE=; fi
   if command -v timeout > /dev/null 2>&1 && timeout --foreground 5 true > /dev/null 2>&1; then CHECKS_TIMER=timeout; else CHECKS_TIMER=perl; fi
 }
 
