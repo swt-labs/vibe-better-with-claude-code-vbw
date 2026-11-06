@@ -67863,12 +67863,140 @@
       "after": [
         "P207.1"
       ],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "cmd-mutate.sh: a red break, a survivor and a --none entry record rule: {req, k} from the Rn.k address; the earlier-survivor lookup (strengthened) and the already-broken judgement of a pending check compare rules by {req, k}, never by text",
         "cmd-plan.sh: plan_missing_breaks matches a recorded break to an owed rule by its requirement and its place (the rule's n), so a reworded rule's breaks still count and a break of one rule never counts for another",
         "cmd-show.sh: vbw show plan numbers a break Rn.k from its place without reading the rule's text; vbw show req lists under each rule, retired ones included, the breaks recorded against it"
+      ],
+      "mutations": [
+        {
+          "rule": {
+            "req": "R258",
+            "k": 4
+          },
+          "what": "records the rule by text",
+          "files": [
+            "plugin/lib/cmd-mutate.sh"
+          ],
+          "checks": {
+            "C591": "green"
+          },
+          "result": "survivor",
+          "at": "2026-11-06T12:22:25Z",
+          "head": "b8a9672e6757dfb89be155d4fcf0dfcf734f36ac",
+          "tree": "2ef43b6c8092f73bd73ac4becac4c47c9eb33e5f",
+          "contract": "7e2628a36313853977aa09f1571905202a29fc095bbfe8e8e28f875aae6e12cb"
+        },
+        {
+          "rule": {
+            "req": "R258",
+            "k": 5
+          },
+          "what": "plan done matches by text",
+          "files": [
+            "plugin/lib/cmd-plan.sh"
+          ],
+          "checks": {
+            "C591": "red"
+          },
+          "result": "red",
+          "at": "2026-11-06T12:22:27Z",
+          "head": "b8a9672e6757dfb89be155d4fcf0dfcf734f36ac",
+          "tree": "2ef43b6c8092f73bd73ac4becac4c47c9eb33e5f",
+          "contract": "7e2628a36313853977aa09f1571905202a29fc095bbfe8e8e28f875aae6e12cb"
+        },
+        {
+          "rule": {
+            "req": "R258",
+            "k": 6
+          },
+          "what": "any break of the requirement counts",
+          "files": [
+            "plugin/lib/cmd-plan.sh"
+          ],
+          "checks": {
+            "C591": "red"
+          },
+          "result": "red",
+          "at": "2026-11-06T12:22:29Z",
+          "head": "b8a9672e6757dfb89be155d4fcf0dfcf734f36ac",
+          "tree": "2ef43b6c8092f73bd73ac4becac4c47c9eb33e5f",
+          "contract": "7e2628a36313853977aa09f1571905202a29fc095bbfe8e8e28f875aae6e12cb"
+        },
+        {
+          "rule": {
+            "req": "R258",
+            "k": 7
+          },
+          "what": "retired rule lists no breaks",
+          "files": [
+            "plugin/lib/cmd-show.sh"
+          ],
+          "checks": {
+            "C591": "red"
+          },
+          "result": "red",
+          "at": "2026-11-06T12:22:31Z",
+          "head": "b8a9672e6757dfb89be155d4fcf0dfcf734f36ac",
+          "tree": "2ef43b6c8092f73bd73ac4becac4c47c9eb33e5f",
+          "contract": "7e2628a36313853977aa09f1571905202a29fc095bbfe8e8e28f875aae6e12cb"
+        },
+        {
+          "rule": {
+            "req": "R258",
+            "k": 8
+          },
+          "what": "survivor lookup never matches",
+          "files": [
+            "plugin/lib/cmd-mutate.sh"
+          ],
+          "checks": {
+            "C591": "green"
+          },
+          "result": "survivor",
+          "at": "2026-11-06T12:22:33Z",
+          "head": "b8a9672e6757dfb89be155d4fcf0dfcf734f36ac",
+          "tree": "2ef43b6c8092f73bd73ac4becac4c47c9eb33e5f",
+          "contract": "7e2628a36313853977aa09f1571905202a29fc095bbfe8e8e28f875aae6e12cb"
+        },
+        {
+          "rule": {
+            "req": "R258",
+            "k": 4
+          },
+          "what": "records every rule as place 1",
+          "files": [
+            "plugin/lib/cmd-mutate.sh"
+          ],
+          "checks": {
+            "C591": "red"
+          },
+          "result": "red",
+          "at": "2026-11-06T12:23:30Z",
+          "head": "b8a9672e6757dfb89be155d4fcf0dfcf734f36ac",
+          "tree": "2ef43b6c8092f73bd73ac4becac4c47c9eb33e5f",
+          "contract": "7e2628a36313853977aa09f1571905202a29fc095bbfe8e8e28f875aae6e12cb"
+        },
+        {
+          "rule": {
+            "req": "R258",
+            "k": 8
+          },
+          "what": "earlier survivor never found",
+          "files": [
+            "plugin/lib/cmd-mutate.sh"
+          ],
+          "checks": {
+            "C591": "red"
+          },
+          "result": "red",
+          "at": "2026-11-06T12:23:31Z",
+          "head": "b8a9672e6757dfb89be155d4fcf0dfcf734f36ac",
+          "tree": "2ef43b6c8092f73bd73ac4becac4c47c9eb33e5f",
+          "contract": "7e2628a36313853977aa09f1571905202a29fc095bbfe8e8e28f875aae6e12cb"
+        }
       ]
     },
     {
@@ -85994,6 +86122,17 @@
         "ended": "2026-11-06T10:44:02Z",
         "cost": {
           "usd": 1.689038
+        }
+      },
+      {
+        "id": "build-20261106T121405Z",
+        "kind": "build",
+        "session": "0ee781c3-c5b6-4a6c-889f-04b89f1fba4a",
+        "milestone": "M53",
+        "started": "2026-11-06T12:14:05Z",
+        "ended": "2026-11-06T12:23:55Z",
+        "cost": {
+          "usd": 0.918335
         }
       }
     ],
