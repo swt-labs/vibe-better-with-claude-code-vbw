@@ -19683,7 +19683,7 @@
       "milestone": "M53",
       "rules": [
         {
-          "text": "a break naming its rule by place and a reworded requirement are schema 10, the table's top, which VBW_SCHEMA_MAX follows",
+          "text": "a break naming its rule by place and a reworded requirement are schema 12, the table's top, which VBW_SCHEMA_MAX follows",
           "check": "C590",
           "plan": "P208.1"
         },
@@ -19723,7 +19723,7 @@
           "plan": "P208.2"
         },
         {
-          "text": "docs/record.md gives the break's rule as {req, k} with k the rule's place, says a full vbw apply that inserts or removes live rules moves the places under later breaks, has the table row 10 and describes the one-time conversion at the first write; docs/proof.md says a break is matched to its rule by place, so rewording keeps its breaks",
+          "text": "docs/record.md gives the break's rule as {req, k} with k the rule's place, says a full vbw apply that inserts or removes live rules moves the places under later breaks, has the table row 12 and describes the one-time conversion at the first write; docs/proof.md says a break is matched to its rule by place, so rewording keeps its breaks",
           "check": "C592",
           "plan": "P208.1"
         }
@@ -67726,7 +67726,7 @@
     {
       "id": "P208.1",
       "phase": "P208",
-      "title": "Schema 10: a recorded break names its rule by place",
+      "title": "Schema 12: a recorded break names its rule by place",
       "reqs": [
         "R258"
       ],
@@ -67743,10 +67743,10 @@
       "status": "planned",
       "role": "dev",
       "tasks": [
-        "record-schema.jq and record.sh: a new top row, schema 10, feature text exactly 'a break that names its rule by place or a requirement reworded with its rules kept', present when any break's rule has k or any requirement has reworded true; VBW_SCHEMA_MAX becomes 10 (tests/standards.bats already pins the digest of this shape: the draft in .vbw/runtime/scratch/schema10/lib digests to it, so change no other key list or value)",
+        "record-schema.jq and record.sh: a new top row, schema 12, feature text exactly 'a break that names its rule by place or a requirement reworded with its rules kept', present when any break's rule has k or any requirement has reworded true; VBW_SCHEMA_MAX becomes 10 (tests/standards.bats already pins the digest of this shape: the draft in .vbw/runtime/scratch/schema10/lib digests to it, so change no other key list or value)",
         "record.jq: a break's rule is {req, k} (k an integer from 1 to 9999) or the older {req, text}, and no other shape; requirements[] accepts reworded, exactly true (false is corrupt); a human requirement still cannot carry rules",
         "record.sh: the first write of a record whose breaks name their rules by text converts each break to {req, k}, k being the 1-based place (retired rules counted) of the rule of that requirement whose text matches; a break whose text matches no rule is kept as it is; the write raises the schema to 10",
-        "docs/record.md: the plans row gives a break as rule: {req, k} with k the rule's place, says a full vbw apply that inserts or removes live rules in the middle of a requirement moves the places under the breaks that follow (the cost R258 chose), and Versioning gets row 10, VBW_SCHEMA_MAX 10 and the one-time conversion at the first write",
+        "docs/record.md: the plans row gives a break as rule: {req, k} with k the rule's place, says a full vbw apply that inserts or removes live rules in the middle of a requirement moves the places under the breaks that follow (the cost R258 chose), and Versioning gets row 12, VBW_SCHEMA_MAX 10 and the one-time conversion at the first write",
         "docs/proof.md, The mutation check: a break belongs to its rule by its place (Rn.k), so rewording a rule keeps its breaks and retiring one keeps its place"
       ]
     },
@@ -75887,6 +75887,14 @@
       "at": "2026-11-06T10:01:16Z",
       "text": "Contract approved: 251 requirements, 596 checks, 615 plans (f1ba6fe1bcb1)",
       "plans": []
+    },
+    {
+      "id": "D618",
+      "at": "2026-11-06T10:36:32Z",
+      "text": "Contract approved: 251 requirements, 596 checks, 615 plans (8226ce44508a)",
+      "plans": [
+        "P208.1"
+      ]
     }
   ],
   "commands": {
