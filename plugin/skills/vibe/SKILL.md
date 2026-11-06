@@ -58,7 +58,7 @@ Before starting a plan, build, fix, qa or prove step (a background proof too), s
 When `rename_hint` in `vbw next --json` is a sentence, say it once, as given. Never run /rename yourself: the user renames the chat.
 
 `plan`, `build`, `fix` need the **Workflow** tool (the `workflows` line above turned it on). None: say why, stop. Pass
-`session` (`${CLAUDE_SESSION_ID}`, so the workflow confirms and ends its own run), `models` (from `vbw config models`), the next JSON's top-level `rigor`, `effort`, `profile` and `root` (the project folder: agents of a session started in a subfolder work there) in every workflow's args.
+`session` (`${CLAUDE_SESSION_ID}`, so the workflow confirms and ends its own run), `models` (from `vbw config models`), the next JSON's top-level `rigor`, `effort`, `profile` and `root` (the project folder: agents of a session started in a subfolder work there), `packs` and `packs_root` (the stack packs; absent when the project matches none) in every workflow's args.
 
 Before `spec` or a workflow `plan`: code and no `.vbw/map.md` → map first:
 `VBW_SESSION_ID=${CLAUDE_SESSION_ID} vbw run start map`, Workflow `vbw:mapping` (args as above; it does not end its run),
