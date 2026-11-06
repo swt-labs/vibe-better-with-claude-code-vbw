@@ -8,7 +8,7 @@ Read this when your plan's files include Cargo.toml or *.rs. It adds to your ins
 - A dependency you add to a crate updates the Cargo.lock of every workspace that path-depends on that crate. Commit those lockfiles in the same commit as the dependency, never later.
 - Run one crate with `-j 2` (`cargo test -j 2 -p NAME`). Run the whole workspace only alone: when a check is marked alone, run nothing beside it.
 - A behaviour change re-pins baselines, generated pages and digests in the same change; a green test that compares against an old baseline is not done.
-- Write paths from the project root, also in a nested workspace (crates/pay/src/lib.rs). `cargo fmt -- FILE...` touches only your files.
+- Write paths from the project root, also in a nested workspace (crates/pay/src/lib.rs). Format with `rustfmt --edition EDITION FILE...`, which touches your files and the modules they declare; `cargo fmt`, with or without a file named, rewrites the whole crate.
 
 ## Committing
 
