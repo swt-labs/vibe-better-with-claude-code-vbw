@@ -108,7 +108,9 @@ names() {
 @test "R265: the Dev's mutation step says to commit every finished task before a break, that the kernel leaves the file as given, and to edit the break out right after each mutate and before the next --queue; the undo sentences are gone" {
   has_line "$DEV" "commit" "before" "break"
   has_line "$DEV" "leaves the file as" "mutate"
-  has_line "$DEV" "edit the break out"
+  has_line "$DEV" "edit the break out" "right after each"
+  has_line "$DEV" "edit the break out before the next --queue"
+  has_line "$DEV" "same broken bytes twice"
   has_line "$DEV" "--queue" "edit"
   ! grep -qi 'it undoes the break' "$DEV" || { echo "dev.md still says VBW undoes the break"; false; }
   ! grep -qi 'check the file is unchanged' "$DEV" || { echo "dev.md still says to check the file is unchanged"; false; }
