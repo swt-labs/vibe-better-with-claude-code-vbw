@@ -1624,6 +1624,10 @@ several rules can run side by side: each is queued (`--queue`), then `vbw mutate
 PLAN --run` runs them at once, each in its own clean copy. See
 docs/workflows.md for the command and docs/rigor.md for the levels.
 
+A break belongs to its rule by the rule's place in its requirement (`Rn.k`), not
+by its words: rewording a rule keeps its breaks, and a retired rule keeps its
+place, so the rules after it keep theirs.
+
 A task break (`taskK`) without `--check` runs the checks of the plan's own
 rules: those of the rules that name the plan and those of the requirements it
 completes, each check once. A red check of a rule the plan does not owe does not
