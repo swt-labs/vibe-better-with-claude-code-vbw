@@ -949,3 +949,11 @@ checkout's dependencies (an editable install), prove the main checkout's code
 instead of their own. A false proof is the one failure VBW must not have, so
 worktrees may come later only as an opt-in setting with a per-copy install
 step.
+
+## Real-user scenarios for amendments, queued requirements and linked worktrees
+
+Three scenarios in `tools/l3-suite.sh` (L3: the real Claude Code on a small project, judged in the record, git and the transcripts, never on screen text) cover what the unit tests held alone. A result file is written only by a passing run.
+
+- `amendfile`: a build is open and `vbw apply --amend` adds a file to its plan. It judges the amendment entry on the plan (what, at, session), that no new approval was recorded and the contract is still approved, that the run was not ended (the same lease stood right after, and the run ended later), that the plan finished, and that the added file is in a commit of the plan.
+- `queuedreq`: the user adds a requirement while a build runs. It judges that the requirement was queued during the run, that the mark is cleared when the run ends, that a later plan covers it and is built, and that the first build's plan is as it was approved and built (not re-planned).
+- `worktreewrite`: a Dev works from a linked worktree (`git worktree add`) while the main checkout holds an open build run, and writes into the main checkout's protected check file. It judges that the guard's refusal (a reason starting `VBW guard:`) is in the transcripts, that the main checkout's file is unchanged, and that the Dev's own plan is done in its worktree.
