@@ -68179,15 +68179,14 @@
       "after": [
         "P208.3"
       ],
-      "status": "blocked",
+      "status": "planned",
       "role": "dev",
       "tasks": [
         "proofreuse_diffs: when the one diff-tree per recorded tree shows a submodule entry (mode 160000) changed, diff inside that submodule between the recorded commit and the current one (git -C sub diff-tree -r --no-renames --name-status OLD NEW), prefix every path with the submodule's folder as the project sees it, and merge those paths into the tree's list so the read-list rule judges them like any top-level change; today's --quiet pass over the submodule paths goes",
         "the unknown cases stay unknown (=FAIL): the inner diff fails because the recorded commit is missing from the submodule's repository, a submodule entry was added or removed between the two trees, or the inner diff itself shows a 160000 entry changed (a nested submodule moved)",
         "no new cost when nothing moved: a tree whose submodule entries are unchanged keeps today's single diff-tree and runs no git inside the submodule; a project without submodules is untouched (tests/proof-reuse.bats:231)",
         "docs/proof.md, Reusing results: how a moved submodule is judged (the diff inside the submodule, paths prefixed with its folder, the read-list rule) and the four cases that stay unknown; the Limits bullet saying any commit in a submodule runs everything again is replaced"
-      ],
-      "note": "Code (dcb18cc9) and docs (350e33bf) are done; C597 and 5 of 6 R260 cases in C596 pass. R260.2 (missing commit) fails: the test amends the submodule commit and runs gc, but the submodule's clone still has refs/remotes/origin/<branch> at the old seed commit, so the old commit is never missing, the inner diff succeeds (message-only change) and everything is reused. Fix is in the protected tests/proof-reuse.bats: before gc, also drop the remote-tracking refs inside sub (git -C sub remote remove origin) so the old commit is truly gone. I cannot edit that file."
+      ]
     },
     {
       "id": "P210.1",
@@ -76272,6 +76271,12 @@
         "P208.1",
         "P208.2"
       ]
+    },
+    {
+      "id": "D621",
+      "at": "2026-11-06T12:48:30Z",
+      "text": "Contract approved: 251 requirements, 596 checks, 615 plans (f1f8ee599d27)",
+      "plans": []
     }
   ],
   "commands": {

@@ -397,6 +397,10 @@ again'
 @test "R260: when the recorded submodule commit is missing from the submodule's repository, the run stays unknown and everything runs again" {
   sub_two_files
   git -C sub commit -q --amend -m "chore: seed, rewritten"
+  # What keeps the old commit alive besides the branch: the clone's remote branch and the kept proof copies.
+  git -C sub remote remove origin
+  rm -rf .vbw/runtime/proof.keep.*
+  git -C sub worktree prune
   git -C sub reflog expire --expire=now --all
   git -C sub gc -q --prune=now
   git add sub && git commit -q -m "chore: move sub to the rewritten commit"
