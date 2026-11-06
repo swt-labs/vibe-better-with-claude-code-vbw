@@ -256,7 +256,8 @@ cmd_fix() {
   # through the approved single-file form, never as the whole test command. The
   # files are planned as a proof plans them (a file that did not pass runs, the
   # one reuse rule decides the rest), except for the proof's "nothing committed" cause.
-  TF_PATHS=() TF_TODO=() TF_REUSE='{}' TF_WHY='{}'
+  # shellcheck disable=SC2034 # TF_INDEX is read by testfiles_run and testfiles_command
+  TF_PATHS=() TF_TODO=() TF_REUSE='{}' TF_WHY='{}' TF_INDEX='{"owned": [], "dups": [], "match": [], "map": {}}'
   # shellcheck disable=SC2034 # read by testfiles_plan
   PROVE_NAMES='[]' TODO_COMMANDS='[]' REUSE_COMMANDS='{}' WHY_COMMANDS='{}'
   if [ ${#ids[@]} -gt 0 ] && [ -z "$wait_files" ] && testfiles_on "$record"; then

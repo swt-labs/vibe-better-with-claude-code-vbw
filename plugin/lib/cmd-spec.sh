@@ -18,7 +18,7 @@ cmd_spec() {
   local parsed
   parsed=$(spec_parse)
   case "$sub" in
-    sync|check) spec_verify_leave_out "$parsed" ;;
+    sync|check) spec_verify_leave_out "$parsed"; spec_verify_test_files "$parsed" ;;
   esac
   case "$sub" in
     check)
@@ -105,6 +105,38 @@ spec_sync() {
   spec_sync_test_files "$(printf '%s' "$1" | jq -c '.test_files')"
   spec_sync_leave_out "$(printf '%s' "$1" | jq -c '(.leave_out // null) | if . == null then null else map(.path) end')"
   printf 'record has %s requirements\n' "$(jq '.requirements | length' "$VBW_RECORD")"
+}
+
+# spec_test_files_refusal PARSED: "LINE<tab>MESSAGE" for the first refusal of the
+# test file forms against the commit, LINE the form's; nothing otherwise. A dir
+# that is, or lies under, a committed symbolic link is refused: the copy keeps
+# the link, and the cd would follow it out of the copy. A committed file two
+# forms match is refused: a test file belongs to one form, and never runs twice.
+spec_test_files_refusal() {
+  local dirs hit
+  dirs=$(printf '%s' "$1" | jq -c '.test_file_lines as $l | [(.test_files | if type == "array" then . else [] end)
+    | to_entries[] | select(.value.dir != null)
+    | {line: $l[.key], name: .value.name, dir: .value.dir, up: (.value.dir | split("/") as $s | [range(1; ($s | length) + 1) | $s[:.] | join("/")])}]')
+  if [ "$dirs" != '[]' ]; then
+    hit=$(git -C "$VBW_ROOT" ls-files -s -z | jq -Rrs --slurpfile d <(printf '%s' "$dirs") '
+      [split("\u0000")[] | select(startswith("120000 ")) | sub("^[^\t]*\t"; "")] as $links
+      | first($d[0][] | select(any(.up[]; . as $u | $links | index([$u]))) | . as $f
+        | "\($f.line)\tthe dir of \(if $f.name == null then "the Test files section" else "form \($f.name)" end), \($f.dir)/, is a symbolic link in the commit, or lies under one: a form runs in a real folder of the clean copy") // empty')
+    [ -z "$hit" ] || { printf '%s\n' "$hit"; return 0; }
+  fi
+  printf '%s' "$1" | jq -e '.test_files | type == "array" and length > 1' > /dev/null || return 0
+  # shellcheck source=testfiles.sh
+  . "$VBW_LIB/testfiles.sh"
+  testfiles_owned "$1" | jq -r --slurpfile s <(printf '%s' "$1") '$s[0] as $s
+    | first(group_by(.p)[] | select(length > 1)
+      | "\($s.test_file_lines[.[1].i])\t\(.[0].p) is matched by forms \($s.test_files[.[0].i].name) and \($s.test_files[.[1].i].name): a test file belongs to one form") // empty'
+}
+
+# spec_verify_test_files PARSED: dies on the first refusal of the test file forms, naming its line.
+spec_verify_test_files() {
+  local hit
+  hit=$(spec_test_files_refusal "$1")
+  [ -z "$hit" ] || vbw_die "spec.md line ${hit%%$'\t'*}: ${hit#*$'\t'}"
 }
 
 # Every Clean copy path must be git-ignored when something is there: only

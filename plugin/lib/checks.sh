@@ -344,13 +344,14 @@ checks_unit() {
 
 # checks_units_load UNITS: every unit's launch data, from one jq pass over the
 # units (a JSON array): CU_COUNT units; for unit I, CU_NAME, CU_OUT, CU_TIMEOUT,
-# CU_EXIT, CU_OUTPUT, CU_ALONE, CU_PIN (the copy it names, or empty) and its
+# CU_EXIT, CU_OUTPUT, CU_ALONE, CU_PIN (the copy it names, or empty), CU_IN
+# (the folder of the copy it runs in, .dir: empty for the copy's root) and its
 # argv, CU_ARGC[I] words of CU_ARGV from CU_AT[I]. checks_run_units declares them.
 checks_units_load() {
   local f=() a k=0 c
   while IFS= read -r -d '' a; do f+=("$a"); done < <(printf '%s' "$1" | jq -j '.[]
     | [.name, .out, (.timeout | tostring), (.exit | tostring), .output, (.alone | tostring), (.slot // "" | tostring),
-       (.argv | length | tostring)] + .argv | .[] + "\u0000"')
+       (.dir // ""), (.argv | length | tostring)] + .argv | .[] + "\u0000"')
   CU_COUNT=0
   while [ "$k" -lt ${#f[@]} ]; do
     CU_NAME[CU_COUNT]=${f[k]}
@@ -360,11 +361,12 @@ checks_units_load() {
     CU_OUTPUT[CU_COUNT]=${f[k + 4]}
     CU_ALONE[CU_COUNT]=${f[k + 5]}
     CU_PIN[CU_COUNT]=${f[k + 6]}
-    c=${f[k + 7]}
+    CU_IN[CU_COUNT]=${f[k + 7]}
+    c=${f[k + 8]}
     CU_AT[CU_COUNT]=${#CU_ARGV[@]}
     CU_ARGC[CU_COUNT]=$c
-    [ "$c" -eq 0 ] || CU_ARGV+=("${f[@]:k + 8:c}")
-    k=$((k + 8 + c))
+    [ "$c" -eq 0 ] || CU_ARGV+=("${f[@]:k + 9:c}")
+    k=$((k + 9 + c))
     CU_COUNT=$((CU_COUNT + 1))
   done
 }
@@ -374,7 +376,7 @@ checks_units_load() {
 # copy and place are free once its slot and its gate place are given back
 # (checks_unit_free): the next unit starts while this one writes its result.
 checks_unit_run() {
-  local i=$1 name out t want re alone copy here=$PWD st="" reads=true res t0 collected=false list a c
+  local i=$1 name out t want re alone copy here=$PWD st="" reads=true res t0 collected=false list a c why base
   name=${CU_NAME[i]} out=$CHECK_OUT/${CU_OUT[i]} t=${CU_TIMEOUT[i]} want=${CU_EXIT[i]} re=${CU_OUTPUT[i]} alone=${CU_ALONE[i]}
   a=${CU_AT[i]} c=${CU_ARGC[i]} list=$CU_DIR/$i.reads
   if [ -n "${2:-}" ]; then
@@ -396,7 +398,27 @@ checks_unit_run() {
     reads_reset "$copy" "$st" || reads=false
     [ -z "$t0" ] || prooftime_span tracking "$t0"
   fi
-  checks_exec "$t" "$out" ${CU_ARGV[@]+"${CU_ARGV[@]:a:c}"}
+  # A unit with a folder (a test file form's dir) runs in it. A folder the commit
+  # does not have, or one a link leads out of the copy, fails the unit, naming
+  # it, and runs nothing.
+  why=
+  if [ -n "${CU_IN[i]:-}" ]; then
+    why="is not in the commit"
+    base=$(pwd -P)
+    if cd -P "./${CU_IN[i]}" 2> /dev/null; then
+      case "$PWD/" in
+        "$base"/?*) why= ;;
+        *) why="leads outside the clean copy (a symbolic link)"; cd "$base" || return 1 ;;
+      esac
+    fi
+  fi
+  if [ -n "$why" ]; then
+    vbw_out 'the folder %s/ (the dir of the test file form) %s: no test file of the form can run\n' "${CU_IN[i]}" "$why" > "$out"
+    CHECK_CODE=1 CHECK_SECONDS=0
+  else
+    checks_exec "$t" "$out" ${CU_ARGV[@]+"${CU_ARGV[@]:a:c}"}
+    [ -z "${CU_IN[i]:-}" ] || cd "${copy:-$here}" || return 1
+  fi
   if [ -n "$st" ]; then
     t0=
     [ -z "${PROOFTIME_FILE:-}" ] || t0=$(prooftime_clock)
@@ -531,7 +553,7 @@ checks_units_parallel() {
 # (vbw mutate --run: each break is in its own copy). Results are in the units' order.
 checks_run_units() {
   local jobs slots cap i slot res CU_DIR CU_WAKE='' CU_RUNNER='' CU_COUNT=0
-  local CU_NAME=() CU_OUT=() CU_TIMEOUT=() CU_EXIT=() CU_OUTPUT=() CU_ALONE=() CU_PIN=() CU_AT=() CU_ARGC=() CU_ARGV=()
+  local CU_NAME=() CU_OUT=() CU_TIMEOUT=() CU_EXIT=() CU_OUTPUT=() CU_ALONE=() CU_PIN=() CU_IN=() CU_AT=() CU_ARGC=() CU_ARGV=()
   checks_units_load "$1"
   [ "$CU_COUNT" -gt 0 ] || { printf '{}\n'; return 0; }
   jobs=$(vbw_check_jobs) || jobs=1

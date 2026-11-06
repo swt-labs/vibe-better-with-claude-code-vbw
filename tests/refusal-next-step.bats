@@ -143,6 +143,7 @@ empty_filter_full() {
   apply_refusal full "a tier below its floor" "$(full_with '(.plans[] | select(.id == "P2.2")).files = ["src/payments/charge.js"]')"
   apply_refusal full "an express phase with two plans" "$(full_with '(.phases[] | select(.id == "P2")).tier = "express"')"
   apply_refusal full "a malformed single-file test form" "$(full_with '.test_files = {run: ["bats"], files: ["tests/*.bats"]}')"
+  apply_refusal full "a named test-file form with a pathspec outside its dir" "$(full_with '.test_files = [{name: "web", dir: "apps/web", run: ["sh", "{file}"], files: ["other/*.sh"]}]')"
   apply_refusal full "a bats case filter matching no case name" "$(empty_filter_full)"
   mv .vbw/spec.md "$TEST_ROOT/spec.md"
   apply_refusal full "a test-file form with no .vbw/spec.md to write it into" "$(full_with '.test_files = {run: ["bats", "{file}"], files: ["tests/*.bats"]}')"

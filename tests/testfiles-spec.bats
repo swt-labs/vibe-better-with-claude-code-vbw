@@ -135,3 +135,191 @@ FORM='- run: sh {file}
   [[ "$output" == *"approved test file form"* ]] || { echo "$output"; false; }
   jq -e 'any(.granted[]; .kind == "test_files")' "$(git rev-parse --git-common-dir)/vbw/consent.json" > /dev/null
 }
+
+# #735: several named forms, each with its own run, files and optional dir.
+FORMS='- webapp:
+  - dir: apps/webapp
+  - run: sh run.sh {file}
+  - files: apps/webapp/src/*.t
+- mobile:
+  - run: ["sh", "apps/mobile/run.sh", "{file}"]
+  - files: apps/mobile/*.t
+  - files: apps/mobile/more/*.t'
+
+@test "#735: named forms parse into an array of {name, dir, run, files}, dir null when absent" {
+  spec "$FORMS"
+  run "$VBW" spec sync
+  [ "$status" -eq 0 ] || { echo "$output"; false; }
+  jq -e '.test_files == [
+    {name: "webapp", dir: "apps/webapp", run: ["sh","run.sh","{file}"], files: ["apps/webapp/src/*.t"]},
+    {name: "mobile", dir: null, run: ["sh","apps/mobile/run.sh","{file}"], files: ["apps/mobile/*.t","apps/mobile/more/*.t"]}]' .vbw/record.json \
+    || { jq .test_files .vbw/record.json; false; }
+}
+
+@test "#735: the unnamed shape stays {run, files}; with a top-level dir it is one form with a null name" {
+  spec "$FORM"
+  "$VBW" spec sync > /dev/null
+  [ "$(jq -c '.test_files' .vbw/record.json)" = '{"run":["sh","{file}"],"files":["tests/t_*.sh"]}' ]
+  spec '- dir: apps/a/
+- run: sh {file}
+- files: apps/a/t_*.sh'
+  run "$VBW" spec sync
+  [ "$status" -eq 0 ] || { echo "$output"; false; }
+  [ "$(jq -c '.test_files' .vbw/record.json)" = '[{"name":null,"dir":"apps/a","run":["sh","{file}"],"files":["apps/a/t_*.sh"]}]' ] \
+    || { jq -c .test_files .vbw/record.json; false; }
+}
+
+# refused SPEC_LINES TEXT...: spec check refuses the section, naming every TEXT.
+refused() {
+  local t
+  spec "$1"
+  shift
+  run "$VBW" spec check
+  [ "$status" -ne 0 ] || { echo "accepted: $output"; return 1; }
+  for t in "$@"; do [[ "$output" == *"$t"* ]] || { echo "missing '$t' in: $output"; return 1; }; done
+}
+
+@test "#735: a form without run or files, a form named twice and a run naming {file} twice are refused with the line" {
+  refused '- a:
+  - files: x/*.t' "line 13" "form a needs a '- run:"
+  refused '- a:
+  - run: sh {file}' "line 13" "form a needs a '- files:"
+  refused '- a:
+  - run: sh {file}
+  - files: x/*.t
+- a:
+  - run: sh {file}
+  - files: y/*.t' "line 16" "form a is named twice"
+  refused '- a:
+  - run: sh {file} {file}
+  - files: x/*.t' "line 14" "{file} exactly once"
+  refused '- a:
+  - run: sh {file}
+  - run: sh {file}
+  - files: x/*.t' "line 15" "form a has two run lines"
+}
+
+@test "#735: a dir that is absolute, has . or .. parts, or lies under .vbw/ or .git/ is refused with its line" {
+  local d
+  for d in /abs a/../b ./a .vbw/x .git; do
+    refused "- a:
+  - dir: $d
+  - run: sh {file}
+  - files: $d/x.t" "line 14" "the dir of form a"
+  done
+}
+
+@test "#735: a dir with glob characters is refused with its line: the cd uses its literal text" {
+  local d
+  for d in 'apps/*' 'apps/w?b' 'apps/[w]eb'; do
+    refused "- a:
+  - dir: $d
+  - run: sh {file}
+  - files: $d/x.t" "line 14" "the dir of form a" "no glob characters"
+  done
+}
+
+@test "#735: a files pathspec of a form with dir outside that dir, or with . or .. parts, is refused" {
+  refused '- webapp:
+  - dir: apps/webapp
+  - run: sh {file}
+  - files: apps/other/*.t' "line 16" "the files of form webapp must lie under its dir apps/webapp/"
+  refused '- dir: apps/a
+- run: sh {file}
+- files: elsewhere/*.t' "line 15" "must lie under its dir apps/a/"
+  # git normalises the pathspec: this one lists apps/mobile's files under webapp.
+  refused '- webapp:
+  - dir: apps/webapp
+  - run: sh {file}
+  - files: apps/webapp/../mobile/*.t' "line 16" "must lie under its dir apps/webapp/" "apps/webapp/../mobile/*.t"
+  refused '- webapp:
+  - dir: apps/webapp
+  - run: sh {file}
+  - files: :!apps/webapp/./x.t apps/webapp/*.t' "line 16" ":!apps/webapp/./x.t"
+}
+
+@test "#735: a form with a dir takes the :!, :^ and :(exclude) spellings of an exclude under it, and git applies each" {
+  local x
+  mkdir -p apps/a
+  printf 'true\n' > apps/a/a.t
+  printf 'true\n' > apps/a/b.t
+  git add apps/a && git commit -q -m "test: a and b"
+  for x in ':!' ':^' ':(exclude)'; do
+    spec "- dir: apps/a
+- run: sh {file}
+- files: ${x}apps/a/b.t apps/a/*.t"
+    run "$VBW" spec sync
+    [ "$status" -eq 0 ] || { echo "$x: $output"; false; }
+    jq -e --arg x "${x}apps/a/b.t" '.test_files[0].files == [$x, "apps/a/*.t"]' .vbw/record.json > /dev/null \
+      || { jq -c .test_files .vbw/record.json; false; }
+    # shellcheck disable=SC2016 # expanded by vbw_kernel
+    [ "$(vbw_kernel '. "$VBW_LIB/testfiles.sh"; testfiles_owned "$(cat "$VBW_RECORD")"' | jq -c '[.[].p]')" = '["apps/a/a.t"]' ]
+    refused "- dir: apps/a
+- run: sh {file}
+- files: ${x}apps/other/b.t apps/a/*.t" "line 15" "must lie under its dir apps/a/" "${x}apps/other/b.t"
+  done
+}
+
+@test "#735: a form with a dir refuses pathspec magic other than the three excludes, naming the magic, not the dir" {
+  local x
+  # glob, icase and top change what git matches, so the under-dir check of the text proves nothing.
+  for x in ':(glob)' ':(icase)' ':(top)' ':/' ':(exclude,glob)' ':(glob,exclude)'; do
+    refused "- dir: apps/a
+- run: sh {file}
+- files: ${x}apps/a/b.t apps/a/*.t" "line 15" "no pathspec magic but an exclude" "${x}apps/a/b.t"
+    [[ "$output" != *"must lie under its dir"* ]] || { echo "$x: $output"; false; }
+  done
+}
+
+@test "#735: spec.jq, record.jq and the kernel's jq defs strip an exclude with the same pathspec_path" {
+  local f defs=()
+  for f in lib/spec.jq lib/record.jq lib/record.sh; do
+    defs+=("$(grep -o 'def pathspec_path:.*;' "$PLUGIN_ROOT/$f")") # cmm-exempt
+  done
+  [ -n "${defs[0]}" ] && [ "${defs[0]}" = "${defs[1]}" ] && [ "${defs[0]}" = "${defs[2]}" ] || { printf '%s\n' "${defs[@]}"; false; }
+}
+
+@test "#735: a dir that is, or lies under, a committed symbolic link is refused at check and sync" {
+  mkdir -p apps real/web
+  ln -s ../.. apps/web
+  ln -s real top
+  printf 'true\n' > real/web/x.t
+  git add apps/web top real && git commit -q -m "test: links"
+  refused '- web:
+  - dir: apps/web
+  - run: sh {file}
+  - files: apps/web/*.t' "line 13" "the dir of form web, apps/web/, is a symbolic link in the commit, or lies under one"
+  refused '- dir: top/web
+- run: sh {file}
+- files: top/web/*.t' "line 11" "the dir of the Test files section, top/web/, is a symbolic link"
+  run "$VBW" spec sync
+  [ "$status" -ne 0 ] && [[ "$output" == *"is a symbolic link"* ]] || { echo "$output"; false; }
+  jq -e 'has("test_files") | not' .vbw/record.json > /dev/null
+}
+
+@test "#735: top-level run, files or dir lines beside a named form, and a nested line outside one, are refused with the line" {
+  refused '- run: sh {file}
+- a:
+  - run: sh {file}
+  - files: x/*.t' "line 14" "mixes"
+  refused '- a:
+  - run: sh {file}
+  - files: x/*.t
+- files: y/*.t' "line 16" "mixes"
+  refused '  - run: sh {file}' "line 13" "named form"
+}
+
+@test "#735: a committed file matched by two forms is refused at check and sync, naming it and both forms" {
+  mkdir -p apps/a
+  printf 'true\n' > apps/a/x.t
+  git add apps/a/x.t && git commit -q -m "test: x"
+  refused '- one:
+  - run: sh {file}
+  - files: apps/a/*.t
+- two:
+  - run: sh {file}
+  - files: apps/*/x.t' "line 16" "apps/a/x.t is matched by forms one and two"
+  run "$VBW" spec sync
+  [ "$status" -ne 0 ] && [[ "$output" == *"matched by forms one and two"* ]] || { echo "$output"; false; }
+  jq -e 'has("test_files") | not' .vbw/record.json > /dev/null
+}

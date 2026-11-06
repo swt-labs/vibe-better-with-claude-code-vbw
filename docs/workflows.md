@@ -403,7 +403,20 @@ When the project's test runner can run one test file, the Lead adds
 {"test_files": {"run": ["bats", "{file}"], "files": ["tests/*.bats"]}}
 ```
 
-`vbw apply` writes it into the spec's `## Test files` section. It changes
+A project with several test runners (a monorepo with one per subproject) gives
+one named form per runner, each with the folder its runner starts in when it is
+not the project root:
+
+```json
+{"test_files": [
+  {"name": "webapp", "dir": "apps/webapp", "run": ["npx", "vitest", "run", "{file}"], "files": ["apps/webapp/**/*.test.ts"]},
+  {"name": "api", "run": ["pytest", "{file}"], "files": ["api/tests/test_*.py"]}]}
+```
+
+`vbw apply` refuses the forms before anything changes when the section they make
+would not parse (docs/proof.md, Test files: a pathspec outside its form's dir, a
+name given twice, a run without `{file}` once), or when a committed file is
+matched by two forms. `vbw apply` writes it into the spec's `## Test files` section. It changes
 nothing else about the document, and it takes effect only after the user
 approves it, like a command (see docs/proof.md, Test files).
 
@@ -539,6 +552,8 @@ Each refusal below ends with `Next: ` and the step in the right column
 | `vbw apply`: a phase or plan or check id already in use (`--add`) | Use an unused id, or change the existing one with `--patch` or a full apply |
 | `vbw apply`: a requirement of another milestone, or already covered by a phase | Take it out of the document; for `--add`, when the covering phase of this milestone has not started, change that phase with a full apply instead |
 | `vbw apply`: a bats check (`tests/x.bats`) whose case filter matches no case name in the file | write the cases the filter names into tests/x.bats (each @test name matching the pattern), see them fail with the runner, then send the document again; or correct the pattern |
+| `vbw apply`: `test_files` that is not one form `{run, files, dir?}` or an array of named forms `{name, run, files, dir?}` | Give `test_files` in one of those shapes, with one form per test runner, or leave it out |
+| `vbw apply`: named test-file forms the spec refuses (`test_files: ...`: a pathspec outside its dir, a dir that is a symbolic link, a name given twice, a committed file two forms match) | Change `test_files` as the message says (docs/proof.md, Test files), or leave it out |
 | `vbw apply`: a started plan or phase changed or dropped | Put it back as the record has it (`vbw show plan ID`) and add a new plan or phase for further work |
 | `vbw apply`: a missing rule, or a rule naming no check of its requirement | Add one rule per condition, each with its check |
 | `vbw apply`: a check whose rules two plans own that build one after the other, or beside each other (a shared wave) | give each plan's rules a check of their own (a separate test file, or the same file with a case filter as a distinct check), or move the rules to one plan |

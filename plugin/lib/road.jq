@@ -38,16 +38,17 @@ $rec[0] as $r
   | def passing($c): ([$r.requirements[] | select(.id == $c.req)][0].status | IN("proven", "accepted"))
       and ($r.evidence.checks[$c.id].status? == "pass");
     def checks_of($ph): [$r.checks[] | select(.req as $q | any($ph.reqs[]; . == $q))];
-    # The units a proof of these checks runs: each check and, with an approved
-    # single-file form, the test files of the checks that the form names.
+    # The units a proof of these checks runs: each check and, with approved
+    # single-file forms, the test files of the checks that a form names.
     def units($cs):
       [$cs[] | "check:\(.id)"]
       + (if $r.test_files == null then [] else
-           ([$r.test_files.files[] | select(startswith(":!") | not) | globre | "^\(.)$"]) as $inc
-           | ([$r.test_files.files[] | select(startswith(":!")) | ltrimstr(":!") | globre | "^\(.)$"]) as $exc
-           | [$r.checks[].run[]] as $ran
-           | [$cs[].files[]? | select(. as $f | any($inc[]; . as $p | $f | test($p)) and (any($exc[]; . as $p | $f | test($p)) | not)
-               and (any($ran[]; . == $f) | not)) | "file:\(.)"] | unique
+           [$r.checks[].run[]] as $ran
+           | [($r.test_files | if type == "array" then .[] else . end) as $tf
+               | ([$tf.files[] | select(pathspec_path == .) | globre | "^\(.)$"]) as $inc
+               | ([$tf.files[] | pathspec_path as $p | select($p != .) | $p | globre | "^\(.)$"]) as $exc
+               | $cs[].files[]? | select(. as $f | any($inc[]; . as $p | $f | test($p)) and (any($exc[]; . as $p | $f | test($p)) | not)
+                   and (any($ran[]; . == $f) | not)) | "file:\(.)"] | unique
          end);
     def finished($tier): [$r.phases[] | select((.outcome | type) == "object" and ((.outcome.tier // .tier // "standard") == $tier)
         and (.outcome.fix_rounds | type) == "number")] | .[-10:] | map(.outcome.fix_rounds);

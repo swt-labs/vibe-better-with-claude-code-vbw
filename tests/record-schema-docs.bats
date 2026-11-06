@@ -17,6 +17,7 @@ load helper
   printf '%s\n' "$section" | grep -qE '^\|[^|]*`settings\.mcp`[^|]*\| *7 *\|' || { echo "no table row settings.mcp -> 7"; false; }
   printf '%s\n' "$section" | grep -qE '^\|[^|]*tree[^|]*contract[^|]*\| *8 *\|' || { echo "no table row for a break with tree or contract -> 8"; false; }
   printf '%s\n' "$section" | grep -qE '^\|[^|]*amendment[^|]*await[^|]*queued[^|]*\| *9 *\|' || { echo "no table row for an amendment, an awaited check or a queued requirement -> 9"; false; }
+  printf '%s\n' "$section" | grep -qE '^\|[^|]*test file forms[^|]*`test_files`[^|]*\| *10 *\|' || { echo "no table row for a list of test file forms -> 10"; false; }
   [ "$(printf '%s\n' "$section" | grep -cE '^\|[^|]*\| *([5-9]|10) *\|')" -eq 6 ] || { echo "the table has more or fewer than six rows"; false; }
   printf '%s\n' "$section" | grep -qiE 'floor' || { echo "the floor (4) is not named"; false; }
   printf '%s\n' "$section" | grep -qiE 'highest' || { echo "highest feature wins is not stated"; false; }
@@ -27,12 +28,12 @@ load helper
   # The field rows point to the table instead of restating numbers.
   row=$(grep -E '^\| `schema` \|' "$doc")
   [[ "$row" == *"Versioning"* ]] || { echo "the schema row does not point to Versioning: $row"; false; }
-  ! printf '%s\n' "$row" | grep -qE 'schema[- ][5-9]|`[5-9]`' || { echo "the schema row restates numbers: $row"; false; }
+  ! printf '%s\n' "$row" | grep -qE 'schema[- ]([5-9]|10)|`([5-9]|10)`' || { echo "the schema row restates numbers: $row"; false; }
   row=$(grep -E '^\| `decisions\[\]` \|' "$doc")
   ! printf '%s\n' "$row" | grep -qE 'schema[- ]6' || { echo "the decisions row restates schema 6: $row"; false; }
   row=$(grep -E '^\| `settings` \|' "$doc")
   ! printf '%s\n' "$row" | grep -qE 'schema[- ][57]' || { echo "the settings row restates schema 5 or 7: $row"; false; }
-  ! awk 'BEGIN { RS = "" } { gsub(/\n/, " "); print }' "$doc" | grep -E 'Key order' | grep -qE '[5-9] while|schema [5-9]' || { echo "the key-order note restates numbers"; false; }
+  ! awk 'BEGIN { RS = "" } { gsub(/\n/, " "); print }' "$doc" | grep -E 'Key order' | grep -qE '([5-9]|10) while|schema ([5-9]|10)' || { echo "the key-order note restates numbers"; false; }
 }
 
 # R258 (T234): docs/record.md says a recorded break names its rule by place, {req, k},

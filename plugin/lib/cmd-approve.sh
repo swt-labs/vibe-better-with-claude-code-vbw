@@ -111,7 +111,8 @@ approve_pending() {
     consent_has command "$(vbw_sha256_argv ${argv[@]+"${argv[@]}"})" || out="$out${out:+; }$name (${argv[*]+"${argv[*]}"})"
   done < <(printf '%s' "$1" | jq -j '.commands | keys[] | . + "\u0000"')
   if printf '%s' "$1" | jq -e 'has("test_files")' > /dev/null && ! consent_has test_files "$(test_files_hash "$1")"; then
-    out="$out${out:+; }test files ($(printf '%s' "$1" | jq -r '.test_files.run | join(" ")'); $(printf '%s' "$1" | jq -r '.test_files.files | join(" ")'))"
+    out="$out${out:+; }test files ($(printf '%s' "$1" | jq -r "$VBW_JQ_DEFS"'if .test_files | type == "object" then "\(.test_files.run | join(" ")); \(.test_files.files | join(" "))"
+      else [tf_forms[] | tf_say] | join("; ") end'))"
   fi
   printf '%s' "$out"
 }
@@ -147,8 +148,7 @@ approve_commands() {
   local name argv a
   if printf '%s' "$1" | jq -e 'has("test_files")' > /dev/null; then
     consent_grant test_files "$(test_files_hash "$1")" "$(printf '%s' "$1" | jq -c '.test_files')"
-    printf 'approved test file form: %s (files %s)\n' "$(printf '%s' "$1" | jq -r '.test_files.run | join(" ")')" \
-      "$(printf '%s' "$1" | jq -r '.test_files.files | join(" ")')"
+    printf '%s' "$1" | jq -r "$VBW_JQ_DEFS"'tf_forms[] | "approved test file form: \(tf_say)"'
   fi
   while IFS= read -r -d '' name; do
     argv=()

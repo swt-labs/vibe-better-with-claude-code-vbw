@@ -244,7 +244,7 @@ code_grep() {
 # prints into R248_DIGEST. A layout-only change (comments, whitespace, line breaks, the
 # order of names inside a list) never moves it.
 R248_SCHEMA=10
-R248_DIGEST=dc44b201e9b26b5420c2c3f04374587100b89414b958c793d1eb6c3be8ad2213
+R248_DIGEST=587cbad3987b9f4cd12cf0e7eaab30d4a0e9ea9bf95969f94242d5e3ac14e368
 
 @test "R248: the record's accepted shape is pinned: record.jq's key lists and enums, the schema table's rows and the interview values digest to R248_DIGEST, and the table's top, VBW_SCHEMA_MAX and R248_SCHEMA agree (tools/check-record-shape.sh)" {
   [ "$PLUGIN_ROOT" = "$REPO_ROOT/plugin" ] || skip "not the shipped plugin"
@@ -302,11 +302,11 @@ R248_DIGEST=dc44b201e9b26b5420c2c3f04374587100b89414b958c793d1eb6c3be8ad2213
   run bash "$check" "$d" "$schema" "$digest"
   refused "a value added to interview.json"
   # A row added to the schema table with the pin unmoved: the digest moves and the numbers differ.
-  fresh; sed -i.bak 's/^def schema_features: \[/def schema_features: [ {schema: 10, feature: "a probe", present: false},/' "$d/lib/record-schema.jq"
+  fresh; sed -i.bak "s/^def schema_features: \\[/def schema_features: [ {schema: $((schema + 1)), feature: \"a probe\", present: false},/" "$d/lib/record-schema.jq"
   grep -q '"a probe"' "$d/lib/record-schema.jq"
   run bash "$check" "$d" "$schema" "$digest"
   refused "a table row added"
-  [[ "$output" == *"table 10"* && "$output" == *"VBW_SCHEMA_MAX $schema"* && "$output" == *"pinned $schema"* ]] || { echo "the numbers line does not name each value: $output"; false; }
+  [[ "$output" == *"table $((schema + 1))"* && "$output" == *"VBW_SCHEMA_MAX $schema"* && "$output" == *"pinned $schema"* ]] || { echo "the numbers line does not name each value: $output"; false; }
   # VBW_SCHEMA_MAX raised with the table unmoved: the digest holds, the numbers differ.
   fresh; sed -i.bak "s/^VBW_SCHEMA_MAX=.*\$/VBW_SCHEMA_MAX=$((schema + 1))/" "$d/lib/record.sh"
   run bash "$check" "$d" "$schema" "$digest"
