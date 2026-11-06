@@ -2000,7 +2000,7 @@ scenario_leftover() {
     expect "the proof passed" jq -e '.proof_passed == true' <<< "$facts"
     expect "the project command ran in a proof copy" jq -e '.ran_in_proof_copy == true' <<< "$facts"
     expect "the file was not in the proof copy" jq -e '.file_in_proof_copy == false' <<< "$facts"
-    expect "the proof copy is gone" jq -e '.copy_removed == true' <<< "$facts"
+    expect "the proof copy is kept for the next command, held by none" jq -e '.copy_released == true' <<< "$facts"
     [ "$failed" -eq 0 ] || passed=false
     result_write leftover "$fixture" "${cost_usd:-0}" "$passed" "$facts" \
       '["a leftover modified tracked file","a git-ignored leftover (copied into the proof copy by design)","a project command other than a shell script","a project larger than the greet.sh fixture"]'
@@ -2015,7 +2015,9 @@ scenario_leftover() {
 # passing proof, and a plain vbw prove reuses lint's pass by its read list
 # (R166: FILE is not committed code), so lint would not run in a proof copy at
 # all. Removes FILE and prints the facts as one JSON object (null: not known,
-# because lint did not run in a proof copy). tests/l3-leftover.bats runs it.
+# because lint did not run in a proof copy). The copy lint ran in is kept for the
+# next command (#738): copy_released says it is a kept slot no command holds.
+# tests/l3-leftover.bats runs it.
 leftover_proof() {
   local d=$1 f=$2 probe=$3 ev before after a where real argv=() flips=false same=false pp=false ran=false inc=null gone=null
   ev='.evidence | {passed, checks: (.checks | map_values(.status)), commands: (.commands | map_values(.status))}'
@@ -2033,14 +2035,17 @@ leftover_proof() {
   if [ -n "$where" ] && [ "$where" != "$real" ]; then
     ran=true
     case "$(sed -n 2p "$probe")" in yes) inc=true ;; no) inc=false ;; esac
-    # No copy is left: not its folder, not its git worktree entry, no proof.* folder (grep -c reads everything, safe under pipefail).
+    # The copy is a kept slot with no owner, and no other proof.* folder is left.
     gone=false
-    [ ! -e "$where" ] && [ "$(git -C "$d" worktree list --porcelain | grep -cF -- "$where")" = 0 ] \
-      && [ -z "$(find "$d/.vbw/runtime" -maxdepth 1 -name 'proof.*' 2> /dev/null)" ] && gone=true
+    case "$where" in
+      "$real"/.vbw/runtime/proof.keep.*/tree)
+        [ ! -e "${where%/tree}/pid" ] \
+          && [ -z "$(find "$d/.vbw/runtime" -maxdepth 1 -name 'proof.*' ! -name 'proof.keep.*' 2> /dev/null)" ] && gone=true ;;
+    esac
   fi
   rm -f "$d/$f"
   jq -nc --arg f "$f" --argjson fl "$flips" --argjson s "$same" --argjson p "$pp" --argjson r "$ran" --argjson i "$inc" --argjson g "$gone" \
-    '{leftover_file: $f, check_flips_in_working_folder: $fl, proof_unchanged: $s, proof_passed: $p, ran_in_proof_copy: $r, file_in_proof_copy: $i, copy_removed: $g}'
+    '{leftover_file: $f, check_flips_in_working_folder: $fl, proof_unchanged: $s, proof_passed: $p, ran_in_proof_copy: $r, file_in_proof_copy: $i, copy_released: $g}'
 }
 
 # --- The interview (R42): a newcomer and a senior engineer answer it in the real

@@ -318,7 +318,7 @@ tied() {
   code=$(pr 'vbw_code_tree')
   rec='{"requirements":[],"plans":[],"checks":[{"id":"C1","run":["true"]}],"commands":{},"evidence":{"passed":true,"tree":"'"$code"'","head":"'"$tree"'"}}'
   rec=$(printf '%s' "$rec" | jq -c --arg c "$(pr 'contract_hash '"'$rec'")" '.evidence.contract = $c')
-  rec=$(printf '%s' "$rec" | jq -c --arg f "$(printf '%s' "$rec" | jq -c 'del(.evidence)' | pr 'vbw_sha256')" '.evidence.record = $f')
+  rec=$(printf '%s' "$rec" | jq -c --arg f "$(printf '%s' "$rec" | jq -c 'del(.evidence, .schema)' | pr 'vbw_sha256')" '.evidence.record = $f')
   run pr 'proofreuse_plan '"'$rec'"'; printf "%s\n" "$WHY_CHECKS"'
   [ "$output" = '{"C1":"proving again with nothing committed"}' ]
   # The record changed since that proof (R175): the rule reuses again.

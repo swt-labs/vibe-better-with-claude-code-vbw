@@ -18,7 +18,8 @@ teardown_file() { fixture_teardown; }
 
 # to_qa: from the record as the real flow left it, make the phase built,
 # proven and due for QA again (its pass is on other code), with a fresh full
-# proof; prints vbw next --json.
+# proof; prints vbw next --json. The new evidence drops what a real proof wrote
+# (own.copy_slots), so the schema goes back to the floor.
 to_qa() {
   edit_record '.plans |= map(.status = "done") | .requirements |= map(.status = "proven")
     | .fixes |= map(.status = "closed") | .lease = null
@@ -26,7 +27,7 @@ to_qa() {
   local hash tree
   hash=$(vbw_contract_hash)
   tree=$(vbw_code_tree)
-  edit_record ".evidence = {at: \"2026-10-01T09:00:00Z\", contract: \"$hash\", tree: \"$tree\", full: true, passed: true, checks: {}, commands: {}, scope: []}"
+  edit_record ".evidence = {at: \"2026-10-01T09:00:00Z\", contract: \"$hash\", tree: \"$tree\", full: true, passed: true, checks: {}, commands: {}, scope: []} | .schema = 4"
   vbw_consent_contract
   "$VBW" next --json < /dev/null
 }

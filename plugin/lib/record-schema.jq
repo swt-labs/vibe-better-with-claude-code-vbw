@@ -23,7 +23,9 @@ def schema_features: [
      or ((.requirements | type) == "array" and any(.requirements[]; type == "object" and .queued == true)))},
   # Named forms or a dir: test_files is stored as an array; one plain form stays {run, files}.
   {schema: 10, feature: "a list of test file forms",
-   present: ((.test_files | type) == "array")}
+   present: ((.test_files | type) == "array")},
+  {schema: 11, feature: "a proof that kept its clean copies",
+   present: ((.evidence | type) == "object" and (.evidence.own | type) == "object" and (.evidence.own | has("copy_slots")))}
 ];
 
 def schema_of: . as $r | [schema_features[] | select(.present) | .schema] | max // schema_floor;

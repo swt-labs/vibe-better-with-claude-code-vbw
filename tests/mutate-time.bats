@@ -4,6 +4,7 @@
 # in the proof's form, measured by prooftime.sh's clock and nothing estimated:
 #   VBW's own work: X of Y min
 #     steps of W s: copies A, unbroken B, break R3.1 C, waits D, saving E
+#     copies: K kept copies claimed (R refreshed), M made     (#738)
 # copies: making, breaking, restoring and removing the clean copies; unbroken:
 # the checks on the unbroken code; one entry per break named by its target
 # ("break R3.1", "break task2"; in --run a wave of breaks run side by side is one
@@ -73,9 +74,11 @@ teardown_file() { fixture_teardown; }
 
 OWN_RE="^VBW's own work: [0-9]+\.[0-9] of [0-9]+\.[0-9] min$"
 STEPS_RE='^  steps of [0-9]+\.[0-9] s: copies [0-9]+\.[0-9], unbroken [0-9]+\.[0-9], (breaks? [^,]+ [0-9]+\.[0-9], )+waits [0-9]+\.[0-9], saving [0-9]+\.[0-9]$'
+COPIES_RE='^  copies: [0-9]+ kept cop(y|ies) claimed \([0-9]+ refreshed\), [0-9]+ made$'
 
-# split: OWN (the own-work line), STEPS (the line after it), BEFORE (every line
-# before OWN) and AFTER (every line after STEPS), from $output. Fails when the
+# split: OWN (the own-work line), STEPS (the line after it), COPIES (the line
+# after that: what the run did with its clean copies, #738), BEFORE (every line
+# before OWN) and AFTER (every line after COPIES), from $output. Fails when the
 # own-work line is missing or appears twice.
 split() {
   local n
@@ -84,13 +87,15 @@ split() {
   OWN=$(printf '%s\n' "$output" | sed -n "${n}p")
   STEPS=$(printf '%s\n' "$output" | sed -n "$((n + 1))p")
   BEFORE=$(printf '%s\n' "$output" | sed -n "1,$((n - 1))p")
-  AFTER=$(printf '%s\n' "$output" | sed -n "$((n + 2)),\$p")
+  COPIES=$(printf '%s\n' "$output" | sed -n "$((n + 2))p")
+  AFTER=$(printf '%s\n' "$output" | sed -n "$((n + 3)),\$p")
   [[ "$STEPS" =~ $STEPS_RE ]] || { echo "no steps line after the own-work line: $STEPS"; echo "$output"; return 1; }
+  [[ "$COPIES" =~ $COPIES_RE ]] || { echo "no copies line after the steps line: $COPIES"; echo "$output"; return 1; }
 }
 
 # none: the output carries no breakdown.
 none() {
-  if printf '%s\n' "$output" | grep -qE "$OWN_RE|^  steps of "; then echo "a breakdown was printed:"; echo "$output"; return 1; fi
+  if printf '%s\n' "$output" | grep -qE "$OWN_RE|^  steps of |^  copies: "; then echo "a breakdown was printed:"; echo "$output"; return 1; fi
 }
 
 # step NAME: the seconds of step NAME in $STEPS (empty when absent).
@@ -251,6 +256,16 @@ C3 red" ] || { echo "$output"; false; }
   split
   [ "$(names | tr '\n' '|')" = "copies|unbroken|breaks R1.1 R1.2|waits|saving|" ] || { names; false; }
   sum_ok
+  # #738: one copy per break of the wave, kept for the next run, which claims them.
+  [ "$COPIES" = "  copies: 0 kept copies claimed (0 refreshed), 2 made" ] || { echo "$output"; false; }
+  printf 'echo unpaid\n' > src/pay.sh
+  "$VBW" mutate P1.1 R1.1 --queue "prints unpaid again" src/pay.sh > /dev/null
+  printf 'echo paid\necho paid\n' > src/pay.sh
+  "$VBW" mutate P1.1 R1.2 --queue "prints twice again" src/pay.sh > /dev/null
+  vbw_run mutate P1.1 --run
+  [ "$status" -eq 0 ] || { echo "$output"; false; }
+  split
+  [ "$COPIES" = "  copies: 2 kept copies claimed (0 refreshed), 0 made" ] || { echo "$output"; false; }
 }
 
 @test "R207: waits is the time the run waited for a computer-wide slot, and the slots line still comes last" {

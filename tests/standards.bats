@@ -243,8 +243,8 @@ code_grep() {
 # (plugin/lib/record.sh), describe it in docs/record.md, then copy the digest the check
 # prints into R248_DIGEST. A layout-only change (comments, whitespace, line breaks, the
 # order of names inside a list) never moves it.
-R248_SCHEMA=10
-R248_DIGEST=587cbad3987b9f4cd12cf0e7eaab30d4a0e9ea9bf95969f94242d5e3ac14e368
+R248_SCHEMA=11
+R248_DIGEST=a086e6c6404df7cd8924e6d942aca52efd30449dba0f6323a67c31f8d5af9bf2
 
 @test "R248: the record's accepted shape is pinned: record.jq's key lists and enums, the schema table's rows and the interview values digest to R248_DIGEST, and the table's top, VBW_SCHEMA_MAX and R248_SCHEMA agree (tools/check-record-shape.sh)" {
   [ "$PLUGIN_ROOT" = "$REPO_ROOT/plugin" ] || skip "not the shipped plugin"

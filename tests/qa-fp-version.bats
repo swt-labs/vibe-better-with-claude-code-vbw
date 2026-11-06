@@ -103,8 +103,8 @@ change_test() {
   local v
   v=$(version)
   jq -e --argjson v "$v" '.P1.version == $v' "$(cache_file)" || { cat "$(cache_file)"; false; }
-  # No new record field: the pass is the same shape, and the record keeps its schema.
-  jq -e '(.phases[0].qa | keys - ["result", "tier", "tree", "at", "note", "rounds"]) == [] and (.schema == 1 or .schema == 4)' .vbw/record.json
+  # No new record field: the pass is the same shape, and the schema is the table's answer for the rest.
+  jq -e -L "$PLUGIN_ROOT/lib" 'include "record-schema"; (.phases[0].qa | keys - ["result", "tier", "tree", "at", "note", "rounds"]) == [] and .schema == schema_of' .vbw/record.json
 }
 
 @test "R132: after an update that changes the fingerprint's version, an unchanged passed phase still stands" {

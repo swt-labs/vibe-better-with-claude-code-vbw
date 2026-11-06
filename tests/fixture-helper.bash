@@ -136,6 +136,17 @@ fixture_build() {
   fi
   _fx_root=${TEST_ROOT:-}
   if [ -z "$_fx_bad" ]; then
+    # A kept proof copy (#738) belongs to the folder it was made in, by its
+    # path: the fixture keeps none, and each copy of it makes its own.
+    while IFS= read -r _fx_n; do
+      chmod -R u+rwx "$_fx_n" && rm -rf "$_fx_n" || _fx_bad="cannot remove the kept proof copy $_fx_n"
+    done < <(find "$_fx_root" -type d -path '*/.vbw/runtime/proof.keep.*' -prune -print)
+    # Their worktree entries, in each repository and submodule repository.
+    while IFS= read -r _fx_n; do
+      git --git-dir="${_fx_n%/worktrees}" worktree prune || _fx_bad="cannot prune the worktrees of ${_fx_n%/worktrees}"
+    done < <(find "$_fx_root" -type d -name worktrees -path '*.git/*' -prune -print)
+  fi
+  if [ -z "$_fx_bad" ]; then
     _fx_phys=$(cd "$_fx_root" && pwd -P)
     # The random part of the TEST_ROOT's name finds the path in any spelling
     # (/private/var or /var, or with / and . made -, as Claude Code keys projects).

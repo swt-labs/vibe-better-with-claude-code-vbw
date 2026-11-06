@@ -271,7 +271,9 @@ started() { [ "$(ls "$BAR" | grep -c '^[0-9]')" -ge 1 ]; }
   RUN1=
   breaks | jq -e '. == [{t: "paying prints paid", r: "red", c: {C1: "red"}}, {t: "nothing but paid is printed", r: "red", c: {C1: "red"}}]' || breaks
   [ ! -e "$MARKER" ]
-  [ -z "$(ls -d .vbw/runtime/proof.* 2> /dev/null)" ] || { ls .vbw/runtime; false; }
+  # #738: the run's copies are kept for the next command, none still owned.
+  [ "$(ls -d .vbw/runtime/proof.* | wc -l | tr -d ' ')" -eq "$n" ] || { ls .vbw/runtime; false; }
+  [ -z "$(ls .vbw/runtime/proof.keep.*/pid 2> /dev/null)" ] || { ls .vbw/runtime/proof.keep.*; false; }
 }
 
 @test "R230: the marker lives under .vbw/runtime and mutate-queue.sh's header names it" {

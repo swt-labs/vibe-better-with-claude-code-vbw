@@ -27,9 +27,10 @@ VBW_FIX_CAP=3
 
 cmd_prove() {
   local full=0
+  # shellcheck disable=SC2034 # PROOFCOPY_FRESH is read by proofcopy_create_slots
   case $# in
     0) ;;
-    1) [ "$1" = --full ] || vbw_usage_error "usage: vbw prove [--full]"; full=1 ;;
+    1) [ "$1" = --full ] || vbw_usage_error "usage: vbw prove [--full]"; full=1; PROOFCOPY_FRESH=1 ;;
     *) vbw_usage_error "usage: vbw prove [--full]" ;;
   esac
   vbw_require_project
@@ -94,7 +95,7 @@ cmd_prove() {
     proofsteps_units "$checks" "$commands" "$files"
     checks_keep "$checks" "$commands" "$files"
     prooftime_step saving
-    proofcopy_remove
+    proofcopy_release
     prooftime_step copies
   fi
   checks_end
@@ -150,9 +151,10 @@ cmd_prove() {
   vbw_scratch_json evf "$ev"
   vbw_scratch_json curf "$(qa_combined "$record")"
   record_update "$VBW_JQ_DEFS$(cat "$VBW_LIB/prove.jq")" --slurpfile ev "$evf" --argjson cap "$VBW_FIX_CAP" --slurpfile cur "$curf" --arg at "$at"
-  # The record as this proof leaves it, without the evidence (D296): the next prove's
-  # "nothing committed" cause fires only while this fingerprint still holds (R175, R103).
-  fp=$(jq -c 'del(.evidence)' "$VBW_RECORD" | vbw_sha256)
+  # The record as this proof leaves it, without the evidence or the schema (D296): the
+  # next prove's "nothing committed" cause fires only while this fingerprint still holds
+  # (R175, R103). The write of own below can raise the schema (copy_slots).
+  fp=$(proofreuse_record_fp < "$VBW_RECORD")
   prooftime_step record
   # The split, its wall time read after the record step: the wall covers every step but
   # the units' own tracking; the write of the split, the commit and the summary follow it.

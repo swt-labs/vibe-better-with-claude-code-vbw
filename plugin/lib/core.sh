@@ -76,7 +76,7 @@ vbw_guard_run() {
 # folder costs one process (the gate's lock and place are given back between
 # one unit and the next, T180); a registered tree is opened up, then removed.
 vbw_guard_drop() {
-  local p keep=() tree=''
+  local p tree=''
   for p in ${VBW_GUARD_DIRS[@]+"${VBW_GUARD_DIRS[@]}"}; do [ "$p" != "$1" ] || tree=1; done
   if [ -n "$tree" ]; then
     { chmod -R u+rwx "$1"; rm -rf "$1"; } 2>/dev/null || true
@@ -85,6 +85,13 @@ vbw_guard_drop() {
   elif [ -e "$1" ] || [ -L "$1" ]; then
     rm -f "$1" 2>/dev/null || true
   fi
+  vbw_guard_forget "$1"
+}
+
+# vbw_guard_forget PATH: stop guarding PATH and leave it where it is (a kept
+# proof copy handed back); when nothing is left, the traps are removed again.
+vbw_guard_forget() {
+  local p keep=()
   for p in ${VBW_GUARD_FILES[@]+"${VBW_GUARD_FILES[@]}"}; do [ "$p" = "$1" ] || keep+=("$p"); done
   VBW_GUARD_FILES=(${keep[@]+"${keep[@]}"})
   keep=()

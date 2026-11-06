@@ -42,14 +42,14 @@ teardown() { vbw_teardown; }
 
 store() { printf '%s/vbw/runs.json\n' "$(git rev-parse --path-format=absolute --git-common-dir)"; }
 
-@test "R34: after a passing proof, leftover_proof runs lint in a proof copy without the leftover file, and the copy is gone" {
+@test "R34: after a passing proof, leftover_proof runs lint in a proof copy without the leftover file, and the copy is kept with no owner (#738)" {
   # The scenario's situation: lint's pass is stored with a read list, which a plain vbw prove reuses.
   jq -e '.runs["command:lint"] | .status == "pass" and (.reads | type == "array")' "$(store)"
   run leftover_proof "$PROJECT" todos.txt "$TEST_ROOT/probe"
   [ "$status" -eq 0 ]
   printf '%s\n' "$output" | jq -e '.leftover_file == "todos.txt" and .check_flips_in_working_folder == true
     and .proof_unchanged == true and .proof_passed == true
-    and .ran_in_proof_copy == true and .file_in_proof_copy == false and .copy_removed == true' || { echo "$output"; false; }
+    and .ran_in_proof_copy == true and .file_in_proof_copy == false and .copy_released == true' || { echo "$output"; false; }
   [ ! -e todos.txt ]
 }
 
@@ -59,5 +59,5 @@ store() { printf '%s/vbw/runs.json\n' "$(git rev-parse --path-format=absolute --
   run leftover_proof "$PROJECT" todos.txt "$TEST_ROOT/probe"
   [ "$status" -eq 0 ]
   printf '%s\n' "$output" | jq -e '.ran_in_proof_copy == true and .file_in_proof_copy == true
-    and .proof_unchanged == false and .proof_passed == false and .copy_removed == true' || { echo "$output"; false; }
+    and .proof_unchanged == false and .proof_passed == false and .copy_released == true' || { echo "$output"; false; }
 }

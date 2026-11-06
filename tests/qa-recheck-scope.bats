@@ -17,7 +17,7 @@ teardown_file() { fixture_teardown; }
 @test "R47: a QA pass keeps one digest of the phase's own inputs in qa.tree; no new record field, the schema unchanged" {
   qa_pass P1 P2
   jq -e 'all(.phases[].qa; (keys - ["result","tier","tree","at","note","rounds"]) == [] and (.tree | test("^[0-9a-f]{64}$")))' .vbw/record.json
-  jq -e '.phases[0].qa.tree != .phases[1].qa.tree and (.schema == 1 or .schema == 4)' .vbw/record.json
+  jq -e -L "$PLUGIN_ROOT/lib" 'include "record-schema"; .phases[0].qa.tree != .phases[1].qa.tree and .schema == schema_of' .vbw/record.json
   # The per-input digests that name a reason are this clone's cache, outside the record.
   jq -e '[.P1, .P2] | all(.[]; (.files, .tests, .plan) | type == "string")' "$(git rev-parse --git-common-dir)/vbw/qa.json"
   vbw_run status
