@@ -80,7 +80,7 @@ strengthen() {
   break_pay R1.1
   [ "$status" -eq 0 ] || { echo "$output"; false; }
   printf '%s\n' "$output" | grep -qF "R1.1 $PENDING: tests/pay.sh" || { echo "$output"; false; }
-  last_break | jq -e '.rule.text == "paying prints paid" and .result == "red" and .checks == {C1: "red"} and .pending == ["tests/pay.sh"]' || { last_break; false; }
+  last_break | jq -e '.rule == {req: "R1", k: 1} and .result == "red" and .checks == {C1: "red"} and .pending == ["tests/pay.sh"]' || { last_break; false; }
   same_as_head src/pay.sh
 }
 

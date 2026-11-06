@@ -126,6 +126,6 @@ line() { show | grep -Eq -- "$1" || { echo "no line matches $1:"; show; return 1
   line '^  task2: no testable behaviour: only writes a log line nothing reads$'
   show | grep -Eq 'no code could change its outcome' && show | grep -Eq 'no testable behaviour' || { show; false; }
   "$VBW" show plan P1.1 --json < /dev/null | jq -e '.plan.mutations | length == 2
-    and (.[0] | .rule == {req: "R1", text: "the measurement is a decision in the record"} and .none == "the figures are a decision in the record" and (.head | test("^[0-9a-f]{40}$")))
+    and (.[0] | .rule == {req: "R1", k: 1} and .none == "the figures are a decision in the record" and (.head | test("^[0-9a-f]{40}$")))
     and (.[1] | .task == 2 and (has("head") | not))' || { "$VBW" show plan P1.1 --json < /dev/null | jq '.plan.mutations'; false; }
 }

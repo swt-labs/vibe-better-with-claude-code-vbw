@@ -64,7 +64,7 @@ table() { jq -r -n -L "$PLUGIN_ROOT/lib" "include \"record-schema\"; $1"; }
 
 # --- schema 9 (check: R250 schema) --------------------------------------------------
 
-@test "R250 schema: schema 9 is one row of the table, 'an amendment, an awaited check or a queued requirement', VBW_SCHEMA_MAX reads it, and record.jq's key lists hold exactly queued, amendments and awaits (the shape tests/standards.bats pins)" {
+@test "R250 schema: schema 9 is one row of the table, 'an amendment, an awaited check or a queued requirement', VBW_SCHEMA_MAX reads it, and record.jq's key lists hold queued, amendments and awaits (the shape tests/standards.bats pins)" {
   # A later row may top the table; the table's top is VBW_SCHEMA_MAX (record-schema.bats).
   [ "$(sed -n 's/^VBW_SCHEMA_MAX=//p' "$PLUGIN_ROOT/lib/record.sh")" -ge 9 ]
   [ "$(table '[schema_features[] | select(.schema == 9) | .feature] | join(" | ")')" = "an amendment, an awaited check or a queued requirement" ]
@@ -73,7 +73,7 @@ table() { jq -r -n -L "$PLUGIN_ROOT/lib" "include \"record-schema\"; $1"; }
   [ "$(table '{checks: [{amendments: []}]} | schema_of')" = 9 ]
   [ "$(table '{requirements: [{queued: true}]} | schema_of')" = 9 ]
   [ "$(table '{plans: [{mutations: [{tree: "t"}]}], checks: [{id: "C1"}], requirements: [{id: "R1"}]} | schema_of')" = 8 ]
-  grep -qF 'field_rule(["id","text","proof","status","milestone","rules","skipped","later","queued"])' "$PLUGIN_ROOT/lib/record.jq"
+  grep -qF 'field_rule(["id","text","proof","status","milestone","rules","skipped","later","queued","reworded"])' "$PLUGIN_ROOT/lib/record.jq"
   grep -qF 'field_rule(["id","req","run","files","exit","output","timeout","alone","fix","amendments"])' "$PLUGIN_ROOT/lib/record.jq"
   grep -qF 'field_rule(["id","phase","title","reqs","files","after","status","note","tasks","role","mutations","amendments","awaits"])' "$PLUGIN_ROOT/lib/record.jq"
   grep -qF '(keys | sort) == ["at","session","what"]' "$PLUGIN_ROOT/lib/record.jq"

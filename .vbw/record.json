@@ -71802,7 +71802,7 @@
       "id": "F372",
       "req": "R45",
       "attempts": 0,
-      "status": "open",
+      "status": "fixed",
       "note": "C40 fail (exit 1)"
     },
     {
@@ -71816,35 +71816,35 @@
       "id": "F374",
       "req": "R193",
       "attempts": 0,
-      "status": "open",
+      "status": "fixed",
       "note": "C411 fail (exit 1)"
     },
     {
       "id": "F375",
       "req": "R196",
       "attempts": 0,
-      "status": "open",
+      "status": "fixed",
       "note": "C415 fail (exit 1)"
     },
     {
       "id": "F376",
       "req": "R203",
       "attempts": 0,
-      "status": "open",
+      "status": "fixed",
       "note": "C448 fail (exit 1), C449 fail (exit 1)"
     },
     {
       "id": "F377",
       "req": "R249",
       "attempts": 0,
-      "status": "open",
+      "status": "fixed",
       "note": "C573 fail (exit 1)"
     },
     {
       "id": "F378",
       "req": "R250",
       "attempts": 0,
-      "status": "open",
+      "status": "fixed",
       "note": "C574 fail (exit 1)"
     }
   ],
@@ -76909,6 +76909,12 @@
       "id": "D622",
       "at": "2026-11-06T13:26:36Z",
       "text": "Contract approved: 251 requirements, 596 checks, 615 plans (fd7bfb3b2383)",
+      "plans": []
+    },
+    {
+      "id": "D623",
+      "at": "2026-11-06T15:38:30Z",
+      "text": "Contract approved: 251 requirements, 596 checks, 615 plans (8ca04421e225)",
       "plans": []
     }
   ],

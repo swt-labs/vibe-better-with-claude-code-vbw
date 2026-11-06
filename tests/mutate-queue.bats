@@ -48,8 +48,8 @@ EOF
   jq -nc '{phases: [{id: "P1", title: "Shop", reqs: ["R1"], goal: "g", criteria: ["c"], tier: "standard"}],
     plans: [{id: "P1.1", phase: "P1", title: "Pay", reqs: ["R1"], files: ["src/pay.sh"], after: [], role: "dev", tasks: ["pay"]}],
     checks: [{id: "C1", req: "R1", run: ["sh", "tests/pay.sh"], files: ["tests/pay.sh"]}],
-    rules: [{req: "R1", text: "paying prints paid", check: "C1"},
-            {req: "R1", text: "nothing but paid is printed", check: "C1"}]}' | "$VBW" apply > /dev/null
+    rules: [{req: "R1", text: "R1.1", check: "C1"},
+            {req: "R1", text: "R1.2", check: "C1"}]}' | "$VBW" apply > /dev/null
   git add -A && git commit -q -m "feat(shop): start"
   "$VBW" approve > /dev/null
   "$VBW" config set check_jobs 2 > /dev/null
@@ -62,7 +62,7 @@ teardown() {
   vbw_teardown
 }
 
-breaks() { jq -c '[.plans[0].mutations[]? | {t: (.rule.text // "task\(.task)"), r: .result, c: .checks}]' .vbw/record.json; }
+breaks() { jq -c '[.plans[0].mutations[]? | {t: (if .rule then "\(.rule.req).\(.rule.k)" else "task\(.task)" end), r: .result, c: .checks}]' .vbw/record.json; }
 queue() {
   local target=$1 what=$2 body=$3
   printf '%s\n' "$body" > src/pay.sh
@@ -75,7 +75,7 @@ queue() {
   queue R1.1 "prints unpaid" 'echo unpaid'
   [[ "$output" == *"R1.1 queued"* && "$output" == *"vbw mutate P1.1 --run"* ]] || { echo "$output"; false; }
   [ ! -f "$LOG" ] || { echo "a check ran: $(cat "$LOG")"; false; }
-  [ "$(breaks)" = '[]' ] || breaks
+  [ "$(breaks)" = '[]' ] || { breaks; false; }
   git diff --quiet -- src tests || { git status --short; false; }
 }
 
@@ -86,7 +86,7 @@ queue() {
   run "$VBW" mutate P1.1 --run < /dev/null
   [ "$status" -eq 0 ] || { echo "$output"; false; }
   [[ "$output" == *"R1.1 red: prints unpaid"* && "$output" == *"R1.2 red: prints more than paid"* ]] || { echo "$output"; false; }
-  breaks | jq -e '. == [{t: "paying prints paid", r: "red", c: {C1: "red"}}, {t: "nothing but paid is printed", r: "red", c: {C1: "red"}}]' || breaks
+  breaks | jq -e '. == [{t: "R1.1", r: "red", c: {C1: "red"}}, {t: "R1.2", r: "red", c: {C1: "red"}}]' || { breaks; false; }
   # One unbroken run of C1 and one run per break; both breaks were under way together.
   [ "$(wc -l < "$LOG" | tr -d ' ')" -eq 3 ] || { cat "$LOG"; false; }
   [ "$(ls "$BAR" | grep -c '^met\.')" -eq 2 ] || { ls "$BAR"; false; }
@@ -102,7 +102,7 @@ queue() {
   run "$VBW" mutate P1.1 --run < /dev/null
   [ "$status" -eq 1 ] || { echo "$output"; false; }
   [[ "$output" == *"R1.1 red"* && "$output" == *"survivor: R1.2"* ]] || { echo "$output"; false; }
-  breaks | jq -e 'map(.r) == ["red", "survivor"]' || breaks
+  breaks | jq -e 'map(.r) == ["red", "survivor"]' || { breaks; false; }
 }
 
 @test "T174: a break queued at another commit is dropped and named, and --run exits 1" {
@@ -113,7 +113,7 @@ queue() {
   run "$VBW" mutate P1.1 --run < /dev/null
   [ "$status" -eq 1 ] || { echo "$output"; false; }
   [[ "$output" == *"R1.1"*"another commit"*"break it again"* && "$output" == *"R1.2 red"* ]] || { echo "$output"; false; }
-  breaks | jq -e 'map(.t) == ["nothing but paid is printed"]' || breaks
+  breaks | jq -e 'map(.t) == ["R1.2"]' || { breaks; false; }
 }
 
 @test "T174: check files that differ from the last commit stop --run, and nothing is recorded" {
@@ -121,7 +121,7 @@ queue() {
   printf '\n# stronger\n' >> tests/pay.sh
   run "$VBW" mutate P1.1 --run < /dev/null
   [ "$status" -ne 0 ] && [[ "$output" == *"tests/pay.sh"* && "$output" == *"commit them first"* ]] || { echo "$output"; false; }
-  [ "$(breaks)" = '[]' ] || breaks
+  [ "$(breaks)" = '[]' ] || { breaks; false; }
 }
 
 @test "T174: --queue is for a rule break; --run with nothing queued says how to queue" {
@@ -195,7 +195,7 @@ started() { [ "$(ls "$BAR" | grep -c '^[0-9]')" -ge 1 ]; }
   [ "$(cat "$MARKER")" = "$SLEEPER" ]
   [ ! -f "$LOG" ] || { echo "a check ran: $(cat "$LOG")"; false; }
   [ -z "$(ls -d .vbw/runtime/proof.* 2> /dev/null)" ] || { ls .vbw/runtime; false; }
-  [ "$(breaks)" = '[]' ] || breaks
+  [ "$(breaks)" = '[]' ] || { breaks; false; }
   kill "$SLEEPER"
   SLEEPER=
 }
@@ -217,7 +217,7 @@ started() { [ "$(ls "$BAR" | grep -c '^[0-9]')" -ge 1 ]; }
   [ "$(head -n 1 "$MARK")" != "$dead" ] || { cat "$MARK"; false; }
   [ ! -e "$MARKER" ] || { echo "the marker outlived the run"; false; }
   [ ! -d .vbw/runtime/mutate-queue/P1.1 ] || { echo "the queue folder outlived the run"; ls -A .vbw/runtime/mutate-queue/P1.1; false; }
-  breaks | jq -e 'map(.r) == ["red"]' || breaks
+  breaks | jq -e 'map(.r) == ["red"]' || { breaks; false; }
 }
 
 @test "R230: a run with no break waiting, or only a break of another commit, leaves no marker and no empty folder" {
@@ -269,7 +269,7 @@ started() { [ "$(ls "$BAR" | grep -c '^[0-9]')" -ge 1 ]; }
   touch "$BAR/go"
   wait "$RUN1"
   RUN1=
-  breaks | jq -e '. == [{t: "paying prints paid", r: "red", c: {C1: "red"}}, {t: "nothing but paid is printed", r: "red", c: {C1: "red"}}]' || breaks
+  breaks | jq -e '. == [{t: "R1.1", r: "red", c: {C1: "red"}}, {t: "R1.2", r: "red", c: {C1: "red"}}]' || { breaks; false; }
   [ ! -e "$MARKER" ]
   # #738: the run's copies are kept for the next command, none still owned.
   [ "$(ls -d .vbw/runtime/proof.* | wc -l | tr -d ' ')" -eq "$n" ] || { ls .vbw/runtime; false; }

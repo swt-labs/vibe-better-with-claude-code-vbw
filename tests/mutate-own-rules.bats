@@ -190,7 +190,7 @@ build_more() {
   printf 'echo unpaid\n' > src/pay.sh
   run "$VBW" mutate P1.1 R1.2 "prints unpaid" src/pay.sh < /dev/null
   [ "$status" -eq 0 ] || { echo "$output"; false; }
-  breaks P1.1 | jq -e '.[-1].rule == {req: "R1", text: "paying prints paid"} and .[-1].checks == {C2: "red"}' || { breaks P1.1; false; }
+  breaks P1.1 | jq -e '.[-1].rule == {req: "R1", k: 2} and .[-1].checks == {C2: "red"}' || { breaks P1.1; false; }
   [ "$(ran C2)" -eq 2 ] && [ "$(ran C3)" -eq 0 ] || { echo "$(cat "$RANLOG")"; false; }
   run "$VBW" mutate P1.1 R2.1 "prints unpaid" src/pay.sh < /dev/null
   [ "$status" -ne 0 ]
