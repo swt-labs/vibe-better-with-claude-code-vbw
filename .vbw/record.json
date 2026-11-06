@@ -73506,6 +73506,11 @@
       "id": "T246",
       "text": "vbw mutate dead end (adapted from field feedback): a rule whose check reads git history can be neither broken by a file edit nor excused, because --none refuses a check that reads through git. Allow --none with a required reason for such a check, recorded and listed at the next gate and ship so the excuse stays visible. A git replace break in the proof copy declined for now: more machinery for a rare case.",
       "status": "open"
+    },
+    {
+      "id": "T247",
+      "text": "vbw mutate can lose uncommitted work (adopted, by code reading, not yet reproduced): a named file's whole difference from HEAD counts as the break, and it is set aside and restored to HEAD, so an uncommitted line beside the break is dropped. Reproduce first with a failing test; no uncommitted work may be lost; the Dev prompt says commit before a break.",
+      "status": "open"
     }
   ],
   "decisions": [
