@@ -30059,7 +30059,15 @@
         "guarded: R1 (C1), R2 (C2), R12 (C11), R13 (C12), R14 (C13), R25 (C24), R32 (C28), R33 (C29), R43 (C42, C43), R44 (C44, C45), R45 (C39, C40, C41), R46 (C46), R47 (C47), R48 (C49, C50), R49 (C48), R58 (C62, C63, C64, C67), R61 (C73, C74, C75, C76, C77), R66 (C95), R70 (C114), R73 (C98), R74 (C99, C100), R78 (C105, C106), R79 (C107), R80 (C108), R83 (C119), R92 (C131, C132, C133, C134, C135, C136, C137, C138, C139), R93 (C140, C141, C142, C143, C144), R94 (C145, C146, C147, C148), R97 (C153), R98 (C154), R100 (C156), R104 (C161, C162), R105 (C163), R110 (C169, C170), R111 (C171, C172, C173, C174, C175), R115 (C181), R118 (C184), R131 (C198), R132 (C199), R134 (C201), R135 (C202), R144 (C208, C209), R148 (C213, C214, C216, C238), R149 (C217, C218, C219, C220, C221, C222), R152 (C233, C234), R153 (C235, C236, C239), R160 (C247, C263, C264), R161 (C248, C265, C266), R166 (C253, C254, C255, C256, C267), R167 (C257, C258, C259, C260), R168 (C261, C262), R169 (C268), R170 (C269), R174 (C279, C280), R175 (C274, C275), R176 (C276, C277, C278), R182 (C322, C323, C324, C325, C326), R183 (C327), R188 (C350, C351, C352, C353, C354, C355, C356, C357, C358, C359), R190 (C374, C375, C376, C377, C378, C379, C380, C381, C382, C383, C384, C385, C386, C387, C388), R191 (C389, C390, C391, C392, C393, C394, C395, C396, C397, C398, C399, C400), R193 (C411, C412), R194 (C417, C418, C419), R195 (C420, C421, C422), R196 (C415, C416), R197 (C413, C414), R203 (C448, C449, C450), R204 (C451, C452, C453, C454), R205 (C455, C456, C457, C458, C467), R206 (C459, C460), R209 (C469, C470, C471, C472, C473), R210 (C474, C475, C476), R214 (C485, C486, C487), R217 (C494, C495), R221 (C504), R223 (C507, C508, C509), R226 (C510, C511), R228 (C522, C523, C524, C525), R232 (C534), R236 (C537), R238 (C545), R246 (C566, C567), R251 (C579), R252 (C580), R253 (C581, C582)",
         "tests: project test command"
       ],
-      "predicted": "deep"
+      "predicted": "deep",
+      "escalations": [
+        {
+          "at": "2026-11-06T09:47:54Z",
+          "from": "deep",
+          "to": "deep",
+          "reason": "Dev blocked P207.1: Code and docs are done and committed (C587, C589 pass; proof-priority tests 1,3,4,5,6 and nested tests 2,4,5,6 pass). Three approved check cases fail for faults in the check files themselves, which I may not edit: (a) tests/proof-priority.bats 'fix done' case: its fixture never marks P1.1 done, so vbw fix done F1 finds no finished requirement and runs 0 checks (output 'checks: 0 ran'); needs status:\"done\" on the plan as tests/check-jobs-nested.bats has. (b) tests/check-jobs-nested.bats case 1: it runs vbw decide before the second prove, which changes the record so the first proof no longer counts as proved and the units are reused (all 'reused', none run), so the store-off env is never written; remove the decide. (c) same file case 3: the first 'marked prove' passes and closes F1, so 'marked fix done F1' says 'F1 is not open'; the fix must be reopened before it."
+        }
+      ]
     },
     {
       "id": "P208",
@@ -67433,7 +67441,7 @@
         "docs/proof.md"
       ],
       "after": [],
-      "status": "planned",
+      "status": "blocked",
       "role": "dev",
       "tasks": [
         "checks.sh: checks_exec runs every unit under nice (the system program that lowers a process's priority) by putting it before the timeout or perl command, when nice is on PATH (looked up once per process); no other file calls nice, so prove, fix done, mutate and the mutate queue all get it",
@@ -67441,7 +67449,8 @@
         "checks.sh: every unit's environment carries VBW_PROOF_UNIT=1 beside VBW_SLOT_STORE, whether or not the computer-wide store is in force",
         "core.sh: vbw_check_jobs reads 1 when VBW_PROOF_UNIT is set and the clone has no valid check_jobs setting; vbw_check_jobs_source then prints a reason starting 'inside another proof's unit'; a set value (1 to 64) still wins and the range check is unchanged",
         "docs/proof.md, The computer-wide limit: the limit counts units running at once, not processor use; one unit may use more than one core (see Cores per unit); units run at low priority (nice) so the machine stays usable, at normal priority when nice is missing; a proof started inside another proof's unit (VBW_PROOF_UNIT) takes one unit at a time by default and the project's check_jobs setting overrides it"
-      ]
+      ],
+      "note": "Code and docs are done and committed (C587, C589 pass; proof-priority tests 1,3,4,5,6 and nested tests 2,4,5,6 pass). Three approved check cases fail for faults in the check files themselves, which I may not edit: (a) tests/proof-priority.bats 'fix done' case: its fixture never marks P1.1 done, so vbw fix done F1 finds no finished requirement and runs 0 checks (output 'checks: 0 ran'); needs status:\"done\" on the plan as tests/check-jobs-nested.bats has. (b) tests/check-jobs-nested.bats case 1: it runs vbw decide before the second prove, which changes the record so the first proof no longer counts as proved and the units are reused (all 'reused', none run), so the store-off env is never written; remove the decide. (c) same file case 3: the first 'marked prove' passes and closes F1, so 'marked fix done F1' says 'F1 is not open'; the fix must be reopened before it."
     },
     {
       "id": "P208.1",
@@ -85550,6 +85559,17 @@
         "ended": "2026-11-06T04:06:34Z",
         "cost": {
           "usd": 34.923074
+        }
+      },
+      {
+        "id": "build-20261106T094339Z",
+        "kind": "build",
+        "session": "0ee781c3-c5b6-4a6c-889f-04b89f1fba4a",
+        "milestone": "M53",
+        "started": "2026-11-06T09:43:39Z",
+        "ended": "2026-11-06T09:48:16Z",
+        "cost": {
+          "usd": 0.907893
         }
       }
     ],
