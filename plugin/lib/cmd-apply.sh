@@ -550,11 +550,13 @@ cmd_apply() {
         then .rules = [.rules | to_entries[] | .key as $k | .value | rule_edit($ops; "\($q).\($k + 1)")] else . end)
     | if $d | has("rules") then .requirements |= map(. as $q
         | if any($d.rules[]; .req == $q.id) then .rules = place($q.rules // []; [$d.rules[] | select(.req == $q.id) | {text, check} + (if has("plan") then {plan} else {} end)]) else . end)
-      else . end'
+      else . end
+    # A full apply is the Lead review of the reworded requirements the phases cover: the mark goes, the rules stay.
+    | if $patch or $add then . else .requirements |= map(. as $q | if any($d.phases[]; (.reqs // []) | index($q.id) != null) then del(.reworded) else . end) end'
   # The merged record is checked here, so a violation names the mode too; record_update checks it again.
   merged=$(mktemp "$VBW_RUNTIME/apply.XXXXXX") || vbw_die "cannot create a temporary file in $VBW_RUNTIME"$'\n'"Next: check that $VBW_RUNTIME exists and can be written to, then run vbw apply again"
   vbw_guard_add file "$merged"
-  jq "$filter | .protected = ([(.checks // [])[]? | objects | .files? | arrays | .[] | strings] | unique)" --slurpfile f_d "$df" --slurpfile f_tiers "$tf" --slurpfile f_pd "$pf" --slurpfile f_ops "$of" --argjson patch "$patch" --argjson add "$add" --arg mode "$(printf '%s' "$record" | jq -r '.settings.rigor // "auto"')" "$VBW_RECORD" > "$merged" 2> /dev/null \
+  jq -L "$VBW_LIB" "include \"record-schema\"; $filter | .protected = ([(.checks // [])[]? | objects | .files? | arrays | .[] | strings] | unique) | .schema = schema_of" --slurpfile f_d "$df" --slurpfile f_tiers "$tf" --slurpfile f_pd "$pf" --slurpfile f_ops "$of" --argjson patch "$patch" --argjson add "$add" --arg mode "$(printf '%s' "$record" | jq -r '.settings.rigor // "auto"')" "$VBW_RECORD" > "$merged" 2> /dev/null \
     || apply_internal "cannot merge the plan into the record"
   # Judged on the merged record: a mixed requirement (R212) and a check owned by two plans not yet
   # built, one after the other (R211) or beside each other in a wave (R215); all leave the record unchanged.
