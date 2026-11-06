@@ -74462,7 +74462,7 @@
     {
       "id": "T248",
       "text": "vbw apply --patch with a partial plan row dies with a raw jq error (reproduced on 2.1.26): a plan with only id and files, or no reqs, gives Cannot iterate over null; no files gives an internal error about rigor tiers. Merge given fields onto the existing plan, or refuse naming the missing field; never a raw jq error.",
-      "status": "open"
+      "status": "done"
     },
     {
       "id": "T249",
