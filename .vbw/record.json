@@ -73511,6 +73511,11 @@
       "id": "T247",
       "text": "vbw mutate can lose uncommitted work (adopted, by code reading, not yet reproduced): a named file's whole difference from HEAD counts as the break, and it is set aside and restored to HEAD, so an uncommitted line beside the break is dropped. Reproduce first with a failing test; no uncommitted work may be lost; the Dev prompt says commit before a break.",
       "status": "open"
+    },
+    {
+      "id": "T248",
+      "text": "vbw apply --patch with a partial plan row dies with a raw jq error (reproduced on 2.1.26): a plan with only id and files, or no reqs, gives Cannot iterate over null; no files gives an internal error about rigor tiers. Merge given fields onto the existing plan, or refuse naming the missing field; never a raw jq error.",
+      "status": "open"
     }
   ],
   "decisions": [
