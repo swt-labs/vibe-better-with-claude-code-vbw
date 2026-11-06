@@ -3591,6 +3591,7 @@ rustpack_seed() {
   printf 'pub fn greet(_name: &str) -> String {\n    String::new()\n}\n' > src/lib.rs
   printf '#[test]\nfn greets_by_name() {\n    assert_eq!(greeter::greet("Ana"), "Hello, Ana!");\n}\n' > tests/greet.rs
   printf 'target/\n' >> .gitignore
+  cargo generate-lockfile --quiet --offline 2> /dev/null || cargo generate-lockfile --quiet || return 1
   printf '%s' '{"phases": [{"id": "P1", "title": "Greet", "reqs": ["R1"]}],
     "plans": [{"id": "P1.1", "phase": "P1", "title": "greet", "reqs": ["R1"], "files": ["src/lib.rs"], "after": [], "tasks": ["greet returns Hello, NAME!"]}],
     "checks": [{"id": "C1", "req": "R1", "run": ["cargo", "test", "-j", "2", "--test", "greet"], "files": ["tests/greet.rs"]}],
