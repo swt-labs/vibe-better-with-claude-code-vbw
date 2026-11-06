@@ -464,5 +464,5 @@ again'
   PATH="$TEST_ROOT/logbin:$PATH" run "$VBW" prove < /dev/null
   [ "$status" -eq 0 ] || { echo "$output"; false; }
   [ "$(ran)" = "" ] || { echo "ran: $(ran)"; false; }
-  ! grep -E 'diff' "$TEST_ROOT/calls" | grep -qE '/sub\|| -C [^|]*/sub |--git-dir' || { echo "a git diff ran inside the submodule:"; grep diff "$TEST_ROOT/calls"; false; }
+  ! grep -E 'diff' "$TEST_ROOT/calls" | grep -qE '/sub\||[| ]-C [^|]*/sub |--git-dir' || { echo "a git diff ran inside the submodule:"; grep diff "$TEST_ROOT/calls"; false; }
 }
