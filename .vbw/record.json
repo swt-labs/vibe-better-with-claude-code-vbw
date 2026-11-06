@@ -1,6 +1,15 @@
 {
   "schema": 12,
-  "lease": null,
+  "lease": {
+    "run": "qa-20261106T164419Z",
+    "kind": "qa",
+    "started_at": "2026-11-06T16:44:19Z",
+    "files": [],
+    "session": "0ee781c3-c5b6-4a6c-889f-04b89f1fba4a",
+    "cost": {
+      "usd": 3275.269597
+    }
+  },
   "protected": [
     "tests/adaptive-results.bats",
     "tests/agent-scratch.bats",
@@ -30213,7 +30222,22 @@
         "guarded: R3 (C3), R12 (C11), R13 (C12), R14 (C13), R21 (C16), R22 (C19), R23 (C20), R24 (C23), R26 (C22), R37 (C35), R38 (C33, C34), R39 (C36), R40 (C37), R47 (C47), R49 (C48), R50 (C51), R51 (C52, C53, C66), R52 (C58, C91), R53 (C54, C55), R55 (C56, C57), R57 (C59, C70, C71), R60 (C72, C94), R61 (C73, C74, C75, C76, C77), R62 (C78, C79, C80, C81, C82, C83, C93), R65 (C86, C87, C88, C89, C90), R67 (C96), R70 (C114), R71 (C115, C121), R72 (C116, C118), R78 (C105, C106), R79 (C107), R80 (C108), R83 (C119), R95 (C149, C150), R96 (C151, C152), R98 (C154), R99 (C155), R100 (C156), R101 (C179), R106 (C164, C165), R107 (C166, C167), R111 (C171, C172, C173, C174, C175), R116 (C182, C183), R119 (C180), R121 (C187, C188), R122 (C189), R123 (C190, C191), R131 (C198), R132 (C199), R134 (C201), R135 (C202), R142 (C204, C205), R143 (C206, C207), R149 (C217, C218, C219, C220, C221, C222), R152 (C233, C234), R157 (C244), R160 (C247, C263, C264), R161 (C248, C265, C266), R164 (C251), R165 (C252), R170 (C269), R171 (C270), R179 (C297, C298, C299, C300, C301, C302, C303, C304, C305, C306, C312), R180 (C307, C308, C309, C310), R185 (C334, C335, C336, C337, C338, C339, C340, C341, C342, C343), R186 (C344, C345, C346, C347, C348), R188 (C350, C351, C352, C353, C354, C355, C356, C357, C358, C359), R189 (C360, C361, C362, C363, C364, C365, C366, C367, C368, C369, C370, C371, C372, C373), R190 (C374, C375, C376, C377, C378, C379, C380, C381, C382, C383, C384, C385, C386, C387, C388), R191 (C389, C390, C391, C392, C393, C394, C395, C396, C397, C398, C399, C400), R192 (C401, C402, C403, C404, C405, C406, C407, C408, C409, C410), R201 (C428, C429), R210 (C474, C475, C476), R223 (C507, C508, C509), R228 (C522, C523, C524, C525), R229 (C526, C527, C528, C529), R239 (C554, C555), R241 (C546, C547, C548, C549, C550, C560), R245 (C564, C565), R249 (C571, C572, C573), R251 (C579), R252 (C580)",
         "tests: project test command"
       ],
-      "predicted": "deep"
+      "predicted": "deep",
+      "qa": {
+        "result": "pass",
+        "tier": "deep",
+        "tree": "da11f0ea30cb9ac3bf10bb3d39a402c2e356c7b11238b92bbe7e11aad04f8103",
+        "at": "2026-11-06T16:45:32Z",
+        "note": "14/14 checks"
+      },
+      "outcome": {
+        "tier": "deep",
+        "predicted": "deep",
+        "held": true,
+        "fix_rounds": 0,
+        "qa_findings": 0,
+        "escalations": 0
+      }
     },
     {
       "id": "P211",
@@ -76916,6 +76940,30 @@
       "at": "2026-11-06T15:38:30Z",
       "text": "Contract approved: 251 requirements, 596 checks, 615 plans (8ca04421e225)",
       "plans": []
+    },
+    {
+      "id": "D624",
+      "text": "Keep plugin/lib/cmd-prove.sh as merged from PRs #742 and #744",
+      "why": "The owner's approved 2.1.26 order brings both PRs in; the file's change after P207.1 is those merges, and the proof passed with it",
+      "at": "2026-11-06T16:43:36Z"
+    },
+    {
+      "id": "D625",
+      "text": "Keep plugin/lib/core.sh as merged from PR #744",
+      "why": "bd8ffb51 is the approved PR's clean-copy code; the proof passed with it",
+      "at": "2026-11-06T16:44:06Z"
+    },
+    {
+      "id": "D626",
+      "text": "Keep plugin/lib/cmd-next.sh with the lead's speed fix",
+      "why": "ae7d538a restores R249's one pass over the record after the pack code added a third read; the proof passed with it",
+      "at": "2026-11-06T16:44:07Z"
+    },
+    {
+      "id": "D627",
+      "text": "Keep plugin/packs/rust/dev.md with the lead's rustfmt correction",
+      "why": "1873ea59: cargo fmt -- FILE rewrites the whole crate, probed on a throwaway crate",
+      "at": "2026-11-06T16:44:09Z"
     }
   ],
   "commands": {
