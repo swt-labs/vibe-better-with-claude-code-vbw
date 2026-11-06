@@ -12,14 +12,14 @@
 # each one's lines print together when it ends.
 #
 # Scenarios: greenfield, reject, resume, change, convert, balanced, docs, qafix,
-# decision, debug, research, edgecase, leftover, recheck, approval, newcomer, senior, panel, steptime, road, pluginoff, tools, legacy, nolegacy, smallchange, costs, loop, plugindir, sessions, taskbreak, fixchecks, failoutput, leaveout, hiddenrecord, latedecision, ignoredplanning, stalefix, mapsnapshot, alreadyfixed, mapnotrun, submodule, testforms, amendfile, queuedreq, worktreewrite. A user
+# decision, debug, research, edgecase, leftover, recheck, approval, newcomer, senior, panel, steptime, road, pluginoff, tools, legacy, nolegacy, smallchange, costs, loop, plugindir, sessions, taskbreak, fixchecks, failoutput, leaveout, hiddenrecord, latedecision, ignoredplanning, stalefix, mapsnapshot, alreadyfixed, mapnotrun, submodule, testforms, amendfile, queuedreq, worktreewrite, rustpack. A user
 # answers every question with VBW's recommendation unless the scenario says otherwise.
 set -uo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 l3() { bash "$ROOT/tools/l3.sh" "$@"; }
 VBW="$ROOT/plugin/bin/vbw"
-ALL="greenfield reject resume change convert balanced docs qafix decision debug research edgecase leftover recheck approval newcomer senior panel steptime road pluginoff tools legacy nolegacy smallchange costs loop plugindir sessions taskbreak fixchecks failoutput leaveout hiddenrecord latedecision ignoredplanning stalefix mapsnapshot alreadyfixed mapnotrun submodule testforms amendfile queuedreq worktreewrite"
+ALL="greenfield reject resume change convert balanced docs qafix decision debug research edgecase leftover recheck approval newcomer senior panel steptime road pluginoff tools legacy nolegacy smallchange costs loop plugindir sessions taskbreak fixchecks failoutput leaveout hiddenrecord latedecision ignoredplanning stalefix mapsnapshot alreadyfixed mapnotrun submodule testforms amendfile queuedreq worktreewrite rustpack"
 RESULTS="$ROOT/tools/l3-results"
 STEPS=60
 # The status line's end time since d7f73771: 'until around HH:MM', with a day word when the end is not today.
@@ -3578,6 +3578,55 @@ scenario_queuedreq() {
       "$(jq -n --argjson q "$queued_seen" --argjson c "$cleared" --argjson p "$planned" --argjson b "$built" --argjson k "$kept" --arg lp "$later_plan" \
         '{queued_during_run: $q, cleared_at_run_end: $c, planned_later: $p, built_later: $b, first_plans_kept: $k, later_plan: $lp}')" \
       '["a requirement added during a fix run","a requirement edited (not added) during a run","several requirements queued together","the wording VBW shows the user (read by a person)"]'
+  }
+}
+
+# rustpack_seed: a small Rust crate, its greet function a stub and its test written ahead of the
+# code, with one plan P1.1 on src/lib.rs approved by the user before the session.
+rustpack_seed() {
+  printf '# Greetings\n\n## Requirements\n\n- R1 [auto] greet("Ana") returns "Hello, Ana!"\n' > .vbw/spec.md
+  "$VBW" spec sync > /dev/null || return 1
+  mkdir -p src tests
+  printf '[package]\nname = "greeter"\nversion = "0.1.0"\nedition = "2021"\n' > Cargo.toml
+  printf 'pub fn greet(_name: &str) -> String {\n    String::new()\n}\n' > src/lib.rs
+  printf '#[test]\nfn greets_by_name() {\n    assert_eq!(greeter::greet("Ana"), "Hello, Ana!");\n}\n' > tests/greet.rs
+  printf 'target/\n' >> .gitignore
+  printf '%s' '{"phases": [{"id": "P1", "title": "Greet", "reqs": ["R1"]}],
+    "plans": [{"id": "P1.1", "phase": "P1", "title": "greet", "reqs": ["R1"], "files": ["src/lib.rs"], "after": [], "tasks": ["greet returns Hello, NAME!"]}],
+    "checks": [{"id": "C1", "req": "R1", "run": ["cargo", "test", "-j", "2", "--test", "greet"], "files": ["tests/greet.rs"]}],
+    "rules": [{"req": "R1", "text": "a name is greeted", "check": "C1"}]}' \
+    | "$VBW" apply > /dev/null || return 1
+  git add -A && git commit -qm "chore: plan" || return 1
+  "$VBW" approve > /dev/null || return 1
+}
+
+# rustpack (R261): a real Rust crate through /vbw:vibe. Judged in the record and the session logs:
+# vbw next names the Rust pack for the plan, the Dev's brief names the pack's dev text, the Dev
+# reads it, and the plan is built and proven with cargo.
+scenario_rustpack() {
+  command -v cargo > /dev/null 2>&1 || { say "setup failed: cargo is not installed"; return 1; }
+  new_project
+  (cd "$dir" && "$VBW" init > /dev/null && "$VBW" config rigor express > /dev/null && rustpack_seed) \
+    || { say "setup failed: could not seed the approved plan"; return 1; }
+  fixture="a Rust crate (Cargo.toml, src/lib.rs with a stub, tests/greet.rs written ahead) with one plan P1.1 on src/lib.rs approved by the user before the session; rigor express; the user types /vbw:vibe"
+  named=$(cd "$dir" && "$VBW" next --json | jq -c '.packs.plans["P1.1"] // []')
+  start="/vbw:vibe"
+  checks() {
+    local passed=true r="$dir/.vbw/record.json" told=false read_it=false done_p=false pack=false
+    [ "$named" = '["rust"]' ] && pack=true
+    transcripts | xargs cat 2> /dev/null | jq -se 'any(.[]; .type == "user" and (.message.content | tostring | contains("packs/rust/dev.md")))' > /dev/null 2>&1 && told=true
+    transcripts | xargs cat 2> /dev/null | jq -se '[.[] | select(.type == "assistant") | .message.content[]? | select(.type == "tool_use" and .name != "Workflow" and ((.input | tostring) | contains("packs/rust/dev.md")))] | length > 0' > /dev/null 2>&1 && read_it=true
+    jq -e '.plans[] | select(.id == "P1.1") | .status == "done"' "$r" > /dev/null 2>&1 && done_p=true
+    say "pack named: $named, Dev told: $told, Dev read it: $read_it, P1.1 done: $done_p"
+    common_checks
+    expect "vbw next --json names the Rust pack for P1.1" [ "$pack" = true ]
+    expect "the Dev's brief names the pack's dev text" [ "$told" = true ]
+    expect "the Dev read the pack's dev text" [ "$read_it" = true ]
+    expect "P1.1 is done" [ "$done_p" = true ]
+    [ "$failed" -eq 0 ] || passed=false
+    result_write rustpack "$fixture" "${cost_usd:-0}" "$passed" \
+      "$(jq -n --argjson p "$pack" --argjson t "$told" --argjson r "$read_it" --argjson d "$done_p" '{pack_named: $p, dev_told: $t, dev_read: $r, plan_done: $d}')" \
+      '["the Lead pack text at a real plan step (the plan was seeded)","the QA pack text at a deep tier (rigor express)","a nested Cargo workspace","a dependency added with its lockfiles","whether the pack made the Dev work better than without it"]'
   }
 }
 
