@@ -54,7 +54,7 @@ edit_record() {
   rm -f .vbw/runtime/glance.json
 }
 # open_fix: F1 of R1 open, so vbw fix done F1 runs C1.
-open_fix() { edit_record '.fixes = [{id: "F1", req: "R1", attempts: 0, status: "open", note: "a"}]'; }
+open_fix() { edit_record '.plans[0].status = "done" | .fixes = [{id: "F1", req: "R1", attempts: 0, status: "open", note: "a"}]'; }
 # values LABEL: the nice values the units labelled LABEL recorded, one per line.
 values() { awk -v l="$1" '$1 == l { print $2 }' "$NICELOG"; }
 # above_base LABEL: at least one value was recorded for LABEL and every one is above the hand-run value.

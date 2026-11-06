@@ -93,7 +93,6 @@ marked() { VBW_PROOF_UNIT=1 "$VBW" "$@" < /dev/null; }
   # The store cannot be made: its folder's parent takes no new entries.
   rm -rf "$CLAUDE_CONFIG_DIR/vbw"
   chmod 500 "$CLAUDE_CONFIG_DIR"
-  "$VBW" decide "re-run" "the store is off" > /dev/null
   vbw_run prove
   chmod u+rwx "$CLAUDE_CONFIG_DIR"
   [ "$status" -eq 0 ] || { echo "$output"; false; }
@@ -107,7 +106,7 @@ marked() { VBW_PROOF_UNIT=1 "$VBW" "$@" < /dev/null; }
   [[ "$(VBW_PROOF_UNIT=1 jobs_line)" != *"(set"* && "$(VBW_PROOF_UNIT=1 jobs_line)" != *"machine default"* ]] || { VBW_PROOF_UNIT=1 jobs_line; false; }
 }
 
-@test "R257: inside a marked unit, vbw prove, vbw check and vbw fix done run one unit at a time" {
+@test "R257: inside a marked unit, vbw prove and vbw check run one unit at a time" {
   run marked prove
   [ "$status" -eq 0 ] || { echo "$output"; false; }
   [ "$(seen)" = 6 ] && [ "$(peak)" = 1 ] || { echo "prove: $(seen) ran, peak $(peak)"; false; }
@@ -115,7 +114,9 @@ marked() { VBW_PROOF_UNIT=1 "$VBW" "$@" < /dev/null; }
   run marked check C1 C2 C3 C4 C5 C6
   [ "$status" -eq 0 ] || { echo "$output"; false; }
   [ "$(seen)" = 6 ] && [ "$(peak)" = 1 ] || { echo "check: $(seen) ran, peak $(peak)"; false; }
-  : > "$CONC/seen"
+}
+
+@test "R257: inside a marked unit, vbw fix done runs one unit at a time" {
   run marked fix done F1
   [ "$status" -eq 0 ] || { echo "$output"; false; }
   [ "$(seen)" -ge 6 ] && [ "$(peak)" = 1 ] || { echo "fix done: $(seen) ran, peak $(peak)"; false; }
