@@ -476,8 +476,17 @@ R1 [auto] A customer can pay once
   other: the first Dev's mutation step would run the check before the other
   Dev committed, a race that fails only sometimes. Give each plan's rules a
   check of their own.
-- When a requirement's text or proof changes, `vbw spec sync` resets its rules
-  to pending, so the Lead restates them.
+- When an `auto` requirement's text changes, `vbw spec sync` keeps its rules,
+  in their places and words, resets its status to `open` and marks it
+  `reworded` (`changed R1 (status reset to open, 2 rules kept)`). The contract
+  needs approval again, and at the next plan step the Lead reviews the kept
+  rules: it keeps one that still holds, rewords one whose words are now wrong
+  and retires one whose behaviour changed, each with `vbw apply --patch`; its
+  full `vbw apply` clears the mark. A rule is removed only by an explicit
+  retire, never by a sync. When the proof changes from `auto` to `human`, the
+  requirement loses its rules and its checks (a `human` requirement carries
+  neither), and the sync message names them; a change to `auto` starts with
+  pending rules.
 - A requirement approved before rules existed (no requirement has a `rules`
   field) keeps its approval. Its screen shows `rules not listed`, and nothing
   forces rules until the Lead applies a plan that lists them (D53). Once any
