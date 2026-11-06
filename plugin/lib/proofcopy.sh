@@ -689,6 +689,24 @@ proofcopy_size_kb() {
   du -sk "$VBW_ROOT/$p" 2> /dev/null | awk 'NR == 1 {t = $1} END {printf "%d\n", t}'
 }
 
+# proofcopy_disk_kind: print "clone" when the project's disk makes copy-on-write
+# clones (a clone of a small file under $VBW_RUNTIME succeeds: cp -c on macOS,
+# cp --reflink=always elsewhere), else "plain". The disk decides, never a folder's
+# name, a stack or a language. The probe is removed. VBW_PROOFCOPY_DISK=clone|plain
+# is the test override and answers without trying. Never fails.
+proofcopy_disk_kind() {
+  case "${VBW_PROOFCOPY_DISK:-}" in clone | plain) vbw_out '%s\n' "$VBW_PROOFCOPY_DISK"; return 0 ;; esac
+  local flag=--reflink=always src dst kind=plain
+  [ "$(uname)" != Darwin ] || flag=-c
+  mkdir -p "$VBW_RUNTIME" 2> /dev/null || true
+  src="$VBW_RUNTIME/disk-probe-src.$$"
+  dst="$VBW_RUNTIME/disk-probe-dst.$$"
+  if printf 'vbw\n' > "$src" 2> /dev/null && cp "$flag" "$src" "$dst" 2> /dev/null; then kind=clone; fi
+  rm -f "$src" "$dst" 2> /dev/null || true
+  vbw_out '%s\n' "$kind"
+  return 0
+}
+
 # proofcopy_big_ignored: one line "name/ (1.0 GB)" for each git-ignored folder
 # inside the project over VBW_PROOFCOPY_PLAIN_KB (500 MB by default); a worktree
 # folder and .claude/worktrees are never candidates and never counted. Never fails.
