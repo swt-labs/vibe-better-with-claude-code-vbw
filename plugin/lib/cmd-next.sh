@@ -203,11 +203,11 @@ next_decide() {
   runs=""
   [ -z "$hist" ] || runs="$(dirname "$hist")/run-times.json"
   out=$(printf '%s' "$record" | jq -c --rawfile prev "$prev" --slurpfile approved_doc "$adoc" --argjson effort "$effort" --argjson tracked "$counts" --argjson approved "$approved" --arg waiting "$waiting" --arg problems "$problems" --arg contract "$hash" \
-    --argjson code_changed "$changed" --argjson legacy "$legacy" --slurpfile in <(printf '%s' "$digests") --slurpfile ch <(printf '%s' "$cache") --argjson fpv "$QA_FP_VERSION" --argjson profile "$profile" --arg session "$(vbw_session)" --arg holder "$holder" --argjson next_phase "$NP_NEXT_PHASE" --slurpfile tiers "$VBW_LIB/tiers.json" \
+    --argjson code_changed "$changed" --argjson legacy "$legacy" --slurpfile in <(printf '%s' "$digests") --slurpfile ch <(printf '%s' "$cache") --argjson fpv "$QA_FP_VERSION" --argjson profile "$profile" --arg session "$(vbw_session)" --arg holder "$holder" --argjson next_phase "$NP_NEXT_PHASE" --slurpfile tiers "$VBW_LIB/tiers.json" --slurpfile mf <(next_manifests) \
     --argjson want_step "${NP_WANT_STEP:-0}" --argjson want_road "${NP_WANT_ROAD:-0}" --slurpfile note <(printf '%s' "$note") \
     --slurpfile h <(jq -c 'select(type == "object" and (.steps | type) == "array")' "$hist" 2> /dev/null) \
     --slurpfile runs <(jq -c 'select(type == "object" and (.runs | type) == "object")' "$runs" 2> /dev/null) \
-    "$VBW_JQ_DEFS$VBW_QA_DEFS$VBW_STEP_DEFS$VBW_STEP_SIZE_DEFS$(road_expect_defs)"'. as $work | [qa_prog($in[0]; $ch[0])] as $qa
+    "$VBW_JQ_DEFS$VBW_QA_DEFS$VBW_STEP_DEFS$VBW_STEP_SIZE_DEFS$(road_expect_defs)$NEXT_PACKS_DEFS"'. as $work | [qa_prog($in[0]; $ch[0])] as $qa
     | def next_prog:
 '"$(cat "$VBW_LIB/next.jq")"'
 ;
@@ -220,7 +220,7 @@ next_decide() {
     | def road_prog:
 '"$(cat "$VBW_LIB/road.jq")"'
 ;
-    {next: $n, qa: $qa[0],
+    {next: $n, qa: $qa[0], packs: (if $want_step == 1 then ($work | plan_packs) else [] end),
        size: (if $want_step == 1 and $ok then
                 (($n.action) as $a
                  | (if $a == "build" then ["build", $n.detail.plans] elif $a == "fix" then ["fix", $n.detail.fixes]
@@ -232,21 +232,25 @@ next_decide() {
   # A plan that names a plan or phase that is not there cannot be judged.
   printf '%s' "$qa" | jq -e '.problems | any(.[]; contains("does not exist")) | not' > /dev/null || vbw_die "$(printf '%s' "$qa" | jq -r '.problems | join("; ")')"
   printf '%s' "$out" | jq -e '.next | has("error") | not' > /dev/null || vbw_die "$(printf '%s' "$out" | jq -r '.next.error')"
-  printf '%s' "$out" | jq -c '{next, size, road}'
+  printf '%s' "$out" | jq -c '{next, size, road, packs}'
 }
 
-# The jq program of the stack packs (docs/packs.md): a pattern without a slash matches a file's
-# basename, one with a slash the whole path; * matches within one path segment. $mf is the
-# manifests, $r the working record, $tracked the tracked files (NUL separated, read only at the
-# plan action), $pr the plugin folder. A project with no match gets neither packs nor packs_root.
-NEXT_PACKS_JQ='def rx: split("*") | map(gsub("(?<c>[^A-Za-z0-9_])"; "\\\(.c)")) | join("[^/]*") | "^" + . + "$";
-  def packs_of($files): [$mf[] | select(.patterns as $ps | any($files[]; . as $f | ($f | split("/") | last) as $b | any($ps[]; . as $p | (if contains("/") then $f else $b end) | test($p | rx)))) | .name];
-  ([$r[0].plans[]? | {id, phase, p: packs_of(.files // [])} | select(.p | length > 0)]) as $pl
-  | (if .action == "plan" then packs_of($tracked | split("\u0000") | map(select(. != ""))) else [] end) as $tp
-  | {plans: ($pl | map({(.id): .p}) | add // {}),
-     phases: ($pl | group_by(.phase) | map({(.[0].phase): ([.[].p[]] | unique)}) | add // {}),
-     project: (([$pl[].p[]] + $tp) | unique)} as $k
-  | if ($k.project | length) == 0 then . else . + {packs: ($k | with_entries(select(.value | length > 0))), packs_root: ($pr + "/packs")} end'
+# The jq definitions of the stack packs (docs/packs.md): a pattern without a slash matches a
+# file's basename, one with a slash the whole path; * matches within one path segment. $mf is
+# the manifests. Defined here because next_decide's one pass over the record computes the plans'
+# packs (R249): next_with_root adds only what the plan action's tracked files select.
+NEXT_PACKS_DEFS='def pack_rx: split("*") | map(gsub("(?<c>[^A-Za-z0-9_])"; "\\\(.c)")) | join("[^/]*") | "^" + . + "$";
+  def packs_of($files): [$mf[] | select(.patterns as $ps | any($files[]; . as $f | ($f | split("/") | last) as $b | any($ps[]; . as $p | (if contains("/") then $f else $b end) | test($p | pack_rx)))) | .name];
+  def plan_packs: [.plans[]? | {id, phase, p: packs_of(.files // [])} | select(.p | length > 0)];
+'
+
+# next_manifests: every pack's manifest in the plugin; nothing when it holds no pack folder.
+next_manifests() {
+  local f
+  for f in "$VBW_PLUGIN"/packs/*/pack.json; do
+    [ ! -f "$f" ] || cat "$f"
+  done
+}
 
 # next_tracked NEXT: the project's tracked files (git ls-files -z) at the plan action, where no
 # plan exists yet for the Lead's pack; nothing otherwise. The answer's text is a cheap
@@ -255,20 +259,19 @@ next_tracked() {
   case $1 in *'"action":"plan"'*) git -C "$VBW_ROOT" ls-files -z 2> /dev/null || : ;; esac
 }
 
-# next_with_root NEXT: the command's --json answer: NEXT with the project folder (vbw root) and,
-# for a project with a match, the packs of its plans, phases and files. One jq call whether or not
-# a pack folder exists; a pack file is read only for its manifest.
+# next_with_root NEXT DECIDED: the command's --json answer: NEXT with the project folder (vbw
+# root) and, for a project with a match, the packs of its plans, phases and files. DECIDED is
+# next_decide's answer, holding the plans' packs; no record reaches this call. A pack file is
+# read only for its manifest. A project with no match gets neither packs nor packs_root.
 next_with_root() {
-  local f manifests=()
-  for f in "$VBW_PLUGIN"/packs/*/pack.json; do
-    [ ! -f "$f" ] || manifests+=("$f")
-  done
-  if [ "${#manifests[@]}" -eq 0 ]; then
-    printf '%s\n' "$1" | jq -c --arg root "$VBW_ROOT" '. + {root: $root}'
-    return
-  fi
-  printf '%s\n' "$1" | jq -c --arg root "$VBW_ROOT" --arg pr "$VBW_PLUGIN" --slurpfile mf <(cat "${manifests[@]}") --slurpfile r <(printf '%s' "$NP_WORK") --rawfile tracked <(next_tracked "$1") \
-    ". + {root: \$root} | $NEXT_PACKS_JQ"
+  printf '%s\n' "$1" | jq -c --arg root "$VBW_ROOT" --arg pr "$VBW_PLUGIN" --slurpfile mf <(next_manifests) --slurpfile o <(printf '%s' "$2") --rawfile tracked <(next_tracked "$1") \
+    "$NEXT_PACKS_DEFS"'($o[0].packs // []) as $pl
+    | . + {root: $root}
+    | (if .action == "plan" then packs_of($tracked | split("\u0000") | map(select(. != ""))) else [] end) as $tp
+    | {plans: ($pl | map({(.id): .p}) | add // {}),
+       phases: ($pl | group_by(.phase) | map({(.[0].phase): ([.[].p[]] | unique)}) | add // {}),
+       project: (([$pl[].p[]] + $tp) | unique)} as $k
+    | if ($k.project | length) == 0 then . else . + {packs: ($k | with_entries(select(.value | length > 0))), packs_root: ($pr + "/packs")} end'
 }
 
 cmd_next() {
@@ -319,7 +322,7 @@ cmd_next() {
     # the kernel builds from it (the loop's step note), hold no path, so a copy of the project
     # never points back at it.
     if [ "${FUNCNAME[1]:-main}" = main ]; then
-      next_with_root "$next"
+      next_with_root "$next" "$out"
     else
       printf '%s\n' "$next"
     fi
