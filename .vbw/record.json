@@ -71913,7 +71913,7 @@
       "req": "R257",
       "source": "qa",
       "attempts": 0,
-      "status": "open",
+      "status": "fixed",
       "note": "plugin/lib/checks.sh lines 131-132 (commit 90d73722, after the plan's tasks): checks_exec strips VBW_SLOT_STORE from a unit whenever SLOTS_MARK is empty. The comment says 'with the store off', but SLOTS_MARK is also empty in the nested state (slots_open sets SLOTS_STATE=nested when VBW_SLOT_STORE already names this store; slots_take then sets no mark, plugin/lib/slots.sh:240-250, 340-345). So a proof running inside another proof's unit on the same Claude config folder now starts its own units without the store variable; a third-level vbw prove in those units opens the store as a fresh run and takes slots, while every outer slot is held by ancestors waiting for it. Before this commit the variable passed through and the third level was nested (no slots of its own). Plan task 3 only adds VBW_PROOF_UNIT=1 beside VBW_SLOT_STORE; removing the store variable is added behaviour no task, rule or decision covers, and no test covers the nested-of-nested case (tests/check-jobs-nested.bats only checks store=unset when the store could not be made). Found by reading the code, not by running a three-level nest. Regression test: an outer prove with the store on whose unit runs a nested vbw prove (VBW_SLOT_STORE set to this store, same CLAUDE_CONFIG_DIR) whose unit prints VBW_SLOT_STORE must still see the store path; only a run with no store at all (SLOTS_STATE off or lost, and nothing inherited) drops it. Fix: unset it only when the run's own store is off, not when nested, or drop the unset and keep just the mark.",
       "phase": "P207"
     },
@@ -71922,7 +71922,7 @@
       "req": "R258",
       "source": "qa",
       "attempts": 0,
-      "status": "open",
+      "status": "fixed",
       "note": "A record whose breaks still name their rule by text ({req, text}, written before schema 12) stays readable, but nothing that reads it before its first write counts those breaks. The phase criterion says they 'keep counting for the rule whose text they carry until the record is written in the new shape'. plugin/lib/cmd-plan.sh:112 matches only '.rule.k == $o.n' (a text break has no k, so plan done would still name its rule as having no break, if it runs on a record not yet converted, for example a build run opened by an older VBW and finished after an upgrade); plugin/lib/cmd-show.sh (tname, now \"\\(.rule.req).\\(.rule.k)\") prints such a break as 'R1.null' in vbw show plan, and rule_breaks in vbw show req lists nothing for it; plugin/lib/cmd-mutate.sh:392,407 compare '.rule == {req, k}' so an earlier text-shaped survivor is not found. Only plugin/lib/record.sh's write path converts. tests/record-schema.bats 'R258 schema 12: a record whose breaks name their rules by text stays readable' only asserts that vbw show plan exits 0, not that the break is counted or numbered. A regression test should take a schema-11 record with a text-shaped red break, run vbw show plan and vbw plan done (no write first) and assert the break is listed under Rn.k and counted; the simplest fix is one read-side normalisation (breaks_by_place applied in record_read) so every reader sees {req, k}.",
       "phase": "P208"
     }
@@ -87302,6 +87302,17 @@
         "ended": "2026-11-06T16:47:29Z",
         "cost": {
           "usd": 2.114394
+        }
+      },
+      {
+        "id": "fix-20261106T164818Z",
+        "kind": "fix",
+        "session": "0ee781c3-c5b6-4a6c-889f-04b89f1fba4a",
+        "milestone": "M53",
+        "started": "2026-11-06T16:48:18Z",
+        "ended": "2026-11-06T16:56:07Z",
+        "cost": {
+          "usd": 0.311347
         }
       }
     ],
