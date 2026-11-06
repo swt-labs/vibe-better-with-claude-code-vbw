@@ -30133,7 +30133,15 @@
         "guarded: R12 (C11), R32 (C28), R43 (C42, C43), R44 (C44, C45), R45 (C39, C40, C41), R46 (C46), R47 (C47), R48 (C49, C50), R49 (C48), R61 (C73, C74, C75, C76, C77), R66 (C95), R70 (C114), R73 (C98), R74 (C99, C100), R78 (C105, C106), R79 (C107), R80 (C108), R92 (C131, C132, C133, C134, C135, C136, C137, C138, C139), R93 (C140, C141, C142, C143, C144), R94 (C145, C146, C147, C148), R97 (C153), R98 (C154), R100 (C156), R104 (C161, C162), R105 (C163), R110 (C169, C170), R111 (C171, C172, C173, C174, C175), R115 (C181), R118 (C184), R131 (C198), R132 (C199), R134 (C201), R135 (C202), R144 (C208, C209), R148 (C213, C214, C216, C238), R149 (C217, C218, C219, C220, C221, C222), R152 (C233, C234), R153 (C235, C236, C239), R160 (C247, C263, C264), R161 (C248, C265, C266), R166 (C253, C254, C255, C256, C267), R167 (C257, C258, C259, C260), R168 (C261, C262), R169 (C268), R170 (C269), R174 (C279, C280), R175 (C274, C275), R176 (C276, C277, C278), R182 (C322, C323, C324, C325, C326), R183 (C327), R188 (C350, C351, C352, C353, C354, C355, C356, C357, C358, C359), R193 (C411, C412), R194 (C417, C418, C419), R195 (C420, C421, C422), R196 (C415, C416), R197 (C413, C414), R203 (C448, C449, C450), R204 (C451, C452, C453, C454), R205 (C455, C456, C457, C458, C467), R206 (C459, C460), R209 (C469, C470, C471, C472, C473), R210 (C474, C475, C476), R214 (C485, C486, C487), R217 (C494, C495), R221 (C504), R226 (C510, C511), R228 (C522, C523, C524, C525), R232 (C534), R238 (C545), R246 (C566, C567), R251 (C579), R252 (C580), R253 (C581, C582)",
         "tests: project test command"
       ],
-      "predicted": "deep"
+      "predicted": "deep",
+      "escalations": [
+        {
+          "at": "2026-11-06T12:40:22Z",
+          "from": "deep",
+          "to": "deep",
+          "reason": "Dev blocked P209.1: Code (dcb18cc9) and docs (350e33bf) are done; C597 and 5 of 6 R260 cases in C596 pass. R260.2 (missing commit) fails: the test amends the submodule commit and runs gc, but the submodule's clone still has refs/remotes/origin/<branch> at the old seed commit, so the old commit is never missing, the inner diff succeeds (message-only change) and everything is reused. Fix is in the protected tests/proof-reuse.bats: before gc, also drop the remote-tracking refs inside sub (git -C sub remote remove origin) so the old commit is truly gone. I cannot edit that file."
+        }
+      ]
     },
     {
       "id": "P210",
@@ -68171,14 +68179,15 @@
       "after": [
         "P208.3"
       ],
-      "status": "planned",
+      "status": "blocked",
       "role": "dev",
       "tasks": [
         "proofreuse_diffs: when the one diff-tree per recorded tree shows a submodule entry (mode 160000) changed, diff inside that submodule between the recorded commit and the current one (git -C sub diff-tree -r --no-renames --name-status OLD NEW), prefix every path with the submodule's folder as the project sees it, and merge those paths into the tree's list so the read-list rule judges them like any top-level change; today's --quiet pass over the submodule paths goes",
         "the unknown cases stay unknown (=FAIL): the inner diff fails because the recorded commit is missing from the submodule's repository, a submodule entry was added or removed between the two trees, or the inner diff itself shows a 160000 entry changed (a nested submodule moved)",
         "no new cost when nothing moved: a tree whose submodule entries are unchanged keeps today's single diff-tree and runs no git inside the submodule; a project without submodules is untouched (tests/proof-reuse.bats:231)",
         "docs/proof.md, Reusing results: how a moved submodule is judged (the diff inside the submodule, paths prefixed with its folder, the read-list rule) and the four cases that stay unknown; the Limits bullet saying any commit in a submodule runs everything again is replaced"
-      ]
+      ],
+      "note": "Code (dcb18cc9) and docs (350e33bf) are done; C597 and 5 of 6 R260 cases in C596 pass. R260.2 (missing commit) fails: the test amends the submodule commit and runs gc, but the submodule's clone still has refs/remotes/origin/<branch> at the old seed commit, so the old commit is never missing, the inner diff succeeds (message-only change) and everything is reused. Fix is in the protected tests/proof-reuse.bats: before gc, also drop the remote-tracking refs inside sub (git -C sub remote remove origin) so the old commit is truly gone. I cannot edit that file."
     },
     {
       "id": "P210.1",
@@ -86283,6 +86292,17 @@
         "ended": "2026-11-06T12:33:46Z",
         "cost": {
           "usd": 0.907295
+        }
+      },
+      {
+        "id": "build-20261106T123424Z",
+        "kind": "build",
+        "session": "0ee781c3-c5b6-4a6c-889f-04b89f1fba4a",
+        "milestone": "M53",
+        "started": "2026-11-06T12:34:24Z",
+        "ended": "2026-11-06T12:40:38Z",
+        "cost": {
+          "usd": 0.605375
         }
       }
     ],
