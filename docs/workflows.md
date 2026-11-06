@@ -239,7 +239,7 @@ merely contains `--help` (for example a todo) is still text. The test is
 | `vbw show plan P1.2 [--json]` | Dev | the plan, its requirements, its checks, its files. A rule or check of another plan is marked; the plan's own stay unmarked. A rule of P1.3 reads `... [P1.3's, built after this plan]`, a check only P1.3's rules use reads `... [P1.3's: red until it is built, not this plan's to pass]`. The order is `built before this plan`, `built after this plan`, `built beside this plan`, `done` (`[P1.3's, done]`) or `blocked` (`[P1.3's, blocked]`). `--json` adds `plan`, `own` and `order` to each rule, and `own` and `plans` to each check |
 | `vbw show fix F1 [--json]` | Dev | the fix, its requirement, failing checks and output (with the path of each kept full output, under `.vbw/runtime/output/`), the files it may touch |
 | `vbw check [--expect-red] [C1 ...]` | Dev | run approved checks and report; a failing check's full output is kept in `.vbw/runtime/output/<check>.log` and named under its line, nothing else is written. `--expect-red`: every check must fail (red-first) |
-| `vbw mutate P1.2 R3.1 "what you broke" FILE...` | Dev, Docs | break one rule (or `taskK`) of the plan on purpose and record whether a check noticed; VBW undoes the break. `--queue` sets a rule break aside to run later; `vbw mutate P1.2 --run` runs the queued breaks side by side. Standard and deep only (below) |
+| `vbw mutate P1.2 R3.1 "what you broke" FILE...` | Dev, Docs | break one rule (or `taskK`) of the plan on purpose and record whether a check noticed; the kernel leaves each named file as given (the break stays in the working copy) and the Dev edits it out. `--queue` sets a rule break aside to run later; `vbw mutate P1.2 --run` runs the queued breaks side by side. Standard and deep only (below) |
 | `vbw commit P1.2 "feat(x): ..." [FILE...]` | Dev | commit the plan's changed files with provenance trailers. After a mutation survivor it also commits a check file that a check of the plan's own rules names, shared with other requirements or not; a check file no check of the plan's own rules names, or any before a survivor, is refused by name |
 | `vbw commit --fix F1 "fix(x): ..." FILE...` | Dev | commit the named changed files of an open fix. For a requirement fix of any source (QA finding or failing test), the files are check files of its own requirement; the commit carries `VBW-Fix: F1` and `VBW-Req` trailers, and the files wait for one approval before the proof. Code goes through its plan with `vbw commit PLAN`. A check file of another requirement, a code file and `.vbw/` files are refused. For a failing project command, the named changed files commit even when no plan lists them, with the `VBW-Fix` trailer |
 | `vbw plan done P1.2` / `vbw plan block P1.2 "reason"` | Dev | the plan's outcome. `done` is verified: none of the plan's files has uncommitted changes, and the checks of the requirements it completes pass. The plan also needs a commit with its `VBW-Plan` trailer (`vbw commit`); without one, every file must be committed in `HEAD` (for example by the approval commit) and a check of its requirements must pass, or `done` is refused and names the failing check. A blocked plan stops only the plans that depend on it (docs/next.md). `block` refuses a plan that is already done, says so, and changes nothing; reset the plan first if it must be built again |
@@ -341,10 +341,14 @@ VBW's own work: 0.4 of 1.2 min
   copies it made (docs/proof.md, Kept copies).
   The breakdown changes no verdict, record or exit code.
   A refusal prints no breakdown, and `--queue` and `--none` print none.
-- **VBW undoes the break.** The named files go back to their last commit,
-  whether a check noticed (red) or not (a survivor). The command refuses, and
-  writes nothing, if none of the named files differs from their last commit (the
-  break is the difference), a file is outside the plan, or a check file is
+- **The break stays in the working copy.** `vbw mutate` never writes to or
+  deletes a named file: the Dev commits every finished task before a break, and
+  the Dev edits the break out right after each `vbw mutate` (and before the
+  next `--queue`), so no uncommitted work is lost. The same broken bytes sent
+  twice at the same commit are refused as a forgotten break, naming the earlier
+  break; nothing runs and nothing is recorded. The command also refuses, and
+  writes nothing, if none of the named files differs from their last commit
+  (the break is the difference), a file is outside the plan, or a check file is
   touched.
 - **What it records:** `vbw show plan` lists each break: target, description,
   red or survivor, and each check's result. A survivor makes `vbw mutate` exit
