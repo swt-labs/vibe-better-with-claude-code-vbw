@@ -179,7 +179,14 @@ record_read() {
       record_unlock
     ) || true
   fi
-  cat "$VBW_RECORD"
+  # R258: a break that still names its rule by text counts for the rule of that text on
+  # every read, not only after the first write. The grep only decides whether the one jq
+  # pass is needed (a text-shaped break has "text" beside "req" in its rule).
+  if grep -A2 '"rule": {' "$VBW_RECORD" 2> /dev/null | grep -q '"text":'; then
+    jq -L "$VBW_LIB" 'include "record-schema"; breaks_by_place' "$VBW_RECORD"
+  else
+    cat "$VBW_RECORD"
+  fi
 }
 
 record_unlock() {
