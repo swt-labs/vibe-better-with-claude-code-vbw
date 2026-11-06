@@ -118,7 +118,7 @@ checks_timer() {
 # timer reads it (the time keyword with TIMEFORMAT %R: milliseconds, bash 3.2, no
 # process of its own); a failed read falls back to whole seconds.
 checks_exec() {
-  local t="$1" out="$2" TIMEFORMAT=%R tf ms cenv=()
+  local t="$1" out="$2" TIMEFORMAT=%R tf ms cenv=() unstore=()
   shift 2
   # The unit's share of the cores (CHECKS_UNIT_SHARE, set by checks_unit_run), told to
   # the build tools that read it, unless the user's environment already sets them.
@@ -127,6 +127,9 @@ checks_exec() {
     [ -n "${GOMAXPROCS+x}" ] || cenv+=("GOMAXPROCS=$CHECKS_UNIT_SHARE")
     [ -n "${MAKEFLAGS+x}" ] || cenv+=("MAKEFLAGS=-j$CHECKS_UNIT_SHARE")
   fi
+  # A unit holds a slot in this run's store only: with the store off it carries no
+  # store of an outer run either (VBW_PROOF_UNIT marks it in both cases).
+  [ -n "$SLOTS_MARK" ] || unstore=(-u VBW_SLOT_STORE)
   checks_timer
   SECONDS=0
   CHECK_CODE=0
@@ -140,9 +143,9 @@ checks_exec() {
   # it does under perl; without it GNU timeout starts a group of its own and an
   # interrupted run waited for its units to end (T148, Linux).
   if [ "$CHECKS_TIMER" = timeout ]; then
-    { time env -u VBW_SESSION_ID VBW_PROOF_UNIT=1 ${SLOTS_MARK:+"$SLOTS_MARK"} ${cenv[@]+"${cenv[@]}"} ${CHECKS_NICE:+"$CHECKS_NICE"} timeout --foreground -k 5 "$t" "$@" > "$out" 2>&1 < /dev/null || CHECK_CODE=$?; } 2> "$tf"
+    { time env -u VBW_SESSION_ID ${unstore[@]+"${unstore[@]}"} VBW_PROOF_UNIT=1 ${SLOTS_MARK:+"$SLOTS_MARK"} ${cenv[@]+"${cenv[@]}"} ${CHECKS_NICE:+"$CHECKS_NICE"} timeout --foreground -k 5 "$t" "$@" > "$out" 2>&1 < /dev/null || CHECK_CODE=$?; } 2> "$tf"
   else
-    { time env -u VBW_SESSION_ID VBW_PROOF_UNIT=1 ${SLOTS_MARK:+"$SLOTS_MARK"} ${cenv[@]+"${cenv[@]}"} ${CHECKS_NICE:+"$CHECKS_NICE"} perl -e '$SIG{ALRM} = "DEFAULT"; alarm shift @ARGV; exec { $ARGV[0] } @ARGV or do { print STDERR "cannot run $ARGV[0]: $!\n"; exit 127 }' \
+    { time env -u VBW_SESSION_ID ${unstore[@]+"${unstore[@]}"} VBW_PROOF_UNIT=1 ${SLOTS_MARK:+"$SLOTS_MARK"} ${cenv[@]+"${cenv[@]}"} ${CHECKS_NICE:+"$CHECKS_NICE"} perl -e '$SIG{ALRM} = "DEFAULT"; alarm shift @ARGV; exec { $ARGV[0] } @ARGV or do { print STDERR "cannot run $ARGV[0]: $!\n"; exit 127 }' \
       "$t" "$@" > "$out" 2>&1 < /dev/null || CHECK_CODE=$?; } 2> "$tf"
   fi
   CHECK_SECONDS=$SECONDS
