@@ -66,7 +66,7 @@ cmd_show() {
       printf '%s' "$record" | jq -r --arg q "$1" "$SHOW_JQ_DEFS"'
         . as $r | (.requirements[] | select(.id == $q)) as $req
         | "\($req.id) [\($req.proof), \($req.status)] \($req.text)",
-          ($req | rule_lines),
+          ($req | rule_lines($r)),
           "checks:", ($r.checks[] | select(.req == $q) | "  \(.id) " + check_line + (if .fix then " (added by \(.fix))" else "" end)),
           "plans:", ($r.plans[] | select(any(.reqs[]; . == $q)) | "  \(.id) \(.title) [\(.status)]")'
       printf 'commits:\n'
@@ -105,7 +105,7 @@ cmd_show() {
         . as $r
         | "requirements:",
           (.requirements[] | select(.queued | not) | . as $q | "  \(.id) [\(.proof)] \(.text)",
-            (rule_lines | "    " + .),
+            (rule_lines($r) | "    " + .),
             ($r.checks[] | select(.req == $q.id) | "    \(.id) " + check_line)),
           (([.phases[] | select(.milestone == $r.milestone.id and .tier)]) as $tp
             | if ($tp | length) > 0 then "phases:", ($tp[] | "  \(.id) \(.tier): \(.reasons | join("; "))") else empty end),
@@ -427,10 +427,14 @@ def plan_state($r): . as $p | if .status == "done"
   else .status end;
 def argv_line: map(if test("^[A-Za-z0-9_./:=@%+-]+$") then . else @sh end) | join(" ");
 # A rule is shown by its address Rn.k, its place among the requirement'"'"'s rules (T168).
-def rule_lines: if .proof == "auto" then .id as $q |
+# Under it, the breaks recorded against the rule by its place (R258), retired ones included.
+def rule_breaks($r; $q; $k): [$r.plans[].mutations[]? | select(.rule.req == $q and .rule.k == $k)
+    | if has("none") then "no code could change its outcome (\(.none))" else "\(.what): \(.result // "pending")" end]
+  | if length == 0 then "" else " [breaks: \(join("; "))]" end;
+def rule_lines($r): if .proof == "auto" then .id as $q |
     (if (.rules // []) | length == 0 then "rules not listed" else (.rules | to_entries[]
-      | if .value | has("retired") then "rule \($q).\(.key + 1) retired: \(.value.text) (\(.value.retired))"
-        else "rule \($q).\(.key + 1): \(.value.text) -> \(.value.check)" end) end)
+      | if .value | has("retired") then "rule \($q).\(.key + 1) retired: \(.value.text) (\(.value.retired))" + rule_breaks($r; $q; .key + 1)
+        else "rule \($q).\(.key + 1): \(.value.text) -> \(.value.check)" + rule_breaks($r; $q; .key + 1) end) end)
   else empty end;
 def check_line: (.run | argv_line)
   + (if (.exit // 0) != 0 then " (exit \(.exit))" else "" end)
@@ -568,7 +572,7 @@ show_work() {
        elif .tier == "deep" then "tier: deep (the mutation check asks one break per rule, plus one per task no rule covers)"
        elif .tier then "tier: \(.tier)" else empty end),
       "checks:", check_lines,
-      (def tname: if .rule then (.rule.req as $q | .rule.text as $t | ($rules | map(select(.text == $t and (.n | startswith($q + "."))))[0].n // $q)) else "task\(.task)" end;
+      (def tname: if .rule then "\(.rule.req).\(.rule.k)" else "task\(.task)" end;
        if (.plan.mutations // [] | length) > 0 then "mutations:",
          (.plan.mutations as $ms | $ms | to_entries[] | .key as $i | .value as $e | $e | if .none then (if .rule then "  \(tname): no code could change its outcome: \(.none)" else "  task\(.task): no testable behaviour: \(.none)" end)
            else (if .pending then
