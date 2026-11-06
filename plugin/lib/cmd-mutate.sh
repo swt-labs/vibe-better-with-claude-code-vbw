@@ -379,6 +379,8 @@ $ways"
 mutate_record() {
   local plan="$1" target="$2" what="$3" head="$4" results="$5" record="$6" ruledoc="$7" tk="$8" filesj="$9" tree="${10}"
   local sfiles f
+  # The rule's place is the target's own Rn.k, whoever built the rule document (the queue's run too).
+  [ -z "$ruledoc" ] || ruledoc=$(printf '%s' "$ruledoc" | jq -c --argjson k "$((10#${target##*.}))" '. + {k: $k}')
   sfiles=$(printf '%s' "$record" | jq -c --arg p "$plan" "$VBW_JQ_DEFS"'strengthen_files($p)')
   # What was recorded for this target before: a survivor, if the last one was.
   local prior='' strong='[]' marks result entry pending='[]' survived=0
