@@ -1,9 +1,9 @@
 {
   "scenario": "approval",
   "fixture": "greet.sh and farewell.sh, one phase each; spec and plan agreed with the user before the session, contract not yet approved; rigor standard",
-  "cost_usd": 1.17,
+  "cost_usd": 1.00,
   "evidence_level": "L3",
-  "at": "2026-11-05T12:32:54Z",
+  "at": "2026-11-06T17:17:08Z",
   "passed": true,
   "facts": {
     "fingerprint": "2d2b082c4d1d",
