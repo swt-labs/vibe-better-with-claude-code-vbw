@@ -25,9 +25,31 @@ def schema_features: [
   {schema: 10, feature: "a list of test file forms",
    present: ((.test_files | type) == "array")},
   {schema: 11, feature: "a proof that kept its clean copies",
-   present: ((.evidence | type) == "object" and (.evidence.own | type) == "object" and (.evidence.own | has("copy_slots")))}
+   present: ((.evidence | type) == "object" and (.evidence.own | type) == "object" and (.evidence.own | has("copy_slots")))},
+  {schema: 12, feature: "a break that names its rule by place or a requirement reworded with its rules kept",
+   present: (((.plans | type) == "array" and any(.plans[]; type == "object" and (.mutations | type) == "array"
+     and any(.mutations[]; type == "object" and (.rule | type) == "object" and (.rule | has("k")))))
+     or ((.requirements | type) == "array" and any(.requirements[]; type == "object" and .reworded == true)))}
 ];
 
 def schema_of: . as $r | [schema_features[] | select(.present) | .schema] | max // schema_floor;
 
 def schema_top: [schema_features[].schema] | max;
+
+# R258: a break that names its rule by text ({req, text}) is converted to the rule's place,
+# {req, k}: k is the 1-based place in the requirement's rules, retired ones counted. A
+# break whose text matches no rule of its requirement is kept as it is. Run on every write,
+# so the first write of an older record converts it; a converted record is unchanged.
+def breaks_by_place:
+  . as $r
+  | if (.plans | type) != "array" then .
+    else .plans |= map(
+      if type == "object" and (.mutations | type) == "array" then
+        .mutations |= map(
+          if type == "object" and (.rule | type) == "object" and (.rule | has("text")) then
+            ((.rule.req) as $q | (.rule.text) as $t
+             | ([($r.requirements // [])[] | select(type == "object" and .id == $q) | (.rules // []) | to_entries[]
+                 | select(.value.text == $t) | .key + 1] | first) as $k
+             | if $k == null then . else .rule = {req: $q, k: $k} end)
+          else . end)
+      else . end) end;
