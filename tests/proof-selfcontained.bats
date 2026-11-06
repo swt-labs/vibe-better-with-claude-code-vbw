@@ -204,12 +204,16 @@ for p in dist .next target; do [ ! -e "$p" ] && [ ! -L "$p" ] || { echo "build o
   [ "$(git worktree list | wc -l | tr -d ' ')" = 1 ]
 }
 
-@test "R92: the copy is removed after a proof, read-only folders included, and nothing outside it is touched" {
+@test "R92 #738: the copy is kept free after a proof and made again by --full, read-only folders included, and nothing outside it is touched" {
   use_check '[ -d node_modules/ro/sub ] || exit 58'
   vbw_run prove
   [ "$status" -eq 0 ] || { echo "$output"; false; }
-  [ -z "$(find .vbw/runtime -maxdepth 1 -name 'proof.*' 2> /dev/null)" ]
-  [ "$(git worktree list | wc -l | tr -d ' ')" = 1 ]
+  [ "$(find .vbw/runtime -maxdepth 1 -name 'proof.*' 2> /dev/null)" = .vbw/runtime/proof.keep.1 ] || { ls .vbw/runtime; false; }
+  [ ! -e .vbw/runtime/proof.keep.1/pid ]
+  vbw_run prove --full
+  [ "$status" -eq 0 ] || { echo "$output"; false; }
+  jq -e '.evidence.own.copy_slots.made == 1' .vbw/record.json > /dev/null || { jq .evidence.own .vbw/record.json; false; }
+  [ "$(git worktree list | wc -l | tr -d ' ')" = 2 ] || { git worktree list; false; }
   [ "$(cat "$OUTSIDE/keep.txt")" = keep ]
   [ -L node_modules/outside ]
   [ "$(cat node_modules/ro/sub/f.txt)" = ro ]

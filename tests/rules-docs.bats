@@ -98,3 +98,23 @@ kernel_next() {
   [ -n "$row" ] || { echo "no empty-filter row in the refusal table"; false; }
   [ "$row" = "$(kernel_next "$msg")" ] || { echo "empty-filter row: '$row' differs from the kernel's '$(kernel_next "$msg")'"; false; }
 }
+
+# R259 (T235): docs/proof.md's Rules section and docs/record.md's requirements row say that
+# a requirement whose text changes keeps its rules (marked reworded, reviewed by the Lead at
+# the next plan step), that one whose proof becomes human loses its rules and checks, and
+# that a rule is removed only by an explicit vbw apply --patch retire; the older rule, that
+# a changed text resets the rules to pending, is gone.
+
+@test "R259 docs: docs/proof.md's Rules section says a reworded requirement keeps its rules for the Lead's review and a human one loses them, and docs/record.md's requirements row names reworded" {
+  section proof.md '^## Rules' | grep -qiE 'keeps its rules|rules are kept|kept' || { echo "docs/proof.md, Rules: no sentence about a changed text keeping its rules"; false; }
+  section proof.md '^## Rules' | grep -qiE 'reworded' || { echo "docs/proof.md, Rules: the reworded mark is not named"; false; }
+  section proof.md '^## Rules' | grep -qiE 'Lead' && section proof.md '^## Rules' | grep -qiE 'review' || { echo "docs/proof.md, Rules: the Lead's review at the next plan step is missing"; false; }
+  section proof.md '^## Rules' | grep -qiE 'human' || { echo "docs/proof.md, Rules: the proof change to human is missing"; false; }
+  section proof.md '^## Rules' | grep -qiE 'retire' || { echo "docs/proof.md, Rules: the explicit retire is missing"; false; }
+  ! section proof.md '^## Rules' | grep -qi 'resets its rules to pending' || { echo "docs/proof.md, Rules: still says a changed text resets the rules"; false; }
+  local row
+  row=$(grep -E '^\| `requirements\[\]` \|' "$DOCS/record.md")
+  printf '%s\n' "$row" | grep -qF '`reworded`' || { echo "the requirements row does not name reworded"; false; }
+  printf '%s\n' "$row" | grep -qiE 'keep' || { echo "the requirements row does not say a changed text keeps the rules"; false; }
+  ! printf '%s\n' "$row" | grep -qF 'resets them to `[]` when a requirement' || { echo "the requirements row still says sync resets the rules on a text change"; false; }
+}

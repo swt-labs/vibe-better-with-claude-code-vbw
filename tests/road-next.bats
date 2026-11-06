@@ -91,7 +91,7 @@ hm() {
   hist_plan 2 100 3
   r=$(road_of)
   printf '%s' "$r" | jq -e '.seconds == 100 and (.end | type == "string") and .rounds == {}
-    and (.say | test("^Milestone end: planning about 2 min, until around [0-9]{2}:[0-9]{2}; the rest follows once the work is planned$"))' || { echo "$r"; false; }
+    and (.say | test("^Milestone end: planning about 2 min, until around (tomorrow )?[0-9]{2}:[0-9]{2}; the rest follows once the work is planned$"))' || { echo "$r"; false; }
 }
 
 @test "R191: a piece with no basis gives no end and names the missing kind; a made-up time never appears" {

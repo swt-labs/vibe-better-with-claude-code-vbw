@@ -318,22 +318,27 @@ cannot fail, and QA would otherwise find it one round at a time.
   compete for the same slots. A long run can pass Claude Code's 10-minute limit
   for one command, so start it in the background, wait for it and read its
   whole result.
-- **Where the time went:** a break that ran ends with two lines, after the
+- **Where the time went:** a break that ran ends with three lines, after the
   result lines (and after a survivor's line, which keeps its exit 1):
 
 ```
 VBW's own work: 0.4 of 1.2 min
   steps of 24.6 s: copies 3.1, unbroken 9.0, break R3.1 11.2, waits 0.0, saving 1.3
+  copies: 1 kept copy claimed (0 refreshed), 0 made
 ```
 
   Each entry is one step:
-  `copies` is making, breaking, restoring and removing the clean copies;
+  `copies` is making or bringing up to date the clean copies, then breaking,
+  restoring and handing them back;
   `unbroken` is the checks on the unbroken code;
   each break has one entry, named by its target (`break R3.1`, `break task2`);
   with `--run` side by side, one entry per wave names its targets (`breaks R1.1 R1.2`);
   `waits` is the seconds spent waiting for a computer-wide slot;
   `saving` is recording the result in the record.
   The figures are measured by the proof's clock, and the steps sum to the total within rounding.
+  The last line says what the run did with its clean copies: the kept copies it
+  claimed, of those the ones that needed an ignored path copied again, and the
+  copies it made (docs/proof.md, Kept copies).
   The breakdown changes no verdict, record or exit code.
   A refusal prints no breakdown, and `--queue` and `--none` print none.
 - **VBW undoes the break.** The named files go back to their last commit,
@@ -403,7 +408,20 @@ When the project's test runner can run one test file, the Lead adds
 {"test_files": {"run": ["bats", "{file}"], "files": ["tests/*.bats"]}}
 ```
 
-`vbw apply` writes it into the spec's `## Test files` section. It changes
+A project with several test runners (a monorepo with one per subproject) gives
+one named form per runner, each with the folder its runner starts in when it is
+not the project root:
+
+```json
+{"test_files": [
+  {"name": "webapp", "dir": "apps/webapp", "run": ["npx", "vitest", "run", "{file}"], "files": ["apps/webapp/**/*.test.ts"]},
+  {"name": "api", "run": ["pytest", "{file}"], "files": ["api/tests/test_*.py"]}]}
+```
+
+`vbw apply` refuses the forms before anything changes when the section they make
+would not parse (docs/proof.md, Test files: a pathspec outside its form's dir, a
+name given twice, a run without `{file}` once), or when a committed file is
+matched by two forms. `vbw apply` writes it into the spec's `## Test files` section. It changes
 nothing else about the document, and it takes effect only after the user
 approves it, like a command (see docs/proof.md, Test files).
 
@@ -539,6 +557,8 @@ Each refusal below ends with `Next: ` and the step in the right column
 | `vbw apply`: a phase or plan or check id already in use (`--add`) | Use an unused id, or change the existing one with `--patch` or a full apply |
 | `vbw apply`: a requirement of another milestone, or already covered by a phase | Take it out of the document; for `--add`, when the covering phase of this milestone has not started, change that phase with a full apply instead |
 | `vbw apply`: a bats check (`tests/x.bats`) whose case filter matches no case name in the file | write the cases the filter names into tests/x.bats (each @test name matching the pattern), see them fail with the runner, then send the document again; or correct the pattern |
+| `vbw apply`: `test_files` that is not one form `{run, files, dir?}` or an array of named forms `{name, run, files, dir?}` | Give `test_files` in one of those shapes, with one form per test runner, or leave it out |
+| `vbw apply`: named test-file forms the spec refuses (`test_files: ...`: a pathspec outside its dir, a dir that is a symbolic link, a name given twice, a committed file two forms match) | Change `test_files` as the message says (docs/proof.md, Test files), or leave it out |
 | `vbw apply`: a started plan or phase changed or dropped | Put it back as the record has it (`vbw show plan ID`) and add a new plan or phase for further work |
 | `vbw apply`: a missing rule, or a rule naming no check of its requirement | Add one rule per condition, each with its check |
 | `vbw apply`: a check whose rules two plans own that build one after the other, or beside each other (a shared wave) | give each plan's rules a check of their own (a separate test file, or the same file with a case filter as a distinct check), or move the rules to one plan |
@@ -929,3 +949,12 @@ checkout's dependencies (an editable install), prove the main checkout's code
 instead of their own. A false proof is the one failure VBW must not have, so
 worktrees may come later only as an opt-in setting with a per-copy install
 step.
+
+## Real-user scenarios for amendments, queued requirements and linked worktrees
+
+Three scenarios in `tools/l3-suite.sh` (L3: the real Claude Code on a small project, judged in the record, git and the transcripts, never on screen text) cover what the unit tests held alone. A result file is written only by a passing run.
+
+- `amendfile`: a build is open and `vbw apply --amend` adds a file to its plan. It judges the amendment entry on the plan (what, at, session), that no new approval was recorded and the contract is still approved, that the run was not ended (the same lease stood right after, and the run ended later), that the plan finished, and that the added file is in a commit of the plan.
+- `queuedreq`: the user adds a requirement while a build runs. It judges that the requirement was queued during the run, that the mark is cleared when the run ends, that a later plan covers it and is built, and that the first build's plan is as it was approved and built (not re-planned).
+- `rustpack`: a small Rust crate with an approved plan goes through `/vbw:vibe`. It judges that `vbw next --json` names the Rust pack for the plan (docs/packs.md), that the Dev's brief names the pack's dev text, that the Dev reads it, and that the plan is built and proven with cargo.
+- `worktreewrite`: a Dev works from a linked worktree (`git worktree add`) while the main checkout holds an open build run, and writes into the main checkout's protected check file. It judges that the guard's refusal (a reason starting `VBW guard:`) is in the transcripts, that the main checkout's file is unchanged, and that the Dev's own plan is done in its worktree.

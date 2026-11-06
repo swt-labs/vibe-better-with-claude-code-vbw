@@ -113,6 +113,10 @@ prooftime_mark() {
 # prooftime_total: {planning, copies, tracking, saving, record, wall} in
 # seconds; wall is the time since the timer opened, read now (vbw prove and vbw
 # fix done read it after their record step, so it covers every other step).
+# copy_slots is what the command did with its clean copies (proofcopy.sh):
+# kept copies claimed, of those the ones refreshed (an ignored path copied anew
+# or removed), copies made, and the seconds the claimed ones took to bring up
+# to date (part of copies).
 prooftime_total() {
   local wall=0
   if [ -n "$PROOFTIME_T0" ]; then
@@ -121,11 +125,12 @@ prooftime_total() {
   fi
   {
     [ -z "$PROOFTIME_FILE" ] || cat "$PROOFTIME_FILE" 2> /dev/null
-  } | jq -R -s -c --argjson wall "$wall" '
+  } | jq -R -s -c --argjson wall "$wall" \
+    --argjson cl "${PROOFCOPY_CLAIMED:-0}" --argjson rf "${PROOFCOPY_REFRESHED:-0}" --argjson mk "${PROOFCOPY_MADE:-0}" --argjson rms "${PROOFCOPY_REFRESH_MS:-0}" '
     [split("\n")[] | select(length > 0) | split(" ") | {k: .[0], v: (.[1] | tonumber)}] as $l
     | def sum($k): ([$l[] | select(.k == $k) | .v] | add // 0) | . * 1000 | round / 1000;
       {planning: sum("planning"), copies: sum("copies"), tracking: sum("tracking"), saving: sum("saving"), record: sum("record"),
-       wall: ($wall / 1000)}'
+       wall: ($wall / 1000), copy_slots: {claimed: $cl, refreshed: $rf, made: $mk, refresh: ($rms / 1000)}}'
 }
 
 # prooftime_step_waited STEP WAITED: like prooftime_step, but WAITED seconds of

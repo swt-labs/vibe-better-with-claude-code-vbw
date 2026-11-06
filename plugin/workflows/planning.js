@@ -50,6 +50,10 @@ const voice = `\n\nThe user's level: ${profile.level || 'small scripts or no-cod
 // the only ones the Architect is shown, so it never asks about shipped work.
 const reqs = (args && Array.isArray(args.requirements)) ? args.requirements : null
 const reqList = reqs ? `\n\nRequirements of this milestone (the only ones to consider):\n${reqs.map(r => `- ${r.id} [${r.proof}] ${r.text}`).join('\n')}` : ''
+// The requirements reworded since they were planned (args.reworded, vbw next's detail.reworded):
+// their rules were kept, and the Lead reviews them in this plan step.
+const reworded = (args && Array.isArray(args.reworded)) ? args.reworded.filter(x => typeof x === 'string') : []
+const rewordedLine = reworded.length ? `\n\nReworded requirements (${reworded.join(', ')}): their rules were kept; review each one as your instructions say.` : ''
 // The effort option for a role and step, or nothing when the table has none.
 const effortTable = (args && args.effort && typeof args.effort === 'object' && !Array.isArray(args.effort)) ? args.effort : null
 const effortFor = (role, step) => {
@@ -199,7 +203,11 @@ if (!scope || !scope.phases || scope.phases.length === 0) {
 }
 
 phase('Plan')
-const plan = await ask(`Plan these phases: research, decompose them into plans with tasks, write the checks, self-review, and apply with vbw apply. The kernel computes a rigor floor per phase from its signals and refuses a lower tier. Use these phases exactly as given, tier included:\n\n${JSON.stringify(scope.phases)}${strings(scope.notes).length ? `\n\nThe Architect's notes (what is out of scope waits in the backlog; do not plan it):\n${strings(scope.notes).map(s => `- ${s}`).join('\n')}` : ''}${findings(strings(scope.research))}${voice}`,
+// R261: the packs the project's tracked files match (args.packs.project, args.packs_root): the Lead is told the lead text by path.
+const packsRoot = (args && typeof args === 'object' && typeof args.packs_root === 'string' && args.packs_root) || ''
+const packNames = (args && args.packs && Array.isArray(args.packs.project)) ? args.packs.project.filter(n => typeof n === 'string' && n) : []
+const packLine = packsRoot && packNames.length ? `\n\nStack pack text: read ${packNames.map(n => `${packsRoot}/${n}/lead.md`).join(' and ')} first.` : ''
+const plan = await ask(`Plan these phases: research, decompose them into plans with tasks, write the checks, self-review, and apply with vbw apply. The kernel computes a rigor floor per phase from its signals and refuses a lower tier. Use these phases exactly as given, tier included:\n\n${JSON.stringify(scope.phases)}${rewordedLine}${strings(scope.notes).length ? `\n\nThe Architect's notes (what is out of scope waits in the backlog; do not plan it):\n${strings(scope.notes).map(s => `- ${s}`).join('\n')}` : ''}${findings(strings(scope.research))}${packLine}${voice}`,
   opts('lead', 'plan', { schema: PLAN_RESULT, phase: 'Plan' }))
 if (!plan || !plan.applied) {
   await closeRun()

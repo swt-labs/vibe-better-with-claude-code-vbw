@@ -1,0 +1,24 @@
+{
+  "scenario": "amendfile",
+  "fixture": "greet.sh in one plan P1.1 approved by the user before the session; the plan's file list names only greet.sh while its second task and the check need greeting.txt; rigor express; the user types /vbw:vibe, and once the build run is open vbw apply --amend adds greeting.txt to P1.1",
+  "cost_usd": 0.3563,
+  "evidence_level": "L3",
+  "at": "2026-11-06T17:23:03Z",
+  "passed": true,
+  "facts": {
+    "amendment_recorded": true,
+    "approval_kept": true,
+    "run_not_ended_early": true,
+    "plan_done": true,
+    "added_file_in_commit": true,
+    "run_at_amend": "build-20261106T172046Z",
+    "run_after_amend": "build-20261106T172046Z"
+  },
+  "not_tested": [
+    "an amendment of a check (files added to a check)",
+    "an amendment made by a person other than the main session",
+    "a plan that awaits checks (awaits)",
+    "a Dev refused vbw apply --amend by the guard (L1 only)",
+    "the wording VBW shows the user (read by a person)"
+  ]
+}

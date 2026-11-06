@@ -117,7 +117,8 @@ def fix_files($r): if .command then ["*"]
   elif (([.phases[] | select(.milestone == $m)] | length) == 0 and ($only_moved | not))
        or (. as $r | any(.requirements[]; .proof == "auto" and (.id as $id | any($r.checks[]; .req == $id) | not) and (doc_only($r) | not)))
        or (.plans as $p | any($current[]; .proof == "auto" and (.id as $id | any($p[]; any(.reqs[]; . == $id)) | not))) then
-    result("plan"; false; "Run the plan workflow: phases, plans and contract checks"; {tier: early_tier($tracked), small: small_change})
+    ([$current[] | select(.reworded == true) | .id]) as $rw
+    | result("plan"; false; "Run the plan workflow: phases, plans and contract checks\(if ($rw | length) > 0 then ". \($rw | join(", ")) reworded: its rules were kept, so the Lead reviews them (keep, reword or retire each with vbw apply --patch)" else "" end)"; {tier: early_tier($tracked), small: small_change} + (if ($rw | length) > 0 then {reworded: $rw} else {} end))
   elif ($approved | not) and ($problems | length) > 0 then
     ([$problems | split("\n")[] | select(length > 0)]) as $pl
     | result("contract"; false; "The contract is not ready for approval, so there is no approval question yet: \($pl | join("; ")). Fix each (write a missing check file and see it fail first with vbw check --expect-red; vbw spec sync when the spec and the record differ; add missing rules with vbw apply --patch), then run vbw next again"; {problems: $pl})

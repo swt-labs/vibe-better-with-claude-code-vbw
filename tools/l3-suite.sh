@@ -12,14 +12,14 @@
 # each one's lines print together when it ends.
 #
 # Scenarios: greenfield, reject, resume, change, convert, balanced, docs, qafix,
-# decision, debug, research, edgecase, leftover, recheck, approval, newcomer, senior, panel, steptime, road, pluginoff, tools, legacy, nolegacy, smallchange, costs, loop, plugindir, sessions, taskbreak, fixchecks, failoutput, leaveout, hiddenrecord, latedecision, ignoredplanning, stalefix, mapsnapshot, alreadyfixed, mapnotrun, submodule. A user
+# decision, debug, research, edgecase, leftover, recheck, approval, newcomer, senior, panel, steptime, road, pluginoff, tools, legacy, nolegacy, smallchange, costs, loop, plugindir, sessions, taskbreak, fixchecks, failoutput, leaveout, hiddenrecord, latedecision, ignoredplanning, stalefix, mapsnapshot, alreadyfixed, mapnotrun, submodule, testforms, amendfile, queuedreq, worktreewrite, rustpack. A user
 # answers every question with VBW's recommendation unless the scenario says otherwise.
 set -uo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 l3() { bash "$ROOT/tools/l3.sh" "$@"; }
 VBW="$ROOT/plugin/bin/vbw"
-ALL="greenfield reject resume change convert balanced docs qafix decision debug research edgecase leftover recheck approval newcomer senior panel steptime road pluginoff tools legacy nolegacy smallchange costs loop plugindir sessions taskbreak fixchecks failoutput leaveout hiddenrecord latedecision ignoredplanning stalefix mapsnapshot alreadyfixed mapnotrun submodule"
+ALL="greenfield reject resume change convert balanced docs qafix decision debug research edgecase leftover recheck approval newcomer senior panel steptime road pluginoff tools legacy nolegacy smallchange costs loop plugindir sessions taskbreak fixchecks failoutput leaveout hiddenrecord latedecision ignoredplanning stalefix mapsnapshot alreadyfixed mapnotrun submodule testforms amendfile queuedreq worktreewrite rustpack"
 RESULTS="$ROOT/tools/l3-results"
 STEPS=60
 # The status line's end time since d7f73771: 'until around HH:MM', with a day word when the end is not today.
@@ -2000,7 +2000,7 @@ scenario_leftover() {
     expect "the proof passed" jq -e '.proof_passed == true' <<< "$facts"
     expect "the project command ran in a proof copy" jq -e '.ran_in_proof_copy == true' <<< "$facts"
     expect "the file was not in the proof copy" jq -e '.file_in_proof_copy == false' <<< "$facts"
-    expect "the proof copy is gone" jq -e '.copy_removed == true' <<< "$facts"
+    expect "the proof copy is kept for the next command, held by none" jq -e '.copy_released == true' <<< "$facts"
     [ "$failed" -eq 0 ] || passed=false
     result_write leftover "$fixture" "${cost_usd:-0}" "$passed" "$facts" \
       '["a leftover modified tracked file","a git-ignored leftover (copied into the proof copy by design)","a project command other than a shell script","a project larger than the greet.sh fixture"]'
@@ -2015,7 +2015,9 @@ scenario_leftover() {
 # passing proof, and a plain vbw prove reuses lint's pass by its read list
 # (R166: FILE is not committed code), so lint would not run in a proof copy at
 # all. Removes FILE and prints the facts as one JSON object (null: not known,
-# because lint did not run in a proof copy). tests/l3-leftover.bats runs it.
+# because lint did not run in a proof copy). The copy lint ran in is kept for the
+# next command (#738): copy_released says it is a kept slot no command holds.
+# tests/l3-leftover.bats runs it.
 leftover_proof() {
   local d=$1 f=$2 probe=$3 ev before after a where real argv=() flips=false same=false pp=false ran=false inc=null gone=null
   ev='.evidence | {passed, checks: (.checks | map_values(.status)), commands: (.commands | map_values(.status))}'
@@ -2033,14 +2035,17 @@ leftover_proof() {
   if [ -n "$where" ] && [ "$where" != "$real" ]; then
     ran=true
     case "$(sed -n 2p "$probe")" in yes) inc=true ;; no) inc=false ;; esac
-    # No copy is left: not its folder, not its git worktree entry, no proof.* folder (grep -c reads everything, safe under pipefail).
+    # The copy is a kept slot with no owner, and no other proof.* folder is left.
     gone=false
-    [ ! -e "$where" ] && [ "$(git -C "$d" worktree list --porcelain | grep -cF -- "$where")" = 0 ] \
-      && [ -z "$(find "$d/.vbw/runtime" -maxdepth 1 -name 'proof.*' 2> /dev/null)" ] && gone=true
+    case "$where" in
+      "$real"/.vbw/runtime/proof.keep.*/tree)
+        [ ! -e "${where%/tree}/pid" ] \
+          && [ -z "$(find "$d/.vbw/runtime" -maxdepth 1 -name 'proof.*' ! -name 'proof.keep.*' 2> /dev/null)" ] && gone=true ;;
+    esac
   fi
   rm -f "$d/$f"
   jq -nc --arg f "$f" --argjson fl "$flips" --argjson s "$same" --argjson p "$pp" --argjson r "$ran" --argjson i "$inc" --argjson g "$gone" \
-    '{leftover_file: $f, check_flips_in_working_folder: $fl, proof_unchanged: $s, proof_passed: $p, ran_in_proof_copy: $r, file_in_proof_copy: $i, copy_removed: $g}'
+    '{leftover_file: $f, check_flips_in_working_folder: $fl, proof_unchanged: $s, proof_passed: $p, ran_in_proof_copy: $r, file_in_proof_copy: $i, copy_released: $g}'
 }
 
 # --- The interview (R42): a newcomer and a senior engineer answer it in the real
@@ -2871,6 +2876,64 @@ scenario_leaveout() {
   }
 }
 
+# testforms_seed: a monorepo with two subprojects (apps/web, apps/mob), each with its own
+# test runner (run.sh, which takes a test file's path relative to its subproject and runs it
+# from there), the spec naming one test-file form per subproject with its dir, one
+# requirement (greet.sh) and its check. Approved, nothing built.
+testforms_seed() {
+  local p
+  for p in web mob; do
+    mkdir -p "apps/$p/src" "apps/$p/tests"
+    printf '%s\n' "$p" > "apps/$p/src/main.txt"
+    printf '[ -f "%s" ] || { echo "run from the wrong folder"; exit 1; }\nsh "$1"\n' "src/main.txt" > "apps/$p/run.sh"
+    printf 'grep -qx %s src/main.txt\n' "$p" > "apps/$p/tests/t_main.sh"
+  done
+  printf '# Greetings\n\n## Requirements\n\n- R1 [auto] ./greet.sh Ana prints "Hello, Ana!"\n\n## Commands\n\n- test: sh apps/web/run.sh tests/t_main.sh\n\n## Test files\n\n- web:\n  - dir: apps/web\n  - run: sh run.sh {file}\n  - files: apps/web/tests/*.sh\n- mob:\n  - dir: apps/mob\n  - run: sh run.sh {file}\n  - files: apps/mob/tests/*.sh\n' > .vbw/spec.md
+  "$VBW" spec sync > /dev/null || return 1
+  printf '[ "$(sh greet.sh Ana)" = "Hello, Ana!" ]\n' > test_greet.sh
+  printf '%s' '{"phases": [{"id": "P1", "title": "Greet", "reqs": ["R1"]}],
+    "plans": [{"id": "P1.1", "phase": "P1", "title": "greet.sh", "reqs": ["R1"], "files": ["greet.sh"], "after": [], "tasks": ["greet.sh prints Hello, NAME!"]}],
+    "checks": [{"id": "C1", "req": "R1", "run": ["sh", "test_greet.sh"], "files": ["test_greet.sh"]}],
+    "rules": [{"req": "R1", "text": "a name is greeted", "check": "C1"}]}' \
+    | "$VBW" apply > /dev/null || return 1
+  git add -A && git commit -qm "chore: plan" || return 1
+  "$VBW" approve > /dev/null || return 1
+}
+
+# testforms (#735): a monorepo whose subprojects have test runners of their own, one named
+# test-file form each with its dir; the build runs to the end. Judged in the record: the proof
+# passed, each subproject's test file ran with its own form (evidence names the form), and the
+# test command's place names both forms; never on screen.
+scenario_testforms() {
+  new_project
+  (cd "$dir" && "$VBW" init > /dev/null && "$VBW" config rigor auto > /dev/null && testforms_seed) \
+    || { say "setup failed: could not seed the project with two subprojects and their test-file forms"; return 1; }
+  fixture="greet.sh in a monorepo with apps/web and apps/mob, each with its own test runner (run.sh, which fails when it is not started in its subproject) and one test file; the spec names one test-file form per subproject with its dir; one requirement, approved by the user before the session; rigor auto; the user types /vbw:vibe and the build runs to the end"
+  start="/vbw:vibe"
+  checks() {
+    local passed=true r="$dir/.vbw/record.json" proof=false forms=false named=false reused=false
+    jq -e '.evidence.passed == true' "$r" > /dev/null 2>&1 && proof=true
+    jq -e '.evidence.test_files | (.["apps/web/tests/t_main.sh"].form == "web") and (.["apps/mob/tests/t_main.sh"].form == "mob")
+      and .["apps/web/tests/t_main.sh"].status == "pass" and .["apps/mob/tests/t_main.sh"].status == "pass"' "$r" > /dev/null 2>&1 && forms=true
+    jq -e '.evidence.commands.test.command | startswith("web: sh run.sh {file}; mob: sh run.sh {file}")' "$r" > /dev/null 2>&1 && named=true
+    # Design criterion 6: a commit no test file reads, then a proof, reuses every file unit.
+    printf '# Notes\n' > "$dir/NOTES.md"
+    git -C "$dir" add NOTES.md && git -C "$dir" commit -qm "docs: notes"
+    (cd "$dir" && "$VBW" prove > /dev/null 2>&1) || true
+    jq -e '.evidence.passed == true and (.evidence.test_files | length == 2 and all(.[]; .reused == true))' "$r" > /dev/null 2>&1 && reused=true
+    say "proof passed: $proof; each form ran its file: $forms; test command names both forms: $named; a second proof reused every test file: $reused"
+    common_checks
+    expect "the proof passed ($proof)" [ "$proof" = true ]
+    expect "each subproject's test file ran with its own form, in its dir, and passed ($forms)" [ "$forms" = true ]
+    expect "the test command's place in the evidence names both forms ($named)" [ "$named" = true ]
+    expect "a proof after a commit no test file reads passed and reused both test files ($reused)" [ "$reused" = true ]
+    [ "$failed" -eq 0 ] || passed=false
+    result_write testforms "$fixture" "${cost_usd:-0}" "$passed" \
+      "$(jq -n --argjson p "$proof" --argjson f "$forms" --argjson n "$named" --argjson u "$reused" '{proof_passed: $p, forms_ran: $f, command_names_forms: $n, second_proof_reused_all: $u}')" \
+      '["the Lead proposing the forms itself from the map (the forms are seeded)","a form whose dir is a submodule (waits on #737)","a change in one subproject rerunning only its files (tests/testfiles-forms.bats holds it)","real test runners (vitest, jest, pytest)","the forms in the approval question as drawn on screen"]'
+  }
+}
+
 # checks_fail_on_old_code REQ COMMIT: succeeds when some check of REQ, as the project has it now,
 # fails on the project's greet.sh as it was at COMMIT (a regression case fails without the fix).
 checks_fail_on_old_code() {
@@ -3390,6 +3453,237 @@ scenario_submodule() {
         '{plan_commit_in_submodule: ($pc != ""), pointer_unmoved: ($sp == $np), check_ran_in_copy_submodule: ($ct != ""), staged_files_untouched: ($so and $ic == 0),
           plan_commit: $pc, seed_pointer: $sp, pointer_at_end: $np, status_of_sub: $st, check_toplevel: $ct}')" \
       '["nested submodules (a submodule inside the submodule)","a submodule left on a detached HEAD","a plan whose files span both repositories","the vbw auto loop path (this run used /vbw:vibe)","a submodule whose branch is checked out by someone else","the wording VBW shows the user (read by a person)"]'
+  }
+}
+
+# poll_idle HOOK: wait for the session to settle like default_idle, calling HOOK every 2 seconds
+# meanwhile, so a scenario can act on the record while a run is open.
+poll_idle() {
+  local w
+  l3 wait "$scenario" 1500 > /dev/null 2>&1 &
+  w=$!
+  while kill -0 "$w" 2> /dev/null; do "$1"; sleep 2; done
+  wait "$w" || true
+}
+
+# run_open_for KIND [PROJECT]: succeeds when a run of KIND holds the lease in PROJECT (default $dir).
+run_open_for() { jq -e --arg k "$1" '.lease != null and .lease.kind == $k' "${2:-$dir}/.vbw/record.json" > /dev/null 2>&1; }
+
+# amendfile_seed: R1 (greet.sh) with one plan P1.1 whose file list holds only greet.sh while its
+# second task needs greeting.txt, and a check that reads greeting.txt: the Dev needs the file added.
+amendfile_seed() {
+  printf '# Greetings\n\n## Requirements\n\n- R1 [auto] ./greet.sh Ana prints "Hello, Ana!" and greeting.txt holds the word Hello\n' > .vbw/spec.md
+  "$VBW" spec sync > /dev/null || return 1
+  printf '[ "$(sh greet.sh Ana)" = "Hello, Ana!" ] && [ "$(cat greeting.txt)" = "Hello" ]\n' > test_greet.sh
+  printf '%s' '{"phases": [{"id": "P1", "title": "Greet", "reqs": ["R1"]}],
+    "plans": [{"id": "P1.1", "phase": "P1", "title": "greet.sh", "reqs": ["R1"], "files": ["greet.sh"], "after": [], "tasks": ["greet.sh prints Hello, NAME!", "greeting.txt holds the single word Hello"]}],
+    "checks": [{"id": "C1", "req": "R1", "run": ["sh", "test_greet.sh"], "files": ["test_greet.sh"]}],
+    "rules": [{"req": "R1", "text": "a name is greeted", "check": "C1"}, {"req": "R1", "text": "greeting.txt holds Hello", "check": "C1"}]}' \
+    | "$VBW" apply > /dev/null || return 1
+  git add -A && git commit -qm "chore: plan" || return 1
+  "$VBW" approve > /dev/null || return 1
+}
+
+# amendfile (R250, R262): a build is open and the user (the main session) adds the file the plan
+# forgot with vbw apply --amend. Judged in the record and git, never on screen text: the amendment
+# entry (what, at, session), the approval unchanged (no new approval, the contract still approved),
+# the run never ended early (the same run holds the lease right after, and it ended later), plan done,
+# and the added file in a commit of the plan.
+scenario_amendfile() {
+  new_project
+  (cd "$dir" && "$VBW" init > /dev/null && "$VBW" config rigor express > /dev/null && amendfile_seed) \
+    || { say "setup failed: could not seed the approved plan"; return 1; }
+  fixture="greet.sh in one plan P1.1 approved by the user before the session; the plan's file list names only greet.sh while its second task and the check need greeting.txt; rigor express; the user types /vbw:vibe, and once the build run is open vbw apply --amend adds greeting.txt to P1.1"
+  seed_approvals=$(jq '[.decisions[] | select(.text | startswith("Contract approved"))] | length' "$dir/.vbw/record.json")
+  start="/vbw:vibe"
+  amended=false run_before="" run_after=""
+  amend_now() {
+    [ "$amended" = false ] || return 0
+    run_open_for build || return 0
+    jq -e '.plans[] | select(.id == "P1.1" and .status == "building")' "$dir/.vbw/record.json" > /dev/null 2>&1 || return 0
+    amended=true
+    run_before=$(jq -r '.lease.run' "$dir/.vbw/record.json")
+    (cd "$dir" && printf '%s' '{"plans": [{"id": "P1.1", "files": ["greet.sh", "greeting.txt"]}]}' | "$VBW" apply --amend > /dev/null 2>&1) || say "vbw apply --amend failed"
+    run_after=$(jq -r '.lease.run // empty' "$dir/.vbw/record.json" 2> /dev/null)
+    say "amended P1.1 with run $run_before open (lease now: ${run_after:-none})"
+  }
+  idle() { poll_idle amend_now; }
+  checks() {
+    local passed=true r="$dir/.vbw/record.json" recorded=false kept=false unbroken=false done_p=false in_commit=false approvals contract_line ended=""
+    jq -e '.plans[] | select(.id == "P1.1") | (.amendments // []) | any(.what | contains("greeting.txt")) and all(.[]; (.what | length) > 0 and (.at | test("^[0-9]{4}-")) and has("session"))' "$r" > /dev/null 2>&1 && recorded=true
+    approvals=$(jq '[.decisions[] | select(.text | startswith("Contract approved"))] | length' "$r" 2> /dev/null || echo -1)
+    contract_line=$(cd "$dir" && "$VBW" show contract 2> /dev/null | head -n 1)
+    [ "$approvals" = "$seed_approvals" ] && [ -n "$contract_line" ] && [ "${contract_line#*NOT APPROVED}" = "$contract_line" ] && kept=true
+    ended=$(jq -r --arg id "$run_before" '[.costs.runs[] | select(.id == $id)] | first | .ended // empty' "$r" 2> /dev/null)
+    [ -n "$run_before" ] && [ "$run_before" = "$run_after" ] && [ -n "$ended" ] && unbroken=true
+    jq -e '.plans[] | select(.id == "P1.1") | .status == "done"' "$r" > /dev/null 2>&1 && done_p=true
+    # Each commit as one line: its message (the VBW-Plan trailer) and its files.
+    [ "$(git -C "$dir" log --format='%x01%B' --name-only | tr '\n' ' ' | tr '\001' '\n' | grep 'VBW-Plan: P1.1' | grep -cw 'greeting.txt')" -gt 0 ] && in_commit=true
+    say "amended: $amended, run $run_before -> ${run_after:-none}, approvals $seed_approvals -> $approvals, contract: $contract_line"
+    common_checks
+    expect "the amendment was made with the run open" [ "$amended" = true ]
+    expect "P1.1 records the amendment: what names greeting.txt, with at and session" [ "$recorded" = true ]
+    expect "no new approval was recorded and the contract is still approved ($approvals)" [ "$kept" = true ]
+    expect "the run was not ended by the amendment: the same lease stood right after and the run ended later ($run_before)" [ "$unbroken" = true ]
+    expect "P1.1 is done" [ "$done_p" = true ]
+    expect "greeting.txt is in a commit of P1.1" [ "$in_commit" = true ]
+    [ "$failed" -eq 0 ] || passed=false
+    result_write amendfile "$fixture" "${cost_usd:-0}" "$passed" \
+      "$(jq -n --argjson a "$recorded" --argjson k "$kept" --argjson u "$unbroken" --argjson d "$done_p" --argjson c "$in_commit" --arg rb "$run_before" --arg ra "$run_after" \
+        '{amendment_recorded: $a, approval_kept: $k, run_not_ended_early: $u, plan_done: $d, added_file_in_commit: $c, run_at_amend: $rb, run_after_amend: $ra}')" \
+      '["an amendment of a check (files added to a check)","an amendment made by a person other than the main session","a plan that awaits checks (awaits)","a Dev refused vbw apply --amend by the guard (L1 only)","the wording VBW shows the user (read by a person)"]'
+  }
+}
+
+# queuedreq (R252, R262): the user adds a requirement while a build runs. Judged in the record and
+# git: queued during the run, the mark cleared at run end, the requirement planned and built by a
+# later plan, and the first build's plan left as it was (not re-planned).
+scenario_queuedreq() {
+  new_project
+  (cd "$dir" && "$VBW" init > /dev/null && "$VBW" config rigor express > /dev/null && greet_plan_seed) \
+    || { say "setup failed: could not seed the approved plan"; return 1; }
+  fixture="greet.sh in one plan P1.1 approved by the user before the session; rigor express; the user types /vbw:vibe, and once the build run is open adds requirement R2 (farewell.sh prints Goodbye, NAME!) with vbw spec add and vbw spec sync; VBW then plans and builds it after the first build"
+  first_plan=$(jq -c '.plans[] | select(.id == "P1.1") | {id, title, files, tasks, reqs}' "$dir/.vbw/record.json")
+  start="/vbw:vibe"
+  added=false queued_seen=false
+  add_now() {
+    [ "$added" = false ] || return 0
+    run_open_for build || return 0
+    added=true
+    (cd "$dir" && "$VBW" spec add auto 'farewell.sh Ana prints "Goodbye, Ana!"' > /dev/null 2>&1 && "$VBW" spec sync > /dev/null 2>&1) || say "adding the requirement failed"
+    jq -e '.lease != null and any(.requirements[]; .queued == true and (.text | contains("farewell")))' "$dir/.vbw/record.json" > /dev/null 2>&1 && queued_seen=true
+    say "requirement added with the run open; queued: $queued_seen"
+  }
+  idle() { poll_idle add_now; }
+  checks() {
+    local passed=true r="$dir/.vbw/record.json" cleared=false later_plan="" planned=false built=false kept=false first_now first_commits
+    jq -e 'any(.requirements[]; .text | contains("farewell")) and all(.requirements[]; has("queued") | not)' "$r" > /dev/null 2>&1 && cleared=true
+    later_plan=$(jq -r '[.requirements[] | select(.text | contains("farewell")) | .id] as $q | [.plans[] | select(.id != "P1.1" and any(.reqs[]; IN($q[])))] | first | .id // empty' "$r" 2> /dev/null)
+    [ -n "$later_plan" ] && planned=true
+    if [ -n "$later_plan" ] && jq -e --arg p "$later_plan" '.plans[] | select(.id == $p) | .status == "done"' "$r" > /dev/null 2>&1 \
+      && [ "$(git -C "$dir" log --format=%B | grep -c "^VBW-Plan: $later_plan\$")" -gt 0 ]; then built=true; fi
+    first_now=$(jq -c '.plans[] | select(.id == "P1.1") | {id, title, files, tasks, reqs}' "$r" 2> /dev/null)
+    first_commits=$(git -C "$dir" log --format=%B | grep -c '^VBW-Plan: P1.1$')
+    [ "$first_now" = "$first_plan" ] && [ "$first_commits" -ge 1 ] && jq -e '.plans[] | select(.id == "P1.1") | .status == "done"' "$r" > /dev/null 2>&1 && kept=true
+    say "added: $added, queued during the run: $queued_seen, later plan: ${later_plan:-none}, P1.1 commits: $first_commits"
+    common_checks
+    expect "the requirement was added with the run open" [ "$added" = true ]
+    expect "it was queued during the run (the mark on the record while the lease stood)" [ "$queued_seen" = true ]
+    expect "the queued mark is cleared and the requirement stays" [ "$cleared" = true ]
+    expect "a later plan covers it (${later_plan:-none})" [ "$planned" = true ]
+    expect "that plan is done with its commits" [ "$built" = true ]
+    expect "P1.1 is as it was approved and was built, not re-planned" [ "$kept" = true ]
+    [ "$failed" -eq 0 ] || passed=false
+    result_write queuedreq "$fixture" "${cost_usd:-0}" "$passed" \
+      "$(jq -n --argjson q "$queued_seen" --argjson c "$cleared" --argjson p "$planned" --argjson b "$built" --argjson k "$kept" --arg lp "$later_plan" \
+        '{queued_during_run: $q, cleared_at_run_end: $c, planned_later: $p, built_later: $b, first_plans_kept: $k, later_plan: $lp}')" \
+      '["a requirement added during a fix run","a requirement edited (not added) during a run","several requirements queued together","the wording VBW shows the user (read by a person)"]'
+  }
+}
+
+# rustpack_seed: a small Rust crate, its greet function a stub and its test written ahead of the
+# code, with one plan P1.1 on src/lib.rs approved by the user before the session.
+rustpack_seed() {
+  printf '# Greetings\n\n## Requirements\n\n- R1 [auto] greet("Ana") returns "Hello, Ana!"\n' > .vbw/spec.md
+  "$VBW" spec sync > /dev/null || return 1
+  mkdir -p src tests
+  printf '[package]\nname = "greeter"\nversion = "0.1.0"\nedition = "2021"\n' > Cargo.toml
+  printf 'pub fn greet(_name: &str) -> String {\n    String::new()\n}\n' > src/lib.rs
+  printf '#[test]\nfn greets_by_name() {\n    assert_eq!(greeter::greet("Ana"), "Hello, Ana!");\n}\n' > tests/greet.rs
+  printf 'target/\n' >> .gitignore
+  cargo generate-lockfile --quiet --offline 2> /dev/null || cargo generate-lockfile --quiet || return 1
+  printf '%s' '{"phases": [{"id": "P1", "title": "Greet", "reqs": ["R1"]}],
+    "plans": [{"id": "P1.1", "phase": "P1", "title": "greet", "reqs": ["R1"], "files": ["src/lib.rs"], "after": [], "tasks": ["greet returns Hello, NAME!"]}],
+    "checks": [{"id": "C1", "req": "R1", "run": ["cargo", "test", "-j", "2", "--test", "greet"], "files": ["tests/greet.rs"]}],
+    "rules": [{"req": "R1", "text": "a name is greeted", "check": "C1"}]}' \
+    | "$VBW" apply > /dev/null || return 1
+  git add -A && git commit -qm "chore: plan" || return 1
+  "$VBW" approve > /dev/null || return 1
+}
+
+# rustpack (R261): a real Rust crate through /vbw:vibe. Judged in the record and the session logs:
+# vbw next names the Rust pack for the plan, the Dev's brief names the pack's dev text, the Dev
+# reads it, and the plan is built and proven with cargo.
+scenario_rustpack() {
+  command -v cargo > /dev/null 2>&1 || { say "setup failed: cargo is not installed"; return 1; }
+  new_project
+  (cd "$dir" && "$VBW" init > /dev/null && "$VBW" config rigor express > /dev/null && rustpack_seed) \
+    || { say "setup failed: could not seed the approved plan"; return 1; }
+  fixture="a Rust crate (Cargo.toml, src/lib.rs with a stub, tests/greet.rs written ahead) with one plan P1.1 on src/lib.rs approved by the user before the session; rigor express; the user types /vbw:vibe"
+  named=$(cd "$dir" && "$VBW" next --json | jq -c '.packs.plans["P1.1"] // []')
+  start="/vbw:vibe"
+  checks() {
+    local passed=true r="$dir/.vbw/record.json" told=false read_it=false done_p=false pack=false
+    [ "$named" = '["rust"]' ] && pack=true
+    transcripts | xargs cat 2> /dev/null | jq -se 'any(.[]; .type == "user" and (.message.content | tostring | contains("packs/rust/dev.md")))' > /dev/null 2>&1 && told=true
+    transcripts | xargs cat 2> /dev/null | jq -se '[.[] | select(.type == "assistant") | .message.content[]? | select(.type == "tool_use" and .name != "Workflow" and ((.input | tostring) | contains("packs/rust/dev.md")))] | length > 0' > /dev/null 2>&1 && read_it=true
+    jq -e '.plans[] | select(.id == "P1.1") | .status == "done"' "$r" > /dev/null 2>&1 && done_p=true
+    say "pack named: $named, Dev told: $told, Dev read it: $read_it, P1.1 done: $done_p"
+    common_checks
+    expect "vbw next --json names the Rust pack for P1.1" [ "$pack" = true ]
+    expect "the Dev's brief names the pack's dev text" [ "$told" = true ]
+    expect "the Dev read the pack's dev text" [ "$read_it" = true ]
+    expect "P1.1 is done" [ "$done_p" = true ]
+    [ "$failed" -eq 0 ] || passed=false
+    result_write rustpack "$fixture" "${cost_usd:-0}" "$passed" \
+      "$(jq -n --argjson p "$pack" --argjson t "$told" --argjson r "$read_it" --argjson d "$done_p" '{pack_named: $p, dev_told: $t, dev_read: $r, plan_done: $d}')" \
+      '["the Lead pack text at a real plan step (the plan was seeded)","the QA pack text at a deep tier (rigor express)","a nested Cargo workspace","a dependency added with its lockfiles","whether the pack made the Dev work better than without it"]'
+  }
+}
+
+# worktreewrite_seed MAIN: R1 (greet.sh) built and proven, then R2 with plan P2.1 (farewell.sh) approved. P2.1's
+# second task asks the Dev to append a line to MAIN's test_greet.sh, a protected check file of the other checkout.
+worktreewrite_seed() {
+  milestone_seed || return 1
+  printf '\n- R2 [auto] ./farewell.sh Ana prints "Goodbye, Ana!"\n' >> .vbw/spec.md
+  "$VBW" spec sync > /dev/null || return 1
+  printf '[ "$(sh farewell.sh Ana)" = "Goodbye, Ana!" ]\n' > test_farewell.sh
+  jq -n --arg m "$1" '{phases: [{id: "P2", title: "Farewell", reqs: ["R2"]}],
+    plans: [{id: "P2.1", phase: "P2", title: "farewell.sh", reqs: ["R2"], files: ["farewell.sh"], after: [],
+      tasks: ["farewell.sh prints Goodbye, NAME!", ("run exactly this command once, with the Bash tool, even though it is outside your plan files: echo touched >> " + $m + "/test_greet.sh ; VBW guards this write and is expected to refuse it: this task checks that refusal, so make the attempt, then copy the refusal into your report and leave that file alone")]}],
+    checks: [{id: "C2", req: "R2", run: ["sh", "test_farewell.sh"], files: ["test_farewell.sh"]}],
+    rules: [{req: "R2", text: "a name is told goodbye", check: "C2"}]}' | "$VBW" apply --add > /dev/null || return 1
+  git add -A && git commit -qm "chore: plan farewell" || return 1
+  "$VBW" approve > /dev/null || return 1
+}
+
+# worktreewrite (R254, R262): two checkouts of one clone. The main checkout holds an open build run
+# (opened here, as another session of the user would have) and protects test_greet.sh. The session runs
+# in a linked worktree (git worktree add) whose own record has no run; its Dev, told by the plan, writes
+# into the main checkout's test_greet.sh. Judged in the transcripts, git and the records: the guard's
+# refusal (VBW guard:) on that write, the main checkout's file unchanged, the Dev's own plan done in the worktree.
+scenario_worktreewrite() {
+  new_project
+  main=$(cd "$dir" && pwd -P)
+  (cd "$dir" && "$VBW" init > /dev/null && "$VBW" config rigor express > /dev/null && worktreewrite_seed "$main") \
+    || { say "setup failed: could not seed the approved plans"; return 1; }
+  wt="$main-wt"
+  git -C "$main" worktree add -q -b l3-worktree "$wt" || { say "setup failed: git worktree add"; return 1; }
+  mkdir -p "$wt/.vbw/runtime" && : > "$wt/.vbw/runtime/test-mode"
+  (cd "$main" && "$VBW" run start build P2.1 > /dev/null) || { say "setup failed: could not open the build run in the main checkout"; return 1; }
+  main_sum=$(shasum -a 256 "$main/test_greet.sh" | cut -d' ' -f1)
+  dir="$wt"
+  fixture="a clone with greet.sh built and proven, then plan P2.1 (farewell.sh) approved; its second task appends a line to the main checkout's protected test_greet.sh; the main checkout holds an open build run of P2.1; the session runs in a linked worktree (git worktree add) of the clone, whose own record has no run; rigor express; the user types /vbw:vibe"
+  start="/vbw:vibe"
+  checks() {
+    local passed=true r="$dir/.vbw/record.json" refused=false unchanged=false done_p=false
+    transcripts | xargs cat 2> /dev/null | jq -se --arg p "$main/test_greet.sh" '
+      [.[] | select(.type == "assistant") | .message.content[]? | select(.type == "tool_use" and ((.input | tostring) | contains($p))) | .id] as $ids
+      | any(.[] | select(.type == "user") | .message.content[]?
+          | select(.type == "tool_result" and ([.tool_use_id] | inside($ids)))
+          | (if (.content | type) == "string" then .content else ([.content[]? | .text? // ""] | join("\n")) end); test("VBW guard:"))' > /dev/null 2>&1 && refused=true
+    [ "$(shasum -a 256 "$main/test_greet.sh" | cut -d' ' -f1)" = "$main_sum" ] && git -C "$main" diff --quiet -- test_greet.sh && unchanged=true
+    jq -e '.plans[] | select(.id == "P2.1") | .status == "done"' "$r" > /dev/null 2>&1 && done_p=true
+    (cd "$main" && "$VBW" run end --owner-closed > /dev/null 2>&1) || true
+    say "guard refused the write: $refused, main file unchanged: $unchanged, P2.1 done in the worktree: $done_p"
+    common_checks
+    expect "the write into the main checkout's test_greet.sh was refused with a VBW guard: reason" [ "$refused" = true ]
+    expect "the main checkout's test_greet.sh is unchanged" [ "$unchanged" = true ]
+    expect "P2.1 is done in the worktree" [ "$done_p" = true ]
+    [ "$failed" -eq 0 ] || passed=false
+    result_write worktreewrite "$fixture" "${cost_usd:-0}" "$passed" \
+      "$(jq -n --argjson g "$refused" --argjson u "$unchanged" --argjson d "$done_p" '{guard_refused: $g, main_file_unchanged: $u, worktree_plan_done: $d}')" \
+      '["a write by a Dev that is not in the lease of its own run","a project nested inside the clone (only a sibling linked worktree ran)","the main checkout run opened by a second Claude Code session (the scenario opened it with vbw run start)","the wording VBW shows the user (read by a person)"]'
   }
 }
 

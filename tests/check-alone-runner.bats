@@ -7,6 +7,9 @@ load helper
 
 setup() {
   vbw_setup
+  # This file tests the machine default's parallel runs: a proof marks its own units (VBW_PROOF_UNIT, R257),
+  # which would make the kernel under test run one check at a time.
+  unset VBW_PROOF_UNIT
   export TIMES="$TEST_ROOT/times"
   mkdir -p "$TIMES" "$TEST_ROOT/bin" "$TEST_ROOT/tmp"
   : > "$TIMES/log"

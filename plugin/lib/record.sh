@@ -34,7 +34,7 @@ record_violation() {
 # the one definition (R247), so an older VBW says the project needs a newer VBW instead
 # of calling the record corrupt. Records of schemas 1 to 3 written by an older VBW
 # are read and become format 4 on their next write.
-VBW_SCHEMA_MAX=9
+VBW_SCHEMA_MAX=12
 
 # The schema of the record at FILE when it is a number above the highest this
 # VBW reads (written by a newer VBW); empty and status 1 otherwise. A
@@ -126,29 +126,34 @@ record_glance_current() {
 # holds {record, validator}, the sha256 of the record's bytes and of the validator's
 # own text (record.jq, record-schema.jq, interview.json, in that order) and the top
 # schema it reads, because the refusal of a newer schema depends on that too. A record
-# whose bytes and validator match it is not validated again; any other bytes are.
+# whose bytes and validator match it is not validated again; any other bytes are. It also
+# holds text_breaks: true when those bytes hold a break that names its rule by text (R258).
 # A runtime folder that cannot be read or written is never an error: the digest is
 # simply not kept.
 record_validator_digest() {
   { printf '%s\n' "$VBW_SCHEMA_MAX"; cat "$VBW_LIB/record.jq" "$VBW_LIB/record-schema.jq" "$VBW_LIB/interview.json" 2> /dev/null; } | vbw_sha256
 }
 
-# record_digest_matches FILE: true when the digest file names FILE's bytes and the validator.
+# record_digest_matches FILE: true when the digest file names FILE's bytes and the validator;
+# RECORD_TEXT_BREAKS then says what it holds of them.
 record_digest_matches() {
   local want got
   [ -f "$VBW_RUNTIME/validated.json" ] || return 1
   got=$(vbw_sha256 < "$1" 2> /dev/null) || return 1
-  want=$(jq -c '[.record, .validator]' "$VBW_RUNTIME/validated.json" 2> /dev/null) || return 1
-  [ "$want" = "[\"$got\",\"$(record_validator_digest)\"]" ]
+  want=$(jq -r '"\(.record) \(.validator) \(.text_breaks // false)"' "$VBW_RUNTIME/validated.json" 2> /dev/null) || return 1
+  [ "${want% *}" = "$got $(record_validator_digest)" ] || return 1
+  RECORD_TEXT_BREAKS=${want##* }
 }
 
-# record_digest_write FILE: keep the digest of FILE's bytes (a temporary name, then a rename).
+# record_digest_write FILE [true]: keep the digest of FILE's bytes (a temporary name, then a
+# rename); true when they hold a break that names its rule by text.
 record_digest_write() {
-  local rec val t
+  local rec val t extra=
+  [ "${2:-}" != true ] || extra=',"text_breaks":true'
   rec=$(vbw_sha256 < "$1" 2> /dev/null) || return 0
   val=$(record_validator_digest)
   t=$(mktemp "$VBW_RUNTIME/validated.XXXXXX" 2> /dev/null) || return 0
-  if printf '{"record":"%s","validator":"%s"}\n' "$rec" "$val" > "$t" 2> /dev/null; then
+  if printf '{"record":"%s","validator":"%s"%s}\n' "$rec" "$val" "$extra" > "$t" 2> /dev/null; then
     mv "$t" "$VBW_RUNTIME/validated.json" 2> /dev/null || rm -f "$t" 2> /dev/null || true
   else
     rm -f "$t" 2> /dev/null || true
@@ -168,7 +173,8 @@ record_read() {
   if ! record_digest_matches "$VBW_RECORD"; then
     record_refuse_newer
     v=$(record_violation "$VBW_RECORD") || vbw_die "record is corrupt: $v ($VBW_RECORD)" 3
-    record_digest_write "$VBW_RECORD"
+    RECORD_TEXT_BREAKS=$(jq '[.plans[]?.mutations[]?.rule? | objects | has("text")] | any' "$VBW_RECORD")
+    record_digest_write "$VBW_RECORD" "$RECORD_TEXT_BREAKS"
   fi
   if ! record_glance_current; then
     (
@@ -179,7 +185,14 @@ record_read() {
       record_unlock
     ) || true
   fi
-  cat "$VBW_RECORD"
+  # R258: a break that still names its rule by text counts for the rule of that text on
+  # every read, not only after the first write. The digest says whether this pass is needed,
+  # so a record with none pays nothing.
+  if [ "$RECORD_TEXT_BREAKS" = true ]; then
+    jq -L "$VBW_LIB" 'include "record-schema"; breaks_by_place' "$VBW_RECORD"
+  else
+    cat "$VBW_RECORD"
+  fi
 }
 
 record_unlock() {
@@ -361,7 +374,7 @@ record_update() {
   # checks, then the rest, so the guards read the beginning of the file alone (R149,
   # R150). An older record (schema 1 to 3) becomes format 4 here.
   jq "$@" -L "$VBW_LIB" "include \"record-schema\"; $filter
-    | {schema: schema_of, lease: (.lease // null),
+    | breaks_by_place | {schema: schema_of, lease: (.lease // null),
        protected: ([(.checks // [])[]? | objects | .files? | arrays | .[] | strings] | unique)}
       + (if has(\"checks\") then {checks} else {checks: []} end) + del(.schema, .lease, .protected, .checks)" "$VBW_RECORD" > "$tmp" 2>/dev/null || vbw_die "internal error: record update failed"
   v=$(record_violation "$tmp") || vbw_die "refused: $v"$'\n'"Next: nothing was written; give the command a valid value (the line above names what would break), or run vbw doctor if the record itself is damaged"
@@ -486,6 +499,14 @@ record_commit() {
 VBW_JQ_DEFS='def next_id($p): (([.[]?.id | ltrimstr($p) | tonumber?] | max) // 0) + 1 | "\($p)\(.)";
 def next_fix_id: (.fixes + [(.parked // [])[].ids[]? | select(startswith("F")) | {id: .}]) | next_id("F");
 def covers($p): . as $e | $e == $p or (($e | endswith("/")) and ($p | startswith($e)));
+# tf_forms: the test file forms of a record or a parsed spec, always an array of
+# {name, dir, run, files}: the one-form {run, files} reads as an unnamed form at the root.
+def tf_forms: (.test_files // null) | if . == null then [] elif type == "object" then [{name: null, dir: null, run, files}] else . end;
+# A pathspec without its exclude prefix (:!, :^ or :(exclude)); the same def is in spec.jq and in the validator.
+def pathspec_path: sub("^(:!|:\\^|:\\(exclude\\))"; "");
+# One test file form for a message: "[NAME: ]RUN (files PATHSPECS[, in DIR/])".
+def tf_say: (if .name == null then "" else .name + ": " end) + (.run | join(" "))
+  + " (files \(.files | join(" "))" + (if .dir == null then "" else ", in \(.dir)/" end) + ")";
 # A text names $f (a path or a commit) as a word of its own: a closing dot of a sentence, or a
 # leading ./, does not hide it; NOTES.md names neither NOTES.md.bak nor docs/NOTES.md.
 def names($f): split($f) as $s | any(range(0; ($s | length) - 1);

@@ -75,7 +75,7 @@ refused() {
   run "$VBW" mutate P1.1 R1.1 "prints unpaid instead of paid" src/pay.sh < /dev/null
   [ "$status" -eq 0 ] || { echo "$output"; false; }
   [[ "$output" == *red* ]] || { echo "$output"; false; }
-  breaks P1.1 | jq -e 'length == 1 and (.[0] | .rule == {req: "R1", text: "paying prints paid"}
+  breaks P1.1 | jq -e 'length == 1 and (.[0] | .rule == {req: "R1", k: 1}
     and .what == "prints unpaid instead of paid" and .checks == {C1: "red"} and .result == "red" and (has("task") | not))' \
     || { breaks P1.1; false; }
 }
@@ -149,7 +149,7 @@ with_sub_pay() {
   printf 'echo paid\necho paid\n' > src/pay.sh
   run "$VBW" mutate P1.1 R1.2 "prints paid twice" src/pay.sh < /dev/null
   [ "$status" -eq 0 ] || { echo "$output"; false; }
-  breaks P1.1 | jq -e '.[0].rule == {req: "R1", text: "paying prints one line"} and .[0].checks == {C3: "red"} and .[0].result == "red"' \
+  breaks P1.1 | jq -e '.[0].rule == {req: "R1", k: 2} and .[0].checks == {C3: "red"} and .[0].result == "red"' \
     || { breaks P1.1; false; }
 }
 
@@ -210,7 +210,7 @@ with_sub_pay() {
   [ "$status" -ne 0 ] || { echo "$output"; false; }
   [[ "$output" == *survivor* && "$output" == *R2.1* && "$output" == *"a receipt is printed"* ]] || { echo "$output"; false; }
   breaks P1.2 | jq -e 'length == 1 and .[0].result == "survivor" and .[0].checks == {C2: "green"}
-    and .[0].rule == {req: "R2", text: "a receipt is printed"}' || { breaks P1.2; false; }
+    and .[0].rule == {req: "R2", k: 1}' || { breaks P1.2; false; }
 }
 
 @test "R188: a red break after a survivor of the same rule is recorded when the check protects no files, under /bin/bash 3.2" {

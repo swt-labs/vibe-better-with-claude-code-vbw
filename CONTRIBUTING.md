@@ -23,6 +23,8 @@ A feature, setting or special case that only one project needs will be declined,
 3. **Test first.** Reproduce the problem with a failing test, then fix it (see Tests). For a speed or cost item, give the figures before and after, and say exactly what you ran and what you did not.
 4. **Update the page in the same pull request.** When your change fixes a known issue or builds an idea, remove its entry, and update the behaviour docs as usual.
 
+Adding a language? A stack pack is one more folder; see [`docs/packs.md`](docs/packs.md).
+
 Found a problem that is on neither page? Open a bug report (see Reporting bugs). Have a new idea? Use the feature request template and describe the problem first.
 
 ## Prerequisites

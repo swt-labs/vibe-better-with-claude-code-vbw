@@ -109,7 +109,7 @@ plan_missing_breaks() {
     . as $r | (.plans[] | select(.id == $p)) as $pl
     | if ($r.lease.kind // "") != "build" or $pl.status != "building" then empty else
         [owed_rules($p)[] | . as $o
-          | select([$r.plans[].mutations[]? | select((.result == "red" or has("none")) and .rule.req == $o.req and .rule.text == $o.text)] | length == 0)
+          | select([$r.plans[].mutations[]? | select((.result == "red" or has("none")) and .rule.req == $o.req and .rule.k == $o.n)] | length == 0)
           | "  \(.req).\(.n) \(.text)"] as $rules
         | if ($rules | length) == 0 then empty else
             (["Rules no recorded break has made a check fail:"] + $rules

@@ -1,0 +1,21 @@
+{
+  "scenario": "rustpack",
+  "fixture": "a Rust crate (Cargo.toml, src/lib.rs with a stub, tests/greet.rs written ahead) with one plan P1.1 on src/lib.rs approved by the user before the session; rigor express; the user types /vbw:vibe",
+  "cost_usd": 0.3602,
+  "evidence_level": "L3",
+  "at": "2026-11-06T17:29:57Z",
+  "passed": true,
+  "facts": {
+    "pack_named": true,
+    "dev_told": true,
+    "dev_read": true,
+    "plan_done": true
+  },
+  "not_tested": [
+    "the Lead pack text at a real plan step (the plan was seeded)",
+    "the QA pack text at a deep tier (rigor express)",
+    "a nested Cargo workspace",
+    "a dependency added with its lockfiles",
+    "whether the pack made the Dev work better than without it"
+  ]
+}

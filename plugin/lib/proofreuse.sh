@@ -28,8 +28,12 @@ PROVE_FLAT='map_values(if $off or (.reads | type) != "object" then . + {reads: n
 # computed from). A fingerprint is the SHA-256 of the unit's canonical bytes:
 #   check:   its approved definition as key-sorted compact JSON, then a newline;
 #   command: the time limit and the argv, each ended by a NUL;
-#   file:    the same, with the form's argv for that test file.
+#   file:    the same, with the argv of the file's form for that test file; a
+#            form with a dir adds "dir:DIR" after the time limit, and its {file}
+#            is the path relative to the dir.
 PROOFREUSE_FPS=${PROOFREUSE_FPS:-'{}'}
+# The form index of each test file ({path: i} into tf_forms; testfiles_index sets it).
+PROOFREUSE_TFMAP=${PROOFREUSE_TFMAP:-'{}'}
 PROOFREUSE_FPS_RECORD=${PROOFREUSE_FPS_RECORD-}
 # What the contract ties each check to: "check:ID" -> the files of the plans of
 # the check's requirement (each entry a path, a folder ending in "/", or "*"),
@@ -41,7 +45,7 @@ PROOFREUSE_DIFFS=${PROOFREUSE_DIFFS-}
 PROOFREUSE_DIFFS_HEAD=${PROOFREUSE_DIFFS_HEAD-}
 PROOFREUSE_DIFFS_STORE=${PROOFREUSE_DIFFS_STORE-}
 
-# Input: $keys (a JSON array of unit keys), $rec (the record), $have (the map so far). Output, per key without a fingerprint yet:
+# Input: $keys (a JSON array of unit keys), $rec (the record), $have (the map so far), $tfm (PROOFREUSE_TFMAP). Output, per key without a fingerprint yet:
 # key, kind (l: one line, z: NUL-ended fields), field count, fields, all NUL-ended.
 # shellcheck disable=SC2016 # a jq program
 PROOFREUSE_EMIT_JQ='def srt: if type == "object" then . as $o | reduce ($o | keys[]) as $k ({}; .[$k] = ($o[$k] | srt))
@@ -55,7 +59,9 @@ PROOFREUSE_EMIT_JQ='def srt: if type == "object" then . as $o | reduce ($o | key
       ($k | ltrimstr("command:")) as $n | [$lim] + [$r.commands[$n][]?]
       | $k, "\u0000", "z", "\u0000", (length | tostring), "\u0000", (.[] | ., "\u0000")
     elif startswith("file:") then
-      ($k | ltrimstr("file:")) as $f | [$lim] + [$r.test_files.run[]? | split("{file}") | join($f)]
+      ($k | ltrimstr("file:")) as $f | ($r | tf_forms)[$tfm[0][$f] // 0] as $t
+      | if $t.dir == null then [$lim] + [$t.run[]? | split("{file}") | join($f)]
+        else [$lim, "dir:" + $t.dir] + [$t.run[]? | split("{file}") | join($f | ltrimstr($t.dir + "/"))] end
       | $k, "\u0000", "z", "\u0000", (length | tostring), "\u0000", (.[] | ., "\u0000")
     else empty end'
 
@@ -116,7 +122,8 @@ proofreuse_fps_need() {
     if [ "$mode" = l ]; then printf '%s\n' "${fields[0]}" > "$dir/u/$n"; else printf '%s\0' ${fields[@]+"${fields[@]}"} > "$dir/u/$n"; fi
     printf '%s\0' "$key" >> "$dir/keys"
     n=$((n + 1))
-  done < <(jq -n -j --argjson d "$VBW_COMMAND_TIMEOUT" --slurpfile rec <(printf '%s' "$1") --slurpfile have <(printf '%s' "$PROOFREUSE_FPS") --slurpfile keys <(printf '%s' "$2") "$PROOFREUSE_EMIT_JQ")
+  done < <(jq -n -j --argjson d "$VBW_COMMAND_TIMEOUT" --slurpfile rec <(printf '%s' "$1") --slurpfile have <(printf '%s' "$PROOFREUSE_FPS") --slurpfile keys <(printf '%s' "$2") \
+    --slurpfile tfm <(printf '%s' "$PROOFREUSE_TFMAP") "$VBW_JQ_DEFS$PROOFREUSE_EMIT_JQ")
   if [ "$n" -gt 0 ]; then
     proofreuse_hashes "$dir/u" "$n" > "$dir/hashes" || { vbw_guard_drop "$dir"; vbw_die "cannot fingerprint the units"; }
     PROOFREUSE_FPS=$(jq -nc --slurpfile have <(printf '%s' "$PROOFREUSE_FPS") --rawfile k "$dir/keys" --rawfile h "$dir/hashes" \
@@ -139,9 +146,15 @@ proofreuse_check_fp() { proofreuse_fp_of "$1" "check:$2"; }
 # and the time limit it runs under (settings.command_timeout, else the default).
 proofreuse_command_fp() { proofreuse_fp_of "$1" "command:$2"; }
 
+# proofreuse_record_fp: the fingerprint of the record on stdin as a proof judges
+# it (D296): without its evidence, and without its schema, which record-schema.jq
+# derives from the rest and which the evidence itself can raise (own.copy_slots),
+# so the proof's own write never changes what it fingerprinted.
+proofreuse_record_fp() { jq -c 'del(.evidence, .schema)' | vbw_sha256; }
+
 # proofreuse_proved RECORD HEAD: succeed when nothing changed since the
 # record's last passing proof (evidence.passed): the record is as that proof
-# left it (its fingerprint without the evidence equals evidence.record, so the
+# left it (its fingerprint, proofreuse_record_fp, equals evidence.record, so the
 # contract, the commands and every decision, verdict or backlog item are as
 # proved: D296, D302), the project's files have the fingerprint it recorded
 # (vbw_code_tree equals evidence.tree) and the committed code is the tree it
@@ -153,7 +166,7 @@ proofreuse_proved() {
   local tree ev_head ev_rec
   printf '%s' "$1" | jq -e '.evidence.passed == true' > /dev/null 2>&1 || return 1
   ev_rec=$(printf '%s' "$1" | jq -r '.evidence.record // empty')
-  [ -n "$ev_rec" ] && [ "$ev_rec" = "$(printf '%s' "$1" | jq -c 'del(.evidence)' | vbw_sha256)" ] || return 1
+  [ -n "$ev_rec" ] && [ "$ev_rec" = "$(printf '%s' "$1" | proofreuse_record_fp)" ] || return 1
   tree=$(printf '%s' "$1" | jq -r '.evidence.tree // empty')
   [ -n "$tree" ] && [ "$(vbw_code_tree 2> /dev/null)" = "$tree" ] || return 1
   ev_head=$(printf '%s' "$1" | jq -r '.evidence.head // empty')
@@ -302,11 +315,55 @@ proofreuse_annotate() {
       + (if $w[0][$n] and .value.status != "skipped" then {why: $w[0][$n]} else {} end)))'
 }
 
+# proofreuse_raw_names RAW PREFIX NESTED: git's raw diff-tree -z output in RAW as the
+# NUL-separated "status path" pairs of a name-status diff, each path prefixed with PREFIX.
+# A submodule entry (mode 160000) that moved is printed as "G path old new" when NESTED is
+# empty; any other change of one (added, removed, a type change), and any at all when
+# NESTED is set, makes jq fail: the tree stays unknown.
+proofreuse_raw_names() {
+  jq -Rs -j --arg pre "$2" --arg nested "$3" 'split("\u0000") | .[0:-1] as $F
+    | range(0; ($F | length); 2) as $i
+    | ($F[$i] | ltrimstr(":") | split(" ")) as $m | $F[$i + 1] as $p
+    | if $m[0] == "160000" or $m[1] == "160000" then
+        (if $nested == "" and $m[4] == "M" and $m[0] == $m[1] then "G\u0000\($pre)\($p)\u0000\($m[2])\u0000\($m[3])\u0000"
+         else error("submodule") end)
+      else "\($m[4])\u0000\($pre)\($p)\u0000" end' "$1"
+}
+
+# proofreuse_tree_diff TREE HEAD OUT: appends to OUT the name-status pairs (status, path) of
+# the files that differ between TREE and HEAD; fails when the tree is unknown. One diff-tree
+# for the project. Only when it shows a submodule's commit changed does git run inside that
+# submodule, between the recorded commit and the current one, and its paths (prefixed with
+# the submodule's folder as the project sees it) join the list, so the read-list rule judges
+# them like any top-level change. Unknown (fail): the recorded commit missing from the
+# submodule's repository, a submodule added or removed, a nested submodule moved.
+proofreuse_tree_diff() {
+  local raw=$3.raw conv=$3.conv s p old new
+  git -C "$VBW_ROOT" diff-tree -z -r --no-renames --raw "$1" "$2" > "$raw" 2> /dev/null || return 1
+  proofreuse_raw_names "$raw" "" "" > "$conv" 2> /dev/null || return 1
+  exec 3< "$conv"
+  while IFS= read -r -d '' s <&3; do
+    if [ "$s" = G ]; then
+      IFS= read -r -d '' p <&3
+      IFS= read -r -d '' old <&3
+      IFS= read -r -d '' new <&3
+      [ -e "$VBW_ROOT/$p/.git" ] || { exec 3<&-; return 1; }
+      git -C "$VBW_ROOT/$p" diff-tree -z -r --no-renames --raw "$old" "$new" > "$raw" 2> /dev/null || { exec 3<&-; return 1; }
+      proofreuse_raw_names "$raw" "$p/" nested >> "$3" 2> /dev/null || { exec 3<&-; return 1; }
+    else
+      IFS= read -r -d '' p <&3
+      printf '%s\0%s\0' "$s" "$p" >> "$3"
+    fi
+  done
+  exec 3<&-
+}
+
 # proofreuse_diffs HEAD: sets PROOFREUSE_DIFFS, a JSON object recorded tree ->
 # the files that differ between that tree and the committed code HEAD
 # ([{s: status letter, p: path}]), or null when the tree is unknown. One git
-# diff-tree per distinct tree of PROOFREUSE_STORE. Cached for the same store
-# and head, so planning and the proof's causes share it.
+# diff-tree per distinct tree of PROOFREUSE_STORE (proofreuse_tree_diff says
+# what a moved submodule adds). Cached for the same store and head, so
+# planning and the proof's causes share it.
 proofreuse_diffs() {
   local dir tree
   if [ -n "$PROOFREUSE_DIFFS" ] && [ "$PROOFREUSE_DIFFS_HEAD" = "$1" ] && [ "$PROOFREUSE_DIFFS_STORE" = "${PROOFREUSE_STORE-}" ]; then
@@ -315,17 +372,12 @@ proofreuse_diffs() {
   dir=$(proofreuse_scratch)
   vbw_guard_add dir "$dir"
   : > "$dir/stream"
-  # A submodule moved between the trees (vbw_head_tree counts it at its own HEAD)
-  # makes the code that tree's runs ran on unknown: git lists only the submodule's
-  # folder, never the files that changed inside it, so no read list can vouch.
-  local subs=() p
-  while IFS= read -r -d '' p; do subs+=("$p"); done < <(vbw_subs)
-  # Per tree: the tree, the name-status pairs git printed, then =OK or =FAIL (a status is never "=").
+  # Per tree: the tree, the name-status pairs, then =OK or =FAIL (a status is never "=").
   while IFS= read -r -d '' tree; do
     printf '%s\0' "$tree" >> "$dir/stream"
-    if [ ${#subs[@]} -gt 0 ] && ! git -C "$VBW_ROOT" diff-tree -r -z --quiet "$tree" "$1" -- "${subs[@]}" 2> /dev/null; then
-      printf '=FAIL\0' >> "$dir/stream"
-    elif git -C "$VBW_ROOT" diff-tree -z -r --no-renames --name-status "$tree" "$1" >> "$dir/stream" 2> /dev/null; then
+    : > "$dir/one"
+    if proofreuse_tree_diff "$tree" "$1" "$dir/one"; then
+      cat "$dir/one" >> "$dir/stream"
       printf '=OK\0' >> "$dir/stream"
     else
       printf '=FAIL\0' >> "$dir/stream"

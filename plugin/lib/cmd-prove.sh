@@ -27,9 +27,10 @@ VBW_FIX_CAP=3
 
 cmd_prove() {
   local full=0
+  # shellcheck disable=SC2034 # PROOFCOPY_FRESH is read by proofcopy_create_slots
   case $# in
     0) ;;
-    1) [ "$1" = --full ] || vbw_usage_error "usage: vbw prove [--full]"; full=1 ;;
+    1) [ "$1" = --full ] || vbw_usage_error "usage: vbw prove [--full]"; full=1; PROOFCOPY_FRESH=1 ;;
     *) vbw_usage_error "usage: vbw prove [--full]" ;;
   esac
   vbw_require_project
@@ -44,6 +45,7 @@ cmd_prove() {
   prooftime_begin
   record=$(record_read)
   checks_begin "$record" strict
+  checks_timer
   # A check another plan builds waits, unrun, until that plan is built (R250).
   awaited=$(prove_awaited "$record")
   [ -z "$awaited" ] || CHECK_HELD="${CHECK_HELD:+$CHECK_HELD$'\n'}$awaited"
@@ -93,7 +95,7 @@ cmd_prove() {
     proofsteps_units "$checks" "$commands" "$files"
     checks_keep "$checks" "$commands" "$files"
     prooftime_step saving
-    proofcopy_remove
+    proofcopy_release
     prooftime_step copies
   fi
   checks_end
@@ -149,9 +151,10 @@ cmd_prove() {
   vbw_scratch_json evf "$ev"
   vbw_scratch_json curf "$(qa_combined "$record")"
   record_update "$VBW_JQ_DEFS$(cat "$VBW_LIB/prove.jq")" --slurpfile ev "$evf" --argjson cap "$VBW_FIX_CAP" --slurpfile cur "$curf" --arg at "$at"
-  # The record as this proof leaves it, without the evidence (D296): the next prove's
-  # "nothing committed" cause fires only while this fingerprint still holds (R175, R103).
-  fp=$(jq -c 'del(.evidence)' "$VBW_RECORD" | vbw_sha256)
+  # The record as this proof leaves it, without the evidence or the schema (D296): the
+  # next prove's "nothing committed" cause fires only while this fingerprint still holds
+  # (R175, R103). The write of own below can raise the schema (copy_slots).
+  fp=$(proofreuse_record_fp < "$VBW_RECORD")
   prooftime_step record
   # The split, its wall time read after the record step: the wall covers every step but
   # the units' own tracking; the write of the split, the commit and the summary follow it.
@@ -170,6 +173,7 @@ cmd_prove() {
   local rc=0
   prove_summary "$causes" || rc=$?
   slots_say
+  [ -n "$CHECKS_NICE" ] || printf 'nice was not found: units ran at normal priority\n' >&2
   return "$rc"
 }
 
@@ -472,7 +476,9 @@ prove_summary() {
         | if ($c | length) == 1 then "  ran everything: \($c[0])"
           elif ($c | length) > 1 then "  ran everything, because:", ($c[] | "  - \(.)") else empty end),
       "  checks: \([$e.checks[] | select(.reused | not)] | length) ran, \([$e.checks[] | select(.reused)] | length) reused",
-      "  test files: \([($e.test_files // {})[] | select(.reused | not)] | length) ran, \([($e.test_files // {})[] | select(.reused)] | length) reused",
+      "  test files: \([($e.test_files // {})[] | select(.reused | not)] | length) ran, \([($e.test_files // {})[] | select(.reused)] | length) reused"
+        + ([($e.test_files // {})[] | select(.form != null)] | group_by(.form)
+           | if length == 0 then "" else " (" + (map("\(.[0].form) \([.[] | select(.reused | not)] | length) ran, \([.[] | select(.reused)] | length) reused") | join("; ")) + ")" end),
       (if ($e.commands.test // null) != null and ($e.commands.test.of_files | not) and ($e.commands.test.reused | not) and ($e.commands.test.status != "skipped")
          then "  test command ran whole: no single-file form is declared" else empty end),
       (if ($e.commands.test // null) != null and $e.commands.test.of_files and (($e.test_files // {}) | length) == 0

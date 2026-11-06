@@ -179,6 +179,16 @@ The proof-wide steps hold one
 slot each, listed in the store as `vbw:plan` (reuse planning), `vbw:copies`
 (making the clean copies) and `vbw:save` (saving the run store).
 
+The limit counts units running at once, not processor use: one unit may use
+more than one core (see [Cores per unit](#cores-per-unit)). Units run at
+low priority (`nice`), so the machine stays usable while a proof runs; where
+`nice` is missing they run at normal priority and the proof's summary says so
+in one line.
+
+A proof started inside another proof's unit (the outer run marks its units with
+`VBW_PROOF_UNIT`) takes one unit at a time by default, because its slot store
+may be another one; the project's `check_jobs` setting overrides this default.
+
 `vbw next` never waits for a slot: it answers at once, even while every slot is held. A
 nested run (a proof started from inside a proof) takes no slot of its own.
 
@@ -466,8 +476,17 @@ R1 [auto] A customer can pay once
   other: the first Dev's mutation step would run the check before the other
   Dev committed, a race that fails only sometimes. Give each plan's rules a
   check of their own.
-- When a requirement's text or proof changes, `vbw spec sync` resets its rules
-  to pending, so the Lead restates them.
+- When an `auto` requirement's text changes, `vbw spec sync` keeps its rules,
+  in their places and words, resets its status to `open` and marks it
+  `reworded` (`changed R1 (status reset to open, 2 rules kept)`). The contract
+  needs approval again, and at the next plan step the Lead reviews the kept
+  rules: it keeps one that still holds, rewords one whose words are now wrong
+  and retires one whose behaviour changed, each with `vbw apply --patch`; its
+  full `vbw apply` clears the mark. A rule is removed only by an explicit
+  retire, never by a sync. When the proof changes from `auto` to `human`, the
+  requirement loses its rules and its checks (a `human` requirement carries
+  neither), and the sync message names them; a change to `auto` starts with
+  pending rules.
 - A requirement approved before rules existed (no requirement has a `rules`
   field) keeps its approval. Its screen shows `rules not listed`, and nothing
   forces rules until the Lead applies a plan that lists them (D53). Once any
@@ -660,7 +679,44 @@ section in `.vbw/spec.md`, beside `## Commands`:
 
 `run` is the command for one test file; it names `{file}` exactly once, and VBW
 puts each test file's path there. `files` lists the git pathspecs of the test
-files, one or more per line. The Lead proposes the form with the runner's
+files, one or more per line.
+
+A project with several test runners, such as a monorepo with one per
+subproject, names one form per runner, with the lines nested under the name:
+
+```markdown
+## Test files
+
+- webapp:
+  - dir: apps/webapp
+  - run: npx vitest run {file}
+  - files: apps/webapp/**/*.test.ts
+- mobile:
+  - dir: apps/mobile
+  - run: npx jest {file}
+  - files: apps/mobile/**/*.test.tsx
+```
+
+`dir` is optional: the folder of the project the form's runs start in, which is
+where a runner finds its own configuration. With a dir, `{file}` is the test
+file's path relative to its dir (`src/cart.test.ts`, not
+`apps/webapp/src/cart.test.ts`), and every pathspec of the form must lie under
+it, with no `.` or `..` parts; an exclude does too, in any of git's spellings
+(`:!`, `:^` or `:(exclude)`, as in `:!apps/webapp/src/slow.test.ts`). Other
+pathspec magic (`:(glob)`, `:(icase)`, `:(top)` or `:/`, or an exclude combined
+with one) is refused in a form with a dir, naming it: it changes what git
+matches, so the pathspec's text no longer shows that its files lie under the
+dir. A dir is a real folder: no `.` or `..` parts, no
+glob characters (`*`, `?`, `[`), and not a committed symbolic link or under one.
+A single form may take a top-level `- dir:` line too. A name is letters,
+digits, `_` or `-`, and given once; one section uses one shape, top-level lines
+or named forms, never both. `vbw spec check` and `vbw spec sync` refuse a
+committed file matched by two forms, naming the file, both forms and the later
+form's line: a test file belongs to one form, so it never runs twice. A form whose
+dir holds no committed file matches nothing, so the test command fails naming the
+form (below). If a matched file's folder is still missing from the proof's clean
+copy, or leads out of the copy through a link, that file fails and names the
+folder, and nothing runs for it. The Lead proposes the form with the runner's
 documented syntax (`vbw apply`, see docs/workflows.md). `vbw init` never writes
 one: VBW never guesses a form.
 
@@ -679,6 +735,15 @@ failed. The summary counts them, as `test files: N ran, M reused`:
   test files: 3 ran, 41 reused
 ```
 
+With named forms the line counts each form, and each test file's result in the
+evidence names its form:
+
+```
+  test files: 3 ran, 41 reused (webapp 2 ran, 30 reused; mobile 1 ran, 11 reused)
+```
+
+A change re-runs only the test files that read it, whatever their form.
+
 A failing test file fails the proof, and the proof names it. `vbw prove --full`
 runs every test file on its own and reuses none.
 
@@ -688,17 +753,19 @@ with a form, neither the test command nor the quick command runs.
 
 When that leaves no test file to run (every file the form matches is run by
 an approved check), the test command counts as covered by those checks: it
-passes with `test files: 0 ran, 0 reused`, and the summary says so. When the
+passes with `test files: 0 ran, 0 reused`, and the summary says so. When a
 form matches no committed file at all, the test command fails, the summary
-names the pathspecs, and a fix opens for it: add the test files, or change the
-form in `.vbw/spec.md`.
+names the form and its pathspecs, and a fix opens for it: add the test files,
+or change the form in `.vbw/spec.md`.
 
 ## `vbw prove`
 
 1. Refuses unless the current contract hash is approved.
 2. Makes a clean copy of the committed code (`HEAD`) inside the project, under
-   `.vbw/runtime/`. The copy's folder is named after the process that made it
-   (its owner, by process id), for example `.vbw/runtime/proof.48213.k3Xa9Q`.
+   `.vbw/runtime/`, or claims one an earlier command kept there and brings it
+   up to date, so it holds exactly what a fresh copy would
+   ([Kept copies](#kept-copies)). The copy's folder is a numbered slot, for
+   example `.vbw/runtime/proof.keep.1`, owned by the process using it.
    Each checked-out submodule is in it at the submodule's own `HEAD`, with its
    git-ignored files, since `vbw commit` commits there and leaves the project's
    pointer where it was (docs/workflows.md, "Submodules").
@@ -707,7 +774,8 @@ form in `.vbw/spec.md`.
    root of that copy; an unapproved command is skipped and reported, never run.
    A check whose last pass is still valid for the files it read is reused, not
    run again ([Reusing results in `vbw prove`](#reusing-results-in-vbw-prove)).
-   Then it removes the copy, also when interrupted.
+   Then it hands the copy back for the next command to claim; when interrupted,
+   it removes the copy instead.
 4. Scope: every commit of the record's own history
    ([Whose commits VBW judges](#whose-commits-vbw-judges)) with a `VBW-Plan:`
    trailer naming a plan of the current milestone must change only that plan's
@@ -874,7 +942,10 @@ usage: vbw prove [--full]
 ```
 
 `vbw prove --full` runs everything fresh: every approved check and every
-approved project command, and never the quick command. It reuses nothing. Any
+approved project command, and never the quick command. It reuses nothing.
+It claims no kept copy either: it makes fresh copies, which become the kept
+ones for the next command ([Kept copies](#kept-copies)). This is the way out
+when you doubt a kept copy. Any
 other argument is refused with the usage line, and nothing runs.
 
 A plain `vbw prove` may reuse results
@@ -960,14 +1031,93 @@ count, commit it or ignore it.
 To keep a big ignored folder out of the copy, list it under
 [`## Clean copy`](#clean-copy-clean-copy).
 
+#### Kept copies
+
+Copying a large `node_modules` can take longer than the checks themselves, so
+the clean copies are kept between commands instead of being made again each
+time. `vbw prove`, `vbw fix done` and `vbw mutate` keep each copy in a numbered
+slot, `.vbw/runtime/proof.keep.1`, `proof.keep.2` and so on: one per unit that
+runs at once, never more than `check_jobs`, and never more than the command has
+units to run. A slot's `pid` file names the process using it. A command claims
+the free slots in order (no owner, an owner that has ended, or a `pid` file
+that has stayed empty for 5 seconds: an owner that died before it wrote its
+id) and makes a new
+slot only when none is free; it never touches a slot whose owner still runs.
+When the command ends normally it hands each slot back, copy and all. When it
+is interrupted or stops on an error it removes the slots it holds, since a
+half-used copy is not trusted.
+
+Before any unit runs, a claimed copy is brought up to date, so it holds
+exactly what a copy made fresh at that moment would hold:
+
+- the committed code of `HEAD` (each submodule at its own `HEAD`), and nothing
+  uncommitted, untracked or staged from the working folder (`HEAD` detached,
+  then `git reset --hard`: a branch a unit checked out in the copy stays where
+  it is);
+- the git-ignored paths as the working folder has them now, less build folders
+  and the `## Clean copy` list: a path new to the list is copied in, a path
+  gone from it, newly listed under `## Clean copy` or no longer ignored is
+  removed, and in a path still on it only the entries that changed are
+  copied again or removed;
+- nothing an earlier unit built or wrote: `git clean -ffdx` removes every
+  other file, and inside a kept ignored path (a cache in `node_modules` or
+  `.angular`, say) each entry a unit wrote is copied again from the working
+  folder, or removed when the working folder has none.
+
+A kept ignored path counts as changed when any entry in it, in the working
+folder, changed after the copy was last brought up to date, or when its number
+of entries differs. VBW reads each entry's change time (ctime), which every
+write, rename or permission change moves and no tool can set back, so an
+install that keeps the packages' old modification times is still seen. A
+folder's own change time moves when an entry in it is added, removed or
+renamed, so the folders whose listing changed are matched to the working
+folder's and every other changed entry is copied again. A path is copied again
+whole instead when more than one in 20 of its entries changed (a clone of the
+whole path then costs less: on APFS one entry on its own costs about 25 times
+its share of a whole clone), when its number of entries differs with no
+changed entry, or when it cannot be brought up to date entry by entry (a
+read-only folder, an entry that became a folder). One
+walk of `node_modules` takes about a second; copying it again took 46 seconds
+on the project that prompted this. When any of these steps fails, or the
+project's set of submodules changed, the slot is emptied and the copy made
+fresh in it. So is a copy that is not, or no longer, a worktree made for its
+place: a copied project folder, a linked folder on its path, or a `.git` file
+naming another worktree. Git runs in a copy without `GIT_DIR`, `GIT_WORK_TREE`,
+`GIT_INDEX_FILE` or `GIT_COMMON_DIR`, so an exported one never points it at the
+working folder's repository. After it marks when a copy was brought up to date,
+and again when it is done, VBW waits for the clock to move on (at most a
+second on HFS+, which keeps whole seconds; a few milliseconds elsewhere), so a
+change in the same instant is never missed.
+`vbw prove --full` always makes fresh copies.
+
+`vbw show evidence` says what the last proof did with its copies
+(`copies: 1 kept copy claimed (0 refreshed), 0 made`; refreshed counts the
+claimed copies that needed an ignored path copied again or removed), and the
+record keeps it in `evidence.own.copy_slots` (docs/record.md). `vbw mutate`
+prints the same line after its own-work lines.
+`vbw doctor` names each kept copy with its size. The kept copies take disk space between commands (with a
+copy-on-write clone, little); to free it, remove `.vbw/runtime/proof.keep.*`
+while no VBW command runs. The size `vbw doctor` gives counts in full the
+blocks a clone shares with the working folder: on one APFS project six kept
+copies of 9.5 GB each held about 7 GB of disk in all.
+
 #### Leftover proof copies
 
-A proof killed outright can leave its copy behind. The next `vbw prove` or
-`vbw fix done` removes every leftover copy whose owner (the process named in
-the folder) has ended, together with its git worktree entry. It never removes a
-copy whose owner still runs. A copy without an owner in its name (made by an
-older VBW) goes once it is more than 24 hours old. A copy that cannot be
-removed (a locked file) leaves the result unchanged and prints one line:
+A kept copy that nothing uses goes on its own: the next `vbw prove`,
+`vbw fix done` or `vbw mutate` removes a free slot unused for more than 24
+hours, and one numbered past `check_jobs` (left from a time the setting was
+higher). It never removes a slot whose owner still runs; a slot it cannot move
+aside to remove is handed back as it is.
+
+A proof killed outright (`kill -9`) cannot remove its slot; the slot's owner
+has then ended, so the next command claims it and empties it when it cannot be
+brought up to date. Copies made by an older VBW sit in folders named after the
+process that made it (its owner, by process id), for example
+`.vbw/runtime/proof.48213.k3Xa9Q`. The next command removes each one whose
+owner has ended, together with its git worktree entry, and never one whose
+owner still runs. A copy without an owner in its name goes once it is more than
+24 hours old. A copy that cannot be removed (a locked file) leaves the result
+unchanged and prints one line:
 `vbw: cannot remove the leftover proof copy <path>; remove it by hand`.
 
 #### Links left pointing into a proof copy
@@ -1095,6 +1245,17 @@ project would put every file on it. A store an older VBW wrote loses such lists
 at its next save. Beside the store, `vbw/run-times.json` keeps each run's
 seconds alone, written with it. Time estimates read only that file, never the
 store, whose read lists can run to hundreds of MB (docs/panel.md).
+
+**A moved submodule.** A commit in a submodule runs only what read a changed
+file inside it. Git names only the submodule's folder as changed, so VBW asks
+git inside the submodule for the files that differ between the commit a run was
+made on and the current one, prefixes every path with the submodule's folder as
+the project sees it (`apps/mobile/src/comms.ts`) and judges those paths by the
+read lists exactly like a change in the project itself. A submodule whose
+commit did not move costs no git call inside it. Four cases stay unknown, and
+every check and command runs again: the recorded commit is missing from the
+submodule's repository, a submodule was added since, a submodule was removed
+since, or a nested submodule (one inside the submodule) moved.
 
 **Files a unit writes.** Build output a unit writes is removed before the next
 unit runs in its copy (see the clean copy, above), so no unit reads
@@ -1301,11 +1462,10 @@ They read `checks: N ran, M reused` and `test files: N ran, M reused`. After
   run in the project, open each proof copy's `.git` file to see whether it is a
   repository of its own, exactly as git inside the copy does. A unit running
   meanwhile counts as reading through git and runs again in the next proof.
-- A commit in a submodule runs every check and command again: git names only
-  the submodule's folder as changed, never the files inside it, so no read list
-  can vouch for a run made before. Files read inside a submodule are on the read
-  lists by their project paths (`apps/mobile/src/comms.ts`), and git run inside a
-  submodule of the copy counts as reading through git.
+- Files read inside a submodule are on the read lists by their project paths
+  (`apps/mobile/src/comms.ts`), and git run inside a submodule of the copy
+  counts as reading through git. How a moved submodule is judged is in
+  "A moved submodule", above.
 
 To run everything fresh, use `vbw prove --full`, or prove again with
 nothing committed since a passing proof (a second `vbw prove` is a deliberate re-run).
@@ -1482,6 +1642,10 @@ statement per rule) with `vbw mutate` and runs the rule's own check. Breaks of
 several rules can run side by side: each is queued (`--queue`), then `vbw mutate
 PLAN --run` runs them at once, each in its own clean copy. See
 docs/workflows.md for the command and docs/rigor.md for the levels.
+
+A break belongs to its rule by the rule's place in its requirement (`Rn.k`), not
+by its words: rewording a rule keeps its breaks, and a retired rule keeps its
+place, so the rules after it keep theirs.
 
 A task break (`taskK`) without `--check` runs the checks of the plan's own
 rules: those of the rules that name the plan and those of the requirements it

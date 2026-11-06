@@ -67,3 +67,42 @@ has_line() {
   has_line "$(section)" "space" "line number"
   section | grep -qF 'expected "- <path>"' || { echo "the refusal's wording (expected \"- <path>\" ...) is not quoted"; false; }
 }
+
+# kept: the Kept copies section of docs/proof.md (#738).
+kept() { awk '/^#### Kept copies/ {p=1; print; next} p && /^#{1,4} / {exit} p' "$PROOF"; }
+# prove_steps: the numbered steps of the vbw prove section.
+prove_steps() { awk '/^## `vbw prove`/ {p=1; next} p && /^#{1,3} / {exit} p' "$PROOF"; }
+
+@test "#738: vbw prove's step 2 says the copy is a kept slot claimed and brought up to date, and step 3 that it is handed back, removed when interrupted" {
+  has_line "$(prove_steps)" "claims one an earlier command kept"
+  has_line "$(prove_steps)" "proof.keep.1"
+  has_line "$(prove_steps)" "hands the copy back"
+  has_line "$(prove_steps)" "removes the copy"
+}
+
+@test "#738: the Kept copies section states the invariant, the slots, the owner, the change test, --full and where the figures are" {
+  [ -n "$(kept)" ] || { echo "docs/proof.md has no Kept copies section"; false; }
+  has_line "$(kept)" "pid" "process"
+  has_line "$(kept)" "never touches a slot whose owner still runs"
+  has_line "$(kept)" "interrupted" "removes the slots"
+  has_line "$(kept)" "exactly" "fresh"
+  has_line "$(kept)" "uncommitted, untracked or staged"
+  has_line "$(kept)" "no longer ignored"
+  has_line "$(kept)" "git clean -ffdx"
+  has_line "$(kept)" "change time" "ctime"
+  has_line "$(kept)" "vbw prove --full" "fresh"
+  has_line "$(kept)" "evidence.own.copy_slots"
+  has_line "$(kept)" "vbw doctor" "size"
+}
+
+@test "#738: Leftover proof copies names the sweep of kept slots: 24 hours, past check_jobs, never a running owner's" {
+  local left
+  left=$(awk '/^#### Leftover proof copies/ {p=1; next} p && /^#{1,4} / {exit} p' "$PROOF")
+  has_line "$left" "24"
+  has_line "$left" "check_jobs"
+  has_line "$left" "never removes a slot whose owner still runs"
+}
+
+@test "#738: docs/record.md documents evidence.own.copy_slots with its four fields" {
+  has_line "$(cat "$RECORD")" "copy_slots" "claimed, refreshed, made, refresh"
+}

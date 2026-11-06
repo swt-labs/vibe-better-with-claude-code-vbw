@@ -60,6 +60,17 @@ def loop_item: type == "object"
                                  and ((has("planned") | not) or .planned == true)
                                  and (.seconds | type == "number" and . > 0) and (.basis | nonempty)));
 
+# A break's rule: {req, k}, k the rule's place in its requirement (retired rules counted),
+# or the older {req, text} (R258).
+def rule_ref_ok: type == "object" and (.req | nonempty)
+  and (((keys | sort) == ["k","req"] and (.k | int_in(1; 9999))) or ((keys | sort) == ["req","text"] and (.text | nonempty)));
+
+# A break still naming its rule by text: the top schema may be declared over it while the
+# first write has not converted it yet (R258).
+def has_text_break: (.plans | type) == "array"
+  and any(.plans[]; type == "object" and (.mutations | type) == "array"
+    and any(.mutations[]; type == "object" and (.rule | type) == "object" and (.rule | has("text"))));
+
 # One recorded break of a plan (vbw mutate): a rule or a task K with what was broken,
 # the files, each check red or green and the result (a red one may carry pending: the
 # check files waiting for approval that caught it), a task with nothing to break, or a rule
@@ -69,12 +80,12 @@ def mutation_ok:
   and (if has("none") then (.none | nonempty) and (
         if has("rule")
         then (keys | sort) == ["at","head","none","rule"]
-          and (.rule | type == "object" and (keys | sort) == ["req","text"] and (.req | nonempty) and (.text | nonempty))
+          and (.rule | rule_ref_ok)
           and (.head | type == "string" and test("^[0-9a-f]{40}$"))
         else (keys | sort) == ["at","none","task"] and (.task | int_in(1; 9999)) end)
       else (keys - ["rule","task","what","files","checks","result","at","head","tree","contract","strengthened","pending"] == [])
         and (has("rule") != has("task"))
-        and ((has("rule") | not) or (.rule | type == "object" and (keys | sort) == ["req","text"] and (.req | nonempty) and (.text | nonempty)))
+        and ((has("rule") | not) or (.rule | rule_ref_ok))
         and ((has("task") | not) or (.task | int_in(1; 9999)))
         and (.what | nonempty)
         and (.files | type == "array" and length > 0 and all(.[]; safe_path))
@@ -118,7 +129,7 @@ if type != "object" then ["record must be a JSON object"] else
     ( select(($r | has("protected")) and ($r.schema | at_floor | not))
       | "protected is only for a record of schema \(schema_floor) or above" ),
     ( ($r | schema_of) as $answer
-      | select(($r.schema | at_floor) and $r.schema > $answer)
+      | select(($r.schema | at_floor) and $r.schema > $answer and (($r.schema == schema_top and ($r | has_text_break)) | not))
       # A row says how its feature is introduced in the refusal: "lead" (default "a record with ").
       | first(schema_features[] | select(.schema == $r.schema))
       | "schema \($r.schema) is only for \(.lead // "a record with ")\(.feature)" ),
@@ -213,8 +224,9 @@ if type != "object" then ["record must be a JSON object"] else
     id_rules(arr("decisions"); "^D[0-9]+$"),
 
     ( $reqs[]
-      | field_rule(["id","text","proof","status","milestone","rules","skipped","later","queued"]),
+      | field_rule(["id","text","proof","status","milestone","rules","skipped","later","queued","reworded"]),
         ( select(has("queued") and .queued != true) | "\(.id) queued can only be true" ),
+        ( select(has("reworded") and .reworded != true) | "\(.id) reworded can only be true" ),
         ( select((has("skipped") and .skipped != true) or (has("later") and .later != true)) | "\(.id) skipped and later can only be true" ),
         ( select((has("skipped") or has("later")) and .proof != "human") | "\(.id) is auto-proved and cannot be skipped" ),
         ( select(has("later") and (has("skipped") | not)) | "\(.id) moves to the next milestone only when skipped" ),
@@ -374,10 +386,24 @@ if type != "object" then ["record must be a JSON object"] else
         end ),
     ( $r.test_files
       | select(. != null)
-      | select((type == "object" and (keys == ["files","run"]) and (.run | argv)
-                and ((.run | [.[] | [match("\\{file\\}"; "g")] | length] | add) == 1)
-                and (.files | type == "array" and length > 0 and all(.[]; type == "string" and length > 0))) | not)
-      | "test_files must be {run, files}: run an argv naming {file} exactly once, files a non-empty array of git pathspecs" ),
+      # One form is {run, files}; several, or one with a name or a dir, an array of
+      # {name, dir, run, files} (docs/record.md), never one unnamed form without dir.
+      | def tf_ok: (.run | argv) and ((.run | [.[] | [match("\\{file\\}"; "g")] | length] | add) == 1)
+          and (.files | type == "array" and length > 0 and all(.[]; type == "string" and length > 0));
+        def tf_dir: . == null or (type == "string" and (split("/") as $s | (startswith("/") | not)
+          and all($s[]; . != "" and . != "." and . != "..") and $s[0] != ".vbw" and $s[0] != ".git"));
+        # The same def is in spec.jq and VBW_JQ_DEFS.
+        def pathspec_path: sub("^(:!|:\\^|:\\(exclude\\))"; "");
+        select((if type == "object" then keys == ["files","run"] and tf_ok
+          elif type == "array" then length > 0
+            and all(.[]; type == "object" and keys == ["dir","files","name","run"] and tf_ok and (.dir | tf_dir)
+              and (.name == null or (.name | type == "string" and test("^[A-Za-z0-9_-]+$")))
+              and (. as $f | $f.dir == null or all($f.files[]; pathspec_path | startswith($f.dir + "/"))))
+            and ([.[].name] | unique | length) == length
+            and (length == 1 or all(.[]; .name != null))
+            and ((length == 1 and .[0].name == null and .[0].dir == null) | not)
+          else false end) | not)
+      | "test_files must be {run, files}, or an array of named forms {name, dir, run, files}: run an argv naming {file} exactly once, files a non-empty array of git pathspecs under dir" ),
     ( $r.evidence
       | select(. != null)
       | if type != "object" then "evidence must be null or an object" else
@@ -387,9 +413,11 @@ if type != "object" then ["record must be a JSON object"] else
                     and (.passed | type == "boolean") and (.checks | results) and (.commands | results)
                     and (.scope | type == "array" and all(.[]; type == "string"))) | not)
             | "evidence needs at, contract, tree, passed, checks, commands and scope (docs/proof.md)" )
-          , ( select(has("own") and ((.own | type == "object" and (keys == ["copies","planning","record","saving","tracking","wall"])
-                    and all(.[]; nonneg)) | not))
-            | "evidence.own must be an object with exactly planning, copies, tracking, saving, record and wall, each a number of at least 0 (docs/record.md)" )
+          , ( select(has("own") and ((.own | type == "object" and ((keys - ["copy_slots"]) == ["copies","planning","record","saving","tracking","wall"])
+                    and all(del(.copy_slots)[]; nonneg)
+                    and ((has("copy_slots") | not) or (.copy_slots | type == "object" and keys == ["claimed","made","refresh","refreshed"]
+                      and all(.claimed, .made, .refreshed; type == "number" and . >= 0 and . == floor) and (.refresh | nonneg)))) | not))
+            | "evidence.own must be an object with exactly planning, copies, tracking, saving, record and wall, each a number of at least 0, and optionally copy_slots {claimed, refreshed, made, refresh}, whole numbers and seconds of at least 0 (docs/record.md)" )
           , ( select(has("undone") and ((.undone | type == "array" and all(.[]; type == "object" and (keys == ["by","commit","plan"])
                     and (.commit | type == "string" and test("^[0-9a-f]{40}$")) and (.by | type == "string" and test("^[0-9a-f]{40}$"))
                     and (.plan | type == "string" and test("^P[0-9]+\\.[0-9]+$")))) | not))

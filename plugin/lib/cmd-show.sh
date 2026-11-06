@@ -66,7 +66,7 @@ cmd_show() {
       printf '%s' "$record" | jq -r --arg q "$1" "$SHOW_JQ_DEFS"'
         . as $r | (.requirements[] | select(.id == $q)) as $req
         | "\($req.id) [\($req.proof), \($req.status)] \($req.text)",
-          ($req | rule_lines),
+          ($req | rule_lines($r)),
           "checks:", ($r.checks[] | select(.req == $q) | "  \(.id) " + check_line + (if .fix then " (added by \(.fix))" else "" end)),
           "plans:", ($r.plans[] | select(any(.reqs[]; . == $q)) | "  \(.id) \(.title) [\(.status)]")'
       printf 'commits:\n'
@@ -105,7 +105,7 @@ cmd_show() {
         . as $r
         | "requirements:",
           (.requirements[] | select(.queued | not) | . as $q | "  \(.id) [\(.proof)] \(.text)",
-            (rule_lines | "    " + .),
+            (rule_lines($r) | "    " + .),
             ($r.checks[] | select(.req == $q.id) | "    \(.id) " + check_line)),
           (([.phases[] | select(.milestone == $r.milestone.id and .tier)]) as $tp
             | if ($tp | length) > 0 then "phases:", ($tp[] | "  \(.id) \(.tier): \(.reasons | join("; "))") else empty end),
@@ -118,7 +118,8 @@ cmd_show() {
               wait_lines($r; $w)),
           "project commands:",
           (.commands | to_entries[] | "  \(.key): \(.value | argv_line)"),
-          (.test_files // empty | "  test file form: \(.run | join(" ")) (one test file per run; test files: \(.files | join(" ")))"),
+          (.test_files // empty | if type == "object" then "  test file form: \(.run | join(" ")) (one test file per run; test files: \(.files | join(" ")))"
+            else .[] | "  test file form \(.name // "unnamed")\(if .dir == null then "" else " (in \(.dir)/)" end): \(.run | join(" ")) (one test file per run; test files: \(.files | join(" ")))" end),
           (.project.results // empty | "saved test results folders: \(join(", "))"),
           (.project.leave_out // empty | "clean copy leaves out: \(join(", "))")'
       printf '%s' "$record" | jq -r '[.requirements[] | select(.queued) | "  \(.id) [\(.proof)] \(.text)"]
@@ -193,6 +194,7 @@ cmd_show() {
           (if .own == null then "  own work: not recorded" else
              def s: (. * 100 | round) as $n | "\($n / 100 | floor).\(($n % 100) | tostring | if length < 2 then "0" + . else . end)";
              .own as $o | "  own work: \(($o.planning + $o.copies + $o.tracking + $o.saving + $o.record) | s) of \($o.wall | s) s: planning \($o.planning | s), copies \($o.copies | s), read tracking \($o.tracking | s), saving \($o.saving | s), record \($o.record | s)" end),
+          (.own.copy_slots // empty | "  copies: \(.claimed) kept cop\(if .claimed == 1 then "y" else "ies" end) claimed (\(.refreshed) refreshed), \(.made) made"),
           evidence_block($budget),
           ((.checks + (.commands | map_values(select(.of_files | not))) + (.test_files // {})) | to_entries[]
             | "  \(.key) \(.value.status)\(if .value.exit != null then " exit \(.value.exit)" else "" end) \(.value.seconds | sec)s\(if .value.reused then " reused (proof of \(.value.at))" elif (.value.why // "") != "" then " ran: \(.value.why)" else " not recorded" end)",
@@ -293,7 +295,7 @@ show_contract_changes() {
 # array of plain lines (the same diff the approval question counts); needs the earlier
 # approval's snapshot.
 contract_change_lines() {
-  contract_doc "$1" | jq -c --slurpfile old "$VBW_RUNTIME/approved-contract.json" "$SHOW_JQ_DEFS"'
+  contract_doc "$1" | jq -c --slurpfile old "$VBW_RUNTIME/approved-contract.json" "$VBW_JQ_DEFS$SHOW_JQ_DEFS"'
     . as $new | $old[0] as $old
     | [ ($new.requirements | to_entries[] | select($old.requirements[.key] == null)
           | "added requirement \(.key) [\(.value.proof)] \(.value.text)"),
@@ -361,7 +363,14 @@ contract_change_lines() {
               | "\(if $oc[.key] == null then "added" else "changed" end) project command \(.key): \(.value | argv_line)"),
             ($oc | keys[] | select(. as $k | $new.commands | has($k) | not) | "removed project command \(.)")),
         (select(($old.test_files // null) != ($new.test_files // null))
-          | "test file form: \(($new.test_files // null) | if . == null then "none" else "\(.run | join(" ")) (files \(.files | join(" ")))" end)"),
+          | if ($old.test_files | type) != "array" and ($new.test_files | type) != "array" then
+              "test file form: \(($new.test_files // null) | if . == null then "none" else "\(.run | join(" ")) (files \(.files | join(" ")))" end)"
+            else ($old | tf_forms | map({key: (.name // ""), value: .}) | from_entries) as $of
+              | ($new | tf_forms | map({key: (.name // ""), value: .}) | from_entries) as $nf
+              | ($nf | to_entries[] | select($of[.key] != .value)
+                  | "\(if $of[.key] == null then "added" else "changed" end) test file form \(.value | tf_say)"),
+                ($of | to_entries[] | select($nf[.key] == null) | "removed test file form \(.key | if . == "" then "unnamed" else . end)")
+            end),
         (select($old.results != $new.results)
           | "saved test results folders: \(($new.results // []) | if length == 0 then "none" else join(", ") end) (was \(($old.results // []) | if length == 0 then "none" else join(", ") end))"),
         (select(($old.leave_out // []) != ($new.leave_out // []))
@@ -418,10 +427,14 @@ def plan_state($r): . as $p | if .status == "done"
   else .status end;
 def argv_line: map(if test("^[A-Za-z0-9_./:=@%+-]+$") then . else @sh end) | join(" ");
 # A rule is shown by its address Rn.k, its place among the requirement'"'"'s rules (T168).
-def rule_lines: if .proof == "auto" then .id as $q |
+# Under it, the breaks recorded against the rule by its place (R258), retired ones included.
+def rule_breaks($r; $q; $k): [$r.plans[].mutations[]? | select(.rule.req == $q and .rule.k == $k)
+    | if has("none") then "no code could change its outcome (\(.none))" else "\(.what): \(.result // "pending")" end]
+  | if length == 0 then "" else " [breaks: \(join("; "))]" end;
+def rule_lines($r): if .proof == "auto" then .id as $q |
     (if (.rules // []) | length == 0 then "rules not listed" else (.rules | to_entries[]
-      | if .value | has("retired") then "rule \($q).\(.key + 1) retired: \(.value.text) (\(.value.retired))"
-        else "rule \($q).\(.key + 1): \(.value.text) -> \(.value.check)" end) end)
+      | if .value | has("retired") then "rule \($q).\(.key + 1) retired: \(.value.text) (\(.value.retired))" + rule_breaks($r; $q; .key + 1)
+        else "rule \($q).\(.key + 1): \(.value.text) -> \(.value.check)" + rule_breaks($r; $q; .key + 1) end) end)
   else empty end;
 def check_line: (.run | argv_line)
   + (if (.exit // 0) != 0 then " (exit \(.exit))" else "" end)
@@ -559,7 +572,7 @@ show_work() {
        elif .tier == "deep" then "tier: deep (the mutation check asks one break per rule, plus one per task no rule covers)"
        elif .tier then "tier: \(.tier)" else empty end),
       "checks:", check_lines,
-      (def tname: if .rule then (.rule.req as $q | .rule.text as $t | ($rules | map(select(.text == $t and (.n | startswith($q + "."))))[0].n // $q)) else "task\(.task)" end;
+      (def tname: if .rule then "\(.rule.req).\(.rule.k)" else "task\(.task)" end;
        if (.plan.mutations // [] | length) > 0 then "mutations:",
          (.plan.mutations as $ms | $ms | to_entries[] | .key as $i | .value as $e | $e | if .none then (if .rule then "  \(tname): no code could change its outcome: \(.none)" else "  task\(.task): no testable behaviour: \(.none)" end)
            else (if .pending then

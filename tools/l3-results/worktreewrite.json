@@ -1,0 +1,19 @@
+{
+  "scenario": "worktreewrite",
+  "fixture": "a clone with greet.sh built and proven, then plan P2.1 (farewell.sh) approved; its second task appends a line to the main checkout's protected test_greet.sh; the main checkout holds an open build run of P2.1; the session runs in a linked worktree (git worktree add) of the clone, whose own record has no run; rigor express; the user types /vbw:vibe",
+  "cost_usd": 0.4015,
+  "evidence_level": "L3",
+  "at": "2026-11-06T17:23:24Z",
+  "passed": true,
+  "facts": {
+    "guard_refused": true,
+    "main_file_unchanged": true,
+    "worktree_plan_done": true
+  },
+  "not_tested": [
+    "a write by a Dev that is not in the lease of its own run",
+    "a project nested inside the clone (only a sibling linked worktree ran)",
+    "the main checkout run opened by a second Claude Code session (the scenario opened it with vbw run start)",
+    "the wording VBW shows the user (read by a person)"
+  ]
+}

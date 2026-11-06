@@ -53,7 +53,8 @@ facts() { jq -e "$2" "$RESULTS/$1.json" > /dev/null; }
   facts leftover '.facts.leftover_file | type == "string" and length > 0'
   facts leftover '.facts.check_flips_in_working_folder == true'
   facts leftover '.facts.proof_unchanged == true and .facts.proof_passed == true'
-  facts leftover '.facts.file_in_proof_copy == false and .facts.copy_removed == true'
+  # copy_removed: a result from before #738, when the copy was removed; copy_released: the copy is kept, held by none.
+  facts leftover '.facts.file_in_proof_copy == false and (.facts.copy_removed == true or .facts.copy_released == true)'
 }
 
 @test "R34: each scenario's result reflects only its own checks" {

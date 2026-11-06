@@ -124,13 +124,15 @@ log_calls() {
   done
 }
 
-@test "#737: without a submodule, listing the test files costs one git and one jq, as before submodules" {
+@test "#737: without a submodule, listing a form's test files costs one git, as before submodules" {
   log_calls
   # shellcheck disable=SC2016 # expanded by vbw_kernel
-  PATH="$TEST_ROOT/logbin:$PATH" vbw_kernel '. "$VBW_LIB/testfiles.sh"; : > "$TEST_ROOT/calls"
-    testfiles_ls "$(cat "$VBW_RECORD")" | tr "\0" "\n" > "$TEST_ROOT/listed"'
+  PATH="$TEST_ROOT/logbin:$PATH" vbw_kernel '. "$VBW_LIB/testfiles.sh"; specs=()
+    while IFS= read -r a; do specs+=("$a"); done < <(jq -r ".test_files.files[]" "$VBW_RECORD")
+    : > "$TEST_ROOT/calls"
+    testfiles_ls "${specs[@]}" | tr "\0" "\n" > "$TEST_ROOT/listed"'
   [ "$(tr '\n' ' ' < "$TEST_ROOT/listed")" = "tests/t_a.sh tests/t_b.sh " ] || { cat "$TEST_ROOT/listed"; false; }
-  [ "$(sort "$TEST_ROOT/calls" | tr '\n' ' ')" = "git jq " ] || { cat "$TEST_ROOT/calls"; false; }
+  [ "$(sort "$TEST_ROOT/calls" | tr '\n' ' ')" = "git " ] || { cat "$TEST_ROOT/calls"; false; }
 }
 
 @test "R167: a test file an approved check runs is not a test file of its own" {

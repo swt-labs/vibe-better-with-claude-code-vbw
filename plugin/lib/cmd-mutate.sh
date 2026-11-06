@@ -84,7 +84,7 @@ mutate_rule_none() {
     noreads=$(reads_probe "$VBW_RUNTIME" 2>&1) || true
     proofcopy_create_slots 1
     res=$(checks_run_all "$record" "$check")
-    proofcopy_remove
+    proofcopy_release
     res=$(printf '%s' "$res" | jq -c --argjson off "$([ -n "$noreads" ] && echo true || echo false)" "$PROVE_FLAT")
     proofreuse_save "$record" "$res" '{}' "$tree" "$(vbw_now)"
     printf 'ran %s once to record its read list\n' "$check"
@@ -122,8 +122,8 @@ mutate_rule_none() {
   if [ "$(printf '%s' "$verdict" | jq 'has("refuse")')" = true ]; then
     vbw_die "$(printf '%s' "$verdict" | jq -r .refuse)"
   fi
-  record_update '(.plans[] | select(.id == $p)).mutations += [{rule: {req: $q, text: $t}, none: $why, at: $at, head: $h}]' \
-    --arg p "$plan" --arg q "$req" --arg t "$(printf '%s' "$ruledoc" | jq -r .text)" --arg why "$reason" --arg at "$(vbw_now)" --arg h "$head"
+  record_update '(.plans[] | select(.id == $p)).mutations += [{rule: {req: $q, k: $k}, none: $why, at: $at, head: $h}]' \
+    --arg p "$plan" --arg q "$req" --argjson k "$rk" --arg why "$reason" --arg at "$(vbw_now)" --arg h "$head"
   printf '%s\n%s\n' "$(printf '%s' "$verdict" | jq -r .ok)" "$reason"
 }
 
@@ -151,7 +151,8 @@ mutate_time_begin() {
 }
 
 # mutate_time_say: the two lines of where the time went (R207), after the result
-# lines; nothing without a timer. Every figure is measured: the steps tile the wall.
+# lines, then the line of what the run did with its clean copies (#738); nothing
+# without a timer. Every figure is measured: the steps tile the wall.
 mutate_time_say() {
   [ -n "$PROOFTIME_FILE" ] || return 0
   prooftime_step saving
@@ -164,6 +165,9 @@ mutate_time_say() {
       "  steps of \($d.wall | s) s: copies \($d | v("copies") | s), unbroken \($d | v("unbroken") | s), "
         + ([$d.steps[] | select(.k | test("^breaks? ")) | "\(.k) \(.v | s)"] | join(", "))
         + ", waits \($d | v("waits") | s), saving \($d | v("saving") | s)"'
+  # What the run did with its clean copies (#738), as vbw show evidence says it for a proof.
+  printf '  copies: %s kept cop%s claimed (%s refreshed), %s made\n' "$PROOFCOPY_CLAIMED" \
+    "$([ "$PROOFCOPY_CLAIMED" -eq 1 ] && echo y || echo ies)" "$PROOFCOPY_REFRESHED" "$PROOFCOPY_MADE"
   prooftime_end
 }
 
@@ -225,7 +229,7 @@ cmd_mutate() {
   else
     printf '%s' "$record" | jq -e --arg p "$plan" --arg q "$req" '.plans[] | select(.id == $p) | .reqs | index($q) != null' > /dev/null \
       || vbw_die "$plan does not serve $req: choose a rule of a requirement it serves (vbw show plan $plan)"
-    ruledoc=$(printf '%s' "$record" | jq -c --arg q "$req" --argjson k "$rk" '.requirements[] | select(.id == $q) | (.rules // []) | if $k >= 1 then (.[$k - 1] // empty | {req: $q, text, check} + (if has("retired") then {retired} else {} end)) else empty end')
+    ruledoc=$(printf '%s' "$record" | jq -c --arg q "$req" --argjson k "$rk" '.requirements[] | select(.id == $q) | (.rules // []) | if $k >= 1 then (.[$k - 1] // empty | {req: $q, k: $k, text, check} + (if has("retired") then {retired} else {} end)) else empty end')
     [ -n "$ruledoc" ] || vbw_die "$req has no rule $rk: vbw show plan $plan lists the rules, numbered"
     # A retired rule (T168) keeps its address but is owed nothing.
     if printf '%s' "$ruledoc" | jq -e 'has("retired")' > /dev/null; then
@@ -354,7 +358,7 @@ $ways"
     mutate_tstep copies
     printf '%s' "$one" | jq -e 'all(.[]; .status == "pass")' > /dev/null || break
   done
-  proofcopy_remove
+  proofcopy_release
   mutate_tstep copies
   checks_end
   mutate_record "$plan" "$target" "$what" "$head" "$results" "$record" "${ruledoc:-}" "${tk:-}" \
@@ -375,6 +379,8 @@ $ways"
 mutate_record() {
   local plan="$1" target="$2" what="$3" head="$4" results="$5" record="$6" ruledoc="$7" tk="$8" filesj="$9" tree="${10}"
   local sfiles f
+  # The rule's place is the target's own Rn.k, whoever built the rule document (the queue's run too).
+  [ -z "$ruledoc" ] || ruledoc=$(printf '%s' "$ruledoc" | jq -c --argjson k "$((10#${target##*.}))" '. + {k: $k}')
   sfiles=$(printf '%s' "$record" | jq -c --arg p "$plan" "$VBW_JQ_DEFS"'strengthen_files($p)')
   # What was recorded for this target before: a survivor, if the last one was.
   local prior='' strong='[]' marks result entry pending='[]' survived=0
@@ -383,7 +389,7 @@ mutate_record() {
   printf '%s' "$marks" | jq -e 'all(.[]; . == "green")' > /dev/null && result=survivor
   if [ "$result" = red ]; then
     prior=$(printf '%s' "$record" | jq -r --arg p "$plan" --argjson rule "${ruledoc:-null}" --argjson k "${tk:-0}" '.plans[] | select(.id == $p)
-      | [(.mutations // [])[] | select(has("result") and (if $rule != null then .rule == {req: $rule.req, text: $rule.text} else .task == $k end))] | last
+      | [(.mutations // [])[] | select(has("result") and (if $rule != null then .rule == {req: $rule.req, k: $rule.k} else .task == $k end))] | last
       | if . != null and .result == "survivor" then .head else empty end' 2> /dev/null) || prior=''
     if [ -n "$prior" ]; then
       strong=$(printf '%s' "$sfiles" | jq -r '.[]' | while IFS= read -r f; do git diff --quiet "$prior" HEAD -- "$f" 2> /dev/null || printf '%s\n' "$f"; done | jq -R . | jq -sc 'map(select(length > 0))')
@@ -398,14 +404,14 @@ mutate_record() {
     if [ "$pending" != '[]' ]; then
       printf '%s' "$record" | jq -e --arg p "$plan" --arg h "$head" --argjson rule "${ruledoc:-null}" --argjson k "${tk:-0}" --argjson marks "$marks" '.plans[] | select(.id == $p)
         | any((.mutations // [])[]; has("result") and .result == "survivor" and .head != $h
-            and (if $rule != null then .rule == {req: $rule.req, text: $rule.text} else .task == $k end)
+            and (if $rule != null then .rule == {req: $rule.req, k: $rule.k} else .task == $k end)
             and ((($marks | keys) - (.checks | keys)) | length == 0))' > /dev/null && survived=1
     fi
   fi
   entry=$(jq -nc --argjson rule "${ruledoc:-null}" --argjson k "${tk:-0}" --arg what "$what" --argjson files "$filesj" \
     --argjson marks "$marks" --arg result "$result" --arg at "$(vbw_now)" --arg head "$head" --arg tree "$tree" --arg contract "$CHECK_HASH" \
     --argjson strong "$strong" --argjson pending "$pending" '
-    (if $rule != null then {rule: {req: $rule.req, text: $rule.text}} else {task: $k} end)
+    (if $rule != null then {rule: {req: $rule.req, k: $rule.k}} else {task: $k} end)
     + {what: $what, files: $files, checks: $marks, result: $result, at: $at, head: $head, tree: $tree, contract: $contract}
     + (if ($strong | length) > 0 then {strengthened: $strong} else {} end)
     + (if ($pending | length) > 0 then {pending: $pending} else {} end)')

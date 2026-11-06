@@ -78,9 +78,9 @@ question() { printf '%s\n' "$1" | sed -n 's/^approval question: //p'; }
   vbw_run show contract --changes
   [[ "$output" == *"changed requirement R1: [auto] A customer can pay -> [auto] A customer can pay by card"* ]] || { echo "$output"; false; }
   [[ "$output" != *"changed check C1"* && "$output" == *"amendments since the last approval:"* ]] || { echo "$output"; false; }
-  # Two changes: the reworded requirement and the rule the sync removes with it (T235).
+  # One change: the reworded requirement, whose rule the sync now keeps (R259).
   vbw_run show contract
-  [ "$(question "$output")" = "Approve contract $("$VBW" show contract | head -n 1 | cut -d' ' -f2)? 2 changes, 1 amendment since the last approval" ] || { question "$output"; false; }
+  [ "$(question "$output")" = "Approve contract $("$VBW" show contract | head -n 1 | cut -d' ' -f2)? 1 change, 1 amendment since the last approval" ] || { question "$output"; false; }
 }
 
 @test "R251: the approval question stays 'Approve contract <12 hex>?' and the counts come after it: '2 changes since the last approval' with no amendment, the options exactly Approve and Not yet" {

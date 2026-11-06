@@ -103,14 +103,14 @@ noreads() {
 
 # prove_passed: the record says a proof passed on the project as it is now (R175):
 # code tree, committed tree, contract and the record itself (its fingerprint
-# without the evidence, evidence.record) are as that proof left them.
+# without the evidence or schema, evidence.record) are as that proof left them.
 prove_passed() {
   local code head con fp
   code=$(vbw_kernel 'vbw_code_tree'); head=$(vbw_kernel 'vbw_head_tree')
   edit_record '.evidence = {at: "2026-10-11T00:00:00Z", contract: "0000000000000000000000000000000000000000000000000000000000000000", passed: true, checks: {}, commands: {}, scope: [], tree: "'"$code"'", head: "'"$head"'"}'
   con=$(vbw_kernel 'contract_hash "$(record_read)"')
   edit_record '.evidence.contract = "'"$con"'"'
-  fp=$(vbw_kernel 'jq -c "del(.evidence)" "$VBW_RECORD" | vbw_sha256')
+  fp=$(vbw_kernel 'jq -c "del(.evidence, .schema)" "$VBW_RECORD" | vbw_sha256')
   edit_record '.evidence.record = "'"$fp"'"'
 }
 

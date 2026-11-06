@@ -1,0 +1,22 @@
+{
+  "scenario": "queuedreq",
+  "fixture": "greet.sh in one plan P1.1 approved by the user before the session; rigor express; the user types /vbw:vibe, and once the build run is open adds requirement R2 (farewell.sh prints Goodbye, NAME!) with vbw spec add and vbw spec sync; VBW then plans and builds it after the first build",
+  "cost_usd": 0.61,
+  "evidence_level": "L3",
+  "at": "2026-11-06T17:11:35Z",
+  "passed": true,
+  "facts": {
+    "queued_during_run": true,
+    "cleared_at_run_end": true,
+    "planned_later": true,
+    "built_later": true,
+    "first_plans_kept": true,
+    "later_plan": "P2.1"
+  },
+  "not_tested": [
+    "a requirement added during a fix run",
+    "a requirement edited (not added) during a run",
+    "several requirements queued together",
+    "the wording VBW shows the user (read by a person)"
+  ]
+}

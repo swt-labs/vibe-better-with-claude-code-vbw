@@ -87,7 +87,9 @@ user_commit() {
   cmp "$OUT/C1.log" <(expected C1 50)
   cmp "$OUT/$TA_LOG" <(expected TA 30)
   [ "$(find "$OUT" -name '*.log' | wc -l | tr -d ' ')" = 2 ]
-  [ -z "$(find .vbw/runtime -maxdepth 1 \( -name 'proof.*' -o -name 'run.*' \) -print)" ]
+  # The proof copies are kept for the next command (#738), held by none.
+  [ -z "$(find .vbw/runtime -maxdepth 1 \( -name 'proof.*' ! -name 'proof.keep.*' -o -name 'run.*' \) -print)" ]
+  [ -z "$(find .vbw/runtime -path '*/proof.keep.*/pid' -print)" ]
 }
 
 @test "R195: in vbw fix done a pass removes that unit's kept file and a reused unit leaves it" {

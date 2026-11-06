@@ -1,5 +1,63 @@
 # Changelog
 
+## [2.1.26] - 2026-11-06
+
+VBW now knows Rust, proofs are kinder to your computer, and a big project can
+run more than one kind of test. The first stack pack tells VBW's agents what is
+special about Rust, and a project without Rust pays nothing for it. Much of this
+release is [@halindrome](https://github.com/halindrome)'s work: their pull
+requests #742 and #744, and their report #745. Thank you. You can help shape the
+next packs in
+[discussion #747](https://github.com/swt-labs/vibe-better-with-claude-code-vbw/discussions/747).
+
+### New
+
+- **The Rust stack pack.** A plan that touches `Cargo.toml` or a `.rs` file gets
+  it: the Lead, Dev and QA are told how to write a test ahead of its code, keep
+  `Cargo.lock` in step, limit a check to one crate and update pinned results in
+  the same change. `docs/packs.md` explains what a pack is and how to contribute
+  one.
+- **Several test runners in one project (#742).** The `## Test files` section can
+  name one form per runner, each with its own folder, so a project with several
+  subprojects gets one-file-at-a-time proofs in all of them.
+- **Clean copies are kept between commands (#744).** A proof, `vbw fix done` or a
+  mutation run keeps its copies and the next command brings them up to date
+  instead of making them again. Idle copies are removed after 24 hours.
+
+### Changed
+
+- **Your computer stays usable during a proof.** Its units run at low priority,
+  and a proof started inside another proof's unit takes one unit at a time by
+  default.
+- **Rewording a requirement keeps its rules.** The change still needs your
+  approval, and the Lead reviews the kept rules at the next plan step. Changing a
+  requirement to one only you can judge drops its rules and checks.
+- **A surviving mutation now stays with its rule when the rule is reworded,**
+  because it names the rule by place, not by text.
+
+### Fixed
+
+- **A moved git submodule no longer throws away every proof result (#745).** VBW
+  looks at what changed inside the submodule and reruns only the tests that read
+  it.
+- **Formatting Rust files stays within a Dev's own files.** Our 2.1.25 advice,
+  `cargo fmt -- <files>`, rewrites the whole crate. Devs now use `rustfmt`.
+
+### Good to know
+
+- **Rust pack coverage.** A real-user run built a Rust crate with the pack, and
+  the Dev read its text. The Lead and QA texts, nested workspaces and dependency
+  changes across lockfiles have not yet had a real-user run.
+- **Kept copies use disk space.** `vbw doctor` shows their size, which counts
+  blocks shared with your clone in full.
+
+### For you to do
+
+- Update, then restart Claude Code. Your project moves to record schema 12 on its
+  next write, so use 2.1.26 on every computer that works on the project.
+
+Sizes, for information (file bytes): kernel 881 KB (`plugin/bin/vbw` and `plugin/lib`), mods 353 KB (hooks, panel and status line), workflows 76 KB, prompts 116 KB (agents and skills), packs 4 KB.
+
 ## [2.1.25] - 2026-11-05
 
 VBW gets out of your way on big projects. Common commands are much faster, a

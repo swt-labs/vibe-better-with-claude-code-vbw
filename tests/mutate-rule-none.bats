@@ -12,7 +12,7 @@
 # fail does not matter). With no run, or a stale one, the command runs the
 # check once in a clean copy of the committed code with read tracking on,
 # records that run in the store as vbw prove would, says so, and judges that
-# list. It accepts (exit 0, {rule: {req, text}, none, at, head} written under
+# list. It accepts (exit 0, {rule: {req, k}, none, at, head} written under
 # the plan) only a run with a read list, no git flag, and no read file or
 # listed folder covered by a files entry of any plan of the requirement (done
 # or not): an entry matches a read file when it is the same path, a folder
@@ -110,7 +110,7 @@ no_reads() {
   # The limit, in the accepting line itself: a check that only tests a path is not seen.
   says "a check that only tests whether a plan file exists is not detected"
   breaks P1.1 | jq -e 'length == 1 and (.[0] | (keys | sort) == ["at", "head", "none", "rule"]
-    and .rule == {req: "R1", text: "the measurement is a decision in the record"}
+    and .rule == {req: "R1", k: 1}
     and .none == "the figures are a decision in the record, which only vbw writes"
     and (.head | test("^[0-9a-f]{40}$")) and .head == "'"$(git rev-parse HEAD)"'")' || { breaks P1.1; false; }
   # The store's run was judged: it names the record and no plan file.
@@ -187,7 +187,7 @@ no_reads() {
   "$VBW" approve > /dev/null
   run "$VBW" mutate P1.1 R1.2 --none "lists a folder no plan adds to" < /dev/null
   [ "$status" -eq 0 ] || { echo "$output"; false; }
-  breaks P1.1 | jq -e 'length == 1 and .[0].rule.text == "the other folder is listed" and .[0].none == "lists a folder no plan adds to"' || { breaks P1.1; false; }
+  breaks P1.1 | jq -e 'length == 1 and .[0].rule == {req: "R1", k: 2} and .[0].none == "lists a folder no plan adds to"' || { breaks P1.1; false; }
 }
 
 @test "R203: a run that read the project through git is refused, saying its files are unknown" {
@@ -281,7 +281,7 @@ no_reads() {
   vbw_run show plan P1.1
   [ "$status" -eq 0 ] || { echo "$output"; false; }
   good=$(cat .vbw/record.json)
-  for bad in '.checks = {C1: "red"}' '.result = "red"' '.files = ["src/pay.sh"]' '.what = "x"' 'del(.head)' '.head = "abc"' 'del(.rule.text)' '.rule = "R1.1"'; do
+  for bad in '.checks = {C1: "red"}' '.result = "red"' '.files = ["src/pay.sh"]' '.what = "x"' 'del(.head)' '.head = "abc"' 'del(.rule.k)' '.rule = "R1.1"'; do
     printf '%s\n' "$good" > .vbw/record.json
     edit_record "(.plans[] | select(.id == \"P1.1\")).mutations[0] |= ($bad)"
     vbw_run show plan P1.1

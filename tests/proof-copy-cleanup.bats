@@ -1,6 +1,8 @@
 #!/usr/bin/env bats
-# R183: a proof copy (.vbw/runtime/proof.PID.XXXXXX) names its owner process in
-# its folder name; the next vbw prove or vbw fix done removes every copy whose
+# R183, #738: a proof's copy is a kept slot (.vbw/runtime/proof.keep.N) whose pid
+# file names its owner while it runs, and a killed proof's slot is claimed by the
+# next one. A copy of an older VBW (.vbw/runtime/proof.PID.XXXXXX) names its
+# owner process in its folder name; the next vbw prove or vbw fix done removes every copy whose
 # owner has ended (with its git worktree entry, read-only folders included,
 # never following a link out), keeps a copy whose owner is alive, removes an
 # owner-less copy of an older VBW only past 24 hours, and never lets the
@@ -108,7 +110,7 @@ whole() {
 # result: the proof's outcome and what ran, as one line.
 result() { jq -c '{passed: .evidence.passed, checks: (.evidence.checks | map_values({status, reused}))}' .vbw/record.json; }
 
-@test "R183: a new proof copy names its owner process in its folder name" {
+@test "R183 #738: a proof's copy is a kept slot whose pid file names its owner process while it runs" {
   HOLD=1 "$VBW" prove > "$TEST_ROOT/out" 2>&1 &
   local pid=$! i d n=0
   for i in $(seq 1 100); do [ "$(count start)" -ge 1 ] && break; sleep 0.1; done
@@ -116,35 +118,34 @@ result() { jq -c '{passed: .evidence.passed, checks: (.evidence.checks | map_val
   for d in .vbw/runtime/proof.*; do
     [ -e "$d" ] || continue
     n=$((n + 1))
-    [[ "${d##*/}" =~ ^proof\.${pid}\.[A-Za-z0-9]+$ ]] || { echo "copy ${d##*/} does not name its owner $pid"; false; }
+    [[ "${d##*/}" =~ ^proof\.keep\.[0-9]+$ ]] || { echo "copy ${d##*/} is not a kept slot"; false; }
+    [ "$(cat "$d/pid")" = "$pid" ] || { echo "slot ${d##*/} does not name its owner $pid"; false; }
   done
   [ "$n" -ge 1 ]
   touch "$MARK/release"
   wait "$pid"
 }
 
-@test "R183: after a proof killed with kill -9, the next proof removes its copy and worktree entry; a live process's copy stays whole" {
+@test "R183 #738: after a proof killed with kill -9, the next proof claims its slot with one worktree entry; a live process's copy stays whole" {
   HOLD=1 "$VBW" prove > "$TEST_ROOT/out" 2>&1 &
-  local pid=$! i d dead=()
+  local pid=$! i
   for i in $(seq 1 100); do [ "$(count start)" -ge 1 ] && break; sleep 0.1; done
   [ "$(count start)" -ge 1 ]
-  for d in .vbw/runtime/proof.*; do [ -e "$d" ] && dead+=("${d##*/}"); done
-  [ ${#dead[@]} -ge 1 ]
   kill -9 "$pid"
   wait "$pid" || true
   # The orphaned check finishes by itself.
   touch "$MARK/release"
   for i in $(seq 1 100); do [ "$(count end)" -ge "$(count start)" ] && break; sleep 0.1; done
   sleep 0.5
-  for d in "${dead[@]}"; do
-    { [ -d ".vbw/runtime/$d" ] && wt_listed "$d"; } || { echo "the killed proof left no copy $d"; false; }
-  done
+  [ "$(cat .vbw/runtime/proof.keep.1/pid)" = "$pid" ] || { echo "the killed proof left no owned slot"; false; }
   live_pid
   mkcopy "proof.$PID_LIVE.Live01"
-  vbw_run prove
+  vbw_run prove --full
   [ "$status" -eq 0 ] || { echo "$output"; false; }
   [ "$(jq -r .evidence.passed .vbw/record.json)" = true ]
-  for d in "${dead[@]}"; do gone "$d"; done
+  [ ! -e .vbw/runtime/proof.keep.1/pid ] || { echo "the dead owner's slot is still owned"; false; }
+  [ ! -e .vbw/runtime/proof.keep.2 ] || { echo "a new slot was made beside the dead owner's"; false; }
+  [ "$(git worktree list --porcelain | grep -c '/proof.keep.1/tree')" -eq 1 ] || { git worktree list; false; }
   whole "proof.$PID_LIVE.Live01"
 }
 

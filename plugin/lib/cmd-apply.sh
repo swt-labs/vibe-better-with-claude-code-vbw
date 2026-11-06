@@ -44,11 +44,15 @@
 # doc brings (their signals see the whole milestone); every other rule above
 # holds for the merged whole.
 
-# Every mode takes an optional "test_files": {run, files} (R167): the Lead's proposal of how the
-# project's test runner runs one test file (run: an argv naming {file} exactly once; files: git
-# pathspecs without spaces). A bad one is refused before anything changes. A good one is written as
-# the spec's "## Test files" section, replacing an older one, and the spec is synced; the user
-# approves the form with the contract, and VBW never runs one that is not approved.
+# Every mode takes an optional "test_files" (R167): the Lead's proposal of how the project's test
+# runners run one test file. Either one form {run, files, dir?}, or an array of named forms
+# {name, run, files, dir?} (#735), one per runner: run an argv naming {file} exactly once, files
+# git pathspecs without spaces, dir the folder the form's runs start in ({file} is then the path
+# relative to it, and every pathspec lies under it). A bad one is refused before anything changes:
+# the section it becomes is parsed as the spec's own (docs/proof.md), and a committed file two
+# forms match is refused. A good one is written as the spec's "## Test files" section, replacing
+# an older one, and the spec is synced; the user approves the forms with the contract, and VBW
+# never runs one that is not approved.
 
 # shellcheck source=rigor.sh
 . "$VBW_LIB/rigor.sh"
@@ -90,7 +94,8 @@ apply_next() {
     "the contract is not approved"*) echo "send the change with vbw apply --patch, then the user approves it (vbw show contract)" ;;
     "a patch carries plans"*) echo "remove \"phases\" from the document, or send it to a full apply (vbw apply) to change phases" ;;
     "--add needs"*) echo "send --add a JSON object whose \"phases\" array holds the new phases, with their plans, checks and rules" ;;
-    "test_files must be"*) echo "give test_files as {\"run\": [argv naming {file} once], \"files\": [git pathspecs]}, or leave it out" ;;
+    "test_files must be"*) echo "give test_files as {\"run\": [argv naming {file} once], \"files\": [git pathspecs]}, or as [{\"name\": \"webapp\", \"dir\": \"apps/webapp\", \"run\": [...], \"files\": [...]}] with one form per test runner, or leave it out" ;;
+    "test_files: "*) echo "change test_files as the message says (docs/proof.md, Test files), or leave it out" ;;
     "no .vbw/spec.md"*) echo "restore .vbw/spec.md (git checkout -- .vbw/spec.md), then send the document again" ;;
     "apply needs a JSON object"*) echo "pipe one JSON object into vbw apply: {\"phases\": [], \"plans\": [], \"checks\": []}" ;;
     "apply needs phases"*) echo "give phases, plans and checks as arrays, and rules as [{req, text, check, plan?}] if present" ;;
@@ -179,22 +184,35 @@ apply_refuse() { vbw_die "$MODE_NAME refused: $1"$'\n'"Next: $(apply_next "$1")"
 # apply_internal MESSAGE: an internal failure; its next step is the same for every kind.
 apply_internal() { vbw_die "internal error: $1"$'\n'"Next: run vbw doctor, then send the document again; report it if it fails again"; }
 
-# apply_write_test_files FORM: the spec's "## Test files" section becomes FORM (replacing an
-# older one, wherever it stands), then the spec is synced. The run line is plain words when
-# they parse back to the same argv, else a JSON array.
-apply_write_test_files() {
-  local spec="$VBW_DIR/spec.md" tmp
-  # cmd_apply refused earlier when the spec was missing; the folder was just written to.
-  tmp=$(mktemp "$VBW_RUNTIME/spec.XXXXXX") || apply_internal "cannot create a temporary file in $VBW_RUNTIME"
-  vbw_guard_add file "$tmp"
+# apply_test_files_spec FORM: APPLY_TF_SPEC, a scratch copy of the spec whose "## Test files"
+# section is FORM (replacing an older one, wherever it stands), refused unless it parses and no
+# committed file is matched by two forms. A run line is plain words when they parse back to the
+# same argv, else a JSON array.
+apply_test_files_spec() {
+  local spec="$VBW_DIR/spec.md" parsed hit
+  mkdir -p "$VBW_RUNTIME" || apply_internal "cannot create $VBW_RUNTIME"
+  APPLY_TF_SPEC=$(mktemp "$VBW_RUNTIME/spec.XXXXXX") || apply_internal "cannot create a temporary file in $VBW_RUNTIME"
+  vbw_guard_add file "$APPLY_TF_SPEC"
   awk 'BEGIN { skip = 0 }
     /^#{1,2}[ \t]/ { skip = (tolower($0) ~ /^##[ \t]+test files[ \t\r]*$/) }
-    !skip { print }' "$spec" > "$tmp"
-  [ ! -s "$tmp" ] || [ -z "$(tail -c 1 "$tmp")" ] || printf '\n' >> "$tmp"
-  printf '%s' "$1" | jq -r '"\n## Test files\n\n- run: \(.run | if all(.[]; test("\\s") | not) and (.[0] | startswith("[") | not) then join(" ") else tojson end)\n- files: \(.files | join(" "))"' >> "$tmp"
-  cat "$tmp" > "$spec"
-  rm -f "$tmp"
-  vbw_guard_drop "$tmp"
+    !skip { print }' "$spec" > "$APPLY_TF_SPEC"
+  [ ! -s "$APPLY_TF_SPEC" ] || [ -z "$(tail -c 1 "$APPLY_TF_SPEC")" ] || printf '\n' >> "$APPLY_TF_SPEC"
+  printf '%s' "$1" | jq -r 'def runline: if all(.[]; test("\\s") | not) and (.[0] | startswith("[") | not) then join(" ") else tojson end;
+    "\n## Test files\n",
+    (if type == "object" then (if .dir == null then empty else "- dir: \(.dir)" end), "- run: \(.run | runline)", "- files: \(.files | join(" "))"
+     else .[] | "- \(.name):", (if .dir == null then empty else "  - dir: \(.dir)" end), "  - run: \(.run | runline)", "  - files: \(.files | join(" "))" end)' >> "$APPLY_TF_SPEC"
+  parsed=$(jq -Rs -f "$VBW_LIB/spec.jq" < "$APPLY_TF_SPEC") || apply_internal "cannot read the test-file form back"
+  printf '%s' "$parsed" | jq -e '.errors == []' > /dev/null \
+    || apply_refuse "test_files: $(printf '%s' "$parsed" | jq -r '.errors[0] | sub("^line [0-9]+: "; "")')"
+  hit=$(spec_test_files_refusal "$parsed")
+  [ -z "$hit" ] || apply_refuse "test_files: ${hit#*$'\t'}"
+}
+
+# apply_write_test_files: the spec becomes APPLY_TF_SPEC, then it is synced.
+apply_write_test_files() {
+  cat "$APPLY_TF_SPEC" > "$VBW_DIR/spec.md"
+  rm -f "$APPLY_TF_SPEC"
+  vbw_guard_drop "$APPLY_TF_SPEC"
   spec_sync "$(spec_parse)"
 }
 
@@ -289,13 +307,17 @@ cmd_apply() {
   doc=$(cat)
   if printf '%s' "$doc" | jq -e 'type == "object" and has("test_files")' > /dev/null 2>&1; then
     form=$(printf '%s' "$doc" | jq -c '.test_files')
-    printf '%s' "$form" | jq -e 'type == "object" and (keys == ["files", "run"])
-        and (.run | type == "array" and length > 0 and all(.[]; type == "string" and length > 0)
+    printf '%s' "$form" | jq -e 'def form: (.run | type == "array" and length > 0 and all(.[]; type == "string" and length > 0)
              and ([.[] | [match("\\{file\\}"; "g")] | length] | add) == 1)
-        and (.files | type == "array" and length > 0 and all(.[]; type == "string" and length > 0 and (test("\\s") | not)))' > /dev/null 2>&1 \
-      || apply_refuse "test_files must be {run, files}: run an argv naming {file} exactly once, files a non-empty array of git pathspecs without spaces"
+        and (.files | type == "array" and length > 0 and all(.[]; type == "string" and length > 0 and (test("\\s") | not)))
+        and ((.dir // "x") | type == "string" and length > 0 and (test("\\s") | not));
+      if type == "object" then (keys - ["dir"]) == ["files", "run"] and form
+      else type == "array" and length > 0 and all(.[]; type == "object" and (keys - ["dir"]) == ["files", "name", "run"]
+        and (.name | type == "string" and test("^[A-Za-z0-9_-]+$") and . != "run" and . != "files" and . != "dir") and form) end' > /dev/null 2>&1 \
+      || apply_refuse "test_files must be {run, files, dir?}, or an array of named forms {name, run, files, dir?}: run an argv naming {file} exactly once, files a non-empty array of git pathspecs without spaces, dir a folder, name letters, digits, _ or -"
     # Judged before anything is written: the form goes into the spec after the record.
     [ -f "$VBW_DIR/spec.md" ] || apply_refuse "no .vbw/spec.md to write the test-file form into"
+    apply_test_files_spec "$form"
     doc=$(printf '%s' "$doc" | jq -c 'del(.test_files)')
   fi
   # A rule address (T168) reaches a rule already in the record: only a patch takes one.
@@ -528,11 +550,13 @@ cmd_apply() {
         then .rules = [.rules | to_entries[] | .key as $k | .value | rule_edit($ops; "\($q).\($k + 1)")] else . end)
     | if $d | has("rules") then .requirements |= map(. as $q
         | if any($d.rules[]; .req == $q.id) then .rules = place($q.rules // []; [$d.rules[] | select(.req == $q.id) | {text, check} + (if has("plan") then {plan} else {} end)]) else . end)
-      else . end'
+      else . end
+    # A full apply is the Lead review of the reworded requirements the phases cover: the mark goes, the rules stay.
+    | if $patch or $add then . else .requirements |= map(. as $q | if any($d.phases[]; (.reqs // []) | index($q.id) != null) then del(.reworded) else . end) end'
   # The merged record is checked here, so a violation names the mode too; record_update checks it again.
   merged=$(mktemp "$VBW_RUNTIME/apply.XXXXXX") || vbw_die "cannot create a temporary file in $VBW_RUNTIME"$'\n'"Next: check that $VBW_RUNTIME exists and can be written to, then run vbw apply again"
   vbw_guard_add file "$merged"
-  jq "$filter | .protected = ([(.checks // [])[]? | objects | .files? | arrays | .[] | strings] | unique)" --slurpfile f_d "$df" --slurpfile f_tiers "$tf" --slurpfile f_pd "$pf" --slurpfile f_ops "$of" --argjson patch "$patch" --argjson add "$add" --arg mode "$(printf '%s' "$record" | jq -r '.settings.rigor // "auto"')" "$VBW_RECORD" > "$merged" 2> /dev/null \
+  jq -L "$VBW_LIB" "include \"record-schema\"; $filter | .protected = ([(.checks // [])[]? | objects | .files? | arrays | .[] | strings] | unique) | .schema = schema_of" --slurpfile f_d "$df" --slurpfile f_tiers "$tf" --slurpfile f_pd "$pf" --slurpfile f_ops "$of" --argjson patch "$patch" --argjson add "$add" --arg mode "$(printf '%s' "$record" | jq -r '.settings.rigor // "auto"')" "$VBW_RECORD" > "$merged" 2> /dev/null \
     || apply_internal "cannot merge the plan into the record"
   # Judged on the merged record: a mixed requirement (R212) and a check owned by two plans not yet
   # built, one after the other (R211) or beside each other in a wave (R215); all leave the record unchanged.
@@ -575,5 +599,5 @@ cmd_apply() {
   vbw_guard_drop "$of"
   jq -r '.milestone.id as $m | ([.phases[] | select(.milestone == $m) | .id]) as $mine
     | "applied \($mine | length) phases, \([.plans[] | select(.phase as $p | any($mine[]; . == $p))] | length) plans, \(.checks | length) checks in all"' "$VBW_RECORD"
-  [ "$form" = null ] || apply_write_test_files "$form"
+  [ "$form" = null ] || apply_write_test_files
 }

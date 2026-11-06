@@ -170,7 +170,7 @@ mutate_queue_run() {
     done
   done
   mutate_tstep copies
-  proofcopy_remove
+  proofcopy_release
   mutate_tstep copies
   checks_end
   # The results, recorded in queue order as the single form records one; the
