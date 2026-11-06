@@ -68375,13 +68375,159 @@
       "after": [
         "P209.1"
       ],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "plugin/packs/rust/pack.json: {\"name\": \"rust\", \"patterns\": [\"Cargo.toml\", \"*.rs\"]} and nothing else in the folder but lead.md, dev.md and qa.md",
         "the three role texts, each written for its reader (Lead: how to cut plans and checks; Dev: how to build and commit; QA: what to verify) and each naming the four first contents and the path rule: a test target written before its code is declared test = false in Cargo.toml so whole-crate commands stay green while cargo test --test NAME still fails red, and the declaration is removed once it compiles; a dependency added to a crate updates the Cargo.lock of every workspace that path-depends on it, in the same commit; a check runs one crate with -j 2 and the whole workspace only as a check marked alone; a behaviour change re-pins baselines, generated pages and digests in the same change; paths in a nested workspace are written from the project root",
         "cmd-next.sh, the command's --json answer only (beside root): read every $VBW_PLUGIN/packs/*/pack.json by glob and, inside the one jq call that already adds root, compute packs.plans (plan id -> the packs whose patterns match one of its files; a pattern without a slash matches the file's basename), packs.phases (a phase's plans' packs) and, at the plan action, packs.project (the tracked files from git ls-files -z matched the same way), plus packs_root ($VBW_PLUGIN/packs); when nothing matches the answer carries neither packs nor packs_root",
         "no cost without a match: no extra jq process whether or not a pack folder exists (tests/packs.bats counts them), no pack file read beyond the manifests, and the answer for a project without Rust is as today"
+      ],
+      "mutations": [
+        {
+          "rule": {
+            "req": "R261",
+            "k": 1
+          },
+          "what": "pack.json pattern *.rs changed to *.rsx",
+          "files": [
+            "plugin/packs/rust/pack.json"
+          ],
+          "checks": {
+            "C598": "red"
+          },
+          "result": "red",
+          "at": "2026-11-06T13:14:42Z",
+          "head": "0c501a8a1e47a69213a57cc15c18fe9f8d068540",
+          "tree": "bd429b15e94bb860d8474a4538667e656c2e9eae",
+          "contract": "fd7bfb3b23835dd08e5c06e13a2e3d325d839477f58b34fb4b625f8491ce0b9d"
+        },
+        {
+          "rule": {
+            "req": "R261",
+            "k": 2
+          },
+          "what": "lead.md loses test = false",
+          "files": [
+            "plugin/packs/rust/lead.md"
+          ],
+          "checks": {
+            "C598": "red"
+          },
+          "result": "red",
+          "at": "2026-11-06T13:14:44Z",
+          "head": "0c501a8a1e47a69213a57cc15c18fe9f8d068540",
+          "tree": "bd429b15e94bb860d8474a4538667e656c2e9eae",
+          "contract": "fd7bfb3b23835dd08e5c06e13a2e3d325d839477f58b34fb4b625f8491ce0b9d"
+        },
+        {
+          "rule": {
+            "req": "R261",
+            "k": 3
+          },
+          "what": "qa.md gets agent frontmatter name:",
+          "files": [
+            "plugin/packs/rust/qa.md"
+          ],
+          "checks": {
+            "C598": "red"
+          },
+          "result": "red",
+          "at": "2026-11-06T13:14:46Z",
+          "head": "0c501a8a1e47a69213a57cc15c18fe9f8d068540",
+          "tree": "bd429b15e94bb860d8474a4538667e656c2e9eae",
+          "contract": "fd7bfb3b23835dd08e5c06e13a2e3d325d839477f58b34fb4b625f8491ce0b9d"
+        },
+        {
+          "rule": {
+            "req": "R261",
+            "k": 4
+          },
+          "what": "packs.phases always empty",
+          "files": [
+            "plugin/lib/cmd-next.sh"
+          ],
+          "checks": {
+            "C598": "red"
+          },
+          "result": "red",
+          "at": "2026-11-06T13:14:48Z",
+          "head": "0c501a8a1e47a69213a57cc15c18fe9f8d068540",
+          "tree": "bd429b15e94bb860d8474a4538667e656c2e9eae",
+          "contract": "fd7bfb3b23835dd08e5c06e13a2e3d325d839477f58b34fb4b625f8491ce0b9d"
+        },
+        {
+          "rule": {
+            "req": "R261",
+            "k": 5
+          },
+          "what": "packs key emitted even with no match",
+          "files": [
+            "plugin/lib/cmd-next.sh"
+          ],
+          "checks": {
+            "C598": "red"
+          },
+          "result": "red",
+          "at": "2026-11-06T13:14:50Z",
+          "head": "0c501a8a1e47a69213a57cc15c18fe9f8d068540",
+          "tree": "bd429b15e94bb860d8474a4538667e656c2e9eae",
+          "contract": "fd7bfb3b23835dd08e5c06e13a2e3d325d839477f58b34fb4b625f8491ce0b9d"
+        },
+        {
+          "rule": {
+            "req": "R261",
+            "k": 6
+          },
+          "what": "tracked files never read",
+          "files": [
+            "plugin/lib/cmd-next.sh"
+          ],
+          "checks": {
+            "C598": "red"
+          },
+          "result": "red",
+          "at": "2026-11-06T13:14:52Z",
+          "head": "0c501a8a1e47a69213a57cc15c18fe9f8d068540",
+          "tree": "bd429b15e94bb860d8474a4538667e656c2e9eae",
+          "contract": "fd7bfb3b23835dd08e5c06e13a2e3d325d839477f58b34fb4b625f8491ce0b9d"
+        },
+        {
+          "rule": {
+            "req": "R261",
+            "k": 7
+          },
+          "what": "only the rust manifest is read",
+          "files": [
+            "plugin/lib/cmd-next.sh"
+          ],
+          "checks": {
+            "C598": "red"
+          },
+          "result": "red",
+          "at": "2026-11-06T13:14:54Z",
+          "head": "0c501a8a1e47a69213a57cc15c18fe9f8d068540",
+          "tree": "bd429b15e94bb860d8474a4538667e656c2e9eae",
+          "contract": "fd7bfb3b23835dd08e5c06e13a2e3d325d839477f58b34fb4b625f8491ce0b9d"
+        },
+        {
+          "rule": {
+            "req": "R261",
+            "k": 8
+          },
+          "what": "sourcing next with a rust pack writes a key into the record",
+          "files": [
+            "plugin/lib/cmd-next.sh"
+          ],
+          "checks": {
+            "C598": "red"
+          },
+          "result": "red",
+          "at": "2026-11-06T13:14:56Z",
+          "head": "0c501a8a1e47a69213a57cc15c18fe9f8d068540",
+          "tree": "bd429b15e94bb860d8474a4538667e656c2e9eae",
+          "contract": "fd7bfb3b23835dd08e5c06e13a2e3d325d839477f58b34fb4b625f8491ce0b9d"
+        }
       ]
     },
     {
@@ -68401,12 +68547,63 @@
         "P208.3",
         "P209.1"
       ],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "the vibe skill: the router passes the next JSON's top-level packs and packs_root into every workflow's args, in the sentence that already passes rigor, effort, profile and root",
         "building.js: per plan, a note telling the Dev to read ${args.packs_root}/<pack>/dev.md first, computed from args.packs.plans[id] and the empty string when the plan has no pack, so a plan without one gets today's prompt byte for byte; the prompt's start 'Execute VBW plan ${id}. Start with: vbw show plan ${id}; then ${SINCE(id)}${mutate}' is unchanged",
         "verifying.js and planning.js: QA's prompt per phase names the qa.md of each pack in args.packs.phases[id]; the Lead's plan prompt names the lead.md of each pack in args.packs.project; no workflow reads a file (paths only)"
+      ],
+      "mutations": [
+        {
+          "rule": {
+            "req": "R261",
+            "k": 9
+          },
+          "what": "dev.md renamed in building.js",
+          "files": [
+            "plugin/workflows/building.js"
+          ],
+          "checks": {
+            "C599": "red"
+          },
+          "result": "red",
+          "at": "2026-11-06T13:07:52Z",
+          "head": "2ba9db59f46080e7f0f02a512fb48193905e268e",
+          "tree": "fa5f073bedb5e309f5a4bf99d9867ee7588476bc",
+          "contract": "fd7bfb3b23835dd08e5c06e13a2e3d325d839477f58b34fb4b625f8491ce0b9d"
+        },
+        {
+          "task": 1,
+          "what": "packs_root dropped from router sentence",
+          "files": [
+            "plugin/skills/vibe/SKILL.md"
+          ],
+          "checks": {
+            "C599": "red"
+          },
+          "result": "red",
+          "at": "2026-11-06T13:08:23Z",
+          "head": "66de565a91e01ecd2dce10bcc8a8ff69fd15ff41",
+          "tree": "069dea94276e27ddb3b7a5cf131f21b2efe14fc2",
+          "contract": "fd7bfb3b23835dd08e5c06e13a2e3d325d839477f58b34fb4b625f8491ce0b9d"
+        },
+        {
+          "task": 3,
+          "what": "qa.md and lead.md renamed",
+          "files": [
+            "plugin/workflows/verifying.js",
+            "plugin/workflows/planning.js"
+          ],
+          "checks": {
+            "C599": "red"
+          },
+          "result": "red",
+          "at": "2026-11-06T13:08:40Z",
+          "head": "66de565a91e01ecd2dce10bcc8a8ff69fd15ff41",
+          "tree": "069dea94276e27ddb3b7a5cf131f21b2efe14fc2",
+          "contract": "fd7bfb3b23835dd08e5c06e13a2e3d325d839477f58b34fb4b625f8491ce0b9d"
+        }
       ]
     },
     {
@@ -86492,6 +86689,17 @@
         "ended": "2026-11-06T13:05:26Z",
         "cost": {
           "usd": 0.770687
+        }
+      },
+      {
+        "id": "build-20261106T130546Z",
+        "kind": "build",
+        "session": "0ee781c3-c5b6-4a6c-889f-04b89f1fba4a",
+        "milestone": "M53",
+        "started": "2026-11-06T13:05:46Z",
+        "ended": "2026-11-06T13:15:28Z",
+        "cost": {
+          "usd": 1.227884
         }
       }
     ],
