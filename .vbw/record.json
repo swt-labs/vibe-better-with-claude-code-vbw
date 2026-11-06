@@ -75575,6 +75575,27 @@
       "id": "D613",
       "text": "M53's plan order: R256 and R257 first (proof load), then R258, R259, R260, then R261 (the pack), R262 last; halindrome's PRs #742 and #744 are merged into plow/2.1.26 between the first two groups once their CI is green and their real-user scenarios pass. Probe 2026-11-05: test = false on a [[test]] target is skipped by cargo test and cargo clippy --all-targets, while cargo test --test NAME still fails by its compile error",
       "at": "2026-11-05T18:34:39Z"
+    },
+    {
+      "id": "D614",
+      "text": "M53's break-by-place schema row follows halindrome's PRs: #742 takes 10 and #744 takes 11 when they land between P207 and P208, so P208.1 moves to 12, its pins and tests included (lead edit at that merge)",
+      "at": "2026-11-06T04:06:57Z"
+    },
+    {
+      "id": "D615",
+      "at": "2026-11-06T09:43:12Z",
+      "text": "Contract approved: 251 requirements, 596 checks, 615 plans (1139acc64da5)",
+      "plans": [
+        "P207.1",
+        "P208.1",
+        "P208.2",
+        "P208.3",
+        "P209.1",
+        "P210.1",
+        "P210.2",
+        "P210.3",
+        "P211.1"
+      ]
     }
   ],
   "commands": {
