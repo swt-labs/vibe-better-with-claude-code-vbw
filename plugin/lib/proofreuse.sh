@@ -315,11 +315,55 @@ proofreuse_annotate() {
       + (if $w[0][$n] and .value.status != "skipped" then {why: $w[0][$n]} else {} end)))'
 }
 
+# proofreuse_raw_names RAW PREFIX NESTED: git's raw diff-tree -z output in RAW as the
+# NUL-separated "status path" pairs of a name-status diff, each path prefixed with PREFIX.
+# A submodule entry (mode 160000) that moved is printed as "G path old new" when NESTED is
+# empty; any other change of one (added, removed, a type change), and any at all when
+# NESTED is set, makes jq fail: the tree stays unknown.
+proofreuse_raw_names() {
+  jq -Rs -j --arg pre "$2" --arg nested "$3" 'split("\u0000") | .[0:-1] as $F
+    | range(0; ($F | length); 2) as $i
+    | ($F[$i] | ltrimstr(":") | split(" ")) as $m | $F[$i + 1] as $p
+    | if $m[0] == "160000" or $m[1] == "160000" then
+        (if $nested == "" and $m[4] == "M" and $m[0] == $m[1] then "G\u0000\($pre)\($p)\u0000\($m[2])\u0000\($m[3])\u0000"
+         else error("submodule") end)
+      else "\($m[4])\u0000\($pre)\($p)\u0000" end' "$1"
+}
+
+# proofreuse_tree_diff TREE HEAD OUT: appends to OUT the name-status pairs (status, path) of
+# the files that differ between TREE and HEAD; fails when the tree is unknown. One diff-tree
+# for the project. Only when it shows a submodule's commit changed does git run inside that
+# submodule, between the recorded commit and the current one, and its paths (prefixed with
+# the submodule's folder as the project sees it) join the list, so the read-list rule judges
+# them like any top-level change. Unknown (fail): the recorded commit missing from the
+# submodule's repository, a submodule added or removed, a nested submodule moved.
+proofreuse_tree_diff() {
+  local raw=$3.raw conv=$3.conv s p old new
+  git -C "$VBW_ROOT" diff-tree -z -r --no-renames --raw "$1" "$2" > "$raw" 2> /dev/null || return 1
+  proofreuse_raw_names "$raw" "" "" > "$conv" 2> /dev/null || return 1
+  exec 3< "$conv"
+  while IFS= read -r -d '' s <&3; do
+    if [ "$s" = G ]; then
+      IFS= read -r -d '' p <&3
+      IFS= read -r -d '' old <&3
+      IFS= read -r -d '' new <&3
+      [ -e "$VBW_ROOT/$p/.git" ] || { exec 3<&-; return 1; }
+      git -C "$VBW_ROOT/$p" diff-tree -z -r --no-renames --raw "$old" "$new" > "$raw" 2> /dev/null || { exec 3<&-; return 1; }
+      proofreuse_raw_names "$raw" "$p/" nested >> "$3" 2> /dev/null || { exec 3<&-; return 1; }
+    else
+      IFS= read -r -d '' p <&3
+      printf '%s\0%s\0' "$s" "$p" >> "$3"
+    fi
+  done
+  exec 3<&-
+}
+
 # proofreuse_diffs HEAD: sets PROOFREUSE_DIFFS, a JSON object recorded tree ->
 # the files that differ between that tree and the committed code HEAD
 # ([{s: status letter, p: path}]), or null when the tree is unknown. One git
-# diff-tree per distinct tree of PROOFREUSE_STORE. Cached for the same store
-# and head, so planning and the proof's causes share it.
+# diff-tree per distinct tree of PROOFREUSE_STORE (proofreuse_tree_diff says
+# what a moved submodule adds). Cached for the same store and head, so
+# planning and the proof's causes share it.
 proofreuse_diffs() {
   local dir tree
   if [ -n "$PROOFREUSE_DIFFS" ] && [ "$PROOFREUSE_DIFFS_HEAD" = "$1" ] && [ "$PROOFREUSE_DIFFS_STORE" = "${PROOFREUSE_STORE-}" ]; then
@@ -328,17 +372,12 @@ proofreuse_diffs() {
   dir=$(proofreuse_scratch)
   vbw_guard_add dir "$dir"
   : > "$dir/stream"
-  # A submodule moved between the trees (vbw_head_tree counts it at its own HEAD)
-  # makes the code that tree's runs ran on unknown: git lists only the submodule's
-  # folder, never the files that changed inside it, so no read list can vouch.
-  local subs=() p
-  while IFS= read -r -d '' p; do subs+=("$p"); done < <(vbw_subs)
-  # Per tree: the tree, the name-status pairs git printed, then =OK or =FAIL (a status is never "=").
+  # Per tree: the tree, the name-status pairs, then =OK or =FAIL (a status is never "=").
   while IFS= read -r -d '' tree; do
     printf '%s\0' "$tree" >> "$dir/stream"
-    if [ ${#subs[@]} -gt 0 ] && ! git -C "$VBW_ROOT" diff-tree -r -z --quiet "$tree" "$1" -- "${subs[@]}" 2> /dev/null; then
-      printf '=FAIL\0' >> "$dir/stream"
-    elif git -C "$VBW_ROOT" diff-tree -z -r --no-renames --name-status "$tree" "$1" >> "$dir/stream" 2> /dev/null; then
+    : > "$dir/one"
+    if proofreuse_tree_diff "$tree" "$1" "$dir/one"; then
+      cat "$dir/one" >> "$dir/stream"
       printf '=OK\0' >> "$dir/stream"
     else
       printf '=FAIL\0' >> "$dir/stream"
