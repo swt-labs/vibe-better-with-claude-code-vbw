@@ -109,3 +109,15 @@ breaks() { jq -c '[.plans[] | select(.id == "P1.1") | .mutations[]]' .vbw/record
     and (.[0].rule == {req: "R1", k: 1}) and ((.[0].strengthened // []) | index("tests/pay.sh"))' .vbw/record.json \
     || { echo "the red break does not name the strengthened check file:"; breaks; false; }
 }
+
+@test "R258: a record whose breaks still name their rule by text counts them before its first write: vbw show plan numbers the break and vbw plan done accepts the plan" {
+  red R1.1
+  red R1.2
+  jq '.schema = 8 | .plans[0].mutations |= map(.rule = {req: .rule.req, text: (if .rule.k == 1 then "paying prints paid" else "nothing but paid is printed" end)})' .vbw/record.json > "$TEST_ROOT/old.json"
+  cat "$TEST_ROOT/old.json" > .vbw/record.json
+  jq -e '.plans[0].mutations[0].rule | has("text")' .vbw/record.json > /dev/null
+  show | grep -qE '^  R1\.1: prints unpaid: red' || { echo "text break not numbered:"; show; false; }
+  ! show | grep -q 'R1\.null' || { show; false; }
+  run as_dev plan done P1.1
+  [ "$status" -eq 0 ] || { echo "plan done refused: $output"; false; }
+}
