@@ -103,11 +103,11 @@ Example: `vbw apply --add` with `{"phases":[{"id":"P1","title":"Fix add","reqs":
 Over two files, a risk path or a tier: apply refuses; use the planning workflow.
 
 **plan**: `VBW_SESSION_ID=${CLAUDE_SESSION_ID} vbw run start plan`, Workflow `vbw:planning` with args
-`{"requirements": <requirements>, "next_phase": <next_phase>, "models": ...}`. Status `needs_decisions`: user
+`{"requirements": <requirements>, "next_phase": <next_phase>, "reworded": <detail.reworded, when the plan step has it>, "models": ...}`. Status `needs_decisions`: user
 decides first. Ask each with AskUserQuestion, one at a time (why it matters in the question, each option's
 trade-off as description, recommended first, "(Recommended)"). Record
 each: `vbw decide "<what was decided>" "<their reason, or the trade-off they accepted>"`. A requirement already met, dropped or reworded: delete or edit its line in `.vbw/spec.md`, `vbw spec sync`, then take `requirements` from a new `vbw next --json`. Plan again: `VBW_SESSION_ID=${CLAUDE_SESSION_ID} vbw run start plan`, workflow with
-`{"requirements": <requirements>, "next_phase": <next_phase>, "decided": true, "research": <research>, "models": ...}`, `<research>` the
+`{"requirements": <requirements>, "next_phase": <next_phase>, "decided": true, "research": <research>, "reworded": <detail.reworded, when present>, "models": ...}`, `<research>` the
 `research` of the `needs_decisions` reply, so planning starts from what it already found. Planned: give Lead's summary, its
 `choices` (any can change) and Architect's `notes` (offer `vbw todo add`); then the approval menu, never a typed command.
 Status `blocked`: give its summary and blockers. A requirement already met: AskUserQuestion, drop it (delete its line in `.vbw/spec.md`, then `vbw spec sync`) or reword it to what is still missing (edit it there, then `vbw spec sync`); record `vbw decide`; plan again with `requirements` from a new `vbw next --json`.
