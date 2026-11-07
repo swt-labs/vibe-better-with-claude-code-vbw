@@ -8,7 +8,7 @@ Read this when the project has Rust (a tracked Cargo.toml or *.rs file). It adds
 - A change to Cargo.toml or a lockfile goes in one plan at a time.
 - A file many plans would touch (a module list in lib.rs or mod.rs, a shared enum, a manifest, a lockfile) is set up once in an early skeleton plan, or split so each later plan owns its own module file.
 - A later plan that needs a dependency the skeleton did not add waits (an `after` entry) on the plan that adds it, and the plan states it.
-- When a dependency is added or moved between crates, including one reached through a path dependency (the other workspace's manifest never names it), list every affected lockfile in the plan's files, because each lock changes in the same commit.
+- When a dependency is added or moved between crates, including one reached through a path dependency (the other workspace's manifest never names it), list every affected lockfile (each workspace's Cargo.lock) in the plan's files, because each lock changes in the same commit.
 - A behaviour change re-pins what records the old behaviour: baselines, generated pages and digests. Put those files in the plan that changes the behaviour, so they move in the same change.
 - Write every path from the project root, including paths inside a nested workspace (crates/pay/Cargo.toml, not Cargo.toml).
 
