@@ -255,3 +255,15 @@ qa_states() { tr '\n' ' ' < "$PACKS/rust/qa.md" | grep -Eiq -- "$1" || { echo "p
   tr '\n' ' ' < "$PACKS/rust/lead.md" | grep -Eiq 'list[^.]*(lockfile|Cargo\.lock)[^.]*plan' || { echo "lead.md does not tell the Lead to list the lockfiles in the plan"; false; }
   tr '\n' ' ' < "$PACKS/rust/qa.md" | grep -Eiq '(missing|absent|stale)[^.]*(lockfile|Cargo\.lock)[^.]*finding' || { echo "qa.md does not call a missing lockfile a finding"; false; }
 }
+
+@test "R271: the express plan step of the router tells the session to read the project's stack pack text for the Lead first, in the planning workflow's words" {
+  local skill="$PLUGIN_ROOT/skills/vibe/SKILL.md" express wf
+  express=$(awk '/^\*\*plan\*\* with `detail.tier` express/ { p = 1 } /^\*\*plan\*\*:/ { p = 0 } p' "$skill")
+  [ -n "$express" ] || { echo "no express plan step in SKILL.md"; false; }
+  wf=$(grep -o 'Stack pack text: read .*lead\.md.* first\.' "$PLUGIN_ROOT/workflows/planning.js" | head -n 1)
+  [ -n "$wf" ] || { echo "planning.js no longer says 'Stack pack text: read .../lead.md first'"; false; }
+  printf '%s' "$express" | grep -q 'Stack pack text: read ' || { echo "the express step does not say 'Stack pack text: read'"; false; }
+  printf '%s' "$express" | grep -q '/lead\.md first' || { echo "the express step does not name lead.md first"; false; }
+  printf '%s' "$express" | grep -q 'packs_root' || { echo "the express step does not say where the packs are (packs_root)"; false; }
+  printf '%s' "$express" | grep -q 'packs\.project' || { echo "the express step does not say which packs apply (packs.project)"; false; }
+}

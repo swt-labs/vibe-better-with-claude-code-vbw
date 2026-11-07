@@ -42,6 +42,12 @@
     "tests/bench-select.bats",
     "tests/bench-statusline-cost.bats",
     "tests/bench-steps-result.bats",
+    "tests/big-milestone-expected/digests.json",
+    "tests/big-milestone-expected/next.txt",
+    "tests/big-milestone-expected/show-qa.txt",
+    "tests/big-milestone-expected/status.txt",
+    "tests/big-milestone-helper.bash",
+    "tests/big-milestone.bats",
     "tests/big-record-commands.bats",
     "tests/big-record-docs.bats",
     "tests/big-record-fast.bats",
@@ -79,6 +85,7 @@
     "tests/config-qa.bats",
     "tests/config-rigor-bash32.bats",
     "tests/config-skill-check-jobs.bats",
+    "tests/contract-added-lines.bats",
     "tests/contract-waves.bats",
     "tests/contributor-files.bats",
     "tests/cost-docs.bats",
@@ -389,6 +396,7 @@
     "tests/qa-recheck-why.bats",
     "tests/qa-replan-keeps.bats",
     "tests/qa-skip-helper.bash",
+    "tests/qa-state.bats",
     "tests/qa-suite-once.bats",
     "tests/qa-vbw-files.bats",
     "tests/quick-mode.bats",
@@ -479,6 +487,7 @@
     "tests/step-proof-history.bats",
     "tests/step-proof-units.bats",
     "tests/step-proof.bats",
+    "tests/step-range.bats",
     "tests/step-replan.bats",
     "tests/step-skill.bats",
     "tests/step-units-history.bats",
@@ -501,6 +510,7 @@
     "tests/triage-kernel.bats",
     "tests/triage-overrule.bats",
     "tests/triage-skill.bats",
+    "tests/version-mismatch.bats",
     "tests/vibe-commit-rule.bats",
     "tests/workflow-closing.bats",
     "tests/workflows-run-end.bats"
@@ -8338,6 +8348,350 @@
       ],
       "files": [
         "tests/l3-results.bats"
+      ]
+    },
+    {
+      "id": "C622",
+      "req": "R268",
+      "run": [
+        "bats",
+        "--filter",
+        "R268 closure",
+        "tests/qa-state.bats"
+      ],
+      "files": [
+        "tests/qa-state.bats"
+      ]
+    },
+    {
+      "id": "C623",
+      "req": "R268",
+      "run": [
+        "bats",
+        "--filter",
+        "R268 digests",
+        "tests/qa-state.bats"
+      ],
+      "files": [
+        "tests/qa-state.bats"
+      ]
+    },
+    {
+      "id": "C624",
+      "req": "R268",
+      "run": [
+        "bats",
+        "--filter",
+        "R268 identity",
+        "tests/big-milestone.bats"
+      ],
+      "files": [
+        "tests/big-milestone.bats",
+        "tests/big-milestone-helper.bash",
+        "tests/big-milestone-expected/next.txt",
+        "tests/big-milestone-expected/show-qa.txt",
+        "tests/big-milestone-expected/status.txt",
+        "tests/big-milestone-expected/digests.json"
+      ],
+      "timeout": 900
+    },
+    {
+      "id": "C625",
+      "req": "R268",
+      "run": [
+        "bats",
+        "--filter",
+        "R268 timed",
+        "tests/big-milestone.bats"
+      ],
+      "files": [
+        "tests/big-milestone.bats"
+      ]
+    },
+    {
+      "id": "C626",
+      "req": "R269",
+      "run": [
+        "bats",
+        "--filter",
+        "R269 classify",
+        "tests/contract-added-lines.bats"
+      ],
+      "files": [
+        "tests/contract-added-lines.bats"
+      ]
+    },
+    {
+      "id": "C627",
+      "req": "R269",
+      "run": [
+        "bats",
+        "--filter",
+        "R269 next",
+        "tests/contract-added-lines.bats"
+      ],
+      "files": [
+        "tests/contract-added-lines.bats"
+      ]
+    },
+    {
+      "id": "C628",
+      "req": "R269",
+      "run": [
+        "bats",
+        "--filter",
+        "R269 proof",
+        "tests/contract-added-lines.bats"
+      ],
+      "files": [
+        "tests/contract-added-lines.bats"
+      ]
+    },
+    {
+      "id": "C629",
+      "req": "R269",
+      "run": [
+        "bats",
+        "--filter",
+        "R269 changes",
+        "tests/contract-added-lines.bats"
+      ],
+      "files": [
+        "tests/contract-added-lines.bats"
+      ]
+    },
+    {
+      "id": "C630",
+      "req": "R269",
+      "run": [
+        "bats",
+        "--filter",
+        "R269 docs",
+        "tests/contract-added-lines.bats"
+      ],
+      "files": [
+        "tests/contract-added-lines.bats"
+      ]
+    },
+    {
+      "id": "C631",
+      "req": "R270",
+      "run": [
+        "bats",
+        "--filter",
+        "R270 kernel",
+        "tests/step-range.bats"
+      ],
+      "files": [
+        "tests/step-range.bats"
+      ]
+    },
+    {
+      "id": "C632",
+      "req": "R270",
+      "run": [
+        "bats",
+        "--filter",
+        "R270 line",
+        "tests/step-range.bats"
+      ],
+      "files": [
+        "tests/step-range.bats"
+      ]
+    },
+    {
+      "id": "C633",
+      "req": "R270",
+      "run": [
+        "bats",
+        "--filter",
+        "R270 docs",
+        "tests/step-range.bats"
+      ],
+      "files": [
+        "tests/step-range.bats"
+      ]
+    },
+    {
+      "id": "C634",
+      "req": "R271",
+      "run": [
+        "bats",
+        "--filter",
+        "R271",
+        "tests/packs.bats"
+      ],
+      "files": [
+        "tests/packs.bats"
+      ]
+    },
+    {
+      "id": "C635",
+      "req": "R272",
+      "run": [
+        "bats",
+        "--filter",
+        "R272 kernel",
+        "tests/version-mismatch.bats"
+      ],
+      "files": [
+        "tests/version-mismatch.bats"
+      ]
+    },
+    {
+      "id": "C636",
+      "req": "R272",
+      "run": [
+        "bats",
+        "--filter",
+        "R272 hooks",
+        "tests/version-mismatch.bats"
+      ],
+      "files": [
+        "tests/version-mismatch.bats"
+      ]
+    },
+    {
+      "id": "C637",
+      "req": "R272",
+      "run": [
+        "bats",
+        "--filter",
+        "R272",
+        "tests/hook-answers.bats"
+      ],
+      "files": [
+        "tests/hook-answers.bats"
+      ]
+    },
+    {
+      "id": "C638",
+      "req": "R272",
+      "run": [
+        "bats",
+        "--filter",
+        "R272 router",
+        "tests/version-mismatch.bats"
+      ],
+      "files": [
+        "tests/version-mismatch.bats"
+      ]
+    },
+    {
+      "id": "C639",
+      "req": "R273",
+      "run": [
+        "bats",
+        "--filter",
+        "R273:",
+        "tests/guard-script-files.bats"
+      ],
+      "files": [
+        "tests/guard-script-files.bats"
+      ]
+    },
+    {
+      "id": "C640",
+      "req": "R273",
+      "run": [
+        "bats",
+        "--filter",
+        "R273",
+        "tests/hook-answers.bats"
+      ],
+      "files": [
+        "tests/hook-answers.bats"
+      ]
+    },
+    {
+      "id": "C641",
+      "req": "R273",
+      "run": [
+        "bats",
+        "--filter",
+        "R273 timed",
+        "tests/guard-script-files.bats"
+      ],
+      "files": [
+        "tests/guard-script-files.bats"
+      ]
+    },
+    {
+      "id": "C642",
+      "req": "R276",
+      "run": [
+        "bats",
+        "--filter",
+        "R276",
+        "tests/hooks-guard.bats"
+      ],
+      "files": [
+        "tests/hooks-guard.bats"
+      ]
+    },
+    {
+      "id": "C643",
+      "req": "R274",
+      "run": [
+        "bats",
+        "--filter",
+        "captured-write rule|R274: --allowed",
+        "tests/output-child-exit.bats"
+      ],
+      "files": [
+        "tests/output-child-exit.bats"
+      ]
+    },
+    {
+      "id": "C644",
+      "req": "R274",
+      "run": [
+        "bats",
+        "--filter",
+        "R274: (no function|spec_parse)",
+        "tests/output-child-exit.bats"
+      ],
+      "files": [
+        "tests/output-child-exit.bats"
+      ]
+    },
+    {
+      "id": "C645",
+      "req": "R274",
+      "run": [
+        "bats",
+        "--filter",
+        "R274",
+        "tests/standards.bats"
+      ],
+      "files": [
+        "tests/standards.bats"
+      ]
+    },
+    {
+      "id": "C646",
+      "req": "R275",
+      "run": [
+        "bats",
+        "--filter",
+        "R275",
+        "tests/bench-limits.bats"
+      ],
+      "files": [
+        "tests/bench-limits.bats"
+      ]
+    },
+    {
+      "id": "C647",
+      "req": "R275",
+      "run": [
+        "bats",
+        "--filter",
+        "R275",
+        "tests/bench-limits-docs.bats"
+      ],
+      "files": [
+        "tests/bench-limits-docs.bats"
       ]
     }
   ],
@@ -20486,7 +20840,38 @@
       "proof": "auto",
       "status": "open",
       "milestone": "M55",
-      "rules": []
+      "rules": [
+        {
+          "text": "the phase closure visits each phase's links once (no expansion round per phase) and gives the same closure for a chain, a diamond, a ring and a self-link",
+          "check": "C622",
+          "plan": "P217.1"
+        },
+        {
+          "text": "the interleaved list and the problems (a plan after a missing plan, a cycle among the interleaved phases' plans) are the same, the cycle found with one walk among those plans",
+          "check": "C622",
+          "plan": "P217.1"
+        },
+        {
+          "text": "the digests read each repository's tree once per command, a submodule once too, and give the same digests as before",
+          "check": "C623",
+          "plan": "P217.2"
+        },
+        {
+          "text": "qa_digests hands its answer out through vbw_out",
+          "check": "C623",
+          "plan": "P217.2"
+        },
+        {
+          "text": "on the field-shaped record (79 phases, 258 plans, 568 after-links, 47 interleaved, P1 to P40 built) vbw next, vbw show qa, vbw status and the digests answer byte for byte as before, and the tree is read once",
+          "check": "C624",
+          "plan": "P217.2"
+        },
+        {
+          "text": "a timed test file builds that record and times vbw next --json by CPU within 5 s on a nominal machine, scaled by the bench's reference and skipped on a busy machine",
+          "check": "C625",
+          "plan": "P217.3"
+        }
+      ]
     },
     {
       "id": "R269",
@@ -20494,7 +20879,53 @@
       "proof": "auto",
       "status": "open",
       "milestone": "M55",
-      "rules": []
+      "rules": [
+        {
+          "text": "the approval snapshot records the approval's commit and each check file's git blob id",
+          "check": "C626",
+          "plan": "P218.1"
+        },
+        {
+          "text": "a check file changed only by adding lines (at the end, in the middle or at the top) is added-to, not waiting",
+          "check": "C626",
+          "plan": "P218.1"
+        },
+        {
+          "text": "a removed, changed or reordered line, a new file, a snapshot without blob ids, or a file a fix added still waits for approval, and vbw next still says approve first",
+          "check": "C626",
+          "plan": "P218.1"
+        },
+        {
+          "text": "with added-to files vbw next says prove, carries added_to [{file, lines}] and prints 'check file X: N lines added since the approval; the proof judges it with the approved content until they are approved at the next gate' ('1 line added' for one)",
+          "check": "C627",
+          "plan": "P218.2"
+        },
+        {
+          "text": "the proof runs an added-to check with the file's approved content (in the clean copy only) and records the digest it judged in the evidence",
+          "check": "C628",
+          "plan": "P218.3"
+        },
+        {
+          "text": "the proof's summary says 'judged with the approved content (N added lines pending approval)' for such a check, and its pass is reused while the approved content stands",
+          "check": "C628",
+          "plan": "P218.3"
+        },
+        {
+          "text": "once the added lines are approved the check runs again with them from the next proof",
+          "check": "C628",
+          "plan": "P218.3"
+        },
+        {
+          "text": "vbw show contract and vbw show contract --changes list an added-to file as 'test file X: N lines added since the approval' with the diff of the added lines",
+          "check": "C629",
+          "plan": "P218.4"
+        },
+        {
+          "text": "docs/proof.md, docs/guards.md and docs/workflows.md tell the added-to case from the waiting case",
+          "check": "C630",
+          "plan": "P218.5"
+        }
+      ]
     },
     {
       "id": "R270",
@@ -20502,7 +20933,53 @@
       "proof": "auto",
       "status": "open",
       "milestone": "M55",
-      "rules": []
+      "rules": [
+        {
+          "text": "no run still says 'no end time yet' in today's words",
+          "check": "C631",
+          "plan": "P219.1"
+        },
+        {
+          "text": "one or two runs give a rough estimate naming the run count: 'roughly L to H min, until around A to B (rough guess from N runs)' ('roughly N min, until around A' when the ends agree)",
+          "check": "C631",
+          "plan": "P219.1"
+        },
+        {
+          "text": "fewer than 5 kept runs, or a high above 1.5 times the low, make the estimate rough; the thresholds are one definition in steps-expect.jq",
+          "check": "C631",
+          "plan": "P219.1"
+        },
+        {
+          "text": "5 or more runs that agree keep the single figure 'about N min, until around A'",
+          "check": "C631",
+          "plan": "P219.1"
+        },
+        {
+          "text": "the milestone end is a range marked rough when any part is rough, keeping its 'counting ...' tail, and the single figure when every part is tight",
+          "check": "C631",
+          "plan": "P219.1"
+        },
+        {
+          "text": "the step note carries end_low, end_high, rough and runs beside end; vbw run start and vbw status say the range",
+          "check": "C631",
+          "plan": "P219.1"
+        },
+        {
+          "text": "the status line shows 'until ~HH:MM-HH:MM' for a rough estimate and the single clock time for a tight one",
+          "check": "C632",
+          "plan": "P219.2"
+        },
+        {
+          "text": "the panel words a rough note as the same range from the same fields",
+          "check": "C632",
+          "plan": "P219.2"
+        },
+        {
+          "text": "docs/panel.md documents both thresholds and docs/next.md and docs/statusline.md the range wording",
+          "check": "C633",
+          "plan": "P219.3"
+        }
+      ]
     },
     {
       "id": "R271",
@@ -20510,7 +20987,13 @@
       "proof": "auto",
       "status": "open",
       "milestone": "M55",
-      "rules": []
+      "rules": [
+        {
+          "text": "the express plan step tells the session to read each applying pack's lead.md first, naming packs_root and packs.project, in the planning workflow's words",
+          "check": "C634",
+          "plan": "P220.1"
+        }
+      ]
     },
     {
       "id": "R272",
@@ -20518,7 +21001,38 @@
       "proof": "auto",
       "status": "open",
       "milestone": "M55",
-      "rules": []
+      "rules": [
+        {
+          "text": "every kernel write of the record writes .vbw/runtime/writer.json with the writing VBW's version and the record's schema",
+          "check": "C635",
+          "plan": "P220.2"
+        },
+        {
+          "text": "an older VBW refuses with exit 4 and one line naming the version that wrote the record and the version loaded, how to update and what --plugin-dir means, leaving the record alone",
+          "check": "C635",
+          "plan": "P220.2"
+        },
+        {
+          "text": "without a writer file the line names the schema numbers and the loaded version in the same shape",
+          "check": "C635",
+          "plan": "P220.2"
+        },
+        {
+          "text": "the session-start hook puts the kernel's line in its context and its notice",
+          "check": "C636",
+          "plan": "P220.3"
+        },
+        {
+          "text": "the approval menu over such a record is refused (deny, never allow) with the kernel's line as reason and user message",
+          "check": "C637",
+          "plan": "P220.3"
+        },
+        {
+          "text": "the router says the kernel's line and stops at every step that asks the kernel, and never asks the user to type an approve command",
+          "check": "C638",
+          "plan": "P220.1"
+        }
+      ]
     },
     {
       "id": "R273",
@@ -20526,7 +21040,28 @@
       "proof": "auto",
       "status": "open",
       "milestone": "M55",
-      "rules": []
+      "rules": [
+        {
+          "text": "a 264 KB script run by name is read to its end within the guard's time and its write refused by name, never as a guard failure",
+          "check": "C639",
+          "plan": "P221.1"
+        },
+        {
+          "text": "a script too large to read is refused before any read in one line naming the file, its size in KB and what to do (commit it unchanged, or run it in smaller parts); a committed unchanged script still runs unread",
+          "check": "C639",
+          "plan": "P221.1"
+        },
+        {
+          "text": "that refusal is a deny with the user's line, pinned among the hook answers",
+          "check": "C640",
+          "plan": "P221.1"
+        },
+        {
+          "text": "a timed test file measures the guard on an 80 KB and a 264 KB script: the big one within 5 s of CPU and within 1.5 times the size ratio of the small one's time, scaled by the bench's reference",
+          "check": "C641",
+          "plan": "P221.2"
+        }
+      ]
     },
     {
       "id": "R274",
@@ -20534,7 +21069,33 @@
       "proof": "auto",
       "status": "open",
       "milestone": "M55",
-      "rules": []
+      "rules": [
+        {
+          "text": "spec_parse writes the parsed spec through vbw_out",
+          "check": "C644",
+          "plan": "P222.1"
+        },
+        {
+          "text": "no plugin/lib function ends by handing captured text out through a builtin printf or echo unless allow-listed with a reason, and the standards suite runs the rule",
+          "check": "C645",
+          "plan": "P222.1"
+        },
+        {
+          "text": "the rule tool run on plugin/lib passes",
+          "check": "C644",
+          "plan": "P222.1"
+        },
+        {
+          "text": "the rule refuses a function ending in a builtin printf or echo of text captured in it, naming the line, and passes vbw_out, a literal, an argument, a pipe, a file and a function ending otherwise",
+          "check": "C643",
+          "plan": "P222.2"
+        },
+        {
+          "text": "--allowed lists each allow-listed function as 'name: reason', each a function of plugin/lib",
+          "check": "C643",
+          "plan": "P222.2"
+        }
+      ]
     },
     {
       "id": "R275",
@@ -20542,7 +21103,33 @@
       "proof": "auto",
       "status": "open",
       "milestone": "M55",
-      "rules": []
+      "rules": [
+        {
+          "text": "a case's budget is scaled by the reference measured beside it: a slow machine throughout marks every case slow and fails none",
+          "check": "C646",
+          "plan": "P222.3"
+        },
+        {
+          "text": "a case slow while its own reference is nominal is measured again and then fails, while the other cases pass; the header reference line stays once",
+          "check": "C646",
+          "plan": "P222.3"
+        },
+        {
+          "text": "measured again, the case and the reference beside it are both measured anew and the second pair judges it",
+          "check": "C646",
+          "plan": "P222.3"
+        },
+        {
+          "text": "the busy-machine rule stays",
+          "check": "C646",
+          "plan": "P222.3"
+        },
+        {
+          "text": "CLAUDE.md, AGENTS.md and docs/guards.md say the reference is measured beside each case",
+          "check": "C647",
+          "plan": "P222.4"
+        }
+      ]
     },
     {
       "id": "R276",
@@ -20550,7 +21137,23 @@
       "proof": "auto",
       "status": "open",
       "milestone": "M55",
-      "rules": []
+      "rules": [
+        {
+          "text": "a command that only reads the record or looks for it (find -path, ls, grep, wc, cat, head, tail, jq, awk, diff, stat, shasum, cp to /dev/null, git log) passes",
+          "check": "C642",
+          "plan": "P221.3"
+        },
+        {
+          "text": "every real write (a redirection anywhere, cp, mv, install, tee, sed -i, perl -i, ed, rm, truncate, shred, dd of=, ln) is refused as a write of the record",
+          "check": "C642",
+          "plan": "P221.3"
+        },
+        {
+          "text": "an inline program (-c, -e) naming the record is refused with a reason saying the guard cannot tell a read from a write; the file tools' guard is unchanged",
+          "check": "C642",
+          "plan": "P221.3"
+        }
+      ]
     }
   ],
   "phases": [
@@ -31230,6 +31833,182 @@
         "qa_findings": 0,
         "escalations": 0
       }
+    },
+    {
+      "id": "P217",
+      "title": "vbw next answers fast on a big milestone",
+      "reqs": [
+        "R268"
+      ],
+      "milestone": "M55",
+      "goal": "On a record shaped like the field report (79 phases in one milestone, 258 plans, 568 after-links, 47 interleaved phases), vbw next --json answers within 5 s of CPU on a nominal machine, giving exactly the same closure, interleaved list and problems as today.",
+      "criteria": [
+        "plugin/lib/qa.jq's phase closure (today lines 30-36: one full round of expansion per phase) is a single graph walk that visits each phase's after-links once (a depth-first or breadth-first walk that reuses what it already visited); on every record, qa_prog's .closure, its interleaved list and its problems are byte-identical to the current program's. Pinned by fixtures in tests/qa-state.bats or tests/qa-recheck-deps.bats: a straight chain, a diamond, two phases that interleave, a ring of three phases, a phase whose plan comes after a plan of its own phase, an after-link to a plan that does not exist, and a cycle among the interleaved phases' plans (the text 'plans ... come after each other (a cycle)' unchanged).",
+        "The plan cycle check among the interleaved phases' plans (qa.jq:37-43) uses the same single walk and finds the same cycles with the same wording.",
+        "plugin/lib/qa-inputs.sh qa_digests (today :101-104: qa_tree called twice per phase, so git ls-tree runs 2 x phases x repositories) reads each repository's tree of the commit once per command (one git ls-tree -r per repository, submodules included) and takes each phase's files and check files from that one listing; every digest (files, tests, plan, reqs, combined, deps) is byte-identical to today's on the existing fixtures, and a test counts the git calls: one per repository, however many phases.",
+        "qa_digests writes its result through vbw_out (plugin/lib/core.sh:12-15), not a builtin printf (its last line, qa-inputs.sh:111), so the standards rule P222 adds finds nothing here.",
+        "A new fixture helper (beside tests/big-record-helper.bash) builds the field-report shape: 79 phases in one active milestone, 258 plans, 568 after-links, 47 interleaved phases (plans of each coming after plans of the other), plus done plans so QA listings and digests have work to do. A new timed test file (tests/timed-big-milestone.bats or the Lead's name; timed-* files are outside the proof per the spec's Test files and run in the release run) measures vbw next --json's user+sys CPU on that record and passes under 5 s, judged with the bench's busy-machine rule (a reference workload measured beside it, so a uniformly slow runner reports slow, not failed). The file prints the measured CPU.",
+        "On the same fixture, vbw next (plain text), vbw status and vbw qa inputs give the same answers as on the record before the change (the fixture is checked with the current program once, the expected output stored in the test)."
+      ],
+      "tier": "standard",
+      "reasons": [
+        "requirements: 1",
+        "files: 3 (19336 bytes)",
+        "files: more than 2 in a repository tracking 1283 files",
+        "risk: none",
+        "breaks: none",
+        "guarded: R47 (C47), R49 (C48), R104 (C161, C162), R113 (C177), R115 (C181), R132 (C199), R149 (C217, C218, C219, C220, C221, C222), R249 (C571, C572, C573)",
+        "tests: project test command"
+      ],
+      "predicted": "standard"
+    },
+    {
+      "id": "P218",
+      "title": "Added check lines wait for approval without stopping the run",
+      "reqs": [
+        "R269"
+      ],
+      "milestone": "M55",
+      "goal": "A build that only adds lines to a check file (every approved line still there, in order) no longer stops the run for an approval before the proof: the proof judges that check with the approved content, the added lines are shown with their diff at the next gate, and once approved they count from the next proof; a change that removes or alters an approved line still waits before the proof, as today.",
+      "criteria": [
+        "At approval (plugin/lib/cmd-approve.sh:58-71), the approval snapshot .vbw/runtime/approved-contract.json records where each check file's approved content lives: the approval commit's id and, per check file, its git blob id beside the sha256 digest already kept in .files (a runtime file per clone, no change to the record's schema, no bump). An older snapshot without blob ids keeps today's behaviour: every byte change waits.",
+        "Classification, in plugin/lib/contract.sh contract_waiting_with (:118-146): a check file whose current content, compared with the approved blob, differs by added lines only (every approved line present, in order; a diff shows additions and nothing else) is 'added-to'; a file with a removed, changed or reordered approved line, or a file the approval does not know, is 'waiting' as today; a file whose added lines were removed again is neither. Pinned by tests: append at the end, insertion in the middle, insertion at the top, one removed line, one changed line, two swapped lines, a new file, a file back to its approved bytes, a snapshot without blob ids.",
+        "vbw next --json with added-to files (and no waiting file) and unproven requirements answers prove, not approve (plugin/lib/next.jq:145-147, cmd-next.sh:171-175), and its JSON carries the added-to files with their line counts; vbw next's text names them in one plain line each ('check file X: N lines added since the approval; the proof judges it with the approved content until they are approved at the next gate'), following D586 (told at once, nothing to answer, listed again at the gate).",
+        "The proof (plugin/lib/cmd-prove.sh, the clean copies of proofcopy.sh): for each added-to check file, the copy runs that file's checks with the approved content (the approved blob written over the file in the copy only; the working tree is never touched), and each such result records the digest of the content it judged; vbw show proof (or the proof's summary) says 'judged with the approved content (N added lines pending approval)' for those checks.",
+        "After the approval of the added lines, the next vbw prove runs that file's checks again (a result judged with the approved content is never reused as a result for the newly approved content: plugin/lib/proofreuse.sh keys the reuse on the judged digest), and from then on judges the current content.",
+        "vbw show contract --changes and the approval screen list each added-to file with the diff of its added lines (unified diff, the file named) at the next gate; the approval records the new blob ids, after which the file is neither added-to nor waiting.",
+        "A check file whose change removes or alters an approved line still makes vbw next answer approve before prove, with today's wording; tests/approve-choice-kernel.bats, tests/loop-approve.bats, tests/mutate-strengthen.bats and tests/rigor-guarded.bats keep passing (edited only where they pin the old any-byte rule).",
+        "The guard does not change: a build or fix lease's editable list (plugin/hooks/common.jq:122-126, cmd-run.sh:196) is still the only way a build edits a check file; other protected files stay refused (tests/hooks-guard.bats unchanged).",
+        "docs/ pages that say 'test files edited since the approval wait for approval before they are proved' describe the two cases (added lines: proof with approved content, approval at the next gate; removed or altered lines: approval first)."
+      ],
+      "proposed": "deep",
+      "tier": "deep",
+      "reasons": [
+        "requirements: 1",
+        "files: 12 (454963 bytes)",
+        "files: more than 2 in a repository tracking 1283 files",
+        "risk: none",
+        "breaks: R128, R151, R218, R222, R231, R233, R234, R239, R242, R250, R255, R261, R263",
+        "guarded: R10 (C9), R12 (C11), R13 (C12), R14 (C13), R15 (C14), R22 (C19), R24 (C23), R25 (C24), R26 (C22), R28 (C25), R31 (C27), R32 (C28), R35 (C31), R37 (C35), R38 (C33, C34), R39 (C36), R40 (C37), R43 (C42, C43), R44 (C44, C45), R45 (C39, C40, C41), R46 (C46), R47 (C47), R48 (C49, C50), R49 (C48), R50 (C51), R60 (C72, C94), R61 (C73, C74, C75, C76, C77), R65 (C86, C87, C88, C89, C90), R66 (C95), R67 (C96), R69 (C110, C120, C122), R70 (C114), R71 (C115, C121), R72 (C116, C118), R73 (C98), R74 (C99, C100), R75 (C101), R76 (C102, C103), R77 (C104), R78 (C105, C106), R79 (C107), R80 (C108), R81 (C109, C111, C112, C113), R83 (C119), R92 (C131, C132, C133, C134, C135, C136, C137, C138, C139), R93 (C140, C141, C142, C143, C144), R94 (C145, C146, C147, C148), R95 (C149, C150), R96 (C151, C152), R97 (C153), R98 (C154), R99 (C155), R100 (C156), R101 (C179), R102 (C158, C159), R103 (C160), R104 (C161, C162), R105 (C163), R106 (C164, C165), R107 (C166, C167), R110 (C169, C170), R111 (C171, C172, C173, C174, C175), R115 (C181), R116 (C182, C183), R118 (C184), R120 (C185), R123 (C190, C191), R129 (C196), R130 (C197), R131 (C198), R132 (C199), R134 (C201), R135 (C202), R144 (C208, C209), R145 (C210), R147 (C212, C215, C237), R148 (C213, C214, C216, C238), R149 (C217, C218, C219, C220, C221, C222), R150 (C223, C224, C225, C226, C227, C228, C229, C230), R152 (C233, C234), R153 (C235, C236, C239), R156 (C242, C243), R157 (C244), R158 (C245), R159 (C246), R160 (C247, C263, C264), R161 (C248, C265, C266), R162 (C249), R163 (C250), R165 (C252), R166 (C253, C254, C255, C256, C267), R167 (C257, C258, C259, C260), R168 (C261, C262), R169 (C268), R170 (C269), R171 (C270), R173 (C281, C282, C283, C284, C285, C286, C289), R174 (C279, C280), R175 (C274, C275), R176 (C276, C277, C278), R177 (C287, C288), R178 (C290, C291, C292, C293, C294, C295, C296, C311), R179 (C297, C298, C299, C300, C301, C302, C303, C304, C305, C306, C312), R180 (C307, C308, C309, C310), R181 (C313, C314, C315, C316, C317, C318, C319, C320, C321), R182 (C322, C323, C324, C325, C326), R183 (C327), R186 (C344, C345, C346, C347, C348), R188 (C350, C351, C352, C353, C354, C355, C356, C357, C358, C359), R190 (C374, C375, C376, C377, C378, C379, C380, C381, C382, C383, C384, C385, C386, C387, C388), R191 (C389, C390, C391, C392, C393, C394, C395, C396, C397, C398, C399, C400), R192 (C401, C402, C403, C404, C405, C406, C407, C408, C409, C410), R193 (C411, C412), R194 (C417, C418, C419), R195 (C420, C421, C422), R196 (C415, C416), R197 (C413, C414), R198 (C423), R202 (C432, C433, C434, C435, C436, C437, C438, C439, C440, C441, C442, C443, C444, C445, C446, C447), R203 (C448, C449, C450), R204 (C451, C452, C453, C454), R205 (C455, C456, C457, C458, C467), R206 (C459, C460), R207 (C461, C462, C463), R208 (C464, C465, C466, C468), R209 (C469, C470, C471, C472, C473), R210 (C474, C475, C476), R211 (C477, C478, C479), R212 (C480, C481, C482), R213 (C483, C484), R214 (C485, C486, C487), R215 (C488, C489, C490), R216 (C491, C492, C493), R217 (C494, C495), R219 (C497, C498, C499), R220 (C500, C501, C502, C503), R221 (C504), R226 (C510, C511), R228 (C522, C523, C524, C525), R229 (C526, C527, C528, C529), R230 (C530, C531), R232 (C534), R236 (C537), R238 (C545), R241 (C546, C547, C548, C549, C550, C560), R243 (C558, C559, C561), R244 (C562, C563), R245 (C564, C565), R246 (C566, C567), R249 (C571, C572, C573), R251 (C579), R252 (C580), R253 (C581, C582), R254 (C583), R256 (C586, C587), R257 (C588, C589), R258 (C590, C591, C592), R259 (C593, C594, C595), R260 (C596, C597), R262 (C601), R264 (C613, C614, C615, C616), R265 (C605, C606, C607, C608, C609, C610, C611, C612), R266 (C617, C618), R267 (C619, C620, C621)",
+        "tests: project test command"
+      ],
+      "predicted": "deep"
+    },
+    {
+      "id": "P219",
+      "title": "Time estimates as a range when the history is thin or spread",
+      "reqs": [
+        "R270"
+      ],
+      "milestone": "M55",
+      "goal": "Every time estimate VBW gives (step end, milestone end, vbw status, vbw next, run start, the status line, the panel) is said as a low-to-high range marked as a rough guess when it rests on little or widely spread history, and keeps today's single figure when it is well founded; the range comes from the spread of the runs it learned from.",
+      "criteria": [
+        "plugin/lib/steps-expect.jq gives, beside the expected seconds (median of the latest 10 kept runs per unit of work, outliers dropped as today), a low and a high: the smallest and the largest kept run per unit, scaled by the work size the same way as the median, and a rough flag; the flag is true when the kept runs are few or spread (recommended, set once in one jq definition every reader uses and written in docs/panel.md: fewer than 5 kept runs, or high above 1.5 x low). A build wave's quantile rule (0.75^(1/n)) applies to low and high the same way.",
+        "With no run of the kind, 'no end time yet' stays as today; with 1 or 2 runs (today 'VBW has timed fewer than 3 steps like this here') a range is given and marked rough (one run gives low = high; the wording still says rough and names how many runs it rests on); with enough tight runs the single figure 'about N min, until around HH:MM' is unchanged (tests/road-note.bats, tests/l3-step-time.bats expectations for that case unchanged).",
+        "step_words in plugin/lib/steps.sh (:39-47) renders the rough case in the kernel's one wording for chat and Mission Control (D425): 'roughly L to H min, until around HH:MM to HH:MM (rough guess from N runs)'; vbw status, vbw next, vbw run start and the panel's Comms print exactly that text (tests/road-next.bats, tests/panel-comms-short.bats).",
+        "plugin/lib/road.jq's milestone end (:12-22, :128-135) renders a range when any part it adds up is rough (a step kind, or the usual fix-round count learned from fewer than 3 milestones) and the single clock time otherwise (D434 kept for the well-founded case); the 'counting N fix rounds' part stays.",
+        "The step note .vbw/runtime/step.json carries the two ends and the rough flag (new fields; names the Lead's); plugin/scripts/statusline.jq (:73-85) renders the clock-only form for the status line (D425): 'until ~HH:MM-HH:MM' when rough, 'until HH:MM' otherwise; plugin/lib/cmd-status.sh (:57-58) and plugin/scripts/panel-estimate.js (:2-16) read the same fields and show the same ends; no reader computes an estimate the kernel did not write (tests/statusline-step.bats, tests/statusline-step-miss.bats, the panel tests).",
+        "Fixture cases pinned in the listed test files: 0 runs, 1 run, 2 runs, 5 tight runs (single figure), 10 spread runs (range), a milestone road with one rough part; docs/panel.md:747-760 documents both wordings and the thresholds; tests/step-docs.bats checks the doc names them."
+      ],
+      "tier": "deep",
+      "reasons": [
+        "requirements: 1",
+        "files: 10 (153309 bytes)",
+        "files: more than 2 in a repository tracking 1283 files",
+        "risk: none",
+        "breaks: R125, R151, R222",
+        "guarded: R13 (C12), R14 (C13), R16 (C15), R24 (C23), R25 (C24), R26 (C22), R28 (C25), R35 (C31), R37 (C35), R40 (C37), R47 (C47), R48 (C49, C50), R49 (C48), R50 (C51), R51 (C52, C53, C66), R52 (C58, C91), R53 (C54, C55), R55 (C56, C57), R56 (C61, C65), R57 (C59, C70, C71), R58 (C62, C63, C64, C67), R69 (C110, C120, C122), R70 (C114), R71 (C115, C121), R72 (C116, C118), R73 (C98), R74 (C99, C100), R78 (C105, C106), R79 (C107), R80 (C108), R81 (C109, C111, C112, C113), R82 (C117), R85 (C125), R86 (C124), R87 (C126, C127), R88 (C129), R89 (C128), R91 (C130), R102 (C158, C159), R106 (C164, C165), R107 (C166, C167), R111 (C171, C172, C173, C174, C175), R116 (C182, C183), R124 (C192, C193), R149 (C217, C218, C219, C220, C221, C222), R161 (C248, C265, C266), R171 (C270), R173 (C281, C282, C283, C284, C285, C286, C289), R179 (C297, C298, C299, C300, C301, C302, C303, C304, C305, C306, C312), R184 (C328, C329, C330, C331, C332, C333), R185 (C334, C335, C336, C337, C338, C339, C340, C341, C342, C343), R189 (C360, C361, C362, C363, C364, C365, C366, C367, C368, C369, C370, C371, C372, C373), R190 (C374, C375, C376, C377, C378, C379, C380, C381, C382, C383, C384, C385, C386, C387, C388), R191 (C389, C390, C391, C392, C393, C394, C395, C396, C397, C398, C399, C400), R192 (C401, C402, C403, C404, C405, C406, C407, C408, C409, C410), R199 (C424, C425, C430), R200 (C426, C427, C431), R202 (C432, C433, C434, C435, C436, C437, C438, C439, C440, C441, C442, C443, C444, C445, C446, C447), R224 (C512, C513, C514, C515, C516), R227 (C520, C521), R229 (C526, C527, C528, C529), R235 (C538, C539), R240 (C556, C557), R244 (C562, C563), R249 (C571, C572, C573)",
+        "tests: project test command"
+      ],
+      "predicted": "deep"
+    },
+    {
+      "id": "P220",
+      "title": "Plain words from the session: pack text at express, and the version mismatch line",
+      "reqs": [
+        "R271",
+        "R272"
+      ],
+      "milestone": "M55",
+      "goal": "At express rigor the main session plans with the same stack-pack guidance the Lead gets at standard and deep, and a session whose loaded VBW is older than the one that wrote the record is told so in one plain line naming both versions and the fix, never asked to type an approve command.",
+      "criteria": [
+        "plugin/skills/vibe/SKILL.md's express/small plan step (:98-102) tells the main session, for every name in next.json's packs.project (already carried at any plan action, cmd-next.sh:262-274), 'Stack pack text: read <packs_root>/<name>/lead.md first', the same wording as the Lead's line in plugin/workflows/planning.js:206-210; when packs.project is empty the step names no pack. tests/packs.bats gains a case that the skill text names the lead.md read from next.json's packs and packs_root, and one that the two wordings match.",
+        "Every kernel write of the record also writes the writer's version and schema (from the loaded copy's plugin.json) to a runtime file per clone (.vbw/runtime/writer.json or the Lead's name), outside the record: no schema bump.",
+        "When the loaded kernel cannot read the record because its schema is above VBW_SCHEMA_MAX (plugin/lib/record.sh:37,48-52, exit 4), the message names both versions when the writer file exists ('this project's record was written by VBW 2.1.28; this session loaded VBW 2.1.26: update VBW and restart Claude Code, or start Claude Code with --plugin-dir <checkout>/plugin for a development checkout') and the two schema numbers when it does not; exit status 4 unchanged (tests/record-newer.bats, tests/record-compat.bats).",
+        "plugin/hooks/approve-ask.sh (:22-25): when its own copy's vbw show contract exits 4, the hook no longer exits silently; it gives Claude Code that one line as its documented answer so the user reads it before any menu, and never an allow; pinned in tests/hook-answers.bats. plugin/hooks/session-start.sh (:116-123) keeps its once-per-session line and uses the same wording from the same source (one place for the text).",
+        "SKILL.md: at every step that would ask the user (approval, accept, ship confirmation), when the kernel reports exit 4, the router says that line and stops; it never tells the user to type /vbw:approve or a vbw approve command (the rule at SKILL.md:120 kept and extended to name this case); a test of the skill text pins it.",
+        "Both message texts are plain words with the technical term explained once ('--plugin-dir: Claude Code loads VBW from that folder instead of the installed copy')."
+      ],
+      "tier": "deep",
+      "reasons": [
+        "requirements: 2",
+        "files: 4 (58211 bytes)",
+        "files: more than 2 in a repository tracking 1283 files",
+        "risk: none",
+        "breaks: R239, R250, R255, R261",
+        "guarded: R1 (C1), R2 (C2), R13 (C12), R14 (C13), R22 (C19), R23 (C20), R24 (C23), R25 (C24), R26 (C22), R31 (C27), R33 (C29), R37 (C35), R38 (C33, C34), R39 (C36), R40 (C37), R46 (C46), R47 (C47), R49 (C48), R50 (C51), R60 (C72, C94), R61 (C73, C74, C75, C76, C77), R65 (C86, C87, C88, C89, C90), R67 (C96), R70 (C114), R72 (C116, C118), R78 (C105, C106), R79 (C107), R80 (C108), R81 (C109, C111, C112, C113), R83 (C119), R98 (C154), R100 (C156), R106 (C164, C165), R107 (C166, C167), R111 (C171, C172, C173, C174, C175), R114 (C178), R116 (C182, C183), R120 (C185), R121 (C187, C188), R122 (C189), R123 (C190, C191), R134 (C201), R135 (C202), R141 (C203), R146 (C211), R149 (C217, C218, C219, C220, C221, C222), R150 (C223, C224, C225, C226, C227, C228, C229, C230), R161 (C248, C265, C266), R165 (C252), R166 (C253, C254, C255, C256, C267), R171 (C270), R180 (C307, C308, C309, C310), R184 (C328, C329, C330, C331, C332, C333), R185 (C334, C335, C336, C337, C338, C339, C340, C341, C342, C343), R190 (C374, C375, C376, C377, C378, C379, C380, C381, C382, C383, C384, C385, C386, C387, C388), R191 (C389, C390, C391, C392, C393, C394, C395, C396, C397, C398, C399, C400), R192 (C401, C402, C403, C404, C405, C406, C407, C408, C409, C410), R198 (C423), R201 (C428, C429), R208 (C464, C465, C466, C468), R209 (C469, C470, C471, C472, C473), R210 (C474, C475, C476), R228 (C522, C523, C524, C525), R229 (C526, C527, C528, C529), R236 (C537), R241 (C546, C547, C548, C549, C550, C560), R245 (C564, C565), R247 (C568, C569), R249 (C571, C572, C573), R258 (C590, C591, C592), R259 (C593, C594, C595), R264 (C613, C614, C615, C616), R265 (C605, C606, C607, C608, C609, C610, C611, C612)",
+        "tests: project test command"
+      ],
+      "predicted": "deep"
+    },
+    {
+      "id": "P221",
+      "title": "Guards that read right: big scripts within the limit, reading the record is not writing it",
+      "reqs": [
+        "R273",
+        "R276"
+      ],
+      "milestone": "M55",
+      "goal": "The Bash guard reads a 264 KB script run by name within its 5 s CPU limit, answers a script still too large in one line naming the file, its size and what to do, and lets commands that only read .vbw/record.json pass while still refusing every write to it.",
+      "criteria": [
+        "The script scan (plugin/hooks/programs.jq:188-258, 356-361, reached from guard-read.jq:88-96) no longer runs one recursive-group regex over the whole text: it splits the text into lines or statements first and matches each (or uses a form without backtracking), so its cost grows in step with size; every denial tests/guard-script-files.bats finds today is still found with the same reason text.",
+        "A new timed test file (tests/timed-guard-script.bats, outside the proof, release run) generates scripts of 80 KB and 264 KB in the shape of the field script (many lines of shell with quotes, $(...) and here-docs) and checks that the 264 KB read completes within the 5 s CPU limit and that the 264 KB time is at most 1.5 x the size ratio times the 80 KB time, judged with the bench's reference rule so a busy runner reports slow, not failed; it prints both times.",
+        "plugin/hooks/read.sh (:102-130) checks a script's size before reading it; above the readable size (one constant, recommended: the size that reads in about half the limit on the nominal machine, measured and written in the file's comment) the guard answers one line: 'VBW guard: <file> (<N> KB) is too large to read before it runs. Next: commit it unchanged (a committed, unchanged script is not read) or run it in smaller parts'; it never answers 'the guard failed while a run is open ... run vbw doctor' for size; pinned as a hook answer in tests/hook-answers.bats and tests/guard-script-files.bats; ulimit -t 5 in hooks.json stays.",
+        "The 25 ms hot path and D593's two budgets for a script run by name are unchanged for small scripts: tools/bench-hooks.sh's guard cases stay within budget (tests/timed-bench-hooks.bats).",
+        "plugin/hooks/guard-bash.jq (:50-59, :120) and common.jq written(record_path): a command is refused as a write to .vbw/record.json only when the record is a write target: a write redirection (>, >>, >|) to it anywhere in the command (in a pipeline, a subshell or an && chain too), or the record in the writing position of a writing program (cp, mv, install destination; tee; sed -i, perl -i, ed; rm, truncate, shred, dd of=, ln target).",
+        "Commands that only name the record while reading pass: find . -path '*/.vbw/record.json', ls, grep, wc, cat, head, tail, jq, diff, stat, shasum, cp .vbw/record.json /dev/null, git log -- .vbw/record.json; each pinned in tests/hooks-guard.bats beside each refused writer above with record_reason; plugin/hooks/guard-file.jq (Write/Edit) is unchanged (:20 refuses writes only); tests/glance-guards.bats and tests/loop-lease-guards.bats keep passing.",
+        "An interpreter's inline program (-c, -e) whose text names the record keeps today's answer (refused), because the guard cannot tell a read from a write inside it; the reason text says so."
+      ],
+      "tier": "deep",
+      "reasons": [
+        "requirements: 2",
+        "files: 5 (66076 bytes)",
+        "files: more than 2 in a repository tracking 1283 files",
+        "risk: none",
+        "breaks: R233, R239, R250, R255",
+        "guarded: R15 (C14), R75 (C101), R76 (C102, C103), R77 (C104), R83 (C119), R149 (C217, C218, C219, C220, C221, C222), R150 (C223, C224, C225, C226, C227, C228, C229, C230), R160 (C247, C263, C264), R162 (C249), R165 (C252), R166 (C253, C254, C255, C256, C267), R177 (C287, C288), R178 (C290, C291, C292, C293, C294, C295, C296, C311), R180 (C307, C308, C309, C310), R188 (C350, C351, C352, C353, C354, C355, C356, C357, C358, C359), R192 (C401, C402, C403, C404, C405, C406, C407, C408, C409, C410), R194 (C417, C418, C419), R210 (C474, C475, C476), R219 (C497, C498, C499), R243 (C558, C559, C561), R254 (C583)",
+        "tests: project test command"
+      ],
+      "predicted": "deep"
+    },
+    {
+      "id": "P222",
+      "title": "Honest tooling: spec_parse writes through vbw_out, the bench judges each case against its own moment",
+      "reqs": [
+        "R274",
+        "R275"
+      ],
+      "milestone": "M55",
+      "goal": "vbw spec add can no longer fail with 'Interrupted system call' from spec_parse's write on macOS bash 3.2 and a standards rule refuses that write class, and the hook bench never fails a case because the runner was busy at that moment while a real regression of one case still fails.",
+      "criteria": [
+        "plugin/lib/cmd-spec.sh spec_parse's final write (:57, printf of the whole parsed spec) goes through vbw_out (plugin/lib/core.sh:12-15); the output of vbw spec add and every spec command is byte-identical (tests/spec*.bats pass unchanged), per D642.",
+        "tools/check-loop-writes.sh (or a new tools/check-captured-writes.sh wired into tests/standards.bats, the same way) refuses, in plugin/lib/*.sh, a builtin printf or echo of a variable that holds spec- or record-sized text (assigned from a command substitution or a jq run) as the output of a kernel function, unless it goes through vbw_out; the rule names file:line; a regression test in tests/output-child-exit.bats shows it failing on cmd-spec.sh:57 as it is today (a fixture copy) and passing after the move; any other function it flags is moved to vbw_out in the same change, or allow-listed by name with a one-line reason in the tool, never silently.",
+        "tools/bench-hooks.sh (:272-281, :239-262) measures the reference workload beside each case, interleaved call by call as cpu_pair (:214-235) already alternates baseline and hook, and judges that case against the reference of its own moment: scaled budget = budget x (that case's reference / nominal 28.9 ms); the per-case output prints measured, reference, ratio and verdict.",
+        "again (D517) re-measures both the case and its own reference before a case fails; the busy-machine rule (shell and jq startup alone above 25 ms reports busy, not failed) stays.",
+        "Pinned with injected timings, no real clock, in tests/bench-limits.bats: a runner where every case and every reference is 2x nominal reports every case SLOW and none FAIL; a case whose hook time doubles while its reference stays at nominal FAILs; a case over budget once and within budget on again passes. tests/bench-select.bats and tests/timed-bench-hooks.bats keep passing.",
+        "CLAUDE.md's Hot paths paragraph and the bench docs (tests/bench-limits-docs.bats) say the reference is measured beside each case and judges that case, replacing 'in the same run'."
+      ],
+      "tier": "deep",
+      "reasons": [
+        "requirements: 2",
+        "files: 11 (222400 bytes)",
+        "files: more than 2 in a repository tracking 1283 files",
+        "risk: none",
+        "breaks: R128, R151, R218, R222, R223, R231, R233, R234, R239, R242, R250, R255",
+        "guarded: R1 (C1), R2 (C2), R13 (C12), R14 (C13), R15 (C14), R21 (C16), R31 (C27), R32 (C28), R33 (C29), R58 (C62, C63, C64, C67), R61 (C73, C74, C75, C76, C77), R73 (C98), R75 (C101), R76 (C102, C103), R77 (C104), R81 (C109, C111, C112, C113), R83 (C119), R92 (C131, C132, C133, C134, C135, C136, C137, C138, C139), R93 (C140, C141, C142, C143, C144), R115 (C181), R120 (C185), R147 (C212, C215, C237), R149 (C217, C218, C219, C220, C221, C222), R150 (C223, C224, C225, C226, C227, C228, C229, C230), R152 (C233, C234), R160 (C247, C263, C264), R162 (C249), R164 (C251), R165 (C252), R166 (C253, C254, C255, C256, C267), R167 (C257, C258, C259, C260), R170 (C269), R177 (C287, C288), R178 (C290, C291, C292, C293, C294, C295, C296, C311), R179 (C297, C298, C299, C300, C301, C302, C303, C304, C305, C306, C312), R180 (C307, C308, C309, C310), R181 (C313, C314, C315, C316, C317, C318, C319, C320, C321), R183 (C327), R184 (C328, C329, C330, C331, C332, C333), R185 (C334, C335, C336, C337, C338, C339, C340, C341, C342, C343), R188 (C350, C351, C352, C353, C354, C355, C356, C357, C358, C359), R190 (C374, C375, C376, C377, C378, C379, C380, C381, C382, C383, C384, C385, C386, C387, C388), R191 (C389, C390, C391, C392, C393, C394, C395, C396, C397, C398, C399, C400), R192 (C401, C402, C403, C404, C405, C406, C407, C408, C409, C410), R194 (C417, C418, C419), R197 (C413, C414), R198 (C423), R202 (C432, C433, C434, C435, C436, C437, C438, C439, C440, C441, C442, C443, C444, C445, C446, C447), R205 (C455, C456, C457, C458, C467), R206 (C459, C460), R210 (C474, C475, C476), R214 (C485, C486, C487), R219 (C497, C498, C499), R224 (C512, C513, C514, C515, C516), R229 (C526, C527, C528, C529), R235 (C538, C539), R241 (C546, C547, C548, C549, C550, C560), R243 (C558, C559, C561), R245 (C564, C565), R249 (C571, C572, C573), R251 (C579), R252 (C580), R253 (C581, C582), R254 (C583), R256 (C586, C587), R257 (C588, C589), R259 (C593, C594, C595), R267 (C619, C620, C621)",
+        "tests: project test command"
+      ],
+      "predicted": "deep"
     }
   ],
   "plans": [
@@ -72683,6 +73462,453 @@
           }
         }
       ]
+    },
+    {
+      "id": "P217.1",
+      "phase": "P217",
+      "title": "One graph walk for the phase closure (qa.jq)",
+      "reqs": [
+        "R268"
+      ],
+      "files": [
+        "plugin/lib/qa.jq"
+      ],
+      "after": [],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "Replace the expansion rounds (one full pass per phase) with one walk per phase over the direct edges, a visited set stopping on loops, giving the same closure and the same interleaved list",
+        "Find the plan cycle among the interleaved phases' plans with the same one-walk closure instead of one round per plan",
+        "Keep every answer byte for byte: the chain, diamond, ring, self-link, missing-plan and cycle fixtures of tests/qa-state.bats (filter 'R268 closure') pass unchanged"
+      ]
+    },
+    {
+      "id": "P217.2",
+      "phase": "P217",
+      "title": "One tree read per repository for the digests (qa-inputs.sh)",
+      "reqs": [
+        "R268"
+      ],
+      "files": [
+        "plugin/lib/qa-inputs.sh"
+      ],
+      "after": [],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "Read each repository's tree once per command (one git ls-tree -r for every phase's files and check files together; each submodule once at its own commit), then digest each phase's own paths from that one listing, keeping the digest bytes as they were",
+        "Hand the digests out through vbw_out, never a builtin printf after the loop fed by a process substitution",
+        "Same answers as before: the p3chain digests, one ls-tree call per repository, and the stored answers of the big fixture (tests/big-milestone-expected/) for vbw next, vbw show qa, vbw status and the digests"
+      ]
+    },
+    {
+      "id": "P217.3",
+      "phase": "P217",
+      "title": "The timed big-milestone test",
+      "reqs": [
+        "R268"
+      ],
+      "files": [
+        "tests/timed-big-milestone.bats"
+      ],
+      "after": [
+        "P217.1",
+        "P217.2"
+      ],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "A timed test (release run only, tools/test.sh picks up tests/timed-*.bats) that builds the big fixture once (load big-milestone-helper; fixture_build big big_milestone_fixture) and times vbw next --json by user plus system CPU (bash TIMEFORMAT), three runs after one warm-up, the median judged",
+        "A 5 s (5000 ms) budget scaled by the bench's reference as tests/timed-big-record.bats scales its own (NOMINAL_MS read from tools/bench-hooks.sh, VBW_BENCH_REFERENCE_MS stands in, a busy machine skips), the measured CPU printed",
+        "Run it once on this machine and record the figure in the test's header comment"
+      ]
+    },
+    {
+      "id": "P218.1",
+      "phase": "P218",
+      "title": "Approval snapshot with blob ids; added-to against waiting (contract.sh, cmd-approve.sh)",
+      "reqs": [
+        "R269"
+      ],
+      "files": [
+        "plugin/lib/contract.sh",
+        "plugin/lib/cmd-approve.sh"
+      ],
+      "after": [],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "approve_record and approve_repin write the approval's commit id (HEAD after the approval commit) and each check file's git blob id (git hash-object of the approved bytes) into .vbw/runtime/approved-contract.json as 'commit' and 'blobs' {path: blob}",
+        "contract_waiting_with tells an added-to file (every approved line still there, in its order, only new lines among them: the diff against the approved blob holds additions only) from a waiting one (a removed, changed or reordered line, a new file, a file a fix added, or a snapshot without blob ids); it returns only the waiting files and sets CONTRACT_ADDED to one 'path<TAB>added line count' per added-to file",
+        "A snapshot written before the blob ids keeps today's rule: every changed file waits",
+        "Every caller of contract_waiting keeps its meaning (waiting means waiting; an added-to file is not waiting), including qa_digests' saved-results guard"
+      ]
+    },
+    {
+      "id": "P218.2",
+      "phase": "P218",
+      "title": "vbw next says prove and names the added-to files (next.jq, cmd-next.sh)",
+      "reqs": [
+        "R269"
+      ],
+      "files": [
+        "plugin/lib/next.jq",
+        "plugin/lib/cmd-next.sh"
+      ],
+      "after": [
+        "P218.1"
+      ],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "cmd-next.sh hands the added-to files and their counts (CONTRACT_ADDED) to next.jq; the answer carries added_to: [{file, lines}] at its top level, and approve is asked for waiting files only",
+        "The text answer of vbw next prints one line per added-to file after the action line: 'check file X: N lines added since the approval; the proof judges it with the approved content until they are approved at the next gate' ('1 line added' for one)",
+        "The gate after the proof still asks approval for the added lines (the files stay in the approval's changes); nothing else in next's answer changes"
+      ]
+    },
+    {
+      "id": "P218.3",
+      "phase": "P218",
+      "title": "The proof judges an added-to check with the approved content (checks.sh, cmd-prove.sh, proofcopy.sh, proofreuse.sh)",
+      "reqs": [
+        "R269"
+      ],
+      "files": [
+        "plugin/lib/checks.sh",
+        "plugin/lib/cmd-prove.sh",
+        "plugin/lib/proofcopy.sh",
+        "plugin/lib/proofreuse.sh"
+      ],
+      "after": [
+        "P218.1"
+      ],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "checks_approved: added-to files no longer stop a proof (strict included); waiting files still do, with today's message",
+        "In the clean copy only, each added-to check file is replaced by its approved blob (git cat-file of the snapshot's blob id) before the checks run; the working tree is never touched",
+        "The evidence of a check judged so carries judged: {file: sha256 of the approved content}; a check judged with its working content carries no judged key",
+        "The proof's summary line of such a check ends with 'judged with the approved content (N added lines pending approval)'; proofreuse keys the check's fingerprint on the judged digest, so its pass is reused while the approved content stands and the check runs again once the lines are approved"
+      ]
+    },
+    {
+      "id": "P218.4",
+      "phase": "P218",
+      "title": "vbw show contract lists the added-to files with their diff (cmd-show.sh)",
+      "reqs": [
+        "R269"
+      ],
+      "files": [
+        "plugin/lib/cmd-show.sh"
+      ],
+      "after": [
+        "P218.1"
+      ],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "contract_change_lines says 'test file X: N lines added since the approval' for an added-to file and 'changed test file X' only for a waiting one; the approval question counts an added-to file as one change",
+        "show_contract_changes_rest prints the unified diff of the added lines under that line, from the snapshot's blob to the file as it is",
+        "vbw show contract (the approval screen) lists the same lines and diffs, so the user approves what they see"
+      ]
+    },
+    {
+      "id": "P218.5",
+      "phase": "P218",
+      "title": "Docs: the two cases of an edited check file",
+      "reqs": [
+        "R269"
+      ],
+      "files": [
+        "docs/proof.md",
+        "docs/guards.md",
+        "docs/workflows.md"
+      ],
+      "after": [],
+      "status": "planned",
+      "role": "docs",
+      "tasks": [
+        "docs/proof.md: lines added to an approved check file do not stop the run; the proof judges the check with the approved content and its summary says 'judged with the approved content (N added lines pending approval)'; the gate after the proof asks approval for the added lines with their diff; once approved they count from the next proof",
+        "docs/guards.md: the guard on check files is unchanged; an added-to file against a waiting one (a removed, changed or reordered line, a new file) and why only additions are safe to run against",
+        "docs/workflows.md: what the build and fix workflows see: vbw next's added_to and the line it prints, and that a removed or altered line still stops at approve"
+      ]
+    },
+    {
+      "id": "P219.1",
+      "phase": "P219",
+      "title": "Range estimates in the kernel (steps-expect.jq, steps.sh, road.sh, road.jq)",
+      "reqs": [
+        "R270"
+      ],
+      "files": [
+        "plugin/lib/steps-expect.jq",
+        "plugin/lib/steps.sh",
+        "plugin/lib/road.sh",
+        "plugin/lib/road.jq"
+      ],
+      "after": [],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "steps-expect.jq gives an object {seconds, low, high, runs, rough}: seconds the figure of today, low and high the lowest and highest kept run per unit times the step's size, runs the kept count, and one definition 'def rough' holding both thresholds (runs < 5, or high > 1.5 x low); no run keeps seconds and the ends null with runs 0, while 1 and 2 runs now give a rough range",
+        "steps.sh: step_expect hands the object on; the step note (.vbw/runtime/step.json) and next's .step carry low, high, end_low, end_high, rough and runs beside seconds and end; step_words says 'roughly L to H min, until around A to B (rough guess from N runs)', 'roughly N min, until around A (rough guess from N runs)' when low equals high, keeps 'about N min, until around A' for a tight estimate and today's words for no run",
+        "road.sh and road.jq: the road sums low and high over its pieces, is rough when any piece is, carries low, high, end_low, end_high and rough, and says 'Milestone end: roughly L to H min, until around A to B (rough guess), counting ...' with its counting tail kept; a tight road stays as today",
+        "vbw status and vbw run start say the step's sentence from the same step_words"
+      ]
+    },
+    {
+      "id": "P219.2",
+      "phase": "P219",
+      "title": "The status line and the panel show the range (statusline.jq, panel-step.js)",
+      "reqs": [
+        "R270"
+      ],
+      "files": [
+        "plugin/scripts/statusline.jq",
+        "plugin/hooks/panel-step.js",
+        "tests/panel/step-range.test.mjs"
+      ],
+      "after": [
+        "P219.1"
+      ],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "statusline.jq: a rough note shows 'until ~HH:MM-HH:MM' (end_low to end_high, the day named as the kernel's clock rule names it); a tight note keeps 'until around HH:MM'",
+        "panel-step.js stepWords: a rough note words 'roughly L to H min, until around A to B (rough guess from N runs)' from end_low, end_high, rough and runs ('roughly N min, until around A (rough guess from N runs)' when the ends agree); tight notes unchanged",
+        "tests/panel/step-range.test.mjs: node cases for the rough and the tight note"
+      ]
+    },
+    {
+      "id": "P219.3",
+      "phase": "P219",
+      "title": "Docs: the range estimate",
+      "reqs": [
+        "R270"
+      ],
+      "files": [
+        "docs/panel.md",
+        "docs/next.md",
+        "docs/statusline.md"
+      ],
+      "after": [],
+      "status": "planned",
+      "role": "docs",
+      "tasks": [
+        "docs/panel.md: the two thresholds (fewer than 5 kept runs, or a high above 1.5 times the low) and the wording 'roughly L to H min, until around A to B (rough guess from N runs)', beside the single figure and the no-run words",
+        "docs/next.md: .step and .road carry low, high, end_low, end_high, rough and runs; the sentences with examples",
+        "docs/statusline.md: 'until ~HH:MM-HH:MM' for a rough estimate"
+      ]
+    },
+    {
+      "id": "P220.1",
+      "phase": "P220",
+      "title": "The router: the stack pack line at express planning and the newer-VBW line (SKILL.md)",
+      "reqs": [
+        "R271",
+        "R272"
+      ],
+      "files": [
+        "plugin/skills/vibe/SKILL.md"
+      ],
+      "after": [],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "The express plan step tells the session to read the Lead text of every pack in packs.project first: 'Stack pack text: read <packs_root>/<name>/lead.md first', in the planning workflow's words (plugin/workflows/planning.js, packLine)",
+        "Every step that calls the kernel: when it exits 4 (its line says 'needs a newer VBW'), say its line and stop; never ask the user to type /vbw:approve or vbw approve",
+        "The step names --plugin-dir as the kernel's line does, and nothing else in the router changes"
+      ]
+    },
+    {
+      "id": "P220.2",
+      "phase": "P220",
+      "title": "The writer file and the two-version refusal (record.sh)",
+      "reqs": [
+        "R272"
+      ],
+      "files": [
+        "plugin/lib/record.sh"
+      ],
+      "after": [],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "Every kernel write of the record (record_update's one write path) also writes .vbw/runtime/writer.json: {version: this plugin's version from .claude-plugin/plugin.json, schema: the record's schema}",
+        "record_refuse_newer reads the writer file and dies with exit 4 and exactly 'this project needs a newer VBW: its record was written by VBW W, and this session loaded VBW L. Update VBW (/vbw:update), then restart Claude Code; for a development checkout start Claude Code with --plugin-dir <checkout>/plugin (--plugin-dir: Claude Code loads VBW from that folder instead of the installed copy)'",
+        "Without a writer file the line is 'this project needs a newer VBW: its record was written with schema N, and this session loaded VBW L, which reads up to schema M. Update VBW (/vbw:update), ...' in the same shape; the record is never touched"
+      ]
+    },
+    {
+      "id": "P220.3",
+      "phase": "P220",
+      "title": "Hooks: the kernel's line at session start and in the approval menu (session-start.sh, approve-ask.sh)",
+      "reqs": [
+        "R272"
+      ],
+      "files": [
+        "plugin/hooks/session-start.sh",
+        "plugin/hooks/approve-ask.sh"
+      ],
+      "after": [
+        "P220.2"
+      ],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "session-start.sh: on exit 4 the context and the notice to the user carry the kernel's own line (no wording of their own), the notice still naming /vbw:update",
+        "approve-ask.sh: when vbw show contract exits 4, answer deny with the kernel's line as the reason and in systemMessage, so the approval menu is never shown over a record this VBW cannot read; never allow",
+        "The pins in tests/hook-answers.bats (filter R272) and tests/version-mismatch.bats (filter 'R272 hooks') pass; the hook answer inventory stays green"
+      ]
+    },
+    {
+      "id": "P221.1",
+      "phase": "P221",
+      "title": "Linear script scan and a size gate (programs.jq, read.sh)",
+      "reqs": [
+        "R273"
+      ],
+      "files": [
+        "plugin/hooks/programs.jq",
+        "plugin/hooks/read.sh"
+      ],
+      "after": [],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "programs.jq: the script scan (unreadable_calls and the shell-script reading) works line by line or statement by statement, so its time grows with the script's size and the 264 KB field-shaped script is read to its end within the hook's time (ulimit -t 5)",
+        "read.sh: before a script file is read, its size is checked; above 512 KB the answer is a deny whose reason is 'VBW guard: <file> (<N> KB) is too large to read before it runs' then 'Next: commit it unchanged (a committed, unchanged script is not read) or run it in smaller parts', with the user's line beside it; a committed, unchanged script still runs unread",
+        "The bench budgets are unchanged (tools/bench-hooks.sh green), and the refusals of tests/guard-script-files.bats keep their text"
+      ]
+    },
+    {
+      "id": "P221.2",
+      "phase": "P221",
+      "title": "The timed guard-script test",
+      "reqs": [
+        "R273"
+      ],
+      "files": [
+        "tests/timed-guard-script.bats"
+      ],
+      "after": [
+        "P221.1"
+      ],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "A timed test (release run only) that writes an 80 KB and a 264 KB script in the field's shape (thousands of echo lines, a write of a protected check file last) under a build lease and times the Bash guard on each by CPU, three runs, the median",
+        "The 264 KB run within 5 s (5000 ms) and within 1.5 times the size ratio (264/80) times the 80 KB time; budgets scaled by the bench's reference as tests/timed-big-record.bats does (NOMINAL_MS, VBW_BENCH_REFERENCE_MS), a busy machine skips",
+        "Print both measures and the ratio"
+      ]
+    },
+    {
+      "id": "P221.3",
+      "phase": "P221",
+      "title": "The record guard refuses writes, never reads (guard-bash.jq, common.jq)",
+      "reqs": [
+        "R276"
+      ],
+      "files": [
+        "plugin/hooks/guard-bash.jq",
+        "plugin/hooks/common.jq"
+      ],
+      "after": [],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "written(record_path) refuses only a real write: a redirection anywhere in the command (>, >>, 2>, &>), cp, mv or install with the record as destination, tee, sed -i, perl -i, ed, rm, truncate, shred, dd of= and ln with the record as target",
+        "Readers pass: find (-path, -name), ls, grep, wc, cat, head, tail, jq, awk, diff, stat, shasum, cp of the record to /dev/null, git log and git diff naming it",
+        "An inline program (python -c, node -e, perl -e) that names the record is refused with a reason saying the guard cannot tell a read from a write in it; guard-file.jq is unchanged"
+      ]
+    },
+    {
+      "id": "P222.1",
+      "phase": "P222",
+      "title": "spec_parse and every flagged kernel function hand captured text out through vbw_out",
+      "reqs": [
+        "R274"
+      ],
+      "files": [
+        "plugin/lib/cmd-spec.sh",
+        "plugin/lib/core.sh",
+        "plugin/lib/delivered.sh",
+        "plugin/lib/proofcopy.sh",
+        "plugin/lib/steps.sh",
+        "plugin/lib/loop.sh"
+      ],
+      "after": [
+        "P222.2",
+        "P217.2",
+        "P218.3",
+        "P219.1"
+      ],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "spec_parse (cmd-spec.sh:57) writes the parsed spec through vbw_out",
+        "Every function tools/check-captured-writes.sh flags in plugin/lib (delivered_deviations, loop_spend, step_expect, step_proof_plan, vbw_machine_limit, vbw_git_root, vbw_mtime, proofcopy_slots, and any other) writes through vbw_out, or is allow-listed in the tool with a reason only when its write must stay a builtin",
+        "bash tools/check-captured-writes.sh plugin/lib exits 0; the full test run of the changed files stays green"
+      ]
+    },
+    {
+      "id": "P222.2",
+      "phase": "P222",
+      "title": "The captured-write rule (tools/check-captured-writes.sh)",
+      "reqs": [
+        "R274"
+      ],
+      "files": [
+        "tools/check-captured-writes.sh"
+      ],
+      "after": [],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "A bash 3.2 tool, DIR...: for each function in the directories' *.sh files, flag one whose last command is a bare builtin printf or echo whose text argument is one variable assigned in that function from a command substitution (not piped, not redirected); vbw_out, a literal, an argument, a write into a pipe or a file and a function ending otherwise pass; print 'file:line: function' per hit and exit 1",
+        "--allowed prints the allow-list, one 'name: reason' per line (empty at first); an allow-listed function is never flagged",
+        "The self-tests in tests/output-child-exit.bats (filter 'captured-write rule|R274: --allowed') pass; the standards case in tests/standards.bats runs the tool on plugin/lib"
+      ]
+    },
+    {
+      "id": "P222.3",
+      "phase": "P222",
+      "title": "The reference beside each case (tools/bench-hooks.sh)",
+      "reqs": [
+        "R275"
+      ],
+      "files": [
+        "tools/bench-hooks.sh"
+      ],
+      "after": [],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "cpu_pair takes a label; VBW_BENCH_TIMES names a file of injected measures ('LABEL<TAB>BASELINE_MS<TAB>TOTAL_MS', consumed in order per label, the last repeating) for the labels startup, reference, each case's printed label and 'reference beside LABEL'",
+        "Each case measures the case and the reference beside it, interleaved; its budget is scaled by its own ratio (that reference over NOMINAL_MS, above 1 only); after the verdict line it prints 'LABEL: reference beside it X ms CPU per call; ratio R; scaled budget B ms'; a case over its budget is measured again together with its reference and the second pair judges it",
+        "The header 'reference:' line (once, before any case) and the busy-machine rule stay; the header comment says the reference is measured beside each case"
+      ]
+    },
+    {
+      "id": "P222.4",
+      "phase": "P222",
+      "title": "Docs: the bench measures the reference beside each case",
+      "reqs": [
+        "R275"
+      ],
+      "files": [
+        "CLAUDE.md",
+        "AGENTS.md",
+        "docs/guards.md"
+      ],
+      "after": [],
+      "status": "planned",
+      "role": "docs",
+      "tasks": [
+        "CLAUDE.md and AGENTS.md hot paths: the reference workload is measured beside each case and a case is judged against the reference of its own moment ('beside each case' replaces 'on the same machine in the same run')",
+        "docs/guards.md: the same, with the per-case line the bench prints",
+        "No other wording change"
+      ]
     }
   ],
   "fixes": [
@@ -81092,6 +82318,12 @@
       "text": "Rerun the macOS bench shard once for PR 751 instead of changing budgets or the bench in 2.1.27",
       "why": "Two CI runs failed different guard cases by 0.3 to 15 ms over budget at reference ratio 0.90 and 0.97; plugin/hooks is byte-identical to 2.1.26, which passed; locally every guard case is well under budget. The bench design flaw is T255 for 2.1.28. A second fail of the same case would be treated as a real regression",
       "at": "2026-11-07T19:24:00Z"
+    },
+    {
+      "id": "D652",
+      "text": "Estimates: one figure after 5 agreeing runs (the slowest at most 1.5 times the fastest, per unit of work); otherwise a range from the fastest to the slowest of the latest 10 runs of that kind, scaled to the work at hand, worded 'about 10 to 25 min (rough guess), until around 14:10 to 14:25' everywhere (kernel, status line, panel)",
+      "why": "Decided by the lead engineer under the owner's standing rule (decide, record, do): a figure after a few days of normal use while ranges stay honest when past runs disagree; 10 agreeing runs would show ranges too long in a new project, 3 can mislead",
+      "at": "2026-11-07T20:36:29Z"
     }
   ],
   "commands": {
@@ -81114,8 +82346,8 @@
     "profile": "balanced",
     "autonomy_cap": 25,
     "models": {
-      "architect": "fable",
-      "lead": "fable"
+      "architect": "opus",
+      "lead": "opus"
     },
     "rigor": "auto"
   },
@@ -91806,6 +93038,17 @@
         "ended": "2026-11-07T20:36:07Z",
         "cost": {
           "usd": 4.892735
+        }
+      },
+      {
+        "id": "plan-20261107T203655Z",
+        "kind": "plan",
+        "session": "0ee781c3-c5b6-4a6c-889f-04b89f1fba4a",
+        "milestone": "M55",
+        "started": "2026-11-07T20:36:55Z",
+        "ended": "2026-11-07T21:33:33Z",
+        "cost": {
+          "usd": 25.471895
         }
       }
     ],

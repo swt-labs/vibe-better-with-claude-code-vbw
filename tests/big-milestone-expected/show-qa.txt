@@ -1,0 +1,41 @@
+P1 is checked again: its files, tests or plan changed
+P2 is checked again: its files, tests or plan changed
+P3 is checked again: its files, tests or plan changed
+P4 is checked again: its files, tests or plan changed
+P5 is checked again: its files, tests or plan changed
+P6 is checked again: its files, tests or plan changed
+P7 is checked again: its files, tests or plan changed
+P8 is checked again: its files, tests or plan changed
+P9 is checked again: its files, tests or plan changed
+P10 is checked again: its files, tests or plan changed
+P11 is checked again: its files, tests or plan changed
+P12 is checked again: its files, tests or plan changed
+P13 is checked again: its files, tests or plan changed
+P14 is checked again: its files, tests or plan changed
+P15 is checked again: its files, tests or plan changed
+P16 is checked again: its files, tests or plan changed
+P17 is checked again: its files, tests or plan changed
+P18 is checked again: its files, tests or plan changed
+P19 is checked again: its files, tests or plan changed
+P20 is checked again: its files, tests or plan changed
+P21 is checked again: its files, tests or plan changed
+P22 is checked again: its files, tests or plan changed
+P23 is checked again: its files, tests or plan changed
+P24 is checked again: its files, tests or plan changed
+P25 is checked again: its files, tests or plan changed
+P26 is checked again: its files, tests or plan changed
+P27 is checked again: its files, tests or plan changed
+P28 is checked again: its files, tests or plan changed
+P29 is checked again: its files, tests or plan changed
+P30 is checked again: its files, tests or plan changed
+P31 is checked again: not checked yet
+P32 is checked again: not checked yet
+P33 is checked again: not checked yet
+P34 is checked again: not checked yet
+P35 is checked again: not checked yet
+P36 is checked again: not checked yet
+P37 is checked again: not checked yet
+P38 is checked again: not checked yet
+P39 is checked again: not checked yet
+P40 is checked again: not checked yet
+note: phases P1, P2, P3, P4, P5, P6, P7, P8, P9, P10, P11, P12, P13, P14, P15, P16, P17, P18, P19, P20, P21, P22, P23, P24, P25, P26, P27, P28, P29, P30, P31, P32, P33, P34, P35, P36, P37, P38, P39, P40, P41, P42, P43, P44, P45, P46 and P47 build on each other through their plans; each is checked again when the other's tests change

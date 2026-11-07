@@ -215,3 +215,45 @@ PY_WRITE='open("tests/c1.sh", "w").write("x")'
   grep -qE '^GUARD_INPUTS=.*[" ]script[" ]' "$REPO_ROOT/tools/bench-hooks.sh" || { echo "tools/bench-hooks.sh has no script input in GUARD_INPUTS"; false; }
   grep -q 'script.json' "$REPO_ROOT/tools/bench-hooks.sh" || { echo "tools/bench-hooks.sh writes no script.json input"; false; }
 }
+
+# --- R273: a big script is read in time, a huge one refused by size --------------
+
+# field_script FILE KB: a shell script of about KB kilobytes in the field report's shape
+# (thousands of echo lines) whose last line writes the protected check file.
+field_script() {
+  awk -v n="$(( $2 * 1024 / 45 ))" 'BEGIN { for (i = 1; i <= n; i++) printf "echo \"step %06d: the build prints a line here\"\n", i; print "echo x > tests/c1.sh" }' > "$1"
+}
+
+@test "R273: a 264 KB shell script run by bash FILE is read to its end within the guard's time: the write on its last line is refused by name, not as a guard failure" {
+  field_script .vbw/runtime/scratch/field.sh 264
+  [ "$(wc -c < .vbw/runtime/scratch/field.sh)" -ge 262144 ]
+  call 'bash .vbw/runtime/scratch/field.sh'
+  denied "a 264 KB script whose last line writes a protected check file"
+  first "VBW guard: .vbw/runtime/scratch/field.sh (run by bash): echo x > tests/c1.sh writes tests/c1.sh: $PROTECTED"
+  has "$PROTECTED_NEXT"
+}
+
+@test "R273: a script too large to read before it runs is refused by its size, before any read, naming the file, its size in KB and the two ways out" {
+  head -c 3145728 /dev/zero | tr '\0' '#' > .vbw/runtime/scratch/huge.sh
+  printf '\necho x > tests/c1.sh\n' >> .vbw/runtime/scratch/huge.sh
+  call 'bash .vbw/runtime/scratch/huge.sh'
+  denied "a 3 MB script"
+  first 'VBW guard: .vbw/runtime/scratch/huge.sh (3072 KB) is too large to read before it runs'
+  has 'Next: commit it unchanged (a committed, unchanged script is not read) or run it in smaller parts'
+  # Committed and unchanged, the same script runs unread, as any project script does.
+  cp .vbw/runtime/scratch/huge.sh tools/huge.sh
+  git add tools/huge.sh && git commit -q -m "chore(tools): a huge script"
+  call 'bash tools/huge.sh'
+  allowed "the project's own committed huge script"
+}
+
+@test "R273 timed: tests/timed-guard-script.bats times the guard on an 80 KB and a 264 KB script: the big one within 5 s of CPU and within 1.5 times the size ratio of the small one's time, scaled by the bench's reference, skipped on a busy machine" {
+  local f="$BATS_TEST_DIRNAME/timed-guard-script.bats"
+  [ -f "$f" ] || { echo "no tests/timed-guard-script.bats"; false; }
+  grep -qE '\b80\b' "$f" && grep -qE '\b264\b' "$f" || { echo "the timed test does not name the 80 KB and 264 KB scripts"; false; }
+  grep -qE '1\.5' "$f" || { echo "the timed test has no 1.5 ratio rule"; false; }
+  grep -qE '\b5000\b|\b5 ?s\b' "$f" || { echo "the timed test names no 5 s budget"; false; }
+  grep -q 'NOMINAL_MS' "$f" || { echo "the timed test does not read the bench's NOMINAL_MS"; false; }
+  grep -qi 'busy' "$f" || { echo "the timed test has no busy-machine rule"; false; }
+  bats --count "$f" > /dev/null
+}

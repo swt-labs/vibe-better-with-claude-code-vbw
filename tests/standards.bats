@@ -336,3 +336,8 @@ R248_DIGEST=2a802f8856c36fc7b4cf01bbb857538bb8352af06c8f1d5e209454c5793c4e23
   printf '%s\n' "$section" | grep -q 'tools/check-record-shape.sh' || { echo "the Versioning section does not name tools/check-record-shape.sh"; false; }
   printf '%s\n' "$section" | grep -qiE 'new key[^.]*(bump|raise|new schema|schema number)|(bump|raise)[^.]*new key' || { echo "the Versioning section does not say a new key needs a schema bump"; false; }
 }
+
+@test "no plugin/lib function ends by handing captured text out through a builtin printf or echo, unless allow-listed with a reason (R274)" {
+  run bash "$REPO_ROOT/tools/check-captured-writes.sh" "$PLUGIN_ROOT/lib"
+  [ "$status" -eq 0 ] || { echo "$output"; false; }
+}

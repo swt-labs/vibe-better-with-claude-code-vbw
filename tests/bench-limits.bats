@@ -563,3 +563,60 @@ bench_lines() {
   [ "$(printf '%s\n' "$body" | grep -c 'run bench')" -ge 3 ] || { echo "the case has no second measure of the waiting bench"; false; }
   ! grep -qE 'sleep [0-9.]*[1-9]' "$REPO_ROOT/tests/bench-waiting.bash" || { echo "the judge sleeps"; false; }
 }
+
+# R275: the reference is measured beside each case (interleaved with it), so a case
+# is judged against the machine as it was while that case ran, not as it was before
+# the records were built. Each case's budget is scaled by its own ratio (its reference
+# over the nominal 28.9 ms, above 1 only), its line is followed by a line naming the
+# reference beside it, its ratio and the scaled budget, and a case over its budget is
+# measured again together with its reference (D517). The header line (R222) stays, once.
+# L1: VBW_BENCH_TIMES names a file of injected measures, one per line as
+# 'LABEL<TAB>BASELINE_MS<TAB>TOTAL_MS', consumed in order for each label (the last one
+# repeats): the labels are 'startup', 'reference', each case's printed label and
+# 'reference beside LABEL'.
+
+# injected LINE...: the injected measures file; each LINE is 'label|baseline|total'.
+injected() {
+  local l
+  TIMES="$TEST_ROOT/times.tsv"
+  : > "$TIMES"
+  for l in "$@"; do printf '%s\t%s\t%s\n' "${l%%|*}" "$(printf '%s' "$l" | cut -d'|' -f2)" "${l##*|}" >> "$TIMES"; done
+}
+@test "R275: a case's budget is scaled by the reference measured beside it: a slow machine throughout marks every case slow and fails none" {
+  injected 'startup|3.0|3.0' 'reference|3.0|60.8' 'guard (git)|3.0|51.0' 'reference beside guard (git)|3.0|60.8' 'guard (npm)|3.0|51.0' 'reference beside guard (npm)|3.0|60.8'
+  bench VBW_BENCH_TIMES="$TIMES" VBW_BENCH_ONLY="guard (git)|guard (npm)"
+  [ "$status" -eq 0 ] || { printf '%s\n' "$output"; false; }
+  line '^guard \(git\): 48.0 ms own CPU per call \(sh and jq startup 3.0 ms\); budget 25 ms: slow \(ratio 2.00, scaled budget 50.0 ms\)$' > /dev/null
+  line '^guard \(npm\): 48.0 ms own CPU per call \(sh and jq startup 3.0 ms\); budget 25 ms: slow \(ratio 2.00, scaled budget 50.0 ms\)$' > /dev/null
+  line '^guard \(npm\): reference beside it 57.8 ms CPU per call; ratio 2.00; scaled budget 50.0 ms$' > /dev/null
+  line '^guard \(git\): reference beside it 57.8 ms CPU per call; ratio 2.00; scaled budget 50.0 ms$' > /dev/null
+}
+
+@test "R275: a case slow on a machine whose reference beside it is nominal is over its budget, measured again first, while the other cases pass" {
+  injected 'startup|3.0|3.0' 'reference|3.0|31.9' 'guard (git)|3.0|13.0' 'reference beside guard (git)|3.0|31.9' 'guard (npm)|3.0|63.0' 'reference beside guard (npm)|3.0|31.9'
+  bench VBW_BENCH_TIMES="$TIMES" VBW_BENCH_ONLY="guard (git)|guard (npm)"
+  [ "$status" -eq 1 ] || { printf '%s\n' "$output"; false; }
+  line '^guard \(git\): 10.0 ms own CPU per call \(sh and jq startup 3.0 ms\); budget 25 ms$' > /dev/null
+  line '^guard \(npm\): measured again: the first measure gave 60.0 ms own CPU per call \(sh and jq startup 3.0 ms\), above the budget of 25 ms$' > /dev/null
+  line '^guard \(npm\): 60.0 ms own CPU per call \(sh and jq startup 3.0 ms\); budget 25 ms: OVER$' > /dev/null
+  line '^guard \(npm\): reference beside it 28.9 ms CPU per call; ratio 1.00; scaled budget 25 ms$' > /dev/null
+  [ "$(printf '%s\n' "$output" | grep -c '^reference: ')" -eq 1 ]
+}
+
+@test "R275: measured again, a case and the reference beside it are both measured anew: the second pair judges it" {
+  injected 'startup|3.0|3.0' 'reference|3.0|31.9' 'guard (npm)|3.0|63.0' 'guard (npm)|3.0|13.0' 'reference beside guard (npm)|3.0|31.9' 'reference beside guard (npm)|3.0|60.8'
+  bench VBW_BENCH_TIMES="$TIMES" VBW_BENCH_ONLY="guard (npm)"
+  [ "$status" -eq 0 ] || { printf '%s\n' "$output"; false; }
+  line '^guard \(npm\): measured again: the first measure gave 60.0 ms own CPU per call \(sh and jq startup 3.0 ms\), above the budget of 25 ms$' > /dev/null
+  line '^guard \(npm\): 10.0 ms own CPU per call \(sh and jq startup 3.0 ms\); budget 25 ms$' > /dev/null
+  line '^guard \(npm\): reference beside it 57.8 ms CPU per call; ratio 2.00; scaled budget 50.0 ms$' > /dev/null
+  [ "$(printf '%s\n' "$output" | grep -c 'reference beside it')" -eq 1 ]
+}
+
+@test "R275: the busy-machine rule stays: a startup above the hook limit judges nothing" {
+  injected 'startup|30.0|30.0'
+  bench VBW_BENCH_TIMES="$TIMES" VBW_BENCH_ONLY="guard (npm)"
+  [ "$status" -eq 0 ] || { printf '%s\n' "$output"; false; }
+  line '^machine too busy to measure: sh and jq startup takes 30.0 ms CPU per call, above the 25 ms hook limit; nothing judged$' > /dev/null
+  ! printf '%s\n' "$output" | grep -q 'reference beside it'
+}

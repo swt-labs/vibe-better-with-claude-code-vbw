@@ -281,3 +281,27 @@ tools_call() {
   printf '%s' "$output" | jq -e '.hookSpecificOutput | .hookEventName == "PreToolUse" and .permissionDecision == "deny" and (.permissionDecisionReason | startswith("VBW guard: ")) and (.permissionDecisionReason | contains("tests/c1.sh"))'
   printf '%s' "$output" | jq -e "$USER_LINE" || { echo "$output"; false; }
 }
+
+@test "R272 R128: approve-ask.sh deny and systemMessage: under a record written by a newer VBW the approval menu is refused with the kernel's own line (both versions named), shown to the user too, never answered in the user's place" {
+  jq '.schema = 99' .vbw/record.json > "$TEST_ROOT/newer.json" && cp "$TEST_ROOT/newer.json" .vbw/record.json
+  run ask_call "Approve the plan?"
+  [ "$status" -eq 0 ]
+  [ "$(shape "$output")" = "$DENY" ] || { echo "$output"; false; }
+  printf '%s' "$output" | jq -e '.hookSpecificOutput | .hookEventName == "PreToolUse" and .permissionDecision == "deny"
+    and (.permissionDecisionReason | contains("this project needs a newer VBW: its record was written with schema 99, and this session loaded VBW "))
+    and (.permissionDecisionReason | contains("--plugin-dir: Claude Code loads VBW from that folder instead of the installed copy"))' || { echo "$output"; false; }
+  printf '%s' "$output" | jq -e '.systemMessage | contains("needs a newer VBW") and contains("--plugin-dir")' || { echo "$output"; false; }
+}
+
+@test "R273 R128: read.sh deny and systemMessage: a script too large to read before it runs is refused by its size with a 'VBW guard:' reason, which blocks it and tells Claude why, and shows the user what was refused" {
+  "$VBW" approve > /dev/null
+  VBW_SESSION_ID=s1 "$VBW" run start build P1.1 > /dev/null
+  mkdir -p .vbw/runtime/scratch
+  head -c 3145728 /dev/zero | tr '\0' '#' > .vbw/runtime/scratch/huge.sh
+  run bash_call 'bash .vbw/runtime/scratch/huge.sh'
+  [ "$status" -eq 0 ]
+  [ "$(shape "$output")" = "$DENY" ] || { echo "$output"; false; }
+  printf '%s' "$output" | jq -e '.hookSpecificOutput | .hookEventName == "PreToolUse" and .permissionDecision == "deny"
+    and (.permissionDecisionReason | startswith("VBW guard: .vbw/runtime/scratch/huge.sh (3072 KB) is too large to read before it runs"))' || { echo "$output"; false; }
+  printf '%s' "$output" | jq -e "$USER_LINE" || { echo "$output"; false; }
+}
