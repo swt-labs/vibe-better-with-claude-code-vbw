@@ -68,23 +68,23 @@ mutate_digests() {
   done | jq -R . | jq -sc '[_nwise(2) | {key: .[0], value: .[1]}] | from_entries'
 }
 
-# mutate_same_bytes PLAN TARGET HEAD DIGESTS RECORD: refuse a break whose digests equal an
+# mutate_same_bytes PLAN TARGET HEAD BYTESUM RECORD: refuse a break whose digests equal an
 # earlier break's of the plan at the same commit, recorded or queued: the Dev did not edit the
 # earlier break out. One line, naming that break's target and time; nothing runs or is recorded.
 mutate_same_bytes() {
-  local plan="$1" target="$2" head="$3" digests="$4" record="$5" hit='' e m names
-  hit=$(printf '%s' "$record" | jq -r --arg p "$plan" --arg h "$head" --argjson d "$digests" '
+  local plan="$1" target="$2" head="$3" bytesum="$4" record="$5" hit='' e m names
+  hit=$(printf '%s' "$record" | jq -r --arg p "$plan" --arg h "$head" --argjson d "$bytesum" '
     [.plans[] | select(.id == $p) | (.mutations // [])[] | select(.head == $h and (.digests // null) == $d)
      | "\(if has("rule") then "\(.rule.req).\(.rule.k)" else "task\(.task)" end) \(.at)"] | last // empty')
   if [ -z "$hit" ]; then
     while IFS= read -r e; do
       [ -n "$e" ] || continue
-      m=$(jq -r --arg h "$head" --argjson d "$digests" 'select(.head == $h and (.digests // null) == $d) | "\(.target) \(.at // "") (queued)"' "$e/meta.json")
+      m=$(jq -r --arg h "$head" --argjson d "$bytesum" 'select(.head == $h and (.digests // null) == $d) | "\(.target) \(.at // "") (queued)"' "$e/meta.json")
       [ -z "$m" ] || hit=$m
     done < <(mutate_queue_entries "$plan")
   fi
   [ -z "$hit" ] || {
-    names=$(printf '%s' "$digests" | jq -r 'keys | join(", ")')
+    names=$(printf '%s' "$bytesum" | jq -r 'keys | join(", ")')
     vbw_die "$target holds the same bytes of $names as the break $hit: the break was not edited out of the file; edit it out, make a different break, then run vbw mutate again"
   }
 }
@@ -347,9 +347,9 @@ cmd_mutate() {
   head=$(git rev-parse HEAD) || vbw_die "the project has no commit yet"
   tree=$(vbw_head_tree) || vbw_die "cannot fingerprint the committed code"
   # The broken bytes, once as digests and once copied to the set-aside folder; the working copy is never touched (R265).
-  local digests dir
-  digests=$(mutate_digests "${broke[@]}")
-  mutate_same_bytes "$plan" "$target" "$head" "$digests" "$record"
+  local bytesum dir
+  bytesum=$(mutate_digests "${broke[@]}")
+  mutate_same_bytes "$plan" "$target" "$head" "$bytesum" "$record"
   checks_begin "$record"
   dir=$(mktemp -d "$VBW_RUNTIME/mutate.XXXXXX") || vbw_die "cannot create a directory in $VBW_RUNTIME"
   vbw_guard_add dir "$dir"
@@ -362,7 +362,7 @@ cmd_mutate() {
   # Queued (T174): the break waits, set aside, for vbw mutate PLAN --run.
   if [ "$queue" = 1 ]; then
     checks_end
-    mutate_queue_add "$plan" "$dir" "$(jq -nc --arg t "$target" --arg q "$req" --argjson k "$rk" --arg c "$check" --arg w "$what" --arg h "$head" --arg tr "$tree" --arg at "$(vbw_now)" --argjson dg "$digests" \
+    mutate_queue_add "$plan" "$dir" "$(jq -nc --arg t "$target" --arg q "$req" --argjson k "$rk" --arg c "$check" --arg w "$what" --arg h "$head" --arg tr "$tree" --arg at "$(vbw_now)" --argjson dg "$bytesum" \
       --argjson files "$(printf '%s\n' "${files[@]}" | jq -R . | jq -sc .)" --argjson broke "$(printf '%s\n' "${broke[@]}" | jq -R . | jq -sc .)" \
       '{target: $t, req: $q, rk: $k, check: $c, what: $w, files: $files, broke: $broke, head: $h, tree: $tr, at: $at, digests: $dg}')"
     return 0
@@ -407,7 +407,7 @@ $ways"
   proofcopy_release
   mutate_tstep copies
   checks_end
-  MUTATE_DIGESTS=$digests
+  MUTATE_DIGESTS=$bytesum
   mutate_record "$plan" "$target" "$what" "$head" "$results" "$record" "${ruledoc:-}" "${tk:-}" \
     "$(printf '%s\n' "${files[@]}" | jq -R . | jq -sc .)" "$tree" || rc=$?
   mutate_time_say
