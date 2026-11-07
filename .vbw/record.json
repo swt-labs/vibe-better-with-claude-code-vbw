@@ -71823,13 +71823,14 @@
         "R264"
       ],
       "files": [
-        "plugin/lib/cmd-mutate.sh",
-        "plugin/lib/record.jq",
-        "plugin/lib/record-schema.jq",
-        "plugin/lib/record.sh",
         "docs/record.md",
+        "plugin/lib/cmd-approve.sh",
+        "plugin/lib/cmd-mutate.sh",
+        "plugin/lib/cmd-show.sh",
         "plugin/lib/contract.sh",
-        "plugin/lib/cmd-show.sh"
+        "plugin/lib/record-schema.jq",
+        "plugin/lib/record.jq",
+        "plugin/lib/record.sh"
       ],
       "after": [
         "P213.1"
@@ -80466,6 +80467,14 @@
       "at": "2026-11-07T00:27:09Z",
       "text": "Contract approved: 256 requirements, 616 checks, 627 plans (f2db63b4ff95)",
       "plans": []
+    },
+    {
+      "id": "D639",
+      "at": "2026-11-07T00:58:21Z",
+      "text": "Contract approved: 256 requirements, 616 checks, 627 plans (ac5eae5f8972)",
+      "plans": [
+        "P214.1"
+      ]
     }
   ],
   "commands": {
