@@ -120,6 +120,7 @@ names() {
   local doc="$REPO_ROOT/docs/workflows.md"
   ! grep -q 'VBW undoes the break' "$doc" || { echo "docs/workflows.md still says VBW undoes the break"; false; }
   grep -E '^\| *`vbw mutate' "$doc" | grep -qiE 'leaves (the|each|every) (named )?file|stays in the working copy|never touches' || { echo "the mutate row does not say the file is left as given"; false; }
+  grep -E '^\| *`vbw mutate' "$doc" | grep -qi 'stays in the working copy' && grep -E '^\| *`vbw mutate' "$doc" | grep -qi 'edits it out' || { echo "the mutate row does not say the break stays and the Dev edits it out"; false; }
   tr '\n' ' ' < "$doc" | grep -qiE 'edit(s)? the break out' || { echo "docs/workflows.md does not tell the Dev to edit the break out"; false; }
   tr '\n' ' ' < "$doc" | grep -qiE 'same (broken )?bytes[^.]*(twice|again)[^.]*refused|refus[^.]*same (broken )?bytes' || { echo "docs/workflows.md does not document the refusal of the same bytes twice"; false; }
 }
