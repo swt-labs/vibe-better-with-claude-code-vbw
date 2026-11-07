@@ -32,7 +32,10 @@ def schema_features: [
      or ((.requirements | type) == "array" and any(.requirements[]; type == "object" and .reworded == true)))},
   {schema: 13, feature: "a recorded break that carries digests",
    present: ((.plans | type) == "array" and any(.plans[]; type == "object" and (.mutations | type) == "array"
-     and any(.mutations[]; type == "object" and has("digests"))))}
+     and any(.mutations[]; type == "object" and has("digests"))))},
+  {schema: 14, feature: "a rule's --none entry marked git (its check reads the project through git)",
+   present: ((.plans | type) == "array" and any(.plans[]; type == "object" and (.mutations | type) == "array"
+     and any(.mutations[]; type == "object" and has("git"))))}
 ];
 
 def schema_of: . as $r | [schema_features[] | select(.present) | .schema] | max // schema_floor;

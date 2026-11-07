@@ -79,7 +79,8 @@ def mutation_ok($sch):
   type == "object" and (.at | iso)
   and (if has("none") then (.none | nonempty) and (
         if has("rule")
-        then (keys | sort) == ["at","head","none","rule"]
+        then (keys - ["git"] | sort) == ["at","head","none","rule"]
+          and ((has("git") | not) or .git == true)
           and (.rule | rule_ref_ok)
           and (.head | type == "string" and test("^[0-9a-f]{40}$"))
         else (keys | sort) == ["at","none","task"] and (.task | int_in(1; 9999)) end)
