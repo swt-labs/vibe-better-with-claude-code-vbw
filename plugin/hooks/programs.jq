@@ -26,13 +26,31 @@ def strip_heredocs:
     end)
   | .out | join("\n");
 
-# Quoted strings become \u0001<n>\u0002; .q keeps their raw text.
-def mask:
+# Quoted strings become \u0001<n>\u0002; .q keeps their raw text. jq slices a string in
+# time that grows with its offset, so a script masked whole costs the square of its size
+# (R273). The text is masked a line at a time instead: a line that leaves a quote character
+# unpaired is held and joined with the lines after it until one holds the character that
+# can pair it, and the held text is then masked again from its start, so a string that
+# spans lines is masked as one, with the pairing the whole text would get.
+def mask_chunk($base):
   . as $s | [match("'[^']*'|\"(?:\\\\.|[^\"\\\\])*\""; "g")] as $ms
   | reduce range($ms | length) as $i ({text: "", pos: 0, q: []};
-      $ms[$i] as $m | .text += $s[.pos:$m.offset] + "\u0001\($i)\u0002"
+      $ms[$i] as $m | .text += $s[.pos:$m.offset] + "\u0001\($base + $i)\u0002"
       | .q += [$m.string] | .pos = $m.offset + $m.length)
   | .text += $s[.pos:] | {text, q};
+
+def mask:
+  def settle($c):
+    (.q | length) as $b | ($c | mask_chunk($b)) as $r
+    | ([$r.text | match("['\"]"; "g").string] | unique) as $left
+    | if $left == [] then .text += [$r.text] | .q += $r.q | .pend = null
+      else .pend = $c | .need = "[" + ($left | join("")) + "]" end;
+  reduce split("\n")[] as $l ({text: [], q: [], pend: null, need: null};
+      if .pend == null then settle($l)
+      elif .need as $n | $l | test($n) then settle(.pend + "\n" + $l)
+      else .pend += "\n" + $l end)
+  | if .pend == null then . else (.q | length) as $b | (.pend | mask_chunk($b)) as $r | .text += [$r.text] | .q += $r.q end
+  | {text: (.text | join("\n")), q};
 
 def unquote: if startswith("'") then .[1:-1] else .[1:-1] | gsub("\\\\(?<c>.)"; .c) end;
 def restore($q): gsub("\u0001(?<n>[0-9]+)\u0002"; $q[.n | tonumber] | unquote);
@@ -93,7 +111,7 @@ def substitutions:
 # Every simple command the shell would run.
 def commands($depth):
   strip_heredocs | mask as $m
-  | ( [$m.text | splits("\\|\\||&&|;;?|(?<!>)\\||(?<![<>])&(?!>)|\\n|\\(|\\)|\\{|\\}|`") | select(test("\\S"))][]
+  | ( [$m.text | split("\n")[] | splits("\\|\\||&&|;;?|(?<!>)\\||(?<![<>])&(?!>)|\\(|\\)|\\{|\\}|`") | select(test("\\S"))][]
       | simple($m.q) as $c
       | $c,
         ( select($depth > 0)
