@@ -3581,24 +3581,20 @@ scenario_queuedreq() {
   }
 }
 
-# rustpack_seed: a small Rust crate, its greet function a stub and its test written ahead of the
-# code, with one plan P1.1 on src/lib.rs approved by the user before the session.
+# rustpack_seed: a two-crate Rust workspace (crates/textkit, crates/countkit), each lib.rs empty, and a
+# spec of two features, one per crate, with no plan: the Lead plans them.
 rustpack_seed() {
-  printf '# Greetings\n\n## Requirements\n\n- R1 [auto] greet("Ana") returns "Hello, Ana!"\n' > .vbw/spec.md
+  printf '# Text tools\n\n## Requirements\n\n- R1 [auto] textkit::shout("ana") returns "ANA!" (crate crates/textkit)\n- R2 [auto] countkit::words("a b c") returns 3 (crate crates/countkit)\n' > .vbw/spec.md
   "$VBW" spec sync > /dev/null || return 1
-  mkdir -p src tests
-  printf '[package]\nname = "greeter"\nversion = "0.1.0"\nedition = "2021"\n' > Cargo.toml
-  printf 'pub fn greet(_name: &str) -> String {\n    String::new()\n}\n' > src/lib.rs
-  printf '#[test]\nfn greets_by_name() {\n    assert_eq!(greeter::greet("Ana"), "Hello, Ana!");\n}\n' > tests/greet.rs
+  mkdir -p crates/textkit/src crates/countkit/src
+  printf '[workspace]\nmembers = ["crates/textkit", "crates/countkit"]\nresolver = "2"\n' > Cargo.toml
+  printf '[package]\nname = "textkit"\nversion = "0.1.0"\nedition = "2021"\n' > crates/textkit/Cargo.toml
+  printf '[package]\nname = "countkit"\nversion = "0.1.0"\nedition = "2021"\n' > crates/countkit/Cargo.toml
+  : > crates/textkit/src/lib.rs
+  : > crates/countkit/src/lib.rs
   printf 'target/\n' >> .gitignore
   cargo generate-lockfile --quiet --offline 2> /dev/null || cargo generate-lockfile --quiet || return 1
-  printf '%s' '{"phases": [{"id": "P1", "title": "Greet", "reqs": ["R1"]}],
-    "plans": [{"id": "P1.1", "phase": "P1", "title": "greet", "reqs": ["R1"], "files": ["src/lib.rs"], "after": [], "tasks": ["greet returns Hello, NAME!"]}],
-    "checks": [{"id": "C1", "req": "R1", "run": ["cargo", "test", "-j", "2", "--test", "greet"], "files": ["tests/greet.rs"]}],
-    "rules": [{"req": "R1", "text": "a name is greeted", "check": "C1"}]}' \
-    | "$VBW" apply > /dev/null || return 1
-  git add -A && git commit -qm "chore: plan" || return 1
-  "$VBW" approve > /dev/null || return 1
+  git add -A && git commit -qm "chore: workspace" || return 1
 }
 
 # rustpack (R261): a real Rust crate through /vbw:vibe. Judged in the record and the session logs:
@@ -3608,26 +3604,26 @@ scenario_rustpack() {
   command -v cargo > /dev/null 2>&1 || { say "setup failed: cargo is not installed"; return 1; }
   new_project
   (cd "$dir" && "$VBW" init > /dev/null && "$VBW" config rigor express > /dev/null && rustpack_seed) \
-    || { say "setup failed: could not seed the approved plan"; return 1; }
-  fixture="a Rust crate (Cargo.toml, src/lib.rs with a stub, tests/greet.rs written ahead) with one plan P1.1 on src/lib.rs approved by the user before the session; rigor express; the user types /vbw:vibe"
-  named=$(cd "$dir" && "$VBW" next --json | jq -c '.packs.plans["P1.1"] // []')
+    || { say "setup failed: could not seed the workspace and its spec"; return 1; }
+  fixture="a two-crate Cargo workspace (crates/textkit, crates/countkit, both lib.rs empty) and a spec of two requirements, one per crate, with no plan; rigor express; the user types /vbw:vibe and the Lead plans"
   start="/vbw:vibe"
   checks() {
-    local passed=true r="$dir/.vbw/record.json" told=false read_it=false done_p=false pack=false
-    [ "$named" = '["rust"]' ] && pack=true
-    transcripts | xargs cat 2> /dev/null | jq -se 'any(.[]; .type == "user" and (.message.content | tostring | contains("packs/rust/dev.md")))' > /dev/null 2>&1 && told=true
-    transcripts | xargs cat 2> /dev/null | jq -se '[.[] | select(.type == "assistant") | .message.content[]? | select(.type == "tool_use" and .name != "Workflow" and ((.input | tostring) | contains("packs/rust/dev.md")))] | length > 0' > /dev/null 2>&1 && read_it=true
-    jq -e '.plans[] | select(.id == "P1.1") | .status == "done"' "$r" > /dev/null 2>&1 && done_p=true
-    say "pack named: $named, Dev told: $told, Dev read it: $read_it, P1.1 done: $done_p"
+    local passed=true r="$dir/.vbw/record.json" planned=false named=false disjoint=false pack_told=false n
+    workflow_started planning && planned=true
+    n=$(jq '[.plans[]] | length' "$r" 2> /dev/null || echo 0)
+    jq -e '(.plans | length) > 0 and all(.plans[]; (.files | type == "array") and (.files | length) > 0)' "$r" > /dev/null 2>&1 && named=true
+    jq -e '[.plans[].files[]] | length == (unique | length)' "$r" > /dev/null 2>&1 && disjoint=true
+    transcripts | xargs cat 2> /dev/null | jq -se 'any(.[]; (.message.content | tostring | contains("packs/rust/lead.md")))' > /dev/null 2>&1 && pack_told=true
+    say "planning workflow: $planned, plans: $n, files named: $named, files disjoint: $disjoint, Lead told the pack: $pack_told"
     common_checks
-    expect "vbw next --json names the Rust pack for P1.1" [ "$pack" = true ]
-    expect "the Dev's brief names the pack's dev text" [ "$told" = true ]
-    expect "the Dev read the pack's dev text" [ "$read_it" = true ]
-    expect "P1.1 is done" [ "$done_p" = true ]
+    expect "the Lead planned (a planning workflow ran)" [ "$planned" = true ]
+    expect "every plan names the files it changes" [ "$named" = true ]
+    expect "no two plans change the same file" [ "$disjoint" = true ]
     [ "$failed" -eq 0 ] || passed=false
     result_write rustpack "$fixture" "${cost_usd:-0}" "$passed" \
-      "$(jq -n --argjson p "$pack" --argjson t "$told" --argjson r "$read_it" --argjson d "$done_p" '{pack_named: $p, dev_told: $t, dev_read: $r, plan_done: $d}')" \
-      '["the Lead pack text at a real plan step (the plan was seeded)","the QA pack text at a deep tier (rigor express)","a nested Cargo workspace","a dependency added with its lockfiles","whether the pack made the Dev work better than without it"]'
+      "$(jq -n --argjson l "$planned" --argjson f "$named" --argjson d "$disjoint" --argjson t "$pack_told" --argjson n "$n" \
+        '{lead_planned: $l, plan_files_named: $f, plan_files_disjoint: $d, lead_told_pack: $t, plans: $n}')" \
+      '["the QA pack text at a deep tier (rigor express)","a dependency added with its lockfiles","a Cargo workspace nested inside another workspace","whether the pack made the Lead or the Dev work better than without it"]'
   }
 }
 
