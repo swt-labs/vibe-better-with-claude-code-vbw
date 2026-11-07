@@ -71841,12 +71841,161 @@
       "after": [
         "P213.1"
       ],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "mutate_rule_none: a recorded run with git == true is accepted: entry {rule, none, git: true, at, head}, one printed line naming the check, git and the reason; the empty-reason refusal says a reason is needed and why (no read list can vouch for a check that reads the project through git), before any run; the read-list cases unchanged",
         "record.jq: git may only be true, only on a rule none entry; record-schema.jq row 14 'a rule entry marked git', VBW_SCHEMA_MAX 14; docs/record.md row and plans row",
         "contract.sh contract_amendments_block: 'git-read excuses since the last approval:' then '  PLAN: Rn.k CHECK (REASON)' per entry recorded after the clone's last contract grant (so vbw show contract, --changes and vbw ship all print it); cmd-show.sh: show plan prints '  Rn.k: no break possible: CHECK reads the project through git (REASON)' and show req the same words in [breaks: ...]; cmd-plan.sh already counts a none entry"
+      ],
+      "mutations": [
+        {
+          "rule": {
+            "req": "R264",
+            "k": 1
+          },
+          "what": "git mark never written",
+          "files": [
+            "plugin/lib/cmd-mutate.sh"
+          ],
+          "checks": {
+            "C613": "red"
+          },
+          "result": "red",
+          "at": "2026-11-07T11:19:07Z",
+          "head": "70cb32dbd052795798eea5adcd7d6005e5c1a37b",
+          "tree": "9bdf7e7b2d42a079a54dd8cab1e6d80c95fa0e4f",
+          "contract": "ba5f15da9e51cc99e37896aa10f70eb78bd506bfe06afa981fcf8f0b0a852296",
+          "digests": {
+            "plugin/lib/cmd-mutate.sh": "3845172c227ebdf7821840cde37b35ebeff39a928431cf59e4a65df168a205d8"
+          }
+        },
+        {
+          "rule": {
+            "req": "R264",
+            "k": 2
+          },
+          "what": "empty reason accepted",
+          "files": [
+            "plugin/lib/cmd-mutate.sh"
+          ],
+          "checks": {
+            "C613": "red"
+          },
+          "result": "red",
+          "at": "2026-11-07T11:19:09Z",
+          "head": "70cb32dbd052795798eea5adcd7d6005e5c1a37b",
+          "tree": "9bdf7e7b2d42a079a54dd8cab1e6d80c95fa0e4f",
+          "contract": "ba5f15da9e51cc99e37896aa10f70eb78bd506bfe06afa981fcf8f0b0a852296",
+          "digests": {
+            "plugin/lib/cmd-mutate.sh": "d8d5b2c2893398ab9d44d6586c085294252ba76c8a176285fd1c436e85cc4555"
+          }
+        },
+        {
+          "rule": {
+            "req": "R264",
+            "k": 3
+          },
+          "what": "git mark accepts any value",
+          "files": [
+            "plugin/lib/record.jq"
+          ],
+          "checks": {
+            "C613": "red"
+          },
+          "result": "red",
+          "at": "2026-11-07T11:19:11Z",
+          "head": "70cb32dbd052795798eea5adcd7d6005e5c1a37b",
+          "tree": "9bdf7e7b2d42a079a54dd8cab1e6d80c95fa0e4f",
+          "contract": "ba5f15da9e51cc99e37896aa10f70eb78bd506bfe06afa981fcf8f0b0a852296",
+          "digests": {
+            "plugin/lib/record.jq": "aeeeb55da7141e6002ae789ddff01f54dc920f3ff5bcc701f43ea87038478513"
+          }
+        },
+        {
+          "rule": {
+            "req": "R264",
+            "k": 4
+          },
+          "what": "git mark at schema 13",
+          "files": [
+            "plugin/lib/record-schema.jq"
+          ],
+          "checks": {
+            "C614": "red"
+          },
+          "result": "red",
+          "at": "2026-11-07T11:19:14Z",
+          "head": "70cb32dbd052795798eea5adcd7d6005e5c1a37b",
+          "tree": "9bdf7e7b2d42a079a54dd8cab1e6d80c95fa0e4f",
+          "contract": "ba5f15da9e51cc99e37896aa10f70eb78bd506bfe06afa981fcf8f0b0a852296",
+          "digests": {
+            "plugin/lib/record-schema.jq": "68ad9fc5333c207c23a0962960760288318de6dad38a0e2c7ca5d8ec2b4fed99"
+          }
+        },
+        {
+          "rule": {
+            "req": "R264",
+            "k": 5
+          },
+          "what": "docs say 13",
+          "files": [
+            "docs/record.md"
+          ],
+          "checks": {
+            "C615": "red"
+          },
+          "result": "red",
+          "at": "2026-11-07T11:19:16Z",
+          "head": "70cb32dbd052795798eea5adcd7d6005e5c1a37b",
+          "tree": "9bdf7e7b2d42a079a54dd8cab1e6d80c95fa0e4f",
+          "contract": "ba5f15da9e51cc99e37896aa10f70eb78bd506bfe06afa981fcf8f0b0a852296",
+          "digests": {
+            "docs/record.md": "a1fd9a77ce94bc155edd3975f6eb2e351dba9d3ddb135b3424090a51d1872ad3"
+          }
+        },
+        {
+          "rule": {
+            "req": "R264",
+            "k": 6
+          },
+          "what": "excuse block lists nothing",
+          "files": [
+            "plugin/lib/contract.sh"
+          ],
+          "checks": {
+            "C613": "red"
+          },
+          "result": "red",
+          "at": "2026-11-07T11:19:18Z",
+          "head": "70cb32dbd052795798eea5adcd7d6005e5c1a37b",
+          "tree": "9bdf7e7b2d42a079a54dd8cab1e6d80c95fa0e4f",
+          "contract": "ba5f15da9e51cc99e37896aa10f70eb78bd506bfe06afa981fcf8f0b0a852296",
+          "digests": {
+            "plugin/lib/contract.sh": "fa64af34ca869c0d9143b0792dc2fe12beddba82c6b30ab54b8646045f27d7bc"
+          }
+        },
+        {
+          "rule": {
+            "req": "R264",
+            "k": 7
+          },
+          "what": "show plan prints the plain line",
+          "files": [
+            "plugin/lib/cmd-show.sh"
+          ],
+          "checks": {
+            "C613": "red"
+          },
+          "result": "red",
+          "at": "2026-11-07T11:19:20Z",
+          "head": "70cb32dbd052795798eea5adcd7d6005e5c1a37b",
+          "tree": "9bdf7e7b2d42a079a54dd8cab1e6d80c95fa0e4f",
+          "contract": "ba5f15da9e51cc99e37896aa10f70eb78bd506bfe06afa981fcf8f0b0a852296",
+          "digests": {
+            "plugin/lib/cmd-show.sh": "711a715aa9e48878725828c9263fe0d52491ab8a9aed94e62915e3c9f4c2f722"
+          }
+        }
       ]
     },
     {
@@ -90954,6 +91103,17 @@
         "ended": "2026-11-07T01:03:31Z",
         "cost": {
           "usd": 0.791633
+        }
+      },
+      {
+        "id": "build-20261107T111552Z",
+        "kind": "build",
+        "session": "0ee781c3-c5b6-4a6c-889f-04b89f1fba4a",
+        "milestone": "M54",
+        "started": "2026-11-07T11:15:52Z",
+        "ended": "2026-11-07T11:19:41Z",
+        "cost": {
+          "usd": 3.198476
         }
       }
     ],
