@@ -61,6 +61,7 @@ status_of() { jq -r --arg p "$1" '.plans[] | select(.id == $p) | .status' .vbw/r
   [ "$(status_of P1.1)" != done ]
   printf 'echo unpaid\n' > src/pay.sh
   "$VBW" mutate P1.1 R1.1 "prints unpaid" src/pay.sh < /dev/null > /dev/null
+  git checkout -q -- src/pay.sh
   run "$VBW" plan done P1.1 < /dev/null
   [ "$status" -eq 0 ] || { echo "$output"; false; }
 }

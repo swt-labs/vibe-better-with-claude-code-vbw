@@ -70,3 +70,17 @@ section_states() { section "$1" "$2" | grep -Eiq -- "$3" || { echo "${1##*/} '$2
   states "$DEV" '--none.*(only|solely).*(check|test).*(reads|read list).*(nothing|none|no file)|(check|test).*(reads|read list).*(nothing|none|no file).*--none'
   states "$DEV" '--none[^.]*(only|solely)[^.]*(kernel (verifies|checks|proves|judges)|verified by (vbw|the kernel))'
 }
+
+# R264 (T246): the docs state the git case beside the rule.
+@test "R264 docs: docs/proof.md's mutation check section says a check that reads the project through git is recorded --none on its reason alone, marked git, listed at the next gate, and that a check with a read list never needs it" {
+  section_states "$DOCS/proof.md" "### The mutation check" 'through git[^.]*--none|--none[^.]*through git'
+  section_states "$DOCS/proof.md" "### The mutation check" '(reason alone|on the reason|its reason)[^.]*(git|vouch)|(git|vouch)[^.]*(reason alone|on the reason|its reason)'
+  section_states "$DOCS/proof.md" "### The mutation check" 'git-read excuse|listed[^.]*(show contract|vbw ship|next gate|next approval)'
+  section_states "$DOCS/proof.md" "### The mutation check" 'read list[^.]*(never|no) need|(never|no) need[^.]*read list'
+}
+
+@test "R264 docs: docs/workflows.md's mutate row and mutation check section name the git case, its mark and its listing" {
+  grep -E '^\| *`vbw mutate' "$DOCS/workflows.md" | grep -qi 'git' || { echo "the mutate row does not name the git case"; false; }
+  section_states "$DOCS/workflows.md" "## The mutation check" 'git-read excuse'
+  section_states "$DOCS/workflows.md" "## The mutation check" 'no break possible'
+}

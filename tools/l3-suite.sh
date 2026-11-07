@@ -273,6 +273,22 @@ transcript_tool_called() {
       | select(.type == "tool_use") | (.input.command // ""); test($cmd))' > /dev/null 2>&1
 }
 
+# transcript_edit_after_mutate FILE: reads transcript file names on stdin and succeeds when, in one
+# transcript, an Edit or Write of a path ending FILE comes after a vbw mutate call: the Dev edited
+# the break out of the working copy by hand, which it can only do when the kernel left the break
+# there (R265). Read from the tool calls, never from screen text.
+transcript_edit_after_mutate() {
+  local f
+  while IFS= read -r f; do
+    jq -se --arg file "$1" '
+      [.[] | select(.type == "assistant") | .message.content[]? | select(.type == "tool_use")] as $u
+      | ([$u | to_entries[] | select(.value.name == "Bash" and ((.value.input.command // "") | test("vbw[^|;&]* mutate "))) | .key] | first) as $m
+      | $m != null and any($u | to_entries[]; .key > $m and (.value.name == "Edit" or .value.name == "Write")
+          and ((.value.input.file_path // "") | endswith("/" + $file)))' "$f" > /dev/null 2>&1 && return 0
+  done
+  return 1
+}
+
 # unhide_lines_present DIR: succeeds when DIR/.vbw/.gitignore holds the four
 # un-hide lines VBW keeps for its plan files (R208).
 unhide_lines_present() {
@@ -2688,6 +2704,7 @@ scenario_taskbreak() {
   fixture="greet.sh in two plans of one requirement, approved by the user before the session: P1.1 greets and has a --help task no rule covers, P1.2 adds shout.sh, a file only it owns (its rule's check is red until P1.2 is built); rigor deep; the user types /vbw:vibe and the build runs to the end"
   start="/vbw:vibe"
   checks() {
+    local left=false edited_out=false no_lost=false digs c h f
     local passed=true r="$dir/.vbw/record.json" breaks first_head="" tmp later=false first=false red=false recorded=false ran="[]" only=false p12 bline=false sline=false marked=false blocked_early=true files_ok=false cmark=false rmark=false
     # Every break of P1.1 that ran checks (a task: a number; --none records no checks).
     breaks=$(jq -c '[.plans[] | select(.id == "P1.1") | (.mutations // [])[] | select(has("task") and has("result"))]' "$r" 2> /dev/null || echo '[]')
@@ -2715,6 +2732,21 @@ scenario_taskbreak() {
     jq -e '[.plans[] | select(.id == "P1.1") | .files] == [["greet.sh"]]' "$r" > /dev/null 2>&1 && files_ok=true
     never_blocked=false
     [ "$blocked_early" = false ] && [ "$files_ok" = true ] && never_blocked=true
+    # R265: the break stayed in the working copy (the Dev edited it out by hand after vbw mutate),
+    # no commit of P1.1 holds the broken bytes, and every plan file ends as its commit has it.
+    digs=$(printf '%s' "$breaks" | jq -r '[.[] | (.digests // {}) | to_entries[] | select(.key == "greet.sh") | .value] | unique | .[]')
+    if [ -n "$digs" ] && transcripts | transcript_edit_after_mutate greet.sh; then left=true; fi
+    edited_out=true
+    [ -n "$digs" ] || edited_out=false
+    nl=$'\n'
+    for c in $(git -C "$dir" log --format=%H -- greet.sh) WORKTREE; do
+      if [ "$c" = WORKTREE ]; then h=$(shasum -a 256 "$dir/greet.sh" 2> /dev/null | cut -d' ' -f1); else h=$(git -C "$dir" show "$c:greet.sh" 2> /dev/null | shasum -a 256 | cut -d' ' -f1); fi
+      case "$nl$digs$nl" in *"$nl$h$nl"*) edited_out=false ;; esac
+    done
+    no_lost=true
+    for f in greet.sh shout.sh; do
+      if [ ! -f "$dir/$f" ] || ! git -C "$dir" diff --quiet HEAD -- "$f" 2> /dev/null || [ -n "$(git -C "$dir" status --porcelain -- "$f")" ]; then no_lost=false; fi
+    done
     say "task breaks of P1.1: $(printf '%s' "$breaks" | jq -c '[.[] | {task, result, checks}]')"
     common_checks
     expect "the Dev recorded a task break on P1.1 ($recorded)" [ "$recorded" = true ]
@@ -2726,10 +2758,13 @@ scenario_taskbreak() {
     expect "a vbw mutate result carried the steps line ($sline)" [ "$sline" = true ]
     expect "vbw show plan P1.1 marked R1.2 and C2 as P1.2's in a tool result ($marked)" [ "$marked" = true ]
     expect "no vbw plan block P1.1 call, and P1.1's files are exactly greet.sh ($never_blocked)" [ "$never_blocked" = true ]
+    expect "the break was left in the working copy: the Dev edited greet.sh after vbw mutate ($left)" [ "$left" = true ]
+    expect "the break was edited out: no commit and no working copy holds the broken bytes ($edited_out)" [ "$edited_out" = true ]
+    expect "no file was lost: greet.sh and shout.sh exist and match their commits ($no_lost)" [ "$no_lost" = true ]
     [ "$failed" -eq 0 ] || passed=false
     result_write taskbreak "$fixture" "${cost_usd:-0}" "$passed" \
-      "$(jq -n --argjson rec "$recorded" --argjson ran "$ran" --argjson red "$red" --argjson first "$first" --argjson later "$later" --argjson b "$breaks" --argjson bl "$bline" --argjson sl "$sline" --argjson sm "$marked" --argjson nb "$never_blocked" \
-        '{task_break_recorded: $rec, checks_run: $ran, other_rule_check_red_at_break: $red, early_plan_built_first: $first, later_plan_completed: $later,
+      "$(jq -n --argjson lf "$left" --argjson eo "$edited_out" --argjson nl "$no_lost" --argjson rec "$recorded" --argjson ran "$ran" --argjson red "$red" --argjson first "$first" --argjson later "$later" --argjson b "$breaks" --argjson bl "$bline" --argjson sl "$sline" --argjson sm "$marked" --argjson nb "$never_blocked" \
+        '{break_left_in_working_copy: $lf, break_edited_out: $eo, no_file_lost: $nl, task_break_recorded: $rec, checks_run: $ran, other_rule_check_red_at_break: $red, early_plan_built_first: $first, later_plan_completed: $later,
           mutate_breakdown_line: $bl, mutate_steps_line: $sl,
           show_plan_marked: $sm, early_plan_never_blocked: $nb,
           task_breaks: ($b | map({task, result, checks}))}')" \
@@ -2755,7 +2790,8 @@ fixchecks_seed() {
   printf '#!/bin/sh\necho "Hello, ${1:-world}!"\n' > greet.sh && chmod +x greet.sh
   "$VBW" commit P1.1 "feat(P1.1): greet.sh" > /dev/null || return 1
   for k in 1 2; do
-    printf '#!/bin/sh\necho "Hello"\n' > greet.sh
+    # Distinct bytes per break: the same bytes twice are refused as a forgotten break (R265).
+    printf '#!/bin/sh\necho "Hello %s"\n' "$k" > greet.sh
     "$VBW" mutate P1.1 "R1.$k" "greets nobody by name" greet.sh > /dev/null || return 1
   done
   # shellcheck disable=SC1010 # "plan done" is a vbw subcommand
@@ -2862,16 +2898,30 @@ scenario_leaveout() {
     jq -e '.evidence.passed == true' "$r" > /dev/null 2>&1 && proof=true
     probe=$(cat "$dir/.vbw/runtime/leaveout-probe" 2> /dev/null || true)
     [ "$probe" = "data=absent cache=present" ] && without=true
-    say "contract line: $named; leave_out: $leave; proof passed: $proof; probe: ${probe:-none}"
+    # The disk's own answer, tried here independently of VBW (a copy-on-write clone of a
+    # small file in the project), and what vbw doctor suggests for the ignored cache/.
+    local disk=plain flag=--reflink=always doc matches=false
+    [ "$(uname)" != Darwin ] || flag=-c
+    printf 'x\n' > "$dir/.vbw/runtime/l3-disk-a" 2> /dev/null \
+      && cp "$flag" "$dir/.vbw/runtime/l3-disk-a" "$dir/.vbw/runtime/l3-disk-b" 2> /dev/null && disk=clone
+    rm -f "$dir/.vbw/runtime/l3-disk-a" "$dir/.vbw/runtime/l3-disk-b"
+    doc=$(cd "$dir" && VBW_PROOFCOPY_PLAIN_KB=1 "$VBW" doctor 2>&1 | grep 'cache/' || true)
+    if [ "$disk" = clone ]; then
+      [[ "$doc" == *"little cost"* && "$doc" != *"under Clean copy"* ]] && matches=true
+    else
+      [[ "$doc" == *"list cache/ under Clean copy"* ]] && matches=true
+    fi
+    say "contract line: $named; leave_out: $leave; proof passed: $proof; probe: ${probe:-none}; disk: $disk; doctor: ${doc:-none}"
     common_checks
     expect "vbw show contract names the path left out ($named)" [ "$named" = true ]
     expect "the record's project.leave_out is [data/] ($leave)" [ "$leave" = '["data/"]' ]
     expect "the proof passed ($proof)" [ "$proof" = true ]
     expect "the clean copy held no data/ and still held cache/ ($probe)" [ "$without" = true ]
+    expect "vbw doctor's suggestion for cache/ matches the disk ($disk)" [ "$matches" = true ]
     [ "$failed" -eq 0 ] || passed=false
     result_write leaveout "$fixture" "${cost_usd:-0}" "$passed" \
-      "$(jq -n --argjson n "$named" --argjson l "$leave" --argjson p "$proof" --argjson w "$without" \
-        '{contract_names_path: $n, leave_out: $l, proof_passed: $p, copy_without_data: $w}')" \
+      "$(jq -n --argjson n "$named" --argjson l "$leave" --argjson p "$proof" --argjson w "$without" --arg k "$disk" --argjson m "$matches" \
+        '{contract_names_path: $n, leave_out: $l, proof_passed: $p, copy_without_data: $w, disk_kind: $k, suggestion_matches_disk: $m}')" \
       '["a listed path that is a folder whose files alone are ignored (tests/clean-copy-proof.bats holds it)","a clone without the data folder","the fix, mutate and fix-done copies (tests/clean-copy-proof.bats holds them)","the approval question as drawn on screen","a data folder of real size, or a disk without instant clones"]'
   }
 }
@@ -3581,24 +3631,20 @@ scenario_queuedreq() {
   }
 }
 
-# rustpack_seed: a small Rust crate, its greet function a stub and its test written ahead of the
-# code, with one plan P1.1 on src/lib.rs approved by the user before the session.
+# rustpack_seed: a two-crate Rust workspace (crates/textkit, crates/countkit), each lib.rs empty, and a
+# spec of two features, one per crate, with no plan: the Lead plans them.
 rustpack_seed() {
-  printf '# Greetings\n\n## Requirements\n\n- R1 [auto] greet("Ana") returns "Hello, Ana!"\n' > .vbw/spec.md
+  printf '# Text tools\n\n## Requirements\n\n- R1 [auto] textkit::shout("ana") returns "ANA!" (crate crates/textkit)\n- R2 [auto] countkit::words("a b c") returns 3 (crate crates/countkit)\n' > .vbw/spec.md
   "$VBW" spec sync > /dev/null || return 1
-  mkdir -p src tests
-  printf '[package]\nname = "greeter"\nversion = "0.1.0"\nedition = "2021"\n' > Cargo.toml
-  printf 'pub fn greet(_name: &str) -> String {\n    String::new()\n}\n' > src/lib.rs
-  printf '#[test]\nfn greets_by_name() {\n    assert_eq!(greeter::greet("Ana"), "Hello, Ana!");\n}\n' > tests/greet.rs
+  mkdir -p crates/textkit/src crates/countkit/src
+  printf '[workspace]\nmembers = ["crates/textkit", "crates/countkit"]\nresolver = "2"\n' > Cargo.toml
+  printf '[package]\nname = "textkit"\nversion = "0.1.0"\nedition = "2021"\n' > crates/textkit/Cargo.toml
+  printf '[package]\nname = "countkit"\nversion = "0.1.0"\nedition = "2021"\n' > crates/countkit/Cargo.toml
+  : > crates/textkit/src/lib.rs
+  : > crates/countkit/src/lib.rs
   printf 'target/\n' >> .gitignore
   cargo generate-lockfile --quiet --offline 2> /dev/null || cargo generate-lockfile --quiet || return 1
-  printf '%s' '{"phases": [{"id": "P1", "title": "Greet", "reqs": ["R1"]}],
-    "plans": [{"id": "P1.1", "phase": "P1", "title": "greet", "reqs": ["R1"], "files": ["src/lib.rs"], "after": [], "tasks": ["greet returns Hello, NAME!"]}],
-    "checks": [{"id": "C1", "req": "R1", "run": ["cargo", "test", "-j", "2", "--test", "greet"], "files": ["tests/greet.rs"]}],
-    "rules": [{"req": "R1", "text": "a name is greeted", "check": "C1"}]}' \
-    | "$VBW" apply > /dev/null || return 1
-  git add -A && git commit -qm "chore: plan" || return 1
-  "$VBW" approve > /dev/null || return 1
+  git add -A && git commit -qm "chore: workspace" || return 1
 }
 
 # rustpack (R261): a real Rust crate through /vbw:vibe. Judged in the record and the session logs:
@@ -3607,27 +3653,28 @@ rustpack_seed() {
 scenario_rustpack() {
   command -v cargo > /dev/null 2>&1 || { say "setup failed: cargo is not installed"; return 1; }
   new_project
-  (cd "$dir" && "$VBW" init > /dev/null && "$VBW" config rigor express > /dev/null && rustpack_seed) \
-    || { say "setup failed: could not seed the approved plan"; return 1; }
-  fixture="a Rust crate (Cargo.toml, src/lib.rs with a stub, tests/greet.rs written ahead) with one plan P1.1 on src/lib.rs approved by the user before the session; rigor express; the user types /vbw:vibe"
-  named=$(cd "$dir" && "$VBW" next --json | jq -c '.packs.plans["P1.1"] // []')
+  (cd "$dir" && "$VBW" init > /dev/null && "$VBW" config rigor standard > /dev/null && rustpack_seed) \
+    || { say "setup failed: could not seed the workspace and its spec"; return 1; }
+  fixture="a two-crate Cargo workspace (crates/textkit, crates/countkit, both lib.rs empty) and a spec of two requirements, one per crate, with no plan; rigor standard, because express plans in the main session with no Lead; the user types /vbw:vibe and the Lead plans"
   start="/vbw:vibe"
   checks() {
-    local passed=true r="$dir/.vbw/record.json" told=false read_it=false done_p=false pack=false
-    [ "$named" = '["rust"]' ] && pack=true
-    transcripts | xargs cat 2> /dev/null | jq -se 'any(.[]; .type == "user" and (.message.content | tostring | contains("packs/rust/dev.md")))' > /dev/null 2>&1 && told=true
-    transcripts | xargs cat 2> /dev/null | jq -se '[.[] | select(.type == "assistant") | .message.content[]? | select(.type == "tool_use" and .name != "Workflow" and ((.input | tostring) | contains("packs/rust/dev.md")))] | length > 0' > /dev/null 2>&1 && read_it=true
-    jq -e '.plans[] | select(.id == "P1.1") | .status == "done"' "$r" > /dev/null 2>&1 && done_p=true
-    say "pack named: $named, Dev told: $told, Dev read it: $read_it, P1.1 done: $done_p"
+    local passed=true r="$dir/.vbw/record.json" planned=false named=false disjoint=false pack_told=false n
+    workflow_started planning && planned=true
+    n=$(jq '[.plans[]] | length' "$r" 2> /dev/null || echo 0)
+    jq -e '(.plans | length) > 0 and all(.plans[]; (.files | type == "array") and (.files | length) > 0)' "$r" > /dev/null 2>&1 && named=true
+    jq -e '[.plans[].files[]] | length == (unique | length)' "$r" > /dev/null 2>&1 && disjoint=true
+    transcripts | xargs cat 2> /dev/null | jq -se 'any(.[]; (.message.content | tostring | contains("packs/rust/lead.md")))' > /dev/null 2>&1 && pack_told=true
+    say "planning workflow: $planned, plans: $n, files named: $named, files disjoint: $disjoint, Lead told the pack: $pack_told"
     common_checks
-    expect "vbw next --json names the Rust pack for P1.1" [ "$pack" = true ]
-    expect "the Dev's brief names the pack's dev text" [ "$told" = true ]
-    expect "the Dev read the pack's dev text" [ "$read_it" = true ]
-    expect "P1.1 is done" [ "$done_p" = true ]
+    expect "the Lead planned (a planning workflow ran)" [ "$planned" = true ]
+    expect "the Lead was told the pack text" [ "$pack_told" = true ]
+    expect "every plan names the files it changes" [ "$named" = true ]
+    expect "no two plans change the same file" [ "$disjoint" = true ]
     [ "$failed" -eq 0 ] || passed=false
     result_write rustpack "$fixture" "${cost_usd:-0}" "$passed" \
-      "$(jq -n --argjson p "$pack" --argjson t "$told" --argjson r "$read_it" --argjson d "$done_p" '{pack_named: $p, dev_told: $t, dev_read: $r, plan_done: $d}')" \
-      '["the Lead pack text at a real plan step (the plan was seeded)","the QA pack text at a deep tier (rigor express)","a nested Cargo workspace","a dependency added with its lockfiles","whether the pack made the Dev work better than without it"]'
+      "$(jq -n --argjson l "$planned" --argjson f "$named" --argjson d "$disjoint" --argjson t "$pack_told" --argjson n "$n" \
+        '{lead_planned: $l, plan_files_named: $f, plan_files_disjoint: $d, lead_told_pack: $t, plans: $n}')" \
+      '["the QA pack text at a deep tier (rigor standard)","a dependency added with its lockfiles","a Cargo workspace nested inside another workspace","whether the pack made the Lead or the Dev work better than without it"]'
   }
 }
 

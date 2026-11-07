@@ -60,6 +60,7 @@ build() {
   if [ "$1" = mutation ]; then
     printf 'bye\n' > src/greet.txt
     "$VBW" mutate P2.1 "$Q.1" "says bye" src/greet.txt < /dev/null > /dev/null
+    git checkout -q -- src/greet.txt
   fi
   "$VBW" plan done P2.1 > /dev/null
   VBW_SESSION_ID=s1 "$VBW" run end > /dev/null

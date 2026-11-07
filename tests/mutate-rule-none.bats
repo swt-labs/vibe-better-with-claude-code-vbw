@@ -190,13 +190,76 @@ no_reads() {
   breaks P1.1 | jq -e 'length == 1 and .[0].rule == {req: "R1", k: 2} and .[0].none == "lists a folder no plan adds to"' || { breaks P1.1; false; }
 }
 
-@test "R203: a run that read the project through git is refused, saying its files are unknown" {
+# R264 (T246; docs/proof.md R203 section, docs/workflows.md): a rule whose check reads the
+# project through git has no read list to vouch for it, so --none REASON is accepted on the
+# reason alone: the entry gains git: true, the command prints one line, and the excuse is
+# listed at the next gate (vbw show contract, --changes, vbw ship) until the next approval.
+@test "R264: --none REASON on a check whose recorded run reads the project through git is accepted: entry {rule, none, git, at, head} written, one line printed naming the check, git and the reason" {
+  run "$VBW" mutate P1.1 R1.3 --none "only git" < /dev/null
+  [ "$status" -eq 0 ] || { echo "$output"; false; }
+  [ "$(printf '%s\n' "$output" | grep -c .)" -eq 1 ] || { echo "$output"; false; }
+  says "R1.3" "C4" "through git" "only git"
+  breaks P1.1 | jq -e 'length == 1 and (.[0] | (keys | sort) == ["at", "git", "head", "none", "rule"] and .git == true and .rule == {req: "R1", k: 3} and .none == "only git" and (.head | test("^[0-9a-f]{40}$")))' || { breaks P1.1; false; }
+  run_of C4 | jq -e '.git == true' || { run_of C4; false; }
+  vbw_run show plan P1.1
+  [ "$status" -eq 0 ] || { echo "$output"; false; }
+}
+
+@test "R264: an empty or missing reason is refused saying a reason is needed and why (no read list can vouch for the check); nothing runs, nothing is recorded" {
   local sum
   sum=$(record_sum)
-  run "$VBW" mutate P1.1 R1.3 --none "only git" < /dev/null
+  run "$VBW" mutate P1.1 R1.3 --none "" < /dev/null
   refused "$sum"
-  says "reads the project through git, so its files are unknown"
-  run_of C4 | jq -e '.git == true' || { run_of C4; false; }
+  says "--none needs a reason" "no read list"
+  run "$VBW" mutate P1.1 R1.3 --none < /dev/null
+  refused "$sum"
+  says "--none needs a reason"
+  [ "$(run_of C4)" = null ] || { echo "the check ran: $(run_of C4)"; false; }
+}
+
+@test "R264: vbw show plan and vbw show req print the excuse as 'no break possible: CHECK reads the project through git (REASON)', and vbw plan done counts it" {
+  # What plan done asks, at the function that decides it: the fixture's C6 always fails and
+  # plan done runs the checks first, and it asks breaks only of a building plan in a build run, and a requirement's rules of the plan that completes it.
+  owed() { jq '.lease = {kind: "build"} | (.plans[] | select(.id == "P1.1")).status = "building" | (.plans[] | select(.id == "P1.2")).status = "done"' .vbw/record.json \
+    | vbw_kernel '. "$VBW_LIB/cmd-plan.sh"; plan_missing_breaks P1.1'; }
+  [[ "$(owed)" == *"R1.3"* ]] || { owed; false; }
+  "$VBW" mutate P1.1 R1.3 --none "only git" < /dev/null > /dev/null
+  vbw_run show plan P1.1
+  printf '%s\n' "$output" | grep -qE '^  R1\.3: no break possible: C4 reads the project through git \(only git\)$' || { echo "$output"; false; }
+  vbw_run show req R1
+  [[ "$output" == *"no break possible: C4 reads the project through git (only git)"* ]] || { echo "$output"; false; }
+  [[ "$(owed)" != *"R1.3"* ]] || { echo "plan done still asks for R1.3"; owed; false; }
+}
+
+@test "R264: vbw show contract and vbw show contract --changes list every git-read excuse since the last approval, one line each (plan, rule, check, reason), the block vbw ship shares; none listed after the next approval" {
+  vbw_run show contract
+  [[ "$output" != *"git-read excuses"* ]] || { echo "$output"; false; }
+  "$VBW" mutate P1.1 R1.3 --none "only git" < /dev/null > /dev/null
+  vbw_run show contract --changes
+  [ "$status" -eq 0 ] || { echo "$output"; false; }
+  printf '%s\n' "$output" | grep -qE '^git-read excuses since the last approval:$' || { echo "$output"; false; }
+  printf '%s\n' "$output" | grep -qE '^  P1\.1: R1\.3 C4 \(only git\)$' || { echo "$output"; false; }
+  vbw_run show contract
+  printf '%s\n' "$output" | grep -qE '^  P1\.1: R1\.3 C4 \(only git\)$' || { echo "$output"; false; }
+  grep -q 'contract_amendments_block' "$PLUGIN_ROOT/lib/cmd-ship.sh" || { echo "vbw ship does not print the shared block"; false; }
+  grep -q 'git-read excuses' "$PLUGIN_ROOT/lib/contract.sh" || { echo "the excuses are not part of the shared block in contract.sh"; false; }
+  "$VBW" approve > /dev/null
+  vbw_run show contract
+  [[ "$output" != *"git-read excuses"* ]] || { echo "listed after the approval: $output"; false; }
+}
+
+@test "R264: the validator accepts git: true only on a rule --none entry, and refuses it on a task entry, a recorded break, or as any other value" {
+  local good bad
+  "$VBW" mutate P1.1 R1.3 --none "only git" < /dev/null > /dev/null
+  "$VBW" mutate P1.1 task1 --none "only renames a variable" < /dev/null > /dev/null
+  good=$(cat .vbw/record.json)
+  for bad in '.[0].git = false' '.[0].git = "yes"' '.[1].git = true'; do
+    printf '%s\n' "$good" > .vbw/record.json
+    edit_record "(.plans[] | select(.id == \"P1.1\")).mutations |= ($bad)"
+    vbw_run show plan P1.1
+    [ "$status" -ne 0 ] || { echo "accepted: $bad"; echo "$output"; false; }
+    [[ "$output" == *corrupt* ]] || { echo "$bad: $output"; false; }
+  done
 }
 
 @test "R203: a run with no read list is refused, saying the file system recorded none" {

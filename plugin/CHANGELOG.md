@@ -1,5 +1,55 @@
 # Changelog
 
+## [2.1.27] - 2026-11-07
+
+Fixes from the first week of real Rust work on 2.1.26. A field report from a
+large Rust project shaped most of this release, and its lead answered our
+follow-up questions. Thank you.
+
+### Changed
+
+- **Rust pack: parallel plans in one crate.** The Lead is told that two plans
+  may share a crate when their files do not overlap. A file many plans share,
+  such as a module list or a lockfile, is set up once in an early skeleton plan
+  or split per module, so later plans do not wait on one file. A version moved
+  between crates now counts like a dependency added, and so does one reached
+  through a path dependency.
+- **Rust pack: QA findings that fit real commands.** A workspace-wide command
+  inside an ordinary check is a finding only when it compiles or runs tests. A
+  tool that only reads the lockfile is fine.
+- **`vbw mutate` never touches your files.** The deliberate break stays exactly
+  as the Dev made it, and the Dev edits it out. Uncommitted work next to a break
+  can no longer be lost. The same break sent twice is refused as a forgotten one.
+- **A rule whose check reads git history has a way out.** `vbw mutate --none`
+  now accepts such a check with a stated reason. The excuse is listed at the next
+  approval and at the ship, so it never passes unseen.
+- **`vbw apply --patch` keeps what you leave out.** A plan or check row that
+  names an existing one keeps its other fields; `null` removes an optional one.
+- **The large-folder hint knows your disk.** `vbw doctor` and `vbw init` try a
+  copy-on-write clone first. Where the disk makes them, a big build folder costs
+  little to copy, so VBW no longer suggests leaving it out.
+
+### Fixed
+
+- **`vbw apply --patch` with a partial plan** answered with a raw jq error. It
+  now merges, or names the missing field in one line.
+- **A Linux-only test failure** in the low-priority proof check.
+
+### Good to know
+
+- **Dev sessions on a newer branch than the installed VBW** cannot use the
+  approval menu. Start Claude Code with `--plugin-dir ./plugin` there. A clearer
+  message is on our list.
+- **The loop cannot take over a milestone already in progress.** It starts only
+  new backlog items. Taking over is on our list.
+
+### For you to do
+
+- Update, then restart Claude Code. Your project moves to record schema 14 on its
+  next write, so use 2.1.27 on every computer that works on the project.
+
+Sizes, for information (file bytes): kernel 892 KB (`plugin/bin/vbw` and `plugin/lib`), mods 353 KB (hooks, panel and status line), workflows 76 KB, prompts 117 KB (agents and skills), packs 5 KB.
+
 ## [2.1.26] - 2026-11-06
 
 VBW now knows Rust, proofs are kinder to your computer, and a big project can

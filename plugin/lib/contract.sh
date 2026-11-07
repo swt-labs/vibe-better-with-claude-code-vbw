@@ -195,4 +195,20 @@ contract_amendments_block() {
   printf '%s' "$1" | jq -r '[(.plans[], .checks[]) | .id as $i | (.amendments // [])[]
       | "  \($i): \(.what) (\(.at), session \(.session // "unknown"))"]
     | if length > 0 then "amendments since the last approval:", .[] else empty end'
+  local seen=null
+  [ -f "${VBW_RUNTIME:-}/git-excuses-seen.json" ] && seen=$(cat "$VBW_RUNTIME/git-excuses-seen.json")
+  printf '%s' "$1" | jq -r --argjson seen "${seen:-null}" '. as $r |
+    [.plans[] | .id as $p | (.mutations // [])[] | select(.git == true and .rule != null)
+      | .rule as $ru
+      | ([$r.requirements[] | select(.id == $ru.req) | (.rules // [])[$ru.k - 1].check // empty][0] // "its check") as $c
+      | {key: "\($p)|\(.rule.req).\(.rule.k)|\(.at)", line: "  \($p): \(.rule.req).\(.rule.k) \($c) (\(.none))"}
+      | select(. as $x | ($seen // []) | index($x.key) | not)]
+    | if length > 0 then "git-read excuses since the last approval:", (.[] | .line) else empty end'
+}
+
+# contract_git_excuses RECORD_JSON: the keys of every git-read excuse recorded (plan|rule|time),
+# what an approval notes as listed (R264).
+contract_git_excuses() {
+  printf '%s' "$1" | jq -c '[.plans[] | .id as $p | (.mutations // [])[] | select(.git == true and .rule != null)
+    | "\($p)|\(.rule.req).\(.rule.k)|\(.at)"]'
 }

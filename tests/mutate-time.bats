@@ -126,8 +126,8 @@ C1 red" ] || { echo "$output"; false; }
   [ -z "$AFTER" ] || { echo "lines after the split: $AFTER"; false; }
   [ "$(names | tr '\n' '|')" = "copies|unbroken|break R1.1|waits|saving|" ] || { names; false; }
   sum_ok
-  last_break P1.1 | jq -e '(keys | sort) == ["at","checks","contract","files","head","result","rule","tree","what"] and .result == "red" and .checks == {C1: "red"}' || { last_break P1.1; false; }
-  [ "$(cat src/pay.sh)" = "$(git show HEAD:src/pay.sh)" ]
+  last_break P1.1 | jq -e '(keys | sort) == ["at","checks","contract","digests","files","head","result","rule","tree","what"] and .result == "red" and .checks == {C1: "red"}' || { last_break P1.1; false; }
+  [ "$(cat src/pay.sh)" = "echo unpaid" ]
 }
 
 @test "R207: a survivor keeps its exit 1 and its line; the breakdown follows it" {
@@ -138,7 +138,7 @@ C1 red" ] || { echo "$output"; false; }
   [ "$BEFORE" = "survivor: R2.1 (a receipt is printed): C2 still pass" ] || { echo "$output"; false; }
   [ -z "$AFTER" ] || { echo "$output"; false; }
   [ "$(names | tr '\n' '|')" = "copies|unbroken|break R2.1|waits|saving|" ] || { names; false; }
-  last_break P1.2 | jq -e '.result == "survivor" and (keys | sort) == ["at","checks","contract","files","head","result","rule","tree","what"]' || { last_break P1.2; false; }
+  last_break P1.2 | jq -e '.result == "survivor" and (keys | sort) == ["at","checks","contract","digests","files","head","result","rule","tree","what"]' || { last_break P1.2; false; }
 }
 
 @test "R207: a task break names its entry by the task" {
@@ -157,7 +157,9 @@ C1 red" ] || { echo "$output"; false; }
   run "$VBW" mutate P1.2 R2.1 "prints nothing" src/receipt.sh < /dev/null
   [ "$status" -eq 1 ] || { echo "$output"; false; }
   printf '[ "$(sh src/receipt.sh)" = receipt ]\n' > tests/receipt.sh
-  git commit -q -am "test(receipt): check what is printed"
+  # The break stays in the working copy (R265): edit it out and commit only the strengthened check.
+  git checkout -q -- src/receipt.sh
+  git commit -q -m "test(receipt): check what is printed" -- tests/receipt.sh
   printf 'echo nothing\n' > src/receipt.sh
   vbw_run mutate P1.2 R2.1 "prints nothing" src/receipt.sh
   [ "$status" -eq 0 ] || { echo "$output"; false; }
@@ -258,10 +260,11 @@ C3 red" ] || { echo "$output"; false; }
   sum_ok
   # #738: one copy per break of the wave, kept for the next run, which claims them.
   [ "$COPIES" = "  copies: 0 kept copies claimed (0 refreshed), 2 made" ] || { echo "$output"; false; }
-  printf 'echo unpaid\n' > src/pay.sh
+  # Other bytes than the first round: the same bytes twice at one commit are refused (R265).
+  printf 'echo unpaid again\n' > src/pay.sh
   "$VBW" mutate P1.1 R1.1 --queue "prints unpaid again" src/pay.sh > /dev/null
-  printf 'echo paid\necho paid\n' > src/pay.sh
-  "$VBW" mutate P1.1 R1.2 --queue "prints twice again" src/pay.sh > /dev/null
+  printf 'echo paid\necho paid\necho paid\n' > src/pay.sh
+  "$VBW" mutate P1.1 R1.2 --queue "prints thrice" src/pay.sh > /dev/null
   vbw_run mutate P1.1 --run
   [ "$status" -eq 0 ] || { echo "$output"; false; }
   split

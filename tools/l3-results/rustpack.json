@@ -1,21 +1,21 @@
 {
   "scenario": "rustpack",
-  "fixture": "a Rust crate (Cargo.toml, src/lib.rs with a stub, tests/greet.rs written ahead) with one plan P1.1 on src/lib.rs approved by the user before the session; rigor express; the user types /vbw:vibe",
-  "cost_usd": 0.3602,
+  "fixture": "a two-crate Cargo workspace (crates/textkit, crates/countkit, both lib.rs empty) and a spec of two requirements, one per crate, with no plan; rigor standard, because express plans in the main session with no Lead; the user types /vbw:vibe and the Lead plans",
+  "cost_usd": 3.79,
   "evidence_level": "L3",
-  "at": "2026-11-06T17:29:57Z",
+  "at": "2026-11-07T00:53:31Z",
   "passed": true,
   "facts": {
-    "pack_named": true,
-    "dev_told": true,
-    "dev_read": true,
-    "plan_done": true
+    "lead_planned": true,
+    "plan_files_named": true,
+    "plan_files_disjoint": true,
+    "lead_told_pack": true,
+    "plans": 2
   },
   "not_tested": [
-    "the Lead pack text at a real plan step (the plan was seeded)",
-    "the QA pack text at a deep tier (rigor express)",
-    "a nested Cargo workspace",
+    "the QA pack text at a deep tier (rigor standard)",
     "a dependency added with its lockfiles",
-    "whether the pack made the Dev work better than without it"
+    "a Cargo workspace nested inside another workspace",
+    "whether the pack made the Lead or the Dev work better than without it"
   ]
 }

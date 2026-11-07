@@ -117,6 +117,7 @@ apply_next() {
     *"not a requirement of the phases this --add brings"*) echo "set its req to a requirement of the new phases, or send it with vbw apply --patch" ;;
     *"has an unknown field"*) echo "remove that field from the document; the allowed fields are in docs/workflows.md" ;;
     *"the tier must be"*) echo "set the phase's tier to express, standard or deep, or leave it out" ;;
+    *" is a new plan and lacks "* | *" is a new check and lacks "*) echo "send every required field of the new row (plan: phase, title, reqs, files; check: req, run), or send only the fields to change for a row that exists" ;;
     *" run is open"*) echo "end the open run (vbw run end), then plan again" ;;
     *"a plan that has started must stay"*) echo "put the plan back as the record has it (vbw show plan ID), and add a new plan for any further work" ;;
     *"its goal and criteria stay"*) echo "keep the phase's goal and criteria as they are, and add a new phase for the further work (vbw apply --add)" ;;
@@ -384,18 +385,39 @@ cmd_apply() {
       | .[0] // empty') || apply_internal "cannot read the rule addresses"
     [ -z "$problem" ] || apply_refuse "$problem"
     pdoc=$(printf '%s' "$doc" | jq -c '{plans: (.plans // []), checks: (.checks // []), rules: (if (.rules | type) == "array" then [.rules[] | select((type == "object" and has("rule")) | not)] else .rules // [] end)}')
+    # A row with an existing id is merged field by field (R266): an explicit null removes an optional
+    # field and is refused on a required one; a new row must bring every required field. Judged
+    # before the merge and the rigor tiers, so the caller never sees a jq or an internal error.
+    problem=$(record_read | jq -r --slurpfile f_p <(printf '%s' "$pdoc") '. as $r | $f_p[0] as $p | .milestone.id as $m
+      | ([.phases[] | select(.milestone == $m) | .id]) as $ph | ([.requirements[] | select(.milestone == $m) | .id]) as $rq
+      | def judge($kind; $old; $req): .[]? | select(type == "object" and (.id | type) == "string") | . as $n | .id as $i
+          | ([$old[] | select(.id == $i)][0]) as $o
+          | $req[] | . as $f
+          | if $o != null then select($n | has($f) and .[$f] == null) | "\($i) cannot lose its \($f): \($f) is a required field of a \($kind), so give it a value instead of null"
+            else select(($n | has($f) | not) or $n[$f] == null) | "\($i) is a new \($kind) and lacks \($f), a required field: send every required field of a new \($kind)" end;
+      [($p.plans | judge("plan"; [$r.plans[] | select(.phase as $x | $ph | index($x))]; ["phase", "title", "reqs", "files"])),
+       ($p.checks | judge("check"; [$r.checks[] | select(.req as $x | $rq | index($x))]; ["req", "run"]))]
+      | .[0] // empty' 2> /dev/null) || apply_internal "cannot read the patch rows"
+    [ -z "$problem" ] || case "$problem" in *" is a new "*) apply_refuse "$problem" ;; *) vbw_die "--patch refused: $problem"$'\n'"Next: correct that row in the patch document and send it again" ;; esac
     # The milestone's live rules as the addresses leave them, then the rules by words merged in.
     doc=$(record_read | jq -c --slurpfile f_p <(printf '%s' "$pdoc") --slurpfile f_o <(printf '%s' "$ops") "$RULES_JQ"'$f_p[0] as $p | $f_o[0] as $ops | .milestone.id as $m
       | ([.phases[] | select(.milestone == $m)]) as $ph
       | ([.requirements[] | select(.milestone == $m)]) as $rq
       | def merge($old; $new; $keys): [$old[] | . as $o | ([$new[] | select(. as $n | $keys | all(. as $k | $n[$k] == $o[$k]))][0]) // $o]
           + [$new[] | . as $n | select(any($old[]; . as $o | $keys | all(. as $k | $n[$k] == $o[$k])) | not)];
+      def mergef($old; $new): [$old[] | . as $o | ([$new[] | select(.id == $o.id)][0]) as $n | if $n == null then $o else ($o + $n | with_entries(select(.value != null))) end]
+          + [$new[] | . as $n | select(any($old[]; .id == $n.id) | not) | with_entries(select(.value != null))];
       {phases: [$ph[] | {id, title, reqs} + with_entries(select(.key | IN("goal", "criteria")))
           + (if (.proposed // .tier) != null then {tier: (.proposed // .tier)} else {} end)],
-       plans: merge([.plans[] | select(.phase as $x | any($ph[]; .id == $x)) | with_entries(select(.key | IN("id", "phase", "title", "reqs", "files", "after", "tasks", "role")))]; $p.plans; ["id"]),
-       checks: merge([.checks[] | select(.req as $x | any($rq[]; .id == $x))]; $p.checks; ["id"]),
+       plans: mergef([.plans[] | select(.phase as $x | any($ph[]; .id == $x)) | with_entries(select(.key | IN("id", "phase", "title", "reqs", "files", "after", "tasks", "role")))]; $p.plans),
+       checks: mergef([.checks[] | select(.req as $x | any($rq[]; .id == $x))]; $p.checks),
        rules: merge([$rq[] | .id as $q | (.rules // []) | to_entries[] | .key as $k | .value | rule_edit($ops; "\($q).\($k + 1)")
            | select(has("retired") | not) | {req: $q, text, check} + (if has("plan") then {plan} else {} end)]; $p.rules; ["req", "text"])}') \
+      || apply_internal "cannot merge the patch"
+    # The patch's plan and check rows become the merged rows, so the write below lays whole rows.
+    pdoc=$(printf '%s' "$doc" | jq -c --slurpfile f_p <(printf '%s' "$pdoc") '. as $d | $f_p[0]
+      | def whole($rows; $all): [$rows[] | if type == "object" and has("id") then (. as $n | ([$all[] | select(.id == $n.id)][0]) // $n) else . end];
+        .plans = whole(.plans; $d.plans) | .checks = whole(.checks; $d.checks)') \
       || apply_internal "cannot merge the patch"
   fi
   printf '%s' "$doc" | jq -e 'type == "object"' > /dev/null 2>&1 || apply_refuse "apply needs a JSON object on stdin"

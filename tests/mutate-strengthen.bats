@@ -149,6 +149,7 @@ last_break() { jq -c '[.plans[] | select(.id == "P1.1") | .mutations // [] | .[]
   [[ "$output" == *"R1.1 survives the approved check; caught by the pending one: tests/shared.sh"* ]] || { echo "$output"; false; }
   [[ "$output" == *"the pending file still needs the one approval before the proof"* ]] || { echo "$output"; false; }
   last_break | jq -e '.result == "red" and .pending == ["tests/shared.sh"] and .strengthened == ["tests/shared.sh"]' || { last_break; false; }
+  git checkout -q -- src/pay.sh
   "$VBW" plan done P1.1 > /dev/null
   printf 'echo receipt\n# thanks\n' > src/receipt.sh
   "$VBW" commit P2.1 "feat(receipt): thanks" > /dev/null

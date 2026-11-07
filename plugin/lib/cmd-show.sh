@@ -428,13 +428,13 @@ def plan_state($r): . as $p | if .status == "done"
 def argv_line: map(if test("^[A-Za-z0-9_./:=@%+-]+$") then . else @sh end) | join(" ");
 # A rule is shown by its address Rn.k, its place among the requirement'"'"'s rules (T168).
 # Under it, the breaks recorded against the rule by its place (R258), retired ones included.
-def rule_breaks($r; $q; $k): [$r.plans[].mutations[]? | select(.rule.req == $q and .rule.k == $k)
-    | if has("none") then "no code could change its outcome (\(.none))" else "\(.what): \(.result // "pending")" end]
+def rule_breaks($r; $q; $k; $c): [$r.plans[].mutations[]? | select(.rule.req == $q and .rule.k == $k)
+    | if .git == true then "no break possible: \($c) reads the project through git (\(.none))" elif has("none") then "no code could change its outcome (\(.none))" else "\(.what): \(.result // "pending")" end]
   | if length == 0 then "" else " [breaks: \(join("; "))]" end;
 def rule_lines($r): if .proof == "auto" then .id as $q |
     (if (.rules // []) | length == 0 then "rules not listed" else (.rules | to_entries[]
-      | if .value | has("retired") then "rule \($q).\(.key + 1) retired: \(.value.text) (\(.value.retired))" + rule_breaks($r; $q; .key + 1)
-        else "rule \($q).\(.key + 1): \(.value.text) -> \(.value.check)" + rule_breaks($r; $q; .key + 1) end) end)
+      | if .value | has("retired") then "rule \($q).\(.key + 1) retired: \(.value.text) (\(.value.retired))" + rule_breaks($r; $q; .key + 1; .value.check)
+        else "rule \($q).\(.key + 1): \(.value.text) -> \(.value.check)" + rule_breaks($r; $q; .key + 1; .value.check) end) end)
   else empty end;
 def check_line: (.run | argv_line)
   + (if (.exit // 0) != 0 then " (exit \(.exit))" else "" end)
@@ -574,7 +574,7 @@ show_work() {
       "checks:", check_lines,
       (def tname: if .rule then "\(.rule.req).\(.rule.k)" else "task\(.task)" end;
        if (.plan.mutations // [] | length) > 0 then "mutations:",
-         (.plan.mutations as $ms | $ms | to_entries[] | .key as $i | .value as $e | $e | if .none then (if .rule then "  \(tname): no code could change its outcome: \(.none)" else "  task\(.task): no testable behaviour: \(.none)" end)
+         (.plan.mutations as $ms | $ms | to_entries[] | .key as $i | .value as $e | $e | if .none then (if .rule and .git == true then (.rule as $ru | "  \(tname): no break possible: \([$rules[] | select(.n == "\($ru.req).\($ru.k)") | .check][0] // "its check") reads the project through git (\($e.none))") elif .rule then "  \(tname): no code could change its outcome: \(.none)" else "  task\(.task): no testable behaviour: \(.none)" end)
            else (if .pending then
                "  \(tname) \(if ([$ms[:$i][] | select(.result == "survivor" and .head != $e.head and (if $e.rule then .rule == $e.rule else .task == $e.task end)
                     and ((($e.checks | to_entries | map(select(.value == "red") | .key)) - (.checks | keys)) | length == 0))] | length) > 0

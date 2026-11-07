@@ -47,3 +47,18 @@ facts() { jq -e "$2" "$RESULTS/$1.json" > /dev/null; }
     and .facts.fix_rounds >= 1 and .facts.final_qa_verdict == "pass"
     and .facts.phase_proved == true'
 }
+
+@test "R263: the Rust pack scenario ran with the Lead planning: every plan names its files and no two plans change the same file" {
+  result_ok rustpack
+  facts rustpack '.facts.lead_planned == true and .facts.plan_files_named == true and .facts.plan_files_disjoint == true'
+}
+
+@test "R265: the task-break scenario ran with the break left in the working copy, edited out by the Dev, and no file lost" {
+  result_ok taskbreak
+  facts taskbreak '.facts.break_left_in_working_copy == true and .facts.break_edited_out == true and .facts.no_file_lost == true'
+}
+
+@test "R267: the leave-out scenario ran against the disk's own answer, and the suggestion matched it" {
+  result_ok leaveout
+  facts leaveout '(.facts.disk_kind == "clone" or .facts.disk_kind == "plain") and .facts.suggestion_matches_disk == true'
+}

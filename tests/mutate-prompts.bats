@@ -101,3 +101,35 @@ names() {
   [ "$status" -eq 0 ] || { echo "$output"; false; }
   jq -e '.phases[0].tier == "deep" and (.phases[0].escalations[-1].reason | contains("R1.1"))' .vbw/record.json || { jq '.phases[0]' .vbw/record.json; false; }
 }
+
+# R265 (T247; D634): the kernel never touches the working copy, so the Dev commits every
+# finished task before a break, edits the break out right after each vbw mutate (and before
+# the next --queue), and is no longer told that VBW undoes it or to check the file.
+@test "R265: the Dev's mutation step says to commit every finished task before a break, that the kernel leaves the file as given, and to edit the break out right after each mutate and before the next --queue; the undo sentences are gone" {
+  has_line "$DEV" "commit" "before" "break"
+  has_line "$DEV" "leaves the file as" "mutate"
+  has_line "$DEV" "edit the break out" "right after each"
+  has_line "$DEV" "edit the break out before the next --queue"
+  has_line "$DEV" "same broken bytes twice"
+  has_line "$DEV" "--queue" "edit"
+  ! grep -qi 'it undoes the break' "$DEV" || { echo "dev.md still says VBW undoes the break"; false; }
+  ! grep -qi 'check the file is unchanged' "$DEV" || { echo "dev.md still says to check the file is unchanged"; false; }
+}
+
+@test "R265: the Docs agent's mutation step says to commit every finished task before a break and to edit the break out right after each mutate; the undo sentences are gone" {
+  has_line "$DOCS" "commit" "before" "break"
+  has_line "$DOCS" "leaves the file as" "mutate"
+  has_line "$DOCS" "edit the break out" "right after each"
+  has_line "$DOCS" "same broken bytes twice"
+  ! grep -qi 'it undoes the break' "$DOCS" || { echo "docs.md still says VBW undoes the break"; false; }
+  ! grep -qi 'check the file is unchanged' "$DOCS" || { echo "docs.md still says to check the file is unchanged"; false; }
+}
+
+@test "R265: docs/workflows.md's mutate row and its paragraph say the break stays in the working copy and the Dev edits it out; 'VBW undoes the break' is gone" {
+  local doc="$REPO_ROOT/docs/workflows.md"
+  ! grep -q 'VBW undoes the break' "$doc" || { echo "docs/workflows.md still says VBW undoes the break"; false; }
+  grep -E '^\| *`vbw mutate' "$doc" | grep -qiE 'leaves (the|each|every) (named )?file|stays in the working copy|never touches' || { echo "the mutate row does not say the file is left as given"; false; }
+  grep -E '^\| *`vbw mutate' "$doc" | grep -qi 'stays in the working copy' && grep -E '^\| *`vbw mutate' "$doc" | grep -qi 'edits it out' || { echo "the mutate row does not say the break stays and the Dev edits it out"; false; }
+  tr '\n' ' ' < "$doc" | grep -qiE 'edit(s)? the break out' || { echo "docs/workflows.md does not tell the Dev to edit the break out"; false; }
+  tr '\n' ' ' < "$doc" | grep -qiE 'same (broken )?bytes[^.]*(twice|again)[^.]*refused|refus[^.]*same (broken )?bytes' || { echo "docs/workflows.md does not document the refusal of the same bytes twice"; false; }
+}

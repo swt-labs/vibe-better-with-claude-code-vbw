@@ -136,6 +136,24 @@ fix_after() { printf '%s\n' "$output" | awk -v re="$1" '$0 ~ re { keep = 1; next
   [ "$status" -eq 0 ] || { printf '%s\n' "$output"; false; }
 }
 
+@test "R223 standards: tools/check-jq-builtins.sh refuses a call of one of jq's private builtins (a name starting with _, such as _nwise, which jq 1.8 removed) unless the file defines it; a shell variable named _x passes" {
+  local tool="$REPO_ROOT/tools/check-jq-builtins.sh"
+  mkdir -p "$TEST_ROOT/fx"
+  printf '#!/bin/sh\njq -sc %s\n' "'[_nwise(2) | {key: .[0], value: .[1]}] | from_entries'" > "$TEST_ROOT/fx/g.sh"
+  printf 'def _pair(f): [f, f];\n_pair(.a)\n' > "$TEST_ROOT/fx/h.jq"
+  printf '#!/bin/sh\nlocal _u\n_u=$(printf %%s "$1" | jq -c .)\n' > "$TEST_ROOT/fx/i.sh"
+  run bash "$tool" "$TEST_ROOT/fx/g.sh"
+  [ "$status" -eq 1 ] || { echo "g.sh passed:"; printf '%s\n' "$output"; false; }
+  [[ "$output" == *"g.sh:2: _nwise( is a private jq builtin"* ]] || { echo "the refusal does not name the file, line and builtin: $output"; false; }
+  local f
+  for f in h.jq i.sh; do
+    run bash "$tool" "$TEST_ROOT/fx/$f"
+    [ "$status" -eq 0 ] || { echo "$f was refused:"; printf '%s\n' "$output"; false; }
+  done
+  run bash "$tool"
+  [ "$status" -eq 0 ] || { printf '%s\n' "$output"; false; }
+}
+
 @test "R223 standards: each CI shard prints jq --version beside bash --version" {
   local ci="$REPO_ROOT/.github/workflows/ci.yml" b j
   b=$(grep -c 'bash --version' "$ci" || true)

@@ -192,3 +192,66 @@ role_names() {
   # The router passes the answer's top-level packs and packs_root into every workflow's args, as it does root.
   grep -E 'top-level' "$PLUGIN_ROOT/skills/vibe/SKILL.md" | grep -q 'packs_root' || { echo "the router does not pass packs_root to the workflows"; false; }
 }
+
+# R263 (T245; docs/packs.md): the Rust pack's wording fits parallel plans and real
+# commands. The Lead is told that a plan names every file it changes in a crate and
+# that two plans may share a crate when their file lists have no file in common;
+# that a change to Cargo.toml or a lockfile goes in one plan at a time; that a file
+# many plans would touch (a module list in lib.rs or mod.rs, a shared enum, a
+# manifest, a lockfile) is set up once in an early skeleton plan or split so each
+# later plan owns its own module file; and that a later plan needing a dependency
+# the skeleton did not add waits (an `after` entry) on the plan that adds it, and
+# says so. QA treats a workspace-wide command inside an ordinary check as a finding
+# only when it compiles or runs tests; a command that only reads the lockfile or the
+# manifest is no finding. Dev, Lead and QA cover a dependency added or moved, one
+# reached through a path dependency included. L1: wording pins, one case per sentence.
+
+# lead_states REGEX: plugin/packs/rust/lead.md, folded to one line, matches REGEX (extended, case-insensitive).
+lead_states() { tr '\n' ' ' < "$PACKS/rust/lead.md" | grep -Eiq -- "$1" || { echo "packs/rust/lead.md does not state /$1/"; return 1; }; }
+qa_states() { tr '\n' ' ' < "$PACKS/rust/qa.md" | grep -Eiq -- "$1" || { echo "packs/rust/qa.md does not state /$1/"; return 1; }; }
+
+@test "R263 lead: a plan names every file it changes in a crate, and two plans may share a crate when their file lists have no file in common; the whole-crate rule is gone" {
+  lead_states 'names every file it changes'
+  lead_states 'share a crate'
+  lead_states 'no file in common'
+  ! grep -qi 'whole crate it changes' "$PACKS/rust/lead.md" || { echo "lead.md still gives a plan the whole crate"; false; }
+}
+
+@test "R263 lead: a change to Cargo.toml or a lockfile goes in one plan at a time" {
+  lead_states '(Cargo\.toml|manifest)[^.]*(Cargo\.lock|lockfile)[^.]*one plan at a time'
+}
+
+@test "R263 lead: a file many plans would touch (a module list in lib.rs or mod.rs, a shared enum, a manifest, a lockfile) is set up once in an early skeleton plan or split so each later plan owns its own module file" {
+  lead_states 'skeleton'
+  lead_states 'lib\.rs'
+  lead_states 'mod\.rs'
+  lead_states 'enum'
+  lead_states 'split[^.]*(own|each)[^.]*module'
+}
+
+@test "R263 lead: a later plan that needs a dependency the skeleton did not add waits (an after entry) on the plan that adds it, and the plan says so" {
+  lead_states 'dependency[^.]*skeleton[^.]*(did not|does not) (add|cover)[^.]*`after`'
+  lead_states '(plan that adds it|adding plan)'
+  lead_states '(says so|stated in the plan|states it)'
+}
+
+@test "R263 qa: a workspace-wide command inside an ordinary check is a finding only when it compiles or runs tests; a command that only reads the lockfile or the manifest is no finding" {
+  qa_states 'workspace-wide command[^.]*only when[^.]*(compiles|runs tests)'
+  qa_states 'cargo test'
+  qa_states 'cargo (build|check|clippy)'
+  qa_states '(cargo metadata|cargo tree|cargo pkgid)[^.]*(no finding|not a finding)'
+  qa_states 'lockfile diff'
+  ! grep -qE 'A workspace-wide command inside an ordinary check is a finding\.' "$PACKS/rust/qa.md" || { echo "qa.md still calls every workspace-wide command a finding"; false; }
+}
+
+@test "R263 all: dev.md, lead.md and qa.md each cover a dependency added or moved between crates, one reached through a path dependency (the other workspace's manifest never names it) included: the Dev commits every affected lockfile, the Lead lists them, QA treats a missing one as a finding" {
+  local role
+  for role in lead dev qa; do
+    tr '\n' ' ' < "$PACKS/rust/$role.md" | grep -Eiq 'added or moved|moved (between|to another|from one) crate' || { echo "packs/rust/$role.md does not cover a moved dependency"; false; }
+    tr '\n' ' ' < "$PACKS/rust/$role.md" | grep -Eiq 'path dependency' || { echo "packs/rust/$role.md does not name a path dependency"; false; }
+    tr '\n' ' ' < "$PACKS/rust/$role.md" | grep -Eiq 'manifest never names|never names (it|the dependency)|(does|do) not name' || { echo "packs/rust/$role.md does not say the other workspace's manifest never names it"; false; }
+  done
+  tr '\n' ' ' < "$PACKS/rust/dev.md" | grep -Eiq 'commit[^.]*(every|each) affected (lockfile|Cargo\.lock)' || { echo "dev.md does not tell the Dev to commit every affected lockfile"; false; }
+  tr '\n' ' ' < "$PACKS/rust/lead.md" | grep -Eiq 'list[^.]*(lockfile|Cargo\.lock)[^.]*plan' || { echo "lead.md does not tell the Lead to list the lockfiles in the plan"; false; }
+  tr '\n' ' ' < "$PACKS/rust/qa.md" | grep -Eiq '(missing|absent|stale)[^.]*(lockfile|Cargo\.lock)[^.]*finding' || { echo "qa.md does not call a missing lockfile a finding"; false; }
+}

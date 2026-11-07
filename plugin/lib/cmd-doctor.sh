@@ -191,6 +191,8 @@ doctor_statusline() {
 doctor_project() {
   VBW_DIR="$VBW_ROOT/.vbw"
   VBW_RECORD="$VBW_DIR/record.json"
+  # shellcheck disable=SC2034 # read by proofcopy_disk_kind
+  VBW_RUNTIME="$VBW_DIR/runtime"
   [ ! -d "$VBW_ROOT/.vbw-planning" ] \
     || doctor_line info "VBW 1 project data (.vbw-planning/) is here; VBW 2 does not use it"
   if [ ! -f "$VBW_RECORD" ]; then
@@ -238,9 +240,10 @@ doctor_project() {
 
 # Large git-ignored folders the Clean copy section does not list yet (R253).
 doctor_big_ignored() {
-  local line name listed=''
+  local line name listed='' kind
   # shellcheck source=proofcopy.sh
   . "$VBW_LIB/proofcopy.sh"
+  kind=$(proofcopy_disk_kind)
   if [ -f "$VBW_RECORD" ]; then
     listed=$(jq -r '(.project.leave_out // [])[] | sub("/+$"; "")' "$VBW_RECORD" 2> /dev/null) || listed=''
   fi
@@ -248,6 +251,10 @@ doctor_big_ignored() {
     [ -n "$line" ] || continue
     name=${line%% (*}
     if [ -n "$listed" ] && grep -qxF -- "${name%/}" <<< "$listed"; then continue; fi
+    if [ "$kind" = clone ]; then
+      doctor_line info "large git-ignored folder $line is cloned into every proof copy at little cost; keeping it can save rebuilds"
+      continue
+    fi
     doctor_line info "large git-ignored folder $line is copied into every proof copy" "list $name under Clean copy in .vbw/spec.md, then vbw spec sync"
   done
 }

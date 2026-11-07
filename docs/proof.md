@@ -267,7 +267,7 @@ is big and no check needs it (a data folder of many gigabytes), list it under
 - Every clean copy (`vbw prove`, `vbw fix done`, `vbw mutate`) skips the listed paths and everything under them, including ignored files inside a listed folder. The other ignored paths are still copied in. A listed path that no longer exists changes nothing, and the next `vbw spec sync` still accepts it.
 - Leaving a path out changes no result: the next proof reuses what it can, as before. No section, no change: every ignored path is copied in.
 - Git worktrees are always left out, whatever this section says: the folder of every worktree of the project's repository that lies inside the project (`git worktree list`) and `.claude/worktrees`. A worktree nested under an ignored folder is skipped by descending around it, and a worktree whose folder is gone causes no error.
-- Large ignored folders are named. `vbw init` prints each git-ignored folder over 500 MB (the threshold `VBW_PROOFCOPY_PLAIN_KB` shares) as a candidate and writes it into the spec as a commented suggestion, never as a live line, so `vbw spec sync` leaves nothing out until you uncomment it. `vbw doctor` names the candidates the section does not list yet, with their sizes, and says nothing when none is over or all are listed. A worktree is never a candidate.
+- Large ignored folders are named only where leaving them out helps. VBW tests the project's disk (under `.vbw/runtime`) by trying a copy-on-write clone of a small file. Where the disk only makes plain copies, `vbw init` prints each git-ignored folder over 500 MB (the threshold `VBW_PROOFCOPY_PLAIN_KB` shares) as a candidate and writes it into the spec as a commented suggestion, never as a live line, so `vbw spec sync` leaves nothing out until you uncomment it; `vbw doctor` names the candidates the section does not list yet, with their sizes, and says nothing when none is over or all are listed. Where the disk makes copy-on-write clones, `vbw init` writes no commented suggestion and `vbw doctor` gives an info line instead: it names the folder with its size, says the clone costs little, and says that keeping the folder can save rebuilds, with no leave-out step. The disk's answer decides, never the folder's name or the language. Set `VBW_PROOFCOPY_DISK=clone` or `VBW_PROOFCOPY_DISK=plain` to force the answer. A worktree is never a candidate.
 
 Example. `vbw init` in a project with a 1.2 GB ignored `data/` folder prints:
 
@@ -1690,6 +1690,17 @@ suite therefore pays for the checks a break needs, not for every check.
   only tests whether a plan file exists, without opening it, never reads that
   file: such a check is not detected, and the accepting line says so. `vbw plan
   done` counts such a rule covered.
+
+- A check that reads the project through git has no read list to vouch for it,
+  so the check above refuses it. Run `vbw mutate PLAN Rn.k --none REASON` for a
+  check that reads the project through git: it is accepted on its reason alone: the kernel prints one line naming the
+  check, git and the reason, and records the excuse on the rule marked `git`. A
+  missing or empty reason is refused: a reason is what the command needs, since
+  no read list can vouch for the check. Each git-read excuse is listed at the
+  next gate (`vbw show contract`, `--changes` and `vbw ship`) until the next
+  approval, so you see what was excused. A check with a read list never needs
+  it. `vbw show plan` marks the rule "no break possible", and `vbw plan done`
+  counts it covered.
 
 The broken file, and its restore, get a fresh modification time, newer than
 every file in the proof copy (even one stamped ahead of the clock). Builds that

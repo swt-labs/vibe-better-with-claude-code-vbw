@@ -54,7 +54,7 @@ none_ok() {
   [ "$status" -eq 0 ] || { echo "$output"; return 1; }
 }
 # red RULE: a break of src/pay.sh that C2 notices, recorded for RULE.
-red() { printf 'echo unpaid\n' > src/pay.sh; "$VBW" mutate P1.1 "$1" "prints unpaid" src/pay.sh < /dev/null > /dev/null; }
+red() { printf 'echo unpaid %s\n' "$1" > src/pay.sh; "$VBW" mutate P1.1 "$1" "prints unpaid" src/pay.sh < /dev/null > /dev/null; git checkout -q -- src/pay.sh; }
 # refuses_naming WORD...: plan done refuses and names each WORD.
 refuses_naming() {
   local w

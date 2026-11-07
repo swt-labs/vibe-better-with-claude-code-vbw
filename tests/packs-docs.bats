@@ -52,3 +52,28 @@ DOC="$REPO_ROOT/docs/packs.md"
   ! printf '%s\n' "$entry" | grep -q 'test = false' || { echo "the shipped first contents are still listed as ideas"; false; }
   ! printf '%s\n' "$entry" | grep -qi 'First contents' || { echo "the shipped first contents are still listed as ideas"; false; }
 }
+
+# R263: docs/packs.md's Rust pack section lists the parallel-plan and real-command
+# points word for word with the pack texts: the sentence of each rule is taken from
+# the pack file by its key phrase and must appear, whitespace folded, in the docs.
+rust_section() { awk '/^## The Rust pack/ {p=1; next} p && /^## / {exit} p' "$DOC" | tr '\n' ' ' | tr -s ' '; }
+# sentence FILE PHRASE: the sentence of FILE (folded) that holds PHRASE, without its list dash.
+sentence() { tr '\n' ' ' < "$1" | tr -s ' ' | grep -oE "[^.]*$2[^.]*\." | head -n 1 | sed -E 's/^ *(- )?//'; }
+# docs_holds FILE PHRASE: the docs section holds that sentence word for word.
+docs_holds() {
+  local s
+  s=$(sentence "$1" "$2")
+  [ -n "$s" ] || { echo "${1##*/} has no sentence with: $2"; return 1; }
+  rust_section | grep -qF -- "$s" || { echo "docs/packs.md's Rust pack section does not hold word for word: $s"; return 1; }
+}
+
+@test "R263 docs: the Rust pack section holds, word for word, the Lead's disjoint-files, one-manifest-change and skeleton-or-split sentences, the waiting-on-the-adding-plan sentence, QA's compile-or-test sentence and the path-dependency sentence" {
+  local packs="$REPO_ROOT/plugin/packs/rust"
+  docs_holds "$packs/lead.md" 'no file in common'
+  docs_holds "$packs/lead.md" 'one plan at a time'
+  docs_holds "$packs/lead.md" 'skeleton'
+  docs_holds "$packs/lead.md" '`after`'
+  docs_holds "$packs/qa.md" 'only when'
+  docs_holds "$packs/lead.md" 'path dependency'
+  rust_section | grep -Eiq 'added or moved' || { echo "the section does not name a moved dependency"; false; }
+}

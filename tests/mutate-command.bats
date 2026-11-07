@@ -14,7 +14,8 @@
 # unbroken code and on the break, records the result under the plan
 # (.plans[].mutations[]: rule {req, text} or task K, what, checks {ID: red |
 # green}, result red | survivor; none REASON for a task with nothing to break),
-# and leaves the named files exactly as their last commit. A break no check
+# and leaves the named files exactly as the Dev gave them (R265: the kernel never
+# touches the working copy; the Dev edits the break out). A break no check
 # notices is a survivor: named with its rule, exit non-zero. Refusals write
 # nothing. Recording a break never changes the contract. L1: the kernel on a
 # fixture project.
@@ -94,14 +95,14 @@ with_sub_pay() {
   "$VBW" approve > /dev/null
 }
 
-@test "R188: a break in a plan file inside a submodule runs on the submodule's code, is recorded red, and leaves the file as the submodule's last commit" {
+@test "R188: a break in a plan file inside a submodule runs on the submodule's code and is recorded red; the file keeps the break" {
   with_sub_pay
   printf 'echo unpaid\n' > sub/pay.sh
   run "$VBW" mutate P1.1 R1.1 "prints unpaid instead of paid" sub/pay.sh < /dev/null
   [ "$status" -eq 0 ] || { echo "$output"; false; }
   breaks P1.1 | jq -e 'length == 1 and .[0].checks == {C1: "red"} and .[0].result == "red"' || { breaks P1.1; false; }
-  [ -z "$(git -C sub status --porcelain -- pay.sh)" ] || { git -C sub status --porcelain; false; }
-  cmp -s sub/pay.sh <(git -C sub show HEAD:pay.sh)
+  # R265: the working copy keeps the break; the check ran on the set-aside bytes.
+  [ "$(cat sub/pay.sh)" = "echo unpaid" ] || { cat sub/pay.sh; false; }
   # A proof copy reused for the next break (mutate_clean) gets the file back from the
   # submodule's last commit, in the submodule's folder of the copy.
   mkdir -p "$TEST_ROOT/copy/sub"
@@ -243,13 +244,73 @@ with_sub_pay() {
   breaks P1.1 | jq -e 'length == 2 and .[1].result == "red"' || { breaks P1.1; false; }
 }
 
-@test "R188: after a mutation check the named files are byte-identical to their last commit, red or survivor" {
+@test "R265: after a mutation check every named file holds byte for byte what it held: content and mode, an untracked file still exists, a symlink is still a link, a deleted file stays deleted" {
+  printf 'echo unpaid\n' > src/pay.sh
+  chmod 755 src/pay.sh
+  "$VBW" mutate P1.1 R1.1 "prints unpaid" src/pay.sh < /dev/null > /dev/null
+  [ "$(cat src/pay.sh)" = "echo unpaid" ] || { cat src/pay.sh; false; }
+  [ -x src/pay.sh ] || { ls -l src/pay.sh; false; }
+  git checkout -q -- src/pay.sh
+  # A task break, the same: the file keeps what the Dev wrote.
+  printf 'echo unpaid task\n' > src/pay.sh
+  "$VBW" mutate P1.1 task1 "prints unpaid for the task" src/pay.sh < /dev/null > /dev/null
+  [ "$(cat src/pay.sh)" = "echo unpaid task" ] || { cat src/pay.sh; false; }
+  git checkout -q -- src/pay.sh
+  # A deleted plan file stays deleted; an untracked one added beside it stays.
+  rm src/receipt.sh
+  printf 'echo extra\n' > src/extra.txt
+  ln -s receipt.sh src/link.sh
+  "$VBW" mutate P1.2 R2.1 "the receipt file is gone" src/receipt.sh < /dev/null > /dev/null
+  [ ! -e src/receipt.sh ] || { echo "src/receipt.sh came back"; false; }
+  [ -f src/extra.txt ] && [ "$(cat src/extra.txt)" = "echo extra" ] || { echo "src/extra.txt lost"; false; }
+  [ -L src/link.sh ] && [ "$(readlink src/link.sh)" = receipt.sh ] || { echo "src/link.sh is no longer the same link"; false; }
+}
+
+@test "R265: a mutation entry carries one digest per broken file, a deleted file as absent, and the record validator requires the key's shape" {
   printf 'echo unpaid\n' > src/pay.sh
   "$VBW" mutate P1.1 R1.1 "prints unpaid" src/pay.sh < /dev/null > /dev/null
-  same_as_head src/pay.sh
-  printf 'echo nothing\n' > src/receipt.sh
-  "$VBW" mutate P1.2 R2.1 "prints nothing useful" src/receipt.sh < /dev/null > /dev/null || true
-  same_as_head src/receipt.sh
+  breaks P1.1 | jq -e --arg d "$(shasum -a 256 src/pay.sh | cut -c1-64)" '.[0].digests == {"src/pay.sh": $d}' || { breaks P1.1; false; }
+  git checkout -q -- src/pay.sh
+  rm src/receipt.sh
+  "$VBW" mutate P1.2 R2.1 "the receipt file is gone" src/receipt.sh < /dev/null > /dev/null || true
+  breaks P1.2 | jq -e '.[0].digests == {"src/receipt.sh": "absent"}' || { breaks P1.2; false; }
+  # The validator refuses an entry whose digests key is missing, or names a file the break did not.
+  local sum
+  sum=$(record_sum)
+  jq '(.plans[] | select(.id == "P1.1") | .mutations[0]) |= del(.digests)' .vbw/record.json > .vbw/record.tmp && mv .vbw/record.tmp .vbw/record.json
+  run "$VBW" show plan P1.1 < /dev/null
+  [ "$status" -ne 0 ] || { echo "a mutation entry with no digests was accepted"; false; }
+  [[ "$output" == *corrupt* ]] || { echo "$output"; false; }
+  jq '(.plans[] | select(.id == "P1.1") | .mutations[0].digests) = {"src/other.sh": "absent"}' .vbw/record.json > .vbw/record.tmp && mv .vbw/record.tmp .vbw/record.json
+  run "$VBW" show plan P1.1 < /dev/null
+  [ "$status" -ne 0 ] || { echo "digests naming a file outside the break were accepted"; false; }
+  [ "$sum" != "$(record_sum)" ]
+}
+
+@test "R265: the same broken bytes sent twice at the same commit are refused in one line naming the earlier break, its target and time, and saying the break was not edited out; nothing runs, nothing is recorded" {
+  printf 'echo unpaid\n' > src/pay.sh
+  "$VBW" mutate P1.1 R1.1 "prints unpaid" src/pay.sh < /dev/null > /dev/null
+  local sum
+  sum=$(record_sum)
+  run "$VBW" mutate P1.1 R1.2 "prints unpaid again" src/pay.sh < /dev/null
+  refused "$sum"
+  [ "$(printf '%s\n' "$output" | grep -c .)" -eq 1 ] || { echo "$output"; false; }
+  [[ "$output" == *"R1.1"* && "$output" == *"not edited out"* && "$output" == *"src/pay.sh"* ]] || { echo "$output"; false; }
+  [[ "$output" =~ 20[0-9][0-9]-[0-9][0-9]-[0-9][0-9]T ]] || { echo "no time of the earlier break: $output"; false; }
+  [ ! -d .vbw/runtime/mutate-queue/P1.1 ] || { ls -R .vbw/runtime/mutate-queue; false; }
+  # Edited out and broken differently: accepted.
+  printf 'echo unpaid\necho twice\n' > src/pay.sh
+  run "$VBW" mutate P1.1 R1.2 "prints another line" src/pay.sh < /dev/null
+  [ "$status" -eq 0 ] || { echo "$output"; false; }
+}
+
+@test "R265: cmd-mutate.sh and mutate-queue.sh run no git restore, no git checkout, and no rm on project paths outside .vbw/runtime" {
+  local f
+  for f in "$PLUGIN_ROOT/lib/cmd-mutate.sh" "$PLUGIN_ROOT/lib/mutate-queue.sh"; do
+    ! grep -nE '^[^#]*\bgit\b[^|;&]*\b(restore|checkout)\b' "$f" || { echo "$f restores the working copy through git"; false; }
+    # Every rm names a path under the runtime folder (a variable holding one counts by its name).
+    ! grep -nE '^[^#]*\brm\b' "$f" | grep -vE 'VBW_RUNTIME|runtime|\$tmp|\$dir|\$copy|\$aside|\$qdir|\$set_aside|\$q' || { echo "$f removes a project path"; false; }
+  done
 }
 
 @test "R188: recording a break leaves the contract approved, its fingerprint unchanged" {

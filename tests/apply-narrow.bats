@@ -231,3 +231,103 @@ three_rules() {
   [[ "$output" == *"retired rule R1.3: a refused card is named (cards are no longer refused)"* ]] || { echo "$output"; false; }
   [[ "$output" != *"added rule"* ]] && [[ "$output" != *"removed rule"* ]] || { echo "$output"; false; }
 }
+
+# R266 (T248; docs/workflows.md): a patch row that names an existing plan or check and leaves
+# fields out keeps that row's other fields; an explicit null removes an optional field; null
+# on a required field, or a new row lacking one, is refused in one line naming the row and
+# the field, before anything is merged or the rigor tiers computed, so no jq error and no
+# internal error ever reaches the caller.
+# clean_refusal: the last run failed, printed no raw error, and the record is as SUM.
+clean_refusal() {
+  [ "$status" -ne 0 ] || { echo "not refused: $output"; return 1; }
+  [[ "$output" != *"jq: "* && "$output" != *"Cannot iterate"* && "$output" != *"internal error"* && "$output" != *"rigor tiers"* ]] || { echo "a raw error reached the caller: $output"; return 1; }
+  [ "$(cksum < .vbw/record.json)" = "$1" ] || { echo "the record changed: $output"; return 1; }
+}
+
+@test "R266: a plan row with only some fields keeps the row's other fields (the T248 shapes: id and files only; no reqs; no files)" {
+  local before
+  before=$(part '[.plans[] | select(.id == "P1.2")][0]')
+  run "$VBW" apply --patch <<< '{"plans": [{"id": "P1.2", "files": ["src/b.txt", "src/b2.txt"]}]}'
+  [ "$status" -eq 0 ] || { echo "$output"; false; }
+  [ "$(part '[.plans[] | select(.id == "P1.2")][0] | del(.files)')" = "$(printf '%s' "$before" | jq -cS 'del(.files)')" ] || { part '[.plans[] | select(.id == "P1.2")][0]'; false; }
+  [ "$(part '[.plans[] | select(.id == "P1.2")][0].files')" = '["src/b.txt","src/b2.txt"]' ]
+  run "$VBW" apply --patch <<< '{"plans": [{"id": "P1.2", "title": "Pay with one click"}]}'
+  [ "$status" -eq 0 ] || { echo "$output"; false; }
+  part '[.plans[] | select(.id == "P1.2")][0]' | jq -e '.title == "Pay with one click" and .phase == "P1" and .reqs == ["R1"] and .files == ["src/b.txt", "src/b2.txt"] and .after == ["P1.1"] and .tasks == ["button"]' || { part '[.plans[] | select(.id == "P1.2")][0]'; false; }
+}
+
+@test "R266: a check row with only some fields keeps the row's other fields" {
+  run "$VBW" apply --patch <<< '{"checks": [{"id": "C2", "run": ["sh", "tests/c2.sh", "--strict"]}]}'
+  [ "$status" -eq 0 ] || { echo "$output"; false; }
+  part '[.checks[] | select(.id == "C2")][0]' | jq -e '.req == "R2" and .run == ["sh", "tests/c2.sh", "--strict"] and .files == ["tests/c2.sh"]' || { part '[.checks[] | select(.id == "C2")][0]'; false; }
+}
+
+@test "R266: an explicit null removes an optional field of a plan (after, tasks, role) or a check (exit, output, timeout, alone, files)" {
+  edit_record '(.plans[] | select(.id == "P1.2")).role = "dev" | (.checks[] | select(.id == "C2")) += {exit: 0, output: "ok", timeout: 60, alone: true}'
+  run "$VBW" apply --patch <<< '{"plans": [{"id": "P1.2", "after": null, "tasks": null, "role": null}]}'
+  [ "$status" -eq 0 ] || { echo "$output"; false; }
+  part '[.plans[] | select(.id == "P1.2")][0]' | jq -e '(.after // []) == [] and (has("tasks") | not) and (has("role") | not) and .title == "Pay button" and .files == ["src/b.txt"]' || { part '[.plans[] | select(.id == "P1.2")][0]'; false; }
+  run "$VBW" apply --patch <<< '{"checks": [{"id": "C2", "exit": null, "output": null, "timeout": null, "alone": null, "files": null}]}'
+  [ "$status" -eq 0 ] || { echo "$output"; false; }
+  part '[.checks[] | select(.id == "C2")][0]' | jq -e '(has("exit") | not) and (has("output") | not) and (has("timeout") | not) and (has("alone") | not) and (has("files") | not) and .req == "R2" and .run == ["sh", "tests/c2.sh"]' || { part '[.checks[] | select(.id == "C2")][0]'; false; }
+}
+
+@test "R266: null on a required field (plan: phase, title, reqs, files; check: req, run) is refused in one line naming the row and the field, with its next step; the record is unchanged" {
+  local sum f
+  sum=$(cksum < .vbw/record.json)
+  for f in phase title reqs files; do
+    run "$VBW" apply --patch <<< "{\"plans\": [{\"id\": \"P1.2\", \"$f\": null}]}"
+    clean_refusal "$sum"
+    # One line naming the row and the field, then its next step (R162: every refusal carries one).
+    [ "$(printf '%s\n' "$output" | grep . | grep -vc '^Next:')" -eq 1 ] || { echo "$f: $output"; false; }
+    [[ "$output" == *"P1.2"* && "$output" == *"$f"* ]] || { echo "$f: $output"; false; }
+  done
+  for f in req run; do
+    run "$VBW" apply --patch <<< "{\"checks\": [{\"id\": \"C2\", \"$f\": null}]}"
+    clean_refusal "$sum"
+    # One line naming the row and the field, then its next step (R162: every refusal carries one).
+    [ "$(printf '%s\n' "$output" | grep . | grep -vc '^Next:')" -eq 1 ] || { echo "$f: $output"; false; }
+    [[ "$output" == *"C2"* && "$output" == *"$f"* ]] || { echo "$f: $output"; false; }
+  done
+}
+
+@test "R266: a new row lacking a required field is refused as '--patch refused: ...' naming the row and the field, with a Next: line; nothing is written and no jq or internal error shows" {
+  local sum
+  sum=$(cksum < .vbw/record.json)
+  run "$VBW" apply --patch <<< '{"plans": [{"id": "P1.3", "phase": "P1", "title": "Pay later", "files": ["src/d.txt"]}]}'
+  clean_refusal "$sum"
+  printf '%s\n' "$output" | head -n 1 | grep -qE '^(vbw: )?--patch refused: .*P1\.3.*reqs' || { echo "$output"; false; }
+  printf '%s\n' "$output" | grep -q '^Next: ' || { echo "no Next: line: $output"; false; }
+  run "$VBW" apply --patch <<< '{"plans": [{"id": "P1.3", "files": ["src/d.txt"]}]}'
+  clean_refusal "$sum"
+  printf '%s\n' "$output" | head -n 1 | grep -qE '^(vbw: )?--patch refused: .*P1\.3' || { echo "$output"; false; }
+  run "$VBW" apply --patch <<< '{"checks": [{"id": "C3", "req": "R1"}]}'
+  clean_refusal "$sum"
+  printf '%s\n' "$output" | head -n 1 | grep -qE '^(vbw: )?--patch refused: .*C3.*run' || { echo "$output"; false; }
+}
+
+@test "R266: while a build run is open, a plan or rule patch is still refused and a check-only partial row merges" {
+  # R3 is not planned in this fixture: drop it so the contract can be approved and a build started.
+  sed -i.bak '/^- R3 /d' .vbw/spec.md && rm -f .vbw/spec.md.bak
+  "$VBW" spec sync > /dev/null
+  git add -A && git commit -q -m "feat(shop): start"
+  "$VBW" approve > /dev/null
+  VBW_SESSION_ID=s1 "$VBW" run start build P1.1 > /dev/null
+  local sum
+  sum=$(cksum < .vbw/record.json)
+  run "$VBW" apply --patch <<< '{"plans": [{"id": "P1.2", "title": "Pay with one click"}]}'
+  clean_refusal "$sum"
+  [[ "$output" == *"build run is open"* ]] || { echo "$output"; false; }
+  run "$VBW" apply --patch <<< '{"checks": [{"id": "C2", "run": ["sh", "tests/c2.sh", "--strict"]}]}'
+  [ "$status" -eq 0 ] || { echo "$output"; false; }
+  part '[.checks[] | select(.id == "C2")][0]' | jq -e '.req == "R2" and .run == ["sh", "tests/c2.sh", "--strict"] and .files == ["tests/c2.sh"]' || { part '[.checks[] | select(.id == "C2")][0]'; false; }
+  jq -e '.lease.kind == "build"' .vbw/record.json
+}
+
+@test "R266 docs: docs/workflows.md's --patch row and merge list say a row with an existing id is merged field by field, that an explicit null removes an optional field, and that a missing required field is refused naming it" {
+  local doc="$REPO_ROOT/docs/workflows.md"
+  grep -E '^\| *`vbw apply --patch' "$doc" | grep -qiE 'field by field|other fields' || { echo "the --patch row does not say a row keeps its other fields"; false; }
+  tr '\n' ' ' < "$doc" | grep -qiE 'existing `id`[^.;]*(merged|keeps)[^.;]*field' || { echo "the merge list does not say an existing id is merged field by field"; false; }
+  tr '\n' ' ' < "$doc" | grep -qiE 'null[^.;]*removes[^.;]*optional' || { echo "the docs do not say an explicit null removes an optional field"; false; }
+  tr '\n' ' ' < "$doc" | grep -qiE 'required field[^.;]*refused|refused[^.;]*required field' || { echo "the docs do not say a missing required field is refused"; false; }
+}
