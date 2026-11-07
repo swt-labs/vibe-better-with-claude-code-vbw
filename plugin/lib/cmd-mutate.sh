@@ -118,7 +118,7 @@ mutate_clean() {
 # command never judges a list it did not record and never derives one from file names.
 mutate_rule_none() {
   local plan="$1" req="$2" rk="$3" ruledoc="$4" check="$5" record="$6" reason="$7"
-  local head tree fp noreads res verdict
+  local head tree fp noreads res verdict ranmsg=''
   head=$(git rev-parse HEAD 2> /dev/null) || vbw_die "the project has no commit yet"
   checks_begin "$record"
   PROOFREUSE_STORE=$(proofreuse_store_read)
@@ -133,7 +133,7 @@ mutate_rule_none() {
     proofcopy_release
     res=$(printf '%s' "$res" | jq -c --argjson off "$([ -n "$noreads" ] && echo true || echo false)" "$PROVE_FLAT")
     proofreuse_save "$record" "$res" '{}' "$tree" "$(vbw_now)"
-    printf 'ran %s once to record its read list\n' "$check"
+    ranmsg="ran $check once to record its read list"
     PROOFREUSE_STORE=$(proofreuse_store_read)
   fi
   checks_end
@@ -149,7 +149,7 @@ mutate_rule_none() {
     | ($pl | map(select(.files | index("*") != null) | .id)) as $stars
     | if $e == null then {refuse: "\($k): \($id) has no recorded run: it did not run (vbw show contract lists check files waiting for approval)"}
       elif ($e.reads | type) != "array" then {refuse: "\($k): \($id) has no read list: the file system recorded none"}
-      elif $e.git == true then {refuse: "\($k): \($id) reads the project through git, so its files are unknown: break the rule in the plan'"'"'s code instead"}
+      elif $e.git == true then {git: true, ok: "\($k) recorded: \($id) reads the project through git, so no read list can vouch for it; accepted on the reason, marked git and listed at the next gate"}
       else
         $e.reads as $rd
         | [($e.dirs // [])[] | if type == "object" then .path else . end] as $dr
@@ -165,12 +165,22 @@ mutate_rule_none() {
                 + ": break the rule in that code instead")}
           else {ok: "\($k) recorded: \($id) read \(plural($rd | length; "file")) and \(plural($dr | length; "folder")), none of them of \($q)'"'"'s plans (\($pl | map(.id) | join(", "))); a check that only tests whether a plan file exists is not detected"} end
       end')
+  # A git-read excuse prints one line, so the notice of the one run joins it; every other answer prints it first.
+  if [ -n "$ranmsg" ] && [ "$(printf '%s' "$verdict" | jq '.git == true')" != true ]; then
+    printf '%s\n' "$ranmsg"
+    ranmsg=''
+  fi
   if [ "$(printf '%s' "$verdict" | jq 'has("refuse")')" = true ]; then
     vbw_die "$(printf '%s' "$verdict" | jq -r .refuse)"
   fi
-  record_update '(.plans[] | select(.id == $p)).mutations += [{rule: {req: $q, k: $k}, none: $why, at: $at, head: $h}]' \
-    --arg p "$plan" --arg q "$req" --argjson k "$rk" --arg why "$reason" --arg at "$(vbw_now)" --arg h "$head"
-  printf '%s\n%s\n' "$(printf '%s' "$verdict" | jq -r .ok)" "$reason"
+  record_update '(.plans[] | select(.id == $p)).mutations += [{rule: {req: $q, k: $k}, none: $why, at: $at, head: $h} + (if $g then {git: true} else {} end)]' \
+    --arg p "$plan" --arg q "$req" --argjson k "$rk" --arg why "$reason" --arg at "$(vbw_now)" --arg h "$head" \
+    --argjson g "$(printf '%s' "$verdict" | jq '.git == true')"
+  if [ "$(printf '%s' "$verdict" | jq '.git == true')" = true ]; then
+    printf '%s%s (%s)\n' "${ranmsg:+$ranmsg; }" "$(printf '%s' "$verdict" | jq -r .ok)" "$reason"
+  else
+    printf '%s\n%s\n' "$(printf '%s' "$verdict" | jq -r .ok)" "$reason"
+  fi
 }
 
 # mutate_waits_sum: the seconds the run's units have waited for a slot so far.
@@ -249,7 +259,7 @@ cmd_mutate() {
       [ -n "$none" ] || vbw_die "--none needs a reason: say why task $tk has no behaviour a test could notice"
     else
       [ ${#want[@]} -eq 0 ] || vbw_die "--check is for a task; a rule runs its own check"
-      [ -n "$none" ] || vbw_die "--none needs a reason: say why no code the plans build could change what the check of $target judges"
+      [ -n "$none" ] || vbw_die "--none needs a reason: say why no code the plans build could change what the check of $target judges (a check that reads the project through git needs it most: no read list can vouch for it)"
     fi
     [ $# -eq 0 ] || mutate_usage "--none takes a reason and nothing else"
   else
