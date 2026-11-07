@@ -3603,9 +3603,9 @@ rustpack_seed() {
 scenario_rustpack() {
   command -v cargo > /dev/null 2>&1 || { say "setup failed: cargo is not installed"; return 1; }
   new_project
-  (cd "$dir" && "$VBW" init > /dev/null && "$VBW" config rigor express > /dev/null && rustpack_seed) \
+  (cd "$dir" && "$VBW" init > /dev/null && "$VBW" config rigor standard > /dev/null && rustpack_seed) \
     || { say "setup failed: could not seed the workspace and its spec"; return 1; }
-  fixture="a two-crate Cargo workspace (crates/textkit, crates/countkit, both lib.rs empty) and a spec of two requirements, one per crate, with no plan; rigor express; the user types /vbw:vibe and the Lead plans"
+  fixture="a two-crate Cargo workspace (crates/textkit, crates/countkit, both lib.rs empty) and a spec of two requirements, one per crate, with no plan; rigor standard, because express plans in the main session with no Lead; the user types /vbw:vibe and the Lead plans"
   start="/vbw:vibe"
   checks() {
     local passed=true r="$dir/.vbw/record.json" planned=false named=false disjoint=false pack_told=false n
@@ -3617,13 +3617,14 @@ scenario_rustpack() {
     say "planning workflow: $planned, plans: $n, files named: $named, files disjoint: $disjoint, Lead told the pack: $pack_told"
     common_checks
     expect "the Lead planned (a planning workflow ran)" [ "$planned" = true ]
+    expect "the Lead was told the pack text" [ "$pack_told" = true ]
     expect "every plan names the files it changes" [ "$named" = true ]
     expect "no two plans change the same file" [ "$disjoint" = true ]
     [ "$failed" -eq 0 ] || passed=false
     result_write rustpack "$fixture" "${cost_usd:-0}" "$passed" \
       "$(jq -n --argjson l "$planned" --argjson f "$named" --argjson d "$disjoint" --argjson t "$pack_told" --argjson n "$n" \
         '{lead_planned: $l, plan_files_named: $f, plan_files_disjoint: $d, lead_told_pack: $t, plans: $n}')" \
-      '["the QA pack text at a deep tier (rigor express)","a dependency added with its lockfiles","a Cargo workspace nested inside another workspace","whether the pack made the Lead or the Dev work better than without it"]'
+      '["the QA pack text at a deep tier (rigor standard)","a dependency added with its lockfiles","a Cargo workspace nested inside another workspace","whether the pack made the Lead or the Dev work better than without it"]'
   }
 }
 
