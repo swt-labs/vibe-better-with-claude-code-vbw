@@ -769,10 +769,19 @@ Milestone end: about 36 min, until around 14:56, counting 2 fix rounds per stand
   figure. Under a minute it says "less than a minute". Over an hour it reads
   "about 2 h 36 min". An end on another day names the day: "until around
   tomorrow 00:20". Times are 24-hour, local.
-- **It needs history.** VBW gives an end time only after **at least 3 finished steps**
-  of the same kind (for example 3 builds). With fewer, the panel says
-  "No end time yet: VBW has timed fewer than 3 steps like this here" and shows
-  no time. VBW never guesses.
+- **It needs history.** With no finished step of the kind (for example no
+  build), the panel says "No end time yet" and shows no time. VBW never makes
+  one up.
+- **Rough or single.** An estimate is **rough** when it rests on **fewer than 5
+  kept runs**, or when its high is **above 1.5 times its low** (the runs
+  disagree). A rough estimate is a range: "roughly 8 to 14 min, until around
+  14:12 to 14:18 (rough guess from 2 runs)". When the low and high agree it
+  reads "roughly 12 min, until around 14:20 (rough guess from 2 runs)". With
+  **5 or more runs that agree** you get the single figure, "about 12 min, until
+  around 14:20". The milestone end is a range, marked rough, when any part of it
+  is rough, and keeps its "counting ..." tail; it is the single figure only when
+  every part is tight. The range comes from the spread of the runs it learned
+  from, and the two thresholds are defined once, in `steps-expect.jq`.
 - **Time per unit at a tier.** Each kind of step is sized by its own unit, and
   VBW takes the median time per unit over the latest 10 finished ones **at the
   same tier** (an older plan or another tier does not count):
