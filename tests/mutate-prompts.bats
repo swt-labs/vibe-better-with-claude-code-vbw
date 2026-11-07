@@ -116,6 +116,15 @@ names() {
   ! grep -qi 'check the file is unchanged' "$DEV" || { echo "dev.md still says to check the file is unchanged"; false; }
 }
 
+@test "R265: the Docs agent's mutation step says to commit every finished task before a break and to edit the break out right after each mutate; the undo sentences are gone" {
+  has_line "$DOCS" "commit" "before" "break"
+  has_line "$DOCS" "leaves the file as" "mutate"
+  has_line "$DOCS" "edit the break out" "right after each"
+  has_line "$DOCS" "same broken bytes twice"
+  ! grep -qi 'it undoes the break' "$DOCS" || { echo "docs.md still says VBW undoes the break"; false; }
+  ! grep -qi 'check the file is unchanged' "$DOCS" || { echo "docs.md still says to check the file is unchanged"; false; }
+}
+
 @test "R265: docs/workflows.md's mutate row and its paragraph say the break stays in the working copy and the Dev edits it out; 'VBW undoes the break' is gone" {
   local doc="$REPO_ROOT/docs/workflows.md"
   ! grep -q 'VBW undoes the break' "$doc" || { echo "docs/workflows.md still says VBW undoes the break"; false; }
