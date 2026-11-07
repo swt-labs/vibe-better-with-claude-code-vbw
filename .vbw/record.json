@@ -1,6 +1,15 @@
 {
   "schema": 13,
-  "lease": null,
+  "lease": {
+    "run": "qa-20261107T155536Z",
+    "kind": "qa",
+    "started_at": "2026-11-07T15:55:36Z",
+    "files": [],
+    "session": "0ee781c3-c5b6-4a6c-889f-04b89f1fba4a",
+    "cost": {
+      "usd": 3347.165298
+    }
+  },
   "protected": [
     "tests/adaptive-results.bats",
     "tests/agent-scratch.bats",
@@ -31044,7 +31053,22 @@
         "guarded: R13 (C12), R14 (C13), R22 (C19), R23 (C20), R24 (C23), R25 (C24), R27 (C21), R28 (C25), R31 (C27), R39 (C36), R43 (C42, C43), R44 (C44, C45), R45 (C39, C40, C41), R46 (C46), R50 (C51), R60 (C72, C94), R66 (C95), R69 (C110, C120, C122), R70 (C114), R71 (C115, C121), R73 (C98), R74 (C99, C100), R75 (C101), R76 (C102, C103), R77 (C104), R78 (C105, C106), R79 (C107), R81 (C109, C111, C112, C113), R95 (C149, C150), R96 (C151, C152), R99 (C155), R101 (C179), R106 (C164, C165), R107 (C166, C167), R116 (C182, C183), R118 (C184), R123 (C190, C191), R129 (C196), R130 (C197), R134 (C201), R135 (C202), R147 (C212, C215, C237), R148 (C213, C214, C216, C238), R149 (C217, C218, C219, C220, C221, C222), R156 (C242, C243), R157 (C244), R158 (C245), R159 (C246), R160 (C247, C263, C264), R162 (C249), R163 (C250), R167 (C257, C258, C259, C260), R179 (C297, C298, C299, C300, C301, C302, C303, C304, C305, C306, C312), R180 (C307, C308, C309, C310), R182 (C322, C323, C324, C325, C326), R186 (C344, C345, C346, C347, C348), R192 (C401, C402, C403, C404, C405, C406, C407, C408, C409, C410), R194 (C417, C418, C419), R209 (C469, C470, C471, C472, C473), R211 (C477, C478, C479), R212 (C480, C481, C482), R213 (C483, C484), R215 (C488, C489, C490), R216 (C491, C492, C493), R219 (C497, C498, C499), R220 (C500, C501, C502, C503), R228 (C522, C523, C524, C525), R239 (C554, C555), R241 (C546, C547, C548, C549, C550, C560), R242 (C551, C552, C553), R244 (C562, C563), R245 (C564, C565), R250 (C574, C575, C576, C577, C578, C585), R259 (C593, C594, C595), R262 (C601)",
         "tests: project test command"
       ],
-      "predicted": "deep"
+      "predicted": "deep",
+      "qa": {
+        "result": "pass",
+        "tier": "quick",
+        "tree": "cb033cd457b6ee0c339e4d1c7c5dcb13ad9c1f5af341bfc51d4c5a4fc6096b63",
+        "at": "2026-11-07T15:56:57Z",
+        "note": "8/8 checks"
+      },
+      "outcome": {
+        "tier": "deep",
+        "predicted": "deep",
+        "held": true,
+        "fix_rounds": 0,
+        "qa_findings": 0,
+        "escalations": 0
+      }
     },
     {
       "id": "P216",
@@ -80867,6 +80891,36 @@
       "text": "Ship 2.1.27 without changing spec_parse's write; fix it in 2.1.28 with a rule test",
       "why": "F392 is the known bash 3.2 interrupted-write class (printf in spec_parse, cmd-spec.sh:57, unchanged since 2026-10-01), seen once under load 28 while another project's proof ran; the file passes alone and twice in full. A kernel change now reruns most of the proof; 2.1.28 moves the write to vbw_out and extends tools/check-loop-writes.sh to catch it, test first",
       "at": "2026-11-07T15:49:55Z"
+    },
+    {
+      "id": "D643",
+      "text": "Keep docs/packs.md changes from the proof fixes",
+      "why": "The Rust section again holds the pack's lockfile sentence word for word (C603)",
+      "at": "2026-11-07T15:55:25Z"
+    },
+    {
+      "id": "D644",
+      "text": "Keep plugin/lib/mutate-queue.sh changes from the proof fixes",
+      "why": "A named shellcheck exception for a variable read by cmd-mutate.sh; no behaviour change",
+      "at": "2026-11-07T15:55:27Z"
+    },
+    {
+      "id": "D645",
+      "text": "Keep plugin/lib/cmd-mutate.sh changes from the proof fixes",
+      "why": "The same-bytes refusal compares the tree and the contract, so a submodule commit or a changed check definition allows the break again; shellcheck exceptions named; covered by tests/mutate-command.bats",
+      "at": "2026-11-07T15:55:28Z"
+    },
+    {
+      "id": "D646",
+      "text": "Keep plugin/lib/cmd-doctor.sh changes from the doctor fix",
+      "why": "doctor sets the runtime folder before asking the disk (crash on every project, found by the real-disk test); shellcheck exception named",
+      "at": "2026-11-07T15:55:30Z"
+    },
+    {
+      "id": "D647",
+      "text": "Keep tools/l3-suite.sh changes from the scenario fixes",
+      "why": "rustpack at standard rigor so the Lead plans, leaveout judges doctor against the disk, taskbreak's digest match without a quiet grep pipe; all three scenarios ran and passed",
+      "at": "2026-11-07T15:55:32Z"
     }
   ],
   "commands": {
