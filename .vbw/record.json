@@ -71834,14 +71834,13 @@
       "after": [
         "P213.1"
       ],
-      "status": "blocked",
+      "status": "planned",
       "role": "dev",
       "tasks": [
         "mutate_rule_none: a recorded run with git == true is accepted: entry {rule, none, git: true, at, head}, one printed line naming the check, git and the reason; the empty-reason refusal says a reason is needed and why (no read list can vouch for a check that reads the project through git), before any run; the read-list cases unchanged",
         "record.jq: git may only be true, only on a rule none entry; record-schema.jq row 14 'a rule entry marked git', VBW_SCHEMA_MAX 14; docs/record.md row and plans row",
         "contract.sh contract_amendments_block: 'git-read excuses since the last approval:' then '  PLAN: Rn.k CHECK (REASON)' per entry recorded after the clone's last contract grant (so vbw show contract, --changes and vbw ship all print it); cmd-show.sh: show plan prints '  Rn.k: no break possible: CHECK reads the project through git (REASON)' and show req the same words in [breaks: ...]; cmd-plan.sh already counts a none entry"
-      ],
-      "note": "R264.6 needs plugin/lib/cmd-approve.sh, which the plan does not own. 'None listed after the next approval' must hold when the contract is unchanged (the check runs vbw approve on an already approved contract). That path writes nothing but the approved-contract snapshot: no decision, no new consent entry, and the amendments are cleared only in approve_decide (new-hash branch). So no file of this plan can mark an excuse as seen. A clock compare on the snapshot file fails within one second, and a contract_doc side channel would also let vbw apply --amend (approve_repin) hide an excuse without a gate. Fix: add plugin/lib/cmd-approve.sh to P214.1's files; approve_record writes an 'excuses seen' list (plan, rule, at per git entry) into the clone's runtime next to approved-contract.json, and contract_amendments_block lists the git entries not in it. Nothing else in the plan changes. Nothing was edited or committed."
+      ]
     },
     {
       "id": "P214.2",
@@ -90891,6 +90890,17 @@
         "ended": "2026-11-07T00:57:00Z",
         "cost": {
           "usd": 1.097341
+        }
+      },
+      {
+        "id": "build-20261107T005720Z",
+        "kind": "build",
+        "session": "0ee781c3-c5b6-4a6c-889f-04b89f1fba4a",
+        "milestone": "M54",
+        "started": "2026-11-07T00:57:20Z",
+        "ended": "2026-11-07T00:57:33Z",
+        "cost": {
+          "usd": 0.089661
         }
       }
     ],
