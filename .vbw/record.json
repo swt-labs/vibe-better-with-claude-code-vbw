@@ -71310,12 +71310,35 @@
         "P212.1",
         "P213.2"
       ],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "scenario_rustpack: a fixture whose spec asks for two features in one crate (or a two-crate workspace) with no seeded plan, so /vbw:vibe runs the Lead with the Rust pack; facts lead_planned, plan_files_named (every plan names each file it changes), plan_files_disjoint (no two plans change the same file), read from the record",
         "docs/workflows.md rustpack scenario line: what the scenario now judges",
         "run the scenario; commit tools/l3-results/rustpack.json (fixture, cost, L3, facts, not_tested)"
+      ],
+      "mutations": [
+        {
+          "rule": {
+            "req": "R263",
+            "k": 8
+          },
+          "what": "the committed result says the scenario failed",
+          "files": [
+            "tools/l3-results/rustpack.json"
+          ],
+          "checks": {
+            "C604": "red"
+          },
+          "result": "red",
+          "at": "2026-11-07T00:54:44Z",
+          "head": "02522ba56bd58ef1ade7cb4e6997a0b8997f081d",
+          "tree": "1d287abc9a12acf1f8c8e517197e287c34d94130",
+          "contract": "348522caecf2c8829ab876cc9438e92e05ec439cc71210de9afcf866268d6afb",
+          "digests": {
+            "tools/l3-results/rustpack.json": "5f5f0b97900d1a676dca16b013b0ea027e95ac05f54dc84f45ff8ee99fef3659"
+          }
+        }
       ]
     },
     {
@@ -90814,6 +90837,17 @@
         "ended": "2026-11-07T00:54:08Z",
         "cost": {
           "usd": 1.681592
+        }
+      },
+      {
+        "id": "build-20261107T005427Z",
+        "kind": "build",
+        "session": "0ee781c3-c5b6-4a6c-889f-04b89f1fba4a",
+        "milestone": "M54",
+        "started": "2026-11-07T00:54:27Z",
+        "ended": "2026-11-07T00:55:06Z",
+        "cost": {
+          "usd": 0
         }
       }
     ],
