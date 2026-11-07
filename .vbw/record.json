@@ -8351,7 +8351,7 @@
   "milestone": {
     "id": "M54",
     "title": "Field fixes: parallel plans in a Rust crate, safe mutation, clear patch refusals",
-    "status": "active"
+    "status": "shipped"
   },
   "shipped": [
     {
@@ -8613,6 +8613,11 @@
       "id": "M53",
       "title": "A first Rust stack pack, proofs that leave the machine usable, and a reworded rule that keeps its history",
       "at": "2026-11-06T21:25:51Z"
+    },
+    {
+      "id": "M54",
+      "title": "Field fixes: parallel plans in a Rust crate, safe mutation, clear patch refusals",
+      "at": "2026-11-07T17:24:55Z"
     }
   ],
   "requirements": [
@@ -80993,6 +80998,11 @@
       "at": "2026-11-07T17:12:46Z",
       "text": "Contract approved: 256 requirements, 616 checks, 627 plans (612d021e6e87)",
       "plans": []
+    },
+    {
+      "id": "D649",
+      "at": "2026-11-07T17:24:55Z",
+      "text": "Shipped M54 Field fixes: parallel plans in a Rust crate, safe mutation, clear patch refusals: 5 requirements proven or accepted"
     }
   ],
   "commands": {
@@ -95756,6 +95766,10 @@
             "usd": 0,
             "at": "2026-11-06T22:51:15Z"
           }
+        },
+        "total": {
+          "usd": 70.318441,
+          "sessions": 48
         }
       }
     }
