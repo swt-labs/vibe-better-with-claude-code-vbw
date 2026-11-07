@@ -5,7 +5,9 @@
 # jq 1.7.0 (trim, ltrim, rtrim, abs, toarray, trimstr, have_decnum, and add
 # with an argument) outside comment lines and outside a "def <name>" line,
 # unless the file defines that name itself. Prints
-# FILE:LINE: NAME needs jq 1.8; the floor is 1.7, and exits 1 on any hit.
+# FILE:LINE: NAME needs jq 1.8; the floor is 1.7, and exits 1 on any hit. It
+# also refuses a call of a jq private builtin (_name(, such as _nwise, which
+# jq 1.8 removed) unless the file defines it.
 set -euo pipefail
 
 names="trim ltrim rtrim abs toarray trimstr have_decnum add("
@@ -51,6 +53,25 @@ for file in ${files[@]+"${files[@]}"}; do
             off += p; rest = substr(s, off + 1)
           }
           if (hit) printf "%s:%d: %s needs jq 1.8; the floor is 1.7\n", file, i, name (call ? "(" : "")
+        }
+      }
+      # jq private builtins (_nwise, _modify, ...) are not part of jq: they differ
+      # between versions (jq 1.8 removed _nwise). A call of _name( is refused unless
+      # the file defines that name.
+      for (i = 1; i <= NR; i++) {
+        s = line[i]
+        if (s ~ /^[ \t]*#/) continue
+        rest = s; off = 0
+        while (match(rest, /_[a-z][A-Za-z0-9_]*\(/)) {
+          at = off + RSTART
+          before = (at > 1) ? substr(s, at - 1, 1) : ""
+          name = substr(rest, RSTART, RLENGTH - 1)
+          if (!isword(before) && before != "." && before != "$") {
+            defd = 0
+            for (j = 1; j <= NR; j++) if (line[j] ~ ("(^|[^A-Za-z0-9_])def[ \t]+" name "([^A-Za-z0-9_]|$)")) defd = 1
+            if (!defd) printf "%s:%d: %s( is a private jq builtin, not part of jq; it differs between versions\n", file, i, name
+          }
+          off += RSTART + RLENGTH - 1; rest = substr(s, off + 1)
         }
       }
     }' "$file")

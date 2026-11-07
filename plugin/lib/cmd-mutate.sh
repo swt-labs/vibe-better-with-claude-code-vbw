@@ -66,7 +66,7 @@ mutate_digests() {
   local f
   for f in "$@"; do
     printf '%s\n%s\n' "$f" "$(mutate_digest "$f")"
-  done | jq -R . | jq -sc '[_nwise(2) | {key: .[0], value: .[1]}] | from_entries'
+  done | jq -R . | jq -sc '[range(0; length; 2) as $i | {key: .[$i], value: .[$i + 1]}] | from_entries'
 }
 
 # mutate_same_bytes PLAN TARGET HEAD TREE BYTESUM RECORD: refuse a break whose digests equal an
