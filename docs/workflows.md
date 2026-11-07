@@ -239,7 +239,7 @@ merely contains `--help` (for example a todo) is still text. The test is
 | `vbw show plan P1.2 [--json]` | Dev | the plan, its requirements, its checks, its files. A rule or check of another plan is marked; the plan's own stay unmarked. A rule of P1.3 reads `... [P1.3's, built after this plan]`, a check only P1.3's rules use reads `... [P1.3's: red until it is built, not this plan's to pass]`. The order is `built before this plan`, `built after this plan`, `built beside this plan`, `done` (`[P1.3's, done]`) or `blocked` (`[P1.3's, blocked]`). `--json` adds `plan`, `own` and `order` to each rule, and `own` and `plans` to each check |
 | `vbw show fix F1 [--json]` | Dev | the fix, its requirement, failing checks and output (with the path of each kept full output, under `.vbw/runtime/output/`), the files it may touch |
 | `vbw check [--expect-red] [C1 ...]` | Dev | run approved checks and report; a failing check's full output is kept in `.vbw/runtime/output/<check>.log` and named under its line, nothing else is written. `--expect-red`: every check must fail (red-first) |
-| `vbw mutate P1.2 R3.1 "what you broke" FILE...` | Dev, Docs | break one rule (or `taskK`) of the plan on purpose and record whether a check noticed; the kernel leaves each named file as given (the break stays in the working copy) and the Dev edits it out. `--queue` sets a rule break aside to run later; `vbw mutate P1.2 --run` runs the queued breaks side by side. Standard and deep only (below) |
+| `vbw mutate P1.2 R3.1 "what you broke" FILE...` | Dev, Docs | break one rule (or `taskK`) of the plan on purpose and record whether a check noticed; the kernel leaves each named file as given (the break stays in the working copy) and the Dev edits it out. `--queue` sets a rule break aside to run later; `vbw mutate P1.2 --run` runs the queued breaks side by side. A check that reads the project through git takes `--none REASON` on its reason alone (git case, below). Standard and deep only (below) |
 | `vbw commit P1.2 "feat(x): ..." [FILE...]` | Dev | commit the plan's changed files with provenance trailers. After a mutation survivor it also commits a check file that a check of the plan's own rules names, shared with other requirements or not; a check file no check of the plan's own rules names, or any before a survivor, is refused by name |
 | `vbw commit --fix F1 "fix(x): ..." FILE...` | Dev | commit the named changed files of an open fix. For a requirement fix of any source (QA finding or failing test), the files are check files of its own requirement; the commit carries `VBW-Fix: F1` and `VBW-Req` trailers, and the files wait for one approval before the proof. Code goes through its plan with `vbw commit PLAN`. A check file of another requirement, a code file and `.vbw/` files are refused. For a failing project command, the named changed files commit even when no plan lists them, with the `VBW-Fix` trailer |
 | `vbw plan done P1.2` / `vbw plan block P1.2 "reason"` | Dev | the plan's outcome. `done` is verified: none of the plan's files has uncommitted changes, and the checks of the requirements it completes pass. The plan also needs a commit with its `VBW-Plan` trailer (`vbw commit`); without one, every file must be committed in `HEAD` (for example by the approval commit) and a check of its requirements must pass, or `done` is refused and names the failing check. A blocked plan stops only the plans that depend on it (docs/next.md). `block` refuses a plan that is already done, says so, and changes nothing; reset the plan first if it must be built again |
@@ -295,6 +295,14 @@ cannot fail, and QA would otherwise find it one round at a time.
   tests whether a plan file exists, without opening it, never reads that file,
   so such a check is not detected and the rule is accepted though deleting the
   file would fail the check.
+- **A check that reads through git** (`Rn.k --none REASON`): no read list can
+  vouch for it, so the command accepts it on the reason alone. It prints one
+  line naming the check, git and the reason, and records the excuse on the rule
+  marked git. A missing reason is refused. Each git-read excuse is listed at the
+  next gate (`vbw show contract`, `--changes`, `vbw ship`) until the next
+  approval. `vbw show plan` prints "no break possible: CHECK reads the project
+  through git (REASON)" for it, and `vbw plan done` counts it. A check with a
+  read list never needs it.
 - **Side by side** (`--queue`, then `--run`): a rule break can wait instead of
   running. `--queue` sets its broken bytes aside and puts the files back at
   once, running nothing, so the Dev makes the next break straight away. `vbw
