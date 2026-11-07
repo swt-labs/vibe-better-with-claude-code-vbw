@@ -73897,7 +73897,6 @@
         "R275"
       ],
       "files": [
-        "CLAUDE.md",
         "AGENTS.md",
         "docs/guards.md"
       ],
@@ -73905,7 +73904,7 @@
       "status": "planned",
       "role": "docs",
       "tasks": [
-        "CLAUDE.md and AGENTS.md hot paths: the reference workload is measured beside each case and a case is judged against the reference of its own moment ('beside each case' replaces 'on the same machine in the same run')",
+        "AGENTS.md hot paths (CLAUDE.md is a link to AGENTS.md: edit AGENTS.md only, never CLAUDE.md, so the link stays): the reference workload is measured beside each case and a case is judged against the reference of its own moment ('beside each case' replaces 'on the same machine in the same run')",
         "docs/guards.md: the same, with the per-case line the bench prints",
         "No other wording change"
       ]
@@ -82324,6 +82323,34 @@
       "text": "Estimates: one figure after 5 agreeing runs (the slowest at most 1.5 times the fastest, per unit of work); otherwise a range from the fastest to the slowest of the latest 10 runs of that kind, scaled to the work at hand, worded 'about 10 to 25 min (rough guess), until around 14:10 to 14:25' everywhere (kernel, status line, panel)",
       "why": "Decided by the lead engineer under the owner's standing rule (decide, record, do): a figure after a few days of normal use while ranges stay honest when past runs disagree; 10 agreeing runs would show ranges too long in a new project, 3 can mislead",
       "at": "2026-11-07T20:36:29Z"
+    },
+    {
+      "id": "D653",
+      "at": "2026-11-07T21:48:12Z",
+      "text": "Contract approved: 265 requirements, 642 checks, 648 plans (e9ec176184e7)",
+      "plans": [
+        "P217.1",
+        "P217.2",
+        "P217.3",
+        "P218.1",
+        "P218.2",
+        "P218.3",
+        "P218.4",
+        "P218.5",
+        "P219.1",
+        "P219.2",
+        "P219.3",
+        "P220.1",
+        "P220.2",
+        "P220.3",
+        "P221.1",
+        "P221.2",
+        "P221.3",
+        "P222.1",
+        "P222.2",
+        "P222.3",
+        "P222.4"
+      ]
     }
   ],
   "commands": {
