@@ -20384,6 +20384,11 @@
           "text": "scenario_taskbreak runs with the break left in the working copy and its result is committed as tools/l3-results/taskbreak.json: the break was edited out and no file was lost",
           "check": "C612",
           "plan": "P213.3"
+        },
+        {
+          "text": "plugin/agents/docs.md tells the Docs agent to commit every finished task before a break and to edit the break out right after each vbw mutate, says the kernel leaves the file as given and the same broken bytes twice are refused; it undoes the break and check the file is unchanged are gone",
+          "check": "C611",
+          "plan": "P213.2"
         }
       ]
     },
@@ -71788,7 +71793,8 @@
       ],
       "files": [
         "plugin/agents/dev.md",
-        "docs/workflows.md"
+        "docs/workflows.md",
+        "plugin/agents/docs.md"
       ],
       "after": [],
       "status": "done",
@@ -80974,6 +80980,12 @@
       "text": "Keep tools/l3-suite.sh changes from the scenario fixes",
       "why": "rustpack at standard rigor so the Lead plans, leaveout judges doctor against the disk, taskbreak's digest match without a quiet grep pipe; all three scenarios ran and passed",
       "at": "2026-11-07T15:55:32Z"
+    },
+    {
+      "id": "D648",
+      "at": "2026-11-07T17:12:46Z",
+      "text": "Contract approved: 256 requirements, 616 checks, 627 plans (612d021e6e87)",
+      "plans": []
     }
   ],
   "commands": {
