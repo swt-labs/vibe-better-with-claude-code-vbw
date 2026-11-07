@@ -191,6 +191,7 @@ doctor_statusline() {
 doctor_project() {
   VBW_DIR="$VBW_ROOT/.vbw"
   VBW_RECORD="$VBW_DIR/record.json"
+  # shellcheck disable=SC2034 # read by proofcopy_disk_kind
   VBW_RUNTIME="$VBW_DIR/runtime"
   [ ! -d "$VBW_ROOT/.vbw-planning" ] \
     || doctor_line info "VBW 1 project data (.vbw-planning/) is here; VBW 2 does not use it"

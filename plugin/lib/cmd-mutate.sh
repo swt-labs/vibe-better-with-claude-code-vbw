@@ -38,6 +38,7 @@ mutate_put() {
   shift 2
   [ -n "$copy" ] || return 1
   for f in "$@"; do
+    # shellcheck disable=SC2115 # $copy is checked non-empty above
     rm -rf "$copy/$f"
     if [ -e "$aside/files/$f" ] || [ -L "$aside/files/$f" ]; then
       mkdir -p "$copy/$(dirname "$f")"
@@ -68,18 +69,24 @@ mutate_digests() {
   done | jq -R . | jq -sc '[_nwise(2) | {key: .[0], value: .[1]}] | from_entries'
 }
 
-# mutate_same_bytes PLAN TARGET HEAD BYTESUM RECORD: refuse a break whose digests equal an
-# earlier break's of the plan at the same commit, recorded or queued: the Dev did not edit the
-# earlier break out. One line, naming that break's target and time; nothing runs or is recorded.
+# mutate_same_bytes PLAN TARGET HEAD TREE BYTESUM RECORD: refuse a break whose digests equal an
+# earlier break's of the plan on the same committed code, recorded or queued: the Dev did not edit
+# the earlier break out. The same code is the same tree (each submodule at its own HEAD) where the
+# earlier break carries one, else the same commit, as a queued break is judged; a recorded break
+# run under another contract (a check's definition changed since) is not the same run. One line,
+# naming that break's target and time; nothing runs or is recorded.
 mutate_same_bytes() {
-  local plan="$1" target="$2" head="$3" bytesum="$4" record="$5" hit='' e m names
-  hit=$(printf '%s' "$record" | jq -r --arg p "$plan" --arg h "$head" --argjson d "$bytesum" '
-    [.plans[] | select(.id == $p) | (.mutations // [])[] | select(.head == $h and (.digests // null) == $d)
+  local plan="$1" target="$2" head="$3" tree="$4" bytesum="$5" record="$6" hit='' e m names c
+  c=$(contract_hash "$record") || c=''
+  hit=$(printf '%s' "$record" | jq -r --arg p "$plan" --arg h "$head" --arg t "$tree" --arg c "$c" --argjson d "$bytesum" '
+    [.plans[] | select(.id == $p) | (.mutations // [])[]
+     | select((if has("tree") then .tree == $t else .head == $h end) and (.digests // null) == $d
+         and (if has("contract") and $c != "" then .contract == $c else true end))
      | "\(if has("rule") then "\(.rule.req).\(.rule.k)" else "task\(.task)" end) \(.at)"] | last // empty')
   if [ -z "$hit" ]; then
     while IFS= read -r e; do
       [ -n "$e" ] || continue
-      m=$(jq -r --arg h "$head" --argjson d "$bytesum" 'select(.head == $h and (.digests // null) == $d) | "\(.target) \(.at // "") (queued)"' "$e/meta.json")
+      m=$(jq -r --arg h "$head" --arg t "$tree" --argjson d "$bytesum" 'select((if has("tree") then .tree == $t else .head == $h end) and (.digests // null) == $d) | "\(.target) \(.at // "") (queued)"' "$e/meta.json")
       [ -z "$m" ] || hit=$m
     done < <(mutate_queue_entries "$plan")
   fi
@@ -101,6 +108,7 @@ mutate_clean() {
     i=$((i + 1))
     vbw_rel "$r" "$f"
     rel=$VBW_REL
+    # shellcheck disable=SC2115 # $copy is checked non-empty above
     rm -rf "$copy/$f"
     if git -C "$VBW_ROOT${r:+/$r}" cat-file -e "HEAD:$rel" 2> /dev/null; then
       git -C "$VBW_ROOT${r:+/$r}" archive HEAD -- "$rel" | tar -x -C "$copy${r:+/$r}" || vbw_die "cannot reset $f in the proof copy"
@@ -349,7 +357,7 @@ cmd_mutate() {
   # The broken bytes, once as digests and once copied to the set-aside folder; the working copy is never touched (R265).
   local bytesum dir
   bytesum=$(mutate_digests "${broke[@]}")
-  mutate_same_bytes "$plan" "$target" "$head" "$bytesum" "$record"
+  mutate_same_bytes "$plan" "$target" "$head" "$tree" "$bytesum" "$record"
   checks_begin "$record"
   dir=$(mktemp -d "$VBW_RUNTIME/mutate.XXXXXX") || vbw_die "cannot create a directory in $VBW_RUNTIME"
   vbw_guard_add dir "$dir"

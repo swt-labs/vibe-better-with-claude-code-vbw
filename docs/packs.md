@@ -36,7 +36,7 @@ It tells the roles the points below, and that paths in a nested workspace are wr
 3. A change to Cargo.toml or a lockfile goes in one plan at a time.
 4. A file many plans would touch (a module list in lib.rs or mod.rs, a shared enum, a manifest, a lockfile) is set up once in an early skeleton plan, or split so each later plan owns its own module file.
 5. A later plan that needs a dependency the skeleton did not add waits (an `after` entry) on the plan that adds it, and the plan states it.
-6. When a dependency is added or moved between crates, including one reached through a path dependency (the other workspace's manifest never names it), list every affected lockfile in the plan's files, because each lock changes in the same commit.
+6. When a dependency is added or moved between crates, including one reached through a path dependency (the other workspace's manifest never names it), list every affected lockfile (each workspace's Cargo.lock) in the plan's files, because each lock changes in the same commit.
 7. When a dependency is added or moved between crates, including one reached through a path dependency (the other workspace's manifest never names it), commit every affected lockfile in the same commit as the dependency, never later.
 8. A dependency added or moved between crates, including one reached through a path dependency (the other workspace's manifest never names it), must show in every affected lockfile in the same commit. A missing lockfile entry is a finding.
 9. A check runs one crate with `-j 2`; the whole workspace runs only as a check marked alone.

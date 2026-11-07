@@ -2738,9 +2738,10 @@ scenario_taskbreak() {
     if [ -n "$digs" ] && transcripts | transcript_edit_after_mutate greet.sh; then left=true; fi
     edited_out=true
     [ -n "$digs" ] || edited_out=false
+    nl=$'\n'
     for c in $(git -C "$dir" log --format=%H -- greet.sh) WORKTREE; do
       if [ "$c" = WORKTREE ]; then h=$(shasum -a 256 "$dir/greet.sh" 2> /dev/null | cut -d' ' -f1); else h=$(git -C "$dir" show "$c:greet.sh" 2> /dev/null | shasum -a 256 | cut -d' ' -f1); fi
-      if printf '%s\n' "$digs" | grep -qxF -- "$h"; then edited_out=false; fi
+      case "$nl$digs$nl" in *"$nl$h$nl"*) edited_out=false ;; esac
     done
     no_lost=true
     for f in greet.sh shout.sh; do
