@@ -115,11 +115,37 @@ contract_waiting() {
 # contract_waiting_with RECORD_JSON HASH [SHAPE]: contract_waiting for a caller that
 # already has the contract's hash (contract_hash) and, when it has it, the shape
 # (contract_shape; worked out here otherwise, and only when the hash is not approved).
+# An added-to file (contract_classify) is not waiting.
 contract_waiting_with() {
-  local f old="$VBW_RUNTIME/approved-contract.json" out="" all="" held="" shape="${3:-}" pairs=""
+  local shape="${3:-}"
   contract_approved "$2" && return 0
   [ -n "$shape" ] || shape=$(contract_shape "$1")
   consent_has shape "$shape" || return 1
+  contract_classify "$1" | sed -n 's/^W	//p'
+}
+
+# contract_added RECORD_JSON [HASH]: one "path<TAB>added line count" per added-to check file
+# (R269): every approved line still there, in its order, only new lines among them. Prints
+# nothing for an approved contract; fails for a contract whose structure is not approved.
+# Same classification as contract_waiting_with, and no answer in a variable, so both may be
+# captured with $(...) (D654).
+contract_added() {
+  local hash="${2:-}"
+  [ -n "$hash" ] || hash=$(contract_hash "$1")
+  contract_approved "$hash" && return 0
+  consent_has shape "$(contract_shape "$1")" || return 1
+  contract_classify "$1" | sed -n 's/^A	//p'
+}
+
+# contract_classify RECORD_JSON: one line per check file the approval does not hold as it is
+# (the contract's structure must be approved): "W<TAB>path" for a waiting file, "A<TAB>path<TAB>n"
+# for an added-to one. Waiting: the bytes differ and a line was removed, changed or reordered, or
+# the file is new to the approval, was added by a fix, is gone, or the snapshot has no blob id for
+# it (a snapshot from before the blob ids, or one that cannot be read: every changed file waits).
+# When nothing differs by file yet the hash is not approved (a fix's check with the same files),
+# every file waits.
+contract_classify() {
+  local f b n old="$VBW_RUNTIME/approved-contract.json" all="" held="" pairs="" rows="" out=""
   # One path per line: a shell variable cannot hold NUL bytes (bash 5 warns, bash 3.2 drops them).
   held=$(printf '%s' "$1" | jq -r --slurpfile old "$old" '.checks[] | select(has("fix")) | . as $c
     | select($old[0].checks[$c.id] != ($c | del(.amendments))) | .files[]?' 2> /dev/null) \
@@ -133,13 +159,52 @@ contract_waiting_with() {
     i=$((i + 1))
   done
   # The files whose bytes differ from the approved ones (a file the approval does not know is
-  # new), or that a fix added: one jq run for all of them, not one per file. An approval
+  # new), or that a fix added: one jq run for all of them, not one per file, each with the
+  # approved blob id (empty when there is none, or when a fix added the file). An approval
   # snapshot that cannot be read leaves every file changed.
-  out=$(printf '%s' "$pairs" | jq -Rr --slurpfile old "$old" --arg held "$held" '($held | split("\n")) as $h
+  rows=$(printf '%s' "$pairs" | jq -Rr --slurpfile old "$old" --arg held "$held" '($held | split("\n")) as $h
     | split("\t") | select(length == 2) | . as [$f, $d]
-    | select((($old[0].files // {})[$f] // "new") != $d or ($h | index($f) != null)) | $f' 2> /dev/null && printf x) \
-    && out=${out%x} || out=$all
-  printf '%s' "${out:-$all}"
+    | select((($old[0].files // {})[$f] // "new") != $d or ($h | index($f) != null))
+    | "\($f)\t\(if $h | index($f) != null then "" else ($old[0].blobs // {})[$f] // "" end)"' 2> /dev/null && printf x) \
+    && rows=${rows%x} || { printf '%s' "$all" | sed 's/^/W	/'; return 0; }
+  while IFS=$'\t' read -r f b; do
+    [ -n "$f" ] || continue
+    if [ -n "$b" ] && n=$(contract_added_lines "$b" "$VBW_ROOT/$f"); then
+      out="${out}A"$'\t'"$f"$'\t'"$n"$'\n'
+    else
+      out="${out}W"$'\t'"$f"$'\n'
+    fi
+  done <<< "$rows"
+  [ -n "$out" ] || out=$(printf '%s' "$all" | sed 's/^/W	/')
+  printf '%s\n' "${out%$'\n'}" | sed '/^$/d'
+}
+
+# contract_added_lines BLOB FILE: the number of lines FILE has added to the approved content
+# (git blob BLOB); fails when a line was removed, changed or reordered, the file is gone, the
+# blob cannot be read, or nothing was added.
+contract_added_lines() {
+  [ -f "$2" ] || return 1
+  local d
+  d=$(git -C "$VBW_ROOT" cat-file blob "$1" 2> /dev/null | diff - "$2")
+  [ "$?" -le 1 ] || return 1
+  printf '%s\n' "$d" | awk '/^</ { r = 1 } /^>/ { a++ } END { if (r || !a) exit 1; print a }'
+}
+
+# contract_blobs RECORD_JSON: a JSON object {path: git blob id} of every readable check file's
+# current bytes, written to the object store (git hash-object -w) so the approved content can
+# be read back later; {} when git cannot.
+contract_blobs() {
+  local f ids lines="" paths=() id i=0
+  while IFS= read -r -d '' f; do
+    [ -f "$VBW_ROOT/$f" ] && paths+=("$f")
+  done < <(printf '%s' "$1" | jq -j '[.checks[].files // [] | .[]] | unique[] | . + "\u0000"')
+  [ ${#paths[@]} -gt 0 ] || { printf '{}'; return 0; }
+  ids=$(cd "$VBW_ROOT" && git hash-object -w -- "${paths[@]}" 2> /dev/null) || { printf '{}'; return 0; }
+  while IFS= read -r id; do
+    lines="$lines${paths[$i]}"$'\t'"$id"$'\n'
+    i=$((i + 1))
+  done <<< "$ids"
+  printf '%s' "$lines" | jq -Rn '[inputs | split("\t") | select(length == 2) | {(.[0]): .[1]}] | add // {}' -c
 }
 
 contract_approved() {
