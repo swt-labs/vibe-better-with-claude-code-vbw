@@ -20479,6 +20479,78 @@
           "plan": "P216.3"
         }
       ]
+    },
+    {
+      "id": "R268",
+      "text": "vbw next is fast on a big milestone (field report: 59 s on a record of 79 phases in one milestone, 258 plans, 568 after-links, 47 phases interleaved): QA's closure of the phases and its cycle check among the interleaved phases' plans visit each node's links once instead of one full round per node, with the same closure, interleaved list and problems on every record; the per-phase digests read each repository's tree of the commit once per command, not once per phase; a timed test file builds a record of that shape and vbw next --json answers within 5 s of CPU on a nominal machine",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M55",
+      "rules": []
+    },
+    {
+      "id": "R269",
+      "text": "A check file a build changed only by adding lines (every line of its approved content still there, in order) no longer stops the run for an approval before the proof: the proof judges each check with the file's approved content, the added lines wait for approval at the next gate with their diff, and once approved they count from the next proof; a change that removes or alters an approved line still waits for approval before the proof, as today",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M55",
+      "rules": []
+    },
+    {
+      "id": "R270",
+      "text": "A time estimate VBW gives from little history or widely spread history (step and milestone estimates, vbw status, the status line) is said as a range, low to high, marked as a rough guess, while a well-founded one keeps its single figure; the range comes from the spread of the runs it learned from",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M55",
+      "rules": []
+    },
+    {
+      "id": "R271",
+      "text": "At express rigor, where the main session plans instead of the Lead, the router gives it the Lead text of every pack that applies to the files planned, as the Lead is given it at standard and deep (T253)",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M55",
+      "rules": []
+    },
+    {
+      "id": "R272",
+      "text": "When the session's loaded VBW is older than the one that wrote the record, so its approval menu cannot record an answer, every step that would ask says so first in one plain line naming both versions and the fix (update VBW and restart Claude Code, or start it with --plugin-dir for a development checkout), instead of falling back to a typed approve command (T251)",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M55",
+      "rules": []
+    },
+    {
+      "id": "R273",
+      "text": "The guard's read of a script run by name costs in step with the script's size (measured: 80 KB 1.1 s, 264 KB 7.6 s against the 5 s CPU limit), so a 264 KB script is read within the limit; a script still too large to read is answered in one line naming the file, its size and what to do, never as 'the guard failed, run vbw doctor' (T251)",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M55",
+      "rules": []
+    },
+    {
+      "id": "R274",
+      "text": "spec_parse writes its parsed spec through vbw_out, so a child exiting during the write on macOS bash 3.2 can no longer fail vbw spec add with 'Interrupted system call'; tools/check-loop-writes.sh or a new standards rule refuses a builtin write of spec- or record-sized text in a kernel function whose output is captured (T254)",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M55",
+      "rules": []
+    },
+    {
+      "id": "R275",
+      "text": "The hook bench never fails a case because the runner was busy at that moment while a real regression of one case still fails: the reference workload is measured beside each case (or again before a case is failed), and a case is judged against the reference of its own moment (T255)",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M55",
+      "rules": []
+    },
+    {
+      "id": "R276",
+      "text": "The main-session guard refuses a command as a write to .vbw/record.json only when the command writes it (a redirection, cp, mv, tee, sed -i or the like with the record as target); a command that only names it while reading (find -path, ls, grep, wc) passes",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M55",
+      "rules": []
     }
   ],
   "phases": [
@@ -91723,6 +91795,17 @@
         "ended": "2026-11-07T17:24:35Z",
         "cost": {
           "usd": 1.702556
+        }
+      },
+      {
+        "id": "plan-20261107T202731Z",
+        "kind": "plan",
+        "session": "0ee781c3-c5b6-4a6c-889f-04b89f1fba4a",
+        "milestone": "M55",
+        "started": "2026-11-07T20:27:31Z",
+        "ended": "2026-11-07T20:36:07Z",
+        "cost": {
+          "usd": 4.892735
         }
       }
     ],
