@@ -76778,6 +76778,13 @@
       "sort": "next",
       "size": "small",
       "status": "open"
+    },
+    {
+      "id": "T252",
+      "text": "A loop can take over the milestone in progress and run it to the end without the user (owner 2026-11-07: the loop is meant to continue uninterrupted). Today it only starts backlog items and refuses while a milestone is open. Starting it counts as approval of that milestone's plan; a change to what a check promises still stops for the user; no publishing. Also: free text given to /vbw:loop should be refused clearly, and the old finished loop's status should not read like a running one.",
+      "sort": "next",
+      "size": "medium",
+      "status": "open"
     }
   ],
   "decisions": [
