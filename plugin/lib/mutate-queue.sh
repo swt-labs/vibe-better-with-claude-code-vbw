@@ -4,7 +4,7 @@
 #   vbw mutate PLAN --run                       run every queued break of PLAN, side by side
 # A queued break waits in .vbw/runtime/mutate-queue/PLAN/NNNN/: files/ holds its
 # broken bytes (a file it deleted is absent), meta.json what it is {target, req,
-# rk, check, what, files, broke, head, tree}. The run judges each break as the single
+# rk, check, what, files, broke, head, tree, at, digests}. The run judges each break as the single
 # form does: the rule's check once on the unbroken code (unless a recorded break of
 # the same committed code, tree as vbw_head_tree counts it, already ran it), then each break in its own proof copy, as many at
 # a time as there are copies (check_jobs, under the computer-wide slots), and each
@@ -91,7 +91,7 @@ mutate_unbroken_base() {
 }
 
 mutate_queue_run() {
-  local plan="$1" record head tree e entries=() keep=() stale=0 surv=0 bad='' checks ids=() cfiles=() f base unb=() n i k
+  local plan="$1" aside qdir record head tree e entries=() keep=() stale=0 surv=0 bad='' checks ids=() cfiles=() f base unb=() n i k
   vbw_require_project
   cd "$VBW_ROOT" || vbw_die "cannot enter $VBW_ROOT"
   record=$(record_read)
@@ -108,7 +108,8 @@ mutate_queue_run() {
     # A break queued before breaks carried tree is judged by its head.
     if jq -e --arg t "$tree" --arg h "$head" 'if has("tree") then .tree == $t else .head == $h end' "$e/meta.json" > /dev/null; then keep+=("$e"); continue; fi
     printf '%s was queued at another commit, so its break is of older files: break it again\n' "$(jq -r .target "$e/meta.json")" >&2
-    rm -rf "$e"
+    aside=$e
+    rm -rf "$aside"
     stale=1
   done
   [ ${#keep[@]} -gt 0 ] || { mutate_queue_release "$plan"; return 1; }
@@ -138,7 +139,8 @@ mutate_queue_run() {
     if [ -n "$bad" ]; then
       proofcopy_remove
       checks_end
-      rm -rf "$(mutate_queue_dir "$plan")"
+      qdir=$(mutate_queue_dir "$plan")
+      rm -rf "$qdir"
       vbw_die "checks do not pass on the unbroken code, so a break proves nothing: $bad; make them pass and commit, then break again (the queued breaks are dropped)"
     fi
   fi
@@ -180,9 +182,11 @@ mutate_queue_run() {
   for e in "${keep[@]}"; do
     m=$(jq -c . "$e/meta.json")
     ruledoc=$(printf '%s' "$record" | jq -c --argjson m "$m" '.requirements[] | select(.id == $m.req) | (.rules // [])[$m.rk - 1] | {req: $m.req, text, check}')
+    MUTATE_DIGESTS=$(printf '%s' "$m" | jq -c '.digests // null')
     mutate_record "$plan" "$(printf '%s' "$m" | jq -r .target)" "$(printf '%s' "$m" | jq -r .what)" "$head" "$(cat "$e/result.json")" \
       "$(record_read)" "$ruledoc" "" "$(printf '%s' "$m" | jq -c .files)" "$tree" || surv=1
-    rm -rf "$e"
+    aside=$e
+    rm -rf "$aside"
   done
   mutate_queue_release "$plan"
   SLOTS_WAITED=$waited SLOTS_LOST=$lost

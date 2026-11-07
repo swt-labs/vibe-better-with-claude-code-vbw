@@ -6,10 +6,13 @@
 #   vbw mutate PLAN --run                             every queued break of PLAN, side by side
 #   vbw mutate PLAN taskK [--check ID]... WHAT FILE...   task K of the plan
 #   vbw mutate PLAN taskK --none REASON               nothing to break in task K
-# The broken bytes are set aside and the files go back to HEAD at once; the
-# target's checks run in a proof copy of HEAD, unbroken and then broken. The
-# result is recorded under the plan (.plans[].mutations), which the contract
-# does not hold. A break no check notices is a survivor: exit 1.
+# The broken bytes are copied to a set-aside folder in .vbw/runtime and the
+# working copy is never touched (R265): the Dev edits the break out. The target's
+# checks run in a proof copy of HEAD, unbroken and then with the set-aside bytes.
+# The result is recorded under the plan (.plans[].mutations) with one sha-256 per
+# broken file (digests), which the contract does not hold; the same bytes twice at
+# one commit are refused as a break not edited out. A break no check notices is a
+# survivor: exit 1.
 
 # shellcheck source=checks.sh
 . "$VBW_LIB/checks.sh"
@@ -28,40 +31,83 @@ mutate_usage() {
 usage: vbw mutate PLAN Rn.k [--queue] WHAT FILE... | PLAN --run | PLAN taskK [--check ID]... WHAT FILE... | PLAN taskK --none REASON | PLAN Rn.k --none REASON"
 }
 
-# mutate_put DIR DEST FILE...: DEST (a copy of HEAD) gets the broken bytes of each
-# FILE from DIR, or loses it where the break deleted it.
+# mutate_put ASIDE COPY FILE...: COPY (a proof copy of HEAD) gets the broken bytes of
+# each FILE from the set-aside folder ASIDE, or loses it where the break deleted it.
 mutate_put() {
-  local dir="$1" dest="$2" f
+  local aside="$1" copy="$2" f
   shift 2
+  [ -n "$copy" ] || return 1
   for f in "$@"; do
-    rm -rf "${dest:?}/$f"
-    if [ -e "$dir/files/$f" ] || [ -L "$dir/files/$f" ]; then
-      mkdir -p "$dest/$(dirname "$f")"
-      cp -pP "$dir/files/$f" "$dest/$f"
+    rm -rf "$copy/$f"
+    if [ -e "$aside/files/$f" ] || [ -L "$aside/files/$f" ]; then
+      mkdir -p "$copy/$(dirname "$f")"
+      cp -pP "$aside/files/$f" "$copy/$f"
     fi
   done
   # Newer than every file in the copy, so a build that decides by file times remakes it.
-  vbw_stamp_newer "$dest" "$@"
+  vbw_stamp_newer "$copy" "$@"
 }
 
-# mutate_clean DEST FILE...: the files back to their last commit in DEST (removed when HEAD has none),
-# each from its own repository (a submodule's file from the submodule, in its folder of DEST).
+# mutate_digest FILE: the sha-256 of what FILE holds in the working copy ("absent" when
+# it is not there; a symlink counts by its target text).
+mutate_digest() {
+  if [ -L "$1" ]; then
+    readlink "$1" | vbw_sha256
+  elif [ -e "$1" ]; then
+    vbw_sha256 < "$1"
+  else
+    printf 'absent\n'
+  fi
+}
+
+# mutate_digests FILE...: {FILE: digest} as JSON.
+mutate_digests() {
+  local f
+  for f in "$@"; do
+    printf '%s\n%s\n' "$f" "$(mutate_digest "$f")"
+  done | jq -R . | jq -sc '[_nwise(2) | {key: .[0], value: .[1]}] | from_entries'
+}
+
+# mutate_same_bytes PLAN TARGET HEAD DIGESTS RECORD: refuse a break whose digests equal an
+# earlier break's of the plan at the same commit, recorded or queued: the Dev did not edit the
+# earlier break out. One line, naming that break's target and time; nothing runs or is recorded.
+mutate_same_bytes() {
+  local plan="$1" target="$2" head="$3" digests="$4" record="$5" hit='' e m names
+  hit=$(printf '%s' "$record" | jq -r --arg p "$plan" --arg h "$head" --argjson d "$digests" '
+    [.plans[] | select(.id == $p) | (.mutations // [])[] | select(.head == $h and (.digests // null) == $d)
+     | "\(if has("rule") then "\(.rule.req).\(.rule.k)" else "task\(.task)" end) \(.at)"] | last // empty')
+  if [ -z "$hit" ]; then
+    while IFS= read -r e; do
+      [ -n "$e" ] || continue
+      m=$(jq -r --arg h "$head" --argjson d "$digests" 'select(.head == $h and (.digests // null) == $d) | "\(.target) \(.at // "") (queued)"' "$e/meta.json")
+      [ -z "$m" ] || hit=$m
+    done < <(mutate_queue_entries "$plan")
+  fi
+  [ -z "$hit" ] || {
+    names=$(printf '%s' "$digests" | jq -r 'keys | join(", ")')
+    vbw_die "$target holds the same bytes of $names as the break $hit: the break was not edited out of the file; edit it out, make a different break, then run vbw mutate again"
+  }
+}
+
+# mutate_clean COPY FILE...: the files back to their last commit in COPY (removed when HEAD has none),
+# each from its own repository (a submodule's file from the submodule, in its folder of COPY).
 mutate_clean() {
-  local dest="$1" f r rel i=0
+  local copy="$1" f r rel i=0
   shift
+  [ -n "$copy" ] || return 1
   vbw_repos "$@"
   for f in "$@"; do
     r=${VBW_REPO_OF[$i]}
     i=$((i + 1))
     vbw_rel "$r" "$f"
     rel=$VBW_REL
-    rm -rf "${dest:?}/$f"
+    rm -rf "$copy/$f"
     if git -C "$VBW_ROOT${r:+/$r}" cat-file -e "HEAD:$rel" 2> /dev/null; then
-      git -C "$VBW_ROOT${r:+/$r}" archive HEAD -- "$rel" | tar -x -C "$dest${r:+/$r}" || vbw_die "cannot restore $f in the proof copy"
+      git -C "$VBW_ROOT${r:+/$r}" archive HEAD -- "$rel" | tar -x -C "$copy${r:+/$r}" || vbw_die "cannot reset $f in the proof copy"
     fi
   done
   # Newer than the broken build, so the next unbroken run rebuilds the clean code.
-  vbw_stamp_newer "$dest" "$@"
+  vbw_stamp_newer "$copy" "$@"
 }
 
 # mutate_rule_none PLAN REQ K RULEDOC CHECK RECORD REASON: vbw mutate PLAN Rn.k --none REASON
@@ -290,35 +336,25 @@ cmd_mutate() {
   local head tree
   head=$(git rev-parse HEAD) || vbw_die "the project has no commit yet"
   tree=$(vbw_head_tree) || vbw_die "cannot fingerprint the committed code"
+  # The broken bytes, once as digests and once copied to the set-aside folder; the working copy is never touched (R265).
+  local digests dir
+  digests=$(mutate_digests "${broke[@]}")
+  mutate_same_bytes "$plan" "$target" "$head" "$digests" "$record"
   checks_begin "$record"
-  # The broken bytes are set aside and the files go back to HEAD, before any check starts.
-  local dir
   dir=$(mktemp -d "$VBW_RUNTIME/mutate.XXXXXX") || vbw_die "cannot create a directory in $VBW_RUNTIME"
   vbw_guard_add dir "$dir"
-  # Each file's last commit is its own repository's (a submodule's file, its submodule's).
-  local i=0 r rel
-  vbw_repos "${broke[@]}"
   for f in "${broke[@]}"; do
-    r=${VBW_REPO_OF[$i]}
-    i=$((i + 1))
-    vbw_rel "$r" "$f"
-    rel=$VBW_REL
     if [ -e "$f" ] || [ -L "$f" ]; then
       mkdir -p "$dir/files/$(dirname "$f")"
       cp -pP "$f" "$dir/files/$f" || vbw_die "cannot set $f aside"
-    fi
-    if git -C "$VBW_ROOT${r:+/$r}" cat-file -e "HEAD:$rel" 2> /dev/null; then
-      git -C "$VBW_ROOT${r:+/$r}" restore --source=HEAD --worktree -- "$rel" || vbw_die "cannot restore $f to its last commit"
-    else
-      rm -f "$f"
     fi
   done
   # Queued (T174): the break waits, set aside, for vbw mutate PLAN --run.
   if [ "$queue" = 1 ]; then
     checks_end
-    mutate_queue_add "$plan" "$dir" "$(jq -nc --arg t "$target" --arg q "$req" --argjson k "$rk" --arg c "$check" --arg w "$what" --arg h "$head" --arg tr "$tree" \
+    mutate_queue_add "$plan" "$dir" "$(jq -nc --arg t "$target" --arg q "$req" --argjson k "$rk" --arg c "$check" --arg w "$what" --arg h "$head" --arg tr "$tree" --arg at "$(vbw_now)" --argjson dg "$digests" \
       --argjson files "$(printf '%s\n' "${files[@]}" | jq -R . | jq -sc .)" --argjson broke "$(printf '%s\n' "${broke[@]}" | jq -R . | jq -sc .)" \
-      '{target: $t, req: $q, rk: $k, check: $c, what: $w, files: $files, broke: $broke, head: $h, tree: $tr}')"
+      '{target: $t, req: $q, rk: $k, check: $c, what: $w, files: $files, broke: $broke, head: $h, tree: $tr, at: $at, digests: $dg}')"
     return 0
   fi
   # One red check is the proof (T157): the checks run one at a time, fastest first by their last
@@ -361,6 +397,7 @@ $ways"
   proofcopy_release
   mutate_tstep copies
   checks_end
+  MUTATE_DIGESTS=$digests
   mutate_record "$plan" "$target" "$what" "$head" "$results" "$record" "${ruledoc:-}" "${tk:-}" \
     "$(printf '%s\n' "${files[@]}" | jq -R . | jq -sc .)" "$tree" || rc=$?
   mutate_time_say
@@ -373,7 +410,8 @@ $ways"
 # TREE the committed code as vbw_head_tree counts it) under the plan and say
 # what they show; exit 1 for a survivor. RULEDOC is the rule's {req, text, check}
 # (empty for a task), TASK the task's number (empty for a rule); CHECK_WAITING is
-# the files checks_begin found waiting for approval. The pending and strengthened
+# the files checks_begin found waiting for approval; MUTATE_DIGESTS is the break's {file: sha-256}
+# (set by the caller: the queued path reads it from the entry). The pending and strengthened
 # files come from strengthen_files, the one definition of the files a plan may
 # strengthen (R210, R217), never from the files of the checks the break ran.
 mutate_record() {
@@ -409,10 +447,11 @@ mutate_record() {
     fi
   fi
   entry=$(jq -nc --argjson rule "${ruledoc:-null}" --argjson k "${tk:-0}" --arg what "$what" --argjson files "$filesj" \
-    --argjson marks "$marks" --arg result "$result" --arg at "$(vbw_now)" --arg head "$head" --arg tree "$tree" --arg contract "$CHECK_HASH" \
+    --argjson marks "$marks" --arg result "$result" --arg at "$(vbw_now)" --arg head "$head" --arg tree "$tree" --arg contract "$CHECK_HASH" --argjson dg "${MUTATE_DIGESTS:-null}" \
     --argjson strong "$strong" --argjson pending "$pending" '
     (if $rule != null then {rule: {req: $rule.req, k: $rule.k}} else {task: $k} end)
     + {what: $what, files: $files, checks: $marks, result: $result, at: $at, head: $head, tree: $tree, contract: $contract}
+    + (if $dg != null then {digests: $dg} else {} end)
     + (if ($strong | length) > 0 then {strengthened: $strong} else {} end)
     + (if ($pending | length) > 0 then {pending: $pending} else {} end)')
   # A survivor of a plan of the open build run opens the files the plan may strengthen for the run (strengthen_files, R210).
