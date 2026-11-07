@@ -83,7 +83,7 @@ edit_record() {
 # build_more: P1.2's code is built and committed, so C1 passes.
 build_more() {
   printf 'echo more\n' > src/more.sh
-  git commit -q -am "feat(more): more"
+  git add src/more.sh && git commit -q -m "feat(more): more" -- src/more.sh
 }
 
 @test "R193: the T159 case: a task break runs only the checks of the rules the plan owes and records red, though another rule's check of the requirement is still red" {
