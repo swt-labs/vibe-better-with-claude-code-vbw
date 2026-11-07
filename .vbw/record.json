@@ -1,19 +1,6 @@
 {
   "schema": 13,
-  "lease": {
-    "run": "build-20261107T003623Z",
-    "kind": "build",
-    "started_at": "2026-11-07T00:36:23Z",
-    "files": [
-      "docs/workflows.md",
-      "tools/l3-results/rustpack.json",
-      "tools/l3-suite.sh"
-    ],
-    "session": "0ee781c3-c5b6-4a6c-889f-04b89f1fba4a",
-    "cost": {
-      "usd": 3324.421339
-    }
-  },
+  "lease": null,
   "protected": [
     "tests/adaptive-results.bats",
     "tests/agent-scratch.bats",
@@ -71323,7 +71310,7 @@
         "P212.1",
         "P213.2"
       ],
-      "status": "building",
+      "status": "planned",
       "role": "dev",
       "tasks": [
         "scenario_rustpack: a fixture whose spec asks for two features in one crate (or a two-crate workspace) with no seeded plan, so /vbw:vibe runs the Lead with the Rust pack; facts lead_planned, plan_files_named (every plan names each file it changes), plan_files_disjoint (no two plans change the same file), read from the record",
@@ -90802,6 +90789,17 @@
         "ended": "2026-11-07T00:35:26Z",
         "cost": {
           "usd": 1.952487
+        }
+      },
+      {
+        "id": "build-20261107T003623Z",
+        "kind": "build",
+        "session": "0ee781c3-c5b6-4a6c-889f-04b89f1fba4a",
+        "milestone": "M54",
+        "started": "2026-11-07T00:36:23Z",
+        "ended": "2026-11-07T00:54:08Z",
+        "cost": {
+          "usd": 1.681592
         }
       }
     ],
