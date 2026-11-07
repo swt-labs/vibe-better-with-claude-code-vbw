@@ -77214,6 +77214,13 @@
       "sort": "next",
       "size": "small",
       "status": "open"
+    },
+    {
+      "id": "T254",
+      "text": "spec_parse writes its parsed spec with a builtin printf (cmd-spec.sh:57); on macOS bash 3.2 a child exiting while the write waits fails it with 'Interrupted system call' (seen once in the 2.1.27 proof, F392, tests/small-request.bats under load). Move it to vbw_out and extend tools/check-loop-writes.sh (or a new rule) to catch a builtin write of record- or spec-sized text in any kernel function whose output is captured, test first.",
+      "sort": "next",
+      "size": "small",
+      "status": "open"
     }
   ],
   "decisions": [
@@ -80854,6 +80861,12 @@
       "at": "2026-11-07T14:54:02Z",
       "text": "Contract approved: 256 requirements, 616 checks, 627 plans (7ba9bd1a2a1a)",
       "plans": []
+    },
+    {
+      "id": "D642",
+      "text": "Ship 2.1.27 without changing spec_parse's write; fix it in 2.1.28 with a rule test",
+      "why": "F392 is the known bash 3.2 interrupted-write class (printf in spec_parse, cmd-spec.sh:57, unchanged since 2026-10-01), seen once under load 28 while another project's proof ran; the file passes alone and twice in full. A kernel change now reruns most of the proof; 2.1.28 moves the write to vbw_out and extends tools/check-loop-writes.sh to catch it, test first",
+      "at": "2026-11-07T15:49:55Z"
     }
   ],
   "commands": {
