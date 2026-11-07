@@ -75609,7 +75609,7 @@
       "id": "F392",
       "req": "R116",
       "attempts": 0,
-      "status": "open",
+      "status": "fixed",
       "note": "C182 fail (exit 1)"
     }
   ],
@@ -91515,6 +91515,17 @@
         "ended": "2026-11-07T13:07:40Z",
         "cost": {
           "usd": 1.024783
+        }
+      },
+      {
+        "id": "fix-20261107T154959Z",
+        "kind": "fix",
+        "session": "0ee781c3-c5b6-4a6c-889f-04b89f1fba4a",
+        "milestone": "M54",
+        "started": "2026-11-07T15:49:59Z",
+        "ended": "2026-11-07T15:51:32Z",
+        "cost": {
+          "usd": 0
         }
       }
     ],
