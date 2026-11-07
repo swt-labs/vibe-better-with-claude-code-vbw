@@ -30941,7 +30941,22 @@
           "to": "deep",
           "reason": "Dev blocked P212.2: Tasks 1 and 2 are committed (4ddc7a5f scenario_rustpack, cc235200 docs). Task 3 cannot run: every Bash call that runs tools/l3-suite.sh is refused with 'VBW guard: the guard failed while a run is open' (also the unchanged copy from 13ed9c71, so not my edit; a trivial script runs fine). vbw doctor ends with 'plugin/lib/proofcopy.sh: line 701: VBW_RUNTIME: unbound variable'. No tools/l3-results/rustpack.json written, so C604 stays red."
         }
-      ]
+      ],
+      "qa": {
+        "result": "pass",
+        "tier": "deep",
+        "tree": "3df6f178119f97298cf5ccbbf36e729adb8d8c5352e689d5aefdb97113d8bb36",
+        "at": "2026-11-07T15:57:14Z",
+        "note": "14/14 checks"
+      },
+      "outcome": {
+        "tier": "deep",
+        "predicted": "deep",
+        "held": true,
+        "fix_rounds": 0,
+        "qa_findings": 0,
+        "escalations": 1
+      }
     },
     {
       "id": "P213",
@@ -75665,6 +75680,15 @@
       "attempts": 0,
       "status": "closed",
       "note": "C182 fail (exit 1)"
+    },
+    {
+      "id": "F393",
+      "req": "R265",
+      "source": "qa",
+      "attempts": 0,
+      "status": "open",
+      "note": "plugin/agents/docs.md line 19 (the Docs agent's mutation step) still says 'run vbw mutate <plan> Rn.k ... (it undoes the break), check the file is unchanged'. Since P213.1 (d1bb8f37) vbw mutate undoes nothing: the break stays in the working copy (D634, docs/workflows.md row 242 lists 'Dev, Docs' as users of the command). A Docs agent following its brief is told something false, never told to edit its falsified statement out, and is not told to commit finished tasks first nor that the same bytes twice are refused; the only catch is vbw plan done refusing later. P213.2 changed dev.md and workflows.md only and removed 'it undoes the break' / 'check the file is unchanged' from dev.md, leaving the same two sentences in docs.md. Regression test: tests/mutate-prompts.bats (R265) should also assert plugin/agents/docs.md contains neither 'it undoes the break' nor 'check the file is unchanged' and does say to edit the break out right after each vbw mutate.",
+      "phase": "P213"
     }
   ],
   "todos": [
