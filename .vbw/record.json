@@ -20410,7 +20410,7 @@
           "plan": "P215.1"
         },
         {
-          "text": "null on a required field (plan: phase, title, reqs, files; check: req, run) is refused in one line naming the row id and the field; the record is unchanged",
+          "text": "null on a required field (plan: phase, title, reqs, files; check: req, run) is refused in one line naming the row id and the field, followed by its Next: line; the record is unchanged",
           "check": "C617",
           "plan": "P215.1"
         },
@@ -80840,6 +80840,12 @@
       "id": "D640",
       "at": "2026-11-07T11:15:28Z",
       "text": "Contract approved: 256 requirements, 616 checks, 627 plans (ba5f15da9e51)",
+      "plans": []
+    },
+    {
+      "id": "D641",
+      "at": "2026-11-07T14:54:02Z",
+      "text": "Contract approved: 256 requirements, 616 checks, 627 plans (7ba9bd1a2a1a)",
       "plans": []
     }
   ],
