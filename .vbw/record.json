@@ -31006,12 +31006,19 @@
         }
       ],
       "qa": {
-        "result": "fail",
+        "result": "pass",
         "tier": "deep",
-        "tree": "457b8181a9731696bdb5193d82d7e74e44bc3b02ef1691d842375932a65c37c6",
-        "at": "2026-11-07T17:05:22Z",
-        "note": "17/18 checks",
-        "rounds": 1
+        "tree": "1be23102f4528bc41bd5173335a341be98b2a7a8f5fff8329968b396bb59e37e",
+        "at": "2026-11-07T17:23:25Z",
+        "note": "20/20 checks"
+      },
+      "outcome": {
+        "tier": "deep",
+        "predicted": "deep",
+        "held": true,
+        "fix_rounds": 1,
+        "qa_findings": 1,
+        "escalations": 2
       }
     },
     {
@@ -75700,7 +75707,7 @@
       "req": "R265",
       "source": "qa",
       "attempts": 0,
-      "status": "fixed",
+      "status": "closed",
       "note": "plugin/agents/docs.md line 19 (the Docs agent's mutation step) still says 'run vbw mutate <plan> Rn.k ... (it undoes the break), check the file is unchanged'. Since P213.1 (d1bb8f37) vbw mutate undoes nothing: the break stays in the working copy (D634, docs/workflows.md row 242 lists 'Dev, Docs' as users of the command). A Docs agent following its brief is told something false, never told to edit its falsified statement out, and is not told to commit finished tasks first nor that the same bytes twice are refused; the only catch is vbw plan done refusing later. P213.2 changed dev.md and workflows.md only and removed 'it undoes the break' / 'check the file is unchanged' from dev.md, leaving the same two sentences in docs.md. Regression test: tests/mutate-prompts.bats (R265) should also assert plugin/agents/docs.md contains neither 'it undoes the break' nor 'check the file is unchanged' and does say to edit the break out right after each vbw mutate.",
       "phase": "P213"
     }
