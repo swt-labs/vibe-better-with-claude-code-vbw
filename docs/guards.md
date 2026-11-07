@@ -412,9 +412,14 @@ never before the call. Mark a server read-only only when its tools really only r
   a busy machine never counts, and a case over its budget is measured once more
   before it is judged (the bench says so): a slow hook is slow twice. The 25 ms is the
   meaning on a nominal machine (an M1 Max Mac, GitHub's macOS runner). The bench
-  first measures a reference workload (a guard-shaped jq call over a fixed
-  document and program, both written by the bench) and prints its cost, the nominal cost and the ratio:
-  `reference: <X> ms CPU per call; nominal <N> ms (...); ratio <R>`. At a ratio
+  measures a reference workload (a guard-shaped jq call over a fixed
+  document and program, both written by the bench) beside each case, and a case
+  is judged against the reference of its own moment. The header prints the first
+  measure once: `reference: <X> ms CPU per call; nominal <N> ms (...); ratio <R>`.
+  After each case's verdict the bench prints
+  `LABEL: reference beside it <X> ms CPU per call; ratio <R>; scaled budget <B> ms`.
+  A case measured again is measured with a new reference beside it, and the
+  second pair judges it. At a ratio
   of 1 or less every case is judged against 25 ms. Above 1, a case over 25 ms
   but within 25 ms times the ratio is reported slow (the line names the cost,
   the budget, the ratio and the scaled budget) and the bench still passes; a
