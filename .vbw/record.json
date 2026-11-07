@@ -15162,7 +15162,7 @@
           "check": "C350"
         },
         {
-          "text": "after a mutation check the named plan files are byte-identical to their last commit, red or survivor",
+          "text": "after a mutation check the named plan files hold what the Dev gave, red or survivor (R265)",
           "check": "C350"
         },
         {
@@ -15186,7 +15186,7 @@
           "check": "C350"
         },
         {
-          "text": "while a break is checked, another Dev's vbw check gets the result it gets with no break, and the working file already holds its last commit",
+          "text": "while a break is checked, the verdict comes from the set-aside bytes and the working file holds the break (R265)",
           "check": "C351"
         },
         {
@@ -15294,7 +15294,7 @@
           "check": "C356"
         },
         {
-          "text": "the Dev's mutation step comes after green: one small break of the plan's own code per rule at standard, vbw mutate, the break undone; skipped at express",
+          "text": "the Dev's mutation step comes after green: one small break of the plan's own code per rule at standard, vbw mutate, the Dev edits the break out; skipped at express",
           "check": "C356"
         },
         {
@@ -15338,7 +15338,7 @@
           "check": "C357"
         },
         {
-          "text": "docs/workflows.md says when the mutation step runs (standard and deep, never express or a fix), how a builder runs vbw mutate and that the break is undone",
+          "text": "docs/workflows.md says when the mutation step runs (standard and deep, never express or a fix), how a builder runs vbw mutate and that the Dev edits the break out",
           "check": "C358"
         },
         {
@@ -16612,7 +16612,7 @@
           "plan": "P155.1"
         },
         {
-          "text": "the plan files are byte-identical to their last commit after a red, a survivor or a refusal, and the new code is bash 3.2 with JSON only through jq",
+          "text": "the plan files hold what the Dev gave after a red, a survivor or a refusal (R265), and the new code is bash 3.2 with JSON only through jq",
           "check": "C411",
           "plan": "P155.1"
         },
@@ -16814,7 +16814,7 @@
           "plan": "P155.3"
         },
         {
-          "text": "the plan files are byte-identical to their last commit after the break, and the new code is bash 3.2 with JSON only through jq",
+          "text": "the plan files hold what the Dev gave after the break (R265), and the new code is bash 3.2 with JSON only through jq",
           "check": "C415",
           "plan": "P155.3"
         },
@@ -16853,7 +16853,7 @@
           "plan": "P155.2"
         },
         {
-          "text": "the plan files are byte-identical to their last commit after the break, and the new code is bash 3.2 with JSON only through jq",
+          "text": "the plan files hold what the Dev gave after the break (R265), and the new code is bash 3.2 with JSON only through jq",
           "check": "C413",
           "plan": "P155.2"
         },
@@ -20326,7 +20326,7 @@
           "plan": "P213.1"
         },
         {
-          "text": "the checks are judged on the broken bytes through the set-aside copy while the working copy keeps the break; another Dev's vbw check meanwhile gets the unbroken result",
+          "text": "the checks are judged on the broken bytes through the set-aside copy while the working copy keeps the break; another Dev's vbw check of a test that reads that file meanwhile sees the break, because vbw check runs on the working copy",
           "check": "C607",
           "plan": "P213.1"
         },
@@ -80085,6 +80085,12 @@
         "P216.2",
         "P216.3"
       ]
+    },
+    {
+      "id": "D638",
+      "at": "2026-11-07T00:27:09Z",
+      "text": "Contract approved: 256 requirements, 616 checks, 627 plans (f2db63b4ff95)",
+      "plans": []
     }
   ],
   "commands": {
