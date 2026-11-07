@@ -182,6 +182,16 @@ fresh_named() {
   [ "$(VBW_PROOFCOPY_DISK=plain vbw_kernel '. "$VBW_LIB/proofcopy.sh"; proofcopy_disk_kind')" = plain ]
   # shellcheck disable=SC2016 # expanded by vbw_kernel
   [ "$(VBW_PROOFCOPY_DISK=clone vbw_kernel '. "$VBW_LIB/proofcopy.sh"; proofcopy_disk_kind')" = clone ]
+  # The probe really tries a clone: a cp that accepts the clone flag makes it clone, one that refuses makes it plain.
+  mkdir -p shim-ok shim-no
+  printf '#!/bin/sh\nshift\nexec /bin/cp "$@"\n' > shim-ok/cp
+  printf '#!/bin/sh\nexit 1\n' > shim-no/cp
+  chmod +x shim-ok/cp shim-no/cp
+  # shellcheck disable=SC2016 # expanded by vbw_kernel
+  [ "$(PATH="$PWD/shim-ok:$PATH" vbw_kernel '. "$VBW_LIB/proofcopy.sh"; proofcopy_disk_kind')" = clone ] || { echo "a cp that clones did not answer clone"; false; }
+  # shellcheck disable=SC2016 # expanded by vbw_kernel
+  [ "$(PATH="$PWD/shim-no:$PATH" vbw_kernel '. "$VBW_LIB/proofcopy.sh"; proofcopy_disk_kind')" = plain ] || { echo "a cp that refuses did not answer plain"; false; }
+  [ -z "$(find .vbw/runtime -name 'disk*' -print 2> /dev/null)" ] || { echo "the probe left something"; false; }
   grep -q 'VBW_PROOFCOPY_DISK' "$PLUGIN_ROOT/lib/proofcopy.sh" || { echo "the override is not documented in proofcopy.sh"; false; }
   ! grep -nE 'PROOFCOPY_BUILD_DIRS' <(awk '/^proofcopy_disk_kind\(\)/, /^}/' "$PLUGIN_ROOT/lib/proofcopy.sh") || { echo "proofcopy_disk_kind reads the build-folder names"; false; }
 }
