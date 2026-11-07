@@ -14,6 +14,18 @@
 load helper
 load fixture-helper
 
+# narrow_doc: the fixture's plan document (a full apply of P1 and P2).
+narrow_doc() {
+  printf '%s' '{"phases": [{"id": "P1", "title": "Pay", "reqs": ["R1"], "goal": "pay works", "criteria": ["pays"], "tier": "standard"},
+                   {"id": "P2", "title": "Receipt", "reqs": ["R2"], "goal": "receipt works", "criteria": ["receipt"], "tier": "standard"}],
+    "plans": [{"id": "P1.1", "phase": "P1", "title": "Pay form", "reqs": ["R1"], "files": ["src/a.txt"], "after": [], "tasks": ["form"]},
+              {"id": "P1.2", "phase": "P1", "title": "Pay button", "reqs": ["R1"], "files": ["src/b.txt"], "after": ["P1.1"], "tasks": ["button"]},
+              {"id": "P2.1", "phase": "P2", "title": "Receipt page", "reqs": ["R2"], "files": ["src/c.txt"], "after": [], "tasks": ["page"]}],
+    "checks": [{"id": "C1", "req": "R1", "run": ["sh", "tests/c1.sh"], "files": ["tests/c1.sh"]},
+               {"id": "C2", "req": "R2", "run": ["sh", "tests/c2.sh"], "files": ["tests/c2.sh"]}],
+    "rules": [{"req": "R1", "text": "paying works", "check": "C1"}, {"req": "R2", "text": "a receipt is shown", "check": "C2"}]}'
+}
+
 narrow_project() {
   vbw_setup
   vbw_git_project
@@ -23,15 +35,8 @@ narrow_project() {
   # R3 starts in the milestone but is planned only by the tests that add it.
   mkdir -p src tests
   for n in 1 2 3; do printf 'true\n' > "tests/c$n.sh"; done
-  DOC='{"phases": [{"id": "P1", "title": "Pay", "reqs": ["R1"], "goal": "pay works", "criteria": ["pays"], "tier": "standard"},
-                   {"id": "P2", "title": "Receipt", "reqs": ["R2"], "goal": "receipt works", "criteria": ["receipt"], "tier": "standard"}],
-    "plans": [{"id": "P1.1", "phase": "P1", "title": "Pay form", "reqs": ["R1"], "files": ["src/a.txt"], "after": [], "tasks": ["form"]},
-              {"id": "P1.2", "phase": "P1", "title": "Pay button", "reqs": ["R1"], "files": ["src/b.txt"], "after": ["P1.1"], "tasks": ["button"]},
-              {"id": "P2.1", "phase": "P2", "title": "Receipt page", "reqs": ["R2"], "files": ["src/c.txt"], "after": [], "tasks": ["page"]}],
-    "checks": [{"id": "C1", "req": "R1", "run": ["sh", "tests/c1.sh"], "files": ["tests/c1.sh"]},
-               {"id": "C2", "req": "R2", "run": ["sh", "tests/c2.sh"], "files": ["tests/c2.sh"]}],
-    "rules": [{"req": "R1", "text": "paying works", "check": "C1"}, {"req": "R2", "text": "a receipt is shown", "check": "C2"}]}'
   # R3 is not part of this milestone's plan yet: drop it from the first apply.
+  DOC=$(narrow_doc)
   printf '%s' "$DOC" | "$VBW" apply > /dev/null
 }
 
@@ -330,4 +335,93 @@ clean_refusal() {
   tr '\n' ' ' < "$doc" | grep -qiE 'existing `id`[^.;]*(merged|keeps)[^.;]*field' || { echo "the merge list does not say an existing id is merged field by field"; false; }
   tr '\n' ' ' < "$doc" | grep -qiE 'null[^.;]*removes[^.;]*optional' || { echo "the docs do not say an explicit null removes an optional field"; false; }
   tr '\n' ' ' < "$doc" | grep -qiE 'required field[^.;]*refused|refused[^.;]*required field' || { echo "the docs do not say a missing required field is refused"; false; }
+}
+
+# R277 (D655): a patch judges the rigor floor and the one-plan-per-express rule only for
+# the phases that have not started whose plans it changes or adds, as --add judges only
+# the phases it brings. A touched phase whose floor rose is raised to it, never lowered.
+# big FILE: FILE holds 600000 bytes, past the 500000-byte deep floor (rigor-defs.jq).
+big() { head -c 600000 /dev/zero | tr '\0' a > "$1"; }
+tier() { part "[.phases[] | select(.id == \"$1\")][0].tier"; }
+
+@test "R277: a patch is never judged on a phase it does not touch: P1's file grew past its floor, a patch of P2.1 lands, and P1 keeps the tier it was accepted at" {
+  big src/a.txt
+  run "$VBW" apply --patch <<< '{"plans": [{"id": "P2.1", "tasks": ["page, reworded"]}]}'
+  [ "$status" -eq 0 ] || { echo "$output"; false; }
+  [ "$(part '[.plans[] | select(.id == "P2.1")][0].tasks')" = '["page, reworded"]' ]
+  [ "$(tier P1)" = '"standard"' ] || { part '.phases'; false; }
+}
+
+@test "R277: a patch of a phase whose floor rose since it was accepted raises it to that floor in one line naming the phase and the tier, never names the Architect, and never lowers a tier" {
+  big src/a.txt
+  run "$VBW" apply --patch <<< '{"plans": [{"id": "P1.2", "tasks": ["button, reworded"]}]}'
+  [ "$status" -eq 0 ] || { echo "$output"; false; }
+  [ "$(tier P1)" = '"deep"' ] || { part '.phases'; false; }
+  printf '%s\n' "$output" | grep 'P1' | grep -q 'deep' || { echo "no line names P1 and deep: $output"; false; }
+  [[ "$output" != *Architect* ]] || { echo "$output"; false; }
+  # P2 was accepted at standard, above its express floor: a patch of its plan keeps standard.
+  run "$VBW" apply --patch <<< '{"plans": [{"id": "P2.1", "tasks": ["page, reworded"]}]}'
+  [ "$status" -eq 0 ] || { echo "$output"; false; }
+  [ "$(tier P2)" = '"standard"' ] || { part '.phases'; false; }
+}
+
+@test "R277: a patch giving an express phase a second plan raises it to standard in one line naming the phase and the tier" {
+  edit_record '(.phases[] | select(.id == "P2")) |= (.tier = "express" | .predicted = "express" | del(.proposed))'
+  run "$VBW" apply --patch <<< '{"plans": [{"id": "P2.2", "phase": "P2", "title": "Receipt mail", "reqs": ["R2"], "files": ["src/d.txt"], "after": [], "tasks": ["mail"]}]}'
+  [ "$status" -eq 0 ] || { echo "$output"; false; }
+  [ "$(tier P2)" = '"standard"' ] || { part '.phases'; false; }
+  printf '%s\n' "$output" | grep 'P2' | grep -q 'standard' || { echo "no line names P2 and standard: $output"; false; }
+}
+
+@test "R277 docs: docs/workflows.md's --patch row says a patch judges the floor only of the phases whose plans it touches and raises such a phase to a floor that rose" {
+  local row
+  row=$(grep -E '^\| *`vbw apply --patch' "$REPO_ROOT/docs/workflows.md")
+  printf '%s' "$row" | grep -qi 'floor' && printf '%s' "$row" | grep -qi 'raise' || { echo "$row"; false; }
+}
+
+# R278 (D655): a plan's awaits is taken from planning on, by every apply mode.
+@test "R278: a full apply, vbw apply --add and vbw apply --patch take awaits on a plan row, and a later apply that leaves it out keeps it" {
+  run "$VBW" apply <<< "$(narrow_doc | jq -c '(.plans[] | select(.id == "P1.2")) += {awaits: ["C1"]}')"
+  [ "$status" -eq 0 ] || { echo "$output"; false; }
+  [ "$(part '[.plans[] | select(.id == "P1.2")][0].awaits')" = '["C1"]' ] || { part '.plans'; false; }
+  run "$VBW" apply <<< "$(narrow_doc)"
+  [ "$status" -eq 0 ] || { echo "$output"; false; }
+  [ "$(part '[.plans[] | select(.id == "P1.2")][0].awaits')" = '["C1"]' ] || { part '.plans'; false; }
+  run "$VBW" apply --patch <<< '{"plans": [{"id": "P2.1", "awaits": ["C2"]}]}'
+  [ "$status" -eq 0 ] || { echo "$output"; false; }
+  [ "$(part '[.plans[] | select(.id == "P2.1")][0].awaits')" = '["C2"]' ] || { part '.plans'; false; }
+  run "$VBW" apply --add <<< '{"phases": [{"id": "P3", "title": "Refund", "reqs": ["R3"], "goal": "refund works", "criteria": ["refunds"], "tier": "standard"}],
+    "plans": [{"id": "P3.1", "phase": "P3", "title": "Refund form", "reqs": ["R3"], "files": ["src/e.txt"], "after": [], "tasks": ["form"]},
+              {"id": "P3.2", "phase": "P3", "title": "Refund button", "reqs": ["R3"], "files": ["src/f.txt"], "after": [], "tasks": ["button"], "awaits": ["C3"]}],
+    "checks": [{"id": "C3", "req": "R3", "run": ["sh", "tests/c3.sh"], "files": ["tests/c3.sh"]}],
+    "rules": [{"req": "R3", "text": "a refund is paid back", "check": "C3"}]}'
+  [ "$status" -eq 0 ] || { echo "$output"; false; }
+  [ "$(part '[.plans[] | select(.id == "P3.2")][0].awaits')" = '["C3"]' ] || { part '.plans'; false; }
+}
+
+@test "R278: awaits on a plan row is checked as vbw apply --amend checks it: a check that does not exist, or one of a requirement the plan does not build, is refused naming it, and nothing is written" {
+  local before
+  before=$(cksum < .vbw/record.json)
+  run "$VBW" apply --patch <<< '{"plans": [{"id": "P1.2", "awaits": ["C9"]}]}'
+  [ "$status" -ne 0 ] && [[ "$output" == *C9* ]] || { echo "$output"; false; }
+  run "$VBW" apply --patch <<< '{"plans": [{"id": "P1.2", "awaits": ["C2"]}]}'
+  [ "$status" -ne 0 ] && [[ "$output" == *C2* ]] && [[ "$output" == *R2* ]] || { echo "$output"; false; }
+  run "$VBW" apply <<< "$(narrow_doc | jq -c '(.plans[] | select(.id == "P1.2")) += {awaits: ["C2"]}')"
+  [ "$status" -ne 0 ] && [[ "$output" == *C2* ]] || { echo "$output"; false; }
+  [ "$(cksum < .vbw/record.json)" = "$before" ]
+}
+
+@test "R278: vbw apply --amend's refusal on an unapproved contract names a next step that takes the same change: the awaits sent with vbw apply --patch is recorded" {
+  run "$VBW" apply --amend <<< '{"plans": [{"id": "P1.2", "awaits": ["C1"]}]}'
+  [ "$status" -ne 0 ] && [[ "$output" == *"apply --patch"* ]] || { echo "$output"; false; }
+  run "$VBW" apply --patch <<< '{"plans": [{"id": "P1.2", "awaits": ["C1"]}]}'
+  [ "$status" -eq 0 ] || { echo "$output"; false; }
+  [ "$(part '[.plans[] | select(.id == "P1.2")][0].awaits')" = '["C1"]' ] || { part '.plans'; false; }
+}
+
+@test "R278 docs: docs/workflows.md's full apply, --patch and --add rows say a plan row may carry awaits" {
+  local doc="$REPO_ROOT/docs/workflows.md" mode
+  for mode in 'apply < plan.json' 'apply --patch' 'apply --add'; do
+    grep -F "| \`vbw $mode" "$doc" | grep -q awaits || { echo "the vbw $mode row does not name awaits"; false; }
+  done
 }

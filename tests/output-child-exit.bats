@@ -368,7 +368,7 @@ captured() { bash "$REPO_ROOT/tools/check-captured-writes.sh" "$@"; }
   out=\$(jq -c '.spend' \"\$1\")
   echo \"\$out\"
 }" \
-    "8:qa_digests() {
+    "9:qa_digests() {
   local out='{}'
   while read -r id; do
     out=\$(printf '%s' \"\$out\" | jq -c --arg id \"\$id\" '. + {(\$id): 1}')

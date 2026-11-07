@@ -8693,6 +8693,58 @@
       "files": [
         "tests/bench-limits-docs.bats"
       ]
+    },
+    {
+      "id": "C648",
+      "req": "R277",
+      "run": [
+        "bats",
+        "--filter",
+        "R277:",
+        "tests/apply-narrow.bats"
+      ],
+      "files": [
+        "tests/apply-narrow.bats"
+      ]
+    },
+    {
+      "id": "C649",
+      "req": "R278",
+      "run": [
+        "bats",
+        "--filter",
+        "R278:",
+        "tests/apply-narrow.bats"
+      ],
+      "files": [
+        "tests/apply-narrow.bats"
+      ]
+    },
+    {
+      "id": "C650",
+      "req": "R277",
+      "run": [
+        "bats",
+        "--filter",
+        "R277 docs",
+        "tests/apply-narrow.bats"
+      ],
+      "files": [
+        "tests/apply-narrow.bats"
+      ]
+    },
+    {
+      "id": "C651",
+      "req": "R278",
+      "run": [
+        "bats",
+        "--filter",
+        "R278 docs",
+        "tests/apply-narrow.bats"
+      ],
+      "files": [
+        "tests/apply-narrow.bats"
+      ]
     }
   ],
   "project": {
@@ -21154,6 +21206,60 @@
           "plan": "P221.3"
         }
       ]
+    },
+    {
+      "id": "R277",
+      "text": "vbw apply --patch judges the rigor floor and the one-plan-per-express rule only for the phases that have not started whose plans it changes or adds, as --add judges only the phases it brings, so a phase the patch does not touch never blocks it (field report: a patch of four plan rows was refused because an untouched phase's files had grown past its floor since it was accepted); a touched phase whose floor rose above its tier is raised to that floor, and a touched express phase given a second plan to standard, never lowered, each said in one line; a patch's refusal never names the Architect for a tier the patch did not give",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M55",
+      "rules": [
+        {
+          "text": "a patch lands although a phase whose plans it does not change or add has a floor above its tier, and that phase keeps its tier",
+          "check": "C648"
+        },
+        {
+          "text": "a touched phase that has not started whose floor rose above its tier is raised to that floor, said in one line naming the phase and the tier, and no tier is lowered",
+          "check": "C648"
+        },
+        {
+          "text": "a touched express phase given a second plan is raised to standard, said in one line naming the phase and the tier",
+          "check": "C648"
+        },
+        {
+          "text": "a patch never names the Architect for a tier it did not give",
+          "check": "C648"
+        },
+        {
+          "text": "docs/workflows.md's --patch row says a patch judges the floor only of the phases whose plans it touches and raises such a phase to a floor that rose",
+          "check": "C650"
+        }
+      ]
+    },
+    {
+      "id": "R278",
+      "text": "A plan can wait for another plan's check (awaits) from planning on: a full apply, vbw apply --add and vbw apply --patch take awaits on a plan row, checked as vbw apply --amend checks it (each a check of the record, of a requirement the plan builds), and keep it; --amend still adds awaits on an approved contract; no apply refusal gives as its next step a mode that refuses the same change (today --amend's refusal on an unapproved contract sends awaits to --patch, which refuses the field)",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M55",
+      "rules": [
+        {
+          "text": "a full apply, --add and --patch take awaits on a plan row and record it, and an apply that leaves it out keeps it",
+          "check": "C649"
+        },
+        {
+          "text": "awaits naming a check that does not exist, or one of a requirement the plan does not build, is refused naming it, and nothing is written",
+          "check": "C649"
+        },
+        {
+          "text": "--amend's refusal on an unapproved contract names vbw apply --patch, and the same awaits sent with --patch is recorded",
+          "check": "C649"
+        },
+        {
+          "text": "docs/workflows.md's full apply, --patch and --add rows say a plan row may carry awaits",
+          "check": "C651"
+        }
+      ]
     }
   ],
   "phases": [
@@ -32061,6 +32167,33 @@
           "reason": "Dev blocked P222.2: C643 cannot pass: the self-test case qa_digests expects the hit at cmd-plant.sh:8, but its printf is on file line 9 (plant puts text from line 4; the printf is the 6th text line; line 8 is the 'done < <(...)' line). The tool correctly reports 9 for it and 7/6/8 for the other three cases, all matching. The check file tests/output-child-exit.bats is protected, so the expected number needs a one-character fix (8 to 9) in the third case of that test, then C643 passes with the tool as committed."
         }
       ]
+    },
+    {
+      "id": "P223",
+      "title": "Patches judged on what they touch; awaits from planning on",
+      "reqs": [
+        "R277",
+        "R278"
+      ],
+      "milestone": "M55",
+      "goal": "A patch is never refused over a phase it cannot change, and a plan can wait for another plan's check from planning on",
+      "criteria": [
+        "a patch of four plan rows lands although an untouched phase's floor rose",
+        "a touched phase whose floor rose is raised to it in one line, never lowered",
+        "awaits is taken by a full apply, --add and --patch, checked as --amend checks it",
+        "no apply refusal sends the user to a mode that refuses the same change"
+      ],
+      "proposed": "standard",
+      "tier": "standard",
+      "reasons": [
+        "requirements: 2",
+        "files: 2 (124791 bytes)",
+        "risk: none",
+        "breaks: R80, R266",
+        "guarded: R13 (C12), R14 (C13), R22 (C19), R23 (C20), R24 (C23), R25 (C24), R27 (C21), R28 (C25), R31 (C27), R39 (C36), R43 (C42, C43), R44 (C44, C45), R45 (C39, C40, C41), R46 (C46), R50 (C51), R60 (C72, C94), R66 (C95), R69 (C110, C120, C122), R70 (C114), R71 (C115, C121), R73 (C98), R74 (C99, C100), R75 (C101), R76 (C102, C103), R77 (C104), R78 (C105, C106), R79 (C107), R81 (C109, C111, C112, C113), R95 (C149, C150), R96 (C151, C152), R99 (C155), R101 (C179), R106 (C164, C165), R107 (C166, C167), R116 (C182, C183), R118 (C184), R123 (C190, C191), R129 (C196), R130 (C197), R134 (C201), R135 (C202), R147 (C212, C215, C237), R148 (C213, C214, C216, C238), R149 (C217, C218, C219, C220, C221, C222), R156 (C242, C243), R157 (C244), R158 (C245), R159 (C246), R160 (C247, C263, C264), R162 (C249), R163 (C250), R167 (C257, C258, C259, C260), R179 (C297, C298, C299, C300, C301, C302, C303, C304, C305, C306, C312), R180 (C307, C308, C309, C310), R182 (C322, C323, C324, C325, C326), R186 (C344, C345, C346, C347, C348), R188 (C350, C351, C352, C353, C354, C355, C356, C357, C358, C359), R192 (C401, C402, C403, C404, C405, C406, C407, C408, C409, C410), R193 (C411, C412), R194 (C417, C418, C419), R196 (C415, C416), R197 (C413, C414), R203 (C448, C449, C450), R207 (C461, C462, C463), R209 (C469, C470, C471, C472, C473), R210 (C474, C475, C476), R211 (C477, C478, C479), R212 (C480, C481, C482), R213 (C483, C484), R215 (C488, C489, C490), R216 (C491, C492, C493), R219 (C497, C498, C499), R220 (C500, C501, C502, C503), R228 (C522, C523, C524, C525), R230 (C530, C531), R239 (C554, C555), R241 (C546, C547, C548, C549, C550, C560), R242 (C551, C552, C553), R244 (C562, C563), R245 (C564, C565), R250 (C574, C575, C576, C577, C578, C585), R259 (C593, C594, C595), R262 (C601), R263 (C602, C603, C604), R264 (C613, C614, C615, C616), R265 (C605, C606, C607, C608, C609, C610, C611, C612)",
+        "tests: project test command"
+      ],
+      "predicted": "standard"
     }
   ],
   "plans": [
@@ -73526,14 +73659,13 @@
         "plugin/lib/qa.jq"
       ],
       "after": [],
-      "status": "blocked",
+      "status": "planned",
       "role": "dev",
       "tasks": [
         "Replace the expansion rounds (one full pass per phase) with one walk per phase over the direct edges, a visited set stopping on loops, giving the same closure and the same interleaved list",
         "Find the plan cycle among the interleaved phases' plans with the same one-walk closure instead of one round per plan",
         "Keep every answer byte for byte: the chain, diamond, ring, self-link, missing-plan and cycle fixtures of tests/qa-state.bats (filter 'R268 closure') pass unchanged"
-      ],
-      "note": "Could not edit plugin/lib/qa.jq: the Edit tool was refused (auto mode classifier gave no verdict) and a scripted write was denied by the VBW guard. No code changed; C622 is still red as expected. Planned change: replace both expansion rounds with a per-node walk (def reach with a visited set)."
+      ]
     },
     {
       "id": "P217.2",
@@ -73653,15 +73785,14 @@
         "plugin/lib/cmd-approve.sh"
       ],
       "after": [],
-      "status": "blocked",
+      "status": "planned",
       "role": "dev",
       "tasks": [
         "approve_record and approve_repin write the approval's commit id (HEAD after the approval commit) and each check file's git blob id (git hash-object of the approved bytes) into .vbw/runtime/approved-contract.json as 'commit' and 'blobs' {path: blob}",
-        "contract_waiting_with tells an added-to file (every approved line still there, in its order, only new lines among them: the diff against the approved blob holds additions only) from a waiting one (a removed, changed or reordered line, a new file, a file a fix added, or a snapshot without blob ids); it returns only the waiting files and sets CONTRACT_ADDED to one 'path<TAB>added line count' per added-to file",
+        "contract_waiting_with tells an added-to file (every approved line still there, in its order, only new lines among them: the diff against the approved blob holds additions only) from a waiting one (a removed, changed or reordered line, a new file, a file a fix added, or a snapshot without blob ids); it prints only the waiting files, and contract_added RECORD [HASH] prints one 'path<TAB>added line count' per added-to file; both come from one classification and hand nothing back in a variable, so every caller may capture them with $(...) (D654)",
         "A snapshot written before the blob ids keeps today's rule: every changed file waits",
         "Every caller of contract_waiting keeps its meaning (waiting means waiting; an added-to file is not waiting), including qa_digests' saved-results guard"
-      ],
-      "note": "Edit tool calls were refused by the auto mode classifier (no verdict, hard failure), so no code change to plugin/lib/contract.sh or cmd-approve.sh was made. Also found: R269 classify test calls contract_waiting inside $(...) and then reads CONTRACT_ADDED, which a subshell cannot pass back; needs a decision."
+      ]
     },
     {
       "id": "P218.2",
@@ -73680,7 +73811,7 @@
       "status": "planned",
       "role": "dev",
       "tasks": [
-        "cmd-next.sh hands the added-to files and their counts (CONTRACT_ADDED) to next.jq; the answer carries added_to: [{file, lines}] at its top level, and approve is asked for waiting files only",
+        "cmd-next.sh hands the added-to files and their counts (contract_added, D654) to next.jq; the answer carries added_to: [{file, lines}] at its top level, and approve is asked for waiting files only",
         "The text answer of vbw next prints one line per added-to file after the action line: 'check file X: N lines added since the approval; the proof judges it with the approved content until they are approved at the next gate' ('1 line added' for one)",
         "The gate after the proof still asks approval for the added lines (the files stay in the approval's changes); nothing else in next's answer changes"
       ]
@@ -74005,14 +74136,13 @@
         "plugin/skills/vibe/SKILL.md"
       ],
       "after": [],
-      "status": "blocked",
+      "status": "planned",
       "role": "dev",
       "tasks": [
         "The express plan step tells the session to read the Lead text of every pack in packs.project first: 'Stack pack text: read <packs_root>/<name>/lead.md first', in the planning workflow's words (plugin/workflows/planning.js, packLine)",
         "Every step that calls the kernel: when it exits 4 (its line says 'needs a newer VBW'), say its line and stop; never ask the user to type /vbw:approve or vbw approve",
         "The step names --plugin-dir as the kernel's line does, and nothing else in the router changes"
-      ],
-      "note": "Edit on plugin/skills/vibe/SKILL.md was refused twice: auto mode classifier gave no verdict. No file changed; C634 and C638 still red as expected. Re-run once Edit works."
+      ]
     },
     {
       "id": "P220.2",
@@ -74025,14 +74155,13 @@
         "plugin/lib/record.sh"
       ],
       "after": [],
-      "status": "blocked",
+      "status": "planned",
       "role": "dev",
       "tasks": [
         "Every kernel write of the record (record_update's one write path) also writes .vbw/runtime/writer.json: {version: this plugin's version from .claude-plugin/plugin.json, schema: the record's schema}",
         "record_refuse_newer reads the writer file and dies with exit 4 and exactly 'this project needs a newer VBW: its record was written by VBW W, and this session loaded VBW L. Update VBW (/vbw:update), then restart Claude Code; for a development checkout start Claude Code with --plugin-dir <checkout>/plugin (--plugin-dir: Claude Code loads VBW from that folder instead of the installed copy)'",
         "Without a writer file the line is 'this project needs a newer VBW: its record was written with schema N, and this session loaded VBW L, which reads up to schema M. Update VBW (/vbw:update), ...' in the same shape; the record is never touched"
-      ],
-      "note": "Edit tool calls on plugin/lib/record.sh were refused by auto mode (classifier gave no verdict); no code changed, C635 still red. Needs a session where edits are permitted."
+      ]
     },
     {
       "id": "P220.3",
@@ -74068,14 +74197,13 @@
         "plugin/hooks/read.sh"
       ],
       "after": [],
-      "status": "blocked",
+      "status": "planned",
       "role": "dev",
       "tasks": [
         "programs.jq: the script scan (unreadable_calls and the shell-script reading) works line by line or statement by statement, so its time grows with the script's size and the 264 KB field-shaped script is read to its end within the hook's time (ulimit -t 5)",
         "read.sh: before a script file is read, its size is checked; above 512 KB the answer is a deny whose reason is 'VBW guard: <file> (<N> KB) is too large to read before it runs' then 'Next: commit it unchanged (a committed, unchanged script is not read) or run it in smaller parts', with the user's line beside it; a committed, unchanged script still runs unread",
         "The bench budgets are unchanged (tools/bench-hooks.sh green), and the refusals of tests/guard-script-files.bats keep their text"
-      ],
-      "note": "Could not edit plugin/hooks/read.sh: the auto mode classifier gave no verdict on the Edit call, so no change was made. C639 and C640 are red as expected (verified). Planned change: before reading a script, check its size (wc -c) and above 512 KB print the deny JSON with the user's line (see tests/hook-answers.bats R273), then make the programs.jq scan linear."
+      ]
     },
     {
       "id": "P221.2",
@@ -74110,14 +74238,13 @@
         "plugin/hooks/common.jq"
       ],
       "after": [],
-      "status": "blocked",
+      "status": "planned",
       "role": "dev",
       "tasks": [
         "written(record_path) refuses only a real write: a redirection anywhere in the command (>, >>, 2>, &>), cp, mv or install with the record as destination, tee, sed -i, perl -i, ed, rm, truncate, shred, dd of= and ln with the record as target",
         "Readers pass: find (-path, -name), ls, grep, wc, cat, head, tail, jq, awk, diff, stat, shasum, cp of the record to /dev/null, git log and git diff naming it",
         "An inline program (python -c, node -e, perl -e) that names the record is refused with a reason saying the guard cannot tell a read from a write in it; guard-file.jq is unchanged"
-      ],
-      "note": "The Edit tool was refused by auto mode (the classifier gave no verdict), so I could not change plugin/hooks/guard-bash.jq or common.jq. Red check C642 confirmed (3 of 4 R276 cases fail); no code changed, nothing committed."
+      ]
     },
     {
       "id": "P222.1",
@@ -74159,14 +74286,13 @@
         "tools/check-captured-writes.sh"
       ],
       "after": [],
-      "status": "blocked",
+      "status": "planned",
       "role": "dev",
       "tasks": [
         "A bash 3.2 tool, DIR...: for each function in the directories' *.sh files, flag one whose last command is a bare builtin printf or echo whose text argument is one variable assigned in that function from a command substitution (not piped, not redirected); vbw_out, a literal, an argument, a write into a pipe or a file and a function ending otherwise pass; print 'file:line: function' per hit and exit 1",
         "--allowed prints the allow-list, one 'name: reason' per line (empty at first); an allow-listed function is never flagged",
         "The self-tests in tests/output-child-exit.bats (filter 'captured-write rule|R274: --allowed') pass; the standards case in tests/standards.bats runs the tool on plugin/lib"
-      ],
-      "note": "C643 cannot pass: the self-test case qa_digests expects the hit at cmd-plant.sh:8, but its printf is on file line 9 (plant puts text from line 4; the printf is the 6th text line; line 8 is the 'done < <(...)' line). The tool correctly reports 9 for it and 7/6/8 for the other three cases, all matching. The check file tests/output-child-exit.bats is protected, so the expected number needs a one-character fix (8 to 9) in the third case of that test, then C643 passes with the tool as committed."
+      ]
     },
     {
       "id": "P222.3",
@@ -74296,6 +74422,27 @@
         "AGENTS.md hot paths (CLAUDE.md is a link to AGENTS.md: edit AGENTS.md only, never CLAUDE.md, so the link stays): the reference workload is measured beside each case and a case is judged against the reference of its own moment ('beside each case' replaces 'on the same machine in the same run')",
         "docs/guards.md: the same, with the per-case line the bench prints",
         "No other wording change"
+      ]
+    },
+    {
+      "id": "P223.1",
+      "phase": "P223",
+      "title": "vbw apply judges a patch on the phases it touches and takes awaits in every mode",
+      "reqs": [
+        "R277",
+        "R278"
+      ],
+      "files": [
+        "plugin/lib/cmd-apply.sh",
+        "docs/workflows.md"
+      ],
+      "after": [],
+      "status": "planned",
+      "tasks": [
+        "cmd-apply.sh, R277: for a patch, judged holds only the phases that have not started whose plans the patch changes or adds (as pdoc does for --add), so a phase the patch does not touch never blocks it; the header comment says so",
+        "cmd-apply.sh, R277: a touched phase whose floor rose above its tier is raised to that floor, and a touched express phase given a second plan to standard, written by the patch (the only phase field a patch writes), never lowered; each said in one line naming the phase and the new tier; a patch never gives the Architect refusal",
+        "cmd-apply.sh, R278: a plan row of a full apply, --add and --patch may carry awaits, checked with the words --amend uses (a check of the merged record, of a requirement the plan builds) and kept; a row without it keeps the recorded awaits as today; --amend unchanged",
+        "docs/workflows.md: the full apply, --patch and --add rows name awaits; the --patch row says it judges the floor only of the phases whose plans it touches and raises such a phase to a floor that rose; the error table row for a tier below its floor says a patch raises it"
       ]
     }
   ],
@@ -82739,6 +82886,28 @@
         "P222.2",
         "P222.3",
         "P222.4"
+      ]
+    },
+    {
+      "id": "D654",
+      "text": "D653: the added-to list comes from a function, contract_added RECORD, never a variable",
+      "why": "P218.1's Dev found that the Lead's CONTRACT_ADDED global cannot work: every caller (checks.sh, cmd-fix.sh, cmd-next.sh, qa-inputs.sh) and the approved C626 test capture contract_waiting with $(...), and a subshell's variables are lost. contract_waiting_with keeps printing only the waiting files; contract_added prints one 'path<TAB>added line count' per added-to file; both come from one classification, so a caller needing both runs it once. The classify helper of tests/contract-added-lines.bats now calls contract_added (approval at the next gate)",
+      "at": "2026-11-07T22:38:37Z"
+    },
+    {
+      "id": "D655",
+      "text": "Adopt the Rust lead's patch report as R277 and R278 in M55",
+      "why": "Vision rule: a field report from a user project (2026-11-07 22:00), reproduced in a scratch project with the 2.1.27 kernel. The real problems are general: a patch is judged on phases it can never change (judged=$doc, the merged milestone, in cmd-apply.sh), and awaits has no path before approval while each refusal points to the other mode. Adapted, not taken as suggested: the reporter's alternative (a patch may carry a phase tier) is declined, since a patch carries plans, checks and rules only; instead a patch judges only the phases it touches, as --add does, and raises a touched phase to its risen floor. The workaround given meanwhile: vbw config rigor deep, then auto, then the patch; awaits by --amend after approval",
+      "at": "2026-11-07T22:39:58Z"
+    },
+    {
+      "id": "D656",
+      "at": "2026-11-07T23:30:57Z",
+      "text": "Contract approved: 267 requirements, 646 checks, 649 plans (b9aced8dbe03)",
+      "plans": [
+        "P218.1",
+        "P218.2",
+        "P223.1"
       ]
     }
   ],

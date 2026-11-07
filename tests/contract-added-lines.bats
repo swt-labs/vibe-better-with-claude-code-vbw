@@ -48,10 +48,11 @@ check_file() {
 }
 
 # classify: "waiting: <files on one line>" then "added: <file TAB lines, one per line>",
-# as contract_waiting_with reports them (CONTRACT_ADDED beside its waiting files).
+# as contract_waiting and contract_added report them. Both are captured with $(...), as
+# every kernel caller captures them, so neither may hand its answer back in a variable (D654).
 classify() {
   # shellcheck disable=SC2016 # expanded by vbw_kernel
-  vbw_kernel 'w=$(contract_waiting "$(cat "$VBW_RECORD")"); printf "waiting: %s\nadded: %s\n" "$(printf "%s" "$w" | tr "\n" " ")" "$(printf "%s" "$CONTRACT_ADDED" | tr "\t\n" ",;")"'
+  vbw_kernel 'r=$(cat "$VBW_RECORD"); w=$(contract_waiting "$r"); a=$(contract_added "$r"); printf "waiting: %s\nadded: %s\n" "$(printf "%s" "$w" | tr "\n" " ")" "$(printf "%s" "$a" | tr "\t\n" ",;")"'
 }
 
 @test "R269 classify: the approval snapshot records the approval's commit and each check file's git blob id" {
