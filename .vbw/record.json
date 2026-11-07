@@ -71841,14 +71841,13 @@
       "after": [
         "P213.1"
       ],
-      "status": "blocked",
+      "status": "planned",
       "role": "dev",
       "tasks": [
         "mutate_rule_none: a recorded run with git == true is accepted: entry {rule, none, git: true, at, head}, one printed line naming the check, git and the reason; the empty-reason refusal says a reason is needed and why (no read list can vouch for a check that reads the project through git), before any run; the read-list cases unchanged",
         "record.jq: git may only be true, only on a rule none entry; record-schema.jq row 14 'a rule entry marked git', VBW_SCHEMA_MAX 14; docs/record.md row and plans row",
         "contract.sh contract_amendments_block: 'git-read excuses since the last approval:' then '  PLAN: Rn.k CHECK (REASON)' per entry recorded after the clone's last contract grant (so vbw show contract, --changes and vbw ship all print it); cmd-show.sh: show plan prints '  Rn.k: no break possible: CHECK reads the project through git (REASON)' and show req the same words in [breaks: ...]; cmd-plan.sh already counts a none entry"
-      ],
-      "note": "R264.7 test (tests/mutate-rule-none.bats line 221-223, protected C613) cannot pass: its fixture plan P1.1 has no trailer commit and its own check C6 (tests/never.sh) always fails, so the first 'vbw plan done P1.1' refuses with 'checks do not pass: C6 fail' (plugin/lib/cmd-plan.sh runs checks_must_pass before plan_missing_breaks) and never names R1.3. Needs either the missing-breaks list ahead of the check run in cmd-plan.sh (not a plan file) or a fixture/test change. Tasks 1-3 are built and committed; C613 tests 1,2,4,5 and C614, C615 pass."
+      ]
     },
     {
       "id": "P214.2",
@@ -80503,6 +80502,12 @@
       "plans": [
         "P214.1"
       ]
+    },
+    {
+      "id": "D640",
+      "at": "2026-11-07T11:15:28Z",
+      "text": "Contract approved: 256 requirements, 616 checks, 627 plans (ba5f15da9e51)",
+      "plans": []
     }
   ],
   "commands": {
