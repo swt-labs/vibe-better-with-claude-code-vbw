@@ -75532,77 +75532,77 @@
       "id": "F381",
       "req": "R149",
       "attempts": 0,
-      "status": "open",
+      "status": "fixed",
       "note": "C217 fail (exit 1), C220 fail (exit 1), C221 fail (exit 1)"
     },
     {
       "id": "F382",
       "req": "R162",
       "attempts": 0,
-      "status": "open",
+      "status": "fixed",
       "note": "C249 fail (exit 1)"
     },
     {
       "id": "F383",
       "req": "R188",
       "attempts": 0,
-      "status": "open",
+      "status": "fixed",
       "note": "C350 fail (exit 1), C352 fail (exit 1)"
     },
     {
       "id": "F384",
       "req": "R193",
       "attempts": 0,
-      "status": "open",
+      "status": "fixed",
       "note": "C411 fail (exit 1)"
     },
     {
       "id": "F385",
       "req": "R196",
       "attempts": 0,
-      "status": "open",
+      "status": "fixed",
       "note": "C415 fail (exit 1)"
     },
     {
       "id": "F386",
       "req": "R207",
       "attempts": 0,
-      "status": "open",
+      "status": "fixed",
       "note": "C461 fail (exit 1)"
     },
     {
       "id": "F387",
       "req": "R244",
       "attempts": 0,
-      "status": "open",
+      "status": "fixed",
       "note": "C562 fail (exit 1)"
     },
     {
       "id": "F388",
       "req": "R247",
       "attempts": 0,
-      "status": "open",
+      "status": "fixed",
       "note": "C568 fail (exit 1)"
     },
     {
       "id": "F389",
       "req": "R258",
       "attempts": 0,
-      "status": "open",
+      "status": "fixed",
       "note": "C590 fail (exit 1)"
     },
     {
       "id": "F390",
       "req": "R261",
       "attempts": 0,
-      "status": "open",
+      "status": "fixed",
       "note": "C598 fail (exit 1)"
     },
     {
       "id": "F391",
       "command": "test",
       "attempts": 0,
-      "status": "open",
+      "status": "fixed",
       "note": "test fail"
     }
   ],
@@ -91437,6 +91437,17 @@
         "ended": "2026-11-07T11:38:53Z",
         "cost": {
           "usd": 0
+        }
+      },
+      {
+        "id": "fix-20261107T125912Z",
+        "kind": "fix",
+        "session": "0ee781c3-c5b6-4a6c-889f-04b89f1fba4a",
+        "milestone": "M54",
+        "started": "2026-11-07T12:59:12Z",
+        "ended": "2026-11-07T13:07:40Z",
+        "cost": {
+          "usd": 1.024783
         }
       }
     ],
