@@ -31026,7 +31026,22 @@
           "to": "deep",
           "reason": "Dev blocked P214.1: R264.7 test (tests/mutate-rule-none.bats line 221-223, protected C613) cannot pass: its fixture plan P1.1 has no trailer commit and its own check C6 (tests/never.sh) always fails, so the first 'vbw plan done P1.1' refuses with 'checks do not pass: C6 fail' (plugin/lib/cmd-plan.sh runs checks_must_pass before plan_missing_breaks) and never names R1.3. Needs either the missing-breaks list ahead of the check run in cmd-plan.sh (not a plan file) or a fixture/test change. Tasks 1-3 are built and committed; C613 tests 1,2,4,5 and C614, C615 pass."
         }
-      ]
+      ],
+      "qa": {
+        "result": "pass",
+        "tier": "deep",
+        "tree": "e72d60dd37fd69fac05d8827dfa98241fcf87380504e1e95d42d3095c9ab8e4a",
+        "at": "2026-11-07T15:57:04Z",
+        "note": "20/20 checks"
+      },
+      "outcome": {
+        "tier": "deep",
+        "predicted": "deep",
+        "held": true,
+        "fix_rounds": 0,
+        "qa_findings": 0,
+        "escalations": 2
+      }
     },
     {
       "id": "P215",
@@ -31096,7 +31111,22 @@
         "guarded: R12 (C11), R22 (C19), R24 (C23), R31 (C27), R32 (C28), R33 (C29), R34 (C30), R42 (C38), R43 (C42, C43), R44 (C44, C45), R45 (C39, C40, C41), R46 (C46), R47 (C47), R48 (C49, C50), R49 (C48), R51 (C52, C53, C66), R59 (C68, C92), R61 (C73, C74, C75, C76, C77), R62 (C78, C79, C80, C81, C82, C83, C93), R64 (C84, C85), R65 (C86, C87, C88, C89, C90), R66 (C95), R69 (C110, C120, C122), R70 (C114), R72 (C116, C118), R73 (C98), R74 (C99, C100), R78 (C105, C106), R79 (C107), R81 (C109, C111, C112, C113), R83 (C119), R92 (C131, C132, C133, C134, C135, C136, C137, C138, C139), R93 (C140, C141, C142, C143, C144), R94 (C145, C146, C147, C148), R97 (C153), R98 (C154), R100 (C156), R103 (C160), R104 (C161, C162), R105 (C163), R109 (C168), R110 (C169, C170), R111 (C171, C172, C173, C174, C175), R115 (C181), R116 (C182, C183), R118 (C184), R131 (C198), R132 (C199), R134 (C201), R135 (C202), R144 (C208, C209), R147 (C212, C215, C237), R148 (C213, C214, C216, C238), R149 (C217, C218, C219, C220, C221, C222), R150 (C223, C224, C225, C226, C227, C228, C229, C230), R152 (C233, C234), R153 (C235, C236, C239), R160 (C247, C263, C264), R161 (C248, C265, C266), R166 (C253, C254, C255, C256, C267), R167 (C257, C258, C259, C260), R168 (C261, C262), R169 (C268), R170 (C269), R173 (C281, C282, C283, C284, C285, C286, C289), R174 (C279, C280), R175 (C274, C275), R176 (C276, C277, C278), R180 (C307, C308, C309, C310), R181 (C313, C314, C315, C316, C317, C318, C319, C320, C321), R182 (C322, C323, C324, C325, C326), R183 (C327), R184 (C328, C329, C330, C331, C332, C333), R185 (C334, C335, C336, C337, C338, C339, C340, C341, C342, C343), R189 (C360, C361, C362, C363, C364, C365, C366, C367, C368, C369, C370, C371, C372, C373), R190 (C374, C375, C376, C377, C378, C379, C380, C381, C382, C383, C384, C385, C386, C387, C388), R191 (C389, C390, C391, C392, C393, C394, C395, C396, C397, C398, C399, C400), R192 (C401, C402, C403, C404, C405, C406, C407, C408, C409, C410), R194 (C417, C418, C419), R195 (C420, C421, C422), R199 (C424, C425, C430), R200 (C426, C427, C431), R201 (C428, C429), R202 (C432, C433, C434, C435, C436, C437, C438, C439, C440, C441, C442, C443, C444, C445, C446, C447), R204 (C451, C452, C453, C454), R206 (C459, C460), R208 (C464, C465, C466, C468), R209 (C469, C470, C471, C472, C473), R211 (C477, C478, C479), R212 (C480, C481, C482), R213 (C483, C484), R215 (C488, C489, C490), R216 (C491, C492, C493), R218 (C496), R220 (C500, C501, C502, C503), R221 (C504), R223 (C507, C508, C509), R225 (C517, C518, C519), R226 (C510, C511), R228 (C522, C523, C524, C525), R237 (C544), R238 (C545), R240 (C556, C557), R246 (C566, C567), R251 (C579), R252 (C580), R257 (C588, C589), R259 (C593, C594, C595), R260 (C596, C597), R262 (C601)",
         "tests: project test command"
       ],
-      "predicted": "deep"
+      "predicted": "deep",
+      "qa": {
+        "result": "pass",
+        "tier": "standard",
+        "tree": "d4cba9edcba31b8f0ddd1dc70cfccf744a57a742dd25333336023adc3b16639e",
+        "at": "2026-11-07T15:57:02Z",
+        "note": "18/18 checks"
+      },
+      "outcome": {
+        "tier": "deep",
+        "predicted": "deep",
+        "held": true,
+        "fix_rounds": 0,
+        "qa_findings": 0,
+        "escalations": 0
+      }
     }
   ],
   "plans": [
