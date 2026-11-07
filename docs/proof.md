@@ -1691,6 +1691,17 @@ suite therefore pays for the checks a break needs, not for every check.
   file: such a check is not detected, and the accepting line says so. `vbw plan
   done` counts such a rule covered.
 
+- A check that reads the project through git has no read list to vouch for it,
+  so the check above refuses it. `vbw mutate PLAN Rn.k --none REASON` on such a
+  check is accepted on its reason alone: the kernel prints one line naming the
+  check, git and the reason, and records the excuse on the rule marked `git`. A
+  missing or empty reason is refused: a reason is what the command needs, since
+  no read list can vouch for the check. Each git-read excuse is listed at the
+  next gate (`vbw show contract`, `--changes` and `vbw ship`) until the next
+  approval, so you see what was excused. A check with a read list never needs
+  it. `vbw show plan` marks the rule "no break possible", and `vbw plan done`
+  counts it covered.
+
 The broken file, and its restore, get a fresh modification time, newer than
 every file in the proof copy (even one stamped ahead of the clock). Builds that
 decide by file times (make, cargo) rebuild the broken code, so a break is never
