@@ -77316,6 +77316,11 @@
       "sort": "next",
       "size": "small",
       "status": "open"
+    },
+    {
+      "id": "T255",
+      "text": "Hook bench noise (CI 2.1.27, PR 751): guard (script, large record) measured 65.3 ms against 50 on GitHub's macOS runner while the run's reference ratio was 0.90 and jq startup rose from about 8 to 13.8 ms; locally 34 ms. The reference is measured once at the start, so a busy moment later is read as a slow hook. Measure the reference beside each case (or retry against a fresh reference) so a noisy runner never fails the bench while a real regression still does",
+      "status": "open"
     }
   ],
   "decisions": [
@@ -81003,6 +81008,12 @@
       "id": "D649",
       "at": "2026-11-07T17:24:55Z",
       "text": "Shipped M54 Field fixes: parallel plans in a Rust crate, safe mutation, clear patch refusals: 5 requirements proven or accepted"
+    },
+    {
+      "id": "D650",
+      "text": "Fix vbw mutate on jq 1.8 after M54 shipped (08437fd2): replace jq's private _nwise in mutate_digests, and make tools/check-jq-builtins.sh refuse any private jq builtin, with a case in tests/jq-floor.bats",
+      "why": "CI's jq 1.8 failed every vbw mutate with '_nwise/1 is not defined'; a user with a current jq would hit it on every break. Local jq is 1.7.1, so the proof could not see it. The 35 mutate test files pass under jq 1.8.1 and /bin/bash; CI is the gate",
+      "at": "2026-11-07T18:25:44Z"
     }
   ],
   "commands": {
