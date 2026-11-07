@@ -30965,7 +30965,15 @@
         "guarded: R1 (C1), R2 (C2), R10 (C9), R12 (C11), R13 (C12), R14 (C13), R22 (C19), R23 (C20), R24 (C23), R25 (C24), R27 (C21), R28 (C25), R31 (C27), R32 (C28), R33 (C29), R38 (C33, C34), R39 (C36), R40 (C37), R43 (C42, C43), R44 (C44, C45), R45 (C39, C40, C41), R46 (C46), R47 (C47), R48 (C49, C50), R49 (C48), R50 (C51), R60 (C72, C94), R61 (C73, C74, C75, C76, C77), R62 (C78, C79, C80, C81, C82, C83, C93), R65 (C86, C87, C88, C89, C90), R66 (C95), R69 (C110, C120, C122), R70 (C114), R73 (C98), R74 (C99, C100), R75 (C101), R76 (C102, C103), R77 (C104), R78 (C105, C106), R79 (C107), R81 (C109, C111, C112, C113), R92 (C131, C132, C133, C134, C135, C136, C137, C138, C139), R93 (C140, C141, C142, C143, C144), R94 (C145, C146, C147, C148), R95 (C149, C150), R96 (C151, C152), R97 (C153), R98 (C154), R99 (C155), R100 (C156), R101 (C179), R102 (C158, C159), R103 (C160), R104 (C161, C162), R105 (C163), R106 (C164, C165), R107 (C166, C167), R110 (C169, C170), R111 (C171, C172, C173, C174, C175), R115 (C181), R116 (C182, C183), R118 (C184), R119 (C180), R121 (C187, C188), R123 (C190, C191), R127 (C194), R129 (C196), R130 (C197), R131 (C198), R132 (C199), R133 (C195), R134 (C201), R135 (C202), R144 (C208, C209), R146 (C211), R147 (C212, C215, C237), R148 (C213, C214, C216, C238), R149 (C217, C218, C219, C220, C221, C222), R150 (C223, C224, C225, C226, C227, C228, C229, C230), R152 (C233, C234), R153 (C235, C236, C239), R156 (C242, C243), R157 (C244), R158 (C245), R159 (C246), R160 (C247, C263, C264), R161 (C248, C265, C266), R162 (C249), R163 (C250), R165 (C252), R166 (C253, C254, C255, C256, C267), R167 (C257, C258, C259, C260), R168 (C261, C262), R169 (C268), R170 (C269), R173 (C281, C282, C283, C284, C285, C286, C289), R174 (C279, C280), R175 (C274, C275), R176 (C276, C277, C278), R178 (C290, C291, C292, C293, C294, C295, C296, C311), R179 (C297, C298, C299, C300, C301, C302, C303, C304, C305, C306, C312), R180 (C307, C308, C309, C310), R181 (C313, C314, C315, C316, C317, C318, C319, C320, C321), R182 (C322, C323, C324, C325, C326), R183 (C327), R186 (C344, C345, C346, C347, C348), R191 (C389, C390, C391, C392, C393, C394, C395, C396, C397, C398, C399, C400), R192 (C401, C402, C403, C404, C405, C406, C407, C408, C409, C410), R194 (C417, C418, C419), R195 (C420, C421, C422), R202 (C432, C433, C434, C435, C436, C437, C438, C439, C440, C441, C442, C443, C444, C445, C446, C447), R204 (C451, C452, C453, C454), R206 (C459, C460), R208 (C464, C465, C466, C468), R209 (C469, C470, C471, C472, C473), R211 (C477, C478, C479), R212 (C480, C481, C482), R213 (C483, C484), R215 (C488, C489, C490), R216 (C491, C492, C493), R219 (C497, C498, C499), R220 (C500, C501, C502, C503), R221 (C504), R225 (C517, C518, C519), R226 (C510, C511), R228 (C522, C523, C524, C525), R236 (C537), R238 (C545), R239 (C554, C555), R241 (C546, C547, C548, C549, C550, C560), R242 (C551, C552, C553), R244 (C562, C563), R245 (C564, C565), R246 (C566, C567), R248 (C570), R249 (C571, C572, C573), R250 (C574, C575, C576, C577, C578, C585), R251 (C579), R252 (C580), R255 (C584), R257 (C588, C589), R259 (C593, C594, C595), R260 (C596, C597), R262 (C601)",
         "tests: project test command"
       ],
-      "predicted": "deep"
+      "predicted": "deep",
+      "escalations": [
+        {
+          "at": "2026-11-07T00:56:43Z",
+          "from": "deep",
+          "to": "deep",
+          "reason": "Dev blocked P214.1: R264.6 needs plugin/lib/cmd-approve.sh, which the plan does not own. 'None listed after the next approval' must hold when the contract is unchanged (the check runs vbw approve on an already approved contract). That path writes nothing but the approved-contract snapshot: no decision, no new consent entry, and the amendments are cleared only in approve_decide (new-hash branch). So no file of this plan can mark an excuse as seen. A clock compare on the snapshot file fails within one second, and a contract_doc side channel would also let vbw apply --amend (approve_repin) hide an excuse without a gate. Fix: add plugin/lib/cmd-approve.sh to P214.1's files; approve_record writes an 'excuses seen' list (plan, rule, at per git entry) into the clone's runtime next to approved-contract.json, and contract_amendments_block lists the git entries not in it. Nothing else in the plan changes. Nothing was edited or committed."
+        }
+      ]
     },
     {
       "id": "P215",
@@ -71826,13 +71834,14 @@
       "after": [
         "P213.1"
       ],
-      "status": "planned",
+      "status": "blocked",
       "role": "dev",
       "tasks": [
         "mutate_rule_none: a recorded run with git == true is accepted: entry {rule, none, git: true, at, head}, one printed line naming the check, git and the reason; the empty-reason refusal says a reason is needed and why (no read list can vouch for a check that reads the project through git), before any run; the read-list cases unchanged",
         "record.jq: git may only be true, only on a rule none entry; record-schema.jq row 14 'a rule entry marked git', VBW_SCHEMA_MAX 14; docs/record.md row and plans row",
         "contract.sh contract_amendments_block: 'git-read excuses since the last approval:' then '  PLAN: Rn.k CHECK (REASON)' per entry recorded after the clone's last contract grant (so vbw show contract, --changes and vbw ship all print it); cmd-show.sh: show plan prints '  Rn.k: no break possible: CHECK reads the project through git (REASON)' and show req the same words in [breaks: ...]; cmd-plan.sh already counts a none entry"
-      ]
+      ],
+      "note": "R264.6 needs plugin/lib/cmd-approve.sh, which the plan does not own. 'None listed after the next approval' must hold when the contract is unchanged (the check runs vbw approve on an already approved contract). That path writes nothing but the approved-contract snapshot: no decision, no new consent entry, and the amendments are cleared only in approve_decide (new-hash branch). So no file of this plan can mark an excuse as seen. A clock compare on the snapshot file fails within one second, and a contract_doc side channel would also let vbw apply --amend (approve_repin) hide an excuse without a gate. Fix: add plugin/lib/cmd-approve.sh to P214.1's files; approve_record writes an 'excuses seen' list (plan, rule, at per git entry) into the clone's runtime next to approved-contract.json, and contract_amendments_block lists the git entries not in it. Nothing else in the plan changes. Nothing was edited or committed."
     },
     {
       "id": "P214.2",
@@ -72038,10 +72047,33 @@
       "after": [
         "P212.2"
       ],
-      "status": "planned",
+      "status": "done",
       "role": "docs",
       "tasks": [
         "the --patch row: a row with an existing id keeps its other fields; the merge list: merged field by field, explicit null removes an optional field, a missing required field is refused naming it"
+      ],
+      "mutations": [
+        {
+          "rule": {
+            "req": "R266",
+            "k": 8
+          },
+          "what": "docs say replace, null keeps",
+          "files": [
+            "docs/workflows.md"
+          ],
+          "checks": {
+            "C618": "red"
+          },
+          "result": "red",
+          "at": "2026-11-07T00:56:09Z",
+          "head": "f41413dee9a56705d4038874cba082e0b30ec68a",
+          "tree": "360494d6241974b6f88dcf14a7e8b672b1be06a1",
+          "contract": "348522caecf2c8829ab876cc9438e92e05ec439cc71210de9afcf866268d6afb",
+          "digests": {
+            "docs/workflows.md": "b53b2aba4a2aac8ce9dffa9da2eea8746466189b2e210add7171521a45ae19dc"
+          }
+        }
       ]
     },
     {
@@ -90848,6 +90880,17 @@
         "ended": "2026-11-07T00:55:06Z",
         "cost": {
           "usd": 0
+        }
+      },
+      {
+        "id": "build-20261107T005519Z",
+        "kind": "build",
+        "session": "0ee781c3-c5b6-4a6c-889f-04b89f1fba4a",
+        "milestone": "M54",
+        "started": "2026-11-07T00:55:19Z",
+        "ended": "2026-11-07T00:57:00Z",
+        "cost": {
+          "usd": 1.097341
         }
       }
     ],
