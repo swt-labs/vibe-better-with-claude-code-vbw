@@ -384,6 +384,24 @@ what was approved:
   approved are waiting for approval: tests/pay.sh: review them, then /vbw:approve`.
   Nothing is proved.
 
+### Lines added to a check file
+
+A check file that a build changed only by adding lines (every line of its
+approved content is still there, in order; the new lines can be at the end, in
+the middle or at the top) is added-to, not waiting. It does not stop the run:
+`vbw prove` judges the check with the file's approved content (in the clean copy
+only) and records the digest it judged in the evidence. Its summary says
+`judged with the approved content (3 added lines pending approval)`, and its
+pass is reused while the approved content stands.
+
+The added lines wait for approval at the gate after the proof, with their diff
+(`vbw show contract --changes` lists `test file X: N lines added since the
+approval`). Once you approve, the check runs with the added lines from the next
+proof.
+
+A removed, changed or reordered line, a new file, or a file a fix added is the
+waiting case above: it still stops at approval before the proof.
+
 A change to the structure (a new check, a changed `run`, a plan's files) is not
 waiting: the contract needs approval first, as before.
 
