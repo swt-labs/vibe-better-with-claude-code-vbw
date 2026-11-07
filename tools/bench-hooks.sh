@@ -244,7 +244,9 @@ cpu_means() {
     function sec(s) { sub(/s$/, "", s); split(s, p, "m"); return p[1] * 60 + p[2] }
     NR % 2 == 0 { t[++m] = sec($1) + sec($2) }
     END { for (k = 1; k + 1 <= m; k += 2) sum[int((k - 1) / 2) % n] += t[k + 1] - t[k]
-          for (k = 0; k < n; k++) printf "%.1f%s", sum[k] * 1000 / runs, k < n - 1 ? " " : "\n" }' "$log"
+          line = ""
+          for (k = 0; k < n; k++) line = line (k ? " " : "") sprintf("%.1f", sum[k] * 1000 / runs)
+          print line }' "$log"
 }
 
 # injected LABEL: the injected measure for LABEL (tests, VBW_BENCH_TIMES): the file's lines
