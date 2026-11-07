@@ -9,7 +9,7 @@ allowed-tools: Bash("${CLAUDE_PLUGIN_ROOT}/bin/vbw" *) Bash(vbw *) Workflow(vbw:
 
 Kernel decides next step; you carry it out. Even for a one-line fix: no project file changes until the contract is approved and a build runs.
 
-Every step that calls the kernel: when it exits 4 (its line says 'needs a newer VBW'), say its line and stop. The line names both versions and the fix: update VBW and restart Claude Code, or start it with --plugin-dir for a development checkout. Instead, never ask the user to type /vbw:approve or vbw approve.
+Every step that calls the kernel: when it ends with exit 4 (its line says 'needs a newer VBW'), say its line and stop. The line names both versions and the fix: update VBW and restart Claude Code, or start it with --plugin-dir for a development checkout. Instead, never ask the user to type /vbw:approve or vbw approve.
 
 ```!
 "${CLAUDE_PLUGIN_ROOT}/bin/vbw" next --json 2>&1 || true
