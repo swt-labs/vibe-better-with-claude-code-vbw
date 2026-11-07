@@ -69,6 +69,9 @@ approve_record() {
   # (vbw show contract --changes). Per clone, like the consent itself.
   contract_doc "$record" > "$VBW_RUNTIME/approved-contract.json.$$" \
     && mv "$VBW_RUNTIME/approved-contract.json.$$" "$VBW_RUNTIME/approved-contract.json"
+  # The git-read excuses this approval takes with it (R264): the next gate lists only the later ones.
+  contract_git_excuses "$record" > "$VBW_RUNTIME/git-excuses-seen.json.$$" \
+    && mv "$VBW_RUNTIME/git-excuses-seen.json.$$" "$VBW_RUNTIME/git-excuses-seen.json"
   approve_commands "$record"
 }
 
