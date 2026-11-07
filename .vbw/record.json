@@ -30936,6 +30936,12 @@
           "from": "deep",
           "to": "deep",
           "reason": "Dev blocked P213.1: Built and committed (036fe719, d1bb8f37): C606, C608, C609, C610 pass; C605 and C607 stay red on two cases of protected check files that no change in this plan's files can satisfy. (1) tests/mutate-command.bats line 304: after the same-bytes refusal it runs 'vbw mutate P1.1 R1.2' with 'echo unpaid twice' and expects exit 0, but R1.2's check C3 only asserts one printed line, so that break is a survivor and exits 1 (a different break of R1.2 that prints two lines would pass). (2) tests/mutate-isolation.bats line 110: with the break left in the working copy, 'vbw check C2' (which reads src/pay.sh from the live tree, as vbw check always runs there) is expected to pass; it can only fail while the working copy holds the break, and vbw check/checks.sh are not this plan's files. Needs the Lead/user to correct those two tests (e.g. make the second break print two lines; make C2 not read the broken file or drop the claim) or widen the plan."
+        },
+        {
+          "at": "2026-11-07T11:22:35Z",
+          "from": "deep",
+          "to": "deep",
+          "reason": "Dev blocked P213.3: Task 1 committed (ed4fdfc3: taskbreak facts, distinct bytes per break in fixchecks_seed). Task 2 cannot run: every Bash call that runs tools/l3-suite.sh (even bash -n on it, at HEAD~1 too) is refused by the VBW guard with 'the guard failed while a run is open'; vbw doctor says the guards work. The guard fails on this 267 KB script, so scenario_taskbreak and tools/l3-results/taskbreak.json cannot be produced from a Dev session. C612 is red as expected."
         }
       ]
     },
@@ -71814,12 +71820,13 @@
         "P213.2",
         "P212.2"
       ],
-      "status": "planned",
+      "status": "blocked",
       "role": "dev",
       "tasks": [
         "scenario_taskbreak: facts break_left_in_working_copy (the file held the break after vbw mutate, from the session log and git), break_edited_out (the Dev's next commit holds no break), no_file_lost (every plan file at the end matches its commit); fixchecks_seed and any seed that sends the same bytes twice sends distinct bytes per break",
         "run the scenario; commit tools/l3-results/taskbreak.json"
-      ]
+      ],
+      "note": "Task 1 committed (ed4fdfc3: taskbreak facts, distinct bytes per break in fixchecks_seed). Task 2 cannot run: every Bash call that runs tools/l3-suite.sh (even bash -n on it, at HEAD~1 too) is refused by the VBW guard with 'the guard failed while a run is open'; vbw doctor says the guards work. The guard fails on this 267 KB script, so scenario_taskbreak and tools/l3-results/taskbreak.json cannot be produced from a Dev session. C612 is red as expected."
     },
     {
       "id": "P214.1",
@@ -72014,11 +72021,34 @@
         "P215.2",
         "P216.2"
       ],
-      "status": "planned",
+      "status": "done",
       "role": "docs",
       "tasks": [
         "docs/proof.md 'The mutation check': a check that reads the project through git is recorded --none on its reason alone, marked git, listed at the next gate (show contract, --changes, ship) until the next approval; a check with a read list never needs it",
         "docs/workflows.md: the vbw mutate row names the git case; the mutation check section names the git-read excuses listing and the 'no break possible' line"
+      ],
+      "mutations": [
+        {
+          "rule": {
+            "req": "R264",
+            "k": 8
+          },
+          "what": "workflows.md loses the no break possible line",
+          "files": [
+            "docs/workflows.md"
+          ],
+          "checks": {
+            "C616": "red"
+          },
+          "result": "red",
+          "at": "2026-11-07T11:20:58Z",
+          "head": "506617f5986af2446872c146d0d0dacf196c5545",
+          "tree": "368679416a9ffcd8ba3e2665765d062fe3f8e055",
+          "contract": "ba5f15da9e51cc99e37896aa10f70eb78bd506bfe06afa981fcf8f0b0a852296",
+          "digests": {
+            "docs/workflows.md": "319f8b781b46713161a855281fb9fab66a05096c6c1f244b37d3c1352e58641b"
+          }
+        }
       ]
     },
     {
@@ -91114,6 +91144,17 @@
         "ended": "2026-11-07T11:19:41Z",
         "cost": {
           "usd": 3.198476
+        }
+      },
+      {
+        "id": "build-20261107T112006Z",
+        "kind": "build",
+        "session": "0ee781c3-c5b6-4a6c-889f-04b89f1fba4a",
+        "milestone": "M54",
+        "started": "2026-11-07T11:20:06Z",
+        "ended": "2026-11-07T11:22:52Z",
+        "cost": {
+          "usd": 0.953646
         }
       }
     ],
