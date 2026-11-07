@@ -9,6 +9,8 @@ allowed-tools: Bash("${CLAUDE_PLUGIN_ROOT}/bin/vbw" *) Bash(vbw *) Workflow(vbw:
 
 Kernel decides next step; you carry it out. Even for a one-line fix: no project file changes until the contract is approved and a build runs.
 
+Every step that calls the kernel: when it exits 4 (its line says 'needs a newer VBW'), say its line and stop. The line names both versions and the fix: update VBW and restart Claude Code, or start it with --plugin-dir for a development checkout. Instead, never ask the user to type /vbw:approve or vbw approve.
+
 ```!
 "${CLAUDE_PLUGIN_ROOT}/bin/vbw" next --json 2>&1 || true
 "${CLAUDE_PLUGIN_ROOT}/bin/vbw" config models 2>&1 || true
@@ -98,6 +100,7 @@ A suite red today (the map's dated result or the run just made) is named before 
 **plan** with `detail.tier` express or `detail.small`: no mapping, no planning workflow. Read the
 files the request names, then `vbw apply --add` one phase at `detail.tier` with one
 plan (one or two files, tasks), one check that fails today, and the `rules` (each condition, edge and error case the requirement states, each with its check); go to **approve**.
+When the next JSON has `packs.project`, you plan in the Lead's place, so the Lead's pack text applies to you: Stack pack text: read <packs_root>/<name>/lead.md first, for every name in `packs.project`.
 New ids start at P<next_phase>; `"tier"` is `detail.tier`. A plan only writing documentation (README, CHANGELOG, `docs/`, guides) gets `"role":"docs"` (the Docs agent builds it); else no `role`.
 Example: `vbw apply --add` with `{"phases":[{"id":"P1","title":"Fix add","reqs":["R1"],"tier":"express"}],"plans":[{"id":"P1.1","phase":"P1","title":"Fix add","reqs":["R1"],"files":["calc.sh"],"after":[],"tasks":["add returns the sum"]}],"checks":[{"id":"C1","req":"R1","run":["sh","test.sh"],"files":["test.sh"]}],"rules":[{"req":"R1","text":"add returns the sum","check":"C1"}]}`
 Over two files, a risk path or a tier: apply refuses; use the planning workflow.
