@@ -63,11 +63,25 @@ export function stepWords(note, now) {
     if (!Number.isFinite(end)) return { text: NO_END, timed: false }
     const t = Number.isFinite(now) ? now : Date.now()
     const at = 'until around ' + dayClock(end, t)
+    const lowMs = Date.parse(note.end_low)
+    const highMs = Date.parse(note.end_high)
+    const rg = note.rough === true && Number.isFinite(lowMs) && Number.isFinite(highMs)
+    const runs = Number.isFinite(note.runs) ? note.runs : 0
+    const tag = rg ? ' (rough guess from ' + runs + (runs === 1 ? ' run)' : ' runs)') : ''
     const left = end - t
     const hasParts = isObj(note.parts)
-    if (hasParts && (note.late === true || left <= 0)) return { text: at + ', later than usual', timed: true }
-    if (!hasParts && left <= -MIN_MS) return { text: at + ', ' + Math.floor(-left / MIN_MS) + ' min late', timed: true }
-    if (left < MIN_MS) return { text: left > 0 ? 'less than a minute, ' + at : at, timed: true }
+    if (hasParts && (note.late === true || left <= 0)) return { text: at + ', later than usual' + tag, timed: true }
+    if (!hasParts && left <= -MIN_MS) return { text: at + ', ' + Math.floor(-left / MIN_MS) + ' min late' + tag, timed: true }
+    if (left < MIN_MS) return { text: (left > 0 ? 'less than a minute, ' + at : at) + tag, timed: true }
+    if (rg) {
+      const lo = Math.min(lowMs, end)
+      const hi = Math.max(highMs, end)
+      const mins = (ms) => Math.max(1, Math.round((ms - t) / MIN_MS))
+      const lm = mins(lo)
+      const hm = mins(hi)
+      if (lm === hm) return { text: 'roughly ' + lm + ' min, ' + at + tag, timed: true }
+      return { text: 'roughly ' + lm + ' to ' + hm + ' min, until around ' + dayClock(lo, t) + ' to ' + dayClock(hi, t) + tag, timed: true }
+    }
     return { text: 'about ' + Math.max(1, Math.round(left / MIN_MS)) + ' min, ' + at, timed: true }
   } catch {
     return null
