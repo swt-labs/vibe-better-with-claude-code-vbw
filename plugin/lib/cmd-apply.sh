@@ -398,7 +398,7 @@ cmd_apply() {
       [($p.plans | judge("plan"; [$r.plans[] | select(.phase as $x | $ph | index($x))]; ["phase", "title", "reqs", "files"])),
        ($p.checks | judge("check"; [$r.checks[] | select(.req as $x | $rq | index($x))]; ["req", "run"]))]
       | .[0] // empty' 2> /dev/null) || apply_internal "cannot read the patch rows"
-    [ -z "$problem" ] || case "$problem" in *" is a new "*) apply_refuse "$problem" ;; *) vbw_die "--patch refused: $problem" ;; esac
+    [ -z "$problem" ] || case "$problem" in *" is a new "*) apply_refuse "$problem" ;; *) vbw_die "--patch refused: $problem"$'\n'"Next: correct that row in the patch document and send it again" ;; esac
     # The milestone's live rules as the addresses leave them, then the rules by words merged in.
     doc=$(record_read | jq -c --slurpfile f_p <(printf '%s' "$pdoc") --slurpfile f_o <(printf '%s' "$ops") "$RULES_JQ"'$f_p[0] as $p | $f_o[0] as $ops | .milestone.id as $m
       | ([.phases[] | select(.milestone == $m)]) as $ph
