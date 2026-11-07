@@ -118,7 +118,7 @@ strengthen() {
   strengthen
   "$VBW" approve > /dev/null
   printf '[ "$(sh src/receipt.sh)" = receipt ] && true\n' > tests/receipt.sh
-  git commit -q -am "test(receipt): touched"
+  git add tests/receipt.sh && git commit -q -m "test(receipt): touched" -- tests/receipt.sh
   break_pay R1.1
   [ "$status" -eq 0 ] || { echo "$output"; false; }
   printf '%s\n' "$output" | grep -q '^R1\.1 red: prints unpaid instead of paid$' || { echo "$output"; false; }
