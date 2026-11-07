@@ -2897,16 +2897,30 @@ scenario_leaveout() {
     jq -e '.evidence.passed == true' "$r" > /dev/null 2>&1 && proof=true
     probe=$(cat "$dir/.vbw/runtime/leaveout-probe" 2> /dev/null || true)
     [ "$probe" = "data=absent cache=present" ] && without=true
-    say "contract line: $named; leave_out: $leave; proof passed: $proof; probe: ${probe:-none}"
+    # The disk's own answer, tried here independently of VBW (a copy-on-write clone of a
+    # small file in the project), and what vbw doctor suggests for the ignored cache/.
+    local disk=plain flag=--reflink=always doc matches=false
+    [ "$(uname)" != Darwin ] || flag=-c
+    printf 'x\n' > "$dir/.vbw/runtime/l3-disk-a" 2> /dev/null \
+      && cp "$flag" "$dir/.vbw/runtime/l3-disk-a" "$dir/.vbw/runtime/l3-disk-b" 2> /dev/null && disk=clone
+    rm -f "$dir/.vbw/runtime/l3-disk-a" "$dir/.vbw/runtime/l3-disk-b"
+    doc=$(cd "$dir" && VBW_PROOFCOPY_PLAIN_KB=1 "$VBW" doctor 2>&1 | grep 'cache/' || true)
+    if [ "$disk" = clone ]; then
+      [[ "$doc" == *"little cost"* && "$doc" != *"under Clean copy"* ]] && matches=true
+    else
+      [[ "$doc" == *"list cache/ under Clean copy"* ]] && matches=true
+    fi
+    say "contract line: $named; leave_out: $leave; proof passed: $proof; probe: ${probe:-none}; disk: $disk; doctor: ${doc:-none}"
     common_checks
     expect "vbw show contract names the path left out ($named)" [ "$named" = true ]
     expect "the record's project.leave_out is [data/] ($leave)" [ "$leave" = '["data/"]' ]
     expect "the proof passed ($proof)" [ "$proof" = true ]
     expect "the clean copy held no data/ and still held cache/ ($probe)" [ "$without" = true ]
+    expect "vbw doctor's suggestion for cache/ matches the disk ($disk)" [ "$matches" = true ]
     [ "$failed" -eq 0 ] || passed=false
     result_write leaveout "$fixture" "${cost_usd:-0}" "$passed" \
-      "$(jq -n --argjson n "$named" --argjson l "$leave" --argjson p "$proof" --argjson w "$without" \
-        '{contract_names_path: $n, leave_out: $l, proof_passed: $p, copy_without_data: $w}')" \
+      "$(jq -n --argjson n "$named" --argjson l "$leave" --argjson p "$proof" --argjson w "$without" --arg k "$disk" --argjson m "$matches" \
+        '{contract_names_path: $n, leave_out: $l, proof_passed: $p, copy_without_data: $w, disk_kind: $k, suggestion_matches_disk: $m}')" \
       '["a listed path that is a folder whose files alone are ignored (tests/clean-copy-proof.bats holds it)","a clone without the data folder","the fix, mutate and fix-done copies (tests/clean-copy-proof.bats holds them)","the approval question as drawn on screen","a data folder of real size, or a disk without instant clones"]'
   }
 }
