@@ -299,7 +299,7 @@ with_sub_pay() {
   [[ "$output" =~ 20[0-9][0-9]-[0-9][0-9]-[0-9][0-9]T ]] || { echo "no time of the earlier break: $output"; false; }
   [ ! -d .vbw/runtime/mutate-queue/P1.1 ] || { ls -R .vbw/runtime/mutate-queue; false; }
   # Edited out and broken differently: accepted.
-  printf 'echo unpaid twice\n' > src/pay.sh
+  printf 'echo unpaid\necho twice\n' > src/pay.sh
   run "$VBW" mutate P1.1 R1.2 "prints another line" src/pay.sh < /dev/null
   [ "$status" -eq 0 ] || { echo "$output"; false; }
 }

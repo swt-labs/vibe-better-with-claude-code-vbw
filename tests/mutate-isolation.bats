@@ -98,7 +98,7 @@ appears() {
   done
 }
 
-@test "R188 R265: while a break is being checked, another Dev's vbw check gets the result it gets with no break; the working copy holds the break the whole time" {
+@test "R188 R265: while a break is being checked, the verdict comes from the set-aside bytes and the working copy holds the break the whole time, so another Dev's vbw check of a test that reads that file sees the break" {
   local pid
   printf 'echo unpaid\n' > src/pay.sh
   HOLD_PAY="$TEST_ROOT/go-pay" "$VBW" mutate P1.1 R1.1 "prints unpaid" src/pay.sh < /dev/null > "$TEST_ROOT/mutate.out" 2>&1 &
@@ -107,8 +107,8 @@ appears() {
   # The break is being checked now, on the set-aside bytes: the working copy keeps the break.
   [ "$(cat src/pay.sh)" = "echo unpaid" ] || { echo "the working copy was changed: $(cat src/pay.sh)"; false; }
   run "$VBW" check C2 < /dev/null
-  [ "$status" -eq 0 ] || { echo "$output"; false; }
-  [[ "$output" == *"C2 pass"* ]] || { echo "$output"; false; }
+  [ "$status" -ne 0 ] || { echo "$output"; false; }
+  [[ "$output" == *"C2 fail"* ]] || { echo "$output"; false; }
   : > "$TEST_ROOT/go-pay"
   wait "$pid" || { cat "$TEST_ROOT/mutate.out"; false; }
   breaks | jq -e '.[0].result == "red" and .[0].checks == {C1: "red"}' || { breaks; cat "$TEST_ROOT/mutate.out"; false; }
