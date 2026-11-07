@@ -71820,13 +71820,35 @@
         "P213.2",
         "P212.2"
       ],
-      "status": "blocked",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "scenario_taskbreak: facts break_left_in_working_copy (the file held the break after vbw mutate, from the session log and git), break_edited_out (the Dev's next commit holds no break), no_file_lost (every plan file at the end matches its commit); fixchecks_seed and any seed that sends the same bytes twice sends distinct bytes per break",
         "run the scenario; commit tools/l3-results/taskbreak.json"
       ],
-      "note": "Task 1 committed (ed4fdfc3: taskbreak facts, distinct bytes per break in fixchecks_seed). Task 2 cannot run: every Bash call that runs tools/l3-suite.sh (even bash -n on it, at HEAD~1 too) is refused by the VBW guard with 'the guard failed while a run is open'; vbw doctor says the guards work. The guard fails on this 267 KB script, so scenario_taskbreak and tools/l3-results/taskbreak.json cannot be produced from a Dev session. C612 is red as expected."
+      "mutations": [
+        {
+          "rule": {
+            "req": "R265",
+            "k": 15
+          },
+          "what": "the committed result says the scenario failed",
+          "files": [
+            "tools/l3-results/taskbreak.json"
+          ],
+          "checks": {
+            "C612": "red"
+          },
+          "result": "red",
+          "at": "2026-11-07T11:36:26Z",
+          "head": "126f91ab0bc6f84edd260d47ef3c3554129dc007",
+          "tree": "4bc227366b14894979efb8ebd80432d8245adb03",
+          "contract": "ba5f15da9e51cc99e37896aa10f70eb78bd506bfe06afa981fcf8f0b0a852296",
+          "digests": {
+            "tools/l3-results/taskbreak.json": "a853a5429a4e80c8bb627de71cb508e3575657b1141e037baa1119d0b82d3078"
+          }
+        }
+      ]
     },
     {
       "id": "P214.1",
@@ -91155,6 +91177,17 @@
         "ended": "2026-11-07T11:22:52Z",
         "cost": {
           "usd": 0.953646
+        }
+      },
+      {
+        "id": "build-20261107T113609Z",
+        "kind": "build",
+        "session": "0ee781c3-c5b6-4a6c-889f-04b89f1fba4a",
+        "milestone": "M54",
+        "started": "2026-11-07T11:36:09Z",
+        "ended": "2026-11-07T11:37:33Z",
+        "cost": {
+          "usd": 0
         }
       }
     ],
