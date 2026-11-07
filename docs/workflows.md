@@ -246,7 +246,7 @@ merely contains `--help` (for example a todo) is still text. The test is
 | `vbw fix done F1` or `vbw fix done F8 F9` | Lead (the fix round's closing step, run by the workflow) | verified (several fixes in one command run the checks they serve once; one that cannot close is named, the others still close, and the exit code is non-zero): no uncommitted changes in the files it may touch, and the checks of every finished requirement those files serve pass; then awaiting proof. While check files wait for the user's approval it runs no check: it names them, and the fixes await the proof after the approval |
 | `vbw fix check F1 < check.json` | Dev | in a fix that QA opened: register the regression test as a check of the finding's requirement. The JSON has `run` and `files`, and optionally `exit`, `output`, `timeout`, `alone`. It waits for the user's approval before the proof (docs/proof.md) |
 | `vbw apply < plan.json` | Lead | replace phases, plans and checks, and set each `auto` requirement's rules, in one validated write (refused while a build or fix run is open; a plan that has started must come back unchanged and keeps its status, note and breaks across every `vbw apply`; a requirement that another milestone owns or that a phase of another milestone already covers is refused with the `vbw apply --add` message, and nothing is written) |
-| `vbw apply --patch < patch.json` | Lead | change only the plans, checks and rules in the document; everything else stays byte for byte as it was. A check change on a started plan keeps the plan's status, tasks and commits and an open build run stays open (no `vbw plan reset`); the contract then reads NOT APPROVED until the user approves what the check now asserts. A change to plans or rules while a run is open is still refused |
+| `vbw apply --patch < patch.json` | Lead | change only the plans, checks and rules in the document; a plan or check row with an existing id is merged field by field (fields it leaves out keep their values, an explicit `null` removes an optional field, a missing required field is refused naming it); everything else stays byte for byte as it was. A check change on a started plan keeps the plan's status, tasks and commits and an open build run stays open (no `vbw plan reset`); the contract then reads NOT APPROVED until the user approves what the check now asserts. A change to plans or rules while a run is open is still refused |
 | `vbw apply --amend < amend.json` | main session | a correction that changes what no check asserts, on an approved contract only, with or without an open run: `{"plans": [{"id", "files"?, "awaits"?}], "checks": [{"id", "files"?}]}` adds files to a plan (never a protected check file), files to a check, and records that a plan awaits checks of its own requirements. Anything else (a title, a command, an expected result, a rule, a phase, a removal) is refused in one line that names the field, `vbw apply --patch` and the approval, and the record stays as it was. Each addition is recorded on the plan or check as an amendment (what, when, the session's 8-character short id, never a name); the contract stays approved (the approval is re-pinned), an open run stays open (a plan's added file joins the lease, a check's joins the protected files at once), and the next approval, `vbw show contract --changes` and `vbw ship` list the amendments made since approval. The router says one chat line for it; a run agent is refused by the guard |
 | `vbw apply --add < phase.json` | router | add one new phase with its plans, checks and rules to the milestone; every other phase, plan, check and rule stays as it was |
 
@@ -438,8 +438,14 @@ echo '{"checks": [{"id": "C2", "req": "R2", "run": ["sh", "tests/c2.sh", "--stri
 The document may carry `plans`, `checks` and `rules`, in the same shape as a
 full apply, and nothing else. VBW merges them into the record:
 
-- a plan or check with an existing `id` replaces that one; a new `id` is added
-  (a new plan needs a phase that exists);
+- a plan or check with an existing `id` is merged field by field: fields the
+  row leaves out keep their values, so `{"id": "P1.1", "files": [...]}` changes
+  only the files. An explicit `null` removes an optional field (plan: `after`,
+  `tasks`, `role`; check: `exit`, `output`, `timeout`, `alone`, `files`). `null`
+  on a required field (plan: `phase`, `title`, `reqs`, `files`; check: `req`,
+  `run`) is refused, naming the row and the field. A new `id` is added, and a
+  new row missing a required field is refused as `--patch refused: ...` naming
+  the row and the field (a new plan needs a phase that exists);
 - a rule is matched by requirement and text: the same text with another
   `check` changes it, new text adds it, and the requirement's other rules stay;
 - a rule named by its address instead (`"rule": "R1.2"`, the second rule of
