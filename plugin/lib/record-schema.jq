@@ -29,7 +29,10 @@ def schema_features: [
   {schema: 12, feature: "a break that names its rule by place or a requirement reworded with its rules kept",
    present: (((.plans | type) == "array" and any(.plans[]; type == "object" and (.mutations | type) == "array"
      and any(.mutations[]; type == "object" and (.rule | type) == "object" and (.rule | has("k")))))
-     or ((.requirements | type) == "array" and any(.requirements[]; type == "object" and .reworded == true)))}
+     or ((.requirements | type) == "array" and any(.requirements[]; type == "object" and .reworded == true)))},
+  {schema: 13, feature: "a recorded break that carries digests",
+   present: ((.plans | type) == "array" and any(.plans[]; type == "object" and (.mutations | type) == "array"
+     and any(.mutations[]; type == "object" and has("digests"))))}
 ];
 
 def schema_of: . as $r | [schema_features[] | select(.present) | .schema] | max // schema_floor;
@@ -52,4 +55,15 @@ def breaks_by_place:
                  | select(.value.text == $t) | .key + 1] | first) as $k
              | if $k == null then . else .rule = {req: $q, k: $k} end)
           else . end)
+      else . end) end;
+
+# R265: once the record holds a break with digests, an older break of it (written before schema 13)
+# gets digests: {} (none recorded), so every break carries the key and the validator can require it.
+def breaks_with_digests:
+  if (.plans | type) != "array"
+     or (any(.plans[]; type == "object" and (.mutations | type) == "array"
+         and any(.mutations[]; type == "object" and ((.digests // {}) | length) > 0)) | not) then .
+  else .plans |= map(
+      if type == "object" and (.mutations | type) == "array" then
+        .mutations |= map(if type == "object" and (has("none") | not) and (has("digests") | not) then . + {digests: {}} else . end)
       else . end) end;

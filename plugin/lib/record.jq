@@ -75,7 +75,7 @@ def has_text_break: (.plans | type) == "array"
 # the files, each check red or green and the result (a red one may carry pending: the
 # check files waiting for approval that caught it), a task with nothing to break, or a rule
 # whose check reads no file of its requirement's plans ({rule, none, at, head}).
-def mutation_ok:
+def mutation_ok($sch):
   type == "object" and (.at | iso)
   and (if has("none") then (.none | nonempty) and (
         if has("rule")
@@ -83,7 +83,7 @@ def mutation_ok:
           and (.rule | rule_ref_ok)
           and (.head | type == "string" and test("^[0-9a-f]{40}$"))
         else (keys | sort) == ["at","none","task"] and (.task | int_in(1; 9999)) end)
-      else (keys - ["rule","task","what","files","checks","result","at","head","tree","contract","strengthened","pending"] == [])
+      else (keys - ["rule","task","what","files","checks","result","at","head","tree","contract","strengthened","pending","digests"] == [])
         and (has("rule") != has("task"))
         and ((has("rule") | not) or (.rule | rule_ref_ok))
         and ((has("task") | not) or (.task | int_in(1; 9999)))
@@ -96,6 +96,9 @@ def mutation_ok:
         and ((has("contract") | not) or (.contract | sha256))
         and ((has("strengthened") | not) or (.strengthened | type == "array" and all(.[]; safe_path)))
         and ((has("pending") | not) or (.pending | type == "array" and length > 0 and all(.[]; safe_path)))
+        and ((has("digests") | not) or (. as $m | .digests | type == "object"
+             and all(to_entries[]; (.key as $f | $m.files | index($f) != null) and (.value | sha256 or . == "absent"))))
+        and ((($sch | type == "number" and . >= 13) | not) or has("digests"))
       end);
 
 # Plan ids reachable from $n through "after" edges ($g: id -> [ids]).
@@ -297,7 +300,7 @@ if type != "object" then ["record must be a JSON object"] else
         ( select(has("amendments") and ((.amendments | amendments_ok) | not)) | "\(.id) amendments must be [{what, at, session}]" ),
         ( . as $p | select(has("awaits") and ((.awaits | type == "array" and all(.[]; . as $a | any($checks[]; .id == $a and (. as $c | $p.reqs | type == "array" and any(.[]; . == $c.req))))) | not))
           | "\(.id) awaits must be an array of checks of its own requirements" ),
-        ( select(has("mutations") and ((.mutations | type == "array" and all(.[]; mutation_ok)) | not)) | "\(.id) mutations must be recorded breaks (vbw mutate)" ),
+        ( select(has("mutations") and ((.mutations | type == "array" and all(.[]; mutation_ok($r.schema))) | not)) | "\(.id) mutations must be recorded breaks (vbw mutate)" ),
         ( select(has("tasks") and ((.tasks | type == "array" and length > 0) and all(.tasks[]; nonempty) | not)) | "\(.id) tasks must be a non-empty array of non-empty strings" ),
         ( select(has("role") and (.role | one_of(["dev","docs"]) | not)) | "\(.id) role must be dev or docs" ),
         ( select(has("note") and ((.note | nonempty) | not)) | "\(.id) note must be a non-empty string" ),

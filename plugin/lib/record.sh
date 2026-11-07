@@ -34,7 +34,7 @@ record_violation() {
 # the one definition (R247), so an older VBW says the project needs a newer VBW instead
 # of calling the record corrupt. Records of schemas 1 to 3 written by an older VBW
 # are read and become format 4 on their next write.
-VBW_SCHEMA_MAX=12
+VBW_SCHEMA_MAX=13
 
 # The schema of the record at FILE when it is a number above the highest this
 # VBW reads (written by a newer VBW); empty and status 1 otherwise. A
@@ -374,7 +374,7 @@ record_update() {
   # checks, then the rest, so the guards read the beginning of the file alone (R149,
   # R150). An older record (schema 1 to 3) becomes format 4 here.
   jq "$@" -L "$VBW_LIB" "include \"record-schema\"; $filter
-    | breaks_by_place | {schema: schema_of, lease: (.lease // null),
+    | breaks_by_place | breaks_with_digests | {schema: schema_of, lease: (.lease // null),
        protected: ([(.checks // [])[]? | objects | .files? | arrays | .[] | strings] | unique)}
       + (if has(\"checks\") then {checks} else {checks: []} end) + del(.schema, .lease, .protected, .checks)" "$VBW_RECORD" > "$tmp" 2>/dev/null || vbw_die "internal error: record update failed"
   v=$(record_violation "$tmp") || vbw_die "refused: $v"$'\n'"Next: nothing was written; give the command a valid value (the line above names what would break), or run vbw doctor if the record itself is damaged"
