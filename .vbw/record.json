@@ -72464,11 +72464,34 @@
         "P216.1",
         "P213.3"
       ],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "scenario_leaveout: facts disk_kind (proofcopy_disk_kind's answer on the machine) and suggestion_matches_disk (plain: the leave-out suggestion was made; clone: the info line and no commented line)",
         "run the scenario; commit tools/l3-results/leaveout.json"
+      ],
+      "mutations": [
+        {
+          "rule": {
+            "req": "R267",
+            "k": 5
+          },
+          "what": "the committed result says the scenario failed",
+          "files": [
+            "tools/l3-results/leaveout.json"
+          ],
+          "checks": {
+            "C621": "red"
+          },
+          "result": "red",
+          "at": "2026-11-07T11:38:06Z",
+          "head": "a156557b3dc766ee36ea6c486dc9616dc693dde9",
+          "tree": "98a83b4a692f9f7a995b865bb25928aed5667256",
+          "contract": "ba5f15da9e51cc99e37896aa10f70eb78bd506bfe06afa981fcf8f0b0a852296",
+          "digests": {
+            "tools/l3-results/leaveout.json": "74e1120518e3c003460c25d44bd1813bc5803ae77348e8988555d95908f40622"
+          }
+        }
       ]
     }
   ],
@@ -91186,6 +91209,17 @@
         "milestone": "M54",
         "started": "2026-11-07T11:36:09Z",
         "ended": "2026-11-07T11:37:33Z",
+        "cost": {
+          "usd": 0
+        }
+      },
+      {
+        "id": "build-20261107T113739Z",
+        "kind": "build",
+        "session": "0ee781c3-c5b6-4a6c-889f-04b89f1fba4a",
+        "milestone": "M54",
+        "started": "2026-11-07T11:37:39Z",
+        "ended": "2026-11-07T11:38:53Z",
         "cost": {
           "usd": 0
         }
