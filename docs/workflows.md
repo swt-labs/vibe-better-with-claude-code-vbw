@@ -77,6 +77,13 @@ nothing and the router ends the run as before. With it:
   `{ended, recorded, report}`. The workflow returns that answer as
   `confirmation` and sets `complete` to true only when no agent stopped early
   and `recorded` and `ended` are both true.
+- A check file changed only by added lines is added-to. `vbw next` then says
+  `prove` (not `approve`) and carries `added_to: [{file, lines}]`; it prints
+  `check file X: N lines added since the approval; the proof judges it with the
+  approved content until they are approved at the next gate` (`1 line added` for
+  one). The build and fix workflows go on to the proof. A removed or altered
+  line, a new file or a file a fix added still makes `vbw next` say `approve`
+  first.
 - `vbw:planning` closes with the same Lead on every way out, including a stop
   for decisions or an error. Its closing agent also checks each planned phase
   with `vbw show phase`; a phase with no plans makes the workflow return
