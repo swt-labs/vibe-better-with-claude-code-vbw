@@ -1692,8 +1692,8 @@ suite therefore pays for the checks a break needs, not for every check.
   done` counts such a rule covered.
 
 - A check that reads the project through git has no read list to vouch for it,
-  so the check above refuses it. `vbw mutate PLAN Rn.k --none REASON` on such a
-  check is accepted on its reason alone: the kernel prints one line naming the
+  so the check above refuses it. Run `vbw mutate PLAN Rn.k --none REASON` for a
+  check that reads the project through git: it is accepted on its reason alone: the kernel prints one line naming the
   check, git and the reason, and records the excuse on the rule marked `git`. A
   missing or empty reason is refused: a reason is what the command needs, since
   no read list can vouch for the check. Each git-read excuse is listed at the
