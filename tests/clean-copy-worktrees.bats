@@ -224,3 +224,13 @@ fresh_named() {
   VBW_PROOFCOPY_DISK=clone VBW_PROOFCOPY_PLAIN_KB=512 vbw_run init
   [ "$(cksum < .vbw/spec.md)" = "$sum" ] || { echo "vbw init rewrote an existing spec"; false; }
 }
+
+@test "R267 doctor: with no injected answer vbw doctor asks the real disk and runs to its end" {
+  git init -q .
+  git -c user.name=t -c user.email=t@t commit -q --allow-empty -m first
+  "$VBW" init > /dev/null
+  run "$VBW" doctor
+  [[ "$output" != *"unbound variable"* ]] || { echo "$output"; false; }
+  [[ "$output" == *"the spec"* ]] || { echo "$output"; false; }
+  [ ! -e .vbw/runtime/disk-probe-src.* ] || { ls .vbw/runtime; false; }
+}
