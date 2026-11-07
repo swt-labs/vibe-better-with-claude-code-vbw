@@ -178,6 +178,8 @@ input names an `agent_type`) is also held to the lease. The main session never i
 | The same git commands (`commit`, `commit-tree`, `push`, ...) from VBW's chat (a hook input with no `agent_type`) while its autonomous run is armed (`.vbw/runtime/auto.<session>.json`) or the record holds a loop that has not ended | Follow the proof's Next line, or commit with `vbw commit`. With no armed run and no loop the chat is not checked: the user's own commands are never checked, in the chat or the terminal. The rule holds on a ship refusal too: the chat follows the refusal's Next line, a `vbw commit` of the milestone's own files. The user's own files are never committed by VBW's chat: it asks the user what to do with them |
 | `git stash` (except `list`, `show`), `switch`, `reset`, `checkout` of a branch; `git checkout -- PATH` or `git restore PATH` outside `lease.files` | Agents share one working tree: nothing may move HEAD or other agents' changes |
 
+The guard on check files does not change. What differs is the proof afterwards: a protected check file changed only by added lines is added-to, and the proof runs it with its approved content (docs/proof.md, Lines added to a check file). A file with a removed, changed or reordered line, or a new file, is waiting and stops the proof until approved. Only additions are safe to run against: all the approved content is still there, in order, so a build cannot make a check pass by weakening it.
+
 **Programs that write files.** During a run, a subagent's `python`, `node`,
 `deno`, `bun`, `perl`, `ruby`, `php` or `lua` command is judged like a shell
 write: a file it writes outside `lease.files` gets the same refusal, naming the
