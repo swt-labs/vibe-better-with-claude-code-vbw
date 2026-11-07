@@ -30892,7 +30892,15 @@
         "guarded: R13 (C12), R14 (C13), R25 (C24), R28 (C25), R31 (C27), R34 (C30), R39 (C36), R42 (C38), R44 (C44, C45), R48 (C49, C50), R50 (C51), R51 (C52, C53, C66), R59 (C68, C92), R60 (C72, C94), R61 (C73, C74, C75, C76, C77), R62 (C78, C79, C80, C81, C82, C83, C93), R64 (C84, C85), R65 (C86, C87, C88, C89, C90), R69 (C110, C120, C122), R70 (C114), R72 (C116, C118), R73 (C98), R74 (C99, C100), R75 (C101), R76 (C102, C103), R77 (C104), R78 (C105, C106), R79 (C107), R81 (C109, C111, C112, C113), R95 (C149, C150), R96 (C151, C152), R99 (C155), R101 (C179), R106 (C164, C165), R107 (C166, C167), R116 (C182, C183), R118 (C184), R123 (C190, C191), R129 (C196), R130 (C197), R134 (C201), R135 (C202), R147 (C212, C215, C237), R148 (C213, C214, C216, C238), R156 (C242, C243), R157 (C244), R158 (C245), R159 (C246), R160 (C247, C263, C264), R162 (C249), R163 (C250), R167 (C257, C258, C259, C260), R173 (C281, C282, C283, C284, C285, C286, C289), R179 (C297, C298, C299, C300, C301, C302, C303, C304, C305, C306, C312), R180 (C307, C308, C309, C310), R182 (C322, C323, C324, C325, C326), R184 (C328, C329, C330, C331, C332, C333), R185 (C334, C335, C336, C337, C338, C339, C340, C341, C342, C343), R186 (C344, C345, C346, C347, C348), R189 (C360, C361, C362, C363, C364, C365, C366, C367, C368, C369, C370, C371, C372, C373), R190 (C374, C375, C376, C377, C378, C379, C380, C381, C382, C383, C384, C385, C386, C387, C388), R191 (C389, C390, C391, C392, C393, C394, C395, C396, C397, C398, C399, C400), R192 (C401, C402, C403, C404, C405, C406, C407, C408, C409, C410), R194 (C417, C418, C419), R199 (C424, C425, C430), R200 (C426, C427, C431), R201 (C428, C429), R202 (C432, C433, C434, C435, C436, C437, C438, C439, C440, C441, C442, C443, C444, C445, C446, C447), R208 (C464, C465, C466, C468), R209 (C469, C470, C471, C472, C473), R211 (C477, C478, C479), R212 (C480, C481, C482), R213 (C483, C484), R215 (C488, C489, C490), R216 (C491, C492, C493), R219 (C497, C498, C499), R220 (C500, C501, C502, C503), R228 (C522, C523, C524, C525), R237 (C544), R238 (C545), R239 (C554, C555), R240 (C556, C557), R241 (C546, C547, C548, C549, C550, C560), R242 (C551, C552, C553), R244 (C562, C563), R245 (C564, C565), R246 (C566, C567), R250 (C574, C575, C576, C577, C578, C585), R262 (C601)",
         "tests: project test command"
       ],
-      "predicted": "deep"
+      "predicted": "deep",
+      "escalations": [
+        {
+          "at": "2026-11-07T00:30:23Z",
+          "from": "deep",
+          "to": "deep",
+          "reason": "Dev blocked P212.2: Tasks 1 and 2 are committed (4ddc7a5f scenario_rustpack, cc235200 docs). Task 3 cannot run: every Bash call that runs tools/l3-suite.sh is refused with 'VBW guard: the guard failed while a run is open' (also the unchanged copy from 13ed9c71, so not my edit; a trivial script runs fine). vbw doctor ends with 'plugin/lib/proofcopy.sh: line 701: VBW_RUNTIME: unbound variable'. No tools/l3-results/rustpack.json written, so C604 stays red."
+        }
+      ]
     },
     {
       "id": "P213",
@@ -71302,13 +71310,14 @@
         "P212.1",
         "P213.2"
       ],
-      "status": "planned",
+      "status": "blocked",
       "role": "dev",
       "tasks": [
         "scenario_rustpack: a fixture whose spec asks for two features in one crate (or a two-crate workspace) with no seeded plan, so /vbw:vibe runs the Lead with the Rust pack; facts lead_planned, plan_files_named (every plan names each file it changes), plan_files_disjoint (no two plans change the same file), read from the record",
         "docs/workflows.md rustpack scenario line: what the scenario now judges",
         "run the scenario; commit tools/l3-results/rustpack.json (fixture, cost, L3, facts, not_tested)"
-      ]
+      ],
+      "note": "Tasks 1 and 2 are committed (4ddc7a5f scenario_rustpack, cc235200 docs). Task 3 cannot run: every Bash call that runs tools/l3-suite.sh is refused with 'VBW guard: the guard failed while a run is open' (also the unchanged copy from 13ed9c71, so not my edit; a trivial script runs fine). vbw doctor ends with 'plugin/lib/proofcopy.sh: line 701: VBW_RUNTIME: unbound variable'. No tools/l3-results/rustpack.json written, so C604 stays red."
     },
     {
       "id": "P213.1",
@@ -71326,7 +71335,7 @@
         "docs/record.md"
       ],
       "after": [],
-      "status": "blocked",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "cmd-mutate.sh and mutate-queue.sh: the broken bytes are copied to the set-aside folder and the checks judge them from there; no git restore, no git checkout, no rm of a project path: the working copy (content, mode, symlink, untracked, deleted) is never touched, directly, with --queue, or for taskK",
@@ -71334,7 +71343,299 @@
         "the same bytes twice: before any check runs (after the dirty-check-file refusal), a break whose digests equal an earlier entry's or a queued entry's of the same plan at the same HEAD is refused in one line naming the earlier break's target and time, 'not edited out', exit non-zero, nothing run or recorded; also for --queue and for a single break after a queued one",
         "record-schema.jq row 13 'a recorded break that carries digests', VBW_SCHEMA_MAX 13, docs/record.md: Versioning row and the plans row; vbw plan done keeps refusing 'ID has uncommitted changes in: FILES'"
       ],
-      "note": "Built and committed (036fe719, d1bb8f37): C606, C608, C609, C610 pass; C605 and C607 stay red on two cases of protected check files that no change in this plan's files can satisfy. (1) tests/mutate-command.bats line 304: after the same-bytes refusal it runs 'vbw mutate P1.1 R1.2' with 'echo unpaid twice' and expects exit 0, but R1.2's check C3 only asserts one printed line, so that break is a survivor and exits 1 (a different break of R1.2 that prints two lines would pass). (2) tests/mutate-isolation.bats line 110: with the break left in the working copy, 'vbw check C2' (which reads src/pay.sh from the live tree, as vbw check always runs there) is expected to pass; it can only fail while the working copy holds the break, and vbw check/checks.sh are not this plan's files. Needs the Lead/user to correct those two tests (e.g. make the second break print two lines; make C2 not read the broken file or drop the claim) or widen the plan."
+      "mutations": [
+        {
+          "task": 1,
+          "what": "a task break appends a byte to the working copy",
+          "files": [
+            "plugin/lib/cmd-mutate.sh"
+          ],
+          "checks": {
+            "C605": "red"
+          },
+          "result": "red",
+          "at": "2026-11-07T00:31:54Z",
+          "head": "cc2352006ce408fd595bf9c3db8c2fa1966eef69",
+          "tree": "f7eed1322293a335d33c2743612bd57e1e0ec68c",
+          "contract": "f2db63b4ff95f01202d291f020e55f8d9602b269016f8cc6adcb2955f2157cea",
+          "digests": {
+            "plugin/lib/cmd-mutate.sh": "1b887da81de9d3a1384aedfd08f460a0984a948f2a90ebf1d30ef1a6c4a667ae"
+          }
+        },
+        {
+          "rule": {
+            "req": "R265",
+            "k": 1
+          },
+          "what": "set-aside also appends a byte to the working copy",
+          "files": [
+            "plugin/lib/cmd-mutate.sh"
+          ],
+          "checks": {
+            "C605": "red"
+          },
+          "result": "red",
+          "at": "2026-11-07T00:33:44Z",
+          "head": "cc2352006ce408fd595bf9c3db8c2fa1966eef69",
+          "tree": "f7eed1322293a335d33c2743612bd57e1e0ec68c",
+          "contract": "f2db63b4ff95f01202d291f020e55f8d9602b269016f8cc6adcb2955f2157cea",
+          "digests": {
+            "plugin/lib/cmd-mutate.sh": "633c0958f1a1ec54d9d4757865ebc87220a3b1f453506273eef4a4cc0096463d"
+          }
+        },
+        {
+          "rule": {
+            "req": "R265",
+            "k": 3
+          },
+          "what": "the queue removes the working copy of a queued break",
+          "files": [
+            "plugin/lib/cmd-mutate.sh"
+          ],
+          "checks": {
+            "C606": "red"
+          },
+          "result": "red",
+          "at": "2026-11-07T00:33:47Z",
+          "head": "cc2352006ce408fd595bf9c3db8c2fa1966eef69",
+          "tree": "f7eed1322293a335d33c2743612bd57e1e0ec68c",
+          "contract": "f2db63b4ff95f01202d291f020e55f8d9602b269016f8cc6adcb2955f2157cea",
+          "digests": {
+            "plugin/lib/cmd-mutate.sh": "1fd42fdfbc1b828b6291dfd5caa9f8ab006a3345e7d716581f1164ac3d515968"
+          }
+        },
+        {
+          "rule": {
+            "req": "R265",
+            "k": 4
+          },
+          "what": "the checks judge the committed bytes, not the set-aside ones",
+          "files": [
+            "plugin/lib/cmd-mutate.sh"
+          ],
+          "checks": {
+            "C607": "red"
+          },
+          "result": "red",
+          "at": "2026-11-07T00:33:49Z",
+          "head": "cc2352006ce408fd595bf9c3db8c2fa1966eef69",
+          "tree": "f7eed1322293a335d33c2743612bd57e1e0ec68c",
+          "contract": "f2db63b4ff95f01202d291f020e55f8d9602b269016f8cc6adcb2955f2157cea",
+          "digests": {
+            "plugin/lib/cmd-mutate.sh": "aeb98ee96f92dcac39b54e35f7a49c8948c893149246ed6ffea1f075ac42fe43"
+          }
+        },
+        {
+          "rule": {
+            "req": "R265",
+            "k": 5
+          },
+          "what": "a git restore line in the queue",
+          "files": [
+            "plugin/lib/mutate-queue.sh"
+          ],
+          "checks": {
+            "C605": "red"
+          },
+          "result": "red",
+          "at": "2026-11-07T00:33:51Z",
+          "head": "cc2352006ce408fd595bf9c3db8c2fa1966eef69",
+          "tree": "f7eed1322293a335d33c2743612bd57e1e0ec68c",
+          "contract": "f2db63b4ff95f01202d291f020e55f8d9602b269016f8cc6adcb2955f2157cea",
+          "digests": {
+            "plugin/lib/mutate-queue.sh": "df77905fac1ea839e59c8145b2364ca2f7c8c46e09c17df3b3649564fcf6721d"
+          }
+        },
+        {
+          "rule": {
+            "req": "R265",
+            "k": 6
+          },
+          "what": "recorded breaks match on different bytes instead of the same",
+          "files": [
+            "plugin/lib/cmd-mutate.sh"
+          ],
+          "checks": {
+            "C605": "red"
+          },
+          "result": "red",
+          "at": "2026-11-07T00:33:53Z",
+          "head": "cc2352006ce408fd595bf9c3db8c2fa1966eef69",
+          "tree": "f7eed1322293a335d33c2743612bd57e1e0ec68c",
+          "contract": "f2db63b4ff95f01202d291f020e55f8d9602b269016f8cc6adcb2955f2157cea",
+          "digests": {
+            "plugin/lib/cmd-mutate.sh": "285c62f05388d72af73e4d789affce6f5fe1fa6899a7c0f9e840def053e706a1"
+          }
+        },
+        {
+          "rule": {
+            "req": "R265",
+            "k": 7
+          },
+          "what": "queued breaks match on different bytes",
+          "files": [
+            "plugin/lib/cmd-mutate.sh"
+          ],
+          "checks": {
+            "C606": "red"
+          },
+          "result": "red",
+          "at": "2026-11-07T00:33:55Z",
+          "head": "cc2352006ce408fd595bf9c3db8c2fa1966eef69",
+          "tree": "f7eed1322293a335d33c2743612bd57e1e0ec68c",
+          "contract": "f2db63b4ff95f01202d291f020e55f8d9602b269016f8cc6adcb2955f2157cea",
+          "digests": {
+            "plugin/lib/cmd-mutate.sh": "9b1ebfa8e16c5761adaff8b9dcedb56c18e291be410ef132392935d17b98eccf"
+          }
+        },
+        {
+          "rule": {
+            "req": "R265",
+            "k": 8
+          },
+          "what": "the validator accepts a digest for a file the break did not name",
+          "files": [
+            "plugin/lib/record.jq"
+          ],
+          "checks": {
+            "C605": "red"
+          },
+          "result": "red",
+          "at": "2026-11-07T00:33:57Z",
+          "head": "cc2352006ce408fd595bf9c3db8c2fa1966eef69",
+          "tree": "f7eed1322293a335d33c2743612bd57e1e0ec68c",
+          "contract": "f2db63b4ff95f01202d291f020e55f8d9602b269016f8cc6adcb2955f2157cea",
+          "digests": {
+            "plugin/lib/record.jq": "72cca1c280d9abe1eeb3d6202f339cabf9040f97da850aa6fce6670d676a9dd6"
+          }
+        },
+        {
+          "rule": {
+            "req": "R265",
+            "k": 9
+          },
+          "what": "a queued entry carries no digests",
+          "files": [
+            "plugin/lib/cmd-mutate.sh"
+          ],
+          "checks": {
+            "C606": "red"
+          },
+          "result": "red",
+          "at": "2026-11-07T00:33:59Z",
+          "head": "cc2352006ce408fd595bf9c3db8c2fa1966eef69",
+          "tree": "f7eed1322293a335d33c2743612bd57e1e0ec68c",
+          "contract": "f2db63b4ff95f01202d291f020e55f8d9602b269016f8cc6adcb2955f2157cea",
+          "digests": {
+            "plugin/lib/cmd-mutate.sh": "80780c1a0bd0188dee70d94b0b86bba52f9806d8f139b5d6a4db1169b3d27195"
+          }
+        },
+        {
+          "rule": {
+            "req": "R265",
+            "k": 10
+          },
+          "what": "digests count as schema 12",
+          "files": [
+            "plugin/lib/record-schema.jq"
+          ],
+          "checks": {
+            "C609": "red"
+          },
+          "result": "red",
+          "at": "2026-11-07T00:34:01Z",
+          "head": "cc2352006ce408fd595bf9c3db8c2fa1966eef69",
+          "tree": "f7eed1322293a335d33c2743612bd57e1e0ec68c",
+          "contract": "f2db63b4ff95f01202d291f020e55f8d9602b269016f8cc6adcb2955f2157cea",
+          "digests": {
+            "plugin/lib/record-schema.jq": "7b90ece42ec8d8fa006774586b528b071317fabb216557d42e4db701bf0b9cc2"
+          }
+        },
+        {
+          "rule": {
+            "req": "R265",
+            "k": 11
+          },
+          "what": "the versioning row says 12",
+          "files": [
+            "docs/record.md"
+          ],
+          "checks": {
+            "C610": "red"
+          },
+          "result": "red",
+          "at": "2026-11-07T00:34:03Z",
+          "head": "cc2352006ce408fd595bf9c3db8c2fa1966eef69",
+          "tree": "f7eed1322293a335d33c2743612bd57e1e0ec68c",
+          "contract": "f2db63b4ff95f01202d291f020e55f8d9602b269016f8cc6adcb2955f2157cea",
+          "digests": {
+            "docs/record.md": "420f070f8a6d84a96b8b0083f2b8dc06cf4b1ef39f9025dcca5f32db5afc3452"
+          }
+        },
+        {
+          "rule": {
+            "req": "R265",
+            "k": 12
+          },
+          "what": "the kernel puts the committed bytes back into the working copy",
+          "files": [
+            "plugin/lib/cmd-mutate.sh"
+          ],
+          "checks": {
+            "C608": "green"
+          },
+          "result": "survivor",
+          "at": "2026-11-07T00:34:05Z",
+          "head": "cc2352006ce408fd595bf9c3db8c2fa1966eef69",
+          "tree": "f7eed1322293a335d33c2743612bd57e1e0ec68c",
+          "contract": "f2db63b4ff95f01202d291f020e55f8d9602b269016f8cc6adcb2955f2157cea",
+          "digests": {
+            "plugin/lib/cmd-mutate.sh": "a958b7d6cba51be0dec3873dbbdaa2187c093de343c3a563ec02802c5e467377"
+          }
+        },
+        {
+          "rule": {
+            "req": "R265",
+            "k": 12
+          },
+          "what": "the kernel puts the committed bytes back after every break",
+          "files": [
+            "plugin/lib/cmd-mutate.sh"
+          ],
+          "checks": {
+            "C608": "red"
+          },
+          "result": "red",
+          "at": "2026-11-07T00:34:35Z",
+          "head": "cc2352006ce408fd595bf9c3db8c2fa1966eef69",
+          "tree": "f7eed1322293a335d33c2743612bd57e1e0ec68c",
+          "contract": "f2db63b4ff95f01202d291f020e55f8d9602b269016f8cc6adcb2955f2157cea",
+          "digests": {
+            "plugin/lib/cmd-mutate.sh": "195f3cb914fedccf2d4ecec6f0a11498e99feb11e659bd40b97e8d826c0dac5e"
+          }
+        },
+        {
+          "rule": {
+            "req": "R265",
+            "k": 2
+          },
+          "what": "a break leaves a byte appended in the working copy after the run",
+          "files": [
+            "plugin/lib/cmd-mutate.sh"
+          ],
+          "checks": {
+            "C605": "red"
+          },
+          "result": "red",
+          "at": "2026-11-07T00:35:05Z",
+          "head": "cc2352006ce408fd595bf9c3db8c2fa1966eef69",
+          "tree": "f7eed1322293a335d33c2743612bd57e1e0ec68c",
+          "contract": "f2db63b4ff95f01202d291f020e55f8d9602b269016f8cc6adcb2955f2157cea",
+          "digests": {
+            "plugin/lib/cmd-mutate.sh": "3aaeb94fde93a5c4b4cf62e3a2cb35d6cbfe8e71bc58ca105e8fe01324d62b38"
+          }
+        }
+      ]
     },
     {
       "id": "P213.2",
@@ -90471,6 +90772,17 @@
         "ended": "2026-11-07T00:11:26Z",
         "cost": {
           "usd": 4.031881
+        }
+      },
+      {
+        "id": "build-20261107T002735Z",
+        "kind": "build",
+        "session": "0ee781c3-c5b6-4a6c-889f-04b89f1fba4a",
+        "milestone": "M54",
+        "started": "2026-11-07T00:27:35Z",
+        "ended": "2026-11-07T00:35:26Z",
+        "cost": {
+          "usd": 1.952487
         }
       }
     ],
