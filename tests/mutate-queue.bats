@@ -159,6 +159,8 @@ queue() {
 
 @test "T174: vbw plan done names queued breaks that have not run yet" {
   queue R1.1 "prints unpaid" 'echo unpaid'
+  # The break stays in the working copy (R265): the Dev edits it out before plan done.
+  git checkout -q -- src/pay.sh
   run "$VBW" plan done P1.1 < /dev/null
   [ "$status" -ne 0 ] && [[ "$output" == *"R1.1"* && "$output" == *"vbw mutate P1.1 --run"* ]] || { echo "$output"; false; }
 }
@@ -263,7 +265,8 @@ started() { [ "$(ls "$BAR" | grep -c '^[0-9]')" -ge 1 ]; }
   run "$VBW" mutate P1.1 --run < /dev/null
   [ "$status" -eq 0 ] || { echo "$output"; false; }
   [[ "$output" == *"R1.1 red: prints unpaid"* ]] || { echo "$output"; false; }
-  queue R1.1 "prints unpaid" 'echo unpaid'
+  # Other bytes: the same bytes twice on one commit are refused as a break not edited out (R265).
+  queue R1.1 "prints unpaid" 'echo unpaid now'
   m=$(ls -d .vbw/runtime/mutate-queue/P1.1/*/meta.json)
   jq 'del(.tree)' "$m" > "$TEST_ROOT/m.json" && cp "$TEST_ROOT/m.json" "$m"
   printf 'x\n' > other.txt

@@ -92,12 +92,14 @@ done_ok() {
   printf 'echo paid\necho oops >&2\n' > src/pay.sh
   run "$VBW" mutate P1.1 R1.2 "prints oops on stderr" src/pay.sh < /dev/null
   [ "$status" -ne 0 ] && [[ "$output" == *survivor* ]] || { echo "$output"; false; }
-  refuses_naming P1.1 R1.2
+  # The break stays in the working copy (R265): edit it out before plan done judges the plan.
   git checkout -q -- src/pay.sh
+  refuses_naming P1.1 R1.2
   printf '[ "$(sh src/pay.sh 2>&1)" = paid ]\n' > tests/pay.sh
   git commit -q -am "test(pay): nothing but paid, on either stream"
   printf 'echo paid\necho oops >&2\n' > src/pay.sh
   "$VBW" mutate P1.1 R1.2 "prints oops on stderr" src/pay.sh < /dev/null > /dev/null
+  git checkout -q -- src/pay.sh
   done_ok P1.1
 }
 

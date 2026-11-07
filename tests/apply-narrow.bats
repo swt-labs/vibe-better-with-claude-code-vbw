@@ -272,19 +272,21 @@ clean_refusal() {
   part '[.checks[] | select(.id == "C2")][0]' | jq -e '(has("exit") | not) and (has("output") | not) and (has("timeout") | not) and (has("alone") | not) and (has("files") | not) and .req == "R2" and .run == ["sh", "tests/c2.sh"]' || { part '[.checks[] | select(.id == "C2")][0]'; false; }
 }
 
-@test "R266: null on a required field (plan: phase, title, reqs, files; check: req, run) is refused in one line naming the row and the field; the record is unchanged" {
+@test "R266: null on a required field (plan: phase, title, reqs, files; check: req, run) is refused in one line naming the row and the field, with its next step; the record is unchanged" {
   local sum f
   sum=$(cksum < .vbw/record.json)
   for f in phase title reqs files; do
     run "$VBW" apply --patch <<< "{\"plans\": [{\"id\": \"P1.2\", \"$f\": null}]}"
     clean_refusal "$sum"
-    [ "$(printf '%s\n' "$output" | grep -c .)" -eq 1 ] || { echo "$f: $output"; false; }
+    # One line naming the row and the field, then its next step (R162: every refusal carries one).
+    [ "$(printf '%s\n' "$output" | grep . | grep -vc '^Next:')" -eq 1 ] || { echo "$f: $output"; false; }
     [[ "$output" == *"P1.2"* && "$output" == *"$f"* ]] || { echo "$f: $output"; false; }
   done
   for f in req run; do
     run "$VBW" apply --patch <<< "{\"checks\": [{\"id\": \"C2\", \"$f\": null}]}"
     clean_refusal "$sum"
-    [ "$(printf '%s\n' "$output" | grep -c .)" -eq 1 ] || { echo "$f: $output"; false; }
+    # One line naming the row and the field, then its next step (R162: every refusal carries one).
+    [ "$(printf '%s\n' "$output" | grep . | grep -vc '^Next:')" -eq 1 ] || { echo "$f: $output"; false; }
     [[ "$output" == *"C2"* && "$output" == *"$f"* ]] || { echo "$f: $output"; false; }
   done
 }

@@ -71,7 +71,7 @@ max_read() { sed -n 's/^VBW_SCHEMA_MAX=//p' "$PLUGIN_ROOT/lib/record.sh"; }
   run table 'schema_features | all(.[]; type == "object" and (.schema | type) == "number" and (.feature | type) == "string" and has("present")) and (map(.schema) == [5, 6, 7, 8, 9, 10, 11, 12, 13, 14])'
   [ "$output" = "true" ] || { echo "rows: $(table 'schema_features | map({schema, feature})')"; false; }
   run table 'schema_features | map(.feature)'
-  [ "$output" = '["settings.efforts","a decision that names its plans","settings.mcp","a recorded break that carries tree or contract","an amendment, an awaited check or a queued requirement","a list of test file forms","a proof that kept its clean copies","a break that names its rule by place or a requirement reworded with its rules kept"]' ] || { echo "$output"; false; }
+  [ "$output" = '["settings.efforts","a decision that names its plans","settings.mcp","a recorded break that carries tree or contract","an amendment, an awaited check or a queued requirement","a list of test file forms","a proof that kept its clean copies","a break that names its rule by place or a requirement reworded with its rules kept","a recorded break that carries digests","a rule'"'"'s --none entry marked git (its check reads the project through git)"]' ] || { echo "$output"; false; }
   [ "$(table 'schema_floor')" = 4 ]
   [ "$(table 'schema_top')" = 14 ]
   [ "$(max_read)" = "$(table 'schema_top')" ] || { echo "VBW_SCHEMA_MAX $(max_read) is not the table's top $(table 'schema_top')"; false; }
@@ -306,7 +306,8 @@ max_read() { sed -n 's/^VBW_SCHEMA_MAX=//p' "$PLUGIN_ROOT/lib/record.sh"; }
   vbw_run show plan P1.1
   [ "$status" -eq 0 ] || { echo "$output"; false; }
   "$VBW" decide "Use blue buttons" "the owner prefers them" > /dev/null
-  jq -e '.schema == 12
+  # 13: the fixture's own break, written by this kernel, carries digests (R265).
+  jq -e '.schema == 13
     and .plans[0].mutations[0].rule == {req: "R1", k: 1}
     and .plans[0].mutations[1].rule == {req: "R1", text: "no such rule"}' .vbw/record.json || { jq '.schema, .plans[0].mutations[].rule' .vbw/record.json; false; }
   [ "$(validate)" = '[]' ] || { validate; false; }
