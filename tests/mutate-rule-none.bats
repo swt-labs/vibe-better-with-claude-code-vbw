@@ -218,15 +218,17 @@ no_reads() {
 }
 
 @test "R264: vbw show plan and vbw show req print the excuse as 'no break possible: CHECK reads the project through git (REASON)', and vbw plan done counts it" {
-  run "$VBW" plan done P1.1 < /dev/null
-  [ "$status" -ne 0 ] && [[ "$output" == *"R1.3"* ]] || { echo "$output"; false; }
+  # What plan done asks, at the function that decides it: the fixture's C6 always fails and
+  # plan done runs the checks first, and it asks breaks only of a building plan in a build run, and a requirement's rules of the plan that completes it.
+  owed() { jq '.lease = {kind: "build"} | (.plans[] | select(.id == "P1.1")).status = "building" | (.plans[] | select(.id == "P1.2")).status = "done"' .vbw/record.json \
+    | vbw_kernel '. "$VBW_LIB/cmd-plan.sh"; plan_missing_breaks P1.1'; }
+  [[ "$(owed)" == *"R1.3"* ]] || { owed; false; }
   "$VBW" mutate P1.1 R1.3 --none "only git" < /dev/null > /dev/null
   vbw_run show plan P1.1
   printf '%s\n' "$output" | grep -qE '^  R1\.3: no break possible: C4 reads the project through git \(only git\)$' || { echo "$output"; false; }
   vbw_run show req R1
   [[ "$output" == *"no break possible: C4 reads the project through git (only git)"* ]] || { echo "$output"; false; }
-  run "$VBW" plan done P1.1 < /dev/null
-  [[ "$output" != *"R1.3"* ]] || { echo "plan done still asks for R1.3: $output"; false; }
+  [[ "$(owed)" != *"R1.3"* ]] || { echo "plan done still asks for R1.3"; owed; false; }
 }
 
 @test "R264: vbw show contract and vbw show contract --changes list every git-read excuse since the last approval, one line each (plan, rule, check, reason), the block vbw ship shares; none listed after the next approval" {
