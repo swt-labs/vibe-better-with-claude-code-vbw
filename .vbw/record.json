@@ -1,6 +1,19 @@
 {
   "schema": 13,
-  "lease": null,
+  "lease": {
+    "run": "build-20261107T003623Z",
+    "kind": "build",
+    "started_at": "2026-11-07T00:36:23Z",
+    "files": [
+      "docs/workflows.md",
+      "tools/l3-results/rustpack.json",
+      "tools/l3-suite.sh"
+    ],
+    "session": "0ee781c3-c5b6-4a6c-889f-04b89f1fba4a",
+    "cost": {
+      "usd": 3324.421339
+    }
+  },
   "protected": [
     "tests/adaptive-results.bats",
     "tests/agent-scratch.bats",
@@ -71310,14 +71323,13 @@
         "P212.1",
         "P213.2"
       ],
-      "status": "blocked",
+      "status": "building",
       "role": "dev",
       "tasks": [
         "scenario_rustpack: a fixture whose spec asks for two features in one crate (or a two-crate workspace) with no seeded plan, so /vbw:vibe runs the Lead with the Rust pack; facts lead_planned, plan_files_named (every plan names each file it changes), plan_files_disjoint (no two plans change the same file), read from the record",
         "docs/workflows.md rustpack scenario line: what the scenario now judges",
         "run the scenario; commit tools/l3-results/rustpack.json (fixture, cost, L3, facts, not_tested)"
-      ],
-      "note": "Tasks 1 and 2 are committed (4ddc7a5f scenario_rustpack, cc235200 docs). Task 3 cannot run: every Bash call that runs tools/l3-suite.sh is refused with 'VBW guard: the guard failed while a run is open' (also the unchanged copy from 13ed9c71, so not my edit; a trivial script runs fine). vbw doctor ends with 'plugin/lib/proofcopy.sh: line 701: VBW_RUNTIME: unbound variable'. No tools/l3-results/rustpack.json written, so C604 stays red."
+      ]
     },
     {
       "id": "P213.1",
@@ -76772,6 +76784,13 @@
       "id": "T250",
       "text": "tests/proof-priority.bats line 124 fails on Linux: /bin links to /usr/bin, and a dangling link fails [ -e ], so ln runs twice; test [ -e ] or [ -L ]. Red on PR 749, Linux shard 3 only. Test-only.",
       "status": "done"
+    },
+    {
+      "id": "T251",
+      "text": "The guard's read of a script run by name takes more than its 5 s CPU limit on a 264 KB script and answers 'the guard failed, run vbw doctor', which does not name the cause. Say the script is too large to read, and look at why the read grows faster than the file (80 KB 1.1 s, 264 KB 7.6 s). Also: a clear message when the installed VBW is older than the record and the approval menu cannot work; and parallel Devs running a kernel another Dev is editing (a half-edited kernel made the shared record invalid, and a Dev got out with a lenient validator copy).",
+      "sort": "next",
+      "size": "small",
+      "status": "open"
     }
   ],
   "decisions": [
