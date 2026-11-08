@@ -76155,12 +76155,290 @@
         "P221.2",
         "P221.3"
       ],
-      "status": "planned",
+      "status": "done",
       "tasks": [
         "tests/timed-guard-script.bats: a timed case for an inline Bash command (the guard-bash hook input) of the same mix as the field script, a cd first and here-docs (cat and python3 - <<PY) throughout, at about 20 KB and 66 KB: the larger takes at most 5 s of CPU and at most 1.5 times the size ratio of the smaller; shown red on the current guard, whose inline path re-reads the whole head before each here-doc",
         "plugin/hooks/programs.jq: one reader, heredocs($start; resolve), yields {line, text, quoted, cwd} for every here-doc in one pass, the working folder carried from the lines since the previous here-doc and read as commands only when they hold a cd (the way heredocs_cwd does); the old heredocs (with head), heredocs_cwd and heredoc_programs are removed and script_findings uses the new reader",
         "plugin/hooks/guard-bash.jq run and plugin/hooks/guard-read.jq command_writers use the new reader and its cwd instead of reading .head as commands; every refusal and every answer of the guards stays as it is (the existing guard tests pass unchanged)",
         "The guard (guard-bash.jq plus programs.jq) is back within 10% of the size of the bench reference program (tests/bench-limits.bats R233 passes) through the removed duplicate, not by trimming comments; the R273 checks (C639, C640, C641) and the guard test files pass under /bin/bash"
+      ],
+      "mutations": [
+        {
+          "rule": {
+            "req": "R273",
+            "k": 1
+          },
+          "what": "script_findings skips the here-docs (gate test <<<<)",
+          "files": [
+            "plugin/hooks/programs.jq"
+          ],
+          "checks": {
+            "C639": "green"
+          },
+          "result": "survivor",
+          "at": "2026-11-08T14:49:35Z",
+          "head": "5b5730440e89da67f72d9ee79a0e378eff0e143a",
+          "tree": "42ae056e8112ba81b47745ecf5af7b4171a36293",
+          "contract": "01512a7267e5260970490c88aed19901fe686f5f77cd3476d61604e129e41480",
+          "digests": {
+            "plugin/hooks/programs.jq": "437656cdaa4e0ab077532d6b9364c13c9d469b1b0e05c1a17209b42c87cba49c"
+          }
+        },
+        {
+          "rule": {
+            "req": "R273",
+            "k": 2
+          },
+          "what": "here-doc cwd always the start folder",
+          "files": [
+            "plugin/hooks/programs.jq"
+          ],
+          "checks": {
+            "C639": "green"
+          },
+          "result": "survivor",
+          "at": "2026-11-08T14:49:37Z",
+          "head": "5b5730440e89da67f72d9ee79a0e378eff0e143a",
+          "tree": "42ae056e8112ba81b47745ecf5af7b4171a36293",
+          "contract": "01512a7267e5260970490c88aed19901fe686f5f77cd3476d61604e129e41480",
+          "digests": {
+            "plugin/hooks/programs.jq": "31587e5856d0abca7ad7c30f74ca2d64596a10ffeda7a03d227f71a7af12c11d"
+          }
+        },
+        {
+          "rule": {
+            "req": "R273",
+            "k": 3
+          },
+          "what": "python here-docs not interpreter programs",
+          "files": [
+            "plugin/hooks/programs.jq"
+          ],
+          "checks": {
+            "C640": "green"
+          },
+          "result": "survivor",
+          "at": "2026-11-08T14:49:39Z",
+          "head": "5b5730440e89da67f72d9ee79a0e378eff0e143a",
+          "tree": "42ae056e8112ba81b47745ecf5af7b4171a36293",
+          "contract": "01512a7267e5260970490c88aed19901fe686f5f77cd3476d61604e129e41480",
+          "digests": {
+            "plugin/hooks/programs.jq": "36af100ba8a64b10d6e8c992f4712fe3a83eb9269e738400c675f44c53764d00"
+          }
+        },
+        {
+          "rule": {
+            "req": "R273",
+            "k": 4
+          },
+          "what": "the lines since the previous here-doc are never cleared (quadratic)",
+          "files": [
+            "plugin/hooks/programs.jq"
+          ],
+          "checks": {
+            "C641": "green"
+          },
+          "result": "survivor",
+          "at": "2026-11-08T14:49:42Z",
+          "head": "5b5730440e89da67f72d9ee79a0e378eff0e143a",
+          "tree": "42ae056e8112ba81b47745ecf5af7b4171a36293",
+          "contract": "01512a7267e5260970490c88aed19901fe686f5f77cd3476d61604e129e41480",
+          "digests": {
+            "plugin/hooks/programs.jq": "09badb494ac3ddd9140c072a3061d993793899d562177e217f7e8ee01ac217ee"
+          }
+        },
+        {
+          "rule": {
+            "req": "R273",
+            "k": 1
+          },
+          "what": "script_findings skips the here-docs (gate test <<<<)",
+          "files": [
+            "plugin/hooks/programs.jq"
+          ],
+          "checks": {
+            "C639": "red"
+          },
+          "result": "red",
+          "at": "2026-11-08T14:51:49Z",
+          "head": "1c571d0bdf7387992edb14468b947613819a1d3c",
+          "tree": "3b882507ceeffb859cc62b7b2f70077d4b39f8f0",
+          "contract": "d364792a820da30c4d9a1eecc397d7b876e87b607bc7b6fa1acf6d71ba2c13e4",
+          "digests": {
+            "plugin/hooks/programs.jq": "437656cdaa4e0ab077532d6b9364c13c9d469b1b0e05c1a17209b42c87cba49c"
+          },
+          "strengthened": [
+            "tests/guard-script-files.bats"
+          ],
+          "pending": [
+            "tests/guard-script-files.bats"
+          ]
+        },
+        {
+          "rule": {
+            "req": "R273",
+            "k": 2
+          },
+          "what": "here-doc cwd always the start folder",
+          "files": [
+            "plugin/hooks/programs.jq"
+          ],
+          "checks": {
+            "C639": "red"
+          },
+          "result": "red",
+          "at": "2026-11-08T14:51:52Z",
+          "head": "1c571d0bdf7387992edb14468b947613819a1d3c",
+          "tree": "3b882507ceeffb859cc62b7b2f70077d4b39f8f0",
+          "contract": "d364792a820da30c4d9a1eecc397d7b876e87b607bc7b6fa1acf6d71ba2c13e4",
+          "digests": {
+            "plugin/hooks/programs.jq": "31587e5856d0abca7ad7c30f74ca2d64596a10ffeda7a03d227f71a7af12c11d"
+          },
+          "strengthened": [
+            "tests/guard-script-files.bats"
+          ],
+          "pending": [
+            "tests/guard-script-files.bats"
+          ]
+        },
+        {
+          "rule": {
+            "req": "R273",
+            "k": 3
+          },
+          "what": "python here-docs not interpreter programs",
+          "files": [
+            "plugin/hooks/programs.jq"
+          ],
+          "checks": {
+            "C640": "green"
+          },
+          "result": "survivor",
+          "at": "2026-11-08T14:51:54Z",
+          "head": "1c571d0bdf7387992edb14468b947613819a1d3c",
+          "tree": "3b882507ceeffb859cc62b7b2f70077d4b39f8f0",
+          "contract": "d364792a820da30c4d9a1eecc397d7b876e87b607bc7b6fa1acf6d71ba2c13e4",
+          "digests": {
+            "plugin/hooks/programs.jq": "36af100ba8a64b10d6e8c992f4712fe3a83eb9269e738400c675f44c53764d00"
+          }
+        },
+        {
+          "rule": {
+            "req": "R273",
+            "k": 4
+          },
+          "what": "the lines since the previous here-doc are never cleared (quadratic)",
+          "files": [
+            "plugin/hooks/programs.jq"
+          ],
+          "checks": {
+            "C641": "green"
+          },
+          "result": "survivor",
+          "at": "2026-11-08T14:51:56Z",
+          "head": "1c571d0bdf7387992edb14468b947613819a1d3c",
+          "tree": "3b882507ceeffb859cc62b7b2f70077d4b39f8f0",
+          "contract": "d364792a820da30c4d9a1eecc397d7b876e87b607bc7b6fa1acf6d71ba2c13e4",
+          "digests": {
+            "plugin/hooks/programs.jq": "09badb494ac3ddd9140c072a3061d993793899d562177e217f7e8ee01ac217ee"
+          }
+        },
+        {
+          "rule": {
+            "req": "R273",
+            "k": 3
+          },
+          "what": "script request always in text mode",
+          "files": [
+            "plugin/hooks/guard-bash.jq"
+          ],
+          "checks": {
+            "C640": "red"
+          },
+          "result": "red",
+          "at": "2026-11-08T14:53:05Z",
+          "head": "1c571d0bdf7387992edb14468b947613819a1d3c",
+          "tree": "3b882507ceeffb859cc62b7b2f70077d4b39f8f0",
+          "contract": "d364792a820da30c4d9a1eecc397d7b876e87b607bc7b6fa1acf6d71ba2c13e4",
+          "digests": {
+            "plugin/hooks/guard-bash.jq": "58d1b2d039b44b771fac4dba43433e9c2872928c0604b9daf868237721dea637"
+          }
+        },
+        {
+          "rule": {
+            "req": "R273",
+            "k": 4
+          },
+          "what": "the timed file no longer reads the bench's NOMINAL_MS",
+          "files": [
+            "tests/timed-guard-script.bats"
+          ],
+          "checks": {
+            "C641": "red"
+          },
+          "result": "red",
+          "at": "2026-11-08T14:53:27Z",
+          "head": "1c571d0bdf7387992edb14468b947613819a1d3c",
+          "tree": "3b882507ceeffb859cc62b7b2f70077d4b39f8f0",
+          "contract": "d364792a820da30c4d9a1eecc397d7b876e87b607bc7b6fa1acf6d71ba2c13e4",
+          "digests": {
+            "tests/timed-guard-script.bats": "230787fda2202131daa41e7d747e25f0657412813df7f35b5d057afd59690c7b"
+          },
+          "pending": [
+            "tests/guard-script-files.bats"
+          ]
+        },
+        {
+          "task": 3,
+          "what": "guard-read ignores the here-doc cwd",
+          "files": [
+            "plugin/hooks/guard-read.jq"
+          ],
+          "checks": {
+            "C641": "green",
+            "C640": "green",
+            "C639": "green"
+          },
+          "result": "survivor",
+          "at": "2026-11-08T14:54:07Z",
+          "head": "1c571d0bdf7387992edb14468b947613819a1d3c",
+          "tree": "3b882507ceeffb859cc62b7b2f70077d4b39f8f0",
+          "contract": "d364792a820da30c4d9a1eecc397d7b876e87b607bc7b6fa1acf6d71ba2c13e4",
+          "digests": {
+            "plugin/hooks/guard-read.jq": "1b6571c4064b53a2a00812554d02184ebdfb7982fd0d9fc91849abd5ea6a7df4"
+          }
+        },
+        {
+          "task": 3,
+          "what": "guard-read ignores the here-doc cwd",
+          "files": [
+            "plugin/hooks/guard-read.jq"
+          ],
+          "checks": {
+            "C641": "green",
+            "C640": "green",
+            "C639": "red"
+          },
+          "result": "red",
+          "at": "2026-11-08T14:55:48Z",
+          "head": "bbf276eb18bad38eaa67e2711b051785d6b28918",
+          "tree": "3183a0d20b2366b0dd1155a90a8b8a01650d5754",
+          "contract": "c576ca4855a46b05d6a36ffe85a0943bbc4cf24aa017c61db8dc36ec0e2b08b6",
+          "digests": {
+            "plugin/hooks/guard-read.jq": "1b6571c4064b53a2a00812554d02184ebdfb7982fd0d9fc91849abd5ea6a7df4"
+          },
+          "strengthened": [
+            "tests/guard-script-files.bats"
+          ],
+          "pending": [
+            "tests/guard-script-files.bats"
+          ]
+        },
+        {
+          "task": 4,
+          "none": "task 4 is the guard's size against the bench reference (R233, tests/bench-limits.bats), a measure with nothing to break; the code it describes is task 2's and 3's",
+          "at": "2026-11-08T14:55:55Z"
+        }
       ]
     }
   ],
@@ -84972,6 +85250,18 @@
       "plans": [
         "P221.4"
       ]
+    },
+    {
+      "id": "D676",
+      "text": "F420 and F422 (the bench reference no longer within 10% of the guard's size, 41188 against 46666 bytes) are fixed by the guard shrinking: plan P221.4 merges the two here-doc readers into one",
+      "why": "growing the reference instead means measuring its nominal again on a quiet Mac and in both Linux containers, and the Mac is loaded by another VBW run now; the merged reader removes real duplication (F418 added a second reader) and makes inline commands linear too, which supersedes D673's todo",
+      "at": "2026-11-08T14:36:55Z"
+    },
+    {
+      "id": "D677",
+      "text": "F421 (C445, tests/machine-bookkeeping.bats) is closed by its own rerun, not a code change",
+      "why": "it failed on its helper's 30 s cap (wait_starts in tests/machine-helper.bash) while another VBW run on this computer held slots for 33 min (load about 40); it passed in proofs 1 to 3 and alone at load 8 at 13:43; the tight cap under a concurrent proof is a todo",
+      "at": "2026-11-08T14:36:57Z"
     }
   ],
   "commands": {
@@ -96091,6 +96381,17 @@
         "ended": "2026-11-08T12:14:38Z",
         "cost": {
           "usd": 0.055031
+        }
+      },
+      {
+        "id": "build-20261108T143707Z",
+        "kind": "build",
+        "session": "0ee781c3-c5b6-4a6c-889f-04b89f1fba4a",
+        "milestone": "M55",
+        "started": "2026-11-08T14:37:07Z",
+        "ended": "2026-11-08T14:56:38Z",
+        "cost": {
+          "usd": 1.345313
         }
       }
     ],
