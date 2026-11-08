@@ -32180,12 +32180,11 @@
       ],
       "predicted": "deep",
       "qa": {
-        "result": "fail",
+        "result": "pass",
         "tier": "deep",
-        "tree": "c63ce078ce565f8145f42306a9a31e01c8d55f977fb2e4c5d2c2485edab14bf8",
-        "at": "2026-11-08T04:41:04Z",
-        "note": "17/20 checks",
-        "rounds": 1
+        "tree": "f127e69c45b7cb64bb705d1f1ffe96ac4cae07eb4bd5e37bbcff4a3703246d15",
+        "at": "2026-11-08T06:27:51Z",
+        "note": "30/30 checks"
       },
       "escalations": [
         {
@@ -32194,7 +32193,15 @@
           "to": "deep",
           "reason": "Dev blocked P219.4: Code done and committed: proofsteps_begin (own mode) now writes end_low, end_high, rough, runs. C631 stays red on one test defect, not a code defect: tests/step-range.bats own_proof_note runs proofsteps_begin with no session id (tests/helper.bash unsets CLAUDE_CODE_SESSION_ID), so the note has session null and the status line (which shows a proof note only for its own session, here 's1') renders idle at line 174. With VBW_SESSION_ID=s1 in the environment the test passes. Fix needed: add VBW_SESSION_ID=s1 to the bash -c call in own_proof_note via vbw apply --patch plus user approval; the guard refuses a Dev edit of the protected check. Mutation step not run."
         }
-      ]
+      ],
+      "outcome": {
+        "tier": "deep",
+        "predicted": "deep",
+        "held": true,
+        "fix_rounds": 1,
+        "qa_findings": 1,
+        "escalations": 1
+      }
     },
     {
       "id": "P220",
@@ -79195,7 +79202,7 @@
       "req": "R270",
       "source": "qa",
       "attempts": 0,
-      "status": "fixed",
+      "status": "closed",
       "note": "A proof that VBW runs by itself (vbw prove, PS_MODE=own) writes its step note without the range fields, so it still says one figure when its history is thin. plugin/lib/proofsteps.sh:137-144 calls step_expect (seconds only) and builds the note from kind, first_end and end; it never sets end_low, end_high, rough or runs (steps.sh step_start does this for plan/build/fix/qa at :326-330, and step_next does it for the proof's own 'vbw next' sentence). The status line, panel and vbw status read that note, so after 1 to 4 recorded proofs, or spread proof times, they print 'about N min, until around HH:MM' while 'vbw next --json .step.say' for the same proof already said 'roughly L to H min ... (rough guess from N runs)'. The goal says every estimate (status line, panel, vbw status) is a range when rough; the proof note is the most common live step and is the one case missed. proofsteps.sh is in no P219 plan, so the plan left it out. Regression test: with a history of 2 proof runs (and again with spread runs), start proofsteps_begin in own mode and assert .vbw/runtime/step.json has rough true, runs 2 and end_low/end_high; then assert the status line renders 'until ~HH:MM-HH:MM' and stepWords/step_words give the 'roughly ... (rough guess from 2 runs)' sentence; with 5 tight proof runs assert rough false and the single figure.",
       "phase": "P219"
     },
