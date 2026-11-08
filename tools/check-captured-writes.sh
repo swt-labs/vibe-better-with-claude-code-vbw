@@ -11,7 +11,11 @@
 # On every *.sh file under each DIR it prints 'FILE:LINE: FUNCTION' for each
 # such function, with LINE that of the write, and exits 1. A write through
 # vbw_out, of a literal or an argument, into a pipe or a file (or any
-# redirection), and a function that ends with another command pass. A function
+# redirection), and a function that ends with another command pass. The text
+# argument counts as the captured variable also in a default-value expansion of
+# it (${v:-word}, ${v-word}, ${v:=word}, ${v=word}, ${v:?word}, ${v?word}),
+# quoted or not; ${v:+word} and ${v+word} write the word, not the variable, and
+# pass. A function
 # on the allow-list below never counts. --allowed prints the allow-list, one
 # 'name: reason' per line.
 set -euo pipefail
@@ -68,8 +72,10 @@ for f in "${files[@]}"; do
       }
       cmd = trim(cmd)
       # Exactly one variable: anything after it (a pipe, a redirection) passes.
-      if (cmd !~ /^"?\$\{?[A-Za-z_][A-Za-z0-9_]*\}?"?$/) return
-      v = cmd; gsub(/["${}]/, "", v)
+      # Also the variable inside a default-value expansion (${v:-w} ${v-w}
+      # ${v:=w} ${v=w} ${v:?w} ${v?w}); ${v:+w} writes the word, so it passes.
+      if (cmd !~ /^"?\$\{?[A-Za-z_][A-Za-z0-9_]*\}?"?$/ && cmd !~ /^"?\$\{[A-Za-z_][A-Za-z0-9_]*:?[-=?][^}]*\}"?$/) return
+      v = cmd; sub(/^"?\$\{?/, "", v); match(v, /^[A-Za-z_][A-Za-z0-9_]*/); v = substr(v, 1, RLENGTH)
       if (index(skip, " " name " ")) return
       pat = "(^|[^A-Za-z0-9_])" v "=\\$\\([^(]"
       for (j = first; j <= lastj; j++) {
