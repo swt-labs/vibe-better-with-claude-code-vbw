@@ -161,7 +161,8 @@ own_proof_note() {
   PS_N=$1 bash -c 'cd "$1"; VBW_LIB="$2/lib"; . "$VBW_LIB/core.sh"; . "$VBW_LIB/record.sh"; . "$VBW_LIB/consent.sh"; . "$VBW_LIB/contract.sh"; . "$VBW_LIB/proofsteps.sh"
     vbw_project; VBW_PLUGIN="$2"; proofsteps_begin "$PS_N"; cp "$(step_note_file)" "$VBW_RUNTIME/kept.json"' _ "$PROJECT" "$PLUGIN_ROOT"
   # The guard's exit trap removes the note a proof of its own made; the copy stands in for it.
-  cp "$PROJECT/.vbw/runtime/kept.json" "$NOTE"
+  # Its process has ended, so the note names this test's, which is alive for the status line.
+  jq -c --argjson pid "$$" '.pid = $pid' "$PROJECT/.vbw/runtime/kept.json" > "$NOTE"
 }
 
 @test "R270 kernel: a proof of VBW's own writes its note with the range fields, rough from thin or spread history, single from five tight runs" {
