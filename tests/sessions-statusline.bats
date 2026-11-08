@@ -71,7 +71,8 @@ start() { VBW_SESSION_ID="$1" "$VBW" run start build P1.1 > /dev/null; }
   VBW_SESSION_ID="$SESSION_A" "$VBW" run end > /dev/null
   "$VBW" run start build P1.1 > /dev/null
   l=$(first "$SESSION_B")
-  [[ "$l" == *"● working: building P1.1 · 0 of 1" ]] || { echo "$l"; false; }
+  # The first run just ended is one run of history: the step now carries a rough end time (R270).
+  [[ "$l" == *"● working: building P1.1 · 0 of 1 · until ~"* ]] || { echo "$l"; false; }
   [[ "$l" != *"held by"* && "$l" != *"leading"* ]]
 }
 
