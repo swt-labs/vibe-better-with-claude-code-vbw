@@ -158,7 +158,7 @@ next_road_input() {
 # closure and the passed phases; the answer and QA's judgment of the phases (lib/qa.jq, lib/next.jq)
 # are worked out in one run over the working record.
 next_decide() {
-  local core shape="" effort record slim hash counts approved=false changed=false legacy=false next qa waiting profile problems="" holder prev=/dev/null adoc=/dev/null
+  local core shape="" added="[]" effort record slim hash counts approved=false changed=false legacy=false next qa waiting profile problems="" holder prev=/dev/null adoc=/dev/null
   local QA_PRE_LISTING QA_PRE_CLOSURE QA_PRE_SETTLE out digests cache wok=0
   record=$NP_WORK slim=$NP_SLIM
   # The contract's hash, and its shape while the hash is not approved, from the pass's core lines.
@@ -171,6 +171,10 @@ next_decide() {
   # Check files edited since the approval wait: the build goes on, the one approval comes before proof.
   if waiting=$(contract_waiting_with "$slim" "$hash" "$shape"); then
     wok=1
+    # Check files that only had lines added are not waiting: the proof judges them with the approved content (R269).
+    if ! contract_approved "$hash"; then
+      added=$(contract_classify "$slim" | sed -n 's/^A	//p' | jq -Rsc 'split("\n") | map(select(length > 0) | split("\t") | {file: .[0], lines: (.[1] | tonumber)})') || added="[]"
+    fi
     commands_approved "$slim" && approved=true
   fi
   # An unapproved contract that approval would refuse is not offered for approval (R171).
@@ -202,7 +206,7 @@ next_decide() {
   hist=$(step_history_file)
   runs=""
   [ -z "$hist" ] || runs="$(dirname "$hist")/run-times.json"
-  out=$(printf '%s' "$record" | jq -c --rawfile prev "$prev" --slurpfile approved_doc "$adoc" --argjson effort "$effort" --argjson tracked "$counts" --argjson approved "$approved" --arg waiting "$waiting" --arg problems "$problems" --arg contract "$hash" \
+  out=$(printf '%s' "$record" | jq -c --rawfile prev "$prev" --slurpfile approved_doc "$adoc" --argjson effort "$effort" --argjson tracked "$counts" --argjson approved "$approved" --arg waiting "$waiting" --argjson added_to "$added" --arg problems "$problems" --arg contract "$hash" \
     --argjson code_changed "$changed" --argjson legacy "$legacy" --slurpfile in <(printf '%s' "$digests") --slurpfile ch <(printf '%s' "$cache") --argjson fpv "$QA_FP_VERSION" --argjson profile "$profile" --arg session "$(vbw_session)" --arg holder "$holder" --argjson next_phase "$NP_NEXT_PHASE" --slurpfile tiers "$VBW_LIB/tiers.json" --slurpfile mf <(next_manifests) \
     --argjson want_step "${NP_WANT_STEP:-0}" --argjson want_road "${NP_WANT_ROAD:-0}" --slurpfile note <(printf '%s' "$note") \
     --slurpfile h <(jq -c 'select(type == "object" and (.steps | type) == "array")' "$hist" 2> /dev/null) \
@@ -327,7 +331,8 @@ cmd_next() {
       printf '%s\n' "$next"
     fi
   else
-    printf '%s\n' "$next" | jq -r '"\(.action)\(if .gate then " (needs you)" else "" end): \(.instruction)"'
+    printf '%s\n' "$next" | jq -r '"\(.action)\(if .gate then " (needs you)" else "" end): \(.instruction)",
+      (.added_to[]? | "check file \(.file): \(.lines) \(if .lines == 1 then "line" else "lines" end) added since the approval; the proof judges it with the approved content until they are approved at the next gate")'
   fi
 }
 

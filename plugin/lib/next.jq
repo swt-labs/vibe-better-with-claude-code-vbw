@@ -3,6 +3,7 @@
 # $code_changed (the project differs from the commit the evidence proved), $legacy (a
 # VBW 1 plan, .vbw-planning/, is not converted yet), $session (the caller's session, "" when unknown).
 # $waiting: the check files edited since the approval, newline-separated ("" when none).
+# $added_to: [{file, lines}], the check files that only had lines added since the approval (R269); carried as added_to when any.
 # $problems: why the contract cannot be approved yet, one per line ("" when it can; lib/cmd-approve.sh).
 # $tracked (the number of files git tracks, for the early tier).
 # $profile: interview_effective (lib/interview.sh); next fills unanswered ones with the neutral middle choice.
@@ -159,7 +160,8 @@ def fix_files($r): if .command then ["*"]
     result("ship"; true; "Everything else is proven and accepted; you skipped \($later | join(", ")). Choose: ship milestone \(.milestone.id) now and judge \($later | join(", ")) in the next milestone, or judge \($later | join(", ")) now (vbw req accept or vbw req reject)"; {later: $later})
   else
     result("ship"; true; "Everything is proven and accepted: ship milestone \(.milestone.id)"; {})
-  end) as $n
+  end) as $n0
+| ($n0 + (if ($added_to | length) > 0 then {added_to: $added_to} else {} end)) as $n
 # The round (QA depth, the proof's test run, re-check focus, the deviations of the phases to
 # verify, lib/qa.jq: those a decision covers too, with it) is the qa answer's. The router
 # opens the QA run first, which turns the answer into run, so the round stays on it while the
