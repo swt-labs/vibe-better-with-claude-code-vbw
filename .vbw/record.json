@@ -1,6 +1,15 @@
 {
   "schema": 13,
-  "lease": null,
+  "lease": {
+    "run": "qa-20261108T162311Z",
+    "kind": "qa",
+    "started_at": "2026-11-08T16:23:11Z",
+    "files": [],
+    "session": "0ee781c3-c5b6-4a6c-889f-04b89f1fba4a",
+    "cost": {
+      "usd": 3454.62644
+    }
+  },
   "protected": [
     "docs/guards.md",
     "tests/adaptive-results.bats",
@@ -32385,12 +32394,11 @@
         }
       ],
       "qa": {
-        "result": "fail",
+        "result": "pass",
         "tier": "deep",
-        "tree": "f4640371e264b29b296c3e5783a2498ada5a90c04ccf7df03c70ca97e49dc867",
-        "at": "2026-11-08T06:29:44Z",
-        "note": "29/30 checks",
-        "rounds": 1
+        "tree": "7fa09f25c901554cd5b6b3981ec44f4d2909647ddb72b03d24ade6040d0f8c34",
+        "at": "2026-11-08T16:24:29Z",
+        "note": "30/30 checks"
       },
       "outcome": {
         "tier": "deep",
@@ -79730,7 +79738,7 @@
       "req": "R274",
       "source": "qa",
       "attempts": 0,
-      "status": "fixed",
+      "status": "closed",
       "note": "The captured-write rule has a hole and one real function falls through it. tools/check-captured-writes.sh only accepts the text argument when it is exactly one bare variable (regex at line ~58: ^\"?$\\{?NAME\\}?\"?$), so a default-value form such as printf '%s\\n' \"${out:-null}\" is never flagged. plugin/lib/road.sh:32 (road_compute) is exactly that: out=$(jq -n -c --slurpfile rec <(printf '%s' \"$record\") ... ) built from the whole record, then its last line is a builtin printf of \"${out:-null}\", and its caller steps.sh:258 hands it on as captured output. It is the same shape as spec_parse and step_proof_plan, which this phase did move to vbw_out, yet bash tools/check-captured-writes.sh plugin/lib exits 0 on it. Phase criterion 2 says the rule refuses a builtin printf/echo of a variable holding spec- or record-sized text assigned from a command substitution or a jq run, and R274.2 says no plugin/lib function ends that way unless allow-listed; road_compute breaks both and the allow-list is empty. Also unflagged because the tool only looks at the last line before the closing brace: a function whose last command sits in an if/else branch (checks.sh:477 checks_unit_run, cmd-init.sh:159 init_detect_commands), which is a note, not part of this finding. Regression test to add (tests/output-child-exit.bats, self-test cases): a planted function out=$(jq -c . \"$1\"); printf '%s\\n' \"${out:-null}\" must be refused naming its line, and the R274 plugin/lib case must then pass only after road_compute writes through vbw_out.",
       "phase": "P222"
     },
