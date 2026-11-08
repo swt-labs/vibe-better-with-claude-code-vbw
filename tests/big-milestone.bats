@@ -53,6 +53,8 @@ same() { diff -u "$EXPECTED/$1" - || { echo "$1 differs from what the program sa
   grep -q 'next --json' "$f"
   grep -qE 'TIMEFORMAT|%U|/usr/bin/time|times' "$f" || { echo "the timed test does not measure CPU time (user and system)"; false; }
   grep -q 'NOMINAL_MS' "$f" || { echo "the timed test does not read the bench's NOMINAL_MS"; false; }
+  grep -qE '^ +judge .* 5000$' "$f" || { echo "the timed test does not judge the median against 5000 ms"; false; }
+  grep -qE '^ +t=\$\(TIMEFORMAT=.%3U %3S.' "$f" || { echo "the timed test does not time user and system CPU"; false; }
   grep -qi 'busy' "$f" || { echo "the timed test has no busy-machine rule"; false; }
   grep -qE '\b5000\b|\b5 ?s\b' "$f" || { echo "the timed test names no 5 s budget"; false; }
   bats --count "$f" > /dev/null
