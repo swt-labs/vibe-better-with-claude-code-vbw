@@ -84683,6 +84683,12 @@
       "text": "P219.4's check case (tests/step-range.bats, R270 kernel: a proof of VBW's own) started its proof without a session, so the status line of s1 never showed the note and the case could not pass with the fix in (381ce3e8); its helper own_proof_note now runs the proof as VBW_SESSION_ID=s1, as the router runs it. With the fix all 12 cases of the file pass under /bin/bash; the case was red at line 171 before the fix",
       "why": "The fix-round Dev wrote the case before the fix existed and never saw it green; a check that cannot pass protects nothing",
       "at": "2026-11-08T05:11:20Z"
+    },
+    {
+      "id": "D670",
+      "at": "2026-11-08T05:16:58Z",
+      "text": "Contract approved: 267 requirements, 647 checks, 650 plans (4745ad937ae9)",
+      "plans": []
     }
   ],
   "commands": {
