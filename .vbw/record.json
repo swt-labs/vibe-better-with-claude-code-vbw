@@ -81459,6 +81459,13 @@
       "sort": "later",
       "size": "small",
       "status": "open"
+    },
+    {
+      "id": "T264",
+      "text": "Shared check files during a fix: a check file two requirements' checks name (output-child-exit.bats, road-next.bats) cannot be edited by either fix's Dev; give the lease an exclusive owner for such a file, or let vbw commit --fix take a file all of whose requirements the fix serves",
+      "sort": "later",
+      "size": "small",
+      "status": "open"
     }
   ],
   "decisions": [
