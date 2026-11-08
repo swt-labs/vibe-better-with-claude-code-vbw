@@ -32170,7 +32170,15 @@
         "at": "2026-11-08T04:41:04Z",
         "note": "17/20 checks",
         "rounds": 1
-      }
+      },
+      "escalations": [
+        {
+          "at": "2026-11-08T05:09:58Z",
+          "from": "deep",
+          "to": "deep",
+          "reason": "Dev blocked P219.4: Code done and committed: proofsteps_begin (own mode) now writes end_low, end_high, rough, runs. C631 stays red on one test defect, not a code defect: tests/step-range.bats own_proof_note runs proofsteps_begin with no session id (tests/helper.bash unsets CLAUDE_CODE_SESSION_ID), so the note has session null and the status line (which shows a proof note only for its own session, here 's1') renders idle at line 174. With VBW_SESSION_ID=s1 in the environment the test passes. Fix needed: add VBW_SESSION_ID=s1 to the bash -c call in own_proof_note via vbw apply --patch plus user approval; the guard refuses a Dev edit of the protected check. Mutation step not run."
+        }
+      ]
     },
     {
       "id": "P220",
@@ -75912,10 +75920,11 @@
       "after": [
         "P219.1"
       ],
-      "status": "planned",
+      "status": "blocked",
       "tasks": [
         "proofsteps_begin own mode: take step_estimate once (seconds, low, high, runs, rough) and write end_low, end_high, rough and runs into the note beside first_end and end, as step_start does (F412)"
-      ]
+      ],
+      "note": "Code done and committed: proofsteps_begin (own mode) now writes end_low, end_high, rough, runs. C631 stays red on one test defect, not a code defect: tests/step-range.bats own_proof_note runs proofsteps_begin with no session id (tests/helper.bash unsets CLAUDE_CODE_SESSION_ID), so the note has session null and the status line (which shows a proof note only for its own session, here 's1') renders idle at line 174. With VBW_SESSION_ID=s1 in the environment the test passes. Fix needed: add VBW_SESSION_ID=s1 to the bash -c call in own_proof_note via vbw apply --patch plus user approval; the guard refuses a Dev edit of the protected check. Mutation step not run."
     }
   ],
   "fixes": [
@@ -95674,6 +95683,17 @@
         "ended": "2026-11-08T05:02:14Z",
         "cost": {
           "usd": 2.644552
+        }
+      },
+      {
+        "id": "build-20261108T050738Z",
+        "kind": "build",
+        "session": "0ee781c3-c5b6-4a6c-889f-04b89f1fba4a",
+        "milestone": "M55",
+        "started": "2026-11-08T05:07:38Z",
+        "ended": "2026-11-08T05:10:13Z",
+        "cost": {
+          "usd": 0.834885
         }
       }
     ],
