@@ -47,14 +47,15 @@ record_newer_schema() {
 
 # Die (exit 4) when the record was written by a newer VBW. The line names the VBW that
 # wrote the record (the writer file, R272) and the one loaded; a record without a writer
-# file names the schema numbers instead.
+# file, or one whose writer file names the loaded version (a development checkout that
+# raised the schema without a new version number), names the schema numbers instead.
 record_refuse_newer() {
   local n w loaded fix
   n=$(record_newer_schema "$VBW_RECORD") || return 0
   loaded=$(jq -r '.version // "unknown"' "$VBW_PLUGIN/.claude-plugin/plugin.json" 2> /dev/null || echo unknown)
   fix="Update VBW (/vbw:update), then restart Claude Code; for a development checkout start Claude Code with --plugin-dir <checkout>/plugin (--plugin-dir: Claude Code loads VBW from that folder instead of the installed copy)"
   w=$(jq -r '.version // empty | strings' "$VBW_RUNTIME/writer.json" 2> /dev/null || true)
-  if [ -n "$w" ]; then
+  if [ -n "$w" ] && [ "$w" != "$loaded" ]; then
     vbw_die "this project needs a newer VBW: its record was written by VBW $w, and this session loaded VBW $loaded. $fix" 4
   fi
   vbw_die "this project needs a newer VBW: its record was written with schema $n, and this session loaded VBW $loaded, which reads up to schema $VBW_SCHEMA_MAX. $fix" 4
