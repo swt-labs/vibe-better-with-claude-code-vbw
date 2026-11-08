@@ -156,7 +156,7 @@ reads it, and "outside the project" means outside that top folder:
 | `git push` with `--force`, `--force-with-lease`, `--mirror`, `--delete`, `+ref` or `:ref` | Rewrites or deletes remote history |
 | `git reset --hard`, `git clean -f`, `git checkout`/`git restore` of the whole tree (`.`, `*`, `:/`; `restore --staged` alone is fine), `git branch -D`, `git stash drop`/`clear`, `filter-branch`, `filter-repo`, `update-ref -d`, `reflog expire`/`delete` | Discards work git cannot give back |
 | Reading or writing secret files: `.env` and `.env.*` (except `.example`, `.sample`, `.template`, `.dist`, `.defaults`), `*.pem`, `*.key`, `*.p12`, `*.pfx`, `*.kdbx`, `*.keystore`, `*.jks`, `id_rsa`/`id_dsa`/`id_ecdsa`/`id_ed25519`, `.netrc`, `.pgpass`, `.npmrc`, `.pypirc`, `credentials` | VBW never handles secrets. `ls`, `stat` and `test` on them are fine |
-| Writing `.vbw/record.json` (file tools, redirects, any program that is not a reader such as `cat`, `jq`, `grep` or `git`) | Only `vbw` writes the record, validated |
+| Writing `.vbw/record.json`: file tools, a redirect, or a writer naming it (`cp`, `mv`, `install`, `rsync`, `ln`, `tee`, `sed -i`, `perl -i`, `ed`, `rm`, `truncate`, `shred`, `dd of=`, `sort -o`, `awk` in place, `git checkout`/`restore`/`rm`/`mv`/`apply`, `find -delete`/`-exec`, `sponge`). A command that only reads it (`cat`, `jq`, `grep`, `ls`, `wc`, `find -path`) passes, and so does any other program that merely names it. An inline `-c` or `-e` program naming the record is refused, since the guard cannot tell a read from a write | Only `vbw` writes the record, validated |
 
 **During a run** (`record.lease`, docs/workflows.md), any **subagent** (the hook
 input names an `agent_type`) is also held to the lease. The main session never is.
@@ -218,6 +218,10 @@ starts), a Python, Node, Perl or Ruby file as a program. Which text is read:
   in `.vbw/runtime/holder.json`; a run started by an older VBW has none, and
   `HEAD` stands in). A file under `.vbw/runtime/` is the agents' own scratch
   work, so it is read without the lookup.
+- A script above 512 KB is refused by its size before any read, unless it is
+  the project's own (committed and unchanged since the run started). The
+  refusal is one line, `<file> (<N> KB) is too large to read before it runs`,
+  and ends with `Next: run it in smaller parts, each under 512 KB`.
 - A script the guard cannot obtain (a path starting with `~` or holding a shell
   expansion, or a file that does not exist and that the command does not
   write) is refused as unreadable, never allowed by default.
