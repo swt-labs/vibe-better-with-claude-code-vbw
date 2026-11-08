@@ -32096,6 +32096,12 @@
           "from": "deep",
           "to": "deep",
           "reason": "Dev blocked P220.2: Task 1 and C635 case 1 need vbw init to write .vbw/runtime/writer.json, but init writes the record by a direct mv in plugin/lib/cmd-init.sh (line 46), not through record_update, and that file is not in this plan's files. Done in plugin/lib/record.sh (uncommitted): record_writer_write called from record_update, and the new two-version refusal lines (cases 2 and 3 depend on case 1's writer file). Needs cmd-init.sh to call record_writer_write after the mv (one line), or init routed through record_update. Writing it inside record_glance_write instead was rejected: the glance is also rebuilt when reading a record an older VBW wrote, which would stamp the wrong writer version."
+        },
+        {
+          "at": "2026-11-08T00:48:38Z",
+          "from": "deep",
+          "to": "deep",
+          "reason": "Dev blocked P220.3: C637 (tests/hook-answers.bats line ~291, approved) cannot pass with a correct hook: the test sets .schema=99 on a fixture built by vbw init, which since P220.2 has .vbw/runtime/writer.json, so the kernel line (correctly) reads 'written by VBW 2.1.27, and this session loaded VBW 2.1.27'; the test asserts the no-writer shape 'written with schema 99, and this session loaded VBW ' although its own title says 'both versions named'. Fix needed in the check file (rm .vbw/runtime/writer.json first, or assert the writer shape); plan files cannot touch it. Hook code is done and committed (8d785889, 29e008ba); C636 passes, the deny/systemMessage output is exactly the kernel line."
         }
       ]
     },
@@ -73985,12 +73991,76 @@
       "after": [
         "P218.1"
       ],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "cmd-next.sh hands the added-to files and their counts (contract_added, D654) to next.jq; the answer carries added_to: [{file, lines}] at its top level, and approve is asked for waiting files only",
         "The text answer of vbw next prints one line per added-to file after the action line: 'check file X: N lines added since the approval; the proof judges it with the approved content until they are approved at the next gate' ('1 line added' for one)",
         "The gate after the proof still asks approval for the added lines (the files stay in the approval's changes); nothing else in next's answer changes"
+      ],
+      "mutations": [
+        {
+          "rule": {
+            "req": "R269",
+            "k": 4
+          },
+          "what": "added_to never carried",
+          "files": [
+            "plugin/lib/next.jq"
+          ],
+          "checks": {
+            "C627": "red"
+          },
+          "result": "red",
+          "at": "2026-11-08T00:51:05Z",
+          "head": "354fa7d7828197c1400c244a281353124410b254",
+          "tree": "017e5f316058d5bc804ae6fd11f72d17b965913f",
+          "contract": "c6e3c875b471ede80b07f6f834af923a40632f718ecfb0458f87eda69a872800",
+          "digests": {
+            "plugin/lib/next.jq": "7533fe295006d916acfdc54f9a14cdd07adcf321dff36d9fa6e901f46fe04f4f"
+          }
+        },
+        {
+          "task": 2,
+          "what": "singular wording wrong",
+          "files": [
+            "plugin/lib/cmd-next.sh"
+          ],
+          "checks": {
+            "C627": "red"
+          },
+          "result": "red",
+          "at": "2026-11-08T00:51:36Z",
+          "head": "354fa7d7828197c1400c244a281353124410b254",
+          "tree": "017e5f316058d5bc804ae6fd11f72d17b965913f",
+          "contract": "c6e3c875b471ede80b07f6f834af923a40632f718ecfb0458f87eda69a872800",
+          "digests": {
+            "plugin/lib/cmd-next.sh": "16b5df61a09ae0b21ed30ab943ee5528eeb3ec96864c70bd97ace72a2d1c0979"
+          }
+        },
+        {
+          "task": 1,
+          "what": "added files never handed over",
+          "files": [
+            "plugin/lib/cmd-next.sh"
+          ],
+          "checks": {
+            "C627": "red"
+          },
+          "result": "red",
+          "at": "2026-11-08T00:52:04Z",
+          "head": "354fa7d7828197c1400c244a281353124410b254",
+          "tree": "017e5f316058d5bc804ae6fd11f72d17b965913f",
+          "contract": "c6e3c875b471ede80b07f6f834af923a40632f718ecfb0458f87eda69a872800",
+          "digests": {
+            "plugin/lib/cmd-next.sh": "159314750b2f4025731ce181e3ef9f037e8f94c32ca9d8a5b1a18047da78cca2"
+          }
+        },
+        {
+          "task": 3,
+          "none": "the approval gate for added lines is existing behaviour (the files stay in the approval's changes); nothing was changed for it and no check of this plan reads it, P218.4 shows it",
+          "at": "2026-11-08T00:52:07Z"
+        }
       ]
     },
     {
@@ -74009,13 +74079,98 @@
       "after": [
         "P218.1"
       ],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "checks_approved: added-to files no longer stop a proof (strict included); waiting files still do, with today's message",
         "In the clean copy only, each added-to check file is replaced by its approved blob (git cat-file of the snapshot's blob id) before the checks run; the working tree is never touched",
         "The evidence of a check judged so carries judged: {file: sha256 of the approved content}; a check judged with its working content carries no judged key",
         "The proof's summary line of such a check ends with 'judged with the approved content (N added lines pending approval)'; proofreuse keys the check's fingerprint on the judged digest, so its pass is reused while the approved content stands and the check runs again once the lines are approved"
+      ],
+      "mutations": [
+        {
+          "rule": {
+            "req": "R269",
+            "k": 5
+          },
+          "what": "the clean copy never gets the approved content (proofcopy_judge not called)",
+          "files": [
+            "plugin/lib/checks.sh"
+          ],
+          "checks": {
+            "C628": "red"
+          },
+          "result": "red",
+          "at": "2026-11-08T01:10:41Z",
+          "head": "96229212633b646f72278d80b44a14a3b87731ab",
+          "tree": "eb9bc98940ab9b766ea86556e06ac8101a292e8a",
+          "contract": "c6e3c875b471ede80b07f6f834af923a40632f718ecfb0458f87eda69a872800",
+          "digests": {
+            "plugin/lib/checks.sh": "155306a98f554a2358cccc269b81f4659813ca3d413d0ec24882bd1844096b66"
+          }
+        },
+        {
+          "rule": {
+            "req": "R269",
+            "k": 6
+          },
+          "what": "the summary line says judged with the content",
+          "files": [
+            "plugin/lib/cmd-prove.sh"
+          ],
+          "checks": {
+            "C628": "red"
+          },
+          "result": "red",
+          "at": "2026-11-08T01:10:43Z",
+          "head": "96229212633b646f72278d80b44a14a3b87731ab",
+          "tree": "eb9bc98940ab9b766ea86556e06ac8101a292e8a",
+          "contract": "c6e3c875b471ede80b07f6f834af923a40632f718ecfb0458f87eda69a872800",
+          "digests": {
+            "plugin/lib/cmd-prove.sh": "e9bfe69601d964b111bd9b59d568a196bbbbb060f2474f4d58b34e9c485a4a7d"
+          }
+        },
+        {
+          "rule": {
+            "req": "R269",
+            "k": 7
+          },
+          "what": "the fingerprint ignores the judged digest",
+          "files": [
+            "plugin/lib/proofreuse.sh"
+          ],
+          "checks": {
+            "C628": "red"
+          },
+          "result": "red",
+          "at": "2026-11-08T01:10:45Z",
+          "head": "96229212633b646f72278d80b44a14a3b87731ab",
+          "tree": "eb9bc98940ab9b766ea86556e06ac8101a292e8a",
+          "contract": "c6e3c875b471ede80b07f6f834af923a40632f718ecfb0458f87eda69a872800",
+          "digests": {
+            "plugin/lib/proofreuse.sh": "4a95ed39d2c30c0d819c20f931e6337375bda09cb39b04412f1d72571ad4e3e8"
+          }
+        },
+        {
+          "task": 1,
+          "none": "covered by the R269.5, R269.6 and R269.7 breaks: C628 drives the task's code end to end",
+          "at": "2026-11-08T01:10:52Z"
+        },
+        {
+          "task": 2,
+          "none": "covered by the R269.5, R269.6 and R269.7 breaks: C628 drives the task's code end to end",
+          "at": "2026-11-08T01:10:54Z"
+        },
+        {
+          "task": 3,
+          "none": "covered by the R269.5, R269.6 and R269.7 breaks: C628 drives the task's code end to end",
+          "at": "2026-11-08T01:10:56Z"
+        },
+        {
+          "task": 4,
+          "none": "covered by the R269.5, R269.6 and R269.7 breaks: C628 drives the task's code end to end",
+          "at": "2026-11-08T01:10:58Z"
+        }
       ]
     },
     {
@@ -74031,12 +74186,71 @@
       "after": [
         "P218.1"
       ],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "contract_change_lines says 'test file X: N lines added since the approval' for an added-to file and 'changed test file X' only for a waiting one; the approval question counts an added-to file as one change",
         "show_contract_changes_rest prints the unified diff of the added lines under that line, from the snapshot's blob to the file as it is",
         "vbw show contract (the approval screen) lists the same lines and diffs, so the user approves what they see"
+      ],
+      "mutations": [
+        {
+          "rule": {
+            "req": "R269",
+            "k": 8
+          },
+          "what": "added-to diff never printed",
+          "files": [
+            "plugin/lib/cmd-show.sh"
+          ],
+          "checks": {
+            "C629": "red"
+          },
+          "result": "red",
+          "at": "2026-11-08T01:01:53Z",
+          "head": "35a945b6aac878aed47f52e944600e7f1f00efe6",
+          "tree": "02b6f2438b7d9963b5b5e06242a82f71997a90fd",
+          "contract": "c6e3c875b471ede80b07f6f834af923a40632f718ecfb0458f87eda69a872800",
+          "digests": {
+            "plugin/lib/cmd-show.sh": "c8f5c98b4974f70997fe6925ef335a9dc7372207b5fb1c9fb9363dfb9f79080d"
+          }
+        },
+        {
+          "task": 3,
+          "what": "show contract does not list changes",
+          "files": [
+            "plugin/lib/cmd-show.sh"
+          ],
+          "checks": {
+            "C629": "red"
+          },
+          "result": "red",
+          "at": "2026-11-08T01:02:17Z",
+          "head": "35a945b6aac878aed47f52e944600e7f1f00efe6",
+          "tree": "02b6f2438b7d9963b5b5e06242a82f71997a90fd",
+          "contract": "c6e3c875b471ede80b07f6f834af923a40632f718ecfb0458f87eda69a872800",
+          "digests": {
+            "plugin/lib/cmd-show.sh": "6a4cd141f925b0509b628d5609808f827e5eb6e257dc74c26eec2db3966e979c"
+          }
+        },
+        {
+          "task": 1,
+          "what": "count off by one",
+          "files": [
+            "plugin/lib/cmd-show.sh"
+          ],
+          "checks": {
+            "C629": "red"
+          },
+          "result": "red",
+          "at": "2026-11-08T01:02:40Z",
+          "head": "35a945b6aac878aed47f52e944600e7f1f00efe6",
+          "tree": "02b6f2438b7d9963b5b5e06242a82f71997a90fd",
+          "contract": "c6e3c875b471ede80b07f6f834af923a40632f718ecfb0458f87eda69a872800",
+          "digests": {
+            "plugin/lib/cmd-show.sh": "646b85fa0cbd388020ce4243bced114d6f61f8b73627be4863b166fa9a6508e3"
+          }
+        }
       ]
     },
     {
@@ -74532,13 +74746,14 @@
       "after": [
         "P220.2"
       ],
-      "status": "planned",
+      "status": "blocked",
       "role": "dev",
       "tasks": [
         "session-start.sh: on exit 4 the context and the notice to the user carry the kernel's own line (no wording of their own), the notice still naming /vbw:update",
         "approve-ask.sh: when vbw show contract exits 4, answer deny with the kernel's line as the reason and in systemMessage, so the approval menu is never shown over a record this VBW cannot read; never allow",
         "The pins in tests/hook-answers.bats (filter R272) and tests/version-mismatch.bats (filter 'R272 hooks') pass; the hook answer inventory stays green"
-      ]
+      ],
+      "note": "C637 (tests/hook-answers.bats line ~291, approved) cannot pass with a correct hook: the test sets .schema=99 on a fixture built by vbw init, which since P220.2 has .vbw/runtime/writer.json, so the kernel line (correctly) reads 'written by VBW 2.1.27, and this session loaded VBW 2.1.27'; the test asserts the no-writer shape 'written with schema 99, and this session loaded VBW ' although its own title says 'both versions named'. Fix needed in the check file (rm .vbw/runtime/writer.json first, or assert the writer shape); plan files cannot touch it. Hook code is done and committed (8d785889, 29e008ba); C636 passes, the deny/systemMessage output is exactly the kernel line."
     },
     {
       "id": "P221.1",
@@ -74552,7 +74767,7 @@
         "plugin/hooks/read.sh"
       ],
       "after": [],
-      "status": "planned",
+      "status": "done",
       "mutations": [
         {
           "task": 3,
@@ -74620,6 +74835,74 @@
           "contract": "4393c923d2381a0d0e44b8fc040e9c1b185a3b9843a4ea919fb0a0ddb6f38274",
           "digests": {
             "plugin/hooks/read.sh": "22b3534fcc7822c48605260dcc634ba280b339eb98eb529ac9ce9df6e309824b"
+          }
+        },
+        {
+          "task": 3,
+          "none": "task 3 only states that bench budgets and refusal texts stay unchanged; the plan's files hold no code for it, guarded by P221.2's timed check and the existing refusal tests",
+          "at": "2026-11-08T00:49:54Z"
+        },
+        {
+          "rule": {
+            "req": "R273",
+            "k": 1
+          },
+          "what": "the command scan drops the script's last line",
+          "files": [
+            "plugin/hooks/programs.jq"
+          ],
+          "checks": {
+            "C639": "red"
+          },
+          "result": "red",
+          "at": "2026-11-08T00:50:24Z",
+          "head": "354fa7d7828197c1400c244a281353124410b254",
+          "tree": "017e5f316058d5bc804ae6fd11f72d17b965913f",
+          "contract": "c6e3c875b471ede80b07f6f834af923a40632f718ecfb0458f87eda69a872800",
+          "digests": {
+            "plugin/hooks/programs.jq": "c94ba2c6709e9caa200054ce0fc0142e00910e3ceb5dacb2aeb6541a57a60cf5"
+          }
+        },
+        {
+          "rule": {
+            "req": "R273",
+            "k": 2
+          },
+          "what": "size gate threshold raised to 50 MB",
+          "files": [
+            "plugin/hooks/read.sh"
+          ],
+          "checks": {
+            "C639": "red"
+          },
+          "result": "red",
+          "at": "2026-11-08T00:50:26Z",
+          "head": "354fa7d7828197c1400c244a281353124410b254",
+          "tree": "017e5f316058d5bc804ae6fd11f72d17b965913f",
+          "contract": "c6e3c875b471ede80b07f6f834af923a40632f718ecfb0458f87eda69a872800",
+          "digests": {
+            "plugin/hooks/read.sh": "b188f5aeb1ddbe6435fd37c4700eab4d96a2bb8b5b49bdea86dfa3aeda48931d"
+          }
+        },
+        {
+          "rule": {
+            "req": "R273",
+            "k": 3
+          },
+          "what": "the size refusal carries no user line",
+          "files": [
+            "plugin/hooks/read.sh"
+          ],
+          "checks": {
+            "C640": "red"
+          },
+          "result": "red",
+          "at": "2026-11-08T00:50:28Z",
+          "head": "354fa7d7828197c1400c244a281353124410b254",
+          "tree": "017e5f316058d5bc804ae6fd11f72d17b965913f",
+          "contract": "c6e3c875b471ede80b07f6f834af923a40632f718ecfb0458f87eda69a872800",
+          "digests": {
+            "plugin/hooks/read.sh": "7a59b02f1b091fdccab1fccadc28ed220f6dd652dac909e88f23fc079b26af68"
           }
         }
       ],
@@ -94442,6 +94725,17 @@
         "ended": "2026-11-08T00:42:57Z",
         "cost": {
           "usd": 1.831489
+        }
+      },
+      {
+        "id": "build-20261108T004643Z",
+        "kind": "build",
+        "session": "0ee781c3-c5b6-4a6c-889f-04b89f1fba4a",
+        "milestone": "M55",
+        "started": "2026-11-08T00:46:43Z",
+        "ended": "2026-11-08T01:11:48Z",
+        "cost": {
+          "usd": 3.295019
         }
       }
     ],
