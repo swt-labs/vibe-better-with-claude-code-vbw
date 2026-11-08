@@ -40,6 +40,13 @@ checks_approved() {
     cls=$(contract_classify "$1")
     CHECK_WAITING=$(printf '%s\n' "$cls" | sed -n 's/^W	//p')
     CHECK_JUDGED=$(checks_judged "$1" "$cls")
+    # Only the proof (strict) judges an added-to file with its approved content. Every other
+    # run (vbw check, vbw mutate) runs its working content, as it does a waiting file: a break
+    # measures the strengthened check, and a Dev's check sees the lines it added (F413).
+    if [ "${2:-}" != strict ] && [ "$CHECK_JUDGED" != '{}' ]; then
+      CHECK_WAITING=$(printf '%s\n%s' "$CHECK_WAITING" "$(printf '%s\n' "$cls" | sed -n 's/^A	\([^	]*\).*/\1/p')" | sed '/^$/d')
+      CHECK_JUDGED='{}'
+    fi
   fi
   if [ -n "$CHECK_WAITING" ]; then
     waiting=$(printf '%s' "$CHECK_WAITING" | tr '\n' ' ')
