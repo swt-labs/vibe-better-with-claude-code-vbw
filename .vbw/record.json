@@ -79179,7 +79179,7 @@
       "req": "R270",
       "source": "qa",
       "attempts": 0,
-      "status": "open",
+      "status": "fixed",
       "note": "A proof that VBW runs by itself (vbw prove, PS_MODE=own) writes its step note without the range fields, so it still says one figure when its history is thin. plugin/lib/proofsteps.sh:137-144 calls step_expect (seconds only) and builds the note from kind, first_end and end; it never sets end_low, end_high, rough or runs (steps.sh step_start does this for plan/build/fix/qa at :326-330, and step_next does it for the proof's own 'vbw next' sentence). The status line, panel and vbw status read that note, so after 1 to 4 recorded proofs, or spread proof times, they print 'about N min, until around HH:MM' while 'vbw next --json .step.say' for the same proof already said 'roughly L to H min ... (rough guess from N runs)'. The goal says every estimate (status line, panel, vbw status) is a range when rough; the proof note is the most common live step and is the one case missed. proofsteps.sh is in no P219 plan, so the plan left it out. Regression test: with a history of 2 proof runs (and again with spread runs), start proofsteps_begin in own mode and assert .vbw/runtime/step.json has rough true, runs 2 and end_low/end_high; then assert the status line renders 'until ~HH:MM-HH:MM' and stepWords/step_words give the 'roughly ... (rough guess from 2 runs)' sentence; with 5 tight proof runs assert rough false and the single figure.",
       "phase": "P219"
     },
@@ -95738,6 +95738,17 @@
         "ended": "2026-11-08T05:14:32Z",
         "cost": {
           "usd": 0.42877
+        }
+      },
+      {
+        "id": "fix-20261108T051522Z",
+        "kind": "fix",
+        "session": "0ee781c3-c5b6-4a6c-889f-04b89f1fba4a",
+        "milestone": "M55",
+        "started": "2026-11-08T05:15:22Z",
+        "ended": "2026-11-08T05:15:35Z",
+        "cost": {
+          "usd": 0
         }
       }
     ],
