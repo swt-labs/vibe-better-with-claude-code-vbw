@@ -75898,6 +75898,24 @@
           }
         }
       ]
+    },
+    {
+      "id": "P219.4",
+      "phase": "P219",
+      "title": "Range fields in the note of a proof VBW runs by itself (proofsteps.sh)",
+      "reqs": [
+        "R270"
+      ],
+      "files": [
+        "plugin/lib/proofsteps.sh"
+      ],
+      "after": [
+        "P219.1"
+      ],
+      "status": "planned",
+      "tasks": [
+        "proofsteps_begin own mode: take step_estimate once (seconds, low, high, runs, rough) and write end_low, end_high, rough and runs into the note beside first_end and end, as step_start does (F412)"
+      ]
     }
   ],
   "fixes": [
@@ -84609,6 +84627,20 @@
       "text": "F414 design: the gate after the proof that P218's goal names is a vbw next answer. Once the proof leaves nothing failing or unproven and before QA, an added-to check file makes vbw next answer approve (gate true, detail.files naming the added-to files, added_to with their line counts), and vbw show contract lists each with the diff of its added lines; the approval refreshes the snapshot's blob ids, so the next proof judges the file's current content and reruns only the checks whose judged digest changed. While anything is failing or unproven the added lines wait as today (the fix's own gate may carry them). The approval of edited check files is never delegated to the loop (R178). F413: vbw mutate runs an added-to check file with its working content, as it ran a waiting file, and says the break was caught by a check file waiting for approval; the proof still judges the approved content",
       "why": "The phase goal and docs/proof.md promise a gate after the proof, and an added line nobody is asked to approve never counts, so the strengthening it carries is lost; one approval after the proof keeps R269's gain (the build's proof runs without stopping first) and the rerun is small. Mutate exists to measure the strengthened check, so judging the approved content there defeats it",
       "at": "2026-11-08T04:50:16Z"
+    },
+    {
+      "id": "D667",
+      "text": "Fix round 2 review by the lead engineer: F413 as built (51d9d5bf) runs an added-to check file's working content in every non-proof run (vbw check, vbw mutate, fix done, plan done), wider than D666's mutate only; kept, because a probe at 05:04 (an approved check with exit 0 added on top, code failing) showed vbw check records no evidence and vbw prove still judges the approved content and fails. The F413 and F414 regression cases in tests/contract-added-lines.bats fail with 51d9d5bf and d7f950b4 reverted and pass with them (05:05, /bin/bash). F412 needs plugin/lib/proofsteps.sh, which no plan lists and a finished plan cannot take, so it gets the new plan P219.4 (R270); its regression case (step-range.bats, R270 kernel) is red before the fix",
+      "why": "A Dev checking its own strengthened check must see the lines it added, and only the proof's judgement counts toward a requirement; the probe and the red-green runs are the evidence",
+      "at": "2026-11-08T05:06:11Z"
+    },
+    {
+      "id": "D668",
+      "at": "2026-11-08T05:07:11Z",
+      "text": "Contract approved: 267 requirements, 647 checks, 650 plans (e80fc24546e4)",
+      "plans": [
+        "P219.4"
+      ]
     }
   ],
   "commands": {
