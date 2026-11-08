@@ -32386,11 +32386,12 @@
         }
       ],
       "qa": {
-        "result": "pass",
+        "result": "fail",
         "tier": "deep",
-        "tree": "61a243f053c5d2b55ae5504bf26b0c705f3cd746168a2e4be62f4697f21d559f",
-        "at": "2026-11-08T04:39:32Z",
-        "note": "22/22 checks"
+        "tree": "f4640371e264b29b296c3e5783a2498ada5a90c04ccf7df03c70ca97e49dc867",
+        "at": "2026-11-08T06:29:44Z",
+        "note": "29/30 checks",
+        "rounds": 1
       },
       "outcome": {
         "tier": "deep",
@@ -79265,6 +79266,15 @@
       "status": "open",
       "note": "The script scan is still quadratic for any script that has a 'cd' before its here-docs (very common: 'cd /project && ...' as the first line). F415's fix (heredocs/head_cwd in plugin/hooks/programs.jq ~l.287-315) only skips reading the 'head' text when no cd comes before the here-doc; once one cd is early in the file, every here-doc's head is the whole text up to it and 'commands(3)' re-reads it (head_cwd). Evidence (programs.jq script_findings alone through jq, user CPU, same generated mix as tests/timed-guard-script.bats plus one first line 'cd /tmp/x && true'): 98 KB script 17.5 s; 324 KB script did not finish in 120 s. The same scripts without the cd line: 98 KB 0.5 s, 324 KB 1.9 s. So the goal (a 264 KB script read inside the 5 s limit, cost in step with size) still fails for scripts with a cd, and the user gets the 'guard failed, run vbw doctor' answer R273 forbids. Fix: compute each here-doc's working folder in one pass over the commands of the whole text (commands(3) once, then with_cwd, then pick the cwd by line/offset) instead of re-reading a growing head per here-doc. Regression test: in tests/timed-guard-script.bats add 'cd <dir> &&' (and a few more cd lines spread through the script) to the generated 80 KB and 264 KB scripts, so the 264 KB time stays under 5 s and within 1.5 x the size ratio of the 80 KB time; the current field_script has no cd, so it stays green while this takes 17 s at 98 KB.",
       "phase": "P221"
+    },
+    {
+      "id": "F419",
+      "req": "R274",
+      "source": "qa",
+      "attempts": 0,
+      "status": "open",
+      "note": "The captured-write rule has a hole and one real function falls through it. tools/check-captured-writes.sh only accepts the text argument when it is exactly one bare variable (regex at line ~58: ^\"?$\\{?NAME\\}?\"?$), so a default-value form such as printf '%s\\n' \"${out:-null}\" is never flagged. plugin/lib/road.sh:32 (road_compute) is exactly that: out=$(jq -n -c --slurpfile rec <(printf '%s' \"$record\") ... ) built from the whole record, then its last line is a builtin printf of \"${out:-null}\", and its caller steps.sh:258 hands it on as captured output. It is the same shape as spec_parse and step_proof_plan, which this phase did move to vbw_out, yet bash tools/check-captured-writes.sh plugin/lib exits 0 on it. Phase criterion 2 says the rule refuses a builtin printf/echo of a variable holding spec- or record-sized text assigned from a command substitution or a jq run, and R274.2 says no plugin/lib function ends that way unless allow-listed; road_compute breaks both and the allow-list is empty. Also unflagged because the tool only looks at the last line before the closing brace: a function whose last command sits in an if/else branch (checks.sh:477 checks_unit_run, cmd-init.sh:159 init_detect_commands), which is a note, not part of this finding. Regression test to add (tests/output-child-exit.bats, self-test cases): a planted function out=$(jq -c . \"$1\"); printf '%s\\n' \"${out:-null}\" must be refused naming its line, and the R274 plugin/lib case must then pass only after road_compute writes through vbw_out.",
+      "phase": "P222"
     }
   ],
   "todos": [
