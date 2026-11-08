@@ -140,7 +140,7 @@ render() {
     import { pathToFileURL } from 'node:url'
     const step = await import(pathToFileURL(process.argv[1]).href)
     const note = JSON.parse(process.argv[2])
-    const w = step.stepWords(note, Date.now())
+    const w = step.stepWords(note, Date.parse(note.started_at))
     console.log(w.text)" "$PLUGIN_ROOT/hooks/panel-step.js" "$(cat "$NOTE")"
   [ "$status" -eq 0 ] || { echo "$output"; false; }
   [[ "$output" == "roughly 15 to 21 min, until around $(hm end_low) to $(hm end_high) (rough guess from 2 runs)" ]] || { echo "$output"; false; }
