@@ -81466,6 +81466,13 @@
       "sort": "later",
       "size": "small",
       "status": "open"
+    },
+    {
+      "id": "T265",
+      "text": "Fix Devs never see their regression test green when the fix lies outside their files (2026-11-08): the Dev reports red only; let the Dev run the test against the main session's fix, or move the fix into the lease",
+      "sort": "later",
+      "size": "small",
+      "status": "open"
     }
   ],
   "decisions": [
