@@ -172,3 +172,37 @@ exit 1
   grep -qi 'added-to\|lines added' "$REPO_ROOT/docs/guards.md" || { echo "docs/guards.md does not describe an added-to check file"; false; }
   grep -qi 'added-to\|lines added' "$REPO_ROOT/docs/workflows.md" || { echo "docs/workflows.md does not describe an added-to check file"; false; }
 }
+
+@test "R269 next: after a proof that passed with an added-to check file, vbw next asks to approve it (gate, files, added_to) before qa or ship; approving makes the next proof judge the current content" {
+  check_file "${APPROVED_CHECK}echo extra
+"
+  run "$VBW" prove < /dev/null
+  [ "$status" -eq 0 ] || { echo "$output"; false; }
+  run "$VBW" next --json < /dev/null
+  [ "$status" -eq 0 ]
+  printf '%s' "$output" | jq -e '.action == "approve" and .gate == true and .detail.files == ["tests/pay.sh"] and .detail.added_to == [{file: "tests/pay.sh", lines: 1}]' > /dev/null || { echo "$output"; false; }
+  "$VBW" approve > /dev/null
+  run "$VBW" prove < /dev/null
+  [ "$status" -eq 0 ] || { echo "$output"; false; }
+  jq -e '.evidence.checks.C1.status == "pass" and (.evidence.checks.C1 | has("judged") | not)' .vbw/record.json || { jq '.evidence.checks.C1' .vbw/record.json; false; }
+  run "$VBW" next --json < /dev/null
+  printf '%s' "$output" | jq -e '(.action != "approve") and (has("added_to") | not)' > /dev/null || { echo "$output"; false; }
+}
+
+@test "R269 changes: vbw check and vbw mutate run an added-to check file with its working content, as they run a waiting file; the proof judges the approved content" {
+  check_file "${APPROVED_CHECK}exit 1
+"
+  run "$VBW" check C1 < /dev/null
+  [ "$status" -ne 0 ] || { echo "$output"; false; }
+  [[ "$output" == *'C1 fail'* ]] || { echo "$output"; false; }
+  # A break the approved check cannot see (an extra line in src/pay.txt) is a survivor; a line appended to the check kills it.
+  check_file "$APPROVED_CHECK"
+  printf 'paid\nextra\n' > src/pay.txt
+  run "$VBW" mutate P1.1 R1.1 "an extra line" src/pay.txt < /dev/null
+  [ "$status" -ne 0 ] && [[ "$output" == *survivor* ]] || { echo "$output"; false; }
+  check_file "${APPROVED_CHECK}[ \"\$(wc -l < src/pay.txt)\" -eq 1 ]
+"
+  run "$VBW" mutate P1.1 R1.1 "an extra line" src/pay.txt < /dev/null
+  [ "$status" -eq 0 ] || { echo "$output"; false; }
+  [[ "$output" != *survivor* ]] || { echo "$output"; false; }
+}
