@@ -85262,6 +85262,12 @@
       "text": "F421 (C445, tests/machine-bookkeeping.bats) is closed by its own rerun, not a code change",
       "why": "it failed on its helper's 30 s cap (wait_starts in tests/machine-helper.bash) while another VBW run on this computer held slots for 33 min (load about 40); it passed in proofs 1 to 3 and alone at load 8 at 13:43; the tight cap under a concurrent proof is a todo",
       "at": "2026-11-08T14:36:57Z"
+    },
+    {
+      "id": "D678",
+      "at": "2026-11-08T16:00:15Z",
+      "text": "Contract approved: 267 requirements, 647 checks, 652 plans (c576ca4855a4)",
+      "plans": []
     }
   ],
   "commands": {
