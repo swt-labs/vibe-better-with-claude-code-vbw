@@ -146,3 +146,29 @@ judge() {
   judge "the guard on a 264 KB script" "$big" 5000
   perl -e 'exit($ARGV[0] <= $ARGV[1] ? 0 : 1)' -- "$big" "$limit" || { echo "the 264 KB time grows faster than the size: $big ms against $limit ms"; false; }
 }
+
+# inline_ms KB: the median CPU ms of the guard on an inline command of about KB kilobytes (the
+# field script's mix as the command itself, not a file run by name).
+inline_ms() {
+  local f=".vbw/runtime/scratch/inline$1.sh" a b c
+  field_script "$PROJECT/$f" "$1"
+  jq -nc --rawfile c "$PROJECT/$f" --arg d "$PROJECT" '{hook_event_name: "PreToolUse", session_id: "s1", cwd: $d, tool_name: "Bash",
+      agent_id: "a1", agent_type: "vbw:dev", tool_input: {command: $c}}' > "$BATS_TEST_TMPDIR/inl$1.json"
+  guard_once "$BATS_TEST_TMPDIR/inl$1.json" > "$BATS_TEST_TMPDIR/outl$1.json" 2>&1 || true
+  grep -q "tests/c1.sh" "$BATS_TEST_TMPDIR/outl$1.json" || { echo "the guard did not refuse the $1 KB inline command's write:"; cat "$BATS_TEST_TMPDIR/outl$1.json" >&2; return 1; }
+  a=$(cpu guard_once "$BATS_TEST_TMPDIR/inl$1.json"); b=$(cpu guard_once "$BATS_TEST_TMPDIR/inl$1.json"); c=$(cpu guard_once "$BATS_TEST_TMPDIR/inl$1.json")
+  median "$a" "$b" "$c"
+}
+
+@test "R273 timed: the guard on a 66 KB inline command takes at most 5 s of CPU and at most 1.5 times the size ratio of the 20 KB time" {
+  local kind small big limit
+  read -r kind _ < "$BATS_FILE_TMPDIR/ratio"
+  [ "$kind" != busy ] || skip "the machine was busy: jq startup by the clock above the 20 ms hook limit"
+  cd "$PROJECT" || return 1
+  small=$(inline_ms 20)
+  big=$(inline_ms 66)
+  limit=$(perl -e 'printf "%.0f", 1.5 * (66 / 20) * $ARGV[0]' -- "$small")
+  echo "20 KB: $small ms CPU; 66 KB: $big ms CPU; ratio $(perl -e 'printf "%.2f", $ARGV[0] / ($ARGV[1] || 1)' -- "$big" "$small") (limit 1.5 x 66/20 = 4.95, so $limit ms)"
+  judge "the guard on a 66 KB inline command" "$big" 5000
+  perl -e 'exit($ARGV[0] <= $ARGV[1] ? 0 : 1)' -- "$big" "$limit" || { echo "the 66 KB time grows faster than the size: $big ms against $limit ms"; false; }
+}
