@@ -12,7 +12,8 @@
 # Output: null, or {seconds, low, high, rough, end, end_low, end_high, rounds, basis, say};
 # seconds, the ends and the clock times are null when a piece has no basis, and basis
 # then names the first kind missing. low and high add up the pieces' ends; rough is
-# true when any piece is a rough guess (R270), and the say is then a range.
+# true when any piece is a rough guess or a tier's usual fix rounds rest on fewer than 3
+# finished phases (R270), and the say is then a range.
 
 def median: sort | length as $n
   | if $n == 0 then null
@@ -130,7 +131,10 @@ $rec[0] as $r
       | ($all | if $none then null else map(.seconds) | add end) as $sec
       | ($all | if $none then null else map(.low) | add end) as $low
       | ($all | if $none then null else map(.high) | add end) as $high
-      | ($all | any(.[]; .rough == true)) as $rough
+      # Rough when a piece is, or when a tier's usual fix rounds rest on fewer than 3 finished
+      # phases (counted as none): never for the planning step alone, which counts no rounds (R270).
+      | ($all[0].kind == "plan" and ($all | length) == 1) as $planonly
+      | (($all | any(.[]; .rough == true)) or (($planonly | not) and ($ru | any(.[]; .n == null)))) as $rough
       | (if $sec == null then null else $t + $sec | todateiso8601 end) as $end
       | (if $low == null then null else $t + $low | todateiso8601 end) as $end_low
       | (if $high == null then null else $t + $high | todateiso8601 end) as $end_high
@@ -150,7 +154,7 @@ $rec[0] as $r
                         | "\(plural(.; "usual fix round"; "usual fix rounds")) (median of the latest 10 finished phases of each tier)") ] | step_and) end
          end) as $basis
       | {seconds: $sec, low: $low, high: $high, rough: ($rough and $sec != null), end: $end, end_low: $end_low, end_high: $end_high,
-         rounds: (if $all[0].kind == "plan" and ($all | length) == 1 then {} else ($ru | map({key: .t, value: (.n // 0)}) | from_entries) end),
+         rounds: (if $planonly then {} else ($ru | map({key: .t, value: (.n // 0)}) | from_entries) end),
          basis: $basis}
       | . + {say: (
           if .end == null then "no milestone end time yet (\(.basis))"
