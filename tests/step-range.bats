@@ -153,3 +153,36 @@ render() {
   grep -q 'rough guess from' "$REPO_ROOT/docs/next.md" || { echo "docs/next.md does not show the range wording"; false; }
   grep -q 'until ~' "$REPO_ROOT/docs/statusline.md" || { echo "docs/statusline.md does not show the status line's range form"; false; }
 }
+
+# own_proof_note N: a proof of N units starts in a session of its own (no run lease);
+# proofsteps_begin writes the note, which stays at $NOTE.
+own_proof_note() {
+  # shellcheck disable=SC2016 # expanded by the inner bash
+  PS_N=$1 bash -c 'cd "$1"; VBW_LIB="$2/lib"; . "$VBW_LIB/core.sh"; . "$VBW_LIB/record.sh"; . "$VBW_LIB/consent.sh"; . "$VBW_LIB/contract.sh"; . "$VBW_LIB/proofsteps.sh"
+    vbw_project; VBW_PLUGIN="$2"; proofsteps_begin "$PS_N"; cp "$(step_note_file)" "$VBW_RUNTIME/kept.json"' _ "$PROJECT" "$PLUGIN_ROOT"
+  # The guard's exit trap removes the note a proof of its own made; the copy stands in for it.
+  cp "$PROJECT/.vbw/runtime/kept.json" "$NOTE"
+}
+
+@test "R270 kernel: a proof of VBW's own writes its note with the range fields, rough from thin or spread history, single from five tight runs" {
+  step_seed proof 100 5 2
+  own_proof_note 4
+  jq -e '.kind == "proof" and .rough == true and .runs == 2 and .end_low != null and .end_high != null and (.end_low <= .end) and (.end <= .end_high)' "$NOTE" || { cat "$NOTE"; false; }
+  # The same words the proof's own vbw next sentence says, from the same fields.
+  run render
+  [[ "${lines[0]}" == *"until ~$(hm end_low)"* ]] || { echo "${lines[0]}"; false; }
+  [[ "${lines[0]}" != *"until around"* ]] || { echo "${lines[0]}"; false; }
+  # Spread runs (a high above 1.5 times the low) are rough however many.
+  rm -f "$NOTE" "$STEPS"
+  step_seed proof 100 5 3
+  step_seed proof 400 5 3
+  own_proof_note 4
+  jq -e '.rough == true and .runs == 6 and .end_low < .end_high' "$NOTE" || { cat "$NOTE"; false; }
+  # Five tight runs keep the single figure.
+  rm -f "$NOTE" "$STEPS"
+  step_seed proof 100 5 5
+  own_proof_note 4
+  jq -e '.rough == false and .runs == 5 and .end != null' "$NOTE" || { cat "$NOTE"; false; }
+  run render
+  [[ "${lines[0]}" == *"until around $(hm end)"* && "${lines[0]}" != *"~"* ]] || { echo "${lines[0]}"; false; }
+}
