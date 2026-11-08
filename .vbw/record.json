@@ -81438,6 +81438,13 @@
       "sort": "later",
       "size": "small",
       "status": "open"
+    },
+    {
+      "id": "T261",
+      "text": "QA agents see account MCP auth tools (2026-11-08: a QA agent called an ahrefs authenticate tool; the guard refused it): keep account connector tools out of workflow agents' reach or name them in the agent specs as never used",
+      "sort": "later",
+      "size": "small",
+      "status": "open"
     }
   ],
   "decisions": [
