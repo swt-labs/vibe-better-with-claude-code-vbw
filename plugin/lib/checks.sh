@@ -23,14 +23,24 @@ checks_begin() {
 # checks_approved RECORD [strict]: die unless the contract is approved. Check
 # files edited since the approval wait for it (CHECK_WAITING): the checks still
 # run and the files are named, but with "strict" (proof) it dies. A check a fix
-# added waits too, and never runs before the approval (CHECK_HELD, its ids).
+# added waits too, and never runs before the approval (CHECK_HELD, its ids). A
+# file that only has lines added to its approved content (R269) does not wait:
+# CHECK_JUDGED names each check that reads one, {check: {file: {blob, sha, n}}},
+# for the proof to judge it with the approved content (the blob's bytes, sha their
+# SHA-256, n the added lines); {} when there is none.
 # Sets CHECK_HASH. Called directly, never in $(...).
 checks_approved() {
-  local waiting
+  local waiting cls=""
   # shellcheck disable=SC2034 # read by the commands that source this file
   CHECK_HASH=$(contract_hash "$1")
-  CHECK_WAITING=$(contract_waiting "$1") \
-    || vbw_die "the contract is not approved, or changed since it was approved: review it (vbw show contract), then ask the user with the approval menu (AskUserQuestion)"
+  CHECK_WAITING="" CHECK_JUDGED='{}'
+  if ! contract_approved "$CHECK_HASH"; then
+    consent_has shape "$(contract_shape "$1")" \
+      || vbw_die "the contract is not approved, or changed since it was approved: review it (vbw show contract), then ask the user with the approval menu (AskUserQuestion)"
+    cls=$(contract_classify "$1")
+    CHECK_WAITING=$(printf '%s\n' "$cls" | sed -n 's/^W	//p')
+    CHECK_JUDGED=$(checks_judged "$1" "$cls")
+  fi
   if [ -n "$CHECK_WAITING" ]; then
     waiting=$(printf '%s' "$CHECK_WAITING" | tr '\n' ' ')
     [ "${2:-}" != strict ] || vbw_die "check files changed since it was approved, or added by a fix, are waiting for approval, and nothing runs them before: ${waiting% }
@@ -38,6 +48,22 @@ Next: review them, then ask the user to approve them once (vbw next asks), and r
     printf 'vbw: waiting for approval (new or changed since approved): %s\n' "${waiting% }" >&2
   fi
   CHECK_HELD=$(contract_held "$1")
+}
+
+# checks_judged RECORD CLASSIFIED: CHECK_JUDGED's object for the added-to rows
+# ("A<TAB>file<TAB>n") of contract_classify's CLASSIFIED: the approved blob of each
+# file (from the approval snapshot) and the SHA-256 of its bytes.
+checks_judged() {
+  local row f n blob sha files='{}'
+  while IFS=$'\t' read -r row f n; do
+    [ "$row" = A ] || continue
+    blob=$(jq -r --arg f "$f" '.blobs[$f] // empty' "$VBW_RUNTIME/approved-contract.json") && [ -n "$blob" ] \
+      && sha=$(git -C "$VBW_ROOT" cat-file blob "$blob" | vbw_sha256) \
+      || vbw_die "cannot read the approved content of $f"
+    files=$(printf '%s' "$files" | jq -c --arg f "$f" --arg b "$blob" --arg s "$sha" --argjson n "$n" '. + {($f): {blob: $b, sha: $s, n: $n}}')
+  done <<< "$2"
+  printf '%s' "$1" | jq -c --argjson a "$files" '[.checks[] | {key: .id, value: ([.files // [] | .[] | select($a[.] != null) | {key: ., value: $a[.]}] | from_entries)}
+    | select(.value != {})] | from_entries'
 }
 
 # checks_open: this invocation's run, which needs no approval: CHECK_OUT, a
@@ -347,13 +373,14 @@ checks_unit() {
 # checks_units_load UNITS: every unit's launch data, from one jq pass over the
 # units (a JSON array): CU_COUNT units; for unit I, CU_NAME, CU_OUT, CU_TIMEOUT,
 # CU_EXIT, CU_OUTPUT, CU_ALONE, CU_PIN (the copy it names, or empty), CU_IN
-# (the folder of the copy it runs in, .dir: empty for the copy's root) and its
+# (the folder of the copy it runs in, .dir: empty for the copy's root), CU_JUDGED (the
+# {file: blob} it is judged with in a clean copy, proofcopy_judge, or empty) and its
 # argv, CU_ARGC[I] words of CU_ARGV from CU_AT[I]. checks_run_units declares them.
 checks_units_load() {
   local f=() a k=0 c
   while IFS= read -r -d '' a; do f+=("$a"); done < <(printf '%s' "$1" | jq -j '.[]
     | [.name, .out, (.timeout | tostring), (.exit | tostring), .output, (.alone | tostring), (.slot // "" | tostring),
-       (.dir // ""), (.argv | length | tostring)] + .argv | .[] + "\u0000"')
+       (.dir // ""), ((.judged // {}) | if length == 0 then "" else tojson end), (.argv | length | tostring)] + .argv | .[] + "\u0000"')
   CU_COUNT=0
   while [ "$k" -lt ${#f[@]} ]; do
     CU_NAME[CU_COUNT]=${f[k]}
@@ -364,11 +391,12 @@ checks_units_load() {
     CU_ALONE[CU_COUNT]=${f[k + 5]}
     CU_PIN[CU_COUNT]=${f[k + 6]}
     CU_IN[CU_COUNT]=${f[k + 7]}
-    c=${f[k + 8]}
+    CU_JUDGED[CU_COUNT]=${f[k + 8]}
+    c=${f[k + 9]}
     CU_AT[CU_COUNT]=${#CU_ARGV[@]}
     CU_ARGC[CU_COUNT]=$c
-    [ "$c" -eq 0 ] || CU_ARGV+=("${f[@]:k + 9:c}")
-    k=$((k + 9 + c))
+    [ "$c" -eq 0 ] || CU_ARGV+=("${f[@]:k + 10:c}")
+    k=$((k + 10 + c))
     CU_COUNT=$((CU_COUNT + 1))
   done
 }
@@ -399,6 +427,8 @@ checks_unit_run() {
     [ -z "${PROOFTIME_FILE:-}" ] || t0=$(prooftime_clock)
     reads_reset "$copy" "$st" || reads=false
     [ -z "$t0" ] || prooftime_span tracking "$t0"
+    # An added-to check file is the approved content in this copy while the unit runs (R269).
+    [ -z "${CU_JUDGED[i]:-}" ] || proofcopy_judge "$copy" "${CU_JUDGED[i]}"
   fi
   # A unit with a folder (a test file form's dir) runs in it. A folder the commit
   # does not have, or one a link leads out of the copy, fails the unit, naming
@@ -426,6 +456,7 @@ checks_unit_run() {
     [ -z "${PROOFTIME_FILE:-}" ] || t0=$(prooftime_clock)
     if [ "$reads" = true ] && reads_collect "$copy" "$st" "${CU_ARGV[a]:-}" > "$list"; then collected=true; fi
     [ -z "$t0" ] || prooftime_span tracking "$t0"
+    [ -z "${CU_JUDGED[i]:-}" ] || proofcopy_unjudge "$copy" "${CU_JUDGED[i]}"
     # Nothing after this looks into the copy, which the next unit may take at once.
     cd "$here" || return 1
   fi
@@ -555,7 +586,7 @@ checks_units_parallel() {
 # (vbw mutate --run: each break is in its own copy). Results are in the units' order.
 checks_run_units() {
   local jobs slots cap i slot res CU_DIR CU_WAKE='' CU_RUNNER='' CU_COUNT=0
-  local CU_NAME=() CU_OUT=() CU_TIMEOUT=() CU_EXIT=() CU_OUTPUT=() CU_ALONE=() CU_PIN=() CU_IN=() CU_AT=() CU_ARGC=() CU_ARGV=()
+  local CU_NAME=() CU_OUT=() CU_TIMEOUT=() CU_EXIT=() CU_OUTPUT=() CU_ALONE=() CU_PIN=() CU_IN=() CU_JUDGED=() CU_AT=() CU_ARGC=() CU_ARGV=()
   checks_units_load "$1"
   [ "$CU_COUNT" -gt 0 ] || { printf '{}\n'; return 0; }
   jobs=$(vbw_check_jobs) || jobs=1
@@ -608,7 +639,7 @@ checks_run_all() {
   shift
   [ $# -gt 0 ] || all=true
   # A check a fix added waits for the user's approval: it is reported, never run.
-  plan=$(printf '%s' "$record" | jq -c --argjson all "$all" --rawfile given <(printf '%s\0' "$@") --rawfile held <(printf '%s\n' "${CHECK_HELD:-}") '
+  plan=$(printf '%s' "$record" | jq -c --argjson all "$all" --rawfile given <(printf '%s\0' "$@") --rawfile held <(printf '%s\n' "${CHECK_HELD:-}") --slurpfile jd <(printf '%s' "${CHECK_JUDGED:-}") '
     .checks as $c
     | (if $all then [$c[].id] else $given | split("\u0000")[:-1] end) as $ids
     | ($held | split("\n") | map(select(length > 0))) as $h
@@ -616,7 +647,7 @@ checks_run_all() {
        ids: $ids,
        units: [$ids[] as $i | select(any($h[]; . == $i) | not) | $c[] | select(.id == $i)
          | {name: .id, out: "\(.id).out", argv: .run, timeout: (.timeout // 300), exit: (.exit // 0),
-            output: (.output // ""), alone: (.alone // false)}],
+            output: (.output // ""), alone: (.alone // false), judged: (($jd[0][.id] // {}) | map_values(.blob))}],
        waiting: ([$ids[] | select(. as $i | any($h[]; . == $i))
          | {key: ., value: {status: "waiting", exit: null, seconds: 0, tail: "not run: a check a fix added waits for the user'"'"'s approval"}}]
          | from_entries)}')
