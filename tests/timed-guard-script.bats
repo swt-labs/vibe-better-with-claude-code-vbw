@@ -51,9 +51,18 @@ cpu() {
 median() { printf '%s\n%s\n%s\n' "$1" "$2" "$3" | sort -n | sed -n 2p; }
 
 # field_script FILE KB: a shell script of about KB kilobytes in the field report's shape
-# (thousands of echo lines) whose last line writes the protected check file.
+# (thousands of echo lines) whose last command (a python3 here-doc, so that every earlier here-doc is read first) writes the protected check file.
 field_script() {
-  awk -v n="$(( $2 * 1024 / 45 ))" 'BEGIN { for (i = 1; i <= n; i++) printf "echo \"step %06d: the build prints a line here\"\n", i; print "echo x > tests/c1.sh" }' > "$1"
+  # Every 20th step is a cat here-doc, every 20th (offset 10) a python3 - <<PY here-doc, every
+  # 7th a $(...) assignment, the rest echo lines: the mix is the same at every size.
+  awk -v n="$(( $2 * 1024 / 45 ))" 'BEGIN {
+    for (i = 1; i <= n; i++) {
+      if (i % 20 == 0) printf "cat > .vbw/runtime/scratch/note%d.txt <<EOF\nstep %06d: a note the build writes\nsecond line of the note\nEOF\n", i, i
+      else if (i % 20 == 10) printf "python3 - <<PY\nprint(\"step %06d: a program the build runs\")\nPY\n", i
+      else if (i % 7 == 0) printf "v%d=$(date +%%s) # step %06d: a value the build reads\n", i, i
+      else printf "echo \"step %06d: the build prints a line here\"\n", i
+    }
+    printf "python3 - <<PY\nopen(\"tests/c1.sh\", \"w\").write(\"x\")\nPY\n" }' > "$1"
 }
 
 # guard_once INPUT: the Bash guard's answer for the call in the file INPUT, as Claude Code runs it.
