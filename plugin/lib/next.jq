@@ -148,6 +148,11 @@ def fix_files($r): if .command then ["*"]
     | result("approve"; true; "Approve the test files new or edited since the approval (a fix may add or change them), once, before they are proved: \($wf | join(", "))"; {files: $wf})
   elif ($unproven | length) > 0 or $reprove then
     result("prove"; false; "Run vbw prove for \(if ($unproven | length) > 0 then $unproven else $proof_fixes end | join(", "))"; {requirements: $unproven})
+  # The gate after the proof for check files that only had lines added (R269, F414): nothing is
+  # failing or unproven, so the added lines are asked once, with their diff, before QA and shipping.
+  elif ($added_to | length) > 0 then
+    ([$added_to[].file] | sort) as $af
+    | result("approve"; true; "Approve the lines added to the test files since the approval, once; the proof judged them with the approved content, and approved they count from the next proof: \($af | join(", "))"; {files: $af, added_to: $added_to})
   elif ($unsettled | length) > 0 then
     result("deviations"; true; "Files the plans delivered changed outside any plan: ask the user whether to keep each change (vbw decide naming the file) or restore it (vbw fix restore FILE): \([$unsettled[] | "\(.file) (\(.plan)) \(.change)"] | join(", "))"; {deviations: $unsettled})
   elif (proof_complete | not) and (($to_verify | length) > 0 or ($to_accept | length) == 0) then
