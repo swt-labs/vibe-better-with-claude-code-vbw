@@ -32148,7 +32148,15 @@
         "guarded: R13 (C12), R14 (C13), R16 (C15), R24 (C23), R25 (C24), R26 (C22), R28 (C25), R35 (C31), R37 (C35), R40 (C37), R47 (C47), R48 (C49, C50), R49 (C48), R50 (C51), R51 (C52, C53, C66), R52 (C58, C91), R53 (C54, C55), R55 (C56, C57), R56 (C61, C65), R57 (C59, C70, C71), R58 (C62, C63, C64, C67), R69 (C110, C120, C122), R70 (C114), R71 (C115, C121), R72 (C116, C118), R73 (C98), R74 (C99, C100), R78 (C105, C106), R79 (C107), R80 (C108), R81 (C109, C111, C112, C113), R82 (C117), R85 (C125), R86 (C124), R87 (C126, C127), R88 (C129), R89 (C128), R91 (C130), R102 (C158, C159), R106 (C164, C165), R107 (C166, C167), R111 (C171, C172, C173, C174, C175), R116 (C182, C183), R124 (C192, C193), R149 (C217, C218, C219, C220, C221, C222), R161 (C248, C265, C266), R171 (C270), R173 (C281, C282, C283, C284, C285, C286, C289), R179 (C297, C298, C299, C300, C301, C302, C303, C304, C305, C306, C312), R184 (C328, C329, C330, C331, C332, C333), R185 (C334, C335, C336, C337, C338, C339, C340, C341, C342, C343), R189 (C360, C361, C362, C363, C364, C365, C366, C367, C368, C369, C370, C371, C372, C373), R190 (C374, C375, C376, C377, C378, C379, C380, C381, C382, C383, C384, C385, C386, C387, C388), R191 (C389, C390, C391, C392, C393, C394, C395, C396, C397, C398, C399, C400), R192 (C401, C402, C403, C404, C405, C406, C407, C408, C409, C410), R199 (C424, C425, C430), R200 (C426, C427, C431), R202 (C432, C433, C434, C435, C436, C437, C438, C439, C440, C441, C442, C443, C444, C445, C446, C447), R224 (C512, C513, C514, C515, C516), R227 (C520, C521), R229 (C526, C527, C528, C529), R235 (C538, C539), R240 (C556, C557), R244 (C562, C563), R249 (C571, C572, C573)",
         "tests: project test command"
       ],
-      "predicted": "deep"
+      "predicted": "deep",
+      "qa": {
+        "result": "fail",
+        "tier": "deep",
+        "tree": "c63ce078ce565f8145f42306a9a31e01c8d55f977fb2e4c5d2c2485edab14bf8",
+        "at": "2026-11-08T04:41:04Z",
+        "note": "17/20 checks",
+        "rounds": 1
+      }
     },
     {
       "id": "P220",
@@ -79074,6 +79082,15 @@
       "attempts": 0,
       "status": "closed",
       "note": "test fail"
+    },
+    {
+      "id": "F412",
+      "req": "R270",
+      "source": "qa",
+      "attempts": 0,
+      "status": "open",
+      "note": "A proof that VBW runs by itself (vbw prove, PS_MODE=own) writes its step note without the range fields, so it still says one figure when its history is thin. plugin/lib/proofsteps.sh:137-144 calls step_expect (seconds only) and builds the note from kind, first_end and end; it never sets end_low, end_high, rough or runs (steps.sh step_start does this for plan/build/fix/qa at :326-330, and step_next does it for the proof's own 'vbw next' sentence). The status line, panel and vbw status read that note, so after 1 to 4 recorded proofs, or spread proof times, they print 'about N min, until around HH:MM' while 'vbw next --json .step.say' for the same proof already said 'roughly L to H min ... (rough guess from N runs)'. The goal says every estimate (status line, panel, vbw status) is a range when rough; the proof note is the most common live step and is the one case missed. proofsteps.sh is in no P219 plan, so the plan left it out. Regression test: with a history of 2 proof runs (and again with spread runs), start proofsteps_begin in own mode and assert .vbw/runtime/step.json has rough true, runs 2 and end_low/end_high; then assert the status line renders 'until ~HH:MM-HH:MM' and stepWords/step_words give the 'roughly ... (rough guess from 2 runs)' sentence; with 5 tight proof runs assert rough false and the single figure.",
+      "phase": "P219"
     }
   ],
   "todos": [
