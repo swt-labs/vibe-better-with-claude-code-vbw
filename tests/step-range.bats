@@ -158,8 +158,9 @@ render() {
 # proofsteps_begin writes the note, which stays at $NOTE.
 own_proof_note() {
   # shellcheck disable=SC2016 # expanded by the inner bash
-  PS_N=$1 bash -c 'cd "$1"; VBW_LIB="$2/lib"; . "$VBW_LIB/core.sh"; . "$VBW_LIB/record.sh"; . "$VBW_LIB/consent.sh"; . "$VBW_LIB/contract.sh"; . "$VBW_LIB/proofsteps.sh"
+  PS_N=$1 VBW_SESSION_ID=s1 bash -c 'cd "$1"; VBW_LIB="$2/lib"; . "$VBW_LIB/core.sh"; . "$VBW_LIB/record.sh"; . "$VBW_LIB/consent.sh"; . "$VBW_LIB/contract.sh"; . "$VBW_LIB/proofsteps.sh"
     vbw_project; VBW_PLUGIN="$2"; proofsteps_begin "$PS_N"; cp "$(step_note_file)" "$VBW_RUNTIME/kept.json"' _ "$PROJECT" "$PLUGIN_ROOT"
+  # The proof runs in session s1, as the router runs it, so the status line of s1 shows its note.
   # The guard's exit trap removes the note a proof of its own made; the copy stands in for it.
   # Its process has ended, so the note names this test's, which is alive for the status line.
   jq -c --argjson pid "$$" '.pid = $pid' "$PROJECT/.vbw/runtime/kept.json" > "$NOTE"
