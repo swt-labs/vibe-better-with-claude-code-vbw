@@ -283,12 +283,35 @@ def with_cwd($start; resolve):
 
 # Every heredoc of a text, as {line, text, quoted, head}: the line that starts it, its body,
 # whether its delimiter is quoted (the shell then expands nothing in the body), and the text
-# up to the end of that line (the working folder of the line is read from it).
+# up to the end of that line when a cd comes before it, else empty (the working folder of the line is read from it).
 def heredocs:
   . as $t
-  | match("(?:^|\\n)([^\\n]*(?<!<)<<-?[ \\t]*(['\\\"]?)(\\w+)\\2[^\\n]*)\\n(.*?)\\n[ \\t]*\\3[ \\t]*(?=\\n|$)"; "gp") as $m
-  | {line: $m.captures[0].string, text: $m.captures[3].string, quoted: ($m.captures[1].string != ""),
-     head: $t[:$m.offset + 1 + ($m.string[1:] | index("\n"))]};
+  | ([$t | match("(?<![A-Za-z0-9_])cd(?![A-Za-z0-9_])") | .offset][0]) as $cd
+  | split("\n") | reduce .[] as $l ({cur: null, pos: 0, out: []};
+        .pos as $p
+        | if .cur != null then (.cur.delim) as $d |
+            if ($l | test("^[ \\t]*\($d)[ \\t]*$")) then
+              .out += [{line: .cur.line, text: (.cur.body | join("\n")), quoted: .cur.quoted,
+                        head: (.cur.end as $e | if $cd == null or $cd >= $e then "" else $t[:$e] end)}]
+              | .cur = null
+            else .cur.body += [$l] end
+          elif ($l | test("<<")) then
+            ([$l | match("(?<!<)<<-?[ \\t]*(['\\\"]?)(\\w+)\\1"; "g")] | last) as $m
+            | if $m == null then .
+              else .cur = {line: $l, delim: $m.captures[1].string, quoted: ($m.captures[0].string != ""),
+                           end: ($p + ($l | length)), body: []} end
+          else . end
+        | .pos += ($l | length) + 1)
+      | .out[];
+
+# The working folder of a heredoc's line: START moved by every cd before it. Reading the
+# head as commands costs the size of the head, so a head with no cd in it (the common case)
+# is not read: with many heredocs that read made a script's cost grow with the square of its
+# size (R273).
+def head_cwd($start; resolve):
+  if .head | test("(^|[^A-Za-z0-9_])cd([^A-Za-z0-9_]|$)") then
+    [.head | commands(3)] | with_cwd($start; resolve) | last.cwd // $start
+  else $start end;
 
 # Programs read from standard input by a heredoc: the bodies strip_heredocs drops, for the
 # commands that run an interpreter.
@@ -365,7 +388,7 @@ def script_findings($interp; $start; resolve):
               | ((.args | join("\n")) | program_findings($c.cwd)),
                 (inplace_files[] | {call: $c.text, target: ., cwd: $c.cwd}) ) ),
         ( $t | select(test("<<")) | heredoc_programs | . as $h
-          | ([$h.head | commands(3)] | with_cwd($start; resolve) | last.cwd // $start) as $w
+          | ($h | head_cwd($start; resolve)) as $w
           | $h.text | program_findings($w) )
     else program_findings($start) end;
 
