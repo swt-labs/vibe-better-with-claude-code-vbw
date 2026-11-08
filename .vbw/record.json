@@ -32102,6 +32102,12 @@
           "from": "deep",
           "to": "deep",
           "reason": "Dev blocked P220.3: C637 (tests/hook-answers.bats line ~291, approved) cannot pass with a correct hook: the test sets .schema=99 on a fixture built by vbw init, which since P220.2 has .vbw/runtime/writer.json, so the kernel line (correctly) reads 'written by VBW 2.1.27, and this session loaded VBW 2.1.27'; the test asserts the no-writer shape 'written with schema 99, and this session loaded VBW ' although its own title says 'both versions named'. Fix needed in the check file (rm .vbw/runtime/writer.json first, or assert the writer shape); plan files cannot touch it. Hook code is done and committed (8d785889, 29e008ba); C636 passes, the deny/systemMessage output is exactly the kernel line."
+        },
+        {
+          "at": "2026-11-08T01:15:50Z",
+          "from": "deep",
+          "to": "deep",
+          "reason": "Dev blocked P220.3: Hook code is committed and C635-C638 pass. R272.4 mutation ran red. R272.5 mutation (deny->ask in approve-ask.sh) cannot run: tests/hook-answers.bats has an uncommitted edit (strengthened R272 pin, not mine) and vbw mutate refuses until it is committed, but vbw commit refuses it as not covered before a survivor. Also my sed -i.bak left plugin/hooks/approve-ask.sh.bak, which the guard will not let me delete; remove it by hand."
         }
       ]
     },
@@ -32189,6 +32195,12 @@
           "from": "deep",
           "to": "deep",
           "reason": "Dev blocked P222.2: C643 cannot pass: the self-test case qa_digests expects the hit at cmd-plant.sh:8, but its printf is on file line 9 (plant puts text from line 4; the printf is the 6th text line; line 8 is the 'done < <(...)' line). The tool correctly reports 9 for it and 7/6/8 for the other three cases, all matching. The check file tests/output-child-exit.bats is protected, so the expected number needs a one-character fix (8 to 9) in the third case of that test, then C643 passes with the tool as committed."
+        },
+        {
+          "at": "2026-11-08T01:14:56Z",
+          "from": "deep",
+          "to": "deep",
+          "reason": "Dev blocked P222.1: The rule tool still flags 4 functions in files outside this plan: consent_file (plugin/lib/consent.sh:11), interview_private_file (interview.sh:11), proofreuse_store_file (proofreuse.sh:207), unittime_file (unittime.sh:71). Each prints a small path through a builtin printf. Fix needs either those files switched to vbw_out or entries in the ALLOWED list of tools/check-captured-writes.sh, none of which are plan files. Done in plan files: spec_parse and 11 other functions (commits 41efc6ae, 5e9fb66f); C643 passes, C644 and C645 stay red only on those 4."
         }
       ]
     },
@@ -74753,7 +74765,30 @@
         "approve-ask.sh: when vbw show contract exits 4, answer deny with the kernel's line as the reason and in systemMessage, so the approval menu is never shown over a record this VBW cannot read; never allow",
         "The pins in tests/hook-answers.bats (filter R272) and tests/version-mismatch.bats (filter 'R272 hooks') pass; the hook answer inventory stays green"
       ],
-      "note": "C637 (tests/hook-answers.bats line ~291, approved) cannot pass with a correct hook: the test sets .schema=99 on a fixture built by vbw init, which since P220.2 has .vbw/runtime/writer.json, so the kernel line (correctly) reads 'written by VBW 2.1.27, and this session loaded VBW 2.1.27'; the test asserts the no-writer shape 'written with schema 99, and this session loaded VBW ' although its own title says 'both versions named'. Fix needed in the check file (rm .vbw/runtime/writer.json first, or assert the writer shape); plan files cannot touch it. Hook code is done and committed (8d785889, 29e008ba); C636 passes, the deny/systemMessage output is exactly the kernel line."
+      "mutations": [
+        {
+          "rule": {
+            "req": "R272",
+            "k": 4
+          },
+          "what": "session-start context drops the kernel line",
+          "files": [
+            "plugin/hooks/session-start.sh"
+          ],
+          "checks": {
+            "C636": "red"
+          },
+          "result": "red",
+          "at": "2026-11-08T01:15:15Z",
+          "head": "5e9fb66f8ffde88915a46f354b3b96e744984287",
+          "tree": "298263e37f4e0e3a810c41669e21f881fa5f801d",
+          "contract": "741578fb262854ec28e9b7de04e33e0fe52b0ff5e743e2e9130306d41c986f08",
+          "digests": {
+            "plugin/hooks/session-start.sh": "ede53af09dd76d93c93dd0a1a325a79922cb09387cb73ea568b03bd86e9681e3"
+          }
+        }
+      ],
+      "note": "Hook code is committed and C635-C638 pass. R272.4 mutation ran red. R272.5 mutation (deny->ask in approve-ask.sh) cannot run: tests/hook-answers.bats has an uncommitted edit (strengthened R272 pin, not mine) and vbw mutate refuses until it is committed, but vbw commit refuses it as not covered before a survivor. Also my sed -i.bak left plugin/hooks/approve-ask.sh.bak, which the guard will not let me delete; remove it by hand."
     },
     {
       "id": "P221.1",
@@ -74926,12 +74961,104 @@
       "after": [
         "P221.1"
       ],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "A timed test (release run only) that writes an 80 KB and a 264 KB script in the field's shape (thousands of echo lines, a write of a protected check file last) under a build lease and times the Bash guard on each by CPU, three runs, the median",
         "The 264 KB run within 5 s (5000 ms) and within 1.5 times the size ratio (264/80) times the 80 KB time; budgets scaled by the bench's reference as tests/timed-big-record.bats does (NOMINAL_MS, VBW_BENCH_REFERENCE_MS), a busy machine skips",
         "Print both measures and the ratio"
+      ],
+      "mutations": [
+        {
+          "rule": {
+            "req": "R273",
+            "k": 4
+          },
+          "what": "budget 5000 became 500000 and the relative factor 1.5 became 9.5",
+          "files": [
+            "tests/timed-guard-script.bats"
+          ],
+          "checks": {
+            "C641": "green"
+          },
+          "result": "survivor",
+          "at": "2026-11-08T01:16:11Z",
+          "head": "035a177fc228861e95774de439a6a54cead0a9f1",
+          "tree": "567dd07d57c79be82fdd8e2ac6f1504761bc1189",
+          "contract": "741578fb262854ec28e9b7de04e33e0fe52b0ff5e743e2e9130306d41c986f08",
+          "digests": {
+            "tests/timed-guard-script.bats": "4576b937b83e7352a489d60fbcd0e93f48b243d0ed83394e068da23930165f54"
+          }
+        },
+        {
+          "rule": {
+            "req": "R273",
+            "k": 4
+          },
+          "what": "budget 5000 became 500000 and the factor 1.5 became 9.5, second try",
+          "files": [
+            "tests/timed-guard-script.bats"
+          ],
+          "checks": {
+            "C641": "red"
+          },
+          "result": "red",
+          "at": "2026-11-08T01:16:56Z",
+          "head": "c4faaa16ddb9547f047696c5e2440257e9504855",
+          "tree": "f01b5e3ebc0fa49f4fd8c0b20a0cd9dc02c1fd96",
+          "contract": "f936920a2f4009b626854fcf209c55bab9bdadf54164b99de3909c8b516bfcd4",
+          "digests": {
+            "tests/timed-guard-script.bats": "4576b937b83e7352a489d60fbcd0e93f48b243d0ed83394e068da23930165f54"
+          },
+          "strengthened": [
+            "tests/guard-script-files.bats"
+          ],
+          "pending": [
+            "tests/guard-script-files.bats"
+          ]
+        },
+        {
+          "task": 3,
+          "what": "the line printing both measures and the ratio removed",
+          "files": [
+            "tests/timed-guard-script.bats"
+          ],
+          "checks": {
+            "C641": "green"
+          },
+          "result": "survivor",
+          "at": "2026-11-08T01:17:25Z",
+          "head": "c4faaa16ddb9547f047696c5e2440257e9504855",
+          "tree": "f01b5e3ebc0fa49f4fd8c0b20a0cd9dc02c1fd96",
+          "contract": "f936920a2f4009b626854fcf209c55bab9bdadf54164b99de3909c8b516bfcd4",
+          "digests": {
+            "tests/timed-guard-script.bats": "24304c0fb092a01ea3a44b9e3866918a78353c992adce046e6958b4303db2ae5"
+          }
+        },
+        {
+          "task": 3,
+          "what": "print line removed, second try",
+          "files": [
+            "tests/timed-guard-script.bats"
+          ],
+          "checks": {
+            "C641": "red"
+          },
+          "result": "red",
+          "at": "2026-11-08T01:18:05Z",
+          "head": "f70f586eb140144b364598ed583bd57e1b65a414",
+          "tree": "52e0e4fcba934520edb36623eef8eb57f083775b",
+          "contract": "20a9f8dd8f747ab64a6c7a84a47ff3842a928cf57fc2a2efe581505db716cb6e",
+          "digests": {
+            "tests/timed-guard-script.bats": "24304c0fb092a01ea3a44b9e3866918a78353c992adce046e6958b4303db2ae5"
+          },
+          "strengthened": [
+            "tests/guard-script-files.bats"
+          ],
+          "pending": [
+            "tests/guard-script-files.bats"
+          ]
+        }
       ]
     },
     {
@@ -75040,13 +75167,14 @@
         "P218.3",
         "P219.1"
       ],
-      "status": "planned",
+      "status": "blocked",
       "role": "dev",
       "tasks": [
         "spec_parse (cmd-spec.sh:57) writes the parsed spec through vbw_out",
         "Every function tools/check-captured-writes.sh flags in plugin/lib (delivered_deviations, loop_spend, step_expect, step_proof_plan, vbw_machine_limit, vbw_git_root, vbw_mtime, proofcopy_slots, and any other) writes through vbw_out, or is allow-listed in the tool with a reason only when its write must stay a builtin",
         "bash tools/check-captured-writes.sh plugin/lib exits 0; the full test run of the changed files stays green"
-      ]
+      ],
+      "note": "The rule tool still flags 4 functions in files outside this plan: consent_file (plugin/lib/consent.sh:11), interview_private_file (interview.sh:11), proofreuse_store_file (proofreuse.sh:207), unittime_file (unittime.sh:71). Each prints a small path through a builtin printf. Fix needs either those files switched to vbw_out or entries in the ALLOWED list of tools/check-captured-writes.sh, none of which are plan files. Done in plan files: spec_parse and 11 other functions (commits 41efc6ae, 5e9fb66f); C643 passes, C644 and C645 stay red only on those 4."
     },
     {
       "id": "P222.2",
@@ -94736,6 +94864,17 @@
         "ended": "2026-11-08T01:11:48Z",
         "cost": {
           "usd": 3.295019
+        }
+      },
+      {
+        "id": "build-20261108T011346Z",
+        "kind": "build",
+        "session": "0ee781c3-c5b6-4a6c-889f-04b89f1fba4a",
+        "milestone": "M55",
+        "started": "2026-11-08T01:13:46Z",
+        "ended": "2026-11-08T01:18:45Z",
+        "cost": {
+          "usd": 1.08124
         }
       }
     ],

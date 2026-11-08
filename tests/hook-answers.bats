@@ -289,12 +289,14 @@ tools_call() {
 }
 
 @test "R272 R128: approve-ask.sh deny and systemMessage: under a record written by a newer VBW the approval menu is refused with the kernel's own line (both versions named), shown to the user too, never answered in the user's place" {
+  # A newer VBW wrote the record: its schema is past this VBW's, and its writer file names it.
   jq '.schema = 99' .vbw/record.json > "$TEST_ROOT/newer.json" && cp "$TEST_ROOT/newer.json" .vbw/record.json
+  mkdir -p .vbw/runtime && jq -n '{version: "9.9.9", schema: 99}' > .vbw/runtime/writer.json
   run ask_call "Approve the plan?"
   [ "$status" -eq 0 ]
   [ "$(shape "$output")" = "$DENY" ] || { echo "$output"; false; }
   printf '%s' "$output" | jq -e '.hookSpecificOutput | .hookEventName == "PreToolUse" and .permissionDecision == "deny"
-    and (.permissionDecisionReason | contains("this project needs a newer VBW: its record was written with schema 99, and this session loaded VBW "))
+    and (.permissionDecisionReason | contains("this project needs a newer VBW: its record was written by VBW 9.9.9, and this session loaded VBW "))
     and (.permissionDecisionReason | contains("--plugin-dir: Claude Code loads VBW from that folder instead of the installed copy"))' || { echo "$output"; false; }
   printf '%s' "$output" | jq -e '.systemMessage | contains("needs a newer VBW") and contains("--plugin-dir")' || { echo "$output"; false; }
 }
