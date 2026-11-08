@@ -79775,14 +79775,14 @@
       "id": "F424",
       "req": "R43",
       "attempts": 0,
-      "status": "open",
+      "status": "fixed",
       "note": "C42 timeout"
     },
     {
       "id": "F425",
       "req": "R69",
       "attempts": 0,
-      "status": "open",
+      "status": "fixed",
       "note": "C120 fail (exit 1)"
     }
   ],
@@ -96462,6 +96462,17 @@
         "ended": "2026-11-08T16:47:40Z",
         "cost": {
           "usd": 1.215717
+        }
+      },
+      {
+        "id": "fix-20261108T191822Z",
+        "kind": "fix",
+        "session": "0ee781c3-c5b6-4a6c-889f-04b89f1fba4a",
+        "milestone": "M55",
+        "started": "2026-11-08T19:18:22Z",
+        "ended": "2026-11-08T19:21:32Z",
+        "cost": {
+          "usd": 0.460734
         }
       }
     ],
