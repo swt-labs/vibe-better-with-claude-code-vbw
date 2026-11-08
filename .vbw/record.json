@@ -32120,7 +32120,15 @@
           "to": "deep",
           "reason": "Dev blocked P218.1: C626 cannot pass as written. classify() in tests/contract-added-lines.bats captures w=$(contract_waiting ...) and a=$(contract_added ...) with $(...), which strips trailing newlines, then expects 'waiting: tests/pay.sh ' (trailing space) and 'added: tests/pay.sh,1;' (trailing ';'): both need a trailing newline to survive the capture, which no implementation can do. Implemented (committed): snapshot commit+blobs, contract_classify/contract_waiting_with/contract_added/contract_blobs. Result: tests 1 and 5 pass; tests 2,3,4 fail only on that trailing separator (actual 'waiting: tests/pay.sh' / 'added: tests/pay.sh,1'). The check file needs a fix (e.g. build the line with a join that adds no trailing separator, or expect none)."
         }
-      ]
+      ],
+      "qa": {
+        "result": "fail",
+        "tier": "deep",
+        "tree": "deb80ebe132ba73971f0f4d340ffdd2a0d2c3908e20c68babf762af332a304f3",
+        "at": "2026-11-08T04:42:11Z",
+        "note": "28/30 checks",
+        "rounds": 1
+      }
     },
     {
       "id": "P219",
@@ -79106,6 +79114,24 @@
       "status": "open",
       "note": "A proof that VBW runs by itself (vbw prove, PS_MODE=own) writes its step note without the range fields, so it still says one figure when its history is thin. plugin/lib/proofsteps.sh:137-144 calls step_expect (seconds only) and builds the note from kind, first_end and end; it never sets end_low, end_high, rough or runs (steps.sh step_start does this for plan/build/fix/qa at :326-330, and step_next does it for the proof's own 'vbw next' sentence). The status line, panel and vbw status read that note, so after 1 to 4 recorded proofs, or spread proof times, they print 'about N min, until around HH:MM' while 'vbw next --json .step.say' for the same proof already said 'roughly L to H min ... (rough guess from N runs)'. The goal says every estimate (status line, panel, vbw status) is a range when rough; the proof note is the most common live step and is the one case missed. proofsteps.sh is in no P219 plan, so the plan left it out. Regression test: with a history of 2 proof runs (and again with spread runs), start proofsteps_begin in own mode and assert .vbw/runtime/step.json has rough true, runs 2 and end_low/end_high; then assert the status line renders 'until ~HH:MM-HH:MM' and stepWords/step_words give the 'roughly ... (rough guess from 2 runs)' sentence; with 5 tight proof runs assert rough false and the single figure.",
       "phase": "P219"
+    },
+    {
+      "id": "F413",
+      "req": "R269",
+      "source": "qa",
+      "attempts": 0,
+      "status": "open",
+      "note": "vbw mutate ignores lines a Dev adds to strengthen a check, so a survivor can never be killed by adding an assertion. Evidence (read from code; QA cannot write, so no run): vbw mutate calls checks_begin (cmd-mutate.sh:361), which now fills CHECK_JUDGED for every added-to file (checks.sh:37-42). Each break runs in a clean copy (cmd-mutate.sh:380-383, checks_run_all at :408), and checks_unit_run then calls proofcopy_judge on that copy (checks.sh:430), which overwrites the added-to check file with its APPROVED content. So the strengthened lines never run in the break. The old 'pending' path (cmd-mutate.sh:454 uses CHECK_WAITING, which no longer holds an added-to file) is skipped too, so the break is recorded as a survivor again. Before P218 the file waited and mutate ran it with its working content ('caught by a check file waiting for approval', R217). tests/mutate-strengthen.bats only passes because its strengthen_shared and strengthen_own helpers CHANGE a line or rewrite the file (waiting case); no test strengthens by appending a line, which is the natural way. Regression test to add: in tests/mutate-strengthen.bats (or contract-added-lines.bats) record a survivor, append an assertion line to tests/shared.sh (added lines only), commit it, re-run vbw mutate for the same break and expect red, 'caught by a check file waiting for approval' / strengthened, and the proof still judging with the approved content. Fix direction: vbw mutate must not judge added-to files with the approved content (it should run the working content as it did for waiting files), or classify them as pending.",
+      "phase": "P218"
+    },
+    {
+      "id": "F414",
+      "req": "R269",
+      "source": "qa",
+      "attempts": 0,
+      "status": "open",
+      "note": "No gate ever asks the user to approve the added lines, so they stay unapproved and never count. Evidence (read from code): vbw next answers approve only when the contract is not approved (next.jq:126; cmd-next.sh sets approved=true as soon as the structure is approved, :172-179) or when files WAIT and requirements are unproven (next.jq:146). An added-to file is neither, so after the proof next goes on to qa, accept and ship; vbw ship only prints amendments (cmd-ship.sh:112) and never asks for approval. The proof then judges the approved content on every later run, silently, until some unrelated structure change or the user's own vbw approve happens. The goal and docs/proof.md:397 say the added lines 'wait for approval at the gate after the proof'; P218.2 task 3 claims that gate is existing behaviour, but before this phase it was the pre-proof approve that did it, and that is the step this phase removed. Test coverage: tests/contract-added-lines.bats calls vbw approve by hand and never checks that vbw next asks. Regression test to add: after a proof that passed with an added-to file (all requirements proven, no structure change), vbw next --json must answer approve (gate true, detail.files naming the file) before qa/ship, and approving must make the next proof judge the current content. Fix direction: an approve action in next.jq for added-to files once nothing is unproven (it lists the added lines with their diff), or ship/accept refusing until approved.",
+      "phase": "P218"
     }
   ],
   "todos": [
