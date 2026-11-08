@@ -81487,6 +81487,13 @@
       "sort": "later",
       "size": "small",
       "status": "open"
+    },
+    {
+      "id": "T268",
+      "text": "The guard flags '/dev/null)' at the end of a command substitution as a write target (false positive seen 2026-11-08)",
+      "sort": "later",
+      "size": "small",
+      "status": "open"
     }
   ],
   "decisions": [
