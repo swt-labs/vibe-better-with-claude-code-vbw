@@ -85310,6 +85310,18 @@
       "text": "F423: the road is marked rough while a counted tier's usual fix rounds rest on fewer than 3 finished phases (never for the planning step alone); the main session made the fix",
       "why": "the approved P219 criterion says so and a young project otherwise gets a firm-looking end that assumes no fix rounds; 5 of the 8 changed cases are in R191's test files, which a fix Dev cannot write",
       "at": "2026-11-08T17:42:23Z"
+    },
+    {
+      "id": "D681",
+      "text": "F424 and F425 closed by rerun",
+      "why": "C42 (timeout) and C120 (10 s start window) failed in proof 6 under load averages up to 101 from other VBW runs on this computer; both passed in proof 5 and their code is unchanged this milestone; rerun at load 30 passed both (C42 142 s, C120 20 s), as D677",
+      "at": "2026-11-08T19:21:43Z"
+    },
+    {
+      "id": "D682",
+      "at": "2026-11-08T19:33:12Z",
+      "text": "Contract approved: 267 requirements, 647 checks, 652 plans (8e91c3789d32)",
+      "plans": []
     }
   ],
   "commands": {
