@@ -74758,7 +74758,7 @@
       "after": [
         "P220.2"
       ],
-      "status": "blocked",
+      "status": "planned",
       "role": "dev",
       "tasks": [
         "session-start.sh: on exit 4 the context and the notice to the user carry the kernel's own line (no wording of their own), the notice still naming /vbw:update",
@@ -74787,8 +74787,7 @@
             "plugin/hooks/session-start.sh": "ede53af09dd76d93c93dd0a1a325a79922cb09387cb73ea568b03bd86e9681e3"
           }
         }
-      ],
-      "note": "Hook code is committed and C635-C638 pass. R272.4 mutation ran red. R272.5 mutation (deny->ask in approve-ask.sh) cannot run: tests/hook-answers.bats has an uncommitted edit (strengthened R272 pin, not mine) and vbw mutate refuses until it is committed, but vbw commit refuses it as not covered before a survivor. Also my sed -i.bak left plugin/hooks/approve-ask.sh.bak, which the guard will not let me delete; remove it by hand."
+      ]
     },
     {
       "id": "P221.1",
@@ -75159,7 +75158,11 @@
         "plugin/lib/delivered.sh",
         "plugin/lib/proofcopy.sh",
         "plugin/lib/steps.sh",
-        "plugin/lib/loop.sh"
+        "plugin/lib/loop.sh",
+        "plugin/lib/consent.sh",
+        "plugin/lib/interview.sh",
+        "plugin/lib/proofreuse.sh",
+        "plugin/lib/unittime.sh"
       ],
       "after": [
         "P222.2",
@@ -75167,14 +75170,14 @@
         "P218.3",
         "P219.1"
       ],
-      "status": "blocked",
+      "status": "planned",
       "role": "dev",
       "tasks": [
         "spec_parse (cmd-spec.sh:57) writes the parsed spec through vbw_out",
         "Every function tools/check-captured-writes.sh flags in plugin/lib (delivered_deviations, loop_spend, step_expect, step_proof_plan, vbw_machine_limit, vbw_git_root, vbw_mtime, proofcopy_slots, and any other) writes through vbw_out, or is allow-listed in the tool with a reason only when its write must stay a builtin",
-        "bash tools/check-captured-writes.sh plugin/lib exits 0; the full test run of the changed files stays green"
-      ],
-      "note": "The rule tool still flags 4 functions in files outside this plan: consent_file (plugin/lib/consent.sh:11), interview_private_file (interview.sh:11), proofreuse_store_file (proofreuse.sh:207), unittime_file (unittime.sh:71). Each prints a small path through a builtin printf. Fix needs either those files switched to vbw_out or entries in the ALLOWED list of tools/check-captured-writes.sh, none of which are plan files. Done in plan files: spec_parse and 11 other functions (commits 41efc6ae, 5e9fb66f); C643 passes, C644 and C645 stay red only on those 4."
+        "bash tools/check-captured-writes.sh plugin/lib exits 0; the full test run of the changed files stays green",
+        "consent_file, interview_private_file, proofreuse_store_file and unittime_file (consent.sh, interview.sh, proofreuse.sh, unittime.sh) hand their path out through vbw_out, so the allow-list stays empty"
+      ]
     },
     {
       "id": "P222.2",
@@ -84094,6 +84097,14 @@
       "text": "Contract approved: 267 requirements, 646 checks, 649 plans (c6e3c875b471)",
       "plans": [
         "P221.1"
+      ]
+    },
+    {
+      "id": "D660",
+      "at": "2026-11-08T01:21:09Z",
+      "text": "Contract approved: 267 requirements, 646 checks, 649 plans (a80827fbaaa0)",
+      "plans": [
+        "P222.1"
       ]
     }
   ],
