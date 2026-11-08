@@ -265,5 +265,6 @@ field_script() {
   grep -qE '^[[:space:]]*judge .*"\$big" 5000$' "$f" || { echo "the 264 KB time is not judged against 5000 ms"; false; }
   grep -qE '^[[:space:]]*limit=.*1\.5 \* \(264 / 80\) \* ' "$f" || { echo "the limit is not 1.5 x (264 / 80) x the 80 KB time"; false; }
   grep -qE '^[[:space:]]*(big|small)=\$\(guard_ms (264|80)\)$' "$f" || { echo "the guard is not timed on both script sizes"; false; }
+  grep -qE '^[[:space:]]*echo "80 KB: \$small ms CPU; 264 KB: \$big ms CPU; ratio ' "$f" || { echo "the two measures and their ratio are not printed"; false; }
   bats --count "$f" > /dev/null
 }
