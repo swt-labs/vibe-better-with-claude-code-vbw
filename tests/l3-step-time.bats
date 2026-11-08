@@ -55,13 +55,13 @@ teardown() { vbw_teardown; }
 
 road_body() { sed -n '/^scenario_road()/,/^}/p' "$SUITE"; }
 
-@test "R240: the suite defines L3_STATUS_UNTIL once at top level, accepting 'until around HH:MM' with an optional day word" {
+@test "R240: the suite defines L3_STATUS_UNTIL once at top level, accepting 'until around HH:MM' with an optional day word and a rough 'until ~HH:MM' or 'until ~HH:MM-HH:MM'" {
   [ "$(grep -c '^L3_STATUS_UNTIL=' "$SUITE")" -eq 1 ] || { echo "L3_STATUS_UNTIL is not defined exactly once at top level"; false; }
   grep -m1 '^L3_STATUS_UNTIL=' "$SUITE" > "$TEST_ROOT/pattern.sh"
   # shellcheck disable=SC1091
   . "$TEST_ROOT/pattern.sh"
   local s
-  for s in 'until around 14:20' 'until around tomorrow 00:20' '● working: building P1.1 · 0 of 1 · until around 14:20'; do
+  for s in 'until around 14:20' 'until around tomorrow 00:20' '● working: building P1.1 · 0 of 1 · until around 14:20' 'until ~14:20' 'until ~14:12-14:18' '● working: building P1.1 · 0 of 1 · until ~14:12-14:18'; do
     printf '%s\n' "$s" | grep -qE "$L3_STATUS_UNTIL" || { echo "'$L3_STATUS_UNTIL' does not read: $s"; false; }
   done
   # The old wording is not what the status line prints, so the pattern must not read it as a time.
