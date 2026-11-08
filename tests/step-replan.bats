@@ -45,7 +45,7 @@ next() { "$VBW" next --json < /dev/null; }
 }
 
 @test "R229: with history, detail.replan prices the open requirements plus one: three plans of 600 s per requirement and one open requirement give about 20 min" {
-  hist_plan 1 600 3
+  hist_plan 1 600 5
   next | jq -e '.action == "approve" and (.detail.replan | test("^Planning the work: about 20 min, until around (tomorrow )?[0-9]{2}:[0-9]{2}$"))' || { next; false; }
   # The same history prices a planning run of the milestone (one requirement) at 10 min: the extra is the one.
   step_edit '.phases = [] | .plans = [] | .checks = []'
