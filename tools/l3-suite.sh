@@ -22,8 +22,9 @@ VBW="$ROOT/plugin/bin/vbw"
 ALL="greenfield reject resume change convert balanced docs qafix decision debug research edgecase leftover recheck approval newcomer senior panel steptime road pluginoff tools legacy nolegacy smallchange costs loop plugindir sessions taskbreak fixchecks failoutput leaveout hiddenrecord latedecision ignoredplanning stalefix mapsnapshot alreadyfixed mapnotrun submodule testforms amendfile queuedreq worktreewrite rustpack"
 RESULTS="$ROOT/tools/l3-results"
 STEPS=60
-# The status line's end time since d7f73771: 'until around HH:MM', with a day word when the end is not today.
-L3_STATUS_UNTIL='until around ([A-Za-z]+ )?[0-9]{2}:[0-9]{2}'
+# The status line's end time since d7f73771: 'until around HH:MM', with a day word when the end is not today;
+# a rough estimate (R270) reads 'until ~HH:MM' or 'until ~HH:MM-HH:MM', whose first clock is the low end.
+L3_STATUS_UNTIL='until (around |~)([A-Za-z]+ )?[0-9]{2}:[0-9]{2}'
 
 say() { printf '[%s] %s\n' "$scenario" "$*"; }
 
