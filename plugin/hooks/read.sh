@@ -124,16 +124,12 @@ while [ -n "$vbw_rest" ]; do
   if [ "$vbw_mode" != text ] && [ -f "$vbw_abs" ] && [ -r "$vbw_abs" ]; then
     vbw_sz=$(wc -c < "$vbw_abs") || vbw_sz=0
     if [ $((vbw_sz + 0)) -gt 524288 ]; then
-      # Committed and unchanged since HEAD (even if committed during the run) it runs unread.
-      if git -C "${p:-.}" ls-files -z --error-unmatch -- "$vbw_abs" > /dev/null 2>&1 \
-        && git -C "${p:-.}" diff --quiet HEAD -- "$vbw_abs" > /dev/null 2>&1; then
-        continue
-      fi
+      # Only a script committed and unchanged since the run's start ran unread above; this one is refused.
       jq -nc --arg file "$vbw_wr" --arg kb "$(( (vbw_sz + 0) / 1024 ))" \
-        '"\($file) (\($kb) KB) is too large to read before it runs\nNext: commit it unchanged (a committed, unchanged script is not read) or run it in smaller parts" as $m
+        '"\($file) (\($kb) KB) is too large to read before it runs\nNext: run it in smaller parts, each under 512 KB" as $m
          | {hookSpecificOutput: {hookEventName: "PreToolUse", permissionDecision: "deny", permissionDecisionReason: ("VBW guard: " + $m)},
             systemMessage: ("VBW guard blocked this call: " + ($m | split("\n")[0]))}' && exit 0
-      echo "VBW guard: $vbw_wr is too large to read before it runs. Next: commit it unchanged or run it in smaller parts" >&2
+      echo "VBW guard: $vbw_wr is too large to read before it runs. Next: run it in smaller parts, each under 512 KB" >&2
       exit 4
     fi
   fi
