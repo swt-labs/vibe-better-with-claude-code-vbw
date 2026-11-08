@@ -8772,7 +8772,7 @@
   "milestone": {
     "id": "M55",
     "title": "Rust quick wins: a fast vbw next, fewer stops, plain messages",
-    "status": "active"
+    "status": "shipped"
   },
   "shipped": [
     {
@@ -9039,6 +9039,11 @@
       "id": "M54",
       "title": "Field fixes: parallel plans in a Rust crate, safe mutation, clear patch refusals",
       "at": "2026-11-07T17:24:55Z"
+    },
+    {
+      "id": "M55",
+      "title": "Rust quick wins: a fast vbw next, fewer stops, plain messages",
+      "at": "2026-11-08T19:43:46Z"
     }
   ],
   "requirements": [
@@ -85321,6 +85326,11 @@
       "at": "2026-11-08T19:33:12Z",
       "text": "Contract approved: 267 requirements, 647 checks, 652 plans (8e91c3789d32)",
       "plans": []
+    },
+    {
+      "id": "D683",
+      "at": "2026-11-08T19:43:46Z",
+      "text": "Shipped M55 Rust quick wins: a fast vbw next, fewer stops, plain messages: 11 requirements proven or accepted"
     }
   ],
   "commands": {
@@ -100755,6 +100765,10 @@
             "usd": 0,
             "at": "2026-11-07T20:25:38Z"
           }
+        },
+        "total": {
+          "usd": 105.107068,
+          "sessions": 48
         }
       }
     }
