@@ -81480,6 +81480,13 @@
       "sort": "later",
       "size": "small",
       "status": "open"
+    },
+    {
+      "id": "T267",
+      "text": "vbw mutate refuses while a check file is dirty, which blocks a Dev that strengthened the file in the same task; say which file and how to commit it first",
+      "sort": "later",
+      "size": "small",
+      "status": "open"
     }
   ],
   "decisions": [
