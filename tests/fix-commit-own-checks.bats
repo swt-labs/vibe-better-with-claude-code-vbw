@@ -32,7 +32,7 @@ edit_record() {
   jq "$1" .vbw/record.json > "$TEST_ROOT/edit.json" && cp "$TEST_ROOT/edit.json" .vbw/record.json
   rm -f .vbw/runtime/glance.json
 }
-stricter_c1() { printf 'grep -qx paid src/pay.txt\ntest -s src/pay.txt\n' > tests/c1.sh; }
+stricter_c1() { printf 'grep -qx paid src/pay.txt && test -s src/pay.txt\n' > tests/c1.sh; }
 trailer() { git log -1 --format="%(trailers:key=$1,valueonly)" | tr -d '\n'; }
 # refused ARGS...: vbw commit --fix ARGS fails and HEAD does not move.
 refused() {
