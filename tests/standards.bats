@@ -50,10 +50,13 @@ code_grep() {
 }
 
 @test "no plugin-root discovery: paths come from \${CLAUDE_PLUGIN_ROOT} substitution or \$0 (K4)" {
-  # The one exception: the user's statusLine setting cannot use substitution, so
+  # Two exceptions. The user's statusLine setting cannot use substitution, so
   # the command VBW writes there finds the newest install in the plugin cache.
+  # The newer-VBW refusal (R272, plugin/lib/record.sh) names the --plugin-dir
+  # flag to the user as the fix for a development checkout: text, finding no path.
   run code_grep 'plugins/cache|plugin-root-link|--plugin-dir|(^|[^[:alnum:]_])ps[[:space:]]+(a|-)'
-  output=$(printf '%s\n' "$output" | grep -v '/lib/cmd-statusline.sh:[0-9]*:VBW_STATUSLINE_CMD=' || true)
+  output=$(printf '%s\n' "$output" | grep -v '/lib/cmd-statusline.sh:[0-9]*:VBW_STATUSLINE_CMD=' \
+    | grep -v '/lib/record.sh:[0-9]*:  fix="Update VBW (/vbw:update), then restart Claude Code; for a development checkout start Claude Code with --plugin-dir <checkout>/plugin ' || true)
   [ -z "$output" ]
   local dirs=() d
   for d in skills agents workflows; do [ -d "$PLUGIN_ROOT/$d" ] && dirs+=("$PLUGIN_ROOT/$d"); done
