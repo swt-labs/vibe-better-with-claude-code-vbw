@@ -81501,6 +81501,13 @@
       "sort": "later",
       "size": "small",
       "status": "open"
+    },
+    {
+      "id": "T270",
+      "text": "CONTRIBUTING: say that a dev session runs plain claude --resume on the installed VBW, and that --plugin-dir ./plugin makes the session run the Devs' code and blocks plugin/ edits in auto mode",
+      "sort": "later",
+      "size": "small",
+      "status": "open"
     }
   ],
   "decisions": [
