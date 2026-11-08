@@ -46,7 +46,7 @@ teardown() { vbw_teardown; }
 @test "T174: with a check file waiting for approval, fix done runs no check, names the file and says the approval comes first" {
   vbw_setup
   shop
-  printf 'grep -qx paid src/pay.txt\ntest -s src/pay.txt\n' > tests/c1.sh
+  printf 'grep -qx paid src/pay.txt && test -s src/pay.txt\n' > tests/c1.sh
   "$VBW" commit --fix F1 "test(pay): stricter" tests/c1.sh > /dev/null
   run "$VBW" fix done F1 < /dev/null
   [ "$status" -eq 0 ] || { echo "$output"; false; }
