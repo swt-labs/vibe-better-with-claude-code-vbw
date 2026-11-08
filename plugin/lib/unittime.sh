@@ -68,7 +68,7 @@ unittime_total() {
 unittime_file() {
   local common
   common=$(git -C "$VBW_ROOT" rev-parse --path-format=absolute --git-common-dir 2> /dev/null) || return 1
-  printf '%s/vbw/unit-time.json\n' "$common"
+  vbw_out '%s/vbw/unit-time.json\n' "$common"
 }
 
 # unittime_start MILESTONE: keep the unit time MILESTONE starts with: the record's

@@ -204,7 +204,7 @@ proofreuse_allowed() {
 proofreuse_store_file() {
   local common
   common=$(git -C "$VBW_ROOT" rev-parse --path-format=absolute --git-common-dir 2> /dev/null) || vbw_die "not a git repository"
-  printf '%s/vbw/runs.json\n' "$common"
+  vbw_out '%s/vbw/runs.json\n' "$common"
 }
 
 # proofreuse_store_read: the store, or an empty one when it is missing or damaged.
