@@ -32343,12 +32343,19 @@
         }
       ],
       "qa": {
-        "result": "fail",
+        "result": "pass",
         "tier": "deep",
-        "tree": "361bbabfc279ffd5f6b7cb6bfdb015ace3928e79a294742fdab7803458100d99",
-        "at": "2026-11-08T06:29:33Z",
-        "note": "25/26 checks",
-        "rounds": 2
+        "tree": "54e671f853c1574acb1334174e2b12973f600a76037dd7666926dd15dfb81020",
+        "at": "2026-11-08T16:26:04Z",
+        "note": "14/14 checks (re-check round: F418 fix and P221.4 refactor verified, goal re-checked)"
+      },
+      "outcome": {
+        "tier": "deep",
+        "predicted": "deep",
+        "held": true,
+        "fix_rounds": 4,
+        "qa_findings": 4,
+        "escalations": 4
       }
     },
     {
@@ -79729,7 +79736,7 @@
       "req": "R273",
       "source": "qa",
       "attempts": 0,
-      "status": "fixed",
+      "status": "closed",
       "note": "The script scan is still quadratic for any script that has a 'cd' before its here-docs (very common: 'cd /project && ...' as the first line). F415's fix (heredocs/head_cwd in plugin/hooks/programs.jq ~l.287-315) only skips reading the 'head' text when no cd comes before the here-doc; once one cd is early in the file, every here-doc's head is the whole text up to it and 'commands(3)' re-reads it (head_cwd). Evidence (programs.jq script_findings alone through jq, user CPU, same generated mix as tests/timed-guard-script.bats plus one first line 'cd /tmp/x && true'): 98 KB script 17.5 s; 324 KB script did not finish in 120 s. The same scripts without the cd line: 98 KB 0.5 s, 324 KB 1.9 s. So the goal (a 264 KB script read inside the 5 s limit, cost in step with size) still fails for scripts with a cd, and the user gets the 'guard failed, run vbw doctor' answer R273 forbids. Fix: compute each here-doc's working folder in one pass over the commands of the whole text (commands(3) once, then with_cwd, then pick the cwd by line/offset) instead of re-reading a growing head per here-doc. Regression test: in tests/timed-guard-script.bats add 'cd <dir> &&' (and a few more cd lines spread through the script) to the generated 80 KB and 264 KB scripts, so the 264 KB time stays under 5 s and within 1.5 x the size ratio of the 80 KB time; the current field_script has no cd, so it stays green while this takes 17 s at 98 KB.",
       "phase": "P221"
     },
