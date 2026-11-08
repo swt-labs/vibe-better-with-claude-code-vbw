@@ -129,7 +129,7 @@ vbw_now() {
 vbw_clone_settings_file() {
   local common
   common=$(git rev-parse --path-format=absolute --git-common-dir 2> /dev/null) || vbw_die "not a git repository"
-  printf '%s/vbw/settings.json\n' "$common"
+  vbw_out '%s/vbw/settings.json\n' "$common"
 }
 
 # vbw_cores_ok N: N is a whole number of at least 1: digits only, no leading
@@ -242,7 +242,7 @@ vbw_check_jobs_set() {
 vbw_git_root() {
   local root
   root=$(git rev-parse --show-toplevel 2>/dev/null) || vbw_die "not a git repository (VBW needs git: it commits with provenance)"
-  printf '%s\n' "$root"
+  vbw_out '%s\n' "$root"
 }
 
 # Sets VBW_ROOT, VBW_DIR, VBW_RECORD and VBW_RUNTIME for the current project.
@@ -578,7 +578,7 @@ vbw_mtime() {
   local t
   t=$(stat -c %Y "$1" 2>/dev/null) || t=$(stat -f %m "$1" 2>/dev/null) || t=0
   case "$t" in "" | *[!0-9]*) t=0 ;; esac
-  printf '%s\n' "$t"
+  vbw_out '%s\n' "$t"
 }
 
 # vbw_mtime_newest DIR: the newest modification time (epoch seconds) of the files

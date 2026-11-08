@@ -89,7 +89,7 @@ def step_sentence($s; $t):
 step_history_file() {
   local common
   common=$(git rev-parse --path-format=absolute --git-common-dir 2> /dev/null) || return 0
-  printf '%s/vbw/steps.json\n' "$common"
+  vbw_out '%s/vbw/steps.json\n' "$common"
 }
 
 step_note_file() {
@@ -128,7 +128,7 @@ step_estimate() {
   out=$(jq -n -c --slurpfile h <(jq -c 'select(type == "object" and (.steps | type) == "array")' "$file" 2> /dev/null) \
     --slurpfile runs <(jq -c 'select(type == "object" and (.runs | type) == "object")' "$runs" 2> /dev/null) \
     --arg kind "$1" --slurpfile size <(printf '%s' "$size") -f "$VBW_LIB/steps-expect.jq" 2> /dev/null) || return 0
-  printf '%s\n' "$out"
+  vbw_out '%s\n' "$out"
 }
 
 step_expect() {
@@ -430,7 +430,7 @@ step_proof_plan() {
     { mkdir -p "$VBW_RUNTIME" && printf '%s' "$plan" | jq -c --arg h "$head" --arg i "$idx" --arg r "$rec" --arg s "$store" --argjson f "${2:-0}" \
         '{head: $h, index: $i, record: $r, store: $s, full: $f, units: .units, top: .top}' > "$tmp" && mv -f "$tmp" "$cache"; } 2> /dev/null || rm -f "$tmp" 2> /dev/null || true
   fi
-  printf '%s\n' "$plan"
+  vbw_out '%s\n' "$plan"
 }
 
 # step_proof_units RECORD FULL: the names of the units a proof would run now, a

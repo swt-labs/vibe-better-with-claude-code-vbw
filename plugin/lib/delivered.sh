@@ -134,5 +134,5 @@ delivered_deviations() {
   out=$(jq -s -c 'add | sort_by(.plan, .file)' "$dir"/dev.*) \
     || { vbw_guard_drop "$dir"; vbw_die "internal error: the check of delivered files could not read HEAD"; }
   vbw_guard_drop "$dir"
-  printf '%s\n' "$out"
+  vbw_out '%s\n' "$out"
 }

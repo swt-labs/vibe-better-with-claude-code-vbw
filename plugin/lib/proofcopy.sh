@@ -103,7 +103,7 @@ proofcopy_slots() {
   n=$(vbw_check_jobs) || n=1
   [ "$1" -ge "$n" ] || n=$1
   [ "$n" -ge 1 ] || n=1
-  printf '%s\n' "$n"
+  vbw_out '%s\n' "$n"
 }
 
 # proofcopy_create: make the copy; sets PROOF_COPY (absolute path). Called
