@@ -32188,11 +32188,12 @@
       ],
       "predicted": "deep",
       "qa": {
-        "result": "pass",
+        "result": "fail",
         "tier": "deep",
-        "tree": "f127e69c45b7cb64bb705d1f1ffe96ac4cae07eb4bd5e37bbcff4a3703246d15",
-        "at": "2026-11-08T06:27:51Z",
-        "note": "30/30 checks"
+        "tree": "fef0d62d8d16b74ddd7971809f18f4fa2477d1fe82baba85dd04257d6f544d1d",
+        "at": "2026-11-08T16:26:23Z",
+        "note": "32/33 checks",
+        "rounds": 1
       },
       "escalations": [
         {
@@ -79769,6 +79770,15 @@
       "attempts": 0,
       "status": "closed",
       "note": "C542 fail (exit 1)"
+    },
+    {
+      "id": "F423",
+      "req": "R270",
+      "source": "qa",
+      "attempts": 0,
+      "status": "open",
+      "note": "The milestone end is not marked rough when its usual fix-round count rests on fewer than 3 finished phases. The phase criterion says plugin/lib/road.jq renders a range 'when any part it adds up is rough (a step kind, or the usual fix-round count learned from fewer than 3 milestones)'. In plugin/lib/road.jq the usual($tier) helper returns null for fewer than 3 finished phases, the fix pieces are then left out (counted as 0 rounds), and $rough (road.jq ~line 128) is the any() of the pieces' own .rough only, so that case stays the single figure 'about N min, until around HH:MM, counting no fix rounds: fewer than 3 finished X phases here'. tests/step-range.bats line 100 pins that single figure, and tests/road-next.bats lines 56 and 73 pin 'about' wording beside 'fewer than 3 finished'. A new project (thin history, the case this phase is about) therefore gets a firm-looking milestone end that silently assumes zero fix rounds. Regression test: a road whose step kinds are all tight (5 agreeing runs each) but with fewer than 3 finished phases of a tier must say 'roughly ... (rough guess), counting no fix rounds: fewer than 3 finished ...' and carry rough true; with 3 or more finished phases it keeps 'about N min' (edit the three pinned cases to match).",
+      "phase": "P219"
     }
   ],
   "todos": [
