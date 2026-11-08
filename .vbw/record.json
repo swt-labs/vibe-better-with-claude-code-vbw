@@ -21065,7 +21065,7 @@
           "plan": "P220.2"
         },
         {
-          "text": "without a writer file the line names the schema numbers and the loaded version in the same shape",
+          "text": "without a writer file, or with one naming the loaded version (a development checkout that raised the schema without a new version number), the line names the schema numbers and the loaded version in the same shape (this VBW reads up to schema N)",
           "check": "C635",
           "plan": "P220.2"
         },
@@ -84444,6 +84444,12 @@
       "text": "F410 as built (75911220, P220.2): record_refuse_newer names the writer's version only when it differs from the loaded one; otherwise, as without a writer file, the schema numbers (written with schema N, this VBW reads up to schema M). D661's second condition (the writer file's schema equal to the record's) is dropped. The lead engineer made the three edits the guard refused the Devs (F410 in plugin/lib/record.sh, F409 in tests/statusline-step.bats, F398 in tests/step-range.bats): each file is shared with a requirement outside its fix, so no fix lease lists it as editable (R194)",
       "why": "Equal versions tell the user nothing, and the schema numbers say what differs; one condition covers the real case (a checkout raising the schema without a version bump) and keeps every R272 case, whose writer differs from the loaded version. R247 cases 7 and 8 were shown red at 03:2x and pass with the change, with version-mismatch, R272 hook-answers, statusline-step and step-range green under /bin/bash",
       "at": "2026-11-08T03:20:00Z"
+    },
+    {
+      "id": "D665",
+      "at": "2026-11-08T03:22:54Z",
+      "text": "Contract approved: 267 requirements, 646 checks, 649 plans (c9860ad15323)",
+      "plans": []
     }
   ],
   "commands": {
