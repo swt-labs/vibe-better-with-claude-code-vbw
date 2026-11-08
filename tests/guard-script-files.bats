@@ -233,18 +233,24 @@ field_script() {
   has "$PROTECTED_NEXT"
 }
 
-@test "R273: a script too large to read before it runs is refused by its size, before any read, naming the file, its size in KB and the two ways out" {
+@test "R273: a script too large to read before it runs is refused by its size, before any read, naming the file, its size in KB and the way out; committed during the run it is refused the same way, and only the project's own, unchanged since the run started, runs unread" {
   head -c 3145728 /dev/zero | tr '\0' '#' > .vbw/runtime/scratch/huge.sh
   printf '\necho x > tests/c1.sh\n' >> .vbw/runtime/scratch/huge.sh
   call 'bash .vbw/runtime/scratch/huge.sh'
   denied "a 3 MB script"
   first 'VBW guard: .vbw/runtime/scratch/huge.sh (3072 KB) is too large to read before it runs'
-  has 'Next: commit it unchanged (a committed, unchanged script is not read) or run it in smaller parts'
-  # Committed and unchanged, the same script runs unread, as any project script does.
+  has 'Next: run it in smaller parts, each under 512 KB'
+  # Committed during the run it changed since the run's start, as R255 has it: refused, never run unread.
   cp .vbw/runtime/scratch/huge.sh tools/huge.sh
-  git add tools/huge.sh && git commit -q -m "chore(tools): a huge script"
+  git add tools/huge.sh && git commit -q -m "chore(tools): a huge script written during the run"
   call 'bash tools/huge.sh'
-  allowed "the project's own committed huge script"
+  denied "a huge script committed during the run"
+  first 'VBW guard: tools/huge.sh (3072 KB) is too large to read before it runs'
+  # A run that starts on that commit finds the project's own script, unchanged since its start: unread.
+  VBW_SESSION_ID=s1 "$VBW" run end > /dev/null
+  VBW_SESSION_ID=s1 "$VBW" run start build P1.1 > /dev/null
+  call 'bash tools/huge.sh'
+  allowed "the project's own huge script, committed and unchanged since the run started"
 }
 
 @test "R273 timed: tests/timed-guard-script.bats times the guard on an 80 KB and a 264 KB script: the big one within 5 s of CPU and within 1.5 times the size ratio of the small one's time, scaled by the bench's reference, skipped on a busy machine" {

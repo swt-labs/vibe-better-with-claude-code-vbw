@@ -21099,7 +21099,7 @@
           "plan": "P221.1"
         },
         {
-          "text": "a script too large to read is refused before any read in one line naming the file, its size in KB and what to do (commit it unchanged, or run it in smaller parts); a committed unchanged script still runs unread",
+          "text": "a script too large to read is refused before any read in one line naming the file, its size in KB and what to do (run it in smaller parts, each under 512 KB); a script committed during the run is refused the same way, since it changed since the run's start, and only the project's own script, committed and unchanged since the run's start, runs unread",
           "check": "C639",
           "plan": "P221.1"
         },
@@ -74552,13 +74552,7 @@
         "plugin/hooks/read.sh"
       ],
       "after": [],
-      "status": "done",
-      "role": "dev",
-      "tasks": [
-        "programs.jq: the script scan (unreadable_calls and the shell-script reading) works line by line or statement by statement, so its time grows with the script's size and the 264 KB field-shaped script is read to its end within the hook's time (ulimit -t 5)",
-        "read.sh: before a script file is read, its size is checked; above 512 KB the answer is a deny whose reason is 'VBW guard: <file> (<N> KB) is too large to read before it runs' then 'Next: commit it unchanged (a committed, unchanged script is not read) or run it in smaller parts', with the user's line beside it; a committed, unchanged script still runs unread",
-        "The bench budgets are unchanged (tools/bench-hooks.sh green), and the refusals of tests/guard-script-files.bats keep their text"
-      ],
+      "status": "planned",
       "mutations": [
         {
           "task": 3,
@@ -74628,6 +74622,12 @@
             "plugin/hooks/read.sh": "22b3534fcc7822c48605260dcc634ba280b339eb98eb529ac9ce9df6e309824b"
           }
         }
+      ],
+      "role": "dev",
+      "tasks": [
+        "programs.jq: the script scan (unreadable_calls and the shell-script reading) works line by line or statement by statement, so its time grows with the script's size and the 264 KB field-shaped script is read to its end within the hook's time (ulimit -t 5)",
+        "read.sh: before a script file is read, its size is checked; above 512 KB the answer is a deny whose reason is 'VBW guard: <file> (<N> KB) is too large to read before it runs' then 'Next: run it in smaller parts, each under 512 KB', with the user's line beside it; only a script committed and unchanged since the run's start runs unread (it never reaches the size check); one committed during the run is refused by its size like any changed script, never compared with HEAD (D658)",
+        "The bench budgets are unchanged (tools/bench-hooks.sh green), and the refusals of tests/guard-script-files.bats keep their text"
       ]
     },
     {
@@ -83669,6 +83669,20 @@
       "text": "Contract approved: 267 requirements, 646 checks, 649 plans (4393c923d238)",
       "plans": [
         "P220.2"
+      ]
+    },
+    {
+      "id": "D658",
+      "text": "The script size gate never runs unread a script changed since the run's start; its only advice is to run it in smaller parts",
+      "why": "P221.1 (R273) skipped the size refusal for a script committed and unchanged against HEAD, so a builder could commit a script over 512 KB during its run and run it unread, past the guard's read of scripts written during the run (R255: a script committed during the run is still read, the run's start commit is the reference). The approved C639 case and rule R273.2 asked for that ('commit it unchanged'). Now: a script committed and unchanged since the run's start never reaches the gate (the project's own, unread as always); any other script above 512 KB is refused, committed during the run or not; the Next line says 'run it in smaller parts, each under 512 KB'. tests/guard-script-files.bats R273 case changed (approval at the next gate); P221.1 rebuilt",
+      "at": "2026-11-08T00:44:51Z"
+    },
+    {
+      "id": "D659",
+      "at": "2026-11-08T00:46:08Z",
+      "text": "Contract approved: 267 requirements, 646 checks, 649 plans (c6e3c875b471)",
+      "plans": [
+        "P221.1"
       ]
     }
   ],
