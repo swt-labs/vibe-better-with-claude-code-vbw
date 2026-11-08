@@ -1,6 +1,15 @@
 {
   "schema": 13,
-  "lease": null,
+  "lease": {
+    "run": "qa-20261108T043746Z",
+    "kind": "qa",
+    "started_at": "2026-11-08T04:37:46Z",
+    "files": [],
+    "session": "0ee781c3-c5b6-4a6c-889f-04b89f1fba4a",
+    "cost": {
+      "usd": 3429.877076
+    }
+  },
   "protected": [
     "tests/adaptive-results.bats",
     "tests/agent-scratch.bats",
@@ -32278,7 +32287,22 @@
           "to": "deep",
           "reason": "Dev blocked P222.1: The rule tool still flags 4 functions in files outside this plan: consent_file (plugin/lib/consent.sh:11), interview_private_file (interview.sh:11), proofreuse_store_file (proofreuse.sh:207), unittime_file (unittime.sh:71). Each prints a small path through a builtin printf. Fix needs either those files switched to vbw_out or entries in the ALLOWED list of tools/check-captured-writes.sh, none of which are plan files. Done in plan files: spec_parse and 11 other functions (commits 41efc6ae, 5e9fb66f); C643 passes, C644 and C645 stay red only on those 4."
         }
-      ]
+      ],
+      "qa": {
+        "result": "pass",
+        "tier": "deep",
+        "tree": "61a243f053c5d2b55ae5504bf26b0c705f3cd746168a2e4be62f4697f21d559f",
+        "at": "2026-11-08T04:39:32Z",
+        "note": "22/22 checks"
+      },
+      "outcome": {
+        "tier": "deep",
+        "predicted": "deep",
+        "held": true,
+        "fix_rounds": 0,
+        "qa_findings": 0,
+        "escalations": 2
+      }
     },
     {
       "id": "P223",
