@@ -261,5 +261,9 @@ field_script() {
   grep -qE '\b5000\b|\b5 ?s\b' "$f" || { echo "the timed test names no 5 s budget"; false; }
   grep -q 'NOMINAL_MS' "$f" || { echo "the timed test does not read the bench's NOMINAL_MS"; false; }
   grep -qi 'busy' "$f" || { echo "the timed test has no busy-machine rule"; false; }
+  # The numbers sit in the code that judges, not only in the comments.
+  grep -qE '^[[:space:]]*judge .*"\$big" 5000$' "$f" || { echo "the 264 KB time is not judged against 5000 ms"; false; }
+  grep -qE '^[[:space:]]*limit=.*1\.5 \* \(264 / 80\) \* ' "$f" || { echo "the limit is not 1.5 x (264 / 80) x the 80 KB time"; false; }
+  grep -qE '^[[:space:]]*(big|small)=\$\(guard_ms (264|80)\)$' "$f" || { echo "the guard is not timed on both script sizes"; false; }
   bats --count "$f" > /dev/null
 }
