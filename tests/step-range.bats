@@ -8,8 +8,9 @@
 # it was. The step's sentence (vbw next --json .step.say, vbw run start, vbw
 # status) reads 'roughly 15 to 21 min, until around 14:20 to 14:26 (rough guess
 # from 2 runs)'; the road (.road.say) 'Milestone end: roughly L to H min, until
-# around A to B (rough guess)' when any part is rough, its 'counting ...' tail
-# kept; the step note (.vbw/runtime/step.json) carries end_low, end_high, rough
+# around A to B (rough guess)' when any part is rough or a tier's usual fix
+# rounds rest on fewer than 3 finished phases, its 'counting ...' tail kept;
+# the step note (.vbw/runtime/step.json) carries end_low, end_high, rough
 # and runs beside end; the status line shows 'until ~14:20-14:26' when rough
 # and the panel words the same fields. Times are local (Europe/Zurich). L1.
 
@@ -85,7 +86,7 @@ render() {
   [ "$(grep -c '< 5' "$PLUGIN_ROOT/lib/steps-expect.jq")" = 1 ] || { echo "'< 5' appears other than once"; false; }
 }
 
-@test "R270 kernel: the road is a range when any part is rough, keeping its counting tail; tight parts keep the single figure" {
+@test "R270 kernel: the road is a range when any part is rough or a tier's usual fix rounds rest on fewer than 3 finished phases, keeping its counting tail; tight parts with a known count keep the single figure" {
   step_seed proof 60 1 5
   step_seed build 300 1 2
   road_is '.rough == true and .low == 960 and .high == 960 and .seconds == 960
@@ -96,8 +97,15 @@ render() {
   step_seed build 300 1 2
   road_is '.rough == true and (.say | startswith("Milestone end: roughly "))'
   step_seed build 300 1 20
+  road_is '.rough == true and .low == 960 and .high == 960
+    and .say == "Milestone end: roughly 16 min, until around \(clk(.end)) (rough guess), counting no fix rounds: fewer than 3 finished express phases here"'
+  # Three finished express phases give the usual fix rounds (0): every part is known, one figure.
+  step_edit '.shipped = ((.shipped // []) | if any(.[]; .id == "M0") then . else . + [{id: "M0", title: "Before", at: "2025-12-01T00:00:00Z"}] end)
+    | .phases += [range(0; 3) | {id: "P9\(.)", title: "Old \(.)", reqs: ["R1"], milestone: "M0", tier: "express",
+        qa: {result: "pass", tier: "quick", tree: "old", at: "2025-12-01T00:00:00Z"},
+        outcome: {tier: "express", predicted: "express", held: true, fix_rounds: 0, qa_findings: 0, escalations: 0}}]'
   road_is '.rough == false and .low == 960 and .high == 960
-    and .say == "Milestone end: about 16 min, until around \(clk(.end)), counting no fix rounds: fewer than 3 finished express phases here"'
+    and .say == "Milestone end: about 16 min, until around \(clk(.end)), counting no fix rounds per express phase (the usual here)"'
 }
 
 @test "R270 kernel: the step note carries both ends, the rough flag and the run count; vbw run start and vbw status say the range" {
