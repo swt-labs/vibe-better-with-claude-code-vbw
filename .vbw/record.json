@@ -73847,15 +73847,14 @@
         "plugin/lib/cmd-approve.sh"
       ],
       "after": [],
-      "status": "blocked",
+      "status": "planned",
       "role": "dev",
       "tasks": [
         "approve_record and approve_repin write the approval's commit id (HEAD after the approval commit) and each check file's git blob id (git hash-object of the approved bytes) into .vbw/runtime/approved-contract.json as 'commit' and 'blobs' {path: blob}",
         "contract_waiting_with tells an added-to file (every approved line still there, in its order, only new lines among them: the diff against the approved blob holds additions only) from a waiting one (a removed, changed or reordered line, a new file, a file a fix added, or a snapshot without blob ids); it prints only the waiting files, and contract_added RECORD [HASH] prints one 'path<TAB>added line count' per added-to file; both come from one classification and hand nothing back in a variable, so every caller may capture them with $(...) (D654)",
         "A snapshot written before the blob ids keeps today's rule: every changed file waits",
         "Every caller of contract_waiting keeps its meaning (waiting means waiting; an added-to file is not waiting), including qa_digests' saved-results guard"
-      ],
-      "note": "C626 cannot pass as written. classify() in tests/contract-added-lines.bats captures w=$(contract_waiting ...) and a=$(contract_added ...) with $(...), which strips trailing newlines, then expects 'waiting: tests/pay.sh ' (trailing space) and 'added: tests/pay.sh,1;' (trailing ';'): both need a trailing newline to survive the capture, which no implementation can do. Implemented (committed): snapshot commit+blobs, contract_classify/contract_waiting_with/contract_added/contract_blobs. Result: tests 1 and 5 pass; tests 2,3,4 fail only on that trailing separator (actual 'waiting: tests/pay.sh' / 'added: tests/pay.sh,1'). The check file needs a fix (e.g. build the line with a join that adds no trailing separator, or expect none)."
+      ]
     },
     {
       "id": "P218.2",
@@ -74308,17 +74307,18 @@
         "R272"
       ],
       "files": [
-        "plugin/lib/record.sh"
+        "plugin/lib/record.sh",
+        "plugin/lib/cmd-init.sh"
       ],
       "after": [],
-      "status": "blocked",
+      "status": "planned",
       "role": "dev",
       "tasks": [
         "Every kernel write of the record (record_update's one write path) also writes .vbw/runtime/writer.json: {version: this plugin's version from .claude-plugin/plugin.json, schema: the record's schema}",
         "record_refuse_newer reads the writer file and dies with exit 4 and exactly 'this project needs a newer VBW: its record was written by VBW W, and this session loaded VBW L. Update VBW (/vbw:update), then restart Claude Code; for a development checkout start Claude Code with --plugin-dir <checkout>/plugin (--plugin-dir: Claude Code loads VBW from that folder instead of the installed copy)'",
-        "Without a writer file the line is 'this project needs a newer VBW: its record was written with schema N, and this session loaded VBW L, which reads up to schema M. Update VBW (/vbw:update), ...' in the same shape; the record is never touched"
-      ],
-      "note": "Task 1 and C635 case 1 need vbw init to write .vbw/runtime/writer.json, but init writes the record by a direct mv in plugin/lib/cmd-init.sh (line 46), not through record_update, and that file is not in this plan's files. Done in plugin/lib/record.sh (uncommitted): record_writer_write called from record_update, and the new two-version refusal lines (cases 2 and 3 depend on case 1's writer file). Needs cmd-init.sh to call record_writer_write after the mv (one line), or init routed through record_update. Writing it inside record_glance_write instead was rejected: the glance is also rebuilt when reading a record an older VBW wrote, which would stamp the wrong writer version."
+        "Without a writer file the line is 'this project needs a newer VBW: its record was written with schema N, and this session loaded VBW L, which reads up to schema M. Update VBW (/vbw:update), ...' in the same shape; the record is never touched",
+        "cmd-init.sh: the first record goes through the same write step as record_update, so vbw init writes writer.json as every kernel write of the record does (one write path, the lock held)"
+      ]
     },
     {
       "id": "P220.3",
@@ -74354,14 +74354,13 @@
         "plugin/hooks/read.sh"
       ],
       "after": [],
-      "status": "blocked",
+      "status": "planned",
       "role": "dev",
       "tasks": [
         "programs.jq: the script scan (unreadable_calls and the shell-script reading) works line by line or statement by statement, so its time grows with the script's size and the 264 KB field-shaped script is read to its end within the hook's time (ulimit -t 5)",
         "read.sh: before a script file is read, its size is checked; above 512 KB the answer is a deny whose reason is 'VBW guard: <file> (<N> KB) is too large to read before it runs' then 'Next: commit it unchanged (a committed, unchanged script is not read) or run it in smaller parts', with the user's line beside it; a committed, unchanged script still runs unread",
         "The bench budgets are unchanged (tools/bench-hooks.sh green), and the refusals of tests/guard-script-files.bats keep their text"
-      ],
-      "note": "C640 (tests/hook-answers.bats, R273 R128) cannot pass as written: its bash_call sends no agent_id/agent_type, and the guard gives only agents a lease (common.jq guard_context: lease is null without agent_type), so no script request reaches read.sh and the answer is empty. The sibling R254 test in that file sends agent_id a1 and agent_type vbw:dev. Fix needs the test to add those two fields (approved check file, not mine to edit). Done and committed: programs.jq linear mask/split (264 KB now read in ~0.6 s vs 7.6 s), read.sh size gate (deny with user's line, committed script still unread); C639 passes, bench green."
+      ]
     },
     {
       "id": "P221.2",
@@ -83394,6 +83393,14 @@
         "P218.1",
         "P218.2",
         "P223.1"
+      ]
+    },
+    {
+      "id": "D657",
+      "at": "2026-11-08T00:33:07Z",
+      "text": "Contract approved: 267 requirements, 646 checks, 649 plans (4393c923d238)",
+      "plans": [
+        "P220.2"
       ]
     }
   ],

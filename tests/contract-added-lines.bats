@@ -47,12 +47,14 @@ check_file() {
   git add tests/pay.sh && git commit -q -m "test: edit the check file"
 }
 
-# classify: "waiting: <files on one line>" then "added: <file TAB lines, one per line>",
-# as contract_waiting and contract_added report them. Both are captured with $(...), as
-# every kernel caller captures them, so neither may hand its answer back in a variable (D654).
+# classify: "waiting: " then each waiting file followed by a space, then "added: " then
+# each added-to file as "file,lines;", as contract_waiting and contract_added report them.
+# Both are captured with $(...), as every kernel caller captures them, so neither may hand
+# its answer back in a variable (D654); each item gets its separator here, since $(...)
+# drops the last line's newline.
 classify() {
   # shellcheck disable=SC2016 # expanded by vbw_kernel
-  vbw_kernel 'r=$(cat "$VBW_RECORD"); w=$(contract_waiting "$r"); a=$(contract_added "$r"); printf "waiting: %s\nadded: %s\n" "$(printf "%s" "$w" | tr "\n" " ")" "$(printf "%s" "$a" | tr "\t\n" ",;")"'
+  vbw_kernel 'r=$(cat "$VBW_RECORD"); w=$(contract_waiting "$r"); a=$(contract_added "$r"); printf "waiting: %s\nadded: %s\n" "$(printf "%s" "$w" | awk "NF { printf \"%s \", \$0 }")" "$(printf "%s" "$a" | awk "NF { gsub(/\t/, \",\"); printf \"%s;\", \$0 }")"'
 }
 
 @test "R269 classify: the approval snapshot records the approval's commit and each check file's git blob id" {

@@ -46,6 +46,12 @@ bash_call() {
   jq -nc --arg c "$1" --arg d "$PROJECT" '{hook_event_name: "PreToolUse", session_id: "s1", tool_name: "Bash", cwd: $d, tool_input: {command: $c}}' \
     | vbw_hook PreToolUse Bash
 }
+# agent_bash_call COMMAND: bash_call as a run's builder sends it; only agents work under the
+# run's lease, so only their calls reach the read of a script run by name.
+agent_bash_call() {
+  jq -nc --arg c "$1" --arg d "$PROJECT" '{hook_event_name: "PreToolUse", session_id: "s1", tool_name: "Bash", cwd: $d, agent_id: "a1", agent_type: "vbw:dev", tool_input: {command: $c}}' \
+    | vbw_hook PreToolUse Bash
+}
 file_call() {
   jq -nc --arg t "$1" --arg p "$2" --arg d "$PROJECT" '{hook_event_name: "PreToolUse", session_id: "s1", tool_name: $t, cwd: $d, tool_input: {file_path: $p}}' \
     | vbw_hook PreToolUse "$1"
@@ -298,7 +304,7 @@ tools_call() {
   VBW_SESSION_ID=s1 "$VBW" run start build P1.1 > /dev/null
   mkdir -p .vbw/runtime/scratch
   head -c 3145728 /dev/zero | tr '\0' '#' > .vbw/runtime/scratch/huge.sh
-  run bash_call 'bash .vbw/runtime/scratch/huge.sh'
+  run agent_bash_call 'bash .vbw/runtime/scratch/huge.sh'
   [ "$status" -eq 0 ]
   [ "$(shape "$output")" = "$DENY" ] || { echo "$output"; false; }
   printf '%s' "$output" | jq -e '.hookSpecificOutput | .hookEventName == "PreToolUse" and .permissionDecision == "deny"
