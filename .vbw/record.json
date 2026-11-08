@@ -74758,7 +74758,7 @@
       "after": [
         "P220.2"
       ],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "session-start.sh: on exit 4 the context and the notice to the user carry the kernel's own line (no wording of their own), the notice still naming /vbw:update",
@@ -74785,6 +74785,53 @@
           "contract": "741578fb262854ec28e9b7de04e33e0fe52b0ff5e743e2e9130306d41c986f08",
           "digests": {
             "plugin/hooks/session-start.sh": "ede53af09dd76d93c93dd0a1a325a79922cb09387cb73ea568b03bd86e9681e3"
+          }
+        },
+        {
+          "task": 3,
+          "none": "task 3 only runs the pin checks; it changes no code",
+          "at": "2026-11-08T01:22:30Z"
+        },
+        {
+          "rule": {
+            "req": "R272",
+            "k": 5
+          },
+          "what": "approve-ask answers ask instead of deny on exit 4",
+          "files": [
+            "plugin/hooks/approve-ask.sh"
+          ],
+          "checks": {
+            "C637": "red"
+          },
+          "result": "red",
+          "at": "2026-11-08T01:22:49Z",
+          "head": "9b4c2bcf8e943321eb2b0186c0fccbfc884625c2",
+          "tree": "53a64b5b3a24ec565260c3eb99da2dc526d34896",
+          "contract": "a80827fbaaa0866ac9806b9acfbcc7009fd3cd7a97c2559ce22e693be1658bfb",
+          "digests": {
+            "plugin/hooks/approve-ask.sh": "13395079e1c5640e287b9b681234af254231794ff594b660d31a2672f87dc6e0"
+          }
+        },
+        {
+          "rule": {
+            "req": "R272",
+            "k": 4
+          },
+          "what": "session-start context drops the kernel line",
+          "files": [
+            "plugin/hooks/session-start.sh"
+          ],
+          "checks": {
+            "C636": "red"
+          },
+          "result": "red",
+          "at": "2026-11-08T01:22:52Z",
+          "head": "9b4c2bcf8e943321eb2b0186c0fccbfc884625c2",
+          "tree": "53a64b5b3a24ec565260c3eb99da2dc526d34896",
+          "contract": "a80827fbaaa0866ac9806b9acfbcc7009fd3cd7a97c2559ce22e693be1658bfb",
+          "digests": {
+            "plugin/hooks/session-start.sh": "c587ccb6e258d1da4f3043f27efe51644ad212c575a72343e72f85457b405008"
           }
         }
       ]
@@ -75170,13 +75217,78 @@
         "P218.3",
         "P219.1"
       ],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "spec_parse (cmd-spec.sh:57) writes the parsed spec through vbw_out",
         "Every function tools/check-captured-writes.sh flags in plugin/lib (delivered_deviations, loop_spend, step_expect, step_proof_plan, vbw_machine_limit, vbw_git_root, vbw_mtime, proofcopy_slots, and any other) writes through vbw_out, or is allow-listed in the tool with a reason only when its write must stay a builtin",
         "bash tools/check-captured-writes.sh plugin/lib exits 0; the full test run of the changed files stays green",
         "consent_file, interview_private_file, proofreuse_store_file and unittime_file (consent.sh, interview.sh, proofreuse.sh, unittime.sh) hand their path out through vbw_out, so the allow-list stays empty"
+      ],
+      "mutations": [
+        {
+          "rule": {
+            "req": "R274",
+            "k": 1
+          },
+          "what": "spec_parse back to builtin printf",
+          "files": [
+            "plugin/lib/cmd-spec.sh"
+          ],
+          "checks": {
+            "C644": "red"
+          },
+          "result": "red",
+          "at": "2026-11-08T01:27:02Z",
+          "head": "e93a3aed3001ef5fdf4966b6230c5e8669dc365d",
+          "tree": "02e68cc7fcce246ddebb54f2466b22d657cc6732",
+          "contract": "a80827fbaaa0866ac9806b9acfbcc7009fd3cd7a97c2559ce22e693be1658bfb",
+          "digests": {
+            "plugin/lib/cmd-spec.sh": "bdf040fe12575ba07b0cd1f9edf8d5e7879fd6f8dc05b9f9787ca129a68578a8"
+          }
+        },
+        {
+          "rule": {
+            "req": "R274",
+            "k": 2
+          },
+          "what": "unittime_file back to builtin printf",
+          "files": [
+            "plugin/lib/unittime.sh"
+          ],
+          "checks": {
+            "C645": "red"
+          },
+          "result": "red",
+          "at": "2026-11-08T01:27:05Z",
+          "head": "e93a3aed3001ef5fdf4966b6230c5e8669dc365d",
+          "tree": "02e68cc7fcce246ddebb54f2466b22d657cc6732",
+          "contract": "a80827fbaaa0866ac9806b9acfbcc7009fd3cd7a97c2559ce22e693be1658bfb",
+          "digests": {
+            "plugin/lib/unittime.sh": "436a01175e119a34d88fe995624a7d7df95a823e805bfb8056dc45a78cdd1e32"
+          }
+        },
+        {
+          "rule": {
+            "req": "R274",
+            "k": 3
+          },
+          "what": "consent_file back to builtin printf",
+          "files": [
+            "plugin/lib/consent.sh"
+          ],
+          "checks": {
+            "C644": "red"
+          },
+          "result": "red",
+          "at": "2026-11-08T01:27:22Z",
+          "head": "e93a3aed3001ef5fdf4966b6230c5e8669dc365d",
+          "tree": "02e68cc7fcce246ddebb54f2466b22d657cc6732",
+          "contract": "a80827fbaaa0866ac9806b9acfbcc7009fd3cd7a97c2559ce22e693be1658bfb",
+          "digests": {
+            "plugin/lib/consent.sh": "2f0a5672d566f1c978ec01167e6363536daa121b5343d7ed6ab28fd5a5e83b49"
+          }
+        }
       ]
     },
     {
@@ -94886,6 +94998,17 @@
         "ended": "2026-11-08T01:18:45Z",
         "cost": {
           "usd": 1.08124
+        }
+      },
+      {
+        "id": "build-20261108T012141Z",
+        "kind": "build",
+        "session": "0ee781c3-c5b6-4a6c-889f-04b89f1fba4a",
+        "milestone": "M55",
+        "started": "2026-11-08T01:21:41Z",
+        "ended": "2026-11-08T01:28:13Z",
+        "cost": {
+          "usd": 0.751368
         }
       }
     ],
