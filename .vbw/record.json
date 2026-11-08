@@ -81494,6 +81494,13 @@
       "sort": "later",
       "size": "small",
       "status": "open"
+    },
+    {
+      "id": "T269",
+      "text": "Docs tidy (QA notes 2026-11-08): docs/panel.md 782-784 has one source line of 115 chars from a skipped re-wrap; docs/rigor.md 332 does not say the milestone end is rough while a tier has fewer than 3 finished phases",
+      "sort": "later",
+      "size": "small",
+      "status": "open"
     }
   ],
   "decisions": [
