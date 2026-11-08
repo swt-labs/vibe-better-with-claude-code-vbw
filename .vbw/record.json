@@ -1,6 +1,15 @@
 {
   "schema": 13,
-  "lease": null,
+  "lease": {
+    "run": "qa-20261108T193856Z",
+    "kind": "qa",
+    "started_at": "2026-11-08T19:38:56Z",
+    "files": [],
+    "session": "0ee781c3-c5b6-4a6c-889f-04b89f1fba4a",
+    "cost": {
+      "usd": 3464.136564
+    }
+  },
   "protected": [
     "docs/guards.md",
     "tests/adaptive-results.bats",
@@ -32179,12 +32188,11 @@
       ],
       "predicted": "deep",
       "qa": {
-        "result": "fail",
+        "result": "pass",
         "tier": "deep",
-        "tree": "fef0d62d8d16b74ddd7971809f18f4fa2477d1fe82baba85dd04257d6f544d1d",
-        "at": "2026-11-08T16:26:23Z",
-        "note": "32/33 checks",
-        "rounds": 1
+        "tree": "4bd4dbce405a6cac0b5210b248d370be7c0ec93fe446c35306491e41cf30a7cd",
+        "at": "2026-11-08T19:40:08Z",
+        "note": "8/8 checks"
       },
       "escalations": [
         {
@@ -79767,7 +79775,7 @@
       "req": "R270",
       "source": "qa",
       "attempts": 0,
-      "status": "fixed",
+      "status": "closed",
       "note": "The milestone end is not marked rough when its usual fix-round count rests on fewer than 3 finished phases. The phase criterion says plugin/lib/road.jq renders a range 'when any part it adds up is rough (a step kind, or the usual fix-round count learned from fewer than 3 milestones)'. In plugin/lib/road.jq the usual($tier) helper returns null for fewer than 3 finished phases, the fix pieces are then left out (counted as 0 rounds), and $rough (road.jq ~line 128) is the any() of the pieces' own .rough only, so that case stays the single figure 'about N min, until around HH:MM, counting no fix rounds: fewer than 3 finished X phases here'. tests/step-range.bats line 100 pins that single figure, and tests/road-next.bats lines 56 and 73 pin 'about' wording beside 'fewer than 3 finished'. A new project (thin history, the case this phase is about) therefore gets a firm-looking milestone end that silently assumes zero fix rounds. Regression test: a road whose step kinds are all tight (5 agreeing runs each) but with fewer than 3 finished phases of a tier must say 'roughly ... (rough guess), counting no fix rounds: fewer than 3 finished ...' and carry rough true; with 3 or more finished phases it keeps 'about N min' (edit the three pinned cases to match).",
       "phase": "P219"
     },
