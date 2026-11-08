@@ -32013,6 +32013,12 @@
           "from": "deep",
           "to": "deep",
           "reason": "Dev blocked P218.1: Edit tool calls were refused by the auto mode classifier (no verdict, hard failure), so no code change to plugin/lib/contract.sh or cmd-approve.sh was made. Also found: R269 classify test calls contract_waiting inside $(...) and then reads CONTRACT_ADDED, which a subshell cannot pass back; needs a decision."
+        },
+        {
+          "at": "2026-11-07T23:53:48Z",
+          "from": "deep",
+          "to": "deep",
+          "reason": "Dev blocked P218.1: C626 cannot pass as written. classify() in tests/contract-added-lines.bats captures w=$(contract_waiting ...) and a=$(contract_added ...) with $(...), which strips trailing newlines, then expects 'waiting: tests/pay.sh ' (trailing space) and 'added: tests/pay.sh,1;' (trailing ';'): both need a trailing newline to survive the capture, which no implementation can do. Implemented (committed): snapshot commit+blobs, contract_classify/contract_waiting_with/contract_added/contract_blobs. Result: tests 1 and 5 pass; tests 2,3,4 fail only on that trailing separator (actual 'waiting: tests/pay.sh' / 'added: tests/pay.sh,1'). The check file needs a fix (e.g. build the line with a join that adds no trailing separator, or expect none)."
         }
       ]
     },
@@ -32084,6 +32090,12 @@
           "from": "deep",
           "to": "deep",
           "reason": "Dev blocked P220.1: Edit on plugin/skills/vibe/SKILL.md was refused twice: auto mode classifier gave no verdict. No file changed; C634 and C638 still red as expected. Re-run once Edit works."
+        },
+        {
+          "at": "2026-11-07T23:52:24Z",
+          "from": "deep",
+          "to": "deep",
+          "reason": "Dev blocked P220.2: Task 1 and C635 case 1 need vbw init to write .vbw/runtime/writer.json, but init writes the record by a direct mv in plugin/lib/cmd-init.sh (line 46), not through record_update, and that file is not in this plan's files. Done in plugin/lib/record.sh (uncommitted): record_writer_write called from record_update, and the new two-version refusal lines (cases 2 and 3 depend on case 1's writer file). Needs cmd-init.sh to call record_writer_write after the mv (one line), or init routed through record_update. Writing it inside record_glance_write instead was rejected: the glance is also rebuilt when reading a record an older VBW wrote, which would stamp the wrong writer version."
         }
       ]
     },
@@ -32128,6 +32140,12 @@
           "from": "deep",
           "to": "deep",
           "reason": "Dev blocked P221.3: The Edit tool was refused by auto mode (the classifier gave no verdict), so I could not change plugin/hooks/guard-bash.jq or common.jq. Red check C642 confirmed (3 of 4 R276 cases fail); no code changed, nothing committed."
+        },
+        {
+          "at": "2026-11-08T00:05:19Z",
+          "from": "deep",
+          "to": "deep",
+          "reason": "Dev blocked P221.1: C640 (tests/hook-answers.bats, R273 R128) cannot pass as written: its bash_call sends no agent_id/agent_type, and the guard gives only agents a lease (common.jq guard_context: lease is null without agent_type), so no script request reaches read.sh and the answer is empty. The sibling R254 test in that file sends agent_id a1 and agent_type vbw:dev. Fix needs the test to add those two fields (approved check file, not mine to edit). Done and committed: programs.jq linear mask/split (264 KB now read in ~0.6 s vs 7.6 s), read.sh size gate (deny with user's line, committed script still unread); C639 passes, bench green."
         }
       ]
     },
@@ -73659,12 +73677,56 @@
         "plugin/lib/qa.jq"
       ],
       "after": [],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "Replace the expansion rounds (one full pass per phase) with one walk per phase over the direct edges, a visited set stopping on loops, giving the same closure and the same interleaved list",
         "Find the plan cycle among the interleaved phases' plans with the same one-walk closure instead of one round per plan",
         "Keep every answer byte for byte: the chain, diamond, ring, self-link, missing-plan and cycle fixtures of tests/qa-state.bats (filter 'R268 closure') pass unchanged"
+      ],
+      "mutations": [
+        {
+          "rule": {
+            "req": "R268",
+            "k": 1
+          },
+          "what": "closure takes only the direct links",
+          "files": [
+            "plugin/lib/qa.jq"
+          ],
+          "checks": {
+            "C622": "red"
+          },
+          "result": "red",
+          "at": "2026-11-07T23:56:22Z",
+          "head": "091c51505d13663ff89c20497e281f5c7d03184f",
+          "tree": "b6f09d270ca168f94ce6af14c2cc89e3a1214832",
+          "contract": "b9aced8dbe03f1d6ab0d6a8107c27a12403609627103abe0b4e4552a0b9e1ddf",
+          "digests": {
+            "plugin/lib/qa.jq": "3a8c00d58be136e09bc588f30b26f2f70d86d6ffee3b325eef33e6920e9ae3b8"
+          }
+        },
+        {
+          "rule": {
+            "req": "R268",
+            "k": 2
+          },
+          "what": "plan cycle looks at direct links only",
+          "files": [
+            "plugin/lib/qa.jq"
+          ],
+          "checks": {
+            "C622": "red"
+          },
+          "result": "red",
+          "at": "2026-11-07T23:56:24Z",
+          "head": "091c51505d13663ff89c20497e281f5c7d03184f",
+          "tree": "b6f09d270ca168f94ce6af14c2cc89e3a1214832",
+          "contract": "b9aced8dbe03f1d6ab0d6a8107c27a12403609627103abe0b4e4552a0b9e1ddf",
+          "digests": {
+            "plugin/lib/qa.jq": "18abd52107ba32070818112c34a5c5fa23e8f62969b00cc28ae0105ce32b20b8"
+          }
+        }
       ]
     },
     {
@@ -73785,14 +73847,15 @@
         "plugin/lib/cmd-approve.sh"
       ],
       "after": [],
-      "status": "planned",
+      "status": "blocked",
       "role": "dev",
       "tasks": [
         "approve_record and approve_repin write the approval's commit id (HEAD after the approval commit) and each check file's git blob id (git hash-object of the approved bytes) into .vbw/runtime/approved-contract.json as 'commit' and 'blobs' {path: blob}",
         "contract_waiting_with tells an added-to file (every approved line still there, in its order, only new lines among them: the diff against the approved blob holds additions only) from a waiting one (a removed, changed or reordered line, a new file, a file a fix added, or a snapshot without blob ids); it prints only the waiting files, and contract_added RECORD [HASH] prints one 'path<TAB>added line count' per added-to file; both come from one classification and hand nothing back in a variable, so every caller may capture them with $(...) (D654)",
         "A snapshot written before the blob ids keeps today's rule: every changed file waits",
         "Every caller of contract_waiting keeps its meaning (waiting means waiting; an added-to file is not waiting), including qa_digests' saved-results guard"
-      ]
+      ],
+      "note": "C626 cannot pass as written. classify() in tests/contract-added-lines.bats captures w=$(contract_waiting ...) and a=$(contract_added ...) with $(...), which strips trailing newlines, then expects 'waiting: tests/pay.sh ' (trailing space) and 'added: tests/pay.sh,1;' (trailing ';'): both need a trailing newline to survive the capture, which no implementation can do. Implemented (committed): snapshot commit+blobs, contract_classify/contract_waiting_with/contract_added/contract_blobs. Result: tests 1 and 5 pass; tests 2,3,4 fail only on that trailing separator (actual 'waiting: tests/pay.sh' / 'added: tests/pay.sh,1'). The check file needs a fix (e.g. build the line with a join that adds no trailing separator, or expect none)."
     },
     {
       "id": "P218.2",
@@ -74072,12 +74135,61 @@
       "after": [
         "P219.1"
       ],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "statusline.jq: a rough note shows 'until ~HH:MM-HH:MM' (end_low to end_high, the day named as the kernel's clock rule names it); a tight note keeps 'until around HH:MM'",
         "panel-step.js stepWords: a rough note words 'roughly L to H min, until around A to B (rough guess from N runs)' from end_low, end_high, rough and runs ('roughly N min, until around A (rough guess from N runs)' when the ends agree); tight notes unchanged",
         "tests/panel/step-range.test.mjs: node cases for the rough and the tight note"
+      ],
+      "mutations": [
+        {
+          "rule": {
+            "req": "R270",
+            "k": 7
+          },
+          "what": "range separator - became +",
+          "files": [
+            "plugin/scripts/statusline.jq"
+          ],
+          "checks": {
+            "C632": "red"
+          },
+          "result": "red",
+          "at": "2026-11-07T23:53:29Z",
+          "head": "5b7fea30e4fb43890e5ca52e8dcba280483670a8",
+          "tree": "5621503b5a970dabede7ea195f0a8301ef18bdd5",
+          "contract": "b9aced8dbe03f1d6ab0d6a8107c27a12403609627103abe0b4e4552a0b9e1ddf",
+          "digests": {
+            "plugin/scripts/statusline.jq": "e9ae5b8d3b45f7da34a59bc4578f555a441b7b2462a1b7b445cb868906a4038f"
+          }
+        },
+        {
+          "rule": {
+            "req": "R270",
+            "k": 8
+          },
+          "what": "panel range joiner 'to' became '-'",
+          "files": [
+            "plugin/hooks/panel-step.js"
+          ],
+          "checks": {
+            "C632": "red"
+          },
+          "result": "red",
+          "at": "2026-11-07T23:53:31Z",
+          "head": "5b7fea30e4fb43890e5ca52e8dcba280483670a8",
+          "tree": "5621503b5a970dabede7ea195f0a8301ef18bdd5",
+          "contract": "b9aced8dbe03f1d6ab0d6a8107c27a12403609627103abe0b4e4552a0b9e1ddf",
+          "digests": {
+            "plugin/hooks/panel-step.js": "21d24f2e66be34a55c6be120f954ed8454eb2da46c0872783411f5b9c6d081d5"
+          }
+        },
+        {
+          "task": 3,
+          "none": "task 3 is the node test file itself; its cases are run by no rule's check, and the code it tests is broken by R270.8",
+          "at": "2026-11-07T23:53:41Z"
+        }
       ]
     },
     {
@@ -74136,12 +74248,56 @@
         "plugin/skills/vibe/SKILL.md"
       ],
       "after": [],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "The express plan step tells the session to read the Lead text of every pack in packs.project first: 'Stack pack text: read <packs_root>/<name>/lead.md first', in the planning workflow's words (plugin/workflows/planning.js, packLine)",
         "Every step that calls the kernel: when it exits 4 (its line says 'needs a newer VBW'), say its line and stop; never ask the user to type /vbw:approve or vbw approve",
         "The step names --plugin-dir as the kernel's line does, and nothing else in the router changes"
+      ],
+      "mutations": [
+        {
+          "rule": {
+            "req": "R271",
+            "k": 1
+          },
+          "what": "dropped packs_root from the express pack line (3)",
+          "files": [
+            "plugin/skills/vibe/SKILL.md"
+          ],
+          "checks": {
+            "C634": "red"
+          },
+          "result": "red",
+          "at": "2026-11-07T23:55:32Z",
+          "head": "091c51505d13663ff89c20497e281f5c7d03184f",
+          "tree": "b6f09d270ca168f94ce6af14c2cc89e3a1214832",
+          "contract": "b9aced8dbe03f1d6ab0d6a8107c27a12403609627103abe0b4e4552a0b9e1ddf",
+          "digests": {
+            "plugin/skills/vibe/SKILL.md": "4b50f453eea8c5ce508f255bd334bf77556300b7024039d186329bdec02cfd40"
+          }
+        },
+        {
+          "rule": {
+            "req": "R272",
+            "k": 6
+          },
+          "what": "dropped 'and stop' (3)",
+          "files": [
+            "plugin/skills/vibe/SKILL.md"
+          ],
+          "checks": {
+            "C638": "red"
+          },
+          "result": "red",
+          "at": "2026-11-07T23:55:34Z",
+          "head": "091c51505d13663ff89c20497e281f5c7d03184f",
+          "tree": "b6f09d270ca168f94ce6af14c2cc89e3a1214832",
+          "contract": "b9aced8dbe03f1d6ab0d6a8107c27a12403609627103abe0b4e4552a0b9e1ddf",
+          "digests": {
+            "plugin/skills/vibe/SKILL.md": "06dc351e6687384e3d6d13c28b3f8f27ac7c784e9faea19d59daff57d52f7a82"
+          }
+        }
       ]
     },
     {
@@ -74155,13 +74311,14 @@
         "plugin/lib/record.sh"
       ],
       "after": [],
-      "status": "planned",
+      "status": "blocked",
       "role": "dev",
       "tasks": [
         "Every kernel write of the record (record_update's one write path) also writes .vbw/runtime/writer.json: {version: this plugin's version from .claude-plugin/plugin.json, schema: the record's schema}",
         "record_refuse_newer reads the writer file and dies with exit 4 and exactly 'this project needs a newer VBW: its record was written by VBW W, and this session loaded VBW L. Update VBW (/vbw:update), then restart Claude Code; for a development checkout start Claude Code with --plugin-dir <checkout>/plugin (--plugin-dir: Claude Code loads VBW from that folder instead of the installed copy)'",
         "Without a writer file the line is 'this project needs a newer VBW: its record was written with schema N, and this session loaded VBW L, which reads up to schema M. Update VBW (/vbw:update), ...' in the same shape; the record is never touched"
-      ]
+      ],
+      "note": "Task 1 and C635 case 1 need vbw init to write .vbw/runtime/writer.json, but init writes the record by a direct mv in plugin/lib/cmd-init.sh (line 46), not through record_update, and that file is not in this plan's files. Done in plugin/lib/record.sh (uncommitted): record_writer_write called from record_update, and the new two-version refusal lines (cases 2 and 3 depend on case 1's writer file). Needs cmd-init.sh to call record_writer_write after the mv (one line), or init routed through record_update. Writing it inside record_glance_write instead was rejected: the glance is also rebuilt when reading a record an older VBW wrote, which would stamp the wrong writer version."
     },
     {
       "id": "P220.3",
@@ -74197,13 +74354,14 @@
         "plugin/hooks/read.sh"
       ],
       "after": [],
-      "status": "planned",
+      "status": "blocked",
       "role": "dev",
       "tasks": [
         "programs.jq: the script scan (unreadable_calls and the shell-script reading) works line by line or statement by statement, so its time grows with the script's size and the 264 KB field-shaped script is read to its end within the hook's time (ulimit -t 5)",
         "read.sh: before a script file is read, its size is checked; above 512 KB the answer is a deny whose reason is 'VBW guard: <file> (<N> KB) is too large to read before it runs' then 'Next: commit it unchanged (a committed, unchanged script is not read) or run it in smaller parts', with the user's line beside it; a committed, unchanged script still runs unread",
         "The bench budgets are unchanged (tools/bench-hooks.sh green), and the refusals of tests/guard-script-files.bats keep their text"
-      ]
+      ],
+      "note": "C640 (tests/hook-answers.bats, R273 R128) cannot pass as written: its bash_call sends no agent_id/agent_type, and the guard gives only agents a lease (common.jq guard_context: lease is null without agent_type), so no script request reaches read.sh and the answer is empty. The sibling R254 test in that file sends agent_id a1 and agent_type vbw:dev. Fix needs the test to add those two fields (approved check file, not mine to edit). Done and committed: programs.jq linear mask/split (264 KB now read in ~0.6 s vs 7.6 s), read.sh size gate (deny with user's line, committed script still unread); C639 passes, bench green."
     },
     {
       "id": "P221.2",
@@ -74238,12 +74396,77 @@
         "plugin/hooks/common.jq"
       ],
       "after": [],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "written(record_path) refuses only a real write: a redirection anywhere in the command (>, >>, 2>, &>), cp, mv or install with the record as destination, tee, sed -i, perl -i, ed, rm, truncate, shred, dd of= and ln with the record as target",
         "Readers pass: find (-path, -name), ls, grep, wc, cat, head, tail, jq, awk, diff, stat, shasum, cp of the record to /dev/null, git log and git diff naming it",
         "An inline program (python -c, node -e, perl -e) that names the record is refused with a reason saying the guard cannot tell a read from a write in it; guard-file.jq is unchanged"
+      ],
+      "mutations": [
+        {
+          "rule": {
+            "req": "R276",
+            "k": 1
+          },
+          "what": "unknown commands naming the record are refused (reads refused)",
+          "files": [
+            "plugin/hooks/guard-bash.jq"
+          ],
+          "checks": {
+            "C642": "red"
+          },
+          "result": "red",
+          "at": "2026-11-07T23:55:40Z",
+          "head": "091c51505d13663ff89c20497e281f5c7d03184f",
+          "tree": "b6f09d270ca168f94ce6af14c2cc89e3a1214832",
+          "contract": "b9aced8dbe03f1d6ab0d6a8107c27a12403609627103abe0b4e4552a0b9e1ddf",
+          "digests": {
+            "plugin/hooks/guard-bash.jq": "acd1a36c91a78ad7c2491d302d30e499d939f45016bbaeda6413f9c14ffdb112"
+          }
+        },
+        {
+          "rule": {
+            "req": "R276",
+            "k": 2
+          },
+          "what": "tee no longer counted a write",
+          "files": [
+            "plugin/hooks/guard-bash.jq"
+          ],
+          "checks": {
+            "C642": "red"
+          },
+          "result": "red",
+          "at": "2026-11-07T23:55:42Z",
+          "head": "091c51505d13663ff89c20497e281f5c7d03184f",
+          "tree": "b6f09d270ca168f94ce6af14c2cc89e3a1214832",
+          "contract": "b9aced8dbe03f1d6ab0d6a8107c27a12403609627103abe0b4e4552a0b9e1ddf",
+          "digests": {
+            "plugin/hooks/guard-bash.jq": "3270af057649960b7d972f17374b19b4ffee8f8c502a87e3a2923be85d1e0eaa"
+          }
+        },
+        {
+          "rule": {
+            "req": "R276",
+            "k": 3
+          },
+          "what": "inline program check never matches",
+          "files": [
+            "plugin/hooks/guard-bash.jq"
+          ],
+          "checks": {
+            "C642": "red"
+          },
+          "result": "red",
+          "at": "2026-11-07T23:55:44Z",
+          "head": "091c51505d13663ff89c20497e281f5c7d03184f",
+          "tree": "b6f09d270ca168f94ce6af14c2cc89e3a1214832",
+          "contract": "b9aced8dbe03f1d6ab0d6a8107c27a12403609627103abe0b4e4552a0b9e1ddf",
+          "digests": {
+            "plugin/hooks/guard-bash.jq": "acd60b8241e09b25a93b72340f0cfda0619dbb1041bc56dece0a4839ab1160b8"
+          }
+        }
       ]
     },
     {
@@ -74286,12 +74509,61 @@
         "tools/check-captured-writes.sh"
       ],
       "after": [],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "A bash 3.2 tool, DIR...: for each function in the directories' *.sh files, flag one whose last command is a bare builtin printf or echo whose text argument is one variable assigned in that function from a command substitution (not piped, not redirected); vbw_out, a literal, an argument, a write into a pipe or a file and a function ending otherwise pass; print 'file:line: function' per hit and exit 1",
         "--allowed prints the allow-list, one 'name: reason' per line (empty at first); an allow-listed function is never flagged",
         "The self-tests in tests/output-child-exit.bats (filter 'captured-write rule|R274: --allowed') pass; the standards case in tests/standards.bats runs the tool on plugin/lib"
+      ],
+      "mutations": [
+        {
+          "task": 3,
+          "none": "task 3 only names the self-tests and the standards case; they are the checks, nothing in tools/check-captured-writes.sh to break",
+          "at": "2026-11-07T23:52:17Z"
+        },
+        {
+          "rule": {
+            "req": "R274",
+            "k": 5
+          },
+          "what": "allow-list holds a name that is no function of plugin/lib",
+          "files": [
+            "tools/check-captured-writes.sh"
+          ],
+          "checks": {
+            "C643": "red"
+          },
+          "result": "red",
+          "at": "2026-11-07T23:52:50Z",
+          "head": "5b7fea30e4fb43890e5ca52e8dcba280483670a8",
+          "tree": "5621503b5a970dabede7ea195f0a8301ef18bdd5",
+          "contract": "b9aced8dbe03f1d6ab0d6a8107c27a12403609627103abe0b4e4552a0b9e1ddf",
+          "digests": {
+            "tools/check-captured-writes.sh": "125602159a04715ea3ee5c3b9b4e21f1d60a7ff67bb53aef1388715a1677d211"
+          }
+        },
+        {
+          "rule": {
+            "req": "R274",
+            "k": 4
+          },
+          "what": "a hit is never printed (captured-text test never matches)",
+          "files": [
+            "tools/check-captured-writes.sh"
+          ],
+          "checks": {
+            "C643": "red"
+          },
+          "result": "red",
+          "at": "2026-11-07T23:53:09Z",
+          "head": "5b7fea30e4fb43890e5ca52e8dcba280483670a8",
+          "tree": "5621503b5a970dabede7ea195f0a8301ef18bdd5",
+          "contract": "b9aced8dbe03f1d6ab0d6a8107c27a12403609627103abe0b4e4552a0b9e1ddf",
+          "digests": {
+            "tools/check-captured-writes.sh": "0bc9fdb4f5b154f20d1e67e399317ec69727dbb74938fc074aef92ee91c48a56"
+          }
+        }
       ]
     },
     {
@@ -74416,12 +74688,35 @@
         "docs/guards.md"
       ],
       "after": [],
-      "status": "planned",
+      "status": "done",
       "role": "docs",
       "tasks": [
         "AGENTS.md hot paths (CLAUDE.md is a link to AGENTS.md: edit AGENTS.md only, never CLAUDE.md, so the link stays): the reference workload is measured beside each case and a case is judged against the reference of its own moment ('beside each case' replaces 'on the same machine in the same run')",
         "docs/guards.md: the same, with the per-case line the bench prints",
         "No other wording change"
+      ],
+      "mutations": [
+        {
+          "rule": {
+            "req": "R275",
+            "k": 5
+          },
+          "what": "AGENTS.md says once in the same run",
+          "files": [
+            "AGENTS.md"
+          ],
+          "checks": {
+            "C647": "red"
+          },
+          "result": "red",
+          "at": "2026-11-07T23:53:27Z",
+          "head": "812778dc7ae45c9d16e99f25ab086c3704a145eb",
+          "tree": "b3d9b111e978ac92899bb14aef38f9941f6442e9",
+          "contract": "b9aced8dbe03f1d6ab0d6a8107c27a12403609627103abe0b4e4552a0b9e1ddf",
+          "digests": {
+            "AGENTS.md": "f2d89c1b0387422a4df91cf317e2b9d1a87f3b062f0f1f15e64bd252805259dc"
+          }
+        }
       ]
     },
     {
@@ -74437,12 +74732,203 @@
         "docs/workflows.md"
       ],
       "after": [],
-      "status": "planned",
+      "status": "done",
       "tasks": [
         "cmd-apply.sh, R277: for a patch, judged holds only the phases that have not started whose plans the patch changes or adds (as pdoc does for --add), so a phase the patch does not touch never blocks it; the header comment says so",
         "cmd-apply.sh, R277: a touched phase whose floor rose above its tier is raised to that floor, and a touched express phase given a second plan to standard, written by the patch (the only phase field a patch writes), never lowered; each said in one line naming the phase and the new tier; a patch never gives the Architect refusal",
         "cmd-apply.sh, R278: a plan row of a full apply, --add and --patch may carry awaits, checked with the words --amend uses (a check of the merged record, of a requirement the plan builds) and kept; a row without it keeps the recorded awaits as today; --amend unchanged",
         "docs/workflows.md: the full apply, --patch and --add rows name awaits; the --patch row says it judges the floor only of the phases whose plans it touches and raises such a phase to a floor that rose; the error table row for a tier below its floor says a patch raises it"
+      ],
+      "mutations": [
+        {
+          "rule": {
+            "req": "R277",
+            "k": 1
+          },
+          "what": "patch judges every phase again",
+          "files": [
+            "plugin/lib/cmd-apply.sh"
+          ],
+          "checks": {
+            "C648": "red"
+          },
+          "result": "red",
+          "at": "2026-11-08T00:02:35Z",
+          "head": "1173179ba9d25c9597a56ecc5b81eb4afe2b3eb3",
+          "tree": "a3b4d527711c6f8f35d0939dab1e7bb0c9728717",
+          "contract": "b9aced8dbe03f1d6ab0d6a8107c27a12403609627103abe0b4e4552a0b9e1ddf",
+          "digests": {
+            "plugin/lib/cmd-apply.sh": "4dd09a7d1a61a046cc7e73d918f3b828e3541b9bc4b5e31aa0f32a6838be559a"
+          }
+        },
+        {
+          "rule": {
+            "req": "R277",
+            "k": 2
+          },
+          "what": "floor raise never happens",
+          "files": [
+            "plugin/lib/cmd-apply.sh"
+          ],
+          "checks": {
+            "C648": "red"
+          },
+          "result": "red",
+          "at": "2026-11-08T00:02:37Z",
+          "head": "1173179ba9d25c9597a56ecc5b81eb4afe2b3eb3",
+          "tree": "a3b4d527711c6f8f35d0939dab1e7bb0c9728717",
+          "contract": "b9aced8dbe03f1d6ab0d6a8107c27a12403609627103abe0b4e4552a0b9e1ddf",
+          "digests": {
+            "plugin/lib/cmd-apply.sh": "a47ff9910615b500317852153cd2553a618dc8ef99354435991856fc645d5e86"
+          }
+        },
+        {
+          "rule": {
+            "req": "R277",
+            "k": 3
+          },
+          "what": "second plan never raises",
+          "files": [
+            "plugin/lib/cmd-apply.sh"
+          ],
+          "checks": {
+            "C648": "red"
+          },
+          "result": "red",
+          "at": "2026-11-08T00:02:39Z",
+          "head": "1173179ba9d25c9597a56ecc5b81eb4afe2b3eb3",
+          "tree": "a3b4d527711c6f8f35d0939dab1e7bb0c9728717",
+          "contract": "b9aced8dbe03f1d6ab0d6a8107c27a12403609627103abe0b4e4552a0b9e1ddf",
+          "digests": {
+            "plugin/lib/cmd-apply.sh": "f9bb59b7a2f5351506a0127a6c7a3fceea2061284344d6eaacc8a7f95e836856"
+          }
+        },
+        {
+          "rule": {
+            "req": "R277",
+            "k": 4
+          },
+          "what": "patch gets the Architect refusal",
+          "files": [
+            "plugin/lib/cmd-apply.sh"
+          ],
+          "checks": {
+            "C648": "red"
+          },
+          "result": "red",
+          "at": "2026-11-08T00:02:41Z",
+          "head": "1173179ba9d25c9597a56ecc5b81eb4afe2b3eb3",
+          "tree": "a3b4d527711c6f8f35d0939dab1e7bb0c9728717",
+          "contract": "b9aced8dbe03f1d6ab0d6a8107c27a12403609627103abe0b4e4552a0b9e1ddf",
+          "digests": {
+            "plugin/lib/cmd-apply.sh": "e1fc1c92f34707040c623721e1647816c370ebf8337a08d6cf959042285ead11"
+          }
+        },
+        {
+          "rule": {
+            "req": "R278",
+            "k": 1
+          },
+          "what": "awaits dropped from the written plan row",
+          "files": [
+            "plugin/lib/cmd-apply.sh"
+          ],
+          "checks": {
+            "C649": "red"
+          },
+          "result": "red",
+          "at": "2026-11-08T00:02:44Z",
+          "head": "1173179ba9d25c9597a56ecc5b81eb4afe2b3eb3",
+          "tree": "a3b4d527711c6f8f35d0939dab1e7bb0c9728717",
+          "contract": "b9aced8dbe03f1d6ab0d6a8107c27a12403609627103abe0b4e4552a0b9e1ddf",
+          "digests": {
+            "plugin/lib/cmd-apply.sh": "676b073aa6c964550e63adda2cbcbb147c65c55fe7fa76c4bcbfa57b11ac65ec"
+          }
+        },
+        {
+          "rule": {
+            "req": "R278",
+            "k": 2
+          },
+          "what": "awaits never judged",
+          "files": [
+            "plugin/lib/cmd-apply.sh"
+          ],
+          "checks": {
+            "C649": "red"
+          },
+          "result": "red",
+          "at": "2026-11-08T00:02:46Z",
+          "head": "1173179ba9d25c9597a56ecc5b81eb4afe2b3eb3",
+          "tree": "a3b4d527711c6f8f35d0939dab1e7bb0c9728717",
+          "contract": "b9aced8dbe03f1d6ab0d6a8107c27a12403609627103abe0b4e4552a0b9e1ddf",
+          "digests": {
+            "plugin/lib/cmd-apply.sh": "efddd3c9228fc3735c2d617eff2831cba45f02b4e2d13601862e962e110aa94d"
+          }
+        },
+        {
+          "rule": {
+            "req": "R278",
+            "k": 3
+          },
+          "what": "awaits an unknown plan field",
+          "files": [
+            "plugin/lib/cmd-apply.sh"
+          ],
+          "checks": {
+            "C649": "red"
+          },
+          "result": "red",
+          "at": "2026-11-08T00:02:48Z",
+          "head": "1173179ba9d25c9597a56ecc5b81eb4afe2b3eb3",
+          "tree": "a3b4d527711c6f8f35d0939dab1e7bb0c9728717",
+          "contract": "b9aced8dbe03f1d6ab0d6a8107c27a12403609627103abe0b4e4552a0b9e1ddf",
+          "digests": {
+            "plugin/lib/cmd-apply.sh": "2fc6168b5cdbaf024f4d423cd35780097fd68f0601c07df1b24daa4959fb5065"
+          }
+        },
+        {
+          "rule": {
+            "req": "R277",
+            "k": 5
+          },
+          "what": "patch row loses floor words",
+          "files": [
+            "docs/workflows.md"
+          ],
+          "checks": {
+            "C650": "red"
+          },
+          "result": "red",
+          "at": "2026-11-08T00:02:50Z",
+          "head": "1173179ba9d25c9597a56ecc5b81eb4afe2b3eb3",
+          "tree": "a3b4d527711c6f8f35d0939dab1e7bb0c9728717",
+          "contract": "b9aced8dbe03f1d6ab0d6a8107c27a12403609627103abe0b4e4552a0b9e1ddf",
+          "digests": {
+            "docs/workflows.md": "915e96b2de46644c54b39c26cfa65a9df79eb1ad5924682afeca840efe2d8830"
+          }
+        },
+        {
+          "rule": {
+            "req": "R278",
+            "k": 4
+          },
+          "what": "add row loses awaits",
+          "files": [
+            "docs/workflows.md"
+          ],
+          "checks": {
+            "C651": "red"
+          },
+          "result": "red",
+          "at": "2026-11-08T00:02:52Z",
+          "head": "1173179ba9d25c9597a56ecc5b81eb4afe2b3eb3",
+          "tree": "a3b4d527711c6f8f35d0939dab1e7bb0c9728717",
+          "contract": "b9aced8dbe03f1d6ab0d6a8107c27a12403609627103abe0b4e4552a0b9e1ddf",
+          "digests": {
+            "docs/workflows.md": "601e410a8e964d7a21d1321728b78a555f4656846bf30ed422741c7458bbee9a"
+          }
+        }
       ]
     }
   ],
@@ -93645,6 +94131,17 @@
         "ended": "2026-11-07T22:34:02Z",
         "cost": {
           "usd": 7.619645
+        }
+      },
+      {
+        "id": "build-20261107T235045Z",
+        "kind": "build",
+        "session": "0ee781c3-c5b6-4a6c-889f-04b89f1fba4a",
+        "milestone": "M55",
+        "started": "2026-11-07T23:50:45Z",
+        "ended": "2026-11-08T00:05:39Z",
+        "cost": {
+          "usd": 5.148033
         }
       }
     ],
