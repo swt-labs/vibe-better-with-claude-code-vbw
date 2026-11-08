@@ -272,6 +272,16 @@ PY'
   allowed "the project's own huge script, committed and unchanged since the run started"
 }
 
+@test "R273: a script a command writes by a here-doc after a cd and then runs by name is read from that here-doc, found at the folder the cd put it in" {
+  call 'cd src
+cat > s.sh <<EOF
+echo x > ../tests/c1.sh
+EOF
+bash s.sh'
+  denied "a script written in src by a here-doc and run there"
+  has "s.sh (run by bash): echo x > ../tests/c1.sh writes ../tests/c1.sh: $PROTECTED"
+}
+
 @test "R273 timed: tests/timed-guard-script.bats times the guard on an 80 KB and a 264 KB script: the big one within 5 s of CPU and within 1.5 times the size ratio of the small one's time, scaled by the bench's reference, skipped on a busy machine" {
   local f="$BATS_TEST_DIRNAME/timed-guard-script.bats"
   [ -f "$f" ] || { echo "no tests/timed-guard-script.bats"; false; }
