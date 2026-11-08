@@ -75920,11 +75920,38 @@
       "after": [
         "P219.1"
       ],
-      "status": "blocked",
+      "status": "done",
       "tasks": [
         "proofsteps_begin own mode: take step_estimate once (seconds, low, high, runs, rough) and write end_low, end_high, rough and runs into the note beside first_end and end, as step_start does (F412)"
       ],
-      "note": "Code done and committed: proofsteps_begin (own mode) now writes end_low, end_high, rough, runs. C631 stays red on one test defect, not a code defect: tests/step-range.bats own_proof_note runs proofsteps_begin with no session id (tests/helper.bash unsets CLAUDE_CODE_SESSION_ID), so the note has session null and the status line (which shows a proof note only for its own session, here 's1') renders idle at line 174. With VBW_SESSION_ID=s1 in the environment the test passes. Fix needed: add VBW_SESSION_ID=s1 to the bash -c call in own_proof_note via vbw apply --patch plus user approval; the guard refuses a Dev edit of the protected check. Mutation step not run."
+      "mutations": [
+        {
+          "rule": {
+            "req": "R270",
+            "k": 6
+          },
+          "what": "note writes null end_low/end_high, rough false, runs 0",
+          "files": [
+            "plugin/lib/proofsteps.sh"
+          ],
+          "checks": {
+            "C631": "red"
+          },
+          "result": "red",
+          "at": "2026-11-08T05:13:40Z",
+          "head": "05f98fbfa9d911522b90e68a4b4606c36ad2891f",
+          "tree": "d6f85eaffc6b972528bbc58710c9bba6b679b40f",
+          "contract": "4745ad937ae98a8883f915dd0dd8cb89b99dac8d255971b5d7bf451691f72c0b",
+          "digests": {
+            "plugin/lib/proofsteps.sh": "ad628e6724fbfc90d3a8d407cc32a0648029e74e60395c1c4a39e2aa9a4eb268"
+          }
+        },
+        {
+          "task": 1,
+          "none": "the one task is reached by the R270.6 break, which turned C631 red",
+          "at": "2026-11-08T05:13:51Z"
+        }
+      ]
     }
   ],
   "fixes": [
@@ -84650,6 +84677,12 @@
       "plans": [
         "P219.4"
       ]
+    },
+    {
+      "id": "D669",
+      "text": "P219.4's check case (tests/step-range.bats, R270 kernel: a proof of VBW's own) started its proof without a session, so the status line of s1 never showed the note and the case could not pass with the fix in (381ce3e8); its helper own_proof_note now runs the proof as VBW_SESSION_ID=s1, as the router runs it. With the fix all 12 cases of the file pass under /bin/bash; the case was red at line 171 before the fix",
+      "why": "The fix-round Dev wrote the case before the fix existed and never saw it green; a check that cannot pass protects nothing",
+      "at": "2026-11-08T05:11:20Z"
     }
   ],
   "commands": {
@@ -95694,6 +95727,17 @@
         "ended": "2026-11-08T05:10:13Z",
         "cost": {
           "usd": 0.834885
+        }
+      },
+      {
+        "id": "build-20261108T051149Z",
+        "kind": "build",
+        "session": "0ee781c3-c5b6-4a6c-889f-04b89f1fba4a",
+        "milestone": "M55",
+        "started": "2026-11-08T05:11:49Z",
+        "ended": "2026-11-08T05:14:32Z",
+        "cost": {
+          "usd": 0.42877
         }
       }
     ],
