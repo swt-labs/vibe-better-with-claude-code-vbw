@@ -124,7 +124,13 @@ cmd_show() {
           (.project.leave_out // empty | "clean copy leaves out: \(join(", "))")'
       printf '%s' "$record" | jq -r '[.requirements[] | select(.queued) | "  \(.id) [\(.proof)] \(.text)"]
         | if length > 0 then "queued (not in the approved contract):", .[] else empty end'
-      contract_amendments_block "$record"
+      # The screen the user approves lists what changed, an added-to check file with the diff
+      # of its added lines (R269): the text of vbw show contract --changes, amendments included.
+      if [ "$state" != approved ] && [ -f "$VBW_RUNTIME/approved-contract.json" ]; then
+        show_contract_changes "$record"
+      else
+        contract_amendments_block "$record"
+      fi
       if [ "$state" != approved ]; then
         printf 'approval question: Approve contract %s?%s\napproval options: Approve, Not yet\n' "${hash:0:12}" "$(contract_question_counts "$record")"
       fi
@@ -295,7 +301,11 @@ show_contract_changes() {
 # array of plain lines (the same diff the approval question counts); needs the earlier
 # approval's snapshot.
 contract_change_lines() {
-  contract_doc "$1" | jq -c --slurpfile old "$VBW_RUNTIME/approved-contract.json" "$VBW_JQ_DEFS$SHOW_JQ_DEFS"'
+  # The added-to check files (R269) as {path: lines}: a file with only lines added since the
+  # approval is not a changed one. Empty when the contract's structure is not approved.
+  local added
+  added=$(contract_added "$1" 2> /dev/null | jq -Rn '[inputs | split("\t") | select(length == 2) | {key: .[0], value: (.[1] | tonumber)}] | from_entries') || added='{}'
+  contract_doc "$1" | jq -c --argjson added "$added" --slurpfile old "$VBW_RUNTIME/approved-contract.json" "$VBW_JQ_DEFS$SHOW_JQ_DEFS"'
     . as $new | $old[0] as $old
     | [ ($new.requirements | to_entries[] | select($old.requirements[.key] == null)
           | "added requirement \(.key) [\(.value.proof)] \(.value.text)"),
@@ -345,7 +355,9 @@ contract_change_lines() {
                 | if . then "other fields changed (vbw show req \($n.req))" else empty end) ] as $d
           | "changed check \($k) (\($n.req)): " + ($d | join("; "))),
         ($new.files | to_entries[] | select($old.files[.key] != null and $old.files[.key] != .value)
-          | "changed test file \(.key)"),
+          | if $added[.key] != null
+            then "test file \(.key): \($added[.key]) line\(if $added[.key] == 1 then "" else "s" end) added since the approval"
+            else "changed test file \(.key)" end),
         ($new.plans | to_entries[] | select($old.plans[.key] == null)
           | "added plan \(.key) \(.value.title): \(.value.files | join(", "))"),
         ($old.plans | to_entries[] | select($new.plans[.key] == null)
@@ -380,16 +392,27 @@ contract_change_lines() {
 
 # show_contract_changes_rest RECORD_JSON LINES BEFORE: the diff under each changed test file, then the amendments.
 show_contract_changes_rest() {
-  local lines=$2 before=$3 line f want h c diff g rel
+  local lines=$2 before=$3 line f want h c diff g rel rc
   # Under each changed test file: the whole diff between the approved content
   # (found by hash in the file's git history) and the file as it is now.
   while IFS= read -r line; do
     printf '%s\n' "$line"
     case "$line" in
-      "  changed test file "*) ;;
+      "  changed test file "*) f=${line#"  changed test file "} ;;
+      "  test file "*" added since the approval")
+        # The added lines: the unified diff from the snapshot's blob to the file as it is.
+        f=${line#"  test file "}
+        f=${f%%: *}
+        c=$(jq -r --arg f "$f" '.blobs[$f] // empty' "$before")
+        if [ -n "$c" ]; then
+          rc=0
+          diff=$(git -C "$VBW_ROOT" cat-file blob "$c" 2> /dev/null | diff -u --label "a/$f" --label "b/$f" - "$VBW_ROOT/$f") || rc=$?
+          [ "$rc" -gt 1 ] || printf '%s\n' "$diff"
+        fi
+        continue
+        ;;
       *) continue ;;
     esac
-    f=${line#"  changed test file "}
     want=$(jq -r --arg f "$f" '.files[$f]' "$before")
     # In the repository that tracks it (a submodule's file in the submodule).
     vbw_repos "$f"
