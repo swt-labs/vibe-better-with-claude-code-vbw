@@ -32290,7 +32290,15 @@
           "to": "deep",
           "reason": "Dev blocked P221.1: C640 (tests/hook-answers.bats, R273 R128) cannot pass as written: its bash_call sends no agent_id/agent_type, and the guard gives only agents a lease (common.jq guard_context: lease is null without agent_type), so no script request reaches read.sh and the answer is empty. The sibling R254 test in that file sends agent_id a1 and agent_type vbw:dev. Fix needs the test to add those two fields (approved check file, not mine to edit). Done and committed: programs.jq linear mask/split (264 KB now read in ~0.6 s vs 7.6 s), read.sh size gate (deny with user's line, committed script still unread); C639 passes, bench green."
         }
-      ]
+      ],
+      "qa": {
+        "result": "fail",
+        "tier": "deep",
+        "tree": "921420c052fbe8080dc9e2dabc4eb33d9c1e9227466561a07e82fe6480614cfa",
+        "at": "2026-11-08T04:47:51Z",
+        "note": "20/26 checks",
+        "rounds": 1
+      }
     },
     {
       "id": "P222",
@@ -79132,6 +79140,33 @@
       "status": "open",
       "note": "No gate ever asks the user to approve the added lines, so they stay unapproved and never count. Evidence (read from code): vbw next answers approve only when the contract is not approved (next.jq:126; cmd-next.sh sets approved=true as soon as the structure is approved, :172-179) or when files WAIT and requirements are unproven (next.jq:146). An added-to file is neither, so after the proof next goes on to qa, accept and ship; vbw ship only prints amendments (cmd-ship.sh:112) and never asks for approval. The proof then judges the approved content on every later run, silently, until some unrelated structure change or the user's own vbw approve happens. The goal and docs/proof.md:397 say the added lines 'wait for approval at the gate after the proof'; P218.2 task 3 claims that gate is existing behaviour, but before this phase it was the pre-proof approve that did it, and that is the step this phase removed. Test coverage: tests/contract-added-lines.bats calls vbw approve by hand and never checks that vbw next asks. Regression test to add: after a proof that passed with an added-to file (all requirements proven, no structure change), vbw next --json must answer approve (gate true, detail.files naming the file) before qa/ship, and approving must make the next proof judge the current content. Fix direction: an approve action in next.jq for added-to files once nothing is unproven (it lists the added lines with their diff), or ship/accept refusing until approved.",
       "phase": "P218"
+    },
+    {
+      "id": "F415",
+      "req": "R273",
+      "source": "qa",
+      "attempts": 0,
+      "status": "open",
+      "note": "The guard's script scan is still quadratic for scripts that hold here-docs, so the goal 'cost grows in step with size' and the 5 s limit are not met for them. Evidence (programs.jq script_findings run alone through jq on generated text, user CPU): a 284 KB script of echo lines 1.3 s, with 100 cat here-docs 1.7 s, with 300 cat here-docs 2.6 s (more here-docs pass 5 s, with jq start-up and guard context still to add); 300 'python3 - <<PY' here-docs in only about 12 KB cost 13.4 s, 600 cost 53.5 s (doubling the count x4). Cause: heredocs (programs.jq ~l.287-293) slices the whole text up to each here-doc ('head: $t[:$m.offset+...]') and script_findings then runs commands(3) over that whole head for each interpreter here-doc, so each here-doc re-reads everything before it. The 512 KB size gate in read.sh does not guard against this (a 13 s script is 12 KB). Past 5 s the shell kills the guard and the user gets the 'guard failed, run vbw doctor' answer R273 forbids. A regression test should build a script of about 264 KB with several hundred here-docs (cat and python3 - <<PY) and check the 264 KB time is within 1.5 x the size ratio of the 80 KB time and under 5 s.",
+      "phase": "P221"
+    },
+    {
+      "id": "F416",
+      "req": "R273",
+      "source": "qa",
+      "attempts": 0,
+      "status": "open",
+      "note": "tests/timed-guard-script.bats does not use the shape the criterion names: the criterion asks for scripts 'in the shape of the field script (many lines of shell with quotes, $(...) and here-docs)', but field_script (line ~66) writes only 'echo \"step N: ...\"' lines plus one final write. It has no $(...) and no here-doc, so it cannot fail on the here-doc cost above (it stays green while a here-doc script takes 13 s at 12 KB). The test passes, so C641-style timing never catches the remaining quadratic path. Fix: the generator adds $(...) assignments and cat / python3 here-docs at a fixed share of the lines, so the 80 KB and 264 KB scripts have the same mix.",
+      "phase": "P221"
+    },
+    {
+      "id": "F417",
+      "req": "R276",
+      "source": "qa",
+      "attempts": 0,
+      "status": "open",
+      "note": "docs/guards.md line 159 still says the record is protected against 'file tools, redirects, any program that is not a reader such as cat, jq, grep or git'. After P221.3 that is false: only a redirect or a listed writer (cp, mv, install, rsync, ln, tee, sed -i, perl -i, ed, rm, truncate, shred, dd of=, sort -o, awk inplace, git checkout/restore/rm/mv/apply, find -delete/-exec, sponge) refuses, and any other program naming the record passes (for example 'curl -o .vbw/record.json URL', 'wget -O', 'patch .vbw/record.json < p' and 'gzip .vbw/record.json' all pass in a probe of guard-bash.jq). The doc was not touched by the phase (git diff over its commits touches only docs/workflows.md). docs/guards.md 'Script files run by name' (lines 198-222) also never states the 512 KB limit or its refusal line, a limit the user needs to know. Fix: reword line 159 to the new rule (writes refused, reads and an inline -c/-e program naming the record per R276) and add the 512 KB refusal to the script-files section. A regression test is a docs-vs-guard check like tests/step-docs.bats naming the sentence.",
+      "phase": "P221"
     }
   ],
   "todos": [
