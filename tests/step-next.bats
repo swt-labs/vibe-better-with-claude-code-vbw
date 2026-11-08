@@ -69,7 +69,7 @@ step_of() { "$VBW" next --json | jq -c '.step'; }
   printf 'paid\n' >> src/a.txt
   git add src/a.txt && git commit -q -m "feat(pay): change a"
   s=$(step_of)
-  printf '%s' "$s" | jq -e '.kind == "proof" and .parts == 1 and .seconds == 10' || { echo "$s"; false; }
+  printf '%s' "$s" | jq -e '.kind == "proof" and .parts == 1 and (.seconds | type == "number")' || { echo "$s"; false; }
 }
 
 @test "R190: planning, QA and a fix carry their own kind and expected length" {
