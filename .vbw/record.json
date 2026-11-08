@@ -75988,11 +75988,145 @@
       "after": [
         "P222.2"
       ],
-      "status": "planned",
+      "status": "done",
       "tasks": [
         "tools/check-captured-writes.sh: the text argument counts as the captured variable also in a default-value expansion of it (${v:-word}, ${v-word}, ${v:=word}, ${v=word}, ${v:?word}, ${v?word}), quoted or not; ${v:+word} and ${v+word} write the word, not the variable, and pass; the header names these forms (F419)",
         "plugin/lib/road.sh road_compute: hand its JSON out through vbw_out instead of a builtin printf of \"${out:-null}\", keeping the null when out is empty (F419)",
         "The R274 cases of tests/output-child-exit.bats (filter captured-write rule|R274) pass, the plugin/lib case included, and tests/standards.bats R274 passes"
+      ],
+      "mutations": [
+        {
+          "rule": {
+            "req": "R274",
+            "k": 1
+          },
+          "what": "road_compute writes with a builtin printf again",
+          "files": [
+            "plugin/lib/road.sh"
+          ],
+          "checks": {
+            "C644": "red"
+          },
+          "result": "red",
+          "at": "2026-11-08T12:12:37Z",
+          "head": "37503859d62659457a5345d72dac993da85eab1b",
+          "tree": "468af8c71418b75ca10202e669fc7ac691c556bc",
+          "contract": "244be4fcc8f7112e0dd865323864c9cda55c4c38fc8129f2e364f35fb8071a23",
+          "digests": {
+            "plugin/lib/road.sh": "b7a46688d0bcea07dbfc48aed93822907b16c5a0ab666b77382826cad3ac374b"
+          }
+        },
+        {
+          "rule": {
+            "req": "R274",
+            "k": 3
+          },
+          "what": "road_compute ends with a builtin echo of out",
+          "files": [
+            "plugin/lib/road.sh"
+          ],
+          "checks": {
+            "C644": "red"
+          },
+          "result": "red",
+          "at": "2026-11-08T12:12:39Z",
+          "head": "37503859d62659457a5345d72dac993da85eab1b",
+          "tree": "468af8c71418b75ca10202e669fc7ac691c556bc",
+          "contract": "244be4fcc8f7112e0dd865323864c9cda55c4c38fc8129f2e364f35fb8071a23",
+          "digests": {
+            "plugin/lib/road.sh": "e80d3ba44bddc9025113acbb08e73d0280d485a87e98646a7fb4f95893c6d6b3"
+          }
+        },
+        {
+          "rule": {
+            "req": "R274",
+            "k": 4
+          },
+          "what": "only the - default form counts",
+          "files": [
+            "tools/check-captured-writes.sh"
+          ],
+          "checks": {
+            "C643": "red"
+          },
+          "result": "red",
+          "at": "2026-11-08T12:12:41Z",
+          "head": "37503859d62659457a5345d72dac993da85eab1b",
+          "tree": "468af8c71418b75ca10202e669fc7ac691c556bc",
+          "contract": "244be4fcc8f7112e0dd865323864c9cda55c4c38fc8129f2e364f35fb8071a23",
+          "digests": {
+            "tools/check-captured-writes.sh": "aef38f7ddb6f78f22e6fea4a4783c7f7a2bed4860bfd0885c96dc60b34d21171"
+          }
+        },
+        {
+          "rule": {
+            "req": "R274",
+            "k": 2
+          },
+          "what": "findings exit 0 instead of 1",
+          "files": [
+            "tools/check-captured-writes.sh"
+          ],
+          "checks": {
+            "C645": "green"
+          },
+          "result": "survivor",
+          "at": "2026-11-08T12:12:43Z",
+          "head": "37503859d62659457a5345d72dac993da85eab1b",
+          "tree": "468af8c71418b75ca10202e669fc7ac691c556bc",
+          "contract": "244be4fcc8f7112e0dd865323864c9cda55c4c38fc8129f2e364f35fb8071a23",
+          "digests": {
+            "tools/check-captured-writes.sh": "9ef42be620eb920974d64d362f20a4bd1f01dfba8fd23681a2c5eb6a21e72564"
+          }
+        },
+        {
+          "rule": {
+            "req": "R274",
+            "k": 5
+          },
+          "what": "--allowed lists a ghost function",
+          "files": [
+            "tools/check-captured-writes.sh"
+          ],
+          "checks": {
+            "C643": "red"
+          },
+          "result": "red",
+          "at": "2026-11-08T12:12:45Z",
+          "head": "37503859d62659457a5345d72dac993da85eab1b",
+          "tree": "468af8c71418b75ca10202e669fc7ac691c556bc",
+          "contract": "244be4fcc8f7112e0dd865323864c9cda55c4c38fc8129f2e364f35fb8071a23",
+          "digests": {
+            "tools/check-captured-writes.sh": "4c3e1d03d18af4ca046f489832e1e12add422dc190420dc5dcbcec584a9ad625"
+          }
+        },
+        {
+          "rule": {
+            "req": "R274",
+            "k": 2
+          },
+          "what": "findings exit 0 instead of 1",
+          "files": [
+            "tools/check-captured-writes.sh"
+          ],
+          "checks": {
+            "C645": "red"
+          },
+          "result": "red",
+          "at": "2026-11-08T12:13:19Z",
+          "head": "8c38af115eb48838eba221ad01090582d8aeca21",
+          "tree": "affb23b1845cf049859965a0c12406768b61fda3",
+          "contract": "897da4ad8c172bed31b6b6d671feab261f6cb9b8f483f28efe01134d02d0e507",
+          "digests": {
+            "tools/check-captured-writes.sh": "9ef42be620eb920974d64d362f20a4bd1f01dfba8fd23681a2c5eb6a21e72564"
+          },
+          "strengthened": [
+            "tests/standards.bats"
+          ],
+          "pending": [
+            "tests/standards.bats"
+          ]
+        }
       ]
     }
   ],
@@ -84757,6 +84891,18 @@
       "plans": [
         "P222.5"
       ]
+    },
+    {
+      "id": "D672",
+      "text": "F419 goes through a new plan P222.5 (check-captured-writes.sh and road.sh); the main session adds the regression cases to tests/output-child-exit.bats",
+      "why": "road.sh is in no R274 plan and the test file is shared with R218, so a fix Dev could do neither; one approval covers the plan and the test lines",
+      "at": "2026-11-08T12:09:59Z"
+    },
+    {
+      "id": "D673",
+      "text": "The same head re-read in guard-bash.jq (~l.235) and guard-read.jq (~l.48) stays for a todo, not this milestone",
+      "why": "it affects only inline commands with many here-docs after a cd, not scripts run by name (R273's scope); a separate item moves them onto heredocs_cwd with its own timed test",
+      "at": "2026-11-08T12:10:00Z"
     }
   ],
   "commands": {
@@ -95854,6 +96000,17 @@
         "ended": "2026-11-08T06:36:57Z",
         "cost": {
           "usd": 0.991099
+        }
+      },
+      {
+        "id": "build-20261108T121014Z",
+        "kind": "build",
+        "session": "0ee781c3-c5b6-4a6c-889f-04b89f1fba4a",
+        "milestone": "M55",
+        "started": "2026-11-08T12:10:14Z",
+        "ended": "2026-11-08T12:13:50Z",
+        "cost": {
+          "usd": 0.755992
         }
       }
     ],
