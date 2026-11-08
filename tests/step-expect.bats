@@ -58,19 +58,19 @@ teardown_file() { fixture_teardown; }
   [ "$(step_secs first_end)" -eq 60 ] || { cat "$NOTE"; false; }
 }
 
-@test "R190: with fewer than 3 finished steps of the kind there is no end time, never a guess" {
+@test "R190: with one or two finished steps of the kind the end time is a rough guess naming the runs; with none there is no end time" {
   step_seed build 300 1 2
   step_seed plan 60 - 5
   "$VBW" run start build P1.1 > /dev/null
-  jq -e '.kind == "build" and .first_end == null and .end == null' "$NOTE" || { cat "$NOTE"; false; }
+  jq -e '.kind == "build" and .first_end != null and .end != null and .rough == true and .runs == 2' "$NOTE" || { cat "$NOTE"; false; }
   "$VBW" run end > /dev/null
   "$VBW" run start qa > /dev/null
   jq -e '.kind == "qa" and .first_end == null and .end == null' "$NOTE" || { cat "$NOTE"; false; }
 }
 
-@test "R190: builds that recorded no parts do not count toward the three" {
+@test "R190: builds that recorded no parts do not count among the runs an estimate learned from" {
   step_seed build 300 1 2
   step_seed build 300 - 5
   "$VBW" run start build P1.1 > /dev/null
-  jq -e '.first_end == null' "$NOTE" || { cat "$NOTE"; false; }
+  jq -e '.first_end != null and .rough == true and .runs == 2' "$NOTE" || { cat "$NOTE"; false; }
 }
