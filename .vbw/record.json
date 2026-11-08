@@ -76136,6 +76136,32 @@
           ]
         }
       ]
+    },
+    {
+      "id": "P221.4",
+      "phase": "P221",
+      "title": "One here-doc reader for the guard, its working folder read in one pass (programs.jq, guard-bash.jq, guard-read.jq)",
+      "reqs": [
+        "R273"
+      ],
+      "files": [
+        "plugin/hooks/programs.jq",
+        "plugin/hooks/guard-bash.jq",
+        "plugin/hooks/guard-read.jq",
+        "tests/timed-guard-script.bats"
+      ],
+      "after": [
+        "P221.1",
+        "P221.2",
+        "P221.3"
+      ],
+      "status": "planned",
+      "tasks": [
+        "tests/timed-guard-script.bats: a timed case for an inline Bash command (the guard-bash hook input) of the same mix as the field script, a cd first and here-docs (cat and python3 - <<PY) throughout, at about 20 KB and 66 KB: the larger takes at most 5 s of CPU and at most 1.5 times the size ratio of the smaller; shown red on the current guard, whose inline path re-reads the whole head before each here-doc",
+        "plugin/hooks/programs.jq: one reader, heredocs($start; resolve), yields {line, text, quoted, cwd} for every here-doc in one pass, the working folder carried from the lines since the previous here-doc and read as commands only when they hold a cd (the way heredocs_cwd does); the old heredocs (with head), heredocs_cwd and heredoc_programs are removed and script_findings uses the new reader",
+        "plugin/hooks/guard-bash.jq run and plugin/hooks/guard-read.jq command_writers use the new reader and its cwd instead of reading .head as commands; every refusal and every answer of the guards stays as it is (the existing guard tests pass unchanged)",
+        "The guard (guard-bash.jq plus programs.jq) is back within 10% of the size of the bench reference program (tests/bench-limits.bats R233 passes) through the removed duplicate, not by trimming comments; the R273 checks (C639, C640, C641) and the guard test files pass under /bin/bash"
+      ]
     }
   ],
   "fixes": [
@@ -84938,6 +84964,14 @@
       "at": "2026-11-08T12:21:16Z",
       "text": "Contract approved: 267 requirements, 647 checks, 651 plans (897da4ad8c17)",
       "plans": []
+    },
+    {
+      "id": "D675",
+      "at": "2026-11-08T14:36:32Z",
+      "text": "Contract approved: 267 requirements, 647 checks, 652 plans (01512a7267e5)",
+      "plans": [
+        "P221.4"
+      ]
     }
   ],
   "commands": {
