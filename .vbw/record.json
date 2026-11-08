@@ -81410,6 +81410,13 @@
       "sort": "next",
       "size": "medium",
       "status": "open"
+    },
+    {
+      "id": "T257",
+      "text": "A version bump reruns most of the proof (2.1.28: plugin/.claude-plugin/plugin.json changed reran 450 of 743 units, 3 h wall on a busy computer): find what reads plugin.json in every unit (the kernel's version read at start) and keep the version out of the read lists, so a bump costs the units that test the version only",
+      "sort": "next",
+      "size": "small",
+      "status": "open"
     }
   ],
   "decisions": [
