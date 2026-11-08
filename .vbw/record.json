@@ -32059,7 +32059,22 @@
           "to": "deep",
           "reason": "Dev blocked P217.1: Could not edit plugin/lib/qa.jq: the Edit tool was refused (auto mode classifier gave no verdict) and a scripted write was denied by the VBW guard. No code changed; C622 is still red as expected. Planned change: replace both expansion rounds with a per-node walk (def reach with a visited set)."
         }
-      ]
+      ],
+      "qa": {
+        "result": "pass",
+        "tier": "deep",
+        "tree": "04810d81e6e2075c7e344887903892fdd6665cbdacbb5f8e60668331b0b7a13b",
+        "at": "2026-11-08T04:40:39Z",
+        "note": "30/30 checks"
+      },
+      "outcome": {
+        "tier": "deep",
+        "predicted": "standard",
+        "held": false,
+        "fix_rounds": 0,
+        "qa_findings": 0,
+        "escalations": 1
+      }
     },
     {
       "id": "P218",
