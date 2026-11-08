@@ -32217,7 +32217,22 @@
           "to": "deep",
           "reason": "Dev blocked P220.3: Hook code is committed and C635-C638 pass. R272.4 mutation ran red. R272.5 mutation (deny->ask in approve-ask.sh) cannot run: tests/hook-answers.bats has an uncommitted edit (strengthened R272 pin, not mine) and vbw mutate refuses until it is committed, but vbw commit refuses it as not covered before a survivor. Also my sed -i.bak left plugin/hooks/approve-ask.sh.bak, which the guard will not let me delete; remove it by hand."
         }
-      ]
+      ],
+      "qa": {
+        "result": "pass",
+        "tier": "deep",
+        "tree": "9879d55e45e92de7e7e59e033e35e62b9cb783fa8c89c8de1fa056d917b3bd08",
+        "at": "2026-11-08T04:41:29Z",
+        "note": "26/26 checks"
+      },
+      "outcome": {
+        "tier": "deep",
+        "predicted": "deep",
+        "held": true,
+        "fix_rounds": 0,
+        "qa_findings": 0,
+        "escalations": 5
+      }
     },
     {
       "id": "P221",
