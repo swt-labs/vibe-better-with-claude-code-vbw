@@ -81445,6 +81445,13 @@
       "sort": "later",
       "size": "small",
       "status": "open"
+    },
+    {
+      "id": "T262",
+      "text": "Captured-write rule (R274) scope: tools/check-captured-writes.sh judges only a function's last command; nested defaults (${v:-${w}}) and non-final builtin writes of captured text (cmd-show.sh:574, cmd-next.sh:331, cmd-run.sh:70, QA note P222) are not covered; also its header comment breaks a sentence mid-line",
+      "sort": "later",
+      "size": "small",
+      "status": "open"
     }
   ],
   "decisions": [
