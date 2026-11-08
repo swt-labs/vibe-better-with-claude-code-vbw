@@ -81424,6 +81424,13 @@
       "sort": "later",
       "size": "small",
       "status": "open"
+    },
+    {
+      "id": "T259",
+      "text": "Bench reference headroom (2026-11-08): guard-bash.jq plus programs.jq is 45506 bytes against the 45764 limit (10% over the 41188-byte reference, tests/bench-limits.bats R233): grow the reference program and re-measure the nominal on a quiet Mac and both Linux containers",
+      "sort": "later",
+      "size": "small",
+      "status": "open"
     }
   ],
   "decisions": [
