@@ -79254,7 +79254,7 @@
       "req": "R273",
       "source": "qa",
       "attempts": 0,
-      "status": "open",
+      "status": "fixed",
       "note": "The script scan is still quadratic for any script that has a 'cd' before its here-docs (very common: 'cd /project && ...' as the first line). F415's fix (heredocs/head_cwd in plugin/hooks/programs.jq ~l.287-315) only skips reading the 'head' text when no cd comes before the here-doc; once one cd is early in the file, every here-doc's head is the whole text up to it and 'commands(3)' re-reads it (head_cwd). Evidence (programs.jq script_findings alone through jq, user CPU, same generated mix as tests/timed-guard-script.bats plus one first line 'cd /tmp/x && true'): 98 KB script 17.5 s; 324 KB script did not finish in 120 s. The same scripts without the cd line: 98 KB 0.5 s, 324 KB 1.9 s. So the goal (a 264 KB script read inside the 5 s limit, cost in step with size) still fails for scripts with a cd, and the user gets the 'guard failed, run vbw doctor' answer R273 forbids. Fix: compute each here-doc's working folder in one pass over the commands of the whole text (commands(3) once, then with_cwd, then pick the cwd by line/offset) instead of re-reading a growing head per here-doc. Regression test: in tests/timed-guard-script.bats add 'cd <dir> &&' (and a few more cd lines spread through the script) to the generated 80 KB and 264 KB scripts, so the 264 KB time stays under 5 s and within 1.5 x the size ratio of the 80 KB time; the current field_script has no cd, so it stays green while this takes 17 s at 98 KB.",
       "phase": "P221"
     },
@@ -95814,6 +95814,17 @@
         "ended": "2026-11-08T06:30:22Z",
         "cost": {
           "usd": 1.971542
+        }
+      },
+      {
+        "id": "fix-20261108T063304Z",
+        "kind": "fix",
+        "session": "0ee781c3-c5b6-4a6c-889f-04b89f1fba4a",
+        "milestone": "M55",
+        "started": "2026-11-08T06:33:04Z",
+        "ended": "2026-11-08T06:36:57Z",
+        "cost": {
+          "usd": 0.991099
         }
       }
     ],
