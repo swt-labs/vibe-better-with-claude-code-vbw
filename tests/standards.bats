@@ -340,4 +340,11 @@ R248_DIGEST=2a802f8856c36fc7b4cf01bbb857538bb8352af06c8f1d5e209454c5793c4e23
 @test "no plugin/lib function ends by handing captured text out through a builtin printf or echo, unless allow-listed with a reason (R274)" {
   run bash "$REPO_ROOT/tools/check-captured-writes.sh" "$PLUGIN_ROOT/lib"
   [ "$status" -eq 0 ] || { echo "$output"; false; }
+  # The rule still fails on a violation: a planted function exits 1 and is named.
+  local d
+  d=$(mktemp -d "${BATS_TEST_TMPDIR:?}/captured.XXXXXX")
+  printf 'f() {\n  out=$(true)\n  echo "$out"\n}\n' > "$d/plant.sh"
+  run bash "$REPO_ROOT/tools/check-captured-writes.sh" "$d"
+  [ "$status" -eq 1 ] || { echo "$output"; false; }
+  [[ "$output" == *"plant.sh:3: f"* ]] || { echo "$output"; false; }
 }
