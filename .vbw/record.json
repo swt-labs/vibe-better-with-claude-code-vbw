@@ -81403,6 +81403,13 @@
       "id": "T255",
       "text": "Hook bench noise (CI 2.1.27, PR 751): guard (script, large record) measured 65.3 ms against 50 on GitHub's macOS runner while the run's reference ratio was 0.90 and jq startup rose from about 8 to 13.8 ms; locally 34 ms. The reference is measured once at the start, so a busy moment later is read as a slow hook. Measure the reference beside each case (or retry against a fresh reference) so a noisy runner never fails the bench while a real regression still does",
       "status": "open"
+    },
+    {
+      "id": "T256",
+      "text": "Proof gap (2.1.28 release, 2026-11-08): testfiles.sh (D179) drops from the proof's test-file units every file an approved check names, so a file named only by filtered checks (--filter) never runs its other tests in vbw prove. 40 test files are in that state (152 tests in 18 of them); standards.bats K4 failed for a day unseen (R272 text vs K4), caught only by a /bin/bash run before push; CI would have failed. Run each such file's remaining tests as a unit (--negative-filter of its checks' filters, or the whole file) with the same reuse rule",
+      "sort": "next",
+      "size": "medium",
+      "status": "open"
     }
   ],
   "decisions": [
