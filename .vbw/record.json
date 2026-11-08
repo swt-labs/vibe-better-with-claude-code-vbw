@@ -81452,6 +81452,13 @@
       "sort": "later",
       "size": "small",
       "status": "open"
+    },
+    {
+      "id": "T263",
+      "text": "Fix and QA step estimates do not scale with the work: a fix of 2 checks and of 20 get the same range; size them by the checks they rerun (units), as the proof does",
+      "sort": "later",
+      "size": "small",
+      "status": "open"
     }
   ],
   "decisions": [
