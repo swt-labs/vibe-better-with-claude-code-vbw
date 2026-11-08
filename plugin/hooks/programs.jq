@@ -304,19 +304,39 @@ def heredocs:
         | .pos += ($l | length) + 1)
       | .out[];
 
-# The working folder of a heredoc's line: START moved by every cd before it. Reading the
-# head as commands costs the size of the head, so a head with no cd in it (the common case)
-# is not read: with many heredocs that read made a script's cost grow with the square of its
-# size (R273).
-def head_cwd($start; resolve):
-  if .head | test("(^|[^A-Za-z0-9_])cd([^A-Za-z0-9_]|$)") then
-    [.head | commands(3)] | with_cwd($start; resolve) | last.cwd // $start
-  else $start end;
+# The heredocs of a script as {line, text, cwd}, cwd being the working folder of the line that
+# starts each: START moved by every cd before it. The text is read once: the lines since the
+# previous heredoc are read as commands only when they hold a cd, and the folder carries on from
+# there. Reading the whole head again for each heredoc made a script's cost grow with the
+# square of its size (R273).
+def heredocs_cwd($start; resolve):
+  split("\n") | reduce .[] as $l ({cur: null, cwd: $start, seg: [], out: []};
+        if .cur != null then (.cur.delim) as $d |
+            if ($l | test("^[ \\t]*\($d)[ \\t]*$")) then
+              .out += [{line: .cur.line, text: (.cur.body | join("\n")), cwd: .cur.cwd}] | .cur = null
+            else .cur.body += [$l] end
+        else
+          .seg += [$l]
+          | if ($l | test("<<")) then
+              ([$l | match("(?<!<)<<-?[ \\t]*(['\\\"]?)(\\w+)\\1"; "g")] | last) as $m
+              | if $m == null then .
+                else
+                  (.seg | join("\n")) as $h
+                  | (if $h | test("(^|[^A-Za-z0-9_])cd([^A-Za-z0-9_]|$)")
+                     then .cwd as $w | [$h | commands(3)] | with_cwd($w; resolve) | last.cwd // $w
+                     else .cwd end) as $w
+                  | .cwd = $w | .seg = []
+                  | .cur = {line: $l, delim: $m.captures[1].string, cwd: $w, body: []}
+                end
+            else . end
+        end)
+  | .out[];
 
 # Programs read from standard input by a heredoc: the bodies strip_heredocs drops, for the
 # commands that run an interpreter.
+def runs_interpreter: test("\\b(?:python[0-9.]*|node|perl|ruby|php|deno|bun|lua)\\b");
 def heredoc_programs:
-  heredocs | select(.line | test("\\b(?:python[0-9.]*|node|perl|ruby|php|deno|bun|lua)\\b"));
+  heredocs | select(.line | runs_interpreter);
 
 # The files a command writes by name, as written: what the run's rules judge (in_run) and
 # what a guard asks read.sh about when one lies in another project (R254).
@@ -387,9 +407,9 @@ def script_findings($interp; $start; resolve):
             ( $c | select(.cmd | interpreter)
               | ((.args | join("\n")) | program_findings($c.cwd)),
                 (inplace_files[] | {call: $c.text, target: ., cwd: $c.cwd}) ) ),
-        ( $t | select(test("<<")) | heredoc_programs | . as $h
-          | ($h | head_cwd($start; resolve)) as $w
-          | $h.text | program_findings($w) )
+        ( $t | select(test("<<")) | heredocs_cwd($start; resolve)
+          | select(.line | runs_interpreter) | . as $h
+          | $h.text | program_findings($h.cwd) )
     else program_findings($start) end;
 
 # The refusals of a script's text (the input): the script file as written, its interpreter,
