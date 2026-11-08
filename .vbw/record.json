@@ -75973,6 +75973,27 @@
           "at": "2026-11-08T05:13:51Z"
         }
       ]
+    },
+    {
+      "id": "P222.5",
+      "phase": "P222",
+      "title": "Default-value expansions in the captured-write rule, and road_compute through vbw_out (check-captured-writes.sh, road.sh)",
+      "reqs": [
+        "R274"
+      ],
+      "files": [
+        "tools/check-captured-writes.sh",
+        "plugin/lib/road.sh"
+      ],
+      "after": [
+        "P222.2"
+      ],
+      "status": "planned",
+      "tasks": [
+        "tools/check-captured-writes.sh: the text argument counts as the captured variable also in a default-value expansion of it (${v:-word}, ${v-word}, ${v:=word}, ${v=word}, ${v:?word}, ${v?word}), quoted or not; ${v:+word} and ${v+word} write the word, not the variable, and pass; the header names these forms (F419)",
+        "plugin/lib/road.sh road_compute: hand its JSON out through vbw_out instead of a builtin printf of \"${out:-null}\", keeping the null when out is empty (F419)",
+        "The R274 cases of tests/output-child-exit.bats (filter captured-write rule|R274) pass, the plugin/lib case included, and tests/standards.bats R274 passes"
+      ]
     }
   ],
   "fixes": [
@@ -84728,6 +84749,14 @@
       "at": "2026-11-08T05:16:58Z",
       "text": "Contract approved: 267 requirements, 647 checks, 650 plans (4745ad937ae9)",
       "plans": []
+    },
+    {
+      "id": "D671",
+      "at": "2026-11-08T12:09:39Z",
+      "text": "Contract approved: 267 requirements, 647 checks, 651 plans (244be4fcc8f7)",
+      "plans": [
+        "P222.5"
+      ]
     }
   ],
   "commands": {
