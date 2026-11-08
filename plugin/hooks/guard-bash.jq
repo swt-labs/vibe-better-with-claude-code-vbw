@@ -231,8 +231,7 @@ def run:
   | select($g.lease != null or $g.foreign != null or ($g.hook.agent_type // "") != "" or ($c | may_matter or reaches))
   | session_dir($g) as $start
   | ([$c | commands(3)] | with_cwd($start; resolve)) as $cmds
-  | [$c | select(test("<<")) | heredoc_programs
-       | . + {cwd: ([.head | commands(3)] | with_cwd($start; resolve) | last.cwd // $start)}] as $hds
+  | [$c | select(test("<<")) | heredoc_programs($start; resolve)] as $hds
   | (if $g.lease != null then [script_requests($g; $cmds; $c)] else [] end) as $sr
   | ( [$cmds[] | everywhere][0]
       // (select($g.project and $g.foreign != null) | [$cmds[] | here($g) as $k | foreign_run($k)][0])

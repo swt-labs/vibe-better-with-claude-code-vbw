@@ -281,39 +281,17 @@ def with_cwd($start; resolve):
       else . end)
   | .out;
 
-# Every heredoc of a text, as {line, text, quoted, head}: the line that starts it, its body,
-# whether its delimiter is quoted (the shell then expands nothing in the body), and the text
-# up to the end of that line when a cd comes before it, else empty (the working folder of the line is read from it).
-def heredocs:
-  . as $t
-  | ([$t | match("(?<![A-Za-z0-9_])cd(?![A-Za-z0-9_])") | .offset][0]) as $cd
-  | split("\n") | reduce .[] as $l ({cur: null, pos: 0, out: []};
-        .pos as $p
-        | if .cur != null then (.cur.delim) as $d |
-            if ($l | test("^[ \\t]*\($d)[ \\t]*$")) then
-              .out += [{line: .cur.line, text: (.cur.body | join("\n")), quoted: .cur.quoted,
-                        head: (.cur.end as $e | if $cd == null or $cd >= $e then "" else $t[:$e] end)}]
-              | .cur = null
-            else .cur.body += [$l] end
-          elif ($l | test("<<")) then
-            ([$l | match("(?<!<)<<-?[ \\t]*(['\\\"]?)(\\w+)\\1"; "g")] | last) as $m
-            | if $m == null then .
-              else .cur = {line: $l, delim: $m.captures[1].string, quoted: ($m.captures[0].string != ""),
-                           end: ($p + ($l | length)), body: []} end
-          else . end
-        | .pos += ($l | length) + 1)
-      | .out[];
-
-# The heredocs of a script as {line, text, cwd}, cwd being the working folder of the line that
-# starts each: START moved by every cd before it. The text is read once: the lines since the
+# Every heredoc of a text, as {line, text, quoted, cwd}: the line that starts it, its body, whether
+# its delimiter is quoted (the shell then expands nothing in the body), and the working folder of that line:
+# START moved by every cd before it. The text is read once: the lines since the
 # previous heredoc are read as commands only when they hold a cd, and the folder carries on from
 # there. Reading the whole head again for each heredoc made a script's cost grow with the
 # square of its size (R273).
-def heredocs_cwd($start; resolve):
+def heredocs($start; resolve):
   split("\n") | reduce .[] as $l ({cur: null, cwd: $start, seg: [], out: []};
         if .cur != null then (.cur.delim) as $d |
             if ($l | test("^[ \\t]*\($d)[ \\t]*$")) then
-              .out += [{line: .cur.line, text: (.cur.body | join("\n")), cwd: .cur.cwd}] | .cur = null
+              .out += [{line: .cur.line, text: (.cur.body | join("\n")), quoted: .cur.quoted, cwd: .cur.cwd}] | .cur = null
             else .cur.body += [$l] end
         else
           .seg += [$l]
@@ -326,7 +304,7 @@ def heredocs_cwd($start; resolve):
                      then .cwd as $w | [$h | commands(3)] | with_cwd($w; resolve) | last.cwd // $w
                      else .cwd end) as $w
                   | .cwd = $w | .seg = []
-                  | .cur = {line: $l, delim: $m.captures[1].string, cwd: $w, body: []}
+                  | .cur = {line: $l, delim: $m.captures[1].string, quoted: ($m.captures[0].string != ""), cwd: $w, body: []}
                 end
             else . end
         end)
@@ -335,8 +313,8 @@ def heredocs_cwd($start; resolve):
 # Programs read from standard input by a heredoc: the bodies strip_heredocs drops, for the
 # commands that run an interpreter.
 def runs_interpreter: test("\\b(?:python[0-9.]*|node|perl|ruby|php|deno|bun|lua)\\b");
-def heredoc_programs:
-  heredocs | select(.line | runs_interpreter);
+def heredoc_programs($start; resolve):
+  heredocs($start; resolve) | select(.line | runs_interpreter);
 
 # The files a command writes by name, as written: what the run's rules judge (in_run) and
 # what a guard asks read.sh about when one lies in another project (R254).
@@ -407,7 +385,7 @@ def script_findings($interp; $start; resolve):
             ( $c | select(.cmd | interpreter)
               | ((.args | join("\n")) | program_findings($c.cwd)),
                 (inplace_files[] | {call: $c.text, target: ., cwd: $c.cwd}) ) ),
-        ( $t | select(test("<<")) | heredocs_cwd($start; resolve)
+        ( $t | select(test("<<")) | heredocs($start; resolve)
           | select(.line | runs_interpreter) | . as $h
           | $h.text | program_findings($h.cwd) )
     else program_findings($start) end;
