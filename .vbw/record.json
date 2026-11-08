@@ -81473,6 +81473,13 @@
       "sort": "later",
       "size": "small",
       "status": "open"
+    },
+    {
+      "id": "T266",
+      "text": "A plan that replaces a rule must edit the tests that pinned the old rule (F423, 2026-11-08: road-next and road-note still pinned 'about'); the Lead's self-review should list the superseded cases by grep",
+      "sort": "later",
+      "size": "small",
+      "status": "open"
     }
   ],
   "decisions": [
