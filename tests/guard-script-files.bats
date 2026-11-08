@@ -233,6 +233,25 @@ field_script() {
   has "$PROTECTED_NEXT"
 }
 
+@test "R273: the here-docs of a script run by name are read once, each with the working folder of its own line: python3 - <<PY after a cd writes where the cd put it, as an inline command does" {
+  printf 'echo a\ncat > src/note.txt <<EOF\nx\nEOF\ncd tests\npython3 - <<PY\nopen("c1.sh", "w").write("x")\nPY\n' > .vbw/runtime/scratch/h.sh
+  printf 'cd src\ncat > a.txt <<EOF\nx\nEOF\npython3 - <<PY\nopen("c1.sh", "w").write("x")\nPY\n' > .vbw/runtime/scratch/ok.sh
+  call 'bash .vbw/runtime/scratch/h.sh'
+  denied "a here-doc program writing tests/c1.sh after a cd into tests"
+  has "writes c1.sh: $PROTECTED"
+  call 'bash .vbw/runtime/scratch/ok.sh'
+  allowed "the same program after a cd into src writes src/c1.sh"
+  call 'cd tests
+cat > n.txt <<EOF
+x
+EOF
+python3 - <<PY
+open("c1.sh", "w").write("x")
+PY'
+  denied "an inline command with a cd and here-docs writing tests/c1.sh"
+  has "$PROTECTED"
+}
+
 @test "R273: a script too large to read before it runs is refused by its size, before any read, naming the file, its size in KB and the way out; committed during the run it is refused the same way, and only the project's own, unchanged since the run started, runs unread" {
   head -c 3145728 /dev/zero | tr '\0' '#' > .vbw/runtime/scratch/huge.sh
   printf '\necho x > tests/c1.sh\n' >> .vbw/runtime/scratch/huge.sh
