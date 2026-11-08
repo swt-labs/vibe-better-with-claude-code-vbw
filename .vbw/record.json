@@ -1,6 +1,15 @@
 {
   "schema": 13,
-  "lease": null,
+  "lease": {
+    "run": "qa-20261108T062539Z",
+    "kind": "qa",
+    "started_at": "2026-11-08T06:25:39Z",
+    "files": [],
+    "session": "0ee781c3-c5b6-4a6c-889f-04b89f1fba4a",
+    "cost": {
+      "usd": 3442.06274
+    }
+  },
   "protected": [
     "docs/guards.md",
     "tests/adaptive-results.bats",
@@ -32128,12 +32137,19 @@
         }
       ],
       "qa": {
-        "result": "fail",
+        "result": "pass",
         "tier": "deep",
-        "tree": "deb80ebe132ba73971f0f4d340ffdd2a0d2c3908e20c68babf762af332a304f3",
-        "at": "2026-11-08T04:42:11Z",
-        "note": "28/30 checks",
-        "rounds": 1
+        "tree": "a431269fb0b92b4a6877a59ccd73a690d59a831cccde710393f31b821704a864",
+        "at": "2026-11-08T06:27:28Z",
+        "note": "8/8 checks (re-check round 2)"
+      },
+      "outcome": {
+        "tier": "deep",
+        "predicted": "deep",
+        "held": true,
+        "fix_rounds": 2,
+        "qa_findings": 2,
+        "escalations": 2
       }
     },
     {
@@ -79188,7 +79204,7 @@
       "req": "R269",
       "source": "qa",
       "attempts": 0,
-      "status": "fixed",
+      "status": "closed",
       "note": "vbw mutate ignores lines a Dev adds to strengthen a check, so a survivor can never be killed by adding an assertion. Evidence (read from code; QA cannot write, so no run): vbw mutate calls checks_begin (cmd-mutate.sh:361), which now fills CHECK_JUDGED for every added-to file (checks.sh:37-42). Each break runs in a clean copy (cmd-mutate.sh:380-383, checks_run_all at :408), and checks_unit_run then calls proofcopy_judge on that copy (checks.sh:430), which overwrites the added-to check file with its APPROVED content. So the strengthened lines never run in the break. The old 'pending' path (cmd-mutate.sh:454 uses CHECK_WAITING, which no longer holds an added-to file) is skipped too, so the break is recorded as a survivor again. Before P218 the file waited and mutate ran it with its working content ('caught by a check file waiting for approval', R217). tests/mutate-strengthen.bats only passes because its strengthen_shared and strengthen_own helpers CHANGE a line or rewrite the file (waiting case); no test strengthens by appending a line, which is the natural way. Regression test to add: in tests/mutate-strengthen.bats (or contract-added-lines.bats) record a survivor, append an assertion line to tests/shared.sh (added lines only), commit it, re-run vbw mutate for the same break and expect red, 'caught by a check file waiting for approval' / strengthened, and the proof still judging with the approved content. Fix direction: vbw mutate must not judge added-to files with the approved content (it should run the working content as it did for waiting files), or classify them as pending.",
       "phase": "P218"
     },
@@ -79197,7 +79213,7 @@
       "req": "R269",
       "source": "qa",
       "attempts": 0,
-      "status": "fixed",
+      "status": "closed",
       "note": "No gate ever asks the user to approve the added lines, so they stay unapproved and never count. Evidence (read from code): vbw next answers approve only when the contract is not approved (next.jq:126; cmd-next.sh sets approved=true as soon as the structure is approved, :172-179) or when files WAIT and requirements are unproven (next.jq:146). An added-to file is neither, so after the proof next goes on to qa, accept and ship; vbw ship only prints amendments (cmd-ship.sh:112) and never asks for approval. The proof then judges the approved content on every later run, silently, until some unrelated structure change or the user's own vbw approve happens. The goal and docs/proof.md:397 say the added lines 'wait for approval at the gate after the proof'; P218.2 task 3 claims that gate is existing behaviour, but before this phase it was the pre-proof approve that did it, and that is the step this phase removed. Test coverage: tests/contract-added-lines.bats calls vbw approve by hand and never checks that vbw next asks. Regression test to add: after a proof that passed with an added-to file (all requirements proven, no structure change), vbw next --json must answer approve (gate true, detail.files naming the file) before qa/ship, and approving must make the next proof judge the current content. Fix direction: an approve action in next.jq for added-to files once nothing is unproven (it lists the added lines with their diff), or ship/accept refusing until approved.",
       "phase": "P218"
     },
