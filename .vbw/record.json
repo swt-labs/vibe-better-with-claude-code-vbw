@@ -81417,6 +81417,13 @@
       "sort": "next",
       "size": "small",
       "status": "open"
+    },
+    {
+      "id": "T258",
+      "text": "One approval for a new plan and its build's strengthening: a Dev's mutation step that strengthens a check file asks a second approval right after the plan's approval (3 times on 2026-11-08); fold the strengthening into the plan's approval or the after-proof added-lines approval",
+      "sort": "later",
+      "size": "small",
+      "status": "open"
     }
   ],
   "decisions": [
