@@ -81431,6 +81431,13 @@
       "sort": "later",
       "size": "small",
       "status": "open"
+    },
+    {
+      "id": "T260",
+      "text": "Load-sensitive caps in tests: tests/machine-helper.bash 30 s caps and tests/prove-signal.bats 10 s start window fail under a concurrent proof or other VBW runs (proof 6, 2026-11-08, load 101: F425); wait on the condition with a cap scaled by the machine's measured slowness, as the bench does",
+      "sort": "later",
+      "size": "small",
+      "status": "open"
     }
   ],
   "decisions": [
