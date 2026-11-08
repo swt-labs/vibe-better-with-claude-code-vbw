@@ -73827,12 +73827,62 @@
         "P217.1",
         "P217.2"
       ],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "A timed test (release run only, tools/test.sh picks up tests/timed-*.bats) that builds the big fixture once (load big-milestone-helper; fixture_build big big_milestone_fixture) and times vbw next --json by user plus system CPU (bash TIMEFORMAT), three runs after one warm-up, the median judged",
         "A 5 s (5000 ms) budget scaled by the bench's reference as tests/timed-big-record.bats scales its own (NOMINAL_MS read from tools/bench-hooks.sh, VBW_BENCH_REFERENCE_MS stands in, a busy machine skips), the measured CPU printed",
         "Run it once on this machine and record the figure in the test's header comment"
+      ],
+      "mutations": [
+        {
+          "rule": {
+            "req": "R268",
+            "k": 6
+          },
+          "what": "budget 5000 raised to 50000000",
+          "files": [
+            "tests/timed-big-milestone.bats"
+          ],
+          "checks": {
+            "C625": "green"
+          },
+          "result": "survivor",
+          "at": "2026-11-08T00:40:49Z",
+          "head": "c3cbb64bd4c1f83f85f44b05cc31f3b5b4b65d8a",
+          "tree": "d2fd1a955891b626154e2c38a2e50cf29e9ba194",
+          "contract": "4393c923d2381a0d0e44b8fc040e9c1b185a3b9843a4ea919fb0a0ddb6f38274",
+          "digests": {
+            "tests/timed-big-milestone.bats": "9c6cc13b9c3333eaae8d6e33e23dd210d813eed3c9d4ca3b56b84f50dae644b2"
+          }
+        },
+        {
+          "rule": {
+            "req": "R268",
+            "k": 6
+          },
+          "what": "budget raised to 50000000",
+          "files": [
+            "tests/timed-big-milestone.bats"
+          ],
+          "checks": {
+            "C625": "red"
+          },
+          "result": "red",
+          "at": "2026-11-08T00:41:43Z",
+          "head": "3c1e54edfb1d8d1ce513d373c929a35e36dc8c29",
+          "tree": "444fe520161f16cac2a1b62a6d0e15472b1d2333",
+          "contract": "ed96598a9181b54116cd57fd2abb03d98c64eeb50d1f1ba08bcb318129953a42",
+          "digests": {
+            "tests/timed-big-milestone.bats": "9c6cc13b9c3333eaae8d6e33e23dd210d813eed3c9d4ca3b56b84f50dae644b2"
+          },
+          "strengthened": [
+            "tests/big-milestone.bats"
+          ],
+          "pending": [
+            "tests/big-milestone.bats"
+          ]
+        }
       ]
     },
     {
@@ -73847,13 +73897,78 @@
         "plugin/lib/cmd-approve.sh"
       ],
       "after": [],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "approve_record and approve_repin write the approval's commit id (HEAD after the approval commit) and each check file's git blob id (git hash-object of the approved bytes) into .vbw/runtime/approved-contract.json as 'commit' and 'blobs' {path: blob}",
         "contract_waiting_with tells an added-to file (every approved line still there, in its order, only new lines among them: the diff against the approved blob holds additions only) from a waiting one (a removed, changed or reordered line, a new file, a file a fix added, or a snapshot without blob ids); it prints only the waiting files, and contract_added RECORD [HASH] prints one 'path<TAB>added line count' per added-to file; both come from one classification and hand nothing back in a variable, so every caller may capture them with $(...) (D654)",
         "A snapshot written before the blob ids keeps today's rule: every changed file waits",
         "Every caller of contract_waiting keeps its meaning (waiting means waiting; an added-to file is not waiting), including qa_digests' saved-results guard"
+      ],
+      "mutations": [
+        {
+          "rule": {
+            "req": "R269",
+            "k": 1
+          },
+          "what": "snapshot drops the commit id",
+          "files": [
+            "plugin/lib/cmd-approve.sh"
+          ],
+          "checks": {
+            "C626": "red"
+          },
+          "result": "red",
+          "at": "2026-11-08T00:35:55Z",
+          "head": "7aaa909337d2278e9ff62e905e20f2e9df1e6130",
+          "tree": "228c2ba09c77a1b4520956a41d02031aaa0770ff",
+          "contract": "4393c923d2381a0d0e44b8fc040e9c1b185a3b9843a4ea919fb0a0ddb6f38274",
+          "digests": {
+            "plugin/lib/cmd-approve.sh": "95f1492ed70ef7c4e5a9ac174bcdce1167237b39a7b16a0ecff4a0a88d13e8d6"
+          }
+        },
+        {
+          "rule": {
+            "req": "R269",
+            "k": 2
+          },
+          "what": "added-to classification never taken",
+          "files": [
+            "plugin/lib/contract.sh"
+          ],
+          "checks": {
+            "C626": "red"
+          },
+          "result": "red",
+          "at": "2026-11-08T00:35:57Z",
+          "head": "7aaa909337d2278e9ff62e905e20f2e9df1e6130",
+          "tree": "228c2ba09c77a1b4520956a41d02031aaa0770ff",
+          "contract": "4393c923d2381a0d0e44b8fc040e9c1b185a3b9843a4ea919fb0a0ddb6f38274",
+          "digests": {
+            "plugin/lib/contract.sh": "075d2dda2a04b2b0e6ce6f9f632dc4eb47dd8103f755269a33520b87c82cc265"
+          }
+        },
+        {
+          "rule": {
+            "req": "R269",
+            "k": 3
+          },
+          "what": "a removed line no longer disqualifies added-to",
+          "files": [
+            "plugin/lib/contract.sh"
+          ],
+          "checks": {
+            "C626": "red"
+          },
+          "result": "red",
+          "at": "2026-11-08T00:36:00Z",
+          "head": "7aaa909337d2278e9ff62e905e20f2e9df1e6130",
+          "tree": "228c2ba09c77a1b4520956a41d02031aaa0770ff",
+          "contract": "4393c923d2381a0d0e44b8fc040e9c1b185a3b9843a4ea919fb0a0ddb6f38274",
+          "digests": {
+            "plugin/lib/contract.sh": "754a09120d7fd921635b141621e125f79ecc0e8a4270d12d0ddda3680db3db10"
+          }
+        }
       ]
     },
     {
@@ -74311,13 +74426,96 @@
         "plugin/lib/cmd-init.sh"
       ],
       "after": [],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "Every kernel write of the record (record_update's one write path) also writes .vbw/runtime/writer.json: {version: this plugin's version from .claude-plugin/plugin.json, schema: the record's schema}",
         "record_refuse_newer reads the writer file and dies with exit 4 and exactly 'this project needs a newer VBW: its record was written by VBW W, and this session loaded VBW L. Update VBW (/vbw:update), then restart Claude Code; for a development checkout start Claude Code with --plugin-dir <checkout>/plugin (--plugin-dir: Claude Code loads VBW from that folder instead of the installed copy)'",
         "Without a writer file the line is 'this project needs a newer VBW: its record was written with schema N, and this session loaded VBW L, which reads up to schema M. Update VBW (/vbw:update), ...' in the same shape; the record is never touched",
         "cmd-init.sh: the first record goes through the same write step as record_update, so vbw init writes writer.json as every kernel write of the record does (one write path, the lock held)"
+      ],
+      "mutations": [
+        {
+          "rule": {
+            "req": "R272",
+            "k": 1
+          },
+          "what": "record_update no longer writes the writer file",
+          "files": [
+            "plugin/lib/record.sh"
+          ],
+          "checks": {
+            "C635": "red"
+          },
+          "result": "red",
+          "at": "2026-11-08T00:35:46Z",
+          "head": "7aaa909337d2278e9ff62e905e20f2e9df1e6130",
+          "tree": "228c2ba09c77a1b4520956a41d02031aaa0770ff",
+          "contract": "4393c923d2381a0d0e44b8fc040e9c1b185a3b9843a4ea919fb0a0ddb6f38274",
+          "digests": {
+            "plugin/lib/record.sh": "d2385b75b4cf856e7eacb3d15b893e2ed31d7534dfac5119668f74e6b7eef3e9"
+          }
+        },
+        {
+          "rule": {
+            "req": "R272",
+            "k": 2
+          },
+          "what": "refusal with a writer file exits 1, not 4",
+          "files": [
+            "plugin/lib/record.sh"
+          ],
+          "checks": {
+            "C635": "red"
+          },
+          "result": "red",
+          "at": "2026-11-08T00:35:49Z",
+          "head": "7aaa909337d2278e9ff62e905e20f2e9df1e6130",
+          "tree": "228c2ba09c77a1b4520956a41d02031aaa0770ff",
+          "contract": "4393c923d2381a0d0e44b8fc040e9c1b185a3b9843a4ea919fb0a0ddb6f38274",
+          "digests": {
+            "plugin/lib/record.sh": "a897d0c6f34de2770cd0de58807dc05bf2d8c2b22883e40955f9d76a9b4a7c64"
+          }
+        },
+        {
+          "rule": {
+            "req": "R272",
+            "k": 3
+          },
+          "what": "schema line names the record's schema as the reader's maximum",
+          "files": [
+            "plugin/lib/record.sh"
+          ],
+          "checks": {
+            "C635": "red"
+          },
+          "result": "red",
+          "at": "2026-11-08T00:35:52Z",
+          "head": "7aaa909337d2278e9ff62e905e20f2e9df1e6130",
+          "tree": "228c2ba09c77a1b4520956a41d02031aaa0770ff",
+          "contract": "4393c923d2381a0d0e44b8fc040e9c1b185a3b9843a4ea919fb0a0ddb6f38274",
+          "digests": {
+            "plugin/lib/record.sh": "bef8a10b2dd14f56dad010824a020d6ca4e88ecc623c633102e24d7fdc1cb3e0"
+          }
+        },
+        {
+          "task": 4,
+          "what": "init no longer writes the writer file",
+          "files": [
+            "plugin/lib/cmd-init.sh"
+          ],
+          "checks": {
+            "C635": "red"
+          },
+          "result": "red",
+          "at": "2026-11-08T00:36:08Z",
+          "head": "7aaa909337d2278e9ff62e905e20f2e9df1e6130",
+          "tree": "228c2ba09c77a1b4520956a41d02031aaa0770ff",
+          "contract": "4393c923d2381a0d0e44b8fc040e9c1b185a3b9843a4ea919fb0a0ddb6f38274",
+          "digests": {
+            "plugin/lib/cmd-init.sh": "b868eff94154a9575e4e5070f7335140be97b62e5ca0ea75bed0e4b0764924be"
+          }
+        }
       ]
     },
     {
@@ -74354,12 +74552,82 @@
         "plugin/hooks/read.sh"
       ],
       "after": [],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "programs.jq: the script scan (unreadable_calls and the shell-script reading) works line by line or statement by statement, so its time grows with the script's size and the 264 KB field-shaped script is read to its end within the hook's time (ulimit -t 5)",
         "read.sh: before a script file is read, its size is checked; above 512 KB the answer is a deny whose reason is 'VBW guard: <file> (<N> KB) is too large to read before it runs' then 'Next: commit it unchanged (a committed, unchanged script is not read) or run it in smaller parts', with the user's line beside it; a committed, unchanged script still runs unread",
         "The bench budgets are unchanged (tools/bench-hooks.sh green), and the refusals of tests/guard-script-files.bats keep their text"
+      ],
+      "mutations": [
+        {
+          "task": 3,
+          "none": "task 3 only states that bench budgets and refusal texts stay unchanged; the plan's files hold no code for it, guarded by P221.2's timed check and the existing refusal tests",
+          "at": "2026-11-08T00:35:02Z"
+        },
+        {
+          "rule": {
+            "req": "R273",
+            "k": 1
+          },
+          "what": "the command scan drops the script's last line",
+          "files": [
+            "plugin/hooks/programs.jq"
+          ],
+          "checks": {
+            "C639": "red"
+          },
+          "result": "red",
+          "at": "2026-11-08T00:36:06Z",
+          "head": "7aaa909337d2278e9ff62e905e20f2e9df1e6130",
+          "tree": "228c2ba09c77a1b4520956a41d02031aaa0770ff",
+          "contract": "4393c923d2381a0d0e44b8fc040e9c1b185a3b9843a4ea919fb0a0ddb6f38274",
+          "digests": {
+            "plugin/hooks/programs.jq": "78fba57accf025171c1566953ec7b524620191290511f6683f35ad393d4d2e60"
+          }
+        },
+        {
+          "rule": {
+            "req": "R273",
+            "k": 2
+          },
+          "what": "size gate threshold raised to 50 MB",
+          "files": [
+            "plugin/hooks/read.sh"
+          ],
+          "checks": {
+            "C639": "red"
+          },
+          "result": "red",
+          "at": "2026-11-08T00:36:10Z",
+          "head": "7aaa909337d2278e9ff62e905e20f2e9df1e6130",
+          "tree": "228c2ba09c77a1b4520956a41d02031aaa0770ff",
+          "contract": "4393c923d2381a0d0e44b8fc040e9c1b185a3b9843a4ea919fb0a0ddb6f38274",
+          "digests": {
+            "plugin/hooks/read.sh": "1cb8a9ede937d099e833022631d3fbbc7bb4c5b82e66af32d42703156e87bbd3"
+          }
+        },
+        {
+          "rule": {
+            "req": "R273",
+            "k": 3
+          },
+          "what": "the size refusal carries no user line",
+          "files": [
+            "plugin/hooks/read.sh"
+          ],
+          "checks": {
+            "C640": "red"
+          },
+          "result": "red",
+          "at": "2026-11-08T00:36:13Z",
+          "head": "7aaa909337d2278e9ff62e905e20f2e9df1e6130",
+          "tree": "228c2ba09c77a1b4520956a41d02031aaa0770ff",
+          "contract": "4393c923d2381a0d0e44b8fc040e9c1b185a3b9843a4ea919fb0a0ddb6f38274",
+          "digests": {
+            "plugin/hooks/read.sh": "22b3534fcc7822c48605260dcc634ba280b339eb98eb529ac9ce9df6e309824b"
+          }
+        }
       ]
     },
     {
@@ -94149,6 +94417,17 @@
         "ended": "2026-11-08T00:05:39Z",
         "cost": {
           "usd": 5.148033
+        }
+      },
+      {
+        "id": "build-20261108T003338Z",
+        "kind": "build",
+        "session": "0ee781c3-c5b6-4a6c-889f-04b89f1fba4a",
+        "milestone": "M55",
+        "started": "2026-11-08T00:33:38Z",
+        "ended": "2026-11-08T00:42:57Z",
+        "cost": {
+          "usd": 1.831489
         }
       }
     ],
