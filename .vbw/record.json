@@ -84903,6 +84903,12 @@
       "text": "The same head re-read in guard-bash.jq (~l.235) and guard-read.jq (~l.48) stays for a todo, not this milestone",
       "why": "it affects only inline commands with many here-docs after a cd, not scripts run by name (R273's scope); a separate item moves them onto heredocs_cwd with its own timed test",
       "at": "2026-11-08T12:10:00Z"
+    },
+    {
+      "id": "D674",
+      "at": "2026-11-08T12:21:16Z",
+      "text": "Contract approved: 267 requirements, 647 checks, 651 plans (897da4ad8c17)",
+      "plans": []
     }
   ],
   "commands": {
