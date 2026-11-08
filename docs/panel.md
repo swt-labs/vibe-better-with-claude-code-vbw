@@ -779,8 +779,9 @@ Milestone end: about 36 min, until around 14:56, counting 2 fix rounds per stand
   reads "roughly 12 min, until around 14:20 (rough guess from 2 runs)". With
   **5 or more runs that agree** you get the single figure, "about 12 min, until
   around 14:20". The milestone end is a range, marked rough, when any part of it
-  is rough, and keeps its "counting ..." tail; it is the single figure only when
-  every part is tight. The range comes from the spread of the runs it learned
+  is rough or a tier's usual fix rounds rest on fewer than 3 finished phases,
+  and keeps its "counting ..." tail; it is the single figure only when every
+  part is tight and every tier's usual fix rounds are known. The range comes from the spread of the runs it learned
   from, and the two thresholds are defined once, in `steps-expect.jq`.
 - **Time per unit at a tier.** Each kind of step is sized by its own unit, and
   VBW takes the median time per unit over the latest 10 finished ones **at the
@@ -849,8 +850,8 @@ Milestone end: about 36 min, until around 14:56, counting 2 fix rounds per stand
   (1, 2, 2 and 5 give 2). It needs at least 3 finished phases of the tier. The
   sentence names what it counted: "counting 2 fix rounds per standard phase (the
   usual here)". With fewer than 3 finished phases of a tier, the road counts no
-  fix rounds for it and says so: "counting no fix rounds: fewer than 3 finished
-  deep phases here".
+  fix rounds for it, says so ("counting no fix rounds: fewer than 3 finished
+  deep phases here") and is marked a rough guess.
 - **Before planning.** Until the work is planned, the road is the planning step
   alone: "Milestone end: planning about 2 min, until around 14:22; the rest
   follows once the work is planned". VBW never guesses unplanned work.

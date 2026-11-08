@@ -212,15 +212,17 @@ left (the milestone shipped).
 ```
 
 - `low`, `high`, `end_low`, `end_high`, `rough` and `runs`: as on the step. The
-  road is rough when any part is rough, and then reads `Milestone end: roughly
-  30 to 50 min, until around 14:50 to 15:10 (rough guess from 2 runs), counting
+  road is rough when any part is rough, or when a tier's usual fix rounds rest
+  on fewer than 3 finished phases (counted as none), and then reads `Milestone
+  end: roughly 30 to 50 min, until around 14:50 to 15:10 (rough guess), counting
   2 fix rounds per standard phase (the usual here)`; it is the single figure
-  when every part is tight.
+  when every part is tight and every tier's usual fix rounds are known.
 - `seconds` and `end`: the time still ahead and the clock time it ends. Both
   are `null` when any needed piece has no basis; a made-up time never appears.
 - `rounds`: the usual fix rounds per tier, the rounded median of
   `outcome.fix_rounds` over the latest 10 finished phases of the tier (a tier
-  with fewer than 3 finished phases counts 0).
+  with fewer than 3 finished phases counts 0, and the end is then a rough
+  guess).
 - `basis`: what the time adds up, or the first kind with no basis.
 - `road.say`: the sentence, said as given together with `step.say` before a
   step starts. Before planning it reads `Milestone end: planning about 2 min,
