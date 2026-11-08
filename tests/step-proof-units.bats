@@ -68,7 +68,7 @@ step_of() { "$VBW" next --json | jq -c '.step'; }
   # The store's last runs: 10, 20, 30, 40 s; three proofs timed C1 at 40 and C2 at 60 for 150 s of wall:
   # the ratio is 450 / 300 = 1.5, the costs stay the fastest (10, 20, 30, 40): 100 s times 1.5.
   runs_seed '{"check:C1": 10, "check:C2": 20, "check:C3": 30, "check:C4": 40}'
-  hist_proof '[{"name": "check:C1", "seconds": 40}, {"name": "check:C2", "seconds": 60}]' 150 3
+  hist_proof '[{"name": "check:C1", "seconds": 40}, {"name": "check:C2", "seconds": 60}]' 150 5
   local s
   s=$(step_of)
   printf '%s' "$s" | jq -e '.kind == "proof" and .parts == 4 and .seconds == 150 and (.say | startswith("Proving 4 checks: about 3 min"))' || { echo "$s"; false; }
@@ -146,12 +146,11 @@ step_of() { "$VBW" next --json | jq -c '.step'; }
   step_of | jq -e '.kind == "proof" and .parts == 4 and .seconds == 120' || { step_of; false; }
 }
 
-@test "R191: without proofs that recorded units, proofs with only parts give today's time per unit; fewer than 3 proofs in all give none" {
+@test "R191: without proofs that recorded units, proofs with only parts give today's time per unit; with no proof in all there is none" {
   step_seed proof 30 3 3
   step_of | jq -e '.kind == "proof" and .parts == 4 and .seconds == 40' || { step_of; false; }
   jq 'del(.steps[] | select(.kind == "proof"))' "$STEPS" > "$TEST_ROOT/h.json" && cp "$TEST_ROOT/h.json" "$STEPS"
   runs_seed '{"check:C1": 10, "check:C2": 20, "check:C3": 30, "check:C4": 40}'
-  hist_proof '[{"name": "check:C1", "seconds": 40}]' 60 2
   step_of | jq -e '.kind == "proof" and .seconds == null and .end == null
     and .say == "Proving 4 checks: no end time yet (VBW has timed fewer than 3 steps like this here); top reason: no read list (4 units)"' || { step_of; false; }
 }

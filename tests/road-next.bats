@@ -30,7 +30,7 @@ built_project() {
   vbw_setup
   export TZ=Europe/Zurich
   road_project
-  road_hist
+  ROAD_HIST_RUNS=5 road_hist
   outcomes_seed deep 1 2 2 5
 }
 setup_file() { fixture_build built built_project; }
@@ -88,7 +88,7 @@ hm() {
   r=$(road_of)
   printf '%s' "$r" | jq -e '.end == null and .seconds == null and .rounds == {}
     and .say == "no milestone end time yet (VBW has timed fewer than 3 planning steps here)"' || { echo "$r"; false; }
-  hist_plan 2 100 3
+  hist_plan 2 100 5
   r=$(road_of)
   printf '%s' "$r" | jq -e '.seconds == 100 and (.end | type == "string") and .rounds == {}
     and (.say | test("^Milestone end: planning about 2 min, until around (tomorrow )?[0-9]{2}:[0-9]{2}; the rest follows once the work is planned$"))' || { echo "$r"; false; }
@@ -108,8 +108,8 @@ hm() {
 
 @test "R191: durations over an hour read 'about 2 h 36 min' and the clock follows the step's rules" {
   jq 'del(.steps[] | select(.kind == "build"))' "$STEPS" > "$TEST_ROOT/h.json" && cp "$TEST_ROOT/h.json" "$STEPS"
-  hist_build deep 1 1000 3
-  hist_build standard 1 1000 3
+  hist_build deep 1 1000 5
+  hist_build standard 1 1000 5
   local r
   r=$(road_of)
   # 5000 + 10 + 3000 + 20 + 200 + 100 + 1020 = 9350 s.

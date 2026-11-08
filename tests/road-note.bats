@@ -18,7 +18,7 @@ setup() {
   vbw_setup
   road_project
   step_edit '.phases[0].tier = "standard"'
-  road_hist
+  ROAD_HIST_RUNS=5 road_hist
 }
 teardown() { vbw_teardown; }
 
