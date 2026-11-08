@@ -359,6 +359,18 @@ captured() { bash "$REPO_ROOT/tools/check-captured-writes.sh" "$@"; }
 @test "self-test: the captured-write rule refuses a function ending in a builtin printf or echo of text captured in that function, naming the line" {
   local case line
   for case in \
+    "6:road_compute() {
+  out=\$(jq -n -c '{a: 1}')
+  printf '%s\n' \"\${out:-null}\"
+}" \
+    "6:road_plain() {
+  out=\$(jq -c . \"\$1\")
+  echo \"\${out-}\"
+}" \
+    "6:road_set() {
+  out=\$(jq -c . \"\$1\")
+  printf '%s' \"\${out:=}\"
+}" \
     "7:spec_parse() {
   local parsed
   parsed=\$(jq -Rs -f \"\$VBW_LIB/spec.jq\" \"\$1\")
@@ -391,6 +403,10 @@ captured() { bash "$REPO_ROOT/tools/check-captured-writes.sh" "$@"; }
 @test "self-test: the captured-write rule passes vbw_out, a literal or an argument, a write into a pipe or a file, and a function that ends otherwise" {
   local code
   for code in \
+    "flag() {
+  out=\$(jq -c . \"\$1\")
+  printf '%s\n' \"\${out:+set}\"
+}" \
     "spec_parse() {
   local parsed
   parsed=\$(jq -Rs -f \"\$VBW_LIB/spec.jq\" \"\$1\")
