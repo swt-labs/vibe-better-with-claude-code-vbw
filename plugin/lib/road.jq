@@ -9,7 +9,7 @@
 #   $rec[0]  the record; $h[0] / $runs[0] the step history and the run times
 #            (run-times.json; null when missing or damaged); $next[0] vbw next's answer
 #            (action, qa.standing); $note[0] the live step's note, or null
-# Output: null, or {seconds, low, high, rough, end, end_low, end_high, rounds, basis, say};
+# Output: null, or {seconds, typical, low, high, rough, end, end_low, end_high, end_typical, rounds, basis, say};
 # seconds, the ends and the clock times are null when a piece has no basis, and basis
 # then names the first kind missing. low and high add up the pieces' ends; rough is
 # true when any piece is a rough guess or a tier's usual fix rounds rest on fewer than 3
@@ -100,16 +100,18 @@ $rec[0] as $r
     | (if $note == null then null else
         {kind: ($note.kind), ids: ($note.ids // []),
          seconds: (if $note.end == null then null else ((($note.end | fromdateiso8601) - $t) | if . < 0 then 0 else . end) end),
+         typical: (($note.end_typical // $note.end) | if . == null then null else ((fromdateiso8601 - $t) | if . < 0 then 0 else . end) end),
          ends: ([($note.end_low // $note.end), ($note.end_high // $note.end)] | map(if . == null then null else ((fromdateiso8601 - $t) | if . < 0 then 0 else . end) end)),
          rough: ($note.rough == true and $note.end != null)} end) as $live
     # What is left of the live step, as {seconds, low, high, rough}: its ends never cross the end it now has.
     | (if $live == null or $live.seconds == null then null
-       else {seconds: $live.seconds, low: ([($live.ends[0] // $live.seconds), $live.seconds] | min),
+       else {seconds: $live.seconds, typical: $live.typical, low: ([($live.ends[0] // $live.seconds), $live.seconds] | min),
              high: ([($live.ends[1] // $live.seconds), $live.seconds] | max), rough: $live.rough} end) as $left_of
     # A piece whose time cannot be worked out (T174) has no time and says so; the road stays.
     | ($pieces | map(. as $p | (try {v: first_of(expect($p.kind; $p.size))} catch {v: null, unread: true}) as $x
         | ($x.v | if . == null or .seconds == null then null else . end) as $e
         | . + {seconds: ($e | if . == null then null else .seconds * $p.mult end),
+               typical: ($e | if . == null then null else (.typical // .seconds) * $p.mult end),
                low: ($e | if . == null then null else .low * $p.mult end),
                high: ($e | if . == null then null else .high * $p.mult end),
                rough: ($e.rough == true)}
@@ -131,11 +133,13 @@ $rec[0] as $r
       | ($all | if $none then null else map(.seconds) | add end) as $sec
       | ($all | if $none then null else map(.low) | add end) as $low
       | ($all | if $none then null else map(.high) | add end) as $high
+      | ($all | if $none then null else ([[($all | map(.typical // .seconds) | add), $low] | max, $high] | min) end) as $typ
       # Rough when a piece is, or when a tier's usual fix rounds rest on fewer than 3 finished
       # phases (counted as none): never for the planning step alone, which counts no rounds (R270).
       | ($all[0].kind == "plan" and ($all | length) == 1) as $planonly
       | (($all | any(.[]; .rough == true)) or (($planonly | not) and ($ru | any(.[]; .n == null)))) as $rough
       | (if $sec == null then null else $t + $sec | todateiso8601 end) as $end
+      | (if $typ == null then null else $t + $typ | todateiso8601 end) as $end_typ
       | (if $low == null then null else $t + $low | todateiso8601 end) as $end_low
       | (if $high == null then null else $t + $high | todateiso8601 end) as $end_high
       | ($ru | map(select(.n != null)) | map("\(if .n == 0 then "no fix rounds" else plural(.n; "fix round"; "fix rounds") end) per \(.t) phase") | step_and) as $known
@@ -153,7 +157,7 @@ $rec[0] as $r
                      ($all | map(select(.kind == "fix" and .label == "fix rounds")) | map(select(true) | .mult) | add // 0 | select(. > 0)
                         | "\(plural(.; "usual fix round"; "usual fix rounds")) (median of the latest 10 finished phases of each tier)") ] | step_and) end
          end) as $basis
-      | {seconds: $sec, low: $low, high: $high, rough: ($rough and $sec != null), end: $end, end_low: $end_low, end_high: $end_high,
+      | {seconds: $sec, typical: $typ, low: $low, high: $high, rough: ($rough and $sec != null), end: $end, end_low: $end_low, end_high: $end_high, end_typical: $end_typ,
          rounds: (if $planonly then {} else ($ru | map({key: .t, value: (.n // 0)}) | from_entries) end),
          basis: $basis}
       | . + {say: (
@@ -161,7 +165,7 @@ $rec[0] as $r
           elif $all[0].kind == "plan" and ($all | length) == 1 then
             "Milestone end: planning \(if .rough then durr($low; $high) else dur(.seconds) end), until around \(if .rough and durn($low) != durn($high) then "\(step_clock(.end_low; $t)) to \(step_clock(.end_high; $t))" else step_clock(.end; $t) end)\(if .rough then " (rough guess)" else "" end); the rest follows once the work is planned"
           elif .rough then
-            "Milestone end: \(durr($low; $high)), until around \(if durn($low) == durn($high) then step_clock(.end; $t) else "\(step_clock(.end_low; $t)) to \(step_clock(.end_high; $t))" end) (rough guess)\(if ($counting | length) > 0 then ", counting \($counting)" else "" end)"
+            "\(if durn($low) == durn($high) then "Milestone end: \(durr($low; $high)), until around \(step_clock(.end; $t)) (rough guess)" else "Milestone end: usually about \(durn($typ)) (\(durr($low; $high) | ltrimstr("roughly ")), rough guess), until around \(step_clock(.end_typical; $t)) (\(step_clock(.end_low; $t)) to \(step_clock(.end_high; $t)))" end)\(if ($counting | length) > 0 then ", counting \($counting)" else "" end)"
           else "Milestone end: \(dur(.seconds)), until around \(step_clock(.end; $t))\(if ($counting | length) > 0 then ", counting \($counting)" else "" end)" end)}
       end
   end
