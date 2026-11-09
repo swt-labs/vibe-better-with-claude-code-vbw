@@ -33471,6 +33471,12 @@
           "from": "deep",
           "to": "deep",
           "reason": "Dev blocked P226.1: C667 case 'R288 mutate' (tests/check-waiting-line.bats line 82) runs 'vbw mutate P1.2 R2.1' with tests/c2.sh changed but uncommitted and expects the break to run and print the approval line. vbw mutate refuses that today ('check files differ from the last commit', cmd-mutate.sh:350, pinned by tests/mutate-time.bats:209) because a break runs on a copy of HEAD, so an uncommitted check file would be tested as its old content and record a false survivor. The same situation (an uncommitted check file the break's check reads) cannot both be refused and run. Fixing it means either changing the protected check or dropping that guard (or copying dirty waiting check files into the break's copy, which changes what a recorded break proves): the Lead/owner must decide. Done and committed: vbw_wait_say (slots.sh, C668 passes), checks_say_waiting (checks.sh), fix done wording (cmd-fix.sh), dev.md; C667 cases 1-3, 5 pass, case 4 and the docs case (P226.4) are red."
+        },
+        {
+          "at": "2026-11-09T12:36:55Z",
+          "from": "deep",
+          "to": "deep",
+          "reason": "Dev blocked P226.3: task 1 needs RED_FIRST_DEFS (red_own, red_ran_first: the one definition of a plan's own checks and of red first, in plugin/lib/cmd-check.sh) inside the jq program vbw next runs. That program is assembled in plugin/lib/cmd-next.sh (it concatenates VBW_JQ_DEFS, VBW_QA_DEFS ... then next.jq), and cmd-next.sh does not load cmd-check.sh. next.jq alone cannot reach the defs; copying them into next.jq would duplicate the rule and let the two drift. Fix: add plugin/lib/cmd-next.sh to the plan's files (source cmd-check.sh, put $RED_FIRST_DEFS in the defs chain); then next.jq, verifying.js, qa.md as planned. Red run of C671 done: red as expected."
         }
       ]
     },
@@ -33516,6 +33522,12 @@
           "from": "deep",
           "to": "deep",
           "reason": "Dev blocked P227.1: Tasks 1-2 are committed (8aea4318, ae99a0fb); C673 passes. Task 3 cannot pass: the test files set VBW_NOW=2030-01-15 but still seed their notes from jq's wall-clock now (tests/statusline-step.bats lines 56,71,126,150,193,207,270: '(now | floor)'; the same in tests/step-range.bats and tests/road-next.bats R191/R190 cases), so 28+ cases fail (statusline-step 10-29,36; road-next/step-next R191/R190; step-range R270/R291). They are protected check files, which the guard bars me from editing. Needs a vbw apply --patch replacing '(now | floor)' with '($ENV.VBW_NOW | fromdateiso8601)' in those test files, then approval."
+        },
+        {
+          "at": "2026-11-09T12:43:04Z",
+          "from": "deep",
+          "to": "deep",
+          "reason": "Dev blocked P227.2: All four tasks are built and committed; C676 passes, but C675 cannot pass without editing the approved tests/step-range.bats. Its R270 road case (line 103, after 'step_seed build 300 1 2') still expects the old wording: '.say | startswith(\"Milestone end: roughly \")'. In that state the road is rough with ends 16 and 31 min apart, so R291.1/R291.3 and the test's own line 100 require 'Milestone end: usually about 16 min (16 to 31 min, rough guess), ...'; line 103 should read startswith(\"Milestone end: usually about \"). Also tests/panel/step-range.test.mjs (uncommitted, outside this plan's files) expects 'tomorrow 03:20' for the typical end of the 700 min case, but the clocks change on 25 Oct, so the real wall time is 02:20 (the 00:00 and 04:40 ends already include the hour); it needs 02:20. Needs: replan with those two test corrections. Also fixed a P227.1 slip in steps.sh: step_status ran jq without the vbw_now definition, so vbw status lost its 'now:' line."
         }
       ]
     },
@@ -33547,7 +33559,15 @@
         "guarded: R1 (C1), R2 (C2), R12 (C11), R13 (C12), R14 (C13), R22 (C19), R23 (C20), R24 (C23), R25 (C24), R26 (C22), R31 (C27), R32 (C28), R33 (C29), R37 (C35), R38 (C33, C34), R40 (C37), R43 (C42, C43), R44 (C44, C45), R45 (C39, C40, C41), R46 (C46), R47 (C47), R48 (C49, C50), R49 (C48), R61 (C73, C74, C75, C76, C77), R65 (C86, C87, C88, C89, C90), R66 (C95), R69 (C110, C120, C122), R70 (C114), R71 (C115, C121), R73 (C98), R74 (C99, C100), R78 (C105, C106), R79 (C107), R80 (C108), R83 (C119), R92 (C131, C132, C133, C134, C135, C136, C137, C138, C139), R93 (C140, C141, C142, C143, C144), R94 (C145, C146, C147, C148), R97 (C153), R98 (C154), R100 (C156), R103 (C160), R104 (C161, C162), R105 (C163), R106 (C164, C165), R107 (C166, C167), R110 (C169, C170), R111 (C171, C172, C173, C174, C175), R113 (C177), R115 (C181), R118 (C184), R121 (C187, C188), R123 (C190, C191), R131 (C198), R132 (C199), R134 (C201), R135 (C202), R144 (C208, C209), R146 (C211), R147 (C212, C215, C237), R148 (C213, C214, C216, C238), R149 (C217, C218, C219, C220, C221, C222), R150 (C223, C224, C225, C226, C227, C228, C229, C230), R152 (C233, C234), R153 (C235, C236, C239), R160 (C247, C263, C264), R161 (C248, C265, C266), R165 (C252), R166 (C253, C254, C255, C256, C267), R167 (C257, C258, C259, C260), R168 (C261, C262), R169 (C268), R170 (C269), R171 (C270), R174 (C279, C280), R175 (C274, C275), R176 (C276, C277, C278), R180 (C307, C308, C309, C310), R182 (C322, C323, C324, C325, C326), R183 (C327), R192 (C401, C402, C403, C404, C405, C406, C407, C408, C409, C410), R193 (C411, C412), R194 (C417, C418, C419), R195 (C420, C421, C422), R196 (C415, C416), R197 (C413, C414), R202 (C432, C433, C434, C435, C436, C437, C438, C439, C440, C441, C442, C443, C444, C445, C446, C447), R203 (C448, C449, C450), R204 (C451, C452, C453, C454), R205 (C455, C456, C457, C458, C467), R206 (C459, C460), R208 (C464, C465, C466, C468), R209 (C469, C470, C471, C472, C473), R210 (C474, C475, C476), R211 (C477, C478, C479), R212 (C480, C481, C482), R213 (C483, C484), R214 (C485, C486, C487), R215 (C488, C489, C490), R216 (C491, C492, C493), R217 (C494, C495), R220 (C500, C501, C502, C503), R221 (C504), R226 (C510, C511), R228 (C522, C523, C524, C525), R229 (C526, C527, C528, C529), R236 (C537), R238 (C545), R241 (C546, C547, C548, C549, C550, C560), R246 (C566, C567), R249 (C571, C572, C573), R250 (C574, C575, C576, C577, C578, C585), R251 (C579), R252 (C580), R253 (C581, C582), R255 (C584), R256 (C586, C587), R257 (C588, C589), R259 (C593, C594, C595), R260 (C596, C597), R261 (C598, C599, C600), R267 (C619, C620, C621), R268 (C622, C623, C624, C625), R269 (C626, C627, C628, C629, C630), R274 (C643, C644, C645)",
         "tests: project test command"
       ],
-      "predicted": "deep"
+      "predicted": "deep",
+      "escalations": [
+        {
+          "at": "2026-11-09T12:43:08Z",
+          "from": "deep",
+          "to": "deep",
+          "reason": "Dev blocked P228.1: DEVN-04: plugin/lib/testfiles.sh is not in the plan's files but C679 needs it. testfiles_save builds each test file's store entry field by field and drops kernel_reads, so a test-file unit (the 743 units are test files) never keeps its kernel reads and R279.2 and R279.5 stay red (prove-version-bump.bats 'any other change' case fails: t_record.sh is reused instead of rerun). Needed there: add kernel_reads: ($x.kernel_reads // []) to the entry in testfiles_save (line ~200). Done and committed: record.sh version read (R279.1 green), checks.sh and reads.sh (kernel_reads collected per unit), proofreuse.sh (version-only rule, R279.2-4 green in proofreuse-rule.bats), cmd-prove.sh (kernel_reads kept out of the evidence). Add plugin/lib/testfiles.sh to the plan's files; the measurement of task 4 on VBW's own repository is still to do."
+        }
+      ]
     }
   ],
   "plans": [
@@ -79557,13 +79577,24 @@
         "P226.2",
         "P224.2"
       ],
-      "status": "planned",
+      "status": "blocked",
       "role": "dev",
       "tasks": [
         "next.jq: the QA round carries red_first, per plan of the phases to verify, the plan's own checks that never ran red first (worked out from the record in the same pass: no extra process).",
         "verifying.js passes red_first to each QA agent with its phase; plugin/agents/qa.md: each such check is reported as a deviation (vbw qa finding), never a failure by itself.",
         "The R292 QA case of tests/red-first.bats and tests/workflows.bats pass under /bin/bash."
-      ]
+      ],
+      "red_runs": [
+        {
+          "at": "2026-11-09T12:36:25Z",
+          "head": "536f8861162ed3d374dffce6493d0431a1ee08c3",
+          "first": true,
+          "checks": {
+            "C671": "red"
+          }
+        }
+      ],
+      "note": "task 1 needs RED_FIRST_DEFS (red_own, red_ran_first: the one definition of a plan's own checks and of red first, in plugin/lib/cmd-check.sh) inside the jq program vbw next runs. That program is assembled in plugin/lib/cmd-next.sh (it concatenates VBW_JQ_DEFS, VBW_QA_DEFS ... then next.jq), and cmd-next.sh does not load cmd-check.sh. next.jq alone cannot reach the defs; copying them into next.jq would duplicate the rule and let the two drift. Fix: add plugin/lib/cmd-next.sh to the plan's files (source cmd-check.sh, put $RED_FIRST_DEFS in the defs chain); then next.jq, verifying.js, qa.md as planned. Red run of C671 done: red as expected."
     },
     {
       "id": "P226.4",
@@ -79750,14 +79781,26 @@
       "after": [
         "P227.1"
       ],
-      "status": "planned",
+      "status": "blocked",
       "role": "dev",
       "tasks": [
         "steps-expect.jq: est() adds typical, the median of the kept runs times the size (the mean of the two middle runs for an even count), whatever the ladder's own point; plus() adds the typical figures; median and est stay above def basis.",
         "steps.sh and proofsteps.sh: the step and its note carry typical and end_typical (start plus typical); a rough estimate whose ends differ reads 'usually about M min (L to H min, rough guess from N runs), until around T (A to B)', M rounded as the ends are; ends that agree, firm estimates and no runs keep today's words.",
         "road.jq: the milestone road sums the parts' typical figures and reads 'Milestone end: usually about M min (L to H min, rough guess), until around T (A to B), counting ...' when rough with differing ends.",
         "statusline.jq: 'until ~T (A-B)' for a rough range, within 60 ms; panel-step.js words a rough note the same way from the same fields (a note without end_typical uses end); tests/step-range.bats (R270 and R291 cases) and tests/panel/step-range.test.mjs pass."
-      ]
+      ],
+      "red_runs": [
+        {
+          "at": "2026-11-09T12:35:41Z",
+          "head": "bdcd9a3bb376c74da973f8f0fa87f94bedde8989",
+          "first": true,
+          "checks": {
+            "C675": "red",
+            "C676": "red"
+          }
+        }
+      ],
+      "note": "All four tasks are built and committed; C676 passes, but C675 cannot pass without editing the approved tests/step-range.bats. Its R270 road case (line 103, after 'step_seed build 300 1 2') still expects the old wording: '.say | startswith(\"Milestone end: roughly \")'. In that state the road is rough with ends 16 and 31 min apart, so R291.1/R291.3 and the test's own line 100 require 'Milestone end: usually about 16 min (16 to 31 min, rough guess), ...'; line 103 should read startswith(\"Milestone end: usually about \"). Also tests/panel/step-range.test.mjs (uncommitted, outside this plan's files) expects 'tomorrow 03:20' for the typical end of the 700 min case, but the clocks change on 25 Oct, so the real wall time is 02:20 (the 00:00 and 04:40 ends already include the hour); it needs 02:20. Needs: replan with those two test corrections. Also fixed a P227.1 slip in steps.sh: step_status ran jq without the vbw_now definition, so vbw status lost its 'now:' line."
     },
     {
       "id": "P227.3",
@@ -79801,7 +79844,7 @@
         "P224.2",
         "P226.1"
       ],
-      "status": "planned",
+      "status": "blocked",
       "role": "dev",
       "tasks": [
         "record.sh: the writer file's version read goes through one function; when VBW_KERNEL_READS names a file, it keeps plugin.json's access time as it was (touch -a -r from a stamp taken before the read) and appends the file's absolute path there; vbw version and every other read are untouched.",
@@ -79809,7 +79852,19 @@
         "proofreuse.sh: when the only change to a file is its version value (JSON equal without .version), a unit that read it only through kernel_reads is reused, one that read it itself runs again with the reason 'reads the version: FILE'; any other change reruns a unit that read it either way ('FILE changed').",
         "cmd-prove.sh: the proof says, for each unit that ran again, its one reason; measure on VBW's own repository with the 2.1.28 bump replayed and give the count of units rerun (against 450 of 743) in the result for the progress log.",
         "The R279 cases of tests/proofreuse-rule.bats and tests/prove-version-bump.bats pass under /bin/bash."
-      ]
+      ],
+      "red_runs": [
+        {
+          "at": "2026-11-09T12:36:39Z",
+          "head": "536f8861162ed3d374dffce6493d0431a1ee08c3",
+          "first": true,
+          "checks": {
+            "C678": "red",
+            "C679": "red"
+          }
+        }
+      ],
+      "note": "DEVN-04: plugin/lib/testfiles.sh is not in the plan's files but C679 needs it. testfiles_save builds each test file's store entry field by field and drops kernel_reads, so a test-file unit (the 743 units are test files) never keeps its kernel reads and R279.2 and R279.5 stay red (prove-version-bump.bats 'any other change' case fails: t_record.sh is reused instead of rerun). Needed there: add kernel_reads: ($x.kernel_reads // []) to the entry in testfiles_save (line ~200). Done and committed: record.sh version read (R279.1 green), checks.sh and reads.sh (kernel_reads collected per unit), proofreuse.sh (version-only rule, R279.2-4 green in proofreuse-rule.bats), cmd-prove.sh (kernel_reads kept out of the evidence). Add plugin/lib/testfiles.sh to the plan's files; the measurement of task 4 on VBW's own repository is still to do."
     },
     {
       "id": "P228.2",
@@ -100277,6 +100332,17 @@
         "ended": "2026-11-09T12:32:36Z",
         "cost": {
           "usd": 2.11122
+        }
+      },
+      {
+        "id": "build-20261109T123413Z",
+        "kind": "build",
+        "session": "0ee781c3-c5b6-4a6c-889f-04b89f1fba4a",
+        "milestone": "M56",
+        "started": "2026-11-09T12:34:13Z",
+        "ended": "2026-11-09T12:44:06Z",
+        "cost": {
+          "usd": 3.082172
         }
       }
     ],
