@@ -33643,7 +33643,22 @@
           "to": "deep",
           "reason": "Dev blocked P228.1: DEVN-04: plugin/lib/testfiles.sh is not in the plan's files but C679 needs it. testfiles_save builds each test file's store entry field by field and drops kernel_reads, so a test-file unit (the 743 units are test files) never keeps its kernel reads and R279.2 and R279.5 stay red (prove-version-bump.bats 'any other change' case fails: t_record.sh is reused instead of rerun). Needed there: add kernel_reads: ($x.kernel_reads // []) to the entry in testfiles_save (line ~200). Done and committed: record.sh version read (R279.1 green), checks.sh and reads.sh (kernel_reads collected per unit), proofreuse.sh (version-only rule, R279.2-4 green in proofreuse-rule.bats), cmd-prove.sh (kernel_reads kept out of the evidence). Add plugin/lib/testfiles.sh to the plan's files; the measurement of task 4 on VBW's own repository is still to do."
         }
-      ]
+      ],
+      "qa": {
+        "result": "pass",
+        "tier": "deep",
+        "tree": "4d9c7ff61f12280f961f0700749d5b9a3e91a858346950c6f49776f60b6f38ca",
+        "at": "2026-11-09T17:07:35Z",
+        "note": "30/30 checks"
+      },
+      "outcome": {
+        "tier": "deep",
+        "predicted": "deep",
+        "held": true,
+        "fix_rounds": 0,
+        "qa_findings": 0,
+        "escalations": 1
+      }
     }
   ],
   "plans": [
