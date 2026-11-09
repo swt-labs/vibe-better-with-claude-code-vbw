@@ -34,16 +34,18 @@ built_project() {
   outcomes_seed deep 1 2 2 5
 }
 setup_file() { fixture_build built built_project; }
+# R284: the kernel's clock is set (VBW_NOW), so every clock time below holds at any real hour.
 setup() {
   fixture_copy built
+  export TZ=Europe/Zurich VBW_NOW=2030-01-15T10:00:00Z
 }
 teardown() { vbw_teardown; }
 teardown_file() { fixture_teardown; }
 
-# hm ISO: the local HH:MM of a UTC time as VBW words it: today bare, tomorrow, yesterday, else the weekday.
+# hm ISO: the local HH:MM of a UTC time as VBW words it at the set clock (VBW_NOW): today bare, tomorrow, yesterday, else the weekday.
 hm() {
   jq -nr --arg t "$1" '($t | fromdateiso8601) as $t | def day($e): $e | localtime | mktime / 86400 | floor;
-    (day($t) - day(now)) as $d
+    (day($t) - day($ENV.VBW_NOW | fromdateiso8601)) as $d
     | (if $d == 0 then "" elif $d == 1 then "tomorrow " elif $d == -1 then "yesterday " else ($t | strflocaltime("%A ")) end) + ($t | strflocaltime("%H:%M"))'
 }
 
@@ -51,7 +53,7 @@ hm() {
   local r
   r=$(road_of)
   printf '%s' "$r" | jq -e '.seconds == 2150 and .rounds == {deep: 2, standard: 0} and (.basis | type == "string" and length > 0)
-    and ((.end | fromdateiso8601) - now | . >= 2100 and . <= 2200)' || { echo "$r"; false; }
+    and ((.end | fromdateiso8601) - ($ENV.VBW_NOW | fromdateiso8601)) == 2150' || { echo "$r"; false; }
   printf '%s' "$r" | jq -e --arg at "$(hm "$(printf '%s' "$r" | jq -r .end)")" '.say | startswith("Milestone end: roughly 36 min, until around \($at) (rough guess), counting ")' || { echo "$r"; false; }
   printf '%s' "$r" | jq -e '.say | contains("2 fix rounds per deep phase") and contains("(the usual here)") and contains("fewer than 3 finished standard phases here")' || { echo "$r"; false; }
   "$VBW" next --json | jq -e '.action == "build"' > /dev/null
@@ -68,7 +70,7 @@ hm() {
   outcomes_seed deep 4 4
   local r
   r=$(road_of)
-  printf '%s' "$r" | jq -e '.rounds == {deep: 0, standard: 0} and .seconds == 1130
+  printf '%s' "$r" | jq -e '.rounds == {deep: 0, standard: 0} and .seconds == 1130 and .end == "2030-01-15T10:18:50Z"
     and .rough == true and (.say | startswith("Milestone end: roughly 19 min, until around "))
     and (.say | test("\\(rough guess\\), counting no fix rounds: fewer than 3 finished deep( and standard)? phases here"))' || { echo "$r"; false; }
 }
@@ -133,7 +135,7 @@ hm() {
   [ "$(printf '%s' "$n" | jq -c '{seconds, rounds, basis}')" = "$(printf '%s' "$s" | jq -c '{seconds, rounds, basis}')" ] || { echo "$n"; echo "$s"; false; }
   jq -n --argjson n "$n" --argjson s "$s" -e '(($n.end | fromdateiso8601) - ($s.end | fromdateiso8601)) | fabs <= 60' || { echo "$n"; echo "$s"; false; }
   vbw_run status
-  [[ "$output" == *"Milestone end: roughly 36 min, until around"* ]] || { echo "$output"; false; }
+  [[ "$output" == *"Milestone end: roughly 36 min, until around 11:35 (rough guess)"* ]] || { echo "$output"; false; }
 }
 
 @test "R191: while a step runs, vbw next --json, vbw status --json and the note give the identical milestone end" {

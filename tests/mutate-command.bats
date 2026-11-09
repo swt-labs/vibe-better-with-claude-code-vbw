@@ -269,11 +269,11 @@ with_sub_pay() {
 @test "R265: a mutation entry carries one digest per broken file, a deleted file as absent, and the record validator requires the key's shape" {
   printf 'echo unpaid\n' > src/pay.sh
   "$VBW" mutate P1.1 R1.1 "prints unpaid" src/pay.sh < /dev/null > /dev/null
-  breaks P1.1 | jq -e --arg d "$(shasum -a 256 src/pay.sh | cut -c1-64)" '.[0].digests == {"src/pay.sh": $d}' || { breaks P1.1; false; }
+  breaks P1.1 | jq -e --arg d "$(shasum -a 256 src/pay.sh | cut -c1-64)" '.[0].digests == [{file: "src/pay.sh", sha256: $d}]' || { breaks P1.1; false; }
   git checkout -q -- src/pay.sh
   rm src/receipt.sh
   "$VBW" mutate P1.2 R2.1 "the receipt file is gone" src/receipt.sh < /dev/null > /dev/null || true
-  breaks P1.2 | jq -e '.[0].digests == {"src/receipt.sh": "absent"}' || { breaks P1.2; false; }
+  breaks P1.2 | jq -e '.[0].digests == [{file: "src/receipt.sh", sha256: "absent"}]' || { breaks P1.2; false; }
   # The validator refuses an entry whose digests key is missing, or names a file the break did not.
   local sum
   sum=$(record_sum)
@@ -281,7 +281,7 @@ with_sub_pay() {
   run "$VBW" show plan P1.1 < /dev/null
   [ "$status" -ne 0 ] || { echo "a mutation entry with no digests was accepted"; false; }
   [[ "$output" == *corrupt* ]] || { echo "$output"; false; }
-  jq '(.plans[] | select(.id == "P1.1") | .mutations[0].digests) = {"src/other.sh": "absent"}' .vbw/record.json > .vbw/record.tmp && mv .vbw/record.tmp .vbw/record.json
+  jq '(.plans[] | select(.id == "P1.1") | .mutations[0].digests) = [{file: "src/other.sh", sha256: "absent"}]' .vbw/record.json > .vbw/record.tmp && mv .vbw/record.tmp .vbw/record.json
   run "$VBW" show plan P1.1 < /dev/null
   [ "$status" -ne 0 ] || { echo "digests naming a file outside the break were accepted"; false; }
   [ "$sum" != "$(record_sum)" ]

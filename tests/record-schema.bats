@@ -68,12 +68,12 @@ max_read() { sed -n 's/^VBW_SCHEMA_MAX=//p' "$PLUGIN_ROOT/lib/record.sh"; }
   # A module with a main expression cannot be included.
   run table '1'
   [ "$status" -eq 0 ] && [ "$output" = "1" ] || { echo "$output"; false; }
-  run table 'schema_features | all(.[]; type == "object" and (.schema | type) == "number" and (.feature | type) == "string" and has("present")) and (map(.schema) == [5, 6, 7, 8, 9, 10, 11, 12, 13, 14])'
+  run table 'schema_features | all(.[]; type == "object" and (.schema | type) == "number" and (.feature | type) == "string" and has("present")) and (map(.schema) == [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15])'
   [ "$output" = "true" ] || { echo "rows: $(table 'schema_features | map({schema, feature})')"; false; }
   run table 'schema_features | map(.feature)'
-  [ "$output" = '["settings.efforts","a decision that names its plans","settings.mcp","a recorded break that carries tree or contract","an amendment, an awaited check or a queued requirement","a list of test file forms","a proof that kept its clean copies","a break that names its rule by place or a requirement reworded with its rules kept","a recorded break that carries digests","a rule'"'"'s --none entry marked git (its check reads the project through git)"]' ] || { echo "$output"; false; }
+  [ "$output" = '["settings.efforts","a decision that names its plans","settings.mcp","a recorded break that carries tree or contract","an amendment, an awaited check or a queued requirement","a list of test file forms","a proof that kept its clean copies","a break that names its rule by place or a requirement reworded with its rules kept","a recorded break that carries digests","a rule'"'"'s --none entry marked git (its check reads the project through git)","a break whose digests are a list, or a plan'"'"'s red-first runs"]' ] || { echo "$output"; false; }
   [ "$(table 'schema_floor')" = 4 ]
-  [ "$(table 'schema_top')" = 14 ]
+  [ "$(table 'schema_top')" = 15 ]
   [ "$(max_read)" = "$(table 'schema_top')" ] || { echo "VBW_SCHEMA_MAX $(max_read) is not the table's top $(table 'schema_top')"; false; }
   # Single-quoted jq literals only: bash 3.2 unescapes \" inside "$( "..." )" and splits the text.
   [ "$(schema_of 'null')" = 4 ]
@@ -105,10 +105,10 @@ max_read() { sed -n 's/^VBW_SCHEMA_MAX=//p' "$PLUGIN_ROOT/lib/record.sh"; }
   grep -q -- '-L "\$VBW_LIB"' "$PLUGIN_ROOT/lib/record.sh" || { echo "record.sh's writer does not load the module with -L"; false; }
 }
 
-@test "R247: no second copy of the rule: record.sh and record.jq hold no literal schema 5 to 14 beside the word schema (VBW_SCHEMA_MAX aside), no per-schema chain, and their header comments name the module" {
+@test "R247: no second copy of the rule: record.sh and record.jq hold no literal schema 5 to 15 beside the word schema (VBW_SCHEMA_MAX aside), no per-schema chain, and their header comments name the module" {
   local f hits
   for f in "$PLUGIN_ROOT/lib/record.sh" "$PLUGIN_ROOT/lib/record.jq"; do
-    hits=$(grep -iE 'schema' "$f" | grep -vE '^VBW_SCHEMA_MAX=' | grep -E '(^|[[:space:]"(,:=;])([56789]|1[0-4])([[:space:]",;:)]|$)' || true)
+    hits=$(grep -iE 'schema' "$f" | grep -vE '^VBW_SCHEMA_MAX=' | grep -E '(^|[[:space:]"(,:=;])([56789]|1[0-5])([[:space:]",;:)]|$)' || true)
     [ -z "$hits" ] || { echo "a schema number is written in $f:"; echo "$hits"; false; }
   done
   ! grep -qE 'then [0-9]+ elif' "$PLUGIN_ROOT/lib/record.sh" || { echo "record_update still has an if/elif schema chain"; false; }
@@ -117,16 +117,16 @@ max_read() { sed -n 's/^VBW_SCHEMA_MAX=//p' "$PLUGIN_ROOT/lib/record.sh"; }
   grep -B 10 '^VBW_SCHEMA_MAX=' "$PLUGIN_ROOT/lib/record.sh" | grep -q 'record-schema' || { echo "record.sh's header does not name record-schema.jq"; false; }
 }
 
-@test "R247: vbw mutate on a fresh project writes a schema-13 record whose break carries tree, contract and digests and names its rule by place; on every later write the highest feature present wins and 4 is the floor" {
-  jq -e '.schema == 13 and (.plans[0].mutations | length == 1) and (.plans[0].mutations[0] | has("tree") and has("contract") and (.rule | has("req") and has("k")))' .vbw/record.json \
+@test "R247: vbw mutate on a fresh project writes a schema-15 record whose break carries tree, contract and digests (as a list) and names its rule by place; on every later write the highest feature present wins and 4 is the floor" {
+  jq -e '.schema == 15 and (.plans[0].mutations | length == 1) and (.plans[0].mutations[0] | has("tree") and has("contract") and (.rule | has("req") and has("k")))' .vbw/record.json \
     || { jq -c '{schema, mutations: .plans[0].mutations}' .vbw/record.json; false; }
   [ "$(validate)" = "[]" ]
   vbw_run status
   [ "$status" -eq 0 ] || { echo "$output"; false; }
   "$VBW" decide "still twelve" > /dev/null
-  jq -e '.schema == 13' .vbw/record.json
+  jq -e '.schema == 15' .vbw/record.json
   "$VBW" config set mcp github:read-only > /dev/null
-  jq -e '.schema == 13 and .settings.mcp[0].server == "github"' .vbw/record.json
+  jq -e '.schema == 15 and .settings.mcp[0].server == "github"' .vbw/record.json
   # Without the break, settings.mcp decides; then nothing; then each lower feature in turn.
   edit 'del(.plans[].mutations) | .schema = 4'
   "$VBW" decide "seven now" > /dev/null
@@ -142,12 +142,12 @@ max_read() { sed -n 's/^VBW_SCHEMA_MAX=//p' "$PLUGIN_ROOT/lib/record.sh"; }
   jq -e '.schema == 7' .vbw/record.json || { echo "schema $(jq .schema .vbw/record.json), not 7"; false; }
 }
 
-@test "R247: a schema above what the record holds is corrupt (exit 3) and the message names the feature that schema is only for: 14, 13, 12, 11, 10, 8, 7, 6 and 5" {
+@test "R247: a schema above what the record holds is corrupt (exit 3) and the message names the feature that schema is only for: 15, 14, 13, 12, 11, 10, 8, 7, 6 and 5" {
   local n feature
   edit "$BARE | .schema = 4"
   "$VBW" decide "bare" > /dev/null
   jq -e '.schema == 4' .vbw/record.json
-  for n in 14 13 12 11 10 8 7 6 5; do
+  for n in 15 14 13 12 11 10 8 7 6 5; do
     edit ".schema = $n"
     feature=$(table "schema_features[] | select(.schema == $n) | .feature")
     vbw_run status
@@ -167,12 +167,12 @@ max_read() { sed -n 's/^VBW_SCHEMA_MAX=//p' "$PLUGIN_ROOT/lib/record.sh"; }
   [ "$status" -eq 3 ] && [[ "$output" == *"schema 8 is only for a record with a recorded break that carries tree or contract"* ]] || { echo "$output"; false; }
 }
 
-@test "R247 (D582): a schema below what the record holds loads (status 0, doctor says valid) and its next write raises it: 6 with a break (VBW's own record's shape, its rule named by place, its files digested) -> 13, 4 with settings.mcp -> 7, 5 with a decision's plans -> 6, 4 with settings.efforts -> 5, 9 with an awaited check and a list of test file forms -> 10" {
+@test "R247 (D582): a schema below what the record holds loads (status 0, doctor says valid) and its next write raises it: 6 with a break (VBW's own record's shape, its rule named by place, its files digested as a list) -> 15, 4 with settings.mcp -> 7, 5 with a decision's plans -> 6, 4 with settings.efforts -> 5, 9 with an awaited check and a list of test file forms -> 10" {
   local shape before after filter
   cp .vbw/record.json "$TEST_ROOT/built.json"
   # before @ the hand edit that makes the shape @ the schema the next write leaves
   for shape in \
-    '6@.schema = 6@13' \
+    '6@.schema = 6@15' \
     "4@$BARE | .schema = 4 | .settings.mcp = [{server: \"github\", read_only: true}]@7" \
     "5@$BARE | .schema = 5 | .decisions += [{id: \"D90\", text: \"an approval\", at: \"2026-01-01T00:00:00Z\", plans: [\"P1.1\"]}]@6" \
     "4@$BARE | .schema = 4 | .settings.efforts = {dev: \"high\"}@5" \
@@ -198,9 +198,9 @@ max_read() { sed -n 's/^VBW_SCHEMA_MAX=//p' "$PLUGIN_ROOT/lib/record.sh"; }
   done
 }
 
-@test "R247: protected is stated once against the floor: a record of schema 4 to 14 without it, or one below 4 with it, is corrupt saying 'schema 4 or above'; a schema that is not a number stays corrupt" {
+@test "R247: protected is stated once against the floor: a record of schema 4 to 15 without it, or one below 4 with it, is corrupt saying 'schema 4 or above'; a schema that is not a number stays corrupt" {
   local s
-  for s in 4 5 6 7 8 9 10 11 12 13 14; do
+  for s in 4 5 6 7 8 9 10 11 12 13 14 15; do
     run validate <(jq "del(.protected) | .schema = $s" .vbw/record.json)
     [[ "$output" == *"protected is missing: a record of schema 4 or above must carry the protected field"* ]] || { echo "schema $s without protected: $output"; false; }
   done
@@ -215,19 +215,19 @@ max_read() { sed -n 's/^VBW_SCHEMA_MAX=//p' "$PLUGIN_ROOT/lib/record.sh"; }
   [ "$status" -eq 3 ] && [[ "$output" == *"corrupt"* ]] || { echo "$output"; false; }
 }
 
-@test "R247: this VBW reads up to schema 14: a schema-15 record exits 4 saying the project needs a newer VBW and that this VBW reads up to schema 14, never that it is corrupt" {
-  [ "$(max_read)" = 14 ] || { echo "VBW_SCHEMA_MAX is $(max_read)"; false; }
-  edit '.schema = 15'
+@test "R247: this VBW reads up to schema 15: a schema-16 record exits 4 saying the project needs a newer VBW and that this VBW reads up to schema 15, never that it is corrupt" {
+  [ "$(max_read)" = 15 ] || { echo "VBW_SCHEMA_MAX is $(max_read)"; false; }
+  edit '.schema = 16'
   vbw_run status
   [ "$status" -eq 4 ] || { echo "$output"; false; }
-  [[ "$output" == *"needs a newer VBW"* && "$output" == *"reads up to schema 14"* ]] || { echo "$output"; false; }
+  [[ "$output" == *"needs a newer VBW"* && "$output" == *"reads up to schema 15"* ]] || { echo "$output"; false; }
   [[ "$output" != *"corrupt"* ]] || { echo "$output"; false; }
   vbw_run doctor
   [[ "$output" == *"update VBW with /vbw:update"* && "$output" != *"corrupt"* ]] || { echo "$output"; false; }
 }
 
-@test "R247 (T221): a kernel whose VBW_SCHEMA_MAX is 12 reading the schema-13 record this VBW's vbw mutate wrote says the project needs a newer VBW (exit 4), never that it is corrupt; the validator pins the break's shape" {
-  jq -e '.schema == 13' .vbw/record.json
+@test "R247 (T221): a kernel whose VBW_SCHEMA_MAX is 12 reading the schema-15 record this VBW's vbw mutate wrote says the project needs a newer VBW (exit 4), never that it is corrupt; the validator pins the break's shape" {
+  jq -e '.schema == 15' .vbw/record.json
   cp -R "$PLUGIN_ROOT" "$TEST_ROOT/plugin"
   sed -i.bak 's/^VBW_SCHEMA_MAX=.*$/VBW_SCHEMA_MAX=12/' "$TEST_ROOT/plugin/lib/record.sh"
   grep -qx 'VBW_SCHEMA_MAX=12' "$TEST_ROOT/plugin/lib/record.sh"
@@ -270,15 +270,14 @@ max_read() { sed -n 's/^VBW_SCHEMA_MAX=//p' "$PLUGIN_ROOT/lib/record.sh"; }
   [ "$(schema_of '{plans: [{mutations: [{rule: {req: "R1", k: 1}, tree: "t", digests: {"src/pay.sh": "absent"}}]}]}')" = 13 ]
   [ "$(schema_of '{plans: [{mutations: [{rule: {req: "R1", k: 1}, tree: "t"}]}]}')" = 12 ]
   table 'schema_features[] | select(.schema == 13) | .feature' | grep -qi 'digest' || { echo "row 13 does not name the digests: $(table 'schema_features[] | select(.schema == 13)')"; false; }
-  jq -e '.schema == 13 and (.plans[0].mutations[0].digests | type == "object")' .vbw/record.json || { jq -c '{schema, m: .plans[0].mutations[0]}' .vbw/record.json; false; }
+  # R286: this kernel writes the digests as a list (schema 15); an older one wrote the object.
+  jq -e '.schema == 15 and (.plans[0].mutations[0].digests | type == "array")' .vbw/record.json || { jq -c '{schema, m: .plans[0].mutations[0]}' .vbw/record.json; false; }
 }
 
-@test "R264 schema 14: a rule's --none entry marked git is schema 14, the table's top, which VBW_SCHEMA_MAX follows; a none entry without the mark stays 12" {
+@test "R264 schema 14: a rule's --none entry marked git is schema 14, a table row of its own; a none entry without the mark stays 12" {
   [ "$(schema_of '{plans: [{mutations: [{rule: {req: "R1", k: 2}, none: "reads git", git: true, at: "t", head: "h"}]}]}')" = 14 ]
   [ "$(schema_of '{plans: [{mutations: [{rule: {req: "R1", k: 2}, none: "nothing", at: "t", head: "h"}]}]}')" = 12 ]
   table 'schema_features[] | select(.schema == 14) | .feature' | grep -qi 'git' || { echo "row 14 does not name git: $(table 'schema_features[] | select(.schema == 14)')"; false; }
-  [ "$(table 'schema_top')" = 14 ]
-  [ "$(max_read)" = 14 ] || { echo "VBW_SCHEMA_MAX is $(max_read)"; false; }
 }
 
 @test "R258 schema 12: the validator accepts a break's rule as {req, k} (k 1 to 9999) and as the older {req, text}, and refuses every other shape; reworded can only be true" {
@@ -306,9 +305,122 @@ max_read() { sed -n 's/^VBW_SCHEMA_MAX=//p' "$PLUGIN_ROOT/lib/record.sh"; }
   vbw_run show plan P1.1
   [ "$status" -eq 0 ] || { echo "$output"; false; }
   "$VBW" decide "Use blue buttons" "the owner prefers them" > /dev/null
-  # 13: the fixture's own break, written by this kernel, carries digests (R265).
-  jq -e '.schema == 13
+  # 15: the fixture's own break, written by this kernel, carries its digests as a list (R286).
+  jq -e '.schema == 15
     and .plans[0].mutations[0].rule == {req: "R1", k: 1}
     and .plans[0].mutations[1].rule == {req: "R1", text: "no such rule"}' .vbw/record.json || { jq '.schema, .plans[0].mutations[].rule' .vbw/record.json; false; }
   [ "$(validate)" = '[]' ] || { validate; false; }
+}
+
+# R286 (field report 2026-11-09, D685): no line of the record pairs a file path with a
+# SHA-256 digest, so a secret scanner's keyword rule never refuses a record commit. A
+# break's digests are a list of {file, sha256}, each on lines of its own in the record's
+# pretty-printing, the path never on the digest's line; the values are unchanged. The
+# list is the next row of the table, schema 15, which a plan's red-first runs (R292)
+# share, so 2.1.29 costs one schema step. An older record's object is converted on its
+# first write. Gitleaks' generic-api-key rule, copied from Gitleaks v8.24.3
+# (config/gitleaks.toml, id generic-api-key; Gitleaks is not installed, no dependency is
+# added; a newer Gitleaks pattern is copied here by hand), is matched with jq per line and
+# over the whole text, as Gitleaks scans a file.
+GENERIC_API_KEY=$(cat << 'RE'
+(?i)[\w.-]{0,50}?(?:access|auth|(?-i:[Aa]pi|API)|credential|creds|key|passw(?:or)?d|secret|token)(?:[ \t\w.-]{0,20})[\s'"]{0,3}(?:=|>|:{1,3}=|\|\||:|=>|\?=|,)[\x60'"\s=]{0,5}([\w.=-]{10,150}|[a-z0-9][a-z0-9+/]{11,}={0,3})(?:[\x60'"\s;]|\\[nr]|$)
+RE
+)
+SECRET_PATHS='["src/api.rs","lib/auth_token.py","config/secret_keys.ts","tests/password.bats"]'
+
+# keyword_record: the fixture's record as VBW 2.1.28 wrote it (schema 13, digests an object)
+# with the four paths in the break, the test-file evidence and a QA fingerprint.
+keyword_record() {
+  jq --argjson p "$SECRET_PATHS" '.schema = 13
+    | .plans[0].files += $p
+    | .plans[0].mutations[0] |= (.files += $p | .digests = ([$p | to_entries[] | {key: .value, value: ("\(.key + 1)" * 64)}] | from_entries))
+    | .phases[0].qa = {result: "pass", tier: "quick", tree: ("e" * 64), at: "2026-01-01T00:00:00Z"}
+    | .evidence = {at: "2026-01-01T00:00:00Z", contract: ("c" * 64), tree: ("d" * 40), head: ("d" * 40), passed: true, scope: [],
+        checks: {C1: {status: "pass", exit: 0, seconds: 1, tail: "", at: "2026-01-01T00:00:00Z", fp: ("f" * 64)}}, commands: {},
+        test_files: ([$p[] | {key: ., value: {status: "pass", exit: 0, seconds: 1, tail: "", at: "2026-01-01T00:00:00Z", fp: ("a" * 64)}}] | from_entries)}' .vbw/record.json > "$TEST_ROOT/edit.json" && cat "$TEST_ROOT/edit.json" > .vbw/record.json
+}
+# keyword_lines FILE: the lines of FILE that hold a 64-hex value and one of the words a secret scanner's keyword rule looks for.
+keyword_lines() { grep -E '[0-9a-fA-F]{64}' "$1" | grep -iE 'api|key|token|auth|secret|credential|password' || true; }
+# leaks FILE: the lines of FILE the generic-api-key pattern matches, then "whole" when it matches the whole text.
+leaks() {
+  jq -Rr --arg re "$GENERIC_API_KEY" 'select(test($re))' "$1"
+  jq -Rse --arg re "$GENERIC_API_KEY" 'test($re)' "$1" > /dev/null && echo whole
+  return 0
+}
+
+@test "R286 schema: a break whose digests are a list, or a plan's red-first runs, is schema 15, the table's top, which VBW_SCHEMA_MAX follows; the older object stays 13" {
+  [ "$(schema_of '{plans: [{mutations: [{rule: {req: "R1", k: 1}, tree: "t", digests: [{file: "src/pay.sh", sha256: "absent"}]}]}]}')" = 15 ]
+  [ "$(schema_of '{plans: [{id: "P1.1", red_runs: []}]}')" = 15 ]
+  [ "$(schema_of '{plans: [{mutations: [{rule: {req: "R1", k: 1}, tree: "t", digests: {"src/pay.sh": "absent"}}]}]}')" = 13 ]
+  [ "$(table 'schema_top')" = 15 ]
+  [ "$(max_read)" = 15 ] || { echo "VBW_SCHEMA_MAX is $(max_read)"; false; }
+}
+
+@test "R286 schema: a VBW that reads up to schema 14 refuses this VBW's schema-15 record with the R272 line, never calling it corrupt, and leaves it unchanged" {
+  jq -e '.schema == 15' .vbw/record.json || { jq .schema .vbw/record.json; false; }
+  cp -R "$PLUGIN_ROOT" "$TEST_ROOT/plugin"
+  sed -i.bak 's/^VBW_SCHEMA_MAX=.*$/VBW_SCHEMA_MAX=14/' "$TEST_ROOT/plugin/lib/record.sh"
+  cp .vbw/record.json "$TEST_ROOT/kept.json"
+  run "$TEST_ROOT/plugin/bin/vbw" status < /dev/null
+  [ "$status" -eq 4 ] || { echo "exit $status: $output"; false; }
+  [[ "$output" == *"this project needs a newer VBW"* && "$output" != *"corrupt"* ]] || { echo "$output"; false; }
+  cmp -s .vbw/record.json "$TEST_ROOT/kept.json" || { echo "the older kernel changed the record"; false; }
+}
+
+@test "R286 layout: Gitleaks' generic-api-key pattern finds the old layout's path-and-digest lines, and nothing in the record this VBW writes from the same data" {
+  keyword_record
+  [ "$(validate)" = "[]" ] || { echo "the 2.1.28 shape does not validate: $(validate)"; false; }
+  # The test can fail: the old layout holds the field report's lines.
+  [ -n "$(leaks .vbw/record.json)" ] || { echo "the pattern finds nothing in the old layout"; false; }
+  [ -n "$(keyword_lines .vbw/record.json)" ] || { echo "no old-layout line pairs a keyword with a digest"; false; }
+  "$VBW" decide "digests on lines of their own" > /dev/null
+  jq -e '.schema == 15 and (.plans[0].mutations[0].digests | type == "array")' .vbw/record.json || { jq -c '{schema, d: .plans[0].mutations[0].digests}' .vbw/record.json; false; }
+  local found
+  found=$(leaks .vbw/record.json)
+  [ -z "$found" ] || { echo "the pattern matches the record VBW wrote:"; echo "$found"; false; }
+  found=$(keyword_lines .vbw/record.json)
+  [ -z "$found" ] || { echo "lines pair a keyword with a digest:"; echo "$found"; false; }
+  # Each digest on a line whose field name is neutral, its file on another line.
+  [ "$(grep -cE '^ +"sha256": "[0-9a-f]{64}",?$' .vbw/record.json)" -ge 4 ] || { grep -nE '[0-9a-f]{64}' .vbw/record.json; false; }
+}
+
+@test "R286 convert: a schema 13 or 14 record's object digests become the list on its first write, every digest keeping its value and its file, nothing else changed" {
+  local s
+  keyword_record
+  cp .vbw/record.json "$TEST_ROOT/old.json"
+  for s in 13 14; do
+    # 14: the same record with a rule's --none entry marked git (R264), as 2.1.28 wrote it.
+    jq --argjson s "$s" '.schema = $s | if $s == 14 then .plans[0].mutations += [{rule: {req: "R1", k: 1}, none: "reads git", git: true, at: "2026-01-01T00:00:00Z", head: ("b" * 40)}] else . end' "$TEST_ROOT/old.json" > .vbw/record.json
+    cp .vbw/record.json "$TEST_ROOT/old$s.json"
+    [ "$(validate)" = "[]" ] || { echo "schema $s: $(validate)"; false; }
+    "$VBW" decide "convert $s" > /dev/null
+    jq -e '.schema == 15 and all(.plans[].mutations[]?; (.digests // []) | type == "array")' .vbw/record.json || { jq -c '{schema, d: [.plans[].mutations[]?.digests]}' .vbw/record.json; false; }
+    [ "$(jq -cS '.plans[0].mutations[0].digests | sort_by(.file)' .vbw/record.json)" = "$(jq -cS '.plans[0].mutations[0].digests | to_entries | map({file: .key, sha256: .value}) | sort_by(.file)' "$TEST_ROOT/old$s.json")" ] \
+      || { echo "schema $s: the digests changed"; jq -c '.plans[0].mutations[0].digests' .vbw/record.json "$TEST_ROOT/old$s.json"; false; }
+    [ "$(jq -cS 'del(.schema, .decisions, .plans[].mutations[]?.digests)' .vbw/record.json)" = "$(jq -cS 'del(.schema, .decisions, .plans[].mutations[]?.digests)' "$TEST_ROOT/old$s.json")" ] \
+      || { echo "schema $s: the conversion changed more than the digests and the schema"; false; }
+    [ "$(validate)" = "[]" ] || { echo "schema $s after: $(validate)"; false; }
+  done
+}
+
+@test "R286 readers: vbw mutate, vbw show, vbw next and vbw status answer an old record and its converted one the same" {
+  # The fixture's working file still holds its break (D634): a second identical break is refused by its digests.
+  edit '.schema = 13 | .plans[0].mutations[0].digests |= (if type == "array" then map({key: .file, value: .sha256}) | from_entries else . end)'
+  jq -e '.plans[0].mutations[0].digests | type == "object" and length == 1' .vbw/record.json || { jq -c '.plans[0].mutations[0].digests' .vbw/record.json; false; }
+  local m1 s1 n1 st1 m2 s2 n2 st2
+  m1=$("$VBW" mutate P1.1 R1.1 "prints unpaid instead of paid" src/pay.sh 2>&1 < /dev/null) && { echo "the same bytes were not refused: $m1"; false; }
+  s1=$("$VBW" show plan P1.1 2>&1 < /dev/null)
+  n1=$("$VBW" next 2>&1 < /dev/null)
+  st1=$("$VBW" status 2>&1 < /dev/null | grep -v "^what's next")
+  [[ "$m1" == *"holds the same bytes of src/pay.sh"* ]] || { echo "$m1"; false; }
+  "$VBW" decide "convert" > /dev/null
+  jq -e '.schema == 15 and (.plans[0].mutations[0].digests | type == "array")' .vbw/record.json || { jq -c '{schema, d: .plans[0].mutations[0].digests}' .vbw/record.json; false; }
+  m2=$("$VBW" mutate P1.1 R1.1 "prints unpaid instead of paid" src/pay.sh 2>&1 < /dev/null) && { echo "the same bytes were not refused after the conversion: $m2"; false; }
+  s2=$("$VBW" show plan P1.1 2>&1 < /dev/null)
+  n2=$("$VBW" next 2>&1 < /dev/null)
+  st2=$("$VBW" status 2>&1 < /dev/null | grep -v "^what's next")
+  [ "$m1" = "$m2" ] || { echo "vbw mutate: $m1 / $m2"; false; }
+  [ "$s1" = "$s2" ] || { diff <(echo "$s1") <(echo "$s2"); false; }
+  [ "$n1" = "$n2" ] || { echo "vbw next: $n1 / $n2"; false; }
+  [ "$st1" = "$st2" ] || { diff <(echo "$st1") <(echo "$st2"); false; }
 }

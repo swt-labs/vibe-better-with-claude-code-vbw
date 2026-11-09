@@ -22,8 +22,10 @@ load helper
 load step-helper
 load road-helper
 
+# R284: the kernel's clock is set (VBW_NOW, a UTC time), so the clock times hold at any real hour.
 setup() {
   vbw_setup
+  export TZ=Europe/Lisbon VBW_NOW=2030-01-15T10:00:00Z
   tiered_project
 }
 teardown() { vbw_teardown; }
@@ -42,7 +44,7 @@ step_of() { "$VBW" next --json | jq -c '.step'; }
   s=$(step_of)
   # P1.1 two tasks (200 s), P1.2 five (500 s), P1.3 three (300 s): the wave is 500 s, not 1000.
   printf '%s' "$s" | jq -e '.kind == "build" and .parts == 3 and .seconds == 500' || { echo "$s"; false; }
-  printf '%s' "$s" | jq -e '.say | test("^Building P1\\.1, P1\\.2 and P1\\.3: about 8 min, until around [0-9]{2}:[0-9]{2}$")' || { echo "$s"; false; }
+  printf '%s' "$s" | jq -e '.end == "2030-01-15T10:08:20Z" and .say == "Building P1.1, P1.2 and P1.3: about 8 min, until around 10:08"' || { echo "$s"; false; }
 }
 
 @test "R191: a wave of two plans of different sizes ends with the bigger one, never with their sum" {
@@ -86,7 +88,7 @@ step_of() { "$VBW" next --json | jq -c '.step'; }
   local s
   s=$(step_of)
   printf '%s' "$s" | jq -e '.kind == "build" and .seconds == 900 and .runs == 2 and .rough == true and .end != null
-    and (.say | test("^Building P1\\.1, P1\\.2 and P1\\.3: roughly 15 min, until around .*[0-9]{2}:[0-9]{2} \\(rough guess from 2 runs\\)$"))' || { echo "$s"; false; }
+    and .end == "2030-01-15T10:15:00Z" and .say == "Building P1.1, P1.2 and P1.3: roughly 15 min, until around 10:15 (rough guess from 2 runs)"' || { echo "$s"; false; }
   rm "$STEPS"
   s=$(step_of)
   printf '%s' "$s" | jq -e '.kind == "build" and .seconds == null and .end == null
@@ -177,4 +179,29 @@ step_of() { "$VBW" next --json | jq -c '.step'; }
   hist_qa standard 120 3
   hist_qa deep 900 3
   step_of | jq -e '.kind == "qa" and .ids == ["P1", "P2"] and .seconds == 1020' || { step_of; false; }
+}
+
+# R284: at 23:55 (Europe/Lisbon) an end after midnight carries the day word the kernel prints.
+@test "R284: with the clock at 23:55 an end after midnight reads 'until around tomorrow 00:03'" {
+  export VBW_NOW=2030-01-15T23:55:00Z
+  hist_build standard 2 200 4
+  hist_build standard 4 400 3
+  hist_build standard 1 100 3
+  local s
+  s=$(step_of)
+  printf '%s' "$s" | jq -e '.seconds == 500 and .end == "2030-01-16T00:03:20Z" and .say == "Building P1.1, P1.2 and P1.3: about 8 min, until around tomorrow 00:03"' || { echo "$s"; false; }
+}
+
+@test "R284: every test file that checks the kernel's clock times sets the kernel's clock and words its own clock from it, never from the wall clock" {
+  local f
+  for f in step-ladder road-next step-range statusline-step step-next; do
+    grep -q 'VBW_NOW=' "$BATS_TEST_DIRNAME/$f.bats" || { echo "tests/$f.bats does not set the clock"; false; }
+    ! grep -nE 'day\(now\)|, now\]|\) - now' "$BATS_TEST_DIRNAME/$f.bats" || { echo "tests/$f.bats words a clock from the wall clock"; false; }
+  done
+  grep -q 'VBW_NOW' "$PLUGIN_ROOT/lib/core.sh" || { echo "vbw_now does not read the set clock"; false; }
+  ! grep -nE '\(now \| floor\)|now as \$now|step_move\(now' "$PLUGIN_ROOT/lib/steps.sh" "$PLUGIN_ROOT/lib/road.jq" "$PLUGIN_ROOT/lib/proofsteps.sh" "$PLUGIN_ROOT/scripts/statusline.jq" || { echo "the estimate path still reads jq's now"; false; }
+}
+
+@test "R284 docs: docs/panel.md says the kernel takes the time from one clock, which VBW_NOW sets for tests only" {
+  grep -E 'VBW_NOW' "$REPO_ROOT/docs/panel.md" | grep -qiE 'tests? only|only (for|by) tests' || { echo "docs/panel.md does not name VBW_NOW as the tests' clock"; false; }
 }

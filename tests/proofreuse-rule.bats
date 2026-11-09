@@ -331,3 +331,56 @@ tied() {
   run grep -En 'proofreuse_docs|proofreuse_test_run|proofreuse_stamp|checks_fingerprint|test_run|served' "$PLUGIN_ROOT/lib/proofreuse.sh"
   [ "$status" -eq 1 ]
 }
+
+# R279 (measured at 2.1.28, D686): a version bump reruns only the units whose outcome can
+# depend on the version. A unit's run keeps, beside its read list, the files the VBW kernel
+# it ran read for its own bookkeeping (kernel_reads: the version for the writer file of
+# R272, logged by the kernel when the proof names a file for it, the read itself leaving
+# the file's access time as it was). When the only change to such a file is its version
+# value, a unit that read it only through the kernel is reused; a unit that read it
+# itself (printing or comparing the version) runs again, the reason 'reads the version:
+# FILE'; any other change to the file reruns every unit that read it either way.
+
+# version_file: a VBW-shaped plugin.json, committed.
+version_file() {
+  mkdir -p plugin/.claude-plugin
+  jq -n '{name: "vbw", version: "1.0.0", description: "a plugin"}' > plugin/.claude-plugin/plugin.json
+  git add plugin && git commit -q -m "chore(test): plugin"
+}
+# bump FILTER: change plugin.json with FILTER and commit.
+bump() {
+  jq "$1" plugin/.claude-plugin/plugin.json > "$TEST_ROOT/p.json" && cp "$TEST_ROOT/p.json" plugin/.claude-plugin/plugin.json
+  git commit -q -am "chore(test): bump"
+}
+PJ='plugin/.claude-plugin/plugin.json'
+
+@test "R279 rule: a unit that read plugin.json only through the kernel's version read is reused after a change of only the version" {
+  version_file
+  store '{"reads": ["src/a.txt"], "kernel_reads": ["plugin/.claude-plugin/plugin.json"]}'
+  bump '.version = "1.0.1"'
+  run reason
+  [ "$status" -eq 0 ] || { echo "$output"; false; }
+  [ -z "$output" ]
+}
+
+@test "R279 rule: a unit that read plugin.json itself runs again after a version bump, the reason naming the version" {
+  version_file
+  store '{"reads": ["src/a.txt", "plugin/.claude-plugin/plugin.json"], "kernel_reads": ["plugin/.claude-plugin/plugin.json"]}'
+  bump '.version = "1.0.1"'
+  run reason
+  [ "$status" -eq 1 ]
+  [ "$output" = "reads the version: $PJ" ] || { echo "$output"; false; }
+}
+
+@test "R279 rule: any other change to plugin.json reruns a unit that read it, through the kernel or itself, as before" {
+  version_file
+  store '{"reads": ["src/a.txt"], "kernel_reads": ["plugin/.claude-plugin/plugin.json"]}'
+  bump '.description = "another plugin"'
+  run reason
+  [ "$status" -eq 1 ]
+  [ "$output" = "$PJ changed" ] || { echo "$output"; false; }
+  bump '.version = "1.0.2" | .description = "a third plugin"'
+  run reason
+  [ "$status" -eq 1 ]
+  [ "$output" = "$PJ changed" ] || { echo "$output"; false; }
+}

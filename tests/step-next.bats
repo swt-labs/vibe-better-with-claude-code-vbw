@@ -19,8 +19,10 @@ built_project() {
   export TZ=Europe/Zurich
 }
 setup_file() { fixture_build built built_project; }
+# R284: the kernel's clock is set (VBW_NOW), so the clock times hold at any real hour.
 setup() {
   fixture_copy built
+  export VBW_NOW=2030-01-15T10:00:00Z
 }
 teardown() { vbw_teardown; }
 teardown_file() { fixture_teardown; }
@@ -30,7 +32,7 @@ teardown_file() { fixture_teardown; }
 # the test holds at any hour, local midnight included.
 hm() {
   jq -r --arg f "$1" '(.[$f] | fromdateiso8601) as $t | def day($e): $e | localtime | mktime / 86400 | floor;
-    (day($t) - day(now)) as $d
+    (day($t) - day($ENV.VBW_NOW | fromdateiso8601)) as $d
     | (if $d == 0 then "" elif $d == 1 then "tomorrow " elif $d == -1 then "yesterday " else ($t | strflocaltime("%A ")) end) + ($t | strflocaltime("%H:%M"))' "$NOTE"
 }
 step_of() { "$VBW" next --json | jq -c '.step'; }
@@ -41,7 +43,7 @@ step_of() { "$VBW" next --json | jq -c '.step'; }
   local s
   s=$(step_of)
   printf '%s' "$s" | jq -e '.kind == "build" and .parts == 3 and .seconds == 900
-    and (((.end | fromdateiso8601) - now) | . >= 880 and . <= 910)
+    and (((.end | fromdateiso8601) - ($ENV.VBW_NOW | fromdateiso8601)) == 900)
     and (.say == "Building P1.1, P1.2 and P1.3: about 15 min, until around \(.end | fromdateiso8601 | strflocaltime("%H:%M"))"
          or .say == "Building P1.1, P1.2 and P1.3: about 15 min, until around tomorrow \(.end | fromdateiso8601 | strflocaltime("%H:%M"))")' \
     || { echo "$s"; false; }

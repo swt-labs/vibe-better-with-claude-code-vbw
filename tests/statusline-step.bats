@@ -24,6 +24,8 @@ step_line_project() {
 setup_file() { fixture_build step-line step_line_project; }
 setup() {
   fixture_copy step-line
+  # R284: the clock is set, for the kernel and the status line alike.
+  export VBW_NOW=2030-01-15T10:00:00Z
   sleep 30 &
   LIVE=$!
 }
@@ -44,7 +46,7 @@ render() {
 # "yesterday " when it falls on another local day than now, as VBW words it:
 # the test holds at any hour, local midnight included.
 hm() {
-  jq -r --arg f "$1" '(.[$f] | fromdateiso8601) as $t | ([$t, now] | map(strflocaltime("%Y-%m-%d"))) as [$e, $d]
+  jq -r --arg f "$1" '(.[$f] | fromdateiso8601) as $t | ([$t, ($ENV.VBW_NOW | fromdateiso8601)] | map(strflocaltime("%Y-%m-%d"))) as [$e, $d]
     | (if $e == $d then "" elif $e > $d then "tomorrow " else "yesterday " end) + ($t | strflocaltime("%H:%M"))' "$NOTE"
 }
 
@@ -174,7 +176,7 @@ render_color() {
 # midnight is the day before yesterday).
 hm_of() {
   jq -r --arg f "$2" 'def day($e): $e | localtime | mktime / 86400 | floor;
-    (.[$f] | fromdateiso8601) as $t | (day($t) - day(now)) as $d
+    (.[$f] | fromdateiso8601) as $t | (day($t) - day($ENV.VBW_NOW | fromdateiso8601)) as $d
     | (if $d == 0 then "" elif $d == 1 then "tomorrow " elif $d == -1 then "yesterday " else ($t | strflocaltime("%A ")) end) + ($t | strflocaltime("%H:%M"))' "$1"
 }
 

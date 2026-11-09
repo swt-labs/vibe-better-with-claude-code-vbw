@@ -8,7 +8,7 @@
 
 load helper
 
-@test "R247 docs: docs/record.md states the rule once, in Versioning: the table's ten rows, the floor, highest wins, below loads and is raised, above is corrupt, VBW_SCHEMA_MAX 14, no migration command; the key-order note and the schema, decisions and settings rows point to the table" {
+@test "R247 docs: docs/record.md states the rule once, in Versioning: the table's eleven rows, the floor, highest wins, below loads and is raised, above is corrupt, VBW_SCHEMA_MAX 15, no migration command; the key-order note and the schema, decisions and settings rows point to the table" {
   local doc="$REPO_ROOT/docs/record.md" section row
   section=$(awk '/^## Versioning/ { on = 1 } /^## Consent/ { on = 0 } on' "$doc")
   [ -n "$section" ] || { echo "no Versioning section before Consent"; false; }
@@ -20,12 +20,12 @@ load helper
   printf '%s\n' "$section" | grep -qE '^\|[^|]*test file forms[^|]*`test_files`[^|]*\| *10 *\|' || { echo "no table row for a list of test file forms -> 10"; false; }
   printf '%s\n' "$section" | grep -qE '^\|[^|]*`evidence\.own\.copy_slots`[^|]*\| *11 *\|' || { echo "no table row for a proof's copy_slots -> 11"; false; }
   printf '%s\n' "$section" | grep -qE '^\|[^|]*place[^|]*reworded[^|]*\| *12 *\|' || { echo "no table row for a break by place or a reworded requirement -> 12"; false; }
-  [ "$(printf '%s\n' "$section" | grep -cE '^\|[^|]*\| *([5-9]|1[0-4]) *\|')" -eq 10 ] || { echo "the table has more or fewer than ten rows"; false; }
+  [ "$(printf '%s\n' "$section" | grep -cE '^\|[^|]*\| *([5-9]|1[0-5]) *\|')" -eq 11 ] || { echo "the table has more or fewer than eleven rows"; false; }
   printf '%s\n' "$section" | grep -qiE 'floor' || { echo "the floor (4) is not named"; false; }
   printf '%s\n' "$section" | grep -qiE 'highest' || { echo "highest feature wins is not stated"; false; }
   printf '%s\n' "$section" | grep -qiE 'below[^.]*(load|read)[^.]*rais' || { echo "a record below its content loading and being raised is not stated"; false; }
   printf '%s\n' "$section" | grep -qiE 'above[^.]*corrupt' || { echo "a record above its content being corrupt is not stated"; false; }
-  printf '%s\n' "$section" | grep -q '`VBW_SCHEMA_MAX`, currently 14' || { echo "VBW_SCHEMA_MAX, currently 14 is not stated"; false; }
+  printf '%s\n' "$section" | grep -q '`VBW_SCHEMA_MAX`, currently 15' || { echo "VBW_SCHEMA_MAX, currently 15 is not stated"; false; }
   printf '%s\n' "$section" | grep -qi 'no migration command' || { echo "the docs no longer say there is no migration command"; false; }
   # The field rows point to the table instead of restating numbers.
   row=$(grep -E '^\| `schema` \|' "$doc")
@@ -71,9 +71,31 @@ load helper
   grep -E '^\| *`plans\[\]`' "$doc" | grep -qi 'digest' || { echo "the plans row does not describe the digests"; false; }
 }
 
-@test "R264 docs: docs/record.md's Versioning table has a row 14 for a none entry marked git, the table's top" {
+@test "R264 docs: docs/record.md's Versioning table has a row 14 for a none entry marked git" {
   local doc="$REPO_ROOT/docs/record.md" section
   section=$(awk '/^## Versioning/ {p=1} p' "$doc")
   printf '%s\n' "$section" | grep -qE '^\|[^|]*git[^|]*\| *14 *\|' || { echo "no table row for a git-marked none entry -> 14"; false; }
-  printf '%s\n' "$section" | grep -q 'currently 14' || { echo "VBW_SCHEMA_MAX, currently 14 is not stated"; false; }
+}
+
+# R286 (D685): docs/record.md gives a break's digests as a list of {file, sha256}, says why
+# (a secret scanner's keyword rule never meets a path and a digest on one line), has the
+# table's row 15 and says an older VBW must be updated to read it; R287: docs/next.md
+# describes the step a failed record commit stops at, with the three ways on and never
+# skipping the project's hooks.
+@test "R286 docs: docs/record.md's plans row gives the digests as a list of {file, sha256} kept off the path's line for secret scanners, the Versioning table has row 15, and an older VBW must update" {
+  local doc="$REPO_ROOT/docs/record.md" section
+  section=$(awk '/^## Versioning/ { on = 1 } /^## Consent/ { on = 0 } on' "$doc")
+  printf '%s\n' "$section" | grep -qE '^\|[^|]*digest[^|]*list[^|]*red-first[^|]*\| *15 *\|' || { echo "no table row for a list of digests or red-first runs -> 15"; false; }
+  printf '%s\n' "$section" | grep -qiE 'older VBW[^.]*(update|newer)|(update|newer)[^.]*older VBW' || { echo "Versioning does not say an older VBW must be updated"; false; }
+  grep -E '^\| *`plans\[\]`' "$doc" | grep -qF '{file, sha256}' || { echo "the plans row does not give the digests as {file, sha256}"; false; }
+  grep -qiE 'secret scanner' "$doc" || { echo "docs/record.md does not say why the digests are kept off the path's line"; false; }
+}
+
+@test "R287 docs: docs/next.md describes the step a failed record commit stops at, the hook's message, the three ways on, and that VBW never skips the project's hooks" {
+  local doc="$REPO_ROOT/docs/next.md"
+  grep -qE '`commit`' "$doc" || { echo "docs/next.md names no commit step"; false; }
+  grep -qiE 'pre-commit hook' "$doc" || { echo "docs/next.md does not name the project's pre-commit hook"; false; }
+  grep -qiE 'allow it in the checker' "$doc" || { echo "docs/next.md does not give the checker's settings way"; false; }
+  grep -qiE 'commit the VBW files yourself' "$doc" || { echo "docs/next.md does not give the commit-yourself way"; false; }
+  grep -qF -- '--no-verify' "$doc" || { echo "docs/next.md does not say VBW never passes --no-verify"; false; }
 }
