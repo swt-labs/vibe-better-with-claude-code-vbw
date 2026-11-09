@@ -197,7 +197,7 @@ testfiles_save() {
     [$r[0] | keys[] as $p | .[$p] as $x
      | select($x.status != "skipped" and $x.status != "waiting")
      | {key: ("file:" + $p), value: {fp: ($f[0]["file:" + $p] // ""), tree: $tree, status: $x.status, at: $at, seconds: $x.seconds, tail: ($x.tail // ""),
-         reads: (if $x.reads == null then null else ($x.reads + [$p] | unique) end), dirs: ($x.dirs // []), git: ($x.git // false)}}]
+         reads: (if $x.reads == null then null else ($x.reads + [$p] | unique) end), kernel_reads: ($x.kernel_reads // []), dirs: ($x.dirs // []), git: ($x.git // false)}}]
     | from_entries')
   proofreuse_merge "$new"
 }
@@ -214,7 +214,7 @@ testfiles_finish() {
   else order=$(printf '%s\0' "${TF_PATHS[@]}" | jq -Rsc 'split("\u0000")[:-1]'); fi
   proofreuse_join "$order" "$TF_REUSE" "$out" \
     | jq -c --slurpfile x <(printf '%s' "$TF_INDEX") --slurpfile r <(printf '%s' "$1") "$VBW_JQ_DEFS"'($r[0] | tf_forms) as $fs
-      | with_entries(.key as $p | .value |= (del(.reads, .dirs, .git, .id) | if .reused and .status == "pass" then .exit = 0 else . end
+      | with_entries(.key as $p | .value |= (del(.reads, .kernel_reads, .dirs, .git, .id) | if .reused and .status == "pass" then .exit = 0 else . end
           | ($fs[$x[0].map[$p] // 0].name) as $n | if $n == null then . else . + {form: $n} end))'
 }
 

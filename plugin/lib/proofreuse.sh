@@ -434,7 +434,7 @@ PROOFREUSE_RULE_JQ='def parent: if test("/") then sub("/[^/]*$"; "") else "." en
                   | ($e.kernel_reads // [] | map({key: ., value: true}) | from_entries) as $kern
                   | (([$ch[] | select($reads[.p] or $kern[.p])
                         | if .s == "D" then "\(.p) deleted"
-                          elif $kern[.p] and $vos[($e.tree | tostring) + "|" + .p] == true then (if $reads[.p] then "reads the version: \(.p)" else empty end)
+                          elif $vos[($e.tree | tostring) + "|" + .p] == true then (if $reads[.p] then "reads the version: \(.p)" else empty end)
                           else "\(.p) changed" end]
                       + [$ch[] | select(.s == "A" or .s == "D") | (.p | parent) as $d | select($plain | index($d)) | "\($d) listing changed"]
                       + [$ch[] | select(.s == "A" or .s == "D") | select(.p as $p | any($tie[]; . == "*" or covers($p)))
@@ -490,8 +490,8 @@ proofreuse_judge() {
   : > "$dir/vo"
   if [ "$diffs" != "{}" ]; then
     jq -nj --slurpfile st <(printf "%s" "${PROOFREUSE_STORE-}") --slurpfile df <(printf "%s" "$diffs") '
-      [$st[0].runs[]? | select(type == "object" and (.kernel_reads | type) == "array" and (.tree | type) == "string")
-       | .tree as $t | .kernel_reads[] as $p | select(any(($df[0][$t] // [])[]; .s == "M" and .p == $p)) | [$t, $p]]
+      [$st[0].runs[]? | select(type == "object" and (.tree | type) == "string")
+       | .tree as $t | ((.kernel_reads // []) + (.reads // []))[] as $p | select(any(($df[0][$t] // [])[]; .s == "M" and .p == $p)) | [$t, $p]]
       | unique[] | .[0], "\u0000", .[1], "\u0000"' | while IFS= read -r -d "" vt && IFS= read -r -d "" vp; do
       va=$(git -C "$VBW_ROOT" show "$vt:$vp" 2> /dev/null | jq -S -c "del(.version)" 2> /dev/null) || continue
       vb=$(git -C "$VBW_ROOT" show "$2:$vp" 2> /dev/null | jq -S -c "del(.version)" 2> /dev/null) || continue
