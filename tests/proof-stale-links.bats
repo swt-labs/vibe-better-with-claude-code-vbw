@@ -109,7 +109,7 @@ snap() {
 
 @test "R93: the scan runs when the proof stops early with an error, and a failing proof still fails the same way" {
   plant
-  printf 'grep -qx paid src/pay.txt\n# edited\n' > tests/pay.sh
+  printf 'grep -q -x paid src/pay.txt\n# edited\n' > tests/pay.sh
   vbw_run prove
   [ "$status" -ne 0 ]
   [[ "$output" == *"waiting for approval"* ]]

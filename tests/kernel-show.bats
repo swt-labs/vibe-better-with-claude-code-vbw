@@ -206,7 +206,7 @@ show_project() {
   snapshot
   set_results '.project |= del(.results)'
   vbw_run show contract
-  [[ "$output" != *"saved test results folders"* ]]
+  if printf '%s\n' "$output" | grep -q "^saved test results folders"; then echo "$output"; false; fi
   vbw_run show contract --changes
   [[ "$output" == *"saved test results folders: none (was results/, reports/)"* ]]
 }

@@ -118,9 +118,12 @@ if [ -f "$root/.vbw/record.json" ]; then
   next=$(printf '%s\n' "$next" | head -n 1)
   state=$next
   if [ "$newer" -eq 4 ]; then
-    # Written by a newer VBW: nothing works until VBW is updated (exit 4).
-    context="${context}VBW project made by a newer VBW (${state#vbw: }). Tell the user once: update VBW with /vbw:update, then restart Claude Code; VBW cannot work on this project until then."
-    notice="${notice:+$notice }This project was made by a newer VBW. Update with /vbw:update, then restart Claude Code."
+    # Written by a newer VBW: nothing works until VBW is updated (exit 4). The kernel's own
+    # line names both versions and the fix; the hook adds no wording of its own (R272).
+    line=${state#vbw: }
+    context="${context}${line}. Tell the user once; VBW cannot work on this project until then."
+    notice="${notice:+$notice }$line"
+    case $line in *"/vbw:update"*) ;; *) notice="$notice (/vbw:update)" ;; esac
   else
     # VBW's status line set by an older VBW (an old command or no refresh interval): update it
     # (only VBW's own line; `on` keeps every other setting).

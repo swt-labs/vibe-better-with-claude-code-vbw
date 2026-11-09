@@ -16,12 +16,14 @@
 # (the panel's words, D425). $t is the moment, in epoch seconds.
 # step_clock($iso; $t): the local 24-hour time of a UTC time; "tomorrow HH:MM",
 # "yesterday HH:MM" or the weekday when it is not today.
-# step_words($s; $t): a note's time: 'about 12 min, until around 14:20',
-# 'less than a minute, ...', 'until around 14:35, later than usual' (with parts),
-# 'until around 14:20, 6 min late' (without), or 'no end time yet (...)'.
+# step_words($s; $t): a note's time: 'about 12 min, until around 14:20' (a well-founded
+# estimate), 'roughly 15 to 21 min, until around 14:20 to 14:26 (rough guess from 2 runs)'
+# (a rough one, R270: $s carries end_low, end_high, rough and runs; one figure when the
+# ends agree), 'less than a minute, ...', 'until around 14:35, later than usual' (with
+# parts), 'until around 14:20, 6 min late' (without), or 'no end time yet (...)'.
 # step_label($kind; $ids; $n): what a step is: 'Building P1.1, P1.2 and P1.3'.
 # step_say($s; $t): the sentence VBW says before a step starts; $s has kind,
-# ids, parts (a number or {done, total}), end, late and, for a proof, why ({reason,
+# ids, parts (a number or {done, total}), end, end_low, end_high, rough, runs, late and, for a proof, why ({reason,
 # count}: the reason most of its units run again).
 # step_sentence($s; $t): what a running step is doing, its progress and its time.
 # shellcheck disable=SC2016,SC2034
@@ -34,15 +36,24 @@ def step_clock($iso; $t):
     elif $d == 1 then "tomorrow \($hm)"
     elif $d == -1 then "yesterday \($hm)"
     else "\($e | localtime | strftime("%A")) \($hm)" end;
+def step_mins($sec): [1, ($sec / 60 | round)] | max;
 def step_words($s; $t):
   if $s.end == null then "no end time yet (VBW has timed fewer than 3 steps like this here)"
   else (($s.end | fromdateiso8601) - $t) as $left
     | "until around \(step_clock($s.end; $t))" as $at
+    | (($s.rough == true) and $s.end_low != null and $s.end_high != null) as $rg
+    | (if $rg then " (rough guess from \($s.runs // 0) \(if ($s.runs // 0) == 1 then "run" else "runs" end))" else "" end) as $tag
     | (($s.parts // null) != null) as $hp
-    | if $hp and ($s.late == true or $left <= 0) then "\($at), later than usual"
-      elif ($hp | not) and $left <= -60 then "\($at), \(-$left / 60 | floor) min late"
-      elif $left < 60 then (if $left > 0 then "less than a minute, \($at)" else $at end)
-      else "about \([1, ($left / 60 | round)] | max) min, \($at)" end end;
+    | if $hp and ($s.late == true or $left <= 0) then "\($at), later than usual\($tag)"
+      elif ($hp | not) and $left <= -60 then "\($at), \(-$left / 60 | floor) min late\($tag)"
+      elif $left < 60 then (if $left > 0 then "less than a minute, \($at)" else $at end) + $tag
+      elif $rg then
+        ([($s.end_low | fromdateiso8601), ($s.end | fromdateiso8601)] | min) as $lo
+        | ([($s.end_high | fromdateiso8601), ($s.end | fromdateiso8601)] | max) as $hi
+        | step_mins($lo - $t) as $lm | step_mins($hi - $t) as $hm
+        | if $lm == $hm then "roughly \($lm) min, \($at)\($tag)"
+          else "roughly \($lm) to \($hm) min, until around \(step_clock(($lo | todateiso8601); $t)) to \(step_clock(($hi | todateiso8601); $t))\($tag)" end
+      else "about \(step_mins($left)) min, \($at)" end end;
 def step_and: if length < 2 then join("") else (.[:-1] | join(", ")) + " and " + .[-1] end;
 def step_label($k; $ids; $n):
   if $k == "build" then "Building \($ids | step_and)"
@@ -78,7 +89,7 @@ def step_sentence($s; $t):
 step_history_file() {
   local common
   common=$(git rev-parse --path-format=absolute --git-common-dir 2> /dev/null) || return 0
-  printf '%s/vbw/steps.json\n' "$common"
+  vbw_out '%s/vbw/steps.json\n' "$common"
 }
 
 step_note_file() {
@@ -91,15 +102,17 @@ step_kind_has_parts() {
   return 1
 }
 
-# step_expect KIND SIZE: the expected seconds of a step of KIND and SIZE, empty
-# when the history gives no basis. SIZE is JSON: build [{id, tier, tasks, breaks}]
+# step_estimate KIND SIZE: the estimate of a step of KIND and SIZE as one JSON object
+# {seconds, low, high, runs, rough} (lib/steps-expect.jq, R270), seconds and the ends
+# null with runs 0 when the history gives no basis; empty when the history cannot be read.
+# step_expect KIND SIZE: the estimate's seconds alone, empty without a basis. SIZE is JSON: build [{id, tier, tasks, breaks}]
 # (the wave's plans), fix {tier}, plan {reqs}, qa [{id, tier}], proof {units: [names]}
 # (a bare number for a proof counts that many unknown units). The ladders are
 # lib/steps-expect.jq's (R191). Each unit's last seconds come from run-times.json,
 # which the save writes beside the run store (lib/proofreuse.sh), never from the
 # store: it holds every read list and can reach hundreds of MB. A missing, damaged
 # or unreadable history or run times only means less to go on.
-step_expect() {
+step_estimate() {
   local file runs size out
   file=$(step_history_file)
   [ -n "$file" ] && [ -f "$file" ] || return 0
@@ -112,10 +125,14 @@ step_expect() {
     *) size=$(jq -nc --argjson n "$size" '{units: [range(0; $n) | "unit:\(.)"]}') ;;
   esac
   # A proof's size names every unit (Linux caps one argument at 128 KB): through a file.
-  out=$(jq -n -r --slurpfile h <(jq -c 'select(type == "object" and (.steps | type) == "array")' "$file" 2> /dev/null) \
+  out=$(jq -n -c --slurpfile h <(jq -c 'select(type == "object" and (.steps | type) == "array")' "$file" 2> /dev/null) \
     --slurpfile runs <(jq -c 'select(type == "object" and (.runs | type) == "object")' "$runs" 2> /dev/null) \
     --arg kind "$1" --slurpfile size <(printf '%s' "$size") -f "$VBW_LIB/steps-expect.jq" 2> /dev/null) || return 0
-  printf '%s\n' "$out"
+  vbw_out '%s\n' "$out"
+}
+
+step_expect() {
+  step_estimate "$@" | jq -r '.seconds // empty' 2> /dev/null || true
 }
 
 # step_record LEASE_JSON: add the run that just ended to the history, with its
@@ -282,7 +299,7 @@ step_road_status() {
 # step_start KIND IDS_JSON: write the note of the run that just started (the
 # open run of the record), after removing a note that is not live.
 step_start() {
-  local kind="$1" ids="$2" record lease parts=null doing expect first_end=null size
+  local kind="$1" ids="$2" record lease parts=null doing expect first_end=null size est
   record=$(record_read)
   lease=$(printf '%s' "$record" | jq -c '.lease // empty')
   [ -n "$lease" ] || return 0
@@ -302,11 +319,15 @@ step_start() {
     elif $k == "plan" then "planning"
     else "mapping the project" end')
   size=$(step_size "$record" "$kind" "$ids")
-  expect=$(step_expect "$kind" "$size")
+  est=$(step_estimate "$kind" "$size")
+  [ -n "$est" ] || est='{"seconds":null,"low":null,"high":null,"runs":0,"rough":false}'
+  expect=$(printf '%s' "$est" | jq -r '.seconds // empty')
   [ -z "$expect" ] || first_end=$(printf '%s' "$lease" | jq -r --argjson e "$expect" '(.started_at | fromdateiso8601) + $e | todateiso8601')
-  step_note_write "$(printf '%s' "$lease" | jq -c --arg k "$kind" --argjson ids "$ids" --argjson parts "$parts" --arg doing "$doing" --arg fe "$first_end" --argjson size "$size" '
+  step_note_write "$(printf '%s' "$lease" | jq -c --arg k "$kind" --argjson ids "$ids" --argjson parts "$parts" --arg doing "$doing" --arg fe "$first_end" --argjson size "$size" --argjson est "$est" '
+    def at($s): if $s == null then null else (.started_at | fromdateiso8601) + $s | todateiso8601 end;
     {kind: $k, run, session: (.session // null), pid: null, started_at, ids: $ids, doing: $doing, parts: $parts, proof: null,
-     first_end: (if $fe == "null" then null else $fe end), end: (if $fe == "null" then null else $fe end), late: false}
+     first_end: (if $fe == "null" then null else $fe end), end: (if $fe == "null" then null else $fe end),
+     end_low: at($est.low), end_high: at($est.high), rough: ($est.rough == true), runs: ($est.runs // 0), late: false}
     + (if $k == "build" then {units: [$size[]? | . + {seconds: null}]}
        elif $k == "fix" then {tier: ($size.tier // null)}
        elif $k == "plan" then {reqs: ($size.reqs // null)}
@@ -318,12 +339,14 @@ step_start() {
 # requirements plus one (the cost of a yes to a suggestion that adds a requirement,
 # R229): the size and the words come from the same code as step.say for a plan step.
 step_replan_say() {
-  local size seconds
+  local size est
   size=$(step_size "$1" plan '[]' | jq -c '.reqs += 1' 2> /dev/null) || size=
-  seconds=$(step_expect plan "$size")
-  jq -nr --arg s "$seconds" "$VBW_STEP_DEFS"'(now | floor) as $t
-    | (if $s == "" then null else ($s | tonumber) end) as $sec
-    | {kind: "plan", ids: [], parts: null, end: (if $sec == null then null else $t + $sec | todateiso8601 end), late: false}
+  est=$(step_estimate plan "$size")
+  [ -n "$est" ] || est=null
+  jq -nr --argjson e "$est" "$VBW_STEP_DEFS"'(now | floor) as $t
+    | def at($s): if $s == null then null else $t + $s | todateiso8601 end;
+    {kind: "plan", ids: [], parts: null, end: at($e.seconds), end_low: at($e.low), end_high: at($e.high),
+     rough: ($e.rough == true), runs: ($e.runs // 0), late: false}
     | step_say(.; $t)'
 }
 
@@ -407,7 +430,7 @@ step_proof_plan() {
     { mkdir -p "$VBW_RUNTIME" && printf '%s' "$plan" | jq -c --arg h "$head" --arg i "$idx" --arg r "$rec" --arg s "$store" --argjson f "${2:-0}" \
         '{head: $h, index: $i, record: $r, store: $s, full: $f, units: .units, top: .top}' > "$tmp" && mv -f "$tmp" "$cache"; } 2> /dev/null || rm -f "$tmp" 2> /dev/null || true
   fi
-  printf '%s\n' "$plan"
+  vbw_out '%s\n' "$plan"
 }
 
 # step_proof_units RECORD FULL: the names of the units a proof would run now, a
@@ -437,12 +460,12 @@ step_proof_units_plan() {
 }
 
 # step_next RECORD NEXT [FULL]: the step vbw next --json carries: {kind, ids, parts,
-# seconds, end, say} for an answer that runs a step (plan, build, fix, qa, a
+# seconds, low, high, runs, rough, end, end_low, end_high, say} for an answer that runs a step (plan, build, fix, qa, a
 # proof with units left to run), else null. A kind without parts has parts null.
 # RECORD may be vbw next's working record (lib/cmd-next.sh); the proof's reuse plan
 # reads FULL, the record itself, when it is given.
 step_next() {
-  local kind ids='[]' parts=null full units n seconds='' size=null plan why=null
+  local kind ids='[]' parts=null full units n est size=null plan why=null
   case "$(printf '%s' "$2" | jq -r .action)" in
     plan) kind=plan ;;
     build) kind=build ids=$(printf '%s' "$2" | jq -c .detail.plans) ;;
@@ -467,11 +490,13 @@ step_next() {
   if [ "$kind" != proof ]; then
     if [ -n "${NP_STEP_SIZE:-}" ]; then size=$NP_STEP_SIZE; else size=$(step_size "$1" "$kind" "$ids"); fi
   fi
-  seconds=$(step_expect "$kind" "$size")
-  jq -nc --arg k "$kind" --argjson ids "$ids" --argjson parts "$parts" --arg s "$seconds" --argjson why "$why" "$VBW_STEP_DEFS"'
+  est=$(step_estimate "$kind" "$size")
+  [ -n "$est" ] || est=null
+  jq -nc --arg k "$kind" --argjson ids "$ids" --argjson parts "$parts" --argjson e "$est" --argjson why "$why" "$VBW_STEP_DEFS"'
     (now | floor) as $t
-    | (if $s == "" then null else ($s | tonumber) end) as $sec
-    | {kind: $k, ids: $ids, parts: $parts, seconds: $sec, end: (if $sec == null then null else $t + $sec | todateiso8601 end)}
+    | def at($s): if $s == null then null else $t + $s | todateiso8601 end;
+    {kind: $k, ids: $ids, parts: $parts, seconds: $e.seconds, low: $e.low, high: $e.high, runs: ($e.runs // 0),
+     rough: ($e.rough == true), end: at($e.seconds), end_low: at($e.low), end_high: at($e.high)}
     | (if $why != null then . + {why: $why} else . end)
     | . + {say: step_say(.; $t)}'
 }

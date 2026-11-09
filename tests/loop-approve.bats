@@ -107,7 +107,7 @@ consent() { cat "$(git rev-parse --path-format=absolute --git-common-dir)/vbw/co
   local n
   loop_build P2
   n=$(jq '.decisions | length' .vbw/record.json)
-  printf '# edited after the approval\n' >> tests/greet.sh
+  printf 'grep -q -x hello src/greet.txt\n' > tests/greet.sh
   git commit -q -am "test: the check file edited after the approval"
   VBW_SESSION_ID=s1 "$VBW" next --json < /dev/null | jq -e '.action == "approve" and (.detail.files | length) > 0' || { VBW_SESSION_ID=s1 "$VBW" next --json < /dev/null; false; }
   run loop_next s1

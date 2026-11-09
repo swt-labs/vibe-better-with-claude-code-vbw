@@ -26,8 +26,9 @@
    + [$r.plans[] | select(.phase | IN($ids[])) | .id as $p | (.after // [])[] | select($owner[.] == null) | "plan \($p) comes after \(.), which does not exist"]) as $missing
 | ([$r.plans[] | select(.phase | IN($ids[])) | .phase as $ph | (.after // [])[] | $owner[.] | select(. != null and . != $ph and IN($ids[])) | {from: $ph, to: .}]) as $edges
 | ([$ids[] | . as $i | {key: $i, value: ([$edges[] | select(.from == $i) | .to] | unique)}] | from_entries) as $direct
-# Transitive closure by repeated expansion: terminates on cycles.
-| (reduce range(0; $ids | length) as $_ ($direct; . as $c | with_entries(.value |= (. + [.[] | $c[.][]] | unique)))) as $full
+# Transitive closure by one walk per node over the direct links, a visited set stopping on loops.
+| (def reach($g; $s): {seen: {}, todo: ($g[$s] // [])} | until(.todo | length == 0; .todo[-1] as $n | .todo |= .[:-1] | if .seen[$n] then . else .seen[$n] = true | .todo += ($g[$n] // []) end) | .seen | keys;
+   [$ids[] | {key: ., value: reach($direct; .)}] | from_entries) as $full
 # Phases on such a loop interleave: a plan of each comes after a plan of the other. That
 # is a note, not a problem, and the closure still lets each be checked again for the
 # other's tests. Only a loop among the plans themselves is a problem (the record refuses
@@ -37,8 +38,8 @@
 | (if ($interleaved | length) == 0 then [] else
     ([$r.plans[] | select(.phase | IN($interleaved[])) | .id]) as $pids
     | ([$r.plans[] | select(.id | IN($pids[])) | {key: .id, value: ([(.after // [])[] | select(IN($pids[]))] | unique)}] | from_entries) as $pd
-    | (reduce range(0; $pids | length) as $_ ($pd; . as $c | with_entries(.value |= (. + [.[] | $c[.][]] | unique)))) as $pf
-    | [$pids[] | select(. as $i | $pf[$i] | index($i))]
+    | (def reach($g; $s): {seen: {}, todo: ($g[$s] // [])} | until(.todo | length == 0; .todo[-1] as $n | .todo |= .[:-1] | if .seen[$n] then . else .seen[$n] = true | .todo += ($g[$n] // []) end) | .seen | keys;
+       [$pids[] | select(. as $i | reach($pd; $i) | index($i))])
   end) as $loop
 | ($missing + (if ($loop | length) > 0 then ["plans \($loop | join(", ")) come after each other (a cycle)"] else [] end)) as $problems
 | ([$r.phases[] | select(.id | IN($ids[]))

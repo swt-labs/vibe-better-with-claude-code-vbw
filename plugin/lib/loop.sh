@@ -42,7 +42,7 @@ loop_figures_now() {
     figs=$(costs_figures "$sid")
     [ "$figs" = null ] || base=$(printf '%s' "$base" | jq -c --arg s "$sid" --arg at "$(vbw_now)" --argjson f "$figs" '.[$s] = $f + {at: $at}')
   done < <(costs_sessions)
-  printf '%s\n' "$base"
+  vbw_out '%s\n' "$base"
 }
 
 # loop_spend FILE [ITEM]: FILE is the record's path (never its data: jq reads it). The spend as
@@ -60,7 +60,7 @@ loop_spend() {
   out=$(costs_milestone_total "$tmp" loop)
   vbw_guard_drop "$tmp"
   rm -f "$tmp"
-  printf '%s\n' "$out"
+  vbw_out '%s\n' "$out"
 }
 
 # loop_word RECORD SPEND_JSON: under, reached or cannot tell (no figure seen: it counts as reached

@@ -64,12 +64,8 @@ junk() {
 }
 
 @test "T174: a wave the history cannot time leaves the road with no end and the reason, never no road" {
-  # Two readable plans (fewer than 3) and only junk besides: no wave has a basis.
-  hist_build standard 1 100 2
-  hist_qa deep 200 3
-  hist_qa standard 100 3
-  hist_fix deep 300 3
-  hist_proof '[{"name": "check:C1", "seconds": 50}, {"name": "check:C2", "seconds": 50}]' 100 3
+  # No readable run at all, only junk: no wave has a basis (one or two readable runs give a rough range, R270).
+  mkdir -p "$(dirname "$STEPS")" && printf '{"steps": []}\n' > "$STEPS"
   junk
   local r
   r=$(road_of)

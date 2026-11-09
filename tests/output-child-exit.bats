@@ -332,3 +332,121 @@ done < <(find . -print0)"; do
   ! grep -Eq 'mapfile|readarray|declare -A|local -A' "$tool" || { echo "the tool uses a bash 4 feature"; false; }
   /bin/bash -n "$tool"
 }
+
+# R274: a kernel function that captures large text (a command substitution) and
+# hands it out through a builtin printf or echo as its last command writes while
+# the substitution's child may still be exiting: macOS bash 3.2 does not restart
+# that write (spec_parse, cmd-spec.sh, lost the parsed spec). The rule
+# tools/check-captured-writes.sh refuses such an ending in plugin/lib unless the
+# write goes through vbw_out, with an allow-list by function name, each with its
+# reason (--allowed lists them); tests/standards.bats runs it.
+
+captured() { bash "$REPO_ROOT/tools/check-captured-writes.sh" "$@"; }
+
+@test "R274: no function in plugin/lib ends by handing captured text out through a builtin printf or echo, unless allow-listed with a reason" {
+  run captured "$PLUGIN_ROOT/lib"
+  [ "$status" -eq 0 ] || { echo "$output"; false; }
+}
+
+@test "R274: spec_parse hands the parsed spec out through vbw_out" {
+  local body
+  body=$(sed -n '/^spec_parse() {/,/^}/p' "$PLUGIN_ROOT/lib/cmd-spec.sh")
+  [ -n "$body" ] || { echo "no spec_parse in cmd-spec.sh"; false; }
+  ! grep -q "printf '%s\\\\n' \"\$parsed\"" <<< "$body" || { echo "spec_parse still writes with a builtin printf"; false; }
+  grep -q 'vbw_out' <<< "$body" || { echo "spec_parse does not write through vbw_out"; false; }
+}
+
+@test "self-test: the captured-write rule refuses a function ending in a builtin printf or echo of text captured in that function, naming the line" {
+  local case line
+  for case in \
+    "6:road_compute() {
+  out=\$(jq -n -c '{a: 1}')
+  printf '%s\n' \"\${out:-null}\"
+}" \
+    "6:road_plain() {
+  out=\$(jq -c . \"\$1\")
+  echo \"\${out-}\"
+}" \
+    "6:road_set() {
+  out=\$(jq -c . \"\$1\")
+  printf '%s' \"\${out:=}\"
+}" \
+    "7:spec_parse() {
+  local parsed
+  parsed=\$(jq -Rs -f \"\$VBW_LIB/spec.jq\" \"\$1\")
+  printf '%s\n' \"\$parsed\"
+}" \
+    "6:loop_spend() {
+  out=\$(jq -c '.spend' \"\$1\")
+  echo \"\$out\"
+}" \
+    "9:qa_digests() {
+  local out='{}'
+  while read -r id; do
+    out=\$(printf '%s' \"\$out\" | jq -c --arg id \"\$id\" '. + {(\$id): 1}')
+  done < <(jq -r '.[]' \"\$1\")
+  printf '%s\n' \"\$out\"
+}" \
+    "8:step_expect() {
+  local out
+  [ -f \"\$1\" ] || return 0
+  out=\$(jq -n -r -f \"\$1\" 2> /dev/null) || return 0
+  printf '%s' \"\$out\"
+}"; do
+    line=${case%%:*}
+    run captured "$(planted "${case#*:}")"
+    [ "$status" -ne 0 ] || { echo "not caught: ${case#*:}"; false; }
+    [[ "$output" == *"cmd-plant.sh:$line:"* ]] || { echo "not named at line $line: ${case#*:}"; echo "$output"; false; }
+  done
+}
+
+@test "self-test: the captured-write rule passes vbw_out, a literal or an argument, a write into a pipe or a file, and a function that ends otherwise" {
+  local code
+  for code in \
+    "flag() {
+  out=\$(jq -c . \"\$1\")
+  printf '%s\n' \"\${out:+set}\"
+}" \
+    "spec_parse() {
+  local parsed
+  parsed=\$(jq -Rs -f \"\$VBW_LIB/spec.jq\" \"\$1\")
+  vbw_out '%s\n' \"\$parsed\"
+}" \
+    "say() {
+  printf '%s\n' \"\$1\"
+}
+word() { local w=paid; printf '%s\n' \"\$w\"; }
+hello() { echo \"hello \$1\"; }" \
+    "piped() {
+  out=\$(jq -c . \"\$1\")
+  printf '%s\n' \"\$out\" | cat
+}
+filed() {
+  out=\$(jq -c . \"\$1\")
+  printf '%s\n' \"\$out\" > \"\$2\"
+}
+errd() {
+  out=\$(jq -c . \"\$1\")
+  printf '%s\n' \"\$out\" >&2
+}" \
+    "middle() {
+  out=\$(jq -c . \"\$1\")
+  printf '%s\n' \"\$out\"
+  jq -e . \"\$1\" > /dev/null
+}"; do
+    run captured "$(planted "$code")"
+    [ "$status" -eq 0 ] || { echo "refused: $code"; echo "$output"; false; }
+  done
+}
+
+@test "R274: --allowed lists each allow-listed function with its reason, and each one is a function of plugin/lib" {
+  run captured --allowed
+  [ "$status" -eq 0 ] || { echo "$output"; false; }
+  local l name
+  while IFS= read -r l; do
+    [ -n "$l" ] || continue
+    [[ "$l" =~ ^[a-z_][a-z0-9_]*:\ .+$ ]] || { echo "not 'name: reason': $l"; false; }
+    name=${l%%:*}
+    grep -qE "^$name\(\) \{" "$PLUGIN_ROOT"/lib/*.sh || { echo "allow-listed but no such function in plugin/lib: $name"; false; }
+  done <<< "$output"
+}

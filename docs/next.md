@@ -165,9 +165,18 @@ checks left to run), `vbw next --json` carries `step`; otherwise `step` is
 `parts` is the number of plans, fixes or checks (a proof counts the checks left
 after reused results); it is `null` for planning and QA. `seconds` and `end` come
 from this clone's step history (see [Time left](panel.md#time-left)). `say` is
-the sentence the router says as given before the step starts. With fewer than 3
-finished steps of the kind, `seconds` and `end` are `null` and `say` reads
-`Building P1.1, P1.2 and P1.3: no end time yet (VBW has timed fewer than 3 steps like this here)`.
+the sentence the router says as given before the step starts. With no
+finished step of the kind, `seconds` and `end` are `null` and `say` reads
+`Building P1.1, P1.2 and P1.3: no end time yet`.
+
+An estimate from little or widely spread history is a range. The step carries
+`low` and `high` (seconds), `end_low` and `end_high` (clock times), `rough`
+(`true` when fewer than 5 kept runs back it, or `high` is above 1.5 times `low`)
+and `runs` (the run count), beside `seconds` and `end`. `say` then reads
+`Building P1.1 and P1.2: roughly 8 to 14 min, until around 14:12 to 14:18 (rough guess from 2 runs)`
+(`roughly 12 min, until around 14:20 (rough guess from 2 runs)` when low and
+high agree). With 5 or more runs that agree, `rough` is `false` and `say` keeps
+the single figure.
 
 A proof's step also carries `why`, the reason most of its units run again as
 `{"reason": "plugin/lib/core.sh changed", "count": 41}` (absent when no unit
@@ -202,11 +211,18 @@ left (the milestone shipped).
  "say": "Milestone end: about 36 min, until around 14:56, counting 2 fix rounds per standard phase (the usual here)"}
 ```
 
+- `low`, `high`, `end_low`, `end_high`, `rough` and `runs`: as on the step. The
+  road is rough when any part is rough, or when a tier's usual fix rounds rest
+  on fewer than 3 finished phases (counted as none), and then reads `Milestone
+  end: roughly 30 to 50 min, until around 14:50 to 15:10 (rough guess), counting
+  2 fix rounds per standard phase (the usual here)`; it is the single figure
+  when every part is tight and every tier's usual fix rounds are known.
 - `seconds` and `end`: the time still ahead and the clock time it ends. Both
   are `null` when any needed piece has no basis; a made-up time never appears.
 - `rounds`: the usual fix rounds per tier, the rounded median of
   `outcome.fix_rounds` over the latest 10 finished phases of the tier (a tier
-  with fewer than 3 finished phases counts 0).
+  with fewer than 3 finished phases counts 0, and the end is then a rough
+  guess).
 - `basis`: what the time adds up, or the first kind with no basis.
 - `road.say`: the sentence, said as given together with `step.say` before a
   step starts. Before planning it reads `Milestone end: planning about 2 min,

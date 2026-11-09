@@ -23,7 +23,9 @@
 #   that is no commit id standing for HEAD) it is the project's own and runs unread (two git
 #   calls: ls-files --error-unmatch, then diff --quiet); a folder is no script; any other is
 #   read by one pass of guard-read.jq in the hook's own project (--rawfile script), or, with
-#   no readable file at the path, refused as unreadable (--arg missing 1). The git lookup and
+#   no readable file at the path, refused as unreadable (--arg missing 1); a file above 512 KB
+#   is refused by its size before any read, in one line naming it, its KB and what to do
+#   (R273: the read costs in step with the size, and a huge script is not worth it). The git lookup and
 #   the read happen on this path only. The hook command's variables p (project), s (session
 #   folder), r (record), g (glance) and o (run open) are the guard's own.
 # Prints only the answer. The whole reader is parameter expansion, tests, read and printf.
@@ -116,6 +118,19 @@ while [ -n "$vbw_rest" ]; do
     if git -C "${p:-.}" ls-files -z --error-unmatch -- "$vbw_abs" > /dev/null 2>&1 \
       && git -C "${p:-.}" diff --quiet "$vbw_start" -- "$vbw_abs" > /dev/null 2>&1; then
       continue
+    fi
+  fi
+  # A script above 512 KB is refused by its size before any read (R273): the answer is one line.
+  if [ "$vbw_mode" != text ] && [ -f "$vbw_abs" ] && [ -r "$vbw_abs" ]; then
+    vbw_sz=$(wc -c < "$vbw_abs") || vbw_sz=0
+    if [ $((vbw_sz + 0)) -gt 524288 ]; then
+      # Only a script committed and unchanged since the run's start ran unread above; this one is refused.
+      jq -nc --arg file "$vbw_wr" --arg kb "$(( (vbw_sz + 0) / 1024 ))" \
+        '"\($file) (\($kb) KB) is too large to read before it runs\nNext: run it in smaller parts, each under 512 KB" as $m
+         | {hookSpecificOutput: {hookEventName: "PreToolUse", permissionDecision: "deny", permissionDecisionReason: ("VBW guard: " + $m)},
+            systemMessage: ("VBW guard blocked this call: " + ($m | split("\n")[0]))}' && exit 0
+      echo "VBW guard: $vbw_wr is too large to read before it runs. Next: run it in smaller parts, each under 512 KB" >&2
+      exit 4
     fi
   fi
   set -- --arg interp "$vbw_int" --arg written "$vbw_wr" --arg abs "$vbw_abs" --arg cwd "$vbw_cwd" --arg mode "$vbw_mode"

@@ -8,7 +8,7 @@
 interview_private_file() {
   local common
   common=$(git -C "$VBW_ROOT" rev-parse --path-format=absolute --git-common-dir 2> /dev/null) || vbw_die "not a git repository"
-  printf '%s/vbw/profile.json\n' "$common"
+  vbw_out '%s/vbw/profile.json\n' "$common"
 }
 
 # interview_private_update FILTER [jq options]: atomic, locked change of the

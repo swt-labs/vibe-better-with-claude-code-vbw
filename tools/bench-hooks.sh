@@ -48,6 +48,16 @@
 # measures one fixed workload (a jq call of the guard's shape over a program and a document written by the bench, run through sh -c as the
 # hooks are, RUNS calls) on this machine in this run, and prints once
 # 'reference: <X> ms CPU per call; nominal <N> ms (...); ratio <R>', R = measured / nominal.
+# The reference is measured beside each case (R275): every case is measured together with the
+# reference, the two interleaved call by call, and is judged against the ratio of its own
+# moment, so a runner busy for a while never fails the case that ran then, and a case slow
+# while its own reference is nominal still fails. After its verdict line a case prints
+# 'LABEL: reference beside it <X> ms CPU per call; ratio <R>; scaled budget <B> ms'. A case
+# over its budget is measured again, the case and the reference beside it both anew, and the
+# second pair judges it. The header line above is the machine's state at the start, printed once.
+# VBW_BENCH_TIMES=FILE (tests) injects measures: lines 'LABEL<TAB>BASELINE_MS<TAB>TOTAL_MS'
+# consumed in order for each label (startup, reference, a case's label, 'reference beside
+# LABEL'), the last one repeating.
 # NOMINAL_MS is the workload's cost on the two nominal machines (an M1 Max Mac and
 # GitHub's macOS runner), the larger of the two so both sit at a ratio of 1 or less. It is
 # a debt: measure it again whenever the workload or the nominal machines change.
@@ -211,26 +221,80 @@ reference_files "$work/reference"
 printf '{"schema": 4}' > "$work/glance.json"
 printf '{}' > "$work/end.json"
 
-# cpu_pair INPUT BASELINE HOOK: the mean CPU time in ms of RUNS runs of each
-# `sh -c` command, "BASELINE HOOK", alternating call by call so both see the
-# same machine. The children's user and system time comes from bash's `times`
-# (millisecond resolution), written to a file to stay in this shell.
-cpu_pair() {
-  local i c log="$work/times.log"
+# cpu_means N: the mean CPU time in ms of RUNS runs of each of N `sh -c` commands, read from
+# the arguments after N as INPUT COMMAND pairs, alternating call by call so all see the same
+# machine. The children's user and system time comes from bash's `times` (millisecond
+# resolution), written to a file to stay in this shell. Prints the N means on one line.
+cpu_means() {
+  local n="$1" i c k log="$work/times.log"
+  shift
   : > "$log"
   for ((i = 0; i < RUNS; i++)); do
-    for c in "$2" "$3"; do
+    k=1
+    while [ "$k" -le "$#" ]; do
+      c="${*:$((k + 1)):1}"
       times >> "$log"
-      sh -c "$c" < "$1" > /dev/null 2>&1 || true
+      sh -c "$c" < "${*:$k:1}" > /dev/null 2>&1 || true
       times >> "$log"
+      k=$((k + 2))
     done
   done
   # Each `times` prints the shell's line, then the children's cumulative line.
-  awk -v runs="$RUNS" '
+  awk -v runs="$RUNS" -v n="$n" '
     function sec(s) { sub(/s$/, "", s); split(s, p, "m"); return p[1] * 60 + p[2] }
-    NR % 2 == 0 { t[++n] = sec($1) + sec($2) }
-    END { for (k = 1; k + 1 <= n; k += 2) sum[int((k - 1) / 2) % 2] += t[k + 1] - t[k]
-          printf "%.1f %.1f\n", sum[0] * 1000 / runs, sum[1] * 1000 / runs }' "$log"
+    NR % 2 == 0 { t[++m] = sec($1) + sec($2) }
+    END { for (k = 1; k + 1 <= m; k += 2) sum[int((k - 1) / 2) % n] += t[k + 1] - t[k]
+          line = ""
+          for (k = 0; k < n; k++) line = line (k ? " " : "") sprintf("%.1f", sum[k] * 1000 / runs)
+          print line }' "$log"
+}
+
+# injected LABEL: the injected measure for LABEL (tests, VBW_BENCH_TIMES): the file's lines
+# 'LABEL<TAB>BASELINE_MS<TAB>TOTAL_MS' for the label are consumed in order, the last one
+# repeating. Prints 'BASELINE TOTAL'; fails when nothing is injected for the label.
+injected() {
+  local used n
+  [ -n "${VBW_BENCH_TIMES:-}" ] || return 1
+  n=$(awk -F'\t' -v l="$1" '$1 == l { c++ } END { print c + 0 }' "$VBW_BENCH_TIMES")
+  [ "$n" -gt 0 ] || return 1
+  printf '%s\n' "$1" >> "$work/times.used"
+  used=$(grep -cxF -- "$1" "$work/times.used")
+  [ "$used" -le "$n" ] || used="$n"
+  awk -F'\t' -v l="$1" -v u="$used" '$1 == l && ++c == u { print $2, $3 }' "$VBW_BENCH_TIMES"
+}
+
+# cpu_pair INPUT BASELINE HOOK [LABEL]: the mean CPU time in ms of RUNS runs of each
+# `sh -c` command, "BASELINE HOOK", alternating call by call. With a LABEL the measure
+# can be injected (VBW_BENCH_TIMES).
+cpu_pair() {
+  if [ -n "${4:-}" ] && injected "$4"; then return 0; fi
+  cpu_means 2 "$1" "$2" "$1" "$3"
+}
+
+# beside LABEL INPUT BASELINE HOOK (R275): measure a case together with the reference workload
+# beside it, the four commands interleaved call by call: the case's baseline and hook, then
+# the reference's startup and the reference. Sets shell and total (the case's, as cpu_pair's
+# two numbers), REFMS (the reference's CPU net of its startup), RATIO (REFMS over NOMINAL_MS)
+# and SLOW (1 when the ratio is above 1): the case is judged against the machine of its own
+# moment. VBW_BENCH_REFERENCE_MS stands in for REFMS (tests).
+beside() {
+  local rshell rtotal
+  if injected "$1" > "$work/beside.case"; then
+    read -r shell total < "$work/beside.case"
+    read -r rshell rtotal < <(injected "reference beside $1")
+  else
+    read -r shell total rshell rtotal < <(cpu_means 4 "$2" "$3" "$2" "$4" /dev/null "jq -n empty" /dev/null "$REF_CMD")
+  fi
+  REFMS=$(perl -e 'printf "%.1f", $ARGV[0] - $ARGV[1]' -- "$rtotal" "$rshell")
+  [ -z "${VBW_BENCH_REFERENCE_MS:-}" ] || REFMS="$VBW_BENCH_REFERENCE_MS"
+  RATIO=$(perl -e 'printf "%.2f", $ARGV[0] / $ARGV[1]' -- "$REFMS" "$NOMINAL_MS")
+  SLOW=0
+  if perl -e 'exit($ARGV[0] > 1 ? 0 : 1)' -- "$RATIO"; then SLOW=1; fi
+}
+
+# refline LABEL BUDGET: the line after a case's verdict, naming the reference beside it.
+refline() {
+  printf '%s: reference beside it %s ms CPU per call; ratio %s; scaled budget %s ms\n' "$1" "$REFMS" "$RATIO" "$(scaled "$2")"
 }
 
 # within COST BUDGET: whether a cost in ms is at or below a budget in ms.
@@ -266,7 +330,7 @@ verdict() {
 
 # Measure the platform's sh and jq startup first, before the test records are
 # built: above the hook limit, the machine is too busy to judge anything.
-read -r startup _ < <(cpu_pair /dev/null "jq -n empty" "jq -n empty")
+read -r startup _ < <(cpu_pair /dev/null "jq -n empty" "jq -n empty" startup)
 if perl -e 'exit($ARGV[0] > $ARGV[1] ? 0 : 1)' -- "$startup" "$BUDGET_MS"; then
   printf 'machine too busy to measure: sh and jq startup takes %s ms CPU per call, above the %s ms hook limit; nothing judged\n' "$startup" "$BUDGET_MS"
   exit 0
@@ -278,7 +342,8 @@ fi
 # CPU minus that of the sh -c jq startup beside it, as a guard case's own cost is (R233:
 # the startup is a few ms on a Mac and under one on Linux, so a reference that kept it
 # gave the guard 1.3 to 1.6 times the reference on Linux against 1.0 on macOS).
-read -r shell total < <(cpu_pair /dev/null "jq -n empty" "jq -nc --rawfile glance \"$work/glance.json\" --arg root \"$work\" --arg dir \"$work\" --arg open 0 -f \"$work/reference/reference.jq\" - \"$work/reference/reference.json\" \"$work/end.json\"")
+REF_CMD="jq -nc --rawfile glance \"$work/glance.json\" --arg root \"$work\" --arg dir \"$work\" --arg open 0 -f \"$work/reference/reference.jq\" - \"$work/reference/reference.json\" \"$work/end.json\""
+read -r shell total < <(cpu_pair /dev/null "jq -n empty" "$REF_CMD" reference)
 measured=$(perl -e 'printf "%.1f", $ARGV[0] - $ARGV[1]' -- "$total" "$shell")
 [ -z "${VBW_BENCH_REFERENCE_MS:-}" ] || measured="$VBW_BENCH_REFERENCE_MS"
 RATIO=$(perl -e 'printf "%.2f", $ARGV[0] / $ARGV[1]' -- "$measured" "$NOMINAL_MS")
@@ -554,16 +619,17 @@ guards() {
       jq -c --arg o "$work" --arg d "$dir" 'walk(if type == "string" and startswith($o) then $d + .[($o | length):] else . end)' \
         "$work/$input.json" > "$file"
     fi
-    read -r shell total < <(cpu_pair "$file" "$baseline" "$hook")
+    beside "guard ($input$label)" "$file" "$baseline" "$hook"
     own=$(perl -e 'printf "%.1f", $ARGV[0] - $ARGV[1]' -- "$total" "$shell")
     if over "$own" "$budget"; then
       again "guard ($input$label)" "$own ms own CPU per call (sh and jq startup $shell ms)" "$budget"
-      read -r shell total < <(cpu_pair "$file" "$baseline" "$hook")
+      beside "guard ($input$label)" "$file" "$baseline" "$hook"
       own=$(perl -e 'printf "%.1f", $ARGV[0] - $ARGV[1]' -- "$total" "$shell")
     fi
     line=$(printf 'guard (%s%s): %s ms own CPU per call (sh and jq startup %s ms); budget %s ms' \
       "$input" "$label" "$own" "$shell" "$budget")
     verdict "$line" "$own" "$budget"
+    refline "guard ($input$label)" "$budget"
   done
 }
 
@@ -608,10 +674,10 @@ statusline() {
     esac
   fi
   cmd="CLAUDE_CONFIG_DIR='$cfg' NO_COLOR=1 bash '$PLUGIN/scripts/vbw-statusline.sh'"
-  read -r _ total < <(cpu_pair "$work/statusline.json" true "$cmd")
+  beside "status line$label" "$work/statusline.json" true "$cmd"
   if over "$total" "$STATUS_MS"; then
     again "status line$label" "$total ms CPU per call" "$STATUS_MS"
-    read -r _ total < <(cpu_pair "$work/statusline.json" true "$cmd")
+    beside "status line$label" "$work/statusline.json" true "$cmd"
   fi
   if ! jq -e '.session == "bench" and .usd == 1.25' "$dir/.vbw/runtime/cost.bench.json" > /dev/null 2>&1; then
     printf 'status line%s: the cost side file was not written, so the measure left the write out\n' "$label" >&2
@@ -621,6 +687,7 @@ statusline() {
   rm -rf "$cfg"
   line=$(printf 'status line%s: %s ms CPU per call; budget %s ms' "$label" "$total" "$STATUS_MS")
   verdict "$line" "$total" "$STATUS_MS"
+  refline "status line$label" "$STATUS_MS"
 }
 
 # handback: the setting of `vbw statusline on` in a project that turns VBW off.
@@ -650,15 +717,16 @@ handback() {
   # cost is the call minus that.
   printf "sh '%s'\n" "$work/earlier.sh" > "$work/earlier-setting.sh"
   base="cd '$proj' && bash -c : && jq -n empty && sh -c : && sh '$work/earlier-setting.sh'"
-  read -r shell total < <(cpu_pair "$work/handback.json" "$base" "$cmd")
+  beside 'status line (VBW off)' "$work/handback.json" "$base" "$cmd"
   own=$(perl -e 'printf "%.1f", $ARGV[1] - $ARGV[0]' -- "$shell" "$total")
   if over "$own" "$HANDBACK_MS"; then
     again "status line (VBW off)" "$own ms own CPU per call (a bash, a jq and a sh startup and the earlier status line: $shell ms)" "$HANDBACK_MS"
-    read -r shell total < <(cpu_pair "$work/handback.json" "$base" "$cmd")
+    beside 'status line (VBW off)' "$work/handback.json" "$base" "$cmd"
     own=$(perl -e 'printf "%.1f", $ARGV[1] - $ARGV[0]' -- "$shell" "$total")
   fi
   line=$(printf 'status line (VBW off): %s ms own CPU per call (a bash, a jq and a sh startup and the earlier status line: %s ms); budget %s ms' "$own" "$shell" "$HANDBACK_MS")
   verdict "$line" "$own" "$HANDBACK_MS"
+  refline 'status line (VBW off)' "$HANDBACK_MS"
 }
 
 # noproject: the same setting in a git folder with no .vbw at or above it (R224).
@@ -686,16 +754,17 @@ noproject() {
   fi
   printf "sh '%s'\n" "$work/np-earlier.sh" > "$work/np-earlier-setting.sh"
   base="cd '$proj' && bash -c : && jq -n empty && sh -c : && sh '$work/np-earlier-setting.sh'"
-  read -r shell total < <(cpu_pair "$work/noproject.json" "$base" "$cmd")
+  beside 'status line (no project)' "$work/noproject.json" "$base" "$cmd"
   own=$(perl -e 'printf "%.1f", $ARGV[1] - $ARGV[0]' -- "$shell" "$total")
   if over "$own" "$HANDBACK_MS"; then
     again "status line (no project)" "$own ms own CPU per call (a bash, a jq and a sh startup and the earlier status line: $shell ms)" "$HANDBACK_MS"
-    read -r shell total < <(cpu_pair "$work/noproject.json" "$base" "$cmd")
+    beside 'status line (no project)' "$work/noproject.json" "$base" "$cmd"
     own=$(perl -e 'printf "%.1f", $ARGV[1] - $ARGV[0]' -- "$shell" "$total")
   fi
   rm -rf "$root"
   line=$(printf 'status line (no project): %s ms own CPU per call (a bash, a jq and a sh startup and the earlier status line: %s ms); budget %s ms' "$own" "$shell" "$HANDBACK_MS")
   verdict "$line" "$own" "$HANDBACK_MS"
+  refline 'status line (no project)' "$HANDBACK_MS"
 }
 
 # loaded: the setting in a session that loaded the bench's plugin, next to a stand-in release.
@@ -720,14 +789,15 @@ loaded() {
     status=1
     return 0
   fi
-  read -r _ total < <(cpu_pair "$work/loaded.json" true "$cmd")
+  beside 'status line (loaded copy)' "$work/loaded.json" true "$cmd"
   if over "$total" "$STATUS_MS"; then
     again "status line (loaded copy)" "$total ms CPU per call" "$STATUS_MS"
-    read -r _ total < <(cpu_pair "$work/loaded.json" true "$cmd")
+    beside 'status line (loaded copy)' "$work/loaded.json" true "$cmd"
   fi
   rm -f "$work/.vbw/runtime/cost.loaded-bench.json"
   line=$(printf 'status line (loaded copy): %s ms CPU per call; budget %s ms' "$total" "$STATUS_MS")
   verdict "$line" "$total" "$STATUS_MS"
+  refline 'status line (loaded copy)' "$STATUS_MS"
 }
 
 guards "$work" ""
@@ -736,14 +806,15 @@ guards "$large" ", large record"
 if selected 'guard (tools, main session)'; then
   export CLAUDE_PROJECT_DIR="$work"
   base="jq -nc 'input | empty' - \"$work/.vbw/record.json\" \"$CLAUDE_PLUGIN_ROOT/hooks/end.json\" 2>/dev/null || true"
-  read -r shell total < <(cpu_pair "$work/read.json" "$base" "$(tools_hook)")
+  beside 'guard (tools, main session)' "$work/read.json" "$base" "$(tools_hook)"
   own=$(perl -e 'printf "%.1f", $ARGV[0] - $ARGV[1]' -- "$total" "$shell")
   if over "$own" "$BUDGET_MS"; then
     again "guard (tools, main session)" "$own ms own CPU per call (sh and jq startup $shell ms)" "$BUDGET_MS"
-    read -r shell total < <(cpu_pair "$work/read.json" "$base" "$(tools_hook)")
+    beside 'guard (tools, main session)' "$work/read.json" "$base" "$(tools_hook)"
     own=$(perl -e 'printf "%.1f", $ARGV[0] - $ARGV[1]' -- "$total" "$shell")
   fi
   verdict "$(printf 'guard (tools, main session): %s ms own CPU per call (sh and jq startup %s ms); budget %s ms' "$own" "$shell" "$BUDGET_MS")" "$own" "$BUDGET_MS"
+  refline 'guard (tools, main session)' "$BUDGET_MS"
 fi
 # A write that lands in another project (R254): a build agent's shell write into the folder of a
 # second project that has its own build run open. The Bash guard asks read.sh, which runs the
@@ -766,14 +837,15 @@ if selected 'guard (cross-project)'; then
     printf 'guard (cross-project): the other project'"'"'s run did not refuse the write, so the measure left the second pass out\n' >&2
     status=1
   fi
-  read -r shell total < <(cpu_pair "$work/cross.json" "$base" "$hook")
+  beside 'guard (cross-project)' "$work/cross.json" "$base" "$hook"
   own=$(perl -e 'printf "%.1f", $ARGV[0] - $ARGV[1]' -- "$total" "$shell")
   if over "$own" "$BUDGET_MS"; then
     again "guard (cross-project)" "$own ms own CPU per call (sh and two jq startups $shell ms)" "$BUDGET_MS"
-    read -r shell total < <(cpu_pair "$work/cross.json" "$base" "$hook")
+    beside 'guard (cross-project)' "$work/cross.json" "$base" "$hook"
     own=$(perl -e 'printf "%.1f", $ARGV[0] - $ARGV[1]' -- "$total" "$shell")
   fi
   verdict "$(printf 'guard (cross-project): %s ms own CPU per call (sh and two jq startups %s ms); budget %s ms' "$own" "$shell" "$BUDGET_MS")" "$own" "$BUDGET_MS"
+  refline 'guard (cross-project)' "$BUDGET_MS"
 fi
 # A loop on and no lease: the main session's push, judged like the others.
 jq -nc --arg d "$work" '{tool_name: "Bash", cwd: $d, session_id: "bench", tool_input: {command: "git push origin main"}}' > "$work/loop.json"

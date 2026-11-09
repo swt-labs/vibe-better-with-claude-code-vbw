@@ -26,13 +26,31 @@ def strip_heredocs:
     end)
   | .out | join("\n");
 
-# Quoted strings become \u0001<n>\u0002; .q keeps their raw text.
-def mask:
+# Quoted strings become \u0001<n>\u0002; .q keeps their raw text. jq slices a string in
+# time that grows with its offset, so a script masked whole costs the square of its size
+# (R273). The text is masked a line at a time instead: a line that leaves a quote character
+# unpaired is held and joined with the lines after it until one holds the character that
+# can pair it, and the held text is then masked again from its start, so a string that
+# spans lines is masked as one, with the pairing the whole text would get.
+def mask_chunk($base):
   . as $s | [match("'[^']*'|\"(?:\\\\.|[^\"\\\\])*\""; "g")] as $ms
   | reduce range($ms | length) as $i ({text: "", pos: 0, q: []};
-      $ms[$i] as $m | .text += $s[.pos:$m.offset] + "\u0001\($i)\u0002"
+      $ms[$i] as $m | .text += $s[.pos:$m.offset] + "\u0001\($base + $i)\u0002"
       | .q += [$m.string] | .pos = $m.offset + $m.length)
   | .text += $s[.pos:] | {text, q};
+
+def mask:
+  def settle($c):
+    (.q | length) as $b | ($c | mask_chunk($b)) as $r
+    | ([$r.text | match("['\"]"; "g").string] | unique) as $left
+    | if $left == [] then .text += [$r.text] | .q += $r.q | .pend = null
+      else .pend = $c | .need = "[" + ($left | join("")) + "]" end;
+  reduce split("\n")[] as $l ({text: [], q: [], pend: null, need: null};
+      if .pend == null then settle($l)
+      elif .need as $n | $l | test($n) then settle(.pend + "\n" + $l)
+      else .pend += "\n" + $l end)
+  | if .pend == null then . else (.q | length) as $b | (.pend | mask_chunk($b)) as $r | .text += [$r.text] | .q += $r.q end
+  | {text: (.text | join("\n")), q};
 
 def unquote: if startswith("'") then .[1:-1] else .[1:-1] | gsub("\\\\(?<c>.)"; .c) end;
 def restore($q): gsub("\u0001(?<n>[0-9]+)\u0002"; $q[.n | tonumber] | unquote);
@@ -93,7 +111,7 @@ def substitutions:
 # Every simple command the shell would run.
 def commands($depth):
   strip_heredocs | mask as $m
-  | ( [$m.text | splits("\\|\\||&&|;;?|(?<!>)\\||(?<![<>])&(?!>)|\\n|\\(|\\)|\\{|\\}|`") | select(test("\\S"))][]
+  | ( [$m.text | split("\n")[] | splits("\\|\\||&&|;;?|(?<!>)\\||(?<![<>])&(?!>)|\\(|\\)|\\{|\\}|`") | select(test("\\S"))][]
       | simple($m.q) as $c
       | $c,
         ( select($depth > 0)
@@ -263,19 +281,40 @@ def with_cwd($start; resolve):
       else . end)
   | .out;
 
-# Every heredoc of a text, as {line, text, quoted, head}: the line that starts it, its body,
-# whether its delimiter is quoted (the shell then expands nothing in the body), and the text
-# up to the end of that line (the working folder of the line is read from it).
-def heredocs:
-  . as $t
-  | match("(?:^|\\n)([^\\n]*(?<!<)<<-?[ \\t]*(['\\\"]?)(\\w+)\\2[^\\n]*)\\n(.*?)\\n[ \\t]*\\3[ \\t]*(?=\\n|$)"; "gp") as $m
-  | {line: $m.captures[0].string, text: $m.captures[3].string, quoted: ($m.captures[1].string != ""),
-     head: $t[:$m.offset + 1 + ($m.string[1:] | index("\n"))]};
+# Every heredoc of a text, as {line, text, quoted, cwd}: the line that starts it, its body, whether
+# its delimiter is quoted (the shell then expands nothing in the body), and the working folder of that line:
+# START moved by every cd before it. The text is read once: the lines since the
+# previous heredoc are read as commands only when they hold a cd, and the folder carries on from
+# there. Reading the whole head again for each heredoc made a script's cost grow with the
+# square of its size (R273).
+def heredocs($start; resolve):
+  split("\n") | reduce .[] as $l ({cur: null, cwd: $start, seg: [], out: []};
+        if .cur != null then (.cur.delim) as $d |
+            if ($l | test("^[ \\t]*\($d)[ \\t]*$")) then
+              .out += [{line: .cur.line, text: (.cur.body | join("\n")), quoted: .cur.quoted, cwd: .cur.cwd}] | .cur = null
+            else .cur.body += [$l] end
+        else
+          .seg += [$l]
+          | if ($l | test("<<")) then
+              ([$l | match("(?<!<)<<-?[ \\t]*(['\\\"]?)(\\w+)\\1"; "g")] | last) as $m
+              | if $m == null then .
+                else
+                  (.seg | join("\n")) as $h
+                  | (if $h | test("(^|[^A-Za-z0-9_])cd([^A-Za-z0-9_]|$)")
+                     then .cwd as $w | [$h | commands(3)] | with_cwd($w; resolve) | last.cwd // $w
+                     else .cwd end) as $w
+                  | .cwd = $w | .seg = []
+                  | .cur = {line: $l, delim: $m.captures[1].string, quoted: ($m.captures[0].string != ""), cwd: $w, body: []}
+                end
+            else . end
+        end)
+  | .out[];
 
 # Programs read from standard input by a heredoc: the bodies strip_heredocs drops, for the
 # commands that run an interpreter.
-def heredoc_programs:
-  heredocs | select(.line | test("\\b(?:python[0-9.]*|node|perl|ruby|php|deno|bun|lua)\\b"));
+def runs_interpreter: test("\\b(?:python[0-9.]*|node|perl|ruby|php|deno|bun|lua)\\b");
+def heredoc_programs($start; resolve):
+  heredocs($start; resolve) | select(.line | runs_interpreter);
 
 # The files a command writes by name, as written: what the run's rules judge (in_run) and
 # what a guard asks read.sh about when one lies in another project (R254).
@@ -346,9 +385,9 @@ def script_findings($interp; $start; resolve):
             ( $c | select(.cmd | interpreter)
               | ((.args | join("\n")) | program_findings($c.cwd)),
                 (inplace_files[] | {call: $c.text, target: ., cwd: $c.cwd}) ) ),
-        ( $t | select(test("<<")) | heredoc_programs | . as $h
-          | ([$h.head | commands(3)] | with_cwd($start; resolve) | last.cwd // $start) as $w
-          | $h.text | program_findings($w) )
+        ( $t | select(test("<<")) | heredocs($start; resolve)
+          | select(.line | runs_interpreter) | . as $h
+          | $h.text | program_findings($h.cwd) )
     else program_findings($start) end;
 
 # The refusals of a script's text (the input): the script file as written, its interpreter,

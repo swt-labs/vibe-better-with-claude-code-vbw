@@ -26,7 +26,10 @@ PROVE_FLAT='map_values(if $off or (.reads | type) != "object" then . + {reads: n
 # unit key ("check:ID", "command:NAME", "file:PATH") -> fingerprint (a JSON
 # object kept in the process; PROOFREUSE_FPS_RECORD is the record text it was
 # computed from). A fingerprint is the SHA-256 of the unit's canonical bytes:
-#   check:   its approved definition as key-sorted compact JSON, then a newline;
+#   check:   its approved definition as key-sorted compact JSON, then a newline; a check
+#            judged with the approved content of an added-to file (R269) adds judged,
+#            {file: SHA-256 of that content}, so its pass is reused while that content
+#            stands and it runs again once the added lines are approved;
 #   command: the time limit and the argv, each ended by a NUL;
 #   file:    the same, with the argv of the file's form for that test file; a
 #            form with a dir adds "dir:DIR" after the time limit, and its {file}
@@ -54,7 +57,8 @@ PROOFREUSE_EMIT_JQ='def srt: if type == "object" then . as $o | reduce ($o | key
   | $keys[] | select($have[0][.] == null) | . as $k
   | if startswith("check:") then
       ($k | ltrimstr("check:")) as $id | first($r.checks[]? | select(.id == $id)) as $c
-      | $k, "\u0000", "l", "\u0000", "1", "\u0000", ($c | {id, req, run, exit, output, timeout, alone, files} | srt | tojson), "\u0000"
+      | $k, "\u0000", "l", "\u0000", "1", "\u0000", ($c | {id, req, run, exit, output, timeout, alone, files}
+          + (if $j[0][$id] then {judged: ($j[0][$id] | map_values(.sha))} else {} end) | srt | tojson), "\u0000"
     elif startswith("command:") then
       ($k | ltrimstr("command:")) as $n | [$lim] + [$r.commands[$n][]?]
       | $k, "\u0000", "z", "\u0000", (length | tostring), "\u0000", (.[] | ., "\u0000")
@@ -123,7 +127,7 @@ proofreuse_fps_need() {
     printf '%s\0' "$key" >> "$dir/keys"
     n=$((n + 1))
   done < <(jq -n -j --argjson d "$VBW_COMMAND_TIMEOUT" --slurpfile rec <(printf '%s' "$1") --slurpfile have <(printf '%s' "$PROOFREUSE_FPS") --slurpfile keys <(printf '%s' "$2") \
-    --slurpfile tfm <(printf '%s' "$PROOFREUSE_TFMAP") "$VBW_JQ_DEFS$PROOFREUSE_EMIT_JQ")
+    --slurpfile tfm <(printf '%s' "$PROOFREUSE_TFMAP") --slurpfile j <(printf '%s' "${CHECK_JUDGED:-}") "$VBW_JQ_DEFS$PROOFREUSE_EMIT_JQ")
   if [ "$n" -gt 0 ]; then
     proofreuse_hashes "$dir/u" "$n" > "$dir/hashes" || { vbw_guard_drop "$dir"; vbw_die "cannot fingerprint the units"; }
     PROOFREUSE_FPS=$(jq -nc --slurpfile have <(printf '%s' "$PROOFREUSE_FPS") --rawfile k "$dir/keys" --rawfile h "$dir/hashes" \
@@ -200,7 +204,7 @@ proofreuse_allowed() {
 proofreuse_store_file() {
   local common
   common=$(git -C "$VBW_ROOT" rev-parse --path-format=absolute --git-common-dir 2> /dev/null) || vbw_die "not a git repository"
-  printf '%s/vbw/runs.json\n' "$common"
+  vbw_out '%s/vbw/runs.json\n' "$common"
 }
 
 # proofreuse_store_read: the store, or an empty one when it is missing or damaged.

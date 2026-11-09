@@ -27,10 +27,11 @@ section() { sed -n '/^## Time left/,/^## /p' "$PANEL" | sed '$d'; }
   ! printf '%s\n' "$s" | grep -q 'min left in this step' || { echo "the old sentence is still described"; false; }
 }
 
-@test "R190: docs/panel.md explains the 3-step minimum, time per part and the 50-per-kind history" {
+@test "R190: docs/panel.md explains the R270 rough-guess thresholds, time per part and the 50-per-kind history" {
   local s
   s=$(section)
-  printf '%s\n' "$s" | grep -qE 'at least (3|three) finished steps' || { echo "no 3-step minimum"; false; }
+  printf '%s\n' "$s" | grep -q 'fewer than 5' || { echo "no 5-run threshold"; false; }
+  printf '%s\n' "$s" | grep -q '1\.5 times' || { echo "no 1.5 spread threshold"; false; }
   printf '%s\n' "$s" | grep -qiE 'per (plan|part|check)' || { echo "no time per part"; false; }
   printf '%s\n' "$s" | grep -qiE '50 (finished )?steps of each kind|latest 50 of each kind|50 per kind' || { echo "no 50-per-kind history"; false; }
   printf '%s\n' "$s" | grep -qi 'No end time yet' || { echo "no words for no basis"; false; }

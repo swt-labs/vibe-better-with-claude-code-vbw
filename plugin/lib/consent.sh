@@ -8,7 +8,7 @@ consent_file() {
   local common
   common=$(git -C "$VBW_ROOT" rev-parse --path-format=absolute --git-common-dir 2>/dev/null) \
     || vbw_die "not a git repository"
-  printf '%s/vbw/consent.json\n' "$common"
+  vbw_out '%s/vbw/consent.json\n' "$common"
 }
 
 # SHA-256 of an argv, NUL-separated so "a b" c and a "b c" never collide.

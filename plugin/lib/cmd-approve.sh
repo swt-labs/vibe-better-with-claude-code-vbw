@@ -67,8 +67,7 @@ approve_record() {
   consent_grant shape "$(contract_shape "$record")" '{}'
   # What was approved, so the next approval can show only what changed
   # (vbw show contract --changes). Per clone, like the consent itself.
-  contract_doc "$record" > "$VBW_RUNTIME/approved-contract.json.$$" \
-    && mv "$VBW_RUNTIME/approved-contract.json.$$" "$VBW_RUNTIME/approved-contract.json"
+  approve_snapshot "$record"
   # The git-read excuses this approval takes with it (R264): the next gate lists only the later ones.
   contract_git_excuses "$record" > "$VBW_RUNTIME/git-excuses-seen.json.$$" \
     && mv "$VBW_RUNTIME/git-excuses-seen.json.$$" "$VBW_RUNTIME/git-excuses-seen.json"
@@ -82,7 +81,20 @@ approve_repin() {
   consent_grant contract "$(contract_hash "$1")" "$(printf '%s' "$1" | jq -c \
     '{requirements: (.requirements | length), checks: (.checks | length), plans: (.plans | length)}')"
   consent_grant shape "$(contract_shape "$1")" '{}'
-  contract_doc "$1" > "$VBW_RUNTIME/approved-contract.json.$$" \
+  approve_snapshot "$1"
+}
+
+# approve_snapshot RECORD: write .vbw/runtime/approved-contract.json: the contract's document
+# (contract_doc) plus the approval's commit id (HEAD, after the approval commit) and each check
+# file's git blob id (git hash-object of the approved bytes, written to the object store so the
+# approved content can be read back), so a later added-to file is told from a waiting one (R269).
+approve_snapshot() {
+  local doc blobs commit
+  doc=$(contract_doc "$1")
+  blobs=$(contract_blobs "$1")
+  commit=$(git -C "$VBW_ROOT" rev-parse --verify -q HEAD 2> /dev/null) || commit=
+  printf '%s' "$doc" | jq -c --argjson blobs "$blobs" --arg commit "$commit" \
+    '. + {blobs: $blobs} + (if $commit == "" then {} else {commit: $commit} end)' > "$VBW_RUNTIME/approved-contract.json.$$" \
     && mv "$VBW_RUNTIME/approved-contract.json.$$" "$VBW_RUNTIME/approved-contract.json"
 }
 

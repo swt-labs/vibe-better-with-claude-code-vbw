@@ -103,7 +103,7 @@ proofcopy_slots() {
   n=$(vbw_check_jobs) || n=1
   [ "$1" -ge "$n" ] || n=$1
   [ "$n" -ge 1 ] || n=1
-  printf '%s\n' "$n"
+  vbw_out '%s\n' "$n"
 }
 
 # proofcopy_create: make the copy; sets PROOF_COPY (absolute path). Called
@@ -817,6 +817,27 @@ proofcopy_prune_subs() {
     git -C "$VBW_ROOT/$p" worktree prune > /dev/null 2>&1 || true
   done < <(vbw_subs)
   return 0
+}
+
+# proofcopy_judge COPY JUDGED: each file of JUDGED (a JSON object {file: git blob id}, the
+# approved content of an added-to check file, R269) written into COPY as the approval
+# held it, in place so the file keeps its mode. Only the copy changes, never the working
+# folder. Dies when a blob cannot be read.
+proofcopy_judge() {
+  local f b
+  while IFS= read -r -d '' f && IFS= read -r -d '' b; do
+    [ ! -L "$1/$f" ] || rm -f "$1/$f"
+    git -C "$VBW_ROOT" cat-file blob "$b" > "$1/$f" 2> /dev/null || vbw_die "cannot put the approved content of $f into the clean copy"
+  done < <(printf '%s' "$2" | jq -j 'to_entries[] | .key, "\u0000", .value, "\u0000"')
+}
+
+# proofcopy_unjudge COPY JUDGED: the files of JUDGED back as the copy's commit holds them,
+# for the next unit that takes the copy.
+proofcopy_unjudge() {
+  local f
+  while IFS= read -r -d '' f; do
+    proofcopy_git -C "$1" checkout -q -- "$f" > /dev/null 2>&1 || true
+  done < <(printf '%s' "$2" | jq -j 'keys[] + "\u0000"')
 }
 
 # proofcopy_verify HASH RECORD: die naming every check file whose committed

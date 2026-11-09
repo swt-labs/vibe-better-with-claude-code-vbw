@@ -57,6 +57,32 @@ def written(rule):
          (.cmd == "sort" and any(.args[]; test("^(-[A-Za-z]*o|--output.*)$")))
          or (.cmd | test("awk$")) and any(.args[]; test("^(inplace|--in-place)$"))
        else true end));
+
+# The command writes the record (R276): a redirect to it, or a program that changes a file and
+# names it: a copier with it as destination, mv, tee, rm, truncate, shred, ed, dd of=, sed -i,
+# perl -i, a git command that restores or removes it, find that deletes or runs a program. A
+# command that only reads it (find -path, ls, grep, cat, jq, git log) passes: naming the record
+# is not writing it.
+def record_written:
+  (.out | any(.[]; record_path))
+  or (.cmd == "dd" and any(.args[]; startswith("of=") and (.[3:] | record_path)))
+  or (any(.args[]; record_path) and
+      (if .cmd | test("^(cp|install|rsync|ln)$") then
+         ([.args[] | select(startswith("-") | not)] | (last // "") | record_path)
+         or any(.args[]; test("^(-t|--target-directory.*|--remove-source-files)$"))
+       elif .cmd | test("^(mv|tee|rm|unlink|truncate|shred|ed|ex|sponge)$") then true
+       elif .cmd == "sed" then any(.args[]; test("^-[A-Za-z]*i|^--in-place"))
+       elif .cmd == "perl" then any(.args[]; test("^-[A-Za-z]*i"))
+       elif .cmd == "sort" then any(.args[]; test("^(-[A-Za-z]*o|--output.*)$"))
+       elif .cmd | test("awk$") then any(.args[]; test("^(inplace|--in-place)$"))
+       elif .cmd == "git" then (git_words as $w | ($w[0] // "") | test("^(checkout|restore|rm|mv|apply)$"))
+       elif .cmd == "find" then any(.args[]; test("^-(delete|exec|execdir|ok|okdir|fprint0?|fprintf|fls)$"))
+       else false end));
+
+# An inline program (python -c, node -e, perl -e) that names the record: the guard reads text and
+# cannot tell a read from a write in code.
+def record_inline:
+  select((.cmd | interpreter) and any(.args[]; test("^-[A-Za-z]*[ce]$")) and any(.args[]; test("\\.vbw/record\\.json")));
 def paths: (.args[] | sub("^--?[A-Za-z0-9-]+="; "")), .out[], .in[];
 
 
@@ -117,7 +143,8 @@ def in_project($g):
   ( select($g.loop_on) | loop_outward ),
   destructive,
   ( select(.cmd | test("^(ls|stat|test|\\[\\[?)$") | not) | [paths | select(secret_path)][0] // empty | secret_reason ),
-  ( select(written(record_path)) | record_reason );
+  ( select(record_written) | record_reason ),
+  ( record_inline | inline_record_reason );
 
 # The guard of a command as it runs: the same, with the working folder the command has.
 # The absolute path of {path, cwd}, for with_cwd (programs.jq cannot call abs_path).
@@ -204,8 +231,7 @@ def run:
   | select($g.lease != null or $g.foreign != null or ($g.hook.agent_type // "") != "" or ($c | may_matter or reaches))
   | session_dir($g) as $start
   | ([$c | commands(3)] | with_cwd($start; resolve)) as $cmds
-  | [$c | select(test("<<")) | heredoc_programs
-       | . + {cwd: ([.head | commands(3)] | with_cwd($start; resolve) | last.cwd // $start)}] as $hds
+  | [$c | select(test("<<")) | heredoc_programs($start; resolve)] as $hds
   | (if $g.lease != null then [script_requests($g; $cmds; $c)] else [] end) as $sr
   | ( [$cmds[] | everywhere][0]
       // (select($g.project and $g.foreign != null) | [$cmds[] | here($g) as $k | foreign_run($k)][0])

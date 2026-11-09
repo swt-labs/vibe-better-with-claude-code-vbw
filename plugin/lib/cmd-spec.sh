@@ -54,7 +54,7 @@ spec_parse() {
     printf '%s' "$parsed" | jq -r '.errors[] | "vbw: spec.md " + .' >&2
     exit 1
   fi
-  printf '%s\n' "$parsed"
+  vbw_out '%s\n' "$parsed"
 }
 
 # Bring the record's requirements in line with the spec, in spec order. A new
