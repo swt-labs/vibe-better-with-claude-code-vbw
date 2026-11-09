@@ -15,7 +15,10 @@ load fixture-helper
 
 # The fixture's document, doubled when BIG_DOUBLE is 1: every phase, plan, check and rule
 # again, numbered 79 higher (P1.2 -> P80.2, R1 -> R80, C1 -> C80, src/p1-2.txt -> src/p80-2.txt).
-source <(declare -f big_milestone_doc | sed '1s/^big_milestone_doc /big_doc_single /')
+# Written to a file and sourced from there: macOS /bin/bash 3.2's source reads nothing from a
+# process substitution.
+declare -f big_milestone_doc | sed '1s/^big_milestone_doc /big_doc_single /' > "$BATS_RUN_TMPDIR/big-doc-single.$$.bash"
+source "$BATS_RUN_TMPDIR/big-doc-single.$$.bash"
 big_milestone_doc() {
   if [ "${BIG_DOUBLE:-0}" = 1 ]; then
     BIG_PHASES=79 big_doc_single | jq -c 'def shift: if type == "string" then gsub("(?<a>[PRCpc])(?<n>[0-9]+)"; "\(.a)\(.n | tonumber + 79)") else . end;
