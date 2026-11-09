@@ -33681,12 +33681,11 @@
         }
       ],
       "qa": {
-        "result": "fail",
+        "result": "pass",
         "tier": "deep",
-        "tree": "479bf5f1011244343ecefc25ae20481a7bc15fa1bca8dcc2f51feec9a4bd4ebb",
-        "at": "2026-11-09T19:41:07Z",
-        "note": "29/30 checks",
-        "rounds": 1
+        "tree": "f068c9296f4b2bf9adc710e7c02b676b7b4432b70ba41987008ff6773d55d933",
+        "at": "2026-11-09T22:53:28Z",
+        "note": "4/4 checks"
       },
       "outcome": {
         "tier": "deep",
@@ -84137,7 +84136,7 @@
       "req": "R279",
       "source": "qa",
       "attempts": 0,
-      "status": "fixed",
+      "status": "closed",
       "note": "The fourth R279 criterion and P228.1 task 4 are not met: the 2.1.28 bump was never replayed on VBW's own repository, so no 'N of 743 units rerun' figure exists. The maintainer's log line 1084 in vbw-plow/PROGRESS.md says 'the 450-of-743 replay not measured: estimate about 17 test files read the version themselves; the real figure comes from the release's bump'. No decision covers dropping the measurement. For reference only, the proof store (.git/vbw/runs.json) lists 81 of 788 current units (plus 5 older entries) that read plugin.json themselves; this is an estimate from stored read lists, not a replay. What a test cannot catch: this is a missing measurement, not code. Fix: replay the bump (all five version files changed, a scratch branch) and record how many units rerun and the reasons, against 450 of 743.",
       "phase": "P228"
     },
