@@ -9,7 +9,8 @@
 #   $kind    build | fix | plan | qa | proof
 #   $size[0] build: [{id, tier, tasks, breaks}] (the wave's plans); fix: {tier};
 #            plan: {reqs}; qa: [{id, tier}]; proof: {units: [name]}
-# Output: one object {seconds, low, high, runs, rough} (R270): seconds the figure of
+# Output: one object {seconds, typical, low, high, runs, rough} (R270, R291): typical the
+# median of the kept runs times the step's size (R291), seconds the figure of
 # today (a median, a quantile or a ratio), low and high the lowest and the highest
 # kept run per unit times the step's size, runs the count of kept runs, rough whether
 # the estimate is a rough guess (def rough: the one place of both thresholds). One run
@@ -49,9 +50,9 @@ def rough: .runs < 5 or .high > 1.5 * .low;
 # est(point; $m): the kept per-unit values (the input list) as an estimate of a step $m
 # units big: the figure of the ladder (point) and the lowest and highest run, all times $m.
 def est(point; $m): . as $v | if length == 0 then empty
-  else {seconds: (($v | point) * $m), low: (($v | min) * $m), high: (($v | max) * $m), runs: ($v | length)} end;
+  else {seconds: (($v | point) * $m), typical: (($v | median) * $m), low: (($v | min) * $m), high: (($v | max) * $m), runs: ($v | length)} end;
 # Two estimates of parts of one step that run one after the other add up; their runs are the fewer.
-def plus($o): {seconds: (.seconds + $o.seconds), low: (.low + $o.low), high: (.high + $o.high), runs: ([.runs, $o.runs] | min)};
+def plus($o): {seconds: (.seconds + $o.seconds), typical: (.typical + $o.typical), low: (.low + $o.low), high: (.high + $o.high), runs: ([.runs, $o.runs] | min)};
 def num: type == "number" and . >= 0;
 def basis: est(median; 1);
 # A step's size for the idle test (T173): its parts, else its requirements or phases, else 1.
@@ -97,7 +98,7 @@ $size[0] as $size
     | if ($u | length) >= 1 then
         [ $size[] | build_plan(.; $u) ] as $each
         | if ($each | length) == ($size | length) and ($each | length) > 0
-          then {seconds: ($each | map(.seconds) | max), low: ($each | map(.low) | max), high: ($each | map(.high) | max), runs: ($each | map(.runs) | min)}
+          then {seconds: ($each | map(.seconds) | max), typical: ($each | map(.typical) | max), low: ($each | map(.low) | max), high: ($each | map(.high) | max), runs: ($each | map(.runs) | min)}
           else empty end
       else
         (of("build") | withparts | latest) as $b
@@ -140,7 +141,7 @@ $size[0] as $size
           | if ($known | length) == 0 then empty
             else ($known | median) as $m
               | ([ $size.units[]? | cost // $m ] | add) as $base
-              | {seconds: ($base * $ratio), low: ($base * ($each | min)), high: ($base * ($each | max)), runs: ($hist | length)}
+              | {seconds: ($base * $ratio), typical: ($base * ($each | median)), low: ($base * ($each | min)), high: ($base * ($each | max)), runs: ($hist | length)}
             end
         else empty end )
       // ( of("proof") | withparts | latest
@@ -153,5 +154,5 @@ $size[0] as $size
     elif $kind == "qa" then qa
     elif $kind == "proof" then proof
     else empty end ] | first )
-  | if . == null then {seconds: null, low: null, high: null, runs: 0, rough: false}
-    else (.rough = rough | .seconds |= round | .low |= round | .high |= round) end
+  | if . == null then {seconds: null, typical: null, low: null, high: null, runs: 0, rough: false}
+    else (.rough = rough | .seconds |= round | .typical |= round | .low |= round | .high |= round) end
