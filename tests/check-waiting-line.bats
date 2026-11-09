@@ -86,6 +86,13 @@ LINE='tests/c2.sh is waiting for approval: C2 run now on its working content; vb
   [ "$(printf '%s\n' "$output" | grep -c 'is waiting for approval')" = 1 ] || { echo "$output"; false; }
 }
 
+@test "R288 check: fix done of a fix on plan A's requirement, while plan B's test file waits, runs no check and does not name plan B's file" {
+  jq '.plans[].status = "done" | .fixes = [{id: "F1", req: "R1", attempts: 0, status: "open", note: "C1 fail"}]' .vbw/record.json > "$TEST_ROOT/edit.json" && cp "$TEST_ROOT/edit.json" .vbw/record.json
+  vbw_run fix done F1
+  [[ "$output" == *"check files are waiting for approval, so no check runs before it"* ]] || { echo "$output"; false; }
+  [[ "$output" != *"tests/c2.sh"* ]] || { echo "$output"; false; }
+}
+
 @test "R288 wording: every wait is told by one function with what it waits for and since when, and the Dev's specification says the approval line is information, not a block" {
   local defs
   defs=$(grep -rnE '^vbw_wait_say\(\)' "$PLUGIN_ROOT/lib" | wc -l | tr -d ' ')
