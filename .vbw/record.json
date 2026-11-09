@@ -85757,6 +85757,13 @@
       "id": "T276",
       "text": "A check whose files name a document it reads protects that document from every later build (2026-11-09: C652, registered by fix F417 in M55, lists docs/guards.md, so P225.3's Docs agent could neither edit it nor break it for its rules, and vbw mutate refuses a break in a check file). A check's files should be the check's own test files; the planner and vbw fix check should not list the code or docs under test, or vbw should tell them apart",
       "status": "open"
+    },
+    {
+      "id": "T277",
+      "text": "The road's Milestone end can come before the current step's own end (2026-11-09 15:45: proof until around 16:56, Milestone end until around 15:51; at 14:55 fix until 15:00, milestone 15:03): the road must count from the end of the current step, or include it, never from now alone",
+      "sort": "next",
+      "size": "small",
+      "status": "open"
     }
   ],
   "decisions": [
