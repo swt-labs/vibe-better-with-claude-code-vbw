@@ -47,7 +47,7 @@ It prints:
 
 - **Environment:** the VBW version, the operating system and the bash version.
 - **`vbw doctor`:** the result of every check VBW needs, with the fix for anything wrong.
-  One check compares the `vbw` on PATH with the loaded plugin (the one this session started). It says ok when they are the same, and warns with the fix when they differ, for example a released copy on PATH in a `--plugin-dir` session. It also warns when there is no `vbw` on PATH. `vbw --version` prints the version of the `vbw` you run.
+  One check compares the `vbw` on PATH with the copy this session loaded (the copy Claude Code started the session with, read from the session's record), never with the kernel doctor itself runs from. It says ok when they match, and warns when they differ, naming both folders. The fix: start or resume the session again, so the session start writes the loaded copy's PATH line. Without a session id, or when the session has no record, it says it cannot tell which copy the session loaded, and does not compare. It also warns when there is no `vbw` on PATH. `vbw --version` prints the version of the `vbw` you run.
   Another check reads whether Claude Code's auto-update is on for `vbw-marketplace` and warns when it is off (the default for a marketplace like VBW's, so nothing tells you a new VBW is out), with the way to turn it on. It reads the files Claude Code keeps and makes no network call. See [docs/update.md](update.md).
 - **Project state** (inside a VBW project): the milestone, and counts of requirements, plans and checks by status. It also prints the fixes with their status and attempts, the run lease, the last proof (time, pass, failing check ids), the profile and the last step `vbw next` chose. An empty list prints `none`.
 
