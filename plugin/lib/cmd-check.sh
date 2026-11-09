@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # vbw check [--expect-red] [CHECK...]: run approved checks (all when none are
-# given) and report; writes nothing to the record. A Dev uses it red-first
+# given) and report; it writes to the record only an --expect-red run, kept in the
+# evidence of the plans it concerns (R292). A Dev uses it red-first
 # (--expect-red: every check must fail, or it proves nothing) and to see its
 # own checks go green before it commits.
 
@@ -8,6 +9,8 @@
 . "$VBW_LIB/checks.sh"
 # shellcheck source=unittime.sh
 . "$VBW_LIB/unittime.sh"
+# shellcheck source=history.sh
+. "$VBW_LIB/history.sh"
 
 # RED_FIRST_DEFS (R292), on the record: red_own($p) is a plan's own checks (the checks of its
 # live rules that name it or name no plan, every rule of a requirement it completes, else the
@@ -32,8 +35,6 @@ def red_ran_first($c): . as $r
 # plan, whose own checks it ran (red_runs: {at, head, checks, first}).
 red_keep() {
   local record="$1" results="$2" ids id f files rows="{}" first head
-  # shellcheck source=cmd-plan.sh
-  . "$VBW_LIB/cmd-plan.sh"
   head=$(git -C "$VBW_ROOT" rev-parse HEAD 2> /dev/null) || return 0
   ids=$(printf '%s' "$record" | jq -r "$RED_FIRST_DEFS"'. as $r | ($r.lease.kind // "") as $k
     | [$r.plans[] | select(if $k == "build" or $k == "fix" then .status == "building" else (.status != "done" and .status != "blocked") end)
@@ -65,7 +66,7 @@ cmd_check() {
   record=$(record_read)
   checks_begin "$record"
   results=$(checks_run_all "$record" "$@")
-  # A failure's complete output is kept (a pass removes nothing); --expect-red keeps nothing.
+  # A failure's complete output is kept (a pass removes nothing); --expect-red keeps no output.
   [ $red -eq 1 ] || checks_keep "$results" '{}' '{}' pass-leaves
   checks_end
   # --expect-red keeps the run in the evidence of the plans it concerns (R292).

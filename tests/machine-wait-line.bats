@@ -88,6 +88,16 @@ waited_ok() {
   wait_ok "$HOLDER"
 }
 
+@test "R181: vbw check --expect-red whose unit waited still ends with the waited line, after keeping its red run (F441)" {
+  fixture_copy pair
+  hold_start
+  run within 60 "$VBW" check --expect-red C1 < /dev/null
+  last_lines "$output"
+  waited_ok 1 15 || { echo "$output"; false; }
+  [[ "$BEFORE" == "C1 passed before building"* ]] || { echo "$output"; false; }
+  wait_ok "$HOLDER"
+}
+
 @test "R181: vbw fix done whose unit waited ends with the waited line, after its fixes" {
   fixture_copy pair
   hold_start
