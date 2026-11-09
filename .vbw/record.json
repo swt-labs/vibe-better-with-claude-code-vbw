@@ -1,6 +1,15 @@
 {
   "schema": 15,
-  "lease": null,
+  "lease": {
+    "run": "qa-20261109T225045Z",
+    "kind": "qa",
+    "started_at": "2026-11-09T22:50:45Z",
+    "files": [],
+    "session": "0ee781c3-c5b6-4a6c-889f-04b89f1fba4a",
+    "cost": {
+      "usd": 3565.429774
+    }
+  },
   "protected": [
     "docs/guards.md",
     "tests/adaptive-results.bats",
@@ -33553,12 +33562,11 @@
         }
       ],
       "qa": {
-        "result": "fail",
+        "result": "pass",
         "tier": "deep",
-        "tree": "e55938a367b3e029b2ff79fbc27cb44188a026463245e2140c520b4f4b91c61b",
-        "at": "2026-11-09T19:42:34Z",
-        "note": "30/32 checks",
-        "rounds": 1
+        "tree": "95b12103e95076856f89581a837cdc5f7ba63f326a8c1afb6c8661161742feda",
+        "at": "2026-11-09T22:53:18Z",
+        "note": "32/32 checks"
       },
       "outcome": {
         "tier": "deep",
@@ -84138,7 +84146,7 @@
       "req": "R292",
       "source": "qa",
       "attempts": 0,
-      "status": "fixed",
+      "status": "closed",
       "note": "vbw check --expect-red loses the 'waited N for other VBW runs on this computer' line and the 'computer-wide limit was not in force' line (R181). plugin/lib/cmd-check.sh red_keep (line ~29) runs '. $VBW_LIB/cmd-plan.sh' in the middle of cmd_check; cmd-plan.sh sources cmd-check.sh, which sources checks.sh and slots.sh again, and slots.sh top level resets SLOTS_STATE=off, SLOTS_WAITED=0, SLOTS_LOST= (slots.sh:40-48) after checks_end (slots_total) has added the run's waits and before cmd_check calls slots_say (cmd-check.sh:88). Probe: in bash, source cmd-check.sh, set SLOTS_WAITED=7 SLOTS_STATE=on, source cmd-plan.sh: prints WAITED=0 STATE=off. Root cause is the circular source (plan_has_commit lives in cmd-plan.sh, RED_FIRST_DEFS in cmd-check.sh); fix by moving plan_has_commit and RED_FIRST_DEFS into a lib that both commands source once at load, never re-sourcing in a running command. Regression test: in tests/machine-wait-line.bats, a vbw check --expect-red C1 whose unit waits for a slot (hold_start) must still print the final 'waited ... for other VBW runs on this computer' line.",
       "phase": "P226"
     },
@@ -84147,7 +84155,7 @@
       "req": "R292",
       "source": "qa",
       "attempts": 0,
-      "status": "fixed",
+      "status": "closed",
       "note": "Documents say vbw check writes nothing to the record, which is false for --expect-red since P226.2 (it appends plans[].red_runs to .vbw/record.json). Places: docs/proof.md:1971-1977 ('It writes only the full output of each failing check ... (--expect-red keeps nothing)') and :1240 ('--expect-red keeps nothing'), docs/workflows.md:253 ('nothing else is written'), plugin/bin/vbw:31 and :95 (usage 'run approved checks and report (writes nothing)'), and the header comment of plugin/lib/cmd-check.sh:2-3. P226.4 updated only the plan done row and the waiting lines. Regression test: in tests/red-first.bats 'R292 docs', assert that the vbw check entry of docs/proof.md and docs/workflows.md and the usage text of plugin/bin/vbw say --expect-red keeps the run in the plan's evidence (red_runs) and do not say it writes nothing.",
       "phase": "P226"
     }
