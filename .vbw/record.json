@@ -81522,6 +81522,13 @@
       "sort": "next",
       "size": "small",
       "status": "open"
+    },
+    {
+      "id": "T273",
+      "text": "A session resumed on the installed VBW keeps the PATH lines of its earlier --plugin-dir starts (2026-11-09, this repo): plugin/hooks/session-start.sh appends one 'export PATH=<loaded copy>/bin' line to Claude Code's env file on every loaded start (17 identical lines here) and an installed start never removes them, so after 'claude --resume' on the installed 2.1.28 a plain vbw still ran the checkout's copy. vbw doctor reported it as 'the loaded plugin's' because, with no session record, it takes the plugin of the kernel it runs from, which is the PATH copy itself. Write the PATH line once, have an installed start drop the earlier lines, and let doctor compare against the copy Claude Code loaded, not against itself. Also seen: two stale local-scope VBW installs in Claude Code's plugin list (2.1.20 for this folder, its cache gone; 2.1.22 for a probe scratch project); doctor could name a local-scope VBW older than the user-scope one",
+      "sort": "next",
+      "size": "small",
+      "status": "open"
     }
   ],
   "decisions": [
