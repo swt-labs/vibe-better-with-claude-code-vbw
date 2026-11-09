@@ -10,6 +10,8 @@
 . "$VBW_LIB/effort.sh"
 # shellcheck source=cmd-approve.sh
 . "$VBW_LIB/cmd-approve.sh"
+# shellcheck source=commit-failure.sh
+. "$VBW_LIB/commit-failure.sh"
 # shellcheck source=steps.sh
 . "$VBW_LIB/steps.sh"
 # shellcheck source=sessions.sh
@@ -206,7 +208,7 @@ next_decide() {
   hist=$(step_history_file)
   runs=""
   [ -z "$hist" ] || runs="$(dirname "$hist")/run-times.json"
-  out=$(printf '%s' "$record" | jq -c --rawfile prev "$prev" --slurpfile approved_doc "$adoc" --argjson effort "$effort" --argjson tracked "$counts" --argjson approved "$approved" --arg waiting "$waiting" --argjson added_to "$added" --arg problems "$problems" --arg contract "$hash" \
+  out=$(printf '%s' "$record" | jq -c --argjson commit_failed "$(commit_failure_json)" --rawfile prev "$prev" --slurpfile approved_doc "$adoc" --argjson effort "$effort" --argjson tracked "$counts" --argjson approved "$approved" --arg waiting "$waiting" --argjson added_to "$added" --arg problems "$problems" --arg contract "$hash" \
     --argjson code_changed "$changed" --argjson legacy "$legacy" --slurpfile in <(printf '%s' "$digests") --slurpfile ch <(printf '%s' "$cache") --argjson fpv "$QA_FP_VERSION" --argjson profile "$profile" --arg session "$(vbw_session)" --arg holder "$holder" --argjson next_phase "$NP_NEXT_PHASE" --slurpfile tiers "$VBW_LIB/tiers.json" --slurpfile mf <(next_manifests) \
     --argjson want_step "${NP_WANT_STEP:-0}" --argjson want_road "${NP_WANT_ROAD:-0}" --slurpfile note <(printf '%s' "$note") \
     --slurpfile h <(jq -c 'select(type == "object" and (.steps | type) == "array")' "$hist" 2> /dev/null) \
@@ -282,6 +284,8 @@ cmd_next() {
   vbw_require_project
   local next record step road hint replan out main=0
   [ "${FUNCNAME[1]:-main}" != main ] || main=1
+  # A record commit that failed (R287): one more try through the project's hooks before the answer.
+  [ "$main" != 1 ] || commit_failure_retry
   next_prepare || exit $?
   # Only the command asks for the step and the road (below): their size and sums are worked
   # out in the same run that judges the answer, from the live step's note.

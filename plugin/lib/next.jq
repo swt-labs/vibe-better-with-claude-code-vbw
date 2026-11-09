@@ -4,6 +4,7 @@
 # VBW 1 plan, .vbw-planning/, is not converted yet), $session (the caller's session, "" when unknown).
 # $waiting: the check files edited since the approval, newline-separated ("" when none).
 # $added_to: [{file, lines}], the check files that only had lines added since the approval (R269); carried as added_to when any.
+# $commit_failed: null, or {at, files, say} while a record commit the project's hook refused stands (lib/commit-failure.sh, R287).
 # $problems: why the contract cannot be approved yet, one per line ("" when it can; lib/cmd-approve.sh).
 # $tracked (the number of files git tracks, for the early tier).
 # $profile: interview_effective (lib/interview.sh); next fills unanswered ones with the neutral middle choice.
@@ -103,7 +104,10 @@ def fix_files($r): if .command then ["*"]
         elif $nf <= 2 then "quick"
         elif $nf <= 9 then ([$cell, "standard"] | min_by(qa_rank))
         else $cell end)}] | from_entries) as $tiers_qa
-| (if .lease != null and .lease.session != null and .lease.session != $session then
+| (if $commit_failed != null then
+    # R287: VBW's files could not be committed: before any other step, never an approval that cannot be recorded.
+    result("commit"; true; $commit_failed.say; {files: $commit_failed.files, at: $commit_failed.at})
+  elif .lease != null and .lease.session != null and .lease.session != $session then
     result("run"; false; "A VBW \(.lease.kind) run (\(.lease.run)) belongs to another session, \($holder): wait for it, or check vbw status"; {lease: .lease})
   elif .lease != null then
     result("run"; false; "A VBW \(.lease.kind) run (\(.lease.run)) is open: if its workflow is still running in this session, wait for it; otherwise run vbw run end"; {lease: .lease})
