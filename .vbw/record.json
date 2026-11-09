@@ -9182,7 +9182,7 @@
   "milestone": {
     "id": "M56",
     "title": "The loop finishes a milestone; vbw next fast on Linux; every test proven",
-    "status": "active"
+    "status": "shipped"
   },
   "shipped": [
     {
@@ -9454,6 +9454,11 @@
       "id": "M55",
       "title": "Rust quick wins: a fast vbw next, fewer stops, plain messages",
       "at": "2026-11-08T19:43:46Z"
+    },
+    {
+      "id": "M56",
+      "title": "The loop finishes a milestone; vbw next fast on Linux; every test proven",
+      "at": "2026-11-09T22:58:09Z"
     }
   ],
   "requirements": [
@@ -89975,6 +89980,11 @@
       "at": "2026-11-09T22:45:27Z",
       "text": "Contract approved: 278 requirements, 676 checks, 669 plans (ad2591d0670d)",
       "plans": []
+    },
+    {
+      "id": "D696",
+      "at": "2026-11-09T22:58:09Z",
+      "text": "Shipped M56 The loop finishes a milestone; vbw next fast on Linux; every test proven: 11 requirements proven or accepted"
     }
   ],
   "commands": {
@@ -106013,6 +106023,10 @@
             "usd": 0,
             "at": "2026-11-09T09:12:42Z"
           }
+        },
+        "total": {
+          "usd": 90.553037,
+          "sessions": 48
         }
       }
     }
