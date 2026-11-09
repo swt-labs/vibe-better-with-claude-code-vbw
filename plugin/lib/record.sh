@@ -83,7 +83,7 @@ record_version_read() {
     touch -a -r "$stamp" "$f" 2> /dev/null || true
     rm -f "$stamp" 2> /dev/null || true
   fi
-  printf '%s\n' "$v"
+  vbw_out '%s\n' "$v"
 }
 
 # The writer file (R272): .vbw/runtime/writer.json, {version, schema}: the VBW that last
