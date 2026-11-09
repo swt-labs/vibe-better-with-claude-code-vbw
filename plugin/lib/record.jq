@@ -97,8 +97,10 @@ def mutation_ok($sch):
         and ((has("contract") | not) or (.contract | sha256))
         and ((has("strengthened") | not) or (.strengthened | type == "array" and all(.[]; safe_path)))
         and ((has("pending") | not) or (.pending | type == "array" and length > 0 and all(.[]; safe_path)))
-        and ((has("digests") | not) or (. as $m | .digests | type == "object"
-             and all(to_entries[]; (.key as $f | $m.files | index($f) != null) and (.value | sha256 or . == "absent"))))
+        and ((has("digests") | not) or ((.digests | type == "object" or type == "array") and (. as $m | .digests | digests_list
+             | (map(.file) | length == (unique | length))
+               and all(.[]; type == "object" and (keys | sort) == ["file","sha256"]
+                 and (.file as $f | $m.files | index($f) != null) and (.sha256 | sha256 or . == "absent")))))
         and ((($sch | type == "number" and . >= 13) | not) or has("digests"))
       end);
 

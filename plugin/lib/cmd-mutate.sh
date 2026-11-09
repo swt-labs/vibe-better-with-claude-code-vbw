@@ -61,12 +61,13 @@ mutate_digest() {
   fi
 }
 
-# mutate_digests FILE...: {FILE: digest} as JSON.
+# mutate_digests FILE...: [{file, sha256}] sorted by file, as JSON (R286: a path never shares a
+# record line with a digest).
 mutate_digests() {
   local f
   for f in "$@"; do
     printf '%s\n%s\n' "$f" "$(mutate_digest "$f")"
-  done | jq -R . | jq -sc '[range(0; length; 2) as $i | {key: .[$i], value: .[$i + 1]}] | from_entries'
+  done | jq -R . | jq -sc '[range(0; length; 2) as $i | {file: .[$i], sha256: .[$i + 1]}] | sort_by(.file)'
 }
 
 # mutate_same_bytes PLAN TARGET HEAD TREE BYTESUM RECORD: refuse a break whose digests equal an
@@ -78,20 +79,20 @@ mutate_digests() {
 mutate_same_bytes() {
   local plan="$1" target="$2" head="$3" tree="$4" bytesum="$5" record="$6" hit='' e m names c
   c=$(contract_hash "$record") || c=''
-  hit=$(printf '%s' "$record" | jq -r --arg p "$plan" --arg h "$head" --arg t "$tree" --arg c "$c" --argjson d "$bytesum" '
+  hit=$(printf '%s' "$record" | jq -L "$VBW_LIB" -r --arg p "$plan" --arg h "$head" --arg t "$tree" --arg c "$c" --argjson d "$bytesum" 'include "record-schema";
     [.plans[] | select(.id == $p) | (.mutations // [])[]
-     | select((if has("tree") then .tree == $t else .head == $h end) and (.digests // null) == $d
+     | select((if has("tree") then .tree == $t else .head == $h end) and ((.digests // null) | digests_list) == $d
          and (if has("contract") and $c != "" then .contract == $c else true end))
      | "\(if has("rule") then "\(.rule.req).\(.rule.k)" else "task\(.task)" end) \(.at)"] | last // empty')
   if [ -z "$hit" ]; then
     while IFS= read -r e; do
       [ -n "$e" ] || continue
-      m=$(jq -r --arg h "$head" --arg t "$tree" --argjson d "$bytesum" 'select((if has("tree") then .tree == $t else .head == $h end) and (.digests // null) == $d) | "\(.target) \(.at // "") (queued)"' "$e/meta.json")
+      m=$(jq -L "$VBW_LIB" -r --arg h "$head" --arg t "$tree" --argjson d "$bytesum" 'include "record-schema"; select((if has("tree") then .tree == $t else .head == $h end) and ((.digests // null) | digests_list) == $d) | "\(.target) \(.at // "") (queued)"' "$e/meta.json")
       [ -z "$m" ] || hit=$m
     done < <(mutate_queue_entries "$plan")
   fi
   [ -z "$hit" ] || {
-    names=$(printf '%s' "$bytesum" | jq -r 'keys | join(", ")')
+    names=$(printf '%s' "$bytesum" | jq -r 'map(.file) | join(", ")')
     vbw_die "$target holds the same bytes of $names as the break $hit: the break was not edited out of the file; edit it out, make a different break, then run vbw mutate again"
   }
 }

@@ -183,7 +183,7 @@ mutate_queue_run() {
     m=$(jq -c . "$e/meta.json")
     ruledoc=$(printf '%s' "$record" | jq -c --argjson m "$m" '.requirements[] | select(.id == $m.req) | (.rules // [])[$m.rk - 1] | {req: $m.req, text, check}')
     # shellcheck disable=SC2034 # read by cmd-mutate.sh's mutate_record
-    MUTATE_DIGESTS=$(printf '%s' "$m" | jq -c '.digests // null')
+    MUTATE_DIGESTS=$(printf '%s' "$m" | jq -L "$VBW_LIB" -c 'include "record-schema"; (.digests // null) | digests_list')
     mutate_record "$plan" "$(printf '%s' "$m" | jq -r .target)" "$(printf '%s' "$m" | jq -r .what)" "$head" "$(cat "$e/result.json")" \
       "$(record_read)" "$ruledoc" "" "$(printf '%s' "$m" | jq -c .files)" "$tree" || surv=1
     aside=$e
