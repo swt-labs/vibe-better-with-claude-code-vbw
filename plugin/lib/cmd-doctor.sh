@@ -240,6 +240,7 @@ doctor_project() {
   fi
   doctor_big_ignored
   doctor_kept
+  doctor_commit_failed
   [ -n "$v" ] && return 0
   if jq -e '.lease != null' "$VBW_RECORD" > /dev/null; then
     doctor_line warn "a run is open ($(jq -r .lease.run "$VBW_RECORD"))" "if no VBW workflow is running: vbw run end"
@@ -249,6 +250,21 @@ doctor_project() {
     doctor_line info "the contract is not approved (yet, or since it changed): VBW asks with the approval menu after you review it"
   fi
   doctor_guard
+}
+
+# A record commit the project's hook refused and that still stands (R287): one warning line,
+# read only (no retry, no commit, nothing cleared). It stands while a file it names differs from HEAD.
+doctor_commit_failed() {
+  local f="$VBW_RUNTIME/commit-failed.json" x files=() at t reason
+  [ -f "$f" ] || return 0
+  while IFS= read -r -d '' x; do files+=("$x"); done < <(jq -j '(.files // [])[] + "\u0000"' "$f" 2> /dev/null)
+  [ -n "$(cd "$VBW_ROOT" && vbw_dirty_files ${files[@]+"${files[@]}"} 2> /dev/null)" ] || return 0
+  at=$(jq -r '.at // empty' "$f" 2> /dev/null) || at=""
+  t=$(date -j -u -f '%Y-%m-%dT%H:%M:%SZ' "$at" +%s 2> /dev/null) || t=$(date -u -d "$at" +%s 2> /dev/null) || t=""
+  if [ -n "$t" ]; then t=$(date -r "$t" +%H:%M 2> /dev/null) || t=$(date -d "@$t" +%H:%M 2> /dev/null) || t=""; fi
+  [ -n "$t" ] || t=$(date +%H:%M)
+  reason=$(jq -r '(.reason // "") | split("\n")[0]' "$f" 2> /dev/null) || reason=""
+  doctor_line warn "VBW's files could not be committed at $t: $reason" "fix what the hook flagged, allow it in the checker's settings, or commit the VBW files yourself (git add .vbw, then git commit); then run vbw next"
 }
 
 # Large git-ignored folders the Clean copy section does not list yet (R253).
