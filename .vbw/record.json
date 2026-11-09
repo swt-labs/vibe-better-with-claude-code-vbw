@@ -81376,7 +81376,7 @@
       "text": "The guard's read of a script run by name takes more than its 5 s CPU limit on a 264 KB script and answers 'the guard failed, run vbw doctor', which does not name the cause. Say the script is too large to read, and look at why the read grows faster than the file (80 KB 1.1 s, 264 KB 7.6 s). Also: a clear message when the installed VBW is older than the record and the approval menu cannot work; and parallel Devs running a kernel another Dev is editing (a half-edited kernel made the shared record invalid, and a Dev got out with a lenient validator copy).",
       "sort": "next",
       "size": "small",
-      "status": "open"
+      "status": "done"
     },
     {
       "id": "T252",
