@@ -462,12 +462,17 @@ record_hidden() {
 # project root) only those of VBW's files are considered, so a command that
 # writes the record alone never takes the user's edit of the spec with it
 # (vbw todo). Nothing changed: no commit.
-# A failing commit (no git identity, a hook) warns with git's own reason and
-# never undoes the step; with --strict as first argument it prints the reason
+# A failing commit (no git identity, a hook) warns with git's own reason, keeps it
+# as a step of its own (lib/commit-failure.sh) and never undoes the step; with --strict as first argument it prints the reason
 # alone and returns 1, for a caller that must stop (vbw approve).
 record_commit() {
   local strict=0
   [ "${1:-}" != "--strict" ] || { strict=1; shift; }
+  # The kept failure (R287) lives in its own file, loaded when a commit is made.
+  [ "$(type -t commit_failure_keep)" = function ] || {
+    # shellcheck source=commit-failure.sh
+    . "$VBW_LIB/commit-failure.sh"
+  }
   local msg="$1" own=() f why hidden
   shift
   local only=("$@")
@@ -491,6 +496,7 @@ record_commit() {
     if hidden=$(record_hidden); then
       if [ "$strict" = 1 ]; then
         printf '%s\n' "$hidden" >&2
+        commit_failure_keep "$msg" "$hidden" "${own[@]}"
         exit 1
       fi
       printf '%s\n' "$hidden" | sed 's/^/vbw: warning: /' >&2
@@ -501,9 +507,13 @@ record_commit() {
     record_lock
     if why=$(vbw_commit_paths "$msg" "" "${own[@]}" 2>&1 || { printf '%s' "${VBW_COMMIT_ERR:-}"; exit 1; }); then
       record_unlock
+      # A commit that works settles a kept failure once none of its files differs from HEAD.
+      commit_failure_standing || true
       exit 0
     fi
     record_unlock
+    # Every failure is kept as a step of its own (R287): the hook's reason, never a skipped hook.
+    commit_failure_keep "$msg" "$why" "${own[@]}"
     if [ "$strict" = 1 ]; then
       printf '%s\n' "$why" >&2
     else
