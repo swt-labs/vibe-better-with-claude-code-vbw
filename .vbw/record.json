@@ -33539,7 +33539,22 @@
           "to": "deep",
           "reason": "Dev blocked P226.3: task 1 needs RED_FIRST_DEFS (red_own, red_ran_first: the one definition of a plan's own checks and of red first, in plugin/lib/cmd-check.sh) inside the jq program vbw next runs. That program is assembled in plugin/lib/cmd-next.sh (it concatenates VBW_JQ_DEFS, VBW_QA_DEFS ... then next.jq), and cmd-next.sh does not load cmd-check.sh. next.jq alone cannot reach the defs; copying them into next.jq would duplicate the rule and let the two drift. Fix: add plugin/lib/cmd-next.sh to the plan's files (source cmd-check.sh, put $RED_FIRST_DEFS in the defs chain); then next.jq, verifying.js, qa.md as planned. Red run of C671 done: red as expected."
         }
-      ]
+      ],
+      "qa": {
+        "result": "pass",
+        "tier": "deep",
+        "tree": "80e0e279aca589dc76dd11fad49e5023022dee6a17acf1af23736a6ee355f10e",
+        "at": "2026-11-09T17:08:03Z",
+        "note": "30/30 checks"
+      },
+      "outcome": {
+        "tier": "deep",
+        "predicted": "deep",
+        "held": true,
+        "fix_rounds": 0,
+        "qa_findings": 0,
+        "escalations": 3
+      }
     },
     {
       "id": "P227",
