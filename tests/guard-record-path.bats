@@ -94,14 +94,19 @@ record_refused() {
   done
 }
 
-@test "R289 own: a cd the guard cannot follow for certain (in a subshell or a pipe, cd -, or one the next command does not wait for) leaves the project's record refused; a plain && chain is followed (F434)" {
+@test "R289 own: a cd the guard cannot follow for certain (in a subshell or a pipe, one the next command does not wait for, or one it cannot read: cd -, cd ~-, a cd to a variable) leaves the project's record refused; a plain && chain is followed (F434, F439)" {
   local c out
   for c in "(cd '$SCRATCH/plain'; true); echo x > .vbw/record.json" \
     "cd '$SCRATCH/plain'; cd -; echo x > .vbw/record.json" \
     "cd '$SCRATCH/plain' && cd - && echo x > .vbw/record.json" \
     "cd '$TEST_ROOT/none'; echo x > .vbw/record.json" \
     "cd '$SCRATCH/plain' | true; echo x > .vbw/record.json" \
-    "cd '$SCRATCH/plain' || true; cp '$TEST_ROOT/in.json' .vbw/record.json"; do
+    "cd '$SCRATCH/plain' || true; cp '$TEST_ROOT/in.json' .vbw/record.json" \
+    "cd '$SCRATCH/plain' && cd \$OLDPWD && echo x > .vbw/record.json" \
+    "cd '$SCRATCH/plain' && cd \"\$OLDPWD\" && echo x > .vbw/record.json" \
+    "cd '$SCRATCH/plain' && cd ~- && echo x > .vbw/record.json" \
+    "cd '$SCRATCH/plain' && cd -P - && echo x > .vbw/record.json" \
+    "cd '$SCRATCH/plain' && cd -- - && echo x > .vbw/record.json"; do
     out=$(bash_at "$PROJECT" "$c")
     record_refused "$out" "$c"
   done

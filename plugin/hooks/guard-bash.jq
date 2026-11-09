@@ -60,7 +60,7 @@ def written(rule):
 
 # The command writes the record (R276): a redirect to it, or a writer below naming it (a copier
 # as its destination). A command that only reads it (find -path, ls, grep, cat, jq, git log)
-# passes: naming it is not writing it. Judged from .cwd and from .alt (F434, run).
+# passes: naming it is not writing it. Judged from .cwd and .alt (F434).
 def record_written:
   . as $c | any(.cwd // $ARGS.named.dir, .alt // empty; . as $w | $c | (.out | any(.[]; record_at($w)))
   or (.cmd == "dd" and any(.args[]; startswith("of=") and (.[3:] | record_at($w))))
@@ -229,9 +229,9 @@ def run:
   | select($g.lease != null or $g.foreign != null or ($g.hook.agent_type // "") != "" or ($c | may_matter or reaches))
   | session_dir($g) as $start
   | ([$c | commands(3)] | with_cwd($start; resolve)) as $cmds
-  # F434: unless a plain && chain without cd -, the start folder counts too.
-  | (if any($cmds[]; .cwd != $start) and ($c | strip_heredocs | mask | .text | gsub("&&|[<>]&|&>"; " ")
-      | test("[;|&(){}`\\n]|(^|\\s)cd\\s+-(\\s|$)")) then [$cmds[] | .alt = $start] else $cmds end) as $cmds
+  # F434: the start folder counts too unless a plain && chain of cds all followed.
+  | (if any($cmds[]; .cwd != $start) and (any($cmds[]; .cmd == "cd" and [cd_to] == [])
+      or ($c | strip_heredocs | mask | .text | gsub("&&|[<>]&|&>"; " ") | test("[;|&(){}`\\n]"))) then [$cmds[] | .alt = $start] else $cmds end) as $cmds
   | [$c | select(test("<<")) | heredoc_programs($start; resolve)] as $hds
   | (if $g.lease != null then [script_requests($g; $cmds; $c)] else [] end) as $sr
   | ( [$cmds[] | everywhere][0]
