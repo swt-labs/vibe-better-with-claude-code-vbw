@@ -33502,12 +33502,19 @@
         }
       ],
       "qa": {
-        "result": "fail",
+        "result": "pass",
         "tier": "deep",
-        "tree": "fb11e82f79164370c5232a9205d9e813336f445b6f717e885f865b9f8127eec7",
-        "at": "2026-11-09T19:39:20Z",
-        "note": "7/8 checks",
-        "rounds": 2
+        "tree": "edfb5ba8dddec892f0117a7089059de77d923e774ea6d540f9a4acf0e3617be8",
+        "at": "2026-11-09T22:56:49Z",
+        "note": "6/6 checks"
+      },
+      "outcome": {
+        "tier": "deep",
+        "predicted": "deep",
+        "held": true,
+        "fix_rounds": 3,
+        "qa_findings": 3,
+        "escalations": 3
       }
     },
     {
@@ -84127,7 +84134,7 @@
       "req": "R289",
       "source": "qa",
       "attempts": 0,
-      "status": "fixed",
+      "status": "closed",
       "note": "The record guard (plugin/hooks/guard-bash.jq, run; with_cwd in plugin/hooks/programs.jq) still fails open for a cd it cannot read, the same gap F434 fixed only for the literal 'cd -'. The start folder is also judged only when the text matches 'cd -' as its own word (guard-bash.jq line ~234). Through the real PreToolUse Bash hook from the project folder these are NOT refused although the shell really writes the project's own record: 'cd /usr && cd $OLDPWD && echo x > .vbw/record.json', 'cd /usr && cd \"$OLDPWD\" && echo x > .vbw/record.json', 'cd /usr && cd ~- && echo x > .vbw/record.json', 'cd /usr && cd -P - && echo x > .vbw/record.json', 'cd /usr && cd -- - && echo x > .vbw/record.json'. Cause: with_cwd leaves the folder unchanged for a cd whose target is missing (only flags), starts with ~, or holds $ or a backtick, so the folder stays /usr; the F434 trigger regex does not see these spellings. Controls that behave right: '(cd /usr; true); echo x > .vbw/record.json', 'cd /usr; cd -; ...', 'cd /nonexistent; ...', '{ cd /usr; }; ...' and 'cd /usr && echo x > .vbw/record.json' (allowed, correct). Regression test (tests/guard-record-path.bats, next to the F434 case): main-session Bash calls 'cd <elsewhere> && cd $OLDPWD && echo x > .vbw/record.json', 'cd <elsewhere> && cd ~- && echo x > .vbw/record.json' and 'cd <elsewhere> && cd -P - && echo x > .vbw/record.json' must be refused with '.vbw/record.json is written only by vbw', while 'cd <scratchpad repo> && echo x > .vbw/record.json' stays allowed. Fix idea: use one trigger, the condition with_cwd itself uses to skip a cd (any cd whose first non-flag argument is missing, starts with ~, or holds $ or a backtick, as well as the literal cd -), so any cd the guard cannot follow also tests the start folder.",
       "phase": "P225"
     },
