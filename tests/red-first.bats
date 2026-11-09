@@ -146,6 +146,7 @@ plan_of() { jq -c --arg p "$1" '.plans[] | select(.id == $p)' .vbw/record.json; 
   n=$(VBW_SESSION_ID=s1 "$VBW" next --json < /dev/null)
   printf '%s' "$n" | jq -e '.action == "qa" and .round.red_first == {"P1.1": ["C1"]}' > /dev/null || { printf '%s' "$n" | jq -c '{action, red_first: .round.red_first}'; false; }
   grep -q 'red_first' "$PLUGIN_ROOT/workflows/verifying.js" || { echo "the QA workflow does not pass red_first to QA"; false; }
+  grep -F 'Verify VBW phase' "$PLUGIN_ROOT/workflows/verifying.js" | grep -qF 'redFirstNote(id)' || { echo "the QA brief does not carry the red first note of the phase"; false; }
   grep -iE 'red first|red_first' "$PLUGIN_ROOT/agents/qa.md" | grep -qiE 'deviation' || { echo "qa.md does not say a check that never ran red first is a deviation"; false; }
 }
 
