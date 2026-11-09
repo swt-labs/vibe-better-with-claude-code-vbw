@@ -16,6 +16,8 @@
 . "$VBW_LIB/steps.sh"
 # shellcheck source=sessions.sh
 . "$VBW_LIB/sessions.sh"
+# shellcheck source=cmd-check.sh
+. "$VBW_LIB/cmd-check.sh"
 
 # next_holder RECORD: the display name of the lease's session, empty without a lease session.
 next_holder() {
@@ -213,7 +215,7 @@ next_decide() {
     --argjson want_step "${NP_WANT_STEP:-0}" --argjson want_road "${NP_WANT_ROAD:-0}" --slurpfile note <(printf '%s' "$note") \
     --slurpfile h <(jq -c 'select(type == "object" and (.steps | type) == "array")' "$hist" 2> /dev/null) \
     --slurpfile runs <(jq -c 'select(type == "object" and (.runs | type) == "object")' "$runs" 2> /dev/null) \
-    "$VBW_JQ_DEFS$VBW_QA_DEFS$VBW_STEP_DEFS$VBW_STEP_SIZE_DEFS$(road_expect_defs)$NEXT_PACKS_DEFS"'. as $work | [qa_prog($in[0]; $ch[0])] as $qa
+    "$VBW_JQ_DEFS$VBW_QA_DEFS$VBW_STEP_DEFS$VBW_STEP_SIZE_DEFS$(road_expect_defs)$NEXT_PACKS_DEFS$RED_FIRST_DEFS"'. as $work | [qa_prog($in[0]; $ch[0])] as $qa
     | def next_prog:
 '"$(cat "$VBW_LIB/next.jq")"'
 ;

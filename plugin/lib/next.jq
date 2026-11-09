@@ -37,6 +37,14 @@ def fix_files($r): if .command then ["*"]
   else (.req as $q | [$r.plans[] | select(any(.reqs[]; . == $q)) | .files[]] | unique)
        | if length == 0 then ["*"] else . end end;
 
+# Red first (R292, D690), per plan of the phases to verify: the plan's own checks that never ran red
+# before its first code commit (red_own and red_ran_first come with RED_FIRST_DEFS, lib/cmd-check.sh);
+# a plan whose checks all ran red is left out.
+def red_first_round($ids): . as $r
+  | [$r.plans[] | select(.phase | IN($ids[])) | select(.status == "done") | .id as $p
+      | [($r | red_own($p))[] | select(. as $c | ($r | red_ran_first($c)) | not)] as $never
+      | select(($never | length) > 0) | {key: $p, value: $never}] | from_entries;
+
 .milestone.id as $m
 | $qa[0] as $qa
 | ([.requirements[] | select(.milestone == null) | .id]) as $unassigned
@@ -177,6 +185,7 @@ def fix_files($r): if .command then ["*"]
 # caller's own QA run is open: the router may read it on either side of vbw run start qa (T178).
 | ($n.action == "qa" or ($n.action == "run" and .lease.kind == "qa" and (.lease.session == null or .lease.session == $session))) as $with_round
 | $n + (if $with_round then {round: {tiers: $tiers_qa, focus: ([$to_verify[] | select(($qa.focus // {})[.] != null) | {key: ., value: $qa.focus[.]}] | from_entries),
+    red_first: red_first_round($to_verify),
     deviations: ([$to_verify[] | select(($qa.deviations // {})[.] != null) | {key: ., value: $qa.deviations[.]}] | from_entries), suite: (if (.commands.test // null) == null then null else (.commands.test) as $cmd | (if .evidence.commands.test == null then {command: "test", status: "not run"} else .evidence.commands.test | (if (.command // "") == "" then .command = ($cmd | join(" ")) else . end) end) end)}} else {} end) + {next_phase: $next_phase, effort: $effort, requirements: [$current[] | {id, text, proof}], rigor: $rigor, qa: ($qa | {recheck, standing, interleaved, problems}), declined: [(.project.declined // [])[].text], profile: ({level: "small scripts or no-code", depth: "plain with technical terms explained", involvement: "options with a recommendation"} + ($profile | with_entries(select(.value != null or .key == "kept" or .key == "pending"))) + {ask: ([$n.action] | inside(["spec","convert"]) and ($profile.interviewed | not))})}
 # When VBW first reached this gate (R189): the last answer's since while the same action and
 # detail stand, so a restart or another session never moves it; a new gate starts now.

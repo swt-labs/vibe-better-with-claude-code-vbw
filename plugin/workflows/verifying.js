@@ -149,6 +149,14 @@ const deviationNote = id => {
   if (list.length === 0) return ''
   return `\n\nVBW found files the plans of ${id} delivered that HEAD no longer holds as VBW left them: ${list.map(deviationLine).join('; ')}. Each one no decision covers is a deviation: record a finding for it (vbw qa finding ${id} REQ "<the file, what is missing or different, the commit>"); vbw qa record ${id} pass refuses while one stands. For one covered by a decision, check that the decision is the user's and covers that change: then it is not a deviation.`
 }
+// Red first (args.round.red_first, R292, D690): per plan, its own checks that never ran red before
+// the plan's first code commit. QA lists each in its notes as a deviation from test first.
+const redFirst = (args && args.round && args.round.red_first && typeof args.round.red_first === 'object' && !Array.isArray(args.round.red_first)) ? args.round.red_first : {}
+const redFirstNote = id => {
+  const rows = Object.keys(redFirst).filter(p => p.split('.')[0] === id && Array.isArray(redFirst[p]) && redFirst[p].length > 0)
+  if (rows.length === 0) return ''
+  return `\n\nRed first: these checks never ran red before their plan's first code commit: ${rows.map(p => `${p} (${redFirst[p].join(', ')})`).join('; ')}. List each in your notes as a deviation from test first; it is not a vbw qa finding and not a failure by itself.`
+}
 // R261: the packs of a phase's plans (args.packs.phases, args.packs_root): QA is told the qa text by path.
 const packsRoot = (args && typeof args === 'object' && typeof args.packs_root === 'string' && args.packs_root) || ''
 const packPhases = (args && args.packs && typeof args.packs === 'object' && args.packs.phases && typeof args.packs.phases === 'object') ? args.packs.phases : {}
@@ -157,7 +165,7 @@ const packNote = id => {
   return packsRoot && names.length ? `\n\nStack pack text for this phase: read ${names.map(n => `${packsRoot}/${n}/qa.md`).join(' and ')} first.` : ''
 }
 const results = await pipeline(phases, id =>
-  ask(`Verify VBW phase ${id} at the ${tierOf(id)} tier, then record your findings and verdict with vbw qa (if qa record refuses a stale proof, run vbw prove --full, then retry the record once). Start with: vbw show phase ${id}${focusNote(id)}${deviationNote(id)}${suiteNote}${packNote(id)}${voice}`,
+  ask(`Verify VBW phase ${id} at the ${tierOf(id)} tier, then record your findings and verdict with vbw qa (if qa record refuses a stale proof, run vbw prove --full, then retry the record once). Start with: vbw show phase ${id}${focusNote(id)}${deviationNote(id)}${redFirstNote(id)}${suiteNote}${packNote(id)}${voice}`,
     Object.assign({ agentType: 'vbw:qa', label: `qa ${id}`, phase: 'Verify', schema: VERDICT },
       modelOf(id) ? { model: modelOf(id) } : {}, effortOf('qa', 'verify'))))
 
