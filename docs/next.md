@@ -172,8 +172,8 @@ finished step of the kind, `seconds` and `end` are `null` and `say` reads
 An estimate from little or widely spread history is a range. The step carries
 `low` and `high` (seconds), `end_low` and `end_high` (clock times), `rough`
 (`true` when fewer than 5 kept runs back it, or `high` is above 1.5 times `low`)
-and `runs` (the run count), beside `seconds` and `end`. `say` then reads
-`Building P1.1 and P1.2: roughly 8 to 14 min, until around 14:12 to 14:18 (rough guess from 2 runs)`
+and `runs` (the run count), beside `seconds` and `end`. `say` then leads with the typical figure (the median of the runs) and gives the range after it:
+`Building P1.1 and P1.2: usually about 11 min (8 to 14 min, rough guess from 2 runs), until around 14:15 (14:12 to 14:18)`
 (`roughly 12 min, until around 14:20 (rough guess from 2 runs)` when low and
 high agree). With 5 or more runs that agree, `rough` is `false` and `say` keeps
 the single figure.
@@ -214,7 +214,7 @@ left (the milestone shipped).
 - `low`, `high`, `end_low`, `end_high`, `rough` and `runs`: as on the step. The
   road is rough when any part is rough, or when a tier's usual fix rounds rest
   on fewer than 3 finished phases (counted as none), and then reads `Milestone
-  end: roughly 30 to 50 min, until around 14:50 to 15:10 (rough guess), counting
+  end: usually about 40 min (30 to 50 min, rough guess), until around 14:50 (14:40 to 15:10), counting
   2 fix rounds per standard phase (the usual here)`; it is the single figure
   when every part is tight and every tier's usual fix rounds are known.
 - `seconds` and `end`: the time still ahead and the clock time it ends. Both

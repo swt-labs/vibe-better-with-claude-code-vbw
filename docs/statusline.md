@@ -23,7 +23,7 @@ Sonnet 5.5 │ 10m22s (API 5m55s) │ main │ VBW 2.0.6 │ CC 2.1.286
      up; an end on another day reads `until around tomorrow 00:20`. A step with
      parts past its time reads `until around 14:35, later than usual`; one
      without reads `until around 14:20, 6 min late`. A rough estimate (fewer than 5
-     runs, or runs that disagree) shows a range: `until ~14:12-14:18`; a tight
+     runs, or runs that disagree) leads with the typical end and shows the range after it: `until ~10:15 (09:22-18:02)`; a tight
      one keeps the single time. With no finished step of the kind there is no end time: `● working: building P1.2, P2.1 ·
      1 of 2 · 8 min`. The status line reads the time from the running step's note
      and never works it out itself (see [Time left](panel.md#time-left)). It shows
