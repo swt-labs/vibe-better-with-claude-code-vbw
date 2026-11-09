@@ -61,12 +61,37 @@ record_refuse_newer() {
   vbw_die "this project needs a newer VBW: its record was written with schema $n, and this session loaded VBW $loaded, which reads up to schema $VBW_SCHEMA_MAX. $fix" 4
 }
 
+# record_version_read: the loaded VBW's version, for the writer file (R279). When the proof
+# names a file in VBW_KERNEL_READS (one per unit it runs), this read is the kernel's own
+# bookkeeping, not the caller's: the file's absolute path is logged there and plugin.json's
+# access time is left as it was (a stamp taken before the read, set back after), so the
+# proof can tell it from a unit that reads the version itself. Every other read of the
+# version (vbw version, the newer-schema message) is the caller's and untouched.
+record_version_read() {
+  local f=$VBW_PLUGIN/.claude-plugin/plugin.json stamp="" v
+  if [ -n "${VBW_KERNEL_READS:-}" ] && [ -f "$f" ]; then
+    stamp=$(mktemp "$VBW_RUNTIME/atime.XXXXXX" 2> /dev/null) || stamp=
+    if [ -n "$stamp" ] && touch -a -r "$f" "$stamp" 2> /dev/null; then
+      printf '%s\n' "$f" >> "$VBW_KERNEL_READS" 2> /dev/null || true
+    else
+      [ -z "$stamp" ] || rm -f "$stamp" 2> /dev/null || true
+      stamp=
+    fi
+  fi
+  v=$(jq -r '.version // "unknown"' "$f" 2> /dev/null || echo unknown)
+  if [ -n "$stamp" ]; then
+    touch -a -r "$stamp" "$f" 2> /dev/null || true
+    rm -f "$stamp" 2> /dev/null || true
+  fi
+  printf '%s\n' "$v"
+}
+
 # The writer file (R272): .vbw/runtime/writer.json, {version, schema}: the VBW that last
 # wrote the record and the record's schema, so an older VBW can name both versions. Written
 # beside every record write, atomically; a failed write never fails the record write.
 record_writer_write() {
   local t v
-  v=$(jq -r '.version // "unknown"' "$VBW_PLUGIN/.claude-plugin/plugin.json" 2> /dev/null || echo unknown)
+  v=$(record_version_read)
   t=$(mktemp "$VBW_RUNTIME/writer.XXXXXX" 2> /dev/null) || return 0
   if jq -c --arg v "$v" '{version: $v, schema}' "$VBW_RECORD" > "$t" 2> /dev/null; then
     mv "$t" "$VBW_RUNTIME/writer.json" 2> /dev/null || rm -f "$t" 2> /dev/null || true
