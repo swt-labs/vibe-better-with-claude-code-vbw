@@ -51,9 +51,9 @@ hm() {
 }
 
 # note FILTER: write the note: the open run's, a build of P1.1 and P1.2 started
-# 5 min ago, ending in 12 min, then FILTER (times as seconds from now: s(N)).
+# 5 min ago, ending in 12 min, then FILTER (times as seconds from the set clock, VBW_NOW: s(N)).
 note() {
-  jq -n --slurpfile r .vbw/record.json "def s(\$n): (now | floor) + \$n | todateiso8601;
+  jq -n --slurpfile r .vbw/record.json "def s(\$n): (\$ENV.VBW_NOW | fromdateiso8601) + \$n | todateiso8601;
     {kind: \"build\", run: \$r[0].lease.run, session: \"s1\", pid: null, started_at: s(-300), ids: [\"P1.1\", \"P1.2\"],
      doing: \"building P1.1, P1.2\", parts: {done: 1, total: 2}, proof: null, first_end: s(720), end: s(720), late: false} | $1" > "$NOTE"
 }
@@ -68,7 +68,7 @@ note() {
 }
 
 @test "R190: a background proof shows 'proving N of M checks' and its clock time, and counts up" {
-  jq -n --argjson pid "$LIVE" 'def s($n): (now | floor) + $n | todateiso8601;
+  jq -n --argjson pid "$LIVE" 'def s($n): ($ENV.VBW_NOW | fromdateiso8601) + $n | todateiso8601;
     {kind: "proof", run: null, session: "s1", pid: $pid, started_at: s(-60), ids: [], doing: "proving 12 of 40 checks",
      parts: {done: 12, total: 40}, proof: {done: 12, total: 40}, first_end: s(480), end: s(480), late: false}' > "$NOTE"
   run render
@@ -123,7 +123,7 @@ note() {
   export TZ=UTC
   "$VBW" run start build P1.1 P1.2 > /dev/null
   # 00:20 tomorrow, UTC.
-  jq -n --slurpfile r .vbw/record.json '(now | floor) as $t | ($t - ($t % 86400) + 86400 + 1200) as $e
+  jq -n --slurpfile r .vbw/record.json '($ENV.VBW_NOW | fromdateiso8601) as $t | ($t - ($t % 86400) + 86400 + 1200) as $e
     | {kind: "build", run: $r[0].lease.run, session: "s1", pid: null, started_at: ($t - 300 | todateiso8601), ids: ["P1.1", "P1.2"],
        doing: "building P1.1, P1.2", parts: {done: 1, total: 2}, proof: null, first_end: ($e | todateiso8601), end: ($e | todateiso8601), late: false}' > "$NOTE"
   run render
@@ -147,7 +147,7 @@ note() {
   sh -c 'exit 0' &
   gone=$!
   wait "$gone" || true
-  jq -n --argjson pid "$gone" 'def s($n): (now | floor) + $n | todateiso8601;
+  jq -n --argjson pid "$gone" 'def s($n): ($ENV.VBW_NOW | fromdateiso8601) + $n | todateiso8601;
     {kind: "proof", run: null, session: "s1", pid: $pid, started_at: s(-60), ids: [], doing: "proving 12 of 40 checks",
      parts: {done: 12, total: 40}, proof: {done: 12, total: 40}, first_end: s(480), end: s(480), late: false}' > "$NOTE"
   run render
@@ -190,7 +190,7 @@ hm_of() {
 }
 
 @test "C1: a gate reads 'needs you', the action and since when, in amber" {
-  jq -nc 'def s($n): (now | floor) + $n | todateiso8601; {action: "approve", gate: true, instruction: "x", detail: {}, since: s(-90000)}' > .vbw/runtime/next.json
+  jq -nc 'def s($n): ($ENV.VBW_NOW | fromdateiso8601) + $n | todateiso8601; {action: "approve", gate: true, instruction: "x", detail: {}, since: s(-90000)}' > .vbw/runtime/next.json
   run render
   [[ "${lines[0]}" == *"│ ⚑ needs you: approve · since $(hm_of .vbw/runtime/next.json since)" ]] || { echo "${lines[0]}"; false; }
   out=$(render_color)
@@ -204,7 +204,7 @@ hm_of() {
 }
 
 @test "C1: a shipped milestone reads 'idle' with when it shipped, in green" {
-  step_edit '.milestone.status = "shipped" | .shipped = [{id: .milestone.id, title: "Pay", at: (((now | floor) - 7200) | todateiso8601)}]'
+  step_edit '.milestone.status = "shipped" | .shipped = [{id: .milestone.id, title: "Pay", at: ((($ENV.VBW_NOW | fromdateiso8601) - 7200) | todateiso8601)}]'
   jq '{at: .shipped[0].at}' .vbw/record.json > "$TEST_ROOT/at.json"
   run render
   [[ "${lines[0]}" == *"│ ✓ idle: M1 shipped $(hm_of "$TEST_ROOT/at.json" at)" ]] || { echo "${lines[0]}"; false; }
@@ -267,7 +267,7 @@ suite_pattern() {
 }
 
 @test "R240: a proof note exactly as plugin/lib/proofsteps.sh writes it at its start (proof null, road key) shows its end time" {
-  jq -n --argjson pid "$LIVE" 'def s($n): (now | floor) + $n | todateiso8601;
+  jq -n --argjson pid "$LIVE" 'def s($n): ($ENV.VBW_NOW | fromdateiso8601) + $n | todateiso8601;
     {kind: "proof", run: null, session: "s1", pid: $pid, started_at: s(-20), ids: [], doing: "proving 0 of 6 checks",
      parts: {done: 0, total: 6}, proof: null, first_end: s(60), end: s(60), late: false, road: null}' > "$NOTE"
   run render
