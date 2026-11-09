@@ -4,10 +4,13 @@
 # a tools: allowlist; each names disallowedTools for every built-in tool the probe found
 # outside its role (the read-only roles never get Write, Edit or NotebookEdit), and the tools
 # guard (plugin/hooks/guard-tools.jq) refuses any call outside the role's own built-ins and
-# the project's MCP setting. With no MCP setting each role's effective built-in tools are
-# exactly today's: architect, qa: Read, Grep, Glob, Bash; lead: those plus Write, Edit,
-# WebFetch; dev, debugger, docs: those plus Write, Edit; scout: those plus WebSearch,
-# WebFetch. The guard's MCP judgement by role is tests/guard-tools.bats.
+# the project's MCP setting. With no MCP setting each role's effective built-in tools are:
+# architect, qa: Read, Grep, Glob, Bash, ToolSearch; lead: those plus Write, Edit, WebFetch;
+# dev, debugger, docs: those plus Write, Edit; scout: those plus WebSearch, WebFetch. Every
+# role keeps ToolSearch, the loader of its own deferred tools (it loads nothing the role does
+# not have), so Claude Code defers MCP tool schemas instead of loading them all up front
+# (tools/probes/mcp-tools.json, deferral). The guard's MCP judgement by role is
+# tests/guard-tools.bats.
 
 load helper
 load fixture-helper
@@ -16,13 +19,13 @@ AGENTS="$PLUGIN_ROOT/agents"
 PROBE="$REPO_ROOT/tools/probes/mcp-tools.json"
 ROLES="architect lead dev qa scout debugger docs"
 
-# own ROLE: today's built-in tools of the role, one per line.
+# own ROLE: the built-in tools of the role, one per line.
 own() {
   case "$1" in
-    architect | qa) printf '%s\n' Read Grep Glob Bash ;;
-    lead) printf '%s\n' Read Grep Glob Bash Write Edit WebFetch ;;
-    dev | debugger | docs) printf '%s\n' Read Grep Glob Bash Write Edit ;;
-    scout) printf '%s\n' Read Grep Glob Bash WebSearch WebFetch ;;
+    architect | qa) printf '%s\n' Read Grep Glob Bash ToolSearch ;;
+    lead) printf '%s\n' Read Grep Glob Bash ToolSearch Write Edit WebFetch ;;
+    dev | debugger | docs) printf '%s\n' Read Grep Glob Bash ToolSearch Write Edit ;;
+    scout) printf '%s\n' Read Grep Glob Bash ToolSearch WebSearch WebFetch ;;
   esac
 }
 # front AGENT: the agent file's frontmatter.
@@ -78,7 +81,7 @@ answer() {
   done
 }
 
-@test "R241: with no MCP setting the guard leaves every role exactly today's built-ins: its own are open, every other built-in the probe found is refused" {
+@test "R241: with no MCP setting the guard leaves every role exactly its own built-ins: its own are open, every other built-in the probe found is refused" {
   jq -e '(.builtins | type == "array") and (.always_allowed | type == "array")' "$PROBE" > /dev/null || { echo "the probe result at tools/probes/mcp-tools.json has no builtins and always_allowed lists"; false; }
   local a t r
   for a in $ROLES; do
@@ -89,7 +92,7 @@ answer() {
     for t in $(jq -r '(.builtins - .always_allowed)[]' "$PROBE"); do
       own "$a" | grep -qx "$t" && continue
       r=$(answer "$t" "$a")
-      [ "$r" != allow ] || { echo "$a was given $t, which is not one of its tools today"; false; }
+      [ "$r" != allow ] || { echo "$a was given $t, which is not one of its tools"; false; }
     done
   done
 }

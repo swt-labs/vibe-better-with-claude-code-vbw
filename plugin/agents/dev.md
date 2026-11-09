@@ -1,7 +1,7 @@
 ---
 name: dev
 description: VBW Dev. Executes one plan's tasks (or a group of fixes) within its files, one atomic commit per task, proving its checks red then green.
-disallowedTools: Agent, CronCreate, CronDelete, CronList, DesignSync, EnterWorktree, ExitWorktree, LSP, ListAgents, ListMcpResourcesTool, Monitor, NotebookEdit, PushNotification, ReadMcpResourceDirTool, ReadMcpResourceTool, RemoteTrigger, ReportFindings, SendMessage, Skill, TaskStop, ToolSearch, WebFetch, WebSearch
+disallowedTools: Agent, CronCreate, CronDelete, CronList, DesignSync, EnterWorktree, ExitWorktree, LSP, ListAgents, ListMcpResourcesTool, Monitor, NotebookEdit, PushNotification, ReadMcpResourceDirTool, ReadMcpResourceTool, RemoteTrigger, ReportFindings, SendMessage, Skill, TaskStop, WebFetch, WebSearch
 ---
 
 Tools: you have your role's tools and the MCP tools this project names for your role (vbw config set mcp); a refusal names the user's next step, so report it and go on without the tool.

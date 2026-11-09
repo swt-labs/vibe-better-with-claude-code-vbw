@@ -1,7 +1,7 @@
 {
   "probe": "mcp-tools",
-  "at": "2026-11-01T16:26:03Z",
-  "claude_version": "2.1.316 (Claude Code)",
+  "at": "2026-11-09T18:06:04Z",
+  "claude_version": "2.1.319 (Claude Code)",
   "cases": {
     "server_wildcard": {
       "tools_line": "Read, mcp__probe__*",
@@ -17,15 +17,15 @@
     },
     "all_servers_pool": {
       "tools_line": "Read, mcp__*",
-      "result": "RESULT: NO-TOOL Read, SubagentHandback"
+      "result": "RESULT: NO-TOOL Read, SubagentHandback, advisor"
     },
     "pool_double_star": {
       "tools_line": "Read, mcp__*__*",
-      "result": "RESULT: NO-TOOL Read, SubagentHandback"
+      "result": "The Agent call was denied by the auto mode classifier. The reason it gave was \"[Auto-Mode Bypass]\". I didn't get a reply from `mcpprobe:reader`, so I have nothing to report from it.\n\nI haven't tried another way to reach the `probe` MCP server, such as calling `mcp__probe__read_note` directly. That would route around the denial, and you asked for the result to come from that subagent.\n\nTo go ahead, you could allow the Agent call for `mcpprobe:reader` in the permission settings. Or you could tell me to call `mcp__probe__read_note` directly instead."
     },
     "pool_dot_star": {
       "tools_line": "Read, mcp__.*",
-      "result": "RESULT: NO-TOOL Read, SubagentHandback"
+      "result": "RESULT: NO-TOOL Read, SubagentHandback, advisor"
     },
     "agent_type": {
       "tools_line": "Read, mcp__probe__*",
@@ -37,11 +37,15 @@
     },
     "inherit_omitted": {
       "tools_line": "(no tools: line)",
-      "result": "RESULT: NOTE-TOKEN-7731 TOOLS: Agent, Bash, Edit, ListAgents, Read, ReportFindings, Skill, ToolSearch, Write, SubagentHandback, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, mcp__probe__read_note, mcp__probe__write_note, CronCreate, CronDelete, CronList, DesignSync, EnterWorktree, ExitWorktree, LSP, ListMcpResourcesTool, Monitor, NotebookEdit, PushNotification, ReadMcpResourceDirTool, ReadMcpResourceTool, RemoteTrigger, SendMessage, TaskStop, WebFetch, WebSearch, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>"
+      "result": "RESULT: NOTE-TOKEN-7731 TOOLS: Agent, Bash, Edit, ListAgents, Read, ReportFindings, Skill, ToolSearch, Write, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, SubagentHandback, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, advisor, CronCreate, CronDelete, CronList, DesignSync, EnterWorktree, ExitWorktree, ListMcpResourcesTool, Monitor, NotebookEdit, PushNotification, ReadMcpResourceDirTool, ReadMcpResourceTool, RemoteTrigger, SendMessage, TaskStop, WebFetch, WebSearch, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, <other-mcp-tool>, mcp__probe__read_note, mcp__probe__write_note"
     },
     "disallowed_honoured": {
       "tools_line": "disallowedTools: Write, Edit, NotebookEdit, Bash",
-      "result": "RESULT: NOT-WRITTEN RESULT: NOT-WRITTEN. The Write tool is not available in this agent session. Its schema was not among my tools, and ToolSearch select:Write returned \"No matching deferred tools found\". I did not create <checkout>/.vbw/runtime/scratch/probe-mcp-tools/proj/probe-written.txt by any other route, because you asked for the Write tool specifically."
+      "result": "RESULT: NOT-WRITTEN RESULT: NOT-WRITTEN. The Write tool is not available to this agent. It is not in the tool list, and ToolSearch select:Write returned no match. I did not write <checkout>/.vbw/runtime/scratch/probe-mcp-tools/proj/probe-written.txt."
+    },
+    "toolsearch_disallowed": {
+      "tools_line": "disallowedTools: ToolSearch",
+      "result": "RESULT: NOTE-TOKEN-7731"
     },
     "hook_every_tool": {
       "tools_line": "(no tools: line; hook matcher omitted)",
@@ -58,7 +62,6 @@
     "Edit",
     "EnterWorktree",
     "ExitWorktree",
-    "LSP",
     "ListAgents",
     "ListMcpResourcesTool",
     "Monitor",
@@ -79,11 +82,18 @@
     "Write"
   ],
   "always_allowed": [
+    "advisor",
     "StructuredOutput",
     "SubagentHandback"
   ],
   "hook_matcher": null,
-  "hook_read_cpu_ms": 5.5,
+  "deferral": {
+    "first_turn_input_tokens_with_toolsearch": 46207,
+    "first_turn_input_tokens_without_toolsearch": 139614,
+    "without_exceeds_with": true,
+    "note": "same agent and prompt; the sizes depend on the MCP servers of the machine that ran the probe"
+  },
+  "hook_read_cpu_ms": 3.8,
   "mechanism": "D561: the agents drop the tools: allowlist and inherit the session's MCP tools; each names disallowedTools for the built-ins outside its role (honoured by a plugin agent); one PreToolUse tools guard, matcher omitted, sees every tool by agent_type and refuses what the role may not use",
   "decision": "D561"
 }
