@@ -79684,13 +79684,6 @@
         "verifying.js passes red_first to each QA agent with its phase; plugin/agents/qa.md: QA lists each such check in its notes as a deviation from test first, never a vbw qa finding and never a failure by itself (a check that also does not pin its behaviour is already a finding, as a test gap) (D690).",
         "The R292 QA case of tests/red-first.bats and tests/workflows.bats pass under /bin/bash."
       ],
-      "amendments": [
-        {
-          "what": "file plugin/lib/cmd-next.sh added",
-          "at": "2026-11-09T13:04:48Z",
-          "session": "0ee781c3"
-        }
-      ],
       "mutations": [
         {
           "rule": {
@@ -80313,13 +80306,6 @@
             "C678": "green",
             "C679": "red"
           }
-        }
-      ],
-      "amendments": [
-        {
-          "what": "file plugin/lib/testfiles.sh added",
-          "at": "2026-11-09T13:04:48Z",
-          "session": "0ee781c3"
         }
       ],
       "mutations": [
@@ -83962,56 +83948,56 @@
       "id": "F426",
       "req": "R149",
       "attempts": 0,
-      "status": "open",
+      "status": "fixed",
       "note": "C221 fail (exit 1)"
     },
     {
       "id": "F427",
       "req": "R181",
       "attempts": 0,
-      "status": "open",
+      "status": "fixed",
       "note": "C314 fail (exit 1), C315 fail (exit 1)"
     },
     {
       "id": "F428",
       "req": "R185",
       "attempts": 0,
-      "status": "open",
+      "status": "fixed",
       "note": "C334 fail (exit 1), C342 fail (exit 1), C343 fail (exit 1)"
     },
     {
       "id": "F429",
       "req": "R202",
       "attempts": 0,
-      "status": "open",
+      "status": "fixed",
       "note": "C440 fail (exit 1)"
     },
     {
       "id": "F430",
       "req": "R248",
       "attempts": 0,
-      "status": "open",
+      "status": "fixed",
       "note": "C570 fail (exit 1)"
     },
     {
       "id": "F431",
       "req": "R250",
       "attempts": 0,
-      "status": "open",
+      "status": "fixed",
       "note": "C574 fail (exit 1)"
     },
     {
       "id": "F432",
       "req": "R274",
       "attempts": 0,
-      "status": "open",
+      "status": "fixed",
       "note": "C644 fail (exit 1), C645 fail (exit 1)"
     },
     {
       "id": "F433",
       "command": "test",
       "attempts": 0,
-      "status": "open",
+      "status": "fixed",
       "note": "test fail"
     }
   ],
@@ -89767,6 +89753,12 @@
       "plans": [
         "P226.3"
       ]
+    },
+    {
+      "id": "D692",
+      "at": "2026-11-09T15:44:27Z",
+      "text": "Contract approved: 278 requirements, 676 checks, 669 plans (fe92646a7432)",
+      "plans": []
     }
   ],
   "commands": {
