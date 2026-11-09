@@ -196,7 +196,8 @@ step_of() { "$VBW" next --json | jq -c '.step'; }
   local f
   for f in step-ladder road-next step-range statusline-step step-next; do
     grep -q 'VBW_NOW=' "$BATS_TEST_DIRNAME/$f.bats" || { echo "tests/$f.bats does not set the clock"; false; }
-    ! grep -nE 'day\(now\)|, now\]|\) - now' "$BATS_TEST_DIRNAME/$f.bats" || { echo "tests/$f.bats words a clock from the wall clock"; false; }
+    # no[w] matches "now" but not this line's own text, so the scan never finds itself
+    ! grep -nE 'day\(no[w]\)|, no[w]\]|\) - no[w]' "$BATS_TEST_DIRNAME/$f.bats" || { echo "tests/$f.bats words a clock from the wall clock"; false; }
   done
   grep -q 'VBW_NOW' "$PLUGIN_ROOT/lib/core.sh" || { echo "vbw_now does not read the set clock"; false; }
   ! grep -nE '\(now \| floor\)|now as \$now|step_move\(now' "$PLUGIN_ROOT/lib/steps.sh" "$PLUGIN_ROOT/lib/road.jq" "$PLUGIN_ROOT/lib/proofsteps.sh" "$PLUGIN_ROOT/scripts/statusline.jq" || { echo "the estimate path still reads jq's now"; false; }
