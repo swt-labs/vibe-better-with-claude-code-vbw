@@ -21280,6 +21280,94 @@
           "check": "C651"
         }
       ]
+    },
+    {
+      "id": "R279",
+      "text": "A version bump reruns only the proof units whose outcome can depend on the version: changing the five version files (bash tools/bump-version.sh --files) leaves every other unit reused (measured at 2.1.28: plugin/.claude-plugin/plugin.json changed and 450 of 743 units ran again, about 3 h on a busy computer, because every record write reads the version for the writer file of R272); vbw prove after a bump names the units that ran and why, and a unit that prints or compares the version still runs",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M56",
+      "rules": []
+    },
+    {
+      "id": "R282",
+      "text": "vbw next starts a number of processes that does not grow with the milestone's plans: QA's per-plan fingerprints (plugin/lib/qa-inputs.sh) are built in one jq pass and one batch hash, as the proof's reuse already hashes in one sha256sum call (measured at 2.1.28 on the big-milestone fixture, 258 plans: 1279 processes, 599 jq, 478 sha256sum and 158 awk, 4.0 s user and 2.8 s system CPU in Docker; 6.9 and 8.8 s CPU on GitHub's Ubuntu 26.04 runner against a 6.2 s scaled budget, where each process start costs more); a fixture with twice the plans starts the same number of processes, and tests/timed-big-milestone.bats passes on macOS, Ubuntu 24.04 and Ubuntu 26.04",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M56",
+      "rules": []
+    },
+    {
+      "id": "R284",
+      "text": "The time-estimate tests pass at any time of day: each case that checks an 'until around HH:MM' line injects its clock, and a case at 23:5x shows the day word the kernel prints when the end falls on the next day (tests/step-ladder.bats and tests/road-next.bats R191 cases failed in CI runs between 23:52 and 00:00 UTC, the kernel rightly saying 'until around tomorrow 00:05')",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M56",
+      "rules": []
+    },
+    {
+      "id": "R285",
+      "text": "A session started on the installed VBW runs that copy's vbw from Bash: the session start writes the loaded copy's PATH line once, never a duplicate, and a start on an installed copy removes the PATH lines that earlier --plugin-dir starts of the same session wrote (seen 2026-11-09: 17 identical lines kept the checkout's vbw first on PATH after the session was resumed on the installed 2.1.28); vbw doctor compares the vbw on PATH with the copy Claude Code loaded for this session, never with the kernel it runs from, and warns when they differ",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M56",
+      "rules": []
+    },
+    {
+      "id": "R286",
+      "text": "No line of the record pairs a file path with a SHA-256 digest, so a secret scanner's keyword rule never refuses a record commit (field report 2026-11-09: Gitleaks' default generic-api-key rule fired on the mutation digests of a source file named api.rs, and the project's pre-commit hook then refused every record commit, the approval's included): every digest the record keeps beside a file path (a break's digests, QA's fingerprints, the proof's test-file evidence) is stored so that no word such a rule looks for (api, key, token, auth, secret, credential, password) shares a line with a 64-hex value; an older record is converted on its first write; a test runs Gitleaks' generic-api-key pattern over a record built with such paths and finds nothing",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M56",
+      "rules": []
+    },
+    {
+      "id": "R287",
+      "text": "A record commit that fails is a step of its own, never only a warning: when VBW cannot commit its files (the project's pre-commit hook refuses them, for example), vbw next's next step is that failure, with the hook's reason and what to do, before any other step, so the user is never asked for an approval that cannot be recorded (field report 2026-11-09: run close only warned 'could not commit VBW files ... secrets: 5 problem(s) in the staged changes', and the next approval failed after the user had answered Approve); vbw doctor names a record commit that failed, with its reason",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M56",
+      "rules": []
+    },
+    {
+      "id": "R288",
+      "text": "A check or a break never waits on a check file that waits for approval, and says so only where it matters: vbw check and vbw mutate name a check file waiting for approval only for a check that reads it, in a line saying the check runs now on the file's working content and that vbw next asks the approval before the proof; and a vbw check or vbw mutate that waits for anything (a slot of the computer-wide limit, another run of the same plan) says what it waits for and since when (field report 2026-11-09: 'vbw: waiting for approval (new or changed since approved): <another plan's test file>', printed by checks that do not read it, was read as a blocked check, and Devs blocked their plans for a wave)",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M56",
+      "rules": []
+    },
+    {
+      "id": "R289",
+      "text": "The guard protects the record of the project the session works in by its resolved path: a write to a .vbw/record.json in another folder (a throwaway repository in the session's scratchpad, for example) is not refused as a record write (field report 2026-11-09: such a write was refused with '.vbw/record.json is written only by vbw', because the rule matched the end of the path)",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M56",
+      "rules": []
+    },
+    {
+      "id": "R290",
+      "text": "A Dev's write to scratch output outside its plan's files (a file under .vbw/runtime/ but not under .vbw/runtime/scratch/) is refused with a Next naming .vbw/runtime/scratch/ as the place for scratch files, never a replan (field report 2026-11-09: .vbw/runtime/scratch_mut.out was refused with 'report that the plan needs it, so the plan can be replanned with vbw apply')",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M56",
+      "rules": []
+    },
+    {
+      "id": "R291",
+      "text": "A rough estimate gives a typical figure first and its range after, so a wide range still gives a time to plan by: 'usually about 60 min (21 to 542 min, rough guess from 6 runs), until around 10:15 (09:22 to 18:02)', the typical figure being the median of the runs it is learned from, in place of the bare range (field report 2026-11-09: 'roughly 21 to 542 min, until around 09:22 to 18:02', a 25-fold range); the status line leads with the typical end",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M56",
+      "rules": []
+    },
+    {
+      "id": "R292",
+      "text": "Red first is recorded and shown: each vbw check --expect-red run is kept in the plan's evidence, and vbw plan done says in one line which of the plan's own checks never ran red before the plan's first code commit, which QA judges as a deviation; a check another plan owns counts that plan's red run; plan done never refuses on it, because a check of behaviour that already exists is green from its first run and the break runs already show that a check can fail (field report 2026-11-09: at least three of nine Devs skipped red first in two waves and plan done accepted their plans)",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M56",
+      "rules": []
     }
   ],
   "phases": [
@@ -81529,6 +81617,13 @@
       "sort": "next",
       "size": "small",
       "status": "open"
+    },
+    {
+      "id": "T274",
+      "text": "Workspace-wide files serialize a wave (field report 3, 2026-11-09; for the packs release): a plan that changes a file every check of its workspace reads (Cargo.lock, Cargo.toml, package-lock.json and the like) is built in no wave with another plan of that workspace, so a parallel plan's check never fails on another plan's uncommitted lockfile edit (seen: cargo test --locked failed on a lockfile error while another plan of the same wave had added a dependency). Packs name such files; the kernel's wave builder honours them; the Rust pack's Lead rule ('a change to Cargo.toml or a lockfile goes in one plan at a time') does not stop the wave",
+      "sort": "next",
+      "size": "medium",
+      "status": "open"
     }
   ],
   "decisions": [
@@ -85463,6 +85558,18 @@
       "at": "2026-11-08T22:08:08Z",
       "text": "Contract approved: 267 requirements, 647 checks, 652 plans (e3d68cf96a0a)",
       "plans": []
+    },
+    {
+      "id": "D685",
+      "text": "Field report 3 (2026-11-09, the Rust project on 2.1.28) triaged: adopted as R286 (record digests never on a line with a path), R287 (a failed record commit is a step of its own; doctor names it), R288 (the pending-approval line only for checks that read the file; every real wait says what it waits for), R289 (the guard protects the session project's record by resolved path), R290 (the scratch folder named in the out-of-files refusal), R291 (a typical figure before the range), R292 (red first recorded, shown at plan done, judged by QA, never refused). Declined: dry-running the project's hooks before an approval and from doctor; asking check-file approvals mid-build; one break recorded for several rules; splitting queue time and an external lane command. Deferred: lockfiles and other workspace-wide files serializing a wave, to the packs release.",
+      "why": "VBW's design first: each point weighed for every user, not this project. vbw check never waited on an approval (it warns and runs); the line was misleading, so R288 fixes the words and names real waits. Hook dry-runs run project code twice with side effects, while VBW runs repo commands only with consent; R287 gives the same safety. Mid-build approvals add stops for every user. One break per rule is the evidence that each rule's own assertion is checked; rules that are one behaviour should be one rule. VBW cannot see a project's own queue, and a lane command for one project is a special case. Workspace-wide files belong in packs, which 2.1.31 reworks.",
+      "at": "2026-11-09T09:19:29Z"
+    },
+    {
+      "id": "D686",
+      "text": "2.1.29 holds field report 3 (R286-R292) with R279 (version bump cost), R282 (vbw next process count), R284 (midnight tests) and R285 (stale PATH lines); the loop takeover (T252) and the proof gap (T256) move to 2.1.30, and the packs work (language at init, project-local packs, Python pack) to 2.1.31",
+      "why": "Owner 2026-11-09: any feedback from the Rust dev is 100% priority. Shipping their fixes soon beats one larger release; the owner had agreed the list minutes before the report came, so the change is reported to the owner.",
+      "at": "2026-11-09T09:19:31Z"
     }
   ],
   "commands": {
