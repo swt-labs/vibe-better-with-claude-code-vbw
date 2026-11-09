@@ -1,6 +1,19 @@
 {
   "schema": 15,
-  "lease": null,
+  "lease": {
+    "run": "build-20261109T115249Z",
+    "kind": "build",
+    "started_at": "2026-11-09T11:52:49Z",
+    "files": [
+      "plugin/lib/cmd-doctor.sh",
+      "plugin/lib/cmd-next.sh",
+      "plugin/lib/qa-inputs.sh"
+    ],
+    "session": "0ee781c3-c5b6-4a6c-889f-04b89f1fba4a",
+    "cost": {
+      "usd": 3516.165552
+    }
+  },
   "protected": [
     "docs/guards.md",
     "tests/adaptive-results.bats",
@@ -78480,11 +78493,42 @@
         "P224.2",
         "P225.2"
       ],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "vbw doctor prints one warning line while a failed record commit stands: that VBW's files could not be committed, its local time (HH:MM) and the first line of the hook's reason, with the fix the commit step gives; it reads the failure only (no retry, no commit).",
         "Nothing about it when none stands; the R287 doctor case of tests/commit-failed.bats and tests/plugindir-doctor.bats pass under /bin/bash."
+      ],
+      "mutations": [
+        {
+          "rule": {
+            "req": "R287",
+            "k": 9
+          },
+          "what": "doctor line drops the hook's reason",
+          "files": [
+            "plugin/lib/cmd-doctor.sh"
+          ],
+          "checks": {
+            "C656": "red"
+          },
+          "result": "red",
+          "at": "2026-11-09T11:55:46Z",
+          "head": "139567ffe56546dceac93f591770b43af179d62e",
+          "tree": "ac20a8ca98cb3242abea8516dcde56f6764b831b",
+          "contract": "3e426f594c21ce09e2ccfb1686ccf5a6026b125d43868cd488489a2bfa64df14",
+          "digests": [
+            {
+              "file": "plugin/lib/cmd-doctor.sh",
+              "sha256": "03b1f2b83268b0f192131ccf5b10f86044eb6cf1c90c0f1e3239ce31970d67ea"
+            }
+          ]
+        },
+        {
+          "task": 2,
+          "none": "task 2 is the R287.9 case passing, which the rule break already reached; no code of its own",
+          "at": "2026-11-09T11:55:55Z"
+        }
       ]
     },
     {
@@ -79246,7 +79290,7 @@
       "after": [
         "P224.2"
       ],
-      "status": "planned",
+      "status": "building",
       "role": "dev",
       "tasks": [
         "qa-inputs.sh: QA's per-phase fingerprints (files, tests, plan, requirements, combined) built in one jq pass over the listing and one batch hash call for every text to hash, the tree read once per repository and picked per phase without a process per phase (no awk per phase).",
@@ -88334,6 +88378,12 @@
         "P228.2",
         "P228.3"
       ]
+    },
+    {
+      "id": "D689",
+      "at": "2026-11-09T11:56:55Z",
+      "text": "Contract approved: 278 requirements, 676 checks, 669 plans (3e426f594c21)",
+      "plans": []
     }
   ],
   "commands": {
