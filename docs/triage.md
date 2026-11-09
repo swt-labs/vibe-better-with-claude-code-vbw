@@ -104,7 +104,7 @@ fix what the hook flagged, allow it in the checker's settings, or commit the VBW
 files yourself. VBW never skips the hook.
 
 ```
-vbw: warning: could not commit VBW files (chore(vbw): todo T2 added): <git's reason>
+vbw: warning: could not commit VBW files (chore(vbw): todo T2 added): <git's reason>; commit them yourself
 ```
 
 `vbw triage` prints what VBW looks at when it sorts: the active milestone, its
