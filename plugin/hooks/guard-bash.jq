@@ -43,7 +43,7 @@ def destructive:
 def reader: test("^(cat|jq|head|tail|less|more|grep|egrep|rg|wc|git|ls|stat|diff|cmp|shasum|sha256sum|file|test|sort|awk|gawk|nawk|cut|nl|column|paste|\\[\\[?)$");
 def copier: test("^(cp|rsync|install|ln)$");
 
-# The command writes a file the path rule names (record_path, glance_path): a
+# The command writes a file the path rule names (glance_path): a
 # redirect to it, a copier whose destination (last operand) is it, or a program
 # that names it and is not known to only read (sort -o and awk -i inplace write
 # the file they read).
@@ -64,11 +64,12 @@ def written(rule):
 # command that only reads it (find -path, ls, grep, cat, jq, git log) passes: naming the record
 # is not writing it.
 def record_written:
-  (.out | any(.[]; record_path))
-  or (.cmd == "dd" and any(.args[]; startswith("of=") and (.[3:] | record_path)))
-  or (any(.args[]; record_path) and
+  (.cwd // $ARGS.named.dir) as $w
+  | (.out | any(.[]; record_at($w)))
+  or (.cmd == "dd" and any(.args[]; startswith("of=") and (.[3:] | record_at($w))))
+  or (any(.args[]; record_at($w)) and
       (if .cmd | test("^(cp|install|rsync|ln)$") then
-         ([.args[] | select(startswith("-") | not)] | (last // "") | record_path)
+         ([.args[] | select(startswith("-") | not)] | (last // "") | record_at($w))
          or any(.args[]; test("^(-t|--target-directory.*|--remove-source-files)$"))
        elif .cmd | test("^(mv|tee|rm|unlink|truncate|shred|ed|ex|sponge)$") then true
        elif .cmd == "sed" then any(.args[]; test("^-[A-Za-z]*i|^--in-place"))

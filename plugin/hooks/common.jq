@@ -74,7 +74,6 @@ def basename: split("/") | last // "";
 def secret_path: basename
   | (test("^\\.env(\\..+)?$") and (test("^\\.env\\.(example|sample|template|dist|defaults)$") | not))
     or test("\\.(pem|key|p12|pfx|kdbx|keystore|jks)$|^id_(rsa|dsa|ecdsa|ed25519)$|^\\.(netrc|pgpass|npmrc|pypirc)$|^credentials(\\.json)?$");
-def record_path: test("(^|/)\\.vbw/record\\.json$");
 def glance_reason: ".vbw/runtime/glance.json is written only by vbw (vbw help lists the commands)\nNext: leave it as it is; vbw rewrites it with every change to the record";
 def glance_path: test("(^|/)\\.vbw/runtime/glance\\.json$");
 # The agents' scratch folder (project-relative), the one place a build or fix
@@ -96,6 +95,13 @@ def abs_path($cwd):
 def project_path($cwd; $root):
   abs_path($cwd)
   | if startswith(($root | rtrimstr("/")) + "/") then .[($root | rtrimstr("/") | length) + 1:] else null end;
+
+# PATH (as written, read from $cwd) is this project's own record (R289): its resolved place
+# is exactly .vbw/record.json of the session's project; another folder's is not. A path the
+# guard cannot resolve (~ or a shell expansion) that ends in one still counts, as before.
+def record_at($cwd):
+  test("record\\.json$")
+  and (if test("^~|[$`]") then test("(^|/)\\.vbw/record\\.json$") else project_path($cwd; $root) == ".vbw/record.json" end);
 
 # The folder a relative path in a tool call is read from: the session's working
 # folder (the hook input's cwd), which may be a subfolder of the project.
@@ -136,6 +142,9 @@ def lease_write_denial($lease; $record):
   # A protected check file outside the run's files is named for what it is: the plan cannot be replanned to write it.
   elif ($lease.kind | test("^(build|fix)$")) and (. as $p | any($record.protected[]?; . == $p)) then
     protected_reason
+  # vbw's own folder: scratch output belongs in .vbw/runtime/scratch/, never a replan (R290).
+  elif ($lease.kind | test("^(build|fix)$")) and test("^\\.vbw/runtime/") and $lease.files != null and (. as $p | any($lease.files[]; covers($p)) | not) then
+    "\(.) is vbw's own folder, outside this run's files: agents write only their plan's files, and scratch output belongs in .vbw/runtime/scratch/\nNext: leave \(.) as it is; write scratch files (debugging scripts, logs, mutation output) under .vbw/runtime/scratch/"
   elif $lease.files != null and (. as $p | any($lease.files[]; covers($p)) | not) then
     "\(.) is outside this run's files (\($lease.files | join(", "))): agents write only their plan's files\nNext: leave \(.) as it is; report that the plan needs it, so the plan can be replanned with vbw apply"
   elif ($lease.kind | test("^(build|fix)$")) and ($record | has("protected") | not) then
