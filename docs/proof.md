@@ -200,6 +200,27 @@ down the runs giving slots back. A run that waits
 prints `waited ... for other VBW runs on this computer`. Waiting changes
 nothing else: the same result as without it, and a timeout counts from when its command really starts.
 
+A `vbw check` or `vbw mutate` that waits for a slot says so once, when the wait
+starts, in local time:
+
+```
+vbw: waiting for a free slot of the computer-wide limit since 10:42
+```
+
+A run that never waits prints no such line.
+
+A check file that is new or changed since the last approval waits for approval.
+`vbw check` and `vbw mutate` never wait on it: the check runs now on the file's
+working content. They name the file only when a check they run reads it, in one
+line, which is information and not a block:
+
+```
+tests/a.bats is waiting for approval: C1 run now on its working content; vbw next asks the approval before the proof
+```
+
+A waiting file of another plan, or one no running check reads, is not
+mentioned.
+
 Every change of the store is one short step under a lock file next to it
 (`slots.lock`), and a step spends little: one `jq` run, one rename and the
 lock's removal, with no pause unless another run holds the lock. A run that
