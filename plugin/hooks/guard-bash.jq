@@ -58,16 +58,11 @@ def written(rule):
          or (.cmd | test("awk$")) and any(.args[]; test("^(inplace|--in-place)$"))
        else true end));
 
-# The command writes the record (R276): a redirect to it, or a program that changes a file and
-# names it: a copier with it as destination, mv, tee, rm, truncate, shred, ed, dd of=, sed -i,
-# perl -i, a git command that restores or removes it, find that deletes or runs a program. A
-# command that only reads it (find -path, ls, grep, cat, jq, git log) passes: naming the record
-# is not writing it.
-#
-# The command is judged from its working folder, and also from .alt, the folder the whole
-# command started in, when a cd may not have moved it for certain (cwd_sure, F434).
-def record_written_at($w):
-  (.out | any(.[]; record_at($w)))
+# The command writes the record (R276): a redirect to it, or a writer below naming it (a copier
+# as its destination). A command that only reads it (find -path, ls, grep, cat, jq, git log)
+# passes: naming it is not writing it. Judged from .cwd and from .alt (F434, run).
+def record_written:
+  . as $c | any(.cwd // $ARGS.named.dir, .alt // empty; . as $w | $c | (.out | any(.[]; record_at($w)))
   or (.cmd == "dd" and any(.args[]; startswith("of=") and (.[3:] | record_at($w))))
   or (any(.args[]; record_at($w)) and
       (if .cmd | test("^(cp|install|rsync|ln)$") then
@@ -80,18 +75,7 @@ def record_written_at($w):
        elif .cmd | test("awk$") then any(.args[]; test("^(inplace|--in-place)$"))
        elif .cmd == "git" then (git_words as $w | ($w[0] // "") | test("^(checkout|restore|rm|mv|apply)$"))
        elif .cmd == "find" then any(.args[]; test("^-(delete|exec|execdir|ok|okdir|fprint0?|fprintf|fls)$"))
-       else false end));
-def record_written: . as $c | any((.cwd // $ARGS.named.dir), (.alt // empty); . as $w | $c | record_written_at($w));
-
-# The folders with_cwd follows are certain only in a plain && chain (F434): there every cd ran
-# and moved the shell, or nothing after it ran. A subshell, group, pipe or substitution keeps its
-# cd to itself, a cd before ; || & or a new line may have failed, and cd - goes back to a folder
-# the guard does not track. Quoted text and heredoc bodies are data; a redirect such as 2>&1 or
-# &> is no separator.
-def cwd_sure:
-  strip_heredocs | mask | .text
-  | (gsub("&&|[0-9]*[<>]&[0-9-]*|&>>?"; " ") | test("[;|&(){}`\\n]") | not)
-    and (test("(^|[\\s;&|(){}])cd[ \\t]+-[ \\t]*($|[;&|)}])") | not);
+       else false end)));
 
 # An inline program (python -c, node -e, perl -e) that names the record: the guard reads text and
 # cannot tell a read from a write in code.
@@ -245,8 +229,9 @@ def run:
   | select($g.lease != null or $g.foreign != null or ($g.hook.agent_type // "") != "" or ($c | may_matter or reaches))
   | session_dir($g) as $start
   | ([$c | commands(3)] | with_cwd($start; resolve)) as $cmds
-  # A cd moved the folder but may not have for certain: the start folder is judged too (F434).
-  | (if any($cmds[]; .cwd != $start) and ($c | cwd_sure | not) then [$cmds[] | .alt = $start] else $cmds end) as $cmds
+  # F434: unless a plain && chain without cd -, the start folder counts too.
+  | (if any($cmds[]; .cwd != $start) and ($c | strip_heredocs | mask | .text | gsub("&&|[<>]&|&>"; " ")
+      | test("[;|&(){}`\\n]|(^|\\s)cd\\s+-(\\s|$)")) then [$cmds[] | .alt = $start] else $cmds end) as $cmds
   | [$c | select(test("<<")) | heredoc_programs($start; resolve)] as $hds
   | (if $g.lease != null then [script_requests($g; $cmds; $c)] else [] end) as $sr
   | ( [$cmds[] | everywhere][0]
