@@ -20,7 +20,7 @@ body() { sed -n "/^scenario_$1()/,/^}/p" "$SUITE"; }
   body commitstep | grep -q 'new_project' || { echo "it does not start from new_project"; false; }
   body commitstep | grep -q 'greet_plan_seed' || { echo "it does not seed an approved plan"; false; }
   body commitstep | grep -q 'commitstep_hook' || { echo "it installs no refusing hook"; false; }
-  sed -n '/^commitstep_hook()/,/^}/p' "$SUITE" | grep -qF "grep -qx '.vbw/record.json'" || { echo "the hook does not refuse a commit holding the record"; false; }
+  sed -n '/^commitstep_hook()/,/^}/p' "$SUITE" | grep -cF 'git diff --cached --quiet -- .vbw/record.json' > /dev/null || { echo "the hook does not refuse a commit holding the record"; false; }
   if body commitstep | grep -qE 'screen \|.*grep'; then echo "it judges on screen text"; false; fi
   body commitstep | grep -qE 'result_write commitstep "\$fixture" "\$\{cost_usd:-0\}" "\$passed"' || { echo "it does not write fixture, cost and passed"; false; }
 }

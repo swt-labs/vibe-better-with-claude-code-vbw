@@ -3755,7 +3755,7 @@ commitstep_hook() {
   cat > "$1/.git/hooks/pre-commit" << 'HOOK'
 #!/bin/sh
 # L3 stand-in for a secret scanner's false alarm: while the marker stands, a commit holding the record is refused.
-if [ -e "$(git rev-parse --git-dir)/l3-block" ] && git diff --cached --name-only | grep -qx '.vbw/record.json'; then
+if [ -e "$(git rev-parse --git-dir)/l3-block" ] && ! git diff --cached --quiet -- .vbw/record.json; then
   echo "L3 commit check: .vbw/record.json looks like it holds a secret (simulated false alarm)" >&2
   exit 1
 fi

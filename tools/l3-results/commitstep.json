@@ -1,9 +1,9 @@
 {
   "scenario": "commitstep",
   "fixture": "greet.sh in one plan P1.1 approved by the user before the session; rigor express; the project's pre-commit hook refuses every commit that holds .vbw/record.json (a stand-in for a secret scanner's false alarm); the user types /vbw:vibe",
-  "cost_usd": 0.57,
+  "cost_usd": 0.28,
   "evidence_level": "L3",
-  "at": "2026-11-09T18:29:07Z",
+  "at": "2026-11-09T19:23:57Z",
   "passed": true,
   "facts": {
     "failure_kept": true,
