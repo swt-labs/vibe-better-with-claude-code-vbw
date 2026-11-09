@@ -33681,11 +33681,12 @@
         }
       ],
       "qa": {
-        "result": "pass",
+        "result": "fail",
         "tier": "deep",
-        "tree": "4d9c7ff61f12280f961f0700749d5b9a3e91a858346950c6f49776f60b6f38ca",
-        "at": "2026-11-09T17:07:35Z",
-        "note": "30/30 checks"
+        "tree": "479bf5f1011244343ecefc25ae20481a7bc15fa1bca8dcc2f51feec9a4bd4ebb",
+        "at": "2026-11-09T19:41:07Z",
+        "note": "29/30 checks",
+        "rounds": 1
       },
       "outcome": {
         "tier": "deep",
@@ -84130,6 +84131,15 @@
       "status": "open",
       "note": "The record guard (plugin/hooks/guard-bash.jq, run; with_cwd in plugin/hooks/programs.jq) still fails open for a cd it cannot read, the same gap F434 fixed only for the literal 'cd -'. The start folder is also judged only when the text matches 'cd -' as its own word (guard-bash.jq line ~234). Through the real PreToolUse Bash hook from the project folder these are NOT refused although the shell really writes the project's own record: 'cd /usr && cd $OLDPWD && echo x > .vbw/record.json', 'cd /usr && cd \"$OLDPWD\" && echo x > .vbw/record.json', 'cd /usr && cd ~- && echo x > .vbw/record.json', 'cd /usr && cd -P - && echo x > .vbw/record.json', 'cd /usr && cd -- - && echo x > .vbw/record.json'. Cause: with_cwd leaves the folder unchanged for a cd whose target is missing (only flags), starts with ~, or holds $ or a backtick, so the folder stays /usr; the F434 trigger regex does not see these spellings. Controls that behave right: '(cd /usr; true); echo x > .vbw/record.json', 'cd /usr; cd -; ...', 'cd /nonexistent; ...', '{ cd /usr; }; ...' and 'cd /usr && echo x > .vbw/record.json' (allowed, correct). Regression test (tests/guard-record-path.bats, next to the F434 case): main-session Bash calls 'cd <elsewhere> && cd $OLDPWD && echo x > .vbw/record.json', 'cd <elsewhere> && cd ~- && echo x > .vbw/record.json' and 'cd <elsewhere> && cd -P - && echo x > .vbw/record.json' must be refused with '.vbw/record.json is written only by vbw', while 'cd <scratchpad repo> && echo x > .vbw/record.json' stays allowed. Fix idea: use one trigger, the condition with_cwd itself uses to skip a cd (any cd whose first non-flag argument is missing, starts with ~, or holds $ or a backtick, as well as the literal cd -), so any cd the guard cannot follow also tests the start folder.",
       "phase": "P225"
+    },
+    {
+      "id": "F440",
+      "req": "R279",
+      "source": "qa",
+      "attempts": 0,
+      "status": "open",
+      "note": "The fourth R279 criterion and P228.1 task 4 are not met: the 2.1.28 bump was never replayed on VBW's own repository, so no 'N of 743 units rerun' figure exists. The maintainer's log line 1084 in vbw-plow/PROGRESS.md says 'the 450-of-743 replay not measured: estimate about 17 test files read the version themselves; the real figure comes from the release's bump'. No decision covers dropping the measurement. For reference only, the proof store (.git/vbw/runs.json) lists 81 of 788 current units (plus 5 older entries) that read plugin.json themselves; this is an estimate from stored read lists, not a replay. What a test cannot catch: this is a missing measurement, not code. Fix: replay the bump (all five version files changed, a scratch branch) and record how many units rerun and the reasons, against 450 of 743.",
+      "phase": "P228"
     }
   ],
   "todos": [
