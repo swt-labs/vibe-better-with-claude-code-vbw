@@ -1,5 +1,70 @@
 # Changelog
 
+## [2.1.29] - 2026-11-09
+
+A third field report from the lead of a large Rust project, after a day on
+2.1.28: their secret scanner refused VBW's own commits, the guard refused a
+throwaway repository's files, and a "waiting for approval" line made Devs stop
+work that could have gone on. This release fixes those and makes test first
+visible. Thank you.
+
+### Changed
+
+- **A refused commit stops VBW cleanly.** When your project's own commit check
+  (a pre-commit hook, such as a secret scanner) refuses VBW's files, VBW keeps
+  the refusal, and the first step `vbw next` gives is to tell you: the hook's
+  own words (up to 20 lines; the full text stays in
+  `.vbw/runtime/output/commit-failed.log`) and three ways on. VBW never skips
+  your hooks. Once the check lets the files through, the next `vbw next`
+  commits them and goes on. `vbw doctor` warns while a refusal stands.
+- **No secret-scanner false alarms on the record.** The fingerprints VBW keeps
+  for each test break now sit on their own lines, apart from the file's name,
+  so a scanner's "keyword next to a long hex value" rule no longer fires on a
+  path such as `api.rs`. This raises the record schema to 15 (see below).
+- **The guard protects your project's record, not every `record.json`.** A
+  path is judged by where it really lands, so a throwaway repository in a
+  scratch folder can be written. When the guard cannot be sure a `cd` held
+  (inside parentheses or a pipe, after `;`, or a `cd -` or `cd "$OLDPWD"` it
+  cannot follow), it also judges from the folder the command started in, so your
+  record stays protected.
+- **A Dev refused a write is shown the way on.** A write outside the plan's
+  files names the scratch folder for throwaway files, never a replan.
+- **"Waiting for approval" says what it means.** A check of a test file that
+  waits for your approval runs on the file as it is now, and the line appears
+  only for the checks that read that file, saying the approval comes before the
+  proof. Every wait says what it waits for and since when.
+- **Test first is recorded.** Each `vbw check --expect-red` run is kept with its
+  plan, `vbw plan done` names any of the plan's checks that never ran red before
+  its code, and QA lists them in its notes as a deviation from test first.
+- **Estimates lead with the usual figure.** "usually about 6 min (5 to 9 min,
+  rough guess), until around 17:08 (17:08 to 17:12)".
+- **A version bump reruns far less.** VBW's own read of its version no longer
+  counts as your tests reading it, so a release that changes only the version
+  reruns only the tests that read it themselves: 87 of 772 test units
+  instead of 450 of 743.
+- **`vbw next` is fast on Linux too.** QA's fingerprints are made with a fixed
+  number of processes, however many plans a milestone holds. On the test record
+  of 79 phases and 258 plans, `vbw next` now takes about 2.6 s of processor time
+  on Ubuntu 24.04 and 2.8 s on Ubuntu 26.04 (Linux containers), down from 5.8 s
+  and 6.5 s in 2.1.28, and about 3.3 s on a Mac.
+- **One PATH line per session.** Each session start keeps exactly one VBW line
+  for the copy Claude Code loaded in the session's environment file, and
+  removes earlier ones; `vbw doctor` compares against the loaded copy.
+
+### Fixed
+
+- **Tests that crossed midnight** could fail; VBW's clock can now be set for
+  tests.
+
+### For you to do
+
+- Update, then restart Claude Code. **The record schema rises to 15.** Once a
+  2.1.29 session writes a project's record, an older VBW refuses it with "this
+  project needs a newer VBW" and changes nothing: update VBW on every machine
+  that works on the project.
+
+Sizes, for information (file bytes): kernel 947 KB (`plugin/bin/vbw` and `plugin/lib`), mods 363 KB (hooks, panel and status line), workflows 77 KB, prompts 118 KB (agents and skills), packs 5 KB.
+
 ## [2.1.28] - 2026-11-08
 
 Quick wins from a second week of real Rust work. The lead of a large Rust
