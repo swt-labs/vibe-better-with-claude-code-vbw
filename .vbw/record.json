@@ -1,15 +1,6 @@
 {
   "schema": 15,
-  "lease": {
-    "run": "qa-20261109T170218Z",
-    "kind": "qa",
-    "started_at": "2026-11-09T17:02:18Z",
-    "files": [],
-    "session": "0ee781c3-c5b6-4a6c-889f-04b89f1fba4a",
-    "cost": {
-      "usd": 3535.110093
-    }
-  },
+  "lease": null,
   "protected": [
     "docs/guards.md",
     "tests/adaptive-results.bats",
@@ -101397,6 +101388,17 @@
         "ended": "2026-11-09T13:23:39Z",
         "cost": {
           "usd": 0.751556
+        }
+      },
+      {
+        "id": "qa-20261109T170218Z",
+        "kind": "qa",
+        "session": "0ee781c3-c5b6-4a6c-889f-04b89f1fba4a",
+        "milestone": "M56",
+        "started": "2026-11-09T17:02:18Z",
+        "ended": "2026-11-09T17:09:20Z",
+        "cost": {
+          "usd": 4.54176
         }
       }
     ],
