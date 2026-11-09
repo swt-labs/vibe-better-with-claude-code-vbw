@@ -1,6 +1,15 @@
 {
   "schema": 15,
-  "lease": null,
+  "lease": {
+    "run": "qa-20261109T193551Z",
+    "kind": "qa",
+    "started_at": "2026-11-09T19:35:51Z",
+    "files": [],
+    "session": "0ee781c3-c5b6-4a6c-889f-04b89f1fba4a",
+    "cost": {
+      "usd": 3553.542302
+    }
+  },
   "protected": [
     "docs/guards.md",
     "tests/adaptive-results.bats",
@@ -33484,15 +33493,21 @@
           "from": "deep",
           "to": "deep",
           "reason": "Dev blocked P225.3: R289.6 and R290.5: docs/guards.md is a protected check file (tests/guard-session-docs.bats reads it), so the guard refuses the break edit; tried Bash sed and Edit. Needs a break applied via vbw apply --patch, or --none approval. Docs tasks 1-3 are committed; R285.10 break went red (C664)."
+        },
+        {
+          "at": "2026-11-09T19:39:20Z",
+          "from": "deep",
+          "to": "deep",
+          "reason": "QA needs a second round"
         }
       ],
       "qa": {
         "result": "fail",
         "tier": "deep",
-        "tree": "c923fb562c74578709e1c159617f2bdc3208dbfd951a3ba91e89eae9f80bac39",
-        "at": "2026-11-09T17:07:12Z",
-        "note": "17/19 checks",
-        "rounds": 1
+        "tree": "fb11e82f79164370c5232a9205d9e813336f445b6f717e885f865b9f8127eec7",
+        "at": "2026-11-09T19:39:20Z",
+        "note": "7/8 checks",
+        "rounds": 2
       }
     },
     {
@@ -84073,7 +84088,7 @@
       "req": "R289",
       "source": "qa",
       "attempts": 0,
-      "status": "fixed",
+      "status": "closed",
       "note": "The record guard now lets a write to THIS project's .vbw/record.json through when the guard misreads the working folder; the old suffix rule refused all of these. Probed through the real PreToolUse Bash hook from the project folder (guard-bash.jq record_written -> common.jq record_at, programs.jq with_cwd): (a) '(cd /tmp; true); echo x > .vbw/record.json' is NOT refused (the cd inside the subshell is taken as the shell's folder, with_cwd says subshell scope is not read, but the later redirect is then resolved against /tmp); (b) 'cd /tmp; cd -; echo x > .vbw/record.json' is NOT refused (cd - is skipped, so the folder stays /tmp); (c) a cd that fails (cd /nonexistent; echo x > .vbw/record.json) resolves against a folder the shell never entered. In all three the shell really writes the project's own record. Controls: 'cd $(mktemp -d); ...', 'pushd /tmp; ...' and '.vbw//record.json' are still refused, so only the folder-tracking gap is open. The rule used to fail closed on any uncertainty about the folder; it now fails open, and the Dev's own cases only cover a plain 'cd X &&'. Regression test (tests/guard-record-path.bats): a main-session Bash call '(cd <elsewhere>; true); echo x > .vbw/record.json' and 'cd <elsewhere>; cd -; echo x > .vbw/record.json' must be refused with '.vbw/record.json is written only by vbw', while 'cd <scratchpad repo> && echo x > .vbw/record.json' stays allowed. Fix idea: judge a relative record path against the folder of a cd read with certainty only; when a cd sits in a subshell or is '-', or the text has more than one candidate folder, also test the start folder (refuse if either resolves to the project's record).",
       "phase": "P225"
     },
@@ -84082,7 +84097,7 @@
       "req": "R285",
       "source": "qa",
       "attempts": 0,
-      "status": "fixed",
+      "status": "closed",
       "note": "docs/guards.md, section SessionStart (lines ~494-500), still states what R285 made false, and P225.3's docs task only touched diagnostics.md and the Dev-refusal rows. It says the hook 'writes only for a copy loaded with claude --plugin-dir: a PATH line in the file Claude Code provides for it (CLAUDE_ENV_FILE), and the session record'; but session-start.sh now writes the PATH line and the session record for every start, an installed copy included. It also says VBW 'writes nothing outside the project except three things' and that 'an installed copy removes its own session's record'; the hook never removes an installed copy's record any more (it keeps it, plugin/hooks/session-start.sh), and the CLAUDE.md/AGENTS.md rulebook now lists four exceptions including the env file. A reader relying on this page would believe an installed session leaves PATH and the record alone. docs/statusline.md ('Any other session shows the version of the newest installed copy', lines 98-102, 138-139) also predates the record for installed sessions: the status line command reads the session record first, so an installed session now draws with the copy its record names. Regression test (tests/guard-session-docs.bats, 'R285 docs'): guards.md's SessionStart section must not say the PATH line or record is written only for a --plugin-dir copy, and must name the env file's PATH line and the record as written for every start; also that the exceptions count in guards.md matches the rulebook's four.",
       "phase": "P225"
     },
@@ -84106,6 +84121,15 @@
       "attempts": 0,
       "status": "closed",
       "note": "test fail"
+    },
+    {
+      "id": "F439",
+      "req": "R289",
+      "source": "qa",
+      "attempts": 0,
+      "status": "open",
+      "note": "The record guard (plugin/hooks/guard-bash.jq, run; with_cwd in plugin/hooks/programs.jq) still fails open for a cd it cannot read, the same gap F434 fixed only for the literal 'cd -'. The start folder is also judged only when the text matches 'cd -' as its own word (guard-bash.jq line ~234). Through the real PreToolUse Bash hook from the project folder these are NOT refused although the shell really writes the project's own record: 'cd /usr && cd $OLDPWD && echo x > .vbw/record.json', 'cd /usr && cd \"$OLDPWD\" && echo x > .vbw/record.json', 'cd /usr && cd ~- && echo x > .vbw/record.json', 'cd /usr && cd -P - && echo x > .vbw/record.json', 'cd /usr && cd -- - && echo x > .vbw/record.json'. Cause: with_cwd leaves the folder unchanged for a cd whose target is missing (only flags), starts with ~, or holds $ or a backtick, so the folder stays /usr; the F434 trigger regex does not see these spellings. Controls that behave right: '(cd /usr; true); echo x > .vbw/record.json', 'cd /usr; cd -; ...', 'cd /nonexistent; ...', '{ cd /usr; }; ...' and 'cd /usr && echo x > .vbw/record.json' (allowed, correct). Regression test (tests/guard-record-path.bats, next to the F434 case): main-session Bash calls 'cd <elsewhere> && cd $OLDPWD && echo x > .vbw/record.json', 'cd <elsewhere> && cd ~- && echo x > .vbw/record.json' and 'cd <elsewhere> && cd -P - && echo x > .vbw/record.json' must be refused with '.vbw/record.json is written only by vbw', while 'cd <scratchpad repo> && echo x > .vbw/record.json' stays allowed. Fix idea: use one trigger, the condition with_cwd itself uses to skip a cd (any cd whose first non-flag argument is missing, starts with ~, or holds $ or a backtick, as well as the literal cd -), so any cd the guard cannot follow also tests the start folder.",
+      "phase": "P225"
     }
   ],
   "todos": [
