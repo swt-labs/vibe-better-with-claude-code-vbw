@@ -93,3 +93,19 @@ record_refused() {
     record_refused "$out" "$c of ../.vbw/record.json from src"
   done
 }
+
+@test "R289 own: a cd the guard cannot follow for certain (in a subshell or a pipe, cd -, or one the next command does not wait for) leaves the project's record refused; a plain && chain is followed (F434)" {
+  local c out
+  for c in "(cd '$SCRATCH/plain'; true); echo x > .vbw/record.json" \
+    "cd '$SCRATCH/plain'; cd -; echo x > .vbw/record.json" \
+    "cd '$SCRATCH/plain' && cd - && echo x > .vbw/record.json" \
+    "cd '$TEST_ROOT/none'; echo x > .vbw/record.json" \
+    "cd '$SCRATCH/plain' | true; echo x > .vbw/record.json" \
+    "cd '$SCRATCH/plain' || true; cp '$TEST_ROOT/in.json' .vbw/record.json"; do
+    out=$(bash_at "$PROJECT" "$c")
+    record_refused "$out" "$c"
+  done
+  # Every cd of a plain && chain ran, or nothing after it did; a redirect such as 2>&1 is no separator.
+  out=$(bash_at "$PROJECT" "cd '$SCRATCH/repo' && git status 2>&1 && echo x > .vbw/record.json")
+  not_record "$out" "a cd chained with &&"
+}
