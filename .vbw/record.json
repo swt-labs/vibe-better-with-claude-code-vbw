@@ -33419,6 +33419,12 @@
           "from": "deep",
           "to": "deep",
           "reason": "Dev blocked P225.3: Task 2 (docs/guards.md, R289.6 and R290.5): the guard refuses every edit of docs/guards.md as a protected check file; the main session must apply the two edits with vbw apply --patch. Tasks 1 and 3 committed; mutation not run."
+        },
+        {
+          "at": "2026-11-09T12:22:35Z",
+          "from": "deep",
+          "to": "deep",
+          "reason": "Dev blocked P225.3: R289.6 and R290.5: docs/guards.md is a protected check file (tests/guard-session-docs.bats reads it), so the guard refuses the break edit; tried Bash sed and Edit. Needs a break applied via vbw apply --patch, or --none approval. Docs tasks 1-3 are committed; R285.10 break went red (C664)."
         }
       ]
     },
@@ -79049,13 +79055,41 @@
         "P225.1",
         "P225.2"
       ],
-      "status": "planned",
+      "status": "blocked",
       "role": "docs",
       "tasks": [
         "CLAUDE.md and AGENTS.md (the same rulebook, kept identical): 'Nothing outside the project' has four exceptions, the fourth Claude Code's per-session env file ($CLAUDE_ENV_FILE), where the session start keeps one PATH line for the loaded copy (R285); the session record is written for every session.",
         "docs/guards.md: the record is protected by its resolved path (another folder's .vbw/record.json is not), and a Dev's write under .vbw/runtime/ outside the scratch folder is refused naming .vbw/runtime/scratch/.",
         "docs/diagnostics.md: doctor compares the vbw on PATH with the copy this session loaded, its fix (start or resume the session again) and the lines without a session or without a record."
-      ]
+      ],
+      "mutations": [
+        {
+          "rule": {
+            "req": "R285",
+            "k": 10
+          },
+          "what": "AGENTS.md and CLAUDE.md say Three exceptions",
+          "files": [
+            "AGENTS.md",
+            "CLAUDE.md"
+          ],
+          "checks": {
+            "C664": "red"
+          },
+          "result": "red",
+          "at": "2026-11-09T12:21:51Z",
+          "head": "937c1c568dfb1c2f6242d3677c3778f620b88b0d",
+          "tree": "3a2ee89f950d469a726145dc784c84f5ddea50c6",
+          "contract": "dad09e00efa6a8e24454598c755343ae75b36781a799c05c19c2cd2c4de473d3",
+          "digests": [
+            {
+              "file": "AGENTS.md",
+              "sha256": "bc06b90fe8f089c815abaeff95b0ce9bd8dc24f7b39caaaab6abdd6dbccc8e2b"
+            }
+          ]
+        }
+      ],
+      "note": "R289.6 and R290.5: docs/guards.md is a protected check file (tests/guard-session-docs.bats reads it), so the guard refuses the break edit; tried Bash sed and Edit. Needs a break applied via vbw apply --patch, or --none approval. Docs tasks 1-3 are committed; R285.10 break went red (C664)."
     },
     {
       "id": "P226.1",
@@ -79074,13 +79108,232 @@
       "after": [
         "P224.1"
       ],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "checks.sh: checks_approved keeps the waiting files silently; one function prints, for the checks a run will run, one line per waiting file a running check has as its file: '<file> is waiting for approval: <ids> run now on its working content; vbw next asks the approval before the proof' (no vbw: prefix: information, not a refusal); vbw check calls it through checks_run_all and vbw mutate for the checks of its break.",
         "slots.sh: vbw_wait_say WHAT SINCE prints once per wait, when it starts, 'waiting for WHAT since HH:MM' in local time; slots_hold uses it ('a free slot of the computer-wide limit') and the check gate (checks_gate_enter) for another VBW command's checks in this project; fix done's waits go through it too; no other wording of a wait remains.",
         "cmd-mutate.sh and cmd-fix.sh: the approval lines name a file only for the checks that read it; fix done keeps its line that no check runs before the approval.",
         "plugin/agents/dev.md: the 'is waiting for approval' line is information, not a block: keep working; tests/check-waiting-line.bats, the R288 cases of tests/machine-wait-line.bats and tests/mutate-time.bats pass under /bin/bash."
+      ],
+      "mutations": [
+        {
+          "rule": {
+            "req": "R288",
+            "k": 2
+          },
+          "what": "says a waiting file even when no running check reads it",
+          "files": [
+            "plugin/lib/checks.sh"
+          ],
+          "checks": {
+            "C667": "red"
+          },
+          "result": "red",
+          "at": "2026-11-09T12:27:10Z",
+          "head": "8bff8b9cfed6491a7252945b950df9e9f7668d45",
+          "tree": "b852f96c0d24ca575e4230981e6d48bd62e8caeb",
+          "contract": "dad09e00efa6a8e24454598c755343ae75b36781a799c05c19c2cd2c4de473d3",
+          "digests": [
+            {
+              "file": "plugin/lib/checks.sh",
+              "sha256": "6d7b2131afa1b0960f645abc3da95aa1736bf39a5835eae0fc17adaa76cfc71f"
+            }
+          ]
+        },
+        {
+          "rule": {
+            "req": "R288",
+            "k": 3
+          },
+          "what": "names a waiting file for checks that are not run",
+          "files": [
+            "plugin/lib/checks.sh"
+          ],
+          "checks": {
+            "C667": "red"
+          },
+          "result": "red",
+          "at": "2026-11-09T12:27:13Z",
+          "head": "8bff8b9cfed6491a7252945b950df9e9f7668d45",
+          "tree": "b852f96c0d24ca575e4230981e6d48bd62e8caeb",
+          "contract": "dad09e00efa6a8e24454598c755343ae75b36781a799c05c19c2cd2c4de473d3",
+          "digests": [
+            {
+              "file": "plugin/lib/checks.sh",
+              "sha256": "c34d00d1f567cb26fc48ed1bad9b1f6c974149bdf264df12fa9ddb9941ce7e22"
+            }
+          ]
+        },
+        {
+          "rule": {
+            "req": "R288",
+            "k": 4
+          },
+          "what": "a waiting file stops the check instead of running on its working content",
+          "files": [
+            "plugin/lib/checks.sh"
+          ],
+          "checks": {
+            "C667": "red"
+          },
+          "result": "red",
+          "at": "2026-11-09T12:27:17Z",
+          "head": "8bff8b9cfed6491a7252945b950df9e9f7668d45",
+          "tree": "b852f96c0d24ca575e4230981e6d48bd62e8caeb",
+          "contract": "dad09e00efa6a8e24454598c755343ae75b36781a799c05c19c2cd2c4de473d3",
+          "digests": [
+            {
+              "file": "plugin/lib/checks.sh",
+              "sha256": "9c769cc481aa774f4f2121294cf7e4d2fd46faaf7ea920580a18b5a2690c89b9"
+            }
+          ]
+        },
+        {
+          "rule": {
+            "req": "R288",
+            "k": 5
+          },
+          "what": "the gate wait uses its own wording, not vbw_wait_say",
+          "files": [
+            "plugin/lib/checks.sh"
+          ],
+          "checks": {
+            "C667": "red"
+          },
+          "result": "red",
+          "at": "2026-11-09T12:27:21Z",
+          "head": "8bff8b9cfed6491a7252945b950df9e9f7668d45",
+          "tree": "b852f96c0d24ca575e4230981e6d48bd62e8caeb",
+          "contract": "dad09e00efa6a8e24454598c755343ae75b36781a799c05c19c2cd2c4de473d3",
+          "digests": [
+            {
+              "file": "plugin/lib/checks.sh",
+              "sha256": "97922ee06fe48a80d2a7d197d53f7b047cd0a91a462850b3cb70f09d09271bb8"
+            }
+          ]
+        },
+        {
+          "rule": {
+            "req": "R288",
+            "k": 7
+          },
+          "what": "the slot wait says nothing",
+          "files": [
+            "plugin/lib/slots.sh"
+          ],
+          "checks": {
+            "C668": "red"
+          },
+          "result": "red",
+          "at": "2026-11-09T12:27:24Z",
+          "head": "8bff8b9cfed6491a7252945b950df9e9f7668d45",
+          "tree": "b852f96c0d24ca575e4230981e6d48bd62e8caeb",
+          "contract": "dad09e00efa6a8e24454598c755343ae75b36781a799c05c19c2cd2c4de473d3",
+          "digests": [
+            {
+              "file": "plugin/lib/slots.sh",
+              "sha256": "8f5e35e5c284aef3278001ef18a5cc80bd30cf620c400dc8f6adb82da5e18939"
+            }
+          ]
+        },
+        {
+          "rule": {
+            "req": "R288",
+            "k": 6
+          },
+          "what": "dev.md calls the approval line a block",
+          "files": [
+            "plugin/agents/dev.md"
+          ],
+          "checks": {
+            "C667": "red"
+          },
+          "result": "red",
+          "at": "2026-11-09T12:27:27Z",
+          "head": "8bff8b9cfed6491a7252945b950df9e9f7668d45",
+          "tree": "b852f96c0d24ca575e4230981e6d48bd62e8caeb",
+          "contract": "dad09e00efa6a8e24454598c755343ae75b36781a799c05c19c2cd2c4de473d3",
+          "digests": [
+            {
+              "file": "plugin/agents/dev.md",
+              "sha256": "2b02d2b5fa9131138bcce7e1de08ae892dde37b11b950372102a896ae058f950"
+            }
+          ]
+        },
+        {
+          "rule": {
+            "req": "R288",
+            "k": 1
+          },
+          "what": "names the waiting file for every running check",
+          "files": [
+            "plugin/lib/checks.sh"
+          ],
+          "checks": {
+            "C667": "red"
+          },
+          "result": "red",
+          "at": "2026-11-09T12:28:40Z",
+          "head": "05be4c5deb5e021244f38f9b6fc4537ffae01486",
+          "tree": "234b56adcb2252878c15722070f4e611feb6a7a4",
+          "contract": "f84341cbcdc77d06a150a82cc1395190dbf72c29d4c817e72679ce7a5f4fb333",
+          "digests": [
+            {
+              "file": "plugin/lib/checks.sh",
+              "sha256": "57aff322bb6f0a3bad2bad630b641e8d0dc56876ed062c0982b7febe3f5a5fb3"
+            }
+          ]
+        },
+        {
+          "task": 3,
+          "what": "fix done names every waiting file",
+          "files": [
+            "plugin/lib/cmd-fix.sh"
+          ],
+          "checks": {
+            "C667": "green",
+            "C668": "green"
+          },
+          "result": "survivor",
+          "at": "2026-11-09T12:30:16Z",
+          "head": "05be4c5deb5e021244f38f9b6fc4537ffae01486",
+          "tree": "234b56adcb2252878c15722070f4e611feb6a7a4",
+          "contract": "f84341cbcdc77d06a150a82cc1395190dbf72c29d4c817e72679ce7a5f4fb333",
+          "digests": [
+            {
+              "file": "plugin/lib/cmd-fix.sh",
+              "sha256": "465faa53a5c50fc6c5f0bc74a517357e1ea9bf36a0f07df5963356a19aa9d01f"
+            }
+          ]
+        },
+        {
+          "task": 3,
+          "what": "fix done names every waiting file",
+          "files": [
+            "plugin/lib/cmd-fix.sh"
+          ],
+          "checks": {
+            "C667": "red"
+          },
+          "result": "red",
+          "at": "2026-11-09T12:31:39Z",
+          "head": "24527bbd57dc3cbf675b9922d684caf3e6e41cfc",
+          "tree": "ae261bc7e48854020e4e8fcb615b9fc2c2bf51ad",
+          "contract": "4eeb93fd479d565cbaab348c897929c80713dffdd215dbad106fad7e75c9a7e0",
+          "digests": [
+            {
+              "file": "plugin/lib/cmd-fix.sh",
+              "sha256": "465faa53a5c50fc6c5f0bc74a517357e1ea9bf36a0f07df5963356a19aa9d01f"
+            }
+          ],
+          "strengthened": [
+            "tests/check-waiting-line.bats"
+          ],
+          "pending": [
+            "tests/check-waiting-line.bats"
+          ]
+        }
       ]
     },
     {
@@ -79100,7 +79353,7 @@
       "after": [
         "P224.1"
       ],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "vbw check --expect-red records the run in plans[].red_runs: {at, head, checks: {id: red|green}, first} where first says the plan had no code commit (VBW-Plan trailer) yet; the run goes to each plan of the open build or fix run whose own checks it ran, or, with no run open, to each unfinished plan owning one; a plan's own checks are the checks its rules name it for, else its requirements' checks.",
@@ -79118,6 +79371,173 @@
           "what": "file plugin/lib/cmd-apply.sh added",
           "at": "2026-11-09T11:57:26Z",
           "session": "0ee781c3"
+        }
+      ],
+      "mutations": [
+        {
+          "rule": {
+            "req": "R292",
+            "k": 1
+          },
+          "what": "a green run is kept as red",
+          "files": [
+            "plugin/lib/cmd-check.sh"
+          ],
+          "checks": {
+            "C670": "red"
+          },
+          "result": "red",
+          "at": "2026-11-09T12:28:15Z",
+          "head": "8bff8b9cfed6491a7252945b950df9e9f7668d45",
+          "tree": "b852f96c0d24ca575e4230981e6d48bd62e8caeb",
+          "contract": "dad09e00efa6a8e24454598c755343ae75b36781a799c05c19c2cd2c4de473d3",
+          "digests": [
+            {
+              "file": "plugin/lib/cmd-check.sh",
+              "sha256": "6df0ddc29d7363e779d0f456803bf139af980a35d6a32eebb0b6c66c19ac5074"
+            }
+          ]
+        },
+        {
+          "rule": {
+            "req": "R292",
+            "k": 2
+          },
+          "what": "the never-red line says QA judge",
+          "files": [
+            "plugin/lib/cmd-plan.sh"
+          ],
+          "checks": {
+            "C670": "red"
+          },
+          "result": "red",
+          "at": "2026-11-09T12:28:18Z",
+          "head": "8bff8b9cfed6491a7252945b950df9e9f7668d45",
+          "tree": "b852f96c0d24ca575e4230981e6d48bd62e8caeb",
+          "contract": "dad09e00efa6a8e24454598c755343ae75b36781a799c05c19c2cd2c4de473d3",
+          "digests": [
+            {
+              "file": "plugin/lib/cmd-plan.sh",
+              "sha256": "544617200b237f30740cbc3afa6ff17d32b9e43562de129a429cac6d68847d08"
+            }
+          ]
+        },
+        {
+          "rule": {
+            "req": "R292",
+            "k": 3
+          },
+          "what": "a red run after the first code commit counts",
+          "files": [
+            "plugin/lib/cmd-check.sh"
+          ],
+          "checks": {
+            "C670": "red"
+          },
+          "result": "red",
+          "at": "2026-11-09T12:28:21Z",
+          "head": "8bff8b9cfed6491a7252945b950df9e9f7668d45",
+          "tree": "b852f96c0d24ca575e4230981e6d48bd62e8caeb",
+          "contract": "dad09e00efa6a8e24454598c755343ae75b36781a799c05c19c2cd2c4de473d3",
+          "digests": [
+            {
+              "file": "plugin/lib/cmd-check.sh",
+              "sha256": "5b852bd64ac920861f50911eb1e394e29c02b9fc0b26ae6fe0c775afc20867d7"
+            }
+          ]
+        },
+        {
+          "rule": {
+            "req": "R292",
+            "k": 4
+          },
+          "what": "a done plan's red run is ignored",
+          "files": [
+            "plugin/lib/cmd-check.sh"
+          ],
+          "checks": {
+            "C670": "red"
+          },
+          "result": "red",
+          "at": "2026-11-09T12:28:24Z",
+          "head": "8bff8b9cfed6491a7252945b950df9e9f7668d45",
+          "tree": "b852f96c0d24ca575e4230981e6d48bd62e8caeb",
+          "contract": "dad09e00efa6a8e24454598c755343ae75b36781a799c05c19c2cd2c4de473d3",
+          "digests": [
+            {
+              "file": "plugin/lib/cmd-check.sh",
+              "sha256": "68169c7a0b3cdcbd47da1830fe0f069dabd6587f52a3919de1373a03e6d7c3de"
+            }
+          ]
+        },
+        {
+          "rule": {
+            "req": "R292",
+            "k": 5
+          },
+          "what": "a plan with no own checks prints a line",
+          "files": [
+            "plugin/lib/cmd-plan.sh"
+          ],
+          "checks": {
+            "C670": "red"
+          },
+          "result": "red",
+          "at": "2026-11-09T12:28:27Z",
+          "head": "8bff8b9cfed6491a7252945b950df9e9f7668d45",
+          "tree": "b852f96c0d24ca575e4230981e6d48bd62e8caeb",
+          "contract": "dad09e00efa6a8e24454598c755343ae75b36781a799c05c19c2cd2c4de473d3",
+          "digests": [
+            {
+              "file": "plugin/lib/cmd-plan.sh",
+              "sha256": "3ea1f97b8b97dde6ed39aa7d6f9215e2cdeff22379122319d1e839d90053278c"
+            }
+          ]
+        },
+        {
+          "rule": {
+            "req": "R292",
+            "k": 6
+          },
+          "what": "plan done exits 1 on never red",
+          "files": [
+            "plugin/lib/cmd-plan.sh"
+          ],
+          "checks": {
+            "C670": "red"
+          },
+          "result": "red",
+          "at": "2026-11-09T12:28:30Z",
+          "head": "8bff8b9cfed6491a7252945b950df9e9f7668d45",
+          "tree": "b852f96c0d24ca575e4230981e6d48bd62e8caeb",
+          "contract": "dad09e00efa6a8e24454598c755343ae75b36781a799c05c19c2cd2c4de473d3",
+          "digests": [
+            {
+              "file": "plugin/lib/cmd-plan.sh",
+              "sha256": "9fc5e77067d7b5cb68df4125ffd55193883499aee109044413c7fe3f3d677a07"
+            }
+          ]
+        },
+        {
+          "task": 2,
+          "what": "red_runs is an unknown plan field",
+          "files": [
+            "plugin/lib/record.jq"
+          ],
+          "checks": {
+            "C670": "red"
+          },
+          "result": "red",
+          "at": "2026-11-09T12:30:33Z",
+          "head": "05be4c5deb5e021244f38f9b6fc4537ffae01486",
+          "tree": "234b56adcb2252878c15722070f4e611feb6a7a4",
+          "contract": "f84341cbcdc77d06a150a82cc1395190dbf72c29d4c817e72679ce7a5f4fb333",
+          "digests": [
+            {
+              "file": "plugin/lib/record.jq",
+              "sha256": "c0fcb3b01f1e63d4d986c0b39f76cc646798559aa7d0467553e718b43d870ecf"
+            }
+          ]
         }
       ]
     },
@@ -79187,7 +79607,7 @@
         "plugin/lib/cmd-status.sh"
       ],
       "after": [],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "core.sh: vbw_now prints VBW_NOW (a UTC time, YYYY-MM-DDTHH:MM:SSZ) when it is set, else the computer's clock; one jq definition of the moment ($ENV.VBW_NOW when set, else now) for the estimate path.",
@@ -79199,6 +79619,116 @@
           "what": "file plugin/lib/cmd-status.sh added",
           "at": "2026-11-09T11:57:26Z",
           "session": "0ee781c3"
+        }
+      ],
+      "mutations": [
+        {
+          "rule": {
+            "req": "R284",
+            "k": 1
+          },
+          "what": "vbw_now ignores VBW_NOW",
+          "files": [
+            "plugin/lib/core.sh"
+          ],
+          "checks": {
+            "C673": "green"
+          },
+          "result": "survivor",
+          "at": "2026-11-09T12:26:40Z",
+          "head": "8bff8b9cfed6491a7252945b950df9e9f7668d45",
+          "tree": "b852f96c0d24ca575e4230981e6d48bd62e8caeb",
+          "contract": "dad09e00efa6a8e24454598c755343ae75b36781a799c05c19c2cd2c4de473d3",
+          "digests": [
+            {
+              "file": "plugin/lib/core.sh",
+              "sha256": "09790916205c75c2ff594b5f87d828b4aefcd7641a2c32739825f2a44d9f7473"
+            }
+          ]
+        },
+        {
+          "rule": {
+            "req": "R284",
+            "k": 1
+          },
+          "what": "vbw_now ignores VBW_NOW",
+          "files": [
+            "plugin/lib/core.sh"
+          ],
+          "checks": {
+            "C673": "red"
+          },
+          "result": "red",
+          "at": "2026-11-09T12:28:32Z",
+          "head": "05be4c5deb5e021244f38f9b6fc4537ffae01486",
+          "tree": "234b56adcb2252878c15722070f4e611feb6a7a4",
+          "contract": "f84341cbcdc77d06a150a82cc1395190dbf72c29d4c817e72679ce7a5f4fb333",
+          "digests": [
+            {
+              "file": "plugin/lib/core.sh",
+              "sha256": "09790916205c75c2ff594b5f87d828b4aefcd7641a2c32739825f2a44d9f7473"
+            }
+          ],
+          "strengthened": [
+            "tests/step-ladder.bats"
+          ],
+          "pending": [
+            "tests/step-ladder.bats"
+          ]
+        },
+        {
+          "rule": {
+            "req": "R284",
+            "k": 2
+          },
+          "what": "road.jq reads jq's now",
+          "files": [
+            "plugin/lib/road.jq"
+          ],
+          "checks": {
+            "C673": "red"
+          },
+          "result": "red",
+          "at": "2026-11-09T12:29:35Z",
+          "head": "05be4c5deb5e021244f38f9b6fc4537ffae01486",
+          "tree": "234b56adcb2252878c15722070f4e611feb6a7a4",
+          "contract": "f84341cbcdc77d06a150a82cc1395190dbf72c29d4c817e72679ce7a5f4fb333",
+          "digests": [
+            {
+              "file": "plugin/lib/road.jq",
+              "sha256": "9b03e993a99aa4a647281e961994781796aab2f8bb10210a654e6205000281f3"
+            }
+          ],
+          "pending": [
+            "tests/step-ladder.bats"
+          ]
+        },
+        {
+          "rule": {
+            "req": "R284",
+            "k": 3
+          },
+          "what": "day word dropped for tomorrow",
+          "files": [
+            "plugin/lib/steps.sh"
+          ],
+          "checks": {
+            "C673": "red"
+          },
+          "result": "red",
+          "at": "2026-11-09T12:30:06Z",
+          "head": "05be4c5deb5e021244f38f9b6fc4537ffae01486",
+          "tree": "234b56adcb2252878c15722070f4e611feb6a7a4",
+          "contract": "f84341cbcdc77d06a150a82cc1395190dbf72c29d4c817e72679ce7a5f4fb333",
+          "digests": [
+            {
+              "file": "plugin/lib/steps.sh",
+              "sha256": "e3b74c8e67860b20f9327311c6d7388337d63cb22f33928df3e4b9d6159d7dce"
+            }
+          ],
+          "pending": [
+            "tests/step-ladder.bats"
+          ]
         }
       ]
     },
@@ -99731,6 +100261,17 @@
         "ended": "2026-11-09T12:20:47Z",
         "cost": {
           "usd": 2.901398
+        }
+      },
+      {
+        "id": "build-20261109T122105Z",
+        "kind": "build",
+        "session": "0ee781c3-c5b6-4a6c-889f-04b89f1fba4a",
+        "milestone": "M56",
+        "started": "2026-11-09T12:21:05Z",
+        "ended": "2026-11-09T12:32:36Z",
+        "cost": {
+          "usd": 2.11122
         }
       }
     ],
