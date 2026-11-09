@@ -26,6 +26,8 @@ Without such a rule, the doctor says nothing about hidden files.
 
 In a VBW project the doctor also prints one info line naming the branch the next VBW commit lands on, or `detached HEAD at <12 characters>` of the commit when no branch is checked out. Outside a VBW project it prints no branch line.
 
+When VBW's last record commit was refused (a pre-commit hook, say) and still stands, the doctor prints one warning with the time and the hook's first line of reason, `VBW's files could not be committed at <HH:MM>: <reason>`, and the way on: fix what the hook flagged, allow it in the checker's settings, or commit the VBW files yourself, then run `vbw next` (docs/next.md, The commit step). With no such failure it says nothing of it.
+
 VBW needs `jq 1.7 or newer`. The doctor prints the installed version as `jq <version>`. With an older jq it fails the line, names the version, and gives the fix: download a current jq from github.com/jqlang/jq/releases; on Debian 12, run `apt install -t bookworm-backports jq`. Every other `vbw` command refuses an older jq up front with the same message and writes nothing; the doctor still shows its full report.
 
 ### Project state

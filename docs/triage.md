@@ -98,11 +98,13 @@ Only `.vbw/record.json` is in that commit. Files you staged stay staged, and
 files you changed but did not stage stay changed. Neither goes into the commit.
 
 If git cannot commit (no git identity set, or a hook that refuses), the change
-is kept and the command still succeeds. It prints a warning with git's reason
-and asks you to commit the file yourself:
+is kept and the command still succeeds. It prints a warning with git's reason,
+and the next `vbw next` returns the commit step (docs/next.md, The commit step):
+fix what the hook flagged, allow it in the checker's settings, or commit the VBW
+files yourself. VBW never skips the hook.
 
 ```
-vbw: warning: could not commit VBW files (chore(vbw): todo T2 added): <git's reason>; commit them yourself
+vbw: warning: could not commit VBW files (chore(vbw): todo T2 added): <git's reason>
 ```
 
 `vbw triage` prints what VBW looks at when it sorts: the active milestone, its
