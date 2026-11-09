@@ -1741,11 +1741,17 @@ PROBE
   fixture="a small VBW project (vbw init, one-requirement spec); VBW $inst_ver installed from the marketplace and left on; a throwaway copy of this tree ($tree_ver, with a probe SessionStart hook) loaded with --plugin-dir; status line from that copy; launch PATH has the installed bin/ first: $pd_inherit"
   start='Do two things, then reply only with the word done. 1) With your Bash tool run exactly this: echo VBWPROBE; command -v vbw; vbw version; echo "$PATH"; echo "env=${VBWPROBE_ENV:-unset}"  2) Start one vbw:scout agent whose whole task is to run exactly that same command with its Bash tool and report the output. Change nothing.'
   pd_seen=""
+  # Done once the probe's output is in the session's transcript and in its agent's: a wait on that,
+  # never a fixed time (an auto-mode permission check took longer than 10 s, and the closing Escape
+  # cancelled the probe, on Claude Code 2.1.319). While it is not there, nothing is typed.
   done_yet() {
-    sleep 10
+    local m a
+    m=$(main_transcript)
+    a=$(transcripts | grep '/subagents/' | head -1)
+    [ -n "$m" ] && [ -n "$(pd_probe_out "$m")" ] && [ -n "$a" ] && [ -n "$(pd_probe_out "$a")" ] || return 1
     pd_seen=$(screen | sed 's/[[:space:]][[:space:]]*/ /g')
-    return 0
   }
+  on_idle() { sleep 5; }
   checks() {
     local log main agent out_s out_a facts passed copies hooks bins data envfile sl names
     log=$(l3 debuglog "$dir")
@@ -2735,7 +2741,9 @@ scenario_taskbreak() {
     [ "$blocked_early" = false ] && [ "$files_ok" = true ] && never_blocked=true
     # R265: the break stayed in the working copy (the Dev edited it out by hand after vbw mutate),
     # no commit of P1.1 holds the broken bytes, and every plan file ends as its commit has it.
-    digs=$(printf '%s' "$breaks" | jq -r '[.[] | (.digests // {}) | to_entries[] | select(.key == "greet.sh") | .value] | unique | .[]')
+    # A break's digests: a list of {file, sha256} since schema 15 (R286), an object {file: sha256} before.
+    digs=$(printf '%s' "$breaks" | jq -r '[.[] | (.digests // []) | if type == "object" then to_entries | map({file: .key, sha256: .value}) else . end
+      | .[] | select(.file == "greet.sh") | .sha256] | unique | .[]')
     if [ -n "$digs" ] && transcripts | transcript_edit_after_mutate greet.sh; then left=true; fi
     edited_out=true
     [ -n "$digs" ] || edited_out=false
@@ -2795,6 +2803,8 @@ fixchecks_seed() {
     printf '#!/bin/sh\necho "Hello %s"\n' "$k" > greet.sh
     "$VBW" mutate P1.1 "R1.$k" "greets nobody by name" greet.sh > /dev/null || return 1
   done
+  # vbw mutate leaves the break in the working copy (R265): edit it out, as a Dev does.
+  git checkout -q -- greet.sh || return 1
   # shellcheck disable=SC1010 # "plan done" is a vbw subcommand
   "$VBW" plan done P1.1 > /dev/null || return 1
   "$VBW" prove --full > /dev/null || return 1
