@@ -1,19 +1,6 @@
 {
   "schema": 15,
-  "lease": {
-    "run": "build-20261109T115249Z",
-    "kind": "build",
-    "started_at": "2026-11-09T11:52:49Z",
-    "files": [
-      "plugin/lib/cmd-doctor.sh",
-      "plugin/lib/cmd-next.sh",
-      "plugin/lib/qa-inputs.sh"
-    ],
-    "session": "0ee781c3-c5b6-4a6c-889f-04b89f1fba4a",
-    "cost": {
-      "usd": 3516.165552
-    }
-  },
+  "lease": null,
   "protected": [
     "docs/guards.md",
     "tests/adaptive-results.bats",
@@ -79062,14 +79049,13 @@
         "P225.1",
         "P225.2"
       ],
-      "status": "blocked",
+      "status": "planned",
       "role": "docs",
       "tasks": [
         "CLAUDE.md and AGENTS.md (the same rulebook, kept identical): 'Nothing outside the project' has four exceptions, the fourth Claude Code's per-session env file ($CLAUDE_ENV_FILE), where the session start keeps one PATH line for the loaded copy (R285); the session record is written for every session.",
         "docs/guards.md: the record is protected by its resolved path (another folder's .vbw/record.json is not), and a Dev's write under .vbw/runtime/ outside the scratch folder is refused naming .vbw/runtime/scratch/.",
         "docs/diagnostics.md: doctor compares the vbw on PATH with the copy this session loaded, its fix (start or resume the session again) and the lines without a session or without a record."
-      ],
-      "note": "Task 2 (docs/guards.md, R289.6 and R290.5): the guard refuses every edit of docs/guards.md as a protected check file; the main session must apply the two edits with vbw apply --patch. Tasks 1 and 3 committed; mutation not run."
+      ]
     },
     {
       "id": "P226.1",
@@ -79088,15 +79074,14 @@
       "after": [
         "P224.1"
       ],
-      "status": "blocked",
+      "status": "planned",
       "role": "dev",
       "tasks": [
         "checks.sh: checks_approved keeps the waiting files silently; one function prints, for the checks a run will run, one line per waiting file a running check has as its file: '<file> is waiting for approval: <ids> run now on its working content; vbw next asks the approval before the proof' (no vbw: prefix: information, not a refusal); vbw check calls it through checks_run_all and vbw mutate for the checks of its break.",
         "slots.sh: vbw_wait_say WHAT SINCE prints once per wait, when it starts, 'waiting for WHAT since HH:MM' in local time; slots_hold uses it ('a free slot of the computer-wide limit') and the check gate (checks_gate_enter) for another VBW command's checks in this project; fix done's waits go through it too; no other wording of a wait remains.",
         "cmd-mutate.sh and cmd-fix.sh: the approval lines name a file only for the checks that read it; fix done keeps its line that no check runs before the approval.",
         "plugin/agents/dev.md: the 'is waiting for approval' line is information, not a block: keep working; tests/check-waiting-line.bats, the R288 cases of tests/machine-wait-line.bats and tests/mutate-time.bats pass under /bin/bash."
-      ],
-      "note": "C667 case 'R288 mutate' (tests/check-waiting-line.bats line 82) runs 'vbw mutate P1.2 R2.1' with tests/c2.sh changed but uncommitted and expects the break to run and print the approval line. vbw mutate refuses that today ('check files differ from the last commit', cmd-mutate.sh:350, pinned by tests/mutate-time.bats:209) because a break runs on a copy of HEAD, so an uncommitted check file would be tested as its old content and record a false survivor. The same situation (an uncommitted check file the break's check reads) cannot both be refused and run. Fixing it means either changing the protected check or dropping that guard (or copying dirty waiting check files into the break's copy, which changes what a recorded break proves): the Lead/owner must decide. Done and committed: vbw_wait_say (slots.sh, C668 passes), checks_say_waiting (checks.sh), fix done wording (cmd-fix.sh), dev.md; C667 cases 1-3, 5 pass, case 4 and the docs case (P226.4) are red."
+      ]
     },
     {
       "id": "P226.2",
@@ -79108,12 +79093,14 @@
       "files": [
         "plugin/lib/cmd-check.sh",
         "plugin/lib/record.jq",
-        "plugin/lib/cmd-plan.sh"
+        "plugin/lib/cmd-plan.sh",
+        "plugin/lib/contract.sh",
+        "plugin/lib/cmd-apply.sh"
       ],
       "after": [
         "P224.1"
       ],
-      "status": "blocked",
+      "status": "planned",
       "role": "dev",
       "tasks": [
         "vbw check --expect-red records the run in plans[].red_runs: {at, head, checks: {id: red|green}, first} where first says the plan had no code commit (VBW-Plan trailer) yet; the run goes to each plan of the open build or fix run whose own checks it ran, or, with no run open, to each unfinished plan owning one; a plan's own checks are the checks its rules name it for, else its requirements' checks.",
@@ -79121,7 +79108,18 @@
         "vbw plan done prints 'Red first: C1 and C2 never ran red before this plan's first code commit; QA judges this', or 'Red first: every check of this plan ran red before its first code commit (C1, C2)', judged from the red runs of every plan owning the check; no line for a plan with no own checks; plan done's exit and what it records unchanged.",
         "The R292 kept and plan done cases of tests/red-first.bats pass under /bin/bash."
       ],
-      "note": "Needs plugin/lib/contract.sh (lines 18 and 247-248 del(.status, .note, .mutations, .amendments, .awaits)) to also drop .red_runs, or the contract hash changes on the first vbw check --expect-red and every vbw mutate/commit then refuses 'contract not approved'; plugin/lib/cmd-apply.sh (lines 590-605, which carry mutations/amendments/awaits across a re-apply) should carry red_runs too. Both are outside this plan's files. The rest is built and WIP is saved as .vbw/runtime/scratch/P226.2-wip.patch (record.jq red_run_ok + field list; cmd-check.sh red_runs_keep/red_first_line; cmd-plan.sh prints the line): R292 plan-done cases 2-4 pass once the contract ignores red_runs."
+      "amendments": [
+        {
+          "what": "file plugin/lib/contract.sh added",
+          "at": "2026-11-09T11:57:26Z",
+          "session": "0ee781c3"
+        },
+        {
+          "what": "file plugin/lib/cmd-apply.sh added",
+          "at": "2026-11-09T11:57:26Z",
+          "session": "0ee781c3"
+        }
+      ]
     },
     {
       "id": "P226.3",
@@ -79185,17 +79183,24 @@
         "plugin/lib/steps.sh",
         "plugin/lib/road.jq",
         "plugin/lib/proofsteps.sh",
-        "plugin/scripts/statusline.jq"
+        "plugin/scripts/statusline.jq",
+        "plugin/lib/cmd-status.sh"
       ],
       "after": [],
-      "status": "blocked",
+      "status": "planned",
       "role": "dev",
       "tasks": [
         "core.sh: vbw_now prints VBW_NOW (a UTC time, YYYY-MM-DDTHH:MM:SSZ) when it is set, else the computer's clock; one jq definition of the moment ($ENV.VBW_NOW when set, else now) for the estimate path.",
         "steps.sh, road.jq, proofsteps.sh and statusline.jq take every 'now' of the estimate path from that one definition; nothing in them reads jq's now directly.",
         "The cases that set the clock pass: tests/step-ladder.bats (the R284 cases among them), tests/road-next.bats, tests/step-next.bats, tests/statusline-step.bats and tests/step-range.bats's R270 cases whose wording R291 keeps; the status line stays within 60 ms (tools/bench-hooks.sh)."
       ],
-      "note": "Tasks 1-2 are committed (8aea4318, ae99a0fb); C673 passes. Task 3 cannot pass: the test files set VBW_NOW=2030-01-15 but still seed their notes from jq's wall-clock now (tests/statusline-step.bats lines 56,71,126,150,193,207,270: '(now | floor)'; the same in tests/step-range.bats and tests/road-next.bats R191/R190 cases), so 28+ cases fail (statusline-step 10-29,36; road-next/step-next R191/R190; step-range R270/R291). They are protected check files, which the guard bars me from editing. Needs a vbw apply --patch replacing '(now | floor)' with '($ENV.VBW_NOW | fromdateiso8601)' in those test files, then approval."
+      "amendments": [
+        {
+          "what": "file plugin/lib/cmd-status.sh added",
+          "at": "2026-11-09T11:57:26Z",
+          "session": "0ee781c3"
+        }
+      ]
     },
     {
       "id": "P227.2",
@@ -79290,12 +79295,120 @@
       "after": [
         "P224.2"
       ],
-      "status": "building",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "qa-inputs.sh: QA's per-phase fingerprints (files, tests, plan, requirements, combined) built in one jq pass over the listing and one batch hash call for every text to hash, the tree read once per repository and picked per phase without a process per phase (no awk per phase).",
         "The values stay byte for byte (the same bytes hashed): QA_FP_VERSION stays 2, the R268 identity digests (tests/big-milestone-expected/digests.json) are unchanged; any other change of values raises QA_FP_VERSION (tests/qa-fp-version.bats).",
         "Any other per-plan or per-phase process of vbw next (cmd-next.sh) goes the same way; tests/next-processes.bats, tests/big-milestone.bats and tests/qa-fp-version.bats pass, and tests/timed-big-milestone.bats under /bin/bash."
+      ],
+      "mutations": [
+        {
+          "task": 2,
+          "none": "no code of its own: the identity of the values is pinned by the R282.3 break",
+          "at": "2026-11-09T12:11:00Z"
+        },
+        {
+          "task": 3,
+          "none": "no other per-plan or per-phase process remained: the counts of 258 and 516 plans already match after task 1",
+          "at": "2026-11-09T12:11:02Z"
+        },
+        {
+          "rule": {
+            "req": "R282",
+            "k": 1
+          },
+          "what": "qa_hash_batch hashes one file per sha256sum process",
+          "files": [
+            "plugin/lib/qa-inputs.sh"
+          ],
+          "checks": {
+            "C681": "red"
+          },
+          "result": "red",
+          "at": "2026-11-09T12:14:57Z",
+          "head": "a0253fbc69da256f1b702f2f170ee8576ea38409",
+          "tree": "9da94f82481a7d4c135acca2890b1d0921f669ea",
+          "contract": "33903da155f92809d1785ac44fb8dbb24846685cfb12322a35f9f6e2e636f489",
+          "digests": [
+            {
+              "file": "plugin/lib/qa-inputs.sh",
+              "sha256": "e2d011550c2995f7bccbe45611d85479940bf3bdd86644911d7719b4ec7c9260"
+            }
+          ]
+        },
+        {
+          "rule": {
+            "req": "R282",
+            "k": 2
+          },
+          "what": "the tests digest leaves out the check files' digest",
+          "files": [
+            "plugin/lib/qa-inputs.sh"
+          ],
+          "checks": {
+            "C681": "red"
+          },
+          "result": "red",
+          "at": "2026-11-09T12:14:59Z",
+          "head": "a0253fbc69da256f1b702f2f170ee8576ea38409",
+          "tree": "9da94f82481a7d4c135acca2890b1d0921f669ea",
+          "contract": "33903da155f92809d1785ac44fb8dbb24846685cfb12322a35f9f6e2e636f489",
+          "digests": [
+            {
+              "file": "plugin/lib/qa-inputs.sh",
+              "sha256": "d65aeaf8e741e5b0895aa188003288fb4dc299718c03145da7232e54997e6e3f"
+            }
+          ]
+        },
+        {
+          "rule": {
+            "req": "R282",
+            "k": 3
+          },
+          "what": "the plan's text is hashed without its newline, so the values change",
+          "files": [
+            "plugin/lib/qa-inputs.sh"
+          ],
+          "checks": {
+            "C681": "red"
+          },
+          "result": "red",
+          "at": "2026-11-09T12:15:02Z",
+          "head": "a0253fbc69da256f1b702f2f170ee8576ea38409",
+          "tree": "9da94f82481a7d4c135acca2890b1d0921f669ea",
+          "contract": "33903da155f92809d1785ac44fb8dbb24846685cfb12322a35f9f6e2e636f489",
+          "digests": [
+            {
+              "file": "plugin/lib/qa-inputs.sh",
+              "sha256": "1ad9195c70d6a7ae07407fedafd3818d5b8c130bc46e3261b58275f944dba02a"
+            }
+          ]
+        },
+        {
+          "rule": {
+            "req": "R282",
+            "k": 4
+          },
+          "what": "vbw next starts a jq per phase after the digests",
+          "files": [
+            "plugin/lib/cmd-next.sh"
+          ],
+          "checks": {
+            "C681": "red"
+          },
+          "result": "red",
+          "at": "2026-11-09T12:15:06Z",
+          "head": "a0253fbc69da256f1b702f2f170ee8576ea38409",
+          "tree": "9da94f82481a7d4c135acca2890b1d0921f669ea",
+          "contract": "33903da155f92809d1785ac44fb8dbb24846685cfb12322a35f9f6e2e636f489",
+          "digests": [
+            {
+              "file": "plugin/lib/cmd-next.sh",
+              "sha256": "a7d5e0670aa7c0426030f2afd2890c5ee540068f9eb4beded32e6cead181a383"
+            }
+          ]
+        }
       ]
     },
     {
@@ -99602,6 +99715,17 @@
         "ended": "2026-11-09T11:45:52Z",
         "cost": {
           "usd": 2.564754
+        }
+      },
+      {
+        "id": "build-20261109T115249Z",
+        "kind": "build",
+        "session": "0ee781c3-c5b6-4a6c-889f-04b89f1fba4a",
+        "milestone": "M56",
+        "started": "2026-11-09T11:52:49Z",
+        "ended": "2026-11-09T12:20:47Z",
+        "cost": {
+          "usd": 2.901398
         }
       }
     ],
