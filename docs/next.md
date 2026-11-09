@@ -134,8 +134,8 @@ Then run `vbw next` again. Once you commit the files the step is gone and `vbw n
 
 | # | Condition | action | gate |
 |---|---|---|---|
-| 0 | a run lease is open | `run` (wait for its workflow if it is running in this session; otherwise `vbw run end`; a run owned by another session: wait or check `vbw status`, never end it) | no |
-| 0b | VBW could not commit its own files: the project's pre-commit hook (or git) refused them | `commit` (`detail.files`, `detail.at`; the hook's own message, then the three ways on; see The commit step) | yes |
+| 0 | VBW could not commit its own files: the project's pre-commit hook (or git) refused them | `commit` (`detail.files`, `detail.at`; the hook's own message, then the three ways on; see The commit step) | yes |
+| 0a | a run lease is open | `run` (wait for its workflow if it is running in this session; otherwise `vbw run end`; a run owned by another session: wait or check `vbw status`, never end it) | no |
 | 1 | milestone `shipped` or `parked` (a parked one is left behind like a shipped one, docs/loop.md) | `milestone` (start the next one: `vbw milestone start TITLE`) | yes |
 | 2a | no requirements in the current milestone, and a VBW 1 plan (`.vbw-planning/`) not converted yet | `convert` (`/vbw:convert`, or start fresh; docs/convert.md) | yes |
 | 2 | no requirements in the current milestone | `spec` (write its requirements in `.vbw/spec.md`) | yes |

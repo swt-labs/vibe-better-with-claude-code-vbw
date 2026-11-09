@@ -1238,7 +1238,7 @@ a file, so you can read the whole failure without running everything again.
 - A reused result, or a check that was skipped, leaves the file as it is.
 - `.vbw/runtime/` is git-ignored, so these files are never committed.
 - `vbw check` keeps a failing check's output the same way; `--expect-red` keeps
-  nothing. `vbw show fix` reads the file and lists the failing test names.
+  no output file. `vbw show fix` reads the file and lists the failing test names.
 
 An `auto` requirement is `proven` when all its checks pass and `failing`
 otherwise. Human requirements are untouched.
@@ -1971,9 +1971,12 @@ the evidence covers the code you will keep.
 ### `vbw check [--expect-red] [CHECK...]`
 
 Runs the given approved checks (all when none are given) on the working folder,
-uncommitted and untracked files included, and reports. It writes only the full
+uncommitted and untracked files included, and reports. It writes the full
 output of each failing check to `.vbw/runtime/output/<check>.log` and prints
-`  full output: PATH` under that check's line (`--expect-red` keeps nothing): the
-Dev's tool for the red and green steps. Exit 0 when all pass. With `--expect-red`, red-first:
+`  full output: PATH` under that check's line: the Dev's tool for the red and
+green steps. `--expect-red` keeps no output file; it keeps the run in the
+evidence of each plan it concerns (`red_runs` in the record: the time, the
+commit, each check's result, and whether it came before the plan's first code
+commit), which `vbw plan done` and QA read (docs/workflows.md, Red first). Exit 0 when all pass. With `--expect-red`, red-first:
 before a plan is built its checks must fail, and a check that already passes
 proves nothing, so exit 0 only when every check fails.

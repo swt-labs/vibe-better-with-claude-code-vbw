@@ -156,3 +156,13 @@ plan_of() { jq -c --arg p "$1" '.plans[] | select(.id == $p)' .vbw/record.json; 
   grep -iE 'red first' "$d" | grep -qiE 'never refuses|does not refuse' || { echo "docs/workflows.md does not say plan done never refuses on it"; false; }
   grep -iE 'red first' "$d" | grep -qiE 'deviation' || { echo "docs/workflows.md does not say QA judges it as a deviation"; false; }
 }
+
+@test "R292 docs: the vbw check entries and its usage say --expect-red keeps the run in the plan's evidence, and none says vbw check writes nothing (F442)" {
+  local f
+  grep -E '^\| `vbw check ' "$REPO_ROOT/docs/workflows.md" | grep -qF 'red_runs' || { echo "docs/workflows.md's vbw check row does not name red_runs"; false; }
+  sed -n '/^### `vbw check /,/^### /p' "$REPO_ROOT/docs/proof.md" | grep -qF 'red_runs' || { echo "docs/proof.md's vbw check section does not name red_runs"; false; }
+  grep -E '^ +check \[--expect-red\]' "$REPO_ROOT/plugin/bin/vbw" | grep -qF "plan's evidence" || { echo "vbw's usage of check does not say the run is kept"; false; }
+  for f in docs/proof.md docs/workflows.md plugin/bin/vbw plugin/lib/cmd-check.sh; do
+    ! grep -nE 'expect-red. keeps nothing|writes nothing to the record|report \(writes nothing\)' "$REPO_ROOT/$f" || { echo "$f still says vbw check writes nothing"; false; }
+  done
+}
