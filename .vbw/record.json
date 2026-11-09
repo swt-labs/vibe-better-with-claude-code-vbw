@@ -1,6 +1,15 @@
 {
   "schema": 15,
-  "lease": null,
+  "lease": {
+    "run": "qa-20261109T170218Z",
+    "kind": "qa",
+    "started_at": "2026-11-09T17:02:18Z",
+    "files": [],
+    "session": "0ee781c3-c5b6-4a6c-889f-04b89f1fba4a",
+    "cost": {
+      "usd": 3535.110093
+    }
+  },
   "protected": [
     "docs/guards.md",
     "tests/adaptive-results.bats",
@@ -33573,7 +33582,22 @@
           "to": "deep",
           "reason": "Dev blocked P227.2: All four tasks are built and committed; C676 passes, but C675 cannot pass without editing the approved tests/step-range.bats. Its R270 road case (line 103, after 'step_seed build 300 1 2') still expects the old wording: '.say | startswith(\"Milestone end: roughly \")'. In that state the road is rough with ends 16 and 31 min apart, so R291.1/R291.3 and the test's own line 100 require 'Milestone end: usually about 16 min (16 to 31 min, rough guess), ...'; line 103 should read startswith(\"Milestone end: usually about \"). Also tests/panel/step-range.test.mjs (uncommitted, outside this plan's files) expects 'tomorrow 03:20' for the typical end of the 700 min case, but the clocks change on 25 Oct, so the real wall time is 02:20 (the 00:00 and 04:40 ends already include the hour); it needs 02:20. Needs: replan with those two test corrections. Also fixed a P227.1 slip in steps.sh: step_status ran jq without the vbw_now definition, so vbw status lost its 'now:' line."
         }
-      ]
+      ],
+      "qa": {
+        "result": "pass",
+        "tier": "deep",
+        "tree": "18e77d49b5be4ea52076304305010aba2976bef7e1f59d8d34e151de9aa9a733",
+        "at": "2026-11-09T17:06:28Z",
+        "note": "30/30 checks"
+      },
+      "outcome": {
+        "tier": "deep",
+        "predicted": "deep",
+        "held": true,
+        "fix_rounds": 0,
+        "qa_findings": 0,
+        "escalations": 3
+      }
     },
     {
       "id": "P228",
