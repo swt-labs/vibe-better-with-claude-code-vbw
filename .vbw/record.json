@@ -81397,7 +81397,7 @@
       "text": "spec_parse writes its parsed spec with a builtin printf (cmd-spec.sh:57); on macOS bash 3.2 a child exiting while the write waits fails it with 'Interrupted system call' (seen once in the 2.1.27 proof, F392, tests/small-request.bats under load). Move it to vbw_out and extend tools/check-loop-writes.sh (or a new rule) to catch a builtin write of record- or spec-sized text in any kernel function whose output is captured, test first.",
       "sort": "next",
       "size": "small",
-      "status": "open"
+      "status": "done"
     },
     {
       "id": "T255",
