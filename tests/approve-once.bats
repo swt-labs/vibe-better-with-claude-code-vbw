@@ -55,7 +55,7 @@ built() {
 
 @test "R79: vbw check still runs, and names the test files that wait for approval" {
   printf 'paid\n' > src/pay.txt
-  printf '# a tweak\n' >> tests/pay.sh
+  printf 'grep -q -x paid src/pay.txt\n' > tests/pay.sh
   vbw_run check C1
   [ "$status" -eq 0 ] || { echo "$output"; false; }
   [[ "$output" == *"tests/pay.sh"* ]]
@@ -64,8 +64,8 @@ built() {
 
 @test "R79: the one approval is asked for before the phase is proved, naming every edited test file" {
   built
-  printf '# tweak 1\n' >> tests/pay.sh
-  printf '# tweak 2\n' >> tests/receipt.sh
+  printf 'grep -q -x paid src/pay.txt\n' > tests/pay.sh
+  printf 'grep -q -x sent src/receipt.txt\n' > tests/receipt.sh
   vbw_run next --json
   echo "$output" | jq -e '.action == "approve" and .gate == true and .detail.files == ["tests/pay.sh","tests/receipt.sh"]' || { echo "$output"; false; }
   echo "$output" | jq -e '.instruction | contains("tests/pay.sh") and contains("tests/receipt.sh")' || { echo "$output"; false; }
@@ -73,8 +73,8 @@ built() {
 
 @test "R79: proof stops and says which test files are waiting; nothing is proved" {
   built
-  printf '# tweak 1\n' >> tests/pay.sh
-  printf '# tweak 2\n' >> tests/receipt.sh
+  printf 'grep -q -x paid src/pay.txt\n' > tests/pay.sh
+  printf 'grep -q -x sent src/receipt.txt\n' > tests/receipt.sh
   vbw_run prove
   [ "$status" -ne 0 ]
   [[ "$output" == *"waiting for approval"* ]]
@@ -85,8 +85,8 @@ built() {
 
 @test "R79: one approval covers all the edits, and the proof then runs" {
   built
-  printf '# tweak 1\n' >> tests/pay.sh
-  printf '# tweak 2\n' >> tests/receipt.sh
+  printf 'grep -q -x paid src/pay.txt\n' > tests/pay.sh
+  printf 'grep -q -x sent src/receipt.txt\n' > tests/receipt.sh
   vbw_run approve
   [ "$status" -eq 0 ] || { echo "$output"; false; }
   vbw_run prove

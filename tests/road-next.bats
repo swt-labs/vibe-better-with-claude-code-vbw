@@ -7,8 +7,8 @@
 # rule), QA when the phase's tier needs it, and the phase's usual fix rounds, each
 # one fix round plus one proof plus one QA recheck. The usual fix rounds per tier
 # are the median of outcome.fix_rounds over the latest 10 finished phases of that
-# tier, rounded; fewer than 3 finished phases of a tier counts 0 rounds and the
-# sentence says so. Before planning the road is the planning step alone. A piece
+# tier, rounded; fewer than 3 finished phases of a tier counts 0 rounds, the
+# sentence says so and the end is a rough guess (R270). Before planning the road is the planning step alone. A piece
 # with no basis makes end null and names the missing kind. No phase left: null.
 # vbw status --json and vbw status carry the same road. Times are local
 # (Europe/Zurich here).
@@ -30,7 +30,7 @@ built_project() {
   vbw_setup
   export TZ=Europe/Zurich
   road_project
-  road_hist
+  ROAD_HIST_RUNS=5 road_hist
   outcomes_seed deep 1 2 2 5
 }
 setup_file() { fixture_build built built_project; }
@@ -52,7 +52,7 @@ hm() {
   r=$(road_of)
   printf '%s' "$r" | jq -e '.seconds == 2150 and .rounds == {deep: 2, standard: 0} and (.basis | type == "string" and length > 0)
     and ((.end | fromdateiso8601) - now | . >= 2100 and . <= 2200)' || { echo "$r"; false; }
-  printf '%s' "$r" | jq -e --arg at "$(hm "$(printf '%s' "$r" | jq -r .end)")" '.say | startswith("Milestone end: about 36 min, until around \($at), counting ")' || { echo "$r"; false; }
+  printf '%s' "$r" | jq -e --arg at "$(hm "$(printf '%s' "$r" | jq -r .end)")" '.say | startswith("Milestone end: roughly 36 min, until around \($at) (rough guess), counting ")' || { echo "$r"; false; }
   printf '%s' "$r" | jq -e '.say | contains("2 fix rounds per deep phase") and contains("(the usual here)") and contains("fewer than 3 finished standard phases here")' || { echo "$r"; false; }
   "$VBW" next --json | jq -e '.action == "build"' > /dev/null
 }
@@ -69,8 +69,8 @@ hm() {
   local r
   r=$(road_of)
   printf '%s' "$r" | jq -e '.rounds == {deep: 0, standard: 0} and .seconds == 1130
-    and (.say | startswith("Milestone end: about 19 min, until around "))
-    and (.say | test("counting no fix rounds: fewer than 3 finished deep( and standard)? phases here"))' || { echo "$r"; false; }
+    and .rough == true and (.say | startswith("Milestone end: roughly 19 min, until around "))
+    and (.say | test("\\(rough guess\\), counting no fix rounds: fewer than 3 finished deep( and standard)? phases here"))' || { echo "$r"; false; }
 }
 
 @test "R191: a wave already built leaves the road; a built phase whose checks are not passed still counts one proof" {
@@ -88,7 +88,7 @@ hm() {
   r=$(road_of)
   printf '%s' "$r" | jq -e '.end == null and .seconds == null and .rounds == {}
     and .say == "no milestone end time yet (VBW has timed fewer than 3 planning steps here)"' || { echo "$r"; false; }
-  hist_plan 2 100 3
+  hist_plan 2 100 5
   r=$(road_of)
   printf '%s' "$r" | jq -e '.seconds == 100 and (.end | type == "string") and .rounds == {}
     and (.say | test("^Milestone end: planning about 2 min, until around (tomorrow )?[0-9]{2}:[0-9]{2}; the rest follows once the work is planned$"))' || { echo "$r"; false; }
@@ -108,8 +108,10 @@ hm() {
 
 @test "R191: durations over an hour read 'about 2 h 36 min' and the clock follows the step's rules" {
   jq 'del(.steps[] | select(.kind == "build"))' "$STEPS" > "$TEST_ROOT/h.json" && cp "$TEST_ROOT/h.json" "$STEPS"
-  hist_build deep 1 1000 3
-  hist_build standard 1 1000 3
+  hist_build deep 1 1000 5
+  hist_build standard 1 1000 5
+  # Every tier has its usual fix rounds (0 per standard phase), so the end is one figure.
+  outcomes_seed standard 0 0 0
   local r
   r=$(road_of)
   # 5000 + 10 + 3000 + 20 + 200 + 100 + 1020 = 9350 s.
@@ -131,7 +133,7 @@ hm() {
   [ "$(printf '%s' "$n" | jq -c '{seconds, rounds, basis}')" = "$(printf '%s' "$s" | jq -c '{seconds, rounds, basis}')" ] || { echo "$n"; echo "$s"; false; }
   jq -n --argjson n "$n" --argjson s "$s" -e '(($n.end | fromdateiso8601) - ($s.end | fromdateiso8601)) | fabs <= 60' || { echo "$n"; echo "$s"; false; }
   vbw_run status
-  [[ "$output" == *"Milestone end: about 36 min, until around"* ]] || { echo "$output"; false; }
+  [[ "$output" == *"Milestone end: roughly 36 min, until around"* ]] || { echo "$output"; false; }
 }
 
 @test "R191: while a step runs, vbw next --json, vbw status --json and the note give the identical milestone end" {
@@ -144,5 +146,5 @@ hm() {
   [ "$n" = "$o" ] || { echo "next: $n note: $o"; false; }
   [ "$s" = "$o" ] || { echo "status: $s note: $o"; false; }
   vbw_run status
-  [[ "$output" == *"now: building P1.1, P1.2"* && "$output" == *"Milestone end: about "* ]] || { echo "$output"; false; }
+  [[ "$output" == *"now: building P1.1, P1.2"* && "$output" == *"Milestone end: roughly "* ]] || { echo "$output"; false; }
 }

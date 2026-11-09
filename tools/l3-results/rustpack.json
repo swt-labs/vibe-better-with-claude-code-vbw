@@ -1,9 +1,9 @@
 {
   "scenario": "rustpack",
   "fixture": "a two-crate Cargo workspace (crates/textkit, crates/countkit, both lib.rs empty) and a spec of two requirements, one per crate, with no plan; rigor standard, because express plans in the main session with no Lead; the user types /vbw:vibe and the Lead plans",
-  "cost_usd": 3.79,
+  "cost_usd": 4.09,
   "evidence_level": "L3",
-  "at": "2026-11-07T00:53:31Z",
+  "at": "2026-11-08T17:59:34Z",
   "passed": true,
   "facts": {
     "lead_planned": true,

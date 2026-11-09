@@ -20,7 +20,18 @@ vbw_project_of "${CLAUDE_PROJECT_DIR:-$PWD}"
 vbw="${0%/*}/../bin/vbw"
 
 [ -f "$root/.vbw/record.json" ] || exit 0
-head=$(cd "$root" && "$vbw" show contract < /dev/null 2>/dev/null | sed -n '1p') || exit 0
+out=$(cd "$root" && "$vbw" show contract < /dev/null 2>&1)
+rc=$?
+if [ "$rc" -eq 4 ]; then
+  # A record this VBW cannot read (written by a newer VBW): the menu could not record an answer.
+  # Refuse it with the kernel's own line, to Claude and to the user; never allow (R272).
+  line=$(printf '%s\n' "$out" | sed -n '1p')
+  line=${line#vbw: }
+  jq -nc --arg l "$line" '{hookSpecificOutput: {hookEventName: "PreToolUse", permissionDecision: "deny", permissionDecisionReason: $l}, systemMessage: $l}'
+  exit 0
+fi
+[ "$rc" -eq 0 ] || exit 0
+head=$(printf '%s\n' "$out" | sed -n '1p')
 fp=$(printf '%s' "$head" | sed -n 's/^contract \([0-9a-f]\{12\}\)[0-9a-f]* (NOT APPROVED)$/\1/p')
 [ -n "$fp" ] || exit 0
 

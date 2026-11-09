@@ -120,6 +120,11 @@ cmd_prove() {
   checks=$(proofreuse_join "$(printf '%s' "$record" | jq -c '[.checks[].id]')" "$REUSE_CHECKS" "$checks" \
     | jq -c --slurpfile r <(printf '%s' "$record") 'to_entries | map(.key as $id | .value |= (del(.reads, .dirs, .git)
         | if .reused and .status == "pass" then .exit = ($r[0].checks[] | select(.id == $id) | .exit // 0) else . end)) | from_entries')
+  # A check judged with the approved content of an added-to file (R269), run now or reused,
+  # says which content it judged and how many added lines wait for approval.
+  checks=$(printf '%s' "$checks" | jq -c --slurpfile j <(printf '%s' "${CHECK_JUDGED:-}") '
+    with_entries(if $j[0][.key] != null and (.value.status | IN("waiting", "skipped") | not)
+      then .value += {judged: ($j[0][.key] | map_values(.sha)), added_lines: ([$j[0][.key][].n] | add)} else . end)')
   commands=$(proofreuse_join "$PROVE_NAMES" "$REUSE_COMMANDS" "$commands" \
     | jq -c 'map_values(del(.reads, .dirs, .git) | if .reused and .status == "pass" then .exit = 0 else . end)')
   if testfiles_on "$record"; then
@@ -468,7 +473,8 @@ prove_summary() {
   jq -r --rawfile causes <(printf '%s' "$1") --arg own "$(jq -c '.evidence' "$VBW_RECORD" | prooftime_lines)" --argjson d "$VBW_COMMAND_TIMEOUT" --argjson cb "$VBW_CHECK_BUDGET" \
     "$UNITTIME_DEFS$DELIVERED_DEFS"'(.settings.command_timeout // $d) as $limit | (.settings.check_budget // $cb) as $budget | .evidence as $e
     | ($e.checks | to_entries[] | "  \(.key) \(.value.status)\(if .value.status == "fail" then " (exit \(.value.exit))" else "" end) \(.value.seconds | sec)s\(if .value.reused then " reused (proof of \(.value.at))" elif .value.why then " ran: \(.value.why)" else "" end)"
-        + (if .value.status == "pass" then "" else ": " + (.value.tail | split("\n") | last // "") end)),
+        + (if .value.status == "pass" then "" else ": " + (.value.tail | split("\n") | last // "") end)
+        + (if .value.judged then " judged with the approved content (\(.value.added_lines) added line\(if .value.added_lines == 1 then "" else "s" end) pending approval)" else "" end)),
       ($e.commands | to_entries[] | select(.value.of_files | not) | "  \(.key) \(.value.status)\(if .value.status == "skipped" then ": not approved" else " \(.value.seconds | sec)s\(if .value.reused then " reused (proof of \(.value.at))" elif .value.why then " ran: \(.value.why)" else "" end)" end)"),
       (($e.test_files // {}) | to_entries[] | "  \(.key) \(.value.status)\(if .value.status == "fail" then " (exit \(.value.exit))" else "" end) \(.value.seconds | sec)s\(if .value.reused then " reused (proof of \(.value.at))" elif .value.why then " ran: \(.value.why)" else "" end)"
         + (if .value.status == "pass" then "" else ": " + (.value.tail | split("\n") | last // "") end)),

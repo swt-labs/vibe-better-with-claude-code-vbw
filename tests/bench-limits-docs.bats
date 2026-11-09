@@ -147,3 +147,13 @@ old_limits() {
   printf '%s\n' "$para" | grep -q 'timed-bench-hooks.bats' || { echo "the Budget bullet does not name tests/timed-bench-hooks.bats"; false; }
   flat "$g" | grep -qE 'timed-bench-hooks\.bats[^.]*(same rule|as the bench does|measured once more)' || { echo "the Budget bullet does not say the timed case applies the same rule"; false; }
 }
+
+@test "R275: the hot-path rule (CLAUDE.md, AGENTS.md) and docs/guards.md say the reference is measured beside each case, not once in the same run" {
+  local f
+  for f in "$REPO_ROOT/CLAUDE.md" "$REPO_ROOT/AGENTS.md" "$REPO_ROOT/docs/guards.md"; do
+    flat "$f" | grep -qF 'beside each case' || { echo "$f does not say the reference is measured beside each case"; false; }
+  done
+  for f in "$REPO_ROOT/CLAUDE.md" "$REPO_ROOT/AGENTS.md"; do
+    ! grep -q 'on the same machine in the same run' "$f" || { echo "$f still says the reference is measured once in the same run"; false; }
+  done
+}

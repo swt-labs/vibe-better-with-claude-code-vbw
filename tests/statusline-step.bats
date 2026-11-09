@@ -248,7 +248,7 @@ suite_pattern() {
 }
 
 @test "R240: a build note exactly as a run writes it (units and road keys) shows the end time in the step's first minute, then with the minutes" {
-  step_seed build 600 2 3
+  step_seed build 600 2 5
   "$VBW" run start build P1.1 > /dev/null
   # The note the kernel wrote: every key step_start writes, plus the road.
   for k in kind run session pid started_at ids doing parts proof first_end end late units road; do
@@ -275,7 +275,7 @@ suite_pattern() {
 
 @test "R240: the real-user suite's status line pattern reads the HH:MM the status line prints, so the two cannot diverge unseen" {
   suite_pattern
-  step_seed build 600 2 3
+  step_seed build 600 2 5
   "$VBW" run start build P1.1 > /dev/null
   run render
   local got

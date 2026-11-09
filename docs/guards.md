@@ -156,7 +156,7 @@ reads it, and "outside the project" means outside that top folder:
 | `git push` with `--force`, `--force-with-lease`, `--mirror`, `--delete`, `+ref` or `:ref` | Rewrites or deletes remote history |
 | `git reset --hard`, `git clean -f`, `git checkout`/`git restore` of the whole tree (`.`, `*`, `:/`; `restore --staged` alone is fine), `git branch -D`, `git stash drop`/`clear`, `filter-branch`, `filter-repo`, `update-ref -d`, `reflog expire`/`delete` | Discards work git cannot give back |
 | Reading or writing secret files: `.env` and `.env.*` (except `.example`, `.sample`, `.template`, `.dist`, `.defaults`), `*.pem`, `*.key`, `*.p12`, `*.pfx`, `*.kdbx`, `*.keystore`, `*.jks`, `id_rsa`/`id_dsa`/`id_ecdsa`/`id_ed25519`, `.netrc`, `.pgpass`, `.npmrc`, `.pypirc`, `credentials` | VBW never handles secrets. `ls`, `stat` and `test` on them are fine |
-| Writing `.vbw/record.json` (file tools, redirects, any program that is not a reader such as `cat`, `jq`, `grep` or `git`) | Only `vbw` writes the record, validated |
+| Writing `.vbw/record.json`: file tools, a redirect, or a writer naming it (`cp`, `mv`, `install`, `rsync`, `ln`, `tee`, `sed -i`, `perl -i`, `ed`, `rm`, `truncate`, `shred`, `dd of=`, `sort -o`, `awk` in place, `git checkout`/`restore`/`rm`/`mv`/`apply`, `find -delete`/`-exec`, `sponge`). A command that only reads it (`cat`, `jq`, `grep`, `ls`, `wc`, `find -path`) passes, and so does any other program that merely names it. An inline `-c` or `-e` program naming the record is refused, since the guard cannot tell a read from a write | Only `vbw` writes the record, validated |
 
 **During a run** (`record.lease`, docs/workflows.md), any **subagent** (the hook
 input names an `agent_type`) is also held to the lease. The main session never is.
@@ -177,6 +177,8 @@ input names an `agent_type`) is also held to the lease. The main session never i
 | `git commit`, `commit-tree`, `push`, `rebase`, `merge`, `pull`, `cherry-pick`, `revert`, `am` | Commits go through `vbw commit`, with provenance |
 | The same git commands (`commit`, `commit-tree`, `push`, ...) from VBW's chat (a hook input with no `agent_type`) while its autonomous run is armed (`.vbw/runtime/auto.<session>.json`) or the record holds a loop that has not ended | Follow the proof's Next line, or commit with `vbw commit`. With no armed run and no loop the chat is not checked: the user's own commands are never checked, in the chat or the terminal. The rule holds on a ship refusal too: the chat follows the refusal's Next line, a `vbw commit` of the milestone's own files. The user's own files are never committed by VBW's chat: it asks the user what to do with them |
 | `git stash` (except `list`, `show`), `switch`, `reset`, `checkout` of a branch; `git checkout -- PATH` or `git restore PATH` outside `lease.files` | Agents share one working tree: nothing may move HEAD or other agents' changes |
+
+The guard on check files does not change. What differs is the proof afterwards: a protected check file changed only by added lines is added-to, and the proof runs it with its approved content (docs/proof.md, Lines added to a check file). A file with a removed, changed or reordered line, or a new file, is waiting and stops the proof until approved. Only additions are safe to run against: all the approved content is still there, in order, so a build cannot make a check pass by weakening it.
 
 **Programs that write files.** During a run, a subagent's `python`, `node`,
 `deno`, `bun`, `perl`, `ruby`, `php` or `lua` command is judged like a shell
@@ -216,6 +218,10 @@ starts), a Python, Node, Perl or Ruby file as a program. Which text is read:
   in `.vbw/runtime/holder.json`; a run started by an older VBW has none, and
   `HEAD` stands in). A file under `.vbw/runtime/` is the agents' own scratch
   work, so it is read without the lookup.
+- A script above 512 KB is refused by its size before any read, unless it is
+  the project's own (committed and unchanged since the run started). The
+  refusal is one line, `<file> (<N> KB) is too large to read before it runs`,
+  and ends with `Next: run it in smaller parts, each under 512 KB`.
 - A script the guard cannot obtain (a path starting with `~` or holding a shell
   expansion, or a file that does not exist and that the command does not
   write) is refused as unreadable, never allowed by default.
@@ -414,9 +420,14 @@ never before the call. Mark a server read-only only when its tools really only r
   a busy machine never counts, and a case over its budget is measured once more
   before it is judged (the bench says so): a slow hook is slow twice. The 25 ms is the
   meaning on a nominal machine (an M1 Max Mac, GitHub's macOS runner). The bench
-  first measures a reference workload (a guard-shaped jq call over a fixed
-  document and program, both written by the bench) and prints its cost, the nominal cost and the ratio:
-  `reference: <X> ms CPU per call; nominal <N> ms (...); ratio <R>`. At a ratio
+  measures a reference workload (a guard-shaped jq call over a fixed
+  document and program, both written by the bench) beside each case, and a case
+  is judged against the reference of its own moment. The header prints the first
+  measure once: `reference: <X> ms CPU per call; nominal <N> ms (...); ratio <R>`.
+  After each case's verdict the bench prints
+  `LABEL: reference beside it <X> ms CPU per call; ratio <R>; scaled budget <B> ms`.
+  A case measured again is measured with a new reference beside it, and the
+  second pair judges it. At a ratio
   of 1 or less every case is judged against 25 ms. Above 1, a case over 25 ms
   but within 25 ms times the ratio is reported slow (the line names the cost,
   the budget, the ratio and the scaled budget) and the bench still passes; a

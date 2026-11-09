@@ -22,7 +22,7 @@ bench() {
 
 # measured: the label of every case the bench measured, in output order.
 measured() {
-  printf '%s\n' "$output" | sed -n -E 's/^((guard \([^)]*\))|(status line( \([^)]*\))?)): .*/\1/p'
+  printf '%s\n' "$output" | grep -v ': reference beside it ' | sed -n -E 's/^((guard \([^)]*\))|(status line( \([^)]*\))?)): .*/\1/p'
 }
 
 # nothing_built: no record was built (the large record and the sized records print a line when built).

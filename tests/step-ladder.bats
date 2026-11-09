@@ -56,18 +56,17 @@ step_of() { "$VBW" next --json | jq -c '.step'; }
   [ "$(step_secs first_end)" -eq 200 ] || { cat "$NOTE"; false; }
 }
 
-@test "R191: rung 2: with fewer than 3 plans of the tier that recorded tasks, the seconds per plan at that tier" {
-  # Another tier's quick plans must not pull it down (any tier would give 572).
+@test "R191: rung 2: with no plan of the tier that recorded tasks, the seconds per plan at that tier" {
+  # Another tier's quick plans must not pull it down.
   hist_build deep - 10 3
   hist_build standard - 300 1
   hist_build standard - 500 1
   hist_build standard - 700 1
-  hist_build standard 2 500 2
-  # Three plans side by side (T174): the quantile 0.909 of 300, 500, 500, 500 and 700 s is 627 s.
-  step_of | jq -e '.seconds == 627' || { step_of; false; }
+  # Three plans side by side (T174): the quantile 0.909 of 300, 500 and 700 s is 663 s.
+  step_of | jq -e '.seconds == 663' || { step_of; false; }
 }
 
-@test "R191: rung 3: with fewer than 3 plans of the tier, the seconds per plan of any tier" {
+@test "R191: rung 3: with no plan of the tier, the seconds per plan of any tier" {
   hist_build deep - 100 1
   hist_build deep - 200 1
   hist_build express - 900 1
@@ -82,9 +81,13 @@ step_of() { "$VBW" next --json | jq -c '.step'; }
   [ "$(step_secs first_end)" -eq 900 ] || { cat "$NOTE"; false; }
 }
 
-@test "R191: with fewer than 3 plans in all there is no end time, never a guess" {
+@test "R191: with one or two plans in all the wave's end time is a rough guess naming the runs; with none there is no end time" {
   step_seed build 300 1 2
   local s
+  s=$(step_of)
+  printf '%s' "$s" | jq -e '.kind == "build" and .seconds == 900 and .runs == 2 and .rough == true and .end != null
+    and (.say | test("^Building P1\\.1, P1\\.2 and P1\\.3: roughly 15 min, until around .*[0-9]{2}:[0-9]{2} \\(rough guess from 2 runs\\)$"))' || { echo "$s"; false; }
+  rm "$STEPS"
   s=$(step_of)
   printf '%s' "$s" | jq -e '.kind == "build" and .seconds == null and .end == null
     and .say == "Building P1.1, P1.2 and P1.3: no end time yet (VBW has timed fewer than 3 steps like this here)"' || { echo "$s"; false; }
@@ -93,7 +96,7 @@ step_of() { "$VBW" next --json | jq -c '.step'; }
 }
 
 @test "R191: vbw run start says the step with the same expected time as vbw next, within a minute" {
-  hist_build standard 1 100 3
+  hist_build standard 1 100 5
   local e1
   e1=$(step_of | jq -r '.end | fromdateiso8601')
   vbw_run run start build P1.1 P1.2 P1.3
@@ -107,25 +110,23 @@ step_of() { "$VBW" next --json | jq -c '.step'; }
   step_edit '.plans[].status = "done" | .fixes = [{id: "F1", req: "R1", source: "qa", phase: "P1", attempts: 0, status: "open", note: "C1 fail"},
     {id: "F2", req: "R1", source: "qa", phase: "P1", attempts: 0, status: "open", note: "C1 fail"}]'
   git add -A && git commit -q -m "chore(vbw): fixes"
-  hist_fix standard 300 3
+  hist_fix standard 300 5
   hist_fix deep 50 3
   local s
   s=$(step_of)
   printf '%s' "$s" | jq -e '.kind == "fix" and .parts == 2 and .seconds == 300 and (.say | startswith("Fixing F1 and F2: about 5 min"))' || { echo "$s"; false; }
 }
 
-@test "R191: a fix round with fewer than 3 rounds at its tier takes the median of any tier; fewer than 3 in all gives none" {
+@test "R191: a fix round with no round at its tier takes the median of any tier; with none in all it gives none" {
   step_edit '.plans[].status = "done" | .fixes = [{id: "F1", req: "R1", source: "qa", phase: "P1", attempts: 0, status: "open", note: "C1 fail"},
     {id: "F2", req: "R1", source: "qa", phase: "P1", attempts: 0, status: "open", note: "C1 fail"}]'
   git add -A && git commit -q -m "chore(vbw): fix"
   hist_fix deep 50 1
   hist_fix - 80 1
   hist_fix deep 200 1
-  hist_fix standard 400 1
-  # The median of 50, 80, 200 and 400 is 140; two fixes do not double it.
-  step_of | jq -e '.kind == "fix" and .parts == 2 and .seconds == 140' || { step_of; false; }
+  # No round at the phase's tier (standard): the median of 50, 80 and 200 is 80, a rough guess from 3 runs; two fixes do not double it.
+  step_of | jq -e '.kind == "fix" and .parts == 2 and .seconds == 80 and .runs == 3 and .rough == true' || { step_of; false; }
   jq 'del(.steps[] | select(.kind == "fix"))' "$STEPS" > "$TEST_ROOT/h.json" && cp "$TEST_ROOT/h.json" "$STEPS"
-  hist_fix standard 400 2
   step_of | jq -e '.kind == "fix" and .seconds == null and (.say | endswith("no end time yet (VBW has timed fewer than 3 steps like this here)"))' || { step_of; false; }
 }
 
@@ -142,9 +143,8 @@ step_of() { "$VBW" next --json | jq -c '.step'; }
   [ "$(step_secs first_end)" -eq 100 ] || { cat "$NOTE"; false; }
 }
 
-@test "R191: with fewer than 3 planning steps that recorded a count, planning takes its median time as before" {
+@test "R191: with no planning step that recorded a count, planning takes its median time as before" {
   step_edit '.checks = []'
-  hist_plan 2 100 2
   hist_plan - 60 3
   step_of | jq -e '.kind == "plan" and .seconds == 60' || { step_of; false; }
 }
@@ -153,17 +153,15 @@ step_of() { "$VBW" next --json | jq -c '.step'; }
   step_edit '.plans[].status = "done"'
   git add -A && git commit -q -m "chore(vbw): built"
   "$VBW" prove --full > /dev/null
-  hist_qa standard 120 3
+  hist_qa standard 120 5
   hist_qa deep 900 3
   step_of | jq -e '.kind == "qa" and .ids == ["P1"] and .parts == null and .seconds == 120 and (.say | startswith("Checking P1: about 2 min"))' || { step_of; false; }
   jq 'del(.steps[] | select(.kind == "qa" and .phases[0].tier == "standard"))' "$STEPS" > "$TEST_ROOT/h.json" && cp "$TEST_ROOT/h.json" "$STEPS"
   step_of | jq -e '.kind == "qa" and .seconds == 900' || { step_of; false; }
   jq 'del(.steps[] | select(.kind == "qa"))' "$STEPS" > "$TEST_ROOT/h.json" && cp "$TEST_ROOT/h.json" "$STEPS"
-  hist_qa deep 900 2
   step_seed qa 30 - 3
   step_of | jq -e '.kind == "qa" and .seconds == 30' || { step_of; false; }
   jq 'del(.steps[] | select(.kind == "qa"))' "$STEPS" > "$TEST_ROOT/h.json" && cp "$TEST_ROOT/h.json" "$STEPS"
-  hist_qa deep 900 2
   step_of | jq -e '.kind == "qa" and .seconds == null' || { step_of; false; }
   "$VBW" run start qa > /dev/null
   jq -e '.first_end == null and .end == null' "$NOTE" || { cat "$NOTE"; false; }

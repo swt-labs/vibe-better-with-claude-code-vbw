@@ -555,3 +555,53 @@ R239_FORMS=('git commit-tree HEAD^{tree} -m wip' 'git -C . commit-tree HEAD^{tre
   [ "$r" != allow ] || { echo "T209's command was not refused while armed"; false; }
   [[ "$r" == *"git commit"* && "$r" == *"vbw commit"* ]] || { echo "$r"; false; }
 }
+
+# --- R276: the record guard refuses writes, never reads ---------------------------
+
+# reason COMMAND: the first line of the guard's reason for the main session's COMMAND, or "allow".
+reason() { bash_call "$1" | jq -rn '[inputs][0].hookSpecificOutput.permissionDecisionReason // "allow" | split("\n")[0]'; }
+
+RECORD_LINE='VBW guard: .vbw/record.json is written only by vbw (vbw help lists the commands)'
+
+@test "R276: a command that only reads the record, or looks for it, passes: find -path, ls, grep, wc, cat, head, tail, jq, awk, diff, stat, shasum, a copy to /dev/null and git log" {
+  local c got
+  mkdir -p .vbw/runtime && printf '{}' > .vbw/runtime/x.json
+  for c in 'find . -path "*/.vbw/record.json"' 'find . -path "*/.vbw/record.json" -newer .vbw/runtime/x.json -print' 'find .vbw -name record.json' \
+           'ls -la .vbw/record.json' 'grep -c plans .vbw/record.json' 'wc -c .vbw/record.json' 'cat .vbw/record.json' 'head -c 200 .vbw/record.json' \
+           'tail -n 5 .vbw/record.json' 'jq .plans .vbw/record.json' 'jq -r .milestone.id .vbw/record.json > .vbw/runtime/scratch/id.txt' \
+           'awk "{ print }" .vbw/record.json' 'diff .vbw/record.json .vbw/runtime/x.json' 'stat .vbw/record.json' 'shasum -a 256 .vbw/record.json' \
+           'cp .vbw/record.json /dev/null' 'git log --oneline -- .vbw/record.json' 'git diff HEAD -- .vbw/record.json' 'true && cat .vbw/record.json | jq .plans'; do
+    got=$(reason "$c")
+    [ "$got" = allow ] || { printf 'a read was refused: %s\n  %s\n' "$c" "$got"; false; }
+  done
+}
+
+@test "R276: every real write of the record is refused: a redirect anywhere in the command, a copy, move or install onto it, tee, an in-place edit, a delete, a truncation, dd of= and a link onto it" {
+  local c got
+  for c in 'echo x > .vbw/record.json' 'echo x >> .vbw/record.json' 'true && echo x > .vbw/record.json' 'jq . x.json 2> .vbw/record.json' \
+           'cp x.json .vbw/record.json' 'mv x.json .vbw/record.json' 'install -m 644 x.json .vbw/record.json' 'tee .vbw/record.json < x.json' 'cat x.json | tee -a .vbw/record.json' \
+           'sed -i "" s/open/proven/ .vbw/record.json' 'perl -i -pe s/open/proven/ .vbw/record.json' 'ed -s .vbw/record.json' \
+           'rm -f .vbw/record.json' 'truncate -s 0 .vbw/record.json' 'shred -u .vbw/record.json' 'dd if=x.json of=.vbw/record.json' 'ln -sf x.json .vbw/record.json'; do
+    got=$(reason "$c")
+    [ "$got" = "$RECORD_LINE" ] || { printf 'a write was not refused as a write of the record: %s\n  %s\n' "$c" "$got"; false; }
+  done
+}
+
+@test "R276: an inline program (-c, -e) that names the record is refused, and the reason says the guard cannot tell a read from a write" {
+  local c got
+  for c in 'python3 -c "open(\".vbw/record.json\", \"w\").write(\"{}\")"' 'python3 -c "print(open(\".vbw/record.json\").read())"' \
+           'node -e "require(\"fs\").readFileSync(\".vbw/record.json\")"' 'perl -e "open(F, q(.vbw/record.json))"'; do
+    got=$(bash_call "$c" | jq -rn '[inputs][0].hookSpecificOutput.permissionDecisionReason // "allow"')
+    [[ "$got" == "VBW guard: "* ]] || { printf 'not refused: %s\n  %s\n' "$c" "$got"; false; }
+    [[ "$got" == *"cannot tell a read from a write"* ]] || { printf 'the reason does not say the guard cannot tell a read from a write: %s\n  %s\n' "$c" "$got"; false; }
+  done
+}
+
+@test "R276: the file tools' guard is unchanged: Write and Edit on the record are refused, Read passes" {
+  run file_call Write "$PROJECT/.vbw/record.json"
+  denied
+  run file_call Edit "$PROJECT/.vbw/record.json"
+  denied
+  run file_call Read "$PROJECT/.vbw/record.json"
+  [ -z "$output" ]
+}

@@ -66,7 +66,7 @@ context() { printf '%s' "$1" | jq -r '.hookSpecificOutput.additionalContext'; }
   jq '.schema = 99' .vbw/record.json > "$TEST_ROOT/r" && cat "$TEST_ROOT/r" > .vbw/record.json
   run session_start
   [ "$status" -eq 0 ] || { echo "$output"; false; }
-  [[ "$(context "$output")" == "VBW project made by a newer VBW"* ]] || { context "$output"; false; }
+  [[ "$(context "$output")" == "this project needs a newer VBW"* ]] || { context "$output"; false; }
   printf '%s' "$output" | jq -e '.systemMessage | contains("/vbw:update")' > /dev/null || { echo "$output"; false; }
   ! grep -qE '^status( |$)' "$TEST_ROOT/calls" || { cat "$TEST_ROOT/calls"; false; }
 }

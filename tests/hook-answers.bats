@@ -46,6 +46,12 @@ bash_call() {
   jq -nc --arg c "$1" --arg d "$PROJECT" '{hook_event_name: "PreToolUse", session_id: "s1", tool_name: "Bash", cwd: $d, tool_input: {command: $c}}' \
     | vbw_hook PreToolUse Bash
 }
+# agent_bash_call COMMAND: bash_call as a run's builder sends it; only agents work under the
+# run's lease, so only their calls reach the read of a script run by name.
+agent_bash_call() {
+  jq -nc --arg c "$1" --arg d "$PROJECT" '{hook_event_name: "PreToolUse", session_id: "s1", tool_name: "Bash", cwd: $d, agent_id: "a1", agent_type: "vbw:dev", tool_input: {command: $c}}' \
+    | vbw_hook PreToolUse Bash
+}
 file_call() {
   jq -nc --arg t "$1" --arg p "$2" --arg d "$PROJECT" '{hook_event_name: "PreToolUse", session_id: "s1", tool_name: $t, cwd: $d, tool_input: {file_path: $p}}' \
     | vbw_hook PreToolUse "$1"
@@ -279,5 +285,31 @@ tools_call() {
   [ "$status" -eq 0 ] || { echo "$status: $output"; false; }
   [ "$(shape "$output")" = "$DENY" ] || { echo "$output"; false; }
   printf '%s' "$output" | jq -e '.hookSpecificOutput | .hookEventName == "PreToolUse" and .permissionDecision == "deny" and (.permissionDecisionReason | startswith("VBW guard: ")) and (.permissionDecisionReason | contains("tests/c1.sh"))'
+  printf '%s' "$output" | jq -e "$USER_LINE" || { echo "$output"; false; }
+}
+
+@test "R272 R128: approve-ask.sh deny and systemMessage: under a record written by a newer VBW the approval menu is refused with the kernel's own line (both versions named), shown to the user too, never answered in the user's place" {
+  # A newer VBW wrote the record: its schema is past this VBW's, and its writer file names it.
+  jq '.schema = 99' .vbw/record.json > "$TEST_ROOT/newer.json" && cp "$TEST_ROOT/newer.json" .vbw/record.json
+  mkdir -p .vbw/runtime && jq -n '{version: "9.9.9", schema: 99}' > .vbw/runtime/writer.json
+  run ask_call "Approve the plan?"
+  [ "$status" -eq 0 ]
+  [ "$(shape "$output")" = "$DENY" ] || { echo "$output"; false; }
+  printf '%s' "$output" | jq -e '.hookSpecificOutput | .hookEventName == "PreToolUse" and .permissionDecision == "deny"
+    and (.permissionDecisionReason | contains("this project needs a newer VBW: its record was written by VBW 9.9.9, and this session loaded VBW "))
+    and (.permissionDecisionReason | contains("--plugin-dir: Claude Code loads VBW from that folder instead of the installed copy"))' || { echo "$output"; false; }
+  printf '%s' "$output" | jq -e '.systemMessage | contains("needs a newer VBW") and contains("--plugin-dir")' || { echo "$output"; false; }
+}
+
+@test "R273 R128: read.sh deny and systemMessage: a script too large to read before it runs is refused by its size with a 'VBW guard:' reason, which blocks it and tells Claude why, and shows the user what was refused" {
+  "$VBW" approve > /dev/null
+  VBW_SESSION_ID=s1 "$VBW" run start build P1.1 > /dev/null
+  mkdir -p .vbw/runtime/scratch
+  head -c 3145728 /dev/zero | tr '\0' '#' > .vbw/runtime/scratch/huge.sh
+  run agent_bash_call 'bash .vbw/runtime/scratch/huge.sh'
+  [ "$status" -eq 0 ]
+  [ "$(shape "$output")" = "$DENY" ] || { echo "$output"; false; }
+  printf '%s' "$output" | jq -e '.hookSpecificOutput | .hookEventName == "PreToolUse" and .permissionDecision == "deny"
+    and (.permissionDecisionReason | startswith("VBW guard: .vbw/runtime/scratch/huge.sh (3072 KB) is too large to read before it runs"))' || { echo "$output"; false; }
   printf '%s' "$output" | jq -e "$USER_LINE" || { echo "$output"; false; }
 }

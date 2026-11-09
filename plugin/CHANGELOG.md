@@ -1,5 +1,59 @@
 # Changelog
 
+## [2.1.28] - 2026-11-08
+
+Quick wins from a second week of real Rust work. The lead of a large Rust
+project sent another field report: `vbw next` was slow on their big milestone,
+the run stopped for approvals it did not need, and some messages were hard to
+act on. This release fixes those. Thank you.
+
+### Changed
+
+- **`vbw next` is fast on a big milestone.** On a record of 79 phases and 258
+  plans in one milestone it took about a minute. QA's bookkeeping now visits
+  each plan's links once and reads each commit once per command, so it answers
+  in about 4 s of processor time on a record built to the same shape.
+- **Lines added to a test no longer stop the run.** When a build only adds lines
+  to an approved test file, the run goes on to the proof. The proof judges the
+  file as you approved it, so an unapproved line can never weaken a test. You
+  approve the added lines once, after the proof. A line removed or changed still
+  waits for you before the proof.
+- **Estimates say how sure they are.** A time VBW gives from little or widely
+  spread history is now a range marked as a rough guess: "roughly 8 to 14 min,
+  until around 14:12 to 14:18 (rough guess from 2 runs)". The status line shows
+  `until ~14:12-14:18`. The milestone end is rough too while a tier has fewer
+  than 3 finished phases, since VBW cannot yet know its usual fix rounds. With 5
+  or more runs that agree you get the single figure, as before.
+- **Long scripts are read in time.** The guard reads a script run by name, or a
+  long command with many embedded blocks of text (here-docs), in time that
+  grows with its size: a 264 KB script fits well inside the guard's 5 s. A
+  script still too large is refused in one line naming the file, its size and
+  what to do, never as "the guard failed".
+- **Reading the record is never refused.** In your own session, only a command
+  that writes `.vbw/record.json` is refused. Commands that only read it, such as
+  `jq` or `grep`, run.
+- **Express rigor gets the stack pack.** When the main session plans (express),
+  it is given the same pack text the Lead gets at standard and deep.
+- **An older VBW says so before it asks.** When the VBW your session loaded is
+  older than the one that wrote the record, so its approval menu cannot record
+  your answer, VBW says so first in one line, naming both versions and the fix.
+- **`vbw apply --patch` judges only what it changes.** A phase the patch does
+  not touch no longer blocks it, and a plan can wait for another plan's check
+  (awaits) from planning on.
+
+### Fixed
+
+- **`vbw spec add` on macOS** could fail with "Interrupted system call". A new
+  standards rule finds that way of writing anywhere in the kernel.
+- **The hook bench** no longer fails a case because the runner was busy at that
+  moment, while a real slowdown of one case still fails.
+
+### For you to do
+
+- Update, then restart Claude Code. The record schema is unchanged (14).
+
+Sizes, for information (file bytes): kernel 919 KB (`plugin/bin/vbw` and `plugin/lib`), mods 360 KB (hooks, panel and status line), workflows 76 KB, prompts 117 KB (agents and skills), packs 5 KB.
+
 ## [2.1.27] - 2026-11-07
 
 Fixes from the first week of real Rust work on 2.1.26. A field report from a

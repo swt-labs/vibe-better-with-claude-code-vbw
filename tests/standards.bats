@@ -50,10 +50,13 @@ code_grep() {
 }
 
 @test "no plugin-root discovery: paths come from \${CLAUDE_PLUGIN_ROOT} substitution or \$0 (K4)" {
-  # The one exception: the user's statusLine setting cannot use substitution, so
+  # Two exceptions. The user's statusLine setting cannot use substitution, so
   # the command VBW writes there finds the newest install in the plugin cache.
+  # The newer-VBW refusal (R272, plugin/lib/record.sh) names the --plugin-dir
+  # flag to the user as the fix for a development checkout: text, finding no path.
   run code_grep 'plugins/cache|plugin-root-link|--plugin-dir|(^|[^[:alnum:]_])ps[[:space:]]+(a|-)'
-  output=$(printf '%s\n' "$output" | grep -v '/lib/cmd-statusline.sh:[0-9]*:VBW_STATUSLINE_CMD=' || true)
+  output=$(printf '%s\n' "$output" | grep -v '/lib/cmd-statusline.sh:[0-9]*:VBW_STATUSLINE_CMD=' \
+    | grep -v '/lib/record.sh:[0-9]*:  fix="Update VBW (/vbw:update), then restart Claude Code; for a development checkout start Claude Code with --plugin-dir <checkout>/plugin ' || true)
   [ -z "$output" ]
   local dirs=() d
   for d in skills agents workflows; do [ -d "$PLUGIN_ROOT/$d" ] && dirs+=("$PLUGIN_ROOT/$d"); done
@@ -335,4 +338,16 @@ R248_DIGEST=2a802f8856c36fc7b4cf01bbb857538bb8352af06c8f1d5e209454c5793c4e23
   section=$(awk '/^## Versioning/ { on = 1 } /^## Consent/ { on = 0 } on' "$REPO_ROOT/docs/record.md")
   printf '%s\n' "$section" | grep -q 'tools/check-record-shape.sh' || { echo "the Versioning section does not name tools/check-record-shape.sh"; false; }
   printf '%s\n' "$section" | grep -qiE 'new key[^.]*(bump|raise|new schema|schema number)|(bump|raise)[^.]*new key' || { echo "the Versioning section does not say a new key needs a schema bump"; false; }
+}
+
+@test "no plugin/lib function ends by handing captured text out through a builtin printf or echo, unless allow-listed with a reason (R274)" {
+  run bash "$REPO_ROOT/tools/check-captured-writes.sh" "$PLUGIN_ROOT/lib"
+  [ "$status" -eq 0 ] || { echo "$output"; false; }
+  # The rule still fails on a violation: a planted function exits 1 and is named.
+  local d
+  d=$(mktemp -d "${BATS_TEST_TMPDIR:?}/captured.XXXXXX")
+  printf 'f() {\n  out=$(true)\n  echo "$out"\n}\n' > "$d/plant.sh"
+  run bash "$REPO_ROOT/tools/check-captured-writes.sh" "$d"
+  [ "$status" -eq 1 ] || { echo "$output"; false; }
+  [[ "$output" == *"plant.sh:3: f"* ]] || { echo "$output"; false; }
 }

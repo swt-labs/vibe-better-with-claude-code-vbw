@@ -109,7 +109,7 @@ proofsteps_clean() {
 # units. Sets PROOFSTEPS_ON, PS_MODE (own, inside or none) and what the later
 # calls need.
 proofsteps_begin() {
-  local record lease run me live expect first_end=null size
+  local record lease run me live expect first_end=null size est
   PROOFSTEPS_ON=1
   PS_TOTAL=$1
   PS_UNITS=
@@ -134,14 +134,18 @@ proofsteps_begin() {
   if [ -z "$live" ]; then
     if [ -z "$lease" ] || ! printf '%s' "$lease" | jq -e --arg me "$me" '(.session // "") == $me' > /dev/null; then
       PS_MODE=own
-      expect=$(step_expect proof "$size")
+      est=$(step_estimate proof "$size")
+      [ -n "$est" ] || est='{"seconds":null,"low":null,"high":null,"runs":0,"rough":false}'
+      expect=$(printf '%s' "$est" | jq -r '.seconds // empty')
       # The end counts from the note's own start, never from a later second.
       [ -z "$expect" ] || first_end=$(jq -n -r --arg start "$PS_START" --argjson e "$expect" '($start | fromdateiso8601) + $e | todateiso8601')
       vbw_guard_add file "$(step_note_file)"
-      step_note_write "$(jq -n -c --arg me "$me" --argjson pid "$$" --arg now "$PS_START" --argjson t "$PS_TOTAL" --arg fe "$first_end" '
+      step_note_write "$(jq -n -c --arg me "$me" --argjson pid "$$" --arg now "$PS_START" --argjson t "$PS_TOTAL" --arg fe "$first_end" --argjson est "$est" '
+        def at($s): if $s == null then null else ($now | fromdateiso8601) + $s | todateiso8601 end;
         {kind: "proof", run: null, session: (if $me == "" then null else $me end), pid: $pid, started_at: $now, ids: [],
          doing: "proving 0 of \($t) checks", parts: {done: 0, total: $t}, proof: null,
-         first_end: (if $fe == "null" then null else $fe end), end: (if $fe == "null" then null else $fe end), late: false}')"
+         first_end: (if $fe == "null" then null else $fe end), end: (if $fe == "null" then null else $fe end),
+         end_low: at($est.low), end_high: at($est.high), rough: ($est.rough == true), runs: ($est.runs // 0), late: false}')"
       # The road the proof sits on; its answer stays for the units that follow.
       PS_ROAD_NEXT=$(step_road_input)
       step_road_note_set "$PS_ROAD_NEXT"

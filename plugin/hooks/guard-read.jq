@@ -44,8 +44,8 @@ def script_target_denial($k):
 # what the file holds when it runs cannot be read before). A command already counted for a
 # heredoc is not counted again for the file it writes.
 def command_writers($cmds; $raw; $start):
-  [$raw | select(test("<<")) | heredocs | . as $h
-   | ([$h.head | commands(3)] | with_cwd($start; resolve) | last.cwd // $start) as $w
+  [$raw | select(test("<<")) | heredocs($start; resolve) | . as $h
+   | $h.cwd as $w
    | ($h.line | commands(3)) as $x
    | $x | shell_writes
    | {file: ., cwd: $w, text: $h.text, literal: ($h.quoted or ($h.text | test("[$`]") | not)), line: $x.text}] as $hw

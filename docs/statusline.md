@@ -22,8 +22,9 @@ Sonnet 5.5 │ 10m22s (API 5m55s) │ main │ VBW 2.0.6 │ CC 2.1.286
      `● working: proving 12 of 40 checks · 3 min, until around 14:20`, counting
      up; an end on another day reads `until around tomorrow 00:20`. A step with
      parts past its time reads `until around 14:35, later than usual`; one
-     without reads `until around 14:20, 6 min late`. With fewer than 3 finished
-     steps of the kind there is no end time: `● working: building P1.2, P2.1 ·
+     without reads `until around 14:20, 6 min late`. A rough estimate (fewer than 5
+     runs, or runs that disagree) shows a range: `until ~14:12-14:18`; a tight
+     one keeps the single time. With no finished step of the kind there is no end time: `● working: building P1.2, P2.1 ·
      1 of 2 · 8 min`. The status line reads the time from the running step's note
      and never works it out itself (see [Time left](panel.md#time-left)). It shows
      the step's time only; the milestone's end is Mission Control's and the chat

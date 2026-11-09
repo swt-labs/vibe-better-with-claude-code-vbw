@@ -43,6 +43,13 @@
 # the rigor floor and the one-plan-per-express rule judge only the phases the
 # doc brings (their signals see the whole milestone); every other rule above
 # holds for the merged whole.
+# vbw apply --patch judges the same two rules only for the phases that have not started
+# whose plans the patch changes or adds (R277), so a phase it does not touch never blocks
+# it. A touched phase whose floor rose above its tier is raised to that floor, and a touched
+# express phase given a second plan to standard, never lowered, each said in one line; the
+# tier is the only phase field a patch writes, and a patch never gives the Architect refusal.
+# A plan row of every mode may carry "awaits": check ids of the plan's own requirements,
+# judged as --amend judges them and kept by every apply that leaves them out (R278).
 
 # Every mode takes an optional "test_files" (R167): the Lead's proposal of how the project's test
 # runners run one test file. Either one form {run, files, dir?}, or an array of named forms
@@ -431,13 +438,23 @@ cmd_apply() {
   fi
   problem=$(printf '%s' "$doc" | jq -r '[
       (.phases[] | . as $o | keys[] | select(IN("id", "title", "reqs", "goal", "criteria", "tier") | not) | "\($o.id // "a phase") has an unknown field: \(.)"),
-      (.plans[] | . as $o | keys[] | select(IN("id", "phase", "title", "reqs", "files", "after", "tasks", "role") | not) | "\($o.id // "a plan") has an unknown field: \(.)")
+      (.plans[] | . as $o | keys[] | select(IN("id", "phase", "title", "reqs", "files", "after", "tasks", "role", "awaits") | not) | "\($o.id // "a plan") has an unknown field: \(.)")
     ] | .[0] // empty')
   [ -z "$problem" ] || apply_refuse "$problem"
   problem=$(printf '%s' "$doc" | jq -r '.phases[] | select(has("tier") and (.tier | IN("express", "standard", "deep") | not))
     | "\(.id // "a phase") has the tier \(.tier | tojson): the tier must be express, standard or deep"' | head -n 1)
   [ -z "$problem" ] || apply_refuse "$problem"
   record=$(record_read)
+  # A plan's awaits (R278): check ids that exist, of requirements the plan builds, as --amend judges them.
+  problem=$(printf '%s' "$record" | jq -r --slurpfile f_d <(printf '%s' "$doc") '$f_d[0] as $d | (($d.checks + .checks) | unique_by(.id)) as $ck
+    | [$d.plans[] | select(has("awaits") and .awaits != null) | . as $e
+        | if ($e.awaits | type == "array" and all(.[]; type == "string")) | not then "\($e.id) awaits must be an array of check ids"
+          else $e.awaits[] | . as $a | ([$ck[] | select(.id == $a)][0]) as $c
+            | if $c == null then "\($a) is not a check of the record: \($e.id) awaits one that exists"
+              elif ($e.reqs | index($c.req)) == null then "\($a) is a check of \($c.req), which \($e.id) does not build (\($e.reqs | join(", "))): awaits names checks of the plan own requirements"
+              else empty end end]
+    | .[0] // empty' 2> /dev/null) || apply_internal "cannot judge the awaits"
+  [ -z "$problem" ] || apply_refuse "$problem"
   # A patch of checks alone may land while a build run is open (R250): the plans keep their progress,
   # the run stays open, and the contract then waits for the user's approval of what the checks assert.
   printf '%s' "$record" | jq -e --argjson patch "$patch" --slurpfile f_p <(printf '%s' "$pdoc") --slurpfile f_o <(printf '%s' "$ops") \
@@ -491,6 +508,10 @@ cmd_apply() {
   # The phases judged: with --add only the ones it brings, else every phase of the doc.
   judged=$doc
   [ "$add" = false ] || judged=$pdoc
+  # With --patch only the phases whose plans the patch changes or adds (R277).
+  if [ "$patch" = true ]; then
+    judged=$(printf '%s' "$doc" | jq -c --slurpfile f_p <(printf '%s' "$pdoc") '[$f_p[0].plans[]?.phase] as $t | {phases: [.phases[] | select(.id as $i | $t | index($i))]}')
+  fi
   # A phase that has started (a plan no longer planned, or an escalation) or finished keeps
   # its tier, reasons and predicted tier: only the phases that have not started are judged (R159).
   ids=()
@@ -505,18 +526,33 @@ cmd_apply() {
     tiers=$(printf '%s' "$hypo" | rigor_assess "${ids[@]}" 2> /dev/null) \
       || apply_internal "cannot compute the rigor tiers"
   fi
+  if [ "$patch" = true ] && [ ${#ids[@]} -gt 0 ]; then
+    # R277: a touched phase is raised, never refused and never lowered: to its floor when the floor rose
+    # above its tier (not under a forced rigor, which sets tiers itself), to standard when express holds two plans.
+    tiers=$(printf '%s' "$tiers" | jq -c --slurpfile f_d <(printf '%s' "$doc") --slurpfile f_r <(printf '%s' "$record") --arg mode "$(printf '%s' "$record" | jq -r '.settings.rigor // "auto"')" \
+      '$f_d[0] as $d | $f_r[0] as $r | def rk: . as $x | ["express", "standard", "deep"] | index($x);
+       map(. as $a | ([$r.phases[] | select(.id == $a.id)][0].tier) as $cur
+         | if $cur == null then . else
+             (if ($mode | IN("express", "standard", "deep")) or (($a.floor | rk) <= ($cur | rk)) then $cur else $a.floor end) as $t1
+             | ([$d.plans[] | select(.phase == $a.id)] | length) as $n
+             | (if $t1 == "express" and $n > 1 then "standard" else $t1 end) as $t
+             | if $t == $cur then .
+               else . + {raised: $t, why: (if $t1 != $cur then "its signals set the floor at \($a.floor) (\($a.reasons | map(select(test("^(requirements|files|risk|breaks|tests): ") and (test(": none$") | not))) | join("; ")))"
+                                           else "it has \($n) plans and express holds one" end)} end end)') \
+      || apply_internal "cannot raise the touched phases"
+  fi
   problem=$(printf '%s' "$tiers" | jq -r --slurpfile f_d <(printf '%s' "$doc") '$f_d[0] as $d | [.[] | . as $a | ([$d.phases[] | select(.id == $a.id)][0].tier) as $s
       | select($s != null and ($s | IN("express", "standard", "deep")) and (["express", "standard", "deep"] | index($s)) < (["express", "standard", "deep"] | index($a.floor)))
       | "\($a.id) is planned at \($s) but its signals set the floor at \($a.floor) (\($a.reasons | map(select(test("^(requirements|files|risk|breaks|tests): ") and (test(": none$") | not))) | join("; "))): the Architect may only raise a tier"]
     | .[0] // empty')
-  if [ -n "$problem" ] && [ "$(printf '%s' "$record" | jq -r '.settings.rigor // "auto"')" = auto ]; then
+  if [ "$patch" = false ] && [ -n "$problem" ] && [ "$(printf '%s' "$record" | jq -r '.settings.rigor // "auto"')" = auto ]; then
     apply_refuse "$problem"
   fi
   one=$(printf '%s' "$record" | jq -r --slurpfile f_d <(printf '%s' "$doc") --slurpfile f_tiers <(printf '%s' "$tiers") --arg mode "$(printf '%s' "$record" | jq -r '.settings.rigor // "auto"')" '$f_d[0] as $d | $f_tiers[0] as $tiers |
       [$tiers[] | . as $a | (if $mode | IN("express", "standard", "deep") then $mode else $a.tier end) as $t
         | select($t == "express" and ([$d.plans[] | select(.phase == $a.id)] | length) > 1)
         | "\($a.id) is express: one plan, merge its plans or raise its tier"] | .[0] // empty')
-  [ -z "$one" ] || apply_refuse "$one"
+  [ "$patch" = true ] || [ -z "$one" ] || apply_refuse "$one"
   vbw_scratch df "$doc"
   vbw_scratch tf "$tiers"
   vbw_scratch pf "$pdoc"
@@ -528,7 +564,7 @@ cmd_apply() {
     | [.phases[] | select(.milestone == $m)] as $old
     | [.plans[] | select(.status != "planned") | .phase] as $started
     | .checks as $c0
-    | .phases = (if $patch then .phases else [(.phases[] | select($add or .milestone != $m)), ((if $add then $pd.phases else $d.phases end)[] | . as $np | ([$old[] | select(.id == $np.id)][0]) as $o
+    | .phases = (if $patch then [.phases[] | . as $p | ([$tiers[] | select(.id == $p.id and has("raised"))][0]) as $a | if $a == null then . else .tier = $a.raised end] else [(.phases[] | select($add or .milestone != $m)), ((if $add then $pd.phases else $d.phases end)[] | . as $np | ([$old[] | select(.id == $np.id)][0]) as $o
                   | ([$tiers[] | select(.id == $np.id)][0]) as $a
                   | (.tier // null) as $sub
                   | ($mode | IN("express", "standard", "deep")) as $forced
@@ -558,10 +594,10 @@ cmd_apply() {
     | ([.plans[] | select(has("amendments") or has("awaits")) | {key: .id, value: with_entries(select(.key | IN("amendments", "awaits")))}] | from_entries) as $kept
     | ([.checks[] | select(has("amendments")) | {key: .id, value: .amendments}] | from_entries) as $camd
     | ([($pd.plans // $d.plans)[] | {id, phase, title, reqs, files, after: (.after // []), status: ($status[.id] // "planned")}
-          + (with_entries(select(.key | IN("tasks", "role"))))
           + (if $mut[.id] then {mutations: $mut[.id]} else {} end)
           + (if $note[.id] then {note: $note[.id]} else {} end)
-          + ($kept[.id] // {})]) as $np
+          + ($kept[.id] // {})
+          + (with_entries(select((.key | IN("tasks", "role", "awaits")) and .value != null)))]) as $np
     | .plans = (if $patch or $add then [.plans[] | . as $o | ([$np[] | select(.id == $o.id)][0]) // $o] + [$np[] | select($status[.id] == null)]
         else [(.plans[] | select(.phase as $p | any($mine[]; . == $p) | not)), $np[]] end)
     | .checks = (if $patch or $add then [$c0[] | . as $o | ([$pd.checks[] | select(.id == $o.id)][0]) // $o] + [$pd.checks[] | select(.id as $i | $c0 | any(.id == $i) | not)]
@@ -615,6 +651,7 @@ cmd_apply() {
   vbw_guard_drop "$merged"
   [ -z "$problem" ] || apply_refuse "$problem"
   record_update "$filter" --slurpfile f_d "$df" --slurpfile f_tiers "$tf" --slurpfile f_pd "$pf" --slurpfile f_ops "$of" --argjson patch "$patch" --argjson add "$add" --arg mode "$(printf '%s' "$record" | jq -r '.settings.rigor // "auto"')"
+  jq -r '.[] | select(has("raised")) | "raised \(.id) to \(.raised): \(.why)"' "$tf"
   vbw_guard_drop "$df"
   vbw_guard_drop "$tf"
   vbw_guard_drop "$pf"

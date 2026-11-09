@@ -43,8 +43,9 @@ cmd_init() {
   }' > "$VBW_RUNTIME/record.init"
   record_back "$VBW_RUNTIME/record.init"
   mv "$VBW_RUNTIME/record.init" "$VBW_RECORD"
-  # A new project starts with a current glance (written under the lock).
-  ( vbw_guard_reset; record_lock; record_glance_write; record_unlock ) || true
+  # A new project starts with its writer file (the write step of every record write, R272)
+  # and a current glance, written under the lock.
+  ( vbw_guard_reset; record_lock; record_writer_write; record_glance_write; record_unlock ) || true
   record_gitignore || true
   printf 'Initialized VBW in %s\n' "$VBW_ROOT"
   printf '  .vbw/spec.md      what you are building (you own this file)\n'

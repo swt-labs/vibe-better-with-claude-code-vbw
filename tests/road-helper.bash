@@ -138,20 +138,20 @@ outcomes_seed() {
   done
 }
 
-# road_hist [PER_TASK]: the history every road test starts from. A deep plan task
+# road_hist [PER_TASK]: the history every road test starts from (ROAD_HIST_RUNS runs of each, 3 unless set; 5 agreeing runs make an estimate a single figure, R270). A deep plan task
 # and a standard one each take PER_TASK seconds (100; three plans of one task per
 # tier); a deep QA check 200 s and a standard one 100 s; a deep fix round 300 s and a
 # standard one 150 s; three proofs whose wall time equals their units' time (ratio
 # 1); the runs store knows check:C1 at 10 s and check:C2 at 20 s.
 road_hist() {
-  local per="${1:-100}"
-  hist_build deep 1 "$per" 3
-  hist_build standard 1 "$per" 3
-  hist_qa deep 200 3
-  hist_qa standard 100 3
-  hist_fix deep 300 3
-  hist_fix standard 150 3
-  hist_proof '[{"name": "check:C1", "seconds": 50}, {"name": "check:C2", "seconds": 50}]' 100 3
+  local per="${1:-100}" runs="${ROAD_HIST_RUNS:-3}"
+  hist_build deep 1 "$per" "$runs"
+  hist_build standard 1 "$per" "$runs"
+  hist_qa deep 200 "$runs"
+  hist_qa standard 100 "$runs"
+  hist_fix deep 300 "$runs"
+  hist_fix standard 150 "$runs"
+  hist_proof '[{"name": "check:C1", "seconds": 50}, {"name": "check:C2", "seconds": 50}]' 100 "$runs"
   runs_seed '{"check:C1": 10, "check:C2": 20}'
 }
 

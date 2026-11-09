@@ -29,5 +29,5 @@ road_compute() {
     --slurpfile runs <(jq -c 'select(type == "object" and (.runs | type) == "object")' "$runs" 2> /dev/null) \
     --slurpfile next <(printf '%s' "$next") --slurpfile note <(printf '%s' "$note") \
     "$VBW_JQ_DEFS$VBW_STEP_DEFS$expect$(cat "$VBW_LIB/road.jq")" 2> /dev/null) || out=null
-  printf '%s\n' "${out:-null}"
+  vbw_out '%s\n' "${out:-null}"
 }

@@ -215,3 +215,85 @@ PY_WRITE='open("tests/c1.sh", "w").write("x")'
   grep -qE '^GUARD_INPUTS=.*[" ]script[" ]' "$REPO_ROOT/tools/bench-hooks.sh" || { echo "tools/bench-hooks.sh has no script input in GUARD_INPUTS"; false; }
   grep -q 'script.json' "$REPO_ROOT/tools/bench-hooks.sh" || { echo "tools/bench-hooks.sh writes no script.json input"; false; }
 }
+
+# --- R273: a big script is read in time, a huge one refused by size --------------
+
+# field_script FILE KB: a shell script of about KB kilobytes in the field report's shape
+# (thousands of echo lines) whose last line writes the protected check file.
+field_script() {
+  awk -v n="$(( $2 * 1024 / 45 ))" 'BEGIN { for (i = 1; i <= n; i++) printf "echo \"step %06d: the build prints a line here\"\n", i; print "echo x > tests/c1.sh" }' > "$1"
+}
+
+@test "R273: a 264 KB shell script run by bash FILE is read to its end within the guard's time: the write on its last line is refused by name, not as a guard failure" {
+  field_script .vbw/runtime/scratch/field.sh 264
+  [ "$(wc -c < .vbw/runtime/scratch/field.sh)" -ge 262144 ]
+  call 'bash .vbw/runtime/scratch/field.sh'
+  denied "a 264 KB script whose last line writes a protected check file"
+  first "VBW guard: .vbw/runtime/scratch/field.sh (run by bash): echo x > tests/c1.sh writes tests/c1.sh: $PROTECTED"
+  has "$PROTECTED_NEXT"
+}
+
+@test "R273: the here-docs of a script run by name are read once, each with the working folder of its own line: python3 - <<PY after a cd writes where the cd put it, as an inline command does" {
+  printf 'echo a\ncat > src/note.txt <<EOF\nx\nEOF\ncd tests\npython3 - <<PY\nopen("c1.sh", "w").write("x")\nPY\n' > .vbw/runtime/scratch/h.sh
+  printf 'cd src\ncat > a.txt <<EOF\nx\nEOF\npython3 - <<PY\nopen("c1.sh", "w").write("x")\nPY\n' > .vbw/runtime/scratch/ok.sh
+  call 'bash .vbw/runtime/scratch/h.sh'
+  denied "a here-doc program writing tests/c1.sh after a cd into tests"
+  has "writes c1.sh: $PROTECTED"
+  call 'bash .vbw/runtime/scratch/ok.sh'
+  allowed "the same program after a cd into src writes src/c1.sh"
+  call 'cd tests
+cat > n.txt <<EOF
+x
+EOF
+python3 - <<PY
+open("c1.sh", "w").write("x")
+PY'
+  denied "an inline command with a cd and here-docs writing tests/c1.sh"
+  has "$PROTECTED"
+}
+
+@test "R273: a script too large to read before it runs is refused by its size, before any read, naming the file, its size in KB and the way out; committed during the run it is refused the same way, and only the project's own, unchanged since the run started, runs unread" {
+  head -c 3145728 /dev/zero | tr '\0' '#' > .vbw/runtime/scratch/huge.sh
+  printf '\necho x > tests/c1.sh\n' >> .vbw/runtime/scratch/huge.sh
+  call 'bash .vbw/runtime/scratch/huge.sh'
+  denied "a 3 MB script"
+  first 'VBW guard: .vbw/runtime/scratch/huge.sh (3072 KB) is too large to read before it runs'
+  has 'Next: run it in smaller parts, each under 512 KB'
+  # Committed during the run it changed since the run's start, as R255 has it: refused, never run unread.
+  cp .vbw/runtime/scratch/huge.sh tools/huge.sh
+  git add tools/huge.sh && git commit -q -m "chore(tools): a huge script written during the run"
+  call 'bash tools/huge.sh'
+  denied "a huge script committed during the run"
+  first 'VBW guard: tools/huge.sh (3072 KB) is too large to read before it runs'
+  # A run that starts on that commit finds the project's own script, unchanged since its start: unread.
+  VBW_SESSION_ID=s1 "$VBW" run end > /dev/null
+  VBW_SESSION_ID=s1 "$VBW" run start build P1.1 > /dev/null
+  call 'bash tools/huge.sh'
+  allowed "the project's own huge script, committed and unchanged since the run started"
+}
+
+@test "R273: a script a command writes by a here-doc after a cd and then runs by name is read from that here-doc, found at the folder the cd put it in" {
+  call 'cd src
+cat > s.sh <<EOF
+echo x > ../tests/c1.sh
+EOF
+bash s.sh'
+  denied "a script written in src by a here-doc and run there"
+  has "s.sh (run by bash): echo x > ../tests/c1.sh writes ../tests/c1.sh: $PROTECTED"
+}
+
+@test "R273 timed: tests/timed-guard-script.bats times the guard on an 80 KB and a 264 KB script: the big one within 5 s of CPU and within 1.5 times the size ratio of the small one's time, scaled by the bench's reference, skipped on a busy machine" {
+  local f="$BATS_TEST_DIRNAME/timed-guard-script.bats"
+  [ -f "$f" ] || { echo "no tests/timed-guard-script.bats"; false; }
+  grep -qE '\b80\b' "$f" && grep -qE '\b264\b' "$f" || { echo "the timed test does not name the 80 KB and 264 KB scripts"; false; }
+  grep -qE '1\.5' "$f" || { echo "the timed test has no 1.5 ratio rule"; false; }
+  grep -qE '\b5000\b|\b5 ?s\b' "$f" || { echo "the timed test names no 5 s budget"; false; }
+  grep -q 'NOMINAL_MS' "$f" || { echo "the timed test does not read the bench's NOMINAL_MS"; false; }
+  grep -qi 'busy' "$f" || { echo "the timed test has no busy-machine rule"; false; }
+  # The numbers sit in the code that judges, not only in the comments.
+  grep -qE '^[[:space:]]*judge .*"\$big" 5000$' "$f" || { echo "the 264 KB time is not judged against 5000 ms"; false; }
+  grep -qE '^[[:space:]]*limit=.*1\.5 \* \(264 / 80\) \* ' "$f" || { echo "the limit is not 1.5 x (264 / 80) x the 80 KB time"; false; }
+  grep -qE '^[[:space:]]*(big|small)=\$\(guard_ms (264|80)\)$' "$f" || { echo "the guard is not timed on both script sizes"; false; }
+  grep -qE '^[[:space:]]*echo "80 KB: \$small ms CPU; 264 KB: \$big ms CPU; ratio ' "$f" || { echo "the two measures and their ratio are not printed"; false; }
+  bats --count "$f" > /dev/null
+}

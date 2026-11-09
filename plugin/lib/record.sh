@@ -45,11 +45,35 @@ record_newer_schema() {
   [ -n "$n" ] && printf '%s\n' "$n"
 }
 
-# Die (exit 4) when the record was written by a newer VBW.
+# Die (exit 4) when the record was written by a newer VBW. The line names the VBW that
+# wrote the record (the writer file, R272) and the one loaded; a record without a writer
+# file, or one whose writer file names the loaded version (a development checkout that
+# raised the schema without a new version number), names the schema numbers instead.
 record_refuse_newer() {
-  local n
+  local n w loaded fix
   n=$(record_newer_schema "$VBW_RECORD") || return 0
-  vbw_die "this project needs a newer VBW: its record was written with schema $n, this VBW reads up to schema $VBW_SCHEMA_MAX; update VBW with /vbw:update" 4
+  loaded=$(jq -r '.version // "unknown"' "$VBW_PLUGIN/.claude-plugin/plugin.json" 2> /dev/null || echo unknown)
+  fix="Update VBW (/vbw:update), then restart Claude Code; for a development checkout start Claude Code with --plugin-dir <checkout>/plugin (--plugin-dir: Claude Code loads VBW from that folder instead of the installed copy)"
+  w=$(jq -r '.version // empty | strings' "$VBW_RUNTIME/writer.json" 2> /dev/null || true)
+  if [ -n "$w" ] && [ "$w" != "$loaded" ]; then
+    vbw_die "this project needs a newer VBW: its record was written by VBW $w, and this session loaded VBW $loaded. $fix" 4
+  fi
+  vbw_die "this project needs a newer VBW: its record was written with schema $n, and this session loaded VBW $loaded, which reads up to schema $VBW_SCHEMA_MAX. $fix" 4
+}
+
+# The writer file (R272): .vbw/runtime/writer.json, {version, schema}: the VBW that last
+# wrote the record and the record's schema, so an older VBW can name both versions. Written
+# beside every record write, atomically; a failed write never fails the record write.
+record_writer_write() {
+  local t v
+  v=$(jq -r '.version // "unknown"' "$VBW_PLUGIN/.claude-plugin/plugin.json" 2> /dev/null || echo unknown)
+  t=$(mktemp "$VBW_RUNTIME/writer.XXXXXX" 2> /dev/null) || return 0
+  if jq -c --arg v "$v" '{version: $v, schema}' "$VBW_RECORD" > "$t" 2> /dev/null; then
+    mv "$t" "$VBW_RUNTIME/writer.json" 2> /dev/null || rm -f "$t" 2> /dev/null || true
+  else
+    rm -f "$t" 2> /dev/null || true
+  fi
+  return 0
 }
 
 # The glance: the record cut down to what the status line and the guards read
@@ -387,6 +411,7 @@ record_update() {
   mv "$tmp" "$VBW_RECORD"
   vbw_guard_drop "$tmp"
   record_digest_write "$VBW_RECORD"
+  record_writer_write
   record_glance_write
   record_unlock
 }

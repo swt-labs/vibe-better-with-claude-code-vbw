@@ -60,28 +60,117 @@ vbw_scratch_json() {
   printf -v "$1" '%s' "$_f"
 }
 
-# qa_tree REV: read paths (one per line), print the digest of what commit REV holds there,
-# each path in the repository that tracks it (vbw_repos; a folder entry also covers each
-# submodule inside it, vbw_plan_paths). A submodule is read at its own HEAD when REV is
-# HEAD, as vbw_head_tree counts it (vbw commit never moves its pointer), else at the commit
-# REV points it at. A project without submodules digests exactly what it always did.
+# The awk program that picks, from a repository's tree listing (git ls-tree -r), the lines
+# a path set covers, as ls-tree with those pathspecs would print them. RELS holds the
+# pathspecs, separated by \037. A pathspec is normalised as git does (a leading ./, //, /./
+# and x/.. folded; "." or nothing is the whole repository); with a trailing / it covers only
+# what is inside that folder, without it the entry itself too; it is no glob. A path git
+# quotes (a control character, a quote, a backslash, a byte above 127) is read back to its
+# bytes before it is compared; the line itself is printed as git wrote it.
+# shellcheck disable=SC2016
+QA_TREE_AWK='
+function unq(s,   i, c, o, d) {
+  s = substr(s, 2, length(s) - 2); o = ""
+  for (i = 1; i <= length(s); i++) {
+    c = substr(s, i, 1)
+    if (c != "\\") { o = o c; continue }
+    i++; c = substr(s, i, 1)
+    if (c ~ /[0-7]/) { d = substr(s, i, 3); i += 2; o = o sprintf("%c", substr(d, 1, 1) * 64 + substr(d, 2, 1) * 8 + substr(d, 3, 1)) }
+    else if (c == "a") o = o "\007"
+    else if (c == "b") o = o "\010"
+    else if (c == "t") o = o "\011"
+    else if (c == "n") o = o "\012"
+    else if (c == "v") o = o "\013"
+    else if (c == "f") o = o "\014"
+    else if (c == "r") o = o "\015"
+    else o = o c
+  }
+  return o
+}
+BEGIN {
+  n = split(ENVIRON["RELS"], raw, "\037"); k = 0; all = 0
+  for (i = 1; i <= n; i++) {
+    r = raw[i]; slash = (r ~ /\/$/); m = split(r, seg, "/"); d = 0; bad = 0
+    for (j = 1; j <= m; j++) {
+      if (seg[j] == "" || seg[j] == ".") continue
+      if (seg[j] == "..") { if (d == 0) { bad = 1; break } d--; continue }
+      d++; stack[d] = seg[j]
+    }
+    if (bad) continue
+    if (d == 0) { all = 1; continue }
+    r = stack[1]; for (j = 2; j <= d; j++) r = r "/" stack[j]
+    k++; rel[k] = r; sl[k] = slash
+  }
+}
+{
+  t = index($0, "\t")
+  if (t == 0) next
+  if (all) { print; next }
+  p = substr($0, t + 1)
+  if (substr(p, 1, 1) == "\"") p = unq(p)
+  for (i = 1; i <= k; i++) {
+    if ((!sl[i] && p == rel[i]) || substr(p, 1, length(rel[i]) + 1) == rel[i] "/") { print; break }
+  }
+}'
+
+# The trees qa_tree_load read: the repository each was read in ("" is the project's own) and
+# its listing.
+QA_TREE_REPOS=()
+QA_TREE_LISTS=()
+
+# qa_tree_load REV LISTING: read, once, the tree of commit REV of every repository the phases
+# of LISTING (qa_listing's lines) name a file in: one git ls-tree -r per repository, however
+# many phases, a submodule once too (each repository as qa_tree reads it: a submodule at its
+# own HEAD when REV is HEAD, as vbw_head_tree counts it, else at the commit REV points it at).
+# The listing is limited to the files of all the phases together while that fits on a command
+# line; the whole tree otherwise.
+qa_tree_load() {
+  local u=() l r s rels size
+  QA_TREE_REPOS=()
+  QA_TREE_LISTS=()
+  while IFS= read -r l; do u+=("$l"); done < <(printf '%s\n' "$2" | jq -Rr 'sub("^[^ ]+ "; "") | fromjson | .files[], .check_files[]')
+  [ ${#u[@]} -gt 0 ] || return 0
+  vbw_plan_paths "${u[@]}"
+  for r in ${VBW_REPOS[@]+"${VBW_REPOS[@]}"}; do
+    rels=()
+    size=0
+    while IFS= read -r -d '' l; do
+      rels+=("$l")
+      size=$((size + ${#l} + 1))
+    done < <(vbw_in_repo "$r")
+    [ "$size" -le 65536 ] || rels=(.)
+    if [ -z "$r" ]; then
+      l=$(git -C "$VBW_ROOT" ls-tree -r "$1" -- "${rels[@]}")
+    else
+      s=HEAD
+      [ "$1" = HEAD ] || s=$(git -C "$VBW_ROOT" rev-parse -q --verify "$1:$r" 2> /dev/null) || s=
+      l=
+      [ -z "$s" ] || l=$(git -C "$VBW_ROOT/$r" ls-tree -r "$s" -- "${rels[@]}")
+    fi
+    QA_TREE_REPOS+=("$r")
+    QA_TREE_LISTS+=("$l")
+  done
+}
+
+# qa_tree: read paths (one per line), print the digest of what the commit qa_tree_load read
+# holds there, each path in the repository that tracks it (vbw_repos; a folder entry also
+# covers each submodule inside it, vbw_plan_paths): the repository's lines of the tree
+# listing, a submodule's after its own folder name. A project without submodules digests
+# exactly what it always did.
 qa_tree() {
-  local p=() l r s rels
+  local p=() l r i rels
   while IFS= read -r l; do p+=("$l"); done
   {
     if [ ${#p[@]} -gt 0 ]; then
       vbw_plan_paths "${p[@]}"
       for r in ${VBW_REPOS[@]+"${VBW_REPOS[@]}"}; do
-        rels=()
-        while IFS= read -r -d '' l; do rels+=("$l"); done < <(vbw_in_repo "$r")
-        if [ -z "$r" ]; then
-          git -C "$VBW_ROOT" ls-tree -r "$1" -- "${rels[@]}"
-        else
-          s=HEAD
-          [ "$1" = HEAD ] || s=$(git -C "$VBW_ROOT" rev-parse -q --verify "$1:$r" 2> /dev/null) || s=
-          printf '%s\n' "$r"
-          [ -z "$s" ] || git -C "$VBW_ROOT/$r" ls-tree -r "$s" -- "${rels[@]}"
-        fi
+        rels=
+        while IFS= read -r -d '' l; do rels="$rels${rels:+$'\037'}$l"; done < <(vbw_in_repo "$r")
+        [ -z "$r" ] || vbw_out '%s\n' "$r"
+        i=0
+        while [ "$i" -lt ${#QA_TREE_REPOS[@]} ] && [ "${QA_TREE_REPOS[$i]}" != "$r" ]; do i=$((i + 1)); done
+        [ "$i" -lt ${#QA_TREE_REPOS[@]} ] || continue
+        printf '%s\n' "${QA_TREE_LISTS[$i]}" | RELS=$rels LC_ALL=C awk "$QA_TREE_AWK"
       done
     fi
   } | vbw_sha256
@@ -91,24 +180,28 @@ qa_tree() {
 # milestone's phases as commit REV (default HEAD) holds their files and checks'
 # files and RECORD their goal, plans and requirements; deps lists every phase Pn builds on.
 qa_digests() {
-  local id line own='{}' out='{}' cl res=null rev="${2:-HEAD}" pre=0
+  local id line own='{}' out='{}' cl lst res=null rev="${2:-HEAD}" pre=0
   # The caller's pass (QA_PRE_LISTING, QA_PRE_CLOSURE: set by next_decide for the record it
   # judged) stands in for the two reads of the record, for the current commit only.
   [ "$rev" = HEAD ] && [ -n "${QA_PRE_CLOSURE:-}" ] && pre=1
   if [ "$pre" = 0 ] && printf '%s' "$1" | jq -e '(.project.results // []) != []' > /dev/null && contract_waiting "$1" > /dev/null; then
     res=$(printf '%s' "$1" | jq -c '.project.results')
   fi
+  # Each repository's tree of the commit is read once for all the phases (qa_tree_load).
+  if [ "$pre" = 1 ]; then lst=$QA_PRE_LISTING
+  else lst=$(printf '%s' "$1" | jq -r --argjson res "$res" "$VBW_JQ_DEFS$VBW_QA_DEFS"'qa_listing($res)'); fi
+  [ -z "$lst" ] || qa_tree_load "$rev" "$lst"
   while read -r id line; do
-    own=$(printf '%s' "$own" | jq -c --arg id "$id" --arg f "$(printf '%s' "$line" | jq -r '.files[]' | qa_tree "$rev")" --arg p "$(printf '%s' "$line" | jq -c '.plan' | vbw_sha256)" --arg q "$(printf '%s' "$line" | jq -c '.auto' | vbw_sha256)" \
-      --arg t "$({ printf '%s' "$line" | jq -c '.checks'; printf '%s' "$line" | jq -r '.check_files[]' | qa_tree "$rev"; } | vbw_sha256)" '. + {($id): {files: $f, tests: $t, plan: $p, reqs: $q}}')
-  done < <(if [ "$pre" = 1 ]; then [ -z "$QA_PRE_LISTING" ] || printf '%s\n' "$QA_PRE_LISTING"; else printf '%s' "$1" | jq -r --argjson res "$res" "$VBW_JQ_DEFS$VBW_QA_DEFS"'qa_listing($res)'; fi)
+    own=$(printf '%s' "$own" | jq -c --arg id "$id" --arg f "$(printf '%s' "$line" | jq -r '.files[]' | qa_tree)" --arg p "$(printf '%s' "$line" | jq -c '.plan' | vbw_sha256)" --arg q "$(printf '%s' "$line" | jq -c '.auto' | vbw_sha256)" \
+      --arg t "$({ printf '%s' "$line" | jq -c '.checks'; printf '%s' "$line" | jq -r '.check_files[]' | qa_tree; } | vbw_sha256)" '. + {($id): {files: $f, tests: $t, plan: $p, reqs: $q}}')
+  done < <([ -z "$lst" ] || printf '%s\n' "$lst")
   if [ "$pre" = 1 ]; then cl=$QA_PRE_CLOSURE
   else cl=$(printf '%s' "$1" | jq -c --argjson fpv "$QA_FP_VERSION" "$VBW_JQ_DEFS$VBW_QA_DEFS"'qa_prog(null; null) | .closure'); fi
   while IFS=$'\t' read -r id line; do
     out=$(printf '%s' "$out" | jq -c --arg id "$id" --arg c "$(printf '%s' "$line" | vbw_sha256)" --slurpfile own <(printf '%s' "$own") --slurpfile cl <(printf '%s' "$cl") \
       '. + {($id): ($own[0][$id] + {combined: $c, deps: $cl[0][$id]})}')
   done < <(jq -nr --slurpfile own <(printf '%s' "$own") --slurpfile cl <(printf '%s' "$cl") '$own[0] as $own | $cl[0] as $cl | $own | keys[] | . as $k | [$k, (["\($k) \($own[$k].files) \($own[$k].tests) \($own[$k].plan) \($own[$k].reqs)"] + [$cl[$k][] | "\(.) \($own[.].tests)"] | join(";"))] | @tsv')
-  printf '%s\n' "$out"
+  vbw_out '%s\n' "$out"
 }
 
 # qa_cache_file: this clone's record of what each pass covered.

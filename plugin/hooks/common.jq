@@ -207,6 +207,7 @@ def foreign_denial($f; $name):
 
 def secret_reason: "\(basename) may hold secrets; VBW never reads or writes secret files\nNext: do not open \(basename); ask the user for the value you need, or use an example file such as .env.example";
 def record_reason: ".vbw/record.json is written only by vbw (vbw help lists the commands)\nNext: run the vbw command that makes this change (vbw help lists them); read the record with vbw show or vbw status";
+def inline_record_reason: ".vbw/record.json is named in an inline program (-c, -e), and the guard cannot tell a read from a write in code\nNext: read the record with vbw show or vbw status, or with jq in a plain command; changes go through a vbw command";
 def consent_reason: "the consent file is written only by /vbw:approve, and the store of recorded runs (vbw/runs.json) only by vbw\nNext: the user approves through the approval menu (vbw next asks); leave the run store alone, vbw rewrites it by itself";
 
 # A reason string becomes the hook's deny decision. The whole reason goes to

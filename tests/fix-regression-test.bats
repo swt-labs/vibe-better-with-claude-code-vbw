@@ -75,7 +75,7 @@ new_check() { jq -r --arg f "$F_QA" '[.checks[] | select(.fix == $f)][0].id // e
 fixed_and_ended() {
   regression
   register > /dev/null
-  printf 'grep -qx paid src/pay.txt\ntest -s src/pay.txt\n' > tests/c1.sh
+  printf 'grep -qx paid src/pay.txt && test -s src/pay.txt\n' > tests/c1.sh
   git add tests/c1.sh tests/r1-regression.sh
   git commit -q -m "test(pay): regression for the zero payment"
   # shellcheck disable=SC1010 # "done" is a vbw subcommand
@@ -175,7 +175,7 @@ fixed_and_ended() {
   "$VBW" approve > /dev/null
   "$VBW" prove > /dev/null 2>&1 || true
   rm -f "$TEST_ROOT/ran-regression"
-  printf 'test -s src/pay.txt\n' >> tests/r1-regression.sh
+  printf ': > "%s"\ngrep -qx paid src/pay.txt && test -s src/pay.txt\n' "$TEST_ROOT/ran-regression" > tests/r1-regression.sh
   git add tests/r1-regression.sh
   git commit -q -m "test(pay): stricter"
   run "$VBW" prove
