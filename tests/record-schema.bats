@@ -356,6 +356,18 @@ leaks() {
   [ "$(max_read)" = 15 ] || { echo "VBW_SCHEMA_MAX is $(max_read)"; false; }
 }
 
+@test "R286 schema: the validator refuses a break whose digests name a file twice, add a key, or name a file the break did not, and accepts the list and the older object" {
+  [ "$(validate)" = '[]' ] || { validate; false; }
+  edit '.plans[0].mutations[0].digests += [.plans[0].mutations[0].digests[0]]'
+  [ "$(validate)" != '[]' ] || { echo "accepted a file twice in the digests"; false; }
+  edit '.plans[0].mutations[0].digests |= unique | .plans[0].mutations[0].digests[0].extra = 1'
+  [ "$(validate)" != '[]' ] || { echo "accepted an extra key in a digest"; false; }
+  edit '.plans[0].mutations[0].digests[0] |= del(.extra) | .plans[0].mutations[0].digests[0].file = "src/other.sh"'
+  [ "$(validate)" != '[]' ] || { echo "accepted a file the break did not name"; false; }
+  edit '.plans[0].mutations[0].digests = {"src/pay.sh": "absent"}'
+  [ "$(validate)" = '[]' ] || { validate; false; }
+}
+
 @test "R286 schema: a VBW that reads up to schema 14 refuses this VBW's schema-15 record with the R272 line, never calling it corrupt, and leaves it unchanged" {
   jq -e '.schema == 15' .vbw/record.json || { jq .schema .vbw/record.json; false; }
   cp -R "$PLUGIN_ROOT" "$TEST_ROOT/plugin"
