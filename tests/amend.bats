@@ -75,7 +75,7 @@ table() { jq -r -n -L "$PLUGIN_ROOT/lib" "include \"record-schema\"; $1"; }
   [ "$(table '{plans: [{mutations: [{tree: "t"}]}], checks: [{id: "C1"}], requirements: [{id: "R1"}]} | schema_of')" = 8 ]
   grep -qF 'field_rule(["id","text","proof","status","milestone","rules","skipped","later","queued","reworded"])' "$PLUGIN_ROOT/lib/record.jq"
   grep -qF 'field_rule(["id","req","run","files","exit","output","timeout","alone","fix","amendments"])' "$PLUGIN_ROOT/lib/record.jq"
-  grep -qF 'field_rule(["id","phase","title","reqs","files","after","status","note","tasks","role","mutations","amendments","awaits"])' "$PLUGIN_ROOT/lib/record.jq"
+  grep -qF 'field_rule(["id","phase","title","reqs","files","after","status","note","tasks","role","mutations","amendments","awaits","red_runs"])' "$PLUGIN_ROOT/lib/record.jq"
   grep -qF '(keys | sort) == ["at","session","what"]' "$PLUGIN_ROOT/lib/record.jq"
 }
 
