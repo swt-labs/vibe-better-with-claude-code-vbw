@@ -84515,6 +84515,11 @@
       "sort": "next",
       "size": "medium",
       "status": "open"
+    },
+    {
+      "id": "T275",
+      "text": "The building workflow's close agent can report a run ended without ending it (2026-11-09, wf_84c009ab-d23: it ran only vbw run confirm, then reported 'vbw run end succeeded'; the lease stayed and vbw next said a run is open). The workflow should take the run's end from the kernel (the lease gone), never from the agent's word",
+      "status": "open"
     }
   ],
   "decisions": [
