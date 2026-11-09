@@ -20,7 +20,7 @@
 VBW_COMMAND_TIMEOUT=3600
 # shellcheck disable=SC2034 # read by cmd_prove and cmd_fix
 PROVE_FLAT='map_values(if $off or (.reads | type) != "object" then . + {reads: null}
-  else . + {dirs: .reads.dirs, git: .reads.git, reads: .reads.files} end)'
+  else . + {dirs: .reads.dirs, git: .reads.git, reads: .reads.files, kernel_reads: (.reads.kernel_reads // [])} end)'
 
 # The fingerprints of the units' approved definitions. PROOFREUSE_FPS is the map
 # unit key ("check:ID", "command:NAME", "file:PATH") -> fingerprint (a JSON
@@ -303,7 +303,7 @@ proofreuse_save() {
     def runs($kind; $res): $res | keys[] as $n | $res[$n] as $x
       | select($x.status != "skipped" and $x.status != "waiting")
       | {key: "\($kind):\($n)", value: {fp: ($f[0]["\($kind):\($n)"] // ""), tree: $tree, status: $x.status, at: $at, seconds: $x.seconds,
-          tail: ($x.tail // ""), reads: ($x.reads // null), dirs: ($x.dirs // []), git: ($x.git // false)}};
+          tail: ($x.tail // ""), reads: ($x.reads // null), kernel_reads: ($x.kernel_reads // []), dirs: ($x.dirs // []), git: ($x.git // false)}};
     [runs("check"; $c[0]), runs("command"; $m[0])] | from_entries')
   proofreuse_merge "$new" "${6:-[]}"
 }
@@ -410,6 +410,7 @@ proofreuse_diffs() {
 # shellcheck disable=SC2016 # a jq program
 PROOFREUSE_RULE_JQ='def parent: if test("/") then sub("/[^/]*$"; "") else "." end;
   $st[0].runs as $runs | $df[0] as $df | $fps[0] as $fps
+  | ($vo | split("\u0000") | map(select(length > 0) | {key: ., value: true}) | from_entries) as $vos
   | def verdict($k):
       ($runs[$k] | if type == "object" then . else null end) as $e
       | if $off != "" then {key: $k, why: $off}
@@ -422,7 +423,7 @@ PROOFREUSE_RULE_JQ='def parent: if test("/") then sub("/[^/]*$"; "") else "." en
            else null end) as $r1
           | if $r1 != null then {key: $k, why: $r1}
             else
-              ($e | {status, exit: null, seconds, tail, at, fp, reads, dirs, git, reused: true}) as $res
+              ($e | {status, exit: null, seconds, tail, at, fp, reads, kernel_reads, dirs, git, reused: true}) as $res
               | ($df[($e.tree | tostring)]) as $ch
               | if $ch == null then {key: $k, why: "the code it ran on is unknown"}
                 elif ($ch | length) == 0 then {key: $k, result: $res}
@@ -430,7 +431,11 @@ PROOFREUSE_RULE_JQ='def parent: if test("/") then sub("/[^/]*$"; "") else "." en
                   ($e.reads | map({key: ., value: true}) | from_entries) as $reads
                   | [($e.dirs // [])[] | strings] as $plain
                   | ($tied[0][$k] // []) as $tie
-                  | (([$ch[] | select($reads[.p]) | if .s == "D" then "\(.p) deleted" else "\(.p) changed" end]
+                  | ($e.kernel_reads // [] | map({key: ., value: true}) | from_entries) as $kern
+                  | (([$ch[] | select($reads[.p] or $kern[.p])
+                        | if .s == "D" then "\(.p) deleted"
+                          elif $kern[.p] and $vos[($e.tree | tostring) + "|" + .p] == true then (if $reads[.p] then "reads the version: \(.p)" else empty end)
+                          else "\(.p) changed" end]
                       + [$ch[] | select(.s == "A" or .s == "D") | (.p | parent) as $d | select($plain | index($d)) | "\($d) listing changed"]
                       + [$ch[] | select(.s == "A" or .s == "D") | select(.p as $p | any($tie[]; . == "*" or covers($p)))
                           | if .s == "D" then "\(.p) deleted" else "\(.p) added" end])
@@ -480,8 +485,22 @@ proofreuse_judge() {
   fi
   dir=$(proofreuse_scratch)
   vbw_guard_add dir "$dir"
+  # R279: the files a unit's kernel read, changed since the unit ran, whose JSON is equal
+  # without .version: "TREE|PATH" -> true, for the rule's version-only change.
+  : > "$dir/vo"
+  if [ "$diffs" != "{}" ]; then
+    jq -nj --slurpfile st <(printf "%s" "${PROOFREUSE_STORE-}") --slurpfile df <(printf "%s" "$diffs") '
+      [$st[0].runs[]? | select(type == "object" and (.kernel_reads | type) == "array" and (.tree | type) == "string")
+       | .tree as $t | .kernel_reads[] as $p | select(any(($df[0][$t] // [])[]; .s == "M" and .p == $p)) | [$t, $p]]
+      | unique[] | .[0], "\u0000", .[1], "\u0000"' | while IFS= read -r -d "" vt && IFS= read -r -d "" vp; do
+      va=$(git -C "$VBW_ROOT" show "$vt:$vp" 2> /dev/null | jq -S -c "del(.version)" 2> /dev/null) || continue
+      vb=$(git -C "$VBW_ROOT" show "$2:$vp" 2> /dev/null | jq -S -c "del(.version)" 2> /dev/null) || continue
+      [ -z "$va" ] || [ "$va" != "$vb" ] || printf "%s|%s\0" "$vt" "$vp" >> "$dir/vo"
+    done
+  fi
   jq -nc --slurpfile keys <(printf '%s' "$1") --slurpfile st <(printf '%s' "${PROOFREUSE_STORE-}") --slurpfile fps <(printf '%s' "$PROOFREUSE_FPS") \
     --slurpfile df <(printf '%s' "$diffs") --slurpfile tied <(printf '%s' "$PROOFREUSE_TIES") --arg off "$3" --argjson any "${4:-0}" \
+    --rawfile vo "$dir/vo" \
     "$VBW_JQ_DEFS$PROOFREUSE_RULE_JQ" > "$dir/stage1" || { vbw_guard_drop "$dir"; vbw_die "internal error: the reuse rule failed"; }
   printf '{}' > "$dir/folders"
   need=$(jq -c '.need' "$dir/stage1")
