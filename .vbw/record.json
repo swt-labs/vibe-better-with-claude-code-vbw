@@ -89958,10 +89958,10 @@
     "rigor": "auto"
   },
   "evidence": {
-    "at": "2026-11-09T19:30:55Z",
+    "at": "2026-11-09T19:45:22Z",
     "contract": "89e0490d194464b9e93bd7ef509f5eaa50e7957b3423176c0de2bfa073d34f6c",
-    "tree": "f2261bd31c6aa1da2b572e108960c24574d37114",
-    "head": "f2261bd31c6aa1da2b572e108960c24574d37114",
+    "tree": "13c1a42d142284f24fa25cc46c996b4162edee0e",
+    "head": "13c1a42d142284f24fa25cc46c996b4162edee0e",
     "checks": {
       "C1": {
         "status": "pass",
@@ -89984,11 +89984,11 @@
       "C3": {
         "status": "pass",
         "exit": 0,
-        "seconds": 17.7,
+        "seconds": 28.8,
         "tail": "1..11\nok 1 report: versions, doctor, and project state as counts and ids\nok 2 report: an empty count says none, never a blank\nok 3 report: never the spec's text, check output or file contents\nok 4 report: a corrupt record is named as corrupt without echoing its content\nok 5 report: outside a git repository it still prints, and says so\nok 6 report and rtk take no arguments beyond their usage\nok 7 rtk: not installed, with the install command that matches the machine\nok 8 rtk: installed shows its version and path; status equals no argument\nok 9 rtk: the Claude hook is on only when RTK's hook is in the user's settings\nok 10 rtk and report write nothing: no file in the project or settings changes\nok 11 docs/diagnostics.md says what the help says about both commands",
-        "at": "2026-11-09T18:16:55Z",
         "fp": "24fce9b6fc2ad76ba8a50f31aeb9959d02c832fbfb496e5fc64f5335de5fb2ca",
-        "reused": true
+        "at": "2026-11-09T19:45:22Z",
+        "why": "reads the version: plugin/.claude-plugin/plugin.json"
       },
       "C4": {
         "status": "pass",
@@ -90200,11 +90200,11 @@
       "C29": {
         "status": "pass",
         "exit": 0,
-        "seconds": 11.3,
+        "seconds": 21.4,
         "tail": "1..5\nok 1 R33: a record with a newer schema exits non-zero and says the project needs a newer VBW\nok 2 R33: the message never calls a newer record corrupt\nok 3 R33: a newer record is not modified, rewritten or locked by the older VBW\nok 4 R33: a record that is damaged, not newer, is still reported as corrupt\nok 5 R33: the record of every earlier schema version still loads and shows correctly",
-        "at": "2026-11-09T15:45:51Z",
         "fp": "b85a9d42eac1bde99d5aaf35b00109467ef6300095cebf37cbd7db91abf9a016",
-        "reused": true
+        "at": "2026-11-09T19:45:22Z",
+        "why": "reads the version: plugin/.claude-plugin/plugin.json"
       },
       "C30": {
         "status": "pass",
@@ -90218,11 +90218,11 @@
       "C31": {
         "status": "pass",
         "exit": 0,
-        "seconds": 41.4,
+        "seconds": 53.9,
         "tail": "1..8\nok 1 no profile and no tier cell gives QA Haiku, in the tables or in vbw next\nok 2 the budget profile shows QA on Sonnet in vbw config models and in the status line\nok 3 other roles keep their models: budget scout on haiku, express dev on haiku, the rest as before\nok 4 a record that already holds a Haiku QA override gets Sonnet in vbw next\nok 5 a QA override to opus or a full non-Haiku id is honoured, and the dev override still wins\nok 6 a forced rigor and an escalation never lower QA below Sonnet\nok 7 the status line shows the effective QA model: a Haiku override reads Sonnet, an opus one Opus\nok 8 the docs say QA never uses Haiku, and the budget profile no longer lists Haiku for QA",
-        "at": "2026-11-09T15:45:51Z",
         "fp": "f14a566613c5fb88dbcb9cc70d56fa5c88a61582e2e6e6a94929be8746885ae7",
-        "reused": true
+        "at": "2026-11-09T19:45:22Z",
+        "why": "reads the version: plugin/.claude-plugin/plugin.json"
       },
       "C32": {
         "status": "pass",
@@ -90290,11 +90290,11 @@
       "C39": {
         "status": "pass",
         "exit": 0,
-        "seconds": 34.5,
+        "seconds": 45.5,
         "tail": "1..10\nok 1 apply accepts alone: true, keeps it in the record and shows it in the contract\nok 2 apply accepts alone: false\nok 3 a non-boolean alone is refused, naming the check, and changes nothing\nok 4 the alone marker is part of the contract hash\nok 5 adding the marker to an approved contract needs approving again\nok 6 removing the marker from an approved contract needs approving again\nok 7 the approval screen shows an added or removed marker\nok 8 a record whose checks use alone is schema 2 or above, so an older VBW asks for an update instead of calling it corrupt\nok 9 a schema-1 record with an alone check, or a schema-2 record without one, is refused as corrupt\nok 10 a record newer than schema 3 still says it needs a newer VBW",
-        "at": "2026-11-09T15:45:51Z",
         "fp": "27493877997e838ab6ed89a7c8ed6b5114428fa294d0218eb75367047df96d87",
-        "reused": true
+        "at": "2026-11-09T19:45:22Z",
+        "why": "reads the version: plugin/.claude-plugin/plugin.json"
       },
       "C40": {
         "status": "pass",
@@ -90434,11 +90434,11 @@
       "C55": {
         "status": "pass",
         "exit": 0,
-        "seconds": 8.4,
+        "seconds": 15.4,
         "tail": "1..5\nok 1 R53: the panel is a mod named by hooks.json, next to the hooks it had, which are unchanged\nok 2 R53: Claude Code's own validator reads the module and lists the hooks the panel registers\nok 3 R53: the status line is byte for byte what it is without the panel, in a VBW project\nok 4 R53: the status line is byte for byte what it is without the panel, outside a VBW project, with colour too\nok 5 R53: the status line and the kernel know nothing of the panel, so an older Claude Code prints nothing extra",
-        "at": "2026-11-09T19:08:04Z",
         "fp": "99b0b5dfc176cee0cb0aac0aaba7deaddcbf8b4074c02958b48278313fd54b6e",
-        "reused": true
+        "at": "2026-11-09T19:45:22Z",
+        "why": "reads the version: plugin/.claude-plugin/plugin.json"
       },
       "C56": {
         "status": "pass",
@@ -91253,11 +91253,11 @@
       "C148": {
         "status": "pass",
         "exit": 0,
-        "seconds": 3.9,
+        "seconds": 4.0,
         "tail": "1..1\nok 1 R94: the wait setting VBW_CHECK_WAIT_SECONDS is gone from the code and the docs no longer say it ends a wait",
-        "at": "2026-11-09T18:16:55Z",
         "fp": "2ed97e5d717f44f17f3acfc62ad02946f6c63db9ed0f63290d362963ff046d77",
-        "reused": true
+        "at": "2026-11-09T19:45:22Z",
+        "why": "reads the version: plugin/.claude-plugin/plugin.json"
       },
       "C149": {
         "status": "pass",
@@ -91406,11 +91406,11 @@
       "C166": {
         "status": "pass",
         "exit": 0,
-        "seconds": 45.0,
+        "seconds": 50.1,
         "tail": "1 R107: the profile file has a table for each profile, and every role and step the workflows use has a value Claude Code accepts\nok 2 R107: closing a run and documentation get a lower effort than building, planning and QA a higher one, in every profile\nok 3 R107: vbw config effort prints the table of the current profile, and follows a profile change\nok 4 R107: vbw next --json carries the same table, so the router can pass it to every workflow\nok 5 R107: a value Claude Code does not accept is refused with the role and the step, by vbw config effort and by vbw next\nok 6 R107: a value that is not text is refused the same way\nok 7 R107: a missing role or step is refused with its name, so no workflow starts with a gap\nok 8 R107: only the profile in use is judged: a bad value in another profile does not stop this one\nok 9 R107: the router and every skill that starts a workflow pass the effort table in the workflow's args\nok 10 R107: the effort table is described for people: the effort levels, the steps and where the table lives\nok 11 F88: a missing or invalid architect recommend step is refused like every other step\nok 12 F89: docs/workflows.md lists the architect recommend step in the table and the example\nok 13 effort.ROLE: every step of the role takes the chosen effort, in vbw config effort and vbw next --json; the other roles keep the profile's\nok 14 effort.ROLE: vbw config names each role's effort, default where the profile decides\nok 15 effort.ROLE: a record holding a chosen effort is schema 5; default on the last one removes it and the record is schema 4 again\nok 16 effort.ROLE: a level Claude Code does not take, or a role VBW does not have, is refused and nothing is written\nok 17 effort.ROLE: an effort under schema 4 loads and the next write raises the record to 5 (D582); schema 5 without one and a level Claude Code does not take are refused\nok 18 effort.ROLE: a VBW that reads only up to schema 4 says the project needs a newer VBW, never that the record is corrupt",
-        "at": "2026-11-09T18:16:55Z",
         "fp": "ccdb89baa82f463ca04b47659bf6e485ed4405ac953f454d10bc2c8b942f46b6",
-        "reused": true
+        "at": "2026-11-09T19:45:22Z",
+        "why": "reads the version: plugin/.claude-plugin/plugin.json"
       },
       "C167": {
         "status": "pass",
@@ -91595,11 +91595,11 @@
       "C187": {
         "status": "pass",
         "exit": 0,
-        "seconds": 40.5,
+        "seconds": 45.3,
         "tail": "1..11\nok 1 R121: vbw triage --json names the active milestone, its open requirements, the run and the sorted backlog in one call\nok 2 R121: vbw triage shows an open run, and leaves out accepted requirements and closed backlog items\nok 3 R121: after ship there is no active milestone and no open requirement\nok 4 R121: vbw triage (text) prints the same facts and writes nothing\nok 5 R121: vbw todo add keeps the sort and size, and vbw todo list shows them, next before later\nok 6 R121: backlog items added before sorting existed still list as before, without a sort or size, and nothing about them changes\nok 7 R121: a sort or size outside the allowed values, or one without the other, is refused and nothing is added\nok 8 R121: the record validator accepts sorted items and refuses a bad sort or size\nok 9 R121: a sorted backlog item raises the schema to 3 or above, so an older VBW asks for an update instead of calling the record corrupt\nok 10 R121: a 'now' idea added while a run is open is recorded at once, and planning waits for the run to end\nok 11 R121: the kernel help lists vbw triage and the sort and size of vbw todo add",
-        "at": "2026-11-09T18:16:55Z",
         "fp": "9a3b037c82f6e23518475860fbc46760c87b2e8a98ce9b9e8dca5ac3adcf8a06",
-        "reused": true
+        "at": "2026-11-09T19:45:22Z",
+        "why": "reads the version: plugin/.claude-plugin/plugin.json"
       },
       "C188": {
         "status": "pass",
@@ -91622,11 +91622,11 @@
       "C190": {
         "status": "pass",
         "exit": 0,
-        "seconds": 86.4,
+        "seconds": 77.5,
         "tail": "1..15\nok 1 R123: vbw recommend stores the top pick, its reason and size, the runners-up and the time it was written\nok 2 R123: zero runners-up is fine, and a pick may have no source\nok 3 R123: a new recommendation replaces the earlier one, so only one is kept\nok 4 R123: every malformed recommendation is refused with a message naming what is wrong, and the earlier one stays\nok 5 R123: a pick whose source is not open is refused: a shipped or proven requirement, a closed or unknown todo\nok 6 R123: a pick that is a declined suggestion is refused\nok 7 R123: with no open requirement and an empty backlog the stored recommendation says the backlog is empty; with work open, 'empty' is refused\nok 8 R123: while a run is open the kernel stores no recommendation and says so\nok 9 R123: the validator accepts a record with and without a recommendation, and refuses a damaged one\nok 10 R123: a stored recommendation raises the schema to 3 or above; an older VBW asks for an update; without one and without sorted todos the schema stays as before\nok 11 R123: vbw status shows the what's-next part: the top pick, its reason and size, each runner-up with its size, and the date\nok 12 R123: with none stored, vbw status says there is none yet and how to ask for one\nok 13 R123: vbw status --json carries the recommendation, or null when none is stored\nok 14 R123: the kernel help lists vbw recommend\nok 15 R123: vbw ship retires the stored recommendation, written for the work before the ship",
-        "at": "2026-11-09T18:16:55Z",
         "fp": "1298cf4f726813ed091d7c7cd224c97eafc08e4e8d56837e310e1c52709b6d91",
-        "reused": true
+        "at": "2026-11-09T19:45:22Z",
+        "why": "reads the version: plugin/.claude-plugin/plugin.json"
       },
       "C191": {
         "status": "pass",
@@ -91703,20 +91703,20 @@
       "C199": {
         "status": "pass",
         "exit": 0,
-        "seconds": 85.9,
+        "seconds": 75.1,
         "tail": "1..8\nok 1 R132: the fingerprint stored for a passed phase carries the version of how it was computed, in the clone's QA cache\nok 2 R132: after an update that changes the fingerprint's version, an unchanged passed phase still stands\nok 3 R132: at the same version, a different stored fingerprint is a change, as today\nok 4 R132: a fingerprint written by an older VBW with no version is an older version, not a change\nok 5 R132: after an update, a real change to the phase's files sends it back to QA\nok 6 R132: a change to the phase's files made before the update still sends it back to QA after it\nok 7 R132: after an update, a change to the phase's tests, plan or requirements sends it back to QA\nok 8 R132: a change to the phase's requirement made before an update of a version-less fingerprint sends it back to QA",
-        "at": "2026-11-09T18:16:55Z",
         "fp": "aa6f03034434abe1895e674e456d849a5fbff135a921984c8e7694be26905cba",
-        "reused": true
+        "at": "2026-11-09T19:45:22Z",
+        "why": "reads the version: plugin/.claude-plugin/plugin.json"
       },
       "C200": {
         "status": "pass",
         "exit": 0,
-        "seconds": 62.4,
+        "seconds": 49.6,
         "tail": "pprove nothing\nok 13 R128: no hook ever answers allow, for any input below, and a failing hook gives no output\nok 14 R128: the hook answer inventory passes on the hooks as they are\nok 15 R128: the hook answer inventory fails on a new answer shape with no pinning test, names it, and passes once a test pins it\nok 16 R128: the hook answer inventory fails when any hook could answer allow, even with a test named for it\nok 17 R128: the engineering standards run the hook answer inventory, and their selftest shows it failing\nok 18 R242 R128: guard-tools.jq deny and systemMessage: a VBW agent's call of an MCP tool the project has not opened to its role, or of a tool outside its role, is denied with a 'VBW guard:' reason, and the user sees what was refused\nok 19 R242 R128: guard-tools.jq no output: the main session's call of any tool, and a VBW agent's call of its own tool or of a tool the project opened to its role, get no answer\nok 20 R254 R128: guard-read.jq deny and systemMessage: a write that lands in another project under that project's run is denied with a 'VBW guard:' reason, which blocks it and tells Claude why, and shows the user what was refused\nok 21 R272 R128: approve-ask.sh deny and systemMessage: under a record written by a newer VBW the approval menu is refused with the kernel's own line (both versions named), shown to the user too, never answered in the user's place\nok 22 R273 R128: read.sh deny and systemMessage: a script too large to read before it runs is refused by its size with a 'VBW guard:' reason, which blocks it and tells Claude why, and shows the user what was refused\nok 23 R289 R128: guard-bash.jq and guard-file.jq deny: the session project's own record, by any name, is refused with the record reason; another folder's .vbw/record.json gets no record refusal\nok 24 R290 R128: common.jq deny: a builder's write under .vbw/runtime/ outside .vbw/runtime/scratch/ is denied with a 'VBW guard:' reason whose Next names .vbw/runtime/scratch/ for scratch files",
-        "at": "2026-11-09T18:16:55Z",
         "fp": "f955847254a739f97a03d0475fae1b27b117168f9aa33d1e3f32d06c22ff7c6d",
-        "reused": true
+        "at": "2026-11-09T19:45:22Z",
+        "why": "reads the version: plugin/.claude-plugin/plugin.json"
       },
       "C201": {
         "status": "pass",
@@ -91739,11 +91739,11 @@
       "C203": {
         "status": "pass",
         "exit": 0,
-        "seconds": 44.7,
+        "seconds": 34.9,
         "tail": "ok 6 R141: without jq, in a folder that is not a VBW project the hook ends quietly\nok 7 outside a VBW project the hook says nothing\nok 8 in a VBW project it gives the state and the next step, and writes no project file\nok 9 a corrupt record is reported, not hidden\nok 10 a project made by a newer VBW asks for an update, not /vbw:vibe\nok 11 a session started in a subfolder of a VBW project gets the project's state and is told the project folder\nok 12 VBW 1's command copies are removed (they would shadow VBW 2's commands); nothing else is touched\nok 13 the copies' directory is removed once empty, and a clean setup says nothing\nok 14 only the config directory this session uses is cleaned\nok 15 a VBW 1 project is told its plan is safe and how to bring it in, and nothing is written\nok 16 another session's main conversation cannot edit a file the run writes\nok 17 another session's subagent cannot edit it either\nok 18 another session cannot write the file with a shell command either\nok 19 files the run does not write stay editable from another session\nok 20 the owning session and its agents can edit the file\nok 21 after the user states the owner is closed, the edit is allowed\nok 22 a run older than 24 hours no longer guards its files\nok 23 with no open run, or outside a VBW project, edits are allowed\nok 24 a plan run in another session guards every project file\nok 25 a QA run in another session guards no file",
-        "at": "2026-11-09T18:16:55Z",
         "fp": "b1a035ea2ad48bf498f3bf6b77f243ca43a493963c7a8ca58cf0042e87d9ab57",
-        "reused": true
+        "at": "2026-11-09T19:45:22Z",
+        "why": "reads the version: plugin/.claude-plugin/plugin.json"
       },
       "C204": {
         "status": "pass",
@@ -91883,11 +91883,11 @@
       "C219": {
         "status": "pass",
         "exit": 0,
-        "seconds": 69.4,
+        "seconds": 66.3,
         "tail": "1..6\nok 1 R149: the session-start hook says the same on a record over 2 MB, with no error\nok 2 R149: the Bash and file guards answer the same on a record over 2 MB, with and without a run\nok 3 R149: the approve hooks answer the same on a record over 2 MB\nok 4 R149: the status line shows the same on a record over 2 MB, before and during a run\nok 5 R149: the panel shows the same on a record over 2 MB\nok 6 R149: tools/bench-hooks.sh measures the guards and the status line on a record over 2 MB",
-        "at": "2026-11-09T18:16:55Z",
         "fp": "977b1d17bebb3a7f2a05f6e1a086e4ab8ea822a542fe24ac6594a9471630b94f",
-        "reused": true
+        "at": "2026-11-09T19:45:22Z",
+        "why": "reads the version: plugin/.claude-plugin/plugin.json"
       },
       "C220": {
         "status": "pass",
@@ -91928,11 +91928,11 @@
       "C224": {
         "status": "pass",
         "exit": 0,
-        "seconds": 66.1,
+        "seconds": 74.3,
         "tail": "1..6\nok 1 R150: the schema-4 fixture loads and shows correctly in this VBW\nok 2 R150: a VBW that reads up to schema 3 asks for a newer VBW on the schema-4 fixture, never calling it corrupt\nok 3 R150: a VBW that reads up to schema 3 asks for a newer VBW on every record this VBW writes: 0, 1, 3 and 51 checks\nok 4 R150: the status line shows the same on a format-4 record with 0 and 60 checks as on an older one, idle and during a run, with no error\nok 5 R150: the session-start hook says the same on a format-4 record as on an older one, with no error\nok 6 R150: the panel shows the same on a format-4 record with 0 and 60 checks as on an older one",
-        "at": "2026-11-09T18:16:55Z",
         "fp": "9546374c2244d2d507a4683c474557bb6a5653d90a82065dbd248f02e95b030d",
-        "reused": true
+        "at": "2026-11-09T19:45:22Z",
+        "why": "reads the version: plugin/.claude-plugin/plugin.json"
       },
       "C225": {
         "status": "pass",
@@ -91991,11 +91991,11 @@
       "C231": {
         "status": "pass",
         "exit": 0,
-        "seconds": 109.9,
+        "seconds": 115.7,
         "tail": "31: the reference is one jq call of the guard's shape, over the bench's own program and document, never the shipped guard, a project file or the old counting program\nok 15 R231: the reference program and document are deterministic and of the sizes the provenance states, the document a JSON object of at least 50 KB, and the guard-shaped call runs on them\nok 16 R231: the provenance comment names the shape and the sizes, the M1 Max figures from five dated runs and GitHub's shard-1 figure, and NOMINAL_WHEN names a month\nok 17 R233: the provenance comment names the two Linux images with their jq versions and dated figures beside the Mac and GitHub macOS ones\nok 18 R233: the reference keeps the guard's proportion: its program is within 10% of the size of the shipped Bash guard and the programs.jq it includes (PR #730 grew the guard; the reference follows or the guard shrinks)\nok 19 R233: the gap is never closed by a wider allowance: the bench reads no operating system name and has one nominal figure\nok 20 R234: a first difference at or over the margin followed by one under it passes, and the first alone asks for the second measure\nok 21 R234: two differences at or over the margin fail, and the words name both measures\nok 22 R234: a startup above the hook budget in either run reads busy with the startup, as the bench's own rule; a startup at the budget never does\nok 23 R234: the timed waiting case judges through waiting_judge: it skips as busy, measures again on again, and fails with the judge's words\nok 24 R275: a case's budget is scaled by the reference measured beside it: a slow machine throughout marks every case slow and fails none\nok 25 R275: a case slow on a machine whose reference beside it is nominal is over its budget, measured again first, while the other cases pass\nok 26 R275: measured again, a case and the reference beside it are both measured anew: the second pair judges it\nok 27 R275: the busy-machine rule stays: a startup above the hook limit judges nothing",
-        "at": "2026-11-09T18:16:55Z",
         "fp": "e793b124a2853ca98406f9890c1b9dfdad8f49b126f175a6b723f4671450cecf",
-        "reused": true
+        "at": "2026-11-09T19:45:22Z",
+        "why": "reads the version: plugin/.claude-plugin/plugin.json"
       },
       "C232": {
         "status": "pass",
@@ -92081,11 +92081,11 @@
       "C241": {
         "status": "pass",
         "exit": 0,
-        "seconds": 196.0,
+        "seconds": 254.1,
         "tail": "ok 16 R145: a phase that never escalated keeps the small-change discount\nok 17 R145: a tier forced with vbw config rigor, never escalated, keeps the small-change discount\nok 18 R145: the QA round's tier is the raised depth when an escalated phase is among those to verify\nok 19 with no setting the mode is auto, and the config listing says so\nok 20 vbw config rigor sets each of auto, express, standard and deep\nok 21 an invalid mode is refused with the allowed list and the setting stays\nok 22 a forced mode overrides the computed tier when planning, up or down\nok 23 changing the mode re-tiers phases whose work has not started, and auto computes again\nok 24 a phase whose work has started keeps its tier when the mode changes\nok 25 changing the mode never makes the approved contract need approving again\nok 26 init writes the detected commands into spec.md and the record\nok 27 sync makes the record's commands exactly the spec's: changed, added and removed\nok 28 an empty Commands section removes every command\nok 29 a spec without a Commands section leaves the record's commands as they are\nok 30 a JSON array keeps an argument that contains spaces\nok 31 malformed command lines and duplicate names are errors with line numbers; nothing changes\nok 32 after the commands change, next asks for approval until the user approves them\nok 33 approval is refused while the spec's commands and the record's differ\nok 34 vbw config rigor re-tiers unstarted phases only, forced or recomputed\nok 35 a phase the Architect raised to deep is deep again after config rigor express then auto",
-        "at": "2026-11-09T15:45:51Z",
         "fp": "c3836073bec4f93d2e4494fed8606d7db8de4dec09b7f9a14777f400792ec841",
-        "reused": true
+        "at": "2026-11-09T19:45:22Z",
+        "why": "reads the version: plugin/.claude-plugin/plugin.json"
       },
       "C242": {
         "status": "pass",
@@ -92153,11 +92153,11 @@
       "C249": {
         "status": "pass",
         "exit": 0,
-        "seconds": 64.4,
+        "seconds": 71.3,
         "tail": "1..11\nok 1 R162: every refusal written out in cmd-apply.sh and cmd-run.sh carries its next step\nok 2 R162: every kernel line that writes 'refused:' carries its next step\nok 3 R162: a record write the kernel refuses as invalid ends with its next step, and writes nothing\nok 4 R162: every refusal of vbw run confirm ends with its next step\nok 5 R162 R216 R220: every refusal of a full apply ends with its next step\nok 6 R162 R216 R220: every refusal of vbw apply --add ends with its next step\nok 7 R162 R216 R220: every refusal of vbw apply --patch ends with its next step\nok 8 R162: every refusal of vbw run start ends with its next step\nok 9 R162 R219: every block of the file guard and the Bash guard ends with its next step\nok 10 R162: a guard that failed during a run blocks with a next step\nok 11 R216 R220: apply_next answers the two-owner (ordered and beside), mixed-owner and empty-filter messages with their own arms",
-        "at": "2026-11-09T18:16:55Z",
         "fp": "519896c0dfda601738e1bd71b8b65877e664a9d86e471d0b96c2aef1efda7c2e",
-        "reused": true
+        "at": "2026-11-09T19:45:22Z",
+        "why": "reads the version: plugin/.claude-plugin/plugin.json"
       },
       "C250": {
         "status": "pass",
@@ -92171,29 +92171,29 @@
       "C251": {
         "status": "pass",
         "exit": 0,
-        "seconds": 28.5,
+        "seconds": 32.4,
         "tail": "1..9\nok 1 R164: with only the version files and the changelog changed since a passing proof, the release run reuses it\nok 2 R164: the same holds when the version change is committed\nok 3 R164: any other changed file, committed or not, runs everything and says why\nok 4 R164: a new untracked file runs everything and says why\nok 5 R164: with no proof recorded, the release run runs everything and says why\nok 6 R164: when the last proof failed, the release run runs everything and says why\nok 7 R164: when the proof is reused, a failing benchmark or timed check still fails the run\nok 8 R164: the CI shards run their whole share whatever proof is recorded\nok 9 R164: bump-version.sh --help prints its usage and changes nothing; an unknown flag is refused with the usage and changes nothing",
-        "at": "2026-11-09T18:16:55Z",
         "fp": "80591fb718986fab415be8f70c38cc801722e12ccc05aad150c6441f83794838",
-        "reused": true
+        "at": "2026-11-09T19:45:22Z",
+        "why": ".claude-plugin/marketplace.json changed"
       },
       "C252": {
         "status": "pass",
         "exit": 0,
-        "seconds": 70.8,
+        "seconds": 76.9,
         "tail": "1..10\nok 1 R165: during a run a guard that crashes blocks the write or command, saying the guard failed and to run vbw doctor\nok 2 R165: started in a subfolder of the project, during a run a guard that crashes still blocks\nok 3 R165: during a run a guard that cannot start blocks: the guard file missing or unreadable\nok 4 R165: during a run a guard that cannot start because jq is missing blocks\nok 5 R165: during a run a guard that runs past its time limit is stopped and the action blocked; docs/guards.md states the limit\nok 6 R165: during a run a record that cannot be parsed blocks the action when the guard must read it\nok 7 R165: the run-open marker exists exactly while a run is open, outlives a record that cannot be read, and a broken guard goes quiet when the run ends\nok 8 R165: in a VBW project with no open run a failing guard lets the action through as before\nok 9 R165: outside VBW projects a failing or missing guard changes nothing and prints nothing\nok 10 R165: with the guards intact a run still gets their ordinary answers, and the doctor's guard self-test passes",
-        "at": "2026-11-09T18:16:55Z",
         "fp": "3974be14db366f168f2e9b291226dfca3486024f14d0076397606898b8e370f2",
-        "reused": true
+        "at": "2026-11-09T19:45:22Z",
+        "why": "reads the version: plugin/.claude-plugin/plugin.json"
       },
       "C253": {
         "status": "pass",
         "exit": 0,
-        "seconds": 223.4,
+        "seconds": 279,
         "tail": "ok 3 R166: a check that declares no files is reused when nothing it read changed, and runs when a file it read changed\nok 4 R166: deleting a file a check read runs that check again\nok 5 R166: renaming a file a check read runs that check again\nok 6 R166: removing a file from a folder a check listed runs that check again, and only it\nok 7 R166: a content change to a file in a listed folder that no check opened runs nothing\nok 8 R166: a changed approved definition runs that check again\nok 9 R166: a change to a check's own test file, approved again, runs that check again\nok 10 R166: a check whose last result failed runs again though nothing it read changed, and the summary says why\nok 11 R166: a check that never passed runs, and the summary says why\nok 12 R166: results saved without a read list always run again, and the summary says why\nok 13 R166: vbw prove --full runs every check, reuses nothing and is recorded as full; a proof that reused results is not full\nok 14 R166: a proof saves the read list of every check and project command in the store, and none in the record\nok 15 R166: a check runs in a clean copy of the committed code, not in the working folder\nok 16 R175: a passing proof records the fingerprint of the record without its evidence or schema, so a later record change is no 'nothing committed'\nok 17 R166: a change to a file a check and the test command read runs both and nobody else, each saying why\nok 18 R166: a reused line keeps the time of the proof that really ran it, across proofs\nok 19 R166: vbw fix done takes the checks of every finished requirement as candidates, reuses the unchanged ones and saves read lists\nok 20 R166: vbw fix done runs its checks in clean copies\nok 21 R166: a failing check that no named fix's files serve fails every named fix\nok 22 R166: a failing check that a named fix's files serve fails that fix and not another",
-        "at": "2026-11-09T15:45:51Z",
         "fp": "4fd10815d16b00a8e3f550072664418550d8d9c4bb4e1d368983bbd5de9777ea",
-        "reused": true
+        "at": "2026-11-09T19:45:22Z",
+        "why": "reads the version: plugin/.claude-plugin/plugin.json"
       },
       "C254": {
         "status": "pass",
@@ -92216,11 +92216,11 @@
       "C256": {
         "status": "pass",
         "exit": 0,
-        "seconds": 11.5,
+        "seconds": 13.1,
         "tail": "1..9\nok 1 R166: docs/proof.md names the read list\nok 2 R166: docs/proof.md names where read lists are kept\nok 3 R166: docs/proof.md names the limits and how to run everything fresh\nok 4 R166: docs/proof.md says each unit starts without the build output earlier units wrote, and how git use is seen\nok 5 R166: docs/proof.md no longer describes the served-files rule, the passes cache or the documentation-only rule\nok 6 R166: recording read lists adds no tracing tool as a runtime dependency\nok 7 R166: the guards and the status line never read the read lists\nok 8 R166: the guards never open the store of recorded runs, even when they refuse a write to it\nok 9 R226: docs/proof.md names the cause of a start-up listing of the folder holding a script run by its path, what VBW does about it, and that a listing the test itself asks for stays a read",
-        "at": "2026-11-09T18:16:55Z",
         "fp": "66fea21440b31ca4347a91b43a1ac9e4fcba994caae0c29a018400cf716b39ec",
-        "reused": true
+        "at": "2026-11-09T19:45:22Z",
+        "why": "reads the version: plugin/.claude-plugin/plugin.json"
       },
       "C257": {
         "status": "pass",
@@ -92243,10 +92243,10 @@
       "C259": {
         "status": "pass",
         "exit": 0,
-        "seconds": 1.8,
+        "seconds": 2.2,
         "tail": "1..5\nok 1 R167: VBW's spec declares its single-file form: bats on one file\nok 2 R167: VBW's declared test files are every tracked tests/*.bats except the timed ones\nok 3 R167: VBW's spec names the shell lint as its own project command\nok 4 R167: bash tools/test.sh --lint runs shellcheck on every shell file under tools/ and runs no test file\nok 5 R167: tools/test.sh keeps its usage line and documents --lint in it",
         "fp": "a4c3fc4a1c937f7ed83dbad83a14a23b4a955b4576464496a0b301351ed0b484",
-        "at": "2026-11-09T19:30:55Z",
+        "at": "2026-11-09T19:45:22Z",
         "why": "reads the project through git"
       },
       "C260": {
@@ -92261,11 +92261,11 @@
       "C261": {
         "status": "pass",
         "exit": 0,
-        "seconds": 189.6,
+        "seconds": 221.9,
         "tail": "1..14\nok 1 R168: a changed approved command re-runs that command only, and its line says why\nok 2 R168: a changed single-file form re-runs every test file and nothing else\nok 3 R168: a changed list of test files runs the files it adds and nothing else\nok 4 R168: a change to a file every test file reads re-runs those files and nothing else, and each line names the file\nok 5 R168: an added file that no recorded run read or listed the folder of runs nothing: no run could see it\nok 6 R168: a deleted file that no recorded run read or listed the folder of runs nothing\nok 7 R168: a deleted file of the check's requirement's plans runs that check again though no run read it: a check may test whether a path exists\nok 8 R168: a content change to a file no recorded run read runs nothing\nok 9 R168: when the file system cannot record reads, everything runs and the summary says so\nok 10 R168: where a copy is not seen as a read, a unit that copies a file runs again when it changes, and the summary says why\nok 11 R168: a clone with no earlier recorded run runs everything and says so\nok 12 R168: several causes at once are each listed\nok 13 R168: a proof cut short saved nothing: the next proof reuses as if it had not run, and names no cause\nok 14 R168: every summary, full or not, counts the checks and the test files that ran and were reused, and each reused result names its proof",
-        "at": "2026-11-09T15:45:51Z",
         "fp": "992ae02d7523f41a5a6bb86c89f829cd7303fbff22a1c2259e245f1b96573335",
-        "reused": true
+        "at": "2026-11-09T19:45:22Z",
+        "why": "reads the version: plugin/.claude-plugin/plugin.json"
       },
       "C262": {
         "status": "pass",
@@ -92333,11 +92333,11 @@
       "C269": {
         "status": "pass",
         "exit": 0,
-        "seconds": 12.3,
+        "seconds": 12.5,
         "tail": "1..3\nok 1 R170: a passing proof that reused results is reused by the release run\nok 2 R170: a proof that skipped a command not yet approved is not reused, and the reason says so\nok 3 R170: a proof where the quick command stood in for the test command is not reused, and the reason says so",
-        "at": "2026-11-09T18:16:55Z",
         "fp": "cca5744f1bf77d15e4a186f9542f9b6d64295f4334e6d2f6ac8581598920a628",
-        "reused": true
+        "at": "2026-11-09T19:45:22Z",
+        "why": "reads the version: plugin/.claude-plugin/plugin.json"
       },
       "C270": {
         "status": "pass",
@@ -92441,20 +92441,20 @@
       "C281": {
         "status": "pass",
         "exit": 0,
-        "seconds": 8.5,
+        "seconds": 10.4,
         "tail": "1..6\nok 1 R173: a render in a VBW project writes the session's figures to its own side file\nok 2 R173: a render with no cost field leaves the side file unchanged\nok 3 R173: the record is never written by a render, and no temporary file is left behind\nok 4 R173: outside a VBW project nothing is written\nok 5 R173: a session id that is not a safe token writes no file\nok 6 R173: when the runtime folder cannot be written the status line still renders",
-        "at": "2026-11-09T15:45:51Z",
         "fp": "c052807c1ec346404bbfd08fdc45f7de2b58f91b0749e988a4b4dbec181a1512",
-        "reused": true
+        "at": "2026-11-09T19:45:22Z",
+        "why": "reads the version: plugin/.claude-plugin/plugin.json"
       },
       "C282": {
         "status": "pass",
         "exit": 0,
-        "seconds": 55.6,
+        "seconds": 67.6,
         "tail": "1..10\nok 1 R173 (F140): a run id is the kind and its start second, and a second run in that second gets -2, a third -3: no two runs share an id\nok 2 R173: the run keeps the opening figures; its cost is end minus start, appended and committed\nok 3 R173: every finished run is appended in order, each with its own cost\nok 4 R173: no figures at the start: the run's cost is unknown (null), never 0\nok 5 R173: no figures at the end: the run's cost is unknown (null)\nok 6 R173: no session id: the run is recorded with session null and cost unknown\nok 7 R173: another session's figures never count for this run\nok 8 R173 (F143): a figure that fell during the run makes its cost unknown (null), and the run still ends\nok 9 R173: Claude Code's token figures are per request, so a falling one never makes a run unknown (through the status line's own side file)\nok 10 R173: a side file written by an earlier status line (with token fields) counts by its dollars alone",
-        "at": "2026-11-09T15:45:51Z",
         "fp": "a7bd31e319a9cd8896ade2634490c42e5d1372b6f25df9c32c0a3ef98ceae86c",
-        "reused": true
+        "at": "2026-11-09T19:45:22Z",
+        "why": "reads the version: plugin/.claude-plugin/plugin.json"
       },
       "C283": {
         "status": "pass",
@@ -92513,11 +92513,11 @@
       "C289": {
         "status": "pass",
         "exit": 0,
-        "seconds": 7.4,
+        "seconds": 8.6,
         "tail": "1..2\nok 1 R173: the bench's status line cases write the cost side file, and pass\nok 2 R173: a status line that never writes the side file fails the bench, on both records",
-        "at": "2026-11-09T18:16:55Z",
         "fp": "fbe13635ca6021b4583a358cf68ff6ab8e9119a2fe8377ba7eb14d6645ccb075",
-        "reused": true
+        "at": "2026-11-09T19:45:22Z",
+        "why": "reads the version: plugin/.claude-plugin/plugin.json"
       },
       "C290": {
         "status": "pass",
@@ -92864,38 +92864,38 @@
       "C328": {
         "status": "pass",
         "exit": 0,
-        "seconds": 14.2,
+        "seconds": 17.2,
         "tail": "1..13\nok 1 R184: the project's .claude/settings.json turns VBW off: nothing printed, exit 3\nok 2 R184: the user's settings.json turns VBW off when the project says nothing; the project's true wins over it\nok 3 R184: the project's .claude/settings.local.json wins over its .claude/settings.json, both ways\nok 4 R184: the user's settings file is found as VBW finds it: CLAUDE_CONFIG_DIR, else ~/.config/claude-code, else ~/.claude\nok 5 R184: started in a subfolder, the settings are read from the project folder (the nearest folder up holding .git)\nok 6 R184: started in a submodule with no record of its own, the settings are read from the VBW project above it\nok 7 R184: started in a linked worktree nested in a VBW project, with no record of its own, the project's settings are not read\nok 8 R184: nothing that does not turn VBW off changes anything: missing files, no entry, another plugin off, or a file that is not JSON\nok 9 R184: where VBW is on, the output is byte-for-byte the same as with no settings at all, and the cost file is still written\nok 10 R184: where VBW is off, the status line writes no file anywhere in the project\nok 11 R184: where the session runs in the project and the project's file turns VBW off, the verdict costs one jq\nok 12 R184: the project Claude Code names decides, not the folder the status line runs in\nok 13 R184: the script never runs the saved earlier status line, nor any command from the settings (D356)",
-        "at": "2026-11-09T15:45:51Z",
         "fp": "fa0b912f5fa912133e2d5305699e3e1e521407eda241159669c51b7ae4fe6e45",
-        "reused": true
+        "at": "2026-11-09T19:45:22Z",
+        "why": "reads the version: plugin/.claude-plugin/plugin.json"
       },
       "C329": {
         "status": "pass",
         "exit": 0,
-        "seconds": 17.9,
+        "seconds": 24.2,
         "tail": "s own input\nok 2 R184: where VBW is off and there was no earlier status line, the setting shows nothing\nok 3 R184: where VBW is on, the setting shows VBW's lines only and never runs the earlier status line\nok 4 R184: the setting starts one bash, whether VBW is off or on: the installed script runs inside it\nok 5 R184: with no input and stdin left open, the setting does not hang\nok 6 R184: vbw statusline on updates an older VBW setting in place, keeping the refresh interval, every other field and the saved earlier status line\nok 7 R184: vbw statusline on keeps the earlier status line's padding and its own refresh interval in the setting\nok 8 R184: vbw statusline on gives an older VBW setting the saved earlier status line's padding when it has none, and a padding set there stays\nok 9 R184: vbw statusline off still brings back the earlier status line exactly, or removes VBW's when there was none\nok 10 R184: vbw doctor flags an older VBW setting with vbw statusline on as the fix, and not once it is updated\nok 11 R184: a session that starts in a VBW project updates an older VBW setting, keeping its interval and the saved earlier status line\nok 12 R224: outside a VBW project the setting shows the user's earlier status line unchanged, several lines and colour codes included, given Claude Code's own input\nok 13 R224: outside a VBW project with no earlier status line, the setting shows nothing at all: no 'no project here' line, and no VBW 1 line for a .vbw-planning folder\nok 14 R224: the script judges by the folder Claude Code reports, else the one it runs in: no input from an outside folder exits 3; an outside folder with a project named in the input renders as today\nok 15 R224: a setting written by 2.1.19, its text unchanged, hands back outside a VBW project: no rewrite is needed\nok 16 R224 docs: docs/statusline.md says exit 3 hands back both where VBW is turned off and where there is no VBW project, and no longer shows the no-project line as what is shown outside a project",
-        "at": "2026-11-09T17:40:47Z",
         "fp": "6d706f057c5ccd5364eb4a01ddad3a85fb3f2728190fc67e76f9f47c8ec51f97",
-        "reused": true
+        "at": "2026-11-09T19:45:22Z",
+        "why": "reads the version: plugin/.claude-plugin/plugin.json"
       },
       "C330": {
         "status": "pass",
         "exit": 0,
-        "seconds": 5.8,
+        "seconds": 6.1,
         "tail": "1..4\nok 1 R184: in a project that turns VBW off, the real setting shows the user's earlier status line with Claude Code's input\nok 2 R184: in a project that turns VBW off, with no earlier status line, nothing shows: no VBW line, no 'unavailable'\nok 3 R184: where VBW is on, the real setting prints exactly what VBW's script prints, and the earlier status line never runs\nok 4 R184: a setting from an older VBW, not yet updated, shows no VBW line in a project that turns VBW off",
-        "at": "2026-11-09T18:16:55Z",
         "fp": "3b50fe4150340023c092a793ef6a3955eb329bb7051768079a0c60dd3c49c50b",
-        "reused": true
+        "at": "2026-11-09T19:45:22Z",
+        "why": "reads the version: plugin/.claude-plugin/plugin.json"
       },
       "C331": {
         "status": "pass",
         "exit": 0,
-        "seconds": 27.5,
+        "seconds": 28.7,
         "tail": "1..8\nok 1 R184: the bench measures VBW's own cost in the hand-back where VBW is off against 10 ms, the platform's bash, jq and sh startup and the earlier status line left out\nok 2 R184: on a machine that can be measured, VBW's own cost in the hand-back is within 10 ms\nok 3 R184: VBW's script above 10 ms makes the hand-back fail the bench, naming the cost and the limit\nok 4 R184: a hand-back that never shows the earlier status line fails the bench\nok 5 R184: on a machine too busy to measure, the hand-back is not judged either\nok 6 R224: the bench measures VBW's own cost in the hand-back outside a VBW project as 'status line (no project)', as it measures 'status line (VBW off)', against the 10 ms hand-back budget\nok 7 R224: a hand-back outside a VBW project that never shows the earlier status line fails the bench\nok 8 R224: VBW's script above 10 ms, though under the status line's 60 ms, makes the hand-back outside a VBW project fail the bench",
-        "at": "2026-11-09T18:16:55Z",
         "fp": "4fa21950dd10ab4b8ba500e56341e5b7e18c6ce9f2aa1b422a8cd9dd4db2811f",
-        "reused": true
+        "at": "2026-11-09T19:45:22Z",
+        "why": "reads the version: plugin/.claude-plugin/plugin.json"
       },
       "C332": {
         "status": "pass",
@@ -92918,20 +92918,20 @@
       "C334": {
         "status": "pass",
         "exit": 0,
-        "seconds": 69.6,
+        "seconds": 68.0,
         "tail": "1..12\nok 1 R185: a session that loaded VBW from a working tree runs that tree's vbw, ahead of an installed release\nok 2 R185: the same holds outside a VBW project and with the installed VBW turned off for the project\nok 3 R185: the env file keeps what it held, and a working tree whose path has a space and a quote is put first whole\nok 4 R185 (R285): an installed session puts its own copy's bin first on PATH, one line in the env file\nok 5 R185: in a VBW project the session's one line names the kernel in use, its path and its version\nok 6 R185: when the env file cannot be written, the session is told once, naming the exact kernel path to use\nok 7 R185: an approval answered in the menu is recorded by the loaded kernel, with an installed release that cannot read the record first on PATH\nok 8 R185: with an installed release first on PATH, VBW's hooks (session start, approval menu, guards) never run it\nok 9 R185: the unwritable-env-file warning survives a VBW 1 command copy removal and a project made by a newer VBW\nok 10 R285: 17 --plugin-dir starts and then an installed start leave one VBW PATH line, the installed copy's, and every other line byte for byte\nok 11 R285: a --plugin-dir start after an installed start leaves one line, the tree's\nok 12 R285: an installed start keeps the session record naming the copy Claude Code loaded for the session",
-        "at": "2026-11-09T18:16:55Z",
         "fp": "1690eeddc1c35f8732ce10b2b2161b14398b314403a88668913e2ed0dcac015c",
-        "reused": true
+        "at": "2026-11-09T19:45:22Z",
+        "why": "reads the version: plugin/.claude-plugin/plugin.json"
       },
       "C335": {
         "status": "pass",
         "exit": 0,
         "seconds": 12.8,
         "tail": "1..10\nok 1 R185: vbw --version prints the plugin's version, as vbw version does, in and outside a project\nok 2 R185: vbw doctor says the vbw on PATH is the loaded plugin's, with its path and version\nok 3 R185: in a session that loaded a working tree, an installed release first on PATH is a warning, with the fix naming the loaded kernel\nok 4 R185 (R285): outside a Claude Code session doctor names the vbw on PATH and compares it with nothing, never with the kernel it runs from\nok 5 R185: no vbw on PATH at all is a warning too, with the fix naming the loaded kernel\nok 6 R185: a session id that is not a plain name finds no record: doctor ignores a file the id points at\nok 7 R185: the plain-name rule for a session id reads the same in the hook, the status line and the shared function\nok 8 R285 doctor: after an installed start, the installed copy's vbw first on PATH is ok, though doctor runs from another kernel\nok 9 R285 doctor: after an installed start, a stale working tree first on PATH is a warning naming both folders and the fix: start or resume the session again\nok 10 R285 doctor: a session id with no record says doctor cannot tell which copy the session loaded, with the fix, instead of comparing with itself",
-        "at": "2026-11-09T18:16:55Z",
         "fp": "f5983a0b28e3c1ae40625b58f7e03a16996882f5ff8cbd47570acc5ab6cfbd75",
-        "reused": true
+        "at": "2026-11-09T19:45:22Z",
+        "why": "reads the version: plugin/.claude-plugin/plugin.json"
       },
       "C336": {
         "status": "pass",
@@ -92945,20 +92945,20 @@
       "C337": {
         "status": "pass",
         "exit": 0,
-        "seconds": 40.9,
+        "seconds": 43.9,
         "tail": "1..8\nok 1 R185: a session that loaded a working tree shows the tree's version, rendered by the tree's own script\nok 2 R185: in a normal installed session the status line shows the newest installed version, as before\nok 3 R185: the choice never leaks: a later normal session, and the same session resumed without the tree, show the installed copy\nok 4 R185: a working tree that was moved or deleted falls back to the installed copy instead of failing\nok 5 R185: a recorded folder that is no VBW plugin any more is never run: the installed copy renders\nok 6 R185: with the installed VBW turned off for the project, a session that loaded the tree still shows VBW, and one without it still hands back\nok 7 R185: the session start writes only to the project's runtime folder, VBW's Claude config folder and the env file, whatever the session id\nok 8 R185: the status line of a loaded tree runs no git process",
-        "at": "2026-11-09T18:16:55Z",
         "fp": "cc14417e3b3a29df3c3de96f5819f39f5250e20e9e16ef0c75494cfed3d2c880",
-        "reused": true
+        "at": "2026-11-09T19:45:22Z",
+        "why": "reads the version: plugin/.claude-plugin/plugin.json"
       },
       "C338": {
         "status": "pass",
         "exit": 0,
-        "seconds": 10.5,
+        "seconds": 10.7,
         "tail": "1..3\nok 1 R185: the bench measures the loaded copy's status line against the 60 ms limit, and the hooks against 20 ms\nok 2 R185: a loaded copy's status line above 60 ms fails the bench, naming the cost and the limit\nok 3 R185: when the session start does not record the loaded copy, the bench fails instead of measuring the installed one",
-        "at": "2026-11-09T18:16:55Z",
         "fp": "70edcfbe7dc6a57d89688d5212c7cffc2e1b541cb671ddf7f2f420eba2706a3d",
-        "reused": true
+        "at": "2026-11-09T19:45:22Z",
+        "why": "reads the version: plugin/.claude-plugin/plugin.json"
       },
       "C339": {
         "status": "pass",
@@ -92990,20 +92990,20 @@
       "C342": {
         "status": "pass",
         "exit": 0,
-        "seconds": 69.5,
+        "seconds": 66.2,
         "tail": "1..12\nok 1 R185: a session that loaded VBW from a working tree runs that tree's vbw, ahead of an installed release\nok 2 R185: the same holds outside a VBW project and with the installed VBW turned off for the project\nok 3 R185: the env file keeps what it held, and a working tree whose path has a space and a quote is put first whole\nok 4 R185 (R285): an installed session puts its own copy's bin first on PATH, one line in the env file\nok 5 R185: in a VBW project the session's one line names the kernel in use, its path and its version\nok 6 R185: when the env file cannot be written, the session is told once, naming the exact kernel path to use\nok 7 R185: an approval answered in the menu is recorded by the loaded kernel, with an installed release that cannot read the record first on PATH\nok 8 R185: with an installed release first on PATH, VBW's hooks (session start, approval menu, guards) never run it\nok 9 R185: the unwritable-env-file warning survives a VBW 1 command copy removal and a project made by a newer VBW\nok 10 R285: 17 --plugin-dir starts and then an installed start leave one VBW PATH line, the installed copy's, and every other line byte for byte\nok 11 R285: a --plugin-dir start after an installed start leaves one line, the tree's\nok 12 R285: an installed start keeps the session record naming the copy Claude Code loaded for the session",
-        "at": "2026-11-09T18:16:55Z",
         "fp": "794a3e0cbb4e606196379a5c8d05a4be79bf87a9966d37c842ec316c49e53fc8",
-        "reused": true
+        "at": "2026-11-09T19:45:22Z",
+        "why": "reads the version: plugin/.claude-plugin/plugin.json"
       },
       "C343": {
         "status": "pass",
         "exit": 0,
-        "seconds": 68.5,
+        "seconds": 67.9,
         "tail": "1..12\nok 1 R185: a session that loaded VBW from a working tree runs that tree's vbw, ahead of an installed release\nok 2 R185: the same holds outside a VBW project and with the installed VBW turned off for the project\nok 3 R185: the env file keeps what it held, and a working tree whose path has a space and a quote is put first whole\nok 4 R185 (R285): an installed session puts its own copy's bin first on PATH, one line in the env file\nok 5 R185: in a VBW project the session's one line names the kernel in use, its path and its version\nok 6 R185: when the env file cannot be written, the session is told once, naming the exact kernel path to use\nok 7 R185: an approval answered in the menu is recorded by the loaded kernel, with an installed release that cannot read the record first on PATH\nok 8 R185: with an installed release first on PATH, VBW's hooks (session start, approval menu, guards) never run it\nok 9 R185: the unwritable-env-file warning survives a VBW 1 command copy removal and a project made by a newer VBW\nok 10 R285: 17 --plugin-dir starts and then an installed start leave one VBW PATH line, the installed copy's, and every other line byte for byte\nok 11 R285: a --plugin-dir start after an installed start leaves one line, the tree's\nok 12 R285: an installed start keeps the session record naming the copy Claude Code loaded for the session",
-        "at": "2026-11-09T18:16:55Z",
         "fp": "127086ffc1beb40afcf45403b24f260f7be8f18d24e422dd3f03fbb17beaf85e",
-        "reused": true
+        "at": "2026-11-09T19:45:22Z",
+        "why": "reads the version: plugin/.claude-plugin/plugin.json"
       },
       "C344": {
         "status": "pass",
@@ -93215,11 +93215,11 @@
       "C367": {
         "status": "pass",
         "exit": 0,
-        "seconds": 1.4,
+        "seconds": 1.5,
         "tail": "1..7\nok 1 R189: docs/panel.md describes the what's happening now box at the top of the Now tab\nok 2 B5: docs/panel.md says the box draws the step's parts as a strip with its figure, and the milestone's end with its basis\nok 3 2.1.11: docs/panel.md says a time on another day names the day\nok 4 R189: docs/panel.md shows events and messages starting with their clock time\nok 5 R189: docs/panel.md says each What's next row is a button that fills the prompt, with a size chip\nok 6 R189: docs/panel.md says new things stay marked until you have seen them\nok 7 R227: docs/panel.md says the Now panel's empty state reads 'VBW is not waiting on you.', and the old sentence is gone from plugin/ and docs/",
-        "at": "2026-11-09T18:16:55Z",
         "fp": "48b511ca85c7e42f6fae876587ba1711959f96c5fca1ebf28235beb691faa441",
-        "reused": true
+        "at": "2026-11-09T19:45:22Z",
+        "why": "reads the version: plugin/.claude-plugin/plugin.json"
       },
       "C368": {
         "status": "pass",
@@ -93314,11 +93314,11 @@
       "C378": {
         "status": "pass",
         "exit": 0,
-        "seconds": 64.9,
+        "seconds": 48.3,
         "tail": "1..19\nok 1 R190: a build shows the step, its plans, parts done and the clock time only\nok 2 R190: a background proof shows 'proving N of M checks' and its clock time, and counts up\nok 3 R190: a proof inside a fix shows as what the fix is doing; the time stays the fix's\nok 4 R190: a late step with parts shows its moved clock time, later than usual\nok 5 R190 (F246): a step with parts past its end that the kernel has not moved says later than usual too\nok 6 R190: a late step without parts keeps its clock time and says how many minutes late\nok 7 R190: with no basis the step and what it is doing show, with no time\nok 8 R190: an end on another day names the day, in 24-hour local time\nok 9 R190: a note whose run is not the open run, or whose proof process is gone, shows no step\nok 10 R190: the status line works no time out itself: with the run open and no note, no end time\nok 11 C1: a running step reads 'working', what it is doing, minutes so far and 'until around' its clock time, in the accent colour\nok 12 C1: a gate reads 'needs you', the action and since when, in amber\nok 13 C1: a gate with no 'since' still reads 'needs you' and the action\nok 14 C1: a shipped milestone reads 'idle' with when it shipped, in green\nok 15 C1: nothing running and nothing waiting reads 'idle' with the next step\nok 16 C1: the three state colours are the panel palette's accent, need and progress colours in 256-colour codes\nok 17 R240: a build note exactly as a run writes it (units and road keys) shows the end time in the step's first minute, then with the minutes\nok 18 R240: a proof note exactly as plugin/lib/proofsteps.sh writes it at its start (proof null, road key) shows its end time\nok 19 R240: the real-user suite's status line pattern reads the HH:MM the status line prints, so the two cannot diverge unseen",
-        "at": "2026-11-09T19:24:40Z",
         "fp": "a64cd25059185ff6fd8615d7d43907835b9d2c2c79261d7fe4954ca529efaf90",
-        "reused": true
+        "at": "2026-11-09T19:45:22Z",
+        "why": "reads the version: plugin/.claude-plugin/plugin.json"
       },
       "C379": {
         "status": "pass",
@@ -93341,20 +93341,20 @@
       "C381": {
         "status": "pass",
         "exit": 0,
-        "seconds": 0.4,
-        "tail": "TAP version 13\n# Subtest: one note, one moment: the status line, Comms and Mission Control show the identical HH:MM\nok 1 - one note, one moment: the status line, Comms and Mission Control show the identical HH:MM\n  ---\n  duration_ms: 150.051125\n  type: 'test'\n  ...\n1..1\n# tests 1\n# suites 0\n# pass 1\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 265.882",
-        "at": "2026-11-09T13:26:04Z",
+        "seconds": 0.3,
+        "tail": "TAP version 13\n# Subtest: one note, one moment: the status line, Comms and Mission Control show the identical HH:MM\nok 1 - one note, one moment: the status line, Comms and Mission Control show the identical HH:MM\n  ---\n  duration_ms: 106.850209\n  type: 'test'\n  ...\n1..1\n# tests 1\n# suites 0\n# pass 1\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 232.732208",
         "fp": "0cc0571024804563fa91cf81b555e6529c12a8ce39324ea016f3d87504aa83b9",
-        "reused": true
+        "at": "2026-11-09T19:45:22Z",
+        "why": "reads the version: plugin/.claude-plugin/plugin.json"
       },
       "C382": {
         "status": "pass",
         "exit": 0,
-        "seconds": 4.7,
+        "seconds": 5.3,
         "tail": "1..4\nok 1 R190: the hook bench measures the status line with a step running, against the status line budget\nok 2 R190: a status line that does not show the step fails the hook bench\nok 3 R235: when the status line falls back, the bench's failure names the first line and jq's error from statusline.err\nok 4 R235: a status line that renders without the step names the line it read, and no error file text",
-        "at": "2026-11-09T18:16:55Z",
         "fp": "6155c39e9b957e2c2e8627cc25480eaa4122caa790eb063f6e7bd8fb1b97c037",
-        "reused": true
+        "at": "2026-11-09T19:45:22Z",
+        "why": "reads the version: plugin/.claude-plugin/plugin.json"
       },
       "C383": {
         "status": "pass",
@@ -93468,10 +93468,10 @@
         "status": "pass",
         "exit": 0,
         "seconds": 0.3,
-        "tail": "TAP version 13\n# Subtest: one note, one moment: the step HH:MM is identical in the status line, Comms and Mission Control; the road HH:MM shows in Mission Control only\nok 1 - one note, one moment: the step HH:MM is identical in the status line, Comms and Mission Control; the road HH:MM shows in Mission Control only\n  ---\n  duration_ms: 109.666584\n  type: 'test'\n  ...\n1..1\n# tests 1\n# suites 0\n# pass 1\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 194.765708",
-        "at": "2026-11-09T13:26:04Z",
+        "tail": "TAP version 13\n# Subtest: one note, one moment: the step HH:MM is identical in the status line, Comms and Mission Control; the road HH:MM shows in Mission Control only\nok 1 - one note, one moment: the step HH:MM is identical in the status line, Comms and Mission Control; the road HH:MM shows in Mission Control only\n  ---\n  duration_ms: 99.652458\n  type: 'test'\n  ...\n1..1\n# tests 1\n# suites 0\n# pass 1\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 264.214541",
         "fp": "996e0ed34580b94a066de7cb67170ac2c9cef6a52ad59fcd6cab85ca3d64dbec",
-        "reused": true
+        "at": "2026-11-09T19:45:22Z",
+        "why": "reads the version: plugin/.claude-plugin/plugin.json"
       },
       "C396": {
         "status": "pass",
@@ -93548,11 +93548,11 @@
       "C404": {
         "status": "pass",
         "exit": 0,
-        "seconds": 34.7,
+        "seconds": 37.2,
         "tail": "1..9\nok 1 R192: the holding session reads leading, another session held by the name, after the step's cell\nok 2 R192: a /rename during the run shows at once; with the list gone the stored name shows\nok 3 R192: no name known gives the first 8 characters of the id; a lease without a session shows no holder\nok 4 R192: a long name is cut to 20 characters with an ellipsis; escape sequences never reach the terminal\nok 5 R192: with the list missing the status line renders exactly as with an empty list, and a malformed entry is skipped\nok 6 R192: a malformed file in the list does not cost the good entries their names\nok 7 R192: the list is read with one jq pass per render, only while a lease is open\nok 8 R192: the hook bench measures the status line with a lease open and a list of chats on disk\nok 9 R192: with several entries for one session the newest updatedAt wins, whatever the file order",
-        "at": "2026-11-09T15:45:51Z",
         "fp": "44369cc18c7c3991534d36feb108f945a05c6f1593d3ad55368e25a16d4671bd",
-        "reused": true
+        "at": "2026-11-09T19:45:22Z",
+        "why": "reads the version: plugin/.claude-plugin/plugin.json"
       },
       "C405": {
         "status": "pass",
@@ -93719,11 +93719,11 @@
       "C423": {
         "status": "pass",
         "exit": 0,
-        "seconds": 28.1,
+        "seconds": 27.3,
         "tail": "1..5\nok 1 R198: the hook runs vbw next once and never vbw status\nok 2 R198: the context names the project with the words of vbw status's first line\nok 3 R198: a glance older than the record gives the record's milestone, not the glance's\nok 4 R198: a record written by a newer VBW still gives the update notice, without vbw status\nok 5 R198: docs/guards.md says the hook runs vbw next once and reads the project line from the glance",
-        "at": "2026-11-09T18:16:55Z",
         "fp": "dc4f6c9b1783fd4f701cac0220f88ff09b0910f81e4531d312e3b24dcef3f037",
-        "reused": true
+        "at": "2026-11-09T19:45:22Z",
+        "why": "reads the version: plugin/.claude-plugin/plugin.json"
       },
       "C424": {
         "status": "pass",
@@ -93818,10 +93818,10 @@
       "C434": {
         "status": "pass",
         "exit": 0,
-        "seconds": 63.0,
+        "seconds": 83.2,
         "tail": "1..4\nok 1 R202: --generate builds a stand-in of at least the asked size, approved, with cache-writing and cache-reading units\nok 2 R202: the measurement prints every figure for a proof, a one-file fix round and vbw next\nok 3 R202: the sampler of the written-file lists polls at least five times a second, so a fast proof is still seen\nok 4 R202: nothing of a real user project is in the tool or in what it generates",
         "fp": "23729cd8ad38ab6e167a995bfb1b9288496cd3335bae0e6b534d82be4f5e38a7",
-        "at": "2026-11-09T19:30:55Z",
+        "at": "2026-11-09T19:45:22Z",
         "why": "reads the project through git"
       },
       "C435": {
@@ -94457,11 +94457,11 @@
       "C505": {
         "status": "pass",
         "exit": 0,
-        "seconds": 14.9,
+        "seconds": 13.2,
         "tail": "1..5\nok 1 R222: the bench measures one fixed reference workload first and prints its cost, the nominal cost on the named machines and the ratio, once and before any case\nok 2 R222: on a machine twenty times slower than nominal, a guard and a status line above their budgets but within budget times ratio are reported slow on stdout, naming cost, budget, ratio and scaled budget, and the bench exits 0\nok 3 R222: on a slow machine a case above budget times ratio still fails: OVER on stderr, exit 1, and the measure-again rule names the scaled budget\nok 4 R222: on a machine at nominal speed or faster (ratio 1 or less) the absolute budgets apply unchanged, with today's lines\nok 5 R222: the busy rule stays: when sh and jq startup alone are above the hook limit the bench reports busy, judges nothing, reference or not, and exits 0",
-        "at": "2026-11-09T18:16:55Z",
         "fp": "6facdc1c158cb409b5619e89a08c6382694df4faf64d51e333b32e0600ea4025",
-        "reused": true
+        "at": "2026-11-09T19:45:22Z",
+        "why": "reads the version: plugin/.claude-plugin/plugin.json"
       },
       "C506": {
         "status": "pass",
@@ -94484,10 +94484,10 @@
       "C508": {
         "status": "pass",
         "exit": 0,
-        "seconds": 4.6,
+        "seconds": 6.1,
         "tail": "1..3\nok 1 R223 standards: tools/check-jq-builtins.sh refuses a jq program that uses a builtin newer than 1.7.0 unless the file defines the name, naming file and line, and passes the plugin\nok 2 R223 standards: tools/check-jq-builtins.sh refuses a call of one of jq's private builtins (a name starting with _, such as _nwise, which jq 1.8 removed) unless the file defines it; a shell variable named _x passes\nok 3 R223 standards: each CI shard prints jq --version beside bash --version",
         "fp": "d4ee780802f6df0f483f9b8715273cc59c441ec7d3a3d358965da4a52071dfad",
-        "at": "2026-11-09T19:30:55Z",
+        "at": "2026-11-09T19:45:22Z",
         "why": "reads the project through git"
       },
       "C509": {
@@ -94520,20 +94520,20 @@
       "C512": {
         "status": "pass",
         "exit": 0,
-        "seconds": 5.2,
+        "seconds": 5.0,
         "tail": "1..4\nok 1 R224: outside a VBW project the setting shows the user's earlier status line unchanged, several lines and colour codes included, given Claude Code's own input\nok 2 R224: outside a VBW project with no earlier status line, the setting shows nothing at all: no 'no project here' line, and no VBW 1 line for a .vbw-planning folder\nok 3 R224: the script judges by the folder Claude Code reports, else the one it runs in: no input from an outside folder exits 3; an outside folder with a project named in the input renders as today\nok 4 R224: a setting written by 2.1.19, its text unchanged, hands back outside a VBW project: no rewrite is needed",
-        "at": "2026-11-09T15:45:51Z",
         "fp": "739c5e9c25b28caf5e951f25c83d731632b5b125dfbb5849681bcc0634bde887",
-        "reused": true
+        "at": "2026-11-09T19:45:22Z",
+        "why": "reads the version: plugin/.claude-plugin/plugin.json"
       },
       "C513": {
         "status": "pass",
         "exit": 0,
-        "seconds": 4.4,
+        "seconds": 5.7,
         "tail": "1..3\nok 1 R224: outside a VBW project (no .vbw at or above) it prints nothing and exits 3, the hand-back signal, so the setting shows the user's earlier status line instead\nok 2 R224: started in a subfolder it shows the project; a .vbw-planning folder with no .vbw at or above is outside a VBW project, so no VBW 1 line shows\nok 3 R224: a .vbw folder without a record shows the no-project line and writes no cost side file; with a record the side file is written",
-        "at": "2026-11-09T15:45:51Z",
         "fp": "47c920559a2fc9b58772152bdc1469180629bfa2be1a3ed06be85787a3f597d6",
-        "reused": true
+        "at": "2026-11-09T19:45:22Z",
+        "why": "reads the version: plugin/.claude-plugin/plugin.json"
       },
       "C514": {
         "status": "pass",
@@ -94547,20 +94547,20 @@
       "C515": {
         "status": "pass",
         "exit": 0,
-        "seconds": 13.4,
+        "seconds": 7.2,
         "tail": "1..3\nok 1 R224: the bench measures VBW's own cost in the hand-back outside a VBW project as 'status line (no project)', as it measures 'status line (VBW off)', against the 10 ms hand-back budget\nok 2 R224: a hand-back outside a VBW project that never shows the earlier status line fails the bench\nok 3 R224: VBW's script above 10 ms, though under the status line's 60 ms, makes the hand-back outside a VBW project fail the bench",
-        "at": "2026-11-09T18:16:55Z",
         "fp": "c4129721d2a277459ce459731d7d8937703f3c32c538a82a57df43ab67ab882a",
-        "reused": true
+        "at": "2026-11-09T19:45:22Z",
+        "why": "reads the version: plugin/.claude-plugin/plugin.json"
       },
       "C516": {
         "status": "pass",
         "exit": 0,
-        "seconds": 30.5,
+        "seconds": 30.2,
         "tail": "1..1\nok 1 R152, R224: without a selector the bench is the full bench: every case it can be asked for runs, in the listed order, the no-project hand-back among them",
-        "at": "2026-11-09T18:16:55Z",
         "fp": "7b24b1520940530db7e95a4a7a40867b88aababf48d210d1d0e75f161170e96d",
-        "reused": true
+        "at": "2026-11-09T19:45:22Z",
+        "why": "reads the version: plugin/.claude-plugin/plugin.json"
       },
       "C517": {
         "status": "pass",
@@ -94601,11 +94601,11 @@
       "C521": {
         "status": "pass",
         "exit": 0,
-        "seconds": 0.9,
+        "seconds": 1.0,
         "tail": "1..1\nok 1 R227: docs/panel.md says the Now panel's empty state reads 'VBW is not waiting on you.', and the old sentence is gone from plugin/ and docs/",
-        "at": "2026-11-09T18:16:55Z",
         "fp": "0d7a58220c7b20ec03a42c5e85173d90b47ca9c9448567ca5bb500a832533870",
-        "reused": true
+        "at": "2026-11-09T19:45:22Z",
+        "why": "reads the version: plugin/.claude-plugin/plugin.json"
       },
       "C522": {
         "status": "pass",
@@ -94700,11 +94700,11 @@
       "C532": {
         "status": "pass",
         "exit": 0,
-        "seconds": 5.2,
+        "seconds": 4.4,
         "tail": "1..3\nok 1 R231: the reference is one jq call of the guard's shape, over the bench's own program and document, never the shipped guard, a project file or the old counting program\nok 2 R231: the reference program and document are deterministic and of the sizes the provenance states, the document a JSON object of at least 50 KB, and the guard-shaped call runs on them\nok 3 R231: the provenance comment names the shape and the sizes, the M1 Max figures from five dated runs and GitHub's shard-1 figure, and NOMINAL_WHEN names a month",
-        "at": "2026-11-09T18:16:55Z",
         "fp": "0cc2dc103c38b99364fa189897659f21e788f0a607324c8ffeaafcf785f33ea5",
-        "reused": true
+        "at": "2026-11-09T19:45:22Z",
+        "why": "reads the version: plugin/.claude-plugin/plugin.json"
       },
       "C533": {
         "status": "pass",
@@ -94727,11 +94727,11 @@
       "C535": {
         "status": "pass",
         "exit": 0,
-        "seconds": 8.0,
+        "seconds": 5.9,
         "tail": "1..4\nok 1 R234: a first difference at or over the margin followed by one under it passes, and the first alone asks for the second measure\nok 2 R234: two differences at or over the margin fail, and the words name both measures\nok 3 R234: a startup above the hook budget in either run reads busy with the startup, as the bench's own rule; a startup at the budget never does\nok 4 R234: the timed waiting case judges through waiting_judge: it skips as busy, measures again on again, and fails with the judge's words",
-        "at": "2026-11-09T18:16:55Z",
         "fp": "f2246ccd6690c1de3a0c387115d8c2c3294854bb7a0bc174e4945b15b9d81c7a",
-        "reused": true
+        "at": "2026-11-09T19:45:22Z",
+        "why": "reads the version: plugin/.claude-plugin/plugin.json"
       },
       "C536": {
         "status": "pass",
@@ -94754,28 +94754,28 @@
       "C538": {
         "status": "pass",
         "exit": 0,
-        "seconds": 10.5,
+        "seconds": 10.9,
         "tail": "1..4\nok 1 R235: when the render fails, .vbw/runtime/statusline.err holds jq's error and the fallback line is printed\nok 2 R235: a good render leaves .vbw/runtime/statusline.err empty, overwritten each call\nok 3 R235: without a runtime folder the render still prints and writes nothing outside the project\nok 4 R235: a reader that has left does not fail the render, a good one or the fallback (status 0, no SIGPIPE)",
-        "at": "2026-11-09T18:16:55Z",
         "fp": "9a53fb8de863fd9067391cc26bf2ad9f0b1f1a7eceaba9ad40e28b84fb9c73be",
-        "reused": true
+        "at": "2026-11-09T19:45:22Z",
+        "why": "reads the version: plugin/.claude-plugin/plugin.json"
       },
       "C539": {
         "status": "pass",
         "exit": 0,
-        "seconds": 5.5,
+        "seconds": 4.5,
         "tail": "1..2\nok 1 R235: when the status line falls back, the bench's failure names the first line and jq's error from statusline.err\nok 2 R235: a status line that renders without the step names the line it read, and no error file text",
-        "at": "2026-11-09T18:16:55Z",
         "fp": "f656285a17b07432918b008bb0565aeaa99de8c0a1ec089e8d337ddd91a41744",
-        "reused": true
+        "at": "2026-11-09T19:45:22Z",
+        "why": "reads the version: plugin/.claude-plugin/plugin.json"
       },
       "C540": {
         "status": "pass",
         "exit": 0,
-        "seconds": 4.2,
+        "seconds": 6.2,
         "tail": "1..4\nok 1 R233: without arguments the container is ubuntu:24.04 and runs the release run, as before\nok 2 R233: --image ubuntu:26.04 shapes the container after that image and --bench runs only the hook bench\nok 3 R233: a command after -- runs inside the container in place of the release run, its words kept\nok 4 R233: an unknown option or an image the script does not know exits 2 with the usage and builds nothing",
         "fp": "4babb0ea3b7fd899ad23ca30b774bd9248999e3a134b11344a30f5a48780e52d",
-        "at": "2026-11-09T19:30:55Z",
+        "at": "2026-11-09T19:45:22Z",
         "why": "reads the project through git"
       },
       "C541": {
@@ -94790,11 +94790,11 @@
       "C542": {
         "status": "pass",
         "exit": 0,
-        "seconds": 4.3,
+        "seconds": 4.6,
         "tail": "1..3\nok 1 R233: the provenance comment names the two Linux images with their jq versions and dated figures beside the Mac and GitHub macOS ones\nok 2 R233: the reference keeps the guard's proportion: its program is within 10% of the size of the shipped Bash guard and the programs.jq it includes (PR #730 grew the guard; the reference follows or the guard shrinks)\nok 3 R233: the gap is never closed by a wider allowance: the bench reads no operating system name and has one nominal figure",
-        "at": "2026-11-09T18:16:55Z",
         "fp": "e7d14564310d1327bfc7e215e0879b8f874bab0e1c8408199ecc650b9597b501",
-        "reused": true
+        "at": "2026-11-09T19:45:22Z",
+        "why": "reads the version: plugin/.claude-plugin/plugin.json"
       },
       "C543": {
         "status": "pass",
@@ -94835,11 +94835,11 @@
       "C547": {
         "status": "pass",
         "exit": 0,
-        "seconds": 28.0,
+        "seconds": 25.2,
         "tail": "1..7\nok 1 R241: vbw config set mcp stores each entry with its mark in record.settings.mcp, in the order given, and prints the setting\nok 2 R241: vbw config shows the setting in the form it was set, and 'mcp: none' without one\nok 3 R241: default removes the setting and the record goes back to schema 4\nok 4 R241: a malformed server or tool name, mark or list is refused with a usage line naming the accepted form, and nothing changes\nok 5 R241: settings.mcp under schema 6 loads and the next write raises the record to 7 (D582); schema 7 without it and a malformed stored entry are refused\nok 6 R241: a VBW that reads only up to schema 6 says the project needs a newer VBW, never that the record is corrupt\nok 7 R241: the config skill and the README's settings table know the mcp key, its form and its read-only mark",
-        "at": "2026-11-09T18:16:55Z",
         "fp": "cf066c1019b0d3b82aeee74af1afdd243a45f3f6627b21de937931d2df7ef933",
-        "reused": true
+        "at": "2026-11-09T19:45:22Z",
+        "why": "reads the version: plugin/.claude-plugin/plugin.json"
       },
       "C548": {
         "status": "pass",
@@ -94907,20 +94907,20 @@
       "C555": {
         "status": "pass",
         "exit": 0,
-        "seconds": 2.7,
+        "seconds": 2.2,
         "tail": "1..7\nok 1 R239: the vibe skill states that the chat never commits plan work by hand, naming every git history command, that commits go through vbw commit inside the run, and that it follows the proof's Next line\nok 2 R239: docs/guards.md's refusal table names commit-tree beside commit, the chat's refusal while armed or in a loop, and that the user's own commands are never checked\nok 3 R239: docs/workflows.md's 'Every refusal and its next step' table has the two refusals with vbw commit as the next step\nok 4 R245: the vibe skill says the chat commits nothing by hand, a ship refusal included (no git commit, add, stash, checkout or reset of files, no commit of a submodule pointer) and follows the refusal's Next line; and that a user's own uncommitted files are the user's: never committed, staged, stashed, discarded or named as blocking, the chat asks the user what to do and waits\nok 5 R245: the vibe skill says the chat never attributes an instruction the user did not type (no 'as you asked'), and that an empty or unclear /vbw:vibe turn runs vbw next and reports its action, never inferring a request from silence\nok 6 R245: no kernel or skill message tells the chat to commit a file outside the milestone's work: the old ship wording is gone, and every message telling to commit names vbw commit, check files or VBW's own files\nok 7 R245 docs: docs/guards.md and docs/workflows.md say, where the R239 rows are, that the rule also holds on a ship refusal and that the user's own files are never committed by VBW's chat",
-        "at": "2026-11-09T18:16:55Z",
         "fp": "fc0cf63a3ef3d0a4633da1a9584df262a256682dbb998469b8988409a9ace582",
-        "reused": true
+        "at": "2026-11-09T19:45:22Z",
+        "why": "reads the version: plugin/.claude-plugin/plugin.json"
       },
       "C556": {
         "status": "pass",
         "exit": 0,
-        "seconds": 13.0,
+        "seconds": 16.1,
         "tail": "1..3\nok 1 R240: a build note exactly as a run writes it (units and road keys) shows the end time in the step's first minute, then with the minutes\nok 2 R240: a proof note exactly as plugin/lib/proofsteps.sh writes it at its start (proof null, road key) shows its end time\nok 3 R240: the real-user suite's status line pattern reads the HH:MM the status line prints, so the two cannot diverge unseen",
-        "at": "2026-11-09T19:24:40Z",
         "fp": "2104c9fb5957c930cf91f19f4017436a24bfe215c953003febf584990255c5e5",
-        "reused": true
+        "at": "2026-11-09T19:45:22Z",
+        "why": "reads the version: plugin/.claude-plugin/plugin.json"
       },
       "C557": {
         "status": "pass",
@@ -94988,11 +94988,11 @@
       "C564": {
         "status": "pass",
         "exit": 0,
-        "seconds": 1.1,
+        "seconds": 1.8,
         "tail": "1..3\nok 1 R245: the vibe skill says the chat commits nothing by hand, a ship refusal included (no git commit, add, stash, checkout or reset of files, no commit of a submodule pointer) and follows the refusal's Next line; and that a user's own uncommitted files are the user's: never committed, staged, stashed, discarded or named as blocking, the chat asks the user what to do and waits\nok 2 R245: the vibe skill says the chat never attributes an instruction the user did not type (no 'as you asked'), and that an empty or unclear /vbw:vibe turn runs vbw next and reports its action, never inferring a request from silence\nok 3 R245: no kernel or skill message tells the chat to commit a file outside the milestone's work: the old ship wording is gone, and every message telling to commit names vbw commit, check files or VBW's own files",
-        "at": "2026-11-09T18:16:55Z",
         "fp": "f7e3c3c20bd8c2dcf90e73533345960c2d80842b73b031d36cb60c4819a3385a",
-        "reused": true
+        "at": "2026-11-09T19:45:22Z",
+        "why": "reads the version: plugin/.claude-plugin/plugin.json"
       },
       "C565": {
         "status": "pass",
@@ -95024,11 +95024,11 @@
       "C568": {
         "status": "pass",
         "exit": 0,
-        "seconds": 113.4,
+        "seconds": 87.3,
         "tail": "whose VBW_SCHEMA_MAX is 12 reading the schema-15 record this VBW's vbw mutate wrote says the project needs a newer VBW (exit 4), never that it is corrupt; the validator pins the break's shape\nok 9 R258 schema 12: a break naming its rule by place and a reworded requirement are schema 12, the table's top, which VBW_SCHEMA_MAX follows\nok 10 R265 schema 13: a break that carries digests is schema 13, a table row of its own naming the digests\nok 11 R264 schema 14: a rule's --none entry marked git is schema 14, a table row of its own; a none entry without the mark stays 12\nok 12 R258 schema 12: the validator accepts a break's rule as {req, k} (k 1 to 9999) and as the older {req, text}, and refuses every other shape; reworded can only be true\nok 13 R258 schema 12: a record whose breaks name their rules by text stays readable, and its first write converts each to the place of the rule with that text; a break matching no rule is kept as it is\nok 14 R286 schema: a break whose digests are a list, or a plan's red-first runs, is schema 15, the table's top, which VBW_SCHEMA_MAX follows; the older object stays 13\nok 15 R286 schema: the validator refuses a break whose digests name a file twice, add a key, or name a file the break did not, and accepts the list and the older object\nok 16 R286 schema: a VBW that reads up to schema 14 refuses this VBW's schema-15 record with the R272 line, never calling it corrupt, and leaves it unchanged\nok 17 R286 layout: Gitleaks' generic-api-key pattern finds the old layout's path-and-digest lines, and nothing in the record this VBW writes from the same data\nok 18 R286 convert: a schema 13 or 14 record's object digests become the list on its first write, every digest keeping its value and its file, nothing else changed\nok 19 R286 readers: vbw mutate, vbw show, vbw next and vbw status answer an old record and its converted one the same\nok 20 R286 readers: a break queued by VBW 2.1.28 (digests an object in its entry) runs and is recorded with the list",
-        "at": "2026-11-09T18:16:55Z",
         "fp": "8e8af91c73507b5ea5c2ddcb32d01a56a7e43ff68d4dd4d9ea341d3cba68f2bf",
-        "reused": true
+        "at": "2026-11-09T19:45:22Z",
+        "why": "reads the version: plugin/.claude-plugin/plugin.json"
       },
       "C569": {
         "status": "pass",
@@ -95051,11 +95051,11 @@
       "C571": {
         "status": "pass",
         "exit": 0,
-        "seconds": 29.9,
+        "seconds": 23.6,
         "tail": "1..5\nok 1 R249 digest: a record read leaves .vbw/runtime/validated.json with the record's and the validator's digests; the unchanged record is not validated again; a record whose bytes changed is, and its output is the same\nok 2 R249 digest: a write validates only the record it writes: the record it starts from, named by the digest, is not validated again, and one the digest does not name still is\nok 3 R249 digest: a hand edit after a warm digest is still refused as corrupt, and a newer schema still asks for a newer VBW\nok 4 R249 digest: the validator's own text is part of the digest: a changed record.jq, record-schema.jq or interview.json validates the unchanged record again\nok 5 R249 digest: a runtime folder that cannot be written is never an error: the same output, exit 0, nothing on stderr, and the record is simply validated again",
-        "at": "2026-11-09T18:16:55Z",
         "fp": "3dec3ac052e79aa8284b5880a7bc58cfaf02f8b4a770afd46f2929f022097769",
-        "reused": true
+        "at": "2026-11-09T19:45:22Z",
+        "why": "reads the version: plugin/.claude-plugin/plugin.json"
       },
       "C572": {
         "status": "pass",
@@ -95294,11 +95294,11 @@
       "C598": {
         "status": "pass",
         "exit": 0,
-        "seconds": 49.3,
+        "seconds": 41.0,
         "tail": "1..8\nok 1 R261 folder: plugin/packs/rust holds a manifest with the pack's name and its two patterns, and one text per role\nok 2 R261 folder: each role text carries the four first contents and the path rule\nok 3 R261 folder: packs are not agents: plugin/agents still holds the seven agents and the pack folder holds no agent file\nok 4 R261 next: a plan whose files match the patterns has its pack named in vbw next --json, a Python plan in the same wave has none, and the phases and the project are named too\nok 5 R261 next: a project with no Rust pays nothing: no packs key, no packs_root, and no more jq processes than a plugin tree without any pack\nok 6 R261 next: the Lead's pack comes from the project's tracked files: a tracked Cargo.toml selects it at the plan step, an untracked one does not\nok 7 R261 next: adding a stack is one more folder: a plugin tree with an extra pack gives a .py plan that pack without any code change\nok 8 R261 next: a pack is outside the contract and the record: editing a pack file changes no contract hash, un-approves no plan and adds no key to the record",
-        "at": "2026-11-09T18:16:55Z",
         "fp": "689a1b400f1019d5e885ffdcddbcca53795757d06a3d500aca8409240c4fd2c8",
-        "reused": true
+        "at": "2026-11-09T19:45:22Z",
+        "why": "reads the version: plugin/.claude-plugin/plugin.json"
       },
       "C599": {
         "status": "pass",
@@ -95591,20 +95591,20 @@
       "C631": {
         "status": "pass",
         "exit": 0,
-        "seconds": 28.7,
+        "seconds": 39.8,
         "tail": "1..8\nok 1 R270 kernel: no run still gives no end time, in the words of today\nok 2 R270 kernel: one run gives a rough figure naming the one run; two runs a rough range naming both\nok 3 R270 kernel: four runs that agree are still rough (fewer than 5 kept runs); five that agree give the single figure as before\nok 4 R270 kernel: ten runs spread beyond 1.5 times give a rough range naming the ten runs\nok 5 R270 kernel: the thresholds are one definition in lib/steps-expect.jq\nok 6 R270 kernel: the road is a range when any part is rough or a tier's usual fix rounds rest on fewer than 3 finished phases, keeping its counting tail; tight parts with a known count keep the single figure\nok 7 R270 kernel: the step note carries both ends, the rough flag and the run count; vbw run start and vbw status say the range\nok 8 R270 kernel: a proof of VBW's own writes its note with the range fields, rough from thin or spread history, single from five tight runs",
-        "at": "2026-11-09T15:45:51Z",
         "fp": "fce9c053e8362ac0bef813cb71ae76ca98d48b83d96b737812178b140831c178",
-        "reused": true
+        "at": "2026-11-09T19:45:22Z",
+        "why": "reads the version: plugin/.claude-plugin/plugin.json"
       },
       "C632": {
         "status": "pass",
         "exit": 0,
-        "seconds": 12.1,
+        "seconds": 15.9,
         "tail": "1..3\nok 1 R270 line: the status line shows 'until ~HH:MM-HH:MM' for a rough range, and the single clock as before for a tight one\nok 2 R270 line: the status line keeps the single clock for a tight estimate\nok 3 R270 line: the panel words a rough note as a range from the same fields",
-        "at": "2026-11-09T15:45:51Z",
         "fp": "186099646cfa7d450e6b0822ed0c5052a11bc39f13082853bceae528509a257a",
-        "reused": true
+        "at": "2026-11-09T19:45:22Z",
+        "why": "reads the version: plugin/.claude-plugin/plugin.json"
       },
       "C633": {
         "status": "pass",
@@ -95627,29 +95627,29 @@
       "C635": {
         "status": "pass",
         "exit": 0,
-        "seconds": 11.6,
+        "seconds": 10.1,
         "tail": "1..3\nok 1 R272 kernel: every kernel write of the record writes the writer file beside it: this VBW's version and the record's schema\nok 2 R272 kernel: an older VBW refuses (exit 4) naming the version that wrote the record and the version it loaded, how to update, and what --plugin-dir means\nok 3 R272 kernel: without a writer file (a record written before it existed) the refusal names the schema numbers and the loaded version, in the same shape",
-        "at": "2026-11-09T18:16:55Z",
         "fp": "a0c8385f9e1118d673f65a3f368439616ce3d4c194d44a4822225f14b8745785",
-        "reused": true
+        "at": "2026-11-09T19:45:22Z",
+        "why": "reads the version: plugin/.claude-plugin/plugin.json"
       },
       "C636": {
         "status": "pass",
         "exit": 0,
-        "seconds": 3.6,
+        "seconds": 2.7,
         "tail": "1..1\nok 1 R272 hooks: the session-start hook of the older VBW gives the kernel's line, both versions named, in its context and in its notice to the user",
-        "at": "2026-11-09T18:16:55Z",
         "fp": "67937a5314d01c7d242646fb144a8381ae3185bc631a371a30df4853362b7daa",
-        "reused": true
+        "at": "2026-11-09T19:45:22Z",
+        "why": "reads the version: plugin/.claude-plugin/plugin.json"
       },
       "C637": {
         "status": "pass",
         "exit": 0,
-        "seconds": 5.0,
+        "seconds": 6.8,
         "tail": "1..1\nok 1 R272 R128: approve-ask.sh deny and systemMessage: under a record written by a newer VBW the approval menu is refused with the kernel's own line (both versions named), shown to the user too, never answered in the user's place",
-        "at": "2026-11-09T15:45:51Z",
         "fp": "bc9357de0fa03a80b56cb5be5311e518977771549d844bacdaaedf93c8dcad00",
-        "reused": true
+        "at": "2026-11-09T19:45:22Z",
+        "why": "reads the version: plugin/.claude-plugin/plugin.json"
       },
       "C638": {
         "status": "pass",
@@ -95726,11 +95726,11 @@
       "C646": {
         "status": "pass",
         "exit": 0,
-        "seconds": 9.2,
+        "seconds": 6.1,
         "tail": "1..4\nok 1 R275: a case's budget is scaled by the reference measured beside it: a slow machine throughout marks every case slow and fails none\nok 2 R275: a case slow on a machine whose reference beside it is nominal is over its budget, measured again first, while the other cases pass\nok 3 R275: measured again, a case and the reference beside it are both measured anew: the second pair judges it\nok 4 R275: the busy-machine rule stays: a startup above the hook limit judges nothing",
-        "at": "2026-11-09T18:16:55Z",
         "fp": "c7770f2c407174e1e21bce71976cf025f418199aca62c62c7c4178674c20e89b",
-        "reused": true
+        "at": "2026-11-09T19:45:22Z",
+        "why": "reads the version: plugin/.claude-plugin/plugin.json"
       },
       "C647": {
         "status": "pass",
@@ -95789,11 +95789,11 @@
       "C653": {
         "status": "pass",
         "exit": 0,
-        "seconds": 39.4,
+        "seconds": 33.6,
         "tail": "1..7\nok 1 R286 schema: a break whose digests are a list, or a plan's red-first runs, is schema 15, the table's top, which VBW_SCHEMA_MAX follows; the older object stays 13\nok 2 R286 schema: the validator refuses a break whose digests name a file twice, add a key, or name a file the break did not, and accepts the list and the older object\nok 3 R286 schema: a VBW that reads up to schema 14 refuses this VBW's schema-15 record with the R272 line, never calling it corrupt, and leaves it unchanged\nok 4 R286 layout: Gitleaks' generic-api-key pattern finds the old layout's path-and-digest lines, and nothing in the record this VBW writes from the same data\nok 5 R286 convert: a schema 13 or 14 record's object digests become the list on its first write, every digest keeping its value and its file, nothing else changed\nok 6 R286 readers: vbw mutate, vbw show, vbw next and vbw status answer an old record and its converted one the same\nok 7 R286 readers: a break queued by VBW 2.1.28 (digests an object in its entry) runs and is recorded with the list",
-        "at": "2026-11-09T18:16:55Z",
         "fp": "025e0012b2e3fd6aaecf280ef80c21f4da266034fd4ac962442a4f80d0e5b5c6",
-        "reused": true
+        "at": "2026-11-09T19:45:22Z",
+        "why": "reads the version: plugin/.claude-plugin/plugin.json"
       },
       "C654": {
         "status": "pass",
@@ -95870,20 +95870,20 @@
       "C662": {
         "status": "pass",
         "exit": 0,
-        "seconds": 33.3,
+        "seconds": 38.3,
         "tail": "1..3\nok 1 R285: 17 --plugin-dir starts and then an installed start leave one VBW PATH line, the installed copy's, and every other line byte for byte\nok 2 R285: a --plugin-dir start after an installed start leaves one line, the tree's\nok 3 R285: an installed start keeps the session record naming the copy Claude Code loaded for the session",
-        "at": "2026-11-09T18:16:55Z",
         "fp": "f616d6081c5d78d69af4c97fffc921edf4a631bc1a6158f61ed42449ab1e6fe8",
-        "reused": true
+        "at": "2026-11-09T19:45:22Z",
+        "why": "reads the version: plugin/.claude-plugin/plugin.json"
       },
       "C663": {
         "status": "pass",
         "exit": 0,
-        "seconds": 6.9,
+        "seconds": 4.8,
         "tail": "1..3\nok 1 R285 doctor: after an installed start, the installed copy's vbw first on PATH is ok, though doctor runs from another kernel\nok 2 R285 doctor: after an installed start, a stale working tree first on PATH is a warning naming both folders and the fix: start or resume the session again\nok 3 R285 doctor: a session id with no record says doctor cannot tell which copy the session loaded, with the fix, instead of comparing with itself",
-        "at": "2026-11-09T18:16:55Z",
         "fp": "5100a1373e3bedbf08cb2e0a73ff135c8d03af503310b35932d788e847eb8b35",
-        "reused": true
+        "at": "2026-11-09T19:45:22Z",
+        "why": "reads the version: plugin/.claude-plugin/plugin.json"
       },
       "C664": {
         "status": "pass",
@@ -95987,20 +95987,20 @@
       "C675": {
         "status": "pass",
         "exit": 0,
-        "seconds": 26.4,
+        "seconds": 35.9,
         "tail": "1..9\nok 1 R270 kernel: no run still gives no end time, in the words of today\nok 2 R270 kernel: one run gives a rough figure naming the one run; two runs a rough range naming both\nok 3 R270 kernel: four runs that agree are still rough (fewer than 5 kept runs); five that agree give the single figure as before\nok 4 R270 kernel: ten runs spread beyond 1.5 times give a rough range naming the ten runs\nok 5 R270 kernel: the thresholds are one definition in lib/steps-expect.jq\nok 6 R270 kernel: the road is a range when any part is rough or a tier's usual fix rounds rest on fewer than 3 finished phases, keeping its counting tail; tight parts with a known count keep the single figure\nok 7 R270 kernel: the step note carries both ends, the rough flag and the run count; vbw run start and vbw status say the range\nok 8 R270 kernel: a proof of VBW's own writes its note with the range fields, rough from thin or spread history, single from five tight runs\nok 9 R291 kernel: the typical figure is the median of the runs: 21, 40, 60, 80 and 542 min give 60, whatever the ladder's own figure; an even count takes the mean of the two middle runs",
-        "at": "2026-11-09T15:45:51Z",
         "fp": "64369d0af270dedb448d6dd887614fc4712ac5628510bd99da057f093772dde7",
-        "reused": true
+        "at": "2026-11-09T19:45:22Z",
+        "why": "reads the version: plugin/.claude-plugin/plugin.json"
       },
       "C676": {
         "status": "pass",
         "exit": 0,
-        "seconds": 11.5,
+        "seconds": 15.9,
         "tail": "1..3\nok 1 R270 line: the status line shows 'until ~HH:MM-HH:MM' for a rough range, and the single clock as before for a tight one\nok 2 R270 line: the status line keeps the single clock for a tight estimate\nok 3 R270 line: the panel words a rough note as a range from the same fields",
-        "at": "2026-11-09T15:45:51Z",
         "fp": "704ef0cd951bb9141addcc934202ff749c22a8971a0a750ce3fb3294c52f668e",
-        "reused": true
+        "at": "2026-11-09T19:45:22Z",
+        "why": "reads the version: plugin/.claude-plugin/plugin.json"
       },
       "C677": {
         "status": "pass",
@@ -96023,20 +96023,20 @@
       "C679": {
         "status": "pass",
         "exit": 0,
-        "seconds": 42.6,
+        "seconds": 45.4,
         "tail": "1..3\nok 1 R279 kernel: with VBW_KERNEL_READS set, a record write logs the kernel's read of plugin.json there and leaves its access time; vbw version is the caller's own read and logs nothing\nok 2 R279 prove: after a change of only the version, the unit that compares the version runs again and says why; the unit that only writes a record is reused\nok 3 R279 prove: any other change to plugin.json reruns both units, the reason as before",
-        "at": "2026-11-09T18:16:55Z",
         "fp": "b021c9da19fcd5a4cec24b3ee49a57ff08a36250891f31ef6ec6ed8ddd1979b6",
-        "reused": true
+        "at": "2026-11-09T19:45:22Z",
+        "why": "reads the version: plugin/.claude-plugin/plugin.json"
       },
       "C680": {
         "status": "pass",
         "exit": 0,
-        "seconds": 19.9,
+        "seconds": 21.1,
         "tail": "1..1\nok 1 R279 docs: docs/proof.md says a change of only the version reruns only the units that read the version themselves, and names the kernel's own reads",
-        "at": "2026-11-09T18:16:55Z",
         "fp": "24e4b6962c02b035ffa6807c59f614f50a34e97e3234c1e41552aee873551094",
-        "reused": true
+        "at": "2026-11-09T19:45:22Z",
+        "why": "reads the version: plugin/.claude-plugin/plugin.json"
       },
       "C681": {
         "status": "pass",
@@ -96054,14 +96054,14 @@
         "exit": 0,
         "seconds": 6.6,
         "tail": "bash: 5.3.20(1)-release",
-        "fp": "065b393b71dee4232b9b45e3d96e4a1a6552ad444e6fa87346b5ac33b420c740",
         "at": "2026-11-09T19:30:55Z",
-        "why": "tools/l3-suite.sh changed"
+        "fp": "065b393b71dee4232b9b45e3d96e4a1a6552ad444e6fa87346b5ac33b420c740",
+        "reused": true
       },
       "test": {
         "status": "pass",
         "exit": 0,
-        "seconds": 4097.1,
+        "seconds": 4546.1,
         "tail": "",
         "command": "bats --print-output-on-failure {file} (one test file per run)",
         "of_files": true
@@ -96125,11 +96125,11 @@
       "tests/briefs-decisions.bats": {
         "status": "pass",
         "exit": 0,
-        "seconds": 50.8,
+        "seconds": 121.2,
         "tail": "1..12\nok 1 T123: --since-approval lists the decisions after the approval, none before it\nok 2 T123: after a second approval only the decisions after it are listed; for a plan, after the latest approval that changed it\nok 3 #705: an approval that left a plan as it was keeps the decisions before it in that plan's list and its fixes'\nok 4 #705: an approval an older VBW recorded, with no plans, counts as changing every plan, even when it is not the first\nok 5 #705: several ids start at the earliest of their plans' approvals; a project command's fix reads every plan's\nok 6 #705: a record whose approval names its plans is schema 6, and a VBW that reads up to schema 5 asks for an update, never calling it corrupt\nok 7 T123: with no decision since the approval it says so and succeeds\nok 8 T123: before any approval it fails, naming that nothing was approved\nok 9 T123: an unknown decisions option is a usage error\nok 10 T123: every Dev and Docs prompt of a build wave names the decisions-since-approval command\nok 11 T123: every Dev prompt of a fix round names the decisions-since-approval command\nok 12 T123: the Dev and Docs agents read those decisions as binding over the plan",
-        "at": "2026-11-09T19:08:04Z",
         "fp": "0b9e0306ff29b88b8223ee4976df8c3f593a52582c6c38b48784a8775ceb3418",
-        "reused": true
+        "at": "2026-11-09T19:45:22Z",
+        "why": "reads the version: plugin/.claude-plugin/plugin.json"
       },
       "tests/briefs-no-shortcuts.bats": {
         "status": "pass",
@@ -96296,11 +96296,11 @@
       "tests/kernel-core.bats": {
         "status": "pass",
         "exit": 0,
-        "seconds": 88.3,
+        "seconds": 126.3,
         "tail": "ok 2 vbw without arguments prints usage and exits 2\nok 3 an unknown subcommand exits 2 and names it\nok 4 vbw init needs a git repository\nok 5 vbw init scaffolds .vbw with a valid record and ignores the runtime dir\nok 6 vbw init is idempotent and never overwrites existing state\nok 7 vbw init writes nothing outside the project\nok 8 a corrupt record is reported, never repaired\nok 9 unparseable JSON is reported as corrupt\nok 10 a record that parses but has a field of the wrong type is named so, never as unparseable JSON\nok 11 commands outside a VBW project say so\nok 12 concurrent writers never lose an update\nok 13 a write that would make the record invalid is refused and leaves it untouched\nok 14 a stale lock older than 30 seconds is taken over\nok 15 vbw works from a subdirectory of the project\nok 16 file ages are numbers on every platform's stat (Linux stat -f is not BSD stat -f)\nok 17 a lock whose age cannot be read is never stale (it may have just been taken)\nok 18 a writer waits as long as the lock keeps changing hands, and gives up only on a lock that stopped moving\nok 19 a lock whose holder still runs is never taken over, however old; one whose holder is gone is taken\nok 20 a holder id read while it is still being written (no line end yet) never breaks the lock\nok 21 a holder that ends normally between the two looks never lets a waiter delete the next writer's lock",
-        "at": "2026-11-09T15:45:51Z",
         "fp": "3e95137c1892e8c10350cd46c9b89b5a17dc567b856b377db0ce72cb0411b57e",
-        "reused": true
+        "at": "2026-11-09T19:45:22Z",
+        "why": "reads the version: plugin/.claude-plugin/plugin.json"
       },
       "tests/kernel-legacy.bats": {
         "status": "pass",
@@ -96512,20 +96512,20 @@
       "tests/loop-park-schema.bats": {
         "status": "pass",
         "exit": 0,
-        "seconds": 36.6,
+        "seconds": 111.7,
         "tail": "1..1\nok 1 T153: parking an item whose commits changed the record's validator leaves a record the restored kernel reads",
-        "at": "2026-11-09T19:08:04Z",
         "fp": "291ed810c558ff1b92eb5190a99ec2212bfed4c236105f13f1bf65718becb72a",
-        "reused": true
+        "at": "2026-11-09T19:45:22Z",
+        "why": "reads the version: plugin/.claude-plugin/plugin.json"
       },
       "tests/loop-stop-hook.bats": {
         "status": "pass",
         "exit": 0,
-        "seconds": 60.2,
+        "seconds": 138.8,
         "tail": "1..9\nok 1 T150: one Stop hook, the plugin's own, and no skill declares one\nok 2 T150: the hook gives the loop's next step to the loop's session, and nothing to another\nok 3 T150: in a session started in a subfolder of the project the hook drives the loop too\nok 4 T147: one Stop event moves the loop one step: the item opens once\nok 5 T150: after a resume the loop is driven again: vbw loop start of the same session restores its mark\nok 6 T150: the loop's end removes its mark, and the hook is silent again\nok 7 T156: a failed turn of the loop's session leaves the away mark with its time and says nothing; another session leaves none\nok 8 T156: the loop's session resumed leaves an empty away mark, keeping an earlier one; a compact or another session leaves none; the loop's end removes it\nok 9 T150: outside a VBW project and with no loop or armed run the hook says nothing",
-        "at": "2026-11-09T15:45:51Z",
         "fp": "8218af5b4d32ae1b0a2d0a3b1edc4eac69f63fe9354d3299da29abb7ef48c9ce",
-        "reused": true
+        "at": "2026-11-09T19:45:22Z",
+        "why": "reads the version: plugin/.claude-plugin/plugin.json"
       },
       "tests/machine-unit-cores.bats": {
         "status": "pass",
@@ -96566,11 +96566,11 @@
       "tests/panel-suite.bats": {
         "status": "pass",
         "exit": 0,
-        "seconds": 3.3,
+        "seconds": 4.5,
         "tail": "1..1\nok 1 R55: node --test passes over every node test under tests/panel, none missed",
-        "at": "2026-11-09T13:26:04Z",
         "fp": "4a7d9be335f11741d2c1aeda3586d9c38b4b04d87e6eaaa19e24148d969842ca",
-        "reused": true
+        "at": "2026-11-09T19:45:22Z",
+        "why": "reads the version: plugin/.claude-plugin/plugin.json"
       },
       "tests/proof-large-lists.bats": {
         "status": "pass",
@@ -96683,11 +96683,11 @@
       "tests/readme.bats": {
         "status": "pass",
         "exit": 0,
-        "seconds": 0.5,
+        "seconds": 2.4,
         "tail": "1..4\nok 1 every /vbw: command in README.md has a skill\nok 2 install steps name the marketplace source and plugin from the manifests\nok 3 image references point under assets/ or are badges; presence is reported\nok 4 README has the required sections",
-        "at": "2026-11-08T22:08:39Z",
         "fp": "d4445c8b3de7053b1f23bd92dc3b1329e002ff8ed859ced9db87e6ebcdf7552f",
-        "reused": true
+        "at": "2026-11-09T19:45:22Z",
+        "why": ".claude-plugin/marketplace.json changed"
       },
       "tests/reads-lib.bats": {
         "status": "pass",
@@ -96809,20 +96809,20 @@
       "tests/standards-selftest.bats": {
         "status": "pass",
         "exit": 0,
-        "seconds": 144.2,
+        "seconds": 245.9,
         "tail": "ok 3 process killing is caught\nok 4 the signal-free liveness probe kill -0 passes, any other kill is caught\nok 5 /tmp paths are caught\nok 6 git path listings without -z are caught, with -z pass\nok 7 plugin-root discovery is caught\nok 8 a clean file breaks no rule\nok 9 hooks naming a missing file are caught\nok 10 per-tool-call hooks that start a shell or can exit non-zero are caught\nok 11 per-tool-call hooks: only assignments and [ ] tests may come before jq, and the command must end in || true\nok 12 the vision rule check passes on the repository as it is\nok 13 the vision rule check catches the rule removed from a contributor file\nok 14 the vision rule check catches the rule moved below another rule in AGENTS.md\nok 15 the privacy guard lists the files that hold a word, in any case, and never the word\nok 16 the privacy guard passes a clean tree: comments and blank lines in the list are not words\nok 17 the privacy guard checks nothing, and says so, without a list or without words\nok 18 the privacy guard in tracked mode reads every tracked file of this repository, .vbw/ included\nok 19 the privacy guard refuses bad usage\nok 20 the hook answer check passes on the repository as it is\nok 21 the hook answer check catches a new unpinned answer shape\nok 22 the hook answer check catches a hook that answers allow",
         "fp": "cea597da7e37298b1c50fd07c24fcfcd6ab9c1e90cc14912ac62ec844e47ba39",
-        "at": "2026-11-09T19:30:55Z",
+        "at": "2026-11-09T19:45:22Z",
         "why": "reads the project through git"
       },
       "tests/statusline-step-miss.bats": {
         "status": "pass",
         "exit": 0,
-        "seconds": 12.6,
+        "seconds": 59.8,
         "tail": "1..4\nok 1 R235: a reader that leaves early does not fail the status line (SIGPIPE ignored, status 0)\nok 2 R235: the step shows at local times around midnight, in any zone (the day word is tomorrow or none)\nok 3 R235: a start inside the same minute leaves the minutes out and still shows the end\nok 4 R235: a glance written in the record's second does not hide the step",
-        "at": "2026-11-09T15:45:51Z",
         "fp": "0a96485e855e31d282b71883dc45aa9fd72906b4356234125ac8ff9635cee679",
-        "reused": true
+        "at": "2026-11-09T19:45:22Z",
+        "why": "reads the version: plugin/.claude-plugin/plugin.json"
       },
       "tests/submodule-history.bats": {
         "status": "pass",
@@ -96890,11 +96890,11 @@
       "tests/update-notice.bats": {
         "status": "pass",
         "exit": 0,
-        "seconds": 31.2,
+        "seconds": 66.1,
         "tail": "1..12\nok 1 T136: the first session in a clone records the version and offers nothing\nok 2 T136: after an update the first session names both versions and /vbw:whats-new, to the user and in the context\nok 3 T136: the offer shows once, however many sessions follow\nok 4 T136: versions compare as numbers: a seen 2.0.100 is newer than 2.0.41, and 2.0.9 is older\nok 5 T136: an older plugin offers nothing and the highest version seen stays, so coming back to the newer one offers nothing either\nok 6 T136: a copy loaded with --plugin-dir neither offers nor records\nok 7 T136: a seen file that holds no version counts as unseen: nothing offered, then rewritten\nok 8 T136: outside a VBW project the hook offers nothing and writes nothing\nok 9 T136: a project made by a newer VBW is told to update, with no offer and no record\nok 10 T136: the clone's worktrees share one record, so each update is offered once per clone\nok 11 T136: the offer leaves no temporary file behind, and changes nothing in the work tree\nok 12 T136: the status line, the hooks and doctor reach no network (the update check is Claude Code's auto-update, never VBW's)",
-        "at": "2026-11-09T15:45:51Z",
         "fp": "0bea05d41fdf319e76c9469378a0b3f0746f468a4aae34ca5452d4cb29a5cb16",
-        "reused": true
+        "at": "2026-11-09T19:45:22Z",
+        "why": "reads the version: plugin/.claude-plugin/plugin.json"
       },
       "tests/verify-adaptive.bats": {
         "status": "pass",
@@ -96930,19 +96930,19 @@
     "causes": [],
     "full": false,
     "passed": true,
-    "record": "cfc2926cee122e593e7ee718f4a7df56cbdf8835c4a6a0597b0028fa2482a589",
+    "record": "b0d96d30e91d69e98367de191a191316ef4a9be8ff2424f8ab42c930d3aed263",
     "own": {
-      "planning": 36.066,
-      "copies": 8.031,
-      "tracking": 2.386,
-      "saving": 1.678,
-      "record": 7.123,
-      "wall": 271.793,
+      "planning": 34.853,
+      "copies": 10.441,
+      "tracking": 25.429,
+      "saving": 2.124,
+      "record": 7.048,
+      "wall": 1124.51,
       "copy_slots": {
-        "claimed": 4,
+        "claimed": 7,
         "refreshed": 0,
         "made": 0,
-        "refresh": 2.975
+        "refresh": 5.124
       }
     }
   },
