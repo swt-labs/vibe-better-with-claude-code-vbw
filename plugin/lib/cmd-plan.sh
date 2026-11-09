@@ -11,6 +11,8 @@
 . "$VBW_LIB/steps.sh"
 # shellcheck source=mutate-queue.sh
 . "$VBW_LIB/mutate-queue.sh"
+# shellcheck source=cmd-check.sh
+. "$VBW_LIB/cmd-check.sh"
 # shellcheck source=history.sh
 . "$VBW_LIB/history.sh"
 
@@ -76,8 +78,18 @@ Queued, not run yet: $queued: run them with vbw mutate $id --run"
 $missing"
       # Breaks still queued are not needed any more.
       rm -rf "$(mutate_queue_dir "$id")"
+      # Red first (R292): said, never refused; QA judges a check that never ran red first.
+      local red_line
+      red_line=$(printf '%s' "$record" | jq -r "$RED_FIRST_DEFS"'def names: if length < 2 then join("") else (.[:-1] | join(", ")) + " and " + .[-1] end;
+        . as $r | red_own($p) as $own
+        | if ($own | length) == 0 then empty else
+            [$own[] | select(. as $c | ($r | red_ran_first($c)) | not)] as $never
+            | if ($never | length) > 0 then "Red first: \($never | names) never ran red before this plan'"'"'s first code commit; QA judges this"
+              else "Red first: every check of this plan ran red before its first code commit (\($own | join(", ")))" end
+          end' --arg p "$id")
       record_update '(.plans[] | select(.id == $p)) |= (.status = "done" | del(.note))' --arg p "$id"
       step_plan_done
+      [ -z "$red_line" ] || printf '%s\n' "$red_line"
       printf '%s done\n' "$id"
       ;;
     block)
