@@ -79692,12 +79692,62 @@
         "P226.2",
         "P226.3"
       ],
-      "status": "planned",
+      "status": "done",
       "role": "docs",
       "tasks": [
         "docs/proof.md: the 'is waiting for approval' line (only for checks that read the file; the check runs on the working content) and the waiting line with its start time ('waiting for a free slot of the computer-wide limit since 10:42').",
         "docs/workflows.md: the 'Red first:' line at plan done, that plan done never refuses on it, and that QA judges each such check as a deviation.",
         "docs/workflows.md: a refused commit of VBW's files is the commit step of R287 (no longer only a warning to commit them yourself)."
+      ],
+      "mutations": [
+        {
+          "rule": {
+            "req": "R288",
+            "k": 8
+          },
+          "what": "renamed the approval line",
+          "files": [
+            "docs/proof.md"
+          ],
+          "checks": {
+            "C669": "red"
+          },
+          "result": "red",
+          "at": "2026-11-09T13:18:38Z",
+          "head": "5f67a53215a6da1a3e8b6d18bdfe7ab106cb6a27",
+          "tree": "6a60a27fe8661a63eae6f7bdb2c5bfb172fe9729",
+          "contract": "2c669456a73d28af63c63387626613b552c534deb347f2e73f81028dfd6f83a9",
+          "digests": [
+            {
+              "file": "docs/proof.md",
+              "sha256": "39359e8325aad8fecfc3fda51b06cc8f50bc53dc00413c07d8701543d53b5b4c"
+            }
+          ]
+        },
+        {
+          "rule": {
+            "req": "R292",
+            "k": 8
+          },
+          "what": "renamed the Red first line",
+          "files": [
+            "docs/workflows.md"
+          ],
+          "checks": {
+            "C672": "red"
+          },
+          "result": "red",
+          "at": "2026-11-09T13:19:04Z",
+          "head": "5f67a53215a6da1a3e8b6d18bdfe7ab106cb6a27",
+          "tree": "6a60a27fe8661a63eae6f7bdb2c5bfb172fe9729",
+          "contract": "2c669456a73d28af63c63387626613b552c534deb347f2e73f81028dfd6f83a9",
+          "digests": [
+            {
+              "file": "docs/workflows.md",
+              "sha256": "c713c6c0dce328bcab5c16fa40a726f48315f2bf22add6a6affacf26b768cf83"
+            }
+          ]
+        }
       ]
     },
     {
@@ -80044,11 +80094,85 @@
         "P227.1",
         "P227.2"
       ],
-      "status": "planned",
+      "status": "done",
       "role": "docs",
       "tasks": [
         "docs/panel.md: the typical figure (the median of the runs) before the range, with an example, and that the kernel takes the time from one clock which VBW_NOW sets for tests only.",
         "docs/next.md: the step and milestone sentences with 'usually about'; docs/statusline.md: 'until ~10:15 (09:22-18:02)' for a rough estimate."
+      ],
+      "mutations": [
+        {
+          "rule": {
+            "req": "R284",
+            "k": 4
+          },
+          "what": "panel no longer says tests only",
+          "files": [
+            "docs/panel.md"
+          ],
+          "checks": {
+            "C674": "red"
+          },
+          "result": "red",
+          "at": "2026-11-09T13:18:38Z",
+          "head": "5f67a53215a6da1a3e8b6d18bdfe7ab106cb6a27",
+          "tree": "6a60a27fe8661a63eae6f7bdb2c5bfb172fe9729",
+          "contract": "2c669456a73d28af63c63387626613b552c534deb347f2e73f81028dfd6f83a9",
+          "digests": [
+            {
+              "file": "docs/panel.md",
+              "sha256": "fb2c245bcdc5b1b8635580eb39efec323683f94e847e7ddf1096f1150b7221a8"
+            }
+          ]
+        },
+        {
+          "rule": {
+            "req": "R291",
+            "k": 7
+          },
+          "what": "statusline shows range only",
+          "files": [
+            "docs/statusline.md"
+          ],
+          "checks": {
+            "C677": "red"
+          },
+          "result": "red",
+          "at": "2026-11-09T13:19:02Z",
+          "head": "5f67a53215a6da1a3e8b6d18bdfe7ab106cb6a27",
+          "tree": "6a60a27fe8661a63eae6f7bdb2c5bfb172fe9729",
+          "contract": "2c669456a73d28af63c63387626613b552c534deb347f2e73f81028dfd6f83a9",
+          "digests": [
+            {
+              "file": "docs/statusline.md",
+              "sha256": "95aa8363b031efeff039c07f1880ea4507a1a595da6b5f7c51037cbf848ddf0e"
+            }
+          ]
+        },
+        {
+          "rule": {
+            "req": "R291",
+            "k": 7
+          },
+          "what": "next.md drops usually about",
+          "files": [
+            "docs/next.md"
+          ],
+          "checks": {
+            "C677": "red"
+          },
+          "result": "red",
+          "at": "2026-11-09T13:19:16Z",
+          "head": "5f67a53215a6da1a3e8b6d18bdfe7ab106cb6a27",
+          "tree": "6a60a27fe8661a63eae6f7bdb2c5bfb172fe9729",
+          "contract": "2c669456a73d28af63c63387626613b552c534deb347f2e73f81028dfd6f83a9",
+          "digests": [
+            {
+              "file": "docs/next.md",
+              "sha256": "1da9f3b0e9bee01401617eabf7ae8ade95601bf6eec08474a70b9913bbdc1459"
+            }
+          ]
+        }
       ]
     },
     {
@@ -100731,6 +100855,17 @@
         "ended": "2026-11-09T13:17:16Z",
         "cost": {
           "usd": 1.967813
+        }
+      },
+      {
+        "id": "build-20261109T131730Z",
+        "kind": "build",
+        "session": "0ee781c3-c5b6-4a6c-889f-04b89f1fba4a",
+        "milestone": "M56",
+        "started": "2026-11-09T13:17:30Z",
+        "ended": "2026-11-09T13:20:45Z",
+        "cost": {
+          "usd": 0.782631
         }
       }
     ],
