@@ -72,6 +72,9 @@ LINE='tests/c2.sh is waiting for approval: C2 run now on its working content; vb
 }
 
 @test "R288 mutate: a break of plan A says nothing of plan B's waiting file; a break caught by C2 names it in the line" {
+  # A break runs on a copy of the last commit, and vbw mutate refuses an uncommitted check
+  # file, so plan B's changed file is committed first: it still waits for approval.
+  git commit -q -m "test(receipt): quote the receipt" -- tests/c2.sh
   printf 'unpaid\n' > src/pay.txt
   vbw_run mutate P1.1 R1.1 "writes unpaid" src/pay.txt
   [[ "$output" != *"tests/c2.sh"* && "$output" != *"waiting for approval"* ]] || { echo "$output"; false; }
