@@ -33412,7 +33412,15 @@
         "guarded: R3 (C3), R15 (C14), R21 (C16), R33 (C29), R61 (C73, C74, C75, C76, C77), R75 (C101), R76 (C102, C103), R77 (C104), R83 (C119), R98 (C154), R100 (C156), R120 (C185), R141 (C203), R149 (C217, C218, C219, C220, C221, C222), R150 (C223, C224, C225, C226, C227, C228, C229, C230), R151 (C231, C232), R152 (C233, C234), R160 (C247, C263, C264), R162 (C249), R164 (C251), R165 (C252), R166 (C253, C254, C255, C256, C267), R170 (C269), R178 (C290, C291, C292, C293, C294, C295, C296, C311), R179 (C297, C298, C299, C300, C301, C302, C303, C304, C305, C306, C312), R180 (C307, C308, C309, C310), R184 (C328, C329, C330, C331, C332, C333), R192 (C401, C402, C403, C404, C405, C406, C407, C408, C409, C410), R194 (C417, C418, C419), R198 (C423), R208 (C464, C465, C466, C468), R210 (C474, C475, C476), R218 (C496), R219 (C497, C498, C499), R222 (C505, C506), R223 (C507, C508, C509), R225 (C517, C518, C519), R231 (C532, C533), R233 (C540, C541, C542, C543), R234 (C535, C536), R239 (C554, C555), R241 (C546, C547, C548, C549, C550, C560), R243 (C558, C559, C561), R245 (C564, C565), R249 (C571, C572, C573), R250 (C574, C575, C576, C577, C578, C585), R253 (C581, C582), R254 (C583), R255 (C584), R267 (C619, C620, C621), R269 (C626, C627, C628, C629, C630), R275 (C646, C647), R276 (C642, C652)",
         "tests: project test command"
       ],
-      "predicted": "deep"
+      "predicted": "deep",
+      "escalations": [
+        {
+          "at": "2026-11-09T11:36:47Z",
+          "from": "deep",
+          "to": "deep",
+          "reason": "Dev blocked P225.3: Task 2 (docs/guards.md, R289.6 and R290.5): the guard refuses every edit of docs/guards.md as a protected check file; the main session must apply the two edits with vbw apply --patch. Tasks 1 and 3 committed; mutation not run."
+        }
+      ]
     },
     {
       "id": "P226",
@@ -33444,7 +33452,21 @@
         "guarded: R12 (C11), R13 (C12), R14 (C13), R22 (C19), R23 (C20), R24 (C23), R25 (C24), R26 (C22), R27 (C21), R28 (C25), R31 (C27), R32 (C28), R35 (C31), R37 (C35), R38 (C33, C34), R39 (C36), R40 (C37), R43 (C42, C43), R44 (C44, C45), R45 (C39, C40, C41), R46 (C46), R47 (C47), R48 (C49, C50), R49 (C48), R50 (C51), R60 (C72, C94), R61 (C73, C74, C75, C76, C77), R62 (C78, C79, C80, C81, C82, C83, C93), R65 (C86, C87, C88, C89, C90), R66 (C95), R67 (C96), R69 (C110, C120, C122), R70 (C114), R71 (C115, C121), R72 (C116, C118), R73 (C98), R74 (C99, C100), R75 (C101), R76 (C102, C103), R77 (C104), R78 (C105, C106), R79 (C107), R80 (C108), R83 (C119), R92 (C131, C132, C133, C134, C135, C136, C137, C138, C139), R93 (C140, C141, C142, C143, C144), R94 (C145, C146, C147, C148), R95 (C149, C150), R96 (C151, C152), R97 (C153), R98 (C154), R99 (C155), R100 (C156), R101 (C179), R103 (C160), R104 (C161, C162), R105 (C163), R106 (C164, C165), R107 (C166, C167), R110 (C169, C170), R111 (C171, C172, C173, C174, C175), R115 (C181), R116 (C182, C183), R118 (C184), R121 (C187, C188), R123 (C190, C191), R129 (C196), R130 (C197), R131 (C198), R132 (C199), R134 (C201), R135 (C202), R144 (C208, C209), R145 (C210), R147 (C212, C215, C237), R148 (C213, C214, C216, C238), R149 (C217, C218, C219, C220, C221, C222), R150 (C223, C224, C225, C226, C227, C228, C229, C230), R152 (C233, C234), R153 (C235, C236, C239), R156 (C242, C243), R157 (C244), R158 (C245), R159 (C246), R160 (C247, C263, C264), R161 (C248, C265, C266), R162 (C249), R163 (C250), R166 (C253, C254, C255, C256, C267), R167 (C257, C258, C259, C260), R168 (C261, C262), R169 (C268), R170 (C269), R171 (C270), R173 (C281, C282, C283, C284, C285, C286, C289), R174 (C279, C280), R175 (C274, C275), R176 (C276, C277, C278), R178 (C290, C291, C292, C293, C294, C295, C296, C311), R179 (C297, C298, C299, C300, C301, C302, C303, C304, C305, C306, C312), R180 (C307, C308, C309, C310), R182 (C322, C323, C324, C325, C326), R183 (C327), R186 (C344, C345, C346, C347, C348), R192 (C401, C402, C403, C404, C405, C406, C407, C408, C409, C410), R193 (C411, C412), R194 (C417, C418, C419), R195 (C420, C421, C422), R196 (C415, C416), R197 (C413, C414), R202 (C432, C433, C434, C435, C436, C437, C438, C439, C440, C441, C442, C443, C444, C445, C446, C447), R203 (C448, C449, C450), R204 (C451, C452, C453, C454), R205 (C455, C456, C457, C458, C467), R206 (C459, C460), R209 (C469, C470, C471, C472, C473), R210 (C474, C475, C476), R211 (C477, C478, C479), R212 (C480, C481, C482), R213 (C483, C484), R214 (C485, C486, C487), R215 (C488, C489, C490), R216 (C491, C492, C493), R217 (C494, C495), R219 (C497, C498, C499), R220 (C500, C501, C502, C503), R221 (C504), R226 (C510, C511), R228 (C522, C523, C524, C525), R236 (C537), R238 (C545), R239 (C554, C555), R241 (C546, C547, C548, C549, C550, C560), R244 (C562, C563), R245 (C564, C565), R246 (C566, C567), R249 (C571, C572, C573), R250 (C574, C575, C576, C577, C578, C585), R251 (C579), R252 (C580), R253 (C581, C582), R256 (C586, C587), R257 (C588, C589), R259 (C593, C594, C595), R260 (C596, C597), R261 (C598, C599, C600), R262 (C601), R263 (C602, C603, C604), R266 (C617, C618), R267 (C619, C620, C621), R269 (C626, C627, C628, C629, C630), R277 (C648, C650), R278 (C649, C651)",
         "tests: project test command"
       ],
-      "predicted": "deep"
+      "predicted": "deep",
+      "escalations": [
+        {
+          "at": "2026-11-09T11:41:14Z",
+          "from": "deep",
+          "to": "deep",
+          "reason": "Dev blocked P226.2: Needs plugin/lib/contract.sh (lines 18 and 247-248 del(.status, .note, .mutations, .amendments, .awaits)) to also drop .red_runs, or the contract hash changes on the first vbw check --expect-red and every vbw mutate/commit then refuses 'contract not approved'; plugin/lib/cmd-apply.sh (lines 590-605, which carry mutations/amendments/awaits across a re-apply) should carry red_runs too. Both are outside this plan's files. The rest is built and WIP is saved as .vbw/runtime/scratch/P226.2-wip.patch (record.jq red_run_ok + field list; cmd-check.sh red_runs_keep/red_first_line; cmd-plan.sh prints the line): R292 plan-done cases 2-4 pass once the contract ignores red_runs."
+        },
+        {
+          "at": "2026-11-09T11:45:28Z",
+          "from": "deep",
+          "to": "deep",
+          "reason": "Dev blocked P226.1: C667 case 'R288 mutate' (tests/check-waiting-line.bats line 82) runs 'vbw mutate P1.2 R2.1' with tests/c2.sh changed but uncommitted and expects the break to run and print the approval line. vbw mutate refuses that today ('check files differ from the last commit', cmd-mutate.sh:350, pinned by tests/mutate-time.bats:209) because a break runs on a copy of HEAD, so an uncommitted check file would be tested as its old content and record a false survivor. The same situation (an uncommitted check file the break's check reads) cannot both be refused and run. Fixing it means either changing the protected check or dropping that guard (or copying dirty waiting check files into the break's copy, which changes what a recorded break proves): the Lead/owner must decide. Done and committed: vbw_wait_say (slots.sh, C668 passes), checks_say_waiting (checks.sh), fix done wording (cmd-fix.sh), dev.md; C667 cases 1-3, 5 pass, case 4 and the docs case (P226.4) are red."
+        }
+      ]
     },
     {
       "id": "P227",
@@ -33482,6 +33504,12 @@
           "from": "deep",
           "to": "deep",
           "reason": "Dev blocked P227.1: Implementation done and committed (8aea4318): vbw_now honours VBW_NOW; steps.sh, road.jq, proofsteps.sh, statusline.jq use one clock; R284.3 case and the code-scan pass. C673 stays red only because the approved check R284 'every test file ... never from the wall clock' (tests/step-ladder.bats line 199) greps tests/step-ladder.bats itself with the pattern 'day\\(now\\)|, now\\]|\\) - now', which matches its own line 199 ('words a clock from the wall clock'). Needs the check file fixed (e.g. exclude step-ladder's own grep line or write the pattern so it does not match itself); I may not edit an approved check file."
+        },
+        {
+          "at": "2026-11-09T11:45:19Z",
+          "from": "deep",
+          "to": "deep",
+          "reason": "Dev blocked P227.1: Tasks 1-2 are committed (8aea4318, ae99a0fb); C673 passes. Task 3 cannot pass: the test files set VBW_NOW=2030-01-15 but still seed their notes from jq's wall-clock now (tests/statusline-step.bats lines 56,71,126,150,193,207,270: '(now | floor)'; the same in tests/step-range.bats and tests/road-next.bats R191/R190 cases), so 28+ cases fail (statusline-step 10-29,36; road-next/step-next R191/R190; step-range R270/R291). They are protected check files, which the guard bars me from editing. Needs a vbw apply --patch replacing '(now | floor)' with '($ENV.VBW_NOW | fromdateiso8601)' in those test files, then approval."
         }
       ]
     },
@@ -78234,7 +78262,7 @@
       "after": [
         "P224.1"
       ],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "record_commit keeps every failure (the project's hook, any git error, strict or not) in .vbw/runtime/commit-failed.json: {at, reason, files, message}, the full text in .vbw/runtime/output/commit-failed.log; a VBW commit that succeeds removes it; never --no-verify, never an offer to skip the hook.",
@@ -78242,6 +78270,200 @@
         "next.jq's first row: action commit, gate true, its instruction saying VBW's files could not be committed, the hook's own message (at most 20 lines, then where the full text is kept) and the three ways on: fix what the hook flagged, allow it in the checker's settings, or commit the VBW files yourself, then run vbw next again; cmd-next.sh hands the standing failure to it.",
         "vbw approve refuses with the same reason while the failure stands, before writing anything; the existing approval-commit refusal (R81) records its failure too, so vbw next stops at the commit step instead of asking the approval again.",
         "Router: a **commit** (needs user) step that shows the kernel's instruction as given, never the approval menu, and runs vbw next again once the user says it is done; tests/commit-failed.bats (R287 step, approve, clears, hooks, router) and tests/approve-commit-fails.bats pass under /bin/bash."
+      ],
+      "mutations": [
+        {
+          "rule": {
+            "req": "R287",
+            "k": 1
+          },
+          "what": "record_commit no longer keeps the failure",
+          "files": [
+            "plugin/lib/record.sh"
+          ],
+          "checks": {
+            "C655": "red"
+          },
+          "result": "red",
+          "at": "2026-11-09T11:45:02Z",
+          "head": "96e36775ec6920b6eb62dd9aff47b8714870ffe5",
+          "tree": "3e60fdcf5401791b6b0d7b6e4dd839d1fd9178d7",
+          "contract": "82633a16867eeb4dafa5ea9ff7f2d24f00baf42723e3ec43d451cc1e4617439d",
+          "digests": [
+            {
+              "file": "plugin/lib/record.sh",
+              "sha256": "21255ad30740f7fe9869bd6a9952a2f9d678f407c10532f2368f3136f7c80e51"
+            }
+          ]
+        },
+        {
+          "rule": {
+            "req": "R287",
+            "k": 2
+          },
+          "what": "the commit step never shows",
+          "files": [
+            "plugin/lib/next.jq"
+          ],
+          "checks": {
+            "C655": "red"
+          },
+          "result": "red",
+          "at": "2026-11-09T11:45:04Z",
+          "head": "96e36775ec6920b6eb62dd9aff47b8714870ffe5",
+          "tree": "3e60fdcf5401791b6b0d7b6e4dd839d1fd9178d7",
+          "contract": "82633a16867eeb4dafa5ea9ff7f2d24f00baf42723e3ec43d451cc1e4617439d",
+          "digests": [
+            {
+              "file": "plugin/lib/next.jq",
+              "sha256": "3907d3f34436c5014911ffe58d17dc03aa528e4e3c946da2a1aa11144ac64f07"
+            }
+          ]
+        },
+        {
+          "rule": {
+            "req": "R287",
+            "k": 3
+          },
+          "what": "the hook message is never shortened",
+          "files": [
+            "plugin/lib/commit-failure.sh"
+          ],
+          "checks": {
+            "C655": "red"
+          },
+          "result": "red",
+          "at": "2026-11-09T11:45:07Z",
+          "head": "96e36775ec6920b6eb62dd9aff47b8714870ffe5",
+          "tree": "3e60fdcf5401791b6b0d7b6e4dd839d1fd9178d7",
+          "contract": "82633a16867eeb4dafa5ea9ff7f2d24f00baf42723e3ec43d451cc1e4617439d",
+          "digests": [
+            {
+              "file": "plugin/lib/commit-failure.sh",
+              "sha256": "cfcfe480c78c319e22df1224b3a8635a5440ff6f7b0c64777cabc5d75775134e"
+            }
+          ]
+        },
+        {
+          "rule": {
+            "req": "R287",
+            "k": 4
+          },
+          "what": "approve no longer refuses",
+          "files": [
+            "plugin/lib/cmd-approve.sh"
+          ],
+          "checks": {
+            "C655": "red"
+          },
+          "result": "red",
+          "at": "2026-11-09T11:45:10Z",
+          "head": "96e36775ec6920b6eb62dd9aff47b8714870ffe5",
+          "tree": "3e60fdcf5401791b6b0d7b6e4dd839d1fd9178d7",
+          "contract": "82633a16867eeb4dafa5ea9ff7f2d24f00baf42723e3ec43d451cc1e4617439d",
+          "digests": [
+            {
+              "file": "plugin/lib/cmd-approve.sh",
+              "sha256": "4448954762db9b4e949a98cfdede8bedd1e450c2f71d59cc0d68f05a07582695"
+            }
+          ]
+        },
+        {
+          "rule": {
+            "req": "R287",
+            "k": 5
+          },
+          "what": "a failure never clears",
+          "files": [
+            "plugin/lib/commit-failure.sh"
+          ],
+          "checks": {
+            "C655": "red"
+          },
+          "result": "red",
+          "at": "2026-11-09T11:45:12Z",
+          "head": "96e36775ec6920b6eb62dd9aff47b8714870ffe5",
+          "tree": "3e60fdcf5401791b6b0d7b6e4dd839d1fd9178d7",
+          "contract": "82633a16867eeb4dafa5ea9ff7f2d24f00baf42723e3ec43d451cc1e4617439d",
+          "digests": [
+            {
+              "file": "plugin/lib/commit-failure.sh",
+              "sha256": "fb14fa57d78ecb7a436d59a3f975d1cb9384762cca7049195399760b7bb3f28f"
+            }
+          ]
+        },
+        {
+          "rule": {
+            "req": "R287",
+            "k": 6
+          },
+          "what": "vbw next never retries",
+          "files": [
+            "plugin/lib/cmd-next.sh"
+          ],
+          "checks": {
+            "C655": "red"
+          },
+          "result": "red",
+          "at": "2026-11-09T11:45:15Z",
+          "head": "96e36775ec6920b6eb62dd9aff47b8714870ffe5",
+          "tree": "3e60fdcf5401791b6b0d7b6e4dd839d1fd9178d7",
+          "contract": "82633a16867eeb4dafa5ea9ff7f2d24f00baf42723e3ec43d451cc1e4617439d",
+          "digests": [
+            {
+              "file": "plugin/lib/cmd-next.sh",
+              "sha256": "0401ab2322f2e18a5b2c344a608461e0866f7ac510412a509898b70ad5a933a1"
+            }
+          ]
+        },
+        {
+          "rule": {
+            "req": "R287",
+            "k": 7
+          },
+          "what": "the retry passes the flag that skips hooks",
+          "files": [
+            "plugin/lib/commit-failure.sh"
+          ],
+          "checks": {
+            "C655": "red"
+          },
+          "result": "red",
+          "at": "2026-11-09T11:45:17Z",
+          "head": "96e36775ec6920b6eb62dd9aff47b8714870ffe5",
+          "tree": "3e60fdcf5401791b6b0d7b6e4dd839d1fd9178d7",
+          "contract": "82633a16867eeb4dafa5ea9ff7f2d24f00baf42723e3ec43d451cc1e4617439d",
+          "digests": [
+            {
+              "file": "plugin/lib/commit-failure.sh",
+              "sha256": "229d6eb54ff1ab8393655d610de97c710c3af4330de156617392d5201f7a949e"
+            }
+          ]
+        },
+        {
+          "rule": {
+            "req": "R287",
+            "k": 8
+          },
+          "what": "the router step drops never the approval menu",
+          "files": [
+            "plugin/skills/vibe/SKILL.md"
+          ],
+          "checks": {
+            "C655": "red"
+          },
+          "result": "red",
+          "at": "2026-11-09T11:45:20Z",
+          "head": "96e36775ec6920b6eb62dd9aff47b8714870ffe5",
+          "tree": "3e60fdcf5401791b6b0d7b6e4dd839d1fd9178d7",
+          "contract": "82633a16867eeb4dafa5ea9ff7f2d24f00baf42723e3ec43d451cc1e4617439d",
+          "digests": [
+            {
+              "file": "plugin/skills/vibe/SKILL.md",
+              "sha256": "1013e9a4f6667b5728bfb9ea11182c514fe07c320164afd615a5ccfc08fd61f0"
+            }
+          ]
+        }
       ]
     },
     {
@@ -78796,13 +79018,14 @@
         "P225.1",
         "P225.2"
       ],
-      "status": "planned",
+      "status": "blocked",
       "role": "docs",
       "tasks": [
         "CLAUDE.md and AGENTS.md (the same rulebook, kept identical): 'Nothing outside the project' has four exceptions, the fourth Claude Code's per-session env file ($CLAUDE_ENV_FILE), where the session start keeps one PATH line for the loaded copy (R285); the session record is written for every session.",
         "docs/guards.md: the record is protected by its resolved path (another folder's .vbw/record.json is not), and a Dev's write under .vbw/runtime/ outside the scratch folder is refused naming .vbw/runtime/scratch/.",
         "docs/diagnostics.md: doctor compares the vbw on PATH with the copy this session loaded, its fix (start or resume the session again) and the lines without a session or without a record."
-      ]
+      ],
+      "note": "Task 2 (docs/guards.md, R289.6 and R290.5): the guard refuses every edit of docs/guards.md as a protected check file; the main session must apply the two edits with vbw apply --patch. Tasks 1 and 3 committed; mutation not run."
     },
     {
       "id": "P226.1",
@@ -78821,14 +79044,15 @@
       "after": [
         "P224.1"
       ],
-      "status": "planned",
+      "status": "blocked",
       "role": "dev",
       "tasks": [
         "checks.sh: checks_approved keeps the waiting files silently; one function prints, for the checks a run will run, one line per waiting file a running check has as its file: '<file> is waiting for approval: <ids> run now on its working content; vbw next asks the approval before the proof' (no vbw: prefix: information, not a refusal); vbw check calls it through checks_run_all and vbw mutate for the checks of its break.",
         "slots.sh: vbw_wait_say WHAT SINCE prints once per wait, when it starts, 'waiting for WHAT since HH:MM' in local time; slots_hold uses it ('a free slot of the computer-wide limit') and the check gate (checks_gate_enter) for another VBW command's checks in this project; fix done's waits go through it too; no other wording of a wait remains.",
         "cmd-mutate.sh and cmd-fix.sh: the approval lines name a file only for the checks that read it; fix done keeps its line that no check runs before the approval.",
         "plugin/agents/dev.md: the 'is waiting for approval' line is information, not a block: keep working; tests/check-waiting-line.bats, the R288 cases of tests/machine-wait-line.bats and tests/mutate-time.bats pass under /bin/bash."
-      ]
+      ],
+      "note": "C667 case 'R288 mutate' (tests/check-waiting-line.bats line 82) runs 'vbw mutate P1.2 R2.1' with tests/c2.sh changed but uncommitted and expects the break to run and print the approval line. vbw mutate refuses that today ('check files differ from the last commit', cmd-mutate.sh:350, pinned by tests/mutate-time.bats:209) because a break runs on a copy of HEAD, so an uncommitted check file would be tested as its old content and record a false survivor. The same situation (an uncommitted check file the break's check reads) cannot both be refused and run. Fixing it means either changing the protected check or dropping that guard (or copying dirty waiting check files into the break's copy, which changes what a recorded break proves): the Lead/owner must decide. Done and committed: vbw_wait_say (slots.sh, C668 passes), checks_say_waiting (checks.sh), fix done wording (cmd-fix.sh), dev.md; C667 cases 1-3, 5 pass, case 4 and the docs case (P226.4) are red."
     },
     {
       "id": "P226.2",
@@ -78845,14 +79069,15 @@
       "after": [
         "P224.1"
       ],
-      "status": "planned",
+      "status": "blocked",
       "role": "dev",
       "tasks": [
         "vbw check --expect-red records the run in plans[].red_runs: {at, head, checks: {id: red|green}, first} where first says the plan had no code commit (VBW-Plan trailer) yet; the run goes to each plan of the open build or fix run whose own checks it ran, or, with no run open, to each unfinished plan owning one; a plan's own checks are the checks its rules name it for, else its requirements' checks.",
         "record.jq validates red_runs (no path beside a digest; row 15 of record-schema.jq already counts it); green runs are kept too and the exit status stays as today.",
         "vbw plan done prints 'Red first: C1 and C2 never ran red before this plan's first code commit; QA judges this', or 'Red first: every check of this plan ran red before its first code commit (C1, C2)', judged from the red runs of every plan owning the check; no line for a plan with no own checks; plan done's exit and what it records unchanged.",
         "The R292 kept and plan done cases of tests/red-first.bats pass under /bin/bash."
-      ]
+      ],
+      "note": "Needs plugin/lib/contract.sh (lines 18 and 247-248 del(.status, .note, .mutations, .amendments, .awaits)) to also drop .red_runs, or the contract hash changes on the first vbw check --expect-red and every vbw mutate/commit then refuses 'contract not approved'; plugin/lib/cmd-apply.sh (lines 590-605, which carry mutations/amendments/awaits across a re-apply) should carry red_runs too. Both are outside this plan's files. The rest is built and WIP is saved as .vbw/runtime/scratch/P226.2-wip.patch (record.jq red_run_ok + field list; cmd-check.sh red_runs_keep/red_first_line; cmd-plan.sh prints the line): R292 plan-done cases 2-4 pass once the contract ignores red_runs."
     },
     {
       "id": "P226.3",
@@ -78926,7 +79151,7 @@
         "steps.sh, road.jq, proofsteps.sh and statusline.jq take every 'now' of the estimate path from that one definition; nothing in them reads jq's now directly.",
         "The cases that set the clock pass: tests/step-ladder.bats (the R284 cases among them), tests/road-next.bats, tests/step-next.bats, tests/statusline-step.bats and tests/step-range.bats's R270 cases whose wording R291 keeps; the status line stays within 60 ms (tools/bench-hooks.sh)."
       ],
-      "note": "Implementation done and committed (8aea4318): vbw_now honours VBW_NOW; steps.sh, road.jq, proofsteps.sh, statusline.jq use one clock; R284.3 case and the code-scan pass. C673 stays red only because the approved check R284 'every test file ... never from the wall clock' (tests/step-ladder.bats line 199) greps tests/step-ladder.bats itself with the pattern 'day\\(now\\)|, now\\]|\\) - now', which matches its own line 199 ('words a clock from the wall clock'). Needs the check file fixed (e.g. exclude step-ladder's own grep line or write the pattern so it does not match itself); I may not edit an approved check file."
+      "note": "Tasks 1-2 are committed (8aea4318, ae99a0fb); C673 passes. Task 3 cannot pass: the test files set VBW_NOW=2030-01-15 but still seed their notes from jq's wall-clock now (tests/statusline-step.bats lines 56,71,126,150,193,207,270: '(now | floor)'; the same in tests/step-range.bats and tests/road-next.bats R191/R190 cases), so 28+ cases fail (statusline-step 10-29,36; road-next/step-next R191/R190; step-range R270/R291). They are protected check files, which the guard bars me from editing. Needs a vbw apply --patch replacing '(now | floor)' with '($ENV.VBW_NOW | fromdateiso8601)' in those test files, then approval."
     },
     {
       "id": "P227.2",
@@ -99316,6 +99541,17 @@
         "ended": "2026-11-09T11:31:33Z",
         "cost": {
           "usd": 3.488469
+        }
+      },
+      {
+        "id": "build-20261109T113557Z",
+        "kind": "build",
+        "session": "0ee781c3-c5b6-4a6c-889f-04b89f1fba4a",
+        "milestone": "M56",
+        "started": "2026-11-09T11:35:57Z",
+        "ended": "2026-11-09T11:45:52Z",
+        "cost": {
+          "usd": 2.564754
         }
       }
     ],
