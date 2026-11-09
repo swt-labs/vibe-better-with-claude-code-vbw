@@ -81402,7 +81402,7 @@
     {
       "id": "T255",
       "text": "Hook bench noise (CI 2.1.27, PR 751): guard (script, large record) measured 65.3 ms against 50 on GitHub's macOS runner while the run's reference ratio was 0.90 and jq startup rose from about 8 to 13.8 ms; locally 34 ms. The reference is measured once at the start, so a busy moment later is read as a slow hook. Measure the reference beside each case (or retry against a fresh reference) so a noisy runner never fails the bench while a real regression still does",
-      "status": "open"
+      "status": "done"
     },
     {
       "id": "T256",
