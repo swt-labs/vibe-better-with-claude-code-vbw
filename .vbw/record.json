@@ -78567,12 +78567,62 @@
         "P225.3",
         "P227.3"
       ],
-      "status": "planned",
+      "status": "done",
       "role": "docs",
       "tasks": [
         "docs/record.md: the plans row gives a break's digests as a list of {file, sha256}, why (a secret scanner's keyword rule never meets a path and a digest on one line), the Versioning table's row 15 (a break whose digests are a list, or a plan's red-first runs), VBW_SCHEMA_MAX currently 15, eleven rows, and that an older VBW must be updated to read it.",
         "docs/next.md: the commit step (needs you): the project's pre-commit hook's own message, where the full text is kept, the three ways on (fix what the hook flagged, allow it in the checker's settings, commit the VBW files yourself), no approval asked meanwhile, and that VBW never passes --no-verify.",
         "docs/triage.md: the old 'commit them yourself' warning becomes the commit step; docs/diagnostics.md: doctor's line for a failed record commit."
+      ],
+      "mutations": [
+        {
+          "rule": {
+            "req": "R286",
+            "k": 8
+          },
+          "what": "digests no longer {file, sha256}, no secret scanner",
+          "files": [
+            "docs/record.md"
+          ],
+          "checks": {
+            "C654": "red"
+          },
+          "result": "red",
+          "at": "2026-11-09T13:22:21Z",
+          "head": "ebf1089f83eaa5b6255a018e715aaa443a40cb29",
+          "tree": "65184732d1c45d85cf992c2c8c4fbc6396d81b79",
+          "contract": "2c669456a73d28af63c63387626613b552c534deb347f2e73f81028dfd6f83a9",
+          "digests": [
+            {
+              "file": "docs/record.md",
+              "sha256": "7711f5494cd88bace1e0d2eaa9b88d8901802845c2c20e6e4f9167b920a20b35"
+            }
+          ]
+        },
+        {
+          "rule": {
+            "req": "R287",
+            "k": 10
+          },
+          "what": "no pre-commit hook, no --no-verify",
+          "files": [
+            "docs/next.md"
+          ],
+          "checks": {
+            "C657": "red"
+          },
+          "result": "red",
+          "at": "2026-11-09T13:22:32Z",
+          "head": "ebf1089f83eaa5b6255a018e715aaa443a40cb29",
+          "tree": "65184732d1c45d85cf992c2c8c4fbc6396d81b79",
+          "contract": "2c669456a73d28af63c63387626613b552c534deb347f2e73f81028dfd6f83a9",
+          "digests": [
+            {
+              "file": "docs/next.md",
+              "sha256": "5fd97d0d96639465e4f0c7cbdf03b4555de7141d98655a07993349d1a16d5c2a"
+            }
+          ]
+        }
       ]
     },
     {
@@ -80497,10 +80547,36 @@
         "P228.1",
         "P226.4"
       ],
-      "status": "planned",
+      "status": "done",
       "role": "docs",
       "tasks": [
         "docs/proof.md: the kernel's own reads (VBW_KERNEL_READS), that a change of only the version value reruns only the units that read the version themselves ('reads the version: FILE'), and that any other change to the file reruns every unit that read it."
+      ],
+      "mutations": [
+        {
+          "rule": {
+            "req": "R279",
+            "k": 6
+          },
+          "what": "renamed VBW_KERNEL_READS in docs/proof.md",
+          "files": [
+            "docs/proof.md"
+          ],
+          "checks": {
+            "C680": "red"
+          },
+          "result": "red",
+          "at": "2026-11-09T13:22:13Z",
+          "head": "1500d5486ae1387d7bcf9f52eb4d0b96ed67946c",
+          "tree": "7e7dd513b7b214ec7e2268398b2e8e4c2a6b9907",
+          "contract": "2c669456a73d28af63c63387626613b552c534deb347f2e73f81028dfd6f83a9",
+          "digests": [
+            {
+              "file": "docs/proof.md",
+              "sha256": "be01ebb247a3977c97e6e346383486ff59c464ab7df122ccfe6f9201ad056653"
+            }
+          ]
+        }
       ]
     }
   ],
@@ -100866,6 +100942,17 @@
         "ended": "2026-11-09T13:20:45Z",
         "cost": {
           "usd": 0.782631
+        }
+      },
+      {
+        "id": "build-20261109T132057Z",
+        "kind": "build",
+        "session": "0ee781c3-c5b6-4a6c-889f-04b89f1fba4a",
+        "milestone": "M56",
+        "started": "2026-11-09T13:20:57Z",
+        "ended": "2026-11-09T13:23:39Z",
+        "cost": {
+          "usd": 0.751556
         }
       }
     ],
