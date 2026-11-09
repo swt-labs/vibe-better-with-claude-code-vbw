@@ -100,7 +100,7 @@ render() {
   road_is '.rough == true and .low == 960 and .high == 1860 and .typical == 960
     and .say == "Milestone end: usually about 16 min (16 to 31 min, rough guess), until around \(clk(.end_typical)) (\(clk(.end_low)) to \(clk(.end_high))), counting no fix rounds: fewer than 3 finished express phases here"'
   step_seed build 300 1 2
-  road_is '.rough == true and (.say | startswith("Milestone end: roughly "))'
+  road_is '.rough == true and (.say | startswith("Milestone end: usually about "))'
   step_seed build 300 1 20
   road_is '.rough == true and .low == 960 and .high == 960
     and .say == "Milestone end: roughly 16 min, until around \(clk(.end)) (rough guess), counting no fix rounds: fewer than 3 finished express phases here"'
