@@ -180,6 +180,9 @@ checks_exec() {
     [ -n "${GOMAXPROCS+x}" ] || cenv+=("GOMAXPROCS=$CHECKS_UNIT_SHARE")
     [ -n "${MAKEFLAGS+x}" ] || cenv+=("MAKEFLAGS=-j$CHECKS_UNIT_SHARE")
   fi
+  # The file the unit's kernel logs its own reads in (R279, CHECKS_KERNEL_READS, set by
+  # checks_unit_run when the proof tracks reads): one per unit.
+  [ -z "${CHECKS_KERNEL_READS:-}" ] || cenv+=("VBW_KERNEL_READS=$CHECKS_KERNEL_READS")
   # A unit holds a slot in this run's store only: with the store off it carries no
   # store of an outer run either (VBW_PROOF_UNIT marks it in both cases).
   # A nested run (the store is the one it inherited, SLOTS_MARK empty) passes it on,
@@ -448,6 +451,7 @@ checks_unit_run() {
   # Its share of the cores (T172): every core alone, else the run's share.
   local CHECKS_UNIT_SHARE=${CHECKS_SHARE:-}
   [ "$alone" != true ] || CHECKS_UNIT_SHARE=${CHECKS_CORES:-}
+  local CHECKS_KERNEL_READS=
   # The slot is taken after the gate and before the reset and the command, and kept
   # until the read list is collected: the tracking is the unit's own work, inside
   # its slot. The timeout counts from the command's start, never from the wait.
@@ -456,6 +460,8 @@ checks_unit_run() {
     t0=
     [ -z "${PROOFTIME_FILE:-}" ] || t0=$(prooftime_clock)
     reads_reset "$copy" "$st" || reads=false
+    # The unit's kernel logs its own reads of the project here (R279), apart from the unit's.
+    : > "$st/kernel-reads" 2> /dev/null && CHECKS_KERNEL_READS=$st/kernel-reads
     [ -z "$t0" ] || prooftime_span tracking "$t0"
     # An added-to check file is the approved content in this copy while the unit runs (R269).
     [ -z "${CU_JUDGED[i]:-}" ] || proofcopy_judge "$copy" "${CU_JUDGED[i]}"
