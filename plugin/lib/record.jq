@@ -71,6 +71,14 @@ def has_text_break: (.plans | type) == "array"
   and any(.plans[]; type == "object" and (.mutations | type) == "array"
     and any(.mutations[]; type == "object" and (.rule | type) == "object" and (.rule | has("text"))));
 
+# One red-first run of a plan (vbw check --expect-red, R292): when, the commit it ran on, each
+# own check it ran as red or green, and whether the plan had no code commit yet. No path anywhere.
+def red_run_ok:
+  type == "object" and (keys | sort) == ["at","checks","first","head"]
+  and (.at | iso) and (.first | type == "boolean")
+  and (.head | type == "string" and test("^[0-9a-f]{40}([0-9a-f]{24})?$"))
+  and (.checks | type == "object" and length > 0 and all(.[]; one_of(["red","green"])));
+
 # One recorded break of a plan (vbw mutate): a rule or a task K with what was broken,
 # the files, each check red or green and the result (a red one may carry pending: the
 # check files waiting for approval that caught it), a task with nothing to break, or a rule
@@ -299,7 +307,8 @@ if type != "object" then ["record must be a JSON object"] else
         ( . as $p | (.reqs // [])[] | . as $x | select(($reqs | has_id($x)) | not) | "\($p.id) references unknown requirement \(.)" ) ),
 
     ( $plans[]
-      | field_rule(["id","phase","title","reqs","files","after","status","note","tasks","role","mutations","amendments","awaits"]),
+      | field_rule(["id","phase","title","reqs","files","after","status","note","tasks","role","mutations","amendments","awaits","red_runs"]),
+        ( select(has("red_runs") and ((.red_runs | type == "array" and all(.[]; red_run_ok)) | not)) | "\(.id) red_runs must be [{at, head, checks, first}] (vbw check --expect-red)" ),
         ( select(has("amendments") and ((.amendments | amendments_ok) | not)) | "\(.id) amendments must be [{what, at, session}]" ),
         ( . as $p | select(has("awaits") and ((.awaits | type == "array" and all(.[]; . as $a | any($checks[]; .id == $a and (. as $c | $p.reqs | type == "array" and any(.[]; . == $c.req))))) | not))
           | "\(.id) awaits must be an array of checks of its own requirements" ),
