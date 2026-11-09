@@ -84120,7 +84120,7 @@
       "req": "R289",
       "source": "qa",
       "attempts": 0,
-      "status": "open",
+      "status": "fixed",
       "note": "The record guard (plugin/hooks/guard-bash.jq, run; with_cwd in plugin/hooks/programs.jq) still fails open for a cd it cannot read, the same gap F434 fixed only for the literal 'cd -'. The start folder is also judged only when the text matches 'cd -' as its own word (guard-bash.jq line ~234). Through the real PreToolUse Bash hook from the project folder these are NOT refused although the shell really writes the project's own record: 'cd /usr && cd $OLDPWD && echo x > .vbw/record.json', 'cd /usr && cd \"$OLDPWD\" && echo x > .vbw/record.json', 'cd /usr && cd ~- && echo x > .vbw/record.json', 'cd /usr && cd -P - && echo x > .vbw/record.json', 'cd /usr && cd -- - && echo x > .vbw/record.json'. Cause: with_cwd leaves the folder unchanged for a cd whose target is missing (only flags), starts with ~, or holds $ or a backtick, so the folder stays /usr; the F434 trigger regex does not see these spellings. Controls that behave right: '(cd /usr; true); echo x > .vbw/record.json', 'cd /usr; cd -; ...', 'cd /nonexistent; ...', '{ cd /usr; }; ...' and 'cd /usr && echo x > .vbw/record.json' (allowed, correct). Regression test (tests/guard-record-path.bats, next to the F434 case): main-session Bash calls 'cd <elsewhere> && cd $OLDPWD && echo x > .vbw/record.json', 'cd <elsewhere> && cd ~- && echo x > .vbw/record.json' and 'cd <elsewhere> && cd -P - && echo x > .vbw/record.json' must be refused with '.vbw/record.json is written only by vbw', while 'cd <scratchpad repo> && echo x > .vbw/record.json' stays allowed. Fix idea: use one trigger, the condition with_cwd itself uses to skip a cd (any cd whose first non-flag argument is missing, starts with ~, or holds $ or a backtick, as well as the literal cd -), so any cd the guard cannot follow also tests the start folder.",
       "phase": "P225"
     },
@@ -84129,7 +84129,7 @@
       "req": "R279",
       "source": "qa",
       "attempts": 0,
-      "status": "open",
+      "status": "fixed",
       "note": "The fourth R279 criterion and P228.1 task 4 are not met: the 2.1.28 bump was never replayed on VBW's own repository, so no 'N of 743 units rerun' figure exists. The maintainer's log line 1084 in vbw-plow/PROGRESS.md says 'the 450-of-743 replay not measured: estimate about 17 test files read the version themselves; the real figure comes from the release's bump'. No decision covers dropping the measurement. For reference only, the proof store (.git/vbw/runs.json) lists 81 of 788 current units (plus 5 older entries) that read plugin.json themselves; this is an estimate from stored read lists, not a replay. What a test cannot catch: this is a missing measurement, not code. Fix: replay the bump (all five version files changed, a scratch branch) and record how many units rerun and the reasons, against 450 of 743.",
       "phase": "P228"
     },
@@ -84138,7 +84138,7 @@
       "req": "R292",
       "source": "qa",
       "attempts": 0,
-      "status": "open",
+      "status": "fixed",
       "note": "vbw check --expect-red loses the 'waited N for other VBW runs on this computer' line and the 'computer-wide limit was not in force' line (R181). plugin/lib/cmd-check.sh red_keep (line ~29) runs '. $VBW_LIB/cmd-plan.sh' in the middle of cmd_check; cmd-plan.sh sources cmd-check.sh, which sources checks.sh and slots.sh again, and slots.sh top level resets SLOTS_STATE=off, SLOTS_WAITED=0, SLOTS_LOST= (slots.sh:40-48) after checks_end (slots_total) has added the run's waits and before cmd_check calls slots_say (cmd-check.sh:88). Probe: in bash, source cmd-check.sh, set SLOTS_WAITED=7 SLOTS_STATE=on, source cmd-plan.sh: prints WAITED=0 STATE=off. Root cause is the circular source (plan_has_commit lives in cmd-plan.sh, RED_FIRST_DEFS in cmd-check.sh); fix by moving plan_has_commit and RED_FIRST_DEFS into a lib that both commands source once at load, never re-sourcing in a running command. Regression test: in tests/machine-wait-line.bats, a vbw check --expect-red C1 whose unit waits for a slot (hold_start) must still print the final 'waited ... for other VBW runs on this computer' line.",
       "phase": "P226"
     },
@@ -84147,7 +84147,7 @@
       "req": "R292",
       "source": "qa",
       "attempts": 0,
-      "status": "open",
+      "status": "fixed",
       "note": "Documents say vbw check writes nothing to the record, which is false for --expect-red since P226.2 (it appends plans[].red_runs to .vbw/record.json). Places: docs/proof.md:1971-1977 ('It writes only the full output of each failing check ... (--expect-red keeps nothing)') and :1240 ('--expect-red keeps nothing'), docs/workflows.md:253 ('nothing else is written'), plugin/bin/vbw:31 and :95 (usage 'run approved checks and report (writes nothing)'), and the header comment of plugin/lib/cmd-check.sh:2-3. P226.4 updated only the plan done row and the waiting lines. Regression test: in tests/red-first.bats 'R292 docs', assert that the vbw check entry of docs/proof.md and docs/workflows.md and the usage text of plugin/bin/vbw say --expect-red keeps the run in the plan's evidence (red_runs) and do not say it writes nothing.",
       "phase": "P226"
     }
@@ -89929,6 +89929,12 @@
       "id": "D693",
       "at": "2026-11-09T17:39:26Z",
       "text": "Contract approved: 278 requirements, 676 checks, 669 plans (89e0490d1944)",
+      "plans": []
+    },
+    {
+      "id": "D694",
+      "at": "2026-11-09T21:20:16Z",
+      "text": "Contract approved: 278 requirements, 676 checks, 669 plans (470e184b9029)",
       "plans": []
     }
   ],
