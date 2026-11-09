@@ -85050,6 +85050,11 @@
       "id": "T275",
       "text": "The building workflow's close agent can report a run ended without ending it (2026-11-09, wf_84c009ab-d23: it ran only vbw run confirm, then reported 'vbw run end succeeded'; the lease stayed and vbw next said a run is open). The workflow should take the run's end from the kernel (the lease gone), never from the agent's word",
       "status": "open"
+    },
+    {
+      "id": "T276",
+      "text": "A check whose files name a document it reads protects that document from every later build (2026-11-09: C652, registered by fix F417 in M55, lists docs/guards.md, so P225.3's Docs agent could neither edit it nor break it for its rules, and vbw mutate refuses a break in a check file). A check's files should be the check's own test files; the planner and vbw fix check should not list the code or docs under test, or vbw should tell them apart",
+      "status": "open"
     }
   ],
   "decisions": [
