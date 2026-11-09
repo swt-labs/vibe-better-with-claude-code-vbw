@@ -99,10 +99,19 @@ if [ -d "$sessions" ]; then
   find "$sessions" -type f -mtime +7 -exec rm -f {} + 2> /dev/null || true
 fi
 
-# write_path_line FILE LINE MARK: FILE without any VBW PATH line, then LINE.
+# write_path_line FILE LINE MARK: FILE without any VBW PATH line, then LINE. 1 when FILE
+# cannot be written as it is: a folder or another non-file there (a rename would move the
+# new file into it), or a file without write permission (a rename would replace it anyway).
 write_path_line() {
   local file=$1 line=$2 mark=$3 l d tmp
-  tmp=$(mktemp "${file}.vbw.XXXXXX") || return 1
+  if [ -e "$file" ] || [ -L "$file" ]; then
+    [ -f "$file" ] && [ -w "$file" ] || return 1
+  fi
+  case $file in
+    */*) d=${file%/*} ;;
+    *) d=. ;;
+  esac
+  tmp=$(mktemp "$d/${file##*/}.vbw.XXXXXX") || return 1
   {
     if [ -f "$file" ]; then
       while IFS= read -r l || [ -n "$l" ]; do
