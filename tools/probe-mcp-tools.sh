@@ -19,8 +19,8 @@
 #   inherit_omitted      no tools: line; asked to call read_note and list every tool it has
 #   disallowed_honoured  no tools: line, disallowedTools: Write, Edit, NotebookEdit, Bash;
 #                        asked to create proj/probe-written.txt with the Write tool
-#   toolsearch_disallowed  no tools: line, disallowedTools: ToolSearch; the hook logs show whether
-#                        the MCP schema was deferred (ToolSearch called first) or loaded up front
+#   toolsearch_disallowed  inherit_omitted's agent and prompt with disallowedTools: ToolSearch; the
+#                        first-turn input tokens of the two agents' transcripts are compared
 #   hook_every_tool      the probe plugin's PreToolUse entry has no matcher; an agent with
 #                        tools omitted calls Read, Bash and read_note; the hook log must hold all
 # Writes tools/probes/mcp-tools.json {probe, at, claude_version, cases, builtins,
@@ -178,7 +178,8 @@ r=$(session foreign_agent "Call the Workflow tool with name wfprobe:foreign. Wai
 add foreign_agent 'Read, mcp__probe__*' "$r"
 
 # inherit_omitted: no tools: line. Does the agent get the session's MCP tool, and which tools does it list?
-agent_file '' '' "Call the tool whose name ends in read_note (server probe) once, with no arguments. Then reply with one line: RESULT: followed by the tool's exact text, or RESULT: NO-TOOL if you could not call it; then on the same line TOOLS: followed by the exact names of every tool you have, separated by commas, including tools listed as deferred or not yet loaded, by name."
+inherit_body="Call the tool whose name ends in read_note (server probe) once, with no arguments. Then reply with one line: RESULT: followed by the tool's exact text, or RESULT: NO-TOOL if you could not call it; then on the same line TOOLS: followed by the exact names of every tool you have, separated by commas, including tools listed as deferred or not yet loaded, by name."
+agent_file '' '' "$inherit_body"
 : > "$hooklog"
 r=$(session inherit_omitted "$ask_reader" "$work/plugin")
 inherit_raw="$r"
@@ -196,20 +197,21 @@ else
   add disallowed_honoured 'disallowedTools: Write, Edit, NotebookEdit, Bash' "RESULT: WRITTEN file present: $([ -e "$work/proj/probe-written.txt" ] && echo yes || echo no); agent write calls: $writes; reply: ${r:-no reply}"
 fi
 
-# toolsearch_disallowed: inherit_omitted's agent with disallowedTools: ToolSearch. The measure is
+# toolsearch_disallowed: inherit_omitted's agent and prompt with disallowedTools: ToolSearch. The measure is
 # the agent's first-turn input tokens from its transcript, not what the agent says or calls:
 # without ToolSearch Claude Code cannot defer tools, so every inherited MCP schema loads up front.
 # The size depends on the host's MCP servers; the claim is only that without exceeds with.
-agent_file '' 'disallowedTools: ToolSearch' "Call the tool whose name ends in read_note (server probe) once, with no arguments. Then reply with one line: RESULT: followed by the tool's exact text, or RESULT: NO-TOOL if you could not call it."
+agent_file '' 'disallowedTools: ToolSearch' "$inherit_body"
 : > "$hooklog"
 r=$(session toolsearch_disallowed "$ask_reader" "$work/plugin")
 add toolsearch_disallowed 'disallowedTools: ToolSearch' "$r"
 # first_turn NAME: the probe agent's first-turn input tokens (uncached, cache written, cache read)
 # in that case's session, from its subagent transcript under the Claude config dir; 0 if none.
+# Claude Code names a project's transcript folder after its path, every non-alphanumeric as '-'.
 first_turn() {
   local sid dir
   sid=$(jq -r '.session_id // empty' "$work/out/$1.json" 2> /dev/null || true)
-  dir="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/projects/$(printf '%s' "$work/proj" | tr '/.' '--')/$sid/subagents"
+  dir="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/projects/$(printf '%s' "$work/proj" | sed 's/[^A-Za-z0-9]/-/g')/$sid/subagents"
   [ -n "$sid" ] && [ -d "$dir" ] || { echo 0; return; }
   find "$dir" -name 'agent-*.jsonl' -print0 | xargs -0 cat | jq -s '[.[] | select(.type == "assistant") | .message.usage
     | (.input_tokens // 0) + (.cache_creation_input_tokens // 0) + (.cache_read_input_tokens // 0)][0] // 0'

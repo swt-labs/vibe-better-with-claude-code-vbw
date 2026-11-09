@@ -66,7 +66,9 @@ answer() {
   jq -e '(.builtins | type == "array") and (.always_allowed | type == "array")' "$PROBE" > /dev/null || { echo "the probe result at tools/probes/mcp-tools.json has no builtins and always_allowed lists"; false; }
   local a t
   for a in $ROLES; do
-    for t in $(jq -r '.builtins[]' "$PROBE"); do
+    # LSP: a built-in the agents keep disallowing although the probe run of 2.1.319 did not list
+    # it (the probe's list is the agent's own report, so a missing name proves nothing).
+    for t in $(jq -r '(.builtins + ["LSP"]) | unique[]' "$PROBE"); do
       if own "$a" | grep -qx "$t"; then
         ! disallowed "$a" | grep -qx "$t" || { echo "$a disallows its own tool $t"; false; }
       elif ! jq -e --arg t "$t" '.always_allowed | index($t)' "$PROBE" > /dev/null; then

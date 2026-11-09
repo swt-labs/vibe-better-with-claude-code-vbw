@@ -37,6 +37,10 @@ CASES='["server_wildcard", "single_tool", "unconfigured_beside", "agent_type", "
     and (.claude_version | type == "string" and length > 0)
     and (.cases | type == "object") and (.cases | keys as $k | $c | all(.[]; . as $n | $k | any(. == $n)))' "$RESULT" || { cat "$RESULT"; false; }
   jq -e '[.cases[] | (.tools_line | type == "string" and length > 0) and (.result | type == "string" and length > 0)] | all' "$RESULT" || { echo "a case lacks its tools_line or result"; cat "$RESULT"; false; }
+  # A case asked for a RESULT: line must hold the probe agent's answer, never the session's
+  # words about a call that did not run (an Agent call refused by the permission classifier).
+  jq -e '[.cases | to_entries[] | select(.key | IN("agent_type", "foreign_agent", "hook_every_tool") | not) | select(.value.result | startswith("RESULT:") | not) | .key] | length == 0' "$RESULT" \
+    || { echo "a case recorded no probe answer:"; jq -c '[.cases | to_entries[] | select(.key | IN("agent_type", "foreign_agent", "hook_every_tool") | not) | select(.value.result | startswith("RESULT:") | not) | {(.key): .value.result[0:120]}]' "$RESULT"; false; }
   jq -e '.decision == "D561" and (.mechanism | type == "string" and test("disallowedTools"))' "$RESULT" || { jq '{decision, mechanism}' "$RESULT"; false; }
   jq -e '[.decisions[] | select(.id == "D561")] | length == 1 and (.[0].text | test("disallowedTools"))' "$REPO_ROOT/.vbw/record.json" > /dev/null \
     || { echo "the record holds no decision D561 on disallowedTools"; false; }
