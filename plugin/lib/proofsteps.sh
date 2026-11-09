@@ -145,7 +145,7 @@ proofsteps_begin() {
         {kind: "proof", run: null, session: (if $me == "" then null else $me end), pid: $pid, started_at: $now, ids: [],
          doing: "proving 0 of \($t) checks", parts: {done: 0, total: $t}, proof: null,
          first_end: (if $fe == "null" then null else $fe end), end: (if $fe == "null" then null else $fe end),
-         end_low: at($est.low), end_high: at($est.high), rough: ($est.rough == true), runs: ($est.runs // 0), late: false}')"
+         end_low: at($est.low), end_high: at($est.high), end_typical: at($est.typical), rough: ($est.rough == true), runs: ($est.runs // 0), late: false}')"
       # The road the proof sits on; its answer stays for the units that follow.
       PS_ROAD_NEXT=$(step_road_input)
       step_road_note_set "$PS_ROAD_NEXT"
