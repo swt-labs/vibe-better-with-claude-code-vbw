@@ -1,9 +1,9 @@
 {
   "scenario": "taskbreak",
   "fixture": "greet.sh in two plans of one requirement, approved by the user before the session: P1.1 greets and has a --help task no rule covers, P1.2 adds shout.sh, a file only it owns (its rule's check is red until P1.2 is built); rigor deep; the user types /vbw:vibe and the build runs to the end",
-  "cost_usd": 2.00,
+  "cost_usd": 2.33,
   "evidence_level": "L3",
-  "at": "2026-11-08T17:59:32Z",
+  "at": "2026-11-09T19:06:44Z",
   "passed": true,
   "facts": {
     "break_left_in_working_copy": true,
