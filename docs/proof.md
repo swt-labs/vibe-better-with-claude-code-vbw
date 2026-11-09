@@ -1020,6 +1020,23 @@ refuse a proof that is out of date or failed:
 For every check run fresh, use `vbw prove --full` (see
 [Limits](#limits-of-reusing-results)).
 
+#### A version bump
+
+Every record write reads the version in `plugin/.claude-plugin/plugin.json`
+(the writer file). That read is the kernel's own, not the unit's. When a unit
+runs, VBW sets `VBW_KERNEL_READS` to a file; the kernel logs each of its own
+reads of `plugin.json` there, and `vbw version` logs nothing. The proof then
+leaves those reads out of what the unit depends on.
+
+- A change of only the version value reruns only the units that read the
+  version themselves. Their reason reads `reads the version:
+  plugin/.claude-plugin/plugin.json`. Every other unit is reused, including
+  one whose only contact with `plugin.json` is the kernel's read.
+- Any other change to `plugin.json` reruns every unit that read it, through the
+  kernel or itself. The reason reads `<file> changed`.
+
+`vbw prove` names each unit that ran again and why.
+
 ### Proof in the background during an autonomous run
 
 In an autonomous run (`/vbw:vibe --auto`), a stop hook runs each time Claude
