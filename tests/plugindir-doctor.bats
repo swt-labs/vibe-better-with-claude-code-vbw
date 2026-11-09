@@ -133,8 +133,9 @@ doctor_lines() {
   mkdir -p "$CLAUDE_CONFIG_DIR/vbw/sessions"
   printf '%s\n' "$INST" > "$CLAUDE_CONFIG_DIR/vbw/rec"
   PATH="$INST/bin:$PATH" CLAUDE_CODE_SESSION_ID="../rec" run "$VBW" doctor < /dev/null
-  # R285: no record for the id, so doctor says it cannot tell which copy this session loaded.
-  doctor_lines "!" | grep -E '^! ' | grep -qF 'cannot tell which copy this session loaded' && ! printf '%s\n' "$output" | grep -F "$INST" | grep -vqF 'vbw on PATH is' || {
+  # R285: no record for the id, so doctor says it cannot tell which copy this session loaded,
+  # naming only the vbw on PATH (here the installed copy), never as the loaded one.
+  doctor_lines "!" | grep -E '^! ' | grep -qF 'cannot tell which copy this session loaded' && ! printf '%s\n' "$output" | grep -F "$INST" | grep -vqE 'vbw on PATH( is|:)' || {
     echo "doctor followed the id out of the sessions folder:"
     printf '%s\n' "$output"
     false
