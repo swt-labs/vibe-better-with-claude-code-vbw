@@ -22042,7 +22042,8 @@
         {
           "text": "docs/guards.md says the record is protected by its resolved path and another folder's is not",
           "check": "C665",
-          "plan": "P225.3"
+          "plan": "P225.3",
+          "retired": "docs/guards.md is a check file of the shipped C652 (R276, fix F417), so vbw mutate cannot break it (T276); C665 and C666 still assert this text in every proof and ran red before the doc edit"
         }
       ]
     },
@@ -22076,7 +22077,8 @@
         {
           "text": "docs/guards.md describes the refusal of a runtime write outside the scratch folder",
           "check": "C666",
-          "plan": "P225.3"
+          "plan": "P225.3",
+          "retired": "docs/guards.md is a check file of the shipped C652 (R276, fix F417), so vbw mutate cannot break it (T276); C665 and C666 still assert this text in every proof and ran red before the doc edit"
         }
       ]
     },
@@ -79381,18 +79383,6 @@
         "vbw plan done prints 'Red first: C1 and C2 never ran red before this plan's first code commit; QA judges this', or 'Red first: every check of this plan ran red before its first code commit (C1, C2)', judged from the red runs of every plan owning the check; no line for a plan with no own checks; plan done's exit and what it records unchanged.",
         "The R292 kept and plan done cases of tests/red-first.bats pass under /bin/bash."
       ],
-      "amendments": [
-        {
-          "what": "file plugin/lib/contract.sh added",
-          "at": "2026-11-09T11:57:26Z",
-          "session": "0ee781c3"
-        },
-        {
-          "what": "file plugin/lib/cmd-apply.sh added",
-          "at": "2026-11-09T11:57:26Z",
-          "session": "0ee781c3"
-        }
-      ],
       "mutations": [
         {
           "rule": {
@@ -79578,12 +79568,7 @@
         "P224.2"
       ],
       "status": "blocked",
-      "role": "dev",
-      "tasks": [
-        "next.jq: the QA round carries red_first, per plan of the phases to verify, the plan's own checks that never ran red first (worked out from the record in the same pass: no extra process).",
-        "verifying.js passes red_first to each QA agent with its phase; plugin/agents/qa.md: each such check is reported as a deviation (vbw qa finding), never a failure by itself.",
-        "The R292 QA case of tests/red-first.bats and tests/workflows.bats pass under /bin/bash."
-      ],
+      "note": "task 1 needs RED_FIRST_DEFS (red_own, red_ran_first: the one definition of a plan's own checks and of red first, in plugin/lib/cmd-check.sh) inside the jq program vbw next runs. That program is assembled in plugin/lib/cmd-next.sh (it concatenates VBW_JQ_DEFS, VBW_QA_DEFS ... then next.jq), and cmd-next.sh does not load cmd-check.sh. next.jq alone cannot reach the defs; copying them into next.jq would duplicate the rule and let the two drift. Fix: add plugin/lib/cmd-next.sh to the plan's files (source cmd-check.sh, put $RED_FIRST_DEFS in the defs chain); then next.jq, verifying.js, qa.md as planned. Red run of C671 done: red as expected.",
       "red_runs": [
         {
           "at": "2026-11-09T12:36:25Z",
@@ -79594,7 +79579,12 @@
           }
         }
       ],
-      "note": "task 1 needs RED_FIRST_DEFS (red_own, red_ran_first: the one definition of a plan's own checks and of red first, in plugin/lib/cmd-check.sh) inside the jq program vbw next runs. That program is assembled in plugin/lib/cmd-next.sh (it concatenates VBW_JQ_DEFS, VBW_QA_DEFS ... then next.jq), and cmd-next.sh does not load cmd-check.sh. next.jq alone cannot reach the defs; copying them into next.jq would duplicate the rule and let the two drift. Fix: add plugin/lib/cmd-next.sh to the plan's files (source cmd-check.sh, put $RED_FIRST_DEFS in the defs chain); then next.jq, verifying.js, qa.md as planned. Red run of C671 done: red as expected."
+      "role": "dev",
+      "tasks": [
+        "next.jq: the QA round carries red_first, per plan of the phases to verify, the plan's own checks that never ran red first (worked out from the record in the same pass: no extra process).",
+        "verifying.js passes red_first to each QA agent with its phase; plugin/agents/qa.md: QA lists each such check in its notes as a deviation from test first, never a vbw qa finding and never a failure by itself (a check that also does not pin its behaviour is already a finding, as a test gap) (D690).",
+        "The R292 QA case of tests/red-first.bats and tests/workflows.bats pass under /bin/bash."
+      ]
     },
     {
       "id": "P226.4",
@@ -79644,13 +79634,6 @@
         "core.sh: vbw_now prints VBW_NOW (a UTC time, YYYY-MM-DDTHH:MM:SSZ) when it is set, else the computer's clock; one jq definition of the moment ($ENV.VBW_NOW when set, else now) for the estimate path.",
         "steps.sh, road.jq, proofsteps.sh and statusline.jq take every 'now' of the estimate path from that one definition; nothing in them reads jq's now directly.",
         "The cases that set the clock pass: tests/step-ladder.bats (the R284 cases among them), tests/road-next.bats, tests/step-next.bats, tests/statusline-step.bats and tests/step-range.bats's R270 cases whose wording R291 keeps; the status line stays within 60 ms (tools/bench-hooks.sh)."
-      ],
-      "amendments": [
-        {
-          "what": "file plugin/lib/cmd-status.sh added",
-          "at": "2026-11-09T11:57:26Z",
-          "session": "0ee781c3"
-        }
       ],
       "mutations": [
         {
@@ -89092,6 +89075,20 @@
       "at": "2026-11-09T11:56:55Z",
       "text": "Contract approved: 278 requirements, 676 checks, 669 plans (3e426f594c21)",
       "plans": []
+    },
+    {
+      "id": "D690",
+      "text": "QA reports a check that never ran red first in its notes as a deviation from test first, never as a vbw qa finding by itself; a check that also does not pin its behaviour is already a finding as a test gap (R292.7)",
+      "why": "Lead decision 2026-11-09: R292 says QA judges it as a deviation, not a failure, while qa.md says every finding fails the phase; a note keeps 'only behaviour blocks' true",
+      "at": "2026-11-09T12:45:29Z"
+    },
+    {
+      "id": "D691",
+      "at": "2026-11-09T13:04:26Z",
+      "text": "Contract approved: 278 requirements, 676 checks, 669 plans (b49012d74b01)",
+      "plans": [
+        "P226.3"
+      ]
     }
   ],
   "commands": {
