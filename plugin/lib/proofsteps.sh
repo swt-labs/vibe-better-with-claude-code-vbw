@@ -168,7 +168,7 @@ proofsteps_note_update() {
   before=$(jq -r '.end // ""' "$note" 2> /dev/null) || before=
   [ "$1" -le "$total" ] || total=$1
   out=$(jq -c --argjson d "$1" --argjson t "$total" --arg mode "$PS_MODE" --arg run "$PS_RUN" --argjson pid "$$" "$VBW_STEP_DEFS"'
-    if $mode == "own" then select(.kind == "proof" and .pid == $pid) | .parts = {done: $d, total: $t} | step_move(now | floor)
+    if $mode == "own" then select(.kind == "proof" and .pid == $pid) | .parts = {done: $d, total: $t} | step_move(vbw_now | floor)
     else select(.pid == null and .run == $run and (.proof | type) == "object") | .proof = {done: $d, total: $t} end
     | .doing = "proving \($d) of \($t) checks"' "$note" 2> /dev/null) || return 0
   [ -z "$out" ] || step_note_write "$out"
@@ -255,7 +255,7 @@ proofsteps_fix_done() {
   proofsteps_lock || return 0
   note=$(step_note_file)
   out=$(jq -c --argjson n "$1" --arg run "$run" "$VBW_STEP_DEFS"'select(.kind == "fix" and .pid == null and .run == $run and (.parts | type) == "object")
-    | .parts.done = ([.parts.done + $n, .parts.total] | min) | step_move(now | floor)' "$note" 2> /dev/null) || out=
+    | .parts.done = ([.parts.done + $n, .parts.total] | min) | step_move(vbw_now | floor)' "$note" 2> /dev/null) || out=
   [ -z "$out" ] || step_note_write "$out"
   proofsteps_unlock
 }

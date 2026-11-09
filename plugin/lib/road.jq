@@ -36,7 +36,7 @@ def globre: gsub("(?<c>[.+^$()|{}\\[\\]\\\\])"; "\\\(.c)") | gsub("\\*"; ".*") |
 $rec[0] as $r
 | ($next[0] // {}) as $next
 | ($note[0] // null) as $note
-| (now | floor) as $t
+| (vbw_now | floor) as $t
 | ($r.milestone // null) as $ms
 | if $ms == null or $ms.status == "shipped" or $ms.status == "parked" then null else
   $ms.id as $m

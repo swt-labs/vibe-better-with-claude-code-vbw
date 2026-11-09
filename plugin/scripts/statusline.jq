@@ -51,7 +51,7 @@ def progress($done; $total): (if $total > 0 then $done * 100 / $total else 0 end
 | ($rest2 | index("vbw-guard-end")) as $s3
 | (if $s3 != null and $s3 >= 1 then $rest2[0] else null end) as $stepnote
 | (if $s3 != null then $rest2[$s3 + 1] else null end) as $auto
-| now as $now
+| (($ENV.VBW_NOW // "") | if . == "" then now else fromdateiso8601 end) as $now
 # The step's note counts for a build, fix, plan or QA while its run is the open
 # run; a proof's, while its own session's and its process lives (the shell tells
 # a dead one by $deadpid). A step is shown only from the note, never worked out.

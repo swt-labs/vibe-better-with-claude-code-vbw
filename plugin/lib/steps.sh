@@ -27,7 +27,8 @@
 # count}: the reason most of its units run again).
 # step_sentence($s; $t): what a running step is doing, its progress and its time.
 # shellcheck disable=SC2016,SC2034
-VBW_STEP_DEFS='def step_day($e): $e | localtime | mktime / 86400 | floor;
+VBW_STEP_DEFS='def vbw_now: (($ENV.VBW_NOW // "") | if . == "" then now else fromdateiso8601 end);
+def step_day($e): $e | localtime | mktime / 86400 | floor;
 def step_clock($iso; $t):
   ($iso | fromdateiso8601) as $e
   | ($e | localtime | strftime("%H:%M")) as $hm
@@ -343,7 +344,7 @@ step_replan_say() {
   size=$(step_size "$1" plan '[]' | jq -c '.reqs += 1' 2> /dev/null) || size=
   est=$(step_estimate plan "$size")
   [ -n "$est" ] || est=null
-  jq -nr --argjson e "$est" "$VBW_STEP_DEFS"'(now | floor) as $t
+  jq -nr --argjson e "$est" "$VBW_STEP_DEFS"'(vbw_now | floor) as $t
     | def at($s): if $s == null then null else $t + $s | todateiso8601 end;
     {kind: "plan", ids: [], parts: null, end: at($e.seconds), end_low: at($e.low), end_high: at($e.high),
      rough: ($e.rough == true), runs: ($e.runs // 0), late: false}
@@ -364,7 +365,7 @@ step_plan_done() {
     | select($n.kind == "build" and ($n.parts | type) == "object")
     | ([$n.ids[] | select(. as $i | any($pl[]; .id == $i and .status == "done"))] | length) as $done
     | .parts.done = $done
-    | (now | floor) as $t
+    | (vbw_now | floor) as $t
     | .units = [(.units // [])[] | if .seconds == null and (. as $u | any($pl[]; .id == $u.id and .status == "done"))
         then .seconds = ($t - (($n.started_at | fromdateiso8601))) else . end]
     | step_move($t)' "$note" 2> /dev/null) || return 0
@@ -381,7 +382,7 @@ step_status() {
   live=$(step_live_note "$1")
   if [ -z "$live" ]; then echo null; return 0; fi
   printf '%s' "$live" | jq -c '. + {minutes_late: (if .parts == null and .first_end != null
-      then (((now | floor) - (.first_end | fromdateiso8601)) / 60 | floor | if . >= 1 then . else null end) else null end)}' 2> /dev/null || echo null
+      then (((vbw_now | floor) - (.first_end | fromdateiso8601)) / 60 | floor | if . >= 1 then . else null end) else null end)}' 2> /dev/null || echo null
 }
 
 # step_say_note: the sentence of the note just written (run start), then the road's, nothing
@@ -390,7 +391,7 @@ step_say_note() {
   local note
   note=$(step_note_file)
   [ -f "$note" ] || return 0
-  jq -r "$VBW_STEP_DEFS"'step_say(.; now | floor), (.road.say? // empty)' "$note" 2> /dev/null || true
+  jq -r "$VBW_STEP_DEFS"'step_say(.; vbw_now | floor), (.road.say? // empty)' "$note" 2> /dev/null || true
 }
 
 # step_proof_plan RECORD FULL: what a proof would run now, as {units, top}: the
@@ -493,7 +494,7 @@ step_next() {
   est=$(step_estimate "$kind" "$size")
   [ -n "$est" ] || est=null
   jq -nc --arg k "$kind" --argjson ids "$ids" --argjson parts "$parts" --argjson e "$est" --argjson why "$why" "$VBW_STEP_DEFS"'
-    (now | floor) as $t
+    (vbw_now | floor) as $t
     | def at($s): if $s == null then null else $t + $s | todateiso8601 end;
     {kind: $k, ids: $ids, parts: $parts, seconds: $e.seconds, low: $e.low, high: $e.high, runs: ($e.runs // 0),
      rough: ($e.rough == true), end: at($e.seconds), end_low: at($e.low), end_high: at($e.high)}
