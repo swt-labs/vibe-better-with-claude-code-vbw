@@ -33562,11 +33562,12 @@
         }
       ],
       "qa": {
-        "result": "pass",
+        "result": "fail",
         "tier": "deep",
-        "tree": "80e0e279aca589dc76dd11fad49e5023022dee6a17acf1af23736a6ee355f10e",
-        "at": "2026-11-09T17:08:03Z",
-        "note": "30/30 checks"
+        "tree": "e55938a367b3e029b2ff79fbc27cb44188a026463245e2140c520b4f4b91c61b",
+        "at": "2026-11-09T19:42:34Z",
+        "note": "30/32 checks",
+        "rounds": 1
       },
       "outcome": {
         "tier": "deep",
@@ -84140,6 +84141,24 @@
       "status": "open",
       "note": "The fourth R279 criterion and P228.1 task 4 are not met: the 2.1.28 bump was never replayed on VBW's own repository, so no 'N of 743 units rerun' figure exists. The maintainer's log line 1084 in vbw-plow/PROGRESS.md says 'the 450-of-743 replay not measured: estimate about 17 test files read the version themselves; the real figure comes from the release's bump'. No decision covers dropping the measurement. For reference only, the proof store (.git/vbw/runs.json) lists 81 of 788 current units (plus 5 older entries) that read plugin.json themselves; this is an estimate from stored read lists, not a replay. What a test cannot catch: this is a missing measurement, not code. Fix: replay the bump (all five version files changed, a scratch branch) and record how many units rerun and the reasons, against 450 of 743.",
       "phase": "P228"
+    },
+    {
+      "id": "F441",
+      "req": "R292",
+      "source": "qa",
+      "attempts": 0,
+      "status": "open",
+      "note": "vbw check --expect-red loses the 'waited N for other VBW runs on this computer' line and the 'computer-wide limit was not in force' line (R181). plugin/lib/cmd-check.sh red_keep (line ~29) runs '. $VBW_LIB/cmd-plan.sh' in the middle of cmd_check; cmd-plan.sh sources cmd-check.sh, which sources checks.sh and slots.sh again, and slots.sh top level resets SLOTS_STATE=off, SLOTS_WAITED=0, SLOTS_LOST= (slots.sh:40-48) after checks_end (slots_total) has added the run's waits and before cmd_check calls slots_say (cmd-check.sh:88). Probe: in bash, source cmd-check.sh, set SLOTS_WAITED=7 SLOTS_STATE=on, source cmd-plan.sh: prints WAITED=0 STATE=off. Root cause is the circular source (plan_has_commit lives in cmd-plan.sh, RED_FIRST_DEFS in cmd-check.sh); fix by moving plan_has_commit and RED_FIRST_DEFS into a lib that both commands source once at load, never re-sourcing in a running command. Regression test: in tests/machine-wait-line.bats, a vbw check --expect-red C1 whose unit waits for a slot (hold_start) must still print the final 'waited ... for other VBW runs on this computer' line.",
+      "phase": "P226"
+    },
+    {
+      "id": "F442",
+      "req": "R292",
+      "source": "qa",
+      "attempts": 0,
+      "status": "open",
+      "note": "Documents say vbw check writes nothing to the record, which is false for --expect-red since P226.2 (it appends plans[].red_runs to .vbw/record.json). Places: docs/proof.md:1971-1977 ('It writes only the full output of each failing check ... (--expect-red keeps nothing)') and :1240 ('--expect-red keeps nothing'), docs/workflows.md:253 ('nothing else is written'), plugin/bin/vbw:31 and :95 (usage 'run approved checks and report (writes nothing)'), and the header comment of plugin/lib/cmd-check.sh:2-3. P226.4 updated only the plan done row and the waiting lines. Regression test: in tests/red-first.bats 'R292 docs', assert that the vbw check entry of docs/proof.md and docs/workflows.md and the usage text of plugin/bin/vbw say --expect-red keeps the run in the plan's evidence (red_runs) and do not say it writes nothing.",
+      "phase": "P226"
     }
   ],
   "todos": [
