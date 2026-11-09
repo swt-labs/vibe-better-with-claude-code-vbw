@@ -31,8 +31,9 @@ sessions_registry() {
   return 0
 }
 
-# sessions_record_path SID: the file in which a session that loaded a plugin copy with
-# --plugin-dir records that copy's folder (<claude-config-dir>/vbw/sessions/SID, written
+# sessions_record_path SID: the file in which every session records the folder of the
+# plugin copy Claude Code loaded for it, a --plugin-dir tree or an installed release (R285):
+# <claude-config-dir>/vbw/sessions/SID, written
 # by hooks/session-start.sh, read by the status line and by doctor). Only a plain name
 # is an id (letters, digits, _ and -, as in the hook and the status line, which apply
 # the same rule to the id Claude Code hands them); anything else prints nothing and
