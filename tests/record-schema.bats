@@ -364,7 +364,7 @@ leaks() {
   [ "$(validate)" != '[]' ] || { echo "accepted an extra key in a digest"; false; }
   edit '.plans[0].mutations[0].digests[0] |= del(.extra) | .plans[0].mutations[0].digests[0].file = "src/other.sh"'
   [ "$(validate)" != '[]' ] || { echo "accepted a file the break did not name"; false; }
-  edit '.plans[0].mutations[0].digests = {"src/pay.sh": "absent"}'
+  edit '.schema = 13 | .plans[0].mutations[0].digests = {"src/pay.sh": "absent"}'
   [ "$(validate)" = '[]' ] || { validate; false; }
 }
 
