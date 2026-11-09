@@ -95,11 +95,13 @@ The setting runs the newest installed VBW's `scripts/vbw-statusline.sh` from
 the plugin cache, because the plugin's directory changes with every update and
 settings cannot use `${CLAUDE_PLUGIN_ROOT}`.
 
-A session started with `claude --plugin-dir ./plugin` (a working tree of VBW)
-is the exception: its status line is drawn by the working tree's script and
-shows the working tree's version. Any other session shows the version of the
-newest installed copy. If the working tree is moved or deleted, or is no longer
-a VBW plugin, the session falls back to the installed copy.
+Every session start writes a session record naming the copy Claude Code loaded
+(R285), so a session's status line is drawn by that copy's script and shows its
+version: the installed copy the session loaded, or, for a session started with
+`claude --plugin-dir ./plugin` (a working tree of VBW), the working tree. A
+session with no record (an installed session started before VBW 2.1.29, or a
+record older than 7 days) shows the newest installed copy. If the copy a record names is moved or deleted, or
+is no longer a VBW plugin, the session falls back to the newest installed copy.
 
 ## Projects where VBW is turned off
 
@@ -134,9 +136,9 @@ The off path is the cheapest of the status line's paths. The setting starts one
 bash, which runs the installed script inside itself, and that script starts one
 jq: it reads your settings file, the project's two settings files (when the
 session runs in the project, which is nearly always) and Claude Code's JSON
-together, and starts no other process before it says "off". On a session
-that loaded a working tree (`claude --plugin-dir`) it also reads the session's
-record, with no jq. `tools/bench-hooks.sh` measures VBW's own CPU on this path as
+together, and starts no other process before it says "off". When the session
+has a record (every start writes one) it also reads it, with no jq, so a working
+tree loaded with `claude --plugin-dir` stays on where the installed VBW is off. `tools/bench-hooks.sh` measures VBW's own CPU on this path as
 `status line (VBW off)`, and the no-project hand-back (a walk up the folders
 that starts no process) as `status line (no project)`: the whole call minus one bash, one jq and one sh
 startup and the earlier status line itself, which are the platform's and yours.
