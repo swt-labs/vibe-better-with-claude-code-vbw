@@ -200,6 +200,12 @@ step_of() { "$VBW" next --json | jq -c '.step'; }
     ! grep -nE 'day\(no[w]\)|, no[w]\]|\) - no[w]' "$BATS_TEST_DIRNAME/$f.bats" || { echo "tests/$f.bats words a clock from the wall clock"; false; }
   done
   grep -q 'VBW_NOW' "$PLUGIN_ROOT/lib/core.sh" || { echo "vbw_now does not read the set clock"; false; }
+  local got
+  got=$(VBW_NOW=2031-02-03T04:05:06Z bash -c 'source "$1/lib/core.sh"; vbw_now' _ "$PLUGIN_ROOT") || { echo "vbw_now failed"; false; }
+  [ "$got" = "2031-02-03T04:05:06Z" ] || { echo "vbw_now printed '$got', not the set clock"; false; }
+  got=$(VBW_NOW= bash -c 'source "$1/lib/core.sh"; vbw_now' _ "$PLUGIN_ROOT")
+  [[ "$got" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$ ]] || { echo "vbw_now without the set clock printed '$got'"; false; }
+  [ "$got" != "2031-02-03T04:05:06Z" ]
   ! grep -nE '\(now \| floor\)|now as \$now|step_move\(now' "$PLUGIN_ROOT/lib/steps.sh" "$PLUGIN_ROOT/lib/road.jq" "$PLUGIN_ROOT/lib/proofsteps.sh" "$PLUGIN_ROOT/scripts/statusline.jq" || { echo "the estimate path still reads jq's now"; false; }
 }
 
