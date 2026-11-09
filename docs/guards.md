@@ -374,7 +374,8 @@ tool is not marked read-only.
 `tools:` list); each role's `disallowedTools` hides the built-ins it must not have.
 The tools guard is one PreToolUse entry with no matcher, so it sees
 every tool a VBW agent calls. It lets through the role's own built-ins, the MCP
-tools the setting opens to the role, and the tools Claude Code gives every agent.
+tools the setting opens to the role, and the tools Claude Code gives every agent
+(`advisor` among them when you set an advisor model).
 Any other tool is refused: another role's built-in, or one VBW does not know, such as
 one a Claude Code update adds. The refusal names the tool, the role and a next step. The main
 session is never judged and pays one small jq per tool call.

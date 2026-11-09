@@ -8,8 +8,9 @@
 include "common" {search: "./"};
 
 # The tools Claude Code gives every agent whatever its tools (the probe's always_allowed,
-# tools/probes/mcp-tools.json, written by tools/probe-mcp-tools.sh): never refused.
-def always_allowed: "^(StructuredOutput|SubagentHandback)$";
+# tools/probes/mcp-tools.json, written by tools/probe-mcp-tools.sh): never refused. advisor is
+# given to every agent when the user sets an advisor model (advisorModel in settings.json).
+def always_allowed: "^(StructuredOutput|SubagentHandback|advisor)$";
 def reading: "^(architect|lead|scout|qa)$";
 def own_list: {
   architect: "Read, Grep, Glob, Bash",

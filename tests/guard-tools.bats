@@ -138,7 +138,8 @@ names_role() { printf '%s\n' "$1" | grep -qE "(^|[^a-z])$2([^a-z]|$)"; }
     names_role "$r" "$role" && [[ "$r" == *"$tool"* && "$r" == *"Next:"* ]] || { echo "the refusal of $tool for the $role does not name both, with a next step: $r"; false; }
   done
   [ -f "$PROBE" ] && jq -e '.always_allowed | type == "array"' "$PROBE" > /dev/null || { echo "the probe result has no always_allowed list"; false; }
-  for tool in $(jq -r '.always_allowed[]' "$PROBE"); do
+  # advisor: given to every agent only where the user sets advisorModel, so a probe run elsewhere may not list it.
+  for tool in $(jq -r '(.always_allowed + ["advisor"]) | unique[]' "$PROBE"); do
     for role in architect lead dev qa scout debugger docs; do
       [ "$(reason "$tool" "vbw:$role")" = allow ] || { echo "$tool, which Claude Code gives every agent, was refused for the $role"; false; }
     done
