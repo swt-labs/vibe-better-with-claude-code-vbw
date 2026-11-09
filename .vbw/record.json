@@ -85929,6 +85929,13 @@
       "sort": "next",
       "size": "small",
       "status": "open"
+    },
+    {
+      "id": "T280",
+      "text": "slots.sh resets its state (SLOTS_WAITED and the rest) each time it is loaded; checks.sh is still loaded mid-function in cmd-plan.sh (plan done), cmd-fix.sh and cmd-show.sh. Inside one vbw loop next, which runs several kernel actions in one process, a later load forgets an earlier action's waits (only the waited figure; no slot is held between actions). Root cause: slots.sh keeps its state when loaded again. F441 fixed one case (vbw check --expect-red)",
+      "sort": "next",
+      "size": "small",
+      "status": "open"
     }
   ],
   "decisions": [
