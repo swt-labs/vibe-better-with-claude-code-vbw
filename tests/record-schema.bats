@@ -436,3 +436,16 @@ leaks() {
   [ "$n1" = "$n2" ] || { echo "vbw next: $n1 / $n2"; false; }
   [ "$st1" = "$st2" ] || { diff <(echo "$st1") <(echo "$st2"); false; }
 }
+
+@test "R286 readers: a break queued by VBW 2.1.28 (digests an object in its entry) runs and is recorded with the list" {
+  printf 'echo nope\n' > src/pay.sh
+  run "$VBW" mutate P1.1 R1.1 --queue "prints nope" src/pay.sh < /dev/null
+  [ "$status" -eq 0 ] || { echo "$output"; false; }
+  local meta
+  meta=$(ls .vbw/runtime/mutate-queue/P1.1/*/meta.json)
+  jq -c '.digests |= (map({key: .file, value: .sha256}) | from_entries)' "$meta" > "$TEST_ROOT/meta.json" && cat "$TEST_ROOT/meta.json" > "$meta"
+  jq -e '.digests | type == "object"' "$meta" > /dev/null || { cat "$meta"; false; }
+  run "$VBW" mutate P1.1 --run < /dev/null
+  [ "$status" -eq 0 ] || { echo "$output"; false; }
+  jq -e '(.plans[0].mutations | length) == 2 and (.plans[0].mutations[1].digests | type == "array" and length == 1 and .[0].file == "src/pay.sh")' .vbw/record.json || { jq -c '.plans[0].mutations' .vbw/record.json; false; }
+}
