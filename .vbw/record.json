@@ -86962,6 +86962,30 @@
       "text": "R287: when the project's pre-commit hook refuses VBW's files, VBW stops at that step and shows the hook's own message with what to do (fix what it flagged, allow it in the checker's settings, or commit the files yourself), then continues; it never skips the project's hooks (no --no-verify, no 'save anyway' offer)",
       "why": "Chosen by VBW's lead (owner 2026-11-05: decide technical questions): a project's safety tools stay in charge; VBW's check files are the user's own test files, so skipping a secret scanner could commit a real secret; R286 removes the false alarm, so a refusal left over is more likely real. Matches the answer given to the Rust project's lead on 2026-11-09.",
       "at": "2026-11-09T09:23:49Z"
+    },
+    {
+      "id": "D688",
+      "at": "2026-11-09T11:05:54Z",
+      "text": "Contract approved: 278 requirements, 676 checks, 669 plans (96c2093523b7)",
+      "plans": [
+        "P224.1",
+        "P224.2",
+        "P224.3",
+        "P224.4",
+        "P225.1",
+        "P225.2",
+        "P225.3",
+        "P226.1",
+        "P226.2",
+        "P226.3",
+        "P226.4",
+        "P227.1",
+        "P227.2",
+        "P227.3",
+        "P228.1",
+        "P228.2",
+        "P228.3"
+      ]
     }
   ],
   "commands": {
