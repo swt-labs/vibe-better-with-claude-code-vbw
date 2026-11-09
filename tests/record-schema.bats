@@ -321,11 +321,12 @@ max_read() { sed -n 's/^VBW_SCHEMA_MAX=//p' "$PLUGIN_ROOT/lib/record.sh"; }
 # first write. Gitleaks' generic-api-key rule, copied from Gitleaks v8.24.3
 # (config/gitleaks.toml, id generic-api-key; Gitleaks is not installed, no dependency is
 # added; a newer Gitleaks pattern is copied here by hand), is matched with jq per line and
-# over the whole text, as Gitleaks scans a file.
-GENERIC_API_KEY=$(cat << 'RE'
+# over the whole text, as Gitleaks scans a file. The pattern is read from a here-document
+# by read, never inside $(...): macOS /bin/bash 3.2 cannot parse a here-document whose
+# lines hold unbalanced quotes inside a command substitution.
+IFS= read -r GENERIC_API_KEY << 'RE'
 (?i)[\w.-]{0,50}?(?:access|auth|(?-i:[Aa]pi|API)|credential|creds|key|passw(?:or)?d|secret|token)(?:[ \t\w.-]{0,20})[\s'"]{0,3}(?:=|>|:{1,3}=|\|\||:|=>|\?=|,)[\x60'"\s=]{0,5}([\w.=-]{10,150}|[a-z0-9][a-z0-9+/]{11,}={0,3})(?:[\x60'"\s;]|\\[nr]|$)
 RE
-)
 SECRET_PATHS='["src/api.rs","lib/auth_token.py","config/secret_keys.ts","tests/password.bats"]'
 
 # keyword_record: the fixture's record as VBW 2.1.28 wrote it (schema 13, digests an object)
