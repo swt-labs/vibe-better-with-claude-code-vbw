@@ -261,7 +261,7 @@ edit_record() {
 
 # --- check -------------------------------------------------------------------
 
-@test "check runs approved checks, reports, and writes nothing" {
+@test "check runs approved checks, reports, and writes nothing but an expected red run (R292)" {
   apply_plan
   vbw_run check C1
   [ "$status" -eq 1 ]
@@ -275,9 +275,13 @@ edit_record() {
   vbw_run check C1
   [ "$status" -eq 0 ]
   [[ "$output" == *"C1 pass"* ]]
+  cmp .vbw/record.json "$TEST_ROOT/before.json"
+  # R292: a red run asked for with --expect-red is kept in its plan's evidence, and nothing
+  # else changes but the schema, raised to the one red runs need.
   vbw_run check --expect-red C2
   [ "$status" -eq 0 ]
-  cmp .vbw/record.json "$TEST_ROOT/before.json"
+  [ "$(jq -cS 'del(.plans[].red_runs, .schema)' .vbw/record.json)" = "$(jq -cS 'del(.plans[].red_runs, .schema)' "$TEST_ROOT/before.json")" ]
+  jq -e '([.plans[].red_runs // [] | length] | add == 1) and .schema == 15' .vbw/record.json
   [ -z "$(ls .vbw/runtime | grep '^run\.' || true)" ]
 }
 

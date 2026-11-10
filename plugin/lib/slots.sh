@@ -310,6 +310,15 @@ slots_lose() {
   fi
 }
 
+# vbw_wait_say WHAT SINCE: the one telling of a wait, once when it starts: 'waiting for WHAT
+# since HH:MM' (SINCE: epoch seconds; local time), on stderr (R288).
+vbw_wait_say() {
+  local t msg
+  t=$(date -r "$2" +%H:%M 2> /dev/null) || t=$(date -d "@$2" +%H:%M 2> /dev/null) || t=$(date +%H:%M)
+  msg="waiting for $1 since $t"
+  printf '%s\n' "$msg" >&2
+}
+
 # slots_hold NAME: wait for a slot of the store and hold it under NAME, without
 # the unit mark (a bookkeeping step of the run, R202: vbw:plan, vbw:copies,
 # vbw:save). 1 when no slot is in force (store off, lost on the way, or a nested
@@ -322,7 +331,10 @@ slots_hold() {
   local since="" rc=0
   slots_apply "$SLOTS_TAKE" "$1" || rc=$?
   while [ "$rc" -eq 0 ] && [ "$SLOTS_RESULT" != true ]; do
-    [ -n "$since" ] || since=$(date +%s)
+    if [ -z "$since" ]; then
+      since=$(date +%s)
+      vbw_wait_say "a free slot of the computer-wide limit" "$since"
+    fi
     # Every waiter looks at the same pace, however long it has waited: the store gives a
     # freed slot to the waiter whose turn it is, and a newer waiter looking more often
     # would start first (no backoff here; slots_nap is for lock retries).

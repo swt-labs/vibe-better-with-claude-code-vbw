@@ -142,7 +142,7 @@ queue() {
   queue R1.1 "prints unpaid" 'echo unpaid'
   local d
   d=$(shasum -a 256 src/pay.sh | cut -c1-64)
-  jq -e --arg d "$d" '.digests == {"src/pay.sh": $d} and (.at | type == "string")' .vbw/runtime/mutate-queue/P1.1/*/meta.json > /dev/null || { cat .vbw/runtime/mutate-queue/P1.1/*/meta.json; false; }
+  jq -e --arg d "$d" '.digests == [{file: "src/pay.sh", sha256: $d}] and (.at | type == "string")' .vbw/runtime/mutate-queue/P1.1/*/meta.json > /dev/null || { cat .vbw/runtime/mutate-queue/P1.1/*/meta.json; false; }
   run "$VBW" mutate P1.1 R1.2 --queue "prints unpaid again" src/pay.sh < /dev/null
   [ "$status" -ne 0 ] || { echo "$output"; false; }
   [ "$(printf '%s\n' "$output" | grep -c .)" -eq 1 ] || { echo "$output"; false; }
@@ -154,7 +154,7 @@ queue() {
   [ "$(breaks)" = '[]' ] || { breaks; false; }
   run "$VBW" mutate P1.1 --run < /dev/null
   [ "$status" -eq 0 ] || { echo "$output"; false; }
-  jq -e --arg d "$d" '.plans[0].mutations[0].digests == {"src/pay.sh": $d}' .vbw/record.json > /dev/null || { jq .plans[0].mutations .vbw/record.json; false; }
+  jq -e --arg d "$d" '.plans[0].mutations[0].digests == [{file: "src/pay.sh", sha256: $d}]' .vbw/record.json > /dev/null || { jq .plans[0].mutations .vbw/record.json; false; }
 }
 
 @test "T174: vbw plan done names queued breaks that have not run yet" {

@@ -25,14 +25,18 @@ range_project() {
   export TZ=Europe/Zurich
 }
 setup_file() { fixture_build range range_project; }
-setup() { fixture_copy range; }
+# R284: the kernel's clock is set (VBW_NOW), so the clock times hold at any real hour.
+setup() {
+  fixture_copy range
+  export VBW_NOW=2030-01-15T10:00:00Z
+}
 teardown() { vbw_teardown; }
 teardown_file() { fixture_teardown; }
 
 # The clock as VBW words it: HH:MM, after "tomorrow " or the weekday when it falls
 # on another local day than now (the tests hold at any hour, midnight included).
 CLK='def clk($e): ($e | fromdateiso8601) as $t | def day($x): $x | localtime | mktime / 86400 | floor;
-  (day($t) - day(now)) as $d
+  (day($t) - day($ENV.VBW_NOW | fromdateiso8601)) as $d
   | (if $d == 0 then "" elif $d == 1 then "tomorrow " elif $d == -1 then "yesterday " else ($t | strflocaltime("%A ")) end) + ($t | strflocaltime("%H:%M"));'
 
 step_of() { "$VBW" next --json < /dev/null | jq -c '.step'; }
@@ -60,8 +64,9 @@ render() {
   step_is '.rough == true and .runs == 1 and .low == 900 and .high == 900 and .seconds == 900 and .end_low == .end_high
     and .say == "Building P1.1, P1.2 and P1.3: roughly 15 min, until around \(clk(.end_low)) (rough guess from 1 run)"'
   step_seed build 420 1 1
-  step_is '.rough == true and .runs == 2 and .low == 900 and .high == 1260 and (.end_low < .end_high)
-    and .say == "Building P1.1, P1.2 and P1.3: roughly 15 to 21 min, until around \(clk(.end_low)) to \(clk(.end_high)) (rough guess from 2 runs)"'
+  # R291: the typical figure (the median, here the mean of the two runs) leads, the range after it.
+  step_is '.rough == true and .runs == 2 and .low == 900 and .high == 1260 and .typical == 1080 and (.end_low < .end_high)
+    and .say == "Building P1.1, P1.2 and P1.3: usually about 18 min (15 to 21 min, rough guess from 2 runs), until around \(clk(.end_typical)) (\(clk(.end_low)) to \(clk(.end_high)))"'
 }
 
 @test "R270 kernel: four runs that agree are still rough (fewer than 5 kept runs); five that agree give the single figure as before" {
@@ -76,8 +81,8 @@ render() {
 @test "R270 kernel: ten runs spread beyond 1.5 times give a rough range naming the ten runs" {
   step_seed build 300 1 5
   step_seed build 600 1 5
-  step_is '.rough == true and .runs == 10 and .low == 900 and .high == 1800
-    and .say == "Building P1.1, P1.2 and P1.3: roughly 15 to 30 min, until around \(clk(.end_low)) to \(clk(.end_high)) (rough guess from 10 runs)"'
+  step_is '.rough == true and .runs == 10 and .low == 900 and .high == 1800 and .typical == 1350
+    and .say == "Building P1.1, P1.2 and P1.3: usually about 23 min (15 to 30 min, rough guess from 10 runs), until around \(clk(.end_typical)) (\(clk(.end_low)) to \(clk(.end_high)))"'
 }
 
 @test "R270 kernel: the thresholds are one definition in lib/steps-expect.jq" {
@@ -92,10 +97,10 @@ render() {
   road_is '.rough == true and .low == 960 and .high == 960 and .seconds == 960
     and .say == "Milestone end: roughly 16 min, until around \(clk(.end_low)) (rough guess), counting no fix rounds: fewer than 3 finished express phases here"'
   step_seed build 600 1 1
-  road_is '.rough == true and .low == 960 and .high == 1860
-    and .say == "Milestone end: roughly 16 to 31 min, until around \(clk(.end_low)) to \(clk(.end_high)) (rough guess), counting no fix rounds: fewer than 3 finished express phases here"'
+  road_is '.rough == true and .low == 960 and .high == 1860 and .typical == 960
+    and .say == "Milestone end: usually about 16 min (16 to 31 min, rough guess), until around \(clk(.end_typical)) (\(clk(.end_low)) to \(clk(.end_high))), counting no fix rounds: fewer than 3 finished express phases here"'
   step_seed build 300 1 2
-  road_is '.rough == true and (.say | startswith("Milestone end: roughly "))'
+  road_is '.rough == true and (.say | startswith("Milestone end: usually about "))'
   step_seed build 300 1 20
   road_is '.rough == true and .low == 960 and .high == 960
     and .say == "Milestone end: roughly 16 min, until around \(clk(.end)) (rough guess), counting no fix rounds: fewer than 3 finished express phases here"'
@@ -116,9 +121,9 @@ render() {
   jq -e "$CLK"'.rough == true and .runs == 2 and (.end_low < .end_high)
     and ((.end_low | fromdateiso8601) - (.started_at | fromdateiso8601)) == 900
     and ((.end_high | fromdateiso8601) - (.started_at | fromdateiso8601)) == 1260' "$NOTE" || { cat "$NOTE"; false; }
-  [[ "$output" == *"Building P1.1, P1.2 and P1.3: roughly 15 to 21 min, until around $(hm end_low) to $(hm end_high) (rough guess from 2 runs)"* ]] || { echo "$output"; false; }
+  [[ "$output" == *"Building P1.1, P1.2 and P1.3: usually about 18 min (15 to 21 min, rough guess from 2 runs), until around $(hm end_typical) ($(hm end_low) to $(hm end_high))"* ]] || { echo "$output"; false; }
   run "$VBW" status
-  [[ "$output" == *"building P1.1, P1.2, P1.3 · 0 of 3 · roughly 15 to 21 min, until around $(hm end_low) to $(hm end_high) (rough guess from 2 runs)"* ]] || { echo "$output"; false; }
+  [[ "$output" == *"building P1.1, P1.2, P1.3 · 0 of 3 · usually about 18 min (15 to 21 min, rough guess from 2 runs), until around $(hm end_typical) ($(hm end_low) to $(hm end_high))"* ]] || { echo "$output"; false; }
 }
 
 @test "R270 line: the status line shows 'until ~HH:MM-HH:MM' for a rough range, and the single clock as before for a tight one" {
@@ -127,7 +132,7 @@ render() {
   "$VBW" run start build P1.1 P1.2 P1.3 > /dev/null
   run render
   [ "$status" -eq 0 ]
-  [[ "${lines[0]}" == *"building P1.1, P1.2, P1.3 · 0 of 3 · until ~$(hm end_low)-$(hm end_high)"* ]] || { echo "${lines[0]}"; false; }
+  [[ "${lines[0]}" == *"building P1.1, P1.2, P1.3 · 0 of 3 · until ~$(hm end_typical) ($(hm end_low)-$(hm end_high))"* ]] || { echo "${lines[0]}"; false; }
   [[ "${lines[0]}" != *"roughly"* && "${lines[0]}" != *"rough guess"* ]] || { echo "${lines[0]}"; false; }
 }
 
@@ -151,7 +156,7 @@ render() {
     const w = step.stepWords(note, Date.parse(note.started_at))
     console.log(w.text)" "$PLUGIN_ROOT/hooks/panel-step.js" "$(cat "$NOTE")"
   [ "$status" -eq 0 ] || { echo "$output"; false; }
-  [[ "$output" == "roughly 15 to 21 min, until around $(hm end_low) to $(hm end_high) (rough guess from 2 runs)" ]] || { echo "$output"; false; }
+  [[ "$output" == "usually about 18 min (15 to 21 min, rough guess from 2 runs), until around $(hm end_typical) ($(hm end_low) to $(hm end_high))" ]] || { echo "$output"; false; }
 }
 
 @test "R270 docs: docs/panel.md documents the two thresholds, and docs/next.md and docs/statusline.md the range wording" {
@@ -177,10 +182,10 @@ own_proof_note() {
 @test "R270 kernel: a proof of VBW's own writes its note with the range fields, rough from thin or spread history, single from five tight runs" {
   step_seed proof 100 5 2
   own_proof_note 4
-  jq -e '.kind == "proof" and .rough == true and .runs == 2 and .end_low != null and .end_high != null and (.end_low <= .end) and (.end <= .end_high)' "$NOTE" || { cat "$NOTE"; false; }
+  jq -e '.kind == "proof" and .rough == true and .runs == 2 and .end_low != null and .end_high != null and .end_typical != null and (.end_low <= .end) and (.end <= .end_high)' "$NOTE" || { cat "$NOTE"; false; }
   # The same words the proof's own vbw next sentence says, from the same fields.
   run render
-  [[ "${lines[0]}" == *"until ~$(hm end_low)"* ]] || { echo "${lines[0]}"; false; }
+  [[ "${lines[0]}" == *"until ~"* && "${lines[0]}" == *"$(hm end_low)"* ]] || { echo "${lines[0]}"; false; }
   [[ "${lines[0]}" != *"until around"* ]] || { echo "${lines[0]}"; false; }
   # Spread runs (a high above 1.5 times the low) are rough however many.
   rm -f "$NOTE" "$STEPS"
@@ -195,4 +200,30 @@ own_proof_note() {
   jq -e '.rough == false and .runs == 5 and .end != null' "$NOTE" || { cat "$NOTE"; false; }
   run render
   [[ "${lines[0]}" == *"until around $(hm end)"* && "${lines[0]}" != *"~"* ]] || { echo "${lines[0]}"; false; }
+}
+
+# R291 (field report 2026-11-09, D685): a rough estimate leads with a typical figure to
+# plan by, the median of the runs it is learned from (the mean of the two middle runs for
+# an even count), then its range: 'usually about M min (L to H min, rough guess from N
+# runs), until around T (A to B)', T the start plus M. An estimate of several parts adds
+# the parts' typical figures as it adds their ends. The R270 cases above pin the wording
+# end to end; here the figure itself, at the definition that decides it.
+EXPECT_DEFS() { sed -n '/^def median/,/^def basis/p' "$PLUGIN_ROOT/lib/steps-expect.jq"; }
+
+@test "R291 kernel: the typical figure is the median of the runs: 21, 40, 60, 80 and 542 min give 60, whatever the ladder's own figure; an even count takes the mean of the two middle runs" {
+  local defs
+  defs=$(EXPECT_DEFS)
+  [ -n "$defs" ] || { echo "no def median ... def basis in steps-expect.jq"; false; }
+  jq -en "$defs"'[1260, 2400, 3600, 4800, 32520] | est(quantile(0.9); 1) | .typical == 3600 and .low == 1260 and .high == 32520' > /dev/null \
+    || { jq -nc "$defs"'[1260, 2400, 3600, 4800, 32520] | est(quantile(0.9); 1)'; false; }
+  jq -en "$defs"'[600, 1200, 1800, 2400] | est(median; 3) | .typical == 4500' > /dev/null || { jq -nc "$defs"'[600, 1200, 1800, 2400] | est(median; 3)'; false; }
+  jq -en "$defs"'{seconds: 10, low: 5, high: 20, typical: 8, runs: 3} | plus({seconds: 1, low: 1, high: 2, typical: 1, runs: 5}) | .typical == 9 and .runs == 3' > /dev/null \
+    || { echo "plus does not add the typical figures"; false; }
+}
+
+@test "R291 docs: docs/panel.md and docs/next.md show the typical figure before the range, and docs/statusline.md the typical end before the range" {
+  grep -qF 'usually about' "$REPO_ROOT/docs/panel.md" || { echo "docs/panel.md does not show the typical figure"; false; }
+  grep -qF 'usually about' "$REPO_ROOT/docs/next.md" || { echo "docs/next.md does not show the typical figure"; false; }
+  grep -qiE 'median' "$REPO_ROOT/docs/panel.md" || { echo "docs/panel.md does not say the typical figure is the median"; false; }
+  grep -qE 'until ~[0-9]{2}:[0-9]{2} \([0-9]{2}:[0-9]{2}-[0-9]{2}:[0-9]{2}\)' "$REPO_ROOT/docs/statusline.md" || { echo "docs/statusline.md does not show 'until ~HH:MM (HH:MM-HH:MM)'"; false; }
 }

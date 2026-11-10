@@ -12,14 +12,14 @@
 # each one's lines print together when it ends.
 #
 # Scenarios: greenfield, reject, resume, change, convert, balanced, docs, qafix,
-# decision, debug, research, edgecase, leftover, recheck, approval, newcomer, senior, panel, steptime, road, pluginoff, tools, legacy, nolegacy, smallchange, costs, loop, plugindir, sessions, taskbreak, fixchecks, failoutput, leaveout, hiddenrecord, latedecision, ignoredplanning, stalefix, mapsnapshot, alreadyfixed, mapnotrun, submodule, testforms, amendfile, queuedreq, worktreewrite, rustpack. A user
+# decision, debug, research, edgecase, leftover, recheck, approval, newcomer, senior, panel, steptime, road, pluginoff, tools, legacy, nolegacy, smallchange, costs, loop, plugindir, sessions, taskbreak, fixchecks, failoutput, leaveout, hiddenrecord, latedecision, ignoredplanning, stalefix, mapsnapshot, alreadyfixed, mapnotrun, submodule, testforms, amendfile, queuedreq, worktreewrite, rustpack, commitstep. A user
 # answers every question with VBW's recommendation unless the scenario says otherwise.
 set -uo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 l3() { bash "$ROOT/tools/l3.sh" "$@"; }
 VBW="$ROOT/plugin/bin/vbw"
-ALL="greenfield reject resume change convert balanced docs qafix decision debug research edgecase leftover recheck approval newcomer senior panel steptime road pluginoff tools legacy nolegacy smallchange costs loop plugindir sessions taskbreak fixchecks failoutput leaveout hiddenrecord latedecision ignoredplanning stalefix mapsnapshot alreadyfixed mapnotrun submodule testforms amendfile queuedreq worktreewrite rustpack"
+ALL="greenfield reject resume change convert balanced docs qafix decision debug research edgecase leftover recheck approval newcomer senior panel steptime road pluginoff tools legacy nolegacy smallchange costs loop plugindir sessions taskbreak fixchecks failoutput leaveout hiddenrecord latedecision ignoredplanning stalefix mapsnapshot alreadyfixed mapnotrun submodule testforms amendfile queuedreq worktreewrite rustpack commitstep"
 RESULTS="$ROOT/tools/l3-results"
 STEPS=60
 # The status line's end time since d7f73771: 'until around HH:MM', with a day word when the end is not today;
@@ -1741,11 +1741,17 @@ PROBE
   fixture="a small VBW project (vbw init, one-requirement spec); VBW $inst_ver installed from the marketplace and left on; a throwaway copy of this tree ($tree_ver, with a probe SessionStart hook) loaded with --plugin-dir; status line from that copy; launch PATH has the installed bin/ first: $pd_inherit"
   start='Do two things, then reply only with the word done. 1) With your Bash tool run exactly this: echo VBWPROBE; command -v vbw; vbw version; echo "$PATH"; echo "env=${VBWPROBE_ENV:-unset}"  2) Start one vbw:scout agent whose whole task is to run exactly that same command with its Bash tool and report the output. Change nothing.'
   pd_seen=""
+  # Done once the probe's output is in the session's transcript and in its agent's: a wait on that,
+  # never a fixed time (an auto-mode permission check took longer than 10 s, and the closing Escape
+  # cancelled the probe, on Claude Code 2.1.319). While it is not there, nothing is typed.
   done_yet() {
-    sleep 10
+    local m a
+    m=$(main_transcript)
+    a=$(transcripts | grep '/subagents/' | head -1)
+    [ -n "$m" ] && [ -n "$(pd_probe_out "$m")" ] && [ -n "$a" ] && [ -n "$(pd_probe_out "$a")" ] || return 1
     pd_seen=$(screen | sed 's/[[:space:]][[:space:]]*/ /g')
-    return 0
   }
+  on_idle() { sleep 5; }
   checks() {
     local log main agent out_s out_a facts passed copies hooks bins data envfile sl names
     log=$(l3 debuglog "$dir")
@@ -2735,7 +2741,9 @@ scenario_taskbreak() {
     [ "$blocked_early" = false ] && [ "$files_ok" = true ] && never_blocked=true
     # R265: the break stayed in the working copy (the Dev edited it out by hand after vbw mutate),
     # no commit of P1.1 holds the broken bytes, and every plan file ends as its commit has it.
-    digs=$(printf '%s' "$breaks" | jq -r '[.[] | (.digests // {}) | to_entries[] | select(.key == "greet.sh") | .value] | unique | .[]')
+    # A break's digests: a list of {file, sha256} since schema 15 (R286), an object {file: sha256} before.
+    digs=$(printf '%s' "$breaks" | jq -r '[.[] | (.digests // []) | if type == "object" then to_entries | map({file: .key, sha256: .value}) else . end
+      | .[] | select(.file == "greet.sh") | .sha256] | unique | .[]')
     if [ -n "$digs" ] && transcripts | transcript_edit_after_mutate greet.sh; then left=true; fi
     edited_out=true
     [ -n "$digs" ] || edited_out=false
@@ -2795,6 +2803,8 @@ fixchecks_seed() {
     printf '#!/bin/sh\necho "Hello %s"\n' "$k" > greet.sh
     "$VBW" mutate P1.1 "R1.$k" "greets nobody by name" greet.sh > /dev/null || return 1
   done
+  # vbw mutate leaves the break in the working copy (R265): edit it out, as a Dev does.
+  git checkout -q -- greet.sh || return 1
   # shellcheck disable=SC1010 # "plan done" is a vbw subcommand
   "$VBW" plan done P1.1 > /dev/null || return 1
   "$VBW" prove --full > /dev/null || return 1
@@ -3732,6 +3742,64 @@ scenario_worktreewrite() {
     result_write worktreewrite "$fixture" "${cost_usd:-0}" "$passed" \
       "$(jq -n --argjson g "$refused" --argjson u "$unchanged" --argjson d "$done_p" '{guard_refused: $g, main_file_unchanged: $u, worktree_plan_done: $d}')" \
       '["a write by a Dev that is not in the lease of its own run","a project nested inside the clone (only a sibling linked worktree ran)","the main checkout run opened by a second Claude Code session (the scenario opened it with vbw run start)","the wording VBW shows the user (read by a person)"]'
+  }
+}
+# commitstep (R287, field report 2026-11-09): the project's own commit check (a pre-commit hook
+# standing in for a secret scanner's false alarm) refuses every commit that holds .vbw/record.json.
+# VBW never skips the project's hooks: the refusal is kept, vbw next's first step is commit with
+# the hook's own words, and the session stops there instead of going on. Once the check lets the
+# record through, the next vbw next commits it and the step is gone. Judged in the record's
+# runtime files, git and the session's tool calls and results, never on screen text.
+commitstep_hook() {
+  mkdir -p "$1/.git/hooks"
+  cat > "$1/.git/hooks/pre-commit" << 'HOOK'
+#!/bin/sh
+# L3 stand-in for a secret scanner's false alarm: while the marker stands, a commit holding the record is refused.
+if [ -e "$(git rev-parse --git-dir)/l3-block" ] && ! git diff --cached --quiet -- .vbw/record.json; then
+  echo "L3 commit check: .vbw/record.json looks like it holds a secret (simulated false alarm)" >&2
+  exit 1
+fi
+exit 0
+HOOK
+  chmod +x "$1/.git/hooks/pre-commit"
+}
+scenario_commitstep() {
+  new_project
+  (cd "$dir" && "$VBW" init > /dev/null && "$VBW" config rigor express > /dev/null && greet_plan_seed) \
+    || { say "setup failed: could not seed the approved plan"; return 1; }
+  commitstep_hook "$dir"
+  : > "$(git -C "$dir" rev-parse --absolute-git-dir)/l3-block"
+  seed_head=$(git -C "$dir" rev-parse HEAD)
+  fixture="greet.sh in one plan P1.1 approved by the user before the session; rigor express; the project's pre-commit hook refuses every commit that holds .vbw/record.json (a stand-in for a secret scanner's false alarm); the user types /vbw:vibe"
+  start="/vbw:vibe"
+  # The session is done once VBW stands at the commit step: the hook's refusal is VBW's to report, not to get around.
+  done_yet() { [ "$(next_action)" = commit ]; }
+  checks() {
+    local passed=true kept=false logged=false step=false shown=false bypass=false retried=false cleared=false committed=false facts
+    [ -f "$dir/.vbw/runtime/commit-failed.json" ] && kept=true
+    grep -qF 'L3 commit check' "$dir/.vbw/runtime/output/commit-failed.log" 2> /dev/null && logged=true
+    [ "$(next_action)" = commit ] && step=true
+    transcripts | grep -v '/subagents/' | transcript_tool_output 'vbw[^|;&]* next' 'L3 commit check' && shown=true
+    transcripts | transcript_tool_called '--no-verify|core\.hooksPath' && bypass=true
+    # The check lets the record through again: the next vbw next commits it and the step is gone.
+    rm -f "$(git -C "$dir" rev-parse --absolute-git-dir)/l3-block"
+    [ "$(next_action)" != commit ] && retried=true
+    [ ! -f "$dir/.vbw/runtime/commit-failed.json" ] && cleared=true
+    git -C "$dir" diff --quiet HEAD -- .vbw/record.json && [ "$(git -C "$dir" log --format=%H "$seed_head..HEAD" -- .vbw/record.json | wc -l | tr -d ' ')" -gt 0 ] && committed=true
+    say "kept: $kept, log: $logged, step: $step, shown: $shown, bypass: $bypass, retried: $retried, cleared: $cleared, committed: $committed"
+    expect "the refused commit is kept in .vbw/runtime/commit-failed.json" [ "$kept" = true ]
+    expect "the hook's words are kept in .vbw/runtime/output/commit-failed.log" [ "$logged" = true ]
+    expect "vbw next's step at the session's end is commit" [ "$step" = true ]
+    expect "the session read the hook's words from vbw next" [ "$shown" = true ]
+    expect "no call skipped or redirected the project's hooks (--no-verify, core.hooksPath)" [ "$bypass" = false ]
+    expect "with the check passing again, the next vbw next leaves the commit step" [ "$retried" = true ]
+    expect "and clears the kept failure" [ "$cleared" = true ]
+    expect "and the record is committed, with nothing of it left uncommitted" [ "$committed" = true ]
+    [ "$failed" -eq 0 ] || passed=false
+    facts=$(jq -n --argjson k "$kept" --argjson l "$logged" --argjson s "$step" --argjson w "$shown" --argjson b "$bypass" --argjson r "$retried" --argjson c "$cleared" --argjson m "$committed" \
+      '{failure_kept: $k, hook_words_kept: $l, commit_step: $s, hook_words_in_session: $w, hooks_bypassed: $b, step_left_after_check_passes: $r, failure_cleared: $c, record_committed_after: $m}')
+    result_write commitstep "$fixture" "${cost_usd:-0}" "$passed" "$facts" \
+      '["a real secret scanner (a pre-commit hook stands in for it)","vbw approve refusing while the failure stands (L1 only)","vbw doctor'"'"'s warning line (L1 only)","the wording VBW shows the user (read by a person)","a commit refused for a reason other than a hook (no git identity)"]'
   }
 }
 

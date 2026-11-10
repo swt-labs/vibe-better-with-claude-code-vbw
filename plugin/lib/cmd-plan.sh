@@ -11,6 +11,8 @@
 . "$VBW_LIB/steps.sh"
 # shellcheck source=mutate-queue.sh
 . "$VBW_LIB/mutate-queue.sh"
+# shellcheck source=cmd-check.sh
+. "$VBW_LIB/cmd-check.sh"
 # shellcheck source=history.sh
 . "$VBW_LIB/history.sh"
 
@@ -76,8 +78,18 @@ Queued, not run yet: $queued: run them with vbw mutate $id --run"
 $missing"
       # Breaks still queued are not needed any more.
       rm -rf "$(mutate_queue_dir "$id")"
+      # Red first (R292): said, never refused; QA judges a check that never ran red first.
+      local red_line
+      red_line=$(printf '%s' "$record" | jq -r "$RED_FIRST_DEFS"'def names: if length < 2 then join("") else (.[:-1] | join(", ")) + " and " + .[-1] end;
+        . as $r | red_own($p) as $own
+        | if ($own | length) == 0 then empty else
+            [$own[] | select(. as $c | ($r | red_ran_first($c)) | not)] as $never
+            | if ($never | length) > 0 then "Red first: \($never | names) never ran red before this plan'"'"'s first code commit; QA judges this"
+              else "Red first: every check of this plan ran red before its first code commit (\($own | join(", ")))" end
+          end' --arg p "$id")
       record_update '(.plans[] | select(.id == $p)) |= (.status = "done" | del(.note))' --arg p "$id"
       step_plan_done
+      [ -z "$red_line" ] || printf '%s\n' "$red_line"
       printf '%s done\n' "$id"
       ;;
     block)
@@ -116,23 +128,4 @@ plan_missing_breaks() {
               + ["Next: break what each rule promises in this plan'"'"'s code and run vbw mutate \($p) Rn.k \"what you broke\" FILE..., or vbw mutate \($p) Rn.k --none REASON when its check reads nothing the plans build"])
             | join("\n") end
       end'
-}
-
-# plan_has_commit ID [FILE...]: true when some commit of the record's own
-# history (lib/history.sh) carries "VBW-Plan: ID" (an exact token): an older
-# commit naming the same id is an old roadmap's, not this plan's. Read in the
-# project's repository and in each submodule that tracks one of the plan's FILEs
-# (vbw_plan_paths, history_args_in), where vbw commit commits them.
-plan_has_commit() {
-  local id="$1" line r repos=("") HISTORY_ARGS=()
-  shift
-  vbw_plan_paths ${@+"$@"}
-  for r in ${VBW_REPOS[@]+"${VBW_REPOS[@]}"}; do [ -z "$r" ] || repos+=("$r"); done
-  for r in "${repos[@]}"; do
-    history_args_in "$r"
-    while IFS= read -r line; do
-      [ "$line" = "$id" ] && return 0
-    done < <(git -C "$VBW_ROOT${r:+/$r}" log --format='%(trailers:key=VBW-Plan,valueonly)' "${HISTORY_ARGS[@]}" 2> /dev/null)
-  done
-  return 1
 }

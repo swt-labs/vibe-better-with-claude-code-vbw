@@ -1,21 +1,20 @@
 {
   "scenario": "steptime",
   "fixture": "greet.sh and farewell.sh (two plans, the second after the first), six real checks that wait 5 s each (check_jobs 2), approved; the working tree's status line on, the panel in a wide window; no step history first (a build run started by the scenario with vbw run start build, then ended), then a seeded history of three builds of 2 plans in 10 min and three proofs of 6 checks in 1 min, and the user types /vbw:vibe for the real build",
-  "cost_usd": 0.20,
+  "cost_usd": 1.38,
   "evidence_level": "L3",
-  "at": "2026-11-08T18:07:25Z",
+  "at": "2026-11-09T18:39:47Z",
   "passed": true,
   "facts": {
-    "chat_end": "18:00",
-    "statusline_end": "18:00",
-    "comms_end": "18:00",
-    "note_first_end": "18:00",
+    "chat_end": "18:35",
+    "statusline_end": "18:35",
+    "comms_end": "18:35",
+    "note_first_end": "18:35",
     "same_end": true,
     "proof_counts": [
       0,
       2,
-      4,
-      6
+      4
     ],
     "proof_total": 6,
     "proof_counted_up": true,
@@ -23,7 +22,7 @@
     "no_history_status_line_without_time": true,
     "no_history_screen_says_no_end_time": true,
     "no_history_next_says_no_end_time": true,
-    "screen_samples": 350
+    "screen_samples": 279
   },
   "not_tested": [
     "a build that ran late: the end moving to this run's pace was not seen in the window (held by tests/step-note.bats, L1)",

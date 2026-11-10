@@ -272,7 +272,7 @@ gone_pid() {
     slots_look() { return 1; }
     slots_waited() { :; }
     sleep() { tries=$((tries + 1)); printf "%s\n" "$1" >> "$TEST_ROOT/waits"; }
-    slots_hold U1 || exit 1
+    slots_hold U1 2> /dev/null || exit 1
     echo "held after $tries looks"'
   [ "$status" -eq 0 ] && [ "$output" = "held after 40 looks" ] || { echo "$output"; false; }
   [ "$(sort -u "$TEST_ROOT/waits" | wc -l | tr -d ' ')" = 1 ] || { echo "the pauses differ:"; sort "$TEST_ROOT/waits" | uniq -c; false; }
@@ -291,7 +291,7 @@ gone_pid() {
   # shell then loses the store after the run's folder has ended (the save of a
   # proof): its next step, the give, drops its entry.
   # shellcheck disable=SC2016 # expanded by in_store
-  in_store '( sleep() { chmod 555 "$SLOTS_DIR"; }; slots_hold U1 && echo "U1 held" || echo "U1 lost" )
+  in_store '( sleep() { chmod 555 "$SLOTS_DIR"; }; slots_hold U1 2> /dev/null && echo "U1 held" || echo "U1 lost" )
     chmod 755 "$SLOTS_DIR"
     SLOTS_LIMIT=2
     slots_apply "$SLOTS_TAKE" U2 || exit 1
@@ -301,7 +301,7 @@ gone_pid() {
     rm -rf "$CHECK_OUT"
     SLOTS_LIMIT=1
     sleep() { chmod 555 "$SLOTS_DIR"; }
-    slots_hold vbw:save && echo "save held" || echo "save lost"
+    slots_hold vbw:save 2> /dev/null && echo "save held" || echo "save lost"
     unset -f sleep
     chmod 755 "$SLOTS_DIR"
     slots_release vbw:save

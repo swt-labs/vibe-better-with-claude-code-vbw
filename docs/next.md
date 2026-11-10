@@ -118,11 +118,24 @@ requirements that together name at most two files and no risk category or
 risk path, in a repository of any size. The router plans those the same way,
 adding the one phase with `vbw apply --add` (docs/rigor.md).
 
+## The commit step (needs you)
+
+When the project's pre-commit hook refuses a commit of VBW's files (a secret scanner, a linter, a formatter), VBW keeps the failure in `.vbw/runtime/commit-failed.json` and the hook's full text in `.vbw/runtime/output/commit-failed.log`. Until it is dealt with, `vbw next` returns the `commit` step before any other, so you are never asked for an approval that cannot be recorded; `vbw approve` refuses with the same reason and records nothing.
+
+The step shows the hook's own message (at most 20 lines, then where the full text is kept) and the three ways on:
+
+1. Fix what the hook flagged.
+2. Allow it in the checker's settings.
+3. Commit the VBW files yourself (`git add .vbw`, then `git commit`).
+
+Then run `vbw next` again. Once you commit the files the step is gone and `vbw next` continues where it stopped; if the hook now lets the files pass, the next `vbw next` commits them itself. VBW never passes `--no-verify`, never skips the project's hooks and never offers to. The router shows the step's instruction, never the approval menu. `vbw doctor` names a standing failure in one line (docs/diagnostics.md).
+
 ## Decision order (first match wins)
 
 | # | Condition | action | gate |
 |---|---|---|---|
-| 0 | a run lease is open | `run` (wait for its workflow if it is running in this session; otherwise `vbw run end`; a run owned by another session: wait or check `vbw status`, never end it) | no |
+| 0 | VBW could not commit its own files: the project's pre-commit hook (or git) refused them | `commit` (`detail.files`, `detail.at`; the hook's own message, then the three ways on; see The commit step) | yes |
+| 0a | a run lease is open | `run` (wait for its workflow if it is running in this session; otherwise `vbw run end`; a run owned by another session: wait or check `vbw status`, never end it) | no |
 | 1 | milestone `shipped` or `parked` (a parked one is left behind like a shipped one, docs/loop.md) | `milestone` (start the next one: `vbw milestone start TITLE`) | yes |
 | 2a | no requirements in the current milestone, and a VBW 1 plan (`.vbw-planning/`) not converted yet | `convert` (`/vbw:convert`, or start fresh; docs/convert.md) | yes |
 | 2 | no requirements in the current milestone | `spec` (write its requirements in `.vbw/spec.md`) | yes |
@@ -172,8 +185,8 @@ finished step of the kind, `seconds` and `end` are `null` and `say` reads
 An estimate from little or widely spread history is a range. The step carries
 `low` and `high` (seconds), `end_low` and `end_high` (clock times), `rough`
 (`true` when fewer than 5 kept runs back it, or `high` is above 1.5 times `low`)
-and `runs` (the run count), beside `seconds` and `end`. `say` then reads
-`Building P1.1 and P1.2: roughly 8 to 14 min, until around 14:12 to 14:18 (rough guess from 2 runs)`
+and `runs` (the run count), beside `seconds` and `end`. `say` then leads with the typical figure (the median of the runs) and gives the range after it:
+`Building P1.1 and P1.2: usually about 11 min (8 to 14 min, rough guess from 2 runs), until around 14:15 (14:12 to 14:18)`
 (`roughly 12 min, until around 14:20 (rough guess from 2 runs)` when low and
 high agree). With 5 or more runs that agree, `rough` is `false` and `say` keeps
 the single figure.
@@ -214,7 +227,7 @@ left (the milestone shipped).
 - `low`, `high`, `end_low`, `end_high`, `rough` and `runs`: as on the step. The
   road is rough when any part is rough, or when a tier's usual fix rounds rest
   on fewer than 3 finished phases (counted as none), and then reads `Milestone
-  end: roughly 30 to 50 min, until around 14:50 to 15:10 (rough guess), counting
+  end: usually about 40 min (30 to 50 min, rough guess), until around 14:50 (14:40 to 15:10), counting
   2 fix rounds per standard phase (the usual here)`; it is the single figure
   when every part is tight and every tier's usual fix rounds are known.
 - `seconds` and `end`: the time still ahead and the clock time it ends. Both

@@ -772,10 +772,16 @@ Milestone end: about 36 min, until around 14:56, counting 2 fix rounds per stand
 - **It needs history.** With no finished step of the kind (for example no
   build), the panel says "No end time yet" and shows no time. VBW never makes
   one up.
+- **One clock.** The kernel takes the current time from one source: the
+  computer's clock, or `VBW_NOW`, which sets the clock for tests only.
 - **Rough or single.** An estimate is **rough** when it rests on **fewer than 5
   kept runs**, or when its high is **above 1.5 times its low** (the runs
-  disagree). A rough estimate is a range: "roughly 8 to 14 min, until around
-  14:12 to 14:18 (rough guess from 2 runs)". When the low and high agree it
+  disagree). A rough estimate leads with the **typical figure**, the median of the
+  runs it is learned from (the mean of the two middle runs for an even count),
+  and gives the range after it: "usually about 60 min (21 to 542 min, rough
+  guess from 6 runs), until around 10:15 (09:22 to 18:02)". So a wide range
+  still gives a time to plan by. An estimate of several parts leads with the sum
+  of its parts' typical figures. When the low and high agree it
   reads "roughly 12 min, until around 14:20 (rough guess from 2 runs)". With
   **5 or more runs that agree** you get the single figure, "about 12 min, until
   around 14:20". The milestone end is a range, marked rough, when any part of it

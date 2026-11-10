@@ -313,3 +313,24 @@ tools_call() {
     and (.permissionDecisionReason | startswith("VBW guard: .vbw/runtime/scratch/huge.sh (3072 KB) is too large to read before it runs"))' || { echo "$output"; false; }
   printf '%s' "$output" | jq -e "$USER_LINE" || { echo "$output"; false; }
 }
+
+@test "R289 R128: guard-bash.jq and guard-file.jq deny: the session project's own record, by any name, is refused with the record reason; another folder's .vbw/record.json gets no record refusal" {
+  local out
+  run bash_call "echo x > ./.vbw/record.json"
+  printf '%s' "$output" | jq -e '.hookSpecificOutput.permissionDecision == "deny" and (.hookSpecificOutput.permissionDecisionReason | startswith("VBW guard: .vbw/record.json is written only by vbw (vbw help lists the commands)\nNext: run the vbw command that makes this change"))' \
+    || { echo "$output"; false; }
+  mkdir -p "$TEST_ROOT/elsewhere/.vbw"
+  run bash_call "echo x > '$TEST_ROOT/elsewhere/.vbw/record.json'"
+  [[ "$output" != *".vbw/record.json is written only by vbw"* ]] || { echo "$output"; false; }
+  run file_call Write "$TEST_ROOT/elsewhere/.vbw/record.json"
+  [[ "$output" != *".vbw/record.json is written only by vbw"* ]] || { echo "$output"; false; }
+}
+
+@test "R290 R128: common.jq deny: a builder's write under .vbw/runtime/ outside .vbw/runtime/scratch/ is denied with a 'VBW guard:' reason whose Next names .vbw/runtime/scratch/ for scratch files" {
+  "$VBW" approve > /dev/null
+  [ -z "$(git status --porcelain)" ] || { git add -A && git commit -q -m "feat(shop): start"; }
+  VBW_SESSION_ID=s1 "$VBW" run start build P1.1 > /dev/null
+  output=$(jq -nc --arg d "$PROJECT" '{hook_event_name: "PreToolUse", session_id: "s1", tool_name: "Write", cwd: $d, agent_id: "a1", agent_type: "vbw:dev", tool_input: {file_path: ".vbw/runtime/scratch_mut.out", content: "x"}}' | vbw_hook PreToolUse Write)
+  [ "$(shape "$output")" = "$DENY" ] || { echo "$output"; false; }
+  printf '%s' "$output" | jq -e '.hookSpecificOutput.permissionDecisionReason | startswith("VBW guard: .vbw/runtime/scratch_mut.out") and contains("\nNext: ") and (split("\nNext: ")[1] | contains(".vbw/runtime/scratch/"))' || { echo "$output"; false; }
+}

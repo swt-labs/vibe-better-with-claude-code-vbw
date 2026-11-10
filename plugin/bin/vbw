@@ -28,7 +28,7 @@ usage: vbw <command> [args]
   root              the project folder (the top of the git repository), which VBW's paths are relative to
   show VIEW [ID]    roadmap | phase ID | req ID | plan ID | fix ID | contract [--changes] | evidence | decisions | requirements | costs [--json | --ceiling USD]
   approve [--hash FINGERPRINT]   approve the contract and project commands (the user, via /vbw:approve; --hash only if it is still that contract)
-  check [--expect-red] [CHECK...]   run approved checks and report (writes nothing)
+  check [--expect-red] [CHECK...]   run approved checks and report (--expect-red keeps the run in the plan's evidence)
   prove [--full]    run the approved checks and commands, record the evidence
   apply < PLAN      the planner's write: phases, plans and checks in one update
   apply --patch < P change only the plans, checks and rules given, the rest untouched
@@ -92,7 +92,7 @@ vbw_cmd_usage() {
       echo "usage: vbw spec check|sync   validate .vbw/spec.md; sync its requirements into the record"
       echo "       vbw spec add auto|human TEXT   append a requirement to the spec and sync" ;;
     approve) echo "usage: vbw approve [--hash FINGERPRINT]   approve the contract and project commands (the user, via /vbw:approve)" ;;
-    check) echo "usage: vbw check [--expect-red] [CHECK...]   run approved checks and report (writes nothing)" ;;
+    check) echo "usage: vbw check [--expect-red] [CHECK...]   run approved checks and report (--expect-red keeps the run in the plan's evidence)" ;;
     prove) echo "usage: vbw prove [--full]   run the approved checks and commands, record the evidence" ;;
     apply)
       echo "usage: vbw apply < PLAN   the planner's write: phases, plans and checks in one update"

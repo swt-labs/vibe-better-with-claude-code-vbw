@@ -74,7 +74,7 @@ wait_file() {
     eval "orig_$(declare -f slots_apply)"
     slots_apply() { locks=$((locks + 1)); orig_slots_apply "$@"; }
     sleep() { pauses=$((pauses + 1)); [ "$pauses" -ne 20 ] || : > "$SLOTS_DIR/release"; }
-    slots_hold A || { echo "no slot"; exit 1; }
+    slots_hold A 2> /dev/null || { echo "no slot"; exit 1; }
     jq -c "[.held[].id]" "$SLOTS_FILE"
     echo "locks $locks pauses $pauses"'
   wait "$holder" || { echo "the holder failed"; false; }
@@ -93,7 +93,7 @@ wait_file() {
   # shellcheck disable=SC2016 # expanded by in_store
   run in_store 'pauses=0
     sleep() { pauses=$((pauses + 1)); [ "$pauses" -ne 5 ] || kill -KILL "$(cat "$SLOTS_DIR/holder")"; }
-    slots_hold A || { echo "no slot"; exit 1; }
+    slots_hold A 2> /dev/null || { echo "no slot"; exit 1; }
     jq -c "[.held[].id]" "$SLOTS_FILE"
     echo "pauses $pauses"'
   [ "$status" -eq 0 ] || { echo "$output"; false; }

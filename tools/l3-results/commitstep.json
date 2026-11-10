@@ -1,0 +1,25 @@
+{
+  "scenario": "commitstep",
+  "fixture": "greet.sh in one plan P1.1 approved by the user before the session; rigor express; the project's pre-commit hook refuses every commit that holds .vbw/record.json (a stand-in for a secret scanner's false alarm); the user types /vbw:vibe",
+  "cost_usd": 0.28,
+  "evidence_level": "L3",
+  "at": "2026-11-09T19:23:57Z",
+  "passed": true,
+  "facts": {
+    "failure_kept": true,
+    "hook_words_kept": true,
+    "commit_step": true,
+    "hook_words_in_session": true,
+    "hooks_bypassed": false,
+    "step_left_after_check_passes": true,
+    "failure_cleared": true,
+    "record_committed_after": true
+  },
+  "not_tested": [
+    "a real secret scanner (a pre-commit hook stands in for it)",
+    "vbw approve refusing while the failure stands (L1 only)",
+    "vbw doctor's warning line (L1 only)",
+    "the wording VBW shows the user (read by a person)",
+    "a commit refused for a reason other than a hook (no git identity)"
+  ]
+}

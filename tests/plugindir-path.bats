@@ -76,6 +76,17 @@ shells() {
 
 context() { printf '%s' "$output" | jq -r '.hookSpecificOutput.additionalContext // ""'; }
 
+# vbw_path_lines: the env file's PATH lines that put a VBW copy's bin folder first (a folder holding vbw).
+vbw_path_lines() {
+  local l d
+  [ -f "$CLAUDE_ENV_FILE" ] || return 0
+  while IFS= read -r l || [ -n "$l" ]; do
+    case $l in
+      "export PATH='"*) d=${l#"export PATH='"}; d=${d%%"'"*}; [ ! -x "$d/vbw" ] || printf '%s\n' "$l" ;;
+    esac
+  done < "$CLAUDE_ENV_FILE"
+}
+
 @test "R185: a session that loaded VBW from a working tree runs that tree's vbw, ahead of an installed release" {
   vbw_git_project
   "$VBW" init > /dev/null
@@ -135,15 +146,15 @@ context() { printf '%s' "$output" | jq -r '.hookSpecificOutput.additionalContext
   done < <(shells)
 }
 
-@test "R185: a normal installed session leaves the PATH to Claude Code: the installed copy writes nothing to the env file" {
+@test "R185 (R285): an installed session puts its own copy's bin first on PATH, one line in the env file" {
   vbw_git_project
   "$VBW" init > /dev/null
   installed
   run session_start
   [ "$status" -eq 0 ]
-  [ ! -s "$CLAUDE_ENV_FILE" ] || {
-    echo "an installed copy wrote to the env file:"
-    cat "$CLAUDE_ENV_FILE"
+  [ "$(vbw_path_lines | wc -l | tr -d ' ')" = 1 ] && vbw_path_lines | grep -qF "$PLUGIN_ROOT/bin" || {
+    echo "the installed copy did not write its one PATH line:"
+    cat "$CLAUDE_ENV_FILE" 2> /dev/null
     false
   }
   # Its line keeps the words a normal session always had.
@@ -271,4 +282,60 @@ context() { printf '%s' "$output" | jq -r '.hookSpecificOutput.additionalContext
   [[ "$(context)" == *"$PLUGIN_ROOT/bin/vbw"* && "$(context)" == *"newer VBW"* ]] || { echo "$output"; false; }
   [[ "$(printf '%s' "$output" | jq -r '.systemMessage // ""')" == *"$PLUGIN_ROOT/bin/vbw"* ]] || { echo "$output"; false; }
   [[ "$(printf '%s' "$output" | jq -r '.systemMessage // ""')" == *"/vbw:update"* ]] || { echo "$output"; false; }
+}
+
+# R285 (seen 2026-11-09, D686): every session start, by a --plugin-dir copy or an
+# installed one, leaves exactly one VBW PATH line in the session's env file, the loaded
+# copy's bin folder: earlier VBW PATH lines of the file from any copy go (2.1.28 and older
+# wrote them unmarked, in the form export PATH='<folder>/bin':"$PATH"), and every line VBW
+# did not write stays byte for byte, in its place. The installed start keeps the session
+# record too, so vbw doctor knows which copy Claude Code loaded either way.
+
+# installed_copy: a full installed release (a copy of the plugin under test, version 9.9.8) in the plugin cache.
+installed_copy() {
+  REAL="$CLAUDE_CONFIG_DIR/plugins/cache/vbw-marketplace/vbw/9.9.8"
+  mkdir -p "$(dirname "$REAL")"
+  cp -R "$PLUGIN_ROOT" "$REAL"
+  jq '.version = "9.9.8"' "$PLUGIN_ROOT/.claude-plugin/plugin.json" > "$REAL/.claude-plugin/plugin.json"
+}
+# others: the env file's lines VBW did not write, as the test put them there.
+OTHERS=$'export OTHER_PLUGIN=1\nexport PATH=\'/opt/other/bin\':"$PATH"\n# a comment line'
+
+@test "R285: 17 --plugin-dir starts and then an installed start leave one VBW PATH line, the installed copy's, and every other line byte for byte" {
+  vbw_git_project
+  "$VBW" init > /dev/null
+  installed_copy
+  local i
+  # Three lines an older VBW wrote, unmarked, around the lines of others.
+  { printf "export PATH=%s:\"\$PATH\"\n" "'$PLUGIN_ROOT/bin'"; printf '%s\n' "$OTHERS"; printf "export PATH=%s:\"\$PATH\"\n" "'$PLUGIN_ROOT/bin'" "'$PLUGIN_ROOT/bin'"; } > "$CLAUDE_ENV_FILE"
+  loaded
+  for ((i = 1; i <= 17; i++)); do session_start > /dev/null; done
+  [ "$(vbw_path_lines | wc -l | tr -d ' ')" = 1 ] || { echo "after 17 --plugin-dir starts:"; cat "$CLAUDE_ENV_FILE"; false; }
+  installed
+  session_start "$REAL" > /dev/null
+  [ "$(vbw_path_lines | wc -l | tr -d ' ')" = 1 ] && vbw_path_lines | grep -qF "$REAL/bin" || { echo "after the installed start:"; cat "$CLAUDE_ENV_FILE"; false; }
+  # Every line VBW did not write, byte for byte and in order.
+  diff <(printf '%s\n' "$OTHERS") <(grep -vF "$(vbw_path_lines)" "$CLAUDE_ENV_FILE") || { echo "the other lines changed:"; cat "$CLAUDE_ENV_FILE"; false; }
+  [ "$(env PATH="$INST/bin:$PATH" bash -c '. "$1"; command -v vbw' _ "$CLAUDE_ENV_FILE")" = "$REAL/bin/vbw" ] || { cat "$CLAUDE_ENV_FILE"; false; }
+}
+
+@test "R285: a --plugin-dir start after an installed start leaves one line, the tree's" {
+  vbw_git_project
+  installed_copy
+  installed
+  session_start "$REAL" > /dev/null
+  loaded
+  session_start > /dev/null
+  [ "$(vbw_path_lines | wc -l | tr -d ' ')" = 1 ] && vbw_path_lines | grep -qF "$PLUGIN_ROOT/bin" || { cat "$CLAUDE_ENV_FILE"; false; }
+  [ "$(bash_tool bash 'command -v vbw')" = "$PLUGIN_ROOT/bin/vbw" ]
+}
+
+@test "R285: an installed start keeps the session record naming the copy Claude Code loaded for the session" {
+  vbw_git_project
+  installed_copy
+  loaded
+  session_start > /dev/null
+  installed
+  session_start "$REAL" > /dev/null
+  [ "$(cat "$CLAUDE_CONFIG_DIR/vbw/sessions/s1" 2> /dev/null)" = "$REAL" ] || { echo "the session record holds: $(cat "$CLAUDE_CONFIG_DIR/vbw/sessions/s1" 2> /dev/null || echo nothing)"; false; }
 }

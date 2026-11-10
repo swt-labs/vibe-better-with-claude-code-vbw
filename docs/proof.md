@@ -200,6 +200,27 @@ down the runs giving slots back. A run that waits
 prints `waited ... for other VBW runs on this computer`. Waiting changes
 nothing else: the same result as without it, and a timeout counts from when its command really starts.
 
+A `vbw check` or `vbw mutate` that waits for a slot says so once, when the wait
+starts, in local time:
+
+```
+vbw: waiting for a free slot of the computer-wide limit since 10:42
+```
+
+A run that never waits prints no such line.
+
+A check file that is new or changed since the last approval waits for approval.
+`vbw check` and `vbw mutate` never wait on it: the check runs now on the file's
+working content. They name the file only when a check they run reads it, in one
+line, which is information and not a block:
+
+```
+tests/a.bats is waiting for approval: C1 run now on its working content; vbw next asks the approval before the proof
+```
+
+A waiting file of another plan, or one no running check reads, is not
+mentioned.
+
 Every change of the store is one short step under a lock file next to it
 (`slots.lock`), and a step spends little: one `jq` run, one rename and the
 lock's removal, with no pause unless another run holds the lock. A run that
@@ -999,6 +1020,23 @@ refuse a proof that is out of date or failed:
 For every check run fresh, use `vbw prove --full` (see
 [Limits](#limits-of-reusing-results)).
 
+#### A version bump
+
+Every record write reads the version in `plugin/.claude-plugin/plugin.json`
+(the writer file). That read is the kernel's own, not the unit's. When a unit
+runs, VBW sets `VBW_KERNEL_READS` to a file; the kernel logs each of its own
+reads of `plugin.json` there, and `vbw version` logs nothing. The proof then
+leaves those reads out of what the unit depends on.
+
+- A change of only the version value reruns only the units that read the
+  version themselves. Their reason reads `reads the version:
+  plugin/.claude-plugin/plugin.json`. Every other unit is reused, including
+  one whose only contact with `plugin.json` is the kernel's read.
+- Any other change to `plugin.json` reruns every unit that read it, through the
+  kernel or itself. The reason reads `<file> changed`.
+
+`vbw prove` names each unit that ran again and why.
+
 ### Proof in the background during an autonomous run
 
 In an autonomous run (`/vbw:vibe --auto`), a stop hook runs each time Claude
@@ -1200,7 +1238,7 @@ a file, so you can read the whole failure without running everything again.
 - A reused result, or a check that was skipped, leaves the file as it is.
 - `.vbw/runtime/` is git-ignored, so these files are never committed.
 - `vbw check` keeps a failing check's output the same way; `--expect-red` keeps
-  nothing. `vbw show fix` reads the file and lists the failing test names.
+  no output file. `vbw show fix` reads the file and lists the failing test names.
 
 An `auto` requirement is `proven` when all its checks pass and `failing`
 otherwise. Human requirements are untouched.
@@ -1933,9 +1971,12 @@ the evidence covers the code you will keep.
 ### `vbw check [--expect-red] [CHECK...]`
 
 Runs the given approved checks (all when none are given) on the working folder,
-uncommitted and untracked files included, and reports. It writes only the full
+uncommitted and untracked files included, and reports. It writes the full
 output of each failing check to `.vbw/runtime/output/<check>.log` and prints
-`  full output: PATH` under that check's line (`--expect-red` keeps nothing): the
-Dev's tool for the red and green steps. Exit 0 when all pass. With `--expect-red`, red-first:
+`  full output: PATH` under that check's line: the Dev's tool for the red and
+green steps. `--expect-red` keeps no output file; it keeps the run in the
+evidence of each plan it concerns (`red_runs` in the record: the time, the
+commit, each check's result, and whether it came before the plan's first code
+commit), which `vbw plan done` and QA read (docs/workflows.md, Red first). Exit 0 when all pass. With `--expect-red`, red-first:
 before a plan is built its checks must fail, and a check that already passes
 proves nothing, so exit 0 only when every check fails.

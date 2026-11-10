@@ -164,7 +164,8 @@ C1 red" ] || { echo "$output"; false; }
   vbw_run mutate P1.2 R2.1 "prints nothing" src/receipt.sh
   [ "$status" -eq 0 ] || { echo "$output"; false; }
   split
-  [ "$BEFORE" = "vbw: waiting for approval (new or changed since approved): tests/receipt.sh
+  # R288: the waiting line names the file, the checks that read it and that the approval comes before the proof.
+  [ "$BEFORE" = "tests/receipt.sh is waiting for approval: C2 run now on its working content; vbw next asks the approval before the proof
 R2.1 survives the approved check; caught by the pending one: tests/receipt.sh
 C2 red
 the pending file still needs the one approval before the proof" ] || { echo "$output"; false; }

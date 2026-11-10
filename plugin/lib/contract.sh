@@ -15,7 +15,7 @@
 VBW_CONTRACT_DEFS='def canon: if type == "object" then to_entries | map(.value |= canon) | sort_by(.key) | from_entries
   elif type == "array" then map(canon) else . end;
 def contract_core: {requirements: [.requirements[] | select(.queued | not) | {id, text, proof} + (if has("rules") then {rules} else {} end)],
-                    checks: [.checks[] | del(.amendments)], plans: [.plans[] | del(.status, .note, .mutations, .amendments, .awaits)]}
+                    checks: [.checks[] | del(.amendments)], plans: [.plans[] | del(.status, .note, .mutations, .amendments, .awaits, .red_runs)]}
                    + (if .project.results then {results: .project.results} else {} end)
                    + (if .project.leave_out then {leave_out: .project.leave_out} else {} end)
                    + (if .test_files then {test_files} else {} end);
@@ -245,7 +245,7 @@ contract_doc() {
   printf '%s' "$1" | jq -c --slurpfile f_files <(printf '%s' "$files") '$f_files[0] as $files | {
     requirements: (.requirements | map(select(.queued | not)) | map({key: .id, value: ({text, proof} + (if has("rules") then {rules} else {} end))}) | from_entries),
     checks: (.checks | map({key: .id, value: del(.amendments)}) | from_entries),
-    plans: (.plans | map({key: .id, value: del(.status, .note, .mutations, .amendments, .awaits)}) | from_entries),
+    plans: (.plans | map({key: .id, value: del(.status, .note, .mutations, .amendments, .awaits, .red_runs)}) | from_entries),
     commands: .commands,
     files: $files} + (if .project.results then {results: .project.results} else {} end)
     + (if .project.leave_out then {leave_out: .project.leave_out} else {} end)

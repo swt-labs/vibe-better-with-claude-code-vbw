@@ -80,7 +80,8 @@ export function stepWords(note, now) {
       const lm = mins(lo)
       const hm = mins(hi)
       if (lm === hm) return { text: 'roughly ' + lm + ' min, ' + at + tag, timed: true }
-      return { text: 'roughly ' + lm + ' to ' + hm + ' min, until around ' + dayClock(lo, t) + ' to ' + dayClock(hi, t) + tag, timed: true }
+      const ty = Math.min(Math.max(Number.isFinite(Date.parse(note.end_typical)) ? Date.parse(note.end_typical) : end, lo), hi)
+      return { text: 'usually about ' + mins(ty) + ' min (' + lm + ' to ' + hm + ' min, rough guess from ' + runs + (runs === 1 ? ' run' : ' runs') + '), until around ' + dayClock(ty, t) + ' (' + dayClock(lo, t) + ' to ' + dayClock(hi, t) + ')', timed: true }
     }
     return { text: 'about ' + Math.max(1, Math.round(left / MIN_MS)) + ' min, ' + at, timed: true }
   } catch {

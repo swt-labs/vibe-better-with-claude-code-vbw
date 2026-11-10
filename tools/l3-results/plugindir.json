@@ -1,42 +1,30 @@
 {
   "scenario": "plugindir",
-  "fixture": "a small VBW project (vbw init, one-requirement spec); VBW 2.1.4 installed from the marketplace and left on; a throwaway copy of this tree (2.1.4+tree, with a probe SessionStart hook) loaded with --plugin-dir; status line from that copy; launch PATH has the installed bin/ first: true",
-  "cost_usd": 0.1819,
+  "fixture": "a small VBW project (vbw init, one-requirement spec); VBW 2.1.28 installed from the marketplace and left on; a throwaway copy of this tree (2.1.28+tree, with a probe SessionStart hook) loaded with --plugin-dir; status line from that copy; launch PATH has the installed bin/ first: true",
+  "cost_usd": 0.3417,
   "evidence_level": "L3",
-  "at": "2026-10-24T04:28:24Z",
+  "at": "2026-11-09T18:53:41Z",
   "passed": true,
   "facts": {
-    "claude_version": "2.1.310",
-    "tree_root": "~/Documents/AI Stuff/vibe-better-with-claude-code-vbw-worktrees/plow-2.1.8/.vbw/runtime/scratch/plugindir-tree",
-    "tree_version": "2.1.4+tree",
-    "installed_version": "2.1.4",
+    "claude_version": "2.1.319",
+    "tree_root": "<checkout>/.vbw/runtime/scratch/plugindir-tree",
+    "tree_version": "2.1.28+tree",
+    "installed_version": "2.1.28",
     "loaded_copies": [
-      "~/.claude/plugins/cache/vbw-marketplace/vbw/2.1.4",
-      "~/Documents/AI Stuff/vibe-better-with-claude-code-vbw-worktrees/plow-2.1.8/.vbw/runtime/scratch/plugindir-tree"
+      "~/.claude/plugins/cache/vbw-marketplace/vbw/2.1.28",
+      "<checkout>/.vbw/runtime/scratch/plugindir-tree"
     ],
     "tree_overrides_installed": true,
     "plugin_bins_on_path": [
-      "~/Documents/AI Stuff/vibe-better-with-claude-code-vbw-worktrees/plow-2.1.8/.vbw/runtime/scratch/plugindir-tree/bin",
-      "~/.claude/plugins/cache/vbw-marketplace/vbw/2.1.4/bin",
-      "<checkout>/plugin/bin",
-      "<checkout>/plugin/bin",
-      "<checkout>/plugin/bin",
-      "<checkout>/plugin/bin",
-      "<checkout>/plugin/bin",
-      "<checkout>/plugin/bin",
-      "<checkout>/plugin/bin",
-      "<checkout>/plugin/bin",
-      "<checkout>/plugin/bin",
-      "<checkout>/plugin/bin",
-      "<checkout>/plugin/bin",
-      "<checkout>/plugin/bin",
-      "~/Documents/AI Stuff/vibe-better-with-claude-code-vbw-worktrees/plow-2.1.8/.vbw/runtime/scratch/plugindir-tree/bin"
+      "<checkout>/.vbw/runtime/scratch/plugindir-tree/bin",
+      "~/.claude/plugins/cache/vbw-marketplace/vbw/2.1.28/bin",
+      "<checkout>/.vbw/runtime/scratch/plugindir-tree/bin"
     ],
-    "session_vbw_path": "~/Documents/AI Stuff/vibe-better-with-claude-code-vbw-worktrees/plow-2.1.8/.vbw/runtime/scratch/plugindir-tree/bin/vbw",
-    "session_vbw_version": "2.1.4+tree",
+    "session_vbw_path": "<checkout>/.vbw/runtime/scratch/plugindir-tree/bin/vbw",
+    "session_vbw_version": "2.1.28+tree",
     "session_env_applied": true,
-    "agent_vbw_path": "~/Documents/AI Stuff/vibe-better-with-claude-code-vbw-worktrees/plow-2.1.8/.vbw/runtime/scratch/plugindir-tree/bin/vbw",
-    "agent_vbw_version": "2.1.4+tree",
+    "agent_vbw_path": "<checkout>/.vbw/runtime/scratch/plugindir-tree/bin/vbw",
+    "agent_vbw_version": "2.1.28+tree",
     "agent_env_applied": true,
     "hooks_from": [
       "vbw@inline"
@@ -45,7 +33,7 @@
     "plugin_data_id": "vbw-inline",
     "env_file_given": true,
     "launch_path_had_installed": true,
-    "statusline_version_shown": "2.1.4+tree",
+    "statusline_version_shown": "2.1.28+tree",
     "session_start_names_kernel": true
   },
   "not_tested": [

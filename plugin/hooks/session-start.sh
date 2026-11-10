@@ -85,28 +85,63 @@ if [ -n "$sid" ] && [ -f "$root/.vbw/runtime/loop.$sid" ] && [ ! -e "$root/.vbw/
   { : > "$root/.vbw/runtime/loop-away.$sid"; } 2> /dev/null || true
 fi
 
-# A loaded copy puts its own bin/ first on PATH for the session (the env file
-# is read before each Bash tool command; one line, quoted for sh, bash and zsh)
-# and records its folder for the session id (the status line and doctor read
-# it). An installed copy writes no PATH line and drops its session's record
-# (the same session resumed without the tree). Records older than 7 days go.
+# Every start, by a loaded copy or an installed one, puts the loaded copy's bin/
+# first on PATH for the session (the env file is read before each Bash tool
+# command; one line, quoted for sh, bash and zsh) and records the copy's folder
+# for the session id (the status line and doctor read it). Afterwards the env
+# file holds exactly one VBW PATH line (R285): earlier ones of any copy go (the
+# unmarked ones of 2.1.28 and older too: export PATH='<folder>/bin':"$PATH" where
+# the folder holds vbw), every other line stays byte for byte and in order, and
+# the file is replaced atomically from a name in its own folder. Records older
+# than 7 days go.
 sessions=$claude_dir/vbw/sessions
 if [ -d "$sessions" ]; then
   find "$sessions" -type f -mtime +7 -exec rm -f {} + 2> /dev/null || true
 fi
-if [ "$loaded" -eq 1 ]; then
-  q="'"
-  if [ -n "${CLAUDE_ENV_FILE:-}" ] && { printf 'export PATH=%s:"$PATH"\n' "'${plugin//$q/$q\\$q$q}/bin'" >> "$CLAUDE_ENV_FILE"; } 2> /dev/null; then
-    :
-  else
-    notice="VBW could not put this loaded copy first on PATH (Claude Code gave no writable env file), so a plain vbw may run an installed release. Run ${kernel} instead."
-    context="${context}VBW could not put the loaded copy first on PATH: run ${kernel} instead of vbw in this session. Tell the user once. "
+
+# write_path_line FILE LINE MARK: FILE without any VBW PATH line, then LINE. 1 when FILE
+# cannot be written as it is: a folder or another non-file there (a rename would move the
+# new file into it), or a file without write permission (a rename would replace it anyway).
+write_path_line() {
+  local file=$1 line=$2 mark=$3 l d tmp
+  if [ -e "$file" ] || [ -L "$file" ]; then
+    [ -f "$file" ] && [ -w "$file" ] || return 1
   fi
-  if [ -n "$sid" ]; then
-    { mkdir -p "$sessions" && printf '%s\n' "$plugin" > "$sessions/$sid"; } 2> /dev/null || true
-  fi
-elif [ -n "$sid" ]; then
-  rm -f "$sessions/$sid" 2> /dev/null || true
+  case $file in
+    */*) d=${file%/*} ;;
+    *) d=. ;;
+  esac
+  tmp=$(mktemp "$d/${file##*/}.vbw.XXXXXX") || return 1
+  {
+    if [ -f "$file" ]; then
+      while IFS= read -r l || [ -n "$l" ]; do
+        case $l in
+          *"$mark") continue ;;
+          "export PATH='"*"/bin':\"\$PATH\"")
+            d=${l#"export PATH='"}
+            d=${d%%"'"*}
+            [ ! -x "$d/vbw" ] || continue
+            ;;
+        esac
+        printf '%s\n' "$l"
+      done < "$file"
+    fi
+    printf '%s\n' "$line"
+  } > "$tmp" || { rm -f "$tmp"; return 1; }
+  mv "$tmp" "$file" || { rm -f "$tmp"; return 1; }
+}
+
+q="'"
+mark=' # vbw-session-path'
+pathline="export PATH='${plugin//$q/$q\\$q$q}/bin':\"\$PATH\"$mark"
+if [ -n "${CLAUDE_ENV_FILE:-}" ] && write_path_line "$CLAUDE_ENV_FILE" "$pathline" "$mark" 2> /dev/null; then
+  :
+elif [ "$loaded" -eq 1 ]; then
+  notice="VBW could not put this loaded copy first on PATH (Claude Code gave no writable env file), so a plain vbw may run an installed release. Run ${kernel} instead."
+  context="${context}VBW could not put the loaded copy first on PATH: run ${kernel} instead of vbw in this session. Tell the user once. "
+fi
+if [ -n "$sid" ]; then
+  { mkdir -p "$sessions" && printf '%s\n' "$plugin" > "$sessions/$sid"; } 2> /dev/null || true
 fi
 [ "$removed" -eq 0 ] || context="${context}VBW removed $removed outdated VBW 1 command copies that would have run instead of the VBW 2 commands. Tell the user once: run /reload-skills now (or restart Claude Code) before using any /vbw: command, because this session loaded the old copies. "
 
