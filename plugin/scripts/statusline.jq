@@ -51,7 +51,7 @@ def progress($done; $total): (if $total > 0 then $done * 100 / $total else 0 end
 | ($rest2 | index("vbw-guard-end")) as $s3
 | (if $s3 != null and $s3 >= 1 then $rest2[0] else null end) as $stepnote
 | (if $s3 != null then $rest2[$s3 + 1] else null end) as $auto
-| now as $now
+| (($ENV.VBW_NOW // "") | if . == "" then now else fromdateiso8601 end) as $now
 # The step's note counts for a build, fix, plan or QA while its run is the open
 # run; a proof's, while its own session's and its process lives (the shell tells
 # a dead one by $deadpid). A step is shown only from the note, never worked out.
@@ -77,8 +77,8 @@ def progress($done; $total): (if $total > 0 then $done * 100 / $total else 0 end
        elif $p != null then "\($n.doing) · \($p.done) of \($p.total)" else $n.doing end) as $what
     | (if $n.end == null then null
        else (if ($n.rough == true) and $n.end_low != null and $n.end_high != null
-               then (clock($n.end_low) as $lo | clock($n.end_high) as $hi
-                 | "until ~" + (if $lo == $hi then $lo else $lo + "-" + $hi end))
+               then (clock($n.end_low) as $lo | clock($n.end_high) as $hi | clock($n.end_typical // $n.end) as $ty
+                 | "until ~" + (if $lo == $hi then $lo else $ty + " (" + $lo + "-" + $hi + ")" end))
                else "until around " + clock($n.end) end)
          + (if $p != null then (if $n.late == true or (($n.end | fromdateiso8601) <= $now) then ", later than usual" else "" end)
             else ((($now - ($n.first_end // $n.end | fromdateiso8601)) / 60 | floor) as $m | if $m >= 1 then ", \($m) min late" else "" end) end)

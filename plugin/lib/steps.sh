@@ -17,7 +17,7 @@
 # step_clock($iso; $t): the local 24-hour time of a UTC time; "tomorrow HH:MM",
 # "yesterday HH:MM" or the weekday when it is not today.
 # step_words($s; $t): a note's time: 'about 12 min, until around 14:20' (a well-founded
-# estimate), 'roughly 15 to 21 min, until around 14:20 to 14:26 (rough guess from 2 runs)'
+# estimate), 'usually about 18 min (15 to 21 min, rough guess from 2 runs), until around 14:23 (14:20 to 14:26)'
 # (a rough one, R270: $s carries end_low, end_high, rough and runs; one figure when the
 # ends agree), 'less than a minute, ...', 'until around 14:35, later than usual' (with
 # parts), 'until around 14:20, 6 min late' (without), or 'no end time yet (...)'.
@@ -27,7 +27,8 @@
 # count}: the reason most of its units run again).
 # step_sentence($s; $t): what a running step is doing, its progress and its time.
 # shellcheck disable=SC2016,SC2034
-VBW_STEP_DEFS='def step_day($e): $e | localtime | mktime / 86400 | floor;
+VBW_STEP_DEFS='def vbw_now: (($ENV.VBW_NOW // "") | if . == "" then now else fromdateiso8601 end);
+def step_day($e): $e | localtime | mktime / 86400 | floor;
 def step_clock($iso; $t):
   ($iso | fromdateiso8601) as $e
   | ($e | localtime | strftime("%H:%M")) as $hm
@@ -52,7 +53,8 @@ def step_words($s; $t):
         | ([($s.end_high | fromdateiso8601), ($s.end | fromdateiso8601)] | max) as $hi
         | step_mins($lo - $t) as $lm | step_mins($hi - $t) as $hm
         | if $lm == $hm then "roughly \($lm) min, \($at)\($tag)"
-          else "roughly \($lm) to \($hm) min, until around \(step_clock(($lo | todateiso8601); $t)) to \(step_clock(($hi | todateiso8601); $t))\($tag)" end
+          else ([[($s.end_typical // $s.end | fromdateiso8601), $lo] | max, $hi] | min) as $ty
+            | "usually about \(step_mins($ty - $t)) min (\($lm) to \($hm) min, rough guess from \($s.runs // 0) \(if ($s.runs // 0) == 1 then "run" else "runs" end)), until around \(step_clock(($ty | todateiso8601); $t)) (\(step_clock(($lo | todateiso8601); $t)) to \(step_clock(($hi | todateiso8601); $t)))" end
       else "about \(step_mins($left)) min, \($at)" end end;
 def step_and: if length < 2 then join("") else (.[:-1] | join(", ")) + " and " + .[-1] end;
 def step_label($k; $ids; $n):
@@ -327,7 +329,7 @@ step_start() {
     def at($s): if $s == null then null else (.started_at | fromdateiso8601) + $s | todateiso8601 end;
     {kind: $k, run, session: (.session // null), pid: null, started_at, ids: $ids, doing: $doing, parts: $parts, proof: null,
      first_end: (if $fe == "null" then null else $fe end), end: (if $fe == "null" then null else $fe end),
-     end_low: at($est.low), end_high: at($est.high), rough: ($est.rough == true), runs: ($est.runs // 0), late: false}
+     end_low: at($est.low), end_high: at($est.high), end_typical: at($est.typical), rough: ($est.rough == true), runs: ($est.runs // 0), late: false}
     + (if $k == "build" then {units: [$size[]? | . + {seconds: null}]}
        elif $k == "fix" then {tier: ($size.tier // null)}
        elif $k == "plan" then {reqs: ($size.reqs // null)}
@@ -343,9 +345,9 @@ step_replan_say() {
   size=$(step_size "$1" plan '[]' | jq -c '.reqs += 1' 2> /dev/null) || size=
   est=$(step_estimate plan "$size")
   [ -n "$est" ] || est=null
-  jq -nr --argjson e "$est" "$VBW_STEP_DEFS"'(now | floor) as $t
+  jq -nr --argjson e "$est" "$VBW_STEP_DEFS"'(vbw_now | floor) as $t
     | def at($s): if $s == null then null else $t + $s | todateiso8601 end;
-    {kind: "plan", ids: [], parts: null, end: at($e.seconds), end_low: at($e.low), end_high: at($e.high),
+    {kind: "plan", ids: [], parts: null, end: at($e.seconds), end_low: at($e.low), end_high: at($e.high), end_typical: at($e.typical),
      rough: ($e.rough == true), runs: ($e.runs // 0), late: false}
     | step_say(.; $t)'
 }
@@ -364,7 +366,7 @@ step_plan_done() {
     | select($n.kind == "build" and ($n.parts | type) == "object")
     | ([$n.ids[] | select(. as $i | any($pl[]; .id == $i and .status == "done"))] | length) as $done
     | .parts.done = $done
-    | (now | floor) as $t
+    | (vbw_now | floor) as $t
     | .units = [(.units // [])[] | if .seconds == null and (. as $u | any($pl[]; .id == $u.id and .status == "done"))
         then .seconds = ($t - (($n.started_at | fromdateiso8601))) else . end]
     | step_move($t)' "$note" 2> /dev/null) || return 0
@@ -380,8 +382,8 @@ step_status() {
   local live
   live=$(step_live_note "$1")
   if [ -z "$live" ]; then echo null; return 0; fi
-  printf '%s' "$live" | jq -c '. + {minutes_late: (if .parts == null and .first_end != null
-      then (((now | floor) - (.first_end | fromdateiso8601)) / 60 | floor | if . >= 1 then . else null end) else null end)}' 2> /dev/null || echo null
+  printf '%s' "$live" | jq -c "$VBW_STEP_DEFS"'. + {minutes_late: (if .parts == null and .first_end != null
+      then (((vbw_now | floor) - (.first_end | fromdateiso8601)) / 60 | floor | if . >= 1 then . else null end) else null end)}' 2> /dev/null || echo null
 }
 
 # step_say_note: the sentence of the note just written (run start), then the road's, nothing
@@ -390,7 +392,7 @@ step_say_note() {
   local note
   note=$(step_note_file)
   [ -f "$note" ] || return 0
-  jq -r "$VBW_STEP_DEFS"'step_say(.; now | floor), (.road.say? // empty)' "$note" 2> /dev/null || true
+  jq -r "$VBW_STEP_DEFS"'step_say(.; vbw_now | floor), (.road.say? // empty)' "$note" 2> /dev/null || true
 }
 
 # step_proof_plan RECORD FULL: what a proof would run now, as {units, top}: the
@@ -493,10 +495,10 @@ step_next() {
   est=$(step_estimate "$kind" "$size")
   [ -n "$est" ] || est=null
   jq -nc --arg k "$kind" --argjson ids "$ids" --argjson parts "$parts" --argjson e "$est" --argjson why "$why" "$VBW_STEP_DEFS"'
-    (now | floor) as $t
+    (vbw_now | floor) as $t
     | def at($s): if $s == null then null else $t + $s | todateiso8601 end;
-    {kind: $k, ids: $ids, parts: $parts, seconds: $e.seconds, low: $e.low, high: $e.high, runs: ($e.runs // 0),
-     rough: ($e.rough == true), end: at($e.seconds), end_low: at($e.low), end_high: at($e.high)}
+    {kind: $k, ids: $ids, parts: $parts, seconds: $e.seconds, typical: $e.typical, low: $e.low, high: $e.high, runs: ($e.runs // 0),
+     rough: ($e.rough == true), end: at($e.seconds), end_low: at($e.low), end_high: at($e.high), end_typical: at($e.typical)}
     | (if $why != null then . + {why: $why} else . end)
     | . + {say: step_say(.; $t)}'
 }

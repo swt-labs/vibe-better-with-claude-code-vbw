@@ -54,7 +54,7 @@ cmd_status() {
     (. as $r | .plans[] | select(.status == "done") | . as $p
       | [(.awaits // [])[] | select(($r.evidence.checks[.].status // "") != "pass")] | select(length > 0)
       | "\($p.id) built, awaiting \(join(", "))"),
-    (if $step != null then "now: \(step_sentence($step; now | floor))" else empty end),
+    (if $step != null then "now: \(step_sentence($step; vbw_now | floor))" else empty end),
     (if $road != null then $road.say else empty end),
     (if (.shipped | length) > 0 then "shipped: \([.shipped[] | "\(.id) \(.title)"] | join(", "))" else empty end),
     (if ((.parked // []) | length) > 0 then "parked: \([.parked[] | "\(.id) (\(.reason))"] | join(", "))" else empty end),

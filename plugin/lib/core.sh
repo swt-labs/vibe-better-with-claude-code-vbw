@@ -116,8 +116,11 @@ vbw_session() {
   printf '%s' "${VBW_SESSION_ID:-${CLAUDE_CODE_SESSION_ID:-}}"
 }
 
+# The kernel's one clock: VBW_NOW (a UTC time, YYYY-MM-DDTHH:MM:SSZ) when set,
+# which tests use; else the computer's clock. The jq programs of the estimate
+# path take the same moment from `def vbw_now` (lib/steps.sh, statusline.jq).
 vbw_now() {
-  date -u +%Y-%m-%dT%H:%M:%SZ
+  if [ -n "${VBW_NOW:-}" ]; then printf '%s\n' "$VBW_NOW"; else date -u +%Y-%m-%dT%H:%M:%SZ; fi
 }
 
 # This clone's own settings: $(git-common-dir)/vbw/settings.json (shared by the

@@ -145,7 +145,7 @@ proofsteps_begin() {
         {kind: "proof", run: null, session: (if $me == "" then null else $me end), pid: $pid, started_at: $now, ids: [],
          doing: "proving 0 of \($t) checks", parts: {done: 0, total: $t}, proof: null,
          first_end: (if $fe == "null" then null else $fe end), end: (if $fe == "null" then null else $fe end),
-         end_low: at($est.low), end_high: at($est.high), rough: ($est.rough == true), runs: ($est.runs // 0), late: false}')"
+         end_low: at($est.low), end_high: at($est.high), end_typical: at($est.typical), rough: ($est.rough == true), runs: ($est.runs // 0), late: false}')"
       # The road the proof sits on; its answer stays for the units that follow.
       PS_ROAD_NEXT=$(step_road_input)
       step_road_note_set "$PS_ROAD_NEXT"
@@ -168,7 +168,7 @@ proofsteps_note_update() {
   before=$(jq -r '.end // ""' "$note" 2> /dev/null) || before=
   [ "$1" -le "$total" ] || total=$1
   out=$(jq -c --argjson d "$1" --argjson t "$total" --arg mode "$PS_MODE" --arg run "$PS_RUN" --argjson pid "$$" "$VBW_STEP_DEFS"'
-    if $mode == "own" then select(.kind == "proof" and .pid == $pid) | .parts = {done: $d, total: $t} | step_move(now | floor)
+    if $mode == "own" then select(.kind == "proof" and .pid == $pid) | .parts = {done: $d, total: $t} | step_move(vbw_now | floor)
     else select(.pid == null and .run == $run and (.proof | type) == "object") | .proof = {done: $d, total: $t} end
     | .doing = "proving \($d) of \($t) checks"' "$note" 2> /dev/null) || return 0
   [ -z "$out" ] || step_note_write "$out"
@@ -255,7 +255,7 @@ proofsteps_fix_done() {
   proofsteps_lock || return 0
   note=$(step_note_file)
   out=$(jq -c --argjson n "$1" --arg run "$run" "$VBW_STEP_DEFS"'select(.kind == "fix" and .pid == null and .run == $run and (.parts | type) == "object")
-    | .parts.done = ([.parts.done + $n, .parts.total] | min) | step_move(now | floor)' "$note" 2> /dev/null) || out=
+    | .parts.done = ([.parts.done + $n, .parts.total] | min) | step_move(vbw_now | floor)' "$note" 2> /dev/null) || out=
   [ -z "$out" ] || step_note_write "$out"
   proofsteps_unlock
 }

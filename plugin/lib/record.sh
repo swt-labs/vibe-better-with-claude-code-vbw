@@ -34,7 +34,7 @@ record_violation() {
 # the one definition (R247), so an older VBW says the project needs a newer VBW instead
 # of calling the record corrupt. Records of schemas 1 to 3 written by an older VBW
 # are read and become format 4 on their next write.
-VBW_SCHEMA_MAX=14
+VBW_SCHEMA_MAX=15
 
 # The schema of the record at FILE when it is a number above the highest this
 # VBW reads (written by a newer VBW); empty and status 1 otherwise. A
@@ -61,12 +61,37 @@ record_refuse_newer() {
   vbw_die "this project needs a newer VBW: its record was written with schema $n, and this session loaded VBW $loaded, which reads up to schema $VBW_SCHEMA_MAX. $fix" 4
 }
 
+# record_version_read: the loaded VBW's version, for the writer file (R279). When the proof
+# names a file in VBW_KERNEL_READS (one per unit it runs), this read is the kernel's own
+# bookkeeping, not the caller's: the file's absolute path is logged there and plugin.json's
+# access time is left as it was (a stamp taken before the read, set back after), so the
+# proof can tell it from a unit that reads the version itself. Every other read of the
+# version (vbw version, the newer-schema message) is the caller's and untouched.
+record_version_read() {
+  local f=$VBW_PLUGIN/.claude-plugin/plugin.json stamp="" v
+  if [ -n "${VBW_KERNEL_READS:-}" ] && [ -f "$f" ]; then
+    stamp=$(mktemp "$VBW_RUNTIME/atime.XXXXXX" 2> /dev/null) || stamp=
+    if [ -n "$stamp" ] && touch -a -r "$f" "$stamp" 2> /dev/null; then
+      printf '%s\n' "$f" >> "$VBW_KERNEL_READS" 2> /dev/null || true
+    else
+      [ -z "$stamp" ] || rm -f "$stamp" 2> /dev/null || true
+      stamp=
+    fi
+  fi
+  v=$(jq -r '.version // "unknown"' "$f" 2> /dev/null || echo unknown)
+  if [ -n "$stamp" ]; then
+    touch -a -r "$stamp" "$f" 2> /dev/null || true
+    rm -f "$stamp" 2> /dev/null || true
+  fi
+  vbw_out '%s\n' "$v"
+}
+
 # The writer file (R272): .vbw/runtime/writer.json, {version, schema}: the VBW that last
 # wrote the record and the record's schema, so an older VBW can name both versions. Written
 # beside every record write, atomically; a failed write never fails the record write.
 record_writer_write() {
   local t v
-  v=$(jq -r '.version // "unknown"' "$VBW_PLUGIN/.claude-plugin/plugin.json" 2> /dev/null || echo unknown)
+  v=$(record_version_read)
   t=$(mktemp "$VBW_RUNTIME/writer.XXXXXX" 2> /dev/null) || return 0
   if jq -c --arg v "$v" '{version: $v, schema}' "$VBW_RECORD" > "$t" 2> /dev/null; then
     mv "$t" "$VBW_RUNTIME/writer.json" 2> /dev/null || rm -f "$t" 2> /dev/null || true
@@ -398,7 +423,7 @@ record_update() {
   # checks, then the rest, so the guards read the beginning of the file alone (R149,
   # R150). An older record (schema 1 to 3) becomes format 4 here.
   jq "$@" -L "$VBW_LIB" "include \"record-schema\"; $filter
-    | breaks_by_place | breaks_with_digests | {schema: schema_of, lease: (.lease // null),
+    | breaks_by_place | breaks_with_digests | breaks_digests_list | {schema: schema_of, lease: (.lease // null),
        protected: ([(.checks // [])[]? | objects | .files? | arrays | .[] | strings] | unique)}
       + (if has(\"checks\") then {checks} else {checks: []} end) + del(.schema, .lease, .protected, .checks)" "$VBW_RECORD" > "$tmp" 2>/dev/null || vbw_die "internal error: record update failed"
   v=$(record_violation "$tmp") || vbw_die "refused: $v"$'\n'"Next: nothing was written; give the command a valid value (the line above names what would break), or run vbw doctor if the record itself is damaged"
@@ -462,12 +487,17 @@ record_hidden() {
 # project root) only those of VBW's files are considered, so a command that
 # writes the record alone never takes the user's edit of the spec with it
 # (vbw todo). Nothing changed: no commit.
-# A failing commit (no git identity, a hook) warns with git's own reason and
-# never undoes the step; with --strict as first argument it prints the reason
+# A failing commit (no git identity, a hook) warns with git's own reason, keeps it
+# as a step of its own (lib/commit-failure.sh) and never undoes the step; with --strict as first argument it prints the reason
 # alone and returns 1, for a caller that must stop (vbw approve).
 record_commit() {
   local strict=0
   [ "${1:-}" != "--strict" ] || { strict=1; shift; }
+  # The kept failure (R287) lives in its own file, loaded when a commit is made.
+  [ "$(type -t commit_failure_keep)" = function ] || {
+    # shellcheck source=commit-failure.sh
+    . "$VBW_LIB/commit-failure.sh"
+  }
   local msg="$1" own=() f why hidden
   shift
   local only=("$@")
@@ -491,6 +521,7 @@ record_commit() {
     if hidden=$(record_hidden); then
       if [ "$strict" = 1 ]; then
         printf '%s\n' "$hidden" >&2
+        commit_failure_keep "$msg" "$hidden" "${own[@]}"
         exit 1
       fi
       printf '%s\n' "$hidden" | sed 's/^/vbw: warning: /' >&2
@@ -501,9 +532,13 @@ record_commit() {
     record_lock
     if why=$(vbw_commit_paths "$msg" "" "${own[@]}" 2>&1 || { printf '%s' "${VBW_COMMIT_ERR:-}"; exit 1; }); then
       record_unlock
+      # A commit that works settles a kept failure once none of its files differs from HEAD.
+      commit_failure_standing || true
       exit 0
     fi
     record_unlock
+    # Every failure is kept as a step of its own (R287): the hook's reason, never a skipped hook.
+    commit_failure_keep "$msg" "$why" "${own[@]}"
     if [ "$strict" = 1 ]; then
       printf '%s\n' "$why" >&2
     else

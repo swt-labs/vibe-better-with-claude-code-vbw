@@ -14,10 +14,10 @@ load helper
   grep -qF 'CLAUDE_ENV_FILE' "$g"
 }
 
-@test "R185 (F218): AGENTS.md's nothing-outside-the-project rule names three exceptions, the session record among them" {
+@test "R185 (F218): AGENTS.md's nothing-outside-the-project rule names four exceptions (R285: the session's env file the fourth), the session record among them" {
   local a="$REPO_ROOT/AGENTS.md" line
   line=$(grep 'Nothing outside the project' "$a")
-  [[ "$line" == *"Three exceptions"* ]]
+  [[ "$line" == *"Four exceptions"* ]]
   [[ "$line" == *"vbw/sessions/"* ]]
   [[ "$line" == *"R185"* ]]
 }

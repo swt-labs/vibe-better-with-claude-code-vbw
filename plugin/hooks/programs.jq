@@ -268,16 +268,16 @@ def inplace_files:
       else .files += [$a] end) | .files[]];
 
 
-# The working folder each command runs in (R254): each command of the array gets .cwd, the
-# folder in effect when it runs, which a cd moves for the commands after it (a cd to ~, $VAR,
-# an expansion or - is not resolved and leaves it, as before). Subshell scope is not read.
-# RESOLVE takes {path, cwd} and gives the absolute path (common.jq's abs_path: this module
-# cannot call it).
+# The working folder each command runs in (R254): each command gets .cwd, the folder in effect
+# when it runs, which a cd moves for the commands after it; a cd to ~, $VAR, an expansion or -
+# leaves it (cd_to is empty). Subshell scope is not read. RESOLVE: {path, cwd} to the absolute
+# path (common.jq's abs_path, passed in).
+def cd_to: [.args[] | select(startswith("-") | not)][0] | select(. != null and (test("^~|[$`]") | not));
 def with_cwd($start; resolve):
   reduce .[] as $c ({cwd: $start, out: []};
     .cwd as $w | .out += [$c + {cwd: $w}]
-    | if $c.cmd == "cd" then ([$c.args[] | select(startswith("-") | not)][0]) as $t
-        | if $t == null or ($t | test("^~|[$`]")) then . else .cwd = ({path: $t, cwd: $w} | resolve) end
+    | if $c.cmd == "cd" then [$c | cd_to][0] as $t
+        | if $t == null then . else .cwd = ({path: $t, cwd: $w} | resolve) end
       else . end)
   | .out;
 

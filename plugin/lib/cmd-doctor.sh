@@ -55,23 +55,36 @@ doctor_tools() {
   fi
 }
 
-# The loaded plugin: the folder the session start recorded for this session
-# while it still holds a VBW plugin, else the plugin of this kernel. The vbw on
-# PATH should be that plugin's.
+# The vbw on PATH against the copy Claude Code loaded for this session: the folder
+# the session start recorded for the session id (an installed start records it too,
+# R285), never the kernel doctor runs from (that kernel may be any copy).
 doctor_path() {
-  local loaded=$VBW_PLUGIN rec="" recfile on_path pv lv
-  recfile=$(sessions_record_path "${CLAUDE_CODE_SESSION_ID:-}") && rec=$(head -n 1 "$recfile" 2> /dev/null || true)
-  [ -z "$rec" ] || [ ! -f "$rec/.claude-plugin/plugin.json" ] || loaded=$rec
-  lv=$(jq -r '.version // "unknown"' "$loaded/.claude-plugin/plugin.json" 2> /dev/null || echo unknown)
+  local rec="" recfile on_path pv lv
   if ! on_path=$(command -v vbw 2> /dev/null) || [ -z "$on_path" ]; then
-    doctor_line warn "no vbw on PATH (the loaded plugin is $loaded, version $lv)" "run $loaded/bin/vbw, or put $loaded/bin on PATH"
+    on_path=""
+  else
+    pv=$(jq -r '.version // "unknown"' "${on_path%/*}/../.claude-plugin/plugin.json" 2> /dev/null || echo unknown)
+  fi
+  if [ -z "${CLAUDE_CODE_SESSION_ID:-}" ]; then
+    if [ -n "$on_path" ]; then doctor_line info "vbw on PATH: $on_path (version $pv); no Claude Code session to compare with"
+    else doctor_line info "no vbw on PATH; no Claude Code session to compare with"
+    fi
     return 0
   fi
-  pv=$(jq -r '.version // "unknown"' "${on_path%/*}/../.claude-plugin/plugin.json" 2> /dev/null || echo unknown)
-  if [ "$(cd "${on_path%/*}/.." 2> /dev/null && pwd -P)" = "$(cd "$loaded" 2> /dev/null && pwd -P)" ]; then
+  recfile=$(sessions_record_path "$CLAUDE_CODE_SESSION_ID") && rec=$(head -n 1 "$recfile" 2> /dev/null || true)
+  if [ -z "$rec" ] || [ ! -f "$rec/.claude-plugin/plugin.json" ]; then
+    doctor_line warn "doctor cannot tell which copy this session loaded (no record of it)${on_path:+; vbw on PATH: $on_path (version $pv)}" "start or resume the session again"
+    return 0
+  fi
+  lv=$(jq -r '.version // "unknown"' "$rec/.claude-plugin/plugin.json" 2> /dev/null || echo unknown)
+  if [ -z "$on_path" ]; then
+    doctor_line warn "no vbw on PATH (the loaded plugin is $rec, version $lv)" "start or resume the session again, or run $rec/bin/vbw"
+    return 0
+  fi
+  if [ "$(cd "${on_path%/*}/.." 2> /dev/null && pwd -P)" = "$(cd "$rec" 2> /dev/null && pwd -P)" ]; then
     doctor_line ok "vbw on PATH: $on_path (version $pv), the loaded plugin's"
   else
-    doctor_line warn "vbw on PATH is $on_path (version $pv), not the loaded plugin's: $loaded (version $lv)" "run $loaded/bin/vbw, or put $loaded/bin first on PATH"
+    doctor_line warn "vbw on PATH is $on_path (version $pv), not the loaded plugin's: $rec (version $lv)" "start or resume the session again, or run $rec/bin/vbw"
   fi
 }
 
@@ -227,6 +240,7 @@ doctor_project() {
   fi
   doctor_big_ignored
   doctor_kept
+  doctor_commit_failed
   [ -n "$v" ] && return 0
   if jq -e '.lease != null' "$VBW_RECORD" > /dev/null; then
     doctor_line warn "a run is open ($(jq -r .lease.run "$VBW_RECORD"))" "if no VBW workflow is running: vbw run end"
@@ -236,6 +250,21 @@ doctor_project() {
     doctor_line info "the contract is not approved (yet, or since it changed): VBW asks with the approval menu after you review it"
   fi
   doctor_guard
+}
+
+# A record commit the project's hook refused and that still stands (R287): one warning line,
+# read only (no retry, no commit, nothing cleared). It stands while a file it names differs from HEAD.
+doctor_commit_failed() {
+  local f="$VBW_RUNTIME/commit-failed.json" x files=() at t reason
+  [ -f "$f" ] || return 0
+  while IFS= read -r -d '' x; do files+=("$x"); done < <(jq -j '(.files // [])[] + "\u0000"' "$f" 2> /dev/null)
+  [ -n "$(cd "$VBW_ROOT" && vbw_dirty_files ${files[@]+"${files[@]}"} 2> /dev/null)" ] || return 0
+  at=$(jq -r '.at // empty' "$f" 2> /dev/null) || at=""
+  t=$(date -j -u -f '%Y-%m-%dT%H:%M:%SZ' "$at" +%s 2> /dev/null) || t=$(date -u -d "$at" +%s 2> /dev/null) || t=""
+  if [ -n "$t" ]; then t=$(date -r "$t" +%H:%M 2> /dev/null) || t=$(date -d "@$t" +%H:%M 2> /dev/null) || t=""; fi
+  [ -n "$t" ] || t=$(date +%H:%M)
+  reason=$(jq -r '(.reason // "") | split("\n")[0]' "$f" 2> /dev/null) || reason=""
+  doctor_line warn "VBW's files could not be committed at $t: $reason" "fix what the hook flagged, allow it in the checker's settings, or commit the VBW files yourself (git add .vbw, then git commit); then run vbw next"
 }
 
 # Large git-ignored folders the Clean copy section does not list yet (R253).

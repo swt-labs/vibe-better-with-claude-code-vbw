@@ -83,6 +83,8 @@ Next JSON's `profile` = user's level, explanation depth, involvement. Speak at t
 
 ## Steps
 
+**commit** (needs user): VBW's files could not be committed (the project's commit hook refused them). Show the kernel's `instruction` as given (the hook's own message and the three ways on), never the approval menu, and offer no way round the hook. Once the user says it is done, run `vbw next --json` again.
+
 **convert** (needs user): VBW 1 plan, no choice recorded yet. Follow the old-folder step of `vbw:interview` (review,
 recommendation, question); convert runs `vbw:convert`, fresh records `vbw legacy choose fresh`, then `spec`.
 

@@ -6,6 +6,8 @@
 
 # shellcheck source=cmd-spec.sh
 . "$VBW_LIB/cmd-spec.sh"
+# shellcheck source=commit-failure.sh
+. "$VBW_LIB/commit-failure.sh"
 
 cmd_approve() {
   local want=""
@@ -17,6 +19,13 @@ cmd_approve() {
   esac
   vbw_require_project
   local record problems hash
+  # A record commit the project's hook refused stands in the way (R287): one more try through the
+  # hooks, then the same reason as vbw next's step, before anything is written.
+  commit_failure_retry
+  if commit_failure_standing; then
+    printf 'vbw: %s\n' "$(commit_failure_say)" >&2
+    exit 1
+  fi
   record=$(record_read)
   problems=$(approve_problems "$record")
   if [ -n "$problems" ]; then

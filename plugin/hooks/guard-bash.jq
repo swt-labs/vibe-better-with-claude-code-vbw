@@ -43,7 +43,7 @@ def destructive:
 def reader: test("^(cat|jq|head|tail|less|more|grep|egrep|rg|wc|git|ls|stat|diff|cmp|shasum|sha256sum|file|test|sort|awk|gawk|nawk|cut|nl|column|paste|\\[\\[?)$");
 def copier: test("^(cp|rsync|install|ln)$");
 
-# The command writes a file the path rule names (record_path, glance_path): a
+# The command writes a file the path rule names (glance_path): a
 # redirect to it, a copier whose destination (last operand) is it, or a program
 # that names it and is not known to only read (sort -o and awk -i inplace write
 # the file they read).
@@ -58,17 +58,15 @@ def written(rule):
          or (.cmd | test("awk$")) and any(.args[]; test("^(inplace|--in-place)$"))
        else true end));
 
-# The command writes the record (R276): a redirect to it, or a program that changes a file and
-# names it: a copier with it as destination, mv, tee, rm, truncate, shred, ed, dd of=, sed -i,
-# perl -i, a git command that restores or removes it, find that deletes or runs a program. A
-# command that only reads it (find -path, ls, grep, cat, jq, git log) passes: naming the record
-# is not writing it.
+# The command writes the record (R276): a redirect to it, or a writer below naming it (a copier
+# as its destination). A command that only reads it (find -path, ls, grep, cat, jq, git log)
+# passes: naming it is not writing it. Judged from .cwd and .alt (F434).
 def record_written:
-  (.out | any(.[]; record_path))
-  or (.cmd == "dd" and any(.args[]; startswith("of=") and (.[3:] | record_path)))
-  or (any(.args[]; record_path) and
+  . as $c | any(.cwd // $ARGS.named.dir, .alt // empty; . as $w | $c | (.out | any(.[]; record_at($w)))
+  or (.cmd == "dd" and any(.args[]; startswith("of=") and (.[3:] | record_at($w))))
+  or (any(.args[]; record_at($w)) and
       (if .cmd | test("^(cp|install|rsync|ln)$") then
-         ([.args[] | select(startswith("-") | not)] | (last // "") | record_path)
+         ([.args[] | select(startswith("-") | not)] | (last // "") | record_at($w))
          or any(.args[]; test("^(-t|--target-directory.*|--remove-source-files)$"))
        elif .cmd | test("^(mv|tee|rm|unlink|truncate|shred|ed|ex|sponge)$") then true
        elif .cmd == "sed" then any(.args[]; test("^-[A-Za-z]*i|^--in-place"))
@@ -77,7 +75,7 @@ def record_written:
        elif .cmd | test("awk$") then any(.args[]; test("^(inplace|--in-place)$"))
        elif .cmd == "git" then (git_words as $w | ($w[0] // "") | test("^(checkout|restore|rm|mv|apply)$"))
        elif .cmd == "find" then any(.args[]; test("^-(delete|exec|execdir|ok|okdir|fprint0?|fprintf|fls)$"))
-       else false end));
+       else false end)));
 
 # An inline program (python -c, node -e, perl -e) that names the record: the guard reads text and
 # cannot tell a read from a write in code.
@@ -231,6 +229,9 @@ def run:
   | select($g.lease != null or $g.foreign != null or ($g.hook.agent_type // "") != "" or ($c | may_matter or reaches))
   | session_dir($g) as $start
   | ([$c | commands(3)] | with_cwd($start; resolve)) as $cmds
+  # F434: the start folder counts too unless a plain && chain of cds all followed.
+  | (if any($cmds[]; .cwd != $start) and (any($cmds[]; .cmd == "cd" and [cd_to] == [])
+      or ($c | strip_heredocs | mask | .text | gsub("&&|[<>]&|&>"; " ") | test("[;|&(){}`\\n]"))) then [$cmds[] | .alt = $start] else $cmds end) as $cmds
   | [$c | select(test("<<")) | heredoc_programs($start; resolve)] as $hds
   | (if $g.lease != null then [script_requests($g; $cmds; $c)] else [] end) as $sr
   | ( [$cmds[] | everywhere][0]

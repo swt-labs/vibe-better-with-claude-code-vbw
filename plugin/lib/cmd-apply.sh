@@ -591,7 +591,7 @@ cmd_apply() {
     # and its note, the blocked reason, the same way (R213).
     | ([.plans[] | select(has("note")) | {key: .id, value: .note}] | from_entries) as $note
     # and its amendments and awaited checks, and the amendments of a check (R250): history the Lead never re-sends.
-    | ([.plans[] | select(has("amendments") or has("awaits")) | {key: .id, value: with_entries(select(.key | IN("amendments", "awaits")))}] | from_entries) as $kept
+    | ([.plans[] | select(has("amendments") or has("awaits") or has("red_runs")) | {key: .id, value: with_entries(select(.key | IN("amendments", "awaits", "red_runs")))}] | from_entries) as $kept
     | ([.checks[] | select(has("amendments")) | {key: .id, value: .amendments}] | from_entries) as $camd
     | ([($pd.plans // $d.plans)[] | {id, phase, title, reqs, files, after: (.after // []), status: ($status[.id] // "planned")}
           + (if $mut[.id] then {mutations: $mut[.id]} else {} end)

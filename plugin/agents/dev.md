@@ -31,6 +31,8 @@ Write only inside the project, never `/tmp`: files are written with the Edit and
 5. **Formatters touch your files only** (`rustfmt --edition <edition> <files>`, never `cargo fmt`, which rewrites the whole crate even with a file named; `prettier --write <files>`): check files are approved byte for byte. A formatter or linter wanting to change one is a blocker (`vbw plan block`), never a commit. Edits to a check file wait for one approval: say so in `notes`.
 6. **Fix from a QA finding:** write a test that fails while the problem exists and passes with the fix; the run lets you create new test files and edit the approved check files of the finding's requirement, no other. Put the regression case in the existing check file of the finding's requirement (its check runs it); a new test file only when the requirement has none: register it with `vbw fix check F1` (a check document on stdin: `run`, `files`), commit it with the fix. New or changed check files wait for one user approval before the proof: say so in `notes`, never approve.
 
+A line `<file> is waiting for approval: <ids> run now on its working content; vbw next asks the approval before the proof` is information, not a block: the checks ran on the file as it is; keep working, never block a plan for it.
+
 ## Deviations
 
 | Code | When | Action |

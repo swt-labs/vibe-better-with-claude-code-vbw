@@ -109,7 +109,9 @@ cmd_prove() {
   prooftime_mark
   # The save drops the runs of units that no longer exist (a deleted test file, a removed check).
   proofreuse_save "$record" "$checks" "$commands" "$head" "$at" "$(proofreuse_stale "$record" "$(testfiles_keys)")"
-  [ "$files" = '{}' ] || testfiles_save "$record" "$files" "$head" "$at"
+  [ "$files" = "{}" ] || testfiles_save "$record" "$files" "$head" "$at"
+  # The kernel's own reads (R279) are the store's, never the evidence's.
+  files=$(printf "%s" "$files" | jq -c "map_values(del(.kernel_reads))")
   prooftime_step saving
   slots_release vbw:save
   checks=$(prove_stamp "$record" check "$checks" "$at" "$WHY_CHECKS")
@@ -118,7 +120,7 @@ cmd_prove() {
   commands=$(prove_stamp "$record" command "$commands" "$at" "$WHY_COMMANDS")
   # A reused pass ended as the check expects: its exit status is the expected one.
   checks=$(proofreuse_join "$(printf '%s' "$record" | jq -c '[.checks[].id]')" "$REUSE_CHECKS" "$checks" \
-    | jq -c --slurpfile r <(printf '%s' "$record") 'to_entries | map(.key as $id | .value |= (del(.reads, .dirs, .git)
+    | jq -c --slurpfile r <(printf '%s' "$record") 'to_entries | map(.key as $id | .value |= (del(.reads, .kernel_reads, .dirs, .git)
         | if .reused and .status == "pass" then .exit = ($r[0].checks[] | select(.id == $id) | .exit // 0) else . end)) | from_entries')
   # A check judged with the approved content of an added-to file (R269), run now or reused,
   # says which content it judged and how many added lines wait for approval.
@@ -126,7 +128,7 @@ cmd_prove() {
     with_entries(if $j[0][.key] != null and (.value.status | IN("waiting", "skipped") | not)
       then .value += {judged: ($j[0][.key] | map_values(.sha)), added_lines: ([$j[0][.key][].n] | add)} else . end)')
   commands=$(proofreuse_join "$PROVE_NAMES" "$REUSE_COMMANDS" "$commands" \
-    | jq -c 'map_values(del(.reads, .dirs, .git) | if .reused and .status == "pass" then .exit = 0 else . end)')
+    | jq -c 'map_values(del(.reads, .kernel_reads, .dirs, .git) | if .reused and .status == "pass" then .exit = 0 else . end)')
   if testfiles_on "$record"; then
     tfs=$(testfiles_finish "$record" "$files" "$at")
     tfsum=$(testfiles_command "$record" "$tfs")

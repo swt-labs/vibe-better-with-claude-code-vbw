@@ -5,7 +5,24 @@
 # Evaluated on the record (null input works). The feature words are used by the refusal
 # message and the docs.
 
+# Every record field that holds a file fingerprint (a SHA-256 digest), R286: a secret scanner's
+# keyword rule (api, key, token, auth, secret ...) refuses a line holding such a word and a 64-hex
+# value, so no line pairs a path with a digest.
+#   plans[].mutations[].digests  a list of {file, sha256}, path and digest on lines of their own
+#                                (VBW 2.1.28 and older: an object {file: digest}, read by digests_list)
+#   evidence.test_files          the path is a key on its own line; its fp is on another line
+#   evidence.checks/commands fp, evidence.record, evidence.contract, a break's contract and
+#   phases[].qa.tree             carry no path
+# Free text the project writes (a test's output tail) is kept as written.
+
 def schema_floor: 4;
+
+# A break's digests as the list of {file, sha256} sorted by file; the older object {file: digest}
+# is read through it (R286). Anything else stays as it is.
+def digests_list:
+  if type == "object" then to_entries | map({file: .key, sha256: .value}) | sort_by(.file)
+  elif type == "array" then sort_by(if type == "object" then (.file // "") else "" end)
+  else . end;
 
 def schema_features: [
   {schema: 5, feature: "settings.efforts",
@@ -35,7 +52,12 @@ def schema_features: [
      and any(.mutations[]; type == "object" and has("digests"))))},
   {schema: 14, feature: "a rule's --none entry marked git (its check reads the project through git)",
    present: ((.plans | type) == "array" and any(.plans[]; type == "object" and (.mutations | type) == "array"
-     and any(.mutations[]; type == "object" and has("git"))))}
+     and any(.mutations[]; type == "object" and has("git"))))},
+  {schema: 15, feature: "a break whose digests are a list, or a plan's red-first runs",
+   present: ((.plans | type) == "array" and any(.plans[]; type == "object"
+     and (has("red_runs")
+          or ((.mutations | type) == "array"
+              and any(.mutations[]; type == "object" and (.digests | type) == "array")))))}
 ];
 
 def schema_of: . as $r | [schema_features[] | select(.present) | .schema] | max // schema_floor;
@@ -61,12 +83,20 @@ def breaks_by_place:
       else . end) end;
 
 # R265: once the record holds a break with digests, an older break of it (written before schema 13)
-# gets digests: {} (none recorded), so every break carries the key and the validator can require it.
+# gets digests: [] (none recorded), so every break carries the key and the validator can require it.
 def breaks_with_digests:
   if (.plans | type) != "array"
      or (any(.plans[]; type == "object" and (.mutations | type) == "array"
-         and any(.mutations[]; type == "object" and ((.digests // {}) | length) > 0)) | not) then .
+         and any(.mutations[]; type == "object" and ((.digests // []) | length) > 0)) | not) then .
   else .plans |= map(
       if type == "object" and (.mutations | type) == "array" then
-        .mutations |= map(if type == "object" and (has("none") | not) and (has("digests") | not) then . + {digests: {}} else . end)
+        .mutations |= map(if type == "object" and (has("none") | not) and (has("digests") | not) then . + {digests: []} else . end)
+      else . end) end;
+
+# R286: every write turns a break's older digests object into the list; files and values unchanged.
+def breaks_digests_list:
+  if (.plans | type) != "array" then .
+  else .plans |= map(
+      if type == "object" and (.mutations | type) == "array" then
+        .mutations |= map(if type == "object" and has("digests") then .digests |= digests_list else . end)
       else . end) end;

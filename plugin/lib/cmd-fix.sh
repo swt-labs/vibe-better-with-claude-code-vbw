@@ -203,7 +203,10 @@ cmd_fix() {
     # so no check runs now (a long re-check would only wait for the approval): the fixes
     # await the proof that follows it, which runs every check.
     if [ -n "$wait_files" ]; then
-      printf 'check files are waiting for approval, so no check runs before it: %s\n' "$(printf '%s' "$wait_files" | jq -R . | jq -rs 'map(select(length > 0)) | join(", ")')"
+      # A file is named only where a check these fixes serve reads it.
+      mine=$(printf '%s' "$wait_files" | jq -R . | jq -rs --argjson served "$served" --slurpfile rec <(printf '%s' "$record") \
+        'map(select(length > 0)) | map(select(. as $f | any($rec[0].checks[]; (.id as $i | $served | index($i)) and ((.files // []) | index($f))))) | join(", ")')
+      printf 'check files are waiting for approval, so no check runs before it%s\n' "${mine:+: $mine}"
       printf 'the user approves them first (vbw next asks); then vbw prove runs every check\n'
     fi
     cd "$VBW_ROOT" || vbw_die "cannot enter $VBW_ROOT"
@@ -235,7 +238,7 @@ cmd_fix() {
         printf '%s' "$record" | jq -e --arg c "$c" --arg f "$wf" 'any(.checks[]; .id == $c and ((.files // []) | index($f)))' > /dev/null && mine="$mine${mine:+, }$wf"
       done <<< "$wait_files"
       if [ -n "$mine" ]; then
-        vbw_out '%s waiting for approval (check files new or changed since the approval: %s); vbw next asks, then vbw prove runs it\n' "$c" "$mine"
+        vbw_out '%s reads %s, waiting for approval; vbw next asks, then vbw prove runs it\n' "$c" "$mine"
         continue
       fi
       cands+=("$c")

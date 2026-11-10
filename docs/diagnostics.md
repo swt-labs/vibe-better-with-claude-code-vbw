@@ -26,6 +26,8 @@ Without such a rule, the doctor says nothing about hidden files.
 
 In a VBW project the doctor also prints one info line naming the branch the next VBW commit lands on, or `detached HEAD at <12 characters>` of the commit when no branch is checked out. Outside a VBW project it prints no branch line.
 
+When VBW's last record commit was refused (a pre-commit hook, say) and still stands, the doctor prints one warning with the time and the hook's first line of reason, `VBW's files could not be committed at <HH:MM>: <reason>`, and the way on: fix what the hook flagged, allow it in the checker's settings, or commit the VBW files yourself, then run `vbw next` (docs/next.md, The commit step). With no such failure it says nothing of it.
+
 VBW needs `jq 1.7 or newer`. The doctor prints the installed version as `jq <version>`. With an older jq it fails the line, names the version, and gives the fix: download a current jq from github.com/jqlang/jq/releases; on Debian 12, run `apt install -t bookworm-backports jq`. Every other `vbw` command refuses an older jq up front with the same message and writes nothing; the doctor still shows its full report.
 
 ### Project state
@@ -47,7 +49,7 @@ It prints:
 
 - **Environment:** the VBW version, the operating system and the bash version.
 - **`vbw doctor`:** the result of every check VBW needs, with the fix for anything wrong.
-  One check compares the `vbw` on PATH with the loaded plugin (the one this session started). It says ok when they are the same, and warns with the fix when they differ, for example a released copy on PATH in a `--plugin-dir` session. It also warns when there is no `vbw` on PATH. `vbw --version` prints the version of the `vbw` you run.
+  One check compares the `vbw` on PATH with the copy this session loaded (the copy Claude Code started the session with, read from the session's record), never with the kernel doctor itself runs from. It says ok when they match, and warns when they differ, naming both folders. The fix: start or resume the session again, so the session start writes the loaded copy's PATH line. Without a session id, or when the session has no record, it says it cannot tell which copy the session loaded, and does not compare. It also warns when there is no `vbw` on PATH. `vbw --version` prints the version of the `vbw` you run.
   Another check reads whether Claude Code's auto-update is on for `vbw-marketplace` and warns when it is off (the default for a marketplace like VBW's, so nothing tells you a new VBW is out), with the way to turn it on. It reads the files Claude Code keeps and makes no network call. See [docs/update.md](update.md).
 - **Project state** (inside a VBW project): the milestone, and counts of requirements, plans and checks by status. It also prints the fixes with their status and attempts, the run lease, the last proof (time, pass, failing check ids), the profile and the last step `vbw next` chose. An empty list prints `none`.
 

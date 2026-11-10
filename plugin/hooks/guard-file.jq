@@ -17,7 +17,7 @@ def run:
   | if $writes and ($path | consent_path) then consent_reason | deny
     elif $g.project | not then empty
     elif $path | secret_path then $path | secret_reason | deny
-    elif $writes and ($path | record_path) then record_reason | deny
+    elif $writes and ($path | record_at(session_dir($g))) then record_reason | deny
     else
       ( [ if $writes and $g.foreign != null and ($path | project_path(session_dir($g); $root) | foreign_denial($g.foreign; $holder)) then
           $path | project_path(session_dir($g); $root) | foreign_denial($g.foreign; $holder) | deny

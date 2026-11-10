@@ -342,5 +342,11 @@ reads_collect() {
       | reduce ($n | split("\u0000") | map(select(length > 0) | strip))[] as $p (.; .files[$p] += [$id])' \
       "$st/written.json" > "$st/written.tmp" && mv "$st/written.tmp" "$st/written.json" || return 1
   fi
-  cat "$st/last.json"
+  # The files the unit's kernel read for its own bookkeeping (R279, VBW_KERNEL_READS,
+  # logged by absolute path), relative to the copy, beside the unit's own reads.
+  jq -c --rawfile k "$st/kernel-reads" --arg c1 "$copy" --arg c2 "$(cd "$copy" && pwd -P)" '
+    . + {kernel_reads: ([$k | split("\n")[] | select(length > 0)
+      | if startswith($c1 + "/") then .[($c1 | length) + 1:]
+        elif startswith($c2 + "/") then .[($c2 | length) + 1:] else empty end] | unique)}' "$st/last.json" 2> /dev/null \
+    || cat "$st/last.json"
 }

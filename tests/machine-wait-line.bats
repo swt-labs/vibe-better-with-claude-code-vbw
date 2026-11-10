@@ -88,6 +88,16 @@ waited_ok() {
   wait_ok "$HOLDER"
 }
 
+@test "R181: vbw check --expect-red whose unit waited still ends with the waited line, after keeping its red run (F441)" {
+  fixture_copy pair
+  hold_start
+  run within 60 "$VBW" check --expect-red C1 < /dev/null
+  last_lines "$output"
+  waited_ok 1 15 || { echo "$output"; false; }
+  [[ "$BEFORE" == "C1 passed before building"* ]] || { echo "$output"; false; }
+  wait_ok "$HOLDER"
+}
+
 @test "R181: vbw fix done whose unit waited ends with the waited line, after its fixes" {
   fixture_copy pair
   hold_start
@@ -175,4 +185,29 @@ shape() {
   [ "$(shape "$PROJECT/.vbw/record.json" 'del(.evidence)')" = "$A_RECORD" ]
   [ "$(shape "$(git -C "$PROJECT" rev-parse --path-format=absolute --git-common-dir)/vbw/runs.json" .)" = "$A_RUNS" ]
   ! grep -rqi 'wait' "$PROJECT/.vbw/record.json" || { grep -i 'wait' "$PROJECT/.vbw/record.json"; false; }
+}
+
+# R288 (field report 2026-11-09, D685): a vbw check, vbw mutate or fix done that waits
+# says once, when the wait starts, what it waits for and since when, in local time:
+# 'waiting for a free slot of the computer-wide limit since HH:MM'. The waited line at
+# the end stays (R181).
+@test "R288: vbw check whose unit waits for a slot says once, when the wait starts, what it waits for and since when in local time" {
+  fixture_copy pair
+  hold_start
+  local since
+  since=$(TZ=Europe/Lisbon date +%H:%M)
+  TZ=Europe/Lisbon run within 60 "$VBW" check C1 < /dev/null
+  [ "$status" -eq 0 ] || { echo "$output"; show; false; }
+  [ "$(printf '%s\n' "$output" | grep -c 'waiting for a free slot of the computer-wide limit since ')" = 1 ] || { echo "$output"; false; }
+  printf '%s\n' "$output" | grep -E 'waiting for a free slot of the computer-wide limit since [0-9]{2}:[0-9]{2}$' | grep -qE "since ($since|$(TZ=Europe/Lisbon date +%H:%M))$" || { echo "not the local time of the wait's start ($since): $output"; false; }
+  # Told when it starts: before the check's result.
+  [ "$(printf '%s\n' "$output" | grep -n 'waiting for a free slot' | cut -d: -f1)" -lt "$(printf '%s\n' "$output" | grep -n '^C1 pass ' | cut -d: -f1)" ] || { echo "$output"; false; }
+  wait_ok "$HOLDER"
+}
+
+@test "R288: a run that never waits prints no waiting line" {
+  fixture_copy pair
+  run within 60 "$VBW" check C1 < /dev/null
+  [ "$status" -eq 0 ] || { echo "$output"; false; }
+  [[ "$output" != *"waiting for"* ]] || { echo "$output"; false; }
 }

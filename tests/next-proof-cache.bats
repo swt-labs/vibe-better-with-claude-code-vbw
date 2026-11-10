@@ -60,7 +60,7 @@ next() {
   : > "$DIFFTREE"
   PATH="$TEST_ROOT/standin:$PATH" "$VBW" next --json < /dev/null > "$TEST_ROOT/next.json" || { cat "$TEST_ROOT/next.json"; return 1; }
   DIFF=$(wc -l < "$DIFFTREE" | tr -d ' ')
-  STEP=$(jq -c '.step | if . == null then null else del(.seconds, .low, .high, .end, .end_low, .end_high, .say) end' "$TEST_ROOT/next.json")
+  STEP=$(jq -c '.step | if . == null then null else del(.seconds, .low, .high, .end, .end_low, .end_high, .end_typical, .say) end' "$TEST_ROOT/next.json")
 }
 
 store_file() { printf '%s/vbw/runs.json' "$(git rev-parse --path-format=absolute --git-common-dir)"; }

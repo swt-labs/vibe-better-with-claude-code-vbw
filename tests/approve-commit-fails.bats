@@ -43,8 +43,9 @@ approved_decisions() { jq '[.decisions[] | select(.text | startswith("Contract a
   [ "$(approved_decisions)" = "$before" ]
   vbw_run show contract
   [[ "$output" == *"NOT APPROVED"* ]]
+  # R287: while the failed commit stands, vbw next stops at it instead of asking the approval again.
   vbw_run next --json
-  echo "$output" | jq -e '.action == "approve"'
+  echo "$output" | jq -e '.action == "commit"'
 }
 
 @test "R81: once the commit can work, the same approval goes through" {
