@@ -291,7 +291,7 @@ paused() {
 
 @test "R166: vbw check runs in the working folder and records nothing" {
   printf '%s' "$(jq -nc '{phases: [{id: "P1", title: "Pay", reqs: ["R1"], tier: "standard"}],
-    plans: [{id: "P1.1", phase: "P1", title: "Pay", reqs: ["R1"], files: ["src/a.txt"]}],
+    plans: [{id: "P1.1", phase: "P1", title: "Pay", reqs: ["R1"], files: ["src/b.txt"]}],
     checks: [{id: "C1", req: "R1", run: ["sh", "-c", "pwd > conc-cwd"], files: ["src/a.txt"]}]}')" > "$TEST_ROOT/plan.json"
   printf '# Shop\n\n## Requirements\n\n- R1 [auto] A customer can pay\n' > .vbw/spec.md
   "$VBW" spec sync > /dev/null
