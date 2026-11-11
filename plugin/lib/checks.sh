@@ -257,7 +257,7 @@ checks_gate_live() {
 # limit in $2 (empty: no limit): it prints one live registration of another
 # process (R294), or "-" when all are this process's own.
 checks_gate_blocker() {
-  local kind="$1" limit="${2:-}" f id pid n=0 held other= ownb=
+  local kind="$1" limit="${2:-}" f id pid n=0 held other="" ownb=""
   for f in "$VBW_RUNTIME"/gate/reg.* "$VBW_RUNTIME"/gate/want.*; do
     [ -e "$f" ] || continue
     checks_gate_live "$f" || { rm -f "$f"; continue; }
