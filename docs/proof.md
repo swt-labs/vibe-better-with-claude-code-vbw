@@ -209,6 +209,16 @@ vbw: waiting for a free slot of the computer-wide limit since 10:42
 
 A run that never waits prints no such line.
 
+A check that waits at the gate for another VBW command says so the same way,
+once, naming the check and the command's process id that hold it:
+
+```
+vbw: waiting for another VBW command's check C12 (pid 48213) in this project since 10:42
+```
+
+When the shared limit is the cause, it names one of the other command's checks,
+never one of its own. Checks of one run queuing behind each other print nothing.
+
 A check file that is new or changed since the last approval waits for approval.
 `vbw check` and `vbw mutate` never wait on it: the check runs now on the file's
 working content. They name the file only when a check they run reads it, in one
