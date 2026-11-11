@@ -339,7 +339,7 @@ cannot fail, and QA would otherwise find it one round at a time.
   one run per plan at a time (R293). While a `vbw plan done P` runs, a second
   one of the same plan is refused at once, before any check runs, with the same
   line and a `Next:` line to wait and never start a second one; it queues
-  nothing at the check gate. Its marker is `plan-done/P.pid` under
+  nothing at the check gate. Its marker is the file `plan-done.P.pid` directly in
   `.vbw/runtime/`, and a plan done of another plan is never refused. The running one holds a marker, `run.pid` under
   `.vbw/runtime/mutate-queue/PLAN/`, with its pid from before it reads the
   queue until it ends. A marker whose process has ended (or that is empty or
