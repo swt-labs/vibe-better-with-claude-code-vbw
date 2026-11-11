@@ -13,7 +13,10 @@
 # One --run of a plan at a time (R230): the run holds the marker
 # .vbw/runtime/mutate-queue/PLAN/run.pid with its own pid from before it reads any
 # entry until it ends, on every end. A second run finds a live pid and is refused;
-# a marker of a dead, empty or unreadable pid is taken over (vbw_lock_takeover).
+# a marker of a dead, empty or unreadable pid is taken over (vbw_lock_takeover); plan-run.sh holds both.
+
+# shellcheck source=plan-run.sh
+. "$VBW_LIB/plan-run.sh"
 
 # mutate_queue_dir PLAN: the plan's queue folder.
 mutate_queue_dir() {
@@ -48,28 +51,10 @@ mutate_queue_add() {
 
 # mutate_queue_hold PLAN: take the plan's run marker run.pid, or refuse while a live run holds it.
 mutate_queue_hold() {
-  local plan="$1" q marker owner i msg next
+  local plan="$1" q
   q=$(mutate_queue_dir "$plan")
-  marker="$q/run.pid"
-  next="Next: wait for it to finish (a long run started in the background: read its whole result when it ends), then run vbw mutate $plan --run again only if breaks are still queued; never start a second run of the same plan"
-  mkdir -p "$q" || vbw_die "cannot create $q"
-  for ((i = 0; i < 50; i++)); do
-    if vbw_lock_create "$marker"; then
-      vbw_guard_add lock "$marker"
-      return 0
-    fi
-    owner=$(vbw_lock_holder "$marker")
-    if [ -n "$owner" ] && vbw_lock_alive "$owner"; then
-      msg="another run of $plan's queued breaks is still running (pid $owner, vbw mutate $plan --run)"
-      vbw_die "$msg"$'\n'"$next"
-    fi
-    if vbw_lock_takeover "$marker" "$owner"; then
-      vbw_guard_add lock "$marker"
-      return 0
-    fi
-  done
-  msg="another run of $plan's queued breaks is still running (vbw mutate $plan --run)"
-  vbw_die "$msg"$'\n'"$next"
+  plan_run_hold "$q/run.pid" "another run of $plan's queued breaks" "vbw mutate $plan --run" \
+    "wait for it to finish (a long run started in the background: read its whole result when it ends), then run vbw mutate $plan --run again only if breaks are still queued; never start a second run of the same plan"
 }
 
 # mutate_queue_release PLAN: give up the run marker, and the folder when nothing is left in it.

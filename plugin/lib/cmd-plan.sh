@@ -30,6 +30,9 @@ cmd_plan() {
   case "$sub" in
     done)
       local files=() completes=() f dirty trailer=0
+      # One plan done of a plan at a time (R293): the first step, before any check or gate registration.
+      plan_run_hold "$VBW_RUNTIME/plan-done/$id.pid" "another vbw plan done of $id" "vbw plan done $id" \
+        "wait for it to finish, then run vbw plan done $id again only if it is still needed; never start a second one of the same plan"
       while IFS= read -r -d '' f; do files+=("$f"); done \
         < <(printf '%s' "$record" | jq -j --arg p "$id" '.plans[] | select(.id == $p) | .files[] | . + "\u0000"')
       dirty=$(vbw_dirty_files "${files[@]}")
@@ -90,6 +93,7 @@ $missing"
       record_update '(.plans[] | select(.id == $p)) |= (.status = "done" | del(.note))' --arg p "$id"
       step_plan_done
       [ -z "$red_line" ] || printf '%s\n' "$red_line"
+      vbw_guard_drop "$VBW_RUNTIME/plan-done/$id.pid"
       printf '%s done\n' "$id"
       ;;
     block)
