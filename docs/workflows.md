@@ -329,8 +329,13 @@ cannot fail, and QA would otherwise find it one round at a time.
   names breaks still queued. Only a rule break queues; a task break and
   `--none` run at once. VBW refuses a second `--run` of the same plan while one
   is still running: it exits non-zero, before it reads or copies anything, with
-  a line naming the running one (its pid and command) and `Next: wait for it to
-  finish`. The running one holds a marker, `run.pid` under
+  a line naming the running one (its pid, the time it started as HH:MM, and its
+  command) and `Next: wait for it to finish`. The same holds for `vbw plan done`:
+  one run per plan at a time (R293). While a `vbw plan done P` runs, a second
+  one of the same plan is refused at once, before any check runs, with the same
+  line and a `Next:` line to wait and never start a second one; it queues
+  nothing at the check gate. Its marker is `plan-done/P.pid` under
+  `.vbw/runtime/`, and a plan done of another plan is never refused. The running one holds a marker, `run.pid` under
   `.vbw/runtime/mutate-queue/PLAN/`, with its pid from before it reads the
   queue until it ends. A marker whose process has ended (or that is empty or
   not a number) never blocks: the next run takes it over. A run waiting for a
