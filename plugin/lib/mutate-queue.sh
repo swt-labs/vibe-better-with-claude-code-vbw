@@ -76,7 +76,7 @@ mutate_unbroken_base() {
 }
 
 mutate_queue_run() {
-  local plan="$1" aside qdir record head tree e entries=() keep=() stale=0 surv=0 bad='' checks ids=() cfiles=() f base unb=() n i k
+  local plan="$1" aside record head tree e entries=() keep=() stale=0 surv=0 bad='' checks ids=() cfiles=() f base unb=() n i k
   vbw_require_project
   cd "$VBW_ROOT" || vbw_die "cannot enter $VBW_ROOT"
   record=$(record_read)
@@ -124,9 +124,8 @@ mutate_queue_run() {
     if [ -n "$bad" ]; then
       proofcopy_remove
       checks_end
-      qdir=$(mutate_queue_dir "$plan")
-      rm -rf "$qdir"
-      vbw_die "checks do not pass on the unbroken code, so a break proves nothing: $bad; make them pass and commit, then break again (the queued breaks are dropped)"
+      mutate_queue_release "$plan"
+      vbw_die "checks do not pass on the unbroken code, so a break proves nothing: $bad; ${#keep[@]} queued breaks are kept for the next run: make the checks pass (and commit), then run vbw mutate $plan --run again, with nothing queued again"
     fi
   fi
   # The breaks, one per copy, a wave at a time: each copy gets its break, runs its

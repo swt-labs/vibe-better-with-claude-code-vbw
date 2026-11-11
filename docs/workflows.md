@@ -324,7 +324,12 @@ cannot fail, and QA would otherwise find it one round at a time.
   `check_jobs` allows under the computer-wide limit. It prints how many breaks
   run and how many at a time, then each result as a single break would, records
   them, and exits non-zero on a survivor. A break queued before a later commit
-  is dropped and named (its bytes belong to older files): make it again. Check
+  is dropped and named (its bytes belong to older files): make it again. A
+  check that fails on the unbroken code (a busy heavy-job lane can cause it)
+  stops the run: it exits non-zero naming each failing check and its status,
+  and says how many queued breaks are kept for the next run. Every queued break
+  stays as it was, so once the checks pass the next `--run` runs them all
+  without queueing any again. Check
   files that differ from their last commit stop the run, and `vbw plan done`
   names breaks still queued. Only a rule break queues; a task break and
   `--none` run at once. VBW refuses a second `--run` of the same plan while one
