@@ -81176,13 +81176,190 @@
         "docs/workflows.md"
       ],
       "after": [],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "plugin/lib/plan-run.sh (new): one per-plan run marker that both commands use. Taking it creates the marker file holding this process's id (the exclusive create, vbw_lock_create); a marker whose holder has ended, or that holds no readable id, is taken over (vbw_lock_takeover); a live holder is refused with its process id, the time it started (the marker file's own time, vbw_mtime, as HH:MM) and the command, then a Next: line to wait for that run and never start a second one. The marker is registered with the guard, so it is given back however the run ends.",
         "plugin/lib/core.sh: vbw_hhmm EPOCH, the local HH:MM of a moment (the date -r and date -d forms); vbw_wait_say in plugin/lib/slots.sh and the refusal both use it, so the two say a time the same way.",
         "plugin/lib/cmd-plan.sh: vbw plan done takes the plan's marker (.vbw/runtime/plan-done/PLAN.pid) as its first step, before any check or gate registration, and holds it to the end; plugin/lib/mutate-queue.sh's mutate_queue_hold uses the same helper for run.pid, its refusal now naming the start time. A plan done of another plan takes its own marker and is never refused. The --run refusal keeps \"pid N\" before \"vbw mutate P --run\" on its first line (tests/mutate-queue.bats R230).",
         "docs/workflows.md: the plan done refusal, and the start time in the --run refusal, with the one-run-per-plan rule. tests/plan-run-once.bats passes under /bin/bash, and tests/mutate-queue.bats and tests/plan-block-done.bats still pass."
+      ],
+      "red_runs": [
+        {
+          "at": "2026-11-11T13:57:40Z",
+          "head": "1629243f8e9bca82fa52d531f63c3792683795bb",
+          "first": true,
+          "checks": {
+            "C682": "green"
+          }
+        }
+      ],
+      "mutations": [
+        {
+          "rule": {
+            "req": "R293",
+            "k": 1
+          },
+          "what": "plan done marker per process",
+          "files": [
+            "plugin/lib/cmd-plan.sh"
+          ],
+          "checks": {
+            "C682": "red"
+          },
+          "result": "red",
+          "at": "2026-11-11T14:10:45Z",
+          "head": "66c3931c62916fda17feea389bbf9e554bd6c094",
+          "tree": "8c27ffb370b45698910cb63b1786d127826d4cfa",
+          "contract": "ba0dde2c2c113e0240c6be248eae3987efe098a81b7900f55e6f4fefb39e9c08",
+          "digests": [
+            {
+              "file": "plugin/lib/cmd-plan.sh",
+              "sha256": "2ee8f5c537ba65b11090c2413f1496e605c0e7a56d69bb1dd18b5d71fd08805f"
+            }
+          ]
+        },
+        {
+          "rule": {
+            "req": "R293",
+            "k": 4
+          },
+          "what": "one marker for every plan",
+          "files": [
+            "plugin/lib/cmd-plan.sh"
+          ],
+          "checks": {
+            "C682": "red"
+          },
+          "result": "red",
+          "at": "2026-11-11T14:10:47Z",
+          "head": "66c3931c62916fda17feea389bbf9e554bd6c094",
+          "tree": "8c27ffb370b45698910cb63b1786d127826d4cfa",
+          "contract": "ba0dde2c2c113e0240c6be248eae3987efe098a81b7900f55e6f4fefb39e9c08",
+          "digests": [
+            {
+              "file": "plugin/lib/cmd-plan.sh",
+              "sha256": "c645fc00694fcfcc7eaabc3c3bcc0e1a68328fa5633f9a949784fde34a0416f9"
+            }
+          ]
+        },
+        {
+          "rule": {
+            "req": "R293",
+            "k": 3
+          },
+          "what": "mutate marker per process",
+          "files": [
+            "plugin/lib/mutate-queue.sh"
+          ],
+          "checks": {
+            "C682": "red"
+          },
+          "result": "red",
+          "at": "2026-11-11T14:10:50Z",
+          "head": "66c3931c62916fda17feea389bbf9e554bd6c094",
+          "tree": "8c27ffb370b45698910cb63b1786d127826d4cfa",
+          "contract": "ba0dde2c2c113e0240c6be248eae3987efe098a81b7900f55e6f4fefb39e9c08",
+          "digests": [
+            {
+              "file": "plugin/lib/mutate-queue.sh",
+              "sha256": "8ecb750026b6ab42ecdd08e8cfc2f505eaf1ee73f42e07e2b330d58a5fd28ad9"
+            }
+          ]
+        },
+        {
+          "rule": {
+            "req": "R293",
+            "k": 2
+          },
+          "what": "refusal without start time",
+          "files": [
+            "plugin/lib/plan-run.sh"
+          ],
+          "checks": {
+            "C682": "red"
+          },
+          "result": "red",
+          "at": "2026-11-11T14:10:52Z",
+          "head": "66c3931c62916fda17feea389bbf9e554bd6c094",
+          "tree": "8c27ffb370b45698910cb63b1786d127826d4cfa",
+          "contract": "ba0dde2c2c113e0240c6be248eae3987efe098a81b7900f55e6f4fefb39e9c08",
+          "digests": [
+            {
+              "file": "plugin/lib/plan-run.sh",
+              "sha256": "07031c908b21d773c74bd9ae056ffb4965a0be588b52fbd33627b8a633aadf85"
+            }
+          ]
+        },
+        {
+          "rule": {
+            "req": "R293",
+            "k": 5
+          },
+          "what": "dead marker never taken over",
+          "files": [
+            "plugin/lib/plan-run.sh"
+          ],
+          "checks": {
+            "C682": "red"
+          },
+          "result": "red",
+          "at": "2026-11-11T14:10:55Z",
+          "head": "66c3931c62916fda17feea389bbf9e554bd6c094",
+          "tree": "8c27ffb370b45698910cb63b1786d127826d4cfa",
+          "contract": "ba0dde2c2c113e0240c6be248eae3987efe098a81b7900f55e6f4fefb39e9c08",
+          "digests": [
+            {
+              "file": "plugin/lib/plan-run.sh",
+              "sha256": "8126fe54869838bbfb117850b2381add3d5bafcb7dc767e97c4cd1ed9f8c38d5"
+            }
+          ]
+        },
+        {
+          "rule": {
+            "req": "R293",
+            "k": 6
+          },
+          "what": "marker not registered for cleanup",
+          "files": [
+            "plugin/lib/plan-run.sh"
+          ],
+          "checks": {
+            "C682": "red"
+          },
+          "result": "red",
+          "at": "2026-11-11T14:10:57Z",
+          "head": "66c3931c62916fda17feea389bbf9e554bd6c094",
+          "tree": "8c27ffb370b45698910cb63b1786d127826d4cfa",
+          "contract": "ba0dde2c2c113e0240c6be248eae3987efe098a81b7900f55e6f4fefb39e9c08",
+          "digests": [
+            {
+              "file": "plugin/lib/plan-run.sh",
+              "sha256": "f79949e9c6055f51781f589dfa87ac5c1eb66f7591e2b0f42984f1118b341652"
+            }
+          ]
+        },
+        {
+          "task": 2,
+          "what": "vbw_hhmm always says 99:99",
+          "files": [
+            "plugin/lib/core.sh"
+          ],
+          "checks": {
+            "C682": "red"
+          },
+          "result": "red",
+          "at": "2026-11-11T14:12:06Z",
+          "head": "66c3931c62916fda17feea389bbf9e554bd6c094",
+          "tree": "8c27ffb370b45698910cb63b1786d127826d4cfa",
+          "contract": "ba0dde2c2c113e0240c6be248eae3987efe098a81b7900f55e6f4fefb39e9c08",
+          "digests": [
+            {
+              "file": "plugin/lib/core.sh",
+              "sha256": "8362b27c49bb68cdfb085bfa538be7a07bc304c070b79e32e9e2a11bb0535c39"
+            }
+          ]
+        }
       ]
     },
     {
@@ -81197,12 +81374,125 @@
         "docs/proof.md"
       ],
       "after": [],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "plugin/lib/checks.sh: checks_gate_blocker reports the blocking registration's process id with its check id (the pid is the middle of reg.PID.ID); when the shared limit is the cause it reports one live registration of another process, never one of this process's own.",
         "checks_gate_enter: the one line said when a wait for another VBW command starts names that check and that command's pid beside 'since HH:MM', through vbw_wait_say on stderr; this run's own checks queuing behind each other still say nothing (R94), and the line is said once per wait.",
         "docs/proof.md: the gate's wait line with the holder, beside the slot wait line. tests/gate-race.bats passes under /bin/bash, and tests/check-wait-patient.bats and tests/machine-wait-line.bats still pass."
+      ],
+      "red_runs": [
+        {
+          "at": "2026-11-11T13:55:49Z",
+          "head": "1629243f8e9bca82fa52d531f63c3792683795bb",
+          "first": true,
+          "checks": {
+            "C683": "red"
+          }
+        }
+      ],
+      "mutations": [
+        {
+          "task": 3,
+          "none": "task 3 is documentation and the check run only reads code; the run of the plan's tests is already verified by the green check",
+          "at": "2026-11-11T14:00:36Z"
+        },
+        {
+          "rule": {
+            "req": "R294",
+            "k": 1
+          },
+          "what": "wait line drops the pid",
+          "files": [
+            "plugin/lib/checks.sh"
+          ],
+          "checks": {
+            "C683": "red"
+          },
+          "result": "red",
+          "at": "2026-11-11T14:01:08Z",
+          "head": "9fa8ea980ee4fd25b5540f7c8335a7b940f0671c",
+          "tree": "0ce1b8738ef8c28944a3a50dd58ffa8c427996e9",
+          "contract": "0cbec5f3054d4e8b52cf8dae3f15a31db6def3e16ac34c9b6be7118e037446a9",
+          "digests": [
+            {
+              "file": "plugin/lib/checks.sh",
+              "sha256": "c36f90a697ef616ddf60910240c93804b230d39e9674a1b78330b8845cf5a3dd"
+            }
+          ]
+        },
+        {
+          "rule": {
+            "req": "R294",
+            "k": 2
+          },
+          "what": "limit case may name own registration",
+          "files": [
+            "plugin/lib/checks.sh"
+          ],
+          "checks": {
+            "C683": "green"
+          },
+          "result": "survivor",
+          "at": "2026-11-11T14:01:10Z",
+          "head": "9fa8ea980ee4fd25b5540f7c8335a7b940f0671c",
+          "tree": "0ce1b8738ef8c28944a3a50dd58ffa8c427996e9",
+          "contract": "0cbec5f3054d4e8b52cf8dae3f15a31db6def3e16ac34c9b6be7118e037446a9",
+          "digests": [
+            {
+              "file": "plugin/lib/checks.sh",
+              "sha256": "65fa1e5d46c17e21c2955600a6ad33dcafec00a2fa997528f32a0fb685e94ebb"
+            }
+          ]
+        },
+        {
+          "rule": {
+            "req": "R294",
+            "k": 3
+          },
+          "what": "own queueing prints a line",
+          "files": [
+            "plugin/lib/checks.sh"
+          ],
+          "checks": {
+            "C683": "red"
+          },
+          "result": "red",
+          "at": "2026-11-11T14:01:13Z",
+          "head": "9fa8ea980ee4fd25b5540f7c8335a7b940f0671c",
+          "tree": "0ce1b8738ef8c28944a3a50dd58ffa8c427996e9",
+          "contract": "0cbec5f3054d4e8b52cf8dae3f15a31db6def3e16ac34c9b6be7118e037446a9",
+          "digests": [
+            {
+              "file": "plugin/lib/checks.sh",
+              "sha256": "d0dda7bc0737225c90efe61ba23e7a455aa4ae3077afa3519ad086b8d22c4f86"
+            }
+          ]
+        },
+        {
+          "rule": {
+            "req": "R294",
+            "k": 2
+          },
+          "what": "limit case may name own registration",
+          "files": [
+            "plugin/lib/checks.sh"
+          ],
+          "checks": {
+            "C683": "red"
+          },
+          "result": "red",
+          "at": "2026-11-11T14:02:42Z",
+          "head": "720919d0d9fe4ceba8b4283b1b7f81f28249ac5f",
+          "tree": "384ae3d52fe62d5c86cb1cbce3b7d1208f31ba98",
+          "contract": "5c1005ae735c67535c22050659b31813dcbbf64481ad0df12a79750fd3e9f8d5",
+          "digests": [
+            {
+              "file": "plugin/lib/checks.sh",
+              "sha256": "eccc90b941512844ef574a9da6c7e425db0970f9c8bd31d65797fdefbae59763"
+            }
+          ]
+        }
       ]
     },
     {
@@ -81292,12 +81582,188 @@
         "docs/guards.md"
       ],
       "after": [],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "plugin/lib/cmd-apply.sh: a full apply, --add and --patch refuse a plan the document brings whose files include a protected check file (the merged record's protected files, a check the same document adds included), before anything is written, through apply_refuse with the mode's name.",
         "One source for the words, used by --amend's refusal too: the file, that a build never edits it, and the guard's own way on (plugin/hooks/common.jq protected_reason, read, never copied); apply_next gives that way on for every mode.",
         "A patch carrying a check's own row stays accepted. docs/guards.md says vbw apply refuses such a plan when it is sent. tests/apply-refusal-modes.bats and tests/amend.bats pass under /bin/bash. The refusal's first line keeps the file, --patch and the approval (tests/amend.bats R250)."
+      ],
+      "mutations": [
+        {
+          "rule": {
+            "req": "R296",
+            "k": 5
+          },
+          "what": "--amend leaves the sentinel unconverted",
+          "files": [
+            "plugin/lib/cmd-apply.sh"
+          ],
+          "checks": {
+            "C686": "red"
+          },
+          "result": "red",
+          "at": "2026-11-11T14:00:34Z",
+          "head": "9fa8ea980ee4fd25b5540f7c8335a7b940f0671c",
+          "tree": "0ce1b8738ef8c28944a3a50dd58ffa8c427996e9",
+          "contract": "0cbec5f3054d4e8b52cf8dae3f15a31db6def3e16ac34c9b6be7118e037446a9",
+          "digests": [
+            {
+              "file": "plugin/lib/cmd-apply.sh",
+              "sha256": "dffa480c0fbf0d270a85e5d754c94c1ef0b556e6c240195b3d1e01d34cc7a7c4"
+            }
+          ]
+        },
+        {
+          "rule": {
+            "req": "R296",
+            "k": 6
+          },
+          "what": "a check's own row counts as a plan listing the file",
+          "files": [
+            "plugin/lib/cmd-apply.sh"
+          ],
+          "checks": {
+            "C685": "red"
+          },
+          "result": "red",
+          "at": "2026-11-11T14:00:37Z",
+          "head": "9fa8ea980ee4fd25b5540f7c8335a7b940f0671c",
+          "tree": "0ce1b8738ef8c28944a3a50dd58ffa8c427996e9",
+          "contract": "0cbec5f3054d4e8b52cf8dae3f15a31db6def3e16ac34c9b6be7118e037446a9",
+          "digests": [
+            {
+              "file": "plugin/lib/cmd-apply.sh",
+              "sha256": "bb2a9f6b8b84f4a665bf8ce008d9076912eea482f3b850665a07ca824c5973cb"
+            }
+          ]
+        },
+        {
+          "rule": {
+            "req": "R296",
+            "k": 1
+          },
+          "what": "full apply never checks the plans' files",
+          "files": [
+            "plugin/lib/cmd-apply.sh"
+          ],
+          "checks": {
+            "C685": "red"
+          },
+          "result": "red",
+          "at": "2026-11-11T14:01:27Z",
+          "head": "9fa8ea980ee4fd25b5540f7c8335a7b940f0671c",
+          "tree": "0ce1b8738ef8c28944a3a50dd58ffa8c427996e9",
+          "contract": "0cbec5f3054d4e8b52cf8dae3f15a31db6def3e16ac34c9b6be7118e037446a9",
+          "digests": [
+            {
+              "file": "plugin/lib/cmd-apply.sh",
+              "sha256": "a475d8fd88d81311a6330cfa62f31aba4707b8684d3b1014ea69f90cdb245237"
+            }
+          ]
+        },
+        {
+          "rule": {
+            "req": "R296",
+            "k": 2
+          },
+          "what": "--add never checks the plans' files",
+          "files": [
+            "plugin/lib/cmd-apply.sh"
+          ],
+          "checks": {
+            "C685": "red"
+          },
+          "result": "red",
+          "at": "2026-11-11T14:01:29Z",
+          "head": "9fa8ea980ee4fd25b5540f7c8335a7b940f0671c",
+          "tree": "0ce1b8738ef8c28944a3a50dd58ffa8c427996e9",
+          "contract": "0cbec5f3054d4e8b52cf8dae3f15a31db6def3e16ac34c9b6be7118e037446a9",
+          "digests": [
+            {
+              "file": "plugin/lib/cmd-apply.sh",
+              "sha256": "dcabccb0bd8e80c432483e42ccc61d1e0d4d2a2740968e1a89624dd1eff5b2a1"
+            }
+          ]
+        },
+        {
+          "rule": {
+            "req": "R296",
+            "k": 3
+          },
+          "what": "--patch never checks the plans' files",
+          "files": [
+            "plugin/lib/cmd-apply.sh"
+          ],
+          "checks": {
+            "C685": "red"
+          },
+          "result": "red",
+          "at": "2026-11-11T14:01:32Z",
+          "head": "9fa8ea980ee4fd25b5540f7c8335a7b940f0671c",
+          "tree": "0ce1b8738ef8c28944a3a50dd58ffa8c427996e9",
+          "contract": "0cbec5f3054d4e8b52cf8dae3f15a31db6def3e16ac34c9b6be7118e037446a9",
+          "digests": [
+            {
+              "file": "plugin/lib/cmd-apply.sh",
+              "sha256": "acfb1f7e7b06a246dbf830b412245bd90b07f683af1bc8d9e0e8704600a3ec3d"
+            }
+          ]
+        },
+        {
+          "rule": {
+            "req": "R296",
+            "k": 4
+          },
+          "what": "the refusal drops the guard's way on",
+          "files": [
+            "plugin/lib/cmd-apply.sh"
+          ],
+          "checks": {
+            "C685": "green"
+          },
+          "result": "survivor",
+          "at": "2026-11-11T14:01:34Z",
+          "head": "9fa8ea980ee4fd25b5540f7c8335a7b940f0671c",
+          "tree": "0ce1b8738ef8c28944a3a50dd58ffa8c427996e9",
+          "contract": "0cbec5f3054d4e8b52cf8dae3f15a31db6def3e16ac34c9b6be7118e037446a9",
+          "digests": [
+            {
+              "file": "plugin/lib/cmd-apply.sh",
+              "sha256": "494027007c2c5a5fa4f45b61ca50357037a31a405d7a3e80afd8683c8e53595d"
+            }
+          ]
+        },
+        {
+          "rule": {
+            "req": "R296",
+            "k": 4
+          },
+          "what": "the refusal drops the guard's way on",
+          "files": [
+            "plugin/lib/cmd-apply.sh"
+          ],
+          "checks": {
+            "C685": "red"
+          },
+          "result": "red",
+          "at": "2026-11-11T14:02:48Z",
+          "head": "901733bbbbab3e3895fc0a424881072447a3c736",
+          "tree": "b18335588bf5f9f0989358d9819a9fb167075a8e",
+          "contract": "453e5304a43a32c464527f6a0a43c0e710b7b990f0dfc00e5e8577d09acc6011",
+          "digests": [
+            {
+              "file": "plugin/lib/cmd-apply.sh",
+              "sha256": "494027007c2c5a5fa4f45b61ca50357037a31a405d7a3e80afd8683c8e53595d"
+            }
+          ],
+          "strengthened": [
+            "tests/apply-refusal-modes.bats"
+          ],
+          "pending": [
+            "tests/apply-refusal-modes.bats"
+          ]
+        }
       ]
     },
     {
@@ -81316,13 +81782,203 @@
         "docs/diagnostics.md"
       ],
       "after": [],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "plugin/lib/commit-failure.sh: a kept failure remembers the commit it was made on (HEAD then); it stands while a file it names differs from HEAD or HEAD has not moved, and is cleared once a later VBW commit succeeds or the user's commit moves HEAD with its files clean. vbw doctor judges it by the same function.",
         "The step's way on with nothing left to commit: fix what the hook flagged, then approve again; 'commit the VBW files yourself' is offered only while files differ.",
         "vbw approve with a standing failure and nothing to commit tries the approval and its commit again through the project's hooks: a pass records the approval and clears the failure, a refusal keeps the new failure and shows it. Never --no-verify (D687).",
         "docs/next.md (the commit step) and docs/diagnostics.md say so. tests/commit-failed.bats and tests/approve-commit-fails.bats pass under /bin/bash."
+      ],
+      "red_runs": [
+        {
+          "at": "2026-11-11T13:55:53Z",
+          "head": "1629243f8e9bca82fa52d531f63c3792683795bb",
+          "first": true,
+          "checks": {
+            "C688": "red"
+          }
+        }
+      ],
+      "mutations": [
+        {
+          "rule": {
+            "req": "R298",
+            "k": 5
+          },
+          "what": "a later VBW commit no longer clears the failure directly",
+          "files": [
+            "plugin/lib/record.sh"
+          ],
+          "checks": {
+            "C688": "red"
+          },
+          "result": "red",
+          "at": "2026-11-11T14:01:01Z",
+          "head": "9fa8ea980ee4fd25b5540f7c8335a7b940f0671c",
+          "tree": "0ce1b8738ef8c28944a3a50dd58ffa8c427996e9",
+          "contract": "0cbec5f3054d4e8b52cf8dae3f15a31db6def3e16ac34c9b6be7118e037446a9",
+          "digests": [
+            {
+              "file": "plugin/lib/record.sh",
+              "sha256": "6e84ecda314a3a552440a0a25bce8a6880c4787c9bb2b4b8698d99273e24e59e"
+            }
+          ]
+        },
+        {
+          "rule": {
+            "req": "R298",
+            "k": 1
+          },
+          "what": "a failure with nothing dirty no longer stands",
+          "files": [
+            "plugin/lib/commit-failure.sh"
+          ],
+          "checks": {
+            "C688": "red"
+          },
+          "result": "red",
+          "at": "2026-11-11T14:02:45Z",
+          "head": "9fa8ea980ee4fd25b5540f7c8335a7b940f0671c",
+          "tree": "0ce1b8738ef8c28944a3a50dd58ffa8c427996e9",
+          "contract": "4a7a8db6a1a42e1cc602672152e302210d779277cb17a4c1df8fc9415f8cd495",
+          "digests": [
+            {
+              "file": "plugin/lib/commit-failure.sh",
+              "sha256": "ad7af4c463825aa987b0f1c8093cab44a35c80803bb481272e999ffbc4376980"
+            }
+          ]
+        },
+        {
+          "rule": {
+            "req": "R298",
+            "k": 2
+          },
+          "what": "the nothing-to-commit way on is never said",
+          "files": [
+            "plugin/lib/commit-failure.sh"
+          ],
+          "checks": {
+            "C688": "red"
+          },
+          "result": "red",
+          "at": "2026-11-11T14:02:48Z",
+          "head": "9fa8ea980ee4fd25b5540f7c8335a7b940f0671c",
+          "tree": "0ce1b8738ef8c28944a3a50dd58ffa8c427996e9",
+          "contract": "4a7a8db6a1a42e1cc602672152e302210d779277cb17a4c1df8fc9415f8cd495",
+          "digests": [
+            {
+              "file": "plugin/lib/commit-failure.sh",
+              "sha256": "3aade2c52d51416a9438c6de8e6920bfebf3710a01d7a7d319a393fc6c3fa646"
+            }
+          ]
+        },
+        {
+          "rule": {
+            "req": "R298",
+            "k": 3
+          },
+          "what": "approve refuses with nothing to commit instead of retrying",
+          "files": [
+            "plugin/lib/cmd-approve.sh"
+          ],
+          "checks": {
+            "C688": "red"
+          },
+          "result": "red",
+          "at": "2026-11-11T14:02:53Z",
+          "head": "9fa8ea980ee4fd25b5540f7c8335a7b940f0671c",
+          "tree": "0ce1b8738ef8c28944a3a50dd58ffa8c427996e9",
+          "contract": "4a7a8db6a1a42e1cc602672152e302210d779277cb17a4c1df8fc9415f8cd495",
+          "digests": [
+            {
+              "file": "plugin/lib/cmd-approve.sh",
+              "sha256": "9688182cca6e8f14fda577dff8daeaf79c8b86b5893a707648382645b57dac70"
+            }
+          ]
+        },
+        {
+          "rule": {
+            "req": "R298",
+            "k": 4
+          },
+          "what": "a passing approval commit no longer clears the failure",
+          "files": [
+            "plugin/lib/commit-failure.sh"
+          ],
+          "checks": {
+            "C688": "red"
+          },
+          "result": "red",
+          "at": "2026-11-11T14:02:55Z",
+          "head": "9fa8ea980ee4fd25b5540f7c8335a7b940f0671c",
+          "tree": "0ce1b8738ef8c28944a3a50dd58ffa8c427996e9",
+          "contract": "4a7a8db6a1a42e1cc602672152e302210d779277cb17a4c1df8fc9415f8cd495",
+          "digests": [
+            {
+              "file": "plugin/lib/commit-failure.sh",
+              "sha256": "0ae63123891559e4213f622fe945fcf464c9943d626190ff7afdc306c239bce1"
+            }
+          ]
+        },
+        {
+          "task": 1,
+          "what": "doctor judges by dirty files only, not the same function",
+          "files": [
+            "plugin/lib/cmd-doctor.sh"
+          ],
+          "checks": {
+            "C688": "green"
+          },
+          "result": "survivor",
+          "at": "2026-11-11T14:03:58Z",
+          "head": "901733bbbbab3e3895fc0a424881072447a3c736",
+          "tree": "b18335588bf5f9f0989358d9819a9fb167075a8e",
+          "contract": "453e5304a43a32c464527f6a0a43c0e710b7b990f0dfc00e5e8577d09acc6011",
+          "digests": [
+            {
+              "file": "plugin/lib/cmd-doctor.sh",
+              "sha256": "07018733a069a37d86c92a517ee9f6fa8a177b5e9bdac06f1cd3d944e88edc2b"
+            }
+          ]
+        },
+        {
+          "task": 1,
+          "what": "doctor judges by dirty files only, not the same function, take 2",
+          "files": [
+            "plugin/lib/cmd-doctor.sh"
+          ],
+          "checks": {
+            "C688": "red"
+          },
+          "result": "red",
+          "at": "2026-11-11T14:05:14Z",
+          "head": "50ebb9b6f78bff002ef0bc8b90d994d5c8b0058f",
+          "tree": "540e34bb9be453fda0200a051b93e33bb14e6707",
+          "contract": "ba0dde2c2c113e0240c6be248eae3987efe098a81b7900f55e6f4fefb39e9c08",
+          "digests": [
+            {
+              "file": "plugin/lib/cmd-doctor.sh",
+              "sha256": "07018733a069a37d86c92a517ee9f6fa8a177b5e9bdac06f1cd3d944e88edc2b"
+            }
+          ],
+          "strengthened": [
+            "tests/commit-failed.bats"
+          ],
+          "pending": [
+            "tests/commit-failed.bats"
+          ]
+        },
+        {
+          "task": 4,
+          "none": "documentation only: no behaviour to break",
+          "at": "2026-11-11T14:05:21Z"
+        },
+        {
+          "task": 2,
+          "none": "the way-on text is covered by the R298.2 break",
+          "at": "2026-11-11T14:05:23Z"
+        }
       ]
     },
     {
@@ -81338,12 +81994,57 @@
         "AGENTS.md"
       ],
       "after": [],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "tests/proofcopy-keep.bats: the case that tells a whole re-copy of a kept ignored path from an entry-by-entry update judges it by a second name (a hard link kept outside the copy) of the old entry, which a newly created file cannot have; the other cases that compare inode numbers judge the same way, and the inode helper goes.",
         "CLAUDE.md and AGENTS.md (Testing): a test never judges a file by its inode number, as ext4 hands a freed one to the next new file.",
         "tests/proofcopy-keep.bats passes under /bin/bash; CI's Linux bash 5 shard is the gate on ext4."
+      ],
+      "mutations": [
+        {
+          "rule": {
+            "req": "R300",
+            "k": 1
+          },
+          "what": "added an ls -di inode helper",
+          "files": [
+            "tests/proofcopy-keep.bats"
+          ],
+          "checks": {
+            "C691": "red"
+          },
+          "result": "red",
+          "at": "2026-11-11T14:06:02Z",
+          "head": "66c3931c62916fda17feea389bbf9e554bd6c094",
+          "tree": "8c27ffb370b45698910cb63b1786d127826d4cfa",
+          "contract": "ba0dde2c2c113e0240c6be248eae3987efe098a81b7900f55e6f4fefb39e9c08",
+          "digests": [
+            {
+              "file": "tests/proofcopy-keep.bats",
+              "sha256": "e20a24e2b1273ca1ee2a7f0d3ba833afbfd1f904f062266fa67578ed92ced7bf"
+            }
+          ]
+        },
+        {
+          "rule": {
+            "req": "R300",
+            "k": 2
+          },
+          "none": "C692 reads only tests/guard-record-path.bats and docs/guards.md, which this plan does not build",
+          "at": "2026-11-11T14:06:28Z",
+          "head": "66c3931c62916fda17feea389bbf9e554bd6c094"
+        },
+        {
+          "task": 2,
+          "none": "AGENTS.md is a prose rule; no check reads it",
+          "at": "2026-11-11T14:06:35Z"
+        },
+        {
+          "task": 3,
+          "none": "task 3 is running the file under /bin/bash; it builds no code",
+          "at": "2026-11-11T14:06:37Z"
+        }
       ]
     }
   ],
@@ -102277,6 +102978,17 @@
         "ended": "2026-11-11T13:31:21Z",
         "cost": {
           "usd": 11.950528
+        }
+      },
+      {
+        "id": "build-20261111T135519Z",
+        "kind": "build",
+        "session": "0ee781c3-c5b6-4a6c-889f-04b89f1fba4a",
+        "milestone": "M57",
+        "started": "2026-11-11T13:55:19Z",
+        "ended": "2026-11-11T14:13:25Z",
+        "cost": {
+          "usd": 3.528425
         }
       }
     ],
