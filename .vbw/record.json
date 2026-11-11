@@ -86364,7 +86364,7 @@
       "text": "Bring the guard's cost back under 20 ms per call: a lighter first pass for commands with nothing to judge, or the second-pass definitions out of the first; the budget moved to 25 ms for 2.1.25 after CI measured 21.9 ms on GitHub's macOS runner",
       "sort": "next",
       "size": "medium",
-      "status": "open"
+      "status": "dropped"
     },
     {
       "id": "T245",
