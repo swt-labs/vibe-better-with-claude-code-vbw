@@ -9334,7 +9334,7 @@
   "milestone": {
     "id": "M57",
     "title": "Quick wins: one plan done at a time, check files caught at planning, breaks kept, agents keep ToolSearch",
-    "status": "active"
+    "status": "shipped"
   },
   "shipped": [
     {
@@ -9611,6 +9611,11 @@
       "id": "M56",
       "title": "The loop finishes a milestone; vbw next fast on Linux; every test proven",
       "at": "2026-11-09T22:58:09Z"
+    },
+    {
+      "id": "M57",
+      "title": "Quick wins: one plan done at a time, check files caught at planning, breaks kept, agents keep ToolSearch",
+      "at": "2026-11-11T19:26:36Z"
     }
   ],
   "requirements": [
@@ -92041,6 +92046,11 @@
       "at": "2026-11-11T16:42:09Z",
       "text": "Contract approved: 286 requirements, 687 checks, 677 plans (b821bfaa291a)",
       "plans": []
+    },
+    {
+      "id": "D702",
+      "at": "2026-11-11T19:26:36Z",
+      "text": "Shipped M57 Quick wins: one plan done at a time, check files caught at planning, breaks kept, agents keep ToolSearch: 8 requirements proven or accepted"
     }
   ],
   "commands": {
@@ -107652,6 +107662,10 @@
             "usd": 0,
             "at": "2026-11-11T12:54:35Z"
           }
+        },
+        "total": {
+          "usd": 35.016021,
+          "sessions": 48
         }
       }
     }
