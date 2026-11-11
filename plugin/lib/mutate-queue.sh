@@ -162,8 +162,7 @@ mutate_queue_run() {
   checks_end
   # The results, recorded in queue order as the single form records one; the
   # computer-wide wait is said once, at the end.
-  local waited=$SLOTS_WAITED lost=$SLOTS_LOST ruledoc
-  SLOTS_WAITED=0 SLOTS_LOST=
+  local ruledoc
   for e in "${keep[@]}"; do
     m=$(jq -c . "$e/meta.json")
     ruledoc=$(printf '%s' "$record" | jq -c --argjson m "$m" '.requirements[] | select(.id == $m.req) | (.rules // [])[$m.rk - 1] | {req: $m.req, text, check}')
@@ -175,7 +174,6 @@ mutate_queue_run() {
     rm -rf "$aside"
   done
   mutate_queue_release "$plan"
-  SLOTS_WAITED=$waited SLOTS_LOST=$lost
   mutate_time_say
   slots_say
   [ "$surv" = 0 ] && [ "$stale" = 0 ]

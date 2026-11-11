@@ -95,6 +95,7 @@ $missing"
       [ -z "$red_line" ] || printf '%s\n' "$red_line"
       vbw_guard_drop "$VBW_RUNTIME/plan-done/$id.pid"
       printf '%s done\n' "$id"
+      slots_say
       ;;
     block)
       printf '%s' "$record" | jq -e --arg p "$id" 'any(.plans[]; .id == $p and .status == "done") | not' > /dev/null \
