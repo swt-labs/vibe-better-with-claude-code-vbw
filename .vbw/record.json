@@ -81517,12 +81517,236 @@
         "P229.1",
         "P229.2"
       ],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "One load-once rule for every library that keeps state for the life of a process (core, checks, slots, proofcopy, prooftime, qa-inputs, and proofreuse, whose ${VAR:-default} keeps it replaces): the library's first lines return at once when this process has loaded it already, through one marker variable per library that is never exported; functions and constants are untouched.",
         "vbw plan done ends with the waited line (slots_say) after its done line, as vbw check does; mutate-queue.sh drops its save and restore of SLOTS_WAITED and SLOTS_LOST.",
         "tests/lib-load-once.bats and tests/machine-wait-line.bats (the R299 case and the F441 case) pass under /bin/bash; the area files of the changed libraries (tests/machine-*.bats, tests/mutate-queue.bats, tests/proofcopy-*.bats, tests/proof-reuse.bats, tests/gate-race.bats) still pass."
+      ],
+      "mutations": [
+        {
+          "rule": {
+            "req": "R299",
+            "k": 1
+          },
+          "what": "slots.sh load guard disabled",
+          "files": [
+            "plugin/lib/slots.sh"
+          ],
+          "checks": {
+            "C689": "red"
+          },
+          "result": "red",
+          "at": "2026-11-11T14:43:44Z",
+          "head": "e7ada0692d0d1892d44f951d384fd5d3def04bd5",
+          "tree": "e18a98a7da8abf9536340d648b0d0c9e2c3bfedf",
+          "contract": "0dee2cc36c195bb12ca7d58923c2abf62d7c64cacbb0c084d8a74ae23d08f7eb",
+          "digests": [
+            {
+              "file": "plugin/lib/slots.sh",
+              "sha256": "17ba25e478ce227bdfadf1bad401a4272d04d4a68154219913a496e463744858"
+            }
+          ]
+        },
+        {
+          "rule": {
+            "req": "R299",
+            "k": 2
+          },
+          "what": "prooftime.sh load guard disabled",
+          "files": [
+            "plugin/lib/prooftime.sh"
+          ],
+          "checks": {
+            "C689": "red"
+          },
+          "result": "red",
+          "at": "2026-11-11T14:43:47Z",
+          "head": "e7ada0692d0d1892d44f951d384fd5d3def04bd5",
+          "tree": "e18a98a7da8abf9536340d648b0d0c9e2c3bfedf",
+          "contract": "0dee2cc36c195bb12ca7d58923c2abf62d7c64cacbb0c084d8a74ae23d08f7eb",
+          "digests": [
+            {
+              "file": "plugin/lib/prooftime.sh",
+              "sha256": "d3d05acf58ba5b7877e221486fb67d0461d9223465ed3dbe84077632b39780bf"
+            }
+          ]
+        },
+        {
+          "rule": {
+            "req": "R299",
+            "k": 3
+          },
+          "what": "mutate-queue.sh saves SLOTS_WAITED again",
+          "files": [
+            "plugin/lib/mutate-queue.sh"
+          ],
+          "checks": {
+            "C689": "red"
+          },
+          "result": "red",
+          "at": "2026-11-11T14:43:49Z",
+          "head": "e7ada0692d0d1892d44f951d384fd5d3def04bd5",
+          "tree": "e18a98a7da8abf9536340d648b0d0c9e2c3bfedf",
+          "contract": "0dee2cc36c195bb12ca7d58923c2abf62d7c64cacbb0c084d8a74ae23d08f7eb",
+          "digests": [
+            {
+              "file": "plugin/lib/mutate-queue.sh",
+              "sha256": "67eb18ba367c5a2b85cc2fd736c520acdd5a1730aab96ef4640b7479806314ba"
+            }
+          ]
+        },
+        {
+          "rule": {
+            "req": "R299",
+            "k": 4
+          },
+          "what": "plan done no longer says the waited line",
+          "files": [
+            "plugin/lib/cmd-plan.sh"
+          ],
+          "checks": {
+            "C690": "red"
+          },
+          "result": "red",
+          "at": "2026-11-11T14:43:52Z",
+          "head": "e7ada0692d0d1892d44f951d384fd5d3def04bd5",
+          "tree": "e18a98a7da8abf9536340d648b0d0c9e2c3bfedf",
+          "contract": "0dee2cc36c195bb12ca7d58923c2abf62d7c64cacbb0c084d8a74ae23d08f7eb",
+          "digests": [
+            {
+              "file": "plugin/lib/cmd-plan.sh",
+              "sha256": "7016905491589526bae8fec3add57d19952259f0ec20e6a450666adaf6c1a8ba"
+            }
+          ]
+        },
+        {
+          "rule": {
+            "req": "R299",
+            "k": 5
+          },
+          "what": "checks.sh zeroes the waits after loading slots.sh",
+          "files": [
+            "plugin/lib/checks.sh"
+          ],
+          "checks": {
+            "C690": "green"
+          },
+          "result": "survivor",
+          "at": "2026-11-11T14:43:54Z",
+          "head": "e7ada0692d0d1892d44f951d384fd5d3def04bd5",
+          "tree": "e18a98a7da8abf9536340d648b0d0c9e2c3bfedf",
+          "contract": "0dee2cc36c195bb12ca7d58923c2abf62d7c64cacbb0c084d8a74ae23d08f7eb",
+          "digests": [
+            {
+              "file": "plugin/lib/checks.sh",
+              "sha256": "d77057ad94c3c43e7a331e247451aff97b35e1bec5857bcd925dd8c819c7fa4c"
+            }
+          ]
+        },
+        {
+          "rule": {
+            "req": "R299",
+            "k": 5
+          },
+          "what": "slots.sh load guard removed, so a reload zeroes the waits",
+          "files": [
+            "plugin/lib/slots.sh"
+          ],
+          "checks": {
+            "C690": "green"
+          },
+          "result": "survivor",
+          "at": "2026-11-11T14:44:42Z",
+          "head": "e7ada0692d0d1892d44f951d384fd5d3def04bd5",
+          "tree": "e18a98a7da8abf9536340d648b0d0c9e2c3bfedf",
+          "contract": "0dee2cc36c195bb12ca7d58923c2abf62d7c64cacbb0c084d8a74ae23d08f7eb",
+          "digests": [
+            {
+              "file": "plugin/lib/slots.sh",
+              "sha256": "6bd5ef1b8cc8288c160314cbe590ceb1975691d4eb12b940620233d8c37c6c6d"
+            }
+          ]
+        },
+        {
+          "rule": {
+            "req": "R299",
+            "k": 5
+          },
+          "what": "every load guard removed: each library resets its state when loaded again",
+          "files": [
+            "plugin/lib/slots.sh",
+            "plugin/lib/checks.sh",
+            "plugin/lib/core.sh",
+            "plugin/lib/proofreuse.sh",
+            "plugin/lib/prooftime.sh",
+            "plugin/lib/proofcopy.sh",
+            "plugin/lib/qa-inputs.sh"
+          ],
+          "checks": {
+            "C690": "green"
+          },
+          "result": "survivor",
+          "at": "2026-11-11T14:45:35Z",
+          "head": "e7ada0692d0d1892d44f951d384fd5d3def04bd5",
+          "tree": "e18a98a7da8abf9536340d648b0d0c9e2c3bfedf",
+          "contract": "0dee2cc36c195bb12ca7d58923c2abf62d7c64cacbb0c084d8a74ae23d08f7eb",
+          "digests": [
+            {
+              "file": "plugin/lib/checks.sh",
+              "sha256": "5c52520d6b3e546ac9df98477737cf0152ad958723a75a7cc2244b4e33e45a8b"
+            },
+            {
+              "file": "plugin/lib/core.sh",
+              "sha256": "23a8ab5bd3899d190bae53271735e338374ec018d16a20bf76afcba1108f13d7"
+            },
+            {
+              "file": "plugin/lib/proofcopy.sh",
+              "sha256": "d4a554c60348066ec1c3994c07d5865c17b8898ac41fe38ca1e79b57e38baba2"
+            },
+            {
+              "file": "plugin/lib/proofreuse.sh",
+              "sha256": "f2e6d62ef8e9ea93a480f33d89963caa35623f968fa9e1e89d338e97749fb92f"
+            },
+            {
+              "file": "plugin/lib/prooftime.sh",
+              "sha256": "5ffeed6e090b3eea25b00fcad2feac6a219fb9987e960f46c3ba99922a4a474d"
+            },
+            {
+              "file": "plugin/lib/qa-inputs.sh",
+              "sha256": "aa6fd18282c70d88fb2b3cbe02c99b24c68565943d5dd6d7b10903d30069c8e8"
+            },
+            {
+              "file": "plugin/lib/slots.sh",
+              "sha256": "6bd5ef1b8cc8288c160314cbe590ceb1975691d4eb12b940620233d8c37c6c6d"
+            }
+          ]
+        },
+        {
+          "rule": {
+            "req": "R299",
+            "k": 5
+          },
+          "what": "slots_say never says a wait",
+          "files": [
+            "plugin/lib/slots.sh"
+          ],
+          "checks": {
+            "C690": "red"
+          },
+          "result": "red",
+          "at": "2026-11-11T14:46:51Z",
+          "head": "e7ada0692d0d1892d44f951d384fd5d3def04bd5",
+          "tree": "e18a98a7da8abf9536340d648b0d0c9e2c3bfedf",
+          "contract": "0dee2cc36c195bb12ca7d58923c2abf62d7c64cacbb0c084d8a74ae23d08f7eb",
+          "digests": [
+            {
+              "file": "plugin/lib/slots.sh",
+              "sha256": "3e557652b7bf60c111916e819af162849d159c628f1debb13ff2f32a0a51884f"
+            }
+          ]
+        }
       ]
     },
     {
@@ -81562,12 +81786,96 @@
       "after": [
         "P229.2"
       ],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "plugin/lib/cmd-mutate.sh: mutate_rule_none, when no current run of the rule's check is recorded, prints before it runs the check one line naming the check and why it runs: to record which files it reads, so later proofs know which changes can reach it. With a current run it runs nothing and prints no such line.",
         "The after-run line stays truthful (it may merge into the new one; the check and the reason are said before the run).",
         "docs/proof.md: the --none paragraph shows the line. tests/mutate-rule-none.bats passes under /bin/bash."
+      ],
+      "red_runs": [
+        {
+          "at": "2026-11-11T14:14:56Z",
+          "head": "cc663c892b0cdc575cc84f5e286b727901b74e3e",
+          "first": true,
+          "checks": {
+            "C684": "red"
+          }
+        }
+      ],
+      "mutations": [
+        {
+          "rule": {
+            "req": "R295",
+            "k": 1
+          },
+          "what": "dropped the line before the run",
+          "files": [
+            "plugin/lib/cmd-mutate.sh"
+          ],
+          "checks": {
+            "C684": "red"
+          },
+          "result": "red",
+          "at": "2026-11-11T14:17:14Z",
+          "head": "87b67670019dfda5b4c21bc42fc9383cdecea7df",
+          "tree": "e47a748e646dab1411dd5198cb1b3482a01f496e",
+          "contract": "0dee2cc36c195bb12ca7d58923c2abf62d7c64cacbb0c084d8a74ae23d08f7eb",
+          "digests": [
+            {
+              "file": "plugin/lib/cmd-mutate.sh",
+              "sha256": "df170e0ba0ea88ebc7ebc3ad0716f1c63f70da9127b680723b0aea87f2ef2888"
+            }
+          ]
+        },
+        {
+          "rule": {
+            "req": "R295",
+            "k": 2
+          },
+          "what": "line printed although a run is current",
+          "files": [
+            "plugin/lib/cmd-mutate.sh"
+          ],
+          "checks": {
+            "C684": "red"
+          },
+          "result": "red",
+          "at": "2026-11-11T14:17:16Z",
+          "head": "87b67670019dfda5b4c21bc42fc9383cdecea7df",
+          "tree": "e47a748e646dab1411dd5198cb1b3482a01f496e",
+          "contract": "0dee2cc36c195bb12ca7d58923c2abf62d7c64cacbb0c084d8a74ae23d08f7eb",
+          "digests": [
+            {
+              "file": "plugin/lib/cmd-mutate.sh",
+              "sha256": "6c3c385dfb4321dc5b8f5df6a382f60aecb51d78e8562ba971b51a2a5fea0852"
+            }
+          ]
+        },
+        {
+          "rule": {
+            "req": "R295",
+            "k": 3
+          },
+          "what": "ran notice dropped",
+          "files": [
+            "plugin/lib/cmd-mutate.sh"
+          ],
+          "checks": {
+            "C684": "red"
+          },
+          "result": "red",
+          "at": "2026-11-11T14:17:19Z",
+          "head": "87b67670019dfda5b4c21bc42fc9383cdecea7df",
+          "tree": "e47a748e646dab1411dd5198cb1b3482a01f496e",
+          "contract": "0dee2cc36c195bb12ca7d58923c2abf62d7c64cacbb0c084d8a74ae23d08f7eb",
+          "digests": [
+            {
+              "file": "plugin/lib/cmd-mutate.sh",
+              "sha256": "2c9a582c97cd833f491c8fd8aca6f8bdf30fbe3152e4961a926c95b61c0fe1f4"
+            }
+          ]
+        }
       ]
     },
     {
@@ -102989,6 +103297,17 @@
         "ended": "2026-11-11T14:13:25Z",
         "cost": {
           "usd": 3.528425
+        }
+      },
+      {
+        "id": "build-20261111T141422Z",
+        "kind": "build",
+        "session": "0ee781c3-c5b6-4a6c-889f-04b89f1fba4a",
+        "milestone": "M57",
+        "started": "2026-11-11T14:14:22Z",
+        "ended": "2026-11-11T14:47:57Z",
+        "cost": {
+          "usd": 2.030544
         }
       }
     ],
