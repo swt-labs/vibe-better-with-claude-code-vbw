@@ -81764,12 +81764,163 @@
         "P229.1",
         "P229.3"
       ],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "plugin/lib/mutate-queue.sh: when a check fails on the unbroken code, mutate_queue_run removes the proof copies, ends the checks, gives back the run marker and leaves every queued break as it is; it exits non-zero naming each failing check with its status and saying how many queued breaks are kept for the next run, which runs them once the checks pass.",
         "docs/workflows.md (The mutation check): a red baseline keeps the queue; the words 'the queued breaks are dropped' go everywhere.",
         "tests/mutate-queue.bats passes under /bin/bash."
+      ],
+      "mutations": [
+        {
+          "rule": {
+            "req": "R297",
+            "k": 1
+          },
+          "what": "red baseline returns 0",
+          "files": [
+            "plugin/lib/mutate-queue.sh"
+          ],
+          "checks": {
+            "C687": "red"
+          },
+          "result": "red",
+          "at": "2026-11-11T15:13:01Z",
+          "head": "5a658b6cf6297817c9cd855c092121916376e4c3",
+          "tree": "019f177f1b189fad5c67a197e157386ed9aed518",
+          "contract": "0dee2cc36c195bb12ca7d58923c2abf62d7c64cacbb0c084d8a74ae23d08f7eb",
+          "digests": [
+            {
+              "file": "plugin/lib/mutate-queue.sh",
+              "sha256": "9d31398dc536e4aa3d5b8b366827581473bf03d1370965b2072024d53011a925"
+            }
+          ]
+        },
+        {
+          "rule": {
+            "req": "R297",
+            "k": 2
+          },
+          "what": "count omitted",
+          "files": [
+            "plugin/lib/mutate-queue.sh"
+          ],
+          "checks": {
+            "C687": "red"
+          },
+          "result": "red",
+          "at": "2026-11-11T15:13:04Z",
+          "head": "5a658b6cf6297817c9cd855c092121916376e4c3",
+          "tree": "019f177f1b189fad5c67a197e157386ed9aed518",
+          "contract": "0dee2cc36c195bb12ca7d58923c2abf62d7c64cacbb0c084d8a74ae23d08f7eb",
+          "digests": [
+            {
+              "file": "plugin/lib/mutate-queue.sh",
+              "sha256": "436e7307f460538461671cd030a234e3fbc400d0dfe7e48d9c8f399c2fef9b3e"
+            }
+          ]
+        },
+        {
+          "rule": {
+            "req": "R297",
+            "k": 3
+          },
+          "what": "queue removed on red",
+          "files": [
+            "plugin/lib/mutate-queue.sh"
+          ],
+          "checks": {
+            "C687": "red"
+          },
+          "result": "red",
+          "at": "2026-11-11T15:13:07Z",
+          "head": "5a658b6cf6297817c9cd855c092121916376e4c3",
+          "tree": "019f177f1b189fad5c67a197e157386ed9aed518",
+          "contract": "0dee2cc36c195bb12ca7d58923c2abf62d7c64cacbb0c084d8a74ae23d08f7eb",
+          "digests": [
+            {
+              "file": "plugin/lib/mutate-queue.sh",
+              "sha256": "8cacaf36288b2afbee845590ba027f3271e6499256f2107ed18e018404e64100"
+            }
+          ]
+        },
+        {
+          "rule": {
+            "req": "R297",
+            "k": 5
+          },
+          "what": "dropped wording back",
+          "files": [
+            "plugin/lib/mutate-queue.sh"
+          ],
+          "checks": {
+            "C687": "red"
+          },
+          "result": "red",
+          "at": "2026-11-11T15:13:09Z",
+          "head": "5a658b6cf6297817c9cd855c092121916376e4c3",
+          "tree": "019f177f1b189fad5c67a197e157386ed9aed518",
+          "contract": "0dee2cc36c195bb12ca7d58923c2abf62d7c64cacbb0c084d8a74ae23d08f7eb",
+          "digests": [
+            {
+              "file": "plugin/lib/mutate-queue.sh",
+              "sha256": "91bd628a59c58ee755c7bd29f9405fb361b19c4dacbacc0acaab1d9baa5b0c84"
+            }
+          ]
+        },
+        {
+          "rule": {
+            "req": "R297",
+            "k": 4
+          },
+          "what": "first kept break removed",
+          "files": [
+            "plugin/lib/mutate-queue.sh"
+          ],
+          "checks": {
+            "C687": "red"
+          },
+          "result": "red",
+          "at": "2026-11-11T15:13:12Z",
+          "head": "5a658b6cf6297817c9cd855c092121916376e4c3",
+          "tree": "019f177f1b189fad5c67a197e157386ed9aed518",
+          "contract": "0dee2cc36c195bb12ca7d58923c2abf62d7c64cacbb0c084d8a74ae23d08f7eb",
+          "digests": [
+            {
+              "file": "plugin/lib/mutate-queue.sh",
+              "sha256": "1069491c5cd731db0f2b7269e1b73a1c332dbfcc25685378b56a9c4a19a687ec"
+            }
+          ]
+        },
+        {
+          "rule": {
+            "req": "R297",
+            "k": 5
+          },
+          "what": "dropped wording back, alone",
+          "files": [
+            "plugin/lib/mutate-queue.sh"
+          ],
+          "checks": {
+            "C687": "red"
+          },
+          "result": "red",
+          "at": "2026-11-11T15:13:14Z",
+          "head": "5a658b6cf6297817c9cd855c092121916376e4c3",
+          "tree": "019f177f1b189fad5c67a197e157386ed9aed518",
+          "contract": "0dee2cc36c195bb12ca7d58923c2abf62d7c64cacbb0c084d8a74ae23d08f7eb",
+          "digests": [
+            {
+              "file": "plugin/lib/mutate-queue.sh",
+              "sha256": "acbb6d6c45a8232d71e293187fc46c7dd3dbb08b49e175a209a2106bd91a0c41"
+            }
+          ]
+        },
+        {
+          "task": 2,
+          "none": "docs wording is judged by the R297 wording case, which reads the docs",
+          "at": "2026-11-11T15:13:23Z"
+        }
       ]
     },
     {
@@ -82352,6 +82503,49 @@
           "task": 3,
           "none": "task 3 is running the file under /bin/bash; it builds no code",
           "at": "2026-11-11T14:06:37Z"
+        },
+        {
+          "rule": {
+            "req": "R300",
+            "k": 1
+          },
+          "what": "added an ls -di inode helper",
+          "files": [
+            "tests/proofcopy-keep.bats"
+          ],
+          "checks": {
+            "C691": "red"
+          },
+          "result": "red",
+          "at": "2026-11-11T15:17:19Z",
+          "head": "59f013d8874b85e67b9d929be6b309754fd59166",
+          "tree": "8967855a713aedf10f4e32cfef43f5638d86aa50",
+          "contract": "0dee2cc36c195bb12ca7d58923c2abf62d7c64cacbb0c084d8a74ae23d08f7eb",
+          "digests": [
+            {
+              "file": "tests/proofcopy-keep.bats",
+              "sha256": "6e201a80044651338a63a31112646878300d55b3031660fece0aeffd6ee3bea9"
+            }
+          ]
+        },
+        {
+          "rule": {
+            "req": "R300",
+            "k": 2
+          },
+          "none": "C692 reads only tests/guard-record-path.bats and docs/guards.md, which this plan does not build",
+          "at": "2026-11-11T15:17:45Z",
+          "head": "59f013d8874b85e67b9d929be6b309754fd59166"
+        },
+        {
+          "task": 2,
+          "none": "AGENTS.md is a prose rule; no check reads it",
+          "at": "2026-11-11T15:17:48Z"
+        },
+        {
+          "task": 3,
+          "none": "task 3 is running the file under /bin/bash; it builds no code",
+          "at": "2026-11-11T15:17:50Z"
         }
       ]
     }
@@ -91697,6 +91891,12 @@
         "P231.2",
         "P231.3"
       ]
+    },
+    {
+      "id": "D698",
+      "text": "P231.3 is built again: its hard-link mark breaks two kept-copy cases. ln of the copy's node_modules/other/keep.js to .vbw/runtime/keep.mark changes that file's change time, which the copy refresh reads (find -newercm) as a unit's write, so cases 3 and 5 of tests/proofcopy-keep.bats fail on macOS (the old file passes against today's kernel). Judge 'copied again' and 'made again' by change time instead: after the first proof make a reference file in $TEST_ROOT and wait without sleeping until the clock has moved past it (as proofcopy_tick does); after the next proof an entry copied again is strictly newer than the reference (find PATH -newercm REF prints it) and an untouched one is not. Never mark the copy's own entries (ln, an xattr or a write all change their change time). Bring back case 2's check that the claimed copy was not made again, judged the same way if the folder's change time stays put on a claim, else say in a comment why the counts suffice. Correct the CLAUDE.md and AGENTS.md line to match: a reference made before and find -newercm, never a hard link or a mark on the entry",
+      "why": "The mark changed what it measured; change time is what the refresh itself reads, and a new file cannot inherit an older change time on any file system",
+      "at": "2026-11-11T15:07:01Z"
     }
   ],
   "commands": {
@@ -103308,6 +103508,17 @@
         "ended": "2026-11-11T14:47:57Z",
         "cost": {
           "usd": 2.030544
+        }
+      },
+      {
+        "id": "build-20261111T150716Z",
+        "kind": "build",
+        "session": "0ee781c3-c5b6-4a6c-889f-04b89f1fba4a",
+        "milestone": "M57",
+        "started": "2026-11-11T15:07:16Z",
+        "ended": "2026-11-11T15:18:28Z",
+        "cost": {
+          "usd": 1.265151
         }
       }
     ],
