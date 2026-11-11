@@ -87989,6 +87989,13 @@
       "sort": "next",
       "size": "medium",
       "status": "open"
+    },
+    {
+      "id": "T289",
+      "text": "A test file that checks run only with a filter is never run whole by the proof (2026-11-11, 2.1.30 release): tests/standards.bats is named by C570, C645 and C691, each with bats --filter, and the proof's test-file units leave it out (no tests/standards.bats unit in the three M57 proofs), so its shellcheck case never ran and a SC1007 warning from P229.2 reached the release check (fixed, D703). Run the rest of such a file as a project-command unit (or the whole file), so every case of a test file runs in some proof",
+      "sort": "next",
+      "size": "medium",
+      "status": "open"
     }
   ],
   "decisions": [
@@ -92058,6 +92065,12 @@
       "id": "D702",
       "at": "2026-11-11T19:26:36Z",
       "text": "Shipped M57 Quick wins: one plan done at a time, check files caught at planning, breaks kept, agents keep ToolSearch: 8 requirements proven or accepted"
+    },
+    {
+      "id": "D703",
+      "text": "Quick fix: quoted empty locals in checks_gate_blocker (shellcheck SC1007), in plugin/lib/checks.sh",
+      "why": "found by tests/standards.bats at the 2.1.30 release check; the proofs never ran that test because checks run it only with a filter (T289)",
+      "at": "2026-11-11T19:34:45Z"
     }
   ],
   "commands": {
