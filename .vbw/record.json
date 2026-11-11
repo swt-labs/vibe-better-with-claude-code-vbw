@@ -86046,7 +86046,7 @@
       "id": "F444",
       "req": "R149",
       "attempts": 0,
-      "status": "open",
+      "status": "fixed",
       "note": "C217 fail (exit 1), C221 fail (exit 1)"
     },
     {
@@ -86095,7 +86095,7 @@
       "id": "F451",
       "command": "test",
       "attempts": 0,
-      "status": "open",
+      "status": "fixed",
       "note": "test fail"
     }
   ],
@@ -103717,6 +103717,17 @@
         "ended": "2026-11-11T15:18:28Z",
         "cost": {
           "usd": 1.265151
+        }
+      },
+      {
+        "id": "fix-20261111T164745Z",
+        "kind": "fix",
+        "session": "0ee781c3-c5b6-4a6c-889f-04b89f1fba4a",
+        "milestone": "M57",
+        "started": "2026-11-11T16:47:45Z",
+        "ended": "2026-11-11T18:00:20Z",
+        "cost": {
+          "usd": 1.987953
         }
       }
     ],
