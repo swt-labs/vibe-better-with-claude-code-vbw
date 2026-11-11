@@ -314,7 +314,7 @@ slots_lose() {
 # since HH:MM' (SINCE: epoch seconds; local time), on stderr (R288).
 vbw_wait_say() {
   local t msg
-  t=$(date -r "$2" +%H:%M 2> /dev/null) || t=$(date -d "@$2" +%H:%M 2> /dev/null) || t=$(date +%H:%M)
+  t=$(vbw_hhmm "$2")
   msg="waiting for $1 since $t"
   printf '%s\n' "$msg" >&2
 }

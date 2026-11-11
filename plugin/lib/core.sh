@@ -584,6 +584,14 @@ vbw_mtime() {
   vbw_out '%s\n' "$t"
 }
 
+# vbw_hhmm EPOCH: the local HH:MM of a moment (the current time when it cannot be read), the
+# one way every wait and refusal of the kernel says a time (the date -r and date -d forms).
+vbw_hhmm() {
+  local t
+  t=$(date -r "$1" +%H:%M 2> /dev/null) || t=$(date -d "@$1" +%H:%M 2> /dev/null) || t=$(date +%H:%M)
+  vbw_out '%s\n' "$t"
+}
+
 # vbw_mtime_newest DIR: the newest modification time (epoch seconds) of the files
 # under DIR, links not followed (0 when none can be read). One pass: find hands
 # stat many paths per call, in the flavour vbw_mtime uses (GNU first), so a tree of
