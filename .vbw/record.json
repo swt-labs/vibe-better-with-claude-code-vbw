@@ -86546,7 +86546,7 @@
       "text": "tests/step-ladder.bats R191 cases 'rung 1' and 'vbw run start says the step with the same expected time' read the real clock (2026-11-09, PR #752 CI): run at 23:57 UTC, the 8 min estimate ends after midnight, the kernel rightly says 'until around tomorrow 00:05', and the test's regex has no day word, so both fail in the minutes before midnight on any OS. Inject the clock (as the hermetic-test rule asks) so the cases never depend on the time of day",
       "sort": "next",
       "size": "small",
-      "status": "open"
+      "status": "done"
     },
     {
       "id": "T273",
