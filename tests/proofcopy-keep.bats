@@ -81,9 +81,23 @@ teardown() {
 teardown_file() { fixture_teardown; }
 
 slot() { printf '.vbw/runtime/proof.keep.%s\n' "$1"; }
-# mark FILE: keep a second name of FILE outside the copy. A file that is still the same entry
-# is -ef the mark; one copied again is a new file and is not, whatever number the file system gives it.
-mark() { ln "$1" .vbw/runtime/keep.mark; }
+# mark: make a reference file now and wait, without sleeping, until the clock has moved past its
+# change time. After the next proof, an entry copied again is strictly newer than the reference
+# (find -newercm, the test the refresh itself uses) and an untouched one is not; a new file cannot
+# inherit an older change time on any file system. Never mark the copy's own entries: a link, an
+# attribute or a write changes their change time.
+mark() {
+  local i=0
+  : > "$TEST_ROOT/ref"
+  : > "$TEST_ROOT/ref.tick"
+  while [ -z "$(find "$TEST_ROOT/ref.tick" -newercm "$TEST_ROOT/ref" -print)" ] && [ "$i" -lt 5000 ]; do
+    : > "$TEST_ROOT/ref.tick"
+    i=$((i + 1))
+  done
+  rm -f "$TEST_ROOT/ref.tick"
+}
+# copied_again PATH: succeeds when PATH was written after the reference of mark.
+copied_again() { [ -n "$(find "$1" -newercm "$TEST_ROOT/ref" -print -quit)" ]; }
 # counts: what the last proof did with its copies.
 counts() { jq -c '.evidence.own.copy_slots | {claimed, refreshed, made}' .vbw/record.json; }
 # bump TEXT: commit a change to the file C1 reads, so the next proof runs it.
@@ -137,6 +151,8 @@ add_sub() {
   git worktree list --porcelain | grep -qF "/proof.keep.1/tree" || { git worktree list; false; }
   bump two
   prove_ok
+  # The claimed copy was not made again: made is 0. A folder's change time is no judge here, as a
+  # claim may rewrite entries in it on some file systems.
   [ "$(counts)" = '{"claimed":1,"refreshed":0,"made":0}' ] || { counts; false; }
   [ ! -e "$(slot 2)" ] || { ls .vbw/runtime; false; }
   prove_ok --full
@@ -162,7 +178,7 @@ add_sub() {
 
 @test "#738: ignored paths added, edited, renamed and deleted are brought up to date, and only they are copied again; a newly listed or no longer ignored path leaves the copy; the copy equals a fresh one" {
   prove_ok
-  mark "$(slot 1)/tree/node_modules/other/keep.js"
+  mark
   printf 'new\n' > node_modules/pkg/new.js
   # An edit that keeps an old modification time is still seen.
   printf 'v2\n' > node_modules/pkg/index.js
@@ -185,7 +201,7 @@ add_sub() {
   [ -f "$t/node_modules/pkg/b.js" ] && [ ! -e "$t/node_modules/pkg/a.js" ] && [ ! -e "$t/node_modules/pkg/gone.js" ] || { ls -la "$t/node_modules/pkg"; false; }
   [ ! -e "$t/cache" ] || { echo "the listed cache/ is still in the copy"; false; }
   [ ! -e "$t/.env" ] || { echo ".env, no longer ignored, is still in the copy"; false; }
-  [ "$t/node_modules/other/keep.js" -ef .vbw/runtime/keep.mark ] || { echo "an unchanged file of node_modules was copied again"; false; }
+  ! copied_again "$t/node_modules/other/keep.js" || { echo "an unchanged file of node_modules was copied again"; false; }
   local kept
   kept=$(snap "$t")
   prove_ok --full
@@ -211,7 +227,7 @@ add_sub() {
 @test "#738: what a unit wrote (a build folder, a stray file, a file in a kept ignored folder, an edited or deleted one there, an edited tracked file) is undone when the next command claims the copy, and nothing else is copied again" {
   WRITE=1 prove_ok
   [ -f "$(slot 1)/tree/dist/out" ] && [ -f "$(slot 1)/tree/node_modules/.cache/x" ] && [ ! -e "$(slot 1)/tree/node_modules/pkg/gone.js" ] || { echo "the unit wrote nothing"; false; }
-  mark "$(slot 1)/tree/node_modules/other/keep.js"
+  mark
   bump two
   prove_ok
   local t
@@ -221,16 +237,16 @@ add_sub() {
   [ "$(cat "$t/src/pay.txt")" = "$(printf 'paid\ntwo')" ] || { cat "$t/src/pay.txt"; false; }
   [ "$(cat "$t/node_modules/pkg/index.js")" = v1 ] && [ "$(cat "$t/node_modules/pkg/a.js")" = a ] && [ "$(cat "$t/node_modules/pkg/gone.js")" = gone ] \
     || { ls -la "$t/node_modules/pkg"; false; }
-  [ "$t/node_modules/other/keep.js" -ef .vbw/runtime/keep.mark ] || { echo "an unchanged file of node_modules was copied again"; false; }
+  ! copied_again "$t/node_modules/other/keep.js" || { echo "an unchanged file of node_modules was copied again"; false; }
   [ "$(counts)" = '{"claimed":1,"refreshed":1,"made":0}' ] || { counts; false; }
 }
 
 @test "#738: when a unit wrote into most of a kept ignored path, the path is copied again whole, as cloning it costs less than entry by entry" {
   WRITE=most prove_ok
-  mark "$(slot 1)/tree/node_modules/other/keep.js"
+  mark
   bump two
   prove_ok
-  [ ! "$(slot 1)/tree/node_modules/other/keep.js" -ef .vbw/runtime/keep.mark ] || { echo "node_modules was brought up to date entry by entry"; false; }
+  copied_again "$(slot 1)/tree/node_modules/other/keep.js" || { echo "node_modules was brought up to date entry by entry"; false; }
   [ "$(cat "$(slot 1)/tree/node_modules/big/f7.js")" = 7 ] && [ "$(cat "$(slot 1)/tree/node_modules/pkg/a.js")" = a ] || { echo "the unit's writes are still there"; false; }
 }
 
