@@ -86539,7 +86539,7 @@
       "text": "vbw next starts about 1,300 processes on a big milestone (2026-11-09, PR #752 CI): on the big-milestone fixture one vbw next --json starts 1279 processes (599 jq, 478 sha256sum, 158 awk), mostly the per-plan loop of plugin/lib/qa-inputs.sh (about 5 jq, 3 sha256sum and 1 awk per plan). Process starts cost more on Linux and more again with Ubuntu 26.04's uutils coreutils: tests/timed-big-milestone.bats R268 failed twice on the Ubuntu 26.04 CI shard (6850 and 8774 ms CPU against about 6200 ms scaled; 2.1.28 merged over it on the owner's word). Build the per-plan fingerprints in one jq pass and one batch hash, as plugin/lib/proofreuse.sh already does, so the count no longer grows with the plans; then 2.1.29's changelog states the Linux figure",
       "sort": "next",
       "size": "medium",
-      "status": "open"
+      "status": "done"
     },
     {
       "id": "T272",
