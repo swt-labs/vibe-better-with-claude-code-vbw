@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+[ -z "${VBW_LOADED_SLOTS:-}" ] || return 0 # load once per process (R299)
+VBW_LOADED_SLOTS=1
 # The computer-wide slot store (R181, docs/proof.md). Every unit of vbw prove,
 # vbw fix done and vbw check (a check, a project command, a test file) takes one
 # slot for as long as its command runs, so all VBW runs on a computer, in every

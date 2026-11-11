@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+[ -z "${VBW_LOADED_CORE:-}" ] || return 0 # load once per process (R299)
+VBW_LOADED_CORE=1
 # Shared helpers for the vbw kernel. Sourced by bin/vbw; never executed alone.
 # Exit codes: 0 ok, 1 error, 2 usage, 3 corrupt record, 4 record written by a newer VBW.
 

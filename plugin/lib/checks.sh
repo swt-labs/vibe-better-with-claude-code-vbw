@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+[ -z "${VBW_LOADED_CHECKS:-}" ] || return 0 # load once per process (R299)
+VBW_LOADED_CHECKS=1
 # Running approved checks and commands (docs/proof.md), shared by vbw check and
 # vbw prove. Nothing runs unless the current contract is approved; every argv
 # is executed directly, never through a shell, with stdin closed and a timeout.
