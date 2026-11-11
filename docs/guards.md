@@ -363,8 +363,8 @@ vbw config set mcp default
 - `SERVER:read-only=TOOL,TOOL` marks a mixed server's read-only tools, by the
   names `/mcp` shows. Its other tools stay with the writing roles.
 - `default` removes the setting. `vbw config` shows it as you set it, or
-  `mcp: none`. With no setting every agent has exactly the tools it has
-  today, and every MCP call is refused.
+  `mcp: none`. With no setting every agent keeps only its role's built-in
+  tools, and every MCP call is refused.
 
 **Who gets what.** Dev, Debugger and Docs get every named tool. Architect, Lead,
 Scout and QA get a tool only when you marked it read-only, never by a guess from
@@ -378,9 +378,13 @@ tool is not marked read-only.
 
 **Every tool, not only MCP tools.** VBW's agents inherit the session's tools (no
 `tools:` list); each role's `disallowedTools` hides the built-ins it must not have.
+Every role keeps `ToolSearch`: it loads only tools the role already has, and
+without it Claude Code would load every MCP tool's description into each agent
+up front instead of on demand.
 The tools guard is one PreToolUse entry with no matcher, so it sees
 every tool a VBW agent calls. It lets through the role's own built-ins, the MCP
-tools the setting opens to the role, and the tools Claude Code gives every agent.
+tools the setting opens to the role, and the tools Claude Code gives every agent
+(`advisor` among them when you set an advisor model).
 Any other tool is refused: another role's built-in, or one VBW does not know, such as
 one a Claude Code update adds. The refusal names the tool, the role and a next step. The main
 session is never judged and pays one small jq per tool call.

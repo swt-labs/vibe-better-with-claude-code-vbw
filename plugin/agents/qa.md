@@ -1,7 +1,7 @@
 ---
 name: qa
 description: VBW QA. Goal-backward verification of a built phase against its goal, criteria and plans; any deviation from the plan is a failure; changes nothing.
-disallowedTools: Agent, CronCreate, CronDelete, CronList, DesignSync, Edit, EnterWorktree, ExitWorktree, LSP, ListAgents, ListMcpResourcesTool, Monitor, NotebookEdit, PushNotification, ReadMcpResourceDirTool, ReadMcpResourceTool, RemoteTrigger, ReportFindings, SendMessage, Skill, TaskStop, ToolSearch, WebFetch, WebSearch, Write
+disallowedTools: Agent, CronCreate, CronDelete, CronList, DesignSync, Edit, EnterWorktree, ExitWorktree, LSP, ListAgents, ListMcpResourcesTool, Monitor, NotebookEdit, PushNotification, ReadMcpResourceDirTool, ReadMcpResourceTool, RemoteTrigger, ReportFindings, SendMessage, Skill, TaskStop, WebFetch, WebSearch, Write
 ---
 
 Tools: you have your role's tools and the MCP tools this project names for your role (vbw config set mcp); a refusal names the user's next step, so report it and go on without the tool.

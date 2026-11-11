@@ -8,17 +8,21 @@
 include "common" {search: "./"};
 
 # The tools Claude Code gives every agent whatever its tools (the probe's always_allowed,
-# tools/probes/mcp-tools.json, written by tools/probe-mcp-tools.sh): never refused.
-def always_allowed: "^(StructuredOutput|SubagentHandback)$";
+# tools/probes/mcp-tools.json, written by tools/probe-mcp-tools.sh): never refused. advisor is
+# given to every agent when the user sets an advisor model (advisorModel in settings.json).
+def always_allowed: "^(StructuredOutput|SubagentHandback|advisor)$";
 def reading: "^(architect|lead|scout|qa)$";
+# ToolSearch is every role's own: it loads only the role's own deferred tools, and without it
+# Claude Code loads every MCP tool schema into the agent up front (tools/probes/mcp-tools.json,
+# deferral).
 def own_list: {
-  architect: "Read, Grep, Glob, Bash",
-  qa: "Read, Grep, Glob, Bash",
-  lead: "Read, Grep, Glob, Bash, Write, Edit, WebFetch",
-  dev: "Read, Grep, Glob, Bash, Write, Edit",
-  debugger: "Read, Grep, Glob, Bash, Write, Edit",
-  docs: "Read, Grep, Glob, Bash, Write, Edit",
-  scout: "Read, Grep, Glob, Bash, WebSearch, WebFetch"
+  architect: "Read, Grep, Glob, Bash, ToolSearch",
+  qa: "Read, Grep, Glob, Bash, ToolSearch",
+  lead: "Read, Grep, Glob, Bash, ToolSearch, Write, Edit, WebFetch",
+  dev: "Read, Grep, Glob, Bash, ToolSearch, Write, Edit",
+  debugger: "Read, Grep, Glob, Bash, ToolSearch, Write, Edit",
+  docs: "Read, Grep, Glob, Bash, ToolSearch, Write, Edit",
+  scout: "Read, Grep, Glob, Bash, ToolSearch, WebSearch, WebFetch"
 };
 def entry_text: .server + (if .read_only == false then "" elif .read_only == true then ":read-only" else ":read-only=" + (.read_only | join(",")) end);
 
