@@ -94,6 +94,7 @@ $missing"
       step_plan_done
       [ -z "$red_line" ] || printf '%s\n' "$red_line"
       vbw_guard_drop "$VBW_RUNTIME/plan-done/$id.pid"
+      rmdir "$VBW_RUNTIME/plan-done" 2> /dev/null || true
       printf '%s done\n' "$id"
       slots_say
       ;;
