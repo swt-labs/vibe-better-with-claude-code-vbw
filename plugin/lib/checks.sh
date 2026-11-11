@@ -255,7 +255,7 @@ checks_gate_live() {
 # limit in $2 (empty: no limit): it prints one live registration of another
 # process (R294), or "-" when all are this process's own.
 checks_gate_blocker() {
-  local kind="$1" limit="${2:-}" f id pid n=0 held other=
+  local kind="$1" limit="${2:-}" f id pid n=0 held other= ownb=
   for f in "$VBW_RUNTIME"/gate/reg.* "$VBW_RUNTIME"/gate/want.*; do
     [ -e "$f" ] || continue
     checks_gate_live "$f" || { rm -f "$f"; continue; }
@@ -276,13 +276,16 @@ checks_gate_blocker() {
         fi
         ;;
     esac
+    # Another command's blocker is the one to name; this process's own is the last resort.
+    [ "$pid" != "$$" ] || { [ -n "$ownb" ] || ownb="$id $pid"; continue; }
     printf '%s %s\n' "$id" "$pid"
     return 0
   done
   if [ "$kind" = shared ] && [ -n "$limit" ] && [ "$n" -ge "$limit" ]; then
-    printf '%s\n' "${other:--}"
+    printf '%s\n' "${other:-${ownb:--}}"
     return 0
   fi
+  [ -z "$ownb" ] || { printf '%s\n' "$ownb"; return 0; }
   return 1
 }
 
@@ -292,22 +295,6 @@ checks_gate_foreign() {
   for f in "$1"/reg.* "$1"/want.*; do
     [ -e "$f" ] || continue
     case "${f##*/}" in "reg.$$."* | "want.$$."*) ;; *) return 0 ;; esac
-  done
-  return 1
-}
-
-# checks_gate_foreign_name DIR: "ID PID" of the first live registration or want of another process.
-checks_gate_foreign_name() {
-  local f pid
-  for f in "$1"/reg.* "$1"/want.*; do
-    [ -e "$f" ] || continue
-    checks_gate_live "$f" || continue
-    pid="${f##*/}"
-    pid="${pid#*.}"
-    pid="${pid%%.*}"
-    [ "$pid" != "$$" ] || continue
-    printf '%s %s\n' "${f##*.}" "$pid"
-    return 0
   done
   return 1
 }
@@ -336,7 +323,7 @@ checks_gate_enter() {
         if [ -z "$since" ] && checks_gate_foreign "$g"; then
           since=$(date +%s)
           case "$blocker" in
-            - | *" $$") blocker=$(checks_gate_foreign_name "$g") || blocker= ;;
+            - | *" $$") blocker= ;;
           esac
           if [ -n "$blocker" ]; then
             vbw_wait_say "another VBW command's check ${blocker% *} (pid ${blocker##* }) in this project" "$since"
