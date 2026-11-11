@@ -30,7 +30,9 @@ setup() {
   # With $BAR/on, a run on broken code waits (up to 10 s) until a second one is under
   # way, and says whether it saw it: the breaks ran side by side. With $BAR/hold, a run
   # on broken code names itself in $BAR and waits (up to 30 s) for $BAR/go.
+  # With $BAR/red, every run fails, broken or not, as when the project's own heavy-job lane is busy (R297).
   cat > tests/pay.sh <<EOF
+[ ! -f "$BAR/red" ] || { echo "the heavy-job lane is busy" >&2; exit 1; }
 out=\$(sh src/pay.sh)
 echo run >> "$LOG"
 cat "$MARKER" >> "$MARK" 2> /dev/null || true
@@ -326,4 +328,52 @@ started() { [ "$(ls "$BAR" | grep -c '^[0-9]')" -ge 1 ]; }
   printf '%s' "$sec" | grep -qiE 'refus[^.]{0,200}same plan' || { echo "the refusal of a second run of the same plan is not documented"; false; }
   printf '%s' "$sec" | grep -qiE 'dead|no longer runs|ended' || { echo "the dead-marker takeover is not documented"; false; }
   printf '%s' "$sec" | grep -qi 'background' || { echo "the background advice is not documented"; false; }
+}
+
+# R297 (field report 2026-11-11): a red baseline keeps the queued breaks. When a check the
+# breaks need fails on the unbroken code (here as when the project's own heavy-job lane is
+# busy), vbw mutate PLAN --run exits non-zero naming each failing check and its status, says
+# the queued breaks are kept for the next run and how many, and leaves every queued break as
+# it was; the run marker is given back and the proof copies are removed. Once the checks pass
+# again, the next --run runs every kept break, with nothing queued again.
+
+# queue_sum: a digest of every file under the plan's queue folder but the run marker.
+queue_sum() { find .vbw/runtime/mutate-queue/P1.1 -type f ! -name run.pid -print0 | LC_ALL=C sort -z | xargs -0 shasum | shasum; }
+
+@test "R297: a check red on the unbroken code stops --run naming the check and its status, says how many queued breaks are kept, and keeps each as it was; no marker or copy is left" {
+  queue R1.1 "prints unpaid" 'echo unpaid'
+  queue R1.2 "prints more than paid" 'echo paid; echo more'
+  git checkout -q -- src/pay.sh
+  local before
+  before=$(queue_sum)
+  touch "$BAR/red"
+  run "$VBW" mutate P1.1 --run < /dev/null
+  [ "$status" -ne 0 ] || { echo "$output"; false; }
+  [[ "$output" == *"C1 fail"* ]] || { echo "the failing check and its status are not named: $output"; false; }
+  printf '%s\n' "$output" | grep -qiE '2 queued breaks[^.]*kept|kept[^.]*2 queued breaks' || { echo "does not say the 2 queued breaks are kept: $output"; false; }
+  printf '%s\n' "$output" | grep -qi 'next run' || { echo "does not say they are kept for the next run: $output"; false; }
+  [[ "$output" != *"dropped"* ]] || { echo "$output"; false; }
+  [ "$(queue_entries | wc -l | tr -d ' ')" -eq 2 ] || { ls -R .vbw/runtime/mutate-queue; false; }
+  [ "$(queue_sum)" = "$before" ] || { echo "a queued break changed"; ls -R .vbw/runtime/mutate-queue; false; }
+  [ ! -e "$MARKER" ] || { echo "the run marker was not given back"; false; }
+  [ -z "$(ls -d .vbw/runtime/proof.* 2> /dev/null)" ] || { echo "proof copies are left"; ls .vbw/runtime; false; }
+  [ "$(breaks)" = '[]' ] || { breaks; false; }
+}
+
+@test "R297: once the checks pass again, the next --run runs every kept break without queueing any again" {
+  queue R1.1 "prints unpaid" 'echo unpaid'
+  queue R1.2 "prints more than paid" 'echo paid; echo more'
+  git checkout -q -- src/pay.sh
+  touch "$BAR/red"
+  run "$VBW" mutate P1.1 --run < /dev/null
+  [ "$status" -ne 0 ] || { echo "$output"; false; }
+  rm -f "$BAR/red"
+  run "$VBW" mutate P1.1 --run < /dev/null
+  [ "$status" -eq 0 ] || { echo "$output"; false; }
+  breaks | jq -e '. == [{t: "R1.1", r: "red", c: {C1: "red"}}, {t: "R1.2", r: "red", c: {C1: "red"}}]' || { breaks; false; }
+  [ -z "$(queue_entries)" ] || { ls -R .vbw/runtime/mutate-queue; false; }
+}
+
+@test "R297 wording: no kernel message or document says a red baseline drops the queued breaks" {
+  ! grep -rnF 'the queued breaks are dropped' "$PLUGIN_ROOT" "$REPO_ROOT/docs" || false
 }

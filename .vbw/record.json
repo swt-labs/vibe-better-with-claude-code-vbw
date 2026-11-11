@@ -208,6 +208,7 @@
     "tests/legacy-interview.bats",
     "tests/legacy-review-linux.bats",
     "tests/legacy-review.bats",
+    "tests/lib-load-once.bats",
     "tests/lock-exclusive.bats",
     "tests/loop-approve-waits.bats",
     "tests/loop-approve.bats",
@@ -344,6 +345,7 @@
     "tests/park-ids.bats",
     "tests/plan-block-done.bats",
     "tests/plan-done-committed.bats",
+    "tests/plan-run-once.bats",
     "tests/plan-scope.bats",
     "tests/planning-number.bats",
     "tests/plugindir-bench.bats",
@@ -9169,6 +9171,156 @@
       ],
       "files": [
         "tests/next-processes.bats"
+      ]
+    },
+    {
+      "id": "C682",
+      "req": "R293",
+      "run": [
+        "bats",
+        "--print-output-on-failure",
+        "tests/plan-run-once.bats"
+      ],
+      "files": [
+        "tests/plan-run-once.bats"
+      ]
+    },
+    {
+      "id": "C683",
+      "req": "R294",
+      "run": [
+        "bats",
+        "--print-output-on-failure",
+        "--filter",
+        "R294",
+        "tests/gate-race.bats"
+      ],
+      "files": [
+        "tests/gate-race.bats"
+      ]
+    },
+    {
+      "id": "C684",
+      "req": "R295",
+      "run": [
+        "bats",
+        "--print-output-on-failure",
+        "--filter",
+        "R295",
+        "tests/mutate-rule-none.bats"
+      ],
+      "files": [
+        "tests/mutate-rule-none.bats"
+      ]
+    },
+    {
+      "id": "C685",
+      "req": "R296",
+      "run": [
+        "bats",
+        "--print-output-on-failure",
+        "--filter",
+        "R296",
+        "tests/apply-refusal-modes.bats"
+      ],
+      "files": [
+        "tests/apply-refusal-modes.bats"
+      ]
+    },
+    {
+      "id": "C686",
+      "req": "R296",
+      "run": [
+        "bats",
+        "--print-output-on-failure",
+        "--filter",
+        "R296",
+        "tests/amend.bats"
+      ],
+      "files": [
+        "tests/amend.bats"
+      ]
+    },
+    {
+      "id": "C687",
+      "req": "R297",
+      "run": [
+        "bats",
+        "--print-output-on-failure",
+        "--filter",
+        "R297",
+        "tests/mutate-queue.bats"
+      ],
+      "files": [
+        "tests/mutate-queue.bats"
+      ]
+    },
+    {
+      "id": "C688",
+      "req": "R298",
+      "run": [
+        "bats",
+        "--print-output-on-failure",
+        "--filter",
+        "R298",
+        "tests/commit-failed.bats"
+      ],
+      "files": [
+        "tests/commit-failed.bats"
+      ]
+    },
+    {
+      "id": "C689",
+      "req": "R299",
+      "run": [
+        "bats",
+        "--print-output-on-failure",
+        "tests/lib-load-once.bats"
+      ],
+      "files": [
+        "tests/lib-load-once.bats"
+      ]
+    },
+    {
+      "id": "C690",
+      "req": "R299",
+      "run": [
+        "bats",
+        "--print-output-on-failure",
+        "--filter",
+        "R299|F441",
+        "tests/machine-wait-line.bats"
+      ],
+      "files": [
+        "tests/machine-wait-line.bats"
+      ]
+    },
+    {
+      "id": "C691",
+      "req": "R300",
+      "run": [
+        "bats",
+        "--print-output-on-failure",
+        "--filter",
+        "R300",
+        "tests/standards.bats"
+      ],
+      "files": [
+        "tests/standards.bats"
+      ]
+    },
+    {
+      "id": "C692",
+      "req": "R300",
+      "run": [
+        "bats",
+        "--print-output-on-failure",
+        "--filter",
+        "R300",
+        "tests/guard-record-path.bats"
+      ],
+      "files": [
+        "tests/guard-record-path.bats"
       ]
     }
   ],
@@ -19996,9 +20148,9 @@
     },
     {
       "id": "R241",
-      "text": "A project can name the MCP servers whose tools VBW's agents may use, in one documented place (docs/ says where and how); a project that names none gives every VBW agent exactly the tools it has today. The mechanism is chosen from a recorded probe of how Claude Code resolves a plugin agent's tools with mcp__ names and wildcards (#694, T207)",
+      "text": "A project can name the MCP servers whose tools VBW's agents may use, in one documented place (docs/ says where and how); a project that names none gives every VBW agent only its role's built-in tools and no MCP tool. Every role keeps ToolSearch, so Claude Code loads an MCP tool's description only when the agent looks it up, never every one in the agent's first turn, and the tools guard never refuses the tools Claude Code gives every agent, advisor among them (#753, PR #754). The mechanism is chosen from a recorded probe of how Claude Code resolves a plugin agent's tools with mcp__ names and wildcards (#694, T207)",
       "proof": "auto",
-      "status": "proven",
+      "status": "open",
       "milestone": "M49",
       "rules": [
         {
@@ -20092,7 +20244,8 @@
           "check": "C546",
           "plan": "P192.1"
         }
-      ]
+      ],
+      "reworded": true
     },
     {
       "id": "R242",
@@ -22177,6 +22330,218 @@
           "text": "docs/workflows.md describes the Red first line, that it never refuses, and that QA judges it as a deviation",
           "check": "C672",
           "plan": "P226.4"
+        }
+      ]
+    },
+    {
+      "id": "R293",
+      "text": "One kernel run per plan at a time: while a vbw plan done of a plan runs, a second vbw plan done of the same plan refuses at once, naming the running one's process id and the time it started, and queues nothing; a second vbw mutate PLAN --run of the same plan does the same (field report 2026-11-11: an agent's repeated vbw plan done queued about 25 copies at the check gate, which starved the other plans' checks for about 4 hours)",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M57",
+      "rules": [
+        {
+          "text": "while vbw plan done P runs, a second vbw plan done P exits non-zero at once, before any check runs, and leaves no registration at the check gate",
+          "check": "C682"
+        },
+        {
+          "text": "the refusal names the running command's process id and the time it started (HH:MM, as the 'since HH:MM' wait line), with a Next: line to wait for that run and never start a second one",
+          "check": "C682"
+        },
+        {
+          "text": "while vbw mutate P --run runs, a second vbw mutate P --run refuses the same way, its refusal naming the start time too",
+          "check": "C682"
+        },
+        {
+          "text": "vbw plan done of another plan, while P runs, is not refused and runs normally",
+          "check": "C682"
+        },
+        {
+          "text": "a marker left by a process killed outright never refuses: the next vbw plan done P or vbw mutate P --run takes it over and runs",
+          "check": "C682"
+        },
+        {
+          "text": "the marker is given back when the run ends, passed, failed or interrupted, so the next run is not refused",
+          "check": "C682"
+        }
+      ]
+    },
+    {
+      "id": "R294",
+      "text": "A check that waits at the check gate for another VBW command names what holds the gate: the holding check's id and that command's process id, beside the time the wait began, in the line it prints when the wait starts (field report 2026-11-11: a vbw mutate waited at the gate for hours without naming what held it)",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M57",
+      "rules": [
+        {
+          "text": "a check that starts waiting at the gate because of another VBW command prints one line on stderr naming the holding check's id and that command's process id beside 'since HH:MM'",
+          "check": "C683"
+        },
+        {
+          "text": "a wait caused by the shared limit names one of the other command's live registrations (check id and pid), never one of the waiting process's own",
+          "check": "C683"
+        },
+        {
+          "text": "this run's own checks queuing behind each other print no wait line, and the line is printed once per wait, not once per look",
+          "check": "C683"
+        }
+      ]
+    },
+    {
+      "id": "R295",
+      "text": "vbw mutate PLAN Rn.k --none says, before it runs the rule's check to record that check's read list (when no current run is recorded), which check it runs and why, so that run is never silent (field report 2026-11-11: a --none ran a check for over 3 hours with no output, and the user asked why --none runs a check at all)",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M57",
+      "rules": [
+        {
+          "text": "with no current run of the rule's check recorded, --none prints, before the check's command starts, a line naming the check and why it runs: to record which files it reads, so later proofs know which changes can reach it",
+          "check": "C684"
+        },
+        {
+          "text": "with a current run of the check recorded, --none runs no check and prints no such line",
+          "check": "C684"
+        },
+        {
+          "text": "after the run, the output still says the check ran",
+          "check": "C684"
+        }
+      ]
+    },
+    {
+      "id": "R296",
+      "text": "vbw apply refuses a plan whose files include a protected check file, in a full apply, --add and --patch alike, as --amend already does, naming the file and the way on that the guard names: the main session changes the check file and sends it with vbw apply --patch, then the user approves it; a build never edits it (field report 2026-11-11: --patch accepted a plan whose only file was a protected check file, and its Dev was refused at build, costing a round and an extra approval)",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M57",
+      "rules": [
+        {
+          "text": "a full apply refuses a plan whose files include a protected check file; the record is unchanged",
+          "check": "C685"
+        },
+        {
+          "text": "--add refuses it too, a file a check of the same document makes protected included",
+          "check": "C685"
+        },
+        {
+          "text": "--patch refuses it too",
+          "check": "C685"
+        },
+        {
+          "text": "the refusal names its mode, the file, that a build never edits it, and the guard's own way on: the main session changes the check with vbw apply --patch, then the user approves it",
+          "check": "C685"
+        },
+        {
+          "text": "--amend's refusal says the same words as --patch's, from one source, after its own mode's name",
+          "check": "C686"
+        },
+        {
+          "text": "a --patch carrying a check's own row, with the check file's new content, is still accepted; only a plan listing the file is refused",
+          "check": "C685"
+        }
+      ]
+    },
+    {
+      "id": "R297",
+      "text": "A red baseline keeps the queued breaks: when a plan's checks fail on the unbroken code, vbw mutate PLAN --run says so and keeps every queued break for the next run instead of dropping them (field report 2026-11-11: a check failed on the unbroken code because the project's own heavy-job lane was busy, and the Dev had to queue every break again)",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M57",
+      "rules": [
+        {
+          "text": "a check red on the unbroken code makes vbw mutate P --run exit non-zero naming each failing check and its status",
+          "check": "C687"
+        },
+        {
+          "text": "it says the queued breaks are kept for the next run, and how many",
+          "check": "C687"
+        },
+        {
+          "text": "every queued break stays in the plan's queue folder unchanged; the run marker is given back and the proof copies are removed",
+          "check": "C687"
+        },
+        {
+          "text": "once the checks pass again, the next --run runs every kept break without any being queued again",
+          "check": "C687"
+        },
+        {
+          "text": "the words '(the queued breaks are dropped)' appear nowhere in the kernel or the docs",
+          "check": "C687"
+        }
+      ]
+    },
+    {
+      "id": "R298",
+      "text": "An approval whose commit the project's pre-commit hook refuses stays a standing commit failure until a later VBW commit succeeds, also when the rollback leaves nothing that differs from the last commit, so vbw next never asks the same approval again in a loop (T282, QA note 2026-11-09)",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M57",
+      "rules": [
+        {
+          "text": "an approval whose commit the hook refused, with nothing left differing from the last commit, stays a standing failure: vbw next shows the commit step with the hook's message, never the approval again",
+          "check": "C688"
+        },
+        {
+          "text": "with nothing left to commit the step says to fix what the hook flagged, then approve again, and never offers to commit the VBW files yourself",
+          "check": "C688"
+        },
+        {
+          "text": "vbw approve after the fix tries the approval and its commit again; refused again, the new failure is kept and shown",
+          "check": "C688"
+        },
+        {
+          "text": "when that commit succeeds, the approval is recorded and the failure cleared",
+          "check": "C688"
+        },
+        {
+          "text": "any later VBW commit that succeeds clears the failure",
+          "check": "C688"
+        }
+      ]
+    },
+    {
+      "id": "R299",
+      "text": "A kernel library loaded again in the same process keeps its state: slots.sh keeps the waits it has counted when it is loaded again, so a vbw command that runs several kernel actions in one process reports every wait (T280; F441 fixed one case)",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M57",
+      "rules": [
+        {
+          "text": "slots.sh loaded a second time in a process (through checks.sh) keeps SLOTS_WAITED, SLOTS_LOST and the rest of its state",
+          "check": "C689"
+        },
+        {
+          "text": "every kernel library that keeps state for the life of a process keeps it when sourced again, under one load-once rule",
+          "check": "C689"
+        },
+        {
+          "text": "nothing saves and restores SLOTS_WAITED or SLOTS_LOST to survive a reload (mutate-queue.sh's copy is gone)",
+          "check": "C689"
+        },
+        {
+          "text": "vbw plan done, which loads checks.sh again, reports its wait for a slot with the waited line after its done line",
+          "check": "C690"
+        },
+        {
+          "text": "vbw check --expect-red whose unit waited still ends with the waited line (F441)",
+          "check": "C690"
+        }
+      ]
+    },
+    {
+      "id": "R300",
+      "text": "The kept-copy tests pass on any file system: the case that tells a whole re-copy of a kept ignored path from an update entry by entry judges it by something a new file cannot inherit, never an inode number, which Linux reuses at once; and the record guard's tests name every cd docs/guards.md lists as one the guard cannot read, a bare cd and cd ~ among them (T284: the copy case failed once on Linux bash 5, PR #755; T281)",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M57",
+      "rules": [
+        {
+          "text": "no test judges a file by its inode number; the kept-copy case that tells a whole re-copy from an entry-by-entry update judges it by something a newly created file cannot have",
+          "check": "C691"
+        },
+        {
+          "text": "tests/guard-record-path.bats names every cd form docs/guards.md lists as one the guard cannot read, a bare cd and cd ~ among them, and shows each leaves the project's record refused",
+          "check": "C692"
         }
       ]
     }
@@ -33698,6 +34063,108 @@
         "qa_findings": 0,
         "escalations": 1
       }
+    },
+    {
+      "id": "P229",
+      "title": "One run per plan, and every wait says what it waits for",
+      "reqs": [
+        "R293",
+        "R294",
+        "R299"
+      ],
+      "milestone": "M57",
+      "goal": "A plan's checks are never run twice at once by repeated commands, and whenever VBW waits it says exactly what it is waiting for, every time, even when one command does several kernel actions.",
+      "criteria": [
+        "R293: while `vbw plan done P` runs, a second `vbw plan done P` in the same project exits non-zero at once, before any check runs: it leaves no registration (no reg.* or want.* file with its process id) under .vbw/runtime/gate, so it queues nothing at the check gate",
+        "R293: that refusal names the running command's process id and the clock time it started (HH:MM, the same format as the 'since HH:MM' wait line), plus a Next: line saying to wait for that run and never start a second one",
+        "R293: while `vbw mutate P --run` runs, a second `vbw mutate P --run` refuses the same way, its existing refusal now also naming the start time; a test pins this refusal (none exists today)",
+        "R293: `vbw plan done` of a different plan (P2 while P runs) is not refused and runs normally",
+        "R293: a run marker left by a process that has ended (killed outright) never refuses: the next `vbw plan done P` or `vbw mutate P --run` takes the marker over and runs",
+        "R293: the marker is given back when the run ends, whether it passed, failed or was interrupted, so a third run after the first ended is not refused",
+        "R294: when a check starts waiting at the check gate because of another VBW command, the one wait line it prints names the holding check's id and that command's process id beside 'since HH:MM', on stderr",
+        "R294: when the wait is caused by the shared-check limit (no single blocking check), the line names one of the other command's live registrations (its check id and process id), never a registration of the waiting process itself",
+        "R294: this run's own checks queuing behind each other still print no wait line (R94 unchanged), and the line is printed once per wait, not per poll",
+        "R299: loading slots.sh a second time in the same process leaves SLOTS_WAITED, SLOTS_LOST and the rest of its state as the first load left them; a test sources it (through checks.sh) twice after counting a wait and finds the count kept",
+        "R299: every other kernel library that keeps state for the life of a process does the same when sourced again; a test loads each such library twice and compares its state before and after",
+        "R299: a vbw command that runs several kernel actions in one process (vbw plan done, which sources checks.sh again) reports every wait it had; the F441 case (tests/machine-wait-line.bats:91) still passes, and the save-and-restore of SLOTS_WAITED/SLOTS_LOST that existed only to survive a reload is removed"
+      ],
+      "tier": "deep",
+      "reasons": [
+        "requirements: 3",
+        "files: 12 (389492 bytes)",
+        "files: more than 2 in a repository tracking 1307 files",
+        "risk: none",
+        "breaks: R69, R156, R181, R203, R211, R212, R215, R216, R220, R230, R242, R250, R264, R265, R274, R287, R288",
+        "guarded: R1 (C1), R2 (C2), R12 (C11), R13 (C12), R14 (C13), R25 (C24), R28 (C25), R31 (C27), R32 (C28), R33 (C29), R39 (C36), R43 (C42, C43), R44 (C44, C45), R45 (C39, C40, C41), R46 (C46), R47 (C47), R48 (C49, C50), R49 (C48), R50 (C51), R58 (C62, C63, C64, C67), R60 (C72, C94), R61 (C73, C74, C75, C76, C77), R66 (C95), R70 (C114), R73 (C98), R74 (C99, C100), R75 (C101), R76 (C102, C103), R77 (C104), R78 (C105, C106), R79 (C107), R80 (C108), R81 (C109, C111, C112, C113), R83 (C119), R92 (C131, C132, C133, C134, C135, C136, C137, C138, C139), R93 (C140, C141, C142, C143, C144), R94 (C145, C146, C147, C148), R95 (C149, C150), R96 (C151, C152), R97 (C153), R98 (C154), R99 (C155), R100 (C156), R101 (C179), R103 (C160), R104 (C161, C162), R105 (C163), R106 (C164, C165), R107 (C166, C167), R110 (C169, C170), R111 (C171, C172, C173, C174, C175), R113 (C177), R115 (C181), R116 (C182, C183), R118 (C184), R123 (C190, C191), R129 (C196), R130 (C197), R131 (C198), R132 (C199), R134 (C201), R135 (C202), R144 (C208, C209), R147 (C212, C215, C237), R148 (C213, C214, C216, C238), R149 (C217, C218, C219, C220, C221, C222), R152 (C233, C234), R153 (C235, C236, C239), R157 (C244), R158 (C245), R159 (C246), R160 (C247, C263, C264), R161 (C248, C265, C266), R162 (C249), R163 (C250), R166 (C253, C254, C255, C256, C267), R167 (C257, C258, C259, C260), R168 (C261, C262), R169 (C268), R170 (C269), R174 (C279, C280), R175 (C274, C275), R176 (C276, C277, C278), R179 (C297, C298, C299, C300, C301, C302, C303, C304, C305, C306, C312), R180 (C307, C308, C309, C310), R182 (C322, C323, C324, C325, C326), R183 (C327), R186 (C344, C345, C346, C347, C348), R188 (C350, C351, C352, C353, C354, C355, C356, C357, C358, C359), R190 (C374, C375, C376, C377, C378, C379, C380, C381, C382, C383, C384, C385, C386, C387, C388), R192 (C401, C402, C403, C404, C405, C406, C407, C408, C409, C410), R193 (C411, C412), R194 (C417, C418, C419), R195 (C420, C421, C422), R196 (C415, C416), R197 (C413, C414), R202 (C432, C433, C434, C435, C436, C437, C438, C439, C440, C441, C442, C443, C444, C445, C446, C447), R204 (C451, C452, C453, C454), R205 (C455, C456, C457, C458, C467), R206 (C459, C460), R207 (C461, C462, C463), R209 (C469, C470, C471, C472, C473), R210 (C474, C475, C476), R213 (C483, C484), R214 (C485, C486, C487), R217 (C494, C495), R218 (C496), R219 (C497, C498, C499), R221 (C504), R223 (C507, C508, C509), R226 (C510, C511), R228 (C522, C523, C524, C525), R232 (C534), R236 (C537), R238 (C545), R239 (C554, C555), R244 (C562, C563), R245 (C564, C565), R246 (C566, C567), R249 (C571, C572, C573), R251 (C579), R252 (C580), R253 (C581, C582), R256 (C586, C587), R257 (C588, C589), R258 (C590, C591, C592), R259 (C593, C594, C595), R260 (C596, C597), R262 (C601), R263 (C602, C603, C604), R266 (C617, C618), R267 (C619, C620, C621), R268 (C622, C623, C624, C625), R269 (C626, C627, C628, C629, C630), R277 (C648, C650), R278 (C649, C651), R279 (C678, C679, C680), R282 (C681), R284 (C673, C674), R286 (C653, C654), R292 (C670, C671, C672)",
+        "tests: project test command"
+      ],
+      "predicted": "deep"
+    },
+    {
+      "id": "P230",
+      "title": "Mutation runs that explain themselves and keep the queued breaks",
+      "reqs": [
+        "R295",
+        "R297"
+      ],
+      "milestone": "M57",
+      "goal": "vbw mutate never runs a check silently and never throws away queued breaks because the code was red for a reason outside the plan.",
+      "criteria": [
+        "R295: `vbw mutate P Rn.k --none`, when no current run of the rule's check is recorded, prints before the check starts a line naming that check's id and why it runs: to record which files it reads, so later proofs know which changes can reach it",
+        "R295: a test proves the order: the line is on the output before the check's own command runs (for example, a check that writes a marker file shows the line already printed when the marker appears, or a check that never ends still shows the line)",
+        "R295: when a current run of the check is recorded, `--none` runs no check and prints no such line",
+        "R295: the existing after-run message stays truthful (it may merge with the new line, but the check id and reason are said before the run)",
+        "R297: when one or more checks fail on the unbroken code, `vbw mutate P --run` exits non-zero naming each failing check and its status, and says the queued breaks are kept for the next run, with how many",
+        "R297: after that refusal every queued break is still in the plan's queue folder, unchanged; the run marker is given back and the proof copies are removed",
+        "R297: once the checks pass again, the next `vbw mutate P --run` runs every kept break without the Dev queueing any again",
+        "R297: the old wording '(the queued breaks are dropped)' appears nowhere; a test in tests/mutate-queue.bats pins the new wording and the kept queue"
+      ],
+      "tier": "deep",
+      "reasons": [
+        "requirements: 2",
+        "files: 4 (222355 bytes)",
+        "files: more than 2 in a repository tracking 1307 files",
+        "risk: none",
+        "breaks: R69, R156, R181, R203, R211, R212, R215, R216, R220, R230, R242, R250, R264, R265, R287, R288",
+        "guarded: R12 (C11), R13 (C12), R14 (C13), R25 (C24), R28 (C25), R31 (C27), R32 (C28), R39 (C36), R43 (C42, C43), R44 (C44, C45), R45 (C39, C40, C41), R46 (C46), R47 (C47), R48 (C49, C50), R49 (C48), R50 (C51), R60 (C72, C94), R61 (C73, C74, C75, C76, C77), R66 (C95), R70 (C114), R73 (C98), R74 (C99, C100), R75 (C101), R76 (C102, C103), R77 (C104), R78 (C105, C106), R79 (C107), R80 (C108), R81 (C109, C111, C112, C113), R92 (C131, C132, C133, C134, C135, C136, C137, C138, C139), R93 (C140, C141, C142, C143, C144), R94 (C145, C146, C147, C148), R95 (C149, C150), R96 (C151, C152), R97 (C153), R98 (C154), R99 (C155), R100 (C156), R101 (C179), R103 (C160), R104 (C161, C162), R105 (C163), R106 (C164, C165), R107 (C166, C167), R110 (C169, C170), R111 (C171, C172, C173, C174, C175), R115 (C181), R116 (C182, C183), R118 (C184), R123 (C190, C191), R129 (C196), R130 (C197), R131 (C198), R132 (C199), R134 (C201), R135 (C202), R144 (C208, C209), R147 (C212, C215, C237), R148 (C213, C214, C216, C238), R152 (C233, C234), R153 (C235, C236, C239), R157 (C244), R158 (C245), R159 (C246), R160 (C247, C263, C264), R161 (C248, C265, C266), R162 (C249), R163 (C250), R166 (C253, C254, C255, C256, C267), R167 (C257, C258, C259, C260), R168 (C261, C262), R169 (C268), R170 (C269), R174 (C279, C280), R175 (C274, C275), R176 (C276, C277, C278), R179 (C297, C298, C299, C300, C301, C302, C303, C304, C305, C306, C312), R180 (C307, C308, C309, C310), R182 (C322, C323, C324, C325, C326), R183 (C327), R186 (C344, C345, C346, C347, C348), R188 (C350, C351, C352, C353, C354, C355, C356, C357, C358, C359), R192 (C401, C402, C403, C404, C405, C406, C407, C408, C409, C410), R193 (C411, C412), R194 (C417, C418, C419), R195 (C420, C421, C422), R196 (C415, C416), R197 (C413, C414), R202 (C432, C433, C434, C435, C436, C437, C438, C439, C440, C441, C442, C443, C444, C445, C446, C447), R204 (C451, C452, C453, C454), R205 (C455, C456, C457, C458, C467), R206 (C459, C460), R207 (C461, C462, C463), R209 (C469, C470, C471, C472, C473), R210 (C474, C475, C476), R213 (C483, C484), R214 (C485, C486, C487), R217 (C494, C495), R219 (C497, C498, C499), R221 (C504), R226 (C510, C511), R228 (C522, C523, C524, C525), R232 (C534), R238 (C545), R239 (C554, C555), R244 (C562, C563), R245 (C564, C565), R246 (C566, C567), R251 (C579), R252 (C580), R253 (C581, C582), R256 (C586, C587), R257 (C588, C589), R258 (C590, C591, C592), R259 (C593, C594, C595), R260 (C596, C597), R262 (C601), R263 (C602, C603, C604), R266 (C617, C618), R267 (C619, C620, C621), R269 (C626, C627, C628, C629, C630), R277 (C648, C650), R278 (C649, C651), R279 (C678, C679, C680), R286 (C653, C654), R292 (C670, C671, C672)",
+        "tests: project test command"
+      ],
+      "predicted": "deep"
+    },
+    {
+      "id": "P231",
+      "title": "Fewer wasted rounds: check files caught at planning, commit failures that stay, tests steady on any file system",
+      "reqs": [
+        "R296",
+        "R298",
+        "R300"
+      ],
+      "milestone": "M57",
+      "goal": "A plan that lists a protected check file is refused when it is sent, a refused approval commit never brings the same approval question back in a loop, and the kept-copy and record-guard tests pass on Linux and macOS alike.",
+      "criteria": [
+        "R296: `vbw apply` refuses a plan whose files include a protected check file in a full apply, with --add and with --patch, as --amend already does; the record is unchanged after the refusal",
+        "R296: the refusal names the file and the same way on as the guard (plugin/hooks/common.jq:118): the main session changes the check file and sends it with vbw apply --patch, then the user approves it; a build never edits it. The --amend refusal uses the same words, from one shared source",
+        "R296: a --patch that carries the check file's own new content (the approved way to change a check) is still accepted; only a plan listing the check file among its files is refused",
+        "R296: the refusal goes through the refusal modes like the other planning refusals (tests in tests/apply-refusal-modes.bats and tests/amend.bats)",
+        "R298: when the project's pre-commit hook refuses the commit of an approval and VBW's rollback leaves no file differing from the last commit, the commit failure still stands: `vbw next` shows the commit-failure step with the hook's own message, never the same approval question again",
+        "R298: the failure step names a way on that works when nothing is left to commit: fix what the hook flagged, then approve again; it does not offer 'commit the VBW files yourself' when there is nothing to commit",
+        "R298: `vbw approve` run after the fix tries the approval and its commit again; when the commit succeeds the failure is cleared and the approval is recorded; when the hook refuses again, the new failure is kept and shown",
+        "R298: a failure is cleared when any later VBW commit succeeds; when the files did differ and the user commits them themselves, it is still cleared as today; the project's hooks are never skipped (D687)",
+        "R300: the kept-copy test in tests/proofcopy-keep.bats that tells a whole re-copy of a kept ignored path from an entry-by-entry update judges it by something a newly created file cannot inherit (for example a marker written into the old entry), never by an inode number",
+        "R300: that case and the file pass on Linux bash 5 (ext4, where a freed inode number is reused at once) and on macOS /bin/bash 3.2",
+        "R300: tests/guard-record-path.bats names every cd form that docs/guards.md lists as one the guard cannot read, a bare `cd` and `cd ~` among them, and each case shows the guard treats it as unreadable"
+      ],
+      "tier": "deep",
+      "reasons": [
+        "requirements: 3",
+        "files: 11 (232774 bytes)",
+        "files: more than 2 in a repository tracking 1307 files",
+        "risk: none",
+        "breaks: R69, R156, R181, R211, R212, R215, R216, R220, R242, R250, R264, R265, R287, R289",
+        "guarded: R1 (C1), R2 (C2), R3 (C3), R13 (C12), R14 (C13), R15 (C14), R21 (C16), R22 (C19), R23 (C20), R24 (C23), R25 (C24), R26 (C22), R27 (C21), R28 (C25), R31 (C27), R33 (C29), R37 (C35), R38 (C33, C34), R40 (C37), R43 (C42, C43), R45 (C39, C40, C41), R46 (C46), R47 (C47), R49 (C48), R50 (C51), R61 (C73, C74, C75, C76, C77), R66 (C95), R70 (C114), R71 (C115, C121), R72 (C116, C118), R73 (C98), R74 (C99, C100), R75 (C101), R76 (C102, C103), R77 (C104), R78 (C105, C106), R79 (C107), R80 (C108), R81 (C109, C111, C112, C113), R98 (C154), R100 (C156), R102 (C158, C159), R106 (C164, C165), R107 (C166, C167), R111 (C171, C172, C173, C174, C175), R116 (C182, C183), R120 (C185), R121 (C187, C188), R123 (C190, C191), R128 (C200), R130 (C197), R146 (C211), R149 (C217, C218, C219, C220, C221, C222), R150 (C223, C224, C225, C226, C227, C228, C229, C230), R151 (C231, C232), R152 (C233, C234), R157 (C244), R158 (C245), R159 (C246), R160 (C247, C263, C264), R161 (C248, C265, C266), R162 (C249), R164 (C251), R165 (C252), R166 (C253, C254, C255, C256, C267), R167 (C257, C258, C259, C260), R170 (C269), R171 (C270), R174 (C279, C280), R177 (C287, C288), R178 (C290, C291, C292, C293, C294, C295, C296, C311), R179 (C297, C298, C299, C300, C301, C302, C303, C304, C305, C306, C312), R180 (C307, C308, C309, C310), R184 (C328, C329, C330, C331, C332, C333), R185 (C334, C335, C336, C337, C338, C339, C340, C341, C342, C343), R188 (C350, C351, C352, C353, C354, C355, C356, C357, C358, C359), R190 (C374, C375, C376, C377, C378, C379, C380, C381, C382, C383, C384, C385, C386, C387, C388), R191 (C389, C390, C391, C392, C393, C394, C395, C396, C397, C398, C399, C400), R192 (C401, C402, C403, C404, C405, C406, C407, C408, C409, C410), R194 (C417, C418, C419), R198 (C423), R202 (C432, C433, C434, C435, C436, C437, C438, C439, C440, C441, C442, C443, C444, C445, C446, C447), R205 (C455, C456, C457, C458, C467), R208 (C464, C465, C466, C468), R209 (C469, C470, C471, C472, C473), R210 (C474, C475, C476), R213 (C483, C484), R218 (C496), R219 (C497, C498, C499), R222 (C505, C506), R223 (C507, C508, C509), R225 (C517, C518, C519), R229 (C526, C527, C528, C529), R231 (C532, C533), R233 (C540, C541, C542, C543), R234 (C535, C536), R236 (C537), R239 (C554, C555), R243 (C558, C559, C561), R244 (C562, C563), R245 (C564, C565), R247 (C568, C569), R249 (C571, C572, C573), R253 (C581, C582), R254 (C583), R255 (C584), R258 (C590, C591, C592), R259 (C593, C594, C595), R266 (C617, C618), R267 (C619, C620, C621), R269 (C626, C627, C628, C629, C630), R270 (C631, C632, C633), R272 (C635, C636, C637, C638), R275 (C646, C647), R277 (C648, C650), R278 (C649, C651), R279 (C678, C679, C680), R284 (C673, C674), R285 (C662, C663, C664), R286 (C653, C654), R290 (C660, C661, C666), R291 (C675, C676, C677), R292 (C670, C671, C672)",
+        "tests: project test command"
+      ],
+      "predicted": "deep"
     }
   ],
   "plans": [
@@ -80692,6 +81159,192 @@
           ]
         }
       ]
+    },
+    {
+      "id": "P229.1",
+      "phase": "P229",
+      "title": "One run of a plan at a time",
+      "reqs": [
+        "R293"
+      ],
+      "files": [
+        "plugin/lib/plan-run.sh",
+        "plugin/lib/cmd-plan.sh",
+        "plugin/lib/mutate-queue.sh",
+        "plugin/lib/core.sh",
+        "plugin/lib/slots.sh",
+        "docs/workflows.md"
+      ],
+      "after": [],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "plugin/lib/plan-run.sh (new): one per-plan run marker that both commands use. Taking it creates the marker file holding this process's id (the exclusive create, vbw_lock_create); a marker whose holder has ended, or that holds no readable id, is taken over (vbw_lock_takeover); a live holder is refused with its process id, the time it started (the marker file's own time, vbw_mtime, as HH:MM) and the command, then a Next: line to wait for that run and never start a second one. The marker is registered with the guard, so it is given back however the run ends.",
+        "plugin/lib/core.sh: vbw_hhmm EPOCH, the local HH:MM of a moment (the date -r and date -d forms); vbw_wait_say in plugin/lib/slots.sh and the refusal both use it, so the two say a time the same way.",
+        "plugin/lib/cmd-plan.sh: vbw plan done takes the plan's marker (.vbw/runtime/plan-done/PLAN.pid) as its first step, before any check or gate registration, and holds it to the end; plugin/lib/mutate-queue.sh's mutate_queue_hold uses the same helper for run.pid, its refusal now naming the start time. A plan done of another plan takes its own marker and is never refused. The --run refusal keeps \"pid N\" before \"vbw mutate P --run\" on its first line (tests/mutate-queue.bats R230).",
+        "docs/workflows.md: the plan done refusal, and the start time in the --run refusal, with the one-run-per-plan rule. tests/plan-run-once.bats passes under /bin/bash, and tests/mutate-queue.bats and tests/plan-block-done.bats still pass."
+      ]
+    },
+    {
+      "id": "P229.2",
+      "phase": "P229",
+      "title": "The check gate's wait line names what holds it",
+      "reqs": [
+        "R294"
+      ],
+      "files": [
+        "plugin/lib/checks.sh",
+        "docs/proof.md"
+      ],
+      "after": [],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "plugin/lib/checks.sh: checks_gate_blocker reports the blocking registration's process id with its check id (the pid is the middle of reg.PID.ID); when the shared limit is the cause it reports one live registration of another process, never one of this process's own.",
+        "checks_gate_enter: the one line said when a wait for another VBW command starts names that check and that command's pid beside 'since HH:MM', through vbw_wait_say on stderr; this run's own checks queuing behind each other still say nothing (R94), and the line is said once per wait.",
+        "docs/proof.md: the gate's wait line with the holder, beside the slot wait line. tests/gate-race.bats passes under /bin/bash, and tests/check-wait-patient.bats and tests/machine-wait-line.bats still pass."
+      ]
+    },
+    {
+      "id": "P229.3",
+      "phase": "P229",
+      "title": "Kernel libraries keep their state when loaded again",
+      "reqs": [
+        "R299"
+      ],
+      "files": [
+        "plugin/lib/core.sh",
+        "plugin/lib/checks.sh",
+        "plugin/lib/slots.sh",
+        "plugin/lib/proofcopy.sh",
+        "plugin/lib/proofreuse.sh",
+        "plugin/lib/prooftime.sh",
+        "plugin/lib/qa-inputs.sh",
+        "plugin/lib/mutate-queue.sh",
+        "plugin/lib/cmd-plan.sh"
+      ],
+      "after": [
+        "P229.1",
+        "P229.2"
+      ],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "One load-once rule for every library that keeps state for the life of a process (core, checks, slots, proofcopy, prooftime, qa-inputs, and proofreuse, whose ${VAR:-default} keeps it replaces): the library's first lines return at once when this process has loaded it already, through one marker variable per library that is never exported; functions and constants are untouched.",
+        "vbw plan done ends with the waited line (slots_say) after its done line, as vbw check does; mutate-queue.sh drops its save and restore of SLOTS_WAITED and SLOTS_LOST.",
+        "tests/lib-load-once.bats and tests/machine-wait-line.bats (the R299 case and the F441 case) pass under /bin/bash; the area files of the changed libraries (tests/machine-*.bats, tests/mutate-queue.bats, tests/proofcopy-*.bats, tests/proof-reuse.bats, tests/gate-race.bats) still pass."
+      ]
+    },
+    {
+      "id": "P230.1",
+      "phase": "P230",
+      "title": "A red baseline keeps the queued breaks",
+      "reqs": [
+        "R297"
+      ],
+      "files": [
+        "plugin/lib/mutate-queue.sh",
+        "docs/workflows.md"
+      ],
+      "after": [
+        "P229.1",
+        "P229.3"
+      ],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "plugin/lib/mutate-queue.sh: when a check fails on the unbroken code, mutate_queue_run removes the proof copies, ends the checks, gives back the run marker and leaves every queued break as it is; it exits non-zero naming each failing check with its status and saying how many queued breaks are kept for the next run, which runs them once the checks pass.",
+        "docs/workflows.md (The mutation check): a red baseline keeps the queue; the words 'the queued breaks are dropped' go everywhere.",
+        "tests/mutate-queue.bats passes under /bin/bash."
+      ]
+    },
+    {
+      "id": "P230.2",
+      "phase": "P230",
+      "title": "--none says which check it runs and why",
+      "reqs": [
+        "R295"
+      ],
+      "files": [
+        "plugin/lib/cmd-mutate.sh",
+        "docs/proof.md"
+      ],
+      "after": [
+        "P229.2"
+      ],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "plugin/lib/cmd-mutate.sh: mutate_rule_none, when no current run of the rule's check is recorded, prints before it runs the check one line naming the check and why it runs: to record which files it reads, so later proofs know which changes can reach it. With a current run it runs nothing and prints no such line.",
+        "The after-run line stays truthful (it may merge into the new one; the check and the reason are said before the run).",
+        "docs/proof.md: the --none paragraph shows the line. tests/mutate-rule-none.bats passes under /bin/bash."
+      ]
+    },
+    {
+      "id": "P231.1",
+      "phase": "P231",
+      "title": "vbw apply refuses a plan that lists a check file",
+      "reqs": [
+        "R296"
+      ],
+      "files": [
+        "plugin/lib/cmd-apply.sh",
+        "docs/guards.md"
+      ],
+      "after": [],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "plugin/lib/cmd-apply.sh: a full apply, --add and --patch refuse a plan the document brings whose files include a protected check file (the merged record's protected files, a check the same document adds included), before anything is written, through apply_refuse with the mode's name.",
+        "One source for the words, used by --amend's refusal too: the file, that a build never edits it, and the guard's own way on (plugin/hooks/common.jq protected_reason, read, never copied); apply_next gives that way on for every mode.",
+        "A patch carrying a check's own row stays accepted. docs/guards.md says vbw apply refuses such a plan when it is sent. tests/apply-refusal-modes.bats and tests/amend.bats pass under /bin/bash. The refusal's first line keeps the file, --patch and the approval (tests/amend.bats R250)."
+      ]
+    },
+    {
+      "id": "P231.2",
+      "phase": "P231",
+      "title": "A refused approval commit stays the step until a commit works",
+      "reqs": [
+        "R298"
+      ],
+      "files": [
+        "plugin/lib/commit-failure.sh",
+        "plugin/lib/cmd-approve.sh",
+        "plugin/lib/record.sh",
+        "plugin/lib/cmd-doctor.sh",
+        "docs/next.md",
+        "docs/diagnostics.md"
+      ],
+      "after": [],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "plugin/lib/commit-failure.sh: a kept failure remembers the commit it was made on (HEAD then); it stands while a file it names differs from HEAD or HEAD has not moved, and is cleared once a later VBW commit succeeds or the user's commit moves HEAD with its files clean. vbw doctor judges it by the same function.",
+        "The step's way on with nothing left to commit: fix what the hook flagged, then approve again; 'commit the VBW files yourself' is offered only while files differ.",
+        "vbw approve with a standing failure and nothing to commit tries the approval and its commit again through the project's hooks: a pass records the approval and clears the failure, a refusal keeps the new failure and shows it. Never --no-verify (D687).",
+        "docs/next.md (the commit step) and docs/diagnostics.md say so. tests/commit-failed.bats and tests/approve-commit-fails.bats pass under /bin/bash."
+      ]
+    },
+    {
+      "id": "P231.3",
+      "phase": "P231",
+      "title": "Kept-copy tests that hold on any file system",
+      "reqs": [
+        "R300"
+      ],
+      "files": [
+        "tests/proofcopy-keep.bats",
+        "CLAUDE.md",
+        "AGENTS.md"
+      ],
+      "after": [],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "tests/proofcopy-keep.bats: the case that tells a whole re-copy of a kept ignored path from an entry-by-entry update judges it by a second name (a hard link kept outside the copy) of the old entry, which a newly created file cannot have; the other cases that compare inode numbers judge the same way, and the inode helper goes.",
+        "CLAUDE.md and AGENTS.md (Testing): a test never judges a file by its inode number, as ext4 hands a freed one to the next new file.",
+        "tests/proofcopy-keep.bats passes under /bin/bash; CI's Linux bash 5 shard is the gate on ext4."
+      ]
     }
   ],
   "fixes": [
@@ -101577,6 +102230,17 @@
         "ended": "2026-11-09T22:57:12Z",
         "cost": {
           "usd": 2.23778
+        }
+      },
+      {
+        "id": "plan-20261111T125747Z",
+        "kind": "plan",
+        "session": "0ee781c3-c5b6-4a6c-889f-04b89f1fba4a",
+        "milestone": "M57",
+        "started": "2026-11-11T12:57:47Z",
+        "ended": "2026-11-11T13:31:21Z",
+        "cost": {
+          "usd": 11.950528
         }
       }
     ],

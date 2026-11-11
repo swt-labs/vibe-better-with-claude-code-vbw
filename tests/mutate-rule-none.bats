@@ -41,7 +41,8 @@ built_project() {
   printf '[ "$(sh src/pay.sh)" = paid ]\n' > tests/pay.sh
   printf 'ls src/other > /dev/null\n' > tests/list.sh
   printf 'git rev-parse HEAD > /dev/null\n' > tests/gitlog.sh
-  printf 'cat notes/measure.txt > /dev/null\n' > tests/notes.sh
+  # With R295_HOLD set, C5 first marks R295_HOLD/started, then waits (up to 30 s) for R295_HOLD/go.
+  printf '[ -z "${R295_HOLD:-}" ] || { : > "$R295_HOLD/started"; i=0; while [ ! -f "$R295_HOLD/go" ] && [ "$i" -lt 300 ]; do sleep 0.1; i=$((i + 1)); done; }\ncat notes/measure.txt > /dev/null\n' > tests/notes.sh
   printf 'exit 1\n' > tests/never.sh
   jq -nc '{phases: [{id: "P1", title: "Lab", reqs: ["R1", "R2"], goal: "g", criteria: ["c"], tier: "standard"}],
     plans: [{id: "P1.1", phase: "P1", title: "Measure", reqs: ["R1", "R2"], files: ["src/pay.sh"], after: [], role: "dev", tasks: ["measure", "pay"]},
@@ -358,4 +359,46 @@ no_reads() {
   /bin/bash -n "$f"
   ! grep -nE '^[^#]*(\b(mapfile|readarray|eval)\b|(declare|local|typeset) -[a-zA-Z]*A|\$\{[A-Za-z_][A-Za-z_0-9]*(,,|\^\^|,|\^)\})' "$f" || false
   ! grep -nE '^[^#]*\b(grep|sed|awk|cut)\b[^|;]*(record\.json|runs\.json|\.json\b)' "$f" || false
+}
+
+# R295 (field report 2026-11-11): --none never runs a check silently. With no current run of
+# the rule's check recorded, it says, before the check's command starts, which check it runs
+# and why: to record which files it reads, so later proofs know which changes can reach it.
+# With a current run it runs nothing and says no such line. C5 holds (R295_HOLD) while it runs.
+
+# hold_wait FILE: wait (up to 30 s) until FILE exists.
+hold_wait() {
+  local i
+  for ((i = 0; i < 300; i++)); do [ -f "$1" ] && return 0; sleep 0.1; done
+  echo "never appeared: $1"
+  return 1
+}
+
+@test "R295: with no current run, --none names the check it runs and why before the check's command starts, and still says it ran it" {
+  export R295_HOLD="$TEST_ROOT/hold"
+  mkdir -p "$R295_HOLD"
+  "$VBW" mutate P1.1 R1.4 --none "reads the notes only" > "$TEST_ROOT/none.out" 2>&1 < /dev/null 3>&- &
+  local pid=$! code=0 said
+  hold_wait "$R295_HOLD/started" || { touch "$R295_HOLD/go"; wait "$pid" || true; cat "$TEST_ROOT/none.out"; false; }
+  # The check's command is running now: the line is already out.
+  said=$(grep -F C5 "$TEST_ROOT/none.out" | grep -iF 'files it reads' || true)
+  touch "$R295_HOLD/go"
+  wait "$pid" || code=$?
+  [ -n "$said" ] || { echo "no line named C5 and why before it ran:"; cat "$TEST_ROOT/none.out"; false; }
+  [ "$code" -eq 0 ] || { cat "$TEST_ROOT/none.out"; false; }
+  grep -qF 'C5' "$TEST_ROOT/none.out" && grep -qiE 'ran C5|C5 ran' "$TEST_ROOT/none.out" || { cat "$TEST_ROOT/none.out"; false; }
+}
+
+@test "R295: with a current run of the check recorded, --none runs no check and says no such line" {
+  export R295_HOLD="$TEST_ROOT/hold"
+  mkdir -p "$R295_HOLD"
+  touch "$R295_HOLD/go"
+  run "$VBW" mutate P1.1 R1.4 --none "reads the notes only" < /dev/null
+  [ "$status" -eq 0 ] || { echo "$output"; false; }
+  [ -f "$R295_HOLD/started" ] || { echo "the first --none ran no check"; false; }
+  rm -f "$R295_HOLD/started"
+  run "$VBW" mutate P1.1 R1.4 --none "reads the notes only, again" < /dev/null
+  [ "$status" -eq 0 ] || { echo "$output"; false; }
+  [ ! -f "$R295_HOLD/started" ] || { echo "the check ran although its run was current: $output"; false; }
+  [[ "$output" != *"files it reads"* ]] || { echo "$output"; false; }
 }

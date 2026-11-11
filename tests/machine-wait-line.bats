@@ -211,3 +211,18 @@ shape() {
   [ "$status" -eq 0 ] || { echo "$output"; false; }
   [[ "$output" != *"waiting for"* ]] || { echo "$output"; false; }
 }
+
+# R299 (T280): a vbw command that runs several kernel actions in one process reports every
+# wait it had. vbw plan done loads the check runner again before it runs the plan's checks;
+# a wait for a slot there is still told at the end, after its done line, as vbw check tells it.
+@test "R299: vbw plan done whose check waited for a slot ends with the waited line, after its done line" {
+  fixture_copy pair
+  hold_start
+  run within 60 "$VBW" plan "done" P1.1 < /dev/null
+  [ "$status" -eq 0 ] || { echo "$output"; show; false; }
+  last_lines "$output"
+  waited_ok 1 15 || { echo "$output"; false; }
+  [ "$BEFORE" = "P1.1 done" ] || { echo "$output"; false; }
+  [ "$(printf '%s\n' "$output" | grep -c 'for other VBW runs')" = 1 ] || { echo "$output"; false; }
+  wait_ok "$HOLDER"
+}

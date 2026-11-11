@@ -325,3 +325,21 @@ DOCS
   vbw_run next --json
   printf '%s' "$output" | jq -e '.amendments | length == 1 and .[0].id == "C1" and (.[0].what | test("tests/pay-data.txt"))' > /dev/null || { echo "$output"; false; }
 }
+
+# R296: the protected-file refusal of --amend and of --patch come from one source: for the same
+# plan and file they say the same words, each after its own mode's name.
+@test "R296 amend: --amend refuses a protected check file on a plan in the same words as --patch, after its own mode name, with the guard's way on" {
+  local doc='{"plans": [{"id": "P1.1", "files": ["src/pay.txt", "tests/receipt.sh"]}]}' amended patched way
+  cp .vbw/record.json "$TEST_ROOT/before.json"
+  amend "$doc"
+  [ "$status" -ne 0 ] || { echo "accepted: $output"; false; }
+  amended=$output
+  run bash -c 'printf "%s" "$1" | VBW_SESSION_ID="$2" "$3" apply --patch' _ "$doc" "$SESSION" "$VBW"
+  [ "$status" -ne 0 ] || { echo "the patch was accepted: $output"; false; }
+  patched=$output
+  cmp -s .vbw/record.json "$TEST_ROOT/before.json" || { echo "a refusal changed the record"; false; }
+  [[ "$amended" == "vbw: --amend refused: "* && "$patched" == "vbw: --patch refused: "* ]] || { printf '%s\n---\n%s\n' "$amended" "$patched"; false; }
+  [ "${amended#vbw: --amend refused: }" = "${patched#vbw: --patch refused: }" ] || { printf 'not the same words:\n%s\n---\n%s\n' "$amended" "$patched"; false; }
+  way=$(jq -nr -L "$PLUGIN_ROOT/hooks" --arg f tests/receipt.sh 'include "common"; $f | protected_reason' | sed -n 's/^Next: leave .* as it is; //p')
+  [ -n "$way" ] && [[ "$amended" == *"$way"* ]] || { echo "not the guard's way on ($way): $amended"; false; }
+}
