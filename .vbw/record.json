@@ -86627,6 +86627,13 @@
       "sort": "next",
       "size": "small",
       "status": "open"
+    },
+    {
+      "id": "T285",
+      "text": "The Timeline accounts for the whole session (#704, adopted publicly 2026-10-29 by @halindrome's report): a row for the time outside VBW runs, and the time a run spent waiting on the user shown as its own segment, so the rows sum to the session total",
+      "sort": "later",
+      "size": "medium",
+      "status": "open"
     }
   ],
   "decisions": [
