@@ -1756,7 +1756,11 @@ suite therefore pays for the checks a break needs, not for every check.
   --none REASON` after the kernel verifies the check's read list against the
   files of the requirement's plans: the list must name none of them. The command
   may run the check once in a clean copy of the committed code, with read
-  tracking on, and records that run in the store as a proof would. A check that
+  tracking on, and records that run in the store as a proof would. When no
+  current run is recorded, it first prints one line naming the check and why it
+  runs ("running C1 to record which files it reads, so later proofs know which
+  changes can reach it"), so the run is never silent; with a current run it
+  runs nothing and prints no such line. A check that
   only tests whether a plan file exists, without opening it, never reads that
   file: such a check is not detected, and the accepting line says so. `vbw plan
   done` counts such a rule covered.
