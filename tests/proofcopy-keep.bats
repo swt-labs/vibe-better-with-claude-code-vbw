@@ -81,7 +81,9 @@ teardown() {
 teardown_file() { fixture_teardown; }
 
 slot() { printf '.vbw/runtime/proof.keep.%s\n' "$1"; }
-inode() { ls -di "$1" | awk '{print $1}'; }
+# mark FILE: keep a second name of FILE outside the copy. A file that is still the same entry
+# is -ef the mark; one copied again is a new file and is not, whatever number the file system gives it.
+mark() { ln "$1" .vbw/runtime/keep.mark; }
 # counts: what the last proof did with its copies.
 counts() { jq -c '.evidence.own.copy_slots | {claimed, refreshed, made}' .vbw/record.json; }
 # bump TEXT: commit a change to the file C1 reads, so the next proof runs it.
@@ -133,12 +135,9 @@ add_sub() {
   [ "$(find .vbw/runtime -maxdepth 1 -name 'proof.*' | wc -l | tr -d ' ')" -eq 1 ] || { ls .vbw/runtime; false; }
   [ "$(counts)" = '{"claimed":0,"refreshed":0,"made":1}' ] || { counts; false; }
   git worktree list --porcelain | grep -qF "/proof.keep.1/tree" || { git worktree list; false; }
-  local ino
-  ino=$(inode "$(slot 1)/tree")
   bump two
   prove_ok
   [ "$(counts)" = '{"claimed":1,"refreshed":0,"made":0}' ] || { counts; false; }
-  [ "$(inode "$(slot 1)/tree")" = "$ino" ] || { echo "the copy was made again"; false; }
   [ ! -e "$(slot 2)" ] || { ls .vbw/runtime; false; }
   prove_ok --full
   [ "$(counts)" = '{"claimed":0,"refreshed":0,"made":1}' ] || { counts; false; }
@@ -163,8 +162,7 @@ add_sub() {
 
 @test "#738: ignored paths added, edited, renamed and deleted are brought up to date, and only they are copied again; a newly listed or no longer ignored path leaves the copy; the copy equals a fresh one" {
   prove_ok
-  local ino
-  ino=$(inode "$(slot 1)/tree/node_modules/other/keep.js")
+  mark "$(slot 1)/tree/node_modules/other/keep.js"
   printf 'new\n' > node_modules/pkg/new.js
   # An edit that keeps an old modification time is still seen.
   printf 'v2\n' > node_modules/pkg/index.js
@@ -187,7 +185,7 @@ add_sub() {
   [ -f "$t/node_modules/pkg/b.js" ] && [ ! -e "$t/node_modules/pkg/a.js" ] && [ ! -e "$t/node_modules/pkg/gone.js" ] || { ls -la "$t/node_modules/pkg"; false; }
   [ ! -e "$t/cache" ] || { echo "the listed cache/ is still in the copy"; false; }
   [ ! -e "$t/.env" ] || { echo ".env, no longer ignored, is still in the copy"; false; }
-  [ "$(inode "$t/node_modules/other/keep.js")" = "$ino" ] || { echo "an unchanged file of node_modules was copied again"; false; }
+  [ "$t/node_modules/other/keep.js" -ef .vbw/runtime/keep.mark ] || { echo "an unchanged file of node_modules was copied again"; false; }
   local kept
   kept=$(snap "$t")
   prove_ok --full
@@ -213,8 +211,7 @@ add_sub() {
 @test "#738: what a unit wrote (a build folder, a stray file, a file in a kept ignored folder, an edited or deleted one there, an edited tracked file) is undone when the next command claims the copy, and nothing else is copied again" {
   WRITE=1 prove_ok
   [ -f "$(slot 1)/tree/dist/out" ] && [ -f "$(slot 1)/tree/node_modules/.cache/x" ] && [ ! -e "$(slot 1)/tree/node_modules/pkg/gone.js" ] || { echo "the unit wrote nothing"; false; }
-  local ino
-  ino=$(inode "$(slot 1)/tree/node_modules/other/keep.js")
+  mark "$(slot 1)/tree/node_modules/other/keep.js"
   bump two
   prove_ok
   local t
@@ -224,17 +221,16 @@ add_sub() {
   [ "$(cat "$t/src/pay.txt")" = "$(printf 'paid\ntwo')" ] || { cat "$t/src/pay.txt"; false; }
   [ "$(cat "$t/node_modules/pkg/index.js")" = v1 ] && [ "$(cat "$t/node_modules/pkg/a.js")" = a ] && [ "$(cat "$t/node_modules/pkg/gone.js")" = gone ] \
     || { ls -la "$t/node_modules/pkg"; false; }
-  [ "$(inode "$t/node_modules/other/keep.js")" = "$ino" ] || { echo "an unchanged file of node_modules was copied again"; false; }
+  [ "$t/node_modules/other/keep.js" -ef .vbw/runtime/keep.mark ] || { echo "an unchanged file of node_modules was copied again"; false; }
   [ "$(counts)" = '{"claimed":1,"refreshed":1,"made":0}' ] || { counts; false; }
 }
 
 @test "#738: when a unit wrote into most of a kept ignored path, the path is copied again whole, as cloning it costs less than entry by entry" {
   WRITE=most prove_ok
-  local ino
-  ino=$(inode "$(slot 1)/tree/node_modules/other/keep.js")
+  mark "$(slot 1)/tree/node_modules/other/keep.js"
   bump two
   prove_ok
-  [ "$(inode "$(slot 1)/tree/node_modules/other/keep.js")" != "$ino" ] || { echo "node_modules was brought up to date entry by entry"; false; }
+  [ ! "$(slot 1)/tree/node_modules/other/keep.js" -ef .vbw/runtime/keep.mark ] || { echo "node_modules was brought up to date entry by entry"; false; }
   [ "$(cat "$(slot 1)/tree/node_modules/big/f7.js")" = 7 ] && [ "$(cat "$(slot 1)/tree/node_modules/pkg/a.js")" = a ] || { echo "the unit's writes are still there"; false; }
 }
 
