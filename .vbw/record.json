@@ -86641,6 +86641,13 @@
       "sort": "next",
       "size": "medium",
       "status": "open"
+    },
+    {
+      "id": "T287",
+      "text": "Workflow agents answered a question the user typed in the main session (field report 4, 2026-11-11: both Devs and the confirm step of a build answered a question about another service): second sighting after T232 (2026-11-03). Run T232's probe in 2.1.31 and report upstream if Claude Code's Workflow tool passes the message",
+      "sort": "next",
+      "size": "small",
+      "status": "open"
     }
   ],
   "decisions": [
