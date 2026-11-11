@@ -192,6 +192,18 @@ approve_refused() {
   next_json | jq -e '.action != "commit" and .action != "approve"' > /dev/null || { next_json; false; }
 }
 
+@test "R298 doctor: vbw doctor judges the failure as vbw next does: a refused approval with nothing left to commit is named, with the approve-again way on, until a commit clears it" {
+  approve_refused
+  vbw_run doctor
+  printf '%s\n' "$output" | grep -qF 'secrets: 5 problem(s) in the staged changes' || { echo "$output"; false; }
+  [[ "$output" == *"approve again"* ]] || { echo "$output"; false; }
+  [[ "$output" != *"commit the VBW files yourself"* ]] || { echo "$output"; false; }
+  hook_passes
+  "$VBW" todo add "a later VBW commit" > /dev/null
+  vbw_run doctor
+  [[ "$output" != *"could not be committed"* ]] || { echo "$output"; false; }
+}
+
 @test "R298 clears: any later VBW commit that succeeds clears the failure, and vbw next goes on" {
   approve_refused
   next_json | jq -e '.action == "commit"' > /dev/null || { echo "the failure does not stand before the later commit"; next_json; false; }
