@@ -25,7 +25,7 @@ teardown_file() { fixture_teardown; }
   # shellcheck disable=SC2016 # expanded by vbw_kernel
   run vbw_kernel '. "$VBW_LIB/checks.sh"
     unset CHECK_OUT
-    slots_waited "$(($(date +%s) - 5))"
+    slots_waited 9999999999 # a start after now counts the one-second minimum: no clock read here (R152)
     SLOTS_LOST="the store could not be written" SLOTS_STATE=lost SLOTS_LEFT=$'"'"'C3\n'"'"' SLOTS_UNIT=C3 SLOTS_RESULT=true
     before=$(declare -p SLOTS_WAITED SLOTS_LOST SLOTS_STATE SLOTS_LEFT SLOTS_UNIT SLOTS_RESULT SLOTS_LOCKED SLOTS_MARK SLOTS_SUB)
     . "$VBW_LIB/checks.sh"
@@ -33,7 +33,7 @@ teardown_file() { fixture_teardown; }
     [ "$before" = "$after" ] || { printf "before the second load:\n%s\nafter it:\n%s\n" "$before" "$after"; exit 1; }
     echo "waited $SLOTS_WAITED"'
   [ "$status" -eq 0 ] || { echo "$output"; false; }
-  [[ "$output" =~ ^waited\ [5-9]$ ]] || { echo "$output"; false; }
+  [ "$output" = "waited 1" ] || { echo "$output"; false; }
 }
 
 # lib_state LIB: in a fresh shell, the variables LIB's load adds (the base libraries core,

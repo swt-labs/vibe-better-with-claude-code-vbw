@@ -193,12 +193,13 @@ no_reads() {
 
 # R264 (T246; docs/proof.md R203 section, docs/workflows.md): a rule whose check reads the
 # project through git has no read list to vouch for it, so --none REASON is accepted on the
-# reason alone: the entry gains git: true, the command prints one line, and the excuse is
+# reason alone: the entry gains git: true, the command prints one line of result (after
+# R295's line naming the check it runs, when no current run is recorded), and the excuse is
 # listed at the next gate (vbw show contract, --changes, vbw ship) until the next approval.
 @test "R264: --none REASON on a check whose recorded run reads the project through git is accepted: entry {rule, none, git, at, head} written, one line printed naming the check, git and the reason" {
   run "$VBW" mutate P1.1 R1.3 --none "only git" < /dev/null
   [ "$status" -eq 0 ] || { echo "$output"; false; }
-  [ "$(printf '%s\n' "$output" | grep -c .)" -eq 1 ] || { echo "$output"; false; }
+  [ "$(printf '%s\n' "$output" | grep -v '^running C4 to record which files it reads' | grep -c .)" -eq 1 ] || { echo "$output"; false; }
   says "R1.3" "C4" "through git" "only git"
   breaks P1.1 | jq -e 'length == 1 and (.[0] | (keys | sort) == ["at", "git", "head", "none", "rule"] and .git == true and .rule == {req: "R1", k: 3} and .none == "only git" and (.head | test("^[0-9a-f]{40}$")))' || { breaks P1.1; false; }
   run_of C4 | jq -e '.git == true' || { run_of C4; false; }

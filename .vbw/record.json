@@ -91984,6 +91984,18 @@
       "at": "2026-11-11T15:20:38Z",
       "text": "Contract approved: 286 requirements, 687 checks, 677 plans (0dee2cc36c19)",
       "plans": []
+    },
+    {
+      "id": "D700",
+      "text": "Fix round 1 of M57: R296 stays as built: a full apply refuses a plan that lists any check's file, the document's own new checks included, because the guard protects every check's files during a build; never narrow it to make a fixture pass",
+      "why": "The proof's apply refusals came from test fixtures that modelled a state no build can reach. The main session changed those fixtures and the cases R298 and R295 superseded (tests/approve-commands.bats R178 case now expects the standing commit step; tests/mutate-rule-none.bats R264 case allows R295's line; tests/lib-load-once.bats reads no clock, R152), for one approval. Left to the fix: F444, vbw plan done leaves an empty .vbw/runtime/plan-done folder behind: keep the marker as a file directly in .vbw/runtime (as plan-done.PLAN.pid) so nothing stays after the run, and update docs/workflows.md; F451, the tests/runner-reads.bats case 'R166: vbw check runs in the working folder and records nothing' lists a check file (src/a.txt) among a plan's files: change that fixture so no plan lists a check file. F443, F445 to F450 need no code change: their checks pass with the approved test files.",
+      "at": "2026-11-11T16:39:20Z"
+    },
+    {
+      "id": "D701",
+      "at": "2026-11-11T16:42:09Z",
+      "text": "Contract approved: 286 requirements, 687 checks, 677 plans (b821bfaa291a)",
+      "plans": []
     }
   ],
   "commands": {

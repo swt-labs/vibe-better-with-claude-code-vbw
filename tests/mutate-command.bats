@@ -39,13 +39,16 @@ built_project() {
   printf 'sh src/receipt.sh > /dev/null\n' > tests/receipt.sh
   jq -nc '{phases: [{id: "P1", title: "Shop", reqs: ["R1", "R2"], goal: "g", criteria: ["c"], tier: "standard"}],
     plans: [{id: "P1.1", phase: "P1", title: "Pay", reqs: ["R1"], files: ["src/pay.sh"], after: [], role: "dev", tasks: ["pay", "print once"]},
-            {id: "P1.2", phase: "P1", title: "Receipt", reqs: ["R2"], files: ["src/receipt.sh", "tests/receipt.sh", "tests/pay-once.sh"], after: [], role: "dev", tasks: ["receipt"]}],
+            {id: "P1.2", phase: "P1", title: "Receipt", reqs: ["R2"], files: ["src/receipt.sh"], after: [], role: "dev", tasks: ["receipt"]}],
     checks: [{id: "C1", req: "R1", run: ["sh", "tests/pay.sh"], files: ["tests/pay.sh"]},
              {id: "C2", req: "R2", run: ["sh", "tests/receipt.sh"], files: ["tests/receipt.sh"]},
              {id: "C3", req: "R1", run: ["sh", "tests/pay-once.sh"], files: ["tests/pay-once.sh"]}],
     rules: [{req: "R1", text: "paying prints paid", check: "C1"},
             {req: "R1", text: "paying prints one line", check: "C3"},
             {req: "R2", text: "a receipt is printed", check: "C2"}]}' | "$VBW" apply > /dev/null
+  # A record written before vbw apply refused it (R296): P1.2 lists two check files among its files.
+  jq '(.plans[] | select(.id == "P1.2")).files += ["tests/receipt.sh", "tests/pay-once.sh"]' .vbw/record.json > "$TEST_ROOT/edit.json" \
+    && cp "$TEST_ROOT/edit.json" .vbw/record.json && rm -f .vbw/runtime/glance.json
   git add -A && git commit -q -m "feat(shop): start"
   "$VBW" approve > /dev/null
 }

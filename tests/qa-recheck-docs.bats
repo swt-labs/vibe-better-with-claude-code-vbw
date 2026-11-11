@@ -43,7 +43,7 @@ docs_project() {
       {id: "P3", title: "Part 3", reqs: ["R3"], goal: "Part 3 works", criteria: ["src/p3.txt says part3"]}],
     plans: [
       {id: "P1.1", phase: "P1", title: "Part 1", reqs: ["R1"], after: [], tasks: ["write part 1"],
-       files: ["src/p1.txt", "docs/p1.md", "docs/p1.markdown", "docs/p1.rst", "data/words.txt", "results/run.json", "results/expected.md", "tests/p1-cases.md"]},
+       files: ["src/p1.txt", "docs/p1.md", "docs/p1.markdown", "docs/p1.rst", "data/words.txt", "results/run.json", "results/expected.md"]},
       {id: "P2.1", phase: "P2", title: "Guide", reqs: ["R2"], after: [], tasks: ["write the guide"], files: ["docs/guide.md"]},
       {id: "P3.1", phase: "P3", title: "Part 3", reqs: ["R3"], after: ["P1.1"], tasks: ["write part 3"], files: ["src/p3.txt"]}],
     checks: [
