@@ -1,5 +1,63 @@
 # Changelog
 
+## [2.1.30] - 2026-11-11
+
+Quick wins from a fourth field report by the lead of a large Rust project,
+whose round of work lost about four hours to one plan's step queued many
+times over, and a fix from the community: @halindrome's #754, which lets
+VBW's agents load connected tools only when they need them. Thank you both.
+
+### Changed
+
+- **One run of a plan at a time.** A second `vbw plan done` of a plan that is
+  still being finished, or a second `vbw mutate PLAN --run`, refuses at once
+  and names the run already going: its process id, the time it started and its
+  command. An agent that retries a slow step now learns to wait, instead of
+  queueing copies that hold up every other plan's checks.
+- **A wait names what holds it.** A check that waits for another VBW command's
+  checks names one of them and that command's process id, beside the time it
+  began waiting: "waiting for another VBW command's check C12 (pid 48213) in
+  this project since 10:42".
+- **`--none` says why it runs a check.** `vbw mutate PLAN Rn.k --none` runs
+  the rule's check once when no current run is recorded, to record which files
+  the check reads: that list is the evidence that no plan's code can change
+  what the check judges. It now says so before it starts, naming the check.
+- **A plan that lists a protected test file is refused when it is written.**
+  `vbw apply` (a full apply, `--add` and `--patch`, as `--amend` already did)
+  refuses such a plan in the guard's own words, so it never reaches a build: the
+  main session changes the test file and sends it with `vbw apply --patch`, then
+  you approve it.
+- **A red baseline keeps the queued breaks.** When a plan's checks fail on the
+  unbroken code (a busy machine, for example), `vbw mutate PLAN --run` names
+  each failing check and keeps every queued break for the next run instead of
+  dropping them.
+- **Agents load connected tools on demand** (#753, #754, thanks @halindrome).
+  Every role keeps Claude Code's ToolSearch, so an MCP tool's description loads
+  only when an agent looks it up, never every one in each agent's first turn
+  (46,072 first-turn input tokens instead of 149,281 in the contributor's
+  measure; the figure depends on your MCP servers). The tools guard never
+  refuses `advisor`, which Claude Code gives every agent when you set an advisor
+  model.
+
+### Fixed
+
+- **No approval loop after a refused commit.** When your project's commit check
+  refuses an approval's commit and nothing else is left to commit, that refusal
+  stays the next step until a commit succeeds, instead of the same approval
+  being asked again. `vbw approve` tries again through your hooks, and
+  `vbw doctor` judges it the same way.
+- **Every wait is counted.** VBW's own code keeps the waits it has counted when
+  it is loaded again in the same command, and `vbw plan done` ends with the
+  waited line, as `vbw check` does.
+- **A copy test that could fail on Linux** now tells a file copied again by its
+  change time, never by an inode number, which Linux reuses at once.
+
+### For you to do
+
+- Update, then restart Claude Code. The record schema stays at 15.
+
+Sizes, for information (file bytes): kernel 954 KB (`plugin/bin/vbw` and `plugin/lib`), mods 363 KB (hooks, panel and status line), workflows 77 KB, prompts 118 KB (agents and skills), packs 5 KB.
+
 ## [2.1.29] - 2026-11-09
 
 A third field report from the lead of a large Rust project, after a day on
