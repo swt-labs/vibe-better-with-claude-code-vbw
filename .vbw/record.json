@@ -91897,6 +91897,12 @@
       "text": "P231.3 is built again: its hard-link mark breaks two kept-copy cases. ln of the copy's node_modules/other/keep.js to .vbw/runtime/keep.mark changes that file's change time, which the copy refresh reads (find -newercm) as a unit's write, so cases 3 and 5 of tests/proofcopy-keep.bats fail on macOS (the old file passes against today's kernel). Judge 'copied again' and 'made again' by change time instead: after the first proof make a reference file in $TEST_ROOT and wait without sleeping until the clock has moved past it (as proofcopy_tick does); after the next proof an entry copied again is strictly newer than the reference (find PATH -newercm REF prints it) and an untouched one is not. Never mark the copy's own entries (ln, an xattr or a write all change their change time). Bring back case 2's check that the claimed copy was not made again, judged the same way if the folder's change time stays put on a claim, else say in a comment why the counts suffice. Correct the CLAUDE.md and AGENTS.md line to match: a reference made before and find -newercm, never a hard link or a mark on the entry",
       "why": "The mark changed what it measured; change time is what the refresh itself reads, and a new file cannot inherit an older change time on any file system",
       "at": "2026-11-11T15:07:01Z"
+    },
+    {
+      "id": "D699",
+      "at": "2026-11-11T15:20:38Z",
+      "text": "Contract approved: 286 requirements, 687 checks, 677 plans (0dee2cc36c19)",
+      "plans": []
     }
   ],
   "commands": {
