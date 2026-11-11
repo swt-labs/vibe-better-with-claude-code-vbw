@@ -86634,6 +86634,13 @@
       "sort": "later",
       "size": "medium",
       "status": "open"
+    },
+    {
+      "id": "T286",
+      "text": "#756 (halindrome, 2026-11-09): Skill is blocked for every agent since P192.3 (D561), the same side effect as #753, so skills R62 installs reach only the main session. Adapted: skills become a capability the project grants, like MCP (a setting in the record, enforced by the tools guard; never VBW's own skills). First the probe the issue describes: first-turn token cost of the skill catalog, the tool_input the guard sees for a Skill call, workflow-started agents against Agent-tool subagents; then the delivery shape (the Lead names skills per plan, or the workflow passes the approved set)",
+      "sort": "next",
+      "size": "medium",
+      "status": "open"
     }
   ],
   "decisions": [
