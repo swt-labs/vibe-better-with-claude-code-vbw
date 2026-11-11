@@ -325,6 +325,8 @@ protected_refused() {
   [[ "$output" == *"$3"*"protected check file"* ]] || { echo "the $1 refusal does not name $3 as a protected check file: $output"; return 1; }
   [[ "$output" == *"build"* ]] || { echo "the $1 refusal does not say a build never edits it: $output"; return 1; }
   [[ "$output" == *"$way"* ]] || { echo "the $1 refusal does not give the guard's way on ($way): $output"; return 1; }
+  [[ "${lines[0]}" == *"$way"* ]] || { echo "the first line of the $1 refusal does not give the guard's way on ($way): ${lines[0]}"; return 1; }
+  [[ "${lines[1]}" == "Next: $way" ]] || { echo "the Next line of the $1 refusal is not the guard's way on ($way): ${lines[1]}"; return 1; }
 }
 
 @test "R296: a full apply, --add and --patch each refuse a plan whose files include a protected check file, naming the mode, the file and the guard's way on; the record is unchanged" {
