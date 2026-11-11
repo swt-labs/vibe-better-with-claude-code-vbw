@@ -86584,7 +86584,7 @@
       "text": "Guard headroom (2026-11-09): the bench's 'guard (big)' case (a 400-line heredoc after git add) runs at 23.2-24.5 ms of VBW's own CPU against its 25 ms budget on this Mac (reference ratio 0.84), before and after F434's change alike; profile the heredoc path and win back headroom so a slower Mac or runner does not fail the release bench (with T171)",
       "sort": "next",
       "size": "small",
-      "status": "open"
+      "status": "dropped"
     },
     {
       "id": "T279",
