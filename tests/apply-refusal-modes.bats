@@ -318,15 +318,16 @@ guard_way() {
 # protected_refused MODE LABEL FILE DOC: the apply is refused, the record unchanged, and the
 # message names LABEL, FILE as a protected check file, a build, and the guard's way on.
 protected_refused() {
-  local way
+  local way first second
   way=$(guard_way "$3")
   [ -n "$way" ] || { echo "the guard gives no way on for $3"; return 1; }
   refused_as "$1" "$2" "$4" || return 1
   [[ "$output" == *"$3"*"protected check file"* ]] || { echo "the $1 refusal does not name $3 as a protected check file: $output"; return 1; }
   [[ "$output" == *"build"* ]] || { echo "the $1 refusal does not say a build never edits it: $output"; return 1; }
   [[ "$output" == *"$way"* ]] || { echo "the $1 refusal does not give the guard's way on ($way): $output"; return 1; }
-  [[ "${lines[0]}" == *"$way"* ]] || { echo "the first line of the $1 refusal does not give the guard's way on ($way): ${lines[0]}"; return 1; }
-  [[ "${lines[1]}" == "Next: $way" ]] || { echo "the Next line of the $1 refusal is not the guard's way on ($way): ${lines[1]}"; return 1; }
+  first=$(printf "%s\n" "$output" | sed -n 1p); second=$(printf "%s\n" "$output" | sed -n 2p)
+  [[ "$first" == *"$way"* ]] || { echo "the first line of the $1 refusal does not give the guard's way on ($way): $first"; return 1; }
+  [ "$second" = "Next: $way" ] || { echo "$1: $second"; return 1; }
 }
 
 @test "R296: a full apply, --add and --patch each refuse a plan whose files include a protected check file, naming the mode, the file and the guard's way on; the record is unchanged" {
