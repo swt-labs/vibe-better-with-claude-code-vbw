@@ -87946,7 +87946,7 @@
       "text": "An approval commit refused by the project's hook when everything else is already committed: the rollback leaves nothing that differs from HEAD, so the failure counts as cleared and vbw next may ask the approval again in a loop (QA P224 note, 2026-11-09, from reading the code). Keep the failure standing until the next successful commit; add the case to tests/approve-commit-fails.bats",
       "sort": "next",
       "size": "small",
-      "status": "open"
+      "status": "done"
     },
     {
       "id": "T283",
