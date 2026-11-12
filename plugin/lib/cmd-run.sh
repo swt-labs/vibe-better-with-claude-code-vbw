@@ -30,7 +30,8 @@ cmd_run() {
     start) [ $# -ge 1 ] || vbw_usage_error "usage: vbw run start plan | build PLAN... | fix FIX... | qa | map" ;;
     end) { [ $# -eq 0 ] || { [ $# -eq 1 ] && { [ "$1" = "--owner-closed" ] || [ "$1" = "--map" ]; }; }; } || vbw_usage_error "usage: vbw run end [--owner-closed | --map < MAP]" ;;
     confirm) [ $# -ge 1 ] || vbw_usage_error "usage: vbw run confirm ID..." ;;
-    *) vbw_usage_error "usage: vbw run start KIND [IDS...] | vbw run confirm ID... | vbw run end [--owner-closed | --map < MAP]" ;;
+    state) [ $# -ge 1 ] || vbw_usage_error "usage: vbw run state ID..." ;;
+    *) vbw_usage_error "usage: vbw run start KIND [IDS...] | vbw run confirm ID... | vbw run state ID... | vbw run end [--owner-closed | --map < MAP]" ;;
   esac
   vbw_require_project
   if [ "$sub" = confirm ]; then
@@ -69,6 +70,32 @@ cmd_run() {
     esac
     printf '%s\n' "$report"
     case "$report" in *"not recorded"*) return 1 ;; esac
+    return 0
+  fi
+  if [ "$sub" = state ]; then
+    # The kernel's own answer after a run's close step: {open, recorded}, one JSON
+    # line. open: a run lease is held. recorded: each named plan (done or blocked),
+    # fix (no longer open) or phase (a QA verdict from the latest QA run, also once
+    # it ended) to whether its result is recorded. Writes nothing; an id that is
+    # none of them is refused by name.
+    local sids sreport
+    sids=$(printf '%s\n' "$@" | jq -R . | jq -sc 'map(select(length > 0))')
+    sreport=$(record_read | jq -c --argjson ids "$sids" '
+      ([(.costs.runs // [])[] | select(.kind == "qa") | .started | select(. != null)]
+        + [.lease | select(. != null and .kind == "qa") | .started_at] | max) as $qa
+      | [$ids[] as $i
+        | if any(.plans[]; .id == $i) then {k: $i, v: ([.plans[] | select(.id == $i)][0].status | IN("done", "blocked"))}
+          elif any(.fixes[]; .id == $i) then {k: $i, v: ([.fixes[] | select(.id == $i)][0].status != "open")}
+          elif any(.phases[]; .id == $i) then
+            {k: $i, v: (([.phases[] | select(.id == $i)][0].qa.at // null) as $at
+              | $at != null and $qa != null and (($at | fromdateiso8601) >= ($qa | fromdateiso8601)))}
+          else {k: $i, unknown: true} end] as $r
+      | if any($r[]; .unknown) then {unknown: [$r[] | select(.unknown) | .k][0]}
+        else {open: (.lease != null), recorded: ($r | map({(.k): .v}) | add // {})} end')
+    case "$sreport" in
+      '{"unknown"'*) vbw_die "unknown id $(printf '%s' "$sreport" | jq -r .unknown): it is no plan, fix or phase"$'\n'"Next: name the ids the run was started with (vbw status lists them)" ;;
+    esac
+    printf '%s\n' "$sreport"
     return 0
   fi
   if [ "$sub" = end ]; then
