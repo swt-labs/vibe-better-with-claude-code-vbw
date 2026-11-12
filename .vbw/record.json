@@ -89285,6 +89285,13 @@
       "sort": "next",
       "size": "small",
       "status": "dropped"
+    },
+    {
+      "id": "T291",
+      "text": "After the installed VBW is 2.1.31: add to VBW's own .vbw/spec.md Test files the lines '- filter: --filter -f' and '- rest: bats --print-output-on-failure --allow-empty-suite --negative-filter {filters} {file}', run vbw spec sync, approve, and check the next proof runs the rest units (D710; R304)",
+      "sort": "next",
+      "size": "small",
+      "status": "open"
     }
   ],
   "decisions": [
