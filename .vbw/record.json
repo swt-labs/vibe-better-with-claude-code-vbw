@@ -9368,20 +9368,6 @@
       ]
     },
     {
-      "id": "C696",
-      "req": "R301",
-      "run": [
-        "bats",
-        "--print-output-on-failure",
-        "--filter",
-        "R301 timed",
-        "tests/bench-limits.bats"
-      ],
-      "files": [
-        "tests/bench-limits.bats"
-      ]
-    },
-    {
       "id": "C697",
       "req": "R304",
       "run": [
@@ -22719,23 +22705,6 @@
       ]
     },
     {
-      "id": "R301",
-      "text": "The Bash guard has headroom under its budget: every Bash guard case of the hook bench (git, npm, big, interp, cross-project, loop, at every record size) costs at most 20 ms own CPU per call at the nominal machine's speed, and a script file run by name at most 40 ms, so a slower CI runner no longer fails it (T283: guard (big) costs about 28 ms on GitHub's macOS runner against its 25 ms budget, and failed the CI of the 2.1.29 and 2.1.30 releases, which merged only by an admin merge)",
-      "proof": "auto",
-      "status": "open",
-      "milestone": "M58",
-      "rules": [
-        {
-          "text": "a timed file judges every Bash guard case of the bench (git, npm, big, interp, cross-project, loop) at 20 ms of own CPU per call at every record size, scaled by the reference beside it, failing on any OVER and skipping a busy machine",
-          "check": "C696"
-        },
-        {
-          "text": "the same timed run judges a script run by name at 40 ms, the bench's doubling of the 20 ms budget",
-          "check": "C696"
-        }
-      ]
-    },
-    {
       "id": "R302",
       "text": "The hook bench's compile split times the Bash guard's whole program as a hook call runs it, programs.jq included, and no row of it times a program that fails to compile (T283: row (b) leaves out programs.jq and times 29 compile errors)",
       "proof": "auto",
@@ -34680,44 +34649,6 @@
         "tests: project test command"
       ],
       "predicted": "deep"
-    },
-    {
-      "id": "P233",
-      "title": "The Bash guard is fast enough to pass on slower CI machines",
-      "reqs": [
-        "R301"
-      ],
-      "milestone": "M58",
-      "goal": "Every Bash guard case costs at most 20 ms per call (40 ms for a script run by name) at nominal speed, so GitHub's slower macOS runner no longer fails the release CI.",
-      "criteria": [
-        "VBW_HOOK_BUDGET_MS=20 bash tools/bench-hooks.sh passes every Bash guard case (git, npm, big, interp, cross-project, loop) at every record size the bench uses; script-by-name cases are judged at 40 ms by the bench's existing doubling",
-        "The default bench budget stays 25 ms (50 ms for scripts by name): only the guard gets faster, the bar is not lowered",
-        "The guard gives the same answer as today for every input: every existing guard and hook-answer test passes unchanged in what it pins (no refusal dropped or weakened, no new allow answer)",
-        "If the hooks.json Bash guard command changes, its pinned test is updated to the new command and the guard still runs only jq programs from the plugin folder: no eval, no bash -c on data, Bash 3.2 compatible, inert outside VBW projects",
-        "The compile-split rows of P232 show where the saved time comes from (compile versus run), with every timed program compiling",
-        "The bench reference program still meets its size rule against the guard (D676: within 10% of the guard's size), or the reference is remeasured on the nominal machines in the same change",
-        "The macOS CI shard of the release pull request passes the hook bench without an admin merge"
-      ],
-      "proposed": "deep",
-      "tier": "deep",
-      "reasons": [
-        "requirements: 1",
-        "files: 8 (174846 bytes)",
-        "files: more than 2 in a repository tracking 1310 files",
-        "risk: CI (phase title)",
-        "breaks: R151, R222, R231, R233, R234, R243, R275",
-        "guarded: R15 (C14), R61 (C73, C74, C75, C76, C77), R75 (C101), R76 (C102, C103), R77 (C104), R83 (C119), R120 (C185), R128 (C200), R149 (C217, C218, C219, C220, C221, C222), R150 (C223, C224, C225, C226, C227, C228, C229, C230), R160 (C247, C263, C264), R162 (C249), R165 (C252), R166 (C253, C254, C255, C256, C267), R177 (C287, C288), R178 (C290, C291, C292, C293, C294, C295, C296, C311), R179 (C297, C298, C299, C300, C301, C302, C303, C304, C305, C306, C312), R180 (C307, C308, C309, C310), R181 (C313, C314, C315, C316, C317, C318, C319, C320, C321), R184 (C328, C329, C330, C331, C332, C333), R185 (C334, C335, C336, C337, C338, C339, C340, C341, C342, C343), R188 (C350, C351, C352, C353, C354, C355, C356, C357, C358, C359), R190 (C374, C375, C376, C377, C378, C379, C380, C381, C382, C383, C384, C385, C386, C387, C388), R192 (C401, C402, C403, C404, C405, C406, C407, C408, C409, C410), R194 (C417, C418, C419), R198 (C423), R210 (C474, C475, C476), R219 (C497, C498, C499), R224 (C512, C513, C514, C515, C516), R235 (C538, C539), R239 (C554, C555), R241 (C546, C547, C548, C549, C550, C560), R242 (C551, C552, C553), R245 (C564, C565), R250 (C574, C575, C576, C577, C578, C585), R254 (C583), R255 (C584), R269 (C626, C627, C628, C629, C630), R273 (C639, C640, C641), R276 (C642, C652), R285 (C662, C663, C664), R289 (C658, C659, C665), R290 (C660, C661, C666), R296 (C685, C686)",
-        "tests: project test command"
-      ],
-      "predicted": "deep",
-      "escalations": [
-        {
-          "at": "2026-11-12T22:54:17Z",
-          "from": "deep",
-          "to": "deep",
-          "reason": "Dev blocked P233.1: DEVN-04, see D711. The recommended shape (inline programs read in the second pass) puts interp at two passes (about 35-40 ms) against R301.1's 20 ms, and no single-pass change reaches the 16 ms on this Mac that 20 ms at the nominal machine means (jq compile is 16.5 of 19-20 ms and tracks instruction count). Built and committed: heredoc scan skipped without an interpreter word (big 22.6 -> 19.6) and tests/timed-guard-headroom.bats (passes on the Mac at the absolute 20/40 ms, 0.1-0.7 ms to spare; likely still red on a slower CI runner). Needs the owner: interp judged at 40 ms like script (then the recommended shape applies) or R301 relaxed."
-        }
-      ]
     },
     {
       "id": "P234",
@@ -83515,46 +83446,6 @@
       ]
     },
     {
-      "id": "P233.1",
-      "phase": "P233",
-      "title": "A faster Bash guard: each call compiles only what its command needs",
-      "reqs": [
-        "R301"
-      ],
-      "files": [
-        "plugin/hooks/guard-bash.jq",
-        "plugin/hooks/programs.jq",
-        "plugin/hooks/guard-read.jq",
-        "plugin/hooks/common.jq",
-        "plugin/hooks/read.sh",
-        "tools/bench-hooks.sh",
-        "tests/timed-guard-headroom.bats"
-      ],
-      "after": [
-        "P232.1"
-      ],
-      "status": "blocked",
-      "role": "dev",
-      "tasks": [
-        "Measure where a guard call spends its time with the corrected compile split (VBW_BENCH_STEPS=compile and =1) on the git, npm, big and interp inputs, and record the design as a decision (vbw decide) before changing code: the recommended shape keeps the first pass to reading the shell command and moves the reading of inline programs (programs.jq) to the second pass read.sh already runs for scripts, so a command without an interpreter program never compiles it",
-        "Build that shape without changing one answer: the hooks.json command stays as it is; every guard, hook-answer and interpreter test keeps passing unchanged; no eval, no bash -c on data, Bash 3.2",
-        "Write tests/timed-guard-headroom.bats (a timed file, run only by the release run): the bench at VBW_HOOK_BUDGET_MS=20 over every Bash guard case (git, npm, big, interp, script, cross-project, loop) at every record size, failing on any OVER, skipping a busy machine, requiring all 25 input and record cases judged; a draft is at .vbw/runtime/scratch/timed-guard-headroom.draft.bats; run it and show it passes",
-        "Keep the bench reference's size rule (D676: within 10% of guard-bash.jq and programs.jq together, tests/bench-limits.bats R233); if the guard's size moves out of it, remeasure the reference on the Mac and both Linux images in the same change and update NOMINAL_MS and its provenance",
-        "Report the before and after figures of the compile split, and give in the plan summary the text docs/guards.md needs in How a command is read for the two passes (the main session makes that edit: docs/guards.md is the protected file of C652)"
-      ],
-      "red_runs": [
-        {
-          "at": "2026-11-12T22:25:12Z",
-          "head": "ee58330d8bf9f9a9ea52b28d6a08b8f9f8f8e816",
-          "first": true,
-          "checks": {
-            "C696": "red"
-          }
-        }
-      ],
-      "note": "DEVN-04, see D711. The recommended shape (inline programs read in the second pass) puts interp at two passes (about 35-40 ms) against R301.1's 20 ms, and no single-pass change reaches the 16 ms on this Mac that 20 ms at the nominal machine means (jq compile is 16.5 of 19-20 ms and tracks instruction count). Built and committed: heredoc scan skipped without an interpreter word (big 22.6 -> 19.6) and tests/timed-guard-headroom.bats (passes on the Mac at the absolute 20/40 ms, 0.1-0.7 ms to spare; likely still red on a slower CI runner). Needs the owner: interp judged at 40 ms like script (then the recommended shape applies) or R301 relaxed."
-    },
-    {
       "id": "P234.1",
       "phase": "P234",
       "title": "The Test files section can say how checks pick some tests, and how to run the rest",
@@ -84138,9 +84029,7 @@
       "files": [
         "plugin/hooks/programs.jq"
       ],
-      "after": [
-        "P233.1"
-      ],
+      "after": [],
       "status": "planned",
       "tasks": [
         "Show tests/guard-comments.bats red, then read comments in the guard quote masking (programs.jq mask_chunk and mask) in the same left-to-right scan that pairs quotes: outside quotes a # at the start of a word (line start, or after a blank or one of ; & | ( ) ) starts a comment to the end of the line, which is dropped before quotes pair, so its quote marks pair with nothing and a held line never waits on one; a # in a quoted string, inside a word, in ${#x} or $# stays text; heredoc bodies stay as strip_heredocs leaves them",
@@ -89542,6 +89431,13 @@
       "sort": "next",
       "size": "small",
       "status": "open"
+    },
+    {
+      "id": "T292",
+      "text": "R301 again, its own milestone: the Bash guard has headroom under its budget (20 ms per call at the nominal speed, 40 ms for a script run by name) so CI's macOS shards stop failing the hook bench. Research first: profile where jq spends the guard's compile (16.5 of 19-20 ms per call on the M1 Max, jq 1.7.1; compile split: parse 0.3, modules 2.7, builtins 1.2), across the M1 Max, GitHub's macOS runner and the Linux images; then design. P233.1's options (D711, D712): interp judged at 40 ms with inline programs read in the second pass (about 2 ms off single-pass calls); or a rewrite cutting about 20% of the guard's instructions. 2.1.30 CI (Linux, ratio 1.47): git 33.6, npm 32.8, big 37.1 OVER, interp 34.3, loop 32.3, script 62.1 ms",
+      "sort": "next",
+      "size": "large",
+      "status": "open"
     }
   ],
   "decisions": [
@@ -93680,6 +93576,12 @@
       "text": "P233.1: the recommended shape (inline programs read in the second pass) is not built: it makes the interp case a two-pass call (a script run by name, two passes, measures 39 ms) against R301.1's 20 ms for interp. Built instead: one pass, with the heredoc scan skipped when the command names no interpreter (big 22.6 -> 19.6 ms on the Mac).",
       "why": "Measured on the Mac (VBW_BENCH_STEPS, jq 1.7.1): compile is 16.5 of the guard's 19-20 ms and tracks instruction count (7,817 instructions, about 2 us each; no construct, string or builtin carries it). Taking program_writes, unreadable_calls and the script findings out of the first pass saves about 2 ms for every call, but interp (an agent running python from a heredoc) then pays a second jq start and compile and lands near 35-40 ms. The judging rule scales a slower machine by the reference ratio, and the nominal reference (28.9 ms, Linux) is 1.27 times this Mac's 22.7 ms, so a case needs about 16 ms on this Mac to pass at 20 ms at the nominal machine; today git 19.3, npm 18.3, big 19.6, interp 19.9, script 39.6 (timed file passes on the Mac at the absolute 20/40 ms with 0.1 to 0.7 ms to spare).",
       "at": "2026-11-12T22:54:01Z"
+    },
+    {
+      "id": "D712",
+      "text": "R301 (20 ms headroom for the Bash guard) leaves M58 and 2.1.31 for its own milestone, research first: where jq spends the guard's compile (about 16.5 of 19-20 ms per call on the M1 Max), then a design that cuts it. Its timed file and case are dropped (C696 removed with R301). P233.1's measured speed-up e2ffdcc3 stays as a quick fix (T283): the guard scans heredocs for programs only when the command names an interpreter; same answers (guard, interpreter and cross-project test files pass); big 22.6 -> 19.6 ms on the M1 Max, the case that was OVER on CI",
+      "why": "P233.1 blocked with measurements (D711): the planned restructure gains about 2 ms on single-pass calls and makes interp a two-pass call at about 40 ms; against the reference the guard sits at about 25 ms per call on Macs and 22 to 25 on Linux (2.1.30 CI log), so 20 ms needs about 20% less compile, which needs a profile first; holding 2.1.31 for it would delay the release by an unknown time",
+      "at": "2026-11-12T22:59:58Z"
     }
   ],
   "commands": {
