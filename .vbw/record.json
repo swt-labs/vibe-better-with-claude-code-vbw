@@ -34709,7 +34709,15 @@
         "guarded: R15 (C14), R61 (C73, C74, C75, C76, C77), R75 (C101), R76 (C102, C103), R77 (C104), R83 (C119), R120 (C185), R128 (C200), R149 (C217, C218, C219, C220, C221, C222), R150 (C223, C224, C225, C226, C227, C228, C229, C230), R160 (C247, C263, C264), R162 (C249), R165 (C252), R166 (C253, C254, C255, C256, C267), R177 (C287, C288), R178 (C290, C291, C292, C293, C294, C295, C296, C311), R179 (C297, C298, C299, C300, C301, C302, C303, C304, C305, C306, C312), R180 (C307, C308, C309, C310), R181 (C313, C314, C315, C316, C317, C318, C319, C320, C321), R184 (C328, C329, C330, C331, C332, C333), R185 (C334, C335, C336, C337, C338, C339, C340, C341, C342, C343), R188 (C350, C351, C352, C353, C354, C355, C356, C357, C358, C359), R190 (C374, C375, C376, C377, C378, C379, C380, C381, C382, C383, C384, C385, C386, C387, C388), R192 (C401, C402, C403, C404, C405, C406, C407, C408, C409, C410), R194 (C417, C418, C419), R198 (C423), R210 (C474, C475, C476), R219 (C497, C498, C499), R224 (C512, C513, C514, C515, C516), R235 (C538, C539), R239 (C554, C555), R241 (C546, C547, C548, C549, C550, C560), R242 (C551, C552, C553), R245 (C564, C565), R250 (C574, C575, C576, C577, C578, C585), R254 (C583), R255 (C584), R269 (C626, C627, C628, C629, C630), R273 (C639, C640, C641), R276 (C642, C652), R285 (C662, C663, C664), R289 (C658, C659, C665), R290 (C660, C661, C666), R296 (C685, C686)",
         "tests: project test command"
       ],
-      "predicted": "deep"
+      "predicted": "deep",
+      "escalations": [
+        {
+          "at": "2026-11-12T22:54:17Z",
+          "from": "deep",
+          "to": "deep",
+          "reason": "Dev blocked P233.1: DEVN-04, see D711. The recommended shape (inline programs read in the second pass) puts interp at two passes (about 35-40 ms) against R301.1's 20 ms, and no single-pass change reaches the 16 ms on this Mac that 20 ms at the nominal machine means (jq compile is 16.5 of 19-20 ms and tracks instruction count). Built and committed: heredoc scan skipped without an interpreter word (big 22.6 -> 19.6) and tests/timed-guard-headroom.bats (passes on the Mac at the absolute 20/40 ms, 0.1-0.7 ms to spare; likely still red on a slower CI runner). Needs the owner: interp judged at 40 ms like script (then the recommended shape applies) or R301 relaxed."
+        }
+      ]
     },
     {
       "id": "P234",
@@ -83525,7 +83533,7 @@
       "after": [
         "P232.1"
       ],
-      "status": "planned",
+      "status": "blocked",
       "role": "dev",
       "tasks": [
         "Measure where a guard call spends its time with the corrected compile split (VBW_BENCH_STEPS=compile and =1) on the git, npm, big and interp inputs, and record the design as a decision (vbw decide) before changing code: the recommended shape keeps the first pass to reading the shell command and moves the reading of inline programs (programs.jq) to the second pass read.sh already runs for scripts, so a command without an interpreter program never compiles it",
@@ -83533,7 +83541,18 @@
         "Write tests/timed-guard-headroom.bats (a timed file, run only by the release run): the bench at VBW_HOOK_BUDGET_MS=20 over every Bash guard case (git, npm, big, interp, script, cross-project, loop) at every record size, failing on any OVER, skipping a busy machine, requiring all 25 input and record cases judged; a draft is at .vbw/runtime/scratch/timed-guard-headroom.draft.bats; run it and show it passes",
         "Keep the bench reference's size rule (D676: within 10% of guard-bash.jq and programs.jq together, tests/bench-limits.bats R233); if the guard's size moves out of it, remeasure the reference on the Mac and both Linux images in the same change and update NOMINAL_MS and its provenance",
         "Report the before and after figures of the compile split, and give in the plan summary the text docs/guards.md needs in How a command is read for the two passes (the main session makes that edit: docs/guards.md is the protected file of C652)"
-      ]
+      ],
+      "red_runs": [
+        {
+          "at": "2026-11-12T22:25:12Z",
+          "head": "ee58330d8bf9f9a9ea52b28d6a08b8f9f8f8e816",
+          "first": true,
+          "checks": {
+            "C696": "red"
+          }
+        }
+      ],
+      "note": "DEVN-04, see D711. The recommended shape (inline programs read in the second pass) puts interp at two passes (about 35-40 ms) against R301.1's 20 ms, and no single-pass change reaches the 16 ms on this Mac that 20 ms at the nominal machine means (jq compile is 16.5 of 19-20 ms and tracks instruction count). Built and committed: heredoc scan skipped without an interpreter word (big 22.6 -> 19.6) and tests/timed-guard-headroom.bats (passes on the Mac at the absolute 20/40 ms, 0.1-0.7 ms to spare; likely still red on a slower CI runner). Needs the owner: interp judged at 40 ms like script (then the recommended shape applies) or R301 relaxed."
     },
     {
       "id": "P234.1",
@@ -83550,12 +83569,20 @@
         "plugin/lib/cmd-apply.sh"
       ],
       "after": [],
-      "status": "planned",
+      "status": "done",
       "red_runs": [
         {
           "at": "2026-11-12T22:11:07Z",
           "head": "db7192cdcd7cc453079d8de8a24801b5e25d2397",
           "first": true,
+          "checks": {
+            "C698": "red"
+          }
+        },
+        {
+          "at": "2026-11-12T22:24:58Z",
+          "head": "ee58330d8bf9f9a9ea52b28d6a08b8f9f8f8e816",
+          "first": false,
           "checks": {
             "C698": "red"
           }
@@ -83567,6 +83594,179 @@
         "Refuse, naming the line, a rest line that does not name {file} and {filters} exactly once each, and a rest or join line without a filter line",
         "Store the new fields in the record form and accept them in the record validator (an array entry keeps dir, files, name and run, plus filter, rest and join when given), with schema 16: record-schema.jq gets the row with the feature \"a test file form with a filter, rest or join line\" and VBW_SCHEMA_MAX becomes 16 (tests/record-schema.bats pins both; the main session updated it, and the filtered_form helper of tests/prove-testfiles.bats that kept C698 from passing; the docs/record.md Versioning row is P234.3s)",
         "Let vbw apply's test_files carry filter, rest and join and write them back into the spec's section"
+      ],
+      "mutations": [
+        {
+          "task": 3,
+          "what": "record validator accepts an empty join string",
+          "files": [
+            "plugin/lib/record.jq"
+          ],
+          "checks": {
+            "C698": "green"
+          },
+          "result": "survivor",
+          "at": "2026-11-12T22:28:40Z",
+          "head": "c36e0c5792760e8287cb798bd863abcba275817a",
+          "tree": "d467f09f199ccb5f3ac45f70ce01d5ed75afe0eb",
+          "contract": "cb7f6e7f8ef53f84abd02716d0fd1a04c94f207a00821e4bff8ddafae0c8a1ca",
+          "digests": [
+            {
+              "file": "plugin/lib/record.jq",
+              "sha256": "b5ffe876a25776610c17286e8133ff89977f7590bb0d6f7ae5e13e6d6cfe9c3f"
+            }
+          ]
+        },
+        {
+          "task": 3,
+          "what": "record validator accepts an empty join string",
+          "files": [
+            "plugin/lib/record.jq"
+          ],
+          "checks": {
+            "C698": "red"
+          },
+          "result": "red",
+          "at": "2026-11-12T22:29:35Z",
+          "head": "55d82cf416bd2d94d8007c8dec4df0af9a194056",
+          "tree": "f2581ef95d24a7c94c453e4f88a1f0f6ca253caa",
+          "contract": "0c4fe7f15de595d6d1f51cd497c8ead1c874138cf592fa28e7b45e861333bd1a",
+          "digests": [
+            {
+              "file": "plugin/lib/record.jq",
+              "sha256": "b5ffe876a25776610c17286e8133ff89977f7590bb0d6f7ae5e13e6d6cfe9c3f"
+            }
+          ],
+          "strengthened": [
+            "tests/prove-testfiles.bats"
+          ],
+          "pending": [
+            "tests/prove-testfiles.bats"
+          ]
+        },
+        {
+          "task": 1,
+          "what": "single-quoted join keeps its closing quote",
+          "files": [
+            "plugin/lib/spec.jq"
+          ],
+          "checks": {
+            "C698": "green"
+          },
+          "result": "survivor",
+          "at": "2026-11-12T22:30:00Z",
+          "head": "55d82cf416bd2d94d8007c8dec4df0af9a194056",
+          "tree": "f2581ef95d24a7c94c453e4f88a1f0f6ca253caa",
+          "contract": "0c4fe7f15de595d6d1f51cd497c8ead1c874138cf592fa28e7b45e861333bd1a",
+          "digests": [
+            {
+              "file": "plugin/lib/spec.jq",
+              "sha256": "fd2d62ad226eca70241bdd0c1ea3c2cbf4da2412c81306c904f3c0b1752e107b"
+            }
+          ]
+        },
+        {
+          "task": 1,
+          "what": "single-quoted join keeps its closing quote",
+          "files": [
+            "plugin/lib/spec.jq"
+          ],
+          "checks": {
+            "C698": "red"
+          },
+          "result": "red",
+          "at": "2026-11-12T22:31:05Z",
+          "head": "d54340722900c2972d0a3e2866c2e73bff9fc55e",
+          "tree": "e61ee3a59ecb4fb19ebd71c8c4996bdc6e8bea61",
+          "contract": "f2ce2199a6cfba811c87013ba3b338dcf5f1c1c662e4a44a032feedcc29ca646",
+          "digests": [
+            {
+              "file": "plugin/lib/spec.jq",
+              "sha256": "fd2d62ad226eca70241bdd0c1ea3c2cbf4da2412c81306c904f3c0b1752e107b"
+            }
+          ],
+          "strengthened": [
+            "tests/prove-testfiles.bats"
+          ],
+          "pending": [
+            "tests/prove-testfiles.bats"
+          ]
+        },
+        {
+          "task": 4,
+          "what": "apply writes the join line without its spaces",
+          "files": [
+            "plugin/lib/cmd-apply.sh"
+          ],
+          "checks": {
+            "C698": "green"
+          },
+          "result": "survivor",
+          "at": "2026-11-12T22:31:34Z",
+          "head": "d54340722900c2972d0a3e2866c2e73bff9fc55e",
+          "tree": "e61ee3a59ecb4fb19ebd71c8c4996bdc6e8bea61",
+          "contract": "f2ce2199a6cfba811c87013ba3b338dcf5f1c1c662e4a44a032feedcc29ca646",
+          "digests": [
+            {
+              "file": "plugin/lib/cmd-apply.sh",
+              "sha256": "2b18a17b10cfae864295f78bcb859e53018d2104173009487442e050e62c62ed"
+            }
+          ]
+        },
+        {
+          "task": 4,
+          "what": "apply writes the join line without its spaces",
+          "files": [
+            "plugin/lib/cmd-apply.sh"
+          ],
+          "checks": {
+            "C698": "red"
+          },
+          "result": "red",
+          "at": "2026-11-12T22:32:56Z",
+          "head": "69a500ab31235bf960d31bd140dec22ab46341c2",
+          "tree": "da2468c583a8a9eced24a6268597ee62f893887f",
+          "contract": "fa4747b04aadcc0db6ffe70d69c2936138a927b5b5ffe9f6dcdbe2e79940c6d3",
+          "digests": [
+            {
+              "file": "plugin/lib/cmd-apply.sh",
+              "sha256": "2b18a17b10cfae864295f78bcb859e53018d2104173009487442e050e62c62ed"
+            }
+          ],
+          "strengthened": [
+            "tests/prove-testfiles.bats"
+          ],
+          "pending": [
+            "tests/prove-testfiles.bats"
+          ]
+        },
+        {
+          "rule": {
+            "req": "R304",
+            "k": 8
+          },
+          "what": "rest line may omit {filters}",
+          "files": [
+            "plugin/lib/spec.jq"
+          ],
+          "checks": {
+            "C698": "red"
+          },
+          "result": "red",
+          "at": "2026-11-12T22:33:41Z",
+          "head": "69a500ab31235bf960d31bd140dec22ab46341c2",
+          "tree": "da2468c583a8a9eced24a6268597ee62f893887f",
+          "contract": "fa4747b04aadcc0db6ffe70d69c2936138a927b5b5ffe9f6dcdbe2e79940c6d3",
+          "digests": [
+            {
+              "file": "plugin/lib/spec.jq",
+              "sha256": "f0bec8353a92ab51c54724faa64432bd68299dd81e8ae361ab919801a1fffc06"
+            }
+          ],
+          "pending": [
+            "tests/prove-testfiles.bats"
+          ]
+        }
       ]
     },
     {
@@ -83608,12 +83808,62 @@
       "after": [
         "P232.2"
       ],
-      "status": "planned",
+      "status": "done",
       "role": "docs",
       "tasks": [
         "docs/proof.md: show the filter, rest and join lines with a bats example (--filter -f; bats --allow-empty-suite --negative-filter {filters} {file}), say that a file named only by filtered checks runs its other tests and that the rest command must pass when nothing is left",
         "docs/record.md: the form filter, rest and join fields, and in Versioning the row for schema 16 (a test file form with a filter, rest or join line, naming filter, rest and join) with VBW_SCHEMA_MAX, currently 16 (tests/record-schema-docs.bats pins twelve rows)",
         "plugin/agents/lead.md: when checks run a file with a filter, the Lead proposes the filter and rest lines ({filters}) with the one-file form"
+      ],
+      "mutations": [
+        {
+          "rule": {
+            "req": "R304",
+            "k": 9
+          },
+          "what": "renamed --allow-empty-suite in proof.md",
+          "files": [
+            "docs/proof.md"
+          ],
+          "checks": {
+            "C699": "red"
+          },
+          "result": "red",
+          "at": "2026-11-12T22:25:33Z",
+          "head": "70af0f75fd3556ac8071f8fa4666fd6f011b2ea1",
+          "tree": "1b0f04fb504517f2b23077d522e2e75a4564f05b",
+          "contract": "cb7f6e7f8ef53f84abd02716d0fd1a04c94f207a00821e4bff8ddafae0c8a1ca",
+          "digests": [
+            {
+              "file": "docs/proof.md",
+              "sha256": "6c258e4d1943a0758169d3f3e7a211302f4178d42431126433c0cdc036874050"
+            }
+          ]
+        },
+        {
+          "rule": {
+            "req": "R304",
+            "k": 10
+          },
+          "what": "renamed {filters} in lead.md",
+          "files": [
+            "plugin/agents/lead.md"
+          ],
+          "checks": {
+            "C699": "red"
+          },
+          "result": "red",
+          "at": "2026-11-12T22:25:40Z",
+          "head": "70af0f75fd3556ac8071f8fa4666fd6f011b2ea1",
+          "tree": "1b0f04fb504517f2b23077d522e2e75a4564f05b",
+          "contract": "cb7f6e7f8ef53f84abd02716d0fd1a04c94f207a00821e4bff8ddafae0c8a1ca",
+          "digests": [
+            {
+              "file": "plugin/agents/lead.md",
+              "sha256": "12752880ae0b8b80858a314d2bbf826cfb94958a771ac217c9eaf87a34e7f32e"
+            }
+          ]
+        }
       ]
     },
     {
@@ -93424,6 +93674,12 @@
       "text": "R304 stores a test file form's filter, rest and join in the record at schema 16 (feature: a test file form with a filter, rest or join line). VBW's own spec gets its filter and rest lines only once the installed VBW is 2.1.31; the main-session step after P234.1 and P234.2 moves to the start of 2.1.32",
       "why": "the 2.1.30 validator accepts a form only with its known keys, so the schema step makes an older VBW ask to be updated instead of calling the record corrupt (R247); VBW's own record is written by the installed 2.1.30, which would refuse the lines",
       "at": "2026-11-12T22:23:53Z"
+    },
+    {
+      "id": "D711",
+      "text": "P233.1: the recommended shape (inline programs read in the second pass) is not built: it makes the interp case a two-pass call (a script run by name, two passes, measures 39 ms) against R301.1's 20 ms for interp. Built instead: one pass, with the heredoc scan skipped when the command names no interpreter (big 22.6 -> 19.6 ms on the Mac).",
+      "why": "Measured on the Mac (VBW_BENCH_STEPS, jq 1.7.1): compile is 16.5 of the guard's 19-20 ms and tracks instruction count (7,817 instructions, about 2 us each; no construct, string or builtin carries it). Taking program_writes, unreadable_calls and the script findings out of the first pass saves about 2 ms for every call, but interp (an agent running python from a heredoc) then pays a second jq start and compile and lands near 35-40 ms. The judging rule scales a slower machine by the reference ratio, and the nominal reference (28.9 ms, Linux) is 1.27 times this Mac's 22.7 ms, so a case needs about 16 ms on this Mac to pass at 20 ms at the nominal machine; today git 19.3, npm 18.3, big 19.6, interp 19.9, script 39.6 (timed file passes on the Mac at the absolute 20/40 ms with 0.1 to 0.7 ms to spare).",
+      "at": "2026-11-12T22:54:01Z"
     }
   ],
   "commands": {
@@ -105189,6 +105445,17 @@
         "ended": "2026-11-12T22:16:45Z",
         "cost": {
           "usd": 2.162136
+        }
+      },
+      {
+        "id": "build-20261112T222423Z",
+        "kind": "build",
+        "session": "0ee781c3-c5b6-4a6c-889f-04b89f1fba4a",
+        "milestone": "M58",
+        "started": "2026-11-12T22:24:23Z",
+        "ended": "2026-11-12T22:54:37Z",
+        "cost": {
+          "usd": 3.428703
         }
       }
     ],
