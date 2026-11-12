@@ -105,3 +105,18 @@ merge_prompt() {
   grep -qF '"name"' "$FLOW"
   grep -E '^8\. \*\*One-file test form' "$LEAD" | grep -qF 'one form per test runner'
 }
+
+@test "R304 docs: docs/proof.md shows the filter, rest and join lines, says a file named only by filtered checks runs its other tests, and that a rest run must pass when nothing is left (bats --allow-empty-suite)" {
+  grep -qF -- '- filter: ' "$DOC"
+  grep -qF -- '- rest: ' "$DOC"
+  grep -qF -- '- join: ' "$DOC"
+  grep -qF '{filters}' "$DOC"
+  grep -qF -- '--negative-filter' "$DOC"
+  grep -qF -- '--allow-empty-suite' "$DOC"
+}
+
+@test "R304 docs: docs/record.md gives the form's filter, rest and join fields, and the Lead's instructions name the filter and rest lines" {
+  grep -qF '"filter"' "$REPO_ROOT/docs/record.md"
+  grep -qF '"rest"' "$REPO_ROOT/docs/record.md"
+  grep -qF '{filters}' "$LEAD"
+}

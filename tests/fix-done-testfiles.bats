@@ -26,10 +26,10 @@ fixdone_project() {
   printf 'a\n' > src/a.txt
   printf 'b\n' > src/b.txt
   printf 'c\n' > src/c.txt
-  printf 'echo t_a >> "$RANLOG"\n[ ! -e "$TEST_ROOT/fail_a" ] || { echo "t_a broken"; exit 1; }\n' > tests/t_a.sh
-  printf 'echo t_b >> "$RANLOG"\ngrep -q . src/b.txt\n' > tests/t_b.sh
-  printf 'echo t_c >> "$RANLOG"\ngrep -q . src/c.txt\n' > tests/t_c.sh
-  printf 'echo C1 >> "$RANLOG"\ngrep -q . src/a.txt\n' > tests/c1.sh
+  printf 'echo t_a >> "$RANLOG"\n[ -z "${PEEK:-}" ] || cat "$PEEK" >> "$PEEK.seen"\n[ ! -e "$TEST_ROOT/fail_a" ] || { echo "t_a broken"; exit 1; }\n' > tests/t_a.sh
+  printf 'echo t_b >> "$RANLOG"\n[ -z "${PEEK:-}" ] || cat "$PEEK" >> "$PEEK.seen"\ngrep -q . src/b.txt\n' > tests/t_b.sh
+  printf 'echo t_c >> "$RANLOG"\n[ -z "${PEEK:-}" ] || cat "$PEEK" >> "$PEEK.seen"\ngrep -q . src/c.txt\n' > tests/t_c.sh
+  printf 'echo C1 >> "$RANLOG"\n[ -z "${PEEK:-}" ] || cat "$PEEK" >> "$PEEK.seen"\ngrep -q . src/a.txt\n' > tests/c1.sh
   printf 'echo all >> "$RANLOG"\n' > tests/all.sh
   export RANLOG="$TEST_ROOT/ran.log"
   : > "$RANLOG"
@@ -172,4 +172,45 @@ line() {
   printf '%s\n' "$output" | grep -F 'tests/t_' | grep -qF 'ran:' && { echo "$output"; false; }
   line '^test files: 3 ran, 0 reused$'
   [ "$(ran)" = "C1 t_a t_b t_c " ] || { echo "ran: $(ran)"; false; }
+}
+
+# R305 (T288): vbw fix done of a test-command fix says what it will run before it runs it, as
+# vbw prove does, so it is never silent while its units run. Each unit script appends what
+# fix done had printed so far ($PEEK, its output file) to $PEEK.seen when it starts.
+
+# fix_done_peek: vbw fix done "$FIX" with its output in $PEEK; sets status and output.
+fix_done_peek() {
+  export PEEK="$TEST_ROOT/fixdone.out"
+  : > "$PEEK.seen"
+  status=0
+  "$VBW" fix done "$FIX" > "$PEEK" 2>&1 < /dev/null || status=$?
+  output=$(cat "$PEEK")
+}
+
+@test "R305: before its first unit runs, fix done prints vbw prove's opening line: run again, N of M units, top reasons" {
+  rm -f "$TEST_ROOT/fail_a"
+  fix_done_peek
+  [ "$status" -eq 0 ] || { echo "$output"; false; }
+  line '^run again: 1 of 4 units; top reasons: last result failed \(1\)$'
+  grep -qE '^run again: 1 of 4 units; ' "$PEEK.seen" || { echo "the line was not printed before the units ran; they saw:"; cat "$PEEK.seen"; echo "output:"; echo "$output"; false; }
+}
+
+@test "R305: a change no unit read reruns only the failed file and reuses every other unit, counted in the opening line" {
+  rm -f "$TEST_ROOT/fail_a"
+  printf 'notes\n' > NOTES.md && git add NOTES.md && git commit -q -m "docs: notes"
+  fix_done_peek
+  [ "$status" -eq 0 ] || { echo "$output"; false; }
+  [ "$(ran)" = "t_a " ] || { echo "ran: $(ran)"; false; }
+  line '^run again: 1 of 4 units; '
+  line '^test files: 1 ran, 2 reused$'
+}
+
+@test "R305: when fix done must run every unit, its first line says so and why, before any unit runs" {
+  rm -f "$TEST_ROOT/fail_a"
+  rm -f "$(git rev-parse --path-format=absolute --git-common-dir)/vbw/runs.json"
+  fix_done_peek
+  [ "$status" -eq 0 ] || { echo "$output"; false; }
+  [ "$(printf '%s\n' "$output" | head -1)" = 'every candidate check runs: this clone has no earlier recorded run' ] || { echo "$output"; false; }
+  grep -qxF 'every candidate check runs: this clone has no earlier recorded run' "$PEEK.seen" || { echo "the units ran before the cause was said; they saw:"; cat "$PEEK.seen"; false; }
+  line '^run again: 4 of 4 units; '
 }

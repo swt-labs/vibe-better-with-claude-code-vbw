@@ -99,3 +99,84 @@ cells() { row "$1" | head -1 | sed -E "s/^$1[[:space:]]+//"; }
   [ "$defs" -gt 0 ] || { echo "no definitions"; false; }
   [ "$((called * 5))" -ge "$((defs * 4))" ] || { echo "the reference calls $called of its $defs definitions"; false; }
 }
+
+# R302 (T283): the compile split times the Bash guard as a hook call compiles it: guard-bash.jq
+# with every file it includes, read from its include lines, and every program it times compiles.
+# Each row's label names the files it compiles; a program that does not compile is never timed.
+
+# includes FILE: the module files FILE includes, one per line, as NAME.jq.
+includes() { sed -n -E 's/^include "([a-z0-9_-]+)".*/\1.jq/p' "$1"; }
+
+# plugin_copy DIR: the bench's inputs (hooks and lib) of the shipped plugin, copied into DIR.
+plugin_copy() {
+  mkdir -p "$1"
+  cp -R "$PLUGIN_ROOT/hooks" "$PLUGIN_ROOT/lib" "$1/"
+}
+
+# compile_split [PLUGIN]: the compile split table, one run per row, of the shipped plugin or PLUGIN.
+compile_split() {
+  run env VBW_BENCH_STEPS=compile VBW_BENCH_RUNS=1 VBW_BENCH_PLUGIN_ROOT="${1:-$PLUGIN_ROOT}" VBW_HOOK_BUDGET_MS=100000 VBW_STATUSLINE_BUDGET_MS=100000 bash "$BENCH"
+}
+
+# guard_rows_name GUARD: every guard row of $output, (a) to (d), names guard-bash.jq and each
+# include of GUARD; row (e), the modules alone, names each include.
+guard_rows_name() {
+  local label f line
+  for label in '(a)' '(b)' '(c)' '(d)' '(e)'; do
+    line=$(printf '%s\n' "$output" | grep -F -- "$label " | head -1)
+    [ -n "$line" ] || { echo "no row $label:"; echo "$output"; return 1; }
+    if [ "$label" != '(e)' ]; then
+      [[ "$line" == *guard-bash.jq* ]] || { echo "row $label does not name guard-bash.jq: $line"; return 1; }
+    fi
+    for f in $(includes "$1"); do
+      [[ "$line" == *"$f"* ]] || { echo "row $label does not name $f: $line"; return 1; }
+    done
+  done
+}
+
+@test "R302: every guard row of the compile split names guard-bash.jq and each file it includes, programs.jq among them, and the run exits 0" {
+  compile_split
+  [ "$status" -eq 0 ] || { echo "$output"; false; }
+  includes "$PLUGIN_ROOT/hooks/guard-bash.jq" | grep -qx 'programs.jq' || { echo "the guard no longer includes programs.jq"; false; }
+  guard_rows_name "$PLUGIN_ROOT/hooks/guard-bash.jq"
+}
+
+@test "R302: the step table's program compile row names the same files: guard-bash.jq and each file it includes" {
+  run env VBW_BENCH_STEPS=1 VBW_BENCH_RUNS=1 VBW_HOOK_BUDGET_MS=100000 VBW_STATUSLINE_BUDGET_MS=100000 bash "$BENCH"
+  [ "$status" -eq 0 ] || { echo "$output"; false; }
+  local line f
+  line=$(row 'program compile')
+  [[ "$line" == *guard-bash.jq* ]] || { echo "the program compile row does not name guard-bash.jq: $line"; false; }
+  for f in $(includes "$PLUGIN_ROOT/hooks/guard-bash.jq"); do
+    [[ "$line" == *"$f"* ]] || { echo "the program compile row does not name $f: $line"; false; }
+  done
+}
+
+@test "R302: the guard's files are read from its include lines: a guard with one more include, whose definition it calls, compiles in every guard row and each row names it" {
+  local p="$TEST_ROOT/plugin"
+  plugin_copy "$p"
+  printf 'def bench_extra_probe: empty;\n' > "$p/hooks/extra.jq"
+  perl -0pi -e 's/(include "programs" \{search: "\.\/"\};\n)/$1include "extra" {search: ".\/"};\n/; s/\nrun, "vbw-guard-done"\s*\z/\nrun, "vbw-guard-done", bench_extra_probe\n/' "$p/hooks/guard-bash.jq"
+  grep -q 'include "extra"' "$p/hooks/guard-bash.jq" && grep -q 'bench_extra_probe$' "$p/hooks/guard-bash.jq" || { echo "the fixture guard was not changed"; false; }
+  # jq exits 3 on a compile error only; the guard over empty inputs may stop otherwise.
+  local code=0
+  jq -nc --rawfile glance /dev/null --arg root x --arg dir x --arg open 0 -f "$p/hooks/guard-bash.jq" /dev/null /dev/null > /dev/null 2>&1 || code=$?
+  [ "$code" -ne 3 ] || { echo "the fixture guard does not compile"; false; }
+  compile_split "$p"
+  [ "$status" -eq 0 ] || { echo "$output"; false; }
+  guard_rows_name "$p/hooks/guard-bash.jq"
+}
+
+@test "R302: a timed program that does not compile is never timed: the bench exits non-zero naming the row and jq's error, in the compile split and in the step table" {
+  local p="$TEST_ROOT/plugin"
+  plugin_copy "$p"
+  printf '\ndef bench_broken: (;\n' >> "$p/hooks/programs.jq"
+  compile_split "$p"
+  [ "$status" -ne 0 ] || { echo "the compile split passed with a program that does not compile:"; echo "$output"; false; }
+  [[ "$output" == *"(a)"* ]] || { echo "the failing row is not named:"; echo "$output"; false; }
+  [[ "$output" == *"syntax error"* ]] || { echo "jq's error is not shown:"; echo "$output"; false; }
+  ! printf '%s\n' "$output" | grep -E '^\(a\) ' | grep -qE '[[:space:]][0-9]+\.[0-9]$' || { echo "row (a) was timed:"; echo "$output"; false; }
+  run env VBW_BENCH_STEPS=1 VBW_BENCH_RUNS=1 VBW_HOOK_BUDGET_MS=100000 VBW_STATUSLINE_BUDGET_MS=100000 VBW_BENCH_PLUGIN_ROOT="$p" bash "$BENCH"
+  [ "$status" -ne 0 ] || { echo "the step table passed with a program that does not compile:"; echo "$output"; false; }
+  [[ "$output" == *"program compile"* ]] && [[ "$output" == *"syntax error"* ]] || { echo "the step table does not name the row and jq's error:"; echo "$output"; false; }
+}

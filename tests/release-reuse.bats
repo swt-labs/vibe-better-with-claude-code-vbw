@@ -123,3 +123,14 @@ bump_copy() {
     false
   }
 }
+
+# R303 (T283): when the proof is reused, a failed benchmark still leaves the timed tests to run;
+# the run then fails, its last lines naming the failed benchmark.
+@test "R303: a release run that reuses the proof runs the timed tests after a failed hook bench, then fails naming it" {
+  fake_repo
+  bump
+  FAIL=bench-hooks fake_run --release
+  [ "$CODE" -ne 0 ] || { echo "$OUT"; false; }
+  grep -qx 'bench-panel' "$LOG" && bats_calls | grep -q 'tests/timed-speed.bats' || { echo "the run stopped at the benchmark:"; cat "$LOG"; false; }
+  [[ "$(tail -n 3 "$TEST_ROOT/out")" == *"hook bench"* ]] || { echo "the last lines do not name the hook bench: $OUT"; false; }
+}

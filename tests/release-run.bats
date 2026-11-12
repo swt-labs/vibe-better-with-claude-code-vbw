@@ -324,3 +324,111 @@ has_clock() {
     false
   }
 }
+
+# R303 (T283): a failed hook or panel benchmark never stops the rest of a run: the lint and
+# every test file still run, then the run fails, its last lines naming each failed benchmark
+# ('hook bench' for tools/bench-hooks.sh, 'panel bench' for tools/bench-panel.sh).
+
+# ran_all: the lint and both benchmarks ran, and bats ran the untimed files in one batch and the timed files alone.
+ran_all() {
+  grep -q '^shellcheck ' "$LOG" && grep -qx 'bench-hooks' "$LOG" && grep -qx 'bench-panel' "$LOG" || {
+    echo "the lint or a benchmark did not run:"
+    cat "$LOG"
+    return 1
+  }
+  local calls
+  calls=$(bats_calls)
+  printf '%s\n' "$calls" | grep -e '--jobs' | grep -q 'tests/a.bats' || {
+    echo "the parallel batch did not run:"
+    cat "$LOG"
+    return 1
+  }
+  [ "$(files_of "$(printf '%s\n' "$calls" | tail -n 1)")" = "$TIMED" ] || {
+    echo "the timed files did not run alone, last:"
+    cat "$LOG"
+    return 1
+  }
+}
+
+# names_failed WORDS...: the run failed and its last 3 lines name each failed benchmark.
+names_failed() {
+  local tail w
+  [ "$CODE" -ne 0 ] || {
+    echo "the run passed with a failed benchmark"
+    cat "$TEST_ROOT/out"
+    return 1
+  }
+  tail=$(tail -n 3 "$TEST_ROOT/out")
+  for w in "$@"; do
+    [[ "$tail" == *"$w"* ]] || {
+      echo "the last lines do not name the $w:"
+      cat "$TEST_ROOT/out"
+      return 1
+    }
+  done
+}
+
+@test "R303: in CI shard 1 a failed hook bench stops nothing: the panel bench, the lint and every test file run, then the shard fails naming the hook bench" {
+  fake_repo
+  FAIL=bench-hooks fake_run --shard 1/1
+  ran_all
+  names_failed 'hook bench'
+  ! tail -n 3 "$TEST_ROOT/out" | grep -q 'panel bench' || {
+    echo "the panel bench passed but is named as failed:"
+    cat "$TEST_ROOT/out"
+    false
+  }
+}
+
+@test "R303: in CI shard 1 a failed panel bench stops nothing either, and the shard fails naming it" {
+  fake_repo
+  FAIL=bench-panel fake_run --shard 1/1
+  ran_all
+  names_failed 'panel bench'
+}
+
+@test "R303: the non-shard release run runs every test file after a failed benchmark, then fails naming it" {
+  fake_repo
+  FAIL=bench-hooks fake_run --release
+  ran_all
+  names_failed 'hook bench'
+}
+
+@test "R303: a failed benchmark and a failed batch: the run fails and still names the benchmark" {
+  fake_repo
+  printf '#!/usr/bin/env bash\n{ printf %%s bats; printf " %%s" "$@"; echo; } >> "$LOG"\nexit 1\n' > "$STUBS/bats"
+  chmod +x "$STUBS/bats"
+  FAIL=bench-hooks fake_run --shard 1/1
+  grep -qx 'bench-panel' "$LOG" && bats_calls | grep -q 'tests/a.bats' || {
+    echo "the run stopped at the benchmark:"
+    cat "$LOG"
+    false
+  }
+  names_failed 'hook bench'
+}
+
+@test "R303: with every benchmark passing the shard and the release run exit 0 and name no failed benchmark; with only a test file failing, the run fails and names none" {
+  fake_repo
+  local how
+  for how in '--shard 1/1' '--release'; do
+    # shellcheck disable=SC2086 # two words on purpose
+    fake_run $how
+    [ "$CODE" -eq 0 ] || {
+      echo "$how failed with nothing failing:"
+      cat "$TEST_ROOT/out"
+      false
+    }
+    ! grep -qE 'hook bench|panel bench' "$TEST_ROOT/out" || {
+      echo "$how names a failed benchmark with none failing:"
+      cat "$TEST_ROOT/out"
+      false
+    }
+    # shellcheck disable=SC2086 # two words on purpose
+    FAIL=batch fake_run $how
+    [ "$CODE" -ne 0 ] && ! grep -qE 'hook bench|panel bench' "$TEST_ROOT/out" || {
+      echo "$how with a failing test file:"
+      cat "$TEST_ROOT/out"
+      false
+    }
+  done
+}

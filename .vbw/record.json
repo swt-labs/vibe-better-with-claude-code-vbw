@@ -391,6 +391,7 @@
     "tests/prove-own-work.bats",
     "tests/prove-parallel.bats",
     "tests/prove-signal.bats",
+    "tests/prove-testfiles.bats",
     "tests/prove-version-bump.bats",
     "tests/qa-depth-docs.bats",
     "tests/qa-depth-escalated.bats",
@@ -9321,6 +9322,160 @@
       ],
       "files": [
         "tests/guard-record-path.bats"
+      ]
+    },
+    {
+      "id": "C693",
+      "req": "R302",
+      "run": [
+        "bats",
+        "--print-output-on-failure",
+        "--filter",
+        "R302",
+        "tests/bench-guard-steps.bats"
+      ],
+      "files": [
+        "tests/bench-guard-steps.bats"
+      ]
+    },
+    {
+      "id": "C694",
+      "req": "R303",
+      "run": [
+        "bats",
+        "--print-output-on-failure",
+        "--filter",
+        "R303",
+        "tests/release-run.bats"
+      ],
+      "files": [
+        "tests/release-run.bats"
+      ]
+    },
+    {
+      "id": "C695",
+      "req": "R303",
+      "run": [
+        "bats",
+        "--print-output-on-failure",
+        "--filter",
+        "R303",
+        "tests/release-reuse.bats"
+      ],
+      "files": [
+        "tests/release-reuse.bats"
+      ]
+    },
+    {
+      "id": "C696",
+      "req": "R301",
+      "run": [
+        "bats",
+        "--print-output-on-failure",
+        "--filter",
+        "R301 timed",
+        "tests/bench-limits.bats"
+      ],
+      "files": [
+        "tests/bench-limits.bats"
+      ]
+    },
+    {
+      "id": "C697",
+      "req": "R304",
+      "run": [
+        "bats",
+        "--print-output-on-failure",
+        "--filter",
+        "R304:",
+        "tests/prove-testfiles.bats"
+      ],
+      "files": [
+        "tests/prove-testfiles.bats"
+      ]
+    },
+    {
+      "id": "C698",
+      "req": "R304",
+      "run": [
+        "bats",
+        "--print-output-on-failure",
+        "--filter",
+        "R304 spec",
+        "tests/prove-testfiles.bats"
+      ],
+      "files": [
+        "tests/prove-testfiles.bats"
+      ]
+    },
+    {
+      "id": "C699",
+      "req": "R304",
+      "run": [
+        "bats",
+        "--print-output-on-failure",
+        "--filter",
+        "R304 docs",
+        "tests/testfiles-docs.bats"
+      ],
+      "files": [
+        "tests/testfiles-docs.bats"
+      ]
+    },
+    {
+      "id": "C700",
+      "req": "R305",
+      "run": [
+        "bats",
+        "--print-output-on-failure",
+        "--filter",
+        "R305",
+        "tests/fix-done-testfiles.bats"
+      ],
+      "files": [
+        "tests/fix-done-testfiles.bats"
+      ]
+    },
+    {
+      "id": "C701",
+      "req": "R306",
+      "run": [
+        "bats",
+        "--print-output-on-failure",
+        "--filter",
+        "R306",
+        "tests/run-confirm.bats"
+      ],
+      "files": [
+        "tests/run-confirm.bats"
+      ]
+    },
+    {
+      "id": "C702",
+      "req": "R306",
+      "run": [
+        "bats",
+        "--print-output-on-failure",
+        "--filter",
+        "R306",
+        "tests/workflow-closing.bats"
+      ],
+      "files": [
+        "tests/workflow-closing.bats"
+      ]
+    },
+    {
+      "id": "C703",
+      "req": "R307",
+      "run": [
+        "bats",
+        "--print-output-on-failure",
+        "--filter",
+        "R307",
+        "tests/road-note.bats"
+      ],
+      "files": [
+        "tests/road-note.bats"
       ]
     }
   ],
@@ -22549,6 +22704,228 @@
           "check": "C692"
         }
       ]
+    },
+    {
+      "id": "R301",
+      "text": "The Bash guard has headroom under its budget: every Bash guard case of the hook bench (git, npm, big, interp, cross-project, loop, at every record size) costs at most 20 ms own CPU per call at the nominal machine's speed, and a script file run by name at most 40 ms, so a slower CI runner no longer fails it (T283: guard (big) costs about 28 ms on GitHub's macOS runner against its 25 ms budget, and failed the CI of the 2.1.29 and 2.1.30 releases, which merged only by an admin merge)",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M58",
+      "rules": [
+        {
+          "text": "a timed file judges every Bash guard case of the bench (git, npm, big, interp, cross-project, loop) at 20 ms of own CPU per call at every record size, scaled by the reference beside it, failing on any OVER and skipping a busy machine",
+          "check": "C696"
+        },
+        {
+          "text": "the same timed run judges a script run by name at 40 ms, the bench's doubling of the 20 ms budget",
+          "check": "C696"
+        }
+      ]
+    },
+    {
+      "id": "R302",
+      "text": "The hook bench's compile split times the Bash guard's whole program as a hook call runs it, programs.jq included, and no row of it times a program that fails to compile (T283: row (b) leaves out programs.jq and times 29 compile errors)",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M58",
+      "rules": [
+        {
+          "text": "the compile split's guard rows compile guard-bash.jq with every file it includes, read from its include lines (programs.jq among them, and a file a later include adds)",
+          "check": "C693"
+        },
+        {
+          "text": "each row's label names the files it compiles, and the step table's program compile row names the same files",
+          "check": "C693"
+        },
+        {
+          "text": "a timed program that does not compile is never timed: the bench exits non-zero naming the row and jq's error, in the compile split and in the step table",
+          "check": "C693"
+        }
+      ]
+    },
+    {
+      "id": "R303",
+      "text": "On CI a failed hook or panel bench never stops the rest of its shard: shard 1 runs its lint and test files whatever the bench says, and fails at the end naming the bench (T283: a failed bench stopped shard 1, so its test files never ran on CI)",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M58",
+      "rules": [
+        {
+          "text": "in CI shard 1 a failed hook bench stops nothing: the panel bench, the lint and every test file run, then the shard fails and its last lines name the hook bench",
+          "check": "C694"
+        },
+        {
+          "text": "a failed panel bench stops nothing either, and the shard fails naming it",
+          "check": "C694"
+        },
+        {
+          "text": "the non-shard release run runs every test file after a failed bench, then fails naming it",
+          "check": "C694"
+        },
+        {
+          "text": "the release run that reuses the last proof runs the timed tests after a failed bench, then fails naming it",
+          "check": "C695"
+        },
+        {
+          "text": "a failed bench and a failed test file together fail the run, which still names the bench",
+          "check": "C694"
+        },
+        {
+          "text": "with every bench passing the run exits 0 and names no failed bench; with only a test file failing it fails and names none",
+          "check": "C694"
+        }
+      ]
+    },
+    {
+      "id": "R304",
+      "text": "Every test runs in some proof: a test file that approved checks run only with a filter also runs its other tests as a unit of the project's test files, under the same reuse rule as every unit, so no test is left to CI alone (T256: 40 test files are in that state, 152 tests in 18 of them; a tests/standards.bats case failed for a day unseen in 2.1.28, and a shellcheck warning reached the 2.1.30 release check)",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M58",
+      "rules": [
+        {
+          "text": "a test file named only by filtered checks is a unit that runs the form's rest command with the checks' filters, so its other tests run and no filtered test runs twice",
+          "check": "C697",
+          "plan": "P234.2"
+        },
+        {
+          "text": "a test file an approved check runs whole stays out of the units, also when a filtered check names it too",
+          "check": "C697",
+          "plan": "P234.2"
+        },
+        {
+          "text": "the form's join line joins the filters of a rest run (| by default)",
+          "check": "C697",
+          "plan": "P234.2"
+        },
+        {
+          "text": "with a filter line and no rest line a filtered-only file runs whole as a unit, and the proof says so once, naming the rest line",
+          "check": "C697",
+          "plan": "P234.2"
+        },
+        {
+          "text": "without a filter line the units are as before: a file an approved check names is never a unit of its own",
+          "check": "C697",
+          "plan": "P234.2"
+        },
+        {
+          "text": "a failing test the rest runs fails the proof, which names the file",
+          "check": "C697",
+          "plan": "P234.2"
+        },
+        {
+          "text": "a rest unit follows the one reuse rule: reused when nothing it reads changed, run again when a filter changes, and counted in the run again line",
+          "check": "C697",
+          "plan": "P234.2"
+        },
+        {
+          "text": "the spec refuses, naming the line, a rest line that does not name {file} and {filters} once each, and a rest line without a filter line",
+          "check": "C698",
+          "plan": "P234.1"
+        },
+        {
+          "text": "docs/proof.md shows the filter, rest and join lines with a bats example and says the rest command must pass when nothing is left (bats --allow-empty-suite)",
+          "check": "C699",
+          "plan": "P234.3"
+        },
+        {
+          "text": "docs/record.md gives the form's filter, rest and join fields, and the Lead's instructions name the rest line's {filters}",
+          "check": "C699",
+          "plan": "P234.3"
+        }
+      ]
+    },
+    {
+      "id": "R305",
+      "text": "vbw fix done of a fix of the project's test command reruns only the units its changes can reach, reusing the others as vbw prove does, and while it runs prints the progress lines vbw prove prints, so it is never silent for minutes (T288: it ran all 210 units for about 29 min with no output, and the fixing workflow's agent lost it)",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M58",
+      "rules": [
+        {
+          "text": "before its first unit runs, fix done prints vbw prove's opening line: run again, N of M units, top reasons",
+          "check": "C700"
+        },
+        {
+          "text": "a change no unit read reruns only the failed test file and reuses every other unit, counted in the opening line",
+          "check": "C700"
+        },
+        {
+          "text": "when fix done must run every unit, its first line says so and why, before any unit runs",
+          "check": "C700"
+        }
+      ]
+    },
+    {
+      "id": "R306",
+      "text": "The building, fixing and verifying workflows take a run's end and a fix's done from the kernel, never from an agent's report: after the close step they read whether the run is still open and which fixes are not recorded, and report each as not done with the command that finishes it (T275: a close agent reported vbw run end succeeded without running it; T288: a fixing run ended with its fix done lost)",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M58",
+      "rules": [
+        {
+          "text": "vbw run state prints {open, recorded}: open while a run lease is open and false once it ended; a plan is recorded when done or blocked",
+          "check": "C701",
+          "plan": "P235.2"
+        },
+        {
+          "text": "a fix still open is not recorded, also after its run ended",
+          "check": "C701",
+          "plan": "P235.2"
+        },
+        {
+          "text": "a phase's QA verdict counts only from the latest QA run, also after that run ended",
+          "check": "C701",
+          "plan": "P235.2"
+        },
+        {
+          "text": "vbw run state writes nothing and refuses an unknown id, naming it",
+          "check": "C701",
+          "plan": "P235.2"
+        },
+        {
+          "text": "the closing agent runs vbw run state with the ids after vbw run end and returns its output as printed, a required field of its answer",
+          "check": "C702",
+          "plan": "P235.3"
+        },
+        {
+          "text": "when the kernel's answer says the run is open, the building, fixing and verifying workflows report not complete and give vbw run end, whatever the agent said",
+          "check": "C702",
+          "plan": "P235.3"
+        },
+        {
+          "text": "a fix the agent calls closed but the kernel has not recorded is reported not done, among the open fixes, with vbw fix done for it",
+          "check": "C702",
+          "plan": "P235.3"
+        },
+        {
+          "text": "a closing answer without the kernel's answer, or with one that is not its JSON, is never taken as done: not complete, with the commands to run by hand",
+          "check": "C702",
+          "plan": "P235.3"
+        },
+        {
+          "text": "without a session, the fix done agent's closed fixes also come from the kernel's answer",
+          "check": "C702",
+          "plan": "P235.3"
+        }
+      ]
+    },
+    {
+      "id": "R307",
+      "text": "The road never puts the end of the milestone before the end of the current step: the Milestone end it shows is at or after the current step's own end (T277: proof until around 16:56, Milestone end until around 15:51)",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M58",
+      "rules": [
+        {
+          "text": "T277's shape, a proof running late: the milestone's until-around time is not before the step's, and its duration agrees with its end",
+          "check": "C703"
+        },
+        {
+          "text": "for a firm end, a rough range and a typical with low and high, the milestone's until-around, low and high times are each at or after the step's own",
+          "check": "C703"
+        }
+      ]
     }
   ],
   "phases": [
@@ -34233,6 +34610,162 @@
         "qa_findings": 0,
         "escalations": 0
       }
+    },
+    {
+      "id": "P232",
+      "title": "The hook bench measures what really runs, and CI runs every test even when the bench fails",
+      "reqs": [
+        "R302",
+        "R303"
+      ],
+      "milestone": "M58",
+      "goal": "The speed bench times the Bash guard exactly as a hook call compiles it, and a failed bench on CI no longer hides the test results of its shard.",
+      "criteria": [
+        "VBW_BENCH_STEPS=compile times, for the Bash guard, the same program text a hook call compiles: guard-bash.jq together with every file it includes (holder.jq, common.jq and programs.jq); a test fails when any include of guard-bash.jq is missing from the timed program",
+        "Before timing, the bench compiles every program it times; a row whose program does not compile is never timed: the bench exits non-zero and names that row and the jq error, instead of printing a time",
+        "The VBW_BENCH_STEPS=1 'program compile' row and the compile-split rows agree on what they time: each row's label says which files it compiles",
+        "In a CI shard run (bash tools/test.sh --shard K/4), when tools/bench-hooks.sh or tools/bench-panel.sh fails, the shard still runs its lint and every bats file it owns, then exits non-zero, and its last lines name each failed bench (for example 'failed: hook bench')",
+        "The same order holds for the non-shard --release run and the release run that reuses the last proof: the benches never stop the test files from running",
+        "When every bench and test passes, the run exits 0 exactly as today; when only a bats file fails, the exit and output are as today",
+        "A test in tests/ci-shards.bats runs shard 1 with a bench that exits 1 and shows the bats files ran and the run failed naming the bench; the test fails against today's tools/test.sh"
+      ],
+      "proposed": "deep",
+      "tier": "deep",
+      "reasons": [
+        "requirements: 2",
+        "files: 4 (218607 bytes)",
+        "files: more than 2 in a repository tracking 1310 files",
+        "risk: CI (phase title)",
+        "breaks: R78, R81, R151, R152, R164, R167, R176, R182, R222, R228, R231, R233, R234, R243, R275",
+        "guarded: R12 (C11), R15 (C14), R31 (C27), R32 (C28), R43 (C42, C43), R44 (C44, C45), R45 (C39, C40, C41), R46 (C46), R47 (C47), R48 (C49, C50), R49 (C48), R55 (C56, C57), R61 (C73, C74, C75, C76, C77), R66 (C95), R69 (C110, C120, C122), R70 (C114), R73 (C98), R74 (C99, C100), R75 (C101), R76 (C102, C103), R77 (C104), R79 (C107), R80 (C108), R92 (C131, C132, C133, C134, C135, C136, C137, C138, C139), R93 (C140, C141, C142, C143, C144), R94 (C145, C146, C147, C148), R97 (C153), R98 (C154), R100 (C156), R103 (C160), R104 (C161, C162), R105 (C163), R110 (C169, C170), R111 (C171, C172, C173, C174, C175), R115 (C181), R118 (C184), R120 (C185), R128 (C200), R131 (C198), R132 (C199), R134 (C201), R135 (C202), R142 (C204, C205), R144 (C208, C209), R147 (C212, C215, C237), R148 (C213, C214, C216, C238), R149 (C217, C218, C219, C220, C221, C222), R150 (C223, C224, C225, C226, C227, C228, C229, C230), R153 (C235, C236, C239), R160 (C247, C263, C264), R161 (C248, C265, C266), R162 (C249), R165 (C252), R166 (C253, C254, C255, C256, C267), R168 (C261, C262), R169 (C268), R170 (C269), R174 (C279, C280), R175 (C274, C275), R177 (C287, C288), R178 (C290, C291, C292, C293, C294, C295, C296, C311), R179 (C297, C298, C299, C300, C301, C302, C303, C304, C305, C306, C312), R180 (C307, C308, C309, C310), R181 (C313, C314, C315, C316, C317, C318, C319, C320, C321), R183 (C327), R184 (C328, C329, C330, C331, C332, C333), R185 (C334, C335, C336, C337, C338, C339, C340, C341, C342, C343), R188 (C350, C351, C352, C353, C354, C355, C356, C357, C358, C359), R190 (C374, C375, C376, C377, C378, C379, C380, C381, C382, C383, C384, C385, C386, C387, C388), R192 (C401, C402, C403, C404, C405, C406, C407, C408, C409, C410), R193 (C411, C412), R194 (C417, C418, C419), R195 (C420, C421, C422), R196 (C415, C416), R197 (C413, C414), R198 (C423), R202 (C432, C433, C434, C435, C436, C437, C438, C439, C440, C441, C442, C443, C444, C445, C446, C447), R203 (C448, C449, C450), R204 (C451, C452, C453, C454), R205 (C455, C456, C457, C458, C467), R206 (C459, C460), R209 (C469, C470, C471, C472, C473), R210 (C474, C475, C476), R211 (C477, C478, C479), R212 (C480, C481, C482), R213 (C483, C484), R214 (C485, C486, C487), R215 (C488, C489, C490), R216 (C491, C492, C493), R217 (C494, C495), R219 (C497, C498, C499), R220 (C500, C501, C502, C503), R221 (C504), R224 (C512, C513, C514, C515, C516), R226 (C510, C511), R232 (C534), R235 (C538, C539), R238 (C545), R239 (C554, C555), R241 (C546, C547, C548, C549, C550, C560), R242 (C551, C552, C553), R245 (C564, C565), R246 (C566, C567), R250 (C574, C575, C576, C577, C578, C585), R251 (C579), R252 (C580), R253 (C581, C582), R254 (C583), R255 (C584), R256 (C586, C587), R257 (C588, C589), R258 (C590, C591, C592), R259 (C593, C594, C595), R260 (C596, C597), R264 (C613, C614, C615, C616), R267 (C619, C620, C621), R269 (C626, C627, C628, C629, C630), R279 (C678, C679, C680), R285 (C662, C663, C664), R287 (C655, C656, C657), R288 (C667, C668, C669), R289 (C658, C659, C665), R290 (C660, C661, C666), R292 (C670, C671, C672), R294 (C683), R295 (C684), R296 (C685, C686)",
+        "tests: project test command"
+      ],
+      "predicted": "deep"
+    },
+    {
+      "id": "P233",
+      "title": "The Bash guard is fast enough to pass on slower CI machines",
+      "reqs": [
+        "R301"
+      ],
+      "milestone": "M58",
+      "goal": "Every Bash guard case costs at most 20 ms per call (40 ms for a script run by name) at nominal speed, so GitHub's slower macOS runner no longer fails the release CI.",
+      "criteria": [
+        "VBW_HOOK_BUDGET_MS=20 bash tools/bench-hooks.sh passes every Bash guard case (git, npm, big, interp, cross-project, loop) at every record size the bench uses; script-by-name cases are judged at 40 ms by the bench's existing doubling",
+        "The default bench budget stays 25 ms (50 ms for scripts by name): only the guard gets faster, the bar is not lowered",
+        "The guard gives the same answer as today for every input: every existing guard and hook-answer test passes unchanged in what it pins (no refusal dropped or weakened, no new allow answer)",
+        "If the hooks.json Bash guard command changes, its pinned test is updated to the new command and the guard still runs only jq programs from the plugin folder: no eval, no bash -c on data, Bash 3.2 compatible, inert outside VBW projects",
+        "The compile-split rows of P232 show where the saved time comes from (compile versus run), with every timed program compiling",
+        "The bench reference program still meets its size rule against the guard (D676: within 10% of the guard's size), or the reference is remeasured on the nominal machines in the same change",
+        "The macOS CI shard of the release pull request passes the hook bench without an admin merge"
+      ],
+      "proposed": "deep",
+      "tier": "deep",
+      "reasons": [
+        "requirements: 1",
+        "files: 8 (174846 bytes)",
+        "files: more than 2 in a repository tracking 1310 files",
+        "risk: CI (phase title)",
+        "breaks: R151, R222, R231, R233, R234, R243, R275",
+        "guarded: R15 (C14), R61 (C73, C74, C75, C76, C77), R75 (C101), R76 (C102, C103), R77 (C104), R83 (C119), R120 (C185), R128 (C200), R149 (C217, C218, C219, C220, C221, C222), R150 (C223, C224, C225, C226, C227, C228, C229, C230), R160 (C247, C263, C264), R162 (C249), R165 (C252), R166 (C253, C254, C255, C256, C267), R177 (C287, C288), R178 (C290, C291, C292, C293, C294, C295, C296, C311), R179 (C297, C298, C299, C300, C301, C302, C303, C304, C305, C306, C312), R180 (C307, C308, C309, C310), R181 (C313, C314, C315, C316, C317, C318, C319, C320, C321), R184 (C328, C329, C330, C331, C332, C333), R185 (C334, C335, C336, C337, C338, C339, C340, C341, C342, C343), R188 (C350, C351, C352, C353, C354, C355, C356, C357, C358, C359), R190 (C374, C375, C376, C377, C378, C379, C380, C381, C382, C383, C384, C385, C386, C387, C388), R192 (C401, C402, C403, C404, C405, C406, C407, C408, C409, C410), R194 (C417, C418, C419), R198 (C423), R210 (C474, C475, C476), R219 (C497, C498, C499), R224 (C512, C513, C514, C515, C516), R235 (C538, C539), R239 (C554, C555), R241 (C546, C547, C548, C549, C550, C560), R242 (C551, C552, C553), R245 (C564, C565), R250 (C574, C575, C576, C577, C578, C585), R254 (C583), R255 (C584), R269 (C626, C627, C628, C629, C630), R273 (C639, C640, C641), R276 (C642, C652), R285 (C662, C663, C664), R289 (C658, C659, C665), R290 (C660, C661, C666), R296 (C685, C686)",
+        "tests: project test command"
+      ],
+      "predicted": "deep"
+    },
+    {
+      "id": "P234",
+      "title": "Every test runs in some proof",
+      "reqs": [
+        "R304"
+      ],
+      "milestone": "M58",
+      "goal": "A test file that approved checks run only with a filter also runs its remaining tests as a proof unit, so no test is left to CI alone.",
+      "criteria": [
+        "A test file matched by the project's test-file form and named only by filtered approved checks (bats --filter and the like) becomes a proof unit that runs the file's tests those filters do not select",
+        "A test file named by an approved check that runs the whole file (no filter) stays out of the units, as today",
+        "The filtered tests are not run a second time by the unit (D179: nothing runs twice), through a generic way the test-file form declares, not a bats-only special case in the kernel",
+        "A file whose every test is already selected by filters yields no failing unit: nothing left to run is not a failure (as M22)",
+        "These units follow the one reuse rule of every unit: reused when nothing they read changed, run again when something did, with the same reason lines",
+        "A failing test in such a unit fails the proof and names the file and the test, like any unit",
+        "vbw prove's 'run again: N of M units' line counts these units",
+        "On VBW's own project, the unfiltered tests of tests/standards.bats and the other filtered-only files run in vbw prove (the D703 shellcheck warning would have failed a proof)",
+        "docs explain how the test-file form handles files that checks run with a filter",
+        "Regression tests in tests/prove-testfiles.bats fail against today's testfiles_index and pass after"
+      ],
+      "proposed": "deep",
+      "tier": "deep",
+      "reasons": [
+        "requirements: 1",
+        "files: 11 (397316 bytes)",
+        "files: more than 2 in a repository tracking 1310 files",
+        "risk: CI (phase goal)",
+        "breaks: R78, R81, R95, R96, R152, R167, R176, R182, R191, R228",
+        "guarded: R1 (C1), R2 (C2), R12 (C11), R13 (C12), R14 (C13), R22 (C19), R23 (C20), R24 (C23), R25 (C24), R27 (C21), R28 (C25), R31 (C27), R32 (C28), R33 (C29), R38 (C33, C34), R39 (C36), R40 (C37), R43 (C42, C43), R44 (C44, C45), R45 (C39, C40, C41), R46 (C46), R47 (C47), R48 (C49, C50), R49 (C48), R61 (C73, C74, C75, C76, C77), R62 (C78, C79, C80, C81, C82, C83, C93), R65 (C86, C87, C88, C89, C90), R66 (C95), R69 (C110, C120, C122), R70 (C114), R71 (C115, C121), R73 (C98), R74 (C99, C100), R79 (C107), R80 (C108), R92 (C131, C132, C133, C134, C135, C136, C137, C138, C139), R93 (C140, C141, C142, C143, C144), R94 (C145, C146, C147, C148), R97 (C153), R98 (C154), R99 (C155), R100 (C156), R101 (C179), R102 (C158, C159), R103 (C160), R104 (C161, C162), R105 (C163), R110 (C169, C170), R111 (C171, C172, C173, C174, C175), R115 (C181), R116 (C182, C183), R118 (C184), R119 (C180), R121 (C187, C188), R123 (C190, C191), R127 (C194), R130 (C197), R131 (C198), R132 (C199), R133 (C195), R134 (C201), R135 (C202), R144 (C208, C209), R146 (C211), R147 (C212, C215, C237), R148 (C213, C214, C216, C238), R149 (C217, C218, C219, C220, C221, C222), R150 (C223, C224, C225, C226, C227, C228, C229, C230), R153 (C235, C236, C239), R156 (C242, C243), R157 (C244), R158 (C245), R159 (C246), R160 (C247, C263, C264), R161 (C248, C265, C266), R162 (C249), R165 (C252), R166 (C253, C254, C255, C256, C267), R168 (C261, C262), R169 (C268), R170 (C269), R173 (C281, C282, C283, C284, C285, C286, C289), R174 (C279, C280), R175 (C274, C275), R177 (C287, C288), R178 (C290, C291, C292, C293, C294, C295, C296, C311), R179 (C297, C298, C299, C300, C301, C302, C303, C304, C305, C306, C312), R180 (C307, C308, C309, C310), R181 (C313, C314, C315, C316, C317, C318, C319, C320, C321), R183 (C327), R188 (C350, C351, C352, C353, C354, C355, C356, C357, C358, C359), R190 (C374, C375, C376, C377, C378, C379, C380, C381, C382, C383, C384, C385, C386, C387, C388), R192 (C401, C402, C403, C404, C405, C406, C407, C408, C409, C410), R193 (C411, C412), R194 (C417, C418, C419), R195 (C420, C421, C422), R196 (C415, C416), R197 (C413, C414), R202 (C432, C433, C434, C435, C436, C437, C438, C439, C440, C441, C442, C443, C444, C445, C446, C447), R203 (C448, C449, C450), R204 (C451, C452, C453, C454), R205 (C455, C456, C457, C458, C467), R206 (C459, C460), R208 (C464, C465, C466, C468), R209 (C469, C470, C471, C472, C473), R210 (C474, C475, C476), R211 (C477, C478, C479), R212 (C480, C481, C482), R213 (C483, C484), R214 (C485, C486, C487), R215 (C488, C489, C490), R216 (C491, C492, C493), R217 (C494, C495), R220 (C500, C501, C502, C503), R221 (C504), R225 (C517, C518, C519), R226 (C510, C511), R232 (C534), R236 (C537), R238 (C545), R241 (C546, C547, C548, C549, C550, C560), R242 (C551, C552, C553), R246 (C566, C567), R247 (C568, C569), R248 (C570), R249 (C571, C572, C573), R250 (C574, C575, C576, C577, C578, C585), R251 (C579), R252 (C580), R253 (C581, C582), R255 (C584), R256 (C586, C587), R257 (C588, C589), R258 (C590, C591, C592), R259 (C593, C594, C595), R260 (C596, C597), R264 (C613, C614, C615, C616), R265 (C605, C606, C607, C608, C609, C610, C611, C612), R266 (C617, C618), R267 (C619, C620, C621), R269 (C626, C627, C628, C629, C630), R272 (C635, C636, C637, C638), R274 (C643, C644, C645), R277 (C648, C650), R278 (C649, C651), R279 (C678, C679, C680), R286 (C653, C654), R287 (C655, C656, C657), R288 (C667, C668, C669), R292 (C670, C671, C672), R294 (C683), R295 (C684), R296 (C685, C686), R298 (C688), R299 (C689, C690)",
+        "tests: project test command"
+      ],
+      "predicted": "deep"
+    },
+    {
+      "id": "P235",
+      "title": "Fix done reruns only what it must and talks while it runs; workflows report what the kernel recorded",
+      "reqs": [
+        "R305",
+        "R306"
+      ],
+      "milestone": "M58",
+      "goal": "vbw fix done of a test-command fix reruns only the units its change can reach and prints progress as vbw prove does, and the building, fixing and verifying workflows report a run's end and each fix's done from the kernel, never from an agent's claim.",
+      "criteria": [
+        "The root cause of T288's 210-unit rerun is found, recorded as a decision, and pinned by a regression test that fails before the fix",
+        "After a fix that changes one file, vbw fix done reruns only the test-file units whose recorded reads include a changed file and reports the others as reused, under the same rule as vbw prove",
+        "When fix done must run every unit (for example no earlier recorded run), its first line says so and why",
+        "Before the first unit, fix done prints the same 'run again: N of M units; top reasons ...' line vbw prove prints, then the same per-unit progress lines, so it is never silent between units",
+        "A fixing round's summary at the end is unchanged in content",
+        "After the close step, the building, fixing and verifying workflows decide 'complete', 'closed' and 'ended' from what the kernel recorded, not from the close agent's answer",
+        "When the run is still open after the close step, the workflow reports it as not done and gives the command that finishes it (vbw run end)",
+        "For each fix the kernel has not recorded done, the workflow reports it as not done and gives the command that finishes it (vbw fix done ...)",
+        "The same holds when the close agent stops or returns nothing",
+        "Tests drive each workflow with a close agent that answers 'ended' while the run stays open (and a fix stays open) and show the workflow reports not done with the command; they fail against today's workflows",
+        "When everything is recorded, each workflow's report is as today"
+      ],
+      "proposed": "deep",
+      "tier": "deep",
+      "reasons": [
+        "requirements: 2",
+        "files: 11 (309584 bytes)",
+        "files: more than 2 in a repository tracking 1310 files",
+        "risk: none",
+        "breaks: R78, R81, R95, R96, R152, R167, R176, R182, R191, R228",
+        "guarded: R12 (C11), R13 (C12), R14 (C13), R23 (C20), R25 (C24), R26 (C22), R28 (C25), R31 (C27), R32 (C28), R39 (C36), R43 (C42, C43), R44 (C44, C45), R45 (C39, C40, C41), R46 (C46), R47 (C47), R48 (C49, C50), R49 (C48), R50 (C51), R58 (C62, C63, C64, C67), R60 (C72, C94), R61 (C73, C74, C75, C76, C77), R66 (C95), R69 (C110, C120, C122), R70 (C114), R71 (C115, C121), R73 (C98), R74 (C99, C100), R75 (C101), R76 (C102, C103), R77 (C104), R79 (C107), R80 (C108), R92 (C131, C132, C133, C134, C135, C136, C137, C138, C139), R93 (C140, C141, C142, C143, C144), R94 (C145, C146, C147, C148), R97 (C153), R98 (C154), R99 (C155), R100 (C156), R101 (C179), R102 (C158, C159), R103 (C160), R104 (C161, C162), R105 (C163), R106 (C164, C165), R107 (C166, C167), R110 (C169, C170), R111 (C171, C172, C173, C174, C175), R115 (C181), R116 (C182, C183), R118 (C184), R123 (C190, C191), R129 (C196), R130 (C197), R131 (C198), R132 (C199), R134 (C201), R135 (C202), R144 (C208, C209), R147 (C212, C215, C237), R148 (C213, C214, C216, C238), R149 (C217, C218, C219, C220, C221, C222), R153 (C235, C236, C239), R156 (C242, C243), R157 (C244), R158 (C245), R159 (C246), R160 (C247, C263, C264), R161 (C248, C265, C266), R162 (C249), R163 (C250), R166 (C253, C254, C255, C256, C267), R168 (C261, C262), R169 (C268), R170 (C269), R173 (C281, C282, C283, C284, C285, C286, C289), R174 (C279, C280), R175 (C274, C275), R177 (C287, C288), R179 (C297, C298, C299, C300, C301, C302, C303, C304, C305, C306, C312), R180 (C307, C308, C309, C310), R181 (C313, C314, C315, C316, C317, C318, C319, C320, C321), R183 (C327), R186 (C344, C345, C346, C347, C348), R188 (C350, C351, C352, C353, C354, C355, C356, C357, C358, C359), R190 (C374, C375, C376, C377, C378, C379, C380, C381, C382, C383, C384, C385, C386, C387, C388), R192 (C401, C402, C403, C404, C405, C406, C407, C408, C409, C410), R193 (C411, C412), R194 (C417, C418, C419), R195 (C420, C421, C422), R196 (C415, C416), R197 (C413, C414), R202 (C432, C433, C434, C435, C436, C437, C438, C439, C440, C441, C442, C443, C444, C445, C446, C447), R203 (C448, C449, C450), R204 (C451, C452, C453, C454), R205 (C455, C456, C457, C458, C467), R206 (C459, C460), R207 (C461, C462, C463), R209 (C469, C470, C471, C472, C473), R210 (C474, C475, C476), R211 (C477, C478, C479), R212 (C480, C481, C482), R213 (C483, C484), R214 (C485, C486, C487), R215 (C488, C489, C490), R216 (C491, C492, C493), R217 (C494, C495), R219 (C497, C498, C499), R220 (C500, C501, C502, C503), R221 (C504), R226 (C510, C511), R230 (C530, C531), R232 (C534), R236 (C537), R238 (C545), R239 (C554, C555), R241 (C546, C547, C548, C549, C550, C560), R242 (C551, C552, C553), R244 (C562, C563), R245 (C564, C565), R246 (C566, C567), R250 (C574, C575, C576, C577, C578, C585), R251 (C579), R252 (C580), R253 (C581, C582), R256 (C586, C587), R257 (C588, C589), R258 (C590, C591, C592), R259 (C593, C594, C595), R260 (C596, C597), R261 (C598, C599, C600), R262 (C601), R263 (C602, C603, C604), R264 (C613, C614, C615, C616), R265 (C605, C606, C607, C608, C609, C610, C611, C612), R266 (C617, C618), R267 (C619, C620, C621), R269 (C626, C627, C628, C629, C630), R270 (C631, C632, C633), R277 (C648, C650), R278 (C649, C651), R279 (C678, C679, C680), R284 (C673, C674), R287 (C655, C656, C657), R288 (C667, C668, C669), R291 (C675, C676, C677), R292 (C670, C671, C672), R293 (C682), R294 (C683), R295 (C684), R297 (C687)",
+        "tests: project test command"
+      ],
+      "predicted": "deep"
+    },
+    {
+      "id": "P236",
+      "title": "The milestone end is never shown before the current step's end",
+      "reqs": [
+        "R307"
+      ],
+      "milestone": "M58",
+      "goal": "Every clock time the road shows for the Milestone end is at or after the matching time it shows for the current step.",
+      "criteria": [
+        "For every live step note shape (firm end, rough range, typical with low and high), the Milestone end's 'until around' time is at or after the current step's own 'until around' time",
+        "When the road shows ranges, the Milestone end's low time is at or after the step's low time and its high time at or after the step's high time",
+        "The T277 shape (a proof until around 16:56) never yields a Milestone end before 16:56; a regression test with that note fails against today's road.jq and passes after",
+        "The Milestone duration shown agrees with its end time (no end moved without the duration)",
+        "Existing road tests (tests/road-next.bats, road-note.bats, road-history-shapes.bats, step-range.bats) pass, changed only where they pinned the wrong order"
+      ],
+      "proposed": "standard",
+      "tier": "standard",
+      "reasons": [
+        "requirements: 1",
+        "files: 2 (38294 bytes)",
+        "risk: none",
+        "breaks: R78, R81, R191",
+        "guarded: R13 (C12), R14 (C13), R24 (C23), R25 (C24), R26 (C22), R28 (C25), R37 (C35), R40 (C37), R47 (C47), R49 (C48), R50 (C51), R69 (C110, C120, C122), R70 (C114), R71 (C115, C121), R72 (C116, C118), R73 (C98), R74 (C99, C100), R79 (C107), R80 (C108), R102 (C158, C159), R106 (C164, C165), R107 (C166, C167), R111 (C171, C172, C173, C174, C175), R116 (C182, C183), R161 (C248, C265, C266), R171 (C270), R179 (C297, C298, C299, C300, C301, C302, C303, C304, C305, C306, C312), R190 (C374, C375, C376, C377, C378, C379, C380, C381, C382, C383, C384, C385, C386, C387, C388), R192 (C401, C402, C403, C404, C405, C406, C407, C408, C409, C410), R202 (C432, C433, C434, C435, C436, C437, C438, C439, C440, C441, C442, C443, C444, C445, C446, C447), R229 (C526, C527, C528, C529), R244 (C562, C563), R249 (C571, C572, C573), R270 (C631, C632, C633), R284 (C673, C674), R286 (C653, C654), R287 (C655, C656, C657), R291 (C675, C676, C677), R298 (C688)",
+        "tests: project test command"
+      ],
+      "predicted": "standard"
     }
   ],
   "plans": [
@@ -82616,6 +83149,242 @@
           "at": "2026-11-11T15:17:50Z"
         }
       ]
+    },
+    {
+      "id": "P232.1",
+      "phase": "P232",
+      "title": "The speed bench times the Bash guard exactly as a hook call compiles it",
+      "reqs": [
+        "R302"
+      ],
+      "files": [
+        "tools/bench-hooks.sh",
+        "docs/guards.md"
+      ],
+      "after": [],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "Read the guard's own files from its include lines (holder.jq, common.jq, programs.jq and any later one) and build every compile-split row from that list, so no row leaves a file out",
+        "Before anything is timed, compile each program once with the hook's own flags; a program that does not compile stops the bench with a non-zero exit naming its row and jq's error, in the compile split and in the step table",
+        "Name in each row's label the files it compiles, the step table's 'program compile' row included",
+        "Correct the header comment that still says the default budget is 20 ms (the code uses 25 ms), and say in docs/guards.md what each split row compiles"
+      ]
+    },
+    {
+      "id": "P232.2",
+      "phase": "P232",
+      "title": "A failed speed bench no longer stops the tests in CI or in the release run",
+      "reqs": [
+        "R303"
+      ],
+      "files": [
+        "tools/test.sh",
+        "docs/proof.md"
+      ],
+      "after": [],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "In a CI shard, run the hook and panel benches without stopping on their failure, remember which failed, then run the lint and every test file as today",
+        "Do the same in the release run and in the release run that reuses the last proof",
+        "At the end, print one line per failed bench ('failed: hook bench', 'failed: panel bench') as the last lines and exit non-zero, also when a test file failed too; a run with no failed bench ends exactly as today",
+        "Say in docs/proof.md's release-run text that a failed bench never stops the test files"
+      ]
+    },
+    {
+      "id": "P233.1",
+      "phase": "P233",
+      "title": "A faster Bash guard: each call compiles only what its command needs",
+      "reqs": [
+        "R301"
+      ],
+      "files": [
+        "plugin/hooks/guard-bash.jq",
+        "plugin/hooks/programs.jq",
+        "plugin/hooks/guard-read.jq",
+        "plugin/hooks/common.jq",
+        "plugin/hooks/read.sh",
+        "tools/bench-hooks.sh",
+        "tests/timed-guard-headroom.bats",
+        "docs/guards.md"
+      ],
+      "after": [
+        "P232.1"
+      ],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "Measure where a guard call spends its time with the corrected compile split (VBW_BENCH_STEPS=compile and =1) on the git, npm, big and interp inputs, and record the design as a decision (vbw decide) before changing code: the recommended shape keeps the first pass to reading the shell command and moves the reading of inline programs (programs.jq) to the second pass read.sh already runs for scripts, so a command without an interpreter program never compiles it",
+        "Build that shape without changing one answer: the hooks.json command stays as it is; every guard, hook-answer and interpreter test keeps passing unchanged; no eval, no bash -c on data, Bash 3.2",
+        "Write tests/timed-guard-headroom.bats (a timed file, run only by the release run): the bench at VBW_HOOK_BUDGET_MS=20 over every Bash guard case (git, npm, big, interp, script, cross-project, loop) at every record size, failing on any OVER, skipping a busy machine, requiring all 25 input and record cases judged; a draft is at .vbw/runtime/scratch/timed-guard-headroom.draft.bats; run it and show it passes",
+        "Keep the bench reference's size rule (D676: within 10% of guard-bash.jq and programs.jq together, tests/bench-limits.bats R233); if the guard's size moves out of it, remeasure the reference on the Mac and both Linux images in the same change and update NOMINAL_MS and its provenance",
+        "Update docs/guards.md ('How a command is read') for the two passes, and report the before and after figures of the compile split"
+      ]
+    },
+    {
+      "id": "P234.1",
+      "phase": "P234",
+      "title": "The Test files section can say how checks pick some tests, and how to run the rest",
+      "reqs": [
+        "R304"
+      ],
+      "files": [
+        "plugin/lib/spec.jq",
+        "plugin/lib/record.jq",
+        "plugin/lib/record-schema.jq",
+        "plugin/lib/record.sh",
+        "plugin/lib/cmd-apply.sh"
+      ],
+      "after": [],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "Read three new optional lines of a test-file form in .vbw/spec.md: '- filter: <option words>' (the options an approved check uses to pick some of a file's tests, such as --filter -f), '- rest: <command>' (the command that leaves those tests out, naming {file} and {filters} once each) and '- join: <text>' (how the filters are joined, | by default; a quoted value keeps its spaces), in the plain and the named form shapes",
+        "Refuse, naming the line, a rest line that does not name {file} and {filters} exactly once each, and a rest or join line without a filter line",
+        "Store the new fields in the record's form and accept them in the record validator, with the schema step a new key needs (record-schema.jq)",
+        "Let vbw apply's test_files carry filter, rest and join and write them back into the spec's section"
+      ]
+    },
+    {
+      "id": "P234.2",
+      "phase": "P234",
+      "title": "A test file that checks run only with a filter runs its other tests in every proof",
+      "reqs": [
+        "R304"
+      ],
+      "files": [
+        "plugin/lib/testfiles.sh",
+        "plugin/lib/proofreuse.sh",
+        "plugin/lib/cmd-prove.sh"
+      ],
+      "after": [
+        "P234.1"
+      ],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "In testfiles_index, drop only the files an approved check runs whole; a file named only by checks that carry a form's filter option becomes a unit with those checks' filter values, in check order",
+        "Run such a unit with the form's rest command, {filters} replaced by the filters joined by the join text, so no filtered test runs twice; with a filter line but no rest line, run the file whole and say once per proof, naming the missing '- rest:' line, that its filtered tests run twice",
+        "Make the unit's fingerprint the command it really runs, so a changed filter runs it again and an unchanged one is reused under the one reuse rule, with the usual reason lines and the 'run again: N of M units' count",
+        "Check that a failing test in such a unit fails the proof and names the file, as any unit does"
+      ]
+    },
+    {
+      "id": "P234.3",
+      "phase": "P234",
+      "title": "Docs: how the Test files section handles tests that checks run with a filter",
+      "reqs": [
+        "R304"
+      ],
+      "files": [
+        "docs/proof.md",
+        "docs/record.md",
+        "plugin/agents/lead.md"
+      ],
+      "after": [
+        "P232.2"
+      ],
+      "status": "planned",
+      "role": "docs",
+      "tasks": [
+        "docs/proof.md: show the filter, rest and join lines with a bats example (--filter -f; bats --allow-empty-suite --negative-filter {filters} {file}), say that a file named only by filtered checks runs its other tests and that the rest command must pass when nothing is left",
+        "docs/record.md: the form's filter, rest and join fields",
+        "plugin/agents/lead.md: when checks run a file with a filter, the Lead proposes the filter and rest lines ({filters}) with the one-file form"
+      ]
+    },
+    {
+      "id": "P235.1",
+      "phase": "P235",
+      "title": "vbw fix done says what it will rerun before it starts, and reruns only what a fix can reach",
+      "reqs": [
+        "R305"
+      ],
+      "files": [
+        "plugin/lib/cmd-fix.sh",
+        "plugin/lib/cmd-prove.sh",
+        "plugin/lib/proofsteps.sh",
+        "docs/proof.md",
+        "tests/fix-done-reach.bats"
+      ],
+      "after": [
+        "P234.2",
+        "P234.3"
+      ],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "Find why T288's fix done (M57's F451 round, 2026-11-11) reran every unit: read the clone's run store and M57's proof evidence, reproduce it on a fixture, record the cause with vbw decide, and add a regression test in tests/fix-done-reach.bats that fails before the fix",
+        "Fix that cause, so fix done reruns only the units whose recorded reads include a changed file and reuses the rest under vbw prove's rule",
+        "Before the first unit runs, print the same opening line vbw prove prints ('run again: N of M units; top reasons: ...'), from one shared function for both commands",
+        "When every unit must run, print the reason as the first line, before any unit starts; keep the closing summary lines as they are, and update docs/proof.md's fix done section"
+      ]
+    },
+    {
+      "id": "P235.2",
+      "phase": "P235",
+      "title": "vbw run state: the kernel's own answer on whether a run ended and what was recorded",
+      "reqs": [
+        "R306"
+      ],
+      "files": [
+        "plugin/lib/cmd-run.sh"
+      ],
+      "after": [],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "Add vbw run state ID...: one JSON line {open, recorded}, open true while a run lease is open, recorded mapping each named plan, fix or phase to whether its result is recorded as vbw run confirm judges it",
+        "Judge a phase's QA verdict against the latest QA run, also once that run has ended (its start from the step history)",
+        "Refuse an unknown id by name, write nothing, and list the command in vbw run's usage line"
+      ]
+    },
+    {
+      "id": "P235.3",
+      "phase": "P235",
+      "title": "The workflows take a run's end and each fix's done from vbw run state, never from an agent's word",
+      "reqs": [
+        "R306"
+      ],
+      "files": [
+        "plugin/workflows/building.js",
+        "plugin/workflows/fixing.js",
+        "plugin/workflows/verifying.js",
+        "plugin/agents/lead.md",
+        "docs/workflows.md"
+      ],
+      "after": [
+        "P235.2",
+        "P234.3"
+      ],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "Ask the closing agent (and the fix done agent without a session) to run vbw run state with the ids after vbw run end and return its output exactly as printed, in a required state field",
+        "Decide ended, recorded and complete from that answer only: a missing or unreadable answer counts as not done, with the commands to run by hand",
+        "Report a still-open run as not done with vbw run end, and each fix the kernel has not recorded as not done with vbw fix done for it; take closed fixes only from the kernel's answer",
+        "Update the Lead's 'Close a run' instructions and docs/workflows.md (the close step, vbw run state in the kernel commands table, and that the router's own vbw next stays the final word)"
+      ]
+    },
+    {
+      "id": "P236.1",
+      "phase": "P236",
+      "title": "The milestone end is never shown before the current step's end",
+      "reqs": [
+        "R307"
+      ],
+      "files": [
+        "plugin/lib/road.jq",
+        "docs/next.md"
+      ],
+      "after": [],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "Count the live step in the road from the times the step itself shows (step_words): its until-around time, low and high, so a late step's end moves the milestone's typical figure too",
+        "Keep the milestone's duration and its end in step: both come from the same seconds",
+        "Run the road tests (road-next, road-note, road-history-shapes, step-range) and say in docs/next.md that the milestone end is never before the current step's"
+      ]
     }
   ],
   "fixes": [
@@ -103814,6 +104583,17 @@
         "ended": "2026-11-11T18:00:20Z",
         "cost": {
           "usd": 1.987953
+        }
+      },
+      {
+        "id": "plan-20261112T103119Z",
+        "kind": "plan",
+        "session": "0ee781c3-c5b6-4a6c-889f-04b89f1fba4a",
+        "milestone": "M58",
+        "started": "2026-11-12T10:31:19Z",
+        "ended": "2026-11-12T11:12:50Z",
+        "cost": {
+          "usd": 16.418787
         }
       }
     ],

@@ -142,3 +142,145 @@ log_calls() {
   "$VBW" prove > /dev/null || true
   jq -e '.evidence.test_files | keys == ["tests/t_b.sh"]' .vbw/record.json
 }
+
+# R304 (T256): every test runs in some proof. A form may declare the options its approved checks
+# use to select some of a file's tests (- filter: <option words>) and the run that leaves those
+# tests out (- rest: <argv naming {file} and {filters} once each>; {filters} is the filters the
+# approved checks give that file, joined by | or by the form's - join: text). A file named only
+# by filtered checks is then a unit that runs that rest, so nothing runs twice (D179). The
+# runner below (tests/run.sh) logs its arguments to $RANLOG and runs each "case NAME CODE" line
+# of the file that --only selects or --skip leaves out (both regular expressions).
+
+# filtered_form [REST] [JOIN]: the copied project with the runner, test files t_a (three
+# passing cases), t_b and t_c, a form with a filter line (--only) and the rest line REST
+# ("-": none; default: the runner with --skip {filters}), and four checks: C1 and C2 run
+# t_a with a filter each, C3 runs t_b whole, C4 runs t_b with a filter; t_c has no check.
+filtered_form() {
+  local rest="${1-sh tests/run.sh --skip {filters} {file}}"
+  export RANLOG="$TEST_ROOT/ran.log"
+  : > "$RANLOG"
+  cat > tests/run.sh << 'SH'
+echo "$*" >> "$RANLOG"
+only='' skip=''
+while [ $# -gt 1 ]; do
+  case "$1" in
+    --only) only=$2; shift 2 ;;
+    --skip) skip=$2; shift 2 ;;
+    *) shift ;;
+  esac
+done
+rc=0
+while read -r w name code; do
+  [ "$w" = case ] || continue
+  if [ -n "$only" ] && ! printf '%s\n' "$name" | grep -qE -- "$only"; then continue; fi
+  if [ -n "$skip" ] && printf '%s\n' "$name" | grep -qE -- "$skip"; then continue; fi
+  echo "ran $name"
+  [ "$code" = 0 ] || { echo "$name failed"; rc=1; }
+done < "$1"
+exit $rc
+SH
+  printf 'case R1 0\ncase R2 0\ncase K1 0\n' > tests/t_a.sh
+  printf 'case R3 0\ncase K2 0\n' > tests/t_b.sh
+  printf 'case K3 0\n' > tests/t_c.sh
+  {
+    printf '# Shop\n\n## Requirements\n\n- R1 [auto] A customer can pay\n\n## Commands\n\n- test: sh tests/all.sh\n\n## Test files\n\n'
+    printf -- '- run: sh tests/run.sh {file}\n- files: tests/t_*.sh\n- filter: --only\n'
+    [ "$rest" = - ] || printf -- '- rest: %s\n' "$rest"
+    [ -z "${2:-}" ] || printf -- '- join: %s\n' "$2"
+  } > .vbw/spec.md
+  "$VBW" spec sync > /dev/null
+  jq '.checks = [{id:"C1", req:"R1", run:["sh","tests/run.sh","--only","R1","tests/t_a.sh"], files:["tests/c1.sh"]},
+                 {id:"C2", req:"R1", run:["sh","tests/run.sh","--only","R2","tests/t_a.sh"], files:["tests/c1.sh"]},
+                 {id:"C3", req:"R1", run:["sh","tests/run.sh","tests/t_b.sh"], files:["tests/c1.sh"]},
+                 {id:"C4", req:"R1", run:["sh","tests/run.sh","--only","R3","tests/t_b.sh"], files:["tests/c1.sh"]}]' \
+    .vbw/record.json > "$TEST_ROOT/edit.json" && cp "$TEST_ROOT/edit.json" .vbw/record.json
+  git add -A && git commit -q -m "chore(vbw): filtered checks"
+  "$VBW" approve > /dev/null
+}
+
+# ran_line ARGS: how many times the runner was called with exactly ARGS.
+ran_line() { grep -cxF -- "$1" "$RANLOG" || true; }
+
+@test "R304: a test file named only by filtered checks is a unit that runs the tests no filter selects, and nothing runs twice" {
+  filtered_form
+  vbw_run prove
+  [ "$status" -eq 0 ] || { echo "$output"; cat "$RANLOG"; false; }
+  jq -e '.evidence.test_files | has("tests/t_a.sh") and has("tests/t_c.sh")' .vbw/record.json || { jq '.evidence.test_files' .vbw/record.json; false; }
+  [ "$(ran_line '--skip R1|R2 tests/t_a.sh')" -eq 1 ] || { echo "the rest of t_a did not run once:"; cat "$RANLOG"; false; }
+  [ "$(ran_line '--only R1 tests/t_a.sh')" -eq 1 ] && [ "$(ran_line '--only R2 tests/t_a.sh')" -eq 1 ] || { cat "$RANLOG"; false; }
+  [ "$(ran_line 'tests/t_a.sh')" -eq 0 ] || { echo "t_a ran whole, so its filtered tests ran twice:"; cat "$RANLOG"; false; }
+  [ "$(ran_line 'tests/t_c.sh')" -eq 1 ] || { cat "$RANLOG"; false; }
+}
+
+@test "R304: a test file an approved check runs whole stays out of the units, also when a filtered check names it too" {
+  filtered_form
+  vbw_run prove
+  [ "$status" -eq 0 ] || { echo "$output"; false; }
+  jq -e '.evidence.test_files | has("tests/t_b.sh") | not' .vbw/record.json || { jq '.evidence.test_files' .vbw/record.json; false; }
+  [ "$(ran_line 'tests/t_b.sh')" -eq 1 ] || { echo "t_b did not run once, as its check:"; cat "$RANLOG"; false; }
+  ! grep -q -- '--skip R3' "$RANLOG" || { cat "$RANLOG"; false; }
+}
+
+@test "R304: the form's join line joins the filters of a rest run" {
+  filtered_form 'sh tests/run.sh --skip {filters} {file}' ' or '
+  "$VBW" prove > /dev/null || true
+  [ "$(ran_line '--skip R1 or R2 tests/t_a.sh')" -eq 1 ] || { cat "$RANLOG"; false; }
+}
+
+@test "R304: with a filter line and no rest line a filtered-only file runs whole as a unit, and the proof says so once, naming the rest line" {
+  filtered_form -
+  vbw_run prove
+  [ "$status" -eq 0 ] || { echo "$output"; false; }
+  [ "$(ran_line 'tests/t_a.sh')" -eq 1 ] || { cat "$RANLOG"; false; }
+  [ "$(printf '%s\n' "$output" | grep -c -- '- rest:')" -eq 1 ] || { echo "the proof does not say once that a rest line would leave out the filtered tests:"; echo "$output"; false; }
+}
+
+@test "R304: without a filter line the units are as before: a file an approved check names is never a unit of its own" {
+  filtered_form -
+  grep -v -- '^- filter:' .vbw/spec.md > "$TEST_ROOT/spec.md" && cp "$TEST_ROOT/spec.md" .vbw/spec.md
+  "$VBW" spec sync > /dev/null
+  git add -A && git commit -q -m "chore(vbw): no filter line"
+  "$VBW" approve > /dev/null
+  "$VBW" prove > /dev/null || true
+  jq -e '.evidence.test_files | keys == ["tests/t_c.sh"]' .vbw/record.json || { jq '.evidence.test_files' .vbw/record.json; false; }
+}
+
+@test "R304: a failing test the rest runs fails the proof, which names the file" {
+  filtered_form
+  printf 'case R1 0\ncase R2 0\ncase K1 1\n' > tests/t_a.sh
+  git add -A && git commit -q -m "test: K1 fails"
+  vbw_run prove
+  [ "$status" -ne 0 ] || { echo "$output"; false; }
+  printf '%s\n' "$output" | grep -qE '^ +tests/t_a\.sh fail' || { echo "$output"; false; }
+}
+
+@test "R304: a rest unit follows the one reuse rule: reused when nothing it reads changed, run again with the others counted when a filter changes" {
+  filtered_form
+  "$VBW" prove > /dev/null
+  : > "$RANLOG"
+  "$VBW" prove > /dev/null
+  [ "$(ran_line '--skip R1|R2 tests/t_a.sh')" -eq 0 ] || { echo "the rest unit ran again with nothing changed:"; cat "$RANLOG"; false; }
+  jq '.checks |= map(if .id == "C1" then .run = ["sh","tests/run.sh","--only","K1","tests/t_a.sh"] else . end)' .vbw/record.json > "$TEST_ROOT/edit.json" && cp "$TEST_ROOT/edit.json" .vbw/record.json
+  git add -A && git commit -q -m "chore(vbw): C1 selects K1"
+  "$VBW" approve > /dev/null
+  : > "$RANLOG"
+  vbw_run prove
+  [ "$status" -eq 0 ] || { echo "$output"; false; }
+  [ "$(ran_line '--skip K1|R2 tests/t_a.sh')" -eq 1 ] || { echo "the rest unit did not run again on the changed filter:"; cat "$RANLOG"; false; }
+  printf '%s\n' "$output" | grep -qE '^run again: 2 of 6 units' || { echo "the opening line does not count the rest unit:"; echo "$output"; false; }
+}
+
+@test "R304 spec: the spec refuses a rest line that does not name {file} and {filters} once each, and a rest line without a filter line, naming the line" {
+  filtered_form
+  local bad
+  for bad in '- rest: sh tests/run.sh --skip x {file}' '- rest: sh tests/run.sh --skip {filters}' '- rest: sh tests/run.sh {filters} {filters} {file}'; do
+    sed "s|^- rest: .*|$bad|" .vbw/spec.md > "$TEST_ROOT/spec.md"
+    cp "$TEST_ROOT/spec.md" .vbw/spec.md
+    vbw_run spec check
+    [ "$status" -ne 0 ] && [[ "$output" == *"line "* ]] && [[ "$output" == *"{filters}"* ]] || { echo "accepted: $bad"; echo "$output"; false; }
+  done
+  sed -e 's|^- rest: .*|- rest: sh tests/run.sh --skip {filters} {file}|' -e '/^- filter:/d' .vbw/spec.md > "$TEST_ROOT/spec.md"
+  cp "$TEST_ROOT/spec.md" .vbw/spec.md
+  vbw_run spec check
+  [ "$status" -ne 0 ] && [[ "$output" == *"filter"* ]] || { echo "a rest line without a filter line was accepted:"; echo "$output"; false; }
+}

@@ -620,3 +620,22 @@ injected() {
   line '^machine too busy to measure: sh and jq startup takes 30.0 ms CPU per call, above the 25 ms hook limit; nothing judged$' > /dev/null
   ! printf '%s\n' "$output" | grep -q 'reference beside it'
 }
+
+# R301 (T283): the Bash guard has headroom under its budget. A timed file (run by the release
+# run, never by vbw prove, R152) judges every Bash guard case of the bench at 20 ms of own CPU
+# per call, 40 ms for a script run by name (the bench's doubling), at every record size; the
+# default budget stays 25 ms (the R151 cases above).
+@test "R301 timed: tests/timed-guard-headroom.bats runs the bench at a 20 ms budget over every Bash guard case at every record size, fails on any OVER, and skips a busy machine" {
+  local f="$BATS_TEST_DIRNAME/timed-guard-headroom.bats" run_line c
+  [ -f "$f" ] || { echo "no tests/timed-guard-headroom.bats"; false; }
+  run_line=$(grep -E 'tools/bench-hooks\.sh' "$f" | grep -vE '^[[:space:]]*#' | head -1)
+  [[ "$run_line" == *"VBW_HOOK_BUDGET_MS=20 "* ]] || { echo "the bench is not run at a 20 ms budget: $run_line"; false; }
+  [[ "$run_line" != *"VBW_BENCH_RUNS"* && "$run_line" != *"VBW_BENCH_REFERENCE_MS"* && "$run_line" != *"VBW_BENCH_TIMES"* ]] || { echo "the bench does not measure as it does at release: $run_line"; false; }
+  for c in 'guard (git' 'guard (npm' 'guard (big' 'guard (interp' 'guard (script' 'guard (cross-project' 'guard (loop'; do
+    grep -qF "$c" "$f" || { echo "the cases selected do not include $c"; false; }
+  done
+  grep -qF ': OVER' "$f" || { echo "an OVER line does not fail the test"; false; }
+  grep -qi 'busy' "$f" && grep -qE '^[[:space:]]*if .*busy.*skip|skip .*busy' "$f" || { echo "a busy machine is not skipped"; false; }
+  grep -qE -- '-eq 25\b' "$f" || { echo "the test does not require all 25 input and record cases to be judged"; false; }
+  [ "$(bats --count "$f")" -ge 1 ]
+}
