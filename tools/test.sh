@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Run every check: shellcheck on repo tooling, then the bats suite. Runs under
 # whatever `bash` is first on PATH, so CI runs it once with macOS /bin/bash 3.2
-# and once with bash 5. Fails on the first failing stage (no pipes).
+# and once with bash 5. Fails on the first failing stage (no pipes), except the speed benchmarks: a failed
+# bench never stops the lint or the test files; the run fails at the end naming it.
 # No option: the lint and every test file except the timed ones (tests/timed-*.bats),
 # the run `vbw prove` uses. --release adds both benchmarks and the timed files, run
 # alone after the rest: the speed checks run once per release, never in a proof.
@@ -98,6 +99,32 @@ jobs_count() {
   echo "$j"
 }
 
+# The speed benchmarks never stop a run: a failed one is remembered and the lint and every
+# test file still run; `finish` then prints one line per failed bench as the last lines and
+# exits non-zero (also when a test file failed too).
+failed_benches=""
+test_failed=0
+
+# run_benches: the hook bench, then the panel bench when node exists (the panel is JS).
+run_benches() {
+  if ! bash tools/bench-hooks.sh; then failed_benches="${failed_benches}failed: hook bench"$'\n'; fi
+  if command -v node >/dev/null 2>&1; then
+    if ! bash tools/bench-panel.sh; then failed_benches="${failed_benches}failed: panel bench"$'\n'; fi
+  fi
+}
+
+# run_bats ARGS...: run bats, remember a failure without stopping the run.
+run_bats() {
+  bats --print-output-on-failure "$@" || test_failed=1
+}
+
+# finish: name each failed bench, then exit 1 when a bench or a test file failed.
+finish() {
+  [ -z "$failed_benches" ] || printf '%s' "$failed_benches"
+  if [ -n "$failed_benches" ] || [ "$test_failed" -ne 0 ]; then exit 1; fi
+  exit 0
+}
+
 if [ "$shard" -ge 1 ]; then
   share=()
   while IFS= read -r f; do share+=("$f"); done < <(shard_files "$shard" "$nshards")
@@ -129,18 +156,15 @@ if [ "$shard" -ge 1 ]; then
     else
       echo "shellcheck not installed; skipping tool lint" >&2
     fi
-    bash tools/bench-hooks.sh
-    if command -v node >/dev/null 2>&1; then
-      bash tools/bench-panel.sh
-    fi
+    run_benches
   fi
   if [ "${#batch[@]}" -gt 0 ]; then
-    bats --print-output-on-failure --jobs "$(jobs_count)" "${batch[@]}"
+    run_bats --jobs "$(jobs_count)" "${batch[@]}"
   fi
   if [ "${#timed_run[@]}" -gt 0 ]; then
-    bats --print-output-on-failure "${timed_run[@]}"
+    run_bats "${timed_run[@]}"
   fi
-  exit 0
+  finish
 fi
 
 if [ "$list" = 1 ]; then
@@ -202,15 +226,12 @@ release_reuse() {
 if [ "$release" = 1 ]; then
   if why=$(release_reuse); then
     echo "release: reusing the passing proof of $why (only the version files and the changelog changed since); running the benchmarks and the timed tests only"
-    bash tools/bench-hooks.sh
-    if command -v node >/dev/null 2>&1; then
-      bash tools/bench-panel.sh
-    fi
+    run_benches
     if [ -n "$timed" ]; then
       # shellcheck disable=SC2086 # the list is fixed paths without spaces
-      bats --print-output-on-failure $timed
+      run_bats $timed
     fi
-    exit 0
+    finish
   fi
 fi
 
@@ -240,15 +261,13 @@ done
 
 if [ "$release" = 1 ]; then
   # The hook cost budget (CPU time, so other load does not skew it) is measured first.
-  bash tools/bench-hooks.sh
-  # The panel cost budget, when node exists (the panel is JS).
-  if command -v node >/dev/null 2>&1; then
-    bash tools/bench-panel.sh
-  fi
+  # The panel cost budget follows, when node exists (the panel is JS).
+  run_benches
 fi
 
-bats --print-output-on-failure --jobs "$(jobs_count)" "${rest[@]}"
+run_bats --jobs "$(jobs_count)" "${rest[@]}"
 if [ "$release" = 1 ] && [ -n "$timed" ]; then
   # shellcheck disable=SC2086 # the list is fixed paths without spaces
-  bats --print-output-on-failure $timed
+  run_bats $timed
 fi
+finish
