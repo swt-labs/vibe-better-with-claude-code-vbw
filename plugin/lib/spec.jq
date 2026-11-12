@@ -14,8 +14,13 @@
 # <git pathspecs>", any number of lines; an optional "- dir: <folder>"), or named
 # forms ("- NAME:" with those lines nested under it). One unnamed form without a
 # dir is {run, files}, as before forms had names; anything else is an array of
-# {name, dir, run, files} (name and dir null when absent). null without the
-# section. test_file_lines holds the line each form starts on, in that order.
+# {name, dir, run, files} (name and dir null when absent). A form may also carry
+# "- filter: <option words>" (the options an approved check uses to pick some of a
+# file's tests), "- rest: <command naming {file} and {filters} once each>" and
+# "- join: <text>" (how the filters are joined; a quoted value keeps its spaces),
+# kept as filter (argv), rest (argv) and join (string) only when given; a rest or
+# join line needs a filter line. A form with one of them is always an array entry.
+# null without the section. test_file_lines holds the line each form starts on, in that order.
 
 def heading: test("^#{1,2}\\s");
 # The argv of one command line: a JSON array of strings, or words split on spaces.
@@ -24,6 +29,14 @@ def argv_of: if startswith("[") then (try fromjson catch null)
   else [splits("\\s+") | select(length > 0)] end;
 # The number of times "{file}" appears in an argv.
 def file_slots: [.[] | [match("\\{file\\}"; "g")] | length] | add;
+# The number of times a regular expression matches in an argv's words.
+def slots($m): [.[] | [match($m; "g")] | length] | add;
+# A join value: double quotes (a JSON string) or single quotes keep its spaces; null when empty.
+def join_of: if startswith("\"") then (try fromjson catch null) | if type == "string" and length > 0 then . else null end
+  elif length >= 3 and startswith("'") and endswith("'") then .[1:-1]
+  else . end;
+# A new test file form; rl and jl are the lines of its rest and join (not output).
+def newform($name; $line): {name: $name, line: $line, dir: null, run: null, files: [], filter: null, rest: null, join: null, rl: null, jl: null};
 # A results folder as given, with its trailing "/", or null when it is unsafe.
 # True when a clean copy path is unsafe: absolute, an empty, "." or ".." segment, or under .vbw or .git.
 def bad_leave_out: (rtrimstr("/") | split("/")) as $s
@@ -37,6 +50,19 @@ def tf_label: if .name == null then "the Test files section" else "form \(.name)
 # form; a refusal goes in .err.
 def tf_apply($n; $k; $v; $l):
   if $k == "files" then .files += [$v | splits("\\s+") | select(length > 0) | {p: ., line: $n}]
+  elif $k == "filter" then ($v | argv_of) as $a
+    | if .filter != null then .err = "line \($n): \(tf_label) has two filter lines"
+      elif $a == null then .err = "line \($n): the Test files filter line must be option words (or a JSON array of strings), got: \($l)"
+      else .filter = $a end
+  elif $k == "rest" then ($v | argv_of) as $a
+    | if .rest != null then .err = "line \($n): \(tf_label) has two rest lines"
+      elif $a == null or ($a | slots("\\{file\\}")) != 1 or ($a | slots("\\{filters\\}")) != 1 then
+        .err = "line \($n): the Test files rest line must name {file} and {filters} exactly once each (words, or a JSON array of strings), got: \($l)"
+      else .rest = $a | .rl = $n end
+  elif $k == "join" then ($v | join_of) as $j
+    | if .join != null then .err = "line \($n): \(tf_label) has two join lines"
+      elif $j == null then .err = "line \($n): the Test files join line must be some text, in quotes when it has spaces to keep, got: \($l)"
+      else .join = $j | .jl = $n end
   elif $k == "run" then ($v | argv_of) as $a
     | if .run != null then .err = "line \($n): \(tf_label) has two run lines"
       elif $a == null or ($a | file_slots) != 1 then
@@ -82,16 +108,16 @@ split("\n") | map(sub("\r$"; ""))
           else .commands[$m.name] = $a end
       elif .tf and ($l | test("^\\s*[-*+]\\s")) then
         ($l | [capture("^- (?<name>[A-Za-z0-9_-]+):\\s*$")] | first
-          | if . != null and (.name == "run" or .name == "files" or .name == "dir") then null else . end) as $f
-        | ($l | [capture("^- (?<key>run|files|dir): +(?<val>\\S.*?)\\s*$")] | first) as $t
-        | ($l | [capture("^\\s+[-*+] +(?<key>run|files|dir): +(?<val>\\S.*?)\\s*$")] | first) as $s
+          | if . != null and (.name == "run" or .name == "files" or .name == "dir" or .name == "filter" or .name == "rest" or .name == "join") then null else . end) as $f
+        | ($l | [capture("^- (?<key>run|files|dir|filter|rest|join): +(?<val>\\S.*?)\\s*$")] | first) as $t
+        | ($l | [capture("^\\s+[-*+] +(?<key>run|files|dir|filter|rest|join): +(?<val>\\S.*?)\\s*$")] | first) as $s
         | if $f != null then
             if .tmode == "root" then .errors += ["line \($n): the Test files section mixes top-level run, files or dir lines with named forms (- \($f.name):): use one shape"]
             elif any(.tforms[]; .name == $f.name) then .errors += ["line \($n): test file form \($f.name) is named twice"]
-            else .tmode = "named" | .tforms += [{name: $f.name, line: $n, dir: null, run: null, files: []}] end
+            else .tmode = "named" | .tforms += [newform($f.name; $n)] end
           elif $t != null then
             if .tmode == "named" then .errors += ["line \($n): the Test files section mixes top-level run, files or dir lines with named forms: use one shape"]
-            else (if .tmode == null then .tmode = "root" | .tforms = [{name: null, line: .tfline, dir: null, run: null, files: []}] else . end)
+            else (if .tmode == null then .tmode = "root" | .tforms = [newform(null; .tfline)] else . end)
               | tf_line($n; 0; $t.key; $t.val; $l) end
           elif $s != null then
             if .tmode != "named" then .errors += ["line \($n): a nested run, files or dir line belongs under a named form (- NAME:), got: \($l)"]
@@ -126,12 +152,14 @@ split("\n") | map(sub("\r$"; ""))
 | if .seen then . else .errors += ["no '## Requirements' section"] end
 | if .tfline == null or (.errors | length) > 0 then .
   else
-    (if .tforms == [] then [{name: null, line: .tfline, dir: null, run: null, files: []}] else .tforms end) as $fs
+    (if .tforms == [] then [newform(null; .tfline)] else .tforms end) as $fs
     | .errors += [$fs[]
         | if .run == null then "line \(.line): \(tf_label) needs a '- run: <command with {file}>' line"
           elif .files == [] then "line \(.line): \(tf_label) needs a '- files: <git pathspecs>' line"
           # Other magic (glob, icase, top, ...) changes what git matches, so the
           # under-dir test of the text would prove nothing: refused by name.
+          elif .filter == null and (.rest != null or .join != null) then
+            "line \(.rl // .jl): \(tf_label) has a \(if .rest != null then "rest" else "join" end) line but no '- filter: <option words>' line: a rest or join line needs a filter line"
           elif .dir != null then . as $f | (.files[]
             | if .p | pathspec_path | startswith(":") then
                 "line \(.line): the files of \($f | tf_label) take no pathspec magic but an exclude (:!, :^ or :(exclude)) in a form with a dir, got: \(.p)"
@@ -143,6 +171,6 @@ split("\n") | map(sub("\r$"; ""))
 | .tforms as $fs
 | {requirements: .reqs, commands: .commands, results: (if .results == [] then null else .results end), leave_out: (if .leave_out == [] then null else .leave_out end),
    test_files: (if .tfline == null then null
-     else [$fs[] | {name, dir, run, files: [.files[].p]}]
-       | if length == 1 and .[0].name == null and .[0].dir == null then .[0] | {run, files} else . end end),
+     else [$fs[] | {name, dir, run, files: [.files[].p]} + (with_entries(select((.key == "filter" or .key == "rest" or .key == "join") and .value != null)))]
+       | if length == 1 and .[0].name == null and .[0].dir == null and (.[0] | has("filter") or has("rest") or has("join") | not) then .[0] | {run, files} else . end end),
    test_file_lines: [$fs[].line], errors: .errors, end: .end}
