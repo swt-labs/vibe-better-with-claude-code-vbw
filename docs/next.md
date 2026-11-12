@@ -239,6 +239,10 @@ left (the milestone shipped).
   with fewer than 3 finished phases counts 0, and the end is then a rough
   guess).
 - `basis`: what the time adds up, or the first kind with no basis.
+- The milestone's end is never before the current step's: the live step counts
+  in the road with the end its own words show (a late step's `until around`
+  time, a rough step's typical end), so `road.end`, `end_typical`, `end_low`
+  and `end_high` are each at or after the step's, and the duration agrees.
 - `road.say`: the sentence, said as given together with `step.say` before a
   step starts. Before planning it reads `Milestone end: planning about 2 min,
   until around 14:22; the rest follows once the work is planned`. With no basis
