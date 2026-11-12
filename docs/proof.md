@@ -734,6 +734,38 @@ section in `.vbw/spec.md`, beside `## Commands`:
 puts each test file's path there. `files` lists the git pathspecs of the test
 files, one or more per line.
 
+### Tests that checks run with a filter
+
+An approved check may run a test file with a filter, such as
+`bats --filter R12 tests/cart.bats`. A file named only by filtered checks would
+then never run its other tests in the proof. Three more lines give those tests
+their own run:
+
+```markdown
+## Test files
+
+- run: bats {file}
+- files: tests/*.bats
+- filter: --filter -f
+- rest: bats --allow-empty-suite --negative-filter {filters} {file}
+- join: |
+```
+
+- `filter` names the options a check uses to filter. Here `--filter` and `-f`.
+- `rest` is the command that runs everything the checks' filters leave out. It
+  names `{file}` and `{filters}` once each, and needs a `filter` line.
+- `join` is what joins the checks' filters into `{filters}` (`|` when absent).
+
+A file named only by filtered checks runs as a unit with the `rest` command, so
+its other tests run and no filtered test runs twice. A file that an approved
+check runs whole stays out of these units. The `rest` command must pass when
+nothing is left to run: `bats --allow-empty-suite` does. With a `filter` line
+and no `rest` line, the file runs whole as a unit, and the proof says so once,
+naming the `rest` line. Without a `filter` line, a file a check names is never a
+unit of its own. A failing test in a `rest` run fails the proof and names the
+file. These units are reused like every other unit, and run again when a filter
+changes.
+
 A project with several test runners, such as a monorepo with one per
 subproject, names one form per runner, with the lines nested under the name:
 
