@@ -114,3 +114,25 @@ record_refused() {
   out=$(bash_at "$PROJECT" "cd '$SCRATCH/repo' && git status 2>&1 && echo x > .vbw/record.json")
   not_record "$out" "a cd chained with &&"
 }
+
+# R300 (T281): every cd docs/guards.md lists as one the guard cannot read is named here, a
+# bare cd and cd ~ among them, and each is shown treated as unreadable: after it, in a plain
+# && chain or after ;, the folder the command started in (the project) is judged too, so the
+# project's record stays refused. A form the docs add without a case here fails this case.
+@test "R300: every cd docs/guards.md lists as one the guard cannot read (cd -, cd ~-, a bare cd, cd ~, a cd to a variable) leaves the project's record refused" {
+  local listed forms f c sep out
+  listed=$(tr '\n' ' ' < "$REPO_ROOT/docs/guards.md" | sed -n 's/.*with a `cd` it cannot read (\([^)]*\)).*/\1/p')
+  [ -n "$listed" ] || { echo "docs/guards.md no longer lists the cd forms the guard cannot read"; false; }
+  forms=$(printf '%s\n' "$listed" | grep -o '`[^`]*`' | tr -d '`' | LC_ALL=C sort -u)
+  [ "$(printf '%s\n' "$forms" | tr '\n' '|')" = '$OLDPWD|cd|cd -|cd ~|cd ~-|' ] || { printf 'docs/guards.md lists forms this case does not name:\n%s\n' "$forms"; false; }
+  while IFS= read -r f; do
+    case "$f" in
+      '$OLDPWD') c='cd "$OLDPWD"' ;;
+      *) c=$f ;;
+    esac
+    for sep in ' && ' '; '; do
+      out=$(bash_at "$PROJECT" "cd '$SCRATCH/plain'$sep$c$sep""echo x > .vbw/record.json")
+      record_refused "$out" "cd '$SCRATCH/plain'$sep$c$sep""echo x > .vbw/record.json"
+    done
+  done <<< "$forms"
+}

@@ -351,3 +351,12 @@ R248_DIGEST=7f43f960743d8606a8917bffecd9ae338475a83fedfa5f5916db0bd69fe96a1e
   [ "$status" -eq 1 ] || { echo "$output"; false; }
   [[ "$output" == *"plant.sh:3: f"* ]] || { echo "$output"; false; }
 }
+
+# R300 (T284, PR #755): a test never judges a file by its inode number. Linux ext4 hands a
+# freed inode to the next new file at once, so "a new file" and "the old entry" can share one;
+# a case tells them apart by something a new file cannot inherit (a second name of the old
+# entry, a mark written into it). The patterns are written so this case does not match itself.
+@test "R300: no test judges a file by its inode number, whether read by ls, stat or find" {
+  run grep -rnE 'l[s][[:space:]]+-[a-zA-Z]*i|%[i]|-inu[m]|-samefil[e]' "$REPO_ROOT/tests" --include='*.bats' --include='*.bash'
+  [ -z "$output" ] || { echo "$output"; false; }
+}

@@ -128,6 +128,8 @@ The step shows the hook's own message (at most 20 lines, then where the full tex
 2. Allow it in the checker's settings.
 3. Commit the VBW files yourself (`git add .vbw`, then `git commit`).
 
+The failure remembers the commit it was made on. It stands while a file it names differs from that commit, or while no commit has been made since, also when a refused approval left nothing that differs (VBW takes the approval back), so `vbw next` never asks the same approval again in a loop. With nothing left to commit, the step offers only the first two ways and says to approve again: `vbw approve` then tries the approval and its commit again through the project's hooks. A pass records the approval and clears the failure; a refusal keeps the new failure and shows it. Any later VBW commit that succeeds clears it, and so does your own commit that leaves its files clean.
+
 Then run `vbw next` again. Once you commit the files the step is gone and `vbw next` continues where it stopped; if the hook now lets the files pass, the next `vbw next` commits them itself. VBW never passes `--no-verify`, never skips the project's hooks and never offers to. The router shows the step's instruction, never the approval menu. `vbw doctor` names a standing failure in one line (docs/diagnostics.md).
 
 ## Decision order (first match wins)

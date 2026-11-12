@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+[ -z "${VBW_LOADED_CORE:-}" ] || return 0 # load once per process (R299)
+VBW_LOADED_CORE=1
 # Shared helpers for the vbw kernel. Sourced by bin/vbw; never executed alone.
 # Exit codes: 0 ok, 1 error, 2 usage, 3 corrupt record, 4 record written by a newer VBW.
 
@@ -581,6 +583,14 @@ vbw_mtime() {
   local t
   t=$(stat -c %Y "$1" 2>/dev/null) || t=$(stat -f %m "$1" 2>/dev/null) || t=0
   case "$t" in "" | *[!0-9]*) t=0 ;; esac
+  vbw_out '%s\n' "$t"
+}
+
+# vbw_hhmm EPOCH: the local HH:MM of a moment (the current time when it cannot be read), the
+# one way every wait and refusal of the kernel says a time (the date -r and date -d forms).
+vbw_hhmm() {
+  local t
+  t=$(date -r "$1" +%H:%M 2> /dev/null) || t=$(date -d "@$1" +%H:%M 2> /dev/null) || t=$(date +%H:%M)
   vbw_out '%s\n' "$t"
 }
 

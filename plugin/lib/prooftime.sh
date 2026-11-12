@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+[ -z "${VBW_LOADED_PROOFTIME:-}" ] || return 0 # load once per process (R299)
+VBW_LOADED_PROOFTIME=1
 # The clock inside a proof (R202, docs/proof.md): vbw prove and vbw fix done
 # time the steps that are VBW's own work, not a unit's command running:
 # planning (reading the record and the contract, what to reuse, the scope check

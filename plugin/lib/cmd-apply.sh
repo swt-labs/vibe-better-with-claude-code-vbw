@@ -92,12 +92,35 @@ RULES_JQ='def rule_edit($ops; $a): ([$ops[] | select(.rule == $a)][0]) as $o
     | .out + .live;
 '
 
+# apply_guard_reason FILE: the guard's own words for a protected check file (hooks/common.jq
+# protected_reason), read, never copied (R296): the file, that a build never edits it, and the way on.
+apply_guard_reason() {
+  jq -nr -L "$VBW_PLUGIN/hooks" --arg f "$1" 'include "common"; $f | protected_reason' 2> /dev/null || apply_internal "cannot read the guard's words for a protected check file"
+}
+# apply_protected_words FILE: the one line of the refusal for a plan that lists protected check
+# file FILE, the same in every mode: the guard's first line, then its way on.
+apply_protected_words() {
+  local r
+  r=$(apply_guard_reason "$1")
+  printf '%s; %s' "${r%%$'\n'*}" "${r##*as it is; }"
+}
+# apply_protected_way MESSAGE: the guard's way on, the Next line of a protected-file refusal.
+apply_protected_way() { local r; r=$(apply_guard_reason "${1%% is a protected check file*}"); printf '%s\n' "${r##*as it is; }"; }
+# apply_protected_fix PROBLEM: a jq problem that is the sentinel PROTECTED<TAB>FILE becomes the refusal's words.
+apply_protected_fix() {
+  case "$1" in
+    "PROTECTED"$'\t'*) apply_protected_words "${1#PROTECTED$'\t'}" ;;
+    *) printf '%s' "$1" ;;
+  esac
+}
+
 # apply_refuse MESSAGE: every refusal names the mode it came from (R156).
 # apply_next MESSAGE: the one next step of the kind of refusal MESSAGE is. Messages of the
 # record's own validation (an unknown requirement, a duplicate id, ...) take the last arm.
 apply_next() {
   case "$1" in
-    *"is not an amendment"* | *"must be an array of objects"* | *"would lose "* | *"protected check file: a plan"*) echo "send that change with vbw apply --patch, then the user approves it; --amend takes only files added to a plan or a check and the checks a plan awaits" ;;
+    *"is not an amendment"* | *"must be an array of objects"* | *"would lose "*) echo "send that change with vbw apply --patch, then the user approves it; --amend takes only files added to a plan or a check and the checks a plan awaits" ;;
+    *" is a protected check file: "*) apply_protected_way "$1" ;;
     "the contract is not approved"*) echo "send the change with vbw apply --patch, then the user approves it (vbw show contract)" ;;
     "a patch carries plans"*) echo "remove \"phases\" from the document, or send it to a full apply (vbw apply) to change phases" ;;
     "--add needs"*) echo "send --add a JSON object whose \"phases\" array holds the new phases, with their plans, checks and rules" ;;
@@ -267,7 +290,7 @@ apply_amend() {
                 else empty end),
                (if $kind == "plans" and ($e | has("files")) and ($e.files | type == "array") then
                   $e.files[] | . as $f | select(($row.files | index($f)) == null and ($prot | index($f)) != null)
-                  | "\($f) is a protected check file: a plan never takes one among its files; \($tail)"
+                  | "PROTECTED\t\($f)"
                 else empty end),
                (if $e | has("awaits") then
                   if ($e.awaits | type == "array" and all(.[]; type == "string")) | not then "\($e.id) awaits must be an array of check ids"
@@ -279,7 +302,7 @@ apply_amend() {
           end;
       [top, shape, entry("plans"; .plans; ["id", "files", "awaits"]), entry("checks"; .checks; ["id", "files"])] | .[0] // empty' 2> /dev/null) \
     || apply_internal "cannot judge the amendment"
-  [ -z "$problem" ] || apply_refuse "$problem"
+  [ -z "$problem" ] || apply_refuse "$(apply_protected_fix "$problem")"
   vbw_scratch df "$doc"
   sess=$(vbw_session)
   adds=$(printf '%s' "$record" | jq -r --slurpfile f_d "$df" "$AMEND_JQ"'adds($f_d[0])[] | . as $x | $x | whats[] | "\($x.id): \(.)"') \
@@ -311,7 +334,7 @@ cmd_apply() {
     apply_amend "$(cat)"
     return 0
   fi
-  local doc record problem merged filter hypo tiers judged one pdoc='{}' df tf pf of ids p form=null ops='[]' addr
+  local brought doc record problem merged filter hypo tiers judged one pdoc='{}' df tf pf of ids p form=null ops='[]' addr
   doc=$(cat)
   if printf '%s' "$doc" | jq -e 'type == "object" and has("test_files")' > /dev/null 2>&1; then
     form=$(printf '%s' "$doc" | jq -c '.test_files')
@@ -333,6 +356,8 @@ cmd_apply() {
       then [.rules[] | objects | select(has("rule")) | .rule | tostring][0] // empty else empty end' 2> /dev/null) || addr=''
   [ -z "$addr" ] || [ "$patch" = true ] \
     || apply_refuse "a rule address ($addr) is for vbw apply --patch: a full apply and --add take rules as {req, text, check, plan?}"
+  # The plans the document itself brings, before a mode merges the record's own into it (R296).
+  brought=$(printf '%s' "$doc" | jq -c '[(.plans? // [])[]? | objects | select((.files? | type) == "array") | .files[]? | strings] | unique' 2> /dev/null) || brought='[]'
   if [ "$add" = true ]; then
     # --add: new phases with their plans, checks and rules, appended to the milestone;
     # every existing item stays as it is, its tier included; the rigor floor and the
@@ -431,6 +456,12 @@ cmd_apply() {
   printf '%s' "$doc" | jq -e '(keys - ["phases", "plans", "checks", "rules"]) == [] and all(.phases, .plans, .checks; type == "array")
       and ((has("rules") | not) or (.rules | type == "array" and all(.[]; type == "object" and (keys - ["req", "text", "check", "plan"]) == [] and (.text | type == "string" and length > 0))))' \
     > /dev/null || apply_refuse "apply needs phases, plans and checks, each an array, and optionally rules: [{req, text, check, plan?}]"
+  # A plan never lists a protected check file: the merged record's (a check of this document
+  # included) is the main session's to change with --patch, never a build's (R296).
+  problem=$(record_read | jq -r --slurpfile f_d <(printf '%s' "$doc") --argjson b "$brought" \
+    '([(.protected // [])[]] + [($f_d[0].checks // [])[]? | objects | (.files // [])[]? | strings] | unique) as $prot
+      | [$b[] | select(. as $f | $prot | index($f))][0] // empty') || apply_internal "cannot read the plans' files"
+  [ -z "$problem" ] || apply_refuse "$(apply_protected_words "$problem")"
   if [ "$add" = false ] && [ "$patch" = false ]; then
     problem=$(record_read | jq -r --slurpfile f_p <(printf '%s' "$doc") "$FOREIGN_REQS_JQ"'$f_p[0] as $p | . as $r | foreign_reqs($r; .milestone.id; $p; "others"; "full apply")[0] // empty') \
       || apply_internal "cannot read the phases' requirements"

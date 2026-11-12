@@ -302,3 +302,46 @@ EMPTY_FILTER_NEXT="Next: write the cases the filter names into tests/x.bats (eac
   refused_as full "full apply" "$(with_check '["bats", "--filter", "R220", "tests/x.bats"]' | jq -c '(.rules[] | select(.check == "C9")).plan = "P2.1"')"
   last_line_is "$MIXED_NEXT"
 }
+
+# R296 (field report 2026-11-11): a plan whose files include a protected check file is
+# refused in every mode, as --amend already refuses it, before anything is written: a
+# build would never be let to edit it. The refusal names its mode and the file, says a
+# build never edits it, and gives the same way on as the guard (common.jq's
+# protected_reason): the main session changes the check with vbw apply --patch, then the
+# user approves it. A patch that carries the check's own row (the approved way to change
+# a check) is still accepted; only a plan listing the file is refused.
+
+# guard_way FILE: the way on the guard gives for FILE, after its "leave FILE as it is; ".
+guard_way() {
+  jq -nr -L "$PLUGIN_ROOT/hooks" --arg f "$1" 'include "common"; $f | protected_reason' | sed -n 's/^Next: leave .* as it is; //p'
+}
+# protected_refused MODE LABEL FILE DOC: the apply is refused, the record unchanged, and the
+# message names LABEL, FILE as a protected check file, a build, and the guard's way on.
+protected_refused() {
+  local way first second
+  way=$(guard_way "$3")
+  [ -n "$way" ] || { echo "the guard gives no way on for $3"; return 1; }
+  refused_as "$1" "$2" "$4" || return 1
+  [[ "$output" == *"$3"*"protected check file"* ]] || { echo "the $1 refusal does not name $3 as a protected check file: $output"; return 1; }
+  [[ "$output" == *"build"* ]] || { echo "the $1 refusal does not say a build never edits it: $output"; return 1; }
+  [[ "$output" == *"$way"* ]] || { echo "the $1 refusal does not give the guard's way on ($way): $output"; return 1; }
+  first=$(printf "%s\n" "$output" | sed -n 1p); second=$(printf "%s\n" "$output" | sed -n 2p)
+  [[ "$first" == *"$way"* ]] || { echo "the first line of the $1 refusal does not give the guard's way on ($way): $first"; return 1; }
+  [ "$second" = "Next: $way" ] || { echo "$1: $second"; return 1; }
+}
+
+@test "R296: a full apply, --add and --patch each refuse a plan whose files include a protected check file, naming the mode, the file and the guard's way on; the record is unchanged" {
+  protected_refused full "full apply" tests/c2.sh "$(full_with '(.plans[] | select(.id == "P2.1")).files += ["tests/c2.sh"]')"
+  protected_refused add "--add" tests/c1.sh "$(add_with '.plans[0].files += ["tests/c1.sh"]')"
+  # A file the same document makes a check file is protected too.
+  protected_refused add "--add" tests/c3.sh "$(add_with '.plans[0].files += ["tests/c3.sh"]')"
+  protected_refused patch "--patch" tests/c2.sh '{"plans": [{"id": "P2.1", "phase": "P2", "title": "Receipt page", "reqs": ["R2"], "files": ["src/c.txt", "tests/c2.sh"], "after": []}]}'
+  protected_refused patch "--patch" tests/c1.sh '{"plans": [{"id": "P2.1", "files": ["src/c.txt", "tests/c1.sh"]}]}'
+}
+
+@test "R296: a patch carrying a check's own row, with the check file's new content, is accepted; a plan listing no check file beside it is accepted too" {
+  printf 'true # stronger\n' > tests/c2.sh
+  replan_accepted patch '{"checks": [{"id": "C2", "req": "R2", "run": ["sh", "tests/c2.sh"], "files": ["tests/c2.sh"]}],
+    "plans": [{"id": "P2.1", "phase": "P2", "title": "Receipt page", "reqs": ["R2"], "files": ["src/c.txt", "src/d.txt"], "after": []}]}'
+  replan_part '[.plans[] | select(.id == "P2.1") | .files]' | jq -e '. == [["src/c.txt", "src/d.txt"]]' > /dev/null || { replan_part .plans; false; }
+}

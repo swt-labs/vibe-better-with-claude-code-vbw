@@ -19,6 +19,8 @@
 #   inherit_omitted      no tools: line; asked to call read_note and list every tool it has
 #   disallowed_honoured  no tools: line, disallowedTools: Write, Edit, NotebookEdit, Bash;
 #                        asked to create proj/probe-written.txt with the Write tool
+#   toolsearch_disallowed  inherit_omitted's agent and prompt with disallowedTools: ToolSearch; the
+#                        first-turn input tokens of the two agents' transcripts are compared
 #   hook_every_tool      the probe plugin's PreToolUse entry has no matcher; an agent with
 #                        tools omitted calls Read, Bash and read_note; the hook log must hold all
 # Writes tools/probes/mcp-tools.json {probe, at, claude_version, cases, builtins,
@@ -176,7 +178,8 @@ r=$(session foreign_agent "Call the Workflow tool with name wfprobe:foreign. Wai
 add foreign_agent 'Read, mcp__probe__*' "$r"
 
 # inherit_omitted: no tools: line. Does the agent get the session's MCP tool, and which tools does it list?
-agent_file '' '' "Call the tool whose name ends in read_note (server probe) once, with no arguments. Then reply with one line: RESULT: followed by the tool's exact text, or RESULT: NO-TOOL if you could not call it; then on the same line TOOLS: followed by the exact names of every tool you have, separated by commas."
+inherit_body="Call the tool whose name ends in read_note (server probe) once, with no arguments. Then reply with one line: RESULT: followed by the tool's exact text, or RESULT: NO-TOOL if you could not call it; then on the same line TOOLS: followed by the exact names of every tool you have, separated by commas, including tools listed as deferred or not yet loaded, by name."
+agent_file '' '' "$inherit_body"
 : > "$hooklog"
 r=$(session inherit_omitted "$ask_reader" "$work/plugin")
 inherit_raw="$r"
@@ -193,6 +196,31 @@ if [ ! -e "$work/proj/probe-written.txt" ] && [ ! -e "$work/proj/proj/probe-writ
 else
   add disallowed_honoured 'disallowedTools: Write, Edit, NotebookEdit, Bash' "RESULT: WRITTEN file present: $([ -e "$work/proj/probe-written.txt" ] && echo yes || echo no); agent write calls: $writes; reply: ${r:-no reply}"
 fi
+
+# toolsearch_disallowed: inherit_omitted's agent and prompt with disallowedTools: ToolSearch. The measure is
+# the agent's first-turn input tokens from its transcript, not what the agent says or calls:
+# without ToolSearch Claude Code cannot defer tools, so every inherited MCP schema loads up front.
+# The size depends on the host's MCP servers; the claim is only that without exceeds with.
+agent_file '' 'disallowedTools: ToolSearch' "$inherit_body"
+: > "$hooklog"
+r=$(session toolsearch_disallowed "$ask_reader" "$work/plugin")
+add toolsearch_disallowed 'disallowedTools: ToolSearch' "$r"
+# first_turn NAME: the probe agent's first-turn input tokens (uncached, cache written, cache read)
+# in that case's session, from its subagent transcript under the Claude config dir; 0 if none.
+# Claude Code names a project's transcript folder after its path, every non-alphanumeric as '-'.
+first_turn() {
+  local sid dir
+  sid=$(jq -r '.session_id // empty' "$work/out/$1.json" 2> /dev/null || true)
+  dir="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/projects/$(printf '%s' "$work/proj" | sed 's/[^A-Za-z0-9]/-/g')/$sid/subagents"
+  [ -n "$sid" ] && [ -d "$dir" ] || { echo 0; return; }
+  find "$dir" -name 'agent-*.jsonl' -print0 | xargs -0 cat | jq -s '[.[] | select(.type == "assistant") | .message.usage
+    | (.input_tokens // 0) + (.cache_creation_input_tokens // 0) + (.cache_read_input_tokens // 0)][0] // 0'
+}
+deferral=$(jq -nc --argjson w "$(first_turn inherit_omitted)" --argjson o "$(first_turn toolsearch_disallowed)" \
+  '{first_turn_input_tokens_with_toolsearch: $w, first_turn_input_tokens_without_toolsearch: $o,
+    without_exceeds_with: ($w > 0 and $o > $w),
+    note: "same agent and prompt; the sizes depend on the MCP servers of the machine that ran the probe"}')
+printf '%-20s %s\n' deferral "$deferral" >&2
 
 # hook_every_tool: the probe plugin's PreToolUse entry has no matcher; an agent with tools omitted
 # calls Read, Bash and read_note; the log must hold each with agent_type mcpprobe:reader.
@@ -243,7 +271,7 @@ mechanism="D561: the agents drop the tools: allowlist and inherit the session's 
 version=$(claude --version | head -1)
 mkdir -p "$here/tools/probes"
 jq -n --arg at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" --arg v "$version" --argjson c "$cases" --argjson b "$builtins" --argjson a "$always" \
-  --argjson m "$matcher" --argjson cpu "$cpu" --arg mech "$mechanism" \
-  '{probe: "mcp-tools", at: $at, claude_version: $v, cases: $c, builtins: $b, always_allowed: $a, hook_matcher: $m, hook_read_cpu_ms: $cpu, mechanism: $mech, decision: "D561"}' \
+  --argjson m "$matcher" --argjson cpu "$cpu" --argjson def "$deferral" --arg mech "$mechanism" \
+  '{probe: "mcp-tools", at: $at, claude_version: $v, cases: $c, builtins: $b, always_allowed: $a, hook_matcher: $m, deferral: $def, hook_read_cpu_ms: $cpu, mechanism: $mech, decision: "D561"}' \
   | jq --arg root "$here" --arg home "${HOME:-}" -f "$here/tools/mask-paths.jq" > "$here/tools/probes/mcp-tools.json"
 echo "wrote tools/probes/mcp-tools.json" >&2

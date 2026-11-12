@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+[ -z "${VBW_LOADED_QA_INPUTS:-}" ] || return 0 # load once per process (R299)
+VBW_LOADED_QA_INPUTS=1
 # What each QA pass covered (R47, R49; docs/proof.md). For each phase of the
 # active milestone: a digest of its files, of its tests (its requirements'
 # checks and their files) as committed (HEAD), of its goal and plan, and of its

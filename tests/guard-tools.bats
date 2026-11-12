@@ -55,7 +55,7 @@ reason() {
 # names_role REASON ROLE: the reason names the role as a word.
 names_role() { printf '%s\n' "$1" | grep -qE "(^|[^a-z])$2([^a-z]|$)"; }
 
-@test "R242: with no MCP setting, every agent's MCP call is refused: the effective tool set is today's, and the refusal names the role and vbw config set mcp" {
+@test "R242: with no MCP setting, every agent's MCP call is refused: the effective tool set is the role's own built-ins, and the refusal names the role and vbw config set mcp" {
   local role r
   for role in architect lead dev qa scout debugger docs; do
     r=$(reason mcp__github__get_issue "vbw:$role")
@@ -138,7 +138,8 @@ names_role() { printf '%s\n' "$1" | grep -qE "(^|[^a-z])$2([^a-z]|$)"; }
     names_role "$r" "$role" && [[ "$r" == *"$tool"* && "$r" == *"Next:"* ]] || { echo "the refusal of $tool for the $role does not name both, with a next step: $r"; false; }
   done
   [ -f "$PROBE" ] && jq -e '.always_allowed | type == "array"' "$PROBE" > /dev/null || { echo "the probe result has no always_allowed list"; false; }
-  for tool in $(jq -r '.always_allowed[]' "$PROBE"); do
+  # advisor: given to every agent only where the user sets advisorModel, so a probe run elsewhere may not list it.
+  for tool in $(jq -r '(.always_allowed + ["advisor"]) | unique[]' "$PROBE"); do
     for role in architect lead dev qa scout debugger docs; do
       [ "$(reason "$tool" "vbw:$role")" = allow ] || { echo "$tool, which Claude Code gives every agent, was refused for the $role"; false; }
     done

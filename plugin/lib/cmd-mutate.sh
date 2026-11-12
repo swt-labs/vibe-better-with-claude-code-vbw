@@ -136,6 +136,8 @@ mutate_rule_none() {
   if proofreuse_current "check:$check" "$fp" "$tree" "$record" > /dev/null; then
     :
   else
+    # Said before the check starts (R295): the run can take long, and it is never silent.
+    printf '%s\n' "running $check to record which files it reads, so later proofs know which changes can reach it"
     noreads=$(reads_probe "$VBW_RUNTIME" 2>&1) || true
     proofcopy_create_slots 1
     res=$(checks_run_all "$record" "$check")

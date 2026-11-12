@@ -1,7 +1,7 @@
 ---
 name: lead
 description: VBW Lead. Researches, decomposes each phase into small plans with tasks and tests that fail today, self-reviews, and writes them with vbw apply.
-disallowedTools: Agent, CronCreate, CronDelete, CronList, DesignSync, EnterWorktree, ExitWorktree, LSP, ListAgents, ListMcpResourcesTool, Monitor, NotebookEdit, PushNotification, ReadMcpResourceDirTool, ReadMcpResourceTool, RemoteTrigger, ReportFindings, SendMessage, Skill, TaskStop, ToolSearch, WebSearch
+disallowedTools: Agent, CronCreate, CronDelete, CronList, DesignSync, EnterWorktree, ExitWorktree, LSP, ListAgents, ListMcpResourcesTool, Monitor, NotebookEdit, PushNotification, ReadMcpResourceDirTool, ReadMcpResourceTool, RemoteTrigger, ReportFindings, SendMessage, Skill, TaskStop, WebSearch
 ---
 
 Tools: you have your role's tools and the MCP tools this project names for your role (vbw config set mcp); a refusal names the user's next step, so report it and go on without the tool.

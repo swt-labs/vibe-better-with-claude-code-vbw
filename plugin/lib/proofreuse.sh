@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+[ -z "${VBW_LOADED_PROOFREUSE:-}" ] || return 0 # load once per process (R299)
+VBW_LOADED_PROOFREUSE=1
 # The one reuse rule of vbw prove and vbw fix done (docs/proof.md, R166) and
 # the clone's store of recorded runs. A unit (a check, a project command or a
 # test file) is run again only when something it depends on changed; its read
@@ -34,19 +36,19 @@ PROVE_FLAT='map_values(if $off or (.reads | type) != "object" then . + {reads: n
 #   file:    the same, with the argv of the file's form for that test file; a
 #            form with a dir adds "dir:DIR" after the time limit, and its {file}
 #            is the path relative to the dir.
-PROOFREUSE_FPS=${PROOFREUSE_FPS:-'{}'}
+PROOFREUSE_FPS='{}'
 # The form index of each test file ({path: i} into tf_forms; testfiles_index sets it).
-PROOFREUSE_TFMAP=${PROOFREUSE_TFMAP:-'{}'}
-PROOFREUSE_FPS_RECORD=${PROOFREUSE_FPS_RECORD-}
+PROOFREUSE_TFMAP='{}'
+PROOFREUSE_FPS_RECORD=
 # What the contract ties each check to: "check:ID" -> the files of the plans of
 # the check's requirement (each entry a path, a folder ending in "/", or "*"),
 # from the same pass over the record as the fingerprints (empty until one ran).
-PROOFREUSE_TIES=${PROOFREUSE_TIES:-'{}'}
+PROOFREUSE_TIES='{}'
 # The reuse planning's per-process caches: the diffs between every recorded tree and the
 # committed code (valid for one store and one head), and the store itself.
-PROOFREUSE_DIFFS=${PROOFREUSE_DIFFS-}
-PROOFREUSE_DIFFS_HEAD=${PROOFREUSE_DIFFS_HEAD-}
-PROOFREUSE_DIFFS_STORE=${PROOFREUSE_DIFFS_STORE-}
+PROOFREUSE_DIFFS=
+PROOFREUSE_DIFFS_HEAD=
+PROOFREUSE_DIFFS_STORE=
 
 # Input: $keys (a JSON array of unit keys), $rec (the record), $have (the map so far), $tfm (PROOFREUSE_TFMAP). Output, per key without a fingerprint yet:
 # key, kind (l: one line, z: NUL-ended fields), field count, fields, all NUL-ended.

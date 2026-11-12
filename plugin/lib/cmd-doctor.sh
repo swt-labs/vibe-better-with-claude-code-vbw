@@ -255,16 +255,21 @@ doctor_project() {
 # A record commit the project's hook refused and that still stands (R287): one warning line,
 # read only (no retry, no commit, nothing cleared). It stands while a file it names differs from HEAD.
 doctor_commit_failed() {
-  local f="$VBW_RUNTIME/commit-failed.json" x files=() at t reason
-  [ -f "$f" ] || return 0
-  while IFS= read -r -d '' x; do files+=("$x"); done < <(jq -j '(.files // [])[] + "\u0000"' "$f" 2> /dev/null)
-  [ -n "$(cd "$VBW_ROOT" && vbw_dirty_files ${files[@]+"${files[@]}"} 2> /dev/null)" ] || return 0
+  local f="$VBW_RUNTIME/commit-failed.json" at t reason way
+  # shellcheck source=commit-failure.sh
+  . "$VBW_LIB/commit-failure.sh"
+  commit_failure_stands || return 0
   at=$(jq -r '.at // empty' "$f" 2> /dev/null) || at=""
   t=$(date -j -u -f '%Y-%m-%dT%H:%M:%SZ' "$at" +%s 2> /dev/null) || t=$(date -u -d "$at" +%s 2> /dev/null) || t=""
   if [ -n "$t" ]; then t=$(date -r "$t" +%H:%M 2> /dev/null) || t=$(date -d "@$t" +%H:%M 2> /dev/null) || t=""; fi
   [ -n "$t" ] || t=$(date +%H:%M)
   reason=$(jq -r '(.reason // "") | split("\n")[0]' "$f" 2> /dev/null) || reason=""
-  doctor_line warn "VBW's files could not be committed at $t: $reason" "fix what the hook flagged, allow it in the checker's settings, or commit the VBW files yourself (git add .vbw, then git commit); then run vbw next"
+  if [ -z "$(commit_failure_dirty)" ]; then
+    way="fix what the hook flagged or allow it in the checker's settings, then approve again (vbw approve)"
+  else
+    way="fix what the hook flagged, allow it in the checker's settings, or commit the VBW files yourself (git add .vbw, then git commit); then run vbw next"
+  fi
+  doctor_line warn "VBW's files could not be committed at $t: $reason" "$way"
 }
 
 # Large git-ignored folders the Clean copy section does not list yet (R253).

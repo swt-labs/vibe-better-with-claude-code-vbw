@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+[ -z "${VBW_LOADED_SLOTS:-}" ] || return 0 # load once per process (R299)
+VBW_LOADED_SLOTS=1
 # The computer-wide slot store (R181, docs/proof.md). Every unit of vbw prove,
 # vbw fix done and vbw check (a check, a project command, a test file) takes one
 # slot for as long as its command runs, so all VBW runs on a computer, in every
@@ -314,7 +316,7 @@ slots_lose() {
 # since HH:MM' (SINCE: epoch seconds; local time), on stderr (R288).
 vbw_wait_say() {
   local t msg
-  t=$(date -r "$2" +%H:%M 2> /dev/null) || t=$(date -d "@$2" +%H:%M 2> /dev/null) || t=$(date +%H:%M)
+  t=$(vbw_hhmm "$2")
   msg="waiting for $1 since $t"
   printf '%s\n' "$msg" >&2
 }

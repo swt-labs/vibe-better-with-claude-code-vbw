@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+[ -z "${VBW_LOADED_PROOFCOPY:-}" ] || return 0 # load once per process (R299)
+VBW_LOADED_PROOFCOPY=1
 # The clean copy vbw prove runs on (docs/proof.md): a detached git worktree of
 # HEAD inside the project, so uncommitted changes and untracked files change no
 # proof result. Git-ignored paths (dependencies, env files) are copied in, never

@@ -209,6 +209,16 @@ vbw: waiting for a free slot of the computer-wide limit since 10:42
 
 A run that never waits prints no such line.
 
+A check that waits at the gate for another VBW command says so the same way,
+once, naming the check and the command's process id that hold it:
+
+```
+vbw: waiting for another VBW command's check C12 (pid 48213) in this project since 10:42
+```
+
+When the shared limit is the cause, it names one of the other command's checks,
+never one of its own. Checks of one run queuing behind each other print nothing.
+
 A check file that is new or changed since the last approval waits for approval.
 `vbw check` and `vbw mutate` never wait on it: the check runs now on the file's
 working content. They name the file only when a check they run reads it, in one
@@ -1746,7 +1756,11 @@ suite therefore pays for the checks a break needs, not for every check.
   --none REASON` after the kernel verifies the check's read list against the
   files of the requirement's plans: the list must name none of them. The command
   may run the check once in a clean copy of the committed code, with read
-  tracking on, and records that run in the store as a proof would. A check that
+  tracking on, and records that run in the store as a proof would. When no
+  current run is recorded, it first prints one line naming the check and why it
+  runs ("running C1 to record which files it reads, so later proofs know which
+  changes can reach it"), so the run is never silent; with a current run it
+  runs nothing and prints no such line. A check that
   only tests whether a plan file exists, without opening it, never reads that
   file: such a check is not detected, and the accepting line says so. `vbw plan
   done` counts such a rule covered.

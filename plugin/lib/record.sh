@@ -532,8 +532,8 @@ record_commit() {
     record_lock
     if why=$(vbw_commit_paths "$msg" "" "${own[@]}" 2>&1 || { printf '%s' "${VBW_COMMIT_ERR:-}"; exit 1; }); then
       record_unlock
-      # A commit that works settles a kept failure once none of its files differs from HEAD.
-      commit_failure_standing || true
+      # A commit that works ends a kept failure (R298).
+      commit_failure_clear
       exit 0
     fi
     record_unlock

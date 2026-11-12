@@ -13,7 +13,10 @@
 # One --run of a plan at a time (R230): the run holds the marker
 # .vbw/runtime/mutate-queue/PLAN/run.pid with its own pid from before it reads any
 # entry until it ends, on every end. A second run finds a live pid and is refused;
-# a marker of a dead, empty or unreadable pid is taken over (vbw_lock_takeover).
+# a marker of a dead, empty or unreadable pid is taken over (vbw_lock_takeover); plan-run.sh holds both.
+
+# shellcheck source=plan-run.sh
+. "$VBW_LIB/plan-run.sh"
 
 # mutate_queue_dir PLAN: the plan's queue folder.
 mutate_queue_dir() {
@@ -48,28 +51,10 @@ mutate_queue_add() {
 
 # mutate_queue_hold PLAN: take the plan's run marker run.pid, or refuse while a live run holds it.
 mutate_queue_hold() {
-  local plan="$1" q marker owner i msg next
+  local plan="$1" q
   q=$(mutate_queue_dir "$plan")
-  marker="$q/run.pid"
-  next="Next: wait for it to finish (a long run started in the background: read its whole result when it ends), then run vbw mutate $plan --run again only if breaks are still queued; never start a second run of the same plan"
-  mkdir -p "$q" || vbw_die "cannot create $q"
-  for ((i = 0; i < 50; i++)); do
-    if vbw_lock_create "$marker"; then
-      vbw_guard_add lock "$marker"
-      return 0
-    fi
-    owner=$(vbw_lock_holder "$marker")
-    if [ -n "$owner" ] && vbw_lock_alive "$owner"; then
-      msg="another run of $plan's queued breaks is still running (pid $owner, vbw mutate $plan --run)"
-      vbw_die "$msg"$'\n'"$next"
-    fi
-    if vbw_lock_takeover "$marker" "$owner"; then
-      vbw_guard_add lock "$marker"
-      return 0
-    fi
-  done
-  msg="another run of $plan's queued breaks is still running (vbw mutate $plan --run)"
-  vbw_die "$msg"$'\n'"$next"
+  plan_run_hold "$q/run.pid" "another run of $plan's queued breaks" "vbw mutate $plan --run" \
+    "wait for it to finish (a long run started in the background: read its whole result when it ends), then run vbw mutate $plan --run again only if breaks are still queued; never start a second run of the same plan"
 }
 
 # mutate_queue_release PLAN: give up the run marker, and the folder when nothing is left in it.
@@ -91,7 +76,7 @@ mutate_unbroken_base() {
 }
 
 mutate_queue_run() {
-  local plan="$1" aside qdir record head tree e entries=() keep=() stale=0 surv=0 bad='' checks ids=() cfiles=() f base unb=() n i k
+  local plan="$1" aside record head tree e entries=() keep=() stale=0 surv=0 bad='' checks ids=() cfiles=() f base unb=() n i k
   vbw_require_project
   cd "$VBW_ROOT" || vbw_die "cannot enter $VBW_ROOT"
   record=$(record_read)
@@ -139,9 +124,8 @@ mutate_queue_run() {
     if [ -n "$bad" ]; then
       proofcopy_remove
       checks_end
-      qdir=$(mutate_queue_dir "$plan")
-      rm -rf "$qdir"
-      vbw_die "checks do not pass on the unbroken code, so a break proves nothing: $bad; make them pass and commit, then break again (the queued breaks are dropped)"
+      mutate_queue_release "$plan"
+      vbw_die "checks do not pass on the unbroken code, so a break proves nothing: $bad; ${#keep[@]} queued breaks are kept for the next run: make the checks pass (and commit), then run vbw mutate $plan --run again, with nothing queued again"
     fi
   fi
   # The breaks, one per copy, a wave at a time: each copy gets its break, runs its
@@ -177,8 +161,7 @@ mutate_queue_run() {
   checks_end
   # The results, recorded in queue order as the single form records one; the
   # computer-wide wait is said once, at the end.
-  local waited=$SLOTS_WAITED lost=$SLOTS_LOST ruledoc
-  SLOTS_WAITED=0 SLOTS_LOST=
+  local ruledoc
   for e in "${keep[@]}"; do
     m=$(jq -c . "$e/meta.json")
     ruledoc=$(printf '%s' "$record" | jq -c --argjson m "$m" '.requirements[] | select(.id == $m.req) | (.rules // [])[$m.rk - 1] | {req: $m.req, text, check}')
@@ -190,7 +173,6 @@ mutate_queue_run() {
     rm -rf "$aside"
   done
   mutate_queue_release "$plan"
-  SLOTS_WAITED=$waited SLOTS_LOST=$lost
   mutate_time_say
   slots_say
   [ "$surv" = 0 ] && [ "$stale" = 0 ]

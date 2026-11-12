@@ -22,7 +22,9 @@ cmd_approve() {
   # A record commit the project's hook refused stands in the way (R287): one more try through the
   # hooks, then the same reason as vbw next's step, before anything is written.
   commit_failure_retry
-  if commit_failure_standing; then
+  # With files still to commit it refuses; with nothing left to commit (the approval's rollback) the
+  # approval and its commit are tried again below, and a refusal keeps the new failure (R298, D687).
+  if commit_failure_standing && [ -n "$(commit_failure_dirty)" ]; then
     printf 'vbw: %s\n' "$(commit_failure_say)" >&2
     exit 1
   fi

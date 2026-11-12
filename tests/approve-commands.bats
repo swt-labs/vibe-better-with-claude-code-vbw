@@ -75,8 +75,9 @@ with_commands() {
   [ "$(jq '.decisions | length' .vbw/record.json)" -eq "$d" ]
   [ "$(command_decisions)" -eq 0 ]
   ! consent | jq -e 'any(.granted[]; .kind == "command")' > /dev/null || false
+  # The refused commit stays the next step until a commit succeeds, and says to approve again (R298).
   vbw_run next --json
-  echo "$output" | jq -e '.action == "approve"' > /dev/null || { echo "$output"; false; }
+  echo "$output" | jq -e '.action == "commit" and (.instruction | contains("vbw approve"))' > /dev/null || { echo "$output"; false; }
   rm -f "$HOOK"
   vbw_run approve
   [ "$status" -eq 0 ] || { echo "$output"; false; }

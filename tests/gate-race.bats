@@ -106,3 +106,77 @@ teardown() { vbw_teardown; }
   [ "$status" -eq 0 ] && [ -z "$output" ] || { echo "$output"; false; }
   [ "$(tr '\n' ' ' < "$TEST_ROOT/procs")" = "rm --- rm " ] || { tr '\n' ' ' < "$TEST_ROOT/procs"; false; }
 }
+
+# R294 (field report 2026-11-11): a check that starts waiting at the check gate because of
+# another VBW command says what holds the gate, once, when the wait starts, on stderr: the
+# holding check's id and that command's process id beside 'since HH:MM'. A wait caused by the
+# shared limit (no single blocking check) names one of the other command's live
+# registrations, never one of the waiting process's own. This run's own checks queuing behind
+# each other still print no wait line (R94).
+
+# live_start: a live process standing for another VBW command (LIVE, killed in the case).
+live_start() {
+  sleep 120 > /dev/null 2>&1 3>&- &
+  LIVE=$!
+}
+
+@test "R294: a check waiting for another command's check names that check's id and the command's pid beside since HH:MM, once, on stderr" {
+  live_start
+  mkdir -p .vbw/runtime/gate
+  printf 'alone\n' > ".vbw/runtime/gate/reg.$LIVE.C9"
+  "$VBW" check C1 > "$TEST_ROOT/out" 2> "$TEST_ROOT/err" < /dev/null 3>&- &
+  local pid=$! i line code=0
+  for ((i = 0; i < 300; i++)); do grep -q 'waiting for' "$TEST_ROOT/err" && break; sleep 0.1; done
+  line=$(grep 'waiting for' "$TEST_ROOT/err" || true)
+  kill "$LIVE"
+  wait "$LIVE" 2> /dev/null || true
+  wait "$pid" || code=$?
+  [ -n "$line" ] || { echo "no wait line on stderr:"; cat "$TEST_ROOT/err" "$TEST_ROOT/out"; false; }
+  [[ "$line" == *C9* && "$line" == *"$LIVE"* ]] || { echo "the line does not name C9 and pid $LIVE: $line"; false; }
+  [[ "$line" =~ since\ [0-9]{2}:[0-9]{2}$ ]] || { echo "the line does not end with since HH:MM: $line"; false; }
+  [ "$(grep -c 'waiting for' "$TEST_ROOT/err")" -eq 1 ] || { cat "$TEST_ROOT/err"; false; }
+  ! grep -q 'waiting for' "$TEST_ROOT/out" || { echo "the wait line went to stdout"; false; }
+  [ "$code" -eq 0 ] && grep -q '^C1 pass' "$TEST_ROOT/out" || { cat "$TEST_ROOT/out" "$TEST_ROOT/err"; false; }
+}
+
+@test "R294: a wait at the shared limit names one of the other command's registrations, never one of the waiting process's own" {
+  mkdir -p .vbw/runtime/gate
+  # The other command's process starts after this one, so its registration sorts after the
+  # waiting process's own: a line naming the first registration found would name the own one.
+  # shellcheck disable=SC2016 # expanded by vbw_kernel
+  run vbw_kernel '. "$VBW_LIB/slots.sh"; . "$VBW_LIB/checks.sh"
+    g="$VBW_RUNTIME/gate" err="$TEST_ROOT/err" i=0
+    sleep 120 > /dev/null 2>&1 3>&- &
+    live=$!
+    printf "shared\n" > "$g/reg.$$.C2"
+    printf "shared\n" > "$g/reg.$live.C8"
+    ( CHECKS_LIMIT=2 checks_gate_enter C1 false ) 2> "$err" &
+    w=$!
+    while ! grep -q "waiting for" "$err" && [ "$i" -lt 300 ]; do sleep 0.1; i=$((i + 1)); done
+    kill "$live"
+    wait "$w"
+    printf "self %s\nlive %s\n" "$$" "$live"
+    cat "$err"'
+  [ "$status" -eq 0 ] || { echo "$output"; false; }
+  local self live line
+  self=$(printf '%s\n' "$output" | sed -n 's/^self //p')
+  live=$(printf '%s\n' "$output" | sed -n 's/^live //p')
+  line=$(printf '%s\n' "$output" | grep 'waiting for' || true)
+  [ -n "$line" ] && [ "$(printf '%s\n' "$line" | wc -l | tr -d ' ')" -eq 1 ] || { echo "not one wait line: $output"; false; }
+  [[ "$line" == *C8* && "$line" == *"$live"* ]] || { echo "the line does not name the other command's C8 and pid $live: $line"; false; }
+  [[ "$line" != *C2* && "$line" != *"$self"* ]] || { echo "the line names the waiting process's own registration (C2, pid $self): $line"; false; }
+}
+
+@test "R294: this run's own checks queuing behind each other print no wait line" {
+  # shellcheck disable=SC2016 # expanded by vbw_kernel
+  run vbw_kernel '. "$VBW_LIB/slots.sh"; . "$VBW_LIB/checks.sh"
+    g="$VBW_RUNTIME/gate" naps=0
+    mkdir -p "$g"
+    printf "alone\n" > "$g/reg.$$.C2"
+    # The own alone check ends after a few looks; the waiting one then enters.
+    slots_nap() { naps=$((naps + 1)); [ "$naps" -lt 5 ] || rm -f "$g/reg.$$.C2"; }
+    CHECKS_LIMIT=2 checks_gate_enter C1 false || exit 1
+    echo "entered after $naps looks"'
+  [ "$status" -eq 0 ] || { echo "$output"; false; }
+  [ "$output" = "entered after 5 looks" ] || { echo "$output"; false; }
+}

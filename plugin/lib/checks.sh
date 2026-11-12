@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+[ -z "${VBW_LOADED_CHECKS:-}" ] || return 0 # load once per process (R299)
+VBW_LOADED_CHECKS=1
 # Running approved checks and commands (docs/proof.md), shared by vbw check and
 # vbw prove. Nothing runs unless the current contract is approved; every argv
 # is executed directly, never through a shell, with stdin closed and a timeout.
@@ -249,20 +251,25 @@ checks_gate_live() {
   [ -n "$pid" ] && kill -0 "$pid" 2> /dev/null
 }
 
-# checks_gate_blocker KIND: print the check blocking KIND ("alone" or "shared")
-# and return 0, or return 1 when nothing blocks. Dead registrations are dropped.
-# A shared check is also blocked (printing "-") when the live registrations
-# number the limit in $2 (empty: no limit).
+# checks_gate_blocker KIND: print "ID PID" of the check blocking KIND ("alone" or
+# "shared") and return 0, or return 1 when nothing blocks. Dead registrations are
+# dropped. A shared check is also blocked when the live registrations number the
+# limit in $2 (empty: no limit): it prints one live registration of another
+# process (R294), or "-" when all are this process's own.
 checks_gate_blocker() {
-  local kind="$1" limit="${2:-}" f id n=0 held
+  local kind="$1" limit="${2:-}" f id pid n=0 held other="" ownb=""
   for f in "$VBW_RUNTIME"/gate/reg.* "$VBW_RUNTIME"/gate/want.*; do
     [ -e "$f" ] || continue
     checks_gate_live "$f" || { rm -f "$f"; continue; }
     id="${f##*.}"
+    pid="${f##*/}"
+    pid="${pid#*.}"
+    pid="${pid%%.*}"
     case "${f##*/}" in
       want.*) [ "$kind" = shared ] || continue ;;
       *)
         n=$((n + 1))
+        [ -n "$other" ] || [ "$pid" = "$$" ] || other="$id $pid"
         if [ "$kind" = shared ]; then
           # Read by the shell itself, never a process per registration at every entry.
           held=
@@ -271,13 +278,16 @@ checks_gate_blocker() {
         fi
         ;;
     esac
-    printf '%s\n' "$id"
+    # Another command's blocker is the one to name; this process's own is the last resort.
+    [ "$pid" != "$$" ] || { [ -n "$ownb" ] || ownb="$id $pid"; continue; }
+    printf '%s %s\n' "$id" "$pid"
     return 0
   done
   if [ "$kind" = shared ] && [ -n "$limit" ] && [ "$n" -ge "$limit" ]; then
-    printf -- '-\n'
+    printf '%s\n' "${other:-${ownb:--}}"
     return 0
   fi
+  [ -z "$ownb" ] || { printf '%s\n' "$ownb"; return 0; }
   return 1
 }
 
@@ -293,7 +303,7 @@ checks_gate_foreign() {
 
 # checks_gate_enter ID ALONE: wait for the gate, then register this check.
 checks_gate_enter() {
-  local id="$1" kind=shared g="$VBW_RUNTIME/gate" idle=0 want='' owner file limit since='' took=0 lost=''
+  local id="$1" kind=shared g="$VBW_RUNTIME/gate" idle=0 want='' owner file limit since='' took=0 lost='' blocker
   [ "$2" != true ] || kind=alone
   limit="${CHECKS_LIMIT:-}"
   [ -n "$limit" ] || limit=$(vbw_check_jobs) || limit=1
@@ -309,11 +319,19 @@ checks_gate_enter() {
       if [ -d "$g/mutex" ]; then vbw_guard_add dir "$g/mutex"; else vbw_guard_add lock "$g/mutex"; fi
       idle=0 lost=''
 
-      if checks_gate_blocker "$kind" "$limit" > /dev/null; then
+      if blocker=$(checks_gate_blocker "$kind" "$limit"); then
         # Only a wait for another VBW command counts; this run's own units queue at the gate silently (R94).
+        # The line names the check and command that hold it (R294).
         if [ -z "$since" ] && checks_gate_foreign "$g"; then
           since=$(date +%s)
-          vbw_wait_say "another VBW command's checks in this project" "$since"
+          case "$blocker" in
+            - | *" $$") blocker= ;;
+          esac
+          if [ -n "$blocker" ]; then
+            vbw_wait_say "another VBW command's check ${blocker% *} (pid ${blocker##* }) in this project" "$since"
+          else
+            vbw_wait_say "another VBW command's checks in this project" "$since"
+          fi
         fi
         # An alone check that has to wait holds back new shared checks, so it is not starved;
         # the launcher, which waits for that before it starts the next unit, is woken.
