@@ -89278,6 +89278,13 @@
       "sort": "next",
       "size": "medium",
       "status": "dropped"
+    },
+    {
+      "id": "T290",
+      "text": "After the installed VBW is 2.1.31: add to VBW's own .vbw/spec.md Test files the lines '- filter: --filter -f' and '- rest: bats --print-output-on-failure --allow-empty-suite --negative-filter {filters} {file}', run vbw spec sync, approve, and check the next proof runs the rest units (D708; R304)",
+      "sort": "next",
+      "size": "small",
+      "status": "open"
     }
   ],
   "decisions": [
@@ -93404,6 +93411,12 @@
         "P234.1",
         "P234.3"
       ]
+    },
+    {
+      "id": "D710",
+      "text": "R304 stores a test file form's filter, rest and join in the record at schema 16 (feature: a test file form with a filter, rest or join line). VBW's own spec gets its filter and rest lines only once the installed VBW is 2.1.31; the main-session step after P234.1 and P234.2 moves to the start of 2.1.32",
+      "why": "the 2.1.30 validator accepts a form only with its known keys, so the schema step makes an older VBW ask to be updated instead of calling the record corrupt (R247); VBW's own record is written by the installed 2.1.30, which would refuse the lines",
+      "at": "2026-11-12T22:23:53Z"
     }
   ],
   "commands": {
