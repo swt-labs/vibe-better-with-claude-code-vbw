@@ -34742,7 +34742,15 @@
         "guarded: R1 (C1), R2 (C2), R12 (C11), R13 (C12), R14 (C13), R22 (C19), R23 (C20), R24 (C23), R25 (C24), R27 (C21), R28 (C25), R31 (C27), R32 (C28), R33 (C29), R38 (C33, C34), R39 (C36), R40 (C37), R43 (C42, C43), R44 (C44, C45), R45 (C39, C40, C41), R46 (C46), R47 (C47), R48 (C49, C50), R49 (C48), R61 (C73, C74, C75, C76, C77), R62 (C78, C79, C80, C81, C82, C83, C93), R65 (C86, C87, C88, C89, C90), R66 (C95), R69 (C110, C120, C122), R70 (C114), R71 (C115, C121), R73 (C98), R74 (C99, C100), R79 (C107), R80 (C108), R92 (C131, C132, C133, C134, C135, C136, C137, C138, C139), R93 (C140, C141, C142, C143, C144), R94 (C145, C146, C147, C148), R97 (C153), R98 (C154), R99 (C155), R100 (C156), R101 (C179), R102 (C158, C159), R103 (C160), R104 (C161, C162), R105 (C163), R110 (C169, C170), R111 (C171, C172, C173, C174, C175), R115 (C181), R116 (C182, C183), R118 (C184), R119 (C180), R121 (C187, C188), R123 (C190, C191), R127 (C194), R130 (C197), R131 (C198), R132 (C199), R133 (C195), R134 (C201), R135 (C202), R144 (C208, C209), R146 (C211), R147 (C212, C215, C237), R148 (C213, C214, C216, C238), R149 (C217, C218, C219, C220, C221, C222), R150 (C223, C224, C225, C226, C227, C228, C229, C230), R153 (C235, C236, C239), R156 (C242, C243), R157 (C244), R158 (C245), R159 (C246), R160 (C247, C263, C264), R161 (C248, C265, C266), R162 (C249), R165 (C252), R166 (C253, C254, C255, C256, C267), R168 (C261, C262), R169 (C268), R170 (C269), R173 (C281, C282, C283, C284, C285, C286, C289), R174 (C279, C280), R175 (C274, C275), R177 (C287, C288), R178 (C290, C291, C292, C293, C294, C295, C296, C311), R179 (C297, C298, C299, C300, C301, C302, C303, C304, C305, C306, C312), R180 (C307, C308, C309, C310), R181 (C313, C314, C315, C316, C317, C318, C319, C320, C321), R183 (C327), R188 (C350, C351, C352, C353, C354, C355, C356, C357, C358, C359), R190 (C374, C375, C376, C377, C378, C379, C380, C381, C382, C383, C384, C385, C386, C387, C388), R192 (C401, C402, C403, C404, C405, C406, C407, C408, C409, C410), R193 (C411, C412), R194 (C417, C418, C419), R195 (C420, C421, C422), R196 (C415, C416), R197 (C413, C414), R202 (C432, C433, C434, C435, C436, C437, C438, C439, C440, C441, C442, C443, C444, C445, C446, C447), R203 (C448, C449, C450), R204 (C451, C452, C453, C454), R205 (C455, C456, C457, C458, C467), R206 (C459, C460), R208 (C464, C465, C466, C468), R209 (C469, C470, C471, C472, C473), R210 (C474, C475, C476), R211 (C477, C478, C479), R212 (C480, C481, C482), R213 (C483, C484), R214 (C485, C486, C487), R215 (C488, C489, C490), R216 (C491, C492, C493), R217 (C494, C495), R220 (C500, C501, C502, C503), R221 (C504), R225 (C517, C518, C519), R226 (C510, C511), R232 (C534), R236 (C537), R238 (C545), R241 (C546, C547, C548, C549, C550, C560), R242 (C551, C552, C553), R246 (C566, C567), R247 (C568, C569), R248 (C570), R249 (C571, C572, C573), R250 (C574, C575, C576, C577, C578, C585), R251 (C579), R252 (C580), R253 (C581, C582), R255 (C584), R256 (C586, C587), R257 (C588, C589), R258 (C590, C591, C592), R259 (C593, C594, C595), R260 (C596, C597), R264 (C613, C614, C615, C616), R265 (C605, C606, C607, C608, C609, C610, C611, C612), R266 (C617, C618), R267 (C619, C620, C621), R269 (C626, C627, C628, C629, C630), R272 (C635, C636, C637, C638), R274 (C643, C644, C645), R277 (C648, C650), R278 (C649, C651), R279 (C678, C679, C680), R286 (C653, C654), R287 (C655, C656, C657), R288 (C667, C668, C669), R292 (C670, C671, C672), R294 (C683), R295 (C684), R296 (C685, C686), R298 (C688), R299 (C689, C690)",
         "tests: project test command"
       ],
-      "predicted": "deep"
+      "predicted": "deep",
+      "escalations": [
+        {
+          "at": "2026-11-12T22:12:15Z",
+          "from": "deep",
+          "to": "deep",
+          "reason": "Dev blocked P234.1: tests/prove-testfiles.bats (C698, protected) cannot pass: its filtered_form helper defaults REST with ${1-sh tests/run.sh --skip {filters} {file}}, and bash ends that expansion at the first }, so the rest line written to the spec is 'sh tests/run.sh --skip {filters {file}}' (checked under /bin/bash 3.2 and bash 5), which names {filters} zero times; R304.8 requires refusing it, so every filtered_form setup fails at 'vbw spec sync' before the case's own assertions (the same helper makes C697 unreachable). Fix needed in the check file: put the default in a variable or use ${1:-...} with the braces escaped, e.g. local d='sh tests/run.sh --skip {filters} {file}'; rest=${1-$d}. Done so far and committed: spec.jq parses and refuses the three lines (task 1 and 2, checked by hand on plain and named forms). Not done: tasks 3 and 4 (record-schema.jq schema 16 step plus VBW_SCHEMA_MAX 16 in record.sh, record.jq validator, cmd-apply.sh), which also need tests/record-schema.bats to move from 15 to 16 (it pins schema_top = 15 and 'reads up to schema 15')."
+        }
+      ]
     },
     {
       "id": "P235",
@@ -83227,13 +83235,92 @@
         "tools/bench-hooks.sh"
       ],
       "after": [],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "Read the guard's own files from its include lines (holder.jq, common.jq, programs.jq and any later one) and build every compile-split row from that list, so no row leaves a file out",
         "Before anything is timed, compile each program once with the hook's own flags; a program that does not compile stops the bench with a non-zero exit naming its row and jq's error, in the compile split and in the step table",
         "Name in each row's label the files it compiles, the step table's 'program compile' row included",
         "Correct the header comment that still says the default budget is 20 ms (the code uses 25 ms), and give in the plan summary, for docs/guards.md, one line per split row saying what it compiles (the main session makes that edit: docs/guards.md is the protected file of C652)"
+      ],
+      "mutations": [
+        {
+          "task": 4,
+          "none": "comment-only change and a plan-summary line; no behaviour to break",
+          "at": "2026-11-12T22:12:20Z"
+        },
+        {
+          "rule": {
+            "req": "R302",
+            "k": 1
+          },
+          "what": "inlined row (b) leaves programs.jq out",
+          "files": [
+            "tools/bench-hooks.sh"
+          ],
+          "checks": {
+            "C693": "red"
+          },
+          "result": "red",
+          "at": "2026-11-12T22:12:59Z",
+          "head": "f538c7fb7d9ab1be589e768eda6c289a9281e771",
+          "tree": "55fe49e5074110c735279be5f9763d0e1c00e31f",
+          "contract": "a28b86efa03699f55f6db995e4412f92923e759447036367538fdc99163a782d",
+          "digests": [
+            {
+              "file": "tools/bench-hooks.sh",
+              "sha256": "a0e58956f431b4ccab7c6a036d2e1d13cc43dbf8b7125c021e8f1eff966b40e0"
+            }
+          ]
+        },
+        {
+          "rule": {
+            "req": "R302",
+            "k": 2
+          },
+          "what": "labels stop naming included files",
+          "files": [
+            "tools/bench-hooks.sh"
+          ],
+          "checks": {
+            "C693": "red"
+          },
+          "result": "red",
+          "at": "2026-11-12T22:13:02Z",
+          "head": "f538c7fb7d9ab1be589e768eda6c289a9281e771",
+          "tree": "55fe49e5074110c735279be5f9763d0e1c00e31f",
+          "contract": "a28b86efa03699f55f6db995e4412f92923e759447036367538fdc99163a782d",
+          "digests": [
+            {
+              "file": "tools/bench-hooks.sh",
+              "sha256": "c96c7c5aede0c32e1abb8a1f140e77f1375b334d1591d284bbc07f0d2b5cae3a"
+            }
+          ]
+        },
+        {
+          "rule": {
+            "req": "R302",
+            "k": 3
+          },
+          "what": "compile error no longer detected",
+          "files": [
+            "tools/bench-hooks.sh"
+          ],
+          "checks": {
+            "C693": "red"
+          },
+          "result": "red",
+          "at": "2026-11-12T22:13:04Z",
+          "head": "f538c7fb7d9ab1be589e768eda6c289a9281e771",
+          "tree": "55fe49e5074110c735279be5f9763d0e1c00e31f",
+          "contract": "a28b86efa03699f55f6db995e4412f92923e759447036367538fdc99163a782d",
+          "digests": [
+            {
+              "file": "tools/bench-hooks.sh",
+              "sha256": "564c1a81a7af09a78ade123656da497382f46bcb9b84750686a509caa8bdc2f7"
+            }
+          ]
+        }
       ]
     },
     {
@@ -83248,13 +83335,175 @@
         "docs/proof.md"
       ],
       "after": [],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "In a CI shard, run the hook and panel benches without stopping on their failure, remember which failed, then run the lint and every test file as today",
         "Do the same in the release run and in the release run that reuses the last proof",
         "At the end, print one line per failed bench ('failed: hook bench', 'failed: panel bench') as the last lines and exit non-zero, also when a test file failed too; a run with no failed bench ends exactly as today",
         "Say in docs/proof.md's release-run text that a failed bench never stops the test files"
+      ],
+      "red_runs": [
+        {
+          "at": "2026-11-12T22:10:30Z",
+          "head": "db7192cdcd7cc453079d8de8a24801b5e25d2397",
+          "first": true,
+          "checks": {
+            "C694": "red",
+            "C695": "red"
+          }
+        }
+      ],
+      "mutations": [
+        {
+          "task": 4,
+          "none": "task 4 is prose in docs/proof.md; no check reads it and no behavior can change",
+          "at": "2026-11-12T22:12:11Z"
+        },
+        {
+          "rule": {
+            "req": "R303",
+            "k": 5
+          },
+          "what": "bench not named when a test file failed too",
+          "files": [
+            "tools/test.sh"
+          ],
+          "checks": {
+            "C694": "red"
+          },
+          "result": "red",
+          "at": "2026-11-12T22:12:39Z",
+          "head": "398c1be11e12671ed5f336d6c6d3d01a47bec7e9",
+          "tree": "b4eaf99e47b1344a63aa521ad22ee3b2c40c3feb",
+          "contract": "a28b86efa03699f55f6db995e4412f92923e759447036367538fdc99163a782d",
+          "digests": [
+            {
+              "file": "tools/test.sh",
+              "sha256": "0e5082630d0b10742341bcd2cd95f7b8615fa0294d3d2d73e983af1bbde3c7bd"
+            }
+          ]
+        },
+        {
+          "rule": {
+            "req": "R303",
+            "k": 6
+          },
+          "what": "a failing test file alone no longer fails the run",
+          "files": [
+            "tools/test.sh"
+          ],
+          "checks": {
+            "C694": "red"
+          },
+          "result": "red",
+          "at": "2026-11-12T22:12:42Z",
+          "head": "398c1be11e12671ed5f336d6c6d3d01a47bec7e9",
+          "tree": "b4eaf99e47b1344a63aa521ad22ee3b2c40c3feb",
+          "contract": "a28b86efa03699f55f6db995e4412f92923e759447036367538fdc99163a782d",
+          "digests": [
+            {
+              "file": "tools/test.sh",
+              "sha256": "cf022e7ee03cdb21caf9b67228e8bd6128909a2ccd71ab48abbd341de6b6381f"
+            }
+          ]
+        },
+        {
+          "rule": {
+            "req": "R303",
+            "k": 1
+          },
+          "what": "hook bench failure stops the run",
+          "files": [
+            "tools/test.sh"
+          ],
+          "checks": {
+            "C694": "red"
+          },
+          "result": "red",
+          "at": "2026-11-12T22:13:43Z",
+          "head": "f538c7fb7d9ab1be589e768eda6c289a9281e771",
+          "tree": "55fe49e5074110c735279be5f9763d0e1c00e31f",
+          "contract": "a28b86efa03699f55f6db995e4412f92923e759447036367538fdc99163a782d",
+          "digests": [
+            {
+              "file": "tools/test.sh",
+              "sha256": "f5d9ac9d01bad413c160bcb000e8ccc19e85cff1a7eceb6476fe39d62f7194a2"
+            }
+          ]
+        },
+        {
+          "rule": {
+            "req": "R303",
+            "k": 2
+          },
+          "what": "panel bench failure stops the run",
+          "files": [
+            "tools/test.sh"
+          ],
+          "checks": {
+            "C694": "red"
+          },
+          "result": "red",
+          "at": "2026-11-12T22:13:45Z",
+          "head": "f538c7fb7d9ab1be589e768eda6c289a9281e771",
+          "tree": "55fe49e5074110c735279be5f9763d0e1c00e31f",
+          "contract": "a28b86efa03699f55f6db995e4412f92923e759447036367538fdc99163a782d",
+          "digests": [
+            {
+              "file": "tools/test.sh",
+              "sha256": "4ca2ba2a75a32696c0113c90e7482cf51dcbacf454b4546c4495f6c07b7cc304"
+            }
+          ]
+        },
+        {
+          "rule": {
+            "req": "R303",
+            "k": 3
+          },
+          "what": "release run stops after a failed bench",
+          "files": [
+            "tools/test.sh"
+          ],
+          "checks": {
+            "C694": "red"
+          },
+          "result": "red",
+          "at": "2026-11-12T22:13:47Z",
+          "head": "f538c7fb7d9ab1be589e768eda6c289a9281e771",
+          "tree": "55fe49e5074110c735279be5f9763d0e1c00e31f",
+          "contract": "a28b86efa03699f55f6db995e4412f92923e759447036367538fdc99163a782d",
+          "digests": [
+            {
+              "file": "tools/test.sh",
+              "sha256": "e7fff1d509d63cb70b577b37b77633422ddbd4f7e79172018ce7f24d24b397f9"
+            }
+          ]
+        },
+        {
+          "rule": {
+            "req": "R303",
+            "k": 4
+          },
+          "what": "reuse run stops after a failed bench",
+          "files": [
+            "tools/test.sh"
+          ],
+          "checks": {
+            "C695": "red"
+          },
+          "result": "red",
+          "at": "2026-11-12T22:13:50Z",
+          "head": "f538c7fb7d9ab1be589e768eda6c289a9281e771",
+          "tree": "55fe49e5074110c735279be5f9763d0e1c00e31f",
+          "contract": "a28b86efa03699f55f6db995e4412f92923e759447036367538fdc99163a782d",
+          "digests": [
+            {
+              "file": "tools/test.sh",
+              "sha256": "b1d7f6cd2a1305ba146b4c673b05dde4715f254c17f8ec514f9c898722adf6be"
+            }
+          ]
+        }
       ]
     },
     {
@@ -83301,14 +83550,25 @@
         "plugin/lib/cmd-apply.sh"
       ],
       "after": [],
-      "status": "planned",
+      "status": "blocked",
       "role": "dev",
       "tasks": [
         "Read three new optional lines of a test-file form in .vbw/spec.md: '- filter: <option words>' (the options an approved check uses to pick some of a file's tests, such as --filter -f), '- rest: <command>' (the command that leaves those tests out, naming {file} and {filters} once each) and '- join: <text>' (how the filters are joined, | by default; a quoted value keeps its spaces), in the plain and the named form shapes",
         "Refuse, naming the line, a rest line that does not name {file} and {filters} exactly once each, and a rest or join line without a filter line",
         "Store the new fields in the record's form and accept them in the record validator, with the schema step a new key needs (record-schema.jq)",
         "Let vbw apply's test_files carry filter, rest and join and write them back into the spec's section"
-      ]
+      ],
+      "red_runs": [
+        {
+          "at": "2026-11-12T22:11:07Z",
+          "head": "db7192cdcd7cc453079d8de8a24801b5e25d2397",
+          "first": true,
+          "checks": {
+            "C698": "red"
+          }
+        }
+      ],
+      "note": "tests/prove-testfiles.bats (C698, protected) cannot pass: its filtered_form helper defaults REST with ${1-sh tests/run.sh --skip {filters} {file}}, and bash ends that expansion at the first }, so the rest line written to the spec is 'sh tests/run.sh --skip {filters {file}}' (checked under /bin/bash 3.2 and bash 5), which names {filters} zero times; R304.8 requires refusing it, so every filtered_form setup fails at 'vbw spec sync' before the case's own assertions (the same helper makes C697 unreachable). Fix needed in the check file: put the default in a variable or use ${1:-...} with the braces escaped, e.g. local d='sh tests/run.sh --skip {filters} {file}'; rest=${1-$d}. Done so far and committed: spec.jq parses and refuses the three lines (task 1 and 2, checked by hand on plain and named forms). Not done: tasks 3 and 4 (record-schema.jq schema 16 step plus VBW_SCHEMA_MAX 16 in record.sh, record.jq validator, cmd-apply.sh), which also need tests/record-schema.bats to move from 15 to 16 (it pins schema_top = 15 and 'reads up to schema 15')."
     },
     {
       "id": "P234.2",
@@ -83395,12 +83655,120 @@
         "plugin/lib/cmd-run.sh"
       ],
       "after": [],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "Add vbw run state ID...: one JSON line {open, recorded}, open true while a run lease is open, recorded mapping each named plan, fix or phase to whether its result is recorded as vbw run confirm judges it",
         "Judge a phase's QA verdict against the latest QA run, also once that run has ended (its start from the step history)",
         "Refuse an unknown id by name, write nothing, and list the command in vbw run's usage line"
+      ],
+      "red_runs": [
+        {
+          "at": "2026-11-12T22:10:33Z",
+          "head": "db7192cdcd7cc453079d8de8a24801b5e25d2397",
+          "first": true,
+          "checks": {
+            "C701": "red"
+          }
+        }
+      ],
+      "mutations": [
+        {
+          "rule": {
+            "req": "R306",
+            "k": 1
+          },
+          "what": "open always false",
+          "files": [
+            "plugin/lib/cmd-run.sh"
+          ],
+          "checks": {
+            "C701": "red"
+          },
+          "result": "red",
+          "at": "2026-11-12T22:12:33Z",
+          "head": "3ad655a3f85a2170db08f4dc66732aa7e0d66f40",
+          "tree": "e5ac7a83999e67127d2e77702fb87aaf5ac20656",
+          "contract": "a28b86efa03699f55f6db995e4412f92923e759447036367538fdc99163a782d",
+          "digests": [
+            {
+              "file": "plugin/lib/cmd-run.sh",
+              "sha256": "480f3def7d111db1d4f6dd6c04048ac972065a3fad3a3062eca7c17e4536afc3"
+            }
+          ]
+        },
+        {
+          "rule": {
+            "req": "R306",
+            "k": 2
+          },
+          "what": "fix always recorded",
+          "files": [
+            "plugin/lib/cmd-run.sh"
+          ],
+          "checks": {
+            "C701": "red"
+          },
+          "result": "red",
+          "at": "2026-11-12T22:12:36Z",
+          "head": "3ad655a3f85a2170db08f4dc66732aa7e0d66f40",
+          "tree": "e5ac7a83999e67127d2e77702fb87aaf5ac20656",
+          "contract": "a28b86efa03699f55f6db995e4412f92923e759447036367538fdc99163a782d",
+          "digests": [
+            {
+              "file": "plugin/lib/cmd-run.sh",
+              "sha256": "84f2a42da17233c5a34d653320faa7ade4271edfa8d9371c4f96c0d06f56efeb"
+            }
+          ]
+        },
+        {
+          "rule": {
+            "req": "R306",
+            "k": 3
+          },
+          "what": "any QA verdict counts",
+          "files": [
+            "plugin/lib/cmd-run.sh"
+          ],
+          "checks": {
+            "C701": "red"
+          },
+          "result": "red",
+          "at": "2026-11-12T22:12:38Z",
+          "head": "3ad655a3f85a2170db08f4dc66732aa7e0d66f40",
+          "tree": "e5ac7a83999e67127d2e77702fb87aaf5ac20656",
+          "contract": "a28b86efa03699f55f6db995e4412f92923e759447036367538fdc99163a782d",
+          "digests": [
+            {
+              "file": "plugin/lib/cmd-run.sh",
+              "sha256": "b33ed20658201edb5321bfff1cba787309ebc4a24ae4a2934879768bfb82f4dd"
+            }
+          ]
+        },
+        {
+          "rule": {
+            "req": "R306",
+            "k": 4
+          },
+          "what": "unknown id not refused",
+          "files": [
+            "plugin/lib/cmd-run.sh"
+          ],
+          "checks": {
+            "C701": "red"
+          },
+          "result": "red",
+          "at": "2026-11-12T22:12:41Z",
+          "head": "3ad655a3f85a2170db08f4dc66732aa7e0d66f40",
+          "tree": "e5ac7a83999e67127d2e77702fb87aaf5ac20656",
+          "contract": "a28b86efa03699f55f6db995e4412f92923e759447036367538fdc99163a782d",
+          "digests": [
+            {
+              "file": "plugin/lib/cmd-run.sh",
+              "sha256": "f3f748fa02f9e57d6dceb4d5b8f1585ffb753abf439336dddf1b42590cff4b89"
+            }
+          ]
+        }
       ]
     },
     {
@@ -83415,7 +83783,8 @@
         "plugin/workflows/fixing.js",
         "plugin/workflows/verifying.js",
         "plugin/agents/lead.md",
-        "docs/workflows.md"
+        "docs/workflows.md",
+        "tests/fix-done-approval.bats"
       ],
       "after": [
         "P235.2",
@@ -83428,6 +83797,13 @@
         "Decide ended, recorded and complete from that answer only: a missing or unreadable answer counts as not done, with the commands to run by hand",
         "Report a still-open run as not done with vbw run end, and each fix the kernel has not recorded as not done with vbw fix done for it; take closed fixes only from the kernel's answer",
         "Update the Lead's 'Close a run' instructions and docs/workflows.md (the close step, vbw run state in the kernel commands table, and that the router's own vbw next stays the final word)"
+      ],
+      "amendments": [
+        {
+          "what": "file tests/fix-done-approval.bats added",
+          "at": "2026-11-12T22:09:30Z",
+          "session": "0ee781c3"
+        }
       ]
     },
     {
@@ -83442,12 +83818,72 @@
         "docs/next.md"
       ],
       "after": [],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "Count the live step in the road from the times the step itself shows (step_words): its until-around time, low and high, so a late step's end moves the milestone's typical figure too",
         "Keep the milestone's duration and its end in step: both come from the same seconds",
         "Run the road tests (road-next, road-note, road-history-shapes, step-range) and say in docs/next.md that the milestone end is never before the current step's"
+      ],
+      "red_runs": [
+        {
+          "at": "2026-11-12T22:10:33Z",
+          "head": "db7192cdcd7cc453079d8de8a24801b5e25d2397",
+          "first": true,
+          "checks": {
+            "C703": "red"
+          }
+        }
+      ],
+      "mutations": [
+        {
+          "rule": {
+            "req": "R307",
+            "k": 1
+          },
+          "what": "late step no longer counts at its own end",
+          "files": [
+            "plugin/lib/road.jq"
+          ],
+          "checks": {
+            "C703": "red"
+          },
+          "result": "red",
+          "at": "2026-11-12T22:15:40Z",
+          "head": "b58a872a1e231ae832763b3361548b8ab31b62af",
+          "tree": "150a789d1a5938fc060a0996a485d7f7c5959fb3",
+          "contract": "a28b86efa03699f55f6db995e4412f92923e759447036367538fdc99163a782d",
+          "digests": [
+            {
+              "file": "plugin/lib/road.jq",
+              "sha256": "09ed7b98321f7e8bc22081b4b78e867e36d4eafab39ebdeb3742fb2b442b0079"
+            }
+          ]
+        },
+        {
+          "rule": {
+            "req": "R307",
+            "k": 2
+          },
+          "what": "high no longer at or after the step end",
+          "files": [
+            "plugin/lib/road.jq"
+          ],
+          "checks": {
+            "C703": "red"
+          },
+          "result": "red",
+          "at": "2026-11-12T22:15:43Z",
+          "head": "b58a872a1e231ae832763b3361548b8ab31b62af",
+          "tree": "150a789d1a5938fc060a0996a485d7f7c5959fb3",
+          "contract": "a28b86efa03699f55f6db995e4412f92923e759447036367538fdc99163a782d",
+          "digests": [
+            {
+              "file": "plugin/lib/road.jq",
+              "sha256": "fb21ac2ed89c079e02cb522dbe63346ff597d5b47020a97808c8f76b761ee607"
+            }
+          ]
+        }
       ]
     },
     {
@@ -104721,6 +105157,17 @@
         "ended": "2026-11-12T11:12:50Z",
         "cost": {
           "usd": 16.418787
+        }
+      },
+      {
+        "id": "build-20261112T220955Z",
+        "kind": "build",
+        "session": "0ee781c3-c5b6-4a6c-889f-04b89f1fba4a",
+        "milestone": "M58",
+        "started": "2026-11-12T22:09:55Z",
+        "ended": "2026-11-12T22:16:45Z",
+        "cost": {
+          "usd": 2.162136
         }
       }
     ],
