@@ -87925,7 +87925,7 @@
       "text": "Adopt community PR #754 (issue #753, halindrome): every agent disallows ToolSearch since P192.3 (D561), so Claude Code cannot defer tools and each agent loads every MCP tool schema up front (their L2: 46,072 first-turn input tokens with ToolSearch, 149,281 without); advisor (given when the user sets advisorModel) is refused by guard-tools.jq. Bring the PR onto main after 2.1.29, reword R241 (owner), run L3 greenfield and check workflow-spawned agents, credit halindrome. First item of 2.1.30",
       "sort": "next",
       "size": "small",
-      "status": "open"
+      "status": "done"
     },
     {
       "id": "T280",
