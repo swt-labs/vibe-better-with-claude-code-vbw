@@ -286,3 +286,16 @@ ran_line() { grep -cxF -- "$1" "$RANLOG" || true; }
   vbw_run spec check
   [ "$status" -ne 0 ] && [[ "$output" == *"filter"* ]] || { echo "a rest line without a filter line was accepted:"; echo "$output"; false; }
 }
+
+@test "R304 spec: the record validator refuses a form whose join is empty, whose rest lacks {filters}, or whose rest has no filter" {
+  filtered_form 'sh tests/run.sh --skip {filters} {file}' ' or '
+  local edit
+  for edit in '.test_files[0].join = ""' '.test_files[0].rest = ["sh","tests/run.sh","{file}"]' 'del(.test_files[0].filter)'; do
+    jq "$edit" .vbw/record.json > "$TEST_ROOT/edit.json"
+    cp .vbw/record.json "$TEST_ROOT/keep.json"
+    cp "$TEST_ROOT/edit.json" .vbw/record.json
+    vbw_run doctor
+    [[ "$output" == *"test_files must be"* ]] || { echo "accepted: $edit"; echo "$output"; false; }
+    cp "$TEST_ROOT/keep.json" .vbw/record.json
+  done
+}
