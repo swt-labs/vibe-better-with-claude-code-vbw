@@ -83550,14 +83550,7 @@
         "plugin/lib/cmd-apply.sh"
       ],
       "after": [],
-      "status": "blocked",
-      "role": "dev",
-      "tasks": [
-        "Read three new optional lines of a test-file form in .vbw/spec.md: '- filter: <option words>' (the options an approved check uses to pick some of a file's tests, such as --filter -f), '- rest: <command>' (the command that leaves those tests out, naming {file} and {filters} once each) and '- join: <text>' (how the filters are joined, | by default; a quoted value keeps its spaces), in the plain and the named form shapes",
-        "Refuse, naming the line, a rest line that does not name {file} and {filters} exactly once each, and a rest or join line without a filter line",
-        "Store the new fields in the record's form and accept them in the record validator, with the schema step a new key needs (record-schema.jq)",
-        "Let vbw apply's test_files carry filter, rest and join and write them back into the spec's section"
-      ],
+      "status": "planned",
       "red_runs": [
         {
           "at": "2026-11-12T22:11:07Z",
@@ -83568,7 +83561,13 @@
           }
         }
       ],
-      "note": "tests/prove-testfiles.bats (C698, protected) cannot pass: its filtered_form helper defaults REST with ${1-sh tests/run.sh --skip {filters} {file}}, and bash ends that expansion at the first }, so the rest line written to the spec is 'sh tests/run.sh --skip {filters {file}}' (checked under /bin/bash 3.2 and bash 5), which names {filters} zero times; R304.8 requires refusing it, so every filtered_form setup fails at 'vbw spec sync' before the case's own assertions (the same helper makes C697 unreachable). Fix needed in the check file: put the default in a variable or use ${1:-...} with the braces escaped, e.g. local d='sh tests/run.sh --skip {filters} {file}'; rest=${1-$d}. Done so far and committed: spec.jq parses and refuses the three lines (task 1 and 2, checked by hand on plain and named forms). Not done: tasks 3 and 4 (record-schema.jq schema 16 step plus VBW_SCHEMA_MAX 16 in record.sh, record.jq validator, cmd-apply.sh), which also need tests/record-schema.bats to move from 15 to 16 (it pins schema_top = 15 and 'reads up to schema 15')."
+      "role": "dev",
+      "tasks": [
+        "Read three new optional lines of a test-file form in .vbw/spec.md: '- filter: <option words>' (the options an approved check uses to pick some of a file's tests, such as --filter -f), '- rest: <command>' (the command that leaves those tests out, naming {file} and {filters} once each) and '- join: <text>' (how the filters are joined, | by default; a quoted value keeps its spaces), in the plain and the named form shapes",
+        "Refuse, naming the line, a rest line that does not name {file} and {filters} exactly once each, and a rest or join line without a filter line",
+        "Store the new fields in the record form and accept them in the record validator (an array entry keeps dir, files, name and run, plus filter, rest and join when given), with schema 16: record-schema.jq gets the row with the feature \"a test file form with a filter, rest or join line\" and VBW_SCHEMA_MAX becomes 16 (tests/record-schema.bats pins both; the main session updated it, and the filtered_form helper of tests/prove-testfiles.bats that kept C698 from passing; the docs/record.md Versioning row is P234.3s)",
+        "Let vbw apply's test_files carry filter, rest and join and write them back into the spec's section"
+      ]
     },
     {
       "id": "P234.2",
@@ -83613,7 +83612,7 @@
       "role": "docs",
       "tasks": [
         "docs/proof.md: show the filter, rest and join lines with a bats example (--filter -f; bats --allow-empty-suite --negative-filter {filters} {file}), say that a file named only by filtered checks runs its other tests and that the rest command must pass when nothing is left",
-        "docs/record.md: the form's filter, rest and join fields",
+        "docs/record.md: the form filter, rest and join fields, and in Versioning the row for schema 16 (a test file form with a filter, rest or join line, naming filter, rest and join) with VBW_SCHEMA_MAX, currently 16 (tests/record-schema-docs.bats pins twelve rows)",
         "plugin/agents/lead.md: when checks run a file with a filter, the Lead proposes the filter and rest lines ({filters}) with the one-file form"
       ]
     },
@@ -83797,13 +83796,6 @@
         "Decide ended, recorded and complete from that answer only: a missing or unreadable answer counts as not done, with the commands to run by hand",
         "Report a still-open run as not done with vbw run end, and each fix the kernel has not recorded as not done with vbw fix done for it; take closed fixes only from the kernel's answer",
         "Update the Lead's 'Close a run' instructions and docs/workflows.md (the close step, vbw run state in the kernel commands table, and that the router's own vbw next stays the final word)"
-      ],
-      "amendments": [
-        {
-          "what": "file tests/fix-done-approval.bats added",
-          "at": "2026-11-12T22:09:30Z",
-          "session": "0ee781c3"
-        }
       ]
     },
     {
@@ -93402,6 +93394,15 @@
         "P235.3",
         "P236.1",
         "P237.1"
+      ]
+    },
+    {
+      "id": "D709",
+      "at": "2026-11-12T22:23:27Z",
+      "text": "Contract approved: 294 requirements, 699 checks, 688 plans (cb7f6e7f8ef5)",
+      "plans": [
+        "P234.1",
+        "P234.3"
       ]
     }
   ],

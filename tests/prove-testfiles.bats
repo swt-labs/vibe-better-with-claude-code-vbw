@@ -156,7 +156,9 @@ log_calls() {
 # ("-": none; default: the runner with --skip {filters}), and four checks: C1 and C2 run
 # t_a with a filter each, C3 runs t_b whole, C4 runs t_b with a filter; t_c has no check.
 filtered_form() {
-  local rest="${1-sh tests/run.sh --skip {filters} {file}}"
+  # The default sits in a variable: bash ends ${1-...} at the first }, so {filters} cannot be inside it.
+  local def='sh tests/run.sh --skip {filters} {file}'
+  local rest="${1-$def}"
   export RANLOG="$TEST_ROOT/ran.log"
   : > "$RANLOG"
   cat > tests/run.sh << 'SH'

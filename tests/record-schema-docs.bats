@@ -8,7 +8,7 @@
 
 load helper
 
-@test "R247 docs: docs/record.md states the rule once, in Versioning: the table's eleven rows, the floor, highest wins, below loads and is raised, above is corrupt, VBW_SCHEMA_MAX 15, no migration command; the key-order note and the schema, decisions and settings rows point to the table" {
+@test "R247 docs: docs/record.md states the rule once, in Versioning: the table's twelve rows, the floor, highest wins, below loads and is raised, above is corrupt, VBW_SCHEMA_MAX 16, no migration command; the key-order note and the schema, decisions and settings rows point to the table" {
   local doc="$REPO_ROOT/docs/record.md" section row
   section=$(awk '/^## Versioning/ { on = 1 } /^## Consent/ { on = 0 } on' "$doc")
   [ -n "$section" ] || { echo "no Versioning section before Consent"; false; }
@@ -20,12 +20,13 @@ load helper
   printf '%s\n' "$section" | grep -qE '^\|[^|]*test file forms[^|]*`test_files`[^|]*\| *10 *\|' || { echo "no table row for a list of test file forms -> 10"; false; }
   printf '%s\n' "$section" | grep -qE '^\|[^|]*`evidence\.own\.copy_slots`[^|]*\| *11 *\|' || { echo "no table row for a proof's copy_slots -> 11"; false; }
   printf '%s\n' "$section" | grep -qE '^\|[^|]*place[^|]*reworded[^|]*\| *12 *\|' || { echo "no table row for a break by place or a reworded requirement -> 12"; false; }
-  [ "$(printf '%s\n' "$section" | grep -cE '^\|[^|]*\| *([5-9]|1[0-5]) *\|')" -eq 11 ] || { echo "the table has more or fewer than eleven rows"; false; }
+  printf '%s\n' "$section" | grep -qE '^\|[^|]*filter[^|]*rest[^|]*join[^|]*\| *16 *\|' || { echo "no table row for a test file form with a filter, rest or join line -> 16"; false; }
+  [ "$(printf '%s\n' "$section" | grep -cE '^\|[^|]*\| *([5-9]|1[0-6]) *\|')" -eq 12 ] || { echo "the table has more or fewer than twelve rows"; false; }
   printf '%s\n' "$section" | grep -qiE 'floor' || { echo "the floor (4) is not named"; false; }
   printf '%s\n' "$section" | grep -qiE 'highest' || { echo "highest feature wins is not stated"; false; }
   printf '%s\n' "$section" | grep -qiE 'below[^.]*(load|read)[^.]*rais' || { echo "a record below its content loading and being raised is not stated"; false; }
   printf '%s\n' "$section" | grep -qiE 'above[^.]*corrupt' || { echo "a record above its content being corrupt is not stated"; false; }
-  printf '%s\n' "$section" | grep -q '`VBW_SCHEMA_MAX`, currently 15' || { echo "VBW_SCHEMA_MAX, currently 15 is not stated"; false; }
+  printf '%s\n' "$section" | grep -q '`VBW_SCHEMA_MAX`, currently 16' || { echo "VBW_SCHEMA_MAX, currently 16 is not stated"; false; }
   printf '%s\n' "$section" | grep -qi 'no migration command' || { echo "the docs no longer say there is no migration command"; false; }
   # The field rows point to the table instead of restating numbers.
   row=$(grep -E '^\| `schema` \|' "$doc")
