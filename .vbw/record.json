@@ -87960,7 +87960,7 @@
       "text": "The whole-copy test in tests/proofcopy-keep.bats ('copied again whole', #738) failed once on Linux bash 5 (PR #755, first run): it checks that keep.js's inode number changed, and Linux reuses a freed inode number at once, so a whole re-copy can keep the same number. Judge the re-copy by something a new file cannot inherit (a second hard link made before: a whole copy gives a file with one link)",
       "sort": "next",
       "size": "small",
-      "status": "open"
+      "status": "done"
     },
     {
       "id": "T285",
