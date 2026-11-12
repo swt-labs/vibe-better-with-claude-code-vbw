@@ -127,6 +127,7 @@
     "tests/glance-guards.bats",
     "tests/glance-helper.bash",
     "tests/glance-write.bats",
+    "tests/guard-comments.bats",
     "tests/guard-cost.bats",
     "tests/guard-cross-project.bats",
     "tests/guard-fail-closed.bats",
@@ -9476,6 +9477,18 @@
       ],
       "files": [
         "tests/road-note.bats"
+      ]
+    },
+    {
+      "id": "C704",
+      "req": "R308",
+      "run": [
+        "bats",
+        "--print-output-on-failure",
+        "tests/guard-comments.bats"
+      ],
+      "files": [
+        "tests/guard-comments.bats"
       ]
     }
   ],
@@ -22926,6 +22939,32 @@
           "check": "C703"
         }
       ]
+    },
+    {
+      "id": "R308",
+      "text": "The Bash guard reads a comment in a command, and in a script file it reads (R255), as bash does: outside quotes a # at the start of a word starts a comment to the end of the line, and a quote mark inside a comment pairs with nothing, so no code after a comment is read as quoted text (a write there is judged, never missed) and no quoted text is read as code (a script run by name is never refused for a write it does not make) (2026-11-12: under the plan lease the guard refused bash tools/bench-hooks.sh, naming as a write target outside the project about 1 KB of the script that ends at the apostrophe of a comment at line 184; a script of a comment holding an apostrophe, then echo \"a\" > out.txt, then a second such comment shows the guard no write)",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M58",
+      "rules": [
+        {
+          "text": "a quote mark in a comment of a script file run by name pairs with nothing: a write after such a comment, on a line of its own or after a code line ending in a comment, is judged",
+          "check": "C704"
+        },
+        {
+          "text": "quoted text in a script file is never read as code: a > inside quotes beside comments holding apostrophes, and double-quoted strings holding : and |, are text, so a script writing only the plan files passes",
+          "check": "C704"
+        },
+        {
+          "text": "a command is read the same way: a write after a commented line holding an apostrophe, or after a code line ending in such a comment, is judged",
+          "check": "C704"
+        },
+        {
+          "text": "a # that does not start a word (inside a word, a quoted string, ${#x}, $#) starts no comment: a write after it on the same line is judged",
+          "check": "C704"
+        }
+      ],
+      "reworded": true
     }
   ],
   "phases": [
@@ -34764,6 +34803,33 @@
         "breaks: R78, R81, R191",
         "guarded: R13 (C12), R14 (C13), R24 (C23), R25 (C24), R26 (C22), R28 (C25), R37 (C35), R40 (C37), R47 (C47), R49 (C48), R50 (C51), R69 (C110, C120, C122), R70 (C114), R71 (C115, C121), R72 (C116, C118), R73 (C98), R74 (C99, C100), R79 (C107), R80 (C108), R102 (C158, C159), R106 (C164, C165), R107 (C166, C167), R111 (C171, C172, C173, C174, C175), R116 (C182, C183), R161 (C248, C265, C266), R171 (C270), R179 (C297, C298, C299, C300, C301, C302, C303, C304, C305, C306, C312), R190 (C374, C375, C376, C377, C378, C379, C380, C381, C382, C383, C384, C385, C386, C387, C388), R192 (C401, C402, C403, C404, C405, C406, C407, C408, C409, C410), R202 (C432, C433, C434, C435, C436, C437, C438, C439, C440, C441, C442, C443, C444, C445, C446, C447), R229 (C526, C527, C528, C529), R244 (C562, C563), R249 (C571, C572, C573), R270 (C631, C632, C633), R284 (C673, C674), R286 (C653, C654), R287 (C655, C656, C657), R291 (C675, C676, C677), R298 (C688)",
         "tests: project test command"
+      ],
+      "predicted": "standard"
+    },
+    {
+      "id": "P237",
+      "title": "The Bash guard reads comments as bash does",
+      "reqs": [
+        "R308"
+      ],
+      "milestone": "M58",
+      "goal": "The Bash guard reads a comment in a command, and in a script file it reads, as bash does: no write after a comment is missed and no quoted text is read as a write.",
+      "criteria": [
+        "A write between comments holding an apostrophe, in a script run by name or in a command, is judged and a protected or outside target is refused",
+        "A script whose comments hold apostrophes and whose quoted strings hold >, : or |, writing only the plan files, runs without a refusal",
+        "A # inside a word, a quoted string, ${#x} or $# starts no comment, so a write after it on the same line is still judged",
+        "Every existing guard test passes unchanged and the guard cases of the hook bench cost no more than before"
+      ],
+      "proposed": "standard",
+      "tier": "standard",
+      "reasons": [
+        "requirements: 1",
+        "files: 1 (26936 bytes)",
+        "risk: none",
+        "breaks: none",
+        "guarded: R255 (C584), R273 (C639, C640, C641)",
+        "tests: project test command",
+        "raised by the Architect"
       ],
       "predicted": "standard"
     }
@@ -83158,8 +83224,7 @@
         "R302"
       ],
       "files": [
-        "tools/bench-hooks.sh",
-        "docs/guards.md"
+        "tools/bench-hooks.sh"
       ],
       "after": [],
       "status": "planned",
@@ -83168,7 +83233,7 @@
         "Read the guard's own files from its include lines (holder.jq, common.jq, programs.jq and any later one) and build every compile-split row from that list, so no row leaves a file out",
         "Before anything is timed, compile each program once with the hook's own flags; a program that does not compile stops the bench with a non-zero exit naming its row and jq's error, in the compile split and in the step table",
         "Name in each row's label the files it compiles, the step table's 'program compile' row included",
-        "Correct the header comment that still says the default budget is 20 ms (the code uses 25 ms), and say in docs/guards.md what each split row compiles"
+        "Correct the header comment that still says the default budget is 20 ms (the code uses 25 ms), and give in the plan summary, for docs/guards.md, one line per split row saying what it compiles (the main session makes that edit: docs/guards.md is the protected file of C652)"
       ]
     },
     {
@@ -83206,8 +83271,7 @@
         "plugin/hooks/common.jq",
         "plugin/hooks/read.sh",
         "tools/bench-hooks.sh",
-        "tests/timed-guard-headroom.bats",
-        "docs/guards.md"
+        "tests/timed-guard-headroom.bats"
       ],
       "after": [
         "P232.1"
@@ -83219,7 +83283,7 @@
         "Build that shape without changing one answer: the hooks.json command stays as it is; every guard, hook-answer and interpreter test keeps passing unchanged; no eval, no bash -c on data, Bash 3.2",
         "Write tests/timed-guard-headroom.bats (a timed file, run only by the release run): the bench at VBW_HOOK_BUDGET_MS=20 over every Bash guard case (git, npm, big, interp, script, cross-project, loop) at every record size, failing on any OVER, skipping a busy machine, requiring all 25 input and record cases judged; a draft is at .vbw/runtime/scratch/timed-guard-headroom.draft.bats; run it and show it passes",
         "Keep the bench reference's size rule (D676: within 10% of guard-bash.jq and programs.jq together, tests/bench-limits.bats R233); if the guard's size moves out of it, remeasure the reference on the Mac and both Linux images in the same change and update NOMINAL_MS and its provenance",
-        "Update docs/guards.md ('How a command is read') for the two passes, and report the before and after figures of the compile split"
+        "Report the before and after figures of the compile split, and give in the plan summary the text docs/guards.md needs in How a command is read for the two passes (the main session makes that edit: docs/guards.md is the protected file of C652)"
       ]
     },
     {
@@ -83384,6 +83448,27 @@
         "Count the live step in the road from the times the step itself shows (step_words): its until-around time, low and high, so a late step's end moves the milestone's typical figure too",
         "Keep the milestone's duration and its end in step: both come from the same seconds",
         "Run the road tests (road-next, road-note, road-history-shapes, step-range) and say in docs/next.md that the milestone end is never before the current step's"
+      ]
+    },
+    {
+      "id": "P237.1",
+      "phase": "P237",
+      "title": "Comments read as bash reads them in the guard quote masking",
+      "reqs": [
+        "R308"
+      ],
+      "files": [
+        "plugin/hooks/programs.jq"
+      ],
+      "after": [
+        "P233.1"
+      ],
+      "status": "planned",
+      "tasks": [
+        "Show tests/guard-comments.bats red, then read comments in the guard quote masking (programs.jq mask_chunk and mask) in the same left-to-right scan that pairs quotes: outside quotes a # at the start of a word (line start, or after a blank or one of ; & | ( ) ) starts a comment to the end of the line, which is dropped before quotes pair, so its quote marks pair with nothing and a held line never waits on one; a # in a quoted string, inside a word, in ${#x} or $# stays text; heredoc bodies stay as strip_heredocs leaves them",
+        "Keep the cost: a command without a # pays nothing new; run the hook bench guard cases before and after (VBW_BENCH_ONLY) and report both figures (R301); no eval, Bash 3.2",
+        "Keep every guard test green unchanged: tests/guard-script-files.bats, tests/hook-answers.bats, tests/guard-interpreters.bats, tests/guard-protected.bats, tests/timed-guard-script.bats",
+        "Give in the plan summary the text docs/guards.md needs in How a command is read: a comment is read as bash reads it, in a command and in a script file the guard reads (the main session makes that edit: docs/guards.md is the protected file of C652)"
       ]
     }
   ],
@@ -92840,6 +92925,48 @@
       "text": "Quick fix: quoted empty locals in checks_gate_blocker (shellcheck SC1007), in plugin/lib/checks.sh",
       "why": "found by tests/standards.bats at the 2.1.30 release check; the proofs never ran that test because checks run it only with a filter (T289)",
       "at": "2026-11-11T19:34:45Z"
+    },
+    {
+      "id": "D704",
+      "text": "P234 (R304): the Test files section gets an optional line naming the runner's own way to skip the tests the checks' filters run (for bats, --negative-filter with the filters joined); VBW fills in the filters; without that line the file runs whole and VBW says so once",
+      "why": "the Architect's option (a), chosen by the lead engineer: generic for every runner and keeps nothing running twice (D179) where the runner allows it; (b) runs filtered tests twice, (c) changes every approved check",
+      "at": "2026-11-12T11:13:55Z"
+    },
+    {
+      "id": "D705",
+      "text": "Skills for agents (T286, #756): the best skill always wins; a skill's token cost never makes VBW choose a worse one. The token measure only designs delivery: each agent loads an approved skill when it needs it, not every skill up front",
+      "why": "owner 2026-11-12: if tool A is the best but costs more tokens, never degrade VBW to an inferior B",
+      "at": "2026-11-12T11:13:57Z"
+    },
+    {
+      "id": "D706",
+      "text": "R308 planned by the main session on the small path: phase P237 (standard), one plan P237.1 on plugin/hooks/programs.jq after P233.1, one check C704 running tests/guard-comments.bats whole (no filter, so R304 holds); the guard drops a comment in the same left-to-right scan that pairs quotes",
+      "why": "the kernel marked R308 small; the root cause is one function (the quote masking reads an apostrophe in a comment as a quote), shown red today by 3 of the 4 cases: 2 missed writes and 1 false refusal; P233.1 rewrites the same file, so P237.1 follows it",
+      "at": "2026-11-12T22:06:59Z"
+    },
+    {
+      "id": "D707",
+      "text": "docs/guards.md is the protected file of C652 (R276): no plan edits it. P232.1, P233.1 and P237.1 give its new text in their summaries; the main session makes one docs/guards.md edit with vbw apply --patch on C652, approved with the Test files lines after P234.1 and P234.2",
+      "why": "the 2.1.30 kernel refused P237.1 listing docs/guards.md as a protected check file; P232.1 and P233.1 listed it too and their Devs would have been refused mid-build",
+      "at": "2026-11-12T22:07:01Z"
+    },
+    {
+      "id": "D708",
+      "at": "2026-11-12T22:08:48Z",
+      "text": "Contract approved: 294 requirements, 699 checks, 688 plans (15e8997aab62)",
+      "plans": [
+        "P232.1",
+        "P232.2",
+        "P233.1",
+        "P234.1",
+        "P234.2",
+        "P234.3",
+        "P235.1",
+        "P235.2",
+        "P235.3",
+        "P236.1",
+        "P237.1"
+      ]
     }
   ],
   "commands": {
