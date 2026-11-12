@@ -987,6 +987,9 @@ and panel benchmarks, and the test files named `tests/timed-*.bats`), so a busy
 machine never fails or delays a proof. They run once per release, in
 `bash tools/test.sh --release`, which CI runs on every pull request. `bash tools/test.sh`
 without `--release` runs the same lint and tests the proof runs, without them.
+A failed bench never stops the test files: the release run (and CI's first shard)
+runs the lint and every test file anyway, then fails, its last lines naming each
+failed bench (`failed: hook bench`, `failed: panel bench`).
 
 ### Full and partial proofs: `vbw prove --full`
 
