@@ -57,7 +57,9 @@ def schema_features: [
    present: ((.plans | type) == "array" and any(.plans[]; type == "object"
      and (has("red_runs")
           or ((.mutations | type) == "array"
-              and any(.mutations[]; type == "object" and (.digests | type) == "array")))))}
+              and any(.mutations[]; type == "object" and (.digests | type) == "array")))))},
+  {schema: 16, feature: "a test file form with a filter, rest or join line",
+   present: ((.test_files | type) == "array" and any(.test_files[]; type == "object" and (has("filter") or has("rest") or has("join"))))}
 ];
 
 def schema_of: . as $r | [schema_features[] | select(.present) | .schema] | max // schema_floor;

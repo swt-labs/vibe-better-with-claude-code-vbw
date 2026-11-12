@@ -34,7 +34,7 @@ record_violation() {
 # the one definition (R247), so an older VBW says the project needs a newer VBW instead
 # of calling the record corrupt. Records of schemas 1 to 3 written by an older VBW
 # are read and become format 4 on their next write.
-VBW_SCHEMA_MAX=15
+VBW_SCHEMA_MAX=16
 
 # The schema of the record at FILE when it is a number above the highest this
 # VBW reads (written by a newer VBW); empty and status 1 otherwise. A
