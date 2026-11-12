@@ -232,7 +232,7 @@ def run:
   # F434: the start folder counts too unless a plain && chain of cds all followed.
   | (if any($cmds[]; .cwd != $start) and (any($cmds[]; .cmd == "cd" and [cd_to] == [])
       or ($c | strip_heredocs | mask | .text | gsub("&&|[<>]&|&>"; " ") | test("[;|&(){}`\\n]"))) then [$cmds[] | .alt = $start] else $cmds end) as $cmds
-  | [$c | select(test("<<")) | heredoc_programs($start; resolve)] as $hds
+  | [$c | select(test("<<") and runs_interpreter) | heredoc_programs($start; resolve)] as $hds
   | (if $g.lease != null then [script_requests($g; $cmds; $c)] else [] end) as $sr
   | ( [$cmds[] | everywhere][0]
       // (select($g.project and $g.foreign != null) | [$cmds[] | here($g) as $k | foreign_run($k)][0])
