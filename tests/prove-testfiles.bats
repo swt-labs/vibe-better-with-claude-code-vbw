@@ -313,3 +313,12 @@ ran_line() { grep -cxF -- "$1" "$RANLOG" || true; }
     [ "$(jq -r '.test_files[0].join' .vbw/record.json)" = "$want" ] || { echo "$line gave $(jq -c '.test_files[0].join' .vbw/record.json)"; false; }
   done
 }
+
+@test "R304 spec: vbw apply writes a form's filter, rest and join lines into the spec, a join with spaces in quotes, and the record keeps them" {
+  filtered_form
+  printf '{"plans": [], "checks": [], "test_files": {"run": ["sh", "tests/run.sh", "{file}"], "files": ["tests/t_*.sh"], "filter": ["--only"], "rest": ["sh", "tests/run.sh", "--skip", "{filters}", "{file}"], "join": " or "}}' | "$VBW" apply --patch
+  grep -qxF -- '- filter: --only' .vbw/spec.md || { cat .vbw/spec.md; false; }
+  grep -qxF -- '- rest: sh tests/run.sh --skip {filters} {file}' .vbw/spec.md || { cat .vbw/spec.md; false; }
+  grep -qxF -- '- join: " or "' .vbw/spec.md || { cat .vbw/spec.md; false; }
+  [ "$(jq -c '.test_files[0] | [.filter, .rest, .join]' .vbw/record.json)" = '[["--only"],["sh","tests/run.sh","--skip","{filters}","{file}"]," or "]' ]
+}
