@@ -299,3 +299,17 @@ ran_line() { grep -cxF -- "$1" "$RANLOG" || true; }
     cp "$TEST_ROOT/keep.json" .vbw/record.json
   done
 }
+
+@test "R304 spec: a join line keeps the spaces of a quoted value, in single or double quotes, and reads a bare value as it is" {
+  filtered_form 'sh tests/run.sh --skip {filters} {file}' ' or '
+  grep -q '^- join:' .vbw/spec.md || { cat .vbw/spec.md; false; }
+  local line want
+  for line in "- join: ' or '" '- join: " or "' '- join: ,'; do
+    want=' or '; [ "$line" != '- join: ,' ] || want=','
+    sed "s|^- join: .*|$line|" .vbw/spec.md > "$TEST_ROOT/spec.md"
+    cp "$TEST_ROOT/spec.md" .vbw/spec.md
+    vbw_run spec sync
+    [ "$status" -eq 0 ] || { echo "$line"; echo "$output"; false; }
+    [ "$(jq -r '.test_files[0].join' .vbw/record.json)" = "$want" ] || { echo "$line gave $(jq -c '.test_files[0].join' .vbw/record.json)"; false; }
+  done
+}
