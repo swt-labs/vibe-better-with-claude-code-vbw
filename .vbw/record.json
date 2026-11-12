@@ -87995,7 +87995,7 @@
       "text": "A test file that checks run only with a filter is never run whole by the proof (2026-11-11, 2.1.30 release): tests/standards.bats is named by C570, C645 and C691, each with bats --filter, and the proof's test-file units leave it out (no tests/standards.bats unit in the three M57 proofs), so its shellcheck case never ran and a SC1007 warning from P229.2 reached the release check (fixed, D703). Run the rest of such a file as a project-command unit (or the whole file), so every case of a test file runs in some proof",
       "sort": "next",
       "size": "medium",
-      "status": "open"
+      "status": "dropped"
     }
   ],
   "decisions": [
