@@ -87939,7 +87939,7 @@
       "text": "Record guard: tests/guard-record-path.bats names cd -, cd ~-, cd $OLDPWD, cd -P - and cd -- - but not a bare cd or cd ~, which docs/guards.md also names (QA P225 round 3 note, 2026-11-09). Same cd_to path; add the two cases when the file is next edited",
       "sort": "later",
       "size": "small",
-      "status": "open"
+      "status": "done"
     },
     {
       "id": "T282",
