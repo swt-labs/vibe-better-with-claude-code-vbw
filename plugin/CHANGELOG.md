@@ -57,6 +57,17 @@ runners.
   `filter`, `rest` or `join` line; without them it stays where it was. A VBW
   older than 2.1.31 asks to be updated before it reads a schema-16 record.
 
+### Known issue
+
+- **Claude Code 2.1.323's sandbox refuses VBW's clean copy.** With the
+  sandbox on, `vbw mutate PLAN --run` stops with "cannot make a clean copy of
+  the committed code: ... could not create directory of
+  '.git/worktrees/tree': Operation not permitted", and the Dev may stop the
+  plan as blocked. VBW 2.1.30 meets it too; Claude Code 2.1.322 did not
+  refuse it. The next release makes the copy without writing under `.git`.
+  Until then, let that command run outside the sandbox when Claude Code asks,
+  or turn the sandbox off while a build runs.
+
 Sizes, for information (file bytes): kernel 963 KB (`plugin/bin/vbw` and `plugin/lib`), mods 364 KB (hooks, panel and status line), workflows 82 KB, prompts 119 KB (agents and skills), packs 5 KB.
 
 ## [2.1.30] - 2026-11-11
