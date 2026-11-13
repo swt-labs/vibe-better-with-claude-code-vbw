@@ -242,6 +242,8 @@ ran_line() { grep -cxF -- "$1" "$RANLOG" || true; }
   filtered_form -
   grep -v -- '^- filter:' .vbw/spec.md > "$TEST_ROOT/spec.md" && cp "$TEST_ROOT/spec.md" .vbw/spec.md
   "$VBW" spec sync > /dev/null
+  # Every check names its file with the usual filter options too: with no filter line none of them is a filter.
+  jq '.checks |= map(.run |= (.[:-1] + ["--filter", "Z", "--only", "Z"] + .[-1:]))' .vbw/record.json > "$TEST_ROOT/edit.json" && cp "$TEST_ROOT/edit.json" .vbw/record.json
   git add -A && git commit -q -m "chore(vbw): no filter line"
   "$VBW" approve > /dev/null
   "$VBW" prove > /dev/null || true
@@ -255,6 +257,8 @@ ran_line() { grep -cxF -- "$1" "$RANLOG" || true; }
   vbw_run prove
   [ "$status" -ne 0 ] || { echo "$output"; false; }
   printf '%s\n' "$output" | grep -qE '^ +tests/t_a\.sh fail' || { echo "$output"; false; }
+  # The test command's own result names the failing file too (the record's evidence, not only the proof's lines).
+  jq -e '.evidence.commands.test | .status == "fail" and (.tail | contains("tests/t_a.sh fail"))' .vbw/record.json || { jq '.evidence.commands.test' .vbw/record.json; false; }
 }
 
 @test "R304: a rest unit follows the one reuse rule: reused when nothing it reads changed, run again with the others counted when a filter changes" {
