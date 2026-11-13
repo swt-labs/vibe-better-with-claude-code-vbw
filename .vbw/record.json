@@ -9504,7 +9504,7 @@
   "milestone": {
     "id": "M58",
     "title": "Faster Bash guard, every test in a proof, no silent fix done",
-    "status": "active"
+    "status": "shipped"
   },
   "shipped": [
     {
@@ -9786,6 +9786,11 @@
       "id": "M57",
       "title": "Quick wins: one plan done at a time, check files caught at planning, breaks kept, agents keep ToolSearch",
       "at": "2026-11-11T19:26:36Z"
+    },
+    {
+      "id": "M58",
+      "title": "Faster Bash guard, every test in a proof, no silent fix done",
+      "at": "2026-11-13T13:15:45Z"
     }
   ],
   "requirements": [
@@ -94499,6 +94504,11 @@
       "text": "Ship 2.1.31 as built; 2.1.32 is a hotfix whose one item is a clean copy that writes nothing under .git (T296), released as soon as it is proven",
       "why": "Claude Code 2.1.323's sandbox refuses git worktree add (could not create directory of .git/worktrees/tree: Operation not permitted), which VBW's clean copy uses (plugin/lib/proofcopy.sh) for vbw mutate --run and proof copies: seen in all five 2.1.31 scenarios, in none of 25 sessions on 2.1.319 and 2.1.322. The code is unchanged on this branch, so 2.1.30 users meet it too; holding 2.1.31 protects nobody, and 2.1.31's notes name the issue and the way on",
       "at": "2026-11-13T13:00:38Z"
+    },
+    {
+      "id": "D724",
+      "at": "2026-11-13T13:15:45Z",
+      "text": "Shipped M58 Faster Bash guard, every test in a proof, no silent fix done: 7 requirements proven or accepted"
     }
   ],
   "commands": {
@@ -111331,6 +111341,10 @@
             "usd": 0,
             "at": "2026-11-12T10:29:48Z"
           }
+        },
+        "total": {
+          "usd": 55.951839,
+          "sessions": 48
         }
       }
     }
