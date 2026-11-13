@@ -462,6 +462,7 @@
     "tests/rules-prompts.bats",
     "tests/rules.bats",
     "tests/run-confirm.bats",
+    "tests/run-help.bats",
     "tests/scope-of-its-time.bats",
     "tests/scope-undone-docs.bats",
     "tests/scope-undone-record.bats",
@@ -9476,6 +9477,21 @@
       "files": [
         "tests/guard-comments.bats"
       ]
+    },
+    {
+      "id": "C705",
+      "req": "R306",
+      "run": [
+        "bats",
+        "--print-output-on-failure",
+        "--filter",
+        "R306",
+        "tests/run-help.bats"
+      ],
+      "files": [
+        "tests/run-help.bats"
+      ],
+      "fix": "F458"
     }
   ],
   "project": {
@@ -88370,7 +88386,7 @@
       "req": "R306",
       "source": "qa",
       "attempts": 0,
-      "status": "open",
+      "status": "fixed",
       "note": "vbw run state is missing from the real help text, while docs/workflows.md (the 'vbw run start --help' example, around line 260) shows it there. Evidence: running 'plugin/bin/vbw run start --help' and 'plugin/bin/vbw run --help' prints 'usage: vbw run start KIND [IDS] | run confirm ID... | run end [--owner-closed | --map < MAP] ...' with no 'run state ID...'; the same stale line is in plugin/bin/vbw at lines 36 (vbw --help command list) and 101 (the run help). P235.2 task 3 says 'list the command in vbw run's usage line'; only the usage-error line in plugin/lib/cmd-run.sh line 34 got it. So the doc states output the command does not give, and a user or agent asking for help cannot find the command. Fix: add 'run state ID...' to both lines in plugin/bin/vbw (a file no plan listed, so the fix round does it). Regression test should compare 'vbw run --help' and 'vbw --help' with the docs example and require the text 'run state ID...' in both.",
       "phase": "P235"
     }
@@ -106392,6 +106408,17 @@
         "ended": "2026-11-13T10:37:00Z",
         "cost": {
           "usd": 0.502763
+        }
+      },
+      {
+        "id": "fix-20261113T103719Z",
+        "kind": "fix",
+        "session": "0ee781c3-c5b6-4a6c-889f-04b89f1fba4a",
+        "milestone": "M58",
+        "started": "2026-11-13T10:37:19Z",
+        "ended": "2026-11-13T10:38:25Z",
+        "cost": {
+          "usd": 0.390878
         }
       }
     ],
