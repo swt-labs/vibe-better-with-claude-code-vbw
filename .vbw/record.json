@@ -1,6 +1,15 @@
 {
   "schema": 15,
-  "lease": null,
+  "lease": {
+    "run": "qa-20261113T103103Z",
+    "kind": "qa",
+    "started_at": "2026-11-13T10:31:03Z",
+    "files": [],
+    "session": "0ee781c3-c5b6-4a6c-889f-04b89f1fba4a",
+    "cost": {
+      "usd": 3668.165987
+    }
+  },
   "protected": [
     "docs/guards.md",
     "tests/adaptive-results.bats",
@@ -34784,7 +34793,22 @@
         "tests: project test command",
         "raised by the Architect"
       ],
-      "predicted": "standard"
+      "predicted": "standard",
+      "qa": {
+        "result": "pass",
+        "tier": "quick",
+        "tree": "b8479cfaebd414e56b59ac00755dadf9f251cb5a5e5945f63b94f0122e7765f8",
+        "at": "2026-11-13T10:32:50Z",
+        "note": "8/8 checks"
+      },
+      "outcome": {
+        "tier": "standard",
+        "predicted": "standard",
+        "held": true,
+        "fix_rounds": 0,
+        "qa_findings": 0,
+        "escalations": 0
+      }
     }
   ],
   "plans": [
