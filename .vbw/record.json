@@ -34688,6 +34688,12 @@
           "from": "deep",
           "to": "deep",
           "reason": "Dev blocked P234.1: tests/prove-testfiles.bats (C698, protected) cannot pass: its filtered_form helper defaults REST with ${1-sh tests/run.sh --skip {filters} {file}}, and bash ends that expansion at the first }, so the rest line written to the spec is 'sh tests/run.sh --skip {filters {file}}' (checked under /bin/bash 3.2 and bash 5), which names {filters} zero times; R304.8 requires refusing it, so every filtered_form setup fails at 'vbw spec sync' before the case's own assertions (the same helper makes C697 unreachable). Fix needed in the check file: put the default in a variable or use ${1:-...} with the braces escaped, e.g. local d='sh tests/run.sh --skip {filters} {file}'; rest=${1-$d}. Done so far and committed: spec.jq parses and refuses the three lines (task 1 and 2, checked by hand on plain and named forms). Not done: tasks 3 and 4 (record-schema.jq schema 16 step plus VBW_SCHEMA_MAX 16 in record.sh, record.jq validator, cmd-apply.sh), which also need tests/record-schema.bats to move from 15 to 16 (it pins schema_top = 15 and 'reads up to schema 15')."
+        },
+        {
+          "at": "2026-11-13T03:17:51Z",
+          "from": "deep",
+          "to": "deep",
+          "reason": "Dev blocked P234.2: Code for tasks 1-3 is committed (7f8b8d5e, f6b9a8a8); C697 stays red on two cases of tests/prove-testfiles.bats that cannot pass as written, and that file is protected. R304.3 (join): filtered_form writes the join as a bare '- join:  or ' line, which the spec trims to 'or' (the file's own R304 spec case says only a quoted value keeps its spaces), so the run is '--skip R1orR2'; fix: write it quoted, printf -- \"- join: '%s'\\n\". R304.7 (reuse): the second 'vbw prove' runs with nothing committed since a passing proof, which by design (proofreuse_allowed) re-runs everything, so the unit cannot be reused; fix: commit a code change (e.g. echo x > tests/other.txt; git add -A; git commit) between the two proofs. With those two edits applied in a scratch copy both cases pass on my code. Need the main session to patch the check (vbw apply --patch) and the user to approve it. Mutation step and task 4 not done."
         }
       ]
     },
@@ -83675,14 +83681,27 @@
       "after": [
         "P234.1"
       ],
-      "status": "planned",
+      "status": "blocked",
       "role": "dev",
       "tasks": [
         "In testfiles_index, drop only the files an approved check runs whole; a file named only by checks that carry a form's filter option becomes a unit with those checks' filter values, in check order",
         "Run such a unit with the form's rest command, {filters} replaced by the filters joined by the join text, so no filtered test runs twice; with a filter line but no rest line, run the file whole and say once per proof, naming the missing '- rest:' line, that its filtered tests run twice",
         "Make the unit's fingerprint the command it really runs, so a changed filter runs it again and an unchanged one is reused under the one reuse rule, with the usual reason lines and the 'run again: N of M units' count",
         "Check that a failing test in such a unit fails the proof and names the file, as any unit does"
-      ]
+      ],
+      "red_runs": [
+        {
+          "at": "2026-11-13T03:09:22Z",
+          "head": "3995b24c7b8cc2ab953c70bdef0f6be520b4ad12",
+          "first": true,
+          "checks": {
+            "C697": "red",
+            "C698": "green",
+            "C699": "green"
+          }
+        }
+      ],
+      "note": "Code for tasks 1-3 is committed (7f8b8d5e, f6b9a8a8); C697 stays red on two cases of tests/prove-testfiles.bats that cannot pass as written, and that file is protected. R304.3 (join): filtered_form writes the join as a bare '- join:  or ' line, which the spec trims to 'or' (the file's own R304 spec case says only a quoted value keeps its spaces), so the run is '--skip R1orR2'; fix: write it quoted, printf -- \"- join: '%s'\\n\". R304.7 (reuse): the second 'vbw prove' runs with nothing committed since a passing proof, which by design (proofreuse_allowed) re-runs everything, so the unit cannot be reused; fix: commit a code change (e.g. echo x > tests/other.txt; git add -A; git commit) between the two proofs. With those two edits applied in a scratch copy both cases pass on my code. Need the main session to patch the check (vbw apply --patch) and the user to approve it. Mutation step and task 4 not done."
     },
     {
       "id": "P234.3",
@@ -83930,13 +83949,151 @@
         "P235.2",
         "P234.3"
       ],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "Ask the closing agent (and the fix done agent without a session) to run vbw run state with the ids after vbw run end and return its output exactly as printed, in a required state field",
         "Decide ended, recorded and complete from that answer only: a missing or unreadable answer counts as not done, with the commands to run by hand",
         "Report a still-open run as not done with vbw run end, and each fix the kernel has not recorded as not done with vbw fix done for it; take closed fixes only from the kernel's answer",
         "Update the Lead's 'Close a run' instructions and docs/workflows.md (the close step, vbw run state in the kernel commands table, and that the router's own vbw next stays the final word)"
+      ],
+      "red_runs": [
+        {
+          "at": "2026-11-13T03:08:27Z",
+          "head": "3995b24c7b8cc2ab953c70bdef0f6be520b4ad12",
+          "first": true,
+          "checks": {
+            "C701": "green",
+            "C702": "red"
+          }
+        }
+      ],
+      "mutations": [
+        {
+          "rule": {
+            "req": "R306",
+            "k": 5
+          },
+          "what": "building.js: state no longer a required field of the closing answer",
+          "files": [
+            "plugin/workflows/building.js"
+          ],
+          "checks": {
+            "C702": "red"
+          },
+          "result": "red",
+          "at": "2026-11-13T03:18:50Z",
+          "head": "10d5081c104a502efcd10e1186222115506f9cfc",
+          "tree": "160fd38491d75c26cbf623e5defa23a92ccd391b",
+          "contract": "46bd933c5aebb8c7d3ecc0e73b4cd0371a285fb63d4a012a3ba4b714bc4cb8c6",
+          "digests": [
+            {
+              "file": "plugin/workflows/building.js",
+              "sha256": "3316aac4d9983d7e27b479a6bba2954c66033d1a985de8dad55f99a7b49bfeac"
+            }
+          ]
+        },
+        {
+          "rule": {
+            "req": "R306",
+            "k": 6
+          },
+          "what": "verifying.js: ended taken as true whenever the kernel answered, open or not",
+          "files": [
+            "plugin/workflows/verifying.js"
+          ],
+          "checks": {
+            "C702": "red"
+          },
+          "result": "red",
+          "at": "2026-11-13T03:19:07Z",
+          "head": "10d5081c104a502efcd10e1186222115506f9cfc",
+          "tree": "160fd38491d75c26cbf623e5defa23a92ccd391b",
+          "contract": "46bd933c5aebb8c7d3ecc0e73b4cd0371a285fb63d4a012a3ba4b714bc4cb8c6",
+          "digests": [
+            {
+              "file": "plugin/workflows/verifying.js",
+              "sha256": "a2aed64374d706161207a5eb3ec182269af2ee239a64c1441ed628ae37aac032"
+            }
+          ]
+        },
+        {
+          "rule": {
+            "req": "R306",
+            "k": 7
+          },
+          "what": "fixing.js: a fix is closed whatever the kernel recorded",
+          "files": [
+            "plugin/workflows/fixing.js"
+          ],
+          "checks": {
+            "C702": "red"
+          },
+          "result": "red",
+          "at": "2026-11-13T03:19:20Z",
+          "head": "10d5081c104a502efcd10e1186222115506f9cfc",
+          "tree": "160fd38491d75c26cbf623e5defa23a92ccd391b",
+          "contract": "46bd933c5aebb8c7d3ecc0e73b4cd0371a285fb63d4a012a3ba4b714bc4cb8c6",
+          "digests": [
+            {
+              "file": "plugin/workflows/fixing.js",
+              "sha256": "760548672a7d9ec5f10bf8507466621bea5681ecf6269970a70ee408021e4f39"
+            }
+          ]
+        },
+        {
+          "rule": {
+            "req": "R306",
+            "k": 9
+          },
+          "what": "fixing.js: without a session the closed fixes come from the agent, not the kernel",
+          "files": [
+            "plugin/workflows/fixing.js"
+          ],
+          "checks": {
+            "C702": "red"
+          },
+          "result": "red",
+          "at": "2026-11-13T03:19:37Z",
+          "head": "23bb8aff423ad3ef4183d04ce60024f9a2ffa57d",
+          "tree": "c500200f9ad7a83169c95288d4c6d277ba50637f",
+          "contract": "46bd933c5aebb8c7d3ecc0e73b4cd0371a285fb63d4a012a3ba4b714bc4cb8c6",
+          "digests": [
+            {
+              "file": "plugin/workflows/fixing.js",
+              "sha256": "cbecbb2755323f1a79d3d1de488ee55c2fd9a6fd7f1835195c4b7e11045a72ee"
+            }
+          ]
+        },
+        {
+          "rule": {
+            "req": "R306",
+            "k": 8
+          },
+          "what": "building.js: no readable kernel answer taken as ended and recorded",
+          "files": [
+            "plugin/workflows/building.js"
+          ],
+          "checks": {
+            "C702": "red"
+          },
+          "result": "red",
+          "at": "2026-11-13T03:19:52Z",
+          "head": "23bb8aff423ad3ef4183d04ce60024f9a2ffa57d",
+          "tree": "c500200f9ad7a83169c95288d4c6d277ba50637f",
+          "contract": "46bd933c5aebb8c7d3ecc0e73b4cd0371a285fb63d4a012a3ba4b714bc4cb8c6",
+          "digests": [
+            {
+              "file": "plugin/workflows/building.js",
+              "sha256": "9d61d236403872602f66457959a8fa827108a08926453b64da706f0352a60029"
+            }
+          ]
+        },
+        {
+          "task": 4,
+          "none": "task 4 is the Lead's instructions and docs/workflows.md wording: no check reads it for R306 (C701 and C702 run the kernel and the stubbed workflows)",
+          "at": "2026-11-13T03:20:00Z"
+        }
       ]
     },
     {
@@ -84030,12 +84187,195 @@
         "plugin/hooks/programs.jq"
       ],
       "after": [],
-      "status": "planned",
+      "status": "done",
       "tasks": [
         "Show tests/guard-comments.bats red, then read comments in the guard quote masking (programs.jq mask_chunk and mask) in the same left-to-right scan that pairs quotes: outside quotes a # at the start of a word (line start, or after a blank or one of ; & | ( ) ) starts a comment to the end of the line, which is dropped before quotes pair, so its quote marks pair with nothing and a held line never waits on one; a # in a quoted string, inside a word, in ${#x} or $# stays text; heredoc bodies stay as strip_heredocs leaves them",
         "Keep the cost: a command without a # pays nothing new; run the hook bench guard cases before and after (VBW_BENCH_ONLY) and report both figures (R301); no eval, Bash 3.2",
         "Keep every guard test green unchanged: tests/guard-script-files.bats, tests/hook-answers.bats, tests/guard-interpreters.bats, tests/guard-protected.bats, tests/timed-guard-script.bats",
         "Give in the plan summary the text docs/guards.md needs in How a command is read: a comment is read as bash reads it, in a command and in a script file the guard reads (the main session makes that edit: docs/guards.md is the protected file of C652)"
+      ],
+      "red_runs": [
+        {
+          "at": "2026-11-13T03:08:23Z",
+          "head": "3995b24c7b8cc2ab953c70bdef0f6be520b4ad12",
+          "first": true,
+          "checks": {
+            "C704": "red"
+          }
+        }
+      ],
+      "mutations": [
+        {
+          "rule": {
+            "req": "R308",
+            "k": 1
+          },
+          "what": "comment only at text start",
+          "files": [
+            "plugin/hooks/programs.jq"
+          ],
+          "checks": {
+            "C704": "red"
+          },
+          "result": "red",
+          "at": "2026-11-13T03:17:11Z",
+          "head": "64b7362f80ff2dcff6d9116854cc8d8d2a7217f8",
+          "tree": "3268a7e11271276865616576c42af9ccb2ba08ca",
+          "contract": "e1271c633ab3a14a3c148bb7f5dab26f37d74122fb28f11c8ac98eedd48e667f",
+          "digests": [
+            {
+              "file": "plugin/hooks/programs.jq",
+              "sha256": "242745388063e5416d7056733688744df58de4b8d5b166442debf7c5344b534b"
+            }
+          ]
+        },
+        {
+          "rule": {
+            "req": "R308",
+            "k": 2
+          },
+          "what": "a # after an unpaired quote is dropped as a comment",
+          "files": [
+            "plugin/hooks/programs.jq"
+          ],
+          "checks": {
+            "C704": "green"
+          },
+          "result": "survivor",
+          "at": "2026-11-13T03:17:14Z",
+          "head": "64b7362f80ff2dcff6d9116854cc8d8d2a7217f8",
+          "tree": "3268a7e11271276865616576c42af9ccb2ba08ca",
+          "contract": "e1271c633ab3a14a3c148bb7f5dab26f37d74122fb28f11c8ac98eedd48e667f",
+          "digests": [
+            {
+              "file": "plugin/hooks/programs.jq",
+              "sha256": "642d8910092a341d29fb2b5148c824b223ce8b418e9b3133d4c69bcc8f59592b"
+            }
+          ]
+        },
+        {
+          "rule": {
+            "req": "R308",
+            "k": 3
+          },
+          "what": "a dropped comment is kept as text",
+          "files": [
+            "plugin/hooks/programs.jq"
+          ],
+          "checks": {
+            "C704": "red"
+          },
+          "result": "red",
+          "at": "2026-11-13T03:17:16Z",
+          "head": "64b7362f80ff2dcff6d9116854cc8d8d2a7217f8",
+          "tree": "3268a7e11271276865616576c42af9ccb2ba08ca",
+          "contract": "e1271c633ab3a14a3c148bb7f5dab26f37d74122fb28f11c8ac98eedd48e667f",
+          "digests": [
+            {
+              "file": "plugin/hooks/programs.jq",
+              "sha256": "748e79b03b142f358f07b74a96c21de05a5d7ad33af62299207360e023c821b0"
+            }
+          ]
+        },
+        {
+          "rule": {
+            "req": "R308",
+            "k": 4
+          },
+          "what": "a # anywhere starts a comment",
+          "files": [
+            "plugin/hooks/programs.jq"
+          ],
+          "checks": {
+            "C704": "red"
+          },
+          "result": "red",
+          "at": "2026-11-13T03:17:19Z",
+          "head": "64b7362f80ff2dcff6d9116854cc8d8d2a7217f8",
+          "tree": "3268a7e11271276865616576c42af9ccb2ba08ca",
+          "contract": "e1271c633ab3a14a3c148bb7f5dab26f37d74122fb28f11c8ac98eedd48e667f",
+          "digests": [
+            {
+              "file": "plugin/hooks/programs.jq",
+              "sha256": "b1490b3bf1148be7cc778a6607b47d224244f1f7ee6366cd191a35a7d1afdac9"
+            }
+          ]
+        },
+        {
+          "rule": {
+            "req": "R308",
+            "k": 2
+          },
+          "what": "a # after an unpaired quote is dropped as a comment",
+          "files": [
+            "plugin/hooks/programs.jq"
+          ],
+          "checks": {
+            "C704": "green"
+          },
+          "result": "survivor",
+          "at": "2026-11-13T03:18:06Z",
+          "head": "1e12c2289c11634ede1f915fca4af56183bdcee0",
+          "tree": "c29c64a217fcc845c8976a5871688294a08e69aa",
+          "contract": "ee322fd74507d90eac332912b08c9c4c73a87a25fc481d4b3af240282dbd0cab",
+          "digests": [
+            {
+              "file": "plugin/hooks/programs.jq",
+              "sha256": "642d8910092a341d29fb2b5148c824b223ce8b418e9b3133d4c69bcc8f59592b"
+            }
+          ]
+        },
+        {
+          "rule": {
+            "req": "R308",
+            "k": 2
+          },
+          "what": "a # after an unpaired quote is dropped as a comment (again)",
+          "files": [
+            "plugin/hooks/programs.jq"
+          ],
+          "checks": {
+            "C704": "green"
+          },
+          "result": "survivor",
+          "at": "2026-11-13T03:18:51Z",
+          "head": "10d5081c104a502efcd10e1186222115506f9cfc",
+          "tree": "160fd38491d75c26cbf623e5defa23a92ccd391b",
+          "contract": "46bd933c5aebb8c7d3ecc0e73b4cd0371a285fb63d4a012a3ba4b714bc4cb8c6",
+          "digests": [
+            {
+              "file": "plugin/hooks/programs.jq",
+              "sha256": "642d8910092a341d29fb2b5148c824b223ce8b418e9b3133d4c69bcc8f59592b"
+            }
+          ]
+        },
+        {
+          "rule": {
+            "req": "R308",
+            "k": 2
+          },
+          "what": "a text with a # pairs no double-quoted string",
+          "files": [
+            "plugin/hooks/programs.jq"
+          ],
+          "checks": {
+            "C704": "red"
+          },
+          "result": "red",
+          "at": "2026-11-13T03:19:54Z",
+          "head": "23bb8aff423ad3ef4183d04ce60024f9a2ffa57d",
+          "tree": "c500200f9ad7a83169c95288d4c6d277ba50637f",
+          "contract": "46bd933c5aebb8c7d3ecc0e73b4cd0371a285fb63d4a012a3ba4b714bc4cb8c6",
+          "digests": [
+            {
+              "file": "plugin/hooks/programs.jq",
+              "sha256": "354b6953d1dc4e182877bc8e147477bcf027cd8f69997468e6f918556e278a8c"
+            }
+          ],
+          "pending": [
+            "tests/guard-comments.bats"
+          ]
+        }
       ]
     }
   ],
@@ -105366,6 +105706,17 @@
         "ended": "2026-11-12T22:54:37Z",
         "cost": {
           "usd": 3.428703
+        }
+      },
+      {
+        "id": "build-20261113T030742Z",
+        "kind": "build",
+        "session": "0ee781c3-c5b6-4a6c-889f-04b89f1fba4a",
+        "milestone": "M58",
+        "started": "2026-11-13T03:07:42Z",
+        "ended": "2026-11-13T03:20:40Z",
+        "cost": {
+          "usd": 2.767808
         }
       }
     ],
