@@ -38,14 +38,15 @@ def mask_chunk($base):
   # quotes: a # at the start of a word (the start of the text, or after a blank or one of
   # ; & | ( ) ) runs to the end of the line and is dropped, so its quote marks pair with
   # nothing (R308). A # after a quote character no string has paired is inside the string
-  # that character opens, and stays text. A text without a # pays nothing new.
+  # that character opens: the line stays held (mask), and the held text is masked again
+  # from its start, where that string is paired whole. A text without a # pays nothing new.
   | (if contains("#") then "'[^']*'|\"(?:\\\\.|[^\"\\\\])*\"|(?<![^\\s;&|()])#[^\\n]*"
      else "'[^']*'|\"(?:\\\\.|[^\"\\\\])*\"" end) as $re
   | [match($re; "g")] as $ms
   | reduce range($ms | length) as $i ({text: "", pos: 0, q: []};
       $ms[$i] as $m | $s[.pos:$m.offset] as $pre
       | if ($m.string | startswith("#")) then
-          if ($pre | test("['\"]")) then . else .text += $pre | .pos = $m.offset + $m.length end
+          .text += $pre | .pos = $m.offset + $m.length
         else .text += $pre + "\u0001\($base + (.q | length))\u0002"
           | .q += [$m.string] | .pos = $m.offset + $m.length end)
   | .text += $s[.pos:] | {text, q};
