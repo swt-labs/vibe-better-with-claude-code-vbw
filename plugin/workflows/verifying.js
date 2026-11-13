@@ -56,9 +56,10 @@ if (given !== undefined && given !== null && (typeof given !== 'object' || Array
 
 const CLOSE_RESULT = {
   type: 'object',
-  required: ['ended', 'recorded', 'report', 'refused'],
+  required: ['ended', 'recorded', 'report', 'state', 'refused'],
   properties: {
     refused: REFUSED,
+    state: { type: 'string', description: 'What vbw run state printed, exactly as printed (one JSON line)' },
     ended: { type: 'boolean' },
     recorded: { type: 'boolean' },
     report: { type: 'string' },
@@ -91,18 +92,34 @@ const VERDICT = {
 // The run's own last step (R78, R81): confirm what the agents recorded, say plainly
 // what was not, and end the run. Only when the router passed args.session.
 const session = (args && args.session) || ''
+// R306 (T275, T288): the kernel's own answer, vbw run state as the closing agent returned it, never
+// the agent's word. Null when it is missing or is not the JSON {open, recorded}.
+const kernelState = done => {
+  try {
+    let s = JSON.parse(done && done.state)
+    if (typeof s === 'string') s = JSON.parse(s) // a model may hand the line back quoted once
+    return s && typeof s.open === 'boolean' && s.recorded && typeof s.recorded === 'object' && !Array.isArray(s.recorded) ? s : null
+  } catch (e) { return null }
+}
 const closeRun = async ids => {
   if (!session) return null
   const sh = c => `VBW_SESSION_ID=${session} ${c}`
   const confirm = sh(`vbw run confirm ${ids.join(' ')}`)
   const end = sh('vbw run end')
-  const done = await ask(`Close this VBW run (your own instructions, Close a run, allow it). Run ${confirm} (it exits 1 when some verdicts were not recorded), then, whatever it said, run ${end}. Answer ended (run end succeeded), recorded (confirm exited 0) and report (the lines for what was not recorded, else "all recorded; run ended"). Change nothing else.${voice}`,
+  const state = sh(`vbw run state ${ids.join(' ')}`)
+  const done = await ask(`Close this VBW run (your own instructions, Close a run, allow it). Run ${confirm} (it exits 1 when some verdicts were not recorded), then, whatever it said, run ${end}, then run ${state} and return its output exactly as printed in state. Answer ended (run end succeeded), recorded (confirm exited 0), state and report (the lines for what was not recorded, else "all recorded; run ended"). Change nothing else.${voice}`,
     Object.assign({ agentType: 'vbw:lead', label: 'close run', schema: CLOSE_RESULT }, { model: CLOSE_MODEL }, effortOf('lead', 'close')))
-  if (!done) log(`the closing agent stopped: run by hand: ${confirm} ; then ${end}`)
+  if (!done) { log(`the closing agent stopped: run by hand: ${confirm} ; then ${end}`); return done }
+  // The kernel decides: ended and recorded come from vbw run state, whatever the agent said.
+  const k = kernelState(done)
+  done.ended = Boolean(k) && k.open === false
+  done.recorded = Boolean(k) && ids.every(id => k.recorded[id] === true)
+  if (!k && done.report) log(done.report)
+  if (!k) log(`the closing agent gave no readable vbw run state, so nothing is taken as done: run by hand: ${confirm} ; then ${end} ; then vbw run state ${ids.join(' ')}`)
   else {
     if (!done.recorded || !done.ended) log(done.report)
     if (!done.recorded) log(`not everything was recorded: check by hand with ${confirm}`)
-    if (!done.ended) log(`the run did not end: run by hand: ${end}`)
+    if (!done.ended) log(`the run is still open: run by hand: ${end}`)
   }
   return done
 }

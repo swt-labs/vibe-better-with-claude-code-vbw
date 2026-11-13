@@ -12,7 +12,11 @@ RUN="$BATS_TEST_DIRNAME/helpers/run-workflow.js"
 WF="$PLUGIN_ROOT/workflows"
 DONE='{"status":"done","summary":"s","notes":[]}'
 PASS='{"verdict":"pass","checks":[]}'
-OK='{"ended":true,"recorded":true,"report":"all recorded; run ended"}'
+# R306: the closing agent also returns what vbw run state printed (state, as text); the workflow
+# decides ended, recorded and complete from it. state_of OPEN RECORDED: that text.
+state_of() { jq -nc --argjson o "$1" --argjson r "$2" '{open: $o, recorded: $r} | tojson'; }
+OK=$(jq -nc --arg s "$(state_of false '{"P1":true,"P1.1":true,"P1.2":true,"F1":true,"F2":true}')" \
+  '{ended: true, recorded: true, report: "all recorded; run ended", state: $s}')
 
 setup() { command -v node > /dev/null 2>&1 || skip "node is not installed"; }
 
@@ -94,4 +98,67 @@ wf() { node "$RUN" "$WF/$1.js" "$2" "$3"; }
     and .result.status == "blocked" and (.result.summary | contains("P1 has no plans recorded"))' || { echo "$output"; false; }
   run wf planning "$(jq -nc --argjson r "$reqs" '{requirements: $r, decided: true, session: "s"}')" "$(jq -nc --argjson s "$scope" --argjson k "$OK" '{"architect (scope)": $s, "lead": {applied: true, summary: "s", blockers: []}, "close run": $k}')"
   printf '%s' "$output" | jq -e '.result.status == "planned"' || { echo "$output"; false; }
+}
+
+# R306 (T275, T288): the building, fixing and verifying workflows take a run's end and a fix's
+# done from the kernel's answer (vbw run state, run by the closing agent and returned as it
+# printed it), never from the closing agent's own words.
+
+# claim STATE: a closing answer that claims everything ended and recorded and closed F1,
+# carrying STATE as the kernel's answer ("-": none).
+claim() {
+  jq -nc --arg s "$1" '{ended: true, recorded: true, report: "all recorded; run ended", fixdone: "ran", closed: ["F1"], open: [], approval: []}
+    + (if $s == "-" then {} else {state: $s} end)'
+}
+
+@test "R306: the closing agent is told to run vbw run state with the ids after vbw run end and to return its output as printed" {
+  local w
+  for w in building fixing verifying; do
+    run wf "$w" '{"plans":["P1.1"],"groups":[["F1"]],"phases":["P1"],"session":"s"}' '{}'
+    [ "$status" -eq 0 ] || { echo "$w: $output"; false; }
+    printf '%s' "$output" | jq -e '[.calls[] | select(.opts.label == "close run")][0]
+      | (.prompt | test("vbw run state (P1\\.1|F1|P1)")) and (.prompt | index("vbw run end") < index("vbw run state"))
+      and (.opts.schema.required | index("state") != null)' || { echo "$w: $output"; false; }
+  done
+}
+
+@test "R306: a closing agent that answers ended while the kernel says the run is open: each workflow reports not done and gives vbw run end" {
+  local open
+  open=$(state_of true '{"P1.1":true,"F1":true,"P1":true}')
+  run wf building '{"plans":["P1.1"],"session":"s1"}' "$(jq -nc --argjson d "$DONE" --argjson k "$(claim "$open")" '{"dev P1.1": $d, "close run": $k}')"
+  printf '%s' "$output" | jq -e '.result.complete == false and (.logs | any(contains("VBW_SESSION_ID=s1 vbw run end")))' || { echo "$output"; false; }
+  run wf fixing '{"groups":[["F1"]],"session":"s1"}' "$(jq -nc --argjson d "$DONE" --argjson k "$(claim "$open")" '{"F1": $d, "close run": $k}')"
+  printf '%s' "$output" | jq -e '.result.complete == false and (.logs | any(contains("VBW_SESSION_ID=s1 vbw run end")))' || { echo "$output"; false; }
+  run wf verifying '{"phases":["P1"],"session":"s1"}' "$(jq -nc --argjson d "$PASS" --argjson k "$(claim "$open")" '{"qa P1": $d, "close run": $k}')"
+  printf '%s' "$output" | jq -e '.result.complete == false and (.logs | any(contains("VBW_SESSION_ID=s1 vbw run end")))' || { echo "$output"; false; }
+}
+
+@test "R306: a fix the closing agent calls closed but the kernel has not recorded is reported not done, with vbw fix done for it" {
+  local st
+  st=$(state_of false '{"F1":false}')
+  run wf fixing '{"groups":[["F1"]],"session":"s1"}' "$(jq -nc --argjson d "$DONE" --argjson k "$(claim "$st")" '{"F1": $d, "close run": $k}')"
+  printf '%s' "$output" | jq -e '.result.complete == false and ((.result.fixdone.closed | index("F1")) == null)
+    and any(.result.fixdone.open[]; .fix == "F1") and (.logs | any(contains("F1") and contains("VBW_SESSION_ID=s1 vbw fix done F1")))' || { echo "$output"; false; }
+}
+
+@test "R306: a closing answer without the kernel's answer, or with one that is not its JSON, is never taken as done: not complete, with the commands to run by hand" {
+  local k w
+  for k in "$(claim -)" "$(claim 'vbw run end succeeded')"; do
+    run wf building '{"plans":["P1.1"],"session":"s1"}' "$(jq -nc --argjson d "$DONE" --argjson k "$k" '{"dev P1.1": $d, "close run": $k}')"
+    printf '%s' "$output" | jq -e '.result.complete == false and (.logs | any(contains("VBW_SESSION_ID=s1 vbw run end")))' || { echo "$output"; false; }
+    run wf fixing '{"groups":[["F1"]],"session":"s1"}' "$(jq -nc --argjson d "$DONE" --argjson k "$k" '{"F1": $d, "close run": $k}')"
+    printf '%s' "$output" | jq -e '.result.complete == false and ((.result.fixdone.closed | index("F1")) == null)
+      and (.logs | any(contains("VBW_SESSION_ID=s1 vbw fix done F1")))' || { echo "$output"; false; }
+    run wf verifying '{"phases":["P1"],"session":"s1"}' "$(jq -nc --argjson d "$PASS" --argjson k "$k" '{"qa P1": $d, "close run": $k}')"
+    printf '%s' "$output" | jq -e '.result.complete == false and (.logs | any(contains("VBW_SESSION_ID=s1 vbw run end")))' || { echo "$output"; false; }
+  done
+}
+
+@test "R306: without a session, the fix done agent's closed fixes are also taken from the kernel's answer" {
+  local st k
+  st=$(state_of false '{"F1":false}')
+  k=$(jq -nc --arg s "$st" '{fixdone: "ran", closed: ["F1"], open: [], report: "all closed", state: $s}')
+  run wf fixing '{"groups":[["F1"]]}' "$(jq -nc --argjson d "$DONE" --argjson k "$k" '{"F1": $d, "fix done": $k}')"
+  printf '%s' "$output" | jq -e '((.result.fixdone.closed | index("F1")) == null) and any(.result.fixdone.open[]; .fix == "F1")
+    and (.logs | any(contains("vbw fix done F1")))' || { echo "$output"; false; }
 }

@@ -229,9 +229,13 @@ apply_test_files_spec() {
     !skip { print }' "$spec" > "$APPLY_TF_SPEC"
   [ ! -s "$APPLY_TF_SPEC" ] || [ -z "$(tail -c 1 "$APPLY_TF_SPEC")" ] || printf '\n' >> "$APPLY_TF_SPEC"
   printf '%s' "$1" | jq -r 'def runline: if all(.[]; test("\\s") | not) and (.[0] | startswith("[") | not) then join(" ") else tojson end;
+    def joinline: if test("^\\s|\\s$|^[\"'"'"']") then tojson else . end;
+    def extras($p): (if has("filter") then "\($p)- filter: \(.filter | runline)" else empty end),
+      (if has("rest") then "\($p)- rest: \(.rest | runline)" else empty end),
+      (if has("join") then "\($p)- join: \(.join | joinline)" else empty end);
     "\n## Test files\n",
-    (if type == "object" then (if .dir == null then empty else "- dir: \(.dir)" end), "- run: \(.run | runline)", "- files: \(.files | join(" "))"
-     else .[] | "- \(.name):", (if .dir == null then empty else "  - dir: \(.dir)" end), "  - run: \(.run | runline)", "  - files: \(.files | join(" "))" end)' >> "$APPLY_TF_SPEC"
+    (if type == "object" then (if .dir == null then empty else "- dir: \(.dir)" end), "- run: \(.run | runline)", "- files: \(.files | join(" "))", extras("")
+     else .[] | "- \(.name):", (if .dir == null then empty else "  - dir: \(.dir)" end), "  - run: \(.run | runline)", "  - files: \(.files | join(" "))", extras("  ") end)' >> "$APPLY_TF_SPEC"
   parsed=$(jq -Rs -f "$VBW_LIB/spec.jq" < "$APPLY_TF_SPEC") || apply_internal "cannot read the test-file form back"
   printf '%s' "$parsed" | jq -e '.errors == []' > /dev/null \
     || apply_refuse "test_files: $(printf '%s' "$parsed" | jq -r '.errors[0] | sub("^line [0-9]+: "; "")')"
@@ -341,9 +345,14 @@ cmd_apply() {
     printf '%s' "$form" | jq -e 'def form: (.run | type == "array" and length > 0 and all(.[]; type == "string" and length > 0)
              and ([.[] | [match("\\{file\\}"; "g")] | length] | add) == 1)
         and (.files | type == "array" and length > 0 and all(.[]; type == "string" and length > 0 and (test("\\s") | not)))
-        and ((.dir // "x") | type == "string" and length > 0 and (test("\\s") | not));
-      if type == "object" then (keys - ["dir"]) == ["files", "run"] and form
-      else type == "array" and length > 0 and all(.[]; type == "object" and (keys - ["dir"]) == ["files", "name", "run"]
+        and ((.dir // "x") | type == "string" and length > 0 and (test("\\s") | not))
+        and (has("filter") or ((has("rest") or has("join")) | not))
+        and ((has("filter") | not) or (.filter | type == "array" and length > 0 and all(.[]; type == "string" and length > 0)))
+        and ((has("rest") | not) or (.rest | type == "array" and length > 0 and all(.[]; type == "string" and length > 0)
+             and ([.[] | [match("\\{file\\}"; "g")] | length] | add) == 1 and ([.[] | [match("\\{filters\\}"; "g")] | length] | add) == 1))
+        and ((has("join") | not) or (.join | type == "string" and length > 0));
+      if type == "object" then (keys - ["dir", "filter", "join", "rest"]) == ["files", "run"] and form
+      else type == "array" and length > 0 and all(.[]; type == "object" and (keys - ["dir", "filter", "join", "rest"]) == ["files", "name", "run"]
         and (.name | type == "string" and test("^[A-Za-z0-9_-]+$") and . != "run" and . != "files" and . != "dir") and form) end' > /dev/null 2>&1 \
       || apply_refuse "test_files must be {run, files, dir?}, or an array of named forms {name, run, files, dir?}: run an argv naming {file} exactly once, files a non-empty array of git pathspecs without spaces, dir a folder, name letters, digits, _ or -"
     # Judged before anything is written: the form goes into the spec after the record.

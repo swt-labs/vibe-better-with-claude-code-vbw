@@ -272,6 +272,13 @@ cmd_fix() {
     fi
   fi
   slots_release vbw:plan
+  # What is about to run and why, before the first unit starts: vbw prove's opening
+  # line, from the same function, over this round's plan (R305).
+  if [ ${#ids[@]} -gt 0 ] && [ -z "$wait_files" ]; then
+    # shellcheck disable=SC2034 # read by prove_plan_object
+    TODO_CHECKS=(${todo[@]+"${todo[@]}"}) REUSE_CHECKS=$rmap WHY_CHECKS=$wmap REUSE_COMMANDS='{}' WHY_COMMANDS='{}' CHECK_HELD=''
+    prove_plan_line "$record" "$causes"
+  fi
   if [ ${#todo[@]} -gt 0 ] || [ ${#TF_TODO[@]} -gt 0 ]; then
     checks_approved "$record"
     at=$(vbw_now)

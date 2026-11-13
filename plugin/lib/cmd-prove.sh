@@ -206,36 +206,6 @@ prove_commands() {
   printf '%s' "$res" | jq -c --slurpfile s <(printf '%s' "$skipped") 'with_entries(.key |= ltrimstr("cmd-")) + $s[0]'
 }
 
-# prove_plan_object RECORD CAUSES: the plan (TODO_*, REUSE_*, WHY_*, TF_*) and the
-# proof's causes (lines of text) as an evidence-shaped object, {checks, commands,
-# test_files, causes}, for the report's own counting and ranking (prooftime.sh):
-# a unit to run carries its reason, a reused one is marked reused, a held check
-# waits. Plan data reaches jq by file.
-prove_plan_object() {
-  jq -n --slurpfile tc <(printf '%s\0' ${TODO_CHECKS[@]+"${TODO_CHECKS[@]}"} | jq -Rsc 'split("\u0000") | map(select(length > 0))') \
-    --slurpfile held <(printf '%s\n' "${CHECK_HELD:-}" | jq -Rsc 'split("\n") | map(select(length > 0))') \
-    --slurpfile cm <(proofsteps_command_names "$1" "$TODO_COMMANDS" | proofsteps_names) \
-    --slurpfile tf <(printf '%s\0' ${TF_TODO[@]+"${TF_TODO[@]}"} | jq -Rsc 'split("\u0000") | map(select(length > 0))') \
-    --slurpfile wc <(printf '%s' "$WHY_CHECKS") --slurpfile wm <(printf '%s' "$WHY_COMMANDS") --slurpfile wf <(printf '%s' "$TF_WHY") \
-    --slurpfile rc <(printf '%s' "$REUSE_CHECKS") --slurpfile rm <(printf '%s' "$REUSE_COMMANDS") --slurpfile rf <(printf '%s' "$TF_REUSE") \
-    --slurpfile cz <(printf '%s' "$2" | jq -Rsc 'split("\n") | map(select(length > 0))') '
-    def todo($names; $why; $skip): $names | map({key: ., value: (if $skip | index(.) then {status: "waiting"} else {status: "pass"} + (if $why[.] then {why: $why[.]} else {} end) end)}) | from_entries;
-    def reused($m): $m | map_values({status: "pass", reused: true});
-    {checks: (todo($tc[0]; $wc[0]; $held[0]) + reused($rc[0])),
-     commands: (todo($cm[0]; $wm[0]; []) + reused($rm[0])),
-     test_files: (todo($tf[0]; $wf[0]; []) + reused($rf[0])),
-     causes: $cz[0]}'
-}
-
-# prove_plan_line RECORD CAUSES: the opening line, in the form of the closing one
-# in the future tense, "run again: N of M units; top reasons: ...": the report
-# line of prooftime_lines over the plan, so both lines count and rank alike.
-prove_plan_line() {
-  local line
-  line=$(prove_plan_object "$@" | prooftime_lines | tail -n 1) || return 0
-  vbw_out '%s\n' "run${line#ran}"
-}
-
 # prove_unit_names RECORD: the names of the units this proof runs (check:ID,
 # file:PATH, command:NAME), as a JSON array: what prove_units counts.
 prove_unit_names() {

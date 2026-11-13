@@ -99,3 +99,47 @@ edit() { jq "$1" .vbw/record.json > "$TEST_ROOT/e.json" && cp "$TEST_ROOT/e.json
   [ "$(cksum < .vbw/record.json)" = "$before" ]
   [ "$(git rev-list --count HEAD)" = "$commits" ]
 }
+
+# R306 (T275, T288): vbw run state ID... is the kernel's own answer a workflow takes after its
+# close step: one JSON line {open, recorded}, open true while a run lease is open, recorded an
+# object of each named plan, fix or phase to whether its result is recorded (as vbw run confirm
+# judges: a plan done or blocked, a fix no longer open, a phase with a QA verdict from the
+# latest QA run, also once that run has ended). It refuses nothing a confirm would and writes nothing.
+
+# state IDS...: the parsed vbw run state answer, compact.
+state() { "$VBW" run state "$@" < /dev/null | jq -c .; }
+
+@test "R306: vbw run state says a build run is open and which plans are recorded, then that the run ended" {
+  "$VBW" run start build P1.1 P1.2 > /dev/null
+  edit '(.plans[] | select(.id == "P1.1")).status = "done"'
+  [ "$(state P1.1 P1.2)" = '{"open":true,"recorded":{"P1.1":true,"P1.2":false}}' ] || { state P1.1 P1.2; false; }
+  "$VBW" run end > /dev/null
+  [ "$(state P1.1 P1.2 | jq -c '.open')" = false ] || { state P1.1 P1.2; false; }
+}
+
+@test "R306: vbw run state names a fix still open as not recorded, after its run ended too" {
+  "$VBW" run start fix F1 F2 > /dev/null
+  edit '(.fixes[] | select(.id == "F1")).status = "fixed"'
+  "$VBW" run end > /dev/null
+  [ "$(state F1 F2)" = '{"open":false,"recorded":{"F1":true,"F2":false}}' ] || { state F1 F2; false; }
+}
+
+@test "R306: vbw run state counts a phase's QA verdict from the QA run that just ended, not an older one" {
+  "$VBW" run start qa > /dev/null
+  edit '(.phases[] | select(.id == "P1")).qa = {result: "pass", tier: "standard", tree: ("a" * 40), at: (now | todate)}
+    | (.phases[] | select(.id == "P2")).qa = {result: "pass", tier: "standard", tree: ("a" * 40), at: "2020-01-01T00:00:00Z"}'
+  "$VBW" run end > /dev/null
+  [ "$(state P1 P2)" = '{"open":false,"recorded":{"P1":true,"P2":false}}' ] || { state P1 P2; false; }
+}
+
+@test "R306: vbw run state writes nothing and refuses an unknown id" {
+  "$VBW" run start build P1.1 > /dev/null
+  local before commits
+  before=$(cksum < .vbw/record.json)
+  commits=$(git rev-list --count HEAD)
+  vbw_run run state P1.1
+  [ "$status" -eq 0 ] || { echo "$output"; false; }
+  [ "$(cksum < .vbw/record.json)" = "$before" ] && [ "$(git rev-list --count HEAD)" = "$commits" ]
+  vbw_run run state P9.9
+  [ "$status" -ne 0 ] && [[ "$output" == *"P9.9"* ]] || { echo "$output"; false; }
+}

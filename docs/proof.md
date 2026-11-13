@@ -734,6 +734,38 @@ section in `.vbw/spec.md`, beside `## Commands`:
 puts each test file's path there. `files` lists the git pathspecs of the test
 files, one or more per line.
 
+### Tests that checks run with a filter
+
+An approved check may run a test file with a filter, such as
+`bats --filter R12 tests/cart.bats`. A file named only by filtered checks would
+then never run its other tests in the proof. Three more lines give those tests
+their own run:
+
+```markdown
+## Test files
+
+- run: bats {file}
+- files: tests/*.bats
+- filter: --filter -f
+- rest: bats --allow-empty-suite --negative-filter {filters} {file}
+- join: |
+```
+
+- `filter` names the options a check uses to filter. Here `--filter` and `-f`.
+- `rest` is the command that runs everything the checks' filters leave out. It
+  names `{file}` and `{filters}` once each, and needs a `filter` line.
+- `join` is what joins the checks' filters into `{filters}` (`|` when absent).
+
+A file named only by filtered checks runs as a unit with the `rest` command, so
+its other tests run and no filtered test runs twice. A file that an approved
+check runs whole stays out of these units. The `rest` command must pass when
+nothing is left to run: `bats --allow-empty-suite` does. With a `filter` line
+and no `rest` line, the file runs whole as a unit, and the proof says so once,
+naming the `rest` line. Without a `filter` line, a file a check names is never a
+unit of its own. A failing test in a `rest` run fails the proof and names the
+file. These units are reused like every other unit, and run again when a filter
+changes.
+
 A project with several test runners, such as a monorepo with one per
 subproject, names one form per runner, with the lines nested under the name:
 
@@ -987,6 +1019,9 @@ and panel benchmarks, and the test files named `tests/timed-*.bats`), so a busy
 machine never fails or delays a proof. They run once per release, in
 `bash tools/test.sh --release`, which CI runs on every pull request. `bash tools/test.sh`
 without `--release` runs the same lint and tests the proof runs, without them.
+A failed bench never stops the test files: the release run (and CI's first shard)
+runs the lint and every test file anyway, then fails, its last lines naming each
+failed bench (`failed: hook bench`, `failed: panel bench`).
 
 ### Full and partial proofs: `vbw prove --full`
 
@@ -1647,6 +1682,7 @@ still valid for its read list is not run again. It prints one line per check
 and per test file, reused or run, and then both counts:
 
 ```text
+run again: 2 of 4 units; top reasons: src/pay.txt changed (1), last result failed (1)
 C1 pass 2s ran: src/pay.txt changed
 C2 unchanged since its pass (2026-10-04T20:30:00Z)
 tests/t_a.sh pass 3s ran: last result failed
@@ -1654,6 +1690,15 @@ tests/t_b.sh unchanged since its pass (2026-10-04T20:30:00Z)
 checks: 1 ran, 1 reused
 test files: 1 ran, 1 reused
 ```
+
+Before its first unit runs, `vbw fix done` prints the same opening line as
+`vbw prove` (see "Before the first unit runs" above),
+from the same function and over this round's plan, so a long round says how many
+units it will run and why before anyone waits for it. A unit runs when its last
+result failed or its recorded read list names a file the fix changed; every other
+unit is reused and counted in the line, so a change no unit read reruns only the
+failed test file. It is the first line of the output, as in these examples; when a
+cause makes it run every unit, the cause line comes before it.
 
 Each check and test file that ran gets a line in the proof summary's wording,
 with the reason it ran; a reused one keeps the time of the pass it reuses.
@@ -1667,6 +1712,7 @@ its own:
 
 ```text
 every candidate check runs: this clone has no earlier recorded run
+run again: 3 of 3 units; top reasons: this clone has no earlier recorded run (3)
 C1 pass 2s
 C2 pass 1s
 tests/t_a.sh pass 3s

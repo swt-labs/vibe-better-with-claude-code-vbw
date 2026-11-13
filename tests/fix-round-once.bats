@@ -18,8 +18,10 @@ DEV="$PLUGIN_ROOT/agents/dev.md"
 LEAD="$PLUGIN_ROOT/agents/lead.md"
 DONE='{"status":"done","summary":"s","notes":[]}'
 BLOCKED='{"status":"blocked","summary":"needs a decision","notes":[]}'
-OK='{"fixdone":"ran","closed":["F1","F3","F2","F4"],"open":[],"ended":true,"recorded":true,"report":"all recorded; run ended"}'
-ALONE='{"fixdone":"ran","closed":["F1","F3","F2","F4"],"open":[],"report":"all closed"}'
+# R306: the closing (or fix done) agent also returns what vbw run state printed, as text.
+ALL='{\"open\":false,\"recorded\":{\"F1\":true,\"F2\":true,\"F3\":true,\"F4\":true}}'
+OK='{"fixdone":"ran","closed":["F1","F3","F2","F4"],"open":[],"ended":true,"recorded":true,"report":"all recorded; run ended","state":"'"$ALL"'"}'
+ALONE='{"fixdone":"ran","closed":["F1","F3","F2","F4"],"open":[],"report":"all closed","state":"'"$ALL"'"}'
 
 setup() { command -v node > /dev/null 2>&1 || skip "node is not installed"; }
 
@@ -118,7 +120,7 @@ all_done() { jq -nc --argjson d "$DONE" --argjson k "${1:-$OK}" --argjson a "${2
 }
 
 @test "R182: the result says which fixes closed and which stayed open, each open one with its reason" {
-  local k='{"fixdone":"ran","closed":["F1","F3","F4"],"open":[{"fix":"F2","reason":"F2 broke finished work: C3 fail"}],"ended":true,"recorded":false,"report":"F2: not recorded (open)"}'
+  local k='{"fixdone":"ran","closed":["F1","F3","F4"],"open":[{"fix":"F2","reason":"F2 broke finished work: C3 fail"}],"ended":true,"recorded":false,"report":"F2: not recorded (open)","state":"{\"open\":false,\"recorded\":{\"F1\":true,\"F2\":false,\"F3\":true,\"F4\":true}}"}'
   run three_groups "$(all_done "$k")" s1
   [ "$status" -eq 0 ] || { echo "$output"; false; }
   printf '%s' "$output" | jq -e '(.result.fixdone.closed | sort) == ["F1","F3","F4"]
@@ -179,7 +181,7 @@ all_done() { jq -nc --argjson d "$DONE" --argjson k "${1:-$OK}" --argjson a "${2
 }
 
 @test "R182: without a session, complete follows the plan: an open fix and a blocked Dev give the same value, true" {
-  local k='{"fixdone":"ran","closed":["F1"],"open":[{"fix":"F2","reason":"uncommitted changes"}],"report":"F2 open"}'
+  local k='{"fixdone":"ran","closed":["F1"],"open":[{"fix":"F2","reason":"uncommitted changes"}],"report":"F2 open","state":"{\"open\":false,\"recorded\":{\"F1\":true,\"F2\":false}}"}'
   run wf '{"groups":[["F1"],["F2"]]}' "$(jq -nc --argjson d "$DONE" --argjson k "$k" '{"F1": $d, "F2": $d, "fix done": $k}')"
   [ "$status" -eq 0 ] || { echo "$output"; false; }
   printf '%s' "$output" | jq -e '.result.fixdone.open == [{fix: "F2", reason: "uncommitted changes"}] and .result.complete == true' > /dev/null || { echo "$output"; false; }

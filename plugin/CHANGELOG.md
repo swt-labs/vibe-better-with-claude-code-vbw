@@ -1,5 +1,75 @@
 # Changelog
 
+## [2.1.31] - 2026-11-13
+
+Every test now runs in some proof, `vbw fix done` is never silent, and the
+workflows take a run's end from the kernel instead of an agent's word. The
+Bash guard reads comments as bash does, and its speed bench now measures the
+whole guard. Thank you @halindrome: your reading of the red bench runs in #754
+started the bench and guard work in this release.
+
+### Changed
+
+- **Every test runs in some proof.** A test file whose approved checks run
+  only some of its tests (with a filter) now also runs its other tests, as one
+  more unit of your project's test files, reused like every other unit. Before,
+  those tests ran only on CI. Your spec's `## Test files` section takes three
+  new lines for this: `filter`, `rest` and `join` (see docs/proof.md).
+- **`vbw fix done` is never silent.** It reruns only the checks its changes
+  can reach and reuses the rest, as `vbw prove` does. It starts with the same
+  opening line (how many units run again, and why) and prints the same
+  progress lines, so a long fix check never looks stuck.
+- **A run's end comes from the kernel.** A new command, `vbw run state ID...`,
+  says whether a run is still open and which fixes are not recorded. The building,
+  fixing and verifying workflows read it after their close step and report
+  anything not done with the command that finishes it, instead of trusting an
+  agent's report.
+- **The road's Milestone end is never before the current step's end.**
+- **The Bash guard reads comments as bash does.** A quote mark inside a
+  comment (`# the bench's note`) no longer pairs with a quote further on, so a
+  write after it is always judged, and a script is never refused for a write
+  it does not make.
+- **The guard's speed bench measures the whole guard.** Its compile split
+  times the Bash guard as a hook call runs it, `programs.jq` included, and
+  never times a program that fails to compile. On CI, a failed bench no longer
+  stops the rest of its shard's tests: the shard runs everything, then fails
+  naming the bench.
+
+### Faster
+
+- **The Bash guard reads heredoc programs only when the command names an
+  interpreter** (`python`, `node`, `bash` and the like). A large command
+  without one is cheaper to judge (the bench's `guard (big)` case: 22.6 to
+  19.6 ms on an M1 Max).
+
+In #754 we said bringing the Bash guard back under its budget would be the
+first item of 2.1.31. This release does part of it: the bench now measures
+the guard correctly, and one cost is gone. Most of a guard call (about 16.5 of
+19 to 20 ms) is jq compiling the guard's program. Cutting that needs a
+different design, which the next milestone researches first. Until then, the
+bench's Bash guard cases can still read over their budget on GitHub's macOS
+runners.
+
+### For you to do
+
+- Update, then restart Claude Code.
+- The record schema is 16 when your spec's `## Test files` section uses a
+  `filter`, `rest` or `join` line; without them it stays where it was. A VBW
+  older than 2.1.31 asks to be updated before it reads a schema-16 record.
+
+### Known issue
+
+- **Claude Code 2.1.323's sandbox refuses VBW's clean copy.** With the
+  sandbox on, `vbw mutate PLAN --run` stops with "cannot make a clean copy of
+  the committed code: ... could not create directory of
+  '.git/worktrees/tree': Operation not permitted", and the Dev may stop the
+  plan as blocked. VBW 2.1.30 meets it too; Claude Code 2.1.322 did not
+  refuse it. The next release makes the copy without writing under `.git`.
+  Until then, let that command run outside the sandbox when Claude Code asks,
+  or turn the sandbox off while a build runs.
+
+Sizes, for information (file bytes): kernel 963 KB (`plugin/bin/vbw` and `plugin/lib`), mods 364 KB (hooks, panel and status line), workflows 82 KB, prompts 119 KB (agents and skills), packs 5 KB.
+
 ## [2.1.30] - 2026-11-11
 
 Quick wins from a fourth field report by the lead of a large Rust project,

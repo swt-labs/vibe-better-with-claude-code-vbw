@@ -152,7 +152,7 @@ two_done() { jq -nc --argjson d "$DONE" --argjson k "$OK" '{"F1": $d, "F2": $d, 
   [ -n "$c" ] || { echo "$output"; false; }
   printf '%s\n' "$output" | sed -n "$((c + 1))p" | grep -qE '^test files: [0-9]+ ran, [0-9]+ reused$' || { echo "$output"; false; }
   local before units
-  before=$(printf '%s\n' "$output" | sed -n "1,$((c - 1))p" | grep -vE '^every candidate check runs: ')
+  before=$(printf '%s\n' "$output" | sed -n "1,$((c - 1))p" | grep -vE '^(every candidate check runs|run again): ')
   units=$(printf '%s\n' "$before" | grep -cE '^C[0-9]+ (pass|fail|timeout|unchanged since its pass)' || true)
   [ "$units" -eq 3 ] && [ "$(printf '%s\n' "$before" | grep -c .)" -eq 3 ] || { echo "$output"; false; }
   printf '%s\n' "$output" | grep -qE '^C1 pass ' && printf '%s\n' "$output" | grep -qE '^C3 pass ' || { echo "$output"; false; }

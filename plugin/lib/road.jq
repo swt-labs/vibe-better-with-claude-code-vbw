@@ -100,7 +100,12 @@ $rec[0] as $r
     | (if $note == null then null else
         {kind: ($note.kind), ids: ($note.ids // []),
          seconds: (if $note.end == null then null else ((($note.end | fromdateiso8601) - $t) | if . < 0 then 0 else . end) end),
-         typical: (($note.end_typical // $note.end) | if . == null then null else ((fromdateiso8601 - $t) | if . < 0 then 0 else . end) end),
+         # The end the step's own words show (step_words), so the milestone never ends before it (R307).
+         typical: ((if $note.end == null then null
+                    elif ($note.late == true or $note.rough != true or $note.end_low == null or $note.end_high == null) then $note.end
+                    else ([[($note.end_typical // $note.end | fromdateiso8601), ([($note.end_low | fromdateiso8601), ($note.end | fromdateiso8601)] | min)] | max,
+                           ([($note.end_high | fromdateiso8601), ($note.end | fromdateiso8601)] | max)] | min | todateiso8601) end)
+                   | if . == null then null else ((fromdateiso8601 - $t) | if . < 0 then 0 else . end) end),
          ends: ([($note.end_low // $note.end), ($note.end_high // $note.end)] | map(if . == null then null else ((fromdateiso8601 - $t) | if . < 0 then 0 else . end) end)),
          rough: ($note.rough == true and $note.end != null)} end) as $live
     # What is left of the live step, as {seconds, low, high, rough}: its ends never cross the end it now has.

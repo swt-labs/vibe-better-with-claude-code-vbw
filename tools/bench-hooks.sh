@@ -6,7 +6,7 @@
 # RUNS calls. VBW's own cost is the hook's CPU time minus that of the same
 # `sh -c jq` with an empty program: shell and jq startup are the platform's
 # (about 8 ms of CPU on an idle Mac), paid by any hook, and not ours to remove.
-# The budget (R151): VBW's own CPU per call is at most VBW_HOOK_BUDGET_MS (default 20),
+# The budget (R151): VBW's own CPU per call is at most VBW_HOOK_BUDGET_MS (default 25),
 # judged for each guard alone, however it compares with the startup.
 # - CPU time, not wall-clock time: waiting for a busy machine is not the hook's
 #   work.
@@ -95,18 +95,19 @@ SIZES="51 500 2000"
 # The reference workload's nominal cost (R222): CPU ms per call of the workload in the
 # reference block below, on the two nominal machines, measured NOMINAL_WHEN. This is a
 # debt: measure it again whenever the workload or the nominal machines change.
-# October 2026. The workload is one jq call of the guard's shape (--rawfile glance, --arg root,
-# --arg dir, --arg open, -f PROGRAM - DOCUMENT END) over a program of 41188 bytes and a
+# November 2026. The workload is one jq call of the guard's shape (--rawfile glance, --arg root,
+# --arg dir, --arg open, -f PROGRAM - DOCUMENT END) over a program of 45295 bytes and a
 # document of 86107 bytes, both written by this script; its cost is the call's CPU minus the
 # sh -c jq startup beside it, as a guard case's own cost is (R233). The program calls four of
 # every five of its definitions, as the guard calls all of its own (R243: jq drops an uncalled
-# definition before code generation). M1 Max Mac: 23.6 to 23.9 ms over
-# five runs of this script on 2026-11-04. GitHub's macOS runner: not yet measured in this form;
+# definition before code generation). M1 Max Mac: 25.4 to 25.6 ms over
+# five runs of this script on 2026-11-13. GitHub's macOS runner: not yet measured in this form;
 # the latest known is the earlier figure of 16.7 ms with the startup counted, in the bench
 # shard 1 log of pull request #740 (2026-10-31), to be replaced from the shard 1 log of the next pull request.
-# ubuntu-latest 28.9 ms (jq 1.7.1, ubuntu:24.04 in the container of tools/test-linux.sh on the Mac, 2026-11-04).
-# Ubuntu 26.04 26.8 ms (jq 1.8.1, the same container with ubuntu:26.04, 2026-11-04). The largest is pinned,
-# so the machines sit at a ratio of 1 or less.
+# ubuntu-latest 27.9 ms (jq 1.7.1, ubuntu:24.04 in the container of tools/test-linux.sh on the Mac, 2026-11-13).
+# Ubuntu 26.04 28.6 ms (jq 1.8.1, the same container with ubuntu:26.04, 2026-11-13). The pin stays at the
+# largest measure of this form, 28.9 ms (ubuntu-latest on 2026-11-04, with 150 definitions): every
+# machine measures the 165-definition program at or under it, so the machines sit at a ratio of 1 or less.
 NOMINAL_MS=28.9
 NOMINAL_WHEN="November 2026"
 
@@ -182,7 +183,7 @@ hooks_json="$PLUGIN/hooks/hooks.json"
 export CLAUDE_PLUGIN_ROOT="$PLUGIN" CLAUDE_PROJECT_DIR="$work"
 
 # reference_files DIR (R231): the reference program and document, written from the bench's
-# own text into DIR: reference.jq (about 41 KB, the size of the shipped Bash guard and the programs.jq it includes, built
+# own text into DIR: reference.jq (about 45 KB, the size of the shipped Bash guard and the programs.jq it includes, built
 # of fixed helper definitions and a body that reads $glance, $root, $dir, $open and its
 # inputs the way a guard does) and reference.json (a fixed object of about 60 KB). The
 # content is deterministic and read from no shipped file and no project file. Four of every
@@ -195,7 +196,7 @@ export CLAUDE_PLUGIN_ROOT="$PLUGIN" CLAUDE_PROJECT_DIR="$work"
 reference_files() {
   mkdir -p "$1"
   awk 'BEGIN {
-    for (i = 1; i <= 150; i++)
+    for (i = 1; i <= 165; i++)
       printf "def h%d($v; $w): if ($v | type) == \"object\" then ($v | keys | map(select(startswith(\"k%d\") or test(\"^c[0-9]+$\"))) | length) + $w elif ($v | type) == \"array\" then ($v | map(tostring | length) | add // 0) + %d else ($v | tostring | ascii_downcase | length) end;\n", i, i % 7, i
     print "($glance | fromjson) as $g"
     print "| ([inputs] | .[-2:]) as $in"
@@ -205,7 +206,7 @@ reference_files() {
     print "| [$checks[] | select((.run | join(\" \") | test(\"^sh \")) and (.files | length) > 0)] as $kept"
     print "| (($root | length) + ($dir | length) + ($open | tonumber)) as $n"
     printf "| [$doc"
-    for (i = 1; i <= 150; i++) if (i % 5 != 0) printf ", h%d($doc; $n)", i
+    for (i = 1; i <= 165; i++) if (i % 5 != 0) printf ", h%d($doc; $n)", i
     print "] as $parts"
     print "| {schema: ($g.schema // 0), kept: ($kept | length), end: ($end | length), parts: ($parts | map(numbers) | add)}"
   }' > "$1/reference.jq"
@@ -382,6 +383,35 @@ jq -nc --arg d "$work" '{hook_event_name: "PostToolUse", tool_name: "AskUserQues
   tool_input: {questions: [{question: "Which database should the app use?", options: [{label: "SQLite"}, {label: "Postgres"}]}]},
   tool_response: {answers: {"Which database should the app use?": "SQLite"}}}' > "$work/answer.json"
 
+# The Bash guard's own files (R302): guard-bash.jq and every file its include lines name, read from
+# those lines (a file a later include adds is picked up), so no row leaves one out. guard_rels holds
+# each include's path relative to hooks/ ("../lib/holder.jq"), guard_files the absolute paths,
+# guard_label the file names a row's label carries.
+guard_rels=()
+guard_files=()
+guard_label="guard-bash.jq"
+while IFS= read -r rel; do
+  guard_rels+=("$rel")
+  guard_files+=("$PLUGIN/hooks/$rel")
+  guard_label="$guard_label ${rel##*/}"
+done < <(sed -n -E 's/^include "([^"]+)" *\{search: *"([^"]+)"\};.*/\2\/\1.jq/p' "$PLUGIN/hooks/guard-bash.jq")
+if [ "$(grep -c '^include ' "$PLUGIN/hooks/guard-bash.jq")" -ne "${#guard_rels[@]}" ]; then
+  echo "bench: an include line of guard-bash.jq is not of the form: include \"NAME\" {search: \"DIR\"};" >&2
+  exit 1
+fi
+
+# compile_check ROW PROGRAM: compiles PROGRAM once with the hook's own flags before anything is
+# timed (R302). jq exits 3 on a compile error: the bench then names ROW and jq's error.
+compile_failed=0
+compile_check() {
+  local row="$1" prog="$2" err code=0
+  err=$(jq -nc --rawfile glance /dev/null --arg root "$work" --arg dir "$work" --arg open 0 -f "$prog" - /dev/null /dev/null 2>&1 < /dev/null >/dev/null) || code=$?
+  if [ "$code" -eq 3 ]; then
+    printf 'bench: %s does not compile (%s), so it is not timed:\n%s\n' "$row" "$prog" "$err" >&2
+    compile_failed=1
+  fi
+}
+
 # VBW_BENCH_STEPS=1 (R233): instead of judging cases, print one table of the CPU ms per call
 # (cpu_pair's method, RUNS runs) of the steps one Bash guard call is made of, for the git,
 # npm, big and interp inputs: sh startup, jq startup, the program compiled alone (the
@@ -393,13 +423,16 @@ if [ "${VBW_BENCH_STEPS:-}" = 1 ]; then
   steps_compile="jq -nc --rawfile glance /dev/null --arg root \"$work\" --arg dir \"$work\" --arg open 0 -f \"$PLUGIN/hooks/guard-bash.jq\" - /dev/null \"$PLUGIN/hooks/end.json\""
   steps_ref="jq -nc --rawfile glance \"$work/glance.json\" --arg root \"$work\" --arg dir \"$work\" --arg open 0 -f \"$work/reference/reference.jq\" - \"$work/reference/reference.json\" \"$work/end.json\""
   steps_refcompile="jq -nc --rawfile glance /dev/null --arg root \"$work\" --arg dir \"$work\" --arg open 0 -f \"$work/reference/reference.jq\" - /dev/null /dev/null"
+  compile_check "program compile ($guard_label)" "$PLUGIN/hooks/guard-bash.jq"
+  compile_check "reference compile" "$work/reference/reference.jq"
+  [ "$compile_failed" -eq 0 ] || exit 1
   printf 'steps: CPU ms per call over %s runs, net of the sh and jq startup; the quotient in parentheses is to the reference run\n' "$RUNS"
   # The gross rows are the startups. Each net row is a pair's difference to its own startup
   # (the shell prelude to sh alone, the others to sh and jq together), printed as 'N.N (Q.QQ)'
   # with Q the quotient to the reference run of the same column (1.00 for the reference run).
   # A difference below zero is measurement noise and prints as 0.0.
   net() { perl -e 'my $d = $ARGV[1] - $ARGV[0]; printf "%.1f", $d > 0 ? $d : 0' -- "$1" "$2"; }
-  steps_rows=("sh startup" "jq startup" "shell prelude" "program compile" "program run" "reference compile" "reference run")
+  steps_rows=("sh startup" "jq startup" "shell prelude" "program compile ($guard_label)" "program run" "reference compile" "reference run")
   steps_cells=("" "" "" "" "" "" "")
   for input in git npm big interp; do
     read -r c0 c1 < <(cpu_pair /dev/null ":" "jq -n empty")
@@ -425,7 +458,7 @@ if [ "${VBW_BENCH_STEPS:-}" = 1 ]; then
   {
     printf 'step\tgit\tnpm\tbig\tinterp\n'
     for i in 0 1 2 3 4 5 6; do printf '%s%s\n' "${steps_rows[$i]}" "${steps_cells[$i]}"; done
-  } | awk -F"\t" '{ printf "%-18s %-14s %-14s %-14s %s\n", $1, $2, $3, $4, $5 }'
+  } | awk -F"\t" '{ printf "%-60s %-14s %-14s %-14s %s\n", $1, $2, $3, $4, $5 }'
   exit 0
 fi
 
@@ -460,6 +493,7 @@ if [ "${VBW_BENCH_STEPS:-}" = compile ]; then
           while ($i < @l && $l[$i] !~ /^(def |#|\S)/) { $chunk .= $l[$i]; $i++; }
           $chunk = join "", grep { !/^\s*#/ } split /^/, $chunk;
           $chunk =~ s/\s+\z//;
+          $chunk =~ s/;[ \t]*#[^\n]*\z/;/;
           $chunk =~ /\A(def\s+\w+(?:\([^)]*\))?\s*:)(.*);\z/s or die "no def in: $chunk";
           print $out "$1 " . $wrap->($2) . ";\n";
         } elsif ($s =~ /^(#|include |import |\s*$)/) {
@@ -473,16 +507,23 @@ if [ "${VBW_BENCH_STEPS:-}" = compile ]; then
       close $out;' -- "$1" "$2" "$3"
   }
   for m in c:empty d:false; do
+    mkdir -p "$cdir/${m%%:*}/hooks"
     reshape "${m#*:}" "$PLUGIN/hooks/guard-bash.jq" "$cdir/${m%%:*}/hooks/guard-bash.jq"
-    reshape "${m#*:}" "$PLUGIN/hooks/common.jq" "$cdir/${m%%:*}/hooks/common.jq"
-    reshape "${m#*:}" "$PLUGIN/lib/holder.jq" "$cdir/${m%%:*}/lib/holder.jq"
+    for rel in ${guard_rels[@]+"${guard_rels[@]}"}; do
+      mkdir -p "$(dirname "$cdir/${m%%:*}/hooks/$rel")"
+      reshape "${m#*:}" "$PLUGIN/hooks/$rel" "$cdir/${m%%:*}/hooks/$rel"
+    done
   done
-  { cat "$PLUGIN/lib/holder.jq" "$PLUGIN/hooks/common.jq"; grep -vE '^include ' "$PLUGIN/hooks/guard-bash.jq"; } > "$cdir/b/guard-inline.jq"
-  printf 'include "holder" {search: "../lib"};\ninclude "common" {search: "./"};\nempty\n' > "$cdir/d/hooks/modules.jq"
+  { cat ${guard_files[@]+"${guard_files[@]}"}; grep -vE '^include ' "$PLUGIN/hooks/guard-bash.jq"; } > "$cdir/b/guard-inline.jq"
+  { grep -E '^include ' "$PLUGIN/hooks/guard-bash.jq"; printf 'empty\n'; } > "$cdir/d/hooks/modules.jq"
+  d_files=()
+  c_files=()
+  for rel in ${guard_rels[@]+"${guard_rels[@]}"}; do d_files+=("$cdir/d/hooks/$rel"); c_files+=("$cdir/c/hooks/$rel"); done
+  mod_label="${guard_label#guard-bash.jq }"
   # (f): the builtins (by name and arity, from jq itself) the guard's files mention outside
   # string literals and do not define themselves, each named once under 'if false'.
   jq -nr '[builtins[] | select(startswith("_") | not)] | .[]' > "$cdir/builtins.txt"
-  cat "$PLUGIN/hooks/guard-bash.jq" "$PLUGIN/hooks/common.jq" "$PLUGIN/lib/holder.jq" \
+  cat "$PLUGIN/hooks/guard-bash.jq" ${guard_files[@]+"${guard_files[@]}"} \
     | perl -e '
         open my $b, "<", $ARGV[0] or die; my %arity;
         while (<$b>) { chomp; my ($n, $a) = split m{/}; push @{$arity{$n}}, $a; }
@@ -495,6 +536,14 @@ if [ "${VBW_BENCH_STEPS:-}" = compile ]; then
           push @calls, map { $_ ? "$w(" . join(";", (".") x $_) . ")" : $w } @{$arity{$w}};
         }
         print "if false then (", join(", ", @calls), ") else empty end\n";' -- "$cdir/builtins.txt" > "$cdir/builtins.jq"
+  compile_check "(a) guard as shipped [$guard_label]" "$PLUGIN/hooks/guard-bash.jq"
+  compile_check "(b) includes inlined [$guard_label]" "$cdir/b/guard-inline.jq"
+  compile_check "(c) parse only [$guard_label]" "$cdir/c/hooks/guard-bash.jq"
+  compile_check "(d) bodies under if false [$guard_label]" "$cdir/d/hooks/guard-bash.jq"
+  compile_check "(e) modules, as (d) [$mod_label]" "$cdir/d/hooks/modules.jq"
+  compile_check "(f) builtins bound" "$cdir/builtins.jq"
+  compile_check "(g) reference" "$work/reference/reference.jq"
+  [ "$compile_failed" -eq 0 ] || exit 1
   cflags="--rawfile glance /dev/null --arg root \"$work\" --arg dir \"$work\" --arg open 0"
   printf 'compile: CPU ms per call over %s runs, net of jq -n empty; each program over empty inputs\n' "$RUNS"
   # crow LABEL PROGRAM FILE...: one row; bytes and definitions are counted over the FILEs.
@@ -508,14 +557,14 @@ if [ "${VBW_BENCH_STEPS:-}" = compile ]; then
   }
   {
     printf 'program\tbytes\tdefinitions\tms\n'
-    crow "(a) guard as shipped" "$PLUGIN/hooks/guard-bash.jq" "$PLUGIN/hooks/guard-bash.jq" "$PLUGIN/hooks/common.jq" "$PLUGIN/lib/holder.jq"
-    crow "(b) includes inlined" "$cdir/b/guard-inline.jq" "$cdir/b/guard-inline.jq"
-    crow "(c) parse only" "$cdir/c/hooks/guard-bash.jq" "$cdir/c/hooks/guard-bash.jq" "$cdir/c/hooks/common.jq" "$cdir/c/lib/holder.jq"
-    crow "(d) bodies under if false" "$cdir/d/hooks/guard-bash.jq" "$cdir/d/hooks/guard-bash.jq" "$cdir/d/hooks/common.jq" "$cdir/d/lib/holder.jq"
-    crow "(e) modules, as (d)" "$cdir/d/hooks/modules.jq" "$cdir/d/hooks/common.jq" "$cdir/d/lib/holder.jq"
+    crow "(a) guard as shipped [$guard_label]" "$PLUGIN/hooks/guard-bash.jq" "$PLUGIN/hooks/guard-bash.jq" ${guard_files[@]+"${guard_files[@]}"}
+    crow "(b) includes inlined [$guard_label]" "$cdir/b/guard-inline.jq" "$cdir/b/guard-inline.jq"
+    crow "(c) parse only [$guard_label]" "$cdir/c/hooks/guard-bash.jq" "$cdir/c/hooks/guard-bash.jq" ${c_files[@]+"${c_files[@]}"}
+    crow "(d) bodies under if false [$guard_label]" "$cdir/d/hooks/guard-bash.jq" "$cdir/d/hooks/guard-bash.jq" ${d_files[@]+"${d_files[@]}"}
+    crow "(e) modules, as (d) [$mod_label]" "$cdir/d/hooks/modules.jq" ${d_files[@]+"${d_files[@]}"}
     crow "(f) builtins bound" "$cdir/builtins.jq" "$cdir/builtins.jq"
     crow "(g) reference" "$work/reference/reference.jq" "$work/reference/reference.jq"
-  } | awk -F"\t" '{ printf "%-28s %-8s %-12s %s\n", $1, $2, $3, $4 }'
+  } | awk -F"\t" '{ printf "%-90s %-8s %-12s %s\n", $1, $2, $3, $4 }'
   exit 0
 fi
 

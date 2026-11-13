@@ -21,7 +21,7 @@ wf() { node "$RUN" "$WF/$1.js" "$2" "$3"; }
 closer_ok='{"close run": {"ended": true, "recorded": true, "report": "all recorded; run ended"}}'
 
 @test "R78: the build workflow confirms its plans and ends its run as its last step" {
-  run wf building '{"plans":["P1.1","P1.2"],"session":"sess1"}' "$(jq -nc --argjson d "$DONE" '{"dev P1.1": $d, "dev P1.2": $d, "close run": {ended: true, recorded: true, report: "all recorded; run ended"}}')"
+  run wf building '{"plans":["P1.1","P1.2"],"session":"sess1"}' "$(jq -nc --argjson d "$DONE" '{"dev P1.1": $d, "dev P1.2": $d, "close run": {ended: true, recorded: true, report: "all recorded; run ended", state: ({open: false, recorded: {"P1.1": true, "P1.2": true}} | tojson)}}')"
   [ "$status" -eq 0 ] || { echo "$output"; false; }
   printf '%s' "$output" | jq -e '.calls[-1].opts.label == "close run"
     and (.calls[-1].prompt | contains("vbw run confirm P1.1 P1.2") and contains("vbw run end") and contains("VBW_SESSION_ID=sess1"))
@@ -36,7 +36,7 @@ closer_ok='{"close run": {"ended": true, "recorded": true, "report": "all record
 }
 
 @test "R78: when everything was recorded, nothing is reported as missing" {
-  run wf building '{"plans":["P1.1"],"session":"s"}' "$(jq -nc --argjson d "$DONE" '{"dev P1.1": $d, "close run": {ended: true, recorded: true, report: "all recorded"}}')"
+  run wf building '{"plans":["P1.1"],"session":"s"}' "$(jq -nc --argjson d "$DONE" '{"dev P1.1": $d, "close run": {ended: true, recorded: true, report: "all recorded", state: ({open: false, recorded: {"P1.1": true}} | tojson)}}')"
   printf '%s' "$output" | jq -e '(.logs | any(contains("not recorded")) | not)' || { echo "$output"; false; }
 }
 

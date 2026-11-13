@@ -65,7 +65,13 @@ nothing and the router ends the run as before. With it:
 
 - `vbw:building`, `vbw:fixing` and `vbw:verifying` finish with one last agent,
   the Lead (label `close run`), that runs `vbw run confirm` for every plan, fix
-  or phase of the run, then `vbw run end` whatever confirm said. In
+  or phase of the run, then `vbw run end` whatever confirm said, then
+  `vbw run state` for the same ids, and returns what it printed exactly as
+  printed (the required `state` field). The workflow takes the run's end and
+  each result's record from that answer only, never from the agent's own
+  `ended`, `recorded` or `closed`: a run the answer shows still open, or an
+  answer that is missing or is not its JSON, counts as not done, and the log
+  gives the command to run by hand (`vbw run end`, `vbw fix done F1`). In
   `vbw:fixing` the Lead first runs one `vbw fix done` for the fixes whose Dev
   reported done, and waits for it to end, before `vbw run confirm`. Without
   `args.session`, `vbw:fixing` still runs it, with an agent of its own. A fix
@@ -135,11 +141,17 @@ did not end, the workflow writes the commands to its log and sets `complete` to
 vbw fix done F8 F9                                   # fix rounds only: the done fixes
 VBW_SESSION_ID=<session> vbw run confirm P1.1 P1.2   # names anything unrecorded
 VBW_SESSION_ID=<session> vbw run end
+vbw run state P1.1 P1.2                              # the kernel's answer the workflow reads
 ```
 
-The log lines read `the closing agent stopped: run by hand: ...`, `not
-everything was recorded: check by hand with ...` and `the run did not end: run
-by hand: ...`. A planning run logs only the `vbw run end` line.
+The log lines read `the closing agent stopped: run by hand: ...`, `the closing
+agent gave no readable vbw run state, so nothing is taken as done: ...`, `not
+everything was recorded: check by hand with ...`, `the run is still open: run
+by hand: ...` and `F1 is not done: the kernel has not recorded it; run by
+hand: ... vbw fix done F1`. A planning run logs only the `vbw run end` line.
+
+The router's own `vbw next` stays the final word: it reads the record and asks
+for anything still missing, whatever a workflow reported.
 
 The router then finds no open run. `vbw run end` with nothing open prints
 `no run is open` and exits 0, so the router's own call is harmless.
@@ -153,6 +165,15 @@ $ vbw run confirm P1.1 P1.2
 P1.1: recorded (done)
 P1.2: not recorded (still building)
 ```
+
+### `vbw run state ID...`
+
+The kernel's answer a workflow takes after its close step: one JSON line,
+`{"open": true|false, "recorded": {"P1.1": true, ...}}`. `open` is true while a
+run lease is open and false once it ended. Each ID is recorded by the rules
+below, also after the run ended (a fix still open is not recorded; a phase
+counts only a verdict from the latest QA run). It writes nothing and refuses an
+unknown ID, naming it.
 
 What counts as recorded, by the kind of the open run:
 
@@ -236,7 +257,7 @@ changes nothing. It also works right after a subcommand. With no command,
 
 ```
 $ vbw run start --help
-usage: vbw run start KIND [IDS] | run confirm ID... | run end [--owner-closed | --map < MAP]   open the run lease, check what its agents recorded, close it (a map run with its map)
+usage: vbw run start KIND [IDS] | run confirm ID... | run state ID... | run end [--owner-closed | --map < MAP]   open the run lease, check what its agents recorded, close it (a map run with its map)
 ```
 
 Help writes no record, makes no commit and does not touch the index. It works
@@ -256,6 +277,7 @@ merely contains `--help` (for example a todo) is still text. The test is
 | `vbw commit --fix F1 "fix(x): ..." FILE...` | Dev | commit the named changed files of an open fix. For a requirement fix of any source (QA finding or failing test), the files are check files of its own requirement; the commit carries `VBW-Fix: F1` and `VBW-Req` trailers, and the files wait for one approval before the proof. Code goes through its plan with `vbw commit PLAN`. A check file of another requirement, a code file and `.vbw/` files are refused. For a failing project command, the named changed files commit even when no plan lists them, with the `VBW-Fix` trailer |
 | `vbw plan done P1.2` / `vbw plan block P1.2 "reason"` | Dev | the plan's outcome. `done` is verified: none of the plan's files has uncommitted changes, and the checks of the requirements it completes pass. It also prints one line, `Red first: ...`, naming the plan's own checks that never ran red (`vbw check --expect-red`, kept in the plan's evidence) before the plan's first code commit, or saying every one did; a check another plan owns counts that plan's red run, and a plan with no own checks prints none. Red first never refuses `done`: a check of behaviour that already exists is green from its first run. `vbw next` hands QA each such check, and QA judges it as a deviation from test first in its notes, not as a failure. The plan also needs a commit with its `VBW-Plan` trailer (`vbw commit`); without one, every file must be committed in `HEAD` (for example by the approval commit) and a check of its requirements must pass, or `done` is refused and names the failing check. A blocked plan stops only the plans that depend on it (docs/next.md). `block` refuses a plan that is already done, says so, and changes nothing; reset the plan first if it must be built again |
 | `vbw fix done F1` or `vbw fix done F8 F9` | Lead (the fix round's closing step, run by the workflow) | verified (several fixes in one command run the checks they serve once; one that cannot close is named, the others still close, and the exit code is non-zero): no uncommitted changes in the files it may touch, and the checks of every finished requirement those files serve pass; then awaiting proof. While check files wait for the user's approval it runs no check: it names them, and the fixes await the proof after the approval |
+| `vbw run state ID...` | Lead (the closing step, after `vbw run end`) | the kernel's answer a workflow takes the run's end and each result's record from: `{"open": ..., "recorded": {ID: ...}}`; writes nothing, refuses an unknown ID |
 | `vbw fix check F1 < check.json` | Dev | in a fix that QA opened: register the regression test as a check of the finding's requirement. The JSON has `run` and `files`, and optionally `exit`, `output`, `timeout`, `alone`. It waits for the user's approval before the proof (docs/proof.md) |
 | `vbw apply < plan.json` | Lead | replace phases, plans and checks, and set each `auto` requirement's rules, in one validated write (a plan row may carry `awaits`, check ids of the plan's own requirements, judged as `--amend` judges them and kept when a later apply leaves them out; refused while a build or fix run is open; a plan that has started must come back unchanged and keeps its status, note and breaks across every `vbw apply`; a requirement that another milestone owns or that a phase of another milestone already covers is refused with the `vbw apply --add` message, and nothing is written) |
 | `vbw apply --patch < patch.json` | Lead | change only the plans, checks and rules in the document; a plan or check row with an existing id is merged field by field (fields it leaves out keep their values, an explicit `null` removes an optional field, a missing required field is refused naming it; a plan row may carry `awaits`); everything else stays byte for byte as it was. A patch judges the rigor floor and the one-plan-per-express rule only for the phases that have not started whose plans it changes or adds, so a phase it does not touch never blocks it; a touched phase whose floor rose above its tier is raised to that floor (an express phase given a second plan to standard), never lowered, and said in one line. A check change on a started plan keeps the plan's status, tasks and commits and an open build run stays open (no `vbw plan reset`); the contract then reads NOT APPROVED until the user approves what the check now asserts. A change to plans or rules while a run is open is still refused |

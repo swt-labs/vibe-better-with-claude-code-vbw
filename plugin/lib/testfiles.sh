@@ -101,12 +101,27 @@ testfiles_owned() {
 testfiles_index() {
   local p
   TF_INDEX=$(testfiles_owned "$1" | jq -c --slurpfile r <(printf '%s' "$1") "$VBW_JQ_DEFS"'
-    ($r[0] | tf_forms) as $fs | [$r[0].checks[].run[]] as $run | . as $all
-    | (reduce $all[] as $x ({seen: {}, out: []}; if .seen[$x.p] then . else .seen[$x.p] = true | .out += [$x] end) | .out) as $one
-    | {owned: [$one[] | select(.p as $p | any($run[]; . == $p) | not)],
+    ($r[0] | tf_forms) as $fs | [$r[0].checks[].run] as $runs | . as $all
+    # The values a check run gives the filter options of a form (--only X, or --only=X).
+    | def fvals($o): . as $run | [range(0; length) as $k | $run[$k] as $w | $o[] as $f
+        | if $w == $f then ($run[$k + 1] // empty)
+          elif ($f | startswith("--")) and ($w | startswith($f + "=")) then $w[($f | length) + 1:] else empty end];
+    # Per file: whether an approved check runs it whole (a check naming it with no filter value;
+    # any check naming it when its form has no filter line), and the filters of the other checks.
+    def verdict($x): ($fs[$x.i].filter) as $o
+      | [$runs[] | select(any(.[]; . == $x.p)) | if $o == null then [] else fvals($o) end] as $per
+      | {whole: ($per | any(length == 0)), filters: ($per | add // [] | reduce .[] as $v ([]; if index([$v]) then . else . + [$v] end))};
+    (reduce $all[] as $x ({seen: {}, out: []}; if .seen[$x.p] then . else .seen[$x.p] = true | .out += [$x] end) | .out) as $one
+    | [$one[] | . + verdict(.)] as $vs
+    | {owned: [$vs[] | select(.whole | not) | {p, i}],
        dups: [$all | group_by(.p)[] | select(length > 1) | {p: .[0].p, forms: map($fs[.i].name // "unnamed")}],
        match: [range(0; $fs | length) as $i | [$all[] | select(.i == $i)] | length]}
-    | .map = ([.owned[] | {key: .p, value: .i}] | from_entries)')
+    | .map = ([.owned[] | {key: .p, value: .i}] | from_entries)
+    | .fil = ([$vs[] | select((.whole | not) and (.filters | length) > 0 and $fs[.i].rest != null)
+        | $fs[.i].join as $j | {key: .p, value: (.filters | join($j // "|"))}] | from_entries)
+    | .norest = [$vs[] | select((.whole | not) and (.filters | length) > 0 and $fs[.i].rest == null) | .p]')
+  # shellcheck disable=SC2034 # read by proofreuse_fps_need
+  PROOFREUSE_TFREST=$(printf '%s' "$TF_INDEX" | jq -c '.fil')
   # shellcheck disable=SC2034 # read by proofreuse_fps_need
   PROOFREUSE_TFMAP=$(printf '%s' "$TF_INDEX" | jq -c '.map')
   TF_PATHS=()
@@ -142,6 +157,11 @@ testfiles_plan() {
   # shellcheck disable=SC2034 # read by cmd_prove
   QUICK_STANDIN=false
   testfiles_index "$record"
+  # A filtered-only file of a form with a filter line and no rest line runs whole: say, once, what a rest line would do (R304).
+  if printf '%s' "$TF_INDEX" | jq -e '(.norest | length) > 0' > /dev/null; then
+    printf 'vbw: %s run whole as test files, and their tests that approved checks run with a filter run twice; add a "- rest: <command naming {file} and {filters}>" line to the Test files form in .vbw/spec.md so only the other tests run\n' \
+      "$(printf '%s' "$TF_INDEX" | jq -r '.norest | join(", ")')" >&2
+  fi
   [ ${#TF_PATHS[@]} -gt 0 ] || return 0
   keys=$(testfiles_keys)
   proofreuse_fps_need "$record" "$keys"
@@ -174,12 +194,12 @@ testfiles_run() {
   [ ${#TF_TODO[@]} -gt 0 ] || { printf '{}\n'; return 0; }
   ids=$(testfiles_ids "${TF_TODO[@]}")
   res=$(checks_run_units "$(printf '%s' "$1" | jq -c --argjson d "$VBW_COMMAND_TIMEOUT" --slurpfile x <(printf '%s' "$TF_INDEX") \
-    --rawfile p <(printf '%s\0' "${TF_TODO[@]}") --rawfile n <(printf '%s' "$ids") "$VBW_JQ_DEFS"'
+    --rawfile p <(printf '%s\0' "${TF_TODO[@]}") --rawfile n <(printf '%s' "$ids") "$VBW_JQ_DEFS$PROOFREUSE_ARGV_JQ"'
     (.settings.command_timeout // $d) as $t | tf_forms as $fs
     | ($p | split("\u0000")[:-1]) as $ps | ($n | split("\n")) as $ns
     | [range(0; $ps | length) as $k | $ns[$k] as $id | $fs[$x[0].map[$ps[$k]] // 0] as $f
        | (if $f.dir == null then $ps[$k] else $ps[$k] | ltrimstr($f.dir + "/") end) as $rel
-       | {name: $id, out: "\($id).out", argv: [$f.run[] | split("{file}") | join($rel)], timeout: $t, exit: 0, output: "", alone: false}
+       | {name: $id, out: "\($id).out", argv: tf_argv($f; $rel; $x[0].fil[$ps[$k]]), timeout: $t, exit: 0, output: "", alone: false}
          + (if $f.dir == null then {} else {dir: $f.dir} end)]')")
   printf '%s' "$res" | jq -c --rawfile p <(printf '%s\0' "${TF_TODO[@]}") --rawfile n <(printf '%s' "$ids") '. as $r
     | ($p | split("\u0000")[:-1]) as $ps | ($n | split("\n")) as $ns

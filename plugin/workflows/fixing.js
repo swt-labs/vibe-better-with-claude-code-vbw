@@ -53,6 +53,10 @@ const effortOf = (role, step) => {
 }
 if (groups.length === 0) return reply({ results: [], error: 'no fix groups given: pass args.groups from vbw next --json (detail.groups)' })
 
+const STATE_PROP = {
+  type: 'string',
+  description: 'What vbw run state printed, exactly as printed (one JSON line)',
+}
 const FIXDONE_PROPS = {
   refused: REFUSED,
   fixdone: { type: 'string', enum: ['ran', 'failed'] },
@@ -62,13 +66,13 @@ const FIXDONE_PROPS = {
 }
 const CLOSE_RESULT = {
   type: 'object',
-  required: ['fixdone', 'closed', 'open', 'approval', 'ended', 'recorded', 'report', 'refused'],
-  properties: Object.assign({ ended: { type: 'boolean' }, recorded: { type: 'boolean' }, report: { type: 'string' } }, FIXDONE_PROPS),
+  required: ['fixdone', 'closed', 'open', 'approval', 'ended', 'recorded', 'report', 'state', 'refused'],
+  properties: Object.assign({ state: STATE_PROP, ended: { type: 'boolean' }, recorded: { type: 'boolean' }, report: { type: 'string' } }, FIXDONE_PROPS),
 }
 const ALONE_RESULT = {
   type: 'object',
-  required: ['fixdone', 'closed', 'open', 'approval', 'report', 'refused'],
-  properties: Object.assign({ report: { type: 'string' } }, FIXDONE_PROPS),
+  required: ['fixdone', 'closed', 'open', 'approval', 'report', 'state', 'refused'],
+  properties: Object.assign({ state: STATE_PROP, report: { type: 'string' } }, FIXDONE_PROPS),
 }
 
 const FIX_RESULT = {
@@ -90,23 +94,40 @@ const WAIT = 'It may run past one shell command\'s 10-minute limit: if Claude Co
 const FIXDONE_ANSWER = 'Answer fixdone ("ran" when it ran, "failed" when it stopped with an error), closed (the fix ids it closed), open (each fix it left open: {fix, reason}) and approval (the check files it said are waiting for approval, so that no check ran: the user approves them before the proof; [] when it said none)'
 // The run's own last step (R78, R81): the round's vbw fix done, then confirm what the agents
 // recorded, say plainly what was not, and end the run. Only when the router passed args.session.
+// R306 (T275, T288): the kernel's own answer, vbw run state as the closing agent returned it, never
+// the agent's word. Null when it is missing or is not the JSON {open, recorded}.
+const kernelState = done => {
+  try {
+    let s = JSON.parse(done && done.state)
+    if (typeof s === 'string') s = JSON.parse(s) // a model may hand the line back quoted once
+    return s && typeof s.open === 'boolean' && s.recorded && typeof s.recorded === 'object' && !Array.isArray(s.recorded) ? s : null
+  } catch (e) { return null }
+}
 const closeRun = async (ids, fixCmd) => {
   const confirm = sh(`vbw run confirm ${ids.join(' ')}`)
   const end = sh('vbw run end')
+  const state = sh(`vbw run state ${ids.join(' ')}`)
   const first = fixCmd ? `First run ${fixCmd}. ${WAIT} ` : ''
-  const done = await ask(`Close this VBW run (your own instructions, Close a run, allow it). ${first}Then run ${confirm} (it exits 1 when some fixes were not recorded), then, whatever it said, run ${end}. ${FIXDONE_ANSWER}${fixCmd ? '' : ' (no fix is to be closed: answer "ran" with empty lists)'}, ended (run end succeeded), recorded (confirm exited 0) and report (the lines for what was not recorded, else "all recorded; run ended"). Change nothing else.${voice}`,
+  const done = await ask(`Close this VBW run (your own instructions, Close a run, allow it). ${first}Then run ${confirm} (it exits 1 when some fixes were not recorded), then, whatever it said, run ${end}, then run ${state} and return its output exactly as printed in state. ${FIXDONE_ANSWER}${fixCmd ? '' : ' (no fix is to be closed: answer "ran" with empty lists)'}, ended (run end succeeded), recorded (confirm exited 0), state and report (the lines for what was not recorded, else "all recorded; run ended"). Change nothing else.${voice}`,
     Object.assign({ agentType: 'vbw:lead', label: 'close run', schema: CLOSE_RESULT }, { model: CLOSE_MODEL }, effortOf('lead', 'close')))
-  if (!done) log(`the closing agent stopped: run by hand: ${fixCmd ? fixCmd + ' ; then ' : ''}${confirm} ; then ${end}`)
+  if (!done) { log(`the closing agent stopped: run by hand: ${fixCmd ? fixCmd + ' ; then ' : ''}${confirm} ; then ${end}`); return done }
+  // The kernel decides: ended and recorded come from vbw run state, whatever the agent said.
+  const k = kernelState(done)
+  done.ended = Boolean(k) && k.open === false
+  done.recorded = Boolean(k) && ids.every(id => k.recorded[id] === true)
+  if (!k && done.report) log(done.report)
+  if (!k) log(`the closing agent gave no readable vbw run state, so nothing is taken as done: run by hand: ${fixCmd ? fixCmd + ' ; then ' : ''}${confirm} ; then ${end} ; then vbw run state ${ids.join(' ')}`)
   else {
     if (!done.recorded || !done.ended) log(done.report)
     if (!done.recorded) log(`not everything was recorded: check by hand with ${confirm}`)
-    if (!done.ended) log(`the run did not end: run by hand: ${end}`)
+    if (!done.ended) log(`the run is still open: run by hand: ${end}`)
   }
   return done
 }
 // Without a session there is no closing Lead: an agent of its own runs the round's vbw fix done.
-const fixDoneAlone = async fixCmd => {
-  const done = await ask(`Close the fixes of this VBW round (your own instructions, Close a run, allow it). Run ${fixCmd}. ${WAIT} ${FIXDONE_ANSWER}, and report (what it printed for fixes left open). Change nothing else.${voice}`,
+const fixDoneAlone = async (fixCmd, ids) => {
+  const stateCmd = sh(`vbw run state ${ids.join(' ')}`)
+  const done = await ask(`Close the fixes of this VBW round (your own instructions, Close a run, allow it). Run ${fixCmd}. ${WAIT} Then run ${stateCmd} and return its output exactly as printed in state. ${FIXDONE_ANSWER}, state and report (what it printed for fixes left open). Change nothing else.${voice}`,
     Object.assign({ agentType: 'vbw:lead', label: 'fix done', schema: ALONE_RESULT }, { model: CLOSE_MODEL }, effortOf('lead', 'close')))
   if (!done) log(`the fix done agent stopped: run by hand: ${fixCmd}`)
   return done
@@ -138,16 +159,24 @@ const fixCmd = doneIds.length ? sh(`vbw fix done ${doneIds.join(' ')}`) : ''
 let confirmation = null
 let fd = null
 if (session) { confirmation = await closeRun(groups.flat(), fixCmd); fd = confirmation }
-else if (fixCmd) fd = await fixDoneAlone(fixCmd)
+else if (fixCmd) fd = await fixDoneAlone(fixCmd, doneIds)
 const failed = Boolean(fixCmd) && (!fd || fd.fixdone === 'failed')
 if (failed) log(`vbw fix done did not finish: run by hand: ${fixCmd}`)
-const closed = fd && fixCmd && Array.isArray(fd.closed) ? fd.closed : []
-const open = fd && fixCmd && Array.isArray(fd.open) ? fd.open : []
+// R306: a fix is closed only when the kernel's answer (vbw run state) records it. One the agent calls
+// closed that the kernel has not recorded, or any of them when that answer is missing, is not done.
+const kernel = fd && fixCmd ? kernelState(fd) : null
+const open = fd && fixCmd && Array.isArray(fd.open) ? fd.open.slice() : []
+const closed = doneIds.filter(id => fd && kernel && kernel.recorded[id] === true && !open.some(o => o && o.fix === id))
+const unrecorded = fd ? doneIds.filter(id => !closed.includes(id) && !open.some(o => o && o.fix === id)) : []
+unrecorded.forEach(id => {
+  open.push({ fix: id, reason: kernel ? 'the kernel has not recorded it as done' : 'the kernel did not confirm it (no readable vbw run state)' })
+  log(`${id} is not done: the kernel has not recorded it; run by hand: ${sh(`vbw fix done ${id}`)}`)
+})
 open.forEach(o => log(`${o.fix} stays open: ${o.reason}`))
 // T174: check files waiting for the user's approval stop the round's re-check at once; the
 // approval is the next step (vbw next asks), and the proof after it runs every check.
 const approval = fd && fixCmd && Array.isArray(fd.approval) ? fd.approval.filter(f => typeof f === 'string') : []
 if (approval.length) log(`the user's approval comes next: check files wait for it (${approval.join(', ')}), so vbw fix done ran no check; vbw next asks, then vbw prove runs every check`)
 const fixdone = { command: fixCmd || null, closed, open, left_out: leftOut, approval }
-const complete = interrupted === 0 && !failed && (!session || Boolean(confirmation && confirmation.recorded && confirmation.ended))
+const complete = interrupted === 0 && !failed && unrecorded.length === 0 && (!session || Boolean(confirmation && confirmation.recorded && confirmation.ended))
 return reply(confirmation ? { results: out, complete, fixdone, confirmation } : { results: out, complete, fixdone })
