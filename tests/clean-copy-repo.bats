@@ -27,7 +27,7 @@ repo_project() {
   cat > tests/pay.sh << 'SH'
 [ -z "${MARK:-}" ] || touch "$MARK/start.$$"
 while [ -n "${HOLD:-}" ] && [ ! -e "$MARK/release" ]; do sleep 0.1; done
-grep -qx paid src/pay.txt
+grep -qx paid src/pay.txt || exit 1
 [ ! -d sub ] || grep -qx paid sub/pay.txt
 SH
   printf '# Shop\n\n## Requirements\n\n- R1 [auto] A customer can pay\n' > .vbw/spec.md
@@ -370,6 +370,7 @@ orphans() {
   [ -z "$(orphans)" ] || { echo "after a sweep:"; orphans; false; }
   # Interrupt: the held slot goes.
   bump four
+  rm -f "$MARK"/start.*
   HOLD=1 "$VBW" prove > "$TEST_ROOT/out" 2>&1 < /dev/null &
   local pid=$! i=0
   while [ -z "$(find "$MARK" -name 'start.*' -print -quit)" ] && [ "$i" -lt 100 ]; do sleep 0.1; i=$((i + 1)); done
