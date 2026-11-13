@@ -291,7 +291,7 @@ qa_digests() {
     } > "$dir/trees"
     (cd "$dir" && LC_ALL=C awk "$QA_TREE_AWK" specs trees) || vbw_die "cannot read the trees"
   fi
-  out=$(qa_hash_batch "$dir" "${names[@]}") || vbw_die "cannot hash QA's inputs"
+  out=$(qa_hash_batch "$dir" ${names[@]+"${names[@]}"}) || vbw_die "cannot hash QA's inputs"
   i=0
   while IFS= read -r x; do
     case $((i % 4)) in 0) hf+=("$x") ;; 1) hc+=("$x") ;; 2) hp+=("$x") ;; *) hq+=("$x") ;; esac
@@ -302,7 +302,7 @@ qa_digests() {
     printf '%s\n%s\n' "${chk[$i]}" "${hc[$i]}" > "$dir/t$i"
     names+=("t$i")
   done
-  out=$(qa_hash_batch "$dir" "${names[@]}") || vbw_die "cannot hash QA's inputs"
+  out=$(qa_hash_batch "$dir" ${names[@]+"${names[@]}"}) || vbw_die "cannot hash QA's inputs"
   while IFS= read -r x; do ht+=("$x"); done <<< "$out"
   {
     for ((i = 0; i < n; i++)); do
@@ -326,7 +326,7 @@ qa_digests() {
     i=$((i + 1))
   done
   exec 3<&-
-  out=$(qa_hash_batch "$dir" "${names[@]}") || vbw_die "cannot hash QA's inputs"
+  out=$(qa_hash_batch "$dir" ${names[@]+"${names[@]}"}) || vbw_die "cannot hash QA's inputs"
   while IFS= read -r x; do hm+=("$x"); done <<< "$out"
   {
     for ((i = 0; i < ${#ck[@]}; i++)); do printf '%s\t%s\n' "${ck[$i]}" "${hm[$i]}"; done
