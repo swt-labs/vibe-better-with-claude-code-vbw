@@ -34766,7 +34766,22 @@
         "guarded: R13 (C12), R14 (C13), R24 (C23), R25 (C24), R26 (C22), R28 (C25), R37 (C35), R40 (C37), R47 (C47), R49 (C48), R50 (C51), R69 (C110, C120, C122), R70 (C114), R71 (C115, C121), R72 (C116, C118), R73 (C98), R74 (C99, C100), R79 (C107), R80 (C108), R102 (C158, C159), R106 (C164, C165), R107 (C166, C167), R111 (C171, C172, C173, C174, C175), R116 (C182, C183), R161 (C248, C265, C266), R171 (C270), R179 (C297, C298, C299, C300, C301, C302, C303, C304, C305, C306, C312), R190 (C374, C375, C376, C377, C378, C379, C380, C381, C382, C383, C384, C385, C386, C387, C388), R192 (C401, C402, C403, C404, C405, C406, C407, C408, C409, C410), R202 (C432, C433, C434, C435, C436, C437, C438, C439, C440, C441, C442, C443, C444, C445, C446, C447), R229 (C526, C527, C528, C529), R244 (C562, C563), R249 (C571, C572, C573), R270 (C631, C632, C633), R284 (C673, C674), R286 (C653, C654), R287 (C655, C656, C657), R291 (C675, C676, C677), R298 (C688)",
         "tests: project test command"
       ],
-      "predicted": "standard"
+      "predicted": "standard",
+      "qa": {
+        "result": "pass",
+        "tier": "quick",
+        "tree": "a9a20e85a190c833269102c5eb1f99f09f2c8c49bd96375c74fa478c90beda49",
+        "at": "2026-11-13T10:32:56Z",
+        "note": "7/7 checks"
+      },
+      "outcome": {
+        "tier": "standard",
+        "predicted": "standard",
+        "held": true,
+        "fix_rounds": 0,
+        "qa_findings": 0,
+        "escalations": 0
+      }
     },
     {
       "id": "P237",
