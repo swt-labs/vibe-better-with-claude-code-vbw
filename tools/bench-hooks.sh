@@ -96,7 +96,7 @@ SIZES="51 500 2000"
 # reference block below, on the two nominal machines, measured NOMINAL_WHEN. This is a
 # debt: measure it again whenever the workload or the nominal machines change.
 # October 2026. The workload is one jq call of the guard's shape (--rawfile glance, --arg root,
-# --arg dir, --arg open, -f PROGRAM - DOCUMENT END) over a program of 41188 bytes and a
+# --arg dir, --arg open, -f PROGRAM - DOCUMENT END) over a program of 45295 bytes and a
 # document of 86107 bytes, both written by this script; its cost is the call's CPU minus the
 # sh -c jq startup beside it, as a guard case's own cost is (R233). The program calls four of
 # every five of its definitions, as the guard calls all of its own (R243: jq drops an uncalled
@@ -182,7 +182,7 @@ hooks_json="$PLUGIN/hooks/hooks.json"
 export CLAUDE_PLUGIN_ROOT="$PLUGIN" CLAUDE_PROJECT_DIR="$work"
 
 # reference_files DIR (R231): the reference program and document, written from the bench's
-# own text into DIR: reference.jq (about 41 KB, the size of the shipped Bash guard and the programs.jq it includes, built
+# own text into DIR: reference.jq (about 45 KB, the size of the shipped Bash guard and the programs.jq it includes, built
 # of fixed helper definitions and a body that reads $glance, $root, $dir, $open and its
 # inputs the way a guard does) and reference.json (a fixed object of about 60 KB). The
 # content is deterministic and read from no shipped file and no project file. Four of every
@@ -195,7 +195,7 @@ export CLAUDE_PLUGIN_ROOT="$PLUGIN" CLAUDE_PROJECT_DIR="$work"
 reference_files() {
   mkdir -p "$1"
   awk 'BEGIN {
-    for (i = 1; i <= 150; i++)
+    for (i = 1; i <= 165; i++)
       printf "def h%d($v; $w): if ($v | type) == \"object\" then ($v | keys | map(select(startswith(\"k%d\") or test(\"^c[0-9]+$\"))) | length) + $w elif ($v | type) == \"array\" then ($v | map(tostring | length) | add // 0) + %d else ($v | tostring | ascii_downcase | length) end;\n", i, i % 7, i
     print "($glance | fromjson) as $g"
     print "| ([inputs] | .[-2:]) as $in"
@@ -205,7 +205,7 @@ reference_files() {
     print "| [$checks[] | select((.run | join(\" \") | test(\"^sh \")) and (.files | length) > 0)] as $kept"
     print "| (($root | length) + ($dir | length) + ($open | tonumber)) as $n"
     printf "| [$doc"
-    for (i = 1; i <= 150; i++) if (i % 5 != 0) printf ", h%d($doc; $n)", i
+    for (i = 1; i <= 165; i++) if (i % 5 != 0) printf ", h%d($doc; $n)", i
     print "] as $parts"
     print "| {schema: ($g.schema // 0), kept: ($kept | length), end: ($end | length), parts: ($parts | map(numbers) | add)}"
   }' > "$1/reference.jq"
