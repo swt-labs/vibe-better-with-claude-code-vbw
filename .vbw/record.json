@@ -90273,6 +90273,13 @@
       "sort": "next",
       "size": "small",
       "status": "open"
+    },
+    {
+      "id": "T296",
+      "text": "Claude Code 2.1.323 with the sandbox on refuses git worktree add: 'could not create directory of .git/worktrees/tree: Operation not permitted', so vbw mutate --run (and any proof copy made by plugin/lib/proofcopy.sh) fails and a Dev blocks when auto mode denies running outside the sandbox (M58 L3: all five scenarios hit it, road's build stopped). Make the clean copy write nothing under .git (for example a clone or checkout into .vbw/runtime with its own git directory there), probe what the 2.1.323 sandbox allows first, and add an L3 case under the sandbox; hotfix 2.1.32",
+      "sort": "next",
+      "size": "medium",
+      "status": "open"
     }
   ],
   "decisions": [
@@ -94479,6 +94486,12 @@
       "text": "M58 L3: greenfield, qafix, fixchecks, testforms and road run beside the final proof, never beside QA; a scenario that times out is run again alone",
       "why": "Both read the tree and edit nothing; the proof runs no timed checks, and the scenarios mostly wait on the model; running them together keeps the publish word near 13:00 instead of about 13:40. The scenarios are those of the changed areas (fix done and the fixing and verifying workflows, test file forms, the road) plus greenfield, as every release that touches the core loop",
       "at": "2026-11-13T11:45:22Z"
+    },
+    {
+      "id": "D723",
+      "text": "Ship 2.1.31 as built; 2.1.32 is a hotfix whose one item is a clean copy that writes nothing under .git (T296), released as soon as it is proven",
+      "why": "Claude Code 2.1.323's sandbox refuses git worktree add (could not create directory of .git/worktrees/tree: Operation not permitted), which VBW's clean copy uses (plugin/lib/proofcopy.sh) for vbw mutate --run and proof copies: seen in all five 2.1.31 scenarios, in none of 25 sessions on 2.1.319 and 2.1.322. The code is unchanged on this branch, so 2.1.30 users meet it too; holding 2.1.31 protects nobody, and 2.1.31's notes name the issue and the way on",
+      "at": "2026-11-13T13:00:38Z"
     }
   ],
   "commands": {
