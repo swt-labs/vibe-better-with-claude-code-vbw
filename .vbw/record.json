@@ -84217,7 +84217,8 @@
         "R306"
       ],
       "files": [
-        "plugin/lib/cmd-run.sh"
+        "plugin/lib/cmd-run.sh",
+        "plugin/bin/vbw"
       ],
       "after": [],
       "status": "done",
@@ -84333,6 +84334,13 @@
               "sha256": "f3f748fa02f9e57d6dceb4d5b8f1585ffb753abf439336dddf1b42590cff4b89"
             }
           ]
+        }
+      ],
+      "amendments": [
+        {
+          "what": "file plugin/bin/vbw added",
+          "at": "2026-11-13T10:36:25Z",
+          "session": "0ee781c3"
         }
       ]
     },
@@ -106373,6 +106381,17 @@
         "ended": "2026-11-13T10:35:10Z",
         "cost": {
           "usd": 2.17975
+        }
+      },
+      {
+        "id": "fix-20261113T103556Z",
+        "kind": "fix",
+        "session": "0ee781c3-c5b6-4a6c-889f-04b89f1fba4a",
+        "milestone": "M58",
+        "started": "2026-11-13T10:35:56Z",
+        "ended": "2026-11-13T10:37:00Z",
+        "cost": {
+          "usd": 0.502763
         }
       }
     ],
