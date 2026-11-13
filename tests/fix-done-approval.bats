@@ -72,7 +72,7 @@ teardown() { vbw_teardown; }
   command -v node > /dev/null 2>&1 || skip "node is not installed"
   local out
   out=$(node "$RUN" "$WF" '{"groups":[["F1"]],"session":"s1"}' \
-    '{"F1":{"status":"done","summary":"s","notes":[]},"close run":{"fixdone":"ran","closed":["F1"],"open":[],"approval":["tests/c1.sh"],"ended":true,"recorded":true,"report":"all recorded; run ended"}}')
+    '{"F1":{"status":"done","summary":"s","notes":[]},"close run":{"fixdone":"ran","closed":["F1"],"open":[],"approval":["tests/c1.sh"],"ended":true,"recorded":true,"report":"all recorded; run ended","state":"{\"open\":false,\"recorded\":{\"F1\":true}}"}}')
   printf '%s' "$out" | jq -e '[.calls[] | select(.opts.label == "close run")][0] | (.prompt | test("approval")) and (.opts.schema.properties.approval.type == "array")' \
     || { printf '%s' "$out" | jq '.calls[] | select(.opts.label == "close run")'; false; }
   printf '%s' "$out" | jq -e '.result.fixdone.approval == ["tests/c1.sh"] and .result.complete == true' || { printf '%s' "$out" | jq .result; false; }
