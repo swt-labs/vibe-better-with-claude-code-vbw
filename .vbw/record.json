@@ -90200,7 +90200,7 @@
       "text": "The Bash guard sits at its 25 ms budget (2.1.29 release, 2026-11-10): guard (big) costs about 28 ms on GitHub's macOS runner, on 2.1.28's code as on 2.1.29's (local A/B at ratio 0.80: 22.0 against 22.4 ms), and failed PR #755's macOS shard 1 twice, so the release merged by an admin merge; guard (git) is at about 24.5. jq compiling the guard's 38 KB of definitions is 80% of each call (VBW_BENCH_STEPS=1: compile 16.5 of 20.3 ms). Win back real headroom (compile only what a command needs, or a cheaper shape of the program), and fix the bench's compile row (b), which leaves out programs.jq and times 29 compile errors. Also: a failed bench stops shard 1, so its test files never run on CI; run them whatever the bench says",
       "sort": "next",
       "size": "medium",
-      "status": "open"
+      "status": "done"
     },
     {
       "id": "T284",
