@@ -94527,10 +94527,10 @@
     "rigor": "auto"
   },
   "evidence": {
-    "at": "2026-11-13T13:01:37Z",
+    "at": "2026-11-13T13:08:43Z",
     "contract": "433f34c6267e2f665d59e573a939d6ef0e1acb5db4fff648e0b5651bd7782c99",
-    "tree": "5b91a695a9ab12fbd3b6c413af0b16829b992647",
-    "head": "5b91a695a9ab12fbd3b6c413af0b16829b992647",
+    "tree": "480b521869caf7469c3a3378af82a828d12948d0",
+    "head": "480b521869caf7469c3a3378af82a828d12948d0",
     "checks": {
       "C1": {
         "status": "pass",
@@ -94573,9 +94573,9 @@
         "exit": 0,
         "seconds": 0.5,
         "tail": "1..1\nok 1 R5: a deviating build was put to the user before QA, restored through a fix, and passed QA",
-        "fp": "2403c3f21cb90a13812bd1b7604170e90ea05abdc8ae25a7932ae84425782d1b",
         "at": "2026-11-13T13:01:37Z",
-        "why": "tools/l3-results/qafix.json changed"
+        "fp": "2403c3f21cb90a13812bd1b7604170e90ea05abdc8ae25a7932ae84425782d1b",
+        "reused": true
       },
       "C8": {
         "status": "pass",
@@ -94654,9 +94654,9 @@
         "exit": 0,
         "seconds": 3.7,
         "tail": "1..8\nok 1 the repository's contributor files name only what exists\nok 2 no contributor file mentions .vbw-planning\nok 3 selftest: a clean tree passes\nok 4 selftest: a nonexistent path fails and is named\nok 5 selftest: a nonexistent /vbw: command fails\nok 6 selftest: .vbw-planning fails\nok 7 selftest: a bad path in an issue template fails\nok 8 no VBW 1 contributor ritual is left: no linked-issue or QA-evidence workflow, and the PR template asks for neither",
-        "fp": "42d52543809ac338e2220d67cea0076337b4c85be5d7b0a08e4efc2e6fc50fe2",
         "at": "2026-11-13T13:01:37Z",
-        "why": ". listing changed"
+        "fp": "42d52543809ac338e2220d67cea0076337b4c85be5d7b0a08e4efc2e6fc50fe2",
+        "reused": true
       },
       "C17": {
         "status": "pass",
@@ -95003,11 +95003,11 @@
       "C55": {
         "status": "pass",
         "exit": 0,
-        "seconds": 5.6,
+        "seconds": 7.9,
         "tail": "1..5\nok 1 R53: the panel is a mod named by hooks.json, next to the hooks it had, which are unchanged\nok 2 R53: Claude Code's own validator reads the module and lists the hooks the panel registers\nok 3 R53: the status line is byte for byte what it is without the panel, in a VBW project\nok 4 R53: the status line is byte for byte what it is without the panel, outside a VBW project, with colour too\nok 5 R53: the status line and the kernel know nothing of the panel, so an older Claude Code prints nothing extra",
         "fp": "99b0b5dfc176cee0cb0aac0aaba7deaddcbf8b4074c02958b48278313fd54b6e",
-        "at": "2026-11-13T13:01:37Z",
-        "why": ". listing changed"
+        "at": "2026-11-13T13:08:43Z",
+        "why": "plugin/CHANGELOG.md changed"
       },
       "C56": {
         "status": "pass",
@@ -95822,11 +95822,11 @@
       "C148": {
         "status": "pass",
         "exit": 0,
-        "seconds": 2.7,
+        "seconds": 3.3,
         "tail": "1..1\nok 1 R94: the wait setting VBW_CHECK_WAIT_SECONDS is gone from the code and the docs no longer say it ends a wait",
-        "at": "2026-11-13T11:48:01Z",
         "fp": "2ed97e5d717f44f17f3acfc62ad02946f6c63db9ed0f63290d362963ff046d77",
-        "reused": true
+        "at": "2026-11-13T13:08:43Z",
+        "why": "plugin/CHANGELOG.md changed"
       },
       "C149": {
         "status": "pass",
@@ -95975,11 +95975,11 @@
       "C166": {
         "status": "pass",
         "exit": 0,
-        "seconds": 41.6,
+        "seconds": 39.9,
         "tail": "1 R107: the profile file has a table for each profile, and every role and step the workflows use has a value Claude Code accepts\nok 2 R107: closing a run and documentation get a lower effort than building, planning and QA a higher one, in every profile\nok 3 R107: vbw config effort prints the table of the current profile, and follows a profile change\nok 4 R107: vbw next --json carries the same table, so the router can pass it to every workflow\nok 5 R107: a value Claude Code does not accept is refused with the role and the step, by vbw config effort and by vbw next\nok 6 R107: a value that is not text is refused the same way\nok 7 R107: a missing role or step is refused with its name, so no workflow starts with a gap\nok 8 R107: only the profile in use is judged: a bad value in another profile does not stop this one\nok 9 R107: the router and every skill that starts a workflow pass the effort table in the workflow's args\nok 10 R107: the effort table is described for people: the effort levels, the steps and where the table lives\nok 11 F88: a missing or invalid architect recommend step is refused like every other step\nok 12 F89: docs/workflows.md lists the architect recommend step in the table and the example\nok 13 effort.ROLE: every step of the role takes the chosen effort, in vbw config effort and vbw next --json; the other roles keep the profile's\nok 14 effort.ROLE: vbw config names each role's effort, default where the profile decides\nok 15 effort.ROLE: a record holding a chosen effort is schema 5; default on the last one removes it and the record is schema 4 again\nok 16 effort.ROLE: a level Claude Code does not take, or a role VBW does not have, is refused and nothing is written\nok 17 effort.ROLE: an effort under schema 4 loads and the next write raises the record to 5 (D582); schema 5 without one and a level Claude Code does not take are refused\nok 18 effort.ROLE: a VBW that reads only up to schema 4 says the project needs a newer VBW, never that the record is corrupt",
-        "at": "2026-11-13T11:48:01Z",
         "fp": "ccdb89baa82f463ca04b47659bf6e485ed4405ac953f454d10bc2c8b942f46b6",
-        "reused": true
+        "at": "2026-11-13T13:08:43Z",
+        "why": "plugin/CHANGELOG.md changed"
       },
       "C167": {
         "status": "pass",
@@ -96164,11 +96164,11 @@
       "C187": {
         "status": "pass",
         "exit": 0,
-        "seconds": 36.3,
+        "seconds": 34.3,
         "tail": "1..11\nok 1 R121: vbw triage --json names the active milestone, its open requirements, the run and the sorted backlog in one call\nok 2 R121: vbw triage shows an open run, and leaves out accepted requirements and closed backlog items\nok 3 R121: after ship there is no active milestone and no open requirement\nok 4 R121: vbw triage (text) prints the same facts and writes nothing\nok 5 R121: vbw todo add keeps the sort and size, and vbw todo list shows them, next before later\nok 6 R121: backlog items added before sorting existed still list as before, without a sort or size, and nothing about them changes\nok 7 R121: a sort or size outside the allowed values, or one without the other, is refused and nothing is added\nok 8 R121: the record validator accepts sorted items and refuses a bad sort or size\nok 9 R121: a sorted backlog item raises the schema to 3 or above, so an older VBW asks for an update instead of calling the record corrupt\nok 10 R121: a 'now' idea added while a run is open is recorded at once, and planning waits for the run to end\nok 11 R121: the kernel help lists vbw triage and the sort and size of vbw todo add",
-        "at": "2026-11-13T11:48:01Z",
         "fp": "9a3b037c82f6e23518475860fbc46760c87b2e8a98ce9b9e8dca5ac3adcf8a06",
-        "reused": true
+        "at": "2026-11-13T13:08:43Z",
+        "why": "plugin/CHANGELOG.md changed"
       },
       "C188": {
         "status": "pass",
@@ -96191,11 +96191,11 @@
       "C190": {
         "status": "pass",
         "exit": 0,
-        "seconds": 65.5,
+        "seconds": 63.4,
         "tail": "1..15\nok 1 R123: vbw recommend stores the top pick, its reason and size, the runners-up and the time it was written\nok 2 R123: zero runners-up is fine, and a pick may have no source\nok 3 R123: a new recommendation replaces the earlier one, so only one is kept\nok 4 R123: every malformed recommendation is refused with a message naming what is wrong, and the earlier one stays\nok 5 R123: a pick whose source is not open is refused: a shipped or proven requirement, a closed or unknown todo\nok 6 R123: a pick that is a declined suggestion is refused\nok 7 R123: with no open requirement and an empty backlog the stored recommendation says the backlog is empty; with work open, 'empty' is refused\nok 8 R123: while a run is open the kernel stores no recommendation and says so\nok 9 R123: the validator accepts a record with and without a recommendation, and refuses a damaged one\nok 10 R123: a stored recommendation raises the schema to 3 or above; an older VBW asks for an update; without one and without sorted todos the schema stays as before\nok 11 R123: vbw status shows the what's-next part: the top pick, its reason and size, each runner-up with its size, and the date\nok 12 R123: with none stored, vbw status says there is none yet and how to ask for one\nok 13 R123: vbw status --json carries the recommendation, or null when none is stored\nok 14 R123: the kernel help lists vbw recommend\nok 15 R123: vbw ship retires the stored recommendation, written for the work before the ship",
-        "at": "2026-11-13T11:48:01Z",
         "fp": "1298cf4f726813ed091d7c7cd224c97eafc08e4e8d56837e310e1c52709b6d91",
-        "reused": true
+        "at": "2026-11-13T13:08:43Z",
+        "why": "plugin/CHANGELOG.md changed"
       },
       "C191": {
         "status": "pass",
@@ -96272,11 +96272,11 @@
       "C199": {
         "status": "pass",
         "exit": 0,
-        "seconds": 70.5,
+        "seconds": 62.0,
         "tail": "1..8\nok 1 R132: the fingerprint stored for a passed phase carries the version of how it was computed, in the clone's QA cache\nok 2 R132: after an update that changes the fingerprint's version, an unchanged passed phase still stands\nok 3 R132: at the same version, a different stored fingerprint is a change, as today\nok 4 R132: a fingerprint written by an older VBW with no version is an older version, not a change\nok 5 R132: after an update, a real change to the phase's files sends it back to QA\nok 6 R132: a change to the phase's files made before the update still sends it back to QA after it\nok 7 R132: after an update, a change to the phase's tests, plan or requirements sends it back to QA\nok 8 R132: a change to the phase's requirement made before an update of a version-less fingerprint sends it back to QA",
-        "at": "2026-11-13T11:48:01Z",
         "fp": "aa6f03034434abe1895e674e456d849a5fbff135a921984c8e7694be26905cba",
-        "reused": true
+        "at": "2026-11-13T13:08:43Z",
+        "why": "plugin/CHANGELOG.md changed"
       },
       "C200": {
         "status": "pass",
@@ -96497,11 +96497,11 @@
       "C224": {
         "status": "pass",
         "exit": 0,
-        "seconds": 54.3,
+        "seconds": 56.0,
         "tail": "1..6\nok 1 R150: the schema-4 fixture loads and shows correctly in this VBW\nok 2 R150: a VBW that reads up to schema 3 asks for a newer VBW on the schema-4 fixture, never calling it corrupt\nok 3 R150: a VBW that reads up to schema 3 asks for a newer VBW on every record this VBW writes: 0, 1, 3 and 51 checks\nok 4 R150: the status line shows the same on a format-4 record with 0 and 60 checks as on an older one, idle and during a run, with no error\nok 5 R150: the session-start hook says the same on a format-4 record as on an older one, with no error\nok 6 R150: the panel shows the same on a format-4 record with 0 and 60 checks as on an older one",
-        "at": "2026-11-13T11:48:01Z",
         "fp": "9546374c2244d2d507a4683c474557bb6a5653d90a82065dbd248f02e95b030d",
-        "reused": true
+        "at": "2026-11-13T13:08:43Z",
+        "why": "plugin/CHANGELOG.md changed"
       },
       "C225": {
         "status": "pass",
@@ -96560,11 +96560,11 @@
       "C231": {
         "status": "pass",
         "exit": 0,
-        "seconds": 93.2,
+        "seconds": 89.1,
         "tail": "31: the reference is one jq call of the guard's shape, over the bench's own program and document, never the shipped guard, a project file or the old counting program\nok 15 R231: the reference program and document are deterministic and of the sizes the provenance states, the document a JSON object of at least 50 KB, and the guard-shaped call runs on them\nok 16 R231: the provenance comment names the shape and the sizes, the M1 Max figures from five dated runs and GitHub's shard-1 figure, and NOMINAL_WHEN names a month\nok 17 R233: the provenance comment names the two Linux images with their jq versions and dated figures beside the Mac and GitHub macOS ones\nok 18 R233: the reference keeps the guard's proportion: its program is within 10% of the size of the shipped Bash guard and the programs.jq it includes (PR #730 grew the guard; the reference follows or the guard shrinks)\nok 19 R233: the gap is never closed by a wider allowance: the bench reads no operating system name and has one nominal figure\nok 20 R234: a first difference at or over the margin followed by one under it passes, and the first alone asks for the second measure\nok 21 R234: two differences at or over the margin fail, and the words name both measures\nok 22 R234: a startup above the hook budget in either run reads busy with the startup, as the bench's own rule; a startup at the budget never does\nok 23 R234: the timed waiting case judges through waiting_judge: it skips as busy, measures again on again, and fails with the judge's words\nok 24 R275: a case's budget is scaled by the reference measured beside it: a slow machine throughout marks every case slow and fails none\nok 25 R275: a case slow on a machine whose reference beside it is nominal is over its budget, measured again first, while the other cases pass\nok 26 R275: measured again, a case and the reference beside it are both measured anew: the second pair judges it\nok 27 R275: the busy-machine rule stays: a startup above the hook limit judges nothing",
-        "at": "2026-11-13T11:48:01Z",
         "fp": "e793b124a2853ca98406f9890c1b9dfdad8f49b126f175a6b723f4671450cecf",
-        "reused": true
+        "at": "2026-11-13T13:08:43Z",
+        "why": "plugin/CHANGELOG.md changed"
       },
       "C232": {
         "status": "pass",
@@ -96722,11 +96722,11 @@
       "C249": {
         "status": "pass",
         "exit": 0,
-        "seconds": 60.5,
+        "seconds": 54.7,
         "tail": "1..11\nok 1 R162: every refusal written out in cmd-apply.sh and cmd-run.sh carries its next step\nok 2 R162: every kernel line that writes 'refused:' carries its next step\nok 3 R162: a record write the kernel refuses as invalid ends with its next step, and writes nothing\nok 4 R162: every refusal of vbw run confirm ends with its next step\nok 5 R162 R216 R220: every refusal of a full apply ends with its next step\nok 6 R162 R216 R220: every refusal of vbw apply --add ends with its next step\nok 7 R162 R216 R220: every refusal of vbw apply --patch ends with its next step\nok 8 R162: every refusal of vbw run start ends with its next step\nok 9 R162 R219: every block of the file guard and the Bash guard ends with its next step\nok 10 R162: a guard that failed during a run blocks with a next step\nok 11 R216 R220: apply_next answers the two-owner (ordered and beside), mixed-owner and empty-filter messages with their own arms",
-        "at": "2026-11-13T11:48:01Z",
         "fp": "519896c0dfda601738e1bd71b8b65877e664a9d86e471d0b96c2aef1efda7c2e",
-        "reused": true
+        "at": "2026-11-13T13:08:43Z",
+        "why": "plugin/CHANGELOG.md changed"
       },
       "C250": {
         "status": "pass",
@@ -96740,20 +96740,20 @@
       "C251": {
         "status": "pass",
         "exit": 0,
-        "seconds": 31.7,
+        "seconds": 29.6,
         "tail": "1..10\nok 1 R164: with only the version files and the changelog changed since a passing proof, the release run reuses it\nok 2 R164: the same holds when the version change is committed\nok 3 R164: any other changed file, committed or not, runs everything and says why\nok 4 R164: a new untracked file runs everything and says why\nok 5 R164: with no proof recorded, the release run runs everything and says why\nok 6 R164: when the last proof failed, the release run runs everything and says why\nok 7 R164: when the proof is reused, a failing benchmark or timed check still fails the run\nok 8 R164: the CI shards run their whole share whatever proof is recorded\nok 9 R164: bump-version.sh --help prints its usage and changes nothing; an unknown flag is refused with the usage and changes nothing\nok 10 R303: a release run that reuses the proof runs the timed tests after a failed hook bench, then fails naming it",
-        "at": "2026-11-13T11:48:01Z",
         "fp": "80591fb718986fab415be8f70c38cc801722e12ccc05aad150c6441f83794838",
-        "reused": true
+        "at": "2026-11-13T13:08:43Z",
+        "why": "plugin/CHANGELOG.md changed"
       },
       "C252": {
         "status": "pass",
         "exit": 0,
-        "seconds": 60.0,
+        "seconds": 51.2,
         "tail": "1..10\nok 1 R165: during a run a guard that crashes blocks the write or command, saying the guard failed and to run vbw doctor\nok 2 R165: started in a subfolder of the project, during a run a guard that crashes still blocks\nok 3 R165: during a run a guard that cannot start blocks: the guard file missing or unreadable\nok 4 R165: during a run a guard that cannot start because jq is missing blocks\nok 5 R165: during a run a guard that runs past its time limit is stopped and the action blocked; docs/guards.md states the limit\nok 6 R165: during a run a record that cannot be parsed blocks the action when the guard must read it\nok 7 R165: the run-open marker exists exactly while a run is open, outlives a record that cannot be read, and a broken guard goes quiet when the run ends\nok 8 R165: in a VBW project with no open run a failing guard lets the action through as before\nok 9 R165: outside VBW projects a failing or missing guard changes nothing and prints nothing\nok 10 R165: with the guards intact a run still gets their ordinary answers, and the doctor's guard self-test passes",
-        "at": "2026-11-13T11:48:01Z",
         "fp": "3974be14db366f168f2e9b291226dfca3486024f14d0076397606898b8e370f2",
-        "reused": true
+        "at": "2026-11-13T13:08:43Z",
+        "why": "plugin/CHANGELOG.md changed"
       },
       "C253": {
         "status": "pass",
@@ -96815,7 +96815,7 @@
         "seconds": 1.4,
         "tail": "1..5\nok 1 R167: VBW's spec declares its single-file form: bats on one file\nok 2 R167: VBW's declared test files are every tracked tests/*.bats except the timed ones\nok 3 R167: VBW's spec names the shell lint as its own project command\nok 4 R167: bash tools/test.sh --lint runs shellcheck on every shell file under tools/ and runs no test file\nok 5 R167: tools/test.sh keeps its usage line and documents --lint in it",
         "fp": "a4c3fc4a1c937f7ed83dbad83a14a23b4a955b4576464496a0b301351ed0b484",
-        "at": "2026-11-13T13:01:37Z",
+        "at": "2026-11-13T13:08:43Z",
         "why": "reads the project through git"
       },
       "C260": {
@@ -96904,9 +96904,9 @@
         "exit": 0,
         "seconds": 11.4,
         "tail": "1..3\nok 1 R170: a passing proof that reused results is reused by the release run\nok 2 R170: a proof that skipped a command not yet approved is not reused, and the reason says so\nok 3 R170: a proof where the quick command stood in for the test command is not reused, and the reason says so",
-        "at": "2026-11-13T11:48:01Z",
         "fp": "cca5744f1bf77d15e4a186f9542f9b6d64295f4334e6d2f6ac8581598920a628",
-        "reused": true
+        "at": "2026-11-13T13:08:43Z",
+        "why": "plugin/CHANGELOG.md changed"
       },
       "C270": {
         "status": "pass",
@@ -97082,11 +97082,11 @@
       "C289": {
         "status": "pass",
         "exit": 0,
-        "seconds": 7.3,
+        "seconds": 6.9,
         "tail": "1..2\nok 1 R173: the bench's status line cases write the cost side file, and pass\nok 2 R173: a status line that never writes the side file fails the bench, on both records",
-        "at": "2026-11-13T11:48:01Z",
         "fp": "fbe13635ca6021b4583a358cf68ff6ab8e9119a2fe8377ba7eb14d6645ccb075",
-        "reused": true
+        "at": "2026-11-13T13:08:43Z",
+        "why": "plugin/CHANGELOG.md changed"
       },
       "C290": {
         "status": "pass",
@@ -97451,20 +97451,20 @@
       "C330": {
         "status": "pass",
         "exit": 0,
-        "seconds": 4.7,
+        "seconds": 4.6,
         "tail": "1..4\nok 1 R184: in a project that turns VBW off, the real setting shows the user's earlier status line with Claude Code's input\nok 2 R184: in a project that turns VBW off, with no earlier status line, nothing shows: no VBW line, no 'unavailable'\nok 3 R184: where VBW is on, the real setting prints exactly what VBW's script prints, and the earlier status line never runs\nok 4 R184: a setting from an older VBW, not yet updated, shows no VBW line in a project that turns VBW off",
-        "at": "2026-11-13T11:48:01Z",
         "fp": "3b50fe4150340023c092a793ef6a3955eb329bb7051768079a0c60dd3c49c50b",
-        "reused": true
+        "at": "2026-11-13T13:08:43Z",
+        "why": "plugin/CHANGELOG.md changed"
       },
       "C331": {
         "status": "pass",
         "exit": 0,
-        "seconds": 21.4,
+        "seconds": 21.0,
         "tail": "1..8\nok 1 R184: the bench measures VBW's own cost in the hand-back where VBW is off against 10 ms, the platform's bash, jq and sh startup and the earlier status line left out\nok 2 R184: on a machine that can be measured, VBW's own cost in the hand-back is within 10 ms\nok 3 R184: VBW's script above 10 ms makes the hand-back fail the bench, naming the cost and the limit\nok 4 R184: a hand-back that never shows the earlier status line fails the bench\nok 5 R184: on a machine too busy to measure, the hand-back is not judged either\nok 6 R224: the bench measures VBW's own cost in the hand-back outside a VBW project as 'status line (no project)', as it measures 'status line (VBW off)', against the 10 ms hand-back budget\nok 7 R224: a hand-back outside a VBW project that never shows the earlier status line fails the bench\nok 8 R224: VBW's script above 10 ms, though under the status line's 60 ms, makes the hand-back outside a VBW project fail the bench",
-        "at": "2026-11-13T11:48:01Z",
         "fp": "4fa21950dd10ab4b8ba500e56341e5b7e18c6ce9f2aa1b422a8cd9dd4db2811f",
-        "reused": true
+        "at": "2026-11-13T13:08:43Z",
+        "why": "plugin/CHANGELOG.md changed"
       },
       "C332": {
         "status": "pass",
@@ -97487,20 +97487,20 @@
       "C334": {
         "status": "pass",
         "exit": 0,
-        "seconds": 54.3,
+        "seconds": 39.5,
         "tail": "1..12\nok 1 R185: a session that loaded VBW from a working tree runs that tree's vbw, ahead of an installed release\nok 2 R185: the same holds outside a VBW project and with the installed VBW turned off for the project\nok 3 R185: the env file keeps what it held, and a working tree whose path has a space and a quote is put first whole\nok 4 R185 (R285): an installed session puts its own copy's bin first on PATH, one line in the env file\nok 5 R185: in a VBW project the session's one line names the kernel in use, its path and its version\nok 6 R185: when the env file cannot be written, the session is told once, naming the exact kernel path to use\nok 7 R185: an approval answered in the menu is recorded by the loaded kernel, with an installed release that cannot read the record first on PATH\nok 8 R185: with an installed release first on PATH, VBW's hooks (session start, approval menu, guards) never run it\nok 9 R185: the unwritable-env-file warning survives a VBW 1 command copy removal and a project made by a newer VBW\nok 10 R285: 17 --plugin-dir starts and then an installed start leave one VBW PATH line, the installed copy's, and every other line byte for byte\nok 11 R285: a --plugin-dir start after an installed start leaves one line, the tree's\nok 12 R285: an installed start keeps the session record naming the copy Claude Code loaded for the session",
-        "at": "2026-11-13T11:48:01Z",
         "fp": "1690eeddc1c35f8732ce10b2b2161b14398b314403a88668913e2ed0dcac015c",
-        "reused": true
+        "at": "2026-11-13T13:08:43Z",
+        "why": "plugin/CHANGELOG.md changed"
       },
       "C335": {
         "status": "pass",
         "exit": 0,
-        "seconds": 10.0,
+        "seconds": 9.4,
         "tail": "1..10\nok 1 R185: vbw --version prints the plugin's version, as vbw version does, in and outside a project\nok 2 R185: vbw doctor says the vbw on PATH is the loaded plugin's, with its path and version\nok 3 R185: in a session that loaded a working tree, an installed release first on PATH is a warning, with the fix naming the loaded kernel\nok 4 R185 (R285): outside a Claude Code session doctor names the vbw on PATH and compares it with nothing, never with the kernel it runs from\nok 5 R185: no vbw on PATH at all is a warning too, with the fix naming the loaded kernel\nok 6 R185: a session id that is not a plain name finds no record: doctor ignores a file the id points at\nok 7 R185: the plain-name rule for a session id reads the same in the hook, the status line and the shared function\nok 8 R285 doctor: after an installed start, the installed copy's vbw first on PATH is ok, though doctor runs from another kernel\nok 9 R285 doctor: after an installed start, a stale working tree first on PATH is a warning naming both folders and the fix: start or resume the session again\nok 10 R285 doctor: a session id with no record says doctor cannot tell which copy the session loaded, with the fix, instead of comparing with itself",
-        "at": "2026-11-13T11:48:01Z",
         "fp": "f5983a0b28e3c1ae40625b58f7e03a16996882f5ff8cbd47570acc5ab6cfbd75",
-        "reused": true
+        "at": "2026-11-13T13:08:43Z",
+        "why": "plugin/CHANGELOG.md changed"
       },
       "C336": {
         "status": "pass",
@@ -97514,20 +97514,20 @@
       "C337": {
         "status": "pass",
         "exit": 0,
-        "seconds": 35.3,
+        "seconds": 28.5,
         "tail": "1..8\nok 1 R185: a session that loaded a working tree shows the tree's version, rendered by the tree's own script\nok 2 R185: in a normal installed session the status line shows the newest installed version, as before\nok 3 R185: the choice never leaks: a later normal session, and the same session resumed without the tree, show the installed copy\nok 4 R185: a working tree that was moved or deleted falls back to the installed copy instead of failing\nok 5 R185: a recorded folder that is no VBW plugin any more is never run: the installed copy renders\nok 6 R185: with the installed VBW turned off for the project, a session that loaded the tree still shows VBW, and one without it still hands back\nok 7 R185: the session start writes only to the project's runtime folder, VBW's Claude config folder and the env file, whatever the session id\nok 8 R185: the status line of a loaded tree runs no git process",
-        "at": "2026-11-13T11:48:01Z",
         "fp": "cc14417e3b3a29df3c3de96f5819f39f5250e20e9e16ef0c75494cfed3d2c880",
-        "reused": true
+        "at": "2026-11-13T13:08:43Z",
+        "why": "plugin/CHANGELOG.md changed"
       },
       "C338": {
         "status": "pass",
         "exit": 0,
-        "seconds": 7.8,
+        "seconds": 7.2,
         "tail": "1..3\nok 1 R185: the bench measures the loaded copy's status line against the 60 ms limit, and the hooks against 20 ms\nok 2 R185: a loaded copy's status line above 60 ms fails the bench, naming the cost and the limit\nok 3 R185: when the session start does not record the loaded copy, the bench fails instead of measuring the installed one",
-        "at": "2026-11-13T11:48:01Z",
         "fp": "70edcfbe7dc6a57d89688d5212c7cffc2e1b541cb671ddf7f2f420eba2706a3d",
-        "reused": true
+        "at": "2026-11-13T13:08:43Z",
+        "why": "plugin/CHANGELOG.md changed"
       },
       "C339": {
         "status": "pass",
@@ -97559,20 +97559,20 @@
       "C342": {
         "status": "pass",
         "exit": 0,
-        "seconds": 54.2,
+        "seconds": 39.0,
         "tail": "1..12\nok 1 R185: a session that loaded VBW from a working tree runs that tree's vbw, ahead of an installed release\nok 2 R185: the same holds outside a VBW project and with the installed VBW turned off for the project\nok 3 R185: the env file keeps what it held, and a working tree whose path has a space and a quote is put first whole\nok 4 R185 (R285): an installed session puts its own copy's bin first on PATH, one line in the env file\nok 5 R185: in a VBW project the session's one line names the kernel in use, its path and its version\nok 6 R185: when the env file cannot be written, the session is told once, naming the exact kernel path to use\nok 7 R185: an approval answered in the menu is recorded by the loaded kernel, with an installed release that cannot read the record first on PATH\nok 8 R185: with an installed release first on PATH, VBW's hooks (session start, approval menu, guards) never run it\nok 9 R185: the unwritable-env-file warning survives a VBW 1 command copy removal and a project made by a newer VBW\nok 10 R285: 17 --plugin-dir starts and then an installed start leave one VBW PATH line, the installed copy's, and every other line byte for byte\nok 11 R285: a --plugin-dir start after an installed start leaves one line, the tree's\nok 12 R285: an installed start keeps the session record naming the copy Claude Code loaded for the session",
-        "at": "2026-11-13T11:48:01Z",
         "fp": "794a3e0cbb4e606196379a5c8d05a4be79bf87a9966d37c842ec316c49e53fc8",
-        "reused": true
+        "at": "2026-11-13T13:08:43Z",
+        "why": "plugin/CHANGELOG.md changed"
       },
       "C343": {
         "status": "pass",
         "exit": 0,
-        "seconds": 55.0,
+        "seconds": 56.4,
         "tail": "1..12\nok 1 R185: a session that loaded VBW from a working tree runs that tree's vbw, ahead of an installed release\nok 2 R185: the same holds outside a VBW project and with the installed VBW turned off for the project\nok 3 R185: the env file keeps what it held, and a working tree whose path has a space and a quote is put first whole\nok 4 R185 (R285): an installed session puts its own copy's bin first on PATH, one line in the env file\nok 5 R185: in a VBW project the session's one line names the kernel in use, its path and its version\nok 6 R185: when the env file cannot be written, the session is told once, naming the exact kernel path to use\nok 7 R185: an approval answered in the menu is recorded by the loaded kernel, with an installed release that cannot read the record first on PATH\nok 8 R185: with an installed release first on PATH, VBW's hooks (session start, approval menu, guards) never run it\nok 9 R185: the unwritable-env-file warning survives a VBW 1 command copy removal and a project made by a newer VBW\nok 10 R285: 17 --plugin-dir starts and then an installed start leave one VBW PATH line, the installed copy's, and every other line byte for byte\nok 11 R285: a --plugin-dir start after an installed start leaves one line, the tree's\nok 12 R285: an installed start keeps the session record naming the copy Claude Code loaded for the session",
-        "at": "2026-11-13T11:48:01Z",
         "fp": "127086ffc1beb40afcf45403b24f260f7be8f18d24e422dd3f03fbb17beaf85e",
-        "reused": true
+        "at": "2026-11-13T13:08:43Z",
+        "why": "plugin/CHANGELOG.md changed"
       },
       "C344": {
         "status": "pass",
@@ -97784,11 +97784,11 @@
       "C367": {
         "status": "pass",
         "exit": 0,
-        "seconds": 1.0,
+        "seconds": 1.2,
         "tail": "1..7\nok 1 R189: docs/panel.md describes the what's happening now box at the top of the Now tab\nok 2 B5: docs/panel.md says the box draws the step's parts as a strip with its figure, and the milestone's end with its basis\nok 3 2.1.11: docs/panel.md says a time on another day names the day\nok 4 R189: docs/panel.md shows events and messages starting with their clock time\nok 5 R189: docs/panel.md says each What's next row is a button that fills the prompt, with a size chip\nok 6 R189: docs/panel.md says new things stay marked until you have seen them\nok 7 R227: docs/panel.md says the Now panel's empty state reads 'VBW is not waiting on you.', and the old sentence is gone from plugin/ and docs/",
-        "at": "2026-11-13T11:48:01Z",
         "fp": "48b511ca85c7e42f6fae876587ba1711959f96c5fca1ebf28235beb691faa441",
-        "reused": true
+        "at": "2026-11-13T13:08:43Z",
+        "why": "plugin/CHANGELOG.md changed"
       },
       "C368": {
         "status": "pass",
@@ -97919,11 +97919,11 @@
       "C382": {
         "status": "pass",
         "exit": 0,
-        "seconds": 3.6,
+        "seconds": 3.5,
         "tail": "1..4\nok 1 R190: the hook bench measures the status line with a step running, against the status line budget\nok 2 R190: a status line that does not show the step fails the hook bench\nok 3 R235: when the status line falls back, the bench's failure names the first line and jq's error from statusline.err\nok 4 R235: a status line that renders without the step names the line it read, and no error file text",
-        "at": "2026-11-13T11:48:01Z",
         "fp": "6155c39e9b957e2c2e8627cc25480eaa4122caa790eb063f6e7bd8fb1b97c037",
-        "reused": true
+        "at": "2026-11-13T13:08:43Z",
+        "why": "plugin/CHANGELOG.md changed"
       },
       "C383": {
         "status": "pass",
@@ -98065,9 +98065,9 @@
         "exit": 0,
         "seconds": 0.6,
         "tail": "1..3\nok 1 R191: the suite has a road scenario, in its default list, that seeds a tiered history and phase outcomes and records each fact\nok 2 R191: a committed result of the road scenario shows both sentences in chat and the same milestone HH:MM in Mission Control, at L3\nok 3 R191: the committed result shows the status line without the milestone time, and 'no end time yet' for both without history",
-        "fp": "992c188a430a65ef109aa83ac71e81b54531e7e83a5a8a7a48456c9e4cdab1af",
         "at": "2026-11-13T13:01:37Z",
-        "why": "tools/l3-results/road.json changed"
+        "fp": "992c188a430a65ef109aa83ac71e81b54531e7e83a5a8a7a48456c9e4cdab1af",
+        "reused": true
       },
       "C399": {
         "status": "pass",
@@ -98288,11 +98288,11 @@
       "C423": {
         "status": "pass",
         "exit": 0,
-        "seconds": 21.9,
+        "seconds": 22.2,
         "tail": "1..5\nok 1 R198: the hook runs vbw next once and never vbw status\nok 2 R198: the context names the project with the words of vbw status's first line\nok 3 R198: a glance older than the record gives the record's milestone, not the glance's\nok 4 R198: a record written by a newer VBW still gives the update notice, without vbw status\nok 5 R198: docs/guards.md says the hook runs vbw next once and reads the project line from the glance",
-        "at": "2026-11-13T11:48:01Z",
         "fp": "dc4f6c9b1783fd4f701cac0220f88ff09b0910f81e4531d312e3b24dcef3f037",
-        "reused": true
+        "at": "2026-11-13T13:08:43Z",
+        "why": "plugin/CHANGELOG.md changed"
       },
       "C424": {
         "status": "pass",
@@ -98344,9 +98344,9 @@
         "exit": 0,
         "seconds": 1.1,
         "tail": "1..7\nok 1 R201: the qafix scenario states guided autonomy in the user's words, reads the setting back with vbw config autonomy and expects guided\nok 2 R201: the scenario records that the setting was written before the first run: the settings write in the transcript comes before the first 'Contract approved' decision and the first run lease\nok 3 R201: a committed result of the qafix scenario passed with autonomy guided, set before the first run, and the deviation restored, at L3\nok 4 R201: the comparison passes when the settings write is earlier than the first Contract approved decision\nok 5 R201: the comparison fails when the settings write is later than the first Contract approved decision\nok 6 R201: a record with no Contract approved decision is not treated as before\nok 7 R201: a record that cannot be read is not treated as before",
-        "fp": "3802fca6e39968de1fc83979e485473fc792f03177635598ba42d3b29d372359",
         "at": "2026-11-13T13:01:37Z",
-        "why": "tools/l3-results/qafix.json changed"
+        "fp": "3802fca6e39968de1fc83979e485473fc792f03177635598ba42d3b29d372359",
+        "reused": true
       },
       "C430": {
         "status": "pass",
@@ -98387,10 +98387,10 @@
       "C434": {
         "status": "pass",
         "exit": 0,
-        "seconds": 48.4,
+        "seconds": 69.3,
         "tail": "1..4\nok 1 R202: --generate builds a stand-in of at least the asked size, approved, with cache-writing and cache-reading units\nok 2 R202: the measurement prints every figure for a proof, a one-file fix round and vbw next\nok 3 R202: the sampler of the written-file lists polls at least five times a second, so a fast proof is still seen\nok 4 R202: nothing of a real user project is in the tool or in what it generates",
         "fp": "23729cd8ad38ab6e167a995bfb1b9288496cd3335bae0e6b534d82be4f5e38a7",
-        "at": "2026-11-13T13:01:37Z",
+        "at": "2026-11-13T13:08:43Z",
         "why": "reads the project through git"
       },
       "C435": {
@@ -98407,9 +98407,9 @@
         "exit": 0,
         "seconds": 0.7,
         "tail": "1..4\nok 1 R202: the greenfield scenario records whether each report line appeared in the proof output\nok 2 R202: a committed greenfield result shows both report lines in a real session's proof output, at L3\nok 3 R202: each fact is set true only when the transcript reader finds its printed form\nok 4 R202: the transcript reader takes lines from the tool results of vbw prove and fix done calls only",
-        "fp": "6bb77e7539c02224a9597702d118c3be9934b7326fce11a9cc04fdf5823f8de8",
         "at": "2026-11-13T13:01:37Z",
-        "why": "tools/l3-results/greenfield.json changed"
+        "fp": "6bb77e7539c02224a9597702d118c3be9934b7326fce11a9cc04fdf5823f8de8",
+        "reused": true
       },
       "C437": {
         "status": "pass",
@@ -98677,9 +98677,9 @@
         "exit": 0,
         "seconds": 0.7,
         "tail": "1..4\nok 1 R208: the hiddenrecord scenario exists, is in the default list and is named in the suite's header\nok 2 R208: it seeds a project whose .gitignore holds *.json and reads git and .vbw/.gitignore, never the screen\nok 3 R208: the committed hiddenrecord result shows the record committed under a *.json rule, with the un-hide lines\nok 4 R208: the greenfield scenario records the un-hide lines and the tracked record, and its committed result from this code shows them",
-        "fp": "2cead4a0203853f44102e617e83e53f16aa7d49d0d7b939eac45f42060d8566b",
         "at": "2026-11-13T13:01:37Z",
-        "why": "tools/l3-results/greenfield.json changed"
+        "fp": "2cead4a0203853f44102e617e83e53f16aa7d49d0d7b939eac45f42060d8566b",
+        "reused": true
       },
       "C467": {
         "status": "pass",
@@ -99026,11 +99026,11 @@
       "C505": {
         "status": "pass",
         "exit": 0,
-        "seconds": 9.5,
+        "seconds": 9.1,
         "tail": "1..5\nok 1 R222: the bench measures one fixed reference workload first and prints its cost, the nominal cost on the named machines and the ratio, once and before any case\nok 2 R222: on a machine twenty times slower than nominal, a guard and a status line above their budgets but within budget times ratio are reported slow on stdout, naming cost, budget, ratio and scaled budget, and the bench exits 0\nok 3 R222: on a slow machine a case above budget times ratio still fails: OVER on stderr, exit 1, and the measure-again rule names the scaled budget\nok 4 R222: on a machine at nominal speed or faster (ratio 1 or less) the absolute budgets apply unchanged, with today's lines\nok 5 R222: the busy rule stays: when sh and jq startup alone are above the hook limit the bench reports busy, judges nothing, reference or not, and exits 0",
-        "at": "2026-11-13T11:48:01Z",
         "fp": "6facdc1c158cb409b5619e89a08c6382694df4faf64d51e333b32e0600ea4025",
-        "reused": true
+        "at": "2026-11-13T13:08:43Z",
+        "why": "plugin/CHANGELOG.md changed"
       },
       "C506": {
         "status": "pass",
@@ -99053,10 +99053,10 @@
       "C508": {
         "status": "pass",
         "exit": 0,
-        "seconds": 3.6,
+        "seconds": 4.7,
         "tail": "1..3\nok 1 R223 standards: tools/check-jq-builtins.sh refuses a jq program that uses a builtin newer than 1.7.0 unless the file defines the name, naming file and line, and passes the plugin\nok 2 R223 standards: tools/check-jq-builtins.sh refuses a call of one of jq's private builtins (a name starting with _, such as _nwise, which jq 1.8 removed) unless the file defines it; a shell variable named _x passes\nok 3 R223 standards: each CI shard prints jq --version beside bash --version",
         "fp": "d4ee780802f6df0f483f9b8715273cc59c441ec7d3a3d358965da4a52071dfad",
-        "at": "2026-11-13T13:01:37Z",
+        "at": "2026-11-13T13:08:43Z",
         "why": "reads the project through git"
       },
       "C509": {
@@ -99116,11 +99116,11 @@
       "C515": {
         "status": "pass",
         "exit": 0,
-        "seconds": 6.2,
+        "seconds": 5.1,
         "tail": "1..3\nok 1 R224: the bench measures VBW's own cost in the hand-back outside a VBW project as 'status line (no project)', as it measures 'status line (VBW off)', against the 10 ms hand-back budget\nok 2 R224: a hand-back outside a VBW project that never shows the earlier status line fails the bench\nok 3 R224: VBW's script above 10 ms, though under the status line's 60 ms, makes the hand-back outside a VBW project fail the bench",
-        "at": "2026-11-13T11:48:01Z",
         "fp": "c4129721d2a277459ce459731d7d8937703f3c32c538a82a57df43ab67ab882a",
-        "reused": true
+        "at": "2026-11-13T13:08:43Z",
+        "why": "plugin/CHANGELOG.md changed"
       },
       "C516": {
         "status": "pass",
@@ -99172,9 +99172,9 @@
         "exit": 0,
         "seconds": 0.6,
         "tail": "1..1\nok 1 R227: docs/panel.md says the Now panel's empty state reads 'VBW is not waiting on you.', and the old sentence is gone from plugin/ and docs/",
-        "at": "2026-11-13T11:48:01Z",
         "fp": "0d7a58220c7b20ec03a42c5e85173d90b47ca9c9448567ca5bb500a832533870",
-        "reused": true
+        "at": "2026-11-13T13:08:43Z",
+        "why": "plugin/CHANGELOG.md changed"
       },
       "C522": {
         "status": "pass",
@@ -99269,11 +99269,11 @@
       "C532": {
         "status": "pass",
         "exit": 0,
-        "seconds": 2.7,
+        "seconds": 3.2,
         "tail": "1..3\nok 1 R231: the reference is one jq call of the guard's shape, over the bench's own program and document, never the shipped guard, a project file or the old counting program\nok 2 R231: the reference program and document are deterministic and of the sizes the provenance states, the document a JSON object of at least 50 KB, and the guard-shaped call runs on them\nok 3 R231: the provenance comment names the shape and the sizes, the M1 Max figures from five dated runs and GitHub's shard-1 figure, and NOMINAL_WHEN names a month",
-        "at": "2026-11-13T11:48:01Z",
         "fp": "0cc2dc103c38b99364fa189897659f21e788f0a607324c8ffeaafcf785f33ea5",
-        "reused": true
+        "at": "2026-11-13T13:08:43Z",
+        "why": "plugin/CHANGELOG.md changed"
       },
       "C533": {
         "status": "pass",
@@ -99296,11 +99296,11 @@
       "C535": {
         "status": "pass",
         "exit": 0,
-        "seconds": 3.2,
+        "seconds": 3.6,
         "tail": "1..4\nok 1 R234: a first difference at or over the margin followed by one under it passes, and the first alone asks for the second measure\nok 2 R234: two differences at or over the margin fail, and the words name both measures\nok 3 R234: a startup above the hook budget in either run reads busy with the startup, as the bench's own rule; a startup at the budget never does\nok 4 R234: the timed waiting case judges through waiting_judge: it skips as busy, measures again on again, and fails with the judge's words",
-        "at": "2026-11-13T11:48:01Z",
         "fp": "f2246ccd6690c1de3a0c387115d8c2c3294854bb7a0bc174e4945b15b9d81c7a",
-        "reused": true
+        "at": "2026-11-13T13:08:43Z",
+        "why": "plugin/CHANGELOG.md changed"
       },
       "C536": {
         "status": "pass",
@@ -99323,28 +99323,28 @@
       "C538": {
         "status": "pass",
         "exit": 0,
-        "seconds": 5.1,
+        "seconds": 6.5,
         "tail": "1..4\nok 1 R235: when the render fails, .vbw/runtime/statusline.err holds jq's error and the fallback line is printed\nok 2 R235: a good render leaves .vbw/runtime/statusline.err empty, overwritten each call\nok 3 R235: without a runtime folder the render still prints and writes nothing outside the project\nok 4 R235: a reader that has left does not fail the render, a good one or the fallback (status 0, no SIGPIPE)",
-        "at": "2026-11-13T11:48:01Z",
         "fp": "9a53fb8de863fd9067391cc26bf2ad9f0b1f1a7eceaba9ad40e28b84fb9c73be",
-        "reused": true
+        "at": "2026-11-13T13:08:43Z",
+        "why": "plugin/CHANGELOG.md changed"
       },
       "C539": {
         "status": "pass",
         "exit": 0,
-        "seconds": 2.6,
+        "seconds": 3.0,
         "tail": "1..2\nok 1 R235: when the status line falls back, the bench's failure names the first line and jq's error from statusline.err\nok 2 R235: a status line that renders without the step names the line it read, and no error file text",
-        "at": "2026-11-13T11:48:01Z",
         "fp": "f656285a17b07432918b008bb0565aeaa99de8c0a1ec089e8d337ddd91a41744",
-        "reused": true
+        "at": "2026-11-13T13:08:43Z",
+        "why": "plugin/CHANGELOG.md changed"
       },
       "C540": {
         "status": "pass",
         "exit": 0,
-        "seconds": 2.9,
+        "seconds": 4.3,
         "tail": "1..4\nok 1 R233: without arguments the container is ubuntu:24.04 and runs the release run, as before\nok 2 R233: --image ubuntu:26.04 shapes the container after that image and --bench runs only the hook bench\nok 3 R233: a command after -- runs inside the container in place of the release run, its words kept\nok 4 R233: an unknown option or an image the script does not know exits 2 with the usage and builds nothing",
         "fp": "4babb0ea3b7fd899ad23ca30b774bd9248999e3a134b11344a30f5a48780e52d",
-        "at": "2026-11-13T13:01:37Z",
+        "at": "2026-11-13T13:08:43Z",
         "why": "reads the project through git"
       },
       "C541": {
@@ -99359,11 +99359,11 @@
       "C542": {
         "status": "pass",
         "exit": 0,
-        "seconds": 2.4,
+        "seconds": 2.7,
         "tail": "1..3\nok 1 R233: the provenance comment names the two Linux images with their jq versions and dated figures beside the Mac and GitHub macOS ones\nok 2 R233: the reference keeps the guard's proportion: its program is within 10% of the size of the shipped Bash guard and the programs.jq it includes (PR #730 grew the guard; the reference follows or the guard shrinks)\nok 3 R233: the gap is never closed by a wider allowance: the bench reads no operating system name and has one nominal figure",
-        "at": "2026-11-13T11:48:01Z",
         "fp": "e7d14564310d1327bfc7e215e0879b8f874bab0e1c8408199ecc650b9597b501",
-        "reused": true
+        "at": "2026-11-13T13:08:43Z",
+        "why": "plugin/CHANGELOG.md changed"
       },
       "C543": {
         "status": "pass",
@@ -99404,11 +99404,11 @@
       "C547": {
         "status": "pass",
         "exit": 0,
-        "seconds": 16.7,
+        "seconds": 16.1,
         "tail": "1..7\nok 1 R241: vbw config set mcp stores each entry with its mark in record.settings.mcp, in the order given, and prints the setting\nok 2 R241: vbw config shows the setting in the form it was set, and 'mcp: none' without one\nok 3 R241: default removes the setting and the record goes back to schema 4\nok 4 R241: a malformed server or tool name, mark or list is refused with a usage line naming the accepted form, and nothing changes\nok 5 R241: settings.mcp under schema 6 loads and the next write raises the record to 7 (D582); schema 7 without it and a malformed stored entry are refused\nok 6 R241: a VBW that reads only up to schema 6 says the project needs a newer VBW, never that the record is corrupt\nok 7 R241: the config skill and the README's settings table know the mcp key, its form and its read-only mark",
-        "at": "2026-11-13T11:48:01Z",
         "fp": "cf066c1019b0d3b82aeee74af1afdd243a45f3f6627b21de937931d2df7ef933",
-        "reused": true
+        "at": "2026-11-13T13:08:43Z",
+        "why": "plugin/CHANGELOG.md changed"
       },
       "C548": {
         "status": "pass",
@@ -99476,11 +99476,11 @@
       "C555": {
         "status": "pass",
         "exit": 0,
-        "seconds": 1.2,
+        "seconds": 1.4,
         "tail": "1..7\nok 1 R239: the vibe skill states that the chat never commits plan work by hand, naming every git history command, that commits go through vbw commit inside the run, and that it follows the proof's Next line\nok 2 R239: docs/guards.md's refusal table names commit-tree beside commit, the chat's refusal while armed or in a loop, and that the user's own commands are never checked\nok 3 R239: docs/workflows.md's 'Every refusal and its next step' table has the two refusals with vbw commit as the next step\nok 4 R245: the vibe skill says the chat commits nothing by hand, a ship refusal included (no git commit, add, stash, checkout or reset of files, no commit of a submodule pointer) and follows the refusal's Next line; and that a user's own uncommitted files are the user's: never committed, staged, stashed, discarded or named as blocking, the chat asks the user what to do and waits\nok 5 R245: the vibe skill says the chat never attributes an instruction the user did not type (no 'as you asked'), and that an empty or unclear /vbw:vibe turn runs vbw next and reports its action, never inferring a request from silence\nok 6 R245: no kernel or skill message tells the chat to commit a file outside the milestone's work: the old ship wording is gone, and every message telling to commit names vbw commit, check files or VBW's own files\nok 7 R245 docs: docs/guards.md and docs/workflows.md say, where the R239 rows are, that the rule also holds on a ship refusal and that the user's own files are never committed by VBW's chat",
-        "at": "2026-11-13T11:48:01Z",
         "fp": "fc0cf63a3ef3d0a4633da1a9584df262a256682dbb998469b8988409a9ace582",
-        "reused": true
+        "at": "2026-11-13T13:08:43Z",
+        "why": "plugin/CHANGELOG.md changed"
       },
       "C556": {
         "status": "pass",
@@ -99557,11 +99557,11 @@
       "C564": {
         "status": "pass",
         "exit": 0,
-        "seconds": 0.9,
+        "seconds": 1.0,
         "tail": "1..3\nok 1 R245: the vibe skill says the chat commits nothing by hand, a ship refusal included (no git commit, add, stash, checkout or reset of files, no commit of a submodule pointer) and follows the refusal's Next line; and that a user's own uncommitted files are the user's: never committed, staged, stashed, discarded or named as blocking, the chat asks the user what to do and waits\nok 2 R245: the vibe skill says the chat never attributes an instruction the user did not type (no 'as you asked'), and that an empty or unclear /vbw:vibe turn runs vbw next and reports its action, never inferring a request from silence\nok 3 R245: no kernel or skill message tells the chat to commit a file outside the milestone's work: the old ship wording is gone, and every message telling to commit names vbw commit, check files or VBW's own files",
-        "at": "2026-11-13T11:48:01Z",
         "fp": "f7e3c3c20bd8c2dcf90e73533345960c2d80842b73b031d36cb60c4819a3385a",
-        "reused": true
+        "at": "2026-11-13T13:08:43Z",
+        "why": "plugin/CHANGELOG.md changed"
       },
       "C565": {
         "status": "pass",
@@ -99593,11 +99593,11 @@
       "C568": {
         "status": "pass",
         "exit": 0,
-        "seconds": 62.1,
+        "seconds": 61.3,
         "tail": "xit 4), never that it is corrupt; the validator pins the break's shape\nok 9 R258 schema 12: a break naming its rule by place and a reworded requirement are schema 12, the table's top, which VBW_SCHEMA_MAX follows\nok 10 R265 schema 13: a break that carries digests is schema 13, a table row of its own naming the digests\nok 11 R264 schema 14: a rule's --none entry marked git is schema 14, a table row of its own; a none entry without the mark stays 12\nok 12 R258 schema 12: the validator accepts a break's rule as {req, k} (k 1 to 9999) and as the older {req, text}, and refuses every other shape; reworded can only be true\nok 13 R258 schema 12: a record whose breaks name their rules by text stays readable, and its first write converts each to the place of the rule with that text; a break matching no rule is kept as it is\nok 14 R286 schema: a break whose digests are a list, or a plan's red-first runs, is schema 15; the older object stays 13\nok 15 R304 schema: a test file form with a filter, rest or join line is schema 16, the table's top, which VBW_SCHEMA_MAX follows; a list of forms without them stays 10\nok 16 R286 schema: the validator refuses a break whose digests name a file twice, add a key, or name a file the break did not, and accepts the list and the older object\nok 17 R286 schema: a VBW that reads up to schema 14 refuses this VBW's schema-15 record with the R272 line, never calling it corrupt, and leaves it unchanged\nok 18 R286 layout: Gitleaks' generic-api-key pattern finds the old layout's path-and-digest lines, and nothing in the record this VBW writes from the same data\nok 19 R286 convert: a schema 13 or 14 record's object digests become the list on its first write, every digest keeping its value and its file, nothing else changed\nok 20 R286 readers: vbw mutate, vbw show, vbw next and vbw status answer an old record and its converted one the same\nok 21 R286 readers: a break queued by VBW 2.1.28 (digests an object in its entry) runs and is recorded with the list",
-        "at": "2026-11-13T11:48:01Z",
         "fp": "8e8af91c73507b5ea5c2ddcb32d01a56a7e43ff68d4dd4d9ea341d3cba68f2bf",
-        "reused": true
+        "at": "2026-11-13T13:08:43Z",
+        "why": "plugin/CHANGELOG.md changed"
       },
       "C569": {
         "status": "pass",
@@ -99620,11 +99620,11 @@
       "C571": {
         "status": "pass",
         "exit": 0,
-        "seconds": 16.1,
+        "seconds": 17.4,
         "tail": "1..5\nok 1 R249 digest: a record read leaves .vbw/runtime/validated.json with the record's and the validator's digests; the unchanged record is not validated again; a record whose bytes changed is, and its output is the same\nok 2 R249 digest: a write validates only the record it writes: the record it starts from, named by the digest, is not validated again, and one the digest does not name still is\nok 3 R249 digest: a hand edit after a warm digest is still refused as corrupt, and a newer schema still asks for a newer VBW\nok 4 R249 digest: the validator's own text is part of the digest: a changed record.jq, record-schema.jq or interview.json validates the unchanged record again\nok 5 R249 digest: a runtime folder that cannot be written is never an error: the same output, exit 0, nothing on stderr, and the record is simply validated again",
-        "at": "2026-11-13T11:48:01Z",
         "fp": "3dec3ac052e79aa8284b5880a7bc58cfaf02f8b4a770afd46f2929f022097769",
-        "reused": true
+        "at": "2026-11-13T13:08:43Z",
+        "why": "plugin/CHANGELOG.md changed"
       },
       "C572": {
         "status": "pass",
@@ -99863,11 +99863,11 @@
       "C598": {
         "status": "pass",
         "exit": 0,
-        "seconds": 30.6,
+        "seconds": 28.7,
         "tail": "1..8\nok 1 R261 folder: plugin/packs/rust holds a manifest with the pack's name and its two patterns, and one text per role\nok 2 R261 folder: each role text carries the four first contents and the path rule\nok 3 R261 folder: packs are not agents: plugin/agents still holds the seven agents and the pack folder holds no agent file\nok 4 R261 next: a plan whose files match the patterns has its pack named in vbw next --json, a Python plan in the same wave has none, and the phases and the project are named too\nok 5 R261 next: a project with no Rust pays nothing: no packs key, no packs_root, and no more jq processes than a plugin tree without any pack\nok 6 R261 next: the Lead's pack comes from the project's tracked files: a tracked Cargo.toml selects it at the plan step, an untracked one does not\nok 7 R261 next: adding a stack is one more folder: a plugin tree with an extra pack gives a .py plan that pack without any code change\nok 8 R261 next: a pack is outside the contract and the record: editing a pack file changes no contract hash, un-approves no plan and adds no key to the record",
-        "at": "2026-11-13T11:48:01Z",
         "fp": "689a1b400f1019d5e885ffdcddbcca53795757d06a3d500aca8409240c4fd2c8",
-        "reused": true
+        "at": "2026-11-13T13:08:43Z",
+        "why": "plugin/CHANGELOG.md changed"
       },
       "C599": {
         "status": "pass",
@@ -100196,20 +100196,20 @@
       "C635": {
         "status": "pass",
         "exit": 0,
-        "seconds": 7.8,
+        "seconds": 8.2,
         "tail": "1..3\nok 1 R272 kernel: every kernel write of the record writes the writer file beside it: this VBW's version and the record's schema\nok 2 R272 kernel: an older VBW refuses (exit 4) naming the version that wrote the record and the version it loaded, how to update, and what --plugin-dir means\nok 3 R272 kernel: without a writer file (a record written before it existed) the refusal names the schema numbers and the loaded version, in the same shape",
-        "at": "2026-11-13T11:48:01Z",
         "fp": "a0c8385f9e1118d673f65a3f368439616ce3d4c194d44a4822225f14b8745785",
-        "reused": true
+        "at": "2026-11-13T13:08:43Z",
+        "why": "plugin/CHANGELOG.md changed"
       },
       "C636": {
         "status": "pass",
         "exit": 0,
-        "seconds": 3.2,
+        "seconds": 2.2,
         "tail": "1..1\nok 1 R272 hooks: the session-start hook of the older VBW gives the kernel's line, both versions named, in its context and in its notice to the user",
-        "at": "2026-11-13T11:48:01Z",
         "fp": "67937a5314d01c7d242646fb144a8381ae3185bc631a371a30df4853362b7daa",
-        "reused": true
+        "at": "2026-11-13T13:08:43Z",
+        "why": "plugin/CHANGELOG.md changed"
       },
       "C637": {
         "status": "pass",
@@ -100295,11 +100295,11 @@
       "C646": {
         "status": "pass",
         "exit": 0,
-        "seconds": 4.8,
+        "seconds": 4.6,
         "tail": "1..4\nok 1 R275: a case's budget is scaled by the reference measured beside it: a slow machine throughout marks every case slow and fails none\nok 2 R275: a case slow on a machine whose reference beside it is nominal is over its budget, measured again first, while the other cases pass\nok 3 R275: measured again, a case and the reference beside it are both measured anew: the second pair judges it\nok 4 R275: the busy-machine rule stays: a startup above the hook limit judges nothing",
-        "at": "2026-11-13T11:48:01Z",
         "fp": "c7770f2c407174e1e21bce71976cf025f418199aca62c62c7c4178674c20e89b",
-        "reused": true
+        "at": "2026-11-13T13:08:43Z",
+        "why": "plugin/CHANGELOG.md changed"
       },
       "C647": {
         "status": "pass",
@@ -100358,11 +100358,11 @@
       "C653": {
         "status": "pass",
         "exit": 0,
-        "seconds": 26.3,
+        "seconds": 22.8,
         "tail": "1..7\nok 1 R286 schema: a break whose digests are a list, or a plan's red-first runs, is schema 15; the older object stays 13\nok 2 R286 schema: the validator refuses a break whose digests name a file twice, add a key, or name a file the break did not, and accepts the list and the older object\nok 3 R286 schema: a VBW that reads up to schema 14 refuses this VBW's schema-15 record with the R272 line, never calling it corrupt, and leaves it unchanged\nok 4 R286 layout: Gitleaks' generic-api-key pattern finds the old layout's path-and-digest lines, and nothing in the record this VBW writes from the same data\nok 5 R286 convert: a schema 13 or 14 record's object digests become the list on its first write, every digest keeping its value and its file, nothing else changed\nok 6 R286 readers: vbw mutate, vbw show, vbw next and vbw status answer an old record and its converted one the same\nok 7 R286 readers: a break queued by VBW 2.1.28 (digests an object in its entry) runs and is recorded with the list",
-        "at": "2026-11-13T11:48:01Z",
         "fp": "025e0012b2e3fd6aaecf280ef80c21f4da266034fd4ac962442a4f80d0e5b5c6",
-        "reused": true
+        "at": "2026-11-13T13:08:43Z",
+        "why": "plugin/CHANGELOG.md changed"
       },
       "C654": {
         "status": "pass",
@@ -100439,20 +100439,20 @@
       "C662": {
         "status": "pass",
         "exit": 0,
-        "seconds": 30.3,
+        "seconds": 26.4,
         "tail": "1..3\nok 1 R285: 17 --plugin-dir starts and then an installed start leave one VBW PATH line, the installed copy's, and every other line byte for byte\nok 2 R285: a --plugin-dir start after an installed start leaves one line, the tree's\nok 3 R285: an installed start keeps the session record naming the copy Claude Code loaded for the session",
-        "at": "2026-11-13T11:48:01Z",
         "fp": "f616d6081c5d78d69af4c97fffc921edf4a631bc1a6158f61ed42449ab1e6fe8",
-        "reused": true
+        "at": "2026-11-13T13:08:43Z",
+        "why": "plugin/CHANGELOG.md changed"
       },
       "C663": {
         "status": "pass",
         "exit": 0,
-        "seconds": 4.2,
+        "seconds": 4.0,
         "tail": "1..3\nok 1 R285 doctor: after an installed start, the installed copy's vbw first on PATH is ok, though doctor runs from another kernel\nok 2 R285 doctor: after an installed start, a stale working tree first on PATH is a warning naming both folders and the fix: start or resume the session again\nok 3 R285 doctor: a session id with no record says doctor cannot tell which copy the session loaded, with the fix, instead of comparing with itself",
-        "at": "2026-11-13T11:48:01Z",
         "fp": "5100a1373e3bedbf08cb2e0a73ff135c8d03af503310b35932d788e847eb8b35",
-        "reused": true
+        "at": "2026-11-13T13:08:43Z",
+        "why": "plugin/CHANGELOG.md changed"
       },
       "C664": {
         "status": "pass",
@@ -100592,20 +100592,20 @@
       "C679": {
         "status": "pass",
         "exit": 0,
-        "seconds": 41.1,
+        "seconds": 34.0,
         "tail": "1..3\nok 1 R279 kernel: with VBW_KERNEL_READS set, a record write logs the kernel's read of plugin.json there and leaves its access time; vbw version is the caller's own read and logs nothing\nok 2 R279 prove: after a change of only the version, the unit that compares the version runs again and says why; the unit that only writes a record is reused\nok 3 R279 prove: any other change to plugin.json reruns both units, the reason as before",
-        "at": "2026-11-13T11:48:01Z",
         "fp": "b021c9da19fcd5a4cec24b3ee49a57ff08a36250891f31ef6ec6ed8ddd1979b6",
-        "reused": true
+        "at": "2026-11-13T13:08:43Z",
+        "why": "plugin/CHANGELOG.md changed"
       },
       "C680": {
         "status": "pass",
         "exit": 0,
-        "seconds": 18.1,
+        "seconds": 15.6,
         "tail": "1..1\nok 1 R279 docs: docs/proof.md says a change of only the version reruns only the units that read the version themselves, and names the kernel's own reads",
-        "at": "2026-11-13T11:48:01Z",
         "fp": "24e4b6962c02b035ffa6807c59f614f50a34e97e3234c1e41552aee873551094",
-        "reused": true
+        "at": "2026-11-13T13:08:43Z",
+        "why": "plugin/CHANGELOG.md changed"
       },
       "C681": {
         "status": "pass",
@@ -100664,11 +100664,11 @@
       "C687": {
         "status": "pass",
         "exit": 0,
-        "seconds": 28.2,
+        "seconds": 23.6,
         "tail": "1..3\nok 1 R297: a check red on the unbroken code stops --run naming the check and its status, says how many queued breaks are kept, and keeps each as it was; no marker or copy is left\nok 2 R297: once the checks pass again, the next --run runs every kept break without queueing any again\nok 3 R297 wording: no kernel message or document says a red baseline drops the queued breaks",
-        "at": "2026-11-13T11:48:01Z",
         "fp": "4e9f6fd29432ee99f14c509ce4af1779c8132845376de7c369fc7aa443e77e11",
-        "reused": true
+        "at": "2026-11-13T13:08:43Z",
+        "why": "plugin/CHANGELOG.md changed"
       },
       "C688": {
         "status": "pass",
@@ -100736,11 +100736,11 @@
       "C695": {
         "status": "pass",
         "exit": 0,
-        "seconds": 3.9,
+        "seconds": 3.5,
         "tail": "1..1\nok 1 R303: a release run that reuses the proof runs the timed tests after a failed hook bench, then fails naming it",
-        "at": "2026-11-13T11:48:01Z",
         "fp": "a6e38a27af115087f94c830e70b2abd431d46ee3cc49018b05f4669ee057a267",
-        "reused": true
+        "at": "2026-11-13T13:08:43Z",
+        "why": "plugin/CHANGELOG.md changed"
       },
       "C697": {
         "status": "pass",
@@ -100830,14 +100830,14 @@
         "exit": 0,
         "seconds": 5.7,
         "tail": "bash: 5.3.20(1)-release",
-        "fp": "065b393b71dee4232b9b45e3d96e4a1a6552ad444e6fa87346b5ac33b420c740",
         "at": "2026-11-13T13:01:37Z",
-        "why": "tools/l3-results listing changed"
+        "fp": "065b393b71dee4232b9b45e3d96e4a1a6552ad444e6fa87346b5ac33b420c740",
+        "reused": true
       },
       "test": {
         "status": "pass",
         "exit": 0,
-        "seconds": 4005.7,
+        "seconds": 3982,
         "tail": "",
         "command": "bats --print-output-on-failure {file} (one test file per run)",
         "of_files": true
@@ -100901,11 +100901,11 @@
       "tests/briefs-decisions.bats": {
         "status": "pass",
         "exit": 0,
-        "seconds": 45.0,
+        "seconds": 27.7,
         "tail": "1..12\nok 1 T123: --since-approval lists the decisions after the approval, none before it\nok 2 T123: after a second approval only the decisions after it are listed; for a plan, after the latest approval that changed it\nok 3 #705: an approval that left a plan as it was keeps the decisions before it in that plan's list and its fixes'\nok 4 #705: an approval an older VBW recorded, with no plans, counts as changing every plan, even when it is not the first\nok 5 #705: several ids start at the earliest of their plans' approvals; a project command's fix reads every plan's\nok 6 #705: a record whose approval names its plans is schema 6, and a VBW that reads up to schema 5 asks for an update, never calling it corrupt\nok 7 T123: with no decision since the approval it says so and succeeds\nok 8 T123: before any approval it fails, naming that nothing was approved\nok 9 T123: an unknown decisions option is a usage error\nok 10 T123: every Dev and Docs prompt of a build wave names the decisions-since-approval command\nok 11 T123: every Dev prompt of a fix round names the decisions-since-approval command\nok 12 T123: the Dev and Docs agents read those decisions as binding over the plan",
-        "at": "2026-11-13T11:48:01Z",
         "fp": "0b9e0306ff29b88b8223ee4976df8c3f593a52582c6c38b48784a8775ceb3418",
-        "reused": true
+        "at": "2026-11-13T13:08:43Z",
+        "why": "plugin/CHANGELOG.md changed"
       },
       "tests/briefs-no-shortcuts.bats": {
         "status": "pass",
@@ -101200,9 +101200,9 @@
         "exit": 0,
         "seconds": 0.5,
         "tail": "1..4\nok 1 R194: the fixchecks scenario exists, is in the default list and is named in the suite's header\nok 2 R194: it seeds a check that covers less than the requirement, approves by the choice, and reads the commits' trailers and files in git\nok 3 R194: the result states each fact the scenario judged\nok 4 R194: a committed result of the fixchecks scenario, when there is one, is labelled honestly",
-        "fp": "3419a81c6d4c893267a5ff86d6991c894eefe5c68738205d0a0b4faf68a0515f",
         "at": "2026-11-13T13:01:37Z",
-        "why": "tools/l3-results/fixchecks.json changed"
+        "fp": "3419a81c6d4c893267a5ff86d6991c894eefe5c68738205d0a0b4faf68a0515f",
+        "reused": true
       },
       "tests/l3-ignoredplanning.bats": {
         "status": "pass",
@@ -101297,11 +101297,11 @@
       "tests/loop-park-schema.bats": {
         "status": "pass",
         "exit": 0,
-        "seconds": 30.4,
+        "seconds": 20.1,
         "tail": "1..1\nok 1 T153: parking an item whose commits changed the record's validator leaves a record the restored kernel reads",
-        "at": "2026-11-13T11:48:01Z",
         "fp": "291ed810c558ff1b92eb5190a99ec2212bfed4c236105f13f1bf65718becb72a",
-        "reused": true
+        "at": "2026-11-13T13:08:43Z",
+        "why": "plugin/CHANGELOG.md changed"
       },
       "tests/loop-stop-hook.bats": {
         "status": "pass",
@@ -101585,10 +101585,10 @@
       "tests/standards-selftest.bats": {
         "status": "pass",
         "exit": 0,
-        "seconds": 114.4,
+        "seconds": 118.3,
         "tail": "ok 3 process killing is caught\nok 4 the signal-free liveness probe kill -0 passes, any other kill is caught\nok 5 /tmp paths are caught\nok 6 git path listings without -z are caught, with -z pass\nok 7 plugin-root discovery is caught\nok 8 a clean file breaks no rule\nok 9 hooks naming a missing file are caught\nok 10 per-tool-call hooks that start a shell or can exit non-zero are caught\nok 11 per-tool-call hooks: only assignments and [ ] tests may come before jq, and the command must end in || true\nok 12 the vision rule check passes on the repository as it is\nok 13 the vision rule check catches the rule removed from a contributor file\nok 14 the vision rule check catches the rule moved below another rule in AGENTS.md\nok 15 the privacy guard lists the files that hold a word, in any case, and never the word\nok 16 the privacy guard passes a clean tree: comments and blank lines in the list are not words\nok 17 the privacy guard checks nothing, and says so, without a list or without words\nok 18 the privacy guard in tracked mode reads every tracked file of this repository, .vbw/ included\nok 19 the privacy guard refuses bad usage\nok 20 the hook answer check passes on the repository as it is\nok 21 the hook answer check catches a new unpinned answer shape\nok 22 the hook answer check catches a hook that answers allow",
         "fp": "cea597da7e37298b1c50fd07c24fcfcd6ab9c1e90cc14912ac62ec844e47ba39",
-        "at": "2026-11-13T13:01:37Z",
+        "at": "2026-11-13T13:08:43Z",
         "why": "reads the project through git"
       },
       "tests/statusline-step-miss.bats": {
@@ -101706,19 +101706,19 @@
     "causes": [],
     "full": false,
     "passed": true,
-    "record": "1c0dcb35d2e2b59341a46f0c7385d4da12c3e0e4f3036bbce6010e69d05f1322",
+    "record": "46fb4d8fc5bcb13dfb2f0b26d50b69ddfb0a4d9def05d91fb8f456b88ff85925",
     "own": {
-      "planning": 26.898,
-      "copies": 8.561,
-      "tracking": 3.516,
-      "saving": 1.526,
-      "record": 6.836,
-      "wall": 217.124,
+      "planning": 26.842,
+      "copies": 8.705,
+      "tracking": 12.055,
+      "saving": 1.825,
+      "record": 6.861,
+      "wall": 420.162,
       "copy_slots": {
         "claimed": 7,
         "refreshed": 0,
         "made": 0,
-        "refresh": 3.798
+        "refresh": 3.896
       }
     }
   },
