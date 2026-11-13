@@ -94816,6 +94816,16 @@
       "text": "T296 design: a proof copy is its own repository whose git folder is not named .git",
       "why": "Probe (L2, Claude Code 2.1.323, sandbox on, headless claude -p in a throwaway repo, 2026-11-13 20:35): the sandbox refuses writes to .git/worktrees, .git/config, .git/hooks (also inside a nested .git: git init and clone fail copying hook templates, and init --template= fails locking .git/config) and any file named .gitmodules; it allows .git/vbw, git commit in the project, a folder named .git holding plain files, git archive, an alternate index. Passing under the sandbox: git init --template= --separate-git-dir=.vbw/runtime/<g> <tree>, objects/info/alternates to the project's objects, include.path to the project's config, update-ref --no-deref HEAD to the commit, read-tree + checkout-index; status clean, HEAD equal, ls-files/log/diff work, a commit in the copy stays in the copy's own objects, and the project gains no worktree or ref. Replaces git worktree add in proofcopy_checkout; the .gitmodules skip-worktree path stays.",
       "at": "2026-11-13T20:31:56Z"
+    },
+    {
+      "id": "D728",
+      "at": "2026-11-13T22:54:14Z",
+      "text": "Contract approved: 295 requirements, 701 checks, 690 plans (8a1b3bb21dad)",
+      "plans": [
+        "P238.1",
+        "P238.2",
+        "P239.1"
+      ]
     }
   ],
   "commands": {
