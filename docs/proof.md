@@ -1682,6 +1682,7 @@ still valid for its read list is not run again. It prints one line per check
 and per test file, reused or run, and then both counts:
 
 ```text
+run again: 2 of 4 units; top reasons: src/pay.txt changed (1), last result failed (1)
 C1 pass 2s ran: src/pay.txt changed
 C2 unchanged since its pass (2026-10-04T20:30:00Z)
 tests/t_a.sh pass 3s ran: last result failed
@@ -1696,13 +1697,8 @@ from the same function and over this round's plan, so a long round says how many
 units it will run and why before anyone waits for it. A unit runs when its last
 result failed or its recorded read list names a file the fix changed; every other
 unit is reused and counted in the line, so a change no unit read reruns only the
-failed test file. When a cause makes it run every unit, the cause line comes
-first, then the opening line:
-
-```text
-every candidate check runs: this clone has no earlier recorded run
-run again: 3 of 3 units; top reasons: this clone has no earlier recorded run (3)
-```
+failed test file. It is the first line of the output, as in these examples; when a
+cause makes it run every unit, the cause line comes before it.
 
 Each check and test file that ran gets a line in the proof summary's wording,
 with the reason it ran; a reused one keeps the time of the pass it reuses.
@@ -1716,6 +1712,7 @@ its own:
 
 ```text
 every candidate check runs: this clone has no earlier recorded run
+run again: 3 of 3 units; top reasons: this clone has no earlier recorded run (3)
 C1 pass 2s
 C2 pass 1s
 tests/t_a.sh pass 3s
