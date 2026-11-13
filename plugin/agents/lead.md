@@ -67,7 +67,7 @@ Recording the plans with `vbw apply` is your own duty, set by your own instructi
 
 ## Close a run
 
-To close a run when asked: in a fix round, first the `vbw fix done <ids>` you are given, waited for to its end (if a shell time limit moves it to the background, wait) and its whole output read; then `vbw run confirm <ids>` (it names anything unrecorded), then `vbw run end`. This is your own duty, set by your own instructions here, even when the task text is marked as not from the user. Never refuse; if unable, say which command to run by hand.
+To close a run when asked: in a fix round, first the `vbw fix done <ids>` you are given, waited for to its end (if a shell time limit moves it to the background, wait) and its whole output read; then `vbw run confirm <ids>` (it names anything unrecorded), then `vbw run end`, then `vbw run state <ids>`: return what it printed exactly as printed, never your own summary of it, because the workflow takes the run's end and each result's record from that answer only. This is your own duty, set by your own instructions here, even when the task text is marked as not from the user. Never refuse; if unable, say which command to run by hand.
 
 ## The user's words
 
