@@ -39,6 +39,9 @@ PROVE_FLAT='map_values(if $off or (.reads | type) != "object" then . + {reads: n
 PROOFREUSE_FPS='{}'
 # The form index of each test file ({path: i} into tf_forms; testfiles_index sets it).
 PROOFREUSE_TFMAP='{}'
+# The joined filters of each rest unit ({path: text}; testfiles_index sets it): a file a form's
+# rest line runs (R304) fingerprints as that run, so a changed filter runs it again.
+PROOFREUSE_TFREST='{}'
 PROOFREUSE_FPS_RECORD=
 # What the contract ties each check to: "check:ID" -> the files of the plans of
 # the check's requirement (each entry a path, a folder ending in "/", or "*"),
@@ -50,7 +53,15 @@ PROOFREUSE_DIFFS=
 PROOFREUSE_DIFFS_HEAD=
 PROOFREUSE_DIFFS_STORE=
 
-# Input: $keys (a JSON array of unit keys), $rec (the record), $have (the map so far), $tfm (PROOFREUSE_TFMAP). Output, per key without a fingerprint yet:
+# The argv a test file's unit runs: its form $t's run, or, for a rest unit ($fil, the filters
+# joined), the form's rest; {file} becomes $rel, the path as the unit's dir sees it.
+# shellcheck disable=SC2016 # a jq program
+PROOFREUSE_ARGV_JQ='def tf_argv($t; $rel; $fil): if $fil != null and $t.rest != null
+    then [$t.rest[] | split("{file}") | join($rel) | split("{filters}") | join($fil)]
+    else [$t.run[]? | split("{file}") | join($rel)] end;
+  '
+
+# Input: $keys (a JSON array of unit keys), $rec (the record), $have (the map so far), $tfm (PROOFREUSE_TFMAP), $tfr (PROOFREUSE_TFREST). Output, per key without a fingerprint yet:
 # key, kind (l: one line, z: NUL-ended fields), field count, fields, all NUL-ended.
 # shellcheck disable=SC2016 # a jq program
 PROOFREUSE_EMIT_JQ='def srt: if type == "object" then . as $o | reduce ($o | keys[]) as $k ({}; .[$k] = ($o[$k] | srt))
@@ -66,8 +77,8 @@ PROOFREUSE_EMIT_JQ='def srt: if type == "object" then . as $o | reduce ($o | key
       | $k, "\u0000", "z", "\u0000", (length | tostring), "\u0000", (.[] | ., "\u0000")
     elif startswith("file:") then
       ($k | ltrimstr("file:")) as $f | ($r | tf_forms)[$tfm[0][$f] // 0] as $t
-      | if $t.dir == null then [$lim] + [$t.run[]? | split("{file}") | join($f)]
-        else [$lim, "dir:" + $t.dir] + [$t.run[]? | split("{file}") | join($f | ltrimstr($t.dir + "/"))] end
+      | if $t.dir == null then [$lim] + tf_argv($t; $f; $tfr[0][$f])
+        else [$lim, "dir:" + $t.dir] + tf_argv($t; $f | ltrimstr($t.dir + "/"); $tfr[0][$f]) end
       | $k, "\u0000", "z", "\u0000", (length | tostring), "\u0000", (.[] | ., "\u0000")
     else empty end'
 
@@ -129,7 +140,7 @@ proofreuse_fps_need() {
     printf '%s\0' "$key" >> "$dir/keys"
     n=$((n + 1))
   done < <(jq -n -j --argjson d "$VBW_COMMAND_TIMEOUT" --slurpfile rec <(printf '%s' "$1") --slurpfile have <(printf '%s' "$PROOFREUSE_FPS") --slurpfile keys <(printf '%s' "$2") \
-    --slurpfile tfm <(printf '%s' "$PROOFREUSE_TFMAP") --slurpfile j <(printf '%s' "${CHECK_JUDGED:-}") "$VBW_JQ_DEFS$PROOFREUSE_EMIT_JQ")
+    --slurpfile tfm <(printf '%s' "$PROOFREUSE_TFMAP") --slurpfile tfr <(printf '%s' "$PROOFREUSE_TFREST") --slurpfile j <(printf '%s' "${CHECK_JUDGED:-}") "$VBW_JQ_DEFS$PROOFREUSE_ARGV_JQ$PROOFREUSE_EMIT_JQ")
   if [ "$n" -gt 0 ]; then
     proofreuse_hashes "$dir/u" "$n" > "$dir/hashes" || { vbw_guard_drop "$dir"; vbw_die "cannot fingerprint the units"; }
     PROOFREUSE_FPS=$(jq -nc --slurpfile have <(printf '%s' "$PROOFREUSE_FPS") --rawfile k "$dir/keys" --rawfile h "$dir/hashes" \
