@@ -120,6 +120,7 @@ testfiles_index() {
     | .fil = ([$vs[] | select((.whole | not) and (.filters | length) > 0 and $fs[.i].rest != null)
         | $fs[.i].join as $j | {key: .p, value: (.filters | join($j // "|"))}] | from_entries)
     | .norest = [$vs[] | select((.whole | not) and (.filters | length) > 0 and $fs[.i].rest == null) | .p]')
+  # shellcheck disable=SC2034 # read by proofreuse_fps_need
   PROOFREUSE_TFREST=$(printf '%s' "$TF_INDEX" | jq -c '.fil')
   # shellcheck disable=SC2034 # read by proofreuse_fps_need
   PROOFREUSE_TFMAP=$(printf '%s' "$TF_INDEX" | jq -c '.map')
