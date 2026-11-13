@@ -90017,6 +90017,13 @@
       "sort": "next",
       "size": "large",
       "status": "open"
+    },
+    {
+      "id": "T293",
+      "text": "The Bash guard (2.1.30) refused the main session's jq -r 'select(.type==\"result\") | .key' FILE as a secret file: 'select(.type==\"result\") | .key may hold secrets'. jq's first operand is its program, not a path, so a program ending in .key is read as a key file. Find the root cause (how the secret-file rule picks a command's operands) and fix it for every program-first command",
+      "sort": "next",
+      "size": "small",
+      "status": "open"
     }
   ],
   "decisions": [
