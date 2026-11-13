@@ -111,9 +111,22 @@ prove_ok() {
   jq -e '.evidence.passed' .vbw/record.json > /dev/null || { jq .evidence .vbw/record.json; return 1; }
 }
 # snap DIR: every file with its checksum, every link with its target and every
-# folder of DIR, sorted; the worktree's own .git file and .vbw (the record, which each proof commits) left out.
+# folder of DIR, sorted; the copy's own .git file and .vbw (the record, which each proof commits) left out.
 snap() {
   (cd "$1" && find . \( -name .git -o -path ./.vbw \) -prune -o \( -type f -exec cksum {} + \) -o \( -type l -exec sh -c 'for l; do printf "%s -> %s\n" "$l" "$(readlink "$l")"; done' sh {} + \) -o -type d -print) | LC_ALL=C sort
+}
+# in_slot N: slot N's copy is a repository of its own (R309): its git folder lies in the
+# slot, outside the copy's tree, and git lists no worktree for it.
+in_slot() {
+  local s g
+  s=$(cd -P "$(slot "$1")" && pwd -P) || return 1
+  g=$(git -C "$(slot "$1")/tree" rev-parse --absolute-git-dir) && g=$(cd -P "$g" && pwd -P) || return 1
+  case "$g" in
+    "$s"/tree | "$s"/tree/*) echo "slot $1's git folder $g is in its tree"; return 1 ;;
+    "$s"/*) ;;
+    *) echo "slot $1's git folder $g is not in the slot"; return 1 ;;
+  esac
+  ! git worktree list --porcelain | grep -qF "/proof.keep.$1/tree" || { git worktree list; return 1; }
 }
 dead_pid() {
   local p
@@ -148,7 +161,7 @@ add_sub() {
   [ ! -e "$(slot 1)/pid" ] || { echo "the slot is still owned by $(cat "$(slot 1)/pid")"; false; }
   [ "$(find .vbw/runtime -maxdepth 1 -name 'proof.*' | wc -l | tr -d ' ')" -eq 1 ] || { ls .vbw/runtime; false; }
   [ "$(counts)" = '{"claimed":0,"refreshed":0,"made":1}' ] || { counts; false; }
-  git worktree list --porcelain | grep -qF "/proof.keep.1/tree" || { git worktree list; false; }
+  in_slot 1
   bump two
   prove_ok
   # The claimed copy was not made again: made is 0. A folder's change time is no judge here, as a
@@ -270,7 +283,6 @@ add_sub() {
   [ "$(counts)" = '{"claimed":0,"refreshed":0,"made":1}' ] || { counts; false; }
   [ -e "$(slot 1)/pid" ] && [ -d "$(slot 2)/tree" ]
   rm -rf "$(slot 2)" "$(slot 1)/pid"
-  git worktree prune
   live_pid
   printf '%s\n' "$PID_LIVE" > "$(slot 1)/pid"
   printf 'mine\n' > "$(slot 1)/tree/held.txt"
@@ -297,7 +309,7 @@ add_sub() {
   prove_ok
   [ "$(counts)" = '{"claimed":0,"refreshed":0,"made":1}' ] || { counts; false; }
   [ -f "$(slot 1)/tree/src/pay.txt" ]
-  [ "$(git worktree list --porcelain | grep -c '/proof.keep.1/tree')" -eq 1 ] || { git worktree list; false; }
+  in_slot 1
 }
 
 @test "#738: a kept copy whose refresh fails, or that has no manifest, is removed and made fresh" {
@@ -324,8 +336,7 @@ add_sub() {
   cd "$TEST_ROOT/moved"
   prove_ok
   [ "$(counts)" = '{"claimed":0,"refreshed":0,"made":1}' ] || { counts; false; }
-  [ "$(git -C "$(slot 1)/tree" rev-parse --path-format=absolute --git-common-dir)" = "$(git rev-parse --path-format=absolute --git-common-dir)" ] \
-    || { echo "the copy still belongs to the original"; false; }
+  in_slot 1 || { echo "the copy still belongs to the original"; false; }
   [ "$(git -C "$orig/$(slot 1)/tree" rev-parse HEAD)" = "$head" ] || { echo "the original's kept copy was moved"; false; }
   [ -z "$(git -C "$orig/$(slot 1)/tree" status --porcelain)" ] || { git -C "$orig/$(slot 1)/tree" status; false; }
 }
@@ -358,21 +369,18 @@ add_sub() {
   # Slot 2 is idle for 24 hours, slot 1 is not: the proof claims slot 1, and slot
   # 2 is gone. (An inode check cannot tell: ext4 hands a new folder the inode of
   # the one just removed.)
-  mkdir -p "$(slot 2)" "$(slot 3)" "$(slot 4)"
-  git worktree add -q --detach "$(slot 2)/tree" HEAD
+  cp -Rp "$(slot 1)" "$(slot 2)"
   touch -t 202001010000 "$(slot 2)"
   # Past the cap: one free, one whose owner runs.
-  git worktree add -q --detach "$(slot 3)/tree" HEAD
-  git worktree add -q --detach "$(slot 4)/tree" HEAD
+  cp -Rp "$(slot 1)" "$(slot 3)"
+  cp -Rp "$(slot 1)" "$(slot 4)"
   live_pid
   printf '%s\n' "$PID_LIVE" > "$(slot 4)/pid"
   bump two
   prove_ok
   [ "$(counts)" = '{"claimed":1,"refreshed":0,"made":0}' ] || { counts; false; }
   [ ! -e "$(slot 2)" ] || { echo "the idle slot is still there"; false; }
-  ! git worktree list --porcelain | grep -qF '/proof.keep.2/tree' || { git worktree list; false; }
   [ ! -e "$(slot 3)" ] || { echo "the slot past the cap is still there"; false; }
-  ! git worktree list --porcelain | grep -qF '/proof.keep.3/tree' || { git worktree list; false; }
   [ -d "$(slot 4)/tree" ] || { echo "a slot whose owner runs was removed"; false; }
 }
 
@@ -391,22 +399,22 @@ add_sub() {
   [ "$(cat "$(slot 1)/tree/sub/deps/d.txt")" = d2 ] && [ ! -e "$(slot 1)/tree/sub/junk.txt" ] || { ls -la "$(slot 1)/tree/sub"; false; }
 }
 
-@test "#738: a branch a unit checked out in a kept copy, of the project or of a submodule, never moves when the copy is brought up to date" {
+@test "#738: a branch a unit made in a kept copy, of the project or of a submodule, never moves when the copy is brought up to date" {
   add_sub
   prove_ok --full
-  git branch feature
-  git -C sub branch subfeature
   local f s
-  f=$(git rev-parse feature)
-  s=$(git -C sub rev-parse subfeature)
-  git -C "$(slot 1)/tree" checkout -q feature
-  git -C "$(slot 1)/tree/sub" checkout -q subfeature
+  # A copy is a repository of its own (R309): the branch lives in the copy's refs.
+  git -C "$(slot 1)/tree" checkout -q -b feature
+  git -C "$(slot 1)/tree/sub" checkout -q -b subfeature
+  f=$(git -C "$(slot 1)/tree" rev-parse feature)
+  s=$(git -C "$(slot 1)/tree/sub" rev-parse subfeature)
   printf 'paid\nsub2\n' > sub/pay.txt
   git -C sub commit -q -am "feat: sub2"
   bump two
   prove_ok
   [ "$(counts)" = '{"claimed":1,"refreshed":0,"made":0}' ] || { counts; false; }
-  [ "$(git rev-parse feature)" = "$f" ] && [ "$(git -C sub rev-parse subfeature)" = "$s" ] || { git log --oneline --all; false; }
+  [ "$(git -C "$(slot 1)/tree" rev-parse feature)" = "$f" ] && [ "$(git -C "$(slot 1)/tree/sub" rev-parse subfeature)" = "$s" ] || { git -C "$(slot 1)/tree" log --oneline --all; false; }
+  ! git rev-parse -q --verify refs/heads/feature > /dev/null && ! git -C sub rev-parse -q --verify refs/heads/subfeature > /dev/null || { echo "a branch reached the project"; false; }
   ! git -C "$(slot 1)/tree" symbolic-ref -q HEAD && ! git -C "$(slot 1)/tree/sub" symbolic-ref -q HEAD || { echo "a copy is on a branch"; false; }
   [ "$(git -C "$(slot 1)/tree" rev-parse HEAD)" = "$(code_head)" ] && [ "$(git -C "$(slot 1)/tree/sub" rev-parse HEAD)" = "$(git -C sub rev-parse HEAD)" ]
 }
@@ -419,28 +427,6 @@ add_sub() {
   GIT_DIR="$PWD/.git" prove_ok
   [ "$(counts)" = '{"claimed":1,"refreshed":0,"made":0}' ] || { counts; false; }
   [ "$(git diff --cached --name-only)" = src/staged.txt ] || { git status; false; }
-}
-
-@test "#738: proofcopy_own refuses a copy's folder that is a link (to another worktree of the submodule, which every other check accepts) and a copy whose .git names another copy's git dir" {
-  add_sub
-  "$VBW" config set check_jobs 2 > /dev/null
-  mkdir -p "$(slot 1)" "$(slot 2)"
-  git worktree add -q --detach "$(slot 1)/tree" HEAD
-  git worktree add -q --detach "$(slot 2)/tree" HEAD
-  git -C sub worktree add -q --detach "$PWD/$(slot 1)/tree/sub.real" HEAD
-  # The worktree add left an empty tree/sub (the gitlink): replace it, or the link lands inside it.
-  rmdir "$(slot 1)/tree/sub"
-  ln -s "$PWD/$(slot 1)/tree/sub.real" "$(slot 1)/tree/sub"
-  [ -L "$(slot 1)/tree/sub" ] || { ls -la "$(slot 1)/tree"; false; }
-  # shellcheck disable=SC2016 # expanded by vbw_kernel
-  run vbw_kernel '. "$VBW_LIB/proofcopy.sh"; t=$VBW_RUNTIME/proof.keep.1/tree
-    proofcopy_own "$t" "$VBW_ROOT" && echo own
-    proofcopy_own "$t/sub.real" "$VBW_ROOT/sub" && echo real
-    proofcopy_own "$t/sub" "$VBW_ROOT/sub" && echo link
-    cp "$VBW_RUNTIME/proof.keep.2/tree/.git" "$t/.git"
-    proofcopy_own "$t" "$VBW_ROOT" && echo other
-    true'
-  [ "$output" = "$(printf 'own\nreal')" ] || { echo "$output"; false; }
 }
 
 @test "#738: an ignored path gone from the working folder leaves the copy, and the copy counts as refreshed" {
