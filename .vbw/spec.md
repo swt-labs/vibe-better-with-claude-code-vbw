@@ -303,6 +303,8 @@ VBW is a Claude Code plugin that makes it build software properly: the user agre
 - R306 [auto] The building, fixing and verifying workflows take a run's end and a fix's done from the kernel, never from an agent's report: after the close step they read whether the run is still open and which fixes are not recorded, and report each as not done with the command that finishes it (T275: a close agent reported vbw run end succeeded without running it; T288: a fixing run ended with its fix done lost)
 - R307 [auto] The road never puts the end of the milestone before the end of the current step: the Milestone end it shows is at or after the current step's own end (T277: proof until around 16:56, Milestone end until around 15:51)
 - R308 [auto] The Bash guard reads a comment in a command, and in a script file it reads (R255), as bash does: outside quotes a # at the start of a word starts a comment to the end of the line, and a quote mark inside a comment pairs with nothing, so no code after a comment is read as quoted text (a write there is judged, never missed) and no quoted text is read as code (a script run by name is never refused for a write it does not make) (2026-11-12: under the plan lease the guard refused bash tools/bench-hooks.sh, naming as a write target outside the project about 1 KB of the script that ends at the apostrophe of a comment at line 184; a script of a comment holding an apostrophe, then echo "a" > out.txt, then a second such comment shows the guard no write)
+- R309 [auto] Every clean copy of the committed code (a proof copy, vbw mutate --run) is made under Claude Code's sandbox: the copy is its own repository whose git folder is not named .git, sharing the project's objects and reading the project's config, so nothing is written under the project's .git but VBW's own .git/vbw, and the project gains no worktree, ref or config line (T296, D727: Claude Code 2.1.323 with the sandbox on refuses writes to .git/worktrees, .git/config and .git/hooks; on 2026-11-13 all five real-user scenarios met "could not create directory of '.git/worktrees/tree': Operation not permitted" and road's Dev blocked)
+- R310 [auto] vbw next never answers on a step it could not finish: when QA's fingerprints cannot be made it stops with the reason, so the failure is seen, never turned into an answer (T297: on 2026-11-13 CI's R282 count showed vbw next skipping QA's hashing after its listing pass and still answering, as a forced failure of that step reproduces)
 
 <!-- One requirement per line: an id, how it is proved, and a user-observable
      statement. [auto] = a check can prove it; [human] = only a person can judge it.
@@ -320,6 +322,8 @@ VBW is a Claude Code plugin that makes it build software properly: the user agre
 
 - run: bats --print-output-on-failure {file}
 - files: tests/*.bats :!tests/timed-*.bats
+- filter: --filter -f
+- rest: bats --print-output-on-failure --allow-empty-suite --negative-filter {filters} {file}
 
 ## Test results
 

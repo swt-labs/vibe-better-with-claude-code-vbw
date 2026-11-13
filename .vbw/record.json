@@ -1,5 +1,5 @@
 {
-  "schema": 15,
+  "schema": 16,
   "lease": null,
   "protected": [
     "docs/guards.md",
@@ -22955,6 +22955,22 @@
         }
       ],
       "reworded": true
+    },
+    {
+      "id": "R309",
+      "text": "Every clean copy of the committed code (a proof copy, vbw mutate --run) is made under Claude Code's sandbox: the copy is its own repository whose git folder is not named .git, sharing the project's objects and reading the project's config, so nothing is written under the project's .git but VBW's own .git/vbw, and the project gains no worktree, ref or config line (T296, D727: Claude Code 2.1.323 with the sandbox on refuses writes to .git/worktrees, .git/config and .git/hooks; on 2026-11-13 all five real-user scenarios met \"could not create directory of '.git/worktrees/tree': Operation not permitted\" and road's Dev blocked)",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M59",
+      "rules": []
+    },
+    {
+      "id": "R310",
+      "text": "vbw next never answers on a step it could not finish: when QA's fingerprints cannot be made it stops with the reason, so the failure is seen, never turned into an answer (T297: on 2026-11-13 CI's R282 count showed vbw next skipping QA's hashing after its listing pass and still answering, as a forced failure of that step reproduces)",
+      "proof": "auto",
+      "status": "open",
+      "milestone": "M59",
+      "rules": []
     }
   ],
   "phases": [
@@ -101755,17 +101771,33 @@
       }
     }
   },
-  "test_files": {
-    "run": [
-      "bats",
-      "--print-output-on-failure",
-      "{file}"
-    ],
-    "files": [
-      "tests/*.bats",
-      ":!tests/timed-*.bats"
-    ]
-  },
+  "test_files": [
+    {
+      "name": null,
+      "dir": null,
+      "run": [
+        "bats",
+        "--print-output-on-failure",
+        "{file}"
+      ],
+      "files": [
+        "tests/*.bats",
+        ":!tests/timed-*.bats"
+      ],
+      "filter": [
+        "--filter",
+        "-f"
+      ],
+      "rest": [
+        "bats",
+        "--print-output-on-failure",
+        "--allow-empty-suite",
+        "--negative-filter",
+        "{filters}",
+        "{file}"
+      ]
+    }
+  ],
   "costs": {
     "runs": [
       {
