@@ -94520,6 +94520,12 @@
       "text": "Quick fix: the shellcheck note on PROOFREUSE_TFREST, in plugin/lib/testfiles.sh",
       "why": "CI on PR #758 failed tests/standards.bats 'shell files parse on the minimum bash and pass shellcheck' (SC2034) on all three systems; the line sets a value proofreuse.sh reads and lacked the note its neighbour has. A comment cannot change behavior: shellcheck is clean on every kernel file, the test passes under /bin/bash, and CI reruns the full suite. The local proof of the units that read testfiles.sh runs beside CI. Root cause of the miss: VBW's own spec has no rest line for its filtered test files yet (T291, next after the release).",
       "at": "2026-11-13T14:26:16Z"
+    },
+    {
+      "id": "D726",
+      "text": "D725 correction: no local proof ran beside CI",
+      "why": "D725 said the local proof of the units that read plugin/lib/testfiles.sh would run beside CI; it did not: vbw next asked for none after the ship (action milestone), and memory rule: run exactly the proof vbw next asks. CI's full run passed on all three systems (run 43442768442, shard 3 rerun). The next milestone's proof reruns those units.",
+      "at": "2026-11-13T18:34:02Z"
     }
   ],
   "commands": {
