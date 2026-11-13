@@ -90158,7 +90158,7 @@
       "text": "The road's Milestone end can come before the current step's own end (2026-11-09 15:45: proof until around 16:56, Milestone end until around 15:51; at 14:55 fix until 15:00, milestone 15:03): the road must count from the end of the current step, or include it, never from now alone",
       "sort": "next",
       "size": "small",
-      "status": "open"
+      "status": "done"
     },
     {
       "id": "T278",
