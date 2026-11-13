@@ -90292,6 +90292,11 @@
       "sort": "next",
       "size": "medium",
       "status": "open"
+    },
+    {
+      "id": "T297",
+      "text": "vbw next answers silently when QA's fingerprints fail (CI 2026-11-13, run 43442768442, macOS shard 3, tests/next-processes.bats R282 processes: 516 plans counted git 12, jq 46, sha256sum 4, no awk; forcing qa_digests to stop after its listing pass gives exactly those counts and vbw next still exits 0 with its answer). next_decide runs as 'next_decide | jq || rc=$?', so errexit is off there, and 'digests=$(qa_digests ...)' is never checked. Test first: a forced failure of qa_digests must fail vbw next with the reason. Guard '${names[@]}' in qa_digests (qa-inputs.sh:294, bash 3.2 set -u). Then find what stops qa_digests on GitHub's macOS runner, once the failure names itself",
+      "status": "open"
     }
   ],
   "decisions": [
