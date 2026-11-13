@@ -79,6 +79,15 @@ next_fails() {
   next_fails "jq: forced failure of the answer"
 }
 
+@test "R310 answer error: an answer the judgment itself refuses (next.jq raises an error) stops vbw next with that reason and no answer" {
+  # A jq on $SHIM that makes next.jq's program raise its own error, which the program catches.
+  {
+    printf '#!/bin/bash\nargs=()\nfor a; do args+=("${a/def next_prog:/def next_prog: error(\\"forced judgment error\\") |}"); done\nexec "%s" "${args[@]}"\n' "$(command -v jq)"
+  } > "$SHIM/jq"
+  chmod +x "$SHIM/jq"
+  next_fails "forced judgment error"
+}
+
 @test "R310 status: when QA's inputs cannot be hashed, vbw status exits non-zero with the reason instead of a status built on empty fingerprints" {
   hash_fails
   local rc=0
@@ -96,7 +105,7 @@ next_fails() {
   cat "$TEST_ROOT/out" "$TEST_ROOT/err"
   [ "$rc" -ne 0 ]
   grep -qF "vbw: cannot hash QA's inputs" "$TEST_ROOT/err"
-  if grep -qF 'is not a phase of the active milestone' "$TEST_ROOT/err"; then false; fi
+  [ "$(grep -cF 'is not a phase of the active milestone' "$TEST_ROOT/err")" = 0 ]
   [ "$(cksum < .vbw/record.json)" = "$before" ]
 }
 
