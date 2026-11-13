@@ -75,6 +75,7 @@
     "tests/clean-copy-contract.bats",
     "tests/clean-copy-docs.bats",
     "tests/clean-copy-proof.bats",
+    "tests/clean-copy-repo.bats",
     "tests/clean-copy-spec.bats",
     "tests/clean-copy-worktrees.bats",
     "tests/close-haiku-docs.bats",
@@ -275,6 +276,7 @@
     "tests/next-phase.bats",
     "tests/next-processes.bats",
     "tests/next-proof-cache.bats",
+    "tests/next-step-failure.bats",
     "tests/next-table.bats",
     "tests/no-bats-on-generated.bats",
     "tests/output-child-exit.bats",
@@ -9492,6 +9494,30 @@
         "tests/run-help.bats"
       ],
       "fix": "F458"
+    },
+    {
+      "id": "C706",
+      "req": "R309",
+      "run": [
+        "bats",
+        "--print-output-on-failure",
+        "tests/clean-copy-repo.bats"
+      ],
+      "files": [
+        "tests/clean-copy-repo.bats"
+      ]
+    },
+    {
+      "id": "C707",
+      "req": "R310",
+      "run": [
+        "bats",
+        "--print-output-on-failure",
+        "tests/next-step-failure.bats"
+      ],
+      "files": [
+        "tests/next-step-failure.bats"
+      ]
     }
   ],
   "project": {
@@ -15955,7 +15981,7 @@
           "check": "C327"
         },
         {
-          "text": "removing a dead copy deletes its git worktree entry: git worktree list and .git/worktrees no longer name it",
+          "text": "removing a dead copy an older VBW made (a git worktree) also deletes its worktree entry where git may write: git worktree list and .git/worktrees no longer name it",
           "check": "C327"
         },
         {
@@ -22962,7 +22988,78 @@
       "proof": "auto",
       "status": "open",
       "milestone": "M59",
-      "rules": []
+      "rules": [
+        {
+          "text": "each clean copy, the project's and every checked-out submodule's, is its own repository: its files in the slot's tree/, its git folder inside the same slot outside tree/, never a folder named .git holding a repository, borrowing that repository's objects through objects/info/alternates",
+          "check": "C706",
+          "plan": "P238.1"
+        },
+        {
+          "text": "making, releasing, claiming and refreshing, removing and sweeping a copy each leave the project's .git byte-identical apart from .git/vbw, a submodule's git folder included",
+          "check": "C706",
+          "plan": "P238.1"
+        },
+        {
+          "text": "vbw prove and vbw mutate --run add no worktree entry, ref, config line or hook to the project's or a submodule's git folder, and start no git worktree add, prune or remove",
+          "check": "C706",
+          "plan": "P238.1"
+        },
+        {
+          "text": "with .git/worktrees, .git/config and .git/hooks unwritable and .gitmodules refused (the sandbox's stand-in), vbw prove passes on a project with a submodule, a kept copy is claimed again, and vbw mutate --run completes",
+          "check": "C706",
+          "plan": "P238.1"
+        },
+        {
+          "text": "where .gitmodules cannot be written, the copy holds every other file, .gitmodules is marked skip-worktree, vbw-gitmodules-index sits in the copy's git folder, git status is clean and vbw_subs finds the submodule in the copy",
+          "check": "C706",
+          "plan": "P238.1"
+        },
+        {
+          "text": "inside a copy git status is clean, HEAD is the project's HEAD and a submodule copy's HEAD the submodule's, and git ls-files, log and diff work",
+          "check": "C706",
+          "plan": "P238.1"
+        },
+        {
+          "text": "a commit made inside a copy lands only in the copy's own objects: the project's refs and objects do not change",
+          "check": "C706",
+          "plan": "P238.1"
+        },
+        {
+          "text": "proofcopy_own accepts only a copy of the new kind made for that place and refuses an older VBW's worktree, a slot copied from another, a copy moved elsewhere, a link on the path, a git folder borrowing other objects, a folder holding its own .git folder and a submodule's copy checked against the project",
+          "check": "C706",
+          "plan": "P238.1"
+        },
+        {
+          "text": "a kept slot an older VBW made (a git worktree) is made fresh in its slot on the next proof, with no message",
+          "check": "C706",
+          "plan": "P238.1"
+        },
+        {
+          "text": "an older VBW's worktree entry under .vbw/runtime/proof.* stays without any message where git may not write (the sandbox) and is gone after a proof where it may",
+          "check": "C706",
+          "plan": "P238.1"
+        },
+        {
+          "text": "a kept copy whose commit can no longer be read (history rewritten, objects pruned) is made fresh, never a failed proof",
+          "check": "C706",
+          "plan": "P238.1"
+        },
+        {
+          "text": "removing a slot removes its git folders: none is left under .vbw/runtime after a discard, a sweep, an interrupt or a vbw_die",
+          "check": "C706",
+          "plan": "P238.1"
+        },
+        {
+          "text": "vbw run inside a copy, the project's or a submodule's, treats the copy as a project of its own, also when the project's path holds a folder named modules, and the hooks' walk (hooks/project.sh) agrees",
+          "check": "C706",
+          "plan": "P238.1"
+        },
+        {
+          "text": "kernel code run from inside a copy finds this clone's settings and step history in the project's .git/vbw, never in the copy's git folder",
+          "check": "C706",
+          "plan": "P238.1"
+        }
+      ]
     },
     {
       "id": "R310",
@@ -22970,7 +23067,43 @@
       "proof": "auto",
       "status": "open",
       "milestone": "M59",
-      "rules": []
+      "rules": [
+        {
+          "text": "qa_digests expands no array unguarded, so an empty list works under macOS /bin/bash 3.2 with set -u",
+          "check": "C707",
+          "plan": "P239.1"
+        },
+        {
+          "text": "when QA's inputs cannot be hashed, vbw next exits non-zero with 'vbw: cannot hash QA's inputs' on stderr, prints no answer and leaves .vbw/runtime/next.json as it was",
+          "check": "C707",
+          "plan": "P239.1"
+        },
+        {
+          "text": "when the answer itself cannot be worked out, vbw next exits non-zero with that step's reason on stderr, prints no answer and leaves .vbw/runtime/next.json as it was",
+          "check": "C707",
+          "plan": "P239.1"
+        },
+        {
+          "text": "when QA's inputs cannot be hashed, vbw status exits non-zero with the reason instead of a status built on empty fingerprints",
+          "check": "C707",
+          "plan": "P239.1"
+        },
+        {
+          "text": "when QA's inputs cannot be hashed, vbw qa record stops with that reason, never 'is not a phase of the active milestone', and records nothing",
+          "check": "C707",
+          "plan": "P239.1"
+        },
+        {
+          "text": "qa_state and qa_combined pass a hashing failure on to their callers",
+          "check": "C707",
+          "plan": "P239.1"
+        },
+        {
+          "text": "the road's inputs (next_road_input, step_road_input) still turn a failed judgment into {}, and no other caller of next_decide or next_answer turns a failure into an answer",
+          "check": "C707",
+          "plan": "P239.1"
+        }
+      ]
     }
   ],
   "phases": [
@@ -34897,6 +35030,71 @@
         "qa_findings": 0,
         "escalations": 0
       }
+    },
+    {
+      "id": "P238",
+      "title": "Proof copies that work under Claude Code's sandbox",
+      "reqs": [
+        "R309"
+      ],
+      "milestone": "M59",
+      "goal": "vbw prove and vbw mutate --run make their clean copy of the committed code without writing anything inside the project's .git folder except .git/vbw, so they work when Claude Code's sandbox is on.",
+      "criteria": [
+        "A clean copy (the project's copy and each checked-out submodule's copy) is made as its own small repository: its tree in the slot's tree/ folder, its git folder inside the same slot under .vbw/runtime (never a folder named .git holding a repository), objects borrowed from the project through objects/info/alternates, and the project's settings read through include.path, as recorded in D727. git worktree add is no longer used anywhere in plugin/lib/proofcopy.sh.",
+        "Making, refreshing, releasing, sweeping and removing a copy leaves the project's .git byte-identical apart from .git/vbw: no new entry in .git/worktrees, no new ref, no new or changed line in .git/config, nothing in .git/hooks (a bats case compares a listing with sizes and hashes of .git, minus .git/vbw, before and after vbw prove and vbw mutate --run).",
+        "A bats case stands in for the sandbox: with the project's .git/worktrees, .git/config and .git/hooks made unwritable (chmod) and .gitmodules refused, vbw prove passes on a fixture with a submodule and vbw mutate --run completes; the same case fails on today's code.",
+        "Inside a copy, git status is clean, HEAD equals the project's HEAD (each submodule copy's HEAD equals that submodule's HEAD), and git ls-files, log and diff work; a commit made inside the copy lands only in the copy's own objects and the project's refs and objects do not change.",
+        "The #737 path still holds: where .gitmodules cannot be written, the copy is made with every other file, .gitmodules files are marked skip-worktree, vbw-gitmodules-index sits in the copy's git folder, git status is clean and vbw_subs (plugin/lib/core.sh:473) still finds the submodules (tests/proof-reuse.bats:195-201 keeps passing).",
+        "proofcopy_own accepts only a copy of the new kind made for that place (tree/.git a file naming the slot's own git folder, that folder's alternates pointing at the project's (or the submodule's) objects, no link on the path, the copy the top of its own repository) and rejects anything else; a kept slot made by an older VBW (a worktree) fails it and is removed and made fresh in its slot, with no error shown to the user.",
+        "A kept copy whose old commit can no longer be read (the project rewrote history and git gc removed the objects) is removed and made fresh, never a failed proof.",
+        "Removing a slot removes its git folder with it: no orphan git folder is left under .vbw/runtime after discard, sweep, interrupt or vbw_die (tests in tests/proof-copy-cleanup.bats).",
+        "No git worktree prune runs on the project or a submodule for copies made by this version; leftover worktree entries made by older VBW versions under .vbw/runtime/proof.* are cleaned up only best-effort, and a refusal by the sandbox is not an error and prints nothing.",
+        "The project's own worktrees (R253) are still left out of every copy: proofcopy_worktrees keeps working and tests/clean-copy-worktrees.bats passes.",
+        "vbw run from inside a copy still treats the copy as a project of its own, never the user's project above it (vbw_require_project, plugin/lib/core.sh:260-285), for the project copy and for a submodule copy.",
+        "Every test in tests/clean-copy-*.bats, tests/proofcopy-keep.bats, tests/proof-copy-*.bats, tests/proof-reuse.bats and tests/timed-proofcopy-keep.bats passes under macOS /bin/bash 3.2 and bash 5 from a path containing a space; the tests that pinned worktree internals are edited, not stacked beside new ones.",
+        "docs/proof.md and the header comment of plugin/lib/proofcopy.sh describe the copy as its own repository, not a git worktree.",
+        "L3: the greenfield and road scenarios (tools/l3-suite.sh) run on Claude Code 2.1.323 with the sandbox on and finish without 'could not create directory of .git/worktrees' and without a blocked Dev; the progress log names the scenarios run and not run."
+      ],
+      "tier": "deep",
+      "reasons": [
+        "requirements: 1",
+        "files: 6 (271306 bytes)",
+        "files: more than 2 in a repository tracking 1314 files",
+        "risk: none",
+        "breaks: R20, R103, R183, R260",
+        "guarded: R1 (C1), R2 (C2), R3 (C3), R12 (C11), R13 (C12), R14 (C13), R31 (C27), R32 (C28), R33 (C29), R43 (C42, C43), R44 (C44, C45), R45 (C39, C40, C41), R46 (C46), R47 (C47), R48 (C49, C50), R49 (C48), R51 (C52, C53, C66), R52 (C58, C91), R53 (C54, C55), R55 (C56, C57), R57 (C59, C70, C71), R58 (C62, C63, C64, C67), R61 (C73, C74, C75, C76, C77), R62 (C78, C79, C80, C81, C82, C83, C93), R65 (C86, C87, C88, C89, C90), R66 (C95), R69 (C110, C120, C122), R70 (C114), R73 (C98), R74 (C99, C100), R78 (C105, C106), R79 (C107), R80 (C108), R81 (C109, C111, C112, C113), R83 (C119), R92 (C131, C132, C133, C134, C135, C136, C137, C138, C139), R93 (C140, C141, C142, C143, C144), R94 (C145, C146, C147, C148), R97 (C153), R98 (C154), R99 (C155), R100 (C156), R101 (C179), R104 (C161, C162), R105 (C163), R110 (C169, C170), R111 (C171, C172, C173, C174, C175), R115 (C181), R118 (C184), R119 (C180), R121 (C187, C188), R122 (C189), R123 (C190, C191), R131 (C198), R132 (C199), R134 (C201), R135 (C202), R144 (C208, C209), R147 (C212, C215, C237), R148 (C213, C214, C216, C238), R149 (C217, C218, C219, C220, C221, C222), R152 (C233, C234), R153 (C235, C236, C239), R157 (C244), R160 (C247, C263, C264), R161 (C248, C265, C266), R165 (C252), R166 (C253, C254, C255, C256, C267), R167 (C257, C258, C259, C260), R168 (C261, C262), R169 (C268), R170 (C269), R174 (C279, C280), R175 (C274, C275), R176 (C276, C277, C278), R179 (C297, C298, C299, C300, C301, C302, C303, C304, C305, C306, C312), R180 (C307, C308, C309, C310), R181 (C313, C314, C315, C316, C317, C318, C319, C320, C321), R182 (C322, C323, C324, C325, C326), R185 (C334, C335, C336, C337, C338, C339, C340, C341, C342, C343), R188 (C350, C351, C352, C353, C354, C355, C356, C357, C358, C359), R189 (C360, C361, C362, C363, C364, C365, C366, C367, C368, C369, C370, C371, C372, C373), R190 (C374, C375, C376, C377, C378, C379, C380, C381, C382, C383, C384, C385, C386, C387, C388), R191 (C389, C390, C391, C392, C393, C394, C395, C396, C397, C398, C399, C400), R193 (C411, C412), R194 (C417, C418, C419), R195 (C420, C421, C422), R196 (C415, C416), R197 (C413, C414), R201 (C428, C429), R202 (C432, C433, C434, C435, C436, C437, C438, C439, C440, C441, C442, C443, C444, C445, C446, C447), R203 (C448, C449, C450), R204 (C451, C452, C453, C454), R205 (C455, C456, C457, C458, C467), R206 (C459, C460), R209 (C469, C470, C471, C472, C473), R210 (C474, C475, C476), R211 (C477, C478, C479), R212 (C480, C481, C482), R213 (C483, C484), R214 (C485, C486, C487), R215 (C488, C489, C490), R216 (C491, C492, C493), R217 (C494, C495), R218 (C496), R220 (C500, C501, C502, C503), R221 (C504), R223 (C507, C508, C509), R226 (C510, C511), R228 (C522, C523, C524, C525), R229 (C526, C527, C528, C529), R232 (C534), R238 (C545), R241 (C546, C547, C548, C549, C550, C560), R246 (C566, C567), R249 (C571, C572, C573), R251 (C579), R252 (C580), R253 (C581, C582), R256 (C586, C587), R257 (C588, C589), R258 (C590, C591, C592), R259 (C593, C594, C595), R261 (C598, C599, C600), R264 (C613, C614, C615, C616), R267 (C619, C620, C621), R269 (C626, C627, C628, C629, C630), R270 (C631, C632, C633), R274 (C643, C644, C645), R279 (C678, C679, C680), R284 (C673, C674), R287 (C655, C656, C657), R288 (C667, C668, C669), R291 (C675, C676, C677), R292 (C670, C671, C672), R293 (C682), R294 (C683), R295 (C684), R299 (C689, C690), R303 (C694, C695), R304 (C697, C698, C699), R305 (C700)",
+        "tests: project test command"
+      ],
+      "predicted": "deep"
+    },
+    {
+      "id": "P239",
+      "title": "vbw next stops when it cannot work out QA's fingerprints",
+      "reqs": [
+        "R310"
+      ],
+      "milestone": "M59",
+      "goal": "When vbw next cannot finish one of its steps, such as hashing QA's inputs, it stops and says why instead of giving an answer built on missing data.",
+      "criteria": [
+        "The root cause in T297 is fixed: qa_digests (plugin/lib/qa-inputs.sh:229-305) works when the list of files to hash is empty, under macOS /bin/bash 3.2 with set -u (every array expansion guarded), with a test that fails without the fix.",
+        "When qa_digests fails inside vbw next (forced in a test, e.g. the hashing step made to fail), vbw next exits non-zero, prints the 'vbw: cannot hash QA's inputs' (or 'cannot read the trees') reason on stderr, prints no answer on stdout, and leaves .vbw/runtime/next.json as it was.",
+        "Every step inside next_decide (plugin/lib/cmd-next.sh), not only the hashing, stops vbw next on failure: a failing settle, cache read or answer jq ends the command with its reason; the fix is structural (the step's failure reaches the command) rather than a check on one line, and a test forces at least the hashing step and the final answer step to fail.",
+        "vbw status (through next_answer) also reports the failure with its reason and a non-zero exit instead of a status built on empty fingerprints.",
+        "vbw qa (plugin/lib/cmd-qa.sh:50) stops with the hashing reason when qa_digests fails, never the misleading 'is not a phase of the active milestone'; qa_state and qa_combined (plugin/lib/cmd-next.sh:34,50) pass a hashing failure on to their callers.",
+        "The road keeps its documented behaviour: next_road_input (plugin/lib/cmd-next.sh:157) still turns a failed judgment into '{}', and a test pins that this is the only place a failure is turned into an answer.",
+        "The R282 process-count case (tests/next-processes.bats:62) and the fingerprint-stability case (:72) still pass, and the forced-failure cases live in tests/next-processes.bats (or the one next-area file the Lead picks), under /bin/bash 3.2 and bash 5."
+      ],
+      "tier": "deep",
+      "reasons": [
+        "requirements: 1",
+        "files: 5 (78920 bytes)",
+        "files: more than 2 in a repository tracking 1314 files",
+        "risk: CI (R310)",
+        "breaks: none",
+        "guarded: R12 (C11), R13 (C12), R14 (C13), R22 (C19), R24 (C23), R25 (C24), R26 (C22), R28 (C25), R37 (C35), R38 (C33, C34), R40 (C37), R47 (C47), R49 (C48), R50 (C51), R65 (C86, C87, C88, C89, C90), R69 (C110, C120, C122), R70 (C114), R71 (C115, C121), R72 (C116, C118), R73 (C98), R74 (C99, C100), R78 (C105, C106), R79 (C107), R80 (C108), R81 (C109, C111, C112, C113), R102 (C158, C159), R104 (C161, C162), R106 (C164, C165), R107 (C166, C167), R111 (C171, C172, C173, C174, C175), R113 (C177), R115 (C181), R116 (C182, C183), R123 (C190, C191), R132 (C199), R149 (C217, C218, C219, C220, C221, C222), R160 (C247, C263, C264), R161 (C248, C265, C266), R166 (C253, C254, C255, C256, C267), R171 (C270), R179 (C297, C298, C299, C300, C301, C302, C303, C304, C305, C306, C312), R190 (C374, C375, C376, C377, C378, C379, C380, C381, C382, C383, C384, C385, C386, C387, C388), R191 (C389, C390, C391, C392, C393, C394, C395, C396, C397, C398, C399, C400), R192 (C401, C402, C403, C404, C405, C406, C407, C408, C409, C410), R202 (C432, C433, C434, C435, C436, C437, C438, C439, C440, C441, C442, C443, C444, C445, C446, C447), R229 (C526, C527, C528, C529), R244 (C562, C563), R249 (C571, C572, C573), R250 (C574, C575, C576, C577, C578, C585), R251 (C579), R252 (C580), R261 (C598, C599, C600), R268 (C622, C623, C624, C625), R269 (C626, C627, C628, C629, C630), R270 (C631, C632, C633), R282 (C681), R284 (C673, C674), R286 (C653, C654), R287 (C655, C656, C657), R291 (C675, C676, C677), R292 (C670, C671, C672), R298 (C688), R299 (C689, C690), R307 (C703)",
+        "tests: project test command"
+      ],
+      "predicted": "deep"
     }
   ],
   "plans": [
@@ -84828,6 +85026,76 @@
           ]
         }
       ]
+    },
+    {
+      "id": "P238.1",
+      "phase": "P238",
+      "title": "Each clean copy becomes its own small repository",
+      "reqs": [
+        "R309"
+      ],
+      "files": [
+        "plugin/lib/proofcopy.sh",
+        "plugin/lib/core.sh",
+        "plugin/lib/steps.sh",
+        "plugin/lib/reads.sh"
+      ],
+      "after": [],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "Make each copy its own small repository (D727), for the project and for every checked-out submodule: git init --template= with its git folder inside the same slot, outside tree/ (one folder per repository, so removing the slot removes them all), objects/info/alternates pointing at that repository's objects, include.path to its config, HEAD set with update-ref --no-deref, then read-tree and checkout-index. Name the git folder in tree/.git by a relative path, as git does for submodules, so the unchanged walk in vbw_require_project and hooks/project.sh never reads a copy as a submodule even when the project's path holds a folder named modules. Keep the #737 way where .gitmodules cannot be written: every other file checked out, .gitmodules marked skip-worktree, vbw-gitmodules-index in the copy's git folder.",
+        "Rewrite proofcopy_own for the new kind and bind each copy to its place (for example core.worktree set to the tree's own path, checked against the folder asked about): accept only a copy whose tree/.git names this slot's own git folder made for that folder, whose alternates name that repository's objects, with no link on the path and the copy the top of its own repository; everything else (an older VBW's worktree, a slot copied or moved, a link, other objects, a folder with its own .git folder) fails and is made fresh with nothing shown. In proofcopy_refresh, a copy whose current commit can no longer be read (history rewritten and pruned: the copy no longer keeps those objects alive) is made fresh instead of failing the proof.",
+        "Stop writing to the project's .git: no git worktree add or prune anywhere in proofcopy.sh. Older VBW's worktree entries that name a folder under .vbw/runtime/proof.* are tidied best-effort (also when a new copy now stands at the same path, which git worktree prune alone would keep), never when no such entry is listed, and a refusal (the sandbox) prints nothing. proofcopy_worktrees (R253) keeps reading git worktree list.",
+        "Kernel code that runs with its working folder inside a copy (checks_unit_run cds there) keeps reading this clone's stores from the project's .git/vbw: vbw_clone_settings_file (core.sh) and step_history_file (steps.sh) ask git about the project (VBW_ROOT), not the current folder, as consent, interview and the proof store already do.",
+        "Rewrite the header comment of proofcopy.sh and the comments in reads.sh that describe the copy as a git worktree sharing the repository's git folder; tests/clean-copy-repo.bats passes under /bin/bash 3.2 and bash 5, and so do the edited cases in tests/proofcopy-keep.bats, tests/proof-reuse.bats and tests/proof-copy-cleanup.bats and the whole of tests/clean-copy-*.bats and tests/timed-proofcopy-keep.bats."
+      ]
+    },
+    {
+      "id": "P238.2",
+      "phase": "P238",
+      "title": "Docs: the clean copy is its own repository",
+      "reqs": [
+        "R309"
+      ],
+      "files": [
+        "docs/proof.md",
+        "README.md"
+      ],
+      "after": [
+        "P238.1"
+      ],
+      "status": "planned",
+      "role": "docs",
+      "tasks": [
+        "docs/proof.md: describe the clean copy as its own small repository whose git folder lives in its slot under .vbw/runtime, borrowing the project's stored files and reading its settings, so nothing is written in the project's .git but .git/vbw and it works under Claude Code's sandbox (Kept copies, the ownership check, Leftover proof copies, and every place that says worktree for a proof copy)",
+        "docs/proof.md: say that a kept copy whose commit was rewritten away is made fresh, and that copies left by an older VBW (worktrees) are remade once and their old git entries tidied where git may write",
+        "README.md: the diagram line 'Proof in a detached worktree' and any other mention of the proof copy as a worktree"
+      ]
+    },
+    {
+      "id": "P239.1",
+      "phase": "P239",
+      "title": "vbw next stops with the reason when a step fails",
+      "reqs": [
+        "R310"
+      ],
+      "files": [
+        "plugin/lib/qa-inputs.sh",
+        "plugin/lib/cmd-next.sh",
+        "plugin/lib/cmd-status.sh",
+        "plugin/lib/cmd-qa.sh",
+        "docs/next.md"
+      ],
+      "after": [],
+      "status": "planned",
+      "role": "dev",
+      "tasks": [
+        "qa_digests: guard every array expansion (the three qa_hash_batch calls, ${names[@]}) so an empty list works under macOS /bin/bash 3.2 with set -u (T297's root cause)",
+        "next_decide: make every step's failure reach the command (the hashing, qa_settle, the cache read, contract_classify, the answer's jq): the function returns the failing step's status with its reason on stderr, so vbw next exits non-zero, prints no answer and leaves next.json as it was",
+        "qa_state and qa_combined return a hashing failure to their caller; vbw qa stops with the hashing reason, never 'is not a phase of the active milestone'; vbw status stops with the reason instead of hiding it (cmd-status.sh's '|| out=')",
+        "Keep the road's two inputs (next_road_input and steps.sh's step_road_input) as the only places a failed judgment becomes '{}'; docs/next.md says that vbw next, vbw status and vbw qa stop with the step's reason when a step cannot be finished"
+      ]
     }
   ],
   "fixes": [
@@ -106536,6 +106804,17 @@
         "ended": "2026-11-13T13:07:04Z",
         "cost": {
           "usd": 0.665674
+        }
+      },
+      {
+        "id": "plan-20261113T203402Z",
+        "kind": "plan",
+        "session": "0ee781c3-c5b6-4a6c-889f-04b89f1fba4a",
+        "milestone": "M59",
+        "started": "2026-11-13T20:34:02Z",
+        "ended": "2026-11-13T21:11:20Z",
+        "cost": {
+          "usd": 10.734706
         }
       }
     ],

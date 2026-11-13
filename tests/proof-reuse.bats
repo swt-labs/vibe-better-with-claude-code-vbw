@@ -126,7 +126,7 @@ decide() { "$VBW" decide "Use blue buttons" "the owner prefers them" > /dev/null
   [ "$(ran)" = "" ] || { echo "ran: $(ran)"; false; }
 }
 
-@test "a check reading a submodule runs on the submodule's committed code, its ignored files included; an uncommitted change there runs nothing, a commit there runs it again; the submodule holds no copy but the kept one (#738)" {
+@test "a check reading a submodule runs on the submodule's committed code, its ignored files included; an uncommitted change there runs nothing, a commit there runs it again; the submodule lists no worktree for its copy (#738, R309)" {
   git init -q "$TEST_ROOT/subsrc"
   printf 'paid\n' > "$TEST_ROOT/subsrc/pay.txt"
   printf 'deps/\n' > "$TEST_ROOT/subsrc/.gitignore"
@@ -156,9 +156,9 @@ SH
   vbw_run prove
   [ "$status" -ne 0 ] || { echo "$output"; false; }
   [[ "$(ran)" == *"C5 "* ]] || { echo "ran: $(ran)"; false; }
-  # Beside the submodule itself, one worktree per kept copy, none elsewhere.
-  [ "$(git -C sub worktree list --porcelain | grep -c '^worktree ')" -eq $((1 + $(ls -d .vbw/runtime/proof.keep.* | wc -l))) ] || { git -C sub worktree list; false; }
-  [ -z "$(git -C sub worktree list --porcelain | grep '^worktree ' | sed 1d | grep -v '/\.vbw/runtime/proof\.keep\.[0-9]*/tree/sub$')" ] || { git -C sub worktree list; false; }
+  # The submodule's copies are repositories of their own (R309): it lists no worktree but itself.
+  [ "$(git -C sub worktree list --porcelain | grep -c '^worktree ')" -eq 1 ] || { git -C sub worktree list; false; }
+  [ -f .vbw/runtime/proof.keep.1/tree/sub/.git ] || { ls -la .vbw/runtime/proof.keep.1/tree/sub; false; }
 }
 
 # sub_with_gitmodules: a submodule "sub" whose own tree holds a .gitmodules, committed.
@@ -194,53 +194,51 @@ SH
 
 # #737: Claude Code's sandbox refuses to create any file named .gitmodules
 # ("unable to create file .gitmodules: Operation not permitted"). A fake git
-# stands in for it: a worktree add that writes a .gitmodules fails with git's
-# message, its half-made worktree left behind. Only then is the copy made again
-# with every .gitmodules unwritten (git reads it from the index), git status
-# clean, and VBW's own lookup in the copy still finds the submodule.
+# stands in for it: whatever git command leaves a .gitmodules in the copy's slot
+# fails with git's message, the file removed and the half-made copy left behind.
+# Only then is the copy made again with every .gitmodules unwritten (git reads it
+# from the index, vbw-gitmodules-index in the copy's git folder says so), git
+# status clean, and VBW's own lookup in the copy still finds the submodule.
 @test "when the sandbox refuses .gitmodules, the copy is made again without it, git status stays clean, and VBW finds the submodule in the copy" {
   sub_with_gitmodules
   git add -A && git commit -q -m "chore: sub"
   mkdir -p "$TEST_ROOT/fakebin"
   cat > "$TEST_ROOT/fakebin/git" << 'SH'
 #!/bin/sh
-case " $* " in
-  *" worktree add "*" --no-checkout "*) exec "$REAL_GIT" "$@" ;;
-  *" worktree add "*)
-    "$REAL_GIT" "$@" || exit
-    for a; do dest=$prev; prev=$a; done
-    [ -e "$dest/.gitmodules" ] || exit 0
-    rm -f "$dest/.gitmodules"
-    echo "error: unable to create file .gitmodules: Operation not permitted" >&2
-    echo "fatal: Could not reset index file to revision 'HEAD'." >&2
-    exit 128 ;;
-esac
-exec "$REAL_GIT" "$@"
+"$REAL_GIT" "$@"
+rc=$?
+if [ -n "$(find "$SLOT" -name .gitmodules -print 2> /dev/null | head -n 1)" ]; then
+  find "$SLOT" -name .gitmodules -exec rm -f {} + 2> /dev/null
+  echo "error: unable to create file .gitmodules: Operation not permitted" >&2
+  echo "fatal: Could not reset index file to revision 'HEAD'." >&2
+  exit 128
+fi
+exit $rc
 SH
   chmod +x "$TEST_ROOT/fakebin/git"
   # shellcheck disable=SC2016 # expanded by vbw_kernel
-  REAL_GIT=$(command -v git) PATH="$TEST_ROOT/fakebin:$PATH" vbw_kernel '. "$VBW_LIB/proofcopy.sh"; PROOF_SLOTS=("$VBW_RUNTIME/proof.keep.1"); mkdir -p "${PROOF_SLOTS[0]}"
+  SLOT="$PWD/.vbw/runtime/proof.keep.1" REAL_GIT=$(command -v git) PATH="$TEST_ROOT/fakebin:$PATH" vbw_kernel '. "$VBW_LIB/proofcopy.sh"; PROOF_SLOTS=("$VBW_RUNTIME/proof.keep.1"); mkdir -p "${PROOF_SLOTS[0]}"
     proofcopy_make "${PROOF_SLOTS[0]}"
     PROOF_COPY=${PROOF_SLOTS[0]}/tree
     for f in .gitmodules sub/.gitmodules; do [ ! -e "$PROOF_COPY/$f" ] || { echo "the copy wrote $f"; exit 1; }; done
     [ -z "$(git -C "$PROOF_COPY" status --porcelain)" ] || { git -C "$PROOF_COPY" status --porcelain; exit 1; }
     [ -z "$(git -C "$PROOF_COPY/sub" status --porcelain)" ] || exit 1
     grep -qx paid "$PROOF_COPY/sub/pay.txt" || exit 1
+    [ -f "$(git -C "$PROOF_COPY" rev-parse --absolute-git-dir)/vbw-gitmodules-index" ] || { echo "no vbw-gitmodules-index in the copy'"'"'s git folder"; exit 1; }
     [ "$(VBW_ROOT=$PROOF_COPY vbw_subs | tr "\0" "\n")" = sub ] || { echo "vbw_subs in the copy: $(VBW_ROOT=$PROOF_COPY vbw_subs | tr "\0" " ")"; exit 1; }
-    [ "$(git -C "$VBW_ROOT" worktree list --porcelain | grep -c "^worktree ")" -eq 2 ] || { git -C "$VBW_ROOT" worktree list; exit 1; }
+    [ "$(git -C "$VBW_ROOT" worktree list --porcelain | grep -c "^worktree ")" -eq 1 ] || { git -C "$VBW_ROOT" worktree list; exit 1; }
     proofcopy_remove'
 }
 
-@test "#737: without a submodule, a copy costs one git process, as before submodules" {
-  mkdir -p "$TEST_ROOT/logbin"
-  printf '#!/bin/sh\necho git >> "$TEST_ROOT/calls"\nexec %s "$@"\n' "$(command -v git)" > "$TEST_ROOT/logbin/git"
-  chmod +x "$TEST_ROOT/logbin/git"
+@test "#737: without a .gitmodules, a copy is made in one try: no file is marked skip-worktree and no vbw-gitmodules-index is written" {
   # shellcheck disable=SC2016 # expanded by vbw_kernel
-  PATH="$TEST_ROOT/logbin:$PATH" vbw_kernel '. "$VBW_LIB/proofcopy.sh"; : > "$TEST_ROOT/calls"
-    proofcopy_checkout "$VBW_ROOT" "$TEST_ROOT/c"'
-  grep -qx paid "$TEST_ROOT/c/src/pay.txt"
-  [ "$(wc -l < "$TEST_ROOT/calls" | tr -d ' ')" -eq 1 ] || { cat "$TEST_ROOT/calls"; false; }
-  git worktree remove --force "$TEST_ROOT/c"
+  vbw_kernel '. "$VBW_LIB/proofcopy.sh"; PROOF_SLOTS=("$VBW_RUNTIME/proof.keep.1"); mkdir -p "${PROOF_SLOTS[0]}"
+    proofcopy_make "${PROOF_SLOTS[0]}"
+    t=${PROOF_SLOTS[0]}/tree
+    grep -qx paid "$t/src/pay.txt" || { echo "the copy lacks src/pay.txt"; exit 1; }
+    [ -z "$(git -C "$t" ls-files -v | grep -v "^H ")" ] || { git -C "$t" ls-files -v | grep -v "^H "; exit 1; }
+    [ ! -e "$(git -C "$t" rev-parse --absolute-git-dir)/vbw-gitmodules-index" ] || { echo "a vbw-gitmodules-index was written"; exit 1; }
+    proofcopy_remove'
 }
 
 @test "R103: an untracked project file in the working folder runs nothing" {
@@ -397,10 +395,10 @@ again'
 @test "R260: when the recorded submodule commit is missing from the submodule's repository, the run stays unknown and everything runs again" {
   sub_two_files
   git -C sub commit -q --amend -m "chore: seed, rewritten"
-  # What keeps the old commit alive besides the branch: the clone's remote branch and the kept proof copies.
+  # What keeps the old commit alive besides the branch: the clone's remote branch. The kept
+  # proof copies borrow the submodule's objects and keep nothing alive (R309); they go too.
   git -C sub remote remove origin
   rm -rf .vbw/runtime/proof.keep.*
-  git -C sub worktree prune
   git -C sub reflog expire --expire=now --all
   git -C sub gc -q --prune=now
   git add sub && git commit -q -m "chore: move sub to the rewritten commit"
