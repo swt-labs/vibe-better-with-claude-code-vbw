@@ -34769,7 +34769,15 @@
         "guarded: R12 (C11), R13 (C12), R14 (C13), R23 (C20), R25 (C24), R26 (C22), R28 (C25), R31 (C27), R32 (C28), R39 (C36), R43 (C42, C43), R44 (C44, C45), R45 (C39, C40, C41), R46 (C46), R47 (C47), R48 (C49, C50), R49 (C48), R50 (C51), R58 (C62, C63, C64, C67), R60 (C72, C94), R61 (C73, C74, C75, C76, C77), R66 (C95), R69 (C110, C120, C122), R70 (C114), R71 (C115, C121), R73 (C98), R74 (C99, C100), R75 (C101), R76 (C102, C103), R77 (C104), R79 (C107), R80 (C108), R92 (C131, C132, C133, C134, C135, C136, C137, C138, C139), R93 (C140, C141, C142, C143, C144), R94 (C145, C146, C147, C148), R97 (C153), R98 (C154), R99 (C155), R100 (C156), R101 (C179), R102 (C158, C159), R103 (C160), R104 (C161, C162), R105 (C163), R106 (C164, C165), R107 (C166, C167), R110 (C169, C170), R111 (C171, C172, C173, C174, C175), R115 (C181), R116 (C182, C183), R118 (C184), R123 (C190, C191), R129 (C196), R130 (C197), R131 (C198), R132 (C199), R134 (C201), R135 (C202), R144 (C208, C209), R147 (C212, C215, C237), R148 (C213, C214, C216, C238), R149 (C217, C218, C219, C220, C221, C222), R153 (C235, C236, C239), R156 (C242, C243), R157 (C244), R158 (C245), R159 (C246), R160 (C247, C263, C264), R161 (C248, C265, C266), R162 (C249), R163 (C250), R166 (C253, C254, C255, C256, C267), R168 (C261, C262), R169 (C268), R170 (C269), R173 (C281, C282, C283, C284, C285, C286, C289), R174 (C279, C280), R175 (C274, C275), R177 (C287, C288), R179 (C297, C298, C299, C300, C301, C302, C303, C304, C305, C306, C312), R180 (C307, C308, C309, C310), R181 (C313, C314, C315, C316, C317, C318, C319, C320, C321), R183 (C327), R186 (C344, C345, C346, C347, C348), R188 (C350, C351, C352, C353, C354, C355, C356, C357, C358, C359), R190 (C374, C375, C376, C377, C378, C379, C380, C381, C382, C383, C384, C385, C386, C387, C388), R192 (C401, C402, C403, C404, C405, C406, C407, C408, C409, C410), R193 (C411, C412), R194 (C417, C418, C419), R195 (C420, C421, C422), R196 (C415, C416), R197 (C413, C414), R202 (C432, C433, C434, C435, C436, C437, C438, C439, C440, C441, C442, C443, C444, C445, C446, C447), R203 (C448, C449, C450), R204 (C451, C452, C453, C454), R205 (C455, C456, C457, C458, C467), R206 (C459, C460), R207 (C461, C462, C463), R209 (C469, C470, C471, C472, C473), R210 (C474, C475, C476), R211 (C477, C478, C479), R212 (C480, C481, C482), R213 (C483, C484), R214 (C485, C486, C487), R215 (C488, C489, C490), R216 (C491, C492, C493), R217 (C494, C495), R219 (C497, C498, C499), R220 (C500, C501, C502, C503), R221 (C504), R226 (C510, C511), R230 (C530, C531), R232 (C534), R236 (C537), R238 (C545), R239 (C554, C555), R241 (C546, C547, C548, C549, C550, C560), R242 (C551, C552, C553), R244 (C562, C563), R245 (C564, C565), R246 (C566, C567), R250 (C574, C575, C576, C577, C578, C585), R251 (C579), R252 (C580), R253 (C581, C582), R256 (C586, C587), R257 (C588, C589), R258 (C590, C591, C592), R259 (C593, C594, C595), R260 (C596, C597), R261 (C598, C599, C600), R262 (C601), R263 (C602, C603, C604), R264 (C613, C614, C615, C616), R265 (C605, C606, C607, C608, C609, C610, C611, C612), R266 (C617, C618), R267 (C619, C620, C621), R269 (C626, C627, C628, C629, C630), R270 (C631, C632, C633), R277 (C648, C650), R278 (C649, C651), R279 (C678, C679, C680), R284 (C673, C674), R287 (C655, C656, C657), R288 (C667, C668, C669), R291 (C675, C676, C677), R292 (C670, C671, C672), R293 (C682), R294 (C683), R295 (C684), R297 (C687)",
         "tests: project test command"
       ],
-      "predicted": "deep"
+      "predicted": "deep",
+      "qa": {
+        "result": "fail",
+        "tier": "deep",
+        "tree": "3487b2f571c077641e08218fa228ee591e991d1fcccb61e1bf24bda34a848f95",
+        "at": "2026-11-13T10:34:35Z",
+        "note": "27/28 checks",
+        "rounds": 1
+      }
     },
     {
       "id": "P236",
@@ -88357,6 +88365,15 @@
       "attempts": 0,
       "status": "closed",
       "note": "test fail"
+    },
+    {
+      "id": "F458",
+      "req": "R306",
+      "source": "qa",
+      "attempts": 0,
+      "status": "open",
+      "note": "vbw run state is missing from the real help text, while docs/workflows.md (the 'vbw run start --help' example, around line 260) shows it there. Evidence: running 'plugin/bin/vbw run start --help' and 'plugin/bin/vbw run --help' prints 'usage: vbw run start KIND [IDS] | run confirm ID... | run end [--owner-closed | --map < MAP] ...' with no 'run state ID...'; the same stale line is in plugin/bin/vbw at lines 36 (vbw --help command list) and 101 (the run help). P235.2 task 3 says 'list the command in vbw run's usage line'; only the usage-error line in plugin/lib/cmd-run.sh line 34 got it. So the doc states output the command does not give, and a user or agent asking for help cannot find the command. Fix: add 'run state ID...' to both lines in plugin/bin/vbw (a file no plan listed, so the fix round does it). Regression test should compare 'vbw run --help' and 'vbw --help' with the docs example and require the text 'run state ID...' in both.",
+      "phase": "P235"
     }
   ],
   "todos": [
