@@ -1,0 +1,21 @@
+{
+  "scenario": "testforms",
+  "fixture": "greet.sh in a monorepo with apps/web and apps/mob, each with its own test runner (run.sh, which fails when it is not started in its subproject) and one test file; the spec names one test-file form per subproject with its dir; one requirement, approved by the user before the session; rigor auto; the user types /vbw:vibe and the build runs to the end",
+  "cost_usd": 1.21,
+  "evidence_level": "L3",
+  "at": "2026-11-13T11:54:42Z",
+  "passed": true,
+  "facts": {
+    "proof_passed": true,
+    "forms_ran": true,
+    "command_names_forms": true,
+    "second_proof_reused_all": true
+  },
+  "not_tested": [
+    "the Lead proposing the forms itself from the map (the forms are seeded)",
+    "a form whose dir is a submodule (waits on #737)",
+    "a change in one subproject rerunning only its files (tests/testfiles-forms.bats holds it)",
+    "real test runners (vitest, jest, pytest)",
+    "the forms in the approval question as drawn on screen"
+  ]
+}

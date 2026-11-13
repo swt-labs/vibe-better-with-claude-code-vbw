@@ -1,23 +1,23 @@
 {
   "scenario": "road",
   "fixture": "greet.sh and farewell.sh (two plans in two standard phases of one milestone, the second after the first), six real checks that wait 5 s each (check_jobs 2), approved; the working tree's status line on, the panel in a wide window; no history first (a build run started by the scenario with vbw run start build, then ended), then a seeded history (three builds of one plan of one task at 5 min, three proofs of the six checks, three QA checks of one phase at 2 min, three fix rounds at 200 s, the runs store with the six checks at 5 s) and three finished phases of a shipped milestone with 1, 1 and 2 fix rounds, and the user types /vbw:vibe for the real build",
-  "cost_usd": 1.05,
+  "cost_usd": 5.05,
   "evidence_level": "L3",
-  "at": "2026-11-08T18:04:10Z",
+  "at": "2026-11-13T12:22:18Z",
   "passed": true,
   "facts": {
-    "chat_step_end": "18:00",
-    "chat_road_end": "18:21",
-    "panel_road_end": "18:21",
-    "note_road_end": "18:21",
+    "chat_step_end": "12:00",
+    "chat_road_end": "12:21",
+    "panel_road_end": "12:21",
+    "note_road_end": "12:21",
     "same_road_end": true,
-    "statusline_end": "18:00",
+    "statusline_end": "12:00",
     "statusline_has_road": false,
     "no_history_no_end_time": true,
     "no_history_next_says_no_end_time": true,
     "no_history_note_says_no_end_time": true,
     "no_history_screen_says_no_end_time": true,
-    "screen_samples": 237
+    "screen_samples": 751
   },
   "not_tested": [
     "a build that ran late: the milestone end moving with each late plan was not seen in the window (held by tests/road-note.bats, L1)",

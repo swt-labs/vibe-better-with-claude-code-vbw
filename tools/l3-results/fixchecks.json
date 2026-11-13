@@ -1,9 +1,9 @@
 {
   "scenario": "fixchecks",
   "fixture": "greet.sh built and proven, its phase standard and QA not yet run; the requirement also states several names, one greeting line each, which greet.sh does not do and the approved check does not test; the user types /vbw:vibe and approves by the choice",
-  "cost_usd": 0.92,
+  "cost_usd": 1.27,
   "evidence_level": "L3",
-  "at": "2026-11-09T18:58:03Z",
+  "at": "2026-11-13T11:55:58Z",
   "passed": true,
   "facts": {
     "first_qa_verdict": "fail",
