@@ -1690,6 +1690,20 @@ checks: 1 ran, 1 reused
 test files: 1 ran, 1 reused
 ```
 
+Before its first unit runs, `vbw fix done` prints the same opening line as
+`vbw prove` (see "Before the first unit runs" above),
+from the same function and over this round's plan, so a long round says how many
+units it will run and why before anyone waits for it. A unit runs when its last
+result failed or its recorded read list names a file the fix changed; every other
+unit is reused and counted in the line, so a change no unit read reruns only the
+failed test file. When a cause makes it run every unit, the cause line comes
+first, then the opening line:
+
+```text
+every candidate check runs: this clone has no earlier recorded run
+run again: 3 of 3 units; top reasons: this clone has no earlier recorded run (3)
+```
+
 Each check and test file that ran gets a line in the proof summary's wording,
 with the reason it ran; a reused one keeps the time of the pass it reuses.
 Both count lines print after every per-unit line, every time (`0 ran, 0
