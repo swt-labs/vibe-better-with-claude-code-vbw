@@ -83681,7 +83681,7 @@
       "after": [
         "P234.1"
       ],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "In testfiles_index, drop only the files an approved check runs whole; a file named only by checks that carry a form's filter option becomes a unit with those checks' filter values, in check order",
@@ -83699,6 +83699,246 @@
             "C698": "green",
             "C699": "green"
           }
+        },
+        {
+          "at": "2026-11-13T07:11:54Z",
+          "head": "b1f2443b69ed65feb807dee181d4d1f095713d18",
+          "first": false,
+          "checks": {
+            "C697": "green",
+            "C698": "green",
+            "C699": "green"
+          }
+        }
+      ],
+      "mutations": [
+        {
+          "rule": {
+            "req": "R304",
+            "k": 1
+          },
+          "what": "rest never used",
+          "files": [
+            "plugin/lib/testfiles.sh"
+          ],
+          "checks": {
+            "C697": "red"
+          },
+          "result": "red",
+          "at": "2026-11-13T07:17:34Z",
+          "head": "b1f2443b69ed65feb807dee181d4d1f095713d18",
+          "tree": "207e86fc53cb1898f3813959a4aa909bca4d3ea0",
+          "contract": "3f212d0820e206783160ab7edabc7260378210ca3def681066a015761e03fad8",
+          "digests": [
+            {
+              "file": "plugin/lib/testfiles.sh",
+              "sha256": "443dad410b363a28b95732cb655b568438e5a2960b9c7638553801024887233c"
+            }
+          ]
+        },
+        {
+          "rule": {
+            "req": "R304",
+            "k": 2
+          },
+          "what": "whole needs every check whole",
+          "files": [
+            "plugin/lib/testfiles.sh"
+          ],
+          "checks": {
+            "C697": "red"
+          },
+          "result": "red",
+          "at": "2026-11-13T07:17:37Z",
+          "head": "b1f2443b69ed65feb807dee181d4d1f095713d18",
+          "tree": "207e86fc53cb1898f3813959a4aa909bca4d3ea0",
+          "contract": "3f212d0820e206783160ab7edabc7260378210ca3def681066a015761e03fad8",
+          "digests": [
+            {
+              "file": "plugin/lib/testfiles.sh",
+              "sha256": "d5f30bedbe0257a6adb0a8b33cba793f0d6be2b96e1f6113df8f39dd632ae4ca"
+            }
+          ]
+        },
+        {
+          "rule": {
+            "req": "R304",
+            "k": 3
+          },
+          "what": "default join comma",
+          "files": [
+            "plugin/lib/testfiles.sh"
+          ],
+          "checks": {
+            "C697": "red"
+          },
+          "result": "red",
+          "at": "2026-11-13T07:17:39Z",
+          "head": "b1f2443b69ed65feb807dee181d4d1f095713d18",
+          "tree": "207e86fc53cb1898f3813959a4aa909bca4d3ea0",
+          "contract": "3f212d0820e206783160ab7edabc7260378210ca3def681066a015761e03fad8",
+          "digests": [
+            {
+              "file": "plugin/lib/testfiles.sh",
+              "sha256": "f6b08cd7106a439d85fc40b5f6b2d2e0b8a3f01f7c3ff1a014109df916d4d7bd"
+            }
+          ]
+        },
+        {
+          "rule": {
+            "req": "R304",
+            "k": 4
+          },
+          "what": "no norest notice",
+          "files": [
+            "plugin/lib/testfiles.sh"
+          ],
+          "checks": {
+            "C697": "red"
+          },
+          "result": "red",
+          "at": "2026-11-13T07:17:42Z",
+          "head": "b1f2443b69ed65feb807dee181d4d1f095713d18",
+          "tree": "207e86fc53cb1898f3813959a4aa909bca4d3ea0",
+          "contract": "3f212d0820e206783160ab7edabc7260378210ca3def681066a015761e03fad8",
+          "digests": [
+            {
+              "file": "plugin/lib/testfiles.sh",
+              "sha256": "1b66d311841b906512e2c958c1a5e555e12154f689fe01a15bdd2ae511aebb0d"
+            }
+          ]
+        },
+        {
+          "rule": {
+            "req": "R304",
+            "k": 5
+          },
+          "what": "default filter option without a filter line",
+          "files": [
+            "plugin/lib/testfiles.sh"
+          ],
+          "checks": {
+            "C697": "green"
+          },
+          "result": "survivor",
+          "at": "2026-11-13T07:17:44Z",
+          "head": "b1f2443b69ed65feb807dee181d4d1f095713d18",
+          "tree": "207e86fc53cb1898f3813959a4aa909bca4d3ea0",
+          "contract": "3f212d0820e206783160ab7edabc7260378210ca3def681066a015761e03fad8",
+          "digests": [
+            {
+              "file": "plugin/lib/testfiles.sh",
+              "sha256": "eb4b125da7464d48afd07e4989e95b6770b6af286be4efb56394014b0f0f6b30"
+            }
+          ]
+        },
+        {
+          "rule": {
+            "req": "R304",
+            "k": 6
+          },
+          "what": "failing file not named",
+          "files": [
+            "plugin/lib/testfiles.sh"
+          ],
+          "checks": {
+            "C697": "green"
+          },
+          "result": "survivor",
+          "at": "2026-11-13T07:17:46Z",
+          "head": "b1f2443b69ed65feb807dee181d4d1f095713d18",
+          "tree": "207e86fc53cb1898f3813959a4aa909bca4d3ea0",
+          "contract": "3f212d0820e206783160ab7edabc7260378210ca3def681066a015761e03fad8",
+          "digests": [
+            {
+              "file": "plugin/lib/testfiles.sh",
+              "sha256": "5b1719a7b431f0c9dfb78bf5945852d2840ed3d8b84ede3b9be1a6e1b186c2bf"
+            }
+          ]
+        },
+        {
+          "rule": {
+            "req": "R304",
+            "k": 7
+          },
+          "what": "fingerprint ignores the filters",
+          "files": [
+            "plugin/lib/proofreuse.sh"
+          ],
+          "checks": {
+            "C697": "red"
+          },
+          "result": "red",
+          "at": "2026-11-13T07:17:49Z",
+          "head": "b1f2443b69ed65feb807dee181d4d1f095713d18",
+          "tree": "207e86fc53cb1898f3813959a4aa909bca4d3ea0",
+          "contract": "3f212d0820e206783160ab7edabc7260378210ca3def681066a015761e03fad8",
+          "digests": [
+            {
+              "file": "plugin/lib/proofreuse.sh",
+              "sha256": "0e7067b6817bca0eca3f3e13774f9068f53e7259d6c229a0d41ef1289a28fd0d"
+            }
+          ]
+        },
+        {
+          "rule": {
+            "req": "R304",
+            "k": 5
+          },
+          "what": "default filter option without a filter line",
+          "files": [
+            "plugin/lib/testfiles.sh"
+          ],
+          "checks": {
+            "C697": "red"
+          },
+          "result": "red",
+          "at": "2026-11-13T07:22:07Z",
+          "head": "938b145561f62263e8426264509927f032203895",
+          "tree": "f44fae330bc7a8b5ff844b8a5913f8aa6a5fc810",
+          "contract": "d56daa90f5982a86844954e975b23d046493657d0984aff12f0638bde39a8048",
+          "digests": [
+            {
+              "file": "plugin/lib/testfiles.sh",
+              "sha256": "eb4b125da7464d48afd07e4989e95b6770b6af286be4efb56394014b0f0f6b30"
+            }
+          ],
+          "strengthened": [
+            "tests/prove-testfiles.bats"
+          ],
+          "pending": [
+            "tests/prove-testfiles.bats"
+          ]
+        },
+        {
+          "rule": {
+            "req": "R304",
+            "k": 6
+          },
+          "what": "failing file not named",
+          "files": [
+            "plugin/lib/testfiles.sh"
+          ],
+          "checks": {
+            "C697": "red"
+          },
+          "result": "red",
+          "at": "2026-11-13T07:23:34Z",
+          "head": "938b145561f62263e8426264509927f032203895",
+          "tree": "f44fae330bc7a8b5ff844b8a5913f8aa6a5fc810",
+          "contract": "d56daa90f5982a86844954e975b23d046493657d0984aff12f0638bde39a8048",
+          "digests": [
+            {
+              "file": "plugin/lib/testfiles.sh",
+              "sha256": "5b1719a7b431f0c9dfb78bf5945852d2840ed3d8b84ede3b9be1a6e1b186c2bf"
+            }
+          ],
+          "strengthened": [
+            "tests/prove-testfiles.bats"
+          ],
+          "pending": [
+            "tests/prove-testfiles.bats"
+          ]
         }
       ]
     },
@@ -105728,6 +105968,17 @@
         "ended": "2026-11-13T03:20:40Z",
         "cost": {
           "usd": 2.767808
+        }
+      },
+      {
+        "id": "build-20261113T071025Z",
+        "kind": "build",
+        "session": "0ee781c3-c5b6-4a6c-889f-04b89f1fba4a",
+        "milestone": "M58",
+        "started": "2026-11-13T07:10:25Z",
+        "ended": "2026-11-13T07:25:12Z",
+        "cost": {
+          "usd": 1.078484
         }
       }
     ],
