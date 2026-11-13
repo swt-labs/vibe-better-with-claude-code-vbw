@@ -31,8 +31,8 @@ next_holder() {
 # version is first fingerprinted again at its own commit (qa_settle).
 qa_state() {
   local d="${2:-}"
-  [ -n "$d" ] || d=$(qa_digests "$1")
-  qa_settle "$1" "$d"
+  [ -n "$d" ] || d=$(qa_digests "$1") || return $?
+  qa_settle "$1" "$d" || return $?
   printf '%s' "$1" | jq -c --slurpfile in <(printf '%s' "$d") --slurpfile ch <(qa_cache_read) --argjson fpv "$QA_FP_VERSION" "$VBW_JQ_DEFS"'$in[0] as $inputs | $ch[0] as $cache | '"$(cat "$VBW_LIB/qa.jq")"
 }
 
@@ -47,7 +47,7 @@ qa_deviations() {
 # version is held by the qa.tree it has.
 qa_combined() {
   local d="${2:-}"
-  [ -n "$d" ] || d=$(qa_digests "$1")
+  [ -n "$d" ] || d=$(qa_digests "$1") || return $?
   qa_state "$1" "$d" | jq -c --slurpfile dg <(printf '%s' "$d") --slurpfile rc <(printf '%s' "$1") '$dg[0] as $d | $rc[0] as $r | . as $s | $d | map_values(.combined)
     + ([$r.phases[] | select(.id as $i | $s.standing | index($i)) | select(.qa.tree != null) | {(.id): .qa.tree}] | add // {})'
 }
@@ -142,9 +142,10 @@ next_prepare() {
 # stdout; it writes nothing. The one place the answer is judged, so the command,
 # vbw status and the road (lib/road.sh) read the same one.
 next_answer() {
-  local rc=0
+  local rc=0 out
   next_prepare || return $?
-  next_decide | jq -c '.next' || rc=$?
+  out=$(next_decide) || rc=$?
+  [ "$rc" -ne 0 ] || printf '%s' "$out" | jq -c '.next' || rc=$?
   # The pass's file is this call's own: a caller may run it in a subshell, whose
   # guard list dies with it, so it is removed here, not left to the command's end.
   vbw_guard_drop "$NP_PASS"
@@ -154,7 +155,8 @@ next_answer() {
 # next_road_input: next_decide's answer for the road, {} when it cannot be judged
 # (step_road_status, after next_prepare).
 next_road_input() {
-  { next_decide 2> /dev/null | jq -c '.next'; } 2> /dev/null || echo '{}'
+  local out
+  out=$(next_decide 2> /dev/null) && printf '%s' "$out" | jq -c '.next' 2> /dev/null || echo '{}'
 }
 
 # next_decide: the answer next_prepare's record gives (see next_answer). Everything it
@@ -167,7 +169,7 @@ next_decide() {
   record=$NP_WORK slim=$NP_SLIM
   # The contract's hash, and its shape while the hash is not approved, from the pass's core lines.
   core=$(sed -n 1p "$NP_PASS")
-  hash=$(contract_hash_from "$core" "$NP_FILES")
+  hash=$(contract_hash_from "$core" "$NP_FILES") || return $?
   if ! contract_approved "$hash"; then
     shape=$(sed -n 2p "$NP_PASS")
     shape=$(printf '%s\n' "${shape:-$core}" | vbw_sha256)
@@ -177,7 +179,7 @@ next_decide() {
     wok=1
     # Check files that only had lines added are not waiting: the proof judges them with the approved content (R269).
     if ! contract_approved "$hash"; then
-      added=$(contract_classify "$slim" | sed -n 's/^A	//p' | jq -Rsc 'split("\n") | map(select(length > 0) | split("\t") | {file: .[0], lines: (.[1] | tonumber)})') || added="[]"
+      added=$(contract_classify "$slim" | sed -n 's/^A	//p' | jq -Rsc 'split("\n") | map(select(length > 0) | split("\t") | {file: .[0], lines: (.[1] | tonumber)})') || return $?
     fi
     commands_approved "$slim" && approved=true
   fi
@@ -199,9 +201,9 @@ next_decide() {
   if [ "$wok" = 1 ] && [ -n "$NP_LISTING_RES" ]; then QA_PRE_LISTING=$(printf '%s' "$NP_LISTING_RES" | jq -r '.[]'); else QA_PRE_LISTING=$(printf '%s' "$NP_LISTING" | jq -r '.[]'); fi
   # shellcheck disable=SC2034  # read by qa_digests and qa_settle
   QA_PRE_CLOSURE=$NP_CLOSURE QA_PRE_SETTLE=$NP_SETTLE
-  digests=$(qa_digests "$record")
-  qa_settle "$record" "$digests"
-  cache=$(qa_cache_read)
+  digests=$(qa_digests "$record") || return $?
+  qa_settle "$record" "$digests" || return $?
+  cache=$(qa_cache_read) || return $?
   # The last answer (a gate's since) and, while not approved, the last approved contract (a re-approval).
   [ -f "$VBW_RUNTIME/next.json" ] && prev="$VBW_RUNTIME/next.json"
   [ "$approved" = true ] || [ ! -f "$VBW_RUNTIME/approved-contract.json" ] || adoc="$VBW_RUNTIME/approved-contract.json"
