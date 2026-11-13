@@ -106239,6 +106239,17 @@
         "cost": {
           "usd": 1.080205
         }
+      },
+      {
+        "id": "fix-20261113T090119Z",
+        "kind": "fix",
+        "session": "0ee781c3-c5b6-4a6c-889f-04b89f1fba4a",
+        "milestone": "M58",
+        "started": "2026-11-13T09:01:19Z",
+        "ended": "2026-11-13T09:07:06Z",
+        "cost": {
+          "usd": 1.042749
+        }
       }
     ],
     "milestones": {
