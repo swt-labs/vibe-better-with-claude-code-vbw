@@ -90266,6 +90266,13 @@
       "sort": "next",
       "size": "small",
       "status": "open"
+    },
+    {
+      "id": "T295",
+      "text": "vbw apply --amend that adds a file to a plan does not add it to an open fix run's lease (docs/workflows.md says an open run gains the file): M58, P235.2 gained plugin/bin/vbw during fix-20261113T103556Z and the Dev was still refused it; a new fix run named it. Make the fix lease follow the amendment as a build lease does, or say in the docs which runs follow it, with a case",
+      "sort": "next",
+      "size": "small",
+      "status": "open"
     }
   ],
   "decisions": [
