@@ -84351,13 +84351,6 @@
             }
           ]
         }
-      ],
-      "amendments": [
-        {
-          "what": "file plugin/bin/vbw added",
-          "at": "2026-11-13T10:36:25Z",
-          "session": "0ee781c3"
-        }
       ]
     },
     {
@@ -94467,6 +94460,12 @@
       "text": "#756 direction for 2.1.32 (T286): approved skills reach only the agents of the plans that name them, as their bodies, never as the whole catalog; Skill stays disallowed for agents; the guard checks .tool_input.skill (bare or <plugin>:<skill>) against a list in record.settings, as it checks mcp__<server>__; a per-run delivery path is probed first",
       "why": "The contributor's L2 probe (2026-11-12): allowing Skill loads the session's whole catalog (+7,944 tokens, about 46 per skill, personal and plugin skills included); a skills: preload costs about its body (+187) with no Skill permission; workflow agents and Agent-tool subagents behave the same; static agent files cannot name a project's skills. The best skill wins; cost only shapes delivery (owner 2026-11-12). Reply posted on #756",
       "at": "2026-11-13T09:20:52Z"
+    },
+    {
+      "id": "D721",
+      "at": "2026-11-13T11:45:01Z",
+      "text": "Contract approved: 293 requirements, 699 checks, 687 plans (433f34c6267e)",
+      "plans": []
     }
   ],
   "commands": {
