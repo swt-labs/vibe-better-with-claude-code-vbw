@@ -53,7 +53,10 @@ const effortOf = (role, step) => {
 }
 if (groups.length === 0) return reply({ results: [], error: 'no fix groups given: pass args.groups from vbw next --json (detail.groups)' })
 
-const STATE_PROP = { type: 'string', description: 'What vbw run state printed, exactly as printed (one JSON line)' }
+const STATE_PROP = {
+  type: 'string',
+  description: 'What vbw run state printed, exactly as printed (one JSON line)',
+}
 const FIXDONE_PROPS = {
   refused: REFUSED,
   fixdone: { type: 'string', enum: ['ran', 'failed'] },
