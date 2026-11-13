@@ -66,7 +66,7 @@ PROTECTED='tests/c1.sh is a protected check file: a protected check file is neve
     "printf 'done\\n'" > .vbw/runtime/scratch/ok.sh
   call 'bash .vbw/runtime/scratch/ok.sh'
   allowed "quoted ':' and '|' and a quoted > beside comments holding apostrophes"
-  printf '%s\n' 'echo "note # that spans' 'a line > tests/c1.sh" > src/pay.txt' > .vbw/runtime/scratch/s.sh
+  printf '%s\n' 'echo "note # that spans' 'a line > tests/c1.sh also" > src/pay.txt' > .vbw/runtime/scratch/s.sh
   call 'bash .vbw/runtime/scratch/s.sh'
   allowed "a # inside a double-quoted string that spans lines starts no comment, so the > after it is text"
 }
