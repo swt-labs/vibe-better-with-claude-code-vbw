@@ -1,6 +1,15 @@
 {
   "schema": 15,
-  "lease": null,
+  "lease": {
+    "run": "qa-20261113T130509Z",
+    "kind": "qa",
+    "started_at": "2026-11-13T13:05:09Z",
+    "files": [],
+    "session": "0ee781c3-c5b6-4a6c-889f-04b89f1fba4a",
+    "cost": {
+      "usd": 3676.25727
+    }
+  },
   "protected": [
     "docs/guards.md",
     "tests/adaptive-results.bats",
@@ -34778,12 +34787,19 @@
       ],
       "predicted": "deep",
       "qa": {
-        "result": "fail",
+        "result": "pass",
         "tier": "deep",
-        "tree": "3487b2f571c077641e08218fa228ee591e991d1fcccb61e1bf24bda34a848f95",
-        "at": "2026-11-13T10:34:35Z",
-        "note": "27/28 checks",
-        "rounds": 1
+        "tree": "411a275770f99db84d40f724181537dd4357edc4ad5faa255f96b85e64fb9e29",
+        "at": "2026-11-13T13:06:39Z",
+        "note": "28/28 checks"
+      },
+      "outcome": {
+        "tier": "deep",
+        "predicted": "deep",
+        "held": true,
+        "fix_rounds": 1,
+        "qa_findings": 1,
+        "escalations": 0
       }
     },
     {
@@ -88379,7 +88395,7 @@
       "req": "R306",
       "source": "qa",
       "attempts": 0,
-      "status": "fixed",
+      "status": "closed",
       "note": "vbw run state is missing from the real help text, while docs/workflows.md (the 'vbw run start --help' example, around line 260) shows it there. Evidence: running 'plugin/bin/vbw run start --help' and 'plugin/bin/vbw run --help' prints 'usage: vbw run start KIND [IDS] | run confirm ID... | run end [--owner-closed | --map < MAP] ...' with no 'run state ID...'; the same stale line is in plugin/bin/vbw at lines 36 (vbw --help command list) and 101 (the run help). P235.2 task 3 says 'list the command in vbw run's usage line'; only the usage-error line in plugin/lib/cmd-run.sh line 34 got it. So the doc states output the command does not give, and a user or agent asking for help cannot find the command. Fix: add 'run state ID...' to both lines in plugin/bin/vbw (a file no plan listed, so the fix round does it). Regression test should compare 'vbw run --help' and 'vbw --help' with the docs example and require the text 'run state ID...' in both.",
       "phase": "P235"
     }
