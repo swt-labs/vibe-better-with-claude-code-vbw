@@ -93582,6 +93582,14 @@
       "text": "R301 (20 ms headroom for the Bash guard) leaves M58 and 2.1.31 for its own milestone, research first: where jq spends the guard's compile (about 16.5 of 19-20 ms per call on the M1 Max), then a design that cuts it. Its timed file and case are dropped (C696 removed with R301). P233.1's measured speed-up e2ffdcc3 stays as a quick fix (T283): the guard scans heredocs for programs only when the command names an interpreter; same answers (guard, interpreter and cross-project test files pass); big 22.6 -> 19.6 ms on the M1 Max, the case that was OVER on CI",
       "why": "P233.1 blocked with measurements (D711): the planned restructure gains about 2 ms on single-pass calls and makes interp a two-pass call at about 40 ms; against the reference the guard sits at about 25 ms per call on Macs and 22 to 25 on Linux (2.1.30 CI log), so 20 ms needs about 20% less compile, which needs a profile first; holding 2.1.31 for it would delay the release by an unknown time",
       "at": "2026-11-12T22:59:58Z"
+    },
+    {
+      "id": "D713",
+      "at": "2026-11-13T03:07:12Z",
+      "text": "Contract approved: 293 requirements, 698 checks, 687 plans (e1271c633ab3)",
+      "plans": [
+        "P237.1"
+      ]
     }
   ],
   "commands": {
