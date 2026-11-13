@@ -407,7 +407,7 @@ if type != "object" then ["record must be a JSON object"] else
           and (.files | type == "array" and length > 0 and all(.[]; type == "string" and length > 0));
         def tf_dir: . == null or (type == "string" and (split("/") as $s | (startswith("/") | not)
           and all($s[]; . != "" and . != "." and . != "..") and $s[0] != ".vbw" and $s[0] != ".git"));
-        # filter, rest and join (schema 16): filter an argv; rest an argv naming {file} and {filters} once each;
+        # filter, rest and join (the schema table's top row): filter an argv; rest an argv naming {file} and {filters} once each;
         # join a non-empty string; rest and join only beside a filter.
         def tf_extra: (has("filter") or ((has("rest") or has("join")) | not))
           and ((has("filter") | not) or (.filter | argv))
