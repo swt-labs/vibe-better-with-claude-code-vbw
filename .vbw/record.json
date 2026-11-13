@@ -90165,6 +90165,13 @@
       "sort": "next",
       "size": "small",
       "status": "open"
+    },
+    {
+      "id": "T294",
+      "text": "A fix round's guard lets a group's Dev edit only the check files of the group's first fix's requirement: M58 round 1 grouped F453 (R182) with F456 (R248), and the Dev was refused tests/standards.bats, R248's own check file, naming only R182's files. Allow the check files of every fix in the group (one approval still covers them), with a case of two requirements in one group",
+      "sort": "next",
+      "size": "small",
+      "status": "open"
     }
   ],
   "decisions": [
@@ -94347,6 +94354,18 @@
       "at": "2026-11-13T09:13:54Z",
       "text": "Contract approved: 293 requirements, 698 checks, 687 plans (4e5f55ea654b)",
       "plans": []
+    },
+    {
+      "id": "D719",
+      "text": "M58 fix round 1 finished by the main session: F456's pin (tests/standards.bats, R248_SCHEMA 16 and the digest tools/check-record-shape.sh prints) and the bench's measures (165-definition reference: M1 Max 25.4 to 25.6 ms over five runs, ubuntu:24.04 27.9 ms, ubuntu:26.04 28.6 ms, 2026-11-13); NOMINAL_MS stays 28.9 because every machine measures at or under it",
+      "why": "The fix run's guard let the Dev edit only R182's check files (the group's first requirement), and the installed 2.1.30 guard refuses running tools/bench-hooks.sh by path (the R308 bug), so the Dev could not measure; keeping the pin avoids editing two protected files for a 1% change inside day-to-day noise, and a higher pin only makes the bench stricter",
+      "at": "2026-11-13T09:20:50Z"
+    },
+    {
+      "id": "D720",
+      "text": "#756 direction for 2.1.32 (T286): approved skills reach only the agents of the plans that name them, as their bodies, never as the whole catalog; Skill stays disallowed for agents; the guard checks .tool_input.skill (bare or <plugin>:<skill>) against a list in record.settings, as it checks mcp__<server>__; a per-run delivery path is probed first",
+      "why": "The contributor's L2 probe (2026-11-12): allowing Skill loads the session's whole catalog (+7,944 tokens, about 46 per skill, personal and plugin skills included); a skills: preload costs about its body (+187) with no Skill permission; workflow agents and Agent-tool subagents behave the same; static agent files cannot name a project's skills. The best skill wins; cost only shapes delivery (owner 2026-11-12). Reply posted on #756",
+      "at": "2026-11-13T09:20:52Z"
     }
   ],
   "commands": {
