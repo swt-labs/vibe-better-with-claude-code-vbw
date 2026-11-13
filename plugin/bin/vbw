@@ -33,7 +33,7 @@ usage: vbw <command> [args]
   apply < PLAN      the planner's write: phases, plans and checks in one update
   apply --patch < P change only the plans, checks and rules given, the rest untouched
   apply --add < P   add new phases with their plans, checks and rules, the rest untouched
-  run start KIND [IDS] | run confirm ID... | run end [--owner-closed | --map < MAP]   open the run lease, check what its agents recorded, close it (a map run with its map)
+  run start KIND [IDS] | run confirm ID... | run state ID... | run end [--owner-closed | --map < MAP]   open the run lease, check what its agents recorded, close it (a map run with its map)
   plan done|block|reset ID   a plan's outcome (done is verified)
   fix done ID [ID...] | retry ID | restore FILE...   fixes committed (checks they serve run once); retry an escalated fix; restore a delivered file changed outside any plan
   req accept ID | req reject ID NOTE | req skip ID   the user's verdict on a [human] requirement, or Skip for now
@@ -98,7 +98,7 @@ vbw_cmd_usage() {
       echo "usage: vbw apply < PLAN   the planner's write: phases, plans and checks in one update"
       echo "       vbw apply --patch < P   change only the plans, checks and rules given"
       echo "       vbw apply --add < P   add new phases with their plans, checks and rules" ;;
-    run) echo "usage: vbw run start KIND [IDS] | run confirm ID... | run end [--owner-closed | --map < MAP]   open the run lease, check what its agents recorded, close it (a map run with its map)" ;;
+    run) echo "usage: vbw run start KIND [IDS] | run confirm ID... | run state ID... | run end [--owner-closed | --map < MAP]   open the run lease, check what its agents recorded, close it (a map run with its map)" ;;
     plan) echo "usage: vbw plan done|block|reset ID   a plan's outcome (done is verified; block takes a reason)" ;;
     fix)
       echo "usage: vbw fix done ID [ID...]   fixes committed; the checks they serve run once"
