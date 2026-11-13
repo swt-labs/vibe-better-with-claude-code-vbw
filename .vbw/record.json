@@ -90235,7 +90235,7 @@
       "text": "vbw fix done is silent for 30+ min (2026-11-11, M57 fix round): for a fix of a project-command check it runs the whole test command (210 units, about 29 min) and prints nothing until the end; the fixing workflow's agent ran it in the background and lost it when the agent ended, so nothing was recorded. Show progress while it runs (as vbw prove does), run only the units the fix can reach, and keep the workflow from ending before fix done returns",
       "sort": "next",
       "size": "medium",
-      "status": "open"
+      "status": "done"
     },
     {
       "id": "T289",
