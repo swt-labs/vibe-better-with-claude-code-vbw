@@ -84033,13 +84033,112 @@
         "P234.2",
         "P234.3"
       ],
-      "status": "planned",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "Find why T288's fix done (M57's F451 round, 2026-11-11) reran every unit: read the clone's run store and M57's proof evidence, reproduce it on a fixture, record the cause with vbw decide, and add a regression test in tests/fix-done-reach.bats that fails before the fix",
         "Fix that cause, so fix done reruns only the units whose recorded reads include a changed file and reuses the rest under vbw prove's rule",
         "Before the first unit runs, print the same opening line vbw prove prints ('run again: N of M units; top reasons: ...'), from one shared function for both commands",
         "When every unit must run, print the reason as the first line, before any unit starts; keep the closing summary lines as they are, and update docs/proof.md's fix done section"
+      ],
+      "red_runs": [
+        {
+          "at": "2026-11-13T07:26:30Z",
+          "head": "57c98a27e6f3ed5d66ce40ed218ce778f2522598",
+          "first": true,
+          "checks": {
+            "C700": "red"
+          }
+        }
+      ],
+      "mutations": [
+        {
+          "rule": {
+            "req": "R305",
+            "k": 1
+          },
+          "what": "fix done no longer prints the opening line",
+          "files": [
+            "plugin/lib/cmd-fix.sh"
+          ],
+          "checks": {
+            "C700": "red"
+          },
+          "result": "red",
+          "at": "2026-11-13T07:42:30Z",
+          "head": "cb547d1341294d4b02d5d6e5f58befaa8c341bef",
+          "tree": "c5a04743fe18a0fc1ac781fe3413351c1db46e44",
+          "contract": "d56daa90f5982a86844954e975b23d046493657d0984aff12f0638bde39a8048",
+          "digests": [
+            {
+              "file": "plugin/lib/cmd-fix.sh",
+              "sha256": "08dcdc91d6fd10bc4703b54f9ea53e80d774bb0714378c06db3bd7a89e59aa87"
+            }
+          ]
+        },
+        {
+          "rule": {
+            "req": "R305",
+            "k": 2
+          },
+          "what": "fix done runs every test file whatever the cause",
+          "files": [
+            "plugin/lib/cmd-fix.sh"
+          ],
+          "checks": {
+            "C700": "red"
+          },
+          "result": "red",
+          "at": "2026-11-13T07:42:32Z",
+          "head": "cb547d1341294d4b02d5d6e5f58befaa8c341bef",
+          "tree": "c5a04743fe18a0fc1ac781fe3413351c1db46e44",
+          "contract": "d56daa90f5982a86844954e975b23d046493657d0984aff12f0638bde39a8048",
+          "digests": [
+            {
+              "file": "plugin/lib/cmd-fix.sh",
+              "sha256": "8c6de4134b87cad0e47fe9506378ce855c66656a6da75d187b84cad653fed86f"
+            }
+          ]
+        },
+        {
+          "rule": {
+            "req": "R305",
+            "k": 3
+          },
+          "what": "the cause line is no longer printed",
+          "files": [
+            "plugin/lib/cmd-fix.sh"
+          ],
+          "checks": {
+            "C700": "red"
+          },
+          "result": "red",
+          "at": "2026-11-13T07:42:35Z",
+          "head": "cb547d1341294d4b02d5d6e5f58befaa8c341bef",
+          "tree": "c5a04743fe18a0fc1ac781fe3413351c1db46e44",
+          "contract": "d56daa90f5982a86844954e975b23d046493657d0984aff12f0638bde39a8048",
+          "digests": [
+            {
+              "file": "plugin/lib/cmd-fix.sh",
+              "sha256": "b9a46594786b8be65d5a4a31a36c9b1052c2a529e13442bd63e786368e52c0ea"
+            }
+          ]
+        },
+        {
+          "task": 1,
+          "none": "the task adds tests/fix-done-reach.bats, a test file no check of R305 runs; its cases are judged by being red before task 3's code and green after",
+          "at": "2026-11-13T07:43:29Z"
+        },
+        {
+          "task": 2,
+          "none": "the cause (D716) was reach plus silence, so no code changed for it; the rerun rule is vbw prove's, unchanged, and R305.2's break covered the fix done planning",
+          "at": "2026-11-13T07:43:31Z"
+        },
+        {
+          "task": 4,
+          "none": "the code part (cause line first) is R305.3's break; the rest is docs/proof.md, whose examples tests/fix-done-docs.bats judges and no check of R305 reads",
+          "at": "2026-11-13T07:43:33Z"
+        }
       ]
     },
     {
@@ -94188,6 +94287,12 @@
       "at": "2026-11-13T07:09:59Z",
       "text": "Contract approved: 293 requirements, 698 checks, 687 plans (3f212d0820e2)",
       "plans": []
+    },
+    {
+      "id": "D716",
+      "text": "P235.1: T288's fix done rerun of 210 units was the reuse rule working: M57's F451 round changed plugin/lib/cmd-plan.sh and docs/workflows.md, which 171 and 50 of the run store's recorded read lists name (218 units in all, the store today); the fault was silence, no opening line told the count before the first unit ran. Built: fix done prints vbw prove's opening line from the same function, prove_plan_line, now in proofsteps.sh",
+      "why": "the run store's read lists show the rerun was reach, not a reuse failure, so the rule stays and only the missing line is added",
+      "at": "2026-11-13T07:29:59Z"
     }
   ],
   "commands": {
@@ -105986,6 +106091,17 @@
         "ended": "2026-11-13T07:25:12Z",
         "cost": {
           "usd": 1.078484
+        }
+      },
+      {
+        "id": "build-20261113T072540Z",
+        "kind": "build",
+        "session": "0ee781c3-c5b6-4a6c-889f-04b89f1fba4a",
+        "milestone": "M58",
+        "started": "2026-11-13T07:25:40Z",
+        "ended": "2026-11-13T07:44:28Z",
+        "cost": {
+          "usd": 1.080205
         }
       }
     ],
