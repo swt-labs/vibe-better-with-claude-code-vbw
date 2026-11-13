@@ -291,6 +291,12 @@ The Bash guard judges what the shell would execute, not the text:
   `nohup`, `time`, `nice`, `timeout`, `xargs`, `rtk` (RTK's rewrites), `if`/`then`/`do`/...).
 - Quoted strings and heredoc bodies are data: `git commit -m "never rm -rf /"`
   is allowed (ledger D281).
+- A comment is read as bash reads it, in a command and in a script file the
+  guard reads (R308): outside quotes, a `#` at the start of a word (the start of
+  a line, or after a blank or one of `;` `&` `|` `(` `)`) starts a comment that
+  runs to the end of the line. A quote mark inside a comment pairs with nothing,
+  so a write after a comment is judged and quoted text is never read as code. A
+  `#` inside a word, a quoted string, `${#x}` or `$#` starts no comment.
 - What the shell runs from inside strings is judged too: `$(...)` and `` `...` ``
   inside double quotes, and the script given to `sh -c`/`bash -c` or `eval`
   (three levels deep).
@@ -486,6 +492,20 @@ never before the call. Mark a server read-only only when its tools really only r
   the fix: each Ubuntu runner's program run quotient is within 1.25 times macOS's. The
   figures are 0.78 and 0.77 against 0.79, about 0.99 times macOS's. The nominal figure is
   one, 28.9 ms, with no per-system allowance.
+
+  The compile split (`VBW_BENCH_STEPS=compile`, R302) times how jq compiles the Bash guard
+  as a hook call compiles it: `guard-bash.jq` with every file its include lines name, read
+  from those lines. Each row's label names the files it compiles, and a program that fails
+  to compile stops the bench with jq's error instead of being timed:
+  (a) `guard-bash.jq` with every file it includes, as the hook compiles it;
+  (b) the same files joined into one file, with no include lookup;
+  (c) the same files with every definition body emptied, so only parsing is timed;
+  (d) the same files with each body under `if false`, so binding and code generation are
+  timed but nothing runs;
+  (e) the include files alone, in (d)'s form;
+  (f) only the jq builtins the guard calls, each named under `if false`;
+  (g) the reference program.
+  The step table's program compile row compiles `guard-bash.jq` and its includes.
 
 ## SessionStart
 

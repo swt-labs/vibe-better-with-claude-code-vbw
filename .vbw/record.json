@@ -83681,7 +83681,7 @@
       "after": [
         "P234.1"
       ],
-      "status": "blocked",
+      "status": "planned",
       "role": "dev",
       "tasks": [
         "In testfiles_index, drop only the files an approved check runs whole; a file named only by checks that carry a form's filter option becomes a unit with those checks' filter values, in check order",
@@ -83700,8 +83700,7 @@
             "C699": "green"
           }
         }
-      ],
-      "note": "Code for tasks 1-3 is committed (7f8b8d5e, f6b9a8a8); C697 stays red on two cases of tests/prove-testfiles.bats that cannot pass as written, and that file is protected. R304.3 (join): filtered_form writes the join as a bare '- join:  or ' line, which the spec trims to 'or' (the file's own R304 spec case says only a quoted value keeps its spaces), so the run is '--skip R1orR2'; fix: write it quoted, printf -- \"- join: '%s'\\n\". R304.7 (reuse): the second 'vbw prove' runs with nothing committed since a passing proof, which by design (proofreuse_allowed) re-runs everything, so the unit cannot be reused; fix: commit a code change (e.g. echo x > tests/other.txt; git add -A; git commit) between the two proofs. With those two edits applied in a scratch copy both cases pass on my code. Need the main session to patch the check (vbw apply --patch) and the user to approve it. Mutation step and task 4 not done."
+      ]
     },
     {
       "id": "P234.3",
@@ -93930,6 +93929,18 @@
       "plans": [
         "P237.1"
       ]
+    },
+    {
+      "id": "D714",
+      "text": "R233's size rule (tests/bench-limits.bats: the reference program within 10% of guard-bash.jq plus programs.jq) is met by the reference following the guard, not by trimming the guard: grow the reference program in tools/bench-hooks.sh with more of the same kind of definitions to within 10% of the guard's 46567 bytes, measure the reference's CPU before and after on the M1 Max (VBW_BENCH_STEPS=1, 100 runs) and in tools/test-linux.sh's containers when Docker is up, scale NOMINAL_MS by the measured factor, and state that provenance; GitHub's macOS runner figure is confirmed from the release PR's CI reference line",
+      "why": "e2ffdcc3 (+21 bytes) put the guard 5 bytes over the rule and P237.1's comment reading (R308, about 350 bytes of code and a 6-line comment) 800 more; the guard has no unused definitions, and cutting comments to pass a size proxy would hide growth the rule exists to show; R301's own milestone (T292) reworks guard and reference anyway",
+      "at": "2026-11-13T03:28:48Z"
+    },
+    {
+      "id": "D715",
+      "at": "2026-11-13T07:09:59Z",
+      "text": "Contract approved: 293 requirements, 698 checks, 687 plans (3f212d0820e2)",
+      "plans": []
     }
   ],
   "commands": {

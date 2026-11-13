@@ -188,7 +188,8 @@ SH
     printf '# Shop\n\n## Requirements\n\n- R1 [auto] A customer can pay\n\n## Commands\n\n- test: sh tests/all.sh\n\n## Test files\n\n'
     printf -- '- run: sh tests/run.sh {file}\n- files: tests/t_*.sh\n- filter: --only\n'
     [ "$rest" = - ] || printf -- '- rest: %s\n' "$rest"
-    [ -z "${2:-}" ] || printf -- '- join: %s\n' "$2"
+    # Quoted, so a join with spaces keeps them (the spec trims a bare value).
+    [ -z "${2:-}" ] || printf -- "- join: '%s'\n" "$2"
   } > .vbw/spec.md
   "$VBW" spec sync > /dev/null
   jq '.checks = [{id:"C1", req:"R1", run:["sh","tests/run.sh","--only","R1","tests/t_a.sh"], files:["tests/c1.sh"]},
@@ -259,6 +260,10 @@ ran_line() { grep -cxF -- "$1" "$RANLOG" || true; }
 @test "R304: a rest unit follows the one reuse rule: reused when nothing it reads changed, run again with the others counted when a filter changes" {
   filtered_form
   "$VBW" prove > /dev/null
+  # A proof with nothing committed since a passing one runs everything again (proofreuse_allowed),
+  # so a change the rest unit does not read is committed first.
+  printf 'x\n' > notes.txt
+  git add notes.txt && git commit -q -m "docs: a note no unit reads"
   : > "$RANLOG"
   "$VBW" prove > /dev/null
   [ "$(ran_line '--skip R1|R2 tests/t_a.sh')" -eq 0 ] || { echo "the rest unit ran again with nothing changed:"; cat "$RANLOG"; false; }
