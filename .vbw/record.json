@@ -94293,6 +94293,12 @@
       "text": "P235.1: T288's fix done rerun of 210 units was the reuse rule working: M57's F451 round changed plugin/lib/cmd-plan.sh and docs/workflows.md, which 171 and 50 of the run store's recorded read lists name (218 units in all, the store today); the fault was silence, no opening line told the count before the first unit ran. Built: fix done prints vbw prove's opening line from the same function, prove_plan_line, now in proofsteps.sh",
       "why": "the run store's read lists show the rerun was reach, not a reuse failure, so the rule stays and only the missing line is added",
       "at": "2026-11-13T07:29:59Z"
+    },
+    {
+      "id": "D717",
+      "at": "2026-11-13T07:49:30Z",
+      "text": "Contract approved: 293 requirements, 698 checks, 687 plans (d56daa90f598)",
+      "plans": []
     }
   ],
   "commands": {
