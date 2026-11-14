@@ -358,6 +358,9 @@ orphans() {
   own_kind "$(slot 1)/tree"
   # Discard: a copy that fails its check is emptied and made fresh.
   printf 'gitdir: /nowhere\n' > "$(slot 1)/tree/.git"
+  # A git folder of the slot that the new copy does not reuse (a submodule that is gone).
+  mkdir -p "$(slot 1)/git-5/objects"
+  : > "$(slot 1)/git-5/HEAD"
   bump two
   prove_ok
   [ "$(counts)" = '{"claimed":0,"refreshed":0,"made":1}' ] || { counts; false; }
