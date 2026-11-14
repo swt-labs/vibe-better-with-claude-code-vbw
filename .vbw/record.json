@@ -1,25 +1,6 @@
 {
   "schema": 16,
-  "lease": {
-    "run": "fix-20261114T114010Z",
-    "kind": "fix",
-    "started_at": "2026-11-14T11:40:10Z",
-    "files": [
-      "docs/next.md",
-      "plugin/lib/cmd-next.sh",
-      "plugin/lib/cmd-qa.sh",
-      "plugin/lib/cmd-status.sh",
-      "plugin/lib/qa-inputs.sh"
-    ],
-    "session": "0ee781c3-c5b6-4a6c-889f-04b89f1fba4a",
-    "new_tests": true,
-    "editable": [
-      "tests/next-step-failure.bats"
-    ],
-    "cost": {
-      "usd": 3718.924339
-    }
-  },
+  "lease": null,
   "protected": [
     "docs/guards.md",
     "tests/adaptive-results.bats",
@@ -108215,6 +108196,17 @@
         "ended": "2026-11-14T11:39:12Z",
         "cost": {
           "usd": 1.426961
+        }
+      },
+      {
+        "id": "fix-20261114T114010Z",
+        "kind": "fix",
+        "session": "0ee781c3-c5b6-4a6c-889f-04b89f1fba4a",
+        "milestone": "M59",
+        "started": "2026-11-14T11:40:10Z",
+        "ended": "2026-11-14T13:22:49Z",
+        "cost": {
+          "usd": 2.127657
         }
       }
     ],
