@@ -95720,10 +95720,10 @@
     "rigor": "auto"
   },
   "evidence": {
-    "at": "2026-11-14T13:33:32Z",
+    "at": "2026-11-14T14:04:57Z",
     "contract": "f89dc70c02e22290a29cead829832f8d5ef72adc3c685501877a2af6903b7696",
-    "tree": "f11e7c436b79750361a587b23663c6af13e56708",
-    "head": "f11e7c436b79750361a587b23663c6af13e56708",
+    "tree": "eb722a0751b398ceb078865548e5b736b4ff49cd",
+    "head": "eb722a0751b398ceb078865548e5b736b4ff49cd",
     "checks": {
       "C1": {
         "status": "pass",
@@ -95755,29 +95755,29 @@
       "C4": {
         "status": "pass",
         "exit": 0,
-        "seconds": 0.6,
+        "seconds": 0.4,
         "tail": "1..1\nok 1 R4: the Docs agent built a documentation requirement and it is proved",
-        "at": "2026-11-11T18:08:21Z",
         "fp": "b3bc0ce42d0434a0016798727ea285c516c041eed9617341c752af0f6d0c5ed2",
-        "reused": true
+        "at": "2026-11-14T14:04:57Z",
+        "why": "tools/l3-suite.sh changed"
       },
       "C5": {
         "status": "pass",
         "exit": 0,
-        "seconds": 0.5,
+        "seconds": 0.4,
         "tail": "1..1\nok 1 R5: a deviating build was put to the user before QA, restored through a fix, and passed QA",
-        "at": "2026-11-13T13:01:37Z",
         "fp": "2403c3f21cb90a13812bd1b7604170e90ea05abdc8ae25a7932ae84425782d1b",
-        "reused": true
+        "at": "2026-11-14T14:04:57Z",
+        "why": "tools/l3-suite.sh changed"
       },
       "C8": {
         "status": "pass",
         "exit": 0,
-        "seconds": 0.7,
+        "seconds": 0.4,
         "tail": "1..1\nok 1 R8: balanced autonomy, background QA: no Stop-hook errors, stopped at accept",
-        "at": "2026-11-11T18:08:21Z",
         "fp": "7551dc1fdf59595ad4ad37d65f35b59e3349ffafb259c1212ad42c6354ed2ea9",
-        "reused": true
+        "at": "2026-11-14T14:04:57Z",
+        "why": "tools/l3-suite.sh changed"
       },
       "C9": {
         "status": "pass",
@@ -95971,11 +95971,11 @@
       "C30": {
         "status": "pass",
         "exit": 0,
-        "seconds": 1.2,
+        "seconds": 0.8,
         "tail": "1..5\nok 1 R34: the edge-case scenario exists, runs the real app and states its fixture and level\nok 2 R34: the edge case got a rule and a check before approval, and the check tests that edge\nok 3 R34: the leftover-file scenario exists, runs the real app and states its fixture and level\nok 4 R34: a leftover untracked file left the proof unchanged and was not in the proof copy\nok 5 R34: each scenario's result reflects only its own checks",
-        "at": "2026-11-11T18:08:21Z",
         "fp": "dfd9ca3c788b48433d6f36b5dd82d2ebcb79520cb88849f406168b04088532ab",
-        "reused": true
+        "at": "2026-11-14T14:04:57Z",
+        "why": "tools/l3-suite.sh changed"
       },
       "C31": {
         "status": "pass",
@@ -96043,11 +96043,11 @@
       "C38": {
         "status": "pass",
         "exit": 0,
-        "seconds": 1.6,
+        "seconds": 1.7,
         "tail": "1..9\nok 1 R42: the newcomer scenario exists, runs the real app and states its fixture and level\nok 2 R42: the senior-engineer scenario exists, runs the real app and states its fixture and level\nok 3 R42: the newcomer answered the three fixed questions, what and for whom, the follow-ups and where to keep them\nok 4 R42: the senior engineer answered the three fixed questions, what and for whom, the follow-ups and where to keep them\nok 5 R42: each scenario's recorded answers (vbw interview, taken from the project) match what was answered\nok 6 R42: in each scenario a second request in a new session did not trigger the interview again\nok 7 R42: each scenario reaches the ship step\nok 8 R42: the two scenarios record different explanation depth and involvement, and their transcripts are saved for comparison\nok 9 R42: the release gate runs every scenario for a milestone release: both new scenarios are in the default list",
-        "at": "2026-11-11T18:08:21Z",
         "fp": "4fcdda79e46b1b556c06d89c0c79430dc624de8da8e7ddfa4a2c9fbf26a79a26",
-        "reused": true
+        "at": "2026-11-14T14:04:57Z",
+        "why": "tools/l3-suite.sh changed"
       },
       "C39": {
         "status": "pass",
@@ -96151,11 +96151,11 @@
       "C50": {
         "status": "pass",
         "exit": 0,
-        "seconds": 0.7,
+        "seconds": 0.6,
         "tail": "1..4\nok 1 R48: the recheck scenario exists, is in the default list and is named in the suite's header\nok 2 R48: it plays a fix round on a project of two phases, and takes its facts from the record and git\nok 3 R48: it states what it did not test and its fixture\nok 4 R48: a committed result of it is honest: L3, passed, with the phases checked again and the reason named; none is committed before it ran",
-        "at": "2026-11-11T18:08:21Z",
         "fp": "7bbe28031f5621929d1620debfb7d1e5d7bf196bb0862fcf9e4e300c63d0e7b8",
-        "reused": true
+        "at": "2026-11-14T14:04:57Z",
+        "why": "tools/l3-suite.sh changed"
       },
       "C51": {
         "status": "pass",
@@ -96286,11 +96286,11 @@
       "C66": {
         "status": "pass",
         "exit": 0,
-        "seconds": 0.7,
+        "seconds": 0.6,
         "tail": "1..4\nok 1 R51: the panel scenario exists, is in the default list and is named in the suite's header\nok 2 R51: it runs the real app in a window wide enough for the panel, and writes its own result with its fixture and what it did not test\nok 3 R51: a committed result of it is honest: L3, passed, and the panel facts are all there\nok 4 R51: the result says what was seen on the screen was read from the panel, and the sound was not heard",
-        "at": "2026-11-11T18:08:21Z",
         "fp": "3b57d18751935740ec8c659a0e862e5e0e2871f9bb0bfacfe6f00333e25e5427",
-        "reused": true
+        "at": "2026-11-14T14:04:57Z",
+        "why": "tools/l3-suite.sh changed"
       },
       "C67": {
         "status": "pass",
@@ -96376,11 +96376,11 @@
       "C77": {
         "status": "pass",
         "exit": 0,
-        "seconds": 0.7,
+        "seconds": 1.0,
         "tail": "1..4\nok 1 R61: the approval scenario exists, is in the default list and is named in the suite's header\nok 2 R61: it answers the approval question with Enter, never by typing /vbw:approve, and checks the record and git\nok 3 R61: the result's approved_by_enter fact holds for one approval per question asked (a fix that edits a test asks again), never for one approval only\nok 4 R61: a committed result of it is honest: L3, passed, the choice was shown and Enter approved the shown contract; none is committed before it ran",
-        "at": "2026-11-11T18:08:21Z",
         "fp": "7a1189f7a1dddc360b59fca07f41681aa5f20b103eab671f4198e2a88404b0a1",
-        "reused": true
+        "at": "2026-11-14T14:04:57Z",
+        "why": "tools/l3-suite.sh changed"
       },
       "C78": {
         "status": "pass",
@@ -96430,11 +96430,11 @@
       "C83": {
         "status": "pass",
         "exit": 0,
-        "seconds": 0.5,
+        "seconds": 0.9,
         "tail": "1..4\nok 1 R62: the tools scenario exists, is in the default list and is named in the suite's header\nok 2 R62: it answers yes once, reads the stored answer, and checks nothing was installed before approval, from the record and git\nok 3 R62: it states what it did not test and its fixture\nok 4 R62: a committed result of it is honest: L3, passed, the answer stored once, nothing installed before approval; none is committed before it ran",
-        "at": "2026-11-11T19:35:34Z",
         "fp": "64460ee3163ff9e511be4127cabde76951cca9d98517b7d635143a5b9b464c25",
-        "reused": true
+        "at": "2026-11-14T14:04:57Z",
+        "why": "tools/l3-suite.sh changed"
       },
       "C84": {
         "status": "pass",
@@ -96448,11 +96448,11 @@
       "C85": {
         "status": "pass",
         "exit": 0,
-        "seconds": 0.7,
+        "seconds": 0.8,
         "tail": "1..2\nok 1 R64: new_project marks every scenario project with .vbw/runtime/test-mode\nok 2 R64: scenarios read only the test keys, and never write into Claude Code's store",
-        "at": "2026-11-11T18:08:21Z",
         "fp": "45f2460b530dde4e461a7ca0a0d6aa3ec3d396e6b1992e2ea817bc29c8c65b68",
-        "reused": true
+        "at": "2026-11-14T14:04:57Z",
+        "why": "tools/l3-suite.sh changed"
       },
       "C86": {
         "status": "pass",
@@ -96493,11 +96493,11 @@
       "C90": {
         "status": "pass",
         "exit": 0,
-        "seconds": 1.2,
+        "seconds": 1.4,
         "tail": "1..5\nok 1 R65: both scenarios exist, are in the default list and are named in the suite's header\nok 2 R65: legacy builds a fixture with a VBW 1 folder, picks the option that is not recommended, and reads the record and git\nok 3 R65: nolegacy uses a project without a VBW 1 folder and checks from the transcript that no review question was asked\nok 4 R65: the committed result of legacy: L3, passed, the review shown before another question, recommended option first, the other picked, nothing converted, folder untouched, not asked again\nok 5 R65: the committed result of nolegacy: L3, passed, the review question never asked, the interview completed",
-        "at": "2026-11-11T18:08:21Z",
         "fp": "ae9d78a5b0670495f52d26070b10c15ea89a86a4c45ae032d2e57ed12701ffd4",
-        "reused": true
+        "at": "2026-11-14T14:04:57Z",
+        "why": "tools/l3-suite.sh changed"
       },
       "C91": {
         "status": "pass",
@@ -96511,11 +96511,11 @@
       "C92": {
         "status": "pass",
         "exit": 0,
-        "seconds": 0.9,
+        "seconds": 0.7,
         "tail": "1..3\nok 1 R59: the real-user script no longer looks for the old level question\nok 2 R59: the level options check is keyed on the greeting's question, with the four options in order\nok 3 R59: the interview counts as asked when the level question was asked",
-        "at": "2026-11-11T18:08:21Z",
         "fp": "b150d0c4ec034a179d372e5421f228b933a942212ffc02d9cc593da27688814e",
-        "reused": true
+        "at": "2026-11-14T14:04:57Z",
+        "why": "tools/l3-suite.sh changed"
       },
       "C93": {
         "status": "pass",
@@ -96745,11 +96745,11 @@
       "C118": {
         "status": "pass",
         "exit": 0,
-        "seconds": 0.6,
+        "seconds": 1.2,
         "tail": "1..3\nok 1 R72: the smallchange scenario exists, is in the default list and is named in the suite's header\nok 2 R72: it asks for one small change in plain words and reads the record, git and the transcript\nok 3 R72: the committed result: L3, passed, no planning workflow, one approval, one plan, its check passed, QA quick at most, the change committed",
-        "at": "2026-11-11T18:08:21Z",
         "fp": "5b1366e875b970cd6a41aa186a3fc23d64bb6e0d619079e4b070bb525372f33f",
-        "reused": true
+        "at": "2026-11-14T14:04:57Z",
+        "why": "tools/l3-suite.sh changed"
       },
       "C119": {
         "status": "pass",
@@ -97321,11 +97321,11 @@
       "C183": {
         "status": "pass",
         "exit": 0,
-        "seconds": 0.4,
+        "seconds": 0.9,
         "tail": "1..2\nok 1 R116: the smallchange scenario seeds a milestone with earlier requirements and records what it kept\nok 2 R116: the committed result: L3, passed, the request added to a milestone with earlier work, no planning workflow, one approval, one new plan",
-        "at": "2026-11-11T18:08:21Z",
         "fp": "df75cb2836ebec15ccdcabf7e080a7792ceb3404f3e3ae68a1dc64823746314a",
-        "reused": true
+        "at": "2026-11-14T14:04:57Z",
+        "why": "tools/l3-suite.sh changed"
       },
       "C184": {
         "status": "pass",
@@ -98005,10 +98005,10 @@
       "C259": {
         "status": "pass",
         "exit": 0,
-        "seconds": 1.0,
+        "seconds": 2.2,
         "tail": "1..5\nok 1 R167: VBW's spec declares its single-file form: bats on one file\nok 2 R167: VBW's declared test files are every tracked tests/*.bats except the timed ones\nok 3 R167: VBW's spec names the shell lint as its own project command\nok 4 R167: bash tools/test.sh --lint runs shellcheck on every shell file under tools/ and runs no test file\nok 5 R167: tools/test.sh keeps its usage line and documents --lint in it",
         "fp": "a4c3fc4a1c937f7ed83dbad83a14a23b4a955b4576464496a0b301351ed0b484",
-        "at": "2026-11-14T13:33:32Z",
+        "at": "2026-11-14T14:04:57Z",
         "why": "reads the project through git"
       },
       "C260": {
@@ -98248,11 +98248,11 @@
       "C286": {
         "status": "pass",
         "exit": 0,
-        "seconds": 0.5,
+        "seconds": 1.0,
         "tail": "1..2\nok 1 R173: the costs scenario exists, is in the suite's list and its saved result passed at L3\nok 2 R173: the result shows a known, non-zero cost for the run and the milestone, of the same order as /cost",
-        "at": "2026-11-11T18:08:21Z",
         "fp": "a4ed0f2ccc18fb7928cac6b9b5861027881da42ec1bf08bcf60f0c0622e84909",
-        "reused": true
+        "at": "2026-11-14T14:04:57Z",
+        "why": "tools/l3-suite.sh changed"
       },
       "C287": {
         "status": "pass",
@@ -98464,11 +98464,11 @@
       "C310": {
         "status": "pass",
         "exit": 0,
-        "seconds": 1.1,
+        "seconds": 2.3,
         "tail": "1..6\nok 1 R180: the loop scenario exists, is in the default list and the header, and writes its own result\nok 2 R180: the scenario arms two items with a small ceiling, one ships and one escalates twice and parks, checked in the record, the report and git\nok 3 R180: a committed result of the loop scenario, when there is one, is labelled honestly\nok 4 R180: docs/loop.md, docs/guards.md and README name the loop's commands and status\nok 5 R180 (F183): the scenario judges reverts only when the parked item had commits, and names the gap in not_tested when it had none; a committed result keeps that promise\nok 6 R180 (F190): the loop result's remote and tag counts are the ones the scenario measured, never constants",
-        "at": "2026-11-14T10:00:16Z",
         "fp": "c24572d1e9fcd2c40bd783369a81a8b57084a86a4dad1a08dfbed0930f59fd41",
-        "reused": true
+        "at": "2026-11-14T14:04:57Z",
+        "why": "tools/l3-suite.sh changed"
       },
       "C311": {
         "status": "pass",
@@ -98662,11 +98662,11 @@
       "C332": {
         "status": "pass",
         "exit": 0,
-        "seconds": 0.6,
+        "seconds": 1.3,
         "tail": "1..4\nok 1 R184: the pluginoff scenario exists, is in the default list and is named in the suite's header\nok 2 R184: it turns VBW off in the project's own settings and writes its result with its fixture and what it did not test\nok 3 R184: a committed result is honest: L3, passed, VBW confirmed off by Claude Code, and nothing of VBW shown\nok 4 R184: if Claude Code loads the panel where VBW is off, the result names the panel test that proves it shows nothing there",
-        "at": "2026-11-11T18:08:21Z",
         "fp": "acaf5d6eba3b42334c4ce02a14ff39ed0354785d4d3c7846c768a805ef96979f",
-        "reused": true
+        "at": "2026-11-14T14:04:57Z",
+        "why": "tools/l3-suite.sh changed"
       },
       "C333": {
         "status": "pass",
@@ -98698,11 +98698,11 @@
       "C336": {
         "status": "pass",
         "exit": 0,
-        "seconds": 0.6,
+        "seconds": 1.3,
         "tail": "1..4\nok 1 R185: the plugindir scenario exists, is in the default list and is named in the suite's header\nok 2 R185: it starts the session with the working tree and the installed VBW on, and can name its result plugindir-probe\nok 3 R185: the committed probe is an honest L3 run of two different versions\nok 4 R185: the probe names the copies loaded, the PATH order, the vbw resolved by the session and an agent, and whose hooks ran",
-        "at": "2026-11-11T18:08:21Z",
         "fp": "bec483e42e8dfdd81be7e3ee4e509e8b450ff311ee6ef08fefff8c4b1c3d164c",
-        "reused": true
+        "at": "2026-11-14T14:04:57Z",
+        "why": "tools/l3-suite.sh changed"
       },
       "C337": {
         "status": "pass",
@@ -98734,11 +98734,11 @@
       "C340": {
         "status": "pass",
         "exit": 0,
-        "seconds": 0.6,
+        "seconds": 1.1,
         "tail": "1..3\nok 1 R185: the plugindir scenario's committed result is an honest, passing L3 run of two different versions\nok 2 R185: the session and an agent it started ran the working tree's vbw, at the working tree's version\nok 3 R185: the status line showed the working tree's version, the first line named the kernel, and the installed copy's hooks did not run",
-        "at": "2026-11-11T18:08:21Z",
         "fp": "b395b1a1313447a3669235a0c0075e9c5fc0ab2c93589b5ab162a888327b0e7b",
-        "reused": true
+        "at": "2026-11-14T14:04:57Z",
+        "why": "tools/l3-suite.sh changed"
       },
       "C341": {
         "status": "pass",
@@ -99013,11 +99013,11 @@
       "C371": {
         "status": "pass",
         "exit": 0,
-        "seconds": 0.6,
+        "seconds": 1.9,
         "tail": "1..3\nok 1 R189: the panel scenario records the Comms facts and the short and narrow windows it used\nok 2 R189: a committed result of the panel scenario shows Comms clearing and nothing spilling, at L3\nok 3 R189: the scenario resizes to a short window of at most 30 rows and a narrow one of at most 100 columns",
-        "at": "2026-11-11T18:08:21Z",
         "fp": "312776745ed9eb747f4757556c5b5ac157c5d6a32789b408c81ae595045be843",
-        "reused": true
+        "at": "2026-11-14T14:04:57Z",
+        "why": "tools/l3-suite.sh changed"
       },
       "C372": {
         "status": "pass",
@@ -99076,11 +99076,11 @@
       "C378": {
         "status": "pass",
         "exit": 0,
-        "seconds": 32.6,
+        "seconds": 48.6,
         "tail": "1..19\nok 1 R190: a build shows the step, its plans, parts done and the clock time only\nok 2 R190: a background proof shows 'proving N of M checks' and its clock time, and counts up\nok 3 R190: a proof inside a fix shows as what the fix is doing; the time stays the fix's\nok 4 R190: a late step with parts shows its moved clock time, later than usual\nok 5 R190 (F246): a step with parts past its end that the kernel has not moved says later than usual too\nok 6 R190: a late step without parts keeps its clock time and says how many minutes late\nok 7 R190: with no basis the step and what it is doing show, with no time\nok 8 R190: an end on another day names the day, in 24-hour local time\nok 9 R190: a note whose run is not the open run, or whose proof process is gone, shows no step\nok 10 R190: the status line works no time out itself: with the run open and no note, no end time\nok 11 C1: a running step reads 'working', what it is doing, minutes so far and 'until around' its clock time, in the accent colour\nok 12 C1: a gate reads 'needs you', the action and since when, in amber\nok 13 C1: a gate with no 'since' still reads 'needs you' and the action\nok 14 C1: a shipped milestone reads 'idle' with when it shipped, in green\nok 15 C1: nothing running and nothing waiting reads 'idle' with the next step\nok 16 C1: the three state colours are the panel palette's accent, need and progress colours in 256-colour codes\nok 17 R240: a build note exactly as a run writes it (units and road keys) shows the end time in the step's first minute, then with the minutes\nok 18 R240: a proof note exactly as plugin/lib/proofsteps.sh writes it at its start (proof null, road key) shows its end time\nok 19 R240: the real-user suite's status line pattern reads the HH:MM the status line prints, so the two cannot diverge unseen",
-        "at": "2026-11-14T12:26:31Z",
         "fp": "a64cd25059185ff6fd8615d7d43907835b9d2c2c79261d7fe4954ca529efaf90",
-        "reused": true
+        "at": "2026-11-14T14:04:57Z",
+        "why": "tools/l3-suite.sh changed"
       },
       "C379": {
         "status": "pass",
@@ -99148,11 +99148,11 @@
       "C386": {
         "status": "pass",
         "exit": 0,
-        "seconds": 4.1,
+        "seconds": 9.2,
         "tail": "1..6\nok 1 R190: the suite has a steptime scenario that seeds a step history and records each fact\nok 2 R190: a committed result of the steptime scenario shows one end time in chat, status line and Comms, at L3\nok 3 R190: the committed result shows a background proof counting up and 'no end time yet' without history\nok 4 R240: the suite defines L3_STATUS_UNTIL once at top level, accepting 'until around HH:MM' with an optional day word and a rough 'until ~HH:MM' or 'until ~HH:MM-HH:MM'\nok 5 R240: the steptime sampler and the road scenario read the status line column with L3_STATUS_UNTIL, and no stale 'until HH:MM' pattern remains\nok 6 R240: the committed result is from a run on the fixed suite (2026-11-01 or later) with the status line's end time equal to the chat's and Comms'",
-        "at": "2026-11-11T18:08:21Z",
         "fp": "b87a1e707c8f3ace85390fd96d0edc061932ddca3b7da88ce4a9c535feded39f",
-        "reused": true
+        "at": "2026-11-14T14:04:57Z",
+        "why": "tools/l3-suite.sh changed"
       },
       "C387": {
         "status": "pass",
@@ -99256,11 +99256,11 @@
       "C398": {
         "status": "pass",
         "exit": 0,
-        "seconds": 0.6,
+        "seconds": 2.9,
         "tail": "1..3\nok 1 R191: the suite has a road scenario, in its default list, that seeds a tiered history and phase outcomes and records each fact\nok 2 R191: a committed result of the road scenario shows both sentences in chat and the same milestone HH:MM in Mission Control, at L3\nok 3 R191: the committed result shows the status line without the milestone time, and 'no end time yet' for both without history",
-        "at": "2026-11-13T13:01:37Z",
         "fp": "992c188a430a65ef109aa83ac71e81b54531e7e83a5a8a7a48456c9e4cdab1af",
-        "reused": true
+        "at": "2026-11-14T14:04:57Z",
+        "why": "tools/l3-results/road.json changed"
       },
       "C399": {
         "status": "pass",
@@ -99499,11 +99499,11 @@
       "C425": {
         "status": "pass",
         "exit": 0,
-        "seconds": 1.0,
+        "seconds": 4.8,
         "tail": "1..5\nok 1 R199: tests/panel/wiring.test.mjs asserts whole tab rows at 40, 50 and 60 columns in place of 'the tab row is one line at 40 columns'\nok 2 R199: tests/panel/r189/containment.test.mjs asserts whole tab rows at 100, 64, 60, 50 and 40 body columns on every tab in place of 'never wraps onto a second line at 40 columns'\nok 3 R199: the panel scenario records that each of the six tab names appears whole as '[ Name ]' at the short and the narrow size, in its pass set\nok 4 R199: a committed result of the panel scenario passed with both tab facts true, at L3\nok 5 R199: docs/panel.md no longer says the tab row is always one line and states the whole-row rule with the widths 71, 65, 52, 44 and 38",
-        "at": "2026-11-11T18:08:21Z",
         "fp": "34233812979f1d926cdb2de59b0f644de03fcffe4c8eb592aa242b752366eb50",
-        "reused": true
+        "at": "2026-11-14T14:04:57Z",
+        "why": "tools/l3-suite.sh changed"
       },
       "C426": {
         "status": "pass",
@@ -99517,11 +99517,11 @@
       "C427": {
         "status": "pass",
         "exit": 0,
-        "seconds": 0.8,
+        "seconds": 3.5,
         "tail": "1..5\nok 1 R200: tests/panel/r189/containment.test.mjs draws Comms with a live step note at 1, 2, 3, 4 and 8 rows at 80 and 40 columns\nok 2 R200: the panel scenario records the short-window helper line ('VBW ▸' once at 200x24 while helpers work, the prompt box whole) as its own fact, in its pass set\nok 3 R200: a committed result of the panel scenario passed with helper_line_short and no_spill_short true, at L3\nok 4 R200: docs/panel.md's Comms section states the order of lines in little room and the one-row form\nok 5 R200: docs/panel.md's Time left section says that in a one-row Comms the step's time sits on the helper line",
-        "at": "2026-11-11T18:08:21Z",
         "fp": "acd74ad0282aeb1c7cd933582e07600fc21ef2c68512608f756074c3d088bf2a",
-        "reused": true
+        "at": "2026-11-14T14:04:57Z",
+        "why": "tools/l3-suite.sh changed"
       },
       "C428": {
         "status": "pass",
@@ -99535,11 +99535,11 @@
       "C429": {
         "status": "pass",
         "exit": 0,
-        "seconds": 1.1,
+        "seconds": 4.3,
         "tail": "1..7\nok 1 R201: the qafix scenario states guided autonomy in the user's words, reads the setting back with vbw config autonomy and expects guided\nok 2 R201: the scenario records that the setting was written before the first run: the settings write in the transcript comes before the first 'Contract approved' decision and the first run lease\nok 3 R201: a committed result of the qafix scenario passed with autonomy guided, set before the first run, and the deviation restored, at L3\nok 4 R201: the comparison passes when the settings write is earlier than the first Contract approved decision\nok 5 R201: the comparison fails when the settings write is later than the first Contract approved decision\nok 6 R201: a record with no Contract approved decision is not treated as before\nok 7 R201: a record that cannot be read is not treated as before",
-        "at": "2026-11-13T13:01:37Z",
         "fp": "3802fca6e39968de1fc83979e485473fc792f03177635598ba42d3b29d372359",
-        "reused": true
+        "at": "2026-11-14T14:04:57Z",
+        "why": "tools/l3-suite.sh changed"
       },
       "C430": {
         "status": "pass",
@@ -99580,10 +99580,10 @@
       "C434": {
         "status": "pass",
         "exit": 0,
-        "seconds": 47.9,
+        "seconds": 71.9,
         "tail": "1..4\nok 1 R202: --generate builds a stand-in of at least the asked size, approved, with cache-writing and cache-reading units\nok 2 R202: the measurement prints every figure for a proof, a one-file fix round and vbw next\nok 3 R202: the sampler of the written-file lists polls at least five times a second, so a fast proof is still seen\nok 4 R202: nothing of a real user project is in the tool or in what it generates",
         "fp": "23729cd8ad38ab6e167a995bfb1b9288496cd3335bae0e6b534d82be4f5e38a7",
-        "at": "2026-11-14T13:33:32Z",
+        "at": "2026-11-14T14:04:57Z",
         "why": "reads the project through git"
       },
       "C435": {
@@ -99598,11 +99598,11 @@
       "C436": {
         "status": "pass",
         "exit": 0,
-        "seconds": 0.7,
+        "seconds": 3.3,
         "tail": "1..4\nok 1 R202: the greenfield scenario records whether each report line appeared in the proof output\nok 2 R202: a committed greenfield result shows both report lines in a real session's proof output, at L3\nok 3 R202: each fact is set true only when the transcript reader finds its printed form\nok 4 R202: the transcript reader takes lines from the tool results of vbw prove and fix done calls only",
-        "at": "2026-11-13T13:01:37Z",
         "fp": "6bb77e7539c02224a9597702d118c3be9934b7326fce11a9cc04fdf5823f8de8",
-        "reused": true
+        "at": "2026-11-14T14:04:57Z",
+        "why": "tools/l3-results/greenfield.json changed"
       },
       "C437": {
         "status": "pass",
@@ -99796,11 +99796,11 @@
       "C458": {
         "status": "pass",
         "exit": 0,
-        "seconds": 0.9,
+        "seconds": 5.0,
         "tail": "1..4\nok 1 R205: the leaveout scenario exists, is in the default list and is named in the suite's header\nok 2 R205: it seeds an ignored data folder listed under Clean copy, a check that probes the copy, and reads the record and vbw show contract\nok 3 R205: the result states each fact the scenario judged\nok 4 R205: the committed result of the leaveout scenario shows the path in the contract, a passed proof and a copy without the data",
-        "at": "2026-11-11T18:08:21Z",
         "fp": "7d9d56104bfd86ad9d1eea9380c181ffd2eb4f085d9efa936da31ced30c57777",
-        "reused": true
+        "at": "2026-11-14T14:04:57Z",
+        "why": "tools/l3-results/leaveout.json changed"
       },
       "C459": {
         "status": "pass",
@@ -99841,11 +99841,11 @@
       "C463": {
         "status": "pass",
         "exit": 0,
-        "seconds": 0.6,
+        "seconds": 2.9,
         "tail": "1..2\nok 1 R207: the taskbreak scenario reads the mutate breakdown from the transcripts' tool results and records it as a fact\nok 2 R207: the committed taskbreak result from this code shows the breakdown line in a real session's vbw mutate output",
-        "at": "2026-11-11T19:35:34Z",
         "fp": "09b93e289a60eab053f6267e6924aee5df600ea7a1e8c062f6f377ca041144be",
-        "reused": true
+        "at": "2026-11-14T14:04:57Z",
+        "why": "tools/l3-suite.sh changed"
       },
       "C464": {
         "status": "pass",
@@ -99868,11 +99868,11 @@
       "C466": {
         "status": "pass",
         "exit": 0,
-        "seconds": 0.7,
+        "seconds": 5.2,
         "tail": "1..4\nok 1 R208: the hiddenrecord scenario exists, is in the default list and is named in the suite's header\nok 2 R208: it seeds a project whose .gitignore holds *.json and reads git and .vbw/.gitignore, never the screen\nok 3 R208: the committed hiddenrecord result shows the record committed under a *.json rule, with the un-hide lines\nok 4 R208: the greenfield scenario records the un-hide lines and the tracked record, and its committed result from this code shows them",
-        "at": "2026-11-13T13:01:37Z",
         "fp": "2cead4a0203853f44102e617e83e53f16aa7d49d0d7b939eac45f42060d8566b",
-        "reused": true
+        "at": "2026-11-14T14:04:57Z",
+        "why": "tools/l3-results/greenfield.json changed"
       },
       "C467": {
         "status": "pass",
@@ -99931,11 +99931,11 @@
       "C473": {
         "status": "pass",
         "exit": 0,
-        "seconds": 0.7,
+        "seconds": 6.8,
         "tail": "1..3\nok 1 R209: the taskbreak scenario reads vbw show plan's marks from the transcripts' tool results, as the fact show_plan_marked\nok 2 R209: the scenario records early_plan_never_blocked: no vbw plan block P1.1 tool call, and P1.1's recorded files still exactly greet.sh\nok 3 R209: the committed taskbreak result from this code passed with show_plan_marked and early_plan_never_blocked true",
-        "at": "2026-11-11T19:35:34Z",
         "fp": "550f8e913115eff8f206e4221d42d7f7f0c37fe9fa9ef8424259fe512421f357",
-        "reused": true
+        "at": "2026-11-14T14:04:57Z",
+        "why": "tools/l3-suite.sh changed"
       },
       "C474": {
         "status": "pass",
@@ -100246,10 +100246,10 @@
       "C508": {
         "status": "pass",
         "exit": 0,
-        "seconds": 2.8,
+        "seconds": 11.7,
         "tail": "1..3\nok 1 R223 standards: tools/check-jq-builtins.sh refuses a jq program that uses a builtin newer than 1.7.0 unless the file defines the name, naming file and line, and passes the plugin\nok 2 R223 standards: tools/check-jq-builtins.sh refuses a call of one of jq's private builtins (a name starting with _, such as _nwise, which jq 1.8 removed) unless the file defines it; a shell variable named _x passes\nok 3 R223 standards: each CI shard prints jq --version beside bash --version",
         "fp": "d4ee780802f6df0f483f9b8715273cc59c441ec7d3a3d358965da4a52071dfad",
-        "at": "2026-11-14T13:33:32Z",
+        "at": "2026-11-14T14:04:57Z",
         "why": "reads the project through git"
       },
       "C509": {
@@ -100399,11 +100399,11 @@
       "C525": {
         "status": "pass",
         "exit": 0,
-        "seconds": 5.5,
+        "seconds": 12.3,
         "tail": "1..9\nok 1 R228: the mapnotrun scenario exists, is in the default list and is named in the suite's header\nok 2 R228: it seeds two suites, one green and one red that the README marks as expensive, and judges .vbw/spec.md, the record and the transcripts\nok 3 R228: the result states each fact the scenario judged\nok 4 R228: a committed result of the mapnotrun scenario, when there is one, is labelled honestly\nok 5 R228: the red suite's seed prints not ok and exits 1, the green one prints ok and exits 0\nok 6 R228: the scenario judges the red suite in ## Commands from the spec's lines and passes only without it\nok 7 R237: on the template's spec (vbw init) the helper prints no command; a command written after the comment is the only line printed\nok 8 R237: a comment that opens and closes on one line between two real lines drops only itself; a multi-line block drops its lines; another section's lines never print\nok 9 R237: commands_lines calls the helper, and no scenario pipes a raw spec section into grep '^- '",
-        "at": "2026-11-14T10:00:16Z",
         "fp": "abc83a156fafe4552e1ec2c1f69dc8172526888e3f5373ef8d6ae8b12070911f",
-        "reused": true
+        "at": "2026-11-14T14:04:57Z",
+        "why": "tools/l3-suite.sh changed"
       },
       "C526": {
         "status": "pass",
@@ -100534,10 +100534,10 @@
       "C540": {
         "status": "pass",
         "exit": 0,
-        "seconds": 2.7,
+        "seconds": 8.7,
         "tail": "1..4\nok 1 R233: without arguments the container is ubuntu:24.04 and runs the release run, as before\nok 2 R233: --image ubuntu:26.04 shapes the container after that image and --bench runs only the hook bench\nok 3 R233: a command after -- runs inside the container in place of the release run, its words kept\nok 4 R233: an unknown option or an image the script does not know exits 2 with the usage and builds nothing",
         "fp": "4babb0ea3b7fd899ad23ca30b774bd9248999e3a134b11344a30f5a48780e52d",
-        "at": "2026-11-14T13:33:32Z",
+        "at": "2026-11-14T14:04:57Z",
         "why": "reads the project through git"
       },
       "C541": {
@@ -100570,20 +100570,20 @@
       "C544": {
         "status": "pass",
         "exit": 0,
-        "seconds": 3.0,
+        "seconds": 6.9,
         "tail": "1..3\nok 1 R237: on the template's spec (vbw init) the helper prints no command; a command written after the comment is the only line printed\nok 2 R237: a comment that opens and closes on one line between two real lines drops only itself; a multi-line block drops its lines; another section's lines never print\nok 3 R237: commands_lines calls the helper, and no scenario pipes a raw spec section into grep '^- '",
-        "at": "2026-11-14T10:00:16Z",
         "fp": "d86eec90050b66c3421b5ca0923cb0607d52eb34de9997e9227e77acd7879cdd",
-        "reused": true
+        "at": "2026-11-14T14:04:57Z",
+        "why": "tools/l3-suite.sh changed"
       },
       "C545": {
         "status": "pass",
         "exit": 0,
-        "seconds": 1.2,
+        "seconds": 2.9,
         "tail": "1..8\nok 1 R238: the submodule scenario exists, is in the default list and is named in the suite's header\nok 2 R238: it seeds one submodule on a branch with git submodule add, a check inside it, and a staged uncommitted file in each repository\nok 3 R238: it judges the plan's commit in the submodule, the unmoved pointer, the check run in the clean copy's submodule and the staged files, in git and the record, never on screen\nok 4 R238: docs/proof.md names the submodule scenario with what it judges, where mapnotrun is named\nok 5 R238: a committed result of the submodule scenario, when there is one, is labelled honestly and states the four facts true\nok 6 R246: the scenario's copy_top pattern matches a toplevel line as a run writes it, ending /.vbw/runtime/proof.X/tree/sub, and not the old /proof.X/sub form or the project's own sub\nok 7 R246: docs/proof.md's submodule paragraph says the toplevel is under .vbw/runtime/proof.*/tree/sub\nok 8 R246 result: the submodule scenario's result is committed from a passing run, with the four facts true and the check's toplevel under proof.*/tree/sub",
-        "at": "2026-11-14T10:00:16Z",
         "fp": "2832e561d44521ff5c5e50ac6c7d7a59217af864b427e16293f5c89e95c10e95",
-        "reused": true
+        "at": "2026-11-14T14:04:57Z",
+        "why": "tools/l3-results/submodule.json changed"
       },
       "C546": {
         "status": "pass",
@@ -100678,20 +100678,20 @@
       "C556": {
         "status": "pass",
         "exit": 0,
-        "seconds": 9.7,
+        "seconds": 13.2,
         "tail": "1..3\nok 1 R240: a build note exactly as a run writes it (units and road keys) shows the end time in the step's first minute, then with the minutes\nok 2 R240: a proof note exactly as plugin/lib/proofsteps.sh writes it at its start (proof null, road key) shows its end time\nok 3 R240: the real-user suite's status line pattern reads the HH:MM the status line prints, so the two cannot diverge unseen",
-        "at": "2026-11-14T12:26:31Z",
         "fp": "2104c9fb5957c930cf91f19f4017436a24bfe215c953003febf584990255c5e5",
-        "reused": true
+        "at": "2026-11-14T14:04:57Z",
+        "why": "tools/l3-suite.sh changed"
       },
       "C557": {
         "status": "pass",
         "exit": 0,
-        "seconds": 2.2,
+        "seconds": 2.4,
         "tail": "1..3\nok 1 R240: the suite defines L3_STATUS_UNTIL once at top level, accepting 'until around HH:MM' with an optional day word and a rough 'until ~HH:MM' or 'until ~HH:MM-HH:MM'\nok 2 R240: the steptime sampler and the road scenario read the status line column with L3_STATUS_UNTIL, and no stale 'until HH:MM' pattern remains\nok 3 R240: the committed result is from a run on the fixed suite (2026-11-01 or later) with the status line's end time equal to the chat's and Comms'",
-        "at": "2026-11-11T18:08:21Z",
         "fp": "b66142c32d9102126a85dd9eee213b4081692614581f87aeaf9b118f35657b3a",
-        "reused": true
+        "at": "2026-11-14T14:04:57Z",
+        "why": "tools/l3-suite.sh changed"
       },
       "C558": {
         "status": "pass",
@@ -100768,20 +100768,20 @@
       "C566": {
         "status": "pass",
         "exit": 0,
-        "seconds": 0.4,
+        "seconds": 0.9,
         "tail": "1..2\nok 1 R246: the scenario's copy_top pattern matches a toplevel line as a run writes it, ending /.vbw/runtime/proof.X/tree/sub, and not the old /proof.X/sub form or the project's own sub\nok 2 R246: docs/proof.md's submodule paragraph says the toplevel is under .vbw/runtime/proof.*/tree/sub",
-        "at": "2026-11-14T10:00:16Z",
         "fp": "e9af7226cb71e0014e850604e0a889ebbd0ad1b25425346a0c57b5c07c3c21d0",
-        "reused": true
+        "at": "2026-11-14T14:04:57Z",
+        "why": "tools/l3-suite.sh changed"
       },
       "C567": {
         "status": "pass",
         "exit": 0,
-        "seconds": 0.5,
+        "seconds": 0.6,
         "tail": "1..1\nok 1 R246 result: the submodule scenario's result is committed from a passing run, with the four facts true and the check's toplevel under proof.*/tree/sub",
-        "at": "2026-11-11T18:08:21Z",
         "fp": "baf282554dbfa2d48a1ab6b80402da5019bd47fcdab7bfc5c2ce7a50505dea4d",
-        "reused": true
+        "at": "2026-11-14T14:04:57Z",
+        "why": "tools/l3-results/submodule.json changed"
       },
       "C568": {
         "status": "pass",
@@ -101083,11 +101083,11 @@
       "C601": {
         "status": "pass",
         "exit": 0,
-        "seconds": 1.2,
+        "seconds": 2.4,
         "tail": "1..6\nok 1 R262: the three scenarios exist, are in the default list and the header, and write their results honestly\nok 2 R262 amendfile: it opens a build, adds a file to its plan with vbw apply --amend, and judges the amendment's record, the kept approval, the unbroken run, plan done and the file in the plan's commit\nok 3 R262 queuedreq: it adds a requirement while a build runs and judges the queued mark, its clearing at run end, the later plan and build, and that the first plans were not re-planned\nok 4 R262 worktreewrite: a Dev in a linked worktree writes into the main checkout under its build run, and it judges the guard's refusal, the unchanged file and the Dev's finished plan\nok 5 R262: docs/workflows.md names the three scenarios with what each judges\nok 6 R262: a committed result of each scenario, when there is one, is labelled honestly and states its facts true",
-        "at": "2026-11-13T07:50:44Z",
         "fp": "cda4b6162efa56eec0071e675ea80ff404ffc17b40e735c179dbc24e60bbec36",
-        "reused": true
+        "at": "2026-11-14T14:04:57Z",
+        "why": "tools/l3-suite.sh changed"
       },
       "C602": {
         "status": "pass",
@@ -101112,9 +101112,9 @@
         "exit": 0,
         "seconds": 0.7,
         "tail": "1..1\nok 1 R263: the Rust pack scenario ran with the Lead planning: every plan names its files and no two plans change the same file",
-        "at": "2026-11-11T18:08:21Z",
         "fp": "8061000c9d2ae431d8c46e63f612313d0202f5520c8a1a5bbbca495f287edbd6",
-        "reused": true
+        "at": "2026-11-14T14:04:57Z",
+        "why": "tools/l3-suite.sh changed"
       },
       "C605": {
         "status": "pass",
@@ -101182,11 +101182,11 @@
       "C612": {
         "status": "pass",
         "exit": 0,
-        "seconds": 0.6,
+        "seconds": 0.8,
         "tail": "1..1\nok 1 R265: the task-break scenario ran with the break left in the working copy, edited out by the Dev, and no file lost",
-        "at": "2026-11-11T19:35:34Z",
         "fp": "84efe26403f0279bb08043c7e871dfcc639d319d46fc99800ffdaa94c47a46ab",
-        "reused": true
+        "at": "2026-11-14T14:04:57Z",
+        "why": "tools/l3-suite.sh changed"
       },
       "C613": {
         "status": "pass",
@@ -101263,11 +101263,11 @@
       "C621": {
         "status": "pass",
         "exit": 0,
-        "seconds": 0.5,
+        "seconds": 0.7,
         "tail": "1..1\nok 1 R267: the leave-out scenario ran against the disk's own answer, and the suggestion matched it",
-        "at": "2026-11-11T18:08:21Z",
         "fp": "a2246752ef392086776a5099a255b7ab06b135fa9ac53d01a922f83741e4d426",
-        "reused": true
+        "at": "2026-11-14T14:04:57Z",
+        "why": "tools/l3-results/leaveout.json changed"
       },
       "C622": {
         "status": "pass",
@@ -102039,16 +102039,16 @@
       "lint": {
         "status": "pass",
         "exit": 0,
-        "seconds": 5.8,
+        "seconds": 5.7,
         "tail": "bash: 5.3.20(1)-release",
-        "at": "2026-11-14T10:00:16Z",
         "fp": "065b393b71dee4232b9b45e3d96e4a1a6552ad444e6fa87346b5ac33b420c740",
-        "reused": true
+        "at": "2026-11-14T14:04:57Z",
+        "why": "tools/l3-suite.sh changed"
       },
       "test": {
         "status": "pass",
         "exit": 0,
-        "seconds": 4690.3,
+        "seconds": 4649.7,
         "tail": "",
         "command": "bats --print-output-on-failure {file} (one test file per run)",
         "of_files": true
@@ -102078,9 +102078,9 @@
         "exit": 0,
         "seconds": 13.6,
         "tail": "1..2\nok 1 T154: a patch that adds a file to a reset plan keeps its recorded breaks\nok 2 T154: a full apply that keeps the plan keeps its recorded breaks",
-        "fp": "b9a195fdea21a38616df3eb3d45792749b44e05ae283cea6084158bc9138002f",
         "at": "2026-11-14T13:33:32Z",
-        "why": "plugin/lib/cmd-next.sh changed"
+        "fp": "b9a195fdea21a38616df3eb3d45792749b44e05ae283cea6084158bc9138002f",
+        "reused": true
       },
       "tests/apply-test-files.bats": {
         "status": "pass",
@@ -102123,9 +102123,9 @@
         "exit": 0,
         "seconds": 9.4,
         "tail": "1..4\nok 1 R152: a selector measures only the case it names, and builds nothing else\nok 2 R152: a selector is the start of a printed label; a trailing colon names exactly one case\nok 3 R152: several selectors joined with | run in the bench's own order, each case once\nok 4 R152: a selector that names no case exits 2 and lists the cases, measuring and building nothing",
-        "fp": "d3b7cf7c6bfde71265805b688a053c4ee22049968e50e27d0b10dd8cefb7191c",
         "at": "2026-11-14T13:33:32Z",
-        "why": "plugin/lib/cmd-next.sh changed"
+        "fp": "d3b7cf7c6bfde71265805b688a053c4ee22049968e50e27d0b10dd8cefb7191c",
+        "reused": true
       },
       "tests/benchmark-doc.bats": {
         "status": "pass",
@@ -102159,9 +102159,9 @@
         "exit": 0,
         "seconds": 68.4,
         "tail": "1..12\nok 1 T123: --since-approval lists the decisions after the approval, none before it\nok 2 T123: after a second approval only the decisions after it are listed; for a plan, after the latest approval that changed it\nok 3 #705: an approval that left a plan as it was keeps the decisions before it in that plan's list and its fixes'\nok 4 #705: an approval an older VBW recorded, with no plans, counts as changing every plan, even when it is not the first\nok 5 #705: several ids start at the earliest of their plans' approvals; a project command's fix reads every plan's\nok 6 #705: a record whose approval names its plans is schema 6, and a VBW that reads up to schema 5 asks for an update, never calling it corrupt\nok 7 T123: with no decision since the approval it says so and succeeds\nok 8 T123: before any approval it fails, naming that nothing was approved\nok 9 T123: an unknown decisions option is a usage error\nok 10 T123: every Dev and Docs prompt of a build wave names the decisions-since-approval command\nok 11 T123: every Dev prompt of a fix round names the decisions-since-approval command\nok 12 T123: the Dev and Docs agents read those decisions as binding over the plan",
-        "fp": "0b9e0306ff29b88b8223ee4976df8c3f593a52582c6c38b48784a8775ceb3418",
         "at": "2026-11-14T13:33:32Z",
-        "why": "plugin/lib/cmd-next.sh changed"
+        "fp": "0b9e0306ff29b88b8223ee4976df8c3f593a52582c6c38b48784a8775ceb3418",
+        "reused": true
       },
       "tests/briefs-no-shortcuts.bats": {
         "status": "pass",
@@ -102177,9 +102177,9 @@
         "exit": 0,
         "seconds": 89.7,
         "tail": "1..7\nok 1 T174: a lone plan takes the upper quartile of its tier's seconds per unit of work (tasks plus breaks), times its own\nok 2 T174: a wave waits for its slowest plan: n plans side by side take the quantile 0.75^(1/n)\nok 3 T174: a plan's breaks are the rules it owes, carried in the note's units (the history keeps them); none at express\nok 4 T174: history from before breaks were recorded times a plan per task, at the same quantile\nok 5 T173: a build that stayed open for hours is left out of the quantile: 8 times the median of its kind and size\nok 6 T174: the road's build waves count each plan's breaks the same way\nok 7 T174: docs/panel.md says a wave is timed for its slowest plan and that a plan's breaks count",
-        "fp": "fdef7d34078498bd057a255cbac63f206edab9c9b39b9aa672063b5a2b331fb8",
         "at": "2026-11-14T13:33:32Z",
-        "why": "plugin/lib/cmd-next.sh changed"
+        "fp": "fdef7d34078498bd057a255cbac63f206edab9c9b39b9aa672063b5a2b331fb8",
+        "reused": true
       },
       "tests/check-jobs-docs.bats": {
         "status": "pass",
@@ -102258,9 +102258,9 @@
         "exit": 0,
         "seconds": 18.9,
         "tail": "1..3\nok 1 R160: no kernel script captures NUL-separated jq output in a shell variable\nok 2 R160: the rule catches the capture it is for\nok 3 R160: vbw next says nothing on its error output while a check a fix added waits for approval",
-        "fp": "13d0308412ff06c063f30376d73ffc6682d133daeadb25270741bc237b656833",
         "at": "2026-11-14T13:33:32Z",
-        "why": "plugin/lib/cmd-next.sh changed"
+        "fp": "13d0308412ff06c063f30376d73ffc6682d133daeadb25270741bc237b656833",
+        "reused": true
       },
       "tests/contributor-tools.bats": {
         "status": "pass",
@@ -102285,18 +102285,18 @@
         "exit": 0,
         "seconds": 18.1,
         "tail": "1..3\nok 1 T174: with a check file waiting for approval, fix done runs no check, names the file and says the approval comes first\nok 2 T174: with no check file waiting, fix done re-checks finished work as before\nok 3 T174: the fixing workflow asks the closing agent for the files waiting for approval and says the approval comes next",
-        "fp": "4d0d68e529102954d390d62b9cfed4813021d6162e353e61691635e76b3e424e",
         "at": "2026-11-14T13:33:32Z",
-        "why": "plugin/lib/cmd-next.sh changed"
+        "fp": "4d0d68e529102954d390d62b9cfed4813021d6162e353e61691635e76b3e424e",
+        "reused": true
       },
       "tests/fix-done-reach.bats": {
         "status": "pass",
         "exit": 0,
         "seconds": 53.7,
         "tail": "1..2\nok 1 R305: a fix whose change one unit read reruns that unit and the failed one; the opening line counts both before any unit starts\nok 2 R305: a change that touches no unit's read list reruns only the failed file",
-        "fp": "e4f8ed3fa645030863c2a11e9efa3395e98e240c023a3e906bf885c1b943da40",
         "at": "2026-11-14T13:33:32Z",
-        "why": "plugin/lib/cmd-next.sh changed"
+        "fp": "e4f8ed3fa645030863c2a11e9efa3395e98e240c023a3e906bf885c1b943da40",
+        "reused": true
       },
       "tests/fix-done-unapproved.bats": {
         "status": "pass",
@@ -102312,18 +102312,18 @@
         "exit": 0,
         "seconds": 123.9,
         "tail": "1..10\nok 1 a copy holds no path of the fixture, and its variables point into the copy\nok 2 after each build, setup_file's own variables and directory are back as they were\nok 3 copy isolation (1 of 2): a test's writes never reach the fixture or the next test\nok 4 copy isolation (2 of 2): a test's writes never reach the fixture or the next test\nok 5 each test gets its own HOME, Claude config folder, plugin data and git identity, holding the fixture's\nok 6 fixture_copy refuses a fixture that was not built, naming it\nok 7 the build runs once per file, even with bats --jobs 4: every test gets its own copy of the variant it names\nok 8 a copied loop_project proves exactly as a freshly built one: the same verdicts and the same reuse decisions\nok 9 #738: a fixture keeps no proof copy of its builder's proofs, and a copy makes its own\nok 10 the build is refused, naming the place, when the fixture holds its own path or an array; nothing of it is left",
-        "fp": "3983c072458f2bd2aa29ff35e550653bc974d75d7bdbcfb063ecc2894478f1b8",
         "at": "2026-11-14T13:33:32Z",
-        "why": "plugin/lib/cmd-next.sh changed"
+        "fp": "3983c072458f2bd2aa29ff35e550653bc974d75d7bdbcfb063ecc2894478f1b8",
+        "reused": true
       },
       "tests/gate-since.bats": {
         "status": "pass",
         "exit": 0,
         "seconds": 12.5,
         "tail": "1..2\nok 1 R189: a gate carries since, the time VBW first reached it, kept while the same gate stands, in any session\nok 2 R189: a new gate starts its own time, a damaged last answer is ignored, and a step that needs nobody carries none",
-        "fp": "512258ed3af78021af480e83a6b2a77790e8411eec4da4649619513310d083cc",
         "at": "2026-11-14T13:33:32Z",
-        "why": "plugin/lib/cmd-next.sh changed"
+        "fp": "512258ed3af78021af480e83a6b2a77790e8411eec4da4649619513310d083cc",
+        "reused": true
       },
       "tests/gate-waited.bats": {
         "status": "pass",
@@ -102375,9 +102375,9 @@
         "exit": 0,
         "seconds": 66.7,
         "tail": "ok 5 secrets are never read or written, by the shell or the file tools\nok 6 the record is written only by vbw\nok 7 only the user approves: vbw approve and consent writes are denied everywhere\nok 8 project rules apply only when the session's project is a VBW project\nok 9 a session started in a submodule with no record of its own is guarded as the VBW project above it, as the kernel finds it\nok 10 a linked worktree nested in a VBW project, with no record of its own, is its own project: guards inert, the kernel refuses\nok 11 a session started in a subfolder of a VBW project is guarded as at its root; the project is the git top, never a folder above it\nok 12 a corrupt record still counts as a VBW project\nok 13 a guard error allows the call and never exits non-zero (exit 2 would block it)\nok 14 a large heredoc is data, and the command around it is still judged\nok 15 during a build, a subagent writes only the run's files\nok 16 #727: during a run, the files cp, rsync, install, ln, mv, tee, sed -i and rm write are judged like a redirect's\nok 17 #727: during a run, a shell tool writing a protected check file, or a folder that holds one, is refused like a redirect\nok 18 #727: during planning, a shell copy onto product code is refused like a redirect\nok 19 during a build, protected check files are read-only and commits go through vbw\nok 20 during a run, builders never move HEAD or other builders' changes in the shared tree\nok 21 during planning, subagents may write test files (no file list, nothing protected yet)\nok 22 the main session is never held to a lease, and an old lease holds no one\nok 23 commands rewritten by RTK are judged like the originals\nok 24 during a QA or mapping run, agents write nothing",
-        "fp": "9cb4f343b5b6757456252f1c772f112324130ec7f8eaf01aae3ddb1d9fa66fd8",
         "at": "2026-11-14T13:33:32Z",
-        "why": "plugin/lib/cmd-next.sh changed"
+        "fp": "9cb4f343b5b6757456252f1c772f112324130ec7f8eaf01aae3ddb1d9fa66fd8",
+        "reused": true
       },
       "tests/jq-floor.bats": {
         "status": "pass",
@@ -102420,9 +102420,9 @@
         "exit": 0,
         "seconds": 76.8,
         "tail": "ok 2 vbw without arguments prints usage and exits 2\nok 3 an unknown subcommand exits 2 and names it\nok 4 vbw init needs a git repository\nok 5 vbw init scaffolds .vbw with a valid record and ignores the runtime dir\nok 6 vbw init is idempotent and never overwrites existing state\nok 7 vbw init writes nothing outside the project\nok 8 a corrupt record is reported, never repaired\nok 9 unparseable JSON is reported as corrupt\nok 10 a record that parses but has a field of the wrong type is named so, never as unparseable JSON\nok 11 commands outside a VBW project say so\nok 12 concurrent writers never lose an update\nok 13 a write that would make the record invalid is refused and leaves it untouched\nok 14 a stale lock older than 30 seconds is taken over\nok 15 vbw works from a subdirectory of the project\nok 16 file ages are numbers on every platform's stat (Linux stat -f is not BSD stat -f)\nok 17 a lock whose age cannot be read is never stale (it may have just been taken)\nok 18 a writer waits as long as the lock keeps changing hands, and gives up only on a lock that stopped moving\nok 19 a lock whose holder still runs is never taken over, however old; one whose holder is gone is taken\nok 20 a holder id read while it is still being written (no line end yet) never breaks the lock\nok 21 a holder that ends normally between the two looks never lets a waiter delete the next writer's lock",
-        "fp": "3e95137c1892e8c10350cd46c9b89b5a17dc567b856b377db0ce72cb0411b57e",
         "at": "2026-11-14T13:33:32Z",
-        "why": "plugin/lib/cmd-next.sh changed"
+        "fp": "3e95137c1892e8c10350cd46c9b89b5a17dc567b856b377db0ce72cb0411b57e",
+        "reused": true
       },
       "tests/kernel-legacy.bats": {
         "status": "pass",
@@ -102438,36 +102438,36 @@
         "exit": 0,
         "seconds": 133.2,
         "tail": "ok 2 row 2: no requirements asks for the spec\nok 3 row 3: requirements without checks or phases need planning\nok 4 row 4: an unapproved contract is a human gate\nok 5 row 5: a blocked plan is a human gate naming it\nok 6 row 6: build the ready wave only (dependencies respected)\nok 7 rows 7 and 9: escalated fixes gate, open fixes are worked\nok 8 #706: an open fix whose code changed since the proof is proved before another fix round\nok 9 row 10: unproven auto requirements are proved (including after a fix)\nok 10 row 11: open human requirements go to acceptance\nok 11 row 0: an open run lease comes first (wait for its workflow, or end it)\nok 12 row 12: everything proven and accepted is ready to ship\nok 13 the human form prints one instruction line\nok 14 row 10: evidence of another contract is stale and must be proved again\nok 15 row 8: scope violations in current evidence are a human gate\nok 16 approval is read from the clone's consent, never from the record\nok 17 row 6: plans that share a file never build in the same wave\nok 18 row 9: open fixes that share files form one group (one builder), others run alongside\nok 19 row 2a: an unconverted VBW 1 plan is offered for conversion before the spec\nok 20 row 10a: built phases not verified by QA on the proven code go to QA, at the profile's tier\nok 21 row 10b: a phase QA failed on the proven code is verified again before shipping",
-        "fp": "2584719597e80f950dc4023af95b6bd3823b5ce4d76e34bf22aedda5af5bf615",
         "at": "2026-11-14T13:33:32Z",
-        "why": "plugin/lib/cmd-next.sh changed"
+        "fp": "2584719597e80f950dc4023af95b6bd3823b5ce4d76e34bf22aedda5af5bf615",
+        "reused": true
       },
       "tests/kernel-plan-dirs.bats": {
         "status": "pass",
         "exit": 0,
         "seconds": 29.9,
         "tail": "1..4\nok 1 an agent may write any file under a directory its plan lists, and nothing beside it\nok 2 another session cannot write under a directory a live run lists\nok 3 a VBW commit of a file under its plan's directory is in scope\nok 4 a directory and a file inside it never build in the same wave",
-        "fp": "76998dff64ccbca04e8afd8cd95677bce366a6ffbf1e86cb0e712bc807a67201",
         "at": "2026-11-14T13:33:32Z",
-        "why": "plugin/lib/cmd-next.sh changed"
+        "fp": "76998dff64ccbca04e8afd8cd95677bce366a6ffbf1e86cb0e712bc807a67201",
+        "reused": true
       },
       "tests/kernel-prove.bats": {
         "status": "pass",
         "exit": 0,
         "seconds": 227.3,
         "tail": "ok 4 approve consents to the project commands by exact argv\nok 5 hostile repository: a fresh clone runs nothing until its user approves\nok 6 hostile update: a command added after approval never runs\nok 7 argv is executed directly, never through a shell\nok 8 tamper: editing a protected check file after approval fails prove\nok 9 tamper: editing a check or widening a plan in the record withdraws approval\nok 10 red-first: checks fail before building; a vacuous check is flagged\nok 11 fix cap: three failed attempts escalate to a person\nok 12 a passing proof proves the requirement and records the evidence\nok 13 expected exit status and output are both enforced\nok 14 a check that hangs is stopped at its timeout\nok 15 a missing program is a failure, not a crash\nok 16 approved project commands run; a failing one becomes a fix\nok 17 scope: a VBW commit that touches files outside its plan fails proof\nok 18 show contract renders what is approved, and whether it is\nok 19 a requirement still being built fails without opening a fix\nok 20 a hanging check is stopped even when the environment ignores the stop signals\nok 21 a proof commits its evidence: VBW's own files are never left modified\nok 22 an edit proved while uncommitted, then committed, needs a new proof\nok 23 committing VBW's own record after a proof keeps the proof fresh",
-        "fp": "bdd139fe7b3750578865614d352f5483bdcf3c55bd8ffddfd664575fedc2cbb4",
         "at": "2026-11-14T13:33:32Z",
-        "why": "plugin/lib/cmd-next.sh changed"
+        "fp": "bdd139fe7b3750578865614d352f5483bdcf3c55bd8ffddfd664575fedc2cbb4",
+        "reused": true
       },
       "tests/kernel-qa.bats": {
         "status": "pass",
         "exit": 0,
         "seconds": 56.1,
         "tail": "1..4\nok 1 after the proof, QA is next; a pass on the proven code lets the milestone ship\nok 2 a failed verdict needs findings; findings become fixes only QA closes, and a pass closes them\nok 3 code that changes after QA needs QA again; three failed rounds escalate\nok 4 show phase gives QA the goal, criteria, tasks and verdict; show plan gives a Dev its tasks",
-        "fp": "463e6550a316b90e2a04d520d0cbd7152dfd33d89221f61e0beace2db17a7f8e",
         "at": "2026-11-14T13:33:32Z",
-        "why": "plugin/lib/cmd-next.sh changed"
+        "fp": "463e6550a316b90e2a04d520d0cbd7152dfd33d89221f61e0beace2db17a7f8e",
+        "reused": true
       },
       "tests/kernel-rtk.bats": {
         "status": "pass",
@@ -102492,18 +102492,18 @@
         "exit": 0,
         "seconds": 4.3,
         "tail": "1..1\nok 1 next in the owning session still says to wait or end an interrupted run",
-        "fp": "af3339824b71a6961ea74d887bfaae75882b2b4a8c27866db5df1eb7abc4b543",
         "at": "2026-11-14T13:33:32Z",
-        "why": "plugin/lib/cmd-next.sh changed"
+        "fp": "af3339824b71a6961ea74d887bfaae75882b2b4a8c27866db5df1eb7abc4b543",
+        "reused": true
       },
       "tests/kernel-show.bats": {
         "status": "pass",
         "exit": 0,
         "seconds": 21.9,
         "tail": "1..13\nok 1 show roadmap lists phases and plans with status and dependencies\nok 2 show phase lists its requirements and plans with files\nok 3 show req lists its checks, plans and commits from trailers\nok 4 show evidence says when nothing has been proved yet\nok 5 unknown views and ids are errors\nok 6 show req matches requirement ids exactly (R1 is not R12)\nok 7 show req leaves out an old roadmap's commit naming the same id, older than the record\nok 8 a phase's status is derived from its plans\nok 9 show decisions lists each decision with its reason\nok 10 show requirements lists proof, status, milestone, and whether the work is built\nok 11 show phase and contract print a phase's tier and reasons, and nothing for a phase without one\nok 12 show req prints a requirement's rules, and show contract --changes reports rule changes\nok 13 show contract lists the saved test results folders, and --changes names a changed list",
-        "fp": "5a93d935a69d13088010b6c4f5d9a7685b46d791bd2071d1638da185fc25ef77",
         "at": "2026-11-14T13:33:32Z",
-        "why": "plugin/lib/cmd-next.sh changed"
+        "fp": "5a93d935a69d13088010b6c4f5d9a7685b46d791bd2071d1638da185fc25ef77",
+        "reused": true
       },
       "tests/kernel-spec.bats": {
         "status": "pass",
@@ -102519,90 +102519,90 @@
         "exit": 0,
         "seconds": 60.9,
         "tail": "ok 1 accept and reject apply only to human requirements\nok 2 a rejection opens a fix; when it is done the requirement returns for acceptance\nok 3 ship is refused until vbw next says ship, then marks the milestone shipped\nok 4 config resolves VBW 1's seven roles from the profile and per-role overrides\nok 5 overrides saved under the earlier role names move to VBW 1's names\nok 6 docs/rigor.md's balanced tier table gives the Lead, Scout, Dev and QA their profile models\nok 7 config refuses unknown keys and invalid values, and changes nothing\nok 8 auto on needs a well-formed session id and arms only that session\nok 9 the gate is silent when no run is armed\nok 10 the gate blocks the stop with the next step and counts it\nok 11 the gate lets the session wait while a workflow runs\nok 12 the gate stops and disarms at a decision that needs the user\nok 13 the gate stops and disarms at the step cap\nok 14 an escalated fix can be retried once by the user's decision\nok 15 the backlog: add, list, done and drop\nok 16 doctor checks the project and the guards, and changes nothing\nok 17 doctor fails on a corrupt record and names the fix\nok 18 doctor reports disabled workflows\nok 19 doctor works where Claude Code is not installed (CI machines)\nok 20 autonomy is balanced until set; guided and hands-off are the other levels",
-        "fp": "e89d2305b34ac0fc4556ebd6da0523695a5d8f50ea7ff3693df96d4df6ff27fc",
         "at": "2026-11-14T13:33:32Z",
-        "why": "plugin/lib/cmd-next.sh changed"
+        "fp": "e89d2305b34ac0fc4556ebd6da0523695a5d8f50ea7ff3693df96d4df6ff27fc",
+        "reused": true
       },
       "tests/kernel-work.bats": {
         "status": "pass",
         "exit": 0,
         "seconds": 210.1,
         "tail": "ok 19 check runs approved checks, reports, and writes nothing but an expected red run (R292)\nok 20 show plan gives a builder its plan, requirements, checks and commands\nok 21 show fix gives a builder the failure and the files it may touch\nok 22 evidence is stale when code changes after the proof\nok 23 committing proved work or the record never makes evidence stale\nok 24 files a check creates do not make its own evidence stale\nok 25 computing the fingerprint leaves the user's index untouched\nok 26 a run's end commits the spec, the record and the check files, and nothing else\nok 27 approval commits the record once; a run end commits the run it records (R173), and nothing else\nok 28 VBW never edits or commits the user's .gitignore\nok 29 the codebase map is committed with VBW's own files\nok 30 #731: a map run ends with its map: the map is in the run's record commit and .vbw/ is clean\nok 31 #731: run end --map refuses an empty map, another kind of run and no run, and writes nothing\nok 32 #731: run end --map refuses another session's map run and leaves the map as it was\nok 33 after an approval, show contract --changes lists only what changed since\nok 34 a kept VBW 1 folder changing never makes the evidence stale\nok 35 the fingerprint works when .gitignore ignores the VBW folders, tracked or not (#695)\nok 36 accepting a requirement closes a fix still open from its earlier rejection\nok 37 apply keeps the Architect's phase goals and criteria and the Lead's tasks and roles\nok 38 QA and mapping runs hold a lease that lets their agents write nothing",
-        "fp": "1b729dc8a264b0b21f9f42a44c7a901837591fdecf90cd1e8597f0ad249c44bd",
         "at": "2026-11-14T13:33:32Z",
-        "why": "plugin/lib/cmd-next.sh changed"
+        "fp": "1b729dc8a264b0b21f9f42a44c7a901837591fdecf90cd1e8597f0ad249c44bd",
+        "reused": true
       },
       "tests/l3-alreadyfixed.bats": {
         "status": "pass",
         "exit": 0,
-        "seconds": 0.9,
+        "seconds": 0.6,
         "tail": "1..3\nok 1 #717: the alreadyfixed scenario exists, is in the default list and is named in the suite's header\nok 2 #717: it seeds a committed fix and reads the record, git and the transcript\nok 3 #717: the committed result: L3, passed, recorded as already fixed with evidence, nothing added, no planning, the code untouched",
-        "at": "2026-11-11T18:08:21Z",
         "fp": "c7209b64bf8770d614ada4c92b86dd24234c4909b933b022baa05619c3f45fec",
-        "reused": true
+        "at": "2026-11-14T14:04:57Z",
+        "why": "tools/l3-suite.sh changed"
       },
       "tests/l3-commitstep.bats": {
         "status": "pass",
         "exit": 0,
         "seconds": 0.6,
         "tail": "1..3\nok 1 R287 commitstep: the scenario is in the default list and the header, seeds an approved plan behind a hook that refuses the record, and writes its result\nok 2 R287 commitstep: it judges the kept refusal and the hook's words, the commit step, the words read by the session, no skipped hook, and the step's end once the check passes\nok 3 R287 commitstep: the committed result passed at L3 and states every fact, no hook skipped",
-        "at": "2026-11-11T19:35:34Z",
         "fp": "2568d2c36cd4181e833c84caaba7a766a22af9291e1edaabb22f27cbd3dceac0",
-        "reused": true
+        "at": "2026-11-14T14:04:57Z",
+        "why": "tools/l3-suite.sh changed"
       },
       "tests/l3-failoutput.bats": {
         "status": "pass",
         "exit": 0,
-        "seconds": 0.9,
+        "seconds": 0.7,
         "tail": "1..4\nok 1 R195: the failoutput scenario exists, is in the default list and is named in the suite's header\nok 2 R195: it breaks a proven requirement, reads the kept output file and the agents' show fix results in the transcripts\nok 3 R195: the result states each fact the scenario judged\nok 4 R195: a committed result of the failoutput scenario, when there is one, is labelled honestly",
-        "at": "2026-11-11T18:08:21Z",
         "fp": "9c1d4a853d90424f0c4b187db6215e9aaea5f491781a7f3acf6a73523c4e701e",
-        "reused": true
+        "at": "2026-11-14T14:04:57Z",
+        "why": "tools/l3-suite.sh changed"
       },
       "tests/l3-fixchecks.bats": {
         "status": "pass",
         "exit": 0,
-        "seconds": 0.5,
+        "seconds": 0.7,
         "tail": "1..4\nok 1 R194: the fixchecks scenario exists, is in the default list and is named in the suite's header\nok 2 R194: it seeds a check that covers less than the requirement, approves by the choice, and reads the commits' trailers and files in git\nok 3 R194: the result states each fact the scenario judged\nok 4 R194: a committed result of the fixchecks scenario, when there is one, is labelled honestly",
-        "at": "2026-11-13T13:01:37Z",
         "fp": "3419a81c6d4c893267a5ff86d6991c894eefe5c68738205d0a0b4faf68a0515f",
-        "reused": true
+        "at": "2026-11-14T14:04:57Z",
+        "why": "tools/l3-suite.sh changed"
       },
       "tests/l3-ignoredplanning.bats": {
         "status": "pass",
         "exit": 0,
-        "seconds": 1.1,
+        "seconds": 0.6,
         "tail": "1..3\nok 1 #695: the ignoredplanning scenario exists, is in the default list and is named in the suite's header\nok 2 #695: it seeds an ignored .vbw-planning, tracked and untracked, and reads the record and git, never the screen\nok 3 #695: the committed ignoredplanning result shows a recorded tree, no change seen and results reused",
-        "at": "2026-11-11T18:08:21Z",
         "fp": "0bfceb7864a295fef3e374c9d00dd61973727aa8d4f96262959aed8da1753aa5",
-        "reused": true
+        "at": "2026-11-14T14:04:57Z",
+        "why": "tools/l3-suite.sh changed"
       },
       "tests/l3-latedecision.bats": {
         "status": "pass",
         "exit": 0,
-        "seconds": 1.1,
+        "seconds": 0.8,
         "tail": "1..5\nok 1 #705: the latedecision scenario exists, is in the default list and is named in the suite's header\nok 2 #705: the seed records the decision after the approval and leaves the plan as approved, so only a re-approval waits\nok 3 #705: it approves by the choice and reads the Dev's call, the files and the record, never the screen\nok 4 #705: the result states each fact the scenario judged\nok 5 #705: a committed result of the latedecision scenario, when there is one, is labelled honestly",
-        "at": "2026-11-11T18:08:21Z",
         "fp": "1b293de136701bf55e063db45e1cd8f09f32e960206670cbebdf19d7632a0e19",
-        "reused": true
+        "at": "2026-11-14T14:04:57Z",
+        "why": "tools/l3-suite.sh changed"
       },
       "tests/l3-leftover.bats": {
         "status": "pass",
         "exit": 0,
-        "seconds": 39.4,
+        "seconds": 28.7,
         "tail": "1..2\nok 1 R34: after a passing proof, leftover_proof runs lint in a proof copy without the leftover file, and the copy is kept with no owner (#738)\nok 2 R34: a leftover that reaches the proof copy (git-ignored, copied in by design) is reported in the copy, and the proof changes",
         "fp": "b813fdb966f16debb7eed2eb551585dab4221509a43a5bd807bce01f58e0eb42",
-        "at": "2026-11-14T13:33:32Z",
-        "why": "plugin/lib/cmd-next.sh changed"
+        "at": "2026-11-14T14:04:57Z",
+        "why": "tools/l3-suite.sh changed"
       },
       "tests/l3-mapsnapshot.bats": {
         "status": "pass",
         "exit": 0,
-        "seconds": 0.9,
+        "seconds": 1.0,
         "tail": "1..4\nok 1 #707: the mapsnapshot scenario exists, is in the default list and is named in the suite's header\nok 2 #707: it seeds a failing test, runs /vbw:map and judges .vbw/map.md, git and the transcripts\nok 3 #707: the result states each fact the scenario judged\nok 4 #707: a committed result of the mapsnapshot scenario, when there is one, is labelled honestly",
-        "at": "2026-11-11T18:08:21Z",
         "fp": "e1d9756e7f5cad4a123d7acbdf11f770c9ccc6a6f86173c1f7d695c176bc78d3",
-        "reused": true
+        "at": "2026-11-14T14:04:57Z",
+        "why": "tools/l3-suite.sh changed"
       },
       "tests/l3-results.bats": {
         "status": "pass",
@@ -102616,47 +102616,47 @@
       "tests/l3-sessions.bats": {
         "status": "pass",
         "exit": 0,
-        "seconds": 0.9,
+        "seconds": 1.1,
         "tail": "1..4\nok 1 R192: the sessions scenario exists, is in the default list and is named in the suite's header\nok 2 R192: it names the chat with /rename, asks from a second chat during the run, and reads files, never the screen\nok 3 R192: the result states each fact the scenario judged\nok 4 R192: a committed result of the sessions scenario, when there is one, is labelled honestly",
-        "at": "2026-11-11T18:08:21Z",
         "fp": "80ccba6381077bfd2e336c1ee845ac20c84ae5a4b282e5269d15c1d3e03ded8c",
-        "reused": true
+        "at": "2026-11-14T14:04:57Z",
+        "why": "tools/l3-suite.sh changed"
       },
       "tests/l3-stalefix.bats": {
         "status": "pass",
         "exit": 0,
-        "seconds": 0.7,
+        "seconds": 1.1,
         "tail": "1..4\nok 1 #706: the stalefix scenario exists, is in the default list and is named in the suite's header\nok 2 #706: it reads the refused fix done, the rounds and proofs in the transcripts and the record's history\nok 3 #706: the result states each fact the scenario judged\nok 4 #706: a committed result of the stalefix scenario, when there is one, is labelled honestly",
-        "at": "2026-11-11T18:08:21Z",
         "fp": "7dcf80b4b612d55559a0963adca01f3f1aa391aeeed9c671481e7c576aa939b9",
-        "reused": true
+        "at": "2026-11-14T14:04:57Z",
+        "why": "tools/l3-suite.sh changed"
       },
       "tests/l3-suite-jobs.bats": {
         "status": "pass",
         "exit": 0,
-        "seconds": 14.2,
+        "seconds": 14.3,
         "tail": "1..3\nok 1 T27: a slow scenario does not hold its slot's successors: the others run through the free slot\nok 2 T27: no more than L3_JOBS scenarios run at once\nok 3 T27: each scenario's exit counts, and the lines print in the order asked",
-        "at": "2026-11-11T18:08:21Z",
         "fp": "fdddcfbd55a61ac7d4f4e5c2ff72113326241d2084fd34eff112fdb47ae7bb84",
-        "reused": true
+        "at": "2026-11-14T14:04:57Z",
+        "why": "tools/l3-suite.sh changed"
       },
       "tests/l3-taskbreak.bats": {
         "status": "pass",
         "exit": 0,
-        "seconds": 1.0,
+        "seconds": 1.1,
         "tail": "1..4\nok 1 R193: the taskbreak scenario exists, is in the default list and is named in the suite's header\nok 2 R193: it seeds an approved two-plan requirement with the rules naming their plans, forces deep, and reads the record and git\nok 3 R193: the result states each fact the scenario judged\nok 4 R193: a committed result of the taskbreak scenario, when there is one, is labelled honestly",
-        "at": "2026-11-14T10:00:16Z",
         "fp": "19955e43972f94a8c48085f82d4cad872b05525e4163bafef810e8493d7fd849",
-        "reused": true
+        "at": "2026-11-14T14:04:57Z",
+        "why": "tools/l3-suite.sh changed"
       },
       "tests/l3-testforms.bats": {
         "status": "pass",
         "exit": 0,
-        "seconds": 5.3,
+        "seconds": 7.1,
         "tail": "1..3\nok 1 #735: the testforms scenario exists, is in the default list and is named in the suite's header\nok 2 #735: it judges the record's evidence, states each fact, and never reads the screen\nok 3 #735: its seed gives an approved contract with one form per subproject, each with its dir",
         "fp": "906bf211bc11cb2a0f0050f8881e5bef5c4d342e1580ecb5d93a091370d1e2c3",
-        "at": "2026-11-14T13:33:32Z",
-        "why": "plugin/lib/cmd-next.sh changed"
+        "at": "2026-11-14T14:04:57Z",
+        "why": "tools/l3-suite.sh changed"
       },
       "tests/l3-wait.bats": {
         "status": "pass",
@@ -102672,27 +102672,27 @@
         "exit": 0,
         "seconds": 274.1,
         "tail": "1..19\nok 1 T156: with no history an item's budget is the default for its size (no size: medium)\nok 2 T156: a small item with no history gets the small default\nok 3 T156: with three or more shipped items of its size the budget is twice their median\nok 4 T156: with fewer than three shipped items of its size the default holds\nok 5 T156: past its budget the loop ends before the next step, names the item, step, time and budget, and keeps the work\nok 6 T156: under its budget the step runs\nok 7 T156: a ship is never stopped by the budget; the next item gets its own\nok 8 T156: vbw loop status and the report show the item's budget and elapsed time\nok 9 T156: once the item is planned and the road is timed, the budget is twice the time so far plus the road, set once\nok 10 T156: a road shorter than a quarter of an hour still gets a budget of 30 minutes\nok 11 T156: with no timed road the label's budget stays, and its basis says so\nok 12 T156: the report names the basis of the budget it shows\nok 13 T156: the validator takes planned: true on a budget and refuses planned: false or any other key\nok 14 T156: after the loop's session was gone, the time from the item's last step to the resumed step is left out\nok 15 T156: after a turn ended on an API error, the time from the failure to the resumed step is left out; time working still counts\nok 16 T156: the budget set from the plan counts the time so far without the time away\nok 17 T156: an item the last loop left in progress resumes when named again, keeping its work, time and budget, without the time stopped\nok 18 T156: an item stopped after working past its budget is not resumed by a loop (finish it with /vbw:vibe); naming another item names it\nok 19 T156: the validator takes stepped_at as a time and away as whole seconds, nothing else",
-        "fp": "a8b0fba9d1a8b0cc8ec3baf2d934c378a68341c96467bd54bad937971cdab8c8",
         "at": "2026-11-14T13:33:32Z",
-        "why": "plugin/lib/cmd-next.sh changed"
+        "fp": "a8b0fba9d1a8b0cc8ec3baf2d934c378a68341c96467bd54bad937971cdab8c8",
+        "reused": true
       },
       "tests/loop-park-schema.bats": {
         "status": "pass",
         "exit": 0,
         "seconds": 32.5,
         "tail": "1..1\nok 1 T153: parking an item whose commits changed the record's validator leaves a record the restored kernel reads",
-        "fp": "291ed810c558ff1b92eb5190a99ec2212bfed4c236105f13f1bf65718becb72a",
         "at": "2026-11-14T13:33:32Z",
-        "why": "plugin/lib/cmd-next.sh changed"
+        "fp": "291ed810c558ff1b92eb5190a99ec2212bfed4c236105f13f1bf65718becb72a",
+        "reused": true
       },
       "tests/loop-stop-hook.bats": {
         "status": "pass",
         "exit": 0,
         "seconds": 61.7,
         "tail": "1..9\nok 1 T150: one Stop hook, the plugin's own, and no skill declares one\nok 2 T150: the hook gives the loop's next step to the loop's session, and nothing to another\nok 3 T150: in a session started in a subfolder of the project the hook drives the loop too\nok 4 T147: one Stop event moves the loop one step: the item opens once\nok 5 T150: after a resume the loop is driven again: vbw loop start of the same session restores its mark\nok 6 T150: the loop's end removes its mark, and the hook is silent again\nok 7 T156: a failed turn of the loop's session leaves the away mark with its time and says nothing; another session leaves none\nok 8 T156: the loop's session resumed leaves an empty away mark, keeping an earlier one; a compact or another session leaves none; the loop's end removes it\nok 9 T150: outside a VBW project and with no loop or armed run the hook says nothing",
-        "fp": "8218af5b4d32ae1b0a2d0a3b1edc4eac69f63fe9354d3299da29abb7ef48c9ce",
         "at": "2026-11-14T13:33:32Z",
-        "why": "plugin/lib/cmd-next.sh changed"
+        "fp": "8218af5b4d32ae1b0a2d0a3b1edc4eac69f63fe9354d3299da29abb7ef48c9ce",
+        "reused": true
       },
       "tests/machine-unit-cores.bats": {
         "status": "pass",
@@ -102717,18 +102717,18 @@
         "exit": 0,
         "seconds": 18.0,
         "tail": "1..2\nok 1 T157: a task break runs the fastest check first and stops at the first red\nok 2 T157: a survivor runs every check",
-        "fp": "44107a1d176bed98ab7fa3b234963fda998ad5ad61e3173c6b4538f84834e122",
         "at": "2026-11-14T13:33:32Z",
-        "why": "plugin/lib/cmd-next.sh changed"
+        "fp": "44107a1d176bed98ab7fa3b234963fda998ad5ad61e3173c6b4538f84834e122",
+        "reused": true
       },
       "tests/mutate-queue.bats": {
         "status": "pass",
         "exit": 0,
         "seconds": 96.0,
         "tail": "1..9\nok 1 T174: --queue sets the break aside at once and leaves the file as given; nothing runs and nothing is recorded\nok 2 T174: --run runs the queued breaks side by side, the check once unbroken, and records each as red\nok 3 T174: a survivor among the queued breaks is recorded and makes --run exit 1; the others are recorded red\nok 4 T174: a break queued at another commit is dropped and named, and --run exits 1\nok 5 T174: check files that differ from the last commit stop --run, and nothing is recorded\nok 6 T174: --queue is for a rule break; --run with nothing queued says how to queue\nok 7 T174: vbw plan done names queued breaks that have not run yet\nok 8 R217: the queued path passes mutate_record no check files, only the ten documented arguments\nok 9 a break queued before breaks carried tree is judged by its head: the same commit runs it, another commit drops it",
-        "fp": "7e808321c92c3a297e9c80c30f3c6035e9bcfa8071f81c3d573c118f2eee0620",
         "at": "2026-11-14T13:33:32Z",
-        "why": "plugin/lib/cmd-next.sh changed"
+        "fp": "7e808321c92c3a297e9c80c30f3c6035e9bcfa8071f81c3d573c118f2eee0620",
+        "reused": true
       },
       "tests/mutate-rule-none-help.bats": {
         "status": "pass",
@@ -102744,9 +102744,9 @@
         "exit": 0,
         "seconds": 44.1,
         "tail": "1..5\nok 1 T152: the rule's plan is kept in the record\nok 2 T152: a plan cannot finish without a red break of the rules it owns, while another plan of the requirement is open\nok 3 T152: a rule without a plan keeps today's rule: an early plan finishes, the completing plan asks\nok 4 T168: a retired rule is owed no break and is left out of the plan's rules; R1.2 keeps its address\nok 5 T152: a rule's plan must serve the rule's requirement",
-        "fp": "0fe2a810de2892e7034c95fcb639326759e3e7a324d0b6ebe4fcbb68a85ae3ee",
         "at": "2026-11-14T13:33:32Z",
-        "why": "plugin/lib/cmd-next.sh changed"
+        "fp": "0fe2a810de2892e7034c95fcb639326759e3e7a324d0b6ebe4fcbb68a85ae3ee",
+        "reused": true
       },
       "tests/output-child-exit.bats": {
         "status": "pass",
@@ -102807,18 +102807,18 @@
         "exit": 0,
         "seconds": 55.3,
         "tail": "1..2\nok 1 R202: vbw fix done prints both report lines when the reused test files carry read lists larger than a command line\nok 2 R202: a commit that adds thousands of files no run has seen and no plan lists runs nothing, and the record keeps no cause",
-        "fp": "f416e4f0ae1e8c01165da722d8234e67b0c8ad371a2c495de85d0f396b602f1a",
         "at": "2026-11-14T13:33:32Z",
-        "why": "plugin/lib/cmd-next.sh changed"
+        "fp": "f416e4f0ae1e8c01165da722d8234e67b0c8ad371a2c495de85d0f396b602f1a",
+        "reused": true
       },
       "tests/proof-selfcontained.bats": {
         "status": "pass",
         "exit": 0,
         "seconds": 24.1,
         "tail": "1..1\nok 1 R92 #738: the copy is kept free after a proof and made again by --full, read-only folders included, and nothing outside it is touched",
-        "fp": "e0cdf62ee10c04108f0f6b185fffa68b2f652f189a157c11fa422525cb724e8c",
         "at": "2026-11-14T13:33:32Z",
-        "why": "plugin/lib/cmd-next.sh changed"
+        "fp": "e0cdf62ee10c04108f0f6b185fffa68b2f652f189a157c11fa422525cb724e8c",
+        "reused": true
       },
       "tests/proof-stale-links.bats": {
         "status": "pass",
@@ -102843,9 +102843,9 @@
         "exit": 0,
         "seconds": 607.1,
         "tail": " fresh one\nok 5 #738: what a unit wrote (a build folder, a stray file, a file in a kept ignored folder, an edited or deleted one there, an edited tracked file) is undone when the next command claims the copy, and nothing else is copied again\nok 6 #738: when a unit wrote into most of a kept ignored path, the path is copied again whole, as cloning it costs less than entry by entry\nok 7 #738: a slot whose owner has ended, or whose pid file stayed empty for 5 s, is claimed; one whose owner runs, or whose empty pid file is new, is left alone and another is made\nok 8 #738: an interrupted proof removes the copy it holds; the next proof makes it again at the same place\nok 9 #738: a kept copy whose refresh fails, or that has no manifest, is removed and made fresh\nok 10 #738: in a copy of the project folder, a kept copy that still belongs to the original is made fresh and the original's copy is not touched\nok 11 #738: no command makes more copies than it has units\nok 12 #738: the sweep removes a slot unused for 24 hours and one numbered past check_jobs, never one whose owner runs\nok 13 #738: a submodule's committed code and ignored paths are brought up to date in a kept copy\nok 14 #738: a branch a unit made in a kept copy, of the project or of a submodule, never moves when the copy is brought up to date\nok 15 #738: an exported GIT_DIR naming the project's repository never reaches its index through a kept copy\nok 16 #738: an ignored path gone from the working folder leaves the copy, and the copy counts as refreshed\nok 17 #738: a sweep that cannot move a slot aside hands it back instead of keeping it\nok 18 #738: proofcopy_tick returns only once a change made after it is newer than the file it waited on\nok 19 #738: vbw show evidence names the copies claimed, refreshed and made; vbw doctor names each kept copy with its size\nok 20 #738: a proof's copy_slots makes the record schema 11; evidence whose own has no copy_slots still reads; a malformed copy_slots makes the record corrupt",
-        "fp": "ea094e4da37e07e4f748964eb145ddfdd7789ada3616cad101fffd7273d674d6",
         "at": "2026-11-14T13:33:32Z",
-        "why": "plugin/lib/cmd-next.sh changed"
+        "fp": "ea094e4da37e07e4f748964eb145ddfdd7789ada3616cad101fffd7273d674d6",
+        "reused": true
       },
       "tests/proofreuse-rule.bats": {
         "status": "pass",
@@ -102870,27 +102870,27 @@
         "exit": 0,
         "seconds": 65.2,
         "tail": "1..5\nok 1 R168: the clone's store holds the recorded runs and nothing else\nok 2 R168: a changed approved command re-runs that command only: vbw fix done re-runs no check for it, the next vbw prove runs the command and says why\nok 3 R168: vbw fix done re-runs a failing test file on its own, never the whole test command, and closes the fix when it passes\nok 4 R168: vbw fix done leaves the fix open and names the test file when it still fails\nok 5 R168: both savers of the store go through one locking function",
-        "fp": "9bec1eff298393fe4912f6bd0f2e5b45773cbad3a0e7414f71e4e3d1f9000805",
         "at": "2026-11-14T13:33:32Z",
-        "why": "plugin/lib/cmd-next.sh changed"
+        "fp": "9bec1eff298393fe4912f6bd0f2e5b45773cbad3a0e7414f71e4e3d1f9000805",
+        "reused": true
       },
       "tests/prove-testfiles.bats": {
         "status": "pass",
         "exit": 0,
         "seconds": 114.8,
         "tail": "1..8\nok 1 R167: the evidence holds one entry per test file and the test command's place is one aggregate that fails with them\nok 2 R167: the summary names the failing test file and counts the test files\nok 3 R167: vbw show evidence lists the test files, not the aggregate\nok 4 R167: a failing test file's complete output is kept under the runtime folder\nok 5 R167: a test file inside a submodule is a test file of its own and runs in the proof copy\nok 6 R167: a pathspec reaches into a submodule only when it names it, and one level deep, as the proof copy holds them\nok 7 #737: without a submodule, listing a form's test files costs one git, as before submodules\nok 8 R167: a test file an approved check runs is not a test file of its own",
-        "fp": "18c22ba798e02a8d95c9b4da6501e61b534c2ac14f6d7929996b0a71d1315324",
         "at": "2026-11-14T13:33:32Z",
-        "why": "plugin/lib/cmd-next.sh changed"
+        "fp": "18c22ba798e02a8d95c9b4da6501e61b534c2ac14f6d7929996b0a71d1315324",
+        "reused": true
       },
       "tests/prove-units-env.bats": {
         "status": "pass",
         "exit": 0,
         "seconds": 29.6,
         "tail": "1..2\nok 1 R173: a check and a project command run without the VBW_SESSION_ID of the session that proves\nok 2 R173: vbw fix done runs its checks the same way",
-        "fp": "a0756d1ed758819d051db42405321a18a520e8f687ffd39c9c1518f170af7115",
         "at": "2026-11-14T13:33:32Z",
-        "why": "plugin/lib/cmd-next.sh changed"
+        "fp": "a0756d1ed758819d051db42405321a18a520e8f687ffd39c9c1518f170af7115",
+        "reused": true
       },
       "tests/prove-version-bump.bats": {
         "status": "pass",
@@ -102915,18 +102915,18 @@
         "exit": 0,
         "seconds": 207.5,
         "tail": "the qafix shape: NOTES.md, delivered by P1.1 and named by no check, deleted by hand after the build: the proof lists it, QA is told, and no pass, quick or deep, is recorded until QA fails the phase\nok 3 what counts is HEAD: a hand commit back to the plan's content, or the file brought back through its plan, ends the deviation and QA may pass\nok 4 a hand change after a later plan's change is that later plan's deviation, and lists its phase again though only a document changed and its pass stood\nok 5 a commit whose VBW-Fix trailer names a fix of the record moves a delivered file on; one that names no fix of the record is a deviation\nok 6 the user's decision recorded after the delivery and naming the file covers the deviation and QA may pass; one naming other files, or recorded before the file was delivered, does not\nok 7 a file an express phase delivered changed outside any plan stops the ship until the user settles it; kept, nothing is left for QA\nok 8 the user chooses before QA: restoring opens one fix naming the file, which a fix brings back through its plan; QA follows the proof\nok 9 a restore whose file still deviates after its fix round opens again with one more attempt; passing checks do not close it\nok 10 the check reads the history and HEAD once: the same shell commands for 3 deviating files as for 30, with every file named\nok 11 a plan's work reverted by hand is a deviation; a commit a park undid delivered nothing, even when a current plan has its plan id\nok 12 commits older than the record are not its plans' commits: a retired roadmap's P1.1 delivered nothing for today's P1.1, and a hand change to what today's P1.1 delivered is still a deviation\nok 13 a malformed deviation in the evidence makes the record corrupt\nok 14 the QA brief names each deviation of the round, its plan, how it changed and by which commit, and says a pass needs a finding or the user's decision; a decided one names the decision\nok 15 the docs state the rule where they say what QA checks",
-        "fp": "303eb6e7eed3cd76fb666884aa4719ff3ae4cfa401c6b678715effe6a2a442cf",
         "at": "2026-11-14T13:33:32Z",
-        "why": "plugin/lib/cmd-next.sh changed"
+        "fp": "303eb6e7eed3cd76fb666884aa4719ff3ae4cfa401c6b678715effe6a2a442cf",
+        "reused": true
       },
       "tests/qa-recheck-converge.bats": {
         "status": "pass",
         "exit": 0,
         "seconds": 131.0,
         "tail": "1..9\nok 1 T118: a code change in a phase another builds on checks only that phase again\nok 2 T118: on a clone without the QA cache, a code change in a dependency still leaves the dependent standing\nok 3 T45: a dependency's goal or plan change alone does not check the dependent again\nok 4 T131: a failed phase whose goal and plans did not change gets a re-check round: the fixes since the verdict and its commit\nok 5 T131: the first round, a never-checked phase and a passed phase that changed get the whole-phase sweep\nok 6 T131: a goal, criteria or plan change since the failed verdict brings back the whole-phase sweep\nok 7 T131: without the QA cache a failed phase gets the whole-phase sweep\nok 8 T131: the verify workflow tells a re-check round's QA the fixes, the commit to diff from and the goal, and the first round nothing of it\nok 9 T131: the QA agent's instructions carry the re-check round rule",
-        "fp": "9bb8f766fdba534f2c1cd3395c78656b2cf0504a9b91bb91c0cbccb11827a6e8",
         "at": "2026-11-14T13:33:32Z",
-        "why": "plugin/lib/cmd-next.sh changed"
+        "fp": "9bb8f766fdba534f2c1cd3395c78656b2cf0504a9b91bb91c0cbccb11827a6e8",
+        "reused": true
       },
       "tests/qa-refusal-wording.bats": {
         "status": "pass",
@@ -102942,27 +102942,27 @@
         "exit": 0,
         "seconds": 51.5,
         "tail": "1..9\nok 1 R166: vbw qa record accepts a proof whose results were reused\nok 2 R166: vbw qa record refuses a stale proof and says vbw prove\nok 3 R166: vbw qa record refuses a proof in which the quick command stood in for the test command, and says vbw prove --full\nok 4 R166: vbw qa record refuses a proof in which an approved full command was skipped\nok 5 R166: vbw next asks for vbw prove --full only for the quick stand-in or a skipped full command\nok 6 R166: after a proof that reused results vbw next goes on to QA\nok 7 R166: vbw ship accepts a proof that reused results\nok 8 R166: vbw ship refuses a proof in which the quick command stood in\nok 9 R166: a proof recorded before the reuse fields existed (full true, or no full flag) is accepted",
-        "fp": "7b401c08f66b14555d21bb7b107431dd9e2235a4f0d188981c60f7352bfc8465",
         "at": "2026-11-14T13:33:32Z",
-        "why": "plugin/lib/cmd-next.sh changed"
+        "fp": "7b401c08f66b14555d21bb7b107431dd9e2235a4f0d188981c60f7352bfc8465",
+        "reused": true
       },
       "tests/qa-round-open-run.bats": {
         "status": "pass",
         "exit": 0,
         "seconds": 31.3,
         "tail": "1..7\nok 1 T178: the qa answer sizes a one-file standard phase quick and carries the proof's test run\nok 2 T178: while the caller's QA run is open, vbw next answers run with the same round as the qa answer\nok 3 T178: a QA run opened without a session id (the caller unknown) carries the round too\nok 4 T178: another session's QA run carries no round\nok 5 T178: an open run that is not QA carries no round\nok 6 T178: the QA workflow refuses a round that is not an object and starts no agent, instead of silently dropping the depth and the test run\nok 7 T178: the QA workflow still takes a missing, null or object round",
-        "fp": "78fa2ae901fc667fd9b59a074197481f6c5052da0fa31cf34809d1785f0afa3e",
         "at": "2026-11-14T13:33:32Z",
-        "why": "plugin/lib/cmd-next.sh changed"
+        "fp": "78fa2ae901fc667fd9b59a074197481f6c5052da0fa31cf34809d1785f0afa3e",
+        "reused": true
       },
       "tests/qa-state.bats": {
         "status": "pass",
         "exit": 0,
         "seconds": 58.9,
         "tail": "1..16\nok 1 qa.jq: untouched phases keep their pass; the record's passes stand\nok 2 qa.jq: never checked, failed last time\nok 3 qa.jq: several reasons at once, each named: files, tests, goal or plan, and the tests of what it builds on\nok 4 qa.jq: a phase that builds on one whose tests changed is checked again, transitively, and the one it builds on is not\nok 5 qa.jq: a dependency whose files or plan changed but not its tests leaves the dependent standing\nok 6 qa.jq: a change that is checked again and passed leaves the dependent re-checked until it passes too\nok 7 qa.jq: a cycle among the plans terminates and is named, with the plans in it\nok 8 qa.jq: a plan after a plan or a phase that does not exist is a problem, by name\nok 9 qa.jq: without the clone cache the only change reason is the plain one\nok 10 qa.jq: only the built phases of the active milestone are judged\nok 11 qa.jq: without digests it still reports the closure and the problems\nok 12 qa_digests: files, tests, plan and combined digests per phase, from the committed content\nok 13 qa_digests: an uncommitted edit changes nothing; a code commit changes that phase only, a test commit what builds on it too\nok 14 qa_digests: a changed check file changes tests, a changed goal changes plan, other phases are untouched\nok 15 qa cache: written for a phase, read back, and a damaged or missing file reads as no cache\nok 16 the digests, the cache and the record give the reasons; a pass recorded in the cache stands",
-        "fp": "dcbe1c72c24e050d9d2c9cc0323f01e22c2d80ba8af96d17f30616847d8a9704",
         "at": "2026-11-14T13:33:32Z",
-        "why": "plugin/lib/cmd-next.sh changed"
+        "fp": "dcbe1c72c24e050d9d2c9cc0323f01e22c2d80ba8af96d17f30616847d8a9704",
+        "reused": true
       },
       "tests/readme.bats": {
         "status": "pass",
@@ -103023,27 +103023,27 @@
         "exit": 0,
         "seconds": 32.6,
         "tail": "1..2\nok 1 R170: a proof that reused results is recorded as not full, and the release run reuses it all the same\nok 2 R166: after a full proof of the same code, the release run reuses it",
-        "fp": "6073cc11dd724c6ab88cacfb65c558c9d9bb92b1b0c62f8f13fc5a5218e19601",
         "at": "2026-11-14T13:33:32Z",
-        "why": "plugin/lib/cmd-next.sh changed"
+        "fp": "6073cc11dd724c6ab88cacfb65c558c9d9bb92b1b0c62f8f13fc5a5218e19601",
+        "reused": true
       },
       "tests/rigor-early.bats": {
         "status": "pass",
         "exit": 0,
         "seconds": 80.8,
         "tail": "ok 2 three requirements are standard, as at apply (C20: 2 express, 3 standard)\nok 3 a [human] requirement is standard\nok 4 a requirement text naming a risk category is standard\nok 5 a repository tracking more than 30 files is standard\nok 6 a repository tracking at most 30 files stays express\nok 7 rigor deep forces deep\nok 8 rigor standard forces standard\nok 9 a forced express on a bigger request still says express\nok 10 detail.tier appears only at the plan step\nok 11 express at the plan step holds at apply: one plan of four small files is express\nok 12 an existing codebase with no project test command is standard at both steps\nok 13 an existing codebase with a project test command stays express at both steps\nok 14 the router's express example is a document vbw apply accepts as express\nok 15 two [auto] risk-free requirements are express before planning, as at apply\nok 16 a project check command counts as the project's tests\nok 17 a document is never a risk path, however it is named\nok 18 re-planning re-tiers an unstarted phase from its signals; a started phase keeps its tier (D49)\nok 19 a re-tier before work moves the predicted tier, so the outcome holds\nok 20 planning an unstarted phase again moves its predicted tier with its tier\nok 21 an escalated express phase is not finished until QA passes",
-        "fp": "4f066e816105ab5d42b0b324bd591fdffd4dc5182a1d959f5bd9787579611264",
         "at": "2026-11-14T13:33:32Z",
-        "why": "plugin/lib/cmd-next.sh changed"
+        "fp": "4f066e816105ab5d42b0b324bd591fdffd4dc5182a1d959f5bd9787579611264",
+        "reused": true
       },
       "tests/road-history-shapes.bats": {
         "status": "pass",
         "exit": 0,
         "seconds": 22.2,
         "tail": "1..3\nok 1 T174: the road times every wave from a history holding every shape VBW has written\nok 2 T174: entries of a shape VBW never wrote are skipped, never the road\nok 3 T174: a wave the history cannot time leaves the road with no end and the reason, never no road",
-        "fp": "f0d9e3db5c63e8c448200a33ed49bd84fe1b98dcca2c6f341d76f8c3a9bcf273",
         "at": "2026-11-14T13:33:32Z",
-        "why": "plugin/lib/cmd-next.sh changed"
+        "fp": "f0d9e3db5c63e8c448200a33ed49bd84fe1b98dcca2c6f341d76f8c3a9bcf273",
+        "reused": true
       },
       "tests/rules-docs.bats": {
         "status": "pass",
@@ -103086,18 +103086,18 @@
         "exit": 0,
         "seconds": 40.7,
         "tail": "1..2\nok 1 run store: a proof drops the runs of a deleted test file, of a test file a check now runs and of a removed check\nok 2 run store: a unit another worktree of the clone still has keeps its run until that worktree is gone",
-        "fp": "61a9fd8231ccfd20f3f878a96f7399368917b15470d25ccd22fd263c4ab381c0",
         "at": "2026-11-14T13:33:32Z",
-        "why": "plugin/lib/cmd-next.sh changed"
+        "fp": "61a9fd8231ccfd20f3f878a96f7399368917b15470d25ccd22fd263c4ab381c0",
+        "reused": true
       },
       "tests/run-store-reads.bats": {
         "status": "pass",
         "exit": 0,
         "seconds": 29.3,
         "tail": "1..2\nok 1 a proof of many units never loads the store while its units run; their updates read the times\nok 2 vbw next and vbw status time the proof from the times, never from the store",
-        "fp": "7e4af58a21847839716c1f2425863e53d6b8f64fffc0381e0fb3292b8a946193",
         "at": "2026-11-14T13:33:32Z",
-        "why": "plugin/lib/cmd-next.sh changed"
+        "fp": "7e4af58a21847839716c1f2425863e53d6b8f64fffc0381e0fb3292b8a946193",
+        "reused": true
       },
       "tests/runner-reads.bats": {
         "status": "pass",
@@ -103113,27 +103113,27 @@
         "exit": 0,
         "seconds": 4.2,
         "tail": "1..1\nok 1 R204: the scope check runs the same shell commands for 500 plan commits as for 50, with the same result",
-        "fp": "b232e5e62faf1410bee5ceec205577fc3e6bd281a9d3e7082cd61871a649612a",
         "at": "2026-11-14T13:33:32Z",
-        "why": "plugin/lib/cmd-next.sh changed"
+        "fp": "b232e5e62faf1410bee5ceec205577fc3e6bd281a9d3e7082cd61871a649612a",
+        "reused": true
       },
       "tests/scope-of-its-time.bats": {
         "status": "pass",
         "exit": 0,
         "seconds": 40.0,
         "tail": "1..4\nok 1 a check file a survivor let the plan strengthen, renamed afterwards, keeps that commit in scope\nok 2 a plan file the plan no longer lists keeps its earlier commit in scope\nok 3 a file no version of the record allowed the plan stays a violation; the user's decision naming the commit and the file accepts it, and nothing else\nok 4 the docs say how a commit is judged and how the user accepts a violation",
-        "fp": "1da7c69576c8ef51a1c54574fbd1f3a4ef42cf49a6ae93ecd6566ed4eae20677",
         "at": "2026-11-14T13:33:32Z",
-        "why": "plugin/lib/cmd-next.sh changed"
+        "fp": "1da7c69576c8ef51a1c54574fbd1f3a4ef42cf49a6ae93ecd6566ed4eae20677",
+        "reused": true
       },
       "tests/scope-shipped.bats": {
         "status": "pass",
         "exit": 0,
         "seconds": 46.6,
         "tail": "1..4\nok 1 T162: a shipped milestone's commit outside its plan does not fail today's proof\nok 2 T162: the current milestone's commit outside its plan still fails the proof\nok 3 a retired roadmap's commits, older than the record, are not judged by today's plan of the same id\nok 4 a commit after the record's birth outside its plan still fails the proof",
-        "fp": "613bcd10decdf4f0f7cc499dd34dae8234573aed8c32acf0c3202027973e7ace",
         "at": "2026-11-14T13:33:32Z",
-        "why": "plugin/lib/cmd-next.sh changed"
+        "fp": "613bcd10decdf4f0f7cc499dd34dae8234573aed8c32acf0c3202027973e7ace",
+        "reused": true
       },
       "tests/show-plan-owner.bats": {
         "status": "pass",
@@ -103167,26 +103167,26 @@
         "exit": 0,
         "seconds": 14.9,
         "tail": "1..3\nok 1 R72: the router's small path tells a documentation-only plan to take role docs, with the Lead's own list of documentation\nok 2 R72: vbw next hands a documentation plan that carries role docs to the Docs agent\nok 3 R72: a documentation plan with no role is a Dev plan: the role is the planner's to write",
-        "fp": "409690b645f6cca4c58ef861e05b2aa638e12839f5e7e9361cd8bad8e7f22b5a",
         "at": "2026-11-14T13:33:32Z",
-        "why": "plugin/lib/cmd-next.sh changed"
+        "fp": "409690b645f6cca4c58ef861e05b2aa638e12839f5e7e9361cd8bad8e7f22b5a",
+        "reused": true
       },
       "tests/standards-selftest.bats": {
         "status": "pass",
         "exit": 0,
-        "seconds": 152.7,
+        "seconds": 123.3,
         "tail": "ok 3 process killing is caught\nok 4 the signal-free liveness probe kill -0 passes, any other kill is caught\nok 5 /tmp paths are caught\nok 6 git path listings without -z are caught, with -z pass\nok 7 plugin-root discovery is caught\nok 8 a clean file breaks no rule\nok 9 hooks naming a missing file are caught\nok 10 per-tool-call hooks that start a shell or can exit non-zero are caught\nok 11 per-tool-call hooks: only assignments and [ ] tests may come before jq, and the command must end in || true\nok 12 the vision rule check passes on the repository as it is\nok 13 the vision rule check catches the rule removed from a contributor file\nok 14 the vision rule check catches the rule moved below another rule in AGENTS.md\nok 15 the privacy guard lists the files that hold a word, in any case, and never the word\nok 16 the privacy guard passes a clean tree: comments and blank lines in the list are not words\nok 17 the privacy guard checks nothing, and says so, without a list or without words\nok 18 the privacy guard in tracked mode reads every tracked file of this repository, .vbw/ included\nok 19 the privacy guard refuses bad usage\nok 20 the hook answer check passes on the repository as it is\nok 21 the hook answer check catches a new unpinned answer shape\nok 22 the hook answer check catches a hook that answers allow",
         "fp": "cea597da7e37298b1c50fd07c24fcfcd6ab9c1e90cc14912ac62ec844e47ba39",
-        "at": "2026-11-14T13:33:32Z",
+        "at": "2026-11-14T14:04:57Z",
         "why": "reads the project through git"
       },
       "tests/standards.bats": {
         "status": "pass",
         "exit": 0,
-        "seconds": 21.2,
+        "seconds": 19.1,
         "tail": "1..18\nok 1 no eval or data-as-code (ledger D108, D139)\nok 2 no bash-4-only features: macOS /bin/bash 3.2 is the floor (K2, ledger D294)\nok 3 never terminates processes (ledger D54, D285–D288)\nok 4 no predictable /tmp paths or writes outside the project (K3, ledger D296)\nok 5 git path listings are NUL-separated (ledger D293)\nok 6 no plugin-root discovery: paths come from ${CLAUDE_PLUGIN_ROOT} substitution or $0 (K4)\nok 7 shell files parse on the minimum bash and pass shellcheck\nok 8 plugin manifests are valid\nok 9 hooks.json is valid and every file a hook names exists in hooks/\nok 10 per-tool-call hooks run jq directly and never exit non-zero (K20)\nok 11 Claude Code's own validator accepts the plugin and the marketplace\nok 12 no brace-literal parameter defaults (a default of {} written inside the expansion): bash 3.2 keeps the backslash (tests and tools too)\nok 13 the vision rule is VBW's first development rule, and every contributor file states it (owner mandate, 2026-10-06)\nok 14 every answer a hook gives Claude Code has a test pinning its meaning, and no hook answers allow (R128)\nok 15 no tracked file, .vbw/ included, names a private project of the owner (owner rule, 2026-10-21; needs the maintainer-local list, skipped without it)\nok 16 no shell code pipes into a quiet grep: grep -q stops early, and under pipefail the producer's SIGPIPE fails the pipeline (tools/check-pipefail-grep.sh)\nok 17 self-test: the pipefail rule refuses each quiet grep after a pipe, whatever the producer, naming its line, and passes every form that reads to the end\nok 18 no committed result file names a home folder: the L3 results and the probes write the checkout as <checkout> and the home folder as ~ (T213)",
         "fp": "48128ae9c3c6ace556f9ed4c4e8858d47e0c4f3b376db805ecb962a8fd1527ba",
-        "at": "2026-11-14T13:33:32Z",
+        "at": "2026-11-14T14:04:57Z",
         "why": "reads the project through git"
       },
       "tests/statusline-step-miss.bats": {
@@ -103194,18 +103194,18 @@
         "exit": 0,
         "seconds": 13.8,
         "tail": "1..4\nok 1 R235: a reader that leaves early does not fail the status line (SIGPIPE ignored, status 0)\nok 2 R235: the step shows at local times around midnight, in any zone (the day word is tomorrow or none)\nok 3 R235: a start inside the same minute leaves the minutes out and still shows the end\nok 4 R235: a glance written in the record's second does not hide the step",
-        "fp": "0a96485e855e31d282b71883dc45aa9fd72906b4356234125ac8ff9635cee679",
         "at": "2026-11-14T13:33:32Z",
-        "why": "plugin/lib/cmd-next.sh changed"
+        "fp": "0a96485e855e31d282b71883dc45aa9fd72906b4356234125ac8ff9635cee679",
+        "reused": true
       },
       "tests/statusline.bats": {
         "status": "pass",
         "exit": 0,
         "seconds": 33.2,
         "tail": "1..14\nok 1 in a VBW project it shows progress and the last next step\nok 2 a running build and an armed autonomous run are visible\nok 3 a gate that needs the user says so\nok 4 no data from Claude Code, or garbage, never breaks it\nok 5 the branch is read in a linked worktree too\nok 6 statusline on sets it without asking, and keeps the user's own to restore\nok 7 the setting finds the newest installed VBW and renders it\nok 8 workflows on turns Dynamic workflows on, keeps every other setting, and never overrides a deliberate off\nok 9 a running step shows how long it has run and how many agents are working\nok 10 the team line follows the profile and per-role models; tokens and prompt cache are shown\nok 11 statusline on asks Claude Code to refresh it every 5 seconds, and tops up a setting made without it\nok 12 from Claude Code 2.1.287 the agents and team line is dropped; line 1 keeps the agent count\nok 13 a session in a VBW project tops up the refresh interval of VBW's status line, and leaves any other status line alone\nok 14 doctor warns when VBW's status line has no refresh interval",
-        "fp": "fae800ed78a4911ee52bdac7122875049958ae3bef7f2fd82b93a720de837f77",
         "at": "2026-11-14T13:33:32Z",
-        "why": "plugin/lib/cmd-next.sh changed"
+        "fp": "fae800ed78a4911ee52bdac7122875049958ae3bef7f2fd82b93a720de837f77",
+        "reused": true
       },
       "tests/step-range.bats": {
         "status": "pass",
@@ -103221,9 +103221,9 @@
         "exit": 0,
         "seconds": 55.6,
         "tail": "1..7\nok 1 the fixture: the approval and vbw commit committed in the submodule, and the project's pointer did not move\nok 2 delivered files: a hand change to a plan's file in the submodule is a deviation, named by its project path\nok 3 scope: a commit in the submodule naming the plan that changes a file outside it is a violation, named by its project path\nok 4 vbw show req lists the requirement's commits in the submodule\nok 5 the loop's report lists a shipped item's commits in the submodule\nok 6 vbw show contract --changes shows the diff of a changed test file in the submodule from its approved content\nok 7 QA's fingerprint of a phase moves with a commit of its file, or of its test file, in the submodule",
-        "fp": "544eaa8e76406ae17a811963274dd3acc5337923a9c55af1b4390a2a69ec508b",
         "at": "2026-11-14T13:33:32Z",
-        "why": "plugin/lib/cmd-next.sh changed"
+        "fp": "544eaa8e76406ae17a811963274dd3acc5337923a9c55af1b4390a2a69ec508b",
+        "reused": true
       },
       "tests/test-cost-rules.bats": {
         "status": "pass",
@@ -103239,36 +103239,36 @@
         "exit": 0,
         "seconds": 4.1,
         "tail": "1..3\nok 1 rule: no test file of VBW asserts with a negated command that is not its block's last\nok 2 rule self-test: a negated command before the end of a test, of a helper or of a loop body is caught\nok 3 rule self-test: a negated last command, one with its own failure and here-document text pass",
-        "fp": "8c61ff59230361dbdb436c003e3fb43eb1501c47b194eac97219f68f139b7f49",
         "at": "2026-11-14T13:33:32Z",
-        "why": "tests/next-step-failure.bats changed"
+        "fp": "8c61ff59230361dbdb436c003e3fb43eb1501c47b194eac97219f68f139b7f49",
+        "reused": true
       },
       "tests/testfiles-forms.bats": {
         "status": "pass",
         "exit": 0,
         "seconds": 63.5,
         "tail": "1..10\nok 1 #735: approve names each form with its dir\nok 2 #735: each form's files run with its own argv, in its dir, with {file} relative to it\nok 3 #735: a change in one subproject reruns only the files that read it\nok 4 #735: a form that matches no tracked file fails the test command, naming the form\nok 5 #735: a unit whose folder is missing from the copy fails naming the folder, and runs nothing\nok 6 #735: a unit whose folder leads outside the copy through a link fails naming the folder, and runs nothing\nok 7 #735: a file two forms match, committed after the forms were synced, fails the test command naming it and both forms\nok 8 #735: one unnamed form without a dir keeps its fingerprint; a dir is part of a form's fingerprint\nok 9 #735: vbw fix done reruns the failed file of its form, in that form's dir, and reuses the other form's\nok 10 #735: the stored legacy form keeps its approval hash, and adding a form needs a new approval",
-        "fp": "5d577773e8693b25e69ffd0d0ccd23dc84c308eae9bff813d68d095fec939905",
         "at": "2026-11-14T13:33:32Z",
-        "why": "plugin/lib/cmd-next.sh changed"
+        "fp": "5d577773e8693b25e69ffd0d0ccd23dc84c308eae9bff813d68d095fec939905",
+        "reused": true
       },
       "tests/testfiles-spec.bats": {
         "status": "pass",
         "exit": 0,
         "seconds": 53.6,
         "tail": "ok 3 a spec without the section has no form\nok 4 a run line without {file}, or with it twice, is refused naming its line\nok 5 a section without files, or without a run line, is refused naming the section's line\nok 6 a second run line and an unknown line are refused\nok 7 sync removes the field when the section goes, and an older record without it opens as before\nok 8 sync says when the form is added, changed or removed\nok 9 the form is part of the contract: editing it changes the hash and needs a new approval\nok 10 vbw approve grants the form like a command, and vbw show contract lists it among the commands that will run\nok 11 #735: named forms parse into an array of {name, dir, run, files}, dir null when absent\nok 12 #735: the unnamed shape stays {run, files}; with a top-level dir it is one form with a null name\nok 13 #735: a form without run or files, a form named twice and a run naming {file} twice are refused with the line\nok 14 #735: a dir that is absolute, has . or .. parts, or lies under .vbw/ or .git/ is refused with its line\nok 15 #735: a dir with glob characters is refused with its line: the cd uses its literal text\nok 16 #735: a files pathspec of a form with dir outside that dir, or with . or .. parts, is refused\nok 17 #735: a form with a dir takes the :!, :^ and :(exclude) spellings of an exclude under it, and git applies each\nok 18 #735: a form with a dir refuses pathspec magic other than the three excludes, naming the magic, not the dir\nok 19 #735: spec.jq, record.jq and the kernel's jq defs strip an exclude with the same pathspec_path\nok 20 #735: a dir that is, or lies under, a committed symbolic link is refused at check and sync\nok 21 #735: top-level run, files or dir lines beside a named form, and a nested line outside one, are refused with the line\nok 22 #735: a committed file matched by two forms is refused at check and sync, naming it and both forms",
-        "fp": "69619f9f9ee76d5cbefb265d9f43be9bf32406a5a6fb9def0bbfcb88fc5d521b",
         "at": "2026-11-14T13:33:32Z",
-        "why": "plugin/lib/cmd-next.sh changed"
+        "fp": "69619f9f9ee76d5cbefb265d9f43be9bf32406a5a6fb9def0bbfcb88fc5d521b",
+        "reused": true
       },
       "tests/unit-time.bats": {
         "status": "pass",
         "exit": 0,
         "seconds": 43.7,
         "tail": "1..10\nok 1 unit time: the line names the three slowest units that ran, their share and those over the budget; reused, skipped and waiting units are left out\nok 2 unit time: every reader takes decimal seconds beside whole ones, and sums are rounded to a tenth\nok 3 unit time: a unit under a second is recorded and printed in tenths, not as 0 s\nok 4 unit time: vbw prove prints the line just before VBW's own work, and the summary reads check_budget\nok 5 unit time: vbw fix done prints the line just after its ran again line\nok 6 unit time: vbw show evidence prints the total of every current unit as it last ran, the ten slowest and every unit over the budget\nok 7 unit time: check_budget is set, shown and reset with vbw config, refused out of range, and the validator refuses a bad value\nok 8 unit time: vbw ship names the unit time and its change since the milestone started\nok 9 unit time: without a figure from the milestone's start vbw ship says so; vbw milestone start keeps the figure in the clone, not in the record\nok 10 unit time: the docs say units are timed to a tenth of a second and how reports print them, and the fixed entry is gone",
-        "fp": "e2de9236f61466cb2773b4089f5e50cb0e19ca428f11db4e25fcea4a6a686639",
         "at": "2026-11-14T13:33:32Z",
-        "why": "plugin/lib/cmd-next.sh changed"
+        "fp": "e2de9236f61466cb2773b4089f5e50cb0e19ca428f11db4e25fcea4a6a686639",
+        "reused": true
       },
       "tests/update-autoupdate.bats": {
         "status": "pass",
@@ -103284,9 +103284,9 @@
         "exit": 0,
         "seconds": 36.3,
         "tail": "1..12\nok 1 T136: the first session in a clone records the version and offers nothing\nok 2 T136: after an update the first session names both versions and /vbw:whats-new, to the user and in the context\nok 3 T136: the offer shows once, however many sessions follow\nok 4 T136: versions compare as numbers: a seen 2.0.100 is newer than 2.0.41, and 2.0.9 is older\nok 5 T136: an older plugin offers nothing and the highest version seen stays, so coming back to the newer one offers nothing either\nok 6 T136: a copy loaded with --plugin-dir neither offers nor records\nok 7 T136: a seen file that holds no version counts as unseen: nothing offered, then rewritten\nok 8 T136: outside a VBW project the hook offers nothing and writes nothing\nok 9 T136: a project made by a newer VBW is told to update, with no offer and no record\nok 10 T136: the clone's worktrees share one record, so each update is offered once per clone\nok 11 T136: the offer leaves no temporary file behind, and changes nothing in the work tree\nok 12 T136: the status line, the hooks and doctor reach no network (the update check is Claude Code's auto-update, never VBW's)",
-        "fp": "0bea05d41fdf319e76c9469378a0b3f0746f468a4aae34ca5452d4cb29a5cb16",
         "at": "2026-11-14T13:33:32Z",
-        "why": "plugin/lib/cmd-next.sh changed"
+        "fp": "0bea05d41fdf319e76c9469378a0b3f0746f468a4aae34ca5452d4cb29a5cb16",
+        "reused": true
       },
       "tests/verify-adaptive.bats": {
         "status": "pass",
@@ -103349,19 +103349,19 @@
     "causes": [],
     "full": false,
     "passed": true,
-    "record": "b6c9e8f4b49c5ce7e8c3f952ddc25f72669e8a3e09412944843e423a48d2c1df",
+    "record": "ef21b4a7471680f38136f1b8bb4b47b1c198d14258ca91cd2e165ff16e937d40",
     "own": {
-      "planning": 16.453,
-      "copies": 7.771,
-      "tracking": 12.93,
-      "saving": 1.919,
-      "record": 7.022,
-      "wall": 906.334,
+      "planning": 17.241,
+      "copies": 11.242,
+      "tracking": 15.075,
+      "saving": 1.882,
+      "record": 6.941,
+      "wall": 251.095,
       "copy_slots": {
         "claimed": 7,
-        "refreshed": 0,
+        "refreshed": 7,
         "made": 0,
-        "refresh": 3.68
+        "refresh": 6.113
       }
     }
   },
