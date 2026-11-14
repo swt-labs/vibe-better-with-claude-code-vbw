@@ -91322,6 +91322,11 @@
       "id": "T299",
       "text": "After a failed QA hashing step, cmd-prove.sh, cmd-req.sh and cmd-show.sh print the reason and carry on with an empty qa_combined value (vbw_scratch_json x \"$(qa_combined ...)\"); R310 stops vbw next, status and qa record only (P239.1's Dev, 2026-11-14)",
       "status": "open"
+    },
+    {
+      "id": "T300",
+      "text": "A docs plan whose requirement's rules are judged by code checks cannot do the mutation step and its agent blocks: on 2026-11-14 P238.2 (docs/proof.md, README.md for R309) had vbw mutate refuse a code break ('plugin/lib/proofcopy.sh is not one of P238.2's files') and refuse Rn.k --none ('a rule its plans' code could break ... break the rule in that code instead'), so the Docs agent blocked; vbw plan done P238.2 then passed from the main session. Make the docs plan's mutation step say what it needs (none, as P238.1's breaks cover the rules, or a docs check), and make the two refusals agree",
+      "status": "open"
     }
   ],
   "decisions": [
