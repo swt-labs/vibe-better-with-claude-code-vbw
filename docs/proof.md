@@ -1185,9 +1185,11 @@ read-only folder, an entry that became a folder). One
 walk of `node_modules` takes about a second; copying it again took 46 seconds
 on the project that prompted this. When any of these steps fails, or the
 project's set of submodules changed, the slot is emptied and the copy made
-fresh in it. So is a copy that is not, or no longer, a worktree made for its
-place: a copied project folder, a linked folder on its path, or a `.git` file
-naming another worktree. Git runs in a copy without `GIT_DIR`, `GIT_WORK_TREE`,
+fresh in it. So is a copy that is not, or no longer, a copy of this kind made for its
+place: a copied project folder, a linked folder on its path, a git folder
+borrowing other objects, or a folder holding its own `.git` folder. So is a kept copy
+whose commit can no longer be read (history rewritten, objects pruned): it is
+made fresh, never a failed proof. Git runs in a copy without `GIT_DIR`, `GIT_WORK_TREE`,
 `GIT_INDEX_FILE` or `GIT_COMMON_DIR`, so an exported one never points it at the
 working folder's repository. After it marks when a copy was brought up to date,
 and again when it is done, VBW waits for the clock to move on (at most a
@@ -1206,6 +1208,32 @@ while no VBW command runs. The size `vbw doctor` gives counts in full the
 blocks a clone shares with the working folder: on one APFS project six kept
 copies of 9.5 GB each held about 7 GB of disk in all.
 
+#### What a clean copy is
+
+A clean copy is its own small git repository, not a git worktree. Its files sit
+in the slot's `tree/` folder and its git folder sits in the same slot, outside
+`tree/` and not named `.git`. The copy borrows the project's stored files
+(objects) and reads the project's settings, so making, keeping and removing a
+copy writes nothing in the project's `.git` except VBW's own `.git/vbw`: no
+worktree entry, branch, config line or hook is added. This is why proof works
+under Claude Code's sandbox, which refuses writes to `.git/worktrees`,
+`.git/config` and `.git/hooks`. Each checked-out submodule's copy works the
+same way. Where the sandbox refuses to write `.gitmodules` into the copy, the
+copy holds every other file, marks `.gitmodules` as unchanged for git
+(skip-worktree) and keeps its content in `vbw-gitmodules-index` in the copy's
+git folder, so `git status` in the copy stays clean and VBW still finds the
+submodule. Inside a copy `git status` is clean, `HEAD` is the project's `HEAD`
+(a submodule copy's is the submodule's), and `git ls-files`, `git log` and
+`git diff` work. A commit made inside a copy lands only in the copy's own
+objects; the project's branches and objects do not change. A `vbw` command run
+inside a copy treats it as a project of its own, but reads this clone's
+settings and step history from the project's `.git/vbw`.
+
+A kept copy an older VBW made (a git worktree) is made fresh in its slot on the
+next proof, with no message. Its old worktree entry in the project's `.git` is
+tidied by that proof where git may write there. Where git may not write (the
+sandbox), the entry stays and VBW prints nothing about it.
+
 #### Leftover proof copies
 
 A kept copy that nothing uses goes on its own: the next `vbw prove`,
@@ -1219,7 +1247,7 @@ has then ended, so the next command claims it and empties it when it cannot be
 brought up to date. Copies made by an older VBW sit in folders named after the
 process that made it (its owner, by process id), for example
 `.vbw/runtime/proof.48213.k3Xa9Q`. The next command removes each one whose
-owner has ended, together with its git worktree entry, and never one whose
+owner has ended, together with any git worktree entry the older VBW left, and never one whose
 owner still runs. A copy without an owner in its name goes once it is more than
 24 hours old. A copy that cannot be removed (a locked file) leaves the result
 unchanged and prints one line:
@@ -1562,9 +1590,9 @@ They read `checks: N ran, M reused` and `test files: N ran, M reused`. After
   the copy's `.git` file, which every git command run inside the copy reads
   first. Git run elsewhere in your repository while a unit runs does not count
   (`git worktree list`, `git branch`, `git gc`, `git fetch`, another proof making
-  its copy), though it reads the copy's `HEAD` in the shared git folder. Two
+  its copy), though it reads the copy's `HEAD` in the copy's own git folder. Two
   commands do count: `git status --ignored` and `git clean -X` (also with `-n`),
-  run in the project, open each proof copy's `.git` file to see whether it is a
+  run in the project, open each proof copy's `.git` entry to see whether it is a
   repository of its own, exactly as git inside the copy does. A unit running
   meanwhile counts as reading through git and runs again in the next proof.
 - Files read inside a submodule are on the read lists by their project paths
