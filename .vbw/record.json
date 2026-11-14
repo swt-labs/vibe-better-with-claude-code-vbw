@@ -1,6 +1,15 @@
 {
   "schema": 16,
-  "lease": null,
+  "lease": {
+    "run": "qa-20261114T113421Z",
+    "kind": "qa",
+    "started_at": "2026-11-14T11:34:21Z",
+    "files": [],
+    "session": "0ee781c3-c5b6-4a6c-889f-04b89f1fba4a",
+    "cost": {
+      "usd": 3717.215942
+    }
+  },
   "protected": [
     "docs/guards.md",
     "tests/adaptive-results.bats",
@@ -35120,7 +35129,15 @@
         "guarded: R12 (C11), R13 (C12), R14 (C13), R22 (C19), R24 (C23), R25 (C24), R26 (C22), R28 (C25), R37 (C35), R38 (C33, C34), R40 (C37), R47 (C47), R49 (C48), R50 (C51), R65 (C86, C87, C88, C89, C90), R69 (C110, C120, C122), R70 (C114), R71 (C115, C121), R72 (C116, C118), R73 (C98), R74 (C99, C100), R78 (C105, C106), R79 (C107), R80 (C108), R81 (C109, C111, C112, C113), R102 (C158, C159), R104 (C161, C162), R106 (C164, C165), R107 (C166, C167), R111 (C171, C172, C173, C174, C175), R113 (C177), R115 (C181), R116 (C182, C183), R123 (C190, C191), R132 (C199), R149 (C217, C218, C219, C220, C221, C222), R160 (C247, C263, C264), R161 (C248, C265, C266), R166 (C253, C254, C255, C256, C267), R171 (C270), R179 (C297, C298, C299, C300, C301, C302, C303, C304, C305, C306, C312), R190 (C374, C375, C376, C377, C378, C379, C380, C381, C382, C383, C384, C385, C386, C387, C388), R191 (C389, C390, C391, C392, C393, C394, C395, C396, C397, C398, C399, C400), R192 (C401, C402, C403, C404, C405, C406, C407, C408, C409, C410), R202 (C432, C433, C434, C435, C436, C437, C438, C439, C440, C441, C442, C443, C444, C445, C446, C447), R229 (C526, C527, C528, C529), R244 (C562, C563), R249 (C571, C572, C573), R250 (C574, C575, C576, C577, C578, C585), R251 (C579), R252 (C580), R261 (C598, C599, C600), R268 (C622, C623, C624, C625), R269 (C626, C627, C628, C629, C630), R270 (C631, C632, C633), R282 (C681), R284 (C673, C674), R286 (C653, C654), R287 (C655, C656, C657), R291 (C675, C676, C677), R292 (C670, C671, C672), R298 (C688), R299 (C689, C690), R307 (C703)",
         "tests: project test command"
       ],
-      "predicted": "deep"
+      "predicted": "deep",
+      "qa": {
+        "result": "fail",
+        "tier": "deep",
+        "tree": "03aaed07b6a3e57e377fdbc5f9a5596c56112bb18f2084bca743595f796756ae",
+        "at": "2026-11-14T11:37:04Z",
+        "note": "17/18 checks",
+        "rounds": 1
+      }
     }
   ],
   "plans": [
@@ -89423,6 +89440,15 @@
       "attempts": 0,
       "status": "closed",
       "note": "test fail"
+    },
+    {
+      "id": "F461",
+      "req": "R310",
+      "source": "qa",
+      "attempts": 0,
+      "status": "open",
+      "note": "Criterion 3 asks that EVERY step inside next_decide stops vbw next when it fails, as a structure, not a check on single lines. Commit f4265559 added '|| return $?' to five steps only (contract_hash_from, contract_classify, qa_digests, qa_settle, qa_cache_read). These steps in plugin/lib/cmd-next.sh next_decide still ignore a failure: the two QA_PRE_LISTING=$(... | jq -r '.[]') assignments (a failed jq leaves an empty listing and qa_digests then fingerprints an empty file list, the same missing-data case as T297), holder=$(next_holder ...) (a failed holder_display gives an empty holder and the answer goes on), and counts=$(git ls-files | jq ...) / profile=$(interview_effective ...) (only caught later by accident, when the final jq refuses an empty --argjson, with jq's text and not the step's reason). next_decide runs on the left of '||' in cmd_next, so set -e is off inside it, which is why each step needs its own return. Regression test to add in tests/next-step-failure.bats: a jq shim that fails the QA_PRE_LISTING extraction (and one that fails holder_display or the counts jq) must make vbw next exit non-zero with that step's reason, print no answer and leave next.json as it was. Fix by giving every assignment in next_decide the same '|| return $?', or by one helper all steps go through, and add a check that no $(...) assignment in next_decide lacks it.",
+      "phase": "P239"
     }
   ],
   "todos": [
