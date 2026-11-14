@@ -35078,6 +35078,12 @@
           "from": "deep",
           "to": "deep",
           "reason": "Dev blocked P238.1: Tasks 1-5 were already committed and C706 passes (ok 7). Before the mutation step I ran a stale leftover script in .vbw/runtime/scratch/mut.sh from plan P192.3 by mistake: it edited plugin/agents/dev.md, qa.md, scout.md and plugin/hooks/guard-tools.jq and queued 10 breaks for P192.3. The guard refuses my edits to those files, so the tree is dirty and plan done cannot pass. Restore with: git checkout -- plugin/agents/dev.md plugin/agents/qa.md plugin/agents/scout.md plugin/hooks/guard-tools.jq, and drop the queued P192.3 breaks (do not run vbw mutate P192.3 --run). Then rerun P238.1 for the 14 rule breaks (R309.1-14) and task5 --none."
+        },
+        {
+          "at": "2026-11-14T01:42:58Z",
+          "from": "deep",
+          "to": "deep",
+          "reason": "Dev blocked P238.1: C706 cannot pass within the check's 300 s timeout: its case 'R309 cleanup' takes about 318 s on a loaded machine and about the unit's whole timeout in any case. It sends TERM to a vbw prove held on a unit (HOLD=1) and waits for it before touching $MARK/release; bash defers the trap while it waits on the unit, so the interrupted proof ends only when the held unit times out (300 s). tests/proofcopy-keep.bats's interrupt case does the same (311 s). The other nine cases take about 80 s. Result: vbw check C706 reports timeout (7 of 10 cases done), and vbw mutate --run refuses ('checks do not pass on the unbroken code'). The fix is one line in tests/clean-copy-repo.bats: 'touch \"$MARK/release\"' before 'wait \"$pid\"' (verified: the case then takes 18 s, C706 passes in 101 s, all 10 cases ok under bats). The plan cannot commit that file before a survivor opens it (vbw commit refuses it) and vbw mutate refuses an uncommitted check file, so I reverted my edit. All five tasks of P238.1 are already committed and all 10 cases pass when run directly with bats. 16 breaks are queued for vbw mutate P238.1 --run (R309.1 to R309.14), task5 recorded as none; they need that one-line test change approved or committed first."
         }
       ]
     },
@@ -85056,7 +85062,7 @@
         "tests/proofcopy-keep.bats"
       ],
       "after": [],
-      "status": "planned",
+      "status": "blocked",
       "role": "dev",
       "tasks": [
         "Make each copy its own small repository (D727), for the project and for every checked-out submodule: git init --template= with its git folder inside the same slot, outside tree/ (one folder per repository, so removing the slot removes them all), objects/info/alternates pointing at that repository's objects, include.path to its config, HEAD set with update-ref --no-deref, then read-tree and checkout-index. Name the git folder in tree/.git by a relative path, as git does for submodules, so the unchanged walk in vbw_require_project and hooks/project.sh never reads a copy as a submodule even when the project's path holds a folder named modules. Keep the #737 way where .gitmodules cannot be written: every other file checked out, .gitmodules marked skip-worktree, vbw-gitmodules-index in the copy's git folder.",
@@ -85090,7 +85096,15 @@
             "C706": "red"
           }
         }
-      ]
+      ],
+      "mutations": [
+        {
+          "task": 5,
+          "none": "task 5 rewrites comments only and states a test run; it has no behaviour a test could notice",
+          "at": "2026-11-14T01:10:27Z"
+        }
+      ],
+      "note": "C706 cannot pass within the check's 300 s timeout: its case 'R309 cleanup' takes about 318 s on a loaded machine and about the unit's whole timeout in any case. It sends TERM to a vbw prove held on a unit (HOLD=1) and waits for it before touching $MARK/release; bash defers the trap while it waits on the unit, so the interrupted proof ends only when the held unit times out (300 s). tests/proofcopy-keep.bats's interrupt case does the same (311 s). The other nine cases take about 80 s. Result: vbw check C706 reports timeout (7 of 10 cases done), and vbw mutate --run refuses ('checks do not pass on the unbroken code'). The fix is one line in tests/clean-copy-repo.bats: 'touch \"$MARK/release\"' before 'wait \"$pid\"' (verified: the case then takes 18 s, C706 passes in 101 s, all 10 cases ok under bats). The plan cannot commit that file before a survivor opens it (vbw commit refuses it) and vbw mutate refuses an uncommitted check file, so I reverted my edit. All five tasks of P238.1 are already committed and all 10 cases pass when run directly with bats. 16 breaks are queued for vbw mutate P238.1 --run (R309.1 to R309.14), task5 recorded as none; they need that one-line test change approved or committed first."
     },
     {
       "id": "P238.2",
@@ -95153,6 +95167,12 @@
       "id": "D729",
       "at": "2026-11-14T00:39:24Z",
       "text": "Contract approved: 295 requirements, 701 checks, 690 plans (c7d6a2b8938a)",
+      "plans": []
+    },
+    {
+      "id": "D730",
+      "at": "2026-11-14T01:54:29Z",
+      "text": "Contract approved: 295 requirements, 701 checks, 690 plans (76429570cf4f)",
       "plans": []
     }
   ],
