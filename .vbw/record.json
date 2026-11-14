@@ -85062,7 +85062,7 @@
         "tests/proofcopy-keep.bats"
       ],
       "after": [],
-      "status": "blocked",
+      "status": "done",
       "role": "dev",
       "tasks": [
         "Make each copy its own small repository (D727), for the project and for every checked-out submodule: git init --template= with its git folder inside the same slot, outside tree/ (one folder per repository, so removing the slot removes them all), objects/info/alternates pointing at that repository's objects, include.path to its config, HEAD set with update-ref --no-deref, then read-tree and checkout-index. Name the git folder in tree/.git by a relative path, as git does for submodules, so the unchanged walk in vbw_require_project and hooks/project.sh never reads a copy as a submodule even when the project's path holds a folder named modules. Keep the #737 way where .gitmodules cannot be written: every other file checked out, .gitmodules marked skip-worktree, vbw-gitmodules-index in the copy's git folder.",
@@ -85095,6 +85095,14 @@
           "checks": {
             "C706": "red"
           }
+        },
+        {
+          "at": "2026-11-14T01:57:02Z",
+          "head": "eb3b86d6ea6e72f8ab5d1e8384f8fcc9ad381911",
+          "first": false,
+          "checks": {
+            "C706": "green"
+          }
         }
       ],
       "mutations": [
@@ -85102,9 +85110,374 @@
           "task": 5,
           "none": "task 5 rewrites comments only and states a test run; it has no behaviour a test could notice",
           "at": "2026-11-14T01:10:27Z"
+        },
+        {
+          "rule": {
+            "req": "R309",
+            "k": 1
+          },
+          "what": "no alternates file written",
+          "files": [
+            "plugin/lib/proofcopy.sh"
+          ],
+          "checks": {
+            "C706": "red"
+          },
+          "result": "red",
+          "at": "2026-11-14T02:04:16Z",
+          "head": "eb3b86d6ea6e72f8ab5d1e8384f8fcc9ad381911",
+          "tree": "f382325c35d060506c6b6d94b62670bf04df9d39",
+          "contract": "76429570cf4f94da14c53e9da4c099892f1c48b825123af53e75b1d0dcd98517",
+          "digests": [
+            {
+              "file": "plugin/lib/proofcopy.sh",
+              "sha256": "41ec23543d32c5ca312f538a6f83137b4ac63186b5c7906b44af7bc3d1bce834"
+            }
+          ]
+        },
+        {
+          "rule": {
+            "req": "R309",
+            "k": 2
+          },
+          "what": "write a stray file into the project's git folder",
+          "files": [
+            "plugin/lib/proofcopy.sh"
+          ],
+          "checks": {
+            "C706": "red"
+          },
+          "result": "red",
+          "at": "2026-11-14T02:04:19Z",
+          "head": "eb3b86d6ea6e72f8ab5d1e8384f8fcc9ad381911",
+          "tree": "f382325c35d060506c6b6d94b62670bf04df9d39",
+          "contract": "76429570cf4f94da14c53e9da4c099892f1c48b825123af53e75b1d0dcd98517",
+          "digests": [
+            {
+              "file": "plugin/lib/proofcopy.sh",
+              "sha256": "88cfc4663a4ca4d46bc897c859a3fa84f24b22d4cabcd502ba6623f2702f5bdf"
+            }
+          ]
+        },
+        {
+          "rule": {
+            "req": "R309",
+            "k": 3
+          },
+          "what": "tidy runs git worktree prune",
+          "files": [
+            "plugin/lib/proofcopy.sh"
+          ],
+          "checks": {
+            "C706": "red"
+          },
+          "result": "red",
+          "at": "2026-11-14T02:04:21Z",
+          "head": "eb3b86d6ea6e72f8ab5d1e8384f8fcc9ad381911",
+          "tree": "f382325c35d060506c6b6d94b62670bf04df9d39",
+          "contract": "76429570cf4f94da14c53e9da4c099892f1c48b825123af53e75b1d0dcd98517",
+          "digests": [
+            {
+              "file": "plugin/lib/proofcopy.sh",
+              "sha256": "4a8e33824566c6d63445b06dbd3931b6dbc6332bf61b3c7ccf007280a4d87b51"
+            }
+          ]
+        },
+        {
+          "rule": {
+            "req": "R309",
+            "k": 4
+          },
+          "what": "no skip fallback when .gitmodules is refused",
+          "files": [
+            "plugin/lib/proofcopy.sh"
+          ],
+          "checks": {
+            "C706": "red"
+          },
+          "result": "red",
+          "at": "2026-11-14T02:04:23Z",
+          "head": "eb3b86d6ea6e72f8ab5d1e8384f8fcc9ad381911",
+          "tree": "f382325c35d060506c6b6d94b62670bf04df9d39",
+          "contract": "76429570cf4f94da14c53e9da4c099892f1c48b825123af53e75b1d0dcd98517",
+          "digests": [
+            {
+              "file": "plugin/lib/proofcopy.sh",
+              "sha256": "340936d32aff6dedb0bb46c5e17b0615e6a8352546728aa36a166b859f1cc0be"
+            }
+          ]
+        },
+        {
+          "rule": {
+            "req": "R309",
+            "k": 5
+          },
+          "what": "vbw-gitmodules-index marker not written",
+          "files": [
+            "plugin/lib/proofcopy.sh"
+          ],
+          "checks": {
+            "C706": "red"
+          },
+          "result": "red",
+          "at": "2026-11-14T02:04:26Z",
+          "head": "eb3b86d6ea6e72f8ab5d1e8384f8fcc9ad381911",
+          "tree": "f382325c35d060506c6b6d94b62670bf04df9d39",
+          "contract": "76429570cf4f94da14c53e9da4c099892f1c48b825123af53e75b1d0dcd98517",
+          "digests": [
+            {
+              "file": "plugin/lib/proofcopy.sh",
+              "sha256": "73ef40c5ba74b4d42babc1cfa96e815f820379100001910cd2e2382353c4cf43"
+            }
+          ]
+        },
+        {
+          "rule": {
+            "req": "R309",
+            "k": 6
+          },
+          "what": "read-tree left out",
+          "files": [
+            "plugin/lib/proofcopy.sh"
+          ],
+          "checks": {
+            "C706": "red"
+          },
+          "result": "red",
+          "at": "2026-11-14T02:09:52Z",
+          "head": "eb3b86d6ea6e72f8ab5d1e8384f8fcc9ad381911",
+          "tree": "f382325c35d060506c6b6d94b62670bf04df9d39",
+          "contract": "76429570cf4f94da14c53e9da4c099892f1c48b825123af53e75b1d0dcd98517",
+          "digests": [
+            {
+              "file": "plugin/lib/proofcopy.sh",
+              "sha256": "4e0042e107df5fcbcb45c68a3023735640e04a2f4d43eb1b82427b94f9b80cec"
+            }
+          ]
+        },
+        {
+          "rule": {
+            "req": "R309",
+            "k": 7
+          },
+          "what": "objects folder is the project's own (symlink)",
+          "files": [
+            "plugin/lib/proofcopy.sh"
+          ],
+          "checks": {
+            "C706": "red"
+          },
+          "result": "red",
+          "at": "2026-11-14T02:09:54Z",
+          "head": "eb3b86d6ea6e72f8ab5d1e8384f8fcc9ad381911",
+          "tree": "f382325c35d060506c6b6d94b62670bf04df9d39",
+          "contract": "76429570cf4f94da14c53e9da4c099892f1c48b825123af53e75b1d0dcd98517",
+          "digests": [
+            {
+              "file": "plugin/lib/proofcopy.sh",
+              "sha256": "4cd650e2c0fb77d2157c067b4cde36f9913f06eee54a52c7311b9c62742d3f71"
+            }
+          ]
+        },
+        {
+          "rule": {
+            "req": "R309",
+            "k": 8
+          },
+          "what": "proofcopy_own no longer compares the borrowed objects",
+          "files": [
+            "plugin/lib/proofcopy.sh"
+          ],
+          "checks": {
+            "C706": "red"
+          },
+          "result": "red",
+          "at": "2026-11-14T02:09:57Z",
+          "head": "eb3b86d6ea6e72f8ab5d1e8384f8fcc9ad381911",
+          "tree": "f382325c35d060506c6b6d94b62670bf04df9d39",
+          "contract": "76429570cf4f94da14c53e9da4c099892f1c48b825123af53e75b1d0dcd98517",
+          "digests": [
+            {
+              "file": "plugin/lib/proofcopy.sh",
+              "sha256": "aa8831b903a538f75733e509da281ad31bf915e55178a60777e6a324c56ec3bf"
+            }
+          ]
+        },
+        {
+          "rule": {
+            "req": "R309",
+            "k": 9
+          },
+          "what": "refresh no longer checks the copy is of the new kind",
+          "files": [
+            "plugin/lib/proofcopy.sh"
+          ],
+          "checks": {
+            "C706": "red"
+          },
+          "result": "red",
+          "at": "2026-11-14T02:09:59Z",
+          "head": "eb3b86d6ea6e72f8ab5d1e8384f8fcc9ad381911",
+          "tree": "f382325c35d060506c6b6d94b62670bf04df9d39",
+          "contract": "76429570cf4f94da14c53e9da4c099892f1c48b825123af53e75b1d0dcd98517",
+          "digests": [
+            {
+              "file": "plugin/lib/proofcopy.sh",
+              "sha256": "eb51f0e9cbe3545b683a481637b1624048c9492d7dcf3707c97e3c1d4b8b11f8"
+            }
+          ]
+        },
+        {
+          "rule": {
+            "req": "R309",
+            "k": 10
+          },
+          "what": "old worktree entries never tidied",
+          "files": [
+            "plugin/lib/proofcopy.sh"
+          ],
+          "checks": {
+            "C706": "red"
+          },
+          "result": "red",
+          "at": "2026-11-14T02:10:02Z",
+          "head": "eb3b86d6ea6e72f8ab5d1e8384f8fcc9ad381911",
+          "tree": "f382325c35d060506c6b6d94b62670bf04df9d39",
+          "contract": "76429570cf4f94da14c53e9da4c099892f1c48b825123af53e75b1d0dcd98517",
+          "digests": [
+            {
+              "file": "plugin/lib/proofcopy.sh",
+              "sha256": "cae150428654fd513df4c94369652e229b92deddd32df4304d915185740dcfa0"
+            }
+          ]
+        },
+        {
+          "rule": {
+            "req": "R309",
+            "k": 11
+          },
+          "what": "unreadable commit no longer detected",
+          "files": [
+            "plugin/lib/proofcopy.sh"
+          ],
+          "checks": {
+            "C706": "red"
+          },
+          "result": "red",
+          "at": "2026-11-14T02:10:04Z",
+          "head": "eb3b86d6ea6e72f8ab5d1e8384f8fcc9ad381911",
+          "tree": "f382325c35d060506c6b6d94b62670bf04df9d39",
+          "contract": "76429570cf4f94da14c53e9da4c099892f1c48b825123af53e75b1d0dcd98517",
+          "digests": [
+            {
+              "file": "plugin/lib/proofcopy.sh",
+              "sha256": "fec92fb442197f3f2bf95f1df33dffe23b457b7c36097f4a54d8ab6e34bee912"
+            }
+          ]
+        },
+        {
+          "rule": {
+            "req": "R309",
+            "k": 12
+          },
+          "what": "discard leaves the git folders",
+          "files": [
+            "plugin/lib/proofcopy.sh"
+          ],
+          "checks": {
+            "C706": "green"
+          },
+          "result": "survivor",
+          "at": "2026-11-14T02:10:06Z",
+          "head": "eb3b86d6ea6e72f8ab5d1e8384f8fcc9ad381911",
+          "tree": "f382325c35d060506c6b6d94b62670bf04df9d39",
+          "contract": "76429570cf4f94da14c53e9da4c099892f1c48b825123af53e75b1d0dcd98517",
+          "digests": [
+            {
+              "file": "plugin/lib/proofcopy.sh",
+              "sha256": "498c07fb68272b6bdc60df655dc2abe4771cf36517e5c9ab22070d23801dd6a7"
+            }
+          ]
+        },
+        {
+          "rule": {
+            "req": "R309",
+            "k": 13
+          },
+          "what": "tree/.git names its git folder by an absolute path",
+          "files": [
+            "plugin/lib/proofcopy.sh"
+          ],
+          "checks": {
+            "C706": "red"
+          },
+          "result": "red",
+          "at": "2026-11-14T02:10:09Z",
+          "head": "eb3b86d6ea6e72f8ab5d1e8384f8fcc9ad381911",
+          "tree": "f382325c35d060506c6b6d94b62670bf04df9d39",
+          "contract": "76429570cf4f94da14c53e9da4c099892f1c48b825123af53e75b1d0dcd98517",
+          "digests": [
+            {
+              "file": "plugin/lib/proofcopy.sh",
+              "sha256": "9a8f6c8e706be5765aa61d7407c7bf278edd423d586cb0cfc698c612d35571b2"
+            }
+          ]
+        },
+        {
+          "rule": {
+            "req": "R309",
+            "k": 14
+          },
+          "what": "settings asked of the current folder",
+          "files": [
+            "plugin/lib/core.sh"
+          ],
+          "checks": {
+            "C706": "red"
+          },
+          "result": "red",
+          "at": "2026-11-14T02:10:11Z",
+          "head": "eb3b86d6ea6e72f8ab5d1e8384f8fcc9ad381911",
+          "tree": "f382325c35d060506c6b6d94b62670bf04df9d39",
+          "contract": "76429570cf4f94da14c53e9da4c099892f1c48b825123af53e75b1d0dcd98517",
+          "digests": [
+            {
+              "file": "plugin/lib/core.sh",
+              "sha256": "042882ac5fde39a5bc83e3ed6faff58d75a3ff2d62ceac7432b2a2b0c617b5ee"
+            }
+          ]
+        },
+        {
+          "rule": {
+            "req": "R309",
+            "k": 12
+          },
+          "what": "discard leaves the git folders",
+          "files": [
+            "plugin/lib/proofcopy.sh"
+          ],
+          "checks": {
+            "C706": "red"
+          },
+          "result": "red",
+          "at": "2026-11-14T02:14:23Z",
+          "head": "ed2783d64eb45f643c9f2639b3810a0882b625dd",
+          "tree": "ed0807d4b618ab062e414451205d320c2fed6cf6",
+          "contract": "1683559ba96ade80617c12dfba46ceb89e78f12b7f35cd4495d47807e43e5d26",
+          "digests": [
+            {
+              "file": "plugin/lib/proofcopy.sh",
+              "sha256": "498c07fb68272b6bdc60df655dc2abe4771cf36517e5c9ab22070d23801dd6a7"
+            }
+          ],
+          "strengthened": [
+            "tests/clean-copy-repo.bats"
+          ],
+          "pending": [
+            "tests/clean-copy-repo.bats"
+          ]
         }
-      ],
-      "note": "C706 cannot pass within the check's 300 s timeout: its case 'R309 cleanup' takes about 318 s on a loaded machine and about the unit's whole timeout in any case. It sends TERM to a vbw prove held on a unit (HOLD=1) and waits for it before touching $MARK/release; bash defers the trap while it waits on the unit, so the interrupted proof ends only when the held unit times out (300 s). tests/proofcopy-keep.bats's interrupt case does the same (311 s). The other nine cases take about 80 s. Result: vbw check C706 reports timeout (7 of 10 cases done), and vbw mutate --run refuses ('checks do not pass on the unbroken code'). The fix is one line in tests/clean-copy-repo.bats: 'touch \"$MARK/release\"' before 'wait \"$pid\"' (verified: the case then takes 18 s, C706 passes in 101 s, all 10 cases ok under bats). The plan cannot commit that file before a survivor opens it (vbw commit refuses it) and vbw mutate refuses an uncommitted check file, so I reverted my edit. All five tasks of P238.1 are already committed and all 10 cases pass when run directly with bats. 16 breaks are queued for vbw mutate P238.1 --run (R309.1 to R309.14), task5 recorded as none; they need that one-line test change approved or committed first."
+      ]
     },
     {
       "id": "P238.2",
@@ -107206,6 +107579,17 @@
         "ended": "2026-11-14T01:08:25Z",
         "cost": {
           "usd": 0.674579
+        }
+      },
+      {
+        "id": "build-20261114T015456Z",
+        "kind": "build",
+        "session": "0ee781c3-c5b6-4a6c-889f-04b89f1fba4a",
+        "milestone": "M59",
+        "started": "2026-11-14T01:54:56Z",
+        "ended": "2026-11-14T02:14:47Z",
+        "cost": {
+          "usd": 0.793297
         }
       }
     ],
