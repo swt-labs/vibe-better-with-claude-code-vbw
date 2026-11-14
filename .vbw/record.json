@@ -35100,7 +35100,22 @@
           "to": "deep",
           "reason": "Dev blocked P238.2: Docs done and committed (04a1af50, dc18669d). Mutation: R309.10 break in docs/proof.md survived C706 because the check reads plugin/lib code, not docs; --none refused (rule is breakable in P238.1 code). A docs-only plan cannot kill it; needs a decision on docs mutation for code-checked rules."
         }
-      ]
+      ],
+      "qa": {
+        "result": "pass",
+        "tier": "deep",
+        "tree": "fa753c57eddb58695abb0902f6c2f1c350a199ee6446b0a0557c6061479b6cf7",
+        "at": "2026-11-14T11:38:26Z",
+        "note": "30/30 checks"
+      },
+      "outcome": {
+        "tier": "deep",
+        "predicted": "deep",
+        "held": true,
+        "fix_rounds": 0,
+        "qa_findings": 0,
+        "escalations": 4
+      }
     },
     {
       "id": "P239",
