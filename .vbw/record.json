@@ -91400,6 +91400,11 @@
       "id": "T304",
       "text": "Stop on a failed step beyond vbw next (R310 follow-up, M59 QA 2026-11-14): vbw prove (cmd-prove.sh), vbw req accept (cmd-req.sh) and vbw show phase (cmd-show.sh) call qa_combined inside a \"$(...)\" argument, so a hashing failure prints its reason but they go on with empty fingerprints; values computed inside next_decide's final jq command line (commit_failure_json, vbw_session, next_manifests) reach jq empty and are caught only by jq's own error; tests/next-step-failure.bats's structure check clears an unguarded assignment when any later line has '|| return' (make it per assignment)",
       "status": "open"
+    },
+    {
+      "id": "T305",
+      "text": "tests/proofcopy-keep.bats is the slowest unit of every proof (598 to 607 s on 2026-11-14, budget 120 s): find what waits (the interrupted-proof case's 300 s pattern) and make it wait on a condition, so a clean-copy change does not cost ten minutes of each proof",
+      "status": "open"
     }
   ],
   "decisions": [
