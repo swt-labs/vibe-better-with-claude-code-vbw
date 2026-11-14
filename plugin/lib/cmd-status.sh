@@ -25,7 +25,7 @@ cmd_status() {
     [ "$step" = null ] || NP_NOTE=$step
     # shellcheck disable=SC2034
     NP_WANT_ROAD=1
-    out=$(next_decide 2> /dev/null) || out=
+    out=$(next_decide) || exit $?
     road=$(printf '%s' "$out" | jq -c '.road // null' 2> /dev/null) || road=null
   fi
   if [ "${1:-}" = "--json" ]; then

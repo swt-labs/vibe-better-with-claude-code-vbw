@@ -2876,12 +2876,16 @@ leaveout_seed() {
   printf 'tmp\n' > cache/entry.bin
   printf '# Greetings\n\n## Requirements\n\n- R1 [auto] ./greet.sh Ana prints "Hello, Ana!"\n\n## Clean copy\n\n- data/\n' > .vbw/spec.md
   "$VBW" spec sync > /dev/null || return 1
+  # The probe is written only from inside a proof's clean copy (.vbw/runtime/proof.*/tree), into
+  # the project's runtime folder: the copy is a repository of its own (D727), so its git folder
+  # does not lead back to the project, and a check run in the project itself writes nothing.
   cat > test_greet.sh <<'SH'
-probe="$(git rev-parse --git-common-dir)/../.vbw/runtime/leaveout-probe"
+probe=
+case "$PWD" in */.vbw/runtime/proof.*/tree | */.vbw/runtime/proof.*/tree/*) probe="${PWD%%/.vbw/runtime/proof.*}/.vbw/runtime/leaveout-probe" ;; esac
 d=absent c=absent
 [ -e data ] && d=present
 [ -e cache ] && c=present
-mkdir -p "$(dirname "$probe")" && printf 'data=%s cache=%s\n' "$d" "$c" > "$probe"
+[ -z "$probe" ] || printf 'data=%s cache=%s\n' "$d" "$c" > "$probe"
 [ "$(sh greet.sh Ana)" = "Hello, Ana!" ]
 SH
   printf '%s' '{"phases": [{"id": "P1", "title": "Greet", "reqs": ["R1"]}],

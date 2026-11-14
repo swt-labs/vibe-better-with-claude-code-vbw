@@ -12,6 +12,14 @@ lifecycle. `vbw next --json` returns:
 
 `gate: true` means a person must act; autonomous runs stop there.
 
+When a step of the judgment cannot be finished (QA's fingerprints cannot be
+hashed, the answer cannot be worked out), `vbw next`, `vbw status` and
+`vbw qa record` stop with that step's reason (`vbw: cannot hash QA's inputs`)
+and a non-zero exit. `vbw next` prints no answer and leaves
+`.vbw/runtime/next.json` as it was; a status or an answer is never built on
+inputs that could not be made. Only the road (the end-of-milestone estimate)
+treats a failed judgment as "no road yet".
+
 Every answer also carries `requirements`: the requirements of the current
 (active) milestone, each with `id`, `text` and `proof`. Requirements of shipped
 milestones are left out, and one carried over to the active milestone is

@@ -126,7 +126,7 @@ result() { jq -c '{passed: .evidence.passed, checks: (.evidence.checks | map_val
   wait "$pid"
 }
 
-@test "R183 #738: after a proof killed with kill -9, the next proof claims its slot with one worktree entry; a live process's copy stays whole" {
+@test "R183 #738: after a proof killed with kill -9, the next proof claims its slot, whose copy is a repository of its own; a live process's copy stays whole" {
   HOLD=1 "$VBW" prove > "$TEST_ROOT/out" 2>&1 &
   local pid=$! i
   for i in $(seq 1 100); do [ "$(count start)" -ge 1 ] && break; sleep 0.1; done
@@ -145,7 +145,14 @@ result() { jq -c '{passed: .evidence.passed, checks: (.evidence.checks | map_val
   [ "$(jq -r .evidence.passed .vbw/record.json)" = true ]
   [ ! -e .vbw/runtime/proof.keep.1/pid ] || { echo "the dead owner's slot is still owned"; false; }
   [ ! -e .vbw/runtime/proof.keep.2 ] || { echo "a new slot was made beside the dead owner's"; false; }
-  [ "$(git worktree list --porcelain | grep -c '/proof.keep.1/tree')" -eq 1 ] || { git worktree list; false; }
+  # The claimed slot holds one copy, a repository of its own whose git folder is in the slot (R309).
+  [ -f .vbw/runtime/proof.keep.1/tree/.git ] || { ls -la .vbw/runtime/proof.keep.1/tree; false; }
+  case "$(cd -P "$(git -C .vbw/runtime/proof.keep.1/tree rev-parse --absolute-git-dir)" && pwd -P)" in
+    "$(cd -P .vbw/runtime/proof.keep.1 && pwd -P)"/tree/*) echo "the copy's git folder is in its tree"; false ;;
+    "$(cd -P .vbw/runtime/proof.keep.1 && pwd -P)"/*) ;;
+    *) echo "the copy's git folder is not in its slot"; false ;;
+  esac
+  ! git worktree list --porcelain | grep -qF '/proof.keep.1/tree' || { git worktree list; false; }
   whole "proof.$PID_LIVE.Live01"
 }
 

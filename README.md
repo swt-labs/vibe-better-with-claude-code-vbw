@@ -124,7 +124,7 @@ You type `/vbw:vibe` and what you want. VBW runs the loop below and stops only w
   │ what each plan built is still there. │    │                         │
   └──────────────────────────────────────┘    └─────────────────────────┘
                      │                        Executable definition of done.
-                     │                        Proof in a detached worktree,
+                     │                        Proof in a clean copy of HEAD,
                      │                        evidence in .vbw/record.json.
                      ▼
   ┌──────────────────────────────────────┐    ┌─────────────────────────┐

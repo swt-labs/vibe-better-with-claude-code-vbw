@@ -1,5 +1,37 @@
 # Changelog
 
+## [2.1.32] - 2026-11-14
+
+Proofs work under Claude Code's sandbox again, and `vbw next` never answers on
+a step it could not finish.
+
+### Fixed
+
+- **Proofs, fix checks and mutation runs work under Claude Code's sandbox.**
+  VBW's clean copy of your committed code is now its own small git repository
+  inside `.vbw/runtime`. It borrows your project's stored files instead of
+  copying them, and making it writes nothing under your project's `.git`
+  folder (VBW's own `.git/vbw` folder aside). Claude Code 2.1.323 and later
+  refuse those writes from a sandboxed command, which stopped
+  `vbw mutate PLAN --run` (the known issue of 2.1.31). Each checked-out git
+  submodule gets its own small repository the same way. A copy kept by an
+  older VBW is remade on the next proof without a message, and its old entries
+  under `.git/worktrees` are removed.
+- **`vbw next`, `vbw status` and `vbw qa record` never answer on a step they
+  could not finish.** When a step fails, for example when QA's fingerprints of
+  the built work cannot be made, the command stops with that step's reason and
+  changes nothing, instead of answering from missing data. One cause of such a
+  failure is fixed as well: on macOS's bash 3.2, an empty list of files stopped
+  the fingerprint step. A CI run on 2026-11-13 showed it: `vbw next` skipped
+  that step and still answered.
+
+### For you to do
+
+- Update, then restart Claude Code. The first proof after the update remakes
+  the clean copy by itself.
+
+Sizes, for information (file bytes): kernel 970 KB (`plugin/bin/vbw` and `plugin/lib`), mods 364 KB (hooks, panel and status line), workflows 82 KB, prompts 119 KB (agents and skills), packs 5 KB.
+
 ## [2.1.31] - 2026-11-13
 
 Every test now runs in some proof, `vbw fix done` is never silent, and the
