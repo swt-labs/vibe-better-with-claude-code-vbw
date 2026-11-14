@@ -85056,7 +85056,7 @@
         "tests/proofcopy-keep.bats"
       ],
       "after": [],
-      "status": "blocked",
+      "status": "planned",
       "role": "dev",
       "tasks": [
         "Make each copy its own small repository (D727), for the project and for every checked-out submodule: git init --template= with its git folder inside the same slot, outside tree/ (one folder per repository, so removing the slot removes them all), objects/info/alternates pointing at that repository's objects, include.path to its config, HEAD set with update-ref --no-deref, then read-tree and checkout-index. Name the git folder in tree/.git by a relative path, as git does for submodules, so the unchanged walk in vbw_require_project and hooks/project.sh never reads a copy as a submodule even when the project's path holds a folder named modules. Keep the #737 way where .gitmodules cannot be written: every other file checked out, .gitmodules marked skip-worktree, vbw-gitmodules-index in the copy's git folder.",
@@ -85081,9 +85081,16 @@
           "checks": {
             "C706": "red"
           }
+        },
+        {
+          "at": "2026-11-14T00:56:32Z",
+          "head": "029374b8c3b7857c2daf4116d156c54decb16ccb",
+          "first": false,
+          "checks": {
+            "C706": "red"
+          }
         }
-      ],
-      "note": "Tasks 1-5 were already committed and C706 passes (ok 7). Before the mutation step I ran a stale leftover script in .vbw/runtime/scratch/mut.sh from plan P192.3 by mistake: it edited plugin/agents/dev.md, qa.md, scout.md and plugin/hooks/guard-tools.jq and queued 10 breaks for P192.3. The guard refuses my edits to those files, so the tree is dirty and plan done cannot pass. Restore with: git checkout -- plugin/agents/dev.md plugin/agents/qa.md plugin/agents/scout.md plugin/hooks/guard-tools.jq, and drop the queued P192.3 breaks (do not run vbw mutate P192.3 --run). Then rerun P238.1 for the 14 rule breaks (R309.1-14) and task5 --none."
+      ]
     },
     {
       "id": "P238.2",
@@ -107168,6 +107175,17 @@
         "ended": "2026-11-14T00:49:57Z",
         "cost": {
           "usd": 0.67698
+        }
+      },
+      {
+        "id": "build-20261114T005111Z",
+        "kind": "build",
+        "session": "0ee781c3-c5b6-4a6c-889f-04b89f1fba4a",
+        "milestone": "M59",
+        "started": "2026-11-14T00:51:11Z",
+        "ended": "2026-11-14T01:08:25Z",
+        "cost": {
+          "usd": 0.674579
         }
       }
     ],
