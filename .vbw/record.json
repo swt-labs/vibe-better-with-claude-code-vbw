@@ -91395,6 +91395,11 @@
       "id": "T303",
       "text": "Clean copy tidy-ups from M59 QA (2026-11-14): proofcopy_own reads alternates with 'done < file 2> /dev/null', so bash applies the input first and a hand-deleted alternates file prints 'No such file or directory' (swap the redirects); the comment above proofcopy_sweep_rm still says it removes the slot 'with its worktree entries' (tidying now lives in proofcopy_tidy)",
       "status": "open"
+    },
+    {
+      "id": "T304",
+      "text": "Stop on a failed step beyond vbw next (R310 follow-up, M59 QA 2026-11-14): vbw prove (cmd-prove.sh), vbw req accept (cmd-req.sh) and vbw show phase (cmd-show.sh) call qa_combined inside a \"$(...)\" argument, so a hashing failure prints its reason but they go on with empty fingerprints; values computed inside next_decide's final jq command line (commit_failure_json, vbw_session, next_manifests) reach jq empty and are caught only by jq's own error; tests/next-step-failure.bats's structure check clears an unguarded assignment when any later line has '|| return' (make it per assignment)",
+      "status": "open"
     }
   ],
   "decisions": [
