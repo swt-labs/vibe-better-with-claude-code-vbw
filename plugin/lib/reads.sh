@@ -3,12 +3,12 @@
 # the access time (atime, the time the system notes when a file is read) of
 # every tracked file and folder of the copy, and of the copy's .git file, is
 # set back with touch -a to an old date. After it, what moved forward was read:
-# a file was opened, a folder was listed, git was used. The copy is a worktree,
-# and its .git file (the line naming its git folder) is what every git command
-# run inside the copy reads first; its HEAD and index sit in the repository's
-# shared git folder, which git run elsewhere in the repository also reads (git
-# worktree list, git branch, another worktree being made), so they would tell
-# nothing about the run. Build output a run writes (a file under a folder named
+# a file was opened, a folder was listed, git was used. The copy is a repository
+# of its own, and its .git file (the line naming its git folder, in the same
+# slot) is what every git command run inside the copy reads first; its HEAD and
+# index sit in that git folder, outside the copy's tree, which git run by VBW
+# beside the copy (refreshing it, a submodule's copy) also reads, so they would
+# tell nothing about the run. Build output a run writes (a file under a folder named
 # in PROOFCOPY_BUILD_DIRS, proofcopy.sh) is gone before the next run, which
 # starts without it as the first run of a fresh copy does. Any other file a run
 # writes remembers that run's read list; a later run in the same copy that
@@ -179,7 +179,7 @@ reads_reset() {
     slack=0
     : > "$st/mark0" || return 1
     [ "$exact" = true ] || reads_mark "$st/mark0" 0 || return 1
-    # A worktree's .git is a file (gitrepository-layout): the collection's sign of git use.
+    # A copy's .git is a file naming its git folder (gitrepository-layout): the collection's sign of git use.
     [ -f "$copy/.git" ] || return 1
     reads_tracked "$copy" > "$st/tracked" || return 1
     jq -Rs -j '
@@ -219,7 +219,7 @@ reads_reset() {
 }
 
 # reads_tracked COPY: the copy's tracked paths, NUL-separated, each checked-out
-# submodule's (vbw_subs, a worktree of its own in the copy, lib/proofcopy.sh)
+# submodule's (vbw_subs, a repository of its own in the copy, lib/proofcopy.sh)
 # under its folder.
 reads_tracked() {
   local p
@@ -230,7 +230,7 @@ reads_tracked() {
   done < <(vbw_subs)
 }
 
-# reads_subgits COPY: the .git file of each submodule's worktree in the copy,
+# reads_subgits COPY: the .git file of each submodule's copy in the copy,
 # NUL-separated: git used there is git use as much as in the copy itself.
 reads_subgits() {
   local p

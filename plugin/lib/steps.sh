@@ -90,7 +90,8 @@ def step_sentence($s; $t):
 # step_history_file: the history's path, empty outside a git repository.
 step_history_file() {
   local common
-  common=$(git rev-parse --path-format=absolute --git-common-dir 2> /dev/null) || return 0
+  # Asked of the project, not of the current folder (inside a clean copy that is a repository of its own).
+  common=$(git -C "${VBW_ROOT:-.}" rev-parse --path-format=absolute --git-common-dir 2> /dev/null) || return 0
   vbw_out '%s/vbw/steps.json\n' "$common"
 }
 

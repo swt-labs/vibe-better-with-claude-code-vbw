@@ -242,12 +242,13 @@ mixed_change() {
 }
 
 @test "R202: vbw fix done counts the time its clean copies take as VBW's own work" {
-  # One slot, so one copy: a git whose worktree add takes 4 s puts them into the own-work line (0.1 min);
-  # without them the round's own steps stay under 3 s, which prints 0.0.
+  # One slot, so one copy: a git whose making of the copy's own repository (init --separate-git-dir, D727)
+  # takes 4 s puts them into the own-work line (0.1 min); without them the round's own steps stay under 3 s,
+  # which prints 0.0.
   "$VBW" config set check_jobs 1 > /dev/null
   mkdir -p "$TEST_ROOT/slowbin"
   real=$(command -v git)
-  printf '#!/bin/sh\ncase " $* " in *" worktree add "*) sleep 4 ;; esac\nexec %s "$@"\n' "$real" > "$TEST_ROOT/slowbin/git"
+  printf '#!/bin/sh\ncase " $* " in *" --separate-git-dir "*) sleep 4 ;; esac\nexec %s "$@"\n' "$real" > "$TEST_ROOT/slowbin/git"
   chmod +x "$TEST_ROOT/slowbin/git"
   edit_record '.fixes = [{id: "F1", req: "R1", attempts: 0, status: "open", note: "a"}]'
   PATH="$TEST_ROOT/slowbin:$PATH" vbw_run fix done F1

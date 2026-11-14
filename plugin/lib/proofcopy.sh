@@ -1,21 +1,32 @@
 #!/usr/bin/env bash
 [ -z "${VBW_LOADED_PROOFCOPY:-}" ] || return 0 # load once per process (R299)
 VBW_LOADED_PROOFCOPY=1
-# The clean copy vbw prove runs on (docs/proof.md): a detached git worktree of
-# HEAD inside the project, so uncommitted changes and untracked files change no
-# proof result. Git-ignored paths (dependencies, env files) are copied in, never
-# linked (a copy-on-write clone where the file system offers one, a plain copy
-# where it refuses), so the copy shares no writable folder with the working
-# folder. Build output is not environment: the copy builds its own, so no
-# artifact of a proof points into the working folder or another copy.
+# The clean copy vbw prove runs on (docs/proof.md): HEAD checked out in a small
+# repository of its own inside the project, so uncommitted changes and untracked
+# files change no proof result (R309). Its files are in the slot's tree/ and its
+# git folder, never named .git, beside tree/ in the same slot: it borrows the
+# project's objects (objects/info/alternates) and reads the project's settings
+# (include.path), so nothing is written under the project's .git (Claude Code's
+# sandbox refuses writes to .git/worktrees, .git/config and .git/hooks), the
+# project gains no worktree entry, ref or config line, and removing the slot removes
+# the repository. tree/.git is a file naming that folder by a relative path, as git
+# does for a submodule (so the walk up from a copy never takes it for one), and
+# core.worktree binds the copy to its place (proofcopy_own). Git-ignored paths
+# (dependencies, env files) are copied in, never linked (a copy-on-write clone
+# where the file system offers one, a plain copy where it refuses), so the copy
+# shares no writable folder with the working folder. Build output is not
+# environment: the copy builds its own, so no artifact of a proof points into the
+# working folder or another copy.
 #
-# A checked-out submodule (vbw_subs) gets a detached worktree of its own HEAD in
-# its folder of the copy, and its own ignored paths are copied in the same way:
+# A checked-out submodule (vbw_subs) gets a repository of its own at its own HEAD
+# in its folder of the copy, with its own git folder in the same slot and the
+# submodule's objects, and its own ignored paths are copied in the same way:
 # vbw commit commits there and leaves the project's pointer where it was
 # (docs/workflows.md, "Submodules"), so its HEAD is its committed code.
 #
 # Kept copies (#738, docs/proof.md "Kept copies"). A copy lives in a slot,
-# .vbw/runtime/proof.keep.N (N from 1): tree/ (the worktree), pid (its owner,
+# .vbw/runtime/proof.keep.N (N from 1): tree/ (the files), git and git-K (the git
+# folders of the project's copy and of the K-th submodule's), pid (its owner,
 # the vbw process using it: taken by an exclusive create, vbw_lock_create, and
 # from an owner that has ended by vbw_lock_takeover), manifest (what the copy
 # was last brought to: its submodules, and each ignored path copied in with its
@@ -30,7 +41,7 @@ VBW_LOADED_PROOFCOPY=1
 # A claimed copy is brought up to date before any unit runs (proofcopy_refresh)
 # and then holds what a copy made fresh at that moment would hold: HEAD
 # detached and git reset --hard to the project's HEAD (each submodule to its
-# own; a branch a unit checked out there never moves); git clean -ffdx, sparing only
+# own; a branch a unit made there never moves); git clean -ffdx, sparing only
 # the ignored paths that are still to be copied in and were copied before; each
 # ignored path new to the list copied in; in one copied before, the entries that
 # changed brought up to date one by one (proofcopy_sync): those of its source
@@ -40,11 +51,13 @@ VBW_LOADED_PROOFCOPY=1
 # the manifest's with no changed entry, or an entry cannot be brought up to date
 # on its own. A failing step, a slot without a manifest, a
 # changed set of submodules, or vbw prove --full (PROOFCOPY_FRESH): the copy is
-# removed and made fresh in its slot. Every git command in a copy runs only
-# after the copy is checked to be a worktree made for that place (proofcopy_own):
+# removed and made fresh in its slot; so is a copy whose commit can no longer be
+# read (history rewritten and pruned: the copy keeps no object alive), and a slot
+# an older VBW made (a git worktree). Every git command in a copy runs only
+# after the copy is checked to be the copy made for that place (proofcopy_own):
 # git finds a repository by walking up, and above the copy is the user's project;
-# a copied project folder holds the original's; a linked folder can lead to the
-# user's own checkout. It runs without GIT_DIR and its kin (proofcopy_git). The
+# a copied slot or project folder holds the original's; a linked folder can lead
+# to the user's own checkout. It runs without GIT_DIR and its kin (proofcopy_git). The
 # stamp and done are each followed by a wait for the clock to move past them
 # (proofcopy_tick), so no change in their tick is missed.
 #
@@ -57,7 +70,9 @@ VBW_LOADED_PROOFCOPY=1
 # hours old. A copy is first claimed by one atomic mv to
 # proof.$$.swept-<its name>, so a second cleanup sees a live owner and leaves
 # it, and a cleanup killed partway leaves a folder whose owner has ended. A
-# copy that will not go prints one warning line and the proof goes on.
+# copy that will not go prints one warning line and the proof goes on. An older
+# VBW's worktree entry for a copy under proof.* that no longer holds is removed
+# by hand (proofcopy_tidy), never by a git worktree command.
 #
 # Left out (R205): the paths listed under ## Clean copy in .vbw/spec.md (the
 # record's project.leave_out) are not copied in: a listed path, or any ignored
@@ -124,14 +139,14 @@ proofcopy_create_slots() {
   PROOF_SLOTS=()
   mkdir -p "$VBW_RUNTIME" || vbw_die "cannot create $VBW_RUNTIME"
   proofcopy_sweep
-  # Listed before the prune, so a worktree whose folder is gone is still left out.
+  # Listed before the copies change, so a worktree whose folder is gone is still left out.
   proofcopy_worktrees
-  git -C "$VBW_ROOT" worktree prune 2> /dev/null || true
   while [ "${#PROOF_COPIES[@]}" -lt "$1" ]; do
     d="$VBW_RUNTIME/proof.keep.$n"
     if proofcopy_take "$d"; then proofcopy_ready "$d"; fi
     n=$((n + 1))
   done
+  proofcopy_tidy
   PROOF_COPY=${PROOF_COPIES[0]}
   proofcopy_plain_say
 }
@@ -193,34 +208,58 @@ proofcopy_git() (
   exec git "$@"
 )
 
-# proofcopy_own DIR REPO: DIR, a folder under the project, is a worktree of
-# REPO made for this place: no link anywhere on its path below the project (a
-# linked folder can lead to the user's own checkout), the top of a repository of
-# its own (never a folder git would take for part of one above it), sharing
-# REPO's repository (in a copied project folder the kept copy's .git still names
-# the original's, which git would change), with a git dir among REPO's worktrees
-# whose gitdir file names DIR itself.
+# proofcopy_own DIR REPO: DIR, a folder under the project, is the copy of REPO
+# made for this place (proofcopy_checkout): no link anywhere on its path below the
+# project (a linked folder can lead to the user's own checkout), the top of a
+# repository of its own (never a folder git would take for part of one above
+# it), whose .git file names, by a relative path, a git folder that is a child of
+# the folder holding DIR's tree (the slot), bound to this place (its core.worktree
+# is DIR itself: a slot copied or moved elsewhere names the old place), borrowing
+# REPO's objects and no others (one line in objects/info/alternates). A worktree
+# of an older VBW, a folder with its own .git folder and a copy of another
+# repository fail one of these.
 proofcopy_own() {
-  local top here real common gd
-  [ -f "$1/.git" ] || return 1
+  local real here top gd line wt alt n
+  [ -f "$1/.git" ] && [ ! -L "$1/.git" ] || return 1
   case "$1" in "$VBW_ROOT"/*) ;; *) return 1 ;; esac
   real=$(cd -P "$VBW_ROOT" 2> /dev/null && pwd -P) || return 1
   here=$(cd -P "$1" 2> /dev/null && pwd -P) || return 1
   [ "$here" = "$real${1#"$VBW_ROOT"}" ] || return 1
+  line=; read -r line < "$1/.git" || :
+  line=${line#gitdir: }
+  case "$line" in '' | /*) return 1 ;; esac
+  gd=$(cd -P "$1/$line" 2> /dev/null && pwd -P) || return 1
+  case "$here" in "$(dirname "$gd")"/tree | "$(dirname "$gd")"/tree/*) ;; *) return 1 ;; esac
+  [ "$(proofcopy_git -C "$1" rev-parse --absolute-git-dir 2> /dev/null)" = "$gd" ] || return 1
   top=$(proofcopy_git -C "$1" rev-parse --show-toplevel 2> /dev/null) || return 1
   [ "$(cd -P "$top" 2> /dev/null && pwd -P)" = "$here" ] || return 1
-  common=$(proofcopy_git -C "$1" rev-parse --path-format=absolute --git-common-dir 2> /dev/null) || return 1
-  [ "$common" = "$(proofcopy_git -C "$2" rev-parse --path-format=absolute --git-common-dir 2> /dev/null)" ] || return 1
-  gd=$(proofcopy_git -C "$1" rev-parse --absolute-git-dir 2> /dev/null) || return 1
-  case "$gd" in "$common"/worktrees/*) ;; *) return 1 ;; esac
-  top=$(cat "$gd/gitdir" 2> /dev/null) || return 1
-  [ "$(cd -P "$(dirname "$top")" 2> /dev/null && pwd -P)" = "$here" ]
+  wt=$(proofcopy_git config --file "$gd/config" core.worktree 2> /dev/null) || return 1
+  [ "$(cd -P "$wt" 2> /dev/null && pwd -P)" = "$here" ] || return 1
+  alt=; n=0
+  while IFS= read -r line; do
+    n=$((n + 1))
+    [ "$n" -gt 1 ] || alt=$line
+  done < "$gd/objects/info/alternates" 2> /dev/null
+  [ "$n" -eq 1 ] || return 1
+  case "$alt" in /*) ;; *) alt="$gd/objects/$alt" ;; esac
+  [ "$(cd -P "$alt" 2> /dev/null && pwd -P)" = "$(proofcopy_repo_objects "$2")" ]
+}
+
+# proofcopy_repo_objects REPO: REPO's objects folder, absolute and physical
+# (what a copy of REPO borrows). Fails when REPO is no repository.
+proofcopy_repo_objects() {
+  local c
+  c=$(proofcopy_git -C "$1" rev-parse --path-format=absolute --git-common-dir 2> /dev/null) || return 1
+  (cd -P "$c/objects" 2> /dev/null && pwd -P)
 }
 
 # proofcopy_reset COPY SHA: COPY's HEAD detached at SHA, then its index and
 # files reset to it. A branch a unit checked out in the copy stays where it is:
-# reset --hard alone would move it.
+# reset --hard alone would move it. Fails, so the copy is made fresh, when the
+# commit the copy stands at can no longer be read: the copy borrows the repository's
+# objects and keeps none alive, so a history rewritten and pruned takes them.
 proofcopy_reset() {
+  proofcopy_git -C "$1" rev-parse --verify -q 'HEAD^{tree}' > /dev/null 2>&1 || return 1
   proofcopy_git -C "$1" update-ref --no-deref HEAD "$2" > /dev/null 2>&1 \
     && proofcopy_git -C "$1" -c submodule.recurse=false reset -q --hard "$2" > /dev/null 2>&1
 }
@@ -261,16 +300,17 @@ proofcopy_left_read() {
 
 # proofcopy_make SLOT: a fresh copy in the held, empty slot.
 proofcopy_make() {
-  local d=$1 copy=$1/tree real l p subs=()
+  local d=$1 copy=$1/tree real l p n=0 subs=()
   touch "$d/stamp.next" || vbw_die "cannot write in $d"
   proofcopy_tick "$d/stamp.next"
-  l=$(proofcopy_checkout "$VBW_ROOT" "$copy" 2>&1) \
+  l=$(proofcopy_checkout "$VBW_ROOT" "$copy" "$d/git" 2>&1) \
     || { proofcopy_remove; vbw_die "cannot make a clean copy of the committed code: ${l##*$'\n'}"; }
-  # Each checked-out submodule: a detached worktree of its own HEAD (its committed
+  # Each checked-out submodule: a repository of its own at its own HEAD (its committed
   # code, which vbw commit moves; the project's pointer may lag), in its folder.
   while IFS= read -r -d '' p; do subs+=("$p"); done < <(vbw_subs)
   for p in ${subs[@]+"${subs[@]}"}; do
-    l=$(proofcopy_checkout "$VBW_ROOT/$p" "$copy/$p" 2>&1) \
+    n=$((n + 1))
+    l=$(proofcopy_checkout "$VBW_ROOT/$p" "$copy/$p" "$d/git-$n" 2>&1) \
       || { proofcopy_remove; vbw_die "cannot make a clean copy of the submodule $p's committed code: ${l##*$'\n'}"; }
   done
   real=$(cd -P "$VBW_ROOT" && pwd -P) || vbw_die "cannot resolve $VBW_ROOT"
@@ -612,26 +652,61 @@ proofcopy_sweep_rm() {
   { [ ! -e "$claim" ] && mv "$1" "$claim" 2> /dev/null; } || { rm -f "$1/pid"; return 0; }
   chmod -R u+rwx "$claim" > /dev/null 2>&1 || true
   rm -rf "$claim" > /dev/null 2>&1 || true
-  git -C "$VBW_ROOT" worktree prune > /dev/null 2>&1 || true
-  proofcopy_prune_subs
   [ ! -e "$claim" ] || printf 'vbw: cannot remove the leftover proof copy %s; remove it by hand\n' ".vbw/runtime/${claim##*/}" >&2
 }
 
-# proofcopy_checkout REPO DEST: a detached worktree of REPO's HEAD at DEST. When
-# git cannot write it (Claude Code's sandbox refuses to create any file named
-# .gitmodules), the half-made one goes and it is made again with every file but
-# the .gitmodules files, which stay unwritten, marked skip-worktree: git status
-# stays clean, git reads them from the index, and so does vbw_subs, told by
-# vbw-gitmodules-index in the copy's git directory. Git's error on stderr.
+# proofcopy_checkout REPO DEST GITDIR: DEST becomes a small repository of its own
+# at REPO's HEAD (R309), its files in DEST and its git folder GITDIR, a folder
+# beside DEST's tree in the same slot (never named .git, so the walk up from a
+# copy, vbw_require_project and hooks/project.sh, never takes it for a submodule).
+# Nothing is written under REPO's git folder: GITDIR borrows its objects
+# (objects/info/alternates) and reads its settings (include.path), and DEST/.git
+# is a file naming GITDIR by a relative path, as git does for a submodule, bound to
+# this place by core.worktree. When git cannot write it (Claude Code's sandbox
+# refuses to create any file named .gitmodules), the half-made one goes and it is
+# made again with every file but the .gitmodules files, which stay unwritten,
+# marked skip-worktree: git status stays clean, git reads them from the index, and
+# so does vbw_subs, told by vbw-gitmodules-index in GITDIR. Git's error on stderr.
 proofcopy_checkout() {
-  git -C "$1" -c core.hooksPath=/dev/null worktree add -q --detach "$2" HEAD > /dev/null 2>&1 && return 0
-  rm -rf "$2"
-  git -C "$1" worktree prune
-  git -C "$1" -c core.hooksPath=/dev/null worktree add -q --no-checkout --detach "$2" HEAD > /dev/null || return 1
-  proofcopy_git -C "$2" read-tree HEAD || return 1
-  proofcopy_git -C "$2" ls-files -z -- ':(glob)**/.gitmodules' | proofcopy_git -C "$2" update-index -z --skip-worktree --stdin || return 1
-  proofcopy_git -C "$2" checkout-index -a -q -u || return 1
-  : > "$(proofcopy_git -C "$2" rev-parse --absolute-git-dir)/vbw-gitmodules-index"
+  proofcopy_repo "$1" "$2" "$3" > /dev/null 2>&1 && return 0
+  chmod -R u+rwx "$2" "$3" > /dev/null 2>&1 || true
+  rm -rf "$2" "$3"
+  proofcopy_repo "$1" "$2" "$3" skip > /dev/null || return 1
+  : > "$3/vbw-gitmodules-index"
+}
+
+# proofcopy_repo REPO DEST GITDIR [skip]: the work of proofcopy_checkout; with
+# skip, the .gitmodules files are marked skip-worktree and not written.
+proofcopy_repo() {
+  local repo=$1 dest=$2 gd=$3 here common rel up q c
+  common=$(proofcopy_git -C "$repo" rev-parse --path-format=absolute --git-common-dir) || return 1
+  proofcopy_git -c init.defaultBranch=vbw init -q --template= --separate-git-dir "$gd" "$dest" || return 1
+  here=$(cd -P "$dest" && pwd -P) || return 1
+  # From DEST up to its slot (one step for tree, two for tree/sub, ...), then GITDIR.
+  rel=${dest#"$(dirname "$gd")"/}
+  up=../
+  while [ "$rel" != "${rel#*/}" ]; do
+    up="../$up"
+    rel=${rel#*/}
+  done
+  printf 'gitdir: %s%s\n' "$up" "${gd##*/}" > "$dest/.git" || return 1
+  mkdir -p "$gd/objects/info" || return 1
+  printf '%s\n' "$(cd -P "$common/objects" && pwd -P)" > "$gd/objects/info/alternates" || return 1
+  # The repository's own settings read first, so what git init wrote and this
+  # place's binding come after and win (a submodule's own says core.worktree too).
+  q=$common/config
+  q=${q//\\/\\\\}
+  q=${q//\"/\\\"}
+  c=${here//\\/\\\\}
+  c=${c//\"/\\\"}
+  { printf '[include]\n\tpath = "%s"\n' "$q"; cat "$gd/config"; printf '[core]\n\tworktree = "%s"\n' "$c"; } > "$gd/config.new" \
+    && mv "$gd/config.new" "$gd/config" || return 1
+  proofcopy_git -C "$dest" update-ref --no-deref HEAD "$(proofcopy_git -C "$repo" rev-parse HEAD)" || return 1
+  proofcopy_git -C "$dest" read-tree HEAD || return 1
+  if [ -n "${4:-}" ]; then
+    proofcopy_git -C "$dest" ls-files -z -- ':(glob)**/.gitmodules' | proofcopy_git -C "$dest" update-index -z --skip-worktree --stdin || return 1
+  fi
+  proofcopy_git -C "$dest" checkout-index -a -q -u
 }
 
 # Worktrees (R253): the folder of every worktree of the repository that lies
@@ -775,13 +850,11 @@ proofcopy_copy() {
   return 1
 }
 
-# proofcopy_discard SLOT: empty the held slot but for its pid file; git forgets
-# the worktrees that were in it. Read-only folders are opened up first.
+# proofcopy_discard SLOT: empty the held slot but for its pid file; the git
+# folders of its copies go with it. Read-only folders are opened up first.
 proofcopy_discard() {
   chmod -R u+rwx "$1" 2> /dev/null || true
   find "$1" -mindepth 1 -maxdepth 1 ! -name pid -exec rm -rf {} + 2> /dev/null || true
-  git -C "$VBW_ROOT" worktree prune 2> /dev/null || true
-  proofcopy_prune_subs
 }
 
 # proofcopy_release: hand back every slot this command holds, copy and all,
@@ -797,27 +870,52 @@ proofcopy_release() {
   PROOF_COPY=
 }
 
-# proofcopy_remove: remove every slot this command holds, worktrees and all,
+# proofcopy_remove: remove every slot this command holds, git folders and all,
 # read-only folders included (rm never follows a link out of a copy).
 proofcopy_remove() {
   local d
   for d in ${PROOF_SLOTS[@]+"${PROOF_SLOTS[@]}"}; do
     vbw_guard_drop "$d"
   done
-  git -C "$VBW_ROOT" worktree prune 2> /dev/null || true
-  proofcopy_prune_subs
   PROOF_SLOTS=()
   PROOF_COPIES=()
   PROOF_COPY=
 }
 
-# proofcopy_prune_subs: each submodule forgets the worktrees of removed copies
-# (removing a copy's folder removed theirs). Never fails.
-proofcopy_prune_subs() {
+# proofcopy_tidy: the worktree entries an older VBW left in the git folder of the
+# project and of each checked-out submodule for a copy under .vbw/runtime/proof.*,
+# and that no longer hold (the folder is gone, or something else, a copy of this
+# VBW, stands at that path now: its .git file does not name the entry), are
+# removed, best effort. Each entry's folder is read (its gitdir file) and removed
+# by hand, so no git worktree command runs and an entry whose path a new copy holds
+# goes too (git worktree prune would keep it); an entry that still holds, an older
+# VBW's live copy, stays. With no such entry nothing is written, and a folder git
+# may not write (Claude Code's sandbox) is left, with nothing said. Never fails.
+proofcopy_tidy() {
   local p
+  proofcopy_tidy_repo "$VBW_ROOT"
   while IFS= read -r -d '' p; do
-    git -C "$VBW_ROOT/$p" worktree prune > /dev/null 2>&1 || true
+    proofcopy_tidy_repo "$VBW_ROOT/$p"
   done < <(vbw_subs)
+  return 0
+}
+
+# proofcopy_tidy_repo REPO: proofcopy_tidy for one repository.
+proofcopy_tidy_repo() {
+  local real common g l w n
+  real=$(cd -P "$VBW_ROOT" 2> /dev/null && pwd -P) || return 0
+  common=$(proofcopy_git -C "$1" rev-parse --path-format=absolute --git-common-dir 2> /dev/null) || return 0
+  for g in "$common"/worktrees/*/; do
+    g=${g%/}
+    [ -f "$g/gitdir" ] || continue
+    l=; read -r l < "$g/gitdir" || :
+    case "$l" in "$real"/.vbw/runtime/proof.*/.git | "$VBW_ROOT"/.vbw/runtime/proof.*/.git) ;; *) continue ;; esac
+    # Still its worktree: the folder's .git file names this entry.
+    w=; [ ! -f "$l" ] || read -r w < "$l" || :
+    n=$(cd -P "$g" 2> /dev/null && pwd -P)
+    [ "${w#gitdir: }" != "$g" ] && [ "${w#gitdir: }" != "$n" ] || continue
+    rm -rf "$g" > /dev/null 2>&1 || true
+  done
   return 0
 }
 

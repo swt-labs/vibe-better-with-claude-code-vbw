@@ -133,7 +133,9 @@ vbw_now() {
 # panel reads {"sound": "<value>"} from this file; unset means any voice).
 vbw_clone_settings_file() {
   local common
-  common=$(git rev-parse --path-format=absolute --git-common-dir 2> /dev/null) || vbw_die "not a git repository"
+  # Asked of the project, not of the folder the code runs in: inside a clean copy
+  # (lib/proofcopy.sh) the current folder is a repository of its own.
+  common=$(git -C "${VBW_ROOT:-.}" rev-parse --path-format=absolute --git-common-dir 2> /dev/null) || vbw_die "not a git repository"
   vbw_out '%s/vbw/settings.json\n' "$common"
 }
 
