@@ -35084,6 +35084,12 @@
           "from": "deep",
           "to": "deep",
           "reason": "Dev blocked P238.1: C706 cannot pass within the check's 300 s timeout: its case 'R309 cleanup' takes about 318 s on a loaded machine and about the unit's whole timeout in any case. It sends TERM to a vbw prove held on a unit (HOLD=1) and waits for it before touching $MARK/release; bash defers the trap while it waits on the unit, so the interrupted proof ends only when the held unit times out (300 s). tests/proofcopy-keep.bats's interrupt case does the same (311 s). The other nine cases take about 80 s. Result: vbw check C706 reports timeout (7 of 10 cases done), and vbw mutate --run refuses ('checks do not pass on the unbroken code'). The fix is one line in tests/clean-copy-repo.bats: 'touch \"$MARK/release\"' before 'wait \"$pid\"' (verified: the case then takes 18 s, C706 passes in 101 s, all 10 cases ok under bats). The plan cannot commit that file before a survivor opens it (vbw commit refuses it) and vbw mutate refuses an uncommitted check file, so I reverted my edit. All five tasks of P238.1 are already committed and all 10 cases pass when run directly with bats. 16 breaks are queued for vbw mutate P238.1 --run (R309.1 to R309.14), task5 recorded as none; they need that one-line test change approved or committed first."
+        },
+        {
+          "at": "2026-11-14T02:22:23Z",
+          "from": "deep",
+          "to": "deep",
+          "reason": "Dev blocked P238.2: Docs done and committed (04a1af50, dc18669d). Mutation: R309.10 break in docs/proof.md survived C706 because the check reads plugin/lib code, not docs; --none refused (rule is breakable in P238.1 code). A docs-only plan cannot kill it; needs a decision on docs mutation for code-checked rules."
         }
       ]
     },
@@ -85493,13 +85499,40 @@
       "after": [
         "P238.1"
       ],
-      "status": "planned",
+      "status": "blocked",
       "role": "docs",
       "tasks": [
         "docs/proof.md: describe the clean copy as its own small repository whose git folder lives in its slot under .vbw/runtime, borrowing the project's stored files and reading its settings, so nothing is written in the project's .git but .git/vbw and it works under Claude Code's sandbox (Kept copies, the ownership check, Leftover proof copies, and every place that says worktree for a proof copy)",
         "docs/proof.md: say that a kept copy whose commit was rewritten away is made fresh, and that copies left by an older VBW (worktrees) are remade once and their old git entries tidied where git may write",
         "README.md: the diagram line 'Proof in a detached worktree' and any other mention of the proof copy as a worktree"
-      ]
+      ],
+      "mutations": [
+        {
+          "rule": {
+            "req": "R309",
+            "k": 10
+          },
+          "what": "docs claim the old entry is removed with a message in the sandbox",
+          "files": [
+            "docs/proof.md"
+          ],
+          "checks": {
+            "C706": "green"
+          },
+          "result": "survivor",
+          "at": "2026-11-14T02:20:05Z",
+          "head": "dc18669d6220d1a82303b395926f23ab5aa0b546",
+          "tree": "f4f5ec2614d38c267b6a88b618726cbcb255dd56",
+          "contract": "1683559ba96ade80617c12dfba46ceb89e78f12b7f35cd4495d47807e43e5d26",
+          "digests": [
+            {
+              "file": "docs/proof.md",
+              "sha256": "409c070099c6e1359d20e093d100a4be490781a22d6bfb8ba64884f107d1a3c9"
+            }
+          ]
+        }
+      ],
+      "note": "Docs done and committed (04a1af50, dc18669d). Mutation: R309.10 break in docs/proof.md survived C706 because the check reads plugin/lib code, not docs; --none refused (rule is breakable in P238.1 code). A docs-only plan cannot kill it; needs a decision on docs mutation for code-checked rules."
     },
     {
       "id": "P239.1",
@@ -107590,6 +107623,17 @@
         "ended": "2026-11-14T02:14:47Z",
         "cost": {
           "usd": 0.793297
+        }
+      },
+      {
+        "id": "build-20261114T021532Z",
+        "kind": "build",
+        "session": "0ee781c3-c5b6-4a6c-889f-04b89f1fba4a",
+        "milestone": "M59",
+        "started": "2026-11-14T02:15:32Z",
+        "ended": "2026-11-14T02:22:36Z",
+        "cost": {
+          "usd": 0.26158
         }
       }
     ],
