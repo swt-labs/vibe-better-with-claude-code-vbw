@@ -85059,13 +85059,6 @@
         "Kernel code that runs with its working folder inside a copy (checks_unit_run cds there) keeps reading this clone's stores from the project's .git/vbw: vbw_clone_settings_file (core.sh) and step_history_file (steps.sh) ask git about the project (VBW_ROOT), not the current folder, as consent, interview and the proof store already do.",
         "Rewrite the header comment of proofcopy.sh and the comments in reads.sh that describe the copy as a git worktree sharing the repository's git folder; tests/clean-copy-repo.bats passes under /bin/bash 3.2 and bash 5, and so do the edited cases in tests/proofcopy-keep.bats, tests/proof-reuse.bats and tests/proof-copy-cleanup.bats and the whole of tests/clean-copy-*.bats and tests/timed-proofcopy-keep.bats."
       ],
-      "amendments": [
-        {
-          "what": "file tests/proofcopy-keep.bats added",
-          "at": "2026-11-13T22:54:50Z",
-          "session": "0ee781c3"
-        }
-      ],
       "red_runs": [
         {
           "at": "2026-11-13T22:58:15Z",
@@ -95124,6 +95117,12 @@
         "P238.2",
         "P239.1"
       ]
+    },
+    {
+      "id": "D729",
+      "at": "2026-11-14T00:39:24Z",
+      "text": "Contract approved: 295 requirements, 701 checks, 690 plans (c7d6a2b8938a)",
+      "plans": []
     }
   ],
   "commands": {
