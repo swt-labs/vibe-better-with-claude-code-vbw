@@ -133,3 +133,40 @@ next_fails() {
   '\'' *.sh | LC_ALL=C sort -u' _ "$PLUGIN_ROOT/lib"
   [ "$output" = "$(printf 'next_road_input\nstep_road_input')" ] || { echo "$output"; false; }
 }
+
+# fail_jq_on PATTERN REASON: a jq on $SHIM that refuses any call whose arguments hold PATTERN.
+fail_jq_on() {
+  printf '#!/bin/sh\nfor a; do case "$a" in *"%s"*) echo "%s" >&2; exit 5 ;; esac; done\nexec "%s" "$@"\n' "$1" "$2" "$(command -v jq)" > "$SHIM/jq"
+  chmod +x "$SHIM/jq"
+}
+
+@test "R310 steps: a failed tracked-file count or holder lookup stops vbw next with that step's reason" {
+  fail_jq_on "tracked: length" "jq: forced failure of the counts"
+  next_fails "jq: forced failure of the counts"
+  fail_jq_on ".lease.session // empty" "jq: forced failure of the holder"
+  next_fails "jq: forced failure of the holder"
+}
+
+@test "R310 steps: a failed extraction of QA's listing stops vbw next with that reason, not fingerprints of an empty listing" {
+  printf '#!/bin/sh\nif [ "$1" = -r ] && [ "$2" = ".[]" ]; then echo "jq: forced failure of the listing" >&2; exit 5; fi\nexec "%s" "$@"\n' "$(command -v jq)" > "$SHIM/jq"
+  chmod +x "$SHIM/jq"
+  next_fails "jq: forced failure of the listing"
+}
+
+@test "R310 structure: every command substitution assignment in next_decide stops the step on a failure" {
+  local body bad
+  body=$(sed -n '/^next_decide() {/,/^}/p' "$PLUGIN_ROOT/lib/cmd-next.sh")
+  [ -n "$body" ]
+  # An assignment of $(...) (an 'if x=$(...)' condition excepted) is closed by a
+  # '|| return' or '|| exit' before the next assignment begins.
+  bad=$(printf '%s\n' "$body" | awk '
+    /^[[:space:]]*#/ { next }
+    /(^|[[:space:];]|\|\| )[A-Za-z_]+=\$\(/ && !/(^|[[:space:]])if [A-Za-z_]+=\$\(/ {
+      if (pending != "") print pending
+      pending = $0
+    }
+    /\|\| *(return|exit)/ { pending = "" }
+    END { if (pending != "") print pending }
+  ' | cut -c1-120)
+  [ -z "$bad" ] || { echo "assignments without '|| return': $bad"; false; }
+}
