@@ -376,8 +376,8 @@ orphans() {
   while [ -z "$(find "$MARK" -name 'start.*' -print -quit)" ] && [ "$i" -lt 100 ]; do sleep 0.1; i=$((i + 1)); done
   [ -n "$(find "$MARK" -name 'start.*' -print -quit)" ]
   kill -TERM "$pid"
-  wait "$pid" || true
   touch "$MARK/release"
+  wait "$pid" || true
   [ ! -e "$(slot 1)" ] || { echo "the interrupted proof left its slot"; ls -la "$(slot 1)"; false; }
   [ -z "$(orphans)" ] || { echo "after an interrupt:"; orphans; false; }
   # vbw_die: a check file committed but not approved (the working folder still holds the
