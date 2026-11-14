@@ -89414,14 +89414,14 @@
       "id": "F459",
       "req": "R149",
       "attempts": 0,
-      "status": "open",
+      "status": "fixed",
       "note": "C217 fail (exit 1), C221 fail (exit 1)"
     },
     {
       "id": "F460",
       "command": "test",
       "attempts": 0,
-      "status": "open",
+      "status": "fixed",
       "note": "test fail"
     }
   ],
@@ -108125,6 +108125,17 @@
         "ended": "2026-11-14T09:59:03Z",
         "cost": {
           "usd": 0.386857
+        }
+      },
+      {
+        "id": "fix-20261114T111054Z",
+        "kind": "fix",
+        "session": "0ee781c3-c5b6-4a6c-889f-04b89f1fba4a",
+        "milestone": "M59",
+        "started": "2026-11-14T11:10:54Z",
+        "ended": "2026-11-14T11:20:00Z",
+        "cost": {
+          "usd": 0.430795
         }
       }
     ],
