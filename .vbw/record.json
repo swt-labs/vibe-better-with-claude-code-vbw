@@ -9530,7 +9530,7 @@
   "milestone": {
     "id": "M59",
     "title": "Proof copies under the sandbox, a vbw next that never answers on a failed step",
-    "status": "active"
+    "status": "shipped"
   },
   "shipped": [
     {
@@ -9817,6 +9817,11 @@
       "id": "M58",
       "title": "Faster Bash guard, every test in a proof, no silent fix done",
       "at": "2026-11-13T13:15:45Z"
+    },
+    {
+      "id": "M59",
+      "title": "Proof copies under the sandbox, a vbw next that never answers on a failed step",
+      "at": "2026-11-14T14:09:11Z"
     }
   ],
   "requirements": [
@@ -95692,6 +95697,11 @@
       "at": "2026-11-14T13:29:44Z",
       "text": "Contract approved: 295 requirements, 701 checks, 690 plans (f89dc70c02e2)",
       "plans": []
+    },
+    {
+      "id": "D736",
+      "at": "2026-11-14T14:09:11Z",
+      "text": "Shipped M59 Proof copies under the sandbox, a vbw next that never answers on a failed step: 2 requirements proven or accepted"
     }
   ],
   "commands": {
@@ -113322,6 +113332,10 @@
             "usd": 0,
             "at": "2026-11-13T20:32:19Z"
           }
+        },
+        "total": {
+          "usd": 36.537272,
+          "sessions": 48
         }
       }
     }
