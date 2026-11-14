@@ -213,7 +213,7 @@ for p in dist .next target; do [ ! -e "$p" ] && [ ! -L "$p" ] || { echo "build o
   vbw_run prove --full
   [ "$status" -eq 0 ] || { echo "$output"; false; }
   jq -e '.evidence.own.copy_slots.made == 1' .vbw/record.json > /dev/null || { jq .evidence.own .vbw/record.json; false; }
-  [ "$(git worktree list | wc -l | tr -d ' ')" = 2 ] || { git worktree list; false; }
+  [ "$(git worktree list | wc -l | tr -d ' ')" = 1 ] || { git worktree list; false; }
   [ "$(cat "$OUTSIDE/keep.txt")" = keep ]
   [ -L node_modules/outside ]
   [ "$(cat node_modules/ro/sub/f.txt)" = ro ]
