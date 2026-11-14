@@ -89452,7 +89452,7 @@
       "req": "R310",
       "source": "qa",
       "attempts": 0,
-      "status": "open",
+      "status": "fixed",
       "note": "Criterion 3 asks that EVERY step inside next_decide stops vbw next when it fails, as a structure, not a check on single lines. Commit f4265559 added '|| return $?' to five steps only (contract_hash_from, contract_classify, qa_digests, qa_settle, qa_cache_read). These steps in plugin/lib/cmd-next.sh next_decide still ignore a failure: the two QA_PRE_LISTING=$(... | jq -r '.[]') assignments (a failed jq leaves an empty listing and qa_digests then fingerprints an empty file list, the same missing-data case as T297), holder=$(next_holder ...) (a failed holder_display gives an empty holder and the answer goes on), and counts=$(git ls-files | jq ...) / profile=$(interview_effective ...) (only caught later by accident, when the final jq refuses an empty --argjson, with jq's text and not the step's reason). next_decide runs on the left of '||' in cmd_next, so set -e is off inside it, which is why each step needs its own return. Regression test to add in tests/next-step-failure.bats: a jq shim that fails the QA_PRE_LISTING extraction (and one that fails holder_display or the counts jq) must make vbw next exit non-zero with that step's reason, print no answer and leave next.json as it was. Fix by giving every assignment in next_decide the same '|| return $?', or by one helper all steps go through, and add a check that no $(...) assignment in next_decide lacks it.",
       "phase": "P239"
     }
@@ -108213,6 +108213,17 @@
         "ended": "2026-11-14T13:22:49Z",
         "cost": {
           "usd": 2.127657
+        }
+      },
+      {
+        "id": "fix-20261114T133001Z",
+        "kind": "fix",
+        "session": "0ee781c3-c5b6-4a6c-889f-04b89f1fba4a",
+        "milestone": "M59",
+        "started": "2026-11-14T13:30:01Z",
+        "ended": "2026-11-14T13:32:57Z",
+        "cost": {
+          "usd": 0.203517
         }
       }
     ],
