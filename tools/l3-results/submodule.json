@@ -1,20 +1,20 @@
 {
   "scenario": "submodule",
   "fixture": "a project with one submodule at sub/ (its own repository on branch main, holding greet.sh, red today, and test.sh printing its git toplevel; the spec names sh sub/test.sh), vbw init, a file staged and left uncommitted in the project and one in the submodule; the user types /vbw:vibe and answers with the recommendation to ship",
-  "cost_usd": 1.72,
+  "cost_usd": 0.76,
   "evidence_level": "L3",
-  "at": "2026-11-06T17:19:04Z",
+  "at": "2026-11-14T13:57:26Z",
   "passed": true,
   "facts": {
     "plan_commit_in_submodule": true,
     "pointer_unmoved": true,
     "check_ran_in_copy_submodule": true,
     "staged_files_untouched": true,
-    "plan_commit": "8bcc961df1d3bbf07d1cfa39e26a4ff3872a2af1",
-    "seed_pointer": "9d52af1bde4c012147aa70fb84e77359c264f60b",
-    "pointer_at_end": "9d52af1bde4c012147aa70fb84e77359c264f60b",
+    "plan_commit": "5e8f905b1f29037c937b448d2c4b1ec709c5d37e",
+    "seed_pointer": "0f16c040fd5e3bee369158f6fb2d48c47644fe4a",
+    "pointer_at_end": "0f16c040fd5e3bee369158f6fb2d48c47644fe4a",
     "status_of_sub": " M sub",
-    "check_toplevel": "/private/var/folders/xl/6lk7wfr15t79zn7fpz2lm1q80000gn/T/vbw-l3-submodule.uJZtZt/.vbw/runtime/proof.keep.1/tree/sub"
+    "check_toplevel": "/private/var/folders/xl/6lk7wfr15t79zn7fpz2lm1q80000gn/T/vbw-l3-submodule.NAhCvj/.vbw/runtime/proof.keep.1/tree/sub"
   },
   "not_tested": [
     "nested submodules (a submodule inside the submodule)",
