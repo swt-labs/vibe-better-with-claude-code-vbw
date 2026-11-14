@@ -90891,6 +90891,11 @@
       "id": "T298",
       "text": "Agents' scratch folder keeps every run's files: .vbw/runtime/scratch held 558 entries from October on, and on 2026-11-14 P238.1's Dev ran an old .vbw/runtime/scratch/mut.sh of P192.3 taking it for its own; it broke plugin/agents/dev.md, qa.md, scout.md and plugin/hooks/guard-tools.jq and queued 7 breaks for P192.3 (undone by hand). Give each run its own scratch folder, or clear a run's scratch when it ends, so no agent finds another run's scripts; also old .vbw/runtime/mutate.* folders stay (12, from 2026-10-26 on)",
       "status": "open"
+    },
+    {
+      "id": "T299",
+      "text": "After a failed QA hashing step, cmd-prove.sh, cmd-req.sh and cmd-show.sh print the reason and carry on with an empty qa_combined value (vbw_scratch_json x \"$(qa_combined ...)\"); R310 stops vbw next, status and qa record only (P239.1's Dev, 2026-11-14)",
+      "status": "open"
     }
   ],
   "decisions": [
