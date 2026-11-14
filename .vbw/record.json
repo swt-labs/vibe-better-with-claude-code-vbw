@@ -91385,6 +91385,11 @@
       "id": "T301",
       "text": "A fix run cannot reach a failing test that no check names (2026-11-14, F460): a failing case of a spec test file that no check's filter covers becomes a project-command fix with no requirement, so vbw run start fix gives its lease no editable check file, even when the file is a requirement's protected check file (here R92's tests/proof-selfcontained.bats); the Dev is refused and the main session had to edit it. Attribute such a failure to the requirements whose checks protect the file (their own check files editable, one approval as today), and say so in vbw show fix",
       "status": "open"
+    },
+    {
+      "id": "T302",
+      "text": "The fixing workflow's close step gives up on a long vbw fix done (2026-11-14, F461): fix done reran 346 units (cmd-next.sh changed, about 56 min); the closer waited about 30 min, stopped, and its fix done did not survive, leaving the run open and the fix unrecorded (40 min lost; the main session reran it). The close step must wait for fix done however long it runs (its own progress lines show it is alive), or the workflow must run it as a step of its own whose end it reads",
+      "status": "open"
     }
   ],
   "decisions": [
