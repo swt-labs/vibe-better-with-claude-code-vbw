@@ -91390,6 +91390,11 @@
       "id": "T302",
       "text": "The fixing workflow's close step gives up on a long vbw fix done (2026-11-14, F461): fix done reran 346 units (cmd-next.sh changed, about 56 min); the closer waited about 30 min, stopped, and its fix done did not survive, leaving the run open and the fix unrecorded (40 min lost; the main session reran it). The close step must wait for fix done however long it runs (its own progress lines show it is alive), or the workflow must run it as a step of its own whose end it reads",
       "status": "open"
+    },
+    {
+      "id": "T303",
+      "text": "Clean copy tidy-ups from M59 QA (2026-11-14): proofcopy_own reads alternates with 'done < file 2> /dev/null', so bash applies the input first and a hand-deleted alternates file prints 'No such file or directory' (swap the redirects); the comment above proofcopy_sweep_rm still says it removes the slot 'with its worktree entries' (tidying now lives in proofcopy_tidy)",
+      "status": "open"
     }
   ],
   "decisions": [
